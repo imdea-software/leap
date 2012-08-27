@@ -102,7 +102,7 @@ struct
     let run_z3 _ =
       let _ = Debug.print_smt "Invoking z3... " in
       let z3_cmd  = config.exec ^ " -t:" ^ (string_of_int config.timeout)
-                      ^ " " ^ temp in
+                      ^ " " ^ temp ^ " CASE_SPLIT=4 " in
       let env = Array.of_list [] in
       let (from_z3,to_z3,stderr) = Unix.open_process_full z3_cmd env in
       let response = parse_z3_output from_z3 in
