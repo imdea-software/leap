@@ -1,0 +1,59 @@
+
+Diagram: ticketint_progress
+
+Support :
+  
+  ((i != j) -> ~(@crit(i). /\ @crit(j).)) /\
+  ((i != j /\ @active(i). /\ @active(j).) -> main::ticket(i) != main::ticket(j)) /\
+  (@active(i). -> main::ticket(i) < avail)
+  
+
+Nodes:
+[1] : {@1(k). \/ @2(k). \/ @6(k).}
+[2] : {@3(k).}
+[3] : {@4(t). /\ setIntMin(bag) = main::ticket(t) /\ t != k /\ @4(k).}
+[4] : {@5(t). /\ setIntMin(bag) = main::ticket(t) /\ t != k /\ @4(k).}
+[5] : {@6(t). /\ setIntMin(bag) = main::ticket(t) /\ t != k /\ @4(k).}
+[6] : {@4(k). /\ setIntMin(bag) = main::ticket(k)}
+[7] : {@5(k). /\ setIntMin(bag) = main::ticket(k)}
+
+
+Initial:
+{1}
+
+
+Boxes:
+{3,4,5} : t
+
+
+Edges:
+[1] -> [2] : {}
+[2] -> [3] : {3(k)}
+[2] -> [6] : {3(k)}
+[3] -> [4] : {4(t)}
+[4] -> [5] : {5(t)}
+[5] => [3] : {6(t)}
+[5] => [4] : {6(t)}
+[5] => [5] : {6(t)}
+[5] -> [6] : {6(t)}
+[6] -> [7] : {4(k)}
+[7] -> [1] : {}
+
+[1] -> [1] : {}
+[2] -> [2] : {}
+[3] -> [3] : {}
+[4] -> [4] : {}
+[5] -> [5] : {}
+[6] -> [6] : {}
+[7] -> [7] : {}
+
+
+Acceptance:
+
+{ [1]->[2], [2]->[3], [2]->[6], [3]->[4], [4]->[5], [6]->[7] } : { [7]->[1] }
+with
+  begin
+    default : 0
+  end
+
+

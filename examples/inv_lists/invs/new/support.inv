@@ -1,0 +1,11 @@
+param:
+
+tid i
+
+invariant [list_region] :
+
+    (@23(i). \/ @24(i).)-> ~ (insert::aux(i) in region)
+///\  @24(i). -> rd(heap, insert::aux(i)).next = insert::curr(i)
+///\  insert::curr(i) in region
+///\  insert::prev(i) in region
+

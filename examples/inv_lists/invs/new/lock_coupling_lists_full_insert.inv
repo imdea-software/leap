@@ -1,0 +1,28 @@
+
+param:
+
+tid i
+
+invariant [list_insert] :
+
+// For insert
+
+//@insert_program(i). ->
+//  (
+//       head in region
+//    /\ (@curr_def_ins(i). -> insert::curr(i) in region)
+//  ) /\
+
+(i != j /\ @insert_program(i). /\ @inside_if_one(j). /\ @inside_if_two(j).) ->
+  insert::prev(i) != remove::curr(j)
+
+
+
+
+//    /\ (@after_new(i). -> ~ (insert::aux(i) in region))
+//    /\ tail in region
+//    /\ null in region
+//    /\ (@prev_def_ins(i). -> insert::prev(i) in region)
+//    /\ (@after_new(i). -> ~ (insert::aux(i) in region))
+//    /\ region = addr2set(heap, head)
+//  )

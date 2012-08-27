@@ -1,0 +1,8 @@
+param:
+
+tid i
+
+invariant [list_rem] :
+
+@rem(i). -> remove::curr(i).next = remove::auxAddr(i)  /\
+            remove::prev(i).next = remove::currAddr(i)

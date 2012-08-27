@@ -1,0 +1,64 @@
+
+-> removeWhile {union:reduce|simpl}
+
+
+// BUG VERSION
+-> removeOwns [ 6:N:removeDisjoint;
+               13:N:removeDisjoint] {union:reduce|simpl}
+
+// GOOD VERSION
+-> removeOwns [ 8:N:removeNext;
+               14:N:removeNext] {union:reduce|simpl}
+
+
+// BUG VERSION
+-> removeDisjoint [ 3:N:removeRegion, removePreserve            ;
+                    8:N:removeRegion, removePreserve            ;
+                   11:N:removeRegion, removePreserve, removeNext] {union:reduce|simpl}
+
+// GOOD VERSION
+-> removeDisjoint [ 3:N:removeRegion, removePreserve            ;
+                    9:N:removeRegion, removePreserve            ;
+                   12:N:removeRegion, removePreserve, removeNext] {union:reduce|simpl}
+
+
+// BUG VERSION
+-> removeNext [ 3:N:removePreserve, removeRegion;
+                8:N:removePreserve, removeRegion;
+               11:N:removePreserve, removeRegion;
+               12:E:removeOwns                  ] {union:reduce|simpl}
+
+// GOOD VERSION
+-> removeNext [ 3:N:removePreserve, removeRegion;
+                9:N:removePreserve, removeRegion;
+               12:N:removePreserve, removeRegion;
+               13:E:removeOwns                  ] {union:reduce|simpl}
+
+
+// BUG VERSION
+-> removeRegion [ 3:N:removePreserve                                                                       ;
+                  7:N:removeWhile                                                                          ;
+                  8:N:removePreserve, removeWhile                                                          ;
+                 12:N:removePreserve, removeWhile, removeNext                                              ;
+                 12:E:removePreserve, removeWhile, removeNext, removeAux, removeOwns {pruning:reduce|simpl}] {union:reduce|simpl}
+
+// GOOD VERSION
+-> removeRegion [ 3:N:removePreserve                                                      ;
+                  7:N:removeWhile                                                         ;
+                  9:N:removePreserve,removeWhile                                          ;
+                 13:N:removePreserve,removeWhile,removeNext                               ;
+                 13E:removePreserve,removeNext,removeAux,removeOwns {pruning:reduce|simpl}] {union:reduce|simpl}
+
+
+// BUG VERSION
+-> removeAux [12:removePreserve, removeNext, removeRegion] {union:reduce|simpl}
+
+// GOOD VERSION
+-> removeAux [13:removePreserve,removeNext,removeRegion] {union:reduce|simpl}
+
+
+// BUG VERSION
+-> removePreserve [12:E:removeNext, removeRegion {pruning:reduce|simpl}] {union:reduce|simpl}
+
+// GOOD VERSION
+-> removePreserve [13:E:removeNext, removeRegion {pruning:reduce|simpl}] {union:reduce|simpl}

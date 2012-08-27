@@ -1,0 +1,89 @@
+* Syntax changes
+** A dot is added to the end of a pogram positions. ie @2. @3[k].
+** Ghost code is surrounded by |[  ]|
+
+* Proposed roadmap
+** Projects
+*** Project 1: parse the program [DONE]
+*** Project 2: parse invariant candidates [DONE]
+*** Project 3: given a program and an invariant, generate all VCs [DONE]
+*** Project 4: parse a diagram [DONE]
+*** Project 5: generate all VC for a closed diagram [DONE]
+*** Project 6: generate all VC for a parametrized diagram
+
+* leap structure
+pos_solver -> yicesposquery || z3posquery -> (yices || z3)
+num_solver -> yicesnumquery || z3numquery -> (yices || z3) -> smp_num
+tll_solver -> yicestllquery || z3tllquery -> (yices || z3) -> smp_tll
+
+* to ask
+** How to implement malloc?
+** Invariant candidates accepts only thread variables as parameters, no fixed thread ids.
+** By the moment, I cannot use boolean variables as conditions. ie while b do ... endwhile
+** Hos to define Enabled function?
+** Should I add an "me" thread identifier? How do we coupe with the ticket mutex program using sets then???
+
+* fix
+** It does not print the ghost code
+** In numeric problems, the transition name may duplicate
+** Change the definition of beta to match cases where arrows go out and in the same box.
+
+* todo
+** Replace fields in VarCell, VarElem... by (variable * kind_t)
+** Add priming to variables as a field of the data type, and not as ' to the variable name
+** Add "min" operation to intSet
+** Add formula parsing to verification diagram in order to obtain the parameter k
+** Resolve the shift/reduce conflict in the parser
+** Add sets as well founded domains for ranking functions in acceptance conditions for verification diagrams
+** Parametrized verification diagrams
+** Add arrays as program variables
+** Add the possibility to add definitions
+** Add function rev and use it in the vd example
+** Generate separate programs: prog2fts, vcgen_closed, vcgen_open, prog2fts --parse
+** List preservation example [DONE]
+** Ranking functions [DONE]
+** Relate a diagram with a program (variables, transitions, ...) [DONE]
+** Skip required between a while and end of program [DONE]
+** Change "-debug" for "--debug" (Deprecated) [DONE]
+** Limit the number of statements that can be ghost or atomic [DONE]
+** Fix the if statement for ghost code [DONE]
+** Test atomic statements [DONE]
+** Add semantic to expressions of the form c.lock() [DONE]
+** The num of threads in a closed system is a param of --vcgen-closed [DONE]
+** Check single assignment within a ghost or atomic code [DONE]
+** Await, critical, noncritical, while ,select code should not be allowed as ghost [DONE]
+** Possibility to define ghost variables [DONE]
+** Ghost assignments can be done only over ghost variables [DONE]
+** Replace the param function with the new one [DONE]
+** Modify to respect ' at the end of a variable when param is called [DONE]
+** I need a function to get primed variables from a formula [DONE]
+** Add to which procedure a variable belongs to [DONE]
+** Rho: statement_t -> th_t option [DONE]
+** Fix the jump position for negative case of if and while [DONE]
+** Modify assignment effects [DONE]
+** Atomic commands [DONE]
+** Variables preservation [DONE]
+** Parametrize rho generation by a thread id [DONE]
+** Prime function [DONE]
+** In the invariant file, I must declare first the tid variables. I will use:
+	 tid: i
+		tid j
+			i != j -> .... [DONE]
+** Generate VC for programs [DONE]
+** Define a structure for VD [DONE]
+** Parse VD [DONE]
+** Add atomic statements with different left variable [DONE]
+** Replace && and || by /\ and \/ [DONE]
+** Single procedure programs and local variables are named by "ticket[1]"  (or "MinTicket.ticket[1]") [DONE]
+** Use ticket(i) for parametrized local variables. [DONE]
+** Enrich the parser and VCGen with instructions of the form c.next, c.data, ... [DONE]
+** Generate the invariants with this extended syntax (ensure formulas are building blocks) [DONE]
+** Generate the FTS from the program [DONE]
+** Try with parametrized systems [DONE]
+** Generate VC for diagrams, not just invariant candidates [DONE]
+** Generate output compatible with SAT or SMT solver
+** Modify parser to accept unsorted variables. For instance "x=y" could be equality between integers or sets. Mmm... is this truly necessary? [DONE]
+** Extend parser to parse ghost variables declaration [DONE]
+** Verify that only declared variables are used [DONE]
+** Codify whether a statement is ghost or not inside the statement itself. Perhaps a "ghost : bool" field in options structure? [DONE]
+** Being able to label program lines. c: critial, for instance. [DONE]

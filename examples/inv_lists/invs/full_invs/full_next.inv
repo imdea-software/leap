@@ -1,0 +1,39 @@
+param:
+
+tid i
+
+invariant [fullNext] :
+
+
+    rd(heap, head).next != head
+/\  head != tail // Same as in remove_region
+/\  tail != null // Same as in remove_region
+/\  rd(heap, head).next != null
+/\  @ins_head_next_diff(i). -> rd(heap, head).next != head
+/\  @ins_prev_is_head(i). -> insert::prev(i) = head
+/\  @ins_diff(i). -> insert::prev(i) != insert::curr(i)
+/\  (@ins_aux_eq_prev(i). -> insert::aux(i) = insert::prev(i))
+/\  (@ins_aux_before_prev(i). -> (insert::aux(i) != insert::prev(i) /\ rd(heap, insert::aux(i)).next = insert::prev(i)))
+/\  @ins_aux_before_curr(i). -> (rd(heap,insert::aux(i)).next = insert::curr(i))
+/\  (@ins_follows(i). /\ ~ @ins_equals(i).) -> (insert::prev(i) != insert::curr(i) /\
+                                         rd(heap,insert::prev(i)).next = insert::curr(i))
+/\  @ins_equals(i). -> insert::prev(i) = insert::curr(i)
+/\  @ins_while(i). -> insert::curr(i) != null
+
+
+/\ @rem_prev_is_head(i). -> (remove::prev(i) = head /\ rd(heap, head).next != 
+null)
+/\ (@rem_aux_eq_prev(i). -> remove::aux(i) = remove::prev(i))
+/\ (@rem_equals(i). -> remove::prev(i) = remove::curr(i))
+/\ (@rem_aux_before_prev(i). -> (remove::aux(i) != remove::prev(i) /\ rd(heap, remove::aux(i)).next = remove::prev(i)))
+/\ (@rem_equals(i). -> remove::prev(i) = remove::curr(i))
+/\ ((@rem_follows(i). /\ ~ @rem_equals(i).) -> (remove::prev(i) != remove::curr(i) /\
+                                     rd(heap,remove::prev(i)).next = remove::curr(i)))
+
+/\ @rem_while(i). -> remove::curr(i) != tail
+/\ (@rem_if_one(i). \/ @rem_if_two(i).) -> remove::curr(i) != tail
+/\ @rem_diff(i). -> remove::prev(i) != remove::curr(i)
+/\ @rem_if_two(i). -> (   rd(heap, remove::curr(i)).next = remove::aux(i)
+                          /\ remove::prev(i) != remove::aux(i)
+                          /\ remove::curr(i) != remove::aux(i))
+

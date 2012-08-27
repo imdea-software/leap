@@ -1,0 +1,7 @@
+param:
+
+
+invariant [list_notnull] :
+
+head != null /\ tail != null /\ head != tail
+

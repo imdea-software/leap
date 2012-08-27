@@ -1,0 +1,50 @@
+--- 1 ---
+[ OK(L) ]: pc(i)=1 /\ pc(j)=1 /\ tick = 0 /\ min = 0 /\ main::ticket(i) = 0 /\ main::ticket(j) = 0 -> i != j /\ pc(i)=4 \/ pc(i)=5 \/ pc(i)=6 /\ pc(j)=4 \/ pc(j)=5 \/ pc(j)=6 -> main::ticket(i) != main::ticket(j)
+--- 2 ---
+[ OK(L) ]: i != j /\ pc(i)=4 \/ pc(i)=5 \/ pc(i)=6 /\ pc(j)=4 \/ pc(j)=5 \/ pc(j)=6 -> main::ticket(i) != main::ticket(j) /\ pc(i)=1 /\ pc' = pc{i<-2} /\ 1 = 1 /\ tick' = tick /\ min' = min /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' /\ pc'(i)=4 \/ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=4 \/ pc'(j)=5 \/ pc'(j)=6 -> main::ticket(i)' != main::ticket(j)'
+--- 3 ---
+[ OK(L) ]: i != j /\ pc(i)=4 \/ pc(i)=5 \/ pc(i)=6 /\ pc(j)=4 \/ pc(j)=5 \/ pc(j)=6 -> main::ticket(i) != main::ticket(j) /\ pc(i)=1 /\ pc' = pc{i<-7} /\ ~ 1 = 1 /\ tick' = tick /\ min' = min /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' /\ pc'(i)=4 \/ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=4 \/ pc'(j)=5 \/ pc'(j)=6 -> main::ticket(i)' != main::ticket(j)'
+--- 4 ---
+[ OK(L) ]: i != j /\ pc(i)=4 \/ pc(i)=5 \/ pc(i)=6 /\ pc(j)=4 \/ pc(j)=5 \/ pc(j)=6 -> main::ticket(i) != main::ticket(j) /\ pc(j)=1 /\ pc' = pc{j<-2} /\ 1 = 1 /\ tick' = tick /\ min' = min /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' /\ pc'(i)=4 \/ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=4 \/ pc'(j)=5 \/ pc'(j)=6 -> main::ticket(i)' != main::ticket(j)'
+--- 5 ---
+[ OK(L) ]: i != j /\ pc(i)=4 \/ pc(i)=5 \/ pc(i)=6 /\ pc(j)=4 \/ pc(j)=5 \/ pc(j)=6 -> main::ticket(i) != main::ticket(j) /\ pc(j)=1 /\ pc' = pc{j<-7} /\ ~ 1 = 1 /\ tick' = tick /\ min' = min /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' /\ pc'(i)=4 \/ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=4 \/ pc'(j)=5 \/ pc'(j)=6 -> main::ticket(i)' != main::ticket(j)'
+--- 6 ---
+[  CHK  ]: k_0 != i /\ k_0 != j /\ i != j /\ pc(i)=4 \/ pc(i)=5 \/ pc(i)=6 /\ pc(j)=4 \/ pc(j)=5 \/ pc(j)=6 -> main::ticket(i) != main::ticket(j) /\ pc(k_0)=1 /\ pc' = pc{k_0<-2} /\ 1 = 1 /\ tick' = tick /\ min' = min /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' /\ pc'(i)=4 \/ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=4 \/ pc'(j)=5 \/ pc'(j)=6 -> main::ticket(i)' != main::ticket(j)'
+--- 7 ---
+[  CHK  ]: k_0 != i /\ k_0 != j /\ i != j /\ pc(i)=4 \/ pc(i)=5 \/ pc(i)=6 /\ pc(j)=4 \/ pc(j)=5 \/ pc(j)=6 -> main::ticket(i) != main::ticket(j) /\ pc(k_0)=1 /\ pc' = pc{k_0<-7} /\ ~ 1 = 1 /\ tick' = tick /\ min' = min /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' /\ pc'(i)=4 \/ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=4 \/ pc'(j)=5 \/ pc'(j)=6 -> main::ticket(i)' != main::ticket(j)'
+--- 8 ---
+[ OK(L) ]: i != j /\ pc(i)=4 \/ pc(i)=5 \/ pc(i)=6 /\ pc(j)=4 \/ pc(j)=5 \/ pc(j)=6 -> main::ticket(i) != main::ticket(j) /\ pc(i)=2 /\ pc' = pc{i<-3} /\ tick' = tick /\ min' = min /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' /\ pc'(i)=4 \/ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=4 \/ pc'(j)=5 \/ pc'(j)=6 -> main::ticket(i)' != main::ticket(j)'
+--- 9 ---
+[ OK(L) ]: i != j /\ pc(i)=4 \/ pc(i)=5 \/ pc(i)=6 /\ pc(j)=4 \/ pc(j)=5 \/ pc(j)=6 -> main::ticket(i) != main::ticket(j) /\ pc(j)=2 /\ pc' = pc{j<-3} /\ tick' = tick /\ min' = min /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' /\ pc'(i)=4 \/ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=4 \/ pc'(j)=5 \/ pc'(j)=6 -> main::ticket(i)' != main::ticket(j)'
+--- 10 ---
+[  CHK  ]: k_0 != i /\ k_0 != j /\ i != j /\ pc(i)=4 \/ pc(i)=5 \/ pc(i)=6 /\ pc(j)=4 \/ pc(j)=5 \/ pc(j)=6 -> main::ticket(i) != main::ticket(j) /\ pc(k_0)=2 /\ pc' = pc{k_0<-3} /\ tick' = tick /\ min' = min /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' /\ pc'(i)=4 \/ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=4 \/ pc'(j)=5 \/ pc'(j)=6 -> main::ticket(i)' != main::ticket(j)'
+--- 11 ---
+[   X   ]: i != j /\ pc(i)=4 \/ pc(i)=5 \/ pc(i)=6 /\ pc(j)=4 \/ pc(j)=5 \/ pc(j)=6 -> main::ticket(i) != main::ticket(j) /\ pc(i)=3 /\ pc' = pc{i<-4} /\ tick' = tick + 1 /\ true /\ main::ticket' = main::ticket{i<-tick} /\ true /\ min' = min /\ j' = j /\ i' = i /\ j' = j /\ i' = i -> i' != j' /\ pc'(i)=4 \/ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=4 \/ pc'(j)=5 \/ pc'(j)=6 -> main::ticket(i)' != main::ticket(j)'
+--- 12 ---
+[   X   ]: i != j /\ pc(i)=4 \/ pc(i)=5 \/ pc(i)=6 /\ pc(j)=4 \/ pc(j)=5 \/ pc(j)=6 -> main::ticket(i) != main::ticket(j) /\ pc(j)=3 /\ pc' = pc{j<-4} /\ tick' = tick + 1 /\ true /\ main::ticket' = main::ticket{j<-tick} /\ true /\ min' = min /\ j' = j /\ i' = i /\ j' = j /\ i' = i -> i' != j' /\ pc'(i)=4 \/ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=4 \/ pc'(j)=5 \/ pc'(j)=6 -> main::ticket(i)' != main::ticket(j)'
+--- 13 ---
+[  CHK  ]: k_0 != i /\ k_0 != j /\ i != j /\ pc(i)=4 \/ pc(i)=5 \/ pc(i)=6 /\ pc(j)=4 \/ pc(j)=5 \/ pc(j)=6 -> main::ticket(i) != main::ticket(j) /\ pc(k_0)=3 /\ pc' = pc{k_0<-4} /\ tick' = tick + 1 /\ true /\ main::ticket' = main::ticket{k_0<-tick} /\ true /\ min' = min /\ j' = j /\ i' = i /\ j' = j /\ i' = i -> i' != j' /\ pc'(i)=4 \/ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=4 \/ pc'(j)=5 \/ pc'(j)=6 -> main::ticket(i)' != main::ticket(j)'
+--- 14 ---
+[  CHK  ]: i != j /\ pc(i)=4 \/ pc(i)=5 \/ pc(i)=6 /\ pc(j)=4 \/ pc(j)=5 \/ pc(j)=6 -> main::ticket(i) != main::ticket(j) /\ pc(i)=4 /\ pc' = pc{i<-5} /\ main::ticket(i) = min /\ tick' = tick /\ min' = min /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' /\ pc'(i)=4 \/ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=4 \/ pc'(j)=5 \/ pc'(j)=6 -> main::ticket(i)' != main::ticket(j)'
+--- 15 ---
+[  CHK  ]: i != j /\ pc(i)=4 \/ pc(i)=5 \/ pc(i)=6 /\ pc(j)=4 \/ pc(j)=5 \/ pc(j)=6 -> main::ticket(i) != main::ticket(j) /\ pc(i)=4 /\ pc' = pc{i<-4} /\ ~ main::ticket(i) = min /\ tick' = tick /\ min' = min /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' /\ pc'(i)=4 \/ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=4 \/ pc'(j)=5 \/ pc'(j)=6 -> main::ticket(i)' != main::ticket(j)'
+--- 16 ---
+[  CHK  ]: i != j /\ pc(i)=4 \/ pc(i)=5 \/ pc(i)=6 /\ pc(j)=4 \/ pc(j)=5 \/ pc(j)=6 -> main::ticket(i) != main::ticket(j) /\ pc(j)=4 /\ pc' = pc{j<-5} /\ main::ticket(j) = min /\ tick' = tick /\ min' = min /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' /\ pc'(i)=4 \/ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=4 \/ pc'(j)=5 \/ pc'(j)=6 -> main::ticket(i)' != main::ticket(j)'
+--- 17 ---
+[  CHK  ]: i != j /\ pc(i)=4 \/ pc(i)=5 \/ pc(i)=6 /\ pc(j)=4 \/ pc(j)=5 \/ pc(j)=6 -> main::ticket(i) != main::ticket(j) /\ pc(j)=4 /\ pc' = pc{j<-4} /\ ~ main::ticket(j) = min /\ tick' = tick /\ min' = min /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' /\ pc'(i)=4 \/ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=4 \/ pc'(j)=5 \/ pc'(j)=6 -> main::ticket(i)' != main::ticket(j)'
+--- 18 ---
+[  CHK  ]: k_0 != i /\ k_0 != j /\ i != j /\ pc(i)=4 \/ pc(i)=5 \/ pc(i)=6 /\ pc(j)=4 \/ pc(j)=5 \/ pc(j)=6 -> main::ticket(i) != main::ticket(j) /\ pc(k_0)=4 /\ pc' = pc{k_0<-5} /\ main::ticket(k_0) = min /\ tick' = tick /\ min' = min /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' /\ pc'(i)=4 \/ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=4 \/ pc'(j)=5 \/ pc'(j)=6 -> main::ticket(i)' != main::ticket(j)'
+--- 19 ---
+[  CHK  ]: k_0 != i /\ k_0 != j /\ i != j /\ pc(i)=4 \/ pc(i)=5 \/ pc(i)=6 /\ pc(j)=4 \/ pc(j)=5 \/ pc(j)=6 -> main::ticket(i) != main::ticket(j) /\ pc(k_0)=4 /\ pc' = pc{k_0<-4} /\ ~ main::ticket(k_0) = min /\ tick' = tick /\ min' = min /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' /\ pc'(i)=4 \/ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=4 \/ pc'(j)=5 \/ pc'(j)=6 -> main::ticket(i)' != main::ticket(j)'
+--- 20 ---
+[  CHK  ]: i != j /\ pc(i)=4 \/ pc(i)=5 \/ pc(i)=6 /\ pc(j)=4 \/ pc(j)=5 \/ pc(j)=6 -> main::ticket(i) != main::ticket(j) /\ pc(i)=5 /\ pc' = pc{i<-6} /\ tick' = tick /\ min' = min /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' /\ pc'(i)=4 \/ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=4 \/ pc'(j)=5 \/ pc'(j)=6 -> main::ticket(i)' != main::ticket(j)'
+--- 21 ---
+[  CHK  ]: i != j /\ pc(i)=4 \/ pc(i)=5 \/ pc(i)=6 /\ pc(j)=4 \/ pc(j)=5 \/ pc(j)=6 -> main::ticket(i) != main::ticket(j) /\ pc(j)=5 /\ pc' = pc{j<-6} /\ tick' = tick /\ min' = min /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' /\ pc'(i)=4 \/ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=4 \/ pc'(j)=5 \/ pc'(j)=6 -> main::ticket(i)' != main::ticket(j)'
+--- 22 ---
+[  CHK  ]: k_0 != i /\ k_0 != j /\ i != j /\ pc(i)=4 \/ pc(i)=5 \/ pc(i)=6 /\ pc(j)=4 \/ pc(j)=5 \/ pc(j)=6 -> main::ticket(i) != main::ticket(j) /\ pc(k_0)=5 /\ pc' = pc{k_0<-6} /\ tick' = tick /\ min' = min /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' /\ pc'(i)=4 \/ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=4 \/ pc'(j)=5 \/ pc'(j)=6 -> main::ticket(i)' != main::ticket(j)'
+--- 23 ---
+[ OK(L) ]: i != j /\ pc(i)=4 \/ pc(i)=5 \/ pc(i)=6 /\ pc(j)=4 \/ pc(j)=5 \/ pc(j)=6 -> main::ticket(i) != main::ticket(j) /\ pc(i)=6 /\ pc' = pc{i<-1} /\ min' = min + 1 /\ true /\ tick' = tick /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' /\ pc'(i)=4 \/ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=4 \/ pc'(j)=5 \/ pc'(j)=6 -> main::ticket(i)' != main::ticket(j)'
+--- 24 ---
+[ OK(L) ]: i != j /\ pc(i)=4 \/ pc(i)=5 \/ pc(i)=6 /\ pc(j)=4 \/ pc(j)=5 \/ pc(j)=6 -> main::ticket(i) != main::ticket(j) /\ pc(j)=6 /\ pc' = pc{j<-1} /\ min' = min + 1 /\ true /\ tick' = tick /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' /\ pc'(i)=4 \/ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=4 \/ pc'(j)=5 \/ pc'(j)=6 -> main::ticket(i)' != main::ticket(j)'
+--- 25 ---
+[  CHK  ]: k_0 != i /\ k_0 != j /\ i != j /\ pc(i)=4 \/ pc(i)=5 \/ pc(i)=6 /\ pc(j)=4 \/ pc(j)=5 \/ pc(j)=6 -> main::ticket(i) != main::ticket(j) /\ pc(k_0)=6 /\ pc' = pc{k_0<-1} /\ min' = min + 1 /\ true /\ tick' = tick /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' /\ pc'(i)=4 \/ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=4 \/ pc'(j)=5 \/ pc'(j)=6 -> main::ticket(i)' != main::ticket(j)'

@@ -1,0 +1,34 @@
+--- 1 ---
+[ OK(L) ]: pc(i)=1 /\ avail = 0 /\ lower = EmptySetInt /\ bag = EmptySetInt -> pc(i)=5 \/ pc(i)=6 -> setIntMin(bag) = main::ticket(i)
+--- 2 ---
+[ OK(L) ]: pc(i)=5 \/ pc(i)=6 -> setIntMin(bag) = main::ticket(i) /\ pc(i)=1 /\ pc' = pc{i<-2} /\ true /\ avail' = avail /\ lower' = lower /\ bag' = bag /\ i' = i /\ main::ticket' = main::ticket /\ i' = i -> pc'(i)=5 \/ pc'(i)=6 -> setIntMin(bag') = main::ticket(i)'
+--- 3 ---
+[ OK(L) ]: pc(i)=5 \/ pc(i)=6 -> setIntMin(bag) = main::ticket(i) /\ pc(i)=1 /\ pc' = pc{i<-7} /\ ~ true /\ avail' = avail /\ lower' = lower /\ bag' = bag /\ i' = i /\ main::ticket' = main::ticket /\ i' = i -> pc'(i)=5 \/ pc'(i)=6 -> setIntMin(bag') = main::ticket(i)'
+--- 4 ---
+[  CHK  ]: k_0 != i /\ pc(i)=5 \/ pc(i)=6 -> setIntMin(bag) = main::ticket(i) /\ pc(k_0)=1 /\ pc' = pc{k_0<-2} /\ true /\ avail' = avail /\ lower' = lower /\ bag' = bag /\ i' = i /\ main::ticket' = main::ticket /\ i' = i -> pc'(i)=5 \/ pc'(i)=6 -> setIntMin(bag') = main::ticket(i)'
+--- 5 ---
+[ OK(L) ]: k_0 != i /\ pc(i)=5 \/ pc(i)=6 -> setIntMin(bag) = main::ticket(i) /\ pc(k_0)=1 /\ pc' = pc{k_0<-7} /\ ~ true /\ avail' = avail /\ lower' = lower /\ bag' = bag /\ i' = i /\ main::ticket' = main::ticket /\ i' = i -> pc'(i)=5 \/ pc'(i)=6 -> setIntMin(bag') = main::ticket(i)'
+--- 6 ---
+[ OK(L) ]: pc(i)=5 \/ pc(i)=6 -> setIntMin(bag) = main::ticket(i) /\ pc(i)=2 /\ pc' = pc{i<-3} /\ avail' = avail /\ lower' = lower /\ bag' = bag /\ i' = i /\ main::ticket' = main::ticket /\ i' = i -> pc'(i)=5 \/ pc'(i)=6 -> setIntMin(bag') = main::ticket(i)'
+--- 7 ---
+[  CHK  ]: k_0 != i /\ pc(i)=5 \/ pc(i)=6 -> setIntMin(bag) = main::ticket(i) /\ pc(k_0)=2 /\ pc' = pc{k_0<-3} /\ avail' = avail /\ lower' = lower /\ bag' = bag /\ i' = i /\ main::ticket' = main::ticket /\ i' = i -> pc'(i)=5 \/ pc'(i)=6 -> setIntMin(bag') = main::ticket(i)'
+--- 8 ---
+[ OK(L) ]: pc(i)=5 \/ pc(i)=6 -> setIntMin(bag) = main::ticket(i) /\ pc(i)=3 /\ pc' = pc{i<-4} /\ bag' = bag UnionInt SinglInt(avail) /\ true /\ avail' = avail + 1 /\ true /\ main::ticket' = main::ticket{i<-avail} /\ true /\ lower' = lower /\ i' = i /\ i' = i -> pc'(i)=5 \/ pc'(i)=6 -> setIntMin(bag') = main::ticket(i)'
+--- 9 ---
+[   X   ]: k_0 != i /\ pc(i)=5 \/ pc(i)=6 -> setIntMin(bag) = main::ticket(i) /\ pc(k_0)=3 /\ pc' = pc{k_0<-4} /\ bag' = bag UnionInt SinglInt(avail) /\ true /\ avail' = avail + 1 /\ true /\ main::ticket' = main::ticket{k_0<-avail} /\ true /\ lower' = lower /\ i' = i /\ i' = i -> pc'(i)=5 \/ pc'(i)=6 -> setIntMin(bag') = main::ticket(i)'
+--- 10 ---
+[  CHK  ]: pc(i)=5 \/ pc(i)=6 -> setIntMin(bag) = main::ticket(i) /\ pc(i)=4 /\ pc' = pc{i<-5} /\ setIntMin(bag) = main::ticket(i) /\ avail' = avail /\ lower' = lower /\ bag' = bag /\ i' = i /\ main::ticket' = main::ticket /\ i' = i -> pc'(i)=5 \/ pc'(i)=6 -> setIntMin(bag') = main::ticket(i)'
+--- 11 ---
+[ OK(L) ]: pc(i)=5 \/ pc(i)=6 -> setIntMin(bag) = main::ticket(i) /\ pc(i)=4 /\ pc' = pc{i<-4} /\ ~ setIntMin(bag) = main::ticket(i) /\ avail' = avail /\ lower' = lower /\ bag' = bag /\ i' = i /\ main::ticket' = main::ticket /\ i' = i -> pc'(i)=5 \/ pc'(i)=6 -> setIntMin(bag') = main::ticket(i)'
+--- 12 ---
+[  CHK  ]: k_0 != i /\ pc(i)=5 \/ pc(i)=6 -> setIntMin(bag) = main::ticket(i) /\ pc(k_0)=4 /\ pc' = pc{k_0<-5} /\ setIntMin(bag) = main::ticket(k_0) /\ avail' = avail /\ lower' = lower /\ bag' = bag /\ i' = i /\ main::ticket' = main::ticket /\ i' = i -> pc'(i)=5 \/ pc'(i)=6 -> setIntMin(bag') = main::ticket(i)'
+--- 13 ---
+[  CHK  ]: k_0 != i /\ pc(i)=5 \/ pc(i)=6 -> setIntMin(bag) = main::ticket(i) /\ pc(k_0)=4 /\ pc' = pc{k_0<-4} /\ ~ setIntMin(bag) = main::ticket(k_0) /\ avail' = avail /\ lower' = lower /\ bag' = bag /\ i' = i /\ main::ticket' = main::ticket /\ i' = i -> pc'(i)=5 \/ pc'(i)=6 -> setIntMin(bag') = main::ticket(i)'
+--- 14 ---
+[  CHK  ]: pc(i)=5 \/ pc(i)=6 -> setIntMin(bag) = main::ticket(i) /\ pc(i)=5 /\ pc' = pc{i<-6} /\ avail' = avail /\ lower' = lower /\ bag' = bag /\ i' = i /\ main::ticket' = main::ticket /\ i' = i -> pc'(i)=5 \/ pc'(i)=6 -> setIntMin(bag') = main::ticket(i)'
+--- 15 ---
+[  CHK  ]: k_0 != i /\ pc(i)=5 \/ pc(i)=6 -> setIntMin(bag) = main::ticket(i) /\ pc(k_0)=5 /\ pc' = pc{k_0<-6} /\ avail' = avail /\ lower' = lower /\ bag' = bag /\ i' = i /\ main::ticket' = main::ticket /\ i' = i -> pc'(i)=5 \/ pc'(i)=6 -> setIntMin(bag') = main::ticket(i)'
+--- 16 ---
+[ OK(L) ]: pc(i)=5 \/ pc(i)=6 -> setIntMin(bag) = main::ticket(i) /\ pc(i)=6 /\ pc' = pc{i<-1} /\ bag' = bag SetDiffInt SinglInt(main::ticket(i)) /\ true /\ avail' = avail /\ lower' = lower /\ i' = i /\ main::ticket' = main::ticket /\ i' = i -> pc'(i)=5 \/ pc'(i)=6 -> setIntMin(bag') = main::ticket(i)'
+--- 17 ---
+[   X   ]: k_0 != i /\ pc(i)=5 \/ pc(i)=6 -> setIntMin(bag) = main::ticket(i) /\ pc(k_0)=6 /\ pc' = pc{k_0<-1} /\ bag' = bag SetDiffInt SinglInt(main::ticket(k_0)) /\ true /\ avail' = avail /\ lower' = lower /\ i' = i /\ main::ticket' = main::ticket /\ i' = i -> pc'(i)=5 \/ pc'(i)=6 -> setIntMin(bag') = main::ticket(i)'

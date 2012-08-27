@@ -1,0 +1,30 @@
+param:
+
+tid i
+
+invariant [list_support] :
+
+   head != null
+/\ tail != null
+/\ head != tail
+/\ @after_malloc_one(i). -> (    insert::aux(i) != head
+                              /\ insert::aux(i) != tail
+                              /\ insert::aux(i) != insert::prev(i)
+                              /\ insert::aux(i) != insert::curr(i))
+/\ rd(heap, head).next != head
+/\ @prev_next_diff(i). -> insert::prev(i) != rd(heap, insert::prev(i)).next
+/\ @head_next_diff(i). -> rd(heap, head).next != head
+/\ @prev_is_head(i). -> insert::prev(i) = head
+/\ @inside_while(i). -> insert::curr(i) != null
+
+// For transition 8
+/\ @curr_def(i). -> (insert::curr(i) = null \/ (insert::curr(i) != null /\ rd(heap, insert::curr(i)).next != insert::curr(i)))
+
+
+/\ (@after_malloc_two(i). -> rd(heap, insert::aux(i)).next = insert::curr(i))
+/\ (@after_if(i). -> ((rd(heap, insert::curr(i)).data = insert::e(i)) \/
+                      (   rd(heap, insert::curr(i)).data != insert::e(i)
+                       /\ rd(heap, insert::prev(i)).next = insert::aux(i)
+                       /\ rd(heap, insert::aux(i)).next  = insert::curr(i))))
+
+/\ rd(heap, tail).next = null

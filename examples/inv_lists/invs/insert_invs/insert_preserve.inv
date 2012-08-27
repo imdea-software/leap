@@ -1,0 +1,9 @@
+param:
+
+
+invariant [insertPreserve] :
+
+null in region /\ region = addr2set(heap, head)
+
+
+

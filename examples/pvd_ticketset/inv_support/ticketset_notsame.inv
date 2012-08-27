@@ -1,0 +1,8 @@
+param:
+
+tid i
+tid j
+
+invariant [ticket_set_notsame] :
+
+(i != j /\ @active(i). /\ @active(j).) -> (main::ticket(i) != main::ticket(j))

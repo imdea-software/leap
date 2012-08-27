@@ -1,0 +1,8 @@
+param:
+
+tid i
+
+invariant [removeOwns] :
+
+(@owns_prev_rem(i). -> rd(heap, remove::prev(i)).lockid = i) /\
+((@owns_curr_rem_one(i). \/ @owns_curr_rem_two(i).) -> rd(heap, remove::curr(i)).lockid = i)

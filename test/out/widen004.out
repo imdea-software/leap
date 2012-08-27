@@ -1,0 +1,92 @@
+Invoking yices...
+unsat
+QUERY:
+(define x::int)
+(define y::int)
+
+(assert+ (not (=>  (and  (<=  0 x ) (and  (<=  x  12) (and  (<=  -2 y ) (and  (<=  y  12) true ))))  (<=  0 x ))))
+(check)
+
+Invoking yices...
+sat
+QUERY:
+(define x::int)
+(define y::int)
+
+(assert+ (not (=>  (and  (<=  0 x ) (and  (<=  x  12) (and  (<=  -2 y ) (and  (<=  y  12) true ))))  (<=  x  2))))
+(check)
+
+Invoking yices...
+sat
+QUERY:
+(define x::int)
+(define y::int)
+
+(assert+ (not (=>  (and  (<=  0 x ) (and  (<=  x  12) (and  (<=  -2 y ) (and  (<=  y  12) true ))))  (<=  x  3))))
+(check)
+
+Invoking yices...
+sat
+QUERY:
+(define x::int)
+(define y::int)
+
+(assert+ (not (=>  (and  (<=  0 x ) (and  (<=  x  12) (and  (<=  -2 y ) (and  (<=  y  12) true ))))  (<=  x  4))))
+(check)
+
+Invoking yices...
+unsat
+QUERY:
+(define x::int)
+(define y::int)
+
+(assert+ (not (=>  (and  (<=  0 x ) (and  (<=  x  12) (and  (<=  -2 y ) (and  (<=  y  12) true ))))  (<=  x  15))))
+(check)
+
+Invoking yices...
+sat
+QUERY:
+(define x::int)
+(define y::int)
+
+(assert+ (not (=>  (and  (<=  0 x ) (and  (<=  x  12) (and  (<=  -2 y ) (and  (<=  y  12) true ))))  (<=  -1 y ))))
+(check)
+
+Invoking yices...
+sat
+QUERY:
+(define x::int)
+(define y::int)
+
+(assert+ (not (=>  (and  (<=  0 x ) (and  (<=  x  12) (and  (<=  -2 y ) (and  (<=  y  12) true ))))  (<=  y  2))))
+(check)
+
+Invoking yices...
+sat
+QUERY:
+(define x::int)
+(define y::int)
+
+(assert+ (not (=>  (and  (<=  0 x ) (and  (<=  x  12) (and  (<=  -2 y ) (and  (<=  y  12) true ))))  (<=  y  3))))
+(check)
+
+Invoking yices...
+sat
+QUERY:
+(define x::int)
+(define y::int)
+
+(assert+ (not (=>  (and  (<=  0 x ) (and  (<=  x  12) (and  (<=  -2 y ) (and  (<=  y  12) true ))))  (<=  y  4))))
+(check)
+
+Invoking yices...
+unsat
+QUERY:
+(define x::int)
+(define y::int)
+
+(assert+ (not (=>  (and  (<=  0 x ) (and  (<=  x  12) (and  (<=  -2 y ) (and  (<=  y  12) true ))))  (<=  y  15))))
+(check)
+
+===
+y <= 15 & x <= 15 & 0 <= x===

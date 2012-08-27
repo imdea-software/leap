@@ -1,0 +1,8 @@
+param:
+
+tid i
+
+invariant [fullCorrectness] :
+
+   @ins_element_in_set(i). -> insert::e(i) inElem elements
+/\ @rem_element_notin_set(i). -> ~ (remove::e(i) inElem elements)

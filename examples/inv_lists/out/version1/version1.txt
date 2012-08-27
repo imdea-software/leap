@@ -1,0 +1,4 @@
+Original version run with:
+
+OPTIONS="-sm -yices+z3 -dp tll -co union -hp -do benchmarks/full"
+

@@ -1,0 +1,8 @@
+param:
+
+tid i
+
+invariant [removeWhile] :
+
+   @inside_while_rem(i). -> remove::curr(i) != tail
+/\ (@inside_if_one(i). \/ @inside_if_two(i).) -> remove::curr(i) != tail

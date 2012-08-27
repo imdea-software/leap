@@ -1,0 +1,11 @@
+param:
+
+tid i
+
+invariant [list_inregion] :
+
+head in region /\ tail in region /\
+(@p_in_region(i). -> insert::prev(i) in region) /\
+(@c_in_region(i). -> insert::curr(i) in region)
+
+

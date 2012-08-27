@@ -1,0 +1,11 @@
+param:
+
+
+invariant [fullPreserve] :
+
+   null in region
+/\ region = addr2set(heap, head)
+/\ rd(heap, tail).next = null
+/\ tail != null
+/\ head != null
+/\ head != tail

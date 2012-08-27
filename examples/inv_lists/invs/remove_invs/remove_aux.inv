@@ -1,0 +1,12 @@
+param:
+
+tid i
+
+invariant [removeAux] :
+
+  (@inside_if_one(i). \/ @inside_if_two(i).) -> remove::curr(i) != tail
+/\ @prev_is_head_rem(i). -> (remove::prev(i) = head /\ rd(heap, head).next != null)
+/\ rd(heap, head).next != head
+/\ head != tail // Same as in remove_region
+/\ tail != null // Same as in remove_region
+/\ rd(heap, head).next != null

@@ -1,0 +1,28 @@
+
+-> insertLock [6 :N:insertNext;
+               14:N:insertNext] {union:reduce|simpl}
+
+
+
+-> insertRegion [3: N:insertPreserve {pruning:reduce|simpl};
+                 8: N:insertPreserve {pruning:reduce|simpl};
+                 13:E:insertDisj                           ]
+    {union:reduce|simpl}
+
+
+-> insertNext [8: N:insertPreserve,insertRegion;
+               12:E:insertRegion               ;
+               13:E:insertLock,insertSupport   ] {union:reduce|simpl}
+
+
+-> insertPreserve [12:E:insertRegion                         ;
+                   13:E:insertSupport {pruning:reduce|simpl} ]
+    {union:reduce|simpl}
+
+
+-> insertSupport [12:N:insertNext, insertRegion;
+                  12:E:insertRegion, insertDisj;
+                  13:E:insertLock              ] {union:reduce|simpl}
+
+
+-> insertDisj [11:N:insertLock] {union:reduce|simpl}

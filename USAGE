@@ -1,0 +1,370 @@
+LEAP program arguments:
+
+By the time being, LEAP contains all implemented functionalities, except for the 
+automatic generation of numerical invariants. Apart from LEAP, there are some 
+reduced programs that allows the call to some of the functionalities in 
+isolation: PROG2FTS, SINV, PINV, TLL, PVD). Here, I describe the so far 
+implemented program arguments available for LEAP. For the other programs, the 
+possible arguments will be a subset of the ones described here.
+
+By default, LEAP contains functionalities to generate VCs over a program.  
+Hence,, by default LEAP needs to receive as argument the file name where the 
+program description is. For instance:
+
+	# ./leap list_implementation.prg
+
+
+
+The available program arguments are:
+
+
+
+	-v verbose
+
+It was once intended to enable more verbosity in the program output. However, I 
+think it is never used.
+
+
+
+-------
+
+	--show
+
+Outputs the parsed program, showing the transition number for each program line.
+
+
+
+-------
+
+	-i invariant candidate
+
+When generating VCs for parametrized invariance, LEAP needs to know which is the 
+invariant candidate. The file where the invariant candidate is described is 
+passed with this argument. For instance:
+
+	# ./leap list_implementation.prg -i list_preservation.inv
+
+
+
+-------
+
+	-binv #th generate vc for a closed system for #th threads
+
+Uses "binv" for the generation of VCs. In this case, a closed system is assumed, 
+and hence the number of system threads should be passed as argument. For 
+example, for a system with 2 threads we use:
+
+	# ./leap list_implementation.prg -i list_preservation.inv -binv 2
+
+
+
+-------
+
+	-pinv generate vc for an open system with arrays
+
+Uses "pinv" for the generation of VCs for parametrized invariance. No further 
+arguments are required. For instance:
+
+	# ./leap list_implementation.prg -i list_preservation.inv -pinv
+
+
+
+-------
+
+	-pinv+ generate vc for an open system with arrays with self support
+
+Similar to "pinv", except that in this variant the same invariant given as 
+argument is also used as support. As "pinv", it requires no extra arguments:
+
+	# ./leap list_implementation.prg -i list_preservation.inv -pinv+
+
+
+
+-------
+
+	-spinv file_1,file_2,...,file_n
+
+Generates VCs for an open system using supporting invariants. file_1, file_2, 
+..., file_n are files describing the supporting invariants. The invariants in 
+those files should follow the same format as the one for the invariant 
+candidate. The file are separated by comma and no space must be left between 
+filenames and commas, as otherwise they may be confused with isolated program 
+arguments. For example:
+
+	# ./leap list_implementation.prg -i list_preservation.inv   \
+					 -sinv list_next.inv,list_region.inv
+
+All the options above are disjoint one from the other. If one is used, then no 
+other is allowed to be invoked in the same program call.
+
+
+
+-------
+
+	-g invariant graph file
+
+Enables the graph mode. In graph mode, no invariant candidate nor support 
+invariant is required. All information is read from a graph file. See below for 
+a description of the graph file format. In this case, LEAP is invoked as:
+
+		# ./leap list_implementation.prg -g list.graph
+
+NOTE: this example is not complete, as when using the graph mode, a folder where 
+to look for invariants must be also provided. This program argument is described 
+below.
+
+
+-------
+
+	-d invariant folder
+
+When using the graph mode, invariant names can be used to describe which are the 
+candidates and which are the supporting ones. Hence, a set of invariants must be 
+loaded in the system before they can be used. With this argument, we tell LEAP 
+where to loop for this invariants. The argument must be a folder name and, by 
+default, it tries to load in the system all files with termination ".inv", 
+assuming all of them contains valid descriptions of invariants. When loading 
+invariants, some verification such as label declaration are checked. For 
+example:
+
+		# ./leap list_implementation.prg -g list.graph -d inv_folder
+
+
+
+-------
+
+	--focus pc1,pc2,...,pcn
+
+Sometimes, we are only interested in some program transitions. Using "--focus" 
+we say to LEAP that we only want to generate VCs for the given program 
+positions. For instance:
+
+		# ./leap list_implementation.prg -g list.graph -d inv_folder --focus 10,12
+
+carries out the verification considering only transitions 10 and 12 of the 
+program list_implementation.prg
+
+
+
+-------
+
+	-dp {num|tll}
+
+By default, if no decision procedure is passed as argument, LEAP just generated 
+the verification conditions and outputs them to the user. If a decision 
+procedure is given as argument, then the generated VCs are also verified using 
+an SMT solver. When invoking "-dp" option, the decision procedure must be 
+specified. Available options are "num" for numeric programs and "tll" for TLL3 
+programs. For example:
+
+		# ./leap list_implementation.prg -g list.graph -d inv_folder -dp tll
+
+
+
+-------
+
+	-z3
+
+By default, LEAP tries to use yices (for which there must be a link in the same 
+folder from where we are invoking LEAP). If Z3 wants to be used, then this 
+option must be passed as argument:
+
+		# ./leap list_implementation.prg -g list.graph -d inv_folder -dp tll -z3
+
+
+
+-------
+
+	-co {dnf|union|pruning}
+
+Indicates the method to be used for computing the cut-off when dealing with TLL3 
+formulas. If no option is given, DNF is used by default.
+
+		# ./leap list_implementation.prg -g list.graph -d inv_folder    \
+						 -dp tll -z3 -co union
+
+
+
+-------
+
+	-hp
+
+(also known as Hyper Propulsion =P) hides preservation relation in generated 
+VCs, speeding up the verification time. Basically, if a variable "v" is 
+preserved, then in the post-state the unprimed version is used instead of adding 
+a new primed variable and stating that "v' = v". This option is suggested in 
+order to reduce the number of variables in the generated VCs.  For instance:
+
+		# ./leap list_implementation.prg -g list.graph -d inv_folder    \
+						 -dp tll -z3 -co union -hp
+
+
+
+-------
+
+	-ca
+
+Enables counting abstraction. Variables N1, N2, ..., Nl are declared and used to 
+denote the number of threads at each program location.
+
+
+
+-------
+
+	--debug
+
+Output extra debug information.
+
+
+
+-------
+
+	--show_file_info
+
+Outputs the path of all intermediate files used in the verification process 
+(such as file containing the queries given to an SMT solver).
+
+
+
+-------
+
+	-o "file"
+
+Outputs the resulting VCs and their status after verification to the file given 
+as argument. For instance:
+
+		# ./leap list_implementation.prg -g list.graph -d inv_folder    \
+						 -dp tll -z3 -co union -hp -o out_folder/out_file.out
+
+
+
+-------
+
+	-vd
+
+Analyzes a verification diagram and generates the corresponding VCs. For 
+example:
+
+		# ./leap list_implementation.prg -vd diagram.vd
+
+
+
+-------
+
+	-f formula
+
+When using diagrams, a formula to be verified must also be given as argument.  
+This is done using this program argument. Hence:
+
+		# ./leap list_implementation.prg -vd diagram.vd -f formula_file.form
+
+
+
+-------
+
+	-pvd
+
+Similar to "-vd" option, but it instead assumes a file describing a parametrized 
+verification diagram to be passed as argument:
+
+		# ./leap list_implementation.prg -pvd diagram.vd -f formula_file.form
+
+
+
+
+
+Invariant file format:
+======================
+
+Files are described in a file (usually with extension ".inv" following this 
+format.
+
+-------
+param:
+{tid declaration}
+
+invariant [{invariant name}] :
+
+{formula}
+-------
+
+{tid declaration} specifies the thread ids that will parametrize the formula. It 
+can be empty if the formula is not parametrized, but the "param:" keyword must 
+be always present. {invariant name} provides a name that can be used later to 
+invoke the formula in the proof graph. Finally, {formula} is a TLL3 formula. For 
+instance:
+
+param:
+tid i
+
+invariant [insert_lock] :
+(@owns_prev_one(i). -> rd(heap, insert::prev(i)).lockid = i) /\
+(@owns_curr_one(i). -> rd(heap, insert::curr(i)).lockid = i)
+
+
+
+
+
+Graph file format:
+==================
+
+Proof graphs are usually described in a file with the ".graph" extension. It 
+must contain a list of rules. Each rule describes how to apply parametrized 
+invariance, the formulas involved, special cases declaration and tactics to be 
+used. Each rule is of the form:
+
+-------
+{paraminv rule} [{special cases}] {general tactics}
+-------
+
+{paraminv rule} describes the parametrized invariance rule to be used:
+
+-> inv : uses PINV+ over "inv"
+inv1,inv2 -> inv : uses SINV over "inv" considering "inv1" and "inv2" as support
+
+{special cases} describes extra information required for specific transitions.  
+Its syntax is:
+
+{transition number}:{N|E}:{extra support}"{"{special tactics}"}"
+
+{transition number} just identifies the transition number where to apply to 
+special case. "N" says that the special case applies to the "N"ormal rule of 
+SINV, while "E" says that it must be applied to the "E"xtra generated vc in 
+SINV. If this argument is missing, then the special case in applied to both 
+premises. {extra support} declares the extra supporting invariants for such case 
+and {special tactics} declares special tactics to be applied for this particular 
+case. Special tactics override previously defined general tactics for this case 
+and if no special tactics are declared, then the general ones are applied.
+
+Tactics are specified between braces. There are two kinds of tactics. Tactics 
+for support generation and tactics for post-processing of VCs. Support tactics 
+and post tactics are separated by a "|". Many post tactics can be concatenated 
+in a list. The result, is that first the VC is generated and then each tactic is 
+applied in sequence to the generated VC.
+
+The only available support tactic by now is "reduce", which reduces the number 
+of generated support by taking into consideration only full assignments from 
+support vocabulary to invariant vocabulary.
+
+Available post-processing tactics are "split" and "simpl". "split" divides the 
+post-condition if the VC is an implication with a conjunction as consequent, 
+while "simpl" applies simplification considering the transition and thread 
+taking the transition. For instance:
+
+
+-- File example ----------------------------
+
+-> insert_lock [6:N:insert_next; 14:N:insert_next] {reduce|simpl}
+
+-> insert_region [3:N:insert_preserve;
+									8:N:insert_preserve;
+									13:E:insert_lock] {reduce|simpl}
+
+-> insert_next [8:N:insert_preserve,insert_region;
+								12:E:insert_region;
+								13:E:insert_region,insert_lock {|split}] {reduce|simpl}
+
+-> insert_preserve [12:E:insert_region;
+										13:E:insert_support] {reduce|split simpl}
+
+-- File example ----------------------------

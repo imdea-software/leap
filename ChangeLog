@@ -1,0 +1,6 @@
+2011-09-30  Cesar Sanchez  <cesar.sanchez@imdea.org>
+
+	* statement.ml: add an entry in get_st_cond for StSelect
+	  to fix the problem that the TS did not have transitions
+	  for all choices of "choice _ or _ or _ or "
+

@@ -1,0 +1,40 @@
+Checked VCs with PINV+
+
+--- 1 : T_0 ---
+[ OK(L) ]: pc(i)=1 /\ tick = 0 /\ min = 0 /\ main::ticket(i) = 0 -> pc(i) = [4,6] -> main::ticket(i) < tick
+--- 2 : T_1 ---
+[ OK(L) ]: pc(i)=1 /\ pc' = pc{i<-7} /\ ~ 1 = 1 -> pc'(i) = [4,6] -> main::ticket(i) < tick
+--- 3 : T_1 ---
+[ OK(L) ]: pc(i)=1 /\ pc' = pc{i<-2} /\ 1 = 1 -> pc'(i) = [4,6] -> main::ticket(i) < tick
+--- 4 : T_1 ---
+[ OK(L) ]: pc(i) = [4,6] -> main::ticket(i) < tick /\ k_1 != k_0 /\ k_1 != i /\ pc(k_1)=1 /\ pc' = pc{k_1<-7} /\ ~ 1 = 1 -> pc'(i) = [4,6] -> main::ticket(i) < tick
+--- 5 : T_1 ---
+[ OK(L) ]: pc(i) = [4,6] -> main::ticket(i) < tick /\ k_1 != k_0 /\ k_1 != i /\ pc(k_1)=1 /\ pc' = pc{k_1<-2} /\ 1 = 1 -> pc'(i) = [4,6] -> main::ticket(i) < tick
+--- 6 : T_2 ---
+[ OK(L) ]: pc(i)=2 /\ pc' = pc{i<-3} -> pc'(i) = [4,6] -> main::ticket(i) < tick
+--- 7 : T_2 ---
+[ OK(L) ]: pc(i) = [4,6] -> main::ticket(i) < tick /\ k_1 != k_0 /\ k_1 != i /\ pc(k_1)=2 /\ pc' = pc{k_1<-3} -> pc'(i) = [4,6] -> main::ticket(i) < tick
+--- 8 : T_3 ---
+[  CHK  ]: pc(i)=3 /\ pc' = pc{i<-4} /\ tick' = tick + 1 /\ main::ticket' = main::ticket{i<-tick} /\ me' = i -> pc'(i) = [4,6] -> main::ticket(i)' < tick'
+--- 9 : T_3 ---
+[  CHK  ]: pc(i) = [4,6] -> main::ticket(i) < tick /\ k_1 != k_0 /\ k_1 != i /\ pc(k_1)=3 /\ pc' = pc{k_1<-4} /\ tick' = tick + 1 /\ main::ticket' = main::ticket{k_1<-tick} /\ me' = k_1 -> pc'(i) = [4,6] -> main::ticket(i)' < tick'
+--- 10 : T_4 ---
+[ OK(L) ]: main::ticket(i) < tick /\ pc(i)=4 /\ pc' = pc{i<-4} /\ ~ main::ticket(i) = min -> pc'(i) = [4,6] -> main::ticket(i) < tick
+--- 11 : T_4 ---
+[ OK(L) ]: main::ticket(i) < tick /\ pc(i)=4 /\ pc' = pc{i<-5} /\ main::ticket(i) = min -> pc'(i) = [4,6] -> main::ticket(i) < tick
+--- 12 : T_4 ---
+[ OK(L) ]: main::ticket(k_1) < tick /\ pc(i) = [4,6] -> main::ticket(i) < tick /\ k_1 != k_0 /\ k_1 != i /\ pc(k_1)=4 /\ pc' = pc{k_1<-4} /\ ~ main::ticket(k_1) = min -> pc'(i) = [4,6] -> main::ticket(i) < tick
+--- 13 : T_4 ---
+[ OK(L) ]: main::ticket(k_1) < tick /\ pc(i) = [4,6] -> main::ticket(i) < tick /\ k_1 != k_0 /\ k_1 != i /\ pc(k_1)=4 /\ pc' = pc{k_1<-5} /\ main::ticket(k_1) = min -> pc'(i) = [4,6] -> main::ticket(i) < tick
+--- 14 : T_5 ---
+[ OK(L) ]: main::ticket(i) < tick /\ pc(i)=5 /\ pc' = pc{i<-6} -> pc'(i) = [4,6] -> main::ticket(i) < tick
+--- 15 : T_5 ---
+[ OK(L) ]: main::ticket(k_1) < tick /\ pc(i) = [4,6] -> main::ticket(i) < tick /\ k_1 != k_0 /\ k_1 != i /\ pc(k_1)=5 /\ pc' = pc{k_1<-6} -> pc'(i) = [4,6] -> main::ticket(i) < tick
+--- 16 : T_6 ---
+[ OK(L) ]: main::ticket(i) < tick /\ pc(i)=6 /\ pc' = pc{i<-1} /\ min' = min + 1 -> pc'(i) = [4,6] -> main::ticket(i) < tick
+--- 17 : T_6 ---
+[ OK(L) ]: main::ticket(k_1) < tick /\ pc(i) = [4,6] -> main::ticket(i) < tick /\ k_1 != k_0 /\ k_1 != i /\ pc(k_1)=6 /\ pc' = pc{k_1<-1} /\ min' = min + 1 -> pc'(i) = [4,6] -> main::ticket(i) < tick
+--- 18 : T_7 ---
+[ OK(L) ]: pc(i)=7 /\ pc' = pc{i<-8} -> pc'(i) = [4,6] -> main::ticket(i) < tick
+--- 19 : T_7 ---
+[ OK(L) ]: pc(i) = [4,6] -> main::ticket(i) < tick /\ k_1 != k_0 /\ k_1 != i /\ pc(k_1)=7 /\ pc' = pc{k_1<-8} -> pc'(i) = [4,6] -> main::ticket(i) < tick

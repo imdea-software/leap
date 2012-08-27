@@ -1,0 +1,66 @@
+param:
+
+tid i
+
+invariant [list_support] :
+
+
+   head != null
+/\ tail != null
+/\ head != tail
+/\ @after_malloc_one(i). -> (    insert::aux(i) != head
+                              /\ insert::aux(i) != tail
+                              /\ insert::aux(i) != insert::prev(i)
+                              /\ insert::aux(i) != insert::curr(i))
+
+/\ rd(heap, head).next != head
+
+/\ @prev_next_diff_ins(i). -> insert::prev(i) != rd(heap, insert::prev(i)).next
+/\ @prev_next_diff_rem(i). -> remove::prev(i) != rd(heap, remove::prev(i)).next
+
+
+/\ (@head_next_diff_ins(i). \/ @head_next_diff_rem(i).) -> rd(heap, head).next != head
+
+/\ @prev_is_head_ins(i). -> insert::prev(i) = head
+/\ @prev_is_head_rem(i). -> (remove::prev(i) = head /\ rd(heap, head).next != null)
+
+/\ @inside_while_ins(i). -> insert::curr(i) != null
+/\ @inside_while_rem(i). -> (remove::curr(i) != null /\ remove::curr(i) !=tail)
+
+/\ @begin_while_rem(i). -> remove::curr(i) != null
+/\ @after_while_rem(i). -> (remove::curr(i) != null /\ (remove::curr(i) = tail \/ rd(heap, remove::curr(i)).data = remove::e(i)))
+
+/\ (@equals_rem(i). -> remove::prev(i) = remove::curr(i))
+/\ ((@follows_rem(i). /\ ~ @equals_rem(i).) -> (remove::prev(i) != remove::curr(i) /\
+                                                rd(heap, remove::prev(i)).next = remove::curr(i)))
+
+/\ @curr_def_ins(i). -> (insert::curr(i) = null \/ (insert::curr(i) != null /\ rd(heap, insert::curr(i)).next != insert::curr(i)))
+/\ @curr_def_rem(i). -> (remove::curr(i) = null \/ (remove::curr(i) != null /\ rd(heap, remove::curr(i)).next != remove::curr(i)))
+
+/\ (@after_malloc_two(i). -> rd(heap, insert::aux(i)).next = insert::curr(i))
+/\ (@after_if(i). -> ((rd(heap, insert::curr(i)).data = insert::e(i)) \/
+                      (   rd(heap, insert::curr(i)).data != insert::e(i)
+                       /\ rd(heap, insert::prev(i)).next = insert::aux(i)
+                       /\ rd(heap, insert::aux(i)).next  = insert::curr(i))))
+
+/\ (@inside_if_one(i). \/ @inside_if_two(i).) -> rd(heap, remove::prev(i)).next = remove::curr(i)
+/\ @inside_if_two(i). -> rd(heap, remove::curr(i)).next = remove::aux(i)
+
+/\ (@after_if_rem(i). -> ((rd(heap, remove::curr(i)).data != remove::e(i)) \/
+                          (   rd(heap, remove::curr(i)).data = remove::e(i)
+                           /\ rd(heap, remove::prev(i)).next = remove::aux(i))))
+
+/\ rd(heap, tail).next = null
+
+/\ head in region
+/\ tail in region
+/\ null in region
+/\ (@prev_def_ins(i). -> insert::prev(i) in region)
+/\ (@prev_def_rem(i). -> remove::prev(i) in region)
+/\ (@curr_def_ins(i). -> insert::curr(i) in region)
+/\ (@curr_def_rem(i). -> remove::curr(i) in region)
+/\ (@after_new(i). -> ~ (insert::aux(i) in region))
+/\ (@curr_maybe_def_rem(i). /\ remove::curr(i) != tail /\ rd(heap, remove::curr(i)).data = remove::e(i)) -> ~(remove::curr(i) in region)
+/\ (@curr_maybe_def_rem(i). /\ (remove::curr(i) = tail \/ rd(heap, remove::curr(i)).data != remove::e(i))) -> (remove::curr(i) in region)
+
+/\ region = addr2set(heap, head)

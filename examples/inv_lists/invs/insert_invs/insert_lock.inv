@@ -1,0 +1,8 @@
+param:
+
+tid i
+
+invariant [insertLock] :
+
+((@owns_prev_one(i). \/ @owns_prev_two(i).) -> rd(heap, insert::prev(i)).lockid = i) /\
+((@owns_curr_one(i). \/ @owns_curr_two(i).) -> rd(heap, insert::curr(i)).lockid = i)

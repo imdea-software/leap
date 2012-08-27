@@ -1,0 +1,16 @@
+param:
+
+tid i
+
+invariant [removeRegion] :
+
+
+   head in region
+/\ tail in region
+/\ null in region
+/\  tail != null
+/\  head != null
+/\  head != tail
+/\ @prev_def_rem(i). -> remove::prev(i) != tail
+/\ (@prev_def_rem(i). -> (remove::prev(i) != null /\ remove::prev(i) in region))
+/\ (@curr_def_rem(i). -> (remove::curr(i) != null /\ remove::curr(i) in region))

@@ -1,0 +1,50 @@
+--- 1 ---
+[ OK(L) ]: pc(i)=1 /\ pc(j)=1 /\ avail = 0 /\ lower = EmptySetInt /\ bag = EmptySetInt -> i != j -> ~ pc(i)=5 \/ pc(i)=6 /\ pc(j)=5 \/ pc(j)=6
+--- 2 ---
+[ OK(L) ]: i != j -> ~ pc(i)=5 \/ pc(i)=6 /\ pc(j)=5 \/ pc(j)=6 /\ pc(i)=1 /\ pc' = pc{i<-2} /\ true /\ avail' = avail /\ lower' = lower /\ bag' = bag /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' -> ~ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=5 \/ pc'(j)=6
+--- 3 ---
+[ OK(L) ]: i != j -> ~ pc(i)=5 \/ pc(i)=6 /\ pc(j)=5 \/ pc(j)=6 /\ pc(i)=1 /\ pc' = pc{i<-7} /\ ~ true /\ avail' = avail /\ lower' = lower /\ bag' = bag /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' -> ~ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=5 \/ pc'(j)=6
+--- 4 ---
+[ OK(L) ]: i != j -> ~ pc(i)=5 \/ pc(i)=6 /\ pc(j)=5 \/ pc(j)=6 /\ pc(j)=1 /\ pc' = pc{j<-2} /\ true /\ avail' = avail /\ lower' = lower /\ bag' = bag /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' -> ~ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=5 \/ pc'(j)=6
+--- 5 ---
+[ OK(L) ]: i != j -> ~ pc(i)=5 \/ pc(i)=6 /\ pc(j)=5 \/ pc(j)=6 /\ pc(j)=1 /\ pc' = pc{j<-7} /\ ~ true /\ avail' = avail /\ lower' = lower /\ bag' = bag /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' -> ~ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=5 \/ pc'(j)=6
+--- 6 ---
+[ OK(L) ]: k_0 != i /\ k_0 != j /\ i != j -> ~ pc(i)=5 \/ pc(i)=6 /\ pc(j)=5 \/ pc(j)=6 /\ pc(k_0)=1 /\ pc' = pc{k_0<-2} /\ true /\ avail' = avail /\ lower' = lower /\ bag' = bag /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' -> ~ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=5 \/ pc'(j)=6
+--- 7 ---
+[ OK(L) ]: k_0 != i /\ k_0 != j /\ i != j -> ~ pc(i)=5 \/ pc(i)=6 /\ pc(j)=5 \/ pc(j)=6 /\ pc(k_0)=1 /\ pc' = pc{k_0<-7} /\ ~ true /\ avail' = avail /\ lower' = lower /\ bag' = bag /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' -> ~ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=5 \/ pc'(j)=6
+--- 8 ---
+[ OK(L) ]: i != j -> ~ pc(i)=5 \/ pc(i)=6 /\ pc(j)=5 \/ pc(j)=6 /\ pc(i)=2 /\ pc' = pc{i<-3} /\ avail' = avail /\ lower' = lower /\ bag' = bag /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' -> ~ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=5 \/ pc'(j)=6
+--- 9 ---
+[ OK(L) ]: i != j -> ~ pc(i)=5 \/ pc(i)=6 /\ pc(j)=5 \/ pc(j)=6 /\ pc(j)=2 /\ pc' = pc{j<-3} /\ avail' = avail /\ lower' = lower /\ bag' = bag /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' -> ~ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=5 \/ pc'(j)=6
+--- 10 ---
+[ OK(L) ]: k_0 != i /\ k_0 != j /\ i != j -> ~ pc(i)=5 \/ pc(i)=6 /\ pc(j)=5 \/ pc(j)=6 /\ pc(k_0)=2 /\ pc' = pc{k_0<-3} /\ avail' = avail /\ lower' = lower /\ bag' = bag /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' -> ~ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=5 \/ pc'(j)=6
+--- 11 ---
+[ OK(L) ]: i != j -> ~ pc(i)=5 \/ pc(i)=6 /\ pc(j)=5 \/ pc(j)=6 /\ pc(i)=3 /\ pc' = pc{i<-4} /\ bag' = bag UnionInt SinglInt(avail) /\ true /\ avail' = avail + 1 /\ true /\ main::ticket' = main::ticket{i<-avail} /\ true /\ lower' = lower /\ j' = j /\ i' = i /\ j' = j /\ i' = i -> i' != j' -> ~ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=5 \/ pc'(j)=6
+--- 12 ---
+[ OK(L) ]: i != j -> ~ pc(i)=5 \/ pc(i)=6 /\ pc(j)=5 \/ pc(j)=6 /\ pc(j)=3 /\ pc' = pc{j<-4} /\ bag' = bag UnionInt SinglInt(avail) /\ true /\ avail' = avail + 1 /\ true /\ main::ticket' = main::ticket{j<-avail} /\ true /\ lower' = lower /\ j' = j /\ i' = i /\ j' = j /\ i' = i -> i' != j' -> ~ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=5 \/ pc'(j)=6
+--- 13 ---
+[ OK(L) ]: k_0 != i /\ k_0 != j /\ i != j -> ~ pc(i)=5 \/ pc(i)=6 /\ pc(j)=5 \/ pc(j)=6 /\ pc(k_0)=3 /\ pc' = pc{k_0<-4} /\ bag' = bag UnionInt SinglInt(avail) /\ true /\ avail' = avail + 1 /\ true /\ main::ticket' = main::ticket{k_0<-avail} /\ true /\ lower' = lower /\ j' = j /\ i' = i /\ j' = j /\ i' = i -> i' != j' -> ~ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=5 \/ pc'(j)=6
+--- 14 ---
+[   X   ]: i != j -> ~ pc(i)=5 \/ pc(i)=6 /\ pc(j)=5 \/ pc(j)=6 /\ pc(i)=4 /\ pc' = pc{i<-5} /\ setIntMin(bag) = main::ticket(i) /\ avail' = avail /\ lower' = lower /\ bag' = bag /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' -> ~ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=5 \/ pc'(j)=6
+--- 15 ---
+[ OK(L) ]: i != j -> ~ pc(i)=5 \/ pc(i)=6 /\ pc(j)=5 \/ pc(j)=6 /\ pc(i)=4 /\ pc' = pc{i<-4} /\ ~ setIntMin(bag) = main::ticket(i) /\ avail' = avail /\ lower' = lower /\ bag' = bag /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' -> ~ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=5 \/ pc'(j)=6
+--- 16 ---
+[   X   ]: i != j -> ~ pc(i)=5 \/ pc(i)=6 /\ pc(j)=5 \/ pc(j)=6 /\ pc(j)=4 /\ pc' = pc{j<-5} /\ setIntMin(bag) = main::ticket(j) /\ avail' = avail /\ lower' = lower /\ bag' = bag /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' -> ~ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=5 \/ pc'(j)=6
+--- 17 ---
+[ OK(L) ]: i != j -> ~ pc(i)=5 \/ pc(i)=6 /\ pc(j)=5 \/ pc(j)=6 /\ pc(j)=4 /\ pc' = pc{j<-4} /\ ~ setIntMin(bag) = main::ticket(j) /\ avail' = avail /\ lower' = lower /\ bag' = bag /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' -> ~ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=5 \/ pc'(j)=6
+--- 18 ---
+[ OK(L) ]: k_0 != i /\ k_0 != j /\ i != j -> ~ pc(i)=5 \/ pc(i)=6 /\ pc(j)=5 \/ pc(j)=6 /\ pc(k_0)=4 /\ pc' = pc{k_0<-5} /\ setIntMin(bag) = main::ticket(k_0) /\ avail' = avail /\ lower' = lower /\ bag' = bag /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' -> ~ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=5 \/ pc'(j)=6
+--- 19 ---
+[ OK(L) ]: k_0 != i /\ k_0 != j /\ i != j -> ~ pc(i)=5 \/ pc(i)=6 /\ pc(j)=5 \/ pc(j)=6 /\ pc(k_0)=4 /\ pc' = pc{k_0<-4} /\ ~ setIntMin(bag) = main::ticket(k_0) /\ avail' = avail /\ lower' = lower /\ bag' = bag /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' -> ~ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=5 \/ pc'(j)=6
+--- 20 ---
+[ OK(L) ]: i != j -> ~ pc(i)=5 \/ pc(i)=6 /\ pc(j)=5 \/ pc(j)=6 /\ pc(i)=5 /\ pc' = pc{i<-6} /\ avail' = avail /\ lower' = lower /\ bag' = bag /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' -> ~ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=5 \/ pc'(j)=6
+--- 21 ---
+[ OK(L) ]: i != j -> ~ pc(i)=5 \/ pc(i)=6 /\ pc(j)=5 \/ pc(j)=6 /\ pc(j)=5 /\ pc' = pc{j<-6} /\ avail' = avail /\ lower' = lower /\ bag' = bag /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' -> ~ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=5 \/ pc'(j)=6
+--- 22 ---
+[ OK(L) ]: k_0 != i /\ k_0 != j /\ i != j -> ~ pc(i)=5 \/ pc(i)=6 /\ pc(j)=5 \/ pc(j)=6 /\ pc(k_0)=5 /\ pc' = pc{k_0<-6} /\ avail' = avail /\ lower' = lower /\ bag' = bag /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' -> ~ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=5 \/ pc'(j)=6
+--- 23 ---
+[ OK(L) ]: i != j -> ~ pc(i)=5 \/ pc(i)=6 /\ pc(j)=5 \/ pc(j)=6 /\ pc(i)=6 /\ pc' = pc{i<-1} /\ bag' = bag SetDiffInt SinglInt(main::ticket(i)) /\ true /\ avail' = avail /\ lower' = lower /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' -> ~ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=5 \/ pc'(j)=6
+--- 24 ---
+[ OK(L) ]: i != j -> ~ pc(i)=5 \/ pc(i)=6 /\ pc(j)=5 \/ pc(j)=6 /\ pc(j)=6 /\ pc' = pc{j<-1} /\ bag' = bag SetDiffInt SinglInt(main::ticket(j)) /\ true /\ avail' = avail /\ lower' = lower /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' -> ~ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=5 \/ pc'(j)=6
+--- 25 ---
+[ OK(L) ]: k_0 != i /\ k_0 != j /\ i != j -> ~ pc(i)=5 \/ pc(i)=6 /\ pc(j)=5 \/ pc(j)=6 /\ pc(k_0)=6 /\ pc' = pc{k_0<-1} /\ bag' = bag SetDiffInt SinglInt(main::ticket(k_0)) /\ true /\ avail' = avail /\ lower' = lower /\ j' = j /\ i' = i /\ main::ticket' = main::ticket /\ j' = j /\ i' = i -> i' != j' -> ~ pc'(i)=5 \/ pc'(i)=6 /\ pc'(j)=5 \/ pc'(j)=6

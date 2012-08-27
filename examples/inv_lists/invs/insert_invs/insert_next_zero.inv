@@ -1,0 +1,7 @@
+param:
+
+tid i
+
+invariant [insertNextZero] :
+
+@head_next_diff(i). -> rd(heap, head).next != head

@@ -1,0 +1,33 @@
+param:
+
+tid i
+
+invariant [fullOrder] :
+
+   rd(heap, head).data < rd(heap, tail).data
+/\ rd(heap, tail).data < rd(heap, null).data
+
+/\ @main_e(i). -> (rd(heap, head).data < main::e(i) /\
+       main::e(i) < rd(heap, tail).data)
+/\ @search_body(i). -> (rd(heap, head).data < search::e(i) /\
+            search::e(i) < rd(heap, tail).data)
+
+/\ @insert_body(i). -> (rd(heap, head).data < insert::e(i) /\
+            insert::e(i) < rd(heap, tail).data)
+
+/\ @remove_body(i). -> (rd(heap, head).data < remove::e(i) /\
+            remove::e(i) < rd(heap, tail).data)
+
+/\ @ins_curr_def(i). -> (rd(heap, insert::curr(i)).data < rd(heap, tail).data \/
+                         rd(heap, insert::curr(i)).data = rd(heap, tail).data)
+/\ @ins_prev_def(i). -> (rd(heap, insert::prev(i)).data < rd(heap, tail).data \/
+                         rd(heap, insert::prev(i)).data = rd(heap, tail).data)
+
+/\ @ins_if_begins(i). -> (insert::e(i) < rd(heap, insert::curr(i)).data \/
+                          insert::e(i) = rd(heap, insert::curr(i)).data)
+/\ @ins_while(i). -> rd(heap, insert::prev(i)).data < insert::e(i)
+/\ @ins_curr_lower(i). -> rd(heap, insert::curr(i)).data < insert::e(i)
+/\ @ins_prev_lower(i). -> rd(heap, insert::prev(i)).data < insert::e(i)
+/\ @ins_insert(i). -> rd(heap, insert::curr(i)).data > insert::e(i)
+/\ @after_malloc(i). -> rd(heap, insert::aux(i)).data = insert::e(i)
+/\ @rem_remove(i). -> rd(heap, remove::curr(i)).data = remove::e(i)

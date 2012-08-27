@@ -1,0 +1,7 @@
+param:
+
+tid i
+
+invariant [minTicket] :
+
+@crit(i). -> (min = main::ticket(i))

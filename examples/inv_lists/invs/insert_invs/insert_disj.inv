@@ -1,0 +1,8 @@
+param:
+
+tid i
+tid j
+
+invariant [insertDisj] :
+
+(i != j /\ @after_new(i). /\ @after_new(j).) -> insert::aux(i) != insert::aux(j)

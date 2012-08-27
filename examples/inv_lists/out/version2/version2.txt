@@ -1,0 +1,8 @@
+Version extenden with:
+
++ Forget primed memory variables when computing SMP
++ Partition generation for reducing number of cases when verifying using Z3
++ Z3 is invoked with "CASE_SPLIT=4" option
+
+OPTIONS="-fpm -sm -yices+z3 -dp tll -co union -hp -do benchmarks/full+fpm+cases"
+

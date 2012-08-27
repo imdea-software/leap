@@ -1,0 +1,13 @@
+
+param:
+
+tid i
+
+invariant [removeDisjoint] :
+
+
+   (@equals_rem(i). -> remove::prev(i) = remove::curr(i))
+/\ (@follows_rem(i). /\ ~ @equals_rem(i).) -> (remove::prev(i) != remove::curr(i))
+/\ @diff_rem(i). -> remove::prev(i) != remove::curr(i)
+/\ @inside_if_two(i). -> (   remove::prev(i) != remove::aux(i)
+                          /\ remove::curr(i) != remove::aux(i))

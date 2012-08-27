@@ -1,0 +1,10 @@
+
+param:
+
+tid i
+
+invariant [insertNextOne] :
+
+(@diff(i). \/ (@follows(i). /\ ~ @equals(i).)) ->
+  (insert::prev(i) != insert::curr(i)) 
+

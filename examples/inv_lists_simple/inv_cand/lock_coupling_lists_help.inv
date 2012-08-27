@@ -1,0 +1,12 @@
+param:
+
+tid i
+
+invariant [list_help] :
+
+   @prev_def(i). -> null in addr2set(heap, insert::prev(i))
+/\ @curr_def(i). -> null in addr2set(heap, insert::curr(i))
+/\ null in addr2set(heap, head)
+
+
+

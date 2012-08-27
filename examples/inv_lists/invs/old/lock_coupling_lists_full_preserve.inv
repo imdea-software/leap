@@ -1,0 +1,8 @@
+param:
+
+tid i
+
+invariant [list_preserve] :
+
+region = addr2set(heap, head) /\ null in region
+

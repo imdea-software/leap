@@ -1,0 +1,20 @@
+<src> : include
+<src/misc> : include
+<src/expression> : include
+<src/solvers> or <src/solvers/backend> : include
+<src/solvers/backend/yices> : include
+<src/solvers/backend/z3> : include
+<src/solvers/backend/minisat> : include
+<src/solvers/theory> : include
+<src/parser> : include
+<src/prog2fts> : include
+<src/numinv> : include
+<src/pinv> : include
+<src/sinv> : include
+<src/pvd> : include
+<src/spec_check> : include
+<src/tll> : include
+<src/smp> : include
+<src/graph> : include
+<src/tactics> : include
+<src/leap> : include

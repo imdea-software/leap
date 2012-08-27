@@ -1,0 +1,9 @@
+//-> greater {pruning:reduce2|simpl}
+
+-> activeLow {pruning:reduce2|simpl}
+
+-> notSame [3:N:activeLow] {pruning:reduce2|simpl}
+
+-> minTicket [3:activeLow; 6:E:activeLow, notSame] {pruning:reduce2|simpl}
+
+-> mutex [4:N:notSame, minTicket] {pruning:reduce2|simpl}

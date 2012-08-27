@@ -1,0 +1,7 @@
+param:
+
+tid i
+
+invariant [ticket_set_active_low] :
+
+( @active(i). ) -> (main::ticket(i) < avail)
