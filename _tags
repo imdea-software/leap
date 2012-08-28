@@ -15,6 +15,7 @@
 <src/sinv> : include
 <src/pvd> : include
 <src/spec_check> : include
+<src/trs> : include
 <src/tll> : include
 <src/smp> : include
 <src/graph> : include
