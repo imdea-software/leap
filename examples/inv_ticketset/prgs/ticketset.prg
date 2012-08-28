@@ -4,7 +4,7 @@ global
   ghost intSet lower := EmptySetInt
 
 procedure main ()
-	int ticket := 0
+  int ticket := 0
 begin
 
   while true do
@@ -13,19 +13,19 @@ begin
         {
           ticket := avail;
           avail := avail + 1;
-					bag := UnionInt (bag, SingleInt(avail));
-				}
+          bag := UnionInt (bag, SingleInt(avail));
+        }
 
 :active[
 
         await (setIntMin(bag) = ticket);
 :crit[
         critical;
-				bag := SetDiffInt (bag, SingleInt(ticket));
+        bag := SetDiffInt (bag, SingleInt(ticket));
 :crit]
 :active]
 
   endwhile
 
-	return ();
+  return ();
 end
