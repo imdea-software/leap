@@ -1,6 +1,7 @@
 <src> : include
 <src/misc> : include
 <src/interface> : include
+<src/statements> : include
 <src/expression> : include
 <src/solvers> or <src/solvers/backend> : include
 <src/solvers/backend/yices> : include
