@@ -48,6 +48,8 @@ type term =
   | MemT          of mem
   | IntT          of integer
   | ArrayT        of arrays
+  | AddrArrayT    of addrarr
+  | TidArrayT     of tidarr
 
 and eq =          term * term
 
@@ -56,6 +58,14 @@ and diseq =       term * term
 and arrays =
     VarArray      of variable
   | ArrayUp       of arrays * tid * expr_t
+
+and addrarr =
+  | VarAddrArray  of variable
+  | AddrArrayUp   of addrarr * integer * addr
+
+and tidarr =
+  | VarTidArray   of variable
+  | TidArrayUp    of tidarr * integer * tid
 
 and integer =
     IntVal        of int
@@ -81,36 +91,46 @@ and set =
   | SetArrayRd    of arrays * tid
 
 and tid =
-    VarTh         of variable
+  | VarTh           of variable
   | NoThid
-  | CellLockId    of cell
-  | ThidArrayRd   of arrays * tid
-  | PointerLockid of addr
+  | CellLockId      of cell
+  | CellLockIdAt    of cell * integer
+  | ThidArrayRd     of arrays * tid
+  | PointerLockid   of addr
+  | PointerLockidAt of addr * integer
+  | ThidArrRd       of tidarr * integer
 
 and elem =
     VarElem       of variable
   | CellData      of cell
   | ElemArrayRd   of arrays * tid
   | PointerData   of addr
+  | PointerDataAt of addr * integer
   | HavocListElem
   | LowestElem
   | HighestElem
 
 and addr =
-    VarAddr       of variable
+  | VarAddr       of variable
   | Null
   | Next          of cell
+  | NextAt        of cell * integer
   | FirstLocked   of mem * path
   | AddrArrayRd   of arrays * tid
   | Malloc        of elem * addr * tid
   | PointerNext   of addr
+  | PointerNextAt of addr * integer
+  | AddrArrRd     of addrarr * integer
 
 and cell =
     VarCell       of variable
   | Error
   | MkCell        of elem * addr * tid
+  | MkSLCell      of elem * addrarr * tidarr * integer
   | CellLock      of cell
   | CellUnlock    of cell
+  | CellLockAt    of cell * integer
+  | CellUnlockAt  of cell * integer
   | CellAt        of mem * addr
   | CellArrayRd   of arrays * tid
 

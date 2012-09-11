@@ -2573,9 +2573,17 @@ addr :
     { Stm.Null }
   | term DOT NEXT
     {
-      let get_str_expr () = sprintf "%s.data" (Stm.term_to_str $1) in
+      let get_str_expr () = sprintf "%s.next" (Stm.term_to_str $1) in
       let c = parser_check_type check_type_cell  $1 Expr.Cell get_str_expr in
         Stm.Next(c)
+    }
+  | term DOT NEXT OPEN_BRACKET term CLOSE_BRACKET
+    {
+      let get_str_expr () = sprintf "%s.next[%s]" (Stm.term_to_str $1)
+                                                  (Stm.term_to_str $5) in
+      let c = parser_check_type check_type_cell $1 Expr.Cell get_str_expr in
+      let l = parser_check_type check_type_int $5 Expr.Int get_str_expr in
+        Stm.NextAt(c,l)
     }
   | FIRSTLOCKED OPEN_PAREN term COMMA term CLOSE_PAREN
     {
@@ -2602,6 +2610,14 @@ addr :
       let get_str_expr () = sprintf "%s->next" (Stm.term_to_str $1) in
       let a = parser_check_type check_type_addr $1 Expr.Addr get_str_expr in
         Stm.PointerNext a
+    }
+  | term POINTER NEXT OPEN_BRACKET term CLOSE_BRACKET
+    {
+      let get_str_expr () = sprintf "%s->next[%s]" (Stm.term_to_str $1)
+                                                   (Stm.term_to_str $5) in
+      let a = parser_check_type check_type_addr $1 Expr.Addr get_str_expr in
+      let l = parser_check_type check_type_int $5 Expr.Int get_str_expr in
+        Stm.PointerNextAt (a,l)
     }
 
 

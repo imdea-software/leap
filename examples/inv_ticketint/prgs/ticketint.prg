@@ -2,17 +2,17 @@
 global
   int tick := 0
   int min := 0
-	bool v
+  bool v
 
 procedure main ()
   int ticket :=0
 begin
-	b := true;
+  b := true;
 
-	if (false = true) then
-		skip;
-		return (false);
-	endif
+  if (false = true) then
+    skip;
+    return (false);
+  endif
 
   while (1=1) do
 
