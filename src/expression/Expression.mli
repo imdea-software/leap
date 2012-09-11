@@ -23,6 +23,8 @@ and sort =
   | Bool
   | Int
   | Array
+  | AddrArray
+  | TidArray
   | Unknown
 
 and variable = varId * sort * bool * tid option * string option * kind_t

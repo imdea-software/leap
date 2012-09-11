@@ -28,6 +28,8 @@ and sort =
   | Bool
   | Int
   | Array
+  | AddrArray
+  | TidArray
   | Unknown
 
 
@@ -481,19 +483,23 @@ let clean_var_th (v:variable) : variable =
 
 let var_to_term (v:variable) : term =
   match var_sort v with
-    Unknown -> VarT    v
-  | Set     -> SetT    (VarSet     v)
-  | Elem    -> ElemT   (VarElem    v)
-  | Thid    -> ThidT   (VarTh      v)
-  | Addr    -> AddrT   (VarAddr    v)
-  | Cell    -> CellT   (VarCell    v)
-  | SetTh   -> SetThT  (VarSetTh   v)
-  | SetInt  -> SetIntT (VarSetInt  v)
-  | SetElem -> SetElemT(VarSetElem v)
-  | Path    -> PathT   (VarPath    v)
-  | Mem     -> MemT    (VarMem     v)
-  | Int     -> IntT    (VarInt     v)
-  | Array   -> ArrayT  (VarArray   v)
+    Unknown   -> VarT       v
+  | Set       -> SetT       (VarSet        v)
+  | Elem      -> ElemT      (VarElem       v)
+  | Thid      -> ThidT      (VarTh         v)
+  | Addr      -> AddrT      (VarAddr       v)
+  | Cell      -> CellT      (VarCell       v)
+  | SetTh     -> SetThT     (VarSetTh      v)
+  | SetInt    -> SetIntT    (VarSetInt     v)
+  | SetElem   -> SetElemT   (VarSetElem    v)
+  | Path      -> PathT      (VarPath       v)
+  | Mem       -> MemT       (VarMem        v)
+  | Int       -> IntT       (VarInt        v)
+  | Array     -> ArrayT     (VarArray      v)
+  | AddrArray -> AddrArrayT (VarAddrArray  v)
+  | TidArray  -> TidArrayT  (VarTidArray   v)
+
+
   | Bool    -> VarT    v
 
 
@@ -517,19 +523,22 @@ let term_to_var (t:term) : variable =
 
 let term_sort (t:term) : sort =
   match t with
-    VarT v    -> var_sort v
-  | SetT _    -> Set
-  | ElemT _   -> Elem
-  | ThidT _   -> Thid
-  | AddrT _   -> Addr
-  | CellT _   -> Cell
-  | SetThT _  -> SetTh
-  | SetIntT _ -> SetInt
-  | SetElemT _-> SetElem
-  | PathT _   -> Path
-  | MemT _    -> Mem
-  | IntT _    -> Int
-  | ArrayT _  -> Array
+    VarT v       -> var_sort v
+  | SetT _       -> Set
+  | ElemT _      -> Elem
+  | ThidT _      -> Thid
+  | AddrT _      -> Addr
+  | CellT _      -> Cell
+  | SetThT _     -> SetTh
+  | SetIntT _    -> SetInt
+  | SetElemT _   -> SetElem
+  | PathT _      -> Path
+  | MemT _       -> Mem
+  | IntT _       -> Int
+  | ArrayT _     -> Array
+  | AddrArrayT _ -> AddrArray
+  | TidArrayT _  -> TidArray
+
 
 
 
@@ -753,13 +762,24 @@ let rec is_primed_array (a:arrays) : bool =
     VarArray v       -> is_primed v
   | ArrayUp (a',_,_) -> is_primed_array a'
 
+let rec is_primed_addrarray (a:addrarr) : bool =
+  match a with
+    VarAddrArray v       -> is_primed v
+  | AddrArrayUp (a',_,_) -> is_primed_addrarray a'
+
+let rec is_primed_tidarray (a:tidarr) : bool =
+  match a with
+    VarTidArray v       -> is_primed v
+  | TidArrayUp (a',_,_) -> is_primed_tidarray a'
 
 let is_primed_tid (th:tid) : bool =
   match th with
     VarTh v           -> is_primed v
   | NoThid            -> false
   | CellLockId _      -> false
+  | CellLockIdAt _    -> false
   | ThidArrayRd (a,_) -> is_primed_array a
+  | ThidArrRd (a,_)   -> is_primed_tidarray a
   (* FIX: Propagate the query inside cell??? *)
 
 
@@ -803,19 +823,21 @@ let rec priming_term (pr:bool)
                      (prime_set:VarSet.t option)
                      (expr:term) : term =
   match expr with
-    VarT v            -> VarT     (priming_variable pr prime_set v)
-  | SetT(set)         -> SetT     (priming_set      pr prime_set set)
-  | AddrT(addr)       -> AddrT    (priming_addr     pr prime_set addr)
-  | ElemT(elem)       -> ElemT    (priming_elem     pr prime_set elem)
-  | ThidT(th)         -> ThidT    (priming_tid      pr prime_set th)
-  | CellT(cell)       -> CellT    (priming_cell     pr prime_set cell)
-  | SetThT(setth)     -> SetThT   (priming_setth    pr prime_set setth)
-  | SetIntT(setint)   -> SetIntT  (priming_setint   pr prime_set setint)
-  | SetElemT(setelem) -> SetElemT (priming_setelem  pr prime_set setelem)
-  | PathT(path)       -> PathT    (priming_path     pr prime_set path)
-  | MemT(mem)         -> MemT     (priming_mem      pr prime_set mem)
-  | IntT(i)           -> IntT     (priming_int      pr prime_set i)
-  | ArrayT(arr)       -> ArrayT   (priming_array    pr prime_set arr)
+    VarT v            -> VarT       (priming_variable   pr prime_set v)
+  | SetT(set)         -> SetT       (priming_set        pr prime_set set)
+  | AddrT(addr)       -> AddrT      (priming_addr       pr prime_set addr)
+  | ElemT(elem)       -> ElemT      (priming_elem       pr prime_set elem)
+  | ThidT(th)         -> ThidT      (priming_tid        pr prime_set th)
+  | CellT(cell)       -> CellT      (priming_cell       pr prime_set cell)
+  | SetThT(setth)     -> SetThT     (priming_setth      pr prime_set setth)
+  | SetIntT(setint)   -> SetIntT    (priming_setint     pr prime_set setint)
+  | SetElemT(setelem) -> SetElemT   (priming_setelem    pr prime_set setelem)
+  | PathT(path)       -> PathT      (priming_path       pr prime_set path)
+  | MemT(mem)         -> MemT       (priming_mem        pr prime_set mem)
+  | IntT(i)           -> IntT       (priming_int        pr prime_set i)
+  | ArrayT(arr)       -> ArrayT     (priming_array      pr prime_set arr)
+  | AddrArrayT(arr)   -> AddrArrayT (priming_addrarray  pr prime_set arr)
+  | TidArrayT(arr)    -> TidArrayT  (priming_tidarray   pr prime_set arr)
 
 
 and priming_expr (pr:bool) (prime_set:VarSet.t option) (expr:expr_t) : expr_t =
@@ -831,6 +853,21 @@ and priming_array (pr:bool) (prime_set:VarSet.t option) (expr:arrays) : arrays =
                                   priming_tid   pr prime_set t,
                                   priming_expr  pr prime_set e)
 
+and priming_addrarray (pr:bool) (prime_set:VarSet.t option) (expr:addrarr)
+      : addrarr =
+  match expr with
+    VarAddrArray v       -> VarAddrArray (priming_variable pr prime_set v)
+  | AddrArrayUp(arr,i,a) -> AddrArrayUp  (priming_addrarray pr prime_set arr,
+                                          priming_int   pr prime_set i,
+                                          priming_addr  pr prime_set a)
+
+and priming_tidarray (pr:bool) (prime_set:VarSet.t option) (expr:tidarr)
+      : tidarr =
+  match expr with
+    VarTidArray v       -> VarTidArray (priming_variable pr prime_set v)
+  | TidArrayUp(arr,i,t) -> TidArrayUp  (priming_tidarray pr prime_set arr,
+                                          priming_int  pr prime_set i,
+                                          priming_tid  pr prime_set t)
 
 and priming_set (pr:bool) (prime_set:VarSet.t option) (e:set) : set =
   match e with
@@ -855,11 +892,14 @@ and priming_addr (pr:bool) (prime_set:VarSet.t option) (a:addr) : addr =
     VarAddr v             -> VarAddr (priming_variable pr prime_set v)
   | Null                  -> Null
   | Next(cell)            -> Next(priming_cell pr prime_set cell)
+  | NextAt(cell,l)        -> NextAt(priming_cell pr prime_set cell,
+                                    priming_int pr prime_set l)
   | FirstLocked(mem,path) -> FirstLocked(priming_mem pr prime_set mem,
                                          priming_path pr prime_set path)
   | AddrArrayRd(arr,t)    -> AddrArrayRd(priming_array pr prime_set arr,
                                          priming_tid pr prime_set t)
-
+  | AddrArrRd(arr,l)      -> AddrArrRd(priming_addrarray pr prime_set arr,
+                                       priming_int pr prime_set l)
 
 and priming_elem (pr:bool) (prime_set:VarSet.t option) (e:elem) : elem =
   match e with
@@ -869,17 +909,22 @@ and priming_elem (pr:bool) (prime_set:VarSet.t option) (e:elem) : elem =
                                       priming_tid pr prime_set t)
 
   | HavocListElem      -> HavocListElem
+  | HavocSkiplistElem  -> HavocSkiplistElem
   | LowestElem         -> LowestElem
   | HighestElem        -> HighestElem
 
 
 and priming_tid (pr:bool) (prime_set:VarSet.t option) (th:tid) : tid =
   match th with
-    VarTh v            -> VarTh (priming_variable pr prime_set v)
-  | NoThid             -> NoThid
-  | CellLockId(cell)   -> CellLockId(priming_cell pr prime_set cell)
-  | ThidArrayRd(arr,t) -> ThidArrayRd(priming_array pr prime_set arr,
+    VarTh v              -> VarTh (priming_variable pr prime_set v)
+  | NoThid               -> NoThid
+  | CellLockId(cell)     -> CellLockId(priming_cell pr prime_set cell)
+  | CellLockIdAt(cell,l) -> CellLockIdAt(priming_cell pr prime_set cell,
+                                         priming_int pr prime_set l)
+  | ThidArrayRd(arr,t)   -> ThidArrayRd(priming_array pr prime_set arr,
                                       priming_tid pr prime_set t)
+  | ThidArrRd(arr,l)     -> ThidArrRd(priming_tidarray pr prime_set arr,
+                                      priming_int pr prime_set l)
 
 
 and priming_cell (pr:bool) (prime_set:VarSet.t option) (c:cell) : cell =
@@ -1182,11 +1227,15 @@ and variable_to_simple_str (var:variable) : string =
 
 and tid_to_str (th:tid) : string =
   match th with
-    VarTh v            -> variable_to_str v
-  | NoThid             -> sprintf "#"
-  | CellLockId(cell)   -> sprintf "%s.lockid" (cell_to_str cell)
-  | ThidArrayRd(arr,t) -> sprintf "%s%s" (arrays_to_str arr)
-                                         (param_tid_to_str t)
+    VarTh v              -> variable_to_str v
+  | NoThid               -> sprintf "#"
+  | CellLockId(cell)     -> sprintf "%s.lockid" (cell_to_str cell)
+  | CellLockIdAt(cell,l) -> sprintf "%s.lockid[%s]" (cell_to_str cell)
+                                                    (integer_to_str l)
+  | ThidArrayRd(arr,t)   -> sprintf "%s%s" (arrays_to_str arr)
+                                           (param_tid_to_str t)
+  | ThidArrRd(arr,l)     -> sprintf "%s%s" (tidarr_to_str arr)
+                                           (integer_to_str l)
 
 
 and param_tid_to_str (expr:tid) : string =
@@ -1200,7 +1249,9 @@ and param_tid_to_str (expr:tid) : string =
                      end
   | NoThid        -> sprintf "(#)"
   | CellLockId _  -> sprintf "(%s)" (tid_to_str expr)
+  | CellLockIdAt _-> sprintf "(%s)" (tid_to_str expr)
   | ThidArrayRd _ -> sprintf "(%s)" (tid_to_str expr)
+  | ThidArrRd _   -> sprintf "(%s)" (tid_to_str expr)
 
 
 and tid_option_to_str (expr:tid option) : string =
@@ -1312,6 +1363,22 @@ and arrays_to_str (expr:arrays) : string =
   | ArrayUp(arr,t,e) -> sprintf "%s{%s<-%s}" (arrays_to_str arr)
                                              (tid_to_str t)
                                              (expr_to_str e)
+
+
+and addrarr_to_str (expr:addrarr) : string =
+  match expr with
+    VarAddrArray v       -> variable_to_str v
+  | AddrArrayUp(arr,i,a) -> sprintf "%s{%s<-%s}" (addrarr_to_str arr)
+                                                 (integer_to_str i)
+                                                 (addr_to_str a)
+
+
+and tidarr_to_str (expr:tidarr) : string =
+  match expr with
+    VarTidArray v       -> variable_to_str v
+  | TidArrayUp(arr,i,t) -> sprintf "%s{%s<-%s}" (tidarr_to_str arr)
+                                                (integer_to_str i)
+                                                (tid_to_str t)
 
 
 and integer_to_str (expr:integer) : string =
@@ -1442,11 +1509,15 @@ and addr_to_str (expr:addr) :string =
     VarAddr v             -> variable_to_str v
   | Null                  -> "null"
   | Next(cell)            -> sprintf "%s.next" (cell_to_str cell)
+  | NextAt(cell,l)        -> sprintf "%s.next[%s]" (cell_to_str cell)
+                                                   (integer_to_str l)
   | FirstLocked(mem,path) -> sprintf "firstlocked(%s,%s)"
                                             (mem_to_str mem)
                                             (path_to_str path)
   | AddrArrayRd(arr,t)    -> sprintf "%s%s" (arrays_to_str arr)
                                               (param_tid_to_str t)
+  | AddrArrRd(arr,l)      -> sprintf "%s%s" (addrarr_to_str arr)
+                                            (integer_to_str l)
 
 
 and eq_to_str ((e1,e2):eq) : string =
@@ -1465,6 +1536,7 @@ and elem_to_str (expr:elem) : string =
   | ElemArrayRd(arr,t) -> sprintf "%s%s" (arrays_to_str arr)
                                          (param_tid_to_str t)
   | HavocListElem      -> "havocListElem()"
+  | HavocSkiplistElem  -> "havocSLElem()"
   | LowestElem         -> "lowestElem"
   | HighestElem        -> "highestElem"
 
@@ -1484,6 +1556,8 @@ and term_to_str (expr:term) : string =
   | MemT(mem)         -> (mem_to_str mem)
   | IntT(i)           -> (integer_to_str i)
   | ArrayT(arr)       -> (arrays_to_str arr)
+  | AddrArrayT(arr)   -> (addrarr_to_str arr)
+  | TidArrayT(arr)    -> (tidarr_to_str arr)
 
 
 and expr_to_str (expr:expr_t) : string =
@@ -1652,20 +1726,22 @@ let pc_to_str (p:pc_t) : string =
 
 let sort_to_str (s:sort) : string =
   match s with
-      Set     -> "set"
-    | Elem    -> "elem"
-    | Thid    -> "tid"
-    | Addr    -> "addr"
-    | Cell    -> "cell"
-    | SetTh   -> "setTh"
-    | SetInt  -> "setInt"
-    | SetElem -> "setElem"
-    | Path    -> "path"
-    | Mem     -> "mem"
-    | Bool    -> "bool"
-    | Int     -> "int"
-    | Array   -> "array"
-    | Unknown -> "unknown"
+      Set       -> "set"
+    | Elem      -> "elem"
+    | Thid      -> "tid"
+    | Addr      -> "addr"
+    | Cell      -> "cell"
+    | SetTh     -> "setTh"
+    | SetInt    -> "setInt"
+    | SetElem   -> "setElem"
+    | Path      -> "path"
+    | Mem       -> "mem"
+    | Bool      -> "bool"
+    | Int       -> "int"
+    | Array     -> "array"
+    | AddrArray -> "addrarr"
+    | TidArray  -> "tidarr"
+    | Unknown   -> "unknown"
 
  
 
@@ -1757,6 +1833,8 @@ let rec get_vars_term (expr:term)
   | MemT(mem)         -> get_vars_mem mem base
   | IntT(i)           -> get_vars_int i base
   | ArrayT(arr)       -> get_vars_array arr base
+  | AddrArrayT(arr)   -> get_vars_addrarr arr base
+  | TidArrayT(arr)    -> get_vars_tidarr arr base
 
 
 and get_vars_expr (e:expr_t)
@@ -1771,7 +1849,31 @@ and get_vars_array (a:arrays)
   let get_vars_aux t = get_vars_tid t base in
   match a with
     VarArray v       -> (base v)@(Option.map_default get_vars_aux [] (var_th v))
-  | ArrayUp(arr,t,e) -> (get_vars_array arr base)@(get_vars_expr e base)
+  | ArrayUp(arr,t,e) -> (get_vars_array arr base) @
+                        (get_vars_tid t base)     @
+                        (get_vars_expr e base)
+
+
+and get_vars_addrarr (a:addrarr)
+                     (base:variable -> variable list) : variable list =
+  let get_vars_aux t = get_vars_tid t base in
+  match a with
+    VarAddrArray v       -> (base v) @
+                            (Option.map_default get_vars_aux [] (var_th v))
+  | AddrArrayUp(arr,i,a) -> (get_vars_addrarr arr base) @
+                            (get_vars_int i base)       @
+                            (get_vars_addr a base)
+
+
+and get_vars_tidarr (a:tidarr)
+                    (base:variable -> variable list) : variable list =
+  let get_vars_aux t = get_vars_tid t base in
+  match a with
+    VarTidArray v       -> (base v) @
+                           (Option.map_default get_vars_aux [] (var_th v))
+  | TidArrayUp(arr,i,t) -> (get_vars_tidarr arr base) @
+                           (get_vars_int i base)      @
+                           (get_vars_tid t base)
 
 
 and get_vars_set (e:set)
@@ -1798,8 +1900,10 @@ and get_vars_addr (a:addr)
                              (Option.map_default get_vars_aux [] (var_th v))
   | Null                  -> []
   | Next(cell)            -> (get_vars_cell cell base)
+  | NextAt(cell,l)        -> (get_vars_cell cell base) @ (get_vars_int l base)
   | FirstLocked(mem,path) -> (get_vars_mem mem base) @ (get_vars_path path base)
   | AddrArrayRd(arr,t)    -> (get_vars_array arr base)
+  | AddrArrRd(arr,i)      -> (get_vars_addrarr arr base) @ (get_vars_int i base)
 
 
 and get_vars_elem (e:elem)
@@ -1811,6 +1915,7 @@ and get_vars_elem (e:elem)
   | CellData(cell)     -> (get_vars_cell cell base)
   | ElemArrayRd(arr,t) -> (get_vars_array arr base)
   | HavocListElem      -> []
+  | HavocSkiplistElem  -> []
   | LowestElem         -> []
   | HighestElem        -> []
 
@@ -1819,11 +1924,13 @@ and get_vars_tid (th:tid)
                  (base:variable -> variable list) : variable list =
   let get_vars_aux t = get_vars_tid t base in
   match th with
-    VarTh v            -> (base v) @
-                          (Option.map_default get_vars_aux [] (var_th v))
-  | NoThid             -> []
-  | CellLockId(cell)   -> (get_vars_cell cell base)
-  | ThidArrayRd(arr,t) -> (get_vars_array arr base)
+    VarTh v              -> (base v) @
+                            (Option.map_default get_vars_aux [] (var_th v))
+  | NoThid               -> []
+  | CellLockId(cell)     -> (get_vars_cell cell base)
+  | CellLockIdAt(cell,l) -> (get_vars_cell cell base) @ (get_vars_int l base)
+  | ThidArrayRd(arr,t)   -> (get_vars_array arr base)
+  | ThidArrRd(arr,l)     -> (get_vars_tidarr arr base) @ (get_vars_int l base)
 
 
 and get_vars_cell (c:cell)
@@ -2112,20 +2219,22 @@ let construct_var_from_sort (id:varId)
                             (k:kind_t) : term =
   let v = build_var id s false th_p p_name k in
   match s with
-    Set     -> SetT     (VarSet     v)
-  | Elem    -> ElemT    (VarElem    v)
-  | Thid    -> ThidT    (VarTh      v)
-  | Addr    -> AddrT    (VarAddr    v)
-  | Cell    -> CellT    (VarCell    v)
-  | SetTh   -> SetThT   (VarSetTh   v)
-  | SetInt  -> SetIntT  (VarSetInt  v)
-  | SetElem -> SetElemT (VarSetElem v)
-  | Path    -> PathT    (VarPath    v)
-  | Mem     -> MemT     (VarMem     v)
-  | Bool    -> VarT v
-  | Int     -> IntT     (VarInt     v)
-  | Array   -> ArrayT   (VarArray   v)
-  | Unknown -> VarT v
+    Set       -> SetT       (VarSet       v)
+  | Elem      -> ElemT      (VarElem      v)
+  | Thid      -> ThidT      (VarTh        v)
+  | Addr      -> AddrT      (VarAddr      v)
+  | Cell      -> CellT      (VarCell      v)
+  | SetTh     -> SetThT     (VarSetTh     v)
+  | SetInt    -> SetIntT    (VarSetInt    v)
+  | SetElem   -> SetElemT   (VarSetElem   v)
+  | Path      -> PathT      (VarPath      v)
+  | Mem       -> MemT       (VarMem       v)
+  | Bool      -> VarT       v
+  | Int       -> IntT       (VarInt       v)
+  | Array     -> ArrayT     (VarArray     v)
+  | AddrArray -> AddrArrayT (VarAddrArray v)
+  | TidArray  -> TidArrayT  (VarTidArray  v)
+  | Unknown   -> VarT       v
 
 
 (* Converts a variable to a term *)
@@ -2240,6 +2349,8 @@ let rec voc_term (expr:term) : tid list =
     | MemT(mem)         -> voc_mem mem
     | IntT(i)           -> voc_int i
     | ArrayT(arr)       -> voc_array arr
+    | AddrArrayT(arr)   -> voc_addrarr arr
+    | TidArrayT(arr)    -> voc_tidarr arr
 
 
 and voc_expr (e:expr_t) : tid list =
@@ -2253,6 +2364,17 @@ and voc_array (a:arrays) : tid list =
     VarArray v       -> Option.map_default (fun x->[x]) [] (var_th v)
   | ArrayUp(arr,t,e) -> (voc_array arr) @ (voc_expr e)
 
+
+and voc_addrarr (a:addrarr) : tid list =
+  match a with
+    VarAddrArray v       -> Option.map_default (fun x->[x]) [] (var_th v)
+  | AddrArrayUp(arr,i,a) -> (voc_addrarr arr) @ (voc_int i) @ (voc_addr a)
+
+
+and voc_tidarr (a:tidarr) : tid list =
+  match a with
+    VarTidArray v       -> Option.map_default (fun x->[x]) [] (var_th v)
+  | TidArrayUp(arr,i,t) -> (voc_tidarr arr) @ (voc_int i) @ (voc_tid t)
 
 
 and voc_set (e:set) : tid list =
