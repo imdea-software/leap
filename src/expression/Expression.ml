@@ -2395,8 +2395,10 @@ and voc_addr (a:addr) : tid list =
     VarAddr v             -> Option.map_default (fun x->[x]) [] (var_th v)
   | Null                  -> []
   | Next(cell)            -> (voc_cell cell)
+  | NextAt(cell,l)        -> (voc_cell cell) @ (voc_int l)
   | FirstLocked(mem,path) -> (voc_mem mem) @ (voc_path path)
   | AddrArrayRd(arr,t)    -> (voc_array arr)
+  | AddrArrRd(arr,l)      -> (voc_addrarr arr) @ (voc_int l)
 
 
 and voc_elem (e:elem) : tid list =
@@ -2405,16 +2407,19 @@ and voc_elem (e:elem) : tid list =
   | CellData(cell)     -> (voc_cell cell)
   | ElemArrayRd(arr,t) -> (voc_array arr)
   | HavocListElem      -> []
+  | HavocSkiplistElem  -> []
   | LowestElem         -> []
   | HighestElem        -> []
 
 
 and voc_tid (th:tid) : tid list =
   match th with
-    VarTh v            -> th :: (Option.map_default (fun x->[x]) [] (var_th v))
-  | NoThid             -> []
-  | CellLockId(cell)   -> (voc_cell cell)
-  | ThidArrayRd(arr,t) -> (voc_array arr)
+    VarTh v              -> th::(Option.map_default (fun x->[x]) [] (var_th v))
+  | NoThid               -> []
+  | CellLockId(cell)     -> (voc_cell cell)
+  | CellLockIdAt(cell,l) -> (voc_cell cell) @ (voc_int l)
+  | ThidArrayRd(arr,t)   -> (voc_array arr)
+  | ThidArrRd(arr,l)     -> (voc_tidarr arr) @ (voc_int l)
 
 
 and voc_cell (c:cell) : tid list =
@@ -2600,6 +2605,8 @@ let rec var_kind_term (kind:kind_t) (expr:term) : term list =
     | MemT(mem)         -> var_kind_mem kind mem
     | IntT(i)           -> var_kind_int kind i
     | ArrayT(arr)       -> var_kind_array kind arr
+    | AddrArrayT(arr)   -> var_kind_addrarr kind arr
+    | TidArrayT(arr)    -> var_kind_tidarr kind arr
 
 
 and var_kind_expr (kind:kind_t) (e:expr_t) : term list =
@@ -2613,6 +2620,21 @@ and var_kind_array (kind:kind_t) (a:arrays) : term list =
     VarArray v       -> if (var_k v) = kind then [ArrayT a] else []
   | ArrayUp(arr,t,e) -> (var_kind_array kind arr) @ (var_kind_expr kind e)
 
+
+and var_kind_addrarr (kind:kind_t) (a:addrarr) : term list =
+  match a with
+    VarAddrArray v       -> if (var_k v) = kind then [AddrArrayT a] else []
+  | AddrArrayUp(arr,i,a) -> (var_kind_addrarr kind arr) @
+                            (var_kind_int kind i)       @
+                            (var_kind_addr kind a)
+
+
+and var_kind_tidarr (kind:kind_t) (a:tidarr) : term list =
+  match a with
+    VarTidArray v       -> if (var_k v) = kind then [TidArrayT a] else []
+  | TidArrayUp(arr,i,t) -> (var_kind_tidarr kind arr) @
+                           (var_kind_int kind i)      @
+                           (var_kind_tid kind t)
 
 
 and var_kind_set (kind:kind_t) (e:set) : term list =
@@ -2633,9 +2655,11 @@ and var_kind_addr (kind:kind_t) (a:addr) : term list =
     VarAddr v             -> if (var_k v) = kind then [AddrT a] else []
   | Null                  -> []
   | Next(cell)            -> (var_kind_cell kind cell)
+  | NextAt(cell,l)        -> (var_kind_cell kind cell) @ (var_kind_int kind l)
   | FirstLocked(mem,path) -> (var_kind_mem kind mem) @
                              (var_kind_path kind path)
   | AddrArrayRd(arr,t)    -> (var_kind_array kind arr)
+  | AddrArrRd(arr,l)      -> (var_kind_addrarr kind arr) @ (var_kind_int kind l)
 
 
 and var_kind_elem (kind:kind_t) (e:elem) : term list =
@@ -2644,16 +2668,19 @@ and var_kind_elem (kind:kind_t) (e:elem) : term list =
   | CellData(cell)     -> (var_kind_cell kind cell)
   | ElemArrayRd(arr,t) -> (var_kind_array kind arr)
   | HavocListElem      -> []
+  | HavocSkiplistElem  -> []
   | LowestElem         -> []
   | HighestElem        -> []
 
 
 and var_kind_tid (kind:kind_t) (th:tid) : term list =
   match th with
-    VarTh v            -> if (var_k v) = kind then [ThidT th] else []
-  | NoThid             -> []
-  | CellLockId(cell)   -> (var_kind_cell kind cell)
-  | ThidArrayRd(arr,t) -> (var_kind_array kind arr)
+    VarTh v              -> if (var_k v) = kind then [ThidT th] else []
+  | NoThid               -> []
+  | CellLockId(cell)     -> (var_kind_cell kind cell)
+  | CellLockIdAt(cell,l) -> (var_kind_cell kind cell) @ (var_kind_int kind l)
+  | ThidArrayRd(arr,t)   -> (var_kind_array kind arr)
+  | ThidArrRd(arr,l)     -> (var_kind_tidarr kind arr) @ (var_kind_int kind l)
 
 
 and var_kind_cell (kind:kind_t) (c:cell) : term list =
@@ -2849,19 +2876,21 @@ let var_kind (kind:kind_t) (e:expr_t) : term list =
 
 let rec param_a_term (pfun:variable option -> tid option) (expr:term) : term =
   match expr with
-    VarT(v)           -> VarT    (set_var_th v (pfun (Some v)))
-  | SetT(set)         -> SetT    (param_set      pfun set    )
-  | AddrT(addr)       -> AddrT   (param_addr_aux pfun addr   )
-  | ElemT(elem)       -> ElemT   (param_elem_aux pfun elem   )
-  | ThidT(th)         -> ThidT   (param_tid_aux  pfun th     )
-  | CellT(cell)       -> CellT   (param_cell_aux pfun cell   )
-  | SetThT(setth)     -> SetThT  (param_setth    pfun setth  )
-  | SetIntT(setint)   -> SetIntT (param_setint   pfun setint )
-  | SetElemT(setelem) -> SetElemT(param_setelem  pfun setelem)
-  | PathT(path)       -> PathT   (param_path     pfun path   )
-  | MemT(mem)         -> MemT    (param_mem      pfun mem    )
-  | IntT(i)           -> IntT    (param_int      pfun i      )
-  | ArrayT(arr)       -> ArrayT  (param_arrays   pfun arr    )
+    VarT(v)           -> VarT       (set_var_th v (pfun (Some v)))
+  | SetT(set)         -> SetT       (param_set      pfun set    )
+  | AddrT(addr)       -> AddrT      (param_addr_aux pfun addr   )
+  | ElemT(elem)       -> ElemT      (param_elem_aux pfun elem   )
+  | ThidT(th)         -> ThidT      (param_tid_aux  pfun th     )
+  | CellT(cell)       -> CellT      (param_cell_aux pfun cell   )
+  | SetThT(setth)     -> SetThT     (param_setth    pfun setth  )
+  | SetIntT(setint)   -> SetIntT    (param_setint   pfun setint )
+  | SetElemT(setelem) -> SetElemT   (param_setelem  pfun setelem)
+  | PathT(path)       -> PathT      (param_path     pfun path   )
+  | MemT(mem)         -> MemT       (param_mem      pfun mem    )
+  | IntT(i)           -> IntT       (param_int      pfun i      )
+  | ArrayT(arr)       -> ArrayT     (param_arrays   pfun arr    )
+  | AddrArrayT(arr)   -> AddrArrayT (param_addrarr  pfun arr    )
+  | TidArrayT(arr)    -> TidArrayT  (param_tidarr   pfun arr    )
 
 
 and param_expr_aux (pfun:variable option -> tid option) (expr:expr_t): expr_t =
@@ -2876,6 +2905,24 @@ and param_arrays (pfun:variable option -> tid option) (arr:arrays) : arrays =
       (*TODO: Fix open array case for array variables *)
   | ArrayUp(arr,t,e) -> ArrayUp(param_arrays pfun arr, t,
                                 param_expr_aux pfun e)
+
+
+and param_addrarr (pfun:variable option -> tid option) (arr:addrarr) : addrarr =
+  match arr with
+    VarAddrArray v       -> VarAddrArray (set_var_th v (pfun (Some v)))
+      (*TODO: Fix open array case for array variables *)
+  | AddrArrayUp(arr,i,a) -> AddrArrayUp(param_addrarr pfun arr,
+                                        param_int pfun i,
+                                        param_addr_aux pfun a)
+
+
+and param_tidarr (pfun:variable option -> tid option) (arr:tidarr) : tidarr =
+  match arr with
+    VarTidArray v       -> VarTidArray (set_var_th v (pfun (Some v)))
+      (*TODO: Fix open array case for array variables *)
+  | TidArrayUp(arr,i,t) -> TidArrayUp(param_tidarr pfun arr,
+                                      param_int pfun i,
+                                      param_tid_aux pfun t)
 
 
 and param_set (pfun:variable option -> tid option) (e:set) : set =
@@ -2900,9 +2947,13 @@ and param_addr_aux (pfun:variable option -> tid option) (a:addr) : addr =
     VarAddr v                 -> VarAddr (set_var_th v (pfun (Some v)))
   | Null                      -> Null
   | Next(cell)                -> Next(param_cell_aux pfun cell)
+  | NextAt(cell,l)            -> NextAt(param_cell_aux pfun cell,
+                                        param_int pfun l)
   | FirstLocked(mem,path)     -> FirstLocked(param_mem pfun mem,
                                              param_path pfun path)
   | AddrArrayRd(arr,t)        -> AddrArrayRd(param_arrays pfun arr, t)
+  | AddrArrRd(arr,l)          -> AddrArrRd(param_addrarr pfun arr,
+                                           param_int pfun l)
 
 
 and param_elem_aux (pfun:variable option -> tid option) (e:elem) : elem =
@@ -2911,16 +2962,21 @@ and param_elem_aux (pfun:variable option -> tid option) (e:elem) : elem =
   | CellData(cell)       -> CellData(param_cell_aux pfun cell)
   | ElemArrayRd(arr,t)   -> ElemArrayRd(param_arrays pfun arr, t)
   | HavocListElem        -> HavocListElem
+  | HavocSkiplistElem    -> HavocSkiplistElem
   | LowestElem           -> LowestElem
   | HighestElem          -> HighestElem
 
 
 and param_tid_aux (pfun:variable option -> tid option) (th:tid) : tid =
   match th with
-    VarTh v            -> VarTh (set_var_th v (pfun (Some v)))
-  | NoThid             -> NoThid
-  | CellLockId(cell)   -> CellLockId(param_cell_aux pfun cell)
-  | ThidArrayRd(arr,t) -> ThidArrayRd(param_arrays pfun arr, t)
+    VarTh v              -> VarTh (set_var_th v (pfun (Some v)))
+  | NoThid               -> NoThid
+  | CellLockId(cell)     -> CellLockId(param_cell_aux pfun cell)
+  | CellLockIdAt(cell,l) -> CellLockIdAt(param_cell_aux pfun cell,
+                                         param_int pfun l)
+  | ThidArrayRd(arr,t)   -> ThidArrayRd(param_arrays pfun arr, t)
+  | ThidArrRd(arr,l)     -> ThidArrRd(param_tidarr pfun arr,
+                                      param_int pfun l)
 
 
 and param_cell_aux (pfun:variable option -> tid option) (c:cell) : cell =
@@ -3215,6 +3271,8 @@ let rec subst_tid_term (subs:tid_subst_t) (expr:term) : term =
   | MemT(mem)           -> MemT(subst_tid_mem subs mem)
   | IntT(i)             -> IntT(subst_tid_int subs i)
   | ArrayT(arr)         -> ArrayT(subst_tid_array subs arr)
+  | AddrArrayT(arr)     -> AddrArrayT(subst_tid_addrarr subs arr)
+  | TidArrayT(arr)      -> TidArrayT(subst_tid_tidarr subs arr)
 
 
 and subst_tid_expr (subs:tid_subst_t) (expr:expr_t) : expr_t =
@@ -3229,6 +3287,24 @@ and subst_tid_array (subs:tid_subst_t) (expr:arrays) : arrays =
                                     (Option.lift(subst_tid_th subs) (var_th v)))
   | ArrayUp(arr,t,e) -> ArrayUp(subst_tid_array subs arr, t,
                                 subst_tid_expr subs e)
+
+
+and subst_tid_addrarr (subs:tid_subst_t) (expr:addrarr) : addrarr =
+  match expr with
+    VarAddrArray v       -> VarAddrArray (set_var_th v
+                                    (Option.lift(subst_tid_th subs) (var_th v)))
+  | AddrArrayUp(arr,i,a) -> AddrArrayUp(subst_tid_addrarr subs arr,
+                                        subst_tid_int subs i,
+                                        subst_tid_addr subs a)
+
+
+and subst_tid_tidarr (subs:tid_subst_t) (expr:tidarr) : tidarr =
+  match expr with
+    VarTidArray v       -> VarTidArray (set_var_th v
+                                    (Option.lift(subst_tid_th subs) (var_th v)))
+  | TidArrayUp(arr,i,t) -> TidArrayUp(subst_tid_tidarr subs arr,
+                                      subst_tid_int subs i,
+                                      subst_tid_th subs t)
 
 
 and subst_tid_set (subs:tid_subst_t) (e:set) : set =
@@ -3253,9 +3329,13 @@ and subst_tid_addr (subs:tid_subst_t) (a:addr) : addr =
                                   (Option.lift(subst_tid_th subs) (var_th v)))
   | Null                      -> Null
   | Next(cell)                -> Next(subst_tid_cell subs cell)
+  | NextAt(cell,l)            -> NextAt(subst_tid_cell subs cell,
+                                        subst_tid_int subs l)
   | FirstLocked(mem,path)     -> FirstLocked(subst_tid_mem subs mem,
                                              subst_tid_path subs path)
   | AddrArrayRd(arr,t)        -> AddrArrayRd(subst_tid_array subs arr, t)
+  | AddrArrRd(arr,i)          -> AddrArrRd(subst_tid_addrarr subs arr,
+                                           subst_tid_int subs i)
 
 
 and subst_tid_elem (subs:tid_subst_t) (e:elem) : elem =
@@ -3265,6 +3345,7 @@ and subst_tid_elem (subs:tid_subst_t) (e:elem) : elem =
   | CellData(cell)        -> CellData(subst_tid_cell subs cell)
   | ElemArrayRd(arr,t)    -> ElemArrayRd(subst_tid_array subs arr, t)
   | HavocListElem         -> HavocListElem
+  | HavocSkiplistElem     -> HavocSkiplistElem
   | LowestElem            -> LowestElem
   | HighestElem           -> HighestElem
 
@@ -3400,8 +3481,12 @@ and subst_tid_th (subs:tid_subst_t) (t:tid) : tid =
               | VarTh _ -> t
               | NoThid -> t
               | CellLockId c -> CellLockId (subst_tid_cell subs c)
+              | CellLockIdAt (c,l) -> CellLockIdAt (subst_tid_cell subs c,
+                                                    subst_tid_int subs l)
               | ThidArrayRd (a,p) -> ThidArrayRd (subst_tid_array subs a,
                                                   subst_tid_th subs p)
+              | ThidArrRd (a,i) -> ThidArrRd (subst_tid_tidarr subs a,
+                                              subst_tid_int subs i)
             end
 
 
@@ -4113,8 +4198,10 @@ let required_sorts (phi:formula) : sort list =
     | VarAddr _         -> single Addr
     | Null              -> single Addr
     | Next c            -> append Addr [req_c c]
+    | NextAt (c,l)      -> append Addr [req_c c;req_i l]
     | FirstLocked (m,p) -> append Addr [req_m m;req_p p]
     | AddrArrayRd (a,t) -> append Addr [req_arr a; req_t t]
+    | AddrArrRd (a,i)   -> append Addr [req_addrarr a; req_i i]
 
   and req_e (e:elem) : SortSet.t =
     match e with
@@ -4122,15 +4209,18 @@ let required_sorts (phi:formula) : sort list =
     | CellData c        -> append Elem [req_c c]
     | ElemArrayRd (a,t) -> append Elem [req_arr a;req_t t]
     | HavocListElem     -> single Elem
+    | HavocSkiplistElem -> single Elem
     | LowestElem        -> single Elem
     | HighestElem       -> single Elem
 
   and req_t (t:tid) : SortSet.t =
     match t with
-    | VarTh _           -> single Thid
-    | NoThid            -> single Thid
-    | CellLockId c      -> append Thid [req_c c]
-    | ThidArrayRd (a,t) -> append Thid [req_arr a;req_t t]
+    | VarTh _            -> single Thid
+    | NoThid             -> single Thid
+    | CellLockId c       -> append Thid [req_c c]
+    | CellLockIdAt (c,l) -> append Thid [req_c c;req_i l]
+    | ThidArrayRd (a,t)  -> append Thid [req_arr a;req_t t]
+    | ThidArrRd (a,l)    -> append Thid [req_tidarr a;req_i l]
 
   and req_s (s:set) : SortSet.t =
     match s with
@@ -4162,6 +4252,18 @@ let required_sorts (phi:formula) : sort list =
     | VarArray _      -> single Array
     | ArrayUp (a,t,e) -> append Array [req_arr a;req_t t;req_expr e]
 
+  and req_addrarr (a:addrarr) : SortSet.t =
+    match a with
+    | VarAddrArray _        -> single AddrArray
+    | AddrArrayUp (arr,i,a) -> append AddrArray [req_addrarr arr;
+                                                 req_i i;req_a a]
+
+  and req_tidarr (a:tidarr) : SortSet.t =
+    match a with
+    | VarTidArray _        -> single TidArray
+    | TidArrayUp (arr,i,t) -> append TidArray [req_tidarr arr;
+                                               req_i i;req_t t]
+
   and req_term (t:term) : SortSet.t =
     match t with
     | VarT (_,s,_,_,_,_) -> single s
@@ -4177,6 +4279,8 @@ let required_sorts (phi:formula) : sort list =
     | MemT m             -> req_m m
     | IntT i             -> req_i i
     | ArrayT a           -> req_arr a
+    | AddrArrayT a       -> req_addrarr a
+    | TidArrayT a        -> req_tidarr a
 
   and req_expr (e:expr_t) : SortSet.t =
     match e with
