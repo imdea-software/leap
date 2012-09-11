@@ -34,7 +34,7 @@ assume
 :main_body[
                                 while (true) do
                                   // Generate random e
-                                  e := havocSkiplistElem();
+                                  e := havocSLElem();
 :main_e[
                                   choice
                                     call search(e);

@@ -101,12 +101,13 @@ and tid =
   | ThidArrRd       of tidarr * integer
 
 and elem =
-    VarElem       of variable
-  | CellData      of cell
-  | ElemArrayRd   of arrays * tid
-  | PointerData   of addr
-  | PointerDataAt of addr * integer
+    VarElem           of variable
+  | CellData          of cell
+  | ElemArrayRd       of arrays * tid
+  | PointerData       of addr
+  | PointerDataAt     of addr * integer
   | HavocListElem
+  | HavocSkiplistElem
   | LowestElem
   | HighestElem
 

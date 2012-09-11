@@ -103,12 +103,13 @@ and tid =
   | ThidArrRd       of tidarr * integer
 
 and elem =
-    VarElem       of variable
-  | CellData      of cell
-  | ElemArrayRd   of arrays * tid
-  | PointerData   of addr
-  | PointerDataAt of addr * integer
+    VarElem           of variable
+  | CellData          of cell
+  | ElemArrayRd       of arrays * tid
+  | PointerData       of addr
+  | PointerDataAt     of addr * integer
   | HavocListElem
+  | HavocSkiplistElem
   | LowestElem
   | HighestElem
 
@@ -419,6 +420,19 @@ and arrays_to_str (loc:bool) (expr:arrays) : string =
                                                       (tid_to_str loc t)
                                                       (expr_to_str_aux loc e)
 
+and addrarr_to_str (loc:bool) (expr:addrarr) : string =
+  match expr with
+    VarAddrArray v            -> variable_to_str loc v
+  | AddrArrayUp(arr,i,a)      -> sprintf "%s{%s<-%s}" (addrarr_to_str loc arr)
+                                                      (integer_to_str loc i)
+                                                      (addr_to_str loc a)
+
+and tidarr_to_str (loc:bool) (expr:tidarr) : string =
+  match expr with
+    VarTidArray v             -> variable_to_str loc v
+  | TidArrayUp(arr,i,t)       -> sprintf "%s{%s<-%s}" (tidarr_to_str loc arr)
+                                                      (integer_to_str loc i)
+                                                      (tid_to_str loc t)
 
 and integer_to_str (loc:bool) (expr:integer) : string =
   match expr with
@@ -538,8 +552,17 @@ and cell_to_str (loc:bool) (expr:cell) : string =
                                            (elem_to_str loc data)
                                            (addr_to_str loc addr)
                                            (tid_to_str loc th)
+  | MkSLCell(data,aa,ta,l)-> sprintf "mkslcell(%s,%s,%s,%s)"
+                                           (elem_to_str loc data)
+                                           (addrarr_to_str loc aa)
+                                           (tidarr_to_str loc ta)
+                                           (integer_to_str loc l)
   | CellLock(cell)        -> sprintf "%s.lock" (cell_to_str loc cell)
   | CellUnlock(cell)      -> sprintf "%s.unlock" (cell_to_str loc cell)
+  | CellLockAt(cell,l)    -> sprintf "%s.lock[%s]" (cell_to_str loc cell)
+                                                   (integer_to_str loc l)
+  | CellUnlockAt(cell,l)  -> sprintf "%s.unlock[%s]" (cell_to_str loc cell)
+                                                     (integer_to_str loc l)
   | CellAt(mem,addr)      -> sprintf "rd(%s,%s)" (mem_to_str loc mem)
                                                  (addr_to_str loc addr)
   | CellArrayRd(arr,t)    -> sprintf "%s%s" (arrays_to_str loc arr)
@@ -551,6 +574,8 @@ and addr_to_str (loc:bool) (expr:addr) :string =
     VarAddr v             -> variable_to_str loc v
   | Null                  -> "null"
   | Next(cell)            -> sprintf "%s.next" (cell_to_str loc cell)
+  | NextAt(cell,l)        -> sprintf "%s.next[%s]" (cell_to_str loc cell)
+                                                   (integer_to_str loc l)
   | FirstLocked(mem,path) -> sprintf "firstlocked(%s,%s)"
                                             (mem_to_str loc mem)
                                             (path_to_str loc path)
@@ -560,17 +585,26 @@ and addr_to_str (loc:bool) (expr:addr) :string =
                                                         (addr_to_str loc a)
                                                         (tid_to_str loc t)
   | PointerNext a         -> sprintf "%s->next" (addr_to_str loc a)
+  | PointerNextAt(a,l)    -> sprintf "%s->next[%s]" (addr_to_str loc a)
+                                                    (integer_to_str loc l)
+  | AddrArrRd (arr,i)     -> sprintf "%s[%s]" (addrarr_to_str loc arr)
+                                              (integer_to_str loc i)
 
 
 and tid_to_str (loc:bool) (th:tid) : string =
   match th with
-    VarTh v            -> variable_to_str loc v
-  | NoThid             -> sprintf "#"
-  | CellLockId(cell)   -> sprintf "%s.lockid" (cell_to_str loc cell)
-  | ThidArrayRd(arr,t) -> sprintf "%s%s" (arrays_to_str loc arr)
-                                         (tid_to_str loc t)
-  | PointerLockid a    -> sprintf "%s->lockid" (addr_to_str loc a)
-
+    VarTh v              -> variable_to_str loc v
+  | NoThid               -> sprintf "#"
+  | CellLockId(cell)     -> sprintf "%s.lockid" (cell_to_str loc cell)
+  | CellLockIdAt(cell,l) -> sprintf "%s.lockid[%s]" (cell_to_str loc cell)
+                                                    (integer_to_str loc l)
+  | ThidArrayRd(arr,t)   -> sprintf "%s%s" (arrays_to_str loc arr)
+                                           (tid_to_str loc t)
+  | PointerLockid a      -> sprintf "%s->lockid" (addr_to_str loc a)
+  | PointerLockidAt(a,l) -> sprintf "%s->lockid[%s]" (addr_to_str loc a)
+                                                     (integer_to_str loc l)
+  | ThidArrRd (arr,i)    -> sprintf "%s[%s]" (tidarr_to_str loc arr)
+                                             (integer_to_str loc i)
 
 and eq_to_str (loc:bool) ((e1,e2):eq) : string =
       sprintf "%s = %s" (term_to_str_aux loc e1) (term_to_str_aux loc e2)
@@ -588,7 +622,10 @@ and elem_to_str (loc:bool) (expr:elem) : string =
   | ElemArrayRd(arr,t)    -> sprintf "%s%s" (arrays_to_str loc arr)
                                          (tid_to_str loc t)
   | PointerData a         -> sprintf "%s->data" (addr_to_str loc a)
+  | PointerDataAt(a,l)    -> sprintf "%s->data[%s]" (addr_to_str loc a)
+                                                    (integer_to_str loc l)
   | HavocListElem         -> sprintf "havocListElem()"
+  | HavocSkiplistElem     -> sprintf "havocSLElem()"
   | LowestElem            -> sprintf "lowestElem"
   | HighestElem           -> sprintf "highestElem"
 
@@ -608,6 +645,8 @@ and term_to_str_aux (loc:bool) (expr:term) : string =
   | MemT(mem)           -> (mem_to_str loc mem)
   | IntT(i)             -> (integer_to_str loc i)
   | ArrayT(arr)         -> (arrays_to_str loc arr)
+  | AddrArrayT(arr)     -> (addrarr_to_str loc arr)
+  | TidArrayT(arr)      -> (tidarr_to_str loc arr)
 
 
 
@@ -696,19 +735,21 @@ let variable_to_expr_var (v:variable) :E.variable =
 
 let rec term_to_expr_term (t:term) : E.term =
   match t with
-    VarT v    -> E.VarT    (variable_to_expr_var v)
-  | SetT s    -> E.SetT    (set_to_expr_set s)
-  | ElemT e   -> E.ElemT   (elem_to_expr_elem e)
-  | ThidT t   -> E.ThidT   (tid_to_expr_tid t)
-  | AddrT a   -> E.AddrT   (addr_to_expr_addr a)
-  | CellT c   -> E.CellT   (cell_to_expr_cell c)
-  | SetThT s  -> E.SetThT  (setth_to_expr_setth s)
-  | SetIntT s -> E.SetIntT (setint_to_expr_setint s)
-  | SetElemT s-> E.SetElemT(setelem_to_expr_setelem s)
-  | PathT p   -> E.PathT   (path_to_expr_path p)
-  | MemT m    -> E.MemT    (mem_to_expr_mem m)
-  | IntT i    -> E.IntT    (integer_to_expr_integer i)
-  | ArrayT a  -> E.ArrayT  (array_to_expr_array a)
+    VarT v       -> E.VarT       (variable_to_expr_var v)
+  | SetT s       -> E.SetT       (set_to_expr_set s)
+  | ElemT e      -> E.ElemT      (elem_to_expr_elem e)
+  | ThidT t      -> E.ThidT      (tid_to_expr_tid t)
+  | AddrT a      -> E.AddrT      (addr_to_expr_addr a)
+  | CellT c      -> E.CellT      (cell_to_expr_cell c)
+  | SetThT s     -> E.SetThT     (setth_to_expr_setth s)
+  | SetIntT s    -> E.SetIntT    (setint_to_expr_setint s)
+  | SetElemT s   -> E.SetElemT   (setelem_to_expr_setelem s)
+  | PathT p      -> E.PathT      (path_to_expr_path p)
+  | MemT m       -> E.MemT       (mem_to_expr_mem m)
+  | IntT i       -> E.IntT       (integer_to_expr_integer i)
+  | ArrayT a     -> E.ArrayT     (array_to_expr_array a)
+  | AddrArrayT a -> E.AddrArrayT (addrarray_to_expr_array a)
+  | TidArrayT a  -> E.TidArrayT  (tidarray_to_expr_array a)
 
 
 and eq_to_expr_eq ((t1,t2):eq) : E.eq =
@@ -725,6 +766,20 @@ and array_to_expr_array (a:arrays) : E.arrays =
   | ArrayUp (a,t,e) -> E.ArrayUp (array_to_expr_array a,
                                   tid_to_expr_th t,
                                   expr_to_expr_expr e)
+
+and addrarray_to_expr_array (a:addrarr) : E.addrarr =
+  match a with
+    VarAddrArray v        -> E.VarAddrArray (variable_to_expr_var v)
+  | AddrArrayUp (arr,i,a) -> E.AddrArrayUp (addrarray_to_expr_array arr,
+                                            integer_to_expr_integer i,
+                                            addr_to_expr_addr a)
+
+and tidarray_to_expr_array (a:tidarr) : E.tidarr =
+  match a with
+    VarTidArray v        -> E.VarTidArray (variable_to_expr_var v)
+  | TidArrayUp (arr,i,t) -> E.TidArrayUp (tidarray_to_expr_array arr,
+                                          integer_to_expr_integer i,
+                                          tid_to_expr_tid t)
 
 and integer_to_expr_integer (i:integer) : E.integer =
   let to_int = integer_to_expr_integer in
@@ -759,12 +814,16 @@ and set_to_expr_set (s:set) : E.set =
 
 and tid_to_expr_tid (t:tid) : E.tid =
   match t with
-    VarTh v           -> E.VarTh (variable_to_expr_var v)
-  | NoThid            -> E.NoThid
-  | CellLockId c      -> E.CellLockId (cell_to_expr_cell c)
-  | ThidArrayRd (a,t) -> E.ThidArrayRd (array_to_expr_array a,
-                                        tid_to_expr_th t)
-  | PointerLockid a   -> E.CellLockId(E.CellAt(E.heap,addr_to_expr_addr a))
+    VarTh v              -> E.VarTh (variable_to_expr_var v)
+  | NoThid               -> E.NoThid
+  | CellLockId c         -> E.CellLockId (cell_to_expr_cell c)
+  | CellLockIdAt(c,l)    -> E.CellLockIdAt (cell_to_expr_cell c,
+                                            integer_to_expr_integer l)
+  | ThidArrayRd (a,t)    -> E.ThidArrayRd (array_to_expr_array a,
+                                           tid_to_expr_th t)
+  | PointerLockid a      -> E.CellLockId(E.CellAt(E.heap,addr_to_expr_addr a))
+  | PointerLockidAt(a,l) -> E.CellLockIdAt(E.CellAt(E.heap,addr_to_expr_addr a),
+                                           integer_to_expr_integer l)
 
 
 and tid_to_expr_th (t:tid) : E.tid =

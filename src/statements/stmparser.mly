@@ -764,7 +764,7 @@ let global_decl_cond (k:Expr.kind_t)
 %token ME
 
 %token ERROR MKCELL DATA NEXT LOCKID LOCK UNLOCK
-%token HAVOCLISTELEM LOWEST_ELEM HIGHEST_ELEM
+%token HAVOCLISTELEM HAVOCSKIPLISTELEM LOWEST_ELEM HIGHEST_ELEM
 %token MEMORY_READ
 %token COMMA
 %token NULL UPDATE
@@ -2529,6 +2529,11 @@ elem :
   | HAVOCLISTELEM OPEN_PAREN CLOSE_PAREN
     {
       Stm.HavocListElem
+    }
+  | HAVOCSKIPLISTELEM OPEN_PAREN CLOSE_PAREN
+    {
+      let _ = Printf.printf "We arrived to havoc!!!\n" in
+      Stm.HavocSkiplistElem
     }
   | LOWEST_ELEM
     {

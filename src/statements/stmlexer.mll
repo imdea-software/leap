@@ -51,7 +51,7 @@ rule norm = parse
   | "havocListElem" { Global.last "havocListElem" ; HAVOCLISTELEM }
   | "lowestElem"    { Global.last "lowestElem"    ; LOWEST_ELEM }
   | "highestElem"   { Global.last "highestElem"   ; HIGHEST_ELEM }
-  | "havocListElem" { Global.last "havocListElem" ; HAVOCLISTELEM }
+  | "havocSLElem"   { Global.last "havocSLElem"   ; HAVOCSKIPLISTELEM }
   | "upd"           { Global.last "upd"           ; UPDATE }
   | "epsilon"       { Global.last "epsilon"       ; EPSILON }
   | "EmptySet"      { Global.last "EmptySet"      ; EMPTYSET }

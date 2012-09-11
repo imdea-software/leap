@@ -48,6 +48,8 @@ and term =
   | MemT          of mem
   | IntT          of integer
   | ArrayT        of arrays
+  | AddrArrayT    of addrarr
+  | TidArrayT     of tidarr
 
 and eq =          term * term
 
@@ -56,6 +58,14 @@ and diseq =       term * term
 and arrays =
     VarArray      of variable
   | ArrayUp       of arrays * tid * expr_t
+
+and addrarr =
+  | VarAddrArray  of variable
+  | AddrArrayUp   of addrarr * integer * addr
+
+and tidarr =
+  | VarTidArray   of variable
+  | TidArrayUp    of tidarr * integer * tid
 
 and integer =
     IntVal        of int
@@ -84,13 +94,16 @@ and tid =
     VarTh         of variable
   | NoThid
   | CellLockId    of cell
+  | CellLockIdAt  of cell * integer
   | ThidArrayRd   of arrays * tid
+  | ThidArrRd     of tidarr * integer
 
 and elem =
-    VarElem       of variable
-  | CellData      of cell
-  | ElemArrayRd   of arrays * tid
+    VarElem           of variable
+  | CellData          of cell
+  | ElemArrayRd       of arrays * tid
   | HavocListElem
+  | HavocSkiplistElem
   | LowestElem
   | HighestElem
 
@@ -98,8 +111,10 @@ and addr =
     VarAddr       of variable
   | Null
   | Next          of cell
+  | NextAt        of cell * integer
   | FirstLocked   of mem * path
   | AddrArrayRd   of arrays * tid
+  | AddrArrRd     of addrarr * integer
 
 and cell =
     VarCell       of variable
