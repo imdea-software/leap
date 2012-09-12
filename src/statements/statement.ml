@@ -107,7 +107,6 @@ and elem =
   | CellData          of cell
   | ElemArrayRd       of arrays * tid
   | PointerData       of addr
-  | PointerDataAt     of addr * integer
   | HavocListElem
   | HavocSkiplistElem
   | LowestElem
@@ -622,8 +621,6 @@ and elem_to_str (loc:bool) (expr:elem) : string =
   | ElemArrayRd(arr,t)    -> sprintf "%s%s" (arrays_to_str loc arr)
                                          (tid_to_str loc t)
   | PointerData a         -> sprintf "%s->data" (addr_to_str loc a)
-  | PointerDataAt(a,l)    -> sprintf "%s->data[%s]" (addr_to_str loc a)
-                                                    (integer_to_str loc l)
   | HavocListElem         -> sprintf "havocListElem()"
   | HavocSkiplistElem     -> sprintf "havocSLElem()"
   | LowestElem            -> sprintf "lowestElem"
@@ -821,6 +818,8 @@ and tid_to_expr_tid (t:tid) : E.tid =
                                             integer_to_expr_integer l)
   | ThidArrayRd (a,t)    -> E.ThidArrayRd (array_to_expr_array a,
                                            tid_to_expr_th t)
+  | ThidArrRd (a,l)      -> E.ThidArrRd (tidarray_to_expr_array a,
+                                         integer_to_expr_integer l)
   | PointerLockid a      -> E.CellLockId(E.CellAt(E.heap,addr_to_expr_addr a))
   | PointerLockidAt(a,l) -> E.CellLockIdAt(E.CellAt(E.heap,addr_to_expr_addr a),
                                            integer_to_expr_integer l)
@@ -828,11 +827,15 @@ and tid_to_expr_tid (t:tid) : E.tid =
 
 and tid_to_expr_th (t:tid) : E.tid =
   match t with
-    VarTh v           -> E.VarTh (variable_to_expr_var v)
-  | NoThid            -> E.NoThid
-  | CellLockId c      -> E.CellLockId (cell_to_expr_cell c)
-  | ThidArrayRd (a,t) -> raise (Not_supported_conversion (tid_to_str true t))
-  | PointerLockid _   -> raise (Not_supported_conversion (tid_to_str true t))
+    VarTh v            -> E.VarTh (variable_to_expr_var v)
+  | NoThid             -> E.NoThid
+  | CellLockId c       -> E.CellLockId (cell_to_expr_cell c)
+  | CellLockIdAt (c,l) -> E.CellLockIdAt (cell_to_expr_cell c,
+                                          integer_to_expr_integer l)
+  | ThidArrayRd (a,t)  -> raise (Not_supported_conversion (tid_to_str true t))
+  | ThidArrRd (a,l)    -> raise (Not_supported_conversion (tid_to_str true t))
+  | PointerLockid _    -> raise (Not_supported_conversion (tid_to_str true t))
+  | PointerLockidAt _  -> raise (Not_supported_conversion (tid_to_str true t))
 
 
 and elem_to_expr_elem (e:elem) : E.elem =
@@ -843,35 +846,49 @@ and elem_to_expr_elem (e:elem) : E.elem =
                                         tid_to_expr_th t)
   | PointerData a     -> E.CellData(E.CellAt(E.heap,addr_to_expr_addr a))
   | HavocListElem     -> E.HavocListElem
+  | HavocSkiplistElem -> E.HavocSkiplistElem
   | LowestElem        -> E.LowestElem
   | HighestElem       -> E.HighestElem
 
 
 and addr_to_expr_addr (a:addr) : E.addr =
   match a with
-    VarAddr v         -> E.VarAddr (variable_to_expr_var v)
-  | Null              -> E.Null
-  | Next c            -> E.Next (cell_to_expr_cell c)
-  | FirstLocked (m,p) -> E.FirstLocked (mem_to_expr_mem m,
-                                        path_to_expr_path p)
-  | AddrArrayRd (a,t) -> E.AddrArrayRd (array_to_expr_array a,
+    VarAddr v           -> E.VarAddr (variable_to_expr_var v)
+  | Null                -> E.Null
+  | Next c              -> E.Next (cell_to_expr_cell c)
+  | NextAt (c,l)        -> E.NextAt (cell_to_expr_cell c,
+                                     integer_to_expr_integer l)
+  | FirstLocked (m,p)   -> E.FirstLocked (mem_to_expr_mem m,
+                                          path_to_expr_path p)
+  | AddrArrayRd (a,t)   -> E.AddrArrayRd (array_to_expr_array a,
                                         tid_to_expr_th t)
-  | Malloc _          -> raise (Not_supported_conversion (addr_to_str true a))
-  | PointerNext a     -> E.Next(E.CellAt(E.heap,addr_to_expr_addr a))
+  | AddrArrRd (a,i)     -> E.AddrArrRd (addrarray_to_expr_array a,
+                                        integer_to_expr_integer i)
+  | Malloc _            -> raise (Not_supported_conversion (addr_to_str true a))
+  | PointerNext a       -> E.Next(E.CellAt(E.heap,addr_to_expr_addr a))
+  | PointerNextAt (a,l) -> E.Next(E.CellAt(E.heap,addr_to_expr_addr a))
 
 
 and cell_to_expr_cell (c:cell) : E.cell =
   match c with
-    VarCell v         -> E.VarCell (variable_to_expr_var v)
-  | Error             -> E.Error
-  | MkCell (e,a,t)    -> E.MkCell (elem_to_expr_elem e,
-                                   addr_to_expr_addr a,
-                                  tid_to_expr_tid t)
-  | CellLock c        -> E.CellLock (cell_to_expr_cell c)
-  | CellUnlock c      -> E.CellUnlock (cell_to_expr_cell c)
-  | CellAt (m,a)      -> E.CellAt (mem_to_expr_mem m, addr_to_expr_addr a)
-  | CellArrayRd (a,t) -> E.CellArrayRd (array_to_expr_array a,
-                                        tid_to_expr_th t)
+    VarCell v            -> E.VarCell (variable_to_expr_var v)
+  | Error                -> E.Error
+  | MkCell (e,a,t)       -> E.MkCell (elem_to_expr_elem e,
+                                      addr_to_expr_addr a,
+                                      tid_to_expr_tid t)
+  | MkSLCell (e,aa,ta,l) -> E.MkSLCell (elem_to_expr_elem e,
+                                        addrarray_to_expr_array aa,
+                                        tidarray_to_expr_array ta,
+                                        integer_to_expr_integer l)
+  | CellLock c           -> E.CellLock (cell_to_expr_cell c)
+  | CellLockAt (c,l)     -> E.CellLockAt (cell_to_expr_cell c,
+                                          integer_to_expr_integer l)
+  | CellUnlock c         -> E.CellUnlock (cell_to_expr_cell c)
+  | CellUnlockAt (c,l)   -> E.CellUnlockAt (cell_to_expr_cell c,
+                                            integer_to_expr_integer l)
+  | CellAt (m,a)         -> E.CellAt (mem_to_expr_mem m, addr_to_expr_addr a)
+  | CellArrayRd (a,t)    -> E.CellArrayRd (array_to_expr_array a,
+                                           tid_to_expr_th t) 
 
 
 and setth_to_expr_setth (s:setth) : E.setth =

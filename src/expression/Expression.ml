@@ -122,8 +122,11 @@ and cell =
     VarCell       of variable
   | Error
   | MkCell        of elem * addr * tid
+  | MkSLCell      of elem * addrarr * tidarr * integer
   | CellLock      of cell
+  | CellLockAt    of cell * integer
   | CellUnlock    of cell
+  | CellUnlockAt  of cell * integer
   | CellAt        of mem * addr
   | CellArrayRd   of arrays * tid
 
@@ -929,17 +932,21 @@ and priming_tid (pr:bool) (prime_set:VarSet.t option) (th:tid) : tid =
 
 and priming_cell (pr:bool) (prime_set:VarSet.t option) (c:cell) : cell =
   match c with
-    VarCell v            -> VarCell (priming_variable pr prime_set v)
-  | Error                -> Error
-  | MkCell(data,addr,th) -> MkCell(priming_elem pr prime_set data,
-                                   priming_addr pr prime_set addr,
-                                   priming_tid pr prime_set th)
-  | CellLock(cell)       -> CellLock(priming_cell pr prime_set cell)
-  | CellUnlock(cell)     -> CellUnlock(priming_cell pr prime_set cell)
-  | CellAt(mem,addr)     -> CellAt(priming_mem pr prime_set mem,
-                                   priming_addr pr prime_set addr)
-  | CellArrayRd(arr,t)   -> CellArrayRd(priming_array pr prime_set arr,
-                                        priming_tid pr prime_set t)
+    VarCell v              -> VarCell (priming_variable pr prime_set v)
+  | Error                  -> Error
+  | MkCell(data,addr,th)   -> MkCell(priming_elem pr prime_set data,
+                                     priming_addr pr prime_set addr,
+                                     priming_tid pr prime_set th)
+  | MkSLCell(data,aa,ta,l) -> MkSLCell(priming_elem pr prime_set data,
+                                       priming_addrarray pr prime_set aa,
+                                       priming_tidarray pr prime_set ta,
+                                       priming_int pr prime_set l)
+  | CellLock(cell)         -> CellLock(priming_cell pr prime_set cell)
+  | CellUnlock(cell)       -> CellUnlock(priming_cell pr prime_set cell)
+  | CellAt(mem,addr)       -> CellAt(priming_mem pr prime_set mem,
+                                     priming_addr pr prime_set addr)
+  | CellArrayRd(arr,t)     -> CellArrayRd(priming_array pr prime_set arr,
+                                          priming_tid pr prime_set t)
 
 
 and priming_setth (pr:bool) (prime_set:VarSet.t option) (s:setth) : setth =
@@ -1490,12 +1497,17 @@ and setelem_to_str (expr:setelem) : string =
 
 and cell_to_str (expr:cell) : string =
   match expr with
-    VarCell v             -> variable_to_str v
-  | Error                 -> "Error"
-  | MkCell(data,addr,th)  -> sprintf "mkcell(%s,%s,%s)"
+    VarCell v              -> variable_to_str v
+  | Error                  -> "Error"
+  | MkCell(data,addr,th)   -> sprintf "mkcell(%s,%s,%s)"
                                            (elem_to_str data)
                                            (addr_to_str addr)
                                            (tid_to_str th)
+  | MkSLCell(data,aa,ta,l) -> sprintf "mkslcell(%s,%s,%s,%s)"
+                                           (elem_to_str data)
+                                           (addrarr_to_str aa)
+                                           (tidarr_to_str ta)
+                                           (integer_to_str l)
   | CellLock(cell)        -> sprintf "%s.lock" (cell_to_str cell)
   | CellUnlock(cell)      -> sprintf "%s.unlock" (cell_to_str cell)
   | CellAt(mem,addr)      -> sprintf "rd(%s,%s)" (mem_to_str mem)
@@ -1937,16 +1949,21 @@ and get_vars_cell (c:cell)
                   (base:variable -> variable list) : variable list =
   let get_vars_aux t = get_vars_tid t base in
   match c with
-    VarCell v            -> (base v) @
-                            (Option.map_default get_vars_aux [] (var_th v))
-  | Error                -> []
-  | MkCell(data,addr,th) -> (get_vars_elem data base) @
-                            (get_vars_addr addr base) @
-                            (get_vars_tid th base)
-  | CellLock(cell)       -> (get_vars_cell cell base)
-  | CellUnlock(cell)     -> (get_vars_cell cell base)
-  | CellAt(mem,addr)     -> (get_vars_mem mem base) @ (get_vars_addr addr base)
-  | CellArrayRd(arr,t)   -> (get_vars_array arr base)
+    VarCell v              -> (base v) @
+                              (Option.map_default get_vars_aux [] (var_th v))
+  | Error                  -> []
+  | MkCell(data,addr,th)   -> (get_vars_elem data base) @
+                              (get_vars_addr addr base) @
+                              (get_vars_tid th base)
+  | MkSLCell(data,aa,ta,l) -> (get_vars_elem data base) @
+                              (get_vars_addrarr aa base) @
+                              (get_vars_tidarr ta base) @
+                              (get_vars_int l base)
+  | CellLock(cell)         -> (get_vars_cell cell base)
+  | CellUnlock(cell)       -> (get_vars_cell cell base)
+  | CellAt(mem,addr)       -> (get_vars_mem mem base) @
+                              (get_vars_addr addr base)
+  | CellArrayRd(arr,t)     -> (get_vars_array arr base)
 
 
 and get_vars_setth (s:setth)
@@ -2424,15 +2441,19 @@ and voc_tid (th:tid) : tid list =
 
 and voc_cell (c:cell) : tid list =
   match c with
-    VarCell v            -> Option.map_default (fun x->[x]) [] (var_th v)
-  | Error                -> []
-  | MkCell(data,addr,th) -> (voc_elem data) @
-                            (voc_addr addr) @
-                            (voc_tid th)
-  | CellLock(cell)       -> (voc_cell cell)
-  | CellUnlock(cell)     -> (voc_cell cell)
-  | CellAt(mem,addr)     -> (voc_mem mem) @ (voc_addr addr)
-  | CellArrayRd(arr,t)   -> (voc_array arr)
+    VarCell v              -> Option.map_default (fun x->[x]) [] (var_th v)
+  | Error                  -> []
+  | MkCell(data,addr,th)   -> (voc_elem data) @
+                              (voc_addr addr) @
+                              (voc_tid th)
+  | MkSLCell(data,aa,ta,l) -> (voc_elem data)  @
+                              (voc_addrarr aa) @
+                              (voc_tidarr ta ) @
+                              (voc_int l)
+  | CellLock(cell)         -> (voc_cell cell)
+  | CellUnlock(cell)       -> (voc_cell cell)
+  | CellAt(mem,addr)       -> (voc_mem mem) @ (voc_addr addr)
+  | CellArrayRd(arr,t)     -> (voc_array arr)
 
 
 and voc_setth (s:setth) : tid list =
@@ -2685,15 +2706,20 @@ and var_kind_tid (kind:kind_t) (th:tid) : term list =
 
 and var_kind_cell (kind:kind_t) (c:cell) : term list =
   match c with
-    VarCell v            -> if (var_k v) = kind then [CellT c] else []
-  | Error                -> []
-  | MkCell(data,addr,th) -> (var_kind_elem kind data) @
-                            (var_kind_addr kind addr) @
-                            (var_kind_tid kind th)
-  | CellLock(cell)       -> (var_kind_cell kind cell)
-  | CellUnlock(cell)     -> (var_kind_cell kind cell)
-  | CellAt(mem,addr)     -> (var_kind_mem kind mem) @ (var_kind_addr kind addr)
-  | CellArrayRd(arr,t)   -> (var_kind_array kind arr)
+    VarCell v              -> if (var_k v) = kind then [CellT c] else []
+  | Error                  -> []
+  | MkCell(data,addr,th)   -> (var_kind_elem kind data) @
+                              (var_kind_addr kind addr) @
+                              (var_kind_tid kind th)
+  | MkSLCell(data,aa,ta,l) -> (var_kind_elem kind data)  @
+                              (var_kind_addrarr kind aa) @
+                              (var_kind_tidarr kind ta)  @
+                              (var_kind_int kind l)
+  | CellLock(cell)         -> (var_kind_cell kind cell)
+  | CellUnlock(cell)       -> (var_kind_cell kind cell)
+  | CellAt(mem,addr)       -> (var_kind_mem kind mem) @
+                              (var_kind_addr kind addr)
+  | CellArrayRd(arr,t)     -> (var_kind_array kind arr)
 
 
 and var_kind_setth (kind:kind_t) (s:setth) : term list =
@@ -2981,16 +3007,20 @@ and param_tid_aux (pfun:variable option -> tid option) (th:tid) : tid =
 
 and param_cell_aux (pfun:variable option -> tid option) (c:cell) : cell =
   match c with
-    VarCell v            -> VarCell (set_var_th v (pfun (Some v)))
-  | Error                -> Error
-  | MkCell(data,addr,th) -> MkCell(param_elem_aux pfun data,
+    VarCell v              -> VarCell (set_var_th v (pfun (Some v)))
+  | Error                  -> Error
+  | MkCell(data,addr,th)   -> MkCell(param_elem_aux pfun data,
                                    param_addr_aux pfun addr,
                                    param_tid_aux pfun th)
-  | CellLock(cell)       -> CellLock(param_cell_aux pfun cell)
-  | CellUnlock(cell)     -> CellUnlock(param_cell_aux pfun cell)
-  | CellAt(mem,addr)     -> CellAt(param_mem pfun mem,
-                                   param_addr_aux pfun addr)
-  | CellArrayRd(arr,t)   -> CellArrayRd(param_arrays pfun arr, t)
+  | MkSLCell(data,aa,ta,l) -> MkSLCell(param_elem_aux pfun data,
+                                       param_addrarr pfun aa,
+                                       param_tidarr pfun ta,
+                                       param_int pfun l)
+  | CellLock(cell)         -> CellLock(param_cell_aux pfun cell)
+  | CellUnlock(cell)       -> CellUnlock(param_cell_aux pfun cell)
+  | CellAt(mem,addr)       -> CellAt(param_mem pfun mem,
+                                     param_addr_aux pfun addr)
+  | CellArrayRd(arr,t)     -> CellArrayRd(param_arrays pfun arr, t)
 
 
 and param_setth (pfun:variable option -> tid option) (s:setth) : setth =
@@ -3376,17 +3406,21 @@ and subst_tid_th (subs:tid_subst_t) (th:tid) : tid =
 
 and subst_tid_cell (subs:tid_subst_t) (c:cell) : cell =
   match c with
-    VarCell v            -> VarCell (set_var_th v
+    VarCell v              -> VarCell (set_var_th v
                                 (Option.lift (subst_tid_th subs) (var_th v)))
-  | Error                -> Error
-  | MkCell(data,addr,th) -> MkCell(subst_tid_elem subs data,
-                                   subst_tid_addr subs addr,
-                                   subst_tid_th subs th)
-  | CellLock(cell)       -> CellLock(subst_tid_cell subs cell)
-  | CellUnlock(cell)     -> CellUnlock(subst_tid_cell subs cell)
-  | CellAt(mem,addr)     -> CellAt(subst_tid_mem subs mem,
-                                   subst_tid_addr subs addr)
-  | CellArrayRd(arr,t)   -> CellArrayRd(subst_tid_array subs arr, t)
+  | Error                  -> Error
+  | MkCell(data,addr,th)   -> MkCell(subst_tid_elem subs data,
+                                     subst_tid_addr subs addr,
+                                     subst_tid_th subs th)
+  | MkSLCell(data,aa,ta,l) -> MkSLCell(subst_tid_elem subs data,
+                                       subst_tid_addrarr subs aa,
+                                       subst_tid_tidarr subs ta,
+                                       subst_tid_int subs l)
+  | CellLock(cell)         -> CellLock(subst_tid_cell subs cell)
+  | CellUnlock(cell)       -> CellUnlock(subst_tid_cell subs cell)
+  | CellAt(mem,addr)       -> CellAt(subst_tid_mem subs mem,
+                                     subst_tid_addr subs addr)
+  | CellArrayRd(arr,t)     -> CellArrayRd(subst_tid_array subs arr, t)
 
 
 and subst_tid_setth (subs:tid_subst_t) (s:setth) : setth =
@@ -4185,13 +4219,15 @@ let required_sorts (phi:formula) : sort list =
 
   and req_c (c:cell) : SortSet.t =
     match c with
-    | VarCell _         -> single Cell
-    | Error             -> single Cell
-    | MkCell (e,a,t)    -> append Cell [req_e e;req_a a; req_t t]
-    | CellLock c        -> append Cell [req_c c]
-    | CellUnlock c      -> append Cell [req_c c]
-    | CellAt (m,a)      -> append Cell [req_m m;req_a a]
-    | CellArrayRd (a,t) -> append Cell [req_arr a;req_t t]
+    | VarCell _            -> single Cell
+    | Error                -> single Cell
+    | MkCell (e,a,t)       -> append Cell [req_e e;req_a a; req_t t]
+    | MkSLCell (e,aa,ta,l) -> append Cell [req_e e;req_addrarr aa;
+                                           req_tidarr ta;req_i l]
+    | CellLock c           -> append Cell [req_c c]
+    | CellUnlock c         -> append Cell [req_c c]
+    | CellAt (m,a)         -> append Cell [req_m m;req_a a]
+    | CellArrayRd (a,t)    -> append Cell [req_arr a;req_t t]
 
   and req_a (a:addr) : SortSet.t =
     match a with

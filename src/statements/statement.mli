@@ -105,7 +105,6 @@ and elem =
   | CellData          of cell
   | ElemArrayRd       of arrays * tid
   | PointerData       of addr
-  | PointerDataAt     of addr * integer
   | HavocListElem
   | HavocSkiplistElem
   | LowestElem

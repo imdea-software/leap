@@ -115,8 +115,11 @@ and cell =
     VarCell       of variable
   | Error
   | MkCell        of elem * addr * tid
+  | MkSLCell      of elem * addrarr * tidarr * integer
   | CellLock      of cell
+  | CellLockAt    of cell * integer
   | CellUnlock    of cell
+  | CellUnlockAt  of cell * integer
   | CellAt        of mem * addr
   | CellArrayRd   of arrays * tid
 

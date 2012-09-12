@@ -126,7 +126,9 @@ and tid_to_str (t:Expr.tid) : string =
                             (IntExpr.variable_to_int_variable v)
   | Expr.NoThid        -> "NoThid"
   | Expr.CellLockId _  -> raise (NotSupportedInYices (Expr.tid_to_str t))
+  | Expr.CellLockIdAt _-> raise (NotSupportedInYices (Expr.tid_to_str t))
   | Expr.ThidArrayRd _ -> raise (NotSupportedInYices (Expr.tid_to_str t))
+  | Expr.ThidArrRd _   -> raise (NotSupportedInYices (Expr.tid_to_str t))
 
 
 let thid_variable_to_str (th:Expr.tid) : string =
