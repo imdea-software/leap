@@ -553,6 +553,8 @@ let get_sort_from_term (gVars:var_table_t)
   | Expr.MemT(_)           -> Expr.Mem
   | Expr.IntT(_)           -> Expr.Int
   | Expr.ArrayT(_)         -> Expr.Array
+  | Expr.AddrArrayT(_)     -> Expr.AddrArray
+  | Expr.TidArrayT(_)      -> Expr.TidArray
 
 
 

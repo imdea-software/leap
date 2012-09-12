@@ -1167,15 +1167,24 @@ and var_kind_th (kind:E.kind_t) (th:tid) : term list =
 
 and var_kind_cell (kind:E.kind_t) (c:cell) : term list =
   match c with
-    VarCell(_,_,_,k)     -> if k = kind then [CellT c] else []
-  | Error                -> []
-  | MkCell(data,addr,th) -> (var_kind_elem kind data) @
-                            (var_kind_addr kind addr) @
-                            (var_kind_th kind th)
-  | CellLock(cell)       -> (var_kind_cell kind cell)
-  | CellUnlock(cell)     -> (var_kind_cell kind cell)
-  | CellAt(mem,addr)     -> (var_kind_mem kind mem) @ (var_kind_addr kind addr)
-  | CellArrayRd(arr,t)   -> (var_kind_array kind arr)
+    VarCell(_,_,_,k)       -> if k = kind then [CellT c] else []
+  | Error                  -> []
+  | MkCell(data,addr,th)   -> (var_kind_elem kind data) @
+                              (var_kind_addr kind addr) @
+                              (var_kind_th kind th)
+  | MkSLCell(data,aa,ta,l) -> (var_kind_elem kind data)  @
+                              (var_kind_addrarr kind aa) @
+                              (var_kind_tidarr kind ta)  @
+                              (var_kind_int kind l)
+  | CellLock(cell)         -> (var_kind_cell kind cell)
+  | CellLockAt(cell,l)     -> (var_kind_cell kind cell) @
+                              (var_kind_int kind l)
+  | CellUnlock(cell)       -> (var_kind_cell kind cell)
+  | CellUnlockAt(cell,l)   -> (var_kind_cell kind cell) @
+                              (var_kind_int kind l)
+  | CellAt(mem,addr)       -> (var_kind_mem kind mem) @
+                              (var_kind_addr kind addr)
+  | CellArrayRd(arr,t)     -> (var_kind_array kind arr)
 
 
 and var_kind_setth (kind:E.kind_t) (s:setth) : term list =

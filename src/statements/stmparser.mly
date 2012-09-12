@@ -473,20 +473,22 @@ let check_and_get_sort (id:string) : Expr.sort =
         let modif_v = Stm.var_replace_sort v s in
           begin
             match s with
-              Expr.Set     -> Stm.SetT    (Stm.VarSet     modif_v)
-            | Expr.Elem    -> Stm.ElemT   (Stm.VarElem    modif_v)
-            | Expr.Thid    -> Stm.ThidT   (Stm.VarTh      modif_v)
-            | Expr.Addr    -> Stm.AddrT   (Stm.VarAddr    modif_v)
-            | Expr.Cell    -> Stm.CellT   (Stm.VarCell    modif_v)
-            | Expr.SetTh   -> Stm.SetThT  (Stm.VarSetTh   modif_v)
-            | Expr.SetInt  -> Stm.SetIntT (Stm.VarSetInt  modif_v)
-            | Expr.SetElem -> Stm.SetElemT(Stm.VarSetElem modif_v)
-            | Expr.Path    -> Stm.PathT   (Stm.VarPath    modif_v)
-            | Expr.Mem     -> Stm.MemT    (Stm.VarMem     modif_v)
-            | Expr.Bool    -> Stm.VarT    modif_v
-            | Expr.Int     -> Stm.IntT    (Stm.VarInt     modif_v)
-            | Expr.Array   -> Stm.ArrayT  (Stm.VarArray   modif_v)
-            | Expr.Unknown -> Stm.VarT    modif_v
+              Expr.Set       -> Stm.SetT       (Stm.VarSet       modif_v)
+            | Expr.Elem      -> Stm.ElemT      (Stm.VarElem      modif_v)
+            | Expr.Thid      -> Stm.ThidT      (Stm.VarTh        modif_v)
+            | Expr.Addr      -> Stm.AddrT      (Stm.VarAddr      modif_v)
+            | Expr.Cell      -> Stm.CellT      (Stm.VarCell      modif_v)
+            | Expr.SetTh     -> Stm.SetThT     (Stm.VarSetTh     modif_v)
+            | Expr.SetInt    -> Stm.SetIntT    (Stm.VarSetInt    modif_v)
+            | Expr.SetElem   -> Stm.SetElemT   (Stm.VarSetElem   modif_v)
+            | Expr.Path      -> Stm.PathT      (Stm.VarPath      modif_v)
+            | Expr.Mem       -> Stm.MemT       (Stm.VarMem       modif_v)
+            | Expr.Bool      -> Stm.VarT       modif_v
+            | Expr.Int       -> Stm.IntT       (Stm.VarInt       modif_v)
+            | Expr.Array     -> Stm.ArrayT     (Stm.VarArray     modif_v)
+            | Expr.AddrArray -> Stm.AddrArrayT (Stm.VarAddrArray modif_v)
+            | Expr.TidArray  -> Stm.TidArrayT  (Stm.VarTidArray  modif_v)
+            | Expr.Unknown   -> Stm.VarT       modif_v
           end
     | _                   -> exp
 

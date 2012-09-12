@@ -18,20 +18,22 @@ exception UnsupportedTllExpr of string
 
 let rec sort_to_tll_sort (s:Expr.sort) : Tll.sort =
   match s with
-    Expr.Set     -> Tll.Set
-  | Expr.Elem    -> Tll.Elem
-  | Expr.Thid    -> Tll.Thid
-  | Expr.Addr    -> Tll.Addr
-  | Expr.Cell    -> Tll.Cell
-  | Expr.SetTh   -> Tll.SetTh
-  | Expr.SetInt  -> raise (UnsupportedSort (Expr.sort_to_str s))
-  | Expr.SetElem -> Tll.SetElem
-  | Expr.Path    -> Tll.Path
-  | Expr.Mem     -> Tll.Mem
-  | Expr.Bool    -> raise (UnsupportedSort (Expr.sort_to_str s))
-  | Expr.Int     -> raise (UnsupportedSort (Expr.sort_to_str s))
-  | Expr.Array   -> raise (UnsupportedSort (Expr.sort_to_str s))
-  | Expr.Unknown -> Tll.Unknown
+    Expr.Set       -> Tll.Set
+  | Expr.Elem      -> Tll.Elem
+  | Expr.Thid      -> Tll.Thid
+  | Expr.Addr      -> Tll.Addr
+  | Expr.Cell      -> Tll.Cell
+  | Expr.SetTh     -> Tll.SetTh
+  | Expr.SetInt    -> raise (UnsupportedSort (Expr.sort_to_str s))
+  | Expr.SetElem   -> Tll.SetElem
+  | Expr.Path      -> Tll.Path
+  | Expr.Mem       -> Tll.Mem
+  | Expr.Bool      -> raise (UnsupportedSort (Expr.sort_to_str s))
+  | Expr.Int       -> raise (UnsupportedSort (Expr.sort_to_str s))
+  | Expr.Array     -> raise (UnsupportedSort (Expr.sort_to_str s))
+  | Expr.AddrArray -> raise (UnsupportedSort (Expr.sort_to_str s))
+  | Expr.TidArray  -> raise (UnsupportedSort (Expr.sort_to_str s))
+  | Expr.Unknown   -> Tll.Unknown
 
 
 
@@ -59,27 +61,31 @@ and variable_to_tll_var (v:Expr.variable) : Tll.variable =
 
 and tid_to_tll_tid (th:Expr.tid) : Tll.tid =
   match th with
-    Expr.VarTh v -> Tll.VarTh (variable_to_tll_var v)
-  | Expr.NoThid -> Tll.NoThid
-  | Expr.CellLockId c -> Tll.CellLockId (cell_to_tll_cell c)
-  | Expr.ThidArrayRd _ -> raise (UnsupportedTllExpr(Expr.tid_to_str th))
+    Expr.VarTh v        -> Tll.VarTh (variable_to_tll_var v)
+  | Expr.NoThid         -> Tll.NoThid
+  | Expr.CellLockId c   -> Tll.CellLockId (cell_to_tll_cell c)
+  | Expr.CellLockIdAt _ -> raise (UnsupportedTllExpr(Expr.tid_to_str th))
+  | Expr.ThidArrayRd _  -> raise (UnsupportedTllExpr(Expr.tid_to_str th))
+  | Expr.ThidArrRd _    -> raise (UnsupportedTllExpr(Expr.tid_to_str th))
 
 
 and term_to_tll_term (t:Expr.term) : Tll.term =
   match t with
-    Expr.VarT v      -> Tll.VarT (variable_to_tll_var v)
-  | Expr.SetT s      -> Tll.SetT (set_to_tll_set s)
-  | Expr.ElemT e     -> Tll.ElemT (elem_to_tll_elem e)
-  | Expr.ThidT t     -> Tll.ThidT (tid_to_tll_tid t)
-  | Expr.AddrT a     -> Tll.AddrT (addr_to_tll_addr a)
-  | Expr.CellT c     -> Tll.CellT (cell_to_tll_cell c)
-  | Expr.SetThT st   -> Tll.SetThT (setth_to_tll_setth st)
-  | Expr.SetIntT _   -> raise(UnsupportedTllExpr(Expr.term_to_str t))
-  | Expr.SetElemT st -> Tll.SetElemT (setelem_to_tll_setelem st)
-  | Expr.PathT p     -> Tll.PathT (path_to_tll_path p)
-  | Expr.MemT m      -> Tll.MemT (mem_to_tll_mem m)
-  | Expr.IntT _      -> raise(UnsupportedTllExpr (Expr.term_to_str t))
-  | Expr.ArrayT a    -> arrays_to_tll_term a 
+    Expr.VarT v       -> Tll.VarT (variable_to_tll_var v)
+  | Expr.SetT s       -> Tll.SetT (set_to_tll_set s)
+  | Expr.ElemT e      -> Tll.ElemT (elem_to_tll_elem e)
+  | Expr.ThidT t      -> Tll.ThidT (tid_to_tll_tid t)
+  | Expr.AddrT a      -> Tll.AddrT (addr_to_tll_addr a)
+  | Expr.CellT c      -> Tll.CellT (cell_to_tll_cell c)
+  | Expr.SetThT st    -> Tll.SetThT (setth_to_tll_setth st)
+  | Expr.SetIntT _    -> raise(UnsupportedTllExpr(Expr.term_to_str t))
+  | Expr.SetElemT st  -> Tll.SetElemT (setelem_to_tll_setelem st)
+  | Expr.PathT p      -> Tll.PathT (path_to_tll_path p)
+  | Expr.MemT m       -> Tll.MemT (mem_to_tll_mem m)
+  | Expr.IntT _       -> raise(UnsupportedTllExpr (Expr.term_to_str t))
+  | Expr.AddrArrayT a -> raise(UnsupportedTllExpr (Expr.term_to_str t))
+  | Expr.TidArrayT a  -> raise(UnsupportedTllExpr (Expr.term_to_str t))
+  | Expr.ArrayT a     -> arrays_to_tll_term a 
 
 
 and arrays_to_tll_term (a:Expr.arrays) : Tll.term =
@@ -129,6 +135,7 @@ and elem_to_tll_elem (e:Expr.elem) : Tll.elem =
       Tll.VarElem (variable_to_tll_var v)
   | Expr.ElemArrayRd _          -> raise(UnsupportedTllExpr(Expr.elem_to_str e))
   | Expr.HavocListElem          -> Tll.HavocListElem
+  | Expr.HavocSkiplistElem      -> raise(UnsupportedTllExpr(Expr.elem_to_str e))
   | Expr.LowestElem             -> Tll.LowestElem
   | Expr.HighestElem            -> Tll.HighestElem
 
@@ -138,12 +145,14 @@ and addr_to_tll_addr (a:Expr.addr) : Tll.addr =
     Expr.VarAddr v              -> Tll.VarAddr (variable_to_tll_var v)
   | Expr.Null                   -> Tll.Null
   | Expr.Next c                 -> Tll.Next (cell_to_tll_cell c)
+  | Expr.NextAt _               -> raise(UnsupportedTllExpr(Expr.addr_to_str a))
   | Expr.FirstLocked (m,p)      -> Tll.FirstLocked (mem_to_tll_mem m,
                                                     path_to_tll_path p)
   | Expr.AddrArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
       let v = Expr.build_var id s pr (Some t) p Expr.Normal in
       Tll.VarAddr (variable_to_tll_var v)
   | Expr.AddrArrayRd _          -> raise(UnsupportedTllExpr(Expr.addr_to_str a))
+  | Expr.AddrArrRd _            -> raise(UnsupportedTllExpr(Expr.addr_to_str a))
 
 
 and cell_to_tll_cell (c:Expr.cell) : Tll.cell =
@@ -153,10 +162,13 @@ and cell_to_tll_cell (c:Expr.cell) : Tll.cell =
   | Expr.MkCell (e,a,t) -> Tll.MkCell (elem_to_tll_elem e,
                                        addr_to_tll_addr a,
                                        tid_to_tll_tid t)
+  | Expr.MkSLCell _     -> raise(UnsupportedTllExpr(Expr.cell_to_str c))
   (* Tll receives two arguments, while current epxression receives only one *)
   (* However, for the list examples, I think we will not need it *)
   | Expr.CellLock c     -> Tll.CellLock (cell_to_tll_cell c, Tll.NoThid)
+  | Expr.CellLockAt _   -> raise(UnsupportedTllExpr(Expr.cell_to_str c))
   | Expr.CellUnlock c   -> Tll.CellUnlock (cell_to_tll_cell c)
+  | Expr.CellUnlockAt _ -> raise(UnsupportedTllExpr(Expr.cell_to_str c))
   | Expr.CellAt (m,a)   -> Tll.CellAt (mem_to_tll_mem m, addr_to_tll_addr a)
   | Expr.CellArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
       let v = Expr.build_var id s pr (Some t) p Expr.Normal in
