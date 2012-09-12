@@ -78,6 +78,7 @@ and integer =
   | IntArrayRd    of arrays * tid
   | IntSetMin     of setint
   | IntSetMax     of setint
+  | HavocLevel
 
 and set =
     VarSet        of variable

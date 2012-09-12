@@ -22,8 +22,8 @@ assume
   head != tail /\
   head != null /\
   tail != null /\
-  head->next[0] = tail /\
-  tail->next[0] = null
+  head->arr[0] = tail /\
+  tail->arr[0] = null
 
 
 // ----- PROGRAM BEGINS --------------------------------------
@@ -55,15 +55,16 @@ assume
                               procedure search (e:elem)
                                 int i
                                 addr prev
+                                addr curr
                               begin
                                 i := maxLevel;
                                 prev := head;
-                                curr := prev->next[i];
+                                curr := prev->arr[i];
                                 while (0 <= i /\ curr->data != e) do
-                                  curr := prev->next[i];
-                                  while (curr->data < v) do
+                                  curr := prev->arr[i];
+                                  while (curr->data < e) do
                                     prev := curr;
-                                    curr := prev->next[i];
+                                    curr := prev->arr[i];
                                   endwhile
                                   i := i -1;
                                 endwhile
@@ -74,43 +75,43 @@ assume
 
 
                               procedure insert (e:elem)
-                                array<addr> upd;
+                                addrarr update
                                 addr prev
                                 addr curr
                                 addr newCell
                                 int lvl
                                 int i
-                                bool valueWasIn = false
+                                bool valueWasIn := false
 
                               begin
                                 lvl := havocLevel();
-                                if (lvl > sl) then
+                                if (lvl > maxLevel) then
                                   i := maxLevel + 1;
                                   while (i <= lvl) do
-                                    head->next[i] := tail;
-                                    tail->next[i] := null;
+                                    head->arr[i] := tail;
+                                    tail->arr[i] := null;
                                     i := i + 1;
                                   endwhile
                                 endif
                                 prev := head;
-                                curr := prev->next[maxLevel];
+                                curr := prev->arr[maxLevel];
                                 i := maxLevel;
-                                while (0 <= i /\ ~ valueWasIn) do
-                                  curr := prev->next[i];
+                                while (0 <= i /\ ~(valueWasIn)) do
+                                  curr := prev->arr[i];
                                   while (curr->data < e) do
                                     prev := curr;
-                                    curr := prev->next[i];
+                                    curr := prev->arr[i];
                                   endwhile
-                                  upd[i] := prev;
+                                  update[i] := prev;
                                   i := i - 1;
-                                  valueWasIn := (curr->data = v);
+                                  valueWasIn := (curr->data = e);
                                 endwhile
-                                if (~ valueWasIn) then
+                                if (~ (valueWasIn)) then
                                   newCell := mallocSL(lvl, e);
                                   i := 0;
                                   while (i <= lvl) do
-                                    newCell->next[i] := upd[i]->next[i];
-                                    upd[i]->next[i] := newCell
+                                    newCell->arr[i] := update[i]->arr[i];
+                                    update[i]->arr[i] := newCell
                                       $ if i=0 then
                                           region := region Union {newCell}
                                         endif
@@ -133,13 +134,13 @@ assume
                                 bool valueWasIn
                               begin
                                 prev := head;
-                                curr := prev->next[maxLevel];
+                                curr := prev->arr[maxLevel];
                                 i := maxLevel;
                                 while (i >= 0) do
-                                  curr := prev->next[i];
+                                  curr := prev->arr[i];
                                   while (curr->data < e) do
                                     prev := curr;
-                                    curr := prev->next[i];
+                                    curr := prev->arr[i];
                                   endwhile
                                   if (curr->data != e) then
                                     removeFrom := i - 1;
@@ -151,7 +152,7 @@ assume
                                 if (valueWasIn) then
                                   i := removeFrom;
                                   while (i >= 0) do
-                                    upd[i]->next[i] := curr->next[i];
+                                    upd[i]->arr[i] := curr->arr[i];
                                     $ if i = 0 then
                                         region := region SetDiff {curr};
                                       endif

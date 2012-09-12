@@ -80,6 +80,7 @@ and integer =
   | IntArrayRd    of arrays * tid
   | IntSetMin     of setint
   | IntSetMax     of setint
+  | HavocLevel
 
 and set =
     VarSet        of variable
@@ -450,6 +451,7 @@ and integer_to_str (loc:bool) (expr:integer) : string =
                                             (tid_to_str loc t)
   | IntSetMin(s)          -> sprintf "setIntMin(%s)" (setint_to_str loc s)
   | IntSetMax(s)          -> sprintf "setIntMax(%s)" (setint_to_str loc s)
+  | HavocLevel            -> sprintf "havocLevel()"
 
 
 and mem_to_str (loc:bool) (expr:mem) : string =
@@ -792,6 +794,7 @@ and integer_to_expr_integer (i:integer) : E.integer =
                                       tid_to_expr_th t)
   | IntSetMin s      -> E.IntSetMin (setint_to_expr_setint s)
   | IntSetMax s      -> E.IntSetMax (setint_to_expr_setint s)
+  | HavocLevel       -> E.HavocLevel
 
 
 and set_to_expr_set (s:set) : E.set =
@@ -1259,6 +1262,7 @@ and var_kind_int (kind:E.kind_t) (i:integer) : term list =
   | IntArrayRd(arr,t) -> (var_kind_array kind arr)
   | IntSetMin(s)      -> (var_kind_setint kind s)
   | IntSetMax(s)      -> (var_kind_setint kind s)
+  | HavocLevel        -> []
 
 
 and var_kind_literal (kind:E.kind_t) (l:literal) : term list =

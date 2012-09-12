@@ -42,6 +42,7 @@ rule norm = parse
   | "mkcell"        { Global.last "mkcell"        ; MKCELL }
   | "data"          { Global.last "data"          ; DATA }
   | "next"          { Global.last "next"          ; NEXT }
+  | "arr"           { Global.last "arr"           ; ARR }
   | "firstlocked"   { Global.last "fistlocked"    ; FIRSTLOCKED }
   | "lockid"        { Global.last "lockid"        ; LOCKID }
   | "lock"          { Global.last "lock"          ; LOCK }
@@ -52,8 +53,10 @@ rule norm = parse
   | "lowestElem"    { Global.last "lowestElem"    ; LOWEST_ELEM }
   | "highestElem"   { Global.last "highestElem"   ; HIGHEST_ELEM }
   | "havocSLElem"   { Global.last "havocSLElem"   ; HAVOCSKIPLISTELEM }
+  | "havocLevel"    { Global.last "havocLevel"    ; HAVOCLEVEL }
   | "upd"           { Global.last "upd"           ; UPDATE }
   | "epsilon"       { Global.last "epsilon"       ; EPSILON }
+  | "singlePath"    { Global.last "singlePath"    ; SINGLE_PATH }
   | "EmptySet"      { Global.last "EmptySet"      ; EMPTYSET }
   | "Union"         { Global.last "Union"         ; UNION }
   | "Intr"          { Global.last "Intr"          ; INTR }

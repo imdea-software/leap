@@ -415,6 +415,22 @@ let check_type_mem t =
     | _                 -> raise (WrongType t)
 
 
+let check_type_addrarr t =
+  match t with
+      Stm.AddrArrayT(arr) -> arr
+    | Stm.VarT(v,s,p,k)   -> check_sort_var v p Expr.AddrArray k;
+                                 Stm.VarAddrArray(v,s,p,k)
+    | _                   -> raise (WrongType t)
+
+
+let check_type_tidarr t =
+  match t with
+      Stm.TidArrayT(arr)  -> arr
+    | Stm.VarT(v,s,p,k)   -> check_sort_var v p Expr.TidArray k;
+                                 Stm.VarTidArray(v,s,p,k)
+    | _                   -> raise (WrongType t)
+
+
 let check_and_get_sort (id:string) : Expr.sort =
   match id with
     "tid"     -> Expr.Thid
@@ -429,6 +445,8 @@ let check_and_get_sort (id:string) : Expr.sort =
   | "intSet"  -> Expr.SetInt
   | "elemSet" -> Expr.SetElem
   | "int"     -> Expr.Int
+  | "addrarr" -> Expr.AddrArray
+  | "tidarr"  -> Expr.TidArray
   | _ -> begin
            Interface.Err.msg "Unrecognized sort" $
              sprintf "A sort was expected, but \"%s\" was found" id;
@@ -509,11 +527,16 @@ let check_and_get_sort (id:string) : Expr.sort =
     | Stm.IntT(Stm.VarInt _)                   -> ()
     | Stm.ElemT(Stm.PointerData _)             -> ()
     | Stm.AddrT(Stm.PointerNext _)             -> ()
+    | Stm.AddrT(Stm.PointerNextAt _)           -> ()
+    | Stm.AddrT(Stm.AddrArrRd _)               -> ()
     | Stm.ThidT(Stm.PointerLockid _)           -> ()
+    | Stm.ThidT(Stm.PointerLockidAt _)         -> ()
+    | Stm.ThidT(Stm.ThidArrRd _)               -> ()
     | _ -> begin
              Interface.Err.msg "Invalid assignment" $
                       sprintf "The assignment \"%s\" is invalid. Assignments \
-                               can be done only over variables or cells fields."
+                               can be done only over variables, cells fields \
+                               or array locations."
                                (get_expr_str ());
              raise (Wrong_assignment t)
            end
@@ -766,11 +789,13 @@ let global_decl_cond (k:Expr.kind_t)
 %token ME
 
 %token ERROR MKCELL DATA NEXT LOCKID LOCK UNLOCK
+%token ARR
 %token HAVOCLISTELEM HAVOCSKIPLISTELEM LOWEST_ELEM HIGHEST_ELEM
+%token HAVOCLEVEL
 %token MEMORY_READ
 %token COMMA
 %token NULL UPDATE
-%token EPSILON
+%token EPSILON SINGLE_PATH
 %token EMPTYSET UNION INTR SETDIFF
 %token EMPTYSETTH UNIONTH INTRTH SETDIFFTH SINGLETH
 %token EMPTYSETINT UNIONINT INTRINT SETDIFFINT SINGLEINT
@@ -907,6 +932,7 @@ let global_decl_cond (k:Expr.kind_t)
 %type <Stm.literal> literal
 %type <Stm.eq> equals
 %type <Stm.diseq> disequals
+%type <Stm.term> arraylookup
 
 
 
@@ -2434,6 +2460,8 @@ term :
     { Stm.MemT($1) }
   | integer
     { Stm.IntT($1) }
+  | arraylookup
+    { $1 }
   | OPEN_PAREN term CLOSE_PAREN
     { $2 }
 
@@ -2534,7 +2562,6 @@ elem :
     }
   | HAVOCSKIPLISTELEM OPEN_PAREN CLOSE_PAREN
     {
-      let _ = Printf.printf "We arrived to havoc!!!\n" in
       Stm.HavocSkiplistElem
     }
   | LOWEST_ELEM
@@ -2584,7 +2611,7 @@ addr :
       let c = parser_check_type check_type_cell  $1 Expr.Cell get_str_expr in
         Stm.Next(c)
     }
-  | term DOT NEXT OPEN_BRACKET term CLOSE_BRACKET
+  | term DOT ARR OPEN_BRACKET term CLOSE_BRACKET
     {
       let get_str_expr () = sprintf "%s.next[%s]" (Stm.term_to_str $1)
                                                   (Stm.term_to_str $5) in
@@ -2618,7 +2645,7 @@ addr :
       let a = parser_check_type check_type_addr $1 Expr.Addr get_str_expr in
         Stm.PointerNext a
     }
-  | term POINTER NEXT OPEN_BRACKET term CLOSE_BRACKET
+  | term POINTER ARR OPEN_BRACKET term CLOSE_BRACKET
     {
       let get_str_expr () = sprintf "%s->next[%s]" (Stm.term_to_str $1)
                                                    (Stm.term_to_str $5) in
@@ -2789,10 +2816,10 @@ setelem :
 path :
   | EPSILON
     { Stm.Epsilon }
-  | OPEN_BRACKET term CLOSE_BRACKET
+  | SINGLE_PATH OPEN_PAREN term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "[ %s ]" (Stm.term_to_str $2) in
-      let a = parser_check_type check_type_addr $2 Expr.Addr get_str_expr in
+      let get_str_expr () = sprintf "[ %s ]" (Stm.term_to_str $3) in
+      let a = parser_check_type check_type_addr $3 Expr.Addr get_str_expr in
         Stm.SimplePath(a)
     }
   | GETP OPEN_PAREN term COMMA term COMMA term CLOSE_PAREN
@@ -2881,3 +2908,26 @@ integer :
       in
         Stm.IntSetMax (s)
     }
+  | HAVOCLEVEL OPEN_PAREN CLOSE_PAREN
+    {
+      Stm.HavocLevel
+    }
+
+
+/* ARRAYLOOKUP terms */
+
+arraylookup :
+  | term OPEN_BRACKET term CLOSE_BRACKET
+    {
+      let get_str_expr () = sprintf "%s[%s]" (Stm.term_to_str $1)
+                                             (Stm.term_to_str $3) in
+      let i = parser_check_type check_type_int $3 Expr.Int get_str_expr in
+
+      try
+        let arr = parser_check_type check_type_tidarr $1 Expr.TidArray get_str_expr in
+          Stm.ThidT (Stm.ThidArrRd (arr,i))
+      with
+        _ -> let arr = parser_check_type check_type_addrarr $1 Expr.AddrArray get_str_expr in
+               Stm.AddrT (Stm.AddrArrRd (arr,i))
+    }
+

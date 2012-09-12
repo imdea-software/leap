@@ -80,6 +80,7 @@ and integer =
   | IntArrayRd    of arrays * tid
   | IntSetMin     of setint
   | IntSetMax     of setint
+  | HavocLevel
 
 and set =
     VarSet        of variable
@@ -1038,6 +1039,7 @@ and priming_int (pr:bool) (prime_set:VarSet.t option) (i:integer) : integer =
                                     priming_tid pr prime_set t)
   | IntSetMin(s)      -> IntSetMin(priming_setint pr prime_set s)
   | IntSetMax(s)      -> IntSetMax(priming_setint pr prime_set s)
+  | HavocLevel        -> HavocLevel
 
 
 
@@ -1409,6 +1411,7 @@ and integer_to_str (expr:integer) : string =
                                         (param_tid_to_str t)
   | IntSetMin(s)      -> sprintf "setIntMin(%s)" (setint_to_str s)
   | IntSetMax(s)      -> sprintf "setIntMax(%s)" (setint_to_str s)
+  | HavocLevel        -> sprintf "havocLevel()"
 
 
 and mem_to_str (expr:mem) : string =
@@ -2067,6 +2070,7 @@ and get_vars_int (i:integer)
   | IntArrayRd(arr,t) -> (get_vars_array arr base)
   | IntSetMin(s)      -> (get_vars_setint s base)
   | IntSetMax(s)      -> (get_vars_setint s base)
+  | HavocLevel        -> []
 
 
 and get_vars_atom (a:atom)
@@ -2534,6 +2538,7 @@ and voc_int (i:integer) : tid list =
   | IntArrayRd(arr,t) -> (voc_array arr)
   | IntSetMin(s)      -> (voc_setint s)
   | IntSetMax(s)      -> (voc_setint s)
+  | HavocLevel        -> []
 
 
 and voc_atom (a:atom) : tid list =
@@ -2812,6 +2817,7 @@ and var_kind_int (kind:kind_t) (i:integer) : term list =
   | IntArrayRd(arr,t) -> (var_kind_array kind arr)
   | IntSetMin(s)      -> (var_kind_setint kind s)
   | IntSetMax(s)      -> (var_kind_setint kind s)
+  | HavocLevel        -> []
 
 
 and var_kind_atom (kind:kind_t) (a:atom) : term list =
@@ -3124,6 +3130,7 @@ and param_int (pfun:variable option -> tid option) (i:integer) : integer =
   | IntArrayRd(arr,t)   -> IntArrayRd(param_arrays pfun arr, t)
   | IntSetMin(s)        -> IntSetMin(param_setint pfun s)
   | IntSetMax(s)        -> IntSetMax(param_setint pfun s)
+  | HavocLevel          -> HavocLevel
 
 
 and param_atom (pfun:variable option -> tid option) (a:atom) : atom =
@@ -3531,6 +3538,7 @@ and subst_tid_int (subs:tid_subst_t) (i:integer) : integer =
   | IntArrayRd(arr,t) -> IntArrayRd(subst_tid_array subs arr, t)
   | IntSetMin(s)      -> IntSetMin(subst_tid_setint subs s)
   | IntSetMax(s)      -> IntSetMax(subst_tid_setint subs s)
+  | HavocLevel        -> HavocLevel
 
 
 and subst_tid_th (subs:tid_subst_t) (t:tid) : tid =
@@ -4310,6 +4318,7 @@ let required_sorts (phi:formula) : sort list =
     | IntArrayRd (a,t) -> append Int [req_arr a;req_t t]
     | IntSetMin s      -> append Int [req_si s]
     | IntSetMax s      -> append Int [req_si s]
+    | HavocLevel       -> single Int
 
   and req_arr (a:arrays) : SortSet.t =
     match a with
