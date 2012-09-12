@@ -70,8 +70,8 @@ let defPredTableSize = 200
 let abs_cell_counter = ref 0
 
 
-let build_fresh_lockid_var (c:Expr.cell) : variable =
-  let lockid_term = Expr.ThidT (Expr.CellLockId c) in
+let build_fresh_lockid_var (t:Expr.tid) : variable =
+  let lockid_term = Expr.ThidT t in
   let cell_tag = Expr.TermPool.tag term_pool lockid_term in
   let var = (abs_cell_id ^ string_of_int cell_tag, false, None, None)
   in
@@ -85,7 +85,6 @@ let build_fresh_tid_array_var (t:Expr.tid) : variable =
   in
     var
 
-  
 
 let rec conv_variable (v:Expr.variable) : variable =
   let (id,_,pr,th,p,_) = v in (id, pr, Option.lift conv_th th, p)
@@ -93,10 +92,12 @@ let rec conv_variable (v:Expr.variable) : variable =
 
 and conv_th (th:Expr.tid) : tid =
   match th with
-    Expr.VarTh v -> VarTh (conv_variable v)
-  | Expr.NoThid -> NoThid
-  | Expr.CellLockId c -> VarTh (build_fresh_lockid_var c)
-  | Expr.ThidArrayRd _ -> VarTh (build_fresh_tid_array_var th)
+    Expr.VarTh v            -> VarTh (conv_variable v)
+  | Expr.NoThid             -> NoThid
+  | Expr.CellLockId _       -> VarTh (build_fresh_lockid_var th)
+  | Expr.CellLockIdAt _     -> VarTh (build_fresh_lockid_var th)
+  | Expr.ThidArrayRd _      -> VarTh (build_fresh_tid_array_var th)
+  | Expr.ThidArrRd _        -> VarTh (build_fresh_tid_array_var th)
 
 
 let localize_var_id (v:string) (p_name:string) : string =

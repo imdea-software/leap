@@ -1023,20 +1023,22 @@ let construct_var_from_sort (id:varId)
                             (k:E.kind_t) : term =
   let v = build_var id s p_name k in
   match s with
-    E.Set     -> SetT     (VarSet     v)
-  | E.Elem    -> ElemT    (VarElem    v)
-  | E.Thid    -> ThidT    (VarTh      v)
-  | E.Addr    -> AddrT    (VarAddr    v)
-  | E.Cell    -> CellT    (VarCell    v)
-  | E.SetTh   -> SetThT   (VarSetTh   v)
-  | E.SetInt  -> SetIntT  (VarSetInt  v)
-  | E.SetElem -> SetElemT (VarSetElem v)
-  | E.Path    -> PathT    (VarPath    v)
-  | E.Mem     -> MemT     (VarMem     v)
-  | E.Bool    -> VarT v
-  | E.Int     -> IntT     (VarInt     v)
-  | E.Array   -> ArrayT   (VarArray   v)
-  | E.Unknown -> VarT v
+    E.Set        -> SetT        (VarSet        v)
+  | E.Elem       -> ElemT       (VarElem       v)
+  | E.Thid       -> ThidT       (VarTh         v)
+  | E.Addr       -> AddrT       (VarAddr       v)
+  | E.Cell       -> CellT       (VarCell       v)
+  | E.SetTh      -> SetThT      (VarSetTh      v)
+  | E.SetInt     -> SetIntT     (VarSetInt     v)
+  | E.SetElem    -> SetElemT    (VarSetElem    v)
+  | E.Path       -> PathT       (VarPath       v)
+  | E.Mem        -> MemT        (VarMem        v)
+  | E.Bool       -> VarT        v
+  | E.Int        -> IntT        (VarInt        v)
+  | E.Array      -> ArrayT      (VarArray      v)
+  | E.AddrArray  -> AddrArrayT  (VarAddrArray  v)
+  | E.TidArray   -> TidArrayT   (VarTidArray   v)
+  | E.Unknown    -> VarT        v
 
 
 let term_to_str (t:term) : string =
@@ -1071,6 +1073,8 @@ let rec var_kind_term (kind:E.kind_t) (expr:term) : term list =
     | MemT(mem)         -> var_kind_mem kind mem
     | IntT(i)           -> var_kind_int kind i
     | ArrayT(arr)       -> var_kind_array kind arr
+    | AddrArrayT(arr)   -> var_kind_addrarr kind arr
+    | TidArrayT(arr)    -> var_kind_tidarr kind arr
 
 
 and var_kind_expr (kind:E.kind_t) (e:expr_t) : term list =
@@ -1084,6 +1088,21 @@ and var_kind_array (kind:E.kind_t) (a:arrays) : term list =
     VarArray(_,_,_,k) -> if k = kind then [ArrayT a] else []
   | ArrayUp(arr,t,e)  -> (var_kind_array kind arr) @ (var_kind_expr kind e)
 
+
+and var_kind_addrarr (kind:E.kind_t) (a:addrarr) : term list =
+  match a with
+    VarAddrArray(_,_,_,k) -> if k = kind then [AddrArrayT a] else []
+  | AddrArrayUp(arr,i,a)  -> (var_kind_addrarr kind arr) @
+                             (var_kind_int kind i)       @
+                             (var_kind_addr kind a)
+
+
+and var_kind_tidarr (kind:E.kind_t) (a:tidarr) : term list =
+  match a with
+    VarTidArray(_,_,_,k) -> if k = kind then [TidArrayT a] else []
+  | TidArrayUp(arr,i,t)  -> (var_kind_tidarr kind arr) @
+                            (var_kind_int kind i)      @
+                            (var_kind_th kind t)
 
 
 and var_kind_set (kind:E.kind_t) (e:set) : term list =
@@ -1104,13 +1123,19 @@ and var_kind_addr (kind:E.kind_t) (a:addr) : term list =
     VarAddr(_,_,_,k)          -> if k = kind then [AddrT a] else []
   | Null                      -> []
   | Next(cell)                -> (var_kind_cell kind cell)
+  | NextAt(cell,l)            -> (var_kind_cell kind cell) @
+                                 (var_kind_int kind l)
   | FirstLocked(mem,path)     -> (var_kind_mem kind mem) @
                                  (var_kind_path kind path)
   | AddrArrayRd(arr,t)        -> (var_kind_array kind arr)
+  | AddrArrRd(arr,i)          -> (var_kind_addrarr kind arr) @
+                                 (var_kind_int kind i)
   | Malloc(data,addr,th)      -> (var_kind_elem kind data) @
                                  (var_kind_addr kind addr) @
                                  (var_kind_th kind th)
   | PointerNext a             -> (var_kind_addr kind a)
+  | PointerNextAt (a,l)       -> (var_kind_addr kind a) @
+                                 (var_kind_int kind l)
 
 
 and var_kind_elem (kind:E.kind_t) (e:elem) : term list =
@@ -1120,17 +1145,24 @@ and var_kind_elem (kind:E.kind_t) (e:elem) : term list =
   | ElemArrayRd(arr,t)  -> (var_kind_array kind arr)
   | PointerData a       -> (var_kind_addr kind a)
   | HavocListElem       -> []
+  | HavocSkiplistElem   -> []
   | LowestElem          -> []
   | HighestElem         -> []
 
 
 and var_kind_th (kind:E.kind_t) (th:tid) : term list =
   match th with
-    VarTh(_,_,_,k)      -> if k = kind then [ThidT th] else []
-  | NoThid              -> []
-  | CellLockId(cell)    -> (var_kind_cell kind cell)
-  | ThidArrayRd(arr,t)  -> (var_kind_array kind arr)
-  | PointerLockid a     -> (var_kind_addr kind a)
+    VarTh(_,_,_,k)        -> if k = kind then [ThidT th] else []
+  | NoThid                -> []
+  | CellLockId(cell)      -> (var_kind_cell kind cell)
+  | CellLockIdAt(cell,l)  -> (var_kind_cell kind cell) @
+                             (var_kind_int kind l)
+  | ThidArrayRd(arr,t)    -> (var_kind_array kind arr)
+  | ThidArrRd(arr,i)      -> (var_kind_tidarr kind arr) @
+                             (var_kind_int kind i)
+  | PointerLockid a       -> (var_kind_addr kind a)
+  | PointerLockidAt (a,l) -> (var_kind_addr kind a) @
+                             (var_kind_int kind l)
 
 
 and var_kind_cell (kind:E.kind_t) (c:cell) : term list =

@@ -374,19 +374,21 @@ and is_int_atom ato =
   | Expr.PCRange(_)                       -> true
 and is_int_integer t =
   match t with
-    Expr.VarT(_)    -> false
-  | Expr.SetT(_)    -> false
-  | Expr.ElemT(_)   -> false
-  | Expr.ThidT(_)   -> false
-  | Expr.AddrT(_)   -> false
-  | Expr.CellT(_)   -> false
-  | Expr.SetThT(_)  -> false
-  | Expr.SetIntT(_) -> false
-  | Expr.SetElemT(_)-> false
-  | Expr.PathT(_)   -> false
-  | Expr.MemT(_)    -> false
-  | Expr.IntT(_)    -> true
-  | Expr.ArrayT(_)  -> false
+    Expr.VarT(_)       -> false
+  | Expr.SetT(_)       -> false
+  | Expr.ElemT(_)      -> false
+  | Expr.ThidT(_)      -> false
+  | Expr.AddrT(_)      -> false
+  | Expr.CellT(_)      -> false
+  | Expr.SetThT(_)     -> false
+  | Expr.SetIntT(_)    -> false
+  | Expr.SetElemT(_)   -> false
+  | Expr.PathT(_)      -> false
+  | Expr.MemT(_)       -> false
+  | Expr.IntT(_)       -> true
+  | Expr.ArrayT(_)     -> false
+  | Expr.AddrArrayT(_) -> false
+  | Expr.TidArrayT(_)  -> false
 and is_int_expression e = 
   match e with
     Expr.Term(t)      -> is_int_integer t
