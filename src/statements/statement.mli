@@ -119,6 +119,7 @@ and addr =
   | FirstLocked   of mem * path
   | AddrArrayRd   of arrays * tid
   | Malloc        of elem * addr * tid
+  | MallocSL      of elem * integer
   | PointerNext   of addr
   | PointerNextAt of addr * integer
   | AddrArrRd     of addrarr * integer

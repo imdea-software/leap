@@ -107,13 +107,13 @@ assume
                                   valueWasIn := (curr->data = e);
                                 endwhile
                                 if (~ (valueWasIn)) then
-                                  newCell := mallocSL(lvl, e);
+                                  newCell := mallocSL(e,lvl);
                                   i := 0;
                                   while (i <= lvl) do
                                     newCell->arr[i] := update[i]->arr[i];
                                     update[i]->arr[i] := newCell
-                                      $ if i=0 then
-                                          region := region Union {newCell}
+                                      $ if (i=0) then
+                                          region := region Union {newCell};
                                         endif
                                       $
                                     i := i + 1;
@@ -126,8 +126,8 @@ assume
 
 
                               procedure remove (e:elem)
-                                array<addr> upd
-                                int removeFrom = maxLevel
+                                addrarr update
+                                int removeFrom := maxLevel
                                 int i
                                 addr prev
                                 addr curr
@@ -145,15 +145,15 @@ assume
                                   if (curr->data != e) then
                                     removeFrom := i - 1;
                                   endif
-                                  upd[i] := prev;
+                                  update[i] := prev;
                                   i := i - 1;
                                 endwhile
-                                valueWasIn := curr->val = e;
+                                valueWasIn := curr->data = e;
                                 if (valueWasIn) then
                                   i := removeFrom;
                                   while (i >= 0) do
-                                    upd[i]->arr[i] := curr->arr[i];
-                                    $ if i = 0 then
+                                    update[i]->arr[i] := curr->arr[i]
+                                    $ if (i=0) then
                                         region := region SetDiff {curr};
                                       endif
                                     $

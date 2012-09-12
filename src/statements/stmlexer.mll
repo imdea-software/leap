@@ -37,6 +37,7 @@ rule norm = parse
   | "_or_"          { Global.last "_or_"          ; ST_OR }
   | "endchoice"     { Global.last "endchoice"     ; ST_ENDCHOICE }
   | "malloc"        { Global.last "malloc"        ; MALLOC }
+  | "mallocSL"      { Global.last "mallocSL"      ; MALLOCSL }
   | "->"            { Global.last "->"            ; POINTER }
   | "error"         { Global.last "error"         ; ERROR }
   | "mkcell"        { Global.last "mkcell"        ; MKCELL }
