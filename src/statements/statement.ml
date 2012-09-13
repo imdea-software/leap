@@ -1369,8 +1369,12 @@ let pad (n:int) (st:string) (g:string) =
 
 let unit_cmd_to_str (op:unit_operation) : string =
   match op with
-    UnitLock a   -> (addr_to_str false a) ^ "->lock"
-  | UnitUnlock a -> (addr_to_str false a) ^ "->unlock"
+    UnitLock a         -> sprintf "%s->lock" (addr_to_str false a)
+  | UnitUnlock a       -> sprintf "%s->unlock" (addr_to_str false a)
+  | UnitLockAt (a,l)   -> sprintf "%s->lock[%s]" (addr_to_str false a)
+                                                 (integer_to_str false l)
+  | UnitUnlockAt (a,l) -> sprintf "%s->unlock[%s]" (addr_to_str false a)
+                                                   (integer_to_str false l)
 
 
 let rec statement_to_str (n:int) (s:statement_t) =
@@ -1611,8 +1615,15 @@ let rec enabling_condition_aux (is_ghost:bool)
       let cond =
         begin
           match op with
-            UnitLock a   -> [E.eq_tid (read_at a) E.NoThid]
+          | UnitLock a   -> [E.eq_tid (read_at a) E.NoThid]
           | UnitUnlock a ->
+              begin
+                match th with
+                  Some t -> [E.eq_tid   (read_at a) t]
+                | None   -> [E.ineq_tid (read_at a) E.NoThid]
+              end
+          | UnitLockAt (a,l)   -> [E.eq_tid (read_at a) E.NoThid]
+          | UnitUnlockAt (a,l) ->
               begin
                 match th with
                   Some t -> [E.eq_tid   (read_at a) t]
@@ -1671,11 +1682,23 @@ let rec get_st_atomic_effect (st:statement_t option)
 
 let addr_used_in_unit_op (op:unit_operation) : E.addr =
   match op with
-    UnitLock a   -> addr_to_expr_addr a
-  | UnitUnlock a -> addr_to_expr_addr a
+  | UnitLock a         -> addr_to_expr_addr a
+  | UnitUnlock a       -> addr_to_expr_addr a
+  | UnitLockAt (a,_)   -> addr_to_expr_addr a
+  | UnitUnlockAt (a,_) -> addr_to_expr_addr a
+
+let level_used_in_unit_op (op:unit_operation) : E.integer =
+  match op with
+  | UnitLock _         -> E.IntVal 0
+  | UnitUnlock _       -> E.IntVal 0
+  | UnitLockAt (_,l)   -> integer_to_expr_integer l
+  | UnitUnlockAt (_,l) -> integer_to_expr_integer l
+
 
 
 let get_unit_op (op:unit_operation) : unit_op =
   match op with
-    UnitLock _   -> Lock
-  | UnitUnlock _ -> Unlock
+    UnitLock _     -> Lock
+  | UnitUnlock _   -> Unlock
+  | UnitLockAt _   -> Lock
+  | UnitUnlockAt _ -> Unlock

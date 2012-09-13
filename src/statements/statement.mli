@@ -343,6 +343,7 @@ val get_fst_st_pos : statement_t -> Expression.pc_t
 val statement_to_str : int -> statement_t -> string
 
 val addr_used_in_unit_op : unit_operation -> Expression.addr
+val level_used_in_unit_op : unit_operation -> Expression.integer
 val get_unit_op : unit_operation -> unit_op
 
 val enabling_condition : Expression.tid option ->
