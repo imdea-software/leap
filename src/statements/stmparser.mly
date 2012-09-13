@@ -790,7 +790,7 @@ let global_decl_cond (k:Expr.kind_t)
 %token ME
 
 %token ERROR MKCELL DATA NEXT LOCKID LOCK UNLOCK
-%token ARR
+%token ARR LOCKS
 %token HAVOCLISTELEM HAVOCSKIPLISTELEM LOWEST_ELEM HIGHEST_ELEM
 %token HAVOCLEVEL
 %token MEMORY_READ
@@ -934,6 +934,7 @@ let global_decl_cond (k:Expr.kind_t)
 %type <Stm.eq> equals
 %type <Stm.diseq> disequals
 %type <Stm.term> arraylookup
+%type <Stm.integer option> lock_pos
 
 
 
@@ -1986,9 +1987,12 @@ statement:
       pos := !pos + 1;
       st
     }
-  | line_label_list term POINTER LOCK ghost_block_or_semicolon
+  | line_label_list term POINTER LOCK lock_pos ghost_block_or_semicolon
     {
-      let get_str_expr () = sprintf "%s->lock" (Stm.term_to_str $2) in
+      let get_str_expr () = sprintf "%s->lock%s" (Stm.term_to_str $2)
+                              (match $5 with
+                               | None -> ""
+                               | Some i -> "[" ^Stm.term_to_str (Stm.IntT i)^ "]") in
       let a = parser_check_type check_type_addr $2 Expr.Addr get_str_expr in
       let st_info = { Stm.pos             = !pos;
                       Stm.next_pos        = !pos+1;
@@ -1998,13 +2002,16 @@ statement:
                       Stm.called_from_pos = [];
                       Stm.return_pos      = []; } in
       (* I'm not verifying whether I am working with a non ghost address *)
-      let g_code = $5 in
-      let st = Stm.StUnit (Stm.UnitLock a, g_code, Some st_info) in
+      let g_code = $6 in
+      let st = Stm.StUnit ((match $5 with
+                           | None   -> Stm.UnitLock a
+                           | Some i -> Stm.UnitLockAt (a,i)
+                           ), g_code, Some st_info) in
       Hashtbl.replace pos_st !pos (!current_proc, st);
       pos := !pos+1;
       st
     }
-  | line_label_list term POINTER UNLOCK ghost_block_or_semicolon
+  | line_label_list term POINTER UNLOCK lock_pos ghost_block_or_semicolon
     {
       let get_str_expr () = sprintf "%s->unlock" (Stm.term_to_str $2) in
       let a = parser_check_type check_type_addr $2 Expr.Addr get_str_expr in
@@ -2016,7 +2023,7 @@ statement:
                       Stm.called_from_pos = [];
                       Stm.return_pos      = []; } in
       (* I'm not verifying whether I am working with a non ghost address *)
-      let g_code = $5 in
+      let g_code = $6 in
       let st = Stm.StUnit (Stm.UnitUnlock a, g_code, Some st_info) in
       Hashtbl.replace pos_st !pos (!current_proc, st);
       pos := !pos+1;
@@ -2172,6 +2179,17 @@ statement:
       Hashtbl.replace pos_st !pos (!current_proc, st);
       pos := !pos + 1;
       st
+    }
+
+
+lock_pos :
+  |
+    { None }
+  | OPEN_BRACKET term CLOSE_BRACKET
+    {
+      let get_str_expr () = sprintf "[%s]" (Stm.term_to_str $2) in
+      let i = parser_check_type check_type_int $2 Expr.Int get_str_expr in
+        Some i
     }
 
 

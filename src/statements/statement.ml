@@ -221,6 +221,8 @@ and expr_t =
 type unit_operation =
     UnitLock      of addr
   | UnitUnlock    of addr
+  | UnitLockAt    of addr * integer
+  | UnitUnlockAt  of addr * integer
 
 
 type statement_t =
