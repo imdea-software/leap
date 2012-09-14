@@ -30,6 +30,7 @@ rule norm = parse
   | "param"         { Global.last "param"         ; PARAM }
   | "error"         { Global.last "error"         ; ERROR }
   | "mkcell"        { Global.last "mkcell"        ; MKCELL }
+  | "mkslcell"      { Global.last "mkslcell"      ; MKSLCELL }
   | "data"          { Global.last "data"          ; DATA }
   | "next"          { Global.last "next"          ; NEXT }
   | "firstlocked"   { Global.last "fistlocked"    ; FIRSTLOCKED }
@@ -116,6 +117,7 @@ rule norm = parse
   | '#'             { Global.last "#"             ; SHARP }
   | "->"            { Global.last "->"            ; EDGE_ARROW }
   | "=>"            { Global.last "=>"            ; LARGE_EDGE_ARROW }
+  | "arrUpd"        { Global.last "arrUpd"        ; ARR_UPDATE }
   | (digit+) as num { Global.last num; NUMBER (int_of_string num) }
   | (letter alphanum*) as id { Global.last id; IDENT (id,Global.get_linenum()) }
   | whitespc          { Global.last "whitespc"; norm lexbuf }

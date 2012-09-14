@@ -284,6 +284,25 @@ let check_type_mem t =
     | _            -> raise (WrongType t)
 
 
+let check_type_addrarr t =
+  match t with
+      Expr.AddrArrayT arr -> arr
+    | Expr.VarT v         -> let var = Expr.inject_var_sort v Expr.AddrArray in
+                               check_sort_var var;
+                               Expr.VarAddrArray var
+    | _                   -> raise (WrongType t)
+
+
+let check_type_tidarr t =
+  match t with
+      Expr.TidArrayT arr -> arr
+    | Expr.VarT v        -> let var = Expr.inject_var_sort v Expr.TidArray in
+                              check_sort_var var;
+                              Expr.VarTidArray var
+    | _                  -> raise (WrongType t)
+
+
+
 let check_and_get_sort (id:string) : Expr.sort =
   match id with
     "tid"     -> Expr.Thid
@@ -436,7 +455,7 @@ let check_and_add_delta (tbl:Vd.delta_fun_t)
 
 %token BEGIN END
 
-%token ERROR MKCELL DATA NEXT LOCKID LOCK UNLOCK
+%token ERROR MKCELL MKSLCELL DATA NEXT LOCKID LOCK UNLOCK
 %token MEMORY_READ
 %token DOT COMMA
 %token NULL UPDATE
@@ -463,6 +482,7 @@ let check_and_add_delta (tbl:Vd.delta_fun_t)
 %token LOGICAL_AND LOGICAL_OR LOGICAL_NOT LOGICAL_THEN LOGICAL_IFF
 %token LOGICAL_TRUE LOGICAL_FALSE
 %token DOT
+%token ARR_UPDATE
 
 %token INVARIANT FORMULA PARAM
 %token AT UNDERSCORE SHARP
@@ -539,6 +559,7 @@ let check_and_add_delta (tbl:Vd.delta_fun_t)
 %type <Expr.literal> literal
 %type <Expr.eq> equals
 %type <Expr.diseq> disequals
+%type <Expr.term> arrays
 
 %type <Diagrams.vd_t> diagram
 %type <(Diagrams.pvd_t * Expression.tid list)> param_diagram
@@ -1170,6 +1191,8 @@ term :
     { Expr.MemT($1) }
   | integer
     { Expr.IntT($1) }
+  | arrays
+    { $1 }
   | OPEN_PAREN term CLOSE_PAREN
     { $2 }
 
@@ -1312,14 +1335,6 @@ addr :
       let c = parser_check_type check_type_cell  $1 Expr.Cell get_str_expr in
         Expr.Next(c)
     }
-  | term DOT ARR OPEN_BRACKET term CLOSE_BRACKET
-    {
-      let get_str_expr () = sprintf "%s.next[%s]" (Expr.term_to_str $1)
-                                                  (Expr.term_to_str $5) in
-      let c = parser_check_type check_type_cell $1 Expr.Cell get_str_expr in
-      let l = parser_check_type check_type_int $5 Expr.Int get_str_expr in
-        Expr.NextAt(c,l)
-    }
   | FIRSTLOCKED OPEN_PAREN term COMMA term CLOSE_PAREN
     {
       let get_str_expr () = sprintf "firstlocked(%s,%s)" (Expr.term_to_str $3)
@@ -1344,6 +1359,19 @@ cell :
       let a  = parser_check_type check_type_addr $5 Expr.Addr get_str_expr in
       let th = parser_check_type check_type_thid $7 Expr.Thid get_str_expr in
         Expr.MkCell(d,a,th)
+    }
+  | MKSLCELL OPEN_PAREN term COMMA term COMMA term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "mkslcell(%s,%s,%s,%s)"
+                                           (Expr.term_to_str $3)
+                                           (Expr.term_to_str $5)
+                                           (Expr.term_to_str $7)
+                                           (Expr.term_to_str $9) in
+      let e  = parser_check_type check_type_elem $3 Expr.Elem get_str_expr in
+      let aa = parser_check_type check_type_addrarr $5 Expr.AddrArray get_str_expr in
+      let ta = parser_check_type check_type_tidarr $7 Expr.TidArray get_str_expr in
+      let l  = parser_check_type check_type_int $9 Expr.Int get_str_expr in
+        Expr.MkSLCell(e,aa,ta,l)
     }
   | term DOT LOCK
     {
@@ -1580,4 +1608,52 @@ integer :
       let s  = parser_check_type check_type_setint iSet Expr.SetInt get_str_expr
       in
         Expr.IntSetMax (s)
+    }
+
+
+
+/* ARRAY terms */
+arrays :
+  | term OPEN_BRACKET term CLOSE_BRACKET
+    {
+      let get_str_expr () = sprintf "%s[%s]" (Expr.term_to_str $1)
+                                             (Expr.term_to_str $3) in
+      let i = parser_check_type check_type_int $3 Expr.Int get_str_expr in
+      try
+        let at = parser_check_type check_type_tidarr $1 Expr.TidArray get_str_expr in
+          Expr.ThidT (Expr.ThidArrRd (at,i))
+      with _ -> try
+        let aa = parser_check_type check_type_addrarr $1 Expr.AddrArray get_str_expr in
+          Expr.AddrT (Expr.AddrArrRd (aa,i))
+      with e -> try
+        let t = parser_check_type check_type_thid $1 Expr.Thid get_str_expr in
+        match t with
+        | Expr.CellLockId c -> Expr.ThidT (Expr.CellLockIdAt (c,i))
+        | _                 -> raise e
+      with e -> try
+        let a = parser_check_type check_type_addr $1 Expr.Addr get_str_expr in
+        match a with
+        | Expr.Next c -> Expr.AddrT (Expr.NextAt (c,i))
+        | _           -> raise e
+      with e ->
+        let c = parser_check_type check_type_cell $1 Expr.Cell get_str_expr in
+        match c with
+        | Expr.CellLock d   -> Expr.CellT (Expr.CellLockAt (d,i))
+        | Expr.CellUnlock d -> Expr.CellT (Expr.CellUnlockAt (d,i))
+        | _                 -> raise e
+    }
+  | ARR_UPDATE OPEN_PAREN term COMMA term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "arrUpd (%s,%s,%s)" (Expr.term_to_str $3)
+                                                        (Expr.term_to_str $5)
+                                                        (Expr.term_to_str $7) in
+      let i = parser_check_type check_type_int $5 Expr.Int get_str_expr in
+      try
+        let at = parser_check_type check_type_tidarr $3 Expr.TidArray get_str_expr in
+        let t = parser_check_type check_type_thid $5 Expr.Thid get_str_expr in
+          Expr.TidArrayT (Expr.TidArrayUp (at,i,t))
+      with _ ->
+        let aa = parser_check_type check_type_addrarr $3 Expr.AddrArray get_str_expr in
+        let a = parser_check_type check_type_addr $5 Expr.Addr get_str_expr in
+          Expr.AddrArrayT (Expr.AddrArrayUp (aa,i,a))
     }

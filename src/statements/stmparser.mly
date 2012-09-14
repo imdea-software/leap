@@ -795,8 +795,7 @@ let lock_pos_to_str (pos:Stm.integer option) : string =
 %token POINTER
 %token ME
 
-%token ERROR MKCELL DATA NEXT LOCKID LOCK UNLOCK
-%token ARR
+%token ERROR MKCELL MKSLCELL DATA NEXT LOCKID LOCK UNLOCK
 %token HAVOCLISTELEM HAVOCSKIPLISTELEM LOWEST_ELEM HIGHEST_ELEM
 %token HAVOCLEVEL
 %token MEMORY_READ
@@ -2709,6 +2708,20 @@ cell :
       let a  = parser_check_type check_type_addr $5 Expr.Addr get_str_expr in
       let th = parser_check_type check_type_thid $7 Expr.Thid get_str_expr in
         Stm.MkCell(d,a,th)
+    }
+
+  | MKSLCELL OPEN_PAREN term COMMA term COMMA term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "mkslcell(%s,%s,%s,%s)"
+                                           (Stm.term_to_str $3)
+                                           (Stm.term_to_str $5)
+                                           (Stm.term_to_str $7)
+                                           (Stm.term_to_str $9) in
+      let e  = parser_check_type check_type_elem $3 Expr.Elem get_str_expr in
+      let aa = parser_check_type check_type_addrarr $5 Expr.AddrArray get_str_expr in
+      let ta = parser_check_type check_type_tidarr $7 Expr.TidArray get_str_expr in
+      let l  = parser_check_type check_type_int $9 Expr.Int get_str_expr in
+        Stm.MkSLCell(e,aa,ta,l)
     }
   | term DOT LOCK
     {
