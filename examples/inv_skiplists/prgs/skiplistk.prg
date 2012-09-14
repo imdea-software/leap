@@ -23,7 +23,7 @@ assume
   head != null /\
   tail != null /\
   head->next[0] = tail /\
-  tail->arr[0] = null
+  tail->next[0] = null
 
 
 // ----- PROGRAM BEGINS --------------------------------------
@@ -62,7 +62,7 @@ assume
                                 i := K - 1;
                                 prev := head;
                                 prev->lock[i];
-                                curr := prev->arr[i];
+                                curr := prev->next[i];
                                 curr->lock[i];
                                 while (0 <= i /\ curr->data != e) do
                                   if (i < K-1) then
@@ -72,13 +72,13 @@ assume
                                       cover->unlock[i+2];
                                     endif
                                     cover := curr;
-                                    curr := prev->arr[i];
+                                    curr := prev->next[i];
                                     curr->lock[i];
                                   endif
                                   while (curr->data < e) do
                                     prev->unlock[i];
                                     prev := curr;
-                                    curr := prev->arr[i];
+                                    curr := prev->next[i];
                                     curr->lock[i];
                                   endwhile
                                   i := i -1;
@@ -114,7 +114,7 @@ assume
                                 lvl := havocLevel();
                                 prev := head;
                                 prev->lock[K-1];
-                                curr := prev->arr[K-1];
+                                curr := prev->next[K-1];
                                 curr->lock[K-1];
                                 i := K-1;
                                 while (0 <= i) do
@@ -127,13 +127,13 @@ assume
                                       cover->unlock[i+2];
                                     endif
                                     cover := curr;
-                                    curr := prev->arr[i];
+                                    curr := prev->next[i];
                                     curr->lock[i];
                                   endif
                                   while (curr->data < e) do
                                     prev->unlock[i];
                                     prev := curr;
-                                    curr := prev->arr[i];
+                                    curr := prev->next[i];
                                     curr->lock[i];
                                   endwhile
                                   update[i] := prev;
@@ -146,7 +146,7 @@ assume
                                 if (valueWasIs) then
                                   i := lvl;
                                   while (i >= 0) do
-                                    update[i]->arr[i]->unlock[i];
+                                    update[i]->next[i]->unlock[i];
                                     update[i]->unlock[i];
                                     i := i - 1;
                                   endwhile
@@ -154,9 +154,9 @@ assume
                                   newCell := mallocSL(e, lvl);
                                   i := 0;
                                   while (i <= lvl) do
-                                    newCell->arr[i] := update[i]->arr[i];
-                                    update[i]->arr[i] := newCell;
-                                    newCell->arr[i]->unlock[i];
+                                    newCell->next[i] := update[i]->next[i];
+                                    update[i]->next[i] := newCell;
+                                    newCell->next[i]->unlock[i];
                                     update[i]->unlock[i];
                                     i := i + 1;
                                   endwhile
@@ -180,7 +180,7 @@ assume
                               begin
                                 prev := head;
                                 prev->lock[K-1];
-                                curr := prev->arr[K-1];
+                                curr := prev->next[K-1];
                                 curr->lock[K-1];
                                 cover := tail;
                                 deleteFrom := K-1;
@@ -188,7 +188,7 @@ assume
                                 while (0 <= i) do
                                   if (i < K-1) then
                                     prev->lock[i];
-                                    if (prev->arr[i+1]->data != e) then
+                                    if (prev->next[i+1]->data != e) then
                                       deleteFrom := i;
                                       prev->unlock[i+1];
                                     endif
@@ -196,13 +196,13 @@ assume
                                       cover->unlock[i+2];
                                     endif
                                     cover := curr;
-                                    curr := prev->arr[i];
+                                    curr := prev->next[i];
                                     curr->lock[i];
                                   endif
                                   while (curr->data < e) do
                                     prev->unlock[i];
                                     prev := curr;
-                                    curr := prev->arr[i];
+                                    curr := prev->next[i];
                                     curr->lock[i];
                                   endwhile
                                   update[i] := prev;
@@ -214,11 +214,11 @@ assume
                                 valueWasIn := (curr->data = e);
                                 i := deleteFrom;
                                 while (i >= 0) do
-                                  if (update[i]->arr[i] = curr /\ curr->data = e) then
-                                    update[i]->arr[i] := curr->arr[i];
+                                  if (update[i]->next[i] = curr /\ curr->data = e) then
+                                    update[i]->next[i] := curr->next[i];
                                     curr->unlock[i];
                                   else
-                                    update[i]->arr[i]->unlock[i];
+                                    update[i]->next[i]->unlock[i];
                                   endif
                                   update[i]->unlock[i];
                                   i := i - 1;
