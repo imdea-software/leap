@@ -320,20 +320,22 @@ let inject_sort (exp:Expr.term) : Expr.term =
                    let var = Expr.inject_var_sort v s in
                      begin
                        match s with
-                         Expr.Set     -> Expr.SetT    (Expr.VarSet     var)
-                       | Expr.Elem    -> Expr.ElemT   (Expr.VarElem    var)
-                       | Expr.Thid    -> Expr.ThidT   (Expr.VarTh      var)
-                       | Expr.Addr    -> Expr.AddrT   (Expr.VarAddr    var)
-                       | Expr.Cell    -> Expr.CellT   (Expr.VarCell    var)
-                       | Expr.SetTh   -> Expr.SetThT  (Expr.VarSetTh   var)
-                       | Expr.SetInt  -> Expr.SetIntT (Expr.VarSetInt  var)
-                       | Expr.SetElem -> Expr.SetElemT(Expr.VarSetElem var)
-                       | Expr.Path    -> Expr.PathT   (Expr.VarPath    var)
-                       | Expr.Mem     -> Expr.MemT    (Expr.VarMem     var)
-                       | Expr.Bool    -> Expr.VarT    (var)
-                       | Expr.Int     -> Expr.IntT    (Expr.VarInt     var)
-                       | Expr.Array   -> Expr.ArrayT  (Expr.VarArray   var)
-                       | Expr.Unknown -> Expr.VarT    (var)
+                         Expr.Set       -> Expr.SetT       (Expr.VarSet       var)
+                       | Expr.Elem      -> Expr.ElemT      (Expr.VarElem      var)
+                       | Expr.Thid      -> Expr.ThidT      (Expr.VarTh        var)
+                       | Expr.Addr      -> Expr.AddrT      (Expr.VarAddr      var)
+                       | Expr.Cell      -> Expr.CellT      (Expr.VarCell      var)
+                       | Expr.SetTh     -> Expr.SetThT     (Expr.VarSetTh     var)
+                       | Expr.SetInt    -> Expr.SetIntT    (Expr.VarSetInt    var)
+                       | Expr.SetElem   -> Expr.SetElemT   (Expr.VarSetElem   var)
+                       | Expr.Path      -> Expr.PathT      (Expr.VarPath      var)
+                       | Expr.Mem       -> Expr.MemT       (Expr.VarMem       var)
+                       | Expr.Bool      -> Expr.VarT       (var)
+                       | Expr.Int       -> Expr.IntT       (Expr.VarInt       var)
+                       | Expr.Array     -> Expr.ArrayT     (Expr.VarArray     var)
+                       | Expr.AddrArray -> Expr.AddrArrayT (Expr.VarAddrArray var)
+                       | Expr.TidArray  -> Expr.TidArrayT  (Expr.VarTidArray  var)
+                       | Expr.Unknown   -> Expr.VarT       (var)
                      end
   | _           -> exp
 
@@ -1309,6 +1311,14 @@ addr :
       let get_str_expr () = sprintf "%s.data" (Expr.term_to_str $1) in
       let c = parser_check_type check_type_cell  $1 Expr.Cell get_str_expr in
         Expr.Next(c)
+    }
+  | term DOT ARR OPEN_BRACKET term CLOSE_BRACKET
+    {
+      let get_str_expr () = sprintf "%s.next[%s]" (Expr.term_to_str $1)
+                                                  (Expr.term_to_str $5) in
+      let c = parser_check_type check_type_cell $1 Expr.Cell get_str_expr in
+      let l = parser_check_type check_type_int $5 Expr.Int get_str_expr in
+        Expr.NextAt(c,l)
     }
   | FIRSTLOCKED OPEN_PAREN term COMMA term CLOSE_PAREN
     {

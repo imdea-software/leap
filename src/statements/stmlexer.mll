@@ -44,7 +44,6 @@ rule norm = parse
   | "data"          { Global.last "data"          ; DATA }
   | "next"          { Global.last "next"          ; NEXT }
   | "arr"           { Global.last "arr"           ; ARR }
-  | "locks"         { Global.last "locks"         ; LOCKS }
   | "firstlocked"   { Global.last "fistlocked"    ; FIRSTLOCKED }
   | "lockid"        { Global.last "lockid"        ; LOCKID }
   | "lock"          { Global.last "lock"          ; LOCK }

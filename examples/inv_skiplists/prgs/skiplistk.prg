@@ -22,7 +22,7 @@ assume
   head != tail /\
   head != null /\
   tail != null /\
-  head->arr[0] = tail /\
+  head->next[0] = tail /\
   tail->arr[0] = null
 
 

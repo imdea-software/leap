@@ -769,6 +769,12 @@ let global_decl_cond (k:Expr.kind_t)
     parser_check_compatibility_with_op_cond (Stm.VarT var) t get_str_expr op
 
 
+let lock_pos_to_str (pos:Stm.integer option) : string =
+  match pos with
+  | None   -> ""
+  | Some i -> sprintf "[%s]" (Stm.term_to_str (Stm.IntT i))
+
+
 
 
 %}
@@ -790,7 +796,7 @@ let global_decl_cond (k:Expr.kind_t)
 %token ME
 
 %token ERROR MKCELL DATA NEXT LOCKID LOCK UNLOCK
-%token ARR LOCKS
+%token ARR
 %token HAVOCLISTELEM HAVOCSKIPLISTELEM LOWEST_ELEM HIGHEST_ELEM
 %token HAVOCLEVEL
 %token MEMORY_READ
@@ -1989,10 +1995,7 @@ statement:
     }
   | line_label_list term POINTER LOCK lock_pos ghost_block_or_semicolon
     {
-      let get_str_expr () = sprintf "%s->lock%s" (Stm.term_to_str $2)
-                              (match $5 with
-                               | None -> ""
-                               | Some i -> "[" ^Stm.term_to_str (Stm.IntT i)^ "]") in
+      let get_str_expr () = sprintf "%s->lock%s" (Stm.term_to_str $2) (lock_pos_to_str $5) in
       let a = parser_check_type check_type_addr $2 Expr.Addr get_str_expr in
       let st_info = { Stm.pos             = !pos;
                       Stm.next_pos        = !pos+1;
@@ -2013,7 +2016,7 @@ statement:
     }
   | line_label_list term POINTER UNLOCK lock_pos ghost_block_or_semicolon
     {
-      let get_str_expr () = sprintf "%s->unlock" (Stm.term_to_str $2) in
+      let get_str_expr () = sprintf "%s->unlock%s" (Stm.term_to_str $2) (lock_pos_to_str $5) in
       let a = parser_check_type check_type_addr $2 Expr.Addr get_str_expr in
       let st_info = { Stm.pos             = !pos;
                       Stm.next_pos        = !pos+1;
@@ -2024,7 +2027,10 @@ statement:
                       Stm.return_pos      = []; } in
       (* I'm not verifying whether I am working with a non ghost address *)
       let g_code = $6 in
-      let st = Stm.StUnit (Stm.UnitUnlock a, g_code, Some st_info) in
+      let st = Stm.StUnit ((match $5 with
+                            | None   -> Stm.UnitUnlock a
+                            | Some i -> Stm.UnitUnlockAt (a,i)
+                            ), g_code, Some st_info) in
       Hashtbl.replace pos_st !pos (!current_proc, st);
       pos := !pos+1;
       st
@@ -2599,9 +2605,17 @@ elem :
 thid :
   | term DOT LOCKID
     {
-      let get_str_expr () = sprintf "%s.lockid" (Stm.term_to_str $1) in
+
+      let get_str_expr () = sprintf "%s.lockid" (Stm.term_to_str $1) in (*
+                                                  (lock_pos_to_str $4) in
+*)
       let c = parser_check_type check_type_cell  $1 Expr.Cell get_str_expr in
-        Stm.CellLockId(c)
+(*
+      match $4 with
+      | None   ->*) Stm.CellLockId(c)
+(*      | Some i -> let j = parser_check_type check_type_int (Stm.IntT i) Expr.Int get_str_expr in
+                  Stm.CellLockIdAt (c,j)
+*)
     }
   | SHARP
     {
@@ -2609,9 +2623,16 @@ thid :
     }
   | term POINTER LOCKID
     {
-      let get_str_expr () = sprintf "%s->lockid" (Stm.term_to_str $1) in
+      let get_str_expr () = sprintf "%s->lockid" (Stm.term_to_str $1) in (*
+                                                   (lock_pos_to_str $4) in
+*)
       let a = parser_check_type check_type_addr $1 Expr.Addr get_str_expr in
-        Stm.PointerLockid a
+(*
+      match $4 with
+      | None   ->*) Stm.PointerLockid a
+(*      | Some i -> let j = parser_check_type check_type_int (Stm.IntT i) Expr.Int get_str_expr in
+                    Stm.PointerLockidAt (a,j)
+*)
     }
   | ME
     {
@@ -2626,10 +2647,12 @@ addr :
     { Stm.Null }
   | term DOT NEXT
     {
+      (* TUKA *)
       let get_str_expr () = sprintf "%s.next" (Stm.term_to_str $1) in
       let c = parser_check_type check_type_cell  $1 Expr.Cell get_str_expr in
         Stm.Next(c)
     }
+/*
   | term DOT ARR OPEN_BRACKET term CLOSE_BRACKET
     {
       let get_str_expr () = sprintf "%s.next[%s]" (Stm.term_to_str $1)
@@ -2638,6 +2661,7 @@ addr :
       let l = parser_check_type check_type_int $5 Expr.Int get_str_expr in
         Stm.NextAt(c,l)
     }
+*/
   | FIRSTLOCKED OPEN_PAREN term COMMA term CLOSE_PAREN
     {
       let get_str_expr () = sprintf "firstlocked(%s,%s)" (Stm.term_to_str $3)
@@ -2669,10 +2693,12 @@ addr :
     }
   | term POINTER NEXT
     {
+      (* TUKA *)
       let get_str_expr () = sprintf "%s->next" (Stm.term_to_str $1) in
       let a = parser_check_type check_type_addr $1 Expr.Addr get_str_expr in
         Stm.PointerNext a
     }
+/*
   | term POINTER ARR OPEN_BRACKET term CLOSE_BRACKET
     {
       let get_str_expr () = sprintf "%s->next[%s]" (Stm.term_to_str $1)
@@ -2681,6 +2707,7 @@ addr :
       let l = parser_check_type check_type_int $5 Expr.Int get_str_expr in
         Stm.PointerNextAt (a,l)
     }
+*/
 
 
 /* CELL terms */
@@ -2701,15 +2728,30 @@ cell :
     }
   | term DOT LOCK
     {
-      let get_str_expr () = sprintf "%s.lock" (Stm.term_to_str $1) in
+      let get_str_expr () = sprintf "%s.lock" (Stm.term_to_str $1) in (*
+                                                (lock_pos_to_str $4) in
+*)
       let c = parser_check_type check_type_cell $1 Expr.Cell get_str_expr in
-        Stm.CellLock(c)
+(*
+      match $4 with
+      | None   -> *) Stm.CellLock(c)
+(*      | Some i -> let j = parser_check_type check_type_int (Stm.IntT i) Expr.Int get_str_expr in
+                    Stm.CellLockAt(c,j)
+*)
     }
   | term DOT UNLOCK
     {
-      let get_str_expr () = sprintf "%s.unlock" (Stm.term_to_str $1) in
+
+      let get_str_expr () = sprintf "%s.unlock" (Stm.term_to_str $1) in (*
+                                                  (lock_pos_to_str $4) in
+*)
       let c = parser_check_type check_type_cell $1 Expr.Cell get_str_expr in
-        Stm.CellUnlock(c)
+(*
+      match $4 with
+      | None   ->*) Stm.CellUnlock(c)
+(*      | Some i -> let j = parser_check_type check_type_int (Stm.IntT i) Expr.Int get_str_expr in
+                    Stm.CellUnlockAt(c,j)
+*)
     }
   | MEMORY_READ OPEN_PAREN term COMMA term CLOSE_PAREN
     {
