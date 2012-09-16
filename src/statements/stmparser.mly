@@ -46,6 +46,7 @@ exception Procedure_args_mismatch of string
 exception Impossible_find_sort of Expr.varId
 exception Incompatible_call_sort of Stm.term * string
 exception Incompatible_return_sort of string
+exception Different_argument_length of string * string
 
 
 (* Temporal variable tables for input and local variables *)
@@ -2724,10 +2725,12 @@ cell :
                       term CLOSE_PAREN
     {
       let list_term_to_str ts = String.concat "," (List.map Stm.term_to_str ts) in
-      let get_str_expr () = sprintf "mkcell(%s,%s,%s,%s)"
+      let addrs_str = list_term_to_str $6 in
+      let tids_str = list_term_to_str $10 in
+      let get_str_expr () = sprintf "mkcell(%s,[%s],[%s],%s)"
                                            (Stm.term_to_str $3)
-                                           (list_term_to_str $6)
-                                           (list_term_to_str $10)
+                                           (addrs_str)
+                                           (tids_str)
                                            (Stm.term_to_str $13) in
       let e  = parser_check_type check_type_elem $3 Expr.Elem get_str_expr in
       let addrs = List.map (fun a ->
@@ -2737,6 +2740,14 @@ cell :
                    parser_check_type check_type_thid t Expr.Thid get_str_expr
                  ) $10 in
       let l  = parser_check_type check_type_int $13 Expr.Int get_str_expr in
+      if List.length addrs <> List.length tids then
+        begin
+          Interface.Err.msg "Different argument lengths" $
+            sprintf "mkcell is invoked with an unequal number of addresses [%s] \
+                     and thread ids [%s]." addrs_str tids_str;
+          raise (Different_argument_length (addrs_str,tids_str))
+        end
+      else
         Stm.MkSLKCell(e,addrs,tids,l)
     }
   | MKCELL OPEN_PAREN term COMMA term COMMA term COMMA term CLOSE_PAREN

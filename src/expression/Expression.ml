@@ -123,6 +123,7 @@ and cell =
     VarCell       of variable
   | Error
   | MkCell        of elem * addr * tid
+  | MkSLKCell     of elem * addr list * tid list * integer
   | MkSLCell      of elem * addrarr * tidarr * integer
   | CellLock      of cell
   | CellLockAt    of cell * integer
@@ -938,6 +939,10 @@ and priming_cell (pr:bool) (prime_set:VarSet.t option) (c:cell) : cell =
   | MkCell(data,addr,th)   -> MkCell(priming_elem pr prime_set data,
                                      priming_addr pr prime_set addr,
                                      priming_tid pr prime_set th)
+  | MkSLKCell(data,aa,tt,l)-> MkSLKCell(priming_elem pr prime_set data,
+                                        List.map (priming_addr pr prime_set) aa,
+                                        List.map (priming_tid pr prime_set) tt,
+                                        priming_int pr prime_set l)
   | MkSLCell(data,aa,ta,l) -> MkSLCell(priming_elem pr prime_set data,
                                        priming_addrarray pr prime_set aa,
                                        priming_tidarray pr prime_set ta,
@@ -1503,6 +1508,7 @@ and setelem_to_str (expr:setelem) : string =
 
 
 and cell_to_str (expr:cell) : string =
+  let list_str f xs = String.concat "," (List.map f xs) in
   match expr with
     VarCell v              -> variable_to_str v
   | Error                  -> "Error"
@@ -1510,7 +1516,12 @@ and cell_to_str (expr:cell) : string =
                                            (elem_to_str data)
                                            (addr_to_str addr)
                                            (tid_to_str th)
-  | MkSLCell(data,aa,ta,l) -> sprintf "mkslcell(%s,%s,%s,%s)"
+  | MkSLKCell(data,aa,tt,l)-> sprintf "mkcell(%s,[%s],[%s],%s)"
+                                           (elem_to_str data)
+                                           (list_str addr_to_str aa)
+                                           (list_str tid_to_str tt)
+                                           (integer_to_str l)
+  | MkSLCell(data,aa,ta,l) -> sprintf "mkcell(%s,%s,%s,%s)"
                                            (elem_to_str data)
                                            (addrarr_to_str aa)
                                            (tidarr_to_str ta)
@@ -1959,6 +1970,7 @@ and get_vars_tid (th:tid)
 and get_vars_cell (c:cell)
                   (base:variable -> variable list) : variable list =
   let get_vars_aux t = get_vars_tid t base in
+  let fold f xs = List.fold_left (fun ys x -> (f x base) @ ys) [] xs in
   match c with
     VarCell v              -> (base v) @
                               (Option.map_default get_vars_aux [] (var_th v))
@@ -1966,6 +1978,10 @@ and get_vars_cell (c:cell)
   | MkCell(data,addr,th)   -> (get_vars_elem data base) @
                               (get_vars_addr addr base) @
                               (get_vars_tid th base)
+  | MkSLKCell(data,aa,tt,l)-> (get_vars_elem data base) @
+                              (fold get_vars_addr aa)   @
+                              (fold get_vars_tid tt)    @
+                              (get_vars_int l base)
   | MkSLCell(data,aa,ta,l) -> (get_vars_elem data base) @
                               (get_vars_addrarr aa base) @
                               (get_vars_tidarr ta base) @
@@ -2456,12 +2472,17 @@ and voc_tid (th:tid) : tid list =
 
 
 and voc_cell (c:cell) : tid list =
+  let fold f xs = List.fold_left (fun ys x -> (f x) @ ys) [] xs in
   match c with
     VarCell v              -> Option.map_default (fun x->[x]) [] (var_th v)
   | Error                  -> []
   | MkCell(data,addr,th)   -> (voc_elem data) @
                               (voc_addr addr) @
                               (voc_tid th)
+  | MkSLKCell(data,aa,tt,l)-> (voc_elem data)    @
+                              (fold voc_addr aa) @
+                              (fold voc_tid tt)  @
+                              (voc_int l)
   | MkSLCell(data,aa,ta,l) -> (voc_elem data)  @
                               (voc_addrarr aa) @
                               (voc_tidarr ta ) @
@@ -2724,12 +2745,17 @@ and var_kind_tid (kind:kind_t) (th:tid) : term list =
 
 
 and var_kind_cell (kind:kind_t) (c:cell) : term list =
+  let fold f xs = List.fold_left (fun ys x -> (f kind x) @ ys) [] xs in
   match c with
     VarCell v              -> if (var_k v) = kind then [CellT c] else []
   | Error                  -> []
   | MkCell(data,addr,th)   -> (var_kind_elem kind data) @
                               (var_kind_addr kind addr) @
                               (var_kind_tid kind th)
+  | MkSLKCell(data,aa,tt,l)-> (var_kind_elem kind data)  @
+                              (fold var_kind_addr aa)    @
+                              (fold var_kind_tid tt)     @
+                              (var_kind_int kind l)
   | MkSLCell(data,aa,ta,l) -> (var_kind_elem kind data)  @
                               (var_kind_addrarr kind aa) @
                               (var_kind_tidarr kind ta)  @
@@ -3036,6 +3062,10 @@ and param_cell_aux (pfun:variable option -> tid option) (c:cell) : cell =
   | MkCell(data,addr,th)   -> MkCell(param_elem_aux pfun data,
                                    param_addr_aux pfun addr,
                                    param_tid_aux pfun th)
+  | MkSLKCell(data,aa,tt,l)-> MkSLKCell(param_elem_aux pfun data,
+                                        List.map (param_addr_aux pfun) aa,
+                                        List.map (param_tid_aux pfun) tt,
+                                        param_int pfun l)
   | MkSLCell(data,aa,ta,l) -> MkSLCell(param_elem_aux pfun data,
                                        param_addrarr pfun aa,
                                        param_tidarr pfun ta,
@@ -3441,6 +3471,10 @@ and subst_tid_cell (subs:tid_subst_t) (c:cell) : cell =
   | MkCell(data,addr,th)   -> MkCell(subst_tid_elem subs data,
                                      subst_tid_addr subs addr,
                                      subst_tid_th subs th)
+  | MkSLKCell(data,aa,tt,l)-> MkSLKCell(subst_tid_elem subs data,
+                                        List.map (subst_tid_addr subs) aa,
+                                        List.map (subst_tid_th subs) tt,
+                                        subst_tid_int subs l)
   | MkSLCell(data,aa,ta,l) -> MkSLCell(subst_tid_elem subs data,
                                        subst_tid_addrarr subs aa,
                                        subst_tid_tidarr subs ta,
@@ -4256,6 +4290,10 @@ let required_sorts (phi:formula) : sort list =
     | VarCell _            -> single Cell
     | Error                -> single Cell
     | MkCell (e,a,t)       -> append Cell [req_e e;req_a a; req_t t]
+    | MkSLKCell (e,aa,tt,l)-> append Cell
+                                ((List.map req_a aa) @
+                                 (List.map req_t tt) @
+                                 [req_e e;req_i l])
     | MkSLCell (e,aa,ta,l) -> append Cell [req_e e;req_addrarr aa;
                                            req_tidarr ta;req_i l]
     | CellLock c           -> append Cell [req_c c]

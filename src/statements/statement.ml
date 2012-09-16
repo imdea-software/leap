@@ -550,6 +550,7 @@ and setelem_to_str (loc:bool) (expr:setelem) : string =
 
 
 and cell_to_str (loc:bool) (expr:cell) : string =
+  let apply_str f xs = String.concat "," (List.map f xs) in
   match expr with
     VarCell v             -> variable_to_str loc v
   | Error -> "Error"
@@ -557,7 +558,12 @@ and cell_to_str (loc:bool) (expr:cell) : string =
                                            (elem_to_str loc data)
                                            (addr_to_str loc addr)
                                            (tid_to_str loc th)
-  | MkSLCell(data,aa,ta,l)-> sprintf "mkslcell(%s,%s,%s,%s)"
+  | MkSLKCell(data,aa,tt,l) -> sprintf "mkcell(%s,[%s],[%s],%s)"
+                                           (elem_to_str loc data)
+                                           (apply_str (addr_to_str loc) aa)
+                                           (apply_str (tid_to_str loc) tt)
+                                           (integer_to_str loc l)
+  | MkSLCell(data,aa,ta,l)-> sprintf "mkcell(%s,%s,%s,%s)"
                                            (elem_to_str loc data)
                                            (addrarr_to_str loc aa)
                                            (tidarr_to_str loc ta)
@@ -886,6 +892,10 @@ and cell_to_expr_cell (c:cell) : E.cell =
   | MkCell (e,a,t)       -> E.MkCell (elem_to_expr_elem e,
                                       addr_to_expr_addr a,
                                       tid_to_expr_tid t)
+  | MkSLKCell (e,aa,tt,l) -> E.MkSLKCell (elem_to_expr_elem e,
+                                          List.map addr_to_expr_addr aa,
+                                          List.map tid_to_expr_tid tt,
+                                          integer_to_expr_integer l)
   | MkSLCell (e,aa,ta,l) -> E.MkSLCell (elem_to_expr_elem e,
                                         addrarray_to_expr_array aa,
                                         tidarray_to_expr_array ta,
@@ -1178,12 +1188,17 @@ and var_kind_th (kind:E.kind_t) (th:tid) : term list =
 
 
 and var_kind_cell (kind:E.kind_t) (c:cell) : term list =
+  let fold f xs = List.fold_left (fun ys x -> (f kind x) @ ys) [] xs in
   match c with
     VarCell(_,_,_,k)       -> if k = kind then [CellT c] else []
   | Error                  -> []
   | MkCell(data,addr,th)   -> (var_kind_elem kind data) @
                               (var_kind_addr kind addr) @
                               (var_kind_th kind th)
+  | MkSLKCell(data,aa,tt,l)-> (var_kind_elem kind data) @
+                              (fold var_kind_addr aa)   @
+                              (fold var_kind_th tt)     @
+                              (var_kind_int kind l)
   | MkSLCell(data,aa,ta,l) -> (var_kind_elem kind data)  @
                               (var_kind_addrarr kind aa) @
                               (var_kind_tidarr kind ta)  @
