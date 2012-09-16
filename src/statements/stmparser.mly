@@ -795,7 +795,7 @@ let lock_pos_to_str (pos:Stm.integer option) : string =
 %token POINTER
 %token ME
 
-%token ERROR MKCELL MKSLCELL DATA NEXT LOCKID LOCK UNLOCK
+%token ERROR MKCELL DATA NEXT LOCKID LOCK UNLOCK
 %token HAVOCLISTELEM HAVOCSKIPLISTELEM LOWEST_ELEM HIGHEST_ELEM
 %token HAVOCLEVEL
 %token MEMORY_READ
@@ -920,6 +920,7 @@ let lock_pos_to_str (pos:Stm.integer option) : string =
 %type <(Stm.expr_t list * Stm.statement_t) list> atomic_statements_choice
 
 %type <Stm.term option> maybe_term
+%type <Stm.term list> term_list
 
 %type <Statement.boolean> formula
 %type <Stm.literal> literal
@@ -2205,6 +2206,13 @@ maybe_term :
     { Some $1 }
 
 
+term_list :
+  | term COMMA term
+    { [$1;$3] }
+  | term COMMA term_list
+    { $1 :: $3 }
+
+
 params :
   |
     { [] }
@@ -2710,7 +2718,28 @@ cell :
         Stm.MkCell(d,a,th)
     }
 
-  | MKSLCELL OPEN_PAREN term COMMA term COMMA term COMMA term CLOSE_PAREN
+  | MKCELL OPEN_PAREN term COMMA
+                      OPEN_BRACKET term_list CLOSE_BRACKET COMMA
+                      OPEN_BRACKET term_list CLOSE_BRACKET COMMA
+                      term CLOSE_PAREN
+    {
+      let list_term_to_str ts = String.concat "," (List.map Stm.term_to_str ts) in
+      let get_str_expr () = sprintf "mkcell(%s,%s,%s,%s)"
+                                           (Stm.term_to_str $3)
+                                           (list_term_to_str $6)
+                                           (list_term_to_str $10)
+                                           (Stm.term_to_str $13) in
+      let e  = parser_check_type check_type_elem $3 Expr.Elem get_str_expr in
+      let addrs = List.map (fun a ->
+                    parser_check_type check_type_addr a Expr.Addr get_str_expr
+                  ) $6 in
+      let tids = List.map (fun t ->
+                   parser_check_type check_type_thid t Expr.Thid get_str_expr
+                 ) $10 in
+      let l  = parser_check_type check_type_int $13 Expr.Int get_str_expr in
+        Stm.MkSLKCell(e,addrs,tids,l)
+    }
+  | MKCELL OPEN_PAREN term COMMA term COMMA term COMMA term CLOSE_PAREN
     {
       let get_str_expr () = sprintf "mkslcell(%s,%s,%s,%s)"
                                            (Stm.term_to_str $3)
