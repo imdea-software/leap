@@ -162,6 +162,7 @@ and cell_to_tll_cell (c:Expr.cell) : Tll.cell =
   | Expr.MkCell (e,a,t) -> Tll.MkCell (elem_to_tll_elem e,
                                        addr_to_tll_addr a,
                                        tid_to_tll_tid t)
+  | Expr.MkSLKCell _    -> raise(UnsupportedTllExpr(Expr.cell_to_str c))
   | Expr.MkSLCell _     -> raise(UnsupportedTllExpr(Expr.cell_to_str c))
   (* Tll receives two arguments, while current epxression receives only one *)
   (* However, for the list examples, I think we will not need it *)
