@@ -17,6 +17,7 @@
 <src/spec_check> : include
 <src/trs> : include
 <src/tll> : include
+<src/tsl> : include
 <src/smp> : include
 <src/graph> : include
 <src/tactics> : include
