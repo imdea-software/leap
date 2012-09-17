@@ -61,12 +61,12 @@ and addr =
   | AddrArrRd   of addrarr * integer
 (*  | Malloc of elem * addr * tid *)
 and cell =
-    VarCell     of variable
+    VarCell       of variable
   | Error
-  | MkCell      of elem * addrarr * tidarr * integer
-  | CellLockAt  of cell * integer * tid
-  | CellUnlock  of cell * integer
-  | CellAt      of mem * addr
+  | MkCell        of elem * addrarr * tidarr * integer
+  | CellLockAt    of cell * integer * tid
+  | CellUnlockAt  of cell * integer
+  | CellAt        of mem * addr
 and setth =
     VarSetTh of variable
   | EmptySetTh

@@ -65,12 +65,12 @@ and addr =
   | AddrArrRd   of addrarr * integer
 (*  | Malloc of elem * addr * tid *)
 and cell =
-    VarCell     of variable
+    VarCell      of variable
   | Error
-  | MkCell      of elem * addrarr * tidarr * integer
-  | CellLockAt  of cell * integer * tid
-  | CellUnlock  of cell * integer
-  | CellAt      of mem * addr
+  | MkCell       of elem * addrarr * tidarr * integer
+  | CellLockAt   of cell * integer * tid
+  | CellUnlockAt of cell * integer
+  | CellAt       of mem * addr
 and setth =
     VarSetTh of variable
   | EmptySetTh
@@ -205,7 +205,8 @@ let is_primed_tid (th:tid) : bool =
   match th with
   | VarTh v           -> is_primed_var v
   | NoThid            -> false
-  | CellLockId _      -> false
+  | CellLockIdAt _    -> false
+  | ThidArrRd _       -> false
   (* FIX: Propagate the query inside cell??? *)
 
 
@@ -299,30 +300,34 @@ let rec get_varset_set s =
     | AddrToSet(m,a) -> (get_varset_mem m) @@ (get_varset_addr a)
 and get_varset_tid th =
   match th with
-      VarTh v      -> S.singleton v @@ get_varset_from_param v
-    | NoThid       -> S.empty
-    | CellLockId c ->  get_varset_cell c
+      VarTh v            -> S.singleton v @@ get_varset_from_param v
+    | NoThid             -> S.empty
+    | CellLockIdAt (c,l) -> (get_varset_cell c) @@ (get_varset_integer l)
+    | ThidArrRd (ta,i)   -> (get_varset_tidarr ta) @@ (get_varset_integer i)
 and get_varset_elem e =
   match e with
-      VarElem v     -> S.singleton v @@ get_varset_from_param v
-    | CellData c    -> get_varset_cell c
-    | HavocListElem -> S.empty
-    | LowestElem    -> S.empty
-    | HighestElem   -> S.empty
+      VarElem v         -> S.singleton v @@ get_varset_from_param v
+    | CellData c        -> get_varset_cell c
+    | HavocSkiplistElem -> S.empty
+    | LowestElem        -> S.empty
+    | HighestElem       -> S.empty
 and get_varset_addr a =
   match a with
       VarAddr v        -> S.singleton v @@ get_varset_from_param v
     | Null             -> S.empty
-    | Next c           -> get_varset_cell c
+    | NextAt (c,l)     -> (get_varset_cell c) @@ (get_varset_integer l)
     | FirstLocked(m,p) -> (get_varset_mem m) @@ (get_varset_path p)
+    | AddrArrRd (aa,i) -> (get_varset_addrarr aa) @@ (get_varset_integer i)
 (*    | Malloc(e,a,th)   -> (get_varset_elem e) @@ (get_varset_addr a) @@  (get_varset_tid th) *)
 and get_varset_cell c = match c with
-      VarCell v      -> S.singleton v @@ get_varset_from_param v
-    | Error          -> S.empty
-    | MkCell(e,a,th) -> (get_varset_elem e) @@ (get_varset_addr a) @@ (get_varset_tid th)
-    | CellLock(c,th)    ->  (get_varset_cell c) @@ (get_varset_tid th)
-    | CellUnlock(c)  ->  get_varset_cell c
-    | CellAt(m,a)    ->  (get_varset_mem  m) @@ (get_varset_addr a)
+      VarCell v           -> S.singleton v @@ get_varset_from_param v
+    | Error               -> S.empty
+    | MkCell(e,aa,tt,l)   -> (get_varset_elem e) @@ (get_varset_addrarr aa) @@
+                             (get_varset_tidarr tt) @@ (get_varset_integer l)
+    | CellLockAt (c,l,th) -> (get_varset_cell c) @@ (get_varset_integer l) @@
+                             (get_varset_tid th)
+    | CellUnlockAt (c,l)  -> (get_varset_cell c) @@ (get_varset_integer l)
+    | CellAt(m,a)         -> (get_varset_mem  m) @@ (get_varset_addr a)
 and get_varset_setth sth =
   match sth with
       VarSetTh v         -> S.singleton v @@ get_varset_from_param v
@@ -351,6 +356,28 @@ and get_varset_mem m =
       VarMem v           -> S.singleton v @@ get_varset_from_param v
     | Emp                -> S.empty
     | Update(m,a,c)      -> (get_varset_mem m) @@ (get_varset_addr a) @@ (get_varset_cell c)
+and get_varset_integer i =
+  match i with
+      IntVal _     -> S.empty
+    | VarInt v     -> S.singleton v
+    | IntNeg i     -> (get_varset_integer i)
+    | IntAdd (i,j) -> (get_varset_integer i) @@ (get_varset_integer j)
+    | IntSub (i,j) -> (get_varset_integer i) @@ (get_varset_integer j)
+    | IntMul (i,j) -> (get_varset_integer i) @@ (get_varset_integer j)
+    | IntDiv (i,j) -> (get_varset_integer i) @@ (get_varset_integer j)
+    | HavocLevel   -> S.empty
+and get_varset_addrarr arr =
+  match arr with
+      VarAddrArray v       -> S.singleton v
+    | AddrArrayUp (aa,i,a) -> (get_varset_addrarr aa) @@
+                              (get_varset_integer i)  @@
+                              (get_varset_addr a)
+and get_varset_tidarr arr =
+  match arr with
+      VarTidArray v       -> S.singleton v
+    | TidArrayUp (aa,i,t) -> (get_varset_tidarr aa) @@
+                             (get_varset_integer i) @@
+                             (get_varset_tid t)
 and get_varset_atom a =
   match a with
       Append(p1,p2,p3)       -> (get_varset_path p1) @@ (get_varset_path p2) @@
@@ -366,6 +393,10 @@ and get_varset_atom a =
     | InElem(e,se)           -> (get_varset_elem e) @@ (get_varset_setelem se)
     | SubsetEqElem(se1,se2)  -> (get_varset_setelem se1) @@
                                 (get_varset_setelem se2)
+    | Less (i,j)             -> (get_varset_integer i) @@ (get_varset_integer j)
+    | Greater (i,j)          -> (get_varset_integer i) @@ (get_varset_integer j)
+    | LessEq (i,j)           -> (get_varset_integer i) @@ (get_varset_integer j)
+    | GreaterEq (i,j)        -> (get_varset_integer i) @@ (get_varset_integer j)
     | LessElem(e1,e2)        -> (get_varset_elem e1) @@ (get_varset_elem e2)
     | GreaterElem(e1,e2)     -> (get_varset_elem e1) @@ (get_varset_elem e2)
     | Eq((x,y))              -> (get_varset_term x) @@ (get_varset_term y)
@@ -384,6 +415,9 @@ and get_varset_term t = match t with
     | SetElemT se         -> get_varset_setelem se
     | PathT  p            -> get_varset_path p
     | MemT   m            -> get_varset_mem m
+    | IntT   i            -> get_varset_integer i
+    | AddrArrayT aa       -> get_varset_addrarr aa
+    | TidArrayT  tt       -> get_varset_tidarr tt
     | VarUpdate(v,pc,t)   -> (S.singleton v) @@ (get_varset_term t) @@
                              (get_varset_from_param v)
 and get_varset_literal l =
@@ -457,6 +491,10 @@ let rec get_termset_atom (a:atom) : TermSet.t =
   | SubsetEqTh(st1,st2)    -> add_list [SetThT st1; SetThT st2]
   | InElem(e,se)           -> add_list [ElemT e; SetElemT se]
   | SubsetEqElem(se1,se2)  -> add_list [SetElemT se1; SetElemT se2]
+  | Less (i,j)             -> add_list [IntT i; IntT j]
+  | Greater (i,j)          -> add_list [IntT i; IntT j]
+  | LessEq (i,j)           -> add_list [IntT i; IntT j]
+  | GreaterEq (i,j)        -> add_list [IntT i; IntT j]
   | LessElem(e1,e2)        -> add_list [ElemT e1; ElemT e2]
   | GreaterElem(e1,e2)     -> add_list [ElemT e1; ElemT e2]
   | Eq((x,y))              -> add_list [x;y]
@@ -501,15 +539,18 @@ and get_termset_from_formula (phi:formula) : TermSet.t =
 let termset_of_sort (all:TermSet.t) (s:sort) : TermSet.t =
   let match_sort (t:term) : bool =
     match s with
-    | Set     -> (match t with | SetT _     -> true | _ -> false)
-    | Elem    -> (match t with | ElemT _    -> true | _ -> false)
-    | Thid    -> (match t with | ThidT _    -> true | _ -> false)
-    | Addr    -> (match t with | AddrT _    -> true | _ -> false)
-    | Cell    -> (match t with | CellT _    -> true | _ -> false)
-    | SetTh   -> (match t with | SetThT _   -> true | _ -> false)
-    | SetElem -> (match t with | SetElemT _ -> true | _ -> false)
-    | Path    -> (match t with | PathT _    -> true | _ -> false)
-    | Mem     -> (match t with | MemT _     -> true | _ -> false)
+    | Set       -> (match t with | SetT _       -> true | _ -> false)
+    | Elem      -> (match t with | ElemT _      -> true | _ -> false)
+    | Thid      -> (match t with | ThidT _      -> true | _ -> false)
+    | Addr      -> (match t with | AddrT _      -> true | _ -> false)
+    | Cell      -> (match t with | CellT _      -> true | _ -> false)
+    | SetTh     -> (match t with | SetThT _     -> true | _ -> false)
+    | SetElem   -> (match t with | SetElemT _   -> true | _ -> false)
+    | Path      -> (match t with | PathT _      -> true | _ -> false)
+    | Mem       -> (match t with | MemT _       -> true | _ -> false)
+    | Int       -> (match t with | IntT _       -> true | _ -> false)
+    | AddrArray -> (match t with | AddrArrayT _ -> true | _ -> false)
+    | TidArray  -> (match t with | TidArrayT _  -> true | _ -> false)
     | Unknown -> false in
   TermSet.fold (fun t set ->
     if match_sort t then
@@ -566,6 +607,15 @@ and is_path_var s =
 and is_mem_var s =
   match s with
       VarMem _ -> true | _ -> false
+and is_int_var s =
+  match s with
+      VarInt _ -> true | _ -> false
+and is_addrarr_var s =
+  match s with
+      VarAddrArray _ -> true | _ -> false
+and is_tidarr_var s =
+  match s with
+      VarTidArray _ -> true | _ -> false
 
 let get_sort_from_term t =
   match t with
@@ -579,6 +629,9 @@ let get_sort_from_term t =
     | SetElemT _       -> SetElem
     | PathT _          -> Path
     | MemT _           -> Mem
+    | IntT _           -> Int
+    | AddrArrayT _     -> AddrArray
+    | TidArrayT _      -> TidArray
     | VarUpdate(v,_,_) -> get_sort v
   
 let terms_same_type a b =
@@ -593,17 +646,20 @@ let is_eq_normalized a b =
 (* TODO: propagate equalities of vars x = y *)
 let rec is_term_flat t =
   match t with
-      VarT(_)     -> true
-    | SetT s      -> is_set_flat s
-    | ElemT e     -> is_elem_flat   e
-    | ThidT k     -> is_tid_flat k
-    | AddrT a     -> is_addr_flat a
-    | CellT c     -> is_cell_flat c
-    | SetThT st   -> is_setth_flat st
-    | SetElemT se -> is_setelem_flat se
-    | PathT p     -> is_path_flat p
-    | MemT  m     -> is_mem_flat m
-    | VarUpdate _ -> true
+      VarT(_)        -> true
+    | SetT s         -> is_set_flat s
+    | ElemT e        -> is_elem_flat   e
+    | ThidT k        -> is_tid_flat k
+    | AddrT a        -> is_addr_flat a
+    | CellT c        -> is_cell_flat c
+    | SetThT st      -> is_setth_flat st
+    | SetElemT se    -> is_setelem_flat se
+    | PathT p        -> is_path_flat p
+    | MemT  m        -> is_mem_flat m
+    | IntT  i        -> is_int_flat i
+    | AddrArrayT aa  -> is_addrarr_flat aa
+    | TidArrayT tt   -> is_tidarr_flat tt
+    | VarUpdate _    -> true
 
 and is_set_flat t =
   match t with
@@ -617,31 +673,34 @@ and is_set_flat t =
     | AddrToSet(m,a) -> (is_mem_var m) && (is_addr_var a)
 and is_tid_flat t =
   match t with
-      VarTh _       -> true
-    | NoThid        -> true     
-    | CellLockId(c) -> is_cell_var c
+      VarTh _            -> true
+    | NoThid             -> true
+    | CellLockIdAt (c,l) -> (is_cell_var c) && (is_int_var l)
+    | ThidArrRd (tt,i)   -> (is_tidarr_var tt) && (is_int_var i)
 and is_elem_flat t =
   match t with
-      VarElem _     -> true
-    | CellData(c)   -> is_cell_var c
-    | HavocListElem -> true
-    | LowestElem    -> true
-    | HighestElem   -> true
+      VarElem _         -> true
+    | CellData(c)       -> is_cell_var c
+    | HavocSkiplistElem -> true
+    | LowestElem        -> true
+    | HighestElem       -> true
 and is_addr_flat t =
   match t with
       VarAddr _        -> true
     | Null             -> true
-    | Next(c)          -> is_cell_var c
+    | NextAt(c,l)      -> (is_cell_var c) && (is_int_var l)
     | FirstLocked(m,p) -> (is_mem_var m) && (is_path_var p)
+    | AddrArrRd (aa,i) -> (is_addrarr_var aa) && (is_int_var i)
 (*    | Malloc(m,a,k)    -> (is_mem_var m) && (is_addr_var a) && (is_thread_var k) *)
 and is_cell_flat t =
   match t with
-      VarCell _  -> true
-    | Error      -> true
-    | MkCell(e,a,k) -> (is_elem_var e) && (is_addr_var a) && (is_tid_var k)
-    | CellLock(c,th)   -> (is_cell_var c) && (is_tid_var th)
-    | CellUnlock(c) -> is_cell_var c
-    | CellAt(m,a)   -> (is_mem_var m) && (is_addr_var a)
+      VarCell _           -> true
+    | Error               -> true
+    | MkCell (e,aa,tt,l)  -> (is_elem_var e) && (is_addrarr_var aa) &&
+                             (is_tidarr_var tt) && (is_int_var l)
+    | CellLockAt (c,l,th) -> (is_cell_var c) && (is_int_var l) && (is_tid_var th)
+    | CellUnlockAt (c,l)  -> (is_cell_var c) && (is_int_var l)
+    | CellAt(m,a)         -> (is_mem_var m) && (is_addr_var a)
 and is_setth_flat t =
   match t with
       VarSetTh _ -> true
@@ -670,7 +729,26 @@ and is_mem_flat t =
       VarMem _ -> true
     | Emp      -> true
     | Update(m,a,c) -> (is_mem_var m) && (is_addr_var a) && (is_cell_var c)
-  
+and is_int_flat t =
+  match t with
+      IntVal _     -> true
+    | VarInt _     -> true
+    | IntNeg i     -> is_int_flat i
+    | IntAdd (i,j) -> (is_int_flat i) && (is_int_flat j)
+    | IntSub (i,j) -> (is_int_flat i) && (is_int_flat j)
+    | IntMul (i,j) -> (is_int_flat i) && (is_int_flat j)
+    | IntDiv (i,j) -> (is_int_flat i) && (is_int_flat j)
+    | HavocLevel   -> true
+and is_addrarr_flat t =
+  match t with
+      VarAddrArray _       -> true
+    | AddrArrayUp (aa,i,a) -> (is_addrarr_flat aa) && (is_int_flat i) &&
+                              (is_addr_flat a)
+and is_tidarr_flat t =
+  match t with
+      VarTidArray _       -> true
+    | TidArrayUp (tt,i,t) -> (is_tidarr_flat tt) && (is_int_flat i) &&
+                             (is_tid_flat t)
 
 let is_literal_flat lit =
   match lit with
@@ -688,6 +766,10 @@ let is_literal_flat lit =
     | SubsetEqTh(st1,st2)    -> (is_setth_var st1) && (is_setth_var st2)
     | InElem(e,se)           -> (is_elem_var e) && (is_setelem_var se)
     | SubsetEqElem(se1,se2)  -> (is_setelem_var se1) && (is_setelem_var se2)
+    | Less (i1,i2)           -> (is_int_var i1) && (is_int_var i2)
+    | Greater (i1,i2)        -> (is_int_var i1) && (is_int_var i2)
+    | LessEq (i1,i2)         -> (is_int_var i1) && (is_int_var i2)
+    | GreaterEq (i1,i2)      -> (is_int_var i1) && (is_int_var i2)
     | LessElem(e1,e2)        -> (is_elem_var e1) && (is_elem_var e2)
     | GreaterElem(e1,e2)     -> (is_elem_var e1) && (is_elem_var e2)
     | Eq(t1,t2)              -> ((is_term_var t1) && (is_term_var t2)  ||
@@ -712,6 +794,10 @@ let is_literal_flat lit =
     | SubsetEqTh(st1,st2)   -> (is_setth_var st1) && (is_setth_var st2)
     | InElem(e,se)          -> (is_elem_var e) && (is_setelem_var se)
     | SubsetEqElem(se1,se2) -> (is_setelem_var se1) && (is_setelem_var se2)
+    | Less (i1,i2)          -> (is_int_var i1) && (is_int_var i2)
+    | Greater (i1,i2)       -> (is_int_var i1) && (is_int_var i2)
+    | LessEq (i1,i2)        -> (is_int_var i1) && (is_int_var i2)
+    | GreaterEq (i1,i2)     -> (is_int_var i1) && (is_int_var i2)
     | LessElem(e1,e2)       -> (is_elem_var e1) && (is_elem_var e2)
     | GreaterElem(e1,e2)    -> (is_elem_var e1) && (is_elem_var e2)
     | Eq(x,y)               ->  (is_term_var x) && (is_term_var y)
@@ -763,6 +849,14 @@ and atom_to_str a =
                                     (elem_to_str e) (setelem_to_str s)
   | SubsetEqElem(s_in,s_out)   -> Printf.sprintf "%s subseteqElem %s"
                                     (setelem_to_str s_in) (setelem_to_str s_out)
+  | Less (i1,i2)               -> Printf.sprintf "%s < %s"
+                                    (int_to_str i1) (int_to_str i2)
+  | Greater (i1,i2)            -> Printf.sprintf "%s > %s"
+                                    (int_to_str i1) (int_to_str i2)
+  | LessEq (i1,i2)             -> Printf.sprintf "%s <= %s"
+                                    (int_to_str i1) (int_to_str i2)
+  | GreaterEq (i1,i2)          -> Printf.sprintf "%s >= %s"
+                                    (int_to_str i1) (int_to_str i2)
   | LessElem(e1,e2)            -> Printf.sprintf "%s < %s"
                                     (elem_to_str e1) (elem_to_str e2)
   | GreaterElem(e1,e2)         -> Printf.sprintf "%s < %s"
@@ -790,7 +884,8 @@ and mem_to_str expr =
       VarMem(v) -> variable_to_str v
     | Emp -> Printf.sprintf "emp"
     | Update(mem,add,cell) -> Printf.sprintf "upd(%s,%s,%s)"
-  (mem_to_str mem) (addr_to_str add) (cell_to_str cell)
+        (mem_to_str mem) (addr_to_str add) (cell_to_str cell)
+
 and path_to_str expr =
   match expr with
       VarPath(v) -> variable_to_str v
