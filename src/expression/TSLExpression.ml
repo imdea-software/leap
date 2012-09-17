@@ -885,7 +885,26 @@ and mem_to_str expr =
     | Emp -> Printf.sprintf "emp"
     | Update(mem,add,cell) -> Printf.sprintf "upd(%s,%s,%s)"
         (mem_to_str mem) (addr_to_str add) (cell_to_str cell)
-
+and int_to_str expr =
+  match expr with
+      IntVal i       -> string_of_int i
+    | VarInt v       -> variable_to_str v
+    | IntNeg i       -> Printf.sprintf "-%s" (int_to_str i)
+    | IntAdd (i1,i2) -> Printf.sprintf "%s + %s" (int_to_str i1) (int_to_str i2)
+    | IntSub (i1,i2) -> Printf.sprintf "%s - %s" (int_to_str i1) (int_to_str i2)
+    | IntMul (i1,i2) -> Printf.sprintf "%s * %s" (int_to_str i1) (int_to_str i2)
+    | IntDiv (i1,i2) -> Printf.sprintf "%s / %s" (int_to_str i1) (int_to_str i2)
+    | HavocLevel     -> Printf.sprintf "havocLevel()"
+and addrarr_to_str expr =
+  match expr with
+      VarAddrArray v       -> variable_to_str v
+    | AddrArrayUp (aa,i,a) -> Printf.sprintf "%s {%s <- %s}"
+                                (addrarr_to_str aa) (int_to_str i) (addr_to_str a)
+and tidarr_to_str expr =
+  match expr with
+      VarTidArray v       -> variable_to_str v
+    | TidArrayUp (tt,i,t) -> Printf.sprintf "%s {%s <- %s}"
+                               (tidarr_to_str tt) (int_to_str i) (tid_to_str t)
 and path_to_str expr =
   match expr with
       VarPath(v) -> variable_to_str v
@@ -934,28 +953,36 @@ and setelem_to_str e =
                             (setelem_to_str s_1) (setelem_to_str s_2)
 and cell_to_str e =
   match e with
-      VarCell(v) -> variable_to_str v
-    | Error -> "Error"
-    | MkCell(data,addr,th) -> Printf.sprintf "mkcell(%s,%s,%s)"
-  (elem_to_str data) (addr_to_str addr) (tid_to_str th)
-    | CellLock(cell,th)   -> Printf.sprintf "%s.lock(%s)"
-  (cell_to_str cell) (tid_to_str th)
-    | CellUnlock(cell) -> Printf.sprintf "%s.unlock"
-  (cell_to_str cell)
-    | CellAt(mem,addr) -> Printf.sprintf "%s [ %s ]" (mem_to_str mem) (addr_to_str addr)
+      VarCell(v)            -> variable_to_str v
+    | Error                 -> "Error"
+    | MkCell(data,aa,tt,l)  -> Printf.sprintf "mkcell(%s,%s,%s,%s)"
+                                 (elem_to_str data) (addrarr_to_str aa)
+                                 (tidarr_to_str tt) (int_to_str l)
+    | CellLockAt(cell,l,th) -> Printf.sprintf "%s.lock(%s,%s)"
+                                 (cell_to_str cell) (int_to_str l) (tid_to_str th)
+    | CellUnlockAt(cell,l)  -> Printf.sprintf "%s.unlock(%s)"
+                                 (cell_to_str cell) (int_to_str l)
+    | CellAt(mem,addr)      -> Printf.sprintf "%s [ %s ]"
+                                 (mem_to_str mem) (addr_to_str addr)
 and addr_to_str expr =
   match expr with
-      VarAddr(v) -> variable_to_str v
-    | Null    -> "null"
-    | Next(cell)           -> Printf.sprintf "%s.next" (cell_to_str cell)
+      VarAddr(v)            -> variable_to_str v
+    | Null                  -> "null"
+    | NextAt(cell,l)        -> Printf.sprintf "%s.next(%s)"
+                                 (cell_to_str cell) (int_to_str l)
     | FirstLocked(mem,path) -> Printf.sprintf "firstlocked(%s,%s)"
-  (mem_to_str mem) (path_to_str path)
+                                 (mem_to_str mem) (path_to_str path)
+    | AddrArrRd (aa,i)      -> Printf.sprintf "%s[%s]"
+                                 (addrarr_to_str aa) (int_to_str i)
 (*    | Malloc(e,a,t)     -> Printf.sprintf "malloc(%s,%s,%s)" (elem_to_str e) (addr_to_str a) (tid_to_str t) *)
 and tid_to_str th =
   match th with
-      VarTh(v)         -> variable_to_str v
-    | NoThid           -> Printf.sprintf "NoThid"
-    | CellLockId(cell) -> Printf.sprintf "%s.lockid" (cell_to_str cell)
+      VarTh(v)             -> variable_to_str v
+    | NoThid               -> Printf.sprintf "NoThid"
+    | CellLockIdAt(cell,l) -> Printf.sprintf "%s.lockid(%s)"
+                                (cell_to_str cell) (int_to_str l)
+    | ThidArrRd (tt,i)     -> Printf.sprintf "%s[%s]"
+                                (tidarr_to_str tt) (int_to_str i)
 and eq_to_str expr =
   let (e1,e2) = expr in
     Printf.sprintf "%s = %s" (term_to_str e1) (term_to_str e2)
@@ -964,11 +991,11 @@ and diseq_to_str expr =
     Printf.sprintf "%s != %s" (term_to_str e1) (term_to_str e2)
 and elem_to_str elem =
   match elem with
-      VarElem(v)     -> variable_to_str v
-    | CellData(cell) -> Printf.sprintf "%s.data" (cell_to_str cell)
-    | HavocListElem  -> "havocListElem()"
-    | LowestElem     -> "lowestElem"
-    | HighestElem    -> "highestElem"
+      VarElem(v)         -> variable_to_str v
+    | CellData(cell)     -> Printf.sprintf "%s.data" (cell_to_str cell)
+    | HavocSkiplistElem  -> "havocSkiplistElem()"
+    | LowestElem         -> "lowestElem"
+    | HighestElem        -> "highestElem"
 and term_to_str expr =
   match expr with
       VarT(v) -> variable_to_str v
@@ -981,6 +1008,9 @@ and term_to_str expr =
     | SetElemT(setelem)  -> (setelem_to_str setelem)
     | PathT(path)        -> (path_to_str path)
     | MemT(mem)          -> (mem_to_str mem)
+    | IntT(i)            -> (int_to_str i)
+    | AddrArrayT(aa)     -> (addrarr_to_str aa)
+    | TidArrayT(tt)      -> (tidarr_to_str tt)
     | VarUpdate (v,th,t) -> let v' = prime_var v in
                             let v'_str = variable_to_str v' in
                             let v_str = variable_to_str v in
@@ -1017,15 +1047,18 @@ and formula_to_str form =
 
 let sort_to_str s =
   match s with
-      Set     -> "Set"
-    | Elem    -> "Elem"
-    | Thid    -> "Thid"
-    | Addr    -> "Addr"
-    | Cell    -> "Cell"
-    | SetTh   -> "SetTh"
-    | SetElem -> "SetElem"
-    | Path    -> "Path"
-    | Mem     -> "Mem"
+      Set       -> "Set"
+    | Elem      -> "Elem"
+    | Thid      -> "Thid"
+    | Addr      -> "Addr"
+    | Cell      -> "Cell"
+    | SetTh     -> "SetTh"
+    | SetElem   -> "SetElem"
+    | Path      -> "Path"
+    | Mem       -> "Mem"
+    | Int       -> "Int"
+    | AddrArray -> "AddrArray"
+    | TidArray  -> "TidArray"
     | Unknown -> "Unknown"
 
 let generic_printer aprinter x =
@@ -1124,6 +1157,9 @@ and voc_term (expr:term) : tid list =
     | SetElemT(setelem)  -> voc_setelem setelem
     | PathT(path)        -> voc_path path
     | MemT(mem)          -> voc_mem mem
+    | IntT(i)            -> voc_int i
+    | AddrArrayT(aa)     -> voc_addrarr aa
+    | TidArrayT(tt)      -> voc_tidarr tt
     | VarUpdate (v,th,t) -> (voc_var v) @ (voc_tid th) @ (voc_term t)
 
 
@@ -1143,35 +1179,38 @@ and voc_addr (a:addr) : tid list =
   match a with
     VarAddr v             -> Option.map_default (fun x->[x]) [] (var_th v)
   | Null                  -> []
-  | Next(cell)            -> (voc_cell cell)
+  | NextAt(cell,l)        -> (voc_cell cell) @ (voc_int l)
   | FirstLocked(mem,path) -> (voc_mem mem) @ (voc_path path)
+  | AddrArrRd (aa,i)      -> (voc_addrarr aa) @ (voc_int i)
 
 
 and voc_elem (e:elem) : tid list =
   match e with
     VarElem v          -> Option.map_default (fun x->[x]) [] (var_th v)
   | CellData(cell)     -> (voc_cell cell)
-  | HavocListElem      -> []
+  | HavocSkiplistElem  -> []
   | LowestElem         -> []
   | HighestElem        -> []
 
 
 and voc_tid (th:tid) : tid list =
   match th with
-    VarTh v            -> th :: (Option.map_default (fun x->[x]) [] (var_th v))
-  | NoThid             -> []
-  | CellLockId(cell)   -> (voc_cell cell)
+    VarTh v              -> th :: (Option.map_default (fun x->[x]) [] (var_th v))
+  | NoThid               -> []
+  | CellLockIdAt(cell,l) -> (voc_cell cell) @ (voc_int l)
+  | ThidArrRd (tt,i)     -> (voc_tidarr tt) @ (voc_int i)
 
 
 and voc_cell (c:cell) : tid list =
   match c with
     VarCell v            -> Option.map_default (fun x->[x]) [] (var_th v)
   | Error                -> []
-  | MkCell(data,addr,th) -> (voc_elem data) @
-                            (voc_addr addr) @
-                            (voc_tid th)
-  | CellLock(cell,th)    -> (voc_cell cell) @ (voc_tid th)
-  | CellUnlock(cell)     -> (voc_cell cell)
+  | MkCell(data,aa,tt,l) -> (voc_elem data)  @
+                            (voc_addrarr aa) @
+                            (voc_tidarr tt)  @
+                            (voc_int l)
+  | CellLockAt(cell,l,th)-> (voc_cell cell) @ (voc_int l) @ (voc_tid th)
+  | CellUnlockAt(cell,l) -> (voc_cell cell) @ (voc_int l)
   | CellAt(mem,addr)     -> (voc_mem mem) @ (voc_addr addr)
 
 
@@ -1213,6 +1252,30 @@ and voc_mem (m:mem) : tid list =
   | Update(mem,add,cell) -> (voc_mem mem) @ (voc_addr add) @ (voc_cell cell)
 
 
+and voc_int (i:integer) : tid list =
+  match i with
+    IntVal _       -> []
+  | VarInt v       -> Option.map_default (fun x->[x]) [] (var_th v)
+  | IntNeg i       -> voc_int i
+  | IntAdd (i1,i2) -> (voc_int i1) @ (voc_int i2)
+  | IntSub (i1,i2) -> (voc_int i1) @ (voc_int i2)
+  | IntMul (i1,i2) -> (voc_int i1) @ (voc_int i2)
+  | IntDiv (i1,i2) -> (voc_int i1) @ (voc_int i2)
+  | HavocLevel     -> []
+
+
+and voc_addrarr (arr:addrarr) : tid list =
+  match arr with
+    VarAddrArray v       -> Option.map_default (fun x->[x]) [] (var_th v)
+  | AddrArrayUp (aa,i,a) -> (voc_addrarr aa) @ (voc_int i) @ (voc_addr a)
+
+
+and voc_tidarr (arr:tidarr) : tid list =
+  match arr with
+    VarTidArray v       -> Option.map_default (fun x->[x]) [] (var_th v)
+  | TidArrayUp (tt,i,t) -> (voc_tidarr tt) @ (voc_int i) @ (voc_tid t)
+
+
 and voc_atom (a:atom) : tid list =
   match a with
     Append(p1,p2,pres)         -> (voc_path p1) @
@@ -1231,6 +1294,10 @@ and voc_atom (a:atom) : tid list =
   | SubsetEqTh(s_in,s_out)     -> (voc_setth s_in) @ (voc_setth s_out)
   | InElem(e,s)                -> (voc_elem e) @ (voc_setelem s)
   | SubsetEqElem(s_in,s_out)   -> (voc_setelem s_in) @ (voc_setelem s_out)
+  | Less (i1,i2)               -> (voc_int i1) @ (voc_int i2)
+  | Greater (i1,i2)            -> (voc_int i1) @ (voc_int i2)
+  | LessEq (i1,i2)             -> (voc_int i1) @ (voc_int i2)
+  | GreaterEq (i1,i2)          -> (voc_int i1) @ (voc_int i2)
   | LessElem(e1,e2)            -> (voc_elem e1) @ (voc_elem e2)
   | GreaterElem(e1,e2)         -> (voc_elem e1) @ (voc_elem e2)
   | Eq(exp)                    -> (voc_eq exp)
@@ -1856,6 +1923,10 @@ let required_sorts (phi:formula) : sort list =
     | SubsetEqTh (s1,s2)  -> list_union [req_st s1;req_st s2]
     | InElem (e,s)        -> list_union [req_e e;req_se s]
     | SubsetEqElem (s1,s2)-> list_union [req_se s1;req_se s2]
+    | Less (i1,i2)        -> list_union [req_i i1;req_i i2]
+    | Greater (i1,i2)     -> list_union [req_i i1;req_i i2]
+    | LessEq (i1,i2)      -> list_union [req_i i1;req_i i2]
+    | GreaterEq (i1,i2)   -> list_union [req_i i1;req_i i2]
     | LessElem  (e1,e2)   -> list_union [req_e e1; req_e e2]
     | GreaterElem (e1,e2) -> list_union [req_e e1; req_e e2]
     | Eq (t1,t2)          -> union (req_term t1) (req_term t2)
@@ -1869,6 +1940,27 @@ let required_sorts (phi:formula) : sort list =
     | VarMem _         -> single Mem
     | Emp              -> single Mem
     | Update (m,a,c)   -> append Mem [req_m m;req_a a;req_c c]
+
+  and req_i (i:integer) : SortSet.t =
+    match i with
+    | IntVal _           -> single Int
+    | VarInt _           -> single Int
+    | IntNeg i           -> append Int [req_i i]
+    | IntAdd (i1,i2)     -> append Int [req_i i1;req_i i2]
+    | IntSub (i1,i2)     -> append Int [req_i i1;req_i i2]
+    | IntMul (i1,i2)     -> append Int [req_i i1;req_i i2]
+    | IntDiv (i1,i2)     -> append Int [req_i i1;req_i i2]
+    | HavocLevel         -> empty
+
+  and req_aa (arr:addrarr) : SortSet.t =
+    match arr with
+    | VarAddrArray _       -> single AddrArray
+    | AddrArrayUp (aa,i,a) -> append AddrArray [req_aa aa;req_i i;req_a a]
+
+  and req_tt (arr:tidarr) : SortSet.t =
+    match arr with
+    | VarTidArray _       -> single TidArray
+    | TidArrayUp (tt,i,t) -> append TidArray [req_tt tt;req_i i;req_t t]
 
   and req_p (p:path) : SortSet.t =
     match p with
@@ -1898,33 +1990,35 @@ let required_sorts (phi:formula) : sort list =
 
   and req_c (c:cell) : SortSet.t =
     match c with
-    | VarCell _         -> single Cell
-    | Error             -> single Cell
-    | MkCell (e,a,t)    -> append Cell [req_e e;req_a a; req_t t]
-    | CellLock (c,t)    -> append Cell [req_c c;req_t t]
-    | CellUnlock c      -> append Cell [req_c c]
-    | CellAt (m,a)      -> append Cell [req_m m;req_a a]
+    | VarCell _          -> single Cell
+    | Error              -> single Cell
+    | MkCell (e,aa,tt,l) -> append Cell [req_e e;req_aa aa; req_tt tt;req_i l]
+    | CellLockAt (c,l,t) -> append Cell [req_c c;req_i l;req_t t]
+    | CellUnlockAt (c,l) -> append Cell [req_c c;req_i l]
+    | CellAt (m,a)       -> append Cell [req_m m;req_a a]
 
   and req_a (a:addr) : SortSet.t =
     match a with
     | VarAddr _         -> single Addr
     | Null              -> single Addr
-    | Next c            -> append Addr [req_c c]
+    | NextAt (c,l)      -> append Addr [req_c c;req_i l]
     | FirstLocked (m,p) -> append Addr [req_m m;req_p p]
+    | AddrArrRd (aa,i)  -> append Addr [req_aa aa;req_i i]
 
   and req_e (e:elem) : SortSet.t =
     match e with
     | VarElem _         -> single Elem
     | CellData c        -> append Elem [req_c c]
-    | HavocListElem     -> single Elem
+    | HavocSkiplistElem -> single Elem
     | LowestElem        -> single Elem
     | HighestElem       -> single Elem
 
   and req_t (t:tid) : SortSet.t =
     match t with
-    | VarTh _           -> single Thid
-    | NoThid            -> single Thid
-    | CellLockId c      -> append Thid [req_c c]
+    | VarTh _            -> single Thid
+    | NoThid             -> single Thid
+    | CellLockIdAt (c,l) -> append Thid [req_c c;req_i l]
+    | ThidArrRd (tt,i)   -> append Thid [req_tt tt;req_i i]
 
   and req_s (s:set) : SortSet.t =
     match s with
@@ -1949,6 +2043,9 @@ let required_sorts (phi:formula) : sort list =
     | SetElemT s                   -> req_se s
     | PathT p                      -> req_p p
     | MemT m                       -> req_m m
+    | IntT i                       -> req_i i
+    | AddrArrayT aa                -> req_aa aa
+    | TidArrayT tt                 -> req_tt tt
     | VarUpdate ((_,s,_,_,_),t,tr) -> append s [req_t t;req_term tr]
 
   in
@@ -1990,6 +2087,10 @@ let special_ops (phi:formula) : special_op_t list =
     | SubsetEqTh (s1,s2)  -> list_union [ops_st s1;ops_st s2]
     | InElem (e,s)        -> list_union [ops_e e;ops_se s]
     | SubsetEqElem (s1,s2)-> list_union [ops_se s1;ops_se s2]
+    | Less (i1,i2)        -> list_union [ops_i i1;ops_i i2]
+    | Greater (i1,i2)     -> list_union [ops_i i1;ops_i i2]
+    | LessEq (i1,i2)      -> list_union [ops_i i1;ops_i i2]
+    | GreaterEq (i1,i2)   -> list_union [ops_i i1;ops_i i2]
     | LessElem (e1,e2)    -> append ElemOrder [ops_e e1; ops_e e2]
     | GreaterElem (e1,e2) -> append ElemOrder [ops_e e1; ops_e e2]
     | Eq (t1,t2)          -> list_union [ops_term t1;ops_term t2]
@@ -2003,6 +2104,27 @@ let special_ops (phi:formula) : special_op_t list =
     | VarMem _         -> empty
     | Emp              -> empty
     | Update (m,a,c)   -> list_union [ops_m m;ops_a a;ops_c c]
+
+  and ops_i (i:integer) : OpsSet.t =
+    match i with
+    | IntVal _       -> empty
+    | VarInt _       -> empty
+    | IntNeg i       -> list_union [ops_i i]
+    | IntAdd (i1,i2) -> list_union [ops_i i1; ops_i i2]
+    | IntSub (i1,i2) -> list_union [ops_i i1; ops_i i2]
+    | IntMul (i1,i2) -> list_union [ops_i i1; ops_i i2]
+    | IntDiv (i1,i2) -> list_union [ops_i i1; ops_i i2]
+    | HavocLevel     -> empty
+
+  and ops_aa (arr:addrarr) : OpsSet.t =
+    match arr with
+    | VarAddrArray _       -> empty
+    | AddrArrayUp (aa,i,a) -> list_union [ops_aa aa; ops_i i; ops_a a]
+
+  and ops_tt (arr:tidarr) : OpsSet.t =
+    match arr with
+    | VarTidArray _       -> empty
+    | TidArrayUp (tt,i,t) -> list_union [ops_tt tt; ops_i i; ops_t t]
 
   and ops_p (p:path) : OpsSet.t =
     match p with
@@ -2032,33 +2154,35 @@ let special_ops (phi:formula) : special_op_t list =
 
   and ops_c (c:cell) : OpsSet.t =
     match c with
-    | VarCell _         -> empty
-    | Error             -> empty
-    | MkCell (e,a,t)    -> list_union [ops_e e;ops_a a; ops_t t]
-    | CellLock (c,t)    -> list_union [ops_c c;ops_t t]
-    | CellUnlock c      -> list_union [ops_c c]
-    | CellAt (m,a)      -> list_union [ops_m m;ops_a a]
+    | VarCell _          -> empty
+    | Error              -> empty
+    | MkCell (e,aa,tt,l) -> list_union [ops_e e;ops_aa aa;ops_tt tt;ops_i l]
+    | CellLockAt (c,l,t) -> list_union [ops_c c;ops_i l;ops_t t]
+    | CellUnlockAt (c,l) -> list_union [ops_c c;ops_i l]
+    | CellAt (m,a)       -> list_union [ops_m m;ops_a a]
 
   and ops_a (a:addr) : OpsSet.t =
     match a with
-    | VarAddr _         -> empty
-    | Null              -> empty
-    | Next c            -> list_union [ops_c c]
-    | FirstLocked (m,p) -> append FstLocked [ops_m m;ops_p p]
+    | VarAddr _            -> empty
+    | Null                 -> empty
+    | NextAt (c,l)         -> list_union [ops_c c;ops_i l]
+    | FirstLocked (m,p)    -> append FstLocked [ops_m m;ops_p p]
+    | AddrArrRd (aa,i)     -> list_union [ops_aa aa;ops_i i]
 
   and ops_e (e:elem) : OpsSet.t =
     match e with
     | VarElem _         -> empty
     | CellData c        -> ops_c c
-    | HavocListElem     -> empty
+    | HavocSkiplistElem -> empty
     | LowestElem        -> empty
     | HighestElem       -> empty
 
   and ops_t (t:tid) : OpsSet.t =
     match t with
-    | VarTh _           -> empty
-    | NoThid            -> empty
-    | CellLockId c      -> ops_c c
+    | VarTh _            -> empty
+    | NoThid             -> empty
+    | CellLockIdAt (c,l) -> list_union [ops_c c;ops_i l]
+    | ThidArrRd (tt,i)   -> list_union [ops_tt tt;ops_i i]
 
   and ops_s (s:set) : OpsSet.t =
     match s with
@@ -2083,6 +2207,9 @@ let special_ops (phi:formula) : special_op_t list =
     | SetElemT s         -> ops_se s
     | PathT p            -> ops_p p
     | MemT m             -> ops_m m
+    | IntT i             -> ops_i i
+    | AddrArrayT aa      -> ops_aa aa
+    | TidArrayT tt       -> ops_tt tt
     | VarUpdate (_,t,tr) -> list_union [ops_t t;ops_term tr]
 
   in
