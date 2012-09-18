@@ -120,6 +120,7 @@ and addr =
   | AddrArrayRd   of arrays * tid
   | Malloc        of elem * addr * tid
   | MallocSL      of elem * integer
+  | MallocSLK     of elem * integer
   | PointerNext   of addr
   | PointerNextAt of addr * integer
   | AddrArrRd     of addrarr * integer
@@ -321,6 +322,7 @@ val term_to_setelem : term -> setelem
 val elem_to_expr_elem : elem -> Expression.elem
 val addr_to_expr_addr : addr -> Expression.addr
 val tid_to_expr_tid : tid -> Expression.tid
+val integer_to_expr_integer : integer -> Expression.integer
 
 val term_to_expr_term : term -> Expression.term
 val literal_to_expr_literal : literal -> Expression.literal

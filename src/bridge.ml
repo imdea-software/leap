@@ -86,21 +86,55 @@ let unfold_expression (mInfo:malloc_info)
       (E.Term (E.AddrT a_fresh), Some E.aux_heap, [], [new_f])
   in
   match e with
-    Stm.Term (Stm.AddrT (Stm.Malloc(e,a,t))) ->
+  | Stm.Term (Stm.AddrT (Stm.Malloc(e,a,t))) ->
       let e_expr  = Stm.elem_to_expr_elem e in
       let a_expr  = Stm.addr_to_expr_addr a in
       let t_expr  = Stm.tid_to_expr_tid t in
       let mkcell  = E.param_cell th_p (E.MkCell(e_expr, a_expr, t_expr)) in
         gen_malloc mkcell
+  | Stm.Term (Stm.AddrT (Stm.MallocSLK(e,l))) ->
+      let e_expr  = Stm.elem_to_expr_elem e in
+      let l_expr  = Stm.integer_to_expr_integer l in
+      let mkcell  = E.param_cell th_p (E.MkSLKCell(e_expr, [], [], l_expr)) in
+        gen_malloc mkcell
+  | Stm.Term (Stm.AddrT (Stm.MallocSL(e,l))) ->
+      let e_expr   = Stm.elem_to_expr_elem e in
+      let l_expr   = Stm.integer_to_expr_integer l in
+      let aa_fresh = E.VarAddrArray(E.build_var
+                       E.fresh_addrarr_name E.AddrArray false None None E.Normal) in
+      let tt_fresh = E.VarTidArray(E.build_var
+                       E.fresh_tidarr_name E.TidArray false None None E.Normal) in
+      let i_fresh = E.VarInt(E.build_var
+                       E.fresh_int_name E.Int false None None E.Normal) in
+      let mkcell   = E.param_cell th_p
+                       (E.MkSLCell(e_expr, aa_fresh, tt_fresh, l_expr)) in
+      let (t,e,ms,fs) = gen_malloc mkcell in
+      let fs' = List.map (fun f -> E.And
+                                     (E.Implies
+                                       (E.less_form (E.IntVal 0) i_fresh,
+                                        E.And
+                                          (E.eq_addr (E.AddrArrRd(aa_fresh, i_fresh))
+                                                     (E.Null),
+                                           E.eq_tid (E.ThidArrRd(tt_fresh, i_fresh))
+                                                    (E.NoThid))), f)) fs in
+        (t,e,ms,fs')
   | Stm.Term (Stm.ElemT (Stm.PointerData a)) ->
       let a_expr = Stm.addr_to_expr_addr a in
       (E.Term (E.ElemT (E.CellData (E.CellAt (E.heap,a_expr)))), None, [], [])
   | Stm.Term (Stm.AddrT (Stm.PointerNext a)) ->
       let a_expr = Stm.addr_to_expr_addr a in
       (E.Term (E.AddrT (E.Next (E.CellAt (E.heap,a_expr)))), None, [], [])
+  | Stm.Term (Stm.AddrT (Stm.PointerNextAt (a,l))) ->
+      let a_expr = Stm.addr_to_expr_addr a in
+      let l_expr = Stm.integer_to_expr_integer l in
+      (E.Term (E.AddrT (E.NextAt (E.CellAt (E.heap,a_expr), l_expr))), None, [], [])
   | Stm.Term (Stm.ThidT (Stm.PointerLockid a)) ->
       let a_expr = Stm.addr_to_expr_addr a in
       (E.Term (E.ThidT (E.CellLockId (E.CellAt (E.heap,a_expr)))), None, [], [])
+  | Stm.Term (Stm.ThidT (Stm.PointerLockidAt (a,l))) ->
+      let a_expr = Stm.addr_to_expr_addr a in
+      let l_expr = Stm.integer_to_expr_integer l in
+      (E.Term (E.ThidT (E.CellLockIdAt (E.CellAt (E.heap,a_expr), l_expr))), None, [], [])
   | _ -> (Stm.expr_to_expr_expr e, None, [], [])
 
 

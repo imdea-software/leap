@@ -261,11 +261,15 @@ module PosSet : Set.S with type elt = pc_t
 
 
 (* Configuration *)
-val pc_name         : string
-val fresh_cell_name : string
-val fresh_addr_name : string
-val defCountAbsVar  : string
-val defCountVar     : integer
+val pc_name            : string
+val fresh_cell_name    : string
+val fresh_addr_name    : string
+val fresh_mem_name     : string
+val fresh_addrarr_name : string
+val fresh_tidarr_name  : string
+val fresh_int_name     : string
+val defCountAbsVar     : string
+val defCountVar        : integer
 
 (* The heap *)
 val heap     : mem

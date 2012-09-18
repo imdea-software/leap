@@ -122,6 +122,7 @@ and addr =
   | AddrArrayRd   of arrays * tid
   | Malloc        of elem * addr * tid
   | MallocSL      of elem * integer
+  | MallocSLK     of elem * integer
   | PointerNext   of addr
   | PointerNextAt of addr * integer
   | AddrArrRd     of addrarr * integer
@@ -597,6 +598,8 @@ and addr_to_str (loc:bool) (expr:addr) :string =
                                                         (tid_to_str loc t)
   | MallocSL(e,l)         -> sprintf "mallocSL(%s,%s)" (elem_to_str loc e)
                                                        (integer_to_str loc l)
+  | MallocSLK(e,l)        -> sprintf "mallocSLK(%s,%s)" (elem_to_str loc e)
+                                                        (integer_to_str loc l)
   | PointerNext a         -> sprintf "%s->next" (addr_to_str loc a)
   | PointerNextAt(a,l)    -> sprintf "%s->next[%s]" (addr_to_str loc a)
                                                     (integer_to_str loc l)
@@ -881,6 +884,7 @@ and addr_to_expr_addr (a:addr) : E.addr =
                                         integer_to_expr_integer i)
   | Malloc _            -> raise (Not_supported_conversion (addr_to_str true a))
   | MallocSL _          -> raise (Not_supported_conversion (addr_to_str true a))
+  | MallocSLK _         -> raise (Not_supported_conversion (addr_to_str true a))
   | PointerNext a       -> E.Next(E.CellAt(E.heap,addr_to_expr_addr a))
   | PointerNextAt (a,l) -> E.Next(E.CellAt(E.heap,addr_to_expr_addr a))
 
@@ -1154,6 +1158,8 @@ and var_kind_addr (kind:E.kind_t) (a:addr) : term list =
                                  (var_kind_addr kind addr) @
                                  (var_kind_th kind th)
   | MallocSL(data,l)          -> (var_kind_elem kind data) @
+                                 (var_kind_int kind l)
+  | MallocSLK(data,l)         -> (var_kind_elem kind data) @
                                  (var_kind_int kind l)
   | PointerNext a             -> (var_kind_addr kind a)
   | PointerNextAt (a,l)       -> (var_kind_addr kind a) @

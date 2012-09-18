@@ -38,6 +38,7 @@ rule norm = parse
   | "endchoice"     { Global.last "endchoice"     ; ST_ENDCHOICE }
   | "malloc"        { Global.last "malloc"        ; MALLOC }
   | "mallocSL"      { Global.last "mallocSL"      ; MALLOCSL }
+  | "mallocSLK"     { Global.last "mallocSLK"     ; MALLOCSLK }
   | "->"            { Global.last "->"            ; POINTER }
   | "error"         { Global.last "error"         ; ERROR }
   | "mkcell"        { Global.last "mkcell"        ; MKCELL }

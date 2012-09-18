@@ -176,8 +176,9 @@ let get_sort_from_tables (stm_t:Stm.term)
                          (inpTbl:Sys.var_table_t)
                          (locTbl:Sys.var_table_t) : Expr.sort =
   match stm_t with
-  | Stm.AddrT (Stm.Malloc _)   -> Expr.Addr
-  | Stm.AddrT (Stm.MallocSL _) -> Expr.Addr
+  | Stm.AddrT (Stm.Malloc _)    -> Expr.Addr
+  | Stm.AddrT (Stm.MallocSL _)  -> Expr.Addr
+  | Stm.AddrT (Stm.MallocSLK _) -> Expr.Addr
   | _ -> let t = Stm.term_to_expr_term stm_t
          in
            System.get_sort_from_term globalVars inpTbl locTbl invVars t
@@ -792,7 +793,7 @@ let lock_pos_to_str (pos:Stm.integer option) : string =
 %token ST_WHILE ST_DO ST_ENDWHILE
 %token ST_CHOICE ST_OR ST_ENDCHOICE
 
-%token MALLOC MALLOCSL
+%token MALLOC MALLOCSL MALLOCSLK
 %token POINTER
 %token ME
 
@@ -2683,6 +2684,15 @@ addr :
       let e = parser_check_type check_type_elem $3 Expr.Elem get_str_expr in
       let l = parser_check_type check_type_int $5 Expr.Int get_str_expr in
         Stm.MallocSL(e,l)
+    }
+  | MALLOCSLK OPEN_PAREN term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "mallocSLK(%s,%s)" (Stm.term_to_str $3)
+                                                       (Stm.term_to_str $5) 
+      in
+      let e = parser_check_type check_type_elem $3 Expr.Elem get_str_expr in
+      let l = parser_check_type check_type_int $5 Expr.Int get_str_expr in
+        Stm.MallocSLK(e,l)
     }
   | term POINTER NEXT
     {

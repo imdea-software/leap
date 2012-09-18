@@ -362,10 +362,15 @@ exception Not_implemented of string
 
 
 (* Configuration *)
-let pc_name         = "pc"
-let fresh_cell_name = "freshcell"
-let fresh_addr_name = "freshaddr"
-let fresh_mem_name  = "freshmem"
+let pc_name             = "pc"
+let fresh_cell_name     = "freshcell"
+let fresh_addr_name     = "freshaddr"
+let fresh_mem_name      = "freshmem"
+let fresh_addrarr_name  = "freshaddrarr"
+let fresh_tidarr_name   = "freshtidarr"
+let fresh_int_name      = "freshint"
+
+
 let notid_name      = "NoThread"
 let defCountAbsVar  = "N"
 
