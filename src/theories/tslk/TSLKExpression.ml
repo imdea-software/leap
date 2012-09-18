@@ -17,35 +17,35 @@ and sort =
   | Path
   | Mem
   | Int
-	| Unknown
+  | Unknown
 and term =
-		VarT        			of variable
-	| SetT        			of set
-	| ElemT       			of elem
-	| ThidT       			of tid
-	| AddrT       			of addr
-	| CellT       			of cell
-	| SetThT      			of setth
-	| SetElemT    			of setelem
-	| PathT       			of path
-	| MemT        			of mem
-	| IntT        			of integer
-	| VarUpdate   			of variable * tid * term
+    VarT              of variable
+  | SetT              of set
+  | ElemT             of elem
+  | ThidT             of tid
+  | AddrT             of addr
+  | CellT             of cell
+  | SetThT            of setth
+  | SetElemT          of setelem
+  | PathT             of path
+  | MemT              of mem
+  | IntT              of integer
+  | VarUpdate         of variable * tid * term
 and eq = term * term
 and diseq = term * term
 and set =
-		VarSet 						of variable
-	| EmptySet
-	| Singl     				of addr
-	| Union     				of set * set
-	| Intr      				of set * set
-	| Setdiff   				of set * set
-	| PathToSet 				of path
-	| AddrToSet 				of mem * addr
+    VarSet            of variable
+  | EmptySet
+  | Singl             of addr
+  | Union             of set * set
+  | Intr              of set * set
+  | Setdiff           of set * set
+  | PathToSet         of path
+  | AddrToSet         of mem * addr
 and tid =
-		VarTh         		of variable
-	| NoThid
-	| CellLockIdAt  		of cell * integer
+    VarTh             of variable
+  | NoThid
+  | CellLockIdAt      of cell * integer
 and elem =
     VarElem           of variable
   | CellData          of cell
@@ -53,88 +53,88 @@ and elem =
   | LowestElem
   | HighestElem
 and addr =
-		VarAddr     			of variable
-	| Null
-	| NextAt      			of cell * integer
-	| FirstLocked 			of mem * path
+    VarAddr           of variable
+  | Null
+  | NextAt            of cell * integer
+  | FirstLocked       of mem * path
 (*  | Malloc of elem * addr * tid *)
 and cell =
-		VarCell      			of variable
-	| Error
-	| MkCell       			of elem * addr list * tid list * integer
-	| CellLockAt   			of cell * integer * tid
-	| CellUnlockAt 			of cell * integer
-	| CellAt       			of mem * addr
+    VarCell           of variable
+  | Error
+  | MkCell            of elem * addr list * tid list * integer
+  | CellLockAt        of cell * integer * tid
+  | CellUnlockAt      of cell * integer
+  | CellAt            of mem * addr
 and setth =
-		VarSetTh 					of variable
-	| EmptySetTh
-	| SinglTh   				of tid
-	| UnionTh   				of setth * setth
-	| IntrTh    				of setth * setth
-	| SetdiffTh 				of setth * setth
+    VarSetTh          of variable
+  | EmptySetTh
+  | SinglTh           of tid
+  | UnionTh           of setth * setth
+  | IntrTh            of setth * setth
+  | SetdiffTh         of setth * setth
 and setelem =
-		VarSetElem   			of variable
-	| EmptySetElem
-	| SinglElem   			of elem
-	| UnionElem    			of setelem * setelem
-	| IntrElem     			of setelem * setelem
-	| SetToElems   			of set * mem
-	| SetdiffElem  			of setelem * setelem
+    VarSetElem        of variable
+  | EmptySetElem
+  | SinglElem         of elem
+  | UnionElem         of setelem * setelem
+  | IntrElem          of setelem * setelem
+  | SetToElems        of set * mem
+  | SetdiffElem       of setelem * setelem
 and path =
-		VarPath 					of variable
-	| Epsilon
-	| SimplePath 				of addr
-	| GetPath    				of mem * addr * addr
+    VarPath           of variable
+  | Epsilon
+  | SimplePath        of addr
+  | GetPath           of mem * addr * addr
 and mem =
-		VarMem						of variable
-	| Emp
-	| Update						of mem * addr * cell
+    VarMem            of variable
+  | Emp
+  | Update            of mem * addr * cell
 and integer =
-		IntVal        		of int
-	| VarInt        		of variable
-	| IntNeg        		of integer
-	| IntAdd        		of integer * integer
-	| IntSub        		of integer * integer
-	| IntMul        		of integer * integer
-	| IntDiv        		of integer * integer
-	| HavocLevel
+    IntVal            of int
+  | VarInt            of variable
+  | IntNeg            of integer
+  | IntAdd            of integer * integer
+  | IntSub            of integer * integer
+  | IntMul            of integer * integer
+  | IntDiv            of integer * integer
+  | HavocLevel
 and atom =
-		Append       			of path * path * path
-	| Reach        			of mem * addr * addr * path
-	| OrderList    			of mem * addr * addr
-	| In           			of addr * set
-	| SubsetEq     			of set  * set
-	| InTh         			of tid * setth
-	| SubsetEqTh   			of setth * setth
-	| InElem       			of elem * setelem
-	| SubsetEqElem 			of setelem * setelem
-	| Less         			of integer * integer
-	| Greater      			of integer * integer
-	| LessEq       			of integer * integer
-	| GreaterEq    			of integer * integer
-	| LessElem     			of elem * elem
-	| GreaterElem  			of elem * elem
-	| Eq           			of eq
-	| InEq         			of diseq
-	| PC           			of int * tid option * bool
-	| PCUpdate     			of int * tid
-	| PCRange      			of int * int * tid option * bool
+    Append            of path * path * path
+  | Reach             of mem * addr * addr * path
+  | OrderList         of mem * addr * addr
+  | In                of addr * set
+  | SubsetEq          of set  * set
+  | InTh              of tid * setth
+  | SubsetEqTh        of setth * setth
+  | InElem            of elem * setelem
+  | SubsetEqElem      of setelem * setelem
+  | Less              of integer * integer
+  | Greater           of integer * integer
+  | LessEq            of integer * integer
+  | GreaterEq         of integer * integer
+  | LessElem          of elem * elem
+  | GreaterElem       of elem * elem
+  | Eq                of eq
+  | InEq              of diseq
+  | PC                of int * tid option * bool
+  | PCUpdate          of int * tid
+  | PCRange           of int * int * tid option * bool
 and literal =
-		Atom    					of atom
-	| NegAtom 					of atom
+    Atom              of atom
+  | NegAtom           of atom
 and conjunctive_formula =
     FalseConj
   | TrueConj
-	| Conj 							of literal list
+  | Conj              of literal list
 and formula =
-		Literal   				of literal
-	| True
+    Literal           of literal
+  | True
   | False
-	| And     					of formula * formula
-	| Or      					of formula * formula
-	| Not     					of formula
-	| Implies 					of formula * formula
-	| Iff     					of formula * formula
+  | And               of formula * formula
+  | Or                of formula * formula
+  | Not               of formula
+  | Implies           of formula * formula
+  | Iff               of formula * formula
 
 type special_op_t =
   | Reachable
@@ -194,7 +194,7 @@ let is_primed_tid (th:tid) : bool =
   | VarTh v           -> is_primed_var v
   | NoThid            -> false
   | CellLockIdAt _    -> false
-	(* FIX: Propagate the query inside cell??? *)
+  (* FIX: Propagate the query inside cell??? *)
 
 
 let var_th (v:variable) : tid option =
@@ -276,7 +276,7 @@ let get_varset_from_param (v:variable) : S.t =
 
 
 let rec get_varset_set s =
-	match s with
+  match s with
       VarSet v       -> S.singleton v @@ get_varset_from_param v
     | EmptySet       -> S.empty
     | Singl(a)       -> get_varset_addr a
@@ -305,12 +305,12 @@ and get_varset_addr a =
     | FirstLocked(m,p) -> (get_varset_mem m) @@ (get_varset_path p)
 (*    | Malloc(e,a,th)   -> (get_varset_elem e) @@ (get_varset_addr a) @@  (get_varset_tid th) *)
 and get_varset_cell c =
-	let fold f xs = List.fold_left (fun set x -> (f x) @@ set) S.empty xs in
-	match c with
+  let fold f xs = List.fold_left (fun set x -> (f x) @@ set) S.empty xs in
+  match c with
       VarCell v           -> S.singleton v @@ get_varset_from_param v
     | Error               -> S.empty
-		| MkCell(e,aa,tt,l)   -> (get_varset_elem e) @@ (fold get_varset_addr aa) @@
-														 (fold get_varset_tid tt) @@ (get_varset_integer l)
+    | MkCell(e,aa,tt,l)   -> (get_varset_elem e) @@ (fold get_varset_addr aa) @@
+                             (fold get_varset_tid tt) @@ (get_varset_integer l)
     | CellLockAt (c,l,th) -> (get_varset_cell c) @@ (get_varset_integer l) @@
                              (get_varset_tid th)
     | CellUnlockAt (c,l)  -> (get_varset_cell c) @@ (get_varset_integer l)
@@ -391,7 +391,7 @@ and get_varset_term t = match t with
     | PathT  p            -> get_varset_path p
     | MemT   m            -> get_varset_mem m
     | IntT   i            -> get_varset_integer i
-		| VarUpdate(v,pc,t)   -> (S.singleton v) @@ (get_varset_term t) @@
+    | VarUpdate(v,pc,t)   -> (S.singleton v) @@ (get_varset_term t) @@
                              (get_varset_from_param v)
 and get_varset_literal l =
   match l with
@@ -522,7 +522,7 @@ let termset_of_sort (all:TermSet.t) (s:sort) : TermSet.t =
     | Path      -> (match t with | PathT _      -> true | _ -> false)
     | Mem       -> (match t with | MemT _       -> true | _ -> false)
     | Int       -> (match t with | IntT _       -> true | _ -> false)
-		| Unknown -> false in
+    | Unknown -> false in
   TermSet.fold (fun t set ->
     if match_sort t then
       TermSet.add t set
@@ -595,7 +595,7 @@ let get_sort_from_term t =
     | PathT _          -> Path
     | MemT _           -> Mem
     | IntT _           -> Int
-		| VarUpdate(v,_,_) -> get_sort v
+    | VarUpdate(v,_,_) -> get_sort v
   
 let terms_same_type a b =
   (get_sort_from_term a) = (get_sort_from_term b)
@@ -620,7 +620,7 @@ let rec is_term_flat t =
     | PathT p        -> is_path_flat p
     | MemT  m        -> is_mem_flat m
     | IntT  i        -> is_int_flat i
-		| VarUpdate _    -> true
+    | VarUpdate _    -> true
 
 and is_set_flat t =
   match t with
@@ -652,11 +652,11 @@ and is_addr_flat t =
     | FirstLocked(m,p) -> (is_mem_var m) && (is_path_var p)
 (*    | Malloc(m,a,k)    -> (is_mem_var m) && (is_addr_var a) && (is_thread_var k) *)
 and is_cell_flat t =
-	match t with
+  match t with
       VarCell _           -> true
     | Error               -> true
-		| MkCell (e,aa,tt,l)  -> (is_elem_var e) && (List.for_all is_addr_var aa) &&
-														 (List.for_all is_tid_var tt) && (is_int_var l)
+    | MkCell (e,aa,tt,l)  -> (is_elem_var e) && (List.for_all is_addr_var aa) &&
+                             (List.for_all is_tid_var tt) && (is_int_var l)
     | CellLockAt (c,l,th) -> (is_cell_var c) && (is_int_var l) && (is_tid_var th)
     | CellUnlockAt (c,l)  -> (is_cell_var c) && (is_int_var l)
     | CellAt(m,a)         -> (is_mem_var m) && (is_addr_var a)
@@ -891,13 +891,13 @@ and setelem_to_str e =
     | SetdiffElem(s_1,s_2) -> Printf.sprintf "%s SetDiffElem %s"
                             (setelem_to_str s_1) (setelem_to_str s_2)
 and cell_to_str e =
-	let concat f xs = String.concat "," (List.map f xs) in
-	match e with
+  let concat f xs = String.concat "," (List.map f xs) in
+  match e with
       VarCell(v)            -> variable_to_str v
     | Error                 -> "Error"
-		| MkCell(data,aa,tt,l)  -> Printf.sprintf "mkcell(%s,[%s],[%s],%s)"
-																 (elem_to_str data) (concat addr_to_str aa)
-																 (concat tid_to_str tt) (int_to_str l)
+    | MkCell(data,aa,tt,l)  -> Printf.sprintf "mkcell(%s,[%s],[%s],%s)"
+                                 (elem_to_str data) (concat addr_to_str aa)
+                                 (concat tid_to_str tt) (int_to_str l)
     | CellLockAt(cell,l,th) -> Printf.sprintf "%s.lock(%s,%s)"
                                  (cell_to_str cell) (int_to_str l) (tid_to_str th)
     | CellUnlockAt(cell,l)  -> Printf.sprintf "%s.unlock(%s)"
@@ -945,7 +945,7 @@ and term_to_str expr =
     | PathT(path)        -> (path_to_str path)
     | MemT(mem)          -> (mem_to_str mem)
     | IntT(i)            -> (int_to_str i)
-		| VarUpdate (v,th,t) -> let v' = prime_var v in
+    | VarUpdate (v,th,t) -> let v' = prime_var v in
                             let v'_str = variable_to_str v' in
                             let v_str = variable_to_str v in
                             let th_str = tid_to_str th in
@@ -991,7 +991,7 @@ let sort_to_str s =
     | Path      -> "Path"
     | Mem       -> "Mem"
     | Int       -> "Int"
-		| Unknown -> "Unknown"
+    | Unknown -> "Unknown"
 
 let generic_printer aprinter x =
   Printf.printf "%s" (aprinter x)
@@ -1090,7 +1090,7 @@ and voc_term (expr:term) : tid list =
     | PathT(path)        -> voc_path path
     | MemT(mem)          -> voc_mem mem
     | IntT(i)            -> voc_int i
-		| VarUpdate (v,th,t) -> (voc_var v) @ (voc_tid th) @ (voc_term t)
+    | VarUpdate (v,th,t) -> (voc_var v) @ (voc_tid th) @ (voc_term t)
 
 
 and voc_set (e:set) : tid list =
@@ -1130,13 +1130,13 @@ and voc_tid (th:tid) : tid list =
 
 
 and voc_cell (c:cell) : tid list =
-	let fold f xs = List.fold_left (fun ys x -> (f x) @ ys) [] xs in
-	match c with
+  let fold f xs = List.fold_left (fun ys x -> (f x) @ ys) [] xs in
+  match c with
     VarCell v            -> Option.map_default (fun x->[x]) [] (var_th v)
   | Error                -> []
-	| MkCell(data,aa,tt,l) -> (voc_elem data)		 @
-														(fold voc_addr aa) @
-														(fold voc_tid tt)  @
+  | MkCell(data,aa,tt,l) -> (voc_elem data)    @
+                            (fold voc_addr aa) @
+                            (fold voc_tid tt)  @
                             (voc_int l)
   | CellLockAt(cell,l,th)-> (voc_cell cell) @ (voc_int l) @ (voc_tid th)
   | CellUnlockAt(cell,l) -> (voc_cell cell) @ (voc_int l)
@@ -1869,7 +1869,7 @@ let required_sorts (phi:formula) : sort list =
     | IntDiv (i1,i2)     -> append Int [req_i i1;req_i i2]
     | HavocLevel         -> empty
 
-	and req_p (p:path) : SortSet.t =
+  and req_p (p:path) : SortSet.t =
     match p with
     | VarPath _         -> single Path
     | Epsilon           -> single Path
@@ -1895,14 +1895,14 @@ let required_sorts (phi:formula) : sort list =
     | SetToElems (s,m)     -> append SetElem [req_s   s;req_m   m]
     | SetdiffElem (s1,s2)  -> append SetElem [req_se s1;req_se s2]
 
-	and req_c (c:cell) : SortSet.t =
-		match c with
+  and req_c (c:cell) : SortSet.t =
+    match c with
     | VarCell _          -> single Cell
     | Error              -> single Cell
-		| MkCell (e,aa,tt,l) -> append Cell ([req_e e;req_i l] @
-																				 (List.map req_a aa) @
-																				 (List.map req_t tt))
-		| CellLockAt (c,l,t) -> append Cell [req_c c;req_i l;req_t t]
+    | MkCell (e,aa,tt,l) -> append Cell ([req_e e;req_i l] @
+                                         (List.map req_a aa) @
+                                         (List.map req_t tt))
+    | CellLockAt (c,l,t) -> append Cell [req_c c;req_i l;req_t t]
     | CellUnlockAt (c,l) -> append Cell [req_c c;req_i l]
     | CellAt (m,a)       -> append Cell [req_m m;req_a a]
 
@@ -1951,7 +1951,7 @@ let required_sorts (phi:formula) : sort list =
     | PathT p                      -> req_p p
     | MemT m                       -> req_m m
     | IntT i                       -> req_i i
-		| VarUpdate ((_,s,_,_,_),t,tr) -> append s [req_t t;req_term tr]
+    | VarUpdate ((_,s,_,_,_),t,tr) -> append s [req_t t;req_term tr]
 
   in
     SortSet.elements (req_f phi)
@@ -2021,7 +2021,7 @@ let special_ops (phi:formula) : special_op_t list =
     | IntDiv (i1,i2) -> list_union [ops_i i1; ops_i i2]
     | HavocLevel     -> empty
 
-	and ops_p (p:path) : OpsSet.t =
+  and ops_p (p:path) : OpsSet.t =
     match p with
     | VarPath _         -> empty
     | Epsilon           -> empty
@@ -2051,9 +2051,9 @@ let special_ops (phi:formula) : special_op_t list =
     match c with
     | VarCell _          -> empty
     | Error              -> empty
-		| MkCell (e,aa,tt,l) -> list_union ([ops_e e;ops_i l] @
-																				(List.map ops_a aa) @
-																				(List.map ops_t tt))
+    | MkCell (e,aa,tt,l) -> list_union ([ops_e e;ops_i l] @
+                                        (List.map ops_a aa) @
+                                        (List.map ops_t tt))
     | CellLockAt (c,l,t) -> list_union [ops_c c;ops_i l;ops_t t]
     | CellUnlockAt (c,l) -> list_union [ops_c c;ops_i l]
     | CellAt (m,a)       -> list_union [ops_m m;ops_a a]
@@ -2103,7 +2103,7 @@ let special_ops (phi:formula) : special_op_t list =
     | PathT p            -> ops_p p
     | MemT m             -> ops_m m
     | IntT i             -> ops_i i
-		| VarUpdate (_,t,tr) -> list_union [ops_t t;ops_term tr]
+    | VarUpdate (_,t,tr) -> list_union [ops_t t;ops_term tr]
 
   in
     OpsSet.elements (ops_f phi)

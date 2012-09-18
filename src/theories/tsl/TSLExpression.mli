@@ -17,36 +17,36 @@ and sort =
   | TidArray
   | Unknown
 and term =
-		VarT        			of variable
-	| SetT        			of set
-	| ElemT       			of elem
-	| ThidT       			of tid
-	| AddrT       			of addr
-	| CellT       			of cell
-	| SetThT      			of setth
-	| SetElemT    			of setelem
-	| PathT       			of path
-	| MemT        			of mem
-	| IntT        			of integer
-	| AddrArrayT  			of addrarr
-	| TidArrayT   			of tidarr
-	| VarUpdate   			of variable * tid * term
+    VarT              of variable
+  | SetT              of set
+  | ElemT             of elem
+  | ThidT             of tid
+  | AddrT             of addr
+  | CellT             of cell
+  | SetThT            of setth
+  | SetElemT          of setelem
+  | PathT             of path
+  | MemT              of mem
+  | IntT              of integer
+  | AddrArrayT        of addrarr
+  | TidArrayT         of tidarr
+  | VarUpdate         of variable * tid * term
 and eq = term * term
 and diseq = term * term
 and set =
-		VarSet 						of variable
-	| EmptySet
-	| Singl     				of addr
-	| Union     				of set * set
-	| Intr      				of set * set
-	| Setdiff   				of set * set
-	| PathToSet 				of path
-	| AddrToSet 				of mem * addr
+    VarSet            of variable
+  | EmptySet
+  | Singl             of addr
+  | Union             of set * set
+  | Intr              of set * set
+  | Setdiff           of set * set
+  | PathToSet         of path
+  | AddrToSet         of mem * addr
 and tid =
-		VarTh         		of variable
-	| NoThid
-	| CellLockIdAt  		of cell * integer
-	| ThidArrRd     		of tidarr * integer
+    VarTh             of variable
+  | NoThid
+  | CellLockIdAt      of cell * integer
+  | ThidArrRd         of tidarr * integer
 and elem =
     VarElem           of variable
   | CellData          of cell
@@ -54,95 +54,95 @@ and elem =
   | LowestElem
   | HighestElem
 and addr =
-		VarAddr     			of variable
-	| Null
-	| NextAt      			of cell * integer
-	| FirstLocked 			of mem * path
-	| AddrArrRd  				of addrarr * integer
+    VarAddr           of variable
+  | Null
+  | NextAt            of cell * integer
+  | FirstLocked       of mem * path
+  | AddrArrRd         of addrarr * integer
 (*  | Malloc of elem * addr * tid *)
 and cell =
-		VarCell      			of variable
-	| Error
-	| MkCell       			of elem * addrarr * tidarr * integer
-	| CellLockAt   			of cell * integer * tid
-	| CellUnlockAt 			of cell * integer
-	| CellAt       			of mem * addr
+    VarCell           of variable
+  | Error
+  | MkCell            of elem * addrarr * tidarr * integer
+  | CellLockAt        of cell * integer * tid
+  | CellUnlockAt      of cell * integer
+  | CellAt            of mem * addr
 and setth =
-		VarSetTh 					of variable
-	| EmptySetTh
-	| SinglTh   				of tid
-	| UnionTh   				of setth * setth
-	| IntrTh    				of setth * setth
-	| SetdiffTh 				of setth * setth
+    VarSetTh          of variable
+  | EmptySetTh
+  | SinglTh           of tid
+  | UnionTh           of setth * setth
+  | IntrTh            of setth * setth
+  | SetdiffTh         of setth * setth
 and setelem =
-		VarSetElem   			of variable
-	| EmptySetElem
-	| SinglElem   			of elem
-	| UnionElem    			of setelem * setelem
-	| IntrElem     			of setelem * setelem
-	| SetToElems   			of set * mem
-	| SetdiffElem  			of setelem * setelem
+    VarSetElem        of variable
+  | EmptySetElem
+  | SinglElem         of elem
+  | UnionElem         of setelem * setelem
+  | IntrElem          of setelem * setelem
+  | SetToElems        of set * mem
+  | SetdiffElem       of setelem * setelem
 and path =
-		VarPath 					of variable
-	| Epsilon
-	| SimplePath 				of addr
-	| GetPath    				of mem * addr * addr
+    VarPath           of variable
+  | Epsilon
+  | SimplePath        of addr
+  | GetPath           of mem * addr * addr
 and mem =
-		VarMem						of variable
-	| Emp
-	| Update						of mem * addr * cell
+    VarMem            of variable
+  | Emp
+  | Update            of mem * addr * cell
 and integer =
-		IntVal        		of int
-	| VarInt        		of variable
-	| IntNeg        		of integer
-	| IntAdd        		of integer * integer
-	| IntSub        		of integer * integer
-	| IntMul        		of integer * integer
-	| IntDiv        		of integer * integer
-	| HavocLevel
+    IntVal            of int
+  | VarInt            of variable
+  | IntNeg            of integer
+  | IntAdd            of integer * integer
+  | IntSub            of integer * integer
+  | IntMul            of integer * integer
+  | IntDiv            of integer * integer
+  | HavocLevel
 and addrarr =
-	| VarAddrArray  		of variable
-	| AddrArrayUp   		of addrarr * integer * addr
+  | VarAddrArray      of variable
+  | AddrArrayUp       of addrarr * integer * addr
 and tidarr =
-	| VarTidArray   		of variable
-	| TidArrayUp    		of tidarr * integer * tid
+  | VarTidArray       of variable
+  | TidArrayUp        of tidarr * integer * tid
 and atom =
-		Append       			of path * path * path
-	| Reach        			of mem * addr * addr * path
-	| OrderList    			of mem * addr * addr
-	| In           			of addr * set
-	| SubsetEq     			of set  * set
-	| InTh         			of tid * setth
-	| SubsetEqTh   			of setth * setth
-	| InElem       			of elem * setelem
-	| SubsetEqElem 			of setelem * setelem
-	| Less         			of integer * integer
-	| Greater      			of integer * integer
-	| LessEq       			of integer * integer
-	| GreaterEq    			of integer * integer
-	| LessElem     			of elem * elem
-	| GreaterElem  			of elem * elem
-	| Eq           			of eq
-	| InEq         			of diseq
-	| PC           			of int * tid option * bool
-	| PCUpdate     			of int * tid
-	| PCRange      			of int * int * tid option * bool
+    Append            of path * path * path
+  | Reach             of mem * addr * addr * path
+  | OrderList         of mem * addr * addr
+  | In                of addr * set
+  | SubsetEq          of set  * set
+  | InTh              of tid * setth
+  | SubsetEqTh        of setth * setth
+  | InElem            of elem * setelem
+  | SubsetEqElem      of setelem * setelem
+  | Less              of integer * integer
+  | Greater           of integer * integer
+  | LessEq            of integer * integer
+  | GreaterEq         of integer * integer
+  | LessElem          of elem * elem
+  | GreaterElem       of elem * elem
+  | Eq                of eq
+  | InEq              of diseq
+  | PC                of int * tid option * bool
+  | PCUpdate          of int * tid
+  | PCRange           of int * int * tid option * bool
 and literal =
-		Atom    					of atom
-	| NegAtom 					of atom
+    Atom              of atom
+  | NegAtom           of atom
 and conjunctive_formula =
     FalseConj
   | TrueConj
-	| Conj 							of literal list
+  | Conj              of literal list
 and formula =
-		Literal   				of literal
-	| True
+    Literal           of literal
+  | True
   | False
-	| And     					of formula * formula
-	| Or      					of formula * formula
-	| Not     					of formula
-	| Implies 					of formula * formula
-	| Iff     					of formula * formula
+  | And               of formula * formula
+  | Or                of formula * formula
+  | Not               of formula
+  | Implies           of formula * formula
+  | Iff               of formula * formula
 
 
 type special_op_t =
