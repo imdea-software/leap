@@ -63,35 +63,35 @@ $(TOOLS) :
 
 $(LEAP): $(PP)
 	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) -pp $(PPEXEC) $(LEAP).native
-	@ln -f -s ./_build/src/leap/$(LEAP).native $(LEAP)
+	@ln -f -s ./_build/src/progs/leap/$(LEAP).native $(LEAP)
 
 $(PROG2FTS): $(PP)
 	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) -pp $(PPEXEC) $(PROG2FTS).native
-	@ln -f -s ./_build/src/prog2fts/$(PROG2FTS).native $(PROG2FTS)
+	@ln -f -s ./_build/src/progs/prog2fts/$(PROG2FTS).native $(PROG2FTS)
 
 $(PINV): $(PP)
 	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) -pp $(PPEXEC) $(PINV).native
-	@ln -f -s ./_build/src/pinv/$(PINV).native $(PINV)
+	@ln -f -s ./_build/src/progs/pinv/$(PINV).native $(PINV)
 
 $(SINV): $(PP)
 	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) -pp $(PPEXEC) $(SINV).native
-	@ln -f -s ./_build/src/sinv/$(SINV).native $(SINV)
+	@ln -f -s ./_build/src/progs/sinv/$(SINV).native $(SINV)
 
 $(PVD): $(PP)
 	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) -pp $(PPEXEC) $(PVD).native
-	@ln -f -s ./_build/src/pvd/$(PVD).native $(PVD)
+	@ln -f -s ./_build/src/progs/pvd/$(PVD).native $(PVD)
 
 $(NUMINV): $(PP)
 	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) -pp $(PPEXEC) $(NUMINV).native
-	@ln -f -s ./_build/src/numinv/$(NUMINV).native $(NUMINV)
+	@ln -f -s ./_build/src/progs/numinv/$(NUMINV).native $(NUMINV)
 
 $(SPEC_CHECK): $(PP)
 	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) -pp $(PPEXEC) $(SPEC_CHECK).native
-	@ln -f -s ./_build/src/spec_check/$(SPEC_CHECK).native $(SPEC_CHECK)
+	@ln -f -s ./_build/src/progs/spec_check/$(SPEC_CHECK).native $(SPEC_CHECK)
 
 $(TLL): $(PP)
 	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) -pp $(PPEXEC) $(TLL).native
-	@ln -f -s ./_build/src/tll/$(TLL).native $(TLL)
+	@ln -f -s ./_build/src/progs/tll/$(TLL).native $(TLL)
 
 solvertest: $(PP)
 	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) -pp $(PPEXEC) test.native
