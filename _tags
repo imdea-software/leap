@@ -9,12 +9,7 @@
 <src/solvers/backend/minisat> : include
 <src/solvers/theory> : include
 <src/parser> : include
-<src/prog2fts> : include
-<src/numinv> : include
-<src/pinv> : include
-<src/sinv> : include
-<src/pvd> : include
-<src/spec_check> : include
+<src/diagrams> : include
 <src/trs> : include
 <src/theories/tll> : include
 <src/theories/tsl> : include
@@ -22,4 +17,10 @@
 <src/smp> : include
 <src/graph> : include
 <src/tactics> : include
-<src/leap> : include
+<src/progs/prog2fts> : include
+<src/progs/numinv> : include
+<src/progs/pinv> : include
+<src/progs/sinv> : include
+<src/progs/pvd> : include
+<src/progs/spec_check> : include
+<src/progs/leap> : include
