@@ -20,5 +20,5 @@ val set_forget_primed_mem : cutoff_options_t -> bool -> unit
 val set_group_vars : cutoff_options_t -> bool -> unit
 
 val cut_off : cutoff_strategy ->
-							cutoff_options_t -> TSLKExpression.formula -> model_size
+              cutoff_options_t -> TSLKExpression.formula -> model_size
 
