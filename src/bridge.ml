@@ -56,38 +56,42 @@ let unfold_expression (mInfo:malloc_info)
                                         E.mem option  *
                                         E.term list   *
                                         E.formula list) =
+  let gen_malloc (mkcell:E.cell) :
+                 (E.expr_t * E.mem option * E.term list * E.formula list) =
+    let c_fresh = E.VarCell(E.build_var
+                      E.fresh_cell_name E.Cell false None None E.Normal) in
+    let a_fresh = E.VarAddr(E.build_var
+                      E.fresh_addr_name E.Addr false None None E.Normal) in
+    let diff_fresh a = E.ineq_addr a_fresh (E.VarAddr a) in
+    let not_in_set s = E.Not (E.in_form a_fresh (E.VarSet s)) in
+    let gDiffAddr = List.map diff_fresh mInfo.gAddrs in
+    let gNotInSet = List.map not_in_set mInfo.gSets in
+    let lDiffAddr = List.fold_left (fun xs t ->
+                      xs @ List.map (fun v ->
+                             diff_fresh (E.param_variable (Some t) v)
+                           ) mInfo.lAddrs
+                    ) [] mInfo.tids in
+    let lNotInSet = List.fold_left (fun xs t ->
+                      xs @ List.map (fun v ->
+                             not_in_set (E.param_variable th_p v)
+                           ) mInfo.lSets
+                    ) [] mInfo.tids in
+    let new_f = E.conj_list $
+                  gDiffAddr @ gNotInSet @ lDiffAddr @ lNotInSet @
+                  [
+                    E.eq_cell c_fresh mkcell;
+                    E.eq_cell (E.CellAt (E.heap, a_fresh)) E.Error;
+                    E.eq_mem E.aux_heap (E.Update (E.heap, a_fresh, c_fresh))]
+    in
+      (E.Term (E.AddrT a_fresh), Some E.aux_heap, [], [new_f])
+  in
   match e with
     Stm.Term (Stm.AddrT (Stm.Malloc(e,a,t))) ->
       let e_expr  = Stm.elem_to_expr_elem e in
       let a_expr  = Stm.addr_to_expr_addr a in
       let t_expr  = Stm.tid_to_expr_tid t in
-      let c_fresh = E.VarCell(E.build_var
-                        E.fresh_cell_name E.Cell false None None E.Normal) in
-      let a_fresh = E.VarAddr(E.build_var
-                        E.fresh_addr_name E.Addr false None None E.Normal) in
       let mkcell  = E.param_cell th_p (E.MkCell(e_expr, a_expr, t_expr)) in
-      let diff_fresh a = E.ineq_addr a_fresh (E.VarAddr a) in
-      let not_in_set s = E.Not (E.in_form a_fresh (E.VarSet s)) in
-      let gDiffAddr = List.map diff_fresh mInfo.gAddrs in
-      let gNotInSet = List.map not_in_set mInfo.gSets in
-      let lDiffAddr = List.fold_left (fun xs t ->
-                        xs @ List.map (fun v ->
-                               diff_fresh (E.param_variable (Some t) v)
-                             ) mInfo.lAddrs
-                      ) [] mInfo.tids in
-      let lNotInSet = List.fold_left (fun xs t ->
-                        xs @ List.map (fun v ->
-                               not_in_set (E.param_variable th_p v)
-                             ) mInfo.lSets
-                      ) [] mInfo.tids in
-      let new_f = E.conj_list $
-                    gDiffAddr @ gNotInSet @ lDiffAddr @ lNotInSet @
-                    [
-                      E.eq_cell c_fresh mkcell;
-                      E.eq_cell (E.CellAt (E.heap, a_fresh)) E.Error;
-                      E.eq_mem E.aux_heap (E.Update (E.heap, a_fresh, c_fresh))]
-      in
-        (E.Term (E.AddrT a_fresh), Some E.aux_heap, [], [new_f])
+        gen_malloc mkcell
   | Stm.Term (Stm.ElemT (Stm.PointerData a)) ->
       let a_expr = Stm.addr_to_expr_addr a in
       (E.Term (E.ElemT (E.CellData (E.CellAt (E.heap,a_expr)))), None, [], [])

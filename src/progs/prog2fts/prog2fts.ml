@@ -1,5 +1,5 @@
 open Printf
-open TSLKInterface
+open Bridge
 
 open LeapLib
 open Global
