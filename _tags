@@ -16,8 +16,9 @@
 <src/pvd> : include
 <src/spec_check> : include
 <src/trs> : include
-<src/tll> : include
-<src/tsl> : include
+<src/theories/tll> : include
+<src/theories/tsl> : include
+<src/theories/tslk> : include
 <src/smp> : include
 <src/graph> : include
 <src/tactics> : include
