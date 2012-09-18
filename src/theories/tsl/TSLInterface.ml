@@ -285,9 +285,7 @@ and atom_to_tsl_atom (a:Expr.atom) : Tsl.atom =
   let setth   = setth_to_tsl_setth     in
   let setelem = setelem_to_tsl_setelem in
   let integ   = int_to_tsl_int         in
-  let addrarr = addrarr_to_tsl_addrarr in
-  let tidarr  = tidarr_to_tsl_tidarr   in
-  let term    = term_to_tsl_term       in
+	let term    = term_to_tsl_term       in
   match a with
     Expr.Append (p1,p2,p3)    -> Tsl.Append (path p1,path p2,path p3)
   | Expr.Reach (m,a1,a2,p)    -> Tsl.Reach (mem m, addr a1, addr a2, path p)
@@ -300,10 +298,10 @@ and atom_to_tsl_atom (a:Expr.atom) : Tsl.atom =
   | Expr.SubsetEqInt _        -> raise (UnsupportedTslExpr(Expr.atom_to_str a))
   | Expr.InElem (e,s)         -> Tsl.InElem (elem_to_tsl_elem e, setelem s)
   | Expr.SubsetEqElem (s1,s2) -> Tsl.SubsetEqElem (setelem s1, setelem s2)
-  | Expr.Less (i1,i2)         -> Tsl.Less (int_to_tsl_int i1, int_to_tsl_int i2)
-  | Expr.Greater (i1,i2)      -> Tsl.Greater (int_to_tsl_int i1, int_to_tsl_int i2)
-  | Expr.LessEq (i1,i2)       -> Tsl.LessEq (int_to_tsl_int i1, int_to_tsl_int i2)
-  | Expr.GreaterEq (i1,i2)    -> Tsl.GreaterEq (int_to_tsl_int i1, int_to_tsl_int i2)
+	| Expr.Less (i1,i2)         -> Tsl.Less (integ i1, integ i2)
+	| Expr.Greater (i1,i2)      -> Tsl.Greater (integ i1, integ i2)
+	| Expr.LessEq (i1,i2)       -> Tsl.LessEq (integ i1, integ i2)
+	| Expr.GreaterEq (i1,i2)    -> Tsl.GreaterEq (integ i1, integ i2)
   | Expr.LessTid _            -> raise (UnsupportedTslExpr(Expr.atom_to_str a))
   | Expr.LessElem (e1,e2)     -> Tsl.LessElem (elem e1, elem e2)
   | Expr.GreaterElem (e1,e2)  -> Tsl.GreaterElem (elem e1, elem e2)
