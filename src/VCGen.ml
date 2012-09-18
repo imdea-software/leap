@@ -1676,7 +1676,7 @@ struct
                   (status : valid_t) : (valid_t * int * int * float) =
     assert(isInitialized());
     if status = Unverified || status = NotValid then begin
-      let tll_phi = Tllinterface.formula_to_tll_formula phi in
+      let tll_phi = TllInterface.formula_to_tll_formula phi in
       let timer = new LeapLib.timer in
       timer#start;
       let valid, calls = TS.is_valid_plus_info

@@ -22,5 +22,6 @@
 <src/progs/pinv> : include
 <src/progs/sinv> : include
 <src/progs/pvd> : include
+<src/progs/tll> : include
 <src/progs/spec_check> : include
 <src/progs/leap> : include
