@@ -16,9 +16,10 @@ module type S =
   sig
     type model_size =
         {
-          num_elems : int ;
-          num_tids : int ;
-          num_addrs : int ;
+          num_levels : int ;
+          num_elems  : int ;
+          num_tids   : int ;
+          num_addrs  : int ;
         }
 
     type cutoff_options_t
@@ -39,7 +40,7 @@ module type S =
 
 
 
-module Make (K : Level) =
+module Make (K : Level.S) =
   struct
     type cutoff_options_t =
       {
@@ -49,14 +50,15 @@ module Make (K : Level) =
 
 
     type model_size =
-        { 
-          num_elems : int ; 
-          num_tids : int ;
-          num_addrs : int ;
+        {
+          num_levels : int ;
+          num_elems  : int ;
+          num_tids   : int ;
+          num_addrs  : int ;
         }
 
 
-    type union_info = (ASet.t * ASet.t * ASet.t)
+    type union_info = (ASet.t * ASet.t * ASet.t * ASet.t)
 
 
     (* Cutoff options functions *)
@@ -93,33 +95,40 @@ module Make (K : Level) =
 
     (* union_info functions *)
 
-    let new_union_count = (ASet.empty, ASet.empty, ASet.empty)
+    let new_union_count = (ASet.empty, ASet.empty, ASet.empty, ASet.empty)
 
 
     let union_count_elem (u:union_info) (a:Expr.atom) : union_info =
-      let (e_set, t_set, a_set) = u
+      let (e_set, t_set, a_set, l_set) = u
       in
-        (ASet.add a e_set, t_set, a_set)
+        (ASet.add a e_set, t_set, a_set, l_set)
 
 
     let union_count_tid (u:union_info) (a:Expr.atom) : union_info =
-      let (e_set, t_set, a_set) = u
+      let (e_set, t_set, a_set, l_set) = u
       in
-        (e_set, ASet.add a t_set, a_set)
+        (e_set, ASet.add a t_set, a_set, l_set)
 
 
     let union_count_addr (u:union_info) (a:Expr.atom) : union_info =
-      let (e_set, t_set, a_set) = u
+      let (e_set, t_set, a_set, l_set) = u
       in
-        (e_set, t_set, ASet.add a a_set)
+        (e_set, t_set, ASet.add a a_set, l_set)
+
+
+    let union_count_addr (u:union_info) (a:Expr.atom) : union_info =
+      let (e_set, t_set, a_set, l_set) = u
+      in
+        (e_set, t_set, a_set, ASet.add a l_set)
 
 
     let union_model_size (u:union_info) : model_size =
-      let (e_set, t_set, a_set) = u in
+      let (e_set, t_set, a_set, l_set) = u in
       {
         num_elems = ASet.cardinal e_set;
         num_tids = ASet.cardinal t_set;
         num_addrs = ASet.cardinal a_set;
+        num_levels = ASet.cardinal l_set;
       }
 
 
@@ -148,6 +157,7 @@ module Make (K : Level) =
 
       let numtid = ref (vars_tid) in
       let numelem = ref (vars_elem + vars_mem * vars_addr) in
+      let numlevel = ref (K.level) in
     (*
       let numaddr = ref (2+(VarSet.cardinal varaddr) * tid_num) in
       let numtid = ref (2+(VarSet.cardinal vartid) * tid_num) in
@@ -197,15 +207,16 @@ module Make (K : Level) =
             end
       in
         match expr with
-        | TrueConj  -> { num_addrs = 1 ; num_tids = 1 ; num_elems = 1 }
-        | FalseConj -> { num_addrs = 1 ; num_tids = 1 ; num_elems = 1 }
+        | TrueConj  -> { num_addrs = 1 ; num_tids = 1 ; num_elems = 1 ; num_levels = 1 }
+        | FalseConj -> { num_addrs = 1 ; num_tids = 1 ; num_elems = 1 ; num_levels = 1 }
         | Conj l    -> let _ = List.iter process l in
                        (*let _ = numtid := !numtid + vars_mem * !numaddr in
                        let _ = numelem := !numelem + vars_mem * !numaddr in*)
                        {
-                         num_addrs = !numaddr ; (* null is accounted for      *)
-                         num_tids  = !numtid  ; (* NotThread is accounted for *)
-                         num_elems = !numelem ;
+                         num_addrs  = !numaddr  ; (* null is accounted for      *)
+                         num_tids   = !numtid   ; (* NotThread is accounted for *)
+                         num_elems  = !numelem  ;
+                         num_levels = !numlevel ;
                        }
 
 
@@ -215,11 +226,12 @@ module Make (K : Level) =
                         
         in
           {
-            num_elems = max s.num_elems e_cut_off.num_elems;
-            num_tids = max s.num_tids e_cut_off.num_tids;
-            num_addrs = max s.num_addrs e_cut_off.num_addrs;
+            num_elems  = max s.num_elems  e_cut_off.num_elems ;
+            num_tids   = max s.num_tids   e_cut_off.num_tids  ;
+            num_addrs  = max s.num_addrs  e_cut_off.num_addrs ;
+            num_levels = max s.num_levels e_cut_off.num_levels;
           }
-      ) {num_elems=0; num_tids=0; num_addrs=0} conj_list
+      ) {num_elems=0; num_tids=0; num_addrs=0; num_levels=0} conj_list
 
 
     (* I must also count the equalities!!! *)
@@ -311,6 +323,7 @@ module Make (K : Level) =
           num_elems = 2 + (VarSet.cardinal varelem + info.num_elems) * tid_num;
           num_tids = 2 + (tid_num + info.num_tids) * tid_num;
           num_addrs = 2 + (VarSet.cardinal varaddr + (2 * info.num_addrs)) * tid_num;
+          num_levels = K.level ;
         }
 
 

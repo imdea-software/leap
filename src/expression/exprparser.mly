@@ -455,7 +455,7 @@ let check_and_add_delta (tbl:Vd.delta_fun_t)
 
 %token BEGIN END
 
-%token ERROR MKCELL MKSLCELL DATA NEXT LOCKID LOCK UNLOCK
+%token ERROR MKCELL DATA NEXT LOCKID LOCK UNLOCK
 %token MEMORY_READ
 %token DOT COMMA
 %token NULL UPDATE
@@ -1360,9 +1360,9 @@ cell :
       let th = parser_check_type check_type_thid $7 Expr.Thid get_str_expr in
         Expr.MkCell(d,a,th)
     }
-  | MKSLCELL OPEN_PAREN term COMMA term COMMA term COMMA term CLOSE_PAREN
+  | MKCELL OPEN_PAREN term COMMA term COMMA term COMMA term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "mkslcell(%s,%s,%s,%s)"
+      let get_str_expr () = sprintf "mkcell(%s,%s,%s,%s)"
                                            (Expr.term_to_str $3)
                                            (Expr.term_to_str $5)
                                            (Expr.term_to_str $7)
@@ -1373,6 +1373,39 @@ cell :
       let l  = parser_check_type check_type_int $9 Expr.Int get_str_expr in
         Expr.MkSLCell(e,aa,ta,l)
     }
+  | MKCELL OPEN_PAREN term COMMA
+                      OPEN_BRACKET term_list CLOSE_BRACKET COMMA
+                      OPEN_BRACKET term_list CLOSE_BRACKET COMMA
+                      term CLOSE_PAREN
+    {
+      let list_term_to_str ts = String.concat "," (List.map Expr.term_to_str ts) in
+      let addrs_str = list_term_to_str $6 in
+      let tids_str = list_term_to_str $10 in
+      let get_str_expr () = sprintf "mkcell(%s,[%s],[%s],%s)"
+                                           (Expr.term_to_str $3)
+                                           (addrs_str)
+                                           (tids_str)
+                                           (Expr.term_to_str $13) in
+      let e  = parser_check_type check_type_elem $3 Expr.Elem get_str_expr in
+      let addrs = List.map (fun a ->
+                    parser_check_type check_type_addr a Expr.Addr get_str_expr
+                  ) $6 in
+      let tids = List.map (fun t ->
+                   parser_check_type check_type_thid t Expr.Thid get_str_expr
+                 ) $10 in
+      let l  = parser_check_type check_type_int $13 Expr.Int get_str_expr in
+      if List.length addrs <> List.length tids then
+        begin
+          Interface.Err.msg "Different argument lengths" $
+            sprintf "mkcell is invoked with an unequal number of addresses [%s] \
+                     and thread ids [%s]." addrs_str tids_str;
+          raise (Different_argument_length (addrs_str,tids_str))
+        end
+      else
+        Expr.MkSLKCell(e,addrs,tids,l)
+    }
+
+
   | term DOT LOCK
     {
       let get_str_expr () = sprintf "%s.lock" (Expr.term_to_str $1) in

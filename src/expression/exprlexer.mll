@@ -30,7 +30,6 @@ rule norm = parse
   | "param"         { Global.last "param"         ; PARAM }
   | "error"         { Global.last "error"         ; ERROR }
   | "mkcell"        { Global.last "mkcell"        ; MKCELL }
-  | "mkslcell"      { Global.last "mkslcell"      ; MKSLCELL }
   | "data"          { Global.last "data"          ; DATA }
   | "next"          { Global.last "next"          ; NEXT }
   | "firstlocked"   { Global.last "fistlocked"    ; FIRSTLOCKED }

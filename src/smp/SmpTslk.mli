@@ -6,19 +6,15 @@ type cutoff_strategy =
   | Pruning   (* Computes a better bound, by pruning non interesting literals *)
 
 
-module type Level =
-  sig
-    val level : int
-  end
-
 
 module type S =
   sig
     type model_size =
         {
-          num_elems : int ;
-          num_tids : int ;
-          num_addrs : int ;
+          num_levels : int ;
+          num_elems  : int ;
+          num_tids   : int ;
+          num_addrs  : int ;
         }
 
     type cutoff_options_t
@@ -37,5 +33,5 @@ module type S =
                   cutoff_options_t -> TSLKExpression.formula -> model_size
   end
 
-module Make (K : Level) : S
+module Make (K : Level.S) : S
 
