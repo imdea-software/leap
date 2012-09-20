@@ -157,6 +157,9 @@ module type S =
     module AtomSet : Set.S with type elt = atom
     module ThreadSet : Set.S with type elt = tid
 
+    (* Expression height *)
+    val k : int
+
     (* variable manipulation *)
     val param_var : variable -> tid -> variable
     val is_global_var : variable -> bool
