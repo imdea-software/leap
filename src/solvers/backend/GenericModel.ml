@@ -1,6 +1,8 @@
 
 open LeapLib
 
+module Expr = Expression
+
 
 (** A constant, function, record label or field label identifier*)
 type id = string
@@ -61,9 +63,15 @@ let elem_s    : string = "Elem"
 let tid_s     : string = "Thid"
 let cell_s    : string = "Cell"
 let setth_s   : string = "Setth"
+let setint_s  : string = "Setint"
 let setelem_s : string = "SetElem"
 let path_s    : string = "Path"
 let heap_s    : string = "Heap"
+let bool_s    : string = "Bool"
+let int_s     : string = "Int"
+let array_s   : string = "Array"
+let addrarr_s : string = "AddrArr"
+let tidarr_s  : string = "TidArr"
 let unk_s     : string = "Unknown"
 let loc_s     : string = "Loc"
 
@@ -348,16 +356,22 @@ let id_list_to_str (m:t) (ids:id list) : string =
     str ^ (id_to_str m x)
   ) "" ids
 
-let conv_sort (s:TllExpression.sort) : sort =
+let conv_sort (s:Expression.sort) : sort =
   match s with
-  | TllExpression.Set     -> set_s
-  | TllExpression.Elem    -> elem_s
-  | TllExpression.Addr    -> addr_s
-  | TllExpression.Thid    -> tid_s
-  | TllExpression.Cell    -> cell_s
-  | TllExpression.SetTh   -> setth_s
-  | TllExpression.SetElem -> setelem_s
-  | TllExpression.Path    -> path_s
-  | TllExpression.Mem     -> heap_s
-  | TllExpression.Unknown -> unk_s
+  | Expr.Set       -> set_s
+  | Expr.Elem      -> elem_s
+  | Expr.Thid      -> tid_s
+  | Expr.Addr      -> addr_s
+  | Expr.Cell      -> cell_s
+  | Expr.SetTh     -> setth_s
+  | Expr.SetInt    -> setint_s
+  | Expr.SetElem   -> setelem_s
+  | Expr.Path      -> path_s
+  | Expr.Mem       -> heap_s
+  | Expr.Bool      -> bool_s
+  | Expr.Int       -> int_s
+  | Expr.Array     -> array_s
+  | Expr.AddrArray -> addrarr_s
+  | Expr.TidArray  -> tidarr_s
+  | Expr.Unknown   -> unk_s
 

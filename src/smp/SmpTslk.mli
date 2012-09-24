@@ -5,18 +5,21 @@ type cutoff_strategy =
   | Union     (* Computes an upper bound using union over literals *)
   | Pruning   (* Computes a better bound, by pruning non interesting literals *)
 
+
+type cutoff_options_t
+
+
+type model_size =
+  {
+    num_levels : int ;
+    num_elems  : int ;
+    num_tids   : int ;
+    num_addrs  : int ;
+  }
+
+
 module Make (TSLK : TSLKExpression.S) :
   sig
-
-    type model_size =
-        {
-          num_levels : int ;
-          num_elems  : int ;
-          num_tids   : int ;
-          num_addrs  : int ;
-        }
-
-    type cutoff_options_t
 
     val strategy_to_str : cutoff_strategy -> string
 

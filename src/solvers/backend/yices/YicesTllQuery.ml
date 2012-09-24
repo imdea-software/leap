@@ -2,8 +2,8 @@ open LeapLib
 
 module Expr     = TllExpression
 module VarIdSet = TllExpression.VarIdSet
-module B=Buffer
-module GM = GenericModel
+module B        = Buffer
+module GM       = GenericModel
 
 let prog_lines = ref 0
 
@@ -1177,7 +1177,8 @@ let rec yices_define_var (buf:Buffer.t)
   in
     if Expr.is_global_var v then
       begin
-        GM.sm_decl_const sort_map name (GM.conv_sort s) ;
+        GM.sm_decl_const sort_map name
+          (GM.conv_sort (TllInterface.sort_to_expr_sort s));
         B.add_string buf ( "(define " ^ name ^ "::" ^ s_str ^ ")\n" );
         match s with
           Expr.Path -> B.add_string buf ( "(assert (ispath " ^ name ^ "))\n" )

@@ -41,6 +41,9 @@ sig
       [sat] has been satisfiable. Otherwise returns an empty model *)
 end
 
+
+
+
 module type PosBackend =
 (** Signatures of the functions the Solver needs to implement in order
     to fully support Position Reasoning. *)
@@ -57,6 +60,9 @@ sig
         corresponding data structure in the Solver program. *)
   end
 end
+
+
+
 
 module type TllBackend =
 (** Signatures of the functions the Solver needs to implement in order
@@ -96,6 +102,53 @@ sig
   end
 end
 
+
+
+(*
+module type TslkBackend =
+(** Signatures of the functions the Solver needs to implement in order
+    to fully support TLL. *)
+sig
+  type t
+  
+  module Tslk :
+  (** Translation of TLL expressions. *)
+  sig
+    module Exp : TSLKEXP
+    module Smp : sig
+      type cutoff_strategy
+      type cutoff_options_t
+    end
+
+
+    val literal_list : Exp.literal list -> t
+    (** [literal_list ls] translates the list [ls] of literals into its
+        internal representation. *)
+    
+    val formula      : Tactics.solve_tactic_t option ->
+                       Smp.cutoff_strategy ->
+                       Smp.cutoff_options_t ->
+                       Exp.formula -> t
+    (** [formula stat strat copt f] translates the formula [f] following the
+        strategy [strat] to compute the SMP cutoff and tactic [stat] to
+        decide whether or not to include extra information to help the
+        future satisfiability analysis of the formula. When computing the SMP
+        it considers the options passes in [copt]. *)
+        
+    val conjformula  : Exp.conjunctive_formula -> t
+    (** [conjformula f] tranlates the conjunctive formula [f]. *)
+
+    val sort_map : unit -> GenericModel.sort_map_t
+    (** [sort_map ()] returns the sort mapping obtained from the last
+        call to a formula translation *)
+
+  end
+end
+*)
+
+
+
+
 module type NumBackend =
 (** Signatures of the functions the Solver needs to implement in order
     to fully support Numeric Reasoning. *)
@@ -132,6 +185,9 @@ sig
   end
 end
 
+
+
+
 module type CUSTOM_BACKEND_SOLVER = 
 (** Signature of a full backend solver. *)
 sig
@@ -141,17 +197,24 @@ sig
   (** Translation of expressions into internal data structures that 
       the Solver understands. *)
         
-    include PosBackend with type t := t
-    include TllBackend with type t := t
-    include NumBackend with type t := t
+    include PosBackend  with type t := t
+    include TllBackend  with type t := t
+    include NumBackend  with type t := t
+(*    include TslkBackend with type t := t*)
   end
 end
 
-module type BACKEND_SOLVER = CUSTOM_BACKEND_SOLVER 
-  with module Translate.Pos.Exp = PosExpression
-  and  module Translate.Tll.Exp = TllExpression
-  and  module Translate.Tll.Smp = SmpTll
-  and  module Translate.Num.Exp = NumExpression
+module type BACKEND_SOLVER = CUSTOM_BACKEND_SOLVER
+  with module Translate.Pos.Exp  = PosExpression
+  and  module Translate.Tll.Exp  = TllExpression
+  and  module Translate.Tll.Smp  = SmpTll
+  and  module Translate.Num.Exp  = NumExpression
+(*  and  module Translate.Tslk.Exp = TSLKExpression
+  and  module Translate.Tslk.Smp = SmpTslk
+*)
+
+
+
 
 module type CUSTOM_BACKEND_POS =
 (** Signature of solver that supports position reasoning *)
@@ -169,6 +232,9 @@ end
 module type BACKEND_POS = CUSTOM_BACKEND_POS
   with module Translate.Pos.Exp = PosExpression
 
+
+
+
 module type CUSTOM_BACKEND_TLL =
 (** Signature of solver that supports TLL reasoning *)
 sig
@@ -185,6 +251,28 @@ end
 module type BACKEND_TLL = CUSTOM_BACKEND_TLL
   with module Translate.Tll.Exp = TllExpression
   and  module Translate.Tll.Smp = SmpTll
+
+
+
+(*
+module type CUSTOM_BACKEND_TSLK =
+(** Signature of solver that supports TSLK reasoning *)
+sig
+  include BackendCommon
+  
+  module Translate : sig
+  (** Translation of expressions into internal data structures that 
+      the Solver understands. *)
+  
+    include TslkBackend with type t := t
+  end
+end
+
+module type BACKEND_TSLK = CUSTOM_BACKEND_TSLK
+  with module Translate.Tslk.Exp = TSLKExpression
+  and  module Translate.Tslk.Smp = SmpTslk
+*)
+
 
 module type CUSTOM_BACKEND_NUM =
 (** Signature of solver that supports numeric reasoning *)

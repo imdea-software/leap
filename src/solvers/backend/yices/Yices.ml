@@ -155,6 +155,19 @@ struct
       let conjformula  = YicesTllQuery.conjformula_to_str
       let sort_map     = YicesTllQuery.get_sort_map
     end
+
+(***************   THIS IS NEW   ***************)
+    module Tslk =
+    struct
+      module Exp = TSLKExpression
+      module Smp = SmpTslk
+      let literal_list = YicesTslkQuery.literal_list_to_str
+      let formula      = YicesTslkQuery.formula_to_str
+      let conjformula  = YicesTslkQuery.conjformula_to_str
+      let sort_map     = YicesTslkQuery.get_sort_map
+    end
+
+(***************   THIS IS NEW   ***************)
     
     module Num =
     struct

@@ -18,7 +18,7 @@ module Make (TSLK : TSLKExpression.S) =
     (* Expression to TSLKExpression conversion *)
 
 
-    let rec sort_to_tslk_sort (s:Expr.sort) =
+    let rec sort_to_tslk_sort (s:Expr.sort) : TSLK.sort =
       match s with
         Expr.Set       -> TSLK.Set
       | Expr.Elem      -> TSLK.Elem
@@ -37,6 +37,20 @@ module Make (TSLK : TSLKExpression.S) =
       | Expr.TidArray  -> raise (UnsupportedSort (Expr.sort_to_str s))
       | Expr.Unknown   -> TSLK.Unknown
 
+
+    and sort_to_expr_sort (s:TSLK.sort) : Expr.sort =
+      match s with
+      | TSLK.Set     -> Expr.Set
+      | TSLK.Elem    -> Expr.Elem
+      | TSLK.Thid    -> Expr.Thid
+      | TSLK.Addr    -> Expr.Addr
+      | TSLK.Cell    -> Expr.Cell
+      | TSLK.SetTh   -> Expr.SetTh
+      | TSLK.SetElem -> Expr.SetElem
+      | TSLK.Path    -> Expr.Path
+      | TSLK.Mem     -> Expr.Mem
+      | TSLK.Int     -> Expr.Int
+      | TSLK.Unknown -> Expr.Unknown
 
 
     and build_term_var (v:Expr.variable) : TSLK.term =

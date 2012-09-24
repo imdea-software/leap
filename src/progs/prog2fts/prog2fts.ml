@@ -1,5 +1,5 @@
 open Printf
-open SmpTslk
+open YicesTslkQuery
 
 open LeapLib
 open Global

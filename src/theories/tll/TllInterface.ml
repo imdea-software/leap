@@ -18,7 +18,7 @@ exception UnsupportedTllExpr of string
 
 let rec sort_to_tll_sort (s:Expr.sort) : Tll.sort =
   match s with
-    Expr.Set       -> Tll.Set
+  | Expr.Set       -> Tll.Set
   | Expr.Elem      -> Tll.Elem
   | Expr.Thid      -> Tll.Thid
   | Expr.Addr      -> Tll.Addr
@@ -35,6 +35,18 @@ let rec sort_to_tll_sort (s:Expr.sort) : Tll.sort =
   | Expr.TidArray  -> raise (UnsupportedSort (Expr.sort_to_str s))
   | Expr.Unknown   -> Tll.Unknown
 
+
+and sort_to_expr_sort (s:Tll.sort) : Expr.sort =
+  match s with
+  | Tll.Set     -> Expr.Set
+  | Tll.Elem    -> Expr.Elem
+  | Tll.Thid    -> Expr.Thid
+  | Tll.Addr    -> Expr.Addr
+  | Tll.Cell    -> Expr.Cell
+  | Tll.SetTh   -> Expr.SetTh
+  | Tll.SetElem -> Expr.SetElem
+  | Tll.Path    -> Expr.Path
+  | Tll.Mem     -> Expr.Mem
 
 
 and build_term_var (v:Expr.variable) : Tll.term =

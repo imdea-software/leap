@@ -116,5 +116,5 @@ val id_list_to_str : t -> id list -> string
 (** [id_list_to_str m ids] searches all definitions of identifiers in list [ids]
     in model [m] and returns a string representation of all values *)
 
-val conv_sort : TllExpression.sort -> sort
+val conv_sort : Expression.sort -> sort
 (** [conv_sort s] returns the generic model representation of sort [s] *)

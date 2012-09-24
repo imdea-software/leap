@@ -7,6 +7,23 @@ type cutoff_strategy =
   | Pruning   (* Computes a better bound, by pruning non interesting literals *)
 
 
+type cutoff_options_t =
+  {
+    mutable forget_primed_mem : bool ;
+    mutable group_vars : bool ;
+  }
+
+
+type model_size =
+  {
+    num_levels : int ;
+    num_elems  : int ;
+    num_tids   : int ;
+    num_addrs  : int ;
+  }
+
+
+
 module Make (TSLK : TSLKExpression.S) =
   struct
 
@@ -14,22 +31,6 @@ module Make (TSLK : TSLKExpression.S) =
     module VarIdSet = TSLK.VarIdSet
     module VarSet   = TSLK.VarSet
     module ASet     = TSLK.AtomSet
-
-
-    type cutoff_options_t =
-      {
-        mutable forget_primed_mem : bool ;
-        mutable group_vars : bool ;
-      }
-
-
-    type model_size =
-        {
-          num_levels : int ;
-          num_elems  : int ;
-          num_tids   : int ;
-          num_addrs  : int ;
-        }
 
 
     type union_info = (ASet.t * ASet.t * ASet.t * ASet.t)
