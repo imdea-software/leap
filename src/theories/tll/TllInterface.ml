@@ -47,6 +47,7 @@ and sort_to_expr_sort (s:Tll.sort) : Expr.sort =
   | Tll.SetElem -> Expr.SetElem
   | Tll.Path    -> Expr.Path
   | Tll.Mem     -> Expr.Mem
+  | Tll.Unknown -> Expr.Unknown
 
 
 and build_term_var (v:Expr.variable) : Tll.term =

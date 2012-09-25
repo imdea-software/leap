@@ -19,7 +19,7 @@ module type S =
       | SetElem
       | Path
       | Mem
-      | Int
+      | Level
       | Unknown
     and term =
         VarT              of variable
@@ -32,7 +32,7 @@ module type S =
       | SetElemT          of setelem
       | PathT             of path
       | MemT              of mem
-      | IntT              of integer
+      | LevelT            of level
       | VarUpdate         of variable * tid * term
     and eq = term * term
     and diseq = term * term
@@ -48,7 +48,7 @@ module type S =
     and tid =
         VarTh             of variable
       | NoThid
-      | CellLockIdAt      of cell * integer
+      | CellLockIdAt      of cell * level
     and elem =
         VarElem           of variable
       | CellData          of cell
@@ -58,15 +58,15 @@ module type S =
     and addr =
         VarAddr           of variable
       | Null
-      | NextAt            of cell * integer
+      | NextAt            of cell * level
       | FirstLocked       of mem * path
     (*  | Malloc of elem * addr * tid *)
     and cell =
         VarCell           of variable
       | Error
-      | MkCell            of elem * addr list * tid list * integer
-      | CellLockAt        of cell * integer * tid
-      | CellUnlockAt      of cell * integer
+      | MkCell            of elem * addr list * tid list * level
+      | CellLockAt        of cell * level * tid
+      | CellUnlockAt      of cell * level
       | CellAt            of mem * addr
     and setth =
         VarSetTh          of variable
@@ -92,14 +92,11 @@ module type S =
         VarMem            of variable
       | Emp
       | Update            of mem * addr * cell
-    and integer =
-        IntVal            of int
-      | VarInt            of variable
-      | IntNeg            of integer
-      | IntAdd            of integer * integer
-      | IntSub            of integer * integer
-      | IntMul            of integer * integer
-      | IntDiv            of integer * integer
+    and level =
+        LevelVal          of int
+      | VarLevel          of variable
+      | LevelSucc         of level
+      | LevelPred         of level
       | HavocLevel
     and atom =
         Append            of path * path * path
@@ -111,10 +108,10 @@ module type S =
       | SubsetEqTh        of setth * setth
       | InElem            of elem * setelem
       | SubsetEqElem      of setelem * setelem
-      | Less              of integer * integer
-      | Greater           of integer * integer
-      | LessEq            of integer * integer
-      | GreaterEq         of integer * integer
+      | Less              of level * level
+      | Greater           of level * level
+      | LessEq            of level * level
+      | GreaterEq         of level * level
       | LessElem          of elem * elem
       | GreaterElem       of elem * elem
       | Eq                of eq
@@ -269,7 +266,7 @@ module Make (K : Level.S) =
       | SetElem
       | Path
       | Mem
-      | Int
+      | Level
       | Unknown
     and term =
         VarT              of variable
@@ -282,7 +279,7 @@ module Make (K : Level.S) =
       | SetElemT          of setelem
       | PathT             of path
       | MemT              of mem
-      | IntT              of integer
+      | LevelT            of level
       | VarUpdate         of variable * tid * term
     and eq = term * term
     and diseq = term * term
@@ -298,7 +295,7 @@ module Make (K : Level.S) =
     and tid =
         VarTh             of variable
       | NoThid
-      | CellLockIdAt      of cell * integer
+      | CellLockIdAt      of cell * level
     and elem =
         VarElem           of variable
       | CellData          of cell
@@ -308,15 +305,15 @@ module Make (K : Level.S) =
     and addr =
         VarAddr           of variable
       | Null
-      | NextAt            of cell * integer
+      | NextAt            of cell * level
       | FirstLocked       of mem * path
     (*  | Malloc of elem * addr * tid *)
     and cell =
         VarCell           of variable
       | Error
-      | MkCell            of elem * addr list * tid list * integer
-      | CellLockAt        of cell * integer * tid
-      | CellUnlockAt      of cell * integer
+      | MkCell            of elem * addr list * tid list * level
+      | CellLockAt        of cell * level * tid
+      | CellUnlockAt      of cell * level
       | CellAt            of mem * addr
     and setth =
         VarSetTh          of variable
@@ -342,14 +339,11 @@ module Make (K : Level.S) =
         VarMem            of variable
       | Emp
       | Update            of mem * addr * cell
-    and integer =
-        IntVal            of int
-      | VarInt            of variable
-      | IntNeg            of integer
-      | IntAdd            of integer * integer
-      | IntSub            of integer * integer
-      | IntMul            of integer * integer
-      | IntDiv            of integer * integer
+    and level =
+        LevelVal          of int
+      | VarLevel          of variable
+      | LevelSucc         of level
+      | LevelPred         of level
       | HavocLevel
     and atom =
         Append            of path * path * path
@@ -361,10 +355,10 @@ module Make (K : Level.S) =
       | SubsetEqTh        of setth * setth
       | InElem            of elem * setelem
       | SubsetEqElem      of setelem * setelem
-      | Less              of integer * integer
-      | Greater           of integer * integer
-      | LessEq            of integer * integer
-      | GreaterEq         of integer * integer
+      | Less              of level * level
+      | Greater           of level * level
+      | LessEq            of level * level
+      | GreaterEq         of level * level
       | LessElem          of elem * elem
       | GreaterElem       of elem * elem
       | Eq                of eq
@@ -543,7 +537,7 @@ module Make (K : Level.S) =
       match th with
           VarTh v            -> S.singleton v @@ get_varset_from_param v
         | NoThid             -> S.empty
-        | CellLockIdAt (c,l) -> (get_varset_cell c) @@ (get_varset_integer l)
+        | CellLockIdAt (c,l) -> (get_varset_cell c) @@ (get_varset_level l)
     and get_varset_elem e =
       match e with
           VarElem v         -> S.singleton v @@ get_varset_from_param v
@@ -555,7 +549,7 @@ module Make (K : Level.S) =
       match a with
           VarAddr v        -> S.singleton v @@ get_varset_from_param v
         | Null             -> S.empty
-        | NextAt (c,l)     -> (get_varset_cell c) @@ (get_varset_integer l)
+        | NextAt (c,l)     -> (get_varset_cell c) @@ (get_varset_level l)
         | FirstLocked(m,p) -> (get_varset_mem m) @@ (get_varset_path p)
     (*    | Malloc(e,a,th)   -> (get_varset_elem e) @@ (get_varset_addr a) @@  (get_varset_tid th) *)
     and get_varset_cell c =
@@ -564,10 +558,10 @@ module Make (K : Level.S) =
           VarCell v           -> S.singleton v @@ get_varset_from_param v
         | Error               -> S.empty
         | MkCell(e,aa,tt,l)   -> (get_varset_elem e) @@ (fold get_varset_addr aa) @@
-                                 (fold get_varset_tid tt) @@ (get_varset_integer l)
-        | CellLockAt (c,l,th) -> (get_varset_cell c) @@ (get_varset_integer l) @@
+                                 (fold get_varset_tid tt) @@ (get_varset_level l)
+        | CellLockAt (c,l,th) -> (get_varset_cell c) @@ (get_varset_level l) @@
                                  (get_varset_tid th)
-        | CellUnlockAt (c,l)  -> (get_varset_cell c) @@ (get_varset_integer l)
+        | CellUnlockAt (c,l)  -> (get_varset_cell c) @@ (get_varset_level l)
         | CellAt(m,a)         -> (get_varset_mem  m) @@ (get_varset_addr a)
     and get_varset_setth sth =
       match sth with
@@ -597,16 +591,13 @@ module Make (K : Level.S) =
           VarMem v           -> S.singleton v @@ get_varset_from_param v
         | Emp                -> S.empty
         | Update(m,a,c)      -> (get_varset_mem m) @@ (get_varset_addr a) @@ (get_varset_cell c)
-    and get_varset_integer i =
+    and get_varset_level i =
       match i with
-          IntVal _     -> S.empty
-        | VarInt v     -> S.singleton v
-        | IntNeg i     -> (get_varset_integer i)
-        | IntAdd (i,j) -> (get_varset_integer i) @@ (get_varset_integer j)
-        | IntSub (i,j) -> (get_varset_integer i) @@ (get_varset_integer j)
-        | IntMul (i,j) -> (get_varset_integer i) @@ (get_varset_integer j)
-        | IntDiv (i,j) -> (get_varset_integer i) @@ (get_varset_integer j)
-        | HavocLevel   -> S.empty
+          LevelVal _  -> S.empty
+        | VarLevel v  -> S.singleton v
+        | LevelSucc l -> (get_varset_level l)
+        | LevelPred l -> (get_varset_level l)
+        | HavocLevel  -> S.empty
     and get_varset_atom a =
       match a with
           Append(p1,p2,p3)       -> (get_varset_path p1) @@ (get_varset_path p2) @@
@@ -622,10 +613,10 @@ module Make (K : Level.S) =
         | InElem(e,se)           -> (get_varset_elem e) @@ (get_varset_setelem se)
         | SubsetEqElem(se1,se2)  -> (get_varset_setelem se1) @@
                                     (get_varset_setelem se2)
-        | Less (i,j)             -> (get_varset_integer i) @@ (get_varset_integer j)
-        | Greater (i,j)          -> (get_varset_integer i) @@ (get_varset_integer j)
-        | LessEq (i,j)           -> (get_varset_integer i) @@ (get_varset_integer j)
-        | GreaterEq (i,j)        -> (get_varset_integer i) @@ (get_varset_integer j)
+        | Less (i,j)             -> (get_varset_level i) @@ (get_varset_level j)
+        | Greater (i,j)          -> (get_varset_level i) @@ (get_varset_level j)
+        | LessEq (i,j)           -> (get_varset_level i) @@ (get_varset_level j)
+        | GreaterEq (i,j)        -> (get_varset_level i) @@ (get_varset_level j)
         | LessElem(e1,e2)        -> (get_varset_elem e1) @@ (get_varset_elem e2)
         | GreaterElem(e1,e2)     -> (get_varset_elem e1) @@ (get_varset_elem e2)
         | Eq((x,y))              -> (get_varset_term x) @@ (get_varset_term y)
@@ -644,7 +635,7 @@ module Make (K : Level.S) =
         | SetElemT se         -> get_varset_setelem se
         | PathT  p            -> get_varset_path p
         | MemT   m            -> get_varset_mem m
-        | IntT   i            -> get_varset_integer i
+        | LevelT l            -> get_varset_level l
         | VarUpdate(v,pc,t)   -> (S.singleton v) @@ (get_varset_term t) @@
                                  (get_varset_from_param v)
     and get_varset_literal l =
@@ -718,10 +709,10 @@ module Make (K : Level.S) =
       | SubsetEqTh(st1,st2)    -> add_list [SetThT st1; SetThT st2]
       | InElem(e,se)           -> add_list [ElemT e; SetElemT se]
       | SubsetEqElem(se1,se2)  -> add_list [SetElemT se1; SetElemT se2]
-      | Less (i,j)             -> add_list [IntT i; IntT j]
-      | Greater (i,j)          -> add_list [IntT i; IntT j]
-      | LessEq (i,j)           -> add_list [IntT i; IntT j]
-      | GreaterEq (i,j)        -> add_list [IntT i; IntT j]
+      | Less (l1,l2)           -> add_list [LevelT l1; LevelT l2]
+      | Greater (l1,l2)        -> add_list [LevelT l1; LevelT l2]
+      | LessEq (l1,l2)         -> add_list [LevelT l1; LevelT l2]
+      | GreaterEq (l1,l2)      -> add_list [LevelT l1; LevelT l2]
       | LessElem(e1,e2)        -> add_list [ElemT e1; ElemT e2]
       | GreaterElem(e1,e2)     -> add_list [ElemT e1; ElemT e2]
       | Eq((x,y))              -> add_list [x;y]
@@ -775,7 +766,7 @@ module Make (K : Level.S) =
         | SetElem   -> (match t with | SetElemT _   -> true | _ -> false)
         | Path      -> (match t with | PathT _      -> true | _ -> false)
         | Mem       -> (match t with | MemT _       -> true | _ -> false)
-        | Int       -> (match t with | IntT _       -> true | _ -> false)
+        | Level     -> (match t with | LevelT _     -> true | _ -> false)
         | Unknown -> false in
       TermSet.fold (fun t set ->
         if match_sort t then
@@ -834,7 +825,7 @@ module Make (K : Level.S) =
           VarMem _ -> true | _ -> false
     and is_int_var s =
       match s with
-          VarInt _ -> true | _ -> false
+          VarLevel _ -> true | _ -> false
 
     let get_sort_from_term t =
       match t with
@@ -848,7 +839,7 @@ module Make (K : Level.S) =
         | SetElemT _       -> SetElem
         | PathT _          -> Path
         | MemT _           -> Mem
-        | IntT _           -> Int
+        | LevelT _         -> Level
         | VarUpdate(v,_,_) -> get_sort v
       
     let terms_same_type a b =
@@ -873,7 +864,7 @@ module Make (K : Level.S) =
         | SetElemT se    -> is_setelem_flat se
         | PathT p        -> is_path_flat p
         | MemT  m        -> is_mem_flat m
-        | IntT  i        -> is_int_flat i
+        | LevelT  i        -> is_level_flat i
         | VarUpdate _    -> true
 
     and is_set_flat t =
@@ -942,15 +933,12 @@ module Make (K : Level.S) =
           VarMem _ -> true
         | Emp      -> true
         | Update(m,a,c) -> (is_mem_var m) && (is_addr_var a) && (is_cell_var c)
-    and is_int_flat t =
+    and is_level_flat t =
       match t with
-          IntVal _     -> true
-        | VarInt _     -> true
-        | IntNeg i     -> is_int_flat i
-        | IntAdd (i,j) -> (is_int_flat i) && (is_int_flat j)
-        | IntSub (i,j) -> (is_int_flat i) && (is_int_flat j)
-        | IntMul (i,j) -> (is_int_flat i) && (is_int_flat j)
-        | IntDiv (i,j) -> (is_int_flat i) && (is_int_flat j)
+          LevelVal _  -> true
+        | VarLevel _  -> true
+        | LevelSucc l -> is_level_flat l
+        | LevelPred l -> is_level_flat l
         | HavocLevel   -> true
 
     let is_literal_flat lit =
@@ -1053,13 +1041,13 @@ module Make (K : Level.S) =
       | SubsetEqElem(s_in,s_out)   -> Printf.sprintf "%s subseteqElem %s"
                                         (setelem_to_str s_in) (setelem_to_str s_out)
       | Less (i1,i2)               -> Printf.sprintf "%s < %s"
-                                        (int_to_str i1) (int_to_str i2)
+                                        (level_to_str i1) (level_to_str i2)
       | Greater (i1,i2)            -> Printf.sprintf "%s > %s"
-                                        (int_to_str i1) (int_to_str i2)
+                                        (level_to_str i1) (level_to_str i2)
       | LessEq (i1,i2)             -> Printf.sprintf "%s <= %s"
-                                        (int_to_str i1) (int_to_str i2)
+                                        (level_to_str i1) (level_to_str i2)
       | GreaterEq (i1,i2)          -> Printf.sprintf "%s >= %s"
-                                        (int_to_str i1) (int_to_str i2)
+                                        (level_to_str i1) (level_to_str i2)
       | LessElem(e1,e2)            -> Printf.sprintf "%s < %s"
                                         (elem_to_str e1) (elem_to_str e2)
       | GreaterElem(e1,e2)         -> Printf.sprintf "%s < %s"
@@ -1088,15 +1076,12 @@ module Make (K : Level.S) =
         | Emp -> Printf.sprintf "emp"
         | Update(mem,add,cell) -> Printf.sprintf "upd(%s,%s,%s)"
             (mem_to_str mem) (addr_to_str add) (cell_to_str cell)
-    and int_to_str expr =
+    and level_to_str expr =
       match expr with
-          IntVal i       -> string_of_int i
-        | VarInt v       -> variable_to_str v
-        | IntNeg i       -> Printf.sprintf "-%s" (int_to_str i)
-        | IntAdd (i1,i2) -> Printf.sprintf "%s + %s" (int_to_str i1) (int_to_str i2)
-        | IntSub (i1,i2) -> Printf.sprintf "%s - %s" (int_to_str i1) (int_to_str i2)
-        | IntMul (i1,i2) -> Printf.sprintf "%s * %s" (int_to_str i1) (int_to_str i2)
-        | IntDiv (i1,i2) -> Printf.sprintf "%s / %s" (int_to_str i1) (int_to_str i2)
+          LevelVal n       -> string_of_int n
+        | VarLevel v       -> variable_to_str v
+        | LevelSucc l -> Printf.sprintf "succ (%s)" (level_to_str l)
+        | LevelPred l -> Printf.sprintf "pred (%s)" (level_to_str l)
         | HavocLevel     -> Printf.sprintf "havocLevel()"
     and path_to_str expr =
       match expr with
@@ -1151,11 +1136,11 @@ module Make (K : Level.S) =
         | Error                 -> "Error"
         | MkCell(data,aa,tt,l)  -> Printf.sprintf "mkcell(%s,[%s],[%s],%s)"
                                      (elem_to_str data) (concat addr_to_str aa)
-                                     (concat tid_to_str tt) (int_to_str l)
+                                     (concat tid_to_str tt) (level_to_str l)
         | CellLockAt(cell,l,th) -> Printf.sprintf "%s.lock(%s,%s)"
-                                     (cell_to_str cell) (int_to_str l) (tid_to_str th)
+                                     (cell_to_str cell) (level_to_str l) (tid_to_str th)
         | CellUnlockAt(cell,l)  -> Printf.sprintf "%s.unlock(%s)"
-                                     (cell_to_str cell) (int_to_str l)
+                                     (cell_to_str cell) (level_to_str l)
         | CellAt(mem,addr)      -> Printf.sprintf "%s [ %s ]"
                                      (mem_to_str mem) (addr_to_str addr)
     and addr_to_str expr =
@@ -1163,7 +1148,7 @@ module Make (K : Level.S) =
           VarAddr(v)            -> variable_to_str v
         | Null                  -> "null"
         | NextAt(cell,l)        -> Printf.sprintf "%s.next(%s)"
-                                     (cell_to_str cell) (int_to_str l)
+                                     (cell_to_str cell) (level_to_str l)
         | FirstLocked(mem,path) -> Printf.sprintf "firstlocked(%s,%s)"
                                      (mem_to_str mem) (path_to_str path)
     (*    | Malloc(e,a,t)     -> Printf.sprintf "malloc(%s,%s,%s)" (elem_to_str e) (addr_to_str a) (tid_to_str t) *)
@@ -1172,7 +1157,7 @@ module Make (K : Level.S) =
           VarTh(v)             -> variable_to_str v
         | NoThid               -> Printf.sprintf "NoThid"
         | CellLockIdAt(cell,l) -> Printf.sprintf "%s.lockid(%s)"
-                                    (cell_to_str cell) (int_to_str l)
+                                    (cell_to_str cell) (level_to_str l)
     and eq_to_str expr =
       let (e1,e2) = expr in
         Printf.sprintf "%s = %s" (term_to_str e1) (term_to_str e2)
@@ -1198,7 +1183,7 @@ module Make (K : Level.S) =
         | SetElemT(setelem)  -> (setelem_to_str setelem)
         | PathT(path)        -> (path_to_str path)
         | MemT(mem)          -> (mem_to_str mem)
-        | IntT(i)            -> (int_to_str i)
+        | LevelT(i)            -> (level_to_str i)
         | VarUpdate (v,th,t) -> let v' = prime_var v in
                                 let v'_str = variable_to_str v' in
                                 let v_str = variable_to_str v in
@@ -1244,8 +1229,8 @@ module Make (K : Level.S) =
         | SetElem   -> "SetElem"
         | Path      -> "Path"
         | Mem       -> "Mem"
-        | Int       -> "Int"
-        | Unknown -> "Unknown"
+        | Level     -> "Level"
+        | Unknown   -> "Unknown"
 
     let generic_printer aprinter x =
       Printf.printf "%s" (aprinter x)
@@ -1343,7 +1328,7 @@ module Make (K : Level.S) =
         | SetElemT(setelem)  -> voc_setelem setelem
         | PathT(path)        -> voc_path path
         | MemT(mem)          -> voc_mem mem
-        | IntT(i)            -> voc_int i
+        | LevelT(i)            -> voc_level i
         | VarUpdate (v,th,t) -> (voc_var v) @ (voc_tid th) @ (voc_term t)
 
 
@@ -1363,7 +1348,7 @@ module Make (K : Level.S) =
       match a with
         VarAddr v             -> Option.map_default (fun x->[x]) [] (var_th v)
       | Null                  -> []
-      | NextAt(cell,l)        -> (voc_cell cell) @ (voc_int l)
+      | NextAt(cell,l)        -> (voc_cell cell) @ (voc_level l)
       | FirstLocked(mem,path) -> (voc_mem mem) @ (voc_path path)
 
 
@@ -1380,7 +1365,7 @@ module Make (K : Level.S) =
       match th with
         VarTh v              -> th :: (Option.map_default (fun x->[x]) [] (var_th v))
       | NoThid               -> []
-      | CellLockIdAt(cell,l) -> (voc_cell cell) @ (voc_int l)
+      | CellLockIdAt(cell,l) -> (voc_cell cell) @ (voc_level l)
 
 
     and voc_cell (c:cell) : tid list =
@@ -1391,9 +1376,9 @@ module Make (K : Level.S) =
       | MkCell(data,aa,tt,l) -> (voc_elem data)    @
                                 (fold voc_addr aa) @
                                 (fold voc_tid tt)  @
-                                (voc_int l)
-      | CellLockAt(cell,l,th)-> (voc_cell cell) @ (voc_int l) @ (voc_tid th)
-      | CellUnlockAt(cell,l) -> (voc_cell cell) @ (voc_int l)
+                                (voc_level l)
+      | CellLockAt(cell,l,th)-> (voc_cell cell) @ (voc_level l) @ (voc_tid th)
+      | CellUnlockAt(cell,l) -> (voc_cell cell) @ (voc_level l)
       | CellAt(mem,addr)     -> (voc_mem mem) @ (voc_addr addr)
 
 
@@ -1435,16 +1420,13 @@ module Make (K : Level.S) =
       | Update(mem,add,cell) -> (voc_mem mem) @ (voc_addr add) @ (voc_cell cell)
 
 
-    and voc_int (i:integer) : tid list =
+    and voc_level (i:level) : tid list =
       match i with
-        IntVal _       -> []
-      | VarInt v       -> Option.map_default (fun x->[x]) [] (var_th v)
-      | IntNeg i       -> voc_int i
-      | IntAdd (i1,i2) -> (voc_int i1) @ (voc_int i2)
-      | IntSub (i1,i2) -> (voc_int i1) @ (voc_int i2)
-      | IntMul (i1,i2) -> (voc_int i1) @ (voc_int i2)
-      | IntDiv (i1,i2) -> (voc_int i1) @ (voc_int i2)
-      | HavocLevel     -> []
+        LevelVal _  -> []
+      | VarLevel v  -> Option.map_default (fun x->[x]) [] (var_th v)
+      | LevelSucc l -> voc_level l
+      | LevelPred l -> voc_level l
+      | HavocLevel  -> []
 
 
     and voc_atom (a:atom) : tid list =
@@ -1465,10 +1447,10 @@ module Make (K : Level.S) =
       | SubsetEqTh(s_in,s_out)     -> (voc_setth s_in) @ (voc_setth s_out)
       | InElem(e,s)                -> (voc_elem e) @ (voc_setelem s)
       | SubsetEqElem(s_in,s_out)   -> (voc_setelem s_in) @ (voc_setelem s_out)
-      | Less (i1,i2)               -> (voc_int i1) @ (voc_int i2)
-      | Greater (i1,i2)            -> (voc_int i1) @ (voc_int i2)
-      | LessEq (i1,i2)             -> (voc_int i1) @ (voc_int i2)
-      | GreaterEq (i1,i2)          -> (voc_int i1) @ (voc_int i2)
+      | Less (i1,i2)               -> (voc_level i1) @ (voc_level i2)
+      | Greater (i1,i2)            -> (voc_level i1) @ (voc_level i2)
+      | LessEq (i1,i2)             -> (voc_level i1) @ (voc_level i2)
+      | GreaterEq (i1,i2)          -> (voc_level i1) @ (voc_level i2)
       | LessElem(e1,e2)            -> (voc_elem e1) @ (voc_elem e2)
       | GreaterElem(e1,e2)         -> (voc_elem e1) @ (voc_elem e2)
       | Eq(exp)                    -> (voc_eq exp)
@@ -1648,10 +1630,10 @@ module Make (K : Level.S) =
         | SubsetEqTh (s1,s2)  -> list_union [req_st s1;req_st s2]
         | InElem (e,s)        -> list_union [req_e e;req_se s]
         | SubsetEqElem (s1,s2)-> list_union [req_se s1;req_se s2]
-        | Less (i1,i2)        -> list_union [req_i i1;req_i i2]
-        | Greater (i1,i2)     -> list_union [req_i i1;req_i i2]
-        | LessEq (i1,i2)      -> list_union [req_i i1;req_i i2]
-        | GreaterEq (i1,i2)   -> list_union [req_i i1;req_i i2]
+        | Less (i1,i2)        -> list_union [req_lv i1;req_lv i2]
+        | Greater (i1,i2)     -> list_union [req_lv i1;req_lv i2]
+        | LessEq (i1,i2)      -> list_union [req_lv i1;req_lv i2]
+        | GreaterEq (i1,i2)   -> list_union [req_lv i1;req_lv i2]
         | LessElem  (e1,e2)   -> list_union [req_e e1; req_e e2]
         | GreaterElem (e1,e2) -> list_union [req_e e1; req_e e2]
         | Eq (t1,t2)          -> union (req_term t1) (req_term t2)
@@ -1666,16 +1648,13 @@ module Make (K : Level.S) =
         | Emp              -> single Mem
         | Update (m,a,c)   -> append Mem [req_m m;req_a a;req_c c]
 
-      and req_i (i:integer) : SortSet.t =
-        match i with
-        | IntVal _           -> single Int
-        | VarInt _           -> single Int
-        | IntNeg i           -> append Int [req_i i]
-        | IntAdd (i1,i2)     -> append Int [req_i i1;req_i i2]
-        | IntSub (i1,i2)     -> append Int [req_i i1;req_i i2]
-        | IntMul (i1,i2)     -> append Int [req_i i1;req_i i2]
-        | IntDiv (i1,i2)     -> append Int [req_i i1;req_i i2]
-        | HavocLevel         -> empty
+      and req_lv (l:level) : SortSet.t =
+        match l with
+        | LevelVal _  -> single Level
+        | VarLevel _  -> single Level
+        | LevelSucc l -> append Level [req_lv l]
+        | LevelPred l -> append Level [req_lv l]
+        | HavocLevel  -> empty
 
       and req_p (p:path) : SortSet.t =
         match p with
@@ -1707,18 +1686,18 @@ module Make (K : Level.S) =
         match c with
         | VarCell _          -> single Cell
         | Error              -> single Cell
-        | MkCell (e,aa,tt,l) -> append Cell ([req_e e;req_i l] @
+        | MkCell (e,aa,tt,l) -> append Cell ([req_e e;req_lv l] @
                                              (List.map req_a aa) @
                                              (List.map req_t tt))
-        | CellLockAt (c,l,t) -> append Cell [req_c c;req_i l;req_t t]
-        | CellUnlockAt (c,l) -> append Cell [req_c c;req_i l]
+        | CellLockAt (c,l,t) -> append Cell [req_c c;req_lv l;req_t t]
+        | CellUnlockAt (c,l) -> append Cell [req_c c;req_lv l]
         | CellAt (m,a)       -> append Cell [req_m m;req_a a]
 
       and req_a (a:addr) : SortSet.t =
         match a with
         | VarAddr _         -> single Addr
         | Null              -> single Addr
-        | NextAt (c,l)      -> append Addr [req_c c;req_i l]
+        | NextAt (c,l)      -> append Addr [req_c c;req_lv l]
         | FirstLocked (m,p) -> append Addr [req_m m;req_p p]
 
       and req_e (e:elem) : SortSet.t =
@@ -1733,7 +1712,7 @@ module Make (K : Level.S) =
         match t with
         | VarTh _            -> single Thid
         | NoThid             -> single Thid
-        | CellLockIdAt (c,l) -> append Thid [req_c c;req_i l]
+        | CellLockIdAt (c,l) -> append Thid [req_c c;req_lv l]
 
       and req_s (s:set) : SortSet.t =
         match s with
@@ -1758,7 +1737,7 @@ module Make (K : Level.S) =
         | SetElemT s                   -> req_se s
         | PathT p                      -> req_p p
         | MemT m                       -> req_m m
-        | IntT i                       -> req_i i
+        | LevelT l                     -> req_lv l
         | VarUpdate ((_,s,_,_,_),t,tr) -> append s [req_t t;req_term tr]
 
       in
@@ -1800,10 +1779,10 @@ module Make (K : Level.S) =
         | SubsetEqTh (s1,s2)  -> list_union [ops_st s1;ops_st s2]
         | InElem (e,s)        -> list_union [ops_e e;ops_se s]
         | SubsetEqElem (s1,s2)-> list_union [ops_se s1;ops_se s2]
-        | Less (i1,i2)        -> list_union [ops_i i1;ops_i i2]
-        | Greater (i1,i2)     -> list_union [ops_i i1;ops_i i2]
-        | LessEq (i1,i2)      -> list_union [ops_i i1;ops_i i2]
-        | GreaterEq (i1,i2)   -> list_union [ops_i i1;ops_i i2]
+        | Less (i1,i2)        -> list_union [ops_lv i1;ops_lv i2]
+        | Greater (i1,i2)     -> list_union [ops_lv i1;ops_lv i2]
+        | LessEq (i1,i2)      -> list_union [ops_lv i1;ops_lv i2]
+        | GreaterEq (i1,i2)   -> list_union [ops_lv i1;ops_lv i2]
         | LessElem (e1,e2)    -> append ElemOrder [ops_e e1; ops_e e2]
         | GreaterElem (e1,e2) -> append ElemOrder [ops_e e1; ops_e e2]
         | Eq (t1,t2)          -> list_union [ops_term t1;ops_term t2]
@@ -1818,16 +1797,13 @@ module Make (K : Level.S) =
         | Emp              -> empty
         | Update (m,a,c)   -> list_union [ops_m m;ops_a a;ops_c c]
 
-      and ops_i (i:integer) : OpsSet.t =
+      and ops_lv (i:level) : OpsSet.t =
         match i with
-        | IntVal _       -> empty
-        | VarInt _       -> empty
-        | IntNeg i       -> list_union [ops_i i]
-        | IntAdd (i1,i2) -> list_union [ops_i i1; ops_i i2]
-        | IntSub (i1,i2) -> list_union [ops_i i1; ops_i i2]
-        | IntMul (i1,i2) -> list_union [ops_i i1; ops_i i2]
-        | IntDiv (i1,i2) -> list_union [ops_i i1; ops_i i2]
-        | HavocLevel     -> empty
+        | LevelVal _  -> empty
+        | VarLevel _  -> empty
+        | LevelSucc l -> list_union [ops_lv l]
+        | LevelPred l -> list_union [ops_lv l]
+        | HavocLevel  -> empty
 
       and ops_p (p:path) : OpsSet.t =
         match p with
@@ -1859,18 +1835,18 @@ module Make (K : Level.S) =
         match c with
         | VarCell _          -> empty
         | Error              -> empty
-        | MkCell (e,aa,tt,l) -> list_union ([ops_e e;ops_i l] @
+        | MkCell (e,aa,tt,l) -> list_union ([ops_e e;ops_lv l] @
                                             (List.map ops_a aa) @
                                             (List.map ops_t tt))
-        | CellLockAt (c,l,t) -> list_union [ops_c c;ops_i l;ops_t t]
-        | CellUnlockAt (c,l) -> list_union [ops_c c;ops_i l]
+        | CellLockAt (c,l,t) -> list_union [ops_c c;ops_lv l;ops_t t]
+        | CellUnlockAt (c,l) -> list_union [ops_c c;ops_lv l]
         | CellAt (m,a)       -> list_union [ops_m m;ops_a a]
 
       and ops_a (a:addr) : OpsSet.t =
         match a with
         | VarAddr _            -> empty
         | Null                 -> empty
-        | NextAt (c,l)         -> list_union [ops_c c;ops_i l]
+        | NextAt (c,l)         -> list_union [ops_c c;ops_lv l]
         | FirstLocked (m,p)    -> append FstLocked [ops_m m;ops_p p]
 
       and ops_e (e:elem) : OpsSet.t =
@@ -1885,7 +1861,7 @@ module Make (K : Level.S) =
         match t with
         | VarTh _            -> empty
         | NoThid             -> empty
-        | CellLockIdAt (c,l) -> list_union [ops_c c;ops_i l]
+        | CellLockIdAt (c,l) -> list_union [ops_c c;ops_lv l]
 
       and ops_s (s:set) : OpsSet.t =
         match s with
@@ -1910,7 +1886,7 @@ module Make (K : Level.S) =
         | SetElemT s         -> ops_se s
         | PathT p            -> ops_p p
         | MemT m             -> ops_m m
-        | IntT i             -> ops_i i
+        | LevelT i           -> ops_lv i
         | VarUpdate (_,t,tr) -> list_union [ops_t t;ops_term tr]
 
       in

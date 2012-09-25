@@ -16,7 +16,7 @@ module type S =
       | SetElem
       | Path
       | Mem
-      | Int
+      | Level
       | Unknown
     and term =
         VarT              of variable
@@ -29,7 +29,7 @@ module type S =
       | SetElemT          of setelem
       | PathT             of path
       | MemT              of mem
-      | IntT              of integer
+      | LevelT            of level
       | VarUpdate         of variable * tid * term
     and eq = term * term
     and diseq = term * term
@@ -45,7 +45,7 @@ module type S =
     and tid =
         VarTh             of variable
       | NoThid
-      | CellLockIdAt      of cell * integer
+      | CellLockIdAt      of cell * level
     and elem =
         VarElem           of variable
       | CellData          of cell
@@ -55,15 +55,15 @@ module type S =
     and addr =
         VarAddr           of variable
       | Null
-      | NextAt            of cell * integer
+      | NextAt            of cell * level
       | FirstLocked       of mem * path
     (*  | Malloc of elem * addr * tid *)
     and cell =
         VarCell           of variable
       | Error
-      | MkCell            of elem * addr list * tid list * integer
-      | CellLockAt        of cell * integer * tid
-      | CellUnlockAt      of cell * integer
+      | MkCell            of elem * addr list * tid list * level
+      | CellLockAt        of cell * level * tid
+      | CellUnlockAt      of cell * level
       | CellAt            of mem * addr
     and setth =
         VarSetTh          of variable
@@ -89,14 +89,11 @@ module type S =
         VarMem            of variable
       | Emp
       | Update            of mem * addr * cell
-    and integer =
-        IntVal            of int
-      | VarInt            of variable
-      | IntNeg            of integer
-      | IntAdd            of integer * integer
-      | IntSub            of integer * integer
-      | IntMul            of integer * integer
-      | IntDiv            of integer * integer
+    and level =
+        LevelVal          of int
+      | VarLevel          of variable
+      | LevelSucc         of level
+      | LevelPred         of level
       | HavocLevel
     and atom =
         Append            of path * path * path
@@ -108,10 +105,10 @@ module type S =
       | SubsetEqTh        of setth * setth
       | InElem            of elem * setelem
       | SubsetEqElem      of setelem * setelem
-      | Less              of integer * integer
-      | Greater           of integer * integer
-      | LessEq            of integer * integer
-      | GreaterEq         of integer * integer
+      | Less              of level * level
+      | Greater           of level * level
+      | LessEq            of level * level
+      | GreaterEq         of level * level
       | LessElem          of elem * elem
       | GreaterElem       of elem * elem
       | Eq                of eq
