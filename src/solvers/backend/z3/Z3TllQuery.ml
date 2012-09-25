@@ -1135,7 +1135,8 @@ let rec z3_define_var (buf:Buffer.t)
   in
     if Expr.is_global_var v then
       begin
-        GM.sm_decl_const sort_map name (GM.conv_sort s) ;
+        GM.sm_decl_const sort_map name
+          (GM.conv_sort (TllInterface.sort_to_expr_sort s)) ;
         B.add_string buf ( "(declare-const " ^ name ^ " " ^ s_str ^ ")\n" );
         match s with
           Expr.Path -> B.add_string buf ( "(assert (ispath " ^ name ^ "))\n" )
