@@ -50,6 +50,7 @@ exception Normal_vars_in_ghost_assignment of Expr.term list
 exception No_kind_for_var of Expr.varId
 exception Duplicated_ranking_function of Vd.node_id_t * Expr.term * Expr.term
 exception Ranking_function_unmatched_sort of Expr.sort * Expr.term * Expr.sort
+exception Different_argument_length of string * string
 
 
 let invVars = Hashtbl.create System.initVarNum
@@ -539,6 +540,8 @@ let check_and_add_delta (tbl:Vd.delta_fun_t)
 %type <unit> inv_var_decl_list
 %type <unit> inv_var_decl
 %type <Tag.f_tag option> formula_tag
+
+%type <Expr.term list> term_list
 
 %type <Expression.formula> formula
 %type <Expr.tid option> opt_th_param
@@ -1426,6 +1429,14 @@ cell :
       let a = parser_check_type check_type_addr $5 Expr.Addr get_str_expr in
         Expr.CellAt(h,a)
     }
+
+
+term_list :
+  | term COMMA term
+    { [$1;$3] }
+  | term COMMA term_list
+    { $1 :: $3 }
+
 
 
 /* SETTH terms*/

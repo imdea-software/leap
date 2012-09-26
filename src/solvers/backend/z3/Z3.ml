@@ -3,7 +3,7 @@ open Debug
 open LeapLib
 open Z3BackendType
 
-module Z3 : BACKEND_POS_TLL =
+module Z3 : BACKEND_POS_TLL_TSLK =
 struct
   type t = string
   
@@ -155,5 +155,17 @@ struct
       let conjformula  = Z3TllQuery.conjformula_to_str
       let sort_map     = Z3TllQuery.get_sort_map
     end
+(*
+    module Tslk =
+    struct
+      module Exp = TSLKExpression
+      module Smp = SmpTslk
+      
+      let literal_list = Z3TslkQuery.literal_list_to_str
+      let formula      = Z3TslkQuery.formula_to_str
+      let conjformula  = Z3TslkQuery.conjformula_to_str
+      let sort_map     = Z3TslkQuery.get_sort_map
+    end
+*)
   end
 end

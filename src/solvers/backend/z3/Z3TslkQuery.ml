@@ -1259,7 +1259,7 @@ module Make (TSLK : TSLKExpression.S) =
         Expr.VarTh v            -> variable_invocation_to_str v
       | Expr.NoThid             -> "NoThread"
       | Expr.CellLockIdAt (c,l) -> Printf.sprintf "(lock_at %s %s)" (cellterm_to_str c)
-                                                                   (levelterm_to_str l)
+                                                                    (levelterm_to_str l)
 
 
     and addrterm_to_str (a:Expr.addr) : string =

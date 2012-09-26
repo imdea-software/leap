@@ -107,22 +107,21 @@ end
 (*
 module type TslkBackend =
 (** Signatures of the functions the Solver needs to implement in order
-    to fully support TLL. *)
+    to fully support TSLK. *)
 sig
   type t
   
   module Tslk :
-  (** Translation of TLL expressions. *)
+  (** Translation of TSLK expressions. *)
   sig
     module Exp : TSLKEXP
     module Smp : sig
       type cutoff_strategy
       type cutoff_options_t
     end
-
-
+    
     val literal_list : Exp.literal list -> t
-    (** [literal_list ls] translates the list [ls] of literals into its
+    (** [literal_list ls] translates the list [ls] of literals into its 
         internal representation. *)
     
     val formula      : Tactics.solve_tactic_t option ->
@@ -141,11 +140,9 @@ sig
     val sort_map : unit -> GenericModel.sort_map_t
     (** [sort_map ()] returns the sort mapping obtained from the last
         call to a formula translation *)
-
   end
 end
 *)
-
 
 
 
@@ -200,7 +197,7 @@ sig
     include PosBackend  with type t := t
     include TllBackend  with type t := t
     include NumBackend  with type t := t
-(*    include TslkBackend with type t := t*)
+(*    include TslkBackend with type t := t *)
   end
 end
 
@@ -209,10 +206,9 @@ module type BACKEND_SOLVER = CUSTOM_BACKEND_SOLVER
   and  module Translate.Tll.Exp  = TllExpression
   and  module Translate.Tll.Smp  = SmpTll
   and  module Translate.Num.Exp  = NumExpression
-(*  and  module Translate.Tslk.Exp = TSLKExpression
-  and  module Translate.Tslk.Smp = SmpTslk
+(*  and  module Translate.Tslk.Exp = TSLKExpression.S
+  and  module Translate.Tslk.Smp = SmpTslk.S
 *)
-
 
 
 
@@ -256,7 +252,7 @@ module type BACKEND_TLL = CUSTOM_BACKEND_TLL
 
 (*
 module type CUSTOM_BACKEND_TSLK =
-(** Signature of solver that supports TSLK reasoning *)
+(** Signature of solver that supports TLL reasoning *)
 sig
   include BackendCommon
   
@@ -264,7 +260,7 @@ sig
   (** Translation of expressions into internal data structures that 
       the Solver understands. *)
   
-    include TslkBackend with type t := t
+    include TllBackend with type t := t  
   end
 end
 
@@ -272,6 +268,9 @@ module type BACKEND_TSLK = CUSTOM_BACKEND_TSLK
   with module Translate.Tslk.Exp = TSLKExpression
   and  module Translate.Tslk.Smp = SmpTslk
 *)
+
+
+
 
 
 module type CUSTOM_BACKEND_NUM =

@@ -150,7 +150,7 @@ module Make (TSLK : TSLKExpression.S) =
         | Expr.SetElemT _ -> numelem := !numelem + 1 (* the witness of se1 != se2 *)
         | Expr.PathT _    -> numaddr := !numaddr + 2 (* the witnesses of p1 != p2 *)
         | Expr.MemT _     -> ()
-        | Expr.IntT _     -> ()
+        | Expr.LevelT _     -> ()
         | Expr.VarUpdate _-> () in                (* ALE: Not sure if OK *)
       let process (lit:Expr.literal) =
         match lit with
@@ -223,7 +223,7 @@ module Make (TSLK : TSLKExpression.S) =
       | Expr.SetElemT _  -> union_count_elem info (Expr.Eq(x,y)) (* the witness of se1 != se2 *)
       | Expr.PathT _     -> union_count_addr info (Expr.Eq(x,y)) (* the witnesses of p1 != p2 *)
       | Expr.MemT _      -> info
-      | Expr.IntT _      -> info
+      | Expr.LevelT _      -> info
       | Expr.VarUpdate _ -> info (* ALE: Not sure if OK *)
 
 
@@ -239,7 +239,7 @@ module Make (TSLK : TSLKExpression.S) =
       | Expr.SetElemT _  -> union_count_elem info (Expr.InEq(x,y)) (* the witness of se1 != se2 *)
       | Expr.PathT _     -> union_count_addr info (Expr.InEq(x,y)) (* the witnesses of p1 != p2 *)
       | Expr.MemT _      -> info
-      | Expr.IntT _      -> info
+      | Expr.LevelT _      -> info
       | Expr.VarUpdate _ -> info (* ALE: Not sure if OK *)
 
 
@@ -315,7 +315,7 @@ module Make (TSLK : TSLKExpression.S) =
         | Expr.SetElemT _  -> Some (x,y) (* the witness of se1 != se2 *)
         | Expr.PathT _     -> Some (x,y) (* the witnesses of p1 != p2 *)
         | Expr.MemT _      -> Some (x,y)
-        | Expr.IntT _      -> Some (x,y)
+        | Expr.LevelT _      -> Some (x,y)
         | Expr.VarUpdate _ -> let _ = assert(false) in None (* ALE: Not sure if OK *)
 
 
