@@ -6,7 +6,7 @@ module Make (TSLK : TSLKExpression.S) =
 
     module Expr     = TSLK
     module VarIdSet = TSLK.VarIdSet
-    module Smp      = SmpTslk
+    module Smp      = SmpTslk.Make(TSLK)
     module B        = Buffer
     module GM       = GenericModel
     module Interf   = TSLKInterface.Make(TSLK)
@@ -30,6 +30,7 @@ module Make (TSLK : TSLKExpression.S) =
 
     (* Sort names *)
     let bool_s    : string = "Bool"
+    let int_s     : string = "Int"
     let level_s   : string = "Level"
     let addr_s    : string = "Address"
     let set_s     : string = "Set"
@@ -1257,7 +1258,7 @@ module Make (TSLK : TSLKExpression.S) =
       match th with
         Expr.VarTh v            -> variable_invocation_to_str v
       | Expr.NoThid             -> "NoThread"
-      | Expr.CellLockIdAt (c,l) -> Printf.sprintf "(lockat %s %s)" (cellterm_to_str c)
+      | Expr.CellLockIdAt (c,l) -> Printf.sprintf "(lock_at %s %s)" (cellterm_to_str c)
                                                                    (levelterm_to_str l)
 
 
@@ -1265,8 +1266,9 @@ module Make (TSLK : TSLKExpression.S) =
       match a with
           Expr.VarAddr v        -> variable_invocation_to_str v
         | Expr.Null             -> "null"
-        | Expr.Next c           -> Printf.sprintf "(next %s)"
+        | Expr.NextAt (c,l)     -> Printf.sprintf "(next_at %s %s)"
                                       (cellterm_to_str c)
+                                      (levelterm_to_str l)
         | Expr.FirstLocked(m,p) -> Printf.sprintf "(firstlock %s %s)"
                                       (memterm_to_str m)
                                       (pathterm_to_str p)
@@ -1274,18 +1276,22 @@ module Make (TSLK : TSLKExpression.S) =
 
     and cellterm_to_str (c:Expr.cell) : string =
       match c with
-          Expr.VarCell v      -> variable_invocation_to_str v
-        | Expr.Error          -> "error"
-        | Expr.MkCell(e,a,th) -> Printf.sprintf "(mkcell %s %s %s)"
+          Expr.VarCell v          -> variable_invocation_to_str v
+        | Expr.Error              -> "error"
+        | Expr.MkCell(e,aa,tt,l)  -> Printf.sprintf "(mkcell %s %s %s %s)"
                                           (elemterm_to_str e)
-                                          (addrterm_to_str a)
-                                          (tidterm_to_str th)
-        | Expr.CellLock(c,th) -> Printf.sprintf "(cell_lock %s %s)"
+                                          (* TUKA: Put here an array printer!!! *)
+                                          (String.concat " " (List.map addrterm_to_str aa))
+                                          (String.concat " " (List.map tidterm_to_str tt))
+                                          (levelterm_to_str l)
+        | Expr.CellLockAt(c,l,th) -> Printf.sprintf "(cell_lock_at %s %s %s)"
                                           (cellterm_to_str c)
+                                          (levelterm_to_str l)
                                           (tidterm_to_str th)
-        | Expr.CellUnlock c  -> Printf.sprintf "(cell_unlock %s)"
+        | Expr.CellUnlockAt (c,l) -> Printf.sprintf "(cell_unlock_at %s %s)"
                                           (cellterm_to_str c)
-        | Expr.CellAt(m,a)     -> Printf.sprintf "(select %s %s)"
+                                          (levelterm_to_str l)
+        | Expr.CellAt(m,a)        -> Printf.sprintf "(select %s %s)"
                                           (memterm_to_str m)
                                           (addrterm_to_str a)
 
@@ -1348,13 +1354,12 @@ module Make (TSLK : TSLKExpression.S) =
                                               (cellterm_to_str c)
 
 
-    and levelterm_to_str (i:Expr.integer) : string =
-      let tostr = intterm_to_str in
-      match i with
+    and levelterm_to_str (l:Expr.level) : string =
+      match l with
       | Expr.LevelVal n  -> "ll_" ^ string_of_int n
       | Expr.VarLevel v  -> variable_invocation_to_str v
-      | Expr.LevelSucc l -> "(lsucc %s)" (levelterm_to_str l)
-      | Expr.LevelPred l -> "(lpred %s)" (levelterm_to_str l)
+      | Expr.LevelSucc l -> Printf.sprintf "(lsucc %s)" (levelterm_to_str l)
+      | Expr.LevelPred l -> Printf.sprintf "(lpred %s)" (levelterm_to_str l)
       | Expr.HavocLevel  -> "" (* Don't need representation for this statement *)
 
 
@@ -1380,6 +1385,7 @@ module Make (TSLK : TSLKExpression.S) =
       | Expr.SetElemT se       -> setelemterm_to_str se
       | Expr.PathT   p         -> pathterm_to_str p
       | Expr.MemT  m           -> memterm_to_str m
+      | Expr.LevelT l          -> levelterm_to_str l
       | Expr.VarUpdate(v,th,t) -> varupdate_to_str v th t
 
 
@@ -1432,6 +1438,26 @@ module Make (TSLK : TSLKExpression.S) =
     let subseteqelem_to_str (r:Expr.setelem) (s:Expr.setelem) : string =
       Printf.sprintf "(subseteqelem %s %s)" (setelemterm_to_str r)
                                             (setelemterm_to_str s)
+
+
+    let lesslevel_to_str (l1:Expr.level) (l2:Expr.level) : string =
+      Printf.sprintf "(less_l %s %s)" (levelterm_to_str l1)
+                                      (levelterm_to_str l2)
+
+
+    let lesseqlevel_to_str (l1:Expr.level) (l2:Expr.level) : string =
+      Printf.sprintf "(lesseq_l %s %s)" (levelterm_to_str l1)
+                                        (levelterm_to_str l2)
+
+
+    let greaterlevel_to_str (l1:Expr.level) (l2:Expr.level) : string =
+      Printf.sprintf "(great_l %s %s)" (levelterm_to_str l1)
+                                       (levelterm_to_str l2)
+
+
+    let greatereqlevel_to_str (l1:Expr.level) (l2:Expr.level) : string =
+      Printf.sprintf "(greateq_l %s %s)" (levelterm_to_str l1)
+                                         (levelterm_to_str l2)
 
 
     let lesselem_to_str (e1:Expr.elem) (e2:Expr.elem) : string =
@@ -1518,6 +1544,10 @@ module Make (TSLK : TSLKExpression.S) =
         | Expr.SubsetEqTh(rt,st)     -> subseteqth_to_str rt st
         | Expr.InElem(e,se)          -> inelem_to_str e se
         | Expr.SubsetEqElem(re,se)   -> subseteqelem_to_str re se
+        | Expr.Less (l1,l2)          -> lesslevel_to_str l1 l2
+        | Expr.Greater (l1,l2)       -> greaterlevel_to_str l1 l2
+        | Expr.LessEq (l1,l2)        -> lesseqlevel_to_str l1 l2
+        | Expr.GreaterEq (l1,l2)     -> greatereqlevel_to_str l1 l2
         | Expr.LessElem(e1,e2)       -> lesselem_to_str e1 e2
         | Expr.GreaterElem(e1,e2)    -> greaterelem_to_str e1 e2
         | Expr.Eq(x,y)               -> eq_to_str x y
@@ -1557,9 +1587,9 @@ module Make (TSLK : TSLKExpression.S) =
       let _ = GM.clear_sort_map sort_map in
       let expr = Expr.Conj ls in
       let c = Smp.cut_off_normalized expr in
-      let num_addr = c.Smp.num_addrs in
-      let num_tid = c.Smp.num_tids in
-      let num_elem = c.Smp.num_elems in
+      let num_addr = c.SmpTslk.num_addrs in
+      let num_tid = c.SmpTslk.num_tids in
+      let num_elem = c.SmpTslk.num_elems in
       let (req_sorts, req_ops) =
         List.fold_left (fun (ss,os) lit ->
           let phi = Expr.Literal lit
@@ -1582,8 +1612,8 @@ module Make (TSLK : TSLKExpression.S) =
 
 
     let formula_to_str (stac:Tactics.solve_tactic_t option)
-                       (co:Smp.cutoff_strategy)
-                       (copt:Smp.cutoff_options_t)
+                       (co:SmpTslk.cutoff_strategy)
+                       (copt:SmpTslk.cutoff_options_t)
                        (phi:Expr.formula) : string =
 
       let _ = LeapDebug.debug "entering Z3TllQuery.formula_to_str...\n" in
@@ -1625,9 +1655,9 @@ module Make (TSLK : TSLKExpression.S) =
       let _ = GM.clear_sort_map sort_map in
       let _ = LeapDebug.debug "Z3TllQuery will compute the cutoff...\n" in
       let max_cut_off = Smp.cut_off co copt phi in
-      let num_addr    = max_cut_off.Smp.num_addrs in
-      let num_tid     = max_cut_off.Smp.num_tids in
-      let num_elem    = max_cut_off.Smp.num_elems in
+      let num_addr    = max_cut_off.SmpTslk.num_addrs in
+      let num_tid     = max_cut_off.SmpTslk.num_tids in
+      let num_elem    = max_cut_off.SmpTslk.num_elems in
       let req_sorts   = Expr.required_sorts phi in
       let req_ops     = Expr.special_ops phi in
       let formula_str = formula_to_str phi in
