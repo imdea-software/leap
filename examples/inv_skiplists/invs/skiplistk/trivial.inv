@@ -1,0 +1,7 @@
+param:
+
+tid i
+
+invariant [fullLock] :
+
+true
