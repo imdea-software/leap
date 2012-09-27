@@ -112,35 +112,37 @@ sig
   type t
   
   module Tslk :
-  (** Translation of TSLK expressions. *)
-  sig
-    module Exp : TSLKEXP
-    module Smp : sig
-      type cutoff_strategy
-      type cutoff_options_t
-    end
-    
-    val literal_list : Exp.literal list -> t
-    (** [literal_list ls] translates the list [ls] of literals into its internal 
-        internal representation. *)
-    
-    val formula      : Tactics.solve_tactic_t option ->
-                       Smp.cutoff_strategy ->
-                       Smp.cutoff_options_t ->
-                       Exp.formula -> t
-    (** [formula stat strat copt f] translates the formula [f] following the
-        strategy [strat] to compute the SMP cutoff and tactic [stat] to
-        decide whether or not to include extra information to help the
-        future satisfiability analysis of the formula. When computing the SMP
-        it considers the options passes in [copt]. *)
-        
-    val conjformula  : Exp.conjunctive_formula -> t
-    (** [conjformula f] tranlates the conjunctive formula [f]. *)
+(*    functor (Exp : TSLKExpression.S) ->*)
+    (** Translation of TSLK expressions. *)
+    sig
+      module Exp : TSLKEXP
+      module Smp : sig
+        type cutoff_strategy
+        type cutoff_options_t
+      end
 
-    val sort_map : unit -> GenericModel.sort_map_t
-    (** [sort_map ()] returns the sort mapping obtained from the last
-        call to a formula translation *)
-  end
+
+      val literal_list : Exp.literal list -> t
+      (** [literal_list ls] translates the list [ls] of literals into its internal 
+          internal representation. *)
+      
+      val formula      : Tactics.solve_tactic_t option ->
+                         Smp.cutoff_strategy ->
+                         Smp.cutoff_options_t ->
+                         Exp.formula -> t
+      (** [formula stat strat copt f] translates the formula [f] following the
+          strategy [strat] to compute the SMP cutoff and tactic [stat] to
+          decide whether or not to include extra information to help the
+          future satisfiability analysis of the formula. When computing the SMP
+          it considers the options passes in [copt]. *)
+          
+      val conjformula  : Exp.conjunctive_formula -> t
+      (** [conjformula f] tranlates the conjunctive formula [f]. *)
+
+      val sort_map : unit -> GenericModel.sort_map_t
+      (** [sort_map ()] returns the sort mapping obtained from the last
+          call to a formula translation *)
+    end
 end
 
 

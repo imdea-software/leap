@@ -155,17 +155,18 @@ struct
       let conjformula  = Z3TllQuery.conjformula_to_str
       let sort_map     = Z3TllQuery.get_sort_map
     end
-(*
+
     module Tslk =
     struct
-      module Exp = TSLKExpression
-      module Smp = SmpTslk
+      module Exp     = TSLKExpression.Make(struct let level =3 end)
+      module Smp     = SmpTslk
+      module Z3Query = Z3TslkQuery.Make(Exp)
       
-      let literal_list = Z3TslkQuery.literal_list_to_str
-      let formula      = Z3TslkQuery.formula_to_str
-      let conjformula  = Z3TslkQuery.conjformula_to_str
-      let sort_map     = Z3TslkQuery.get_sort_map
+      let literal_list = Z3Query.literal_list_to_str
+      let formula      = Z3Query.formula_to_str
+      let conjformula  = Z3Query.conjformula_to_str
+      let sort_map     = Z3Query.get_sort_map
     end
-*)
+
   end
 end
