@@ -104,7 +104,7 @@ end
 
 
 
-(*
+
 module type TslkBackend =
 (** Signatures of the functions the Solver needs to implement in order
     to fully support TSLK. *)
@@ -121,7 +121,7 @@ sig
     end
     
     val literal_list : Exp.literal list -> t
-    (** [literal_list ls] translates the list [ls] of literals into its 
+    (** [literal_list ls] translates the list [ls] of literals into its internal 
         internal representation. *)
     
     val formula      : Tactics.solve_tactic_t option ->
@@ -142,7 +142,7 @@ sig
         call to a formula translation *)
   end
 end
-*)
+
 
 
 
@@ -158,7 +158,7 @@ sig
     module Exp : NUMEXP
     
     val int_varlist  : Exp.variable list -> t
-    (** [int_varlist vs] tranlates the list [vs] of integer variables
+    (** [int_varlist vs] tranlates the list [vs] of intege/r variables
         into its corresponding internal representation. *)
     
     val formula      : Exp.formula -> t
@@ -212,13 +212,14 @@ module type BACKEND_SOLVER = CUSTOM_BACKEND_SOLVER
 
 
 
+
 module type CUSTOM_BACKEND_POS =
 (** Signature of solver that supports position reasoning *)
 sig
   include BackendCommon
   
   module Translate : sig
-  (** Translation of expressions into internal data structures that 
+  (** Translation of expressions into internal data structures that the Solver 
       the Solver understands. *)
   
     include PosBackend with type t := t  
@@ -252,21 +253,27 @@ module type BACKEND_TLL = CUSTOM_BACKEND_TLL
 
 (*
 module type CUSTOM_BACKEND_TSLK =
-(** Signature of solver that supports TLL reasoning *)
+(** Signature of solver that supports TSLK reasoning *)
 sig
   include BackendCommon
   
-  module Translate : sig
-  (** Translation of expressions into internal data structures that 
-      the Solver understands. *)
-  
-    include TllBackend with type t := t  
-  end
+  module Translate :
+    functor (TSLK : TSLKExpression.S) ->
+      sig
+      (** Translation of expressions into internal data structures that the
+          Solver understands. *)
+      
+        include TslkBackend with type t := t
+      end
 end
+*)
 
-module type BACKEND_TSLK = CUSTOM_BACKEND_TSLK
-  with module Translate.Tslk.Exp = TSLKExpression
-  and  module Translate.Tslk.Smp = SmpTslk
+(*
+module type BACKEND_TSLK =
+  functor (TSLK : TSLKExpression.S) ->
+    CUSTOM_BACKEND_TSLK
+    with module Translate.Tslk.Exp = TSLK
+    and  module Translate.Tslk.Smp = SmpTslk
 *)
 
 
