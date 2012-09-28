@@ -156,6 +156,18 @@ struct
       let sort_map     = YicesTllQuery.get_sort_map
     end
 
+    module Tslk =
+    struct
+      module Exp     = TSLKExpression.Make(struct let level =3 end)
+      module Smp     = SmpTslk
+      module Z3Query = Z3TslkQuery.Make(Exp)
+      
+      let literal_list = Z3Query.literal_list_to_str
+      let formula      = Z3Query.formula_to_str
+      let conjformula  = Z3Query.conjformula_to_str
+      let sort_map     = Z3Query.get_sort_map
+    end
+
     module Num =
     struct
       module Exp = NumExpression

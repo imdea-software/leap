@@ -36,9 +36,8 @@ module type CUSTOM_TSLKSOLVER = sig
 end
 
 module type S = CUSTOM_TSLKSOLVER
-  with module TslkExp = TslkExpression
-  and  module Smp = SmpTslk
-  
+  with module Smp = TslkExpression
+
 module Make : functor (Solver : BackendSolverIntf.BACKEND_TSLK) -> S
 
 val choose : string -> (module S)

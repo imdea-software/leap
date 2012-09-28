@@ -89,7 +89,7 @@ let inputVd (s:string) =
 let inputPvd (s:string) =
   pvdFile := s
 
-let dp_opt_list = ["num"; "tll"]
+let dp_opt_list = ["num"; "tll"; "tslk"]
 let set_dp dp =
   dpType := dp
 

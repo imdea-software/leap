@@ -2,6 +2,6 @@ param:
 
 tid i
 
-invariant [fullLock] :
+invariant [trivial] :
 
 true

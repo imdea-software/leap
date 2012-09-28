@@ -25,12 +25,11 @@ let defaultTll () = (module Yices : BACKEND_TLL)
 
 
 (* Backends that support TSLK reasoning *)
-(*
 let tslkTbl : (string, (module BACKEND_TSLK)) Hashtbl.t = Hashtbl.create 2
 let _ = Hashtbl.add tslkTbl Yices.identifier (module Yices : BACKEND_TSLK)
 let _ = Hashtbl.add tslkTbl Z3.identifier    (module Z3    : BACKEND_TSLK)
 let defaultTslk () = (module Yices : BACKEND_TSLK)
-*)
+(* TUKA: Put Yices as default once generic Backend is modified *)
 
 
 

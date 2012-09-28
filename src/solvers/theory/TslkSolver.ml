@@ -1,33 +1,33 @@
 open LeapLib
 
-module type CUSTOM_TLLSOLVER = sig
-  module TllExp : ExpressionTypes.TLLEXP
+module type CUSTOM_TSLKSOLVER = sig
+  module TslkExp : ExpressionTypes.TSLKEXP
   
   module Smp : sig
     type cutoff_strategy
   end
   
-  val is_sat_conj  : int -> TllExp.conjunctive_formula -> bool
-  val is_sat_dnf   : int -> TllExp.formula -> bool
+  val is_sat_conj  : int -> TslkExp.conjunctive_formula -> bool
+  val is_sat_dnf   : int -> TslkExp.formula -> bool
   
-  val is_valid_dnf : int -> TllExp.formula -> bool
+  val is_valid_dnf : int -> TslkExp.formula -> bool
   val is_valid_dnf_pus_info 
-                   : int -> TllExp.formula -> (bool * int)
+                   : int -> TslkExp.formula -> (bool * int)
     
   val is_sat       : int ->
                      Tactics.solve_tactic_t option ->
                      Smp.cutoff_strategy ->
-                     TllExp.formula -> bool
+                     TslkExp.formula -> bool
   val is_valid     : int ->
                      Tactics.solve_tactic_t option ->
                      Smp.cutoff_strategy ->
-                     TllExp.formula -> bool
+                     TslkExp.formula -> bool
   
   val is_valid_plus_info 
                    : int ->
                      Tactics.solve_tactic_t option ->
                      Smp.cutoff_strategy ->
-                     TllExp.formula -> (bool * int)
+                     TslkExp.formula -> (bool * int)
 
   val compute_model: bool -> unit
   val model_to_str : unit -> string
@@ -38,14 +38,14 @@ module type CUSTOM_TLLSOLVER = sig
 end
 
 module type S = CUSTOM_TLLSOLVER
-  with module TllExp = TllExpression
+  with module TslkExp = TslkExpression
   and  module Smp = SmpTll
   
 module Make(Solver : BackendSolverIntf.BACKEND_TLL) : S =
 struct
-  module TllExp   = Solver.Translate.Tll.Exp
+  module TslkExp   = Solver.Translate.Tll.Exp
   module Smp      = Solver.Translate.Tll.Smp  
-  module VarIdSet = TllExp.VarIdSet
+  module VarIdSet = TslkExp.VarIdSet
   module GM       = GenericModel
 
   let comp_model : bool ref = ref false
@@ -56,85 +56,85 @@ struct
    * is_var 
    *)
   let is_var_path = function
-      TllExp.VarPath(_) -> true
+      TslkExp.VarPath(_) -> true
     | _               -> false
   and is_var_addr = function
-      TllExp.VarAddr(_) -> true
+      TslkExp.VarAddr(_) -> true
     | _               -> false
   and is_var_mem = function
-      TllExp.VarMem(_) -> true
+      TslkExp.VarMem(_) -> true
     | _              -> false
   and is_var_cell = function
-      TllExp.VarCell(_) -> true
+      TslkExp.VarCell(_) -> true
     | _               -> false
   and is_var_elem = function
-      TllExp.VarElem(_) -> true
+      TslkExp.VarElem(_) -> true
     | _               -> false
   and is_var_thid = function
-      TllExp.VarTh(_) -> true
+      TslkExp.VarTh(_) -> true
     | _             -> false
   and is_var_set = function
-      TllExp.VarSet(_) -> true
+      TslkExp.VarSet(_) -> true
     | _              -> false
   and is_var_setth = function
-      TllExp.VarSetTh(_) -> true
+      TslkExp.VarSetTh(_) -> true
     | _                -> false
   and is_var_setelem = function
-      TllExp.VarSetElem(_) -> true
+      TslkExp.VarSetElem(_) -> true
     | _                    -> false
   
   let is_var_term = function
-      TllExp.VarT(_)     -> true
-    | TllExp.SetT(s)     -> is_var_set s
-    | TllExp.ElemT(e)    -> is_var_elem e
-    | TllExp.ThidT(t)    -> is_var_thid t
-    | TllExp.AddrT(a)    -> is_var_addr a
-    | TllExp.CellT(c)    -> is_var_cell c
-    | TllExp.SetThT(st)  -> is_var_setth st
-    | TllExp.SetElemT(st)-> is_var_setelem st
-    | TllExp.PathT(p)    -> is_var_path p
-    | TllExp.MemT(m)     -> is_var_mem m
-    | TllExp.VarUpdate _ -> false (* ALE: Not sure if OK *)
+      TslkExp.VarT(_)     -> true
+    | TslkExp.SetT(s)     -> is_var_set s
+    | TslkExp.ElemT(e)    -> is_var_elem e
+    | TslkExp.ThidT(t)    -> is_var_thid t
+    | TslkExp.AddrT(a)    -> is_var_addr a
+    | TslkExp.CellT(c)    -> is_var_cell c
+    | TslkExp.SetThT(st)  -> is_var_setth st
+    | TslkExp.SetElemT(st)-> is_var_setelem st
+    | TslkExp.PathT(p)    -> is_var_path p
+    | TslkExp.MemT(m)     -> is_var_mem m
+    | TslkExp.VarUpdate _ -> false (* ALE: Not sure if OK *)
   
   (* 
    * is_constant 
    *)
   let is_constant_set = function
-        TllExp.EmptySet -> true
+        TslkExp.EmptySet -> true
       | _             -> false
   and is_constant_setth = function
-        TllExp.EmptySetTh -> true
+        TslkExp.EmptySetTh -> true
       | _               -> false
   and is_constant_setelem = function
-        TllExp.EmptySetElem -> true
+        TslkExp.EmptySetElem -> true
       | _                   -> false
   and is_constant_elem e = false
   and is_constant_thid th = false
   and is_constant_addr =  function
-        TllExp.Null -> true
+        TslkExp.Null -> true
       | _         -> false
   and is_constant_cell = function
-        TllExp.Error -> true
+        TslkExp.Error -> true
       | _          -> false
   and is_constant_path = function
-        TllExp.Epsilon -> true
+        TslkExp.Epsilon -> true
       | _            -> false
   and is_constant_mem  = function
-        TllExp.Emp -> true
+        TslkExp.Emp -> true
       | _        -> false
   
   let is_constant_term = function
-        TllExp.VarT(_)     -> false
-      | TllExp.SetT(s)     -> is_constant_set s
-      | TllExp.ElemT(e)    -> is_constant_elem e
-      | TllExp.ThidT(th)   -> is_constant_thid th
-      | TllExp.AddrT(a)    -> is_constant_addr a
-      | TllExp.CellT(c)    -> is_constant_cell c
-      | TllExp.SetThT(st)  -> is_constant_setth st
-      | TllExp.SetElemT(st)-> is_constant_setelem st
-      | TllExp.PathT(p)    -> is_constant_path p
-      | TllExp.MemT(m)     -> is_constant_mem m
-      | TllExp.VarUpdate _ -> false
+        TslkExp.VarT(_)     -> false
+      | TslkExp.SetT(s)     -> is_constant_set s
+      | TslkExp.ElemT(e)    -> is_constant_elem e
+      | TslkExp.ThidT(th)   -> is_constant_thid th
+      | TslkExp.AddrT(a)    -> is_constant_addr a
+      | TslkExp.CellT(c)    -> is_constant_cell c
+      | TslkExp.SetThT(st)  -> is_constant_setth st
+      | TslkExp.SetElemT(st)-> is_constant_setelem st
+      | TslkExp.PathT(p)    -> is_constant_path p
+      | TslkExp.MemT(m)     -> is_constant_mem m
+      | TslkExp.VarUpdate _ -> false
   
   (* 
    * is_flat
@@ -152,69 +152,69 @@ struct
   
   let is_flat_term t =
     match t with
-        TllExp.VarT   _    -> true
-      | TllExp.SetT   s    -> is_flat_set s
-      | TllExp.ElemT  e    -> is_flat_elem e
-      | TllExp.ThidT  th   -> is_flat_thid th
-      | TllExp.AddrT  a    -> is_flat_addr a
-      | TllExp.CellT  c    -> is_flat_cell c
-      | TllExp.SetThT st   -> is_flat_setth st
-      | TllExp.SetElemT se -> is_flat_setelem se
-      | TllExp.PathT  p    -> is_flat_path p
-      | TllExp.MemT   m    -> is_flat_mem m
-      | TllExp.VarUpdate _ -> true
+        TslkExp.VarT   _    -> true
+      | TslkExp.SetT   s    -> is_flat_set s
+      | TslkExp.ElemT  e    -> is_flat_elem e
+      | TslkExp.ThidT  th   -> is_flat_thid th
+      | TslkExp.AddrT  a    -> is_flat_addr a
+      | TslkExp.CellT  c    -> is_flat_cell c
+      | TslkExp.SetThT st   -> is_flat_setth st
+      | TslkExp.SetElemT se -> is_flat_setelem se
+      | TslkExp.PathT  p    -> is_flat_path p
+      | TslkExp.MemT   m    -> is_flat_mem m
+      | TslkExp.VarUpdate _ -> true
   
   
   let is_flat_literal lit =
     match lit with
-      | TllExp.Append(p1,p2,p3)      -> is_var_path p1 && is_var_path p2 &&
+      | TslkExp.Append(p1,p2,p3)      -> is_var_path p1 && is_var_path p2 &&
                                         is_var_path p3
-      | TllExp.Reach(m,a1,a2,p)      -> is_var_mem m && is_var_addr a1 &&
+      | TslkExp.Reach(m,a1,a2,p)      -> is_var_mem m && is_var_addr a1 &&
                                         is_var_addr a2 && is_var_path p
-      | TllExp.OrderList(m,a1,a2)    -> is_var_mem m && is_var_addr a1 &&
+      | TslkExp.OrderList(m,a1,a2)    -> is_var_mem m && is_var_addr a1 &&
                                         is_var_addr a2
-      | TllExp.In (a,s)              -> is_var_addr a && is_var_set s
-      | TllExp.SubsetEq(s1,s2)       -> is_var_set s1 && is_var_set s2
-      | TllExp.InTh(t,st)            -> is_var_thid t && is_var_setth st
-      | TllExp.SubsetEqTh(st1,st2)   -> is_var_setth st1 && is_var_setth st2
-      | TllExp.InElem(e,se)          -> is_var_elem e && is_var_setelem se
-      | TllExp.SubsetEqElem(se1,se2) -> is_var_setelem se1 && is_var_setelem se2
-      | TllExp.LessElem(e1,e2)       -> is_var_elem e1 && is_var_elem e2
-      | TllExp.GreaterElem(e1,e2)    -> is_var_elem e1 && is_var_elem e2
-      | TllExp.Eq((t1,t2))           -> is_var_term t1 && is_var_term t2
-      | TllExp.InEq((t1,t2))         -> is_var_term t1 && is_var_term t2
-      | TllExp.PC(pc,t,pr)           -> true
-      | TllExp.PCUpdate (pc,t)       -> true
-      | TllExp.PCRange(pc1,pc2,t,pr) -> true
+      | TslkExp.In (a,s)              -> is_var_addr a && is_var_set s
+      | TslkExp.SubsetEq(s1,s2)       -> is_var_set s1 && is_var_set s2
+      | TslkExp.InTh(t,st)            -> is_var_thid t && is_var_setth st
+      | TslkExp.SubsetEqTh(st1,st2)   -> is_var_setth st1 && is_var_setth st2
+      | TslkExp.InElem(e,se)          -> is_var_elem e && is_var_setelem se
+      | TslkExp.SubsetEqElem(se1,se2) -> is_var_setelem se1 && is_var_setelem se2
+      | TslkExp.LessElem(e1,e2)       -> is_var_elem e1 && is_var_elem e2
+      | TslkExp.GreaterElem(e1,e2)    -> is_var_elem e1 && is_var_elem e2
+      | TslkExp.Eq((t1,t2))           -> is_var_term t1 && is_var_term t2
+      | TslkExp.InEq((t1,t2))         -> is_var_term t1 && is_var_term t2
+      | TslkExp.PC(pc,t,pr)           -> true
+      | TslkExp.PCUpdate (pc,t)       -> true
+      | TslkExp.PCRange(pc1,pc2,t,pr) -> true
   
   let is_flat expr =
     List.for_all is_flat_literal expr
       
   
   (* INVOCATIONS TRANSFORMING TO DNF FIRST *)
-  let is_sat_conj (lines : int) (phi : TllExp.conjunctive_formula) : bool =
+  let is_sat_conj (lines : int) (phi : TslkExp.conjunctive_formula) : bool =
     match phi with
-        TllExp.TrueConj   -> true
-      | TllExp.FalseConj  -> false
-      | TllExp.Conj conjs -> 
+        TslkExp.TrueConj   -> true
+      | TslkExp.FalseConj  -> false
+      | TslkExp.Conj conjs -> 
         begin
           Solver.set_prog_lines lines;
           Solver.sat (Solver.Translate.Tll.literal_list conjs)
         end
   
-  let is_sat_dnf (prog_lines : int) (phi : TllExp.formula) : bool =
-    let dnf_phi = TllExp.dnf phi in
+  let is_sat_dnf (prog_lines : int) (phi : TslkExp.formula) : bool =
+    let dnf_phi = TslkExp.dnf phi in
       List.exists (is_sat_conj prog_lines) dnf_phi
   
   
-  let is_valid_dnf (prog_lines : int) (phi : TllExp.formula) : bool =
-    let dnf_phi       = TllExp.dnf (TllExp.Not phi) in
+  let is_valid_dnf (prog_lines : int) (phi : TslkExp.formula) : bool =
+    let dnf_phi       = TslkExp.dnf (TslkExp.Not phi) in
     let is_unsat conj = (not (is_sat_conj prog_lines conj))
     in List.for_all is_unsat dnf_phi
   
   
   let is_valid_dnf_pus_info (prog_lines:int)
-      (phi:TllExp.formula) : (bool * int) =
+      (phi:TslkExp.formula) : (bool * int) =
     Solver.reset_calls ();
     let res = is_valid_dnf prog_lines phi in
     (res, Solver.calls_count ())
@@ -224,20 +224,20 @@ struct
   let is_sat (lines : int)
              (stac:Tactics.solve_tactic_t option)
              (co : Smp.cutoff_strategy)
-             (phi : TllExp.formula) : bool =
+             (phi : TslkExp.formula) : bool =
     Solver.set_prog_lines lines;
     Solver.sat (Solver.Translate.Tll.formula stac co cutoff_opt phi)
   
   let is_valid (prog_lines:int)
                (stac:Tactics.solve_tactic_t option)
                (co:Smp.cutoff_strategy)
-               (phi:TllExp.formula) : bool =
-    not (is_sat prog_lines stac co (TllExp.Not phi))
+               (phi:TslkExp.formula) : bool =
+    not (is_sat prog_lines stac co (TslkExp.Not phi))
   
   let is_valid_plus_info (prog_lines:int)
                          (stac:Tactics.solve_tactic_t option)
                          (co:Smp.cutoff_strategy)
-                         (phi:TllExp.formula) : (bool * int) =
+                         (phi:TslkExp.formula) : (bool * int) =
     Solver.reset_calls ();
     let res = is_valid prog_lines stac co phi in
     (res, Solver.calls_count())

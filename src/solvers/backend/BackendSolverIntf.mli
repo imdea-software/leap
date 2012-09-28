@@ -199,7 +199,7 @@ sig
     include PosBackend  with type t := t
     include TllBackend  with type t := t
     include NumBackend  with type t := t
-(*    include TslkBackend with type t := t *)
+    include TslkBackend with type t := t
   end
 end
 
@@ -208,9 +208,7 @@ module type BACKEND_SOLVER = CUSTOM_BACKEND_SOLVER
   and  module Translate.Tll.Exp  = TllExpression
   and  module Translate.Tll.Smp  = SmpTll
   and  module Translate.Num.Exp  = NumExpression
-(*  and  module Translate.Tslk.Exp = TSLKExpression.S
-  and  module Translate.Tslk.Smp = SmpTslk.S
-*)
+  and  module Translate.Tslk.Smp = SmpTslk
 
 
 
@@ -253,31 +251,23 @@ module type BACKEND_TLL = CUSTOM_BACKEND_TLL
 
 
 
-(*
+
 module type CUSTOM_BACKEND_TSLK =
 (** Signature of solver that supports TSLK reasoning *)
 sig
   include BackendCommon
   
   module Translate :
-    functor (TSLK : TSLKExpression.S) ->
-      sig
-      (** Translation of expressions into internal data structures that the
-          Solver understands. *)
-      
-        include TslkBackend with type t := t
-      end
+    sig
+    (** Translation of expressions into internal data structures that the
+        Solver understands. *)
+
+       include TslkBackend with type t := t
+    end
 end
-*)
 
-(*
-module type BACKEND_TSLK =
-  functor (TSLK : TSLKExpression.S) ->
-    CUSTOM_BACKEND_TSLK
-    with module Translate.Tslk.Exp = TSLK
-    and  module Translate.Tslk.Smp = SmpTslk
-*)
-
+module type BACKEND_TSLK = CUSTOM_BACKEND_TSLK
+    with  module Translate.Tslk.Smp = SmpTslk
 
 
 
