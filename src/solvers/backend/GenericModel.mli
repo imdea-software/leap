@@ -29,6 +29,7 @@ val cell_s    : string
 val setth_s   : string
 val setelem_s : string
 val path_s    : string
+val level_s   : string
 val heap_s    : string
 val unk_s     : string
 val loc_s     : string

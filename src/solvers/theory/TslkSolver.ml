@@ -37,14 +37,14 @@ module type CUSTOM_TSLKSOLVER = sig
   val set_group_vars : bool -> unit
 end
 
-module type S = CUSTOM_TLLSOLVER
-  with module TslkExp = TslkExpression
-  and  module Smp = SmpTll
+module type S = CUSTOM_TSLKSOLVER
+(*  with module TslkExp = TslkExpression *)
+  with module Smp = SmpTslk
   
-module Make(Solver : BackendSolverIntf.BACKEND_TLL) : S =
+module Make(Solver : BackendSolverIntf.BACKEND_TSLK) : S =
 struct
-  module TslkExp   = Solver.Translate.Tll.Exp
-  module Smp      = Solver.Translate.Tll.Smp  
+  module TslkExp  = Solver.Translate.Tslk.Exp
+  module Smp      = Solver.Translate.Tslk.Smp
   module VarIdSet = TslkExp.VarIdSet
   module GM       = GenericModel
 
@@ -63,6 +63,9 @@ struct
     | _               -> false
   and is_var_mem = function
       TslkExp.VarMem(_) -> true
+    | _              -> false
+  and is_var_level = function
+      TslkExp.VarLevel(_) -> true
     | _              -> false
   and is_var_cell = function
       TslkExp.VarCell(_) -> true
@@ -94,6 +97,7 @@ struct
     | TslkExp.SetElemT(st)-> is_var_setelem st
     | TslkExp.PathT(p)    -> is_var_path p
     | TslkExp.MemT(m)     -> is_var_mem m
+    | TslkExp.LevelT(l)   -> is_var_level l
     | TslkExp.VarUpdate _ -> false (* ALE: Not sure if OK *)
   
   (* 
@@ -122,6 +126,9 @@ struct
   and is_constant_mem  = function
         TslkExp.Emp -> true
       | _        -> false
+  and is_constant_level = function
+        TslkExp.LevelVal _ -> true
+      | _        -> false
   
   let is_constant_term = function
         TslkExp.VarT(_)     -> false
@@ -134,6 +141,7 @@ struct
       | TslkExp.SetElemT(st)-> is_constant_setelem st
       | TslkExp.PathT(p)    -> is_constant_path p
       | TslkExp.MemT(m)     -> is_constant_mem m
+      | TslkExp.LevelT(l)   -> is_constant_level l
       | TslkExp.VarUpdate _ -> false
   
   (* 
@@ -148,6 +156,7 @@ struct
   and is_flat_addr    a  = is_var_addr    a  || is_constant_addr    a
   and is_flat_cell    c  = is_var_cell    c  || is_constant_cell    c
   and is_flat_mem     m  = is_var_mem     m  || is_constant_mem     m
+  and is_flat_level   l  = is_var_level   l  || is_constant_level   l
   and is_flat_path    p  = is_var_path    p  || is_constant_path    p
   
   let is_flat_term t =
@@ -162,6 +171,7 @@ struct
       | TslkExp.SetElemT se -> is_flat_setelem se
       | TslkExp.PathT  p    -> is_flat_path p
       | TslkExp.MemT   m    -> is_flat_mem m
+      | TslkExp.LevelT l    -> is_flat_level l
       | TslkExp.VarUpdate _ -> true
   
   
@@ -179,6 +189,10 @@ struct
       | TslkExp.SubsetEqTh(st1,st2)   -> is_var_setth st1 && is_var_setth st2
       | TslkExp.InElem(e,se)          -> is_var_elem e && is_var_setelem se
       | TslkExp.SubsetEqElem(se1,se2) -> is_var_setelem se1 && is_var_setelem se2
+      | TslkExp.Less(l1,l2)           -> is_var_level l1 && is_var_level l2
+      | TslkExp.LessEq(l1,l2)         -> is_var_level l1 && is_var_level l2
+      | TslkExp.Greater(l1,l2)        -> is_var_level l1 && is_var_level l2
+      | TslkExp.GreaterEq(l1,l2)      -> is_var_level l1 && is_var_level l2
       | TslkExp.LessElem(e1,e2)       -> is_var_elem e1 && is_var_elem e2
       | TslkExp.GreaterElem(e1,e2)    -> is_var_elem e1 && is_var_elem e2
       | TslkExp.Eq((t1,t2))           -> is_var_term t1 && is_var_term t2
@@ -199,7 +213,7 @@ struct
       | TslkExp.Conj conjs -> 
         begin
           Solver.set_prog_lines lines;
-          Solver.sat (Solver.Translate.Tll.literal_list conjs)
+          Solver.sat (Solver.Translate.Tslk.literal_list conjs)
         end
   
   let is_sat_dnf (prog_lines : int) (phi : TslkExp.formula) : bool =
@@ -226,7 +240,7 @@ struct
              (co : Smp.cutoff_strategy)
              (phi : TslkExp.formula) : bool =
     Solver.set_prog_lines lines;
-    Solver.sat (Solver.Translate.Tll.formula stac co cutoff_opt phi)
+    Solver.sat (Solver.Translate.Tslk.formula stac co cutoff_opt phi)
   
   let is_valid (prog_lines:int)
                (stac:Tactics.solve_tactic_t option)
@@ -295,7 +309,7 @@ let search_sets_to_str (model:GM.t) (sm:GM.sort_map_t) (s:GM.sort) : string =
 
 
   let model_to_str () : string =
-    let sort_map = Solver.Translate.Tll.sort_map () in
+    let sort_map = Solver.Translate.Tslk.sort_map () in
     let model = Solver.get_model () in
     let thid_str = search_type_to_str model sort_map GM.tid_s in
     let pc_str   = search_type_to_str model sort_map GM.loc_s in
@@ -303,6 +317,7 @@ let search_sets_to_str (model:GM.t) (sm:GM.sort_map_t) (s:GM.sort) : string =
     let elem_str = search_type_to_str model sort_map GM.elem_s in
     let cell_str = search_type_to_str model sort_map GM.cell_s in
     let path_str = search_type_to_str model sort_map GM.path_s in
+    let level_str = search_type_to_str model sort_map GM.level_s in
     (* Special description for sets *)
     let set_str = search_sets_to_str model sort_map GM.set_s in
     let setth_str = search_sets_to_str model sort_map GM.setth_s in
@@ -316,6 +331,7 @@ let search_sets_to_str (model:GM.t) (sm:GM.sort_map_t) (s:GM.sort) : string =
       "\nElements:\n" ^ elem_str ^
       "\nCells:\n" ^ cell_str ^
       "\nPaths:\n" ^ path_str ^
+      "\nLevels:\n" ^ level_str ^
       "\nSets:\n" ^ set_str ^
       "\nSets of tids:\n" ^ setth_str ^
       "\nSets of elements:\n" ^ setelem_str ^
@@ -338,7 +354,7 @@ let search_sets_to_str (model:GM.t) (sm:GM.sort_map_t) (s:GM.sort) : string =
 end
 
 let choose (solverIdent : string) : (module S) =
-  let m = try Hashtbl.find BackendSolvers.tllTbl solverIdent
-    with Not_found -> BackendSolvers.defaultTll () in
-  let module Sol = (val m : BackendSolverIntf.BACKEND_TLL) in
+  let m = try Hashtbl.find BackendSolvers.tslkTbl solverIdent
+    with Not_found -> BackendSolvers.defaultTslk () in
+  let module Sol = (val m : BackendSolverIntf.BACKEND_TSLK) in
   (module Make(Sol) : S)

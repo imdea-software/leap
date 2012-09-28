@@ -1,5 +1,5 @@
 open Printf
-open YicesTslkQuery
+open TslkSolver
 
 open LeapLib
 open Global

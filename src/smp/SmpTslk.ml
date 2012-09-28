@@ -23,6 +23,36 @@ type model_size =
   }
 
 
+  let strategy_to_str (s:cutoff_strategy) : string =
+    match s with
+      Dnf     -> "DNF"
+    | Union   -> "Union"
+    | Pruning -> "Pruning"
+
+
+  let opt_empty () =
+    {
+      forget_primed_mem = false ;
+      group_vars = false ;
+    }
+
+
+  let set_forget_primed_mem (opt:cutoff_options_t) (b:bool) : unit =
+    opt.forget_primed_mem <- b
+
+
+  let set_group_vars (opt:cutoff_options_t) (b:bool) : unit =
+    opt.group_vars <- b
+
+
+  (* model_size functions *)
+  let model_size_to_str ms =
+    "num_elems  = " ^ (string_of_int ms.num_elems)  ^ "\n" ^
+    "num_tids  = " ^ (string_of_int ms.num_tids)  ^ "\n" ^
+    "num_addrs  = " ^ (string_of_int ms.num_addrs)  ^ "\n"
+
+
+
 
 module Make (TSLK : TSLKExpression.S) =
   struct
@@ -35,38 +65,7 @@ module Make (TSLK : TSLKExpression.S) =
 
     type union_info = (ASet.t * ASet.t * ASet.t * ASet.t)
 
-
-    (* Cutoff options functions *)
-
-    let opt_empty () =
-      {
-        forget_primed_mem = false ;
-        group_vars = false ;
-      }
-
-    let set_forget_primed_mem (opt:cutoff_options_t) (b:bool) : unit =
-      opt.forget_primed_mem <- b
-
-    let set_group_vars (opt:cutoff_options_t) (b:bool) : unit =
-      opt.group_vars <- b
-
     let options : cutoff_options_t ref = ref (opt_empty())
-
-
-
-    let strategy_to_str (s:cutoff_strategy) : string =
-      match s with
-        Dnf     -> "DNF"
-      | Union   -> "Union"
-      | Pruning -> "Pruning"
-
-
-    (* model_size functions *)
-    let model_size_to_str ms =
-      "num_elems  = " ^ (string_of_int ms.num_elems)  ^ "\n" ^
-      "num_tids  = " ^ (string_of_int ms.num_tids)  ^ "\n" ^
-      "num_addrs  = " ^ (string_of_int ms.num_addrs)  ^ "\n"
-
 
     (* union_info functions *)
 
