@@ -214,7 +214,10 @@ sig
     -> formula_table_t
 end
 
-module Make(PS : PosSolver.S)(TS : TllSolver.S)(NS : NumSolver.S) : S =
+module Make (PS  : PosSolver.S)
+            (TS  : TllSolver.S)
+            (TKS : TslkSolver.S)
+            (NS  : NumSolver.S) : S =
 struct
   type rhoMode =
       RClosed of E.tid * int
@@ -1255,58 +1258,58 @@ struct
     (* let param_sup = E.conj_list param_sup_list in *)
     
   
-  (* Replace invariant parameters by fresh ones *)
-  let (new_supInv,vs) = 
-    let h (fs, vs) f = 
-      let f_voc = E.voc f in
-      let new_ths = E.gen_fresh_thread_list
-        (inv.E.voc @ vs) (List.length f_voc) in
-      let subst = E.new_tid_subst (List.combine f_voc new_ths) in
-      let new_f = E.subst_tid subst f in
-      (new_f :: fs, new_ths@vs) in
-    List.fold_left h ([],[]) param_sup_list in
+    (* Replace invariant parameters by fresh ones *)
+    let (new_supInv,vs) = 
+      let h (fs, vs) f = 
+        let f_voc = E.voc f in
+        let new_ths = E.gen_fresh_thread_list
+          (inv.E.voc @ vs) (List.length f_voc) in
+        let subst = E.new_tid_subst (List.combine f_voc new_ths) in
+        let new_f = E.subst_tid subst f in
+        (new_f :: fs, new_ths@vs) in
+      List.fold_left h ([],[]) param_sup_list in
   
-  (* New support formula with threads ids renamed *)
-  let supInv = E.conj_list new_supInv in
+    (* New support formula with threads ids renamed *)
+    let supInv = E.conj_list new_supInv in
 
-  (* Vocabulary of the support and a fresh tid for extra premise *)
-  let voc_sup    = List.filter E.is_tid_var (E.voc supInv) in
-  let fresh_tid  = E.gen_fresh_thread vs in
+    (* Vocabulary of the support and a fresh tid for extra premise *)
+    let voc_sup    = List.filter E.is_tid_var (E.voc supInv) in
+    let fresh_tid  = E.gen_fresh_thread vs in
 
-  (* Generates the conjunction of thid disjunctions *)
-  let diff_conj  = E.conj_list $ List.map (fun j -> E.ineq_tid fresh_tid j) inv.E.voc in
+    (* Generates the conjunction of thid disjunctions *)
+    let diff_conj  = E.conj_list $ List.map (fun j -> E.ineq_tid fresh_tid j) inv.E.voc in
 
-  (* Construct the substitutions for support renaming *)
-  let subst_normal = E.new_comb_subst voc_sup inv.E.voc in
-  let subst_with_fresh = E.new_comb_subst voc_sup (fresh_tid::inv.E.voc) in
-  
-  (* All normal supports with partial tid substitution *)
-  let supInv_normal = 
-    E.conj_list (List.map (fun s -> E.subst_tid s supInv) subst_normal) in
+    (* Construct the substitutions for support renaming *)
+    let subst_normal = E.new_comb_subst voc_sup inv.E.voc in
+    let subst_with_fresh = E.new_comb_subst voc_sup (fresh_tid::inv.E.voc) in
+    
+    (* All normal supports with partial tid substitution *)
+    let supInv_normal = 
+      E.conj_list (List.map (fun s -> E.subst_tid s supInv) subst_normal) in
 
-  (* All extra support with partial tid substitution *)
-  let supInv_extra = E.conj_list 
-    (supInv :: List.map (fun s -> E.subst_tid s supInv) subst_with_fresh) in
+    (* All extra support with partial tid substitution *)
+    let supInv_extra = E.conj_list 
+      (supInv :: List.map (fun s -> E.subst_tid s supInv) subst_with_fresh) in
 
-  let (psi,psi_extra) = match inv.E.voc with
-    | [] -> 
-      (E.And (inv.E.formula, supInv_normal), 
-       E.And (inv.E.formula, supInv_extra))
-    | _  -> (supInv_normal, supInv_extra) in
-  
-  let ts = inv.E.voc @ voc_sup in
-  begin
-    Printf.printf "TS: %s\n" (String.concat "," $ List.map E.tid_to_str ts);
-    Printf.printf "VS: %s\n" (String.concat "," $ List.map E.tid_to_str vs);
-    {
-      ts = ts;
-      diff_conj = diff_conj ;
-      psi = psi;
-      psi_extra = psi_extra;
-      fresh_tid = fresh_tid;
-      vs = vs;
-    }
-  end
+    let (psi,psi_extra) = match inv.E.voc with
+      | [] -> 
+        (E.And (inv.E.formula, supInv_normal), 
+         E.And (inv.E.formula, supInv_extra))
+      | _  -> (supInv_normal, supInv_extra) in
+    
+    let ts = inv.E.voc @ voc_sup in
+    begin
+      Printf.printf "TS: %s\n" (String.concat "," $ List.map E.tid_to_str ts);
+      Printf.printf "VS: %s\n" (String.concat "," $ List.map E.tid_to_str vs);
+      {
+        ts = ts;
+        diff_conj = diff_conj ;
+        psi = psi;
+        psi_extra = psi_extra;
+        fresh_tid = fresh_tid;
+        vs = vs;
+      }
+    end
   
   
   (* HERE GOES THE NEW CODE *)
@@ -1670,8 +1673,8 @@ struct
     end else (Unneeded, 0, 0, 0.0)
   
   
-  let call_tll_dp (phi : E.formula)
-                  (stac:Tac.solve_tactic_t option)
+  let call_tll_dp (phi    : E.formula)
+                  (stac   : Tac.solve_tactic_t option)
                   (cutoff : SmpTll.cutoff_strategy)
                   (status : valid_t) : (valid_t * int * int * float) =
     assert(isInitialized());
@@ -1690,6 +1693,35 @@ struct
           (NotValid, calls, 0, timer#elapsed_time)
         end
     end else (Unneeded, 0, 0, 0.0)
+
+(*
+  let call_tslk_dp (phi    : E.formula)
+                   (stac   : Tac.solve_tactic_t option)
+                   (cutoff : SmpTslk.cutoff_strategy)
+                   (status : valid_t) : (valid_t * int * int * float) =
+    assert(isInitialized());
+    if status = Unverified || status = NotValid then begin
+      let k = 3 in (* Compute needed k *)
+      let module K = struct let level = k end in
+      let module TSLKExpr = TSLKExpression.Make(K) in
+      let module TSLKIntf = TSLKInterface.Make(TSLKExpr) in
+      let module Hola = TKS with module TslkExp = TSLKExpr in;
+      let tll_phi = TSLKIntf.formula_to_tslk_formula phi in
+      let timer = new LeapLib.timer in
+      timer#start;
+      let valid, calls = TKS.is_valid_plus_info
+                           solverInfo.prog_lines stac cutoff tll_phi in
+      timer#stop;
+      if valid then
+        (Checked, calls, 1, timer#elapsed_time)
+      else
+        begin
+          TKS.print_model ();
+          (NotValid, calls, 0, timer#elapsed_time)
+        end
+    end else (Unneeded, 0, 0, 0.0)
+*)
+
   
   let apply_dp_on_table (vc_tbl:formula_table_t) (header:string) : bool =
     assert(isInitialized());

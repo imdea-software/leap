@@ -207,4 +207,5 @@ end
 module Make : 
   functor (PS : PosSolver.S) -> 
     functor (TS : TllSolver.S) ->
-      functor (NS : NumSolver.S) -> S
+      functor (TKS : TslkSolver.S) ->
+        functor (NS : NumSolver.S) -> S

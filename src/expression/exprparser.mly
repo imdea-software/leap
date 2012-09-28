@@ -9,10 +9,11 @@ module Vd     = Diagrams
 module Symtbl = Exprsymtable
 
 (* This code should be changed in the future *)
-module Pos = (val PosSolver.choose "default" : PosSolver.S)
-module Tll = (val TllSolver.choose "default" : TllSolver.S)
-module Num = (val NumSolver.choose "default" : NumSolver.S)
-module VCG = VCGen.Make(Pos)(Tll)(Num)
+module Pos  = (val PosSolver.choose  "default" : PosSolver.S)
+module Tll  = (val TllSolver.choose  "default" : TllSolver.S)
+module Tslk = (val TslkSolver.choose "default" : TslkSolver.S)
+module Num  = (val NumSolver.choose  "default" : NumSolver.S)
+module VCG = VCGen.Make(Pos)(Tll)(Tslk)(Num)
 module VD = Diagrams.Make(VCG)
 (* This code should be changed in the future *)
 

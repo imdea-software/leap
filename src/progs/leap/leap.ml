@@ -54,18 +54,23 @@ let _ =
                     BackendSolvers.Yices.identifier
                   else
                     solver in
-    let module Pos = (val PosSolver.choose pSolver : PosSolver.S) in
-    let module Tll = (val TllSolver.choose solver : TllSolver.S) in
-    let module Num = (val NumSolver.choose solver : NumSolver.S) in
+    let module Pos  = (val PosSolver.choose pSolver : PosSolver.S) in
+    let module Tll  = (val TllSolver.choose solver : TllSolver.S) in
+    let module Tslk = (val TslkSolver.choose solver : TslkSolver.S) in
+    let module Num  = (val NumSolver.choose solver : NumSolver.S) in
 
-    (* Tell TLL module whether to compute models or not *)
+    (* Tell TLL and TSLK modules whether to compute models or not *)
     let _ = Tll.compute_model (!LeapArgs.show_models) in
+    let _ = Tslk.compute_model (!LeapArgs.show_models) in
 
-    (* Tell TLL module the parsed cutoff strategy options *)
+
+    (* Tell TLL and TSLK modules the parsed cutoff strategy options *)
     let _ = Tll.set_forget_primed_mem (!LeapArgs.forget_primed_mem) in
     let _ = Tll.set_group_vars (!LeapArgs.group_vars) in
+    let _ = Tslk.set_forget_primed_mem (!LeapArgs.forget_primed_mem) in
+    let _ = Tslk.set_group_vars (!LeapArgs.group_vars) in
 
-    let module VCG = VCGen.Make(Pos)(Tll)(Num) in
+    let module VCG = VCGen.Make(Pos)(Tll)(Tslk)(Num) in
     let focus_list = Expr.gen_focus_list (System.get_trans_num sys)
                        !LeapArgs.focusPC !LeapArgs.ignorePC in
     VCG.initialize ((System.get_trans_num sys) + 1) !LeapArgs.coType 
