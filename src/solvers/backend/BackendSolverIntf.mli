@@ -181,6 +181,10 @@ sig
                          -> Exp.literal -> t
     (** [std_widening vars f l] constructs an internal representation of 
         a standard widening. *)
+
+    val sort_map : unit -> GenericModel.sort_map_t
+    (** [sort_map ()] returns the sort mapping obtained from the last
+        call to a formula translation *)
   end
 end
 

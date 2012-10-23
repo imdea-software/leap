@@ -17,6 +17,7 @@ rule norm = parse
   | '='                      {Global.last "="              ; EQUAL                                }
   | '('                      {Global.last "("              ; OPEN_PAREN                           }
   | ')'                      {Global.last ")"              ; CLOSE_PAREN                          }
+  | '-'                      {Global.last "-"              ; MINUS                                }
   | "select"                 {Global.last "select"         ; SELECT                               }
   | "mk-record"              {Global.last "mk-record"      ; MK_RECORD                            }
   | ("tt_")(digit+ as id)    {Global.last ("tt_" ^ id)     ; TID_ELEM ("tt_" ^ id)                }

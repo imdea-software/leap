@@ -15,8 +15,8 @@ module type CUSTOM_NUMSOLVER = sig
   
   val is_valid_with_lines_plus_info 
                           : int -> NumExp.formula -> (bool * int)
-  
-  
+
+ 
   (* Queries over numeric formulas *)
   val int_implies         : NumExp.formula -> NumExp.formula -> bool
   val int_equivalent      : NumExp.formula -> NumExp.formula -> bool
@@ -39,6 +39,13 @@ module type CUSTOM_NUMSOLVER = sig
   val standard_widening_conj 
                           : NumExp.literal list -> NumExp.literal list 
                               -> NumExp.literal list
+
+
+  (* Counter models management *)
+  val compute_model : bool -> unit
+  val model_to_str  : unit -> string
+  val print_model   : unit -> unit
+  
 end
 
 module type S = CUSTOM_NUMSOLVER

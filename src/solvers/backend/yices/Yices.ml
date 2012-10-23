@@ -178,6 +178,7 @@ struct
       let int_formula_with_lines
                        = YicesNumQuery.int_formula_with_lines_to_str
       let std_widening = YicesNumQuery.standard_widening
+      let sort_map     = YicesNumQuery.get_sort_map
     end
   end
 end

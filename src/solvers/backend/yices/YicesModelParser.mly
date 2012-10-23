@@ -41,7 +41,7 @@ let gen_fresh_id (unit) : int =
 %token <string> ELEM_ELEM
 %token <bool> BOOL
 
-%token EQUAL OPEN_PAREN CLOSE_PAREN DOUBLE_COLON SELECT MK_RECORD
+%token EQUAL OPEN_PAREN CLOSE_PAREN DOUBLE_COLON SELECT MK_RECORD MINUS
 %token NO_THREAD ERROR NULL
 %token EOF
 
@@ -59,6 +59,7 @@ let gen_fresh_id (unit) : int =
 %type <(GM.id option) list> param_list
 %type <GM.value> value
 %type <GM.vals> constant
+%type <int> number
 %type <GM.id * (GM.id * GM.vals) list> record
 %type <(GM.id * GM.vals) list> field_list
 %type <GM.id * GM.vals> field
@@ -152,13 +153,19 @@ constant :
     { $1 }
   | ELEM_ELEM
     { $1 }
-  | NUMBER
+  | number
     { (string_of_int $1) }
   | NO_THREAD
     { "NoThread" }
   | NULL
     { "null" }
 
+
+number :
+  | NUMBER
+    { $1 }
+  | MINUS NUMBER
+    { - $2 }
 
 
 record :
