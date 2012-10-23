@@ -744,9 +744,9 @@ and atom_is_linear a =
 
 (* FOR SETVAR *)
 let rec generic_set_from_int_integer (base:variable -> 'a)
-                          (empty:'a)
-                          (union:'a -> 'a -> 'a)
-                          (t:integer) : 'a =
+                                     (empty:'a)
+                                     (union:'a -> 'a -> 'a)
+                                     (t:integer) : 'a =
   match t with
     Val i          -> empty
   | Var v          -> base v
@@ -768,23 +768,23 @@ let rec generic_set_from_int_integer (base:variable -> 'a)
                             (generic_set_from_int_integer
                                 base empty union t2)
   | ArrayRd (a,th) -> empty
-  | SetMin s       -> empty
-  | SetMax s       -> empty
+  | SetMin s       -> generic_set_from_int_set base empty union s
+  | SetMax s       -> generic_set_from_int_set base empty union s
 
 
-let rec generic_set_from_funterm (base:variable -> 'a)
-                                 (empty:'a)
-                                 (union:'a -> 'a -> 'a)
-                                 (t:fun_term) : 'a =
+and generic_set_from_funterm (base:variable -> 'a)
+                             (empty:'a)
+                             (union:'a -> 'a -> 'a)
+                             (t:fun_term) : 'a =
   match t with
     FunVar (v)      -> base v
   | FunUpd (f,th,v) -> generic_set_from_funterm base empty union f
 
 
-let rec generic_set_from_int_set (base:variable -> 'a)
-                                 (empty:'a)
-                                 (union:'a -> 'a -> 'a)
-                                 (s:set) : 'a =
+and generic_set_from_int_set (base:variable -> 'a)
+                             (empty:'a)
+                             (union:'a -> 'a -> 'a)
+                             (s:set) : 'a =
   let int_f  = generic_set_from_int_integer base empty union in
   let set_f  = generic_set_from_int_set base empty union in
   match s with
