@@ -59,7 +59,8 @@ let _ =
     let module Tslk = (val TslkSolver.choose solver : TslkSolver.S) in
     let module Num  = (val NumSolver.choose solver : NumSolver.S) in
 
-    (* Tell TLL and TSLK modules whether to compute models or not *)
+    (* Tell Num, TLL and TSLK modules whether to compute models or not *)
+    let _ = Num.compute_model (!LeapArgs.show_models) in
     let _ = Tll.compute_model (!LeapArgs.show_models) in
     let _ = Tslk.compute_model (!LeapArgs.show_models) in
 

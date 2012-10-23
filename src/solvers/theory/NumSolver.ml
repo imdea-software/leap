@@ -241,9 +241,6 @@ struct
       print_endline (model_to_str())
     else
       ()
-
-
-
 end
 
 let choose (solverIdent : string) : (module S) =

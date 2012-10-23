@@ -1670,7 +1670,7 @@ struct
         (Checked, calls, 1, timer#elapsed_time)
       else
         begin
-          TS.print_model ();
+          NS.print_model ();
           (NotValid, calls, 0, timer#elapsed_time)
         end
     end else (Unneeded, 0, 0, 0.0)

@@ -33,13 +33,13 @@ let sort_map : GM.sort_map_t = GM.new_sort_map()
 
 
 let int_varid_to_str (v:Expr.varId) : string =
-  let _ = GM.sm_decl_const sort_map v int_s
+  let _ = GM.sm_decl_const sort_map v GM.int_s
   in
     Printf.sprintf "(define %s::%s)\n" v int_s
 
 
 let int_local_varid_to_str (v:Expr.varId) : string =
-  let _ = GM.sm_decl_fun sort_map v [thid_s] [int_s]
+  let _ = GM.sm_decl_fun sort_map v [GM.tid_s] [GM.int_s]
   in
     Printf.sprintf "(define %s::(-> %s %s))\n" v thid_s int_s
 
@@ -77,7 +77,7 @@ let rec int_varlist_to_str (vl:IntExpr.variable list) : string =
                  "(define-type " ^thid_s^ ")\n" ^
                     Expr.ThreadSet.fold (fun t str ->
                       let t_str = tid_to_str t in
-                      let _ = GM.sm_decl_const sort_map t_str thid_s
+                      let _ = GM.sm_decl_const sort_map t_str GM.tid_s
                       in
                         str ^ (Printf.sprintf "(define %s::%s)\n" t_str thid_s)
                  ) t_set ""
@@ -112,10 +112,18 @@ and var_sort_to_str (v:IntExpr.variable) : string =
   | IntExpr.Thid -> thid_s
 
 
+and var_sort_to_gmsort_str (v:IntExpr.variable) : string =
+  match IntExpr.get_sort v with
+    IntExpr.Int  -> GM.int_s
+  | IntExpr.Set  -> GM.set_s
+  | IntExpr.Thid -> GM.tid_s
+
+
 and var_to_str (v:IntExpr.variable) : string =
   let v_str = variable_to_str v in
   let sort_str = var_sort_to_str v in
-  let _ = GM.sm_decl_const sort_map v_str sort_str
+  let gm_sort_str = var_sort_to_gmsort_str v in
+  let _ = GM.sm_decl_const sort_map v_str gm_sort_str
   in
     Printf.sprintf "(define %s::%s)\n" v_str sort_str
 
@@ -133,7 +141,7 @@ and tid_to_str (t:Expr.tid) : string =
 
 let thid_variable_to_str (th:Expr.tid) : string =
   let t_str = tid_to_str th in
-  let _ = GM.sm_decl_const sort_map t_str thid_s
+  let _ = GM.sm_decl_const sort_map t_str GM.tid_s
   in
     Printf.sprintf "(define %s::%s)\n" t_str thid_s
 
@@ -141,7 +149,8 @@ let thid_variable_to_str (th:Expr.tid) : string =
 let local_var_to_str (v:IntExpr.variable) : string =
   let v_str = variable_to_str v in
   let v_sort = var_sort_to_str v in
-  let _ = GM.sm_decl_fun sort_map v_str [thid_s] [v_sort]
+  let gm_v_sort = var_sort_to_gmsort_str v in
+  let _ = GM.sm_decl_fun sort_map v_str [GM.tid_s] [gm_v_sort]
   in
     Printf.sprintf "(define %s::(-> %s %s))\n" v_str thid_s v_sort
 
@@ -206,7 +215,7 @@ let yices_type_decl (prog_lines:int) (buf:Buffer.t) : unit =
 
 
 let yices_undefined_decl (buf:Buffer.t) : unit =
-  let _ = GM.sm_decl_const sort_map undefInt int_s in
+  let _ = GM.sm_decl_const sort_map undefInt GM.int_s in
     B.add_string buf ("(define " ^ undefInt ^ "::" ^ int_s ^ ")\n");
     B.add_string buf ("(define is_legal::(-> " ^int_s^ " " ^bool_s^ ")\n" ^
                       "  (lambda (e::" ^int_s^ ") (/= e " ^
@@ -345,8 +354,8 @@ let yices_max_def (vars_rep:string list) (buf:Buffer.t) : unit =
 (************************ Preamble definitions ************************)
 
 let yices_pc_def (buf:Buffer.t) : unit =
-  let _ = GM.sm_decl_fun sort_map pc_name [thid_s] [loc_s] in
-  let _ = GM.sm_decl_fun sort_map pc_prime_name [thid_s] [loc_s]
+  let _ = GM.sm_decl_fun sort_map pc_name [GM.tid_s] [GM.loc_s] in
+  let _ = GM.sm_decl_fun sort_map pc_prime_name [GM.tid_s] [GM.loc_s]
   in
     B.add_string buf ("(define " ^pc_name^
                         "::(-> " ^thid_s^ " " ^loc_s^ "))\n");
