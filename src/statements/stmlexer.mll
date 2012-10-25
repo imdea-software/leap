@@ -136,6 +136,8 @@ rule norm = parse
   | (letter alphanum*) as id { Global.last id; IDENT (id,Global.get_linenum()) }
   | whitespc          { Global.last "whitespc"; norm lexbuf }
   | '\n'              { Global.last "\\n"; Global.incr_linenum (); norm lexbuf }
+  | "\r\n"            { Global.last "\\r\\n"; Global.incr_linenum (); norm lexbuf }
+  | "\r"              { Global.last "\\r"; Global.incr_linenum (); norm lexbuf }
   | eof               { Global.last "EOF"; EOF }
   | _ as x            { Global.last (String.make 1 x);
                           print_endline ("Bad token: " ^ (String.make 1 x));
