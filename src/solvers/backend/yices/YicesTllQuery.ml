@@ -1052,7 +1052,8 @@ let yices_preamble buf num_addr num_tid num_elem req_sorts =
   if (List.exists (fun s ->
         s=Expr.Elem || s=Expr.Cell || s=Expr.Mem
       ) req_sorts) then yices_element_preamble buf num_elem ;
-  if List.mem Expr.Cell    req_sorts then yices_cell_preamble buf ;
+  if List.mem Expr.Cell req_sorts || List.mem Expr.Mem req_sorts then
+    yices_cell_preamble buf ;
   if List.mem Expr.Mem     req_sorts then yices_heap_preamble buf ;
   if List.mem Expr.Set     req_sorts then yices_set_preamble buf ;
   if List.mem Expr.SetTh   req_sorts then yices_setth_preamble buf ;
@@ -1070,16 +1071,18 @@ let yices_defs buf num_addr num_tid num_elem req_sorts req_ops =
   (* Elements *)
   if List.mem Expr.ElemOrder req_ops || List.mem Expr.OrderedList req_ops then
     yices_elemorder_def buf num_elem ;
+  (* Cells and Heap *)
+  if List.mem Expr.Cell req_sorts || List.mem Expr.Mem req_sorts then
+    yices_error_def buf ;
   (* Cell *)
   if List.mem Expr.Cell req_sorts then
     begin
-      yices_error_def buf ;
       yices_mkcell_def buf ;
       yices_cell_lock buf ;
       yices_cell_unlock_def buf
     end;
   (* Heap *)
-  if List.mem Expr.Cell req_sorts then
+  if List.mem Expr.Mem req_sorts then
     begin
       yices_isheap_def buf ;
       yices_dref_def buf ;
