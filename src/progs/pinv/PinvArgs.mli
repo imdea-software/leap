@@ -16,7 +16,7 @@ val debugFlag : bool ref
 val use_z3 : bool ref
 val hide_pres : bool ref
 val count_abs : bool ref
-val dpType : string ref
+val dpType : DP.t ref
 val coType : VCGen.cutoff_type ref
 val invCandidate : string ref
 val focusPC : int list ref
@@ -24,7 +24,6 @@ val ignorePC : int list ref
 val outFile : string ref
 val assignopt : 'a ref -> bool ref -> 'a -> unit
 val inputInvariant : string -> unit
-val dp_opt_list : string list
 val set_dp : string -> unit
 val co_opt_list : string list
 val set_co : string -> unit

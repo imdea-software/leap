@@ -19,7 +19,7 @@ let debugFlag    = ref false
 let use_z3       = ref false
 let hide_pres    = ref false
 let count_abs    = ref false
-let dpType       = ref ""
+let dpType       = ref (DP.NoDP)
 let coType       = ref VCGen.Dnf
 let vdFile       = ref ""
 let pvdFile      = ref ""
@@ -43,14 +43,18 @@ let inputVd (s:string) =
 let inputPvd (s:string) =
   pvdFile := s
 
-let dp_opt_list = ["num"; "tll"]
 let set_dp dp =
-  dpType := dp
-(*  match dp with
-    "num" -> dpType := Vcgen.enable_num_dp !dpType
-  | "tll" -> dpType := Vcgen.enable_tll_dp !dpType
-  | _     -> ()
-*)
+  try
+    dpType := (DP.from_str dp)
+  with (DP.Unknown_dp_str s) as e ->
+    begin
+      Interface.Err.msg "Unknown decision procedure" $
+        Format.sprintf "One of the following DP options was expected:\n\
+                        %s. But %s was passed as argument."
+        (String.concat "," (List.map DP.to_str DP.def_dp_list)) s;
+        raise e
+    end
+
 
 let co_opt_list = ["dnf"; "union"; "pruning"]
 let set_co co =
@@ -76,8 +80,9 @@ let opts =
         Arg.String inputPvd,
         "analyzes a parametrized verification diagram");
     ("-dp",
-        Arg.Symbol (dp_opt_list,set_dp),
-        "indicates the decision procedure to be used");
+        Arg.String set_dp,
+        "indicates the DP to use. Options are: " ^
+          String.concat "," (List.map DP.to_str DP.def_dp_list));
     ("-z3",
         Arg.Set use_z3,
         "uses z3 as smt solver");
