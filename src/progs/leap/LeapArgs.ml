@@ -35,7 +35,7 @@ let show_models       = ref false
 let show_label_info   = ref false
 let forget_primed_mem = ref true (*false*)
 let group_vars        = ref false
-let dpType            = ref ""
+let dpType            = ref (DP.NoDP)
 let coType            = ref VCGen.Pruning (*VCGen.Dnf*)
 let invCandidate      = ref ""
 let vdFormula         = ref ""
@@ -89,9 +89,19 @@ let inputVd (s:string) =
 let inputPvd (s:string) =
   pvdFile := s
 
-let dp_opt_list = ["num"; "tll"; "tslk"]
+(* let dp_opt_list = List.map DP.to_str DP.def_dp_list *)
 let set_dp dp =
-  dpType := dp
+  try
+    dpType := (DP.from_str dp)
+  with (DP.Unknown_dp_str s) as e ->
+    begin
+      Interface.Err.msg "Unknown decision procedure" $
+        Format.sprintf "One of the following DP options was expected:\n\
+                        %s. But %s was passed as argument."
+        (String.concat "," (List.map DP.to_str DP.def_dp_list)) s;
+        raise e
+    end
+
 
 let co_opt_list = ["dnf"; "union"; "pruning"]
 let set_co co =
@@ -163,8 +173,9 @@ let opts =
         Arg.String inputPvd,
         "analyzes a parametrized verification diagram");
     ("-dp",
-        Arg.Symbol (dp_opt_list, set_dp),
-        "indicates the decision procedure to be used");
+        Arg.String set_dp,
+        "indicates the DP to use. Options are: " ^
+          String.concat "," (List.map DP.to_str DP.def_dp_list));
     ("-z3",
         Arg.Set use_z3,
         "uses z3 as smt solver");
@@ -220,19 +231,22 @@ let anon_fun str =
 let usagemsg = "Parses a program and generates its FTS."
 let error msg = Arg.usage opts msg ; exit 0
 let simple_error msg = Printf.printf "%s\n" msg ; exit 0
-let postcheck () = 
-  if List.length 
-      (List.filter id 
-         [!binvSys;!pinvSys;!pinvPlusSys;!spinvSys;!useGraph]) > 1 then begin
-    Interface.Err.msg
-      "More that one vc generation chosen"
-      "Choose only one of the following options: \n\
-       -binv\n\
-       -pinv\n\
-       -pinv+\n\
-       -spinv\n\
-       -g\n";
-    exit(0)
+let postcheck () =
+  begin
+    if List.length
+      (List.filter id [!binvSys;!pinvSys;!pinvPlusSys;
+                       !spinvSys;!useGraph]) > 1 then
+      begin
+        Interface.Err.msg
+          "More that one vc generation chosen"
+          "Choose only one of the following options: \n\
+           -binv\n\
+           -pinv\n\
+           -pinv+\n\
+           -spinv\n\
+           -g\n";
+        exit(0)
+      end;
   end
 
 let parse_args _ = 

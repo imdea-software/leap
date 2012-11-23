@@ -32,7 +32,7 @@ val show_models : bool ref
 val show_label_info : bool ref
 val forget_primed_mem : bool ref
 val group_vars : bool ref
-val dpType : string ref
+val dpType : DP.t ref
 val coType : VCGen.cutoff_type ref
 val invCandidate : string ref
 val vdFormula : string ref
@@ -55,7 +55,7 @@ val inputFormula : string -> unit
 val inputClosedSys : string -> unit
 val inputVd : string -> unit
 val inputPvd : string -> unit
-val dp_opt_list : string list
+(*val dp_opt_list : string list*)
 val set_dp : string -> unit
 val co_opt_list : string list
 val set_co : string -> unit

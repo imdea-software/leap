@@ -43,13 +43,17 @@ sig
   
   (** Decision procedure *)
   val none_dp : unit -> dp_info
-  val enable_num_dp : unit -> unit
-  val enable_tll_dp : unit -> unit
-  val enable_dp : string -> unit (** Available options: "num", "tll". *)
+  val enable_num_dp  : unit -> unit
+  val enable_tll_dp  : unit -> unit
+  val enable_tsl_dp  : unit -> unit
+  val enable_tslk_dp : int  -> unit
+  val enable_dp      : DP.t -> unit (** Available options: "num", "tll".  *)
   val some_dp_enabled : unit -> bool
-  val apply_pos_dp : unit -> bool
-  val apply_num_dp : unit -> bool
-  val apply_tll_dp : unit -> bool
+  val apply_pos_dp  : unit -> bool
+  val apply_num_dp  : unit -> bool
+  val apply_tll_dp  : unit -> bool
+  val apply_tsl_dp  : unit -> bool
+  val apply_tslk_dp : unit -> (bool * int)
   
   
   

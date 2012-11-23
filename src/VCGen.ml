@@ -53,13 +53,17 @@ sig
   
   (** Decision procedure *)
   val none_dp : unit -> dp_info
-  val enable_num_dp : unit -> unit
-  val enable_tll_dp : unit -> unit
-  val enable_dp : string -> unit 
+  val enable_num_dp  : unit -> unit
+  val enable_tll_dp  : unit -> unit
+  val enable_tsl_dp  : unit -> unit
+  val enable_tslk_dp : int  -> unit
+  val enable_dp      : DP.t -> unit
   val some_dp_enabled : unit -> bool
-  val apply_pos_dp : unit -> bool
-  val apply_num_dp : unit -> bool
-  val apply_tll_dp : unit -> bool
+  val apply_pos_dp  : unit -> bool
+  val apply_num_dp  : unit -> bool
+  val apply_tll_dp  : unit -> bool
+  val apply_tsl_dp  : unit -> bool
+  val apply_tslk_dp : unit -> (bool * int)
   
   
   
@@ -214,10 +218,10 @@ sig
     -> formula_table_t
 end
 
-module Make (PS  : PosSolver.S)
-            (TS  : TllSolver.S)
-            (TKS : TslkSolver.S)
-            (NS  : NumSolver.S) : S =
+module Make (PS   : PosSolver.S )
+            (TS   : TllSolver.S )
+            (TSLK : TslkSolver.S)
+            (NS   : NumSolver.S ) : S =
 struct
   type rhoMode =
       RClosed of E.tid * int
@@ -255,9 +259,11 @@ struct
   
   type dp_info =
     {
-      mutable pos_dp : bool;
-      mutable tll_dp : bool;
-      mutable num_dp : bool;
+      mutable pos_dp  : bool;
+      mutable tll_dp  : bool;
+      mutable num_dp  : bool;
+      mutable tsl_dp  : bool;
+      mutable tslk_dp : bool * int;
     }
   
   type special_cases_tag_tbl_t = (E.pc_t * IGraph.premise_t,
@@ -318,7 +324,11 @@ struct
   
   let solverInfo : solver_info = {
     prog_lines = 0;
-    dp = { pos_dp = false; tll_dp = false; num_dp = false };
+    dp = { pos_dp  = false;
+           tll_dp  = false;
+           num_dp  = false;
+           tsl_dp  = false;
+           tslk_dp = (false, 0) };
     cutoff = Dnf;
     out_file = "";
     detailed_desc = {detFolder = ""; detProg = ""; detInv = "";
@@ -428,10 +438,12 @@ struct
   
   (* Decision procedures *)
   let none_dp (unit) : dp_info =
-    { 
-      pos_dp = false;
-      tll_dp = false;
-      num_dp = false;
+    {
+      pos_dp  = false;
+      tll_dp  = false;
+      num_dp  = false;
+      tsl_dp  = false;
+      tslk_dp = (false,0);
     }
   
   let enable_num_dp () : unit =
@@ -445,15 +457,33 @@ struct
     solverInfo.dp.pos_dp <- true;
     solverInfo.dp.tll_dp <- true;
     _DEBUG "Enabled tll DP."
+
+  let enable_tsl_dp () : unit =
+    assert(isInitialized());
+    solverInfo.dp.pos_dp  <- true;
+    solverInfo.dp.tsl_dp <- true;
+    _DEBUG "Enabled tsl DP."
+
+  let enable_tslk_dp (k:int) : unit =
+    assert(isInitialized());
+    solverInfo.dp.pos_dp  <- true;
+    solverInfo.dp.tslk_dp <- (true,k);
+    _DEBUG "Enabled tslk DP."
   
-  let enable_dp : string -> unit = function
-    | "tll" -> enable_tll_dp ()
-    | "num" -> enable_num_dp ()
-    | _ -> ()
+  let enable_dp : DP.t -> unit = function
+    | DP.NoDP   -> ()
+    | DP.Num    -> enable_num_dp ()
+    | DP.Tll    -> enable_tll_dp ()
+    | DP.Tsl    -> enable_tsl_dp ()
+    | DP.Tslk k -> enable_tslk_dp k
   
   let some_dp_enabled () : bool =
     assert(isInitialized());
-    solverInfo.dp.pos_dp || solverInfo.dp.num_dp || solverInfo.dp.tll_dp
+    solverInfo.dp.pos_dp        ||
+    solverInfo.dp.num_dp        ||
+    solverInfo.dp.tll_dp        ||
+    solverInfo.dp.tsl_dp        ||
+    fst (solverInfo.dp.tslk_dp)
   
   let apply_pos_dp () : bool =
     assert(isInitialized());
@@ -470,6 +500,17 @@ struct
     _DEBUG "Apply Tll DP? %b" solverInfo.dp.tll_dp;
     solverInfo.dp.tll_dp
   
+  let apply_tsl_dp () : bool =
+    assert(isInitialized());
+    _DEBUG "Apply Tsl DP? %b" solverInfo.dp.tsl_dp;
+    solverInfo.dp.tsl_dp
+
+  let apply_tslk_dp () : (bool * int) =
+    assert(isInitialized());
+    let (b,k) = solverInfo.dp.tslk_dp in
+    _DEBUG "Apply Tslk[%i] DP? %b" k b;
+    (b, k)
+
   (* MODE CONVERSION FUNCTION *)
   let rhoMode_to_sysMode : rhoMode -> Sys.sysMode = function
     | RClosed _ -> Sys.SClosed
@@ -1708,18 +1749,18 @@ struct
       let module K = struct let level = k end in
       let module TSLKExpr = TSLKExpression.Make(K) in
       let module TSLKIntf = TSLKInterface.Make(TSLKExpr) in
-      let module Hola = TKS with module TslkExp = TSLKExpr in;
+      let module Hola = TSLK with module TslkExp = TSLKExpr in;
       let tll_phi = TSLKIntf.formula_to_tslk_formula phi in
       let timer = new LeapLib.timer in
       timer#start;
-      let valid, calls = TKS.is_valid_plus_info
+      let valid, calls = TSLK.is_valid_plus_info
                            solverInfo.prog_lines stac cutoff tll_phi in
       timer#stop;
       if valid then
         (Checked, calls, 1, timer#elapsed_time)
       else
         begin
-          TKS.print_model ();
+          TSLKS.print_model ();
           (NotValid, calls, 0, timer#elapsed_time)
         end
     end else (Unneeded, 0, 0, 0.0)

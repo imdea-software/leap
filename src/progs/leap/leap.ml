@@ -15,7 +15,7 @@ module Symtbl = Exprsymtable
 (****************)
 let _ =
   try LeapArgs.parse_args ();
-    _DEBUG "DP selected: %s" (!LeapArgs.dpType);
+    _DEBUG "DP selected: %s" (DP.to_str !LeapArgs.dpType);
     let ch = LeapArgs.open_input () in
     let tmp_sys, undefTids = 
       Parser.parse ch (Stmparser.system Stmlexer.norm) in
