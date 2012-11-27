@@ -3,9 +3,6 @@ open LeapLib
 module type CUSTOM_TLLSOLVER = sig
   module TllExp : ExpressionTypes.TLLEXP
   
-  module Smp : sig
-    type cutoff_strategy
-  end
   
   val is_sat_conj  : int -> TllExp.conjunctive_formula -> bool
   val is_sat_dnf   : int -> TllExp.formula -> bool
@@ -39,12 +36,10 @@ end
 
 module type S = CUSTOM_TLLSOLVER
   with module TllExp = TllExpression
-  and  module Smp = SmpTll
   
 module Make(Solver : BackendSolverIntf.BACKEND_TLL) : S =
 struct
   module TllExp   = Solver.Translate.Tll.Exp
-  module Smp      = Solver.Translate.Tll.Smp  
   module VarIdSet = TllExp.VarIdSet
   module GM       = GenericModel
 

@@ -2,7 +2,6 @@ open LeapLib
 
 module Expr     = TllExpression
 module VarIdSet = TllExpression.VarIdSet
-module Smp      = SmpTll
 module B        = Buffer
 module GM       = GenericModel
 
@@ -1544,10 +1543,10 @@ let literal_to_z3 (buf:Buffer.t) (lit:Expr.literal) : unit =
 let literal_list_to_str (ls:Expr.literal list) : string =
   let _ = GM.clear_sort_map sort_map in
   let expr = Expr.Conj ls in
-  let c = Smp.cut_off_normalized expr in
-  let num_addr = c.Smp.num_addrs in
-  let num_tid = c.Smp.num_tids in
-  let num_elem = c.Smp.num_elems in
+  let c = SmpTll.cut_off_normalized expr in
+  let num_addr = c.SmpTll.num_addrs in
+  let num_tid = c.SmpTll.num_tids in
+  let num_elem = c.SmpTll.num_elems in
   let (req_sorts, req_ops) =
     List.fold_left (fun (ss,os) lit ->
       let phi = Expr.Literal lit
@@ -1612,10 +1611,10 @@ let formula_to_str (stac:Tactics.solve_tactic_t option)
 
   let _ = GM.clear_sort_map sort_map in
   let _ = LeapDebug.debug "Z3TllQuery will compute the cutoff...\n" in
-  let max_cut_off = Smp.cut_off co copt phi in
-  let num_addr    = max_cut_off.Smp.num_addrs in
-  let num_tid     = max_cut_off.Smp.num_tids in
-  let num_elem    = max_cut_off.Smp.num_elems in
+  let max_cut_off = SmpTll.cut_off co copt phi in
+  let num_addr    = max_cut_off.SmpTll.num_addrs in
+  let num_tid     = max_cut_off.SmpTll.num_tids in
+  let num_elem    = max_cut_off.SmpTll.num_elems in
   let req_sorts   = Expr.required_sorts phi in
   let req_ops     = Expr.special_ops phi in
   let formula_str = formula_to_str phi in

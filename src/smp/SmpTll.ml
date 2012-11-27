@@ -6,18 +6,6 @@ module VarIdSet = TllExpression.VarIdSet
 module ASet     = TllExpression.AtomSet
 
 
-type cutoff_strategy =
-  | Dnf       (* Computes dnf over the formula and then counts literals *)
-  | Union     (* Computes an upper bound using union over literals *)
-  | Pruning   (* Computes a better bound, by pruning non interesting literals *)
-
-type cutoff_options_t =
-  {
-    mutable forget_primed_mem : bool ;
-    mutable group_vars : bool ;
-  }
-
-
 type model_size =
     { 
       num_elems : int ; 
@@ -29,29 +17,8 @@ type model_size =
 type union_info = (ASet.t * ASet.t * ASet.t)
 
 
-(* Cutoff options functions *)
 
-let opt_empty () =
-  {
-    forget_primed_mem = false ;
-    group_vars = false ;
-  }
-
-let set_forget_primed_mem (opt:cutoff_options_t) (b:bool) : unit =
-  opt.forget_primed_mem <- b
-
-let set_group_vars (opt:cutoff_options_t) (b:bool) : unit =
-  opt.group_vars <- b
-
-let options : cutoff_options_t ref = ref (opt_empty())
-
-
-
-let strategy_to_str (s:cutoff_strategy) : string =
-  match s with
-    Dnf     -> "DNF"
-  | Union   -> "Union"
-  | Pruning -> "Pruning"
+let options : Smp.cutoff_options_t ref = ref (Smp.opt_empty())
 
 
 (* model_size functions *)
@@ -101,7 +68,8 @@ let cut_off_normalized (expr:conjunctive_formula) : model_size =
   let vars_addr_set = varset_of_sort vars Addr in
   let vars_addr = VarSet.cardinal vars_addr_set in
 
-  let vars_mem_set = if !options.forget_primed_mem && not !options.group_vars then
+  let vars_mem_set = if (Smp.forget_primed_mem !options &&
+                          not (Smp.group_vars !options)) then
                        VarSet.filter (fun v -> not (Expr.is_primed_var v))
                          (varset_of_sort vars Mem)
                      else
@@ -112,7 +80,7 @@ let cut_off_normalized (expr:conjunctive_formula) : model_size =
   (* ALE: No need to add null and NoThread in the counter, as they are added
           separately as an special address and tid respectively *)
 
-  let numaddr = if !options.group_vars then
+  let numaddr = if Smp.group_vars !options then
                   let _ = LeapDebug.debug "cut_off_normalized, \
                                            group_vars is enabled.\n" in
                   (* We create all possible "next" access to mem variables *)
@@ -427,18 +395,12 @@ let compute_max_cut_off_with_pruning (phi:formula) : model_size =
     compute_max_cut_off (new_dnf)
 
 
-let cut_off (strat:cutoff_strategy)
-            (opt:cutoff_options_t)
+let cut_off (strat:Smp.cutoff_strategy)
+            (opt:Smp.cutoff_options_t)
             (f:formula) : model_size =
-  _DEBUG "Strategy: %s\n" (strategy_to_str strat);
+  _DEBUG "Strategy: %s\n" (Smp.strategy_to_str strat);
   options := opt;
   match strat with
-  | Dnf     -> compute_max_cut_off (Expr.dnf f)
-  | Union   -> compute_max_cut_off_with_union f
-  | Pruning -> (*
-               let _ = Printf.printf "Original formula: %s\n" (Expr.formula_to_str f) in
-               let new_f = Option.default True (prune_formula (Expr.nnf f)) in
-               let _ = Printf.printf "Pruned formula: %s\n" (Expr.formula_to_str new_f)
-               in
-               *)
-                 compute_max_cut_off_with_pruning f
+  | Smp.Dnf     -> compute_max_cut_off (Expr.dnf f)
+  | Smp.Union   -> compute_max_cut_off_with_union f
+  | Smp.Pruning -> compute_max_cut_off_with_pruning f

@@ -92,14 +92,15 @@ let report_results_to_str (res:results_t) : string =
 
 
 let report_vc_run_header_to_str (unit) : string =
-  "+-----+-----+-----------+-----+-----------+-----+-----------+\n" ^
-  "|  ID | Loc |  Time(s)  | Num |  Time(s)  | TL3 |  Time(s)  |\n" ^
-  "+-----+-----+-----------+-----+-----------+-----+-----------+\n"
+  "+-----+-----+-----------+-----+-----------+-----+-----------+-----+-----------+\n" ^
+  "|  ID | Loc |  Time(s)  | Num |  Time(s)  | TL3 |  Time(s)  | TSK |  Time(s)  |\n" ^
+  "+-----+-----+-----------+-----+-----------+-----+-----------+-----+-----------+\n"
 
 
-let report_vc_run_to_str (id:int) (pos_status:vc_status) (pos_time:float)
-                                  (num_status:vc_status) (num_time:float)
-                                  (tll_status:vc_status) (tll_time:float)
+let report_vc_run_to_str (id:int) (pos_status:vc_status)  (pos_time:float)
+                                  (num_status:vc_status)  (num_time:float)
+                                  (tll_status:vc_status)  (tll_time:float)
+                                  (tslk_status:vc_status) (tslk_time:float)
                                   (desc:string) (filename:string) : string =
   let status_to_str st = match st with
                            Unverified -> "  ?  "
@@ -109,9 +110,10 @@ let report_vc_run_to_str (id:int) (pos_status:vc_status) (pos_time:float)
   let id_to_str i = sprintf "%4d " i
   in
     "|" ^ (id_to_str id) ^
-    "|" ^ (status_to_str pos_status) ^ "|" ^ (time_to_str pos_time) ^
-    "|" ^ (status_to_str num_status) ^ "|" ^ (time_to_str num_time) ^
-    "|" ^ (status_to_str tll_status) ^ "|" ^ (time_to_str tll_time) ^
+    "|" ^ (status_to_str pos_status)  ^ "|" ^ (time_to_str pos_time)  ^
+    "|" ^ (status_to_str num_status)  ^ "|" ^ (time_to_str num_time)  ^
+    "|" ^ (status_to_str tll_status)  ^ "|" ^ (time_to_str tll_time)  ^
+    "|" ^ (status_to_str tslk_status) ^ "|" ^ (time_to_str tslk_time) ^
     "| " ^ (desc) ^ "\n" ^
     "+-----+-----+-----------+-----+-----------+-----+-----------+\n"
 
@@ -163,12 +165,14 @@ let report_vc_run_header (unit) : unit =
   print_newline(); print_string (report_vc_run_header_to_str())
 
 
-let report_vc_run (id:int) (pos_status:vc_status) (pos_time:float)
-                           (num_status:vc_status) (num_time:float)
-                           (tll_status:vc_status) (tll_time:float)
+let report_vc_run (id:int) (pos_status:vc_status)  (pos_time:float)
+                           (num_status:vc_status)  (num_time:float)
+                           (tll_status:vc_status)  (tll_time:float)
+                           (tslk_status:vc_status) (tslk_time:float)
                            (desc:string) (filename:string) : unit =
   print_string (report_vc_run_to_str id pos_status pos_time num_status num_time
-                                        tll_status tll_time desc filename);
+                                        tll_status tll_time tslk_status tslk_time
+                                        desc filename);
   flush stdout
 
 

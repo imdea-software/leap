@@ -3,11 +3,6 @@ open LeapLib
 module type CUSTOM_TSLKSOLVER = sig
   module TslkExp : ExpressionTypes.TSLKEXP
  
-(*
-  module Smp : sig
-    type cutoff_strategy
-  end
-*)
   
   val is_sat_conj  : int -> TslkExp.conjunctive_formula -> bool
   val is_sat_dnf   : int -> TslkExp.formula -> bool
@@ -18,17 +13,17 @@ module type CUSTOM_TSLKSOLVER = sig
     
   val is_sat       : int ->
                      Tactics.solve_tactic_t option ->
-                     SmpTslk.cutoff_strategy ->
+                     Smp.cutoff_strategy ->
                      TslkExp.formula -> bool
   val is_valid     : int ->
                      Tactics.solve_tactic_t option ->
-                     SmpTslk.cutoff_strategy ->
+                     Smp.cutoff_strategy ->
                      TslkExp.formula -> bool
   
   val is_valid_plus_info 
                    : int ->
                      Tactics.solve_tactic_t option ->
-                     SmpTslk.cutoff_strategy ->
+                     Smp.cutoff_strategy ->
                      TslkExp.formula -> (bool * int)
 
   val compute_model: bool -> unit
@@ -40,25 +35,18 @@ module type CUSTOM_TSLKSOLVER = sig
 end
 
 module type S = CUSTOM_TSLKSOLVER
-(*  with module TslkExp = TslkExpression *)
-(*  with module Smp = SmpTslk *)
 
 
 module Make(K : Level.S) (Solver : BackendSolverIntf.BACKEND_TSLK) : S =
 struct
   module TslkSol = Solver.Translate.Tslk(K)
   module TslkExp = TslkSol.Exp
-  module Smp     = SmpTslk
-(*
-  module TslkExp  = Solver.Translate.Tslk.Exp
-  module Smp      = Solver.Translate.Tslk.Smp
-*)
   module VarIdSet = TslkExp.VarIdSet
   module GM       = GenericModel
 
   let comp_model : bool ref = ref false
 
-  let cutoff_opt : SmpTslk.cutoff_options_t = SmpTslk.opt_empty()
+  let cutoff_opt : Smp.cutoff_options_t = Smp.opt_empty()
   
   (* 
    * is_var 
@@ -245,7 +233,7 @@ struct
   (* INVOCATIONS WITHOUT CONVERTING TO DNF *)
   let is_sat (lines : int)
              (stac:Tactics.solve_tactic_t option)
-             (co : SmpTslk.cutoff_strategy)
+             (co : Smp.cutoff_strategy)
              (phi : TslkExp.formula) : bool =
     Solver.set_prog_lines lines;
     Solver.sat (TslkSol.formula stac co cutoff_opt phi)

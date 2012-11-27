@@ -2,8 +2,8 @@ val prog_lines : int ref
 (** Number of lines in the program *)
 
 val formula_to_str : Tactics.solve_tactic_t option ->
-                     SmpTll.cutoff_strategy ->
-                     SmpTll.cutoff_options_t ->
+                     Smp.cutoff_strategy ->
+                     Smp.cutoff_options_t ->
                      TllExpression.formula -> string
 (** Translates a formula into a string representation for Yices
     following the given strategy. *)

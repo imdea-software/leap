@@ -74,10 +74,6 @@ sig
   (** Translation of TLL expressions. *)
   sig  
     module Exp : TLLEXP
-    module Smp : sig
-      type cutoff_strategy
-      type cutoff_options_t
-    end
     
     val literal_list : Exp.literal list -> t
     (** [literal_list ls] translates the list [ls] of literals into its 
@@ -114,21 +110,14 @@ sig
     (** Translation of TSLK expressions. *)
     sig
       module Exp : TSLKEXP
-      module Smp : module type of SmpTslk
-(*
-      module Smp : sig
-        type cutoff_strategy
-        type cutoff_options_t
-      end
-*)
 
       val literal_list : Exp.literal list -> t
       (** [literal_list ls] translates the list [ls] of literals into its internal 
           internal representation. *)
       
       val formula      : Tactics.solve_tactic_t option ->
-                         SmpTslk.cutoff_strategy ->
-                         SmpTslk.cutoff_options_t ->
+                         Smp.cutoff_strategy ->
+                         Smp.cutoff_options_t ->
                          Exp.formula -> t
       (** [formula stat strat copt f] translates the formula [f] following the
           strategy [strat] to compute the SMP cutoff and tactic [stat] to
@@ -210,9 +199,7 @@ end
 module type BACKEND_SOLVER = CUSTOM_BACKEND_SOLVER
   with module Translate.Pos.Exp  = PosExpression
   and  module Translate.Tll.Exp  = TllExpression
-  and  module Translate.Tll.Smp  = SmpTll
   and  module Translate.Num.Exp  = NumExpression
-(*  and  module Translate.Tslk.Smp = SmpTslk *)
 
 
 
@@ -251,7 +238,6 @@ end
 
 module type BACKEND_TLL = CUSTOM_BACKEND_TLL
   with module Translate.Tll.Exp = TllExpression
-  and  module Translate.Tll.Smp = SmpTll
 
 
 

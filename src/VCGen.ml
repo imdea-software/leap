@@ -218,10 +218,10 @@ sig
     -> formula_table_t
 end
 
-module Make (PS   : PosSolver.S )
-            (TS   : TllSolver.S )
-            (TSLK : TslkSolver.S)
-            (NS   : NumSolver.S ) : S =
+module Make (PS    : PosSolver.S )
+            (TS    : TllSolver.S )
+            (TSLKS : TslkSolver.S)
+            (NS    : NumSolver.S ) : S =
 struct
   type rhoMode =
       RClosed of E.tid * int
@@ -238,12 +238,13 @@ struct
 
   type formula_status_t =
     {
-      desc : string             ;    (** Brief description *)
-      trans : (E.pc_t * int)    ;    (** Transition that represents *)
-      supp_tags : Tag.f_tag list;    (** Support used      *)
-      mutable pos_time : float  ;    (** Pos DP time       *)
-      mutable num_time : float  ;    (** Num DP time       *)
-      mutable tll_time : float  ;    (** TLL DP time       *)
+      desc : string              ;    (** Brief description *)
+      trans : (E.pc_t * int)     ;    (** Transition that represents *)
+      supp_tags : Tag.f_tag list ;    (** Support used      *)
+      mutable pos_time  : float  ;    (** Pos DP time       *)
+      mutable num_time  : float  ;    (** Num DP time       *)
+      mutable tll_time  : float  ;    (** TLL DP time       *)
+      mutable tslk_time : float  ;    (** TLL DP time       *)
     }
   
   type formula_table_t =
@@ -1355,11 +1356,11 @@ struct
   
   (* HERE GOES THE NEW CODE *)
 
-  let vcgen_to_smp_cutoff (smp:cutoff_type) : SmpTll.cutoff_strategy =
+  let vcgen_to_smp_cutoff (smp:cutoff_type) : Smp.cutoff_strategy =
     match smp with
-    | Dnf     -> SmpTll.Dnf
-    | Union   -> SmpTll.Union
-    | Pruning -> SmpTll.Pruning
+    | Dnf     -> Smp.Dnf
+    | Union   -> Smp.Union
+    | Pruning -> Smp.Pruning
 
 
   let tac_to_vcgen_cutoff (smp:Tac.smp_tactic_t) : cutoff_type =
@@ -1585,9 +1586,10 @@ struct
                        trans = (info.pc, get_id info.pc);
                        supp_tags = solverInfo.detailed_desc.gral_supp @
                                    info.supps;
-                       pos_time = 0.0;
-                       num_time = 0.0;
-                       tll_time = 0.0;
+                       pos_time  = 0.0;
+                       num_time  = 0.0;
+                       tll_time  = 0.0;
+                       tslk_time = 0.0;
                      } in
       Hashtbl.add tbl !i (f, p_only, new_preds, Unverified,
                           info.stac, info.smp, f_status);
@@ -1719,7 +1721,7 @@ struct
   
   let call_tll_dp (phi    : E.formula)
                   (stac   : Tac.solve_tactic_t option)
-                  (cutoff : SmpTll.cutoff_strategy)
+                  (cutoff : Smp.cutoff_strategy)
                   (status : valid_t) : (valid_t * int * int * float) =
     assert(isInitialized());
     if status = Unverified || status = NotValid then begin
@@ -1734,6 +1736,30 @@ struct
       else
         begin
           TS.print_model ();
+          (NotValid, calls, 0, timer#elapsed_time)
+        end
+    end else (Unneeded, 0, 0, 0.0)
+
+
+  let call_tslk_dp (phi    : E.formula)
+                   (stac   : Tac.solve_tactic_t option)
+                   (cutoff : Smp.cutoff_strategy)
+                   (status : valid_t) : (valid_t * int * int * float) =
+    assert(isInitialized());
+    if status = Unverified || status = NotValid then begin
+      let module TSLKExpr = TSLKS.TslkExp in
+      let module TSLKIntf = TSLKInterface.Make(TSLKExpr) in
+      let tslk_phi = TSLKIntf.formula_to_tslk_formula phi in
+      let timer = new LeapLib.timer in
+      timer#start;
+      let valid, calls = TSLKS.is_valid_plus_info
+                           solverInfo.prog_lines stac cutoff tslk_phi in
+      timer#stop;
+      if valid then
+        (Checked, calls, 1, timer#elapsed_time)
+      else
+        begin
+          TSLKS.print_model ();
           (NotValid, calls, 0, timer#elapsed_time)
         end
     end else (Unneeded, 0, 0, 0.0)
@@ -1779,6 +1805,8 @@ struct
     let num_sats    = ref 0 in
     let tll_calls   = ref 0 in
     let tll_sats    = ref 0 in
+    let tslk_calls  = ref 0 in
+    let tslk_sats   = ref 0 in
     (* Set the SMT solvers *)
     let to_vc_status st = match st with
       | Unverified -> Report.Unverified
@@ -1835,9 +1863,31 @@ struct
           Hashtbl.replace vc_tbl i (f, p_f, preds, st, stac, cutoff, desc);
           (new_status, time)
         end else (num_status, 0.0) in
-      Report.report_vc_run i (to_vc_status pos_status) pos_time
-        (to_vc_status num_status) num_time
-        (to_vc_status tll_status) tll_time desc.desc "";
+
+      (* Call TSLK DP *)
+      let tslk_status, tslk_time =
+        let (apply_tslk, k) = apply_tslk_dp() in
+        if apply_tslk then begin
+          let prev_st = if tll_status = Unneeded then num_status else tll_status 
+            in
+          let new_status, calls, sats, time =
+            call_tslk_dp f stac (vcgen_to_smp_cutoff cutoff) prev_st in
+          tslk_calls := !tslk_calls + calls;
+          tslk_sats := !tslk_sats + sats;
+          let st = if new_status = Unneeded then
+                     pos_status
+                   else
+                     (desc.tslk_time <- time; new_status) in
+          Hashtbl.replace vc_tbl i (f, p_f, preds, st, stac, cutoff, desc);
+          (new_status, time)
+        end else (tll_status, 0.0) in
+
+      (* We report the results *)
+      Report.report_vc_run i
+        (to_vc_status pos_status)  pos_time
+        (to_vc_status num_status)  num_time
+        (to_vc_status tll_status)  tll_time
+        (to_vc_status tslk_status) tslk_time desc.desc "";
       if solverInfo.detailed_desc.detFolder <> "" then
         let time_list = [("POS", desc.pos_time);
                          ("NUM", desc.num_time);

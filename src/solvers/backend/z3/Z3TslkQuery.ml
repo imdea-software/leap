@@ -10,8 +10,8 @@ module type S =
     (** Number of lines in the program *)
 
     val formula_to_str : Tactics.solve_tactic_t option ->
-                         SmpTslk.cutoff_strategy ->
-                         SmpTslk.cutoff_options_t ->
+                         Smp.cutoff_strategy ->
+                         Smp.cutoff_options_t ->
                          Expr.formula -> string
     (** Translates a formula into a string representation for Yices
         following the given strategy. *)
@@ -33,7 +33,7 @@ module Make (K : Level.S) : S =
 
     module Expr     = TSLKExpression.Make(K)
     module VarIdSet = Expr.VarIdSet
-    module Smp      = SmpTslk.Make(Expr)
+    module Smp4Tslk = SmpTslk.Make(Expr)
     module B        = Buffer
     module GM       = GenericModel
     module Interf   = TSLKInterface.Make(Expr)
@@ -1613,7 +1613,7 @@ module Make (K : Level.S) : S =
     let literal_list_to_str (ls:Expr.literal list) : string =
       let _ = GM.clear_sort_map sort_map in
       let expr = Expr.Conj ls in
-      let c = Smp.cut_off_normalized expr in
+      let c = Smp4Tslk.cut_off_normalized expr in
       let num_addr = c.SmpTslk.num_addrs in
       let num_tid = c.SmpTslk.num_tids in
       let num_elem = c.SmpTslk.num_elems in
@@ -1639,8 +1639,8 @@ module Make (K : Level.S) : S =
 
 
     let formula_to_str (stac:Tactics.solve_tactic_t option)
-                       (co:SmpTslk.cutoff_strategy)
-                       (copt:SmpTslk.cutoff_options_t)
+                       (co:Smp.cutoff_strategy)
+                       (copt:Smp.cutoff_options_t)
                        (phi:Expr.formula) : string =
 
       let _ = LeapDebug.debug "entering Z3TllQuery.formula_to_str...\n" in
@@ -1681,7 +1681,7 @@ module Make (K : Level.S) : S =
 
       let _ = GM.clear_sort_map sort_map in
       let _ = LeapDebug.debug "Z3TllQuery will compute the cutoff...\n" in
-      let max_cut_off = Smp.cut_off co copt phi in
+      let max_cut_off = Smp4Tslk.cut_off co copt phi in
       let num_addr    = max_cut_off.SmpTslk.num_addrs in
       let num_tid     = max_cut_off.SmpTslk.num_tids in
       let num_elem    = max_cut_off.SmpTslk.num_elems in

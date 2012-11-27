@@ -1,11 +1,6 @@
 module type CUSTOM_TSLKSOLVER = sig
   module TslkExp : ExpressionTypes.TSLKEXP
  
-(*
-  module Smp : sig
-    type cutoff_strategy
-  end
-*)
   
   val is_sat_conj  : int -> TslkExp.conjunctive_formula -> bool
   val is_sat_dnf   : int -> TslkExp.formula -> bool
@@ -16,17 +11,17 @@ module type CUSTOM_TSLKSOLVER = sig
     
   val is_sat       : int ->
                      Tactics.solve_tactic_t option ->
-                     SmpTslk.cutoff_strategy ->
+                     Smp.cutoff_strategy ->
                      TslkExp.formula -> bool
   val is_valid     : int ->
                      Tactics.solve_tactic_t option ->
-                     SmpTslk.cutoff_strategy ->
+                     Smp.cutoff_strategy ->
                      TslkExp.formula -> bool
   
   val is_valid_plus_info 
                    : int ->
                      Tactics.solve_tactic_t option ->
-                     SmpTslk.cutoff_strategy ->
+                     Smp.cutoff_strategy ->
                      TslkExp.formula -> (bool * int)
 
   val compute_model: bool -> unit
@@ -38,7 +33,7 @@ module type CUSTOM_TSLKSOLVER = sig
 end
 
 module type S = CUSTOM_TSLKSOLVER
-(*  with module Smp = SmpTslk*)
+
 
 module Make (K : Level.S)
             (Solver : BackendSolverIntf.BACKEND_TSLK) : S

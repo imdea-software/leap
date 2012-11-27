@@ -1584,8 +1584,8 @@ let literal_list_to_str (ls:Expr.literal list) : string =
 
 
 let formula_to_str (stac:Tactics.solve_tactic_t option)
-                   (co:SmpTll.cutoff_strategy)
-                   (copt:SmpTll.cutoff_options_t)
+                   (co:Smp.cutoff_strategy)
+                   (copt:Smp.cutoff_options_t)
                    (phi:Expr.formula) : string =
   let _ = GM.clear_sort_map sort_map in
   let max_cut_off = SmpTll.cut_off co copt phi in

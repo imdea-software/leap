@@ -13,6 +13,7 @@ val report_results : results_t -> unit
 val report_vc_run_header : unit -> unit
 val report_vc_run : int -> vc_status -> float ->
                            vc_status -> float ->
+                           vc_status -> float ->
                            vc_status -> float -> string -> string -> unit
 val report_analysis_time : float -> unit
 val report_labels : System.label_table_t -> unit
