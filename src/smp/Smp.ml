@@ -1,0 +1,44 @@
+
+type cutoff_strategy =
+  | Dnf       (* Computes dnf over the formula and then counts literals *)
+  | Union     (* Computes an upper bound using union over literals *)
+  | Pruning   (* Computes a better bound, by pruning non interesting literals *)
+
+
+type cutoff_options_t =
+  {
+    mutable forget_primed_mem : bool ;
+    mutable group_vars : bool ;
+  }
+
+
+let strategy_to_str (s:cutoff_strategy) : string =
+  match s with
+  | Dnf     -> "DNF"
+  | Union   -> "Union"
+  | Pruning -> "Pruning"
+
+
+(* Cutoff options functions *)
+
+let opt_empty () =
+  {
+    forget_primed_mem = false ;
+    group_vars = false ;
+  }
+
+
+let set_forget_primed_mem (opt:cutoff_options_t) (b:bool) : unit =
+  opt.forget_primed_mem <- b
+
+
+let set_group_vars (opt:cutoff_options_t) (b:bool) : unit =
+  opt.group_vars <- b
+
+
+let forget_primed_mem (opt:cutoff_options_t) : bool =
+  opt.forget_primed_mem
+
+
+let group_vars (opt:cutoff_options_t) : bool =
+  opt.group_vars

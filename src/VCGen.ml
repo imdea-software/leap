@@ -512,6 +512,12 @@ struct
     _DEBUG "Apply Tslk[%i] DP? %b" k b;
     (b, k)
 
+  let apply_heap_based_dp () : bool =
+    apply_tll_dp ()        ||
+    fst (apply_tslk_dp ()) ||
+    apply_tsl_dp ()
+
+
   (* MODE CONVERSION FUNCTION *)
   let rhoMode_to_sysMode : rhoMode -> Sys.sysMode = function
     | RClosed _ -> Sys.SClosed
@@ -1639,7 +1645,7 @@ struct
       | E.Implies (f1,f2) -> E.Implies(clean f1, clean f2)
       | E.Iff (f1,f2) -> E.Iff(clean f1, clean f2)
       | _ -> phi in
-    if apply_tll_dp () then phi else clean phi
+    if apply_heap_based_dp () then phi else clean phi
   
   
   let filter_system (sys:Sys.system_t) : Sys.system_t =
@@ -1657,7 +1663,7 @@ struct
       | E.Implies (f1,f2) -> E.Implies(clean f1, clean f2)
       | E.Iff (f1,f2) -> E.Iff(clean f1, clean f2)
       | _ as phi -> phi in
-    if apply_tll_dp () then fs else clean fs
+    if apply_heap_based_dp () then fs else clean fs
     
   
   let include_count_abs (sys:Sys.system_t) : Sys.system_t =

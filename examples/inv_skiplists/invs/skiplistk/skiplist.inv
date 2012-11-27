@@ -1,0 +1,21 @@
+param:
+
+
+invariant [skiplist] :
+
+//   null in region
+///\ region = addr2set(heap, head)
+///\ rd(heap, tail).next = null
+///\ tail != null
+///\ head != null
+///\ head != tail
+///\ elements = set2elem(heap, region)
+///\ rd(heap, head).data = lowestElem
+///\ rd(heap, tail).data = highestElem
+///\ orderlist (heap, head, tail)
+
+   tail != null
+/\ head != null
+/\ head != tail
+/\ rd(heap, head).data = lowestElem
+/\ rd(heap, tail).data = highestElem

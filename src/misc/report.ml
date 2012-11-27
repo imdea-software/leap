@@ -13,6 +13,10 @@ type vc_status = Unverified | NotValid | Valid | Unneeded
 exception Invalid_folder of string
 
 
+let table_divider_str =
+  "+-----+-----+-----------+-----+-----------+-----+-----------+-----+-----------+\n"
+
+
 (* Auxiliary functions *)
 let time_to_str (t:float) : string =
   let ints = int_of_float (t /. 10.) in
@@ -92,9 +96,9 @@ let report_results_to_str (res:results_t) : string =
 
 
 let report_vc_run_header_to_str (unit) : string =
-  "+-----+-----+-----------+-----+-----------+-----+-----------+-----+-----------+\n" ^
+  table_divider_str ^
   "|  ID | Loc |  Time(s)  | Num |  Time(s)  | TL3 |  Time(s)  | TSK |  Time(s)  |\n" ^
-  "+-----+-----+-----------+-----+-----------+-----+-----------+-----+-----------+\n"
+  table_divider_str
 
 
 let report_vc_run_to_str (id:int) (pos_status:vc_status)  (pos_time:float)
@@ -115,12 +119,12 @@ let report_vc_run_to_str (id:int) (pos_status:vc_status)  (pos_time:float)
     "|" ^ (status_to_str tll_status)  ^ "|" ^ (time_to_str tll_time)  ^
     "|" ^ (status_to_str tslk_status) ^ "|" ^ (time_to_str tslk_time) ^
     "| " ^ (desc) ^ "\n" ^
-    "+-----+-----+-----------+-----+-----------+-----+-----------+\n"
+    table_divider_str
 
 
 let report_analysis_time_to_str (time:float) : string =
-  "| Total analysis time:                           "^(time_to_str time)^"|\n" ^
-  "+-----+-----+-----------+-----+-----------+-----+-----------+\n"
+  "| Total analysis time:                                             "^(time_to_str time)^"|\n" ^
+  table_divider_str
 
 
 let report_details_to_file_to_str (prog_name:string)
@@ -211,6 +215,3 @@ let report_details_to_file (out_folder:string)
           sprintf "Folder \"%s\" is not a valid folder." out_folder;
         raise (Invalid_folder out_folder)
       end
-
-
-                          
