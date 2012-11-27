@@ -1,15 +1,42 @@
 open LeapLib
 
+module type S =
 
-module Make (TSLK : TSLKExpression.S) =
+  sig
+
+    module Expr : TSLKExpression.S
+
+    val prog_lines : int ref
+    (** Number of lines in the program *)
+
+    val formula_to_str : Tactics.solve_tactic_t option ->
+                         SmpTslk.cutoff_strategy ->
+                         SmpTslk.cutoff_options_t ->
+                         Expr.formula -> string
+    (** Translates a formula into a string representation for Yices
+        following the given strategy. *)
+
+    val literal_list_to_str : Expr.literal list -> string
+    (** Translates a list of literals into its corresponding Yices string. *)
+
+    val conjformula_to_str : Expr.conjunctive_formula -> string
+    (** Translates a conjunctive formula into a string representation. *)
+
+    val get_sort_map : unit -> GenericModel.sort_map_t
+    (** Gets the declared mapping from elements to sorts *)
+  end
+
+(*module Make (TSLK : TSLKExpression.S) = *)
+module Make (K : Level.S) : S =
+
   struct
 
-    module Expr     = TSLK
-    module VarIdSet = TSLK.VarIdSet
-    module Smp      = SmpTslk.Make(TSLK)
+    module Expr     = TSLKExpression.Make(K)
+    module VarIdSet = Expr.VarIdSet
+    module Smp      = SmpTslk.Make(Expr)
     module B        = Buffer
     module GM       = GenericModel
-    module Interf   = TSLKInterface.Make(TSLK)
+    module Interf   = TSLKInterface.Make(Expr)
 
 
     let prog_lines = ref 0

@@ -156,11 +156,11 @@ struct
       let sort_map     = YicesTllQuery.get_sort_map
     end
 
-    module Tslk =
+    module Tslk (K : Level.S) =
     struct
-      module Exp     = TSLKExpression.Make(struct let level =3 end)
       module Smp     = SmpTslk
-      module Z3Query = Z3TslkQuery.Make(Exp)
+      module Z3Query = Z3TslkQuery.Make(K)
+      module Exp     = Z3Query.Expr
       
       let literal_list = Z3Query.literal_list_to_str
       let formula      = Z3Query.formula_to_str

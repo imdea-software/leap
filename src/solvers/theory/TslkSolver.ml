@@ -2,10 +2,12 @@ open LeapLib
 
 module type CUSTOM_TSLKSOLVER = sig
   module TslkExp : ExpressionTypes.TSLKEXP
-  
+ 
+(*
   module Smp : sig
     type cutoff_strategy
   end
+*)
   
   val is_sat_conj  : int -> TslkExp.conjunctive_formula -> bool
   val is_sat_dnf   : int -> TslkExp.formula -> bool
@@ -16,17 +18,17 @@ module type CUSTOM_TSLKSOLVER = sig
     
   val is_sat       : int ->
                      Tactics.solve_tactic_t option ->
-                     Smp.cutoff_strategy ->
+                     SmpTslk.cutoff_strategy ->
                      TslkExp.formula -> bool
   val is_valid     : int ->
                      Tactics.solve_tactic_t option ->
-                     Smp.cutoff_strategy ->
+                     SmpTslk.cutoff_strategy ->
                      TslkExp.formula -> bool
   
   val is_valid_plus_info 
                    : int ->
                      Tactics.solve_tactic_t option ->
-                     Smp.cutoff_strategy ->
+                     SmpTslk.cutoff_strategy ->
                      TslkExp.formula -> (bool * int)
 
   val compute_model: bool -> unit
@@ -39,18 +41,23 @@ end
 
 module type S = CUSTOM_TSLKSOLVER
 (*  with module TslkExp = TslkExpression *)
-  with module Smp = SmpTslk
+(*  with module Smp = SmpTslk *)
   
-module Make(Solver : BackendSolverIntf.BACKEND_TSLK) : S =
+module Make(K : Level.S) (Solver : BackendSolverIntf.BACKEND_TSLK) : S =
 struct
+  module TslkSol = Solver.Translate.Tslk(K)
+  module TslkExp = TslkSol.Exp
+  module Smp = SmpTslk
+(*
   module TslkExp  = Solver.Translate.Tslk.Exp
   module Smp      = Solver.Translate.Tslk.Smp
+*)
   module VarIdSet = TslkExp.VarIdSet
   module GM       = GenericModel
 
   let comp_model : bool ref = ref false
 
-  let cutoff_opt : Smp.cutoff_options_t = Smp.opt_empty()
+  let cutoff_opt : SmpTslk.cutoff_options_t = SmpTslk.opt_empty()
   
   (* 
    * is_var 
@@ -213,7 +220,7 @@ struct
       | TslkExp.Conj conjs -> 
         begin
           Solver.set_prog_lines lines;
-          Solver.sat (Solver.Translate.Tslk.literal_list conjs)
+          Solver.sat (TslkSol.literal_list conjs)
         end
   
   let is_sat_dnf (prog_lines : int) (phi : TslkExp.formula) : bool =
@@ -237,10 +244,10 @@ struct
   (* INVOCATIONS WITHOUT CONVERTING TO DNF *)
   let is_sat (lines : int)
              (stac:Tactics.solve_tactic_t option)
-             (co : Smp.cutoff_strategy)
+             (co : SmpTslk.cutoff_strategy)
              (phi : TslkExp.formula) : bool =
     Solver.set_prog_lines lines;
-    Solver.sat (Solver.Translate.Tslk.formula stac co cutoff_opt phi)
+    Solver.sat (TslkSol.formula stac co cutoff_opt phi)
   
   let is_valid (prog_lines:int)
                (stac:Tactics.solve_tactic_t option)
@@ -309,7 +316,7 @@ let search_sets_to_str (model:GM.t) (sm:GM.sort_map_t) (s:GM.sort) : string =
 
 
   let model_to_str () : string =
-    let sort_map = Solver.Translate.Tslk.sort_map () in
+    let sort_map = TslkSol.sort_map () in
     let model = Solver.get_model () in
     let thid_str = search_type_to_str model sort_map GM.tid_s in
     let pc_str   = search_type_to_str model sort_map GM.loc_s in
@@ -353,8 +360,9 @@ let search_sets_to_str (model:GM.t) (sm:GM.sort_map_t) (s:GM.sort) : string =
 
 end
 
-let choose (solverIdent : string) : (module S) =
+let choose (solverIdent : string) (k : int) : (module S) =
   let m = try Hashtbl.find BackendSolvers.tslkTbl solverIdent
     with Not_found -> BackendSolvers.defaultTslk () in
   let module Sol = (val m : BackendSolverIntf.BACKEND_TSLK) in
-  (module Make(Sol) : S)
+  let module K = struct let level = k end in
+  (module Make(K)(Sol) : S)

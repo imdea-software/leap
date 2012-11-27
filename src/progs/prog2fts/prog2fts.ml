@@ -3,12 +3,13 @@ open Printf
 open LeapLib
 open Global
 
+
 module Expr = Expression
 
 (* This code should be changed in the future *)
 module Pos  = (val PosSolver.choose  "default" : PosSolver.S)
 module Tll  = (val TllSolver.choose  "default" : TllSolver.S)
-module Tslk = (val TslkSolver.choose "default" : TslkSolver.S)
+module Tslk = (val TslkSolver.choose "default" 1 : TslkSolver.S)
 module Num  = (val NumSolver.choose  "default" : NumSolver.S)
 module VCG  = VCGen.Make(Pos)(Tll)(Tslk)(Num)
 (* This code should be changed in the future *)

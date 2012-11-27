@@ -249,7 +249,7 @@ module type S =
   end
 
 
-module Make (K : Level.S) =
+module Make (K : Level.S) : S =
   struct
 
     type varId = string

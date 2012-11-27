@@ -104,31 +104,32 @@ end
 
 
 
-
 module type TslkBackend =
 (** Signatures of the functions the Solver needs to implement in order
     to fully support TSLK. *)
 sig
   type t
   
-  module Tslk :
-(*    functor (Exp : TSLKExpression.S) ->*)
+  module Tslk (K : Level.S) :
+(*    functor (Exp : TSLKExpression.S) -> *)
     (** Translation of TSLK expressions. *)
     sig
       module Exp : TSLKEXP
+      module Smp : module type of SmpTslk
+(*
       module Smp : sig
         type cutoff_strategy
         type cutoff_options_t
       end
-
+*)
 
       val literal_list : Exp.literal list -> t
       (** [literal_list ls] translates the list [ls] of literals into its internal 
           internal representation. *)
       
       val formula      : Tactics.solve_tactic_t option ->
-                         Smp.cutoff_strategy ->
-                         Smp.cutoff_options_t ->
+                         SmpTslk.cutoff_strategy ->
+                         SmpTslk.cutoff_options_t ->
                          Exp.formula -> t
       (** [formula stat strat copt f] translates the formula [f] following the
           strategy [strat] to compute the SMP cutoff and tactic [stat] to
@@ -212,7 +213,7 @@ module type BACKEND_SOLVER = CUSTOM_BACKEND_SOLVER
   and  module Translate.Tll.Exp  = TllExpression
   and  module Translate.Tll.Smp  = SmpTll
   and  module Translate.Num.Exp  = NumExpression
-  and  module Translate.Tslk.Smp = SmpTslk
+(*  and  module Translate.Tslk.Smp = SmpTslk *)
 
 
 
@@ -271,7 +272,7 @@ sig
 end
 
 module type BACKEND_TSLK = CUSTOM_BACKEND_TSLK
-    with  module Translate.Tslk.Smp = SmpTslk
+(*    with  module Translate.Tslk.Smp = SmpTslk *)
 
 
 
