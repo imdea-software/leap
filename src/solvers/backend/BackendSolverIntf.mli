@@ -111,7 +111,6 @@ sig
   type t
   
   module Tslk (K : Level.S) :
-(*    functor (Exp : TSLKExpression.S) -> *)
     (** Translation of TSLK expressions. *)
     sig
       module Exp : TSLKEXP

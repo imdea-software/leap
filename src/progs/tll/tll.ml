@@ -32,10 +32,10 @@ let _ =
 
     (* Create VCGen module *)
     let solver = if !TllArgs.use_z3 then "Z3" else "Yices" in
-    let module Pos  = (val PosSolver.choose solver  : PosSolver.S)  in
-    let module Tll  = (val TllSolver.choose solver  : TllSolver.S)  in
-    let module Tslk = (val TslkSolver.choose solver : TslkSolver.S) in
-    let module Num  = (val NumSolver.choose solver  : NumSolver.S)  in
+    let module Pos  = (val PosSolver.choose solver    : PosSolver.S)  in
+    let module Tll  = (val TllSolver.choose solver    : TllSolver.S)  in
+    let module Tslk = (val TslkSolver.choose solver 1 : TslkSolver.S) in
+    let module Num  = (val NumSolver.choose solver    : NumSolver.S)  in
     let module VCG  = VCGen.Make(Pos)(Tll)(Tslk)(Num) in
     VCG.initialize ((System.get_trans_num sys) + 1) !TllArgs.coType 
       "" [] !TllArgs.hide_pres false;

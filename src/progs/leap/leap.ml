@@ -54,9 +54,12 @@ let _ =
                     BackendSolvers.Yices.identifier
                   else
                     solver in
+    (* We get tslk's parameter if passed as argument *)
+    let k_param = DP.get_tslk_param !LeapArgs.dpType in
+
     let module Pos  = (val PosSolver.choose pSolver : PosSolver.S) in
     let module Tll  = (val TllSolver.choose solver : TllSolver.S) in
-    let module Tslk = (val TslkSolver.choose solver : TslkSolver.S) in
+    let module Tslk = (val TslkSolver.choose solver k_param : TslkSolver.S) in
     let module Num  = (val NumSolver.choose solver : NumSolver.S) in
 
     (* Tell Num, TLL and TSLK modules whether to compute models or not *)

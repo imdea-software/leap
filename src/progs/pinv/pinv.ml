@@ -38,9 +38,13 @@ let _ =
     let solver = 
       if !PinvArgs.use_z3 then BackendSolvers.Z3.identifier 
       else BackendSolvers.Yices.identifier in
+
+    (* We get tslk's parameter if passed as argument *)
+    let k_param = DP.get_tslk_param !PinvArgs.dpType in
+
     let module Pos  = (val PosSolver.choose solver  : PosSolver.S) in
     let module Tll  = (val TllSolver.choose solver  : TllSolver.S) in
-    let module Tslk = (val TslkSolver.choose solver : TslkSolver.S) in
+    let module Tslk = (val TslkSolver.choose solver k_param : TslkSolver.S) in
     let module Num  = (val NumSolver.choose solver  : NumSolver.S) in
     let module VCG  = VCGen.Make(Pos)(Tll)(Tslk)(Num) in
     let focus_list = Expr.gen_focus_list (System.get_trans_num sys)

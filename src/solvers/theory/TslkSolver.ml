@@ -42,12 +42,13 @@ end
 module type S = CUSTOM_TSLKSOLVER
 (*  with module TslkExp = TslkExpression *)
 (*  with module Smp = SmpTslk *)
-  
+
+
 module Make(K : Level.S) (Solver : BackendSolverIntf.BACKEND_TSLK) : S =
 struct
   module TslkSol = Solver.Translate.Tslk(K)
   module TslkExp = TslkSol.Exp
-  module Smp = SmpTslk
+  module Smp     = SmpTslk
 (*
   module TslkExp  = Solver.Translate.Tslk.Exp
   module Smp      = Solver.Translate.Tslk.Smp

@@ -39,13 +39,16 @@ let _ =
     (* Shows the parsed system *)
     let _ = if (!SinvArgs.showFlag = true) then Report.report_system sys in
 
+    (* We get tslk's parameter if passed as argument *)
+    let k_param = DP.get_tslk_param !SinvArgs.dpType in
+
     (* Create VCGen module *)
     let solver = 
       if !SinvArgs.use_z3 then BackendSolvers.Z3.identifier 
       else BackendSolvers.Yices.identifier in
     let module Pos  = (val PosSolver.choose  solver : PosSolver.S)  in
     let module Tll  = (val TllSolver.choose  solver : TllSolver.S)  in
-    let module Tslk = (val TslkSolver.choose solver : TslkSolver.S) in
+    let module Tslk = (val TslkSolver.choose solver k_param : TslkSolver.S) in
     let module Num  = (val NumSolver.choose  solver : NumSolver.S)  in
     let module VCG  = VCGen.Make(Pos)(Tll)(Tslk)(Num) in
     VCG.initialize ((Sys.get_trans_num sys) + 1) !SinvArgs.coType 

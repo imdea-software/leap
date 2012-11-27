@@ -11,7 +11,7 @@ module NumExp = NumExpression
 (* This code should be changed in the future *)
 module PosSolver  = (val PosSolver.choose  "default" : PosSolver.S)
 module TllSolver  = (val TllSolver.choose  "default" : TllSolver.S)
-module TslkSolver = (val TslkSolver.choose "default" : TslkSolver.S)
+module TslkSolver = (val TslkSolver.choose "default" 1 : TslkSolver.S)
 module NumSolver  = (val NumSolver.choose  "default" : NumSolver.S)
 module VCG = VCGen.Make(PosSolver)(TllSolver)(TslkSolver)(NumSolver)
 (* This code should be changed in the future *)
