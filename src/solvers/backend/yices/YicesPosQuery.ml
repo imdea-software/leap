@@ -8,10 +8,20 @@ module GM = GenericModel
 let pc_name       : string = "pc"
 let pc_prime_name : string = pc_name ^ "_prime"
 
+
+(* Program lines *)
+let prog_lines : int ref = ref 0
+
+
 (* Sort names *)
 let bool_s : string = "bool"
 let thid_s : string = "thid"
 let loc_s  : string = "loc"
+
+
+(* Program lines manipulation *)
+let set_prog_lines (n:int) : unit =
+  prog_lines := n
 
 
 (* Information storage *)
@@ -92,14 +102,13 @@ let rec expr_to_str (expr:Exp.expression) : string =
 
 
 
-let pos_expression_to_str (expr:Exp.expression)
-                                (lines:int) : string =
+let pos_expression_to_str (expr:Exp.expression) : string =
   let _             = GM.clear_sort_map sort_map in
   let voc           = Exp.voc expr in
   let preds         = Exp.all_preds expr in
   let thid_decl_str = sprintf "(define-type %s)\n" thid_s in
   let loc_decl_str  = sprintf "(define-type %s (subrange 1 %i))\n"
-                        loc_s lines in
+                        loc_s !prog_lines in
   let pc_str        = sprintf "(define pc::(-> %s %s))\n" thid_s loc_s in
   let pc_prime_str  = sprintf "(define pc_prime::(-> %s %s))\n"
                         thid_s loc_s in

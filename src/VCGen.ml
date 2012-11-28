@@ -1752,7 +1752,9 @@ struct
                    (cutoff : Smp.cutoff_strategy)
                    (status : valid_t) : (valid_t * int * int * float) =
     assert(isInitialized());
+    let _ = print_endline "ENTERING..." in
     if status = Unverified || status = NotValid then begin
+      let _ = print_endline "WILL PERFORM THE CHECK..." in
       let module TSLKExpr = TSLKS.TslkExp in
       let module TSLKIntf = TSLKInterface.Make(TSLKExpr) in
       let tslk_phi = TSLKIntf.formula_to_tslk_formula phi in
@@ -1874,8 +1876,7 @@ struct
       let tslk_status, tslk_time =
         let (apply_tslk, k) = apply_tslk_dp() in
         if apply_tslk then begin
-          let prev_st = if tll_status = Unneeded then num_status else tll_status 
-            in
+          let prev_st = if num_status = Unneeded then pos_status else num_status in
           let new_status, calls, sats, time =
             call_tslk_dp f stac (vcgen_to_smp_cutoff cutoff) prev_st in
           tslk_calls := !tslk_calls + calls;

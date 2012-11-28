@@ -14,8 +14,8 @@ struct
   
   (* INVOCATIONS *)
   let is_sat (lines : int) (expr : PosExp.expression) : bool =
-    (Solver.set_prog_lines lines;
-    Solver.sat (Solver.Translate.Pos.expression expr))
+    (Solver.Translate.Pos.set_prog_lines lines;
+     Solver.sat (Solver.Translate.Pos.expression expr))
   
   let is_valid (lines : int) (expr : PosExp.expression) : bool =
     not (is_sat lines (PosExpression.Not(expr)))

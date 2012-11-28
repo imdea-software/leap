@@ -19,6 +19,10 @@ let aux_int       : string = "ai_"
 let undefInt      : string = "undefined_int"
 
 
+(* Program lines *)
+let prog_lines : int ref = ref 0
+
+
 (* Sort names *)
 let int_s : string = "int"
 let thid_s : string = "thid"
@@ -31,7 +35,12 @@ let loc_s : string = "loc"
 let sort_map : GM.sort_map_t = GM.new_sort_map()
 
 
+(* Program lines manipulation *)
+let set_prog_lines (n:int) : unit =
+  prog_lines := n
 
+
+(* Translation funtions *)
 let int_varid_to_str (v:Expr.varId) : string =
   let _ = GM.sm_decl_const sort_map v GM.int_s
   in
@@ -554,8 +563,7 @@ let int_formula_to_str (phi:IntExpr.formula) : string =
     var_str ^ formula_str
 
 
-let int_formula_with_lines_to_str (phi:IntExpr.formula)
-                                  (prog_lines:int) : string =
+let int_formula_with_lines_to_str (phi:IntExpr.formula) : string =
   let _ = GM.clear_sort_map sort_map in
   let filter_ints xs = List.filter (fun v ->
                          IntExpr.get_sort v = IntExpr.Int
@@ -567,7 +575,7 @@ let int_formula_with_lines_to_str (phi:IntExpr.formula)
   let glb_int_vars   = filter_ints global_vars in
   let lcl_int_vars   = filter_ints local_vars in
   let buf            = B.create 1024 in
-  let _              = yices_type_decl prog_lines buf in
+  let _              = yices_type_decl !prog_lines buf in
   let _              = List.iter (fun v ->
                          B.add_string buf (thid_variable_to_str v)
                        ) voc in

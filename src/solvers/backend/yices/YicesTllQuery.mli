@@ -1,5 +1,6 @@
-val prog_lines : int ref
-(** Number of lines in the program *)
+val set_prog_lines : int -> unit
+(** [set_prog_lines n] sets the number of program lines to be analyzed to
+    [n]. *)
 
 val formula_to_str : Tactics.solve_tactic_t option ->
                      Smp.cutoff_strategy ->

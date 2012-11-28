@@ -8,11 +8,10 @@ struct
   type t = string
   
   type configuration = {
-    calls              : counter;    (** number of calls performed. *)
-    mutable prog_lines : int;    (** lines in the program being analyzed. *)
-    mutable exec       : string; (** path to executable. *)
-    mutable timeout    : int;    (** execution timeout (in secs). *)
-    mutable comp_model : bool; (** computes a model for non valid VCs *)
+    calls              : counter; (** number of calls performed. *)
+    mutable exec       : string;  (** path to executable. *)
+    mutable timeout    : int;     (** execution timeout (in secs). *)
+    mutable comp_model : bool;    (** computes a model for non valid VCs *)
   }
   
   (** Unique identifier *)
@@ -21,7 +20,6 @@ struct
   (** the configuration register *)
   let config : configuration = {
     calls      = new counter 0;
-    prog_lines = 0;
     exec       = Config.get_exec_path() ^ "/tools/z3 -m";
     timeout    = 3600; (* one hour *)
     comp_model = false;
@@ -33,7 +31,6 @@ struct
   let reset () = 
   begin
     config.calls # reset;
-    config.prog_lines <- 0;
     config.exec       <- Config.get_exec_path() ^ "/tools/z3 -m";
     config.timeout    <- 3600;
     config.comp_model <- false;
@@ -45,18 +42,6 @@ struct
   (** [calls_count ()] returns the number of calls performed to the SMT. *) 
   let calls_count () = config.calls # get
   
-  (** [set_prog_lines n] sets the number of lines of the analyzed 
-      program to [n]. *)
-  let set_prog_lines n = 
-    begin
-      config.prog_lines <- n;
-      Z3TllQuery.prog_lines := n;
-    end
-  
-  (** [prog_lines ()] returns the number of lines of the program 
-      being analyzed. *)
-  let prog_lines () = config.prog_lines
-
   (** [compute_model b] sets whether a counter model for non valid
       VCs should be computed *)
   let compute_model (b:bool) : unit = config.comp_model <- b
@@ -142,33 +127,34 @@ struct
     module Pos = 
     struct
       module Exp = PosExpression
-      let expression exp = 
-        Z3PosQuery.pos_expression_to_str exp config.prog_lines
+
+      let set_prog_lines = Z3PosQuery.set_prog_lines
+      let expression = Z3PosQuery.pos_expression_to_str
     end
     
     module Tll =
     struct
       module Exp = TllExpression
       module Smp = SmpTll
-      let literal_list = Z3TllQuery.literal_list_to_str
-      let formula      = Z3TllQuery.formula_to_str
-      let conjformula  = Z3TllQuery.conjformula_to_str
-      let sort_map     = Z3TllQuery.get_sort_map
+
+      let set_prog_lines = Z3TllQuery.set_prog_lines
+      let literal_list   = Z3TllQuery.literal_list_to_str
+      let formula        = Z3TllQuery.formula_to_str
+      let conjformula    = Z3TllQuery.conjformula_to_str
+      let sort_map       = Z3TllQuery.get_sort_map
     end
 
     module Tslk (K : Level.S) =
     struct
-(*      module Exp : TSLKExpression.S    = TSLKExpression.Make(K) *)
       module Smp     = SmpTslk
       module Z3Query = Z3TslkQuery.Make(K)
       module Exp     = Z3Query.Expr
 
-      
-     
-      let literal_list = Z3Query.literal_list_to_str
-      let formula      = Z3Query.formula_to_str
-      let conjformula  = Z3Query.conjformula_to_str
-      let sort_map     = Z3Query.get_sort_map
+      let set_prog_lines = Z3Query.set_prog_lines
+      let literal_list   = Z3Query.literal_list_to_str
+      let formula        = Z3Query.formula_to_str
+      let conjformula    = Z3Query.conjformula_to_str
+      let sort_map       = Z3Query.get_sort_map
     end
 
   end

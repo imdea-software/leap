@@ -35,6 +35,11 @@ let loc_s     : string = "loc"
 let sort_map : GM.sort_map_t = GM.new_sort_map()
 
 
+(* Program lines manipulation *)
+let set_prog_lines (n:int) : unit =
+  prog_lines := n
+
+
 (************************* Declarations **************************)
 
 (* (define-type address (scalar null aa_1 aa_2 aa_3 aa_4 aa_5))   *)

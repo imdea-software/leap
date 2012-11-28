@@ -24,14 +24,6 @@ sig
   val unsat : t -> bool
   (** [unsat formula] returns [not(sat formula)]. *)
   
-  val set_prog_lines : int -> unit
-  (** [set_prog_lines n] sets the number of lines of the analyzed 
-      program to [n]. *)
-
-  val prog_lines : unit -> int
-  (** [prog_lines ()] returns the number of lines of the program 
-      being analyzed. *)
-
   val compute_model : bool -> unit
   (** [compute_model b] sets whether a counter model for non valid
       VCs should be computed *)
@@ -42,6 +34,14 @@ sig
 end
 
 
+module type GeneralBackend =
+sig
+  type t
+
+  val set_prog_lines : int -> unit
+  (** [set_prog_lines n] sets the number of lines of the program to be
+      analyzed at [n]. *)
+end
 
 
 module type PosBackend =
@@ -53,8 +53,10 @@ sig
   module Pos : 
   (** Translation of Pos expressions. *)
   sig
+    include GeneralBackend with type t := t
+
     module Exp : POSEXP
-    
+
     val expression : Exp.expression -> t
     (** [expression exp] translates the expression [exp] into its 
         corresponding data structure in the Solver program. *)
@@ -72,8 +74,14 @@ sig
   
   module Tll :
   (** Translation of TLL expressions. *)
-  sig  
+  sig
+    include GeneralBackend with type t := t
+
     module Exp : TLLEXP
+
+    val set_prog_lines : int -> unit
+    (** [set_prog_lines n] sets the number of lines of the program to be
+        analyzed at [n]. *)
     
     val literal_list : Exp.literal list -> t
     (** [literal_list ls] translates the list [ls] of literals into its 
@@ -109,6 +117,8 @@ sig
   module Tslk (K : Level.S) :
     (** Translation of TSLK expressions. *)
     sig
+      include GeneralBackend with type t := t
+
       module Exp : TSLKEXP
 
       val literal_list : Exp.literal list -> t
@@ -146,6 +156,8 @@ sig
   module Num :
   (** Translation of numeric expressions. *)
   sig
+    include GeneralBackend with type t := t
+
     module Exp : NUMEXP
     
     val int_varlist  : Exp.variable list -> t
@@ -161,10 +173,10 @@ sig
     val int_formula  : Exp.formula -> t
     (** [int_formula f] translates the integer formula [f]. *)
     
-    val int_formula_with_lines 
-                     : Exp.formula -> int -> t
-    (** [int_formula_with_lines f n] translate the integer formula [f] 
-        taking into account the number of lines [n]. *)
+    val int_formula_with_lines : Exp.formula -> t
+    (** [int_formula_with_lines f] translate the integer formula [f] taking into 
+        account the number of lines previously passed through [set_prog_lines].
+        *)
     
     val std_widening : Exp.variable list -> Exp.formula 
                          -> Exp.literal -> t

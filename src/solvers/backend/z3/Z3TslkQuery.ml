@@ -6,8 +6,9 @@ module type S =
 
     module Expr : TSLKExpression.S
 
-    val prog_lines : int ref
-    (** Number of lines in the program *)
+    val set_prog_lines : int -> unit
+    (** [set_prog_lines n] sets the number of lines of the program to be
+        analyzed at [n]. *)
 
     val formula_to_str : Tactics.solve_tactic_t option ->
                          Smp.cutoff_strategy ->
@@ -39,7 +40,8 @@ module Make (K : Level.S) : S =
     module Interf   = TSLKInterface.Make(Expr)
 
 
-    let prog_lines = ref 0
+    (* The number of lines in the program *)
+    let prog_lines : int ref = ref 0
 
 
     let pc_name        : string = "pc"
@@ -76,7 +78,6 @@ module Make (K : Level.S) : S =
     let sort_map : GM.sort_map_t = GM.new_sort_map()
 
 
-
     let linenum_to_str (i:int) : string =
       string_of_int i
 
@@ -91,6 +92,11 @@ module Make (K : Level.S) : S =
 
     let path_len_to_str (i:int) : string =
       string_of_int i
+
+
+    (* Auxiliary functions *)
+    let set_prog_lines (n:int) : unit =
+      prog_lines := n
 
 
 

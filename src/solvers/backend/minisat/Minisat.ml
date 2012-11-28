@@ -8,10 +8,10 @@ struct
 
   type configuration = {
     calls              : counter;(** number of calls performed. *)
-    mutable prog_lines : int;    (** lines in the program being analyzed. *)
     mutable exec       : string; (** path to executable. *)
     mutable comp_model : bool;   (** compute model for non valid VCs *)
   }
+
 
   (** Unique identifier *)
   let identifier = "Minisat"
@@ -19,7 +19,6 @@ struct
   (** the configuration register *)
   let config : configuration = {
     calls      = new counter 0;
-    prog_lines = 0;
     exec       = Config.get_exec_path() ^ "/tools/minisat -verb=0 ";
     comp_model = false;
   }
@@ -28,7 +27,6 @@ struct
   let reset () = 
   begin
     config.calls # reset;
-    config.prog_lines <- 0;
     config.exec       <- Config.get_exec_path() ^ "tools/minisat -verb=0 ";
     config.comp_model <- false;
   end
@@ -39,14 +37,6 @@ struct
   (** [calls_count ()] returns the number of calls performed to the SMT. *) 
   let calls_count () = config.calls # get
   
-  (** [set_prog_lines n] sets the number of lines of the analyzed 
-      program to [n]. *)
-  let set_prog_lines n = config.prog_lines <- n
-
-  (** [prog_lines ()] returns the number of lines of the program being analyzed. 
-      *)
-  let prog_lines () = config.prog_lines
-
   (** [compute_model b] sets whether a counter model for non valid
       VCs should be computed *)
   let compute_model (b:bool) : unit = config.comp_model <- b
@@ -111,8 +101,9 @@ struct
     module Pos =
     struct
       module Exp = PosExpression
-      let expression exp = MiniPosQuery.pos_expression_to_str
-                             exp config.prog_lines
+
+      let set_prog_lines = MiniPosQuery.set_prog_lines
+      let expression     = MiniPosQuery.pos_expression_to_str
     end
   end
 end

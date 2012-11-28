@@ -80,7 +80,8 @@ struct
   
   
   let is_sat_with_lines (prog_lines : int) (phi : NumExp.formula) : bool =
-    let f = Solver.Translate.Num.int_formula_with_lines phi prog_lines in 
+    let _ = Solver.Translate.Num.set_prog_lines prog_lines in
+    let f = Solver.Translate.Num.int_formula_with_lines phi in
     Solver.sat f
   
   

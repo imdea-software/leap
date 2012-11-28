@@ -60,6 +60,11 @@ let path_len_to_str (i:int) : string =
   string_of_int i
 
 
+(* Program lines manipulation *)
+let set_prog_lines (n:int) : unit =
+  prog_lines := n
+
+
 
 (************************* Declarations **************************)
 

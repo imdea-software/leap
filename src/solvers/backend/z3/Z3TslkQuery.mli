@@ -4,8 +4,9 @@ module type S =
 
     module Expr : TSLKExpression.S
 
-    val prog_lines : int ref
-    (** Number of lines in the program *)
+    val set_prog_lines : int -> unit
+    (** [set_prog_lines n] sets the number of lines of the program to be
+        analyzed at [n]. *)
 
     val formula_to_str : Tactics.solve_tactic_t option ->
                          Smp.cutoff_strategy ->

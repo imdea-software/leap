@@ -208,7 +208,7 @@ struct
       | TslkExp.FalseConj  -> false
       | TslkExp.Conj conjs -> 
         begin
-          Solver.set_prog_lines lines;
+          TslkSol.set_prog_lines lines;
           Solver.sat (TslkSol.literal_list conjs)
         end
   
@@ -235,7 +235,7 @@ struct
              (stac:Tactics.solve_tactic_t option)
              (co : Smp.cutoff_strategy)
              (phi : TslkExp.formula) : bool =
-    Solver.set_prog_lines lines;
+    TslkSol.set_prog_lines lines;
     Solver.sat (TslkSol.formula stac co cutoff_opt phi)
   
   let is_valid (prog_lines:int)

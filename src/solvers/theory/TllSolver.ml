@@ -191,9 +191,9 @@ struct
     match phi with
         TllExp.TrueConj   -> true
       | TllExp.FalseConj  -> false
-      | TllExp.Conj conjs -> 
+      | TllExp.Conj conjs ->
         begin
-          Solver.set_prog_lines lines;
+          Solver.Translate.Tll.set_prog_lines lines;
           Solver.sat (Solver.Translate.Tll.literal_list conjs)
         end
   
@@ -220,7 +220,7 @@ struct
              (stac:Tactics.solve_tactic_t option)
              (co : Smp.cutoff_strategy)
              (phi : TllExp.formula) : bool =
-    Solver.set_prog_lines lines;
+    Solver.Translate.Tll.set_prog_lines lines;
     Solver.sat (Solver.Translate.Tll.formula stac co cutoff_opt phi)
   
   let is_valid (prog_lines:int)

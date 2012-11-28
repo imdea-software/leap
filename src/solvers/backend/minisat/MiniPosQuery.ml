@@ -3,8 +3,13 @@ open Printf
 
 module Pexpr = PosExpression
 
-let pos_expression_to_str (expr:Pexpr.expression)
-                          (lines:int) : string =
+let prog_lines : int ref = ref 0
+(** The number of lines in the program *)
+
+let set_prog_lines (n:int) : unit =
+  prog_lines := n
+
+let pos_expression_to_str (expr:Pexpr.expression) : string =
   let id_count = ref 1 in
   let expr_map : (Pexpr.expression, int) Hashtbl.t = Hashtbl.create 10 in
   let lookup (expr:Pexpr.expression) : int =
@@ -33,7 +38,7 @@ let pos_expression_to_str (expr:Pexpr.expression)
   let expr_voc = Pexpr.voc expr in
   (* All threads are at some location *)
   let some_pos_list = ref [] in
-  let _ = for i=1 to lines do
+  let _ = for i=1 to !prog_lines do
             List.iter (fun t ->
               some_pos_list := Pexpr.PC (i,Some t,false) :: !some_pos_list
             ) expr_voc
@@ -41,11 +46,11 @@ let pos_expression_to_str (expr:Pexpr.expression)
   let some_pos = Pexpr.disj_list !some_pos_list in
   (* All threads are at an unique location *)
   let unique_pos_list = ref [] in
-  let _ = for i=1 to lines do
+  let _ = for i=1 to !prog_lines do
             List.iter (fun t ->
               let not_pos = ref [] in
               let not_pos' = ref [] in
-              let _ = for j=1 to lines do
+              let _ = for j=1 to !prog_lines do
                         if i!=j then
                           begin
                             not_pos := Pexpr.Not(Pexpr.PC(j,Some t,false))

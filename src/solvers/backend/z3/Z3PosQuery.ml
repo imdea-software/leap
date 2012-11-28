@@ -10,11 +10,20 @@ let pc_prime_name : string = pc_name ^ "_prime"
 let loc_str       : string = "loc_"
 
 
+(* Program lines *)
+let prog_lines : int ref = ref 0
+
+
 (* Sort names *)
 let bool_s : string = "Bool"
 let thid_s : string = "Thid"
 let loc_s  : string = "Loc"
 let int_s  : string = "Int"
+
+
+(* Program lines manipulation *)
+let set_prog_lines (n:int) : unit =
+  prog_lines := n
 
 
 (* Information storage *)
@@ -103,8 +112,7 @@ let rec expr_to_str (expr:Pexpr.expression) : string =
 
 
 
-let pos_expression_to_str (expr:Pexpr.expression)
-                          (lines:int) : string =
+let pos_expression_to_str (expr:Pexpr.expression) : string =
   let _             = GM.clear_sort_map sort_map in
   let voc           = Pexpr.voc expr in
   let preds         = Pexpr.all_preds expr in
@@ -122,7 +130,7 @@ let pos_expression_to_str (expr:Pexpr.expression)
                                       (<= (select pc t) %i)\n\
                                       (<= 1 (select pc_prime t))\n\
                                       (<= (select pc_prime t) %i))\n\
-                               )\n" thid_s bool_s lines lines in
+                               )\n" thid_s bool_s !prog_lines !prog_lines in
   let voc_str       = List.fold_left (fun s v ->
                         s ^ (thid_variable_to_str v)
                       ) "" voc in

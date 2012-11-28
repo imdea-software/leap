@@ -12,7 +12,6 @@ struct
   
   type configuration = {
     calls              : counter;    (** number of calls performed. *)
-    mutable prog_lines : int;    (** lines in the program being analyzed. *)
     mutable exec       : string; (** path to executable. *)
     mutable timeout    : int;    (** execution timeout (in secs). *)
     mutable comp_model : bool; (** compute a model for non valid VCs *)
@@ -24,7 +23,6 @@ struct
   (** the configuration register *)
   let config : configuration = {
     calls      = new counter 0;
-    prog_lines = 0;
     exec       = Config.get_exec_path() ^ "/tools/yices";
     timeout    = 3600; (* one hour *)
     comp_model = false;
@@ -36,7 +34,6 @@ struct
   let reset () = 
   begin
     (*config.calls # reset;*)
-    config.prog_lines <- 0;
     config.exec       <- Config.get_exec_path() ^ "/tools/yices";
     config.timeout    <- 3600;
     config.comp_model <- false;
@@ -50,18 +47,6 @@ struct
   let calls_count () = 
     config.calls # get
   
-  (** [set_prog_lines n] sets the number of lines of the analyzed 
-      program to [n]. *)
-  let set_prog_lines n = 
-    begin
-      config.prog_lines <- n;
-      YicesTllQuery.prog_lines := n;
-    end
-  
-  (** [prog_lines ()] returns the number of lines of the program 
-      being analyzed. *)
-  let prog_lines () = config.prog_lines
-
   (** [compute_model b] sets whether a counter model for non valid
       VCs should be computed *)
   let compute_model (b:bool) : unit = config.comp_model <- b
@@ -142,18 +127,19 @@ struct
     module Pos = 
     struct
       module Exp = PosExpression
-      let expression exp = YicesPosQuery.pos_expression_to_str exp 
-        config.prog_lines
+      let set_prog_lines = YicesPosQuery.set_prog_lines
+      let expression     = YicesPosQuery.pos_expression_to_str
     end
     
     module Tll =
     struct
       module Exp = TllExpression
       module Smp = SmpTll
-      let literal_list = YicesTllQuery.literal_list_to_str
-      let formula      = YicesTllQuery.formula_to_str
-      let conjformula  = YicesTllQuery.conjformula_to_str
-      let sort_map     = YicesTllQuery.get_sort_map
+      let set_prog_lines = YicesTllQuery.set_prog_lines
+      let literal_list   = YicesTllQuery.literal_list_to_str
+      let formula        = YicesTllQuery.formula_to_str
+      let conjformula    = YicesTllQuery.conjformula_to_str
+      let sort_map       = YicesTllQuery.get_sort_map
     end
 
     module Tslk (K : Level.S) =
@@ -161,24 +147,26 @@ struct
       module Smp     = SmpTslk
       module Z3Query = Z3TslkQuery.Make(K)
       module Exp     = Z3Query.Expr
-      
-      let literal_list = Z3Query.literal_list_to_str
-      let formula      = Z3Query.formula_to_str
-      let conjformula  = Z3Query.conjformula_to_str
-      let sort_map     = Z3Query.get_sort_map
+
+      let set_prog_lines = Z3Query.set_prog_lines
+      let literal_list   = Z3Query.literal_list_to_str
+      let formula        = Z3Query.formula_to_str
+      let conjformula    = Z3Query.conjformula_to_str
+      let sort_map       = Z3Query.get_sort_map
     end
 
     module Num =
     struct
       module Exp = NumExpression
-      let int_varlist  = YicesNumQuery.int_varlist_to_str
-      let formula      = YicesNumQuery.yices_string_of_formula
-      let literal      = YicesNumQuery.yices_string_of_literal
-      let int_formula  = YicesNumQuery.int_formula_to_str
-      let int_formula_with_lines
-                       = YicesNumQuery.int_formula_with_lines_to_str
-      let std_widening = YicesNumQuery.standard_widening
-      let sort_map     = YicesNumQuery.get_sort_map
+
+      let set_prog_lines         = YicesNumQuery.set_prog_lines
+      let int_varlist            = YicesNumQuery.int_varlist_to_str
+      let formula                = YicesNumQuery.yices_string_of_formula
+      let literal                = YicesNumQuery.yices_string_of_literal
+      let int_formula            = YicesNumQuery.int_formula_to_str
+      let int_formula_with_lines = YicesNumQuery.int_formula_with_lines_to_str
+      let std_widening           = YicesNumQuery.standard_widening
+      let sort_map               = YicesNumQuery.get_sort_map
     end
   end
 end
