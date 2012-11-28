@@ -55,6 +55,7 @@ module Make (K : Level.S) : S =
     let addr_prefix = "aa_"
     let tid_prefix = "tt_"
     let elem_prefix = "ee_"
+    let level_prefix = "ll_"
 
 
     (* Sort names *)
@@ -100,22 +101,43 @@ module Make (K : Level.S) : S =
 
 
 
+    (********************** Auxiliary labeling ***********************)
+
+    let aa (i:int) : string =
+      addr_prefix ^ (string_of_int i)
+
+
+    let tt (i:int) : string =
+      tid_prefix ^ (string_of_int i)
+
+
+    let ee (i:int) : string =
+      elem_prefix ^ (string_of_int i)
+
+
+    let ll (i:int) : string =
+      level_prefix ^ (string_of_int i)
+
     (************************* Declarations **************************)
+
+
+    let z3_level_preamble (buf:B.t) : unit =
+      B.add_string buf
+        ( "(declare-datatypes () ((" ^level_s );
+      for i = 0 to (K.level -1) do
+        B.add_string buf ( " " ^(ll i))
+      done;
+      B.add_string buf (")))\n")
+
+
 
     (* (define-type address (scalar null aa_1 aa_2 aa_3 aa_4 aa_5))   *)
     (* (define max_address::int 5)                                    *)
     (* (define-type range_address (subrange 0 max_address))           *)
-    let z3_addr_preamble buf num_addr =
-    (*
-      let range_addr_list = String.concat " " $
-                              List.map range_addr_to_str (LeapLib.rangeList 0 num_addr) in
-      let path_len_list = String.concat " " $
-                            List.map path_len_to_str (LeapLib.rangeList 0 (num_addr+1)) in
-    *)
-
+    let z3_addr_preamble (buf:B.t) (num_addr:int) : unit =
       B.add_string buf ("(declare-datatypes () ((" ^addr_s^ " null") ;
       for i = 1 to num_addr do
-        B.add_string buf (" " ^ addr_prefix ^ (string_of_int i))
+        B.add_string buf (" " ^ (aa i))
       done ;
       B.add_string buf ")))\n" ;
       (****** NOTE: In case we use integers to represent addresses ******)
@@ -132,23 +154,15 @@ module Make (K : Level.S) : S =
           "(define-sort RangeAddress () " ^int_s^ ")\n" ^
           "(define-fun is_valid_range_address ((i RangeAddress)) " ^bool_s^
               " (and (<= 0 i) (<= i max_address)))\n")
-    (*
-          "(declare-datatypes () ((RangeAddress " ^ range_addr_list ^ ")))\n" ^
-          "(declare-datatypes () ((PathLength " ^ path_len_list ^ ")))\n")
-    *)
 
 
     (* (define-type tid (scalar NoThread t1 t2 t3)) *)
     (* (define max_tid::int 3)                      *)
     (* (define-type range_tid (subrange 0 max_tid)) *)
-    let z3_tid_preamble buf num_tids =
-    (*
-      let tid_list = String.concat " " $
-                       List.map range_tid_to_str (LeapLib.rangeList 0 num_tids) in
-    *)
+    let z3_tid_preamble (buf:B.t) (num_tids:int) : unit =
       B.add_string buf ("(declare-datatypes () ((" ^tid_s^ " NoThread") ;
       for i = 1 to num_tids do
-        B.add_string buf (" " ^ tid_prefix ^ (string_of_int i))
+        B.add_string buf (" " ^ (tt i))
       done ;
       B.add_string buf ")))\n" ;
       B.add_string buf "; I need the line below to prevent an unknown constant error\n";
@@ -162,58 +176,47 @@ module Make (K : Level.S) : S =
 
 
     (* (define-type element) *)
-    let z3_element_preamble buf num_elems =
+    let z3_element_preamble (buf:B.t) (num_elems:int) : unit =
       B.add_string buf ("(declare-datatypes () ((" ^ elem_s^ " LowestElem HighestElem") ;
       for i = 1 to num_elems do
-        B.add_string buf (" " ^ elem_prefix ^ (string_of_int i))
+        B.add_string buf (" " ^ (ee i))
       done ;
       B.add_string buf ")))\n"
-    (*  B.add_string buf ("(declare-sort " ^elem_s^ ")\n") *)
+
 
 
     (* (define-type cell (record data::element next::address lock::tid))   *)
     (* (define next::(-> cell address) (lambda (c::cell) (select c next))) *)
     (* (define data::(-> cell element) (lambda (c::cell) (select c data))) *)
     (* (define lock::(-> cell tid)     (lambda (c::cell) (select c lock))) *)
-    let z3_cell_preamble buf =
+    let z3_cell_preamble (buf:B.t) : unit =
       B.add_string buf
-        ( "(declare-datatypes () ((" ^cell_s^ " (mkcell (data " ^elem_s^
-          ") (next " ^addr_s^ ") (lock " ^tid_s^ ")))))\n")
-    (*
-        ("(define-type cell (record data::element next::address lock::tid))\n"   ^
-         "(define next::(-> cell address) (lambda (c::cell) (select c next)))\n" ^
-         "(define data::(-> cell element) (lambda (c::cell) (select c data)))\n" ^
-         "(define lock::(-> cell tid)     (lambda (c::cell) (select c lock)))\n" )
-    *)
+        ( "(declare-datatypes () ((" ^cell_s^ "\n" ^
+          "  (mkcell (data " ^elem_s^ ") \n" ^
+          "          (next (Array " ^level_s^ " " ^addr_s^ "))\n" ^
+          "          (next (Array " ^level_s^ " " ^tid_s^ "))))))\n")
+
 
 
     (* (define-type heap    (-> address cell)) *)
-    let z3_heap_preamble buf =
+    let z3_heap_preamble (buf:B.t) : unit =
       B.add_string buf
         ("(define-sort " ^heap_s^ " () (Array " ^addr_s^ " " ^cell_s^ "))\n")
-    (*
-        "(define-type heap    (-> address cell))\n"
-    *)
 
 
     (* (define-type set     (-> address bool)) *)
-    let z3_set_preamble buf =
+    let z3_set_preamble (buf:B.t) : unit =
       B.add_string buf
         ("(define-sort " ^set_s^ " () (Array " ^addr_s^ " " ^bool_s^ "))\n")
-    (*
-        "(define-type set     (-> address bool))\n"
-    *)
 
 
     (* (define-type setth   (-> tid bool))     *)
-    let z3_setth_preamble buf =
+    let z3_setth_preamble (buf:B.t) : unit =
       B.add_string buf
         ("(define-sort " ^setth_s^ " () (Array " ^tid_s^ " " ^bool_s^ "))\n")
-    (*
-        "(define-type setth   (-> tid bool))\n"
-    *)
 
 
+    (* (define-type setelem   (-> elem bool))     *)
     let z3_setelem_preamble buf =
       B.add_string buf
         ("(define-sort " ^setelem_s^ " () (Array " ^elem_s^ " " ^bool_s^ "))\n")
@@ -235,7 +238,7 @@ module Make (K : Level.S) : S =
     (*              (eqpath_pos p r 1) *)
     (*              (eqpath_pos p r 2) *)
     (*              (eqpath_pos p r 3)))) *)
-    let z3_path_preamble buf num_addr =
+    let z3_path_preamble (buf:B.t) (num_addr:int) =
       B.add_string buf
         ( "(define-sort PathLength () " ^int_s^ ")\n" ^
           "(define-fun is_valid_path_length ((i PathLength)) " ^bool_s^
@@ -262,12 +265,13 @@ module Make (K : Level.S) : S =
 
 
 
-    let z3_unknown_preamble buf =
+    let z3_unknown_preamble (buf:B.t) : unit =
       B.add_string buf
         ("(declare-sort " ^unk_s^ ")\n")
 
 
-    let z3_pos_preamble buf =
+
+    let z3_pos_preamble (buf:B.t) : unit =
       B.add_string buf ("(define-sort " ^loc_s^ " () " ^int_s^ ")\n");
       GM.sm_decl_fun sort_map pc_name [tid_s] [loc_s] ;
       GM.sm_decl_fun sort_map pc_prime_name [tid_s] [loc_s] ;
@@ -282,6 +286,7 @@ module Make (K : Level.S) : S =
                          )\n" tid_s bool_s !prog_lines !prog_lines)
 
 
+
     (* (define subseteq::(-> set set bool)  *)
     (*   (lambda (s1::set s2::set)        *)
     (*     (and (if (s1 null) (s2 null))    *)
@@ -290,61 +295,55 @@ module Make (K : Level.S) : S =
     (*          (if (s1 a3) (s2 a3))        *)
     (*          (if (s1 a4) (s2 a4))        *)
     (*          (if (s1 a5) (s2 a5)))))     *)
-    let z3_subseteq_def buf num_addr =
-    (*
-      B.add_string buf
-        ("(define-fun subseteq ((s1 " ^set_s^ ") (s2 " ^set_s^ ")) " ^bool_s^ "\n" ^
-         "  (and (=> (select s1 null) (select s2 null))");
-        for i=1 to num_addr do
-          let aa_i = addr_prefix ^ (string_of_int i) in
-          B.add_string buf
-            ("\n       (=> (select s1 " ^ aa_i ^ ") (select s2 " ^ aa_i ^ "))")
-        done ;
-        B.add_string buf "))\n"
-    *)
+    let z3_subseteq_def (buf:B.t) (num_addr:int) : unit =
       B.add_string buf
         ("(define-fun subseteq ((s1 " ^set_s^ ") (s2 " ^set_s^ ")) " ^bool_s^ "\n\
             (= (intersection s1 s2) s1))\n")
+
 
 
     (* (define singletonth::(-> tid setth)   *)
     (*     (lambda (t::tid)                  *)
     (*         (lambda (r::tid)              *)
     (*             (= t r))))                *)
-    let z3_singletonth_def buf =
+    let z3_singletonth_def (buf:B.t) : unit =
       B.add_string buf
         ("(define-fun singletonth ((t " ^tid_s^ ")) " ^setth_s^ "\n" ^
          "  (store ((as const " ^setth_s^ ") false) t true))\n")
+
 
 
     (* (define unionth::(-> setth setth setth) *)
     (*     (lambda (s::setth r::setth)         *)
     (*         (lambda (t::tid)                *)
     (*             (or (s t) (r t)))))         *)
-    let z3_unionth_def buf =
+    let z3_unionth_def (buf:B.t) : unit =
       B.add_string buf
         ("(define-fun unionth ((s " ^setth_s^ ") (r " ^setth_s^ ")) " ^setth_s^ "\n" ^
          "  ((_ map or) r s))\n")
+
 
 
     (* (define intersectionth::(-> setth setth setth) *)
     (*     (lambda (s::setth r::setth)                *)
     (*         (lambda (t::tid)                       *)
     (*             (and (s t) (r t)))))               *)
-    let z3_intersectionth_def buf =
+    let z3_intersectionth_def (buf:B.t) : unit =
       B.add_string buf
         ("(define-fun intersectionth ((s " ^setth_s^ ") (r " ^setth_s^ ")) " ^setth_s^ "\n" ^
          "  ((_ map and) r s))\n")
+
 
 
     (* (define setdiffth::(-> set set set)    *)
     (*     (lambda (s::setth r::setth)        *)
     (*         (lambda (t::tid)               *)
     (*             (and (s t) (not (r t)))))) *)
-    let z3_setdiffth_def buf =
+    let z3_setdiffth_def (buf:B.t) : unit =
       B.add_string buf
         ("(define-fun setdiffth ((r " ^setth_s^ ") (s " ^setth_s^ ")) " ^setth_s^ "\n" ^
          "  ((_ map and) r ((_ map not) s)))\n")
+
 
 
     (* (define subseteqth::(-> setth setth bool) *)
@@ -353,65 +352,59 @@ module Make (K : Level.S) : S =
     (*          (if (r t1)       (s t1))         *)
     (*          (if (r t2)       (s t2))         *)
     (*          (if (r t3)       (s t3)))))      *)
-    let z3_subseteqth_def buf num_tids =
-    (*
-      B.add_string buf
-        ("(define-fun subseteqth ((r " ^setth_s^ ") (s " ^setth_s^ ")) " ^bool_s^ "\n" ^
-         "  (and (=> (select r NoThread) (select s NoThread))\n");
-        for i=1 to num_tids do
-          let tt_i = tid_prefix ^ (string_of_int i) in
-            B.add_string buf
-              ("\n       (=> (select r " ^ tt_i ^ ") (select s " ^ tt_i ^ "))")
-        done ;
-      B.add_string buf "))\n"
-    *)
+    let z3_subseteqth_def (buf:B.t) (num_tids:int) : unit =
       B.add_string buf
         ("(define-fun subseteqth ((s1 " ^setth_s^ ") (s2 " ^setth_s^ ")) "
             ^bool_s^ "\n\
             (= (intersectionth s1 s2) s1))\n")
 
 
+
     (* (define singletonelem::(-> elem setelem)   *)
     (*     (lambda (e::elem)                      *)
     (*         (lambda (r::elem)                  *)
     (*             (= t r))))                     *)
-    let z3_singletonelem_def buf =
+    let z3_singletonelem_def (buf:B.t) : unit =
       B.add_string buf
         ("(define-fun singletonelem ((e " ^elem_s^ ")) " ^setelem_s^ "\n" ^
          "  (store ((as const " ^setelem_s^ ") false) e true))\n")
+
 
 
     (* (define unionelem::(-> setelem setelem setelem) *)
     (*     (lambda (s::setelem r::setelem)             *)
     (*         (lambda (e::elem)                       *)
     (*             (or (s e) (r e)))))                 *)
-    let z3_unionelem_def buf =
+    let z3_unionelem_def (buf:B.t) : unit =
       B.add_string buf
         ("(define-fun unionelem ((s " ^setelem_s^ ") (r " ^setelem_s^ ")) "
            ^setelem_s^ "\n" ^
          "  ((_ map or) r s))\n")
 
 
+
     (* (define intersectionelem::(-> setelem setelem setelem) *)
     (*     (lambda (s::setelem r::setelem)                    *)
     (*         (lambda (e::elem)                              *)
     (*             (and (s e) (r e)))))                       *)
-    let z3_intersectionelem_def buf =
+    let z3_intersectionelem_def (buf:B.t) : unit =
       B.add_string buf
         ("(define-fun intersectionelem ((s " ^setelem_s^ ") (r " ^setelem_s^ ")) " 
          ^setelem_s^ "\n" ^
          "  ((_ map and) r s))\n")
 
 
+
     (* (define setdiffelem::(-> setelem setelem setelem)    *)
     (*     (lambda (s::setelem r::setelem)                  *)
     (*         (lambda (e::elem)                            *)
     (*             (and (s e) (not (r e))))))               *)
-    let z3_setdiffelem_def buf =
+    let z3_setdiffelem_def (buf:B.t) : unit =
       B.add_string buf
         ("(define-fun setdiffelem ((r " ^setelem_s^ ") (s " ^setelem_s^ ")) "
             ^setelem_s^ "\n" ^
          "  ((_ map and) r ((_ map not) s)))\n")
+
 
 
     (* (define subseteqelem::(-> setelem setelem bool) *)
@@ -419,16 +412,17 @@ module Make (K : Level.S) : S =
     (*     (and (=> (r e1) (s e1))                     *)
     (*          (=> (r e2) (s e2))                     *)
     (*          (=> (r e3) (s e3)))))                  *)
-    let z3_subseteqelem_def buf num_elem =
+    let z3_subseteqelem_def (buf:B.t) (num_elem:int) : unit =
       B.add_string buf
         ("(define-fun subseteqelem ((s1 " ^setelem_s^ ") (s2 " ^setelem_s^ ")) "
             ^bool_s^ "\n\
             (= (intersectionelem s1 s2) s1))\n")
 
 
+
     (* (define empty::set)             *)
     (*   (lambda (a::address) (false)) *)
-    let z3_emp_def buf =
+    let z3_emp_def (buf:B.t) : unit =
       let _ = GM.sm_decl_const sort_map "empty" set_s
       in
         B.add_string buf
@@ -436,9 +430,10 @@ module Make (K : Level.S) : S =
            "(assert (= empty ((as const " ^set_s^ ") false)))\n")
 
 
+
     (* (define emptyth::setth)     *)
     (*   (lambda (t::tid) (false)) *)
-    let z3_empth_def buf =
+    let z3_empth_def (buf:B.t) : unit =
       let _ = GM.sm_decl_const sort_map "emptyth" setth_s
       in
         B.add_string buf
@@ -446,24 +441,27 @@ module Make (K : Level.S) : S =
            "(assert (= emptyth ((as const " ^setth_s^ ") false)))\n")
 
 
+
     (* (define emptyelem::setelem)  *)
     (*   (lambda (e::elem) (false)) *)
-    let z3_empelem_def buf =
+    let z3_empelem_def (buf:B.t) : unit =
       let _ = GM.sm_decl_const sort_map "emptyelem" setelem_s
       in
         B.add_string buf
           ("(declare-const emptyelem " ^setelem_s^ ")\n" ^
            "(assert (= emptyelem ((as const " ^setelem_s^ ") false)))\n")
 
+
      
     (* (define intersection::(-> set set set) *)
     (*     (lambda (s::set r::set) *)
     (*         (lambda (a::address) *)
     (*             (and (s a) (r a))))) *)
-    let z3_intersection_def buf =
+    let z3_intersection_def (buf:B.t) : unit =
       B.add_string buf
       ("(define-fun intersection ((s " ^set_s^ ") (r " ^set_s^ ")) " ^set_s^ "\n" ^
        "  ((_ map and) r s))\n")
+
 
 
     (* (define set2elem::(-> set mem bool)                *)
@@ -473,10 +471,10 @@ module Make (K : Level.S) : S =
     (*          (and (= e (data (m aa_1))) (s aa_1))      *)
     (*          (and (= e (data (m aa_2))) (s aa_2))      *)
     (*          (and (= e (data (m aa_3))) (s aa_3))))))  *)
-    let z3_settoelems_def buf num_addr =
+    let z3_settoelems_def (buf:B.t) (num_addr:int) : unit =
       let str = ref "    (store emptyelem (data (select m null)) (select s null))\n" in
       for i=1 to num_addr do
-        let aa_i = addr_prefix ^ (string_of_int i) in
+        let aa_i = aa i in
         str := "  (unionelem\n" ^ !str ^
                "    (store emptyelem (data (select m " ^aa_i^ ")) (select s " ^aa_i^ ")))\n"
       done;
@@ -486,6 +484,8 @@ module Make (K : Level.S) : S =
 
 
 
+    (* TUKA *)
+
 
     (* (define getlockat::(-> heap path range_address tid)                *)
     (*   (lambda (h::heap p::path i::range_address))                      *)
@@ -493,25 +493,10 @@ module Make (K : Level.S) : S =
     (* (define islockedpos::(-> heap path range_address bool)             *)
     (*     (lambda (h::heap p::path i::range_address))                    *)
     (*         (and (< i (select p length)) (/= NoThread (getlockat h p i)))) *)
-    (* (define firstlockfrom5::(-> heap path address)                     *)
-    (*    (lambda (h::heap p::path)) *)
-    (*      (if (islockedpos h p 5) (getlockat h p 5) null)) *)
-    (* (define firstlockfrom4::(-> heap path address) *)
-    (*    (lambda (h::heap p::path)) *)
-    (*      (if (islockedpos h p 4) (getlockat h p 4) (firstlockfrom5 h p))) *)
-    (* (define firstlockfrom3::(-> heap path address) *)
-    (*    (lambda (h::heap p::path)) *)
-    (*      (if (islockedpos h p 3) (getlockat h p 3) (firstlockfrom4 h p))) *)
-    (* (define firstlockfrom2::(-> heap path address) *)
-    (*    (lambda (h::heap p::path)) *)
-    (*      (if (islockedpos h p 2) (getlockat h p 2) (firstlockfrom3 h p))) *)
-    (* (define firstlockfrom1::(-> heap path address) *)
-    (*    (lambda (h::heap p::path)) *)
-    (*      (if (islockedpos h p 1) (getlockat h p 1) (firstlockfrom2 h p))) *)
     (* (define firstlock::(-> heap path address) *)
     (*    (lambda (h::heap p::path)) *)
     (*      (if (islockedpos h p 0) (getlockat h p 0) (firstlockfrom1 h p))) *)
-    let z3_firstlock_def buf num_addr =
+    let z3_firstlock_def (buf:B.t) (num_addr:int) : unit =
       let strlast = (string_of_int num_addr) in
       B.add_string buf
         ("(define-fun getlockat ((h " ^heap_s^ ") (p " ^path_s^
@@ -679,12 +664,12 @@ module Make (K : Level.S) : S =
       B.add_string buf ("(assert (not (lesselem HighestElem HighestElem)))\n");
       B.add_string buf ("(assert (lesselem LowestElem HighestElem))\n");
       for i = 1 to num_elem do
-        let x = elem_prefix ^ (string_of_int i) in
+        let x = ee i in
         B.add_string buf ("(assert (not (lesselem " ^x^ " " ^x^ ")))\n") ;
         B.add_string buf ("(assert (lesselem LowestElem " ^x^ "))\n");
         B.add_string buf ("(assert (lesselem " ^x^ " HighestElem))\n");
         for j = i+1 to num_elem do
-          let y = elem_prefix ^ (string_of_int j) in
+          let y = ee j in
             B.add_string buf ("(assert (or (lesselem " ^x^ " " ^y^ ") (lesselem " ^y^ " " ^x^ ")))\n")
         done
       done ;
@@ -695,9 +680,9 @@ module Make (K : Level.S) : S =
         for j = 1 to num_elem do
           for k = 1 to num_elem do
             if (i<>j && j<>k (*&& i<>k*)) then
-              let x = elem_prefix ^ (string_of_int i) in
-              let y = elem_prefix ^ (string_of_int j) in
-              let z = elem_prefix ^ (string_of_int k) in
+              let x = ee i in
+              let y = ee j in
+              let z = ee k in
               B.add_string buf ("(assert (=> (and (lesselem " ^x^ " " ^y^ ") \
                                                   (lesselem " ^y^ " " ^z^ ")) \
                                                   (lesselem " ^x^ " " ^z^ ")))\n")
@@ -734,13 +719,16 @@ module Make (K : Level.S) : S =
 
 
     (* (define error::cell) *)
-    let z3_error_def buf=
+    let z3_error_def (buf:B.t) : unit =
       let _ = GM.sm_decl_const sort_map "error" cell_s
       in
         B.add_string buf
-          ("(declare-const error " ^cell_s^ ")\n" ^
-           "(assert (= (lock error) NoThread))\n" ^
-           "(assert (= (next error) null))\n")
+          ("(declare-const error " ^cell_s^ ")\n");
+        for i = 0 to (K.level - 1) do
+          B.add_string buf
+            ("(assert (= (select (lock error) " ^(ll i)^ ") NoThread))\n" ^
+             "(assert (= (select (next error) " ^(ll i)^ ") null))\n")
+        done
 
 
     (* (define mkcell::(-> element address tid cell)        *)
@@ -1043,7 +1031,14 @@ module Make (K : Level.S) : S =
 
 
     (********************* Preamble Declaration **********************)
-    let z3_preamble buf num_addr num_tid num_elem req_sorts =
+    let z3_preamble (buf:B.t)
+                    (num_addr:int)
+                    (num_tid:int)
+                    (num_elem:int)
+                    (req_sorts:Expr.sort list) =
+      B.add_string buf
+        ( "; Translation for TSLK[" ^(string_of_int K.level)^ "]\n\n" );
+      z3_level_preamble buf;
       if (List.exists (fun s ->
             s=Expr.Addr || s=Expr.Cell || s=Expr.Path || s=Expr.Set || s=Expr.Mem
           ) req_sorts) then z3_addr_preamble buf num_addr ;
@@ -1313,7 +1308,7 @@ module Make (K : Level.S) : S =
         | Expr.Error              -> "error"
         | Expr.MkCell(e,aa,tt,l)  -> Printf.sprintf "(mkcell %s %s %s %s)"
                                           (elemterm_to_str e)
-                                          (* TUKA: Put here an array printer!!! *)
+                                          (* TODO: Put here an array printer!!! *)
                                           (String.concat " " (List.map addrterm_to_str aa))
                                           (String.concat " " (List.map tidterm_to_str tt))
                                           (levelterm_to_str l)
@@ -1551,8 +1546,7 @@ module Make (K : Level.S) : S =
                                    "null"
                                  else
                                    begin
-                                     incr counter;
-                                     addr_prefix ^ (string_of_int (!counter))
+                                     incr counter; (aa !counter)
                                     end in
                         let elems_str = List.fold_left (fun str e ->
                                           str ^ (Printf.sprintf "(= %s %s) "
