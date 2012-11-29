@@ -1076,7 +1076,14 @@ module Make (K : Level.S) : S =
       z3_pos_preamble buf
       
 
-    let z3_defs buf num_addr num_tid num_elem req_sorts req_ops =
+
+    (********************* Preamble Definitions **********************)
+    let z3_defs (buf:B.t)
+                (num_addr:int)
+                (num_tid:int)
+                (num_elem:int)
+                (req_sorts:Expr.sort list)
+                (req_ops:Expr.special_op_t list) =
       (* Elements *)
       if List.mem Expr.ElemOrder req_ops || List.mem Expr.OrderedList req_ops then
         z3_elemorder_def buf num_elem ;
@@ -1163,8 +1170,8 @@ module Make (K : Level.S) : S =
 
 
     let rec z3_define_var (buf:Buffer.t)
-                             (tid_set:Expr.VarSet.t)
-                             (v:Expr.variable) : unit =
+                          (tid_set:Expr.VarSet.t)
+                          (v:Expr.variable) : unit =
       let (id,s,pr,th,p) = v in
       let sort_str asort = match asort with
                              Expr.Set     -> set_s
@@ -1221,6 +1228,7 @@ module Make (K : Level.S) : S =
 
 
     and define_variables (buf:Buffer.t) (vars:Expr.VarSet.t) : unit =
+      let varlevel   = Expr.varset_of_sort vars Expr.Level in
       let varset     = Expr.varset_of_sort vars Expr.Set  in
       let varelem    = Expr.varset_of_sort vars Expr.Elem in
       let varaddr    = Expr.varset_of_sort vars Expr.Addr in
@@ -1231,6 +1239,7 @@ module Make (K : Level.S) : S =
       let varpath    = Expr.varset_of_sort vars Expr.Path in
       let varmem     = Expr.varset_of_sort vars Expr.Mem  in
       let varunk     = Expr.varset_of_sort vars Expr.Unknown  in
+        Expr.VarSet.iter (z3_define_var buf vartid) varlevel;
         Expr.VarSet.iter (z3_define_var buf vartid) varset;
         Expr.VarSet.iter (z3_define_var buf vartid) varelem;
         Expr.VarSet.iter (z3_define_var buf vartid) vartid;
@@ -1250,7 +1259,7 @@ module Make (K : Level.S) : S =
 
 
     and variables_from_formula_to_z3 (buf:Buffer.t)
-                                        (phi:Expr.formula) : unit =
+                                     (phi:Expr.formula) : unit =
       let vars = Expr.get_varset_from_formula phi
       in
         define_variables buf vars
@@ -1270,22 +1279,24 @@ module Make (K : Level.S) : S =
 
     and setterm_to_str (s:Expr.set) : string =
       match s with
-          Expr.VarSet v -> variable_invocation_to_str v
-        | Expr.EmptySet -> "empty"
-        | Expr.Singl a  -> Printf.sprintf "(singleton %s)" (addrterm_to_str a)
-        | Expr.Union(r,s) -> Printf.sprintf "(setunion %s %s)" (setterm_to_str r)
-                                                            (setterm_to_str s)
-        | Expr.Intr(r,s)       -> Printf.sprintf "(intersection %s %s)"
-                                                            (setterm_to_str r)
-                                                            (setterm_to_str s)
-        | Expr.Setdiff(r,s)  -> Printf.sprintf "(setdiff %s %s)"
-                                                            (setterm_to_str r)
-                                                            (setterm_to_str s)
-        | Expr.PathToSet p     -> Printf.sprintf "(path2set %s)"
-                                                          (pathterm_to_str p)
+          Expr.VarSet v       -> variable_invocation_to_str v
+        | Expr.EmptySet       -> "empty"
+        | Expr.Singl a        -> Printf.sprintf "(singleton %s)"
+                                                      (addrterm_to_str a)
+        | Expr.Union(r,s)     -> Printf.sprintf "(setunion %s %s)"
+                                                      (setterm_to_str r)
+                                                      (setterm_to_str s)
+        | Expr.Intr(r,s)      -> Printf.sprintf "(intersection %s %s)"
+                                                      (setterm_to_str r)
+                                                      (setterm_to_str s)
+        | Expr.Setdiff(r,s)   -> Printf.sprintf "(setdiff %s %s)"
+                                                      (setterm_to_str r)
+                                                      (setterm_to_str s)
+        | Expr.PathToSet p    -> Printf.sprintf "(path2set %s)"
+                                                      (pathterm_to_str p)
         | Expr.AddrToSet(m,a) -> Printf.sprintf "(address2set %s %s)"
-                                                          (memterm_to_str m)
-                                                          (addrterm_to_str a)
+                                                      (memterm_to_str m)
+                                                      (addrterm_to_str a)
 
 
     and elemterm_to_str (e:Expr.elem) : string =
@@ -1301,21 +1312,23 @@ module Make (K : Level.S) : S =
       match th with
         Expr.VarTh v            -> variable_invocation_to_str v
       | Expr.NoThid             -> "NoThread"
-      | Expr.CellLockIdAt (c,l) -> Printf.sprintf "(lock_at %s %s)" (cellterm_to_str c)
-                                                                    (levelterm_to_str l)
+      | Expr.CellLockIdAt (c,l) -> Printf.sprintf "(select (lock %s) %s)"
+                                                      (cellterm_to_str c)
+                                                      (levelterm_to_str l)
 
 
     and addrterm_to_str (a:Expr.addr) : string =
       match a with
           Expr.VarAddr v        -> variable_invocation_to_str v
         | Expr.Null             -> "null"
-        | Expr.NextAt (c,l)     -> Printf.sprintf "(next_at %s %s)"
+        | Expr.NextAt (c,l)     -> Printf.sprintf "(select (next %s) %s)"
                                       (cellterm_to_str c)
                                       (levelterm_to_str l)
         | Expr.FirstLocked(m,p) -> Printf.sprintf "(firstlock %s %s)"
                                       (memterm_to_str m)
                                       (pathterm_to_str p)
 
+(* TUKA *)
 
     and cellterm_to_str (c:Expr.cell) : string =
       match c with
