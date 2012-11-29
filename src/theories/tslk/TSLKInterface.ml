@@ -179,10 +179,21 @@ module Make (TSLK : TSLKExpression.S) =
         Expr.VarCell v            -> TSLK.VarCell (variable_to_tslk_var v)
       | Expr.Error                -> TSLK.Error
       | Expr.MkCell _             -> raise(UnsupportedTSLKExpr(Expr.cell_to_str c))
-      | Expr.MkSLKCell (e,aa,tt,l)-> TSLK.MkCell (elem_to_tslk_elem e,
-                                                  List.map addr_to_tslk_addr aa,
-                                                  List.map tid_to_tslk_tid tt,
-                                                  int_to_tslk_level l)
+      | Expr.MkSLKCell (e,aa,tt,l)->
+          if List.length aa > TSLK.k || List.length tt > TSLK.k then
+            begin
+              Interface.Err.msg "Too many addresses or threads ids in MkCell" $
+                Printf.sprintf "Tried to build a term:\n%s\n while in TSLK[%i]. \
+                                Notice the number of addresses or threads identifiers \
+                                exceeds the parameter of the theory."
+                                (Expr.cell_to_str c) TSLK.k;
+              raise(UnsupportedTSLKExpr(Expr.cell_to_str c))
+            end
+          else
+            TSLK.MkCell (elem_to_tslk_elem e,
+                         List.map addr_to_tslk_addr aa,
+                         List.map tid_to_tslk_tid tt,
+                         int_to_tslk_level l)
       | Expr.MkSLCell (e,aa,tt,l) -> raise(UnsupportedTSLKExpr(Expr.cell_to_str c))
       (* TSLK receives two arguments, while current epxression receives only one *)
       (* However, for the list examples, I think we will not need it *)
@@ -264,7 +275,16 @@ module Make (TSLK : TSLKExpression.S) =
       let pred = (fun x -> TSLK.LevelPred x) in
       let tolevel = int_to_tslk_level in
       match i with
-        Expr.IntVal i       -> TSLK.LevelVal i
+        Expr.IntVal l       -> if l < 0 || TSLK.k <= l then
+                                 begin
+                                   Interface.Err.msg "Level out of bounds" $
+                                   Printf.sprintf "Level %i is out of the bounds of TSLK[%i], \
+                                                   which goes from 0 to %i."
+                                      l TSLK.k (TSLK.k-1);
+                                   raise (UnsupportedTSLKExpr(Expr.integer_to_str i))
+                                 end
+                               else
+                                 TSLK.LevelVal l
       | Expr.VarInt v       -> TSLK.VarLevel (variable_to_tslk_var v)
       | Expr.IntNeg i       -> raise(UnsupportedTSLKExpr(Expr.integer_to_str i))
       | Expr.IntAdd (i1,i2) -> begin

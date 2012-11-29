@@ -40,6 +40,9 @@ module Make (K : Level.S) : S =
     module Interf   = TSLKInterface.Make(Expr)
 
 
+    exception Array_larger_than_parameter of string * int
+
+
     (* The number of lines in the program *)
     let prog_lines : int ref = ref 0
 
@@ -195,7 +198,6 @@ module Make (K : Level.S) : S =
           "  (mkcell (data " ^elem_s^ ") \n" ^
           "          (next (Array " ^level_s^ " " ^addr_s^ "))\n" ^
           "          (lock (Array " ^level_s^ " " ^tid_s^ "))))))\n")
-
 
 
     (* (define-type heap    (-> address cell)) *)
@@ -1277,6 +1279,32 @@ module Make (K : Level.S) : S =
           Printf.sprintf " (select %s%s%s %s)" p_str id pr_str th_str
 
 
+    and z3_build_cell_next_array (aa:Expr.addr list) : string =
+      let aa_size = List.length aa in
+      if aa_size > K.level then
+        raise (Array_larger_than_parameter
+                  (String.concat "," $ List.map Expr.addr_to_str aa, K.level))
+      else
+        let str = "((as const (Array " ^level_s^ " " ^addr_s^ ")) null)" in
+        let i = ref (-1) in
+        List.fold_left (fun s a ->
+          incr i; "(store " ^s^ " " ^(ll !i)^ " " ^(addrterm_to_str a)^ ")"
+        ) str aa
+
+
+    and z3_build_cell_lock_array (tt:Expr.tid list) : string =
+      let tt_size = List.length tt in
+      if tt_size > K.level then
+        raise (Array_larger_than_parameter
+                  (String.concat "," $ List.map Expr.tid_to_str tt, K.level))
+      else
+        let str = "((as const (Array " ^level_s^ " " ^tid_s^ ")) null)" in
+        let i = ref (-1) in
+        List.fold_left (fun s t ->
+          incr i; "(store " ^s^ " " ^(ll !i)^ " " ^(tidterm_to_str t)^ ")"
+        ) str tt
+
+
     and setterm_to_str (s:Expr.set) : string =
       match s with
           Expr.VarSet v       -> variable_invocation_to_str v
@@ -1337,9 +1365,8 @@ module Make (K : Level.S) : S =
         | Expr.Error              -> "error"
         | Expr.MkCell(e,aa,tt,l)  -> Printf.sprintf "(mkcell %s %s %s %s)"
                                           (elemterm_to_str e)
-                                          (* TODO: Put here an array printer!!! *)
-                                          (String.concat " " (List.map addrterm_to_str aa))
-                                          (String.concat " " (List.map tidterm_to_str tt))
+                                          (z3_build_cell_next_array aa)
+                                          (z3_build_cell_lock_array tt)
                                           (levelterm_to_str l)
         | Expr.CellLockAt(c,l,th) -> Printf.sprintf "(cell_lock_at %s %s %s)"
                                           (cellterm_to_str c)
