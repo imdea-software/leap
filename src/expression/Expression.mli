@@ -109,6 +109,7 @@ and addr =
   | Next          of cell
   | NextAt        of cell * integer
   | FirstLocked   of mem * path
+  | FirstLockedAt of mem * path * integer
   | AddrArrayRd   of arrays * tid
   | AddrArrRd     of addrarr * integer
 

@@ -1347,6 +1347,17 @@ addr :
       let p = parser_check_type check_type_path $5 Expr.Path get_str_expr in
         Expr.FirstLocked(h,p)
     }
+  | FIRSTLOCKED OPEN_PAREN term COMMA term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "firstlocked(%s,%s,%s)"
+                                          (Expr.term_to_str $3)
+                                          (Expr.term_to_str $5)
+                                          (Expr.term_to_str $7) in
+      let h = parser_check_type check_type_mem  $3 Expr.Mem get_str_expr in
+      let p = parser_check_type check_type_path $5 Expr.Path get_str_expr in
+      let l = parser_check_type check_type_int $7 Expr.Int get_str_expr in
+        Expr.FirstLockedAt(h,p,l)
+    }
 
 /* CELL terms */
 

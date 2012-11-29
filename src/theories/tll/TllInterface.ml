@@ -161,6 +161,7 @@ and addr_to_tll_addr (a:Expr.addr) : Tll.addr =
   | Expr.NextAt _               -> raise(UnsupportedTllExpr(Expr.addr_to_str a))
   | Expr.FirstLocked (m,p)      -> Tll.FirstLocked (mem_to_tll_mem m,
                                                     path_to_tll_path p)
+  | Expr.FirstLockedAt _        -> raise(UnsupportedTllExpr(Expr.addr_to_str a))
   | Expr.AddrArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
       let v = Expr.build_var id s pr (Some t) p Expr.Normal in
       Tll.VarAddr (variable_to_tll_var v)

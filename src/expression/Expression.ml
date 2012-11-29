@@ -116,6 +116,7 @@ and addr =
   | Next          of cell
   | NextAt        of cell * integer
   | FirstLocked   of mem * path
+  | FirstLockedAt of mem * path * integer
   | AddrArrayRd   of arrays * tid
   | AddrArrRd     of addrarr * integer
 
@@ -899,17 +900,20 @@ and priming_set (pr:bool) (prime_set:VarSet.t option) (e:set) : set =
 
 and priming_addr (pr:bool) (prime_set:VarSet.t option) (a:addr) : addr =
   match a with
-    VarAddr v             -> VarAddr (priming_variable pr prime_set v)
-  | Null                  -> Null
-  | Next(cell)            -> Next(priming_cell pr prime_set cell)
-  | NextAt(cell,l)        -> NextAt(priming_cell pr prime_set cell,
-                                    priming_int pr prime_set l)
-  | FirstLocked(mem,path) -> FirstLocked(priming_mem pr prime_set mem,
-                                         priming_path pr prime_set path)
-  | AddrArrayRd(arr,t)    -> AddrArrayRd(priming_array pr prime_set arr,
-                                         priming_tid pr prime_set t)
-  | AddrArrRd(arr,l)      -> AddrArrRd(priming_addrarray pr prime_set arr,
-                                       priming_int pr prime_set l)
+    VarAddr v                 -> VarAddr (priming_variable pr prime_set v)
+  | Null                      -> Null
+  | Next(cell)                -> Next(priming_cell pr prime_set cell)
+  | NextAt(cell,l)            -> NextAt(priming_cell pr prime_set cell,
+                                        priming_int pr prime_set l)
+  | FirstLocked(mem,path)     -> FirstLocked(priming_mem pr prime_set mem,
+                                             priming_path pr prime_set path)
+  | FirstLockedAt(mem,path,l) -> FirstLockedAt(priming_mem pr prime_set mem,
+                                               priming_path pr prime_set path,
+                                               priming_int pr prime_set l)
+  | AddrArrayRd(arr,t)        -> AddrArrayRd(priming_array pr prime_set arr,
+                                             priming_tid pr prime_set t)
+  | AddrArrRd(arr,l)          -> AddrArrRd(priming_addrarray pr prime_set arr,
+                                           priming_int pr prime_set l)
 
 and priming_elem (pr:bool) (prime_set:VarSet.t option) (e:elem) : elem =
   match e with
@@ -1545,18 +1549,22 @@ and cell_to_str (expr:cell) : string =
 
 and addr_to_str (expr:addr) :string =
   match expr with
-    VarAddr v             -> variable_to_str v
-  | Null                  -> "null"
-  | Next(cell)            -> sprintf "%s.next" (cell_to_str cell)
-  | NextAt(cell,l)        -> sprintf "%s.next[%s]" (cell_to_str cell)
-                                                   (integer_to_str l)
-  | FirstLocked(mem,path) -> sprintf "firstlocked(%s,%s)"
+    VarAddr v                 -> variable_to_str v
+  | Null                      -> "null"
+  | Next(cell)                -> sprintf "%s.next" (cell_to_str cell)
+  | NextAt(cell,l)            -> sprintf "%s.next[%s]" (cell_to_str cell)
+                                                       (integer_to_str l)
+  | FirstLocked(mem,path)     -> sprintf "firstlocked(%s,%s)"
                                             (mem_to_str mem)
                                             (path_to_str path)
-  | AddrArrayRd(arr,t)    -> sprintf "%s%s" (arrays_to_str arr)
-                                              (param_tid_to_str t)
-  | AddrArrRd(arr,l)      -> sprintf "%s%s" (addrarr_to_str arr)
+  | FirstLockedAt(mem,path,l) -> sprintf "firstlocked(%s,%s,%s)"
+                                            (mem_to_str mem)
+                                            (path_to_str path)
                                             (integer_to_str l)
+  | AddrArrayRd(arr,t)        -> sprintf "%s%s" (arrays_to_str arr)
+                                                (param_tid_to_str t)
+  | AddrArrRd(arr,l)          -> sprintf "%s%s" (addrarr_to_str arr)
+                                                (integer_to_str l)
 
 
 and eq_to_str ((e1,e2):eq) : string =
@@ -1935,14 +1943,16 @@ and get_vars_addr (a:addr)
                   (base:variable -> variable list) : variable list =
   let get_vars_aux t = get_vars_tid t base in
   match a with
-    VarAddr v             -> (base v) @
-                             (Option.map_default get_vars_aux [] (var_th v))
-  | Null                  -> []
-  | Next(cell)            -> (get_vars_cell cell base)
-  | NextAt(cell,l)        -> (get_vars_cell cell base) @ (get_vars_int l base)
-  | FirstLocked(mem,path) -> (get_vars_mem mem base) @ (get_vars_path path base)
-  | AddrArrayRd(arr,t)    -> (get_vars_array arr base)
-  | AddrArrRd(arr,i)      -> (get_vars_addrarr arr base) @ (get_vars_int i base)
+    VarAddr v                 -> (base v) @
+                                  (Option.map_default get_vars_aux [] (var_th v))
+  | Null                      -> []
+  | Next(cell)                -> (get_vars_cell cell base)
+  | NextAt(cell,l)            -> (get_vars_cell cell base) @ (get_vars_int l base)
+  | FirstLocked(mem,path)     -> (get_vars_mem mem base) @ (get_vars_path path base)
+  | FirstLockedAt(mem,path,l) -> (get_vars_mem mem base) @ (get_vars_path path base) @
+                                 (get_vars_int l base)
+  | AddrArrayRd(arr,t)        -> (get_vars_array arr base)
+  | AddrArrRd(arr,i)          -> (get_vars_addrarr arr base) @ (get_vars_int i base)
 
 
 and get_vars_elem (e:elem)
@@ -2446,13 +2456,14 @@ and voc_set (e:set) : tid list =
 
 and voc_addr (a:addr) : tid list =
   match a with
-    VarAddr v             -> Option.map_default (fun x->[x]) [] (var_th v)
-  | Null                  -> []
-  | Next(cell)            -> (voc_cell cell)
-  | NextAt(cell,l)        -> (voc_cell cell) @ (voc_int l)
-  | FirstLocked(mem,path) -> (voc_mem mem) @ (voc_path path)
-  | AddrArrayRd(arr,t)    -> (voc_array arr)
-  | AddrArrRd(arr,l)      -> (voc_addrarr arr) @ (voc_int l)
+    VarAddr v                 -> Option.map_default (fun x->[x]) [] (var_th v)
+  | Null                      -> []
+  | Next(cell)                -> (voc_cell cell)
+  | NextAt(cell,l)            -> (voc_cell cell) @ (voc_int l)
+  | FirstLocked(mem,path)     -> (voc_mem mem) @ (voc_path path)
+  | FirstLockedAt(mem,path,l) -> (voc_mem mem) @ (voc_path path) @ (voc_int l)
+  | AddrArrayRd(arr,t)        -> (voc_array arr)
+  | AddrArrRd(arr,l)          -> (voc_addrarr arr) @ (voc_int l)
 
 
 and voc_elem (e:elem) : tid list =
@@ -2718,14 +2729,17 @@ and var_kind_set (kind:kind_t) (e:set) : term list =
 
 and var_kind_addr (kind:kind_t) (a:addr) : term list =
   match a with
-    VarAddr v             -> if (var_k v) = kind then [AddrT a] else []
-  | Null                  -> []
-  | Next(cell)            -> (var_kind_cell kind cell)
-  | NextAt(cell,l)        -> (var_kind_cell kind cell) @ (var_kind_int kind l)
-  | FirstLocked(mem,path) -> (var_kind_mem kind mem) @
-                             (var_kind_path kind path)
-  | AddrArrayRd(arr,t)    -> (var_kind_array kind arr)
-  | AddrArrRd(arr,l)      -> (var_kind_addrarr kind arr) @ (var_kind_int kind l)
+    VarAddr v                 -> if (var_k v) = kind then [AddrT a] else []
+  | Null                      -> []
+  | Next(cell)                -> (var_kind_cell kind cell)
+  | NextAt(cell,l)            -> (var_kind_cell kind cell) @ (var_kind_int kind l)
+  | FirstLocked(mem,path)     -> (var_kind_mem kind mem) @
+                                 (var_kind_path kind path)
+  | FirstLockedAt(mem,path,l) -> (var_kind_mem kind mem)   @
+                                 (var_kind_path kind path) @
+                                 (var_kind_int kind l)
+  | AddrArrayRd(arr,t)        -> (var_kind_array kind arr)
+  | AddrArrRd(arr,l)          -> (var_kind_addrarr kind arr) @ (var_kind_int kind l)
 
 
 and var_kind_elem (kind:kind_t) (e:elem) : term list =
@@ -3032,6 +3046,9 @@ and param_addr_aux (pfun:variable option -> tid option) (a:addr) : addr =
                                         param_int pfun l)
   | FirstLocked(mem,path)     -> FirstLocked(param_mem pfun mem,
                                              param_path pfun path)
+  | FirstLockedAt(mem,path,l) -> FirstLockedAt(param_mem pfun mem,
+                                               param_path pfun path,
+                                               param_int pfun l)
   | AddrArrayRd(arr,t)        -> AddrArrayRd(param_arrays pfun arr, t)
   | AddrArrRd(arr,l)          -> AddrArrRd(param_addrarr pfun arr,
                                            param_int pfun l)
@@ -3427,6 +3444,9 @@ and subst_tid_addr (subs:tid_subst_t) (a:addr) : addr =
                                         subst_tid_int subs l)
   | FirstLocked(mem,path)     -> FirstLocked(subst_tid_mem subs mem,
                                              subst_tid_path subs path)
+  | FirstLockedAt(mem,path,l) -> FirstLockedAt(subst_tid_mem subs mem,
+                                               subst_tid_path subs path,
+                                               subst_tid_int subs l)
   | AddrArrayRd(arr,t)        -> AddrArrayRd(subst_tid_array subs arr, t)
   | AddrArrRd(arr,i)          -> AddrArrRd(subst_tid_addrarr subs arr,
                                            subst_tid_int subs i)
@@ -4337,13 +4357,14 @@ let required_sorts (phi:formula) : sort list =
 
   and req_a (a:addr) : SortSet.t =
     match a with
-    | VarAddr _         -> single Addr
-    | Null              -> single Addr
-    | Next c            -> append Addr [req_c c]
-    | NextAt (c,l)      -> append Addr [req_c c;req_i l]
-    | FirstLocked (m,p) -> append Addr [req_m m;req_p p]
-    | AddrArrayRd (a,t) -> append Addr [req_arr a; req_t t]
-    | AddrArrRd (a,i)   -> append Addr [req_addrarr a; req_i i]
+    | VarAddr _             -> single Addr
+    | Null                  -> single Addr
+    | Next c                -> append Addr [req_c c]
+    | NextAt (c,l)          -> append Addr [req_c c;req_i l]
+    | FirstLocked (m,p)     -> append Addr [req_m m;req_p p]
+    | FirstLockedAt (m,p,l) -> append Addr [req_m m;req_p p;req_i l]
+    | AddrArrayRd (a,t)     -> append Addr [req_arr a; req_t t]
+    | AddrArrRd (a,i)       -> append Addr [req_addrarr a; req_i i]
 
   and req_e (e:elem) : SortSet.t =
     match e with

@@ -1319,14 +1319,15 @@ module Make (K : Level.S) : S =
 
     and addrterm_to_str (a:Expr.addr) : string =
       match a with
-          Expr.VarAddr v        -> variable_invocation_to_str v
-        | Expr.Null             -> "null"
-        | Expr.NextAt (c,l)     -> Printf.sprintf "(select (next %s) %s)"
-                                      (cellterm_to_str c)
-                                      (levelterm_to_str l)
-        | Expr.FirstLocked(m,p) -> Printf.sprintf "(firstlock %s %s)"
-                                      (memterm_to_str m)
-                                      (pathterm_to_str p)
+          Expr.VarAddr v            -> variable_invocation_to_str v
+        | Expr.Null                 -> "null"
+        | Expr.NextAt (c,l)         -> Printf.sprintf "(select (next %s) %s)"
+                                          (cellterm_to_str c)
+                                          (levelterm_to_str l)
+        | Expr.FirstLockedAt(m,p,l) -> Printf.sprintf "(firstlock %s %s %s)"
+                                          (memterm_to_str m)
+                                          (pathterm_to_str p)
+                                          (levelterm_to_str l)
 
 (* TUKA *)
 

@@ -56,7 +56,7 @@ module type S =
         VarAddr           of variable
       | Null
       | NextAt            of cell * level
-      | FirstLocked       of mem * path
+      | FirstLockedAt     of mem * path * level
     (*  | Malloc of elem * addr * tid *)
     and cell =
         VarCell           of variable

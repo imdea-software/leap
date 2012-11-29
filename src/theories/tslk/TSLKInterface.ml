@@ -163,8 +163,10 @@ module Make (TSLK : TSLKExpression.S) =
       | Expr.Null                   -> TSLK.Null
       | Expr.Next _                 -> raise(UnsupportedTSLKExpr(Expr.addr_to_str a))
       | Expr.NextAt (c,l)           -> TSLK.NextAt (cell_to_tslk_cell c, int_to_tslk_level l)
-      | Expr.FirstLocked (m,p)      -> TSLK.FirstLocked (mem_to_tslk_mem m,
-                                                        path_to_tslk_path p)
+      | Expr.FirstLocked (m,p)      -> raise(UnsupportedTSLKExpr(Expr.addr_to_str a))
+      | Expr.FirstLockedAt (m,p,l)  -> TSLK.FirstLockedAt (mem_to_tslk_mem m,
+                                                          path_to_tslk_path p,
+                                                          int_to_tslk_level l)
       | Expr.AddrArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
           let v = Expr.build_var id s pr (Some t) p Expr.Normal in
           TSLK.VarAddr (variable_to_tslk_var v)
