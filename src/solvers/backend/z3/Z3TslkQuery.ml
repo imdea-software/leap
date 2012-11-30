@@ -733,6 +733,37 @@ module Make (K : Level.S) : S =
            "           (orderlist1 h a b l))))\n")
 
 
+    (* Order over levels *)
+    let z3_levelorder_def (buf:B.t) : unit =
+      B.add_string buf ("(declare-fun less_l (" ^level_s^ " " ^level_s^ ") " ^bool_s^ ")\n") ;
+      B.add_string buf ("(define-fun greater_l ((x " ^level_s^ ") (y " ^level_s^ ")) " ^bool_s^ "\n" ^
+                        "  (less_l y x))\n") ;
+      (* Totality and no-reflexibility *)
+      for i = 0 to (K.level-1) do
+        let l = ll i in
+        B.add_string buf ("(assert (not (less_l " ^l^ " " ^l^ ")))\n") ;
+        for j = i+1 to (K.level-1) do
+          let l2 = ll j in
+            B.add_string buf ("(assert (or (less_l " ^l^ " " ^l2^ ") (less_l " ^l2^ " " ^l^ ")))\n")
+        done
+      done ;
+      (* TOFIX: Replace buffer in order to prevent segmentation fault due to
+                buffer overflow when too many elements are required. *)
+      (* Transitivity *)
+      for i = 0 to (K.level-1) do
+        for j = 0 to (K.level-1) do
+          for k = 0 to (K.level-1) do
+            if (i<>j && j<>k (*&& i<>k*)) then
+              let x = ll i in
+              let y = ll j in
+              let z = ll k in
+              B.add_string buf ("(assert (=> (and (less_l " ^x^ " " ^y^ ") \
+                                                  (less_l " ^y^ " " ^z^ ")) \
+                                                  (less_l " ^x^ " " ^z^ ")))\n")
+          done
+        done
+      done
+
 
     (* (define error::cell) *)
     let z3_error_def (buf:B.t) : unit =
@@ -1097,6 +1128,9 @@ module Make (K : Level.S) : S =
                 (num_elem:int)
                 (req_sorts:Expr.sort list)
                 (req_ops:Expr.special_op_t list) =
+      (* Levels *)
+      if List.mem Expr.LevelOrder req_ops then
+        z3_levelorder_def buf ;
       (* Elements *)
       if List.mem Expr.ElemOrder req_ops || List.mem Expr.OrderedList req_ops then
         z3_elemorder_def buf num_elem ;
@@ -1502,10 +1536,11 @@ module Make (K : Level.S) : S =
 
 
     let orderlist_to_str (m:Expr.mem) (a1:Expr.addr) (a2:Expr.addr) : string =
-      Printf.sprintf ("(orderlist %s %s %s)")
+      Printf.sprintf ("(orderlist %s %s %s %s)")
         (memterm_to_str m)
         (addrterm_to_str a1)
         (addrterm_to_str a2)
+        (ll 0)
 
 
     let in_to_str (a:Expr.addr) (s:Expr.set) : string =
@@ -1628,6 +1663,7 @@ module Make (K : Level.S) : S =
         in
           ("(assert (or " ^ parts_str ^ "))\n")
 
+(* TUKA*)
 
     let atom_to_str (at:Expr.atom) : string =
       match at with
