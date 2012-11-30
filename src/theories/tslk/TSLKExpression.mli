@@ -97,7 +97,7 @@ module type S =
       | HavocLevel
     and atom =
         Append            of path * path * path
-      | Reach             of mem * addr * addr * path
+      | Reach             of mem * addr * addr * level * path
       | OrderList         of mem * addr * addr
       | In                of addr * set
       | SubsetEq          of set  * set

@@ -1382,8 +1382,8 @@ let append_to_str (p1:Expr.path) (p2:Expr.path) (p3:Expr.path) : string =
 
 
 let reach_to_str (m:Expr.mem) (a1:Expr.addr)
-                       (a2:Expr.addr) (p:Expr.path) : string =
-  Printf.sprintf "(is_append %s %s %s %s)"
+                 (a2:Expr.addr) (p:Expr.path) : string =
+  Printf.sprintf "(reach %s %s %s %s)"
     (memterm_to_str m)
     (addrterm_to_str a1)
     (addrterm_to_str a2)

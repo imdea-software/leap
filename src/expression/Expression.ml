@@ -177,6 +177,7 @@ and mem =
 and atom =
     Append        of path * path * path
   | Reach         of mem * addr * addr * path
+  | ReachAt       of mem * addr * addr * integer * path
   | OrderList     of mem * addr * addr
   | In            of addr * set
   | SubsetEq      of set * set
@@ -1071,6 +1072,11 @@ and priming_atom (pr:bool) (prime_set:VarSet.t option) (a:atom) : atom =
                                         priming_addr pr prime_set add_from,
                                         priming_addr pr prime_set add_to,
                                         priming_path pr prime_set p)
+  | ReachAt(h,a_from,a_to,l,p) -> ReachAt(priming_mem pr prime_set h,
+                                          priming_addr pr prime_set a_from,
+                                          priming_addr pr prime_set a_to,
+                                          priming_int pr prime_set l,
+                                          priming_path pr prime_set p)
   | OrderList(h,a_from,a_to)   -> OrderList(priming_mem pr prime_set h,
                                             priming_addr pr prime_set a_from,
                                             priming_addr pr prime_set a_to)
@@ -1300,6 +1306,12 @@ and atom_to_str (expr:atom) : string =
                                             (mem_to_str h)
                                             (addr_to_str add_from)
                                             (addr_to_str add_to)
+                                            (path_to_str p)
+  | ReachAt(h,a_from,a_to,l,p) -> sprintf "reach(%s,%s,%s,%s,%s)"
+                                            (mem_to_str h)
+                                            (addr_to_str a_from)
+                                            (addr_to_str a_to)
+                                            (integer_to_str l)
                                             (path_to_str p)
   | OrderList(h,a_from,a_to)   -> sprintf "orderlist(%s,%s,%s)"
                                             (mem_to_str h)
@@ -2129,6 +2141,11 @@ and get_vars_atom (a:atom)
                                   (get_vars_addr add_from base) @
                                   (get_vars_addr add_to base) @
                                   (get_vars_path p base)
+  | ReachAt(h,a_from,a_to,l,p) -> (get_vars_mem h base) @
+                                  (get_vars_addr a_from base) @
+                                  (get_vars_addr a_to base) @
+                                  (get_vars_int l base) @
+                                  (get_vars_path p base)
   | OrderList(h,a_from,a_to)   -> (get_vars_mem h base) @
                                   (get_vars_addr a_from base) @
                                   (get_vars_addr a_to base)
@@ -2605,6 +2622,11 @@ and voc_atom (a:atom) : tid list =
                                   (voc_addr add_from) @
                                   (voc_addr add_to) @
                                   (voc_path p)
+  | ReachAt(h,a_from,a_to,l,p) -> (voc_mem h) @
+                                  (voc_addr a_from) @
+                                  (voc_addr a_to) @
+                                  (voc_int l) @
+                                  (voc_path p)
   | OrderList(h,a_from,a_to)   -> (voc_mem h) @
                                   (voc_addr a_from) @
                                   (voc_addr a_to)
@@ -2895,6 +2917,11 @@ and var_kind_atom (kind:kind_t) (a:atom) : term list =
   | Reach(h,add_from,add_to,p) -> (var_kind_mem kind h) @
                                   (var_kind_addr kind add_from) @
                                   (var_kind_addr kind add_to) @
+                                  (var_kind_path kind p)
+  | ReachAt(h,a_from,a_to,l,p) -> (var_kind_mem kind h) @
+                                  (var_kind_addr kind a_from) @
+                                  (var_kind_addr kind a_to) @
+                                  (var_kind_int kind l) @
                                   (var_kind_path kind p)
   | OrderList(h,a_from,a_to)   -> (var_kind_mem kind h) @
                                   (var_kind_addr kind a_from) @
@@ -3220,6 +3247,11 @@ and param_atom (pfun:variable option -> tid option) (a:atom) : atom =
                                         param_addr_aux pfun add_from,
                                         param_addr_aux pfun add_to,
                                         param_path pfun p)
+  | ReachAt(h,a_from,a_to,l,p) -> ReachAt(param_mem pfun h,
+                                          param_addr_aux pfun a_from,
+                                          param_addr_aux pfun a_to,
+                                          param_int pfun l,
+                                          param_path pfun p)
   | OrderList(h,a_from,a_to)   -> OrderList(param_mem pfun h,
                                             param_addr_aux pfun a_from,
                                             param_addr_aux pfun a_to)
@@ -3656,6 +3688,11 @@ and subst_tid_atom (subs:tid_subst_t) (a:atom) : atom =
                                         subst_tid_addr subs add_from,
                                         subst_tid_addr subs add_to,
                                         subst_tid_path subs p)
+  | ReachAt(h,a_from,a_to,l,p) -> ReachAt(subst_tid_mem subs h,
+                                          subst_tid_addr subs a_from,
+                                          subst_tid_addr subs a_to,
+                                          subst_tid_int subs l,
+                                          subst_tid_path subs p)
   | OrderList(h,a_from,a_to)   -> OrderList(subst_tid_mem subs h,
                                             subst_tid_addr subs a_from,
                                             subst_tid_addr subs a_to)
@@ -4303,24 +4340,25 @@ let required_sorts (phi:formula) : sort list =
 
   and req_atom (a:atom) : SortSet.t =
     match a with
-    | Append (p1,p2,p3)   -> append Bool [req_p p1;req_p p2;req_p p3]
-    | Reach (m,a1,a2,p)   -> append Bool [req_m m;req_a a1;req_a a2;req_p p]
-    | In (a,s)            -> append Bool [req_a a;req_s s]
-    | SubsetEq (s1,s2)    -> append Bool [req_s s1;req_s s2]
-    | InTh (t,s)          -> append Bool [req_t t;req_st s]
-    | SubsetEqTh (s1,s2)  -> append Bool [req_st s1;req_st s2]
-    | InInt (i,s)         -> append Bool [req_i i;req_si s]
-    | SubsetEqInt (s1,s2) -> append Bool [req_si s1;req_si s2]
-    | Less (i1,i2)        -> append Bool [req_i i1;req_i i2]
-    | Greater (i1,i2)     -> append Bool [req_i i1;req_i i2]
-    | LessEq (i1,i2)      -> append Bool [req_i i1;req_i i2]
-    | GreaterEq (i1,i2)   -> append Bool [req_i i1;req_i i2]
-    | LessTid (t1,t2)     -> append Bool [req_t t1;req_t t2]
-    | Eq (t1,t2)          -> union (req_term t1) (req_term t2)
-    | InEq (t1,t2)        -> union (req_term t1) (req_term t2)
-    | BoolVar _           -> single Bool
-    | BoolArrayRd (a,t)   -> append Bool [req_arr a; req_t t]
-    | _                   -> empty
+    | Append (p1,p2,p3)     -> append Bool [req_p p1;req_p p2;req_p p3]
+    | Reach (m,a1,a2,p)     -> append Bool [req_m m;req_a a1;req_a a2;req_p p]
+    | ReachAt (m,a1,a2,l,p) -> append Bool [req_m m;req_a a1;req_a a2;req_i l;req_p p]
+    | In (a,s)              -> append Bool [req_a a;req_s s]
+    | SubsetEq (s1,s2)      -> append Bool [req_s s1;req_s s2]
+    | InTh (t,s)            -> append Bool [req_t t;req_st s]
+    | SubsetEqTh (s1,s2)    -> append Bool [req_st s1;req_st s2]
+    | InInt (i,s)           -> append Bool [req_i i;req_si s]
+    | SubsetEqInt (s1,s2)   -> append Bool [req_si s1;req_si s2]
+    | Less (i1,i2)          -> append Bool [req_i i1;req_i i2]
+    | Greater (i1,i2)       -> append Bool [req_i i1;req_i i2]
+    | LessEq (i1,i2)        -> append Bool [req_i i1;req_i i2]
+    | GreaterEq (i1,i2)     -> append Bool [req_i i1;req_i i2]
+    | LessTid (t1,t2)       -> append Bool [req_t t1;req_t t2]
+    | Eq (t1,t2)            -> union (req_term t1) (req_term t2)
+    | InEq (t1,t2)          -> union (req_term t1) (req_term t2)
+    | BoolVar _             -> single Bool
+    | BoolArrayRd (a,t)     -> append Bool [req_arr a; req_t t]
+    | _                     -> empty
 
   and req_m (m:mem) : SortSet.t =
     match m with

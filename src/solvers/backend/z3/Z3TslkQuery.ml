@@ -1368,7 +1368,6 @@ module Make (K : Level.S) : S =
                                           (pathterm_to_str p)
                                           (levelterm_to_str l)
 
-(* TUKA *)
 
     and cellterm_to_str (c:Expr.cell) : string =
       match c with
@@ -1461,8 +1460,8 @@ module Make (K : Level.S) : S =
 
 
     let rec varupdate_to_str (v:Expr.variable)
-                                   (th:Expr.tid)
-                                   (t:Expr.term) : string =
+                             (th:Expr.tid)
+                             (t:Expr.term) : string =
       let v_str = variable_invocation_to_str v in
       let th_str = tidterm_to_str th in
       let t_str = term_to_str t
@@ -1493,11 +1492,12 @@ module Make (K : Level.S) : S =
 
 
     let reach_to_str (m:Expr.mem) (a1:Expr.addr)
-                           (a2:Expr.addr) (p:Expr.path) : string =
-      Printf.sprintf "(is_append %s %s %s %s)"
+                     (a2:Expr.addr) (l:Expr.level) (p:Expr.path) : string =
+      Printf.sprintf "(reach %s %s %s %s %s)"
         (memterm_to_str m)
         (addrterm_to_str a1)
         (addrterm_to_str a2)
+        (levelterm_to_str l)
         (pathterm_to_str p)
 
 
@@ -1632,7 +1632,7 @@ module Make (K : Level.S) : S =
     let atom_to_str (at:Expr.atom) : string =
       match at with
           Expr.Append(p1,p2,p3)      -> append_to_str p1 p2 p3
-        | Expr.Reach(m,a1,a2,p)      -> reach_to_str m a1 a2 p
+        | Expr.Reach(m,a1,a2,l,p)    -> reach_to_str m a1 a2 l p
         | Expr.OrderList(m,a1,a2)    -> orderlist_to_str m a1 a2
         | Expr.In(a,s)               -> in_to_str a s
         | Expr.SubsetEq(r,s)         -> subseteq_to_str r s

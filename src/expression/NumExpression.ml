@@ -347,6 +347,7 @@ and is_int_atom ato =
   match ato with
     Expr.Append(_,_,_)                    -> false
   | Expr.Reach(_,_,_,_)                   -> false
+  | Expr.ReachAt(_,_,_,_,_)               -> false
   | Expr.OrderList(_,_,_)                 -> false
   | Expr.In(_,_)                          -> false
   | Expr.SubsetEq(_,_)                    -> false
@@ -474,6 +475,7 @@ and atom_to_int_atom a =
     match a with
       Expr.Append _      -> raise (NotAnIntExpression(Expr.atom_to_str a))
     | Expr.Reach _       -> raise (NotAnIntExpression(Expr.atom_to_str a))
+    | Expr.ReachAt _     -> raise (NotAnIntExpression(Expr.atom_to_str a))
     | Expr.OrderList _   -> raise (NotAnIntExpression(Expr.atom_to_str a))
     | Expr.In _          -> raise (NotAnIntExpression(Expr.atom_to_str a))
     | Expr.SubsetEq _    -> raise (NotAnIntExpression(Expr.atom_to_str a))

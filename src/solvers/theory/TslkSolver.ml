@@ -175,10 +175,11 @@ struct
     match lit with
       | TslkExp.Append(p1,p2,p3)      -> is_var_path p1 && is_var_path p2 &&
                                         is_var_path p3
-      | TslkExp.Reach(m,a1,a2,p)      -> is_var_mem m && is_var_addr a1 &&
-                                        is_var_addr a2 && is_var_path p
+      | TslkExp.Reach(m,a1,a2,l,p)    -> is_var_mem m && is_var_addr a1 &&
+                                         is_var_addr a2 && is_var_level l &&
+                                         is_var_path p
       | TslkExp.OrderList(m,a1,a2)    -> is_var_mem m && is_var_addr a1 &&
-                                        is_var_addr a2
+                                         is_var_addr a2
       | TslkExp.In (a,s)              -> is_var_addr a && is_var_set s
       | TslkExp.SubsetEq(s1,s2)       -> is_var_set s1 && is_var_set s2
       | TslkExp.InTh(t,st)            -> is_var_thid t && is_var_setth st

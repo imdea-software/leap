@@ -100,7 +100,7 @@ module type S =
       | HavocLevel
     and atom =
         Append            of path * path * path
-      | Reach             of mem * addr * addr * path
+      | Reach             of mem * addr * addr * level * path
       | OrderList         of mem * addr * addr
       | In                of addr * set
       | SubsetEq          of set  * set
@@ -348,7 +348,7 @@ module Make (K : Level.S) : S =
       | HavocLevel
     and atom =
         Append            of path * path * path
-      | Reach             of mem * addr * addr * path
+      | Reach             of mem * addr * addr * level * path
       | OrderList         of mem * addr * addr
       | In                of addr * set
       | SubsetEq          of set  * set
@@ -606,8 +606,9 @@ module Make (K : Level.S) : S =
       match a with
           Append(p1,p2,p3)       -> (get_varset_path p1) @@ (get_varset_path p2) @@
                                     (get_varset_path p3)
-        | Reach(m,a1,a2,p)       -> (get_varset_mem m) @@ (get_varset_addr a1) @@
-                                    (get_varset_addr a2) @@ (get_varset_path p)
+        | Reach(m,a1,a2,l,p)     -> (get_varset_mem m) @@ (get_varset_addr a1) @@
+                                    (get_varset_addr a2) @@ (get_varset_level l) @@
+                                    (get_varset_path p)
         | OrderList(m,a1,a2)     -> (get_varset_mem m) @@ (get_varset_addr a1) @@
                                     (get_varset_addr a2)
         | In(a,s)                -> (get_varset_addr a) @@ (get_varset_set s)
@@ -705,7 +706,7 @@ module Make (K : Level.S) : S =
       let add_list = List.fold_left (fun s e -> TermSet.add e s) TermSet.empty in
       match a with
       | Append(p1,p2,p3)       -> add_list [PathT p1; PathT p2; PathT p3]
-      | Reach(m,a1,a2,p)       -> add_list [MemT m; AddrT a1; AddrT a2; PathT p]
+      | Reach(m,a1,a2,l,p)     -> add_list [MemT m; AddrT a1; AddrT a2; LevelT l; PathT p]
       | OrderList(m,a1,a2)     -> add_list [MemT m; AddrT a1; AddrT a2]
       | In(a,s)                -> add_list [AddrT a; SetT s]
       | SubsetEq(s1,s2)        -> add_list [SetT s1; SetT s2]
@@ -952,8 +953,9 @@ module Make (K : Level.S) : S =
       begin match a with
         | Append(p1,p2,p3)       -> (is_path_var p1) && (is_path_var p2) &&
                                     (is_path_var p3)
-        | Reach(m,a1,a2,p)       -> (is_mem_var m) && (is_addr_var a1) &&
-                                    (is_addr_var a2) && (is_path_var p)
+        | Reach(m,a1,a2,l,p)     -> (is_mem_var m) && (is_addr_var a1) &&
+                                    (is_addr_var a2) && (is_int_var l) &&
+                                    (is_path_var p)
         | OrderList(m,a1,a2)     -> (is_mem_var m) && (is_addr_var a1) &&
                                     (is_addr_var a2)
         | In(a,s)                -> (is_addr_var a) && (is_set_var s)
@@ -980,8 +982,9 @@ module Make (K : Level.S) : S =
       begin match a with
         | Append(p1,p2,p3)      -> (is_path_var p1) && (is_path_var p2) &&
                                    (is_path_var p3)
-        | Reach(m,a1,a2,p)      -> (is_mem_var m) && (is_addr_var a1) &&
-                                   (is_addr_var a2) && (is_path_var p)
+        | Reach(m,a1,a2,l,p)    -> (is_mem_var m) && (is_addr_var a1) &&
+                                   (is_addr_var a2) && (is_int_var l) &&
+                                   (is_path_var p)
         | OrderList(m,a1,a2)    -> (is_mem_var m) && (is_addr_var a1) &&
                                    (is_addr_var a2)
         | In(a,s)               -> (is_addr_var a) && (is_set_var s)
@@ -1027,9 +1030,10 @@ module Make (K : Level.S) : S =
       | Append(p1,p2,pres)         -> Printf.sprintf "append(%s,%s,%s)"
                                         (path_to_str p1) (path_to_str p2)
                                         (path_to_str pres)
-      | Reach(h,add_from,add_to,p) -> Printf.sprintf "reach(%s,%s,%s,%s)"
-                                        (mem_to_str h) (addr_to_str add_from)
-                                        (addr_to_str add_to) (path_to_str p)
+      | Reach(h,a_from,a_to,l,p)   -> Printf.sprintf "reach(%s,%s,%s,%s,%s)"
+                                        (mem_to_str h) (addr_to_str a_from)
+                                        (addr_to_str a_to) (level_to_str l)
+                                        (path_to_str p)
       | OrderList(h,a_from,a_to)   -> Printf.sprintf "orderlist(%s,%s,%s)"
                                         (mem_to_str h) (addr_to_str a_from)
                                         (addr_to_str a_to)
@@ -1445,9 +1449,10 @@ module Make (K : Level.S) : S =
         Append(p1,p2,pres)         -> (voc_path p1) @
                                       (voc_path p2) @
                                       (voc_path pres)
-      | Reach(h,add_from,add_to,p) -> (voc_mem h) @
-                                      (voc_addr add_from) @
-                                      (voc_addr add_to) @
+      | Reach(h,a_from,a_to,l,p)   -> (voc_mem h) @
+                                      (voc_addr a_from) @
+                                      (voc_addr a_to) @
+                                      (voc_level l) @
                                       (voc_path p)
       | OrderList(h,a_from,a_to)   -> (voc_mem h) @
                                       (voc_addr a_from) @
@@ -1633,7 +1638,7 @@ module Make (K : Level.S) : S =
       and req_atom (a:atom) : SortSet.t =
         match a with
         | Append (p1,p2,p3)   -> list_union [req_p p1;req_p p1;req_p p2;req_p p3]
-        | Reach (m,a1,a2,p)   -> list_union [req_m m;req_a a1;req_a a2;req_p p]
+        | Reach (m,a1,a2,l,p) -> list_union [req_m m;req_a a1;req_a a2;req_lv l;req_p p]
         | OrderList (m,a1,a2) -> list_union [req_m m;req_a a1;req_a a2]
         | In (a,s)            -> list_union [req_a a;req_s s]
         | SubsetEq (s1,s2)    -> list_union [req_s s1;req_s s2]
@@ -1782,7 +1787,7 @@ module Make (K : Level.S) : S =
       and ops_atom (a:atom) : OpsSet.t =
         match a with
         | Append (p1,p2,p3)   -> list_union [ops_p p1;ops_p p1;ops_p p2;ops_p p3]
-        | Reach (m,a1,a2,p)   -> append Reachable[ops_m m;ops_a a1;ops_a a2;ops_p p]
+        | Reach (m,a1,a2,l,p) -> append Reachable[ops_m m;ops_a a1;ops_a a2;ops_lv l;ops_p p]
         | OrderList (m,a1,a2) -> append OrderedList[ops_m m;ops_a a1;ops_a a2]
         | In (a,s)            -> list_union [ops_a a;ops_s s]
         | SubsetEq (s1,s2)    -> list_union [ops_s s1;ops_s s2]

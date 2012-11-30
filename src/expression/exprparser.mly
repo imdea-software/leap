@@ -1016,6 +1016,20 @@ literal :
       let p      = parser_check_type check_type_path $9 Expr.Path get_str_expr in
         Expr.Atom (Expr.Reach (h,a_from,a_to,p))
     }
+  | REACH OPEN_PAREN term COMMA term COMMA term COMMA term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "reach(%s,%s,%s,%s,%s)" (Expr.term_to_str $3)
+                                                            (Expr.term_to_str $5)
+                                                            (Expr.term_to_str $7)
+                                                            (Expr.term_to_str $9)
+                                                            (Expr.term_to_str $11) in
+      let h      = parser_check_type check_type_mem  $3 Expr.Mem get_str_expr in
+      let a_from = parser_check_type check_type_addr $5 Expr.Addr get_str_expr in
+      let a_to   = parser_check_type check_type_addr $7 Expr.Addr get_str_expr in
+      let p      = parser_check_type check_type_path $9 Expr.Path get_str_expr in
+      let l      = parser_check_type check_type_int $11 Expr.Int get_str_expr in
+        Expr.Atom (Expr.ReachAt (h,a_from,a_to,l,p))
+    }
   | ORDERLIST OPEN_PAREN term COMMA term COMMA term CLOSE_PAREN
     {
       let get_str_expr () = sprintf "orderlist(%s,%s,%s)" (Expr.term_to_str $3)

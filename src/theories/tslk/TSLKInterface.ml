@@ -323,7 +323,8 @@ module Make (TSLK : TSLKExpression.S) =
       let term    = term_to_tslk_term       in
       match a with
         Expr.Append (p1,p2,p3)    -> TSLK.Append (path p1,path p2,path p3)
-      | Expr.Reach (m,a1,a2,p)    -> TSLK.Reach (mem m, addr a1, addr a2, path p)
+      | Expr.Reach _              -> raise (UnsupportedTSLKExpr(Expr.atom_to_str a))
+      | Expr.ReachAt (m,a1,a2,l,p)-> TSLK.Reach (mem m, addr a1, addr a2, integ l, path p)
       | Expr.OrderList(m,a1,a2)   -> TSLK.OrderList (mem m, addr a1, addr a2)
       | Expr.In (a,s)             -> TSLK.In (addr a, set s)
       | Expr.SubsetEq (s1,s2)     -> TSLK.SubsetEq (set s1, set s2)
