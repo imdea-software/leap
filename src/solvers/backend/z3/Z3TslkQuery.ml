@@ -984,11 +984,11 @@ module Make (K : Level.S) : S =
         let strpre = string_of_int (i-1) in
         B.add_string buf
         ("(define-fun path"^ stri ^" ((h " ^heap_s^ ") (a " ^addr_s^ ") (l " ^level_s^ ")) " ^path_s^ "\n" ^
-         "  (add_to_path (path"^ strpre ^" h a) (select (next"^ strpre ^" h a) l)))\n")
+         "  (add_to_path (path"^ strpre ^" h a l) (next"^ strpre ^" h a l)))\n")
       done ;
       B.add_string buf
         ("(define-fun getp"^ (string_of_int (num_addr + 1)) ^" ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ") (l " ^level_s^ ")) " ^path_s^ "\n" ^
-         "  (if (= (select (next"^ (string_of_int num_addr) ^" h from) l) to)\n" ^
+         "  (if (= (next"^ (string_of_int num_addr) ^" h from l) to)\n" ^
          "      (path"^ (string_of_int num_addr) ^" h from l)\n" ^
          "      epsilon))\n");
       for i=num_addr downto 1 do
@@ -997,7 +997,7 @@ module Make (K : Level.S) : S =
         let strnext = string_of_int (i+1) in
         B.add_string buf
           ("(define-fun getp"^ stri ^" ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ") (l " ^level_s^ ")) " ^path_s^ "\n" ^
-           "  (if (= (select (next"^ strpre ^" h from) l) to)\n" ^
+           "  (if (= (next"^ strpre ^" h from l) to)\n" ^
            "      (path"^ stri ^" h from l)\n" ^
            "       (getp"^ strnext ^" h from to l)))\n")
       done ;
@@ -1007,7 +1007,6 @@ module Make (K : Level.S) : S =
       B.add_string buf
         ("(define-fun isgetp ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ") (l " ^level_s^ ") (p " ^path_s^ ")) " ^bool_s^ "\n" ^
          "  (eqpath p (getp_at h from to l)))\n")
-
 
 
     let z3_reach_def (buf:B.t) : unit =
@@ -1682,6 +1681,9 @@ module Make (K : Level.S) : S =
         | Expr.GreaterEq (l1,l2)     -> greatereqlevel_to_str l1 l2
         | Expr.LessElem(e1,e2)       -> lesselem_to_str e1 e2
         | Expr.GreaterElem(e1,e2)    -> greaterelem_to_str e1 e2
+        (* Do not need LevelHavoc, as all possible values are in the
+           domain of Level. ie, ll_0 to ll_(K-1) *)
+        | Expr.Eq(x,Expr.LevelT (Expr.HavocLevel)) -> ""
         | Expr.Eq(x,y)               -> eq_to_str x y
         | Expr.InEq(x,y)             -> ineq_to_str x y
         | Expr.PC(pc,t,pr)           -> pc_to_str pc t pr

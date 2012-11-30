@@ -199,6 +199,9 @@ let generic_stm_term_eq (mode:eqGenMode)
     | (E.ElemT e, E.Term (E.ElemT (E.HavocListElem))) ->
         ([E.ElemT e], E.And (E.ineq_elem e E.LowestElem,
                              E.ineq_elem e E.HighestElem))
+    | (E.ElemT e, E.Term (E.ElemT (E.HavocSkiplistElem))) ->
+        ([E.ElemT e], E.And (E.ineq_elem e E.LowestElem,
+                             E.ineq_elem e E.HighestElem))
     | _ -> let (m,f) = eq_generator v' th_p new_e in
            match pt with
              Num  -> (m,f)

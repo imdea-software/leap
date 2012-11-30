@@ -19,3 +19,10 @@ invariant [skiplist] :
 /\ head != tail
 /\ rd(heap, head).data = lowestElem
 /\ rd(heap, tail).data = highestElem
+/\ orderlist (heap, head, tail)
+/\ rd(heap, tail).next[0] = null
+/\ rd(heap, tail).next[1] = null
+/\ rd(heap, tail).next[2] = null
+/\ (path2set (getp(heap, head, tail, 1)))
+    subseteq
+   (path2set (getp(heap, head, tail, 0)))
