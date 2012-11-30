@@ -84,7 +84,7 @@ module type S =
         VarPath           of variable
       | Epsilon
       | SimplePath        of addr
-      | GetPath           of mem * addr * addr
+      | GetPathAt         of mem * addr * addr * level
     and mem =
         VarMem            of variable
       | Emp
@@ -142,6 +142,7 @@ module type S =
       | Getp
       | Set2Elem
       | ElemOrder
+      | LevelOrder
       | OrderedList
 
 

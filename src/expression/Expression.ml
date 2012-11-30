@@ -166,6 +166,7 @@ and path =
   | Epsilon
   | SimplePath    of addr
   | GetPath       of mem * addr * addr
+  | GetPathAt     of mem * addr * addr * integer
   | PathArrayRd   of arrays * tid
 
 and mem =
@@ -1016,14 +1017,18 @@ and priming_setelem (pr:bool) (prime_set:VarSet.t option) (s:setelem) : setelem 
 
 and priming_path (pr:bool) (prime_set:VarSet.t option) (p:path) : path =
   match p with
-    VarPath v                    -> VarPath (priming_variable pr prime_set v)
-  | Epsilon                      -> Epsilon
-  | SimplePath(addr)             -> SimplePath(priming_addr pr prime_set addr)
-  | GetPath(mem,add_from,add_to) -> GetPath(priming_mem pr prime_set mem,
-                                            priming_addr pr prime_set add_from,
-                                            priming_addr pr prime_set add_to)
-  | PathArrayRd(arr,t)           -> PathArrayRd(priming_array pr prime_set arr,
-                                                priming_tid pr prime_set t)
+    VarPath v                        -> VarPath (priming_variable pr prime_set v)
+  | Epsilon                          -> Epsilon
+  | SimplePath(addr)                 -> SimplePath(priming_addr pr prime_set addr)
+  | GetPath(mem,add_from,add_to)     -> GetPath(priming_mem pr prime_set mem,
+                                                priming_addr pr prime_set add_from,
+                                                priming_addr pr prime_set add_to)
+  | GetPathAt(mem,add_from,add_to,l) -> GetPathAt(priming_mem pr prime_set mem,
+                                                  priming_addr pr prime_set add_from,
+                                                  priming_addr pr prime_set add_to,
+                                                  priming_int pr prime_set l)
+  | PathArrayRd(arr,t)               -> PathArrayRd(priming_array pr prime_set arr,
+                                                    priming_tid pr prime_set t)
 
 
 and priming_mem (pr:bool) (prime_set:VarSet.t option) (m:mem) : mem =
@@ -1332,6 +1337,9 @@ and atom_to_str (expr:atom) : string =
   | LessEq(i1,i2)              -> sprintf "%s <= %s"
                                             (integer_to_str i1)
                                             (integer_to_str i2)
+  | GreaterEq(i1,i2)           -> sprintf "%s >= %s"
+                                            (integer_to_str i1)
+                                            (integer_to_str i2)
   | LessTid(t1,t2)             -> sprintf "%s < %s"
                                             (tid_to_str t1)
                                             (tid_to_str t2)
@@ -1341,9 +1349,6 @@ and atom_to_str (expr:atom) : string =
   | GreaterElem(e1,e2)         -> sprintf "%s > %s"
                                             (elem_to_str e1)
                                             (elem_to_str e2)
-  | GreaterEq(i1,i2)           -> sprintf "%s >= %s"
-                                            (integer_to_str i1)
-                                            (integer_to_str i2)
   | Eq(exp)                    -> eq_to_str (exp)
   | InEq(exp)                  -> diseq_to_str (exp)
   | BoolVar v                  -> variable_to_str v
@@ -1440,15 +1445,20 @@ and mem_to_str (expr:mem) : string =
 
 and path_to_str (expr:path) : string =
   match expr with
-    VarPath v                    -> variable_to_str v
-  | Epsilon                      -> sprintf "epsilon"
-  | SimplePath(addr)             -> sprintf "[ %s ]" (addr_to_str addr)
-  | GetPath(mem,add_from,add_to) -> sprintf "getp(%s,%s,%s)"
-                                              (mem_to_str mem)
-                                              (addr_to_str add_from)
-                                              (addr_to_str add_to)
-  | PathArrayRd(arr,t)           -> sprintf "%s%s" (arrays_to_str arr)
-                                                   (param_tid_to_str t)
+    VarPath v                        -> variable_to_str v
+  | Epsilon                          -> sprintf "epsilon"
+  | SimplePath(addr)                 -> sprintf "[ %s ]" (addr_to_str addr)
+  | GetPath(mem,add_from,add_to)     -> sprintf "getp(%s,%s,%s)"
+                                                  (mem_to_str mem)
+                                                  (addr_to_str add_from)
+                                                  (addr_to_str add_to)
+  | GetPathAt(mem,add_from,add_to,l) -> sprintf "getp(%s,%s,%s,%s)"
+                                                  (mem_to_str mem)
+                                                  (addr_to_str add_from)
+                                                  (addr_to_str add_to)
+                                                  (integer_to_str l)
+  | PathArrayRd(arr,t)               -> sprintf "%s%s" (arrays_to_str arr)
+                                                       (param_tid_to_str t)
 
 
 and set_to_str (expr:set) : string =
@@ -2066,12 +2076,16 @@ and get_vars_path (p:path)
   let get_vars_aux t = get_vars_tid t base in
   match p with
     VarPath v -> (base v) @ (Option.map_default get_vars_aux [] (var_th v))
-  | Epsilon                      -> []
-  | SimplePath(addr)             -> (get_vars_addr addr base)
-  | GetPath(mem,add_from,add_to) -> (get_vars_mem mem base) @
-                                    (get_vars_addr add_from base) @
-                                    (get_vars_addr add_to base)
-  | PathArrayRd(arr,t)           -> (get_vars_array arr base)
+  | Epsilon                          -> []
+  | SimplePath(addr)                 -> (get_vars_addr addr base)
+  | GetPath(mem,add_from,add_to)     -> (get_vars_mem mem base) @
+                                        (get_vars_addr add_from base) @
+                                        (get_vars_addr add_to base)
+  | GetPathAt(mem,add_from,add_to,l) -> (get_vars_mem mem base) @
+                                        (get_vars_addr add_from base) @
+                                        (get_vars_addr add_to base) @
+                                        (get_vars_int l base)
+  | PathArrayRd(arr,t)               -> (get_vars_array arr base)
 
 
 and get_vars_mem (m:mem)
@@ -2135,10 +2149,10 @@ and get_vars_atom (a:atom)
   | Less(i1,i2)                -> (get_vars_int i1 base) @ (get_vars_int i2 base)
   | Greater(i1,i2)             -> (get_vars_int i1 base) @ (get_vars_int i2 base)
   | LessEq(i1,i2)              -> (get_vars_int i1 base) @ (get_vars_int i2 base)
+  | GreaterEq(i1,i2)           -> (get_vars_int i1 base) @ (get_vars_int i2 base)
   | LessTid(t1,t2)             -> (get_vars_tid t1 base) @ (get_vars_tid t2 base)
   | LessElem(e1,e2)            -> (get_vars_elem e1 base) @ (get_vars_elem e2 base)
   | GreaterElem(e1,e2)         -> (get_vars_elem e1 base) @ (get_vars_elem e2 base)
-  | GreaterEq(i1,i2)           -> (get_vars_int i1 base) @ (get_vars_int i2 base)
   | Eq(exp)                    -> (get_vars_eq exp base)
   | InEq(exp)                  -> (get_vars_ineq exp base)
   | BoolVar v                  -> (base v) @
@@ -2547,13 +2561,17 @@ and voc_setelem (s:setelem) : tid list =
 
 and voc_path (p:path) : tid list =
   match p with
-    VarPath v                -> Option.map_default (fun x->[x]) [] (var_th v)
-  | Epsilon                  -> []
-  | SimplePath(addr)         -> (voc_addr addr)
-  | GetPath(mem,a_from,a_to) -> (voc_mem mem) @
-                                (voc_addr a_from) @
-                                (voc_addr a_to)
-  | PathArrayRd(arr,t)       -> (voc_array arr)
+    VarPath v                    -> Option.map_default (fun x->[x]) [] (var_th v)
+  | Epsilon                      -> []
+  | SimplePath(addr)             -> (voc_addr addr)
+  | GetPath(mem,a_from,a_to)     -> (voc_mem mem) @
+                                    (voc_addr a_from) @
+                                    (voc_addr a_to)
+  | GetPathAt(mem,a_from,a_to,l) -> (voc_mem mem) @
+                                    (voc_addr a_from) @
+                                    (voc_addr a_to) @
+                                    (voc_int l)
+  | PathArrayRd(arr,t)           -> (voc_array arr)
 
 
 and voc_mem (m:mem) : tid list =
@@ -2601,10 +2619,10 @@ and voc_atom (a:atom) : tid list =
   | Less(i1,i2)                -> (voc_int i1) @ (voc_int i2)
   | Greater(i1,i2)             -> (voc_int i1) @ (voc_int i2)
   | LessEq(i1,i2)              -> (voc_int i1) @ (voc_int i2)
+  | GreaterEq(i1,i2)           -> (voc_int i1) @ (voc_int i2)
   | LessTid(t1,t2)             -> (voc_tid t1) @ (voc_tid t2)
   | LessElem(e1,e2)            -> (voc_elem e1) @ (voc_elem e2)
   | GreaterElem(e1,e2)         -> (voc_elem e1) @ (voc_elem e2)
-  | GreaterEq(i1,i2)           -> (voc_int i1) @ (voc_int i2)
   | Eq(exp)                    -> (voc_eq exp)
   | InEq(exp)                  -> (voc_ineq exp)
   | BoolVar v                  -> Option.map_default (fun x->[x]) [] (var_th v)
@@ -2832,13 +2850,17 @@ and var_kind_setelem (kind:kind_t) (s:setelem) : term list =
 
 and var_kind_path (kind:kind_t) (p:path) : term list =
   match p with
-    VarPath v                    -> if (var_k v)= kind then [PathT p] else []
-  | Epsilon                      -> []
-  | SimplePath(addr)             -> (var_kind_addr kind addr)
-  | GetPath(mem,add_from,add_to) -> (var_kind_mem kind mem) @
-                                    (var_kind_addr kind add_from) @
-                                    (var_kind_addr kind add_to)
-  | PathArrayRd(arr,t)           -> (var_kind_array kind arr)
+    VarPath v                        -> if (var_k v)= kind then [PathT p] else []
+  | Epsilon                          -> []
+  | SimplePath(addr)                 -> (var_kind_addr kind addr)
+  | GetPath(mem,add_from,add_to)     -> (var_kind_mem kind mem) @
+                                        (var_kind_addr kind add_from) @
+                                        (var_kind_addr kind add_to)
+  | GetPathAt(mem,add_from,add_to,l) -> (var_kind_mem kind mem) @
+                                        (var_kind_addr kind add_from) @
+                                        (var_kind_addr kind add_to) @
+                                        (var_kind_int kind l)
+  | PathArrayRd(arr,t)               -> (var_kind_array kind arr)
 
 
 and var_kind_mem (kind:kind_t) (m:mem) : term list =
@@ -2898,14 +2920,14 @@ and var_kind_atom (kind:kind_t) (a:atom) : term list =
                                   (var_kind_int kind i2)
   | LessEq(i1,i2)              -> (var_kind_int kind i1) @
                                   (var_kind_int kind i2)
+  | GreaterEq(i1,i2)           -> (var_kind_int kind i1) @
+                                  (var_kind_int kind i2)
   | LessTid(t1,t2)             -> (var_kind_tid kind t1) @
                                   (var_kind_tid kind t2)
   | LessElem(e1,e2)            -> (var_kind_elem kind e1) @
                                   (var_kind_elem kind e2)
   | GreaterElem(e1,e2)         -> (var_kind_elem kind e1) @
                                   (var_kind_elem kind e2)
-  | GreaterEq(i1,i2)           -> (var_kind_int kind i1) @
-                                  (var_kind_int kind i2)
   | Eq(exp)                    -> (var_kind_eq kind exp)
   | InEq(exp)                  -> (var_kind_ineq kind exp)
   | BoolVar v                  -> if (var_k v) = kind then
@@ -3148,12 +3170,16 @@ and param_setelem (pfun:variable option -> tid option) (s:setelem) : setelem =
 
 and param_path (pfun:variable option -> tid option) (path:path) : path =
   match path with
-    VarPath v                    -> VarPath (set_var_th v (pfun (Some v)))
-  | Epsilon                      -> Epsilon
-  | SimplePath(addr)             -> SimplePath(param_addr_aux pfun addr)
-  | GetPath(mem,add_from,add_to) -> GetPath(param_mem pfun mem,
-                                            param_addr_aux pfun add_from,
-                                            param_addr_aux pfun add_to)
+    VarPath v                        -> VarPath (set_var_th v (pfun (Some v)))
+  | Epsilon                          -> Epsilon
+  | SimplePath(addr)                 -> SimplePath(param_addr_aux pfun addr)
+  | GetPath(mem,add_from,add_to)     -> GetPath(param_mem pfun mem,
+                                                param_addr_aux pfun add_from,
+                                                param_addr_aux pfun add_to)
+  | GetPathAt(mem,add_from,add_to,l) -> GetPathAt(param_mem pfun mem,
+                                                  param_addr_aux pfun add_from,
+                                                  param_addr_aux pfun add_to,
+                                                  param_int pfun l)
   | PathArrayRd(arr,t)           -> PathArrayRd(param_arrays pfun arr, t)
 
 
@@ -3219,14 +3245,14 @@ and param_atom (pfun:variable option -> tid option) (a:atom) : atom =
                                           param_int pfun i2)
   | LessEq(i1,i2)              -> LessEq(param_int pfun i1,
                                          param_int pfun i2)
+  | GreaterEq(i1,i2)           -> GreaterEq(param_int pfun i1,
+                                            param_int pfun i2)
   | LessTid(t1,t2)             -> LessTid(param_tid_aux pfun t1,
                                           param_tid_aux pfun t2)
   | LessElem(e1,e2)            -> LessElem(param_elem_aux pfun e1,
                                            param_elem_aux pfun e2)
   | GreaterElem(e1,e2)         -> GreaterElem(param_elem_aux pfun e1,
                                               param_elem_aux pfun e2)
-  | GreaterEq(i1,i2)           -> GreaterEq(param_int pfun i1,
-                                            param_int pfun i2)
   | Eq(exp)                    -> Eq(param_eq pfun exp)
   | InEq(exp)                  -> InEq(param_ineq pfun exp)
   | BoolVar v                  -> BoolVar (set_var_th v (pfun (Some v)))
@@ -3564,13 +3590,17 @@ and subst_tid_setelem (subs:tid_subst_t) (s:setelem) : setelem =
 
 and subst_tid_path (subs:tid_subst_t) (p:path) : path =
   match p with
-    VarPath v                    -> VarPath(set_var_th v
-                                  (Option.lift (subst_tid_th subs) (var_th v)))
-  | Epsilon                      -> Epsilon
-  | SimplePath(addr)             -> SimplePath(subst_tid_addr subs addr)
-  | GetPath(mem,add_from,add_to) -> GetPath(subst_tid_mem subs mem,
-                                            subst_tid_addr subs add_from,
-                                            subst_tid_addr subs add_to)
+    VarPath v                        -> VarPath(set_var_th v
+                                          (Option.lift (subst_tid_th subs) (var_th v)))
+  | Epsilon                          -> Epsilon
+  | SimplePath(addr)                 -> SimplePath(subst_tid_addr subs addr)
+  | GetPath(mem,add_from,add_to)     -> GetPath(subst_tid_mem subs mem,
+                                                subst_tid_addr subs add_from,
+                                                subst_tid_addr subs add_to)
+  | GetPathAt(mem,add_from,add_to,l) -> GetPathAt(subst_tid_mem subs mem,
+                                                  subst_tid_addr subs add_from,
+                                                  subst_tid_addr subs add_to,
+                                                  subst_tid_int subs l)
   | PathArrayRd(arr,t)           -> PathArrayRd(subst_tid_array subs arr, t)
 
 
@@ -3651,14 +3681,14 @@ and subst_tid_atom (subs:tid_subst_t) (a:atom) : atom =
                                           subst_tid_int subs i2)
   | LessEq(i1,i2)              -> LessEq(subst_tid_int subs i1,
                                          subst_tid_int subs i2)
+  | GreaterEq(i1,i2)           -> GreaterEq(subst_tid_int subs i1,
+                                            subst_tid_int subs i2)
   | LessTid(t1,t2)             -> LessTid(subst_tid_th subs t1,
                                           subst_tid_th subs t2)
   | LessElem(e1,e2)            -> LessElem(subst_tid_elem subs e1,
                                            subst_tid_elem subs e2)
   | GreaterElem(e1,e2)         -> GreaterElem(subst_tid_elem subs e1,
                                               subst_tid_elem subs e2)
-  | GreaterEq(i1,i2)           -> GreaterEq(subst_tid_int subs i1,
-                                            subst_tid_int subs i2)
   | Eq(exp)                    -> Eq(subst_tid_eq subs exp)
   | InEq(exp)                  -> InEq(subst_tid_ineq subs exp)
   | BoolVar v                  -> BoolVar(set_var_th v
@@ -4300,11 +4330,12 @@ let required_sorts (phi:formula) : sort list =
 
   and req_p (p:path) : SortSet.t =
     match p with
-    | VarPath _         -> single Path
-    | Epsilon           -> single Path
-    | SimplePath a      -> append Path [req_a a]
-    | GetPath (m,a1,a2) -> append Path [req_m m;req_a a1;req_a a2]
-    | PathArrayRd (a,t) -> append Path [req_arr a;req_t t]
+    | VarPath _             -> single Path
+    | Epsilon               -> single Path
+    | SimplePath a          -> append Path [req_a a]
+    | GetPath (m,a1,a2)     -> append Path [req_m m;req_a a1;req_a a2]
+    | GetPathAt (m,a1,a2,l) -> append Path [req_m m;req_a a1;req_a a2;req_i l]
+    | PathArrayRd (a,t)     -> append Path [req_arr a;req_t t]
 
   and req_si (s:setint) : SortSet.t =
     match s with

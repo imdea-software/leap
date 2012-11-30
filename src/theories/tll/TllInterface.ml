@@ -233,6 +233,7 @@ and path_to_tll_path (p:Expr.path) : Tll.path =
   | Expr.GetPath (m,a1,a2) -> Tll.GetPath (mem_to_tll_mem m,
                                            addr_to_tll_addr a1,
                                            addr_to_tll_addr a2)
+  | Expr.GetPathAt _       -> raise(UnsupportedTllExpr(Expr.path_to_str p))
   | Expr.PathArrayRd _     -> raise(UnsupportedTllExpr(Expr.path_to_str p))
 
 

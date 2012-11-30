@@ -87,7 +87,7 @@ module type S =
         VarPath           of variable
       | Epsilon
       | SimplePath        of addr
-      | GetPath           of mem * addr * addr
+      | GetPathAt         of mem * addr * addr * level
     and mem =
         VarMem            of variable
       | Emp
@@ -145,6 +145,7 @@ module type S =
       | Getp
       | Set2Elem
       | ElemOrder
+      | LevelOrder
       | OrderedList
 
 
@@ -334,7 +335,7 @@ module Make (K : Level.S) : S =
         VarPath           of variable
       | Epsilon
       | SimplePath        of addr
-      | GetPath           of mem * addr * addr
+      | GetPathAt         of mem * addr * addr * level
     and mem =
         VarMem            of variable
       | Emp
@@ -391,6 +392,7 @@ module Make (K : Level.S) : S =
       | Getp
       | Set2Elem
       | ElemOrder
+      | LevelOrder
       | OrderedList
 
     exception WrongType of term
@@ -583,10 +585,11 @@ module Make (K : Level.S) : S =
         | SetdiffElem(st1,st2) -> (get_varset_setelem st1) @@ (get_varset_setelem st2)
     and get_varset_path p =
       match p with
-          VarPath v          -> S.singleton v @@ get_varset_from_param v
-        | Epsilon            -> S.empty
-        | SimplePath(a)      -> (get_varset_addr a)
-        | GetPath(m,a1,a2)   -> (get_varset_mem m) @@ (get_varset_addr a1) @@ (get_varset_addr a2)
+          VarPath v            -> S.singleton v @@ get_varset_from_param v
+        | Epsilon              -> S.empty
+        | SimplePath(a)        -> (get_varset_addr a)
+        | GetPathAt(m,a1,a2,l) -> (get_varset_mem m) @@ (get_varset_addr a1) @@
+                                  (get_varset_addr a2) @@ (get_varset_level l)
     and get_varset_mem m =
       match m with
           VarMem v           -> S.singleton v @@ get_varset_from_param v
@@ -925,10 +928,11 @@ module Make (K : Level.S) : S =
         | SetdiffElem(st1,st2) -> (is_setelem_var st1) && (is_setelem_var st2)
     and is_path_flat t =
       match t with
-          VarPath _ -> true
-        | Epsilon   -> true
-        | SimplePath(a)    -> is_addr_var a
-        | GetPath(m,a1,a2) -> (is_mem_var m) && (is_addr_var a1) && (is_addr_var a2)
+          VarPath _            -> true
+        | Epsilon              -> true
+        | SimplePath(a)        -> is_addr_var a
+        | GetPathAt(m,a1,a2,l) -> (is_mem_var m) && (is_addr_var a1) &&
+                                  (is_addr_var a2) && (is_int_var l)
     and is_mem_flat t =
       match t with
           VarMem _ -> true
@@ -1051,7 +1055,7 @@ module Make (K : Level.S) : S =
                                         (level_to_str i1) (level_to_str i2)
       | LessElem(e1,e2)            -> Printf.sprintf "%s < %s"
                                         (elem_to_str e1) (elem_to_str e2)
-      | GreaterElem(e1,e2)         -> Printf.sprintf "%s < %s"
+      | GreaterElem(e1,e2)         -> Printf.sprintf "%s > %s"
                                         (elem_to_str e1) (elem_to_str e2)
       | Eq(exp)                    -> eq_to_str (exp)
       | InEq(exp)                  -> diseq_to_str (exp)
@@ -1086,11 +1090,14 @@ module Make (K : Level.S) : S =
         | HavocLevel     -> Printf.sprintf "havocLevel()"
     and path_to_str expr =
       match expr with
-          VarPath(v) -> variable_to_str v
-        | Epsilon -> Printf.sprintf "epsilon"
-        | SimplePath(addr) -> Printf.sprintf "[ %s ]" (addr_to_str addr)
-        | GetPath(mem,add_from,add_to) -> Printf.sprintf "getp(%s,%s,%s)"
-      (mem_to_str mem) (addr_to_str add_from) (addr_to_str add_to)
+          VarPath(v)                       -> variable_to_str v
+        | Epsilon                          -> Printf.sprintf "epsilon"
+        | SimplePath(addr)                 -> Printf.sprintf "[ %s ]" (addr_to_str addr)
+        | GetPathAt(mem,add_from,add_to,l) -> Printf.sprintf "getp(%s,%s,%s,%s)"
+                                                (mem_to_str mem)
+                                                (addr_to_str add_from)
+                                                (addr_to_str add_to)
+                                                (level_to_str l)
     and set_to_str e =
       match e with
           VarSet(v)  -> variable_to_str v
@@ -1408,12 +1415,13 @@ module Make (K : Level.S) : S =
 
     and voc_path (p:path) : tid list =
       match p with
-        VarPath v                -> Option.map_default (fun x->[x]) [] (var_th v)
-      | Epsilon                  -> []
-      | SimplePath(addr)         -> (voc_addr addr)
-      | GetPath(mem,a_from,a_to) -> (voc_mem mem) @
-                                    (voc_addr a_from) @
-                                    (voc_addr a_to)
+        VarPath v                    -> Option.map_default (fun x->[x]) [] (var_th v)
+      | Epsilon                      -> []
+      | SimplePath(addr)             -> (voc_addr addr)
+      | GetPathAt(mem,a_from,a_to,l) -> (voc_mem mem) @
+                                        (voc_addr a_from) @
+                                        (voc_addr a_to) @
+                                        (voc_level l)
 
 
     and voc_mem (m:mem) : tid list =
@@ -1661,10 +1669,10 @@ module Make (K : Level.S) : S =
 
       and req_p (p:path) : SortSet.t =
         match p with
-        | VarPath _         -> single Path
-        | Epsilon           -> single Path
-        | SimplePath a      -> append Path [req_a a]
-        | GetPath (m,a1,a2) -> append Path [req_m m;req_a a1;req_a a2]
+        | VarPath _             -> single Path
+        | Epsilon               -> single Path
+        | SimplePath a          -> append Path [req_a a]
+        | GetPathAt (m,a1,a2,l) -> append Path [req_m m;req_a a1;req_a a2;req_lv l]
 
       and req_st (s:setth) : SortSet.t =
         match s with
@@ -1810,10 +1818,10 @@ module Make (K : Level.S) : S =
 
       and ops_p (p:path) : OpsSet.t =
         match p with
-        | VarPath _         -> empty
-        | Epsilon           -> empty
-        | SimplePath a      -> ops_a a
-        | GetPath (m,a1,a2) -> append Getp [ops_m m;ops_a a1;ops_a a2]
+        | VarPath _             -> empty
+        | Epsilon               -> empty
+        | SimplePath a          -> ops_a a
+        | GetPathAt (m,a1,a2,l) -> append Getp [ops_m m;ops_a a1;ops_a a2;ops_lv l]
 
       and ops_st (s:setth) : OpsSet.t =
         match s with

@@ -1588,6 +1588,18 @@ path :
       let first = parser_check_type check_type_addr $5 Expr.Addr get_str_expr in
       let last  = parser_check_type check_type_addr $7 Expr.Addr get_str_expr in
         Expr.GetPath(h,first,last)
+    }
+  | GETP OPEN_PAREN term COMMA term COMMA term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "getp(%s,%s,%s,%s)" (Expr.term_to_str $3)
+                                                        (Expr.term_to_str $5)
+                                                        (Expr.term_to_str $7)
+                                                        (Expr.term_to_str $9) in
+      let h     = parser_check_type check_type_mem  $3 Expr.Mem get_str_expr in
+      let first = parser_check_type check_type_addr $5 Expr.Addr get_str_expr in
+      let last  = parser_check_type check_type_addr $7 Expr.Addr get_str_expr in
+      let l     = parser_check_type check_type_int $9 Expr.Int get_str_expr in
+        Expr.GetPathAt(h,first,last,l)
   }
 
 

@@ -126,12 +126,23 @@ module Make (K : Level.S) : S =
 
     let z3_level_preamble (buf:B.t) : unit =
       B.add_string buf
-        ( "(declare-datatypes () ((" ^level_s );
+        ( "(declare-datatypes () ((" ^level_s);
       for i = 0 to (K.level -1) do
         B.add_string buf ( " " ^(ll i))
       done;
-      B.add_string buf (")))\n")
-
+      B.add_string buf (")))\n");
+      let str = ref (" " ^ ll (K.level-1)) in
+      for i = 0 to (K.level-2) do
+        str :=  "\n  (ite (= l " ^(ll i)^ ") " ^(ll (i+1))^ " " ^(!str)^ ")"
+      done;
+      B.add_string buf
+        ( "(define-fun lsucc ((l " ^level_s^ ")) " ^level_s ^(!str)^ ")\n");
+      let str = ref (" " ^ ll 0) in
+      for i = (K.level-1) downto 1 do
+        str :=  "\n  (ite (= l " ^(ll i)^ ") " ^(ll (i-1))^ " " ^(!str)^ ")"
+      done;
+      B.add_string buf
+        ( "(define-fun lpred ((l " ^level_s^ ")) " ^level_s ^(!str)^ ")\n")
 
 
     (* (define-type address (scalar null aa_1 aa_2 aa_3 aa_4 aa_5))   *)
@@ -523,18 +534,18 @@ module Make (K : Level.S) : S =
 
 
 
-    (* (define cell_lock::(-> cell level tid cell) *)
+    (* (define cell_lock_at::(-> cell level tid cell) *)
     let z3_cell_lock (buf:B.t) : unit =
       B.add_string buf
-        ("(define-fun cell_lock ((c " ^cell_s^ ") (l " ^level_s^ ") (t " ^tid_s^ ")) " ^cell_s^ "\n" ^
+        ("(define-fun cell_lock_at ((c " ^cell_s^ ") (l " ^level_s^ ") (t " ^tid_s^ ")) " ^cell_s^ "\n" ^
          "  (mkcell (data c) (next c) (store (lock c) l t)))\n")
 
 
 
-    (* (define cell_unlock::(-> cell level cell) *)
+    (* (define cell_unlock_at::(-> cell level cell) *)
     let z3_cell_unlock_def (buf:B.t) : unit =
       B.add_string buf
-        ("(define-fun cell_unlock ((c " ^cell_s^ ") (l " ^level_s^ ")) " ^cell_s^ "\n" ^
+        ("(define-fun cell_unlock_at ((c " ^cell_s^ ") (l " ^level_s^ ")) " ^cell_s^ "\n" ^
          "  (mkcell (data c) (next c) (store (lock c) l NoThread)))\n")
 
 
@@ -960,11 +971,11 @@ module Make (K : Level.S) : S =
            "       (getp"^ strnext ^" h from to l)))\n")
       done ;
       B.add_string buf
-        ("(define-fun getp ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ") (l " ^level_s^ ")) " ^path_s^ "\n" ^
+        ("(define-fun getp_at ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ") (l " ^level_s^ ")) " ^path_s^ "\n" ^
          "  (getp1 h from to l))\n");
       B.add_string buf
         ("(define-fun isgetp ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ") (l " ^level_s^ ") (p " ^path_s^ ")) " ^bool_s^ "\n" ^
-         "  (eqpath p (getp h from to l)))\n")
+         "  (eqpath p (getp_at h from to l)))\n")
 
 
 
@@ -972,7 +983,7 @@ module Make (K : Level.S) : S =
       B.add_string buf
         ( "(define-fun reach ((h " ^heap_s^ ") (from " ^addr_s^ ") " ^
           "(to " ^addr_s^ ") (l " ^level_s^ ") (p " ^path_s^ ")) " ^bool_s^ "\n" ^
-          "  (and (= (getp h from to l) p) (not (= p epsilon))))\n"
+          "  (and (= (getp_at h from to l) p) (not (= p epsilon))))\n"
         )
 
 
@@ -1418,14 +1429,16 @@ module Make (K : Level.S) : S =
 
     and pathterm_to_str (p:Expr.path) : string =
       match p with
-          Expr.VarPath v       -> variable_invocation_to_str v
-        | Expr.Epsilon         -> "epsilon"
-        | Expr.SimplePath a    -> Printf.sprintf "(singlepath %s)"
-                                        (addrterm_to_str a)
-        | Expr.GetPath(m,a1,a2)-> Printf.sprintf "(getp %s %s %s)"
-                                        (memterm_to_str m)
-                                        (addrterm_to_str a1)
-                                        (addrterm_to_str a2)
+          Expr.VarPath v            -> variable_invocation_to_str v
+        | Expr.Epsilon              -> "epsilon"
+        | Expr.SimplePath a         -> Printf.sprintf "(singlepath %s)"
+                                              (addrterm_to_str a)
+        | Expr.GetPathAt(m,a1,a2,l )-> Printf.sprintf "(getp_at %s %s %s %s)"
+                                              (memterm_to_str m)
+                                              (addrterm_to_str a1)
+                                              (addrterm_to_str a2)
+                                              (levelterm_to_str l)
+
 
 
     and memterm_to_str (m:Expr.mem) : string =

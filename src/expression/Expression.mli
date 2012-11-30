@@ -159,6 +159,7 @@ and path =
   | Epsilon
   | SimplePath    of addr
   | GetPath       of mem * addr * addr
+  | GetPathAt     of mem * addr * addr * integer
   | PathArrayRd   of arrays * tid
 
 and mem =

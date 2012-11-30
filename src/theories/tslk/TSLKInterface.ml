@@ -247,13 +247,15 @@ module Make (TSLK : TSLKExpression.S) =
 
     and path_to_tslk_path (p:Expr.path) : TSLK.path =
       match p with
-        Expr.VarPath v         -> TSLK.VarPath (variable_to_tslk_var v)
-      | Expr.Epsilon           -> TSLK.Epsilon
-      | Expr.SimplePath a      -> TSLK.SimplePath (addr_to_tslk_addr a)
-      | Expr.GetPath (m,a1,a2) -> TSLK.GetPath (mem_to_tslk_mem m,
-                                               addr_to_tslk_addr a1,
-                                               addr_to_tslk_addr a2)
-      | Expr.PathArrayRd _     -> raise(UnsupportedTSLKExpr(Expr.path_to_str p))
+        Expr.VarPath v             -> TSLK.VarPath (variable_to_tslk_var v)
+      | Expr.Epsilon               -> TSLK.Epsilon
+      | Expr.SimplePath a          -> TSLK.SimplePath (addr_to_tslk_addr a)
+      | Expr.GetPath _             -> raise(UnsupportedTSLKExpr(Expr.path_to_str p))
+      | Expr.GetPathAt (m,a1,a2,l) -> TSLK.GetPathAt (mem_to_tslk_mem m,
+                                                      addr_to_tslk_addr a1,
+                                                      addr_to_tslk_addr a2,
+                                                      int_to_tslk_level l)
+      | Expr.PathArrayRd _         -> raise(UnsupportedTSLKExpr(Expr.path_to_str p))
 
 
     and mem_to_tslk_mem (m:Expr.mem) : TSLK.mem =
@@ -317,7 +319,7 @@ module Make (TSLK : TSLKExpression.S) =
       let tid     = tid_to_tslk_tid         in
       let setth   = setth_to_tslk_setth     in
       let setelem = setelem_to_tslk_setelem in
-      let integ   = int_to_tslk_level         in
+      let integ   = int_to_tslk_level       in
       let term    = term_to_tslk_term       in
       match a with
         Expr.Append (p1,p2,p3)    -> TSLK.Append (path p1,path p2,path p3)
