@@ -6,7 +6,8 @@ module Expr = Expression
 
 type inv_t = System.var_table_t * Tag.f_tag option * Expr.formula
 
-type results_t = int * int * int * int * int * int * int * int * string
+type results_t = int * int * int * int * int * int * int * int *
+                 int * int * int * int * string
 
 type vc_status = Unverified | NotValid | Valid | Unneeded
 
@@ -73,8 +74,12 @@ let report_gen_sup_inv_to_str (gen_inv:Expr.formula) : string =
 
 
 let report_results_to_str (res:results_t) : string =
-  let (total, pos_calls, pos_sats, num_calls, num_sats,
-       tll_calls, tll_sats, remains, file) = res in
+  let (total, pos_calls,  pos_sats,
+              num_calls,  num_sats,
+              tll_calls,  tll_sats,
+              tslk_calls, tslk_sats,
+              tsl_calls,  tsl_sats,
+              remains, file) = res in
   let file_str = 
     if file <> "" then
       "| Output file: " ^ file ^ "\n" ^
@@ -90,6 +95,10 @@ let report_results_to_str (res:results_t) : string =
   "| Numeric DP verified:  " ^ (string_of_int num_sats) ^ "\n" ^
   "| TL3 DP calls:         " ^ (string_of_int tll_calls) ^ "\n" ^
   "| TL3 DP verified:      " ^ (string_of_int tll_sats) ^ "\n" ^
+  "| TSLK DP calls:        " ^ (string_of_int tslk_calls) ^ "\n" ^
+  "| TSLK DP verified:     " ^ (string_of_int tslk_sats) ^ "\n" ^
+  "| TSL DP calls:         " ^ (string_of_int tsl_calls) ^ "\n" ^
+  "| TSL DP verified:      " ^ (string_of_int tsl_sats) ^ "\n" ^
   "+---------------------------------------------------------------------\n" ^
   "| Remains unverified:   " ^ (string_of_int remains) ^ "\n" ^
   "+---------------------------------------------------------------------\n"
@@ -97,7 +106,7 @@ let report_results_to_str (res:results_t) : string =
 
 let report_vc_run_header_to_str (unit) : string =
   table_divider_str ^
-  "|  ID | Loc |  Time(s)  | Num |  Time(s)  | TL3 |  Time(s)  | TSK |  Time(s)  |\n" ^
+  "|  ID | Loc |  Time(s)  | Num |  Time(s)  | TL3 |  Time(s)  | TSK |  Time(s)  | TSL |  Time(s)  |\n" ^
   table_divider_str
 
 
@@ -105,6 +114,7 @@ let report_vc_run_to_str (id:int) (pos_status:vc_status)  (pos_time:float)
                                   (num_status:vc_status)  (num_time:float)
                                   (tll_status:vc_status)  (tll_time:float)
                                   (tslk_status:vc_status) (tslk_time:float)
+                                  (tsl_status:vc_status)  (tsl_time:float)
                                   (desc:string) (filename:string) : string =
   let status_to_str st = match st with
                            Unverified -> "  ?  "
@@ -118,12 +128,13 @@ let report_vc_run_to_str (id:int) (pos_status:vc_status)  (pos_time:float)
     "|" ^ (status_to_str num_status)  ^ "|" ^ (time_to_str num_time)  ^
     "|" ^ (status_to_str tll_status)  ^ "|" ^ (time_to_str tll_time)  ^
     "|" ^ (status_to_str tslk_status) ^ "|" ^ (time_to_str tslk_time) ^
+    "|" ^ (status_to_str tsl_status)  ^ "|" ^ (time_to_str tsl_time)  ^
     "| " ^ (desc) ^ "\n" ^
     table_divider_str
 
 
 let report_analysis_time_to_str (time:float) : string =
-  "| Total analysis time:                                             "^(time_to_str time)^"|\n" ^
+  "| Total analysis time:                                                                 "^(time_to_str time)^"|\n" ^
   table_divider_str
 
 
@@ -173,9 +184,13 @@ let report_vc_run (id:int) (pos_status:vc_status)  (pos_time:float)
                            (num_status:vc_status)  (num_time:float)
                            (tll_status:vc_status)  (tll_time:float)
                            (tslk_status:vc_status) (tslk_time:float)
+                           (tsl_status:vc_status)  (tsl_time:float)
                            (desc:string) (filename:string) : unit =
-  print_string (report_vc_run_to_str id pos_status pos_time num_status num_time
-                                        tll_status tll_time tslk_status tslk_time
+  print_string (report_vc_run_to_str id pos_status pos_time
+                                        num_status num_time
+                                        tll_status tll_time
+                                        tslk_status tslk_time
+                                        tsl_status tsl_time
                                         desc filename);
   flush stdout
 

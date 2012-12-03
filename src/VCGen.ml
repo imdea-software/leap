@@ -244,7 +244,8 @@ struct
       mutable pos_time  : float  ;    (** Pos DP time       *)
       mutable num_time  : float  ;    (** Num DP time       *)
       mutable tll_time  : float  ;    (** TLL DP time       *)
-      mutable tslk_time : float  ;    (** TLL DP time       *)
+      mutable tslk_time : float  ;    (** TSLK DP time      *)
+      mutable tsl_time  : float  ;    (** TSL DP time       *)
     }
   
   type formula_table_t =
@@ -1596,6 +1597,7 @@ struct
                        num_time  = 0.0;
                        tll_time  = 0.0;
                        tslk_time = 0.0;
+                       tsl_time  = 0.0;
                      } in
       Hashtbl.add tbl !i (f, p_only, new_preds, Unverified,
                           info.stac, info.smp, f_status);
@@ -1772,23 +1774,23 @@ struct
         end
     end else (Unneeded, 0, 0, 0.0)
 
-(*
-  let call_tslk_dp (phi    : E.formula)
-                   (stac   : Tac.solve_tactic_t option)
-                   (cutoff : SmpTslk.cutoff_strategy)
-                   (status : valid_t) : (valid_t * int * int * float) =
+
+(* TUKA: Repair this function *)
+  let call_tsl_dp (phi    : E.formula)
+                  (stac   : Tac.solve_tactic_t option)
+                  (cutoff : Smp.cutoff_strategy)
+                  (status : valid_t) : (valid_t * int * int * float) =
     assert(isInitialized());
+    let _ = print_endline "ENTERING..." in
     if status = Unverified || status = NotValid then begin
-      let k = 3 in (* Compute needed k *)
-      let module K = struct let level = k end in
-      let module TSLKExpr = TSLKExpression.Make(K) in
+      let _ = print_endline "WILL PERFORM THE CHECK..." in
+      let module TSLKExpr = TSLKS.TslkExp in
       let module TSLKIntf = TSLKInterface.Make(TSLKExpr) in
-      let module Hola = TSLK with module TslkExp = TSLKExpr in;
-      let tll_phi = TSLKIntf.formula_to_tslk_formula phi in
+      let tslk_phi = TSLKIntf.formula_to_tslk_formula phi in
       let timer = new LeapLib.timer in
       timer#start;
-      let valid, calls = TSLK.is_valid_plus_info
-                           solverInfo.prog_lines stac cutoff tll_phi in
+      let valid, calls = TSLKS.is_valid_plus_info
+                           solverInfo.prog_lines stac cutoff tslk_phi in
       timer#stop;
       if valid then
         (Checked, calls, 1, timer#elapsed_time)
@@ -1798,9 +1800,8 @@ struct
           (NotValid, calls, 0, timer#elapsed_time)
         end
     end else (Unneeded, 0, 0, 0.0)
-*)
-
-  
+ 
+ 
   let apply_dp_on_table (vc_tbl:formula_table_t) (header:string) : bool =
     assert(isInitialized());
     let analysis_timer = new LeapLib.timer in
@@ -1813,6 +1814,8 @@ struct
     let num_sats    = ref 0 in
     let tll_calls   = ref 0 in
     let tll_sats    = ref 0 in
+    let tsl_calls   = ref 0 in
+    let tsl_sats    = ref 0 in
     let tslk_calls  = ref 0 in
     let tslk_sats   = ref 0 in
     (* Set the SMT solvers *)
@@ -1889,12 +1892,32 @@ struct
           (new_status, time)
         end else (tll_status, 0.0) in
 
+      (* Call TSL DP *)
+      let tsl_status, tsl_time =
+        if apply_tsl_dp() then begin
+          let prev_st = if num_status = Unneeded then pos_status else num_status in
+          let new_status, calls, sats, time =
+            call_tsl_dp f stac (vcgen_to_smp_cutoff cutoff) prev_st in
+          tsl_calls := !tsl_calls + calls;
+          tsl_sats := !tsl_sats + sats;
+          let st = if new_status = Unneeded then
+                     pos_status
+                   else
+                     (desc.tsl_time <- time; new_status) in
+          Hashtbl.replace vc_tbl i (f, p_f, preds, st, stac, cutoff, desc);
+          (new_status, time)
+        end else (tll_status, 0.0) in
+
+
       (* We report the results *)
       Report.report_vc_run i
         (to_vc_status pos_status)  pos_time
         (to_vc_status num_status)  num_time
         (to_vc_status tll_status)  tll_time
-        (to_vc_status tslk_status) tslk_time desc.desc "";
+        (to_vc_status tslk_status) tslk_time
+        (to_vc_status tsl_status)  tsl_time desc.desc "";
+      (* TODO: Extend this section to get detailed information
+               for TSL and TSLK *)
       if solverInfo.detailed_desc.detFolder <> "" then
         let time_list = [("POS", desc.pos_time);
                          ("NUM", desc.num_time);
@@ -1908,12 +1931,18 @@ struct
       end with _ -> ()
     done;
     (* ) vc_tbl; *)
-    let remains = total_vcs - (!pos_sats + !num_sats + !tll_sats) in
+    let remains = total_vcs -
+                    (!pos_sats + !num_sats +
+                     !tll_sats + !tslk_sats + !tsl_sats) in
     output_results vc_tbl solverInfo.out_file header;
     analysis_timer#stop;
     Report.report_analysis_time (analysis_timer#elapsed_time);
-    Report.report_results (total_vcs, !pos_calls, !pos_sats,
-      !num_calls, !num_sats, !tll_calls, !tll_sats, 
+    Report.report_results (total_vcs,
+      !pos_calls,  !pos_sats,
+      !num_calls,  !num_sats,
+      !tll_calls,  !tll_sats,
+      !tslk_calls, !tslk_sats,
+      !tsl_calls,  !tsl_sats,
       remains, solverInfo.out_file);
     remains = 0
   
