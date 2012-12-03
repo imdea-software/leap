@@ -1308,6 +1308,16 @@ set :
       let a = parser_check_type check_type_addr $5 Expr.Addr get_str_expr in
         Expr.AddrToSet(h,a)
     }
+  | ADDR2SET OPEN_PAREN term COMMA term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "addr2set(%s,%s,%s)" (Expr.term_to_str $3)
+                                                         (Expr.term_to_str $5)
+                                                         (Expr.term_to_str $7) in
+      let h = parser_check_type check_type_mem  $3 Expr.Mem get_str_expr in
+      let a = parser_check_type check_type_addr $5 Expr.Addr get_str_expr in
+      let l = parser_check_type check_type_int $7 Expr.Int get_str_expr in
+        Expr.AddrToSetAt(h,a,l)
+    }
 
 
 /* ELEM terms */

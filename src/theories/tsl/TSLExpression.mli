@@ -41,7 +41,7 @@ and set =
   | Intr              of set * set
   | Setdiff           of set * set
   | PathToSet         of path
-  | AddrToSet         of mem * addr
+  | AddrToSet         of mem * addr * integer
 and tid =
     VarTh             of variable
   | NoThid
@@ -57,7 +57,6 @@ and addr =
     VarAddr           of variable
   | Null
   | NextAt            of cell * integer
-  | FirstLocked       of mem * path
   | AddrArrRd         of addrarr * integer
 (*  | Malloc of elem * addr * tid *)
 and cell =
@@ -86,7 +85,7 @@ and path =
     VarPath           of variable
   | Epsilon
   | SimplePath        of addr
-  | GetPath           of mem * addr * addr
+  | GetPath           of mem * addr * addr * integer
 and mem =
     VarMem            of variable
   | Emp
@@ -108,7 +107,7 @@ and tidarr =
   | TidArrayUp        of tidarr * integer * tid
 and atom =
     Append            of path * path * path
-  | Reach             of mem * addr * addr * path
+  | Reach             of mem * addr * addr * integer * path
   | OrderList         of mem * addr * addr
   | In                of addr * set
   | SubsetEq          of set  * set

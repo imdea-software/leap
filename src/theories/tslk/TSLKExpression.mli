@@ -41,7 +41,7 @@ module type S =
       | Intr              of set * set
       | Setdiff           of set * set
       | PathToSet         of path
-      | AddrToSet         of mem * addr
+      | AddrToSet         of mem * addr * level
     and tid =
         VarTh             of variable
       | NoThid

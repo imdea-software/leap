@@ -45,7 +45,7 @@ and set =
   | Intr              of set * set
   | Setdiff           of set * set
   | PathToSet         of path
-  | AddrToSet         of mem * addr
+  | AddrToSet         of mem * addr * integer
 and tid =
     VarTh             of variable
   | NoThid
@@ -61,7 +61,6 @@ and addr =
     VarAddr           of variable
   | Null
   | NextAt            of cell * integer
-  | FirstLocked       of mem * path
   | AddrArrRd         of addrarr * integer
 (*  | Malloc of elem * addr * tid *)
 and cell =
@@ -90,7 +89,7 @@ and path =
     VarPath           of variable
   | Epsilon
   | SimplePath        of addr
-  | GetPath           of mem * addr * addr
+  | GetPath           of mem * addr * addr * integer
 and mem =
     VarMem            of variable
   | Emp
@@ -112,7 +111,7 @@ and tidarr =
   | TidArrayUp        of tidarr * integer * tid
 and atom =
     Append            of path * path * path
-  | Reach             of mem * addr * addr * path
+  | Reach             of mem * addr * addr * integer * path
   | OrderList         of mem * addr * addr
   | In                of addr * set
   | SubsetEq          of set  * set
@@ -290,14 +289,16 @@ let get_varset_from_param (v:variable) : S.t =
 
 let rec get_varset_set s =
   match s with
-      VarSet v       -> S.singleton v @@ get_varset_from_param v
-    | EmptySet       -> S.empty
-    | Singl(a)       -> get_varset_addr a
-    | Union(s1,s2)   -> (get_varset_set s1) @@ (get_varset_set s2)
-    | Intr(s1,s2)    -> (get_varset_set s1) @@ (get_varset_set s2)
-    | Setdiff(s1,s2) -> (get_varset_set s1) @@ (get_varset_set s2)
-    | PathToSet(p)   -> get_varset_path p
-    | AddrToSet(m,a) -> (get_varset_mem m) @@ (get_varset_addr a)
+      VarSet v         -> S.singleton v @@ get_varset_from_param v
+    | EmptySet         -> S.empty
+    | Singl(a)         -> get_varset_addr a
+    | Union(s1,s2)     -> (get_varset_set s1) @@ (get_varset_set s2)
+    | Intr(s1,s2)      -> (get_varset_set s1) @@ (get_varset_set s2)
+    | Setdiff(s1,s2)   -> (get_varset_set s1) @@ (get_varset_set s2)
+    | PathToSet(p)     -> get_varset_path p
+    | AddrToSet(m,a,l) -> (get_varset_mem m)  @@
+                          (get_varset_addr a) @@
+                          (get_varset_integer l)
 and get_varset_tid th =
   match th with
       VarTh v            -> S.singleton v @@ get_varset_from_param v
@@ -316,7 +317,6 @@ and get_varset_addr a =
       VarAddr v        -> S.singleton v @@ get_varset_from_param v
     | Null             -> S.empty
     | NextAt (c,l)     -> (get_varset_cell c) @@ (get_varset_integer l)
-    | FirstLocked(m,p) -> (get_varset_mem m) @@ (get_varset_path p)
     | AddrArrRd (aa,i) -> (get_varset_addrarr aa) @@ (get_varset_integer i)
 (*    | Malloc(e,a,th)   -> (get_varset_elem e) @@ (get_varset_addr a) @@  (get_varset_tid th) *)
 and get_varset_cell c = match c with
@@ -350,7 +350,10 @@ and get_varset_path p =
       VarPath v          -> S.singleton v @@ get_varset_from_param v
     | Epsilon            -> S.empty
     | SimplePath(a)      -> (get_varset_addr a)
-    | GetPath(m,a1,a2)   -> (get_varset_mem m) @@ (get_varset_addr a1) @@ (get_varset_addr a2)
+    | GetPath(m,a1,a2,l) -> (get_varset_mem m)   @@
+                            (get_varset_addr a1) @@
+                            (get_varset_addr a2) @@
+                            (get_varset_integer l)
 and get_varset_mem m =
   match m with
       VarMem v           -> S.singleton v @@ get_varset_from_param v
@@ -382,8 +385,9 @@ and get_varset_atom a =
   match a with
       Append(p1,p2,p3)       -> (get_varset_path p1) @@ (get_varset_path p2) @@
                                 (get_varset_path p3)
-    | Reach(m,a1,a2,p)       -> (get_varset_mem m) @@ (get_varset_addr a1) @@
-                                (get_varset_addr a2) @@ (get_varset_path p)
+    | Reach(m,a1,a2,l,p)     -> (get_varset_mem m) @@ (get_varset_addr a1) @@
+                                (get_varset_addr a2) @@ (get_varset_integer l) @@
+                                (get_varset_path p)
     | OrderList(m,a1,a2)     -> (get_varset_mem m) @@ (get_varset_addr a1) @@
                                 (get_varset_addr a2)
     | In(a,s)                -> (get_varset_addr a) @@ (get_varset_set s)
@@ -483,7 +487,7 @@ let rec get_termset_atom (a:atom) : TermSet.t =
   let add_list = List.fold_left (fun s e -> TermSet.add e s) TermSet.empty in
   match a with
   | Append(p1,p2,p3)       -> add_list [PathT p1; PathT p2; PathT p3]
-  | Reach(m,a1,a2,p)       -> add_list [MemT m; AddrT a1; AddrT a2; PathT p]
+  | Reach(m,a1,a2,l,p)     -> add_list [MemT m;AddrT a1;AddrT a2;IntT l;PathT p]
   | OrderList(m,a1,a2)     -> add_list [MemT m; AddrT a1; AddrT a2]
   | In(a,s)                -> add_list [AddrT a; SetT s]
   | SubsetEq(s1,s2)        -> add_list [SetT s1; SetT s2]
@@ -663,14 +667,14 @@ let rec is_term_flat t =
 
 and is_set_flat t =
   match t with
-      VarSet _ -> true
-    | EmptySet -> true
-    | Singl(a) -> is_addr_var  a
-    | Union(s1,s2) -> (is_set_var s1) && (is_set_var s2)
-    | Intr(s1,s2)  -> (is_set_var s1) && (is_set_var s2)
-    | Setdiff(s1,s2) -> (is_set_var s1) && (is_set_var s2)
-    | PathToSet(p)   -> (is_path_var p)
-    | AddrToSet(m,a) -> (is_mem_var m) && (is_addr_var a)
+      VarSet _         -> true
+    | EmptySet         -> true
+    | Singl(a)         -> is_addr_var  a
+    | Union(s1,s2)     -> (is_set_var s1) && (is_set_var s2)
+    | Intr(s1,s2)      -> (is_set_var s1) && (is_set_var s2)
+    | Setdiff(s1,s2)   -> (is_set_var s1) && (is_set_var s2)
+    | PathToSet(p)     -> (is_path_var p)
+    | AddrToSet(m,a,l) -> (is_mem_var m) && (is_addr_var a) && (is_int_var l)
 and is_tid_flat t =
   match t with
       VarTh _            -> true
@@ -689,7 +693,6 @@ and is_addr_flat t =
       VarAddr _        -> true
     | Null             -> true
     | NextAt(c,l)      -> (is_cell_var c) && (is_int_var l)
-    | FirstLocked(m,p) -> (is_mem_var m) && (is_path_var p)
     | AddrArrRd (aa,i) -> (is_addrarr_var aa) && (is_int_var i)
 (*    | Malloc(m,a,k)    -> (is_mem_var m) && (is_addr_var a) && (is_thread_var k) *)
 and is_cell_flat t =
@@ -720,10 +723,11 @@ and is_setelem_flat t =
     | SetdiffElem(st1,st2) -> (is_setelem_var st1) && (is_setelem_var st2)
 and is_path_flat t =
   match t with
-      VarPath _ -> true
-    | Epsilon   -> true
-    | SimplePath(a)    -> is_addr_var a
-    | GetPath(m,a1,a2) -> (is_mem_var m) && (is_addr_var a1) && (is_addr_var a2)
+      VarPath _          -> true
+    | Epsilon            -> true
+    | SimplePath(a)      -> is_addr_var a
+    | GetPath(m,a1,a2,l) -> (is_mem_var m) && (is_addr_var a1) &&
+                            (is_addr_var a2) && (is_int_var l)
 and is_mem_flat t =
   match t with
       VarMem _ -> true
@@ -756,8 +760,9 @@ let is_literal_flat lit =
   begin match a with
     | Append(p1,p2,p3)       -> (is_path_var p1) && (is_path_var p2) &&
                                 (is_path_var p3)
-    | Reach(m,a1,a2,p)       -> (is_mem_var m) && (is_addr_var a1) &&
-                                (is_addr_var a2) && (is_path_var p)
+    | Reach(m,a1,a2,l,p)     -> (is_mem_var m) && (is_addr_var a1) &&
+                                (is_addr_var a2) && (is_int_var l) &&
+                                (is_path_var p)
     | OrderList(m,a1,a2)     -> (is_mem_var m) && (is_addr_var a1) &&
                                 (is_addr_var a2)
     | In(a,s)                -> (is_addr_var a) && (is_set_var s)
@@ -784,8 +789,9 @@ let is_literal_flat lit =
   begin match a with
     | Append(p1,p2,p3)      -> (is_path_var p1) && (is_path_var p2) &&
                                (is_path_var p3)
-    | Reach(m,a1,a2,p)      -> (is_mem_var m) && (is_addr_var a1) &&
-                               (is_addr_var a2) && (is_path_var p)
+    | Reach(m,a1,a2,l,p)    -> (is_mem_var m) && (is_addr_var a1) &&
+                               (is_addr_var a2) && (is_int_var l) &&
+                               (is_path_var p)
     | OrderList(m,a1,a2)    -> (is_mem_var m) && (is_addr_var a1) &&
                                (is_addr_var a2)
     | In(a,s)               -> (is_addr_var a) && (is_set_var s)
@@ -831,9 +837,10 @@ and atom_to_str a =
   | Append(p1,p2,pres)         -> Printf.sprintf "append(%s,%s,%s)"
                                     (path_to_str p1) (path_to_str p2)
                                     (path_to_str pres)
-  | Reach(h,add_from,add_to,p) -> Printf.sprintf "reach(%s,%s,%s,%s)"
-                                    (mem_to_str h) (addr_to_str add_from)
-                                    (addr_to_str add_to) (path_to_str p)
+  | Reach(h,a_from,a_to,l,p)   -> Printf.sprintf "reach(%s,%s,%s,%s,%s)"
+                                    (mem_to_str h) (addr_to_str a_from)
+                                    (addr_to_str a_to) (int_to_str l)
+                                    (path_to_str p)
   | OrderList(h,a_from,a_to)   -> Printf.sprintf "orderlist(%s,%s,%s)"
                                     (mem_to_str h) (addr_to_str a_from)
                                     (addr_to_str a_to)
@@ -907,26 +914,30 @@ and tidarr_to_str expr =
                                (tidarr_to_str tt) (int_to_str i) (tid_to_str t)
 and path_to_str expr =
   match expr with
-      VarPath(v) -> variable_to_str v
-    | Epsilon -> Printf.sprintf "epsilon"
-    | SimplePath(addr) -> Printf.sprintf "[ %s ]" (addr_to_str addr)
-    | GetPath(mem,add_from,add_to) -> Printf.sprintf "getp(%s,%s,%s)"
-  (mem_to_str mem) (addr_to_str add_from) (addr_to_str add_to)
+      VarPath(v)                 -> variable_to_str v
+    | Epsilon                    -> Printf.sprintf "epsilon"
+    | SimplePath(addr)           -> Printf.sprintf "[ %s ]" (addr_to_str addr)
+    | GetPath(mem,a_from,a_to,l) -> Printf.sprintf "getp(%s,%s,%s,%s)"
+                                      (mem_to_str mem)
+                                      (addr_to_str a_from)
+                                      (addr_to_str a_to)
+                                      (int_to_str l)
 and set_to_str e =
   match e with
-      VarSet(v)  -> variable_to_str v
-    | EmptySet  -> "EmptySet"
-    | Singl(addr) -> Printf.sprintf "{ %s }" (addr_to_str addr)
-    | Union(s1,s2) -> Printf.sprintf "%s Union %s"
-  (set_to_str s1) (set_to_str s2)
-    | Intr(s1,s2) -> Printf.sprintf "%s Intr %s"
-  (set_to_str s1) (set_to_str s2)
-    | Setdiff(s1,s2) -> Printf.sprintf "%s SetDiff %s"
-  (set_to_str s1) (set_to_str s2)
-    | PathToSet(path) -> Printf.sprintf "path2set(%s)"
-  (path_to_str path)
-    | AddrToSet(mem,addr) -> Printf.sprintf "addr2set(%s,%s)"
-  (mem_to_str mem) (addr_to_str addr)
+      VarSet(v)           -> variable_to_str v
+    | EmptySet            -> "EmptySet"
+    | Singl(addr)         -> Printf.sprintf "{ %s }" (addr_to_str addr)
+    | Union(s1,s2)        -> Printf.sprintf "%s Union %s"
+                              (set_to_str s1) (set_to_str s2)
+    | Intr(s1,s2)         -> Printf.sprintf "%s Intr %s"
+                              (set_to_str s1) (set_to_str s2)
+    | Setdiff(s1,s2)      -> Printf.sprintf "%s SetDiff %s"
+                              (set_to_str s1) (set_to_str s2)
+    | PathToSet(path)     -> Printf.sprintf "path2set(%s)"
+                              (path_to_str path)
+    | AddrToSet(mem,a,l)  -> Printf.sprintf "addr2set(%s,%s,%s)"
+                              (mem_to_str mem) (addr_to_str a)
+                              (int_to_str l)
 and setth_to_str e =
   match e with
       VarSetTh(v)  -> variable_to_str v
@@ -970,8 +981,6 @@ and addr_to_str expr =
     | Null                  -> "null"
     | NextAt(cell,l)        -> Printf.sprintf "%s.next(%s)"
                                  (cell_to_str cell) (int_to_str l)
-    | FirstLocked(mem,path) -> Printf.sprintf "firstlocked(%s,%s)"
-                                 (mem_to_str mem) (path_to_str path)
     | AddrArrRd (aa,i)      -> Printf.sprintf "%s[%s]"
                                  (addrarr_to_str aa) (int_to_str i)
 (*    | Malloc(e,a,t)     -> Printf.sprintf "malloc(%s,%s,%s)" (elem_to_str e) (addr_to_str a) (tid_to_str t) *)
@@ -1165,14 +1174,14 @@ and voc_term (expr:term) : tid list =
 
 and voc_set (e:set) : tid list =
   match e with
-    VarSet v            -> Option.map_default (fun x->[x]) [] (var_th v)
-  | EmptySet            -> []
-  | Singl(addr)         -> (voc_addr addr)
-  | Union(s1,s2)        -> (voc_set s1) @ (voc_set s2)
-  | Intr(s1,s2)         -> (voc_set s1) @ (voc_set s2)
-  | Setdiff(s1,s2)      -> (voc_set s1) @ (voc_set s2)
-  | PathToSet(path)     -> (voc_path path)
-  | AddrToSet(mem,addr) -> (voc_mem mem) @ (voc_addr addr)
+    VarSet v           -> Option.map_default (fun x->[x]) [] (var_th v)
+  | EmptySet           -> []
+  | Singl(addr)        -> (voc_addr addr)
+  | Union(s1,s2)       -> (voc_set s1) @ (voc_set s2)
+  | Intr(s1,s2)        -> (voc_set s1) @ (voc_set s2)
+  | Setdiff(s1,s2)     -> (voc_set s1) @ (voc_set s2)
+  | PathToSet(path)    -> (voc_path path)
+  | AddrToSet(mem,a,l) -> (voc_mem mem) @ (voc_addr a) @ (voc_int l)
 
 
 and voc_addr (a:addr) : tid list =
@@ -1180,7 +1189,6 @@ and voc_addr (a:addr) : tid list =
     VarAddr v             -> Option.map_default (fun x->[x]) [] (var_th v)
   | Null                  -> []
   | NextAt(cell,l)        -> (voc_cell cell) @ (voc_int l)
-  | FirstLocked(mem,path) -> (voc_mem mem) @ (voc_path path)
   | AddrArrRd (aa,i)      -> (voc_addrarr aa) @ (voc_int i)
 
 
@@ -1237,12 +1245,13 @@ and voc_setelem (s:setelem) : tid list =
 
 and voc_path (p:path) : tid list =
   match p with
-    VarPath v                -> Option.map_default (fun x->[x]) [] (var_th v)
-  | Epsilon                  -> []
-  | SimplePath(addr)         -> (voc_addr addr)
-  | GetPath(mem,a_from,a_to) -> (voc_mem mem) @
-                                (voc_addr a_from) @
-                                (voc_addr a_to)
+    VarPath v                  -> Option.map_default (fun x->[x]) [] (var_th v)
+  | Epsilon                    -> []
+  | SimplePath(addr)           -> (voc_addr addr)
+  | GetPath(mem,a_from,a_to,l) -> (voc_mem mem) @
+                                  (voc_addr a_from) @
+                                  (voc_addr a_to)   @
+                                  (voc_int l)
 
 
 and voc_mem (m:mem) : tid list =
@@ -1281,9 +1290,10 @@ and voc_atom (a:atom) : tid list =
     Append(p1,p2,pres)         -> (voc_path p1) @
                                   (voc_path p2) @
                                   (voc_path pres)
-  | Reach(h,add_from,add_to,p) -> (voc_mem h) @
-                                  (voc_addr add_from) @
-                                  (voc_addr add_to) @
+  | Reach(h,a_from,a_to,l,p)   -> (voc_mem h) @
+                                  (voc_addr a_from) @
+                                  (voc_addr a_to) @
+                                  (voc_int l) @
                                   (voc_path p)
   | OrderList(h,a_from,a_to)   -> (voc_mem h) @
                                   (voc_addr a_from) @
@@ -1915,7 +1925,7 @@ let required_sorts (phi:formula) : sort list =
   and req_atom (a:atom) : SortSet.t =
     match a with
     | Append (p1,p2,p3)   -> list_union [req_p p1;req_p p1;req_p p2;req_p p3]
-    | Reach (m,a1,a2,p)   -> list_union [req_m m;req_a a1;req_a a2;req_p p]
+    | Reach (m,a1,a2,l,p) -> list_union [req_m m;req_a a1;req_a a2;req_i l;req_p p]
     | OrderList (m,a1,a2) -> list_union [req_m m;req_a a1;req_a a2]
     | In (a,s)            -> list_union [req_a a;req_s s]
     | SubsetEq (s1,s2)    -> list_union [req_s s1;req_s s2]
@@ -1964,10 +1974,10 @@ let required_sorts (phi:formula) : sort list =
 
   and req_p (p:path) : SortSet.t =
     match p with
-    | VarPath _         -> single Path
-    | Epsilon           -> single Path
-    | SimplePath a      -> append Path [req_a a]
-    | GetPath (m,a1,a2) -> append Path [req_m m;req_a a1;req_a a2]
+    | VarPath _           -> single Path
+    | Epsilon             -> single Path
+    | SimplePath a        -> append Path [req_a a]
+    | GetPath (m,a1,a2,l) -> append Path [req_m m;req_a a1;req_a a2;req_i l]
 
   and req_st (s:setth) : SortSet.t =
     match s with
@@ -2002,7 +2012,6 @@ let required_sorts (phi:formula) : sort list =
     | VarAddr _         -> single Addr
     | Null              -> single Addr
     | NextAt (c,l)      -> append Addr [req_c c;req_i l]
-    | FirstLocked (m,p) -> append Addr [req_m m;req_p p]
     | AddrArrRd (aa,i)  -> append Addr [req_aa aa;req_i i]
 
   and req_e (e:elem) : SortSet.t =
@@ -2029,7 +2038,7 @@ let required_sorts (phi:formula) : sort list =
     | Intr (s1,s2)     -> append Set [req_s s1;req_s s2]
     | Setdiff (s1,s2)  -> append Set [req_s s1;req_s s2]
     | PathToSet p      -> append Set [req_p p]
-    | AddrToSet (m,a)  -> append Set [req_m m;req_a a]
+    | AddrToSet (m,a,l)-> append Set [req_m m;req_a a;req_i l]
 
   and req_term (t:term) : SortSet.t =
     match t with
@@ -2079,7 +2088,7 @@ let special_ops (phi:formula) : special_op_t list =
   and ops_atom (a:atom) : OpsSet.t =
     match a with
     | Append (p1,p2,p3)   -> list_union [ops_p p1;ops_p p1;ops_p p2;ops_p p3]
-    | Reach (m,a1,a2,p)   -> append Reachable[ops_m m;ops_a a1;ops_a a2;ops_p p]
+    | Reach (m,a1,a2,l,p) -> append Reachable[ops_m m;ops_a a1;ops_a a2;ops_i l;ops_p p]
     | OrderList (m,a1,a2) -> append OrderedList[ops_m m;ops_a a1;ops_a a2]
     | In (a,s)            -> list_union [ops_a a;ops_s s]
     | SubsetEq (s1,s2)    -> list_union [ops_s s1;ops_s s2]
@@ -2128,10 +2137,10 @@ let special_ops (phi:formula) : special_op_t list =
 
   and ops_p (p:path) : OpsSet.t =
     match p with
-    | VarPath _         -> empty
-    | Epsilon           -> empty
-    | SimplePath a      -> ops_a a
-    | GetPath (m,a1,a2) -> append Getp [ops_m m;ops_a a1;ops_a a2]
+    | VarPath _           -> empty
+    | Epsilon             -> empty
+    | SimplePath a        -> ops_a a
+    | GetPath (m,a1,a2,l) -> append Getp [ops_m m;ops_a a1;ops_a a2;ops_i l]
 
   and ops_st (s:setth) : OpsSet.t =
     match s with
@@ -2166,7 +2175,6 @@ let special_ops (phi:formula) : special_op_t list =
     | VarAddr _            -> empty
     | Null                 -> empty
     | NextAt (c,l)         -> list_union [ops_c c;ops_i l]
-    | FirstLocked (m,p)    -> append FstLocked [ops_m m;ops_p p]
     | AddrArrRd (aa,i)     -> list_union [ops_aa aa;ops_i i]
 
   and ops_e (e:elem) : OpsSet.t =
@@ -2186,14 +2194,14 @@ let special_ops (phi:formula) : special_op_t list =
 
   and ops_s (s:set) : OpsSet.t =
     match s with
-    | VarSet _         -> empty
-    | EmptySet         -> empty
-    | Singl a          -> ops_a a
-    | Union (s1,s2)    -> list_union [ops_s s1;ops_s s2]
-    | Intr (s1,s2)     -> list_union [ops_s s1;ops_s s2]
-    | Setdiff (s1,s2)  -> list_union [ops_s s1;ops_s s2]
-    | PathToSet p      -> append Path2Set [ops_p p]
-    | AddrToSet (m,a)  -> append Addr2Set [ops_m m;ops_a a]
+    | VarSet _          -> empty
+    | EmptySet          -> empty
+    | Singl a           -> ops_a a
+    | Union (s1,s2)     -> list_union [ops_s s1;ops_s s2]
+    | Intr (s1,s2)      -> list_union [ops_s s1;ops_s s2]
+    | Setdiff (s1,s2)   -> list_union [ops_s s1;ops_s s2]
+    | PathToSet p       -> append Path2Set [ops_p p]
+    | AddrToSet (m,a,l) -> append Addr2Set [ops_m m;ops_a a;ops_i l]
 
   and ops_term (t:term) : OpsSet.t =
     match t with

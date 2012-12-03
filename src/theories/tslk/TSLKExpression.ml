@@ -44,7 +44,7 @@ module type S =
       | Intr              of set * set
       | Setdiff           of set * set
       | PathToSet         of path
-      | AddrToSet         of mem * addr
+      | AddrToSet         of mem * addr * level
     and tid =
         VarTh             of variable
       | NoThid
@@ -292,7 +292,7 @@ module Make (K : Level.S) : S =
       | Intr              of set * set
       | Setdiff           of set * set
       | PathToSet         of path
-      | AddrToSet         of mem * addr
+      | AddrToSet         of mem * addr * level
     and tid =
         VarTh             of variable
       | NoThid
@@ -527,14 +527,16 @@ module Make (K : Level.S) : S =
 
     let rec get_varset_set s =
       match s with
-          VarSet v       -> S.singleton v @@ get_varset_from_param v
-        | EmptySet       -> S.empty
-        | Singl(a)       -> get_varset_addr a
-        | Union(s1,s2)   -> (get_varset_set s1) @@ (get_varset_set s2)
-        | Intr(s1,s2)    -> (get_varset_set s1) @@ (get_varset_set s2)
-        | Setdiff(s1,s2) -> (get_varset_set s1) @@ (get_varset_set s2)
-        | PathToSet(p)   -> get_varset_path p
-        | AddrToSet(m,a) -> (get_varset_mem m) @@ (get_varset_addr a)
+          VarSet v         -> S.singleton v @@ get_varset_from_param v
+        | EmptySet         -> S.empty
+        | Singl(a)         -> get_varset_addr a
+        | Union(s1,s2)     -> (get_varset_set s1) @@ (get_varset_set s2)
+        | Intr(s1,s2)      -> (get_varset_set s1) @@ (get_varset_set s2)
+        | Setdiff(s1,s2)   -> (get_varset_set s1) @@ (get_varset_set s2)
+        | PathToSet(p)     -> get_varset_path p
+        | AddrToSet(m,a,l) -> (get_varset_mem m)  @@
+                              (get_varset_addr a) @@
+                              (get_varset_level l)
     and get_varset_tid th =
       match th with
           VarTh v            -> S.singleton v @@ get_varset_from_param v
@@ -874,14 +876,16 @@ module Make (K : Level.S) : S =
 
     and is_set_flat t =
       match t with
-          VarSet _ -> true
-        | EmptySet -> true
-        | Singl(a) -> is_addr_var  a
-        | Union(s1,s2) -> (is_set_var s1) && (is_set_var s2)
-        | Intr(s1,s2)  -> (is_set_var s1) && (is_set_var s2)
-        | Setdiff(s1,s2) -> (is_set_var s1) && (is_set_var s2)
-        | PathToSet(p)   -> (is_path_var p)
-        | AddrToSet(m,a) -> (is_mem_var m) && (is_addr_var a)
+          VarSet _         -> true
+        | EmptySet         -> true
+        | Singl(a)         -> is_addr_var  a
+        | Union(s1,s2)     -> (is_set_var s1) && (is_set_var s2)
+        | Intr(s1,s2)      -> (is_set_var s1) && (is_set_var s2)
+        | Setdiff(s1,s2)   -> (is_set_var s1) && (is_set_var s2)
+        | PathToSet(p)     -> (is_path_var p)
+        | AddrToSet(m,a,l) -> (is_mem_var m)  &&
+                              (is_addr_var a) &&
+                              (is_int_var l)
     and is_tid_flat t =
       match t with
           VarTh _            -> true
@@ -1104,19 +1108,20 @@ module Make (K : Level.S) : S =
                                                 (level_to_str l)
     and set_to_str e =
       match e with
-          VarSet(v)  -> variable_to_str v
-        | EmptySet  -> "EmptySet"
-        | Singl(addr) -> Printf.sprintf "{ %s }" (addr_to_str addr)
-        | Union(s1,s2) -> Printf.sprintf "%s Union %s"
-      (set_to_str s1) (set_to_str s2)
-        | Intr(s1,s2) -> Printf.sprintf "%s Intr %s"
-      (set_to_str s1) (set_to_str s2)
-        | Setdiff(s1,s2) -> Printf.sprintf "%s SetDiff %s"
-      (set_to_str s1) (set_to_str s2)
-        | PathToSet(path) -> Printf.sprintf "path2set(%s)"
-      (path_to_str path)
-        | AddrToSet(mem,addr) -> Printf.sprintf "addr2set(%s,%s)"
-      (mem_to_str mem) (addr_to_str addr)
+          VarSet(v)             -> variable_to_str v
+        | EmptySet              -> "EmptySet"
+        | Singl(addr)           -> Printf.sprintf "{ %s }" (addr_to_str addr)
+        | Union(s1,s2)          -> Printf.sprintf "%s Union %s"
+                                      (set_to_str s1) (set_to_str s2)
+        | Intr(s1,s2)           -> Printf.sprintf "%s Intr %s"
+                                      (set_to_str s1) (set_to_str s2)
+        | Setdiff(s1,s2)        -> Printf.sprintf "%s SetDiff %s"
+                                      (set_to_str s1) (set_to_str s2)
+        | PathToSet(path)       -> Printf.sprintf "path2set(%s)"
+                                      (path_to_str path)
+        | AddrToSet(mem,addr,l) -> Printf.sprintf "addr2set(%s,%s,%s)"
+                                      (mem_to_str mem) (addr_to_str addr)
+                                      (level_to_str l)
     and setth_to_str e =
       match e with
           VarSetTh(v)  -> variable_to_str v
@@ -1355,7 +1360,7 @@ module Make (K : Level.S) : S =
       | Intr(s1,s2)         -> (voc_set s1) @ (voc_set s2)
       | Setdiff(s1,s2)      -> (voc_set s1) @ (voc_set s2)
       | PathToSet(path)     -> (voc_path path)
-      | AddrToSet(mem,addr) -> (voc_mem mem) @ (voc_addr addr)
+      | AddrToSet(mem,a,l)  -> (voc_mem mem) @ (voc_addr a) @ (voc_level l)
 
 
     and voc_addr (a:addr) : tid list =
@@ -1732,14 +1737,14 @@ module Make (K : Level.S) : S =
 
       and req_s (s:set) : SortSet.t =
         match s with
-        | VarSet _         -> single Set
-        | EmptySet         -> single Set
-        | Singl a          -> append Set  [req_a a]
-        | Union (s1,s2)    -> append Set [req_s s1;req_s s2]
-        | Intr (s1,s2)     -> append Set [req_s s1;req_s s2]
-        | Setdiff (s1,s2)  -> append Set [req_s s1;req_s s2]
-        | PathToSet p      -> append Set [req_p p]
-        | AddrToSet (m,a)  -> append Set [req_m m;req_a a]
+        | VarSet _           -> single Set
+        | EmptySet           -> single Set
+        | Singl a            -> append Set  [req_a a]
+        | Union (s1,s2)      -> append Set [req_s s1;req_s s2]
+        | Intr (s1,s2)       -> append Set [req_s s1;req_s s2]
+        | Setdiff (s1,s2)    -> append Set [req_s s1;req_s s2]
+        | PathToSet p        -> append Set [req_p p]
+        | AddrToSet (m,a,l)  -> append Set [req_m m;req_a a;req_lv l]
 
       and req_term (t:term) : SortSet.t =
         match t with
@@ -1881,14 +1886,14 @@ module Make (K : Level.S) : S =
 
       and ops_s (s:set) : OpsSet.t =
         match s with
-        | VarSet _         -> empty
-        | EmptySet         -> empty
-        | Singl a          -> ops_a a
-        | Union (s1,s2)    -> list_union [ops_s s1;ops_s s2]
-        | Intr (s1,s2)     -> list_union [ops_s s1;ops_s s2]
-        | Setdiff (s1,s2)  -> list_union [ops_s s1;ops_s s2]
-        | PathToSet p      -> append Path2Set [ops_p p]
-        | AddrToSet (m,a)  -> append Addr2Set [ops_m m;ops_a a]
+        | VarSet _          -> empty
+        | EmptySet          -> empty
+        | Singl a           -> ops_a a
+        | Union (s1,s2)     -> list_union [ops_s s1;ops_s s2]
+        | Intr (s1,s2)      -> list_union [ops_s s1;ops_s s2]
+        | Setdiff (s1,s2)   -> list_union [ops_s s1;ops_s s2]
+        | PathToSet p       -> append Path2Set [ops_p p]
+        | AddrToSet (m,a,l) -> append Addr2Set [ops_m m;ops_a a;ops_lv l]
 
       and ops_term (t:term) : OpsSet.t =
         match t with

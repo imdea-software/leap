@@ -91,6 +91,7 @@ and set =
   | Setdiff       of set * set
   | PathToSet     of path
   | AddrToSet     of mem * addr
+  | AddrToSetAt   of mem * addr * integer
   | SetArrayRd    of arrays * tid
 
 and tid =
@@ -896,6 +897,9 @@ and priming_set (pr:bool) (prime_set:VarSet.t option) (e:set) : set =
   | PathToSet(path)     -> PathToSet(priming_path pr prime_set path)
   | AddrToSet(mem,addr) -> AddrToSet(priming_mem pr prime_set mem,
                                      priming_addr pr prime_set addr)
+  | AddrToSetAt(mem,a,l)-> AddrToSetAt(priming_mem pr prime_set mem,
+                                       priming_addr pr prime_set a,
+                                       priming_int pr prime_set l)
   | SetArrayRd(arr,t)   -> SetArrayRd(priming_array pr prime_set arr,
                                       priming_tid pr prime_set t)
 
@@ -1487,6 +1491,9 @@ and set_to_str (expr:set) : string =
   | PathToSet(path)     -> sprintf "path2set(%s)" (path_to_str path)
   | AddrToSet(mem,addr) -> sprintf "addr2set(%s,%s)" (mem_to_str mem)
                                                      (addr_to_str addr)
+  | AddrToSetAt(mem,a,l)-> sprintf "addr2set(%s,%s,%s)" (mem_to_str mem)
+                                                        (addr_to_str a)
+                                                        (integer_to_str l)
   | SetArrayRd(arr,t)   -> sprintf "%s%s" (arrays_to_str arr)
                                           (param_tid_to_str t)
 
@@ -1958,6 +1965,9 @@ and get_vars_set (e:set)
   | Setdiff(s1,s2)      -> (get_vars_set s1 base) @ (get_vars_set s2 base)
   | PathToSet(path)     -> (get_vars_path path base)
   | AddrToSet(mem,addr) -> (get_vars_mem mem base)@(get_vars_addr addr base)
+  | AddrToSetAt(mem,a,l)-> (get_vars_mem mem base) @
+                           (get_vars_addr a base)  @
+                           (get_vars_int l base)
   | SetArrayRd(arr,t)   -> (get_vars_array arr base)
 
 
@@ -2474,15 +2484,16 @@ and voc_tidarr (a:tidarr) : tid list =
 
 and voc_set (e:set) : tid list =
   match e with
-    VarSet v            -> Option.map_default (fun x->[x]) [] (var_th v)
-  | EmptySet            -> []
-  | Singl(addr)         -> (voc_addr addr)
-  | Union(s1,s2)        -> (voc_set s1) @ (voc_set s2)
-  | Intr(s1,s2)         -> (voc_set s1) @ (voc_set s2)
-  | Setdiff(s1,s2)      -> (voc_set s1) @ (voc_set s2)
-  | PathToSet(path)     -> (voc_path path)
-  | AddrToSet(mem,addr) -> (voc_mem mem) @ (voc_addr addr)
-  | SetArrayRd(arr,t)   -> (voc_array arr)
+    VarSet v             -> Option.map_default (fun x->[x]) [] (var_th v)
+  | EmptySet             -> []
+  | Singl(addr)          -> (voc_addr addr)
+  | Union(s1,s2)         -> (voc_set s1) @ (voc_set s2)
+  | Intr(s1,s2)          -> (voc_set s1) @ (voc_set s2)
+  | Setdiff(s1,s2)       -> (voc_set s1) @ (voc_set s2)
+  | PathToSet(path)      -> (voc_path path)
+  | AddrToSet(mem,addr)  -> (voc_mem mem) @ (voc_addr addr)
+  | AddrToSetAt(mem,a,l) -> (voc_mem mem) @ (voc_addr a) @ (voc_int l)
+  | SetArrayRd(arr,t)    -> (voc_array arr)
 
 
 and voc_addr (a:addr) : tid list =
@@ -2764,6 +2775,9 @@ and var_kind_set (kind:kind_t) (e:set) : term list =
   | Setdiff(s1,s2)      -> (var_kind_set kind s1) @ (var_kind_set kind s2)
   | PathToSet(path)     -> (var_kind_path kind path)
   | AddrToSet(mem,addr) -> (var_kind_mem kind mem) @ (var_kind_addr kind addr)
+  | AddrToSetAt(mem,a,l)-> (var_kind_mem kind mem) @
+                           (var_kind_addr kind a)  @
+                           (var_kind_int kind l)
   | SetArrayRd(arr,t)   -> (var_kind_array kind arr)
 
 
@@ -3083,6 +3097,9 @@ and param_set (pfun:variable option -> tid option) (e:set) : set =
   | PathToSet(path)      -> PathToSet(param_path pfun path)
   | AddrToSet(mem,addr)  -> AddrToSet(param_mem pfun mem,
                                       param_addr_aux pfun addr)
+  | AddrToSetAt(mem,a,l) -> AddrToSetAt(param_mem pfun mem,
+                                        param_addr_aux pfun a,
+                                        param_int pfun l)
   | SetArrayRd(arr,t)    -> SetArrayRd(param_arrays pfun arr, t)
 
 
@@ -3489,6 +3506,9 @@ and subst_tid_set (subs:tid_subst_t) (e:set) : set =
   | PathToSet(path)     -> PathToSet(subst_tid_path subs path)
   | AddrToSet(mem,addr) -> AddrToSet(subst_tid_mem subs mem,
                                      subst_tid_addr subs addr)
+  | AddrToSetAt(mem,a,l)-> AddrToSetAt(subst_tid_mem subs mem,
+                                       subst_tid_addr subs a,
+                                       subst_tid_int subs l)
   | SetArrayRd(arr,t)   -> SetArrayRd(subst_tid_array subs arr, t)
 
 
@@ -4456,15 +4476,16 @@ let required_sorts (phi:formula) : sort list =
 
   and req_s (s:set) : SortSet.t =
     match s with
-    | VarSet _         -> single Set
-    | EmptySet         -> single Set
-    | Singl a          -> append Set  [req_a a]
-    | Union (s1,s2)    -> append Set [req_s s1;req_s s2]
-    | Intr (s1,s2)     -> append Set [req_s s1;req_s s2]
-    | Setdiff (s1,s2)  -> append Set [req_s s1;req_s s2]
-    | PathToSet p      -> append Set [req_p p]
-    | AddrToSet (m,a)  -> append Set [req_m m;req_a a]
-    | SetArrayRd (a,t) -> append Set [req_arr a;req_t t]
+    | VarSet _            -> single Set
+    | EmptySet            -> single Set
+    | Singl a             -> append Set  [req_a a]
+    | Union (s1,s2)       -> append Set [req_s s1;req_s s2]
+    | Intr (s1,s2)        -> append Set [req_s s1;req_s s2]
+    | Setdiff (s1,s2)     -> append Set [req_s s1;req_s s2]
+    | PathToSet p         -> append Set [req_p p]
+    | AddrToSet (m,a)     -> append Set [req_m m;req_a a]
+    | AddrToSetAt (m,a,l) -> append Set [req_m m;req_a a;req_i l]
+    | SetArrayRd (a,t)    -> append Set [req_arr a;req_t t]
 
   and req_i (i:integer) : SortSet.t =
     match i with

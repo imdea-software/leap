@@ -88,22 +88,18 @@ module Make (TSLK : TSLKExpression.S) =
                            Expr.varset_of_sort vars Expr.Mem in
 
       let vars_mem = VarSet.cardinal vars_mem_set in
-      (* ALE: I need the "2" for next0, firstlocked0.... *)
-      (* ALE: No need to add null and NoThread in the counter, as they are added
-              separately as an special address and tid respectively *)
+      (* ALE: No need to add null and NoThread in the counter,
+              as they are added separately as an special address
+              and tid respectively when creating the query to SMT *)
 
-      let numaddr = ref (vars_addr + vars_mem * vars_addr) in
-
-      let vars_elem = VarSet.cardinal (Expr.varset_of_sort vars Expr.Elem) in
-
-      let numtid = ref (vars_tid) in
-      let numelem = ref (vars_elem + vars_mem * vars_addr) in
       let numlevel = ref (Expr.k) in
-    (*
-      let numaddr = ref (2+(VarSet.cardinal varaddr) * tid_num) in
-      let numtid = ref (2+(VarSet.cardinal vartid) * tid_num) in
-      let numelem = ref (2+(VarSet.cardinal varelem) * tid_num) in
-    *)
+      (* TOFIX: Not sure if I should consider all next pointers, or if they
+                are already expressed through a variable *)
+      let numtid = ref (vars_tid + vars_mem * vars_addr * !numlevel) in
+      let numaddr = ref (vars_addr + vars_mem * vars_addr * !numlevel) in
+      let vars_elem = VarSet.cardinal (Expr.varset_of_sort vars Expr.Elem) in
+      let numelem = ref (vars_elem + vars_mem * vars_addr) in
+
       let process_ineq (x,y) =
         match x with
         | Expr.VarT _     -> ()        (* nothing, y must be a VarT as well *)
@@ -116,7 +112,7 @@ module Make (TSLK : TSLKExpression.S) =
         | Expr.SetElemT _ -> numelem := !numelem + 1 (* the witness of se1 != se2 *)
         | Expr.PathT _    -> numaddr := !numaddr + 2 (* the witnesses of p1 != p2 *)
         | Expr.MemT _     -> ()
-        | Expr.LevelT _     -> ()
+        | Expr.LevelT _   -> ()
         | Expr.VarUpdate _-> () in                (* ALE: Not sure if OK *)
       let process (lit:Expr.literal) =
         match lit with
@@ -151,8 +147,6 @@ module Make (TSLK : TSLKExpression.S) =
         | Expr.TrueConj  -> { num_addrs = 1 ; num_tids = 1 ; num_elems = 1 ; num_levels = 1 }
         | Expr.FalseConj -> { num_addrs = 1 ; num_tids = 1 ; num_elems = 1 ; num_levels = 1 }
         | Expr.Conj l    -> let _ = List.iter process l in
-                             (*let _ = numtid := !numtid + vars_mem * !numaddr in
-                            let _ = numelem := !numelem + vars_mem * !numaddr in*)
                             {
                               num_addrs  = !numaddr  ; (* null is accounted for      *)
                               num_tids   = !numtid   ; (* NotThread is accounted for *)
@@ -161,7 +155,8 @@ module Make (TSLK : TSLKExpression.S) =
                             }
 
 
-    let compute_max_cut_off (conj_list:Expr.conjunctive_formula list) : model_size =
+    let compute_max_cut_off (conj_list:Expr.conjunctive_formula list)
+          : model_size =
       List.fold_left (fun s e ->
         let e_cut_off = cut_off_normalized e
                         
@@ -205,7 +200,7 @@ module Make (TSLK : TSLKExpression.S) =
       | Expr.SetElemT _  -> union_count_elem info (Expr.InEq(x,y)) (* the witness of se1 != se2 *)
       | Expr.PathT _     -> union_count_addr info (Expr.InEq(x,y)) (* the witnesses of p1 != p2 *)
       | Expr.MemT _      -> info
-      | Expr.LevelT _      -> info
+      | Expr.LevelT _    -> info
       | Expr.VarUpdate _ -> info (* ALE: Not sure if OK *)
 
 
@@ -261,10 +256,11 @@ module Make (TSLK : TSLKExpression.S) =
       let info = union_model_size (union_formula_cutoff new_union_count phi)
       in
         {
-          num_elems = 2 + (VarSet.cardinal varelem + info.num_elems) * tid_num;
+          (* TOFIX: Check that this computation is OK *)
+          num_levels = Expr.k ;
+          num_elems = (VarSet.cardinal varelem + info.num_elems) * tid_num;
           num_tids = 2 + (tid_num + info.num_tids) * tid_num;
           num_addrs = 2 + (VarSet.cardinal varaddr + (2 * info.num_addrs)) * tid_num;
-          num_levels = Expr.k ;
         }
 
 
@@ -343,24 +339,7 @@ module Make (TSLK : TSLKExpression.S) =
     let compute_max_cut_off_with_pruning (phi:Expr.formula) : model_size =
       let pruned_phi = Option.default Expr.True (prune_formula (Expr.nnf phi)) in
       let dnf_phi = Expr.dnf pruned_phi in
-    (*
-      let _ = List.iter (fun line ->
-                print_endline (match line with
-                               | FalseConj -> "false"
-                               | TrueConj -> "true"
-                               | Conj cs -> String.concat " ;; " (List.map Expr.literal_to_str cs))
-              ) dnf_phi in
-    *)
       let new_dnf = List.map Expr.cleanup_dup dnf_phi in
-    (*
-      let _ = List.iter (fun line ->
-                print_endline (match line with
-                               | FalseConj -> "false"
-                               | TrueConj -> "true"
-                               | Conj cs -> String.concat " ;; " (List.map Expr.literal_to_str cs))
-              ) new_dnf in
-      let _ = print_endline "Computed DNF" in
-    *)
         compute_max_cut_off (new_dnf)
 
 

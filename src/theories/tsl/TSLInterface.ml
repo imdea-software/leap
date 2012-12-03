@@ -116,18 +116,21 @@ and diseq_to_tsl_eq ((t1,t2):Expr.diseq) : Tsl.diseq =
 and set_to_tsl_set (s:Expr.set) : Tsl.set =
   let to_set = set_to_tsl_set in
   match s with
-    Expr.VarSet v        -> Tsl.VarSet (variable_to_tsl_var v)
-  | Expr.EmptySet        -> Tsl.EmptySet
-  | Expr.Singl a         -> Tsl.Singl (addr_to_tsl_addr a)
-  | Expr.Union (s1,s2)   -> Tsl.Union (to_set s1, to_set s2)
-  | Expr.Intr (s1,s2)    -> Tsl.Intr (to_set s1, to_set s2)
-  | Expr.Setdiff (s1,s2) -> Tsl.Setdiff (to_set s1, to_set s2)
-  | Expr.PathToSet p     -> Tsl.PathToSet (path_to_tsl_path p)
-  | Expr.AddrToSet (m,a) -> Tsl.AddrToSet (mem_to_tsl_mem m, addr_to_tsl_addr a)
+    Expr.VarSet v            -> Tsl.VarSet (variable_to_tsl_var v)
+  | Expr.EmptySet            -> Tsl.EmptySet
+  | Expr.Singl a             -> Tsl.Singl (addr_to_tsl_addr a)
+  | Expr.Union (s1,s2)       -> Tsl.Union (to_set s1, to_set s2)
+  | Expr.Intr (s1,s2)        -> Tsl.Intr (to_set s1, to_set s2)
+  | Expr.Setdiff (s1,s2)     -> Tsl.Setdiff (to_set s1, to_set s2)
+  | Expr.PathToSet p         -> Tsl.PathToSet (path_to_tsl_path p)
+  | Expr.AddrToSet _         -> raise(UnsupportedTslExpr(Expr.set_to_str s))
+  | Expr.AddrToSetAt (m,a,l) -> Tsl.AddrToSet (mem_to_tsl_mem m,
+                                               addr_to_tsl_addr a,
+                                               int_to_tsl_int l)
   | Expr.SetArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
       let v = Expr.build_var id s pr (Some t) p Expr.Normal in
       Tsl.VarSet (variable_to_tsl_var v)
-  | Expr.SetArrayRd _          -> raise (UnsupportedTslExpr (Expr.set_to_str s))
+  | Expr.SetArrayRd _        -> raise(UnsupportedTslExpr(Expr.set_to_str s))
 
 
 and elem_to_tsl_elem (e:Expr.elem) : Tsl.elem =
@@ -150,8 +153,8 @@ and addr_to_tsl_addr (a:Expr.addr) : Tsl.addr =
   | Expr.Null                   -> Tsl.Null
   | Expr.Next _                 -> raise(UnsupportedTslExpr(Expr.addr_to_str a))
   | Expr.NextAt (c,l)           -> Tsl.NextAt (cell_to_tsl_cell c, int_to_tsl_int l)
-  | Expr.FirstLocked (m,p)      -> Tsl.FirstLocked (mem_to_tsl_mem m,
-                                                    path_to_tsl_path p)
+  | Expr.FirstLocked _          -> raise(UnsupportedTslExpr(Expr.addr_to_str a))
+  | Expr.FirstLockedAt _        -> raise(UnsupportedTslExpr(Expr.addr_to_str a))
   | Expr.AddrArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
       let v = Expr.build_var id s pr (Some t) p Expr.Normal in
       Tsl.VarAddr (variable_to_tsl_var v)
@@ -222,13 +225,15 @@ and setelem_to_tsl_setelem (st:Expr.setelem) : Tsl.setelem =
 
 and path_to_tsl_path (p:Expr.path) : Tsl.path =
   match p with
-    Expr.VarPath v         -> Tsl.VarPath (variable_to_tsl_var v)
-  | Expr.Epsilon           -> Tsl.Epsilon
-  | Expr.SimplePath a      -> Tsl.SimplePath (addr_to_tsl_addr a)
-  | Expr.GetPath (m,a1,a2) -> Tsl.GetPath (mem_to_tsl_mem m,
-                                           addr_to_tsl_addr a1,
-                                           addr_to_tsl_addr a2)
-  | Expr.PathArrayRd _     -> raise(UnsupportedTslExpr(Expr.path_to_str p))
+    Expr.VarPath v             -> Tsl.VarPath (variable_to_tsl_var v)
+  | Expr.Epsilon               -> Tsl.Epsilon
+  | Expr.SimplePath a          -> Tsl.SimplePath (addr_to_tsl_addr a)
+  | Expr.GetPath _             -> raise(UnsupportedTslExpr(Expr.path_to_str p))
+  | Expr.GetPathAt (m,a1,a2,l) -> Tsl.GetPath (mem_to_tsl_mem m,
+                                               addr_to_tsl_addr a1,
+                                               addr_to_tsl_addr a2,
+                                               int_to_tsl_int l)
+  | Expr.PathArrayRd _         -> raise(UnsupportedTslExpr(Expr.path_to_str p))
 
 
 and mem_to_tsl_mem (m:Expr.mem) : Tsl.mem =
@@ -288,27 +293,28 @@ and atom_to_tsl_atom (a:Expr.atom) : Tsl.atom =
   let term    = term_to_tsl_term       in
   match a with
     Expr.Append (p1,p2,p3)    -> Tsl.Append (path p1,path p2,path p3)
-  | Expr.Reach (m,a1,a2,p)    -> Tsl.Reach (mem m, addr a1, addr a2, path p)
+  | Expr.Reach _              -> raise(UnsupportedTslExpr(Expr.atom_to_str a))
+  | Expr.ReachAt (m,a1,a2,l,p)-> Tsl.Reach (mem m, addr a1, addr a2, integ l, path p)
   | Expr.OrderList(m,a1,a2)   -> Tsl.OrderList (mem m, addr a1, addr a2)
   | Expr.In (a,s)             -> Tsl.In (addr a, set s)
   | Expr.SubsetEq (s1,s2)     -> Tsl.SubsetEq (set s1, set s2)
   | Expr.InTh (t,s)           -> Tsl.InTh (tid t, setth s)
   | Expr.SubsetEqTh (s1,s2)   -> Tsl.SubsetEqTh (setth s1, setth s2)
-  | Expr.InInt _              -> raise (UnsupportedTslExpr(Expr.atom_to_str a))
-  | Expr.SubsetEqInt _        -> raise (UnsupportedTslExpr(Expr.atom_to_str a))
+  | Expr.InInt _              -> raise(UnsupportedTslExpr(Expr.atom_to_str a))
+  | Expr.SubsetEqInt _        -> raise(UnsupportedTslExpr(Expr.atom_to_str a))
   | Expr.InElem (e,s)         -> Tsl.InElem (elem_to_tsl_elem e, setelem s)
   | Expr.SubsetEqElem (s1,s2) -> Tsl.SubsetEqElem (setelem s1, setelem s2)
   | Expr.Less (i1,i2)         -> Tsl.Less (integ i1, integ i2)
   | Expr.Greater (i1,i2)      -> Tsl.Greater (integ i1, integ i2)
   | Expr.LessEq (i1,i2)       -> Tsl.LessEq (integ i1, integ i2)
   | Expr.GreaterEq (i1,i2)    -> Tsl.GreaterEq (integ i1, integ i2)
-  | Expr.LessTid _            -> raise (UnsupportedTslExpr(Expr.atom_to_str a))
+  | Expr.LessTid _            -> raise(UnsupportedTslExpr(Expr.atom_to_str a))
   | Expr.LessElem (e1,e2)     -> Tsl.LessElem (elem e1, elem e2)
   | Expr.GreaterElem (e1,e2)  -> Tsl.GreaterElem (elem e1, elem e2)
   | Expr.Eq (t1,t2)           -> Tsl.Eq (term t1, term t2)
   | Expr.InEq (t1,t2)         -> Tsl.InEq (term t1, term t2)
-  | Expr.BoolVar _            -> raise (UnsupportedTslExpr(Expr.atom_to_str a))
-  | Expr.BoolArrayRd _        -> raise (UnsupportedTslExpr(Expr.atom_to_str a))
+  | Expr.BoolVar _            -> raise(UnsupportedTslExpr(Expr.atom_to_str a))
+  | Expr.BoolArrayRd _        -> raise(UnsupportedTslExpr(Expr.atom_to_str a))
   | Expr.PC (pc,t,pr)         -> Tsl.PC (pc, Option.lift tid_to_tsl_tid t,pr)
   | Expr.PCUpdate (pc,t)      -> Tsl.PCUpdate (pc, tid_to_tsl_tid t)
   | Expr.PCRange (pc1,pc2,t,pr) -> Tsl.PCRange (pc1, pc2,

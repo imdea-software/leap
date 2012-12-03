@@ -129,18 +129,21 @@ module Make (TSLK : TSLKExpression.S) =
     and set_to_tslk_set (s:Expr.set) : TSLK.set =
       let to_set = set_to_tslk_set in
       match s with
-        Expr.VarSet v        -> TSLK.VarSet (variable_to_tslk_var v)
-      | Expr.EmptySet        -> TSLK.EmptySet
-      | Expr.Singl a         -> TSLK.Singl (addr_to_tslk_addr a)
-      | Expr.Union (s1,s2)   -> TSLK.Union (to_set s1, to_set s2)
-      | Expr.Intr (s1,s2)    -> TSLK.Intr (to_set s1, to_set s2)
-      | Expr.Setdiff (s1,s2) -> TSLK.Setdiff (to_set s1, to_set s2)
-      | Expr.PathToSet p     -> TSLK.PathToSet (path_to_tslk_path p)
-      | Expr.AddrToSet (m,a) -> TSLK.AddrToSet (mem_to_tslk_mem m, addr_to_tslk_addr a)
+        Expr.VarSet v            -> TSLK.VarSet (variable_to_tslk_var v)
+      | Expr.EmptySet            -> TSLK.EmptySet
+      | Expr.Singl a             -> TSLK.Singl (addr_to_tslk_addr a)
+      | Expr.Union (s1,s2)       -> TSLK.Union (to_set s1, to_set s2)
+      | Expr.Intr (s1,s2)        -> TSLK.Intr (to_set s1, to_set s2)
+      | Expr.Setdiff (s1,s2)     -> TSLK.Setdiff (to_set s1, to_set s2)
+      | Expr.PathToSet p         -> TSLK.PathToSet (path_to_tslk_path p)
+      | Expr.AddrToSet _         -> raise(UnsupportedTSLKExpr(Expr.set_to_str s))
+      | Expr.AddrToSetAt (m,a,l) -> TSLK.AddrToSet (mem_to_tslk_mem m,
+                                                    addr_to_tslk_addr a,
+                                                    int_to_tslk_level l)
       | Expr.SetArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
           let v = Expr.build_var id s pr (Some t) p Expr.Normal in
           TSLK.VarSet (variable_to_tslk_var v)
-      | Expr.SetArrayRd _          -> raise (UnsupportedTSLKExpr (Expr.set_to_str s))
+      | Expr.SetArrayRd _        -> raise (UnsupportedTSLKExpr (Expr.set_to_str s))
 
 
     and elem_to_tslk_elem (e:Expr.elem) : TSLK.elem =

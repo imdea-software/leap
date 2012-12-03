@@ -1351,24 +1351,25 @@ module Make (K : Level.S) : S =
 
     and setterm_to_str (s:Expr.set) : string =
       match s with
-          Expr.VarSet v       -> variable_invocation_to_str v
-        | Expr.EmptySet       -> "empty"
-        | Expr.Singl a        -> Printf.sprintf "(singleton %s)"
+          Expr.VarSet v         -> variable_invocation_to_str v
+        | Expr.EmptySet         -> "empty"
+        | Expr.Singl a          -> Printf.sprintf "(singleton %s)"
                                                       (addrterm_to_str a)
-        | Expr.Union(r,s)     -> Printf.sprintf "(setunion %s %s)"
+        | Expr.Union(r,s)       -> Printf.sprintf "(setunion %s %s)"
                                                       (setterm_to_str r)
                                                       (setterm_to_str s)
-        | Expr.Intr(r,s)      -> Printf.sprintf "(intersection %s %s)"
+        | Expr.Intr(r,s)        -> Printf.sprintf "(intersection %s %s)"
                                                       (setterm_to_str r)
                                                       (setterm_to_str s)
-        | Expr.Setdiff(r,s)   -> Printf.sprintf "(setdiff %s %s)"
+        | Expr.Setdiff(r,s)     -> Printf.sprintf "(setdiff %s %s)"
                                                       (setterm_to_str r)
                                                       (setterm_to_str s)
-        | Expr.PathToSet p    -> Printf.sprintf "(path2set %s)"
+        | Expr.PathToSet p      -> Printf.sprintf "(path2set %s)"
                                                       (pathterm_to_str p)
-        | Expr.AddrToSet(m,a) -> Printf.sprintf "(address2set %s %s)"
+        | Expr.AddrToSet(m,a,l) -> Printf.sprintf "(address2set %s %s %s)"
                                                       (memterm_to_str m)
                                                       (addrterm_to_str a)
+                                                      (levelterm_to_str l)
 
 
     and elemterm_to_str (e:Expr.elem) : string =
