@@ -1785,12 +1785,6 @@ struct
     if status = Unverified || status = NotValid then begin
       let _ = print_endline "WILL PERFORM THE CHECK..." in
 
-      (* 1. Convert formulat phi to TSL formula *)
-      let tsl_phi = TSLInterface.formula_to_tsl_formula phi in
-
-
-
-
       let module TSLKExpr = TSLKS.TslkExp in
       let module TSLKIntf = TSLKInterface.Make(TSLKExpr) in
       let tslk_phi = TSLKIntf.formula_to_tslk_formula phi in
