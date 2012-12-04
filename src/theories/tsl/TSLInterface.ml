@@ -294,8 +294,11 @@ and atom_to_tsl_atom (a:Expr.atom) : Tsl.atom =
   match a with
     Expr.Append (p1,p2,p3)    -> Tsl.Append (path p1,path p2,path p3)
   | Expr.Reach _              -> raise(UnsupportedTslExpr(Expr.atom_to_str a))
-  | Expr.ReachAt (m,a1,a2,l,p)-> Tsl.Reach (mem m, addr a1, addr a2, integ l, path p)
+  | Expr.ReachAt (m,a1,a2,l,p)-> Tsl.Reach (mem m, addr a1, addr a2,
+                                            integ l, path p)
   | Expr.OrderList(m,a1,a2)   -> Tsl.OrderList (mem m, addr a1, addr a2)
+  | Expr.Skiplist(m,s,l,a1,a2)-> Tsl.Skiplist (mem m, set s, integ l,
+                                               addr a1, addr a2)
   | Expr.In (a,s)             -> Tsl.In (addr a, set s)
   | Expr.SubsetEq (s1,s2)     -> Tsl.SubsetEq (set s1, set s2)
   | Expr.InTh (t,s)           -> Tsl.InTh (tid t, setth s)

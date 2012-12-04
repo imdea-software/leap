@@ -113,6 +113,7 @@ and atom =
     Append            of path * path * path
   | Reach             of mem * addr * addr * integer * path
   | OrderList         of mem * addr * addr
+  | Skiplist          of mem * set * integer * addr * addr
   | In                of addr * set
   | SubsetEq          of set  * set
   | InTh              of tid * setth
@@ -156,6 +157,7 @@ type special_op_t =
   | Set2Elem
   | ElemOrder
   | OrderedList
+  | SkiplistProp
 
 exception WrongType of term
 
@@ -390,6 +392,9 @@ and get_varset_atom a =
                                 (get_varset_path p)
     | OrderList(m,a1,a2)     -> (get_varset_mem m) @@ (get_varset_addr a1) @@
                                 (get_varset_addr a2)
+    | Skiplist(m,s,l,a1,a2)  -> (get_varset_mem m) @@
+                                (get_varset_set s) @@ (get_varset_integer l) @@
+                                (get_varset_addr a1) @@ (get_varset_addr a2)
     | In(a,s)                -> (get_varset_addr a) @@ (get_varset_set s)
     | SubsetEq(s1,s2)        -> (get_varset_set s1) @@ (get_varset_set s2)
     | InTh(th,st)            -> (get_varset_tid th) @@ (get_varset_setth st)
@@ -489,6 +494,7 @@ let rec get_termset_atom (a:atom) : TermSet.t =
   | Append(p1,p2,p3)       -> add_list [PathT p1; PathT p2; PathT p3]
   | Reach(m,a1,a2,l,p)     -> add_list [MemT m;AddrT a1;AddrT a2;IntT l;PathT p]
   | OrderList(m,a1,a2)     -> add_list [MemT m; AddrT a1; AddrT a2]
+  | Skiplist(m,s,l,a1,a2)  -> add_list [MemT m; SetT s; IntT l; AddrT a1; AddrT a2]
   | In(a,s)                -> add_list [AddrT a; SetT s]
   | SubsetEq(s1,s2)        -> add_list [SetT s1; SetT s2]
   | InTh(th,st)            -> add_list [ThidT th; SetThT st]
@@ -765,6 +771,9 @@ let is_literal_flat lit =
                                 (is_path_var p)
     | OrderList(m,a1,a2)     -> (is_mem_var m) && (is_addr_var a1) &&
                                 (is_addr_var a2)
+    | Skiplist(m,s,l,a1,a2)  -> (is_mem_var m) &&
+                                (is_set_var s) && (is_int_var l) &&
+                                (is_addr_var a1) && (is_addr_var a2)
     | In(a,s)                -> (is_addr_var a) && (is_set_var s)
     | SubsetEq(s1,s2)        -> (is_set_var s1) && (is_set_var s2)
     | InTh(k,st)             -> (is_tid_var k) && (is_setth_var st)
@@ -794,6 +803,9 @@ let is_literal_flat lit =
                                (is_path_var p)
     | OrderList(m,a1,a2)    -> (is_mem_var m) && (is_addr_var a1) &&
                                (is_addr_var a2)
+    | Skiplist(m,s,l,a1,a2) -> (is_mem_var m) &&
+                               (is_set_var s) && (is_int_var l) &&
+                               (is_addr_var a1) && (is_addr_var a2)
     | In(a,s)               -> (is_addr_var a) && (is_set_var s)
     | SubsetEq(s1,s2)       -> (is_set_var s1) && (is_set_var s2)
     | InTh(k,st)            -> (is_tid_var k) && (is_setth_var st)
@@ -843,6 +855,12 @@ and atom_to_str a =
                                     (path_to_str p)
   | OrderList(h,a_from,a_to)   -> Printf.sprintf "orderlist(%s,%s,%s)"
                                     (mem_to_str h) (addr_to_str a_from)
+                                    (addr_to_str a_to)
+  | Skiplist(h,s,l,a_from,a_to)-> Printf.sprintf "skiplist(%s,%s,%s,%s,%s)"
+                                    (mem_to_str h)
+                                    (set_to_str s)
+                                    (int_to_str l)
+                                    (addr_to_str a_from)
                                     (addr_to_str a_to)
   | In(a,s)                    -> Printf.sprintf "%s in %s "
                                     (addr_to_str a) (set_to_str s)
@@ -1296,6 +1314,11 @@ and voc_atom (a:atom) : tid list =
                                   (voc_int l) @
                                   (voc_path p)
   | OrderList(h,a_from,a_to)   -> (voc_mem h) @
+                                  (voc_addr a_from) @
+                                  (voc_addr a_to)
+  | Skiplist(h,s,l,a_from,a_to)-> (voc_mem h) @
+                                  (voc_set s) @
+                                  (voc_int l) @
                                   (voc_addr a_from) @
                                   (voc_addr a_to)
   | In(a,s)                    -> (voc_addr a) @ (voc_set s)
@@ -1924,26 +1947,29 @@ let required_sorts (phi:formula) : sort list =
 
   and req_atom (a:atom) : SortSet.t =
     match a with
-    | Append (p1,p2,p3)   -> list_union [req_p p1;req_p p1;req_p p2;req_p p3]
-    | Reach (m,a1,a2,l,p) -> list_union [req_m m;req_a a1;req_a a2;req_i l;req_p p]
-    | OrderList (m,a1,a2) -> list_union [req_m m;req_a a1;req_a a2]
-    | In (a,s)            -> list_union [req_a a;req_s s]
-    | SubsetEq (s1,s2)    -> list_union [req_s s1;req_s s2]
-    | InTh (t,s)          -> list_union [req_t t;req_st s]
-    | SubsetEqTh (s1,s2)  -> list_union [req_st s1;req_st s2]
-    | InElem (e,s)        -> list_union [req_e e;req_se s]
-    | SubsetEqElem (s1,s2)-> list_union [req_se s1;req_se s2]
-    | Less (i1,i2)        -> list_union [req_i i1;req_i i2]
-    | Greater (i1,i2)     -> list_union [req_i i1;req_i i2]
-    | LessEq (i1,i2)      -> list_union [req_i i1;req_i i2]
-    | GreaterEq (i1,i2)   -> list_union [req_i i1;req_i i2]
-    | LessElem  (e1,e2)   -> list_union [req_e e1; req_e e2]
-    | GreaterElem (e1,e2) -> list_union [req_e e1; req_e e2]
-    | Eq (t1,t2)          -> union (req_term t1) (req_term t2)
-    | InEq (t1,t2)        -> union (req_term t1) (req_term t2)
-    | PC _                -> empty
-    | PCUpdate _          -> empty
-    | PCRange _           -> empty
+    | Append (p1,p2,p3)      -> list_union [req_p p1;req_p p1;req_p p2;req_p p3]
+    | Reach (m,a1,a2,l,p)    -> list_union [req_m m;req_a a1;req_a a2;
+                                            req_i l;req_p p]
+    | OrderList (m,a1,a2)    -> list_union [req_m m;req_a a1;req_a a2]
+    | Skiplist (m,s,l,a1,a2) -> list_union [req_m m;req_s s;req_i l;
+                                            req_a a1;req_a a2]
+    | In (a,s)               -> list_union [req_a a;req_s s]
+    | SubsetEq (s1,s2)       -> list_union [req_s s1;req_s s2]
+    | InTh (t,s)             -> list_union [req_t t;req_st s]
+    | SubsetEqTh (s1,s2)     -> list_union [req_st s1;req_st s2]
+    | InElem (e,s)           -> list_union [req_e e;req_se s]
+    | SubsetEqElem (s1,s2)   -> list_union [req_se s1;req_se s2]
+    | Less (i1,i2)           -> list_union [req_i i1;req_i i2]
+    | Greater (i1,i2)        -> list_union [req_i i1;req_i i2]
+    | LessEq (i1,i2)         -> list_union [req_i i1;req_i i2]
+    | GreaterEq (i1,i2)      -> list_union [req_i i1;req_i i2]
+    | LessElem  (e1,e2)      -> list_union [req_e e1; req_e e2]
+    | GreaterElem (e1,e2)    -> list_union [req_e e1; req_e e2]
+    | Eq (t1,t2)             -> union (req_term t1) (req_term t2)
+    | InEq (t1,t2)           -> union (req_term t1) (req_term t2)
+    | PC _                   -> empty
+    | PCUpdate _             -> empty
+    | PCRange _              -> empty
 
   and req_m (m:mem) : SortSet.t =
     match m with
@@ -2087,26 +2113,29 @@ let special_ops (phi:formula) : special_op_t list =
 
   and ops_atom (a:atom) : OpsSet.t =
     match a with
-    | Append (p1,p2,p3)   -> list_union [ops_p p1;ops_p p1;ops_p p2;ops_p p3]
-    | Reach (m,a1,a2,l,p) -> append Reachable[ops_m m;ops_a a1;ops_a a2;ops_i l;ops_p p]
-    | OrderList (m,a1,a2) -> append OrderedList[ops_m m;ops_a a1;ops_a a2]
-    | In (a,s)            -> list_union [ops_a a;ops_s s]
-    | SubsetEq (s1,s2)    -> list_union [ops_s s1;ops_s s2]
-    | InTh (t,s)          -> list_union [ops_t t;ops_st s]
-    | SubsetEqTh (s1,s2)  -> list_union [ops_st s1;ops_st s2]
-    | InElem (e,s)        -> list_union [ops_e e;ops_se s]
-    | SubsetEqElem (s1,s2)-> list_union [ops_se s1;ops_se s2]
-    | Less (i1,i2)        -> list_union [ops_i i1;ops_i i2]
-    | Greater (i1,i2)     -> list_union [ops_i i1;ops_i i2]
-    | LessEq (i1,i2)      -> list_union [ops_i i1;ops_i i2]
-    | GreaterEq (i1,i2)   -> list_union [ops_i i1;ops_i i2]
-    | LessElem (e1,e2)    -> append ElemOrder [ops_e e1; ops_e e2]
-    | GreaterElem (e1,e2) -> append ElemOrder [ops_e e1; ops_e e2]
-    | Eq (t1,t2)          -> list_union [ops_term t1;ops_term t2]
-    | InEq (t1,t2)        -> list_union [ops_term t1;ops_term t2]
-    | PC _                -> empty
-    | PCUpdate _          -> empty
-    | PCRange _           -> empty
+    | Append (p1,p2,p3)      -> list_union [ops_p p1;ops_p p1;ops_p p2;ops_p p3]
+    | Reach (m,a1,a2,l,p)    -> append Reachable[ops_m m;ops_a a1;ops_a a2;
+                                                 ops_i l;ops_p p]
+    | OrderList (m,a1,a2)    -> append OrderedList[ops_m m;ops_a a1;ops_a a2]
+    | Skiplist (m,s,l,a1,a2) -> append SkiplistProp[ops_m m;ops_s s; ops_i l;
+                                                    ops_a a1;ops_a a2]
+    | In (a,s)               -> list_union [ops_a a;ops_s s]
+    | SubsetEq (s1,s2)       -> list_union [ops_s s1;ops_s s2]
+    | InTh (t,s)             -> list_union [ops_t t;ops_st s]
+    | SubsetEqTh (s1,s2)     -> list_union [ops_st s1;ops_st s2]
+    | InElem (e,s)           -> list_union [ops_e e;ops_se s]
+    | SubsetEqElem (s1,s2)   -> list_union [ops_se s1;ops_se s2]
+    | Less (i1,i2)           -> list_union [ops_i i1;ops_i i2]
+    | Greater (i1,i2)        -> list_union [ops_i i1;ops_i i2]
+    | LessEq (i1,i2)         -> list_union [ops_i i1;ops_i i2]
+    | GreaterEq (i1,i2)      -> list_union [ops_i i1;ops_i i2]
+    | LessElem (e1,e2)       -> append ElemOrder [ops_e e1; ops_e e2]
+    | GreaterElem (e1,e2)    -> append ElemOrder [ops_e e1; ops_e e2]
+    | Eq (t1,t2)             -> list_union [ops_term t1;ops_term t2]
+    | InEq (t1,t2)           -> list_union [ops_term t1;ops_term t2]
+    | PC _                   -> empty
+    | PCUpdate _             -> empty
+    | PCRange _              -> empty
 
   and ops_m (m:mem) : OpsSet.t =
     match m with

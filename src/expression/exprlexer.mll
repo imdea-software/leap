@@ -65,6 +65,7 @@ rule norm = parse
   | "path2set"      { Global.last "path2set"      ; PATH2SET }
   | "addr2set"      { Global.last "addr2set"      ; ADDR2SET }
   | "orderlist"     { Global.last "orderlist"     ; ORDERLIST }
+  | "skiplist"      { Global.last "skiplist"      ; SKIPLIST }
   | "getp"          { Global.last "getp"          ; GETP }
   | "append"        { Global.last "append"        ; APPEND } 
   | "reach"         { Global.last "reach"         ; REACH } 

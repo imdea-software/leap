@@ -266,6 +266,7 @@ and atom_to_tll_atom (a:Expr.atom) : Tll.atom =
   | Expr.Reach (m,a1,a2,p)    -> Tll.Reach (mem m, addr a1, addr a2, path p)
   | Expr.ReachAt _            -> raise(UnsupportedTllExpr(Expr.atom_to_str a))
   | Expr.OrderList(m,a1,a2)   -> Tll.OrderList (mem m, addr a1, addr a2)
+  | Expr.Skiplist _           -> raise(UnsupportedTllExpr(Expr.atom_to_str a))
   | Expr.In (a,s)             -> Tll.In (addr a, set s)
   | Expr.SubsetEq (s1,s2)     -> Tll.SubsetEq (set s1, set s2)
   | Expr.InTh (t,s)           -> Tll.InTh (tid t, setth s)

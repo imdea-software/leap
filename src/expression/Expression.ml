@@ -180,6 +180,7 @@ and atom =
   | Reach         of mem * addr * addr * path
   | ReachAt       of mem * addr * addr * integer * path
   | OrderList     of mem * addr * addr
+  | Skiplist      of mem * set * integer * addr * addr
   | In            of addr * set
   | SubsetEq      of set * set
   | InTh          of tid * setth
@@ -1084,6 +1085,11 @@ and priming_atom (pr:bool) (prime_set:VarSet.t option) (a:atom) : atom =
   | OrderList(h,a_from,a_to)   -> OrderList(priming_mem pr prime_set h,
                                             priming_addr pr prime_set a_from,
                                             priming_addr pr prime_set a_to)
+  | Skiplist(h,s,l,a_from,a_to)-> Skiplist(priming_mem pr prime_set h,
+                                           priming_set pr prime_set s,
+                                           priming_int pr prime_set l,
+                                           priming_addr pr prime_set a_from,
+                                           priming_addr pr prime_set a_to)
   | In(a,s)                    -> In(priming_addr pr prime_set a,
                                      priming_set pr prime_set s)
   | SubsetEq(s_in,s_out)       -> SubsetEq(priming_set pr prime_set s_in,
@@ -1319,6 +1325,12 @@ and atom_to_str (expr:atom) : string =
                                             (path_to_str p)
   | OrderList(h,a_from,a_to)   -> sprintf "orderlist(%s,%s,%s)"
                                             (mem_to_str h)
+                                            (addr_to_str a_from)
+                                            (addr_to_str a_to)
+  | Skiplist(h,s,l,a_from,a_to)-> sprintf "skiplist(%s,%s,%s,%s,%s)"
+                                            (mem_to_str h)
+                                            (set_to_str s)
+                                            (integer_to_str l)
                                             (addr_to_str a_from)
                                             (addr_to_str a_to)
   | In(a,s)                    -> sprintf "%s in %s "
@@ -2159,6 +2171,11 @@ and get_vars_atom (a:atom)
   | OrderList(h,a_from,a_to)   -> (get_vars_mem h base) @
                                   (get_vars_addr a_from base) @
                                   (get_vars_addr a_to base)
+  | Skiplist(h,s,l,a_from,a_to)-> (get_vars_mem h base) @
+                                  (get_vars_set s base) @
+                                  (get_vars_int l base) @
+                                  (get_vars_addr a_from base) @
+                                  (get_vars_addr a_to base)
   | In(a,s)                    -> (get_vars_addr a base) @ (get_vars_set s base)
   | SubsetEq(s_in,s_out)       -> (get_vars_set s_in base) @
                                   (get_vars_set s_out base)
@@ -2641,6 +2658,11 @@ and voc_atom (a:atom) : tid list =
   | OrderList(h,a_from,a_to)   -> (voc_mem h) @
                                   (voc_addr a_from) @
                                   (voc_addr a_to)
+  | Skiplist(h,s,l,a_from,a_to)-> (voc_mem h) @
+                                  (voc_set s) @
+                                  (voc_int l) @
+                                  (voc_addr a_from) @
+                                  (voc_addr a_to)
   | In(a,s)                    -> (voc_addr a) @ (voc_set s)
   | SubsetEq(s_in,s_out)       -> (voc_set s_in) @ (voc_set s_out)
   | InTh(th,s)                 -> (voc_tid th) @ (voc_setth s)
@@ -2938,6 +2960,11 @@ and var_kind_atom (kind:kind_t) (a:atom) : term list =
                                   (var_kind_int kind l) @
                                   (var_kind_path kind p)
   | OrderList(h,a_from,a_to)   -> (var_kind_mem kind h) @
+                                  (var_kind_addr kind a_from) @
+                                  (var_kind_addr kind a_to)
+  | Skiplist(h,s,l,a_from,a_to)-> (var_kind_mem kind h) @
+                                  (var_kind_set kind s) @
+                                  (var_kind_int kind l) @
                                   (var_kind_addr kind a_from) @
                                   (var_kind_addr kind a_to)
   | In(a,s)                    -> (var_kind_addr kind a) @ (var_kind_set kind s)
@@ -3272,6 +3299,11 @@ and param_atom (pfun:variable option -> tid option) (a:atom) : atom =
   | OrderList(h,a_from,a_to)   -> OrderList(param_mem pfun h,
                                             param_addr_aux pfun a_from,
                                             param_addr_aux pfun a_to)
+  | Skiplist(h,s,l,a_from,a_to)-> Skiplist(param_mem pfun h,
+                                           param_set pfun s,
+                                           param_int pfun l,
+                                           param_addr_aux pfun a_from,
+                                           param_addr_aux pfun a_to)
   | In(a,s)                    -> In(param_addr_aux pfun a,
                                      param_set pfun s)
   | SubsetEq(s_in,s_out)       -> SubsetEq(param_set pfun s_in,
@@ -3716,6 +3748,11 @@ and subst_tid_atom (subs:tid_subst_t) (a:atom) : atom =
   | OrderList(h,a_from,a_to)   -> OrderList(subst_tid_mem subs h,
                                             subst_tid_addr subs a_from,
                                             subst_tid_addr subs a_to)
+  | Skiplist(h,s,l,a_from,a_to)-> Skiplist(subst_tid_mem subs h,
+                                           subst_tid_set subs s,
+                                           subst_tid_int subs l,
+                                           subst_tid_addr subs a_from,
+                                           subst_tid_addr subs a_to)
   | In(a,s)                    -> In(subst_tid_addr subs a,
                                      subst_tid_set subs s)
   | SubsetEq(s_in,s_out)       -> SubsetEq(subst_tid_set subs s_in,

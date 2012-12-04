@@ -109,6 +109,7 @@ and atom =
     Append            of path * path * path
   | Reach             of mem * addr * addr * integer * path
   | OrderList         of mem * addr * addr
+  | Skiplist          of mem * set * integer * addr * addr
   | In                of addr * set
   | SubsetEq          of set  * set
   | InTh              of tid * setth
@@ -153,6 +154,7 @@ type special_op_t =
   | Set2Elem
   | ElemOrder
   | OrderedList
+  | SkiplistProp
 
 
 exception WrongType of term

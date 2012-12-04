@@ -467,7 +467,7 @@ let check_and_add_delta (tbl:Vd.delta_fun_t)
 %token EMPTYSETTH UNIONTH INTRTH SETDIFFTH SINGLETH
 %token EMPTYSETINT UNIONINT INTRINT SETDIFFINT SINGLEINT
 %token EMPTYSETELEM UNIONELEM INTRELEM SETDIFFELEM SINGLEELEM SET2ELEM
-%token PATH2SET ADDR2SET GETP FIRSTLOCKED ORDERLIST
+%token PATH2SET ADDR2SET GETP FIRSTLOCKED ORDERLIST SKIPLIST
 %token APPEND REACH
 %token IN SUBSETEQ
 %token INTH SUBSETEQTH
@@ -1039,6 +1039,21 @@ literal :
       let a_from = parser_check_type check_type_addr $5 Expr.Addr get_str_expr in
       let a_to   = parser_check_type check_type_addr $7 Expr.Addr get_str_expr in
         Expr.Atom (Expr.OrderList (h,a_from,a_to))
+    }
+  | SKIPLIST OPEN_PAREN term COMMA term COMMA term COMMA term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "skiplist(%s,%s,%s,%s,%s)"
+                                        (Expr.term_to_str $3)
+                                        (Expr.term_to_str $5)
+                                        (Expr.term_to_str $7)
+                                        (Expr.term_to_str $9)
+                                        (Expr.term_to_str $11) in
+      let h      = parser_check_type check_type_mem  $3  Expr.Mem get_str_expr in
+      let s      = parser_check_type check_type_set  $5  Expr.Set get_str_expr in
+      let l      = parser_check_type check_type_int  $7  Expr.Int get_str_expr in
+      let a_from = parser_check_type check_type_addr $9  Expr.Addr get_str_expr in
+      let a_to   = parser_check_type check_type_addr $11 Expr.Addr get_str_expr in
+        Expr.Atom (Expr.Skiplist (h,s,l,a_from,a_to))
     }
   | term IN term
     {
