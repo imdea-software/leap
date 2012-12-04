@@ -13,6 +13,13 @@ module Tac = Tactics
 type cutoff_type = Dnf | Union | Pruning
 type valid_t = Unverified | NotValid | CheckedLocation | Checked | Unneeded
 
+type dp_result_t = valid_t * (* Validity of the formula                    *)
+                   int     * (* Total calls to current DP                  *)
+                   int     * (* Total calls to DP, including auxiliary DPs *)
+                   int     * (* Number of verified formulas                *)
+                   float     (* Total time in seconds                      *)
+
+
 module type S =
 sig 
   type rhoMode
@@ -1692,8 +1699,7 @@ struct
       else filtered_sys in
     extended_sys
   
-  let call_pos_dp (phi:PosExp.expression)
-      (status:valid_t) : (valid_t * int * int * float) =
+  let call_pos_dp (phi:PosExp.expression) (status:valid_t) : dp_result_t =
     assert(isInitialized());
     if status = Unverified || status = NotValid then begin
       let timer = new LeapLib.timer in
@@ -1701,14 +1707,13 @@ struct
       let valid = PS.is_valid solverInfo.prog_lines phi in
       timer#stop;
       if valid then
-        (CheckedLocation, 1, 1, timer#elapsed_time)
+        (CheckedLocation, 1, 1, 1, timer#elapsed_time)
       else
-        (NotValid, 1, 0, timer#elapsed_time)
-    end else (status, 0, 0, 0.0)
+        (NotValid, 1, 1, 0, timer#elapsed_time)
+    end else (status, 0, 0, 0, 0.0)
   
   
-  let call_num_dp (phi : E.formula) 
-      (status : valid_t) : (valid_t * int * int * float) =
+  let call_num_dp (phi : E.formula) (status : valid_t) : dp_result_t =
     assert(isInitialized());
     if status = Unverified || status = NotValid then begin
       let num_phi = NumExp.formula_to_int_formula phi in
@@ -1718,19 +1723,19 @@ struct
         NS.is_valid_with_lines_plus_info solverInfo.prog_lines num_phi in
       timer#stop;
       if valid then
-        (Checked, calls, 1, timer#elapsed_time)
+        (Checked, calls, calls, 1, timer#elapsed_time)
       else
         begin
           NS.print_model ();
-          (NotValid, calls, 0, timer#elapsed_time)
+          (NotValid, calls, calls, 0, timer#elapsed_time)
         end
-    end else (Unneeded, 0, 0, 0.0)
+    end else (Unneeded, 0, 0, 0, 0.0)
   
   
   let call_tll_dp (phi    : E.formula)
                   (stac   : Tac.solve_tactic_t option)
                   (cutoff : Smp.cutoff_strategy)
-                  (status : valid_t) : (valid_t * int * int * float) =
+                  (status : valid_t) : dp_result_t =
     assert(isInitialized());
     if status = Unverified || status = NotValid then begin
       let tll_phi = TllInterface.formula_to_tll_formula phi in
@@ -1740,19 +1745,19 @@ struct
                            solverInfo.prog_lines stac cutoff tll_phi in
       timer#stop;
       if valid then
-        (Checked, calls, 1, timer#elapsed_time)
+        (Checked, calls, calls, 1, timer#elapsed_time)
       else
         begin
           TS.print_model ();
-          (NotValid, calls, 0, timer#elapsed_time)
+          (NotValid, calls, calls, 0, timer#elapsed_time)
         end
-    end else (Unneeded, 0, 0, 0.0)
+    end else (Unneeded, 0, 0, 0, 0.0)
 
 
   let call_tslk_dp (phi    : E.formula)
                    (stac   : Tac.solve_tactic_t option)
                    (cutoff : Smp.cutoff_strategy)
-                   (status : valid_t) : (valid_t * int * int * float) =
+                   (status : valid_t) : dp_result_t =
     assert(isInitialized());
     let _ = print_endline "ENTERING..." in
     if status = Unverified || status = NotValid then begin
@@ -1766,41 +1771,39 @@ struct
                            solverInfo.prog_lines stac cutoff tslk_phi in
       timer#stop;
       if valid then
-        (Checked, calls, 1, timer#elapsed_time)
+        (Checked, calls, calls, 1, timer#elapsed_time)
       else
         begin
           TSLKS.print_model ();
-          (NotValid, calls, 0, timer#elapsed_time)
+          (NotValid, calls, calls, 0, timer#elapsed_time)
         end
-    end else (Unneeded, 0, 0, 0.0)
+    end else (Unneeded, 0, 0, 0, 0.0)
 
 
 (* TUKA: Repair this function *)
   let call_tsl_dp (phi    : E.formula)
                   (stac   : Tac.solve_tactic_t option)
                   (cutoff : Smp.cutoff_strategy)
-                  (status : valid_t) : (valid_t * int * int * float) =
+                  (status : valid_t) : dp_result_t =
     assert(isInitialized());
     let _ = print_endline "ENTERING..." in
     if status = Unverified || status = NotValid then begin
       let _ = print_endline "WILL PERFORM THE CHECK..." in
-
-      let module TSLKExpr = TSLKS.TslkExp in
-      let module TSLKIntf = TSLKInterface.Make(TSLKExpr) in
-      let tslk_phi = TSLKIntf.formula_to_tslk_formula phi in
+      let tslk_phi = TSLInterface.formula_to_tsl_formula phi in
       let timer = new LeapLib.timer in
       timer#start;
-      let valid, calls = TSLKS.is_valid_plus_info
-                           solverInfo.prog_lines stac cutoff tslk_phi in
+      let valid, tsl_calls, tslk_calls =
+            TslSolver.is_valid_plus_info
+                solverInfo.prog_lines stac cutoff tslk_phi in
       timer#stop;
       if valid then
-        (Checked, calls, 1, timer#elapsed_time)
+        (Checked, tsl_calls, tslk_calls, 1, timer#elapsed_time)
       else
         begin
-          TSLKS.print_model ();
-          (NotValid, calls, 0, timer#elapsed_time)
+          TslSolver.print_model ();
+          (NotValid, tsl_calls, tslk_calls, 0, timer#elapsed_time)
         end
-    end else (Unneeded, 0, 0, 0.0)
+    end else (Unneeded, 0, 0, 0, 0.0)
  
  
   let apply_dp_on_table (vc_tbl:formula_table_t) (header:string) : bool =
@@ -1809,16 +1812,17 @@ struct
     analysis_timer#start;
     let total_vcs = Hashtbl.length vc_tbl in
     (* Counters *)
-    let pos_calls   = ref 0 in
-    let pos_sats    = ref 0 in
-    let num_calls   = ref 0 in
-    let num_sats    = ref 0 in
-    let tll_calls   = ref 0 in
-    let tll_sats    = ref 0 in
-    let tsl_calls   = ref 0 in
-    let tsl_sats    = ref 0 in
-    let tslk_calls  = ref 0 in
-    let tslk_sats   = ref 0 in
+    let pos_calls     = ref 0 in
+    let pos_sats      = ref 0 in
+    let num_calls     = ref 0 in
+    let num_sats      = ref 0 in
+    let tll_calls     = ref 0 in
+    let tll_sats      = ref 0 in
+    let tsl_calls     = ref 0 in
+    let tsl_aux_calls = ref 0 in
+    let tsl_sats      = ref 0 in
+    let tslk_calls    = ref 0 in
+    let tslk_sats     = ref 0 in
     (* Set the SMT solvers *)
     let to_vc_status st = match st with
       | Unverified -> Report.Unverified
@@ -1834,7 +1838,7 @@ struct
       (* Call position DP *)
       let pos_status, pos_time =
         if apply_pos_dp () then begin
-          let new_status, calls, sats, time = call_pos_dp p_f status in
+          let new_status, calls, _, sats, time = call_pos_dp p_f status in
           pos_calls := !pos_calls + calls;
           pos_sats := !pos_sats + sats;
           let st = if new_status = Unneeded then
@@ -1848,7 +1852,7 @@ struct
       (* Call numeric DP *)
       let num_status, num_time =
         if apply_num_dp () then begin
-          let new_status, calls, sats, time = call_num_dp f pos_status in
+          let new_status, calls, _, sats, time = call_num_dp f pos_status in
           num_calls := !num_calls + calls;
           num_sats := !num_sats + sats;
           let st = if new_status = Unneeded then
@@ -1864,7 +1868,7 @@ struct
         if apply_tll_dp () then begin
           let prev_st = 
             if num_status = Unneeded then pos_status else num_status in
-          let new_status, calls, sats, time =
+          let new_status, calls, _, sats, time =
             call_tll_dp f stac (vcgen_to_smp_cutoff cutoff) prev_st in
           tll_calls := !tll_calls + calls;
           tll_sats := !tll_sats + sats;
@@ -1881,7 +1885,7 @@ struct
         let (apply_tslk, k) = apply_tslk_dp() in
         if apply_tslk then begin
           let prev_st = if num_status = Unneeded then pos_status else num_status in
-          let new_status, calls, sats, time =
+          let new_status, calls, _, sats, time =
             call_tslk_dp f stac (vcgen_to_smp_cutoff cutoff) prev_st in
           tslk_calls := !tslk_calls + calls;
           tslk_sats := !tslk_sats + sats;
@@ -1897,9 +1901,10 @@ struct
       let tsl_status, tsl_time =
         if apply_tsl_dp() then begin
           let prev_st = if num_status = Unneeded then pos_status else num_status in
-          let new_status, calls, sats, time =
+          let new_status, tsl_call, tslk_call, sats, time =
             call_tsl_dp f stac (vcgen_to_smp_cutoff cutoff) prev_st in
-          tsl_calls := !tsl_calls + calls;
+          tsl_calls := !tsl_calls + tsl_call;
+          tsl_aux_calls := !tsl_aux_calls + tslk_call;
           tsl_sats := !tsl_sats + sats;
           let st = if new_status = Unneeded then
                      pos_status

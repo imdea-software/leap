@@ -5,6 +5,8 @@ module TslExp = TSLExpression
 let comp_model : bool ref = ref false
 (* Should we compute a model in case of courter example? *)
 
+let cutoff_opt : Smp.cutoff_options_t = Smp.opt_empty()
+(* The structure where we store the options for cutoff *)
 
 
 let is_sat_plus_info (lines : int)
@@ -26,16 +28,17 @@ let is_sat (lines : int)
 let is_valid_plus_info (prog_lines:int)
                        (stac:Tactics.solve_tactic_t option)
                        (co:Smp.cutoff_strategy)
-                       (phi:TslExp.formula) : (bool * int) =
-  let (s,tslc,tsklc) = is_sat prog_lines stac co (TslExp.Not phi) in
-    (not s, tslc, tslkc)
+                       (phi:TslExp.formula) : (bool * int * int) =
+  let (s,tsl_count,tslk_count) = is_sat_plus_info prog_lines stac co
+                                   (TslExp.Not phi) in
+    (not s, tsl_count, tslk_count)
 
 
 let is_valid (prog_lines:int)
              (stac:Tactics.solve_tactic_t option)
              (co:Smp.cutoff_strategy)
              (phi:TslExp.formula) : bool =
-  let (v,_,_) = is_valid_plus_info prog_lines stac co phi in v
+  not (is_sat prog_lines stac co phi)
 
 
 let compute_model (b:bool) : unit =
