@@ -1351,8 +1351,8 @@ and memterm_to_str (m:Expr.mem) : string =
 
 
 let rec varupdate_to_str (v:Expr.variable)
-                               (th:Expr.tid)
-                               (t:Expr.term) : string =
+                         (th:Expr.tid)
+                         (t:Expr.term) : string =
   let v_str = variable_invocation_to_str v in
   let th_str = tidterm_to_str th in
   let t_str = term_to_str t

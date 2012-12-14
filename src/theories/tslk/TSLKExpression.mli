@@ -30,7 +30,6 @@ module type S =
       | PathT             of path
       | MemT              of mem
       | LevelT            of level
-      | VarUpdate         of variable * tid * term
     and eq = term * term
     and diseq = term * term
     and set =

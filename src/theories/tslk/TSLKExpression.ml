@@ -33,7 +33,6 @@ module type S =
       | PathT             of path
       | MemT              of mem
       | LevelT            of level
-      | VarUpdate         of variable * tid * term
     and eq = term * term
     and diseq = term * term
     and set =
@@ -281,7 +280,6 @@ module Make (K : Level.S) : S =
       | PathT             of path
       | MemT              of mem
       | LevelT            of level
-      | VarUpdate         of variable * tid * term
     and eq = term * term
     and diseq = term * term
     and set =
@@ -643,8 +641,6 @@ module Make (K : Level.S) : S =
         | PathT  p            -> get_varset_path p
         | MemT   m            -> get_varset_mem m
         | LevelT l            -> get_varset_level l
-        | VarUpdate(v,pc,t)   -> (S.singleton v) @@ (get_varset_term t) @@
-                                 (get_varset_from_param v)
     and get_varset_literal l =
       match l with
           Atom a    -> get_varset_atom a
@@ -847,7 +843,6 @@ module Make (K : Level.S) : S =
         | PathT _          -> Path
         | MemT _           -> Mem
         | LevelT _         -> Level
-        | VarUpdate(v,_,_) -> get_sort v
       
     let terms_same_type a b =
       (get_sort_from_term a) = (get_sort_from_term b)
@@ -872,8 +867,6 @@ module Make (K : Level.S) : S =
         | PathT p        -> is_path_flat p
         | MemT  m        -> is_mem_flat m
         | LevelT  i        -> is_level_flat i
-        | VarUpdate _    -> true
-
     and is_set_flat t =
       match t with
           VarSet _         -> true
@@ -1203,12 +1196,6 @@ module Make (K : Level.S) : S =
         | PathT(path)        -> (path_to_str path)
         | MemT(mem)          -> (mem_to_str mem)
         | LevelT(i)            -> (level_to_str i)
-        | VarUpdate (v,th,t) -> let v' = prime_var v in
-                                let v'_str = variable_to_str v' in
-                                let v_str = variable_to_str v in
-                                let th_str = tid_to_str th in
-                                let t_str = term_to_str t in
-                                  Printf.sprintf "%s = %s{%s<-%s}" v'_str v_str th_str t_str
     and conjunctive_formula_to_str form =
       let rec c_to_str f str =
         match f with
@@ -1348,7 +1335,6 @@ module Make (K : Level.S) : S =
         | PathT(path)        -> voc_path path
         | MemT(mem)          -> voc_mem mem
         | LevelT(i)            -> voc_level i
-        | VarUpdate (v,th,t) -> (voc_var v) @ (voc_tid th) @ (voc_term t)
 
 
     and voc_set (e:set) : tid list =
@@ -1759,8 +1745,6 @@ module Make (K : Level.S) : S =
         | PathT p                      -> req_p p
         | MemT m                       -> req_m m
         | LevelT l                     -> req_lv l
-        | VarUpdate ((_,s,_,_,_),t,tr) -> append s [req_t t;req_term tr]
-
       in
         SortSet.elements (req_f phi)
 
@@ -1908,8 +1892,6 @@ module Make (K : Level.S) : S =
         | PathT p            -> ops_p p
         | MemT m             -> ops_m m
         | LevelT i           -> ops_lv i
-        | VarUpdate (_,t,tr) -> list_union [ops_t t;ops_term tr]
-
       in
         OpsSet.elements (ops_f phi)
 

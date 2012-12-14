@@ -57,6 +57,7 @@ and arrays =
 and addrarr =
   | VarAddrArray  of variable
   | AddrArrayUp   of addrarr * integer * addr
+  | CellArr       of cell
 
 and tidarr =
   | VarTidArray   of variable
@@ -120,8 +121,8 @@ and cell =
   | MkCell        of elem * addr * tid
   | MkSLKCell     of elem * addr list * tid list * integer
   | MkSLCell      of elem * addrarr * tidarr * integer
-  | CellLock      of cell
-  | CellLockAt    of cell * integer
+  | CellLock      of cell * tid
+  | CellLockAt    of cell * integer * tid
   | CellUnlock    of cell
   | CellUnlockAt  of cell * integer
   | CellAt        of mem * addr

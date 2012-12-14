@@ -1,6 +1,5 @@
 LEAP=../../leap
-OPTIONS="--show_file_info -fpm -sm -yices+z3 -dp tll -co union -hp -do 
-benchmarks/fullorder"
+OPTIONS="--focus 4 --show_file_info -yices+z3 -dp tll -fpm -sm -co union -hp -do benchmarks/fullorder"
 
 PRG=prgs/listorder.prg
 INV_FOLDER=invs/fullorder_invs

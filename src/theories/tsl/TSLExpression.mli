@@ -30,7 +30,6 @@ and term =
   | IntT              of integer
   | AddrArrayT        of addrarr
   | TidArrayT         of tidarr
-  | VarUpdate         of variable * tid * term
 and eq = term * term
 and diseq = term * term
 and set =
@@ -88,7 +87,6 @@ and path =
   | GetPath           of mem * addr * addr * integer
 and mem =
     VarMem            of variable
-  | Emp
   | Update            of mem * addr * cell
 and integer =
     IntVal            of int
@@ -102,6 +100,7 @@ and integer =
 and addrarr =
   | VarAddrArray      of variable
   | AddrArrayUp       of addrarr * integer * addr
+  | CellArr           of cell
 and tidarr =
   | VarTidArray       of variable
   | TidArrayUp        of tidarr * integer * tid
@@ -170,6 +169,7 @@ module ThreadSet : Set.S with type elt = tid
 val param_var : variable -> tid -> variable
 val is_global_var : variable -> bool
 val get_sort : variable -> sort
+val build_var : varId -> sort -> bool -> tid option -> string option -> variable
 
 (* returns all variables form a formula *)
 val get_varlist_from_conj : conjunctive_formula -> variable list

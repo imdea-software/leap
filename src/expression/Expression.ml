@@ -64,6 +64,7 @@ and arrays =
 and addrarr =
   | VarAddrArray  of variable
   | AddrArrayUp   of addrarr * integer * addr
+  | CellArr       of cell
 
 and tidarr =
   | VarTidArray   of variable
@@ -127,8 +128,8 @@ and cell =
   | MkCell        of elem * addr * tid
   | MkSLKCell     of elem * addr list * tid list * integer
   | MkSLCell      of elem * addrarr * tidarr * integer
-  | CellLock      of cell
-  | CellLockAt    of cell * integer
+  | CellLock      of cell * tid
+  | CellLockAt    of cell * integer * tid
   | CellUnlock    of cell
   | CellUnlockAt  of cell * integer
   | CellAt        of mem * addr
@@ -781,6 +782,7 @@ let rec is_primed_addrarray (a:addrarr) : bool =
   match a with
     VarAddrArray v       -> is_primed v
   | AddrArrayUp (a',_,_) -> is_primed_addrarray a'
+  | CellArr c            -> false
 
 let rec is_primed_tidarray (a:tidarr) : bool =
   match a with
@@ -875,6 +877,7 @@ and priming_addrarray (pr:bool) (prime_set:VarSet.t option) (expr:addrarr)
   | AddrArrayUp(arr,i,a) -> AddrArrayUp  (priming_addrarray pr prime_set arr,
                                           priming_int   pr prime_set i,
                                           priming_addr  pr prime_set a)
+  | CellArr c            -> CellArr (priming_cell pr prime_set c)
 
 and priming_tidarray (pr:bool) (prime_set:VarSet.t option) (expr:tidarr)
       : tidarr =
@@ -963,9 +966,11 @@ and priming_cell (pr:bool) (prime_set:VarSet.t option) (c:cell) : cell =
                                        priming_addrarray pr prime_set aa,
                                        priming_tidarray pr prime_set ta,
                                        priming_int pr prime_set l)
-  | CellLock(cell)         -> CellLock(priming_cell pr prime_set cell)
-  | CellLockAt(cell,l)     -> CellLockAt(priming_cell pr prime_set cell,
-                                         priming_int pr prime_set l)
+  | CellLock(cell, t)      -> CellLock(priming_cell pr prime_set cell,
+                                       priming_tid pr prime_set t)
+  | CellLockAt(cell,l, t)  -> CellLockAt(priming_cell pr prime_set cell,
+                                         priming_int pr prime_set l,
+                                         priming_tid pr prime_set t)
   | CellUnlock(cell)       -> CellUnlock(priming_cell pr prime_set cell)
   | CellUnlockAt(cell,l)   -> CellUnlockAt(priming_cell pr prime_set cell,
                                            priming_int pr prime_set l)
@@ -1431,6 +1436,7 @@ and addrarr_to_str (expr:addrarr) : string =
   | AddrArrayUp(arr,i,a) -> sprintf "%s{%s<-%s}" (addrarr_to_str arr)
                                                  (integer_to_str i)
                                                  (addr_to_str a)
+  | CellArr c            -> sprintf "%s.arr" (cell_to_str c)
 
 
 and tidarr_to_str (expr:tidarr) : string =
@@ -1576,9 +1582,11 @@ and cell_to_str (expr:cell) : string =
                                            (addrarr_to_str aa)
                                            (tidarr_to_str ta)
                                            (integer_to_str l)
-  | CellLock(cell)        -> sprintf "%s.lock" (cell_to_str cell)
-  | CellLockAt(cell,l)    -> sprintf "%s.lock[%s]" (cell_to_str cell)
-                                                   (integer_to_str l)
+  | CellLock(cell,t)        -> sprintf "%s.lock[%s]" (cell_to_str cell)
+                                                     (tid_to_str t)
+  | CellLockAt(cell,l,t)    -> sprintf "%s.lock[%s,%s]" (cell_to_str cell)
+                                                        (integer_to_str l)
+                                                        (tid_to_str t)
   | CellUnlock(cell)      -> sprintf "%s.unlock" (cell_to_str cell)
   | CellUnlockAt(cell,l)  -> sprintf "%s.unlock[%s]" (cell_to_str cell)
                                                      (integer_to_str l)
@@ -1728,22 +1736,24 @@ let get_var_info (t:term)
   let get_info v = (var_id v, var_pr v, var_th v, var_proc v, var_k v)
   in
   match t with
-    VarT v                       -> get_info v
-  | SetT(VarSet v)               -> get_info v
-  | ElemT(VarElem v)             -> get_info v
-  | ThidT(VarTh v)               -> get_info v
-  | AddrT(VarAddr v)             -> get_info v
-  | CellT(VarCell v)             -> get_info v
-  | SetThT(VarSetTh v)           -> get_info v
-  | PathT(VarPath v)             -> get_info v
-  | MemT(VarMem v)               -> get_info v
-  | IntT(VarInt v)               -> get_info v
-  | ElemT(CellData(VarCell v))   -> get_info v
-  | AddrT(Next(VarCell v))       -> get_info v
-  | ThidT(CellLockId(VarCell v)) -> get_info v
-  | CellT(CellLock(VarCell v))   -> get_info v
-  | CellT(CellUnlock(VarCell v)) -> get_info v
-  | _                            -> ("",false,None,None,Normal)
+    VarT v                           -> get_info v
+  | SetT(VarSet v)                   -> get_info v
+  | ElemT(VarElem v)                 -> get_info v
+  | ThidT(VarTh v)                   -> get_info v
+  | AddrT(VarAddr v)                 -> get_info v
+  | CellT(VarCell v)                 -> get_info v
+  | SetThT(VarSetTh v)               -> get_info v
+  | PathT(VarPath v)                 -> get_info v
+  | MemT(VarMem v)                   -> get_info v
+  | IntT(VarInt v)                   -> get_info v
+  | ElemT(CellData(VarCell v))       -> get_info v
+  | AddrT(Next(VarCell v))           -> get_info v
+  | ThidT(CellLockId(VarCell v))     -> get_info v
+  | CellT(CellLock(VarCell v,_))     -> get_info v
+  | CellT(CellUnlock(VarCell v))     -> get_info v
+  | CellT(CellLockAt(VarCell v,_,_)) -> get_info v
+  | CellT(CellUnlockAt(VarCell v,_)) -> get_info v
+  | _                                -> ("",false,None,None,Normal)
 
 
 let get_var_id (t:term) : varId =
@@ -1951,6 +1961,7 @@ and get_vars_addrarr (a:addrarr)
   | AddrArrayUp(arr,i,a) -> (get_vars_addrarr arr base) @
                             (get_vars_int i base)       @
                             (get_vars_addr a base)
+  | CellArr c            -> (get_vars_cell c base)
 
 
 and get_vars_tidarr (a:tidarr)
@@ -2045,9 +2056,10 @@ and get_vars_cell (c:cell)
                               (get_vars_addrarr aa base) @
                               (get_vars_tidarr ta base) @
                               (get_vars_int l base)
-  | CellLock(cell)         -> (get_vars_cell cell base)
-  | CellLockAt(cell,l)     -> (get_vars_cell cell base) @
-                              (get_vars_int l base)
+  | CellLock(cell,t)       -> (get_vars_cell cell base) @ (get_vars_tid t base)
+  | CellLockAt(cell,l,t)   -> (get_vars_cell cell base) @
+                              (get_vars_int l base)     @
+                              (get_vars_tid t base)
   | CellUnlock(cell)       -> (get_vars_cell cell base)
   | CellUnlockAt(cell,l)   -> (get_vars_cell cell base) @
                               (get_vars_int l base)
@@ -2491,6 +2503,7 @@ and voc_addrarr (a:addrarr) : tid list =
   match a with
     VarAddrArray v       -> Option.map_default (fun x->[x]) [] (var_th v)
   | AddrArrayUp(arr,i,a) -> (voc_addrarr arr) @ (voc_int i) @ (voc_addr a)
+  | CellArr c            -> (voc_cell c)
 
 
 and voc_tidarr (a:tidarr) : tid list =
@@ -2562,8 +2575,8 @@ and voc_cell (c:cell) : tid list =
                               (voc_addrarr aa) @
                               (voc_tidarr ta ) @
                               (voc_int l)
-  | CellLock(cell)         -> (voc_cell cell)
-  | CellLockAt(cell,l)     -> (voc_cell cell) @ (voc_int l)
+  | CellLock(cell,t)       -> (voc_cell cell) @ (voc_tid t)
+  | CellLockAt(cell,l,t)   -> (voc_cell cell) @ (voc_int l) @ (voc_tid t)
   | CellUnlock(cell)       -> (voc_cell cell)
   | CellUnlockAt(cell,l)   -> (voc_cell cell) @ (voc_int l)
   | CellAt(mem,addr)       -> (voc_mem mem) @ (voc_addr addr)
@@ -2777,6 +2790,7 @@ and var_kind_addrarr (kind:kind_t) (a:addrarr) : term list =
   | AddrArrayUp(arr,i,a) -> (var_kind_addrarr kind arr) @
                             (var_kind_int kind i)       @
                             (var_kind_addr kind a)
+  | CellArr c            -> (var_kind_cell kind c)
 
 
 and var_kind_tidarr (kind:kind_t) (a:tidarr) : term list =
@@ -2855,9 +2869,11 @@ and var_kind_cell (kind:kind_t) (c:cell) : term list =
                               (var_kind_addrarr kind aa) @
                               (var_kind_tidarr kind ta)  @
                               (var_kind_int kind l)
-  | CellLock(cell)         -> (var_kind_cell kind cell)
-  | CellLockAt(cell,l)     -> (var_kind_cell kind cell) @
-                              (var_kind_int kind l)
+  | CellLock(cell,t)       -> (var_kind_cell kind cell) @
+                              (var_kind_tid kind t)
+  | CellLockAt(cell,l,t)   -> (var_kind_cell kind cell) @
+                              (var_kind_int kind l)     @
+                              (var_kind_tid kind t)
   | CellUnlock(cell)       -> (var_kind_cell kind cell)
   | CellUnlockAt(cell,l)   -> (var_kind_cell kind cell) @
                               (var_kind_int kind l)
@@ -3099,6 +3115,7 @@ and param_addrarr (pfun:variable option -> tid option) (arr:addrarr) : addrarr =
   | AddrArrayUp(arr,i,a) -> AddrArrayUp(param_addrarr pfun arr,
                                         param_int pfun i,
                                         param_addr_aux pfun a)
+  | CellArr c            -> CellArr (param_cell_aux pfun c)
 
 
 and param_tidarr (pfun:variable option -> tid option) (arr:tidarr) : tidarr =
@@ -3185,9 +3202,11 @@ and param_cell_aux (pfun:variable option -> tid option) (c:cell) : cell =
                                        param_addrarr pfun aa,
                                        param_tidarr pfun ta,
                                        param_int pfun l)
-  | CellLock(cell)         -> CellLock(param_cell_aux pfun cell)
-  | CellLockAt(cell,l)     -> CellLockAt(param_cell_aux pfun cell,
-                                         param_int pfun l)
+  | CellLock(cell,t)       -> CellLock(param_cell_aux pfun cell,
+                                       param_tid_aux pfun t)
+  | CellLockAt(cell,l, t)  -> CellLockAt(param_cell_aux pfun cell,
+                                         param_int pfun l,
+                                         param_tid_aux pfun t)
   | CellUnlock(cell)       -> CellUnlock(param_cell_aux pfun cell)
   | CellUnlockAt(cell,l)   -> CellUnlockAt(param_cell_aux pfun cell,
                                            param_int pfun l)
@@ -3514,6 +3533,7 @@ and subst_tid_addrarr (subs:tid_subst_t) (expr:addrarr) : addrarr =
   | AddrArrayUp(arr,i,a) -> AddrArrayUp(subst_tid_addrarr subs arr,
                                         subst_tid_int subs i,
                                         subst_tid_addr subs a)
+  | CellArr c            -> CellArr(subst_tid_cell subs c)
 
 
 and subst_tid_tidarr (subs:tid_subst_t) (expr:tidarr) : tidarr =
@@ -3614,9 +3634,11 @@ and subst_tid_cell (subs:tid_subst_t) (c:cell) : cell =
                                        subst_tid_addrarr subs aa,
                                        subst_tid_tidarr subs ta,
                                        subst_tid_int subs l)
-  | CellLock(cell)         -> CellLock(subst_tid_cell subs cell)
-  | CellLockAt(cell,l)     -> CellLockAt(subst_tid_cell subs cell,
-                                         subst_tid_int subs l)
+  | CellLock(cell,t)       -> CellLock(subst_tid_cell subs cell,
+                                       subst_tid_th subs t)
+  | CellLockAt(cell,l,t)   -> CellLockAt(subst_tid_cell subs cell,
+                                         subst_tid_int subs l,
+                                         subst_tid_th subs t)
   | CellUnlock(cell)       -> CellUnlock(subst_tid_cell subs cell)
   | CellUnlockAt(cell,l)   -> CellUnlockAt(subst_tid_cell subs cell,
                                            subst_tid_int subs l)
@@ -4121,7 +4143,7 @@ let construct_term_eq (v:term)
 
   (* Cells *)
   (* TODO: Not sure if this case is ok *)
-  | (CellT (VarCell var as c), Term CellT (CellLock (VarCell _))) ->
+  | (CellT (VarCell var as c), Term CellT (CellLock (VarCell _, _))) ->
       let new_th    = pres_th_param v th_p in
       let modif     = [ThidT(CellLockId(VarCell(clean_var var)))] in
       let new_tid   = Option.default NoThid th_p in
@@ -4129,12 +4151,15 @@ let construct_term_eq (v:term)
                         (set_var_th (set_var_pr var false) new_th))) in
       (modif, Literal (Atom (Eq (left_term, CellT(MkCell(CellData c, Next c, new_tid))))))
 
+  (* TOFIX: We are missing the case for TSLK and TSL *)
+
   | (CellT (VarCell var), Term t) ->
       let modif     = [CellT(VarCell(clean_var var))] in
       let left_term = prime_term $ param_term th_p v in
       let param_t   = param_term th_p t
       in
         (modif, Literal (Atom (Eq (left_term, param_t))))
+
 
   (* Paths *)
   | (PathT (VarPath var), Term t) ->
@@ -4211,7 +4236,7 @@ let construct_term_eq_as_array (v:term)
                 Term (CellT (MkCell (param_elem th_p e, Next cell_arr, CellLockId cell_arr)))
             | (AddrT(Next(c)), Term (AddrT a)) ->
                 Term (CellT (MkCell (CellData cell_arr, param_addr th_p a, CellLockId cell_arr)))
-            | (CellT (VarCell _), Term (CellT(CellLock(d)))) ->
+            | (CellT (VarCell _), Term (CellT(CellLock(d,_)))) ->
                 let my_tid = Option.default NoThid th_p in
                 let new_d  = param_cell th_p d in
                                Term (CellT (MkCell (CellData new_d, Next new_d, my_tid)))
@@ -4474,8 +4499,8 @@ let required_sorts (phi:formula) : sort list =
                                  [req_e e;req_i l])
     | MkSLCell (e,aa,ta,l) -> append Cell [req_e e;req_addrarr aa;
                                            req_tidarr ta;req_i l]
-    | CellLock c           -> append Cell [req_c c]
-    | CellLockAt (c,l)     -> append Cell [req_c c;req_i l]
+    | CellLock (c,t)       -> append Cell [req_c c;req_t t]
+    | CellLockAt (c,l,t)   -> append Cell [req_c c;req_i l;req_t t]
     | CellUnlock c         -> append Cell [req_c c]
     | CellUnlockAt (c,l)   -> append Cell [req_c c;req_i l]
     | CellAt (m,a)         -> append Cell [req_m m;req_a a]
@@ -4548,6 +4573,7 @@ let required_sorts (phi:formula) : sort list =
     | VarAddrArray _        -> single AddrArray
     | AddrArrayUp (arr,i,a) -> append AddrArray [req_addrarr arr;
                                                  req_i i;req_a a]
+    | CellArr c             -> single Cell
 
   and req_tidarr (a:tidarr) : SortSet.t =
     match a with

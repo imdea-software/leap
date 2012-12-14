@@ -904,9 +904,11 @@ and cell_to_expr_cell (c:cell) : E.cell =
                                         addrarray_to_expr_array aa,
                                         tidarray_to_expr_array ta,
                                         integer_to_expr_integer l)
-  | CellLock c           -> E.CellLock (cell_to_expr_cell c)
+  (* TOFIX: This should not be here nor have a NoThid as an option *)
+  | CellLock c           -> E.CellLock (cell_to_expr_cell c, E.NoThid)
   | CellLockAt (c,l)     -> E.CellLockAt (cell_to_expr_cell c,
-                                          integer_to_expr_integer l)
+                                          integer_to_expr_integer l,
+                                          E.NoThid)
   | CellUnlock c         -> E.CellUnlock (cell_to_expr_cell c)
   | CellUnlockAt (c,l)   -> E.CellUnlockAt (cell_to_expr_cell c,
                                             integer_to_expr_integer l)

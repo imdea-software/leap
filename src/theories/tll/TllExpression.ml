@@ -865,6 +865,7 @@ and term_to_str expr =
                             let th_str = tid_to_str th in
                             let t_str = term_to_str t in
                               Printf.sprintf "%s = %s{%s<-%s}" v'_str v_str th_str t_str
+
 and conjunctive_formula_to_str form =
   let rec c_to_str f str =
     match f with
@@ -1003,6 +1004,7 @@ and voc_term (expr:term) : tid list =
     | PathT(path)        -> voc_path path
     | MemT(mem)          -> voc_mem mem
     | VarUpdate (v,th,t) -> (voc_var v) @ (voc_tid th) @ (voc_term t)
+
 
 
 and voc_set (e:set) : tid list =
@@ -1828,7 +1830,6 @@ let required_sorts (phi:formula) : sort list =
     | PathT p                      -> req_p p
     | MemT m                       -> req_m m
     | VarUpdate ((_,s,_,_,_),t,tr) -> append s [req_t t;req_term tr]
-
   in
     SortSet.elements (req_f phi)
 
@@ -1962,7 +1963,6 @@ let special_ops (phi:formula) : special_op_t list =
     | PathT p            -> ops_p p
     | MemT m             -> ops_m m
     | VarUpdate (_,t,tr) -> list_union [ops_t t;ops_term tr]
-
   in
     OpsSet.elements (ops_f phi)
 

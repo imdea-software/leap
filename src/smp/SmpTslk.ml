@@ -112,8 +112,7 @@ module Make (TSLK : TSLKExpression.S) =
         | Expr.SetElemT _ -> numelem := !numelem + 1 (* the witness of se1 != se2 *)
         | Expr.PathT _    -> numaddr := !numaddr + 2 (* the witnesses of p1 != p2 *)
         | Expr.MemT _     -> ()
-        | Expr.LevelT _   -> ()
-        | Expr.VarUpdate _-> () in                (* ALE: Not sure if OK *)
+        | Expr.LevelT _   -> () in
       let process (lit:Expr.literal) =
         match lit with
         | Expr.Atom(Expr.InEq(x,y)) -> process_ineq(x,y)
@@ -184,8 +183,7 @@ module Make (TSLK : TSLKExpression.S) =
       | Expr.SetElemT _  -> union_count_elem info (Expr.Eq(x,y)) (* the witness of se1 != se2 *)
       | Expr.PathT _     -> union_count_addr info (Expr.Eq(x,y)) (* the witnesses of p1 != p2 *)
       | Expr.MemT _      -> info
-      | Expr.LevelT _      -> info
-      | Expr.VarUpdate _ -> info (* ALE: Not sure if OK *)
+      | Expr.LevelT _    -> info
 
 
     let union_ineq_cutoff (info:union_info) ((x,y):(Expr.term * Expr.term)) : union_info =
@@ -201,7 +199,6 @@ module Make (TSLK : TSLKExpression.S) =
       | Expr.PathT _     -> union_count_addr info (Expr.InEq(x,y)) (* the witnesses of p1 != p2 *)
       | Expr.MemT _      -> info
       | Expr.LevelT _    -> info
-      | Expr.VarUpdate _ -> info (* ALE: Not sure if OK *)
 
 
     let union_atom_cutoff (info:union_info) (a:Expr.atom) : union_info =
@@ -278,7 +275,6 @@ module Make (TSLK : TSLKExpression.S) =
         | Expr.PathT _     -> Some (x,y) (* the witnesses of p1 != p2 *)
         | Expr.MemT _      -> Some (x,y)
         | Expr.LevelT _      -> Some (x,y)
-        | Expr.VarUpdate _ -> let _ = assert(false) in None (* ALE: Not sure if OK *)
 
 
     let prune_atom (a:Expr.atom) : Expr.atom option =

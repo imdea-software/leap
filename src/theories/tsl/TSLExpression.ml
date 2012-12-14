@@ -34,7 +34,6 @@ and term =
   | IntT              of integer
   | AddrArrayT        of addrarr
   | TidArrayT         of tidarr
-  | VarUpdate         of variable * tid * term
 and eq = term * term
 and diseq = term * term
 and set =
@@ -92,7 +91,6 @@ and path =
   | GetPath           of mem * addr * addr * integer
 and mem =
     VarMem            of variable
-  | Emp
   | Update            of mem * addr * cell
 and integer =
     IntVal            of int
@@ -106,6 +104,7 @@ and integer =
 and addrarr =
   | VarAddrArray      of variable
   | AddrArrayUp       of addrarr * integer * addr
+  | CellArr           of cell
 and tidarr =
   | VarTidArray       of variable
   | TidArrayUp        of tidarr * integer * tid
@@ -359,7 +358,6 @@ and get_varset_path p =
 and get_varset_mem m =
   match m with
       VarMem v           -> S.singleton v @@ get_varset_from_param v
-    | Emp                -> S.empty
     | Update(m,a,c)      -> (get_varset_mem m) @@ (get_varset_addr a) @@ (get_varset_cell c)
 and get_varset_integer i =
   match i with
@@ -377,6 +375,9 @@ and get_varset_addrarr arr =
     | AddrArrayUp (aa,i,a) -> (get_varset_addrarr aa) @@
                               (get_varset_integer i)  @@
                               (get_varset_addr a)
+    | CellArr c            -> (get_varset_cell c)
+
+
 and get_varset_tidarr arr =
   match arr with
       VarTidArray v       -> S.singleton v
@@ -427,8 +428,6 @@ and get_varset_term t = match t with
     | IntT   i            -> get_varset_integer i
     | AddrArrayT aa       -> get_varset_addrarr aa
     | TidArrayT  tt       -> get_varset_tidarr tt
-    | VarUpdate(v,pc,t)   -> (S.singleton v) @@ (get_varset_term t) @@
-                             (get_varset_from_param v)
 and get_varset_literal l =
   match l with
       Atom a    -> get_varset_atom a
@@ -642,7 +641,6 @@ let get_sort_from_term t =
     | IntT _           -> Int
     | AddrArrayT _     -> AddrArray
     | TidArrayT _      -> TidArray
-    | VarUpdate(v,_,_) -> get_sort v
   
 let terms_same_type a b =
   (get_sort_from_term a) = (get_sort_from_term b)
@@ -669,7 +667,6 @@ let rec is_term_flat t =
     | IntT  i        -> is_int_flat i
     | AddrArrayT aa  -> is_addrarr_flat aa
     | TidArrayT tt   -> is_tidarr_flat tt
-    | VarUpdate _    -> true
 
 and is_set_flat t =
   match t with
@@ -737,7 +734,6 @@ and is_path_flat t =
 and is_mem_flat t =
   match t with
       VarMem _ -> true
-    | Emp      -> true
     | Update(m,a,c) -> (is_mem_var m) && (is_addr_var a) && (is_cell_var c)
 and is_int_flat t =
   match t with
@@ -754,6 +750,8 @@ and is_addrarr_flat t =
       VarAddrArray _       -> true
     | AddrArrayUp (aa,i,a) -> (is_addrarr_flat aa) && (is_int_flat i) &&
                               (is_addr_flat a)
+    | CellArr c            -> (is_cell_flat c)
+
 and is_tidarr_flat t =
   match t with
       VarTidArray _       -> true
@@ -907,7 +905,6 @@ and literal_to_str e =
 and mem_to_str expr =
   match expr with
       VarMem(v) -> variable_to_str v
-    | Emp -> Printf.sprintf "emp"
     | Update(mem,add,cell) -> Printf.sprintf "upd(%s,%s,%s)"
         (mem_to_str mem) (addr_to_str add) (cell_to_str cell)
 and int_to_str expr =
@@ -925,6 +922,7 @@ and addrarr_to_str expr =
       VarAddrArray v       -> variable_to_str v
     | AddrArrayUp (aa,i,a) -> Printf.sprintf "%s {%s <- %s}"
                                 (addrarr_to_str aa) (int_to_str i) (addr_to_str a)
+    | CellArr c            -> Printf.sprintf "%s.arr" (cell_to_str c)
 and tidarr_to_str expr =
   match expr with
       VarTidArray v       -> variable_to_str v
@@ -1038,12 +1036,6 @@ and term_to_str expr =
     | IntT(i)            -> (int_to_str i)
     | AddrArrayT(aa)     -> (addrarr_to_str aa)
     | TidArrayT(tt)      -> (tidarr_to_str tt)
-    | VarUpdate (v,th,t) -> let v' = prime_var v in
-                            let v'_str = variable_to_str v' in
-                            let v_str = variable_to_str v in
-                            let th_str = tid_to_str th in
-                            let t_str = term_to_str t in
-                              Printf.sprintf "%s = %s{%s<-%s}" v'_str v_str th_str t_str
 and conjunctive_formula_to_str form =
   let rec c_to_str f str =
     match f with
@@ -1187,7 +1179,6 @@ and voc_term (expr:term) : tid list =
     | IntT(i)            -> voc_int i
     | AddrArrayT(aa)     -> voc_addrarr aa
     | TidArrayT(tt)      -> voc_tidarr tt
-    | VarUpdate (v,th,t) -> (voc_var v) @ (voc_tid th) @ (voc_term t)
 
 
 and voc_set (e:set) : tid list =
@@ -1275,7 +1266,6 @@ and voc_path (p:path) : tid list =
 and voc_mem (m:mem) : tid list =
   match m with
     VarMem v             -> Option.map_default (fun x->[x]) [] (var_th v)
-  | Emp                  -> []
   | Update(mem,add,cell) -> (voc_mem mem) @ (voc_addr add) @ (voc_cell cell)
 
 
@@ -1295,6 +1285,7 @@ and voc_addrarr (arr:addrarr) : tid list =
   match arr with
     VarAddrArray v       -> Option.map_default (fun x->[x]) [] (var_th v)
   | AddrArrayUp (aa,i,a) -> (voc_addrarr aa) @ (voc_int i) @ (voc_addr a)
+  | CellArr c            -> (voc_cell c)
 
 
 and voc_tidarr (arr:tidarr) : tid list =
@@ -1974,7 +1965,6 @@ let required_sorts (phi:formula) : sort list =
   and req_m (m:mem) : SortSet.t =
     match m with
     | VarMem _         -> single Mem
-    | Emp              -> single Mem
     | Update (m,a,c)   -> append Mem [req_m m;req_a a;req_c c]
 
   and req_i (i:integer) : SortSet.t =
@@ -1992,6 +1982,7 @@ let required_sorts (phi:formula) : sort list =
     match arr with
     | VarAddrArray _       -> single AddrArray
     | AddrArrayUp (aa,i,a) -> append AddrArray [req_aa aa;req_i i;req_a a]
+    | CellArr c            -> append Cell [req_c c]
 
   and req_tt (arr:tidarr) : SortSet.t =
     match arr with
@@ -2081,8 +2072,6 @@ let required_sorts (phi:formula) : sort list =
     | IntT i                       -> req_i i
     | AddrArrayT aa                -> req_aa aa
     | TidArrayT tt                 -> req_tt tt
-    | VarUpdate ((_,s,_,_,_),t,tr) -> append s [req_t t;req_term tr]
-
   in
     SortSet.elements (req_f phi)
 
@@ -2140,7 +2129,6 @@ let special_ops (phi:formula) : special_op_t list =
   and ops_m (m:mem) : OpsSet.t =
     match m with
     | VarMem _         -> empty
-    | Emp              -> empty
     | Update (m,a,c)   -> list_union [ops_m m;ops_a a;ops_c c]
 
   and ops_i (i:integer) : OpsSet.t =
@@ -2158,6 +2146,7 @@ let special_ops (phi:formula) : special_op_t list =
     match arr with
     | VarAddrArray _       -> empty
     | AddrArrayUp (aa,i,a) -> list_union [ops_aa aa; ops_i i; ops_a a]
+    | CellArr c            -> list_union [ops_c c]
 
   and ops_tt (arr:tidarr) : OpsSet.t =
     match arr with
@@ -2247,8 +2236,6 @@ let special_ops (phi:formula) : special_op_t list =
     | IntT i             -> ops_i i
     | AddrArrayT aa      -> ops_aa aa
     | TidArrayT tt       -> ops_tt tt
-    | VarUpdate (_,t,tr) -> list_union [ops_t t;ops_term tr]
-
   in
     OpsSet.elements (ops_f phi)
 
@@ -2300,4 +2287,5 @@ and get_addrs_eqs_atom (a:atom) : ((addr*addr) list * (addr*addr) list) =
   | Eq (AddrT a1, AddrT a2)   -> ([(a1,a2)],[])
   | InEq (AddrT a1, AddrT a2) -> ([],[(a1,a2)])
   | _ -> ([],[])
-  
+
+

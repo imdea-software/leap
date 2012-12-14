@@ -102,20 +102,7 @@ module Make (TSLK : TSLKExpression.S) =
       | Expr.IntT i        -> TSLK.LevelT (int_to_tslk_level i)
       | Expr.AddrArrayT aa -> raise(UnsupportedTSLKExpr(Expr.term_to_str t))
       | Expr.TidArrayT tt  -> raise(UnsupportedTSLKExpr(Expr.term_to_str t))
-      | Expr.ArrayT a      -> arrays_to_tslk_term a 
-
-
-    and arrays_to_tslk_term (a:Expr.arrays) : TSLK.term =
-      match a with
-        Expr.VarArray v -> build_term_var v
-      | Expr.ArrayUp (Expr.VarArray v,th_p,Expr.Term t) ->
-          let tslk_v  = variable_to_tslk_var v in
-          let tslk_th = tid_to_tslk_tid th_p in
-          let tslk_t  = term_to_tslk_term t
-          in
-            TSLK.VarUpdate (tslk_v, tslk_th, tslk_t)
-      | Expr.ArrayUp (_,_,e) -> raise(UnsupportedTSLKExpr(Expr.expr_to_str e))
-
+      | Expr.ArrayT a      -> raise(UnsupportedTSLKExpr(Expr.term_to_str t))
 
 
     and eq_to_tslk_eq ((t1,t2):Expr.eq) : TSLK.eq =
@@ -201,9 +188,9 @@ module Make (TSLK : TSLKExpression.S) =
       (* TSLK receives two arguments, while current epxression receives only one *)
       (* However, for the list examples, I think we will not need it *)
       | Expr.CellLock _           -> raise(UnsupportedTSLKExpr(Expr.cell_to_str c))
-      | Expr.CellLockAt (c,l)     -> TSLK.CellLockAt (cell_to_tslk_cell c,
+      | Expr.CellLockAt (c,l,t)   -> TSLK.CellLockAt (cell_to_tslk_cell c,
                                                      int_to_tslk_level l,
-                                                     TSLK.NoThid)
+                                                     tid_to_tslk_tid t)
       | Expr.CellUnlock _         -> raise(UnsupportedTSLKExpr(Expr.cell_to_str c))
       | Expr.CellUnlockAt (c,l)   -> TSLK.CellUnlockAt (cell_to_tslk_cell c,
                                                        int_to_tslk_level l)

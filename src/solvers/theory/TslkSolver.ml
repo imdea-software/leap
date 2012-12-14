@@ -94,7 +94,6 @@ struct
     | TslkExp.PathT(p)    -> is_var_path p
     | TslkExp.MemT(m)     -> is_var_mem m
     | TslkExp.LevelT(l)   -> is_var_level l
-    | TslkExp.VarUpdate _ -> false (* ALE: Not sure if OK *)
   
   (* 
    * is_constant 
@@ -138,7 +137,6 @@ struct
       | TslkExp.PathT(p)    -> is_constant_path p
       | TslkExp.MemT(m)     -> is_constant_mem m
       | TslkExp.LevelT(l)   -> is_constant_level l
-      | TslkExp.VarUpdate _ -> false
   
   (* 
    * is_flat
@@ -168,7 +166,6 @@ struct
       | TslkExp.PathT  p    -> is_flat_path p
       | TslkExp.MemT   m    -> is_flat_mem m
       | TslkExp.LevelT l    -> is_flat_level l
-      | TslkExp.VarUpdate _ -> true
   
   
   let is_flat_literal lit =

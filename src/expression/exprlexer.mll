@@ -32,10 +32,13 @@ rule norm = parse
   | "mkcell"        { Global.last "mkcell"        ; MKCELL }
   | "data"          { Global.last "data"          ; DATA }
   | "next"          { Global.last "next"          ; NEXT }
+  | "arr"           { Global.last "arr"           ; ARR }
   | "firstlocked"   { Global.last "fistlocked"    ; FIRSTLOCKED }
   | "lockid"        { Global.last "lockid"        ; LOCKID }
   | "lock"          { Global.last "lock"          ; LOCK }
+  | "lockat"        { Global.last "lockat"        ; LOCKAT }
   | "unlock"        { Global.last "unlock"        ; UNLOCK }
+  | "unlockat"      { Global.last "unlockat"      ; UNLOCKAT }
   | "rd"            { Global.last "rd"            ; MEMORY_READ }
   | "null"          { Global.last "null"          ; NULL }
   | "lowestElem"    { Global.last "lowestElem"    ; LOWEST_ELEM }

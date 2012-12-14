@@ -98,12 +98,12 @@ and term_to_tll_term (t:Expr.term) : Tll.term =
   | Expr.IntT _       -> raise(UnsupportedTllExpr (Expr.term_to_str t))
   | Expr.AddrArrayT a -> raise(UnsupportedTllExpr (Expr.term_to_str t))
   | Expr.TidArrayT a  -> raise(UnsupportedTllExpr (Expr.term_to_str t))
-  | Expr.ArrayT a     -> arrays_to_tll_term a 
+  | Expr.ArrayT a     -> arrays_to_tll_term a
 
 
 and arrays_to_tll_term (a:Expr.arrays) : Tll.term =
   match a with
-    Expr.VarArray v -> build_term_var v
+  | Expr.VarArray v -> build_term_var v
   | Expr.ArrayUp (Expr.VarArray v,th_p,Expr.Term t) ->
       let tll_v  = variable_to_tll_var v in
       let tll_th = tid_to_tll_tid th_p in
@@ -111,7 +111,6 @@ and arrays_to_tll_term (a:Expr.arrays) : Tll.term =
       in
         Tll.VarUpdate (tll_v, tll_th, tll_t)
   | Expr.ArrayUp (_,_,e) -> raise(UnsupportedTllExpr(Expr.expr_to_str e))
-
 
 
 and eq_to_tll_eq ((t1,t2):Expr.eq) : Tll.eq =
@@ -181,7 +180,7 @@ and cell_to_tll_cell (c:Expr.cell) : Tll.cell =
   | Expr.MkSLCell _     -> raise(UnsupportedTllExpr(Expr.cell_to_str c))
   (* Tll receives two arguments, while current epxression receives only one *)
   (* However, for the list examples, I think we will not need it *)
-  | Expr.CellLock c     -> Tll.CellLock (cell_to_tll_cell c, Tll.NoThid)
+  | Expr.CellLock (c,t) -> Tll.CellLock (cell_to_tll_cell c, tid_to_tll_tid t)
   | Expr.CellLockAt _   -> raise(UnsupportedTllExpr(Expr.cell_to_str c))
   | Expr.CellUnlock c   -> Tll.CellUnlock (cell_to_tll_cell c)
   | Expr.CellUnlockAt _ -> raise(UnsupportedTllExpr(Expr.cell_to_str c))
