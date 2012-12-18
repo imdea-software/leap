@@ -1912,6 +1912,16 @@ let rec split_conj (phi:formula) : formula list =
   | _                -> [phi]
 
 
+let from_conjformula_to_formula (cf:conjunctive_formula) : formula =
+  match cf with
+  | TrueConj     -> True
+  | FalseConj    -> False
+  | Conj []      -> True
+  | Conj (l::ls) -> List.fold_left (fun phi l ->
+                      And (phi, Literal l)
+                    ) (Literal l) ls
+
+
 let required_sorts (phi:formula) : sort list =
   let empty = SortSet.empty in
   let union = SortSet.union in
@@ -2256,6 +2266,16 @@ let cleanup_dup (cf:conjunctive_formula) : conjunctive_formula =
     | TrueConj -> TrueConj
     | FalseConj -> FalseConj
     | Conj ls -> Conj (clean_lits ls)
+
+
+let combine_conj_formula (cf1:conjunctive_formula) (cf2:conjunctive_formula)
+      : conjunctive_formula =
+  match (cf1,cf2) with
+  | (FalseConj, _) -> FalseConj
+  | (_, FalseConj) -> FalseConj
+  | (TrueConj, _)  -> cf2
+  | (_, TrueConj)  -> cf1
+  | (Conj ls1, Conj ls2) -> Conj (ls1 @ ls2)
 
 
 (* NOTE: I am not considering the possibility of having a1=a2 \/ a1=a3 in the formula *)

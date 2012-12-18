@@ -119,6 +119,47 @@ let split (cf:TslExp.conjunctive_formula)
         (TslExp.Conj pa, TslExp.Conj nc)
 
 
+let check_sat_by_cases (cases:(TslExp.conjunctive_formula  *     (* PA formula *)
+                               TslExp.conjunctive_formula) list) (* NC formula *)
+      : (bool * int * int) =
+  let tslk_calls = ref 0 in
+  (* Construct a solver for Presburguer Arithmetic *)
+  let numSolv_id = BackendSolvers.Yices.identifier in
+  let module NumSol = (val NumSolver.choose numSolv_id : NumSolver.S) in
+
+
+  let check pa nc arrgs =
+    match arrgs with
+    | [] -> false
+    | alpha::xs -> (* Check PA /\ alpha satisfiability *)
+                   let pa_arrgs = TslExp.combine_conj_formula pa alpha in
+                   let pa_sat = match pa_arrgs with
+                                | TslExp.TrueConj  -> true
+                                | TslExp.FalseConj -> false
+                                | TslExp.Conj ls   ->
+                                    let phi_num = NumExpression.formula_to_int_formula
+                                                    (TSLInterface.tsl_formula_to_formula
+                                                      (TslExp.from_conjformula_to_formula pa_arrgs))
+                                    in
+                                      NumSol.is_sat phi_num in
+                   if pa_sat then
+                     (* Check NC /\ alpha satisfiability *)
+                     true
+                   else
+                     false
+  in
+  let rec check_aux cs =
+    match cs with
+    | []          -> (false, 1, !tslk_calls)
+    | (pa,nc)::xs -> let arrgs = guess_arrangements (TslExp.combine_conj_formula pa nc) in
+                     if check pa nc arrgs then
+                       (true, 1, !tslk_calls)
+                     else
+                       check_aux xs
+  in
+    check_aux cases
+
+
 let is_sat_plus_info (lines : int)
            (stac:Tactics.solve_tactic_t option)
            (co : Smp.cutoff_strategy)
@@ -133,15 +174,12 @@ let is_sat_plus_info (lines : int)
   let phi_dnf = TslExp.dnf phi in
   (* 1. Sanitize the formula *)
   let phi_san = List.map sanitize phi_dnf in
-  (* 2. Guess arrangements of level variables *)
-  let arrgs = List.map guess_arrangements phi_san in
-  (* 3. Split each conjunction into PA y NC *)
+  (* 2. Split each conjunction into PA y NC *)
   let splits = List.map split phi_san in
-  (* 4. Check satisfiability of NC /\ alpha in arrgs *)
-  let numSolv_id = BackendSolvers.Yices.identifier in
-  let module NumSol = (val NumSolver.choose numSolv_id : NumSolver.S) in
-  (* Here goes the code for satisfiability from the paper *)
-  (true, 1, 2)
+  (* 3. Call the solver for each possible case *)
+  let (sat,tsl_calls,tslk_calls) = check_sat_by_cases splits
+  in
+    (sat, tsl_calls, tslk_calls)
 
 
 let is_sat (lines : int)

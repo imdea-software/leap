@@ -244,11 +244,13 @@ val print_typed_variable_set : VarSet.t -> unit
 val generic_printer : ('a -> string) -> 'a -> unit
 
 val split_conj : formula -> formula list
+val from_conjformula_to_formula : conjunctive_formula -> formula
 
 val required_sorts : formula -> sort list
 val special_ops : formula -> special_op_t list
 
 val cleanup_dup : conjunctive_formula -> conjunctive_formula
+val combine_conj_formula : conjunctive_formula -> conjunctive_formula -> conjunctive_formula
 
 val get_addrs_eqs_conj : conjunctive_formula -> ((addr*addr) list * (addr*addr) list)
 val get_addrs_eqs : formula -> ((addr*addr) list * (addr*addr) list)
