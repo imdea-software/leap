@@ -586,3 +586,18 @@ val gen_focus_list : pc_t -> pc_t list -> pc_t list -> pc_t list
 (** [gen_focus_list mp fs is] generates the list of program positions to
     analyze in case that there are at most [mp] positions, [fs] is the list
     of positions where to focus and [is] the positions to ignore *)
+
+val normalize : formula -> formula
+(** [normalize phi] returns a new formula that is the normalization of
+    [phi], adding fresh variables if required *)
+
+val normalize_literal : literal -> literal list
+(** [normalize_literal phi] returns a list of literals that is the result of
+    normalizing literal [l]. As usual, fresh variables not appearing in the
+    literal are added if required. *)
+
+val normalize_conjformula : conjunctive_formula -> conjunctive_formula
+(** [normalize_conjformula cf] returns a new conjunctive formula that results
+    from the normalization of conjunctive formula [cf]. As usual, fresh
+    variables not appearing in the original conjunctive formula are added
+    if required. *)
