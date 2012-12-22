@@ -2374,7 +2374,7 @@ let gen_fresh_var (gen:fresh_var_gen_t) (s:sort) : variable =
       else
         begin
           Hashtbl.replace gen.tbl s (var_prefix, n+1);
-          build_var var_cand_id s false None None Normal
+          build_var var_cand_id s false None None
         end
   in
     find (snd (Hashtbl.find gen.tbl s))
@@ -2403,13 +2403,12 @@ let rec nnf (phi:formula) =
 
 let rec norm_formula (gen_info:fresh_var_gen_t) (phi:formula) : formula =
   match phi with
-  | Literal(Atom(Eq(ElemT(VarElem e), ElemT(CellData c)))) ->
-  | Literal(Atom(Eq(ElemT(CellData c), ElemT(VarElem e)))) ->
-  
-      let aa = gen_fresh_var gen_info AddrArray in
-      let tt = gen_fresh_var gen_info TidArray in
-      let l = gen_fresh_var gen_info Int in
-        Literal(Atom(Eq(CellT(VarCell c), CellT(MkCell(e,aa,tt,l)))))
+  | Literal(Atom(Eq(ElemT(VarElem e), ElemT(CellData (VarCell c)))))
+  | Literal(Atom(Eq(ElemT(CellData (VarCell c)), ElemT(VarElem e)))) ->
+      let aa = VarAddrArray (gen_fresh_var gen_info AddrArray) in
+      let tt = VarTidArray (gen_fresh_var gen_info TidArray) in
+      let l  = VarInt (gen_fresh_var gen_info Int) in
+        Literal(Atom(Eq(CellT(VarCell c), CellT(MkCell(VarElem e,aa,tt,l)))))
   | Literal (Atom a)    -> True (* To fix *)
   | Literal (NegAtom a) -> norm_formula gen_info (Not (Literal (Atom a)))
   | True                -> True
@@ -2421,7 +2420,7 @@ let rec norm_formula (gen_info:fresh_var_gen_t) (phi:formula) : formula =
   | Not psi             -> Not (norm_formula gen_info psi)
   | Implies (psi1,psi2) -> Implies (norm_formula gen_info psi1,
                                     norm_formula gen_info psi2)
-  | Iff (phi1,phi2)     -> Iff (norm_formula gen_info psi1,
+  | Iff (psi1,psi2)     -> Iff (norm_formula gen_info psi1,
                                 norm_formula gen_info psi2)
 
 

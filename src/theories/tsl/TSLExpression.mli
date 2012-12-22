@@ -254,3 +254,9 @@ val combine_conj_formula : conjunctive_formula -> conjunctive_formula -> conjunc
 
 val get_addrs_eqs_conj : conjunctive_formula -> ((addr*addr) list * (addr*addr) list)
 val get_addrs_eqs : formula -> ((addr*addr) list * (addr*addr) list)
+
+
+
+val normalize : formula -> formula
+(** [normalize phi] returns a new formula that is the normalization of
+    [phi], adding fresh variables if required *)
