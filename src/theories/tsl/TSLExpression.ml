@@ -162,6 +162,26 @@ exception WrongType of term
 
 
 
+(*****************)
+(* CONFIGURATION *)
+(*****************)
+
+
+let fresh_set_name      = "freshset"
+let fresh_elem_name     = "freshset"
+let fresh_tid_name      = "freshtid"
+let fresh_addr_name     = "freshaddr"
+let fresh_cell_name     = "freshcell"
+let fresh_setth_name    = "freshsetth"
+let fresh_setelem_name  = "freshsetelem"
+let fresh_path_name     = "freshpath"
+let fresh_mem_name      = "freshmem"
+let fresh_int_name      = "freshint"
+let fresh_addrarr_name  = "freshaddrarr"
+let fresh_tidarr_name   = "freshtidarr"
+let fresh_unknown_name  = "freshunknown"
+
+
 (*************************)
 (* VARIABLE MANIPULATION *)
 (*************************)
@@ -172,6 +192,10 @@ let build_var (id:varId)
               (th:tid option)
               (p:string option) : variable =
   (id,s,pr,th,p)
+
+
+let var_id (v:variable) : varId =
+  let (id,_,_,_,_) = v in id
 
 
 let param_var (v:variable) (th:tid) : variable =
@@ -2309,3 +2333,103 @@ and get_addrs_eqs_atom (a:atom) : ((addr*addr) list * (addr*addr) list) =
   | _ -> ([],[])
 
 
+(*******************************)
+(*                             *)
+(*   Normalization functions   *)
+(*                             *)
+(*******************************)
+
+
+type fresh_var_gen_t =
+  {
+    tbl : (sort, string * int) Hashtbl.t;
+    vars : VarIdSet.t;
+  }
+
+
+let new_fresh_gen (vset:VarIdSet.t) : fresh_var_gen_t =
+  let tbl = Hashtbl.create(20) in
+    Hashtbl.add tbl Set       (fresh_set_name,     1);
+    Hashtbl.add tbl Elem      (fresh_elem_name,    1);
+    Hashtbl.add tbl Thid      (fresh_tid_name,     1);
+    Hashtbl.add tbl Addr      (fresh_addr_name,    1);
+    Hashtbl.add tbl Cell      (fresh_cell_name,    1);
+    Hashtbl.add tbl SetTh     (fresh_setth_name,   1);
+    Hashtbl.add tbl SetElem   (fresh_setelem_name, 1);
+    Hashtbl.add tbl Path      (fresh_path_name,    1);
+    Hashtbl.add tbl Mem       (fresh_mem_name,     1);
+    Hashtbl.add tbl Int       (fresh_int_name,     1);
+    Hashtbl.add tbl AddrArray (fresh_addrarr_name, 1);
+    Hashtbl.add tbl TidArray  (fresh_tidarr_name,  1);
+    Hashtbl.add tbl Unknown   (fresh_unknown_name, 1);
+    {tbl=tbl; vars=vset;}
+
+
+let gen_fresh_var (gen:fresh_var_gen_t) (s:sort) : variable =
+  let rec find n =
+    let (var_prefix, i) = Hashtbl.find gen.tbl s in
+    let var_cand_id = sprintf "%s_%i" var_prefix i in
+      if VarIdSet.mem var_cand_id gen.vars then
+        find (n+1)
+      else
+        begin
+          Hashtbl.replace gen.tbl s (var_prefix, n+1);
+          build_var var_cand_id s false None None Normal
+        end
+  in
+    find (snd (Hashtbl.find gen.tbl s))
+
+
+let rec nnf (phi:formula) =
+  match phi with
+    | False -> False
+    | True  -> True
+    | Iff (e1,e2)    -> And (nnf (Implies (e1,e2)),nnf (Implies(e2,e1)))
+    | Implies(e1,e2) -> Or (nnf (Not e1), nnf e2)
+    | And(e1,e2)     -> And(nnf e1, nnf e2)
+    | Or(e1,e2)      -> Or(nnf e1, nnf e2)
+    | Not (Not e)    -> nnf e
+    | Not (And (e1,e2)) -> Or (nnf (Not e1), nnf (Not e2))
+    | Not (Or (e1, e2)) -> And (nnf (Not e1), nnf (Not e2))
+    | Not (Implies (e1, e2)) ->And (nnf e1, nnf (Not e2))
+    | Not (Iff (e1, e2)) ->  Or (And (nnf e1, nnf (Not e2)), And (nnf (Not e1), nnf e2))
+    | Not Literal(Atom a) -> Literal(NegAtom a)
+    | Not Literal(NegAtom a) -> Literal(Atom a)
+    | Not True  -> False
+    | Not False -> True
+    | Literal(a) -> Literal(a)
+
+
+
+let rec norm_formula (gen_info:fresh_var_gen_t) (phi:formula) : formula =
+  match phi with
+  | Literal(Atom(Eq(ElemT(VarElem e), ElemT(CellData c)))) ->
+  | Literal(Atom(Eq(ElemT(CellData c), ElemT(VarElem e)))) ->
+  
+      let aa = gen_fresh_var gen_info AddrArray in
+      let tt = gen_fresh_var gen_info TidArray in
+      let l = gen_fresh_var gen_info Int in
+        Literal(Atom(Eq(CellT(VarCell c), CellT(MkCell(e,aa,tt,l)))))
+  | Literal (Atom a)    -> True (* To fix *)
+  | Literal (NegAtom a) -> norm_formula gen_info (Not (Literal (Atom a)))
+  | True                -> True
+  | False               -> False
+  | And (psi1,psi2)     -> And (norm_formula gen_info psi1,
+                                norm_formula gen_info psi2)
+  | Or (psi1,psi2)      -> Or (norm_formula gen_info psi1,
+                               norm_formula gen_info psi2)
+  | Not psi             -> Not (norm_formula gen_info psi)
+  | Implies (psi1,psi2) -> Implies (norm_formula gen_info psi1,
+                                    norm_formula gen_info psi2)
+  | Iff (phi1,phi2)     -> Iff (norm_formula gen_info psi1,
+                                norm_formula gen_info psi2)
+
+
+
+let normalize (phi:formula) : formula =
+  let vars = VarSet.fold (fun v s ->
+               VarIdSet.add (var_id v) s
+             ) (get_varset_from_formula phi) VarIdSet.empty in
+  let gen = new_fresh_gen vars
+  in
+    norm_formula gen (nnf phi)

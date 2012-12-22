@@ -591,13 +591,13 @@ val normalize : formula -> formula
 (** [normalize phi] returns a new formula that is the normalization of
     [phi], adding fresh variables if required *)
 
-val normalize_literal : literal -> literal list
-(** [normalize_literal phi] returns a list of literals that is the result of
+(*val normalize_literal : literal -> formula*)
+(** [normalize_literal phi] returns a formula that is the result of
     normalizing literal [l]. As usual, fresh variables not appearing in the
     literal are added if required. *)
 
-val normalize_conjformula : conjunctive_formula -> conjunctive_formula
-(** [normalize_conjformula cf] returns a new conjunctive formula that results
-    from the normalization of conjunctive formula [cf]. As usual, fresh
-    variables not appearing in the original conjunctive formula are added
-    if required. *)
+(*val normalize_conjformula : conjunctive_formula -> conjunctive_formula list*)
+(** [normalize_conjformula cf] returns a new collection (ie. list) of
+    conjunctive formulas that results from the normalization of conjunctive
+    formula [cf]. As usual, fresh variables not appearing in the original
+    conjunctive formula are added if required. *)
