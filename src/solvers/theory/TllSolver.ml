@@ -103,8 +103,13 @@ struct
   and is_constant_setelem = function
         TllExp.EmptySetElem -> true
       | _                   -> false
-  and is_constant_elem e = false
-  and is_constant_thid th = false
+  and is_constant_elem = function
+        TllExp.LowestElem  -> true
+      | TllExp.HighestElem -> true
+      | _                  -> false
+  and is_constant_thid = function
+        TllExp.NoThid -> true
+      | _             -> false
   and is_constant_addr =  function
         TllExp.Null -> true
       | _         -> false

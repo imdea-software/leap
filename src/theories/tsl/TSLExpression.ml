@@ -593,87 +593,141 @@ let termset_of_sort (all:TermSet.t) (s:sort) : TermSet.t =
   ) all TermSet.empty
 
 
-(********************)
-(* TYPES COMPATIBLE *)
-(********************)
 
-(*******************)
-(* FLAT NORMALIZED *)
-(*******************)
-
-let is_term_var t =
+(* is_variable *)
+let is_var_path (p:path) : bool =
+  match p with
+  | VarPath(_) -> true
+  | _          -> false
+and is_var_addr (a:addr) : bool =
+  match a with
+  | VarAddr(_) -> true
+  | _          -> false
+and is_var_mem (m:mem) : bool =
+  match m with
+  | VarMem(_) -> true
+  | _         -> false
+and is_var_cell (c:cell) : bool =
+  match c with
+  | VarCell(_) -> true
+  | _          -> false
+and is_var_elem (e:elem) : bool =
+  match e with
+  | VarElem(_) -> true
+  | _          -> false
+and is_var_thid (t:tid) : bool =
   match t with
-      VarT(_)             -> true
-    | SetT(VarSet(_))     -> true
-    | ElemT(VarElem(_))   -> true
-    | ThidT(VarTh  (_))   -> true
-    | AddrT(VarAddr(_))   -> true
-    | CellT(VarCell(_))   -> true
-    | SetThT(VarSetTh(_)) -> true
-    | PathT(VarPath(_))   -> true
-    | MemT(VarMem(_))     -> true
-    | _                   -> false
-and is_set_var s =
+  | VarTh(_) -> true
+  | _        -> false
+and is_var_set (s:set) : bool =
   match s with
-      VarSet _ -> true | _ -> false
-and is_elem_var s =
+  | VarSet(_) -> true
+  | _         -> false
+and is_var_setth (s:setth) : bool =
   match s with
-      VarElem _ -> true | _ -> false
-and is_tid_var s =
+  | VarSetTh(_) -> true
+  | _           -> false
+and is_var_setelem (s:setelem) : bool =
   match s with
-      VarTh _ -> true | _ -> false
-and is_addr_var s =
-  match s with
-      VarAddr _ -> true | _ -> false
-and is_cell_var s =
-  match s with
-      VarCell _ -> true | _ -> false
-and is_setth_var s =
-  match s with
-      VarSetTh _ -> true | _ -> false
-and is_setelem_var s =
-  match s with
-      VarSetElem _ -> true | _ -> false
-and is_path_var s =
-  match s with
-      VarPath _ -> true | _ -> false
-and is_mem_var s =
-  match s with
-      VarMem _ -> true | _ -> false
-and is_int_var s =
-  match s with
-      VarInt _ -> true | _ -> false
-and is_addrarr_var s =
-  match s with
-      VarAddrArray _ -> true | _ -> false
-and is_tidarr_var s =
-  match s with
-      VarTidArray _ -> true | _ -> false
+  | VarSetElem(_) -> true
+  | _             -> false
+and is_var_int (i:integer) : bool =
+  match i with
+  | VarInt(_) -> true
+  | _         -> false
+and is_var_addrarr (aa:addrarr) : bool =
+  match aa with
+  | VarAddrArray(_) -> true
+  | _               -> false
+and is_var_thidarr (tt:tidarr) : bool =
+  match tt with
+  | VarTidArray(_) -> true
+  | _              -> false
 
-let get_sort_from_term t =
+
+let is_var_term (t:term) : bool =
   match t with
-      VarT _           -> Unknown
-    | SetT _           -> Set
-    | ElemT _          -> Elem
-    | ThidT _          -> Thid
-    | AddrT _          -> Addr
-    | CellT _          -> Cell
-    | SetThT _         -> SetTh
-    | SetElemT _       -> SetElem
-    | PathT _          -> Path
-    | MemT _           -> Mem
-    | IntT _           -> Int
-    | AddrArrayT _     -> AddrArray
-    | TidArrayT _      -> TidArray
-  
-let terms_same_type a b =
-  (get_sort_from_term a) = (get_sort_from_term b)
+  | VarT(_)        -> true
+  | SetT(s)        -> is_var_set s
+  | ElemT(e)       -> is_var_elem e
+  | ThidT(t)       -> is_var_thid t
+  | AddrT(a)       -> is_var_addr a
+  | CellT(c)       -> is_var_cell c
+  | SetThT(st)     -> is_var_setth st
+  | SetElemT(st)   -> is_var_setelem st
+  | PathT(p)       -> is_var_path p
+  | MemT(m)        -> is_var_mem m
+  | IntT(i)        -> is_var_int i
+  | AddrArrayT(aa) -> is_var_addrarr aa
+  | TidArrayT(tt)  -> is_var_thidarr tt
+
+
+
+(* is_constant *)
+
+let is_constant_set (s:set) : bool =
+  match s with
+  | EmptySet -> true
+  | _        -> false
+and is_constant_setth (s:setth) : bool =
+  match s with
+  | EmptySetTh -> true
+  | _          -> false
+and is_constant_setelem (s:setelem) : bool =
+  match s with
+  | EmptySetElem -> true
+  | _            -> false
+and is_constant_elem (e:elem) : bool =
+  match e with
+  | LowestElem  -> true
+  | HighestElem -> true
+  | _           -> false
+and is_constant_thid (t:tid) : bool =
+  match t with
+  | NoThid -> true
+  | _      -> false
+and is_constant_addr (a:addr) : bool =
+  match a with
+  | Null -> true
+  | _    -> false
+and is_constant_cell (c:cell) : bool =
+  match c with
+  | Error -> true
+  | _     -> false
+and is_constant_path (p:path) : bool =
+  match p with
+  | Epsilon -> true
+  | _       -> false
+and is_constant_mem (m:mem) : bool = false
+and is_constant_int (i:integer) : bool =
+  match i with
+  | IntVal _ -> true
+  | _        -> false
+and is_constant_addrarr (aa:addrarr) : bool = false
+and is_constant_tidarr (tt:tidarr) : bool = false
+
+let is_constant_term (t:term) : bool =
+  match t with
+  | VarT(_)        -> false
+  | SetT(s)        -> is_constant_set s
+  | ElemT(e)       -> is_constant_elem e
+  | ThidT(th)      -> is_constant_thid th
+  | AddrT(a)       -> is_constant_addr a
+  | CellT(c)       -> is_constant_cell c
+  | SetThT(st)     -> is_constant_setth st
+  | SetElemT(st)   -> is_constant_setelem st
+  | PathT(p)       -> is_constant_path p
+  | MemT(m)        -> is_constant_mem m
+  | IntT(i)        -> is_constant_int i
+  | AddrArrayT(aa) -> is_constant_addrarr aa
+  | TidArrayT(tt)  -> is_constant_tidarr tt
+
 
 let is_ineq_normalized a b =
-  (terms_same_type a b) && (is_term_var a && is_term_var b)
+  (is_var_term a || is_var_term b)
 
 let is_eq_normalized a b =
-  (terms_same_type a b) && (is_term_var a || is_term_var b)
+  (is_var_term a || is_var_term b)
 
 (* TODO: propagate equalities of vars x = y *)
 let rec is_term_flat t =
@@ -696,22 +750,22 @@ and is_set_flat t =
   match t with
       VarSet _         -> true
     | EmptySet         -> true
-    | Singl(a)         -> is_addr_var  a
-    | Union(s1,s2)     -> (is_set_var s1) && (is_set_var s2)
-    | Intr(s1,s2)      -> (is_set_var s1) && (is_set_var s2)
-    | Setdiff(s1,s2)   -> (is_set_var s1) && (is_set_var s2)
-    | PathToSet(p)     -> (is_path_var p)
-    | AddrToSet(m,a,l) -> (is_mem_var m) && (is_addr_var a) && (is_int_var l)
+    | Singl(a)         -> is_var_addr  a
+    | Union(s1,s2)     -> (is_var_set s1) && (is_var_set s2)
+    | Intr(s1,s2)      -> (is_var_set s1) && (is_var_set s2)
+    | Setdiff(s1,s2)   -> (is_var_set s1) && (is_var_set s2)
+    | PathToSet(p)     -> (is_var_path p)
+    | AddrToSet(m,a,l) -> (is_var_mem m) && (is_var_addr a) && (is_var_int l)
 and is_tid_flat t =
   match t with
       VarTh _            -> true
     | NoThid             -> true
-    | CellLockIdAt (c,l) -> (is_cell_var c) && (is_int_var l)
-    | ThidArrRd (tt,i)   -> (is_tidarr_var tt) && (is_int_var i)
+    | CellLockIdAt (c,l) -> (is_var_cell c) && (is_var_int l)
+    | ThidArrRd (tt,i)   -> (is_var_thidarr tt) && (is_var_int i)
 and is_elem_flat t =
   match t with
       VarElem _         -> true
-    | CellData(c)       -> is_cell_var c
+    | CellData(c)       -> is_var_cell c
     | HavocSkiplistElem -> true
     | LowestElem        -> true
     | HighestElem       -> true
@@ -719,46 +773,46 @@ and is_addr_flat t =
   match t with
       VarAddr _        -> true
     | Null             -> true
-    | NextAt(c,l)      -> (is_cell_var c) && (is_int_var l)
-    | AddrArrRd (aa,i) -> (is_addrarr_var aa) && (is_int_var i)
-(*    | Malloc(m,a,k)    -> (is_mem_var m) && (is_addr_var a) && (is_thread_var k) *)
+    | NextAt(c,l)      -> (is_var_cell c) && (is_var_int l)
+    | AddrArrRd (aa,i) -> (is_var_addrarr aa) && (is_var_int i)
+(*    | Malloc(m,a,k)    -> (is_var_mem m) && (is_var_addr a) && (is_thread_var k) *)
 and is_cell_flat t =
   match t with
       VarCell _           -> true
     | Error               -> true
-    | MkCell (e,aa,tt,l)  -> (is_elem_var e) && (is_addrarr_var aa) &&
-                             (is_tidarr_var tt) && (is_int_var l)
-    | CellLockAt (c,l,th) -> (is_cell_var c) && (is_int_var l) && (is_tid_var th)
-    | CellUnlockAt (c,l)  -> (is_cell_var c) && (is_int_var l)
-    | CellAt(m,a)         -> (is_mem_var m) && (is_addr_var a)
+    | MkCell (e,aa,tt,l)  -> (is_var_elem e) && (is_var_addrarr aa) &&
+                             (is_var_thidarr tt) && (is_var_int l)
+    | CellLockAt (c,l,th) -> (is_var_cell c) && (is_var_int l) && (is_var_thid th)
+    | CellUnlockAt (c,l)  -> (is_var_cell c) && (is_var_int l)
+    | CellAt(m,a)         -> (is_var_mem m) && (is_var_addr a)
 and is_setth_flat t =
   match t with
       VarSetTh _ -> true
     | EmptySetTh -> true
-    | SinglTh(k)         -> (is_tid_var k)
-    | UnionTh(st1,st2)   -> (is_setth_var st1) && (is_setth_var st2)
-    | IntrTh(st1,st2)    -> (is_setth_var st1) && (is_setth_var st2)
-    | SetdiffTh(st1,st2) -> (is_setth_var st1) && (is_setth_var st2)
+    | SinglTh(k)         -> (is_var_thid k)
+    | UnionTh(st1,st2)   -> (is_var_setth st1) && (is_var_setth st2)
+    | IntrTh(st1,st2)    -> (is_var_setth st1) && (is_var_setth st2)
+    | SetdiffTh(st1,st2) -> (is_var_setth st1) && (is_var_setth st2)
 and is_setelem_flat t =
   match t with
       VarSetElem _ -> true
     | EmptySetElem -> true
-    | SinglElem(k)         -> (is_elem_var k)
-    | UnionElem(st1,st2)   -> (is_setelem_var st1) && (is_setelem_var st2)
-    | IntrElem(st1,st2)    -> (is_setelem_var st1) && (is_setelem_var st2)
-    | SetToElems(s,m)      -> (is_set_var s) && (is_mem_var m)
-    | SetdiffElem(st1,st2) -> (is_setelem_var st1) && (is_setelem_var st2)
+    | SinglElem(k)         -> (is_var_elem k)
+    | UnionElem(st1,st2)   -> (is_var_setelem st1) && (is_var_setelem st2)
+    | IntrElem(st1,st2)    -> (is_var_setelem st1) && (is_var_setelem st2)
+    | SetToElems(s,m)      -> (is_var_set s) && (is_var_mem m)
+    | SetdiffElem(st1,st2) -> (is_var_setelem st1) && (is_var_setelem st2)
 and is_path_flat t =
   match t with
       VarPath _          -> true
     | Epsilon            -> true
-    | SimplePath(a)      -> is_addr_var a
-    | GetPath(m,a1,a2,l) -> (is_mem_var m) && (is_addr_var a1) &&
-                            (is_addr_var a2) && (is_int_var l)
+    | SimplePath(a)      -> is_var_addr a
+    | GetPath(m,a1,a2,l) -> (is_var_mem m) && (is_var_addr a1) &&
+                            (is_var_addr a2) && (is_var_int l)
 and is_mem_flat t =
   match t with
       VarMem _ -> true
-    | Update(m,a,c) -> (is_mem_var m) && (is_addr_var a) && (is_cell_var c)
+    | Update(m,a,c) -> (is_var_mem m) && (is_var_addr a) && (is_var_cell c)
 and is_int_flat t =
   match t with
       IntVal _     -> true
@@ -786,64 +840,64 @@ let is_literal_flat lit =
   match lit with
       Atom a ->
   begin match a with
-    | Append(p1,p2,p3)       -> (is_path_var p1) && (is_path_var p2) &&
-                                (is_path_var p3)
-    | Reach(m,a1,a2,l,p)     -> (is_mem_var m) && (is_addr_var a1) &&
-                                (is_addr_var a2) && (is_int_var l) &&
-                                (is_path_var p)
-    | OrderList(m,a1,a2)     -> (is_mem_var m) && (is_addr_var a1) &&
-                                (is_addr_var a2)
-    | Skiplist(m,s,l,a1,a2)  -> (is_mem_var m) &&
-                                (is_set_var s) && (is_int_var l) &&
-                                (is_addr_var a1) && (is_addr_var a2)
-    | In(a,s)                -> (is_addr_var a) && (is_set_var s)
-    | SubsetEq(s1,s2)        -> (is_set_var s1) && (is_set_var s2)
-    | InTh(k,st)             -> (is_tid_var k) && (is_setth_var st)
-    | SubsetEqTh(st1,st2)    -> (is_setth_var st1) && (is_setth_var st2)
-    | InElem(e,se)           -> (is_elem_var e) && (is_setelem_var se)
-    | SubsetEqElem(se1,se2)  -> (is_setelem_var se1) && (is_setelem_var se2)
-    | Less (i1,i2)           -> (is_int_var i1) && (is_int_var i2)
-    | Greater (i1,i2)        -> (is_int_var i1) && (is_int_var i2)
-    | LessEq (i1,i2)         -> (is_int_var i1) && (is_int_var i2)
-    | GreaterEq (i1,i2)      -> (is_int_var i1) && (is_int_var i2)
-    | LessElem(e1,e2)        -> (is_elem_var e1) && (is_elem_var e2)
-    | GreaterElem(e1,e2)     -> (is_elem_var e1) && (is_elem_var e2)
-    | Eq(t1,t2)              -> ((is_term_var t1) && (is_term_var t2)  ||
-                                 (is_term_var t1) && (is_term_flat t2)  ||
-                                 (is_term_flat t1) && (is_term_var t2))
-    | InEq(x,y)              -> (is_term_var x) && (is_term_var y)
+    | Append(p1,p2,p3)       -> (is_var_path p1) && (is_var_path p2) &&
+                                (is_var_path p3)
+    | Reach(m,a1,a2,l,p)     -> (is_var_mem m) && (is_var_addr a1) &&
+                                (is_var_addr a2) && (is_var_int l) &&
+                                (is_var_path p)
+    | OrderList(m,a1,a2)     -> (is_var_mem m) && (is_var_addr a1) &&
+                                (is_var_addr a2)
+    | Skiplist(m,s,l,a1,a2)  -> (is_var_mem m) &&
+                                (is_var_set s) && (is_var_int l) &&
+                                (is_var_addr a1) && (is_var_addr a2)
+    | In(a,s)                -> (is_var_addr a) && (is_var_set s)
+    | SubsetEq(s1,s2)        -> (is_var_set s1) && (is_var_set s2)
+    | InTh(k,st)             -> (is_var_thid k) && (is_var_setth st)
+    | SubsetEqTh(st1,st2)    -> (is_var_setth st1) && (is_var_setth st2)
+    | InElem(e,se)           -> (is_var_elem e) && (is_var_setelem se)
+    | SubsetEqElem(se1,se2)  -> (is_var_setelem se1) && (is_var_setelem se2)
+    | Less (i1,i2)           -> (is_var_int i1) && (is_var_int i2)
+    | Greater (i1,i2)        -> (is_var_int i1) && (is_var_int i2)
+    | LessEq (i1,i2)         -> (is_var_int i1) && (is_var_int i2)
+    | GreaterEq (i1,i2)      -> (is_var_int i1) && (is_var_int i2)
+    | LessElem(e1,e2)        -> (is_var_elem e1) && (is_var_elem e2)
+    | GreaterElem(e1,e2)     -> (is_var_elem e1) && (is_var_elem e2)
+    | Eq(t1,t2)              -> ((is_var_term t1) && (is_var_term t2)  ||
+                                 (is_var_term t1) && (is_term_flat t2)  ||
+                                 (is_term_flat t1) && (is_var_term t2))
+    | InEq(x,y)              -> (is_var_term x) && (is_var_term y)
     | PC (pc,t,pr)           -> true
     | PCUpdate (pc,t)        -> true
     | PCRange (pc1,pc2,t,pr) -> true
   end
     | NegAtom a ->
   begin match a with
-    | Append(p1,p2,p3)      -> (is_path_var p1) && (is_path_var p2) &&
-                               (is_path_var p3)
-    | Reach(m,a1,a2,l,p)    -> (is_mem_var m) && (is_addr_var a1) &&
-                               (is_addr_var a2) && (is_int_var l) &&
-                               (is_path_var p)
-    | OrderList(m,a1,a2)    -> (is_mem_var m) && (is_addr_var a1) &&
-                               (is_addr_var a2)
-    | Skiplist(m,s,l,a1,a2) -> (is_mem_var m) &&
-                               (is_set_var s) && (is_int_var l) &&
-                               (is_addr_var a1) && (is_addr_var a2)
-    | In(a,s)               -> (is_addr_var a) && (is_set_var s)
-    | SubsetEq(s1,s2)       -> (is_set_var s1) && (is_set_var s2)
-    | InTh(k,st)            -> (is_tid_var k) && (is_setth_var st)
-    | SubsetEqTh(st1,st2)   -> (is_setth_var st1) && (is_setth_var st2)
-    | InElem(e,se)          -> (is_elem_var e) && (is_setelem_var se)
-    | SubsetEqElem(se1,se2) -> (is_setelem_var se1) && (is_setelem_var se2)
-    | Less (i1,i2)          -> (is_int_var i1) && (is_int_var i2)
-    | Greater (i1,i2)       -> (is_int_var i1) && (is_int_var i2)
-    | LessEq (i1,i2)        -> (is_int_var i1) && (is_int_var i2)
-    | GreaterEq (i1,i2)     -> (is_int_var i1) && (is_int_var i2)
-    | LessElem(e1,e2)       -> (is_elem_var e1) && (is_elem_var e2)
-    | GreaterElem(e1,e2)    -> (is_elem_var e1) && (is_elem_var e2)
-    | Eq(x,y)               ->  (is_term_var x) && (is_term_var y)
-    | InEq(t1,t2)           -> ((is_term_var  t1) && (is_term_var  t2) ||
-                                (is_term_var  t1) && (is_term_flat t2) ||
-                                (is_term_flat t1) && (is_term_var  t2) )
+    | Append(p1,p2,p3)      -> (is_var_path p1) && (is_var_path p2) &&
+                               (is_var_path p3)
+    | Reach(m,a1,a2,l,p)    -> (is_var_mem m) && (is_var_addr a1) &&
+                               (is_var_addr a2) && (is_var_int l) &&
+                               (is_var_path p)
+    | OrderList(m,a1,a2)    -> (is_var_mem m) && (is_var_addr a1) &&
+                               (is_var_addr a2)
+    | Skiplist(m,s,l,a1,a2) -> (is_var_mem m) &&
+                               (is_var_set s) && (is_var_int l) &&
+                               (is_var_addr a1) && (is_var_addr a2)
+    | In(a,s)               -> (is_var_addr a) && (is_var_set s)
+    | SubsetEq(s1,s2)       -> (is_var_set s1) && (is_var_set s2)
+    | InTh(k,st)            -> (is_var_thid k) && (is_var_setth st)
+    | SubsetEqTh(st1,st2)   -> (is_var_setth st1) && (is_var_setth st2)
+    | InElem(e,se)          -> (is_var_elem e) && (is_var_setelem se)
+    | SubsetEqElem(se1,se2) -> (is_var_setelem se1) && (is_var_setelem se2)
+    | Less (i1,i2)          -> (is_var_int i1) && (is_var_int i2)
+    | Greater (i1,i2)       -> (is_var_int i1) && (is_var_int i2)
+    | LessEq (i1,i2)        -> (is_var_int i1) && (is_var_int i2)
+    | GreaterEq (i1,i2)     -> (is_var_int i1) && (is_var_int i2)
+    | LessElem(e1,e2)       -> (is_var_elem e1) && (is_var_elem e2)
+    | GreaterElem(e1,e2)    -> (is_var_elem e1) && (is_var_elem e2)
+    | Eq(x,y)               ->  (is_var_term x) && (is_var_term y)
+    | InEq(t1,t2)           -> ((is_var_term  t1) && (is_var_term  t2) ||
+                                (is_var_term  t1) && (is_term_flat t2) ||
+                                (is_term_flat t1) && (is_var_term  t2) )
     | PC _                  -> true
     | PCUpdate _            -> true
     | PCRange _             -> true
@@ -2398,6 +2452,7 @@ let rec nnf (phi:formula) =
     | Not True  -> False
     | Not False -> True
     | Literal(a) -> Literal(a)
+
 
 
 
