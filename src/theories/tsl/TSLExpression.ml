@@ -159,6 +159,7 @@ type special_op_t =
   | SkiplistProp
 
 exception WrongType of term
+exception No_variable_term of term
 
 
 
@@ -192,6 +193,12 @@ let build_var (id:varId)
               (th:tid option)
               (p:string option) : variable =
   (id,s,pr,th,p)
+
+
+let inject_var_sort (v:variable) (s:sort) : variable =
+  let (id,_,pr,th,p) = v
+  in
+    (build_var id s pr th p)
 
 
 let var_id (v:variable) : varId =
@@ -728,6 +735,7 @@ let is_ineq_normalized a b =
 
 let is_eq_normalized a b =
   (is_var_term a || is_var_term b)
+
 
 (* TODO: propagate equalities of vars x = y *)
 let rec is_term_flat t =
@@ -2394,6 +2402,8 @@ and get_addrs_eqs_atom (a:atom) : ((addr*addr) list * (addr*addr) list) =
 (*******************************)
 
 
+(* Fresh variables generation *)
+
 type fresh_var_gen_t =
   {
     tbl : (sort, string * int) Hashtbl.t;
@@ -2419,6 +2429,26 @@ let new_fresh_gen (vset:VarIdSet.t) : fresh_var_gen_t =
     {tbl=tbl; vars=vset;}
 
 
+
+(* Normalization *)
+
+type norm_info_t =
+  {
+    term_map : (term, variable) Hashtbl.t ;
+    fresh_gen_info : fresh_var_gen_t ;
+  }
+
+
+let new_norm_info_from_formula (phi:formula) : norm_info_t =
+  let vars = VarSet.fold (fun v s ->
+               VarIdSet.add (var_id v) s
+             ) (get_varset_from_formula phi) VarIdSet.empty in
+  {
+    term_map = Hashtbl.create 10 ;
+    fresh_gen_info = new_fresh_gen vars ;
+  }
+
+
 let gen_fresh_var (gen:fresh_var_gen_t) (s:sort) : variable =
   let rec find n =
     let (var_prefix, i) = Hashtbl.find gen.tbl s in
@@ -2433,6 +2463,57 @@ let gen_fresh_var (gen:fresh_var_gen_t) (s:sort) : variable =
   in
     find (snd (Hashtbl.find gen.tbl s))
 
+
+let gen_fresh_set_var (info:norm_info_t) : set =
+  VarSet (gen_fresh_var info.fresh_gen_info Set)
+
+
+let gen_fresh_elem_var (info:norm_info_t) : elem =
+  VarElem (gen_fresh_var info.fresh_gen_info Elem)
+
+
+let gen_fresh_tid_var (info:norm_info_t) : tid =
+  VarTh (gen_fresh_var info.fresh_gen_info Thid)
+
+
+let gen_fresh_addr_var (info:norm_info_t) : addr =
+  VarAddr (gen_fresh_var info.fresh_gen_info Addr)
+
+
+let gen_fresh_cell_var (info:norm_info_t) : cell =
+  VarCell (gen_fresh_var info.fresh_gen_info Cell)
+
+
+let gen_fresh_setth_var (info:norm_info_t) : setth =
+  VarSetTh (gen_fresh_var info.fresh_gen_info SetTh)
+
+
+let gen_fresh_setelem_var (info:norm_info_t) : setelem =
+  VarSetElem (gen_fresh_var info.fresh_gen_info SetElem)
+
+
+let gen_fresh_path_var (info:norm_info_t) : path =
+  VarPath (gen_fresh_var info.fresh_gen_info Path)
+
+
+let gen_fresh_mem_var (info:norm_info_t) : mem =
+  VarMem (gen_fresh_var info.fresh_gen_info Mem)
+
+
+let gen_fresh_int_var (info:norm_info_t) : integer =
+  VarInt (gen_fresh_var info.fresh_gen_info Int)
+
+
+let gen_fresh_addrarr_var (info:norm_info_t) : addrarr =
+  VarAddrArray (gen_fresh_var info.fresh_gen_info AddrArray)
+
+
+let gen_fresh_tidarr_var (info:norm_info_t) : tidarr =
+  VarTidArray (gen_fresh_var info.fresh_gen_info TidArray)
+
+
+
+(* Formula manipulation *)
 
 let rec nnf (phi:formula) =
   match phi with
@@ -2454,36 +2535,109 @@ let rec nnf (phi:formula) =
     | Literal(a) -> Literal(a)
 
 
+let conj_list (bs:formula list) : formula =
+  match bs with
+  | [] -> True
+  | x::xs -> List.fold_left (fun a b -> And(a,b)) x xs
 
 
-let rec norm_formula (gen_info:fresh_var_gen_t) (phi:formula) : formula =
+let make_compatible_term_from_var (t:term) (v:variable) : term =
+  match t with
+  | VarT _       -> VarT v
+  | SetT _       -> SetT       (VarSet v)
+  | ElemT _      -> ElemT      (VarElem v)
+  | ThidT _      -> ThidT      (VarTh v)
+  | AddrT _      -> AddrT      (VarAddr v)
+  | CellT _      -> CellT      (VarCell v)
+  | SetThT _     -> SetThT     (VarSetTh v)
+  | SetElemT _   -> SetElemT   (VarSetElem v)
+  | PathT _      -> PathT      (VarPath v)
+  | MemT _       -> MemT       (VarMem v)
+  | IntT _       -> IntT       (VarInt v)
+  | AddrArrayT _ -> AddrArrayT (VarAddrArray v)
+  | TidArrayT _  -> TidArrayT  (VarTidArray v)
+
+
+let term_to_var (t:term) : variable =
+  match t with
+    VarT v -> v
+  | SetT       (VarSet v)       -> inject_var_sort v Set
+  | ElemT      (VarElem v)      -> inject_var_sort v Elem
+  | ThidT      (VarTh v)        -> inject_var_sort v Thid
+  | AddrT      (VarAddr v)      -> inject_var_sort v Addr
+  | CellT      (VarCell v)      -> inject_var_sort v Cell
+  | SetThT     (VarSetTh v)     -> inject_var_sort v SetTh
+  | SetElemT   (VarSetElem v)   -> inject_var_sort v SetElem
+  | PathT      (VarPath v)      -> inject_var_sort v Path
+  | MemT       (VarMem v)       -> inject_var_sort v Mem
+  | IntT       (VarInt v)       -> inject_var_sort v Int
+  | AddrArrayT (VarAddrArray v) -> inject_var_sort v AddrArray
+  | TidArrayT  (VarTidArray v)  -> inject_var_sort v TidArray
+  | _                           -> raise (No_variable_term t)
+  
+
+
+let norm_literal (info:norm_info_t) (l:literal) : literal =
+  let gen_if_not_var (t:term) (s:sort) : variable =
+    if is_var_term t then
+      term_to_var t
+    else
+      gen_fresh_var info.fresh_gen_info s
+  in
+  match l with
+  | Atom (Eq (e, ElemT (CellData c)))
+  | Atom (Eq (ElemT (CellData c), e)) ->
+      let e' = VarElem (gen_if_not_var e Elem) in
+      let c' = VarCell (gen_if_not_var (CellT c) Cell) in
+      let aa = gen_fresh_addrarr_var info in
+      let tt = gen_fresh_tidarr_var info in
+      let i  = gen_fresh_int_var info in
+        Atom (Eq (CellT c', CellT (MkCell(e',aa,tt,i))))
+  | _ -> l
+
+
+let rec norm_formula (info:norm_info_t) (phi:formula) : formula =
   match phi with
-  | Literal(Atom(Eq(ElemT(VarElem e), ElemT(CellData (VarCell c)))))
-  | Literal(Atom(Eq(ElemT(CellData (VarCell c)), ElemT(VarElem e)))) ->
-      let aa = VarAddrArray (gen_fresh_var gen_info AddrArray) in
-      let tt = VarTidArray (gen_fresh_var gen_info TidArray) in
-      let l  = VarInt (gen_fresh_var gen_info Int) in
-        Literal(Atom(Eq(CellT(VarCell c), CellT(MkCell(VarElem e,aa,tt,l)))))
-  | Literal (Atom a)    -> True (* To fix *)
-  | Literal (NegAtom a) -> norm_formula gen_info (Not (Literal (Atom a)))
-  | True                -> True
-  | False               -> False
-  | And (psi1,psi2)     -> And (norm_formula gen_info psi1,
-                                norm_formula gen_info psi2)
-  | Or (psi1,psi2)      -> Or (norm_formula gen_info psi1,
-                               norm_formula gen_info psi2)
-  | Not psi             -> Not (norm_formula gen_info psi)
-  | Implies (psi1,psi2) -> Implies (norm_formula gen_info psi1,
-                                    norm_formula gen_info psi2)
-  | Iff (psi1,psi2)     -> Iff (norm_formula gen_info psi1,
-                                norm_formula gen_info psi2)
-
+  | Literal l                 -> Literal (norm_literal info l)
+  | True                      -> True
+  | False                     -> False
+  | And (psi1,psi2)           -> And (norm_formula info psi1,
+                                      norm_formula info psi2)
+  | Or (psi1,psi2)            -> Or (norm_formula info psi1,
+                                     norm_formula info psi2)
+  | Not (Literal (Atom a))    -> True (* Here goes the magic *)
+  | Not (Literal (NegAtom a)) -> norm_formula info (Literal (Atom a))
+  | Not psi                   -> Not (norm_formula info psi)
+  | Implies (psi1,psi2)       -> Implies (norm_formula info psi1,
+                                          norm_formula info psi2)
+  | Iff (psi1,psi2)           -> Iff (norm_formula info psi1,
+                                      norm_formula info psi2)
 
 
 let normalize (phi:formula) : formula =
-  let vars = VarSet.fold (fun v s ->
-               VarIdSet.add (var_id v) s
-             ) (get_varset_from_formula phi) VarIdSet.empty in
-  let gen = new_fresh_gen vars
-  in
-    norm_formula gen (nnf phi)
+  (* Create a new normalization *)
+  let norm_info = new_norm_info_from_formula phi in
+  (* Process the original formula *)
+  let phi' = norm_formula norm_info (nnf phi) in
+  (* Normalize all remaining literals stored in the normalization table *)
+  let lit_list = ref [] in
+  while (Hashtbl.length norm_info.term_map > 0) do
+    Hashtbl.iter (fun t v ->
+      let l = Atom (Eq (make_compatible_term_from_var t v, t)) in
+      let new_l = norm_literal norm_info l in
+      lit_list := (Literal new_l) :: !lit_list;
+      Hashtbl.remove norm_info.term_map t
+    ) norm_info.term_map;
+  done;
+  if !lit_list = [] then
+    phi'
+  else
+    And (conj_list !lit_list, phi')
+  
+
+
+
+
+
+
+
