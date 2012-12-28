@@ -205,6 +205,10 @@ let var_id (v:variable) : varId =
   let (id,_,_,_,_) = v in id
 
 
+let var_sort (v:variable) : sort =
+  let (_,s,_,_,_) = v in s
+
+
 let param_var (v:variable) (th:tid) : variable =
   let (id,s,pr,_,p) = v
   in
@@ -2560,7 +2564,7 @@ let make_compatible_term_from_var (t:term) (v:variable) : term =
 
 let term_to_var (t:term) : variable =
   match t with
-    VarT v -> v
+  | VarT v -> v
   | SetT       (VarSet v)       -> inject_var_sort v Set
   | ElemT      (VarElem v)      -> inject_var_sort v Elem
   | ThidT      (VarTh v)        -> inject_var_sort v Thid
@@ -2574,25 +2578,71 @@ let term_to_var (t:term) : variable =
   | AddrArrayT (VarAddrArray v) -> inject_var_sort v AddrArray
   | TidArrayT  (VarTidArray v)  -> inject_var_sort v TidArray
   | _                           -> raise (No_variable_term t)
-  
+
+
+let var_to_term (v:variable) : term =
+  match var_sort v with
+  | Set       -> SetT       (VarSet        v)
+  | Elem      -> ElemT      (VarElem       v)
+  | Thid      -> ThidT      (VarTh         v)
+  | Addr      -> AddrT      (VarAddr       v)
+  | Cell      -> CellT      (VarCell       v)
+  | SetTh     -> SetThT     (VarSetTh      v)
+  | SetElem   -> SetElemT   (VarSetElem    v)
+  | Path      -> PathT      (VarPath       v)
+  | Mem       -> MemT       (VarMem        v)
+  | Int       -> IntT       (VarInt        v)
+  | AddrArray -> AddrArrayT (VarAddrArray  v)
+  | TidArray  -> TidArrayT  (VarTidArray   v)
+  | Unknown   -> VarT v
+
+
+let sort_of_term (t:term) : sort =
+  match t with
+  | SetT       _ -> Set
+  | ElemT      _ -> Elem
+  | ThidT      _ -> Thid
+  | AddrT      _ -> Addr
+  | CellT      _ -> Cell
+  | SetThT     _ -> SetTh
+  | SetElemT   _ -> SetElem
+  | PathT      _ -> Path
+  | MemT       _ -> Mem
+  | IntT       _ -> Int
+  | AddrArrayT _ -> AddrArray
+  | TidArrayT  _ -> AddrArray
+  | VarT v       -> var_sort v
 
 
 let norm_literal (info:norm_info_t) (l:literal) : literal =
   let gen_if_not_var (t:term) (s:sort) : variable =
+    if is_var_term t then term_to_var t
+    else gen_fresh_var info.fresh_gen_info s in
+  let append_if_diff (t:term) (v:variable) : unit =
     if is_var_term t then
-      term_to_var t
+      (if (term_to_var t) <> v then Hashtbl.add info.term_map t v)
     else
-      gen_fresh_var info.fresh_gen_info s
-  in
+      Hashtbl.add info.term_map t v in
   match l with
   | Atom (Eq (e, ElemT (CellData c)))
-  | Atom (Eq (ElemT (CellData c), e)) ->
-      let e' = VarElem (gen_if_not_var e Elem) in
-      let c' = VarCell (gen_if_not_var (CellT c) Cell) in
+  | Atom (Eq (ElemT (CellData c), e))
+  | NegAtom (InEq (e, ElemT (CellData c)))
+  | NegAtom (InEq (ElemT (CellData c), e)) ->
+      let e_var = gen_if_not_var e Elem in
+      let c_var = gen_if_not_var (CellT c) Cell in
       let aa = gen_fresh_addrarr_var info in
       let tt = gen_fresh_tidarr_var info in
       let i  = gen_fresh_int_var info in
-        Atom (Eq (CellT c', CellT (MkCell(e',aa,tt,i))))
+        append_if_diff e e_var;
+        append_if_diff (ElemT (CellData c)) c_var;
+        Atom (Eq (CellT (VarCell c_var), CellT (MkCell(VarElem e_var,aa,tt,i))))
+  | Atom (InEq (t1, t2))
+  | NegAtom (Eq (t1, t2)) ->
+      let t1_var = gen_if_not_var t1 (sort_of_term t1) in
+      let t2_var = gen_if_not_var t2 (sort_of_term t2) in
+        append_if_diff t1 t1_var;
+        append_if_diff t2 t2_var;
+        Atom (InEq (var_to_term t1_var, var_to_term t2_var))
   | _ -> l
 
 
@@ -2605,7 +2655,7 @@ let rec norm_formula (info:norm_info_t) (phi:formula) : formula =
                                       norm_formula info psi2)
   | Or (psi1,psi2)            -> Or (norm_formula info psi1,
                                      norm_formula info psi2)
-  | Not (Literal (Atom a))    -> True (* Here goes the magic *)
+  | Not (Literal (Atom a))    -> Literal (norm_literal info (NegAtom a))
   | Not (Literal (NegAtom a)) -> norm_formula info (Literal (Atom a))
   | Not psi                   -> Not (norm_formula info psi)
   | Implies (psi1,psi2)       -> Implies (norm_formula info psi1,
