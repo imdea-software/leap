@@ -62,6 +62,7 @@ and addrarr =
 and tidarr =
   | VarTidArray   of variable
   | TidArrayUp    of tidarr * integer * tid
+  | CellTids      of cell
 
 and integer =
     IntVal        of int
@@ -74,6 +75,7 @@ and integer =
   | IntArrayRd    of arrays * tid
   | IntSetMin     of setint
   | IntSetMax     of setint
+  | CellMax       of cell
   | HavocLevel
 
 and set =

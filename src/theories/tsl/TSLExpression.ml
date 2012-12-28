@@ -100,6 +100,7 @@ and integer =
   | IntSub            of integer * integer
   | IntMul            of integer * integer
   | IntDiv            of integer * integer
+  | CellMax           of cell
   | HavocLevel
 and addrarr =
   | VarAddrArray      of variable
@@ -108,6 +109,7 @@ and addrarr =
 and tidarr =
   | VarTidArray       of variable
   | TidArrayUp        of tidarr * integer * tid
+  | CellTids          of cell
 and atom =
     Append            of path * path * path
   | Reach             of mem * addr * addr * integer * path
@@ -403,6 +405,7 @@ and get_varset_integer i =
     | IntSub (i,j) -> (get_varset_integer i) @@ (get_varset_integer j)
     | IntMul (i,j) -> (get_varset_integer i) @@ (get_varset_integer j)
     | IntDiv (i,j) -> (get_varset_integer i) @@ (get_varset_integer j)
+    | CellMax c    -> (get_varset_cell c)
     | HavocLevel   -> S.empty
 and get_varset_addrarr arr =
   match arr with
@@ -419,6 +422,9 @@ and get_varset_tidarr arr =
     | TidArrayUp (aa,i,t) -> (get_varset_tidarr aa) @@
                              (get_varset_integer i) @@
                              (get_varset_tid t)
+    | CellTids c          -> (get_varset_cell c)
+
+
 and get_varset_atom a =
   match a with
       Append(p1,p2,p3)       -> (get_varset_path p1) @@ (get_varset_path p2) @@
@@ -834,6 +840,7 @@ and is_int_flat t =
     | IntSub (i,j) -> (is_int_flat i) && (is_int_flat j)
     | IntMul (i,j) -> (is_int_flat i) && (is_int_flat j)
     | IntDiv (i,j) -> (is_int_flat i) && (is_int_flat j)
+    | CellMax c    -> (is_cell_flat c)
     | HavocLevel   -> true
 and is_addrarr_flat t =
   match t with
@@ -847,6 +854,7 @@ and is_tidarr_flat t =
       VarTidArray _       -> true
     | TidArrayUp (tt,i,t) -> (is_tidarr_flat tt) && (is_int_flat i) &&
                              (is_tid_flat t)
+    | CellTids c          -> (is_cell_flat c)
 
 let is_literal_flat lit =
   match lit with
@@ -1006,6 +1014,7 @@ and int_to_str expr =
     | IntSub (i1,i2) -> Printf.sprintf "%s - %s" (int_to_str i1) (int_to_str i2)
     | IntMul (i1,i2) -> Printf.sprintf "%s * %s" (int_to_str i1) (int_to_str i2)
     | IntDiv (i1,i2) -> Printf.sprintf "%s / %s" (int_to_str i1) (int_to_str i2)
+    | CellMax c      -> Printf.sprintf "%s.max" (cell_to_str c)
     | HavocLevel     -> Printf.sprintf "havocLevel()"
 and addrarr_to_str expr =
   match expr with
@@ -1018,6 +1027,7 @@ and tidarr_to_str expr =
       VarTidArray v       -> variable_to_str v
     | TidArrayUp (tt,i,t) -> Printf.sprintf "%s {%s <- %s}"
                                (tidarr_to_str tt) (int_to_str i) (tid_to_str t)
+    | CellTids c          -> Printf.sprintf "%s.tids" (cell_to_str c)
 and path_to_str expr =
   match expr with
       VarPath(v)                 -> variable_to_str v
@@ -1368,6 +1378,7 @@ and voc_int (i:integer) : tid list =
   | IntSub (i1,i2) -> (voc_int i1) @ (voc_int i2)
   | IntMul (i1,i2) -> (voc_int i1) @ (voc_int i2)
   | IntDiv (i1,i2) -> (voc_int i1) @ (voc_int i2)
+  | CellMax c      -> (voc_cell c)
   | HavocLevel     -> []
 
 
@@ -1382,6 +1393,7 @@ and voc_tidarr (arr:tidarr) : tid list =
   match arr with
     VarTidArray v       -> Option.map_default (fun x->[x]) [] (var_th v)
   | TidArrayUp (tt,i,t) -> (voc_tidarr tt) @ (voc_int i) @ (voc_tid t)
+  | CellTids c          -> (voc_cell c)
 
 
 and voc_atom (a:atom) : tid list =
@@ -2076,18 +2088,20 @@ let required_sorts (phi:formula) : sort list =
     | IntSub (i1,i2)     -> append Int [req_i i1;req_i i2]
     | IntMul (i1,i2)     -> append Int [req_i i1;req_i i2]
     | IntDiv (i1,i2)     -> append Int [req_i i1;req_i i2]
+    | CellMax c          -> append Int [req_c c]
     | HavocLevel         -> empty
 
   and req_aa (arr:addrarr) : SortSet.t =
     match arr with
     | VarAddrArray _       -> single AddrArray
     | AddrArrayUp (aa,i,a) -> append AddrArray [req_aa aa;req_i i;req_a a]
-    | CellArr c            -> append Cell [req_c c]
+    | CellArr c            -> append AddrArray [req_c c]
 
   and req_tt (arr:tidarr) : SortSet.t =
     match arr with
     | VarTidArray _       -> single TidArray
     | TidArrayUp (tt,i,t) -> append TidArray [req_tt tt;req_i i;req_t t]
+    | CellTids c          -> append TidArray [req_c c]
 
   and req_p (p:path) : SortSet.t =
     match p with
@@ -2240,6 +2254,7 @@ let special_ops (phi:formula) : special_op_t list =
     | IntSub (i1,i2) -> list_union [ops_i i1; ops_i i2]
     | IntMul (i1,i2) -> list_union [ops_i i1; ops_i i2]
     | IntDiv (i1,i2) -> list_union [ops_i i1; ops_i i2]
+    | CellMax c      -> list_union [ops_c c]
     | HavocLevel     -> empty
 
   and ops_aa (arr:addrarr) : OpsSet.t =
@@ -2252,6 +2267,7 @@ let special_ops (phi:formula) : special_op_t list =
     match arr with
     | VarTidArray _       -> empty
     | TidArrayUp (tt,i,t) -> list_union [ops_tt tt; ops_i i; ops_t t]
+    | CellTids c          -> list_union [ops_c c]
 
   and ops_p (p:path) : OpsSet.t =
     match p with
@@ -2754,20 +2770,11 @@ let norm_literal (info:norm_info_t) (l:literal) : literal =
 
 let rec norm_formula (info:norm_info_t) (phi:formula) : formula =
   match phi with
-(*
   | Literal(Atom(InEq(CellT c1, CellT c2))) ->
-      norm_formula (Or(ineq_elem (CellData c1) (CellData c2),
-                    Or(ineq_addrarr (CellArr c1) (CellArr c2),
-                    Or(ineq_tidarr () (),
-                       ineq_int () ()))))
-
-
-
-(LiteralElemT (CellData c1),ElemT (CellData c2),
-                    Or (AddrArrayT (CellArr c1),AddrArrayT (CellArr c2),
-                        
-))
-*)
+      norm_formula info (Or(ineq_elem (CellData c1) (CellData c2),
+                         Or(ineq_addrarr (CellArr c1) (CellArr c2),
+                         Or(ineq_tidarr (CellTids c1) (CellTids c2),
+                            ineq_int (CellMax c1) (CellMax c2)))))
   | Literal l                 -> Literal (norm_literal info l)
   | True                      -> True
   | False                     -> False

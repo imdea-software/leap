@@ -69,6 +69,7 @@ and addrarr =
 and tidarr =
   | VarTidArray   of variable
   | TidArrayUp    of tidarr * integer * tid
+  | CellTids      of cell
 
 and integer =
     IntVal        of int
@@ -81,6 +82,7 @@ and integer =
   | IntArrayRd    of arrays * tid
   | IntSetMin     of setint
   | IntSetMax     of setint
+  | CellMax       of cell
   | HavocLevel
 
 and set =
@@ -798,6 +800,7 @@ let rec is_primed_tidarray (a:tidarr) : bool =
   match a with
     VarTidArray v       -> is_primed v
   | TidArrayUp (a',_,_) -> is_primed_tidarray a'
+  | CellTids c            -> false
 
 let is_primed_tid (th:tid) : bool =
   match th with
@@ -896,6 +899,7 @@ and priming_tidarray (pr:bool) (prime_set:VarSet.t option) (expr:tidarr)
   | TidArrayUp(arr,i,t) -> TidArrayUp  (priming_tidarray pr prime_set arr,
                                           priming_int  pr prime_set i,
                                           priming_tid  pr prime_set t)
+  | CellTids c            -> CellTids (priming_cell pr prime_set c)
 
 and priming_set (pr:bool) (prime_set:VarSet.t option) (e:set) : set =
   match e with
@@ -1079,6 +1083,7 @@ and priming_int (pr:bool) (prime_set:VarSet.t option) (i:integer) : integer =
                                     priming_tid pr prime_set t)
   | IntSetMin(s)      -> IntSetMin(priming_setint pr prime_set s)
   | IntSetMax(s)      -> IntSetMax(priming_setint pr prime_set s)
+  | CellMax c         -> CellMax (priming_cell pr prime_set c)
   | HavocLevel        -> HavocLevel
 
 
@@ -1455,6 +1460,7 @@ and tidarr_to_str (expr:tidarr) : string =
   | TidArrayUp(arr,i,t) -> sprintf "%s{%s<-%s}" (tidarr_to_str arr)
                                                 (integer_to_str i)
                                                 (tid_to_str t)
+  | CellTids c            -> sprintf "%s.tids" (cell_to_str c)
 
 
 and integer_to_str (expr:integer) : string =
@@ -1474,6 +1480,7 @@ and integer_to_str (expr:integer) : string =
                                         (param_tid_to_str t)
   | IntSetMin(s)      -> sprintf "setIntMin(%s)" (setint_to_str s)
   | IntSetMax(s)      -> sprintf "setIntMax(%s)" (setint_to_str s)
+  | CellMax(c)        -> sprintf "%s.max" (cell_to_str c)
   | HavocLevel        -> sprintf "havocLevel()"
 
 
@@ -1983,6 +1990,7 @@ and get_vars_tidarr (a:tidarr)
   | TidArrayUp(arr,i,t) -> (get_vars_tidarr arr base) @
                            (get_vars_int i base)      @
                            (get_vars_tid t base)
+  | CellTids c            -> (get_vars_cell c base)
 
 
 and get_vars_set (e:set)
@@ -2171,6 +2179,7 @@ and get_vars_int (i:integer)
   | IntArrayRd(arr,t) -> (get_vars_array arr base)
   | IntSetMin(s)      -> (get_vars_setint s base)
   | IntSetMax(s)      -> (get_vars_setint s base)
+  | CellMax(c)        -> (get_vars_cell c base)
   | HavocLevel        -> []
 
 
@@ -2520,6 +2529,7 @@ and voc_tidarr (a:tidarr) : tid list =
   match a with
     VarTidArray v       -> Option.map_default (fun x->[x]) [] (var_th v)
   | TidArrayUp(arr,i,t) -> (voc_tidarr arr) @ (voc_int i) @ (voc_tid t)
+  | CellTids c            -> (voc_cell c)
 
 
 and voc_set (e:set) : tid list =
@@ -2661,6 +2671,7 @@ and voc_int (i:integer) : tid list =
   | IntArrayRd(arr,t) -> (voc_array arr)
   | IntSetMin(s)      -> (voc_setint s)
   | IntSetMax(s)      -> (voc_setint s)
+  | CellMax(c)        -> (voc_cell c)
   | HavocLevel        -> []
 
 
@@ -2809,6 +2820,7 @@ and var_kind_tidarr (kind:kind_t) (a:tidarr) : term list =
   | TidArrayUp(arr,i,t) -> (var_kind_tidarr kind arr) @
                            (var_kind_int kind i)      @
                            (var_kind_tid kind t)
+  | CellTids c            -> (var_kind_cell kind c)
 
 
 and var_kind_set (kind:kind_t) (e:set) : term list =
@@ -2968,6 +2980,7 @@ and var_kind_int (kind:kind_t) (i:integer) : term list =
   | IntArrayRd(arr,t) -> (var_kind_array kind arr)
   | IntSetMin(s)      -> (var_kind_setint kind s)
   | IntSetMax(s)      -> (var_kind_setint kind s)
+  | CellMax(c)        -> (var_kind_cell kind c)
   | HavocLevel        -> []
 
 
@@ -3135,6 +3148,7 @@ and param_tidarr (pfun:variable option -> tid option) (arr:tidarr) : tidarr =
   | TidArrayUp(arr,i,t) -> TidArrayUp(param_tidarr pfun arr,
                                       param_int pfun i,
                                       param_tid_aux pfun t)
+  | CellTids c            -> CellTids (param_cell_aux pfun c)
 
 
 and param_set (pfun:variable option -> tid option) (e:set) : set =
@@ -3308,6 +3322,7 @@ and param_int (pfun:variable option -> tid option) (i:integer) : integer =
   | IntArrayRd(arr,t)   -> IntArrayRd(param_arrays pfun arr, t)
   | IntSetMin(s)        -> IntSetMin(param_setint pfun s)
   | IntSetMax(s)        -> IntSetMax(param_setint pfun s)
+  | CellMax(c)          -> CellMax(param_cell_aux pfun c)
   | HavocLevel          -> HavocLevel
 
 
@@ -3553,6 +3568,7 @@ and subst_tid_tidarr (subs:tid_subst_t) (expr:tidarr) : tidarr =
   | TidArrayUp(arr,i,t) -> TidArrayUp(subst_tid_tidarr subs arr,
                                       subst_tid_int subs i,
                                       subst_tid_th subs t)
+  | CellTids c            -> CellTids (subst_tid_cell subs c)
 
 
 and subst_tid_set (subs:tid_subst_t) (e:set) : set =
@@ -3743,6 +3759,7 @@ and subst_tid_int (subs:tid_subst_t) (i:integer) : integer =
   | IntArrayRd(arr,t) -> IntArrayRd(subst_tid_array subs arr, t)
   | IntSetMin(s)      -> IntSetMin(subst_tid_setint subs s)
   | IntSetMax(s)      -> IntSetMax(subst_tid_setint subs s)
+  | CellMax(c)        -> CellMax(subst_tid_cell subs c)
   | HavocLevel        -> HavocLevel
 
 
@@ -4571,6 +4588,7 @@ let required_sorts (phi:formula) : sort list =
     | IntArrayRd (a,t) -> append Int [req_arr a;req_t t]
     | IntSetMin s      -> append Int [req_si s]
     | IntSetMax s      -> append Int [req_si s]
+    | CellMax c        -> append Int [req_c c]
     | HavocLevel       -> single Int
 
   and req_arr (a:arrays) : SortSet.t =
@@ -4583,13 +4601,14 @@ let required_sorts (phi:formula) : sort list =
     | VarAddrArray _        -> single AddrArray
     | AddrArrayUp (arr,i,a) -> append AddrArray [req_addrarr arr;
                                                  req_i i;req_a a]
-    | CellArr c             -> single Cell
+    | CellArr c             -> append AddrArray [req_c c]
 
   and req_tidarr (a:tidarr) : SortSet.t =
     match a with
     | VarTidArray _        -> single TidArray
     | TidArrayUp (arr,i,t) -> append TidArray [req_tidarr arr;
                                                req_i i;req_t t]
+    | CellTids c             -> append TidArray [req_c c]
 
   and req_term (t:term) : SortSet.t =
     match t with

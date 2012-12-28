@@ -245,6 +245,7 @@ and int_to_tsl_int (i:Expr.integer) : Tsl.integer =
   | Expr.IntSub (i1,i2) -> Tsl.IntSub (int_to_tsl_int i1, int_to_tsl_int i2)
   | Expr.IntMul (i1,i2) -> Tsl.IntMul (int_to_tsl_int i1, int_to_tsl_int i2)
   | Expr.IntDiv (i1,i2) -> Tsl.IntDiv (int_to_tsl_int i1, int_to_tsl_int i2)
+  | Expr.CellMax (c)    -> Tsl.CellMax (cell_to_tsl_cell c)
   | Expr.IntArrayRd _   -> raise(UnsupportedTslExpr(Expr.integer_to_str i))
   | Expr.IntSetMin _    -> raise(UnsupportedTslExpr(Expr.integer_to_str i))
   | Expr.IntSetMax _    -> raise(UnsupportedTslExpr(Expr.integer_to_str i))
@@ -266,6 +267,7 @@ and tidarr_to_tsl_tidarr (arr:Expr.tidarr) : Tsl.tidarr =
   | Expr.TidArrayUp (tt,i,t) -> Tsl.TidArrayUp (tidarr_to_tsl_tidarr tt,
                                                 int_to_tsl_int i,
                                                 tid_to_tsl_tid t)
+  | Expr.CellTids c          -> Tsl.CellTids (cell_to_tsl_cell c)
 
 
 and atom_to_tsl_atom (a:Expr.atom) : Tsl.atom =
@@ -497,6 +499,7 @@ and tsl_int_to_int (i:Tsl.integer) : Expr.integer =
   | Tsl.IntSub (i1,i2) -> Expr.IntSub (tsl_int_to_int i1, tsl_int_to_int i2)
   | Tsl.IntMul (i1,i2) -> Expr.IntMul (tsl_int_to_int i1, tsl_int_to_int i2)
   | Tsl.IntDiv (i1,i2) -> Expr.IntDiv (tsl_int_to_int i1, tsl_int_to_int i2)
+  | Tsl.CellMax (c)    -> Expr.CellMax (tsl_cell_to_cell c)
   | Tsl.HavocLevel     -> Expr.HavocLevel
 
 
@@ -515,6 +518,7 @@ and tsl_tidarr_to_tidarr (arr:Tsl.tidarr) : Expr.tidarr =
   | Tsl.TidArrayUp (tt,i,t) -> Expr.TidArrayUp (tsl_tidarr_to_tidarr tt,
                                                 tsl_int_to_int i,
                                                 tsl_tid_to_tid t)
+  | Tsl.CellTids c          -> Expr.CellTids (tsl_cell_to_cell c)
 
 
 and tsl_atom_to_atom (a:Tsl.atom) : Expr.atom =

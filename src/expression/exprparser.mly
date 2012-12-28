@@ -457,7 +457,7 @@ let check_and_add_delta (tbl:Vd.delta_fun_t)
 
 %token BEGIN END
 
-%token ERROR MKCELL DATA NEXT ARR LOCKID LOCK UNLOCK LOCKAT UNLOCKAT
+%token ERROR MKCELL DATA NEXT ARR TIDS MAX LOCKID LOCK UNLOCK LOCKAT UNLOCKAT
 %token MEMORY_READ
 %token DOT COMMA
 %token NULL UPDATE
@@ -565,6 +565,7 @@ let check_and_add_delta (tbl:Vd.delta_fun_t)
 %type <Expr.diseq> disequals
 %type <Expr.term> arrays
 %type <Expr.addrarr> addrarr
+%type <Expr.tidarr> tidarr
 
 %type <Diagrams.vd_t> diagram
 %type <(Diagrams.pvd_t * Expression.tid list)> param_diagram
@@ -1229,6 +1230,8 @@ term :
     { $1 }
   | addrarr
     { Expr.AddrArrayT($1) }
+  | tidarr
+    { Expr.TidArrayT($1) }
   | OPEN_PAREN term CLOSE_PAREN
     { $2 }
 
@@ -1735,6 +1738,13 @@ integer :
       in
         Expr.IntSetMax (s)
     }
+  | term DOT MAX
+    {
+      let get_str_expr () = sprintf "%s.max" (Expr.term_to_str $1) in
+      let c  = parser_check_type check_type_cell $1 Expr.Cell get_str_expr
+      in
+        Expr.CellMax (c)
+    }
 
 
 
@@ -1779,12 +1789,22 @@ arrays :
     }
 
 
-/* ARRADDR term */
+/* ADDRARR term */
 addrarr :
   | term DOT ARR
     {
       let get_str_expr () = sprintf "%s.arr" (Expr.term_to_str $1) in
       let c = parser_check_type check_type_cell $1 Expr.Cell get_str_expr in
         Expr.CellArr(c)
+    }
+
+
+/* TIDARR term */
+tidarr :
+  | term DOT TIDS
+    {
+      let get_str_expr () = sprintf "%s.tids" (Expr.term_to_str $1) in
+      let c = parser_check_type check_type_cell $1 Expr.Cell get_str_expr in
+        Expr.CellTids(c)
     }
 

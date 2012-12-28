@@ -463,6 +463,7 @@ and integer_to_int_integer t =
     | Expr.IntArrayRd(a,i) -> ArrayRd(a,i)
     | Expr.IntSetMin(s)    -> SetMin (toset s)
     | Expr.IntSetMax(s)    -> SetMax (toset s)
+    | Expr.CellMax(c)      -> raise (NotAnIntExpression (Expr.integer_to_str t))
     | Expr.HavocLevel      -> raise (NotAnIntExpression (Expr.integer_to_str t))
 
 and term_to_int_integer t =

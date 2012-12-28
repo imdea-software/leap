@@ -96,6 +96,7 @@ and integer =
   | IntSub            of integer * integer
   | IntMul            of integer * integer
   | IntDiv            of integer * integer
+  | CellMax           of cell
   | HavocLevel
 and addrarr =
   | VarAddrArray      of variable
@@ -104,6 +105,7 @@ and addrarr =
 and tidarr =
   | VarTidArray       of variable
   | TidArrayUp        of tidarr * integer * tid
+  | CellTids          of cell
 and atom =
     Append            of path * path * path
   | Reach             of mem * addr * addr * integer * path
