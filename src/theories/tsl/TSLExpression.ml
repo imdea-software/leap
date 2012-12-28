@@ -2398,6 +2398,93 @@ and get_addrs_eqs_atom (a:atom) : ((addr*addr) list * (addr*addr) list) =
   | InEq (AddrT a1, AddrT a2) -> ([],[(a1,a2)])
   | _ -> ([],[])
 
+(*******************************)
+(*                             *)
+(*     Formula manipulation    *)
+(*                             *)
+(*******************************)
+
+
+(* Equality constructor functions for formulas *)
+let eq_set (s1:set) (s2:set) : formula =
+  Literal (Atom (Eq (SetT s1, SetT s2)))
+
+let eq_elem (e1:elem) (e2:elem) : formula =
+  Literal (Atom (Eq (ElemT e1, ElemT e2)))
+
+let eq_tid (t1:tid) (t2:tid) : formula =
+  Literal (Atom (Eq (ThidT t1, ThidT t2)))
+
+let eq_addr (a1:addr) (a2:addr) : formula =
+  Literal (Atom (Eq (AddrT a1, AddrT a2)))
+
+let eq_cell (c1:cell) (c2:cell) : formula =
+  Literal (Atom (Eq (CellT c1, CellT c2)))
+
+let eq_setth (s1:setth) (s2:setth) : formula =
+  Literal (Atom (Eq (SetThT s1, SetThT s2)))
+
+let eq_setelem (s1:setelem) (s2:setelem) : formula =
+  Literal (Atom (Eq (SetElemT s1, SetElemT s2)))
+
+let eq_path (p1:path) (p2:path) : formula =
+  Literal (Atom (Eq (PathT p1, PathT p2)))
+
+let eq_mem (m1:mem) (m2:mem) : formula =
+  Literal (Atom (Eq (MemT m1, MemT m2)))
+
+let eq_int (i1:integer) (i2:integer) : formula =
+  Literal (Atom (Eq (IntT i1, IntT i2)))
+
+let eq_addrarr (aa1:addrarr) (aa2:addrarr) : formula =
+  Literal (Atom (Eq (AddrArrayT aa1, AddrArrayT aa2)))
+
+let eq_tidarr (tt1:tidarr) (tt2:tidarr) : formula =
+  Literal (Atom (Eq (TidArrayT tt1, TidArrayT tt2)))
+
+let eq_term (t1:term) (t2:term) : formula =
+  Literal (Atom (Eq (t1, t2)))
+
+let ineq_set (s1:set) (s2:set) : formula =
+  Literal (Atom (InEq (SetT s1, SetT s2)))
+
+let ineq_elem (e1:elem) (e2:elem) : formula =
+  Literal (Atom (InEq (ElemT e1, ElemT e2)))
+
+let ineq_tid (t1:tid) (t2:tid) : formula =
+  Literal (Atom (InEq (ThidT t1, ThidT t2)))
+
+let ineq_addr (a1:addr) (a2:addr) : formula =
+  Literal (Atom (InEq (AddrT a1, AddrT a2)))
+
+let ineq_cell (c1:cell) (c2:cell) : formula =
+  Literal (Atom (InEq (CellT c1, CellT c2)))
+
+let ineq_setth (s1:setth) (s2:setth) : formula =
+  Literal (Atom (InEq (SetThT s1, SetThT s2)))
+
+let ineq_setelem (s1:setelem) (s2:setelem) : formula =
+  Literal (Atom (InEq (SetElemT s1, SetElemT s2)))
+
+let ineq_path (p1:path) (p2:path) : formula =
+  Literal (Atom (InEq (PathT p1, PathT p2)))
+
+let ineq_mem (m1:mem) (m2:mem) : formula =
+  Literal (Atom (InEq (MemT m1, MemT m2)))
+
+let ineq_int (i1:integer) (i2:integer) : formula =
+  Literal (Atom (InEq (IntT i1, IntT i2)))
+
+let ineq_addrarr (aa1:addrarr) (aa2:addrarr) : formula =
+  Literal (Atom (InEq (AddrArrayT aa1, AddrArrayT aa2)))
+
+let ineq_tidarr (tt1:tidarr) (tt2:tidarr) : formula =
+  Literal (Atom (InEq (TidArrayT tt1, TidArrayT tt2)))
+
+let ineq_term (t1:term) (t2:term) : formula =
+  Literal (Atom (InEq (t1, t2)))
+
+
 
 (*******************************)
 (*                             *)
@@ -2617,13 +2704,16 @@ let sort_of_term (t:term) : sort =
 let norm_literal (info:norm_info_t) (l:literal) : literal =
   let gen_if_not_var (t:term) (s:sort) : variable =
     if is_var_term t then term_to_var t
-    else gen_fresh_var info.fresh_gen_info s in
+    else try
+           Hashtbl.find info.term_map t
+         with _ -> gen_fresh_var info.fresh_gen_info s in
   let append_if_diff (t:term) (v:variable) : unit =
     if is_var_term t then
       (if (term_to_var t) <> v then Hashtbl.add info.term_map t v)
     else
       Hashtbl.add info.term_map t v in
   match l with
+  (* e = c.data *)
   | Atom (Eq (e, ElemT (CellData c)))
   | Atom (Eq (ElemT (CellData c), e))
   | NegAtom (InEq (e, ElemT (CellData c)))
@@ -2635,7 +2725,23 @@ let norm_literal (info:norm_info_t) (l:literal) : literal =
       let i  = gen_fresh_int_var info in
         append_if_diff e e_var;
         append_if_diff (ElemT (CellData c)) c_var;
+        
         Atom (Eq (CellT (VarCell c_var), CellT (MkCell(VarElem e_var,aa,tt,i))))
+  (* a = c.next[l] *)
+  | Atom (Eq (a, AddrT (NextAt (c,i)))) ->
+      let a_var = gen_if_not_var a Addr in
+      let c_var = gen_if_not_var (CellT c) Cell in
+      let i_var = gen_if_not_var (IntT i) Int in
+      let e  = gen_fresh_elem_var info in
+      let aa = gen_fresh_addrarr_var info in
+      let tt = gen_fresh_tidarr_var info in
+        append_if_diff a a_var;
+        append_if_diff (CellT c) c_var;
+        append_if_diff (IntT i) i_var;
+        append_if_diff (CellT (MkCell(e,aa,tt,VarInt i_var))) c_var;
+        Atom (Eq (AddrT (VarAddr a_var),
+                  AddrT (AddrArrRd(aa, VarInt i_var))))
+  (* Inequalities *)
   | Atom (InEq (t1, t2))
   | NegAtom (Eq (t1, t2)) ->
       let t1_var = gen_if_not_var t1 (sort_of_term t1) in
@@ -2648,6 +2754,20 @@ let norm_literal (info:norm_info_t) (l:literal) : literal =
 
 let rec norm_formula (info:norm_info_t) (phi:formula) : formula =
   match phi with
+(*
+  | Literal(Atom(InEq(CellT c1, CellT c2))) ->
+      norm_formula (Or(ineq_elem (CellData c1) (CellData c2),
+                    Or(ineq_addrarr (CellArr c1) (CellArr c2),
+                    Or(ineq_tidarr () (),
+                       ineq_int () ()))))
+
+
+
+(LiteralElemT (CellData c1),ElemT (CellData c2),
+                    Or (AddrArrayT (CellArr c1),AddrArrayT (CellArr c2),
+                        
+))
+*)
   | Literal l                 -> Literal (norm_literal info l)
   | True                      -> True
   | False                     -> False
