@@ -1,4 +1,8 @@
 
+val choose : string -> unit
+(** [choose s] selects [s] as the DP implementation to be used *)
+
+
 val is_sat       : int ->
                    Tactics.solve_tactic_t option ->
                    Smp.cutoff_strategy ->

@@ -1,6 +1,14 @@
 
 module TslExp = TSLExpression
+module type TslkExp = TSLKExpression.S
+
 open TSLExpression
+
+let solver_impl = ref ""
+
+
+let choose (s:string) : unit =
+  solver_impl := s
 
 
 let comp_model : bool ref = ref false
@@ -119,6 +127,12 @@ let split (cf:TslExp.conjunctive_formula)
         (TslExp.Conj pa, TslExp.Conj nc)
 
 
+let translate (tsl_ls:TslExp.literal list) (k:int) =
+  let module K = struct let level = k end in
+  let module TSLKE = TSLKExpression.Make(K) in
+    TSLKE.True
+
+
 let check_sat_by_cases (cases:(TslExp.conjunctive_formula  *     (* PA formula *)
                                TslExp.conjunctive_formula) list) (* NC formula *)
       : (bool * int * int) =
@@ -131,27 +145,47 @@ let check_sat_by_cases (cases:(TslExp.conjunctive_formula  *     (* PA formula *
   let check pa nc arrgs =
     match arrgs with
     | [] -> false
-    | alpha::xs -> (* Check PA /\ alpha satisfiability *)
-                   let pa_arrgs = TslExp.combine_conj_formula pa alpha in
-                   let pa_sat = match pa_arrgs with
-                                | TslExp.TrueConj  -> true
-                                | TslExp.FalseConj -> false
-                                | TslExp.Conj ls   ->
-                                    let phi_num = NumExpression.formula_to_int_formula
-                                                    (TSLInterface.tsl_formula_to_formula
-                                                      (TslExp.from_conjformula_to_formula pa_arrgs))
+    | alpha::xs ->
+        (* Check PA /\ alpha satisfiability *)
+        let pa_arrgs = TslExp.combine_conj_formula pa alpha in
+        let pa_sat = match pa_arrgs with
+                     | TslExp.TrueConj  -> true
+                     | TslExp.FalseConj -> false
+                     | TslExp.Conj ls   ->
+                        let phi_num = NumExpression.formula_to_int_formula
+                                        (TSLInterface.tsl_formula_to_formula
+                                          (TslExp.from_conjformula_to_formula 
+                                            pa_arrgs))
                                     in
                                       NumSol.is_sat phi_num in
-                   if pa_sat then
-                     (* Check NC /\ alpha satisfiability *)
-                     true
-                   else
-                     false
+        if pa_sat then
+          (* Check NC /\ alpha satisfiability *)
+          let nc_arrgs = TslExp.combine_conj_formula nc alpha in
+          let nc_sat = match nc_arrgs with
+                       | TslExp.TrueConj   -> true
+                       | TslExp.FalseConj -> false
+                       | TslExp.Conj ls ->
+                          let l_vs = get_varset_of_sort_from_conj nc_arrgs Int in
+                          let k = VarSet.cardinal l_vs in
+(*                          let phi_trans = translate k nc_arrgs in *)
+                          let k = VarSet.cardinal l_vs in
+                          let phi_tslk = translate nc_arrgs k in
+(*
+                          let module K = struct let level = k end in
+                          let module TslkExp = TSLKExpression.Make(K) in
+*)
+                          let module TslSol = (val TslkSolver.choose !solver_impl k
+                                                      : TslkSolver.S) in
+                          true
+          in true
+        else
+          false
   in
   let rec check_aux cs =
     match cs with
     | []          -> (false, 1, !tslk_calls)
-    | (pa,nc)::xs -> let arrgs = guess_arrangements (TslExp.combine_conj_formula pa nc) in
+    | (pa,nc)::xs -> let arrgs = guess_arrangements
+                                  (TslExp.combine_conj_formula pa nc) in
                      if check pa nc arrgs then
                        (true, 1, !tslk_calls)
                      else
@@ -164,14 +198,9 @@ let is_sat_plus_info (lines : int)
            (stac:Tactics.solve_tactic_t option)
            (co : Smp.cutoff_strategy)
            (phi : TslExp.formula) : (bool * int * int) =
-  (* 0. Normalize the formula. In fact, I only convert it to DNF *)
-  (* TODO: I really need a function to normalize literals!!! *)
-  (* For example, I need to know literal of the form A = B{l <- a}
-     but a modification of a node level (ie. c->next[0] = a is
-     translated into c' = mkcell (c.data,c.next{0 <- a},c.level)).
-     In this case I have an array modification, which is inside another
-     literal, and thus, I would not be able to consider it. *)
-  let phi_dnf = TslExp.dnf phi in
+  (* 0. Normalize the formula and rewrite it in DNF *)
+  let phi_norm = TslExp.normalize phi in
+  let phi_dnf = TslExp.dnf phi_norm in
   (* 1. Sanitize the formula *)
   let phi_san = List.map sanitize phi_dnf in
   (* 2. Split each conjunction into PA y NC *)
