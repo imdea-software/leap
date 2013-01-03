@@ -127,13 +127,17 @@ let split (cf:TslExp.conjunctive_formula)
         (TslExp.Conj pa, TslExp.Conj nc)
 
 
-let translate (tsl_ls:TslExp.literal list) (k:int) =
-  let module K = struct let level = k end in
-  let module TSLKE = TSLKExpression.Make(K) in
-    TSLKE.True
+module TranslateTsl (TslkExp : TSLKExpression.S) =
+  struct
+    let to_tslk (tsl_ls:TslExp.literal list) : TslkExp.formula =
+      TslkExp.True
+  end
 
 
-let check_sat_by_cases (cases:(TslExp.conjunctive_formula  *     (* PA formula *)
+let check_sat_by_cases (lines:int)
+                       (stac:Tactics.solve_tactic_t option)
+                       (co : Smp.cutoff_strategy)
+                       (cases:(TslExp.conjunctive_formula  *     (* PA formula *)
                                TslExp.conjunctive_formula) list) (* NC formula *)
       : (bool * int * int) =
   let tslk_calls = ref 0 in
@@ -167,16 +171,12 @@ let check_sat_by_cases (cases:(TslExp.conjunctive_formula  *     (* PA formula *
                        | TslExp.Conj ls ->
                           let l_vs = get_varset_of_sort_from_conj nc_arrgs Int in
                           let k = VarSet.cardinal l_vs in
-(*                          let phi_trans = translate k nc_arrgs in *)
-                          let k = VarSet.cardinal l_vs in
-                          let phi_tslk = translate nc_arrgs k in
-(*
-                          let module K = struct let level = k end in
-                          let module TslkExp = TSLKExpression.Make(K) in
-*)
-                          let module TslSol = (val TslkSolver.choose !solver_impl k
+                          let module TslkSol = (val TslkSolver.choose !solver_impl k
                                                       : TslkSolver.S) in
-                          true
+                          let module Trans = TranslateTsl (TslkSol.TslkExp) in
+                          let phi_tslk = Trans.to_tslk ls
+                          in
+                            TslkSol.is_sat lines stac co phi_tslk
           in true
         else
           false
@@ -206,7 +206,7 @@ let is_sat_plus_info (lines : int)
   (* 2. Split each conjunction into PA y NC *)
   let splits = List.map split phi_san in
   (* 3. Call the solver for each possible case *)
-  let (sat,tsl_calls,tslk_calls) = check_sat_by_cases splits
+  let (sat,tsl_calls,tslk_calls) = check_sat_by_cases lines stac co splits
   in
     (sat, tsl_calls, tslk_calls)
 
