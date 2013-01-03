@@ -129,8 +129,19 @@ let split (cf:TslExp.conjunctive_formula)
 
 module TranslateTsl (TslkExp : TSLKExpression.S) =
   struct
+
+    module TslkInterf = TSLKInterface.Make(TslkExp)
+    
+    let trans_literal (l:TslExp.literal) : TslkExp.formula =
+      match l with
+      | Atom(Eq(CellT(VarCell c),CellT(MkCell(e,aa,tt,i)))) -> TslkExp.True
+      | _ -> TslkExp.Literal (TslkInterf.literal_to_tslk_literal
+                               (TSLInterface.tsl_literal_to_literal l))
+
+
     let to_tslk (tsl_ls:TslExp.literal list) : TslkExp.formula =
-      TslkExp.True
+      let tslk_ps = List.map trans_literal tsl_ls in
+      TslkExp.conj_list tslk_ps
   end
 
 

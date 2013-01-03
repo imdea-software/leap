@@ -13,6 +13,7 @@ module Make (TSLK : TSLKExpression.S) =
 
     exception UnsupportedSort of string
     exception UnsupportedTSLKExpr of string
+    exception UnsupportedExpr of string
 
 
     (* Expression to TSLKExpression conversion *)
@@ -36,21 +37,6 @@ module Make (TSLK : TSLKExpression.S) =
       | Expr.AddrArray -> raise (UnsupportedSort (Expr.sort_to_str s))
       | Expr.TidArray  -> raise (UnsupportedSort (Expr.sort_to_str s))
       | Expr.Unknown   -> TSLK.Unknown
-
-
-    and sort_to_expr_sort (s:TSLK.sort) : Expr.sort =
-      match s with
-      | TSLK.Set     -> Expr.Set
-      | TSLK.Elem    -> Expr.Elem
-      | TSLK.Thid    -> Expr.Thid
-      | TSLK.Addr    -> Expr.Addr
-      | TSLK.Cell    -> Expr.Cell
-      | TSLK.SetTh   -> Expr.SetTh
-      | TSLK.SetElem -> Expr.SetElem
-      | TSLK.Path    -> Expr.Path
-      | TSLK.Mem     -> Expr.Mem
-      | TSLK.Level   -> Expr.Int
-      | TSLK.Unknown -> Expr.Unknown
 
 
     and build_term_var (v:Expr.variable) : TSLK.term =
@@ -360,5 +346,225 @@ module Make (TSLK : TSLKExpression.S) =
       | Expr.Not f1          -> TSLK.Not (to_formula f1)
       | Expr.Implies (f1,f2) -> TSLK.Implies (to_formula f1, to_formula f2)
       | Expr.Iff (f1,f2)     -> TSLK.Iff (to_formula f1, to_formula f2)
+
+
+
+
+(* TSLKExpression to Expression conversion *)
+
+    let sort_to_expr_sort (s:TSLK.sort) : Expr.sort =
+      match s with
+      | TSLK.Set     -> Expr.Set
+      | TSLK.Elem    -> Expr.Elem
+      | TSLK.Thid    -> Expr.Thid
+      | TSLK.Addr    -> Expr.Addr
+      | TSLK.Cell    -> Expr.Cell
+      | TSLK.SetTh   -> Expr.SetTh
+      | TSLK.SetElem -> Expr.SetElem
+      | TSLK.Path    -> Expr.Path
+      | TSLK.Mem     -> Expr.Mem
+      | TSLK.Level   -> Expr.Int
+      | TSLK.Unknown -> Expr.Unknown
+
+
+
+    let rec var_to_expr_var (v:TSLK.variable) : Expr.variable =
+      let (id,s,pr,th,p) = v
+      in
+        (id, sort_to_expr_sort s, pr, Option.lift tid_to_expr_tid th, p, Expr.Normal)
+
+
+
+    and tid_to_expr_tid (th:TSLK.tid) : Expr.tid =
+      match th with
+      | TSLK.VarTh v            -> Expr.VarTh (var_to_expr_var v)
+      | TSLK.NoThid             -> Expr.NoThid
+      | TSLK.CellLockIdAt (c,l) -> Expr.CellLockIdAt (tsl_cell_to_cell c,
+                                                     level_to_expr_int l)
+
+
+    and term_to_expr_term (t:TSLK.term) : Expr.term =
+      match t with
+      | TSLK.VarT v        -> Expr.VarT (var_to_expr_var v)
+      | TSLK.SetT s        -> Expr.SetT (set_to_expr_set s)
+      | TSLK.ElemT e       -> Expr.ElemT (elem_to_expr_elem e)
+      | TSLK.ThidT t       -> Expr.ThidT (tid_to_expr_tid t)
+      | TSLK.AddrT a       -> Expr.AddrT (addr_to_expr_addr a)
+      | TSLK.CellT c       -> Expr.CellT (tsl_cell_to_cell c)
+      | TSLK.SetThT st     -> Expr.SetThT (setth_to_expr_setth st)
+      | TSLK.SetElemT st   -> Expr.SetElemT (setelem_to_expr_setelem st)
+      | TSLK.PathT p       -> Expr.PathT (path_to_expr_path p)
+      | TSLK.MemT m        -> Expr.MemT (mem_to_expr_mem m)
+      | TSLK.LevelT i      -> Expr.IntT (level_to_expr_int i)
+
+
+
+    and tsl_eq_to_eq ((t1,t2):TSLK.eq) : Expr.eq =
+      (term_to_expr_term t1, term_to_expr_term t2)
+
+
+    and tsl_diseq_to_eq ((t1,t2):TSLK.diseq) : Expr.diseq =
+      (term_to_expr_term t1, term_to_expr_term t2)
+
+
+    and set_to_expr_set (s:TSLK.set) : Expr.set =
+      let to_set = set_to_expr_set in
+      match s with
+      | TSLK.VarSet v            -> Expr.VarSet (var_to_expr_var v)
+      | TSLK.EmptySet            -> Expr.EmptySet
+      | TSLK.Singl a             -> Expr.Singl (addr_to_expr_addr a)
+      | TSLK.Union (s1,s2)       -> Expr.Union (to_set s1, to_set s2)
+      | TSLK.Intr (s1,s2)        -> Expr.Intr (to_set s1, to_set s2)
+      | TSLK.Setdiff (s1,s2)     -> Expr.Setdiff (to_set s1, to_set s2)
+      | TSLK.PathToSet p         -> Expr.PathToSet (path_to_expr_path p)
+      | TSLK.AddrToSet (m,a,l)   -> Expr.AddrToSetAt (mem_to_expr_mem m,
+                                                     addr_to_expr_addr a,
+                                                     level_to_expr_int l)
+
+
+    and elem_to_expr_elem (e:TSLK.elem) : Expr.elem =
+      match e with
+      | TSLK.VarElem v              -> Expr.VarElem (var_to_expr_var v)
+      | TSLK.CellData c             -> Expr.CellData (tsl_cell_to_cell c)
+      | TSLK.HavocSkiplistElem      -> Expr.HavocSkiplistElem
+      | TSLK.LowestElem             -> Expr.LowestElem
+      | TSLK.HighestElem            -> Expr.HighestElem
+
+
+    and addr_to_expr_addr (a:TSLK.addr) : Expr.addr =
+      match a with
+      | TSLK.VarAddr v              -> Expr.VarAddr (var_to_expr_var v)
+      | TSLK.Null                   -> Expr.Null
+      | TSLK.NextAt (c,l)           -> Expr.NextAt (tsl_cell_to_cell c, level_to_expr_int l)
+      | TSLK.FirstLockedAt (m,p,i)  -> Expr.FirstLockedAt (mem_to_expr_mem m,
+                                                           path_to_expr_path p,
+                                                           level_to_expr_int i)
+
+
+    and tsl_cell_to_cell (c:TSLK.cell) : Expr.cell =
+      match c with
+        TSLK.VarCell v          -> Expr.VarCell (var_to_expr_var v)
+      | TSLK.Error              -> Expr.Error
+      | TSLK.MkCell (e,aa,tt,l) -> Expr.MkSLKCell (elem_to_expr_elem e,
+                                                   List.map addr_to_expr_addr aa,
+                                                   List.map tid_to_expr_tid tt,
+                                                   level_to_expr_int l)
+      | TSLK.CellLockAt (c,l, t)-> Expr.CellLockAt (tsl_cell_to_cell c,
+                                                   level_to_expr_int l,
+                                                   tid_to_expr_tid t)
+      | TSLK.CellUnlockAt (c,l) -> Expr.CellUnlockAt (tsl_cell_to_cell c,
+                                                     level_to_expr_int l)
+      | TSLK.CellAt (m,a)       -> Expr.CellAt (mem_to_expr_mem m, addr_to_expr_addr a)
+
+
+    and setth_to_expr_setth (st:TSLK.setth) : Expr.setth =
+      let to_setth = setth_to_expr_setth in
+      match st with
+      | TSLK.VarSetTh v        -> Expr.VarSetTh (var_to_expr_var v)
+      | TSLK.EmptySetTh        -> Expr.EmptySetTh
+      | TSLK.SinglTh t         -> Expr.SinglTh (tid_to_expr_tid t)
+      | TSLK.UnionTh (s1,s2)   -> Expr.UnionTh (to_setth s1, to_setth s2)
+      | TSLK.IntrTh (s1,s2)    -> Expr.IntrTh (to_setth s1, to_setth s2)
+      | TSLK.SetdiffTh (s1,s2) -> Expr.SetdiffTh (to_setth s1, to_setth s2)
+
+
+    and setelem_to_expr_setelem (st:TSLK.setelem) : Expr.setelem =
+      let to_setelem = setelem_to_expr_setelem in
+      match st with
+      | TSLK.VarSetElem v        -> Expr.VarSetElem (var_to_expr_var v)
+      | TSLK.EmptySetElem        -> Expr.EmptySetElem
+      | TSLK.SinglElem e         -> Expr.SinglElem (elem_to_expr_elem e)
+      | TSLK.UnionElem (s1,s2)   -> Expr.UnionElem (to_setelem s1, to_setelem s2)
+      | TSLK.IntrElem (s1,s2)    -> Expr.IntrElem (to_setelem s1, to_setelem s2)
+      | TSLK.SetdiffElem (s1,s2) -> Expr.SetdiffElem (to_setelem s1, to_setelem s2)
+      | TSLK.SetToElems (s,m)    -> Expr.SetToElems (set_to_expr_set s,
+                                                    mem_to_expr_mem m)
+
+
+    and path_to_expr_path (p:TSLK.path) : Expr.path =
+      match p with
+      | TSLK.VarPath v             -> Expr.VarPath (var_to_expr_var v)
+      | TSLK.Epsilon               -> Expr.Epsilon
+      | TSLK.SimplePath a          -> Expr.SimplePath (addr_to_expr_addr a)
+      | TSLK.GetPathAt (m,a1,a2,l) -> Expr.GetPathAt (mem_to_expr_mem m,
+                                                      addr_to_expr_addr a1,
+                                                      addr_to_expr_addr a2,
+                                                      level_to_expr_int l)
+
+
+    and mem_to_expr_mem (m:TSLK.mem) : Expr.mem =
+      match m with
+      | TSLK.VarMem v       -> Expr.VarMem (var_to_expr_var v)
+      | TSLK.Emp            -> raise(UnsupportedExpr(TSLK.mem_to_str m))
+      | TSLK.Update (m,a,c) -> Expr.Update (mem_to_expr_mem m,
+                                            addr_to_expr_addr a,
+                                            tsl_cell_to_cell c)
+
+
+    and level_to_expr_int (i:TSLK.level) : Expr.integer =
+      match i with
+      | TSLK.LevelVal i     -> Expr.IntVal i
+      | TSLK.VarLevel v     -> Expr.VarInt (var_to_expr_var v)
+      | TSLK.LevelSucc i    -> Expr.IntAdd (level_to_expr_int i, Expr.IntVal 1)
+      | TSLK.LevelPred i    -> Expr.IntSub (level_to_expr_int i, Expr.IntVal 1)
+      | TSLK.HavocLevel     -> Expr.HavocLevel
+
+
+    and atom_to_expr_atom (a:TSLK.atom) : Expr.atom =
+      let path    = path_to_expr_path       in
+      let mem     = mem_to_expr_mem         in
+      let addr    = addr_to_expr_addr       in
+      let elem    = elem_to_expr_elem       in
+      let set     = set_to_expr_set         in
+      let tid     = tid_to_expr_tid         in
+      let setth   = setth_to_expr_setth     in
+      let setelem = setelem_to_expr_setelem in
+      let integ   = level_to_expr_int         in
+      let term    = term_to_expr_term       in
+      match a with
+        TSLK.Append (p1,p2,p3)    -> Expr.Append (path p1,path p2,path p3)
+      | TSLK.Reach (m,a1,a2,l,p  )-> Expr.ReachAt (mem m, addr a1, addr a2,
+                                                integ l, path p)
+      | TSLK.OrderList(m,a1,a2)   -> Expr.OrderList (mem m, addr a1, addr a2)
+      | TSLK.In (a,s)             -> Expr.In (addr a, set s)
+      | TSLK.SubsetEq (s1,s2)     -> Expr.SubsetEq (set s1, set s2)
+      | TSLK.InTh (t,s)           -> Expr.InTh (tid t, setth s)
+      | TSLK.SubsetEqTh (s1,s2)   -> Expr.SubsetEqTh (setth s1, setth s2)
+      | TSLK.InElem (e,s)         -> Expr.InElem (elem_to_expr_elem e, setelem s)
+      | TSLK.SubsetEqElem (s1,s2) -> Expr.SubsetEqElem (setelem s1, setelem s2)
+      | TSLK.Less (i1,i2)         -> Expr.Less (integ i1, integ i2)
+      | TSLK.Greater (i1,i2)      -> Expr.Greater (integ i1, integ i2)
+      | TSLK.LessEq (i1,i2)       -> Expr.LessEq (integ i1, integ i2)
+      | TSLK.GreaterEq (i1,i2)    -> Expr.GreaterEq (integ i1, integ i2)
+      | TSLK.LessElem (e1,e2)     -> Expr.LessElem (elem e1, elem e2)
+      | TSLK.GreaterElem (e1,e2)  -> Expr.GreaterElem (elem e1, elem e2)
+      | TSLK.Eq (t1,t2)           -> Expr.Eq (term t1, term t2)
+      | TSLK.InEq (t1,t2)         -> Expr.InEq (term t1, term t2)
+      | TSLK.PC (pc,t,pr)         -> Expr.PC (pc, Option.lift tid_to_expr_tid t,pr)
+      | TSLK.PCUpdate (pc,t)      -> Expr.PCUpdate (pc, tid_to_expr_tid t)
+      | TSLK.PCRange (pc1,pc2,t,pr) -> Expr.PCRange (pc1, pc2,
+                                            Option.lift tid_to_expr_tid t,pr)
+
+
+    and literal_to_expr_literal (l:TSLK.literal) : Expr.literal =
+      match l with
+        TSLK.Atom a    -> Expr.Atom (atom_to_expr_atom a)
+      | TSLK.NegAtom a -> Expr.NegAtom (atom_to_expr_atom a)
+
+
+    and formula_to_expr_formula (f:TSLK.formula) : Expr.formula =
+      let to_formula = formula_to_expr_formula in
+      match f with
+        TSLK.Literal l       -> Expr.Literal (literal_to_expr_literal l)
+      | TSLK.True            -> Expr.True
+      | TSLK.False           -> Expr.False
+      | TSLK.And (f1,f2)     -> Expr.And (to_formula f1, to_formula f2)
+      | TSLK.Or (f1,f2)      -> Expr.Or (to_formula f1, to_formula f2)
+      | TSLK.Not f1          -> Expr.Not (to_formula f1)
+      | TSLK.Implies (f1,f2) -> Expr.Implies (to_formula f1, to_formula f2)
+      | TSLK.Iff (f1,f2)     -> Expr.Iff (to_formula f1, to_formula f2)
+
+
+
 
   end

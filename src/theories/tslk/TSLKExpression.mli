@@ -243,6 +243,9 @@ module type S =
 
     val get_addrs_eqs_conj : conjunctive_formula -> ((addr*addr) list * (addr*addr) list)
     val get_addrs_eqs : formula -> ((addr*addr) list * (addr*addr) list)
+
+    val conj_list : formula list -> formula
+
   end
 
 module Make (K : Level.S) : S

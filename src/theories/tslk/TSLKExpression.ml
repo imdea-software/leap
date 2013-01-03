@@ -246,6 +246,8 @@ module type S =
 
     val get_addrs_eqs_conj : conjunctive_formula -> ((addr*addr) list * (addr*addr) list)
     val get_addrs_eqs : formula -> ((addr*addr) list * (addr*addr) list)
+
+    val conj_list : formula list -> formula
   end
 
 
@@ -1943,4 +1945,12 @@ module Make (K : Level.S) : S =
       | Eq (AddrT a1, AddrT a2)   -> ([(a1,a2)],[])
       | InEq (AddrT a1, AddrT a2) -> ([],[(a1,a2)])
       | _ -> ([],[])
+
+
+    let conj_list (bs:formula list) : formula =
+      match bs with
+      | [] -> True
+      | x::xs -> List.fold_left (fun a b -> And(a,b)) x xs
+
   end
+
