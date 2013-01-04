@@ -131,12 +131,14 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
   struct
 
     module TslkInterf = TSLKInterface.Make(TslkExp)
+
+    let tsl_to_tslk (l:TslExp.literal) : TslkExp.literal =
+      TslkInterf.literal_to_tslk_literal(TSLInterface.literal_to_expr_literal l)
     
     let trans_literal (l:TslExp.literal) : TslkExp.formula =
       match l with
       | Atom(Eq(CellT(VarCell c),CellT(MkCell(e,aa,tt,i)))) -> TslkExp.True
-      | _ -> TslkExp.Literal (TslkInterf.literal_to_tslk_literal
-                               (TSLInterface.tsl_literal_to_literal l))
+      | _ -> TslkExp.Literal (tsl_to_tslk l)
 
 
     let to_tslk (tsl_ls:TslExp.literal list) : TslkExp.formula =
@@ -168,8 +170,8 @@ let check_sat_by_cases (lines:int)
                      | TslExp.FalseConj -> false
                      | TslExp.Conj ls   ->
                         let phi_num = NumExpression.formula_to_int_formula
-                                        (TSLInterface.tsl_formula_to_formula
-                                          (TslExp.from_conjformula_to_formula 
+                                        (TSLInterface.formula_to_expr_formula
+                                          (TslExp.from_conjformula_to_formula
                                             pa_arrgs))
                                     in
                                       NumSol.is_sat phi_num in
