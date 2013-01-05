@@ -157,6 +157,9 @@ module type S =
     (* Expression height *)
     val k : int
 
+    (* Variable construction *)
+    val build_var : varId -> sort -> bool -> tid option -> string option -> variable
+
     (* variable manipulation *)
     val param_var : variable -> tid -> variable
     val is_global_var : variable -> bool

@@ -132,13 +132,95 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
 
     module TslkInterf = TSLKInterface.Make(TslkExp)
 
-    let tsl_to_tslk (l:TslExp.literal) : TslkExp.literal =
+    let tid_tsl_to_tslk (t:TslExp.tid) : TslkExp.tid =
+      TslkInterf.tid_to_tslk_tid(TSLInterface.tid_to_expr_tid t)
+
+    let term_tsl_to_term (t:TslExp.term) : TslkExp.term =
+      TslkInterf.term_to_tslk_term(TSLInterface.term_to_expr_term t)
+
+    let set_tsl_to_tslk (s:TslExp.set) : TslkExp.set =
+      TslkInterf.set_to_tslk_set(TSLInterface.set_to_expr_set s)
+
+    let elem_tsl_to_tslk (e:TslExp.elem) : TslkExp.elem =
+      TslkInterf.elem_to_tslk_elem(TSLInterface.elem_to_expr_elem e)
+
+    let addr_tsl_to_tslk (a:TslExp.addr) : TslkExp.addr =
+      TslkInterf.addr_to_tslk_addr(TSLInterface.addr_to_expr_addr a)
+
+    let cell_tsl_to_tslk (c:TslExp.cell) : TslkExp.cell =
+      TslkInterf.cell_to_tslk_cell(TSLInterface.cell_to_expr_cell c)
+
+    let setth_tsl_to_tslk (s:TslExp.setth) : TslkExp.setth =
+      TslkInterf.setth_to_tslk_setth(TSLInterface.setth_to_expr_setth s)
+
+    let setelem_tsl_to_tslk (s:TslExp.setelem) : TslkExp.setelem =
+      TslkInterf.setelem_to_tslk_setelem(TSLInterface.setelem_to_expr_setelem s)
+
+    let path_tsl_to_tslk (p:TslExp.path) : TslkExp.path =
+      TslkInterf.path_to_tslk_path(TSLInterface.path_to_expr_path p)
+
+    let mem_tsl_to_tslk (m:TslExp.mem) : TslkExp.mem =
+      TslkInterf.mem_to_tslk_mem(TSLInterface.mem_to_expr_mem m)
+
+    let int_tsl_to_tslk (i:TslExp.integer) : TslkExp.level =
+      TslkInterf.int_to_tslk_level(TSLInterface.int_to_expr_int i)
+
+    let literal_tsl_to_tslk (l:TslExp.literal) : TslkExp.literal =
       TslkInterf.literal_to_tslk_literal(TSLInterface.literal_to_expr_literal l)
+
+    let gen_varlist (base:string) (s:TslkExp.sort)
+                    (i:int) (j:int) : TslkExp.variable list =
+      let xs = ref [] in
+      for n = i to j do
+        let id = base ^ (string_of_int n) in
+        let v = TslkExp.build_var id s false None None in
+        xs := v::(!xs)
+      done;
+      List.rev !xs
+
+
+    let gen_addr_list (aa:TslExp.addrarr) (i:int) (j:int) : TslkExp.addr list =
+      let vs = gen_varlist (TslExp.addrarr_to_str aa) TslkExp.Addr i j in
+      List.map (fun v -> TslkExp.VarAddr v) vs
+
+
+    let gen_tid_list (tt:TslExp.tidarr) (i:int) (j:int) : TslkExp.tid list =
+      let vs = gen_varlist (TslExp.tidarr_to_str tt) TslkExp.Thid i j in
+      List.map (fun v -> TslkExp.VarTh v) vs
+
     
     let trans_literal (l:TslExp.literal) : TslkExp.formula =
       match l with
-      | Atom(Eq(CellT(VarCell c),CellT(MkCell(e,aa,tt,i)))) -> TslkExp.True
-      | _ -> TslkExp.Literal (tsl_to_tslk l)
+      | Atom(Eq(CellT (VarCell c),CellT(MkCell(e,aa,tt,i))))
+      | Atom(Eq(CellT(MkCell(e,aa,tt,i)),CellT (VarCell c)))
+      | NegAtom(InEq(CellT (VarCell c),CellT(MkCell(e,aa,tt,i))))
+      | NegAtom(InEq(CellT(MkCell(e,aa,tt,i)),CellT (VarCell c))) ->
+          let c' = cell_tsl_to_tslk (VarCell c) in
+          let e' = elem_tsl_to_tslk e in
+          let aa' = gen_addr_list aa 0 (TslkExp.k - 1) in
+          let tt' = gen_tid_list tt 0 (TslkExp.k - 1) in
+          let l' = TslkExp.LevelVal (TslkExp.k) in
+          TslkExp.Literal(TslkExp.Atom(TslkExp.Eq
+            (TslkExp.CellT c', TslkExp.CellT(TslkExp.MkCell(e',aa',tt',l')))))
+      | Atom(Eq(AddrT a, AddrT (AddrArrRd (aa,i))))
+      | Atom(Eq(AddrT (AddrArrRd (aa,i)), AddrT a))
+      | NegAtom(InEq(AddrT a, AddrT (AddrArrRd (aa,i))))
+      | NegAtom(InEq(AddrT (AddrArrRd (aa,i)), AddrT a)) ->
+          let a' = addr_tsl_to_tslk a in
+          let aa' = gen_addr_list aa 0 (TslkExp.k - 1) in
+          let i' = int_tsl_to_tslk i in
+          let xs = ref [] in
+          for n = 0 to (TslkExp.k - 1) do
+            let n' = TslkExp.LevelVal n in
+            TslkExp.Implies
+              (TslkExp.Literal(TslkExp.Atom(TslkExp.Eq
+                (TslkExp.LevelT i', TslkExp.LevelT n'))),
+              (TslkExp.Literal(TslkExp.Atom(TslkExp.Eq
+                (TslkExp.AddrT a', TslkExp.AddrT (List.nth aa' n))))))
+          done;
+          TslkExp.conj_list (!xs)
+        (* TUKA: Define eq functions in TslkExp to reduce notation here *)
+      | _ -> TslkExp.Literal (literal_tsl_to_tslk l)
 
 
     let to_tslk (tsl_ls:TslExp.literal list) : TslkExp.formula =
