@@ -249,6 +249,30 @@ module type S =
 
     val conj_list : formula list -> formula
 
+    (* Equality constructor functions for formulas *)
+    val eq_set : set -> set -> formula
+    val eq_elem : elem -> elem -> formula
+    val eq_tid : tid -> tid -> formula
+    val eq_addr : addr -> addr -> formula
+    val eq_cell : cell -> cell -> formula
+    val eq_setth : setth -> setth -> formula
+    val eq_setelem : setelem -> setelem -> formula
+    val eq_path : path -> path -> formula
+    val eq_mem : mem -> mem -> formula
+    val eq_level : level -> level -> formula
+    val eq_term : term -> term -> formula
+    val ineq_set : set -> set -> formula
+    val ineq_elem : elem -> elem -> formula
+    val ineq_tid : tid -> tid -> formula
+    val ineq_addr : addr -> addr -> formula
+    val ineq_cell : cell -> cell -> formula
+    val ineq_setth : setth -> setth -> formula
+    val ineq_setelem : setelem -> setelem -> formula
+    val ineq_path : path -> path -> formula
+    val ineq_mem : mem -> mem -> formula
+    val ineq_level : level -> level -> formula
+    val ineq_term : term -> term -> formula
+
   end
 
 module Make (K : Level.S) : S

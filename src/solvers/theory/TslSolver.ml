@@ -200,8 +200,7 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
           let aa' = gen_addr_list aa 0 (TslkExp.k - 1) in
           let tt' = gen_tid_list tt 0 (TslkExp.k - 1) in
           let l' = TslkExp.LevelVal (TslkExp.k) in
-          TslkExp.Literal(TslkExp.Atom(TslkExp.Eq
-            (TslkExp.CellT c', TslkExp.CellT(TslkExp.MkCell(e',aa',tt',l')))))
+            TslkExp.eq_cell (c') (TslkExp.MkCell(e',aa',tt',l'))
       | Atom(Eq(AddrT a, AddrT (AddrArrRd (aa,i))))
       | Atom(Eq(AddrT (AddrArrRd (aa,i)), AddrT a))
       | NegAtom(InEq(AddrT a, AddrT (AddrArrRd (aa,i))))
@@ -212,14 +211,37 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
           let xs = ref [] in
           for n = 0 to (TslkExp.k - 1) do
             let n' = TslkExp.LevelVal n in
-            TslkExp.Implies
-              (TslkExp.Literal(TslkExp.Atom(TslkExp.Eq
-                (TslkExp.LevelT i', TslkExp.LevelT n'))),
-              (TslkExp.Literal(TslkExp.Atom(TslkExp.Eq
-                (TslkExp.AddrT a', TslkExp.AddrT (List.nth aa' n))))))
+            xs := (TslkExp.Implies
+                    (TslkExp.eq_level i' n',
+                     TslkExp.eq_addr a' (List.nth aa' n))) :: (!xs)
           done;
           TslkExp.conj_list (!xs)
-        (* TUKA: Define eq functions in TslkExp to reduce notation here *)
+      | Atom(Eq(AddrArrayT bb, AddrArrayT (AddrArrayUp(aa,i,a))))
+      | Atom(Eq(AddrArrayT (AddrArrayUp(aa,i,a)), AddrArrayT bb))
+      | NegAtom(InEq(AddrArrayT bb, AddrArrayT (AddrArrayUp(aa,i,a))))
+      | NegAtom(InEq(AddrArrayT (AddrArrayUp(aa,i,a)), AddrArrayT bb)) ->
+          let a' = addr_tsl_to_tslk a in
+          let i' = int_tsl_to_tslk i in
+          let aa' = gen_addr_list aa 0 (TslkExp.k - 1) in
+          let bb' = gen_addr_list bb 0 (TslkExp.k - 1) in
+          let xs = ref [] in
+          for n = 0 to (TslkExp.k - 1) do
+            let n' = TslkExp.LevelVal n in
+            xs := (TslkExp.Implies
+                    (TslkExp.eq_level i' n',
+                     TslkExp.eq_addr a' (List.nth bb' n))) ::
+                  (TslkExp.Implies
+                    (TslkExp.ineq_level i' n',
+                     TslkExp.eq_addr (List.nth aa' n) (List.nth bb' n))) ::
+                  (!xs)
+          done;
+          TslkExp.conj_list (!xs)
+      | Atom(Skiplist(m,s,i,a1,a2)) ->
+          let m' = mem_tsl_to_tslk m in
+          let s' = set_tsl_to_tslk s in
+          let a1' = addr_tsl_to_tslk a1 in
+          let a2' = addr_tsl_to_tslk a2 in
+            TslkExp.True
       | _ -> TslkExp.Literal (literal_tsl_to_tslk l)
 
 

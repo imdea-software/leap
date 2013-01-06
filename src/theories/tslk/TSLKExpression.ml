@@ -251,6 +251,32 @@ module type S =
     val get_addrs_eqs : formula -> ((addr*addr) list * (addr*addr) list)
 
     val conj_list : formula list -> formula
+
+
+    (* Equality constructor functions for formulas *)
+    val eq_set : set -> set -> formula
+    val eq_elem : elem -> elem -> formula
+    val eq_tid : tid -> tid -> formula
+    val eq_addr : addr -> addr -> formula
+    val eq_cell : cell -> cell -> formula
+    val eq_setth : setth -> setth -> formula
+    val eq_setelem : setelem -> setelem -> formula
+    val eq_path : path -> path -> formula
+    val eq_mem : mem -> mem -> formula
+    val eq_level : level -> level -> formula
+    val eq_term : term -> term -> formula
+    val ineq_set : set -> set -> formula
+    val ineq_elem : elem -> elem -> formula
+    val ineq_tid : tid -> tid -> formula
+    val ineq_addr : addr -> addr -> formula
+    val ineq_cell : cell -> cell -> formula
+    val ineq_setth : setth -> setth -> formula
+    val ineq_setelem : setelem -> setelem -> formula
+    val ineq_path : path -> path -> formula
+    val ineq_mem : mem -> mem -> formula
+    val ineq_level : level -> level -> formula
+    val ineq_term : term -> term -> formula
+
   end
 
 
@@ -1954,6 +1980,75 @@ module Make (K : Level.S) : S =
       match bs with
       | [] -> True
       | x::xs -> List.fold_left (fun a b -> And(a,b)) x xs
+
+
+
+    (* Equality constructor functions for formulas *)
+    let eq_set (s1:set) (s2:set) : formula =
+      Literal (Atom (Eq (SetT s1, SetT s2)))
+
+    let eq_elem (e1:elem) (e2:elem) : formula =
+      Literal (Atom (Eq (ElemT e1, ElemT e2)))
+
+    let eq_tid (t1:tid) (t2:tid) : formula =
+      Literal (Atom (Eq (ThidT t1, ThidT t2)))
+
+    let eq_addr (a1:addr) (a2:addr) : formula =
+      Literal (Atom (Eq (AddrT a1, AddrT a2)))
+
+    let eq_cell (c1:cell) (c2:cell) : formula =
+      Literal (Atom (Eq (CellT c1, CellT c2)))
+
+    let eq_setth (s1:setth) (s2:setth) : formula =
+      Literal (Atom (Eq (SetThT s1, SetThT s2)))
+
+    let eq_setelem (s1:setelem) (s2:setelem) : formula =
+      Literal (Atom (Eq (SetElemT s1, SetElemT s2)))
+
+    let eq_path (p1:path) (p2:path) : formula =
+      Literal (Atom (Eq (PathT p1, PathT p2)))
+
+    let eq_mem (m1:mem) (m2:mem) : formula =
+      Literal (Atom (Eq (MemT m1, MemT m2)))
+
+    let eq_level (l1:level) (l2:level) : formula =
+      Literal (Atom (Eq (LevelT l1, LevelT l2)))
+
+    let eq_term (t1:term) (t2:term) : formula =
+      Literal (Atom (Eq (t1, t2)))
+
+    let ineq_set (s1:set) (s2:set) : formula =
+      Literal (Atom (InEq (SetT s1, SetT s2)))
+
+    let ineq_elem (e1:elem) (e2:elem) : formula =
+      Literal (Atom (InEq (ElemT e1, ElemT e2)))
+
+    let ineq_tid (t1:tid) (t2:tid) : formula =
+      Literal (Atom (InEq (ThidT t1, ThidT t2)))
+
+    let ineq_addr (a1:addr) (a2:addr) : formula =
+      Literal (Atom (InEq (AddrT a1, AddrT a2)))
+
+    let ineq_cell (c1:cell) (c2:cell) : formula =
+      Literal (Atom (InEq (CellT c1, CellT c2)))
+
+    let ineq_setth (s1:setth) (s2:setth) : formula =
+      Literal (Atom (InEq (SetThT s1, SetThT s2)))
+
+    let ineq_setelem (s1:setelem) (s2:setelem) : formula =
+      Literal (Atom (InEq (SetElemT s1, SetElemT s2)))
+
+    let ineq_path (p1:path) (p2:path) : formula =
+      Literal (Atom (InEq (PathT p1, PathT p2)))
+
+    let ineq_mem (m1:mem) (m2:mem) : formula =
+      Literal (Atom (InEq (MemT m1, MemT m2)))
+
+    let ineq_level (l1:level) (l2:level) : formula =
+      Literal (Atom (InEq (LevelT l1, LevelT l2)))
+
+    let ineq_term (t1:term) (t2:term) : formula =
+      Literal (Atom (InEq (t1, t2)))
 
   end
 
