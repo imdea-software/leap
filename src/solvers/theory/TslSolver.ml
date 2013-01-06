@@ -241,7 +241,24 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
           let s' = set_tsl_to_tslk s in
           let a1' = addr_tsl_to_tslk a1 in
           let a2' = addr_tsl_to_tslk a2 in
-            TslkExp.True
+          let xs = ref
+                    [TslkExp.Literal(TslkExp.Atom(
+                      TslkExp.OrderList(m',a1',a2')));
+                     TslkExp.eq_set
+                      (s')
+                      (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',TslkExp.LevelVal 0)))] in
+          for n = 0 to (TslkExp.k - 1) do
+            let n' = TslkExp.LevelVal n in
+            xs := (TslkExp.eq_addr (TslkExp.NextAt(TslkExp.CellAt(m',a2'),n'))
+                                   (TslkExp.Null)) :: (!xs)
+          done;
+          for n = 0 to (TslkExp.k - 2) do
+            let n' = TslkExp.LevelVal n in
+            xs := (TslkExp.Literal(TslkExp.Atom(TslkExp.SubsetEq(
+                    TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',TslkExp.LevelSucc n')),
+                    TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',n')))))) :: (!xs)
+          done;
+          TslkExp.conj_list (!xs)
       | _ -> TslkExp.Literal (literal_tsl_to_tslk l)
 
 
@@ -282,19 +299,18 @@ let check_sat_by_cases (lines:int)
         if pa_sat then
           (* Check NC /\ alpha satisfiability *)
           let nc_arrgs = TslExp.combine_conj_formula nc alpha in
-          let nc_sat = match nc_arrgs with
-                       | TslExp.TrueConj   -> true
-                       | TslExp.FalseConj -> false
-                       | TslExp.Conj ls ->
-                          let l_vs = get_varset_of_sort_from_conj nc_arrgs Int in
-                          let k = VarSet.cardinal l_vs in
-                          let module TslkSol = (val TslkSolver.choose !solver_impl k
-                                                      : TslkSolver.S) in
-                          let module Trans = TranslateTsl (TslkSol.TslkExp) in
-                          let phi_tslk = Trans.to_tslk ls
-                          in
-                            TslkSol.is_sat lines stac co phi_tslk
-          in true
+          match nc_arrgs with
+          | TslExp.TrueConj   -> true
+          | TslExp.FalseConj -> false
+          | TslExp.Conj ls ->
+              let l_vs = get_varset_of_sort_from_conj nc_arrgs Int in
+              let k = VarSet.cardinal l_vs in
+              let module TslkSol = (val TslkSolver.choose !solver_impl k
+                                          : TslkSolver.S) in
+              let module Trans = TranslateTsl (TslkSol.TslkExp) in
+              let phi_tslk = Trans.to_tslk ls
+              in
+                TslkSol.is_sat lines stac co phi_tslk
         else
           false
   in
