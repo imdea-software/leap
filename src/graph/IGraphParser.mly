@@ -23,7 +23,7 @@ let get_line id = snd id
 %token <string*int> IDENT  // second param is line number
 %token <int> NUMBER
 
-%token ARROW COMMA COLON SEMICOLON
+%token SEQ_ARROW CONC_ARROW COMMA COLON SEMICOLON
 %token OPEN_BRACK CLOSE_BRACK OPEN_BRACE CLOSE_BRACE OPEN_PAREN CLOSE_PAREN
 %token BAR
 %token NORMAL_PREMISE EXTRA_PREMISE
@@ -80,7 +80,7 @@ rule_list :
 
 
 rule :
-  | ARROW inv cases tactics
+  | CONC_ARROW inv cases tactics
     {
       let i = $2 in
       let cs = $3 in
@@ -89,7 +89,7 @@ rule :
       in
         IGraph.new_rule [] i cs ts
     }
-  | inv_list ARROW inv cases tactics
+  | inv_list CONC_ARROW inv cases tactics
     {
       let sup = $1 in
       let i = $3 in

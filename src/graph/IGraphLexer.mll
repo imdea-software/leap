@@ -21,7 +21,8 @@ rule norm = parse
   | "split"       {Global.last "split"        ; SPLIT_TACTIC }
   | "simpl"       {Global.last "simpl"        ; SIMPL_TACTIC }
   | "cases"       {Global.last "cases"        ; SOLVE_TACT_CASES }
-  | "->"          {Global.last "->"           ; ARROW }
+  | "->"          {Global.last "->"           ; SEQ_ARROW }
+  | "=>"          {Global.last "=>"           ; CONC_ARROW }
   | ','           {Global.last ","            ; COMMA }
   | ':'           {Global.last ":"            ; COLON }
   | ';'           {Global.last ";"            ; SEMICOLON }

@@ -134,7 +134,7 @@ let report_vc_run_to_str (id:int) (pos_status:vc_status)  (pos_time:float)
 
 
 let report_analysis_time_to_str (time:float) : string =
-  "| Total analysis time:                                                                 "^(time_to_str time)^"|\n" ^
+  "| Total analysis time:                                                                "^(time_to_str time)^"|\n" ^
   table_divider_str
 
 
