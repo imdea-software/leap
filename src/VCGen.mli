@@ -159,7 +159,14 @@ sig
     -> Expression.formula list 
     -> Expression.formula 
     -> (Expression.formula * vc_info_t) list
-  
+
+
+  (** Sequential B-INV *)
+  val seqinv : System.system_t
+    -> Expression.formula
+    -> (Expression.formula * vc_info_t) list
+
+
   val check_with_pinv : System.system_t 
     -> Expression.formula
     (*-> solver_info*)
@@ -175,6 +182,10 @@ sig
     -> Expression.formula
     (*-> solver_info*)
     ->bool
+
+  val check_with_seqinv : System.system_t
+    -> Expression.formula
+    -> bool
   
   val check_with_graph : System.system_t 
     -> IGraph.iGraph_t 

@@ -176,6 +176,13 @@ sig
     -> Expression.formula list 
     -> Expression.formula 
     -> (Expression.formula * vc_info_t) list
+
+
+  (** Sequential B-INV *)
+  val seqinv : System.system_t
+    -> Expression.formula
+    -> (Expression.formula * vc_info_t) list
+
   
   val check_with_pinv : System.system_t 
     -> Expression.formula
@@ -191,7 +198,11 @@ sig
     -> Expression.formula list
     -> Expression.formula
     (*-> solver_info*)
-    ->bool
+    -> bool
+
+  val check_with_seqinv : System.system_t
+    -> Expression.formula
+    -> bool
   
   val check_with_graph : System.system_t 
     -> IGraph.iGraph_t 
@@ -1478,6 +1489,17 @@ struct
                           (info.supps <- e_tags; (phi,info))) extra_vc in
         vcs @ normal_vc @ extra_vc
       ) [] lines_to_consider
+
+
+  let seqinv (sys : Sys.system_t) (inv : E.formula)
+        : (E.formula * vc_info_t) list =
+    []
+  
+
+  let tag_seqinv (sys : Sys.system_t) (inv : Tag.f_tag)
+        : (E.formula * vc_info_t) list =
+    let inv_as_formula = Tag.tag_table_get_formula tags inv in
+    seqinv sys inv_as_formula
   
   
   let spinv (sys : Sys.system_t) (supInvs:E.formula list)
@@ -1501,8 +1523,8 @@ struct
     let premise_transitions = spinv_premise_transitions sys
                                 lines_to_consider supInvs inv_info in
       premise_init @ premise_transitions
-  
-  
+
+ 
   let tag_spinv (sys : Sys.system_t) (supInv_list : Tag.f_tag list)
       (inv : Tag.f_tag) : (E.formula * vc_info_t) list =
     let supInv_list_as_formula = 
@@ -1992,6 +2014,17 @@ struct
     res
 
 
+  let check_with_seqinv (sys : Sys.system_t) (inv : E.formula) : bool =
+    assert(isInitialized());
+    (* Erases output file, if exists *)
+    let extended_sys = prepare_system sys in
+    let vcs = seqinv extended_sys inv in
+    let vc_list =
+      List.map (fun (vc, desc) -> (post_process vc, desc)) vcs in
+    let res = apply_dp_on_list vc_list "Checked VCs with SEQINV\n\n" in
+    res
+
+
   let check_with_graph (sys:Sys.system_t)
       (graph:IGraph.iGraph_t) : bool =
     (* Auxiliary function for loading cases *)
@@ -2010,7 +2043,7 @@ struct
     (* Process each rule in the invariant relation graph *)
     let graph_info = IGraph.graph_info graph in
     let base_out_name = solverInfo.out_file in
-    let foldop res (sup, inv, cases, tacs) =
+    let foldop res (mode, sup, inv, cases, tacs) =
       solverInfo.tactics <- tacs;
       let inv_id = Tag.tag_id inv in
       let sup_id = String.concat "," $ List.map Tag.tag_id sup in
@@ -2018,36 +2051,47 @@ struct
       let sup_phi = List.map (read_tag>>Option.(default E.False)) sup in
       let _ = set_detFileName inv_id in
       let _ = set_descGralSupp solverInfo.detailed_desc sup in
-      if sup_phi = [] then begin
-        (* PINV *)
-        if Hashtbl.length cases = 0 then printf "PINV+ for %s\n" inv_id
-        else printf "PINV+ WITH CASES for %s\n" inv_id;
-        let output_name = "_pinv_" ^ inv_id in
-        solverInfo.out_file <- (base_out_name ^ output_name);
-        let case_tbl = load_cases cases in
-        solverInfo.special <- case_tbl;
-        solverInfo.tactics <- tacs;
-        let this_res = check_with_pinv_plus sys inv_phi in
-        res && this_res
-      end else begin
-        if Hashtbl.length cases = 0 then begin
-          (* SPINV *)
-          printf "SPINV for %s -> %s\n" sup_id inv_id;
-          let output_name = "_sinv_" ^ sup_id ^ "->" ^ inv_id in
-          solverInfo.out_file <- (base_out_name ^ output_name);
-          let this_res = check_with_spinv sys sup_phi inv_phi
-          in
-            res && this_res
-        end else begin
-          (* SPINV WITH SPECIAL CASES *)
-          printf "SPINV WITH CASES for %s -> %s\n" sup_id inv_id;
-          let output_name = "_sinvsp_" ^ sup_id ^ "->" ^ inv_id in
+      match mode with
+      | IGraph.Concurrent ->
+        if sup_phi = [] then begin
+          (* PINV *)
+          if Hashtbl.length cases = 0 then printf "PINV+ for %s\n" inv_id
+          else printf "PINV+ WITH CASES for %s\n" inv_id;
+          let output_name = "_pinv_" ^ inv_id in
           solverInfo.out_file <- (base_out_name ^ output_name);
           let case_tbl = load_cases cases in
           solverInfo.special <- case_tbl;
-          let this_res = check_with_spinv sys sup_phi inv_phi in
-          res & this_res 
+          solverInfo.tactics <- tacs;
+          let this_res = check_with_pinv_plus sys inv_phi in
+          res && this_res
+        end else begin
+          if Hashtbl.length cases = 0 then begin
+            (* SPINV *)
+            printf "SPINV for %s -> %s\n" sup_id inv_id;
+            let output_name = "_sinv_" ^ sup_id ^ "->" ^ inv_id in
+            solverInfo.out_file <- (base_out_name ^ output_name);
+            let this_res = check_with_spinv sys sup_phi inv_phi
+            in
+              res && this_res
+          end else begin
+            (* SPINV WITH SPECIAL CASES *)
+            printf "SPINV WITH CASES for %s -> %s\n" sup_id inv_id;
+            let output_name = "_sinvsp_" ^ sup_id ^ "->" ^ inv_id in
+            solverInfo.out_file <- (base_out_name ^ output_name);
+            let case_tbl = load_cases cases in
+            solverInfo.special <- case_tbl;
+            let this_res = check_with_spinv sys sup_phi inv_phi in
+            res & this_res
+          end
         end
-      end in
-    List.fold_left foldop true graph_info
+    | IGraph.Sequential ->
+        (* B-INV *)
+        printf "B-INV for %s" inv_id;
+        let output_name = "_seqinv_" ^ inv_id in
+        solverInfo.out_file <- (base_out_name ^ output_name);
+        let this_res = check_with_seqinv sys inv_phi in
+        res & this_res
+    in
+
+      List.fold_left foldop true graph_info
 end

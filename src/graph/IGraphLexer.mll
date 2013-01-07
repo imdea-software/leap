@@ -23,6 +23,7 @@ rule norm = parse
   | "cases"       {Global.last "cases"        ; SOLVE_TACT_CASES }
   | "->"          {Global.last "->"           ; SEQ_ARROW }
   | "=>"          {Global.last "=>"           ; CONC_ARROW }
+  | "[]"          {Global.last "[]"           ; BOX }
   | ','           {Global.last ","            ; COMMA }
   | ':'           {Global.last ":"            ; COLON }
   | ';'           {Global.last ";"            ; SEMICOLON }

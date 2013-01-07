@@ -23,7 +23,7 @@ let get_line id = snd id
 %token <string*int> IDENT  // second param is line number
 %token <int> NUMBER
 
-%token SEQ_ARROW CONC_ARROW COMMA COLON SEMICOLON
+%token SEQ_ARROW CONC_ARROW BOX COMMA COLON SEMICOLON
 %token OPEN_BRACK CLOSE_BRACK OPEN_BRACE CLOSE_BRACE OPEN_PAREN CLOSE_PAREN
 %token BAR
 %token NORMAL_PREMISE EXTRA_PREMISE
@@ -87,7 +87,7 @@ rule :
       let ts = $4 in
       let _ = Printf.printf "tactics size: %i\n" (List.length (Tactics.post_tacs ts))
       in
-        IGraph.new_rule [] i cs ts
+        IGraph.new_conc_rule [] i cs ts
     }
   | inv_list CONC_ARROW inv cases tactics
     {
@@ -97,7 +97,11 @@ rule :
       let ts = $5 in
       let _ = Printf.printf "tactics size: %i\n" (List.length (Tactics.post_tacs ts))
       in
-        IGraph.new_rule sup i cs ts
+        IGraph.new_conc_rule sup i cs ts
+    }
+  | BOX inv tactics
+    {
+      IGraph.new_seq_rule $2 $3
     }
 
 
