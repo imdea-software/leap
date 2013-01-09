@@ -71,15 +71,22 @@ let guess_arrangements (cf:TslExp.conjunctive_formula)
   match cf with
   | TslExp.FalseConj -> []
   | TslExp.TrueConj  -> []
-  | TslExp.Conj ls   -> let level_vars = TslExp.get_varset_from_conj cf in
+  | TslExp.Conj ls   -> let _ = print_endline "COMPUTING LEVEL VARS..." in
+                        let _ = Printf.printf "CONJUNCTIVE FORMULA: %s\n" (TslExp.conjunctive_formula_to_str cf) in
+                        let level_vars = TslExp.get_varset_of_sort_from_conj cf TslExp.Int in
+                        let _ = print_endline "COMPUTING PARTITIONS..." in
                         let parts = Partition.gen_partitions
                                       (TslExp.VarSet.elements level_vars) [] in
+                        let _ = print_endline "COMPUTING EQUALITIES..." in
                         let eqs = List.fold_left (fun xs p ->
                                     (Partition.to_list p) :: xs
                                   ) [] parts in
+                        let _ = Printf.printf "LEVEL_VARS: %i\n" (TslExp.VarSet.cardinal level_vars) in
+                        let _ = print_endline "COMPUTING ARRANGEMENTS..." in
                         let arrgs = List.fold_left (fun xs eq_c ->
                                       (LeapLib.comb eq_c (List.length eq_c)) @ xs
                                     ) [] eqs in
+                        let _ = print_endline "COMPUTING LV_ARRGS..." in
                         let lv_arrs = List.fold_left (fun xs arr ->
                                         let eqs = List.fold_left (fun ys eq_c ->
                                                     (cons_var_eq_class eq_c) @ ys
@@ -315,10 +322,13 @@ let check_sat_by_cases (lines:int)
           false
   in
   let rec check_aux cs =
+    Printf.printf "%i cases:\n%s\n" (List.length cs) (String.concat "\n" (List.map (fun (pa,nc) -> Printf.sprintf "PA: %s\nNC: %s\n--------\n" (TslExp.conjunctive_formula_to_str pa) (TslExp.conjunctive_formula_to_str nc)) cs));
     match cs with
     | []          -> (false, 1, !tslk_calls)
-    | (pa,nc)::xs -> let arrgs = guess_arrangements
+    | (pa,nc)::xs -> let _ = print_endline "WILL GUESS ARRANGEMENTS..." in
+                     let arrgs = guess_arrangements
                                   (TslExp.combine_conj_formula pa nc) in
+                     let _ = print_endline "ARRANGEMENTS GUESSED..." in
                      if check pa nc arrgs then
                        (true, 1, !tslk_calls)
                      else
@@ -332,13 +342,18 @@ let is_sat_plus_info (lines : int)
            (co : Smp.cutoff_strategy)
            (phi : TslExp.formula) : (bool * int * int) =
   (* 0. Normalize the formula and rewrite it in DNF *)
+  let _ = print_endline "WILL NORMALIZE..." in
   let phi_norm = TslExp.normalize phi in
+  let _ = print_endline "WILL DO DNF..." in
   let phi_dnf = TslExp.dnf phi_norm in
   (* 1. Sanitize the formula *)
+  let _ = print_endline "WILL SANITIZE..." in
   let phi_san = List.map sanitize phi_dnf in
   (* 2. Split each conjunction into PA y NC *)
+  let _ = print_endline "WILL SPLIT FORMULAS..." in
   let splits = List.map split phi_san in
   (* 3. Call the solver for each possible case *)
+  let _ = print_endline "WILL CHECK SATISFIABILITY..." in
   let (sat,tsl_calls,tslk_calls) = check_sat_by_cases lines stac co splits
   in
     (sat, tsl_calls, tslk_calls)
