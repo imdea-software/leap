@@ -179,7 +179,7 @@ sig
 
 
   (** Sequential B-INV *)
-  val seqinv : System.system_t
+  val seq_binv : System.system_t
     -> Expression.formula
     -> (Expression.formula * vc_info_t) list
 
@@ -200,7 +200,7 @@ sig
     (*-> solver_info*)
     -> bool
 
-  val check_with_seqinv : System.system_t
+  val check_with_seq_binv : System.system_t
     -> Expression.formula
     -> bool
   
@@ -575,13 +575,11 @@ struct
   (* FIX: This was before having BPCUpdate. Check if it is alright.         *)
   (* let pc             = E.VarArray(E.pc_name,false,None,None,E.Normal) in *)
   
-    (* Deprecated *)
-    let pc' = 
-      E.VarArray(E.build_var E.pc_name E.Unknown true None None E.Normal) in
-    (* Deprecated *)
     let fst_next_pos = List.hd next_list in
     let build_eq' i = match mode with
-      | Sys.SClosed -> E.eq_int (E.IntArrayRd(pc',th)) (E.IntVal i)
+      | Sys.SClosed -> E.pcupd_form i th
+      (* FIX: This was before having PCUpdate. Check if it is alright *)
+      (* E.eq_int (E.IntArrayRd(pc',th)) (E.IntVal i) *)
       | Sys.SOpenArray _ -> E.pcupd_form i th in
       (* FIX: This was before having BPCUpdate. Check if
               it is alright.
@@ -1491,15 +1489,16 @@ struct
       ) [] lines_to_consider
 
 
-  let seqinv (sys : Sys.system_t) (inv : E.formula)
+  let seq_binv (sys : Sys.system_t) (inv : E.formula)
         : (E.formula * vc_info_t) list =
-    []
+    (* TODO: FIX THIS NOT TO USE DIRECTLY BINV *)
+    binv sys inv
   
 
-  let tag_seqinv (sys : Sys.system_t) (inv : Tag.f_tag)
+  let tag_seq_binv (sys : Sys.system_t) (inv : Tag.f_tag)
         : (E.formula * vc_info_t) list =
     let inv_as_formula = Tag.tag_table_get_formula tags inv in
-    seqinv sys inv_as_formula
+    seq_binv sys inv_as_formula
   
   
   let spinv (sys : Sys.system_t) (supInvs:E.formula list)
@@ -1781,7 +1780,7 @@ struct
                    (cutoff : Smp.cutoff_strategy)
                    (status : valid_t) : dp_result_t =
     assert(isInitialized());
-    let _ = print_endline "ENTERING..." in
+    let _ = print_endline "ENTERING TSLK DP..." in
     if status = Unverified || status = NotValid then begin
       let _ = print_endline "WILL PERFORM THE CHECK..." in
       let module TSLKExpr = TSLKS.TslkExp in
@@ -1808,15 +1807,17 @@ struct
                   (cutoff : Smp.cutoff_strategy)
                   (status : valid_t) : dp_result_t =
     assert(isInitialized());
-    let _ = print_endline "ENTERING..." in
+    let _ = print_endline "ENTERING TSL DP..." in
     if status = Unverified || status = NotValid then begin
-      let _ = print_endline "WILL PERFORM THE CHECK..." in
-      let tslk_phi = TSLInterface.formula_to_tsl_formula phi in
+      let _ = print_endline "WILL PERFORM THE CHECK OF TSL..." in
+      let tsl_phi = TSLInterface.formula_to_tsl_formula phi in
+      let _ = print_endline "WILL PERFORM THE TRANSLATION..." in
       let timer = new LeapLib.timer in
       timer#start;
+      let _ = print_endline "TRANSLATION DONE..." in
       let valid, tsl_calls, tslk_calls =
             TslSolver.is_valid_plus_info
-                solverInfo.prog_lines stac cutoff tslk_phi in
+                solverInfo.prog_lines stac cutoff tsl_phi in
       timer#stop;
       if valid then
         (Checked, tsl_calls, tslk_calls, 1, timer#elapsed_time)
@@ -2014,11 +2015,11 @@ struct
     res
 
 
-  let check_with_seqinv (sys : Sys.system_t) (inv : E.formula) : bool =
+  let check_with_seq_binv (sys : Sys.system_t) (inv : E.formula) : bool =
     assert(isInitialized());
     (* Erases output file, if exists *)
     let extended_sys = prepare_system sys in
-    let vcs = seqinv extended_sys inv in
+    let vcs = seq_binv extended_sys inv in
     let vc_list =
       List.map (fun (vc, desc) -> (post_process vc, desc)) vcs in
     let res = apply_dp_on_list vc_list "Checked VCs with SEQINV\n\n" in
@@ -2087,9 +2088,9 @@ struct
     | IGraph.Sequential ->
         (* B-INV *)
         printf "B-INV for %s" inv_id;
-        let output_name = "_seqinv_" ^ inv_id in
+        let output_name = "_seq_binv_" ^ inv_id in
         solverInfo.out_file <- (base_out_name ^ output_name);
-        let this_res = check_with_seqinv sys inv_phi in
+        let this_res = check_with_seq_binv sys inv_phi in
         res & this_res
     in
 

@@ -162,7 +162,7 @@ sig
 
 
   (** Sequential B-INV *)
-  val seqinv : System.system_t
+  val seq_binv : System.system_t
     -> Expression.formula
     -> (Expression.formula * vc_info_t) list
 
@@ -183,7 +183,7 @@ sig
     (*-> solver_info*)
     ->bool
 
-  val check_with_seqinv : System.system_t
+  val check_with_seq_binv : System.system_t
     -> Expression.formula
     -> bool
   

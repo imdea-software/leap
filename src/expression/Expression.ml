@@ -448,7 +448,7 @@ let is_global_var (v:variable) : bool =
 
 
 let build_num_tid (i:int) : tid =
-  VarTh (build_var (string_of_int i) Thid false None None Normal)
+  VarTh (build_var ("k" ^ string_of_int i) Thid false None None Normal)
 
 
 let build_var_tid (id:varId) : tid =
