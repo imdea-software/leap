@@ -1786,6 +1786,8 @@ module Make (K : Level.S) : S =
       let formula_str = formula_to_str phi in
       let buf         = B.create 1024
       in
+        B.add_string buf (Printf.sprintf "; Formula\n; %s\n\n"
+                            (Expr.formula_to_str phi));
         z3_preamble buf num_addr num_tid num_elem req_sorts;
         z3_defs     buf num_addr num_tid num_elem req_sorts req_ops;
         variables_from_formula_to_z3 buf phi ;
