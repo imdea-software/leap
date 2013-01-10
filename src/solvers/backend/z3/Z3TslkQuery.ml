@@ -1407,11 +1407,10 @@ module Make (K : Level.S) : S =
       match c with
           Expr.VarCell v          -> variable_invocation_to_str v
         | Expr.Error              -> "error"
-        | Expr.MkCell(e,aa,tt,l)  -> Printf.sprintf "(mkcell %s %s %s %s)"
+        | Expr.MkCell(e,aa,tt)    -> Printf.sprintf "(mkcell %s %s %s)"
                                           (elemterm_to_str e)
                                           (z3_build_cell_next_array aa)
                                           (z3_build_cell_lock_array tt)
-                                          (levelterm_to_str l)
         | Expr.CellLockAt(c,l,th) -> Printf.sprintf "(cell_lock_at %s %s %s)"
                                           (cellterm_to_str c)
                                           (levelterm_to_str l)

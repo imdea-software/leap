@@ -63,7 +63,7 @@ module type S =
     and cell =
         VarCell           of variable
       | Error
-      | MkCell            of elem * addr list * tid list * level
+      | MkCell            of elem * addr list * tid list
       | CellLockAt        of cell * level * tid
       | CellUnlockAt      of cell * level
       | CellAt            of mem * addr
@@ -341,7 +341,7 @@ module Make (K : Level.S) : S =
     and cell =
         VarCell           of variable
       | Error
-      | MkCell            of elem * addr list * tid list * level
+      | MkCell            of elem * addr list * tid list
       | CellLockAt        of cell * level * tid
       | CellUnlockAt      of cell * level
       | CellAt            of mem * addr
@@ -591,8 +591,9 @@ module Make (K : Level.S) : S =
       match c with
           VarCell v           -> S.singleton v @@ get_varset_from_param v
         | Error               -> S.empty
-        | MkCell(e,aa,tt,l)   -> (get_varset_elem e) @@ (fold get_varset_addr aa) @@
-                                 (fold get_varset_tid tt) @@ (get_varset_level l)
+        | MkCell(e,aa,tt)     -> (get_varset_elem e) @@
+                                 (fold get_varset_addr aa) @@
+                                 (fold get_varset_tid tt)
         | CellLockAt (c,l,th) -> (get_varset_cell c) @@ (get_varset_level l) @@
                                  (get_varset_tid th)
         | CellUnlockAt (c,l)  -> (get_varset_cell c) @@ (get_varset_level l)
@@ -933,8 +934,9 @@ module Make (K : Level.S) : S =
       match t with
           VarCell _           -> true
         | Error               -> true
-        | MkCell (e,aa,tt,l)  -> (is_elem_var e) && (List.for_all is_addr_var aa) &&
-                                 (List.for_all is_tid_var tt) && (is_int_var l)
+        | MkCell (e,aa,tt)    -> (is_elem_var e) &&
+                                 (List.for_all is_addr_var aa) &&
+                                 (List.for_all is_tid_var tt)
         | CellLockAt (c,l,th) -> (is_cell_var c) && (is_int_var l) && (is_tid_var th)
         | CellUnlockAt (c,l)  -> (is_cell_var c) && (is_int_var l)
         | CellAt(m,a)         -> (is_mem_var m) && (is_addr_var a)
@@ -1175,9 +1177,9 @@ module Make (K : Level.S) : S =
       match e with
           VarCell(v)            -> variable_to_str v
         | Error                 -> "Error"
-        | MkCell(data,aa,tt,l)  -> Printf.sprintf "mkcell(%s,[%s],[%s],%s)"
+        | MkCell(data,aa,tt)    -> Printf.sprintf "mkcell(%s,[%s],[%s])"
                                      (elem_to_str data) (concat addr_to_str aa)
-                                     (concat tid_to_str tt) (level_to_str l)
+                                     (concat tid_to_str tt)
         | CellLockAt(cell,l,th) -> Printf.sprintf "%s.lock(%s,%s)"
                                      (cell_to_str cell) (level_to_str l) (tid_to_str th)
         | CellUnlockAt(cell,l)  -> Printf.sprintf "%s.unlock(%s)"
@@ -1409,10 +1411,9 @@ module Make (K : Level.S) : S =
       match c with
         VarCell v            -> Option.map_default (fun x->[x]) [] (var_th v)
       | Error                -> []
-      | MkCell(data,aa,tt,l) -> (voc_elem data)    @
+      | MkCell(data,aa,tt)   -> (voc_elem data)    @
                                 (fold voc_addr aa) @
-                                (fold voc_tid tt)  @
-                                (voc_level l)
+                                (fold voc_tid tt)
       | CellLockAt(cell,l,th)-> (voc_cell cell) @ (voc_level l) @ (voc_tid th)
       | CellUnlockAt(cell,l) -> (voc_cell cell) @ (voc_level l)
       | CellAt(mem,addr)     -> (voc_mem mem) @ (voc_addr addr)
@@ -1724,7 +1725,7 @@ module Make (K : Level.S) : S =
         match c with
         | VarCell _          -> single Cell
         | Error              -> single Cell
-        | MkCell (e,aa,tt,l) -> append Cell ([req_e e;req_lv l] @
+        | MkCell (e,aa,tt)   -> append Cell ([req_e e] @
                                              (List.map req_a aa) @
                                              (List.map req_t tt))
         | CellLockAt (c,l,t) -> append Cell [req_c c;req_lv l;req_t t]
@@ -1871,7 +1872,7 @@ module Make (K : Level.S) : S =
         match c with
         | VarCell _          -> empty
         | Error              -> empty
-        | MkCell (e,aa,tt,l) -> list_union ([ops_e e;ops_lv l] @
+        | MkCell (e,aa,tt)   -> list_union ([ops_e e] @
                                             (List.map ops_a aa) @
                                             (List.map ops_t tt))
         | CellLockAt (c,l,t) -> list_union [ops_c c;ops_lv l;ops_t t]

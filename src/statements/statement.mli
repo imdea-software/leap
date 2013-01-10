@@ -129,7 +129,7 @@ and cell =
     VarCell       of variable
   | Error
   | MkCell        of elem * addr * tid
-  | MkSLKCell     of elem * addr list * tid list * integer
+  | MkSLKCell     of elem * addr list * tid list
   | MkSLCell      of elem * addrarr * tidarr * integer
   | CellLock      of cell
   | CellUnlock    of cell

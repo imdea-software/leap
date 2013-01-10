@@ -2731,17 +2731,15 @@ cell :
 
   | MKCELL OPEN_PAREN term COMMA
                       OPEN_BRACKET term_list CLOSE_BRACKET COMMA
-                      OPEN_BRACKET term_list CLOSE_BRACKET COMMA
-                      term CLOSE_PAREN
+                      OPEN_BRACKET term_list CLOSE_BRACKET CLOSE_PAREN
     {
       let list_term_to_str ts = String.concat "," (List.map Stm.term_to_str ts) in
       let addrs_str = list_term_to_str $6 in
       let tids_str = list_term_to_str $10 in
-      let get_str_expr () = sprintf "mkcell(%s,[%s],[%s],%s)"
+      let get_str_expr () = sprintf "mkcell(%s,[%s],[%s])"
                                            (Stm.term_to_str $3)
                                            (addrs_str)
-                                           (tids_str)
-                                           (Stm.term_to_str $13) in
+                                           (tids_str) in
       let e  = parser_check_type check_type_elem $3 Expr.Elem get_str_expr in
       let addrs = List.map (fun a ->
                     parser_check_type check_type_addr a Expr.Addr get_str_expr
@@ -2749,7 +2747,6 @@ cell :
       let tids = List.map (fun t ->
                    parser_check_type check_type_thid t Expr.Thid get_str_expr
                  ) $10 in
-      let l  = parser_check_type check_type_int $13 Expr.Int get_str_expr in
       if List.length addrs <> List.length tids then
         begin
           Interface.Err.msg "Different argument lengths" $
@@ -2758,7 +2755,7 @@ cell :
           raise (Different_argument_length (addrs_str,tids_str))
         end
       else
-        Stm.MkSLKCell(e,addrs,tids,l)
+        Stm.MkSLKCell(e,addrs,tids)
     }
   | MKCELL OPEN_PAREN term COMMA term COMMA term COMMA term CLOSE_PAREN
     {

@@ -155,7 +155,7 @@ module Make (TSLK : TSLKExpression.S) =
         Expr.VarCell v            -> TSLK.VarCell (var_to_tslk_var v)
       | Expr.Error                -> TSLK.Error
       | Expr.MkCell _             -> raise(UnsupportedTSLKExpr(Expr.cell_to_str c))
-      | Expr.MkSLKCell (e,aa,tt,l)->
+      | Expr.MkSLKCell (e,aa,tt)  ->
           if List.length aa > TSLK.k || List.length tt > TSLK.k then
             begin
               Interface.Err.msg "Too many addresses or threads ids in MkCell" $
@@ -166,10 +166,11 @@ module Make (TSLK : TSLKExpression.S) =
               raise(UnsupportedTSLKExpr(Expr.cell_to_str c))
             end
           else
+            let aa_pad = LeapLib.list_of (TSLK.k - List.length aa) TSLK.Null in
+            let tt_pad = LeapLib.list_of (TSLK.k - List.length tt) TSLK.NoThid in
             TSLK.MkCell (elem_to_tslk_elem e,
-                         List.map addr_to_tslk_addr aa,
-                         List.map tid_to_tslk_tid tt,
-                         int_to_tslk_level l)
+                         (List.map addr_to_tslk_addr aa) @ aa_pad,
+                         (List.map tid_to_tslk_tid tt) @ tt_pad)
       | Expr.MkSLCell (e,aa,tt,l) -> raise(UnsupportedTSLKExpr(Expr.cell_to_str c))
       (* TSLK receives two arguments, while current epxression receives only one *)
       (* However, for the list examples, I think we will not need it *)
@@ -445,10 +446,9 @@ module Make (TSLK : TSLKExpression.S) =
       match c with
         TSLK.VarCell v          -> Expr.VarCell (var_to_expr_var v)
       | TSLK.Error              -> Expr.Error
-      | TSLK.MkCell (e,aa,tt,l) -> Expr.MkSLKCell (elem_to_expr_elem e,
+      | TSLK.MkCell (e,aa,tt)   -> Expr.MkSLKCell (elem_to_expr_elem e,
                                                    List.map addr_to_expr_addr aa,
-                                                   List.map tid_to_expr_tid tt,
-                                                   level_to_expr_int l)
+                                                   List.map tid_to_expr_tid tt)
       | TSLK.CellLockAt (c,l, t)-> Expr.CellLockAt (cell_to_expr_cell c,
                                                    level_to_expr_int l,
                                                    tid_to_expr_tid t)

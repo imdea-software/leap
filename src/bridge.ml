@@ -94,8 +94,8 @@ let unfold_expression (mInfo:malloc_info)
         gen_malloc mkcell
   | Stm.Term (Stm.AddrT (Stm.MallocSLK(e,l))) ->
       let e_expr  = Stm.elem_to_expr_elem e in
-      let l_expr  = Stm.integer_to_expr_integer l in
-      let mkcell  = E.param_cell th_p (E.MkSLKCell(e_expr, [], [], l_expr)) in
+      (* FIX: In fact, I am not using the parameter l *)
+      let mkcell  = E.param_cell th_p (E.MkSLKCell(e_expr, [], [])) in
         gen_malloc mkcell
   | Stm.Term (Stm.AddrT (Stm.MallocSL(e,l))) ->
       let e_expr   = Stm.elem_to_expr_elem e in

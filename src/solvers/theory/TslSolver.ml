@@ -206,8 +206,7 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
           let e' = elem_tsl_to_tslk e in
           let aa' = gen_addr_list aa 0 (TslkExp.k - 1) in
           let tt' = gen_tid_list tt 0 (TslkExp.k - 1) in
-          let l' = TslkExp.LevelVal (TslkExp.k - 1) in
-            TslkExp.eq_cell (c') (TslkExp.MkCell(e',aa',tt',l'))
+            TslkExp.eq_cell (c') (TslkExp.MkCell(e',aa',tt'))
       | Atom(Eq(AddrT a, AddrT (AddrArrRd (aa,i))))
       | Atom(Eq(AddrT (AddrArrRd (aa,i)), AddrT a))
       | NegAtom(InEq(AddrT a, AddrT (AddrArrRd (aa,i))))

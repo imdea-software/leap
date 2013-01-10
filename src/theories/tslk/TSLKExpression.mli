@@ -60,7 +60,7 @@ module type S =
     and cell =
         VarCell           of variable
       | Error
-      | MkCell            of elem * addr list * tid list * level
+      | MkCell            of elem * addr list * tid list
       | CellLockAt        of cell * level * tid
       | CellUnlockAt      of cell * level
       | CellAt            of mem * addr

@@ -128,7 +128,7 @@ and cell =
     VarCell       of variable
   | Error
   | MkCell        of elem * addr * tid
-  | MkSLKCell     of elem * addr list * tid list * integer
+  | MkSLKCell     of elem * addr list * tid list
   | MkSLCell      of elem * addrarr * tidarr * integer
   | CellLock      of cell * tid
   | CellLockAt    of cell * integer * tid
@@ -972,10 +972,9 @@ and priming_cell (pr:bool) (prime_set:VarSet.t option) (c:cell) : cell =
   | MkCell(data,addr,th)   -> MkCell(priming_elem pr prime_set data,
                                      priming_addr pr prime_set addr,
                                      priming_tid pr prime_set th)
-  | MkSLKCell(data,aa,tt,l)-> MkSLKCell(priming_elem pr prime_set data,
+  | MkSLKCell(data,aa,tt)  -> MkSLKCell(priming_elem pr prime_set data,
                                         List.map (priming_addr pr prime_set) aa,
-                                        List.map (priming_tid pr prime_set) tt,
-                                        priming_int pr prime_set l)
+                                        List.map (priming_tid pr prime_set) tt)
   | MkSLCell(data,aa,ta,l) -> MkSLCell(priming_elem pr prime_set data,
                                        priming_addrarray pr prime_set aa,
                                        priming_tidarray pr prime_set ta,
@@ -1589,11 +1588,10 @@ and cell_to_str (expr:cell) : string =
                                            (elem_to_str data)
                                            (addr_to_str addr)
                                            (tid_to_str th)
-  | MkSLKCell(data,aa,tt,l)-> sprintf "mkcell(%s,[%s],[%s],%s)"
+  | MkSLKCell(data,aa,tt)  -> sprintf "mkcell(%s,[%s],[%s])"
                                            (elem_to_str data)
                                            (list_str addr_to_str aa)
                                            (list_str tid_to_str tt)
-                                           (integer_to_str l)
   | MkSLCell(data,aa,ta,l) -> sprintf "mkcell(%s,%s,%s,%s)"
                                            (elem_to_str data)
                                            (addrarr_to_str aa)
@@ -2066,10 +2064,9 @@ and get_vars_cell (c:cell)
   | MkCell(data,addr,th)   -> (get_vars_elem data base) @
                               (get_vars_addr addr base) @
                               (get_vars_tid th base)
-  | MkSLKCell(data,aa,tt,l)-> (get_vars_elem data base) @
+  | MkSLKCell(data,aa,tt)  -> (get_vars_elem data base) @
                               (fold get_vars_addr aa)   @
-                              (fold get_vars_tid tt)    @
-                              (get_vars_int l base)
+                              (fold get_vars_tid tt)
   | MkSLCell(data,aa,ta,l) -> (get_vars_elem data base) @
                               (get_vars_addrarr aa base) @
                               (get_vars_tidarr ta base) @
@@ -2587,10 +2584,9 @@ and voc_cell (c:cell) : tid list =
   | MkCell(data,addr,th)   -> (voc_elem data) @
                               (voc_addr addr) @
                               (voc_tid th)
-  | MkSLKCell(data,aa,tt,l)-> (voc_elem data)    @
+  | MkSLKCell(data,aa,tt)  -> (voc_elem data)    @
                               (fold voc_addr aa) @
-                              (fold voc_tid tt)  @
-                              (voc_int l)
+                              (fold voc_tid tt)
   | MkSLCell(data,aa,ta,l) -> (voc_elem data)  @
                               (voc_addrarr aa) @
                               (voc_tidarr ta ) @
@@ -2883,10 +2879,9 @@ and var_kind_cell (kind:kind_t) (c:cell) : term list =
   | MkCell(data,addr,th)   -> (var_kind_elem kind data) @
                               (var_kind_addr kind addr) @
                               (var_kind_tid kind th)
-  | MkSLKCell(data,aa,tt,l)-> (var_kind_elem kind data)  @
+  | MkSLKCell(data,aa,tt)  -> (var_kind_elem kind data)  @
                               (fold var_kind_addr aa)    @
-                              (fold var_kind_tid tt)     @
-                              (var_kind_int kind l)
+                              (fold var_kind_tid tt)
   | MkSLCell(data,aa,ta,l) -> (var_kind_elem kind data)  @
                               (var_kind_addrarr kind aa) @
                               (var_kind_tidarr kind ta)  @
@@ -3218,10 +3213,9 @@ and param_cell_aux (pfun:variable option -> tid option) (c:cell) : cell =
   | MkCell(data,addr,th)   -> MkCell(param_elem_aux pfun data,
                                    param_addr_aux pfun addr,
                                    param_tid_aux pfun th)
-  | MkSLKCell(data,aa,tt,l)-> MkSLKCell(param_elem_aux pfun data,
+  | MkSLKCell(data,aa,tt)  -> MkSLKCell(param_elem_aux pfun data,
                                         List.map (param_addr_aux pfun) aa,
-                                        List.map (param_tid_aux pfun) tt,
-                                        param_int pfun l)
+                                        List.map (param_tid_aux pfun) tt)
   | MkSLCell(data,aa,ta,l) -> MkSLCell(param_elem_aux pfun data,
                                        param_addrarr pfun aa,
                                        param_tidarr pfun ta,
@@ -3652,10 +3646,9 @@ and subst_tid_cell (subs:tid_subst_t) (c:cell) : cell =
   | MkCell(data,addr,th)   -> MkCell(subst_tid_elem subs data,
                                      subst_tid_addr subs addr,
                                      subst_tid_th subs th)
-  | MkSLKCell(data,aa,tt,l)-> MkSLKCell(subst_tid_elem subs data,
+  | MkSLKCell(data,aa,tt)  -> MkSLKCell(subst_tid_elem subs data,
                                         List.map (subst_tid_addr subs) aa,
-                                        List.map (subst_tid_th subs) tt,
-                                        subst_tid_int subs l)
+                                        List.map (subst_tid_th subs) tt)
   | MkSLCell(data,aa,ta,l) -> MkSLCell(subst_tid_elem subs data,
                                        subst_tid_addrarr subs aa,
                                        subst_tid_tidarr subs ta,
@@ -4520,10 +4513,10 @@ let required_sorts (phi:formula) : sort list =
     | VarCell _            -> single Cell
     | Error                -> single Cell
     | MkCell (e,a,t)       -> append Cell [req_e e;req_a a; req_t t]
-    | MkSLKCell (e,aa,tt,l)-> append Cell
+    | MkSLKCell (e,aa,tt)  -> append Cell
                                 ((List.map req_a aa) @
                                  (List.map req_t tt) @
-                                 [req_e e;req_i l])
+                                 [req_e e])
     | MkSLCell (e,aa,ta,l) -> append Cell [req_e e;req_addrarr aa;
                                            req_tidarr ta;req_i l]
     | CellLock (c,t)       -> append Cell [req_c c;req_t t]
