@@ -206,7 +206,7 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
           let e' = elem_tsl_to_tslk e in
           let aa' = gen_addr_list aa 0 (TslkExp.k - 1) in
           let tt' = gen_tid_list tt 0 (TslkExp.k - 1) in
-          let l' = TslkExp.LevelVal (TslkExp.k) in
+          let l' = TslkExp.LevelVal (TslkExp.k - 1) in
             TslkExp.eq_cell (c') (TslkExp.MkCell(e',aa',tt',l'))
       | Atom(Eq(AddrT a, AddrT (AddrArrRd (aa,i))))
       | Atom(Eq(AddrT (AddrArrRd (aa,i)), AddrT a))
@@ -287,7 +287,7 @@ let check_sat_by_cases (lines:int)
   let module NumSol = (val NumSolver.choose numSolv_id : NumSolver.S) in
 
 
-  let check pa nc arrgs =
+  let rec check pa nc arrgs =
     match arrgs with
     | [] -> false
     | alpha::xs ->
@@ -306,20 +306,24 @@ let check_sat_by_cases (lines:int)
         if pa_sat then
           (* Check NC /\ alpha satisfiability *)
           let nc_arrgs = TslExp.combine_conj_formula nc alpha in
-          match nc_arrgs with
-          | TslExp.TrueConj   -> true
-          | TslExp.FalseConj -> false
-          | TslExp.Conj ls ->
-              let l_vs = get_varset_of_sort_from_conj nc_arrgs Int in
-              let k = VarSet.cardinal l_vs in
-              let module TslkSol = (val TslkSolver.choose !solver_impl k
-                                          : TslkSolver.S) in
-              let module Trans = TranslateTsl (TslkSol.TslkExp) in
-              let phi_tslk = Trans.to_tslk ls
-              in
-                TslkSol.is_sat lines stac co phi_tslk
+          let nc_sat = match nc_arrgs with
+                       | TslExp.TrueConj   -> true
+                       | TslExp.FalseConj -> false
+                       | TslExp.Conj ls ->
+                          let l_vs = get_varset_of_sort_from_conj nc_arrgs Int in
+                          let k = VarSet.cardinal l_vs in
+                          let module TslkSol = (val TslkSolver.choose "Z3" k
+  (*
+                          let module TslkSol = (val TslkSolver.choose !solver_impl k
+*)
+                                                      : TslkSolver.S) in
+                          let module Trans = TranslateTsl (TslkSol.TslkExp) in
+                          let phi_tslk = Trans.to_tslk ls
+                          in
+                            TslkSol.is_sat lines stac co phi_tslk in
+          if nc_sat then true else check pa nc xs
         else
-          false
+          check pa nc xs
   in
   let rec check_aux cs =
     Printf.printf "%i cases:\n%s\n" (List.length cs) (String.concat "\n" (List.map (fun (pa,nc) -> Printf.sprintf "PA: %s\nNC: %s\n--------\n" (TslExp.conjunctive_formula_to_str pa) (TslExp.conjunctive_formula_to_str nc)) cs));

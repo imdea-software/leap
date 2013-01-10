@@ -171,7 +171,7 @@ exception No_variable_term of term
 
 
 let fresh_set_name      = "freshset"
-let fresh_elem_name     = "freshset"
+let fresh_elem_name     = "freshelem"
 let fresh_tid_name      = "freshtid"
 let fresh_addr_name     = "freshaddr"
 let fresh_cell_name     = "freshcell"
@@ -2880,7 +2880,7 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
     let a2_var = gen_if_not_var (AddrT a2) Addr in
     let l1 = gen_fresh_int_var info in
     let l2 = gen_fresh_int_var info in
-    let zero = gen_fresh_int_var info in
+    let zero = gen_if_not_var (IntT (IntVal 0)) Int in
     let ad1 = gen_fresh_addr_var info in
     let ad2 = gen_fresh_addr_var info in
     let c1 = gen_fresh_cell_var info in
@@ -2895,13 +2895,12 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
     let s = gen_fresh_set_var info in
     let phi_ad1_in_s = norm_literal info (Atom(In(ad1,s))) in
     let phi_ad2_in_s = norm_literal info (Atom(In(ad2,s))) in
-      conj_list [eq_int zero (IntVal 0);
-                 eq_path p (GetPath(VarMem m_var, VarAddr a1_var, VarAddr a2_var, zero));
+      conj_list [eq_path p (GetPath(VarMem m_var, VarAddr a1_var, VarAddr a2_var, VarInt zero));
                  eq_set s (PathToSet p);
                  phi_ad1_in_s; phi_ad2_in_s;
                  eq_cell c1 (CellAt(VarMem m_var, VarAddr a1_var));
                  eq_cell c1 (MkCell(e1,aa1,tt1,l1));
-                 eq_addr (VarAddr a2_var) (AddrArrRd(aa1,zero));
+                 eq_addr (VarAddr a2_var) (AddrArrRd(aa1,VarInt zero));
                  eq_cell c2 (CellAt(VarMem m_var, VarAddr a2_var));
                  eq_cell c2 (MkCell(e2,aa2,tt2,l2));
                  Literal(Atom(LessElem(e2,e1)));
@@ -2909,7 +2908,6 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
 
 
   (* not (skiplist (m,s,i,a1,a2)) *)
-(*
   | NegAtom (Skiplist(m,s,i,a1,a2)) ->
       let m_var = gen_if_not_var (MemT m) Mem in
       let s_var = gen_if_not_var (SetT s) Set in
@@ -2917,20 +2915,48 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
       let a1_var = gen_if_not_var (AddrT a1) Addr in
       let a2_var = gen_if_not_var (AddrT a2) Addr in
       let p = gen_fresh_path_var info in
+      let q = gen_fresh_path_var info in
       let r = gen_fresh_set_var info in
+      let u = gen_fresh_set_var info in
+      let zero = gen_if_not_var (IntT (IntVal 0)) Int in
+      let null = gen_if_not_var (AddrT Null) Addr in
+      let a = gen_fresh_addr_var info in
+      let c = gen_fresh_cell_var info in
+      let e = gen_fresh_elem_var info in
+      let aa = gen_fresh_addrarr_var info in
+      let tt = gen_fresh_tidarr_var info in
+      let l1 = gen_fresh_int_var info in
+      let l2 = gen_fresh_int_var info in
       let phi_unordered = norm_literal info (NegAtom(OrderList
-                            (VarMem m_var, VarAddr a1_var,VarAddr a2_var))) in
-      let phi_diff = norm_literal info (Atom(InEq(SetT s_var, SetT r)))
-      
-
-
+                            (VarMem m_var,VarAddr a1_var,VarAddr a2_var))) in
+      let phi_diff = norm_literal info (Atom(InEq(SetT (VarSet s_var), SetT r))) in
+      let phi_a_in_s = norm_literal info (Atom(In(a,VarSet s_var))) in
+      let phi_not_subset = norm_literal info (NegAtom(SubsetEq(r,u))) in
         Or(phi_unordered,
-        Or(,
-        Or(,
-        Or(,
-        Or(,
-            )))))
-*)
+        Or(And(eq_path p (GetPath(VarMem m_var,VarAddr a1_var,VarAddr a2_var,VarInt zero)),
+           And(eq_set r (PathToSet(p)), phi_diff)),
+        Or(Literal(Atom(Less(VarInt i_var, VarInt  zero))),
+        Or(And(phi_a_in_s,
+           And(eq_cell c (CellAt(VarMem m_var,a)),
+           And(eq_cell c (MkCell(e,aa,tt,l1)),
+               Literal(Atom(Less(VarInt i_var,l1)))))),
+        Or(And(ineq_int (VarInt i_var) (VarInt zero),
+           And(Literal(Atom(LessEq(VarInt zero,l2))),
+           And(Literal(Atom(LessEq(l2,l1))),
+           And(eq_cell c (CellAt(VarMem m_var,VarAddr a2_var)),
+           And(eq_cell c (MkCell(e,aa,tt,l1)),
+           And(eq_addr a (AddrArrRd(aa,l2)),
+               ineq_addr a (VarAddr null))))))),
+           And(ineq_int (VarInt i_var) (VarInt zero),
+           And(Literal(Atom(LessEq(VarInt zero,l1))),
+           And(Literal(Atom(Less(l1,VarInt i_var))),
+           And(eq_int (l2) (IntAdd(l1,IntVal 1)),
+           And(eq_path (p) (GetPath(VarMem m_var,VarAddr a1_var,VarAddr a2_var,l1)),
+           And(eq_path (q) (GetPath(VarMem m_var,VarAddr a1_var,VarAddr a2_var,l2)),
+           And(eq_set (r) (PathToSet p),
+           And(eq_set (u) (PathToSet q),
+               phi_not_subset)))))))))))))
+
 
   (* All these are normalized, I just need to ensure inside terms are variables *)
   | Atom (Skiplist(m,s,i,a1,a2)) ->
