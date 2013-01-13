@@ -1243,6 +1243,7 @@ struct
     let th_list = List.filter E.is_tid_var v in
     let th_num = Sys.get_threads sys in
     let th_id_list = E.gen_thread_list 1 th_num in
+    let _ = Printf.printf "LIST: [%s]\n" (String.concat ";" (List.map E.tid_to_str th_id_list)) in
     let prog_lines = List.filter (fun x -> x <> 0) solverInfo.focus in
     let len_voc = List.length th_list in
     let thList = E.voc inv in

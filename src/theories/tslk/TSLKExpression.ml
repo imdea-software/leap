@@ -251,6 +251,7 @@ module type S =
     val get_addrs_eqs : formula -> ((addr*addr) list * (addr*addr) list)
 
     val conj_list : formula list -> formula
+    val disj_list : formula list -> formula
 
 
     (* Equality constructor functions for formulas *)
@@ -1982,6 +1983,11 @@ module Make (K : Level.S) : S =
       | [] -> True
       | x::xs -> List.fold_left (fun a b -> And(a,b)) x xs
 
+
+    let disj_list (bs:formula list) : formula =
+      match bs with
+      | [] -> False
+      | x::xs -> List.fold_left (fun a b -> Or(a,b)) x xs
 
 
     (* Equality constructor functions for formulas *)

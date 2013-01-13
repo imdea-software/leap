@@ -113,6 +113,10 @@ let get_sort (v:variable) : sort =
   let (_,s,_,_,_) = v in s
 
 
+let is_primed_var (v:variable) : bool =
+  let (_,_,pr,_,_) = v in pr
+
+
 let get_proc (v:variable) : string option =
   let (_,_,_,_,p) = v in p
 

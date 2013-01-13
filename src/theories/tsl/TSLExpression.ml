@@ -506,7 +506,8 @@ let localize_with_underscore (v:varId) (p_name:string option) : string =
 let varset_of_sort all s =
   let filt (v,asort,pr,th,p) res =
     if asort=s then
-      VarSet.add (v,asort,pr,None,p) res
+        VarSet.add (v,asort,pr,th,p) res
+(*      VarSet.add (v,asort,pr,None,p) res *)
 (*      VarSet.add ((localize_with_underscore v p) res *)
     else
       res in
@@ -2731,6 +2732,176 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
                      let v = gen_fresh_var info.fresh_gen_info s in
                      append_if_diff t v; v
                    end in
+  let rec norm_set (s:set) : set =
+    match s with
+    | VarSet v -> VarSet v
+    | EmptySet -> EmptySet
+    | Singl a -> Singl (norm_addr a)
+    | Union (s1,s2) -> Union (norm_set s1, norm_set s2)
+    | Intr (s1,s2) -> Intr (norm_set s1, norm_set s2)
+    | Setdiff (s1,s2) -> Setdiff (norm_set s1, norm_set s2)
+    | PathToSet p -> PathToSet (norm_path p)
+    | AddrToSet (m,a,i) -> let i_var = gen_if_not_var (IntT i) Int in
+                             AddrToSet (norm_mem m, norm_addr a, VarInt i_var)
+
+  and norm_tid (t:tid) : tid =
+    match t with
+    | VarTh v -> VarTh v
+    | NoThid -> NoThid
+    | CellLockIdAt (c,i) -> CellLockIdAt (norm_cell c, norm_int i)
+    | ThidArrRd (tt,i) -> let i_var = gen_if_not_var (IntT i) Int in
+                            ThidArrRd (norm_tidarr tt, VarInt i_var)
+
+  and norm_elem (e:elem) : elem =
+    match e with
+    | VarElem v -> VarElem v
+    | CellData c -> CellData (norm_cell c)
+    | HavocSkiplistElem -> HavocSkiplistElem
+    | LowestElem -> LowestElem
+    | HighestElem -> HighestElem
+
+  and norm_addr (a:addr) : addr =
+    match a with
+    | VarAddr v -> VarAddr v
+    | Null -> Null
+    | NextAt (c,i) -> let i_var = gen_if_not_var (IntT i) Int in
+                        NextAt (norm_cell c, VarInt i_var)
+    | AddrArrRd (aa,i) -> let i_var = gen_if_not_var (IntT i) Int in
+                            AddrArrRd (norm_addrarr aa, VarInt i_var)
+
+  and norm_cell (c:cell) : cell =
+    match c with
+    | VarCell v -> VarCell v
+    | Error -> Error
+    | MkCell (e,aa,tt,i) -> let i_var = gen_if_not_var (IntT i) Int in
+                              MkCell (norm_elem e, norm_addrarr aa,
+                                      norm_tidarr tt, VarInt i_var)
+    | CellLockAt (c,i,t) -> let i_var = gen_if_not_var (IntT i) Int in
+                              CellLockAt (norm_cell c, VarInt i_var, norm_tid t)
+    | CellUnlockAt (c,i) -> let i_var = gen_if_not_var (IntT i) Int in
+                              CellUnlockAt (norm_cell c, VarInt i_var)
+    | CellAt (m,a) -> CellAt (norm_mem m, norm_addr a)
+
+  and norm_setth (s:setth) : setth =
+    match s with
+    | VarSetTh v -> VarSetTh v
+    | EmptySetTh -> EmptySetTh
+    | SinglTh t -> SinglTh (norm_tid t)
+    | UnionTh (s1,s2) -> UnionTh (norm_setth s1, norm_setth s2)
+    | IntrTh (s1,s2) -> IntrTh (norm_setth s1, norm_setth s2)
+    | SetdiffTh (s1,s2) -> SetdiffTh (norm_setth s1, norm_setth s2)
+
+  and norm_setelem (s:setelem) : setelem =
+    match s with
+    | VarSetElem v -> VarSetElem v
+    | EmptySetElem -> EmptySetElem
+    | SinglElem e -> SinglElem (norm_elem e)
+    | UnionElem (s1,s2) -> UnionElem (norm_setelem s1, norm_setelem s2)
+    | IntrElem (s1,s2) -> IntrElem (norm_setelem s1, norm_setelem s2)
+    | SetToElems (s,m) -> SetToElems (norm_set s, norm_mem m)
+    | SetdiffElem (s1,s2) -> SetdiffElem (norm_setelem s1, norm_setelem s2)
+
+  and norm_path (p:path) : path =
+    match p with
+    | VarPath v -> VarPath v
+    | Epsilon -> Epsilon
+    | SimplePath a -> SimplePath (norm_addr a)
+    | GetPath (m,a1,a2,i) -> let i_var = gen_if_not_var (IntT i) Int in
+                               GetPath (norm_mem m, norm_addr a1,
+                                        norm_addr a2, VarInt i_var)
+
+  and norm_mem (m:mem) : mem =
+    match m with
+    | VarMem v -> VarMem v
+    | Update (m,a,c) -> Update (norm_mem m, norm_addr a, norm_cell c)
+
+  and norm_int (i:integer) : integer =
+    match i with
+    | IntVal j -> IntVal j
+    | VarInt v -> VarInt v
+    | IntNeg j -> IntNeg j
+    | IntAdd (j1,j2) -> IntAdd (j1,j2)
+    | IntSub (j1,j2) -> IntSub (j1,j2)
+    | IntMul (j1,j2) -> IntMul (j1,j2)
+    | IntDiv (j1,j2) -> IntDiv (j1,j2)
+    | CellMax c -> CellMax (norm_cell c)
+    | HavocLevel -> HavocLevel
+
+  and norm_addrarr (aa:addrarr) : addrarr =
+    match aa with
+    | VarAddrArray v -> VarAddrArray v
+    | AddrArrayUp (bb,i,a) -> let i_var = gen_if_not_var (IntT i) Int in
+                                AddrArrayUp (norm_addrarr bb, VarInt i_var, norm_addr a)
+    | CellArr c -> CellArr (norm_cell c)
+
+  and norm_tidarr (tt:tidarr) : tidarr =
+    match tt with
+    | VarTidArray v -> VarTidArray v
+    | TidArrayUp (yy,i,t) -> let i_var = gen_if_not_var (IntT i) Int in
+                                TidArrayUp (norm_tidarr yy, VarInt i_var, norm_tid t)
+    | CellTids c -> CellTids (norm_cell c)
+
+  and norm_term (t:term) : term =
+    match t with
+    | VarT v -> VarT v
+    | SetT s -> SetT (norm_set s)
+    | ElemT e -> ElemT (norm_elem e)
+    | ThidT t -> ThidT (norm_tid t)
+    | AddrT a -> AddrT (norm_addr a)
+    | CellT c -> CellT (norm_cell c)
+    | SetThT s -> SetThT (norm_setth s)
+    | SetElemT s -> SetElemT (norm_setelem s)
+    | PathT p -> PathT (norm_path p)
+    | MemT m -> MemT (norm_mem m)
+    | IntT i -> IntT (norm_int i)
+    | AddrArrayT aa -> AddrArrayT (norm_addrarr aa)
+    | TidArrayT tt -> TidArrayT (norm_tidarr tt)
+
+
+  and norm_atom (a:atom) : atom =
+    match a with
+    | Append (p1,p2,p3) -> Append (norm_path p1, norm_path p2, norm_path p3)
+    | Reach (m,a1,a2,i,p) -> let i_var = gen_if_not_var (IntT i) Int in
+                               Reach (norm_mem m, norm_addr a1, norm_addr a2,
+                                      VarInt i_var, norm_path p)
+    | OrderList (m,a1,a2) -> OrderList (norm_mem m, norm_addr a1, norm_addr a2)
+    | Skiplist(m,s,i,a1,a2) -> let i_var = gen_if_not_var (IntT i) Int in
+                                 Skiplist(norm_mem m, norm_set s, VarInt i_var,
+                                          norm_addr a1, norm_addr a2)
+    | In (a,s) -> In (norm_addr a, norm_set s)
+    | SubsetEq (s1,s2) -> SubsetEq (norm_set s1, norm_set s2)
+    | InTh (t,s) -> InTh (norm_tid t, norm_setth s)
+    | SubsetEqTh (s1,s2) -> SubsetEqTh (norm_setth s1, norm_setth s2)
+    | InElem (e,s) -> InElem (norm_elem e, norm_setelem s)
+    | SubsetEqElem (s1,s2) -> SubsetEqElem (norm_setelem s1, norm_setelem s2)
+    | Less (i1,i2) -> let i1_var = gen_if_not_var (IntT i1) Int in
+                      let i2_var = gen_if_not_var (IntT i2) Int in
+                        Less (VarInt i1_var, VarInt i2_var)
+    | Greater (i1,i2) -> let i1_var = gen_if_not_var (IntT i1) Int in
+                         let i2_var = gen_if_not_var (IntT i2) Int in
+                           Greater (VarInt i1_var, VarInt i2_var)
+    | LessEq (i1,i2) -> let i1_var = gen_if_not_var (IntT i1) Int in
+                        let i2_var = gen_if_not_var (IntT i2) Int in
+                        LessEq (VarInt i1_var, VarInt i2_var)
+    | GreaterEq (i1,i2) -> let i1_var = gen_if_not_var (IntT i1) Int in
+                           let i2_var = gen_if_not_var (IntT i2) Int in
+                           GreaterEq (VarInt i1_var, VarInt i2_var)
+    | LessElem (e1,e2) -> LessElem (norm_elem e1, norm_elem e2)
+    | GreaterElem (e1,e2) -> GreaterElem (norm_elem e1, norm_elem e2)
+    | Eq (t1,t2) -> Eq (norm_term t1, norm_term t2)
+    | InEq (t1,t2) -> InEq (norm_term t1, norm_term t2)
+    | PC (i,topt,pr) -> PC (i,LeapLib.Option.lift norm_tid topt,pr)
+    | PCUpdate (i,t) -> PCUpdate (i, norm_tid t)
+    | PCRange (i,j,topt,pr) -> PCRange (i,j,LeapLib.Option.lift norm_tid topt,pr)
+
+  in
+  match l with
+  | Atom a -> Literal(Atom (norm_atom a))
+  | NegAtom a -> Literal(NegAtom (norm_atom a))
+
+
+
+(*
   match l with
   (* e = c.data *)
   | Atom (Eq (e, ElemT (CellData c)))
@@ -2975,6 +3146,7 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
       let t2_var = gen_if_not_var t2 (sort_of_term t2) in
         ineq_term (var_to_term t1_var) (var_to_term t2_var)
   | _ -> Literal l
+*)
 
 
 let rec norm_formula (info:norm_info_t) (phi:formula) : formula =

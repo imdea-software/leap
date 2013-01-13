@@ -248,6 +248,7 @@ module type S =
     val get_addrs_eqs : formula -> ((addr*addr) list * (addr*addr) list)
 
     val conj_list : formula list -> formula
+    val disj_list : formula list -> formula
 
     (* Equality constructor functions for formulas *)
     val eq_set : set -> set -> formula

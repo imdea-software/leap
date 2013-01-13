@@ -48,6 +48,7 @@ let int_varid_to_str (v:Expr.varId) : string =
 
 
 let int_local_varid_to_str (v:Expr.varId) : string =
+  let _ = print_endline "CALLED THIS FUNCTION!!!!" in
   let _ = GM.sm_decl_fun sort_map v [GM.tid_s] [GM.int_s]
   in
     Printf.sprintf "(define %s::(-> %s %s))\n" v thid_s int_s
@@ -55,12 +56,13 @@ let int_local_varid_to_str (v:Expr.varId) : string =
 
 let int_var_to_str (v:IntExpr.variable) : string =
   let id = IntExpr.get_id v in
+  let pr_str = if IntExpr.is_primed_var v then "'" else "" in
   let proc = IntExpr.get_proc v
   in
     match proc with
-      None    -> int_varid_to_str id
-    | Some "" -> int_varid_to_str id
-    | Some p  -> int_local_varid_to_str (p^"_"^id)
+      None    -> int_varid_to_str (id ^ pr_str)
+    | Some "" -> int_varid_to_str (id ^ pr_str)
+    | Some p  -> int_local_varid_to_str (p^"_"^id^pr_str)
 (*
     if IntExpr.var_is_global v then
       int_varid_to_str id

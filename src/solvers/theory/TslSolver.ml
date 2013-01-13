@@ -265,6 +265,31 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
                     TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',n')))))) :: (!xs)
           done;
           TslkExp.conj_list (!xs)
+      | NegAtom(Skiplist(m,s,i,a1,a2)) ->
+          let m' = mem_tsl_to_tslk m in
+          let s' = set_tsl_to_tslk s in
+          let a1' = addr_tsl_to_tslk a1 in
+          let a2' = addr_tsl_to_tslk a2 in
+
+
+          let xs = ref
+                    [TslkExp.Literal(TslkExp.NegAtom(
+                      TslkExp.OrderList(m',a1',a2')));
+                     TslkExp.ineq_set
+                      (s')
+                      (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',TslkExp.LevelVal 0)))] in
+          for n = 0 to (TslkExp.k - 1) do
+            let n' = TslkExp.LevelVal n in
+            xs := (TslkExp.ineq_addr (TslkExp.NextAt(TslkExp.CellAt(m',a2'),n'))
+                                   (TslkExp.Null)) :: (!xs)
+          done;
+          for n = 0 to (TslkExp.k - 2) do
+            let n' = TslkExp.LevelVal n in
+            xs := (TslkExp.Literal(TslkExp.NegAtom(TslkExp.SubsetEq(
+                    TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',TslkExp.LevelSucc n')),
+                    TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',n')))))) :: (!xs)
+          done;
+          TslkExp.disj_list (!xs)
       | _ -> TslkExp.Literal (literal_tsl_to_tslk l)
 
 
@@ -287,11 +312,15 @@ let check_sat_by_cases (lines:int)
 
 
   let rec check pa nc arrgs =
+    let _ = Printf.printf "INSIDE, PA: %s\n" (TslExp.conjunctive_formula_to_str pa) in
+    let _ = Printf.printf "INSIDE, NC: %s\n" (TslExp.conjunctive_formula_to_str nc) in
+
     match arrgs with
     | [] -> false
     | alpha::xs ->
         (* Check PA /\ alpha satisfiability *)
         let pa_arrgs = TslExp.combine_conj_formula pa alpha in
+        let _ = Printf.printf "INSIDE PA_ARRGS: %s\n" (TslExp.conjunctive_formula_to_str pa_arrgs) in
         let pa_sat = match pa_arrgs with
                      | TslExp.TrueConj  -> true
                      | TslExp.FalseConj -> false
@@ -301,6 +330,8 @@ let check_sat_by_cases (lines:int)
                                           (TslExp.from_conjformula_to_formula
                                             pa_arrgs))
                                     in
+                        let _ = Printf.printf "BEFORE FORMULA: %s\n" (TslExp.conjunctive_formula_to_str pa_arrgs) in
+                        let _ = Printf.printf "WILL PASS FORMULA: %s\n" (NumExpression.int_formula_to_string phi_num) in
                                       NumSol.is_sat phi_num in
         if pa_sat then
           (* Check NC /\ alpha satisfiability *)
@@ -317,8 +348,9 @@ let check_sat_by_cases (lines:int)
 *)
                                                       : TslkSolver.S) in
                           let module Trans = TranslateTsl (TslkSol.TslkExp) in
-                          let phi_tslk = Trans.to_tslk ls
-                          in
+                          let _ = print_endline "ABOUT TO TRANSLATE..." in
+                          let phi_tslk = Trans.to_tslk ls in
+                          let _ = print_endline "TRANSLATION DONE..." in
                             TslkSol.is_sat lines stac co phi_tslk in
           if nc_sat then true else check pa nc xs
         else
@@ -347,6 +379,8 @@ let is_sat_plus_info (lines : int)
   (* 0. Normalize the formula and rewrite it in DNF *)
   let _ = print_endline "WILL NORMALIZE..." in
   let phi_norm = TslExp.normalize phi in
+  let _ = Printf.printf "ORIGINAL: %s\n" (TslExp.formula_to_str phi) in
+  let _ = Printf.printf "NORMALIZED : %s\n" (TslExp.formula_to_str phi_norm) in
   let _ = print_endline "WILL DO DNF..." in
   let phi_dnf = TslExp.dnf phi_norm in
   (* 1. Sanitize the formula *)

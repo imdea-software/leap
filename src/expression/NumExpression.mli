@@ -79,6 +79,7 @@ exception NotConjunctiveExpr of formula
 val build_var : varId -> sort -> bool -> tid option -> string option -> variable
 val get_id : variable -> varId
 val get_sort : variable -> sort
+val is_primed_var : variable -> bool
 val get_proc : variable -> string option
 val get_th : variable -> tid option
 val var_clear_param_info : variable -> variable
