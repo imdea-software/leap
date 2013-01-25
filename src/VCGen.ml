@@ -1247,7 +1247,10 @@ struct
     let prog_lines = List.filter (fun x -> x <> 0) solverInfo.focus in
     let len_voc = List.length th_list in
     let thList = E.voc inv in
-    let inv_list = if len_voc = 0 then [(inv, E.prime inv)]
+    let loc_inv = if th_num = 1 then E.param (Some (List.hd th_id_list)) inv else inv in
+    let inv_list =
+      if len_voc = 0 then
+        [(loc_inv, E.prime loc_inv)]
       else begin
         let comb_list = LeapLib.comb th_id_list len_voc in
         let subst_list = List.map (fun x ->
@@ -1255,7 +1258,7 @@ struct
                          ) comb_list
         in
           List.map (fun x ->
-            let i = E.subst_tid x inv
+            let i = E.subst_tid x loc_inv
             in
               (i, E.prime i)
           ) subst_list
@@ -1811,6 +1814,7 @@ struct
     let _ = print_endline "ENTERING TSL DP..." in
     if status = Unverified || status = NotValid then begin
       let _ = print_endline "WILL PERFORM THE CHECK OF TSL..." in
+      let _ = Printf.printf "GOING TO CONVERT %s\n" (E.formula_to_str phi) in
       let tsl_phi = TSLInterface.formula_to_tsl_formula phi in
       let _ = print_endline "WILL PERFORM THE TRANSLATION..." in
       let timer = new LeapLib.timer in

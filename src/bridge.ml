@@ -127,7 +127,8 @@ let unfold_expression (mInfo:malloc_info)
   | Stm.Term (Stm.AddrT (Stm.PointerNextAt (a,l))) ->
       let a_expr = Stm.addr_to_expr_addr a in
       let l_expr = Stm.integer_to_expr_integer l in
-      (E.Term (E.AddrT (E.NextAt (E.CellAt (E.heap,a_expr), l_expr))), None, [], [])
+      (E.Term (E.AddrT (E.NextAt (E.CellAt (E.heap,a_expr), l_expr))), None, [], 
+  [])
   | Stm.Term (Stm.ThidT (Stm.PointerLockid a)) ->
       let a_expr = Stm.addr_to_expr_addr a in
       (E.Term (E.ThidT (E.CellLockId (E.CellAt (E.heap,a_expr)))), None, [], [])

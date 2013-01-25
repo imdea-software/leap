@@ -182,6 +182,7 @@ and literal =
     Append        of path * path * path
   | Reach         of mem * addr * addr * path
   | OrderList     of mem * addr * addr
+  | Skiplist      of mem * set * integer * addr * addr
   | In            of addr * set
   | SubsetEq      of set * set
   | InTh          of tid * setth

@@ -4,10 +4,6 @@ global
     addr head
     addr tail
     ghost addrSet region
-
-//  addr head
-//  addr tail
-//  ghost addrSet region
 //  ghost elemSet elements
 
 assume
@@ -16,14 +12,13 @@ assume
 //              UnionElem (SingleElem (rd(heap,head).data),
 //                         SingleElem (rd(heap,tail).data)),
 //                         SingleElem (rd(heap,null).data)) /\
-//  // or orderlist (heap, head, null)
+  skiplist(heap, region, 0, head, tail) /\
   rd(heap, head).data = lowestElem /\
   rd(heap, tail).data = highestElem /\
   head != tail /\
   head != null /\
   tail != null /\
-  head->next[0] = tail /\
-  tail->next[0] = null
+  head->arr[0] = tail
 
 
 // ----- PROGRAM BEGINS --------------------------------------
@@ -59,12 +54,12 @@ assume
                               begin
                                 i := maxLevel;
                                 prev := head;
-                                curr := prev->next[i];
+                                curr := prev->arr[i];
                                 while (0 <= i /\ curr->data != e) do
-                                  curr := prev->next[i];
+                                  curr := prev->arr[i];
                                   while (curr->data < e) do
                                     prev := curr;
-                                    curr := prev->next[i];
+                                    curr := prev->arr[i];
                                   endwhile
                                   i := i -1;
                                 endwhile
@@ -88,19 +83,19 @@ assume
                                 if (lvl > maxLevel) then
                                   i := maxLevel + 1;
                                   while (i <= lvl) do
-                                    head->next[i] := tail;
-                                    tail->next[i] := null;
+                                    head->arr[i] := tail;
+                                    tail->arr[i] := null;
                                     i := i + 1;
                                   endwhile
                                 endif
                                 prev := head;
-                                curr := prev->next[maxLevel];
+                                curr := prev->arr[maxLevel];
                                 i := maxLevel;
                                 while (0 <= i /\ ~(valueWasIn)) do
-                                  curr := prev->next[i];
+                                  curr := prev->arr[i];
                                   while (curr->data < e) do
                                     prev := curr;
-                                    curr := prev->next[i];
+                                    curr := prev->arr[i];
                                   endwhile
                                   update[i] := prev;
                                   i := i - 1;
@@ -110,8 +105,8 @@ assume
                                   newCell := mallocSL(e,lvl);
                                   i := 0;
                                   while (i <= lvl) do
-                                    newCell->next[i] := update[i]->next[i];
-                                    update[i]->next[i] := newCell
+                                    newCell->arr[i] := update[i]->arr[i];
+                                    update[i]->arr[i] := newCell
                                       $ if (i=0) then
                                           region := region Union {newCell};
                                         endif
@@ -134,13 +129,13 @@ assume
                                 bool valueWasIn
                               begin
                                 prev := head;
-                                curr := prev->next[maxLevel];
+                                curr := prev->arr[maxLevel];
                                 i := maxLevel;
                                 while (i >= 0) do
-                                  curr := prev->next[i];
+                                  curr := prev->arr[i];
                                   while (curr->data < e) do
                                     prev := curr;
-                                    curr := prev->next[i];
+                                    curr := prev->arr[i];
                                   endwhile
                                   if (curr->data != e) then
                                     removeFrom := i - 1;
@@ -152,7 +147,7 @@ assume
                                 if (valueWasIn) then
                                   i := removeFrom;
                                   while (i >= 0) do
-                                    update[i]->next[i] := curr->next[i]
+                                    update[i]->arr[i] := curr->arr[i]
                                     $ if (i=0) then
                                         region := region SetDiff {curr};
                                       endif

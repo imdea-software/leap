@@ -323,7 +323,6 @@ and literal_to_tsl_literal (l:Expr.literal) : Tsl.literal =
 and formula_to_tsl_formula (f:Expr.formula) : Tsl.formula =
   let to_formula = formula_to_tsl_formula in
   try
-  Printf.printf "PHI: %s\n" (Expr.formula_to_str f);
   match f with
     Expr.Literal l       -> Tsl.Literal (literal_to_tsl_literal l)
   | Expr.True            -> Tsl.True

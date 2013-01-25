@@ -447,6 +447,25 @@ let check_and_add_delta (tbl:Vd.delta_fun_t)
     ()
 
 
+let define_ident (proc_name:string option)
+                 (id:string)
+                 (th:Expr.tid option) : Expr.term =
+      let k         = match proc_name with
+                      | Some p -> check_is_procedure p;
+                                  check_var_belongs_to_procedure id p;
+                                  let proc_info = System.get_proc_by_name !Symtbl.sys p in
+                                  let iVars     = System.proc_info_get_input proc_info in
+                                  let lVars     = System.proc_info_get_local proc_info in
+                                  if System.mem_var iVars id then
+                                    System.find_var_kind iVars id
+                                  else
+                                    System.find_var_kind lVars id
+                      | None   -> try
+                                    let gVars = System.get_global !Symtbl.sys in
+                                      System.find_var_kind gVars id
+                                  with _ -> Expr.Normal in
+      inject_sort (Expr.VarT (Expr.build_var id Expr.Unknown false th proc_name k))
+
 
 %}
 %token <string*int> IDENT  // second param is line number
@@ -1242,15 +1261,44 @@ term :
 ident :
   IDENT
     {
+      define_ident None (get_name $1) None
+(*
       let id  = get_name $1 in
       let var = Expr.build_var id Expr.Unknown false None None Expr.Normal in
         inject_sort (Expr.VarT var)
+*)
+    }
+  | IDENT DOUBLECOLON IDENT
+    {
+      define_ident (Some (get_name $1)) (get_name $3) None
+(*
+      let proc_name = get_name $1 in
+
+      let id            = get_name $3 in
+      let _             = check_is_procedure proc_name in
+      let _             = check_var_belongs_to_procedure id proc_name in
+
+      let proc_info     = System.get_proc_by_name !Symtbl.sys proc_name in
+      let iVars         = System.proc_info_get_input proc_info in
+      let lVars         = System.proc_info_get_local proc_info in
+
+      let k             = if System.mem_var iVars id then
+                            System.find_var_kind iVars id
+                          else
+                            System.find_var_kind lVars id in
+      let var           = inject_sort (Expr.VarT
+                            (Expr.build_var id Expr.Unknown false None
+                                            (Some proc_name) k))
+      in
+        var
+*)
     }
   | IDENT DOUBLECOLON IDENT th_param
     {
-
+      define_ident (Some (get_name $1)) (get_name $3) $4
+(*
       let proc_name = get_name $1 in
-
+*)
 (* Under testing. Possible correction. *)
 (*
       let c_proc = if !current_proc <> "" then
@@ -1258,6 +1306,7 @@ ident :
                    else
                      None in
 *)
+(*
       let id            = get_name $3 in
       let th            = $4 in
       let _             = check_is_procedure proc_name in
@@ -1276,7 +1325,7 @@ ident :
                                             (Some proc_name) k))
       in
         var
-
+*)
     }
 
 

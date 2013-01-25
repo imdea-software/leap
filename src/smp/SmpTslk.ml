@@ -79,6 +79,8 @@ module Make (TSLK : TSLKExpression.S) =
       let vars_tid = VarSet.cardinal vars_tid_set in
       let vars_addr_set = Expr.varset_of_sort vars Expr.Addr in
       let vars_addr = VarSet.cardinal vars_addr_set in
+      let vars_cell_set = Expr.varset_of_sort vars Expr.Cell in
+      let vars_cell = VarSet.cardinal vars_cell_set in
 
       let vars_mem_set = if (Smp.forget_primed_mem !options &&
                              not (Smp.group_vars !options)) then
@@ -96,7 +98,8 @@ module Make (TSLK : TSLKExpression.S) =
       (* TOFIX: Not sure if I should consider all next pointers, or if they
                 are already expressed through a variable *)
       let numtid = ref (vars_tid + vars_mem * vars_addr * !numlevel) in
-      let numaddr = ref (vars_addr + vars_mem * vars_addr * !numlevel) in
+(*      let numaddr = ref (vars_addr + vars_mem * vars_addr * !numlevel) in *)
+      let numaddr = ref (vars_addr + vars_cell * !numlevel) in
       let vars_elem = VarSet.cardinal (Expr.varset_of_sort vars Expr.Elem) in
       let numelem = ref (vars_elem + vars_mem * vars_addr) in
 

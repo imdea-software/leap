@@ -184,6 +184,7 @@ and literal =
     Append        of path * path * path
   | Reach         of mem * addr * addr * path
   | OrderList     of mem * addr * addr
+  | Skiplist      of mem * set * integer * addr * addr
   | In            of addr * set
   | SubsetEq      of set * set
   | InTh          of tid * setth
@@ -366,6 +367,12 @@ and literal_to_str (loc:bool) (expr:literal) : string =
                                             (mem_to_str loc h)
                                             (addr_to_str loc add_from)
                                             (addr_to_str loc add_to)
+  | Skiplist (h,s,l,a_from,a_to) -> sprintf "skiplist(%s,%s,%s,%s,%s)"
+                                            (mem_to_str loc h)
+                                            (set_to_str loc s)
+                                            (integer_to_str loc l)
+                                            (addr_to_str loc a_from)
+                                            (addr_to_str loc a_to)
   | In(a,s)                    -> sprintf "%s in %s "
                                             (addr_to_str loc a)
                                             (set_to_str loc s)
@@ -885,7 +892,8 @@ and addr_to_expr_addr (a:addr) : E.addr =
   | MallocSL _          -> raise (Not_supported_conversion (addr_to_str true a))
   | MallocSLK _         -> raise (Not_supported_conversion (addr_to_str true a))
   | PointerNext a       -> E.Next(E.CellAt(E.heap,addr_to_expr_addr a))
-  | PointerNextAt (a,l) -> E.Next(E.CellAt(E.heap,addr_to_expr_addr a))
+  | PointerNextAt (a,l) -> E.NextAt(E.CellAt(E.heap,addr_to_expr_addr a),
+                                             integer_to_expr_integer l)
 
 
 and cell_to_expr_cell (c:cell) : E.cell =
@@ -991,6 +999,11 @@ and literal_to_expr_literal (l:literal) : E.literal =
   | OrderList (m,a1,a2) -> E.OrderList (mem_to_expr_mem m,
                                         addr_to_expr_addr a1,
                                         addr_to_expr_addr a2)
+  | Skiplist (m,s,l,a1,a2) -> E.Skiplist (mem_to_expr_mem m,
+                                          set_to_expr_set s,
+                                          integer_to_expr_integer l,
+                                          addr_to_expr_addr a1,
+                                          addr_to_expr_addr a2)
   | In (a,s)            -> E.In (addr_to_expr_addr a, set_to_expr_set s)
   | SubsetEq (s1,s2)    -> E.SubsetEq (set_to_expr_set s1, set_to_expr_set s2)
   | InTh (t,s)          -> E.InTh (tid_to_expr_tid t, setth_to_expr_setth s)
@@ -1306,6 +1319,11 @@ and var_kind_literal (kind:E.kind_t) (l:literal) : term list =
   | OrderList(h,add_from,add_to) -> (var_kind_mem kind h) @
                                     (var_kind_addr kind add_from) @
                                     (var_kind_addr kind add_to)
+  | Skiplist(h,s,l,a1,a2)        -> (var_kind_mem kind h) @
+                                    (var_kind_set kind s) @
+                                    (var_kind_int kind l) @
+                                    (var_kind_addr kind a1) @
+                                    (var_kind_addr kind a2)
   | In(a,s)                      -> (var_kind_addr kind a) @
                                     (var_kind_set kind s)
   | SubsetEq(s_in,s_out)         -> (var_kind_set kind s_in) @

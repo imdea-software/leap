@@ -797,8 +797,9 @@ let lock_pos_to_str (pos:Stm.integer option) : string =
 %token POINTER
 %token ME
 
-%token ERROR MKCELL DATA NEXT LOCKID LOCK UNLOCK
+%token ERROR MKCELL DATA NEXT LOCKID LOCK UNLOCK ARR
 %token HAVOCLISTELEM HAVOCSKIPLISTELEM LOWEST_ELEM HIGHEST_ELEM
+%token SKIPLIST
 %token HAVOCLEVEL
 %token MEMORY_READ
 %token COMMA
@@ -2324,6 +2325,22 @@ literal :
       let a_to   = parser_check_type check_type_addr $7 Expr.Addr get_str_expr in
         Stm.OrderList (h,a_from,a_to)
     }
+  | SKIPLIST OPEN_PAREN term COMMA term COMMA term COMMA term COMMA term 
+    CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "skiplist(%s,%s,%s,%s,%s)"
+                                        (Stm.term_to_str $3)
+                                        (Stm.term_to_str $5)
+                                        (Stm.term_to_str $7)
+                                        (Stm.term_to_str $9)
+                                        (Stm.term_to_str $11) in
+      let h      = parser_check_type check_type_mem  $3  Expr.Mem get_str_expr in
+      let s      = parser_check_type check_type_set  $5  Expr.Set get_str_expr in
+      let l      = parser_check_type check_type_int  $7  Expr.Int get_str_expr in
+      let a_from = parser_check_type check_type_addr $9  Expr.Addr get_str_expr in
+      let a_to   = parser_check_type check_type_addr $11 Expr.Addr get_str_expr in
+        Stm.Skiplist (h,s,l,a_from,a_to)
+    }
   | term IN term
     {
       let get_str_expr () = sprintf "%s in %s" (Stm.term_to_str $1)
@@ -2646,16 +2663,14 @@ addr :
       let c = parser_check_type check_type_cell  $1 Expr.Cell get_str_expr in
         Stm.Next(c)
     }
-/*
   | term DOT ARR OPEN_BRACKET term CLOSE_BRACKET
     {
-      let get_str_expr () = sprintf "%s.next[%s]" (Stm.term_to_str $1)
-                                                  (Stm.term_to_str $5) in
+      let get_str_expr () = sprintf "%s.arr[%s]" (Stm.term_to_str $1)
+                                                 (Stm.term_to_str $5) in
       let c = parser_check_type check_type_cell $1 Expr.Cell get_str_expr in
       let l = parser_check_type check_type_int $5 Expr.Int get_str_expr in
         Stm.NextAt(c,l)
     }
-*/
   | FIRSTLOCKED OPEN_PAREN term COMMA term CLOSE_PAREN
     {
       let get_str_expr () = sprintf "firstlocked(%s,%s)" (Stm.term_to_str $3)
@@ -2700,16 +2715,16 @@ addr :
       let a = parser_check_type check_type_addr $1 Expr.Addr get_str_expr in
         Stm.PointerNext a
     }
-/*
   | term POINTER ARR OPEN_BRACKET term CLOSE_BRACKET
     {
-      let get_str_expr () = sprintf "%s->next[%s]" (Stm.term_to_str $1)
+      let get_str_expr () = sprintf "%s->arr[%s]" (Stm.term_to_str $1)
                                                    (Stm.term_to_str $5) in
       let a = parser_check_type check_type_addr $1 Expr.Addr get_str_expr in
       let l = parser_check_type check_type_int $5 Expr.Int get_str_expr in
+      let _ = Printf.printf "%s\n" (get_str_expr()) in
         Stm.PointerNextAt (a,l)
     }
-*/
+
 
 
 /* CELL terms */
