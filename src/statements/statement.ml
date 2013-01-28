@@ -592,7 +592,7 @@ and addr_to_str (loc:bool) (expr:addr) :string =
     VarAddr v             -> variable_to_str loc v
   | Null                  -> "null"
   | Next(cell)            -> sprintf "%s.next" (cell_to_str loc cell)
-  | NextAt(cell,l)        -> sprintf "%s.next[%s]" (cell_to_str loc cell)
+  | NextAt(cell,l)        -> sprintf "%s.nextat[%s]" (cell_to_str loc cell)
                                                    (integer_to_str loc l)
   | FirstLocked(mem,path) -> sprintf "firstlocked(%s,%s)"
                                             (mem_to_str loc mem)
@@ -607,7 +607,7 @@ and addr_to_str (loc:bool) (expr:addr) :string =
   | MallocSLK(e,l)        -> sprintf "mallocSLK(%s,%s)" (elem_to_str loc e)
                                                         (integer_to_str loc l)
   | PointerNext a         -> sprintf "%s->next" (addr_to_str loc a)
-  | PointerNextAt(a,l)    -> sprintf "%s->next[%s]" (addr_to_str loc a)
+  | PointerNextAt(a,l)    -> sprintf "%s->arr[%s]" (addr_to_str loc a)
                                                     (integer_to_str loc l)
   | AddrArrRd (arr,i)     -> sprintf "%s[%s]" (addrarr_to_str loc arr)
                                               (integer_to_str loc i)
