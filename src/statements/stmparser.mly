@@ -2325,8 +2325,7 @@ literal :
       let a_to   = parser_check_type check_type_addr $7 Expr.Addr get_str_expr in
         Stm.OrderList (h,a_from,a_to)
     }
-  | SKIPLIST OPEN_PAREN term COMMA term COMMA term COMMA term COMMA term 
-    CLOSE_PAREN
+  | SKIPLIST OPEN_PAREN term COMMA term COMMA term COMMA term COMMA term CLOSE_PAREN
     {
       let get_str_expr () = sprintf "skiplist(%s,%s,%s,%s,%s)"
                                         (Stm.term_to_str $3)

@@ -123,12 +123,18 @@ let unfold_expression (mInfo:malloc_info)
       (E.Term (E.ElemT (E.CellData (E.CellAt (E.heap,a_expr)))), None, [], [])
   | Stm.Term (Stm.AddrT (Stm.PointerNext a)) ->
       let a_expr = Stm.addr_to_expr_addr a in
+      let _ = print_endline "TRANSLATING POINTERNEXT!!!" in
+      let _ = Printf.printf "%s\n" (E.term_to_str (E.AddrT (E.Next (E.CellAt 
+(E.heap,a_expr))))) in
       (E.Term (E.AddrT (E.Next (E.CellAt (E.heap,a_expr)))), None, [], [])
   | Stm.Term (Stm.AddrT (Stm.PointerNextAt (a,l))) ->
       let a_expr = Stm.addr_to_expr_addr a in
       let l_expr = Stm.integer_to_expr_integer l in
-      (E.Term (E.AddrT (E.NextAt (E.CellAt (E.heap,a_expr), l_expr))), None, [], 
-  [])
+      let _ = print_endline "TRANSLATING POINTER_NEXT_AT!!!" in
+      let _ = Printf.printf "%s\n" (E.term_to_str (E.AddrT (E.NextAt (E.CellAt (E.heap,a_expr), l_expr)))) in
+      (E.Term (E.AddrT (E.NextAt (E.CellAt (E.heap,a_expr), l_expr))), None, [], [])
+
+
   | Stm.Term (Stm.ThidT (Stm.PointerLockid a)) ->
       let a_expr = Stm.addr_to_expr_addr a in
       (E.Term (E.ThidT (E.CellLockId (E.CellAt (E.heap,a_expr)))), None, [], [])
@@ -175,21 +181,33 @@ let generic_stm_term_eq (mode:eqGenMode)
   let aux_mem = Option.default E.heap mod_heap in
   let (modif,formula) =
     match (v', new_e) with
-      (E.ElemT (E.CellData(E.CellAt(h,a))), E.Term(E.ElemT e')) ->
+    (* CellData *)
+    | (E.ElemT (E.CellData(E.CellAt(h,a))), E.Term(E.ElemT e')) ->
         let new_cell = E.MkCell(e',
                                 E.Next(E.CellAt(aux_mem,a)),
                                 E.CellLockId(E.CellAt(aux_mem,a)))
         in
           eq_generator (E.MemT E.heap) th_p
               (E.Term(E.MemT(E.Update(aux_mem,a,new_cell))))
+    (* Next *)
     | (E.AddrT (E.Next(E.CellAt(h,a))), E.Term(E.AddrT a')) ->
         let new_cell = E.MkCell(E.CellData(E.CellAt(aux_mem,a)),
                                 a',
                                 E.CellLockId(E.CellAt(aux_mem,a))) in
         let new_term = E.param_term th_p (E.MemT(E.Update(aux_mem,a,new_cell)))
         in
-          eq_generator (E.MemT E.heap) th_p
-              (E.Term(new_term))
+        let _ = print_endline "GENERATOR CALLED!!!" in
+          eq_generator (E.MemT E.heap) th_p (E.Term(new_term))
+    (* NextAt *)
+    | (E.AddrT (E.NextAt(E.CellAt(h,a), l)), E.Term(E.AddrT a')) ->
+        let new_cell = E.MkSLCell(E.CellData(E.CellAt(aux_mem,a)),
+                                  E.AddrArrayUp(E.CellArr(E.CellAt(aux_mem,a)),l,a'),
+                                  E.CellTids(E.CellAt(aux_mem,a)),
+                                  E.CellMax(E.CellAt(aux_mem,a))) in
+        let new_term = E.param_term th_p (E.MemT(E.Update(aux_mem,a,new_cell)))
+        in
+          eq_generator (E.MemT E.heap) th_p (E.Term(new_term))
+    (* CellLockId *)
     | (E.ThidT (E.CellLockId(E.CellAt(h,a))), E.Term(E.ThidT t')) ->
         let new_cell = E.MkCell(E.CellData(E.CellAt(aux_mem,a)),
                                 E.Next(E.CellAt(aux_mem,a)),
@@ -197,12 +215,24 @@ let generic_stm_term_eq (mode:eqGenMode)
         in
           eq_generator (E.MemT E.heap) th_p
               (E.Term(E.MemT(E.Update(aux_mem,a,new_cell))))
+    (* CellLockIdAt *)
+    | (E.ThidT (E.CellLockIdAt(E.CellAt(h,a),l)), E.Term(E.ThidT t')) ->
+        let new_cell = E.MkSLCell(E.CellData(E.CellAt(aux_mem,a)),
+                                  E.CellArr(E.CellAt(aux_mem,a)),
+                                  E.TidArrayUp(E.CellTids(E.CellAt(aux_mem,a)),l,t'),
+                                  E.CellMax(E.CellAt(aux_mem,a)))
+        in
+          eq_generator (E.MemT E.heap) th_p
+              (E.Term(E.MemT(E.Update(aux_mem,a,new_cell))))
+    (* HavocListElem *)
     | (E.ElemT e, E.Term (E.ElemT (E.HavocListElem))) ->
         ([E.ElemT e], E.And (E.ineq_elem e E.LowestElem,
                              E.ineq_elem e E.HighestElem))
+    (* HavocSkiplistElem *)
     | (E.ElemT e, E.Term (E.ElemT (E.HavocSkiplistElem))) ->
         ([E.ElemT e], E.And (E.ineq_elem e E.LowestElem,
                              E.ineq_elem e E.HighestElem))
+    (* Remaining cases *)
     | _ -> let (m,f) = eq_generator v' th_p new_e in
            match pt with
              Num  -> (m,f)

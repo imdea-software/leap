@@ -1616,8 +1616,8 @@ and addr_to_str (expr:addr) :string =
     VarAddr v                 -> variable_to_str v
   | Null                      -> "null"
   | Next(cell)                -> sprintf "%s.next" (cell_to_str cell)
-  | NextAt(cell,l)            -> sprintf "%s.next[%s]" (cell_to_str cell)
-                                                       (integer_to_str l)
+  | NextAt(cell,l)            -> sprintf "%s.nextat[%s]" (cell_to_str cell)
+                                                         (integer_to_str l)
   | FirstLocked(mem,path)     -> sprintf "firstlocked(%s,%s)"
                                             (mem_to_str mem)
                                             (path_to_str path)
@@ -4154,6 +4154,13 @@ let construct_term_eq (v:term)
       in
         (modif, Literal (Atom (Eq (left_term, param_t))))
 
+  | (AddrT (NextAt (VarCell var, i)), Term t) ->
+      let modif     = [AddrT(NextAt(VarCell(clean_var var),i))] in
+      let left_term = prime_term $ param_term th_p v in
+      let param_t   = param_term th_p t
+      in
+        (modif, Literal (Atom (Eq (left_term, param_t))))
+
   | (AddrT (AddrArrRd (VarAddrArray var,i)), Term t) ->
       let modif     = [AddrT(AddrArrRd(VarAddrArray (clean_var var),i))] in
       let left_term = prime_term $ param_term th_p v in
@@ -4217,7 +4224,7 @@ let construct_term_eq (v:term)
   (* Missing for this cases =( *)
   | (_, Term t)                 ->
       Interface.Err.msg "Unexpected assignment" $
-              sprintf "When construction transition relation for \
+              sprintf "When constructing transition relation for \
                        assignment between term \"%s\" and \
                        expression \"%s\"." (term_to_str v)
                                            (term_to_str t);
