@@ -17,6 +17,7 @@ module type S =
       | Path
       | Mem
       | Level
+      | Bool
       | Unknown
     and term =
         VarT              of variable
@@ -112,6 +113,7 @@ module type S =
       | GreaterElem       of elem * elem
       | Eq                of eq
       | InEq              of diseq
+      | BoolVar           of variable
       | PC                of int * tid option * bool
       | PCUpdate          of int * tid
       | PCRange           of int * int * tid option * bool

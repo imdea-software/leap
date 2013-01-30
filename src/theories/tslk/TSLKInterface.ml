@@ -31,7 +31,7 @@ module Make (TSLK : TSLKExpression.S) =
       | Expr.SetElem   -> TSLK.SetElem
       | Expr.Path      -> TSLK.Path
       | Expr.Mem       -> TSLK.Mem
-      | Expr.Bool      -> raise (UnsupportedSort (Expr.sort_to_str s))
+      | Expr.Bool      -> TSLK.Bool
       | Expr.Int       -> TSLK.Level
       | Expr.Array     -> raise (UnsupportedSort (Expr.sort_to_str s))
       | Expr.AddrArray -> raise (UnsupportedSort (Expr.sort_to_str s))
@@ -322,7 +322,7 @@ module Make (TSLK : TSLKExpression.S) =
       | Expr.GreaterElem (e1,e2)  -> TSLK.GreaterElem (elem e1, elem e2)
       | Expr.Eq (t1,t2)           -> TSLK.Eq (term t1, term t2)
       | Expr.InEq (t1,t2)         -> TSLK.InEq (term t1, term t2)
-      | Expr.BoolVar _            -> raise(UnsupportedTSLKExpr(Expr.atom_to_str a))
+      | Expr.BoolVar v            -> TSLK.BoolVar (var_to_tslk_var v)
       | Expr.BoolArrayRd _        -> raise(UnsupportedTSLKExpr(Expr.atom_to_str a))
       | Expr.PC (pc,t,pr)         -> TSLK.PC (pc, Option.lift tid_to_tslk_tid t,pr)
       | Expr.PCUpdate (pc,t)      -> TSLK.PCUpdate (pc, tid_to_tslk_tid t)
@@ -365,6 +365,7 @@ module Make (TSLK : TSLKExpression.S) =
       | TSLK.Path    -> Expr.Path
       | TSLK.Mem     -> Expr.Mem
       | TSLK.Level   -> Expr.Int
+      | TSLK.Bool    -> Expr.Bool
       | TSLK.Unknown -> Expr.Unknown
 
 
@@ -540,6 +541,7 @@ module Make (TSLK : TSLKExpression.S) =
       | TSLK.GreaterElem (e1,e2)  -> Expr.GreaterElem (elem e1, elem e2)
       | TSLK.Eq (t1,t2)           -> Expr.Eq (term t1, term t2)
       | TSLK.InEq (t1,t2)         -> Expr.InEq (term t1, term t2)
+      | TSLK.BoolVar v            -> Expr.BoolVar (var_to_expr_var v)
       | TSLK.PC (pc,t,pr)         -> Expr.PC (pc, Option.lift tid_to_expr_tid t,pr)
       | TSLK.PCUpdate (pc,t)      -> Expr.PCUpdate (pc, tid_to_expr_tid t)
       | TSLK.PCRange (pc1,pc2,t,pr) -> Expr.PCRange (pc1, pc2,

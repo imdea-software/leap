@@ -15,6 +15,7 @@ and sort =
   | Int
   | AddrArray
   | TidArray
+  | Bool
   | Unknown
 and term =
     VarT              of variable
@@ -125,6 +126,7 @@ and atom =
   | GreaterElem       of elem * elem
   | Eq                of eq
   | InEq              of diseq
+  | BoolVar           of variable
   | PC                of int * tid option * bool
   | PCUpdate          of int * tid
   | PCRange           of int * int * tid option * bool

@@ -191,6 +191,7 @@ struct
       | TslkExp.GreaterElem(e1,e2)    -> is_var_elem e1 && is_var_elem e2
       | TslkExp.Eq((t1,t2))           -> is_var_term t1 && is_var_term t2
       | TslkExp.InEq((t1,t2))         -> is_var_term t1 && is_var_term t2
+      | TslkExp.BoolVar v             -> true
       | TslkExp.PC(pc,t,pr)           -> true
       | TslkExp.PCUpdate (pc,t)       -> true
       | TslkExp.PCRange(pc1,pc2,t,pr) -> true

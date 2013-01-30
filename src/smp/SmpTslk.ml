@@ -140,6 +140,7 @@ module Make (TSLK : TSLKExpression.S) =
               | Expr.GreaterElem _  -> () (* Not sure *)
               | Expr.Eq(x,y)        -> process_ineq (x,y)
               | Expr.InEq _         -> ()
+              | Expr.BoolVar _      -> ()
               | Expr.PC _           -> ()
               | Expr.PCUpdate _     -> ()
               | Expr.PCRange _      -> ()
@@ -223,6 +224,7 @@ module Make (TSLK : TSLKExpression.S) =
       | Expr.GreaterElem _  -> union_count_elem info a
       | Expr.Eq e           -> union_eq_cutoff info e
       | Expr.InEq e         -> union_ineq_cutoff info e
+      | Expr.BoolVar _      -> info
       | Expr.PC _           -> info
       | Expr.PCUpdate _     -> info
       | Expr.PCRange _      -> info
@@ -299,6 +301,7 @@ module Make (TSLK : TSLKExpression.S) =
       | Expr.GreaterElem _  -> Some a
       | Expr.Eq (x,y)       -> Option.lift (fun (x',y') -> Expr.Eq (x',y')) (prune_eq x y)
       | Expr.InEq (x,y)     -> Option.lift (fun (x',y') -> Expr.InEq (x',y')) (prune_eq x y)
+      | Expr.BoolVar _      -> None
       | Expr.PC _           -> None
       | Expr.PCUpdate _     -> None
       | Expr.PCRange _      -> None

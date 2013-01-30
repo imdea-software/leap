@@ -28,7 +28,7 @@ let rec sort_to_tsl_sort (s:Expr.sort) : Tsl.sort =
   | Expr.SetElem   -> Tsl.SetElem
   | Expr.Path      -> Tsl.Path
   | Expr.Mem       -> Tsl.Mem
-  | Expr.Bool      -> raise (UnsupportedSort (Expr.sort_to_str s))
+  | Expr.Bool      -> Tsl.Bool
   | Expr.Int       -> Tsl.Int
   | Expr.Array     -> raise (UnsupportedSort (Expr.sort_to_str s))
   | Expr.AddrArray -> Tsl.AddrArray
@@ -271,6 +271,7 @@ and tidarr_to_tsl_tidarr (arr:Expr.tidarr) : Tsl.tidarr =
 
 
 and atom_to_tsl_atom (a:Expr.atom) : Tsl.atom =
+  let _ = Printf.printf "Will convert:\n%s\n" (Expr.atom_to_str a) in
   let path    = path_to_tsl_path       in
   let mem     = mem_to_tsl_mem         in
   let addr    = addr_to_tsl_addr       in
@@ -306,7 +307,7 @@ and atom_to_tsl_atom (a:Expr.atom) : Tsl.atom =
   | Expr.GreaterElem (e1,e2)  -> Tsl.GreaterElem (elem e1, elem e2)
   | Expr.Eq (t1,t2)           -> Tsl.Eq (term t1, term t2)
   | Expr.InEq (t1,t2)         -> Tsl.InEq (term t1, term t2)
-  | Expr.BoolVar _            -> raise(UnsupportedTslExpr(Expr.atom_to_str a))
+  | Expr.BoolVar v            -> Tsl.BoolVar (var_to_tsl_var v)
   | Expr.BoolArrayRd _        -> raise(UnsupportedTslExpr(Expr.atom_to_str a))
   | Expr.PC (pc,t,pr)         -> Tsl.PC (pc, Option.lift tid_to_tsl_tid t,pr)
   | Expr.PCUpdate (pc,t)      -> Tsl.PCUpdate (pc, tid_to_tsl_tid t)
@@ -354,6 +355,7 @@ let rec tsl_sort_to_sort (s:Tsl.sort) : Expr.sort =
   | Tsl.Int       -> Expr.Int
   | Tsl.AddrArray -> Expr.AddrArray
   | Tsl.TidArray  -> Expr.TidArray
+  | Tsl.Bool      -> Expr.Bool
   | Tsl.Unknown   -> Expr.Unknown
 
 
@@ -555,6 +557,7 @@ and tsl_atom_to_atom (a:Tsl.atom) : Expr.atom =
   | Tsl.GreaterElem (e1,e2)  -> Expr.GreaterElem (elem e1, elem e2)
   | Tsl.Eq (t1,t2)           -> Expr.Eq (term t1, term t2)
   | Tsl.InEq (t1,t2)         -> Expr.InEq (term t1, term t2)
+  | Tsl.BoolVar v            -> Expr.BoolVar (var_to_expr_var v)
   | Tsl.PC (pc,t,pr)         -> Expr.PC (pc, Option.lift tid_to_expr_tid t,pr)
   | Tsl.PCUpdate (pc,t)      -> Expr.PCUpdate (pc, tid_to_expr_tid t)
   | Tsl.PCRange (pc1,pc2,t,pr) -> Expr.PCRange (pc1, pc2,
