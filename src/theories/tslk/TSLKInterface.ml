@@ -281,7 +281,7 @@ module Make (TSLK : TSLKExpression.S) =
                                end
       | Expr.IntMul (i1,i2) -> raise(UnsupportedTSLKExpr(Expr.integer_to_str i))
       | Expr.IntDiv (i1,i2) -> raise(UnsupportedTSLKExpr(Expr.integer_to_str i))
-      | Expr.CellMax (c)    -> raise(UnsupportedTSLKExpr(Expr.integer_to_str i))
+      | Expr.CellMax (c)    -> TSLK.LevelVal TSLK.k
       | Expr.IntArrayRd _   -> raise(UnsupportedTSLKExpr(Expr.integer_to_str i))
       | Expr.IntSetMin _    -> raise(UnsupportedTSLKExpr(Expr.integer_to_str i))
       | Expr.IntSetMax _    -> raise(UnsupportedTSLKExpr(Expr.integer_to_str i))

@@ -197,6 +197,8 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
 
     
     let trans_literal (l:TslExp.literal) : TslkExp.formula =
+      let _ = Printf.printf "Literal to be translated:\n%s\n" 
+      (TslExp.literal_to_str l) in
       match l with
       | Atom(Eq(CellT (VarCell c),CellT(MkCell(e,aa,tt,i))))
       | Atom(Eq(CellT(MkCell(e,aa,tt,i)),CellT (VarCell c)))

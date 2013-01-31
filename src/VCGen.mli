@@ -183,10 +183,19 @@ sig
     (*-> solver_info*)
     ->bool
 
+
   val check_with_seq_binv : System.system_t
     -> Expression.formula
     -> bool
-  
+
+
+  val check_with_seq_spinv : System.system_t
+    -> Expression.formula list
+    -> Expression.formula
+    (*-> solver_info*)
+    ->bool
+
+
   val check_with_graph : System.system_t 
     -> IGraph.iGraph_t 
     -> bool

@@ -183,7 +183,14 @@ sig
     -> Expression.formula
     -> (Expression.formula * vc_info_t) list
 
-  
+
+  (** Sequential SP-INV for an open system *)
+  val seq_spinv : System.system_t
+    -> Expression.formula list
+    -> Expression.formula
+    -> (Expression.formula * vc_info_t) list
+
+
   val check_with_pinv : System.system_t 
     -> Expression.formula
     (*-> solver_info*)
@@ -200,9 +207,18 @@ sig
     (*-> solver_info*)
     -> bool
 
+
   val check_with_seq_binv : System.system_t
     -> Expression.formula
     -> bool
+
+
+  val check_with_seq_spinv : System.system_t
+    -> Expression.formula list
+    -> Expression.formula
+    (*-> solver_info*)
+    -> bool
+
   
   val check_with_graph : System.system_t 
     -> IGraph.iGraph_t 
@@ -1503,7 +1519,98 @@ struct
         : (E.formula * vc_info_t) list =
     let inv_as_formula = Tag.tag_table_get_formula tags inv in
     seq_binv sys inv_as_formula
-  
+
+
+  let spinv_premise_transitions (sys : Sys.system_t)
+                                (lines_to_consider : int list)
+                                (supInvs : E.formula list)
+                                (inv : E.formula_info_t)
+                                  : (E.formula * vc_info_t) list =
+    let basic_supp = inv.E.formula :: supInvs in
+    let general_supp_info = Tac.gen_support basic_supp inv.E.voc 
+      (Tac.pre_tacs solverInfo.tactics) in
+    
+    let load_info (line : E.pc_t) (p : IGraph.premise_t) :
+          (Tag.f_tag list          *
+           Tac.smp_tactic_t option *
+           Tac.support_info_t      *
+           Tac.post_tac_t list     *
+           Tac.solve_tactic_t option) =
+      try
+        let (supp, tacs) = Hashtbl.find solverInfo.special (line, p) in
+        let supp_tags = Hashtbl.find solverInfo.detailed_desc.supp_table (line,p) in
+        let final_tacs = Tac.specialize_tacs solverInfo.tactics tacs in
+        let special_supp = Tac.gen_support (basic_supp @ supp)
+                             inv.E.voc (Tac.pre_tacs final_tacs)
+        in
+          (supp_tags,
+           Tac.smp_cutoff final_tacs,
+           special_supp,
+           Tac.post_tacs final_tacs,
+           Tac.solve_tactic final_tacs)
+      with
+        Not_found -> ([],
+                      Tac.smp_cutoff solverInfo.tactics,
+                      general_supp_info,
+                      Tac.post_tacs solverInfo.tactics,
+                      Tac.solve_tactic solverInfo.tactics) in
+    let assign_cutoff (smp:Tac.smp_tactic_t option) : cutoff_type =
+      match smp with
+      | None -> solverInfo.cutoff
+      | Some cut -> tac_to_vcgen_cutoff cut
+    in
+      List.fold_left (fun vcs line ->
+        let (n_tags, tmp_n_smp, normal_info, n_tacs, n_stac) =
+          load_info line IGraph.Normal in
+        let (e_tags, tmp_e_smp, extra_info, e_tacs, e_stac) =
+          load_info line IGraph.Extra in
+        let (n_smp, e_smp) = (assign_cutoff tmp_n_smp,
+                              assign_cutoff tmp_e_smp) in
+        let normal_vc = List.fold_left (fun norm_vcs i ->
+                          norm_vcs @ gen_vcs sys normal_info inv n_stac
+                                       n_smp n_tacs line i Normal
+                        ) [] inv.E.voc in
+        let extra_vc = gen_vcs sys extra_info inv e_stac e_smp e_tacs line
+                        (Tac.supp_fresh_tid extra_info) Extra in
+        (* Update support tags information *)
+        let normal_vc = List.map (fun (phi,info) ->
+                          (info.supps <- n_tags; (phi,info))) normal_vc in
+        let extra_vc = List.map (fun (phi,info) ->
+                          (info.supps <- e_tags; (phi,info))) extra_vc in
+        vcs @ normal_vc @ extra_vc
+      ) [] lines_to_consider
+
+
+  let seq_spinv (sys : Sys.system_t) (supInvs:E.formula list)
+      (inv : E.formula) : (E.formula * vc_info_t) list =
+    let voc_inv = List.filter E.is_tid_var (E.voc inv) in
+    let vars_inv = E.all_vars inv in
+    let primed_inv = E.prime inv in
+    let need_theta = List.mem 0 solverInfo.focus in
+    let lines_to_consider = List.filter (fun x -> x <> 0) solverInfo.focus in
+    let inv_info = { E.formula = inv;
+                     E.primed = primed_inv;
+                     E.voc = voc_inv;
+                     E.vars = vars_inv;
+                   } in
+   
+    let premise_init = if need_theta then
+                         [spinv_premise_init sys inv_info]
+                       else
+                         [] in
+
+    let premise_transitions = spinv_premise_transitions sys
+                                lines_to_consider supInvs inv_info in
+      premise_init @ premise_transitions
+
+ 
+  let tag_seq_spinv (sys : Sys.system_t) (supInv_list : Tag.f_tag list)
+      (inv : Tag.f_tag) : (E.formula * vc_info_t) list =
+    let supInv_list_as_formula = 
+      List.map (Tag.tag_table_get_formula tags) supInv_list in
+    let inv_as_formula = Tag.tag_table_get_formula tags inv in
+    seq_spinv sys supInv_list_as_formula inv_as_formula
+
   
   let spinv (sys : Sys.system_t) (supInvs:E.formula list)
       (inv : E.formula) : (E.formula * vc_info_t) list =
@@ -2028,6 +2135,18 @@ struct
     let vc_list =
       List.map (fun (vc, desc) -> (post_process vc, desc)) vcs in
     let res = apply_dp_on_list vc_list "Checked VCs with SEQINV\n\n" in
+    res
+
+
+  let check_with_seq_spinv (sys : Sys.system_t) (supInv_list : E.formula list)
+      (inv : E.formula) : bool =
+    assert(isInitialized());
+    (* Erases output file, if exists *)
+    let extended_sys = prepare_system sys in
+    let vcs = spinv extended_sys supInv_list inv in
+    let vc_list = 
+      List.map (fun (vc, desc) -> (post_process vc, desc)) vcs in
+    let res = apply_dp_on_list vc_list "Checked VCs with SINV\n\n" in
     res
 
 

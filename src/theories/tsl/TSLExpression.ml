@@ -2787,9 +2787,10 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
     match c with
     | VarCell v -> VarCell v
     | Error -> Error
-    | MkCell (e,aa,tt,i) -> let i_var = gen_if_not_var (IntT i) Int in
-                              MkCell (norm_elem e, norm_addrarr aa,
-                                      norm_tidarr tt, VarInt i_var)
+    | MkCell (e,aa,tt,i) -> let c_var = gen_if_not_var (CellT c) Cell in
+                              VarCell c_var
+                              (*MkCell (norm_elem e, norm_addrarr aa,
+                                      norm_tidarr tt, VarInt i_var) *)
     | CellLockAt (c,i,t) -> let i_var = gen_if_not_var (IntT i) Int in
                               CellLockAt (norm_cell c, VarInt i_var, norm_tid t)
     | CellUnlockAt (c,i) -> let i_var = gen_if_not_var (IntT i) Int in
@@ -2902,6 +2903,16 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
                            GreaterEq (VarInt i1_var, VarInt i2_var)
     | LessElem (e1,e2) -> LessElem (norm_elem e1, norm_elem e2)
     | GreaterElem (e1,e2) -> GreaterElem (norm_elem e1, norm_elem e2)
+    | Eq (CellT (VarCell v), CellT (MkCell (e,aa,tt,i)))
+    | Eq (CellT (MkCell (e,aa,tt,i)), CellT (VarCell v)) ->
+        let i_var = gen_if_not_var (IntT i) Int in
+          Eq (CellT (VarCell v), CellT (MkCell(norm_elem e, norm_addrarr aa,
+                                               norm_tidarr tt, VarInt i_var)))
+    | InEq (CellT (VarCell v), CellT (MkCell (e,aa,tt,i)))
+    | InEq (CellT (MkCell (e,aa,tt,i)), CellT (VarCell v)) ->
+        let i_var = gen_if_not_var (IntT i) Int in
+          InEq (CellT (VarCell v), CellT (MkCell(norm_elem e, norm_addrarr aa,
+                                                 norm_tidarr tt, VarInt i_var)))
     | Eq (t1,t2) -> Eq (norm_term t1, norm_term t2)
     | InEq (t1,t2) -> InEq (norm_term t1, norm_term t2)
     | BoolVar v -> BoolVar v
