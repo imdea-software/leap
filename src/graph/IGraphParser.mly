@@ -87,7 +87,7 @@ rule :
       let ts = $4 in
       let _ = Printf.printf "tactics size: %i\n" (List.length (Tactics.post_tacs ts))
       in
-        IGraph.new_conc_rule [] i cs ts
+        IGraph.new_rule IGraph.Concurrent [] i cs ts
     }
   | inv_list CONC_ARROW inv cases tactics
     {
@@ -97,11 +97,21 @@ rule :
       let ts = $5 in
       let _ = Printf.printf "tactics size: %i\n" (List.length (Tactics.post_tacs ts))
       in
-        IGraph.new_conc_rule sup i cs ts
+        IGraph.new_rule IGraph.Concurrent sup i cs ts
     }
-  | BOX inv tactics
+  | BOX inv cases tactics
     {
-      IGraph.new_seq_rule $2 $3
+      IGraph.new_rule IGraph.Sequential [] $2 $3 $4
+    }
+  | inv_list SEQ_ARROW inv cases tactics
+    {
+      let sup = $1 in
+      let i = $3 in
+      let cs = $4 in
+      let ts = $5 in
+      let _ = Printf.printf "tactics size: %i\n" (List.length (Tactics.post_tacs ts))
+      in
+        IGraph.new_rule IGraph.Sequential sup i cs ts
     }
 
 

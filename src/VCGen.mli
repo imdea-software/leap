@@ -167,6 +167,12 @@ sig
     -> (Expression.formula * vc_info_t) list
 
 
+  val seq_spinv : System.system_t
+    -> Expression.formula list
+    -> Expression.formula
+    -> (Expression.formula * vc_info_t) list
+
+
   val check_with_pinv : System.system_t 
     -> Expression.formula
     (*-> solver_info*)

@@ -33,13 +33,14 @@ let add_rule (ig:iGraph_t) (r:rule_t) : iGraph_t =
   r :: ig
 
 
-let new_conc_rule (supList:Tag.f_tag list)
-                  (inv:Tag.f_tag)
-                  (cases:(Expr.pc_t       *
-                          premise_t list  *
-                          Tag.f_tag list  *
-                          Tactics.t) list)
-                  (tacs:Tactics.t) : rule_t =
+let new_rule (mode:mode_t)
+             (supList:Tag.f_tag list)
+             (inv:Tag.f_tag)
+             (cases:(Expr.pc_t       *
+                     premise_t list  *
+                     Tag.f_tag list  *
+                     Tactics.t) list)
+             (tacs:Tactics.t) : rule_t =
   let tbl = Hashtbl.create 10 in
   let _ = List.iter (fun (pc,prems,tags,ts) ->
             List.iter (fun prem ->
@@ -53,11 +54,8 @@ let new_conc_rule (supList:Tag.f_tag list)
             ) prems
           ) cases
   in
-    (Concurrent, supList, inv, tbl, tacs)
+    (mode, supList, inv, tbl, tacs)
 
-
-let new_seq_rule (inv:Tag.f_tag) (tacs:Tactics.t) : rule_t =
-  (Sequential, [], inv, Hashtbl.create 1, tacs)
 
 
 let graph_info (grp:iGraph_t)

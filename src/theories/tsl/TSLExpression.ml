@@ -2763,8 +2763,9 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
     | VarTh v -> VarTh v
     | NoThid -> NoThid
     | CellLockIdAt (c,i) -> CellLockIdAt (norm_cell c, norm_int i)
-    | ThidArrRd (tt,i) -> let i_var = gen_if_not_var (IntT i) Int in
-                            ThidArrRd (norm_tidarr tt, VarInt i_var)
+    | ThidArrRd (tt,i) -> let t_var = gen_if_not_var (ThidT t) Thid in
+                            VarTh t_var
+(*                          ThidArrRd (norm_tidarr tt, VarInt i_var) *)
 
   and norm_elem (e:elem) : elem =
     match e with
@@ -2780,8 +2781,9 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
     | Null -> Null
     | NextAt (c,i) -> let i_var = gen_if_not_var (IntT i) Int in
                         NextAt (norm_cell c, VarInt i_var)
-    | AddrArrRd (aa,i) -> let i_var = gen_if_not_var (IntT i) Int in
-                            AddrArrRd (norm_addrarr aa, VarInt i_var)
+    | AddrArrRd (aa,i) -> let a_var = gen_if_not_var (AddrT a) Addr in
+                            VarAddr a_var
+(*                          AddrArrRd (norm_addrarr aa, VarInt i_var) *)
 
   and norm_cell (c:cell) : cell =
     match c with
@@ -2903,16 +2905,43 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
                            GreaterEq (VarInt i1_var, VarInt i2_var)
     | LessElem (e1,e2) -> LessElem (norm_elem e1, norm_elem e2)
     | GreaterElem (e1,e2) -> GreaterElem (norm_elem e1, norm_elem e2)
+    (* Equality between cell variable and MkCell *)
     | Eq (CellT (VarCell v), CellT (MkCell (e,aa,tt,i)))
     | Eq (CellT (MkCell (e,aa,tt,i)), CellT (VarCell v)) ->
         let i_var = gen_if_not_var (IntT i) Int in
           Eq (CellT (VarCell v), CellT (MkCell(norm_elem e, norm_addrarr aa,
                                                norm_tidarr tt, VarInt i_var)))
+    (* Inequality between cell variable and MkCell *)
     | InEq (CellT (VarCell v), CellT (MkCell (e,aa,tt,i)))
     | InEq (CellT (MkCell (e,aa,tt,i)), CellT (VarCell v)) ->
         let i_var = gen_if_not_var (IntT i) Int in
           InEq (CellT (VarCell v), CellT (MkCell(norm_elem e, norm_addrarr aa,
                                                  norm_tidarr tt, VarInt i_var)))
+    (* Equality between address variable and address array *)
+    | Eq (AddrT (VarAddr a), AddrT (AddrArrRd(aa,i)))
+    | Eq (AddrT (AddrArrRd(aa,i)), AddrT (VarAddr a)) ->
+        let i_var = gen_if_not_var (IntT i) Int in
+          Eq (AddrT (VarAddr a),
+              AddrT (AddrArrRd(norm_addrarr aa, VarInt i_var)))
+    (* Inequality between address variable and address array *)
+    | InEq (AddrT (VarAddr a), AddrT (AddrArrRd(aa,i)))
+    | InEq (AddrT (AddrArrRd(aa,i)), AddrT (VarAddr a)) ->
+        let i_var = gen_if_not_var (IntT i) Int in
+          InEq (AddrT (VarAddr a),
+                AddrT (AddrArrRd(norm_addrarr aa,VarInt i_var)))
+    (* Equality between tid variable  and tids array *)
+    | Eq (ThidT (VarTh a), ThidT (ThidArrRd(tt,i)))
+    | Eq (ThidT (ThidArrRd(tt,i)), ThidT (VarTh a)) ->
+        let i_var = gen_if_not_var (IntT i) Int in
+          Eq (ThidT (VarTh a),
+              ThidT (ThidArrRd(norm_tidarr tt, VarInt i_var)))
+    (* Inequality between tid variable and tids array *)
+    | InEq (ThidT (VarTh a), ThidT (ThidArrRd(tt,i)))
+    | InEq (ThidT (ThidArrRd(tt,i)), ThidT (VarTh a)) ->
+        let i_var = gen_if_not_var (IntT i) Int in
+          InEq (ThidT (VarTh a),
+                ThidT (ThidArrRd(norm_tidarr tt, VarInt i_var)))
+    (* General equalities and inequalities *)
     | Eq (t1,t2) -> Eq (norm_term t1, norm_term t2)
     | InEq (t1,t2) -> InEq (norm_term t1, norm_term t2)
     | BoolVar v -> BoolVar v
