@@ -486,25 +486,25 @@ struct
     assert(isInitialized());
     solverInfo.dp.pos_dp <- true;
     solverInfo.dp.num_dp <- true;
-    _DEBUG "Enabled num DP."
+    LOG "Enabled num DP." LEVEL DEBUG
   
   let enable_tll_dp () : unit =
     assert(isInitialized());
     solverInfo.dp.pos_dp <- true;
     solverInfo.dp.tll_dp <- true;
-    _DEBUG "Enabled tll DP."
+    LOG "Enabled tll DP." LEVEL DEBUG
 
   let enable_tsl_dp () : unit =
     assert(isInitialized());
     solverInfo.dp.pos_dp  <- true;
     solverInfo.dp.tsl_dp <- true;
-    _DEBUG "Enabled tsl DP."
+    LOG "Enabled tsl DP." LEVEL DEBUG
 
   let enable_tslk_dp (k:int) : unit =
     assert(isInitialized());
     solverInfo.dp.pos_dp  <- true;
     solverInfo.dp.tslk_dp <- (true,k);
-    _DEBUG "Enabled tslk DP."
+    LOG "Enabled tslk DP." LEVEL DEBUG
   
   let enable_dp : DP.t -> unit = function
     | DP.NoDP   -> ()
@@ -523,28 +523,28 @@ struct
   
   let apply_pos_dp () : bool =
     assert(isInitialized());
-    _DEBUG "Apply Pos DP? %b" solverInfo.dp.pos_dp;
+    LOG "Apply Pos DP? %b" solverInfo.dp.pos_dp LEVEL DEBUG;
     solverInfo.dp.pos_dp
   
   let apply_num_dp () : bool =
     assert(isInitialized());
-    _DEBUG "Apply Num DP? %b" solverInfo.dp.num_dp;
+    LOG "Apply Num DP? %b" solverInfo.dp.num_dp LEVEL DEBUG;
     solverInfo.dp.num_dp
   
   let apply_tll_dp () : bool =
     assert(isInitialized());
-    _DEBUG "Apply Tll DP? %b" solverInfo.dp.tll_dp;
+    LOG "Apply Tll DP? %b" solverInfo.dp.tll_dp LEVEL DEBUG;
     solverInfo.dp.tll_dp
   
   let apply_tsl_dp () : bool =
     assert(isInitialized());
-    _DEBUG "Apply Tsl DP? %b" solverInfo.dp.tsl_dp;
+    LOG "Apply Tsl DP? %b" solverInfo.dp.tsl_dp LEVEL DEBUG;
     solverInfo.dp.tsl_dp
 
   let apply_tslk_dp () : (bool * int) =
     assert(isInitialized());
     let (b,k) = solverInfo.dp.tslk_dp in
-    _DEBUG "Apply Tslk[%i] DP? %b" k b;
+    LOG "Apply Tslk[%i] DP? %b" k b LEVEL DEBUG;
     (b, k)
 
   let apply_heap_based_dp () : bool =
@@ -2148,7 +2148,6 @@ struct
   let check_with_seq_spinv (sys : Sys.system_t) (supInv_list : E.formula list)
       (inv : E.formula) : bool =
     assert(isInitialized());
-    (* Erases output file, if exists *)
     let extended_sys = prepare_system sys in
     let vcs = seq_spinv extended_sys supInv_list inv in
     let vc_list = 

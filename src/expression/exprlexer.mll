@@ -23,7 +23,7 @@ rule norm = parse
   | "Initial"       { Global.last "Initial"       ; INITIAL }
   | "Edges"         { Global.last "Edges"         ; EDGES }
   | "Acceptance"    { Global.last "Acceptance"    ; ACCEPTANCE }
-  | "with"          { Global.last "with"          ; WITH }
+  | "using"         { Global.last "using"         ; USING }
   | "default"       { Global.last "default"       ; DEFAULT }
   | "invariant"     { Global.last "invariant"     ; INVARIANT }
   | "formula"       { Global.last "formula"       ; FORMULA }

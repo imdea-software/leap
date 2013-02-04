@@ -348,7 +348,7 @@ module Make (TSLK : TSLKExpression.S) =
     let cut_off (strat:Smp.cutoff_strategy)
                 (opt:Smp.cutoff_options_t)
                 (f:Expr.formula) : model_size =
-      _DEBUG "Strategy: %s\n" (Smp.strategy_to_str strat);
+      LOG "Strategy: %s\n" (Smp.strategy_to_str strat) LEVEL DEBUG;
       options := opt;
       match strat with
       | Smp.Dnf     -> compute_max_cut_off (Expr.dnf f)

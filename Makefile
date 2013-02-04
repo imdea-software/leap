@@ -22,8 +22,6 @@ PVD=pvd
 NUMINV=numinv
 SPEC_CHECK=spec_check
 TLL=tll
-PP=preproc.native
-PPEXEC=src/misc/$(PP)
 
 
 # Configuration
@@ -43,14 +41,15 @@ check_tool = @if ( test -e $(TOOLS)/$(1) ) || (test -h $(TOOLS)/$(1) ) ; then \
 
 # Flags
 
-OCAML_FLAGS=
+OCAML_FLAGS= \
+	-pp "camlp4o bolt_pp.cmo"
 
-LIBS = unix,str
+LIBS = unix,str,dynlink,bolt
 
 
 # Compilation rules
 
-all: $(PP) $(PROG2FTS) $(PINV) $(SINV) $(PVD) \
+all: $(PROG2FTS) $(PINV) $(SINV) $(PVD) \
 		 $(NUMINV) $(SPEC_CHECK) $(TLL) $(LEAP) $(TOOLS)
 
 $(TOOLS) :
@@ -61,47 +60,45 @@ $(TOOLS) :
 	$(call check_tool,lingeling,$(LINGELING));
 
 
-$(LEAP): $(PP)
-	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) -pp $(PPEXEC) $(LEAP).native
+$(LEAP):
+	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(LEAP).native
 	@ln -f -s ./_build/src/progs/leap/$(LEAP).native $(LEAP)
 
-$(PROG2FTS): $(PP)
-	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) -pp $(PPEXEC) $(PROG2FTS).native
+$(PROG2FTS):
+	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(PROG2FTS).native
 	@ln -f -s ./_build/src/progs/prog2fts/$(PROG2FTS).native $(PROG2FTS)
 
-$(PINV): $(PP)
-	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) -pp $(PPEXEC) $(PINV).native
+$(PINV):
+	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(PINV).native
 	@ln -f -s ./_build/src/progs/pinv/$(PINV).native $(PINV)
 
-$(SINV): $(PP)
-	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) -pp $(PPEXEC) $(SINV).native
+$(SINV):
+	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(SINV).native
 	@ln -f -s ./_build/src/progs/sinv/$(SINV).native $(SINV)
 
-$(PVD): $(PP)
-	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) -pp $(PPEXEC) $(PVD).native
+$(PVD):
+	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(PVD).native
 	@ln -f -s ./_build/src/progs/pvd/$(PVD).native $(PVD)
 
-$(NUMINV): $(PP)
-	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) -pp $(PPEXEC) $(NUMINV).native
+$(NUMINV):
+	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(NUMINV).native
 	@ln -f -s ./_build/src/progs/numinv/$(NUMINV).native $(NUMINV)
 
-$(SPEC_CHECK): $(PP)
-	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) -pp $(PPEXEC) $(SPEC_CHECK).native
+$(SPEC_CHECK):
+	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(SPEC_CHECK).native
 	@ln -f -s ./_build/src/progs/spec_check/$(SPEC_CHECK).native $(SPEC_CHECK)
 
-$(TLL): $(PP)
-	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) -pp $(PPEXEC) $(TLL).native
+$(TLL):
+	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(TLL).native
 	@ln -f -s ./_build/src/progs/tll/$(TLL).native $(TLL)
 
-solvertest: $(PP)
-	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) -pp $(PPEXEC) test.native
+solvertest:
+	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) test.native
 
-$(PP):
-	ocamlbuild -j 0 preproc.native
 
-doc: $(PP)
+doc:
 	@find src/* \( -name *.ml -o -name *.mli -o -name *.mll -o -name *.mly \) | cut -d"." -f1 | sort -u > leap.odocl
-	ocamlbuild -ocamldoc "ocamldoc.opt -hide-warnings" -pp $(PPEXEC) leap.docdir/index.html
+	ocamlbuild -ocamldoc "ocamldoc.opt -hide-warnings" leap.docdir/index.html
 
 clean:
 	ocamlbuild -clean

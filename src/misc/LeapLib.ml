@@ -42,7 +42,7 @@ let id x = x
 
 let (<<) f g = fun x -> f (g x)
 
-let (>>) f g = g << f
+let (>>) f g = fun x -> g (f x)
 
 let rec rangeList l u = if u < l then [] else l::(rangeList (l+1) u)
 

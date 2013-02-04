@@ -471,7 +471,7 @@ let define_ident (proc_name:string option)
 %token <string*int> IDENT  // second param is line number
 %token <int> NUMBER
 
-%token DIAGRAM SUPPORT THREADS BOXES NODES INITIAL EDGES ACCEPTANCE WITH DEFAULT
+%token DIAGRAM SUPPORT THREADS BOXES NODES INITIAL EDGES ACCEPTANCE USING DEFAULT
 %token EDGE_ARROW LARGE_EDGE_ARROW
 
 %token BEGIN END
@@ -798,7 +798,7 @@ accept_list :
 
 accept_pair :
   | OPEN_SET edge_id_list CLOSE_SET COLON OPEN_SET edge_id_list CLOSE_SET
-    WITH BEGIN delta_func_list END
+    USING BEGIN delta_func_list END
     {
       let l1 = $2 in
       let l2 = $6 in
