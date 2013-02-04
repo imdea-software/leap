@@ -1521,37 +1521,51 @@ struct
     seq_binv sys inv_as_formula
 
 
-  let spinv_premise_transitions (sys : Sys.system_t)
-                                (lines_to_consider : int list)
-                                (supInvs : E.formula list)
-                                (inv : E.formula_info_t)
-                                  : (E.formula * vc_info_t) list =
-    let basic_supp = inv.E.formula :: supInvs in
-    let general_supp_info = Tac.gen_support basic_supp inv.E.voc 
-      (Tac.pre_tacs solverInfo.tactics) in
-    
-    let load_info (line : E.pc_t) (p : IGraph.premise_t) :
+  let seq_gen_vcs (sys : System.system_t)
+                  (inv : E.formula_info_t)
+                  (supInvs : E.formula list)
+                  (spec_stac:Tac.solve_tactic_t option)
+                  (spec_cutoff:cutoff_type)
+                  (tacs : Tac.post_tac_t list)
+                  (line : E.pc_t) : (E.formula * vc_info_t) list =
+    let _ = assert (List.length inv.E.voc = 1) in
+    let trans_tid = List.hd inv.E.voc in
+    let rho = gen_rho (ROpenArray (trans_tid, inv.E.voc))
+                      solverInfo.hide_pres solverInfo.count_abs sys
+                      inv.E.voc line in
+    List.fold_left (fun rs r ->
+      let all_voc = E.voc (E.conj_list (inv.E.formula :: supInvs)) in
+      let task = Tac.new_task supInvs None r inv all_voc trans_tid line in
+      let new_vcs = Tac.apply_post_tacs [task] tacs (hide_pres()) in
+      let vc_info = {pc = line; smp = spec_cutoff; stac = spec_stac; supps=[];}
+      in
+        (List.map (fun phi -> (E.cleanup phi, vc_info)) new_vcs) @ rs
+    ) [] rho
+
+
+  let seq_spinv_premise_transitions (sys : Sys.system_t)
+                                    (lines_to_consider : int list)
+                                    (supInvs : E.formula list)
+                                    (inv : E.formula_info_t)
+                                      : (E.formula * vc_info_t) list =
+    let load_info (line : E.pc_t) :
           (Tag.f_tag list          *
            Tac.smp_tactic_t option *
-           Tac.support_info_t      *
            Tac.post_tac_t list     *
            Tac.solve_tactic_t option) =
       try
+        let p = IGraph.Normal in
         let (supp, tacs) = Hashtbl.find solverInfo.special (line, p) in
         let supp_tags = Hashtbl.find solverInfo.detailed_desc.supp_table (line,p) in
-        let final_tacs = Tac.specialize_tacs solverInfo.tactics tacs in
-        let special_supp = Tac.gen_support (basic_supp @ supp)
-                             inv.E.voc (Tac.pre_tacs final_tacs)
+        let final_tacs = Tac.specialize_tacs solverInfo.tactics tacs
         in
           (supp_tags,
            Tac.smp_cutoff final_tacs,
-           special_supp,
            Tac.post_tacs final_tacs,
            Tac.solve_tactic final_tacs)
       with
         Not_found -> ([],
                       Tac.smp_cutoff solverInfo.tactics,
-                      general_supp_info,
                       Tac.post_tacs solverInfo.tactics,
                       Tac.solve_tactic solverInfo.tactics) in
     let assign_cutoff (smp:Tac.smp_tactic_t option) : cutoff_type =
@@ -1560,37 +1574,30 @@ struct
       | Some cut -> tac_to_vcgen_cutoff cut
     in
       List.fold_left (fun vcs line ->
-        let (n_tags, tmp_n_smp, normal_info, n_tacs, n_stac) =
-          load_info line IGraph.Normal in
-        let (e_tags, tmp_e_smp, extra_info, e_tacs, e_stac) =
-          load_info line IGraph.Extra in
-        let (n_smp, e_smp) = (assign_cutoff tmp_n_smp,
-                              assign_cutoff tmp_e_smp) in
-        let normal_vc = List.fold_left (fun norm_vcs i ->
-                          norm_vcs @ gen_vcs sys normal_info inv n_stac
-                                       n_smp n_tacs line i Normal
-                        ) [] inv.E.voc in
-        let extra_vc = gen_vcs sys extra_info inv e_stac e_smp e_tacs line
-                        (Tac.supp_fresh_tid extra_info) Extra in
-        (* Update support tags information *)
-        let normal_vc = List.map (fun (phi,info) ->
-                          (info.supps <- n_tags; (phi,info))) normal_vc in
-        let extra_vc = List.map (fun (phi,info) ->
-                          (info.supps <- e_tags; (phi,info))) extra_vc in
-        vcs @ normal_vc @ extra_vc
+        let (tags, tmp_smp, tacs, stac) = load_info line in
+        let smp = assign_cutoff tmp_smp in
+
+        let new_vc = List.map (fun (phi,info) ->
+                       (info.supps <- tags; (phi,info)))
+                         (seq_gen_vcs sys inv supInvs stac smp tacs line) in
+
+        vcs @ new_vc
       ) [] lines_to_consider
 
 
   let seq_spinv (sys : Sys.system_t) (supInvs:E.formula list)
       (inv : E.formula) : (E.formula * vc_info_t) list =
-    let voc_inv = List.filter E.is_tid_var (E.voc inv) in
-    let vars_inv = E.all_vars inv in
-    let primed_inv = E.prime inv in
+    let fresh_th = E.gen_fresh_thread (E.voc (E.conj_list (inv::supInvs))) in
+    let loc_inv = E.param (Some fresh_th) inv in
+    let loc_supInvs = List.map (E.param (Some fresh_th)) supInvs in
+
+    let vars_inv = E.all_vars loc_inv in
+    let primed_inv = E.prime loc_inv in
     let need_theta = List.mem 0 solverInfo.focus in
     let lines_to_consider = List.filter (fun x -> x <> 0) solverInfo.focus in
     let inv_info = { E.formula = inv;
                      E.primed = primed_inv;
-                     E.voc = voc_inv;
+                     E.voc = [fresh_th];
                      E.vars = vars_inv;
                    } in
    
@@ -1599,8 +1606,8 @@ struct
                        else
                          [] in
 
-    let premise_transitions = spinv_premise_transitions sys
-                                lines_to_consider supInvs inv_info in
+    let premise_transitions = seq_spinv_premise_transitions sys
+                                lines_to_consider loc_supInvs inv_info in
       premise_init @ premise_transitions
 
  
@@ -2143,10 +2150,10 @@ struct
     assert(isInitialized());
     (* Erases output file, if exists *)
     let extended_sys = prepare_system sys in
-    let vcs = spinv extended_sys supInv_list inv in
+    let vcs = seq_spinv extended_sys supInv_list inv in
     let vc_list = 
       List.map (fun (vc, desc) -> (post_process vc, desc)) vcs in
-    let res = apply_dp_on_list vc_list "Checked VCs with SINV\n\n" in
+    let res = apply_dp_on_list vc_list "Checked VCs with SEQSINV\n\n" in
     res
 
 
@@ -2210,12 +2217,34 @@ struct
           end
         end
     | IGraph.Sequential ->
+      if sup_phi = [] then begin
         (* B-INV *)
         printf "B-INV for %s" inv_id;
         let output_name = "_seq_binv_" ^ inv_id in
         solverInfo.out_file <- (base_out_name ^ output_name);
         let this_res = check_with_seq_binv sys inv_phi in
         res & this_res
+      end else begin
+        if Hashtbl.length cases = 0 then begin
+          (* SEQ_SPINV *)
+            printf "SEQ_SPINV for %s -> %s\n" sup_id inv_id;
+            let output_name = "_seq_sinv_" ^ sup_id ^ "->" ^ inv_id in
+            solverInfo.out_file <- (base_out_name ^ output_name);
+            let this_res = check_with_seq_spinv sys sup_phi inv_phi
+            in
+              res && this_res
+        end else begin
+          (* SEQ_SPINV WITH SPECIAL CASES *)
+            printf "SEQ_SPINV WITH CASES for %s -> %s\n" sup_id inv_id;
+            let output_name = "_seq_sinvsp_" ^ sup_id ^ "->" ^ inv_id in
+            solverInfo.out_file <- (base_out_name ^ output_name);
+            let case_tbl = load_cases cases in
+            solverInfo.special <- case_tbl;
+            let this_res = check_with_seq_spinv sys sup_phi inv_phi in
+            res & this_res
+
+        end
+      end
     in
 
       List.fold_left foldop true graph_info
