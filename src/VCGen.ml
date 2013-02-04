@@ -2159,7 +2159,9 @@ struct
   let check_with_graph (sys:Sys.system_t)
       (graph:IGraph.iGraph_t) : bool =
     (* Auxiliary function for loading cases *)
-    let load_cases (sc_tbl:special_cases_tag_tbl_t) : special_cases_form_tbl_t =
+    let _ = LOG "Entering check_with_graph..." LEVEL TRACE in
+
+      let load_cases (sc_tbl:special_cases_tag_tbl_t) : special_cases_form_tbl_t =
       let case_tbl = Hashtbl.create (Hashtbl.length sc_tbl) in
       let _ = Hashtbl.iter (fun (pc, prem) (tags, tacs) ->
                 set_descSuppTbl solverInfo.detailed_desc (pc,prem) tags;

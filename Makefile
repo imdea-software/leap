@@ -42,7 +42,7 @@ check_tool = @if ( test -e $(TOOLS)/$(1) ) || (test -h $(TOOLS)/$(1) ) ; then \
 # Flags
 
 OCAML_FLAGS= \
-	-pp "camlp4o bolt_pp.cmo"
+	-pp "camlp4o bolt_pp.cmo -level TRACE"
 
 LIBS = unix,str,dynlink,bolt
 
@@ -59,6 +59,9 @@ $(TOOLS) :
 	$(call check_tool,minisat,$(MINISAT));
 	$(call check_tool,lingeling,$(LINGELING));
 
+hola:
+	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) hola.native
+	@ln -f -s ./_build/src/hola.native hola
 
 $(LEAP):
 	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(LEAP).native

@@ -1,0 +1,55 @@
+
+logger "" {
+	level = trace;
+	filter = all;
+  layout = default;
+  mode = direct;
+	output = file;
+	name = "trace_log";
+}
+
+
+logger "" {
+	level = debug;
+  filter = all;
+  layout = default;
+  mode = direct;
+	output = file;
+	name = "debug_log";
+}
+
+logger "" {
+	level = info;
+	filter = all;
+  layout = default;
+  mode = direct;
+	output = file;
+	name = "info_log";
+}
+
+logger "" {
+	level = warn;
+	filter = all;
+  layout = default;
+  mode = direct;
+	output = file;
+	name = "warn_log";
+}
+
+logger "" {
+	level = error;
+	filter = all;
+  layout = default;
+  mode = direct;
+	output = file;
+	name = "error_log";
+}
+
+logger "" {
+	level = fatal;
+	filter = all;
+  layout = default;
+  mode = direct;
+	output = file;
+	name = "fatal_log";
+}

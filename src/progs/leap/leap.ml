@@ -14,6 +14,7 @@ module Symtbl = Exprsymtable
 (* main         *)
 (****************)
 let _ =
+  LOG "Starting LEAP..." LEVEL TRACE;
   try LeapArgs.parse_args ();
     LOG "DP selected: %s" (DP.to_str !LeapArgs.dpType) LEVEL DEBUG;
     let ch = LeapArgs.open_input () in
