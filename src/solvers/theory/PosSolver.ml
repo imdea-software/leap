@@ -14,10 +14,12 @@ struct
   
   (* INVOCATIONS *)
   let is_sat (lines : int) (expr : PosExp.expression) : bool =
+    LOG "is_sat..." LEVEL TRACE;
     (Solver.Translate.Pos.set_prog_lines lines;
      Solver.sat (Solver.Translate.Pos.expression expr))
   
   let is_valid (lines : int) (expr : PosExp.expression) : bool =
+    LOG "Entering is_valid..." LEVEL TRACE;
     not (is_sat lines (PosExpression.Not(expr)))
 end
 
