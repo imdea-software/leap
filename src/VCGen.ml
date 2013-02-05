@@ -1599,18 +1599,9 @@ struct
     let loc_inv = E.param (Some fresh_th) inv in
     let loc_supInvs = List.map (E.param (Some fresh_th)) supInvs in
 
-    let vars_inv = E.all_vars loc_inv in
-    let primed_inv = E.prime loc_inv in
-    let _ = Printf.printf "INV: %s\n" (E.formula_to_str inv) in
-    let _ = Printf.printf "LOC_INV: %s\n" (E.formula_to_str loc_inv) in
-    let _ = Printf.printf "PRIMED_INVINV: %s\n" (E.formula_to_str primed_inv) in
     let need_theta = List.mem 0 solverInfo.focus in
     let lines_to_consider = List.filter (fun x -> x <> 0) solverInfo.focus in
-    let inv_info = { E.formula = loc_inv;
-                     E.primed = primed_inv;
-                     E.voc = [fresh_th];
-                     E.vars = vars_inv;
-                   } in
+    let inv_info = E.new_formula_info loc_inv in
    
     let premise_init = if need_theta then
                          [spinv_premise_init sys inv_info]
@@ -1633,16 +1624,10 @@ struct
   let spinv (sys : Sys.system_t) (supInvs:E.formula list)
       (inv : E.formula) : (E.formula * vc_info_t) list =
     LOG "Entering spinv..." LEVEL TRACE;
-    let voc_inv = List.filter E.is_tid_var (E.voc inv) in
-    let vars_inv = E.all_vars inv in
-    let primed_inv = E.prime inv in
+(*    let voc_inv = List.filter E.is_tid_var (E.voc inv) in *)
     let need_theta = List.mem 0 solverInfo.focus in
     let lines_to_consider = List.filter (fun x -> x <> 0) solverInfo.focus in
-    let inv_info = { E.formula = inv;
-                     E.primed = primed_inv;
-                     E.voc = voc_inv;
-                     E.vars = vars_inv;
-                   } in
+    let inv_info = E.new_formula_info inv in
    
     let premise_init = if need_theta then
                          [spinv_premise_init sys inv_info]
@@ -1996,9 +1981,7 @@ struct
       (* Call position DP *)
       let pos_status, pos_time =
         if apply_pos_dp () then begin
-          let _ = print_endline "---------------------" in
           let new_status, calls, _, sats, time = call_pos_dp p_f status in
-          let _ = print_endline "+++++++++++++++++++++" in
           pos_calls := !pos_calls + calls;
           pos_sats := !pos_sats + sats;
           let st = if new_status = Unneeded then
