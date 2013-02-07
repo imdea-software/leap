@@ -43,8 +43,11 @@ let get_line id = snd id
 %type <Tag.f_tag list> inv_list
 %type <Tag.f_tag> inv
 %type <case_t list> cases
+%type <case_t list> seq_cases
 %type <case_t list> case_list
+%type <case_t list> seq_case_list
 %type <case_t> case
+%type <case_t> seq_case
 %type <IGraph.premise_t list> premise
 %type <Tactics.t> tactics
 %type <(Tactics.smp_tactic_t option * Tactics.solve_tactic_t option)> smp_tactic
@@ -80,16 +83,7 @@ rule_list :
 
 
 rule :
-  | CONC_ARROW inv cases tactics
-    {
-      let i = $2 in
-      let cs = $3 in
-      let ts = $4 in
-      let _ = Printf.printf "tactics size: %i\n" (List.length (Tactics.post_tacs ts))
-      in
-        IGraph.new_rule IGraph.Concurrent [] i cs ts
-    }
-  | inv_list CONC_ARROW inv cases tactics
+  | maybe_empty_inv_list CONC_ARROW inv cases tactics
     {
       let sup = $1 in
       let i = $3 in
@@ -99,11 +93,7 @@ rule :
       in
         IGraph.new_rule IGraph.Concurrent sup i cs ts
     }
-  | BOX inv cases tactics
-    {
-      IGraph.new_rule IGraph.Sequential [] $2 $3 $4
-    }
-  | inv_list SEQ_ARROW inv cases tactics
+  | maybe_empty_inv_list SEQ_ARROW inv seq_cases tactics
     {
       let sup = $1 in
       let i = $3 in
@@ -145,16 +135,25 @@ cases :
     { $2 }
 
 
+seq_cases :
+  |
+    { [] }
+  | OPEN_BRACK seq_case_list CLOSE_BRACK
+    { $2 }
+
+
 case_list :
   | case
     { [$1] }
   | case SEMICOLON case_list
-    {
-      let c = $1 in
-      let cs = $3
-      in
-        c :: cs
-    }
+    { $1 :: $3 }
+
+
+seq_case_list :
+  | seq_case
+    { [$1] }
+  | seq_case SEMICOLON seq_case_list
+    { $1 :: $3 }
 
 
 case :
@@ -167,6 +166,18 @@ case :
       in
         (pc, prem, phi_list, tacs)
     }
+
+
+seq_case :
+  | NUMBER COLON maybe_empty_inv_list tactics
+    {
+      let pc = $1 in
+      let phi_list = $3 in
+      let tacs = $4
+      in
+        (pc, [IGraph.Normal], phi_list, tacs)
+    }
+
 
 premise :
   |
