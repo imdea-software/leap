@@ -89,20 +89,18 @@ rule :
       let i = $3 in
       let cs = $4 in
       let ts = $5 in
-      let _ = Printf.printf "tactics size: %i\n" (List.length (Tactics.post_tacs ts))
-      in
-        IGraph.new_rule IGraph.Concurrent sup i cs ts
+				LOG "Concurrent tactics size: %i" (List.length (Tactics.post_tacs ts));
+				IGraph.new_rule IGraph.Concurrent sup i cs ts
     }
   | maybe_empty_inv_list SEQ_ARROW inv seq_cases tactics
     {
       let sup = $1 in
       let i = $3 in
       let cs = $4 in
-      let ts = $5 in
-      let _ = Printf.printf "tactics size: %i\n" (List.length (Tactics.post_tacs ts))
-      in
-        IGraph.new_rule IGraph.Sequential sup i cs ts
-    }
+			let ts = $5 in
+				LOG "Sequential tactics size: %i" (List.length (Tactics.post_tacs ts));
+				IGraph.new_rule IGraph.Sequential sup i cs ts
+		}
 
 
 maybe_empty_inv_list :

@@ -56,10 +56,12 @@ let unfold_expression (mInfo:malloc_info)
                                         E.mem option  *
                                         E.term list   *
                                         E.formula list) =
+	LOG "Entering unfold_expression..." LEVEL TRACE;
   let gen_malloc (mkcell:E.cell) :
-                 (E.expr_t * E.mem option * E.term list * E.formula list) =
+								 (E.expr_t * E.mem option * E.term list * E.formula list) =
+		LOG "unfold_expression::gen_malloc()" LEVEL TRACE;
     let c_fresh = E.VarCell(E.build_var
-                      E.fresh_cell_name E.Cell false None None E.Normal) in
+											E.fresh_cell_name E.Cell false None None E.Normal) in
     let a_fresh = E.VarAddr(E.build_var
                       E.fresh_addr_name E.Addr false None None E.Normal) in
     let diff_fresh a = E.ineq_addr a_fresh (E.VarAddr a) in
@@ -87,6 +89,7 @@ let unfold_expression (mInfo:malloc_info)
   in
   match e with
   | Stm.Term (Stm.AddrT (Stm.Malloc(e,a,t))) ->
+			LOG "Malloc translate(%s)" (Stm.term_to_str e) LEVEL DEBUG;
       let e_expr  = Stm.elem_to_expr_elem e in
       let a_expr  = Stm.addr_to_expr_addr a in
       let t_expr  = Stm.tid_to_expr_tid t in
@@ -416,4 +419,4 @@ let gen_st_cond_effect_as_array (pt:prog_type)
                                 (st:Stm.statement_t)
                                 (is_ghost:bool)
                                 (th_p:E.tid option) : cond_effect_t list =
-  gen_st_cond_effect_for_th pt st is_ghost th_p
+	gen_st_cond_effect_for_th pt st is_ghost th_p
