@@ -455,13 +455,15 @@ val set_to_str        : set         -> string
 val setth_to_str      : setth       -> string
 val setelem_to_str    : setelem     -> string
 val setint_to_str     : setint      -> string
+val addrarr_to_str    : addrarr     -> string
+val tidarr_to_str     : tidarr      -> string
 val eq_to_str         : eq          -> string
 val diseq_to_str      : diseq       -> string
 val expr_to_str       : expr_t      -> string
-val tid_to_str        : tid        -> string
-val tid_option_to_str : tid option -> string
+val tid_to_str        : tid         -> string
+val tid_option_to_str : tid option  -> string
 
-val variable_to_str  : variable    -> string
+val variable_to_str  : variable     -> string
 
 
 (* CONVERSION FUNCTIONS *)

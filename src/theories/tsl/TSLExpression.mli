@@ -31,6 +31,7 @@ and term =
   | IntT              of integer
   | AddrArrayT        of addrarr
   | TidArrayT         of tidarr
+  | VarUpdate         of variable * tid * term
 and eq = term * term
 and diseq = term * term
 and set =

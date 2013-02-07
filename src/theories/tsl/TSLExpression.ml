@@ -35,6 +35,7 @@ and term =
   | IntT              of integer
   | AddrArrayT        of addrarr
   | TidArrayT         of tidarr
+  | VarUpdate         of variable * tid * term
 and eq = term * term
 and diseq = term * term
 and set =
@@ -472,6 +473,9 @@ and get_varset_term t = match t with
     | IntT   i            -> get_varset_integer i
     | AddrArrayT aa       -> get_varset_addrarr aa
     | TidArrayT  tt       -> get_varset_tidarr tt
+    | VarUpdate(v,pc,t)   -> (S.singleton v) @@ (get_varset_term t) @@
+                             (get_varset_from_param v)
+
 and get_varset_literal l =
   match l with
       Atom a    -> get_varset_atom a
@@ -684,6 +688,7 @@ let is_var_term (t:term) : bool =
   | IntT(i)        -> is_var_int i
   | AddrArrayT(aa) -> is_var_addrarr aa
   | TidArrayT(tt)  -> is_var_thidarr tt
+  | VarUpdate _    -> false
 
 
 
@@ -745,6 +750,7 @@ let is_constant_term (t:term) : bool =
   | IntT(i)        -> is_constant_int i
   | AddrArrayT(aa) -> is_constant_addrarr aa
   | TidArrayT(tt)  -> is_constant_tidarr tt
+  | VarUpdate _    -> false
 
 
 let is_ineq_normalized a b =
@@ -770,6 +776,7 @@ let rec is_term_flat t =
     | IntT  i        -> is_int_flat i
     | AddrArrayT aa  -> is_addrarr_flat aa
     | TidArrayT tt   -> is_tidarr_flat tt
+    | VarUpdate _    -> false
 
 and is_set_flat t =
   match t with
@@ -1146,6 +1153,12 @@ and term_to_str expr =
     | IntT(i)            -> (int_to_str i)
     | AddrArrayT(aa)     -> (addrarr_to_str aa)
     | TidArrayT(tt)      -> (tidarr_to_str tt)
+    | VarUpdate (v,th,t) -> let v' = prime_var v in
+                            let v'_str = variable_to_str v' in
+                            let v_str = variable_to_str v in
+                            let th_str = tid_to_str th in
+                            let t_str = term_to_str t in
+                              Printf.sprintf "%s = %s{%s<-%s}" v'_str v_str th_str t_str
 and conjunctive_formula_to_str form =
   let rec c_to_str f str =
     match f with
@@ -1290,6 +1303,7 @@ and voc_term (expr:term) : tid list =
     | IntT(i)            -> voc_int i
     | AddrArrayT(aa)     -> voc_addrarr aa
     | TidArrayT(tt)      -> voc_tidarr tt
+    | VarUpdate (v,th,t) -> (voc_var v) @ (voc_tid th) @ (voc_term t)
 
 
 and voc_set (e:set) : tid list =
@@ -2200,6 +2214,7 @@ let required_sorts (phi:formula) : sort list =
     | IntT i                       -> req_i i
     | AddrArrayT aa                -> req_aa aa
     | TidArrayT tt                 -> req_tt tt
+    | VarUpdate ((_,s,_,_,_),t,tr) -> append s [req_t t;req_term tr]
   in
     SortSet.elements (req_f phi)
 
@@ -2367,6 +2382,7 @@ let special_ops (phi:formula) : special_op_t list =
     | IntT i             -> ops_i i
     | AddrArrayT aa      -> ops_aa aa
     | TidArrayT tt       -> ops_tt tt
+    | VarUpdate (_,t,tr) -> list_union [ops_t t;ops_term tr]
   in
     OpsSet.elements (ops_f phi)
 
@@ -2678,6 +2694,7 @@ let make_compatible_term_from_var (t:term) (v:variable) : term =
   | IntT _       -> IntT       (VarInt v)
   | AddrArrayT _ -> AddrArrayT (VarAddrArray v)
   | TidArrayT _  -> TidArrayT  (VarTidArray v)
+  | VarUpdate _  -> assert false
 
 
 let term_to_var (t:term) : variable =
@@ -2718,19 +2735,20 @@ let var_to_term (v:variable) : term =
 
 let sort_of_term (t:term) : sort =
   match t with
-  | SetT       _ -> Set
-  | ElemT      _ -> Elem
-  | ThidT      _ -> Thid
-  | AddrT      _ -> Addr
-  | CellT      _ -> Cell
-  | SetThT     _ -> SetTh
-  | SetElemT   _ -> SetElem
-  | PathT      _ -> Path
-  | MemT       _ -> Mem
-  | IntT       _ -> Int
-  | AddrArrayT _ -> AddrArray
-  | TidArrayT  _ -> AddrArray
-  | VarT v       -> var_sort v
+  | SetT       _      -> Set
+  | ElemT      _      -> Elem
+  | ThidT      _      -> Thid
+  | AddrT      _      -> Addr
+  | CellT      _      -> Cell
+  | SetThT     _      -> SetTh
+  | SetElemT   _      -> SetElem
+  | PathT      _      -> Path
+  | MemT       _      -> Mem
+  | IntT       _      -> Int
+  | AddrArrayT _      -> AddrArray
+  | TidArrayT  _      -> AddrArray
+  | VarT v            -> var_sort v
+  | VarUpdate (v,_,_) -> var_sort v
 
 
 let rec norm_literal (info:norm_info_t) (l:literal) : formula =
@@ -2874,6 +2892,7 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
     | IntT i -> IntT (norm_int i)
     | AddrArrayT aa -> AddrArrayT (norm_addrarr aa)
     | TidArrayT tt -> TidArrayT (norm_tidarr tt)
+    | VarUpdate (v,th,t) -> VarUpdate (v, norm_tid th, norm_term t)
 
 
   and norm_atom (a:atom) : atom =

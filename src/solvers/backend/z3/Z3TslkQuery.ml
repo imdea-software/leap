@@ -1493,7 +1493,18 @@ module Make (K : Level.S) : S =
       | Expr.HavocLevel  -> "" (* Don't need representation for this statement *)
 
 
-    let rec term_to_str (t:Expr.term) : string =
+
+    let rec varupdate_to_str (v:Expr.variable)
+                             (th:Expr.tid)
+                             (t:Expr.term) : string =
+      let v_str = variable_invocation_to_str v in
+      let th_str = tidterm_to_str th in
+      let t_str = term_to_str t
+      in
+        Printf.sprintf "(store %s %s %s)" v_str th_str t_str
+
+
+    and term_to_str (t:Expr.term) : string =
       match t with
         Expr.VarT  v           -> variable_invocation_to_str v
       | Expr.SetT  s           -> setterm_to_str s
@@ -1506,6 +1517,7 @@ module Make (K : Level.S) : S =
       | Expr.PathT   p         -> pathterm_to_str p
       | Expr.MemT  m           -> memterm_to_str m
       | Expr.LevelT l          -> levelterm_to_str l
+      | Expr.VarUpdate(v,th,t) -> varupdate_to_str v th t
 
 
     let append_to_str (p1:Expr.path) (p2:Expr.path) (p3:Expr.path) : string =

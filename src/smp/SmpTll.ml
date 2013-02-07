@@ -317,7 +317,7 @@ let prune_eq (x:term) (y:term) : (term * term) option =
     | SetElemT _  -> Some (x,y) (* the witness of se1 != se2 *)
     | PathT _     -> Some (x,y) (* the witnesses of p1 != p2 *)
     | MemT _      -> Some (x,y)
-    | VarUpdate _ -> let _ = assert(false) in None (* ALE: Not sure if OK *)
+    | VarUpdate _ -> assert(false) (* ALE: Not sure if OK *)
 
 
 let prune_atom (a:atom) : atom option =

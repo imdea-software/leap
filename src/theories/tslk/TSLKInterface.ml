@@ -88,7 +88,19 @@ module Make (TSLK : TSLKExpression.S) =
       | Expr.IntT i        -> TSLK.LevelT (int_to_tslk_level i)
       | Expr.AddrArrayT aa -> RAISE(UnsupportedTSLKExpr(Expr.term_to_str t))
       | Expr.TidArrayT tt  -> RAISE(UnsupportedTSLKExpr(Expr.term_to_str t))
-      | Expr.ArrayT a      -> RAISE(UnsupportedTSLKExpr(Expr.term_to_str t))
+      | Expr.ArrayT a      -> arrays_to_tslk_term a
+
+
+    and arrays_to_tslk_term (a:Expr.arrays) : TSLK.term =
+      match a with
+      | Expr.VarArray v -> build_term_var v
+      | Expr.ArrayUp (Expr.VarArray v,th_p,Expr.Term t) ->
+          let tslk_v  = var_to_tslk_var v in
+          let tslk_th = tid_to_tslk_tid th_p in
+          let tslk_t  = term_to_tslk_term t
+          in
+            TSLK.VarUpdate (tslk_v, tslk_th, tslk_t)
+      | Expr.ArrayUp (_,_,e) -> RAISE(UnsupportedTSLKExpr(Expr.expr_to_str e))
 
 
     and eq_to_tslk_eq ((t1,t2):Expr.eq) : TSLK.eq =
@@ -386,18 +398,23 @@ module Make (TSLK : TSLKExpression.S) =
 
     and term_to_expr_term (t:TSLK.term) : Expr.term =
       match t with
-      | TSLK.VarT v        -> Expr.VarT (var_to_expr_var v)
-      | TSLK.SetT s        -> Expr.SetT (set_to_expr_set s)
-      | TSLK.ElemT e       -> Expr.ElemT (elem_to_expr_elem e)
-      | TSLK.ThidT t       -> Expr.ThidT (tid_to_expr_tid t)
-      | TSLK.AddrT a       -> Expr.AddrT (addr_to_expr_addr a)
-      | TSLK.CellT c       -> Expr.CellT (cell_to_expr_cell c)
-      | TSLK.SetThT st     -> Expr.SetThT (setth_to_expr_setth st)
-      | TSLK.SetElemT st   -> Expr.SetElemT (setelem_to_expr_setelem st)
-      | TSLK.PathT p       -> Expr.PathT (path_to_expr_path p)
-      | TSLK.MemT m        -> Expr.MemT (mem_to_expr_mem m)
-      | TSLK.LevelT i      -> Expr.IntT (level_to_expr_int i)
-
+      | TSLK.VarT v             -> Expr.VarT (var_to_expr_var v)
+      | TSLK.SetT s             -> Expr.SetT (set_to_expr_set s)
+      | TSLK.ElemT e            -> Expr.ElemT (elem_to_expr_elem e)
+      | TSLK.ThidT t            -> Expr.ThidT (tid_to_expr_tid t)
+      | TSLK.AddrT a            -> Expr.AddrT (addr_to_expr_addr a)
+      | TSLK.CellT c            -> Expr.CellT (cell_to_expr_cell c)
+      | TSLK.SetThT st          -> Expr.SetThT (setth_to_expr_setth st)
+      | TSLK.SetElemT st        -> Expr.SetElemT (setelem_to_expr_setelem st)
+      | TSLK.PathT p            -> Expr.PathT (path_to_expr_path p)
+      | TSLK.MemT m             -> Expr.MemT (mem_to_expr_mem m)
+      | TSLK.LevelT i           -> Expr.IntT (level_to_expr_int i)
+      | TSLK.VarUpdate (v,th,t) ->
+          let expr_a  = Expr.VarArray (var_to_expr_var v) in
+          let expr_th = tid_to_expr_tid th in
+          let expr_t  = Expr.Term (term_to_expr_term t)
+          in
+            Expr.ArrayT (Expr.ArrayUp (expr_a, expr_th, expr_t))
 
 
     and tsl_eq_to_eq ((t1,t2):TSLK.eq) : Expr.eq =

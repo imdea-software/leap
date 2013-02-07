@@ -162,7 +162,7 @@ struct
       | TllExp.SetElemT se -> is_flat_setelem se
       | TllExp.PathT  p    -> is_flat_path p
       | TllExp.MemT   m    -> is_flat_mem m
-      | TllExp.VarUpdate _ -> true
+      | TllExp.VarUpdate _ -> false
   
   
   let is_flat_literal lit =
