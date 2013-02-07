@@ -1621,8 +1621,8 @@ module Make (K : Level.S) : S =
                     let get_conjuncts c =
                       match c with
                         Conj l -> l
-                      | _ -> raise (ErrorInNNF("Formula " ^ (formula_to_str nnfexpr) ^
-                                    " is not in NNF.\n"))
+                      | _ -> let msg = "Formula "^(formula_to_str nnfexpr)^" is not in NNF.\n" in
+                               RAISE(ErrorInNNF(msg))
                     in
                     (* here lx and ly  are lists of Conj none of which is 
                      * True or False *)
@@ -1637,7 +1637,8 @@ module Make (K : Level.S) : S =
         | Literal(l) -> [ Conj [ l ]]
         | True       -> [TrueConj]
         | False      -> [FalseConj]
-        | _          -> raise (ErrorInNNF("Formula " ^ (formula_to_str nnfexpr) ^ " is not in NNF.\n"))
+        | _          -> let msg = "Formula " ^(formula_to_str nnfexpr)^ " is not in NNF.\n" in
+                          RAISE(ErrorInNNF(msg))
       in
         dnf_nnf (nnf expr)
 

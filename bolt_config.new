@@ -39,7 +39,8 @@ logger "" {
 logger "" {
 	level = error;
 	filter = all;
-  layout = default;
+	layout = pattern;
+	pattern = "$(id:-8) [$(file:-16) $(line:5)] $(level) - $(exception:-9)\n$(backtrace)";
   mode = direct;
 	output = file;
 	name = "error_log";

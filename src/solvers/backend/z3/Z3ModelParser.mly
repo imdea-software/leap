@@ -63,8 +63,8 @@ let convert (v:value_t) : GM.value =
                          let vs' = List.map (abs_to_value>>value_to_vals) vs
                          in
                            GM.Record (name, List.combine lbls vs')
-  | FunMap _ -> raise (Not_implemented "conversion over function maps")
-  | Store _ -> raise (Not_implemented "conversion over array store")
+  | FunMap _ -> RAISE(Not_implemented "conversion over function maps")
+  | Store _ -> RAISE(Not_implemented "conversion over array store")
 
 
 let rec build_fun (tbl:((GM.id option) list, abs_value_t) Hashtbl.t)

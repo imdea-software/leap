@@ -47,7 +47,7 @@ let new_rule (mode:mode_t)
               if Hashtbl.mem tbl (pc, prem) then
                 begin
                   Interface.Err.msg "Special case already defined" "";
-                  raise Duplicated_special_case
+                  RAISE(Duplicated_special_case)
                 end
               else
                 Hashtbl.add tbl (pc, prem) (tags, ts)

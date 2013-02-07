@@ -2,8 +2,8 @@
 
 exception Empty_list;;
 
-(** Timeing wrapper to time portions of code.  
-  Basic usage:
+
+(** Timeing wrapper to time portions of code.  Basic usage:
     
     [let mytimer = new timer in
     ...

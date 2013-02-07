@@ -141,7 +141,7 @@ let cut_off_normalized (expr:conjunctive_formula) : model_size =
                         (LeapDebug.debug "cut_off_normalized: Inconsistent_inequality";
                          ref (List.length all_vars))
                     | e ->
-                        (LeapDebug.debug "cut_off_normalized: exception"; raise e)
+                        (LeapDebug.debug "cut_off_normalized: exception"; RAISE(e))
                 else
                   ref (vars_addr + vars_mem * vars_addr) in
 

@@ -35,14 +35,15 @@ check_tool = @if ( test -e $(TOOLS)/$(1) ) || (test -h $(TOOLS)/$(1) ) ; then \
 						fi
 
 
-
 .PHONY: clean softclean all expand unexpand leap prog2fts pinv sinv pvd tll numinv spec_check doc tools
 
 
 # Flags
 
 OCAML_FLAGS= \
-	-pp "camlp4o bolt_pp.cmo -level TRACE"
+	-pp "`pwd`/prep.sh"
+#	-pp "camlp4o bolt_pp.cmo -level TRACE | cppo"
+
 
 LIBS = unix,str,dynlink,bolt
 
@@ -59,9 +60,6 @@ $(TOOLS) :
 	$(call check_tool,minisat,$(MINISAT));
 	$(call check_tool,lingeling,$(LINGELING));
 
-hola:
-	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) hola.native
-	@ln -f -s ./_build/src/hola.native hola
 
 $(LEAP):
 	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(LEAP).native
@@ -97,6 +95,7 @@ $(TLL):
 
 solvertest:
 	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) test.native
+
 
 
 doc:

@@ -27,15 +27,15 @@ module Make (TSLK : TSLKExpression.S) =
       | Expr.Addr      -> TSLK.Addr
       | Expr.Cell      -> TSLK.Cell
       | Expr.SetTh     -> TSLK.SetTh
-      | Expr.SetInt    -> raise (UnsupportedSort (Expr.sort_to_str s))
+      | Expr.SetInt    -> RAISE(UnsupportedSort(Expr.sort_to_str s))
       | Expr.SetElem   -> TSLK.SetElem
       | Expr.Path      -> TSLK.Path
       | Expr.Mem       -> TSLK.Mem
       | Expr.Bool      -> TSLK.Bool
       | Expr.Int       -> TSLK.Level
-      | Expr.Array     -> raise (UnsupportedSort (Expr.sort_to_str s))
-      | Expr.AddrArray -> raise (UnsupportedSort (Expr.sort_to_str s))
-      | Expr.TidArray  -> raise (UnsupportedSort (Expr.sort_to_str s))
+      | Expr.Array     -> RAISE(UnsupportedSort(Expr.sort_to_str s))
+      | Expr.AddrArray -> RAISE(UnsupportedSort(Expr.sort_to_str s))
+      | Expr.TidArray  -> RAISE(UnsupportedSort(Expr.sort_to_str s))
       | Expr.Unknown   -> TSLK.Unknown
 
 
@@ -66,11 +66,11 @@ module Make (TSLK : TSLKExpression.S) =
       match th with
         Expr.VarTh v            -> TSLK.VarTh (var_to_tslk_var v)
       | Expr.NoThid             -> TSLK.NoThid
-      | Expr.CellLockId _       -> raise (UnsupportedTSLKExpr(Expr.tid_to_str th))
+      | Expr.CellLockId _       -> RAISE(UnsupportedTSLKExpr(Expr.tid_to_str th))
       | Expr.CellLockIdAt (c,l) -> TSLK.CellLockIdAt (cell_to_tslk_cell c,
                                                      int_to_tslk_level l)
-      | Expr.ThidArrayRd _      -> raise (UnsupportedTSLKExpr(Expr.tid_to_str th))
-      | Expr.ThidArrRd (tt,i)   -> raise (UnsupportedTSLKExpr(Expr.tid_to_str th))
+      | Expr.ThidArrayRd _      -> RAISE(UnsupportedTSLKExpr(Expr.tid_to_str th))
+      | Expr.ThidArrRd (tt,i)   -> RAISE(UnsupportedTSLKExpr(Expr.tid_to_str th))
 
     and term_to_tslk_term (t:Expr.term) : TSLK.term =
       match t with
@@ -81,14 +81,14 @@ module Make (TSLK : TSLKExpression.S) =
       | Expr.AddrT a       -> TSLK.AddrT (addr_to_tslk_addr a)
       | Expr.CellT c       -> TSLK.CellT (cell_to_tslk_cell c)
       | Expr.SetThT st     -> TSLK.SetThT (setth_to_tslk_setth st)
-      | Expr.SetIntT _     -> raise(UnsupportedTSLKExpr(Expr.term_to_str t))
+      | Expr.SetIntT _     -> RAISE(UnsupportedTSLKExpr(Expr.term_to_str t))
       | Expr.SetElemT st   -> TSLK.SetElemT (setelem_to_tslk_setelem st)
       | Expr.PathT p       -> TSLK.PathT (path_to_tslk_path p)
       | Expr.MemT m        -> TSLK.MemT (mem_to_tslk_mem m)
       | Expr.IntT i        -> TSLK.LevelT (int_to_tslk_level i)
-      | Expr.AddrArrayT aa -> raise(UnsupportedTSLKExpr(Expr.term_to_str t))
-      | Expr.TidArrayT tt  -> raise(UnsupportedTSLKExpr(Expr.term_to_str t))
-      | Expr.ArrayT a      -> raise(UnsupportedTSLKExpr(Expr.term_to_str t))
+      | Expr.AddrArrayT aa -> RAISE(UnsupportedTSLKExpr(Expr.term_to_str t))
+      | Expr.TidArrayT tt  -> RAISE(UnsupportedTSLKExpr(Expr.term_to_str t))
+      | Expr.ArrayT a      -> RAISE(UnsupportedTSLKExpr(Expr.term_to_str t))
 
 
     and eq_to_tslk_eq ((t1,t2):Expr.eq) : TSLK.eq =
@@ -109,14 +109,14 @@ module Make (TSLK : TSLKExpression.S) =
       | Expr.Intr (s1,s2)        -> TSLK.Intr (to_set s1, to_set s2)
       | Expr.Setdiff (s1,s2)     -> TSLK.Setdiff (to_set s1, to_set s2)
       | Expr.PathToSet p         -> TSLK.PathToSet (path_to_tslk_path p)
-      | Expr.AddrToSet _         -> raise(UnsupportedTSLKExpr(Expr.set_to_str s))
+      | Expr.AddrToSet _         -> RAISE(UnsupportedTSLKExpr(Expr.set_to_str s))
       | Expr.AddrToSetAt (m,a,l) -> TSLK.AddrToSet (mem_to_tslk_mem m,
                                                     addr_to_tslk_addr a,
                                                     int_to_tslk_level l)
       | Expr.SetArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
           let v = Expr.build_var id s pr (Some t) p Expr.Normal in
           TSLK.VarSet (var_to_tslk_var v)
-      | Expr.SetArrayRd _        -> raise (UnsupportedTSLKExpr (Expr.set_to_str s))
+      | Expr.SetArrayRd _        -> RAISE(UnsupportedTSLKExpr(Expr.set_to_str s))
 
 
     and elem_to_tslk_elem (e:Expr.elem) : TSLK.elem =
@@ -126,8 +126,8 @@ module Make (TSLK : TSLKExpression.S) =
       | Expr.ElemArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
           let v = Expr.build_var id s pr (Some t) p Expr.Normal in
           TSLK.VarElem (var_to_tslk_var v)
-      | Expr.ElemArrayRd _          -> raise(UnsupportedTSLKExpr(Expr.elem_to_str e))
-      | Expr.HavocListElem          -> raise(UnsupportedTSLKExpr(Expr.elem_to_str e))
+      | Expr.ElemArrayRd _          -> RAISE(UnsupportedTSLKExpr(Expr.elem_to_str e))
+      | Expr.HavocListElem          -> RAISE(UnsupportedTSLKExpr(Expr.elem_to_str e))
       | Expr.HavocSkiplistElem      -> TSLK.HavocSkiplistElem
       | Expr.LowestElem             -> TSLK.LowestElem
       | Expr.HighestElem            -> TSLK.HighestElem
@@ -137,24 +137,24 @@ module Make (TSLK : TSLKExpression.S) =
       match a with
         Expr.VarAddr v              -> TSLK.VarAddr (var_to_tslk_var v)
       | Expr.Null                   -> TSLK.Null
-      | Expr.Next _                 -> raise(UnsupportedTSLKExpr(Expr.addr_to_str a))
+      | Expr.Next _                 -> RAISE(UnsupportedTSLKExpr(Expr.addr_to_str a))
       | Expr.NextAt (c,l)           -> TSLK.NextAt (cell_to_tslk_cell c, int_to_tslk_level l)
-      | Expr.FirstLocked (m,p)      -> raise(UnsupportedTSLKExpr(Expr.addr_to_str a))
+      | Expr.FirstLocked (m,p)      -> RAISE(UnsupportedTSLKExpr(Expr.addr_to_str a))
       | Expr.FirstLockedAt (m,p,l)  -> TSLK.FirstLockedAt (mem_to_tslk_mem m,
                                                           path_to_tslk_path p,
                                                           int_to_tslk_level l)
       | Expr.AddrArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
           let v = Expr.build_var id s pr (Some t) p Expr.Normal in
           TSLK.VarAddr (var_to_tslk_var v)
-      | Expr.AddrArrayRd _          -> raise(UnsupportedTSLKExpr(Expr.addr_to_str a))
-      | Expr.AddrArrRd (aa,i)       -> raise(UnsupportedTSLKExpr(Expr.addr_to_str a))
+      | Expr.AddrArrayRd _          -> RAISE(UnsupportedTSLKExpr(Expr.addr_to_str a))
+      | Expr.AddrArrRd (aa,i)       -> RAISE(UnsupportedTSLKExpr(Expr.addr_to_str a))
 
 
     and cell_to_tslk_cell (c:Expr.cell) : TSLK.cell =
       match c with
         Expr.VarCell v            -> TSLK.VarCell (var_to_tslk_var v)
       | Expr.Error                -> TSLK.Error
-      | Expr.MkCell _             -> raise(UnsupportedTSLKExpr(Expr.cell_to_str c))
+      | Expr.MkCell _             -> RAISE(UnsupportedTSLKExpr(Expr.cell_to_str c))
       | Expr.MkSLKCell (e,aa,tt)  ->
           if List.length aa > TSLK.k || List.length tt > TSLK.k then
             begin
@@ -163,7 +163,7 @@ module Make (TSLK : TSLKExpression.S) =
                                 Notice the number of addresses or threads identifiers \
                                 exceeds the parameter of the theory."
                                 (Expr.cell_to_str c) TSLK.k;
-              raise(UnsupportedTSLKExpr(Expr.cell_to_str c))
+              RAISE(UnsupportedTSLKExpr(Expr.cell_to_str c))
             end
           else
             let aa_pad = LeapLib.list_of (TSLK.k - List.length aa) TSLK.Null in
@@ -171,21 +171,21 @@ module Make (TSLK : TSLKExpression.S) =
             TSLK.MkCell (elem_to_tslk_elem e,
                          (List.map addr_to_tslk_addr aa) @ aa_pad,
                          (List.map tid_to_tslk_tid tt) @ tt_pad)
-      | Expr.MkSLCell (e,aa,tt,l) -> raise(UnsupportedTSLKExpr(Expr.cell_to_str c))
+      | Expr.MkSLCell (e,aa,tt,l) -> RAISE(UnsupportedTSLKExpr(Expr.cell_to_str c))
       (* TSLK receives two arguments, while current epxression receives only one *)
       (* However, for the list examples, I think we will not need it *)
-      | Expr.CellLock _           -> raise(UnsupportedTSLKExpr(Expr.cell_to_str c))
+      | Expr.CellLock _           -> RAISE(UnsupportedTSLKExpr(Expr.cell_to_str c))
       | Expr.CellLockAt (c,l,t)   -> TSLK.CellLockAt (cell_to_tslk_cell c,
                                                      int_to_tslk_level l,
                                                      tid_to_tslk_tid t)
-      | Expr.CellUnlock _         -> raise(UnsupportedTSLKExpr(Expr.cell_to_str c))
+      | Expr.CellUnlock _         -> RAISE(UnsupportedTSLKExpr(Expr.cell_to_str c))
       | Expr.CellUnlockAt (c,l)   -> TSLK.CellUnlockAt (cell_to_tslk_cell c,
                                                        int_to_tslk_level l)
       | Expr.CellAt (m,a)         -> TSLK.CellAt (mem_to_tslk_mem m, addr_to_tslk_addr a)
       | Expr.CellArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
           let v = Expr.build_var id s pr (Some t) p Expr.Normal in
           TSLK.VarCell (var_to_tslk_var v)
-      | Expr.CellArrayRd _        -> raise(UnsupportedTSLKExpr(Expr.cell_to_str c))
+      | Expr.CellArrayRd _        -> RAISE(UnsupportedTSLKExpr(Expr.cell_to_str c))
 
 
     and setth_to_tslk_setth (st:Expr.setth) : TSLK.setth =
@@ -200,8 +200,7 @@ module Make (TSLK : TSLKExpression.S) =
       | Expr.SetThArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
           let v = Expr.build_var id s pr (Some t) p Expr.Normal in
           TSLK.VarSetTh (var_to_tslk_var v)
-      | Expr.SetThArrayRd _    -> raise(UnsupportedTSLKExpr
-                                                (Expr.setth_to_str st))
+      | Expr.SetThArrayRd _    -> RAISE(UnsupportedTSLKExpr(Expr.setth_to_str st))
 
 
     and setelem_to_tslk_setelem (st:Expr.setelem) : TSLK.setelem =
@@ -218,8 +217,7 @@ module Make (TSLK : TSLKExpression.S) =
           TSLK.VarSetElem (var_to_tslk_var v)
       | Expr.SetToElems (s,m)    -> TSLK.SetToElems (set_to_tslk_set s,
                                                     mem_to_tslk_mem m)
-      | Expr.SetElemArrayRd _    -> raise(UnsupportedTSLKExpr
-                                                (Expr.setelem_to_str st))
+      | Expr.SetElemArrayRd _    -> RAISE(UnsupportedTSLKExpr(Expr.setelem_to_str st))
 
 
     and path_to_tslk_path (p:Expr.path) : TSLK.path =
@@ -227,12 +225,12 @@ module Make (TSLK : TSLKExpression.S) =
         Expr.VarPath v             -> TSLK.VarPath (var_to_tslk_var v)
       | Expr.Epsilon               -> TSLK.Epsilon
       | Expr.SimplePath a          -> TSLK.SimplePath (addr_to_tslk_addr a)
-      | Expr.GetPath _             -> raise(UnsupportedTSLKExpr(Expr.path_to_str p))
+      | Expr.GetPath _             -> RAISE(UnsupportedTSLKExpr(Expr.path_to_str p))
       | Expr.GetPathAt (m,a1,a2,l) -> TSLK.GetPathAt (mem_to_tslk_mem m,
                                                       addr_to_tslk_addr a1,
                                                       addr_to_tslk_addr a2,
                                                       int_to_tslk_level l)
-      | Expr.PathArrayRd _         -> raise(UnsupportedTSLKExpr(Expr.path_to_str p))
+      | Expr.PathArrayRd _         -> RAISE(UnsupportedTSLKExpr(Expr.path_to_str p))
 
 
     and mem_to_tslk_mem (m:Expr.mem) : TSLK.mem =
@@ -245,7 +243,7 @@ module Make (TSLK : TSLKExpression.S) =
       | Expr.MemArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
           let v = Expr.build_var id s pr (Some t) p Expr.Normal in
           TSLK.VarMem (var_to_tslk_var v)
-      | Expr.MemArrayRd _        -> raise (UnsupportedTSLKExpr (Expr.mem_to_str m))
+      | Expr.MemArrayRd _        -> RAISE(UnsupportedTSLKExpr(Expr.mem_to_str m))
 
 
     and int_to_tslk_level (i:Expr.integer) : TSLK.level =
@@ -260,31 +258,31 @@ module Make (TSLK : TSLKExpression.S) =
                                    Printf.sprintf "Level %i is out of the bounds of TSLK[%i], \
                                                    which goes from 0 to %i."
                                       l TSLK.k (TSLK.k-1);
-                                   raise (UnsupportedTSLKExpr(Expr.integer_to_str i))
+                                   RAISE(UnsupportedTSLKExpr(Expr.integer_to_str i))
                                  end
                                else
                                  TSLK.LevelVal l
       | Expr.VarInt v       -> TSLK.VarLevel (var_to_tslk_var v)
-      | Expr.IntNeg i       -> raise(UnsupportedTSLKExpr(Expr.integer_to_str i))
+      | Expr.IntNeg i       -> RAISE(UnsupportedTSLKExpr(Expr.integer_to_str i))
       | Expr.IntAdd (i1,i2) -> begin
                                  match (i1,i2) with
                                  | (Expr.IntVal j1, Expr.IntVal j2) -> TSLK.LevelVal (j1+j2)
                                  | (Expr.VarInt v , Expr.IntVal j ) -> apply j succ (tolevel i1)
                                  | (Expr.IntVal j , Expr.VarInt v ) -> apply j succ (tolevel i2)
-                                 | _ -> raise(UnsupportedTSLKExpr(Expr.integer_to_str i))
+                                 | _ -> RAISE(UnsupportedTSLKExpr(Expr.integer_to_str i))
                                end
       | Expr.IntSub (i1,i2) -> begin
                                  match (i1,i2) with
                                  | (Expr.IntVal j1, Expr.IntVal j2) -> TSLK.LevelVal (j1-j2)
                                  | (Expr.VarInt v , Expr.IntVal j ) -> apply j pred (tolevel i1)
-                                 | _ -> raise(UnsupportedTSLKExpr(Expr.integer_to_str i))
+                                 | _ -> RAISE(UnsupportedTSLKExpr(Expr.integer_to_str i))
                                end
-      | Expr.IntMul (i1,i2) -> raise(UnsupportedTSLKExpr(Expr.integer_to_str i))
-      | Expr.IntDiv (i1,i2) -> raise(UnsupportedTSLKExpr(Expr.integer_to_str i))
+      | Expr.IntMul (i1,i2) -> RAISE(UnsupportedTSLKExpr(Expr.integer_to_str i))
+      | Expr.IntDiv (i1,i2) -> RAISE(UnsupportedTSLKExpr(Expr.integer_to_str i))
       | Expr.CellMax (c)    -> TSLK.LevelVal TSLK.k
-      | Expr.IntArrayRd _   -> raise(UnsupportedTSLKExpr(Expr.integer_to_str i))
-      | Expr.IntSetMin _    -> raise(UnsupportedTSLKExpr(Expr.integer_to_str i))
-      | Expr.IntSetMax _    -> raise(UnsupportedTSLKExpr(Expr.integer_to_str i))
+      | Expr.IntArrayRd _   -> RAISE(UnsupportedTSLKExpr(Expr.integer_to_str i))
+      | Expr.IntSetMin _    -> RAISE(UnsupportedTSLKExpr(Expr.integer_to_str i))
+      | Expr.IntSetMax _    -> RAISE(UnsupportedTSLKExpr(Expr.integer_to_str i))
       | Expr.HavocLevel     -> TSLK.HavocLevel
 
 
@@ -301,29 +299,29 @@ module Make (TSLK : TSLKExpression.S) =
       let term    = term_to_tslk_term       in
       match a with
         Expr.Append (p1,p2,p3)    -> TSLK.Append (path p1,path p2,path p3)
-      | Expr.Reach _              -> raise (UnsupportedTSLKExpr(Expr.atom_to_str a))
+      | Expr.Reach _              -> RAISE(UnsupportedTSLKExpr(Expr.atom_to_str a))
       | Expr.ReachAt (m,a1,a2,l,p)-> TSLK.Reach (mem m, addr a1, addr a2, integ l, path p)
       | Expr.OrderList(m,a1,a2)   -> TSLK.OrderList (mem m, addr a1, addr a2)
-      | Expr.Skiplist _           -> raise(UnsupportedTSLKExpr(Expr.atom_to_str a))
+      | Expr.Skiplist _           -> RAISE(UnsupportedTSLKExpr(Expr.atom_to_str a))
       | Expr.In (a,s)             -> TSLK.In (addr a, set s)
       | Expr.SubsetEq (s1,s2)     -> TSLK.SubsetEq (set s1, set s2)
       | Expr.InTh (t,s)           -> TSLK.InTh (tid t, setth s)
       | Expr.SubsetEqTh (s1,s2)   -> TSLK.SubsetEqTh (setth s1, setth s2)
-      | Expr.InInt _              -> raise(UnsupportedTSLKExpr(Expr.atom_to_str a))
-      | Expr.SubsetEqInt _        -> raise(UnsupportedTSLKExpr(Expr.atom_to_str a))
+      | Expr.InInt _              -> RAISE(UnsupportedTSLKExpr(Expr.atom_to_str a))
+      | Expr.SubsetEqInt _        -> RAISE(UnsupportedTSLKExpr(Expr.atom_to_str a))
       | Expr.InElem (e,s)         -> TSLK.InElem (elem_to_tslk_elem e, setelem s)
       | Expr.SubsetEqElem (s1,s2) -> TSLK.SubsetEqElem (setelem s1, setelem s2)
       | Expr.Less (i1,i2)         -> TSLK.Less (integ i1, integ i2)
       | Expr.Greater (i1,i2)      -> TSLK.Greater (integ i1, integ i2)
       | Expr.LessEq (i1,i2)       -> TSLK.LessEq (integ i1, integ i2)
       | Expr.GreaterEq (i1,i2)    -> TSLK.GreaterEq (integ i1, integ i2)
-      | Expr.LessTid _            -> raise(UnsupportedTSLKExpr(Expr.atom_to_str a))
+      | Expr.LessTid _            -> RAISE(UnsupportedTSLKExpr(Expr.atom_to_str a))
       | Expr.LessElem (e1,e2)     -> TSLK.LessElem (elem e1, elem e2)
       | Expr.GreaterElem (e1,e2)  -> TSLK.GreaterElem (elem e1, elem e2)
       | Expr.Eq (t1,t2)           -> TSLK.Eq (term t1, term t2)
       | Expr.InEq (t1,t2)         -> TSLK.InEq (term t1, term t2)
       | Expr.BoolVar v            -> TSLK.BoolVar (var_to_tslk_var v)
-      | Expr.BoolArrayRd _        -> raise(UnsupportedTSLKExpr(Expr.atom_to_str a))
+      | Expr.BoolArrayRd _        -> RAISE(UnsupportedTSLKExpr(Expr.atom_to_str a))
       | Expr.PC (pc,t,pr)         -> TSLK.PC (pc, Option.lift tid_to_tslk_tid t,pr)
       | Expr.PCUpdate (pc,t)      -> TSLK.PCUpdate (pc, tid_to_tslk_tid t)
       | Expr.PCRange (pc1,pc2,t,pr) -> TSLK.PCRange (pc1, pc2,
@@ -337,6 +335,7 @@ module Make (TSLK : TSLKExpression.S) =
 
 
     and formula_to_tslk_formula (f:Expr.formula) : TSLK.formula =
+      LOG "Entering formula_to_tslk_formula..." LEVEL TRACE;
       let to_formula = formula_to_tslk_formula in
       match f with
         Expr.Literal l       -> TSLK.Literal (literal_to_tslk_literal l)
@@ -496,7 +495,7 @@ module Make (TSLK : TSLKExpression.S) =
     and mem_to_expr_mem (m:TSLK.mem) : Expr.mem =
       match m with
       | TSLK.VarMem v       -> Expr.VarMem (var_to_expr_var v)
-      | TSLK.Emp            -> raise(UnsupportedExpr(TSLK.mem_to_str m))
+      | TSLK.Emp            -> RAISE(UnsupportedExpr(TSLK.mem_to_str m))
       | TSLK.Update (m,a,c) -> Expr.Update (mem_to_expr_mem m,
                                             addr_to_expr_addr a,
                                             cell_to_expr_cell c)

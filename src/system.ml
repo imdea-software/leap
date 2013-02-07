@@ -112,7 +112,7 @@ let add_var (table:var_table_t)
         sprintf "Variable \"%s\" of sort %s has already been defined \
                  previously with sort %s." v (Expr.sort_to_str s)
                                              (Expr.sort_to_str prevSort);
-      raise (Duplicated_var (v, s, prevSort))
+      RAISE(Duplicated_var(v, s, prevSort))
     end
   else
     Hashtbl.replace table v (s,e,t,k)
@@ -189,7 +189,7 @@ let undeftids_in_formula_decl (ts:Expr.varId list) (invVars:var_table_t) :unit =
           sprintf "Variable %s was used in the program and assumed to be a \
                    parameter of the formula to be verified. However, such \
                    variable is not declared as a formula parameter." id;
-        raise (Undefined_variable id)
+        RAISE(Undefined_variable id)
       end
     ) ts
 
@@ -213,7 +213,7 @@ let check_undefined_label (tbl:label_table_t) (l:string) (p:Expr.pc_t) : unit =
         sprintf "Trying to label line %i with tag \"%s\", but this tag has \
                  already been used to label lines between %i and %i"
           p l init_pos end_pos;
-      raise (Duplicated_label (l, p, init_pos, end_pos))
+      RAISE(Duplicated_label(l, p, init_pos, end_pos))
     end
 
 
@@ -223,7 +223,7 @@ let check_defined_label (tbl:label_table_t) (l:string) (p:Expr.pc_t) : unit =
       Interface.Err.msg "Undefined label" $
         sprintf "Trying to close label \"%s\" at line %i, but no opening \
                  tag for this label was found." l p;
-      raise (Undefined_label (l, p))
+      RAISE(Undefined_label(l, p))
     end
 
 
@@ -307,7 +307,7 @@ let get_proc_by_name (sys:system_t) (p_name:string) : proc_info_t =
     begin
       Interface.Err.msg "Process name not found" $
               sprintf "A process with name %s could not be found" p_name;
-      raise (Unknown_procedure p_name)
+      RAISE(Unknown_procedure p_name)
     end
 
 
@@ -367,7 +367,7 @@ let get_statement_at (sys:system_t) (pos:Expr.pc_t) : (string*Stm.statement_t) =
                          sprintf "Position %i does not corresponds to a \
                                   valid statement position within the \
                                   declared system." pos;
-    raise (Not_position pos)
+    RAISE(Not_position pos)
 
 
 let get_trans_num (sys:system_t) : int =
@@ -528,7 +528,7 @@ let get_sort_from_variable (gVars:var_table_t)
       Interface.Err.msg "Undefined variable" $
         sprintf "Variable %s could not be found nor as global variable nor \
                  in the given variable tables." v;
-      raise (Undefined_variable v)
+      RAISE(Undefined_variable v)
     end
 *)
 
@@ -612,7 +612,7 @@ let new_proc_table_from_list (xs:(string * proc_info_t) list):proc_table_t =
                 Interface.Err.msg "Procedure already defined" $
                         sprintf "A procedure with name \"%s\"has already been \
                                  defined" n;
-                raise (Duplicated_procedure n)
+                RAISE(Duplicated_procedure n)
               end
             else
               Hashtbl.replace tbl n i;

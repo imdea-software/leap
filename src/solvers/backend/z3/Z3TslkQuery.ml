@@ -1327,8 +1327,8 @@ module Make (K : Level.S) : S =
     and z3_build_cell_next_array (aa:Expr.addr list) : string =
       let aa_size = List.length aa in
       if aa_size > K.level then
-        raise (Array_larger_than_parameter
-                  (String.concat "," $ List.map Expr.addr_to_str aa, K.level))
+        let msg = String.concat "," $ List.map Expr.addr_to_str aa in
+        RAISE(Array_larger_than_parameter(msg,K.level))
       else
         let str = "((as const (Array " ^level_s^ " " ^addr_s^ ")) null)" in
         let i = ref (-1) in
@@ -1340,8 +1340,8 @@ module Make (K : Level.S) : S =
     and z3_build_cell_lock_array (tt:Expr.tid list) : string =
       let tt_size = List.length tt in
       if tt_size > K.level then
-        raise (Array_larger_than_parameter
-                  (String.concat "," $ List.map Expr.tid_to_str tt, K.level))
+        let msg = String.concat "," $ List.map Expr.tid_to_str tt in
+          RAISE(Array_larger_than_parameter(msg,K.level))
       else
         let str = "((as const (Array " ^level_s^ " " ^tid_s^ ")) null)" in
         let i = ref (-1) in

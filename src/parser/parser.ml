@@ -51,13 +51,13 @@ let open_and_parse (file_name:string) (the_parser:'a parser_t) : 'a =
               with _ -> begin
                           Interface.Err.msg "File not found" $
                             sprintf "File \"%s\" could not be found" file_name;
-                          raise (File_not_found file_name)
+                          RAISE(File_not_found file_name)
                         end in
   try
     parse input the_parser
   with e -> begin
               Interface.Err.msg "Parser Error"
                 ("While parsing file " ^ file_name);
-              raise e
+              RAISE(e)
             end
   

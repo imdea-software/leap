@@ -545,7 +545,7 @@ let term_to_var (t:term) : variable =
   | MemT  (VarMem v)   -> inject_var_sort v Mem
   | IntT  (VarInt v)   -> inject_var_sort v Int
   | ArrayT(VarArray v) -> inject_var_sort v Array
-  | _                  -> raise (No_variable_term t)
+  | _                  -> RAISE(No_variable_term t)
 
 
 
@@ -1880,7 +1880,7 @@ let get_initVal_restriction (v:initVal_t) : expr_t =
                 sprintf "Function get_initVal_restrictions was expecting a \
                          condition over integers or sets. Instead, \"%s\" was \
                          received." (formula_to_str c);
-               raise Invalid_argument
+               RAISE(Invalid_argument)
       end
 
 
@@ -1891,7 +1891,7 @@ let term_to_integer (t:term) : integer =
                 sprintf "Impossible to convert to integer a non integer \
                          term. An integer term was expected, but \"%s\" was \
                          received." (term_to_str t);
-              raise Invalid_argument
+              RAISE(Invalid_argument)
 
 
 let term_to_set (t:term) : set =
@@ -1901,7 +1901,7 @@ let term_to_set (t:term) : set =
                 sprintf "Impossible to convert to set a non set \
                          term. A set term was expected, but \"%s\" was \
                          received." (term_to_str t);
-              raise Invalid_argument
+              RAISE(Invalid_argument)
 
 
 let term_to_setth (t:term) : setth =
@@ -1912,7 +1912,7 @@ let term_to_setth (t:term) : setth =
                            a non set of thread identifiers term. A set of \
                            thread identifiers term was expected, but \"%s\" \
                            was received." (term_to_str t);
-                raise Invalid_argument
+                RAISE(Invalid_argument)
 
 
 let term_to_setint (t:term) : setint =
@@ -1923,7 +1923,7 @@ let term_to_setint (t:term) : setint =
                            a non set of integers term. A set of \
                             integers term was expected, but \"%s\" \
                            was received." (term_to_str t);
-                raise Invalid_argument
+                RAISE(Invalid_argument)
 
 
 
@@ -2358,7 +2358,7 @@ let rec array_var_from_term (t:term) (prime:bool) : arrays =
                     passed to function \"array_var_from_term\". \
                     A variable was expected, but \"%s\" was given."
                     (term_to_str t);
-         raise Invalid_argument
+         RAISE(Invalid_argument)
 
 
 (* FIX: Replace by variable *)
@@ -2448,7 +2448,7 @@ let cons_arrayRd_eq_from_var (s:sort)
         | _     -> Interface.Err.msg "Invalid argument" $
                            sprintf "By now it is impossible to \
                                     build an array of arrays.";
-                   raise Invalid_argument
+                   RAISE(Invalid_argument)
       end
   | Some (Condition c) ->
     begin
@@ -3975,7 +3975,8 @@ let rec to_trs (expr:formula) : formula =
   let add_one i = IntAdd (i, IntVal 1) in
   let tid_to_int t = match t with
                        VarTh v -> VarInt v
-                     | _ -> raise (Not_implemented "Tid to int conversion in to_trs") in
+                     | _ -> let msg = "Tid to int conversion in to_trs" in
+                              RAISE(Not_implemented msg) in
   let rec conv e neg =
     (* First argument in formula, second tells if it must be negated *)
     match (e,neg) with
@@ -4228,7 +4229,7 @@ let construct_term_eq (v:term)
                        assignment between term \"%s\" and \
                        expression \"%s\"." (term_to_str v)
                                            (term_to_str t);
-      raise (Incompatible_assignment (v,e))
+      RAISE(Incompatible_assignment(v,e))
 
   | (_, Formula t)                ->
       Interface.Err.msg "Unexpected assignment" $
@@ -4236,7 +4237,7 @@ let construct_term_eq (v:term)
                        assignment between term \"%s\" and formula \
                        expression \"%s\"." (term_to_str v)
                                            (formula_to_str t);
-      raise (Incompatible_assignment (v,e))
+      RAISE(Incompatible_assignment(v,e))
 
 
 let construct_pres_term (t:term) (th_p:tid option) : formula =
@@ -4285,7 +4286,7 @@ let construct_term_eq_as_array (v:term)
                             identifier to denote the array position to be \
                             modified was provided." (term_to_str v)
                                                     (expr_to_str e);
-                   raise Invalid_argument
+                   RAISE(Invalid_argument)
 
 
 (* NUMERIC EXPRESSION FUNCTIONS *)
@@ -4316,7 +4317,7 @@ let check_numeric (id:varId) (info:var_info_t) : unit =
                       %s has sort %s."
                       (id)
                       (sort_to_str s);
-           raise (No_numeric_variable (id, s))
+           RAISE(No_numeric_variable(id,s))
 
 
 (* COUNTING ABSTRACTION FUNCTIONS *)

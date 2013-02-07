@@ -1999,8 +1999,8 @@ let rec dnf (expr:formula) : conjunctive_formula list =
                 let get_conjuncts c =
                   match c with
                     Conj l -> l
-                  | _ -> raise (ErrorInNNF("Formula " ^ (formula_to_str nnfexpr) ^
-                                " is not in NNF.\n"))
+                  | _ -> let msg = "Formula "^(formula_to_str nnfexpr)^" is not in NNF.\n" in
+                           RAISE(ErrorInNNF(msg))
                 in
                 (* here lx and ly  are lists of Conj none of which is 
                  * True or False *)
@@ -2015,7 +2015,8 @@ let rec dnf (expr:formula) : conjunctive_formula list =
     | Literal(l) -> [ Conj [ l ]]
     | True       -> [TrueConj]
     | False      -> [FalseConj]
-    | _          -> raise (ErrorInNNF("Formula " ^ (formula_to_str nnfexpr) ^ " is not in NNF.\n"))
+    | _          -> let msg = "Formula " ^(formula_to_str nnfexpr)^ " is not in NNF.\n" in
+                      RAISE(ErrorInNNF(msg))
   in
     dnf_nnf (nnf expr)
 
@@ -2694,7 +2695,7 @@ let term_to_var (t:term) : variable =
   | IntT       (VarInt v)       -> inject_var_sort v Int
   | AddrArrayT (VarAddrArray v) -> inject_var_sort v AddrArray
   | TidArrayT  (VarTidArray v)  -> inject_var_sort v TidArray
-  | _                           -> raise (No_variable_term t)
+  | _                           -> RAISE(No_variable_term t)
 
 
 let var_to_term (v:variable) : term =

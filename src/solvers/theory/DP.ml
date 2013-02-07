@@ -34,7 +34,7 @@ let from_str (str:string) : t =
                let k = String.sub s 5 (String.length s - 6) in
                Tslk (int_of_string k)
              else
-               raise (Unknown_dp_str s)
+               RAISE(Unknown_dp_str s)
 
 
 let get_tslk_param (dp:t) : int =

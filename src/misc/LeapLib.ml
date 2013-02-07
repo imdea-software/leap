@@ -4,6 +4,7 @@ exception Empty_list
 exception Negative_position of int
 exception Negative_number of int
 
+
 (* Functions related with time *)
 class timer = object (self)
   val mutable started = Unix.times ()
@@ -57,20 +58,20 @@ let rec list_of n e =
   if n = 0 then
     []
   else if n < 0 then
-    raise (Negative_number n)
+    RAISE(Negative_number n)
   else
     e::(list_of (n-1) e)
 
 
 let rec lastElem l = match l with
-                       [] -> raise Empty_list
+                       [] -> RAISE(Empty_list)
                      | x::[] -> x
                      | _::xs -> lastElem xs
 
 
 let rec first_n n lst =
   if n < 0 then
-    raise (Negative_position n)
+    RAISE(Negative_position n)
   else
     match (n,lst) with
     | (0,_) -> []

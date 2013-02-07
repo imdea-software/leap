@@ -93,6 +93,6 @@ let _ =
         Interface.Err.msg "sinv: Parsing error" $
           sprintf "Unexpected symbol \"%s\" at line %i" 
           (Global.get_last()) (Global.get_linenum())
-    | e -> raise e
+    | e -> RAISE(e)
 
 let _ = LeapDebug.flush()

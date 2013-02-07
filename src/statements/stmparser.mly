@@ -112,7 +112,7 @@ let decl_global_var (v:Expr.varId)
                                  (Option.map_default Expr.expr_to_str "" cond)
                                  (String.concat ", " $
                                      List.map Expr.term_to_str ghosts);
-                               raise (Ghost_var_in_global_decl (v,s,e,k))
+                               RAISE(Ghost_var_in_global_decl(v,s,e,k))
                              end
            | Expr.Ghost  -> ()
   in
@@ -136,7 +136,7 @@ let decl_local_var (v:Expr.varId)
               sprintf "Variable \"%s\" of sort %s cannot be defined as local \
                        since its name conflicts with a procedure input \
                        variable." v (Expr.sort_to_str s);
-      raise (Duplicated_local_var (v, s))
+      RAISE(Duplicated_local_var(v, s))
     end
   else
     begin
@@ -158,7 +158,7 @@ let decl_local_var (v:Expr.varId)
                                    (Option.map_default Expr.expr_to_str "" cond)
                                    (String.concat ", " $
                                        List.map Expr.term_to_str ghosts);
-                                 raise (Ghost_var_in_local_decl (v,s,e,k))
+                                 RAISE(Ghost_var_in_local_decl(v,s,e,k))
                               end
             | Expr.Ghost  -> ()
     in
@@ -217,7 +217,7 @@ let get_term_kind (t:Expr.term) : Expr.kind_t =
 (* Parsing error message funtion *)
 let parser_error msg =
   let msg = sprintf "Error at line %i:\n%s" (Global.get_linenum ()) msg in
-    raise (ParserError msg)
+    RAISE(ParserError msg)
 
 
 
@@ -283,7 +283,7 @@ let parser_check_var_assign v s1 s2 get_expr_str =
               sprintf "Variable %s has sort %s, but sort %s was expected \
                        in:\n\n%s"
                       v (Expr.sort_to_str s1) (Expr.sort_to_str s2) (str_expr);
-      raise (Sort_mismatch (v, s1, s2))
+      RAISE(Sort_mismatch(v, s1, s2))
     end
 
 
@@ -312,7 +312,7 @@ let check_sort_var (v:Expr.varId)
           sprintf "Variable %s is of sort %s, while it is trying to be \
                    assigned to an expression of sort %s"
                     v (Expr.sort_to_str knownSort) (Expr.sort_to_str s);
-        raise (Sort_mismatch (v, knownSort, s))
+        RAISE(Sort_mismatch(v, knownSort, s))
       end
 
 
@@ -335,7 +335,7 @@ let check_type_int t =
       Stm.IntT(i)        -> i
     | Stm.VarT(v,s,p,k) -> check_sort_var v p Expr.Int k;
                                Stm.VarInt(v,s,p,k)
-    | _                 -> raise (WrongType t)
+    | _                 -> RAISE(WrongType t)
 
 
 let check_type_set t =
@@ -343,7 +343,7 @@ let check_type_set t =
       Stm.SetT(s)       -> s
     | Stm.VarT(v,s,p,k) -> check_sort_var v p Expr.Set k;
                                Stm.VarSet(v,s,p,k)
-    | _                 -> raise (WrongType t)
+    | _                 -> RAISE(WrongType t)
 
 
 let check_type_elem t =
@@ -351,7 +351,7 @@ let check_type_elem t =
       Stm.ElemT(e)      -> e
     | Stm.VarT(v,s,p,k) -> check_sort_var v p Expr.Elem k;
                                Stm.VarElem(v,s,p,k)
-    | _                 -> raise (WrongType t)
+    | _                 -> RAISE(WrongType t)
 
 
 let check_type_thid t =
@@ -359,7 +359,7 @@ let check_type_thid t =
       Stm.ThidT(th)     -> th
     | Stm.VarT(v,s,p,k) -> check_sort_var v p Expr.Thid k;
                                Stm.VarTh(v,s,p,k)
-    | _                 -> raise (WrongType t)
+    | _                 -> RAISE(WrongType t)
 
 
 let check_type_addr t =
@@ -367,7 +367,7 @@ let check_type_addr t =
       Stm.AddrT(a)      -> a
     | Stm.VarT(v,s,p,k) -> check_sort_var v p Expr.Addr k;
                                Stm.VarAddr(v,s,p,k)
-    | _                 -> raise (WrongType t)
+    | _                 -> RAISE(WrongType t)
 
 
 let check_type_cell t =
@@ -375,7 +375,7 @@ let check_type_cell t =
       Stm.CellT(c)      -> c
     | Stm.VarT(v,s,p,k) -> check_sort_var v p Expr.Cell k;
                                Stm.VarCell(v,s,p,k)
-    | _                 -> raise (WrongType t)
+    | _                 -> RAISE(WrongType t)
 
 
 let check_type_setth t =
@@ -383,7 +383,7 @@ let check_type_setth t =
       Stm.SetThT(sth)   -> sth
     | Stm.VarT(v,s,p,k) -> check_sort_var v p Expr.SetTh k;
                                Stm.VarSetTh(v,s,p,k)
-    | _                 -> raise (WrongType t)
+    | _                 -> RAISE(WrongType t)
 
 
 let check_type_setint t =
@@ -391,7 +391,7 @@ let check_type_setint t =
       Stm.SetIntT(sth)  -> sth
     | Stm.VarT(v,s,p,k) -> check_sort_var v p Expr.SetInt k;
                                Stm.VarSetInt(v,s,p,k)
-    | _                 -> raise (WrongType t)
+    | _                 -> RAISE(WrongType t)
 
 
 let check_type_setelem t =
@@ -399,7 +399,7 @@ let check_type_setelem t =
       Stm.SetElemT(se)  -> se
     | Stm.VarT(v,s,p,k) -> check_sort_var v p Expr.SetElem k;
                                Stm.VarSetElem(v,s,p,k)
-    | _                 -> raise (WrongType t)
+    | _                 -> RAISE(WrongType t)
 
 
 let check_type_path t =
@@ -407,7 +407,7 @@ let check_type_path t =
       Stm.PathT(p)      -> p
     | Stm.VarT(v,s,p,k) -> check_sort_var v p Expr.Path k;
                                Stm.VarPath(v,s,p,k)
-    | _                 -> raise (WrongType t)
+    | _                 -> RAISE(WrongType t)
 
 
 let check_type_mem t =
@@ -415,7 +415,7 @@ let check_type_mem t =
       Stm.MemT(m)       -> m
     | Stm.VarT(v,s,p,k) -> check_sort_var v p Expr.Mem k;
                                Stm.VarMem(v,s,p,k)
-    | _                 -> raise (WrongType t)
+    | _                 -> RAISE(WrongType t)
 
 
 let check_type_addrarr t =
@@ -423,7 +423,7 @@ let check_type_addrarr t =
       Stm.AddrArrayT(arr) -> arr
     | Stm.VarT(v,s,p,k)   -> check_sort_var v p Expr.AddrArray k;
                                  Stm.VarAddrArray(v,s,p,k)
-    | _                   -> raise (WrongType t)
+    | _                   -> RAISE(WrongType t)
 
 
 let check_type_tidarr t =
@@ -431,7 +431,7 @@ let check_type_tidarr t =
       Stm.TidArrayT(arr)  -> arr
     | Stm.VarT(v,s,p,k)   -> check_sort_var v p Expr.TidArray k;
                                  Stm.VarTidArray(v,s,p,k)
-    | _                   -> raise (WrongType t)
+    | _                   -> RAISE(WrongType t)
 
 
 let check_and_get_sort (id:string) : Expr.sort =
@@ -453,7 +453,7 @@ let check_and_get_sort (id:string) : Expr.sort =
   | _ -> begin
            Interface.Err.msg "Unrecognized sort" $
              sprintf "A sort was expected, but \"%s\" was found" id;
-           raise (Not_sort_name id)
+           RAISE(Not_sort_name id)
          end
 
 
@@ -463,7 +463,7 @@ let check_and_get_sort (id:string) : Expr.sort =
         Interface.Err.msg "Unknown procedure" $
                 sprintf "Identifier \"%s\" is used as a procedure identifier, \
                          but no procedure with such name has been parsed." id;
-        raise (Unknown_procedure id)
+        RAISE(Unknown_procedure id)
       end
 
 
@@ -483,7 +483,7 @@ let check_and_get_sort (id:string) : Expr.sort =
                           (String.concat ", " $ List.map Stm.term_to_str ps)
                           (String.concat " -> " $
                             List.map Expr.sort_to_str call_args);
-        raise (Procedure_args_mismatch p_name)
+        RAISE(Procedure_args_mismatch p_name)
       end
 
 
@@ -541,7 +541,7 @@ let check_and_get_sort (id:string) : Expr.sort =
                                can be done only over variables, cells fields \
                                or array locations."
                                (get_expr_str ());
-             raise (Wrong_assignment t)
+             RAISE(Wrong_assignment t)
            end
 
 
@@ -557,7 +557,7 @@ let check_and_get_sort (id:string) : Expr.sort =
                            (String.concat ", "
                               (List.map Stm.term_to_str ghost_list))
                            (str);
-        raise (Ghost_vars_in_assignment ghost_list)
+        RAISE(Ghost_vars_in_assignment ghost_list)
       end
 
 
@@ -572,7 +572,7 @@ let check_and_get_sort (id:string) : Expr.sort =
                            (String.concat ", "
                               (List.map Stm.term_to_str t_normal))
                            (str);
-        raise (Normal_vars_in_ghost_assignment t_normal)
+        RAISE(Normal_vars_in_ghost_assignment t_normal)
       end
 
 
@@ -585,7 +585,7 @@ let check_and_get_sort (id:string) : Expr.sort =
           sprintf "The term [%s] is assigned twice within the following \
                    ghost code or atomic assignment:\n\n%s\n"
                   (Stm.expr_to_str e) st_str;
-        raise (Atomic_double_assignment e)
+        RAISE(Atomic_double_assignment e)
       end
     
 
@@ -619,7 +619,7 @@ let check_and_get_sort (id:string) : Expr.sort =
                                                allowed. "
                                                (Expr.term_to_str t)
                                                st_str;
-                                      raise (Atomic_double_assignment t)
+                                      RAISE(Atomic_double_assignment t)
                                     end
                                   else
                                     assign_list := t :: !assign_list
@@ -642,7 +642,7 @@ let unexpected_statement get_str_expr =
       sprintf "Ghost and atomic statements admit only assignments or \
                conditional statements. However, the following statement \
                was found:\n\n%s\n" str_expr;
-    raise (Unexpected_statement str_expr)
+    RAISE(Unexpected_statement str_expr)
 
 
 let check_var_belongs_to_procedure (v:Expr.varId) (p_name:string) =
@@ -654,7 +654,7 @@ let check_var_belongs_to_procedure (v:Expr.varId) (p_name:string) =
         Interface.Err.msg "Variable not declared in procedure" $
                 sprintf "Variable \"%s\" does not belong to procedure %s"
                         v p_name;
-        raise (Variable_not_in_procedure (v, p_name))
+        RAISE(Variable_not_in_procedure(v, p_name))
       end
 
 
@@ -677,7 +677,7 @@ let check_call_sort (t_opt:Stm.term option)
                                      no value." (Stm.term_to_str t)
                                                 (Expr.sort_to_str t_sort)
                                                 (p_name) (p_name) ;
-                          raise (Incompatible_call_sort (t, p_name))
+                          RAISE(Incompatible_call_sort(t, p_name))
                         end
   | (Some t, Some s) -> let t_sort = find_sort t in
                         if t_sort <> s then
@@ -689,7 +689,7 @@ let check_call_sort (t_opt:Stm.term option)
                                         (Expr.sort_to_str t_sort)
                                         (p_name)
                                         (Expr.sort_to_str s);
-                            raise (Incompatible_call_sort (t, p_name))
+                            RAISE(Incompatible_call_sort(t, p_name))
                           end
 
 
@@ -704,7 +704,7 @@ let check_return_sort (t_opt:Stm.term option)
                             sprintf "Procedure %s expects to return a value of \
                                      sort %s, but no value was returned."
                               (p_name) (Expr.sort_to_str s) ;
-                          raise (Incompatible_return_sort p_name)
+                          RAISE(Incompatible_return_sort p_name)
                         end
   | (Some t, None  ) -> begin
                           let iVars = Sys.proc_info_get_input proc_info in
@@ -714,7 +714,7 @@ let check_return_sort (t_opt:Stm.term option)
                             sprintf "Procedure %s returns term %s of sort %s, \
                                      but no sort was declared for such procedure."
                               p_name (Stm.term_to_str t) (Expr.sort_to_str t_sort);
-                          raise (Incompatible_return_sort p_name)
+                          RAISE(Incompatible_return_sort p_name)
                         end
   | (Some t, Some s) -> begin
                           let iVars = Sys.proc_info_get_input proc_info in
@@ -728,7 +728,7 @@ let check_return_sort (t_opt:Stm.term option)
                                          sort %s is returned."
                                   p_name (Expr.sort_to_str s)
                                   (Stm.term_to_str t) (Expr.sort_to_str t_sort);
-                              raise (Incompatible_return_sort p_name)
+                              RAISE(Incompatible_return_sort p_name)
                             end
                         end
 
@@ -1021,7 +1021,7 @@ system :
                          but no value was expected to be returned."
                         (Stm.term_to_str t)
                         (Expr.sort_to_str t_sort);
-              raise No_valid_main
+              RAISE(No_valid_main)
             end
         | _ -> begin
                  Interface.Err.msg ("No return at end of \"" ^
@@ -1030,7 +1030,7 @@ system :
                             but instead, statement\n\t %s\n was found."
                             (Sys.defMainProcedure)
                             (Stm.statement_to_str 0 st);
-                 raise No_valid_main
+                 RAISE(No_valid_main)
                end
       else
         begin
@@ -1038,7 +1038,7 @@ system :
                             procedure defined")
                   ("A \"" ^ Sys.defMainProcedure ^ "\" procedure could \
                    not be found in the system description.");
-          raise No_main
+          RAISE(No_main)
         end
     }
 
@@ -2766,7 +2766,7 @@ cell :
           Interface.Err.msg "Different argument lengths" $
             sprintf "mkcell is invoked with an unequal number of addresses [%s] \
                      and thread ids [%s]." addrs_str tids_str;
-          raise (Different_argument_length (addrs_str,tids_str))
+          RAISE(Different_argument_length(addrs_str,tids_str))
         end
       else
         Stm.MkSLKCell(e,addrs,tids)
@@ -3047,7 +3047,7 @@ arraylookup :
         let a = parser_check_type check_type_addr $1 Expr.Addr get_str_expr in
         match a with
         | Stm.PointerNext a -> Stm.AddrT (Stm.PointerNextAt (a,i))
-        | _ -> raise e
+        | _ -> RAISE(e)
       
     }
 

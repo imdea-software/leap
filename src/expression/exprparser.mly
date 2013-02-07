@@ -77,7 +77,7 @@ let get_sort (t:Expr.term) : Expr.sort =
 (* Parsing error message funtion *)
 let parser_error msg =
   let msg = sprintf "Error at line %i:\n%s" (Global.get_linenum ()) msg in
-    raise (ParserError msg)
+    RAISE(ParserError msg)
 
 
 
@@ -168,7 +168,7 @@ let check_sort_var (v:Expr.variable) : unit =
           sprintf "Variable %s is of sort %s, while it is trying to be \
                    assigned to an expression of sort %s"
                     id (Expr.sort_to_str knownSort) (Expr.sort_to_str s);
-        raise (Sort_mismatch (id, knownSort, s))
+        RAISE(Sort_mismatch(id,knownSort,s))
       end
 
 
@@ -193,7 +193,7 @@ let check_type_int t =
     | Expr.VarT v -> let var = Expr.inject_var_sort v Expr.Int in
                        check_sort_var var;
                        Expr.VarInt var
-    | _           -> raise (WrongType t)
+    | _           -> RAISE(WrongType t)
 
 
 let check_type_set t =
@@ -202,7 +202,7 @@ let check_type_set t =
     | Expr.VarT v -> let var = Expr.inject_var_sort v Expr.Set in
                        check_sort_var var;
                        Expr.VarSet var
-    | _           -> raise (WrongType t)
+    | _           -> RAISE(WrongType t)
 
 
 let check_type_elem t =
@@ -211,7 +211,7 @@ let check_type_elem t =
     | Expr.VarT v  -> let var = Expr.inject_var_sort v Expr.Elem in
                         check_sort_var var;
                         Expr.VarElem var
-    | _            -> raise (WrongType t)
+    | _            -> RAISE(WrongType t)
 
 
 let check_type_thid t =
@@ -220,7 +220,7 @@ let check_type_thid t =
     | Expr.VarT v   -> let var = Expr.inject_var_sort v Expr.Thid in
                          check_sort_var var;
                          Expr.VarTh var
-    | _             -> raise (WrongType t)
+    | _             -> RAISE(WrongType t)
 
 
 let check_type_addr t =
@@ -229,7 +229,7 @@ let check_type_addr t =
     | Expr.VarT v  -> let var = Expr.inject_var_sort v Expr.Addr in
                         check_sort_var var;
                         Expr.VarAddr var
-    | _            -> raise (WrongType t)
+    | _            -> RAISE(WrongType t)
 
 
 let check_type_cell t =
@@ -238,7 +238,7 @@ let check_type_cell t =
     | Expr.VarT v  -> let var = Expr.inject_var_sort v Expr.Cell in
                         check_sort_var var;
                         Expr.VarCell var
-    | _            -> raise (WrongType t)
+    | _            -> RAISE(WrongType t)
 
 
 let check_type_setth t =
@@ -247,7 +247,7 @@ let check_type_setth t =
     | Expr.VarT v     -> let var = Expr.inject_var_sort v Expr.SetTh in
                            check_sort_var var;
                            Expr.VarSetTh var
-    | _               -> raise (WrongType t)
+    | _               -> RAISE(WrongType t)
 
 
 let check_type_setint t =
@@ -256,7 +256,7 @@ let check_type_setint t =
     | Expr.VarT v      -> let var = Expr.inject_var_sort v Expr.SetInt in
                             check_sort_var var;
                             Expr.VarSetInt var
-    | _                -> raise (WrongType t)
+    | _                -> RAISE(WrongType t)
 
 
 let check_type_setelem t =
@@ -265,7 +265,7 @@ let check_type_setelem t =
     | Expr.VarT v      -> let var = Expr.inject_var_sort v Expr.SetElem in
                             check_sort_var var;
                             Expr.VarSetElem var
-    | _                -> raise (WrongType t)
+    | _                -> RAISE(WrongType t)
 
 
 let check_type_path t =
@@ -274,7 +274,7 @@ let check_type_path t =
     | Expr.VarT v  -> let var = Expr.inject_var_sort v Expr.Path in
                         check_sort_var var;
                         Expr.VarPath var
-    | _            -> raise (WrongType t)
+    | _            -> RAISE(WrongType t)
 
 
 let check_type_mem t =
@@ -283,7 +283,7 @@ let check_type_mem t =
     | Expr.VarT v  -> let var = Expr.inject_var_sort v Expr.Mem in
                         check_sort_var var;
                         Expr.VarMem var
-    | _            -> raise (WrongType t)
+    | _            -> RAISE(WrongType t)
 
 
 let check_type_addrarr t =
@@ -292,7 +292,7 @@ let check_type_addrarr t =
     | Expr.VarT v         -> let var = Expr.inject_var_sort v Expr.AddrArray in
                                check_sort_var var;
                                Expr.VarAddrArray var
-    | _                   -> raise (WrongType t)
+    | _                   -> RAISE(WrongType t)
 
 
 let check_type_tidarr t =
@@ -301,7 +301,7 @@ let check_type_tidarr t =
     | Expr.VarT v        -> let var = Expr.inject_var_sort v Expr.TidArray in
                               check_sort_var var;
                               Expr.VarTidArray var
-    | _                  -> raise (WrongType t)
+    | _                  -> RAISE(WrongType t)
 
 
 
@@ -321,7 +321,7 @@ let check_and_get_sort (id:string) : Expr.sort =
   | _ -> begin
            Interface.Err.msg "Unrecognized sort" $
              sprintf "A sort was expected, but \"%s\" was found" id;
-           raise (Not_sort_name id)
+           RAISE(Not_sort_name id)
          end
 
 
@@ -331,7 +331,7 @@ let check_is_procedure (id:string) =
       Interface.Err.msg "Unknown procedure" $
               sprintf "Identifier \"%s\" is used as a procedure identifier, \
                        but no procedure with such name has been parsed." id;
-      raise (Unknown_procedure id)
+      RAISE(Unknown_procedure id)
     end
 
 
@@ -367,7 +367,7 @@ let unexpected_statement get_str_expr =
       sprintf "Ghost and atomic statements admit only assignments or \
                conditional statements. However, the following statement \
                was found:\n\n%s\n" str_expr;
-    raise (Unexpected_statement str_expr)
+    RAISE(Unexpected_statement str_expr)
 
 
 let check_var_belongs_to_procedure (v:Expr.varId) (p_name:string) =
@@ -379,7 +379,7 @@ let check_var_belongs_to_procedure (v:Expr.varId) (p_name:string) =
         Interface.Err.msg "Variable not declared in procedure" $
                 sprintf "Variable \"%s\" does not belong to procedure %s"
                         v p_name;
-        raise (Variable_not_in_procedure (v, p_name))
+        RAISE(Variable_not_in_procedure(v,p_name))
       end
 
 
@@ -412,7 +412,7 @@ let check_and_add_delta (tbl:Vd.delta_fun_t)
                    (Vd.PP.node_id_to_str k)
                    (Expr.term_to_str e)
                    (Expr.term_to_str prev_e);
-        raise (Duplicated_ranking_function (k,e,prev_e))
+        RAISE(Duplicated_ranking_function(k,e,prev_e))
       end
     else
       begin
@@ -429,7 +429,7 @@ let check_and_add_delta (tbl:Vd.delta_fun_t)
                                      (Expr.sort_to_str s)
                                      (Expr.term_to_str e)
                                      (Expr.sort_to_str e_sort);
-                          raise (Ranking_function_unmatched_sort (s,e,e_sort))
+                          RAISE(Ranking_function_unmatched_sort(s,e,e_sort))
                         end
         in
           Hashtbl.add tbl k e
@@ -1505,7 +1505,7 @@ cell :
           Interface.Err.msg "Different argument lengths" $
             sprintf "mkcell is invoked with an unequal number of addresses [%s] \
                      and thread ids [%s]." addrs_str tids_str;
-          raise (Different_argument_length (addrs_str,tids_str))
+          RAISE(Different_argument_length(addrs_str,tids_str))
         end
       else
         Expr.MkSLKCell(e,addrs,tids)
@@ -1811,12 +1811,12 @@ arrays :
         let t = parser_check_type check_type_thid $1 Expr.Thid get_str_expr in
         match t with
         | Expr.CellLockId c -> Expr.ThidT (Expr.CellLockIdAt (c,i))
-        | _                 -> raise e
+        | _                 -> RAISE(e)
       with e ->
         let a = parser_check_type check_type_addr $1 Expr.Addr get_str_expr in
         match a with
         | Expr.Next c -> Expr.AddrT (Expr.NextAt (c,i))
-        | _           -> raise e
+        | _           -> RAISE(e)
     }
   | ARR_UPDATE OPEN_PAREN term COMMA term COMMA term CLOSE_PAREN
     {

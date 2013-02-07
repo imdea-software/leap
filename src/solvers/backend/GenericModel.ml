@@ -224,7 +224,7 @@ let unify (m:t) (v1:var) (v2:var) : unit =
 let get_const (m:t) (i:id) : value =
   try
     Hashtbl.find m.values (LeapIdMap.find_id m.const_map i)
-  with _ -> raise (Undefined i)
+  with _ -> RAISE(Undefined i)
 
 
 let get_fun_def (m:t) (i:id) : value option =

@@ -459,9 +459,9 @@ struct
   let decl_tag (t : Tag.f_tag option) (phi : E.formula) : unit =
     match t with
     | None -> ()
-    | Some tag -> 
-        if Tag.tag_table_mem tags tag then 
-          raise (Tag.Duplicated_tag (Tag.tag_id tag))
+    | Some tag -> if Tag.tag_table_mem tags tag
+        then
+          RAISE(Tag.Duplicated_tag(Tag.tag_id tag))
         else Tag.tag_table_add tags tag phi Tag.new_info
   
   let read_tag (t : Tag.f_tag) : E.formula option =
@@ -764,7 +764,7 @@ struct
           sprintf "Thread identifier \"%i\" is out of the limits for \
             the a closed system, since a system with only %i \
             threads was declared." i th_num;
-        raise Invalid_argument
+        RAISE(Invalid_argument)
       end
     else
       let th_p = E.build_num_tid i in
@@ -1033,7 +1033,7 @@ struct
                                        Printf.sprintf "There is no information \
                                                        on where to jump for \
                                                        procedure %s" proc_name;
-                                     raise (Impossible_call proc_name)
+                                     RAISE(Impossible_call proc_name)
                                    end
                        | Some p -> [p] in
         (* Final transition predicate *)
@@ -1068,7 +1068,7 @@ struct
                               | ROpenArray (k,_) ->
                                   (k, Bridge.construct_stm_term_eq_as_array
                                         mInfo pt ret_t th_p (Stm.Term t))
-                              | _ -> raise (Not_implemented
+                              | _ -> RAISE(Not_implemented
                                               "Extra case on return statement") in
                             let sMode = rhoMode_to_sysMode mode in
                             let pos_assignment =
@@ -1534,7 +1534,7 @@ struct
                   (tacs : Tac.post_tac_t list)
                   (line : E.pc_t) : (E.formula * vc_info_t) list =
     LOG "Entering seq_gen_vcs..." LEVEL TRACE;
-    let _ = assert (List.length inv.E.voc = 1) in
+    assert (List.length inv.E.voc = 1);
     let trans_tid = List.hd inv.E.voc in
     let rho = gen_rho (ROpenArray (trans_tid, inv.E.voc))
                       solverInfo.hide_pres solverInfo.count_abs sys
@@ -1829,6 +1829,7 @@ struct
   
   
   let prepare_system (sys:Sys.system_t) : Sys.system_t =
+    LOG "Entering prepare_system..." LEVEL TRACE;
     assert(isInitialized());
     let _ = clear_file solverInfo.out_file in
     let filtered_sys = filter_system sys in
@@ -1853,6 +1854,7 @@ struct
   
   
   let call_num_dp (phi : E.formula) (status : valid_t) : dp_result_t =
+    LOG "Entering call_num_dp..." LEVEL TRACE;
     assert(isInitialized());
     if status = Unverified || status = NotValid then begin
       let num_phi = NumExp.formula_to_int_formula phi in
@@ -1875,6 +1877,7 @@ struct
                   (stac   : Tac.solve_tactic_t option)
                   (cutoff : Smp.cutoff_strategy)
                   (status : valid_t) : dp_result_t =
+    LOG "Entering call_tll_dp..." LEVEL TRACE;
     assert(isInitialized());
     if status = Unverified || status = NotValid then begin
       let tll_phi = TllInterface.formula_to_tll_formula phi in
@@ -1897,10 +1900,9 @@ struct
                    (stac   : Tac.solve_tactic_t option)
                    (cutoff : Smp.cutoff_strategy)
                    (status : valid_t) : dp_result_t =
+    LOG "Entering call_tslk_dp..." LEVEL TRACE;
     assert(isInitialized());
-    let _ = print_endline "ENTERING TSLK DP..." in
     if status = Unverified || status = NotValid then begin
-      let _ = print_endline "WILL PERFORM THE CHECK..." in
       let module TSLKExpr = TSLKS.TslkExp in
       let module TSLKIntf = TSLKInterface.Make(TSLKExpr) in
       let tslk_phi = TSLKIntf.formula_to_tslk_formula phi in
@@ -1924,10 +1926,9 @@ struct
                   (stac   : Tac.solve_tactic_t option)
                   (cutoff : Smp.cutoff_strategy)
                   (status : valid_t) : dp_result_t =
+    LOG "Entering call_tsl_dp..." LEVEL TRACE;
     assert(isInitialized());
-    let _ = print_endline "ENTERING TSL DP..." in
     if status = Unverified || status = NotValid then begin
-      let _ = print_endline "WILL PERFORM THE CHECK OF TSL..." in
       let _ = Printf.printf "GOING TO CONVERT %s\n" (E.formula_to_str phi) in
       let tsl_phi = TSLInterface.formula_to_tsl_formula phi in
       let _ = print_endline "WILL PERFORM THE TRANSLATION..." in

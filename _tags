@@ -1,27 +1,7 @@
-<src> : include
-<src/misc> : include
-<src/interface> : include
-<src/statements> : include
-<src/expression> : include
-<src/solvers> or <src/solvers/backend> : include
-<src/solvers/backend/yices> : include
-<src/solvers/backend/z3> : include
-<src/solvers/backend/minisat> : include
-<src/solvers/theory> : include
-<src/parser> : include
-<src/diagrams> : include
-<src/trs> : include
-<src/theories/tll> : include
-<src/theories/tsl> : include
-<src/theories/tslk> : include
-<src/smp> : include
-<src/graph> : include
-<src/tactics> : include
-<src/progs/prog2fts> : include
-<src/progs/numinv> : include
-<src/progs/pinv> : include
-<src/progs/sinv> : include
-<src/progs/pvd> : include
-<src/progs/tll> : include
-<src/progs/spec_check> : include
-<src/progs/leap> : include
+# Directories
+true: -traverse
+<src/**>: include
+
+# Options
+#"src/misc/leap_pp.ml": pp_camlp4of, use_camlp4
+<src/**/*.ml{,i}>: warnings

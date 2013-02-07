@@ -353,7 +353,8 @@ let rec gen_st_cond_effect_aux (is_ghost:bool)
       add_gc [([],(t,e)::def_assign,curr_p,next_p,true)] gc
   (* FIX: To be implemented *)
   | Stm.StUnit (op,gc,info)    ->
-      raise (Not_implemented "StUnit case in function gen_st_cond_effect")
+      let msg = "StUnit case in function gen_st_cond_effect" in
+        RAISE(Not_implemented msg)
   | Stm.StAtomic (xs,gc,info)  ->
       add_gc (gen_atomic_st_cond_effect [([],def_assign,curr_p,next_p,true)]
         (Stm.StSeq xs)) gc

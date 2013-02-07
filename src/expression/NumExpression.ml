@@ -154,7 +154,7 @@ let sort_to_int_sort (s:Expr.sort) : sort =
     Expr.Int    -> Int
   | Expr.SetInt -> Set
   | Expr.Thid   -> Thid
-  | _           -> raise (NotIntSort (Expr.sort_to_str s))
+  | _           -> RAISE(NotIntSort(Expr.sort_to_str s))
 
 
 let int_sort_to_sort (s:sort) : Expr.sort =
@@ -427,7 +427,7 @@ let rec array_to_funterm (x:Expr.arrays) : fun_term =
       FunUpd (array_to_funterm a, th, IntV (integer_to_int_integer i))
   | Expr.ArrayUp (a,th,Expr.Term (Expr.SetIntT i)) ->
       FunUpd (array_to_funterm a, th, SetV (set_to_int_set i))
-  | _ -> raise (NotAnIntExpression (Expr.arrays_to_str x))
+  | _ -> RAISE(NotAnIntExpression(Expr.arrays_to_str x))
 
 
 and funterm_to_array (x:fun_term) : Expr.arrays =
@@ -450,7 +450,7 @@ and set_to_int_set (s:Expr.setint) : set =
   | Expr.UnionInt(s1,s2)   -> Union (toset s1, toset s2)
   | Expr.IntrInt(s1,s2)    -> Intr (toset s1, toset s2)
   | Expr.SetdiffInt(s1,s2) -> Diff (toset s1, toset s2)
-  | _ -> raise (NotAnIntExpression (Expr.setint_to_str s))
+  | _ -> RAISE(NotAnIntExpression(Expr.setint_to_str s))
 
 
 and integer_to_int_integer t =
@@ -467,38 +467,38 @@ and integer_to_int_integer t =
     | Expr.IntArrayRd(a,i) -> ArrayRd(a,i)
     | Expr.IntSetMin(s)    -> SetMin (toset s)
     | Expr.IntSetMax(s)    -> SetMax (toset s)
-    | Expr.CellMax(c)      -> raise (NotAnIntExpression (Expr.integer_to_str t))
-    | Expr.HavocLevel      -> raise (NotAnIntExpression (Expr.integer_to_str t))
+    | Expr.CellMax(c)      -> RAISE(NotAnIntExpression(Expr.integer_to_str t))
+    | Expr.HavocLevel      -> RAISE(NotAnIntExpression(Expr.integer_to_str t))
 
 and term_to_int_integer t =
   match t with
       Expr.IntT(x) -> integer_to_int_integer x
-    | _            -> raise (NotAnIntExpression (Expr.term_to_str t))
+    | _            -> RAISE(NotAnIntExpression(Expr.term_to_str t))
 
 and atom_to_int_atom a =
   let toint = integer_to_int_integer in
   let toset = set_to_int_set in
     match a with
-      Expr.Append _      -> raise (NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.Reach _       -> raise (NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.ReachAt _     -> raise (NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.OrderList _   -> raise (NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.Skiplist _    -> raise (NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.In _          -> raise (NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.SubsetEq _    -> raise (NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.InTh _        -> raise (NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.SubsetEqTh _  -> raise (NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.InInt _       -> raise (NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.SubsetEqInt _ -> raise (NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.InElem _      -> raise (NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.SubsetEqElem _-> raise (NotAnIntExpression(Expr.atom_to_str a))
+      Expr.Append _      -> RAISE(NotAnIntExpression(Expr.atom_to_str a))
+    | Expr.Reach _       -> RAISE(NotAnIntExpression(Expr.atom_to_str a))
+    | Expr.ReachAt _     -> RAISE(NotAnIntExpression(Expr.atom_to_str a))
+    | Expr.OrderList _   -> RAISE(NotAnIntExpression(Expr.atom_to_str a))
+    | Expr.Skiplist _    -> RAISE(NotAnIntExpression(Expr.atom_to_str a))
+    | Expr.In _          -> RAISE(NotAnIntExpression(Expr.atom_to_str a))
+    | Expr.SubsetEq _    -> RAISE(NotAnIntExpression(Expr.atom_to_str a))
+    | Expr.InTh _        -> RAISE(NotAnIntExpression(Expr.atom_to_str a))
+    | Expr.SubsetEqTh _  -> RAISE(NotAnIntExpression(Expr.atom_to_str a))
+    | Expr.InInt _       -> RAISE(NotAnIntExpression(Expr.atom_to_str a))
+    | Expr.SubsetEqInt _ -> RAISE(NotAnIntExpression(Expr.atom_to_str a))
+    | Expr.InElem _      -> RAISE(NotAnIntExpression(Expr.atom_to_str a))
+    | Expr.SubsetEqElem _-> RAISE(NotAnIntExpression(Expr.atom_to_str a))
     | Expr.Less(x,y)     -> Less(toint x,toint y)
     | Expr.Greater(x,y)  -> Greater(toint x,toint y)
     | Expr.LessEq(x,y)   -> LessEq(toint x,toint y)
     | Expr.GreaterEq(x,y)-> GreaterEq(toint x,toint y)
     | Expr.LessTid(x,y)  -> LessTid(x,y)
-    | Expr.LessElem _    -> raise (NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.GreaterElem _ -> raise (NotAnIntExpression(Expr.atom_to_str a))
+    | Expr.LessElem _    -> RAISE(NotAnIntExpression(Expr.atom_to_str a))
+    | Expr.GreaterElem _ -> RAISE(NotAnIntExpression(Expr.atom_to_str a))
     | Expr.Eq(Expr.ThidT x,Expr.ThidT y)      -> TidEq(x, y)
     | Expr.InEq(Expr.ThidT x,Expr.ThidT y)    -> TidInEq(x, y)
     | Expr.Eq(Expr.ArrayT x, Expr.ArrayT y)   -> FunEq (array_to_funterm x,
@@ -513,10 +513,10 @@ and atom_to_int_atom a =
                                                       IntV(toint y))
     | Expr.InEq(Expr.SetIntT x, Expr.SetIntT y) -> InEq(SetV(toset x),
                                                       SetV(toset y))
-    | Expr.Eq (_,_)   -> raise (NotAnIntExpression (Expr.atom_to_str a))
-    | Expr.InEq (_,_) -> raise (NotAnIntExpression (Expr.atom_to_str a))
-    | Expr.BoolVar _      -> raise (NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.BoolArrayRd _  -> raise (NotAnIntExpression(Expr.atom_to_str a))
+    | Expr.Eq (_,_)   -> RAISE(NotAnIntExpression(Expr.atom_to_str a))
+    | Expr.InEq (_,_) -> RAISE(NotAnIntExpression(Expr.atom_to_str a))
+    | Expr.BoolVar _      -> RAISE(NotAnIntExpression(Expr.atom_to_str a))
+    | Expr.BoolArrayRd _  -> RAISE(NotAnIntExpression(Expr.atom_to_str a))
     | Expr.PC(i,th,pr)    -> PC (i,th,pr)
     | Expr.PCUpdate(i,th) -> PCUpdate (i,th)
     | Expr.PCRange(i,j,th,pr) -> PCRange (i,j,th,pr)
@@ -594,8 +594,8 @@ and int_atom_to_atom (a:atom) : Expr.atom =
                                                Expr.ArrayT (funterm_to_array y))
     | FunInEq(x,y)        -> Expr.InEq        (Expr.ArrayT (funterm_to_array x),
                                                Expr.ArrayT (funterm_to_array y))
-    | Eq(_,_)             -> raise(MalformedExpression(int_atom_to_string a))
-    | InEq(_,_)           -> raise(MalformedExpression(int_atom_to_string a))
+    | Eq(_,_)             -> RAISE(MalformedExpression(int_atom_to_string a))
+    | InEq(_,_)           -> RAISE(MalformedExpression(int_atom_to_string a))
     | PC(i,th,pr)         -> Expr.PC (i, th, pr)
     | PCUpdate(i,th)      -> Expr.PCUpdate (i, th)
     | PCRange(i,j,th,pr)  -> Expr.PCRange (i, j, th, pr)
@@ -654,7 +654,7 @@ let formula_to_conj_literals (phi:formula) : literal list =
     | True      -> []
     |   _       -> Printf.printf "Error: %s\n"
                       (Expr.formula_to_str (int_formula_to_formula phi));
-                   raise (NotConjunctiveExpr phi)
+                   RAISE(NotConjunctiveExpr phi)
   in
     try_to_build_conjunction phi
 
