@@ -1,6 +1,6 @@
 open Printf
 open LeapLib
-open LeapDebug
+open LeapVerbose
 
 module OcamlSys = Sys
 
@@ -1734,6 +1734,8 @@ struct
     let i = ref 1 in
     let iter (f, info) =
       let (p_only, new_preds) = PosExp.keep_locations f in
+      verb "**** VCGen. Original formula: %s\n" (E.formula_to_str f);
+      verb "**** VCGen. Position formula: %s\n" (PosExp.expr_to_str p_only);
       let f_status = {
                        desc = "T_" ^ string_of_int info.pc;
                        trans = (info.pc, get_id info.pc);
@@ -1930,12 +1932,12 @@ struct
     LOG "Entering call_tsl_dp..." LEVEL TRACE;
     assert(isInitialized());
     if status = Unverified || status = NotValid then begin
-      debug "**** Going to translate %s\n" (E.formula_to_str phi);
-      debug "**** Will perform TSL translation...";
+      verb "**** Going to translate %s\n" (E.formula_to_str phi);
+      verb "**** Will perform TSL translation...";
       let tsl_phi = TSLInterface.formula_to_tsl_formula phi in
       let timer = new LeapLib.timer in
       timer#start;
-      debug "**** TSL translation done...";
+      verb "**** TSL translation done...";
       let valid, tsl_calls, tslk_calls =
             TslSolver.is_valid_plus_info
                 solverInfo.prog_lines stac cutoff tsl_phi in

@@ -45,8 +45,8 @@ let _ =
     let module Tslk = (val TslkSolver.choose solver k_param : TslkSolver.S) in
     let module Num  = (val NumSolver.choose  solver : NumSolver.S)  in
     let module VCG  = VCGen.Make(Pos)(Tll)(Tslk)(Num) in
-    VCG.initialize ((Sys.get_trans_num sys) + 1) !PinvArgs.coType 
-      !PinvArgs.outFile [] !PinvArgs.hide_pres !PinvArgs.count_abs;
+    VCG.initialize ((Sys.get_trans_num sys) + 1) !PinvArgs.coType
+      !PinvArgs.outFile [] (not !PinvArgs.expand_pres) !PinvArgs.count_abs;
     let module VD = Diagrams.Make(VCG) in
     
     VCG.enable_dp (!PinvArgs.dpType);
@@ -73,7 +73,7 @@ let _ =
 
       if (!PvdArgs.vdFile <> "") then begin
         let vd = PvdArgs.open_and_parse_expr !PvdArgs.vdFile Eparser.diagram in
-        let vc = VD.gen_vd_vc !PvdArgs.hide_pres sys vd in
+        let vc = VD.gen_vd_vc !PvdArgs.expand_pres sys vd in
         printf "---------------- Verification Diagram ----------------\n\
                 %s\n\
                 ---------------- Verification Diagram ----------------\n"
@@ -98,7 +98,7 @@ let _ =
         if VCG.some_dp_enabled () then
           ignore (VD.check_pvd sys pvd)
         else begin
-          let vc = VD.gen_pvd_vc !PvdArgs.hide_pres sys pvd in
+          let vc = VD.gen_pvd_vc !PvdArgs.expand_pres sys pvd in
           printf "------------ Verification Conditions ------------\n\
                   %s\n\
                   ------------ Verification Conditions ------------\n"

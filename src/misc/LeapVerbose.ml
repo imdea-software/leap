@@ -18,14 +18,21 @@ let disable_verbose () =
 let flush () =
   if !verbose_enabled then Pervasives.flush Pervasives.stdout
 
-let verb (msg : ('a, Format.formatter, unit) format) : 'a  =
-  if !verbose_enabled then Format.printf msg
-  else Format.ifprintf Format.std_formatter msg
+
+let verb (msg : ('a, Format.formatter, unit) format) : 'a =
+  if !verbose_enabled then
+    let res = Format.printf msg in
+      Pervasives.flush Pervasives.stdout; res
+  else
+    Format.ifprintf Format.std_formatter msg
 
 
 let verbl (l:int) (msg : ('a, Format.formatter, unit) format) : 'a  =
-  if (!verbose_enabled && l <= !verbose_level) then Format.printf msg
-  else Format.ifprintf Format.std_formatter msg
+  if (!verbose_enabled && l <= !verbose_level) then
+    let res = Format.printf msg in
+      Pervasives.flush Pervasives.stdout; res
+  else
+    Format.ifprintf Format.std_formatter msg
 
 
 let is_verbose_enabled () : bool =

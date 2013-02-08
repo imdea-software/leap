@@ -1,5 +1,5 @@
 LEAP=../../leap
-OPTIONS="-v --focus 12 -fpm -sm -yices+z3 -dp tsl -co pruning -hp -do benchmarks --show_file_info"
+OPTIONS="-v --focus 37 -sm -yices+z3 -dp tsl -do benchmarks --show_file_info"
 
 PRG=prgs/skiplist.prg
 INV_FOLDER=invs/skiplist

@@ -49,8 +49,8 @@ let _ =
     let module VCG  = VCGen.Make(Pos)(Tll)(Tslk)(Num) in
     let focus_list = Expr.gen_focus_list (System.get_trans_num sys)
                        !PinvArgs.focusPC !PinvArgs.ignorePC in
-    VCG.initialize ((Sys.get_trans_num sys) + 1) !PinvArgs.coType !PinvArgs.outFile 
-      focus_list !PinvArgs.hide_pres !PinvArgs.count_abs;
+    VCG.initialize ((Sys.get_trans_num sys) + 1) !PinvArgs.coType !PinvArgs.outFile
+      focus_list (not !PinvArgs.expand_pres) !PinvArgs.count_abs;
     
     VCG.enable_dp (!PinvArgs.dpType);
     

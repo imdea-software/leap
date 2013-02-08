@@ -29,11 +29,11 @@ let pvdFlag           = ref false
 let use_z3            = ref false
 let use_yices_plus_z3 = ref false
 let use_sat           = ref false
-let hide_pres         = ref true (*false*)
+let expand_pres       = ref false (*false*)
 let count_abs         = ref false
 let show_models       = ref false
 let show_label_info   = ref false
-let forget_primed_mem = ref true (*false*)
+let keep_primed_mem   = ref false (*false*)
 let group_vars        = ref false
 let dpType            = ref (DP.NoDP)
 let coType            = ref VCGen.Pruning (*VCGen.Dnf*)
@@ -188,9 +188,9 @@ let opts =
     ("-co",
         Arg.Symbol (co_opt_list,set_co),
         "indicates the method used for computing the cut-off");
-    ("-hp",
-        Arg.Set hide_pres,
-        "hides preservation relation in generated VCs");
+    ("-ep",
+        Arg.Set expand_pres,
+        "expands preservation relation in generated VCs");
     ("-ca",
         Arg.Set count_abs,
         "enables counting abstraction");
@@ -200,9 +200,9 @@ let opts =
     ("-sl",
         Arg.Set show_label_info,
         "shows the information regarding parsed labels");
-    ("-fpm",
-        Arg.Set forget_primed_mem,
-        "does not consider primed memory variables when computing SMP cutoff");
+    ("-kpm",
+        Arg.Set keep_primed_mem,
+        "does consider primed memory variables when computing SMP cutoff");
     ("-gv",
         Arg.Set group_vars,
         "pre-group variables in equivalence classes when computing SMP cutoff");

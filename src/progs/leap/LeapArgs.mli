@@ -26,11 +26,11 @@ val pvdFlag : bool ref
 val use_z3 : bool ref
 val use_yices_plus_z3 : bool ref
 val use_sat : bool ref
-val hide_pres : bool ref
+val expand_pres : bool ref
 val count_abs : bool ref
 val show_models : bool ref
 val show_label_info : bool ref
-val forget_primed_mem : bool ref
+val keep_primed_mem : bool ref
 val group_vars : bool ref
 val dpType : DP.t ref
 val coType : VCGen.cutoff_type ref

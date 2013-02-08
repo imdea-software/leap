@@ -12,7 +12,7 @@ val verbose : bool ref
 val showFlag : bool ref
 val debugFlag : bool ref
 val use_z3 : bool ref
-val hide_pres : bool ref
+val expand_pres : bool ref
 val count_abs : bool ref
 val dpType : DP.t ref
 val coType : VCGen.cutoff_type ref

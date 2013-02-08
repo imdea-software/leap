@@ -71,16 +71,16 @@ let _ =
 
 
     (* Tell TLL and TSLK modules the parsed cutoff strategy options *)
-    let _ = Tll.set_forget_primed_mem (!LeapArgs.forget_primed_mem) in
+    let _ = Tll.set_forget_primed_mem (not !LeapArgs.keep_primed_mem) in
     let _ = Tll.set_group_vars (!LeapArgs.group_vars) in
-    let _ = Tslk.set_forget_primed_mem (!LeapArgs.forget_primed_mem) in
+    let _ = Tslk.set_forget_primed_mem (not !LeapArgs.keep_primed_mem) in
     let _ = Tslk.set_group_vars (!LeapArgs.group_vars) in
 
     let module VCG = VCGen.Make(Pos)(Tll)(Tslk)(Num) in
     let focus_list = Expr.gen_focus_list (System.get_trans_num sys)
                        !LeapArgs.focusPC !LeapArgs.ignorePC in
-    VCG.initialize ((System.get_trans_num sys) + 1) !LeapArgs.coType 
-      !LeapArgs.outFile focus_list !LeapArgs.hide_pres !LeapArgs.count_abs;
+    VCG.initialize ((System.get_trans_num sys) + 1) !LeapArgs.coType
+      !LeapArgs.outFile focus_list (not !LeapArgs.expand_pres) !LeapArgs.count_abs;
     VCG.set_detFolder !LeapArgs.detailedOutFile;
     VCG.set_detProbName
       (Filename.chop_extension (Filename.basename !LeapArgs.input_file));
@@ -227,7 +227,7 @@ let _ =
       if (!LeapArgs.vdFile <> "") then begin
         let vd = Parser.open_and_parse !LeapArgs.vdFile 
           (Eparser.diagram Elexer.norm) in
-        let vc = VD.gen_vd_vc !LeapArgs.hide_pres sys vd in
+        let vc = VD.gen_vd_vc (not !LeapArgs.expand_pres) sys vd in
         printf "---------------- Verification Diagram ----------------\n\
                 %s\n\
                 ---------------- Verification Diagram ----------------\n"
@@ -254,7 +254,7 @@ let _ =
         if VCG.some_dp_enabled () then
           ignore (VD.check_pvd sys pvd)
         else
-          let vc = VD.gen_pvd_vc !LeapArgs.hide_pres sys pvd in
+          let vc = VD.gen_pvd_vc (not !LeapArgs.expand_pres) sys pvd in
           printf "------------ Verification Conditions ------------\n\
                   %s\n\
                   ------------ Verification Conditions ------------\n"

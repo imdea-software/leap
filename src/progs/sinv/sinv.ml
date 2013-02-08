@@ -51,8 +51,8 @@ let _ =
     let module Tslk = (val TslkSolver.choose solver k_param : TslkSolver.S) in
     let module Num  = (val NumSolver.choose  solver : NumSolver.S)  in
     let module VCG  = VCGen.Make(Pos)(Tll)(Tslk)(Num) in
-    VCG.initialize ((Sys.get_trans_num sys) + 1) !SinvArgs.coType 
-      !SinvArgs.outFile !SinvArgs.focusPC !SinvArgs.hide_pres 
+    VCG.initialize ((Sys.get_trans_num sys) + 1) !SinvArgs.coType
+      !SinvArgs.outFile !SinvArgs.focusPC (not !SinvArgs.expand_pres)
       !SinvArgs.count_abs;
     
     VCG.enable_dp (!SinvArgs.dpType);

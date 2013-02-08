@@ -17,7 +17,7 @@ let pinvPlusSys  = ref false
 let showFlag     = ref false
 let debugFlag    = ref false
 let use_z3       = ref false
-let hide_pres    = ref false
+let expand_pres  = ref false
 let count_abs    = ref false
 let dpType       = ref (DP.NoDP)
 let coType       = ref VCGen.Dnf
@@ -102,9 +102,9 @@ let opts =
     ("-co",
         Arg.Symbol (co_opt_list,set_co),
         "indicates the method used for computing the cut-off");
-    ("-hp",
-        Arg.Set hide_pres,
-        "hides preservation relation in generated VCs");
+    ("-ep",
+        Arg.Set expand_pres,
+        "expands preservation relation in generated VCs");
     ("-ca",
         Arg.Set count_abs,
         "enables counting abstraction");

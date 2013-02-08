@@ -2,6 +2,5 @@ param:
 
 invariant [skiplist_prop] :
 
-    
-    skiplist(heap, region, 0, head, tail)
- /\ (@38. -> insert::newCell in region)
+  insert::prev = null  
+//    skiplist(heap, region, 0, head, tail)
