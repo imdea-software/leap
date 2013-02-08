@@ -1933,11 +1933,11 @@ struct
     assert(isInitialized());
     if status = Unverified || status = NotValid then begin
       verb "**** Going to translate %s\n" (E.formula_to_str phi);
-      verb "**** Will perform TSL translation...";
+      verb "**** Will perform TSL translation...\n";
       let tsl_phi = TSLInterface.formula_to_tsl_formula phi in
       let timer = new LeapLib.timer in
       timer#start;
-      verb "**** TSL translation done...";
+      verb "**** TSL translation done...\n";
       let valid, tsl_calls, tslk_calls =
             TslSolver.is_valid_plus_info
                 solverInfo.prog_lines stac cutoff tsl_phi in

@@ -116,7 +116,7 @@ let unfold_expression (mInfo:malloc_info)
       let (t,e,ms,fs) = gen_malloc mkcell in
       let fs' = List.map (fun f -> E.And
                                      (E.Implies
-                                       (E.less_form (E.IntVal 0) i_fresh,
+                                       (E.lesseq_form (E.IntVal 0) i_fresh,
                                         E.And
                                           (E.eq_addr (E.AddrArrRd(aa_fresh, i_fresh))
                                                      (E.Null),

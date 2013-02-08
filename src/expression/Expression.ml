@@ -1625,10 +1625,10 @@ and addr_to_str (expr:addr) :string =
                                             (mem_to_str mem)
                                             (path_to_str path)
                                             (integer_to_str l)
-  | AddrArrayRd(arr,t)        -> sprintf "%s%s" (arrays_to_str arr)
-                                                (param_tid_to_str t)
-  | AddrArrRd(arr,l)          -> sprintf "%s%s" (addrarr_to_str arr)
-                                                (integer_to_str l)
+  | AddrArrayRd(arr,t)        -> sprintf "%s[%s]" (arrays_to_str arr)
+                                                  (param_tid_to_str t)
+  | AddrArrRd(arr,l)          -> sprintf "%s[%s]" (addrarr_to_str arr)
+                                                  (integer_to_str l)
 
 
 and eq_to_str ((e1,e2):eq) : string =

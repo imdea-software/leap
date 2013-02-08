@@ -233,6 +233,21 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
                      TslkExp.eq_addr a' (List.nth aa' n))) :: (!xs)
           done;
           TslkExp.conj_list (!xs)
+      | Atom(Eq(ThidT t, ThidT (ThidArrRd (tt,i))))
+      | Atom(Eq(ThidT (ThidArrRd (tt,i)), ThidT t))
+      | NegAtom(InEq(ThidT t, ThidT (ThidArrRd (tt,i))))
+      | NegAtom(InEq(ThidT (ThidArrRd (tt,i)), ThidT t)) ->
+          let t' = tid_tsl_to_tslk t in
+          let tt' = gen_tid_list tt 0 (TslkExp.k - 1) in
+          let i' = int_tsl_to_tslk i in
+          let xs = ref [] in
+          for n = 0 to (TslkExp.k - 1) do
+            let n' = TslkExp.LevelVal n in
+            xs := (TslkExp.Implies
+                    (TslkExp.eq_level i' n',
+                     TslkExp.eq_tid t' (List.nth tt' n))) :: (!xs)
+          done;
+          TslkExp.conj_list (!xs)
       | Atom(Eq(AddrArrayT bb, AddrArrayT (AddrArrayUp(aa,i,a))))
       | Atom(Eq(AddrArrayT (AddrArrayUp(aa,i,a)), AddrArrayT bb))
       | NegAtom(InEq(AddrArrayT bb, AddrArrayT (AddrArrayUp(aa,i,a))))
