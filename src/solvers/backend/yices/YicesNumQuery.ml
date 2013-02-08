@@ -48,7 +48,6 @@ let int_varid_to_str (v:Expr.varId) : string =
 
 
 let int_local_varid_to_str (v:Expr.varId) : string =
-  let _ = print_endline "CALLED THIS FUNCTION!!!!" in
   let _ = GM.sm_decl_fun sort_map v [GM.tid_s] [GM.int_s]
   in
     Printf.sprintf "(define %s::(-> %s %s))\n" v thid_s int_s

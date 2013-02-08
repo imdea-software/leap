@@ -2720,7 +2720,6 @@ addr :
                                                    (Stm.term_to_str $5) in
       let a = parser_check_type check_type_addr $1 Expr.Addr get_str_expr in
       let l = parser_check_type check_type_int $5 Expr.Int get_str_expr in
-      let _ = Printf.printf "%s\n" (get_str_expr()) in
         Stm.PointerNextAt (a,l)
     }
 

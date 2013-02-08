@@ -52,16 +52,16 @@ let cond_effect_aux_to_str (cond:cond_effect_aux_t) : string =
 (* FIX: This support is not extended to closed systems *)
 let unfold_expression (mInfo:malloc_info)
                       (th_p:E.tid option)
-                      (e:Stm.expr_t) : (E.expr_t      *
-                                        E.mem option  *
-                                        E.term list   *
-                                        E.formula list) =
-	LOG "Entering unfold_expression..." LEVEL TRACE;
+                      (expr:Stm.expr_t) : (E.expr_t      *
+                                           E.mem option  *
+                                           E.term list   *
+                                           E.formula list) =
+  LOG "Entering unfold_expression..." LEVEL TRACE;
   let gen_malloc (mkcell:E.cell) :
-								 (E.expr_t * E.mem option * E.term list * E.formula list) =
-		LOG "unfold_expression::gen_malloc()" LEVEL TRACE;
+                 (E.expr_t * E.mem option * E.term list * E.formula list) =
+    LOG "unfold_expression::gen_malloc()" LEVEL TRACE;
     let c_fresh = E.VarCell(E.build_var
-											E.fresh_cell_name E.Cell false None None E.Normal) in
+                      E.fresh_cell_name E.Cell false None None E.Normal) in
     let a_fresh = E.VarAddr(E.build_var
                       E.fresh_addr_name E.Addr false None None E.Normal) in
     let diff_fresh a = E.ineq_addr a_fresh (E.VarAddr a) in
@@ -87,20 +87,22 @@ let unfold_expression (mInfo:malloc_info)
     in
       (E.Term (E.AddrT a_fresh), Some E.aux_heap, [], [new_f])
   in
-  match e with
+  match expr with
   | Stm.Term (Stm.AddrT (Stm.Malloc(e,a,t))) ->
-			LOG "Malloc translate(%s)" (Stm.term_to_str e) LEVEL DEBUG;
+      LOG "Malloc translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG;
       let e_expr  = Stm.elem_to_expr_elem e in
       let a_expr  = Stm.addr_to_expr_addr a in
       let t_expr  = Stm.tid_to_expr_tid t in
       let mkcell  = E.param_cell th_p (E.MkCell(e_expr, a_expr, t_expr)) in
         gen_malloc mkcell
   | Stm.Term (Stm.AddrT (Stm.MallocSLK(e,l))) ->
+      LOG "MallocSLK translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG;
       let e_expr  = Stm.elem_to_expr_elem e in
       (* FIX: In fact, I am not using the parameter l *)
       let mkcell  = E.param_cell th_p (E.MkSLKCell(e_expr, [], [])) in
         gen_malloc mkcell
   | Stm.Term (Stm.AddrT (Stm.MallocSL(e,l))) ->
+      LOG "MallocSL translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG;
       let e_expr   = Stm.elem_to_expr_elem e in
       let l_expr   = Stm.integer_to_expr_integer l in
       let aa_fresh = E.VarAddrArray(E.build_var
@@ -122,30 +124,30 @@ let unfold_expression (mInfo:malloc_info)
                                                     (E.NoThid))), f)) fs in
         (t,e,ms,fs')
   | Stm.Term (Stm.ElemT (Stm.PointerData a)) ->
+      LOG "PointerData translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG;
       let a_expr = Stm.addr_to_expr_addr a in
       (E.Term (E.ElemT (E.CellData (E.CellAt (E.heap,a_expr)))), None, [], [])
   | Stm.Term (Stm.AddrT (Stm.PointerNext a)) ->
+      LOG "PointerNext translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG;
       let a_expr = Stm.addr_to_expr_addr a in
-      let _ = print_endline "TRANSLATING POINTERNEXT!!!" in
-      let _ = Printf.printf "%s\n" (E.term_to_str (E.AddrT (E.Next (E.CellAt 
-(E.heap,a_expr))))) in
       (E.Term (E.AddrT (E.Next (E.CellAt (E.heap,a_expr)))), None, [], [])
   | Stm.Term (Stm.AddrT (Stm.PointerNextAt (a,l))) ->
+      LOG "PointerNextAt translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG;
       let a_expr = Stm.addr_to_expr_addr a in
       let l_expr = Stm.integer_to_expr_integer l in
-      let _ = print_endline "TRANSLATING POINTER_NEXT_AT!!!" in
-      let _ = Printf.printf "%s\n" (E.term_to_str (E.AddrT (E.NextAt (E.CellAt (E.heap,a_expr), l_expr)))) in
       (E.Term (E.AddrT (E.NextAt (E.CellAt (E.heap,a_expr), l_expr))), None, [], [])
-
-
   | Stm.Term (Stm.ThidT (Stm.PointerLockid a)) ->
+      LOG "PointerLockid translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG;
       let a_expr = Stm.addr_to_expr_addr a in
       (E.Term (E.ThidT (E.CellLockId (E.CellAt (E.heap,a_expr)))), None, [], [])
   | Stm.Term (Stm.ThidT (Stm.PointerLockidAt (a,l))) ->
+      LOG "PointerLockidAt translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG;
       let a_expr = Stm.addr_to_expr_addr a in
       let l_expr = Stm.integer_to_expr_integer l in
       (E.Term (E.ThidT (E.CellLockIdAt (E.CellAt (E.heap,a_expr), l_expr))), None, [], [])
-  | _ -> (Stm.expr_to_expr_expr e, None, [], [])
+  | _ ->
+      LOG "Else translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG;
+      (Stm.expr_to_expr_expr expr, None, [], [])
 
 
 
@@ -199,7 +201,6 @@ let generic_stm_term_eq (mode:eqGenMode)
                                 E.CellLockId(E.CellAt(aux_mem,a))) in
         let new_term = E.param_term th_p (E.MemT(E.Update(aux_mem,a,new_cell)))
         in
-        let _ = print_endline "GENERATOR CALLED!!!" in
           eq_generator (E.MemT E.heap) th_p (E.Term(new_term))
     (* NextAt *)
     | (E.AddrT (E.NextAt(E.CellAt(h,a), l)), E.Term(E.AddrT a')) ->
@@ -419,4 +420,4 @@ let gen_st_cond_effect_as_array (pt:prog_type)
                                 (st:Stm.statement_t)
                                 (is_ghost:bool)
                                 (th_p:E.tid option) : cond_effect_t list =
-	gen_st_cond_effect_for_th pt st is_ghost th_p
+  gen_st_cond_effect_for_th pt st is_ghost th_p

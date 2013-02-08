@@ -1,8 +1,11 @@
 
+open TSLExpression
+open LeapLib
+open LeapVerbose
+
 module TslExp = TSLExpression
 module type TslkExp = TSLKExpression.S
 
-open TSLExpression
 
 let solver_impl = ref ""
 
@@ -57,6 +60,7 @@ let sanitize (cf:TslExp.conjunctive_formula) : TslExp.conjunctive_formula =
 
 let guess_arrangements (cf:TslExp.conjunctive_formula)
       : TslExp.conjunctive_formula list =
+  LOG "Entering guess_arrangements..." LEVEL TRACE;
   let rec cons_var_eq_class (vs:TslExp.variable list) : TslExp.literal list =
     match vs with
     | v1::v2::xs -> Atom(Eq(IntT (VarInt v1), IntT (VarInt v2))) :: cons_var_eq_class (v2::xs)
@@ -71,22 +75,28 @@ let guess_arrangements (cf:TslExp.conjunctive_formula)
   match cf with
   | TslExp.FalseConj -> []
   | TslExp.TrueConj  -> []
-  | TslExp.Conj ls   -> let _ = print_endline "COMPUTING LEVEL VARS..." in
-                        let _ = Printf.printf "CONJUNCTIVE FORMULA: %s\n" (TslExp.conjunctive_formula_to_str cf) in
+  | TslExp.Conj ls   -> verb "**** TSL Solver. Computing level vars from: %s\n"
+                              (TslExp.conjunctive_formula_to_str cf);
                         let level_vars = TslExp.get_varset_of_sort_from_conj cf TslExp.Int in
-                        let _ = print_endline "COMPUTING PARTITIONS..." in
+                        verb "**** TSL Solver. Extracted level vars: %s\n"
+                              (String.concat ", " $
+                                TslExp.VarSet.fold (fun v xs ->
+                                  (TslExp.variable_to_str v) :: xs
+                                ) level_vars []);
+                        verb "**** TSL Solver. Computing partitions...\n";
                         let parts = Partition.gen_partitions
                                       (TslExp.VarSet.elements level_vars) [] in
-                        let _ = print_endline "COMPUTING EQUALITIES..." in
+                        verb "**** TSL Solver. Computing equalities...\n";
                         let eqs = List.fold_left (fun xs p ->
                                     (Partition.to_list p) :: xs
                                   ) [] parts in
-                        let _ = Printf.printf "LEVEL_VARS: %i\n" (TslExp.VarSet.cardinal level_vars) in
-                        let _ = print_endline "COMPUTING ARRANGEMENTS..." in
+                        verb "**** TSL Solver. Level vars: %i\n"
+                              (TslExp.VarSet.cardinal level_vars);
+                        verb "**** TSL Solver. Computing arrangements...\n";
                         let arrgs = List.fold_left (fun xs eq_c ->
                                       (LeapLib.comb eq_c (List.length eq_c)) @ xs
                                     ) [] eqs in
-                        let _ = print_endline "COMPUTING LV_ARRGS..." in
+                        verb "**** TSL Solver. Computing level arrangements...\n";
                         let lv_arrs = List.fold_left (fun xs arr ->
                                         let eqs = List.fold_left (fun ys eq_c ->
                                                     (cons_var_eq_class eq_c) @ ys
@@ -194,11 +204,10 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
     let gen_tid_list (tt:TslExp.tidarr) (i:int) (j:int) : TslkExp.tid list =
       let vs = gen_varlist (TslExp.tidarr_to_str tt) TslkExp.Thid i j in
       List.map (fun v -> TslkExp.VarTh v) vs
-
     
     let trans_literal (l:TslExp.literal) : TslkExp.formula =
-      let _ = Printf.printf "Literal to be translated:\n%s\n" 
-      (TslExp.literal_to_str l) in
+      verb "**** TSL Solver. Literal to be translated: %s\n"
+            (TslExp.literal_to_str l);
       match l with
       | Atom(Eq(CellT (VarCell c),CellT(MkCell(e,aa,tt,i))))
       | Atom(Eq(CellT(MkCell(e,aa,tt,i)),CellT (VarCell c)))
@@ -314,15 +323,14 @@ let check_sat_by_cases (lines:int)
 
 
   let rec check pa nc arrgs =
-    let _ = Printf.printf "INSIDE, PA: %s\n" (TslExp.conjunctive_formula_to_str pa) in
-    let _ = Printf.printf "INSIDE, NC: %s\n" (TslExp.conjunctive_formula_to_str nc) in
+    verb "**** TSL Solver. PA: %s\n" (TslExp.conjunctive_formula_to_str pa);
+    verb "**** TSL Solver. NC: %s\n" (TslExp.conjunctive_formula_to_str nc);
 
     match arrgs with
     | [] -> false
     | alpha::xs ->
         (* Check PA /\ alpha satisfiability *)
         let pa_arrgs = TslExp.combine_conj_formula pa alpha in
-        let _ = Printf.printf "INSIDE PA_ARRGS: %s\n" (TslExp.conjunctive_formula_to_str pa_arrgs) in
         let pa_sat = match pa_arrgs with
                      | TslExp.TrueConj  -> true
                      | TslExp.FalseConj -> false
@@ -332,9 +340,11 @@ let check_sat_by_cases (lines:int)
                                           (TslExp.from_conjformula_to_formula
                                             pa_arrgs))
                                     in
-                        let _ = Printf.printf "BEFORE FORMULA: %s\n" (TslExp.conjunctive_formula_to_str pa_arrgs) in
-                        let _ = Printf.printf "WILL PASS FORMULA: %s\n" (NumExpression.int_formula_to_string phi_num) in
-                                      NumSol.is_sat phi_num in
+                        verb "**** TSL Solver numeric formula: %s\n"
+                              (TslExp.conjunctive_formula_to_str pa_arrgs);
+                        verb "**** TSL Solver will pass numeric formula: %s\n"
+                              (NumExpression.int_formula_to_string phi_num);
+                        NumSol.is_sat phi_num in
         if pa_sat then
           (* Check NC /\ alpha satisfiability *)
           let nc_arrgs = TslExp.combine_conj_formula nc alpha in
@@ -350,22 +360,27 @@ let check_sat_by_cases (lines:int)
 *)
                                                       : TslkSolver.S) in
                           let module Trans = TranslateTsl (TslkSol.TslkExp) in
-                          let _ = print_endline "ABOUT TO TRANSLATE..." in
+                          verb "**** TSL Solver, about to translate TSL to TSLK...\n";
                           let phi_tslk = Trans.to_tslk ls in
-                          let _ = print_endline "TRANSLATION DONE..." in
+                          verb "**** TSL Solver, TSL to TSLK translation done...\n";
                             TslkSol.is_sat lines stac co phi_tslk in
           if nc_sat then true else check pa nc xs
         else
           check pa nc xs
   in
   let rec check_aux cs =
-    Printf.printf "%i cases:\n%s\n" (List.length cs) (String.concat "\n" (List.map (fun (pa,nc) -> Printf.sprintf "PA: %s\nNC: %s\n--------\n" (TslExp.conjunctive_formula_to_str pa) (TslExp.conjunctive_formula_to_str nc)) cs));
+    verb "**** TSL Solver: %i cases\n%s\n" (List.length cs)
+            (String.concat "\n"
+              (List.map (fun (pa,nc) ->
+                Printf.sprintf "PA: %s\nNC: %s\n--------\n"
+                  (TslExp.conjunctive_formula_to_str pa)
+                  (TslExp.conjunctive_formula_to_str nc)) cs));
     match cs with
     | []          -> (false, 1, !tslk_calls)
-    | (pa,nc)::xs -> let _ = print_endline "WILL GUESS ARRANGEMENTS..." in
+    | (pa,nc)::xs -> verb "**** TSL Solver: will guess arrangements...\n";
                      let arrgs = guess_arrangements
                                   (TslExp.combine_conj_formula pa nc) in
-                     let _ = print_endline "ARRANGEMENTS GUESSED..." in
+                     verb "**** TSL Solver: arrangements guessed...\n";
                      if check pa nc arrgs then
                        (true, 1, !tslk_calls)
                      else
@@ -379,20 +394,20 @@ let is_sat_plus_info (lines : int)
            (co : Smp.cutoff_strategy)
            (phi : TslExp.formula) : (bool * int * int) =
   (* 0. Normalize the formula and rewrite it in DNF *)
-  let _ = print_endline "WILL NORMALIZE..." in
+  verb "**** Will normalize TSL formula...\n";
   let phi_norm = TslExp.normalize phi in
-  let _ = Printf.printf "ORIGINAL: %s\n" (TslExp.formula_to_str phi) in
-  let _ = Printf.printf "NORMALIZED : %s\n" (TslExp.formula_to_str phi_norm) in
-  let _ = print_endline "WILL DO DNF..." in
+  verb "**** Original TSL formula:\n%s\n" (TslExp.formula_to_str phi);
+  verb "**** Normalized TSL formula:\n%s\n" (TslExp.formula_to_str phi_norm);
+  verb "**** Will do DNF on TSL formula...\n";
   let phi_dnf = TslExp.dnf phi_norm in
   (* 1. Sanitize the formula *)
-  let _ = print_endline "WILL SANITIZE..." in
+  verb "**** Will sanitize TSL formula...\n";
   let phi_san = List.map sanitize phi_dnf in
   (* 2. Split each conjunction into PA y NC *)
-  let _ = print_endline "WILL SPLIT FORMULAS..." in
+  verb "**** Will split TSL formula in NC and PA...\n";
   let splits = List.map split phi_san in
   (* 3. Call the solver for each possible case *)
-  let _ = print_endline "WILL CHECK SATISFIABILITY..." in
+  verb "**** Will check TSL formula satisfiability...\n";
   let (sat,tsl_calls,tslk_calls) = check_sat_by_cases lines stac co splits
   in
     (sat, tsl_calls, tslk_calls)

@@ -1,5 +1,6 @@
 open Printf
 open LeapLib
+open LeapDebug
 
 module OcamlSys = Sys
 
@@ -1929,12 +1930,12 @@ struct
     LOG "Entering call_tsl_dp..." LEVEL TRACE;
     assert(isInitialized());
     if status = Unverified || status = NotValid then begin
-      let _ = Printf.printf "GOING TO CONVERT %s\n" (E.formula_to_str phi) in
+      debug "**** Going to translate %s\n" (E.formula_to_str phi);
+      debug "**** Will perform TSL translation...";
       let tsl_phi = TSLInterface.formula_to_tsl_formula phi in
-      let _ = print_endline "WILL PERFORM THE TRANSLATION..." in
       let timer = new LeapLib.timer in
       timer#start;
-      let _ = print_endline "TRANSLATION DONE..." in
+      debug "**** TSL translation done...";
       let valid, tsl_calls, tslk_calls =
             TslSolver.is_valid_plus_info
                 solverInfo.prog_lines stac cutoff tsl_phi in
