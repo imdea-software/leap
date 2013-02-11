@@ -50,12 +50,18 @@ let cell_list = ref []
 let set_list = ref []
 let setth_list = ref []
 let setelem_list = ref []
+let addr_list = ref []
+let elem_list = ref []
+let tid_list = ref []
 
 let clean_lists () :  unit =
 	cell_list := [];
 	set_list := [];
 	setth_list := [];
-	setelem_list := []
+	setelem_list := [];
+	addr_list := [];
+	elem_list := [];
+	tid_list := []
 
 
 (* Information storage *)
@@ -86,6 +92,22 @@ let set_prog_lines (n:int) : unit =
 
 
 (************************* Declarations **************************)
+
+
+let data(expr:string) : string =
+	elem_list := expr :: !elem_list;
+	("(data " ^expr^ ")")
+
+
+let next(expr:string) : string =
+	addr_list := expr :: !addr_list;
+	("(next " ^expr^ ")")
+
+
+let lock(expr:string) : string =
+	tid_list := expr :: !tid_list;
+	("(lock " ^expr^ ")")
+
 
 (* (define-type address (scalar null aa_1 aa_2 aa_3 aa_4 aa_5))   *)
 (* (define max_address::int 5)                                    *)
@@ -321,6 +343,20 @@ let z3_subseteqth_def buf num_tids =
 	B.add_string buf ("))\n")
 
 
+(* (define eqsetth::(-> setth setth bool) *)
+let z3_eqsetth_def buf num_tids =
+	B.add_string buf
+		("(define-fun eqsetth ((s1 " ^setth_s^ ") (s2 " ^setth_s^ ")) "^bool_s^ "\n" ^
+		 "  (and (= (select s1 notid) (select s2 notid))\n" ^
+		 "       (= (select s1 tid_witness) (select s2 tid_witness))\n");
+	for i = 1 to num_tids do
+		let t_str = tid_prefix ^ (string_of_int i) in
+		B.add_string buf
+			("       (= (select s1 " ^t_str^ ") (select s2 " ^t_str^ "))\n")
+	done;
+	B.add_string buf ("))\n")
+
+
 (* (define emptyelem::setelem)  *)
 (*   (lambda (e::elem) (false)) *)
 let z3_empelem_def buf num_elems =
@@ -388,6 +424,20 @@ let z3_subseteqelem_def buf num_elem =
 		let e_str = elem_prefix ^ (string_of_int i) in
 		B.add_string buf
 			("       (=> (select s1 " ^e_str^ ") (select s2 " ^e_str^ "))\n")
+	done;
+	B.add_string buf ("))\n")
+
+
+(* (define eqsetelem::(-> setelem setelem bool) *)
+let z3_eqsetelem_def buf num_elem =
+	B.add_string buf
+		("(define-fun eqsetelem ((s1 " ^setelem_s^ ") (s2 " ^setelem_s^ ")) "^bool_s^ "\n" ^
+		 "  (and (= (select s1 lowestElem) (select s2 lowestElem))\n" ^
+		 "       (= (select s1 highestElem) (select s2 highestElem))\n");
+	for i = 1 to num_elem do
+		let e_str = elem_prefix ^ (string_of_int i) in
+		B.add_string buf
+			("       (= (select s1 " ^e_str^ ") (select s2 " ^e_str^ "))\n")
 	done;
 	B.add_string buf ("))\n")
 
@@ -463,6 +513,17 @@ let z3_subseteq_def buf num_addr =
 	B.add_string buf ("))\n")
 
 
+(* (define eqset::(-> set set bool)  *)
+let z3_eqset_def buf num_addr =
+	B.add_string buf
+		("(define-fun eqset ((s1 " ^set_s^ ") (s2 " ^set_s^ ")) "^bool_s^ "\n" ^
+		 "  (and (= (select s1 null) (select s2 null))\n");
+	for i = 1 to num_addr do
+		let a_str = addr_prefix ^ (string_of_int i) in
+		B.add_string buf
+			("       (= (select s1 " ^a_str^ ") (select s2 " ^a_str^ "))\n")
+	done;
+	B.add_string buf ("))\n")
 
 
 (* (define set2elem::(-> set mem bool)                *)
@@ -705,16 +766,16 @@ let z3_orderlist_def buf num_addr =
       ("(define-fun orderlist" ^id^ " ((h " ^heap_s^ ") " ^
        "(a " ^addr_s^ ") ( b " ^addr_s^ ")) " ^bool_s^ "\n" ^
        "  (or (= (next" ^id^ " h a) b)\n" ^
-       "      (and (lesselem (data (select h (next" ^id^ " h a)))\n" ^
-       "                     (data (select h (next" ^idnext^ " h a))))\n" ^
-       "           (orderlist" ^idnext^ " h a b))))\n")
+			 "      (and (lesselem " ^data ("(select h (next" ^id^ " h a))")^ "\n" ^
+			 "                     " ^data ("(select h (next" ^idnext^ " h a))")^ ")\n" ^
+			 "           (orderlist" ^idnext^ " h a b))))\n")
   done;
   B.add_string buf
     ("(define-fun orderlist ((h " ^heap_s^ ") " ^
      "(a " ^addr_s^ ") (b " ^addr_s^ ")) " ^bool_s^ "\n" ^
        "  (or (= a b)\n" ^
-       "      (and (lesselem (data (select h a))\n" ^
-       "                     (data (select h (next1 h a))))\n" ^
+			 "      (and (lesselem " ^data "(select h a)"^ "\n" ^
+			 "                     " ^data "(select h (next1 h a))"^ ")\n" ^
        "           (orderlist1 h a b))))\n")
 
 
@@ -1066,8 +1127,9 @@ let z3_defs buf num_addr num_tid num_elem req_sorts req_ops =
       z3_union_def buf ;
       z3_intersection_def buf ;
       z3_setdiff_def buf ;
-			z3_subseteq_def buf num_addr
-    end;
+			z3_subseteq_def buf num_addr ;
+			z3_eqset_def buf num_addr
+		end;
   (* Iterations over next *)
   if List.mem Expr.Addr2Set req_ops || List.mem Expr.OrderedList req_ops then
     z3_nextiter_def buf num_addr ;
@@ -1089,8 +1151,9 @@ let z3_defs buf num_addr num_tid num_elem req_sorts req_ops =
       z3_unionth_def buf ;
       z3_intersectionth_def buf ;
       z3_setdiffth_def buf ;
-			z3_subseteqth_def buf num_tid
-    end;
+			z3_subseteqth_def buf num_tid ;
+			z3_eqsetth_def buf num_tid
+		end;
   (* Sets of Elements *)
   if List.mem Expr.SetElem req_sorts then
     begin
@@ -1099,7 +1162,8 @@ let z3_defs buf num_addr num_tid num_elem req_sorts req_ops =
       z3_unionelem_def buf ;
       z3_intersectionelem_def buf ;
 			z3_setdiffelem_def buf ;
-      z3_subseteqelem_def buf num_elem
+			z3_subseteqelem_def buf num_elem ;
+			z3_eqsetelem_def buf num_elem
     end;
   (* Set2Elem *)
 	if List.mem Expr.Set2Elem req_ops then z3_settoelems_def buf ;
@@ -1261,8 +1325,9 @@ and setterm_to_str (s:Expr.set) : string =
 and elemterm_to_str (e:Expr.elem) : string =
   match e with
     Expr.VarElem v     -> variable_invocation_to_str v
-  | Expr.CellData c    -> Printf.sprintf "(data %s)" (cellterm_to_str c)
-  | Expr.HavocListElem -> "" (* Don't need a representation for this *)
+	| Expr.CellData c    -> let c_str = cellterm_to_str c in
+														data c_str
+	| Expr.HavocListElem -> "" (* Don't need a representation for this *)
 	| Expr.LowestElem    -> "lowestElem"
 	| Expr.HighestElem   -> "highestElem"
 
@@ -1459,8 +1524,11 @@ let eq_to_str (t1:Expr.term) (t2:Expr.term) : string =
   let str_t1 = (term_to_str t1) in
   let str_t2 = (term_to_str t2) in
   match t1 with
-      Expr.PathT _ -> Printf.sprintf "(eqpath %s %s)" str_t1 str_t2
-    | _            -> Printf.sprintf "(= %s %s)"      str_t1 str_t2
+		| Expr.PathT _    -> Printf.sprintf "(eqpath %s %s)"		str_t1 str_t2
+		| Expr.SetT _	    -> Printf.sprintf "(eqset %s %s)"			str_t1 str_t2
+		| Expr.SetThT _	  -> Printf.sprintf "(eqsetth %s %s)"		str_t1 str_t2
+		| Expr.SetElemT _	-> Printf.sprintf "(eqsetelem %s %s)" str_t1 str_t2
+		| _								-> Printf.sprintf "(= %s %s)"      		str_t1 str_t2
 
 
 let ineq_to_str (t1:Expr.term) (t2:Expr.term) : string =
@@ -1566,26 +1634,38 @@ let literal_to_z3 (buf:Buffer.t) (lit:Expr.literal) : unit =
   B.add_string buf (literal_to_str lit)
 
 
+let process_addr (a_expr:string) : string =
+	("(assert (isaddr (next " ^a_expr^ ")))\n")
+
+
+let process_tid (t_expr:string) : string =
+	("(assert (istid (lock " ^t_expr^ ")))\n")
+
+
+let process_elem (e_expr:string) : string =
+	("(assert (iselem (data " ^e_expr^ ")))\n")
+
+
 let process_cell (c:Expr.cell) : string =
 	match c with
 	| Expr.CellLock (c,t) ->
 			let c_str = cellterm_to_str c in
 			let t_str = tidterm_to_str t in
-				("(assert (and (= (data (cell_lock " ^c_str^ " " ^t_str^ ") (data " ^c_str^ ")))\n\
-											 (= (next (cell_lock " ^c_str^ " " ^t_str^ ") (next " ^c_str^ ")))\n\
-											 (= (lock (cell_lock " ^c_str^ " " ^t_str^ ") " ^t_str^ "))))\n")
+				("(assert (and (= " ^data ("(cell_lock " ^c_str^ " " ^t_str^ ")")^ " " ^data c_str^ ")\n\
+											 (= (next (cell_lock " ^c_str^ " " ^t_str^ ")) (next " ^c_str^ "))\n\
+											 (= (lock (cell_lock " ^c_str^ " " ^t_str^ ")) " ^t_str^ ")))\n")
 	| Expr.CellUnlock c	->
 			let c_str = cellterm_to_str c in
 			let notid_str = tidterm_to_str Expr.NoThid in
-				("(assert (and (= (data (cell_unlock " ^c_str^ ") (data " ^c_str^ ")))\n\
-											 (= (next (cell_unlock " ^c_str^ ") (next " ^c_str^ ")))\n\
-											 (= (lock (cell_unlock " ^c_str^ ") " ^notid_str^ "))))\n")
+				("(assert (and (= " ^data ("(cell_unlock " ^c_str^ ")")^ " " ^data c_str^ ")\n\
+											 (= (next (cell_unlock " ^c_str^ ")) (next " ^c_str^ "))\n\
+											 (= (lock (cell_unlock " ^c_str^ ")) " ^notid_str^ ")))\n")
 	| Expr.MkCell (e,a,t) ->
 			let e_str = elemterm_to_str e in
 			let a_str = addrterm_to_str a in
 			let t_str = tidterm_to_str t in
 			let mkcell_str = "mkcell " ^e_str^ " " ^a_str^ " " ^t_str in
-				("(assert (and (= (data (" ^mkcell_str^ ")) " ^e_str^ ")\n\
+				("(assert (and (= " ^data ("(" ^mkcell_str^ ")")^ " " ^e_str^ ")\n\
 											 (= (next (" ^mkcell_str^ ")) " ^a_str^ ")\n\
 											 (= (lock (" ^mkcell_str^ ")) " ^t_str^ ")))\n")
 	| _ -> RAISE(UnexpectedCellTerm(Expr.cell_to_str c))
@@ -1695,10 +1775,10 @@ let process_setelem (max_elems:int) (max_addrs:int) (se:Expr.setelem) : string =
 			let m_str = memterm_to_str m in
 			let proc_all_address (e_str:string) : string =
 				let buff_str = ref ("(or (not (select (set2elem " ^s_str^ " " ^m_str^ ") " ^e_str^ "))\n" ^
-														"    (and (select " ^s_str^ " null) (= (data (select " ^m_str^ " null)) " ^e_str^ "))\n") in
+														"    (and (select " ^s_str^ " null) (= " ^data ("(select " ^m_str^ " null)")^ " " ^e_str^ "))\n") in
 				for i = 1 to max_addrs do
 					let a_str = addr_prefix ^ (string_of_int i) in
-					buff_str := !buff_str ^ (" 	  (and (select " ^s_str^ " " ^a_str^ ") (= (data (select " ^m_str^ " " ^a_str^ ")) " ^e_str^ "))\n")
+					buff_str := !buff_str ^ (" 	  (and (select " ^s_str^ " " ^a_str^ ") (= " ^data ("(select " ^m_str^ " " ^a_str^ ")")^ " " ^e_str^ "))\n")
 				done;
 				!buff_str ^ (")\n") in
 			let buff = ref ("(assert (and \n"^(proc_all_address "lowestElem") ^" " ^(proc_all_address "highestElem")^ "\n") in
@@ -1733,6 +1813,9 @@ let literal_list_to_str (ls:Expr.literal list) : string =
       in
       let formula_str = List.fold_right add_and_literal ls ""
       in
+	List.iter (process_addr>>(B.add_string buf)) !addr_list;
+	List.iter (process_tid>>(B.add_string buf)) !tid_list;
+	List.iter (process_elem>>(B.add_string buf)) !elem_list;
 	List.iter (process_cell>>(B.add_string buf)) !cell_list;
 	List.iter ((process_set num_addr)>>(B.add_string buf)) !set_list;
 	List.iter ((process_setth num_tid)>>(B.add_string buf)) !setth_list;
@@ -1802,6 +1885,9 @@ let formula_to_str (stac:Tactics.solve_tactic_t option)
     variables_from_formula_to_z3 buf phi ;
     (* We add extra information if needed *)
     B.add_string buf extra_info_str ;
+		List.iter (process_addr>>(B.add_string buf)) !addr_list;
+		List.iter (process_tid>>(B.add_string buf)) !tid_list;
+		List.iter (process_elem>>(B.add_string buf)) !elem_list;
 		List.iter (process_cell>>(B.add_string buf)) !cell_list;
 		List.iter ((process_set num_addr)>>(B.add_string buf)) !set_list;
 		List.iter ((process_setth num_tid)>>(B.add_string buf)) !setth_list;
