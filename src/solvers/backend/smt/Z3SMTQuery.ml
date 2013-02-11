@@ -310,9 +310,15 @@ let z3_setdiffth_def buf =
 (*          (if (r t3)       (s t3)))))      *)
 let z3_subseteqth_def buf num_tids =
 	B.add_string buf
-    ("(define-fun subseteqth ((s1 " ^setth_s^ ") (s2 " ^setth_s^ ")) "
-        ^bool_s^ "\n\
-        (= (intersectionth s1 s2) s1))\n")
+		("(define-fun subseteqth ((s1 " ^setth_s^ ") (s2 " ^setth_s^ ")) "^bool_s^ "\n" ^
+		 "  (and (=> (select s1 notid) (select s2 notid))\n" ^
+		 "       (=> (select s1 tid_witness) (select s2 tid_witness))\n");
+	for i = 1 to num_tids do
+		let t_str = tid_prefix ^ (string_of_int i) in
+		B.add_string buf
+			("       (=> (select s1 " ^t_str^ ") (select s2 " ^t_str^ "))\n")
+	done;
+	B.add_string buf ("))\n")
 
 
 (* (define emptyelem::setelem)  *)
@@ -375,9 +381,15 @@ let z3_setdiffelem_def buf =
 (*          (=> (r e3) (s e3)))))                  *)
 let z3_subseteqelem_def buf num_elem =
   B.add_string buf
-    ("(define-fun subseteqelem ((s1 " ^setelem_s^ ") (s2 " ^setelem_s^ ")) "
-        ^bool_s^ "\n\
-        (= (intersectionelem s1 s2) s1))\n")
+		("(define-fun subseteqelem ((s1 " ^setelem_s^ ") (s2 " ^setelem_s^ ")) "^bool_s^ "\n" ^
+		 "  (and (=> (select s1 lowestElem) (select s2 lowestElem))\n" ^
+		 "       (=> (select s1 highestElem) (select s2 highestElem))\n");
+	for i = 1 to num_elem do
+		let e_str = elem_prefix ^ (string_of_int i) in
+		B.add_string buf
+			("       (=> (select s1 " ^e_str^ ") (select s2 " ^e_str^ "))\n")
+	done;
+	B.add_string buf ("))\n")
 
 
 (* (define empty::set)             *)
@@ -441,8 +453,16 @@ let z3_setdiff_def buf =
 (*          (if (s1 a5) (s2 a5)))))     *)
 let z3_subseteq_def buf num_addr =
 	B.add_string buf
-    ("(define-fun subseteq ((s1 " ^set_s^ ") (s2 " ^set_s^ ")) " ^bool_s^ "\n\
-        (= (intersection s1 s2) s1))\n")
+		("(define-fun subseteq ((s1 " ^set_s^ ") (s2 " ^set_s^ ")) "^bool_s^ "\n" ^
+		 "  (and (=> (select s1 null) (select s2 null))\n");
+	for i = 1 to num_addr do
+		let a_str = addr_prefix ^ (string_of_int i) in
+		B.add_string buf
+			("       (=> (select s1 " ^a_str^ ") (select s2 " ^a_str^ "))\n")
+	done;
+	B.add_string buf ("))\n")
+
+
 
 
 (* (define set2elem::(-> set mem bool)                *)
@@ -531,15 +551,24 @@ let z3_cell_unlock_def buf =
 (* (define epsilon::path *)
 (*    (mk-record length::0 at::epsilonat where::epsilonwhere)) *)
 
-let z3_epsilon_def buf =
+let z3_epsilon_def buf num_addr =
 	let _ = GM.sm_decl_const sort_map "epsilon" path_s in
 	let mkpath_str = "mkpath 0 epsilonat epsilonwhere empty" in
     B.add_string buf
-      ("(declare-const epsilonat PathAt)\n" ^
-       "(assert (= epsilonat ((as const PathAt) null)))\n" ^
-       "(declare-const epsilonwhere PathWhere)\n" ^
-       "(assert (= epsilonwhere ((as const PathWhere) 0)))\n" ^
-       "(declare-const epsilon " ^path_s^ ")\n" ^
+			("(declare-fun epsilonat () PathAt)\n");
+		for i = 0 to (num_addr + 1) do
+			B.add_string buf
+				("(assert (= (select epsilonat " ^(string_of_int i)^ ") null))\n")
+		done;
+		B.add_string buf
+			("(declare-fun epsilonwhere () PathWhere)\n" ^
+			 "(assert (= (select epsilonwhere null) 0))\n");
+		for i = 1 to num_addr do
+			B.add_string buf
+				("(assert (= (select epsilonwhere " ^(addr_prefix ^ (string_of_int i))^ ") 0))\n")
+		done;
+		B.add_string buf
+			("(declare-fun epsilon () " ^path_s^ ")\n" ^
 			 "(assert (= epsilon (" ^mkpath_str^ ")))\n");
 		B.add_string buf
 			("(assert (and (= (length (" ^mkpath_str^ ")) 0)\n\
@@ -559,21 +588,27 @@ let z3_epsilon_def buf =
 (* (define singlepath::(-> address path) *)
 (*    (lambda (a::address) *)
 (*      (mk-record length::1 at::(singletonat a) where::(singletonwhere a)))) *)
-let z3_singletonpath_def buf =
+let z3_singletonpath_def buf num_addr =
 	let mkpath_str = "mkpath 1 (singletonat a) (singletonwhere a) (singleton a)" in
 	B.add_string buf
     ("(define-fun singletonat ((a " ^addr_s^ ")) PathAt\n" ^
-     "  (store ((as const (PathAt)) null) 0 a))\n" ^
-     "(define-fun singletonwhere ((a " ^addr_s^ ")) PathWhere\n" ^
-     "  (store ((as const (PathWhere)) 1) a 0))\n" ^
-     "(define-fun singlepath ((a " ^addr_s^ ")) " ^path_s^ "\n" ^
+		 "  (store epsilonat 0 a))\n" ^
+		 "(declare-fun singlewhere () PathWhere)\n" ^
+		 "(assert (= (select singlewhere null) 1))\n");
+	for i = 1 to num_addr do
+		B.add_string buf
+			("(assert (= (select singlewhere " ^(addr_prefix ^ (string_of_int i))^ ") 1))\n")
+	done;
+	B.add_string buf
+		("(define-fun singletonwhere ((a " ^addr_s^ ")) PathWhere\n" ^
+		 "  (store singlewhere a 0))\n" ^
+		 "(define-fun singlepath ((a " ^addr_s^ ")) " ^path_s^ "\n" ^
 		 "  (" ^mkpath_str^ "))\n");
 		B.add_string buf
 			("(assert (and (= (length (" ^mkpath_str^ ")) 1)\n\
 										 (= (at (" ^mkpath_str^ ")) (singletonat a))\n\
 										 (= (where (" ^mkpath_str^ ")) (singletonwhere a))\n\
 										 (= (addrs (" ^mkpath_str^ ")) (singleton a))))\n")
-
 
 
 (* (define check_position::(-> path range_address bool)                          *)
@@ -650,40 +685,10 @@ let z3_dref_def buf =
      "  (select h a))\n")
 
 
-let z3_elemorder_def buf num_elem =
-  B.add_string buf ("(declare-fun lesselem (" ^elem_s^ " " ^elem_s^ ") " ^bool_s^ ")\n") ;
-  B.add_string buf ("(define-fun greaterelem ((x " ^elem_s^ ") (y " ^elem_s^ ")) " ^bool_s^ "\n" ^
-                    "  (lesselem y x))\n") ;
-  (* Totality and no-reflexibility *)
-  B.add_string buf ("(assert (not (lesselem lowestElem lowestElem)))\n");
-  B.add_string buf ("(assert (not (lesselem highestElem highestElem)))\n");
-  B.add_string buf ("(assert (lesselem lowestElem highestElem))\n");
-  for i = 1 to num_elem do
-    let x = elem_prefix ^ (string_of_int i) in
-    B.add_string buf ("(assert (not (lesselem " ^x^ " " ^x^ ")))\n") ;
-    B.add_string buf ("(assert (lesselem lowestElem " ^x^ "))\n");
-    B.add_string buf ("(assert (lesselem " ^x^ " highestElem))\n");
-    for j = i+1 to num_elem do
-      let y = elem_prefix ^ (string_of_int j) in
-        B.add_string buf ("(assert (or (lesselem " ^x^ " " ^y^ ") (lesselem " ^y^ " " ^x^ ")))\n")
-    done
-  done ;
-  (* TOFIX: Replace buffer in order to prevent segmentation fault due to
-            buffer overflow when too many elements are required. *)
-  (* Transitivity *)
-  for i = 1 to num_elem do
-    for j = 1 to num_elem do
-      for k = 1 to num_elem do
-        if (i<>j && j<>k (*&& i<>k*)) then
-          let x = elem_prefix ^ (string_of_int i) in
-          let y = elem_prefix ^ (string_of_int j) in
-          let z = elem_prefix ^ (string_of_int k) in
-          B.add_string buf ("(assert (=> (and (lesselem " ^x^ " " ^y^ ") \
-                                              (lesselem " ^y^ " " ^z^ ")) \
-                                              (lesselem " ^x^ " " ^z^ ")))\n")
-      done
-    done
-  done
+let z3_elemorder_def buf =
+	B.add_string buf
+		("(define-fun lesselem ((x " ^elem_s^ ") (y " ^elem_s^ ")) " ^bool_s^ " (< x y))\n" ^
+		 "(define-fun greaterelem ((x " ^elem_s^ ") (y " ^elem_s^ ")) " ^bool_s^ " (> x y))\n")
 
 
 (* Ordered list predicate definition *)
@@ -715,10 +720,9 @@ let z3_orderlist_def buf num_addr =
 
 (* (define error::cell) *)
 let z3_error_def buf=
-  let _ = GM.sm_decl_const sort_map "error" cell_s
-  in
+	let _ = GM.sm_decl_const sort_map "error" cell_s in
     B.add_string buf
-      ("(declare-const error " ^cell_s^ ")\n" ^
+			("(declare-fun error () " ^cell_s^ ")\n" ^
 			 "(assert (= (lock error) notid))\n" ^
        "(assert (= (next error) null))\n")
 
@@ -1036,7 +1040,7 @@ let z3_preamble buf num_addr num_tid num_elem req_sorts =
 let z3_defs buf num_addr num_tid num_elem req_sorts req_ops =
   (* Elements *)
   if List.mem Expr.ElemOrder req_ops || List.mem Expr.OrderedList req_ops then
-    z3_elemorder_def buf num_elem ;
+		z3_elemorder_def buf ;
   (* Cells and Heap *)
   if List.mem Expr.Cell req_sorts || List.mem Expr.Mem req_sorts then
     z3_error_def buf ;
@@ -1062,7 +1066,7 @@ let z3_defs buf num_addr num_tid num_elem req_sorts req_ops =
       z3_union_def buf ;
       z3_intersection_def buf ;
       z3_setdiff_def buf ;
-      z3_subseteq_def buf num_addr
+			z3_subseteq_def buf num_addr
     end;
   (* Iterations over next *)
   if List.mem Expr.Addr2Set req_ops || List.mem Expr.OrderedList req_ops then
@@ -1085,7 +1089,7 @@ let z3_defs buf num_addr num_tid num_elem req_sorts req_ops =
       z3_unionth_def buf ;
       z3_intersectionth_def buf ;
       z3_setdiffth_def buf ;
-      z3_subseteqth_def buf num_tid
+			z3_subseteqth_def buf num_tid
     end;
   (* Sets of Elements *)
   if List.mem Expr.SetElem req_sorts then
@@ -1105,8 +1109,8 @@ let z3_defs buf num_addr num_tid num_elem req_sorts req_ops =
   if List.mem Expr.Path req_sorts then
     begin
       z3_rev_def buf num_addr ;
-      z3_epsilon_def buf ;
-      z3_singletonpath_def buf ;
+			z3_epsilon_def buf num_addr ;
+			z3_singletonpath_def buf num_addr ;
       z3_is_singlepath buf ;
       z3_path_length_def buf ;
       z3_at_path_def buf ;
@@ -1729,13 +1733,13 @@ let literal_list_to_str (ls:Expr.literal list) : string =
       in
       let formula_str = List.fold_right add_and_literal ls ""
       in
-  B.add_string buf "(assert\n   (and";
-  B.add_string buf formula_str ;
-	B.add_string buf "))\n";
 	List.iter (process_cell>>(B.add_string buf)) !cell_list;
 	List.iter ((process_set num_addr)>>(B.add_string buf)) !set_list;
 	List.iter ((process_setth num_tid)>>(B.add_string buf)) !setth_list;
 	List.iter ((process_setelem num_elem num_addr)>>(B.add_string buf)) !setelem_list;
+  B.add_string buf "(assert\n   (and";
+  B.add_string buf formula_str ;
+	B.add_string buf "))\n";
 	B.add_string buf "(check-sat)\n" ;
 	B.contents   buf
 
@@ -1787,7 +1791,7 @@ let formula_to_str (stac:Tactics.solve_tactic_t option)
 	let max_cut_off = SmpTll.cut_off co copt phi in
   let num_addr    = max_cut_off.SmpTll.num_addrs in
   let num_tid     = max_cut_off.SmpTll.num_tids in
-  let num_elem    = max_cut_off.SmpTll.num_elems in
+	let num_elem    = max_cut_off.SmpTll.num_elems in
   let req_sorts   = Expr.required_sorts phi in
   let req_ops     = Expr.special_ops phi in
   let formula_str = formula_to_str phi in
@@ -1798,13 +1802,13 @@ let formula_to_str (stac:Tactics.solve_tactic_t option)
     variables_from_formula_to_z3 buf phi ;
     (* We add extra information if needed *)
     B.add_string buf extra_info_str ;
-    B.add_string buf "(assert\n";
-		B.add_string buf formula_str ;
-		B.add_string buf ")\n";
 		List.iter (process_cell>>(B.add_string buf)) !cell_list;
 		List.iter ((process_set num_addr)>>(B.add_string buf)) !set_list;
 		List.iter ((process_setth num_tid)>>(B.add_string buf)) !setth_list;
 		List.iter ((process_setelem num_elem num_addr)>>(B.add_string buf)) !setelem_list;
+    B.add_string buf "(assert\n";
+		B.add_string buf formula_str ;
+		B.add_string buf ")\n";
 		B.add_string buf "(check-sat)\n" ;
 		B.contents   buf
 
