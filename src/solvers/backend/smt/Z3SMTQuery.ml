@@ -54,6 +54,7 @@ let addr_list = ref []
 let elem_list = ref []
 let tid_list = ref []
 
+
 let clean_lists () :  unit =
 	cell_list := [];
 	set_list := [];
@@ -763,20 +764,29 @@ let z3_orderlist_def buf num_addr =
     let id = string_of_int i in
     let idnext = string_of_int (i+1) in
     B.add_string buf
-      ("(define-fun orderlist" ^id^ " ((h " ^heap_s^ ") " ^
-       "(a " ^addr_s^ ") ( b " ^addr_s^ ")) " ^bool_s^ "\n" ^
-       "  (or (= (next" ^id^ " h a) b)\n" ^
-			 "      (and (lesselem " ^data ("(select h (next" ^id^ " h a))")^ "\n" ^
-			 "                     " ^data ("(select h (next" ^idnext^ " h a))")^ ")\n" ^
-			 "           (orderlist" ^idnext^ " h a b))))\n")
+			("(define-fun orderlist" ^id^ " ((h " ^heap_s^ ") (a " ^addr_s^ ") ( b " ^addr_s^ ")) " ^bool_s^ "\n" ^
+			 "  (and (isaddr a)\n" ^
+			 "       (isaddr b)\n" ^
+			 "			 (isaddr (next" ^id^ " h a))\n" ^
+			 "       (or (= (next" ^id^ " h a) b)\n" ^
+			 "           (and (lesselem (data (select h (next" ^id^ " h a)))\n" ^
+			 "                          (data (select h (next" ^idnext^ " h a))))\n" ^
+			 "			       		(iselem (data (select h (next" ^id^ " h a))))\n" ^
+			 "					      (iselem (data (select h (next" ^idnext^ " h a))))\n" ^
+			 "					      (isaddr (next" ^idnext^ " h a))\n" ^
+			 "                (orderlist" ^idnext^ " h a b)))))\n")
   done;
   B.add_string buf
-    ("(define-fun orderlist ((h " ^heap_s^ ") " ^
-     "(a " ^addr_s^ ") (b " ^addr_s^ ")) " ^bool_s^ "\n" ^
-       "  (or (= a b)\n" ^
-			 "      (and (lesselem " ^data "(select h a)"^ "\n" ^
-			 "                     " ^data "(select h (next1 h a))"^ ")\n" ^
-       "           (orderlist1 h a b))))\n")
+		("(define-fun orderlist ((h " ^heap_s^ ") (a " ^addr_s^ ") (b " ^addr_s^ ")) " ^bool_s^ "\n" ^
+			 "  (and (isaddr a)\n" ^
+			 "       (isaddr b)\n" ^
+			 "       (or (= a b)\n" ^
+			 "           (and (lesselem (data (select h a))\n" ^
+			 "                          (data (select h (next1 h a))))\n" ^
+			 "					      (iselem (data (select h a)))\n" ^
+			 "					      (iselem (data (select h (next1 h a))))\n" ^
+			 "				        (isaddr (next1 h a))\n" ^
+			 "                (orderlist1 h a b)))))\n")
 
 
 (* (define error::cell) *)
@@ -785,7 +795,7 @@ let z3_error_def buf=
     B.add_string buf
 			("(declare-fun error () " ^cell_s^ ")\n" ^
 			 "(assert (= (lock error) notid))\n" ^
-       "(assert (= (next error) null))\n")
+			 "(assert (= " ^next "error"^ " null))\n")
 
 
 (* (define mkcell::(-> element address tid cell)        *)
@@ -825,8 +835,8 @@ let z3_nextiter_def buf num_addr =
       ("(define-fun next1 ((h " ^heap_s^ ") (a " ^addr_s^ ")) " ^addr_s^ "\n" ^
        "  (next (select h a)))\n");
   for i=2 to num_addr do
-    B.add_string buf
-      ("(define-fun next"^ (string_of_int i) ^" ((h " ^heap_s^ ") (a " ^addr_s^ ")) " ^addr_s^ "\n" ^
+		B.add_string buf
+			("(define-fun next"^ (string_of_int i) ^" ((h " ^heap_s^ ") (a " ^addr_s^ ")) " ^addr_s^ "\n" ^
        " (next (select h (next"^ (string_of_int (i-1)) ^" h a))))\n")
   done
 
@@ -834,12 +844,22 @@ let z3_nextiter_def buf num_addr =
 let z3_reachable_def buf num_addr =
   B.add_string buf
     ("(define-fun isreachable ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ")) " ^bool_s^ "\n" ^
-     "  (or (= from to) (= (next (select h from)) to)\n");
+		 "  (and (isaddr from)\n" ^
+		 "       (isaddr to)\n" ^
+		 "       (isaddr (next0 h to)\n" ^
+		 "       (isaddr (next1 h to)\n");
+	for i = 2 to num_addr do
+		B.add_string buf
+			("       (isaddr (next" ^(string_of_int i)^ " h to))\n")
+	done;
+		B.add_string buf
+		("			 (or (= from to)\n" ^
+		 "					 (= (next (select h from)) to)\n");
   for i=2 to num_addr do
     B.add_string buf
       ( "\n             (= (next" ^ (string_of_int i)  ^ " h from) to)" )
   done ;
-  B.add_string buf "))\n"
+	B.add_string buf ")))\n"
 
 
 
@@ -849,7 +869,11 @@ let z3_reachable_def buf num_addr =
 (*          (lambda (to::address)        *)
 (*              (isreachable from to)))) *)
 let z3_address2set_def buf num_addr =
-  let join_sets s1 s2 = "\n  (setunion "^ s1 ^" "^ s2 ^")" in
+	B.add_string buf
+		("(declare-fun address2set (" ^heap_s^ " " ^addr_s^ ") " ^set_s^ ")\n")
+
+(*
+	let join_sets s1 s2 = "\n  (setunion "^ s1 ^" "^ s2 ^")" in
   B.add_string buf
     ("(define-fun address2set ((h " ^heap_s^ ") (from " ^addr_s^ ")) " ^set_s^ "");
   B.add_string buf
@@ -865,6 +889,7 @@ let z3_address2set_def buf num_addr =
              in
                str^")\n"
 		end
+*)
 
 
 (* (define is_singlepath::(-> address path bool) *)
@@ -1317,7 +1342,8 @@ and setterm_to_str (s:Expr.set) : string =
 																									(setterm_to_str s)
 		| Expr.PathToSet p    -> Printf.sprintf "(path2set %s)"
 																									(pathterm_to_str p)
-		| Expr.AddrToSet(m,a) -> Printf.sprintf "(address2set %s %s)"
+		| Expr.AddrToSet(m,a) -> set_list := s :: !set_list;
+														 Printf.sprintf "(address2set %s %s)"
 																									(memterm_to_str m)
 																									(addrterm_to_str a)
 
@@ -1676,30 +1702,54 @@ let process_set (max_addrs:int) (s:Expr.set) : string =
 	| Expr.Union (r,s) ->
 			let r_str = setterm_to_str r in
 			let s_str = setterm_to_str s in
-			let buff_str = ref ("(assert (= (select (setunion " ^r_str^ " " ^s_str^ ") null) (or (select " ^r_str^ " null) (select " ^s_str^ " null))))\n") in
+			let tmpbuf = B.create 1024 in
+			B.add_string tmpbuf
+				("(assert (= (select (setunion " ^r_str^ " " ^s_str^ ") null) (or (select " ^r_str^ " null) (select " ^s_str^ " null))))\n");
 			for i = 1 to max_addrs do
 				let ai_str = addr_prefix ^ (string_of_int i) in
-				buff_str := !buff_str ^ ("(assert (= (select (setunion " ^r_str^ " " ^s_str^ ") " ^ai_str^ ") (or (select " ^r_str^ " " ^ai_str^ ") (select " ^s_str^ " " ^ai_str^ "))))\n");
+				B.add_string tmpbuf
+					("(assert (= (select (setunion " ^r_str^ " " ^s_str^ ") " ^ai_str^ ") (or (select " ^r_str^ " " ^ai_str^ ") (select " ^s_str^ " " ^ai_str^ "))))\n")
 			done;
-			!buff_str
+			B.contents tmpbuf
 	| Expr.Intr (r,s) ->
 			let r_str = setterm_to_str r in
 			let s_str = setterm_to_str s in
-			let buff_str = ref ("(assert (= (select (intersection " ^r_str^ " " ^s_str^ ") null) (and (select " ^r_str^ " null) (select " ^s_str^ " notid))))\n") in
+			let tmpbuf = B.create 1024 in
+			B.add_string tmpbuf
+				("(assert (= (select (intersection " ^r_str^ " " ^s_str^ ") null) (and (select " ^r_str^ " null) (select " ^s_str^ " notid))))\n");
 			for i = 1 to max_addrs do
 				let ai_str = addr_prefix ^ (string_of_int i) in
-				buff_str := !buff_str ^ ("(assert (= (select (intersection " ^r_str^ " " ^s_str^ ") " ^ai_str^ ") (and (select " ^r_str^ " " ^ai_str^ ") (select " ^s_str^ " " ^ai_str^ "))))\n");
+				B.add_string tmpbuf
+					("(assert (= (select (intersection " ^r_str^ " " ^s_str^ ") " ^ai_str^ ") (and (select " ^r_str^ " " ^ai_str^ ") (select " ^s_str^ " " ^ai_str^ "))))\n")
 			done;
-			!buff_str
+			B.contents tmpbuf
 	| Expr.Setdiff (r,s) ->
 			let r_str = setterm_to_str r in
 			let s_str = setterm_to_str s in
-			let buff_str = ref ("(assert (= (select (setdiff " ^r_str^ " " ^s_str^ ") null) (and (select " ^r_str^ " null) (not (select " ^s_str^ " null)))))\n") in
+			let tmpbuf = B.create 1024 in
+			B.add_string tmpbuf
+				("(assert (= (select (setdiff " ^r_str^ " " ^s_str^ ") null) (and (select " ^r_str^ " null) (not (select " ^s_str^ " null)))))\n");
 			for i = 1 to max_addrs do
 				let ai_str = addr_prefix ^ (string_of_int i) in
-				buff_str := !buff_str ^ ("(assert (= (select (setdiff " ^r_str^ " " ^s_str^ ") " ^ai_str^ ") (and (select " ^r_str^ " " ^ai_str^ ") (not (select " ^s_str^ " " ^ai_str^ ")))))\n");
+				B.add_string tmpbuf
+					("(assert (= (select (setdiff " ^r_str^ " " ^s_str^ ") " ^ai_str^ ") (and (select " ^r_str^ " " ^ai_str^ ") (not (select " ^s_str^ " " ^ai_str^ ")))))\n")
 			done;
-			!buff_str
+			B.contents tmpbuf
+	| Expr.AddrToSet (m,a) ->
+			let m_str = memterm_to_str m in
+			let a_str = addrterm_to_str a in
+			let tmpbuf = B.create 1024 in
+			B.add_string tmpbuf ("(assert (isaddr) a)\n") in
+			for i = 0 to max_addrs do
+				B.add_string tmpbuf
+					("(assert (isaddr (next" ^string_of_int i^ " m a)))\n")
+			done;
+			let auxbuf = ref "(singleton from)" in
+			for i = 1 to max_addrs do
+				auxbuf := "(store " ^!auxbuf^ " (next" ^string_of_int i^ " " ^m_str^ " " ^a_str^ ") true)"
+			done;
+			B.add_string tmpbuf ("(assert (= (address2set " ^m_str^ " " ^a_str^ ") " ^!auxbuf^ "))\n");
+			B.contents tmpbuf
 	| _ -> RAISE(UnexpectedSetTerm(Expr.set_to_str s))
 
 
@@ -1708,30 +1758,44 @@ let process_setth (max_tids:int) (sth:Expr.setth) : string =
 	| Expr.UnionTh (r,s) ->
 			let r_str = setthterm_to_str r in
 			let s_str = setthterm_to_str s in
-			let buff_str = ref ("(assert (= (select (unionth " ^r_str^ " " ^s_str^ ") notid) (or (select " ^r_str^ " notid) (select " ^s_str^ " notid))))\n") in
+			let tmpbuf = B.create 1024 in
+			B.add_string tmpbuf
+				("(assert (= (select (unionth " ^r_str^ " " ^s_str^ ") notid) (or (select " ^r_str^ " notid) (select " ^s_str^ " notid))))\n");
 			for i = 1 to max_tids do
 				let ti_str = tid_prefix ^ (string_of_int i) in
-				buff_str := !buff_str ^ ("(assert (= (select (unionth " ^r_str^ " " ^s_str^ ") " ^ti_str^ ") (or (select " ^r_str^ " " ^ti_str^ ") (select " ^s_str^ " " ^ti_str^ "))))\n");
+				B.add_string tmpbuf
+					("(assert (= (select (unionth " ^r_str^ " " ^s_str^ ") " ^ti_str^ ") (or (select " ^r_str^ " " ^ti_str^ ") (select " ^s_str^ " " ^ti_str^ "))))\n")
 			done;
-			!buff_str ^ ("(assert (= (select (unionth " ^r_str^ " " ^s_str^ ") tid_witness) (or (select " ^r_str^ " tid_witness) (select " ^s_str^ " tid_witness))))\n")
+			B.add_string tmpbuf ("(assert (= (select (unionth " ^r_str^ " " ^s_str^ ") tid_witness) (or (select " ^r_str^ " tid_witness) (select " ^s_str^ " tid_witness))))\n");
+			B.contents tmpbuf
 	| Expr.IntrTh (r,s) ->
 			let r_str = setthterm_to_str r in
 			let s_str = setthterm_to_str s in
-			let buff_str = ref ("(assert (= (select (intersectionth " ^r_str^ " " ^s_str^ ") notid) (and (select " ^r_str^ " notid) (select " ^s_str^ " notid))))\n") in
+			let tmpbuf = B.create 1024 in
+			B.add_string tmpbuf
+				("(assert (= (select (intersectionth " ^r_str^ " " ^s_str^ ") notid) (and (select " ^r_str^ " notid) (select " ^s_str^ " notid))))\n");
 			for i = 1 to max_tids do
 				let ti_str = tid_prefix ^ (string_of_int i) in
-				buff_str := !buff_str ^ ("(assert (= (select (intersectionth " ^r_str^ " " ^s_str^ ") " ^ti_str^ ") (and (select " ^r_str^ " " ^ti_str^ ") (select " ^s_str^ " " ^ti_str^ "))))\n");
+				B.add_string tmpbuf
+					("(assert (= (select (intersectionth " ^r_str^ " " ^s_str^ ") " ^ti_str^ ") (and (select " ^r_str^ " " ^ti_str^ ") (select " ^s_str^ " " ^ti_str^ "))))\n")
 			done;
-			!buff_str ^ ("(assert (= (select (intersectionth " ^r_str^ " " ^s_str^ ") tid_witness) (and (select " ^r_str^ " tid_witness) (select " ^s_str^ " tid_witness))))\n")
+			B.add_string tmpbuf
+				("(assert (= (select (intersectionth " ^r_str^ " " ^s_str^ ") tid_witness) (and (select " ^r_str^ " tid_witness) (select " ^s_str^ " tid_witness))))\n");
+			B.contents tmpbuf
 	| Expr.SetdiffTh (r,s) ->
 			let r_str = setthterm_to_str r in
 			let s_str = setthterm_to_str s in
-			let buff_str = ref ("(assert (= (select (setdiffth " ^r_str^ " " ^s_str^ ") notid) (and (select " ^r_str^ " notid) (not (select " ^s_str^ " notid)))))\n") in
+			let tmpbuf = B.create 1024 in
+			B.add_string tmpbuf
+				("(assert (= (select (setdiffth " ^r_str^ " " ^s_str^ ") notid) (and (select " ^r_str^ " notid) (not (select " ^s_str^ " notid)))))\n");
 			for i = 1 to max_tids do
 				let ti_str = tid_prefix ^ (string_of_int i) in
-				buff_str := !buff_str ^ ("(assert (= (select (setdiffth " ^r_str^ " " ^s_str^ ") " ^ti_str^ ") (and (select " ^r_str^ " " ^ti_str^ ") (not (select " ^s_str^ " " ^ti_str^ ")))))\n");
+				B.add_string tmpbuf
+					("(assert (= (select (setdiffth " ^r_str^ " " ^s_str^ ") " ^ti_str^ ") (and (select " ^r_str^ " " ^ti_str^ ") (not (select " ^s_str^ " " ^ti_str^ ")))))\n")
 			done;
-			!buff_str ^ ("(assert (= (select (setdiffth " ^r_str^ " " ^s_str^ ") tid_witness) (and (select " ^r_str^ " tid_witness) (not (select " ^s_str^ " tid_witness)))))\n")
+			B.add_string tmpbuf
+				("(assert (= (select (setdiffth " ^r_str^ " " ^s_str^ ") tid_witness) (and (select " ^r_str^ " tid_witness) (not (select " ^s_str^ " tid_witness)))))\n");
+			B.contents tmpbuf
 	| _ -> RAISE(UnexpectedSetthTerm(Expr.setth_to_str sth))
 
 
@@ -1740,53 +1804,66 @@ let process_setelem (max_elems:int) (max_addrs:int) (se:Expr.setelem) : string =
 	| Expr.UnionElem (r,s) ->
 			let r_str = setelemterm_to_str r in
 			let s_str = setelemterm_to_str s in
-			let buff_str = ref
-						("(assert (= (select (unionelem " ^r_str^ " " ^s_str^ ") lowestElem) (or (select " ^r_str^ " lowestElem) (select " ^s_str^ " lowestElem))))\n" ^
-						 "(assert (= (select (unionelem " ^r_str^ " " ^s_str^ ") highestElem) (or (select " ^r_str^ " highestElem) (select " ^s_str^ " highestElem))))\n") in
+			let tmpbuf = B.create 1024 in
+			B.add_string tmpbuf
+				("(assert (= (select (unionelem " ^r_str^ " " ^s_str^ ") lowestElem) (or (select " ^r_str^ " lowestElem) (select " ^s_str^ " lowestElem))))\n" ^
+				 "(assert (= (select (unionelem " ^r_str^ " " ^s_str^ ") highestElem) (or (select " ^r_str^ " highestElem) (select " ^s_str^ " highestElem))))\n");
 			for i = 1 to max_elems do
 				let ei_str = elem_prefix ^ (string_of_int i) in
-				buff_str := !buff_str ^ ("(assert (= (select (unionelem " ^r_str^ " " ^s_str^ ") " ^ei_str^ ") (or (select " ^r_str^ " " ^ei_str^ ") (select " ^s_str^ " " ^ei_str^ "))))\n");
+				B.add_string tmpbuf
+					("(assert (= (select (unionelem " ^r_str^ " " ^s_str^ ") " ^ei_str^ ") (or (select " ^r_str^ " " ^ei_str^ ") (select " ^s_str^ " " ^ei_str^ "))))\n")
 			done;
-			!buff_str
+			B.contents tmpbuf
 	| Expr.IntrElem (r,s) ->
 			let r_str = setelemterm_to_str r in
 			let s_str = setelemterm_to_str s in
-			let buff_str = ref
-						("(assert (= (select (intersectionelem " ^r_str^ " " ^s_str^ ") lowestElem) (and (select " ^r_str^ " lowestElem) (select " ^s_str^ " lowestElem))))\n" ^
-						 "(assert (= (select (intersectionelem " ^r_str^ " " ^s_str^ ") highestElem) (and (select " ^r_str^ " highestElem) (select " ^s_str^ " highestElem))))\n") in
+			let tmpbuf = B.create 1024 in
+			B.add_string tmpbuf
+				("(assert (= (select (intersectionelem " ^r_str^ " " ^s_str^ ") lowestElem) (and (select " ^r_str^ " lowestElem) (select " ^s_str^ " lowestElem))))\n" ^
+				 "(assert (= (select (intersectionelem " ^r_str^ " " ^s_str^ ") highestElem) (and (select " ^r_str^ " highestElem) (select " ^s_str^ " highestElem))))\n");
 			for i = 1 to max_elems do
 				let ei_str = elem_prefix ^ (string_of_int i) in
-				buff_str := !buff_str ^ ("(assert (= (select (intersectionelem " ^r_str^ " " ^s_str^ ") " ^ei_str^ ") (and (select " ^r_str^ " " ^ei_str^ ") (select " ^s_str^ " " ^ei_str^ "))))\n");
+				B.add_string tmpbuf
+					("(assert (= (select (intersectionelem " ^r_str^ " " ^s_str^ ") " ^ei_str^ ") (and (select " ^r_str^ " " ^ei_str^ ") (select " ^s_str^ " " ^ei_str^ "))))\n")
 			done;
-			!buff_str
+			B.contents tmpbuf
 	| Expr.SetdiffElem (r,s) ->
 			let r_str = setelemterm_to_str r in
 			let s_str = setelemterm_to_str s in
-			let buff_str = ref
-						("(assert (= (select (setdiffelem " ^r_str^ " " ^s_str^ ") lowestElem) (and (select " ^r_str^ " lowestElem) (not (select " ^s_str^ " lowestElem)))))\n" ^
-						 "(assert (= (select (setdiffelem " ^r_str^ " " ^s_str^ ") highestElem) (and (select " ^r_str^ " highestElem) (not (select " ^s_str^ " highestElem)))))\n") in
+			let tmpbuf = B.create 1024 in
+			B.add_string tmpbuf
+				("(assert (= (select (setdiffelem " ^r_str^ " " ^s_str^ ") lowestElem) (and (select " ^r_str^ " lowestElem) (not (select " ^s_str^ " lowestElem)))))\n" ^
+				 "(assert (= (select (setdiffelem " ^r_str^ " " ^s_str^ ") highestElem) (and (select " ^r_str^ " highestElem) (not (select " ^s_str^ " highestElem)))))\n");
 			for i = 1 to max_elems do
 				let ei_str = elem_prefix ^ (string_of_int i) in
-				buff_str := !buff_str ^ ("(assert (= (select (setdiffelem " ^r_str^ " " ^s_str^ ") " ^ei_str^ ") (and (select " ^r_str^ " " ^ei_str^ ") (not (select " ^s_str^ " " ^ei_str^ ")))))\n");
+				B.add_string tmpbuf
+					("(assert (= (select (setdiffelem " ^r_str^ " " ^s_str^ ") " ^ei_str^ ") (and (select " ^r_str^ " " ^ei_str^ ") (not (select " ^s_str^ " " ^ei_str^ ")))))\n")
 			done;
-			!buff_str
+			B.contents tmpbuf
 	| Expr.SetToElems (s,m) ->
 			let s_str = setterm_to_str s in
 			let m_str = memterm_to_str m in
+			let tmpbuf = B.create 1024 in
 			let proc_all_address (e_str:string) : string =
-				let buff_str = ref ("(or (not (select (set2elem " ^s_str^ " " ^m_str^ ") " ^e_str^ "))\n" ^
-														"    (and (select " ^s_str^ " null) (= " ^data ("(select " ^m_str^ " null)")^ " " ^e_str^ "))\n") in
+				let auxbuf = B.create 1024 in
+				B.add_string auxbuf
+					("(or (not (select (set2elem " ^s_str^ " " ^m_str^ ") " ^e_str^ "))\n" ^
+					 "    (and (select " ^s_str^ " null) (= " ^data ("(select " ^m_str^ " null)")^ " " ^e_str^ "))\n");
 				for i = 1 to max_addrs do
 					let a_str = addr_prefix ^ (string_of_int i) in
-					buff_str := !buff_str ^ (" 	  (and (select " ^s_str^ " " ^a_str^ ") (= " ^data ("(select " ^m_str^ " " ^a_str^ ")")^ " " ^e_str^ "))\n")
+					B.add_string auxbuf
+						(" 	  (and (select " ^s_str^ " " ^a_str^ ") (= " ^data ("(select " ^m_str^ " " ^a_str^ ")")^ " " ^e_str^ "))\n")
 				done;
-				!buff_str ^ (")\n") in
-			let buff = ref ("(assert (and \n"^(proc_all_address "lowestElem") ^" " ^(proc_all_address "highestElem")^ "\n") in
+				B.add_string auxbuf ")\n";
+				B.contents auxbuf in
+			B.add_string tmpbuf
+				("(assert (and \n"^(proc_all_address "lowestElem") ^" " ^(proc_all_address "highestElem")^ "\n");
 			for i = 1 to max_elems do
 				let e_str = elem_prefix ^ (string_of_int i) in
-				buff := !buff ^ (proc_all_address e_str) ^ "\n"
+				B.add_string tmpbuf ((proc_all_address e_str) ^ "\n")
 			done;
-			(!buff ^ "))\n")
+			B.add_string tmpbuf "))\n";
+			B.contents tmpbuf
 	| _ -> RAISE(UnexpectedSetelemTerm(Expr.setelem_to_str se))
 
 
@@ -1796,7 +1873,7 @@ let literal_list_to_str (ls:Expr.literal list) : string =
   let expr = Expr.Conj ls in
 	let c = SmpTll.cut_off_normalized expr in
   let num_addr = c.SmpTll.num_addrs in
-  let num_tid = c.SmpTll.num_tids in
+	let num_tid = c.SmpTll.num_tids in
   let num_elem = c.SmpTll.num_elems in
   let (req_sorts, req_ops) =
     List.fold_left (fun (ss,os) lit ->
@@ -1873,7 +1950,7 @@ let formula_to_str (stac:Tactics.solve_tactic_t option)
 	verb "**** SMTTllQuery. Will compute the cutoff...\n";
 	let max_cut_off = SmpTll.cut_off co copt phi in
   let num_addr    = max_cut_off.SmpTll.num_addrs in
-  let num_tid     = max_cut_off.SmpTll.num_tids in
+	let num_tid     = max_cut_off.SmpTll.num_tids in
 	let num_elem    = max_cut_off.SmpTll.num_elems in
   let req_sorts   = Expr.required_sorts phi in
   let req_ops     = Expr.special_ops phi in
