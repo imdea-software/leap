@@ -53,6 +53,7 @@ let setelem_list = ref []
 let addr_list = ref []
 let elem_list = ref []
 let tid_list = ref []
+let getp_list = ref []
 
 
 let clean_lists () :  unit =
@@ -62,7 +63,9 @@ let clean_lists () :  unit =
 	setelem_list := [];
 	addr_list := [];
 	elem_list := [];
-	tid_list := []
+	tid_list := [];
+	getp_list := []
+
 
 
 (* Information storage *)
@@ -689,8 +692,8 @@ let z3_ispath_def buf num_addr =
     ("(define-fun check_position ((p " ^path_s^ ") (i RangeAddress)) " ^bool_s^ "\n" ^
      "  (=> (and (is_valid_range_address i)\n" ^
      "           (< i (length p)))\n" ^
-     "      (= i (select (where p) (select (at p) i)))))\n");
-  B.add_string buf
+		 "      (and (= i (select (where p) (select (at p) i))) (isaddr (select (at p) i)))))\n");
+	B.add_string buf
     ("(define-fun ispath ((p " ^path_s^ ")) " ^bool_s^ "\n" ^
      "  (and");
   for i=0 to num_addr do
@@ -978,7 +981,9 @@ let z3_getp_def buf num_addr =
   B.add_string buf
     ("(define-fun path1 ((h " ^heap_s^ ") (a " ^addr_s^ ")) " ^path_s^ "\n" ^
      "  (singlepath a))\n");
-  for i=2 to (num_addr +1) do
+
+(*
+	for i=2 to (num_addr +1) do
     let stri= string_of_int i in
     let strpre = string_of_int (i-1) in
 		let p_str = "(path"^ strpre ^" h a)" in
@@ -1000,6 +1005,7 @@ let z3_getp_def buf num_addr =
 										 (= (where (" ^mkpath_str^ ")) " ^arg3^ ")\n\
 										 (= (addrs (" ^mkpath_str^ ")) " ^arg4^ ")))\n")
 	done ;
+*)
   B.add_string buf
     ("(define-fun getp"^ (string_of_int (num_addr + 1)) ^" ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ")) " ^path_s^ "\n" ^
      "  (if (= (next"^ (string_of_int num_addr) ^" h from) to)\n" ^
@@ -1020,14 +1026,40 @@ let z3_getp_def buf num_addr =
      "  (getp1 h from to))\n");
   B.add_string buf
     ("(define-fun isgetp ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ") (p " ^path_s^ ")) " ^bool_s^ "\n" ^
+		 "  (eqpath p (getp h from to)))\n")
+
+
+let z3_getp_def buf num_addr =
+	B.add_string buf
+		("(define-fun getp"^ (string_of_int (num_addr + 1)) ^" ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ")) " ^path_s^ "\n" ^
+     "  (if (= (next"^ (string_of_int num_addr) ^" h from) to)\n" ^
+     "      (path"^ (string_of_int num_addr) ^" h from)\n" ^
+     "      epsilon))\n");
+  for i=num_addr downto 1 do
+    let stri = string_of_int i in
+		let strpred = string_of_int (i-1) in
+		let strsucc = string_of_int (i+1) in
+    B.add_string buf
+      ("(define-fun getp"^ stri ^" ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ")) " ^path_s^ "\n" ^
+			 "  (if (= (next"^ strpred ^" h from) to)\n" ^
+			 "      (path"^ stri ^" h from)\n" ^
+			 "      (getp"^ strsucc ^" h from to)))\n")
+  done ;
+	B.add_string buf
+		("(define-fun getp ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ")) " ^path_s^ "\n" ^
+     "  (getp1 h from to))\n");
+  B.add_string buf
+    ("(define-fun isgetp ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ") (p " ^path_s^ ")) " ^bool_s^ "\n" ^
      "  (eqpath p (getp h from to)))\n")
+
+
+
 
 
 let z3_reach_def buf =
   B.add_string buf
-    ( "(define-fun reach ((h " ^heap_s^ ") (from " ^addr_s^ ") " ^
-      "(to " ^addr_s^ ") (p " ^path_s^ ")) " ^bool_s^ "\n" ^
-      "  (and (= (getp h from to) p) (not (= p epsilon))))\n"
+		( "(define-fun reach ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ") (p " ^path_s^ ")) " ^bool_s^ "\n" ^
+			"  (and (ispath p) (eqpath (getp h from to) p) (not (eqpath p epsilon))))\n"
     )
 
 
@@ -1446,10 +1478,11 @@ and pathterm_to_str (p:Expr.path) : string =
     | Expr.Epsilon         -> "epsilon"
     | Expr.SimplePath a    -> Printf.sprintf "(singlepath %s)"
                                     (addrterm_to_str a)
-    | Expr.GetPath(m,a1,a2)-> Printf.sprintf "(getp %s %s %s)"
-                                    (memterm_to_str m)
-                                    (addrterm_to_str a1)
-                                    (addrterm_to_str a2)
+		| Expr.GetPath(m,a1,a2)-> let m_str = memterm_to_str m in
+															let a1_str = addrterm_to_str a1 in
+															let a2_str = addrterm_to_str a2 in
+																getp_list := (m_str, a1_str, a2_str) :: !getp_list;
+																Printf.sprintf "(getp %s %s %s)" m_str a1_str a2_str
 
 
 and memterm_to_str (m:Expr.mem) : string =
@@ -1495,15 +1528,15 @@ let append_to_str (p1:Expr.path) (p2:Expr.path) (p3:Expr.path) : string =
 
 let reach_to_str (m:Expr.mem) (a1:Expr.addr)
                  (a2:Expr.addr) (p:Expr.path) : string =
-  Printf.sprintf "(reach %s %s %s %s)"
-    (memterm_to_str m)
-    (addrterm_to_str a1)
-    (addrterm_to_str a2)
-    (pathterm_to_str p)
+	Printf.sprintf "(reach %s %s %s %s)"
+		(memterm_to_str m)
+		(addrterm_to_str a1)
+		(addrterm_to_str a2)
+		(pathterm_to_str p)
 
 
 let orderlist_to_str (m:Expr.mem) (a1:Expr.addr) (a2:Expr.addr) : string =
-  Printf.sprintf ("(orderlist %s %s %s)")
+	Printf.sprintf ("(orderlist %s %s %s)")
     (memterm_to_str m)
     (addrterm_to_str a1)
     (addrterm_to_str a2)
@@ -1739,16 +1772,16 @@ let process_set (max_addrs:int) (s:Expr.set) : string =
 			let m_str = memterm_to_str m in
 			let a_str = addrterm_to_str a in
 			let tmpbuf = B.create 1024 in
-			B.add_string tmpbuf ("(assert (isaddr) a)\n") in
+			B.add_string tmpbuf ("(assert (isaddr) a)\n");
 			for i = 0 to max_addrs do
 				B.add_string tmpbuf
 					("(assert (isaddr (next" ^string_of_int i^ " m a)))\n")
 			done;
 			let auxbuf = ref "(singleton from)" in
 			for i = 1 to max_addrs do
-				auxbuf := "(store " ^!auxbuf^ " (next" ^string_of_int i^ " " ^m_str^ " " ^a_str^ ") true)"
+				auxbuf := "(store " ^(!auxbuf)^ " (next" ^string_of_int i^ " " ^m_str^ " " ^a_str^ ") true)"
 			done;
-			B.add_string tmpbuf ("(assert (= (address2set " ^m_str^ " " ^a_str^ ") " ^!auxbuf^ "))\n");
+			B.add_string tmpbuf ("(assert (= (address2set " ^m_str^ " " ^a_str^ ") " ^(!auxbuf)^ "))\n");
 			B.contents tmpbuf
 	| _ -> RAISE(UnexpectedSetTerm(Expr.set_to_str s))
 
@@ -1867,6 +1900,21 @@ let process_setelem (max_elems:int) (max_addrs:int) (se:Expr.setelem) : string =
 	| _ -> RAISE(UnexpectedSetelemTerm(Expr.setelem_to_str se))
 
 
+let process_getp (max_addrs:int) ((m,a1,a2) : string * string * string) : string =
+	let tmpbuf = B.create 1024 in
+	B.add_string tmpbuf ("(assert (ispath (path1 " ^m^ " " ^a1^ ")))\n");
+	for i = 2 to (max_addrs + 1) do
+		let str_i = string_of_int i in
+		let str_prev = string_of_int (i-1) in
+		B.add_string tmpbuf ("(assert (= (length (path" ^str_i^ " " ^m^ " " ^a1^ ")) (+ 1 (length (path" ^str_prev^ " " ^m^ " " ^a1^ ")))))\n");
+		B.add_string tmpbuf ("(assert (= (at (path" ^str_i^ " " ^m^ " " ^a1^ ")) (update_pathat (at (path" ^str_prev^ " " ^m^ " " ^a1^ ")) (length (path" ^str_prev^ " " ^m^ " " ^a1^ ")) (next" ^str_prev^ " " ^m^ " " ^a1^ "))))\n");
+		B.add_string tmpbuf ("(assert (= (where (path" ^str_i^ " " ^m^ " " ^a1^ ")) (update_pathwhere (where (path" ^str_prev^ " " ^m^ " " ^a1^ ")) (next" ^str_prev^ " " ^m^ " " ^a1^ ") (length (path" ^str_prev^ " " ^m^ " " ^a1^ ")))))\n");
+		B.add_string tmpbuf ("(assert (= (addrs (path" ^str_i^ " " ^m^ " " ^a1^ ")) (store (addrs (path" ^str_prev^ " " ^m^ " " ^a1^ ")) (next" ^str_prev^ " " ^m^ " " ^a1^ ") true)))\n");
+		B.add_string tmpbuf ("(assert (ispath (path" ^str_i^ " " ^m^ " " ^a1^ ")))\n")
+	done;
+	B.contents tmpbuf
+
+
 let literal_list_to_str (ls:Expr.literal list) : string =
 	clean_lists();
 	let _ = GM.clear_sort_map sort_map in
@@ -1969,6 +2017,7 @@ let formula_to_str (stac:Tactics.solve_tactic_t option)
 		List.iter ((process_set num_addr)>>(B.add_string buf)) !set_list;
 		List.iter ((process_setth num_tid)>>(B.add_string buf)) !setth_list;
 		List.iter ((process_setelem num_elem num_addr)>>(B.add_string buf)) !setelem_list;
+		List.iter ((process_getp num_addr)>>(B.add_string buf)) !getp_list;
     B.add_string buf "(assert\n";
 		B.add_string buf formula_str ;
 		B.add_string buf ")\n";
