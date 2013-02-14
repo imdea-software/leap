@@ -177,8 +177,8 @@ let z3_element_preamble buf num_elems =
 (* (define lock::(-> cell tid)     (lambda (c::cell) (select c lock))) *)
 let z3_cell_preamble buf =
 	B.add_string buf
-		("(declare-sort " ^cell_s^ ")\n\
-			(declare-fun mkcell ((" ^elem_s^ ") (" ^addr_s^ ") (" ^tid_s^ ")) " ^cell_s^ ")\n\
+		("(declare-sort " ^cell_s^ " 0)\n\
+			(declare-fun mkcell (" ^elem_s^ " " ^addr_s^ " " ^tid_s^ ") " ^cell_s^ ")\n\
 			(declare-fun data (" ^cell_s^ ") " ^elem_s^ ")\n\
 			(declare-fun next (" ^cell_s^ ") " ^addr_s^ ")\n\
 			(declare-fun lock (" ^cell_s^ ") " ^tid_s^ ")\n")
@@ -232,7 +232,7 @@ let z3_path_preamble buf num_addr =
     ( "(define-sort PathAt () (Array RangeAddress " ^addr_s^ "))\n" ^
 			"(define-sort PathWhere () (Array " ^addr_s^ " RangeAddress))\n");
 	B.add_string buf
-		( "(declare-sort " ^path_s^ ")\n" );
+		( "(declare-sort " ^path_s^ " 0)\n" );
 	B.add_string buf
 		( "(declare-fun mkpath (PathLength PathAt PathWhere " ^set_s^ ") " ^path_s^ ")\n" );
 	B.add_string buf
@@ -257,7 +257,7 @@ let z3_path_preamble buf num_addr =
 
 let z3_unknown_preamble buf =
   B.add_string buf
-    ("(declare-sort " ^unk_s^ ")\n")
+		("(declare-sort " ^unk_s^ " 0)\n")
 
 
 let z3_pos_preamble buf =
@@ -598,7 +598,7 @@ let z3_firstlock_def buf num_addr =
 (*     (mkcell (next c) (data c) t)) *)
 let z3_cell_lock buf =
   B.add_string buf
-		("(declare-fun cell_lock ((" ^cell_s^ ") (" ^tid_s^ ")) " ^cell_s^ ")\n")
+		("(declare-fun cell_lock (" ^cell_s^ " " ^tid_s^ ") " ^cell_s^ ")\n")
 
 
 (* (define cell_unlock::(-> cell cell) *)
@@ -606,7 +606,7 @@ let z3_cell_lock buf =
 (*     (mkcell (next c) (data c) notid)) *)
 let z3_cell_unlock_def buf =
 	B.add_string buf
-		("(declare-fun cell_unlock ((" ^cell_s^ ") (" ^tid_s^ ")) " ^cell_s^ ")\n")
+		("(declare-fun cell_unlock (" ^cell_s^ ") " ^cell_s^ ")\n")
 
 
 (* (define epsilonat::(-> range_address address) *)
@@ -1132,7 +1132,7 @@ let z3_is_append_def buf num_addr =
 
 (********************* Preamble Declaration **********************)
 let z3_preamble buf num_addr num_tid num_elem req_sorts =
-  if (List.exists (fun s ->
+	if (List.exists (fun s ->
         s=Expr.Addr || s=Expr.Cell || s=Expr.Path || s=Expr.Set || s=Expr.Mem
       ) req_sorts) then z3_addr_preamble buf num_addr ;
   if (List.exists (fun s ->
