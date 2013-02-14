@@ -183,6 +183,7 @@ val mem_to_str      : mem    -> string
 val path_to_str     : path   -> string
 val set_to_str      : set    -> string
 val setth_to_str    : setth  -> string
+val setelem_to_str  : setelem -> string
 val formula_to_str  : formula -> string
 
 (* val eq_to_str      : eq     -> string *)

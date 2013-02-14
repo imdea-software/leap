@@ -1247,8 +1247,9 @@ let z3_defs buf num_addr num_tid num_elem req_sorts req_ops =
 
 
 let rec z3_define_var (buf:Buffer.t)
-                         (tid_set:Expr.VarSet.t)
-                         (v:Expr.variable) : unit =
+											(tid_set:Expr.VarSet.t)
+											(num_tids:int)
+											(v:Expr.variable) : unit =
   let (id,s,pr,th,p) = v in
   let sort_str asort = match asort with
                          Expr.Set     -> set_s
@@ -1285,9 +1286,19 @@ let rec z3_define_var (buf:Buffer.t)
     else
       begin
         GM.sm_decl_fun sort_map name [tid_s] [s_str] ;
-        B.add_string buf ( "(declare-const " ^ name ^ " (Array " ^tid_s^ " " ^ s_str ^ "))\n" );
-        match s with
-          Expr.Path -> Expr.VarSet.iter (fun t ->
+				B.add_string buf ( "(declare-fun " ^ name ^ " () (Array " ^tid_s^ " " ^ s_str ^ "))\n" );
+				match s with
+				| Expr.Addr -> B.add_string buf ("(assert (isaddr (select " ^name^ " notid)))\n");
+											 B.add_string buf ("(assert (isaddr (select " ^name^ " tid_witness)))\n");
+											 for i = 1 to num_tids do
+												 B.add_string buf ("(assert (isaddr (select " ^name^ " " ^tid_prefix ^ (string_of_int i)^ ")))\n")
+											 done
+				| Expr.Elem -> B.add_string buf ("(assert (iselem (select " ^name^ " notid)))\n");
+											 B.add_string buf ("(assert (iselem (select " ^name^ " tid_witness)))\n");
+											 for i = 1 to num_tids do
+												 B.add_string buf ("(assert (iselem (select " ^name^ " " ^tid_prefix ^ (string_of_int i)^ ")))\n")
+											 done
+				| Expr.Path -> Expr.VarSet.iter (fun t ->
                     let v_str = variable_invocation_to_str
                                     (Expr.param_var v (Expr.VarTh t)) in
                       B.add_string buf ( "(assert (ispath " ^ v_str ^ "))\n" )
@@ -1307,7 +1318,7 @@ let rec z3_define_var (buf:Buffer.t)
       end
 
 
-and define_variables (buf:Buffer.t) (vars:Expr.VarSet.t) : unit =
+and define_variables (buf:Buffer.t) (num_tids:int) (vars:Expr.VarSet.t) : unit =
   let varset     = Expr.varset_of_sort vars Expr.Set  in
   let varelem    = Expr.varset_of_sort vars Expr.Elem in
   let varaddr    = Expr.varset_of_sort vars Expr.Addr in
@@ -1318,29 +1329,32 @@ and define_variables (buf:Buffer.t) (vars:Expr.VarSet.t) : unit =
   let varpath    = Expr.varset_of_sort vars Expr.Path in
   let varmem     = Expr.varset_of_sort vars Expr.Mem  in
   let varunk     = Expr.varset_of_sort vars Expr.Unknown  in
-    Expr.VarSet.iter (z3_define_var buf vartid) varset;
-    Expr.VarSet.iter (z3_define_var buf vartid) varelem;
-    Expr.VarSet.iter (z3_define_var buf vartid) vartid;
-    Expr.VarSet.iter (z3_define_var buf vartid) varaddr;
-    Expr.VarSet.iter (z3_define_var buf vartid) varcell;
-    Expr.VarSet.iter (z3_define_var buf vartid) varsetth;
-    Expr.VarSet.iter (z3_define_var buf vartid) varsetelem;
-    Expr.VarSet.iter (z3_define_var buf vartid) varpath;
-    Expr.VarSet.iter (z3_define_var buf vartid) varmem;
-    Expr.VarSet.iter (z3_define_var buf vartid) varunk
+		Expr.VarSet.iter (z3_define_var buf vartid num_tids) varset;
+		Expr.VarSet.iter (z3_define_var buf vartid num_tids) varelem;
+		Expr.VarSet.iter (z3_define_var buf vartid num_tids) vartid;
+		Expr.VarSet.iter (z3_define_var buf vartid num_tids) varaddr;
+		Expr.VarSet.iter (z3_define_var buf vartid num_tids) varcell;
+		Expr.VarSet.iter (z3_define_var buf vartid num_tids) varsetth;
+		Expr.VarSet.iter (z3_define_var buf vartid num_tids) varsetelem;
+		Expr.VarSet.iter (z3_define_var buf vartid num_tids) varpath;
+		Expr.VarSet.iter (z3_define_var buf vartid num_tids) varmem;
+		Expr.VarSet.iter (z3_define_var buf vartid num_tids) varunk
 
 
-and variables_to_z3 (buf:Buffer.t) (expr:Expr.conjunctive_formula) : unit =
-  let vars = Expr.get_varset_from_conj expr
+and variables_to_z3 (buf:Buffer.t)
+										(num_tids:int)
+										(expr:Expr.conjunctive_formula) : unit =
+	let vars = Expr.get_varset_from_conj expr
   in
-    define_variables buf vars
+		define_variables buf num_tids vars
 
 
 and variables_from_formula_to_z3 (buf:Buffer.t)
-                                    (phi:Expr.formula) : unit =
+																 (num_tids:int)
+																 (phi:Expr.formula) : unit =
   let vars = Expr.get_varset_from_formula phi
   in
-    define_variables buf vars
+		define_variables buf num_tids vars
 
 
 and variable_invocation_to_str (v:Expr.variable) : string =
@@ -1355,26 +1369,26 @@ and variable_invocation_to_str (v:Expr.variable) : string =
       Printf.sprintf " (select %s%s%s %s)" p_str id pr_str th_str
 
 
-and setterm_to_str (s:Expr.set) : string =
-  match s with
+and setterm_to_str (sa:Expr.set) : string =
+	match sa with
 			Expr.VarSet v				-> variable_invocation_to_str v
 		| Expr.EmptySet				-> "empty"
 		| Expr.Singl a				-> Printf.sprintf "(singleton %s)" (addrterm_to_str a)
-		| Expr.Union(r,s)			-> set_list := s :: !set_list;
+		| Expr.Union(r,s)			-> set_list := sa :: !set_list;
 														 Printf.sprintf "(setunion %s %s)"
 																									(setterm_to_str r)
 																									(setterm_to_str s)
-		| Expr.Intr(r,s)      -> set_list := s :: !set_list;
+		| Expr.Intr(r,s)      -> set_list := sa :: !set_list;
 														 Printf.sprintf "(intersection %s %s)"
 																									(setterm_to_str r)
 																									(setterm_to_str s)
-		| Expr.Setdiff(r,s)   -> set_list := s :: !set_list;
+		| Expr.Setdiff(r,s)   -> set_list := sa :: !set_list;
 														 Printf.sprintf "(setdiff %s %s)"
 																									(setterm_to_str r)
 																									(setterm_to_str s)
 		| Expr.PathToSet p    -> Printf.sprintf "(path2set %s)"
 																									(pathterm_to_str p)
-		| Expr.AddrToSet(m,a) -> set_list := s :: !set_list;
+		| Expr.AddrToSet(m,a) -> set_list := sa :: !set_list;
 														 Printf.sprintf "(address2set %s %s)"
 																									(memterm_to_str m)
 																									(addrterm_to_str a)
@@ -1932,7 +1946,7 @@ let literal_list_to_str (ls:Expr.literal list) : string =
   let buf = B.create 1024 in
       z3_preamble buf num_addr num_tid num_elem req_sorts;
       z3_defs    buf num_addr num_tid num_elem req_sorts req_ops;
-      variables_to_z3 buf expr ;
+			variables_to_z3 buf num_tid expr ;
       let add_and_literal l str =
   "\n         " ^ (literal_to_str l) ^ str
       in
@@ -2001,13 +2015,13 @@ let formula_to_str (stac:Tactics.solve_tactic_t option)
 	let num_tid     = max_cut_off.SmpTll.num_tids in
 	let num_elem    = max_cut_off.SmpTll.num_elems in
   let req_sorts   = Expr.required_sorts phi in
-  let req_ops     = Expr.special_ops phi in
+	let req_ops     = Expr.special_ops phi in
   let formula_str = formula_to_str phi in
   let buf         = B.create 1024
   in
     z3_preamble buf num_addr num_tid num_elem req_sorts;
     z3_defs     buf num_addr num_tid num_elem req_sorts req_ops;
-    variables_from_formula_to_z3 buf phi ;
+		variables_from_formula_to_z3 buf num_tid phi ;
     (* We add extra information if needed *)
     B.add_string buf extra_info_str ;
 		List.iter (process_addr>>(B.add_string buf)) !addr_list;

@@ -1,6 +1,7 @@
 open Genlex
 open Debug
 open LeapLib
+open LeapVerbose
 open Z3BackendType
 
 module Z3 : BACKEND_POS_TLL_TSLK =
@@ -90,7 +91,9 @@ struct
                       ^ " " ^ temp ^ " CASE_SPLIT=4 " in
       let env = Array.of_list [] in
       let (from_z3,to_z3,stderr) = Unix.open_process_full z3_cmd env in
-      let response = parse_z3_output from_z3 in
+			verb "**** Z3, will parse Z3 output.\n";
+			let response = parse_z3_output from_z3 in
+			verb "**** Z3, response read.\n";
       let _ = if config.comp_model then
                 if response then
                   let buf = Buffer.create 1024 in
@@ -111,7 +114,8 @@ struct
               else
                 () in
       let _ = Unix.close_process_full (from_z3,to_z3,stderr) in
-      let _ = config.calls # incr in
+			let _ = config.calls # incr in
+			verb "**** Z3, will print results.\n";
       let _ = Debug.print_smt_result response in
    (* let _ = Unix.unlink temp in *)
         response
