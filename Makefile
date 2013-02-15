@@ -42,7 +42,6 @@ check_tool = @if ( test -e $(TOOLS)/$(1) ) || (test -h $(TOOLS)/$(1) ) ; then \
 
 OCAML_FLAGS= \
 	-pp "`pwd`/prep.sh"
-#	-pp "camlp4o bolt_pp.cmo -level TRACE | cppo"
 
 
 LIBS = unix,str,dynlink,bolt

@@ -62,10 +62,7 @@ struct
   let parse_z3_output (from_z3:Pervasives.in_channel) : bool =
     let answer_str = Pervasives.input_line from_z3 in
 		let (terminated, outcome) =
-		let _ = print_endline "- ANSWER ----------" in
-		let _ = print_endline answer_str in
-		let _ = print_endline "- ANSWER ----------" in
-      match answer_str with
+			match answer_str with
         "unsat" -> let _ = Debug.print_smt "unsat\n"
                    in
                      (true, false)

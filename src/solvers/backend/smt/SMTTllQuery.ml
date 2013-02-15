@@ -46,28 +46,27 @@ let loc_s     : string = "Loc"
 (* Lock-Unlock information table *)
 (* We store calls to cell_lock and cell_unlock in the formula, in order to
 	 add the necessary assertions once we have translated the formula *)
-let cell_list = ref []
-let set_list = ref []
-let setth_list = ref []
-let setelem_list = ref []
-let addr_list = ref []
-let elem_list = ref []
-let tid_list = ref []
-let getp_list = ref []
-let fstlock_list = ref []
+let cell_tbl = Hashtbl.create 10
+let set_tbl = Hashtbl.create 10
+let setth_tbl = Hashtbl.create 10
+let setelem_tbl = Hashtbl.create 10
+let addr_tbl = Hashtbl.create 10
+let elem_tbl = Hashtbl.create 10
+let tid_tbl = Hashtbl.create 10
+let getp_tbl = Hashtbl.create 10
+let fstlock_tbl = Hashtbl.create 10
 
 
 let clean_lists () :  unit =
-	cell_list := [];
-	set_list := [];
-	setth_list := [];
-	setelem_list := [];
-	addr_list := [];
-	elem_list := [];
-	tid_list := [];
-	getp_list := [];
-	fstlock_list := []
-
+	Hashtbl.clear cell_tbl;
+	Hashtbl.clear set_tbl;
+	Hashtbl.clear setth_tbl;
+	Hashtbl.clear setelem_tbl;
+	Hashtbl.clear addr_tbl;
+	Hashtbl.clear elem_tbl;
+	Hashtbl.clear tid_tbl;
+	Hashtbl.clear getp_tbl;
+	Hashtbl.clear fstlock_tbl
 
 
 (* Information storage *)
@@ -101,17 +100,17 @@ let set_prog_lines (n:int) : unit =
 
 
 let data(expr:string) : string =
-	elem_list := expr :: !elem_list;
+	Hashtbl.add elem_tbl expr ();
 	("(data " ^expr^ ")")
 
 
 let next(expr:string) : string =
-	addr_list := expr :: !addr_list;
+	Hashtbl.add addr_tbl expr ();
 	("(next " ^expr^ ")")
 
 
 let lock(expr:string) : string =
-	tid_list := expr :: !tid_list;
+	Hashtbl.add tid_tbl expr ();
 	("(lock " ^expr^ ")")
 
 
@@ -1379,21 +1378,21 @@ and setterm_to_str (sa:Expr.set) : string =
 			Expr.VarSet v				-> variable_invocation_to_str v
 		| Expr.EmptySet				-> "empty"
 		| Expr.Singl a				-> Printf.sprintf "(singleton %s)" (addrterm_to_str a)
-		| Expr.Union(r,s)			-> set_list := sa :: !set_list;
+		| Expr.Union(r,s)			-> Hashtbl.add set_tbl sa ();
 														 Printf.sprintf "(setunion %s %s)"
 																									(setterm_to_str r)
 																									(setterm_to_str s)
-		| Expr.Intr(r,s)      -> set_list := sa :: !set_list;
+		| Expr.Intr(r,s)      -> Hashtbl.add set_tbl sa ();
 														 Printf.sprintf "(intersection %s %s)"
 																									(setterm_to_str r)
 																									(setterm_to_str s)
-		| Expr.Setdiff(r,s)   -> set_list := sa :: !set_list;
+		| Expr.Setdiff(r,s)   -> Hashtbl.add set_tbl sa ();
 														 Printf.sprintf "(setdiff %s %s)"
 																									(setterm_to_str r)
 																									(setterm_to_str s)
 		| Expr.PathToSet p    -> Printf.sprintf "(path2set %s)"
 																									(pathterm_to_str p)
-		| Expr.AddrToSet(m,a) -> set_list := sa :: !set_list;
+		| Expr.AddrToSet(m,a) -> Hashtbl.add set_tbl sa ();
 														 Printf.sprintf "(address2set %s %s)"
 																									(memterm_to_str m)
 																									(addrterm_to_str a)
@@ -1425,7 +1424,7 @@ and addrterm_to_str (a:Expr.addr) : string =
                                   (cellterm_to_str c)
 		| Expr.FirstLocked(m,p) -> let m_str = memterm_to_str m in
 															 let p_str = pathterm_to_str p in
-															 fstlock_list := (m_str, p_str) :: !fstlock_list;
+															 Hashtbl.add fstlock_tbl (m_str, p_str) ();
 															 Printf.sprintf "(firstlock %s %s)" m_str p_str
 
 
@@ -1433,16 +1432,16 @@ and cellterm_to_str (c:Expr.cell) : string =
   match c with
       Expr.VarCell v      -> variable_invocation_to_str v
     | Expr.Error          -> "error"
-		| Expr.MkCell(e,a,th) -> cell_list := c :: !cell_list;
+		| Expr.MkCell(e,a,th) -> Hashtbl.add cell_tbl c ();
 														 Printf.sprintf "(mkcell %s %s %s)"
                                       (elemterm_to_str e)
                                       (addrterm_to_str a)
                                       (tidterm_to_str th)
-		| Expr.CellLock(c,th) -> cell_list := c :: !cell_list;
-														 Printf.sprintf "(cell_lock %s %s)"													
+		| Expr.CellLock(c,th) -> Hashtbl.add cell_tbl c ();
+														 Printf.sprintf "(cell_lock %s %s)"
 																			(cellterm_to_str c)
-                                      (tidterm_to_str th)
-		| Expr.CellUnlock c   -> cell_list := c :: !cell_list;
+																			(tidterm_to_str th)
+		| Expr.CellUnlock c   -> Hashtbl.add cell_tbl c ();
 														 Printf.sprintf "(cell_unlock %s)"
 																			(cellterm_to_str c)
 		| Expr.CellAt(m,a)    -> Printf.sprintf "(select %s %s)"
@@ -1456,15 +1455,15 @@ and setthterm_to_str (sth:Expr.setth) : string =
     | Expr.EmptySetTh       -> "emptyth"
     | Expr.SinglTh th       -> Printf.sprintf "(singletonth %s)"
                                     (tidterm_to_str th)
-		| Expr.UnionTh(rt,st)   -> setth_list := sth :: !setth_list;
+		| Expr.UnionTh(rt,st)   -> Hashtbl.add setth_tbl sth ();
 															 Printf.sprintf "(unionth %s %s)"
 																		(setthterm_to_str rt)
                                     (setthterm_to_str st)
-		| Expr.IntrTh(rt,st)    -> setth_list := sth :: !setth_list;
+		| Expr.IntrTh(rt,st)    -> Hashtbl.add setth_tbl sth ();
 															 Printf.sprintf "(intersectionth %s %s)"
 																		(setthterm_to_str rt)
                                     (setthterm_to_str st)
-		| Expr.SetdiffTh(rt,st) -> setth_list := sth :: !setth_list;
+		| Expr.SetdiffTh(rt,st) -> Hashtbl.add setth_tbl sth ();
 															 Printf.sprintf "(setdiffth %s %s)"
                                     (setthterm_to_str rt)
                                     (setthterm_to_str st)
@@ -1476,18 +1475,18 @@ and setelemterm_to_str (se:Expr.setelem) : string =
     | Expr.EmptySetElem       -> "emptyelem"
     | Expr.SinglElem e        -> Printf.sprintf "(singletonelem %s)"
                                     (elemterm_to_str e)
-		| Expr.UnionElem(rt,st)   -> setelem_list := se :: !setelem_list;
+		| Expr.UnionElem(rt,st)   -> Hashtbl.add setelem_tbl se ();
 																 Printf.sprintf "(unionelem %s %s)"
                                     (setelemterm_to_str rt)
                                     (setelemterm_to_str st)
-		| Expr.IntrElem(rt,st)    -> setelem_list := se :: !setelem_list;
+		| Expr.IntrElem(rt,st)    -> Hashtbl.add setelem_tbl se ();
 																 Printf.sprintf "(intersectionelem %s %s)"
 																		(setelemterm_to_str rt)
                                     (setelemterm_to_str st)
-		| Expr.SetToElems(s,m)    -> setelem_list := se :: !setelem_list;
+		| Expr.SetToElems(s,m)    -> Hashtbl.add setelem_tbl se ();
 																 Printf.sprintf "(set2elem %s %s)"
 																		(setterm_to_str s) (memterm_to_str m)
-		| Expr.SetdiffElem(rt,st) -> setelem_list := se :: !setelem_list;
+		| Expr.SetdiffElem(rt,st) -> Hashtbl.add setelem_tbl se ();
 																 Printf.sprintf "(setdiffelem %s %s)"
                                     (setelemterm_to_str rt)
                                     (setelemterm_to_str st)
@@ -1502,7 +1501,7 @@ and pathterm_to_str (p:Expr.path) : string =
 		| Expr.GetPath(m,a1,a2)-> let m_str = memterm_to_str m in
 															let a1_str = addrterm_to_str a1 in
 															let a2_str = addrterm_to_str a2 in
-																getp_list := (m_str, a1_str, a2_str) :: !getp_list;
+																Hashtbl.add getp_tbl (m_str, a1_str, a2_str) ();
 																Printf.sprintf "(getp %s %s %s)" m_str a1_str a2_str
 
 
@@ -1945,15 +1944,15 @@ let process_fstlock (max_addrs:int) ((m,p):string * string) : string =
 
 
 let post_process (buf:B.t) (num_addrs:int) (num_elems:int) (num_tids:int) : unit =
-	List.iter (process_addr>>(B.add_string buf)) !addr_list;
-	List.iter (process_tid>>(B.add_string buf)) !tid_list;
-	List.iter (process_elem>>(B.add_string buf)) !elem_list;
-	List.iter (process_cell>>(B.add_string buf)) !cell_list;
-	List.iter ((process_set num_addrs)>>(B.add_string buf)) !set_list;
-	List.iter ((process_setth num_tids)>>(B.add_string buf)) !setth_list;
-	List.iter ((process_setelem num_elems num_addrs)>>(B.add_string buf)) !setelem_list;
-	List.iter ((process_getp num_addrs)>>(B.add_string buf)) !getp_list;
-	List.iter ((process_fstlock num_addrs)>>(B.add_string buf)) !fstlock_list
+	Hashtbl.iter (fun a _ -> B.add_string buf (process_addr a)) addr_tbl;
+	Hashtbl.iter (fun e _ -> B.add_string buf (process_elem e)) elem_tbl;
+	Hashtbl.iter (fun t _ -> B.add_string buf (process_tid t)) tid_tbl;
+	Hashtbl.iter (fun c _ -> B.add_string buf (process_cell c)) cell_tbl;
+	Hashtbl.iter (fun s _ -> B.add_string buf (process_set num_addrs s)) set_tbl;
+	Hashtbl.iter (fun s _ -> B.add_string buf (process_setth num_tids s)) setth_tbl;
+	Hashtbl.iter (fun s _ -> B.add_string buf (process_setelem num_elems num_addrs s)) setelem_tbl;
+	Hashtbl.iter (fun g _ -> B.add_string buf (process_getp num_addrs g)) getp_tbl;
+	Hashtbl.iter (fun f _ -> B.add_string buf (process_fstlock num_addrs f)) fstlock_tbl
 
 
 let literal_list_to_str (ls:Expr.literal list) : string =
