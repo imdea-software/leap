@@ -54,6 +54,7 @@ let addr_list = ref []
 let elem_list = ref []
 let tid_list = ref []
 let getp_list = ref []
+let fstlock_list = ref []
 
 
 let clean_lists () :  unit =
@@ -64,7 +65,8 @@ let clean_lists () :  unit =
 	addr_list := [];
 	elem_list := [];
 	tid_list := [];
-	getp_list := []
+	getp_list := [];
+	fstlock_list := []
 
 
 
@@ -117,6 +119,8 @@ let lock(expr:string) : string =
 (* (define max_address::int 5)                                    *)
 (* (define-type range_address (subrange 0 max_address))           *)
 let z3_addr_preamble buf num_addr =
+
+	B.add_string buf ("(set-logic QF_AUFLIA)");
 	B.add_string buf ("(define-sort " ^addr_s^ " () " ^int_s^ ")\n");
 	GM.sm_decl_const sort_map "max_address" int_s ;
 	B.add_string buf
@@ -588,7 +592,7 @@ let z3_firstlock_def buf num_addr =
     ("(define-fun firstlockfrom"^ stri ^" ((h " ^heap_s^ ") (p " ^path_s^ ")) " ^addr_s^ "\n" ^
      "  (if (islockedpos h p "^ stri ^") (getaddrat p "^ stri ^") (firstlockfrom"^ strnext ^" h p)))\n");
   done ;
-  B.add_string buf
+	B.add_string buf
     ("(define-fun firstlock ((h " ^heap_s^ ") (p " ^path_s^ ") ) " ^addr_s^ "\n" ^
      "  (if (islockedpos h p 0) (getaddrat p 0) (firstlockfrom1 h p)))\n")
 
@@ -1408,7 +1412,8 @@ and tidterm_to_str (th:Expr.tid) : string =
   match th with
     Expr.VarTh v      -> variable_invocation_to_str v
 	| Expr.NoThid       -> "notid"
-  | Expr.CellLockId c -> Printf.sprintf "(lock %s)" (cellterm_to_str c)
+	| Expr.CellLockId c -> let c_str = cellterm_to_str c in
+													 lock c_str
 
 
 and addrterm_to_str (a:Expr.addr) : string =
@@ -1417,9 +1422,10 @@ and addrterm_to_str (a:Expr.addr) : string =
     | Expr.Null             -> "null"
     | Expr.Next c           -> Printf.sprintf "(next %s)"
                                   (cellterm_to_str c)
-    | Expr.FirstLocked(m,p) -> Printf.sprintf "(firstlock %s %s)"
-                                  (memterm_to_str m)
-                                  (pathterm_to_str p)
+		| Expr.FirstLocked(m,p) -> let m_str = memterm_to_str m in
+															 let p_str = pathterm_to_str p in
+															 fstlock_list := (m_str, p_str) :: !fstlock_list;
+															 Printf.sprintf "(firstlock %s %s)" m_str p_str
 
 
 and cellterm_to_str (c:Expr.cell) : string =
@@ -1724,23 +1730,23 @@ let process_cell (c:Expr.cell) : string =
 	| Expr.CellLock (c,t) ->
 			let c_str = cellterm_to_str c in
 			let t_str = tidterm_to_str t in
-				("(assert (and (= " ^data ("(cell_lock " ^c_str^ " " ^t_str^ ")")^ " " ^data c_str^ ")\n\
-											 (= (next (cell_lock " ^c_str^ " " ^t_str^ ")) (next " ^c_str^ "))\n\
-											 (= (lock (cell_lock " ^c_str^ " " ^t_str^ ")) " ^t_str^ ")))\n")
+				("(assert (and (= " ^data ("(cell_lock " ^c_str^ " " ^t_str^ ")")^ " " ^data c_str^ ")\n" ^
+				 "						 (= " ^next ("(cell_lock " ^c_str^ " " ^t_str^ ")")^ " " ^next c_str^ ")\n" ^
+				 "						 (= " ^lock ("(cell_lock " ^c_str^ " " ^t_str^ ")")^ " " ^t_str^ ")))\n")
 	| Expr.CellUnlock c	->
 			let c_str = cellterm_to_str c in
 			let notid_str = tidterm_to_str Expr.NoThid in
-				("(assert (and (= " ^data ("(cell_unlock " ^c_str^ ")")^ " " ^data c_str^ ")\n\
-											 (= (next (cell_unlock " ^c_str^ ")) (next " ^c_str^ "))\n\
-											 (= (lock (cell_unlock " ^c_str^ ")) " ^notid_str^ ")))\n")
+				("(assert (and (= " ^data ("(cell_unlock " ^c_str^ ")")^ " " ^data c_str^ ")\n" ^
+				 "						 (= " ^next ("(cell_unlock " ^c_str^ ")")^ " " ^next c_str^ ")\n" ^
+				 "						 (= " ^lock ("(cell_unlock " ^c_str^ ")")^ " " ^notid_str^ ")))\n")
 	| Expr.MkCell (e,a,t) ->
 			let e_str = elemterm_to_str e in
 			let a_str = addrterm_to_str a in
 			let t_str = tidterm_to_str t in
 			let mkcell_str = "mkcell " ^e_str^ " " ^a_str^ " " ^t_str in
-				("(assert (and (= " ^data ("(" ^mkcell_str^ ")")^ " " ^e_str^ ")\n\
-											 (= (next (" ^mkcell_str^ ")) " ^a_str^ ")\n\
-											 (= (lock (" ^mkcell_str^ ")) " ^t_str^ ")))\n")
+				("(assert (and (= " ^data ("(" ^mkcell_str^ ")")^ " " ^e_str^ ")\n" ^
+				 "						 (= " ^next ("(" ^mkcell_str^ ")")^ " " ^a_str^ ")\n" ^
+				 "						 (= " ^lock ("(" ^mkcell_str^ ")")^ " " ^t_str^ ")))\n")
 	| _ -> RAISE(UnexpectedCellTerm(Expr.cell_to_str c))
 
 
@@ -1914,7 +1920,7 @@ let process_setelem (max_elems:int) (max_addrs:int) (se:Expr.setelem) : string =
 	| _ -> RAISE(UnexpectedSetelemTerm(Expr.setelem_to_str se))
 
 
-let process_getp (max_addrs:int) ((m,a1,a2) : string * string * string) : string =
+let process_getp (max_addrs:int) ((m,a1,a2):string * string * string) : string =
 	let tmpbuf = B.create 1024 in
 	B.add_string tmpbuf ("(assert (ispath (path1 " ^m^ " " ^a1^ ")))\n");
 	for i = 2 to (max_addrs + 1) do
@@ -1927,6 +1933,26 @@ let process_getp (max_addrs:int) ((m,a1,a2) : string * string * string) : string
 		B.add_string tmpbuf ("(assert (ispath (path" ^str_i^ " " ^m^ " " ^a1^ ")))\n")
 	done;
 	B.contents tmpbuf
+
+
+let process_fstlock (max_addrs:int) ((m,p):string * string) : string =
+	let tmpbuf = B.create 1024 in
+	for i = 0 to max_addrs do
+		B.add_string tmpbuf ("(assert (istid (getlockat " ^m^ " " ^p^ " " ^string_of_int i^ ")))\n")
+	done;
+	B.contents tmpbuf
+
+
+let post_process (buf:B.t) (num_addrs:int) (num_elems:int) (num_tids:int) : unit =
+	List.iter (process_addr>>(B.add_string buf)) !addr_list;
+	List.iter (process_tid>>(B.add_string buf)) !tid_list;
+	List.iter (process_elem>>(B.add_string buf)) !elem_list;
+	List.iter (process_cell>>(B.add_string buf)) !cell_list;
+	List.iter ((process_set num_addrs)>>(B.add_string buf)) !set_list;
+	List.iter ((process_setth num_tids)>>(B.add_string buf)) !setth_list;
+	List.iter ((process_setelem num_elems num_addrs)>>(B.add_string buf)) !setelem_list;
+	List.iter ((process_getp num_addrs)>>(B.add_string buf)) !getp_list;
+	List.iter ((process_fstlock num_addrs)>>(B.add_string buf)) !fstlock_list
 
 
 let literal_list_to_str (ls:Expr.literal list) : string =
@@ -1952,14 +1978,8 @@ let literal_list_to_str (ls:Expr.literal list) : string =
       in
       let formula_str = List.fold_right add_and_literal ls ""
       in
-	List.iter (process_addr>>(B.add_string buf)) !addr_list;
-	List.iter (process_tid>>(B.add_string buf)) !tid_list;
-	List.iter (process_elem>>(B.add_string buf)) !elem_list;
-	List.iter (process_cell>>(B.add_string buf)) !cell_list;
-	List.iter ((process_set num_addr)>>(B.add_string buf)) !set_list;
-	List.iter ((process_setth num_tid)>>(B.add_string buf)) !setth_list;
-	List.iter ((process_setelem num_elem num_addr)>>(B.add_string buf)) !setelem_list;
-  B.add_string buf "(assert\n   (and";
+	post_process buf num_addr num_elem num_tid;
+	B.add_string buf "(assert\n   (and";
   B.add_string buf formula_str ;
 	B.add_string buf "))\n";
 	B.add_string buf "(check-sat)\n" ;
@@ -2024,15 +2044,8 @@ let formula_to_str (stac:Tactics.solve_tactic_t option)
 		variables_from_formula_to_z3 buf num_tid phi ;
     (* We add extra information if needed *)
     B.add_string buf extra_info_str ;
-		List.iter (process_addr>>(B.add_string buf)) !addr_list;
-		List.iter (process_tid>>(B.add_string buf)) !tid_list;
-		List.iter (process_elem>>(B.add_string buf)) !elem_list;
-		List.iter (process_cell>>(B.add_string buf)) !cell_list;
-		List.iter ((process_set num_addr)>>(B.add_string buf)) !set_list;
-		List.iter ((process_setth num_tid)>>(B.add_string buf)) !setth_list;
-		List.iter ((process_setelem num_elem num_addr)>>(B.add_string buf)) !setelem_list;
-		List.iter ((process_getp num_addr)>>(B.add_string buf)) !getp_list;
-    B.add_string buf "(assert\n";
+		post_process buf num_addr num_elem num_tid;
+		B.add_string buf "(assert\n";
 		B.add_string buf formula_str ;
 		B.add_string buf ")\n";
 		B.add_string buf "(check-sat)\n" ;
