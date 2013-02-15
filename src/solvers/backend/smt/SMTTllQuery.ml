@@ -120,7 +120,7 @@ let lock(expr:string) : string =
 (* (define-type range_address (subrange 0 max_address))           *)
 let z3_addr_preamble buf num_addr =
 
-	B.add_string buf ("(set-logic QF_AUFLIA)");
+	B.add_string buf ("(set-logic QF_AUFLIA)\n");
 	B.add_string buf ("(define-sort " ^addr_s^ " () " ^int_s^ ")\n");
 	GM.sm_decl_const sort_map "max_address" int_s ;
 	B.add_string buf
@@ -270,13 +270,11 @@ let z3_pos_preamble buf =
   GM.sm_decl_fun sort_map pc_prime_name [tid_s] [loc_s] ;
 	B.add_string buf ("(declare-fun " ^pc_name^ " () (Array " ^tid_s^ " " ^loc_s^ "))\n");
 	B.add_string buf ("(declare-fun " ^pc_prime_name^ " () (Array " ^tid_s^ " " ^loc_s^ "))\n");
-  B.add_string buf
-    (Printf.sprintf "(define-fun in_pos_range ((t %s)) %s\n\
-                        (and (<= 1 (select pc t))\n\
-                             (<= (select pc t) %i)\n\
-                             (<= 1 (select pc_prime t))\n\
-                             (<= (select pc_prime t) %i))\n\
-                     )\n" tid_s bool_s !prog_lines !prog_lines)
+	B.add_string buf ("(define-fun in_pos_range ((t " ^tid_s^ ")) " ^bool_s^ "\n" ^
+										"		(and (<= 1 (select pc t))\n" ^
+										"				 (<= (select pc t) " ^string_of_int !prog_lines^ ")\n" ^
+										"				 (<= 1 (select pc_prime t))\n" ^
+										"				 (<= (select pc_prime t) " ^ string_of_int !prog_lines^ ")))\n")
 
 
 (* (define emptyth::setth)     *)
@@ -1280,11 +1278,9 @@ let rec z3_define_var (buf:Buffer.t)
 				| Expr.Elem -> B.add_string buf ( "(assert (iselem " ^name^ "))\n" )
 				| Expr.Path -> B.add_string buf ( "(assert (ispath " ^name^ "))\n" )
 				| Expr.Mem  -> B.add_string buf ( "(assert (isheap " ^name^ "))\n" )
-				| Expr.Thid ->
-(* IMPORTANT: If it doesn't work, put again this line *)
-(* let _ = B.add_string buf ( "(assert (not (= " ^ name ^ " notid)))\n" ) in *)
-												B.add_string buf ( "(assert (istid " ^name^ "))\n" );
-												B.add_string buf ( "(assert (in_pos_range " ^ name ^ "))\n")
+				| Expr.Thid -> B.add_string buf ( "(assert (not (= " ^ name ^ " notid)))\n" );
+											 B.add_string buf ( "(assert (istid " ^name^ "))\n" );
+											 B.add_string buf ( "(assert (in_pos_range " ^ name ^ "))\n" )
 				| _    -> ()
       end
     else
@@ -1303,21 +1299,26 @@ let rec z3_define_var (buf:Buffer.t)
 												 B.add_string buf ("(assert (iselem (select " ^name^ " " ^tid_prefix ^ (string_of_int i)^ ")))\n")
 											 done
 				| Expr.Path -> Expr.VarSet.iter (fun t ->
-                    let v_str = variable_invocation_to_str
-                                    (Expr.param_var v (Expr.VarTh t)) in
-                      B.add_string buf ( "(assert (ispath " ^ v_str ^ "))\n" )
-                  ) tid_set
+												 let v_str = variable_invocation_to_str
+																			 (Expr.param_var v (Expr.VarTh t)) in
+												 B.add_string buf ( "(assert (ispath " ^ v_str ^ "))\n" )
+											 ) tid_set
         | Expr.Mem -> Expr.VarSet.iter (fun t ->
-                    let v_str = variable_invocation_to_str
-                                    (Expr.param_var v (Expr.VarTh t)) in
-                      B.add_string buf ( "(assert (isheap " ^ v_str ^ "))\n" )
-                  ) tid_set
-        | Expr.Thid -> Expr.VarSet.iter (fun t ->
-                    let v_str = variable_invocation_to_str
-                                    (Expr.param_var v (Expr.VarTh t)) in
-											B.add_string buf ( "(assert (not (= " ^ v_str ^ " notid)))\n" )
-                  ) tid_set
-        | _    -> ()
+												let v_str = variable_invocation_to_str
+																			(Expr.param_var v (Expr.VarTh t)) in
+												B.add_string buf ( "(assert (isheap " ^ v_str ^ "))\n" )
+											) tid_set
+				| Expr.Thid -> Expr.VarSet.iter (fun t ->
+												 let v_str = variable_invocation_to_str
+																			 (Expr.param_var v (Expr.VarTh t)) in
+												 B.add_string buf ( "(assert (not (= " ^ v_str ^ " notid)))\n" )
+											 ) tid_set;
+											 B.add_string buf ("(assert (istid (select " ^name^ " notid)))\n");
+											 B.add_string buf ("(assert (istid (select " ^name^ " tid_witness)))\n");
+											 for i = 1 to num_tids do
+												 B.add_string buf ("(assert (istid (select " ^name^ " " ^tid_prefix ^ (string_of_int i)^ ")))\n")
+											 done
+				| _    -> ()
         (* FIX: Add iterations for ispath and isheap on local variables *)
       end
 
