@@ -7,7 +7,7 @@ TOOLS_SRC=../../../../others/tools
 
 
 # Tools
-Z3=z3-4.0
+Z3=z3-4.3.1
 YICES=yices-1.0.34
 MINISAT=minisat
 LINGELING=lingeling-587f

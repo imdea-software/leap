@@ -21,7 +21,7 @@ struct
   (** the configuration register *)
   let config : configuration = {
     calls      = new counter 0;
-    exec       = Config.get_exec_path() ^ "/tools/z3 -m";
+		exec       = Config.get_exec_path() ^ "/tools/z3";
     timeout    = 3600; (* one hour *)
     comp_model = false;
   }
