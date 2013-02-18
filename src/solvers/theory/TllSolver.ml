@@ -226,10 +226,10 @@ struct
              (stac:Tactics.solve_tactic_t option)
              (co : Smp.cutoff_strategy)
              (phi : TllExp.formula) : bool =
-		LOG "Entering is_sat..." LEVEL TRACE;
-		verb "**** TLL Solver, about to translate TLL...\n";
-		Solver.Translate.Tll.set_prog_lines lines;
-		Solver.sat (Solver.Translate.Tll.formula stac co cutoff_opt phi)
+    LOG "Entering is_sat..." LEVEL TRACE;
+    verb "**** TLL Solver, about to translate TLL...\n";
+    Solver.Translate.Tll.set_prog_lines lines;
+    Solver.sat (Solver.Translate.Tll.formula stac co cutoff_opt phi)
   
   let is_valid (prog_lines:int)
                (stac:Tactics.solve_tactic_t option)

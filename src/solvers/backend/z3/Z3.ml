@@ -21,12 +21,12 @@ struct
   (** the configuration register *)
   let config : configuration = {
     calls      = new counter 0;
-		exec       = Config.get_exec_path() ^ "/tools/z3";
+    exec       = Config.get_exec_path() ^ "/tools/z3";
     timeout    = 3600; (* one hour *)
     comp_model = false;
   }
 
-	let z3_evidence_enable = "(set-option :produce-assignments true)\n"
+  let z3_evidence_enable = "(set-option :produce-assignments true)\n"
   let z3_evidence = "\n(get-model)\n"
   
   (** [reset ()] restores to default the configuration register. *)
@@ -61,8 +61,8 @@ struct
   
   let parse_z3_output (from_z3:Pervasives.in_channel) : bool =
     let answer_str = Pervasives.input_line from_z3 in
-		let (terminated, outcome) =
-			match answer_str with
+    let (terminated, outcome) =
+      match answer_str with
         "unsat" -> let _ = Debug.print_smt "unsat\n"
                    in
                      (true, false)
@@ -80,7 +80,7 @@ struct
     let temp      = Filename.temp_file "leap_" ".smt2" in
     let _         = Debug.print_file_name "VC" temp in
     let full_query = if config.comp_model then
-											 z3_evidence_enable ^ query ^ z3_evidence
+                       z3_evidence_enable ^ query ^ z3_evidence
                      else
                        query in
     let output_ch = open_out temp in
@@ -89,20 +89,20 @@ struct
     let run_z3 _ =
       let _ = Debug.print_smt "Invoking z3... " in
 (*
-			let z3_cmd  = config.exec ^ " -t:" ^ (string_of_int config.timeout)
+      let z3_cmd  = config.exec ^ " -t:" ^ (string_of_int config.timeout)
                       ^ " " ^ temp ^ " CASE_SPLIT=4 " in
 *)
-			let z3_cmd  = config.exec ^ " -t:" ^ (string_of_int config.timeout)
-											^ " " ^ temp in
+      let z3_cmd  = config.exec ^ " -t:" ^ (string_of_int config.timeout)
+                      ^ " " ^ temp in
       let env = Array.of_list [] in
       let (from_z3,to_z3,stderr) = Unix.open_process_full z3_cmd env in
-			verb "**** Z3, will parse Z3 output.\n";
-			let response = parse_z3_output from_z3 in
-			verb "**** Z3, response read.\n";
+      verb "**** Z3, will parse Z3 output.\n";
+      let response = parse_z3_output from_z3 in
+      verb "**** Z3, response read.\n";
       let _ = if config.comp_model then
                 if response then
-									let _ = verb "**** Z3, response with model obtained.\n" in
-									let buf = Buffer.create 1024 in
+                  let _ = verb "**** Z3, response with model obtained.\n" in
+                  let buf = Buffer.create 1024 in
                   let _ = try
                             while true do
                               let line = Pervasives.input_line from_z3 in
@@ -116,13 +116,13 @@ struct
                     model := (Z3ModelParser.generic_model Z3ModelLexer.norm)
                                 (Lexing.from_string (Buffer.contents buf))
                 else
-									(verb "**** Z3, no response with model obtained.\n";
-									GenericModel.clear_model !model)
+                  (verb "**** Z3, no response with model obtained.\n";
+                  GenericModel.clear_model !model)
               else
                 () in
       let _ = Unix.close_process_full (from_z3,to_z3,stderr) in
-			let _ = config.calls # incr in
-			verb "**** Z3, will print results.\n";
+      let _ = config.calls # incr in
+      verb "**** Z3, will print results.\n";
       let _ = Debug.print_smt_result response in
    (* let _ = Unix.unlink temp in *)
         response

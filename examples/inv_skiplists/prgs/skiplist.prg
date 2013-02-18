@@ -90,6 +90,7 @@ assume
                                 endif
                                 prev := head;
                                 curr := prev->arr[maxLevel];
+:insert_i_eq_max
                                 i := maxLevel;
                                 while (0 <= i /\ ~(valueWasIn)) do
                                   curr := prev->arr[i];

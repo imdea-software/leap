@@ -135,7 +135,10 @@ let unfold_expression (mInfo:malloc_info)
       LOG "PointerNextAt translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG;
       let a_expr = Stm.addr_to_expr_addr a in
       let l_expr = Stm.integer_to_expr_integer l in
+      (E.Term (E.AddrT (E.AddrArrRd (E.CellArr (E.CellAt (E.heap,a_expr)), l_expr))), None, [], [])
+(*
       (E.Term (E.AddrT (E.NextAt (E.CellAt (E.heap,a_expr), l_expr))), None, [], [])
+*)
   | Stm.Term (Stm.ThidT (Stm.PointerLockid a)) ->
       LOG "PointerLockid translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG;
       let a_expr = Stm.addr_to_expr_addr a in
@@ -144,7 +147,10 @@ let unfold_expression (mInfo:malloc_info)
       LOG "PointerLockidAt translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG;
       let a_expr = Stm.addr_to_expr_addr a in
       let l_expr = Stm.integer_to_expr_integer l in
+      (E.Term (E.ThidT (E.ThidArrRd (E.CellTids (E.CellAt (E.heap,a_expr)), l_expr))), None, [], [])
+(*
       (E.Term (E.ThidT (E.CellLockIdAt (E.CellAt (E.heap,a_expr), l_expr))), None, [], [])
+*)
   | _ ->
       LOG "Else translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG;
       (Stm.expr_to_expr_expr expr, None, [], [])

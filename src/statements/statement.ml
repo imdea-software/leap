@@ -854,8 +854,12 @@ and tid_to_expr_th (t:tid) : E.tid =
     VarTh v            -> E.VarTh (variable_to_expr_var v)
   | NoThid             -> E.NoThid
   | CellLockId c       -> E.CellLockId (cell_to_expr_cell c)
+  | CellLockIdAt (c,l) -> E.ThidArrRd (E.CellTids (cell_to_expr_cell c),
+                                       integer_to_expr_integer l)
+(*
   | CellLockIdAt (c,l) -> E.CellLockIdAt (cell_to_expr_cell c,
                                           integer_to_expr_integer l)
+*)
   | ThidArrayRd (a,t)  -> RAISE(Not_supported_conversion(tid_to_str true t))
   | ThidArrRd (a,l)    -> RAISE(Not_supported_conversion(tid_to_str true t))
   | PointerLockid _    -> RAISE(Not_supported_conversion(tid_to_str true t))
@@ -880,8 +884,12 @@ and addr_to_expr_addr (a:addr) : E.addr =
     VarAddr v           -> E.VarAddr (variable_to_expr_var v)
   | Null                -> E.Null
   | Next c              -> E.Next (cell_to_expr_cell c)
+  | NextAt (c,l)        -> E.AddrArrRd (E.CellArr (cell_to_expr_cell c),
+                                        integer_to_expr_integer l)
+(*
   | NextAt (c,l)        -> E.NextAt (cell_to_expr_cell c,
                                      integer_to_expr_integer l)
+*)
   | FirstLocked (m,p)   -> E.FirstLocked (mem_to_expr_mem m,
                                           path_to_expr_path p)
   | AddrArrayRd (a,t)   -> E.AddrArrayRd (array_to_expr_array a,
@@ -892,8 +900,12 @@ and addr_to_expr_addr (a:addr) : E.addr =
   | MallocSL _          -> RAISE(Not_supported_conversion(addr_to_str true a))
   | MallocSLK _         -> RAISE(Not_supported_conversion(addr_to_str true a))
   | PointerNext a       -> E.Next(E.CellAt(E.heap,addr_to_expr_addr a))
+  | PointerNextAt (a,l) -> E.AddrArrRd (E.CellArr(E.CellAt(E.heap,addr_to_expr_addr a)),
+                                        integer_to_expr_integer l)
+(*
   | PointerNextAt (a,l) -> E.NextAt(E.CellAt(E.heap,addr_to_expr_addr a),
                                              integer_to_expr_integer l)
+*)
 
 
 and cell_to_expr_cell (c:cell) : E.cell =
