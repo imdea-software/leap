@@ -3,6 +3,7 @@ open Debug
 open LeapLib
 open BackendSolverIntf
 open YicesNumQuery
+open YicesTllQuery
 
 module Yices : BACKEND_SOLVER =
 struct

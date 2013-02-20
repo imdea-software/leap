@@ -1,5 +1,9 @@
+open CommonQuery
+
 module type NUM_QUERY =
 sig
+
+  include COMMON_QUERY
 
   val set_prog_lines : int -> unit
   (** [set_prog_lines n] sets the number of program lines to [n]. *)

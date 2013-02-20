@@ -3,6 +3,8 @@ open Debug
 open LeapLib
 open LeapVerbose
 open Z3BackendType
+open Z3TllQuery
+open Z3TslkQuery
 
 module Z3 : BACKEND_POS_TLL_TSLK =
 struct
