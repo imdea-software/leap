@@ -2,9 +2,7 @@ open Genlex
 open Debug
 open LeapLib
 open BackendSolverIntf
-open YicesPosQuery
 open YicesNumQuery
-open YicesTllQuery
 
 module Yices : BACKEND_SOLVER =
 struct
