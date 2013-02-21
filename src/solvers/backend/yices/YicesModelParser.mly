@@ -71,6 +71,8 @@ let gen_fresh_id (unit) : int =
 /* MODEL FOR COUNTER EXAMPLE PARSER */
 
 generic_model :
+  |
+    { GM.new_model() }
   | assertion_list
     { let m = GM.copy_model model in
       let _ = GM.clear_model model

@@ -105,14 +105,17 @@ struct
       let response = parse_yices_output from_yices in
       let _ = if config.comp_model then
                 if response then
+                  let _ = verb "**** Yices, response with model obtained.\n" in
                   model := (YicesModelParser.generic_model YicesModelLexer.norm)
                                 (Lexing.from_channel from_yices)
                 else
-                  GenericModel.clear_model !model
+                  (verb "**** Z3, no response with model obtained.\n";
+                  GenericModel.clear_model !model)
               else
                 () in
       let _ = Unix.close_process_full (from_yices,to_yices,stderr) in
       let _ = config.calls # incr in
+      verb "**** Yices, will print results.\n";
       let _ = Debug.print_smt_result response in
   (*    let _ = Unix.unlink temp in *)
         response

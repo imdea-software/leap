@@ -205,10 +205,11 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
       let vs = gen_varlist (TslExp.tidarr_to_str tt) TslkExp.Thid i j in
       List.map (fun v -> TslkExp.VarTh v) vs
     
-    let trans_literal (l:TslExp.literal) : TslkExp.formula =
+    let rec trans_literal (l:TslExp.literal) : TslkExp.formula =
       verb "**** TSL Solver. Literal to be translated: %s\n"
             (TslExp.literal_to_str l);
       match l with
+      (* c = mkcell(e,k,A,l) *)
       | Atom(Eq(CellT (VarCell c),CellT(MkCell(e,aa,tt,i))))
       | Atom(Eq(CellT(MkCell(e,aa,tt,i)),CellT (VarCell c)))
       | NegAtom(InEq(CellT (VarCell c),CellT(MkCell(e,aa,tt,i))))
@@ -218,6 +219,13 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
           let aa' = gen_addr_list aa 0 (TslkExp.k - 1) in
           let tt' = gen_tid_list tt 0 (TslkExp.k - 1) in
             TslkExp.eq_cell (c') (TslkExp.MkCell(e',aa',tt'))
+      (* c != mkcell(e,k,A,l) *)
+      | NegAtom(Eq(CellT (VarCell c),CellT(MkCell(e,aa,tt,i))))
+      | NegAtom(Eq(CellT(MkCell(e,aa,tt,i)),CellT (VarCell c)))
+      | Atom(InEq(CellT (VarCell c),CellT(MkCell(e,aa,tt,i))))
+      | Atom(InEq(CellT(MkCell(e,aa,tt,i)),CellT (VarCell c))) ->
+          TslkExp.Not (trans_literal (Atom(Eq(CellT(VarCell c), CellT(MkCell(e,aa,tt,i))))))
+      (* a = A[i] *)
       | Atom(Eq(AddrT a, AddrT (AddrArrRd (aa,i))))
       | Atom(Eq(AddrT (AddrArrRd (aa,i)), AddrT a))
       | NegAtom(InEq(AddrT a, AddrT (AddrArrRd (aa,i))))
@@ -233,6 +241,13 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
                      TslkExp.eq_addr a' (List.nth aa' n))) :: (!xs)
           done;
           TslkExp.conj_list (!xs)
+      (* a != A[i] *)
+      | NegAtom(Eq(AddrT a, AddrT (AddrArrRd (aa,i))))
+      | NegAtom(Eq(AddrT (AddrArrRd (aa,i)), AddrT a))
+      | Atom(InEq(AddrT a, AddrT (AddrArrRd (aa,i))))
+      | Atom(InEq(AddrT (AddrArrRd (aa,i)), AddrT a)) ->
+          TslkExp.Not (trans_literal (Atom(Eq(AddrT a, AddrT (AddrArrRd (aa,i))))))
+      (* t = A[i] *)
       | Atom(Eq(ThidT t, ThidT (ThidArrRd (tt,i))))
       | Atom(Eq(ThidT (ThidArrRd (tt,i)), ThidT t))
       | NegAtom(InEq(ThidT t, ThidT (ThidArrRd (tt,i))))
@@ -248,6 +263,13 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
                      TslkExp.eq_tid t' (List.nth tt' n))) :: (!xs)
           done;
           TslkExp.conj_list (!xs)
+      (* t != A[i] *)
+      | NegAtom(Eq(ThidT t, ThidT (ThidArrRd (tt,i))))
+      | NegAtom(Eq(ThidT (ThidArrRd (tt,i)), ThidT t))
+      | Atom(InEq(ThidT t, ThidT (ThidArrRd (tt,i))))
+      | Atom(InEq(ThidT (ThidArrRd (tt,i)), ThidT t)) ->
+          TslkExp.Not (trans_literal (Atom(Eq(ThidT t, ThidT (ThidArrRd (tt,i))))))
+      (* B = A {l <- a} *)
       | Atom(Eq(AddrArrayT bb, AddrArrayT (AddrArrayUp(aa,i,a))))
       | Atom(Eq(AddrArrayT (AddrArrayUp(aa,i,a)), AddrArrayT bb))
       | NegAtom(InEq(AddrArrayT bb, AddrArrayT (AddrArrayUp(aa,i,a))))
@@ -268,6 +290,40 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
                   (!xs)
           done;
           TslkExp.conj_list (!xs)
+      (* B != A {l <- a} *)
+      | NegAtom(Eq(AddrArrayT bb, AddrArrayT (AddrArrayUp(aa,i,a))))
+      | NegAtom(Eq(AddrArrayT (AddrArrayUp(aa,i,a)), AddrArrayT bb))
+      | Atom(InEq(AddrArrayT bb, AddrArrayT (AddrArrayUp(aa,i,a))))
+      | Atom(InEq(AddrArrayT (AddrArrayUp(aa,i,a)), AddrArrayT bb)) ->
+          TslkExp.Not (trans_literal (Atom(Eq(AddrArrayT bb, AddrArrayT (AddrArrayUp(aa,i,a))))))
+      (* U = T {l <- t} *)
+      | Atom(Eq(TidArrayT uu, TidArrayT (TidArrayUp(tt,i,t))))
+      | Atom(Eq(TidArrayT (TidArrayUp(tt,i,t)), TidArrayT uu))
+      | NegAtom(InEq(TidArrayT uu, TidArrayT (TidArrayUp(tt,i,t))))
+      | NegAtom(InEq(TidArrayT (TidArrayUp(tt,i,t)), TidArrayT uu)) ->
+          let t' = tid_tsl_to_tslk t in
+          let i' = int_tsl_to_tslk i in
+          let tt' = gen_tid_list tt 0 (TslkExp.k - 1) in
+          let uu' = gen_tid_list uu 0 (TslkExp.k - 1) in
+          let xs = ref [] in
+          for n = 0 to (TslkExp.k - 1) do
+            let n' = TslkExp.LevelVal n in
+            xs := (TslkExp.Implies
+                    (TslkExp.eq_level i' n',
+                     TslkExp.eq_tid t' (List.nth uu' n))) ::
+                  (TslkExp.Implies
+                    (TslkExp.ineq_level i' n',
+                     TslkExp.eq_tid (List.nth tt' n) (List.nth uu' n))) ::
+                  (!xs)
+          done;
+          TslkExp.conj_list (!xs)
+      (* U != T {l <- t} *)
+      | NegAtom(Eq(TidArrayT uu, TidArrayT (TidArrayUp(tt,i,t))))
+      | NegAtom(Eq(TidArrayT (TidArrayUp(tt,i,t)), TidArrayT uu))
+      | Atom(InEq(TidArrayT uu, TidArrayT (TidArrayUp(tt,i,t))))
+      | Atom(InEq(TidArrayT (TidArrayUp(tt,i,t)), TidArrayT uu)) ->
+          TslkExp.Not (trans_literal (Atom(Eq(TidArrayT uu, TidArrayT (TidArrayUp(tt,i,t))))))
+      (* Skiplist (m,s,i,s1,s2) *)
       | Atom(Skiplist(m,s,i,a1,a2)) ->
           let m' = mem_tsl_to_tslk m in
           let s' = set_tsl_to_tslk s in
@@ -282,6 +338,7 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
           for n = 0 to (TslkExp.k - 1) do
             let n' = TslkExp.LevelVal n in
             xs := (TslkExp.eq_addr (TslkExp.NextAt(TslkExp.CellAt(m',a2'),n'))
+
                                    (TslkExp.Null)) :: (!xs)
           done;
           for n = 0 to (TslkExp.k - 2) do
@@ -291,6 +348,7 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
                     TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',n')))))) :: (!xs)
           done;
           TslkExp.conj_list (!xs)
+      (* ~ Skiplist(m,s,i,a1,a2) *)
       | NegAtom(Skiplist(m,s,i,a1,a2)) ->
           let m' = mem_tsl_to_tslk m in
           let s' = set_tsl_to_tslk s in
@@ -360,8 +418,10 @@ let check_sat_by_cases (lines:int)
                         verb "**** TSL Solver will pass numeric formula: %s\n"
                               (NumExpression.int_formula_to_string phi_num);
                         NumSol.is_sat phi_num in
+        verb "**** TSL Solver, PA sat?: %b\n" pa_sat;
         if pa_sat then
           (* Check NC /\ alpha satisfiability *)
+          let _ = verb "**** TSL Solver will combine NC and arrangements.\n" in
           let nc_arrgs = TslExp.combine_conj_formula nc alpha in
           let nc_sat = match nc_arrgs with
                        | TslExp.TrueConj  ->

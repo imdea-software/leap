@@ -173,6 +173,8 @@ let fill_model () : unit =
 /* MODEL FOR COUNTER EXAMPLE PARSER */
 
 generic_model :
+  |
+    { GM.new_model() }
   | OPEN_PAREN MODEL assertion_list CLOSE_PAREN
     { let _ = fill_model () in
       let m = GM.copy_model model in
