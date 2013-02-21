@@ -364,9 +364,13 @@ let check_sat_by_cases (lines:int)
           (* Check NC /\ alpha satisfiability *)
           let nc_arrgs = TslExp.combine_conj_formula nc alpha in
           let nc_sat = match nc_arrgs with
-                       | TslExp.TrueConj   -> true
-                       | TslExp.FalseConj -> false
+                       | TslExp.TrueConj  ->
+                          verb "**** TSL Solver NC with arrangements is true "; true
+                       | TslExp.FalseConj ->
+                          verb "**** TSL Solver NC with arrangements is false "; false
                        | TslExp.Conj ls ->
+                          verb "**** TSL Solver NC with arrangements is a literal conjunction:\n%s\n"
+                            (String.concat "; " $ List.map TslExp.literal_to_str ls);
                           let l_vs = get_varset_of_sort_from_conj nc_arrgs Int in
                           let k = VarSet.cardinal l_vs in
                           let module TslkSol = (val TslkSolver.choose "Z3" k

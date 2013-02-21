@@ -1,6 +1,7 @@
 open Genlex
 open Debug
 open LeapLib
+open LeapVerbose
 open BackendSolverIntf
 open NumQuery
 open TllQuery
@@ -63,6 +64,7 @@ struct
   
   let parse_yices_output (from_yices:Pervasives.in_channel) : bool =
     let answer_str = Pervasives.input_line from_yices in
+    verb "**** Yices. Answer: %s\n" answer_str;
     let (terminated, outcome) =
       match answer_str with
         "unsat" -> let _ = Debug.print_smt "unsat\n"
@@ -97,6 +99,7 @@ struct
       let yices_cmd  = config.exec ^ yices_type_checking ^
                         " --timeout=" ^ (string_of_int config.timeout) ^
                         " " ^ temp in
+      verb "**** Yices command: %s\n" yices_cmd;
       let env = Array.of_list [] in
       let (from_yices,to_yices,stderr) = Unix.open_process_full yices_cmd env in
       let response = parse_yices_output from_yices in
