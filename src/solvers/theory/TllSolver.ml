@@ -199,8 +199,10 @@ struct
       | TllExp.FalseConj  -> false
       | TllExp.Conj conjs ->
         begin
-          Solver.Translate.Tll.set_prog_lines lines;
-          Solver.sat (Solver.Translate.Tll.literal_list conjs)
+          let module Q = (val QueryManager.get_tll_query Solver.identifier) in
+          let module Trans = Solver.Translate.Tll.Query(Q) in
+          Trans.set_prog_lines lines;
+          Solver.sat (Trans.literal_list conjs)
         end
   
   let is_sat_dnf (prog_lines : int) (phi : TllExp.formula) : bool =
@@ -228,8 +230,10 @@ struct
              (phi : TllExp.formula) : bool =
     LOG "Entering is_sat..." LEVEL TRACE;
     verb "**** TLL Solver, about to translate TLL...\n";
-    Solver.Translate.Tll.set_prog_lines lines;
-    Solver.sat (Solver.Translate.Tll.formula stac co cutoff_opt phi)
+    let module Q = (val QueryManager.get_tll_query Solver.identifier) in
+    let module Trans = Solver.Translate.Tll.Query(Q) in
+    Trans.set_prog_lines lines;
+    Solver.sat (Trans.formula stac co cutoff_opt phi)
   
   let is_valid (prog_lines:int)
                (stac:Tactics.solve_tactic_t option)
@@ -298,7 +302,9 @@ let search_sets_to_str (model:GM.t) (sm:GM.sort_map_t) (s:GM.sort) : string =
 
 
   let model_to_str () : string =
-    let sort_map = Solver.Translate.Tll.sort_map () in
+    let module Q = (val QueryManager.get_tll_query Solver.identifier) in
+    let module Trans = Solver.Translate.Tll.Query(Q) in
+    let sort_map = Trans.sort_map () in
     let model = Solver.get_model () in
     let thid_str = search_type_to_str model sort_map GM.tid_s in
     let pc_str   = search_type_to_str model sort_map GM.loc_s in

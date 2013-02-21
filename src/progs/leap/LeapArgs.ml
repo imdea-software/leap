@@ -35,6 +35,7 @@ let show_models       = ref false
 let show_label_info   = ref false
 let keep_primed_mem   = ref false (*false*)
 let group_vars        = ref false
+let use_smt           = ref false
 let dpType            = ref (DP.NoDP)
 let coType            = ref VCGen.Pruning (*VCGen.Dnf*)
 let invCandidate      = ref ""
@@ -206,7 +207,9 @@ let opts =
     ("-gv",
         Arg.Set group_vars,
         "pre-group variables in equivalence classes when computing SMP cutoff");
-
+    ("-smt",
+        Arg.Set use_smt,
+        "enables the use of SMT-LIB translation if available");
     ("--debug",
         Arg.Unit setdebug,
         "debug output information");

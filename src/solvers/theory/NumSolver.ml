@@ -66,7 +66,9 @@ struct
 
   (* INVOCATIONS *)
   let is_sat (phi : NumExp.formula) : bool =
-    Solver.sat (Solver.Translate.Num.int_formula phi)
+    let module Q = (val QueryManager.get_num_query Solver.identifier) in
+    let module Trans = Solver.Translate.Num.Query(Q) in
+    Solver.sat (Trans.int_formula phi)
   
   
   let is_valid (phi : NumExp.formula) : bool =
@@ -80,8 +82,10 @@ struct
   
   
   let is_sat_with_lines (prog_lines : int) (phi : NumExp.formula) : bool =
-    let _ = Solver.Translate.Num.set_prog_lines prog_lines in
-    let f = Solver.Translate.Num.int_formula_with_lines phi in
+    let module Q = (val QueryManager.get_num_query Solver.identifier) in
+    let module Trans = Solver.Translate.Num.Query(Q) in
+    let _ = Trans.set_prog_lines prog_lines in
+    let f = Trans.int_formula_with_lines phi in
     Solver.sat f
   
   
@@ -155,8 +159,9 @@ struct
     let x_conj = NumExp.formula_to_conj_literals x in
     let vars_set = NumExp.VarSet.elements
       (NumExp.VarSet.union (NumExp.all_vars_set x) (NumExp.all_vars_set y)) in
-    let is_preserved c = 
-      Solver.unsat (Solver.Translate.Num.std_widening vars_set y c)
+    let module Q = (val QueryManager.get_num_query Solver.identifier) in
+    let module Trans = Solver.Translate.Num.Query(Q) in
+    let is_preserved c = Solver.unsat (Trans.std_widening vars_set y c)
     in NumExp.list_literals_to_formula (List.filter is_preserved x_conj)
   
   let standard_widening_conj (x : NumExp.literal list) 
@@ -166,8 +171,9 @@ struct
           NumExp.VarSet.union s (NumExp.all_vars_set_literal lit)
         ) NumExp.VarSet.empty (x @ y)) in
     let y' = NumExp.list_literals_to_formula y in
-    let is_preserved c = 
-      Solver.unsat (Solver.Translate.Num.std_widening vars_set y' c)
+    let module Q = (val QueryManager.get_num_query Solver.identifier) in
+    let module Trans = Solver.Translate.Num.Query(Q) in
+    let is_preserved c = Solver.unsat (Trans.std_widening vars_set y' c)
     in List.filter is_preserved x
 
 
@@ -223,7 +229,9 @@ struct
 
 
   let model_to_str () : string =
-    let sort_map = Solver.Translate.Num.sort_map () in
+    let module Q = (val QueryManager.get_num_query Solver.identifier) in
+    let module Trans = Solver.Translate.Num.Query(Q) in
+    let sort_map = Trans.sort_map () in
     let model = Solver.get_model () in
     let thid_str = search_type_to_str model sort_map GM.tid_s in
     let pc_str   = search_type_to_str model sort_map GM.loc_s in

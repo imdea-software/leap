@@ -1,4 +1,7 @@
 open ExpressionTypes
+open NumQuery
+open TllQuery
+open TslkQuery
 
 module type BackendCommon =
 (** Minimum signature for a Backend Solver. *)
@@ -75,34 +78,33 @@ sig
   module Tll :
   (** Translation of TLL expressions. *)
   sig
-    include GeneralBackend with type t := t
-
     module Exp : TLLEXP
 
-    val set_prog_lines : int -> unit
-    (** [set_prog_lines n] sets the number of lines of the program to be
-        analyzed at [n]. *)
-    
-    val literal_list : Exp.literal list -> t
-    (** [literal_list ls] translates the list [ls] of literals into its 
-        internal representation. *)
-    
-    val formula      : Tactics.solve_tactic_t option ->
-                       Smp.cutoff_strategy ->
-                       Smp.cutoff_options_t ->
-                       Exp.formula -> t
-    (** [formula stat strat copt f] translates the formula [f] following the
-        strategy [strat] to compute the SMP cutoff and tactic [stat] to
-        decide whether or not to include extra information to help the
-        future satisfiability analysis of the formula. When computing the SMP
-        it considers the options passes in [copt]. *)
-        
-    val conjformula  : Exp.conjunctive_formula -> t
-    (** [conjformula f] tranlates the conjunctive formula [f]. *)
+    module Query (Q : TLL_QUERY) :
+    sig
+      include GeneralBackend with type t := t
 
-    val sort_map : unit -> GenericModel.sort_map_t
-    (** [sort_map ()] returns the sort mapping obtained from the last
-        call to a formula translation *)
+      val literal_list : Exp.literal list -> t
+      (** [literal_list ls] translates the list [ls] of literals into its 
+          internal representation. *)
+      
+      val formula      : Tactics.solve_tactic_t option ->
+                         Smp.cutoff_strategy ->
+                         Smp.cutoff_options_t ->
+                         Exp.formula -> t
+      (** [formula stat strat copt f] translates the formula [f] following the
+          strategy [strat] to compute the SMP cutoff and tactic [stat] to
+          decide whether or not to include extra information to help the
+          future satisfiability analysis of the formula. When computing the SMP
+          it considers the options passes in [copt]. *)
+          
+      val conjformula  : Exp.conjunctive_formula -> t
+      (** [conjformula f] tranlates the conjunctive formula [f]. *)
+
+      val sort_map : unit -> GenericModel.sort_map_t
+      (** [sort_map ()] returns the sort mapping obtained from the last
+          call to a formula translation *)
+    end
   end
 end
 
@@ -156,36 +158,39 @@ sig
   module Num :
   (** Translation of numeric expressions. *)
   sig
-    include GeneralBackend with type t := t
-
     module Exp : NUMEXP
-    
-    val int_varlist  : Exp.variable list -> t
-    (** [int_varlist vs] tranlates the list [vs] of intege/r variables
-        into its corresponding internal representation. *)
-    
-    val formula      : Exp.formula -> t
-    (** Tranlation of a numeric formula into its related data structure. *)
-    
-    val literal      : Exp.literal -> t
-    (** Translation of a literal into an internal representation. *)
-    
-    val int_formula  : Exp.formula -> t
-    (** [int_formula f] translates the integer formula [f]. *)
-    
-    val int_formula_with_lines : Exp.formula -> t
-    (** [int_formula_with_lines f] translate the integer formula [f] taking into 
-        account the number of lines previously passed through [set_prog_lines].
-        *)
-    
-    val std_widening : Exp.variable list -> Exp.formula 
-                         -> Exp.literal -> t
-    (** [std_widening vars f l] constructs an internal representation of 
-        a standard widening. *)
 
-    val sort_map : unit -> GenericModel.sort_map_t
-    (** [sort_map ()] returns the sort mapping obtained from the last
-        call to a formula translation *)
+    module Query (Q : NUM_QUERY) :
+    sig
+      include GeneralBackend with type t := t
+
+      val int_varlist  : Exp.variable list -> t
+      (** [int_varlist vs] tranlates the list [vs] of intege/r variables
+          into its corresponding internal representation. *)
+      
+      val formula      : Exp.formula -> t
+      (** Tranlation of a numeric formula into its related data structure. *)
+      
+      val literal      : Exp.literal -> t
+      (** Translation of a literal into an internal representation. *)
+      
+      val int_formula  : Exp.formula -> t
+      (** [int_formula f] translates the integer formula [f]. *)
+      
+      val int_formula_with_lines : Exp.formula -> t
+      (** [int_formula_with_lines f] translate the integer formula [f] taking into 
+          account the number of lines previously passed through [set_prog_lines].
+          *)
+      
+      val std_widening : Exp.variable list -> Exp.formula 
+                           -> Exp.literal -> t
+      (** [std_widening vars f l] constructs an internal representation of 
+          a standard widening. *)
+
+      val sort_map : unit -> GenericModel.sort_map_t
+      (** [sort_map ()] returns the sort mapping obtained from the last
+          call to a formula translation *)
+    end
   end
 end
 

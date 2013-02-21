@@ -59,22 +59,26 @@ let _ =
     (* We get tslk's parameter if passed as argument *)
     let k_param = DP.get_tslk_param !LeapArgs.dpType in
 
+
+    (* Sets whether the usage of SMT-LIB translation is preferable *)
+    Printf.printf "smt_use: %b\n" (!LeapArgs.use_smt);
+    QueryManager.set_smt_usage (!LeapArgs.use_smt);
+
     let module Pos  = (val PosSolver.choose pSolver : PosSolver.S) in
     let module Tll  = (val TllSolver.choose solver : TllSolver.S) in
     let module Tslk = (val TslkSolver.choose solver k_param : TslkSolver.S) in
     let module Num  = (val NumSolver.choose solver : NumSolver.S) in
 
     (* Tell Num, TLL and TSLK modules whether to compute models or not *)
-    let _ = Num.compute_model (!LeapArgs.show_models) in
-    let _ = Tll.compute_model (!LeapArgs.show_models) in
-    let _ = Tslk.compute_model (!LeapArgs.show_models) in
-
+    Num.compute_model (!LeapArgs.show_models);
+    Tll.compute_model (!LeapArgs.show_models);
+    Tslk.compute_model (!LeapArgs.show_models);
 
     (* Tell TLL and TSLK modules the parsed cutoff strategy options *)
-    let _ = Tll.set_forget_primed_mem (not !LeapArgs.keep_primed_mem) in
-    let _ = Tll.set_group_vars (!LeapArgs.group_vars) in
-    let _ = Tslk.set_forget_primed_mem (not !LeapArgs.keep_primed_mem) in
-    let _ = Tslk.set_group_vars (!LeapArgs.group_vars) in
+    Tll.set_forget_primed_mem (not !LeapArgs.keep_primed_mem);
+    Tll.set_group_vars (!LeapArgs.group_vars);
+    Tslk.set_forget_primed_mem (not !LeapArgs.keep_primed_mem);
+    Tslk.set_group_vars (!LeapArgs.group_vars);
 
     let module VCG = VCGen.Make(Pos)(Tll)(Tslk)(Num) in
     let focus_list = Expr.gen_focus_list (System.get_trans_num sys)

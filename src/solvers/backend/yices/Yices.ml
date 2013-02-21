@@ -2,8 +2,8 @@ open Genlex
 open Debug
 open LeapLib
 open BackendSolverIntf
-open YicesNumQuery
-open YicesTllQuery
+open NumQuery
+open TllQuery
 
 module Yices : BACKEND_SOLVER =
 struct
@@ -134,11 +134,14 @@ struct
     struct
       module Exp = TllExpression
       module Smp = SmpTll
-      let set_prog_lines = YicesTllQuery.set_prog_lines
-      let literal_list   = YicesTllQuery.literal_list_to_str
-      let formula        = YicesTllQuery.formula_to_str
-      let conjformula    = YicesTllQuery.conjformula_to_str
-      let sort_map       = YicesTllQuery.get_sort_map
+      module Query = functor (Q : TLL_QUERY) ->
+      struct
+        let set_prog_lines = Q.set_prog_lines
+        let literal_list   = Q.literal_list_to_str
+        let formula        = Q.formula_to_str
+        let conjformula    = Q.conjformula_to_str
+        let sort_map       = Q.get_sort_map
+      end
     end
 
     module Tslk (K : Level.S) =
@@ -157,15 +160,17 @@ struct
     module Num =
     struct
       module Exp = NumExpression
-
-      let set_prog_lines         = YicesNumQuery.set_prog_lines
-      let int_varlist            = YicesNumQuery.int_varlist_to_str
-      let formula                = YicesNumQuery.yices_string_of_formula
-      let literal                = YicesNumQuery.yices_string_of_literal
-      let int_formula            = YicesNumQuery.int_formula_to_str
-      let int_formula_with_lines = YicesNumQuery.int_formula_with_lines_to_str
-      let std_widening           = YicesNumQuery.standard_widening
-      let sort_map               = YicesNumQuery.get_sort_map
+      module Query = functor (Q : NUM_QUERY) ->
+      struct
+        let set_prog_lines         = Q.set_prog_lines
+        let int_varlist            = Q.int_varlist_to_str
+        let formula                = Q.yices_string_of_formula
+        let literal                = Q.yices_string_of_literal
+        let int_formula            = Q.int_formula_to_str
+        let int_formula_with_lines = Q.int_formula_with_lines_to_str
+        let std_widening           = Q.standard_widening
+        let sort_map               = Q.get_sort_map
+      end
     end
   end
 end

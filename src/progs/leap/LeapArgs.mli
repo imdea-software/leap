@@ -32,6 +32,7 @@ val show_models : bool ref
 val show_label_info : bool ref
 val keep_primed_mem : bool ref
 val group_vars : bool ref
+val use_smt : bool ref
 val dpType : DP.t ref
 val coType : VCGen.cutoff_type ref
 val invCandidate : string ref

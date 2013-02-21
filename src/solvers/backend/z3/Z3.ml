@@ -3,8 +3,9 @@ open Debug
 open LeapLib
 open LeapVerbose
 open Z3BackendType
-open Z3TllQuery
 open Z3TslkQuery
+open TllQuery
+open TslkQuery
 
 module Z3 : BACKEND_POS_TLL_TSLK =
 struct
@@ -149,12 +150,14 @@ struct
     struct
       module Exp = TllExpression
       module Smp = SmpTll
-
-      let set_prog_lines = Z3TllQuery.set_prog_lines
-      let literal_list   = Z3TllQuery.literal_list_to_str
-      let formula        = Z3TllQuery.formula_to_str
-      let conjformula    = Z3TllQuery.conjformula_to_str
-      let sort_map       = Z3TllQuery.get_sort_map
+      module Query = functor (Q : TLL_QUERY) ->
+      struct
+        let set_prog_lines = Q.set_prog_lines
+        let literal_list   = Q.literal_list_to_str
+        let formula        = Q.formula_to_str
+        let conjformula    = Q.conjformula_to_str
+        let sort_map       = Q.get_sort_map
+      end
     end
 
     module Tslk (K : Level.S) =
