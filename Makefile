@@ -1,5 +1,8 @@
 PROJNAME=leap
 
+# Makefile configuration
+OCAMLBUILD=ocamlbuild.native
+
 # Folders
 SCRIPTS=scripts
 TOOLS=tools
@@ -61,48 +64,48 @@ $(TOOLS) :
 
 
 $(LEAP):
-	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(LEAP).native
+	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(LEAP).native
 	@ln -f -s ./_build/src/progs/leap/$(LEAP).native $(LEAP)
 
 $(PROG2FTS):
-	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(PROG2FTS).native
+	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(PROG2FTS).native
 	@ln -f -s ./_build/src/progs/prog2fts/$(PROG2FTS).native $(PROG2FTS)
 
 $(PINV):
-	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(PINV).native
+	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(PINV).native
 	@ln -f -s ./_build/src/progs/pinv/$(PINV).native $(PINV)
 
 $(SINV):
-	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(SINV).native
+	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(SINV).native
 	@ln -f -s ./_build/src/progs/sinv/$(SINV).native $(SINV)
 
 $(PVD):
-	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(PVD).native
+	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(PVD).native
 	@ln -f -s ./_build/src/progs/pvd/$(PVD).native $(PVD)
 
 $(NUMINV):
-	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(NUMINV).native
+	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(NUMINV).native
 	@ln -f -s ./_build/src/progs/numinv/$(NUMINV).native $(NUMINV)
 
 $(SPEC_CHECK):
-	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(SPEC_CHECK).native
+	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(SPEC_CHECK).native
 	@ln -f -s ./_build/src/progs/spec_check/$(SPEC_CHECK).native $(SPEC_CHECK)
 
 $(TLL):
-	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(TLL).native
+	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(TLL).native
 	@ln -f -s ./_build/src/progs/tll/$(TLL).native $(TLL)
 
 solvertest:
-	ocamlbuild -j 0 $(OCAML_FLAGS) -libs $(LIBS) test.native
+	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) test.native
 
 
 
 doc:
 	@find src/* \( -name *.ml -o -name *.mli -o -name *.mll -o -name *.mly \) | cut -d"." -f1 | sort -u > leap.odocl
-	ocamlbuild -ocamldoc "ocamldoc.opt -hide-warnings" leap.docdir/index.html
+	$(OCAMLBUILD) -ocamldoc "ocamldoc.opt -hide-warnings" leap.docdir/index.html
 
 clean:
-	ocamlbuild -clean
+	$(OCAMLBUILD) -clean
 	rm -f $(LEAP) $(TLL) $(PROG2FTS) $(PINV) $(SINV) $(PVD) $(NUMINV) $(SPEC_CHECK) test.native
 
 softclean:
