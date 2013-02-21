@@ -1,0 +1,5 @@
+param:
+
+invariant [skiplist_next] :
+
+  @insert_i_eq_max. -> (insert::curr = rd(heap, insert::prev).arr[maxLevel])
