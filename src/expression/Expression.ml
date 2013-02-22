@@ -4133,6 +4133,20 @@ let construct_term_eq (v:term)
       in
         (modif, Literal (Atom (Eq (left_term, param_t))))
 
+  | (ThidT (CellLockIdAt (VarCell var, i)), Term t) ->
+      let modif     = [ThidT (CellLockIdAt(VarCell(clean_var var),i))] in
+      let left_term = prime_term $ param_term th_p v in
+      let param_t   = param_term th_p t
+      in
+        (modif, Literal (Atom (Eq (left_term, param_t))))
+
+  | (ThidT (ThidArrRd (CellTids (VarCell var), i)), Term t) ->
+      let modif     = [ThidT (ThidArrRd (CellTids(VarCell(clean_var var)),i))] in
+      let left_term = prime_term $ param_term th_p v in
+      let param_t   = param_term th_p t
+      in
+        (modif, Literal (Atom (Eq (left_term, param_t))))
+
   | (ThidT (ThidArrRd (VarTidArray var,i)), Term t) ->
       let modif     = [ThidT(ThidArrRd(VarTidArray (clean_var var),i))] in
       let left_term = prime_term $ param_term th_p v in
@@ -4157,6 +4171,13 @@ let construct_term_eq (v:term)
 
   | (AddrT (NextAt (VarCell var, i)), Term t) ->
       let modif     = [AddrT(NextAt(VarCell(clean_var var),i))] in
+      let left_term = prime_term $ param_term th_p v in
+      let param_t   = param_term th_p t
+      in
+        (modif, Literal (Atom (Eq (left_term, param_t))))
+
+  | (AddrT (AddrArrRd (CellArr (VarCell var), i)), Term t) ->
+      let modif     = [AddrT(AddrArrRd(CellArr(VarCell(clean_var var)),i))] in
       let left_term = prime_term $ param_term th_p v in
       let param_t   = param_term th_p t
       in

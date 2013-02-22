@@ -45,6 +45,8 @@ check_tool = @if ( test -e $(TOOLS)/$(1) ) || (test -h $(TOOLS)/$(1) ) ; then \
 
 OCAML_FLAGS= \
 	-pp "`pwd`/prep.sh"
+#	-cflags -warn-error,A \
+#	-cflags -w,Z \
 
 
 LIBS = unix,str,dynlink,bolt
@@ -53,7 +55,7 @@ LIBS = unix,str,dynlink,bolt
 # Compilation rules
 
 all: $(PROG2FTS) $(PINV) $(SINV) $(PVD) \
-		 $(NUMINV) $(SPEC_CHECK) $(TLL) $(LEAP) $(TOOLS)
+		 $(NUMINV) $(SPEC_CHECK) $(TLL) $(LEAP) $(LEAP).native $(TOOLS)
 
 $(TOOLS) :
 	@echo "Verifying presence of tools in "$(TOOLS)" folder...";
@@ -64,6 +66,10 @@ $(TOOLS) :
 
 
 $(LEAP):
+	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(LEAP).byte
+	@ln -f -s ./_build/src/progs/leap/$(LEAP).byte $(LEAP)
+
+$(LEAP).native:
 	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(LEAP).native
 	@ln -f -s ./_build/src/progs/leap/$(LEAP).native $(LEAP)
 

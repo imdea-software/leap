@@ -217,6 +217,15 @@ let generic_stm_term_eq (mode:eqGenMode)
         let new_term = E.param_term th_p (E.MemT(E.Update(aux_mem,a,new_cell)))
         in
           eq_generator (E.MemT E.heap) th_p (E.Term(new_term))
+    (* CellArr *)
+    | (E.AddrT (E.AddrArrRd (E.CellArr(E.CellAt(h,a)), l)), E.Term(E.AddrT a')) ->
+        let new_cell = E.MkSLCell(E.CellData(E.CellAt(aux_mem,a)),
+                                  E.AddrArrayUp(E.CellArr(E.CellAt(aux_mem,a)),l,a'),
+                                  E.CellTids(E.CellAt(aux_mem,a)),
+                                  E.CellMax(E.CellAt(aux_mem,a))) in
+        let new_term = E.param_term th_p (E.MemT(E.Update(aux_mem,a,new_cell)))
+        in
+          eq_generator (E.MemT E.heap) th_p (E.Term(new_term))
     (* CellLockId *)
     | (E.ThidT (E.CellLockId(E.CellAt(h,a))), E.Term(E.ThidT t')) ->
         let new_cell = E.MkCell(E.CellData(E.CellAt(aux_mem,a)),
@@ -227,6 +236,15 @@ let generic_stm_term_eq (mode:eqGenMode)
               (E.Term(E.MemT(E.Update(aux_mem,a,new_cell))))
     (* CellLockIdAt *)
     | (E.ThidT (E.CellLockIdAt(E.CellAt(h,a),l)), E.Term(E.ThidT t')) ->
+        let new_cell = E.MkSLCell(E.CellData(E.CellAt(aux_mem,a)),
+                                  E.CellArr(E.CellAt(aux_mem,a)),
+                                  E.TidArrayUp(E.CellTids(E.CellAt(aux_mem,a)),l,t'),
+                                  E.CellMax(E.CellAt(aux_mem,a)))
+        in
+          eq_generator (E.MemT E.heap) th_p
+              (E.Term(E.MemT(E.Update(aux_mem,a,new_cell))))
+    (* CellTids *)
+    | (E.ThidT (E.ThidArrRd(E.CellTids(E.CellAt(h,a)),l)), E.Term(E.ThidT t')) ->
         let new_cell = E.MkSLCell(E.CellData(E.CellAt(aux_mem,a)),
                                   E.CellArr(E.CellAt(aux_mem,a)),
                                   E.TidArrayUp(E.CellTids(E.CellAt(aux_mem,a)),l,t'),
