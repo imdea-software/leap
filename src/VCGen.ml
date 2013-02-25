@@ -353,6 +353,7 @@ struct
   exception Invalid_argument
   exception Impossible_call of string
   exception Not_implemented of string
+  exception NotSequentialFormula of string
   
   (* Configuration *)
   let defFormulaTableSize = 200
@@ -1167,7 +1168,10 @@ struct
       (sys : Sys.system_t) (th_list : E.tid list)
       (p : E.pc_t) : E.formula list =
     LOG "Entering gen_rho..." LEVEL TRACE;
-    rho_for_st sys mode hide_pres count_abs th_list p
+    let res = rho_for_st sys mode hide_pres count_abs th_list p in
+    verb "**** VCGen. Generated rho:\n%s\n"
+      (String.concat "\n" $ List.map (fun phi -> "[" ^ E.formula_to_str phi ^ "]") res);
+    res
       
   let gen_all_transitions (sys:Sys.system_t) : (E.pc_t * E.formula list) list =
     let lines = LeapLib.rangeList 1 (Sys.get_trans_num sys) in
@@ -1298,6 +1302,7 @@ struct
                                      solverInfo.count_abs sys thList l in
                   List.iter (fun r ->
                     let antecedent = E.And (fst f, r) in
+                    verb "**** VCGen, hide preserved variables: %b\n" solverInfo.hide_pres;
                     let consequent = if solverInfo.hide_pres then
                                        E.prime_modified antecedent (fst f)
                                      else
@@ -1517,9 +1522,55 @@ struct
   let seq_binv (sys : Sys.system_t) (inv : E.formula)
         : (E.formula * vc_info_t) list =
     LOG "Entering seq_binv..." LEVEL TRACE;
-    (* TODO: FIX THIS NOT TO USE DIRECTLY BINV *)
-    binv sys inv
+
+
+    let th_list = List.filter (fun x -> E.is_tid_var x) (E.voc inv) in
+    if th_list <> [] then RAISE(NotSequentialFormula(E.formula_to_str inv));
+    let fresh_tid = E.gen_fresh_thread th_list in
+
+    let inv_loc = E.param (Some fresh_tid) inv in
+    let inv_voc = E.voc inv_loc in
+    let inv_prime = E.prime inv_loc in
+    let sys_lines = List.filter (fun x -> x <> 0) solverInfo.focus in
+    let need_theta = List.mem 0 solverInfo.focus in
+    (* TODO: Support Threads as terms? *)
+    let gen_vc_info (l:E.pc_t) = {pc  =l;
+                                  smp =solverInfo.cutoff;
+                                  stac=Tac.solve_tactic solverInfo.tactics;
+                                  supps = [];} in
   
+    (* FIX: I think that invariants are not parametrized *)
+    (* when the invariant does not contains a tid *)
+    let init_cond = if need_theta then
+                      let theta = gen_theta_general (Sys.SOpenArray [fresh_tid]) sys
+                                    solverInfo.count_abs in
+                      let init_vc_info = gen_vc_info 0 in
+                        [(E.Implies (theta, inv_loc), init_vc_info)]
+                    else
+                      [] in
+
+    let tran_conds = ref [] in
+    
+    let gen_cond (l:E.pc_t) =
+      let me_subst = E.new_tid_subst [(Sys.me_tid_th,fresh_tid)] in
+      let rho = gen_rho (ROpenArray (fresh_tid, th_list)) solverInfo.hide_pres
+                  solverInfo.count_abs sys inv_voc l in
+      List.iter (fun r ->
+        let r_final = E.subst_tid me_subst r in
+        let antecedent = E.And(inv_loc, r_final) in
+        let consequent = if solverInfo.hide_pres then
+            E.prime_modified antecedent inv_loc
+          else inv_prime in
+        let new_vc = E.Implies (antecedent, consequent) in
+        let vc_info = gen_vc_info l
+        in
+          tran_conds := (new_vc, vc_info) :: !tran_conds
+      ) rho in
+
+    let _ = List.iter (fun l -> gen_cond l) sys_lines
+    in
+      init_cond @ List.rev(!tran_conds)
+
 
   let tag_seq_binv (sys : Sys.system_t) (inv : Tag.f_tag)
         : (E.formula * vc_info_t) list =

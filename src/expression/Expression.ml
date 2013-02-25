@@ -1,5 +1,6 @@
 open Printf
 open LeapLib
+open LeapVerbose
 
 
 type varId = string
@@ -2318,12 +2319,13 @@ let all_global_vars (f:formula) : variable list =
 
 (* Primes in phi the variables modified in ante *)
 let prime_modified (ante:formula) (phi:formula) : formula =
+  LOG "Entering prime_modified" LEVEL TRACE;
   let p_vars = primed_vars ante in
   let p_set  = construct_var_set p_vars
   in
     prime_only p_set phi
 
-                
+
 let prime_modified_term (ante:formula) (t:term) : term =
   let p_vars = primed_vars ante in
   let p_set  = construct_var_set p_vars

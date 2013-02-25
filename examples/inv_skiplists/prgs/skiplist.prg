@@ -89,22 +89,26 @@ assume
                                   endwhile
                                 endif
                                 prev := head;
+:insert_prev_low[
                                 curr := prev->arr[maxLevel];
 :insert_i_eq_max
                                 i := maxLevel;
                                 while (0 <= i /\ ~(valueWasIn)) do
                                   curr := prev->arr[i];
                                   while (curr->data < e) do
+:insert_curr_low
                                     prev := curr;
                                     curr := prev->arr[i];
                                   endwhile
                                   update[i] := prev;
+:insert_update_set
                                   i := i - 1;
                                   valueWasIn := (curr->data = e);
                                 endwhile
                                 if (~ (valueWasIn)) then
                                   newCell := mallocSL(e,lvl);
                                   i := 0;
+:insert_connect_loop[
                                   while (i <= lvl) do
                                     newCell->arr[i] := update[i]->arr[i];
                                     update[i]->arr[i] := newCell
@@ -114,6 +118,9 @@ assume
                                       $
                                     i := i + 1;
                                   endwhile
+
+:insert_connect_loop]
+:insert_prev_low]
                                 endif
                                 return (); // return (~ valueWasIn)
                               end
