@@ -1153,12 +1153,10 @@ and term_to_str expr =
     | IntT(i)            -> (int_to_str i)
     | AddrArrayT(aa)     -> (addrarr_to_str aa)
     | TidArrayT(tt)      -> (tidarr_to_str tt)
-    | VarUpdate (v,th,t) -> let v' = prime_var v in
-                            let v'_str = variable_to_str v' in
-                            let v_str = variable_to_str v in
+    | VarUpdate (v,th,t) -> let v_str = variable_to_str v in
                             let th_str = tid_to_str th in
                             let t_str = term_to_str t in
-                              Printf.sprintf "%s = %s{%s<-%s}" v'_str v_str th_str t_str
+                              Printf.sprintf "%s{%s<-%s}" v_str th_str t_str
 and conjunctive_formula_to_str form =
   let rec c_to_str f str =
     match f with
@@ -1176,16 +1174,11 @@ and formula_to_str form =
       Literal(lit) -> (literal_to_str lit)
     | True  -> Printf.sprintf "true"
     | False -> Printf.sprintf "false"
-    | And(f1, f2)  ->
-  Printf.sprintf "(%s /\\ %s)" (formula_to_str f1) (formula_to_str f2)
-    | Or(f1,f2) ->
-  Printf.sprintf "(%s \\/ %s)" (formula_to_str f1) (formula_to_str f2)
-    | Not(f) ->
-  Printf.sprintf "(~ %s)" (formula_to_str f)
-    | Implies(f1,f2) ->
-  Printf.sprintf "(%s -> %s)" (formula_to_str f1) (formula_to_str f2)
-    | Iff (f1,f2) ->
-  Printf.sprintf "(%s <-> %s)" (formula_to_str f1) (formula_to_str f2)
+    | And(f1, f2)  -> Printf.sprintf "(%s /\\ %s)" (formula_to_str f1) (formula_to_str f2)
+    | Or(f1,f2) -> Printf.sprintf "(%s \\/ %s)" (formula_to_str f1) (formula_to_str f2)
+    | Not(f) -> Printf.sprintf "(~ %s)" (formula_to_str f)
+    | Implies(f1,f2) -> Printf.sprintf "(%s -> %s)" (formula_to_str f1) (formula_to_str f2)
+    | Iff (f1,f2) -> Printf.sprintf "(%s <-> %s)" (formula_to_str f1) (formula_to_str f2)
 
 let sort_to_str s =
   match s with

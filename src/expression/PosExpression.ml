@@ -167,11 +167,7 @@ let rec expr_to_str (expr:expression) : string =
     Eq (t1,t2)            -> sprintf "%s = %s" (tid_to_str t1) (tid_to_str t2)
   | InEq (t1, t2)         -> sprintf "%s != %s" (tid_to_str t1) (tid_to_str t2)
   | Pred p                -> p
-  | PC (pc,t,p)           -> let t_str = if p then
-                                          th_option_to_str
-                                            (priming_option_tid true t)
-                                         else
-                                          th_option_to_str t in
+  | PC (pc,t,p)           -> let t_str = th_option_to_str t in
                              let v_name = if p then
                                             pc_name ^ "'"
                                           else

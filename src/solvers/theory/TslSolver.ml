@@ -383,70 +383,76 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
   end
 
 
+
 let check_sat_by_cases (lines:int)
                        (stac:Tactics.solve_tactic_t option)
                        (co : Smp.cutoff_strategy)
                        (cases:(TslExp.conjunctive_formula  *     (* PA formula *)
                                TslExp.conjunctive_formula) list) (* NC formula *)
       : (bool * int * int) =
-  let tslk_calls = ref 0 in
-  (* Construct a solver for Presburguer Arithmetic *)
-  let numSolv_id = BackendSolvers.Yices.identifier in
-  let module NumSol = (val NumSolver.choose numSolv_id : NumSolver.S) in
+
+  (* PA satisfiability check function *)
+  let check_pa (cf:TslExp.conjunctive_formula) : bool =
+    match cf with
+    | TslExp.TrueConj  -> true
+    | TslExp.FalseConj -> false
+    | TslExp.Conj ls   ->
+        let numSolv_id = BackendSolvers.Yices.identifier in
+        let module NumSol = (val NumSolver.choose numSolv_id : NumSolver.S) in
+        let phi_num = NumExpression.formula_to_int_formula
+                        (TSLInterface.formula_to_expr_formula
+                          (TslExp.from_conjformula_to_formula
+                            cf))
+        in
+        verb "**** TSL Solver numeric formula: %s\n"
+                  (TslExp.conjunctive_formula_to_str cf);
+        verb "**** TSL Solver will pass numeric formula: %s\n"
+                  (NumExpression.int_formula_to_string phi_num);
+        NumSol.is_sat phi_num in
 
 
-  let rec check pa nc arrgs =
+  (* NC satisfiability check function *)
+  let check_nc (cf:TslExp.conjunctive_formula) : bool =
+    match cf with
+    | TslExp.TrueConj  -> true
+    | TslExp.FalseConj -> false
+    | TslExp.Conj ls ->
+        let l_vs = get_varset_of_sort_from_conj cf Int in
+        let k = VarSet.cardinal l_vs in
+        let module TslkSol = (val TslkSolver.choose "Z3" k
+  (*
+        let module TslkSol = (val TslkSolver.choose !solver_impl k
+  *)
+                                         : TslkSolver.S) in
+        let module Trans = TranslateTsl (TslkSol.TslkExp) in
+        verb "**** TSL Solver, about to translate TSL to TSLK...\n";
+        let phi_tslk = Trans.to_tslk ls in
+        verb "**** TSL Solver, TSL to TSLK translation done...\n";
+        TslkSol.is_sat lines stac co phi_tslk in
+
+
+  (* General satisfiability function *)
+  let rec check (pa:TslExp.conjunctive_formula)
+                (nc:TslExp.conjunctive_formula)
+                (arrgs:TslExp.conjunctive_formula list) =
     verb "**** TSL Solver. PA: %s\n" (TslExp.conjunctive_formula_to_str pa);
     verb "**** TSL Solver. NC: %s\n" (TslExp.conjunctive_formula_to_str nc);
-
     match arrgs with
     | [] -> false
     | alpha::xs ->
         (* Check PA /\ alpha satisfiability *)
-        let pa_arrgs = TslExp.combine_conj_formula pa alpha in
-        let pa_sat = match pa_arrgs with
-                     | TslExp.TrueConj  -> true
-                     | TslExp.FalseConj -> false
-                     | TslExp.Conj ls   ->
-                        let phi_num = NumExpression.formula_to_int_formula
-                                        (TSLInterface.formula_to_expr_formula
-                                          (TslExp.from_conjformula_to_formula
-                                            pa_arrgs))
-                                    in
-                        verb "**** TSL Solver numeric formula: %s\n"
-                              (TslExp.conjunctive_formula_to_str pa_arrgs);
-                        verb "**** TSL Solver will pass numeric formula: %s\n"
-                              (NumExpression.int_formula_to_string phi_num);
-                        NumSol.is_sat phi_num in
+        let pa_sat = check_pa (TslExp.combine_conj_formula pa alpha) in
         verb "**** TSL Solver, PA sat?: %b\n" pa_sat;
         if pa_sat then
           (* Check NC /\ alpha satisfiability *)
           let _ = verb "**** TSL Solver will combine NC and arrangements.\n" in
-          let nc_arrgs = TslExp.combine_conj_formula nc alpha in
-          let nc_sat = match nc_arrgs with
-                       | TslExp.TrueConj  ->
-                          verb "**** TSL Solver NC with arrangements is true "; true
-                       | TslExp.FalseConj ->
-                          verb "**** TSL Solver NC with arrangements is false "; false
-                       | TslExp.Conj ls ->
-                          verb "**** TSL Solver NC with arrangements is a literal conjunction:\n%s\n"
-                            (String.concat "; " $ List.map TslExp.literal_to_str ls);
-                          let l_vs = get_varset_of_sort_from_conj nc_arrgs Int in
-                          let k = VarSet.cardinal l_vs in
-                          let module TslkSol = (val TslkSolver.choose "Z3" k
-  (*
-                          let module TslkSol = (val TslkSolver.choose !solver_impl k
-*)
-                                                      : TslkSolver.S) in
-                          let module Trans = TranslateTsl (TslkSol.TslkExp) in
-                          verb "**** TSL Solver, about to translate TSL to TSLK...\n";
-                          let phi_tslk = Trans.to_tslk ls in
-                          verb "**** TSL Solver, TSL to TSLK translation done...\n";
-                            TslkSol.is_sat lines stac co phi_tslk in
+          let nc_sat = check_nc (TslExp.combine_conj_formula nc alpha) in
           if nc_sat then true else check pa nc xs
         else
-          check pa nc xs
-  in
+          check pa nc xs in
+
+  (* Main call *)
+  let tslk_calls = ref 0 in
   let rec check_aux cs =
     verb "**** TSL Solver: %i cases\n%s\n" (List.length cs)
             (String.concat "\n"
@@ -456,14 +462,20 @@ let check_sat_by_cases (lines:int)
                   (TslExp.conjunctive_formula_to_str nc)) cs));
     match cs with
     | []          -> (false, 1, !tslk_calls)
-    | (pa,nc)::xs -> verb "**** TSL Solver: will guess arrangements...\n";
-                     let arrgs = guess_arrangements
-                                  (TslExp.combine_conj_formula pa nc) in
-                     verb "**** TSL Solver: arrangements guessed...\n";
-                     if check pa nc arrgs then
-                       (true, 1, !tslk_calls)
-                     else
-                       check_aux xs
+    | (pa,nc)::xs -> begin
+                       verb "**** TSL Solver: will guess arrangements...\n";
+                       let arrgs = guess_arrangements (TslExp.combine_conj_formula pa nc) in
+                       verb "**** TSL Solver: arrangements guessed...\n";
+                       match arrgs with
+                       | [] -> (* No arrangements guessed, ie. less than 2 level variables.
+                                  Only need to check NC *)
+                               (check_nc nc, 1, !tslk_calls)
+                       | _  -> (* Some arrangement guessed. Full check required *)
+                               if check pa nc arrgs then
+                                 (true, 1, !tslk_calls)
+                               else
+                                 check_aux xs
+                     end
   in
     check_aux cases
 

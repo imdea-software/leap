@@ -859,12 +859,10 @@ and term_to_str expr =
     | SetElemT(setelem)  -> (setelem_to_str setelem)
     | PathT(path)        -> (path_to_str path)
     | MemT(mem)          -> (mem_to_str mem)
-    | VarUpdate (v,th,t) -> let v' = prime_var v in
-                            let v'_str = variable_to_str v' in
-                            let v_str = variable_to_str v in
+    | VarUpdate (v,th,t) -> let v_str = variable_to_str v in
                             let th_str = tid_to_str th in
                             let t_str = term_to_str t in
-                              Printf.sprintf "%s = %s{%s<-%s}" v'_str v_str th_str t_str
+                              Printf.sprintf "%s{%s<-%s}" v_str th_str t_str
 
 and conjunctive_formula_to_str form =
   let rec c_to_str f str =
