@@ -101,22 +101,29 @@ module Make (K : Level.S) : TSLK_QUERY =
     let z3_level_preamble (buf:B.t) : unit =
       B.add_string buf
         ( "(declare-datatypes () ((" ^level_s);
-      for i = 0 to (K.level -1) do
-        B.add_string buf ( " " ^(ll i))
-      done;
+        if K.level < 1 then
+          (* No levels, so I build at least one level 0 *)
+          B.add_string buf (" " ^(ll 0))
+        else
+          for i = 0 to (K.level -1) do
+            B.add_string buf ( " " ^(ll i))
+          done;
       B.add_string buf (")))\n");
-      let str = ref (" " ^ ll (K.level-1)) in
-      for i = 0 to (K.level-2) do
-        str :=  "\n  (ite (= l " ^(ll i)^ ") " ^(ll (i+1))^ " " ^(!str)^ ")"
-      done;
-      B.add_string buf
-        ( "(define-fun lsucc ((l " ^level_s^ ")) " ^level_s ^(!str)^ ")\n");
-      let str = ref (" " ^ ll 0) in
-      for i = (K.level-1) downto 1 do
-        str :=  "\n  (ite (= l " ^(ll i)^ ") " ^(ll (i-1))^ " " ^(!str)^ ")"
-      done;
-      B.add_string buf
-        ( "(define-fun lpred ((l " ^level_s^ ")) " ^level_s ^(!str)^ ")\n")
+      if K.level > 1 then begin
+        (* At least two levels to have order *)
+        let str = ref (" " ^ ll (K.level-1)) in
+        for i = 0 to (K.level-2) do
+          str :=  "\n  (ite (= l " ^(ll i)^ ") " ^(ll (i+1))^ " " ^(!str)^ ")"
+        done;
+        B.add_string buf
+          ( "(define-fun lsucc ((l " ^level_s^ ")) " ^level_s ^(!str)^ ")\n");
+        let str = ref (" " ^ ll 0) in
+        for i = (K.level-1) downto 1 do
+          str :=  "\n  (ite (= l " ^(ll i)^ ") " ^(ll (i-1))^ " " ^(!str)^ ")"
+        done;
+        B.add_string buf
+          ( "(define-fun lpred ((l " ^level_s^ ")) " ^level_s ^(!str)^ ")\n")
+      end
 
 
     (* (define-type address (scalar null aa_1 aa_2 aa_3 aa_4 aa_5))   *)
