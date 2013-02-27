@@ -1,13 +1,9 @@
-open LeapLib
+(*open LeapLib *)
+
+module GenSet = LeapGenericSet
 
 
-type 'a set_t = {
-                  elems : ('a, unit) Hashtbl.t;
-                  counter : int ref;
-                }
-
-
-type 'a ineq_table_t = ('a, 'a set_t) Hashtbl.t
+type 'a ineq_table_t = ('a, 'a GenSet.t) Hashtbl.t
 
 
 (** The type of a partition *)
@@ -27,76 +23,10 @@ type 'a eqs = Eq of ('a * 'a) | Ineq of ('a * 'a)
 exception Not_in_domain
 exception Inconsistent_inequality
 
-
-(* A set for the keys identifying each equivalence class *)
-module IntSet = Set.Make(
-  struct
-    let compare = Pervasives.compare
-    type t = int
-  end )
-
-(* Special set operation *)
-let set_new () : 'a set_t =
-  {
-   elems = Hashtbl.create 10;
-   counter = ref 0;
-  }
-
-
-let set_add (s:'a set_t) (a:'a) : unit =
-  if not (Hashtbl.mem s.elems a) then
-    begin
-      incr s.counter; Hashtbl.add s.elems a ()
-    end
-
-
-let set_singleton (a:'a) : 'a set_t =
-  let s = set_new () in
-  let _ = set_add s a in
-    s
-
-
-let set_size (s:'a set_t) : int =
-  !(s.counter)
-
-
-let set_in (s:'a set_t) (a:'a) : bool =
-  Hashtbl.mem s.elems a
-
-
-let set_iter (f:'a -> unit) (s:'a set_t) : unit =
-  Hashtbl.iter (fun e _ -> f e) s.elems
-
-
-let set_union (s:'a set_t) (r:'a set_t) : 'a set_t =
-  if s.counter < r.counter then
-    let _ = set_iter (set_add r) s in
-    let _ = r.counter := Hashtbl.length s.elems in
-      r
-  else
-    let _ = set_iter (set_add s) r in
-    let _ = s.counter := Hashtbl.length r.elems in
-      s
-
-
-let set_copy_without (s:'a set_t) (ss:'a set_t list) : 'a set_t =
-  let s_new = set_new () in
-  let _ = set_iter (fun e ->
-            if not (List.exists (fun x -> set_in x e) ss) then
-              set_add s_new e
-          ) s in
-    s_new
-
-
-let gen_set (xs:'a list) : 'a set_t =
-  let s = set_new () in
-  let _ =  List.iter (fun e -> set_add s e) xs in
-    s
-
-
-let gen_set_from_pairs (xs:('a*'a) list) : 'a set_t =
-  let s = set_new () in
-  let _ = List.iter (fun (e1,e2) -> set_add s e1; set_add s e2) xs in
+(* Auxiliary operations *)
+let gen_set_from_pairs (xs:('a*'a) list) : 'a GenSet.t =
+  let s = GenSet.empty () in
+  let _ = List.iter (fun (e1,e2) -> GenSet.add s e1; GenSet.add s e2) xs in
     s
 
 
@@ -281,7 +211,7 @@ let load_ineq_tbl (dom:'a list) (p:'a t) (tbl:'a ineq_table_t) : unit =
       (* The EC may not have inequalities, so no set may be returned *)
       try
         let ineq_set = Hashtbl.find tbl e in
-        set_iter (fun i->LeapBitSet.add (Hashtbl.find id_map) enemies i) ineq_set
+        GenSet.iter (fun i->LeapBitSet.add (Hashtbl.find id_map) enemies i) ineq_set
       with _ -> ()
     ) ds;
     if not (LeapBitSet.disjoint friends enemies) then
@@ -323,8 +253,8 @@ let rec gen_eq_classes (xs:('a list * 'a LeapBitSet.t * 'a LeapBitSet.t) list) :
                      ) [] p_list
 
 
-let check_in_dom (s:'a set_t) (a:'a) : unit =
-  if not (set_in s a) then
+let check_in_dom (s:'a GenSet.t) (a:'a) : unit =
+  if not (GenSet.mem s a) then
     RAISE(Not_in_domain)
 
 
@@ -336,7 +266,7 @@ let check_inconsistent (a:'a) (b:'a) : unit =
 let check_no_ineq (tbl: 'a ineq_table_t) (a:'a) (b:'a) : unit =
   try
     let s = Hashtbl.find tbl a in
-    if set_in s b then
+    if GenSet.mem s b then
       RAISE(Inconsistent_inequality)
   with _ -> ()
 
@@ -344,23 +274,23 @@ let check_no_ineq (tbl: 'a ineq_table_t) (a:'a) (b:'a) : unit =
 let load_ineq_info (tbl:'a ineq_table_t) (a:'a) (b:'a) : unit =
   try
     let s = Hashtbl.find tbl a in
-    let _ = set_add s b in
+    let _ = GenSet.add s b in
       Hashtbl.replace tbl a s
-  with _ -> Hashtbl.add tbl a (set_singleton b)
+  with _ -> Hashtbl.add tbl a (GenSet.singleton b)
 
 
 let gen_init_partitions (dom:'a list) (assumptions:'a eqs list) : 'a t  =
   let _ = LeapDebug.debug "entering gen_init_partitions...\n" in
-  let domSet = gen_set dom in
+  let domSet = GenSet.from_list dom in
   (* Split the list of equalities and inequalities *)
-  let e_set = set_new () in
+  let e_set = GenSet.empty () in
   let ineqTbl = Hashtbl.create 100 in
   let (eq,ineq) = List.fold_left (fun (es,is) e ->
                     match e with
                     | Eq (a,b)   -> let _ = check_in_dom domSet a in
                                     let _ = check_in_dom domSet b in
-                                    let _ = set_add e_set a in
-                                    let _ = set_add e_set b in
+                                    let _ = GenSet.add e_set a in
+                                    let _ = GenSet.add e_set b in
                                       ((a,b)::es,is)
                     | Ineq (a,b) -> let _ = check_in_dom domSet a in
                                     let _ = check_in_dom domSet b in
@@ -373,8 +303,8 @@ let gen_init_partitions (dom:'a list) (assumptions:'a eqs list) : 'a t  =
   let part = empty () in
   let _ = List.iter (fun (a,b) -> add_eq part a b) eq in
   (* We add all remaining domain elements to the initial partition *)
-  let rem_set = set_copy_without domSet [e_set] in
-  let _ = set_iter (fun e -> ignore(add_new part e)) rem_set in
+  let rem_set = GenSet.copy_without domSet [e_set] in
+  let _ = GenSet.iter (fun e -> ignore(add_new part e)) rem_set in
   (* We load the inequality information *)
   let _ = load_ineq_tbl dom part ineqTbl in
   (* We have the initial partition *)
