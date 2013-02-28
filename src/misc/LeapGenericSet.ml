@@ -27,6 +27,13 @@ let add (s:'a t) (a:'a) : unit =
     end
 
 
+let remove (s:'a t) (a:'a) : unit =
+  if Hashtbl.mem s.elems a then
+    begin
+      decr s.counter; Hashtbl.remove s.elems a
+    end
+
+
 let singleton (a:'a) : 'a t =
   let s = empty () in
   let _ = add s a in
@@ -87,3 +94,7 @@ let copy_without (s:'a t) (ss:'a t list) : 'a t =
               add s_new e
           ) s in
     s_new
+
+
+let to_str (f:'a -> string) (s:'a t) : string =
+  "{" ^(String.concat ";" (fold (fun e xs -> (f e)::xs) s []))^ "}"

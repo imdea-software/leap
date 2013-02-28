@@ -8,6 +8,10 @@ type 'a arrtree
 (** [empty ()] returns an empty arrangement *)
 val empty : unit -> 'a t
 
+(** [add_elem arr a] insert a single element in the arrangement [arr]
+    without any restriction *)
+val add_elem : 'a t -> 'a -> unit
+
 (** [add_eq arr a b] inserts an equality between [a] and [b] into the
     arrangement [arr] *)
 val add_eq : 'a t -> 'a -> 'a -> unit
@@ -24,6 +28,7 @@ val add_order : 'a t -> 'a -> 'a -> unit
     relation within the arrangement *)
 val to_str : 'a t -> ('a -> string) -> string
 
-val gen_arrtrees : 'a t -> 'a arrtree list
+val gen_arrtrees : 'a t -> ('a -> string) -> 'a arrtree list
 
 
+val arrtree_to_str : ('a -> string) -> 'a arrtree -> string

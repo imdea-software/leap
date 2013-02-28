@@ -12,6 +12,9 @@ val copy : 'a t -> 'a t
 (** [add s a] adds to set [s] element [a] *)
 val add : 'a t -> 'a -> unit
 
+(** [remove s a] removes element [a] from set [s] *)
+val remove : 'a t -> 'a -> unit
+
 (** [singleton a] creates a new set containing just [a] *)
 val singleton : 'a -> 'a t
 
@@ -44,3 +47,7 @@ val to_list : 'a t -> 'a list
 (** [copy_without s ss] returns a set that is a copy of set [s], but excluding
     all elements from any of the sets in [ss] *)
 val copy_without : 'a t -> 'a t list -> 'a t
+
+(** [to_str f s] returns a string representing set [s], using function [f]
+    to represent each element *)
+val to_str : ('a -> string) -> 'a t -> string

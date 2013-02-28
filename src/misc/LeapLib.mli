@@ -44,6 +44,11 @@ val first_n : int -> 'a list -> 'a list
 val rangeList : int -> int -> int list
 val insert_at : 'a -> 'a list -> int -> 'a list
 val list_of : int -> 'a -> 'a list
+(** [split_at xs a] splits [xs] into two lists. The first list contains all
+    elements in [xs] until [a] inclusive. The second list contains all
+    elements in [xs] coming after [a]. If [a] is not in [xs] then [xs] is
+    returned as first list and the second list is returned empty *)
+val split_at : 'a list -> 'a -> 'a list * 'a list
 val apply_if_not_empty : ('a list -> 'b) -> 'b -> 'a list -> 'b
 val match_last_n_chars : int -> string -> string -> bool
 val comb           : 'a list -> int -> 'a list list
@@ -52,6 +57,7 @@ val mid_comb_tuple : 'a list -> int -> int -> ('a list * 'a list) list
 val mid_comb       : 'a list -> int -> 'a -> int -> 'a list list
 val choose         : 'a list -> int -> 'a list list
 val choose_range   : 'a list -> int -> int -> 'a list list
+
 
 (** [print_list f l] prints the list [l] after applying [f] to each argument. *)
 val print_list     : ('a -> string) -> 'a list -> string

@@ -1,5 +1,6 @@
 (* LeapLib.ml *)
 
+
 exception Empty_list
 exception Negative_position of int
 exception Negative_number of int
@@ -61,6 +62,18 @@ let rec list_of n e =
     RAISE(Negative_number n)
   else
     e::(list_of (n-1) e)
+
+
+let split_at (xs:'a list) (a:'a) : 'a list * 'a list =
+  let found = ref false in
+  List.fold_left (fun (preds,succs) e ->
+    if !found then
+      (preds,succs @ [e])
+    else begin
+      found := (e = a);
+      (preds @ [e], succs)
+    end
+  ) ([],[]) xs
 
 
 let rec lastElem l = match l with
@@ -172,3 +185,5 @@ class counter i = object
   method incr = n <- n + 1
   method get = n
 end
+
+

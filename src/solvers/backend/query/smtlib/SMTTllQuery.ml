@@ -2026,7 +2026,7 @@ struct
           let _ = if LeapDebug.is_debug_enabled() then
                     List.iter (fun p ->
                       verb "**** SMTTllQuery. Partitions:\n%s\n"
-                           (Partition.to_str p Expr.term_to_str);
+                           (Partition.to_str Expr.term_to_str p);
                     ) parts in
           verb "**** SMTTllQuery. Number of cases: %i\n" (List.length parts);
           verb "**** SMTTllQuery. Computation done!!!\n";

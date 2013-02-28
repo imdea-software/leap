@@ -1764,7 +1764,7 @@ module Make (K : Level.S) : TSLK_QUERY =
             let _ = if LeapDebug.is_debug_enabled() then
                       List.iter (fun p ->
                         LeapDebug.debug "Partitions:\n%s\n"
-                          (Partition.to_str p Expr.term_to_str)
+                          (Partition.to_str Expr.term_to_str p)
                       ) parts in
             let _ = LeapDebug.debug "Number of cases: %i\n" (List.length parts) in
             let _ = LeapDebug.debug "Computation done!!!\n" in

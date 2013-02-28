@@ -321,7 +321,7 @@ let gen_partitions (dom:'a list) (assumptions:'a eqs list) : ('a t) list =
     ps
 
 
-let to_str (p:'a t) (f_str:'a -> string) : string =
+let to_str (f_str:'a -> string) (p:'a t) : string =
   let buf = Buffer.create 256 in
   let p_keys = keys p in
   let _ = List.iter (fun i ->

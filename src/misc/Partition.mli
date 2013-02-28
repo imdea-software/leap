@@ -78,16 +78,16 @@ val to_list : 'a t -> 'a list list
 (** [to_list p] returns a list representations of all equivalence classes
     in partition [p] *)
 
+val gen_init_partitions : 'a list -> 'a eqs list -> 'a t
 (** [gen_init_partitions d as] generates the initial partition of equivalence
     classes considering only elements in domain [d] and the list of assumptions
     [as] *)
-val gen_init_partitions : 'a list -> 'a eqs list -> 'a t
 
+val gen_partitions : 'a list -> 'a eqs list -> ('a t) list
 (** [gen_partitions d as] generates all possible partitions of equivalence
     classes using elements in domain [d] and starting from the list of
     assumptions [as] *)
-val gen_partitions : 'a list -> 'a eqs list -> ('a t) list
 
+val to_str : ('a -> string) -> 'a t -> string
 (** [partition_to_str p f] returns a string representation of partition [p],
     using function [f] to represent the elements *)
-val to_str : 'a t -> ('a -> string) -> string
