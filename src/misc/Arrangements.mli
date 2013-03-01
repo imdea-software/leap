@@ -3,7 +3,7 @@
 type 'a t
 
 (** The type of arrangements tree *)
-type 'a arrtree
+type 'a arrtree = Node of 'a list * 'a arrtree list
 
 (** [empty ()] returns an empty arrangement *)
 val empty : unit -> 'a t
@@ -28,7 +28,24 @@ val add_order : 'a t -> 'a -> 'a -> unit
     relation within the arrangement *)
 val to_str : 'a t -> ('a -> string) -> string
 
-val gen_arrtrees : 'a t -> ('a -> string) -> 'a arrtree list
+(** [gen_arrtrees arr] returns a list with all possible arrangement trees
+    that can be generated from [arr] *)
+val gen_arrtrees : 'a t -> 'a arrtree list
 
+(** [arrtree_to_set tree] returns a set with all possible branches in [tree] *)
+val arrtree_to_set : 'a arrtree -> ('a list list) LeapGenericSet.t
 
+(** [gen_arrs arr] returns a set of list containing all possible arrangements.
+    Each list represents an increasing ordering of equivalences classes
+    according to arrangement [arr]. Each equivalence class is represented as
+    a list of elements *)
+val gen_arrs : 'a t -> ('a list list) LeapGenericSet.t
+
+(** [arrtree_set_to_str f s] generates a string representing all possible
+    arrangements is set [s] using function [f] to represent each element *)
+val arrtree_set_to_str : ('a -> string) -> ('a list list) LeapGenericSet.t ->
+                         string
+
+(** [arrtree_to_str f tree] returns a string representing [tree], using
+    function [f] to represent each element *)
 val arrtree_to_str : ('a -> string) -> 'a arrtree -> string

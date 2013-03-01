@@ -56,6 +56,10 @@ let fold (f:'a -> 'b -> 'b) (s:'a t) (init:'b) : 'b =
   Hashtbl.fold (fun e _ tmp -> f e tmp) s.elems init
 
 
+let apply (f:'a -> 'a) (s:'a t) : unit =
+  Hashtbl.iter (fun e _ -> Hashtbl.replace s.elems (f e) ()) s.elems
+
+
 let union (s:'a t) (r:'a t) : 'a t =
   if s.counter < r.counter then
     let s_new = copy r in

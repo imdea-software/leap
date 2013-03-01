@@ -91,7 +91,7 @@ let rec build_cand_tree (graph:eqclass_order_t)
   ) avail []
 
 
-let gen_arrtrees (arr:'a t) (f:'a -> string) : 'a arrtree list =
+let gen_arrtrees (arr:'a t) : 'a arrtree list =
   let append_eq (a:'a) (b:'a) (xs:'a Partition.eqs list) =
     Partition.Eq (a,b)::xs in
   let append_ineq (a:'a) (b:'a) (xs:'a Partition.eqs list) =
@@ -107,14 +107,36 @@ let gen_arrtrees (arr:'a t) (f:'a -> string) : 'a arrtree list =
                   (p,id_order) :: xs
                 else xs
               ) [] ps in
+(*
   List.iter (fun (p,_) ->
       Printf.printf "Well defined: %b\n%s\n\n" (well_defined_order arr p)
                                                (Partition.to_str f p)
   ) cands;
+*)
   List.fold_left (fun xs (p,id_graph) ->
     let _ = Printf.printf "KEYS: %s\n" (String.concat "," (List.map string_of_int (Partition.keys p))) in
     (build_cand_tree id_graph (GenSet.from_list (Partition.keys p)) p) @ xs
   ) [] cands
+
+
+let rec arrtree_to_set (tree:'a arrtree) : ('a list list) GenSet.t =
+  let Node(e,xs) = tree in
+  let s = List.fold_left (fun set t -> GenSet.union set (arrtree_to_set t)) (GenSet.empty ()) xs in
+  GenSet.apply (fun ys -> e::ys) s;
+  s
+
+
+let gen_arrs (arr:'a t) : ('a list list) GenSet.t =
+   List.fold_left (fun s t -> GenSet.union s (arrtree_to_set t)) (GenSet.empty ()) (gen_arrtrees arr)
+
+
+let arrtree_set_to_str (f:'a -> string) (s:('a list list) LeapGenericSet.t) : string =
+  String.concat "\n"
+    (GenSet.fold (fun es xs ->
+      ("{" ^(String.concat ";" (List.map (fun ec ->
+                                  "[" ^(String.concat "," (List.map f ec))^ "]"
+                               ) es))^ "}") :: xs
+    ) s [])
 
 
 let rec arrtree_to_str (f:'a -> string) (tree:'a arrtree) : string =
