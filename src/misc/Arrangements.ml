@@ -121,22 +121,23 @@ let gen_arrtrees (arr:'a t) : 'a arrtree list =
 
 let rec arrtree_to_set (tree:'a arrtree) : ('a list list) GenSet.t =
   let Node(e,xs) = tree in
-  let s = List.fold_left (fun set t -> GenSet.union set (arrtree_to_set t)) (GenSet.empty ()) xs in
-  GenSet.apply (fun ys -> e::ys) s;
-  s
+  match xs with
+  | [] -> GenSet.singleton [e]
+  | _  -> let s = List.fold_left (fun set t -> GenSet.union set (arrtree_to_set t)) (GenSet.empty ()) xs in
+          GenSet.fold (fun es res -> GenSet.add res (e::es); res) s (GenSet.empty ())
 
 
 let gen_arrs (arr:'a t) : ('a list list) GenSet.t =
-   List.fold_left (fun s t -> GenSet.union s (arrtree_to_set t)) (GenSet.empty ()) (gen_arrtrees arr)
+  List.fold_left (fun s t ->
+    let ts = arrtree_to_set t in
+    let _ = Printf.printf "TS SIZE: %i\n" (GenSet.size ts) in
+    GenSet.union s ts
+  ) (GenSet.empty ()) (gen_arrtrees arr)
 
 
-let arrtree_set_to_str (f:'a -> string) (s:('a list list) LeapGenericSet.t) : string =
+let arrtree_set_to_str (f:'a -> string) (s:('a list list) GenSet.t) : string =
   String.concat "\n"
-    (GenSet.fold (fun es xs ->
-      ("{" ^(String.concat ";" (List.map (fun ec ->
-                                  "[" ^(String.concat "," (List.map f ec))^ "]"
-                               ) es))^ "}") :: xs
-    ) s [])
+    (GenSet.fold (fun es xs -> ("{" ^(String.concat ";" (List.map (fun ec -> "[" ^(String.concat "," (List.map f ec))^ "]") es))^ "}") :: xs) s [])
 
 
 let rec arrtree_to_str (f:'a -> string) (tree:'a arrtree) : string =

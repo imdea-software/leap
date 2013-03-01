@@ -31,10 +31,6 @@ val iter : ('a -> unit) -> 'a t -> unit
     the elements in set [s] *)
 val fold : ('a -> 'b -> 'b) -> 'a t -> 'b -> 'b
 
-(** [apply f s] modifies all elements in set [s], by applying function [f]
-    to each of them *)
-val apply : ('a -> 'a) -> 'a t -> unit
-
 (** [union s1 s2] returns the set resulting from the union of [s1] and [s2] *)
 val union : 'a t -> 'a t -> 'a t
 

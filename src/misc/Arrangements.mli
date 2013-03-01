@@ -36,7 +36,7 @@ val gen_arrtrees : 'a t -> 'a arrtree list
 val arrtree_to_set : 'a arrtree -> ('a list list) LeapGenericSet.t
 
 (** [gen_arrs arr] returns a set of list containing all possible arrangements.
-    Each list represents an increasing ordering of equivalences classes
+    Each list represents a decreasing ordering of equivalences classes
     according to arrangement [arr]. Each equivalence class is represented as
     a list of elements *)
 val gen_arrs : 'a t -> ('a list list) LeapGenericSet.t
