@@ -82,7 +82,7 @@ let rec build_cand_tree (graph:eqclass_order_t)
                         (p:'a Partition.t) : 'a arrtree list =
   GenSet.fold (fun id xs ->
     let codom = try Hashtbl.find graph id with _ -> GenSet.empty () in
-    if GenSet.inter codom avail <> (GenSet.empty ()) then
+    if GenSet.inter codom avail = (GenSet.empty ()) then
       let avail' = GenSet.copy avail in
       GenSet.remove avail' id;
       Node (Partition.elems p id, build_cand_tree graph avail' p) :: xs
@@ -112,6 +112,7 @@ let gen_arrtrees (arr:'a t) (f:'a -> string) : 'a arrtree list =
                                                (Partition.to_str f p)
   ) cands;
   List.fold_left (fun xs (p,id_graph) ->
+    let _ = Printf.printf "KEYS: %s\n" (String.concat "," (List.map string_of_int (Partition.keys p))) in
     (build_cand_tree id_graph (GenSet.from_list (Partition.keys p)) p) @ xs
   ) [] cands
 
