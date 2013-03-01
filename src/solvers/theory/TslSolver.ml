@@ -3,8 +3,11 @@ open TSLExpression
 open LeapLib
 open LeapVerbose
 
+module Arr = Arrangements
+module GenSet = LeapGenericSet
 module TslExp = TSLExpression
 module type TslkExp = TSLKExpression.S
+
 
 
 let solver_impl = ref ""
@@ -58,7 +61,7 @@ let sanitize (cf:TslExp.conjunctive_formula) : TslExp.conjunctive_formula =
                           TslExp.Conj ls'
 
 
-let guess_arrangements (cf:TslExp.conjunctive_formula)
+let guess_arrangements_by_brute_force (cf:TslExp.conjunctive_formula)
       : TslExp.conjunctive_formula list =
   LOG "Entering guess_arrangements..." LEVEL TRACE;
   let rec cons_var_eq_class (vs:TslExp.variable list) : TslExp.literal list =
@@ -107,6 +110,49 @@ let guess_arrangements (cf:TslExp.conjunctive_formula)
                                       ) [] arrgs
                         in
                           lv_arrs
+
+
+let guess_arrangements (cf:TslExp.conjunctive_formula)
+      : TslExp.conjunctive_formula list =
+  let rec cons_eq_class (is:TslExp.integer list) : TslExp.literal list =
+    match is with
+    | i1::i2::xs -> Atom(Eq(IntT i1, IntT i2)) :: cons_eq_class (i2::xs)
+    | _          -> []
+  in
+  let rec cons_ords (arr:TslExp.integer list list) : TslExp.literal list =
+    match arr with
+    | xs::ys::zs -> Atom(Less(List.hd xs,
+                              List.hd ys)) :: cons_ords (ys::zs)
+    | _          -> []
+  in
+  let arr = Arr.empty() in
+    match cf with
+    | TslExp.FalseConj -> []
+    | TslExp.TrueConj  -> []
+    | TslExp.Conj ls   -> begin
+                            let level_vars = TslExp.get_varset_of_sort_from_conj cf (TslExp.Int) in
+                            TslExp.VarSet.iter (fun v -> Arr.add_elem arr (TslExp.VarInt v)) level_vars;
+                            List.iter (fun l ->
+                              match l with
+                              | TslExp.Atom(TslExp.Less(i1,i2)) -> Arr.add_order arr i1 i2
+                              | TslExp.Atom(TslExp.Greater(i1,i2)) -> Arr.add_order arr i2 i1
+                              | TslExp.Atom(TslExp.Eq(IntT i1,IntT i2)) -> Arr.add_eq arr i1 i2
+                              | TslExp.Atom(TslExp.InEq(IntT i1,IntT i2)) -> Arr.add_ineq arr i1 i2
+                              | TslExp.NegAtom(TslExp.LessEq(i1,i2)) -> Arr.add_order arr i2 i1
+                              | TslExp.NegAtom(TslExp.GreaterEq(i1,i2)) -> Arr.add_order arr i1 i2
+                              | TslExp.NegAtom(TslExp.Eq(IntT i1,IntT i2)) -> Arr.add_ineq arr i1 i2
+                              | TslExp.NegAtom(TslExp.InEq(IntT i1,IntT i2)) -> Arr.add_eq arr i1 i2
+                              | _ -> ()
+                            ) ls;
+                            GenSet.fold (fun s_elem xs ->
+                              let eqs = List.fold_left (fun ys eq_c ->
+                                          (cons_eq_class eq_c) @ ys
+                                        ) [] s_elem in
+                              let ords = cons_ords s_elem in
+                                (TslExp.Conj (eqs @ ords)) :: xs
+                            ) (Arr.gen_arrs arr) []
+                          end
+
 
 let split (cf:TslExp.conjunctive_formula)
       : TslExp.conjunctive_formula * TslExp.conjunctive_formula =
