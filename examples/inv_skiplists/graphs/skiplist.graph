@@ -1,5 +1,5 @@
-// -> skiplist_prop
+ -> skiplist_prop
 
 // -> skiplist_next
 
--> prev_less
+// -> prev_less
