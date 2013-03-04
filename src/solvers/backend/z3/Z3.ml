@@ -80,6 +80,7 @@ struct
       [false] otherwise. *)
   let sat (query:string) : bool =
     (* 1. write query to temp file *)
+    LOG "Entering sat..." LEVEL TRACE;
     let temp      = Filename.temp_file "leap_" ".smt2" in
     let _         = Debug.print_file_name "VC" temp in
     let full_query = if config.comp_model then

@@ -50,7 +50,7 @@ let sanitize (cf:TslExp.conjunctive_formula) : TslExp.conjunctive_formula =
   match cf with
   | TslExp.FalseConj -> cf
   | TslExp.TrueConj  -> cf
-  | TslExp.Conj ls   -> let vars = TslExp.get_varset_from_conj cf in
+  | TslExp.Conj ls   -> let vars = TslExp.varset_from_conj cf in
                         let (cs,ss) = find_candidates ls in
                         let needs_sanit = TslExp.VarSet.diff cs ss in
                         let ls' = TslExp.VarSet.fold (fun v xs ->
@@ -80,7 +80,7 @@ let guess_arrangements_by_brute_force (cf:TslExp.conjunctive_formula)
   | TslExp.TrueConj  -> []
   | TslExp.Conj ls   -> verb "**** TSL Solver. Computing level vars from: %s\n"
                               (TslExp.conjunctive_formula_to_str cf);
-                        let level_vars = TslExp.get_varset_of_sort_from_conj cf TslExp.Int in
+                        let level_vars = TslExp.varset_of_sort_from_conj cf TslExp.Int in
                         verb "**** TSL Solver. Extracted level vars: %s\n"
                               (String.concat ", " $
                                 TslExp.VarSet.fold (fun v xs ->
@@ -130,7 +130,13 @@ let guess_arrangements (cf:TslExp.conjunctive_formula)
     | TslExp.FalseConj -> []
     | TslExp.TrueConj  -> []
     | TslExp.Conj ls   -> begin
-                            let level_vars = TslExp.get_varset_of_sort_from_conj cf (TslExp.Int) in
+                            let level_vars = TslExp.varset_instances_of_sort_from_conj cf (TslExp.Int) in
+                            Printf.printf "THIS IS THE CONJUNCTION TO BE ANALYZED:\n%s\n" (TslExp.conjunctive_formula_to_str cf);
+(*
+                            let level_vars = TslExp.VarSet.fold (fun v s ->
+                                               TslExp.VarSet.add (TslExp.unlocalize_variable v) s
+                                             ) original_vars TslExp.VarSet.empty in
+*)
                             TslExp.VarSet.iter (fun v -> Arr.add_elem arr (TslExp.VarInt v)) level_vars;
                             List.iter (fun l ->
                               match l with
@@ -463,7 +469,7 @@ let check_sat_by_cases (lines:int)
     | TslExp.TrueConj  -> true
     | TslExp.FalseConj -> false
     | TslExp.Conj ls ->
-        let l_vs = get_varset_of_sort_from_conj cf Int in
+        let l_vs = varset_of_sort_from_conj cf Int in
         let k = VarSet.cardinal l_vs in
         let module TslkSol = (val TslkSolver.choose "Z3" k
   (*

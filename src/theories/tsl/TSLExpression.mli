@@ -175,19 +175,30 @@ val param_var : variable -> tid -> variable
 val is_global_var : variable -> bool
 val get_sort : variable -> sort
 val build_var : varId -> sort -> bool -> tid option -> string option -> variable
+val unlocalize_variable : variable -> variable
 
 (* returns all variables form a formula *)
-val get_varlist_from_conj : conjunctive_formula -> variable list
-val get_varlist_of_sort_from_conj : conjunctive_formula -> sort -> varId list
-val varlist_of_sort : variable list -> sort -> varId list
+val varlist_from_conj           : conjunctive_formula -> variable list
+val varlist                     : formula -> variable list
 
-val get_varset_from_conj         : conjunctive_formula -> VarSet.t
-val get_varset_from_formula      : formula -> VarSet.t
-val get_varset_of_sort_from_conj : conjunctive_formula -> sort -> VarSet.t
-val varset_of_sort               : VarSet.t -> sort -> VarSet.t
-val get_termset_from_formula     : formula -> TermSet.t
-val get_termset_from_conjformula : conjunctive_formula -> TermSet.t
-val termset_of_sort              : TermSet.t -> sort -> TermSet.t
+val varidlist_of_sort_from_conj : conjunctive_formula -> sort -> varId list
+val varidlist_of_sort           : formula -> sort -> varId list
+
+val get_varidlist_of_sort       : variable list -> sort -> varId list
+
+val varset_from_conj            : conjunctive_formula -> VarSet.t
+val varset                      : formula -> VarSet.t
+val varset_instances_from_conj  : conjunctive_formula -> VarSet.t
+val varset_instances            : formula -> VarSet.t
+val varset_of_sort_from_conj    : conjunctive_formula -> sort -> VarSet.t
+val varset_of_sort              : formula -> sort -> VarSet.t
+val varset_instances_of_sort_from_conj : conjunctive_formula -> sort -> VarSet.t
+val varset_instances_of_sort           : formula -> sort -> VarSet.t
+
+val filter_varset_with_sort     : VarSet.t -> sort -> VarSet.t
+val termset                     : formula -> TermSet.t
+val termset_from_conj           : conjunctive_formula -> TermSet.t
+val filter_termset_with_sort    : TermSet.t -> sort -> TermSet.t
 
 val voc_term : term -> tid list
 val voc : formula -> tid list

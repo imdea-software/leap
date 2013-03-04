@@ -1,5 +1,6 @@
 open TslkQuery
 open LeapLib
+open LeapVerbose
 
 
 module Make (K : Level.S) : TSLK_QUERY =
@@ -1199,6 +1200,7 @@ module Make (K : Level.S) : TSLK_QUERY =
     let rec z3_define_var (buf:Buffer.t)
                           (tid_set:Expr.VarSet.t)
                           (v:Expr.variable) : unit =
+      Printf.printf "ABOUT TO DEFINE VARIABLE: %s\n" (Expr.variable_to_str v);
       let (id,s,pr,th,p) = v in
       let sort_str asort = match asort with
                              Expr.Set     -> set_s
@@ -1288,8 +1290,12 @@ module Make (K : Level.S) : TSLK_QUERY =
 
     and variables_from_formula_to_z3 (buf:Buffer.t)
                                      (phi:Expr.formula) : unit =
+      print_endline "E";
       let vars = Expr.get_varset_from_formula phi
       in
+      print_endline "F";
+      print_endline "VARIABLES:\n";
+      Expr.VarSet.iter (fun v -> Printf.printf "%s\n" (Expr.variable_to_str v)) vars;
         define_variables buf vars
 
 
@@ -1733,8 +1739,7 @@ module Make (K : Level.S) : TSLK_QUERY =
                        (co:Smp.cutoff_strategy)
                        (copt:Smp.cutoff_options_t)
                        (phi:Expr.formula) : string =
-
-      let _ = LeapDebug.debug "entering Z3TllQuery.formula_to_str...\n" in
+      LOG "Entering formula_to_str..." LEVEL TRACE;
       let extra_info_str =
         match stac with
         | None -> ""
@@ -1757,8 +1762,8 @@ module Make (K : Level.S) : TSLK_QUERY =
 
             let assumps = List.map (fun (x,y) -> Partition.Eq (Expr.AddrT x, Expr.AddrT y)) eq @
                           List.map (fun (x,y) -> Partition.Ineq (Expr.AddrT x, Expr.AddrT y)) ineq in
-            let _ = LeapDebug.debug "Domain: %i\n" (List.length term_dom) in
-            let _ = LeapDebug.debug "Assumptions: %i\n" (List.length assumps) in
+            verb "**** Domain: %i\n" (List.length term_dom);
+            verb "**** Assumptions: %i\n" (List.length assumps);
 
             let parts = Partition.gen_partitions term_dom assumps in
             let _ = if LeapDebug.is_debug_enabled() then
@@ -1766,32 +1771,41 @@ module Make (K : Level.S) : TSLK_QUERY =
                         LeapDebug.debug "Partitions:\n%s\n"
                           (Partition.to_str Expr.term_to_str p)
                       ) parts in
-            let _ = LeapDebug.debug "Number of cases: %i\n" (List.length parts) in
-            let _ = LeapDebug.debug "Computation done!!!\n" in
-              z3_partition_assumptions parts in
+            verb "**** Number of cases: %i\n" (List.length parts);
+            verb "**** Computation done!!!\n";
+            z3_partition_assumptions parts in
 
       let _ = GM.clear_sort_map sort_map in
-      let _ = LeapDebug.debug "Z3TllQuery will compute the cutoff...\n" in
+      verb "**** Z3TslkQuery will compute the cutoff...\n";
       let max_cut_off = Smp4Tslk.cut_off co copt phi in
       let num_addr    = max_cut_off.SmpTslk.num_addrs in
       let num_tid     = max_cut_off.SmpTslk.num_tids in
       let num_elem    = max_cut_off.SmpTslk.num_elems in
       let req_sorts   = Expr.required_sorts phi in
       let req_ops     = Expr.special_ops phi in
+      verb "**** Z3TslkQuery, about to translate formula...\n";
       let formula_str = formula_to_str phi in
+      verb "**** Z3TslkQuery, formula translation done.\n";
       let buf         = B.create 1024
       in
         B.add_string buf (Printf.sprintf "; Formula\n; %s\n\n"
                             (Expr.formula_to_str phi));
+        Printf.printf "FORMULA: %s\n" (Expr.formula_to_str phi);
+        print_endline "A";
         z3_preamble buf num_addr num_tid num_elem req_sorts;
+        print_endline "B";
         z3_defs     buf num_addr num_tid num_elem req_sorts req_ops;
+        print_endline "C";
         variables_from_formula_to_z3 buf phi ;
+        print_endline "D";
         (* We add extra information if needed *)
+        verb "**** Z3TslkQuery, about to compute extra information...\n";
         B.add_string buf extra_info_str ;
+        verb "**** Z3TslkQuery, computed extra information...\n";
         B.add_string buf "(assert\n";
         B.add_string buf formula_str ;
         B.add_string buf ")\n(check-sat)" ;
-        LeapDebug.debug "exiting Z3TllQuery.formula_to_str...\n";
+        verb "**** exiting Z3TllQuery.formula_to_str...\n";
         B.contents   buf
 
 

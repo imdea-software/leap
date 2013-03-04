@@ -228,6 +228,13 @@ let get_sort (v:variable) : sort =
   let (_,s,_,_,_) = v in s
 
 
+let unlocalize_variable (v:variable) : variable =
+  let (v_id,v_s,v_pr,_,v_prog) = v in
+  match v_prog with
+  | None -> v
+  | Some p -> build_var (p ^"_"^ v_id) v_s v_pr None None
+
+
 let prime_var (v:variable) : variable =
   let (id,s,_,th,p) = v in (id,s,true,th,p)
 
@@ -328,7 +335,7 @@ let get_varset_from_param (v:variable) : S.t =
     | _              -> S.empty
 
 
-let rec get_varset_set s =
+let rec get_varset_set (s:set) : S.t =
   match s with
       VarSet v         -> S.singleton v @@ get_varset_from_param v
     | EmptySet         -> S.empty
@@ -340,27 +347,32 @@ let rec get_varset_set s =
     | AddrToSet(m,a,l) -> (get_varset_mem m)  @@
                           (get_varset_addr a) @@
                           (get_varset_integer l)
-and get_varset_tid th =
+
+and get_varset_tid (th:tid) : S.t=
   match th with
       VarTh v            -> S.singleton v @@ get_varset_from_param v
     | NoThid             -> S.empty
     | CellLockIdAt (c,l) -> (get_varset_cell c) @@ (get_varset_integer l)
     | ThidArrRd (ta,i)   -> (get_varset_tidarr ta) @@ (get_varset_integer i)
-and get_varset_elem e =
+
+and get_varset_elem (e:elem) : S.t =
   match e with
       VarElem v         -> S.singleton v @@ get_varset_from_param v
     | CellData c        -> get_varset_cell c
     | HavocSkiplistElem -> S.empty
     | LowestElem        -> S.empty
     | HighestElem       -> S.empty
-and get_varset_addr a =
+
+and get_varset_addr (a:addr) : S.t =
   match a with
       VarAddr v        -> S.singleton v @@ get_varset_from_param v
     | Null             -> S.empty
     | NextAt (c,l)     -> (get_varset_cell c) @@ (get_varset_integer l)
     | AddrArrRd (aa,i) -> (get_varset_addrarr aa) @@ (get_varset_integer i)
-(*    | Malloc(e,a,th)   -> (get_varset_elem e) @@ (get_varset_addr a) @@  (get_varset_tid th) *)
-and get_varset_cell c = match c with
+(*    | Malloc(e,a,th)   -> (get_varset_elem e) @@ (get_varset_addr a) @@ (get_varset_tid th) *)
+
+and get_varset_cell (c:cell) : S.t =
+    match c with
       VarCell v           -> S.singleton v @@ get_varset_from_param v
     | Error               -> S.empty
     | MkCell(e,aa,tt,l)   -> (get_varset_elem e) @@ (get_varset_addrarr aa) @@
@@ -369,7 +381,8 @@ and get_varset_cell c = match c with
                              (get_varset_tid th)
     | CellUnlockAt (c,l)  -> (get_varset_cell c) @@ (get_varset_integer l)
     | CellAt(m,a)         -> (get_varset_mem  m) @@ (get_varset_addr a)
-and get_varset_setth sth =
+
+and get_varset_setth (sth:setth) : S.t =
   match sth with
       VarSetTh v         -> S.singleton v @@ get_varset_from_param v
     | EmptySetTh         -> S.empty
@@ -377,7 +390,8 @@ and get_varset_setth sth =
     | UnionTh(st1,st2)   -> (get_varset_setth st1) @@ (get_varset_setth st2)
     | IntrTh(st1,st2)    -> (get_varset_setth st1) @@ (get_varset_setth st2)
     | SetdiffTh(st1,st2) -> (get_varset_setth st1) @@ (get_varset_setth st2)
-and get_varset_setelem se =
+
+and get_varset_setelem (se:setelem) : S.t =
   match se with
       VarSetElem v         -> S.singleton v @@ get_varset_from_param v
     | EmptySetElem         -> S.empty
@@ -386,7 +400,8 @@ and get_varset_setelem se =
     | IntrElem(st1,st2)    -> (get_varset_setelem st1) @@ (get_varset_setelem st2)
     | SetToElems(s,m)      -> (get_varset_set s) @@ (get_varset_mem m)
     | SetdiffElem(st1,st2) -> (get_varset_setelem st1) @@ (get_varset_setelem st2)
-and get_varset_path p =
+
+and get_varset_path (p:path) : S.t =
   match p with
       VarPath v          -> S.singleton v @@ get_varset_from_param v
     | Epsilon            -> S.empty
@@ -395,11 +410,13 @@ and get_varset_path p =
                             (get_varset_addr a1) @@
                             (get_varset_addr a2) @@
                             (get_varset_integer l)
-and get_varset_mem m =
+
+and get_varset_mem (m:mem) : S.t =
   match m with
       VarMem v           -> S.singleton v @@ get_varset_from_param v
     | Update(m,a,c)      -> (get_varset_mem m) @@ (get_varset_addr a) @@ (get_varset_cell c)
-and get_varset_integer i =
+
+and get_varset_integer (i:integer) : S.t =
   match i with
       IntVal _     -> S.empty
     | VarInt v     -> S.singleton v
@@ -410,7 +427,8 @@ and get_varset_integer i =
     | IntDiv (i,j) -> (get_varset_integer i) @@ (get_varset_integer j)
     | CellMax c    -> (get_varset_cell c)
     | HavocLevel   -> S.empty
-and get_varset_addrarr arr =
+
+and get_varset_addrarr (arr:addrarr) : S.t =
   match arr with
       VarAddrArray v       -> S.singleton v
     | AddrArrayUp (aa,i,a) -> (get_varset_addrarr aa) @@
@@ -419,7 +437,7 @@ and get_varset_addrarr arr =
     | CellArr c            -> (get_varset_cell c)
 
 
-and get_varset_tidarr arr =
+and get_varset_tidarr (arr:tidarr) : S.t =
   match arr with
       VarTidArray v       -> S.singleton v
     | TidArrayUp (aa,i,t) -> (get_varset_tidarr aa) @@
@@ -428,7 +446,7 @@ and get_varset_tidarr arr =
     | CellTids c          -> (get_varset_cell c)
 
 
-and get_varset_atom a =
+and get_varset_atom (instances:bool) (a:atom) : S.t =
   match a with
       Append(p1,p2,p3)       -> (get_varset_path p1) @@ (get_varset_path p2) @@
                                 (get_varset_path p3)
@@ -453,13 +471,24 @@ and get_varset_atom a =
     | GreaterEq (i,j)        -> (get_varset_integer i) @@ (get_varset_integer j)
     | LessElem(e1,e2)        -> (get_varset_elem e1) @@ (get_varset_elem e2)
     | GreaterElem(e1,e2)     -> (get_varset_elem e1) @@ (get_varset_elem e2)
-    | Eq((x,y))              -> (get_varset_term x) @@ (get_varset_term y)
-    | InEq((x,y))            -> (get_varset_term x) @@ (get_varset_term y)
+    | Eq((x,y))              -> if instances then
+                                  match (x,y) with
+                                  | (VarUpdate _, _) -> get_varset_term instances x
+                                  | (_, VarUpdate _) -> get_varset_term instances y
+                                  | _ -> (get_varset_term instances x) @@
+                                         (get_varset_term instances y)
+                                else
+                                  (get_varset_term instances x) @@
+                                  (get_varset_term instances y)
+    | InEq((x,y))            -> (get_varset_term instances x) @@
+                                (get_varset_term instances y)
     | BoolVar v              -> (S.singleton v)
     | PC(pc,th,pr)           -> Option.map_default get_varset_tid S.empty th
     | PCUpdate (pc,th)       -> (get_varset_tid th)
     | PCRange(pc1,pc2,th,pr) -> Option.map_default get_varset_tid S.empty th
-and get_varset_term t = match t with
+
+and get_varset_term (instances:bool) (t:term) : S.t =
+    match t with
       VarT   v            -> S.singleton v @@ get_varset_from_param v
     | SetT   s            -> get_varset_set s
     | ElemT  e            -> get_varset_elem e
@@ -473,35 +502,59 @@ and get_varset_term t = match t with
     | IntT   i            -> get_varset_integer i
     | AddrArrayT aa       -> get_varset_addrarr aa
     | TidArrayT  tt       -> get_varset_tidarr tt
-    | VarUpdate(v,pc,t)   -> (S.singleton v) @@ (get_varset_term t) @@
-                             (get_varset_from_param v)
+    | VarUpdate(v,pc,t)   -> if instances then
+                               get_varset_term instances t
+                             else
+                               (S.singleton v) @@
+                               (get_varset_term instances t) @@
+                               (get_varset_from_param v)
 
-and get_varset_literal l =
+and get_varset_literal (instances:bool) (l:literal) : S.t =
   match l with
-      Atom a    -> get_varset_atom a
-    | NegAtom a -> get_varset_atom a
+      Atom a    -> get_varset_atom instances a
+    | NegAtom a -> get_varset_atom instances a
 
-and get_varset_from_conj phi =
-  let another_lit vars alit = vars @@ (get_varset_literal alit) in
+and get_varset_from_conj (instances:bool) (phi:conjunctive_formula) : S.t =
+  let another_lit vars alit = vars @@ (get_varset_literal instances alit) in
   match phi with
       TrueConj   -> S.empty
     | FalseConj  -> S.empty
     | Conj l     -> List.fold_left (another_lit) S.empty l
 
-and get_varset_from_formula phi =
+and get_varset_from_formula (instances:bool) (phi:formula) : S.t =
   match phi with
-    Literal l       -> get_varset_literal l
+    Literal l       -> get_varset_literal instances l
   | True            -> S.empty
   | False           -> S.empty
-  | And (f1,f2)     -> (get_varset_from_formula f1) @@
-                       (get_varset_from_formula f2)
-  | Or (f1,f2)      -> (get_varset_from_formula f1) @@
-                       (get_varset_from_formula f2)
-  | Not f           -> (get_varset_from_formula f)
-  | Implies (f1,f2) -> (get_varset_from_formula f1) @@
-                       (get_varset_from_formula f2)
-  | Iff (f1,f2)     -> (get_varset_from_formula f1) @@
-                       (get_varset_from_formula f2)
+  | And (f1,f2)     -> (get_varset_from_formula instances f1) @@
+                       (get_varset_from_formula instances f2)
+  | Or (f1,f2)      -> (get_varset_from_formula instances f1) @@
+                       (get_varset_from_formula instances f2)
+  | Not f           -> (get_varset_from_formula instances f)
+  | Implies (f1,f2) -> (get_varset_from_formula instances f1) @@
+                       (get_varset_from_formula instances f2)
+  | Iff (f1,f2)     -> (get_varset_from_formula instances f1) @@
+                       (get_varset_from_formula instances f2)
+
+
+let varset (phi:formula) : S.t =
+  get_varset_from_formula false phi
+
+
+let varset_from_conj (cf:conjunctive_formula) : S.t =
+  get_varset_from_conj false cf
+
+
+let varset (phi:formula) : S.t =
+  get_varset_from_formula false phi
+
+
+let varset_instances_from_conj (cf:conjunctive_formula) : S.t =
+  get_varset_from_conj true cf
+
+
+let varset_instances (phi:formula) : S.t =
+  get_varset_from_formula true phi
 
 
 let localize_with_underscore (v:varId) (p_name:string option) : string =
@@ -510,7 +563,7 @@ let localize_with_underscore (v:varId) (p_name:string option) : string =
     sprintf "%s%s" p_str v
 
 
-let varset_of_sort all s =
+let filter_varset_with_sort (all:S.t) (s:sort) : S.t =
   let filt (v,asort,pr,th,p) res =
     if asort=s then
         VarSet.add (v,asort,pr,th,p) res
@@ -520,20 +573,43 @@ let varset_of_sort all s =
       res in
     S.fold filt all VarSet.empty
 
-let get_varset_of_sort_from_conj phi s =
-  varset_of_sort (get_varset_from_conj phi) s
+
+let varset_of_sort_from_conj (phi:conjunctive_formula) (s:sort) =
+  filter_varset_with_sort (varset_from_conj phi) s
 
 
-let get_varlist_from_conj phi =
-  S.elements (get_varset_from_conj phi)
+let varset_of_sort (phi:formula) (s:sort) =
+  filter_varset_with_sort (varset phi) s
 
-let varlist_of_sort varlist s =
+
+let varset_instances_of_sort_from_conj (phi:conjunctive_formula) (s:sort) =
+  filter_varset_with_sort (varset_instances_from_conj phi) s
+
+
+let varset_instances_of_sort (phi:formula) (s:sort) =
+  filter_varset_with_sort (varset_instances phi) s
+
+
+let varlist_from_conj (phi:conjunctive_formula) : variable list =
+  S.elements (varset_from_conj phi)
+
+
+let varlist (phi:formula) : variable list =
+  S.elements (varset phi)
+
+
+let get_varidlist_of_sort (varlist:variable list) (s:sort) : varId list =
   let is_s (_,asort,_,_,_) = (asort=s) in
   List.map (fun (v,_,_,_,p) -> (localize_with_underscore v p))
            (List.filter is_s varlist)
 
-let get_varlist_of_sort_from_conj phi s =
-  varlist_of_sort (get_varlist_from_conj phi) s
+
+let varidlist_of_sort_from_conj (phi:conjunctive_formula) (s:sort) : varId list =
+  get_varidlist_of_sort (varlist_from_conj phi) s
+
+
+let varidlist_of_sort (phi:formula) (s:sort) : varId list =
+  get_varidlist_of_sort (varlist phi) s
 
 
 let rec get_termset_atom (a:atom) : TermSet.t =
@@ -595,7 +671,15 @@ and get_termset_from_formula (phi:formula) : TermSet.t =
                                      (get_termset_from_formula f2)
 
 
-let termset_of_sort (all:TermSet.t) (s:sort) : TermSet.t =
+let termset (phi:formula) : TermSet.t =
+  get_termset_from_formula phi
+
+
+let termset_from_conj (cf:conjunctive_formula) : TermSet.t =
+  get_termset_from_conjformula cf
+
+
+let filter_termset_with_sort (all:TermSet.t) (s:sort) : TermSet.t =
   let match_sort (t:term) : bool =
     match s with
     | Set       -> (match t with | SetT _       -> true | _ -> false)
@@ -2573,7 +2657,7 @@ type norm_info_t =
 let new_norm_info_from_formula (phi:formula) : norm_info_t =
   let vars = VarSet.fold (fun v s ->
                VarIdSet.add (var_id v) s
-             ) (get_varset_from_formula phi) VarIdSet.empty in
+             ) (varset phi) VarIdSet.empty in
   {
     term_map = Hashtbl.create 10 ;
     fresh_gen_info = new_fresh_gen vars ;
@@ -3260,10 +3344,4 @@ let normalize (phi:formula) : formula =
   else
     And (conj_list !lit_list, phi')
   
-
-
-
-
-
-
 

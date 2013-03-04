@@ -2,5 +2,6 @@ param:
 
 invariant [skiplist_prop] :
 
-     skiplist(heap, region, 0, head, tail)
+   skiplist(heap, region, 0, head, tail)
+/\ maxLevel >= 0
 //  /\ @insert_connect_loop. -> (0 <= insert::i /\ insert::i <= insert::lvl)
