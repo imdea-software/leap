@@ -834,9 +834,8 @@ struct
     let th_p = Some (get_mode_param mode) in
     let append_to_ghost gc gS lS tS (ps:E.formula list list) =
       match gc with
-      | Some code -> 
-          let eff_list = 
-            Bridge.gen_st_cond_effect_as_array pt code true th_p in
+      | Some code ->
+          let eff_list = Bridge.gen_st_cond_effect_as_array pt code true th_p in
           let rho_list = List.fold_left (fun xs (cond, eff, _, _) ->
                            (List.map (fun normal_code ->
                              (E.param th_p cond :: eff :: normal_code)
@@ -1162,7 +1161,7 @@ struct
             List.map (fun x -> x @ pres_list) rhoList 
       end in
       List.map E.conj_list phi_list
-  
+
   
   let gen_rho (mode : rhoMode) (hide_pres:bool) (count_abs : bool)
       (sys : Sys.system_t) (th_list : E.tid list)

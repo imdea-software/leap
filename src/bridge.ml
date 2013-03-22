@@ -187,6 +187,8 @@ let generic_stm_term_eq (mode:eqGenMode)
   let eq_generator = match mode with
                        NormalGenMode -> E.construct_term_eq
                      | ArrayGenMode  -> E.construct_term_eq_as_array in
+  let heap_eq_generator v th e = let (mods,phi) = eq_generator v th e in
+                                   (E.MemT E.heap::mods, phi) in
   let v' = Stm.term_to_expr_term v in
   let (new_e, mod_heap, aux_modif, aux_f) = unfold_expression mInfo th_p e in
   let aux_mem = Option.default E.heap mod_heap in
@@ -196,61 +198,54 @@ let generic_stm_term_eq (mode:eqGenMode)
     | (E.ElemT (E.CellData(E.CellAt(h,a))), E.Term(E.ElemT e')) ->
         let new_cell = E.MkCell(e',
                                 E.Next(E.CellAt(aux_mem,a)),
-                                E.CellLockId(E.CellAt(aux_mem,a)))
-        in
-          eq_generator (E.MemT E.heap) th_p
+                                E.CellLockId(E.CellAt(aux_mem,a))) in
+          heap_eq_generator (E.MemT E.heap) th_p
               (E.Term(E.MemT(E.Update(aux_mem,a,new_cell))))
     (* Next *)
     | (E.AddrT (E.Next(E.CellAt(h,a))), E.Term(E.AddrT a')) ->
         let new_cell = E.MkCell(E.CellData(E.CellAt(aux_mem,a)),
                                 a',
                                 E.CellLockId(E.CellAt(aux_mem,a))) in
-        let new_term = E.param_term th_p (E.MemT(E.Update(aux_mem,a,new_cell)))
-        in
-          eq_generator (E.MemT E.heap) th_p (E.Term(new_term))
+        let new_term = E.param_term th_p (E.MemT(E.Update(aux_mem,a,new_cell))) in
+          heap_eq_generator (E.MemT E.heap) th_p (E.Term(new_term))
     (* NextAt *)
     | (E.AddrT (E.NextAt(E.CellAt(h,a), l)), E.Term(E.AddrT a')) ->
         let new_cell = E.MkSLCell(E.CellData(E.CellAt(aux_mem,a)),
                                   E.AddrArrayUp(E.CellArr(E.CellAt(aux_mem,a)),l,a'),
                                   E.CellTids(E.CellAt(aux_mem,a)),
                                   E.CellMax(E.CellAt(aux_mem,a))) in
-        let new_term = E.param_term th_p (E.MemT(E.Update(aux_mem,a,new_cell)))
-        in
-          eq_generator (E.MemT E.heap) th_p (E.Term(new_term))
+        let new_term = E.param_term th_p (E.MemT(E.Update(aux_mem,a,new_cell))) in
+          heap_eq_generator (E.MemT E.heap) th_p (E.Term(new_term))
     (* CellArr *)
     | (E.AddrT (E.AddrArrRd (E.CellArr(E.CellAt(h,a)), l)), E.Term(E.AddrT a')) ->
         let new_cell = E.MkSLCell(E.CellData(E.CellAt(aux_mem,a)),
                                   E.AddrArrayUp(E.CellArr(E.CellAt(aux_mem,a)),l,a'),
                                   E.CellTids(E.CellAt(aux_mem,a)),
                                   E.CellMax(E.CellAt(aux_mem,a))) in
-        let new_term = E.param_term th_p (E.MemT(E.Update(aux_mem,a,new_cell)))
-        in
-          eq_generator (E.MemT E.heap) th_p (E.Term(new_term))
+        let new_term = E.param_term th_p (E.MemT(E.Update(aux_mem,a,new_cell))) in
+          heap_eq_generator (E.MemT E.heap) th_p (E.Term(new_term))
     (* CellLockId *)
     | (E.ThidT (E.CellLockId(E.CellAt(h,a))), E.Term(E.ThidT t')) ->
         let new_cell = E.MkCell(E.CellData(E.CellAt(aux_mem,a)),
                                 E.Next(E.CellAt(aux_mem,a)),
-                                t')
-        in
-          eq_generator (E.MemT E.heap) th_p
+                                t') in
+          heap_eq_generator (E.MemT E.heap) th_p
               (E.Term(E.MemT(E.Update(aux_mem,a,new_cell))))
     (* CellLockIdAt *)
     | (E.ThidT (E.CellLockIdAt(E.CellAt(h,a),l)), E.Term(E.ThidT t')) ->
         let new_cell = E.MkSLCell(E.CellData(E.CellAt(aux_mem,a)),
                                   E.CellArr(E.CellAt(aux_mem,a)),
                                   E.TidArrayUp(E.CellTids(E.CellAt(aux_mem,a)),l,t'),
-                                  E.CellMax(E.CellAt(aux_mem,a)))
-        in
-          eq_generator (E.MemT E.heap) th_p
+                                  E.CellMax(E.CellAt(aux_mem,a))) in
+          heap_eq_generator (E.MemT E.heap) th_p
               (E.Term(E.MemT(E.Update(aux_mem,a,new_cell))))
     (* CellTids *)
     | (E.ThidT (E.ThidArrRd(E.CellTids(E.CellAt(h,a)),l)), E.Term(E.ThidT t')) ->
         let new_cell = E.MkSLCell(E.CellData(E.CellAt(aux_mem,a)),
                                   E.CellArr(E.CellAt(aux_mem,a)),
                                   E.TidArrayUp(E.CellTids(E.CellAt(aux_mem,a)),l,t'),
-                                  E.CellMax(E.CellAt(aux_mem,a)))
-        in
-          eq_generator (E.MemT E.heap) th_p
+                                  E.CellMax(E.CellAt(aux_mem,a))) in
+          heap_eq_generator (E.MemT E.heap) th_p
               (E.Term(E.MemT(E.Update(aux_mem,a,new_cell))))
     (* HavocListElem *)
     | (E.ElemT e, E.Term (E.ElemT (E.HavocListElem))) ->
@@ -261,17 +256,9 @@ let generic_stm_term_eq (mode:eqGenMode)
         ([E.ElemT e], E.And (E.ineq_elem e E.LowestElem,
                              E.ineq_elem e E.HighestElem))
     (* Remaining cases *)
-    | _ -> let (m,f) = eq_generator v' th_p new_e in
-           match pt with
-             Num  -> (m,f)
-           | Heap -> (* IF PROBLEMS WITH HEAP PRESERVATION, UNCOMMENT THIS *)
-                      let heap' = E.prime_mem E.heap
-                          in
-                     (* IF PROBLEMS WITH HEAP PRESERVATION, UNCOMMENT THIS *)
-                       ((E.MemT E.heap)::m, (*f*) (*E.True*) E.And (f, E.eq_mem heap' aux_mem))
-                    (* heap' = heap e TUKA!!!! *)
-  in
-    (modif @ aux_modif, E.conj_list (formula::aux_f))
+    | _ -> eq_generator v' th_p new_e in
+  (modif @ aux_modif, E.conj_list (formula::aux_f))
+
 
 
 let construct_stm_term_eq (mInfo:malloc_info)
@@ -418,12 +405,22 @@ let gen_st_cond_effect_for_th (pt:prog_type)
   in
     List.map (fun (cs,es,c,n,_) ->
       let cs_phi = E.conj_list cs in
-      let es_phi = E.conj_list $
-                     List.map (fun (t,e) ->
-                       match th_p with
-                         None   -> snd (construct_stm_term_eq mInfo pt t None e)
-                       | Some _ -> snd (construct_stm_term_eq_as_array mInfo pt t th_p e)
-                     ) es
+      let (mods,es_list) = List.fold_left (fun (ts,es) (t,e) ->
+                             let (t_res, e_res) =
+                               match th_p with
+                               | None   -> construct_stm_term_eq mInfo pt t None e
+                               | Some _ -> construct_stm_term_eq_as_array mInfo pt t th_p e in
+                             (t_res@ts, e_res::es)
+                           ) ([],[]) es in
+      let es_phi = E.conj_list (
+                     match pt with
+                     | Num  -> es_list
+                     | Heap -> begin
+                               if (List.mem (E.MemT E.heap) mods || is_ghost) then
+                                 es_list
+                               else
+                                 (E.eq_mem (E.prime_mem E.heap) E.heap)::es_list
+                               end)
       in
         if (c = n) && not(is_ghost) then
           (cs_phi, E.True, c, n)
