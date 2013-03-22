@@ -831,8 +831,8 @@ module Make (K : Level.S) : TSLK_QUERY =
         begin
           match num_addr with
             0 -> "\n  (singleton from))\n"
-          | 1 -> "\n  (union (singleton from) (singleton (select (next (select h from)) l))))\n"
-          | _ -> let basic = "\n  (union (singleton from) (singleton (select (next (select h from)) l)))" in
+          | 1 -> "\n  (setunion (singleton from) (singleton (select (next (select h from)) l))))\n"
+          | _ -> let basic = "\n  (setunion (singleton from) (singleton (select (next (select h from)) l)))" in
                  let addrs = LeapLib.rangeList 2 num_addr in
                  let str   = List.fold_left (fun s i ->
                                join_sets ("(singleton (select (next"^ (string_of_int i) ^ " h from) l))") s

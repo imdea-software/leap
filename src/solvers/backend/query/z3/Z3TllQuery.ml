@@ -782,8 +782,8 @@ struct
       begin
         match num_addr with
           0 -> "\n  (singleton from))\n"
-        | 1 -> "\n  (union (singleton from) (singleton (next (select h from)))))\n"
-        | _ -> let basic = "\n  (union (singleton from) (singleton (next (select h from))))" in
+        | 1 -> "\n  (setunion (singleton from) (singleton (next (select h from)))))\n"
+        | _ -> let basic = "\n  (setunion (singleton from) (singleton (next (select h from))))" in
                let addrs = LeapLib.rangeList 2 num_addr in
                let str   = List.fold_left (fun s i ->
                              join_sets ("(singleton (next"^ (string_of_int i) ^ " h from))") s

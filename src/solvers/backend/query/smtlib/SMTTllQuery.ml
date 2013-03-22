@@ -52,9 +52,6 @@ struct
   (* We store calls to cell_lock and cell_unlock in the formula, in order to
      add the necessary assertions once we have translated the formula *)
   let cell_tbl = Hashtbl.create 10
-  let set_tbl = Hashtbl.create 10
-  let setth_tbl = Hashtbl.create 10
-  let setelem_tbl = Hashtbl.create 10
   let addr_tbl = Hashtbl.create 10
   let elem_tbl = Hashtbl.create 10
   let tid_tbl = Hashtbl.create 10
@@ -64,9 +61,6 @@ struct
 
   let clean_lists () :  unit =
     Hashtbl.clear cell_tbl;
-    Hashtbl.clear set_tbl;
-    Hashtbl.clear setth_tbl;
-    Hashtbl.clear setelem_tbl;
     Hashtbl.clear addr_tbl;
     Hashtbl.clear elem_tbl;
     Hashtbl.clear tid_tbl;
@@ -151,7 +145,7 @@ struct
     GM.sm_decl_const sort_map "max_tid" int_s ;
     B.add_string buf ("(define-fun max_tid () " ^int_s^ " " ^(string_of_int num_tids)^ ")\n");
     B.add_string buf
-      ("(define-fun notid () " ^addr_s^ " 0)\n");
+      ("(define-fun notid () " ^tid_s^ " 0)\n");
     for i = 1 to num_tids do
       let i_str = string_of_int i in
       let t_str = tid_prefix ^ i_str in
@@ -311,27 +305,51 @@ struct
   (*     (lambda (s::setth r::setth)         *)
   (*         (lambda (t::tid)                *)
   (*             (or (s t) (r t)))))         *)
-  let smt_unionth_def buf =
+  let smt_unionth_def buf num_tids =
+    let str = ref ("  (store\n" ^
+                   "    (store empty notid (or (select s1 notid) (select s2 notid)))\n" ^
+                   "                 tid_witness (or (select s1 tid_witness) (select s2 tid_witness)))") in
+    for i = 1 to num_tids do
+      let t_str = tid_prefix ^ (string_of_int i) in
+      str := "  (store\n" ^ (!str) ^ "\n" ^
+             "                 " ^t_str^ " (or (select s1 " ^t_str^ ") (select s2 " ^t_str^ ")))"
+    done;
     B.add_string buf
-      ("(declare-fun unionth (" ^setth_s^ " " ^setth_s^ ") " ^setth_s^ ")\n")
+      ("(define-fun unionth ((s1 " ^setth_s^ ") (s2 " ^setth_s^ ")) " ^setth_s^ "\n" ^ (!str) ^ ")\n")
 
 
   (* (define intersectionth::(-> setth setth setth) *)
   (*     (lambda (s::setth r::setth)                *)
   (*         (lambda (t::tid)                       *)
   (*             (and (s t) (r t)))))               *)
-  let smt_intersectionth_def buf =
+  let smt_intersectionth_def buf num_tids =
+    let str = ref ("  (store\n" ^
+                   "    (store empty notid (and (select s1 notid) (select s2 notid)))\n" ^
+                   "                 tid_witness (and (select s1 tid_witness) (select s2 tid_witness)))") in
+    for i = 1 to num_tids do
+      let t_str = tid_prefix ^ (string_of_int i) in
+      str := "  (store\n" ^ (!str) ^ "\n" ^
+             "                 " ^t_str^ " (and (select s1 " ^t_str^ ") (select s2 " ^t_str^ ")))"
+    done;
     B.add_string buf
-      ("(declare-fun intersectionth (" ^setth_s^ " " ^setth_s^ ") " ^setth_s^ ")\n")
+      ("(define-fun intersectionth ((s1 " ^setth_s^ ") (s2 " ^setth_s^ ")) " ^setth_s^ "\n" ^ (!str) ^ ")\n")
 
 
   (* (define setdiffth::(-> set set set)    *)
   (*     (lambda (s::setth r::setth)        *)
   (*         (lambda (t::tid)               *)
   (*             (and (s t) (not (r t)))))) *)
-  let smt_setdiffth_def buf =
+  let smt_setdiffth_def buf num_tids =
+    let str = ref ("  (store\n" ^
+                   "    (store empty notid (and (select s1 notid) (not (select s2 notid))))\n" ^
+                   "                 tid_witness (and (select s1 tid_witness) (not (select s2 tid_witness))))") in
+    for i = 1 to num_tids do
+      let t_str = tid_prefix ^ (string_of_int i) in
+      str := "  (store\n" ^ (!str) ^ "\n" ^
+             "                 " ^t_str^ " (and (select s1 " ^t_str^ ") (not (select s2 " ^t_str^ "))))"
+    done;
     B.add_string buf
-      ("(declare-fun setdiffth (" ^setth_s^ " " ^setth_s^ ") " ^setth_s^ ")\n")
+      ("(define-fun setdiffth ((s1 " ^setth_s^ ") (s2 " ^setth_s^ ")) " ^setth_s^ "\n" ^ (!str) ^ ")\n")
 
 
   (* (define subseteqth::(-> setth setth bool) *)
@@ -397,27 +415,51 @@ struct
   (*     (lambda (s::setelem r::setelem)             *)
   (*         (lambda (e::elem)                       *)
   (*             (or (s e) (r e)))))                 *)
-  let smt_unionelem_def buf =
+  let smt_unionelem_def buf num_elems =
+    let str = ref ("  (store\n" ^
+                   "    (store empty lowestElem (or (select s1 lowestElem) (select s2 lowestElem)))\n" ^
+                   "                 highestElem (or (select s1 highestElem) (select s2 highestElem)))") in
+    for i = 1 to num_elems do
+      let e_str = elem_prefix ^ (string_of_int i) in
+      str := "  (store\n" ^ (!str) ^ "\n" ^
+             "                 " ^e_str^ " (or (select s1 " ^e_str^ ") (select s2 " ^e_str^ ")))"
+    done;
     B.add_string buf
-      ("(declare-fun unionelem (" ^setelem_s^ " " ^setelem_s^ ") " ^setelem_s^ ")\n")
+      ("(define-fun unionelem ((s1 " ^setelem_s^ ") (s2 " ^setelem_s^ ")) " ^setelem_s^ "\n" ^ (!str) ^ ")\n")
 
 
   (* (define intersectionelem::(-> setelem setelem setelem) *)
   (*     (lambda (s::setelem r::setelem)                    *)
   (*         (lambda (e::elem)                              *)
   (*             (and (s e) (r e)))))                       *)
-  let smt_intersectionelem_def buf =
+  let smt_intersectionelem_def buf num_elems =
+    let str = ref ("  (store\n" ^
+                   "    (store empty lowestElem (and (select s1 lowestElem) (select s2 lowestElem)))\n" ^
+                   "                 highestElem (and (select s1 highestElem) (select s2 highestElem)))") in
+    for i = 1 to num_elems do
+      let e_str = elem_prefix ^ (string_of_int i) in
+      str := "  (store\n" ^ (!str) ^ "\n" ^
+             "                 " ^e_str^ " (and (select s1 " ^e_str^ ") (select s2 " ^e_str^ ")))"
+    done;
     B.add_string buf
-      ("(declare-fun intersectionelem (" ^setelem_s^ " " ^setelem_s^ ") " ^setelem_s^ ")\n")
+      ("(define-fun intersectionelem ((s1 " ^setelem_s^ ") (s2 " ^setelem_s^ ")) " ^setelem_s^ "\n" ^ (!str) ^ ")\n")
 
 
   (* (define setdiffelem::(-> setelem setelem setelem)    *)
   (*     (lambda (s::setelem r::setelem)                  *)
   (*         (lambda (e::elem)                            *)
   (*             (and (s e) (not (r e))))))               *)
-  let smt_setdiffelem_def buf =
+  let smt_setdiffelem_def buf num_elems =
+    let str = ref ("  (store\n" ^
+                   "    (store empty lowestElem (and (select s1 lowestElem) (not (select s2 lowestElem))))\n" ^
+                   "                 highestElem (and (select s1 highestElem) (not (select s2 highestElem))))") in
+    for i = 1 to num_elems do
+      let e_str = elem_prefix ^ (string_of_int i) in
+      str := "  (store\n" ^ (!str) ^ "\n" ^
+             "                 " ^e_str^ " (and (select s1 " ^e_str^ ") (not (select s2 " ^e_str^ "))))"
+    done;
     B.add_string buf
-      ("(declare-fun setdiffelem (" ^setelem_s^ " " ^setelem_s^ ") " ^setelem_s^ ")\n")
+      ("(define-fun setdiffelem ((s1 " ^setelem_s^ ") (s2 " ^setelem_s^ ")) " ^setelem_s^ "\n" ^ (!str) ^ ")\n")
 
 
   (* (define subseteqelem::(-> setelem setelem bool) *)
@@ -475,32 +517,49 @@ struct
       ("(define-fun singleton ((a " ^addr_s^ ")) " ^set_s^ "\n" ^
        "  (store empty a true))\n")
 
-
   (* (define setunion::(-> set set set)       *)
   (*     (lambda (s::set r::set)            *)
   (*         (lambda (a::address)           *)
   (*             (or (s a) (r a)))))        *)
-  let smt_union_def buf =
+  let smt_union_def buf num_addrs =
+    let str = ref "    (store empty null (or (select s1 null) (select s2 null)))" in
+    for i = 1 to num_addrs do
+      let a_str = addr_prefix ^ (string_of_int i) in
+      str := "  (store\n" ^ (!str) ^ "\n" ^
+             "                 " ^a_str^ " (or (select s1 " ^a_str^ ") (select s2 " ^a_str^ ")))"
+    done;
     B.add_string buf
-      ("(declare-fun setunion (" ^set_s^ " " ^set_s^ ") " ^set_s^ ")\n")
+      ("(define-fun setunion ((s1 " ^set_s^ ") (s2 " ^set_s^ ")) " ^set_s^ "\n" ^ (!str) ^ ")\n")
 
 
   (* (define intersection::(-> set set set) *)
   (*     (lambda (s::set r::set) *)
   (*         (lambda (a::address) *)
   (*             (and (s a) (r a))))) *)
-  let smt_intersection_def buf =
+  let smt_intersection_def buf num_addrs =
+    let str = ref "    (store empty null (and (select s1 null) (select s2 null)))" in
+    for i = 1 to num_addrs do
+      let a_str = addr_prefix ^ (string_of_int i) in
+      str := "  (store\n" ^ (!str) ^ "\n" ^
+             "                 " ^a_str^ " (and (select s1 " ^a_str^ ") (select s2 " ^a_str^ ")))"
+    done;
     B.add_string buf
-    ("(declare-fun intersection (" ^set_s^ " " ^set_s^ ") " ^set_s^ ")\n")
+      ("(define-fun intersection ((s1 " ^set_s^ ") (s2 " ^set_s^ ")) " ^set_s^ "\n" ^ (!str) ^ ")\n")
 
 
   (* (define setdiff::(-> set set set)      *)
   (*     (lambda (s::set r::set)            *)
   (*         (lambda (a::address)           *) 
   (*             (and (s a) (not (r a)))))) *)
-  let smt_setdiff_def buf =
+  let smt_setdiff_def buf num_addrs =
+    let str = ref "    (store empty null (and (select s1 null) (not (select s2 null))))" in
+    for i = 1 to num_addrs do
+      let a_str = addr_prefix ^ (string_of_int i) in
+      str := "  (store\n" ^ (!str) ^ "\n" ^
+             "                 " ^a_str^ " (and (select s1 " ^a_str^ ") (not (select s2 " ^a_str^ "))))"
+    done;
     B.add_string buf
-      ("(declare-fun setdiff (" ^set_s^ " " ^set_s^ ") " ^set_s^ ")\n")
+      ("(define-fun setdiff ((s1 " ^set_s^ ") (s2 " ^set_s^ ")) " ^set_s^ "\n" ^ (!str) ^ ")\n")
 
 
   (* (define subseteq::(-> set set bool)  *)
@@ -543,9 +602,16 @@ struct
   (*          (and (= e (data (m aa_1))) (s aa_1))      *)
   (*          (and (= e (data (m aa_2))) (s aa_2))      *)
   (*          (and (= e (data (m aa_3))) (s aa_3))))))  *)
-  let smt_settoelems_def buf =
+  let smt_settoelems_def buf num_addrs =
+    let str = ref "    (store emptyelem (data (select m null)) (select s null))\n" in
+    for i=1 to num_addrs do
+      let aa_i = addr_prefix ^ (string_of_int i) in
+      str := "  (unionelem\n" ^ !str ^
+             "    (store emptyelem (data (select m " ^aa_i^ ")) (select s " ^aa_i^ ")))\n"
+    done;
     B.add_string buf
-      ("(declare-fun set2elem (" ^set_s^ " " ^heap_s^ ") " ^setelem_s^ ")\n")
+    ("(define-fun set2elem ((s " ^set_s^ ") (m " ^heap_s^ ")) " ^setelem_s^
+      "\n" ^ !str ^ ")\n")
 
 
   (* (define getlockat::(-> heap path range_address tid)                *)
@@ -855,8 +921,8 @@ struct
       ("(define-fun isreachable ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ")) " ^bool_s^ "\n" ^
        "  (and (isaddr from)\n" ^
        "       (isaddr to)\n" ^
-       "       (isaddr (next0 h to)\n" ^
-       "       (isaddr (next1 h to)\n");
+       "       (isaddr (next0 h to))\n" ^
+       "       (isaddr (next1 h to))\n");
     for i = 2 to num_addr do
       B.add_string buf
         ("       (isaddr (next" ^(string_of_int i)^ " h to))\n")
@@ -871,17 +937,11 @@ struct
     B.add_string buf ")))\n"
 
 
-
-
   (* (define address2set::(-> address set) *)
   (*     (lambda (from::address)           *)
   (*          (lambda (to::address)        *)
   (*              (isreachable from to)))) *)
   let smt_address2set_def buf num_addr =
-    B.add_string buf
-      ("(declare-fun address2set (" ^heap_s^ " " ^addr_s^ ") " ^set_s^ ")\n")
-
-  (*
     let join_sets s1 s2 = "\n  (setunion "^ s1 ^" "^ s2 ^")" in
     B.add_string buf
       ("(define-fun address2set ((h " ^heap_s^ ") (from " ^addr_s^ ")) " ^set_s^ "");
@@ -889,8 +949,8 @@ struct
       begin
         match num_addr with
           0 -> "\n  (singleton from))\n"
-        | 1 -> "\n  (union (singleton from) (singleton (next (select h from)))))\n"
-        | _ -> let basic = "\n  (union (singleton from) (singleton (next (select h from))))" in
+        | 1 -> "\n  (setunion (singleton from) (singleton (next (select h from)))))\n"
+        | _ -> let basic = "\n  (setunion (singleton from) (singleton (next (select h from))))" in
                let addrs = LeapLib.rangeList 2 num_addr in
                let str   = List.fold_left (fun s i ->
                              join_sets ("(singleton (next"^ (string_of_int i) ^ " h from))") s
@@ -898,7 +958,7 @@ struct
                in
                  str^")\n"
       end
-  *)
+
 
 
   (* (define is_singlepath::(-> address path bool) *)
@@ -1187,9 +1247,9 @@ struct
       begin
         smt_emp_def buf num_addr ;
         smt_singleton_def buf ;
-        smt_union_def buf ;
-        smt_intersection_def buf ;
-        smt_setdiff_def buf ;
+        smt_union_def buf num_addr ;
+        smt_intersection_def buf num_addr ;
+        smt_setdiff_def buf num_addr ;
         smt_subseteq_def buf num_addr ;
         smt_eqset_def buf num_addr
       end;
@@ -1211,9 +1271,9 @@ struct
       begin
         smt_empth_def buf num_tid ;
         smt_singletonth_def buf ;
-        smt_unionth_def buf ;
-        smt_intersectionth_def buf ;
-        smt_setdiffth_def buf ;
+        smt_unionth_def buf num_tid ;
+        smt_intersectionth_def buf num_tid ;
+        smt_setdiffth_def buf num_tid ;
         smt_subseteqth_def buf num_tid ;
         smt_eqsetth_def buf num_tid
       end;
@@ -1222,14 +1282,14 @@ struct
       begin
         smt_empelem_def buf num_elem ;
         smt_singletonelem_def buf ;
-        smt_unionelem_def buf ;
-        smt_intersectionelem_def buf ;
-        smt_setdiffelem_def buf ;
+        smt_unionelem_def buf num_elem ;
+        smt_intersectionelem_def buf num_elem ;
+        smt_setdiffelem_def buf num_elem ;
         smt_subseteqelem_def buf num_elem ;
         smt_eqsetelem_def buf num_elem
       end;
     (* Set2Elem *)
-    if List.mem Expr.Set2Elem req_ops then smt_settoelems_def buf ;
+    if List.mem Expr.Set2Elem req_ops then smt_settoelems_def buf num_addr ;
     (* Firstlock *)
     if List.mem Expr.FstLocked req_ops then smt_firstlock_def buf num_addr ;
     (* Path *)
@@ -1383,22 +1443,18 @@ struct
         Expr.VarSet v       -> variable_invocation_to_str v
       | Expr.EmptySet       -> "empty"
       | Expr.Singl a        -> Printf.sprintf "(singleton %s)" (addrterm_to_str a)
-      | Expr.Union(r,s)     -> Hashtbl.add set_tbl sa ();
-                               Printf.sprintf "(setunion %s %s)"
+      | Expr.Union(r,s)     -> Printf.sprintf "(setunion %s %s)"
                                                     (setterm_to_str r)
                                                     (setterm_to_str s)
-      | Expr.Intr(r,s)      -> Hashtbl.add set_tbl sa ();
-                               Printf.sprintf "(intersection %s %s)"
+      | Expr.Intr(r,s)      -> Printf.sprintf "(intersection %s %s)"
                                                     (setterm_to_str r)
                                                     (setterm_to_str s)
-      | Expr.Setdiff(r,s)   -> Hashtbl.add set_tbl sa ();
-                               Printf.sprintf "(setdiff %s %s)"
+      | Expr.Setdiff(r,s)   -> Printf.sprintf "(setdiff %s %s)"
                                                     (setterm_to_str r)
                                                     (setterm_to_str s)
       | Expr.PathToSet p    -> Printf.sprintf "(path2set %s)"
                                                     (pathterm_to_str p)
-      | Expr.AddrToSet(m,a) -> Hashtbl.add set_tbl sa ();
-                               Printf.sprintf "(address2set %s %s)"
+      | Expr.AddrToSet(m,a) -> Printf.sprintf "(address2set %s %s)"
                                                     (memterm_to_str m)
                                                     (addrterm_to_str a)
 
@@ -1460,16 +1516,13 @@ struct
       | Expr.EmptySetTh       -> "emptyth"
       | Expr.SinglTh th       -> Printf.sprintf "(singletonth %s)"
                                       (tidterm_to_str th)
-      | Expr.UnionTh(rt,st)   -> Hashtbl.add setth_tbl sth ();
-                                 Printf.sprintf "(unionth %s %s)"
+      | Expr.UnionTh(rt,st)   -> Printf.sprintf "(unionth %s %s)"
                                       (setthterm_to_str rt)
                                       (setthterm_to_str st)
-      | Expr.IntrTh(rt,st)    -> Hashtbl.add setth_tbl sth ();
-                                 Printf.sprintf "(intersectionth %s %s)"
+      | Expr.IntrTh(rt,st)    -> Printf.sprintf "(intersectionth %s %s)"
                                       (setthterm_to_str rt)
                                       (setthterm_to_str st)
-      | Expr.SetdiffTh(rt,st) -> Hashtbl.add setth_tbl sth ();
-                                 Printf.sprintf "(setdiffth %s %s)"
+      | Expr.SetdiffTh(rt,st) -> Printf.sprintf "(setdiffth %s %s)"
                                       (setthterm_to_str rt)
                                       (setthterm_to_str st)
 
@@ -1480,19 +1533,15 @@ struct
       | Expr.EmptySetElem       -> "emptyelem"
       | Expr.SinglElem e        -> Printf.sprintf "(singletonelem %s)"
                                       (elemterm_to_str e)
-      | Expr.UnionElem(rt,st)   -> Hashtbl.add setelem_tbl se ();
-                                   Printf.sprintf "(unionelem %s %s)"
+      | Expr.UnionElem(rt,st)   -> Printf.sprintf "(unionelem %s %s)"
                                       (setelemterm_to_str rt)
                                       (setelemterm_to_str st)
-      | Expr.IntrElem(rt,st)    -> Hashtbl.add setelem_tbl se ();
-                                   Printf.sprintf "(intersectionelem %s %s)"
+      | Expr.IntrElem(rt,st)    -> Printf.sprintf "(intersectionelem %s %s)"
                                       (setelemterm_to_str rt)
                                       (setelemterm_to_str st)
-      | Expr.SetToElems(s,m)    -> Hashtbl.add setelem_tbl se ();
-                                   Printf.sprintf "(set2elem %s %s)"
+      | Expr.SetToElems(s,m)    -> Printf.sprintf "(set2elem %s %s)"
                                       (setterm_to_str s) (memterm_to_str m)
-      | Expr.SetdiffElem(rt,st) -> Hashtbl.add setelem_tbl se ();
-                                   Printf.sprintf "(setdiffelem %s %s)"
+      | Expr.SetdiffElem(rt,st) -> Printf.sprintf "(setdiffelem %s %s)"
                                       (setelemterm_to_str rt)
                                       (setelemterm_to_str st)
 
@@ -1755,176 +1804,6 @@ struct
     | _ -> RAISE(UnexpectedCellTerm(Expr.cell_to_str c))
 
 
-  let process_set (max_addrs:int) (s:Expr.set) : string =
-    match s with
-    | Expr.Union (r,s) ->
-        let r_str = setterm_to_str r in
-        let s_str = setterm_to_str s in
-        let tmpbuf = B.create 1024 in
-        B.add_string tmpbuf
-          ("(assert (= (select (setunion " ^r_str^ " " ^s_str^ ") null) (or (select " ^r_str^ " null) (select " ^s_str^ " null))))\n");
-        for i = 1 to max_addrs do
-          let ai_str = addr_prefix ^ (string_of_int i) in
-          B.add_string tmpbuf
-            ("(assert (= (select (setunion " ^r_str^ " " ^s_str^ ") " ^ai_str^ ") (or (select " ^r_str^ " " ^ai_str^ ") (select " ^s_str^ " " ^ai_str^ "))))\n")
-        done;
-        B.contents tmpbuf
-    | Expr.Intr (r,s) ->
-        let r_str = setterm_to_str r in
-        let s_str = setterm_to_str s in
-        let tmpbuf = B.create 1024 in
-        B.add_string tmpbuf
-          ("(assert (= (select (intersection " ^r_str^ " " ^s_str^ ") null) (and (select " ^r_str^ " null) (select " ^s_str^ " notid))))\n");
-        for i = 1 to max_addrs do
-          let ai_str = addr_prefix ^ (string_of_int i) in
-          B.add_string tmpbuf
-            ("(assert (= (select (intersection " ^r_str^ " " ^s_str^ ") " ^ai_str^ ") (and (select " ^r_str^ " " ^ai_str^ ") (select " ^s_str^ " " ^ai_str^ "))))\n")
-        done;
-        B.contents tmpbuf
-    | Expr.Setdiff (r,s) ->
-        let r_str = setterm_to_str r in
-        let s_str = setterm_to_str s in
-        let tmpbuf = B.create 1024 in
-        B.add_string tmpbuf
-          ("(assert (= (select (setdiff " ^r_str^ " " ^s_str^ ") null) (and (select " ^r_str^ " null) (not (select " ^s_str^ " null)))))\n");
-        for i = 1 to max_addrs do
-          let ai_str = addr_prefix ^ (string_of_int i) in
-          B.add_string tmpbuf
-            ("(assert (= (select (setdiff " ^r_str^ " " ^s_str^ ") " ^ai_str^ ") (and (select " ^r_str^ " " ^ai_str^ ") (not (select " ^s_str^ " " ^ai_str^ ")))))\n")
-        done;
-        B.contents tmpbuf
-    | Expr.AddrToSet (m,a) ->
-        let m_str = memterm_to_str m in
-        let a_str = addrterm_to_str a in
-        let tmpbuf = B.create 1024 in
-        B.add_string tmpbuf ("(assert (isaddr) a)\n");
-        for i = 0 to max_addrs do
-          B.add_string tmpbuf
-            ("(assert (isaddr (next" ^string_of_int i^ " m a)))\n")
-        done;
-        let auxbuf = ref "(singleton from)" in
-        for i = 1 to max_addrs do
-          auxbuf := "(store " ^(!auxbuf)^ " (next" ^string_of_int i^ " " ^m_str^ " " ^a_str^ ") true)"
-        done;
-        B.add_string tmpbuf ("(assert (= (address2set " ^m_str^ " " ^a_str^ ") " ^(!auxbuf)^ "))\n");
-        B.contents tmpbuf
-    | _ -> RAISE(UnexpectedSetTerm(Expr.set_to_str s))
-
-
-  let process_setth (max_tids:int) (sth:Expr.setth) : string =
-    match sth with
-    | Expr.UnionTh (r,s) ->
-        let r_str = setthterm_to_str r in
-        let s_str = setthterm_to_str s in
-        let tmpbuf = B.create 1024 in
-        B.add_string tmpbuf
-          ("(assert (= (select (unionth " ^r_str^ " " ^s_str^ ") notid) (or (select " ^r_str^ " notid) (select " ^s_str^ " notid))))\n");
-        for i = 1 to max_tids do
-          let ti_str = tid_prefix ^ (string_of_int i) in
-          B.add_string tmpbuf
-            ("(assert (= (select (unionth " ^r_str^ " " ^s_str^ ") " ^ti_str^ ") (or (select " ^r_str^ " " ^ti_str^ ") (select " ^s_str^ " " ^ti_str^ "))))\n")
-        done;
-        B.add_string tmpbuf ("(assert (= (select (unionth " ^r_str^ " " ^s_str^ ") tid_witness) (or (select " ^r_str^ " tid_witness) (select " ^s_str^ " tid_witness))))\n");
-        B.contents tmpbuf
-    | Expr.IntrTh (r,s) ->
-        let r_str = setthterm_to_str r in
-        let s_str = setthterm_to_str s in
-        let tmpbuf = B.create 1024 in
-        B.add_string tmpbuf
-          ("(assert (= (select (intersectionth " ^r_str^ " " ^s_str^ ") notid) (and (select " ^r_str^ " notid) (select " ^s_str^ " notid))))\n");
-        for i = 1 to max_tids do
-          let ti_str = tid_prefix ^ (string_of_int i) in
-          B.add_string tmpbuf
-            ("(assert (= (select (intersectionth " ^r_str^ " " ^s_str^ ") " ^ti_str^ ") (and (select " ^r_str^ " " ^ti_str^ ") (select " ^s_str^ " " ^ti_str^ "))))\n")
-        done;
-        B.add_string tmpbuf
-          ("(assert (= (select (intersectionth " ^r_str^ " " ^s_str^ ") tid_witness) (and (select " ^r_str^ " tid_witness) (select " ^s_str^ " tid_witness))))\n");
-        B.contents tmpbuf
-    | Expr.SetdiffTh (r,s) ->
-        let r_str = setthterm_to_str r in
-        let s_str = setthterm_to_str s in
-        let tmpbuf = B.create 1024 in
-        B.add_string tmpbuf
-          ("(assert (= (select (setdiffth " ^r_str^ " " ^s_str^ ") notid) (and (select " ^r_str^ " notid) (not (select " ^s_str^ " notid)))))\n");
-        for i = 1 to max_tids do
-          let ti_str = tid_prefix ^ (string_of_int i) in
-          B.add_string tmpbuf
-            ("(assert (= (select (setdiffth " ^r_str^ " " ^s_str^ ") " ^ti_str^ ") (and (select " ^r_str^ " " ^ti_str^ ") (not (select " ^s_str^ " " ^ti_str^ ")))))\n")
-        done;
-        B.add_string tmpbuf
-          ("(assert (= (select (setdiffth " ^r_str^ " " ^s_str^ ") tid_witness) (and (select " ^r_str^ " tid_witness) (not (select " ^s_str^ " tid_witness)))))\n");
-        B.contents tmpbuf
-    | _ -> RAISE(UnexpectedSetthTerm(Expr.setth_to_str sth))
-
-
-  let process_setelem (max_elems:int) (max_addrs:int) (se:Expr.setelem) : string =
-    match se with
-    | Expr.UnionElem (r,s) ->
-        let r_str = setelemterm_to_str r in
-        let s_str = setelemterm_to_str s in
-        let tmpbuf = B.create 1024 in
-        B.add_string tmpbuf
-          ("(assert (= (select (unionelem " ^r_str^ " " ^s_str^ ") lowestElem) (or (select " ^r_str^ " lowestElem) (select " ^s_str^ " lowestElem))))\n" ^
-           "(assert (= (select (unionelem " ^r_str^ " " ^s_str^ ") highestElem) (or (select " ^r_str^ " highestElem) (select " ^s_str^ " highestElem))))\n");
-        for i = 1 to max_elems do
-          let ei_str = elem_prefix ^ (string_of_int i) in
-          B.add_string tmpbuf
-            ("(assert (= (select (unionelem " ^r_str^ " " ^s_str^ ") " ^ei_str^ ") (or (select " ^r_str^ " " ^ei_str^ ") (select " ^s_str^ " " ^ei_str^ "))))\n")
-        done;
-        B.contents tmpbuf
-    | Expr.IntrElem (r,s) ->
-        let r_str = setelemterm_to_str r in
-        let s_str = setelemterm_to_str s in
-        let tmpbuf = B.create 1024 in
-        B.add_string tmpbuf
-          ("(assert (= (select (intersectionelem " ^r_str^ " " ^s_str^ ") lowestElem) (and (select " ^r_str^ " lowestElem) (select " ^s_str^ " lowestElem))))\n" ^
-           "(assert (= (select (intersectionelem " ^r_str^ " " ^s_str^ ") highestElem) (and (select " ^r_str^ " highestElem) (select " ^s_str^ " highestElem))))\n");
-        for i = 1 to max_elems do
-          let ei_str = elem_prefix ^ (string_of_int i) in
-          B.add_string tmpbuf
-            ("(assert (= (select (intersectionelem " ^r_str^ " " ^s_str^ ") " ^ei_str^ ") (and (select " ^r_str^ " " ^ei_str^ ") (select " ^s_str^ " " ^ei_str^ "))))\n")
-        done;
-        B.contents tmpbuf
-    | Expr.SetdiffElem (r,s) ->
-        let r_str = setelemterm_to_str r in
-        let s_str = setelemterm_to_str s in
-        let tmpbuf = B.create 1024 in
-        B.add_string tmpbuf
-          ("(assert (= (select (setdiffelem " ^r_str^ " " ^s_str^ ") lowestElem) (and (select " ^r_str^ " lowestElem) (not (select " ^s_str^ " lowestElem)))))\n" ^
-           "(assert (= (select (setdiffelem " ^r_str^ " " ^s_str^ ") highestElem) (and (select " ^r_str^ " highestElem) (not (select " ^s_str^ " highestElem)))))\n");
-        for i = 1 to max_elems do
-          let ei_str = elem_prefix ^ (string_of_int i) in
-          B.add_string tmpbuf
-            ("(assert (= (select (setdiffelem " ^r_str^ " " ^s_str^ ") " ^ei_str^ ") (and (select " ^r_str^ " " ^ei_str^ ") (not (select " ^s_str^ " " ^ei_str^ ")))))\n")
-        done;
-        B.contents tmpbuf
-    | Expr.SetToElems (s,m) ->
-        let s_str = setterm_to_str s in
-        let m_str = memterm_to_str m in
-        let tmpbuf = B.create 1024 in
-        let proc_all_address (e_str:string) : string =
-          let auxbuf = B.create 1024 in
-          B.add_string auxbuf
-            ("(or (not (select (set2elem " ^s_str^ " " ^m_str^ ") " ^e_str^ "))\n" ^
-             "    (and (select " ^s_str^ " null) (= " ^data ("(select " ^m_str^ " null)")^ " " ^e_str^ "))\n");
-          for i = 1 to max_addrs do
-            let a_str = addr_prefix ^ (string_of_int i) in
-            B.add_string auxbuf
-              ("    (and (select " ^s_str^ " " ^a_str^ ") (= " ^data ("(select " ^m_str^ " " ^a_str^ ")")^ " " ^e_str^ "))\n")
-          done;
-          B.add_string auxbuf ")\n";
-          B.contents auxbuf in
-        B.add_string tmpbuf
-          ("(assert (and \n"^(proc_all_address "lowestElem") ^" " ^(proc_all_address "highestElem")^ "\n");
-        for i = 1 to max_elems do
-          let e_str = elem_prefix ^ (string_of_int i) in
-          B.add_string tmpbuf ((proc_all_address e_str) ^ "\n")
-        done;
-        B.add_string tmpbuf "))\n";
-        B.contents tmpbuf
-    | _ -> RAISE(UnexpectedSetelemTerm(Expr.setelem_to_str se))
-
-
   let process_getp (max_addrs:int) ((m,a1,a2):string * string * string) : string =
     let tmpbuf = B.create 1024 in
     B.add_string tmpbuf ("(assert (ispath (path1 " ^m^ " " ^a1^ ")))\n");
@@ -1953,9 +1832,6 @@ struct
     Hashtbl.iter (fun e _ -> B.add_string buf (process_elem e)) elem_tbl;
     Hashtbl.iter (fun t _ -> B.add_string buf (process_tid t)) tid_tbl;
     Hashtbl.iter (fun c _ -> B.add_string buf (process_cell c)) cell_tbl;
-    Hashtbl.iter (fun s _ -> B.add_string buf (process_set num_addrs s)) set_tbl;
-    Hashtbl.iter (fun s _ -> B.add_string buf (process_setth num_tids s)) setth_tbl;
-    Hashtbl.iter (fun s _ -> B.add_string buf (process_setelem num_elems num_addrs s)) setelem_tbl;
     Hashtbl.iter (fun g _ -> B.add_string buf (process_getp num_addrs g)) getp_tbl;
     Hashtbl.iter (fun f _ -> B.add_string buf (process_fstlock num_addrs f)) fstlock_tbl
 
