@@ -7,10 +7,8 @@ global
 
 assume
   region = {head} Union {tail} Union {null} /\
-  elements = UnionElem (
-              UnionElem (SingleElem (rd(heap,head).data),
-                         SingleElem (rd(heap,tail).data)),
-                         SingleElem (rd(heap,null).data)) /\
+  elements = UnionElem (SingleElem (rd(heap,head).data),
+                        SingleElem (rd(heap,tail).data)) /\
   // or orderlist (heap, head, null)
   rd(heap, head).data = lowestElem /\
   rd(heap, tail).data = highestElem /\

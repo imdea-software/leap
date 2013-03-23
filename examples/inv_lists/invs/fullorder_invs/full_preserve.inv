@@ -9,7 +9,7 @@ invariant [fullPreserve] :
 /\ tail != null
 /\ head != null
 /\ head != tail
-/\ elements = set2elem(heap, region)
+/\ elements = set2elem(heap, region SetDiff {null})
 /\ rd(heap, head).data = lowestElem
 /\ rd(heap, tail).data = highestElem
 /\ orderlist (heap, head, tail)
