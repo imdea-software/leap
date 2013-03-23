@@ -662,13 +662,16 @@ struct
     (* TOFIX: Replace buffer in order to prevent segmentation fault due to
               buffer overflow when too many elements are required. *)
     (* Transitivity *)
-    for i = 1 to num_elem do
-      for j = 1 to num_elem do
-        for k = 1 to num_elem do
+    let name_elem (i:int) = if (i = 0) then "LowestElem"
+                            else if (i = num_elem + 1) then "HighestElem"
+                            else elem_prefix ^ (string_of_int i) in
+    for i = 0 to (num_elem + 1) do
+      for j = 0 to (num_elem + 1) do
+        for k = 0 to (num_elem + 1) do
           if (i<>j && j<>k (*&& i<>k*)) then
-            let x = elem_prefix ^ (string_of_int i) in
-            let y = elem_prefix ^ (string_of_int j) in
-            let z = elem_prefix ^ (string_of_int k) in
+            let x = name_elem i in
+            let y = name_elem j in
+            let z = name_elem k in
             B.add_string buf ("(assert (=> (and (lesselem " ^x^ " " ^y^ ") \
                                                 (lesselem " ^y^ " " ^z^ ")) \
                                                 (lesselem " ^x^ " " ^z^ ")))\n")

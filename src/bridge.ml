@@ -53,12 +53,11 @@ let cond_effect_aux_to_str (cond:cond_effect_aux_t) : string =
 let unfold_expression (mInfo:malloc_info)
                       (th_p:E.tid option)
                       (expr:Stm.expr_t) : (E.expr_t      *
-                                           E.mem option  *
                                            E.term list   *
                                            E.formula list) =
   LOG "Entering unfold_expression..." LEVEL TRACE;
   let gen_malloc (mkcell:E.cell) :
-                 (E.expr_t * E.mem option * E.term list * E.formula list) =
+                 (E.expr_t * E.term list * E.formula list) =
     LOG "unfold_expression::gen_malloc()" LEVEL TRACE;
     let c_fresh = E.VarCell(E.build_var
                       E.fresh_cell_name E.Cell false None None E.Normal) in
@@ -83,9 +82,9 @@ let unfold_expression (mInfo:malloc_info)
                   [
                     E.eq_cell c_fresh mkcell;
                     E.eq_cell (E.CellAt (E.heap, a_fresh)) E.Error;
-                    E.eq_mem E.aux_heap (E.Update (E.heap, a_fresh, c_fresh))]
+                    E.eq_mem (E.prime_mem E.heap) (E.Update (E.heap, a_fresh, c_fresh))]
     in
-      (E.Term (E.AddrT a_fresh), Some E.aux_heap, [], [new_f])
+      (E.Term (E.AddrT a_fresh), [E.MemT E.heap], [new_f])
   in
   match expr with
   | Stm.Term (Stm.AddrT (Stm.Malloc(e,a,t))) ->
@@ -113,7 +112,7 @@ let unfold_expression (mInfo:malloc_info)
                        E.fresh_int_name E.Int false None None E.Normal) in
       let mkcell   = E.param_cell th_p
                        (E.MkSLCell(e_expr, aa_fresh, tt_fresh, l_expr)) in
-      let (t,e,ms,fs) = gen_malloc mkcell in
+      let (t,ms,fs) = gen_malloc mkcell in
       let fs' = List.map (fun f -> E.And
                                      (E.Implies
                                        (E.lesseq_form (E.IntVal 0) i_fresh,
@@ -122,38 +121,38 @@ let unfold_expression (mInfo:malloc_info)
                                                      (E.Null),
                                            E.eq_tid (E.ThidArrRd(tt_fresh, i_fresh))
                                                     (E.NoThid))), f)) fs in
-        (t,e,ms,fs')
+        (t,ms,fs')
   | Stm.Term (Stm.ElemT (Stm.PointerData a)) ->
       LOG "PointerData translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG;
       let a_expr = Stm.addr_to_expr_addr a in
-      (E.Term (E.ElemT (E.CellData (E.CellAt (E.heap,a_expr)))), None, [], [])
+      (E.Term (E.ElemT (E.CellData (E.CellAt (E.heap,a_expr)))), [], [])
   | Stm.Term (Stm.AddrT (Stm.PointerNext a)) ->
       LOG "PointerNext translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG;
       let a_expr = Stm.addr_to_expr_addr a in
-      (E.Term (E.AddrT (E.Next (E.CellAt (E.heap,a_expr)))), None, [], [])
+      (E.Term (E.AddrT (E.Next (E.CellAt (E.heap,a_expr)))), [], [])
   | Stm.Term (Stm.AddrT (Stm.PointerNextAt (a,l))) ->
       LOG "PointerNextAt translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG;
       let a_expr = Stm.addr_to_expr_addr a in
       let l_expr = Stm.integer_to_expr_integer l in
-      (E.Term (E.AddrT (E.AddrArrRd (E.CellArr (E.CellAt (E.heap,a_expr)), l_expr))), None, [], [])
+      (E.Term (E.AddrT (E.AddrArrRd (E.CellArr (E.CellAt (E.heap,a_expr)), l_expr))), [], [])
 (*
       (E.Term (E.AddrT (E.NextAt (E.CellAt (E.heap,a_expr), l_expr))), None, [], [])
 *)
   | Stm.Term (Stm.ThidT (Stm.PointerLockid a)) ->
       LOG "PointerLockid translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG;
       let a_expr = Stm.addr_to_expr_addr a in
-      (E.Term (E.ThidT (E.CellLockId (E.CellAt (E.heap,a_expr)))), None, [], [])
+      (E.Term (E.ThidT (E.CellLockId (E.CellAt (E.heap,a_expr)))), [], [])
   | Stm.Term (Stm.ThidT (Stm.PointerLockidAt (a,l))) ->
       LOG "PointerLockidAt translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG;
       let a_expr = Stm.addr_to_expr_addr a in
       let l_expr = Stm.integer_to_expr_integer l in
-      (E.Term (E.ThidT (E.ThidArrRd (E.CellTids (E.CellAt (E.heap,a_expr)), l_expr))), None, [], [])
+      (E.Term (E.ThidT (E.ThidArrRd (E.CellTids (E.CellAt (E.heap,a_expr)), l_expr))), [], [])
 (*
       (E.Term (E.ThidT (E.CellLockIdAt (E.CellAt (E.heap,a_expr), l_expr))), None, [], [])
 *)
   | _ ->
       LOG "Else translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG;
-      (Stm.expr_to_expr_expr expr, None, [], [])
+      (Stm.expr_to_expr_expr expr, [], [])
 
 
 
@@ -190,63 +189,63 @@ let generic_stm_term_eq (mode:eqGenMode)
   let heap_eq_generator v th e = let (mods,phi) = eq_generator v th e in
                                    (E.MemT E.heap::mods, phi) in
   let v' = Stm.term_to_expr_term v in
-  let (new_e, mod_heap, aux_modif, aux_f) = unfold_expression mInfo th_p e in
-  let aux_mem = Option.default E.heap mod_heap in
+  let (new_e, aux_modif, aux_f) = unfold_expression mInfo th_p e in
+(*  let aux_mem = Option.default E.heap mod_heap in *)
   let (modif,formula) =
     match (v', new_e) with
     (* CellData *)
     | (E.ElemT (E.CellData(E.CellAt(h,a))), E.Term(E.ElemT e')) ->
         let new_cell = E.MkCell(e',
-                                E.Next(E.CellAt(aux_mem,a)),
-                                E.CellLockId(E.CellAt(aux_mem,a))) in
+                                E.Next(E.CellAt(E.heap,a)),
+                                E.CellLockId(E.CellAt(E.heap,a))) in
           heap_eq_generator (E.MemT E.heap) th_p
-              (E.Term(E.MemT(E.Update(aux_mem,a,new_cell))))
+              (E.Term(E.MemT(E.Update(E.heap,a,new_cell))))
     (* Next *)
     | (E.AddrT (E.Next(E.CellAt(h,a))), E.Term(E.AddrT a')) ->
-        let new_cell = E.MkCell(E.CellData(E.CellAt(aux_mem,a)),
+        let new_cell = E.MkCell(E.CellData(E.CellAt(E.heap,a)),
                                 a',
-                                E.CellLockId(E.CellAt(aux_mem,a))) in
-        let new_term = E.param_term th_p (E.MemT(E.Update(aux_mem,a,new_cell))) in
+                                E.CellLockId(E.CellAt(E.heap,a))) in
+        let new_term = E.param_term th_p (E.MemT(E.Update(E.heap,a,new_cell))) in
           heap_eq_generator (E.MemT E.heap) th_p (E.Term(new_term))
     (* NextAt *)
     | (E.AddrT (E.NextAt(E.CellAt(h,a), l)), E.Term(E.AddrT a')) ->
-        let new_cell = E.MkSLCell(E.CellData(E.CellAt(aux_mem,a)),
-                                  E.AddrArrayUp(E.CellArr(E.CellAt(aux_mem,a)),l,a'),
-                                  E.CellTids(E.CellAt(aux_mem,a)),
-                                  E.CellMax(E.CellAt(aux_mem,a))) in
-        let new_term = E.param_term th_p (E.MemT(E.Update(aux_mem,a,new_cell))) in
+        let new_cell = E.MkSLCell(E.CellData(E.CellAt(E.heap,a)),
+                                  E.AddrArrayUp(E.CellArr(E.CellAt(E.heap,a)),l,a'),
+                                  E.CellTids(E.CellAt(E.heap,a)),
+                                  E.CellMax(E.CellAt(E.heap,a))) in
+        let new_term = E.param_term th_p (E.MemT(E.Update(E.heap,a,new_cell))) in
           heap_eq_generator (E.MemT E.heap) th_p (E.Term(new_term))
     (* CellArr *)
     | (E.AddrT (E.AddrArrRd (E.CellArr(E.CellAt(h,a)), l)), E.Term(E.AddrT a')) ->
-        let new_cell = E.MkSLCell(E.CellData(E.CellAt(aux_mem,a)),
-                                  E.AddrArrayUp(E.CellArr(E.CellAt(aux_mem,a)),l,a'),
-                                  E.CellTids(E.CellAt(aux_mem,a)),
-                                  E.CellMax(E.CellAt(aux_mem,a))) in
-        let new_term = E.param_term th_p (E.MemT(E.Update(aux_mem,a,new_cell))) in
+        let new_cell = E.MkSLCell(E.CellData(E.CellAt(E.heap,a)),
+                                  E.AddrArrayUp(E.CellArr(E.CellAt(E.heap,a)),l,a'),
+                                  E.CellTids(E.CellAt(E.heap,a)),
+                                  E.CellMax(E.CellAt(E.heap,a))) in
+        let new_term = E.param_term th_p (E.MemT(E.Update(E.heap,a,new_cell))) in
           heap_eq_generator (E.MemT E.heap) th_p (E.Term(new_term))
     (* CellLockId *)
     | (E.ThidT (E.CellLockId(E.CellAt(h,a))), E.Term(E.ThidT t')) ->
-        let new_cell = E.MkCell(E.CellData(E.CellAt(aux_mem,a)),
-                                E.Next(E.CellAt(aux_mem,a)),
+        let new_cell = E.MkCell(E.CellData(E.CellAt(E.heap,a)),
+                                E.Next(E.CellAt(E.heap,a)),
                                 t') in
           heap_eq_generator (E.MemT E.heap) th_p
-              (E.Term(E.MemT(E.Update(aux_mem,a,new_cell))))
+              (E.Term(E.MemT(E.Update(E.heap,a,new_cell))))
     (* CellLockIdAt *)
     | (E.ThidT (E.CellLockIdAt(E.CellAt(h,a),l)), E.Term(E.ThidT t')) ->
-        let new_cell = E.MkSLCell(E.CellData(E.CellAt(aux_mem,a)),
-                                  E.CellArr(E.CellAt(aux_mem,a)),
-                                  E.TidArrayUp(E.CellTids(E.CellAt(aux_mem,a)),l,t'),
-                                  E.CellMax(E.CellAt(aux_mem,a))) in
+        let new_cell = E.MkSLCell(E.CellData(E.CellAt(E.heap,a)),
+                                  E.CellArr(E.CellAt(E.heap,a)),
+                                  E.TidArrayUp(E.CellTids(E.CellAt(E.heap,a)),l,t'),
+                                  E.CellMax(E.CellAt(E.heap,a))) in
           heap_eq_generator (E.MemT E.heap) th_p
-              (E.Term(E.MemT(E.Update(aux_mem,a,new_cell))))
+              (E.Term(E.MemT(E.Update(E.heap,a,new_cell))))
     (* CellTids *)
     | (E.ThidT (E.ThidArrRd(E.CellTids(E.CellAt(h,a)),l)), E.Term(E.ThidT t')) ->
-        let new_cell = E.MkSLCell(E.CellData(E.CellAt(aux_mem,a)),
-                                  E.CellArr(E.CellAt(aux_mem,a)),
-                                  E.TidArrayUp(E.CellTids(E.CellAt(aux_mem,a)),l,t'),
-                                  E.CellMax(E.CellAt(aux_mem,a))) in
+        let new_cell = E.MkSLCell(E.CellData(E.CellAt(E.heap,a)),
+                                  E.CellArr(E.CellAt(E.heap,a)),
+                                  E.TidArrayUp(E.CellTids(E.CellAt(E.heap,a)),l,t'),
+                                  E.CellMax(E.CellAt(E.heap,a))) in
           heap_eq_generator (E.MemT E.heap) th_p
-              (E.Term(E.MemT(E.Update(aux_mem,a,new_cell))))
+              (E.Term(E.MemT(E.Update(E.heap,a,new_cell))))
     (* HavocListElem *)
     | (E.ElemT e, E.Term (E.ElemT (E.HavocListElem))) ->
         ([E.ElemT e], E.And (E.ineq_elem e E.LowestElem,

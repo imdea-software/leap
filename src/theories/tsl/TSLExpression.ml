@@ -2842,6 +2842,11 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
                      let v = gen_fresh_var info.fresh_gen_info s in
                      append_if_diff t v; v
                    end in
+  let append_assert (v:variable) (t:term) : variable =
+    try
+      Hashtbl.find info.term_map t
+    with _ ->
+      (append_if_diff t v; v) in
   let rec norm_set (s:set) : set =
     match s with
     | VarSet v -> VarSet v
@@ -2937,7 +2942,10 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
     | IntSub (j1,j2) -> IntSub (j1,j2)
     | IntMul (j1,j2) -> IntMul (j1,j2)
     | IntDiv (j1,j2) -> IntDiv (j1,j2)
-    | CellMax c -> CellMax (norm_cell c)
+    | CellMax c -> let l' = gen_fresh_var info.fresh_gen_info Int in
+                   let c_norm = norm_cell (MkCell(CellData c, CellArr c, CellTids c, VarInt l')) in
+                   let _ = gen_if_not_var (CellT c_norm) Cell in
+                   VarInt l'
     | HavocLevel -> HavocLevel
 
   and norm_addrarr (aa:addrarr) : addrarr =
