@@ -446,15 +446,29 @@ let check_sat_by_cases (lines:int)
   (* PA satisfiability check function *)
   let check_pa (cf:TslExp.conjunctive_formula) : bool =
     match cf with
-    | TslExp.TrueConj  -> true
-    | TslExp.FalseConj -> false
+    | TslExp.TrueConj  -> (verb "**** check_pa: true\n"; true)
+    | TslExp.FalseConj -> (verb "**** check_pa: false\n"; false)
     | TslExp.Conj ls   ->
+        verb "**** check_pa: conjunction of literals\n";
         let numSolv_id = BackendSolvers.Yices.identifier in
         let module NumSol = (val NumSolver.choose numSolv_id : NumSolver.S) in
+
+        verb "A0\n";
+        let a1 = (TslExp.from_conjformula_to_formula
+                            cf) in
+        verb "A1\n";
+        let a2 = (TSLInterface.formula_to_expr_formula a1) in
+        verb "A2\n";
+        verb "FORMULA TO INT:\n%s\n" (Expression.formula_to_str a2);
+        let a3 = NumExpression.formula_to_int_formula a2 in
+        verb "A3\n";
+        let phi_num = a3
+(*
         let phi_num = NumExpression.formula_to_int_formula
                         (TSLInterface.formula_to_expr_formula
                           (TslExp.from_conjformula_to_formula
                             cf))
+*)
         in
         verb "**** TSL Solver numeric formula: %s\n"
                   (TslExp.conjunctive_formula_to_str cf);
@@ -517,7 +531,7 @@ let check_sat_by_cases (lines:int)
     | (pa,nc)::xs -> begin
                        verb "**** TSL Solver: will guess arrangements...\n";
                        let arrgs = guess_arrangements (TslExp.combine_conj_formula pa nc) in
-                       verb "**** TSL Solver: arrangements guessed...\n";
+                       verb "**** TSL Solver: arrangements guessed: %i...\n" (List.length arrgs);
                        match arrgs with
                        | [] -> (* No arrangements guessed, ie. less than 2 level variables.
                                   Only need to check NC *)
