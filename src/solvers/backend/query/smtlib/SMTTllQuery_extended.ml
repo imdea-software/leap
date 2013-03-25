@@ -1902,25 +1902,21 @@ struct
         let s_str = setterm_to_str s in
         let m_str = memterm_to_str m in
         let tmpbuf = B.create 1024 in
-        let proc_all_address (e_str:string) : string =
-          let auxbuf = B.create 1024 in
-          B.add_string auxbuf
-            ("(or (not (select (set2elem " ^s_str^ " " ^m_str^ ") " ^e_str^ "))\n" ^
-             "    (and (select " ^s_str^ " null) (= " ^data ("(select " ^m_str^ " null)")^ " " ^e_str^ "))\n");
-          for i = 1 to max_addrs do
-            let a_str = addr_prefix ^ (string_of_int i) in
-            B.add_string auxbuf
-              ("    (and (select " ^s_str^ " " ^a_str^ ") (= " ^data ("(select " ^m_str^ " " ^a_str^ ")")^ " " ^e_str^ "))\n")
+        for i = 0 to (max_elems + 1) do
+          let e_str = if i = 0 then "lowestElem" else
+                      if i = (max_elems + 1) then "highestElem"
+                      else elem_prefix ^ (string_of_int i) in
+          B.add_string tmpbuf
+            ("(assert (= (select (set2elem " ^s_str^ " " ^m_str^ ") " ^e_str^ ")\n" ^
+             "  (or\n");
+          for j = 0 to max_addrs do
+            let a_str = if j = 0 then "null"
+                        else addr_prefix ^ (string_of_int j) in
+            B.add_string tmpbuf
+              ("    (and (select " ^s_str^ " " ^a_str^ ") (= (data (select " ^m_str^ " " ^a_str^ ")) " ^e_str^ "))\n")
           done;
-          B.add_string auxbuf ")\n";
-          B.contents auxbuf in
-        B.add_string tmpbuf
-          ("(assert (and \n"^(proc_all_address "lowestElem") ^" " ^(proc_all_address "highestElem")^ "\n");
-        for i = 1 to max_elems do
-          let e_str = elem_prefix ^ (string_of_int i) in
-          B.add_string tmpbuf ((proc_all_address e_str) ^ "\n")
+          B.add_string tmpbuf ")))\n"
         done;
-        B.add_string tmpbuf "))\n";
         B.contents tmpbuf
     | _ -> RAISE(UnexpectedSetelemTerm(Expr.setelem_to_str se))
 
