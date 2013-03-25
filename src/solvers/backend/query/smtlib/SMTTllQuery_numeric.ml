@@ -151,7 +151,7 @@ struct
     GM.sm_decl_const sort_map "max_tid" int_s ;
     B.add_string buf ("(define-fun max_tid () " ^int_s^ " " ^(string_of_int num_tids)^ ")\n");
     B.add_string buf
-      ("(define-fun notid () " ^addr_s^ " 0)\n");
+      ("(define-fun notid () " ^tid_s^ " 0)\n");
     for i = 1 to num_tids do
       let i_str = string_of_int i in
       let t_str = tid_prefix ^ i_str in

@@ -307,12 +307,12 @@ struct
   (*             (or (s t) (r t)))))         *)
   let smt_unionth_def buf num_tids =
     let str = ref ("  (store\n" ^
-                   "    (store empty notid (or (select s1 notid) (select s2 notid)))\n" ^
-                   "                 tid_witness (or (select s1 tid_witness) (select s2 tid_witness)))") in
+                   "    (store emptyth notid (or (select s1 notid) (select s2 notid)))\n" ^
+                   "                   tid_witness (or (select s1 tid_witness) (select s2 tid_witness)))") in
     for i = 1 to num_tids do
       let t_str = tid_prefix ^ (string_of_int i) in
       str := "  (store\n" ^ (!str) ^ "\n" ^
-             "                 " ^t_str^ " (or (select s1 " ^t_str^ ") (select s2 " ^t_str^ ")))"
+             "                   " ^t_str^ " (or (select s1 " ^t_str^ ") (select s2 " ^t_str^ ")))"
     done;
     B.add_string buf
       ("(define-fun unionth ((s1 " ^setth_s^ ") (s2 " ^setth_s^ ")) " ^setth_s^ "\n" ^ (!str) ^ ")\n")
@@ -324,12 +324,12 @@ struct
   (*             (and (s t) (r t)))))               *)
   let smt_intersectionth_def buf num_tids =
     let str = ref ("  (store\n" ^
-                   "    (store empty notid (and (select s1 notid) (select s2 notid)))\n" ^
-                   "                 tid_witness (and (select s1 tid_witness) (select s2 tid_witness)))") in
+                   "    (store emptyth notid (and (select s1 notid) (select s2 notid)))\n" ^
+                   "                   tid_witness (and (select s1 tid_witness) (select s2 tid_witness)))") in
     for i = 1 to num_tids do
       let t_str = tid_prefix ^ (string_of_int i) in
       str := "  (store\n" ^ (!str) ^ "\n" ^
-             "                 " ^t_str^ " (and (select s1 " ^t_str^ ") (select s2 " ^t_str^ ")))"
+             "                   " ^t_str^ " (and (select s1 " ^t_str^ ") (select s2 " ^t_str^ ")))"
     done;
     B.add_string buf
       ("(define-fun intersectionth ((s1 " ^setth_s^ ") (s2 " ^setth_s^ ")) " ^setth_s^ "\n" ^ (!str) ^ ")\n")
@@ -341,12 +341,12 @@ struct
   (*             (and (s t) (not (r t)))))) *)
   let smt_setdiffth_def buf num_tids =
     let str = ref ("  (store\n" ^
-                   "    (store empty notid (and (select s1 notid) (not (select s2 notid))))\n" ^
-                   "                 tid_witness (and (select s1 tid_witness) (not (select s2 tid_witness))))") in
+                   "    (store emptyth notid (and (select s1 notid) (not (select s2 notid))))\n" ^
+                   "                   tid_witness (and (select s1 tid_witness) (not (select s2 tid_witness))))") in
     for i = 1 to num_tids do
       let t_str = tid_prefix ^ (string_of_int i) in
       str := "  (store\n" ^ (!str) ^ "\n" ^
-             "                 " ^t_str^ " (and (select s1 " ^t_str^ ") (not (select s2 " ^t_str^ "))))"
+             "                   " ^t_str^ " (and (select s1 " ^t_str^ ") (not (select s2 " ^t_str^ "))))"
     done;
     B.add_string buf
       ("(define-fun setdiffth ((s1 " ^setth_s^ ") (s2 " ^setth_s^ ")) " ^setth_s^ "\n" ^ (!str) ^ ")\n")
@@ -417,12 +417,12 @@ struct
   (*             (or (s e) (r e)))))                 *)
   let smt_unionelem_def buf num_elems =
     let str = ref ("  (store\n" ^
-                   "    (store empty lowestElem (or (select s1 lowestElem) (select s2 lowestElem)))\n" ^
-                   "                 highestElem (or (select s1 highestElem) (select s2 highestElem)))") in
+                   "    (store emptyelem lowestElem (or (select s1 lowestElem) (select s2 lowestElem)))\n" ^
+                   "                     highestElem (or (select s1 highestElem) (select s2 highestElem)))") in
     for i = 1 to num_elems do
       let e_str = elem_prefix ^ (string_of_int i) in
       str := "  (store\n" ^ (!str) ^ "\n" ^
-             "                 " ^e_str^ " (or (select s1 " ^e_str^ ") (select s2 " ^e_str^ ")))"
+             "                     " ^e_str^ " (or (select s1 " ^e_str^ ") (select s2 " ^e_str^ ")))"
     done;
     B.add_string buf
       ("(define-fun unionelem ((s1 " ^setelem_s^ ") (s2 " ^setelem_s^ ")) " ^setelem_s^ "\n" ^ (!str) ^ ")\n")
@@ -434,12 +434,12 @@ struct
   (*             (and (s e) (r e)))))                       *)
   let smt_intersectionelem_def buf num_elems =
     let str = ref ("  (store\n" ^
-                   "    (store empty lowestElem (and (select s1 lowestElem) (select s2 lowestElem)))\n" ^
-                   "                 highestElem (and (select s1 highestElem) (select s2 highestElem)))") in
+                   "    (store emptyelem lowestElem (and (select s1 lowestElem) (select s2 lowestElem)))\n" ^
+                   "                     highestElem (and (select s1 highestElem) (select s2 highestElem)))") in
     for i = 1 to num_elems do
       let e_str = elem_prefix ^ (string_of_int i) in
       str := "  (store\n" ^ (!str) ^ "\n" ^
-             "                 " ^e_str^ " (and (select s1 " ^e_str^ ") (select s2 " ^e_str^ ")))"
+             "                     " ^e_str^ " (and (select s1 " ^e_str^ ") (select s2 " ^e_str^ ")))"
     done;
     B.add_string buf
       ("(define-fun intersectionelem ((s1 " ^setelem_s^ ") (s2 " ^setelem_s^ ")) " ^setelem_s^ "\n" ^ (!str) ^ ")\n")
@@ -451,12 +451,12 @@ struct
   (*             (and (s e) (not (r e))))))               *)
   let smt_setdiffelem_def buf num_elems =
     let str = ref ("  (store\n" ^
-                   "    (store empty lowestElem (and (select s1 lowestElem) (not (select s2 lowestElem))))\n" ^
-                   "                 highestElem (and (select s1 highestElem) (not (select s2 highestElem))))") in
+                   "    (store emptyelem lowestElem (and (select s1 lowestElem) (not (select s2 lowestElem))))\n" ^
+                   "                     highestElem (and (select s1 highestElem) (not (select s2 highestElem))))") in
     for i = 1 to num_elems do
       let e_str = elem_prefix ^ (string_of_int i) in
       str := "  (store\n" ^ (!str) ^ "\n" ^
-             "                 " ^e_str^ " (and (select s1 " ^e_str^ ") (not (select s2 " ^e_str^ "))))"
+             "                     " ^e_str^ " (and (select s1 " ^e_str^ ") (not (select s2 " ^e_str^ "))))"
     done;
     B.add_string buf
       ("(define-fun setdiffelem ((s1 " ^setelem_s^ ") (s2 " ^setelem_s^ ")) " ^setelem_s^ "\n" ^ (!str) ^ ")\n")
