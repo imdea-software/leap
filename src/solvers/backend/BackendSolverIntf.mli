@@ -12,9 +12,6 @@ sig
   val identifier : string
   (** Unique identifier for this solver. *)
 
-  val reset : unit -> unit
-  (** [reset ()] restores to default the configuration register. *)
-  
   val reset_calls : unit -> unit
   (** [reset_calls ()] resets the calls counter to [0]. *)
   

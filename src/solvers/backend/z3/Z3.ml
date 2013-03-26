@@ -1,7 +1,3 @@
-open Genlex
-open Debug
-open LeapLib
-open LeapVerbose
 open Z3BackendType
 open Z3TslkQuery
 open TllQuery
@@ -11,128 +7,43 @@ module Z3 : BACKEND_POS_TLL_TSLK =
 struct
   type t = string
   
-  type configuration = {
-    calls              : counter; (** number of calls performed. *)
-    mutable exec       : string;  (** path to executable. *)
-    mutable timeout    : int;     (** execution timeout (in secs). *)
-    mutable comp_model : bool;    (** computes a model for non valid VCs *)
-  }
-  
   (** Unique identifier *)
   let identifier = "Z3"
   
   (** the configuration register *)
-  let config : configuration = {
-    calls      = new counter 0;
-    exec       = Config.get_exec_path() ^ "/tools/z3";
-    timeout    = 3600; (* one hour *)
-    comp_model = false;
-  }
-
-  let z3_evidence_enable = "(set-option :produce-assignments true)\n"
-  let z3_evidence = "\n(get-model)\n"
+  let config = SMTExecute.new_configuration SMTExecute.Z3
   
-  (** [reset ()] restores to default the configuration register. *)
-  let reset () = 
-  begin
-    config.calls # reset;
-    config.exec       <- Config.get_exec_path() ^ "/tools/z3 -m";
-    config.timeout    <- 3600;
-    config.comp_model <- false;
-  end
   
   (** [reset_calls ()] resets the calls counter to [0]. *)
-  let reset_calls () = config.calls # reset
+  let reset_calls () : unit =
+    SMTExecute.reset_calls config
+
   
-  (** [calls_count ()] returns the number of calls performed to the SMT. *) 
-  let calls_count () = config.calls # get
-  
+  (** [calls_count ()] returns the number of calls performed to the SMT. *)
+  let calls_count () : int =
+    SMTExecute.calls_count config
+
+ 
   (** [compute_model b] sets whether a counter model for non valid
       VCs should be computed *)
-  let compute_model (b:bool) : unit = config.comp_model <- b
+  let compute_model (b:bool) : unit =
+    SMTExecute.compute_model config b
 
-  (** The model of the last parsed query *)
-  let model : GenericModel.t ref = ref (GenericModel.new_model())
   
   (** [get_model ()] returns a generic model in case the last call to
       [sat] has been satisfiable. Otherwise returns an empty model *)
   let get_model () : GenericModel.t =
-    !model
+    SMTExecute.get_model ()
   
     
   (* RUNING Z3 *)
   
-  let parse_z3_output (from_z3:Pervasives.in_channel) : bool =
-    let answer_str = Pervasives.input_line from_z3 in
-    let (terminated, outcome) =
-      match answer_str with
-        "unsat" -> let _ = Debug.print_smt "unsat\n"
-                   in
-                     (true, false)
-      | "sat"   -> let _ = Debug.print_smt "sat\n"
-                   in
-                     (true, true)
-      | _       -> (false, false)
-    in
-      outcome
 
-  (** [sat formula] returns [true] whenever the [formula] is satisfiable, 
-      [false] otherwise. *)
-  let sat (query:string) : bool =
-    (* 1. write query to temp file *)
-    LOG "Entering sat..." LEVEL TRACE;
-    let temp      = Filename.temp_file "leap_" ".smt2" in
-    let _         = Debug.print_file_name "VC" temp in
-    let full_query = if config.comp_model then
-                       z3_evidence_enable ^ query ^ z3_evidence
-                     else
-                       query in
-    let output_ch = open_out temp in
-    let _ = output_string output_ch full_query ; close_out output_ch in
-    (* 2. run z3 and parse output *)
-    let run_z3 _ =
-      let _ = Debug.print_smt "Invoking z3... " in
-(*
-      let z3_cmd  = config.exec ^ " -t:" ^ (string_of_int config.timeout)
-                      ^ " " ^ temp ^ " CASE_SPLIT=4 " in
-*)
-      let z3_cmd  = config.exec ^ " -t:" ^ (string_of_int config.timeout)
-                      ^ " " ^ temp in
-      let env = Array.of_list [] in
-      let (from_z3,to_z3,stderr) = Unix.open_process_full z3_cmd env in
-      verb "**** Z3, will parse Z3 output.\n";
-      let response = parse_z3_output from_z3 in
-      verb "**** Z3, response read.\n";
-      let _ = if config.comp_model then
-                if response then
-                  let _ = verb "**** Z3, response with model obtained.\n" in
-                  let buf = Buffer.create 1024 in
-                  let _ = try
-                            while true do
-                              let line = Pervasives.input_line from_z3 in
-                              let exp = Str.regexp (";;[^\n]*") in
-                              let conv = Str.global_replace exp "" line
-                              in
-                                Buffer.add_string buf conv
-                            done
-                          with _ -> ()
-                  in
-                    model := (Z3ModelParser.generic_model Z3ModelLexer.norm)
-                                (Lexing.from_string (Buffer.contents buf))
-                else
-                  (verb "**** Z3, no response with model obtained.\n";
-                  GenericModel.clear_model !model)
-              else
-                () in
-      let _ = Unix.close_process_full (from_z3,to_z3,stderr) in
-      let _ = config.calls # incr in
-      verb "**** Z3, will print results.\n";
-      let _ = Debug.print_smt_result response in
-   (* let _ = Unix.unlink temp in *)
-        response
-    in
-      run_z3 ()
-  
+  (** [sat formula] returns [true] whenever the [formula] is satisfiable, [false] otherwise. *)
+  let sat (query:t) : bool =
+    SMTExecute.run config query
+
+
   (** [unsat formula] returns [not(sat formula)]. *)
   let unsat (query:string) : bool =
     not (sat query)
