@@ -503,12 +503,6 @@ let set_var_pr (v:variable) (pr:bool) : variable =
 let set_var_th (v:variable) (th:tid option) : variable =
   let (id,s,pr,_,p,k) = v in (id,s,pr,th,p,k)
 
-let clean_var_th (v:variable) : variable =
-  let (id,s,pr,_,p,k) = v in (id,s,pr,None,p,k)
-
-
-
-
 
 let var_to_term (v:variable) : term =
   match var_sort v with
@@ -826,6 +820,9 @@ let unprime_variable (var:variable) : variable =
     build_var id s false th p k
 
 
+let var_base_info = var_clear_param_info>>unprime_variable
+
+
 (* Priming functions used for thread identifiers *)
 
 let rec priming_option_tid (pr:bool)
@@ -846,7 +843,8 @@ let priming_variable (pr:bool)
     match prime_set with
       None   -> v'
 (* DO NOT ERASE: This may be needed!!!! *)
-    | Some s -> if VarSet.mem (set_var_th v None) s then v' else v
+    | Some s -> if (VarSet.mem (set_var_th v None) s ||
+                    VarSet.mem (v) s                  ) then v' else v
 (*      | Some s -> if VarSet.mem v s then v' else v *)
 
 
@@ -2456,7 +2454,7 @@ let cons_arrayRd_eq_from_var (s:sort)
     begin
       match c with
         Iff (Literal (Atom (BoolVar v)), f) ->
-          [Iff(Literal(Atom(BoolArrayRd (VarArray(clean_var_th v), th_p))), f)]
+          [Iff(Literal(Atom(BoolArrayRd (VarArray(var_clear_param_info v), th_p))), f)]
       | Literal (Atom (In (a,s)))           ->
           [exp_in (AddrArrayRd(cons_array Addr (AddrT a), th_p)) s]
       | Literal (Atom (SubsetEq (s1,s2)))   ->
@@ -4052,13 +4050,11 @@ let construct_term_eq (v:term)
                       (e:expr_t) : (term list * formula) =
 (*  let new_th = pres_th_param v th_p in *)
 
-  let clean_var = clean_var_th>>unprime_variable in
-
   match (v,e) with
     (* Variables *)
     (VarT var, Formula t) ->
       (* Possibly I have to inject the Bool sort to the variable *)
-      let modif     = [VarT (clean_var var)] in
+      let modif     = [VarT (var_base_info var)] in
       let new_th    = pres_th_param v th_p in
       let left_atom = prime_atom (BoolVar (set_var_th var new_th)) in
       let param_t   = param th_p t
@@ -4066,7 +4062,7 @@ let construct_term_eq (v:term)
         (modif, Iff (Literal (Atom left_atom), param_t))
 
   | (VarT var, Term t) ->
-      let modif     = [VarT (clean_var var)] in
+      let modif     = [VarT (var_base_info var)] in
       let new_th    = pres_th_param v th_p in
       let left_term = prime_term $ param_term new_th v in
       let param_t   = param_term th_p t
@@ -4075,7 +4071,7 @@ let construct_term_eq (v:term)
 
   (* Sets of addresses *)
   | (SetT (VarSet var), Term t) ->
-      let modif     = [SetT(VarSet(clean_var var))] in
+      let modif     = [SetT(VarSet(var_base_info var))] in
       let left_term = prime_term $ param_term th_p v in
       let param_t   = param_term th_p t
       in
@@ -4083,7 +4079,7 @@ let construct_term_eq (v:term)
 
   (* Sets of integers *)
   | (SetIntT (VarSetInt var), Term t) ->
-      let modif     = [SetIntT(VarSetInt(clean_var var))] in
+      let modif     = [SetIntT(VarSetInt(var_base_info var))] in
       let left_term = prime_term $ param_term th_p v in
       let param_t   = param_term th_p t
       in
@@ -4091,7 +4087,7 @@ let construct_term_eq (v:term)
 
   (* Sets of elements *)
   | (SetElemT (VarSetElem var), Term t) ->
-      let modif     = [SetElemT(VarSetElem(clean_var var))] in
+      let modif     = [SetElemT(VarSetElem(var_base_info var))] in
       let left_term = prime_term $ param_term th_p v in
       let param_t   = param_term th_p t
       in
@@ -4099,7 +4095,7 @@ let construct_term_eq (v:term)
 
   (* Sets of threads *)
   | (SetThT (VarSetTh var), Term t) ->
-      let modif     = [SetThT(VarSetTh(clean_var var))] in
+      let modif     = [SetThT(VarSetTh(var_base_info var))] in
       let left_term = prime_term $ param_term th_p v in
       let param_t   = param_term th_p t
       in
@@ -4107,14 +4103,14 @@ let construct_term_eq (v:term)
 
   (* Elements *)
   | (ElemT (VarElem var), Term t) ->
-      let modif     = [ElemT(VarElem(clean_var var))] in
+      let modif     = [ElemT(VarElem(var_base_info var))] in
       let left_term = prime_term $ param_term th_p v in
       let param_t   = param_term th_p t
       in
         (modif, Literal (Atom (Eq (left_term, param_t))))
 
   | (ElemT (CellData (VarCell var)), Term t) ->
-      let modif     = [ElemT(CellData(VarCell(clean_var var)))] in
+      let modif     = [ElemT(CellData(VarCell(var_base_info var)))] in
       let left_term = prime_term $ param_term th_p v in
       let param_t   = param_term th_p t
       in
@@ -4122,35 +4118,35 @@ let construct_term_eq (v:term)
 
   (* Threads *)
   | (ThidT (VarTh var), Term t) ->
-      let modif     = [ThidT(VarTh(clean_var var))] in
+      let modif     = [ThidT(VarTh(var_base_info var))] in
       let left_term = prime_term $ param_term th_p v in
       let param_t   = param_term th_p t
       in
         (modif, Literal (Atom (Eq (left_term, param_t))))
 
   | (ThidT (CellLockId (VarCell var)), Term t) ->
-      let modif     = [ThidT (CellLockId(VarCell(clean_var var)))] in
+      let modif     = [ThidT (CellLockId(VarCell(var_base_info var)))] in
       let left_term = prime_term $ param_term th_p v in
       let param_t   = param_term th_p t
       in
         (modif, Literal (Atom (Eq (left_term, param_t))))
 
   | (ThidT (CellLockIdAt (VarCell var, i)), Term t) ->
-      let modif     = [ThidT (CellLockIdAt(VarCell(clean_var var),i))] in
+      let modif     = [ThidT (CellLockIdAt(VarCell(var_base_info var),i))] in
       let left_term = prime_term $ param_term th_p v in
       let param_t   = param_term th_p t
       in
         (modif, Literal (Atom (Eq (left_term, param_t))))
 
   | (ThidT (ThidArrRd (CellTids (VarCell var), i)), Term t) ->
-      let modif     = [ThidT (ThidArrRd (CellTids(VarCell(clean_var var)),i))] in
+      let modif     = [ThidT (ThidArrRd (CellTids(VarCell(var_base_info var)),i))] in
       let left_term = prime_term $ param_term th_p v in
       let param_t   = param_term th_p t
       in
         (modif, Literal (Atom (Eq (left_term, param_t))))
 
   | (ThidT (ThidArrRd (VarTidArray var,i)), Term t) ->
-      let modif     = [ThidT(ThidArrRd(VarTidArray (clean_var var),i))] in
+      let modif     = [ThidT(ThidArrRd(VarTidArray (var_base_info var),i))] in
       let left_term = prime_term $ param_term th_p v in
       let param_t   = param_term th_p t
       in
@@ -4158,35 +4154,35 @@ let construct_term_eq (v:term)
 
   (* Addresses *)
   | (AddrT (VarAddr var), Term t) ->
-      let modif     = [AddrT(VarAddr(clean_var var))] in
+      let modif     = [AddrT(VarAddr(var_base_info var))] in
       let left_term = prime_term $ param_term th_p v in
       let param_t   = param_term th_p t
       in
         (modif, Literal (Atom (Eq (left_term, param_t))))
 
   | (AddrT (Next (VarCell var)), Term t) ->
-      let modif     = [AddrT(Next(VarCell(clean_var var)))] in
+      let modif     = [AddrT(Next(VarCell(var_base_info var)))] in
       let left_term = prime_term $ param_term th_p v in
       let param_t   = param_term th_p t
       in
         (modif, Literal (Atom (Eq (left_term, param_t))))
 
   | (AddrT (NextAt (VarCell var, i)), Term t) ->
-      let modif     = [AddrT(NextAt(VarCell(clean_var var),i))] in
+      let modif     = [AddrT(NextAt(VarCell(var_base_info var),i))] in
       let left_term = prime_term $ param_term th_p v in
       let param_t   = param_term th_p t
       in
         (modif, Literal (Atom (Eq (left_term, param_t))))
 
   | (AddrT (AddrArrRd (CellArr (VarCell var), i)), Term t) ->
-      let modif     = [AddrT(AddrArrRd(CellArr(VarCell(clean_var var)),i))] in
+      let modif     = [AddrT(AddrArrRd(CellArr(VarCell(var_base_info var)),i))] in
       let left_term = prime_term $ param_term th_p v in
       let param_t   = param_term th_p t
       in
         (modif, Literal (Atom (Eq (left_term, param_t))))
 
   | (AddrT (AddrArrRd (VarAddrArray var,i)), Term t) ->
-      let modif     = [AddrT(AddrArrRd(VarAddrArray (clean_var var),i))] in
+      let modif     = [AddrT(AddrArrRd(VarAddrArray (var_base_info var),i))] in
       let left_term = prime_term $ param_term th_p v in
       let param_t   = param_term th_p t
       in
@@ -4196,7 +4192,7 @@ let construct_term_eq (v:term)
   (* TODO: Not sure if this case is ok *)
   | (CellT (VarCell var as c), Term CellT (CellLock (VarCell _, _))) ->
       let new_th    = pres_th_param v th_p in
-      let modif     = [ThidT(CellLockId(VarCell(clean_var var)))] in
+      let modif     = [ThidT(CellLockId(VarCell(var_base_info var)))] in
       let new_tid   = Option.default NoThid th_p in
       let left_term = prime_term (CellT (VarCell
                         (set_var_th (set_var_pr var false) new_th))) in
@@ -4205,7 +4201,7 @@ let construct_term_eq (v:term)
   (* TOFIX: We are missing the case for TSLK and TSL *)
 
   | (CellT (VarCell var), Term t) ->
-      let modif     = [CellT(VarCell(clean_var var))] in
+      let modif     = [CellT(VarCell(var_base_info var))] in
       let left_term = prime_term $ param_term th_p v in
       let param_t   = param_term th_p t
       in
@@ -4214,7 +4210,7 @@ let construct_term_eq (v:term)
 
   (* Paths *)
   | (PathT (VarPath var), Term t) ->
-      let modif     = [PathT(VarPath(clean_var var))] in
+      let modif     = [PathT(VarPath(var_base_info var))] in
       let left_term = prime_term $ param_term th_p v in
       let param_t   = param_term th_p t
       in
@@ -4222,7 +4218,7 @@ let construct_term_eq (v:term)
 
   (* Memories *)
   | (MemT (VarMem var), Term t) ->
-      let modif     = [MemT(VarMem(clean_var var))] in
+      let modif     = [MemT(VarMem(var_base_info var))] in
       let left_term = prime_term $ param_term th_p v in
       let param_t   = param_term th_p t
       in
@@ -4230,7 +4226,7 @@ let construct_term_eq (v:term)
 
   (* Integers *)
   | (IntT (VarInt var), Term t) ->
-      let modif = [IntT(VarInt(clean_var var))] in
+      let modif = [IntT(VarInt(var_base_info var))] in
       let left_term = prime_term $ param_term th_p v in
       let param_t   = param_term th_p t
       in
@@ -4238,7 +4234,7 @@ let construct_term_eq (v:term)
 
   (* Arrays with domain of thread identifiers *)
   | (ArrayT (VarArray var), Term t) ->
-      let modif     = [ArrayT(VarArray(clean_var var))] in
+      let modif     = [ArrayT(VarArray(var_base_info var))] in
       let left_term = prime_term $ param_term th_p v in
       let param_t   = param_term th_p t
       in
@@ -4274,6 +4270,7 @@ let construct_pres_term (t:term) (th_p:tid option) : formula =
 let construct_term_eq_as_array (v:term)
                                (th_p:tid option)
                                (e:expr_t) : (term list * formula) =
+
   let scope = get_var_owner v in
     match (scope, th_p) with
       (Some _, Some th) ->

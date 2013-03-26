@@ -298,6 +298,10 @@ val build_var : varId -> sort -> bool -> tid option ->
                 string option -> kind_t -> variable
 val var_clear_param_info : variable -> variable
 
+(** [var_base_info v] returns [v], removing information about priming and
+    thread id *)
+val var_base_info : variable -> variable
+
 val var_id        : variable -> varId
 val var_sort      : variable -> sort
 val var_pr        : variable -> bool
@@ -497,6 +501,7 @@ val var_kind : kind_t -> expr_t -> term list
 
 (* PARAMETRIZATION FUNCTIONS *)
 val param_addr : tid option -> addr -> addr
+val param_elem : tid option -> elem -> elem
 val param_cell : tid option -> cell -> cell
 val param_term : tid option -> term -> term
 val param_expr : tid option -> expr_t -> expr_t

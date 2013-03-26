@@ -247,13 +247,15 @@ let generic_stm_term_eq (mode:eqGenMode)
           heap_eq_generator (E.MemT E.heap) th_p
               (E.Term(E.MemT(E.Update(E.heap,a,new_cell))))
     (* HavocListElem *)
-    | (E.ElemT e, E.Term (E.ElemT (E.HavocListElem))) ->
-        ([E.ElemT e], E.And (E.ineq_elem e E.LowestElem,
-                             E.ineq_elem e E.HighestElem))
+    | (E.ElemT (E.VarElem v as e), E.Term (E.ElemT (E.HavocListElem))) ->
+        ([E.ElemT (E.VarElem (E.var_base_info v))],
+            E.And (E.ineq_elem (E.prime_elem (E.param_elem th_p e)) E.LowestElem,
+                   E.ineq_elem (E.prime_elem (E.param_elem th_p e)) E.HighestElem))
     (* HavocSkiplistElem *)
-    | (E.ElemT e, E.Term (E.ElemT (E.HavocSkiplistElem))) ->
-        ([E.ElemT e], E.And (E.ineq_elem e E.LowestElem,
-                             E.ineq_elem e E.HighestElem))
+    | (E.ElemT (E.VarElem v as e), E.Term (E.ElemT (E.HavocSkiplistElem))) ->
+        ([E.ElemT (E.VarElem (E.var_base_info v))],
+            E.And (E.ineq_elem (E.prime_elem (E.param_elem th_p e)) E.LowestElem,
+                   E.ineq_elem (E.prime_elem (E.param_elem th_p e)) E.HighestElem))
     (* Remaining cases *)
     | _ -> eq_generator v' th_p new_e in
   (modif @ aux_modif, E.conj_list (formula::aux_f))
