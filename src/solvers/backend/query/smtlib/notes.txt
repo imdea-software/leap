@@ -1,0 +1,5 @@
+Both files SMTTllQuery_extended.ml and SMTTllQuery_reduced.ml contain an
+implementation to translate TLL formulas to SMTLIB formulas. The main difference
+resides in the fact that "extended" version performs an unfold of many functions
+(such as setunion) considering only the cases appearing in the formula. The
+"reduced" version is more generic, but a little bit slower as well.
