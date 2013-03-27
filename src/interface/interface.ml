@@ -41,6 +41,7 @@ struct
   let msg (title:string) (info:string) =
     Printf.eprintf "\n**** %s ****\n\n%s\n\n" title info
 
+
   let smsg (title:string) (info:string) =
     Printf.eprintf "**** %s: %s ****\n" title info
 
