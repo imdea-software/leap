@@ -942,15 +942,15 @@ struct
   (*          (lambda (to::address)        *)
   (*              (isreachable from to)))) *)
   let smt_address2set_def buf num_addr =
-    let join_sets s1 s2 = "\n  (fjasdlksetunion "^ s1 ^" "^ s2 ^")" in
+    let join_sets s1 s2 = "\n  (setunion "^ s1 ^" "^ s2 ^")" in
     B.add_string buf
       ("(define-fun address2set ((h " ^heap_s^ ") (from " ^addr_s^ ")) " ^set_s^ "");
     B.add_string buf
       begin
         match num_addr with
           0 -> "\n  (singleton from))\n"
-        | 1 -> "\n  (fjaslksetunion (singleton from) (singleton (next (select h from)))))\n"
-        | _ -> let basic = "\n  (jfdslkasetunion (singleton from) (singleton (next (select h from))))" in
+        | 1 -> "\n  (setunion (singleton from) (singleton (next (select h from)))))\n"
+        | _ -> let basic = "\n  (setunion (singleton from) (singleton (next (select h from))))" in
                let addrs = LeapLib.rangeList 2 num_addr in
                let str   = List.fold_left (fun s i ->
                              join_sets ("(singleton (next"^ (string_of_int i) ^ " h from))") s
