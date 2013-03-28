@@ -24,6 +24,7 @@ let cutoff_opt : Smp.cutoff_options_t = Smp.opt_empty()
 (* The structure where we store the options for cutoff *)
 
 
+
 let gen_fresh_addr_var (vs:TslExp.VarSet.t) : TslExp.variable =
   let rec find (n:int) : TslExp.variable =
     let v_cand_id = "fresh_addr_" ^ (string_of_int n) in
@@ -201,6 +202,15 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
 
     module TslkInterf = TSLKInterface.Make(TslkExp)
 
+
+    (* The tables containing addresses and thread identifiers variables
+       representing arrays *)
+    let addrarr_tbl : (TslExp.addrarr, TslkExp.addr list) Hashtbl.t =
+      Hashtbl.create 10
+    let tidarr_tbl : (TslExp.tidarr, TslkExp.tid list) Hashtbl.t =
+      Hashtbl.create 10
+
+
     let tid_tsl_to_tslk (t:TslExp.tid) : TslkExp.tid =
       TslkInterf.tid_to_tslk_tid(TSLInterface.tid_to_expr_tid t)
 
@@ -256,7 +266,26 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
     let gen_tid_list (tt:TslExp.tidarr) (i:int) (j:int) : TslkExp.tid list =
       let vs = gen_varlist (TslExp.tidarr_to_str tt) TslkExp.Thid i j in
       List.map (fun v -> TslkExp.VarTh v) vs
-    
+
+
+    let get_addr_list (aa:TslExp.addrarr) : TslkExp.addr list =
+      try
+        Hashtbl.find addrarr_tbl aa
+      with _ -> begin
+        let aa' = gen_addr_list aa 0 (TslkExp.k - 1) in
+        Hashtbl.add addrarr_tbl aa aa'; aa'
+      end
+
+
+    let get_tid_list (tt:TslExp.tidarr) : TslkExp.tid list =
+      try
+        Hashtbl.find tidarr_tbl tt
+      with _ -> begin
+        let tt' = gen_tid_list tt 0 (TslkExp.k - 1) in
+        Hashtbl.add tidarr_tbl tt tt'; tt'
+      end
+
+
     let rec trans_literal (l:TslExp.literal) : TslkExp.formula =
       verb "**** TSL Solver. Literal to be translated: %s\n"
             (TslExp.literal_to_str l);
@@ -268,8 +297,8 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
       | NegAtom(InEq(CellT(MkCell(e,aa,tt,i)),CellT (VarCell c))) ->
           let c' = cell_tsl_to_tslk (VarCell c) in
           let e' = elem_tsl_to_tslk e in
-          let aa' = gen_addr_list aa 0 (TslkExp.k - 1) in
-          let tt' = gen_tid_list tt 0 (TslkExp.k - 1) in
+          let aa' = get_addr_list aa in
+          let tt' = get_tid_list tt in
             TslkExp.eq_cell (c') (TslkExp.MkCell(e',aa',tt'))
       (* c != mkcell(e,k,A,l) *)
       | NegAtom(Eq(CellT (VarCell c),CellT(MkCell(e,aa,tt,i))))
@@ -277,13 +306,37 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
       | Atom(InEq(CellT (VarCell c),CellT(MkCell(e,aa,tt,i))))
       | Atom(InEq(CellT(MkCell(e,aa,tt,i)),CellT (VarCell c))) ->
           TslkExp.Not (trans_literal (Atom(Eq(CellT(VarCell c), CellT(MkCell(e,aa,tt,i))))))
+      (* A != B (addresses) *)
+      | NegAtom(Eq(AddrArrayT(VarAddrArray _ as aa),
+                   AddrArrayT(VarAddrArray _ as bb)))
+      | Atom(InEq(AddrArrayT(VarAddrArray _ as aa),
+                  AddrArrayT(VarAddrArray _ as bb))) ->
+          let aa' = get_addr_list aa in
+          let bb' = get_addr_list bb in
+          let xs = ref [] in
+          for i = 0 to (TslkExp.k - 1) do
+            xs := (TslkExp.ineq_addr (List.nth aa' i) (List.nth bb' i)) :: (!xs)
+          done;
+          TslkExp.disj_list (!xs)
+      (* A != B (thread identifiers) *)
+      | NegAtom(Eq(TidArrayT(VarTidArray _ as tt),
+                   TidArrayT(VarTidArray _ as uu)))
+      | Atom(InEq(TidArrayT(VarTidArray _ as tt),
+                  TidArrayT(VarTidArray _ as uu))) ->
+          let tt' = get_tid_list tt in
+          let uu' = get_tid_list uu in
+          let xs = ref [] in
+          for i = 0 to (TslkExp.k - 1) do
+            xs := (TslkExp.ineq_tid (List.nth tt' i) (List.nth uu' i)) :: (!xs)
+          done;
+          TslkExp.disj_list (!xs)
       (* a = A[i] *)
       | Atom(Eq(AddrT a, AddrT (AddrArrRd (aa,i))))
       | Atom(Eq(AddrT (AddrArrRd (aa,i)), AddrT a))
       | NegAtom(InEq(AddrT a, AddrT (AddrArrRd (aa,i))))
       | NegAtom(InEq(AddrT (AddrArrRd (aa,i)), AddrT a)) ->
           let a' = addr_tsl_to_tslk a in
-          let aa' = gen_addr_list aa 0 (TslkExp.k - 1) in
+          let aa' = get_addr_list aa in
           let i' = int_tsl_to_tslk i in
           let xs = ref [] in
           for n = 0 to (TslkExp.k - 1) do
@@ -305,7 +358,7 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
       | NegAtom(InEq(ThidT t, ThidT (ThidArrRd (tt,i))))
       | NegAtom(InEq(ThidT (ThidArrRd (tt,i)), ThidT t)) ->
           let t' = tid_tsl_to_tslk t in
-          let tt' = gen_tid_list tt 0 (TslkExp.k - 1) in
+          let tt' = get_tid_list tt in
           let i' = int_tsl_to_tslk i in
           let xs = ref [] in
           for n = 0 to (TslkExp.k - 1) do
@@ -328,8 +381,8 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
       | NegAtom(InEq(AddrArrayT (AddrArrayUp(aa,i,a)), AddrArrayT bb)) ->
           let a' = addr_tsl_to_tslk a in
           let i' = int_tsl_to_tslk i in
-          let aa' = gen_addr_list aa 0 (TslkExp.k - 1) in
-          let bb' = gen_addr_list bb 0 (TslkExp.k - 1) in
+          let aa' = get_addr_list aa in
+          let bb' = get_addr_list bb in
           let xs = ref [] in
           for n = 0 to (TslkExp.k - 1) do
             let n' = TslkExp.LevelVal n in
@@ -355,8 +408,8 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
       | NegAtom(InEq(TidArrayT (TidArrayUp(tt,i,t)), TidArrayT uu)) ->
           let t' = tid_tsl_to_tslk t in
           let i' = int_tsl_to_tslk i in
-          let tt' = gen_tid_list tt 0 (TslkExp.k - 1) in
-          let uu' = gen_tid_list uu 0 (TslkExp.k - 1) in
+          let tt' = get_tid_list tt in
+          let uu' = get_tid_list uu in
           let xs = ref [] in
           for n = 0 to (TslkExp.k - 1) do
             let n' = TslkExp.LevelVal n in
@@ -430,7 +483,13 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
 
 
     let to_tslk (tsl_ls:TslExp.literal list) : TslkExp.formula =
+      Printf.printf "TSL LS: %s\n"
+        (String.concat "\n" (List.map TslExp.literal_to_str tsl_ls));
+      Hashtbl.clear addrarr_tbl;
+      Hashtbl.clear tidarr_tbl;
       let tslk_ps = List.map trans_literal tsl_ls in
+      Printf.printf "TSLK LS: %s\n"
+        (String.concat "\n" (List.map TslkExp.formula_to_str tslk_ps));
       TslkExp.conj_list tslk_ps
   end
 
