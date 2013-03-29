@@ -306,6 +306,24 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
       | Atom(InEq(CellT (VarCell c),CellT(MkCell(e,aa,tt,i))))
       | Atom(InEq(CellT(MkCell(e,aa,tt,i)),CellT (VarCell c))) ->
           TslkExp.Not (trans_literal (Atom(Eq(CellT(VarCell c), CellT(MkCell(e,aa,tt,i))))))
+      (* a = c.arr[l] *)
+      | Atom(Eq(AddrT a, AddrT(AddrArrRd(CellArr c,l))))
+      | Atom(Eq(AddrT(AddrArrRd(CellArr c,l)), AddrT a))
+      | NegAtom(InEq(AddrT a, AddrT(AddrArrRd(CellArr c,l))))
+      | NegAtom(InEq(AddrT(AddrArrRd(CellArr c,l)), AddrT a)) ->
+          let a' = addr_tsl_to_tslk a in
+          let c' = cell_tsl_to_tslk c in
+          let l' = int_tsl_to_tslk l in
+          TslkExp.eq_addr a' (TslkExp.NextAt(c',l'))
+      (* t = c.tids[l] *)
+      | Atom(Eq(ThidT t, ThidT(ThidArrRd(CellTids c,l))))
+      | Atom(Eq(ThidT(ThidArrRd(CellTids c,l)), ThidT t))
+      | NegAtom(InEq(ThidT t, ThidT(ThidArrRd(CellTids c,l))))
+      | NegAtom(InEq(ThidT(ThidArrRd(CellTids c,l)), ThidT t)) ->
+          let t' = tid_tsl_to_tslk t in
+          let c' = cell_tsl_to_tslk c in
+          let l' = int_tsl_to_tslk l in
+          TslkExp.eq_tid t' (TslkExp.CellLockIdAt(c',l'))
       (* A != B (addresses) *)
       | NegAtom(Eq(AddrArrayT(VarAddrArray _ as aa),
                    AddrArrayT(VarAddrArray _ as bb)))
