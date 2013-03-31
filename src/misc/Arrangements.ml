@@ -114,7 +114,6 @@ let gen_arrtrees (arr:'a t) : 'a arrtree list =
   ) cands;
 *)
   List.fold_left (fun xs (p,id_graph) ->
-    let _ = Printf.printf "KEYS: %s\n" (String.concat "," (List.map string_of_int (Partition.keys p))) in
     (build_cand_tree id_graph (GenSet.from_list (Partition.keys p)) p) @ xs
   ) [] cands
 
@@ -130,7 +129,6 @@ let rec arrtree_to_set (tree:'a arrtree) : ('a list list) GenSet.t =
 let gen_arrs (arr:'a t) : ('a list list) GenSet.t =
   List.fold_left (fun s t ->
     let ts = arrtree_to_set t in
-    let _ = Printf.printf "TS SIZE: %i\n" (GenSet.size ts) in
     GenSet.union s ts
   ) (GenSet.empty ()) (gen_arrtrees arr)
 

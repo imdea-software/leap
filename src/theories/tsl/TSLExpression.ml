@@ -3013,9 +3013,21 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
     (* Equality between cell variable and MkCell *)
     | Eq (CellT (VarCell v), CellT (MkCell (e,aa,tt,i)))
     | Eq (CellT (MkCell (e,aa,tt,i)), CellT (VarCell v)) ->
+        let _ = Printf.printf "YYYYYYYYYYYYYYYYYYYYY\n" in
+        let _ = Printf.printf "VARIABLE: %s\n" (variable_to_str v) in
         let i_var = gen_if_not_var (IntT i) Int in
-          Eq (CellT (VarCell v), CellT (MkCell(norm_elem e, norm_addrarr aa,
-                                               norm_tidarr tt, VarInt i_var)))
+        let aa_norm = norm_addrarr aa in
+        let tt_norm = norm_tidarr tt in
+        let aa' = match aa_norm with
+                  | AddrArrayUp _ -> VarAddrArray (gen_if_not_var
+                                      (AddrArrayT aa_norm) AddrArray)
+                  | _ -> aa_norm in
+        let tt' = match tt_norm with
+                  | TidArrayUp _ -> VarTidArray (gen_if_not_var
+                                      (TidArrayT tt_norm) TidArray)
+                  | _ -> tt_norm in
+          Eq (CellT (VarCell v), CellT (MkCell(norm_elem e, aa',
+                                               tt', VarInt i_var)))
     (* Inequality between cell variable and MkCell *)
     | InEq (CellT (VarCell v), CellT (MkCell (e,aa,tt,i)))
     | InEq (CellT (MkCell (e,aa,tt,i)), CellT (VarCell v)) ->

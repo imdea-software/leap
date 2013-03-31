@@ -247,32 +247,57 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
     let literal_tsl_to_tslk (l:TslExp.literal) : TslkExp.literal =
       TslkInterf.literal_to_tslk_literal(TSLInterface.literal_to_expr_literal l)
 
-    let gen_varlist (base:string) (s:TslkExp.sort)
-                    (i:int) (j:int) : TslkExp.variable list =
+
+    let gen_addr_list (aa:TslExp.addrarr) : TslkExp.addr list =
+      let _ = Printf.printf "GEN_ADDR_LIST for: %s\n" (TslExp.addrarr_to_str aa) 
+      in
       let xs = ref [] in
-      for n = i to j do
-        let id = base ^ (string_of_int n) in
-        let v = TslkExp.build_var id s false None None in
+      for n = 0 to (TslkExp.k - 1) do
+        let v = match aa with
+                | TslExp.VarAddrArray v ->
+                    let n_str = string_of_int n in
+                    TslkExp.VarAddr (
+                      TslkExp.build_var (TslExp.addrarr_to_str aa ^ "__" ^ n_str)
+                                        TslkExp.Addr false None None)
+                | TslExp.CellArr c ->
+                    let l = TslkExp.LevelVal n in
+                    TslkExp.NextAt(cell_tsl_to_tslk c, l)
+                | _ -> TslkExp.Null in
         xs := v::(!xs)
       done;
-      List.rev !xs
+      let _ = Printf.printf "GEN_ADDR_LIST GENERATED: [%s]\n" (String.concat ";" 
+      (List.map TslkExp.addr_to_str !xs)) in
+      !xs
 
 
-    let gen_addr_list (aa:TslExp.addrarr) (i:int) (j:int) : TslkExp.addr list =
-      let vs = gen_varlist (TslExp.addrarr_to_str aa) TslkExp.Addr i j in
-      List.map (fun v -> TslkExp.VarAddr v) vs
+    let gen_tid_list (tt:TslExp.tidarr) : TslkExp.tid list =
+      let _ = Printf.printf "GEN_TID_LIST for: %s\n" (TslExp.tidarr_to_str tt) 
+      in
+      let xs = ref [] in
+      for n = 0 to (TslkExp.k - 1) do
+        let v = match tt with
+                | TslExp.VarTidArray v ->
+                    let n_str = string_of_int n in
+                    TslkExp.VarTh (
+                      TslkExp.build_var (TslExp.tidarr_to_str tt ^ "__" ^ n_str)
+                                         TslkExp.Thid false None None)
+                | TslExp.CellTids c ->
+                    let l = TslkExp.LevelVal n in
+                    TslkExp.CellLockIdAt(cell_tsl_to_tslk c, l)
+                | _ -> TslkExp.NoThid in
+        xs := v::(!xs)
+      done;
+      let _ = Printf.printf "GEN_TID_LIST GENERATED: [%s]\n" (String.concat ";" 
+      (List.map TslkExp.tid_to_str !xs)) in
+      !xs
 
-
-    let gen_tid_list (tt:TslExp.tidarr) (i:int) (j:int) : TslkExp.tid list =
-      let vs = gen_varlist (TslExp.tidarr_to_str tt) TslkExp.Thid i j in
-      List.map (fun v -> TslkExp.VarTh v) vs
 
 
     let get_addr_list (aa:TslExp.addrarr) : TslkExp.addr list =
       try
         Hashtbl.find addrarr_tbl aa
       with _ -> begin
-        let aa' = gen_addr_list aa 0 (TslkExp.k - 1) in
+        let aa' = gen_addr_list aa in
         Hashtbl.add addrarr_tbl aa aa'; aa'
       end
 
@@ -281,7 +306,7 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
       try
         Hashtbl.find tidarr_tbl tt
       with _ -> begin
-        let tt' = gen_tid_list tt 0 (TslkExp.k - 1) in
+        let tt' = gen_tid_list tt in
         Hashtbl.add tidarr_tbl tt tt'; tt'
       end
 
@@ -295,6 +320,7 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
       | Atom(Eq(CellT(MkCell(e,aa,tt,i)),CellT (VarCell c)))
       | NegAtom(InEq(CellT (VarCell c),CellT(MkCell(e,aa,tt,i))))
       | NegAtom(InEq(CellT(MkCell(e,aa,tt,i)),CellT (VarCell c))) ->
+          let _ = Printf.printf "XXXXXXXXXXXXXXXXXXXXXXXX\n" in
           let c' = cell_tsl_to_tslk (VarCell c) in
           let e' = elem_tsl_to_tslk e in
           let aa' = get_addr_list aa in

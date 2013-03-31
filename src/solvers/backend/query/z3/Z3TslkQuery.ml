@@ -744,7 +744,11 @@ module Make (K : Level.S) : TSLK_QUERY =
                                                   (less_l " ^x^ " " ^z^ ")))\n")
           done
         done
-      done
+      done;
+      B.add_string buf ("(define-fun lesseq_l ((l1 Level) (l2 Level)) Bool\n" ^
+                        "  (or (= l1 l2) (less_l l1 l2)))\n");
+      B.add_string buf ("(define-fun greateq_l ((l1 Level) (l2 Level)) Bool\n" ^
+                        "  (or (= l1 l2) (greater_l l1 l2)))\n")
 
 
     (* (define error::cell) *)
