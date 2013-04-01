@@ -25,9 +25,9 @@ let cutoff_opt : Smp.cutoff_options_t = Smp.opt_empty()
 
 
 
-let gen_fresh_addr_var (vs:TslExp.VarSet.t) : TslExp.variable =
+let gen_fresh_int_var (vs:TslExp.VarSet.t) : TslExp.variable =
   let rec find (n:int) : TslExp.variable =
-    let v_cand_id = "fresh_addr_" ^ (string_of_int n) in
+    let v_cand_id = "fresh_int_" ^ (string_of_int n) in
     let v_cand = TslExp.build_var v_cand_id TslExp.Int false None None in
       if TslExp.VarSet.mem v_cand vs then find (n+1) else v_cand
   in
@@ -55,7 +55,7 @@ let sanitize (cf:TslExp.conjunctive_formula) : TslExp.conjunctive_formula =
                         let (cs,ss) = find_candidates ls in
                         let needs_sanit = TslExp.VarSet.diff cs ss in
                         let ls' = TslExp.VarSet.fold (fun v xs ->
-                                    let v_new = VarInt (gen_fresh_addr_var vars) in
+                                    let v_new = VarInt (gen_fresh_int_var vars) in
                                     (Atom(Eq(IntT v_new, IntT(IntAdd(VarInt v, IntVal 1))))) :: ls
                                   ) needs_sanit ls
                         in

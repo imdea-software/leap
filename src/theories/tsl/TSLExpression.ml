@@ -2650,6 +2650,7 @@ let new_fresh_gen (vset:VarIdSet.t) : fresh_var_gen_t =
 type norm_info_t =
   {
     term_map : (term, variable) Hashtbl.t ;
+    processed_term_map : (term, variable) Hashtbl.t ;
     fresh_gen_info : fresh_var_gen_t ;
   }
 
@@ -2660,6 +2661,7 @@ let new_norm_info_from_formula (phi:formula) : norm_info_t =
              ) (varset phi) VarIdSet.empty in
   {
     term_map = Hashtbl.create 10 ;
+    processed_term_map = Hashtbl.create 10 ;
     fresh_gen_info = new_fresh_gen vars ;
   }
 
@@ -2835,18 +2837,26 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
     else
       Hashtbl.add info.term_map t v in
   let gen_if_not_var (t:term) (s:sort) : variable =
-    if is_var_term t then term_to_var t
+    let _ = Printf.printf "GEN_IF_NOT_VAR FOR TERM: %s\n" (term_to_str t) in
+    if is_var_term t then (Printf.printf "WAS A VARIABLE\n"; term_to_var t)
     else try
-           Hashtbl.find info.term_map t
+           Printf.printf "EXISTING PAIRS:\n";
+           Hashtbl.iter (fun t v -> Printf.printf "%s ----> %s\n" (term_to_str t) (variable_to_str v)) info.term_map;
+           try
+             Hashtbl.find info.processed_term_map t
+           with _ -> Hashtbl.find info.term_map t
          with _ -> begin
                      let v = gen_fresh_var info.fresh_gen_info s in
+                     Printf.printf "APPENDING A NEW VARIABLE: %s\n" (variable_to_str v);
                      append_if_diff t v; v
                    end in
+(*
   let append_assert (v:variable) (t:term) : variable =
     try
       Hashtbl.find info.term_map t
     with _ ->
       (append_if_diff t v; v) in
+*)
   let rec norm_set (s:set) : set =
     match s with
     | VarSet v -> VarSet v
@@ -3013,8 +3023,6 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
     (* Equality between cell variable and MkCell *)
     | Eq (CellT (VarCell v), CellT (MkCell (e,aa,tt,i)))
     | Eq (CellT (MkCell (e,aa,tt,i)), CellT (VarCell v)) ->
-        let _ = Printf.printf "YYYYYYYYYYYYYYYYYYYYY\n" in
-        let _ = Printf.printf "VARIABLE: %s\n" (variable_to_str v) in
         let i_var = gen_if_not_var (IntT i) Int in
         let aa_norm = norm_addrarr aa in
         let tt_norm = norm_tidarr tt in
@@ -3350,11 +3358,15 @@ let normalize (phi:formula) : formula =
   (* Process the original formula *)
   let phi' = norm_formula norm_info (nnf phi) in
   (* Normalize all remaining literals stored in the normalization table *)
+  let _ = Printf.printf "WILL NORMALIZE REMAINING ELEMENTS\n" in
   let lit_list = ref [] in
   while (Hashtbl.length norm_info.term_map > 0) do
     Hashtbl.iter (fun t v ->
+      Hashtbl.add norm_info.processed_term_map t v;
+      let _ = Printf.printf "PROCESSING: %s ----> %s\n" (term_to_str t) (variable_to_str v) in
       let l = Atom (Eq (make_compatible_term_from_var t v, t)) in
       let new_l = norm_literal norm_info l in
+      let _ = Printf.printf "NEW LITERAL: %s\n" (formula_to_str new_l) in
       lit_list := new_l :: !lit_list;
       Hashtbl.remove norm_info.term_map t
     ) norm_info.term_map;

@@ -23,4 +23,4 @@ val get_tll_query : string -> (module TLL_QUERY)
 (** [get_tslk_query id] returns an appropriate TSLK query module for the
     backend solver identified by [id] depending on the status previously set
     through a call to [set_smt_usage] *)
-(*val get_tslk_query : string -> (module TSLK_QUERY)*)
+(*val get_tslk_query : string -> (module Z3TslkQuery.Make) *)

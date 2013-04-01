@@ -29,10 +29,11 @@ let get_tll_query (id:string) : (module TLL_QUERY) =
   | _                -> (module Z3TllQuery)
 
 (*
-let get_tslk_query (id:string) : (functor (K : Level.S) -> (module TSLK_QUERY)) =
+(*let get_tslk_query (id:string) : (functor (K : Level.S) -> (module TSLK_QUERY)) = *)
+let get_tslk_query (id:string) =
   match (id,!use_smtlib) with
+(*  | (_,    true ) -> (module SMTTslkQuery.Make) *)
   | ("Z3", false) -> (module Z3TslkQuery.Make)
   | _             -> (module Z3TslkQuery.Make)
 *)
-
 
