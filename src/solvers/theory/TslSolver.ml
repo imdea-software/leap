@@ -248,6 +248,21 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
       TslkInterf.literal_to_tslk_literal(TSLInterface.literal_to_expr_literal l)
 
 
+    let expand_array_to_var (v:TslExp.variable)
+                            (s:TslkExp.sort)
+                            (n:int) : TslkExp.variable =
+      let id_str = TslExp.var_id v in
+      let pr_str = if TslExp.is_primed_var v then "_prime" else "" in
+      let th_str = match TslExp.var_th v with
+                   | None -> ""
+                   | Some tid -> "_" ^ (TslExp.tid_to_str tid) in
+      let p_str = match TslExp.var_owner v with
+                  | None -> ""
+                  | Some p -> p ^ "_" in
+      let new_id = p_str ^ id_str ^ th_str ^ pr_str ^ "__" ^ (string_of_int n) in
+        TslkExp.build_var new_id s false None None
+
+
     let gen_addr_list (aa:TslExp.addrarr) : TslkExp.addr list =
       let _ = Printf.printf "GEN_ADDR_LIST for: %s\n" (TslExp.addrarr_to_str aa) 
       in
@@ -255,10 +270,7 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
       for n = 0 to (TslkExp.k - 1) do
         let v = match aa with
                 | TslExp.VarAddrArray v ->
-                    let n_str = string_of_int n in
-                    TslkExp.VarAddr (
-                      TslkExp.build_var (TslExp.addrarr_to_str aa ^ "__" ^ n_str)
-                                        TslkExp.Addr false None None)
+                    TslkExp.VarAddr (expand_array_to_var v TslkExp.Addr n)
                 | TslExp.CellArr c ->
                     let l = TslkExp.LevelVal n in
                     TslkExp.NextAt(cell_tsl_to_tslk c, l)
@@ -277,10 +289,7 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
       for n = 0 to (TslkExp.k - 1) do
         let v = match tt with
                 | TslExp.VarTidArray v ->
-                    let n_str = string_of_int n in
-                    TslkExp.VarTh (
-                      TslkExp.build_var (TslExp.tidarr_to_str tt ^ "__" ^ n_str)
-                                         TslkExp.Thid false None None)
+                    TslkExp.VarTh (expand_array_to_var v TslkExp.Thid n)
                 | TslExp.CellTids c ->
                     let l = TslkExp.LevelVal n in
                     TslkExp.CellLockIdAt(cell_tsl_to_tslk c, l)

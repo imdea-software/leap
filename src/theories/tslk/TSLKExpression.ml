@@ -128,6 +128,10 @@ module type S =
         FalseConj
       | TrueConj
       | Conj              of literal list
+    and disjunctive_formula =
+      | FalseDisj
+      | TrueDisj
+      | Disj              of literal list
     and formula =
         Literal           of literal
       | True
@@ -191,6 +195,7 @@ module type S =
 
     val nnf : formula -> formula
     val dnf : formula -> conjunctive_formula list
+    val cnf : formula -> disjunctive_formula list
 
     val prime_var : variable -> variable
     val unprime_var : variable -> variable
@@ -202,6 +207,7 @@ module type S =
     val atom_to_str     : atom    -> string
     val literal_to_str  : literal -> string
     val conjunctive_formula_to_str : conjunctive_formula -> string
+    val disjunctive_formula_to_str : disjunctive_formula -> string
     val term_to_str     : term   -> string
     val addr_to_str     : addr   -> string
     val cell_to_str     : cell   -> string
@@ -410,6 +416,10 @@ module Make (K : Level.S) : S =
         FalseConj
       | TrueConj
       | Conj              of literal list
+    and disjunctive_formula =
+      | FalseDisj
+      | TrueDisj
+      | Disj              of literal list
     and formula =
         Literal           of literal
       | True
@@ -1263,6 +1273,18 @@ module Make (K : Level.S) : S =
           | FalseConj -> Printf.sprintf "false"
           | Conj([]) -> ""
           | Conj(lit :: subform) -> c_to_str subform (literal_to_str lit)
+    and disjunctive_formula_to_str form =
+      let rec c_to_str f str =
+        match f with
+          | [] -> str
+          | lit::sub ->
+              c_to_str sub (Printf.sprintf "%s \\/ %s" str (literal_to_str lit))
+      in
+        match form with
+          | TrueDisj  -> Printf.sprintf "true"
+          | FalseDisj -> Printf.sprintf "false"
+          | Disj([]) -> ""
+          | Disj(lit :: subform) -> c_to_str subform (literal_to_str lit)
     and formula_to_str form =
       match form with
           Literal(lit) -> (literal_to_str lit)
@@ -1652,6 +1674,51 @@ module Make (K : Level.S) : S =
                           RAISE(ErrorInNNF(msg))
       in
         dnf_nnf (nnf expr)
+
+
+    let rec cnf (expr:formula) : disjunctive_formula list =
+      let rec cnf_nnf nnfexpr =
+        match nnfexpr with
+          Or(e1,e2)  ->
+            begin
+              match (cnf_nnf e1, cnf_nnf e2) with
+                ([TrueDisj],_)  -> [TrueDisj]
+              | (_,[TrueDisj])  -> [TrueDisj]
+              | ([FalseDisj],x) -> x
+              | (x,[FalseDisj]) -> x
+              | (e1_cnf, e2_cnf) ->
+                    let get_disjuncts d =
+                      match d with
+                        Disj l -> l
+                      | _ -> let msg = "Formula "^(formula_to_str nnfexpr)^" is not in NNF.\n" in
+                               RAISE(ErrorInNNF(msg))
+                    in
+                    (* here lx and ly  are lists of Disj none of which is 
+                     * True or False *)
+                    let add_to_all_in_e2 final_list x1 =
+                      let lx1 = get_disjuncts x1 in
+                      let add_x1 l2 x2 = Disj(lx1 @ (get_disjuncts x2))::l2 in
+                      let lst = List.fold_left add_x1 [] e2_cnf in
+                        lst @ final_list
+                    in
+                      List.fold_left add_to_all_in_e2 [] e1_cnf
+            end
+        | And(e1,e2) ->
+            begin
+              match (cnf_nnf e1, cnf_nnf e2) with
+                ([FalseDisj],_) -> [FalseDisj]
+              | (_,[FalseDisj]) -> [FalseDisj]
+              | ([TrueDisj],x)  -> x
+              | (x,[TrueDisj])  -> x
+              | (lx,ly) -> lx @ ly
+            end
+        | Literal(l) -> [ Disj [ l ]]
+        | True       -> [TrueDisj]
+        | False      -> [FalseDisj]
+        | _          -> let msg = "Formula " ^(formula_to_str nnfexpr)^ " is not in NNF.\n" in
+                          RAISE(ErrorInNNF(msg))
+      in
+        cnf_nnf (nnf expr)
 
 
     let rec split_conj (phi:formula) : formula list =

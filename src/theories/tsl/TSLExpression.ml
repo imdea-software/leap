@@ -261,6 +261,10 @@ let var_th (v:variable) : tid option =
   let (_,_,_,th,_) = v in th
 
 
+let var_owner (v:variable) : string option =
+  let (_,_,_,_,p) = v in p
+
+
 
 (*******************************)
 (* VARLIST/VARSET FOR FORMULAS *)
@@ -2866,7 +2870,8 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
     | Intr (s1,s2) -> Intr (norm_set s1, norm_set s2)
     | Setdiff (s1,s2) -> Setdiff (norm_set s1, norm_set s2)
     | PathToSet p -> PathToSet (norm_path p)
-    | AddrToSet (m,a,i) -> let i_var = gen_if_not_var (IntT i) Int in
+    | AddrToSet (m,a,i) -> let _ = Printf.printf "### %s\n" (set_to_str s) in
+                           let i_var = gen_if_not_var (IntT i) Int in
                              AddrToSet (norm_mem m, norm_addr a, VarInt i_var)
 
   and norm_tid (t:tid) : tid =
@@ -2874,7 +2879,8 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
     | VarTh v -> VarTh v
     | NoThid -> NoThid
     | CellLockIdAt (c,i) -> CellLockIdAt (norm_cell c, norm_int i)
-    | ThidArrRd (tt,i) -> let t_var = gen_if_not_var (ThidT t) Thid in
+    | ThidArrRd (tt,i) -> let _ = Printf.printf "### %s\n" (tid_to_str t) in
+                          let t_var = gen_if_not_var (ThidT t) Thid in
                             VarTh t_var
 (*                          ThidArrRd (norm_tidarr tt, VarInt i_var) *)
 
@@ -2890,9 +2896,11 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
     match a with
     | VarAddr v -> VarAddr v
     | Null -> Null
-    | NextAt (c,i) -> let i_var = gen_if_not_var (IntT i) Int in
+    | NextAt (c,i) -> let _ = Printf.printf "### %s\n" (addr_to_str a) in
+                      let i_var = gen_if_not_var (IntT i) Int in
                         NextAt (norm_cell c, VarInt i_var)
-    | AddrArrRd (aa,i) -> let a_var = gen_if_not_var (AddrT a) Addr in
+    | AddrArrRd (aa,i) -> let _ = Printf.printf "### %s\n" (addr_to_str a) in
+                          let a_var = gen_if_not_var (AddrT a) Addr in
                             VarAddr a_var
 (*                          AddrArrRd (norm_addrarr aa, VarInt i_var) *)
 
@@ -2900,13 +2908,16 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
     match c with
     | VarCell v -> VarCell v
     | Error -> Error
-    | MkCell (e,aa,tt,i) -> let c_var = gen_if_not_var (CellT c) Cell in
+    | MkCell (e,aa,tt,i) -> let _ = Printf.printf "### %s\n" (cell_to_str c) in
+                            let c_var = gen_if_not_var (CellT c) Cell in
                               VarCell c_var
                               (*MkCell (norm_elem e, norm_addrarr aa,
                                       norm_tidarr tt, VarInt i_var) *)
-    | CellLockAt (c,i,t) -> let i_var = gen_if_not_var (IntT i) Int in
+    | CellLockAt (c,i,t) -> let _ = Printf.printf "### %s\n" (cell_to_str c) in
+                            let i_var = gen_if_not_var (IntT i) Int in
                               CellLockAt (norm_cell c, VarInt i_var, norm_tid t)
-    | CellUnlockAt (c,i) -> let i_var = gen_if_not_var (IntT i) Int in
+    | CellUnlockAt (c,i) -> let _ = Printf.printf "### %s\n" (cell_to_str c) in
+                            let i_var = gen_if_not_var (IntT i) Int in
                               CellUnlockAt (norm_cell c, VarInt i_var)
     | CellAt (m,a) -> CellAt (norm_mem m, norm_addr a)
 
@@ -2934,7 +2945,8 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
     | VarPath v -> VarPath v
     | Epsilon -> Epsilon
     | SimplePath a -> SimplePath (norm_addr a)
-    | GetPath (m,a1,a2,i) -> let i_var = gen_if_not_var (IntT i) Int in
+    | GetPath (m,a1,a2,i) -> let _ = Printf.printf "### %s\n" (path_to_str p) in
+                             let i_var = gen_if_not_var (IntT i) Int in
                                GetPath (norm_mem m, norm_addr a1,
                                         norm_addr a2, VarInt i_var)
 
@@ -2945,17 +2957,23 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
 
   and norm_int (i:integer) : integer =
     match i with
-    | IntVal j -> IntVal j
+    | IntVal j -> let _ = Printf.printf "### %s\n" (int_to_str i) in
+                  VarInt (gen_if_not_var (IntT i) Int)
     | VarInt v -> VarInt v
     | IntNeg j -> IntNeg j
     | IntAdd (j1,j2) -> IntAdd (j1,j2)
     | IntSub (j1,j2) -> IntSub (j1,j2)
     | IntMul (j1,j2) -> IntMul (j1,j2)
     | IntDiv (j1,j2) -> IntDiv (j1,j2)
+    | CellMax c -> let l = gen_if_not_var (IntT i) Int in
+                   VarInt l
+(*
     | CellMax c -> let l' = gen_fresh_var info.fresh_gen_info Int in
                    let c_norm = norm_cell (MkCell(CellData c, CellArr c, CellTids c, VarInt l')) in
+
                    let _ = gen_if_not_var (CellT c_norm) Cell in
                    VarInt l'
+*)
     | HavocLevel -> HavocLevel
 
   and norm_addrarr (aa:addrarr) : addrarr =
@@ -3353,21 +3371,32 @@ let rec norm_formula (info:norm_info_t) (phi:formula) : formula =
 
 
 let normalize (phi:formula) : formula =
+  let _ = print_endline "------------------------ NEW FORMULA TO NORMALIZE ----------------------------" in
+  let _ = Printf.printf "%s\n" (formula_to_str phi) in
+  let _ = print_endline "------------------------ NEW FORMULA TO NORMALIZE ----------------------------" in
   (* Create a new normalization *)
   let norm_info = new_norm_info_from_formula phi in
   (* Process the original formula *)
   let phi' = norm_formula norm_info (nnf phi) in
   (* Normalize all remaining literals stored in the normalization table *)
-  let _ = Printf.printf "WILL NORMALIZE REMAINING ELEMENTS\n" in
+  let _ = print_endline "WILL NORMALIZE REMAINING ELEMENTS" in
   let lit_list = ref [] in
   while (Hashtbl.length norm_info.term_map > 0) do
     Hashtbl.iter (fun t v ->
-      Hashtbl.add norm_info.processed_term_map t v;
-      let _ = Printf.printf "PROCESSING: %s ----> %s\n" (term_to_str t) (variable_to_str v) in
-      let l = Atom (Eq (make_compatible_term_from_var t v, t)) in
-      let new_l = norm_literal norm_info l in
-      let _ = Printf.printf "NEW LITERAL: %s\n" (formula_to_str new_l) in
-      lit_list := new_l :: !lit_list;
+      begin
+        match t with
+        | IntT (CellMax _) -> ()
+        | _ -> begin
+                 Hashtbl.add norm_info.processed_term_map t v;
+                 let _ = Printf.printf "PROCESSING: %s ----> %s\n" (term_to_str t) (variable_to_str v) in
+                 let l = Atom (Eq (make_compatible_term_from_var t v, t)) in
+                 let new_l = norm_literal norm_info l in
+                 let _ = Printf.printf "NEW LITERAL: %s\n" (formula_to_str new_l) in
+                 match new_l with
+                 | Literal(Atom(Eq(t1,t2))) -> (if t1 <> t2 then lit_list := new_l :: !lit_list)
+                 | _ -> (lit_list := new_l :: !lit_list)
+               end
+      end;
       Hashtbl.remove norm_info.term_map t
     ) norm_info.term_map;
   done;

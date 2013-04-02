@@ -125,6 +125,10 @@ module type S =
         FalseConj
       | TrueConj
       | Conj              of literal list
+    and disjunctive_formula =
+      | FalseDisj
+      | TrueDisj
+      | Disj              of literal list
     and formula =
         Literal           of literal
       | True
@@ -188,6 +192,7 @@ module type S =
 
     val nnf : formula -> formula
     val dnf : formula -> conjunctive_formula list
+    val cnf : formula -> disjunctive_formula list
 
     val prime_var : variable -> variable
     val unprime_var : variable -> variable
@@ -199,6 +204,7 @@ module type S =
     val atom_to_str     : atom    -> string
     val literal_to_str  : literal -> string
     val conjunctive_formula_to_str : conjunctive_formula -> string
+    val disjunctive_formula_to_str : disjunctive_formula -> string
     val term_to_str     : term   -> string
     val addr_to_str     : addr   -> string
     val cell_to_str     : cell   -> string

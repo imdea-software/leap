@@ -1794,7 +1794,7 @@ module Make (K : Level.S) : TSLK_QUERY =
       in
         B.add_string buf (Printf.sprintf "; Formula\n; %s\n\n"
                             (Expr.formula_to_str phi));
-        Printf.printf "FORMULA: %s\n" (Expr.formula_to_str phi);
+        Printf.printf "FORMULA:\n%s\n" (Expr.formula_to_str phi);
         print_endline "A";
         z3_preamble buf num_addr num_tid num_elem req_sorts;
         print_endline "B";

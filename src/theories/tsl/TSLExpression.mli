@@ -175,6 +175,10 @@ val param_var : variable -> tid -> variable
 val is_global_var : variable -> bool
 val get_sort : variable -> sort
 val build_var : varId -> sort -> bool -> tid option -> string option -> variable
+val var_id : variable -> varId
+val is_primed_var : variable -> bool
+val var_owner : variable -> string option
+val var_th : variable -> tid option
 val unlocalize_variable : variable -> variable
 
 (* returns all variables form a formula *)
