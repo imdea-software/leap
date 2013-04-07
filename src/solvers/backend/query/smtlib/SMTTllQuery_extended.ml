@@ -1949,9 +1949,16 @@ struct
     Hashtbl.iter (fun e _ -> B.add_string buf (process_elem e)) elem_tbl;
     Hashtbl.iter (fun t _ -> B.add_string buf (process_tid t)) tid_tbl;
     Hashtbl.iter (fun c _ -> B.add_string buf (process_cell c)) cell_tbl;
-    Hashtbl.iter (fun s _ -> B.add_string buf (process_set num_addrs s)) set_tbl;
     Hashtbl.iter (fun s _ -> B.add_string buf (process_setth num_tids s)) setth_tbl;
     Hashtbl.iter (fun s _ -> B.add_string buf (process_setelem num_elems num_addrs s)) setelem_tbl;
+    let (addrtoset_list, set_list) =
+        Hashtbl.fold (fun s _ (al,sl) ->
+          match s with
+          | Expr.AddrToSet _ -> (s::al,sl)
+          | _                -> (al,s::sl)  
+        ) set_tbl ([],[]) in
+    List.iter (fun s -> B.add_string buf (process_set num_addrs s)) addrtoset_list;
+    List.iter (fun s -> B.add_string buf (process_set num_addrs s)) set_list;
     Hashtbl.iter (fun g _ -> B.add_string buf (process_getp num_addrs g)) getp_tbl;
     Hashtbl.iter (fun f _ -> B.add_string buf (process_fstlock num_addrs f)) fstlock_tbl
 
