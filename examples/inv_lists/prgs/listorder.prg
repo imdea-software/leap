@@ -124,8 +124,8 @@ assume
 :ins_diff[
                                   prev->next := aux
                                     $
-                                      region := region Union {aux};
                                       elements := UnionElem (elements, SingleElem(e));
+                                      region := region Union {aux};
                                     $
 :ins_follows]
 :after_malloc]
@@ -186,8 +186,8 @@ assume
 :rem_if_two
                                   prev->next := aux
                                     $
-                                      region := region SetDiff {curr};
                                       elements := SetDiffElem (elements, SingleElem(e));
+                                      region := region SetDiff {curr};
                                     $
 :rem_follows]
 :rem_curr_def]
