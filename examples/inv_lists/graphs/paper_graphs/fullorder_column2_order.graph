@@ -1,0 +1,1 @@
+fullPreserve, fullNext, fullLock, fullDisjoint, fullRegion => fullOrder {pruning:reduce2|}
