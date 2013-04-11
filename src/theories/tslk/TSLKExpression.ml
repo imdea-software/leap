@@ -286,7 +286,11 @@ module type S =
     val ineq_mem : mem -> mem -> formula
     val ineq_level : level -> level -> formula
     val ineq_term : term -> term -> formula
-
+    val less_level : level -> level -> formula
+    val lesseq_level : level -> level -> formula
+    val greater_level : level -> level -> formula
+    val greatereq_level : level -> level -> formula
+    val subseteq : set -> set -> formula
   end
 
 
@@ -2117,6 +2121,18 @@ module Make (K : Level.S) : S =
     let eq_level (l1:level) (l2:level) : formula =
       Literal (Atom (Eq (LevelT l1, LevelT l2)))
 
+    let less_level (l1:level) (l2:level) : formula =
+      Literal (Atom (Less (l1, l2)))
+
+    let lesseq_level (l1:level) (l2:level) : formula =
+      Literal (Atom (LessEq (l1, l2)))
+
+    let greater_level (l1:level) (l2:level) : formula =
+      Literal (Atom (Greater (l1, l2)))
+
+    let greatereq_level (l1:level) (l2:level) : formula =
+      Literal (Atom (GreaterEq (l1, l2)))
+
     let eq_term (t1:term) (t2:term) : formula =
       Literal (Atom (Eq (t1, t2)))
 
@@ -2152,6 +2168,9 @@ module Make (K : Level.S) : S =
 
     let ineq_term (t1:term) (t2:term) : formula =
       Literal (Atom (InEq (t1, t2)))
+
+    let subseteq (s1:set) (s2:set) : formula =
+      Literal (Atom (SubsetEq (s1,s2)))
 
   end
 

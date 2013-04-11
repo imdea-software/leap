@@ -81,13 +81,21 @@ assume
                               begin
                                 lvl := havocLevel();
                                 if (lvl > maxLevel) then
+:insert_lvl_outrange[
                                   i := maxLevel + 1;
+:insert_i_greater_maxLevel[
                                   while (i <= lvl) do
+:insert_i_lesseq_lvl[
                                     head->arr[i] := tail;
                                     tail->arr[i] := null;
+                                    maxLevel := i;
                                     i := i + 1;
+:insert_i_lesseq_lvl]
+:insert_i_greater_maxLevel]
                                   endwhile
+:insert_lvl_outrange]
                                 endif
+:insert_lvl_inrange[
                                 prev := head;
 :insert_prev_low[
                                 curr := prev->arr[maxLevel];
@@ -118,9 +126,9 @@ assume
                                       $
                                     i := i + 1;
                                   endwhile
-
 :insert_connect_loop]
 :insert_prev_low]
+:insert_lvl_inrange]
                                 endif
                                 return (); // return (~ valueWasIn)
                               end

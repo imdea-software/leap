@@ -282,6 +282,11 @@ module type S =
     val ineq_mem : mem -> mem -> formula
     val ineq_level : level -> level -> formula
     val ineq_term : term -> term -> formula
+    val less_level : level -> level -> formula
+    val lesseq_level : level -> level -> formula
+    val greater_level : level -> level -> formula
+    val greatereq_level : level -> level -> formula
+    val subseteq : set -> set -> formula
 
   end
 

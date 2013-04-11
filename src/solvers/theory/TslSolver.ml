@@ -481,10 +481,11 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
       | Atom(InEq(TidArrayT uu, TidArrayT (TidArrayUp(tt,i,t))))
       | Atom(InEq(TidArrayT (TidArrayUp(tt,i,t)), TidArrayT uu)) ->
           TslkExp.Not (trans_literal (Atom(Eq(TidArrayT uu, TidArrayT (TidArrayUp(tt,i,t))))))
-      (* Skiplist (m,s,i,s1,s2) *)
-      | Atom(Skiplist(m,s,i,a1,a2)) ->
+      (* Skiplist (m,s,l,s1,s2) *)
+      | Atom(Skiplist(m,s,l,a1,a2)) ->
           let m' = mem_tsl_to_tslk m in
           let s' = set_tsl_to_tslk s in
+          let l' = int_tsl_to_tslk l in
           let a1' = addr_tsl_to_tslk a1 in
           let a2' = addr_tsl_to_tslk a2 in
           let xs = ref
@@ -495,21 +496,25 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
                       (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',TslkExp.LevelVal 0)))] in
           for n = 0 to (TslkExp.k - 1) do
             let n' = TslkExp.LevelVal n in
-            xs := (TslkExp.eq_addr (TslkExp.NextAt(TslkExp.CellAt(m',a2'),n'))
-
-                                   (TslkExp.Null)) :: (!xs)
+            xs := TslkExp.Implies
+                    (TslkExp.lesseq_level n' l',
+                     TslkExp.eq_addr (TslkExp.NextAt(TslkExp.CellAt(m',a2'),n'))
+                                     (TslkExp.Null)) :: (!xs)
           done;
           for n = 0 to (TslkExp.k - 2) do
             let n' = TslkExp.LevelVal n in
-            xs := (TslkExp.Literal(TslkExp.Atom(TslkExp.SubsetEq(
-                    TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',TslkExp.LevelSucc n')),
-                    TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',n')))))) :: (!xs)
+            xs := TslkExp.Implies
+                    (TslkExp.less_level n' l',
+                     TslkExp.subseteq
+                       (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',TslkExp.LevelSucc n')))
+                       (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',n')))) :: (!xs)
           done;
           TslkExp.conj_list (!xs)
-      (* ~ Skiplist(m,s,i,a1,a2) *)
-      | NegAtom(Skiplist(m,s,i,a1,a2)) ->
+      (* ~ Skiplist(m,s,l,a1,a2) *)
+      | NegAtom(Skiplist(m,s,l,a1,a2)) ->
           let m' = mem_tsl_to_tslk m in
           let s' = set_tsl_to_tslk s in
+          let l' = int_tsl_to_tslk l in
           let a1' = addr_tsl_to_tslk a1 in
           let a2' = addr_tsl_to_tslk a2 in
 
@@ -522,14 +527,18 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
                       (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',TslkExp.LevelVal 0)))] in
           for n = 0 to (TslkExp.k - 1) do
             let n' = TslkExp.LevelVal n in
-            xs := (TslkExp.ineq_addr (TslkExp.NextAt(TslkExp.CellAt(m',a2'),n'))
-                                   (TslkExp.Null)) :: (!xs)
+            xs := TslkExp.And
+                    (TslkExp.lesseq_level n' l',
+                     TslkExp.ineq_addr (TslkExp.NextAt(TslkExp.CellAt(m',a2'),n'))
+                                       (TslkExp.Null)) :: (!xs)
           done;
           for n = 0 to (TslkExp.k - 2) do
             let n' = TslkExp.LevelVal n in
-            xs := (TslkExp.Literal(TslkExp.NegAtom(TslkExp.SubsetEq(
-                    TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',TslkExp.LevelSucc n')),
-                    TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',n')))))) :: (!xs)
+            xs := TslkExp.And
+                    (TslkExp.less_level n' l',
+                     TslkExp.subseteq
+                      (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',TslkExp.LevelSucc n')))
+                      (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',n')))) :: (!xs)
           done;
           TslkExp.disj_list (!xs)
       | _ -> TslkExp.Literal (literal_tsl_to_tslk l)

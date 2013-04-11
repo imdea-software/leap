@@ -38,7 +38,7 @@ check_tool = @if ( test -e $(TOOLS)/$(1) ) || (test -h $(TOOLS)/$(1) ) ; then \
 						fi
 
 
-.PHONY: clean softclean all expand unexpand leap prog2fts pinv sinv pvd tll numinv spec_check doc tools
+.PHONY: clean softclean all expand unexpand leap prog2fts pinv sinv pvd tll numinv spec_check doc tools tests
 
 
 # Flags
@@ -104,6 +104,8 @@ $(TLL):
 solvertest:
 	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) test.native
 
+tests:
+	@for i in src/tests/*.ml; do $(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) "$$(expr "$$i" : '\(.*\)\.ml').byte" ; done
 
 
 doc:
