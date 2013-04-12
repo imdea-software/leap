@@ -132,7 +132,10 @@ let guess_arrangements (cf:TslExp.conjunctive_formula)
     | TslExp.TrueConj  -> []
     | TslExp.Conj ls   -> begin
                             let level_vars = TslExp.varset_instances_of_sort_from_conj cf (TslExp.Int) in
-                            Printf.printf "THIS IS THE CONJUNCTION TO BE ANALYZED:\n%s\n" (TslExp.conjunctive_formula_to_str cf);
+                             verb "**** TSL Solver: variables for arrangement...\n{ %s }\n"
+                                    (TslExp.VarSet.fold (fun v str ->
+                                      str ^ TslExp.variable_to_str v ^ "; "
+                                    ) level_vars "");
 (*
                             let level_vars = TslExp.VarSet.fold (fun v s ->
                                                TslExp.VarSet.add (TslExp.unlocalize_variable v) s
@@ -151,6 +154,8 @@ let guess_arrangements (cf:TslExp.conjunctive_formula)
                               | TslExp.NegAtom(TslExp.InEq(IntT i1,IntT i2)) -> Arr.add_eq arr i1 i2
                               | _ -> ()
                             ) ls;
+                            verb "**** TSL Solver: known information for arrangments:\n%s\n"
+                                  (Arr.to_str arr TslExp.int_to_str);
                             GenSet.fold (fun s_elem xs ->
                               let eqs = List.fold_left (fun ys eq_c ->
                                           (cons_eq_class eq_c) @ ys
@@ -570,30 +575,14 @@ let check_sat_by_cases (lines:int)
     | TslExp.TrueConj  -> (verb "**** check_pa: true\n"; true)
     | TslExp.FalseConj -> (verb "**** check_pa: false\n"; false)
     | TslExp.Conj ls   ->
-        verb "**** check_pa: conjunction of literals\n";
         let numSolv_id = BackendSolvers.Yices.identifier in
         let module NumSol = (val NumSolver.choose numSolv_id : NumSolver.S) in
-
-        verb "A0\n";
-        let a1 = (TslExp.from_conjformula_to_formula
-                            cf) in
-        verb "A1\n";
-        let a2 = (TSLInterface.formula_to_expr_formula a1) in
-        verb "A2\n";
-        verb "FORMULA TO INT:\n%s\n" (Expression.formula_to_str a2);
-        let a3 = NumExpression.formula_to_int_formula a2 in
-        verb "A3\n";
-        let phi_num = a3
-(*
         let phi_num = NumExpression.formula_to_int_formula
                         (TSLInterface.formula_to_expr_formula
                           (TslExp.from_conjformula_to_formula
                             cf))
-*)
         in
-        verb "**** TSL Solver numeric formula: %s\n"
-                  (TslExp.conjunctive_formula_to_str cf);
-        verb "**** TSL Solver will pass numeric formula: %s\n"
+        verb "**** TSL Solver will check satisfiability for:\n%s\n"
                   (NumExpression.int_formula_to_string phi_num);
         NumSol.is_sat phi_num in
 
@@ -622,8 +611,6 @@ let check_sat_by_cases (lines:int)
   let rec check (pa:TslExp.conjunctive_formula)
                 (nc:TslExp.conjunctive_formula)
                 (arrgs:TslExp.conjunctive_formula list) =
-    verb "**** TSL Solver. PA: %s\n" (TslExp.conjunctive_formula_to_str pa);
-    verb "**** TSL Solver. NC: %s\n" (TslExp.conjunctive_formula_to_str nc);
     match arrgs with
     | [] -> false
     | alpha::xs ->
@@ -641,12 +628,12 @@ let check_sat_by_cases (lines:int)
   (* Main call *)
   let tslk_calls = ref 0 in
   let rec check_aux cs =
-    verb "**** TSL Solver: %i cases\n%s\n" (List.length cs)
+    verbstr (Interface.Msg.info ("SPLIT INTO PA y NC: " ^(string_of_int (List.length cs))^ " CASES")
             (String.concat "\n"
               (List.map (fun (pa,nc) ->
                 Printf.sprintf "PA: %s\nNC: %s\n--------\n"
                   (TslExp.conjunctive_formula_to_str pa)
-                  (TslExp.conjunctive_formula_to_str nc)) cs));
+                  (TslExp.conjunctive_formula_to_str nc)) cs)));
     match cs with
     | []          -> (false, 1, !tslk_calls)
     | (pa,nc)::xs -> begin
@@ -674,8 +661,7 @@ let is_sat_plus_info (lines : int)
   (* 0. Normalize the formula and rewrite it in DNF *)
   verb "**** Will normalize TSL formula...\n";
   let phi_norm = TslExp.normalize phi in
-  verb "**** Original TSL formula:\n%s\n" (TslExp.formula_to_str phi);
-  verb "**** Normalized TSL formula:\n%s\n" (TslExp.formula_to_str phi_norm);
+  verbstr (Interface.Msg.info "NORMALIZED FORMULA" (TslExp.formula_to_str phi_norm));
   verb "**** Will do DNF on TSL formula...\n";
   let phi_dnf = TslExp.dnf phi_norm in
   (* 1. Sanitize the formula *)

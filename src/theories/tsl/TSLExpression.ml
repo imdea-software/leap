@@ -1,5 +1,6 @@
 open Printf
 open LeapLib
+open LeapVerbose
 
 type varId = string
 
@@ -3391,7 +3392,7 @@ let normalize (phi:formula) : formula =
                  let _ = Printf.printf "PROCESSING: %s ----> %s\n" (term_to_str t) (variable_to_str v) in
                  let l = Atom (Eq (make_compatible_term_from_var t v, t)) in
                  let new_l = norm_literal norm_info l in
-                 let _ = Printf.printf "NEW LITERAL: %s\n" (formula_to_str new_l) in
+                 verbstr (Interface.Msg.info "TSL LITERAL TO NORMALIZE" (formula_to_str new_l));
                  match new_l with
                  | Literal(Atom(Eq(t1,t2))) -> (if t1 <> t2 then lit_list := new_l :: !lit_list)
                  | _ -> (lit_list := new_l :: !lit_list)

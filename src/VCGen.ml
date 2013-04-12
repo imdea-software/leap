@@ -1168,8 +1168,8 @@ struct
       (p : E.pc_t) : E.formula list =
     LOG "Entering gen_rho..." LEVEL TRACE;
     let res = rho_for_st sys mode hide_pres count_abs th_list p in
-    verb "**** VCGen. Generated rho:\n%s\n"
-      (String.concat "\n" $ List.map (fun phi -> "[" ^ E.formula_to_str phi ^ "]") res);
+    verbstr (Interface.Msg.info "GENERATED RHO"
+      (String.concat "\n" $ List.map (fun phi -> "[" ^ E.formula_to_str phi ^ "]") res));
     res
       
   let gen_all_transitions (sys:Sys.system_t) : (E.pc_t * E.formula list) list =
@@ -1784,8 +1784,8 @@ struct
     let i = ref 1 in
     let iter (f, info) =
       let (p_only, new_preds) = PosExp.keep_locations f in
-      verb "**** VCGen. Original formula: %s\n" (E.formula_to_str f);
-      verb "**** VCGen. Position formula: %s\n" (PosExp.expr_to_str p_only);
+      verbstr (Interface.Msg.info "ORIGINAL FORMULA" (E.formula_to_str f));
+      verbstr (Interface.Msg.info "LOCATION BASED FORMULA" (PosExp.expr_to_str p_only));
       let f_status = {
                        desc = "T_" ^ string_of_int info.pc;
                        trans = (info.pc, get_id info.pc);
@@ -1982,7 +1982,7 @@ struct
     LOG "Entering call_tsl_dp..." LEVEL TRACE;
     assert(isInitialized());
     if status = Unverified || status = NotValid then begin
-      verb "**** Going to translate %s\n" (E.formula_to_str phi);
+      verbstr (Interface.Msg.info "TSL FORMULA TO BE TRANSLATED INTO TSLK" (E.formula_to_str phi));
       verb "**** Will perform TSL translation...\n";
       let tsl_phi = TSLInterface.formula_to_tsl_formula phi in
       let timer = new LeapLib.timer in
@@ -2281,7 +2281,7 @@ struct
     | IGraph.Sequential ->
       if sup_phi = [] then begin
         (* B-INV *)
-        printf "B-INV for %s" inv_id;
+        printf "B-INV for %s\n" inv_id;
         let output_name = "_seq_binv_" ^ inv_id in
         solverInfo.out_file <- (base_out_name ^ output_name);
         let this_res = check_with_seq_binv sys inv_phi in

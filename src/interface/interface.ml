@@ -46,3 +46,24 @@ struct
     Printf.eprintf "**** %s: %s ****\n" title info
 
 end
+
+
+module Msg =
+struct
+
+  let div (title:string) : string =
+    let size = String.length title in
+    if size <= 70 then
+      let rem = 78 - size in
+      let lineA = String.make (rem/2) '-' in
+      let lineB = String.make (rem - rem/2) '-' in
+      lineA ^ " " ^ title ^ " " ^ lineB ^ "\n"
+    else
+      "---- " ^ title ^ " ----\n"
+
+
+  let info (title:string) (info:string) : string =
+    let border = div title in
+      border ^ info ^ "\n" ^ border
+
+end

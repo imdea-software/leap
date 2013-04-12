@@ -17,3 +17,9 @@ sig
   val smsg : string -> string -> unit
 
 end
+
+module Msg :
+sig
+  val div : string -> string
+  val info : string -> string -> string
+end

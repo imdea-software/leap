@@ -35,6 +35,13 @@ let verbl (l:int) (msg : ('a, Format.formatter, unit) format) : 'a  =
     Format.ifprintf Format.std_formatter msg
 
 
+let verbstr (msg:string) : unit =
+  if !verbose_enabled then
+    Pervasives.print_string msg
+  else
+    ()
+
+
 let is_verbose_enabled () : bool =
   !verbose_enabled
 

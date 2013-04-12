@@ -11,5 +11,6 @@ val flush : unit -> unit
 
 val verb : ('a, Format.formatter, unit) format -> 'a
 val verbl : int -> ('a, Format.formatter, unit) format -> 'a
+val verbstr : string -> unit
 
 val is_verbose_enabled : unit -> bool

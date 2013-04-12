@@ -228,6 +228,7 @@ val cell_to_str     : cell   -> string
 val elem_to_str     : elem   -> string
 val tid_to_str      : tid   -> string
 val mem_to_str      : mem    -> string
+val int_to_str      : integer -> string
 val path_to_str     : path   -> string
 val set_to_str      : set    -> string
 val setth_to_str    : setth  -> string
