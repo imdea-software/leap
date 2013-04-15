@@ -4,8 +4,8 @@ module GenSet = LeapGenericSet
 (** The type of an arrangement *)
 type 'a t = {
               dom   : 'a GenSet.t;
-              eqs   : ('a, 'a) Hashtbl.t;
-              ineqs : ('a, 'a) Hashtbl.t;
+              eqs   : ('a * 'a) GenSet.t;
+              ineqs : ('a * 'a) GenSet.t;
               order : ('a, 'a) Hashtbl.t;
             }
 
@@ -18,8 +18,8 @@ type 'a arrtree = Node of 'a list * 'a arrtree list
 let empty () : 'a t =
   {
     dom = GenSet.empty ();
-    eqs = Hashtbl.create 10;
-    ineqs = Hashtbl.create 10;
+    eqs = GenSet.empty ();
+    ineqs = GenSet.empty ();
     order = Hashtbl.create 10;
   }
 
@@ -29,33 +29,41 @@ let add_elem (arr:'a t) (a:'a) : unit =
 
 
 let add_eq (arr:'a t) (a:'a) (b:'a) : unit =
-  GenSet.add arr.dom a;
-  GenSet.add arr.dom b;
-  Hashtbl.add arr.eqs a b
+  if not (GenSet.mem arr.eqs (a,b) || GenSet.mem arr.eqs (b,a)) then
+    begin
+      GenSet.add arr.dom a;
+      GenSet.add arr.dom b;
+      GenSet.add arr.eqs (a,b)
+    end
 
 
 let add_ineq (arr:'a t) (a:'a) (b:'a) : unit =
-  GenSet.add arr.dom a;
-  GenSet.add arr.dom b;
-  Hashtbl.add arr.ineqs a b
+  if not (GenSet.mem arr.eqs (a,b) || GenSet.mem arr.eqs (b,a)) then
+    begin
+      GenSet.add arr.dom a;
+      GenSet.add arr.dom b;
+      GenSet.add arr.ineqs (a,b)
+    end
 
 
 let add_order (arr:'a t) (a:'a) (b:'a) : unit =
-  GenSet.add arr.dom a;
-  GenSet.add arr.dom b;
-  Hashtbl.add arr.order a b
+  if not (List.mem b (Hashtbl.find_all arr.order a)) then
+    begin
+      GenSet.add arr.dom a;
+      GenSet.add arr.dom b;
+      Hashtbl.add arr.order a b
+    end
 
 
 let to_str (arr:'a t) (f:'a -> string) : string =
   let dom_list = GenSet.fold (fun e xs -> (f e) :: xs) arr.dom [] in
-  let eq_list = Hashtbl.fold (fun a b xs -> ((f a) ^"="^ (f b)) :: xs) arr.eqs 
-  [] in
-  let ineq_list = Hashtbl.fold (fun a b xs -> ((f a) ^"!="^ (f b)) :: xs) arr.ineqs [] in
+  let eq_list = GenSet.fold (fun (a,b) xs -> ((f a) ^"="^ (f b)) :: xs) arr.eqs [] in
+  let ineq_list = GenSet.fold (fun (a,b) xs -> ((f a) ^"!="^ (f b)) :: xs) arr.ineqs [] in
   let order_list = Hashtbl.fold (fun a b xs -> ((f a) ^"<"^ (f b)) :: xs) arr.order [] in
-  "{" ^ (String.concat ";" dom_list) ^ "}\n" ^
-  "{" ^ (String.concat ";" eq_list) ^ "}\n" ^
-  "{" ^ (String.concat ";" ineq_list) ^ "}\n" ^
-  "{" ^ (String.concat ";" order_list) ^ "}\n"
+  "Domain: {" ^ (String.concat ";" dom_list) ^ "}\n" ^
+  "Eqs   : {" ^ (String.concat ";" eq_list) ^ "}\n" ^
+  "Ineqs : {" ^ (String.concat ";" ineq_list) ^ "}\n" ^
+  "Order : {" ^ (String.concat ";" order_list) ^ "}\n"
 
 
 let to_id_order (arr:'a t) (p:'a Partition.t) : eqclass_order_t =
@@ -92,13 +100,13 @@ let rec build_cand_tree (graph:eqclass_order_t)
 
 
 let gen_arrtrees (arr:'a t) : 'a arrtree list =
-  let append_eq (a:'a) (b:'a) (xs:'a Partition.eqs list) =
+  let append_eq ((a,b):'a * 'a) (xs:'a Partition.eqs list) =
     Partition.Eq (a,b)::xs in
-  let append_ineq (a:'a) (b:'a) (xs:'a Partition.eqs list) =
-    Partition.Ineq(a,b) :: xs in
-  let eq_list = Hashtbl.fold append_eq arr.eqs [] in
-  let ineq_list = Hashtbl.fold append_ineq arr.ineqs [] in
-  let order_list = Hashtbl.fold append_ineq arr.order [] in
+  let append_ineq ((a,b):'a * 'a) (xs:'a Partition.eqs list) =
+    Partition.Ineq (a,b)::xs in
+  let eq_list = GenSet.fold append_eq arr.eqs [] in
+  let ineq_list = GenSet.fold append_ineq arr.ineqs [] in
+  let order_list = Hashtbl.fold (fun a b xs -> append_ineq (a,b) xs) arr.order [] in
   let ps = Partition.gen_partitions (GenSet.to_list arr.dom)
                                     (eq_list @ ineq_list @ order_list) in
   let cands = List.fold_left (fun xs p ->
