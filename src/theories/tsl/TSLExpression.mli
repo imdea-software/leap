@@ -161,6 +161,10 @@ type special_op_t =
   | SkiplistProp
 
 
+(* Fresh variable generation *)
+type fresh_var_gen_t
+
+
 exception WrongType of term
 
 (* CALCULATE SET OF VARS *)
@@ -283,3 +287,9 @@ val get_addrs_eqs : formula -> ((addr*addr) list * (addr*addr) list)
 val normalize : formula -> formula
 (** [normalize phi] returns a new formula that is the normalization of
     [phi], adding fresh variables if required *)
+
+
+(* Fresh variable generation *)
+val new_fresh_gen_from_conjformula : conjunctive_formula -> fresh_var_gen_t
+val new_fresh_gen_from_formula : formula -> fresh_var_gen_t
+val gen_fresh_var : fresh_var_gen_t -> sort -> variable

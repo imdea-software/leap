@@ -39,23 +39,29 @@ let sanitize (cf:TslExp.conjunctive_formula) : TslExp.conjunctive_formula =
         : (TslExp.VarSet.t * TslExp.VarSet.t)  =
     List.fold_left (fun (cs,ss) l ->
       match l with
-      | Atom(Eq(_,AddrArrayT(AddrArrayUp(_,VarInt v,_)))) ->
+      | Atom(Eq(_,CellT(MkCell(_,AddrArrayUp(_,VarInt v1,_),TidArrayUp(_,VarInt v2,_),_)))) ->
+          (TslExp.VarSet.add v1 (TslExp.VarSet.add v2 cs), ss)
+      | Atom(Eq(_,AddrArrayT(AddrArrayUp(_,VarInt v,_))))
+      | Atom(Eq(AddrArrayT(AddrArrayUp(_,VarInt v,_)),_))
+      | Atom(Eq(_,TidArrayT(TidArrayUp(_,VarInt v,_))))
+      | Atom(Eq(TidArrayT(TidArrayUp(_,VarInt v,_)),_))
+      | Atom(Eq(_,CellT(MkCell(_,AddrArrayUp(_,VarInt v,_),_,_))))
+      | Atom(Eq(_,CellT(MkCell(_,_,TidArrayUp(_,VarInt v,_),_)))) ->
         (TslExp.VarSet.add v cs, ss)
-      | Atom(Eq(IntT(VarInt _), IntT(IntAdd (VarInt v, IntVal 1)))) ->
-        (cs, TslExp.VarSet.add v ss)
+      | Atom(Eq(IntT(VarInt _), IntT(IntAdd (VarInt v, IntVal 1))))
       | Atom(Eq(IntT(IntAdd (VarInt v, IntVal 1)), IntT (VarInt _))) ->
         (cs, TslExp.VarSet.add v ss)
       | _ -> (cs, ss)
     ) (TslExp.VarSet.empty, TslExp.VarSet.empty) ls
   in
+  let fresh_vargen = TslExp.new_fresh_gen_from_conjformula cf in
   match cf with
   | TslExp.FalseConj -> cf
   | TslExp.TrueConj  -> cf
-  | TslExp.Conj ls   -> let vars = TslExp.varset_from_conj cf in
-                        let (cs,ss) = find_candidates ls in
+  | TslExp.Conj ls   -> let (cs,ss) = find_candidates ls in
                         let needs_sanit = TslExp.VarSet.diff cs ss in
                         let ls' = TslExp.VarSet.fold (fun v xs ->
-                                    let v_new = VarInt (gen_fresh_int_var vars) in
+                                    let v_new = VarInt (TslExp.gen_fresh_var fresh_vargen TslExp.Int) in
                                     (Atom(Eq(IntT v_new, IntT(IntAdd(VarInt v, IntVal 1))))) :: ls
                                   ) needs_sanit ls
                         in
@@ -144,12 +150,16 @@ let guess_arrangements (cf:TslExp.conjunctive_formula)
                             TslExp.VarSet.iter (fun v -> Arr.add_elem arr (TslExp.VarInt v)) level_vars;
                             List.iter (fun l ->
                               match l with
-                              | TslExp.Atom(TslExp.Less(i1,i2)) -> Arr.add_order arr i1 i2
-                              | TslExp.Atom(TslExp.Greater(i1,i2)) -> Arr.add_order arr i2 i1
+                              | TslExp.Atom(TslExp.Less(i1,i2)) -> Arr.add_less arr i1 i2
+                              | TslExp.Atom(TslExp.Greater(i1,i2)) -> Arr.add_greater arr i1 i2
+                              | TslExp.Atom(TslExp.LessEq(i1,i2)) -> Arr.add_lesseq arr i1 i2
+                              | TslExp.Atom(TslExp.GreaterEq(i1,i2)) -> Arr.add_greatereq arr i1 i2
                               | TslExp.Atom(TslExp.Eq(IntT i1,IntT i2)) -> Arr.add_eq arr i1 i2
                               | TslExp.Atom(TslExp.InEq(IntT i1,IntT i2)) -> Arr.add_ineq arr i1 i2
-                              | TslExp.NegAtom(TslExp.LessEq(i1,i2)) -> Arr.add_order arr i2 i1
-                              | TslExp.NegAtom(TslExp.GreaterEq(i1,i2)) -> Arr.add_order arr i1 i2
+                              | TslExp.NegAtom(TslExp.Less(i1,i2)) -> Arr.add_greatereq arr i1 i2
+                              | TslExp.NegAtom(TslExp.Greater(i1,i2)) -> Arr.add_lesseq arr i1 i2
+                              | TslExp.NegAtom(TslExp.LessEq(i1,i2)) -> Arr.add_greater arr i1 i2
+                              | TslExp.NegAtom(TslExp.GreaterEq(i1,i2)) -> Arr.add_less arr i1 i2
                               | TslExp.NegAtom(TslExp.Eq(IntT i1,IntT i2)) -> Arr.add_ineq arr i1 i2
                               | TslExp.NegAtom(TslExp.InEq(IntT i1,IntT i2)) -> Arr.add_eq arr i1 i2
                               | _ -> ()
@@ -272,7 +282,7 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
       let _ = Printf.printf "GEN_ADDR_LIST for: %s\n" (TslExp.addrarr_to_str aa) 
       in
       let xs = ref [] in
-      for n = 0 to (TslkExp.k - 1) do
+      for n = (TslkExp.k - 1) downto 0 do
         let v = match aa with
                 | TslExp.VarAddrArray v ->
                     TslkExp.VarAddr (expand_array_to_var v TslkExp.Addr n)
@@ -291,7 +301,7 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
       let _ = Printf.printf "GEN_TID_LIST for: %s\n" (TslExp.tidarr_to_str tt) 
       in
       let xs = ref [] in
-      for n = 0 to (TslkExp.k - 1) do
+      for n = (TslkExp.k - 1) downto 0 do
         let v = match tt with
                 | TslExp.VarTidArray v ->
                     TslkExp.VarTh (expand_array_to_var v TslkExp.Thid n)
@@ -334,7 +344,6 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
       | Atom(Eq(CellT(MkCell(e,aa,tt,i)),CellT (VarCell c)))
       | NegAtom(InEq(CellT (VarCell c),CellT(MkCell(e,aa,tt,i))))
       | NegAtom(InEq(CellT(MkCell(e,aa,tt,i)),CellT (VarCell c))) ->
-          let _ = Printf.printf "XXXXXXXXXXXXXXXXXXXXXXXX\n" in
           let c' = cell_tsl_to_tslk (VarCell c) in
           let e' = elem_tsl_to_tslk e in
           let aa' = get_addr_list aa in
@@ -550,14 +559,15 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
 
 
     let to_tslk (tsl_ls:TslExp.literal list) : TslkExp.formula =
-      Printf.printf "TSL LS: %s\n"
-        (String.concat "\n" (List.map TslExp.literal_to_str tsl_ls));
+      verbstr (Interface.Msg.info "TSL CONJUNCTIVE FORMULA TO TRANSLATE"
+        (String.concat "\n" (List.map TslExp.literal_to_str tsl_ls)));
       Hashtbl.clear addrarr_tbl;
       Hashtbl.clear tidarr_tbl;
       let tslk_ps = List.map trans_literal tsl_ls in
-      Printf.printf "TSLK LS: %s\n"
-        (String.concat "\n" (List.map TslkExp.formula_to_str tslk_ps));
-      TslkExp.conj_list tslk_ps
+      let tslk_phi = TslkExp.conj_list tslk_ps in
+      verbstr (Interface.Msg.info "OBTAINED TSLK TRANSLATED FORMULA"
+        (TslkExp.formula_to_str tslk_phi));
+      tslk_phi
   end
 
 
@@ -619,7 +629,7 @@ let check_sat_by_cases (lines:int)
         verb "**** TSL Solver, PA sat?: %b\n" pa_sat;
         if pa_sat then
           (* Check NC /\ alpha satisfiability *)
-          let _ = verb "**** TSL Solver will combine NC and arrangements.\n" in
+          let _ = verb "**** TSL Solver will combine candidate arrangement wit NC.\n" in
           let nc_sat = check_nc (TslExp.combine_conj_formula nc alpha) in
           if nc_sat then true else check pa nc xs
         else

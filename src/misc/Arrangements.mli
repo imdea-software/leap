@@ -8,6 +8,9 @@ type 'a arrtree = Node of 'a list * 'a arrtree list
 (** [empty ()] returns an empty arrangement *)
 val empty : unit -> 'a t
 
+(** [copy arr] returns a duplicate of arrangement [arr] *)
+val copy : 'a t -> 'a t
+
 (** [add_elem arr a] insert a single element in the arrangement [arr]
     without any restriction *)
 val add_elem : 'a t -> 'a -> unit
@@ -21,8 +24,24 @@ val add_eq : 'a t -> 'a -> 'a -> unit
 val add_ineq : 'a t -> 'a -> 'a -> unit
 
 (** [add_order arr a b] inserts an order relation between [a] and [b] into the
-    arrangement [arr] *)
+    arrangement [arr]. Same result as invoking [add_less arr a b] *)
 val add_order : 'a t -> 'a -> 'a -> unit
+
+(** [add_less arr a b] inserts an order relation between [a] and [b] into the
+    arrangement [arr], stating that [a] is strictly lower than [b] *)
+val add_less : 'a t -> 'a -> 'a -> unit
+
+(** [add_greater arr a b] inserts an order relation between [a] and [b] into the
+    arrangement [arr], stating that [a] is strictly greater than [b] *)
+val add_greater : 'a t -> 'a -> 'a -> unit
+
+(** [add_lesseq arr a b] inserts an order relation between [a] and [b] into the
+    arrangement [arr], stating that [a] is lower or equal than [b] *)
+val add_lesseq : 'a t -> 'a -> 'a -> unit
+
+(** [add_greatereq arr a b] inserts an order relation between [a] and [b] into the
+    arrangement [arr], stating that [a] is greater or equal than [b] *)
+val add_greatereq : 'a t -> 'a -> 'a -> unit
 
 (** [to_str arr] returns a string with the equalities, inequalities and order
     relation within the arrangement *)

@@ -1204,7 +1204,8 @@ module Make (K : Level.S) : TSLK_QUERY =
     let rec z3_define_var (buf:Buffer.t)
                           (tid_set:Expr.VarSet.t)
                           (v:Expr.variable) : unit =
-      Printf.printf "ABOUT TO DEFINE VARIABLE: %s\n" (Expr.variable_to_str v);
+      verb "**** SMTTslkQuery, defining variable: %s\n" (Expr.variable_to_str 
+      v);
       let (id,s,pr,th,p) = v in
       let sort_str asort = match asort with
                              Expr.Set     -> set_s
@@ -1294,12 +1295,11 @@ module Make (K : Level.S) : TSLK_QUERY =
 
     and variables_from_formula_to_z3 (buf:Buffer.t)
                                      (phi:Expr.formula) : unit =
-      print_endline "E";
-      let vars = Expr.get_varset_from_formula phi
-      in
-      print_endline "F";
-      print_endline "VARIABLES:\n";
-      Expr.VarSet.iter (fun v -> Printf.printf "%s\n" (Expr.variable_to_str v)) vars;
+      let vars = Expr.get_varset_from_formula phi in
+      verb "Z3TslkQuery, variables to define:\n{%s}\n"
+        (Expr.VarSet.fold (fun v str ->
+          str ^ (Expr.variable_to_str v) ^ ";"
+        ) vars "";
         define_variables buf vars
 
 
@@ -1794,14 +1794,9 @@ module Make (K : Level.S) : TSLK_QUERY =
       in
         B.add_string buf (Printf.sprintf "; Formula\n; %s\n\n"
                             (Expr.formula_to_str phi));
-        Printf.printf "FORMULA: %s\n" (Expr.formula_to_str phi);
-        print_endline "A";
         z3_preamble buf num_addr num_tid num_elem req_sorts;
-        print_endline "B";
         z3_defs     buf num_addr num_tid num_elem req_sorts req_ops;
-        print_endline "C";
         variables_from_formula_to_z3 buf phi ;
-        print_endline "D";
         (* We add extra information if needed *)
         verb "**** Z3TslkQuery, about to compute extra information...\n";
         B.add_string buf extra_info_str ;
