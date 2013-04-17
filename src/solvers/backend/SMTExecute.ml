@@ -170,6 +170,7 @@ let run (cfg:configuration_t) (query:string) : bool =
                     Buffer.add_string buf conv
                 done
               with _ -> () in
+      let _ = print_endline (Buffer.contents buf) in
       model := cfg.model_parser (Lexing.from_string (Buffer.contents buf)) end
     else begin
       verb "**** SMTExecute, no response with model obtained.\n";

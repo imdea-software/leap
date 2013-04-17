@@ -1298,7 +1298,7 @@ module Make (K : Level.S) : TSLK_QUERY =
       verb "Z3TslkQuery, variables to define:\n{%s}\n"
         (Expr.VarSet.fold (fun v str ->
           str ^ (Expr.variable_to_str v) ^ ";"
-        ) vars "";
+        ) vars "");
         define_variables buf vars
 
 
