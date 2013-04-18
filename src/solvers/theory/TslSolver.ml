@@ -5,6 +5,7 @@ open LeapVerbose
 
 module Arr = Arrangements
 module GenSet = LeapGenericSet
+module GM = GenericModel
 module TslExp = TSLExpression
 module type TslkExp = TSLKExpression.S
 
@@ -23,6 +24,11 @@ let comp_model : bool ref = ref false
 let cutoff_opt : Smp.cutoff_options_t = Smp.opt_empty()
 (* The structure where we store the options for cutoff *)
 
+
+(* Intermediate model information between TSL solver interface and
+   TSLK solver interface *)
+let tslk_sort_map = ref (GM.new_sort_map())
+let tslk_model = ref (GM.new_model())
 
 
 let gen_fresh_int_var (vs:TslExp.VarSet.t) : TslExp.variable =
@@ -605,16 +611,20 @@ let check_sat_by_cases (lines:int)
     | TslExp.Conj ls ->
         let l_vs = varset_of_sort_from_conj cf Int in
         let k = VarSet.cardinal l_vs in
+(*
         let module TslkSol = (val TslkSolver.choose "Z3" k
-  (*
+*)
         let module TslkSol = (val TslkSolver.choose !solver_impl k
-  *)
                                          : TslkSolver.S) in
+        TslkSol.compute_model (!comp_model);
         let module Trans = TranslateTsl (TslkSol.TslkExp) in
         verb "**** TSL Solver, about to translate TSL to TSLK...\n";
         let phi_tslk = Trans.to_tslk ls in
         verb "**** TSL Solver, TSL to TSLK translation done...\n";
-        TslkSol.is_sat lines stac co phi_tslk in
+        let res = TslkSol.is_sat lines stac co phi_tslk in
+        tslk_sort_map := TslkSol.get_sort_map ();
+        tslk_model := TslkSol.get_model ();
+        res in
 
 
   (* General satisfiability function *)
@@ -712,8 +722,7 @@ let is_valid (prog_lines:int)
 
 
 let compute_model (b:bool) : unit =
-  let _ = comp_model := b
-  in ()
+  comp_model := b
     (* Should I enable which solver? *)
     (* Solver.compute_model b *)
     (* Perhaps I should only set the flag and set activate the compute_model

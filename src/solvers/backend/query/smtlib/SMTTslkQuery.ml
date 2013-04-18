@@ -1804,7 +1804,7 @@ module Make (K : Level.S) : TSLK_QUERY =
         B.add_string buf "(assert\n";
         B.add_string buf formula_str ;
         B.add_string buf ")\n(check-sat)" ;
-        verb "**** exiting Z3TllQuery.formula_to_str...\n";
+        verb "**** exiting Z3TslkQuery.formula_to_str...\n";
         B.contents   buf
 
 

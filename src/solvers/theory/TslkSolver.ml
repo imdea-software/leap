@@ -29,6 +29,8 @@ module type CUSTOM_TSLKSOLVER = sig
   val compute_model: bool -> unit
   val model_to_str : unit -> string
   val print_model  : unit -> unit
+  val get_sort_map : unit -> GenericModel.sort_map_t
+  val get_model : unit -> GenericModel.t
 
   val set_forget_primed_mem : bool -> unit
   val set_group_vars : bool -> unit
@@ -341,6 +343,13 @@ let search_sets_to_str (model:GM.t) (sm:GM.sort_map_t) (s:GM.sort) : string =
       print_endline (model_to_str())
     else
       ()
+
+  let get_sort_map () : GenericModel.sort_map_t =
+    TslkSol.sort_map ()
+
+
+  let get_model () : GenericModel.t =
+    Solver.get_model ()
 
 
   let set_forget_primed_mem (b:bool) : unit =
