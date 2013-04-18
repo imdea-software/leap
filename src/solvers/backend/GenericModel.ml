@@ -376,3 +376,47 @@ let conv_sort (s:Expression.sort) : sort =
   | Expr.TidArray  -> tidarr_s
   | Expr.Unknown   -> unk_s
 
+
+let search_type_to_str (model:t) (sm:sort_map_t) (s:sort) : string =
+  let xs = sm_dom_of_type sm (Const s) @
+           sm_dom_of_type sm (Fun ([tid_s],[s]))
+  in
+    id_list_to_str model xs
+
+
+let search_sets_to_str (model:t) (sm:sort_map_t) (s:sort) : string =
+  let set_to_str (id:id) : string =
+    let elems = Hashtbl.fold (fun es b xs ->
+                  match (es,b) with
+                  | ([Some e], Single "true") -> e :: xs
+                  | ([None]  , Single "true") -> "_" :: xs
+                  | _                            -> xs
+                ) (get_fun model id) [] in
+    Printf.sprintf "%s = {%s}\n" id (String.concat "," elems) in
+  let local_set_to_str (id:id) : string =
+    let locTbl = Hashtbl.create 10 in
+    let _ = Hashtbl.iter (fun es b ->
+              match es with
+              | x::y::[] -> begin
+                              try
+                                let zs = Hashtbl.find locTbl x in
+                                Hashtbl.replace locTbl x ((y,b)::zs)
+                              with
+                                _ -> Hashtbl.add locTbl x [(y,b)]
+                            end
+              | _ -> ()
+            ) (get_fun model id) in
+    Hashtbl.fold (fun t es str ->
+      let elems = List.fold_left (fun xs elem ->
+                    match elem with
+                    | (Some e, Single "true") -> e::xs
+                    | (None  , Single "true") -> "_"::xs
+                    | _                          -> xs
+                  ) [] es in
+      str ^ (Printf.sprintf "%s[%s] = {%s}\n" id (Option.default "_" t)
+              (String.concat "," elems))
+    ) locTbl "" in
+  let gSets = sm_dom_of_type sm (Const s) in
+  let lSets = sm_dom_of_type sm (Fun ([tid_s],[s])) in
+    (List.fold_left (fun str s -> str ^ set_to_str s) "" gSets) ^
+    (List.fold_left (fun str s -> str ^ local_set_to_str s) "" lSets)

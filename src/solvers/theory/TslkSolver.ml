@@ -258,51 +258,6 @@ struct
     (res, Solver.calls_count())
 
 
-  let search_type_to_str (model:GM.t) (sm:GM.sort_map_t) (s:GM.sort) : string =
-    let xs = GM.sm_dom_of_type sm (GM.Const s) @
-             GM.sm_dom_of_type sm (GM.Fun ([GM.tid_s],[s]))
-    in
-      GM.id_list_to_str model xs
-
-
-let search_sets_to_str (model:GM.t) (sm:GM.sort_map_t) (s:GM.sort) : string =
-  let set_to_str (id:GM.id) : string =
-    let elems = Hashtbl.fold (fun es b xs ->
-                  match (es,b) with
-                  | ([Some e], GM.Single "true") -> e :: xs
-                  | ([None]  , GM.Single "true") -> "_" :: xs
-                  | _                            -> xs
-                ) (GM.get_fun model id) [] in
-    Printf.sprintf "%s = {%s}\n" id (String.concat "," elems) in
-  let local_set_to_str (id:GM.id) : string =
-    let locTbl = Hashtbl.create 10 in
-    let _ = Hashtbl.iter (fun es b ->
-              match es with
-              | x::y::[] -> begin
-                              try
-                                let zs = Hashtbl.find locTbl x in
-                                Hashtbl.replace locTbl x ((y,b)::zs)
-                              with
-                                _ -> Hashtbl.add locTbl x [(y,b)]
-                            end
-              | _ -> ()
-            ) (GM.get_fun model id) in
-    Hashtbl.fold (fun t es str ->
-      let elems = List.fold_left (fun xs elem ->
-                    match elem with
-                    | (Some e, GM.Single "true") -> e::xs
-                    | (None  , GM.Single "true") -> "_"::xs
-                    | _                          -> xs
-                  ) [] es in
-      str ^ (Printf.sprintf "%s[%s] = {%s}\n" id (Option.default "_" t)
-              (String.concat "," elems))
-    ) locTbl "" in
-  let gSets = GM.sm_dom_of_type sm (GM.Const s) in
-  let lSets = GM.sm_dom_of_type sm (GM.Fun ([GM.tid_s],[s])) in
-    (List.fold_left (fun str s -> str ^ set_to_str s) "" gSets) ^
-    (List.fold_left (fun str s -> str ^ local_set_to_str s) "" lSets)
-
-
   let compute_model (b:bool) : unit =
     let _ = comp_model := b
     in
@@ -312,19 +267,19 @@ let search_sets_to_str (model:GM.t) (sm:GM.sort_map_t) (s:GM.sort) : string =
   let model_to_str () : string =
     let sort_map = TslkSol.sort_map () in
     let model = Solver.get_model () in
-    let thid_str = search_type_to_str model sort_map GM.tid_s in
-    let pc_str   = search_type_to_str model sort_map GM.loc_s in
-    let addr_str = search_type_to_str model sort_map GM.addr_s in
-    let elem_str = search_type_to_str model sort_map GM.elem_s in
-    let cell_str = search_type_to_str model sort_map GM.cell_s in
-    let path_str = search_type_to_str model sort_map GM.path_s in
-    let level_str = search_type_to_str model sort_map GM.level_s in
+    let thid_str = GM.search_type_to_str model sort_map GM.tid_s in
+    let pc_str   = GM.search_type_to_str model sort_map GM.loc_s in
+    let addr_str = GM.search_type_to_str model sort_map GM.addr_s in
+    let elem_str = GM.search_type_to_str model sort_map GM.elem_s in
+    let cell_str = GM.search_type_to_str model sort_map GM.cell_s in
+    let path_str = GM.search_type_to_str model sort_map GM.path_s in
+    let level_str = GM.search_type_to_str model sort_map GM.level_s in
     (* Special description for sets *)
-    let set_str = search_sets_to_str model sort_map GM.set_s in
-    let setth_str = search_sets_to_str model sort_map GM.setth_s in
-    let setelem_str = search_sets_to_str model sort_map GM.setelem_s in
+    let set_str = GM.search_sets_to_str model sort_map GM.set_s in
+    let setth_str = GM.search_sets_to_str model sort_map GM.setth_s in
+    let setelem_str = GM.search_sets_to_str model sort_map GM.setelem_s in
     (* Special description for sets *)
-    let heap_str = search_type_to_str model sort_map GM.heap_s
+    let heap_str = GM.search_type_to_str model sort_map GM.heap_s
     in
       "\nThreads:\n" ^ thid_str ^
       "\nProgram counters:\n" ^ pc_str ^

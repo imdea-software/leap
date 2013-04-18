@@ -285,8 +285,6 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
 
 
     let gen_addr_list (aa:TslExp.addrarr) : TslkExp.addr list =
-      let _ = Printf.printf "GEN_ADDR_LIST for: %s\n" (TslExp.addrarr_to_str aa) 
-      in
       let xs = ref [] in
       for n = (TslkExp.k - 1) downto 0 do
         let v = match aa with
@@ -298,14 +296,13 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
                 | _ -> TslkExp.Null in
         xs := v::(!xs)
       done;
-      let _ = Printf.printf "GEN_ADDR_LIST GENERATED: [%s]\n" (String.concat ";" 
-      (List.map TslkExp.addr_to_str !xs)) in
+      verb "**** TSL Solver, generated address list for %s: [%s]\n"
+              (TslExp.addrarr_to_str aa)
+              (String.concat ";" (List.map TslkExp.addr_to_str !xs));
       !xs
 
 
     let gen_tid_list (tt:TslExp.tidarr) : TslkExp.tid list =
-      let _ = Printf.printf "GEN_TID_LIST for: %s\n" (TslExp.tidarr_to_str tt) 
-      in
       let xs = ref [] in
       for n = (TslkExp.k - 1) downto 0 do
         let v = match tt with
@@ -317,8 +314,9 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
                 | _ -> TslkExp.NoThid in
         xs := v::(!xs)
       done;
-      let _ = Printf.printf "GEN_TID_LIST GENERATED: [%s]\n" (String.concat ";" 
-      (List.map TslkExp.tid_to_str !xs)) in
+      verb "**** TSL Solver, generated thread id list for %s: [%s]\n"
+              (TslExp.tidarr_to_str tt)
+              (String.concat ";" (List.map TslkExp.tid_to_str !xs));
       !xs
 
 
@@ -730,7 +728,33 @@ let compute_model (b:bool) : unit =
 
 
 let model_to_str () : string =
-  ""
+  let model = !tslk_model in
+  let sort_map = !tslk_sort_map in
+  let thid_str = GM.search_type_to_str model sort_map GM.tid_s in
+  let pc_str   = GM.search_type_to_str model sort_map GM.loc_s in
+  let addr_str = GM.search_type_to_str model sort_map GM.addr_s in
+  let elem_str = GM.search_type_to_str model sort_map GM.elem_s in
+  let cell_str = GM.search_type_to_str model sort_map GM.cell_s in
+  let path_str = GM.search_type_to_str model sort_map GM.path_s in
+  let level_str = GM.search_type_to_str model sort_map GM.level_s in
+  (* Special description for sets *)
+  let set_str = GM.search_sets_to_str model sort_map GM.set_s in
+  let setth_str = GM.search_sets_to_str model sort_map GM.setth_s in
+  let setelem_str = GM.search_sets_to_str model sort_map GM.setelem_s in
+  (* Special description for sets *)
+  let heap_str = GM.search_type_to_str model sort_map GM.heap_s
+  in
+    "\nThreads:\n" ^ thid_str ^
+    "\nProgram counters:\n" ^ pc_str ^
+    "\nAddresses:\n" ^ addr_str ^
+    "\nElements:\n" ^ elem_str ^
+    "\nCells:\n" ^ cell_str ^
+    "\nPaths:\n" ^ path_str ^
+    "\nLevels:\n" ^ level_str ^
+    "\nSets:\n" ^ set_str ^
+    "\nSets of tids:\n" ^ setth_str ^
+    "\nSets of elements:\n" ^ setelem_str ^
+    "\nHeap:\n" ^ heap_str
 
 
 let print_model () : unit =

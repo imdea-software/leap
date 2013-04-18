@@ -119,3 +119,16 @@ val id_list_to_str : t -> id list -> string
 
 val conv_sort : Expression.sort -> sort
 (** [conv_sort s] returns the generic model representation of sort [s] *)
+
+
+val search_type_to_str : t -> sort_map_t -> sort -> string
+(** [search_type_to_str m sm s] returns a string representation of all elements
+    of sort [s] (in addition to functions from thread identifiers to sort [s])
+    in model [m] according to sort map [sm] *)
+
+
+val search_sets_to_str : t -> sort_map_t -> sort -> string
+(** [search_type_to_str m sm s] returns a string representation of all elements
+    of sort [s] (in addition to functions from thread identifiers to sort [s])
+    in model [m] according to sort map [sm], representing all returning elements
+    as sets *)

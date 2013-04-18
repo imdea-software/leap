@@ -69,10 +69,11 @@ let _ =
     let module Tslk = (val TslkSolver.choose solver k_param : TslkSolver.S) in
     let module Num  = (val NumSolver.choose solver : NumSolver.S) in
 
-    (* Tell Num, TLL and TSLK modules whether to compute models or not *)
+    (* Tell Num, TLL, TSLK and TSL modules whether to compute models or not *)
     Num.compute_model (!LeapArgs.show_models);
     Tll.compute_model (!LeapArgs.show_models);
     Tslk.compute_model (!LeapArgs.show_models);
+    TslSolver.compute_model (!LeapArgs.show_models);
 
     (* Tell TLL and TSLK modules the parsed cutoff strategy options *)
     Tll.set_forget_primed_mem (not !LeapArgs.keep_primed_mem);
