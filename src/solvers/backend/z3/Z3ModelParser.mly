@@ -49,9 +49,13 @@ let abs_to_value (a:abs_value_t) : value_t =
   | AsArray i -> Hashtbl.find array_value_map i
 
 
-let value_to_vals (v:value_t) : GM.vals =
+let rec value_to_vals (v:value_t) : GM.vals =
   match v with
   | Constant c -> c
+  | FunMap tbl -> "[" ^ (Hashtbl.fold (fun id_list abs_val str ->
+                          let ids = String.concat "," (List.map (Option.default "_") id_list) in
+                          str ^ ids ^ ":" ^ (value_to_vals (abs_to_value abs_val)) ^ ";"
+                        ) tbl "") ^ "]"
   | _          -> "IMPOSSIBLE TO REPRESENT =("
 
 

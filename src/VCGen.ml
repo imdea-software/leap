@@ -1585,8 +1585,12 @@ struct
                   (tacs : Tac.post_tac_t list)
                   (line : E.pc_t) : (E.formula * vc_info_t) list =
     LOG "Entering seq_gen_vcs..." LEVEL TRACE;
-    assert (List.length inv.E.voc = 1);
-    let trans_tid = List.hd inv.E.voc in
+    Printf.printf "DEBUG: INVARIANT:\n%s\n" (E.formula_to_str inv.E.formula);
+    Printf.printf "DEBUG: VOC:\n%s\n" (String.concat ";" (List.map E.tid_to_str inv.E.voc));
+    assert (List.length inv.E.voc <= 1);
+    let trans_tid = match inv.E.voc with
+                    | [] -> E.gen_fresh_thread []
+                    | x::_ -> x in
     let rho = gen_rho (ROpenArray (trans_tid, inv.E.voc))
                       solverInfo.hide_pres solverInfo.count_abs sys
                       inv.E.voc line in
@@ -2245,6 +2249,9 @@ struct
       let sup_phi = List.map (read_tag>>Option.(default E.False)) sup in
       let _ = set_detFileName inv_id in
       let _ = set_descGralSupp solverInfo.detailed_desc sup in
+      let case_tbl = load_cases cases in
+      solverInfo.special <- case_tbl;
+      solverInfo.tactics <- tacs;
       match mode with
       | IGraph.Concurrent ->
         if sup_phi = [] then begin
@@ -2253,61 +2260,50 @@ struct
           else printf "PINV+ WITH CASES for %s\n" inv_id;
           let output_name = "_pinv_" ^ inv_id in
           solverInfo.out_file <- (base_out_name ^ output_name);
-          let case_tbl = load_cases cases in
-          solverInfo.special <- case_tbl;
-          solverInfo.tactics <- tacs;
           let this_res = check_with_pinv_plus sys inv_phi in
-          res && this_res
+            res && this_res
         end else begin
           if Hashtbl.length cases = 0 then begin
             (* SPINV *)
             printf "SPINV for %s -> %s\n" sup_id inv_id;
             let output_name = "_sinv_" ^ sup_id ^ "->" ^ inv_id in
             solverInfo.out_file <- (base_out_name ^ output_name);
-            let this_res = check_with_spinv sys sup_phi inv_phi
-            in
+            let this_res = check_with_spinv sys sup_phi inv_phi  in
               res && this_res
           end else begin
             (* SPINV WITH SPECIAL CASES *)
             printf "SPINV WITH CASES for %s -> %s\n" sup_id inv_id;
             let output_name = "_sinvsp_" ^ sup_id ^ "->" ^ inv_id in
             solverInfo.out_file <- (base_out_name ^ output_name);
-            let case_tbl = load_cases cases in
-            solverInfo.special <- case_tbl;
             let this_res = check_with_spinv sys sup_phi inv_phi in
-            res & this_res
+              res & this_res
           end
         end
     | IGraph.Sequential ->
-      if sup_phi = [] then begin
-        (* B-INV *)
-        printf "B-INV for %s\n" inv_id;
-        let output_name = "_seq_binv_" ^ inv_id in
-        solverInfo.out_file <- (base_out_name ^ output_name);
-        let this_res = check_with_seq_binv sys inv_phi in
-        res & this_res
-      end else begin
-        if Hashtbl.length cases = 0 then begin
-          (* SEQ_SPINV *)
+        if Hashtbl.length cases <> 0 then begin
+          (* SEQ_SPINV WITH SPECIAL CASES *)
+            printf "SEQ_SPINV WITH CASES for %s -> %s\n" sup_id inv_id;
+            let output_name = "_seq_sinvsp_" ^ sup_id ^ "->" ^ inv_id in
+            solverInfo.out_file <- (base_out_name ^ output_name);
+            let this_res = check_with_seq_spinv sys sup_phi inv_phi in
+              res & this_res
+        end else begin
+          if sup_phi = [] then begin
+            (* B-INV *)
+            printf "B-INV+ for %s\n" inv_id;
+            let output_name = "_seq_binv_" ^ inv_id in
+            solverInfo.out_file <- (base_out_name ^ output_name);
+            let this_res = check_with_seq_binv sys inv_phi in
+              res & this_res
+          end else begin
             printf "SEQ_SPINV for %s -> %s\n" sup_id inv_id;
             let output_name = "_seq_sinv_" ^ sup_id ^ "->" ^ inv_id in
             solverInfo.out_file <- (base_out_name ^ output_name);
             let this_res = check_with_seq_spinv sys sup_phi inv_phi
             in
               res && this_res
-        end else begin
-          (* SEQ_SPINV WITH SPECIAL CASES *)
-            printf "SEQ_SPINV WITH CASES for %s -> %s\n" sup_id inv_id;
-            let output_name = "_seq_sinvsp_" ^ sup_id ^ "->" ^ inv_id in
-            solverInfo.out_file <- (base_out_name ^ output_name);
-            let case_tbl = load_cases cases in
-            solverInfo.special <- case_tbl;
-            let this_res = check_with_seq_spinv sys sup_phi inv_phi in
-            res & this_res
-
+          end
         end
-      end
     in
-
       List.fold_left foldop true graph_info
 end
