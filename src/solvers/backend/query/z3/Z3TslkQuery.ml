@@ -747,7 +747,7 @@ module Make (K : Level.S) : TSLK_QUERY =
       done;
       B.add_string buf ("(define-fun lesseq_l ((l1 Level) (l2 Level)) Bool\n" ^
                         "  (or (= l1 l2) (less_l l1 l2)))\n");
-      B.add_string buf ("(define-fun greateq_l ((l1 Level) (l2 Level)) Bool\n" ^
+      B.add_string buf ("(define-fun greatereq_l ((l1 Level) (l2 Level)) Bool\n" ^
                         "  (or (= l1 l2) (greater_l l1 l2)))\n")
 
 
@@ -1574,13 +1574,13 @@ module Make (K : Level.S) : TSLK_QUERY =
 
 
     let greaterlevel_to_str (l1:Expr.level) (l2:Expr.level) : string =
-      Printf.sprintf "(great_l %s %s)" (levelterm_to_str l1)
-                                       (levelterm_to_str l2)
+      Printf.sprintf "(greater_l %s %s)" (levelterm_to_str l1)
+                                         (levelterm_to_str l2)
 
 
     let greatereqlevel_to_str (l1:Expr.level) (l2:Expr.level) : string =
-      Printf.sprintf "(greateq_l %s %s)" (levelterm_to_str l1)
-                                         (levelterm_to_str l2)
+      Printf.sprintf "(greatereq_l %s %s)" (levelterm_to_str l1)
+                                           (levelterm_to_str l2)
 
 
     let lesselem_to_str (e1:Expr.elem) (e2:Expr.elem) : string =
