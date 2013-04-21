@@ -1,4 +1,4 @@
--> skiplist_prop [22:levels]
+ -> skiplist_prop {union:reduce2|simpl}
 
 // -> levels
 

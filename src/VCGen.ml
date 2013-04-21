@@ -1592,18 +1592,24 @@ struct
                   (line : E.pc_t) : (E.formula * vc_info_t) list =
     LOG "Entering seq_gen_vcs..." LEVEL TRACE;
 
-    let supp = Tac.supp_list info in
-    let all_voc = E.voc (E.conj_list (inv.E.formula :: supp)) in
-    Printf.printf "DEBUG: INVARIANT:\n%s\n" (E.formula_to_str inv.E.formula);
-    Printf.printf "DEBUG: VOC:\n%s\n" (String.concat ";" (List.map E.tid_to_str inv.E.voc));
-    Printf.printf "DEBUG: SUPPORT:\n%s\n" (String.concat "\n" (List.map E.formula_to_str supp));
     assert (List.length inv.E.voc <= 1);
-    let supInvs_voc = List.fold_left (fun xs f -> E.voc f @ xs) [] supp in
-    assert (List.length supInvs_voc <= 1);
-    let trans_tid = match (inv.E.voc, supInvs_voc) with
+    let supp_voc = Tac.supp_voc info in
+    assert (List.length supp_voc <= 1);
+
+
+    let trans_tid = match (inv.E.voc, supp_voc) with
                     | (x::_, _   ) -> x
                     | ([]  , y::_) -> y
                     | ([]  , []  ) -> E.gen_fresh_thread [] in
+    let supp = List.map (E.param (Some trans_tid)) (Tac.supp_list info) in
+    let all_voc = trans_tid :: inv.E.voc @ supp_voc in
+
+
+(*    let all_voc = E.voc (E.conj_list (inv.E.formula :: supp)) in *)
+
+    Printf.printf "DEBUG: INVARIANT:\n%s\n" (E.formula_to_str inv.E.formula);
+    Printf.printf "DEBUG: VOC:\n%s\n" (String.concat ";" (List.map E.tid_to_str inv.E.voc));
+    Printf.printf "DEBUG: SUPPORT:\n%s\n" (String.concat "\n" (List.map E.formula_to_str supp));
     let rho = gen_rho (ROpenArray (trans_tid, inv.E.voc))
                       solverInfo.hide_pres solverInfo.count_abs sys
                       inv.E.voc line in
@@ -1632,51 +1638,6 @@ struct
       vcs @ new_vc
     ) [] lines_to_consider
 
-
-(*
-    LOG "Entering seq_spinv_premise_transitions..." LEVEL TRACE;
-    let basic_supp = inv.E.formula :: supInvs in
-    let general_supp_info = Tac.gen_support basic_supp inv.E.voc (Tac.pre_tacs solverInfo.tactics) in
-
-
-
-    let load_info (line : E.pc_t) :
-          (Tag.f_tag list          *
-           Tac.smp_tactic_t option *
-           E.formula list          *
-           Tac.post_tac_t list     *
-           Tac.solve_tactic_t option) =
-      try
-        let p = IGraph.Normal in
-        let (supp, tacs) = Hashtbl.find solverInfo.special (line, p) in
-        let supp_tags = Hashtbl.find solverInfo.detailed_desc.supp_table (line,p) in
-        let final_tacs = Tac.specialize_tacs solverInfo.tactics tacs
-        in
-          (supp_tags,
-           Tac.smp_cutoff final_tacs,
-           Tac.post_tacs final_tacs,
-           Tac.solve_tactic final_tacs)
-      with
-        Not_found -> ([],
-                      Tac.smp_cutoff solverInfo.tactics,
-                      Tac.post_tacs solverInfo.tactics,
-                      Tac.solve_tactic solverInfo.tactics) in
-    let assign_cutoff (smp:Tac.smp_tactic_t option) : cutoff_type =
-      match smp with
-      | None -> solverInfo.cutoff
-      | Some cut -> tac_to_vcgen_cutoff cut
-    in
-      List.fold_left (fun vcs line ->
-        let (tags, tmp_smp, tacs, stac) = load_info line in
-        let smp = assign_cutoff tmp_smp in
-
-        let new_vc = List.map (fun (phi,info) ->
-                       (info.supps <- tags; (phi,info)))
-                         (seq_gen_vcs sys inv supInvs stac smp tacs line) in
-
-        vcs @ new_vc
-      ) [] lines_to_consider
-*)
 
   let seq_spinv (sys : Sys.system_t) (supInvs:E.formula list)
       (inv : E.formula) : (E.formula * vc_info_t) list =

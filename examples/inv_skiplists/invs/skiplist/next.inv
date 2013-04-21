@@ -1,5 +1,10 @@
 param:
 
+int j
+
 invariant [skiplist_next] :
 
-  @insert_i_eq_max. -> (insert::curr = rd(heap, insert::prev).arr[maxLevel])
+   @insert_head_next_i_tail. -> rd(heap, head).arr[insert::i] = tail
+/\ @insert_tail_next_i_null. -> rd(heap, tail).arr[insert::i] = null
+
+//  @insert_i_eq_max. -> (insert::curr = rd(heap, insert::prev).arr[maxLevel])

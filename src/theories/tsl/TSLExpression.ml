@@ -174,19 +174,19 @@ exception No_variable_term of term
 (*****************)
 
 
-let fresh_set_name      = "freshset"
-let fresh_elem_name     = "freshelem"
-let fresh_tid_name      = "freshtid"
-let fresh_addr_name     = "freshaddr"
-let fresh_cell_name     = "freshcell"
-let fresh_setth_name    = "freshsetth"
-let fresh_setelem_name  = "freshsetelem"
-let fresh_path_name     = "freshpath"
-let fresh_mem_name      = "freshmem"
-let fresh_int_name      = "freshint"
-let fresh_addrarr_name  = "freshaddrarr"
-let fresh_tidarr_name   = "freshtidarr"
-let fresh_unknown_name  = "freshunknown"
+let fresh_set_name      = Expression.fresh_set_name
+let fresh_elem_name     = Expression.fresh_elem_name
+let fresh_tid_name      = Expression.fresh_tid_name
+let fresh_addr_name     = Expression.fresh_addr_name
+let fresh_cell_name     = Expression.fresh_cell_name
+let fresh_setth_name    = Expression.fresh_setth_name
+let fresh_setelem_name  = Expression.fresh_setelem_name
+let fresh_path_name     = Expression.fresh_path_name
+let fresh_mem_name      = Expression.fresh_mem_name
+let fresh_int_name      = Expression.fresh_int_name
+let fresh_addrarr_name  = Expression.fresh_addrarr_name
+let fresh_tidarr_name   = Expression.fresh_tidarr_name
+let fresh_unknown_name  = Expression.fresh_unknown_name
 
 
 (*************************)

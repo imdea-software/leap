@@ -554,9 +554,10 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
             let n' = TslkExp.LevelVal n in
             xs := TslkExp.And
                     (TslkExp.less_level n' l',
-                     TslkExp.subseteq
-                      (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',TslkExp.LevelSucc n')))
-                      (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',n')))) :: (!xs)
+                     TslkExp.Not
+                      (TslkExp.subseteq
+                        (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',TslkExp.LevelSucc n')))
+                        (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',n'))))) :: (!xs)
           done;
           TslkExp.disj_list (!xs)
       | _ -> TslkExp.Literal (literal_tsl_to_tslk l)

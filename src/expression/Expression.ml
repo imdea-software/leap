@@ -372,22 +372,22 @@ exception Not_implemented of string
 
 (* Configuration *)
 let pc_name             = "pc"
-let fresh_set_name      = "freshset"
-let fresh_elem_name     = "freshset"
-let fresh_tid_name      = "freshtid"
-let fresh_addr_name     = "freshaddr"
-let fresh_cell_name     = "freshcell"
-let fresh_setth_name    = "freshsetth"
-let fresh_setint_name   = "freshsetint"
-let fresh_setelem_name  = "freshsetelem"
-let fresh_path_name     = "freshpath"
-let fresh_mem_name      = "freshmem"
-let fresh_bool_name     = "freshbool"
-let fresh_int_name      = "freshint"
-let fresh_array_name    = "fresharray"
-let fresh_addrarr_name  = "freshaddrarr"
-let fresh_tidarr_name   = "freshtidarr"
-let fresh_unknown_name  = "freshunknown"
+let fresh_set_name      = "$set"
+let fresh_elem_name     = "$elem"
+let fresh_tid_name      = "$tid"
+let fresh_addr_name     = "$addr"
+let fresh_cell_name     = "$cell"
+let fresh_setth_name    = "$setth"
+let fresh_setint_name   = "$setint"
+let fresh_setelem_name  = "$setelem"
+let fresh_path_name     = "$path"
+let fresh_mem_name      = "$mem"
+let fresh_bool_name     = "$bool"
+let fresh_int_name      = "$int"
+let fresh_array_name    = "$array"
+let fresh_addrarr_name  = "$addrarr"
+let fresh_tidarr_name   = "$tidarr"
+let fresh_unknown_name  = "$unknown"
 
 
 let notid_name      = "NoThread"
@@ -1298,10 +1298,10 @@ and tid_to_str (th:tid) : string =
   | CellLockId(cell)     -> sprintf "%s.lockid" (cell_to_str cell)
   | CellLockIdAt(cell,l) -> sprintf "%s.lockid[%s]" (cell_to_str cell)
                                                     (integer_to_str l)
-  | ThidArrayRd(arr,t)   -> sprintf "%s%s" (arrays_to_str arr)
-                                           (param_tid_to_str t)
-  | ThidArrRd(arr,l)     -> sprintf "%s%s" (tidarr_to_str arr)
-                                           (integer_to_str l)
+  | ThidArrayRd(arr,t)   -> sprintf "%s[%s]" (arrays_to_str arr)
+                                             (param_tid_to_str t)
+  | ThidArrRd(arr,l)     -> sprintf "%s[%s]" (tidarr_to_str arr)
+                                             (integer_to_str l)
 
 
 and param_tid_to_str (expr:tid) : string =

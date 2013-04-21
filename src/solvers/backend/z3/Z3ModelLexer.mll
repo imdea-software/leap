@@ -42,6 +42,7 @@ rule norm = parse
   | (digit+) as num              {Global.last num              ; NUMBER (int_of_string num)           }
   | "(- "(digit+ as num)")"      {Global.last num              ; NUMBER (-(int_of_string num))        }
   | (letter alphanum*) as id     {Global.last id               ; IDENT (id,Global.get_linenum())      }
+  | ("$" alphanum*) as id        {Global.last id               ; IDENT (id,Global.get_linenum())      }
   | whitespc                     {Global.last "whitespc"       ; norm lexbuf                          }
   | '\n'                         {Global.last "\\n"            ; Global.incr_linenum (); norm lexbuf  }
   | eof                          {Global.last "EOF"            ; EOF                                  }
