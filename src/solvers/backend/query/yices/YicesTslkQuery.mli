@@ -5,7 +5,7 @@ module Make (TSLK : TSLKExpression.S) :
     (** Number of lines in the program *)
 
     val formula_to_str : Tactics.solve_tactic_t option ->
-                         SmpTslk.cutoff_strategy ->
+                         SmpTslk.cutoff_strategy_t ->
                          SmpTslk.cutoff_options_t ->
                          TSLK.formula -> string
     (** Translates a formula into a string representation for Yices

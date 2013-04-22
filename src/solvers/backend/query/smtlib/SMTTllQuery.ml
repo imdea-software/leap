@@ -1868,7 +1868,7 @@ struct
 
 
   let formula_to_str (stac:Tactics.solve_tactic_t option)
-                     (co:Smp.cutoff_strategy)
+                     (co:Smp.cutoff_strategy_t)
                      (copt:Smp.cutoff_options_t)
                      (phi:Expr.formula) : string =
 

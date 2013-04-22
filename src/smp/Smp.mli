@@ -1,6 +1,6 @@
 
 
-type cutoff_strategy =
+type cutoff_strategy_t =
   | Dnf       (* Computes dnf over the formula and then counts literals *)
   | Union     (* Computes an upper bound using union over literals *)
   | Pruning   (* Computes a better bound, by pruning non interesting literals *)
@@ -9,7 +9,7 @@ type cutoff_strategy =
 type cutoff_options_t
 
 
-val strategy_to_str : cutoff_strategy -> string
+val strategy_to_str : cutoff_strategy_t -> string
 
 
 val opt_empty : unit -> cutoff_options_t

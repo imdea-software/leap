@@ -1621,7 +1621,7 @@ module Make (TSLK : TSLKExpression.S) =
 
 
     let formula_to_str (stac:Tactics.solve_tactic_t option)
-                       (co:SmpTslk.cutoff_strategy)
+                       (co:SmpTslk.cutoff_strategy_t)
                        (copt:SmpTslk.cutoff_options_t)
                        (phi:Expr.formula) : string =
       let _ = GM.clear_sort_map sort_map in

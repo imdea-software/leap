@@ -14,17 +14,17 @@ module type CUSTOM_TLLSOLVER = sig
     
   val is_sat       : int ->
                      Tactics.solve_tactic_t option ->
-                     Smp.cutoff_strategy ->
+                     Smp.cutoff_strategy_t ->
                      TllExp.formula -> bool
   val is_valid     : int ->
                      Tactics.solve_tactic_t option ->
-                     Smp.cutoff_strategy ->
+                     Smp.cutoff_strategy_t ->
                      TllExp.formula -> bool
   
   val is_valid_plus_info 
                    : int ->
                      Tactics.solve_tactic_t option ->
-                     Smp.cutoff_strategy ->
+                     Smp.cutoff_strategy_t ->
                      TllExp.formula -> (bool * int)
 
   val compute_model: bool -> unit
@@ -226,7 +226,7 @@ struct
   (* INVOCATIONS WITHOUT CONVERTING TO DNF *)
   let is_sat (lines : int)
              (stac:Tactics.solve_tactic_t option)
-             (co : Smp.cutoff_strategy)
+             (co : Smp.cutoff_strategy_t)
              (phi : TllExp.formula) : bool =
     LOG "Entering is_sat..." LEVEL TRACE;
     verb "**** TLL Solver, about to translate TLL...\n";
@@ -237,13 +237,13 @@ struct
   
   let is_valid (prog_lines:int)
                (stac:Tactics.solve_tactic_t option)
-               (co:Smp.cutoff_strategy)
+               (co:Smp.cutoff_strategy_t)
                (phi:TllExp.formula) : bool =
     not (is_sat prog_lines stac co (TllExp.Not phi))
   
   let is_valid_plus_info (prog_lines:int)
                          (stac:Tactics.solve_tactic_t option)
-                         (co:Smp.cutoff_strategy)
+                         (co:Smp.cutoff_strategy_t)
                          (phi:TllExp.formula) : (bool * int) =
     Solver.reset_calls ();
     let res = is_valid prog_lines stac co phi in

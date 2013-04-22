@@ -9,7 +9,7 @@ sig
   
   type vc_info_t = {
                      pc   : Expression.pc_t               ;
-                     smp  : Smp.cutoff_strategy           ;
+                     smp  : Smp.cutoff_strategy_t           ;
                      stac : Tactics.solve_tactic_t option ;
                      mutable supps : Tag.f_tag list       ;
                    }
@@ -29,7 +29,7 @@ sig
     }
   *)
   
-  val cutoff : unit -> Smp.cutoff_strategy
+  val cutoff : unit -> Smp.cutoff_strategy_t
   val out_file : unit -> string
   val hide_pres : unit -> bool
   val tactics : unit -> Tactics.t
@@ -65,7 +65,7 @@ sig
   (*   -> bool                  *)
   (*   -> solver_info           *)
   val initialize : int       (** Number of lines in the program. *)
-    -> Smp.cutoff_strategy   (** Cutoff strategy to follow. *)
+    -> Smp.cutoff_strategy_t   (** Cutoff strategy to follow. *)
     -> string                (** Output file. *)
     -> Expression.pc_t list  (** Program lines where the VCGen focuses.*)
     -> bool                  (** Hide unmodified variables. *)

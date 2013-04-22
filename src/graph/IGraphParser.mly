@@ -50,7 +50,7 @@ let get_line id = snd id
 %type <case_t> seq_case
 %type <IGraph.premise_t list> premise
 %type <Tactics.t> tactics
-%type <(Smp.cutoff_strategy option * Tactics.solve_tactic_t option)> smp_tactic
+%type <(Smp.cutoff_strategy_t option * Tactics.solve_tactic_t option)> smp_tactic
 %type <Tactics.solve_tactic_t option> solve_tactic
 %type <Tactics.pre_tac_t list> pre_tactic_list
 %type <Tactics.pre_tac_t> pre_tactic

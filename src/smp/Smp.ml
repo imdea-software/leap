@@ -1,5 +1,5 @@
 
-type cutoff_strategy =
+type cutoff_strategy_t =
   | Dnf       (* Computes dnf over the formula and then counts literals *)
   | Union     (* Computes an upper bound using union over literals *)
   | Pruning   (* Computes a better bound, by pruning non interesting literals *)
@@ -12,7 +12,7 @@ type cutoff_options_t =
   }
 
 
-let strategy_to_str (s:cutoff_strategy) : string =
+let strategy_to_str (s:cutoff_strategy_t) : string =
   match s with
   | Dnf     -> "DNF"
   | Union   -> "Union"

@@ -579,7 +579,7 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
 
 let check_sat_by_cases (lines:int)
                        (stac:Tactics.solve_tactic_t option)
-                       (co : Smp.cutoff_strategy)
+                       (co : Smp.cutoff_strategy_t)
                        (cases:(TslExp.conjunctive_formula  *     (* PA formula *)
                                TslExp.conjunctive_formula) list) (* NC formula *)
       : (bool * int * int) =
@@ -675,7 +675,7 @@ let check_sat_by_cases (lines:int)
 
 let is_sat_plus_info (lines : int)
            (stac:Tactics.solve_tactic_t option)
-           (co : Smp.cutoff_strategy)
+           (co : Smp.cutoff_strategy_t)
            (phi : TslExp.formula) : (bool * int * int) =
   (* 0. Normalize the formula and rewrite it in DNF *)
   verb "**** Will normalize TSL formula...\n";
@@ -698,7 +698,7 @@ let is_sat_plus_info (lines : int)
 
 let is_sat (lines : int)
            (stac:Tactics.solve_tactic_t option)
-           (co : Smp.cutoff_strategy)
+           (co : Smp.cutoff_strategy_t)
            (phi : TslExp.formula) : bool =
   (* Here goes the code for satisfiability from the paper *)
   let (s,_,_) = is_sat_plus_info lines stac co phi in s
@@ -706,7 +706,7 @@ let is_sat (lines : int)
 
 let is_valid_plus_info (prog_lines:int)
                        (stac:Tactics.solve_tactic_t option)
-                       (co:Smp.cutoff_strategy)
+                       (co:Smp.cutoff_strategy_t)
                        (phi:TslExp.formula) : (bool * int * int) =
   let (s,tsl_count,tslk_count) = is_sat_plus_info prog_lines stac co
                                    (TslExp.Not phi) in
@@ -715,7 +715,7 @@ let is_valid_plus_info (prog_lines:int)
 
 let is_valid (prog_lines:int)
              (stac:Tactics.solve_tactic_t option)
-             (co:Smp.cutoff_strategy)
+             (co:Smp.cutoff_strategy_t)
              (phi:TslExp.formula) : bool =
   not (is_sat prog_lines stac co phi)
 

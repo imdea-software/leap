@@ -11,7 +11,7 @@ type post_tac_t = SplitConseq | SimplPCVoc
 
 type t =
   {
-    smp   : Smp.cutoff_strategy option   ;
+    smp   : Smp.cutoff_strategy_t option   ;
     solve : solve_tactic_t option        ;
     pre   : pre_tac_t list               ;
     post  : post_tac_t list              ;
@@ -49,14 +49,14 @@ let default_smp = Smp.Dnf
 
 
 
-let new_tactics (smp:Smp.cutoff_strategy option)
+let new_tactics (smp:Smp.cutoff_strategy_t option)
                 (solve_tac:solve_tactic_t option)
                 (pre:pre_tac_t list)
                 (post:post_tac_t list) : t =
   {smp = smp; solve = solve_tac; pre = pre; post = post }
 
 
-let smp_cutoff (tacs:t) : Smp.cutoff_strategy option =
+let smp_cutoff (tacs:t) : Smp.cutoff_strategy_t option =
   tacs.smp
 
 

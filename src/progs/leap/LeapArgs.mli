@@ -34,7 +34,7 @@ val keep_primed_mem : bool ref
 val group_vars : bool ref
 val use_smt : bool ref
 val dpType : DP.t ref
-val coType : Smp.cutoff_strategy ref
+val coType : Smp.cutoff_strategy_t ref
 val invCandidate : string ref
 val vdFormula : string ref
 val supInvariant : string ref

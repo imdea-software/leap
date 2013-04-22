@@ -11,17 +11,17 @@ module type CUSTOM_TSLKSOLVER = sig
     
   val is_sat       : int ->
                      Tactics.solve_tactic_t option ->
-                     Smp.cutoff_strategy ->
+                     Smp.cutoff_strategy_t ->
                      TslkExp.formula -> bool
   val is_valid     : int ->
                      Tactics.solve_tactic_t option ->
-                     Smp.cutoff_strategy ->
+                     Smp.cutoff_strategy_t ->
                      TslkExp.formula -> bool
   
   val is_valid_plus_info 
                    : int ->
                      Tactics.solve_tactic_t option ->
-                     Smp.cutoff_strategy ->
+                     Smp.cutoff_strategy_t ->
                      TslkExp.formula -> (bool * int)
 
   val compute_model: bool -> unit

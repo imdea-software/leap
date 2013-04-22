@@ -1739,7 +1739,7 @@ module Make (K : Level.S) : TSLK_QUERY =
 
 
     let formula_to_str (stac:Tactics.solve_tactic_t option)
-                       (co:Smp.cutoff_strategy)
+                       (co:Smp.cutoff_strategy_t)
                        (copt:Smp.cutoff_options_t)
                        (phi:Expr.formula) : string =
       LOG "Entering formula_to_str..." LEVEL TRACE;

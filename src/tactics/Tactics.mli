@@ -13,13 +13,13 @@ type support_info_t
 type task_t
 
 (* Describing tactics *)
-val new_tactics : Smp.cutoff_strategy option ->
+val new_tactics : Smp.cutoff_strategy_t option ->
                   solve_tactic_t option ->
                   pre_tac_t list ->
                   post_tac_t list ->
                   t
 
-val smp_cutoff : t -> Smp.cutoff_strategy option
+val smp_cutoff : t -> Smp.cutoff_strategy_t option
 val solve_tactic : t -> solve_tactic_t option
 val pre_tacs : t -> pre_tac_t list
 val post_tacs : t -> post_tac_t list

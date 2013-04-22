@@ -6,7 +6,7 @@ sig
   include COMMON_QUERY
 
   val formula_to_str : Tactics.solve_tactic_t option ->
-                       Smp.cutoff_strategy ->
+                       Smp.cutoff_strategy_t ->
                        Smp.cutoff_options_t ->
                        TllExpression.formula -> string
   (** Translates a formula into a string representation for Yices

@@ -13,7 +13,7 @@ module Make (TSLK : TSLKExpression.S) :
 
     val cut_off_normalized  : TSLK.conjunctive_formula -> model_size
 
-    val cut_off : Smp.cutoff_strategy ->
+    val cut_off : Smp.cutoff_strategy_t ->
                   Smp.cutoff_options_t ->
                   TSLK.formula -> model_size
   end

@@ -86,7 +86,7 @@ sig
           internal representation. *)
       
       val formula      : Tactics.solve_tactic_t option ->
-                         Smp.cutoff_strategy ->
+                         Smp.cutoff_strategy_t ->
                          Smp.cutoff_options_t ->
                          Exp.formula -> t
       (** [formula stat strat copt f] translates the formula [f] following the
@@ -125,7 +125,7 @@ sig
           internal representation. *)
       
       val formula      : Tactics.solve_tactic_t option ->
-                         Smp.cutoff_strategy ->
+                         Smp.cutoff_strategy_t ->
                          Smp.cutoff_options_t ->
                          Exp.formula -> t
       (** [formula stat strat copt f] translates the formula [f] following the

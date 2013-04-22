@@ -27,7 +27,7 @@ sig
   type formula_table_t
   
   type vc_info_t = {  pc  : E.pc_t                     ;
-                      smp : Smp.cutoff_strategy        ;
+                      smp : Smp.cutoff_strategy_t        ;
                       stac : Tac.solve_tactic_t option ;
                       mutable supps : Tag.f_tag list   ;
                    }
@@ -47,7 +47,7 @@ sig
     }
   *)
 
-  val cutoff : unit -> Smp.cutoff_strategy
+  val cutoff : unit -> Smp.cutoff_strategy_t
   val out_file : unit -> string
   val hide_pres : unit -> bool
   val tactics : unit -> Tactics.t
@@ -83,7 +83,7 @@ sig
   (*   -> bool                  *)
   (*   -> solver_info           *)
   val initialize : int       (** Number of lines in the program. *)
-    -> Smp.cutoff_strategy   (** Cutoff strategy to follow. *)
+    -> Smp.cutoff_strategy_t   (** Cutoff strategy to follow. *)
     -> string                (** Output file. *)
     -> Expression.pc_t list  (** Program lines where the VCGen focuses.*)
     -> bool                  (** Hide unmodified variables. *)
@@ -265,7 +265,7 @@ struct
   type dp_t = Pos | Num | TLL
   
   type vc_info_t = {  pc  : E.pc_t                     ;
-                      smp : Smp.cutoff_strategy        ;
+                      smp : Smp.cutoff_strategy_t        ;
                       stac : Tac.solve_tactic_t option ;
                       mutable supps : Tag.f_tag list   ;
                    }
@@ -289,7 +289,7 @@ struct
      string list                   * (** New added boolean preds    *)
      valid_t                       * (** Status                     *)
      Tactics.solve_tactic_t option * (** Solving aided tactic       *)
-     Smp.cutoff_strategy           * (** Cutoff strategy to be used *)
+     Smp.cutoff_strategy_t           * (** Cutoff strategy to be used *)
      formula_status_t                (** Brief description          *)
     )) Hashtbl.t
   
@@ -326,7 +326,7 @@ struct
     {
       mutable prog_lines : int ;
       dp : dp_info;
-      mutable cutoff : Smp.cutoff_strategy ;
+      mutable cutoff : Smp.cutoff_strategy_t ;
       mutable out_file : string ;
       mutable detailed_desc : desc_t ;
       mutable focus : E.pc_t list;
@@ -378,7 +378,7 @@ struct
   }
   
   (* This should not go here *)
-  let cutoff ()    : Smp.cutoff_strategy = solverInfo.cutoff
+  let cutoff ()    : Smp.cutoff_strategy_t = solverInfo.cutoff
   let out_file ()  : string              = solverInfo.out_file
   let hide_pres () : bool                = solverInfo.hide_pres
   let tactics ()   : Tactics.t           = solverInfo.tactics
@@ -395,7 +395,7 @@ struct
   let initialize 
         (pl : int) 
           (** Number of lines in the program. *)
-        (co : Smp.cutoff_strategy) (** Cutoff strategy to follow. *)
+        (co : Smp.cutoff_strategy_t) (** Cutoff strategy to follow. *)
         (file : string)
           (** Output file. *)
         (focus : E.pc_t list)
@@ -1409,7 +1409,7 @@ struct
                 (line : E.pc_t)
                 (p : IGraph.premise_t) :
         (Tag.f_tag list             *
-         Smp.cutoff_strategy option *
+         Smp.cutoff_strategy_t option *
          Tac.support_info_t         *
          Tac.post_tac_t list        *
          Tac.solve_tactic_t option) =
@@ -1441,7 +1441,7 @@ struct
               (supp_info : Tac.support_info_t)
               (inv : E.formula_info_t)
               (spec_stac:Tac.solve_tactic_t option)
-              (spec_cutoff:Smp.cutoff_strategy)
+              (spec_cutoff:Smp.cutoff_strategy_t)
               (tacs : Tac.post_tac_t list)
               (line : E.pc_t)
               (trans_tid : E.tid)
@@ -1467,7 +1467,7 @@ struct
     ) [] rho
 
 
-  let assign_cutoff (smp:Smp.cutoff_strategy option) : Smp.cutoff_strategy =
+  let assign_cutoff (smp:Smp.cutoff_strategy_t option) : Smp.cutoff_strategy_t =
     match smp with
     | None -> (Printf.printf "ES NONE\n"; solverInfo.cutoff)
     | Some cut -> (Printf.printf "ES SOME\n"; cut)
@@ -1564,7 +1564,7 @@ struct
                   (info : Tac.support_info_t)
                   (inv : E.formula_info_t)
                   (spec_stac:Tac.solve_tactic_t option)
-                  (spec_cutoff:Smp.cutoff_strategy)
+                  (spec_cutoff:Smp.cutoff_strategy_t)
                   (tacs : Tac.post_tac_t list)
                   (line : E.pc_t) : (E.formula * vc_info_t) list =
     LOG "Entering seq_gen_vcs..." LEVEL TRACE;
@@ -1904,7 +1904,7 @@ struct
   
   let call_tll_dp (phi    : E.formula)
                   (stac   : Tac.solve_tactic_t option)
-                  (cutoff : Smp.cutoff_strategy)
+                  (cutoff : Smp.cutoff_strategy_t)
                   (status : valid_t) : dp_result_t =
     LOG "Entering call_tll_dp..." LEVEL TRACE;
     assert(isInitialized());
@@ -1927,7 +1927,7 @@ struct
 
   let call_tslk_dp (phi    : E.formula)
                    (stac   : Tac.solve_tactic_t option)
-                   (cutoff : Smp.cutoff_strategy)
+                   (cutoff : Smp.cutoff_strategy_t)
                    (status : valid_t) : dp_result_t =
     LOG "Entering call_tslk_dp..." LEVEL TRACE;
     assert(isInitialized());
@@ -1953,7 +1953,7 @@ struct
 (* TUKA: Repair this function *)
   let call_tsl_dp (phi    : E.formula)
                   (stac   : Tac.solve_tactic_t option)
-                  (cutoff : Smp.cutoff_strategy)
+                  (cutoff : Smp.cutoff_strategy_t)
                   (status : valid_t) : dp_result_t =
     LOG "Entering call_tsl_dp..." LEVEL TRACE;
     assert(isInitialized());
