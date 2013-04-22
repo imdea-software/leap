@@ -11,7 +11,7 @@ val is_input_file : bool ref
 val input_file_fd : Unix.file_descr ref
 val debugFlag : bool ref
 val use_z3 : bool ref
-val coType : VCGen.cutoff_type ref
+val coType : Smp.cutoff_strategy ref
 val hide_pres : bool ref
 val phiFile : string ref
 val assignopt : 'a ref -> bool ref -> 'a -> unit

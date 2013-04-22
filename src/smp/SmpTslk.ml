@@ -98,8 +98,8 @@ module Make (TSLK : TSLKExpression.S) =
       (* TOFIX: Not sure if I should consider all next pointers, or if they
                 are already expressed through a variable *)
       let numtid = ref (vars_tid + vars_mem * vars_addr * !numlevel) in
-(*      let numaddr = ref (vars_addr + vars_mem * vars_addr * !numlevel) in *)
-      let numaddr = ref (vars_addr + vars_cell * !numlevel) in
+      let numaddr = ref (vars_addr + vars_mem * vars_addr * !numlevel) in
+(*      let numaddr = ref (vars_addr + vars_cell * !numlevel) in *)
       let vars_elem = VarSet.cardinal (Expr.varset_of_sort vars Expr.Elem) in
       let numelem = ref (vars_elem + vars_mem * vars_addr) in
 
@@ -166,9 +166,9 @@ module Make (TSLK : TSLKExpression.S) =
                         
         in
           {
-            num_elems  = max s.num_elems  e_cut_off.num_elems ;
+            num_elems  = (max s.num_elems  e_cut_off.num_elems) + 5 ;
             num_tids   = max s.num_tids   e_cut_off.num_tids  ;
-            num_addrs  = max s.num_addrs  e_cut_off.num_addrs ;
+            num_addrs  = (max s.num_addrs  e_cut_off.num_addrs) + 5 ;
             num_levels = max s.num_levels e_cut_off.num_levels;
           }
       ) {num_elems=0; num_tids=0; num_addrs=0; num_levels=0} conj_list
@@ -355,7 +355,7 @@ module Make (TSLK : TSLKExpression.S) =
       LOG "Strategy: %s\n" (Smp.strategy_to_str strat) LEVEL DEBUG;
       options := opt;
       match strat with
-      | Smp.Dnf     -> compute_max_cut_off (Expr.dnf f)
-      | Smp.Union   -> compute_max_cut_off_with_union f
-      | Smp.Pruning -> compute_max_cut_off_with_pruning f
+      | Smp.Dnf     -> (Printf.printf "smt2: SNF\n"; compute_max_cut_off (Expr.dnf f))
+      | Smp.Union   -> (Printf.printf "smt2: UNION\n"; compute_max_cut_off_with_union f)
+      | Smp.Pruning -> (Printf.printf "smt2: PRUNING\n"; compute_max_cut_off_with_pruning f)
   end

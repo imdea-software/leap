@@ -15,7 +15,7 @@ val use_z3 : bool ref
 val expand_pres : bool ref
 val count_abs : bool ref
 val dpType : DP.t ref
-val coType : VCGen.cutoff_type ref
+val coType : Smp.cutoff_strategy ref
 val invCandidate : string ref
 val supInvariant : string ref
 val spinvSys : bool ref

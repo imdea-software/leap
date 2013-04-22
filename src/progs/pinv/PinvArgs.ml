@@ -20,7 +20,7 @@ let use_z3       = ref false
 let expand_pres  = ref false
 let count_abs    = ref false
 let dpType       = ref (DP.NoDP)
-let coType       = ref VCGen.Dnf
+let coType       = ref Smp.Pruning (*Smp.Dnf*)
 let invCandidate = ref ""
 let focusPC      = ref []
 let ignorePC     = ref []
@@ -53,9 +53,9 @@ let set_dp dp =
 let co_opt_list = ["dnf"; "union"; "pruning"]
 let set_co co =
   match co with
-  | "dnf" -> coType := VCGen.Dnf
-  | "union" -> coType := VCGen.Union
-  | "pruning" -> coType := VCGen.Pruning
+  | "dnf" -> coType := Smp.Dnf
+  | "union" -> coType := Smp.Union
+  | "pruning" -> coType := Smp.Pruning
   | _ -> ()
 
 let assigninputfile  (s:string) : unit = assignopt input_file is_input_file s

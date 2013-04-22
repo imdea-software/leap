@@ -1,5 +1,4 @@
 
-type cutoff_type = Dnf | Union | Pruning
 type valid_t = Unverified | NotValid | CheckedLocation | Checked | Unneeded
         
 module type S =
@@ -10,7 +9,7 @@ sig
   
   type vc_info_t = {
                      pc   : Expression.pc_t               ;
-                     smp  : cutoff_type                   ;
+                     smp  : Smp.cutoff_strategy           ;
                      stac : Tactics.solve_tactic_t option ;
                      mutable supps : Tag.f_tag list       ;
                    }
@@ -30,7 +29,7 @@ sig
     }
   *)
   
-  val cutoff : unit -> cutoff_type
+  val cutoff : unit -> Smp.cutoff_strategy
   val out_file : unit -> string
   val hide_pres : unit -> bool
   val tactics : unit -> Tactics.t
@@ -66,7 +65,7 @@ sig
   (*   -> bool                  *)
   (*   -> solver_info           *)
   val initialize : int       (** Number of lines in the program. *)
-    -> cutoff_type           (** Cutoff strategy to follow. *)
+    -> Smp.cutoff_strategy   (** Cutoff strategy to follow. *)
     -> string                (** Output file. *)
     -> Expression.pc_t list  (** Program lines where the VCGen focuses.*)
     -> bool                  (** Hide unmodified variables. *)

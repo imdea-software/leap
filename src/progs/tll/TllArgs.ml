@@ -13,7 +13,7 @@ let input_file_fd : Unix.file_descr ref = ref Unix.stdin
 (* Program arguments *)
 let debugFlag     = ref false
 let use_z3        = ref false
-let coType        = ref VCGen.Dnf
+let coType        = ref Smp.Pruning (*Smp.Dnf*)
 let hide_pres     = ref false
 let phiFile       = ref ""
 
@@ -30,9 +30,9 @@ let inputFormula (s:string) =
 let co_opt_list = ["dnf"; "union"; "pruning"]
 let set_co co =
   match co with
-  | "dnf" -> coType := VCGen.Dnf
-  | "union" -> coType := VCGen.Union
-  | "pruning" -> coType := VCGen.Pruning
+  | "dnf" -> coType := Smp.Dnf
+  | "union" -> coType := Smp.Union
+  | "pruning" -> coType := Smp.Pruning
   | _ -> ()
 
 let assigninputfile  (s:string) : unit = assignopt input_file is_input_file s

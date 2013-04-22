@@ -50,7 +50,7 @@ let get_line id = snd id
 %type <case_t> seq_case
 %type <IGraph.premise_t list> premise
 %type <Tactics.t> tactics
-%type <(Tactics.smp_tactic_t option * Tactics.solve_tactic_t option)> smp_tactic
+%type <(Smp.cutoff_strategy option * Tactics.solve_tactic_t option)> smp_tactic
 %type <Tactics.solve_tactic_t option> solve_tactic
 %type <Tactics.pre_tac_t list> pre_tactic_list
 %type <Tactics.pre_tac_t> pre_tactic
@@ -218,11 +218,11 @@ smp_tactic :
   |
     { (None, None) }
   | SMP_UNION solve_tactic COLON
-    { (Some Tactics.Union, $2) }
+    { (Some Smp.Union, $2) }
   | SMP_PRUNING solve_tactic COLON
-    { (Some Tactics.Pruning, $2) }
+    { (Some Smp.Pruning, $2) }
   | SMP_DNF solve_tactic COLON
-    { (Some Tactics.Dnf, $2) }
+    { (Some Smp.Dnf, $2) }
 
 
 solve_tactic :

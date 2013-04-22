@@ -5,18 +5,16 @@ module E = Expression
 
 type solve_tactic_t = Cases
 
-type smp_tactic_t = Union | Pruning | Dnf
-
 type pre_tac_t = Full | Reduce | Reduce2
 
 type post_tac_t = SplitConseq | SimplPCVoc
 
 type t =
   {
-    smp   : smp_tactic_t option   ;
-    solve : solve_tactic_t option ;
-    pre   : pre_tac_t list        ;
-    post  : post_tac_t list       ;
+    smp   : Smp.cutoff_strategy option   ;
+    solve : solve_tactic_t option        ;
+    pre   : pre_tac_t list               ;
+    post  : post_tac_t list              ;
   }
 
 
@@ -47,18 +45,18 @@ type task_t =
 
 
 (* Configuration *)
-let default_smp = Dnf
+let default_smp = Smp.Dnf
 
 
 
-let new_tactics (smp:smp_tactic_t option)
+let new_tactics (smp:Smp.cutoff_strategy option)
                 (solve_tac:solve_tactic_t option)
                 (pre:pre_tac_t list)
                 (post:post_tac_t list) : t =
   {smp = smp; solve = solve_tac; pre = pre; post = post }
 
 
-let smp_cutoff (tacs:t) : smp_tactic_t option =
+let smp_cutoff (tacs:t) : Smp.cutoff_strategy option =
   tacs.smp
 
 
