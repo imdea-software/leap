@@ -291,16 +291,28 @@ let rec union_formula_cutoff (info:union_info) (phi:Expr.formula) : union_info =
 (* Union SMP *)
 let compute_max_cut_off_with_union (phi:formula) : model_size =
   let vars = Expr.get_varset_from_formula phi in
-  let vartid  = Expr.varset_of_sort vars Thid in
-  let varaddr  = Expr.varset_of_sort vars Addr in
-  let varelem  = Expr.varset_of_sort vars Elem in
-  let tid_num = VarSet.cardinal vartid in
-  let info = union_model_size (union_formula_cutoff new_union_count phi)
+  let vartid_num  = VarSet.cardinal (Expr.varset_of_sort vars Thid) in
+  let varaddr_num = VarSet.cardinal (Expr.varset_of_sort vars Addr) in
+  let varelem_num = VarSet.cardinal (Expr.varset_of_sort vars Elem) in
+  let varmem_num  = VarSet.cardinal (Expr.varset_of_sort vars Mem) in
+  let info = union_model_size (union_formula_cutoff new_union_count phi) in
+  let num_addrs = 1 +                         (* null               *)
+                  varaddr_num +               (* Address variables  *)
+                  varaddr_num * varmem_num +  (* Cell next pointers *)
+                  info.num_addrs              (* Special literals   *) in
+  let num_tids = 1 +                          (* No thread          *)
+                 vartid_num +                 (* Thid variables     *)
+                 varmem_num * num_addrs       (* Cell locks         *) in
+  let num_elems = varelem_num +               (* Elem variables     *)
+                  varmem_num * num_addrs      (* Cell data          *)
   in
     {
-      num_elems = 2 + (VarSet.cardinal varelem + info.num_elems) * tid_num;
-      num_tids = 2 + (tid_num + info.num_tids) * tid_num;
-      num_addrs = 2 + (VarSet.cardinal varaddr + (2 * info.num_addrs)) * tid_num;
+      num_addrs = num_addrs; num_tids = num_tids; num_elems = num_elems;
+(*
+      num_elems = 2 + (varelem_num + info.num_elems) * vartid_num;
+      num_tids = 2 + (vartid_num + info.num_tids) * vartid_num;
+      num_addrs = 2 + (varaddr_num + (2 * info.num_addrs)) * vartid_num;
+*)
     }
 
 

@@ -1,6 +1,5 @@
 open LeapLib
-
-
+open LeapVerbose
 
 
 
@@ -98,8 +97,8 @@ module Make (TSLK : TSLKExpression.S) =
       (* TOFIX: Not sure if I should consider all next pointers, or if they
                 are already expressed through a variable *)
       let numtid = ref (vars_tid + vars_mem * vars_addr * !numlevel) in
-      let numaddr = ref (vars_addr + vars_mem * vars_addr * !numlevel) in
-(*      let numaddr = ref (vars_addr + vars_cell * !numlevel) in *)
+(*      let numaddr = ref (vars_addr + vars_mem * vars_addr * !numlevel) in *)
+      let numaddr = ref (vars_addr + vars_cell * !numlevel) in
       let vars_elem = VarSet.cardinal (Expr.varset_of_sort vars Expr.Elem) in
       let numelem = ref (vars_elem + vars_mem * vars_addr) in
 
@@ -166,9 +165,9 @@ module Make (TSLK : TSLKExpression.S) =
                         
         in
           {
-            num_elems  = (max s.num_elems  e_cut_off.num_elems) + 5 ;
+            num_elems  = max s.num_elems  e_cut_off.num_elems ;
             num_tids   = max s.num_tids   e_cut_off.num_tids  ;
-            num_addrs  = (max s.num_addrs  e_cut_off.num_addrs) + 5 ;
+            num_addrs  = max s.num_addrs  e_cut_off.num_addrs ;
             num_levels = max s.num_levels e_cut_off.num_levels;
           }
       ) {num_elems=0; num_tids=0; num_addrs=0; num_levels=0} conj_list
@@ -212,7 +211,7 @@ module Make (TSLK : TSLKExpression.S) =
       match a with
         Expr.Append _       -> union_count_addr info a
       | Expr.Reach _        -> union_count_addr info a
-      | Expr.OrderList _    -> union_count_elem info a
+      | Expr.OrderList _    -> union_count_addr (union_count_elem info a) a
       | Expr.In      _      -> info
       | Expr.SubsetEq _     -> union_count_addr info a
       | Expr.InTh _         -> info
@@ -254,18 +253,32 @@ module Make (TSLK : TSLKExpression.S) =
     (* Union SMP *)
     let compute_max_cut_off_with_union (phi:Expr.formula) : model_size =
       let vars = Expr.get_varset_from_formula phi in
-      let vartid  = Expr.varset_of_sort vars Expr.Thid in
-      let varaddr  = Expr.varset_of_sort vars Expr.Addr in
-      let varelem  = Expr.varset_of_sort vars Expr.Elem in
-      let tid_num = VarSet.cardinal vartid in
-      let info = union_model_size (union_formula_cutoff new_union_count phi)
+      let vartid_num  = VarSet.cardinal (Expr.varset_of_sort vars Expr.Thid) in
+      let varaddr_num = VarSet.cardinal (Expr.varset_of_sort vars Expr.Addr) in
+      let varelem_num = VarSet.cardinal (Expr.varset_of_sort vars Expr.Elem) in
+      let varcell_num = VarSet.cardinal (Expr.varset_of_sort vars Expr.Cell) in
+      let varmem_num  = VarSet.cardinal (Expr.varset_of_sort vars Expr.Mem ) in
+      let info = union_model_size (union_formula_cutoff new_union_count phi) in
+      let num_levels = Expr.k in
+      let num_addrs = 1 +                                     (* null               *)
+                      varaddr_num +                           (* Address variables  *)
+                      varcell_num * num_levels              + (* Cell next pointers *)
+(*                      varaddr_num * varmem_num * num_levels + (* Cell next pointers *) *)
+                      info.num_addrs                          (* Special literals   *) in
+      let num_tids = 1 +                                      (* No thread          *)
+                     vartid_num +                             (* Thid variables     *)
+                     varcell_num * num_levels                 (* Cell locks         *) in
+(*                     varmem_num * num_addrs * num_levels      (* Cell locks         *) in *)
+      let num_elems = varelem_num +                           (* Elem variables     *)
+                      varmem_num * num_addrs                  (* Cell data          *)
       in
+      verb "UNION LEVELS: %i\n" num_levels;
+      verb "UNION ADDR  : %i\n" num_addrs;
+      verb "UNION TIDS  : %i\n" num_tids;
+      verb "UNION ELEMS : %i\n" num_elems;
         {
-          (* TOFIX: Check that this computation is OK *)
-          num_levels = Expr.k ;
-          num_elems = (VarSet.cardinal varelem + info.num_elems) * tid_num;
-          num_tids = 2 + (tid_num + info.num_tids) * tid_num;
-          num_addrs = 2 + (VarSet.cardinal varaddr + (2 * info.num_addrs)) * tid_num;
+          num_levels = num_levels; num_addrs = num_addrs;
+          num_tids = num_tids; num_elems = num_elems;
         }
 
 

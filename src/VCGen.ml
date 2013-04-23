@@ -379,9 +379,9 @@ struct
   
   (* This should not go here *)
   let cutoff ()    : Smp.cutoff_strategy_t = solverInfo.cutoff
-  let out_file ()  : string              = solverInfo.out_file
-  let hide_pres () : bool                = solverInfo.hide_pres
-  let tactics ()   : Tactics.t           = solverInfo.tactics
+  let out_file ()  : string                = solverInfo.out_file
+  let hide_pres () : bool                  = solverInfo.hide_pres
+  let tactics ()   : Tactics.t             = solverInfo.tactics
   (* This should not go here *)
   
   (** Initialization status of the module. *)
@@ -1254,8 +1254,14 @@ struct
     let sup_list_as_formula = List.map (Tag.tag_table_get_formula tags) sup_list
     in
       support sup_list_as_formula ante cons ext_sup
-    
-  
+
+
+  let assign_cutoff (smp:Smp.cutoff_strategy_t option) : Smp.cutoff_strategy_t =
+    match smp with
+    | None -> solverInfo.cutoff
+    | Some cut -> cut
+
+
   (* Invariant vcgen for closed systems *)
   let binv (sys : Sys.system_t) 
       (inv : E.formula) : (E.formula * vc_info_t) list =
@@ -1329,7 +1335,7 @@ struct
     let theta = gen_theta_general
                   (Sys.SOpenArray inv.E.voc) sys solverInfo.count_abs in
     let vc_info = {pc   = 0;
-                   smp  = solverInfo.cutoff;
+                   smp  = assign_cutoff (Tac.smp_cutoff solverInfo.tactics);
                    stac = Tac.solve_tactic solverInfo.tactics;
                    supps= [];} in
     let init_cond = (E.Implies (theta, inv.E.formula), vc_info)
@@ -1467,12 +1473,6 @@ struct
     ) [] rho
 
 
-  let assign_cutoff (smp:Smp.cutoff_strategy_t option) : Smp.cutoff_strategy_t =
-    match smp with
-    | None -> (Printf.printf "ES NONE\n"; solverInfo.cutoff)
-    | Some cut -> (Printf.printf "ES SOME\n"; cut)
-
-
   let spinv_premise_transitions (sys : Sys.system_t)
                                 (lines_to_consider : int list)
                                 (supInvs : E.formula list)
@@ -1504,8 +1504,6 @@ struct
   let seq_binv (sys : Sys.system_t) (inv : E.formula)
         : (E.formula * vc_info_t) list =
     LOG "Entering seq_binv..." LEVEL TRACE;
-
-
     let th_list = List.filter (fun x -> E.is_tid_var x) (E.voc inv) in
     if th_list <> [] then RAISE(NotSequentialFormula(E.formula_to_str inv));
     let fresh_tid = E.gen_fresh_thread th_list in
@@ -1517,7 +1515,7 @@ struct
     let need_theta = List.mem 0 solverInfo.focus in
     (* TODO: Support Threads as terms? *)
     let gen_vc_info (l:E.pc_t) = {pc  =l;
-                                  smp =solverInfo.cutoff;
+                                  smp = assign_cutoff (Tac.smp_cutoff solverInfo.tactics);
                                   stac=Tac.solve_tactic solverInfo.tactics;
                                   supps = [];} in
   
@@ -1700,7 +1698,7 @@ struct
     (* TODO: Support Threads as terms? *)
     let diff_conj = E.conj_list diff_list in
     let gen_vc_info (l:E.pc_t) = {pc  =l;
-                                  smp =solverInfo.cutoff;
+                                  smp =assign_cutoff (Tac.smp_cutoff solverInfo.tactics);
                                   stac=Tac.solve_tactic solverInfo.tactics;
                                   supps = [];} in
   

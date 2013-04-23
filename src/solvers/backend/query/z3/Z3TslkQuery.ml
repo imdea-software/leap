@@ -53,6 +53,13 @@ module Make (K : Level.S) : TSLK_QUERY =
     let loc_s     : string = "Loc"
 
 
+    (* We store tables to add constraints over elements of specific sorts *)
+    let elem_tbl = Hashtbl.create 10
+
+    let clean_lists () : unit =
+      Hashtbl.clear elem_tbl
+
+
     (* Information storage *)
     let sort_map : GM.sort_map_t = GM.new_sort_map()
 
@@ -76,6 +83,14 @@ module Make (K : Level.S) : TSLK_QUERY =
     (* Auxiliary functions *)
     let set_prog_lines (n:int) : unit =
       prog_lines := n
+
+
+    (************************* Declarations **************************)
+
+
+    let data(expr:string) : string =
+      Hashtbl.add elem_tbl expr ();
+      ("(data " ^expr^ ")")
 
 
 
@@ -173,11 +188,22 @@ module Make (K : Level.S) : TSLK_QUERY =
 
     (* (define-type element) *)
     let z3_element_preamble (buf:B.t) (num_elems:int) : unit =
-      B.add_string buf ("(declare-datatypes () ((" ^ elem_s^ " LowestElem HighestElem") ;
+    B.add_string buf ("(define-sort " ^elem_s^ " () " ^int_s^ ")\n");
+    B.add_string buf ("(define-fun lowestElem () " ^elem_s^ " 0)\n");
+    B.add_string buf ("(define-fun highestElem () " ^elem_s^ " " ^(string_of_int (num_elems+1))^ ")\n");
+    for i = 1 to num_elems do
+      let i_str = string_of_int i in
+      let e_str = elem_prefix ^ i_str in
+      B.add_string buf ("(define-fun " ^e_str^ " () " ^elem_s^ " " ^i_str^ ")\n")
+    done;
+    B.add_string buf ("(define-fun iselem ((x " ^elem_s^ ")) " ^bool_s^ " (and (<= lowestElem x) (<= x highestElem)))\n")
+(*
+      B.add_string buf ("(declare-datatypes () ((" ^ elem_s^ " lowestElem highestElem") ;
       for i = 1 to num_elems do
         B.add_string buf (" " ^ (ee i))
       done ;
       B.add_string buf ")))\n"
+*)
 
 
 
@@ -652,18 +678,20 @@ module Make (K : Level.S) : TSLK_QUERY =
 
 
     let z3_elemorder_def (buf:B.t) (num_elem:int) : unit =
+      ()
+(*
       B.add_string buf ("(declare-fun lesselem (" ^elem_s^ " " ^elem_s^ ") " ^bool_s^ ")\n") ;
       B.add_string buf ("(define-fun greaterelem ((x " ^elem_s^ ") (y " ^elem_s^ ")) " ^bool_s^ "\n" ^
                         "  (lesselem y x))\n") ;
       (* Totality and no-reflexibility *)
-      B.add_string buf ("(assert (not (lesselem LowestElem LowestElem)))\n");
-      B.add_string buf ("(assert (not (lesselem HighestElem HighestElem)))\n");
-      B.add_string buf ("(assert (lesselem LowestElem HighestElem))\n");
+      B.add_string buf ("(assert (not (lesselem lowestElem lowestElem)))\n");
+      B.add_string buf ("(assert (not (lesselem highestElem highestElem)))\n");
+      B.add_string buf ("(assert (lesselem lowestElem highestElem))\n");
       for i = 1 to num_elem do
         let x = ee i in
         B.add_string buf ("(assert (not (lesselem " ^x^ " " ^x^ ")))\n") ;
-        B.add_string buf ("(assert (lesselem LowestElem " ^x^ "))\n");
-        B.add_string buf ("(assert (lesselem " ^x^ " HighestElem))\n");
+        B.add_string buf ("(assert (lesselem lowestElem " ^x^ "))\n");
+        B.add_string buf ("(assert (lesselem " ^x^ " highestElem))\n");
         for j = i+1 to num_elem do
           let y = ee j in
             B.add_string buf ("(assert (or (lesselem " ^x^ " " ^y^ ") (lesselem " ^y^ " " ^x^ ")))\n")
@@ -685,7 +713,7 @@ module Make (K : Level.S) : TSLK_QUERY =
           done
         done
       done
-
+*)
 
 
     (* Ordered list predicate definition *)
@@ -702,16 +730,20 @@ module Make (K : Level.S) : TSLK_QUERY =
           ("(define-fun orderlist" ^id^ " ((h " ^heap_s^ ") " ^
            "(a " ^addr_s^ ") ( b " ^addr_s^ ") (l " ^level_s^ ")) " ^bool_s^ "\n" ^
            "  (or (= (next" ^id^ " h a l) b)\n" ^
-           "      (and (lesselem (data (select h (next" ^id^ " h a l)))\n" ^
-           "                     (data (select h (next" ^idnext^ " h a l))))\n" ^
+           "      (and (< (data (select h (next" ^id^ " h a l)))\n" ^
+           "              (data (select h (next" ^idnext^ " h a l))))\n" ^
+           "           (iselem (data (select h (next" ^id^ " h a l))))\n" ^
+           "           (iselem (data (select h (next" ^idnext^ " h a l))))\n" ^
            "           (orderlist" ^idnext^ " h a b l))))\n")
       done;
       B.add_string buf
         ("(define-fun orderlist ((h " ^heap_s^ ") " ^
          "(a " ^addr_s^ ") (b " ^addr_s^ ") (l " ^level_s^ ")) " ^bool_s^ "\n" ^
            "  (or (= a b)\n" ^
-           "      (and (lesselem (data (select h a))\n" ^
-           "                     (data (select h (next1 h a l))))\n" ^
+           "      (and (< (data (select h a))\n" ^
+           "              (data (select h (next1 h a l))))\n" ^
+           "           (iselem (data (select h a)))\n" ^
+           "           (iselem (data (select h (next1 h a l))))\n" ^
            "           (orderlist1 h a b l))))\n")
 
 
@@ -1203,6 +1235,7 @@ module Make (K : Level.S) : TSLK_QUERY =
 
     let rec z3_define_var (buf:Buffer.t)
                           (tid_set:Expr.VarSet.t)
+                          (num_tids:int)
                           (v:Expr.variable) : unit =
       verb "**** Z3TslkQuery, defining variable: %s\n" (Expr.variable_to_str v);
       let (id,s,pr,th,p) = v in
@@ -1228,8 +1261,9 @@ module Make (K : Level.S) : TSLK_QUERY =
             GM.sm_decl_const sort_map name (GM.conv_sort (Interf.sort_to_expr_sort s)) ;
             B.add_string buf ( "(declare-const " ^ name ^ " " ^ s_str ^ ")\n" );
             match s with
-              Expr.Path -> B.add_string buf ( "(assert (ispath " ^ name ^ "))\n" )
+            | Expr.Path -> B.add_string buf ( "(assert (ispath " ^ name ^ "))\n" )
             | Expr.Mem  -> B.add_string buf ( "(assert (isheap " ^ name ^ "))\n" )
+            | Expr.Elem -> B.add_string buf ( "(assert (iselem " ^ name ^ "))\n" )
             | Expr.Thid -> let _ = B.add_string buf ( "(assert (not (= " ^ name ^ " NoThread)))\n" ) in
                            let _ = B.add_string buf ( "(assert (in_pos_range " ^ name ^ "))\n")
                            in
@@ -1241,7 +1275,12 @@ module Make (K : Level.S) : TSLK_QUERY =
             GM.sm_decl_fun sort_map name [tid_s] [s_str] ;
             B.add_string buf ( "(declare-const " ^ name ^ " (Array " ^tid_s^ " " ^ s_str ^ "))\n" );
             match s with
-              Expr.Path -> Expr.VarSet.iter (fun t ->
+            | Expr.Elem -> B.add_string buf ("(assert (iselem (select " ^name^ " notid)))\n");
+                           B.add_string buf ("(assert (iselem (select " ^name^ " tid_witness)))\n");
+                           for i = 1 to num_tids do
+                             B.add_string buf ("(assert (iselem (select " ^name^ " " ^tid_prefix ^ (string_of_int i)^ ")))\n")
+                          done
+            | Expr.Path -> Expr.VarSet.iter (fun t ->
                         let v_str = variable_invocation_to_str
                                         (Expr.param_var v (Expr.VarTh t)) in
                           B.add_string buf ( "(assert (ispath " ^ v_str ^ "))\n" )
@@ -1261,7 +1300,7 @@ module Make (K : Level.S) : TSLK_QUERY =
           end
 
 
-    and define_variables (buf:Buffer.t) (vars:Expr.VarSet.t) : unit =
+    and define_variables (buf:Buffer.t) (num_tids:int) (vars:Expr.VarSet.t) : unit =
       let varlevel   = Expr.varset_of_sort vars Expr.Level in
       let varset     = Expr.varset_of_sort vars Expr.Set  in
       let varelem    = Expr.varset_of_sort vars Expr.Elem in
@@ -1273,33 +1312,36 @@ module Make (K : Level.S) : TSLK_QUERY =
       let varpath    = Expr.varset_of_sort vars Expr.Path in
       let varmem     = Expr.varset_of_sort vars Expr.Mem  in
       let varunk     = Expr.varset_of_sort vars Expr.Unknown  in
-        Expr.VarSet.iter (z3_define_var buf vartid) varlevel;
-        Expr.VarSet.iter (z3_define_var buf vartid) varset;
-        Expr.VarSet.iter (z3_define_var buf vartid) varelem;
-        Expr.VarSet.iter (z3_define_var buf vartid) vartid;
-        Expr.VarSet.iter (z3_define_var buf vartid) varaddr;
-        Expr.VarSet.iter (z3_define_var buf vartid) varcell;
-        Expr.VarSet.iter (z3_define_var buf vartid) varsetth;
-        Expr.VarSet.iter (z3_define_var buf vartid) varsetelem;
-        Expr.VarSet.iter (z3_define_var buf vartid) varpath;
-        Expr.VarSet.iter (z3_define_var buf vartid) varmem;
-        Expr.VarSet.iter (z3_define_var buf vartid) varunk
+        Expr.VarSet.iter (z3_define_var buf vartid num_tids) varlevel;
+        Expr.VarSet.iter (z3_define_var buf vartid num_tids) varset;
+        Expr.VarSet.iter (z3_define_var buf vartid num_tids) varelem;
+        Expr.VarSet.iter (z3_define_var buf vartid num_tids) vartid;
+        Expr.VarSet.iter (z3_define_var buf vartid num_tids) varaddr;
+        Expr.VarSet.iter (z3_define_var buf vartid num_tids) varcell;
+        Expr.VarSet.iter (z3_define_var buf vartid num_tids) varsetth;
+        Expr.VarSet.iter (z3_define_var buf vartid num_tids) varsetelem;
+        Expr.VarSet.iter (z3_define_var buf vartid num_tids) varpath;
+        Expr.VarSet.iter (z3_define_var buf vartid num_tids) varmem;
+        Expr.VarSet.iter (z3_define_var buf vartid num_tids) varunk
 
 
-    and variables_to_z3 (buf:Buffer.t) (expr:Expr.conjunctive_formula) : unit =
+    and variables_to_z3 (buf:Buffer.t)
+                        (num_tids:int)
+                        (expr:Expr.conjunctive_formula) : unit =
       let vars = Expr.get_varset_from_conj expr
       in
-        define_variables buf vars
+        define_variables buf num_tids vars
 
 
     and variables_from_formula_to_z3 (buf:Buffer.t)
+                                     (num_tids:int)
                                      (phi:Expr.formula) : unit =
       let vars = Expr.get_varset_from_formula phi in
       verb "Z3TslkQuery, variables to define:\n{%s}\n"
         (Expr.VarSet.fold (fun v str ->
           str ^ (Expr.variable_to_str v) ^ ";"
         ) vars "");
-        define_variables buf vars
+        define_variables buf num_tids vars
 
 
     and variable_invocation_to_str (v:Expr.variable) : string =
@@ -1366,10 +1408,11 @@ module Make (K : Level.S) : TSLK_QUERY =
     and elemterm_to_str (e:Expr.elem) : string =
       match e with
         Expr.VarElem v         -> variable_invocation_to_str v
-      | Expr.CellData c        -> Printf.sprintf "(data %s)" (cellterm_to_str c)
+      | Expr.CellData c        -> let c_str = cellterm_to_str c in
+                                    data c_str
       | Expr.HavocSkiplistElem -> "" (* Don't need a representation for this *)
-      | Expr.LowestElem        -> "LowestElem"
-      | Expr.HighestElem       -> "HighestElem"
+      | Expr.LowestElem        -> "lowestElem"
+      | Expr.HighestElem       -> "highestElem"
 
 
     and tidterm_to_str (th:Expr.tid) : string =
@@ -1584,11 +1627,11 @@ module Make (K : Level.S) : TSLK_QUERY =
 
 
     let lesselem_to_str (e1:Expr.elem) (e2:Expr.elem) : string =
-      Printf.sprintf "(lesselem %s %s)" (elemterm_to_str e1) (elemterm_to_str e2)
+      Printf.sprintf "(< %s %s)" (elemterm_to_str e1) (elemterm_to_str e2)
 
 
     let greaterelem_to_str (e1:Expr.elem) (e2:Expr.elem) : string =
-      Printf.sprintf "(greaterelem %s %s)" (elemterm_to_str e1) (elemterm_to_str e2)
+      Printf.sprintf "(> %s %s)" (elemterm_to_str e1) (elemterm_to_str e2)
 
 
     let eq_to_str (t1:Expr.term) (t2:Expr.term) : string =
@@ -1710,7 +1753,16 @@ module Make (K : Level.S) : TSLK_QUERY =
       B.add_string buf (literal_to_str lit)
 
 
+    let process_elem (e_expr:string) : string =
+      ("(assert (iselem (data " ^e_expr^ ")))\n")
+
+
+    let post_process (buf:B.t) (num_addrs:int) (num_elems:int) (num_tids:int) : unit =
+      Hashtbl.iter (fun e _ -> B.add_string buf (process_elem e)) elem_tbl
+
+
     let literal_list_to_str (ls:Expr.literal list) : string =
+      clean_lists();
       let _ = GM.clear_sort_map sort_map in
       let expr = Expr.Conj ls in
       let c = Smp4Tslk.cut_off_normalized expr in
@@ -1726,12 +1778,13 @@ module Make (K : Level.S) : TSLK_QUERY =
       let buf = B.create 1024 in
           z3_preamble buf num_addr num_tid num_elem req_sorts;
           z3_defs    buf num_addr num_tid num_elem req_sorts req_ops;
-          variables_to_z3 buf expr ;
+          variables_to_z3 buf num_tid expr ;
           let add_and_literal l str =
       "\n         " ^ (literal_to_str l) ^ str
           in
           let formula_str = List.fold_right add_and_literal ls ""
           in
+      post_process buf num_addr num_elem num_tid;
       B.add_string buf "(assert\n   (and";
       B.add_string buf formula_str ;
       B.add_string buf "))\n(check-sat)" ;
@@ -1777,7 +1830,7 @@ module Make (K : Level.S) : TSLK_QUERY =
             verb "**** Number of cases: %i\n" (List.length parts);
             verb "**** Computation done!!!\n";
             z3_partition_assumptions parts in
-
+      clean_lists();
       let _ = GM.clear_sort_map sort_map in
       verb "**** Z3TslkQuery will compute the cutoff...\n";
       let max_cut_off = Smp4Tslk.cut_off co copt phi in
@@ -1795,10 +1848,11 @@ module Make (K : Level.S) : TSLK_QUERY =
                             (Expr.formula_to_str phi));
         z3_preamble buf num_addr num_tid num_elem req_sorts;
         z3_defs     buf num_addr num_tid num_elem req_sorts req_ops;
-        variables_from_formula_to_z3 buf phi ;
+        variables_from_formula_to_z3 buf num_tid phi ;
         (* We add extra information if needed *)
         verb "**** Z3TslkQuery, about to compute extra information...\n";
         B.add_string buf extra_info_str ;
+        post_process buf num_addr num_elem num_tid;
         verb "**** Z3TslkQuery, computed extra information...\n";
         B.add_string buf "(assert\n";
         B.add_string buf formula_str ;
