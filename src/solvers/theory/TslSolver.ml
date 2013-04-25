@@ -579,9 +579,10 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
 
 let check_sat_by_cases (lines:int)
                        (stac:Tactics.solve_tactic_t option)
-                       (co : Smp.cutoff_strategy)
-                       (cases:(TslExp.conjunctive_formula  *     (* PA formula *)
-                               TslExp.conjunctive_formula) list) (* NC formula *)
+                       (co : Smp.cutoff_strategy_t)
+                       (cases:(TslExp.conjunctive_formula *           (* PA formula  *)
+                               TslExp.conjunctive_formula *           (* NC formula  *)
+                               TslExp.conjunctive_formula list) list) (* Arrangements *)
       : (bool * int * int) =
 
   (* PA satisfiability check function *)
@@ -629,53 +630,48 @@ let check_sat_by_cases (lines:int)
   (* General satisfiability function *)
   let rec check (pa:TslExp.conjunctive_formula)
                 (nc:TslExp.conjunctive_formula)
-                (arrgs:TslExp.conjunctive_formula list) =
-    match arrgs with
-    | [] -> false
-    | alpha::xs ->
-        (* Check PA /\ alpha satisfiability *)
-        let pa_sat = check_pa (TslExp.combine_conj_formula pa alpha) in
-        verb "**** TSL Solver, PA sat?: %b\n" pa_sat;
-        if pa_sat then
-          (* Check NC /\ alpha satisfiability *)
-          let _ = verb "**** TSL Solver will combine candidate arrangement wit NC.\n" in
-          let nc_sat = check_nc (TslExp.combine_conj_formula nc alpha) in
-          if nc_sat then true else check pa nc xs
-        else
-          check pa nc xs in
+                (alpha:TslExp.conjunctive_formula) =
+    let pa_sat = check_pa (TslExp.combine_conj_formula pa alpha) in
+    verb "**** TSL Solver, PA sat?: %b\n" pa_sat;
+    if pa_sat then
+      (* Check NC /\ alpha satisfiability *)
+      let _ = verb "**** TSL Solver will combine candidate arrangement wit NC.\n" in
+      check_nc (TslExp.combine_conj_formula nc alpha)
+    else
+      false in
 
   (* Main call *)
   let tslk_calls = ref 0 in
-  let rec check_aux cs =
-    verbstr (Interface.Msg.info ("SPLIT INTO PA y NC: " ^(string_of_int (List.length cs))^ " CASES")
-            (String.concat "\n"
-              (List.map (fun (pa,nc) ->
-                Printf.sprintf "PA: %s\nNC: %s\n--------\n"
-                  (TslExp.conjunctive_formula_to_str pa)
-                  (TslExp.conjunctive_formula_to_str nc)) cs)));
-    match cs with
-    | []          -> (false, 1, !tslk_calls)
-    | (pa,nc)::xs -> begin
-                       verb "**** TSL Solver: will guess arrangements...\n";
-                       let arrgs = guess_arrangements (TslExp.combine_conj_formula pa nc) in
-                       verb "**** TSL Solver: arrangements guessed: %i...\n" (List.length arrgs);
-                       match arrgs with
-                       | [] -> (* No arrangements guessed, ie. less than 2 level variables.
-                                  Only need to check NC *)
-                               (check_nc nc, 1, !tslk_calls)
-                       | _  -> (* Some arrangement guessed. Full check required *)
-                               if check pa nc arrgs then
-                                 (true, 1, !tslk_calls)
-                               else
-                                 check_aux xs
-                     end
+  let rec check_aux cases =
+    match cases with
+    | [] -> (false, 1, !tslk_calls)
+    | (pa,nc,arrgs)::xs -> begin
+                             let arrgs_to_try = match arrgs with
+                                                | [] -> [TslExp.TrueConj]
+                                                | _ -> arrgs in
+                             if (List.exists (fun alpha -> check pa nc alpha) arrgs_to_try) then
+                               (true, 1, !tslk_calls)
+                             else
+                               check_aux xs
+                           end
   in
     check_aux cases
 
 
+let rec combine_splits_arrgs (sp:(TslExp.conjunctive_formula * TslExp.conjunctive_formula) list)
+                             (arrgs:TslExp.conjunctive_formula list list) :
+            (TslExp.conjunctive_formula *
+             TslExp.conjunctive_formula *
+             TslExp.conjunctive_formula list) list =
+  match (sp,arrgs) with
+  | ([],[])                -> []
+  | ((pa,nc)::xs,arrg::ys) -> (pa,nc,arrg)::(combine_splits_arrgs xs ys)
+  | _ -> assert false
+
+
 let is_sat_plus_info (lines : int)
            (stac:Tactics.solve_tactic_t option)
-           (co : Smp.cutoff_strategy)
+           (co : Smp.cutoff_strategy_t)
            (phi : TslExp.formula) : (bool * int * int) =
   (* 0. Normalize the formula and rewrite it in DNF *)
   verb "**** Will normalize TSL formula...\n";
@@ -683,22 +679,32 @@ let is_sat_plus_info (lines : int)
   verbstr (Interface.Msg.info "NORMALIZED FORMULA" (TslExp.formula_to_str phi_norm));
   verb "**** Will do DNF on TSL formula...\n";
   let phi_dnf = TslExp.dnf phi_norm in
+  verbstr (Interface.Msg.info "DNF RESULT"
+    (String.concat "\n" (List.map TslExp.conjunctive_formula_to_str phi_dnf)));
   (* 1. Sanitize the formula *)
   verb "**** Will sanitize TSL formula...\n";
   let phi_san = List.map sanitize phi_dnf in
-  (* 2. Split each conjunction into PA y NC *)
+  verbstr (Interface.Msg.info "SANITARIZED FORMULAS"
+    (String.concat "\n" (List.map TslExp.conjunctive_formula_to_str phi_san)));
+  (* 2. Guess arrangements *)
+  let arrgs = List.map guess_arrangements phi_san in
+  (* 3. Split each conjunction into PA y NC *)
   verb "**** Will split TSL formula in NC and PA...\n";
   let splits = List.map split phi_san in
-  (* 3. Call the solver for each possible case *)
+  verbstr (Interface.Msg.info "SPLITED FORMULAS"
+    (String.concat "\n" (List.map (fun (pa,nc) -> "PA:\n" ^ (TslExp.conjunctive_formula_to_str pa) ^
+                                                  "NC:\n" ^ (TslExp.conjunctive_formula_to_str nc)) splits)));
+  (* 4. Call the solver for each possible case *)
   verb "**** Will check TSL formula satisfiability...\n";
-  let (sat,tsl_calls,tslk_calls) = check_sat_by_cases lines stac co splits
+  let (sat,tsl_calls,tslk_calls) = check_sat_by_cases lines stac co
+                                      (combine_splits_arrgs splits arrgs)
   in
     (sat, tsl_calls, tslk_calls)
 
 
 let is_sat (lines : int)
            (stac:Tactics.solve_tactic_t option)
-           (co : Smp.cutoff_strategy)
+           (co : Smp.cutoff_strategy_t)
            (phi : TslExp.formula) : bool =
   (* Here goes the code for satisfiability from the paper *)
   let (s,_,_) = is_sat_plus_info lines stac co phi in s
@@ -706,7 +712,7 @@ let is_sat (lines : int)
 
 let is_valid_plus_info (prog_lines:int)
                        (stac:Tactics.solve_tactic_t option)
-                       (co:Smp.cutoff_strategy)
+                       (co:Smp.cutoff_strategy_t)
                        (phi:TslExp.formula) : (bool * int * int) =
   let (s,tsl_count,tslk_count) = is_sat_plus_info prog_lines stac co
                                    (TslExp.Not phi) in
@@ -715,7 +721,7 @@ let is_valid_plus_info (prog_lines:int)
 
 let is_valid (prog_lines:int)
              (stac:Tactics.solve_tactic_t option)
-             (co:Smp.cutoff_strategy)
+             (co:Smp.cutoff_strategy_t)
              (phi:TslExp.formula) : bool =
   not (is_sat prog_lines stac co phi)
 

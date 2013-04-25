@@ -162,8 +162,11 @@ module Make (TSLK : TSLKExpression.S) =
           : model_size =
       List.fold_left (fun s e ->
         let e_cut_off = cut_off_normalized e
-                        
         in
+        verb "DNF LEVELS: %i\n" (max s.num_levels e_cut_off.num_levels);
+        verb "DNF ADDR  : %i\n" (max s.num_addrs  e_cut_off.num_addrs);
+        verb "DNF TIDS  : %i\n" (max s.num_tids   e_cut_off.num_tids);
+        verb "DNF ELEMS : %i\n" (max s.num_elems  e_cut_off.num_elems);
           {
             num_elems  = max s.num_elems  e_cut_off.num_elems ;
             num_tids   = max s.num_tids   e_cut_off.num_tids  ;
@@ -273,11 +276,12 @@ module Make (TSLK : TSLKExpression.S) =
                       varmem_num * num_addrs                  (* Cell data          *)
       in
       verb "UNION LEVELS: %i\n" num_levels;
+      verb "INFO NUM ADDRS: %i\n" info.num_addrs;
       verb "UNION ADDR  : %i\n" num_addrs;
       verb "UNION TIDS  : %i\n" num_tids;
       verb "UNION ELEMS : %i\n" num_elems;
         {
-          num_levels = num_levels; num_addrs = num_addrs;
+          num_levels = num_levels; num_addrs = num_addrs * 2;
           num_tids = num_tids; num_elems = num_elems;
         }
 
