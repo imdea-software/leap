@@ -10,6 +10,8 @@ module TslExp = TSLExpression
 module type TslkExp = TSLKExpression.S
 
 
+exception UnexpectedLiteral of string
+
 
 let solver_impl = ref ""
 
@@ -134,8 +136,8 @@ let guess_arrangements (cf:TslExp.conjunctive_formula)
   in
   let rec cons_ords (arr:TslExp.integer list list) : TslExp.literal list =
     match arr with
-    | xs::ys::zs -> Atom(Less(List.hd xs,
-                              List.hd ys)) :: cons_ords (ys::zs)
+    | xs::ys::zs -> Atom(Less(List.hd ys,
+                              List.hd xs)) :: cons_ords (ys::zs)
     | _          -> []
   in
   let arr = Arr.empty() in
@@ -172,13 +174,24 @@ let guess_arrangements (cf:TslExp.conjunctive_formula)
                             ) ls;
                             verb "**** TSL Solver: known information for arrangments:\n%s\n"
                                   (Arr.to_str arr TslExp.int_to_str);
-                            GenSet.fold (fun s_elem xs ->
-                              let eqs = List.fold_left (fun ys eq_c ->
-                                          (cons_eq_class eq_c) @ ys
-                                        ) [] s_elem in
-                              let ords = cons_ords s_elem in
-                                (TslExp.Conj (eqs @ ords)) :: xs
-                            ) (Arr.gen_arrs arr) []
+                            let arrgs = GenSet.fold (fun s_elem xs ->
+                                    print_endline ("KNOWN INFORMATION:\n" ^
+                                          (Arr.to_str arr TslExp.int_to_str));
+                                          print_endline "PROC ARRANGEMENT:";
+                                          print_endline (String.concat ";"
+                                            (List.map (fun es -> "[" ^
+                                              (String.concat "," (List.map TslExp.int_to_str es)) ^ "]"
+                                            ) s_elem));
+                                          let eqs = List.fold_left (fun ys eq_c ->
+                                                      (cons_eq_class eq_c) @ ys
+                                                    ) [] s_elem in
+                                          let ords = cons_ords s_elem in
+                                          print_endline "GENERATED LITEREAL";
+                                          print_endline (TslExp.conjunctive_formula_to_str (TslExp.Conj (eqs @ ords)));
+                                            (TslExp.Conj (eqs @ ords)) :: xs
+                                        ) (Arr.gen_arrs arr) [] in
+                            verb "**** TSL Solver: generated %i arragements\n" (List.length arrgs);
+                            arrgs
                           end
 
 
@@ -211,7 +224,23 @@ let split (cf:TslExp.conjunctive_formula)
                       | Atom(Less(VarInt _,VarInt _))
                       | Atom(Greater(VarInt _,VarInt _))
                       | NegAtom(LessEq(VarInt _,VarInt _))
-                      | NegAtom(GreaterEq(VarInt _,VarInt _)) -> (l::pas,l::ncs)
+                      | NegAtom(GreaterEq(VarInt _,VarInt _))
+                        (* But l1 <= l2 literals appear, as well as they are not compared to constants *)
+                      | Atom(LessEq(VarInt _,VarInt _))
+                      | Atom(GreaterEq(VarInt _,VarInt _))
+                      | NegAtom(Less(VarInt _,VarInt _))
+                      | NegAtom(Greater(VarInt _,VarInt _)) -> (l::pas,l::ncs)
+                        (* Cases that should not appear at this point after normalization *)
+                      | Atom(Less(IntVal _,_))          | Atom(Less(_,IntVal _))
+                      | Atom(Greater(IntVal _,_))       | Atom(Greater(_,IntVal _))
+                      | NegAtom(LessEq(IntVal _,_))     | NegAtom(LessEq(_,IntVal _))
+                      | NegAtom(GreaterEq(IntVal _,_))  | NegAtom(GreaterEq(_,IntVal _))
+                      | Atom(LessEq(IntVal _,_))        | Atom(LessEq(_,IntVal _))
+                      | Atom(GreaterEq(IntVal _,_))     | Atom(GreaterEq(_,IntVal _))
+                      | NegAtom(Less(IntVal _,_))       | NegAtom(Less(_,IntVal _))
+                      | NegAtom(Greater(IntVal _,_))    | NegAtom(Greater(_,IntVal _)) ->
+                          assert false
+                        (* Remaining cases *)
                       | _ -> (pas,l::ncs)
                     ) ([],[]) cf
       in
@@ -631,6 +660,10 @@ let check_sat_by_cases (lines:int)
   let rec check (pa:TslExp.conjunctive_formula)
                 (nc:TslExp.conjunctive_formula)
                 (alpha:TslExp.conjunctive_formula) =
+    verb "**** TSL Solver. Check PA formula\n%s\nand NC formula\n%s\nwith arrangement\n%s\n"
+          (TslExp.conjunctive_formula_to_str pa)
+          (TslExp.conjunctive_formula_to_str nc)
+          (TslExp.conjunctive_formula_to_str alpha);
     let pa_sat = check_pa (TslExp.combine_conj_formula pa alpha) in
     verb "**** TSL Solver, PA sat?: %b\n" pa_sat;
     if pa_sat then

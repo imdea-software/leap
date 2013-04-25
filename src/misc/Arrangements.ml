@@ -68,7 +68,7 @@ let add_order (arr:'a t) (a:'a) (b:'a) : unit =
 
 
 let add_less (arr:'a t) (a:'a) (b:'a) : unit =
-  add_order arr b a
+  add_order arr a b
 
 
 let add_greater (arr:'a t) (a:'a) (b:'a) : unit =

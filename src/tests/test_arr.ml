@@ -2,12 +2,24 @@ module Arr = Arrangements
 
 let _ =
   let arr = Arr.empty () in
-  Arr.add_elem arr "A";
-  Arr.add_elem arr "B";
-  Arr.add_elem arr "C";
-  Arr.add_eq arr "A" "B";
-  Arr.add_ineq arr "B" "C";
-  Arr.add_lesseq arr "B" "C";
+
+  Arr.add_elem arr "int1";
+  Arr.add_elem arr "int2";
+  Arr.add_elem arr "int3";
+  Arr.add_elem arr "i";
+  Arr.add_elem arr "maxLevel";
+  Arr.add_eq arr "int3" "i+1";
+  Arr.add_eq arr "int1" "0";
+  Arr.add_lesseq arr "int1" "maxLevel";
+(*  Arr.add_less arr "int1" "maxLevel"; *)
+
+(*
+  Arr.add_less arr "A" "B";
+*)
+
+  (* Arrangement representation *)
+  print_endline (Arr.to_str arr (fun i -> i));
+
   (* Generate arrangement tree list *)
   let tree_list = Arr.gen_arrtrees arr in
   (* Print generated arrangement trees *)
