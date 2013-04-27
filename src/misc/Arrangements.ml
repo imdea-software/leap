@@ -3,6 +3,7 @@ module GenSet = LeapGenericSet
 
 (** The type of an arrangement *)
 type 'a t = {
+              strict            : bool;
               dom               : 'a GenSet.t;
               eqs               : ('a * 'a) GenSet.t;
               ineqs             : ('a * 'a) GenSet.t;
@@ -16,8 +17,9 @@ type eqclass_order_t = (int,int GenSet.t) Hashtbl.t
 (** The type of arrangements tree *)
 type 'a arrtree = Node of 'a list * 'a arrtree list
 
-let empty () : 'a t =
+let empty (stc:bool) : 'a t =
   {
+    strict = stc;
     dom = GenSet.empty ();
     eqs = GenSet.empty ();
     ineqs = GenSet.empty ();
@@ -28,6 +30,7 @@ let empty () : 'a t =
 
 let copy (arr:'a t) : 'a t =
   {
+    strict = arr.strict;
     dom = GenSet.copy arr.dom;
     eqs = GenSet.copy arr.eqs;
     ineqs = GenSet.copy arr.ineqs;
@@ -40,30 +43,43 @@ let add_elem (arr:'a t) (a:'a) : unit =
   GenSet.add arr.dom a
 
 
+let proceed (arr:'a t) (a:'a) (b:'a) : bool =
+  (not arr.strict) || (GenSet.mem arr.dom a && GenSet.mem arr.dom b)
+
+
 let add_eq (arr:'a t) (a:'a) (b:'a) : unit =
-  if not (GenSet.mem arr.eqs (a,b) || GenSet.mem arr.eqs (b,a)) then
+  if proceed arr a b then
     begin
-      GenSet.add arr.dom a;
-      GenSet.add arr.dom b;
-      GenSet.add arr.eqs (a,b)
+      if not (GenSet.mem arr.eqs (a,b) || GenSet.mem arr.eqs (b,a)) then
+        begin
+          GenSet.add arr.dom a;
+          GenSet.add arr.dom b;
+          GenSet.add arr.eqs (a,b)
+        end
     end
 
 
 let add_ineq (arr:'a t) (a:'a) (b:'a) : unit =
-  if not (GenSet.mem arr.eqs (a,b) || GenSet.mem arr.eqs (b,a)) then
+  if proceed arr a b then
     begin
-      GenSet.add arr.dom a;
-      GenSet.add arr.dom b;
-      GenSet.add arr.ineqs (a,b)
+      if not (GenSet.mem arr.eqs (a,b) || GenSet.mem arr.eqs (b,a)) then
+        begin
+          GenSet.add arr.dom a;
+          GenSet.add arr.dom b;
+          GenSet.add arr.ineqs (a,b)
+        end
     end
 
 
 let add_order (arr:'a t) (a:'a) (b:'a) : unit =
-  if not (List.mem b (Hashtbl.find_all arr.order a)) then
+  if proceed arr a b then
     begin
-      GenSet.add arr.dom a;
-      GenSet.add arr.dom b;
-      Hashtbl.add arr.order a b
+      if not (List.mem b (Hashtbl.find_all arr.order a)) then
+        begin
+          GenSet.add arr.dom a;
+          GenSet.add arr.dom b;
+          Hashtbl.add arr.order a b
+        end
     end
 
 

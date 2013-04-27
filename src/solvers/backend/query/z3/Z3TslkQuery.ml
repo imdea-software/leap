@@ -849,7 +849,7 @@ module Make (K : Level.S) : TSLK_QUERY =
          "  (or (= from to) (= (select (next (select h from)) l) to)\n");
       for i=2 to num_addr do
         B.add_string buf
-          ( "\n             (= (select (next" ^ (string_of_int i)  ^ " h from) l) to)" )
+          ( "\n             (= (next" ^ (string_of_int i)  ^ " h from l) to)" )
       done ;
       B.add_string buf "))\n"
 
@@ -871,7 +871,7 @@ module Make (K : Level.S) : TSLK_QUERY =
           | _ -> let basic = "\n  (setunion (singleton from) (singleton (select (next (select h from)) l)))" in
                  let addrs = LeapLib.rangeList 2 num_addr in
                  let str   = List.fold_left (fun s i ->
-                               join_sets ("(singleton (select (next"^ (string_of_int i) ^ " h from) l))") s
+                               join_sets ("(singleton (next"^ (string_of_int i) ^ " h from l))") s
                              ) basic addrs
                  in
                    str^")\n"

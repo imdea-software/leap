@@ -281,7 +281,7 @@ module Make (TSLK : TSLKExpression.S) =
       verb "UNION TIDS  : %i\n" num_tids;
       verb "UNION ELEMS : %i\n" num_elems;
         {
-          num_levels = num_levels; num_addrs = num_addrs * 2;
+          num_levels = num_levels; num_addrs = num_addrs;
           num_tids = num_tids; num_elems = num_elems;
         }
 

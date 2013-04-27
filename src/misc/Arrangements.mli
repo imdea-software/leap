@@ -5,8 +5,12 @@ type 'a t
 (** The type of arrangements tree *)
 type 'a arrtree = Node of 'a list * 'a arrtree list
 
-(** [empty ()] returns an empty arrangement *)
-val empty : unit -> 'a t
+(** [empty stc] returns an empty arrangement. [stc] sets strict mode. If strict
+    mode is enabled, then elements of the domain must be declared before
+    they can be part of a relation. If no strict mode is enabled, then
+    relations can add elements to the domain if they have not been previously
+    added. *)
+val empty : bool -> 'a t
 
 (** [copy arr] returns a duplicate of arrangement [arr] *)
 val copy : 'a t -> 'a t

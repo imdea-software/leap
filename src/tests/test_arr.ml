@@ -1,7 +1,7 @@
 module Arr = Arrangements
 
 let _ =
-  let arr = Arr.empty () in
+  let arr = Arr.empty true in
 
   Arr.add_elem arr "int1";
   Arr.add_elem arr "int2";
@@ -14,8 +14,12 @@ let _ =
 (*  Arr.add_less arr "int1" "maxLevel"; *)
 
 (*
+  Arr.add_elem arr "B";
+  Arr.add_elem arr "A";
+  Arr.add_elem arr "C";
   Arr.add_less arr "A" "B";
 *)
+
 
   (* Arrangement representation *)
   print_endline (Arr.to_str arr (fun i -> i));

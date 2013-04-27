@@ -140,7 +140,7 @@ let guess_arrangements (cf:TslExp.conjunctive_formula)
                               List.hd xs)) :: cons_ords (ys::zs)
     | _          -> []
   in
-  let arr = Arr.empty() in
+  let arr = Arr.empty true in
     match cf with
     | TslExp.FalseConj -> []
     | TslExp.TrueConj  -> []
@@ -162,6 +162,11 @@ let guess_arrangements (cf:TslExp.conjunctive_formula)
                               | TslExp.Atom(TslExp.Greater(i1,i2)) -> Arr.add_greater arr i1 i2
                               | TslExp.Atom(TslExp.LessEq(i1,i2)) -> Arr.add_lesseq arr i1 i2
                               | TslExp.Atom(TslExp.GreaterEq(i1,i2)) -> Arr.add_greatereq arr i1 i2
+                              | TslExp.Atom(TslExp.Eq(IntT (VarInt v1),IntT (IntAdd(VarInt v2,IntVal 1))))
+                              | TslExp.Atom(TslExp.Eq(IntT (VarInt v1),IntT (IntAdd(IntVal 1,VarInt v2))))
+                              | TslExp.Atom(TslExp.Eq(IntT (IntAdd(VarInt v2,IntVal 1)),IntT (VarInt v1)))
+                              | TslExp.Atom(TslExp.Eq(IntT (IntAdd(IntVal 1,VarInt v2)),IntT (VarInt v1))) ->
+                                  Arr.add_greater arr (VarInt v1) (VarInt v2)
                               | TslExp.Atom(TslExp.Eq(IntT i1,IntT i2)) -> Arr.add_eq arr i1 i2
                               | TslExp.Atom(TslExp.InEq(IntT i1,IntT i2)) -> Arr.add_ineq arr i1 i2
                               | TslExp.NegAtom(TslExp.Less(i1,i2)) -> Arr.add_greatereq arr i1 i2
@@ -169,12 +174,19 @@ let guess_arrangements (cf:TslExp.conjunctive_formula)
                               | TslExp.NegAtom(TslExp.LessEq(i1,i2)) -> Arr.add_greater arr i1 i2
                               | TslExp.NegAtom(TslExp.GreaterEq(i1,i2)) -> Arr.add_less arr i1 i2
                               | TslExp.NegAtom(TslExp.Eq(IntT i1,IntT i2)) -> Arr.add_ineq arr i1 i2
+
+                              | TslExp.NegAtom(TslExp.InEq(IntT (VarInt v1),IntT (IntAdd(VarInt v2,IntVal 1))))
+                              | TslExp.NegAtom(TslExp.InEq(IntT (VarInt v1),IntT (IntAdd(IntVal 1,VarInt v2))))
+                              | TslExp.NegAtom(TslExp.InEq(IntT (IntAdd(VarInt v2,IntVal 1)),IntT (VarInt v1)))
+                              | TslExp.NegAtom(TslExp.InEq(IntT (IntAdd(IntVal 1,VarInt v2)),IntT (VarInt v1))) ->
+                                  Arr.add_greater arr (VarInt v1) (VarInt v2)
                               | TslExp.NegAtom(TslExp.InEq(IntT i1,IntT i2)) -> Arr.add_eq arr i1 i2
                               | _ -> ()
                             ) ls;
                             verb "**** TSL Solver: known information for arrangments:\n%s\n"
                                   (Arr.to_str arr TslExp.int_to_str);
                             let arrgs = GenSet.fold (fun s_elem xs ->
+(*
                                     print_endline ("KNOWN INFORMATION:\n" ^
                                           (Arr.to_str arr TslExp.int_to_str));
                                           print_endline "PROC ARRANGEMENT:";
@@ -182,12 +194,15 @@ let guess_arrangements (cf:TslExp.conjunctive_formula)
                                             (List.map (fun es -> "[" ^
                                               (String.concat "," (List.map TslExp.int_to_str es)) ^ "]"
                                             ) s_elem));
+*)
                                           let eqs = List.fold_left (fun ys eq_c ->
                                                       (cons_eq_class eq_c) @ ys
                                                     ) [] s_elem in
                                           let ords = cons_ords s_elem in
+(*
                                           print_endline "GENERATED LITEREAL";
                                           print_endline (TslExp.conjunctive_formula_to_str (TslExp.Conj (eqs @ ords)));
+*)
                                             (TslExp.Conj (eqs @ ords)) :: xs
                                         ) (Arr.gen_arrs arr) [] in
                             verb "**** TSL Solver: generated %i arragements\n" (List.length arrgs);
@@ -540,7 +555,8 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
                       TslkExp.OrderList(m',a1',a2')));
                      TslkExp.eq_set
                       (s')
-                      (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',TslkExp.LevelVal 0)))] in
+(*                      (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',TslkExp.LevelVal 0)))] in*)
+                      (TslkExp.AddrToSet(m',a1',TslkExp.LevelVal 0))] in
           for n = 0 to (TslkExp.k - 1) do
             let n' = TslkExp.LevelVal n in
             xs := TslkExp.Implies
@@ -553,8 +569,11 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
             xs := TslkExp.Implies
                     (TslkExp.less_level n' l',
                      TslkExp.subseteq
-                       (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',TslkExp.LevelSucc n')))
-                       (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',n')))) :: (!xs)
+                       (TslkExp.AddrToSet(m',a1',TslkExp.LevelSucc n'))
+                       (TslkExp.AddrToSet(m',a1',n'))) :: (!xs)
+(*                       (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',TslkExp.LevelSucc n')))
+                         (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',n')))) :: (!xs)
+*)
           done;
           TslkExp.conj_list (!xs)
       (* ~ Skiplist(m,s,l,a1,a2) *)
@@ -571,7 +590,8 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
                       TslkExp.OrderList(m',a1',a2')));
                      TslkExp.ineq_set
                       (s')
-                      (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',TslkExp.LevelVal 0)))] in
+(*                      (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',TslkExp.LevelVal 0)))] in*)
+                      (TslkExp.AddrToSet(m',a1',TslkExp.LevelVal 0))] in
           for n = 0 to (TslkExp.k - 1) do
             let n' = TslkExp.LevelVal n in
             xs := TslkExp.And
@@ -585,8 +605,11 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
                     (TslkExp.less_level n' l',
                      TslkExp.Not
                       (TslkExp.subseteq
-                        (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',TslkExp.LevelSucc n')))
-                        (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',n'))))) :: (!xs)
+                        (TslkExp.AddrToSet(m',a1',TslkExp.LevelSucc n'))
+                        (TslkExp.AddrToSet(m',a1',n')))) :: (!xs)
+(*                        (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',TslkExp.LevelSucc n')))
+                          (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',n'))))) :: (!xs)
+*)
           done;
           TslkExp.disj_list (!xs)
       | _ -> TslkExp.Literal (literal_tsl_to_tslk l)
