@@ -4,6 +4,7 @@ open LeapVerbose
 type smt_t = Yices | Z3 | CVC4
 
 exception SMT_Syntax_Error of string
+exception SMT_Timeout of string * int
 
 (* SMT Solver dependent information *)
 
@@ -68,7 +69,7 @@ let new_configuration (smt:smt_t) : configuration_t =
     calls         = new counter 0;
     exec          = get_exec_cmd smt;
     extension     = get_extension smt;
-    timeout       = 3600;
+    timeout       = (*3600*) 1800;
     comp_model    = false;
     model_parser  = get_modelparser smt;
     prequery      = get_prequery smt;
@@ -113,13 +114,10 @@ let parse_output (ch:Pervasives.in_channel) : (bool * bool) =
   verb "**** SMTExecute answer: %s\n" answer_str;
   let (terminated, outcome) =
     match answer_str with
-      "unsat" -> let _ = Debug.print_smt "unsat\n"
-                 in
-                   (true, false)
-    | "sat"   -> let _ = Debug.print_smt "sat\n"
-                 in
-                   (true, true)
-    | _       -> (false, false)
+      "unsat"   -> (Debug.print_smt "unsat\n"; (true, false))
+    | "sat"     -> (Debug.print_smt "sat\n"; (true, true))
+    | "timeout" -> (Debug.print_smt "timeout\n"; (false,true))
+    | _         -> (false, false)
   in
     (terminated, outcome)
 
@@ -152,10 +150,16 @@ let run (cfg:configuration_t) (query:string) : bool =
   verb "**** STMExecute will parse output.\n";
   let (terminated,response) = parse_output stdout in
   verb "**** SMTExecute, response read.\n";
-  if not terminated then begin
-    Interface.Err.msg "Malformed query" $
-      Printf.sprintf "File %s contains an invalid query." tmpfile;
-    RAISE(SMT_Syntax_Error tmpfile)
+  if (not terminated) then begin
+    if response then begin
+      Interface.Err.msg "Timeout query" $
+        Printf.sprintf "File %s contains a query that timeout after %i seconds." tmpfile cfg.timeout;
+      RAISE(SMT_Timeout(tmpfile,cfg.timeout))
+    end else begin
+      Interface.Err.msg "Malformed query" $
+        Printf.sprintf "File %s contains an invalid query." tmpfile;
+      RAISE(SMT_Syntax_Error tmpfile)
+    end
   end;
   if cfg.comp_model then begin
     if response then begin

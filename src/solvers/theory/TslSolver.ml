@@ -555,8 +555,12 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
                       TslkExp.OrderList(m',a1',a2')));
                      TslkExp.eq_set
                       (s')
-(*                      (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',TslkExp.LevelVal 0)))] in*)
                       (TslkExp.AddrToSet(m',a1',TslkExp.LevelVal 0))] in
+(*                      (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',TslkExp.LevelVal 0)))] in *)
+(*
+                        (TslkExp.Setdiff (TslkExp.AddrToSet(m',a1',TslkExp.LevelVal 0),
+                                          TslkExp.AddrToSet(m',a2',TslkExp.LevelVal 0)))] in
+*)
           for n = 0 to (TslkExp.k - 1) do
             let n' = TslkExp.LevelVal n in
             xs := TslkExp.Implies
@@ -571,9 +575,14 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
                      TslkExp.subseteq
                        (TslkExp.AddrToSet(m',a1',TslkExp.LevelSucc n'))
                        (TslkExp.AddrToSet(m',a1',n'))) :: (!xs)
-(*                       (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',TslkExp.LevelSucc n')))
-                         (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',n')))) :: (!xs)
+(*
+                       (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',TslkExp.LevelSucc n')))
+                       (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',n')))) :: (!xs)*)
+(*
+                       (TslkExp.Setdiff (TslkExp.AddrToSet(m',a1',TslkExp.LevelSucc n'), TslkExp.AddrToSet(m',a2',TslkExp.LevelSucc n')))
+                       (TslkExp.Setdiff (TslkExp.AddrToSet(m',a1',n'), TslkExp.AddrToSet(m',a2',n')))) :: (!xs)
 *)
+
           done;
           TslkExp.conj_list (!xs)
       (* ~ Skiplist(m,s,l,a1,a2) *)
@@ -590,8 +599,9 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
                       TslkExp.OrderList(m',a1',a2')));
                      TslkExp.ineq_set
                       (s')
-(*                      (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',TslkExp.LevelVal 0)))] in*)
                       (TslkExp.AddrToSet(m',a1',TslkExp.LevelVal 0))] in
+(*                      (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',TslkExp.LevelVal 0)))] in *)
+(*                      (TslkExp.Setdiff (TslkExp.AddrToSet(m',a1',TslkExp.LevelVal 0), TslkExp.AddrToSet(m',a2',TslkExp.LevelVal 0)))] in *)
           for n = 0 to (TslkExp.k - 1) do
             let n' = TslkExp.LevelVal n in
             xs := TslkExp.And
@@ -607,8 +617,14 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
                       (TslkExp.subseteq
                         (TslkExp.AddrToSet(m',a1',TslkExp.LevelSucc n'))
                         (TslkExp.AddrToSet(m',a1',n')))) :: (!xs)
-(*                        (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',TslkExp.LevelSucc n')))
-                          (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',n'))))) :: (!xs)
+
+(*
+                        (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',TslkExp.LevelSucc n')))
+                        (TslkExp.PathToSet(TslkExp.GetPathAt(m',a1',a2',n'))))) :: (!xs)
+*)
+(*
+                        (TslkExp.Setdiff (TslkExp.AddrToSet(m',a1',TslkExp.LevelSucc n'), TslkExp.AddrToSet(m',a2',TslkExp.LevelSucc n')))
+                        (TslkExp.Setdiff (TslkExp.AddrToSet(m',a1',n'), TslkExp.AddrToSet(m',a2',n'))))) :: (!xs)
 *)
           done;
           TslkExp.disj_list (!xs)

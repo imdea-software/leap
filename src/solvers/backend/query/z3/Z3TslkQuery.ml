@@ -1275,7 +1275,7 @@ module Make (K : Level.S) : TSLK_QUERY =
             GM.sm_decl_fun sort_map name [tid_s] [s_str] ;
             B.add_string buf ( "(declare-const " ^ name ^ " (Array " ^tid_s^ " " ^ s_str ^ "))\n" );
             match s with
-            | Expr.Elem -> B.add_string buf ("(assert (iselem (select " ^name^ " notid)))\n");
+            | Expr.Elem -> B.add_string buf ("(assert (iselem (select " ^name^ " NoThread)))\n");
                            B.add_string buf ("(assert (iselem (select " ^name^ " tid_witness)))\n");
                            for i = 1 to num_tids do
                              B.add_string buf ("(assert (iselem (select " ^name^ " " ^tid_prefix ^ (string_of_int i)^ ")))\n")

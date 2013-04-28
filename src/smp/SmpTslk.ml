@@ -163,10 +163,6 @@ module Make (TSLK : TSLKExpression.S) =
       List.fold_left (fun s e ->
         let e_cut_off = cut_off_normalized e
         in
-        verb "DNF LEVELS: %i\n" (max s.num_levels e_cut_off.num_levels);
-        verb "DNF ADDR  : %i\n" (max s.num_addrs  e_cut_off.num_addrs);
-        verb "DNF TIDS  : %i\n" (max s.num_tids   e_cut_off.num_tids);
-        verb "DNF ELEMS : %i\n" (max s.num_elems  e_cut_off.num_elems);
           {
             num_elems  = max s.num_elems  e_cut_off.num_elems ;
             num_tids   = max s.num_tids   e_cut_off.num_tids  ;
