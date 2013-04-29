@@ -291,6 +291,7 @@ module type S =
     val greater_level : level -> level -> formula
     val greatereq_level : level -> level -> formula
     val subseteq : set -> set -> formula
+    val atomlit : atom -> formula
   end
 
 
@@ -2171,6 +2172,9 @@ module Make (K : Level.S) : S =
 
     let subseteq (s1:set) (s2:set) : formula =
       Literal (Atom (SubsetEq (s1,s2)))
+
+    let atomlit (a:atom) : formula =
+      Literal (Atom a)
 
   end
 

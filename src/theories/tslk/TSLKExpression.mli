@@ -287,6 +287,7 @@ module type S =
     val greater_level : level -> level -> formula
     val greatereq_level : level -> level -> formula
     val subseteq : set -> set -> formula
+    val atomlit : atom -> formula
 
   end
 

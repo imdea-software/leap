@@ -18,7 +18,8 @@ assume
   head != tail /\
   head != null /\
   tail != null /\
-  head->arr[0] = tail
+  head->arr[0] = tail /\
+  maxLevel = 0
 
 
 // ----- PROGRAM BEGINS --------------------------------------

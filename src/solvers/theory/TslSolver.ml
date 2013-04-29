@@ -565,8 +565,9 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
             let n' = TslkExp.LevelVal n in
             xs := TslkExp.Implies
                     (TslkExp.lesseq_level n' l',
-                     TslkExp.eq_addr (TslkExp.NextAt(TslkExp.CellAt(m',a2'),n'))
-                                     (TslkExp.Null)) :: (!xs)
+                     TslkExp.And (TslkExp.atomlit (TslkExp.In(a2',TslkExp.AddrToSet(m',a1',n'))),
+                                  TslkExp.eq_addr (TslkExp.NextAt(TslkExp.CellAt(m',a2'),n'))
+                                                   TslkExp.Null)) :: (!xs);
           done;
           for n = 0 to (TslkExp.k - 2) do
             let n' = TslkExp.LevelVal n in
@@ -606,8 +607,9 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
             let n' = TslkExp.LevelVal n in
             xs := TslkExp.And
                     (TslkExp.lesseq_level n' l',
-                     TslkExp.ineq_addr (TslkExp.NextAt(TslkExp.CellAt(m',a2'),n'))
-                                       (TslkExp.Null)) :: (!xs)
+                     TslkExp.Or (TslkExp.Not (TslkExp.atomlit (TslkExp.In (a2', TslkExp.AddrToSet(m',a1',n')))),
+                                 TslkExp.ineq_addr (TslkExp.NextAt(TslkExp.CellAt(m',a2'),n'))
+                                                    TslkExp.Null)) :: (!xs)
           done;
           for n = 0 to (TslkExp.k - 2) do
             let n' = TslkExp.LevelVal n in
