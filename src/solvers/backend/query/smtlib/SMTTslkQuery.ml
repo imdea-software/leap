@@ -115,31 +115,17 @@ module Make (K : Level.S) : TSLK_QUERY =
 
 
     let z3_level_preamble (buf:B.t) : unit =
+      let k = (string_of_int K.level) in
       B.add_string buf
-        ( "(declare-datatypes () ((" ^level_s);
-        if K.level < 1 then
-          (* No levels, so I build at least one level 0 *)
-          B.add_string buf (" " ^(ll 0))
-        else
-          for i = 0 to (K.level -1) do
-            B.add_string buf ( " " ^(ll i))
-          done;
-      B.add_string buf (")))\n");
-      if K.level > 1 then begin
-        (* At least two levels to have order *)
-        let str = ref (" " ^ ll (K.level-1)) in
-        for i = 0 to (K.level-2) do
-          str :=  "\n  (ite (= l " ^(ll i)^ ") " ^(ll (i+1))^ " " ^(!str)^ ")"
-        done;
-        B.add_string buf
-          ( "(define-fun lsucc ((l " ^level_s^ ")) " ^level_s ^(!str)^ ")\n");
-        let str = ref (" " ^ ll 0) in
-        for i = (K.level-1) downto 1 do
-          str :=  "\n  (ite (= l " ^(ll i)^ ") " ^(ll (i-1))^ " " ^(!str)^ ")"
-        done;
-        B.add_string buf
-          ( "(define-fun lpred ((l " ^level_s^ ")) " ^level_s ^(!str)^ ")\n")
-      end
+        ("(define-sort " ^level_s^ " () " ^int_s^ ")\n" ^
+         "(define-fun lsucc ((l " ^level_s^ ")) " ^level_s^ " (div (+ (+ l " ^k^ ") (- " ^k^ " l)) 2))\n" ^
+         "(define-fun lpred ((l " ^level_s^ ")) " ^level_s^ " (div (- (+ l " ^k^ ") (- " ^k^ " l)) 2))\n" ^
+         "(define-fun islevel ((l " ^level_s^ ")) " ^bool_s^ " (and (<= 0 l) (< l " ^k^ ")))\n");
+      for i = 0 to K.level - 1 do
+        let i_str = string_of_int i in
+        let l_str = level_prefix ^ i_str in
+        B.add_string buf ("(define-fun " ^l_str^ " () " ^level_s^ " " ^i_str^ ")\n")
+      done
 
 
     (* (define-type address (scalar null aa_1 aa_2 aa_3 aa_4 aa_5))   *)
@@ -749,38 +735,7 @@ module Make (K : Level.S) : TSLK_QUERY =
 
     (* Order over levels *)
     let z3_levelorder_def (buf:B.t) : unit =
-      B.add_string buf ("(declare-fun less_l (" ^level_s^ " " ^level_s^ ") " ^bool_s^ ")\n") ;
-      B.add_string buf ("(define-fun greater_l ((x " ^level_s^ ") (y " ^level_s^ ")) " ^bool_s^ "\n" ^
-                        "  (less_l y x))\n") ;
-      (* Totality and no-reflexibility *)
-      for i = 0 to (K.level-1) do
-        let l = ll i in
-        B.add_string buf ("(assert (not (less_l " ^l^ " " ^l^ ")))\n") ;
-        for j = i+1 to (K.level-1) do
-          let l2 = ll j in
-            B.add_string buf ("(assert (or (less_l " ^l^ " " ^l2^ ") (less_l " ^l2^ " " ^l^ ")))\n")
-        done
-      done ;
-      (* TOFIX: Replace buffer in order to prevent segmentation fault due to
-                buffer overflow when too many elements are required. *)
-      (* Transitivity *)
-      for i = 0 to (K.level-1) do
-        for j = 0 to (K.level-1) do
-          for k = 0 to (K.level-1) do
-            if (i<>j && j<>k (*&& i<>k*)) then
-              let x = ll i in
-              let y = ll j in
-              let z = ll k in
-              B.add_string buf ("(assert (=> (and (less_l " ^x^ " " ^y^ ") \
-                                                  (less_l " ^y^ " " ^z^ ")) \
-                                                  (less_l " ^x^ " " ^z^ ")))\n")
-          done
-        done
-      done;
-      B.add_string buf ("(define-fun lesseq_l ((l1 Level) (l2 Level)) Bool\n" ^
-                        "  (or (= l1 l2) (less_l l1 l2)))\n");
-      B.add_string buf ("(define-fun greatereq_l ((l1 Level) (l2 Level)) Bool\n" ^
-                        "  (or (= l1 l2) (greater_l l1 l2)))\n")
+      ()
 
 
     (* (define error::cell) *)
@@ -1261,9 +1216,10 @@ module Make (K : Level.S) : TSLK_QUERY =
             GM.sm_decl_const sort_map name (GM.conv_sort (Interf.sort_to_expr_sort s)) ;
             B.add_string buf ( "(declare-const " ^ name ^ " " ^ s_str ^ ")\n" );
             match s with
+            | Expr.Elem -> B.add_string buf ( "(assert (iselem " ^ name ^ "))\n" )
+            | Expr.Level-> B.add_string buf ( "(assert (islevel " ^ name ^ "))\n" )
             | Expr.Path -> B.add_string buf ( "(assert (ispath " ^ name ^ "))\n" )
             | Expr.Mem  -> B.add_string buf ( "(assert (isheap " ^ name ^ "))\n" )
-            | Expr.Elem -> B.add_string buf ( "(assert (iselem " ^ name ^ "))\n" )
             | Expr.Thid -> let _ = B.add_string buf ( "(assert (not (= " ^ name ^ " NoThread)))\n" ) in
                            let _ = B.add_string buf ( "(assert (in_pos_range " ^ name ^ "))\n")
                            in
@@ -1279,7 +1235,12 @@ module Make (K : Level.S) : TSLK_QUERY =
                            B.add_string buf ("(assert (iselem (select " ^name^ " tid_witness)))\n");
                            for i = 1 to num_tids do
                              B.add_string buf ("(assert (iselem (select " ^name^ " " ^tid_prefix ^ (string_of_int i)^ ")))\n")
-                          done
+                           done
+            | Expr.Level-> B.add_string buf ("(assert (islevel (select " ^name^ " NoThread)))\n");
+                           B.add_string buf ("(assert (islevel (select " ^name^ " tid_witness)))\n");
+                           for i = 1 to num_tids do
+                             B.add_string buf ("(assert (islevel (select " ^name^ " " ^tid_prefix ^ (string_of_int i)^ ")))\n")
+                           done
             | Expr.Path -> Expr.VarSet.iter (fun t ->
                         let v_str = variable_invocation_to_str
                                         (Expr.param_var v (Expr.VarTh t)) in
@@ -1607,23 +1568,23 @@ module Make (K : Level.S) : TSLK_QUERY =
 
 
     let lesslevel_to_str (l1:Expr.level) (l2:Expr.level) : string =
-      Printf.sprintf "(less_l %s %s)" (levelterm_to_str l1)
-                                      (levelterm_to_str l2)
+      Printf.sprintf "(< %s %s)" (levelterm_to_str l1)
+                                 (levelterm_to_str l2)
 
 
     let lesseqlevel_to_str (l1:Expr.level) (l2:Expr.level) : string =
-      Printf.sprintf "(lesseq_l %s %s)" (levelterm_to_str l1)
-                                        (levelterm_to_str l2)
+      Printf.sprintf "(<= %s %s)" (levelterm_to_str l1)
+                                  (levelterm_to_str l2)
 
 
     let greaterlevel_to_str (l1:Expr.level) (l2:Expr.level) : string =
-      Printf.sprintf "(greater_l %s %s)" (levelterm_to_str l1)
-                                         (levelterm_to_str l2)
+      Printf.sprintf "(> %s %s)" (levelterm_to_str l1)
+                                 (levelterm_to_str l2)
 
 
     let greatereqlevel_to_str (l1:Expr.level) (l2:Expr.level) : string =
-      Printf.sprintf "(greatereq_l %s %s)" (levelterm_to_str l1)
-                                           (levelterm_to_str l2)
+      Printf.sprintf "(>= %s %s)" (levelterm_to_str l1)
+                                  (levelterm_to_str l2)
 
 
     let lesselem_to_str (e1:Expr.elem) (e2:Expr.elem) : string =

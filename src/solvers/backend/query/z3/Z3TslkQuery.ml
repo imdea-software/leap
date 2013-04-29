@@ -755,12 +755,22 @@ module Make (K : Level.S) : TSLK_QUERY =
       (* Totality and no-reflexibility *)
       for i = 0 to (K.level-1) do
         let l = ll i in
-        B.add_string buf ("(assert (not (less_l " ^l^ " " ^l^ ")))\n") ;
+        B.add_string buf ("(assert (not (less_l " ^l^ " " ^l^ ")))\n")
+(*
+        (* Symmetry *)
         for j = i+1 to (K.level-1) do
           let l2 = ll j in
             B.add_string buf ("(assert (or (less_l " ^l^ " " ^l2^ ") (less_l " ^l2^ " " ^l^ ")))\n")
         done
+*)
       done ;
+      (* Ordering *)
+      for j = 0 to (K.level-2) do
+        let l1 = ll j in
+        let l2 = ll (j+1) in
+        B.add_string buf ("(assert (less_l " ^l1^ " " ^l2^ "))\n")
+      done;
+
       (* TOFIX: Replace buffer in order to prevent segmentation fault due to
                 buffer overflow when too many elements are required. *)
       (* Transitivity *)

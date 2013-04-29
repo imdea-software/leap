@@ -87,11 +87,13 @@ assume
 :insert_i_greater_maxLevel[
                                   while (i <= lvl) do
 :insert_i_lesseq_lvl[
+:insert_i_top_maxLevel[
                                     head->arr[i] := tail;
 :insert_head_next_i_tail[
                                     tail->arr[i] := null;
 :insert_tail_next_i_null[
                                     maxLevel := i;
+:insert_i_top_maxLevel]
                                     i := i + 1;
 :insert_tail_next_i_null]
 :insert_head_next_i_tail]
