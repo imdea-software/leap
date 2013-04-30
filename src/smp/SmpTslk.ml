@@ -368,7 +368,7 @@ module Make (TSLK : TSLKExpression.S) =
       LOG "Strategy: %s\n" (Smp.strategy_to_str strat) LEVEL DEBUG;
       options := opt;
       match strat with
-      | Smp.Dnf     -> (Printf.printf "smt2: SNF\n"; compute_max_cut_off (Expr.dnf f))
-      | Smp.Union   -> (Printf.printf "smt2: UNION\n"; compute_max_cut_off_with_union f)
-      | Smp.Pruning -> (Printf.printf "smt2: PRUNING\n"; compute_max_cut_off_with_pruning f)
+      | Smp.Dnf     -> compute_max_cut_off (Expr.dnf f)
+      | Smp.Union   -> compute_max_cut_off_with_union f
+      | Smp.Pruning -> compute_max_cut_off_with_pruning f
   end

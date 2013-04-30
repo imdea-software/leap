@@ -110,13 +110,13 @@ assume
                                 i := maxLevel;
                                 while (0 <= i /\ ~(valueWasIn)) do
                                   curr := prev->arr[i];
-                                  while (curr->data < e) do
+                                  while (curr != null /\ curr->data < e) do
 :insert_curr_low
                                     prev := curr;
                                     curr := prev->arr[i];
                                   endwhile
                                   update[i] := prev;
-:insert_update_set
+:insert_updateate_set
                                   i := i - 1;
                                   valueWasIn := (curr->data = e);
                                 endwhile
@@ -156,11 +156,11 @@ assume
                                 i := maxLevel;
                                 while (i >= 0) do
                                   curr := prev->arr[i];
-                                  while (curr->data < e) do
+                                  while (curr != null /\ curr->data < e) do
                                     prev := curr;
                                     curr := prev->arr[i];
                                   endwhile
-                                  if (curr->data != e) then
+                                  if (curr != null /\ curr->data != e) then
                                     removeFrom := i - 1;
                                   endif
                                   update[i] := prev;

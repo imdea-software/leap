@@ -1,0 +1,5 @@
+param:
+
+invariant [skiplist_region] :
+
+@61. -> remove::curr in region

@@ -1,6 +1,9 @@
- -> skiplist_prop [22:levels;
-                   23:levels;
-                   24:skiplist_next,levels] {union:reduce2|simpl}
+// -> skiplist_order
+
+-> skiplist_prop [22:levels;
+                  23:levels;
+                  24:skiplist_next,levels;
+                  61:skiplist_order,skiplist_region,skiplist_next] {union:reduce2|simpl}
 
 //23: could be improved
 

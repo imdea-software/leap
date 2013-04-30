@@ -3381,15 +3381,13 @@ let rec norm_formula (info:norm_info_t) (phi:formula) : formula =
 
 
 let normalize (phi:formula) : formula =
-  let _ = print_endline "------------------------ NEW FORMULA TO NORMALIZE ----------------------------" in
-  let _ = Printf.printf "%s\n" (formula_to_str phi) in
-  let _ = print_endline "------------------------ NEW FORMULA TO NORMALIZE ----------------------------" in
+  verbstr (Interface.Msg.info "NEW FORMULA TO NORMALIZE" (formula_to_str phi));
   (* Create a new normalization *)
   let norm_info = new_norm_info_from_formula phi in
   (* Process the original formula *)
   let phi' = norm_formula norm_info (nnf phi) in
   (* Normalize all remaining literals stored in the normalization table *)
-  let _ = print_endline "WILL NORMALIZE REMAINING ELEMENTS" in
+  verb "WILL NORMALIZE REMAINING ELEMENTS";
   let lit_list = ref [] in
   while (Hashtbl.length norm_info.term_map > 0) do
     Hashtbl.iter (fun t v ->
