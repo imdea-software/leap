@@ -13,6 +13,6 @@ invariant [skiplist_order] :
                 rd(heap, remove::curr).data = remove::e)
             /\ rd(heap, remove::update[remove::i]).data < remove::e
             /\ rd(heap, remove::curr).data = remove::e
-            /\ (j > remove::i -> (rd(heap, remove::update[j]).data < remove::e))
+//            /\ (j > remove::i -> (rd(heap, remove::update[j]).data < remove::e))
 //                                  rd(heap, rd(heap, remove::update[j]).arr[j]).data > remove::e))
             )

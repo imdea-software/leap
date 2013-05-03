@@ -70,6 +70,21 @@ module Make (TSLK : TSLKExpression.S) =
         num_levels = ASet.cardinal l_set;
       }
 
+    let rec redundant_cell_vars (phi:Expr.formula) (aset:VarSet.t) : VarSet.t =
+      match phi with
+      | Expr.And (phi1,phi2) -> VarSet.union (redundant_cell_vars phi1 aset)
+                                             (redundant_cell_vars phi2 aset)
+      | Expr.Literal(Expr.Atom(Expr.Eq(Expr.CellT(Expr.VarCell c),
+                                       Expr.CellT(Expr.MkCell(_,addrs,_)))))
+      | Expr.Literal(Expr.NegAtom(Expr.InEq(Expr.CellT(Expr.VarCell c),
+                                            Expr.CellT(Expr.MkCell(_,addrs,_))))) ->
+        let addrsset = List.fold_left (fun s a -> match a with
+                                                  | Expr.VarAddr v -> VarSet.add v s
+                                                  | _              -> s
+                                      ) (VarSet.empty) addrs in
+        if VarSet.subset addrsset aset then VarSet.singleton c else VarSet.empty
+      | _ -> VarSet.empty
+
 
     (* calculates the cut_off *)
     let cut_off_normalized (expr:Expr.conjunctive_formula) : model_size =
@@ -252,12 +267,26 @@ module Make (TSLK : TSLKExpression.S) =
     (* Union SMP *)
     let compute_max_cut_off_with_union (phi:Expr.formula) : model_size =
       let vars = Expr.get_varset_from_formula phi in
+      let addrvars = Expr.varset_of_sort vars Expr.Addr in
+      let tmpcellvars = Expr.varset_of_sort vars Expr.Cell in
+      let cellvars = tmpcellvars in (*VarSet.diff tmpcellvars (redundant_cell_vars phi addrvars) in *)
       let vartid_num  = VarSet.cardinal (Expr.varset_of_sort vars Expr.Thid) in
-      let varaddr_num = VarSet.cardinal (Expr.varset_of_sort vars Expr.Addr) in
+      let varaddr_num = VarSet.cardinal addrvars in
       let varelem_num = VarSet.cardinal (Expr.varset_of_sort vars Expr.Elem) in
-      let varcell_num = VarSet.cardinal (Expr.varset_of_sort vars Expr.Cell) in
+      let varcell_num = VarSet.cardinal cellvars in
       let varmem_num  = VarSet.cardinal (Expr.varset_of_sort vars Expr.Mem ) in
       let info = union_model_size (union_formula_cutoff new_union_count phi) in
+      Printf.printf "SMP Formula:\n%s\n" (Expr.formula_to_str phi);
+      Printf.printf "Addr variables:";
+      VarSet.iter (fun v -> Printf.printf "%s;" (Expr.variable_to_str v)) addrvars;
+      Printf.printf "\n";
+      Printf.printf "Cell variables:";
+      VarSet.iter (fun v -> Printf.printf "%s;" (Expr.variable_to_str v)) cellvars;
+      Printf.printf "\n";
+      Printf.printf "Mem variables:";
+      VarSet.iter (fun v -> Printf.printf "%s;" (Expr.variable_to_str v)) (Expr.varset_of_sort vars Expr.Mem);
+      Printf.printf "\n";
+
       let num_levels = Expr.k in
       let num_addrs = 1 +                                     (* null               *)
                       varaddr_num +                           (* Address variables  *)
