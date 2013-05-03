@@ -269,13 +269,14 @@ module Make (TSLK : TSLKExpression.S) =
       let vars = Expr.get_varset_from_formula phi in
       let addrvars = Expr.varset_of_sort vars Expr.Addr in
       let tmpcellvars = Expr.varset_of_sort vars Expr.Cell in
-      let cellvars = tmpcellvars in (*VarSet.diff tmpcellvars (redundant_cell_vars phi addrvars) in *)
+      let cellvars = VarSet.diff tmpcellvars (redundant_cell_vars phi addrvars) in
       let vartid_num  = VarSet.cardinal (Expr.varset_of_sort vars Expr.Thid) in
       let varaddr_num = VarSet.cardinal addrvars in
       let varelem_num = VarSet.cardinal (Expr.varset_of_sort vars Expr.Elem) in
       let varcell_num = VarSet.cardinal cellvars in
       let varmem_num  = VarSet.cardinal (Expr.varset_of_sort vars Expr.Mem ) in
       let info = union_model_size (union_formula_cutoff new_union_count phi) in
+(*
       Printf.printf "SMP Formula:\n%s\n" (Expr.formula_to_str phi);
       Printf.printf "Addr variables:";
       VarSet.iter (fun v -> Printf.printf "%s;" (Expr.variable_to_str v)) addrvars;
@@ -286,6 +287,7 @@ module Make (TSLK : TSLKExpression.S) =
       Printf.printf "Mem variables:";
       VarSet.iter (fun v -> Printf.printf "%s;" (Expr.variable_to_str v)) (Expr.varset_of_sort vars Expr.Mem);
       Printf.printf "\n";
+*)
 
       let num_levels = Expr.k in
       let num_addrs = 1 +                                     (* null               *)
