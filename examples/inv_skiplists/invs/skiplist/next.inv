@@ -4,8 +4,8 @@ int j
 
 invariant [skiplist_next] :
 
-   @insert_head_next_i_tail. -> rd(heap, head).arr[0] = tail
-/\ @insert_tail_next_i_null. -> rd(heap, tail).arr[0] = null
+   @insert_head_next_i_tail. -> rd(heap, head).arr[insert::i] = tail
+/\ @insert_tail_next_i_null. -> rd(heap, tail).arr[insert::i] = null
 
 /\ @61. -> (rd(heap, remove::update[remove::i]).arr[remove::i] = remove::curr /\
             rd(heap, remove::curr).arr[remove::i] != null)

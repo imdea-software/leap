@@ -128,7 +128,7 @@ let guess_arrangements_by_brute_force (cf:TslExp.conjunctive_formula)
 
 
 let guess_arrangements (cf:TslExp.conjunctive_formula)
-      : TslExp.conjunctive_formula list =
+      : (TslExp.conjunctive_formula * int) list =
   let rec cons_eq_class (is:TslExp.integer list) : TslExp.literal list =
     match is with
     | i1::i2::xs -> Atom(Eq(IntT i1, IntT i2)) :: cons_eq_class (i2::xs)
@@ -203,7 +203,7 @@ let guess_arrangements (cf:TslExp.conjunctive_formula)
                                           print_endline "GENERATED LITEREAL";
                                           print_endline (TslExp.conjunctive_formula_to_str (TslExp.Conj (eqs @ ords)));
 *)
-                                            (TslExp.Conj (eqs @ ords)) :: xs
+                                            (TslExp.Conj (eqs @ ords),List.length s_elem) :: xs
                                         ) (Arr.gen_arrs arr) [] in
                             verb "**** TSL Solver: generated %i arragements\n" (List.length arrgs);
                             arrgs
@@ -650,9 +650,9 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
 let check_sat_by_cases (lines:int)
                        (stac:Tactics.solve_tactic_t option)
                        (co : Smp.cutoff_strategy_t)
-                       (cases:(TslExp.conjunctive_formula *           (* PA formula  *)
-                               TslExp.conjunctive_formula *           (* NC formula  *)
-                               TslExp.conjunctive_formula list) list) (* Arrangements *)
+                       (cases:(TslExp.conjunctive_formula *                   (* PA formula  *)
+                               TslExp.conjunctive_formula *                   (* NC formula  *)
+                               (TslExp.conjunctive_formula * int) list) list) (* Arrangements *)
       : (bool * int * int) =
 
   (* PA satisfiability check function *)
@@ -674,13 +674,26 @@ let check_sat_by_cases (lines:int)
 
 
   (* NC satisfiability check function *)
-  let check_nc (cf:TslExp.conjunctive_formula) : bool =
+  let check_nc (cf:TslExp.conjunctive_formula) (i:int) : bool =
     match cf with
     | TslExp.TrueConj  -> true
     | TslExp.FalseConj -> false
     | TslExp.Conj ls ->
-        let l_vs = varset_of_sort_from_conj cf Int in
-        let k = VarSet.cardinal l_vs in
+        (* A more efficient way of computing the K is to count the number
+           of equivalence classes in the guessed arrangement. Note that we
+           have previously added as many level variables as we require.
+           Then, if the arrangement contains an assertion of the form
+           "l1 = l2" there is no need to add both variables when computing
+           K, as they will remain to be equal when the SMT will try to
+           compute the model. *)
+        (*
+           let l_vs = varset_of_sort_from_conj cf Int in
+           let k = VarSet.cardinal l_vs in
+         *)
+        let k = if i = -1 then
+                  VarSet.cardinal (varset_of_sort_from_conj cf Int)
+                else
+                  i in
 (*
         let module TslkSol = (val TslkSolver.choose "Z3" k
 *)
@@ -700,7 +713,7 @@ let check_sat_by_cases (lines:int)
   (* General satisfiability function *)
   let rec check (pa:TslExp.conjunctive_formula)
                 (nc:TslExp.conjunctive_formula)
-                (alpha:TslExp.conjunctive_formula) =
+                ((alpha,i):(TslExp.conjunctive_formula * int)) =
     verb "**** TSL Solver. Check PA formula\n%s\nand NC formula\n%s\nwith arrangement\n%s\n"
           (TslExp.conjunctive_formula_to_str pa)
           (TslExp.conjunctive_formula_to_str nc)
@@ -710,7 +723,7 @@ let check_sat_by_cases (lines:int)
     if pa_sat then
       (* Check NC /\ alpha satisfiability *)
       let _ = verb "**** TSL Solver will combine candidate arrangement wit NC.\n" in
-      check_nc (TslExp.combine_conj_formula nc alpha)
+      check_nc (TslExp.combine_conj_formula nc alpha) i
     else
       false in
 
@@ -721,9 +734,9 @@ let check_sat_by_cases (lines:int)
     | [] -> (false, 1, !tslk_calls)
     | (pa,nc,arrgs)::xs -> begin
                              let arrgs_to_try = match arrgs with
-                                                | [] -> [TslExp.TrueConj]
-                                                | _ -> arrgs in
-                             if (List.exists (fun alpha -> check pa nc alpha) arrgs_to_try) then
+                                                | [] -> [(TslExp.TrueConj, -1)]
+                                                | _  -> arrgs in
+                             if (List.exists (fun (alpha, i) -> check pa nc (alpha,i)) arrgs_to_try) then
                                (true, 1, !tslk_calls)
                              else
                                check_aux xs
@@ -733,10 +746,10 @@ let check_sat_by_cases (lines:int)
 
 
 let rec combine_splits_arrgs (sp:(TslExp.conjunctive_formula * TslExp.conjunctive_formula) list)
-                             (arrgs:TslExp.conjunctive_formula list list) :
+                             (arrgs:(TslExp.conjunctive_formula * int ) list list) :
             (TslExp.conjunctive_formula *
              TslExp.conjunctive_formula *
-             TslExp.conjunctive_formula list) list =
+             (TslExp.conjunctive_formula * int) list) list =
   match (sp,arrgs) with
   | ([],[])                -> []
   | ((pa,nc)::xs,arrg::ys) -> (pa,nc,arrg)::(combine_splits_arrgs xs ys)
