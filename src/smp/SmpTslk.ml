@@ -11,12 +11,20 @@ type model_size =
     num_addrs  : int ;
   }
 
+type polarity_t = Pos | Neg | Both
 
   (* model_size functions *)
   let model_size_to_str ms =
     "num_elems  = " ^ (string_of_int ms.num_elems)  ^ "\n" ^
     "num_tids  = " ^ (string_of_int ms.num_tids)  ^ "\n" ^
     "num_addrs  = " ^ (string_of_int ms.num_addrs)  ^ "\n"
+
+
+let invert_polarity (p:polarity_t) : polarity_t =
+  match p with
+  | Pos  -> Neg
+  | Neg  -> Pos
+  | Both -> Both
 
 
 module Make (TSLK : TSLKExpression.S) =
@@ -189,79 +197,69 @@ module Make (TSLK : TSLKExpression.S) =
 
     (* I must also count the equalities!!! *)
 
-    let union_eq_cutoff (info:union_info) ((x,y):(Expr.term * Expr.term)) : union_info =
+
+    let union_ineq_cutoff_pol (info:union_info) ((x,y):(Expr.term * Expr.term)) : union_info =
       match x with
         Expr.VarT _      -> info (* nothing, y must be a VarT as well *)
-      | Expr.SetT _      -> union_count_addr info (Expr.Eq(x,y)) (* the witness of s1 != s2 *)
+      | Expr.SetT _      -> (Printf.printf "ADDING DUE TO: %s != %s\n" (Expr.term_to_str x) (Expr.term_to_str y); union_count_addr info (Expr.InEq(x,y))) (* the witness of s1 != s2 *)
       | Expr.ElemT _     -> info
       | Expr.ThidT _     -> info
       | Expr.AddrT _     -> info (* no need to look for firstlock, every firstlock has a var *)
       | Expr.CellT _     -> info
-      | Expr.SetThT _    -> union_count_tid info (Expr.Eq(x,y)) (* the witness of st1 != st2 *)
-      | Expr.SetElemT _  -> union_count_elem info (Expr.Eq(x,y)) (* the witness of se1 != se2 *)
-      | Expr.PathT _     -> union_count_addr info (Expr.Eq(x,y)) (* the witnesses of p1 != p2 *)
+      | Expr.SetThT _    -> (Printf.printf "ADDING DUE TO: %s != %s\n" (Expr.term_to_str x) (Expr.term_to_str y); union_count_tid info (Expr.InEq(x,y))) (* the witness of st1 != st2 *)
+      | Expr.SetElemT _  -> (Printf.printf "ADDING DUE TO: %s != %s\n" (Expr.term_to_str x) (Expr.term_to_str y); union_count_elem info (Expr.InEq(x,y))) (* the witness of se1 != se2 *)
+      | Expr.PathT _     -> (Printf.printf "ADDING DUE TO: %s != %s\n" (Expr.term_to_str x) (Expr.term_to_str y); union_count_addr info (Expr.InEq(x,y))) (* the witnesses of p1 != p2 *)
       | Expr.MemT _      -> info
       | Expr.LevelT _    -> info
       | Expr.VarUpdate _ -> info (* ALE: Not sure if OK *)
 
 
-    let union_ineq_cutoff (info:union_info) ((x,y):(Expr.term * Expr.term)) : union_info =
-      match x with
-        Expr.VarT _      -> info (* nothing, y must be a VarT as well *)
-      | Expr.SetT _      -> union_count_addr info (Expr.InEq(x,y)) (* the witness of s1 != s2 *)
-      | Expr.ElemT _     -> info
-      | Expr.ThidT _     -> info
-      | Expr.AddrT _     -> info (* no need to look for firstlock, every firstlock has a var *)
-      | Expr.CellT _     -> info
-      | Expr.SetThT _    -> union_count_tid info (Expr.InEq(x,y)) (* the witness of st1 != st2 *)
-      | Expr.SetElemT _  -> union_count_elem info (Expr.InEq(x,y)) (* the witness of se1 != se2 *)
-      | Expr.PathT _     -> union_count_addr info (Expr.InEq(x,y)) (* the witnesses of p1 != p2 *)
-      | Expr.MemT _      -> info
-      | Expr.LevelT _    -> info
-      | Expr.VarUpdate _ -> info (* ALE: Not sure if OK *)
-
-
-    let union_atom_cutoff (info:union_info) (a:Expr.atom) : union_info =
+    let union_atom_cutoff_pol (pol:polarity_t) (info:union_info) (a:Expr.atom) : union_info =
       match a with
-        Expr.Append _       -> union_count_addr info a
-      | Expr.Reach _        -> union_count_addr info a
-      | Expr.OrderList _    -> union_count_addr (union_count_elem info a) a
+        Expr.Append _       -> if pol = Pos then info else (Printf.printf "ADDING DUE TO: %s\n" (Expr.atom_to_str a); union_count_addr info a)
+      | Expr.Reach _        -> if pol = Pos then info else (Printf.printf "ADDING DUE TO: %s\n" (Expr.atom_to_str a); union_count_addr info a)
+      | Expr.OrderList _    -> if pol = Pos then info else (Printf.printf "ADDING DUE TO: %s\n" (Expr.atom_to_str a); union_count_addr (union_count_elem info a) a)
       | Expr.In      _      -> info
-      | Expr.SubsetEq _     -> union_count_addr info a
+      | Expr.SubsetEq _     -> if pol = Pos then info else (Printf.printf "ADDING DUE TO: %s\n" (Expr.atom_to_str a); union_count_addr info a)
       | Expr.InTh _         -> info
-      | Expr.SubsetEqTh _   -> union_count_tid info a
+      | Expr.SubsetEqTh _   -> if pol = Pos then info else union_count_tid info a
       | Expr.InElem _       -> info
-      | Expr.SubsetEqElem _ -> union_count_elem info a
+      | Expr.SubsetEqElem _ -> if pol = Pos then info else union_count_elem info a
       | Expr.Less _         -> info
       | Expr.Greater _      -> info
       | Expr.LessEq _       -> info
       | Expr.GreaterEq _    -> info
-      | Expr.LessElem _     -> union_count_elem info a
-      | Expr.GreaterElem _  -> union_count_elem info a
-      | Expr.Eq e           -> union_eq_cutoff info e
-      | Expr.InEq e         -> union_ineq_cutoff info e
+      | Expr.LessElem _     -> info (*union_count_elem info a*)
+      | Expr.GreaterElem _  -> info (*union_count_elem info a*)
+      | Expr.Eq e           -> if pol = Pos then info else union_ineq_cutoff_pol info e
+      | Expr.InEq e         -> if pol = Neg then info else union_ineq_cutoff_pol info e
       | Expr.BoolVar _      -> info
       | Expr.PC _           -> info
       | Expr.PCUpdate _     -> info
       | Expr.PCRange _      -> info
 
 
-    let union_literal_cutoff (info:union_info) (l:Expr.literal) : union_info =
+    let union_literal_cutoff_pol (pol:polarity_t) (info:union_info) (l:Expr.literal) : union_info =
       match l with
-        Expr.Atom a    -> union_atom_cutoff info a
-      | Expr.NegAtom a -> union_atom_cutoff info a
+        Expr.Atom a    -> union_atom_cutoff_pol pol info a
+      | Expr.NegAtom a -> union_atom_cutoff_pol (invert_polarity pol) info a
 
 
-    let rec union_formula_cutoff (info:union_info) (phi:Expr.formula) : union_info =
+    let rec union_formula_cutoff_pol (pol:polarity_t) (info:union_info) (phi:Expr.formula) : union_info =
+      let apply_cut = union_formula_cutoff_pol in
       match phi with
-        Expr.Literal l       -> union_literal_cutoff info l
+      | Expr.Literal l       -> union_literal_cutoff_pol pol info l
       | Expr.True            -> info
       | Expr.False           -> info
-      | Expr.And (f1,f2)     -> union_formula_cutoff (union_formula_cutoff info f1) f2
-      | Expr.Or (f1,f2)      -> union_formula_cutoff (union_formula_cutoff info f1) f2
-      | Expr.Not f           -> union_formula_cutoff info f
-      | Expr.Implies (f1,f2) -> union_formula_cutoff (union_formula_cutoff info f1) f2
-      | Expr.Iff (f1,f2)     -> union_formula_cutoff (union_formula_cutoff info f2) f2
+      | Expr.And (f1,f2)     -> apply_cut pol (apply_cut pol info f1) f2
+      | Expr.Or (f1,f2)      -> apply_cut pol (apply_cut pol info f1) f2
+      | Expr.Not f           -> apply_cut (invert_polarity pol) info f
+      | Expr.Implies (f1,f2) -> apply_cut pol (apply_cut (invert_polarity pol) info f1) f2
+      | Expr.Iff (f1,f2)     -> apply_cut Both (apply_cut Both info f2) f2
+
+
+    let union_formula_cutoff (info:union_info) (phi:Expr.formula) : union_info =
+      union_formula_cutoff_pol Pos info phi
 
 
     (* Union SMP *)
@@ -272,7 +270,7 @@ module Make (TSLK : TSLKExpression.S) =
                                    if (not (Expr.variable_is_fresh v)) || Expr.variable_is_smp_interesting v then
                                      (Expr.variable_mark_smp_interesting v true; VarSet.add v s)
                                    else
-                                     (Printf.printf "UNINTERESTING %s\n" (Expr.variable_to_str v); s)
+                                     s
                                  ) addrvars VarSet.empty in
       Printf.printf "Interesting addresses:%s\n" (VarSet.fold (fun v str -> str ^ (Expr.variable_to_str v) ^ ";") interesting_addrvars "");
       let tmpcellvars = Expr.varset_of_sort vars Expr.Cell in

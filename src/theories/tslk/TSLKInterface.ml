@@ -536,7 +536,7 @@ module Make (TSLK : TSLKExpression.S) =
       let tid     = tid_to_expr_tid         in
       let setth   = setth_to_expr_setth     in
       let setelem = setelem_to_expr_setelem in
-      let integ   = level_to_expr_int         in
+      let integ   = level_to_expr_int       in
       let term    = term_to_expr_term       in
       match a with
         TSLK.Append (p1,p2,p3)    -> Expr.Append (path p1,path p2,path p3)
