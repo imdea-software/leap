@@ -325,7 +325,10 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
                   | None -> ""
                   | Some p -> p ^ "_" in
       let new_id = p_str ^ id_str ^ th_str ^ pr_str ^ "__" ^ (string_of_int n) in
-        TslkExp.build_var new_id s false None None
+      let v_fresh = TslkExp.build_var new_id s false None None in
+      Printf.printf "FRESH VAR: %s\n" new_id;
+      TslkExp.variable_mark_fresh v_fresh true;
+      v_fresh
 
 
     let gen_addr_list (aa:TslExp.addrarr) : TslkExp.addr list =
@@ -411,6 +414,7 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
           let a' = addr_tsl_to_tslk a in
           let c' = cell_tsl_to_tslk c in
           let l' = int_tsl_to_tslk l in
+          TslkExp.addr_mark_smp_interesting a' true;
           TslkExp.eq_addr a' (TslkExp.NextAt(c',l'))
       (* t = c.tids[l] *)
       | Atom(Eq(ThidT t, ThidT(ThidArrRd(CellTids c,l))))
@@ -420,6 +424,7 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
           let t' = tid_tsl_to_tslk t in
           let c' = cell_tsl_to_tslk c in
           let l' = int_tsl_to_tslk l in
+          TslkExp.tid_mark_smp_interesting t' true;
           TslkExp.eq_tid t' (TslkExp.CellLockIdAt(c',l'))
       (* A != B (addresses) *)
       | NegAtom(Eq(AddrArrayT(VarAddrArray _ as aa),
@@ -432,6 +437,8 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
           for i = 0 to (TslkExp.k - 1) do
             xs := (TslkExp.ineq_addr (List.nth aa' i) (List.nth bb' i)) :: (!xs)
           done;
+          (* I need one witness for array difference *)
+          TslkExp.addr_mark_smp_interesting (List.hd aa') true;
           TslkExp.disj_list (!xs)
       (* A != B (thread identifiers) *)
       | NegAtom(Eq(TidArrayT(VarTidArray _ as tt),
@@ -444,6 +451,8 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
           for i = 0 to (TslkExp.k - 1) do
             xs := (TslkExp.ineq_tid (List.nth tt' i) (List.nth uu' i)) :: (!xs)
           done;
+          (* I need one witness for array difference *)
+          TslkExp.tid_mark_smp_interesting (List.hd tt') true;
           TslkExp.disj_list (!xs)
       (* a = A[i] *)
       | Atom(Eq(AddrT a, AddrT (AddrArrRd (aa,i))))
@@ -460,6 +469,7 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
                     (TslkExp.eq_level i' n',
                      TslkExp.eq_addr a' (List.nth aa' n))) :: (!xs)
           done;
+          TslkExp.addr_mark_smp_interesting a' true;
           TslkExp.conj_list (!xs)
       (* a != A[i] *)
       | NegAtom(Eq(AddrT a, AddrT (AddrArrRd (aa,i))))
@@ -482,6 +492,7 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
                     (TslkExp.eq_level i' n',
                      TslkExp.eq_tid t' (List.nth tt' n))) :: (!xs)
           done;
+          TslkExp.tid_mark_smp_interesting t' true;
           TslkExp.conj_list (!xs)
       (* t != A[i] *)
       | NegAtom(Eq(ThidT t, ThidT (ThidArrRd (tt,i))))
@@ -509,6 +520,7 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
                      TslkExp.eq_addr (List.nth aa' n) (List.nth bb' n))) ::
                   (!xs)
           done;
+          TslkExp.addr_mark_smp_interesting a' true;
           TslkExp.conj_list (!xs)
       (* B != A {l <- a} *)
       | NegAtom(Eq(AddrArrayT bb, AddrArrayT (AddrArrayUp(aa,i,a))))
@@ -536,6 +548,7 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
                      TslkExp.eq_tid (List.nth tt' n) (List.nth uu' n))) ::
                   (!xs)
           done;
+          TslkExp.tid_mark_smp_interesting t' true;
           TslkExp.conj_list (!xs)
       (* U != T {l <- t} *)
       | NegAtom(Eq(TidArrayT uu, TidArrayT (TidArrayUp(tt,i,t))))
@@ -585,6 +598,8 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
 *)
 
           done;
+          TslkExp.addr_mark_smp_interesting a1' true;
+          TslkExp.addr_mark_smp_interesting a2' true;
           TslkExp.conj_list (!xs)
       (* ~ Skiplist(m,s,l,a1,a2) *)
       | NegAtom(Skiplist(m,s,l,a1,a2)) ->
@@ -629,6 +644,8 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
                         (TslkExp.Setdiff (TslkExp.AddrToSet(m',a1',n'), TslkExp.AddrToSet(m',a2',n'))))) :: (!xs)
 *)
           done;
+          TslkExp.addr_mark_smp_interesting a1' true;
+          TslkExp.addr_mark_smp_interesting a2' true;
           TslkExp.disj_list (!xs)
       | _ -> TslkExp.Literal (literal_tsl_to_tslk l)
 
@@ -638,6 +655,10 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
         (String.concat "\n" (List.map TslExp.literal_to_str tsl_ls)));
       Hashtbl.clear addrarr_tbl;
       Hashtbl.clear tidarr_tbl;
+(*
+      GenSet.clear interesting_addrs;
+      GenSet.clear interesting_tids;
+*)
       let tslk_ps = List.map trans_literal tsl_ls in
       let tslk_phi = TslkExp.conj_list tslk_ps in
       verbstr (Interface.Msg.info "OBTAINED TSLK TRANSLATED FORMULA"

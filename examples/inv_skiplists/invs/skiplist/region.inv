@@ -2,4 +2,6 @@ param:
 
 invariant [skiplist_region] :
 
-@61. -> remove::curr in region
+@61. -> (  remove::curr in region
+        /\ (remove::i = maxLevel \/ ~ (remove::curr in addr2set(heap, head, remove::i + 1)))
+        )

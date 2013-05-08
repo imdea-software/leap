@@ -13,6 +13,11 @@ let empty () : 'a t =
   }
 
 
+let clear (s:'a t) : unit =
+  Hashtbl.clear s.elems;
+  s.counter := 0
+
+
 let copy (s:'a t) : 'a t =
   {
     elems = Hashtbl.copy s.elems;

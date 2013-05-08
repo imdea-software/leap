@@ -6,6 +6,9 @@ type 'a t
 (** [empty ()] creates a new empty set *)
 val empty : unit -> 'a t
 
+(** [clear s] removes all elements stored in [s] *)
+val clear : 'a t -> unit
+
 (** [copy s] returns a new copy of set [s] *)
 val copy : 'a t -> 'a t
 

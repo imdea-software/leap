@@ -118,8 +118,15 @@ module Make (K : Level.S) : TSLK_QUERY =
       let k = (string_of_int K.level) in
       B.add_string buf
         ("(define-sort " ^level_s^ " () " ^int_s^ ")\n" ^
-         "(define-fun lsucc ((l " ^level_s^ ")) " ^level_s^ " (div (+ (+ l " ^k^ ") (- " ^k^ " l)) 2))\n" ^
-         "(define-fun lpred ((l " ^level_s^ ")) " ^level_s^ " (div (- (+ l " ^k^ ") (- " ^k^ " l)) 2))\n" ^
+         "(define-fun maxL ((l1 Level) (l2 Level)) Level (ite (< l1 l2) l2 l1))\n" ^
+         "(define-fun minL ((l1 Level) (l2 Level)) Level (ite (< l1 l2) l1 l2))\n" ^
+         "(define-fun lsucc ((l " ^level_s^ ")) " ^level_s^ " (minL (+ l 1) (- " ^k^ " 1)))\n" ^
+         "(define-fun lpred ((l " ^level_s^ ")) " ^level_s^ " (maxL (- l 1) 0))\n" ^
+(*
+         "(define-fun absolute ((l " ^level_s^ ")) " ^level_s^ " (ite (< l 0) (- l) l))\n" ^
+         "(define-fun lsucc ((l " ^level_s^ ")) " ^level_s^ " (div (- (+ l " ^k^ ") (absolute (+ (- l " ^k^ ") 2)) 2))\n" ^
+         "(define-fun lpred ((l " ^level_s^ ")) " ^level_s^ " (div (+ (- l 1) (absolute (- l 1))) 2))\n" ^
+*)
          "(define-fun islevel ((l " ^level_s^ ")) " ^bool_s^ " (and (<= 0 l) (< l " ^k^ ")))\n");
       for i = 0 to K.level - 1 do
         let i_str = string_of_int i in

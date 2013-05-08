@@ -58,7 +58,7 @@ module Make (TSLK : TSLKExpression.S) =
     and var_to_tslk_var (v:Expr.variable) : TSLK.variable =
       let (id,s,pr,th,p,_) = v
       in
-        (id, sort_to_tslk_sort s, pr, Option.lift tid_to_tslk_tid th, p)
+        TSLK.build_var id (sort_to_tslk_sort s) pr (Option.lift tid_to_tslk_tid th) p
 
 
 
@@ -382,7 +382,7 @@ module Make (TSLK : TSLKExpression.S) =
 
 
     let rec var_to_expr_var (v:TSLK.variable) : Expr.variable =
-      let (id,s,pr,th,p) = v
+      let (id,s,pr,th,p,_) = v
       in
         (id, sort_to_expr_sort s, pr, Option.lift tid_to_expr_tid th, p, Expr.Normal)
 

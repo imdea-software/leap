@@ -1248,7 +1248,7 @@ module Make (K : Level.S) : TSLK_QUERY =
                           (num_tids:int)
                           (v:Expr.variable) : unit =
       verb "**** Z3TslkQuery, defining variable: %s\n" (Expr.variable_to_str v);
-      let (id,s,pr,th,p) = v in
+      let (id,s,pr,th,p,_) = v in
       let sort_str asort = match asort with
                              Expr.Set     -> set_s
                            | Expr.Elem    -> elem_s
@@ -1355,7 +1355,7 @@ module Make (K : Level.S) : TSLK_QUERY =
 
 
     and variable_invocation_to_str (v:Expr.variable) : string =
-      let (id,s,pr,th,p) = v in
+      let (id,s,pr,th,p,_) = v in
       let th_str = Option.map_default tidterm_to_str "" th in
       let p_str  = Option.map_default (fun n -> Printf.sprintf "%s_" n) "" p in
       let pr_str = if pr then "_prime" else ""
@@ -1822,7 +1822,7 @@ module Make (K : Level.S) : TSLK_QUERY =
             (* We also filter primed variables *)
             let term_dom = List.filter (fun t ->
                              match t with
-                             | Expr.AddrT (Expr.VarAddr (id,s,pr,th,p)) -> th <> None || p = None
+                             | Expr.AddrT (Expr.VarAddr (id,s,pr,th,p,_)) -> th <> None || p = None
                              | _ -> true
                            ) temp_dom in
 

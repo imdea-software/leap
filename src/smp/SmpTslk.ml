@@ -55,7 +55,7 @@ module Make (TSLK : TSLKExpression.S) =
         (e_set, t_set, ASet.add a a_set, l_set)
 
 
-    let union_count_addr (u:union_info) (a:Expr.atom) : union_info =
+    let union_count_level (u:union_info) (a:Expr.atom) : union_info =
       let (e_set, t_set, a_set, l_set) = u
       in
         (e_set, t_set, a_set, ASet.add a l_set)
@@ -268,10 +268,18 @@ module Make (TSLK : TSLKExpression.S) =
     let compute_max_cut_off_with_union (phi:Expr.formula) : model_size =
       let vars = Expr.get_varset_from_formula phi in
       let addrvars = Expr.varset_of_sort vars Expr.Addr in
+      let interesting_addrvars = VarSet.fold (fun v s ->
+                                   if (not (Expr.variable_is_fresh v)) || Expr.variable_is_smp_interesting v then
+                                     (Expr.variable_mark_smp_interesting v true; VarSet.add v s)
+                                   else
+                                     (Printf.printf "UNINTERESTING %s\n" (Expr.variable_to_str v); s)
+                                 ) addrvars VarSet.empty in
+      Printf.printf "Interesting addresses:%s\n" (VarSet.fold (fun v str -> str ^ (Expr.variable_to_str v) ^ ";") interesting_addrvars "");
       let tmpcellvars = Expr.varset_of_sort vars Expr.Cell in
       let cellvars = VarSet.diff tmpcellvars (redundant_cell_vars phi addrvars) in
       let vartid_num  = VarSet.cardinal (Expr.varset_of_sort vars Expr.Thid) in
-      let varaddr_num = VarSet.cardinal addrvars in
+(*      let varaddr_num = VarSet.cardinal addrvars in *)
+      let varaddr_num = VarSet.cardinal interesting_addrvars in
       let varelem_num = VarSet.cardinal (Expr.varset_of_sort vars Expr.Elem) in
       let varcell_num = VarSet.cardinal cellvars in
       let varmem_num  = VarSet.cardinal (Expr.varset_of_sort vars Expr.Mem ) in
@@ -292,7 +300,7 @@ module Make (TSLK : TSLKExpression.S) =
       let num_levels = Expr.k in
       let num_addrs = 1 +                                     (* null               *)
                       varaddr_num +                           (* Address variables  *)
-                      varcell_num * num_levels              + (* Cell next pointers *)
+(*                      varcell_num * num_levels              + (* Cell next pointers *) *)
 (*                      varaddr_num * varmem_num * num_levels + (* Cell next pointers *) *)
                       info.num_addrs                          (* Special literals   *) in
       let num_tids = 1 +                                      (* No thread          *)

@@ -4,7 +4,9 @@ module type S =
 
     type varId = string
 
-    type variable = varId * sort * bool * tid option * string option
+    type var_info_t
+
+    type variable = varId * sort * bool * tid option * string option * var_info_t
 
     and sort =
         Set
@@ -197,7 +199,15 @@ module type S =
     val prime_var : variable -> variable
     val unprime_var : variable -> variable
     val is_primed_var : variable -> bool
+    val variable_mark_smp_interesting : variable -> bool -> unit
+    val variable_mark_fresh : variable -> bool -> unit
+    val variable_is_smp_interesting : variable -> bool
+    val variable_is_fresh : variable -> bool
 
+
+    (* SMP MARKING FUNCTIONS *)
+    val addr_mark_smp_interesting : addr -> bool -> unit
+    val tid_mark_smp_interesting : tid -> bool -> unit
 
     (* PRETTY_PRINTERS *)
     val variable_to_str : variable -> string

@@ -7,7 +7,9 @@ module type S =
 
     type varId = string
 
-    type variable = varId * sort * bool * tid option * string option
+    type var_info_t
+
+    type variable = varId * sort * bool * tid option * string option * var_info_t
 
     and sort =
         Set
@@ -200,6 +202,14 @@ module type S =
     val prime_var : variable -> variable
     val unprime_var : variable -> variable
     val is_primed_var : variable -> bool
+    val variable_mark_smp_interesting : variable -> bool -> unit
+    val variable_mark_fresh : variable -> bool -> unit
+    val variable_is_smp_interesting : variable -> bool
+    val variable_is_fresh : variable -> bool
+
+    (* SMP MARKING FUNCTIONS *)
+    val addr_mark_smp_interesting : addr -> bool -> unit
+    val tid_mark_smp_interesting : tid -> bool -> unit
 
 
     (* PRETTY_PRINTERS *)
@@ -300,7 +310,13 @@ module Make (K : Level.S) : S =
 
     type varId = string
 
-    type variable = varId * sort * bool * tid option * string option
+    type var_info_t =
+      {
+        mutable smp_interesting : bool;
+        mutable fresh : bool;
+      }
+
+    type variable = varId * sort * bool * tid option * string option * var_info_t
 
     and sort =
         Set
@@ -460,34 +476,50 @@ module Make (K : Level.S) : S =
                   (pr:bool)
                   (th:tid option)
                   (p:string option) : variable =
-      (id,s,pr,th,p)
+      (id,s,pr,th,p,{smp_interesting=false;fresh=false;})
 
 
     let param_var (v:variable) (th:tid) : variable =
-      let (id,s,pr,_,p) = v
+      let (id,s,pr,_,p,info) = v
       in
-        (id,s,pr,Some th,p)
+        (id,s,pr,Some th,p,info)
 
 
     let is_global_var (v:variable) : bool =
-      let (_,_,_,_,p) = v in p = None
+      let (_,_,_,_,p,_) = v in p = None
 
 
     let get_sort (v:variable) : sort =
-      let (_,s,_,_,_) = v in s
+      let (_,s,_,_,_,_) = v in s
 
 
     let prime_var (v:variable) : variable =
-      let (id,s,_,th,p) = v in (id,s,true,th,p)
+      let (id,s,_,th,p,info) = v in (id,s,true,th,p,info)
 
 
     let unprime_var (v:variable) : variable =
-      let (id,s,_,th,p) = v in (id,s,false,th,p)
+      let (id,s,_,th,p,info) = v in (id,s,false,th,p,info)
 
 
     let is_primed_var (v:variable) : bool =
-      let (_,_,pr,_,_) = v in
+      let (_,_,pr,_,_,_) = v in
         pr
+
+    let variable_mark_smp_interesting (v:variable) (b:bool) : unit =
+      let (_,_,_,_,_,info) = v in
+        info.smp_interesting <- b
+
+    let variable_mark_fresh (v:variable) (b:bool) : unit =
+      let (_,_,_,_,_,info) = v in
+        info.fresh <- b
+
+    let variable_is_smp_interesting (v:variable) : bool =
+      let (_,_,_,_,_,info) = v in info.smp_interesting
+
+    let variable_is_fresh (v:variable) : bool =
+(*    Correct way *)
+(*    let (_,_,_,_,_,info) = v in info.fresh *)
+      let (id,_,_,_,_,info) = v in (id.[0] = '$' || info.fresh)
 
 
     let is_primed_tid (th:tid) : bool =
@@ -499,8 +531,35 @@ module Make (K : Level.S) : S =
 
 
     let var_th (v:variable) : tid option =
-      let (_,_,_,th,_) = v in th
+      let (_,_,_,th,_,_) = v in th
 
+
+    let variable_clean_info (v:variable) : unit =
+      let (_,_,_,_,_,info) = v in
+        info.fresh <- false;
+        info.smp_interesting <- false
+
+
+    let unify_var_info (info1:var_info_t) (info2:var_info_t) : var_info_t =
+      {
+        fresh = (info1.fresh || info2.fresh);
+        smp_interesting = (info1.smp_interesting || info2.smp_interesting);
+      }
+
+
+    (*******************************)
+    (*    SMP MARKING FUNCTIONS    *)
+    (*******************************)
+    let addr_mark_smp_interesting (a:addr) (b:bool) : unit =
+      match a with
+      | VarAddr v -> variable_mark_smp_interesting v b
+      | _         -> ()
+
+
+    let tid_mark_smp_interesting (t:tid) (b:bool) : unit =
+      match t with
+      | VarTh v -> variable_mark_smp_interesting v b
+      | _       -> ()
 
 
     (*******************************)
@@ -565,11 +624,22 @@ module Make (K : Level.S) : S =
       end )
 
 
+    let unify_varset (s:S.t) : S.t =
+      let tbl : (variable,var_info_t) Hashtbl.t = Hashtbl.create (S.cardinal s) in
+      S.iter (fun (id,s,pr,th,p,info) ->
+        let base_v = build_var id s pr th p in
+        try
+          Hashtbl.replace tbl base_v (unify_var_info info (Hashtbl.find tbl base_v))
+        with Not_found -> Hashtbl.add tbl base_v info
+      ) s;
+      Hashtbl.fold (fun (id,s,pr,th,p,_) info set -> S.add (id,s,pr,th,p,info) set) tbl S.empty
+
+
     let (@@) s1 s2 =
       S.union s1 s2
 
     let get_varset_from_param (v:variable) : S.t =
-      let (_,_,_,th,_) = v
+      let (_,_,_,th,_,_) = v
       in
         match th with
           Some (VarTh t) -> S.singleton t
@@ -703,14 +773,17 @@ module Make (K : Level.S) : S =
           Atom a    -> get_varset_atom a
         | NegAtom a -> get_varset_atom a
 
-    and get_varset_from_conj phi =
+    and get_varset_from_conj_aux phi =
       let another_lit vars alit = vars @@ (get_varset_literal alit) in
       match phi with
           TrueConj   -> S.empty
         | FalseConj  -> S.empty
         | Conj l     -> List.fold_left (another_lit) S.empty l
 
-    and get_varset_from_formula phi =
+    and get_varset_from_conj phi =
+      unify_varset (get_varset_from_conj_aux phi)
+
+    and get_varset_from_formula_aux phi =
       match phi with
         Literal l       -> get_varset_literal l
       | True            -> S.empty
@@ -725,6 +798,9 @@ module Make (K : Level.S) : S =
       | Iff (f1,f2)     -> (get_varset_from_formula f1) @@
                            (get_varset_from_formula f2)
 
+    and get_varset_from_formula phi =
+      unify_varset (get_varset_from_formula_aux phi)
+
 
     let localize_with_underscore (v:varId) (p_name:string option) : string =
       let p_str = Option.map_default (fun p -> p^"_") "" p_name
@@ -733,9 +809,9 @@ module Make (K : Level.S) : S =
 
 
     let varset_of_sort all s =
-      let filt (v,asort,pr,th,p) res =
+      let filt (v,asort,pr,th,p,info) res =
         if asort=s then
-          VarSet.add (v,asort,pr,None,p) res
+          VarSet.add (v,asort,pr,None,p,info) res
     (*      VarSet.add ((localize_with_underscore v p) res *)
         else
           res in
@@ -749,14 +825,16 @@ module Make (K : Level.S) : S =
       S.elements (get_varset_from_conj phi)
 
     let varlist_of_sort varlist s =
-      let is_s (_,asort,_,_,_) = (asort=s) in
-      List.map (fun (v,_,_,_,p) -> (localize_with_underscore v p))
+      let is_s (_,asort,_,_,_,_) = (asort=s) in
+      List.map (fun (v,_,_,_,p,_) -> (localize_with_underscore v p))
                (List.filter is_s varlist)
 
     let get_varlist_of_sort_from_conj phi s =
       varlist_of_sort (get_varlist_from_conj phi) s
 
 
+    (* TOFIX: terms may be considered different if they differ just in the
+              variable information stored in the var_info_t *)
     let rec get_termset_atom (a:atom) : TermSet.t =
       let add_list = List.fold_left (fun s e -> TermSet.add e s) TermSet.empty in
       match a with
@@ -1081,7 +1159,7 @@ module Make (K : Level.S) : S =
 
 
     let rec variable_to_str (v:variable) : string =
-      let (id,_,pr,th,p) = v in
+      let (id,_,pr,th,p,_) = v in
       let v_str = sprintf "%s%s" (Option.map_default (localize_var_id id) id p)
                                  (Option.map_default (fun t -> "(" ^ tid_to_str t ^ ")" ) "" th)
       in
@@ -1380,7 +1458,7 @@ module Make (K : Level.S) : S =
       VarIdSet.fold (fun v str -> str ^ v ^ "\n") varset ""
 
     let typed_variable_set_to_str tvarset =
-      let pr (v,s,_,_,_) str = (str ^ v ^ ": " ^ (sort_to_str s) ^ "\n") in
+      let pr (v,s,_,_,_,_) str = (str ^ v ^ ": " ^ (sort_to_str s) ^ "\n") in
         S.fold pr tvarset ""
 
     let print_variable_set varset =
@@ -1865,7 +1943,7 @@ module Make (K : Level.S) : S =
 
       and req_term (t:term) : SortSet.t =
         match t with
-        | VarT (_,s,_,_,_)             -> single s
+        | VarT (_,s,_,_,_,_)           -> single s
         | SetT s                       -> req_s s
         | ElemT e                      -> req_e e
         | ThidT t                      -> req_t t
@@ -1876,7 +1954,7 @@ module Make (K : Level.S) : S =
         | PathT p                      -> req_p p
         | MemT m                       -> req_m m
         | LevelT l                     -> req_lv l
-        | VarUpdate ((_,s,_,_,_),t,tr) -> append s [req_t t;req_term tr]
+        | VarUpdate ((_,s,_,_,_,_),t,tr) -> append s [req_t t;req_term tr]
       in
         SortSet.elements (req_f phi)
 
