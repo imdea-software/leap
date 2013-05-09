@@ -729,9 +729,9 @@ let check_sat_by_cases (lines:int)
     verb "**** TSL Solver, PA sat?: %b\n" pa_sat;
     if pa_sat then
       (* Check NC /\ alpha satisfiability *)
-      let i = ref (-1) in
+      let i = ref (List.length alpha) in
       let explicit_levels = List.fold_left (fun xs eqclass ->
-                              incr i;
+                              decr i;
                               (List.map (fun e -> Atom(Eq(IntT e,IntT(IntVal !i)))) eqclass) @ xs
                             ) [] alpha in
       let explicit_levels_phi = match explicit_levels with
