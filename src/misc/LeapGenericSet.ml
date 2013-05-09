@@ -92,6 +92,14 @@ let to_list (s:'a t) : 'a list =
   fold (fun e xs -> e :: xs) s []
 
 
+let exists (f:'a -> bool) (s:'a t) : bool =
+  List.exists f (to_list s)
+
+
+let for_all (f:'a -> bool) (s:'a t) : bool =
+  List.for_all f (to_list s)
+
+
 let copy_without (s:'a t) (ss:'a t list) : 'a t =
   let s_new = empty () in
   let _ = iter (fun e ->

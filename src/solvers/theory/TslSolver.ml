@@ -127,8 +127,8 @@ let guess_arrangements_by_brute_force (cf:TslExp.conjunctive_formula)
                           lv_arrs
 
 
-let guess_arrangements (cf:TslExp.conjunctive_formula)
-      : (TslExp.conjunctive_formula * int) list =
+let alpha_to_conjunctive_formula (alpha:TslExp.integer list list)
+    : TslExp.conjunctive_formula =
   let rec cons_eq_class (is:TslExp.integer list) : TslExp.literal list =
     match is with
     | i1::i2::xs -> Atom(Eq(IntT i1, IntT i2)) :: cons_eq_class (i2::xs)
@@ -140,21 +140,24 @@ let guess_arrangements (cf:TslExp.conjunctive_formula)
                               List.hd xs)) :: cons_ords (ys::zs)
     | _          -> []
   in
+  let eqs = List.fold_left (fun ys eq_c ->
+              (cons_eq_class eq_c) @ ys
+            ) [] alpha in
+  let ords = cons_ords alpha in
+    (TslExp.Conj (eqs @ ords))
+
+
+let guess_arrangements (cf:TslExp.conjunctive_formula) : (TslExp.integer list list) GenSet.t =
   let arr = Arr.empty true in
     match cf with
-    | TslExp.FalseConj -> []
-    | TslExp.TrueConj  -> []
+    | TslExp.FalseConj -> GenSet.empty ()
+    | TslExp.TrueConj  -> GenSet.empty ()
     | TslExp.Conj ls   -> begin
                             let level_vars = TslExp.varset_instances_of_sort_from_conj cf (TslExp.Int) in
                              verb "**** TSL Solver: variables for arrangement...\n{ %s }\n"
                                     (TslExp.VarSet.fold (fun v str ->
                                       str ^ TslExp.variable_to_str v ^ "; "
                                     ) level_vars "");
-(*
-                            let level_vars = TslExp.VarSet.fold (fun v s ->
-                                               TslExp.VarSet.add (TslExp.unlocalize_variable v) s
-                                             ) original_vars TslExp.VarSet.empty in
-*)
                             TslExp.VarSet.iter (fun v -> Arr.add_elem arr (TslExp.VarInt v)) level_vars;
                             List.iter (fun l ->
                               match l with
@@ -190,27 +193,8 @@ let guess_arrangements (cf:TslExp.conjunctive_formula)
                             ) ls;
                             verb "**** TSL Solver: known information for arrangments:\n%s\n"
                                   (Arr.to_str arr TslExp.int_to_str);
-                            let arrgs = GenSet.fold (fun s_elem xs ->
-(*
-                                    print_endline ("KNOWN INFORMATION:\n" ^
-                                          (Arr.to_str arr TslExp.int_to_str));
-                                          print_endline "PROC ARRANGEMENT:";
-                                          print_endline (String.concat ";"
-                                            (List.map (fun es -> "[" ^
-                                              (String.concat "," (List.map TslExp.int_to_str es)) ^ "]"
-                                            ) s_elem));
-*)
-                                          let eqs = List.fold_left (fun ys eq_c ->
-                                                      (cons_eq_class eq_c) @ ys
-                                                    ) [] s_elem in
-                                          let ords = cons_ords s_elem in
-(*
-                                          print_endline "GENERATED LITEREAL";
-                                          print_endline (TslExp.conjunctive_formula_to_str (TslExp.Conj (eqs @ ords)));
-*)
-                                            (TslExp.Conj (eqs @ ords),List.length s_elem) :: xs
-                                        ) (Arr.gen_arrs arr) [] in
-                            verb "**** TSL Solver: generated %i arragements\n" (List.length arrgs);
+                            let arrgs = Arr.gen_arrs arr in
+                            verb "**** TSL Solver: generated %i arragements\n" (GenSet.size arrgs);
                             arrgs
                           end
 
@@ -660,10 +644,6 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
         (String.concat "\n" (List.map TslExp.literal_to_str tsl_ls)));
       Hashtbl.clear addrarr_tbl;
       Hashtbl.clear tidarr_tbl;
-(*
-      GenSet.clear interesting_addrs;
-      GenSet.clear interesting_tids;
-*)
       let tslk_ps = List.map trans_literal tsl_ls in
       let tslk_phi = TslkExp.conj_list tslk_ps in
       verbstr (Interface.Msg.info "OBTAINED TSLK TRANSLATED FORMULA"
@@ -678,7 +658,7 @@ let check_sat_by_cases (lines:int)
                        (co : Smp.cutoff_strategy_t)
                        (cases:(TslExp.conjunctive_formula *                   (* PA formula  *)
                                TslExp.conjunctive_formula *                   (* NC formula  *)
-                               (TslExp.conjunctive_formula * int) list) list) (* Arrangements *)
+                               (TslExp.integer list list) GenSet.t) list)     (* Arrangements *)
       : (bool * int * int) =
 
   (* PA satisfiability check function *)
@@ -739,17 +719,28 @@ let check_sat_by_cases (lines:int)
   (* General satisfiability function *)
   let rec check (pa:TslExp.conjunctive_formula)
                 (nc:TslExp.conjunctive_formula)
-                ((alpha,i):(TslExp.conjunctive_formula * int)) =
+                (alpha:TslExp.integer list list) : bool =
+    let alpha_phi = alpha_to_conjunctive_formula alpha in
     verb "**** TSL Solver. Check PA formula\n%s\nand NC formula\n%s\nwith arrangement\n%s\n"
           (TslExp.conjunctive_formula_to_str pa)
           (TslExp.conjunctive_formula_to_str nc)
-          (TslExp.conjunctive_formula_to_str alpha);
-    let pa_sat = check_pa (TslExp.combine_conj_formula pa alpha) in
+          (TslExp.conjunctive_formula_to_str alpha_phi);
+    let pa_sat = check_pa (TslExp.combine_conj_formula pa alpha_phi) in
     verb "**** TSL Solver, PA sat?: %b\n" pa_sat;
     if pa_sat then
       (* Check NC /\ alpha satisfiability *)
+      let i = ref (-1) in
+      let explicit_levels = List.fold_left (fun xs eqclass ->
+                              incr i;
+                              (List.map (fun e -> Atom(Eq(IntT e,IntT(IntVal !i)))) eqclass) @ xs
+                            ) [] alpha in
+      let explicit_levels_phi = match explicit_levels with
+                                | [] -> TslExp.TrueConj
+                                | _  -> TslExp.Conj explicit_levels in
+      (* HERE PUT THE LEVEL ENUMERATION *)
+      let levels = List.length alpha in
       let _ = verb "**** TSL Solver will combine candidate arrangement wit NC.\n" in
-      check_nc (TslExp.combine_conj_formula nc alpha) i
+      check_nc (TslExp.combine_conj_formula (TslExp.combine_conj_formula nc alpha_phi) explicit_levels_phi) levels
     else
       false in
 
@@ -759,10 +750,7 @@ let check_sat_by_cases (lines:int)
     match cases with
     | [] -> (false, 1, !tslk_calls)
     | (pa,nc,arrgs)::xs -> begin
-                             let arrgs_to_try = match arrgs with
-                                                | [] -> [(TslExp.TrueConj, -1)]
-                                                | _  -> arrgs in
-                             if (List.exists (fun (alpha, i) -> check pa nc (alpha,i)) arrgs_to_try) then
+                             if (GenSet.exists (check pa nc) arrgs) then
                                (true, 1, !tslk_calls)
                              else
                                check_aux xs
@@ -772,10 +760,10 @@ let check_sat_by_cases (lines:int)
 
 
 let rec combine_splits_arrgs (sp:(TslExp.conjunctive_formula * TslExp.conjunctive_formula) list)
-                             (arrgs:(TslExp.conjunctive_formula * int ) list list) :
+                             (arrgs:((TslExp.integer list list) GenSet.t) list) :
             (TslExp.conjunctive_formula *
              TslExp.conjunctive_formula *
-             (TslExp.conjunctive_formula * int) list) list =
+             (TslExp.integer list list) GenSet.t) list =
   match (sp,arrgs) with
   | ([],[])                -> []
   | ((pa,nc)::xs,arrg::ys) -> (pa,nc,arrg)::(combine_splits_arrgs xs ys)

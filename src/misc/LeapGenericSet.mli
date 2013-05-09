@@ -27,7 +27,7 @@ val size : 'a t -> int
 (** [mem s a] returns [true] if element [a] is in set [s]. Otherwise [false] *)
 val mem : 'a t -> 'a -> bool
 
-(** [iter f s] applies [f] in turn to all elements of [s]. *)
+(** [iter f s] applies [f] in turn to all elements of [s] *)
 val iter : ('a -> unit) -> 'a t -> unit
 
 (** [fold f s init] computes [(f eN ... (f e1 init)...)], where [e1 ... eN] are
@@ -46,6 +46,14 @@ val from_list : 'a list -> 'a t
 
 (** [to_list s] generates a list containing all elements in [s] *)
 val to_list : 'a t -> 'a list
+
+(** [exists f s] determines whether there exists an element in [s] for which
+    function [f] returns [true] *)
+val exists : ('a -> bool) -> 'a t -> bool
+
+(** [for_all f s] determines whether for all element in [s], function [f]
+    returns [true] *)
+val for_all : ('a -> bool) -> 'a t -> bool
 
 (** [copy_without s ss] returns a set that is a copy of set [s], but excluding
     all elements from any of the sets in [ss] *)
