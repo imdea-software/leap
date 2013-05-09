@@ -158,29 +158,34 @@ let guess_arrangements (cf:TslExp.conjunctive_formula)
                             TslExp.VarSet.iter (fun v -> Arr.add_elem arr (TslExp.VarInt v)) level_vars;
                             List.iter (fun l ->
                               match l with
-                              | TslExp.Atom(TslExp.Less(i1,i2)) -> Arr.add_less arr i1 i2
-                              | TslExp.Atom(TslExp.Greater(i1,i2)) -> Arr.add_greater arr i1 i2
-                              | TslExp.Atom(TslExp.LessEq(i1,i2)) -> Arr.add_lesseq arr i1 i2
-                              | TslExp.Atom(TslExp.GreaterEq(i1,i2)) -> Arr.add_greatereq arr i1 i2
-                              | TslExp.Atom(TslExp.Eq(IntT (VarInt v1),IntT (IntAdd(VarInt v2,IntVal 1))))
-                              | TslExp.Atom(TslExp.Eq(IntT (VarInt v1),IntT (IntAdd(IntVal 1,VarInt v2))))
-                              | TslExp.Atom(TslExp.Eq(IntT (IntAdd(VarInt v2,IntVal 1)),IntT (VarInt v1)))
-                              | TslExp.Atom(TslExp.Eq(IntT (IntAdd(IntVal 1,VarInt v2)),IntT (VarInt v1))) ->
+                              | Atom(Less(i1,i2)) -> Arr.add_less arr i1 i2
+                              | Atom(Greater(i1,i2)) -> Arr.add_greater arr i1 i2
+                              | Atom(LessEq(i1,i2)) -> Arr.add_lesseq arr i1 i2
+                              | Atom(GreaterEq(i1,i2)) -> Arr.add_greatereq arr i1 i2
+                              | Atom(Eq(IntT (VarInt v1),IntT (IntAdd(VarInt v2,IntVal 1))))
+                              | Atom(Eq(IntT (VarInt v1),IntT (IntAdd(IntVal 1,VarInt v2))))
+                              | Atom(Eq(IntT (IntAdd(VarInt v2,IntVal 1)),IntT (VarInt v1)))
+                              | Atom(Eq(IntT (IntAdd(IntVal 1,VarInt v2)),IntT (VarInt v1))) ->
                                   Arr.add_greater arr (VarInt v1) (VarInt v2)
-                              | TslExp.Atom(TslExp.Eq(IntT i1,IntT i2)) -> Arr.add_eq arr i1 i2
-                              | TslExp.Atom(TslExp.InEq(IntT i1,IntT i2)) -> Arr.add_ineq arr i1 i2
-                              | TslExp.NegAtom(TslExp.Less(i1,i2)) -> Arr.add_greatereq arr i1 i2
-                              | TslExp.NegAtom(TslExp.Greater(i1,i2)) -> Arr.add_lesseq arr i1 i2
-                              | TslExp.NegAtom(TslExp.LessEq(i1,i2)) -> Arr.add_greater arr i1 i2
-                              | TslExp.NegAtom(TslExp.GreaterEq(i1,i2)) -> Arr.add_less arr i1 i2
-                              | TslExp.NegAtom(TslExp.Eq(IntT i1,IntT i2)) -> Arr.add_ineq arr i1 i2
-
-                              | TslExp.NegAtom(TslExp.InEq(IntT (VarInt v1),IntT (IntAdd(VarInt v2,IntVal 1))))
-                              | TslExp.NegAtom(TslExp.InEq(IntT (VarInt v1),IntT (IntAdd(IntVal 1,VarInt v2))))
-                              | TslExp.NegAtom(TslExp.InEq(IntT (IntAdd(VarInt v2,IntVal 1)),IntT (VarInt v1)))
-                              | TslExp.NegAtom(TslExp.InEq(IntT (IntAdd(IntVal 1,VarInt v2)),IntT (VarInt v1))) ->
+                              | Atom(Eq(IntT(VarInt v),IntT(IntVal 0)))
+                              | Atom(Eq(IntT(IntVal 0),IntT(VarInt v))) ->
+                                  Arr.set_minimum arr (VarInt v)
+                              | Atom(Eq(IntT i1,IntT i2)) -> Arr.add_eq arr i1 i2
+                              | Atom(InEq(IntT i1,IntT i2)) -> Arr.add_ineq arr i1 i2
+                              | NegAtom(Less(i1,i2)) -> Arr.add_greatereq arr i1 i2
+                              | NegAtom(Greater(i1,i2)) -> Arr.add_lesseq arr i1 i2
+                              | NegAtom(LessEq(i1,i2)) -> Arr.add_greater arr i1 i2
+                              | NegAtom(GreaterEq(i1,i2)) -> Arr.add_less arr i1 i2
+                              | NegAtom(Eq(IntT i1,IntT i2)) -> Arr.add_ineq arr i1 i2
+                              | NegAtom(InEq(IntT (VarInt v1),IntT (IntAdd(VarInt v2,IntVal 1))))
+                              | NegAtom(InEq(IntT (VarInt v1),IntT (IntAdd(IntVal 1,VarInt v2))))
+                              | NegAtom(InEq(IntT (IntAdd(VarInt v2,IntVal 1)),IntT (VarInt v1)))
+                              | NegAtom(InEq(IntT (IntAdd(IntVal 1,VarInt v2)),IntT (VarInt v1))) ->
                                   Arr.add_greater arr (VarInt v1) (VarInt v2)
-                              | TslExp.NegAtom(TslExp.InEq(IntT i1,IntT i2)) -> Arr.add_eq arr i1 i2
+                              | NegAtom(InEq(IntT(VarInt v),IntT(IntVal 0)))
+                              | NegAtom(InEq(IntT(IntVal 0),IntT(VarInt v))) ->
+                                  Arr.set_minimum arr (VarInt v)
+                              | NegAtom(InEq(IntT i1,IntT i2)) -> Arr.add_eq arr i1 i2
                               | _ -> ()
                             ) ls;
                             verb "**** TSL Solver: known information for arrangments:\n%s\n"

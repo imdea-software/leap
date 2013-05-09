@@ -1,3 +1,4 @@
+open LeapLib
 
 module GenSet = LeapGenericSet
 
@@ -5,6 +6,7 @@ module GenSet = LeapGenericSet
 type 'a t = {
               strict            : bool;
               dom               : 'a GenSet.t;
+              mutable minimum   : 'a option;
               eqs               : ('a * 'a) GenSet.t;
               ineqs             : ('a * 'a) GenSet.t;
               order             : ('a, 'a) Hashtbl.t;
@@ -21,6 +23,7 @@ let empty (stc:bool) : 'a t =
   {
     strict = stc;
     dom = GenSet.empty ();
+    minimum = None;
     eqs = GenSet.empty ();
     ineqs = GenSet.empty ();
     order = Hashtbl.create 10;
@@ -32,6 +35,7 @@ let copy (arr:'a t) : 'a t =
   {
     strict = arr.strict;
     dom = GenSet.copy arr.dom;
+    minimum = arr.minimum;
     eqs = GenSet.copy arr.eqs;
     ineqs = GenSet.copy arr.ineqs;
     order = Hashtbl.copy arr.order;
@@ -99,7 +103,12 @@ let add_greatereq (arr:'a t) (a:'a) (b:'a) : unit =
   add_lesseq arr b a
 
 
+let set_minimum (arr:'a t) (a:'a) : unit =
+  arr.minimum <- Some a
+
+
 let rec inject_leq_info (arr:'a t) : ('a t) list =
+(*
   let apply (f:'a t -> 'a -> 'a -> unit) (arr:'a t) (a:'a) (b:'a) (xs:('a * 'a) list): ('a t) list =
     f arr a b;
     arr.leq_order <- xs;
@@ -110,17 +119,46 @@ let rec inject_leq_info (arr:'a t) : ('a t) list =
                  (apply add_eq    (copy arr) a b xs)
 
 
+  match arr.leq_order with
+  | [] -> [arr]
+  | (a,b)::xs -> List.fold_left (fun arrs arr ->
+                   
+                 ) [] ((add_order (copy arr) a b) @ (add_eq (copy arr) a b))
+
+  | xs ->
+*)
+  let leq_order = arr.leq_order in
+  let arr = copy arr in
+  arr.leq_order <- [];
+  List.fold_left (fun arrs (a,b) ->
+    List.fold_left (fun ys ar ->
+      let ar1 = copy ar in
+      let ar2 = copy ar in
+      add_order ar1 a b;
+      add_eq ar2 a b;
+      ar1 :: ar2 :: ys
+    ) [] arrs
+  ) [arr] leq_order
+
+(*
+  fold (fun arrs (a,b) ->
+          fold (fun ys arr -> apply eq arr @ apply order arr) [] arrs
+       ) [arr] xs
+*)
+
+
 let to_str (arr:'a t) (f:'a -> string) : string =
   let dom_list = GenSet.fold (fun e xs -> (f e) :: xs) arr.dom [] in
   let eq_list = GenSet.fold (fun (a,b) xs -> ((f a) ^"="^ (f b)) :: xs) arr.eqs [] in
   let ineq_list = GenSet.fold (fun (a,b) xs -> ((f a) ^"!="^ (f b)) :: xs) arr.ineqs [] in
   let order_list = Hashtbl.fold (fun a b xs -> ((f a) ^"<"^ (f b)) :: xs) arr.order [] in
   let leq_order_list = List.fold_left (fun xs (a,b) -> ((f a) ^"<="^ (f b)) :: xs) [] arr.leq_order in
-  "Domain: {" ^ (String.concat ";" dom_list) ^ "}\n" ^
-  "Eqs   : {" ^ (String.concat ";" eq_list) ^ "}\n" ^
-  "Ineqs : {" ^ (String.concat ";" ineq_list) ^ "}\n" ^
-  "Order : {" ^ (String.concat ";" order_list) ^ "}\n" ^
-  "<=    : {" ^ (String.concat ";" leq_order_list) ^ "}\n"
+  "Domain : {" ^ (String.concat ";" dom_list) ^ "}\n" ^
+  "Minimum: " ^ (Option.map_default f "" arr.minimum) ^ "\n" ^
+  "Eqs    : {" ^ (String.concat ";" eq_list) ^ "}\n" ^
+  "Ineqs  : {" ^ (String.concat ";" ineq_list) ^ "}\n" ^
+  "Order  : {" ^ (String.concat ";" order_list) ^ "}\n" ^
+  "<=     : {" ^ (String.concat ";" leq_order_list) ^ "}\n"
 
 
 let to_id_order (arr:'a t) (p:'a Partition.t) : eqclass_order_t =
@@ -130,7 +168,11 @@ let to_id_order (arr:'a t) (p:'a Partition.t) : eqclass_order_t =
     let ec_id = Partition.id p (List.hd ec) in
     let ord_set = List.fold_left (fun s e ->
                     try
-                      GenSet.add s (Partition.id p (Hashtbl.find arr.order e));s
+                      List.iter (fun x ->
+                        GenSet.add s (Partition.id p x)
+                      ) (Hashtbl.find_all arr.order e);
+                      s
+(*                      GenSet.add s (Partition.id p (Hashtbl.find arr.order e));s *)
                     with _ -> s
                   ) (GenSet.empty()) ec in
     Hashtbl.add eqclass_order ec_id ord_set
@@ -186,7 +228,11 @@ let gen_arrtrees (arr:'a t) : 'a arrtree list =
       (build_cand_tree id_graph (GenSet.from_list (Partition.keys p)) p) @ xs
     ) [] cands
   in
-  List.fold_left (fun xs a -> (process_arr a) @ xs) [] (inject_leq_info arr)
+  let updated_arr = copy arr in
+  let _ = match arr.minimum with
+          | None -> ()
+          | Some m -> GenSet.iter (fun e -> if m <> e then add_lesseq updated_arr m e else ()) arr.dom in
+  List.fold_left (fun xs a -> (process_arr a) @ xs) [] (inject_leq_info updated_arr)
 
 
 let rec arrtree_to_set (tree:'a arrtree) : ('a list list) GenSet.t =

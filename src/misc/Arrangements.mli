@@ -47,6 +47,10 @@ val add_lesseq : 'a t -> 'a -> 'a -> unit
     arrangement [arr], stating that [a] is greater or equal than [b] *)
 val add_greatereq : 'a t -> 'a -> 'a -> unit
 
+(** [set_minimum arr a] forces [a] to be the minimum element in arrangement
+    [arr] *)
+val set_minimum : 'a t -> 'a -> unit
+
 (** [to_str arr] returns a string with the equalities, inequalities and order
     relation within the arrangement *)
 val to_str : 'a t -> ('a -> string) -> string
