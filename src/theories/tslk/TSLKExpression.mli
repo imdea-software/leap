@@ -268,6 +268,8 @@ module type S =
 
     val conj_list : formula list -> formula
     val disj_list : formula list -> formula
+    val to_conj_list : formula -> formula list
+    val to_disj_list : formula -> formula list
 
     (* Equality constructor functions for formulas *)
     val eq_set : set -> set -> formula

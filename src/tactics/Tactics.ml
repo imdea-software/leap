@@ -11,7 +11,7 @@ type post_tac_t = SplitConseq | SimplPCVoc
 
 type t =
   {
-    smp   : Smp.cutoff_strategy_t option   ;
+    smp   : Smp.cutoff_strategy_t option ;
     solve : solve_tactic_t option        ;
     pre   : pre_tac_t list               ;
     post  : post_tac_t list              ;
@@ -397,6 +397,7 @@ let tac_simple (task:task_t) (tac:post_tac_t) : task_t list =
 (*** Tactics functions ***)
 
 let apply_post_tac (task:task_t) (tac:post_tac_t) : task_t list =
+  let _ = Printf.printf "POST-TACTIC INVARIANT: %s\n" (E.formula_to_str task.inv.E.formula) in
   match tac with
     SplitConseq -> tac_split task tac
   | SimplPCVoc -> tac_simple task tac

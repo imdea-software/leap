@@ -271,6 +271,8 @@ module type S =
 
     val conj_list : formula list -> formula
     val disj_list : formula list -> formula
+    val to_conj_list : formula -> formula list
+    val to_disj_list : formula -> formula list
 
 
     (* Equality constructor functions for formulas *)
@@ -2167,6 +2169,17 @@ module Make (K : Level.S) : S =
       match bs with
       | [] -> False
       | x::xs -> List.fold_left (fun a b -> Or(a,b)) x xs
+
+
+    let rec to_conj_list (phi:formula) : formula list =
+      match phi with
+      | And (f1,f2) -> (to_conj_list f1) @ (to_conj_list f2)
+      | _           -> [phi]
+
+    let rec to_disj_list (phi:formula) : formula list =
+      match phi with
+      | Or (f1,f2) -> (to_disj_list f1) @ (to_disj_list f2)
+      | _          -> [phi]
 
 
     (* Equality constructor functions for formulas *)

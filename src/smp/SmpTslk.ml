@@ -11,6 +11,14 @@ type model_size =
     num_addrs  : int ;
   }
 
+let empty_model_size () : model_size =
+  {
+    num_levels = 0;
+    num_elems = 0;
+    num_tids = 0;
+    num_addrs = 0;
+  }
+
 type polarity_t = Pos | Neg | Both
 
   (* model_size functions *)
@@ -262,6 +270,32 @@ module Make (TSLK : TSLKExpression.S) =
       union_formula_cutoff_pol Pos info phi
 
 
+    let try_pseudo_dnf_union_formula_cutoff (info:union_info) (phi:Expr.formula) : model_size =
+      let _ = Printf.printf "TRYING PSEUDO DNF\n" in
+      let split = List.map Expr.to_disj_list (Expr.to_conj_list phi) in
+      let (atomics,disjs) = List.partition (fun xs -> List.length xs <= 1) split in
+      let others_problematic = List.fold_left (fun i xs ->
+                                 match xs with
+                                 | atom_phi::_ -> let info = union_model_size (union_formula_cutoff_pol Pos new_union_count (atom_phi)) in
+                                                    i + info.num_addrs
+                                 | _           -> i
+                               ) 0 atomics in
+      if List.length disjs = 1 && others_problematic = 0 then
+        let _ = Printf.printf "WE HAVE A CANDIDATE\n" in
+        List.fold_left (fun tmp_info aphi ->
+          let this_info = union_model_size (union_formula_cutoff_pol Pos new_union_count aphi) in
+          {
+            num_elems = max tmp_info.num_elems this_info.num_elems;
+            num_tids = max tmp_info.num_tids this_info.num_tids;
+            num_addrs = max tmp_info.num_addrs this_info.num_addrs;
+            num_levels = max tmp_info.num_levels this_info.num_levels;
+          }
+        ) (empty_model_size()) (List.hd disjs)
+      else
+        let _ = Printf.printf "WE DON'T HAVE A CANDIDATE: %s\n" (Expr.formula_to_str phi) in
+        union_model_size (union_formula_cutoff_pol Pos info phi)
+
+
     (* Union SMP *)
     let compute_max_cut_off_with_union (phi:Expr.formula) : model_size =
       let vars = Expr.get_varset_from_formula phi in
@@ -272,7 +306,7 @@ module Make (TSLK : TSLKExpression.S) =
                                    else
                                      s
                                  ) addrvars VarSet.empty in
-      Printf.printf "Interesting addresses:%s\n" (VarSet.fold (fun v str -> str ^ (Expr.variable_to_str v) ^ ";") interesting_addrvars "");
+      Printf.printf "CANDIDATE Interesting addresses:%s\n" (VarSet.fold (fun v str -> str ^ (Expr.variable_to_str v) ^ ";") interesting_addrvars "");
       let tmpcellvars = Expr.varset_of_sort vars Expr.Cell in
       let cellvars = VarSet.diff tmpcellvars (redundant_cell_vars phi addrvars) in
       let vartid_num  = VarSet.cardinal (Expr.varset_of_sort vars Expr.Thid) in
@@ -281,7 +315,8 @@ module Make (TSLK : TSLKExpression.S) =
       let varelem_num = VarSet.cardinal (Expr.varset_of_sort vars Expr.Elem) in
       let varcell_num = VarSet.cardinal cellvars in
       let varmem_num  = VarSet.cardinal (Expr.varset_of_sort vars Expr.Mem ) in
-      let info = union_model_size (union_formula_cutoff new_union_count phi) in
+(*      let info = union_model_size (union_formula_cutoff new_union_count phi) in *)
+      let info = try_pseudo_dnf_union_formula_cutoff new_union_count phi in
 (*
       Printf.printf "SMP Formula:\n%s\n" (Expr.formula_to_str phi);
       Printf.printf "Addr variables:";
@@ -309,8 +344,8 @@ module Make (TSLK : TSLKExpression.S) =
                       varmem_num * num_addrs                  (* Cell data          *)
       in
       verb "UNION LEVELS: %i\n" num_levels;
-      verb "INFO NUM ADDRS: %i\n" info.num_addrs;
-      verb "UNION ADDR  : %i\n" num_addrs;
+      verb "CANDIDATE INFO NUM ADDRS: %i\n" info.num_addrs;
+      verb "CANDIDATE UNION ADDR  : %i\n" num_addrs;
       verb "UNION TIDS  : %i\n" num_tids;
       verb "UNION ELEMS : %i\n" num_elems;
         {
