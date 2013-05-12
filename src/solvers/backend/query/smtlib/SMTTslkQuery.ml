@@ -1786,9 +1786,10 @@ module Make (K : Level.S) : TSLK_QUERY =
 
             let assumps = List.map (fun (x,y) -> Partition.Eq (Expr.AddrT x, Expr.AddrT y)) eq @
                           List.map (fun (x,y) -> Partition.Ineq (Expr.AddrT x, Expr.AddrT y)) ineq in
-            verb "**** Domain: %i\n" (List.length term_dom);
-            verb "**** Assumptions: %i\n" (List.length assumps);
+            verb "**** Domain: %i\n{%s}\n" (List.length term_dom) (String.concat ";" (List.map Expr.term_to_str term_dom));
+            verb "**** Assumptions: %i\n%s\n" (List.length assumps) (Partition.assumptions_to_str Expr.term_to_str assumps);
 
+            print_endline "Going to compute partitions...";
             let parts = Partition.gen_partitions term_dom assumps in
             let _ = if LeapDebug.is_debug_enabled() then
                       List.iter (fun p ->

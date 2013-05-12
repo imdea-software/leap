@@ -88,6 +88,18 @@ val gen_partitions : 'a list -> 'a eqs list -> ('a t) list
     classes using elements in domain [d] and starting from the list of
     assumptions [as] *)
 
+val eqs_to_str :  ('a -> string) -> 'a eqs -> string
+(** [eqs_to_str f eq] returns a string representing the equality or inequality
+    described by [eq] using function [f] to find a string representation of
+    elements in such relation *)
+
+
+val assumptions_to_str : ('a -> string) -> 'a eqs list -> string
+(** [assumptions_to_str f eqs] returns a string representing the equalities and
+    inequalities in list [eqs] using function [f] to represent the elements in
+    the relation *)
+
+
 val to_str : ('a -> string) -> 'a t -> string
 (** [partition_to_str p f] returns a string representation of partition [p],
     using function [f] to represent the elements *)

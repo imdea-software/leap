@@ -321,6 +321,16 @@ let gen_partitions (dom:'a list) (assumptions:'a eqs list) : ('a t) list =
     ps
 
 
+let eqs_to_str (f_str:'a -> string) (e:'a eqs) : string =
+  match e with
+  | Eq (a1,a2)   -> (f_str a1) ^ "=" ^ (f_str a2)
+  | Ineq (a1,a2) -> (f_str a1) ^ "!=" ^ (f_str a2)
+
+
+let assumptions_to_str (f_str:'a -> string) (assumptions:'a eqs list) : string =
+  "{" ^ (String.concat ";" (List.map (eqs_to_str f_str) assumptions)) ^ "}"
+
+
 let to_str (f_str:'a -> string) (p:'a t) : string =
   let buf = Buffer.create 256 in
   let p_keys = keys p in

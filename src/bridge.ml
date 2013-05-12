@@ -339,6 +339,7 @@ let rec gen_st_cond_effect_aux (is_ghost:bool)
   let me_term             = Stm.ThidT Stm.me_tid in
   let def_assign          = [(me_term, Stm.Term me_term)]
   in
+  let _ = Printf.printf "GEN_ST_COND: %s\n" (Stm.statement_to_str 0 st) in
   match st with
     Stm.StSkip (gc,info)       ->
       add_gc [([],def_assign,curr_p,next_p,true)] gc
@@ -352,8 +353,17 @@ let rec gen_st_cond_effect_aux (is_ghost:bool)
   | Stm.StCrit (gc,info)       ->
       add_gc [([],def_assign,curr_p,next_p,true)] gc
   | Stm.StIf (c,t,e,gc,info)   ->
-      add_gc [([to_expr c],         def_assign,curr_p,next_p,true);
-              ([to_expr(Stm.Not c)],def_assign,curr_p,else_p,true)] gc
+      let append cond xs = List.map (fun (cs,ef,c,n,e) -> (cond::cs,ef,c,n,e)) xs in
+      if is_ghost then
+        let true_res = append (to_expr c) (gen_st_cond_effect_aux true t) in
+        let false_res = match e with
+                        | None   -> []
+                        | Some s -> append (to_expr(Stm.Not c)) (gen_st_cond_effect_aux true s)
+        in
+          true_res @ false_res
+      else
+         [([to_expr c],         def_assign,curr_p,next_p,true);
+          ([to_expr(Stm.Not c)],def_assign,curr_p,else_p,true)]
   | Stm.StWhile (c,l,gc,info)  ->
       add_gc [([to_expr c],         def_assign,curr_p,next_p,true);
               ([to_expr(Stm.Not c)],def_assign,curr_p,else_p,true)] gc
