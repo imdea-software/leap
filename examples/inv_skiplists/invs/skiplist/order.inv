@@ -4,9 +4,16 @@ int j
 
 invariant [skiplist_order] :
 
-   @53. -> (remove::curr = null \/
+   @41. -> (rd(heap, insert::newCell).data > rd(heap, head).data /\
+            rd(heap, insert::newCell).data < rd(heap, tail).data)
+
+/\ @42. -> (rd(heap, insert::newCell).data > rd(heap, head).data /\
+            rd(heap, insert::newCell).data < rd(heap, head).data)
+
+/\ @53. -> (remove::curr = null \/
             rd(heap, remove::curr).data > remove::e \/
             rd(heap, remove::curr).data = remove::e)
+
 
 /\ @61. ->  (  remove::curr != null
             /\ (rd(heap, remove::curr).data > remove::e \/
@@ -16,6 +23,4 @@ invariant [skiplist_order] :
             /\ (remove::i = maxLevel \/
                   (rd(heap, remove::update[remove::i + 1]).data < remove::e /\
                    rd(heap, rd(heap, remove::update[remove::i + 1]).arr[remove::i + 1]).data > remove::e))
-//            /\ (j > remove::i -> (rd(heap, remove::update[j]).data < remove::e /\
-//                                  rd(heap, rd(heap, remove::update[j]).arr[j]).data > remove::e))
             )
