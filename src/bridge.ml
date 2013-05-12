@@ -357,7 +357,7 @@ let rec gen_st_cond_effect_aux (is_ghost:bool)
       if is_ghost then
         let true_res = append (to_expr c) (gen_st_cond_effect_aux true t) in
         let false_res = match e with
-                        | None   -> []
+                        | None   -> [([to_expr(Stm.Not c)],def_assign,curr_p,else_p,true)]
                         | Some s -> append (to_expr(Stm.Not c)) (gen_st_cond_effect_aux true s)
         in
           true_res @ false_res

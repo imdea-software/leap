@@ -439,8 +439,14 @@ module Make (TSLK : TSLKExpression.S) =
                 (f:Expr.formula) : model_size =
       LOG "Strategy: %s\n" (Smp.strategy_to_str strat) LEVEL DEBUG;
       options := opt;
-      match strat with
-      | Smp.Dnf     -> compute_max_cut_off (Expr.dnf f)
-      | Smp.Union   -> compute_max_cut_off_with_union f
-      | Smp.Pruning -> compute_max_cut_off_with_pruning f
+      let model_s = match strat with
+                    | Smp.Dnf     -> compute_max_cut_off (Expr.dnf f)
+                    | Smp.Union   -> compute_max_cut_off_with_union f
+                    | Smp.Pruning -> compute_max_cut_off_with_pruning f
+      in
+      Printf.printf "SMP TSLK LEVELS: %i\n" model_s.num_levels;
+      Printf.printf "SMP TSLK ADDRS: %i\n" model_s.num_addrs;
+      Printf.printf "SMP TSLK TIDS  : %i\n" model_s.num_tids;
+      Printf.printf "SMP TSLK ELEMS : %i\n" model_s.num_elems;
+      model_s
   end
