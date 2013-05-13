@@ -7,6 +7,8 @@ invariant [skiplist_next] :
    @insert_head_next_i_tail. -> rd(heap, head).arr[insert::i] = tail
 /\ @insert_tail_next_i_null. -> rd(heap, tail).arr[insert::i] = null
 
+/\ @42. -> (rd(heap, insert::newCell).arr[insert::i] = rd(heap, insert::update[insert::i]).arr[insert::i])
+
 /\ @61. -> (rd(heap, remove::update[remove::i]).arr[remove::i] = remove::curr /\
             rd(heap, remove::curr).arr[remove::i] != null)
 

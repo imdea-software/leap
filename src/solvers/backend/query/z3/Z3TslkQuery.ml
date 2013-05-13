@@ -139,6 +139,11 @@ module Make (K : Level.S) : TSLK_QUERY =
         done;
         B.add_string buf
           ( "(define-fun lpred ((l " ^level_s^ ")) " ^level_s ^(!str)^ ")\n")
+      end else begin
+        B.add_string buf
+          ("(define-fun lsucc ((l " ^level_s^ ")) " ^level_s^ " l)\n");
+        B.add_string buf
+          ("(define-fun lpred ((l " ^level_s^ ")) " ^level_s^ " l)\n")
       end
 
 
@@ -1262,6 +1267,7 @@ module Make (K : Level.S) : TSLK_QUERY =
                            | Expr.Level   -> level_s
                            | Expr.Bool    -> bool_s
                            | Expr.Unknown -> unk_s in
+      let _ = Printf.printf "DECLARING VARIABLE: %s\n" (Expr.variable_to_str v) in
       let s_str = sort_str s in
       let p_id = Option.map_default (fun str -> str ^ "_" ^ id) id p in
       let name = if pr then p_id ^ "_prime" else p_id
@@ -1321,6 +1327,7 @@ module Make (K : Level.S) : TSLK_QUERY =
       let varsetelem = Expr.varset_of_sort vars Expr.SetElem in
       let varpath    = Expr.varset_of_sort vars Expr.Path in
       let varmem     = Expr.varset_of_sort vars Expr.Mem  in
+      let varbool    = Expr.varset_of_sort vars Expr.Bool  in
       let varunk     = Expr.varset_of_sort vars Expr.Unknown  in
         Expr.VarSet.iter (z3_define_var buf vartid num_tids) varlevel;
         Expr.VarSet.iter (z3_define_var buf vartid num_tids) varset;
@@ -1332,6 +1339,7 @@ module Make (K : Level.S) : TSLK_QUERY =
         Expr.VarSet.iter (z3_define_var buf vartid num_tids) varsetelem;
         Expr.VarSet.iter (z3_define_var buf vartid num_tids) varpath;
         Expr.VarSet.iter (z3_define_var buf vartid num_tids) varmem;
+        Expr.VarSet.iter (z3_define_var buf vartid num_tids) varbool;
         Expr.VarSet.iter (z3_define_var buf vartid num_tids) varunk
 
 

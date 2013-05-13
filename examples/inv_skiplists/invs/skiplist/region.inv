@@ -2,7 +2,12 @@ param:
 
 invariant [skiplist_region] :
 
-   @41. -> (~ insert::newCell in region)
+     @41. -> (~ insert::newCell in addr2set(heap, head, insert::i))
+
+/\   @42. -> ((insert::i = 0 \/ insert::newCell in addr2set(heap, head, insert::i - 1)) /\
+              ~ insert::newCell in addr2set(heap, head, insert::i)
+             )
+          
 
 /\   @61. -> (remove::curr in region /\
               (remove::i = maxLevel \/ ~ (remove::curr in addr2set(heap, head, remove::i + 1))) /\

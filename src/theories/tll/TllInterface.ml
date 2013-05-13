@@ -47,6 +47,7 @@ and sort_to_expr_sort (s:Tll.sort) : Expr.sort =
   | Tll.SetElem -> Expr.SetElem
   | Tll.Path    -> Expr.Path
   | Tll.Mem     -> Expr.Mem
+  | Tll.Bool    -> Expr.Bool
   | Tll.Unknown -> Expr.Unknown
 
 
@@ -281,7 +282,7 @@ and atom_to_tll_atom (a:Expr.atom) : Tll.atom =
   | Expr.GreaterEq _          -> RAISE(UnsupportedTllExpr(Expr.atom_to_str a))
   | Expr.Eq (t1,t2)           -> Tll.Eq (term t1, term t2)
   | Expr.InEq (t1,t2)         -> Tll.InEq (term t1, term t2)
-  | Expr.BoolVar _            -> RAISE(UnsupportedTllExpr(Expr.atom_to_str a))
+  | Expr.BoolVar v            -> Tll.BoolVar (variable_to_tll_var v)
   | Expr.BoolArrayRd _        -> RAISE(UnsupportedTllExpr(Expr.atom_to_str a))
   | Expr.PC (pc,t,pr)         -> Tll.PC (pc, Option.lift tid_to_tll_tid t,pr)
   | Expr.PCUpdate (pc,t)      -> Tll.PCUpdate (pc, tid_to_tll_tid t)

@@ -1184,6 +1184,7 @@ struct
                          | Expr.SetElem -> setelem_s
                          | Expr.Path    -> path_s
                          | Expr.Mem     -> heap_s
+                         | Expr.Bool    -> bool_s
                          | Expr.Unknown -> unk_s in
     let s_str = sort_str s in
     let p_id = Option.map_default (fun str -> str ^ "_" ^ id) id p in
@@ -1535,6 +1536,7 @@ struct
       | Expr.GreaterElem(e1,e2)    -> greaterelem_to_str e1 e2
       | Expr.Eq(x,y)               -> eq_to_str x y
       | Expr.InEq(x,y)             -> ineq_to_str x y
+      | Expr.BoolVar v             -> variable_invocation_to_str v
       | Expr.PC(pc,t,pr)           -> pc_to_str pc t pr
       | Expr.PCUpdate(pc,t)        -> pcupdate_to_str pc t
       | Expr.PCRange(pc1,pc2,t,pr) -> pcrange_to_str pc1 pc2 t pr

@@ -8,7 +8,8 @@ invariant [skiplist_order] :
             rd(heap, insert::newCell).data < rd(heap, tail).data)
 
 /\ @42. -> (rd(heap, insert::newCell).data > rd(heap, head).data /\
-            rd(heap, insert::newCell).data < rd(heap, head).data)
+            rd(heap, insert::newCell).data < rd(heap, tail).data /\
+            rd(heap, insert::update[insert::i]).data < insert::e)
 
 /\ @53. -> (remove::curr = null \/
             rd(heap, remove::curr).data > remove::e \/
@@ -23,4 +24,5 @@ invariant [skiplist_order] :
             /\ (remove::i = maxLevel \/
                   (rd(heap, remove::update[remove::i + 1]).data < remove::e /\
                    rd(heap, rd(heap, remove::update[remove::i + 1]).arr[remove::i + 1]).data > remove::e))
+// Not sure if a need the two lines above
             )

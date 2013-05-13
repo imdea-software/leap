@@ -1856,8 +1856,8 @@ module Make (K : Level.S) : S =
         | Eq (t1,t2)          -> union (req_term t1) (req_term t2)
         | InEq (t1,t2)        -> union (req_term t1) (req_term t2)
         | BoolVar v           -> single Bool
-        | PC _                -> empty
-        | PCUpdate _          -> empty
+        | PC _                -> single Thid
+        | PCUpdate _          -> single Thid
         | PCRange _           -> empty
 
       and req_m (m:mem) : SortSet.t =

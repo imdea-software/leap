@@ -1279,6 +1279,7 @@ module Make (K : Level.S) : TSLK_QUERY =
       let varsetelem = Expr.varset_of_sort vars Expr.SetElem in
       let varpath    = Expr.varset_of_sort vars Expr.Path in
       let varmem     = Expr.varset_of_sort vars Expr.Mem  in
+      let varbool    = Expr.varset_of_sort vars Expr.Bool  in
       let varunk     = Expr.varset_of_sort vars Expr.Unknown  in
         Expr.VarSet.iter (z3_define_var buf vartid num_tids) varlevel;
         Expr.VarSet.iter (z3_define_var buf vartid num_tids) varset;
@@ -1290,6 +1291,7 @@ module Make (K : Level.S) : TSLK_QUERY =
         Expr.VarSet.iter (z3_define_var buf vartid num_tids) varsetelem;
         Expr.VarSet.iter (z3_define_var buf vartid num_tids) varpath;
         Expr.VarSet.iter (z3_define_var buf vartid num_tids) varmem;
+        Expr.VarSet.iter (z3_define_var buf vartid num_tids) varbool;
         Expr.VarSet.iter (z3_define_var buf vartid num_tids) varunk
 
 

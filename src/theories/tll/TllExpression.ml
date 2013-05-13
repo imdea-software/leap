@@ -16,6 +16,7 @@ and sort =
   | SetElem
   | Path
   | Mem
+  | Bool
   | Unknown
 and term =
     VarT     of variable
@@ -101,6 +102,7 @@ and atom =
   | GreaterElem  of elem * elem
   | Eq           of eq
   | InEq         of diseq
+  | BoolVar      of variable
   | PC           of int * tid option * bool
   | PCUpdate     of int * tid
   | PCRange      of int * int * tid option * bool
@@ -343,6 +345,7 @@ and get_varset_atom a =
     | GreaterElem(e1,e2)     -> (get_varset_elem e1) @@ (get_varset_elem e2)
     | Eq((x,y))              -> (get_varset_term x) @@ (get_varset_term y)
     | InEq((x,y))            -> (get_varset_term x) @@ (get_varset_term y)
+    | BoolVar v              -> S.singleton v
     | PC(pc,th,pr)           -> Option.map_default get_varset_tid S.empty th
     | PCUpdate (pc,th)       -> (get_varset_tid th)
     | PCRange(pc1,pc2,th,pr) -> Option.map_default get_varset_tid S.empty th
@@ -434,6 +437,7 @@ let rec get_termset_atom (a:atom) : TermSet.t =
   | GreaterElem(e1,e2)     -> add_list [ElemT e1; ElemT e2]
   | Eq((x,y))              -> add_list [x;y]
   | InEq((x,y))            -> add_list [x;y]
+  | BoolVar v              -> add_list [VarT v]
   | PC(pc,th,pr)           -> (match th with
                                | None   -> TermSet.empty
                                | Some t -> add_list [ThidT t])
@@ -483,6 +487,9 @@ let termset_of_sort (all:TermSet.t) (s:sort) : TermSet.t =
     | SetElem -> (match t with | SetElemT _ -> true | _ -> false)
     | Path    -> (match t with | PathT _    -> true | _ -> false)
     | Mem     -> (match t with | MemT _     -> true | _ -> false)
+    | Bool    -> (match t with
+                  | VarT v -> get_sort v = Bool
+                  | _      -> false)
     | Unknown -> false in
   TermSet.fold (fun t set ->
     if match_sort t then
@@ -667,6 +674,7 @@ let is_literal_flat lit =
                                  (is_term_var t1) && (is_term_flat t2)  ||
                                  (is_term_flat t1) && (is_term_var t2))
     | InEq(x,y)              -> (is_term_var x) && (is_term_var y)
+    | BoolVar v              -> true
     | PC (pc,t,pr)           -> true
     | PCUpdate (pc,t)        -> true
     | PCRange (pc1,pc2,t,pr) -> true
@@ -691,6 +699,7 @@ let is_literal_flat lit =
     | InEq(t1,t2)           -> ((is_term_var  t1) && (is_term_var  t2) ||
                                 (is_term_var  t1) && (is_term_flat t2) ||
                                 (is_term_flat t1) && (is_term_var  t2) )
+    | BoolVar v             -> true
     | PC _                  -> true
     | PCUpdate _            -> true
     | PCRange _             -> true
@@ -742,6 +751,7 @@ and atom_to_str a =
                                     (elem_to_str e1) (elem_to_str e2)
   | Eq(exp)                    -> eq_to_str (exp)
   | InEq(exp)                  -> diseq_to_str (exp)
+  | BoolVar v                  -> variable_to_str v
   | PC (pc,t,pr)               -> let pc_str = if pr then "pc'" else "pc" in
                                   let th_str = Option.map_default
                                                  tid_to_str "" t in
@@ -903,6 +913,7 @@ let sort_to_str s =
     | SetElem -> "SetElem"
     | Path    -> "Path"
     | Mem     -> "Mem"
+    | Bool    -> "Bool"
     | Unknown -> "Unknown"
 
 let generic_printer aprinter x =
@@ -1113,6 +1124,7 @@ and voc_atom (a:atom) : tid list =
   | GreaterElem(e1,e2)         -> (voc_elem e1) @ (voc_elem e2)
   | Eq(exp)                    -> (voc_eq exp)
   | InEq(exp)                  -> (voc_ineq exp)
+  | BoolVar v                  -> Option.map_default (fun x->[x]) [] (var_th v)
   | PC (pc,t,_)                -> Option.map_default (fun x->[x]) [] t
   | PCUpdate (pc,t)            -> [t]
   | PCRange (pc1,pc2,t,_)      -> Option.map_default (fun x->[x]) [] t
@@ -1739,6 +1751,7 @@ let required_sorts (phi:formula) : sort list =
     | GreaterElem (e1,e2) -> list_union [req_e e1; req_e e2]
     | Eq (t1,t2)          -> union (req_term t1) (req_term t2)
     | InEq (t1,t2)        -> union (req_term t1) (req_term t2)
+    | BoolVar _           -> single Bool
     | PC _                -> empty
     | PCUpdate _          -> empty
     | PCRange _           -> empty
@@ -1872,6 +1885,7 @@ let special_ops (phi:formula) : special_op_t list =
     | GreaterElem (e1,e2) -> append ElemOrder [ops_e e1; ops_e e2]
     | Eq (t1,t2)          -> list_union [ops_term t1;ops_term t2]
     | InEq (t1,t2)        -> list_union [ops_term t1;ops_term t2]
+    | BoolVar v           -> empty
     | PC _                -> empty
     | PCUpdate _          -> empty
     | PCRange _           -> empty

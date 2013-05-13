@@ -184,6 +184,7 @@ struct
       | TllExp.GreaterElem(e1,e2)    -> is_var_elem e1 && is_var_elem e2
       | TllExp.Eq((t1,t2))           -> is_var_term t1 && is_var_term t2
       | TllExp.InEq((t1,t2))         -> is_var_term t1 && is_var_term t2
+      | TllExp.BoolVar v             -> true
       | TllExp.PC(pc,t,pr)           -> true
       | TllExp.PCUpdate (pc,t)       -> true
       | TllExp.PCRange(pc1,pc2,t,pr) -> true

@@ -187,6 +187,7 @@ let cut_off_normalized (expr:conjunctive_formula) : model_size =
           | GreaterElem _  -> () (* Not sure *)
           | Eq(x,y)        -> process_ineq (x,y)
           | InEq _         -> ()
+          | BoolVar _      -> ()
           | PC _           -> ()
           | PCUpdate _     -> ()
           | PCRange _      -> ()
@@ -265,6 +266,7 @@ let union_atom_cutoff (info:union_info) (a:Expr.atom) : union_info =
   | GreaterElem _  -> union_count_elem info a
   | Eq e           -> union_eq_cutoff info e
   | InEq e         -> union_ineq_cutoff info e
+  | BoolVar _      -> info
   | PC _           -> info
   | PCUpdate _     -> info
   | PCRange _      -> info
@@ -347,6 +349,7 @@ let prune_atom (a:atom) : atom option =
   | GreaterElem _  -> Some a
   | Eq (x,y)       -> Option.lift (fun (x',y') -> Eq (x',y')) (prune_eq x y)
   | InEq (x,y)     -> Option.lift (fun (x',y') -> InEq (x',y')) (prune_eq x y)
+  | BoolVar _      -> None
   | PC _           -> None
   | PCUpdate _     -> None
   | PCRange _      -> None

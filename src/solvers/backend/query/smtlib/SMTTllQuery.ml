@@ -1327,6 +1327,7 @@ struct
                          | Expr.SetElem -> setelem_s
                          | Expr.Path    -> path_s
                          | Expr.Mem     -> heap_s
+                         | Expr.Bool    -> bool_s
                          | Expr.Unknown -> unk_s in
     let s_str = sort_str s in
     let p_id = Option.map_default (fun str -> str ^ "_" ^ id) id p in
@@ -1397,6 +1398,7 @@ struct
     let varsetelem = Expr.varset_of_sort vars Expr.SetElem in
     let varpath    = Expr.varset_of_sort vars Expr.Path in
     let varmem     = Expr.varset_of_sort vars Expr.Mem  in
+    let varbool    = Expr.varset_of_sort vars Expr.Bool  in
     let varunk     = Expr.varset_of_sort vars Expr.Unknown  in
       Expr.VarSet.iter (smt_define_var buf vartid num_tids) varset;
       Expr.VarSet.iter (smt_define_var buf vartid num_tids) varelem;
@@ -1407,6 +1409,7 @@ struct
       Expr.VarSet.iter (smt_define_var buf vartid num_tids) varsetelem;
       Expr.VarSet.iter (smt_define_var buf vartid num_tids) varpath;
       Expr.VarSet.iter (smt_define_var buf vartid num_tids) varmem;
+      Expr.VarSet.iter (smt_define_var buf vartid num_tids) varbool;
       Expr.VarSet.iter (smt_define_var buf vartid num_tids) varunk
 
 
@@ -1736,6 +1739,7 @@ struct
       | Expr.GreaterElem(e1,e2)    -> greaterelem_to_str e1 e2
       | Expr.Eq(x,y)               -> eq_to_str x y
       | Expr.InEq(x,y)             -> ineq_to_str x y
+      | Expr.BoolVar v             -> variable_invocation_to_str v
       | Expr.PC(pc,t,pr)           -> pc_to_str pc t pr
       | Expr.PCUpdate(pc,t)        -> pcupdate_to_str pc t
       | Expr.PCRange(pc1,pc2,t,pr) -> pcrange_to_str pc1 pc2 t pr
