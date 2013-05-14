@@ -5,7 +5,8 @@ invariant [skiplist_region] :
      @41. -> (~ insert::newCell in addr2set(heap, head, insert::i))
 
 /\   @42. -> ((insert::i = 0 \/ insert::newCell in addr2set(heap, head, insert::i - 1)) /\
-              ~ insert::newCell in addr2set(heap, head, insert::i)
+              ~ insert::newCell in addr2set(heap, head, insert::i) /\
+              insert::update[insert::i] in region
              )
           
 
