@@ -80,6 +80,7 @@ assume
                                 bool valueWasIn := false
 
                               begin
+:insert_body[
                                 lvl := havocLevel();
                                 if (lvl > maxLevel) then
 :insert_lvl_outrange[
@@ -122,6 +123,7 @@ assume
                                 endwhile
                                 if (~ (valueWasIn)) then
                                   newCell := mallocSL(e,lvl);
+:insert_newCell_created[
                                   i := 0;
 :insert_connect_loop[
                                   while (i <= lvl) do
@@ -132,12 +134,14 @@ assume
                                         endif
                                       $
                                     i := i + 1;
+:insert_newCell_created]
                                   endwhile
 :insert_connect_loop]
 :insert_prev_low]
 :insert_lvl_inrange]
                                 endif
                                 return (); // return (~ valueWasIn)
+:insert_body]
                               end
 
 // ----- REMOVE ----------------------------------------------
@@ -151,6 +155,7 @@ assume
                                 addr curr
                                 bool valueWasIn
                               begin
+:remove_body[
                                 prev := head;
                                 curr := prev->arr[maxLevel];
                                 i := maxLevel;
@@ -179,5 +184,6 @@ assume
                                   endwhile
                                 endif
                                 return (); // return (valueWasIn)
+:remove_body]
                               end
                             

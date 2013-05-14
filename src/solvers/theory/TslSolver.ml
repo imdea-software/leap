@@ -165,11 +165,21 @@ let guess_arrangements (cf:TslExp.conjunctive_formula) : (TslExp.integer list li
                               | Atom(Greater(i1,i2)) -> Arr.add_greater arr i1 i2
                               | Atom(LessEq(i1,i2)) -> Arr.add_lesseq arr i1 i2
                               | Atom(GreaterEq(i1,i2)) -> Arr.add_greatereq arr i1 i2
-                              | Atom(Eq(IntT (VarInt v1),IntT (IntAdd(VarInt v2,IntVal 1))))
-                              | Atom(Eq(IntT (VarInt v1),IntT (IntAdd(IntVal 1,VarInt v2))))
-                              | Atom(Eq(IntT (IntAdd(VarInt v2,IntVal 1)),IntT (VarInt v1)))
-                              | Atom(Eq(IntT (IntAdd(IntVal 1,VarInt v2)),IntT (VarInt v1))) ->
-                                  Arr.add_greater arr (VarInt v1) (VarInt v2)
+                              | Atom(Eq(IntT (VarInt v1),IntT (IntAdd(VarInt v2,IntVal i))))
+                              | Atom(Eq(IntT (VarInt v1),IntT (IntAdd(IntVal i,VarInt v2))))
+                              | Atom(Eq(IntT (IntAdd(VarInt v2,IntVal i)),IntT (VarInt v1)))
+                              | Atom(Eq(IntT (IntAdd(IntVal i,VarInt v2)),IntT (VarInt v1))) ->
+                                  if i > 0 then Arr.add_greater arr (VarInt v1) (VarInt v2)
+                                  else if i < 0 then Arr.add_less arr (VarInt v1) (VarInt v2)
+                                  else Arr.add_eq arr (VarInt v1) (VarInt v2)
+                              | Atom(Eq(IntT (VarInt varr),VarUpdate(_,th,IntT(IntAdd(VarInt v2,IntVal i)))))
+                              | Atom(Eq(IntT (VarInt varr),VarUpdate(_,th,IntT(IntAdd(IntVal i,VarInt v2)))))
+                              | Atom(Eq(VarUpdate(_,th,IntT(IntAdd(VarInt v2,IntVal i))),IntT (VarInt varr)))
+                              | Atom(Eq(VarUpdate(_,th,IntT(IntAdd(IntVal i,VarInt v2))),IntT (VarInt varr))) ->
+                                  let v1 = TslExp.param_var varr th in
+                                  if i > 0 then Arr.add_greater arr (VarInt v1) (VarInt v2)
+                                  else if i < 0 then Arr.add_less arr (VarInt v1) (VarInt v2)
+                                  else Arr.add_eq arr (VarInt v1) (VarInt v2)
                               | Atom(Eq(IntT(VarInt v),IntT(IntVal 0)))
                               | Atom(Eq(IntT(IntVal 0),IntT(VarInt v))) ->
                                   Arr.set_minimum arr (VarInt v)
@@ -180,11 +190,21 @@ let guess_arrangements (cf:TslExp.conjunctive_formula) : (TslExp.integer list li
                               | NegAtom(LessEq(i1,i2)) -> Arr.add_greater arr i1 i2
                               | NegAtom(GreaterEq(i1,i2)) -> Arr.add_less arr i1 i2
                               | NegAtom(Eq(IntT i1,IntT i2)) -> Arr.add_ineq arr i1 i2
-                              | NegAtom(InEq(IntT (VarInt v1),IntT (IntAdd(VarInt v2,IntVal 1))))
-                              | NegAtom(InEq(IntT (VarInt v1),IntT (IntAdd(IntVal 1,VarInt v2))))
-                              | NegAtom(InEq(IntT (IntAdd(VarInt v2,IntVal 1)),IntT (VarInt v1)))
-                              | NegAtom(InEq(IntT (IntAdd(IntVal 1,VarInt v2)),IntT (VarInt v1))) ->
-                                  Arr.add_greater arr (VarInt v1) (VarInt v2)
+                              | NegAtom(InEq(IntT (VarInt v1),IntT (IntAdd(VarInt v2,IntVal i))))
+                              | NegAtom(InEq(IntT (VarInt v1),IntT (IntAdd(IntVal i,VarInt v2))))
+                              | NegAtom(InEq(IntT (IntAdd(VarInt v2,IntVal i)),IntT (VarInt v1)))
+                              | NegAtom(InEq(IntT (IntAdd(IntVal i,VarInt v2)),IntT (VarInt v1))) ->
+                                  if i > 0 then Arr.add_greater arr (VarInt v1) (VarInt v2)
+                                  else if i < 0 then Arr.add_less arr (VarInt v1) (VarInt v2)
+                                  else Arr.add_eq arr (VarInt v1) (VarInt v2)
+                              | NegAtom(InEq(IntT (VarInt varr),VarUpdate(_,th,IntT(IntAdd(VarInt v2,IntVal i)))))
+                              | NegAtom(InEq(IntT (VarInt varr),VarUpdate(_,th,IntT(IntAdd(IntVal i,VarInt v2)))))
+                              | NegAtom(InEq(VarUpdate(_,th,IntT(IntAdd(VarInt v2,IntVal i))),IntT (VarInt varr)))
+                              | NegAtom(InEq(VarUpdate(_,th,IntT(IntAdd(IntVal i,VarInt v2))),IntT (VarInt varr))) ->
+                                  let v1 = TslExp.param_var varr th in
+                                  if i > 0 then Arr.add_greater arr (VarInt v1) (VarInt v2)
+                                  else if i < 0 then Arr.add_less arr (VarInt v1) (VarInt v2)
+                                  else Arr.add_eq arr (VarInt v1) (VarInt v2)
                               | NegAtom(InEq(IntT(VarInt v),IntT(IntVal 0)))
                               | NegAtom(InEq(IntT(IntVal 0),IntT(VarInt v))) ->
                                   Arr.set_minimum arr (VarInt v)
@@ -315,7 +335,7 @@ module TranslateTsl (TslkExp : TSLKExpression.S) =
                   | Some p -> p ^ "_" in
       let new_id = p_str ^ id_str ^ th_str ^ pr_str ^ "__" ^ (string_of_int n) in
       let v_fresh = TslkExp.build_var new_id s false None None in
-      Printf.printf "FRESH VAR: %s\n" new_id;
+      verb "FRESH VAR: %s\n" new_id;
       TslkExp.variable_mark_fresh v_fresh true;
       v_fresh
 

@@ -1139,7 +1139,9 @@ module Make (K : Level.S) : TSLK_QUERY =
       if (List.exists (fun s ->
             s=Expr.Elem || s=Expr.Cell || s=Expr.Mem
           ) req_sorts) then z3_element_preamble buf num_elem ;
-      if List.mem Expr.Cell    req_sorts then z3_cell_preamble buf ;
+      if (List.exists (fun s ->
+            s=Expr.Cell || s=Expr.Mem
+          ) req_sorts) then z3_cell_preamble buf ;
       if List.mem Expr.Mem     req_sorts then z3_heap_preamble buf ;
       if List.mem Expr.Set     req_sorts then z3_set_preamble buf ;
       if List.mem Expr.SetTh   req_sorts then z3_setth_preamble buf ;
@@ -1167,7 +1169,7 @@ module Make (K : Level.S) : TSLK_QUERY =
       if List.mem Expr.ElemOrder req_ops || List.mem Expr.OrderedList req_ops then
         z3_elemorder_def buf num_elem ;
       (* Cell *)
-      if List.mem Expr.Cell req_sorts then
+      if List.mem Expr.Cell req_sorts || List.mem Expr.Mem req_sorts then
         begin
           z3_error_def buf ;
           z3_mkcell_def buf ;
@@ -1175,7 +1177,7 @@ module Make (K : Level.S) : TSLK_QUERY =
           z3_cell_unlock_def buf
         end;
       (* Heap *)
-      if List.mem Expr.Cell req_sorts then
+      if List.mem Expr.Cell req_sorts || List.mem Expr.Mem req_sorts then
         begin
           z3_isheap_def buf ;
           z3_dref_def buf ;
@@ -1267,7 +1269,6 @@ module Make (K : Level.S) : TSLK_QUERY =
                            | Expr.Level   -> level_s
                            | Expr.Bool    -> bool_s
                            | Expr.Unknown -> unk_s in
-      let _ = Printf.printf "DECLARING VARIABLE: %s\n" (Expr.variable_to_str v) in
       let s_str = sort_str s in
       let p_id = Option.map_default (fun str -> str ^ "_" ^ id) id p in
       let name = if pr then p_id ^ "_prime" else p_id

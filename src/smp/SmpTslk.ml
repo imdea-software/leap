@@ -271,7 +271,7 @@ module Make (TSLK : TSLKExpression.S) =
 
 
     let try_pseudo_dnf_union_formula_cutoff (info:union_info) (phi:Expr.formula) : model_size =
-      let _ = Printf.printf "TRYING PSEUDO DNF\n" in
+      verb "TRYING PSEUDO DNF\n";
       let split = List.map Expr.to_disj_list (Expr.to_conj_list phi) in
       let (atomics,disjs) = List.partition (fun xs -> List.length xs <= 1) split in
       let others_problematic = List.fold_left (fun i xs ->
@@ -281,7 +281,7 @@ module Make (TSLK : TSLKExpression.S) =
                                  | _           -> i
                                ) 0 atomics in
       if List.length disjs = 1 && others_problematic = 0 then
-        let _ = Printf.printf "WE HAVE A CANDIDATE\n" in
+        let _ = verb "WE HAVE A CANDIDATE\n" in
         List.fold_left (fun tmp_info aphi ->
           let this_info = union_model_size (union_formula_cutoff_pol Pos new_union_count aphi) in
           {
@@ -292,7 +292,7 @@ module Make (TSLK : TSLKExpression.S) =
           }
         ) (empty_model_size()) (List.hd disjs)
       else
-        let _ = Printf.printf "WE DON'T HAVE A CANDIDATE: %s\n" (Expr.formula_to_str phi) in
+        let _ = verb "WE DON'T HAVE A CANDIDATE: %s\n" (Expr.formula_to_str phi) in
         union_model_size (union_formula_cutoff_pol Pos info phi)
 
 
@@ -306,7 +306,8 @@ module Make (TSLK : TSLKExpression.S) =
                                    else
                                      s
                                  ) addrvars VarSet.empty in
-      Printf.printf "CANDIDATE Interesting addresses:%s\n" (VarSet.fold (fun v str -> str ^ (Expr.variable_to_str v) ^ ";") interesting_addrvars "");
+      verb "CANDIDATE Interesting addresses:%s\n"
+        (VarSet.fold (fun v str -> str ^ (Expr.variable_to_str v) ^ ";") interesting_addrvars "");
       let tmpcellvars = Expr.varset_of_sort vars Expr.Cell in
       let cellvars = VarSet.diff tmpcellvars (redundant_cell_vars phi addrvars) in
       let vartid_num  = VarSet.cardinal (Expr.varset_of_sort vars Expr.Thid) in
@@ -343,11 +344,6 @@ module Make (TSLK : TSLKExpression.S) =
       let num_elems = varelem_num +                           (* Elem variables     *)
                       varmem_num * num_addrs                  (* Cell data          *)
       in
-      verb "UNION LEVELS: %i\n" num_levels;
-      verb "CANDIDATE INFO NUM ADDRS: %i\n" info.num_addrs;
-      verb "CANDIDATE UNION ADDR  : %i\n" num_addrs;
-      verb "UNION TIDS  : %i\n" num_tids;
-      verb "UNION ELEMS : %i\n" num_elems;
         {
           num_levels = num_levels; num_addrs = num_addrs;
           num_tids = num_tids; num_elems = num_elems;
@@ -444,9 +440,9 @@ module Make (TSLK : TSLKExpression.S) =
                     | Smp.Union   -> compute_max_cut_off_with_union f
                     | Smp.Pruning -> compute_max_cut_off_with_pruning f
       in
-      Printf.printf "SMP TSLK LEVELS: %i\n" model_s.num_levels;
-      Printf.printf "SMP TSLK ADDRS: %i\n" model_s.num_addrs;
-      Printf.printf "SMP TSLK TIDS  : %i\n" model_s.num_tids;
-      Printf.printf "SMP TSLK ELEMS : %i\n" model_s.num_elems;
+      verb "SMP TSLK LEVELS: %i\n" model_s.num_levels;
+      verb "SMP TSLK ADDRS: %i\n" model_s.num_addrs;
+      verb "SMP TSLK TIDS  : %i\n" model_s.num_tids;
+      verb "SMP TSLK ELEMS : %i\n" model_s.num_elems;
       model_s
   end

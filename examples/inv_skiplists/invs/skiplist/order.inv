@@ -4,8 +4,17 @@ int j
 
 invariant [skiplist_order] :
 
-   @41. -> (rd(heap, insert::newCell).data > rd(heap, head).data /\
-            rd(heap, insert::newCell).data < rd(heap, tail).data)
+   @main_e. -> (main::e != lowestElem /\ main::e != highestElem)
+/\ @insert_body. -> (insert::e != lowestElem /\ insert::e != lowestElem)
+/\ @remove_body. -> (remove::e != lowestElem /\ remove::e != highestElem)
+
+
+/\ @insert_newCell_created. -> (rd(heap, insert::newCell).data != rd(heap, head).data /\
+                                rd(heap, insert::newCell).data != rd(heap, tail).data)
+
+
+///\ @41. -> (rd(heap, insert::newCell).data > rd(heap, head).data /\
+//            rd(heap, insert::newCell).data < rd(heap, tail).data)
 
 /\ @42. -> (rd(heap, insert::update[insert::i]).data < rd(heap, insert::newCell).data /\
             rd(heap, rd(heap, insert::newCell).arr[insert::i]).data > rd(heap, insert::newCell).data

@@ -2860,17 +2860,17 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
     else
       Hashtbl.add info.term_map t v in
   let gen_if_not_var (t:term) (s:sort) : variable =
-    let _ = Printf.printf "GEN_IF_NOT_VAR FOR TERM: %s\n" (term_to_str t) in
-    if is_var_term t then (Printf.printf "WAS A VARIABLE\n"; term_to_var t)
+    let _ = verb "GEN_IF_NOT_VAR FOR TERM: %s\n" (term_to_str t) in
+    if is_var_term t then (verb "WAS A VARIABLE\n"; term_to_var t)
     else try
-           Printf.printf "EXISTING PAIRS:\n";
-           Hashtbl.iter (fun t v -> Printf.printf "%s ----> %s\n" (term_to_str t) (variable_to_str v)) info.term_map;
+           verb "EXISTING PAIRS:\n";
+           Hashtbl.iter (fun t v -> verb "%s ----> %s\n" (term_to_str t) (variable_to_str v)) info.term_map;
            try
              Hashtbl.find info.processed_term_map t
            with _ -> Hashtbl.find info.term_map t
          with _ -> begin
                      let v = gen_fresh_var info.fresh_gen_info s in
-                     Printf.printf "APPENDING A NEW VARIABLE: %s\n" (variable_to_str v);
+                     verb "APPENDING A NEW VARIABLE: %s\n" (variable_to_str v);
                      append_if_diff t v; v
                    end in
 (*

@@ -2052,7 +2052,7 @@ statement:
            ([], None)    -> (n+1, n+1)
          | ([], Some ys) -> ((Stm.get_last_st_pos ys)+1, n+1)
          | (xs, _)       -> let lst = lastElem xs in
-                            let e_pos = Stm.get_st_pos lst + 1 in
+                            let e_pos = Stm.get_st_else_pos lst in
                               (Stm.get_st_info lst).Stm.next_pos <-
                                 ( match else_st with
                                     Some ys -> Stm.get_last_st_pos ys + 1

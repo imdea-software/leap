@@ -1,14 +1,22 @@
 // -> skiplist_order
 
--> skiplist_prop [22:levels;
-                  24:skiplist_next,levels;
-                  41:skiplist_order,skiplist_region;
-                  42:skiplist_order,skiplist_region,skiplist_next,skiplist_create;
-                  61:skiplist_order,skiplist_region,skiplist_next]  {union:reduce2|simpl}
+//-> skiplist_prop [22:levels;
+//                  24:skiplist_next,levels;
+//                  41:skiplist_order,skiplist_region;
+//                  42:skiplist_order,skiplist_region,skiplist_next,skiplist_create;
+//                  61:skiplist_order,skiplist_region,skiplist_next]  {union:reduce2|simpl}
+//
 
+-> levels {union:reduce2|simpl}
 
-// -> levels
+//-> skiplist_create {union:reduce2|simpl}
 
 // -> skiplist_region
+
+
+
+//-> skiplist_next
+
+// -> skiplist_order {}
 
 // -> prev_less
