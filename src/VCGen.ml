@@ -1572,6 +1572,7 @@ struct
                   (tacs : Tac.post_tac_t list)
                   (line : E.pc_t) : (E.formula * vc_info_t) list =
     LOG "Entering seq_gen_vcs..." LEVEL TRACE;
+    print_endline "ENTERING SEQ_GEN_VCS";
 
     assert (List.length inv.E.voc <= 1);
     let supp_voc = Tac.supp_voc info in
@@ -2269,7 +2270,9 @@ struct
             printf "B-INV+ for %s\n" inv_id;
             let output_name = "_seq_binv_" ^ inv_id in
             solverInfo.out_file <- (base_out_name ^ output_name);
-            let this_res = check_with_seq_binv sys inv_phi in
+(*            let this_res = check_with_seq_binv sys inv_phi in *)
+            let this_res = check_with_seq_spinv sys [] inv_phi
+            in
               res & this_res
           end else begin
             printf "SEQ_SPINV for %s -> %s\n" sup_id inv_id;

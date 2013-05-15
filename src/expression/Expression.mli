@@ -227,10 +227,10 @@ and tid_subst_t = (tid * tid) list
 
 type formula_info_t =
   {
-    formula : formula;
-    primed : formula;
-    voc : tid list;
-    vars : variable list;
+    mutable formula : formula;
+    mutable primed : formula;
+            voc : tid list;
+            vars : variable list;
   }
 
 (* Pool type for tagging expression, formulas, etc. *)
@@ -587,7 +587,7 @@ val keep_locations : formula -> (formula * (tid * tid) list * (tid * tid) list)
 *)
 
 val new_formula_info : formula -> formula_info_t
-
+val copy_formula_info : formula_info_t -> formula_info_t
 
 
 val cleanup : formula -> formula

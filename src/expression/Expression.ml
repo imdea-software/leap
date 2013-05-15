@@ -236,10 +236,10 @@ and tid_subst_t = (tid * tid) list
 
 type formula_info_t =
   {
-    formula : formula       ;
-    primed : formula       ;
-    voc : tid list      ;
-    vars : variable list ;
+    mutable formula : formula    ;
+    mutable primed : formula     ;
+            voc : tid list       ;
+            vars : variable list ;
   }
 
 (* Pool type for tagging expression, formulas, etc. *)
@@ -4413,6 +4413,15 @@ let new_formula_info (phi:formula) : formula_info_t =
     primed = prime phi;
     voc = voc phi;
     vars = all_vars phi;
+  }
+
+
+let copy_formula_info (info:formula_info_t) : formula_info_t =
+  {
+    formula = info.formula;
+    primed = info.primed;
+    voc = info.voc;
+    vars = info.vars;
   }
 
 

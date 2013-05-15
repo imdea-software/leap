@@ -41,6 +41,7 @@ val specialize_tacs : t -> t -> t
 val simplify_with_pc : Expression.formula ->
                        Expression.tid ->
                        int ->
+                       bool ->
                        Expression.formula
 
 val simplify_with_vocabulary : Expression.formula ->

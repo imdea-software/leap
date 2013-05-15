@@ -33,13 +33,13 @@ type support_info_t =
 
 type task_t =
   {
-    supp_form : E.formula list     ;
-    diff      : E.formula option   ;
-    rho       : E.formula          ;
-    inv       : E.formula_info_t   ;
-    all_voc   : E.tid list         ;
-    trans_tid : E.tid              ;
-    line      : E.pc_t             ;
+    supp_form         : E.formula list     ;
+    diff              : E.formula option   ;
+    rho               : E.formula          ;
+    mutable inv       : E.formula_info_t   ;
+    all_voc           : E.tid list         ;
+    trans_tid         : E.tid              ;
+    line              : E.pc_t             ;
   }
 
 
@@ -176,21 +176,22 @@ let simplify (phi:E.formula) : E.formula =
 
 (*                                                        *)
 (* Simplifies a formula under the assumption that pc(i)=l *)
+(* pr states whether if considers primed or unprimed pc   *)
 (*                                                        *)
-let simplify_with_pc (phi:E.formula) (i:E.tid) (l:int) : E.formula =
+let simplify_with_pc (phi:E.formula) (i:E.tid) (l:int) (pr:bool) : E.formula =
   let is_same_tid (j:E.tid) : bool =
     match (i,j) with
       E.VarTh(v),E.VarTh(w) -> E.same_var v w
     | _                     -> false in
   let matches_tid (a:E.atom) : bool =
     match a with
-      E.PC(line,Some j,false)       -> is_same_tid j
-    | E.PCRange(l1,l2,Some j,false) -> is_same_tid j
+      E.PC(line,Some j,pr)       -> is_same_tid j
+    | E.PCRange(l1,l2,Some j,pr) -> is_same_tid j
     | _                             -> false in
   let matches_line (a:E.atom) : bool =
     match a with
-      E.PC(line,Some j,false)        -> line == l
-    | E.PCRange(l1,l2,Some j, false) -> l1<=l && l<=l2
+      E.PC(line,Some j,pr)       -> line == l
+    | E.PCRange(l1,l2,Some j,pr) -> l1<=l && l<=l2
     | _                              -> false in
   let simplify_pc (lit:E.literal) (pol:polarity) : E.formula =
     match lit with
@@ -314,7 +315,7 @@ let task_to_formula (hide_pres:bool) (info:task_t) : E.formula =
                   | Some phi -> [phi] in
   let antecedent = E.And (E.conj_list (info.supp_form @ diff_list), info.rho) in
   let consequent = if hide_pres then
-                     E.prime_modified antecedent info.inv.E.formula
+                     E.prime_modified antecedent (E.unprime info.inv.E.primed)
                    else
                      info.inv.E.primed
   in
@@ -363,6 +364,7 @@ let dupl_task_with_supp (task:task_t) (supp:E.formula list) : task_t =
     line = task.line ;
   }
 
+
 (*** Tactics functions ***)
 
 
@@ -382,15 +384,37 @@ let tac_split (task:task_t) (tac:post_tac_t) : task_t list =
 
 
 let tac_simple (task:task_t) (tac:post_tac_t) : task_t list =
+  let (next_pc,tid) = List.fold_left (fun i lit ->
+                        match lit with
+                        | E.Literal (E.Atom(E.PCUpdate(j,th))) -> (j, th)
+                        | _ -> i
+                      ) (0,E.NoThid) (E.to_conj_list task.rho) in
   let psi_simpl = List.map (fun psi ->
                     let vars = task.inv.E.vars @ (E.all_vars task.rho) in
-                    let simpl_pc = simplify_with_pc psi task.trans_tid task.line
+                    let simpl_pc = simplify_with_pc psi task.trans_tid task.line false
                     in
                       simplify_with_vocabulary simpl_pc vars
-                  ) task.supp_form
+                  ) task.supp_form in
+  let inv_simpl = if next_pc > 0 && tid <> E.NoThid then
+                    let _ = Printf.printf "YYYY ORIGINAL INV : %s\n" (E.formula_to_str task.inv.E.formula) in
+                    let _ = Printf.printf "YYYY ORIGINAL INV': %s\n" (E.formula_to_str task.inv.E.primed) in
+                    let inv_simpl = simplify_with_pc task.inv.E.formula tid task.line false in
+                    let inv_primed_simpl = simplify_with_pc task.inv.E.primed tid next_pc true in
+                    let _ = Printf.printf "YYYY SIMPLIFIED INV : %s\n" (E.formula_to_str inv_simpl) in
+                    let _ = Printf.printf "YYYY SIMPLIFIED INV': %s\n" (E.formula_to_str inv_primed_simpl) in
+                    let new_inv_info = E.copy_formula_info task.inv in
+                    new_inv_info.E.formula <- inv_simpl;
+                    new_inv_info.E.primed <- inv_primed_simpl;
+                    new_inv_info
+                  else
+                    task.inv in
+  let _ = Printf.printf "ZZZZZ %i %s\n" next_pc (E.tid_to_str tid) in
   (* TODO: Extend simplification to diff conjunction *)
-  in
-    [dupl_task_with_supp task psi_simpl]
+  let dupp = dupl_task_with_supp task psi_simpl in
+  dupp.inv <- inv_simpl;
+  Printf.printf "PPPP INV : %s\n" (E.formula_to_str dupp.inv.E.formula);
+  Printf.printf "PPPP INV': %s\n" (E.formula_to_str dupp.inv.E.primed);
+  [dupp]
 
 
 
