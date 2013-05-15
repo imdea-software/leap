@@ -190,6 +190,9 @@ module type S =
     val get_termset_from_conjformula : conjunctive_formula -> TermSet.t
     val termset_of_sort              : TermSet.t -> sort -> TermSet.t
 
+    
+    val remove_nonparam_local_vars : VarSet.t -> VarSet.t
+
     val voc_term : term -> tid list
     val voc : formula -> tid list
     val conjformula_voc : conjunctive_formula -> tid list
@@ -213,6 +216,7 @@ module type S =
 
 
     (* PRETTY_PRINTERS *)
+    val variable_to_full_str : variable -> string
     val variable_to_str : variable -> string
     val atom_to_str     : atom    -> string
     val literal_to_str  : literal -> string
@@ -627,14 +631,25 @@ module Make (K : Level.S) : S =
 
 
     let unify_varset (s:S.t) : S.t =
-      let tbl : (variable,var_info_t) Hashtbl.t = Hashtbl.create (S.cardinal s) in
+      let tbl = Hashtbl.create (S.cardinal s) in
       S.iter (fun (id,s,pr,th,p,info) ->
-        let base_v = build_var id s pr th p in
-        try
-          Hashtbl.replace tbl base_v (unify_var_info info (Hashtbl.find tbl base_v))
-        with Not_found -> Hashtbl.add tbl base_v info
+        let base = (id,s,pr,th,p) in
+        if Hashtbl.mem tbl base then
+          let prev_info = Hashtbl.find tbl base in
+          Hashtbl.replace tbl base (unify_var_info info prev_info)
+        else
+          Hashtbl.add tbl base info
       ) s;
-      Hashtbl.fold (fun (id,s,pr,th,p,_) info set -> S.add (id,s,pr,th,p,info) set) tbl S.empty
+      Hashtbl.fold (fun (id,s,pr,th,p) info set -> S.add (id,s,pr,th,p,info) set) tbl S.empty
+
+
+    let remove_nonparam_local_vars (s:S.t) : S.t =
+      S.fold (fun v tmpset ->
+        if not (is_global_var v) && var_th v = None then
+          tmpset
+        else
+          S.add v tmpset
+      ) s S.empty
 
 
     let (@@) s1 s2 =
@@ -1160,7 +1175,39 @@ module Make (K : Level.S) : S =
       sprintf "%s::%s" p_name v
 
 
-    let rec variable_to_str (v:variable) : string =
+    let sort_to_str s =
+      match s with
+          Set       -> "Set"
+        | Elem      -> "Elem"
+        | Thid      -> "Thid"
+        | Addr      -> "Addr"
+        | Cell      -> "Cell"
+        | SetTh     -> "SetTh"
+        | SetElem   -> "SetElem"
+        | Path      -> "Path"
+        | Mem       -> "Mem"
+        | Level     -> "Level"
+        | Bool      -> "Bool"
+        | Unknown   -> "Unknown"
+
+
+    let rec variable_to_full_str (v:variable) : string =
+      let (id,s,pr,th,p,info) = v in
+      "Variable " ^variable_to_str v^ " information\n" ^
+      "Id:              " ^id^ "\n" ^
+      "Sort:            " ^sort_to_str s^ "\n" ^
+      "Primed:          " ^if pr then "true" else "false"^ "\n" ^
+      "Thread:          " ^Option.map_default tid_to_str "None" th^ "\n" ^
+      "Parent:          " ^Option.default "None" p^ "\n" ^
+      "SMP Interesting: " ^if info.smp_interesting then "true" else "false"^ "\n" ^
+      "Fresh:           " ^if info.fresh then "true" else "false"^ "\n"
+(*
+        (variable_to_str v) (id) (sort_to_str s) (pr) (Option.map tid_to_str "None" th)
+        (Option.default "None" p) (info.smp_interesting) (info.fresh)
+*)
+
+
+    and variable_to_str (v:variable) : string =
       let (id,_,pr,th,p,_) = v in
       let v_str = sprintf "%s%s" (Option.map_default (localize_var_id id) id p)
                                  (Option.map_default (fun t -> "(" ^ tid_to_str t ^ ")" ) "" th)
@@ -1386,20 +1433,6 @@ module Make (K : Level.S) : S =
         | Iff (f1,f2) ->
       Printf.sprintf "(%s <-> %s)" (formula_to_str f1) (formula_to_str f2)
 
-    let sort_to_str s =
-      match s with
-          Set       -> "Set"
-        | Elem      -> "Elem"
-        | Thid      -> "Thid"
-        | Addr      -> "Addr"
-        | Cell      -> "Cell"
-        | SetTh     -> "SetTh"
-        | SetElem   -> "SetElem"
-        | Path      -> "Path"
-        | Mem       -> "Mem"
-        | Level     -> "Level"
-        | Bool      -> "Bool"
-        | Unknown   -> "Unknown"
 
     let generic_printer aprinter x =
       Printf.printf "%s" (aprinter x)

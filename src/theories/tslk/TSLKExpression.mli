@@ -187,6 +187,8 @@ module type S =
     val get_termset_from_conjformula : conjunctive_formula -> TermSet.t
     val termset_of_sort              : TermSet.t -> sort -> TermSet.t
 
+    val remove_nonparam_local_vars : VarSet.t -> VarSet.t
+
     val voc_term : term -> tid list
     val voc : formula -> tid list
     val conjformula_voc : conjunctive_formula -> tid list
@@ -210,6 +212,7 @@ module type S =
     val tid_mark_smp_interesting : tid -> bool -> unit
 
     (* PRETTY_PRINTERS *)
+    val variable_to_full_str : variable -> string
     val variable_to_str : variable -> string
     val atom_to_str     : atom    -> string
     val literal_to_str  : literal -> string

@@ -1254,7 +1254,8 @@ module Make (K : Level.S) : TSLK_QUERY =
                           (tid_set:Expr.VarSet.t)
                           (num_tids:int)
                           (v:Expr.variable) : unit =
-      verb "**** Z3TslkQuery, defining variable: %s\n" (Expr.variable_to_str v);
+(*      verb "**** Z3TslkQuery, defining variable: %s\n" (Expr.variable_to_str v); *)
+      print_endline (Expr.variable_to_full_str v);
       let (id,s,pr,th,p,_) = v in
       let sort_str asort = match asort with
                              Expr.Set     -> set_s
@@ -1347,7 +1348,7 @@ module Make (K : Level.S) : TSLK_QUERY =
     and variables_to_z3 (buf:Buffer.t)
                         (num_tids:int)
                         (expr:Expr.conjunctive_formula) : unit =
-      let vars = Expr.get_varset_from_conj expr
+      let vars = Expr.remove_nonparam_local_vars (Expr.get_varset_from_conj expr)
       in
         define_variables buf num_tids vars
 
@@ -1355,7 +1356,7 @@ module Make (K : Level.S) : TSLK_QUERY =
     and variables_from_formula_to_z3 (buf:Buffer.t)
                                      (num_tids:int)
                                      (phi:Expr.formula) : unit =
-      let vars = Expr.get_varset_from_formula phi in
+      let vars = Expr.remove_nonparam_local_vars (Expr.get_varset_from_formula phi) in
       verb "Z3TslkQuery, variables to define:\n{%s}\n"
         (Expr.VarSet.fold (fun v str ->
           str ^ (Expr.variable_to_str v) ^ ";"
