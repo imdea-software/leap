@@ -94,12 +94,13 @@ assume
                                     tail->arr[i] := null;
 :insert_tail_next_i_null[
                                     maxLevel := i;
+:insert_maxLevel_eq_i
 :insert_i_top_maxLevel]
+:insert_i_greater_maxLevel]
                                     i := i + 1;
 :insert_tail_next_i_null]
 :insert_head_next_i_tail]
 :insert_i_lesseq_lvl]
-:insert_i_greater_maxLevel]
                                   endwhile
 :insert_lvl_outrange]
                                 endif

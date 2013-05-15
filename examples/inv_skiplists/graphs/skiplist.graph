@@ -7,16 +7,17 @@
 //                  61:skiplist_order,skiplist_region,skiplist_next]  {union:reduce2|simpl}
 //
 
--> levels {union:reduce2|simpl}
+// -> levels {union:reduce2|simpl}
 
-//-> skiplist_create {union:reduce2|simpl}
+// To check
+-> skiplist_create {union:reduce2|simpl}
 
-// -> skiplist_region
+// -> skiplist_region {union:reduce2|simpl}
 
 
 
-//-> skiplist_next
+// -> skiplist_next {union:reduce2|simpl}
 
-// -> skiplist_order {}
+// -> skiplist_order {union:reduce2|simpl}
 
 // -> prev_less
