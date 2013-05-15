@@ -1,0 +1,71 @@
+To compile LEAP:
+================
+
+make leap
+
+To compile prog2fts, which displays the program lines for a given program:
+
+make prog2fts
+
+
+
+Skiplist examples:
+==================
+
+All the examples files are in the folder trunk/examples/inv_skiplists
+
+In this folder you will find:
+
+
+* graphs/skiplist.graph
+
+	contains the proof graph. What I usually do is to activate one proof at the 
+	time, so the verification process is easier. You can activate or deactivate
+	proofs commenting them. The comment is "//" and comments everything from that
+	point until the end of line.
+
+* prgs/skiplist.prg
+
+	the program with the skiplist
+
+* invs/skiplist/foo.inv
+
+	all the invariants are here. Notice that the name you provide the invariant
+	candidate (and not the file name) is used to refer to it in the proof graph.
+
+* run_graph_skiplist.sh
+
+	contains the script to try to proof all active invariants in the proof graph
+	"graphs/skiplist.graph". It is useful to try to prove the invariant over all
+	program transitions. In the script you can set:
+
+	OPTIONS:
+	The options passed to Leap. You may just want to set or unset the "-v" option
+	which makes the output verbose.
+
+	PRG:
+	The file containing the program to be verified. By default it is
+	"prgs/skiplist.prg"
+
+	INV_FOLDER:
+	The folder where Leap looks for the invariant candidates. By default it is
+	"invs/skiplist"
+
+	GRAPH:
+	The proof graph to be used. By default it is "graphs/skiplist.graph"
+
+	OUTPUT:
+	The folder where results are output. After you run Leap, and it finihes,
+	you will be prompted the number of generated VCs with the time. Just above
+	this information, you will find the file name where the VC have been output.  
+	You can check this file to see which VC has been checked and which don't. A
+	cross "X" marks the unproved ones. Also as Leap runs it outputs the files
+	where the SMTLIB query is being outputed (if --show_file_info is enabled). By
+	default the output folder is "out/skiplist"
+
+* run.sh
+
+	is a script similar to run_graph_skiplist.sh, except that receives a program
+	line as argument and executes Leap only over the given program line. This is
+	useful when you have verified the invariant over all program lines except one,
+	so you can run Leap over this single line and not over all lines once more.
