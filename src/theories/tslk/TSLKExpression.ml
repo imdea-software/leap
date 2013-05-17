@@ -192,6 +192,7 @@ module type S =
 
     
     val remove_nonparam_local_vars : VarSet.t -> VarSet.t
+    val add_prevstate_local_vars : VarSet.t -> VarSet.t
 
     val voc_term : term -> tid list
     val voc : formula -> tid list
@@ -647,6 +648,16 @@ module Make (K : Level.S) : S =
       S.fold (fun v tmpset ->
         if not (is_global_var v) && var_th v = None then
           tmpset
+        else
+          S.add v tmpset
+      ) s S.empty
+
+
+    let add_prevstate_local_vars (s:S.t) : S.t =
+      S.fold (fun v tmpset ->
+        let unprime_v = unprime_var v in
+        if is_primed_var v && not (S.mem unprime_v s) then
+          S.add v (S.add unprime_v tmpset)
         else
           S.add v tmpset
       ) s S.empty

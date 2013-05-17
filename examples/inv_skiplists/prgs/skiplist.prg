@@ -126,7 +126,7 @@ assume
                                   newCell := mallocSL(e,lvl);
 :insert_newCell_created[
                                   i := 0;
-:insert_connect_loop[
+:insert_newCell_unconnected[
                                   while (i <= lvl) do
                                     newCell->arr[i] := update[i]->arr[i];
                                     update[i]->arr[i] := newCell
@@ -134,10 +134,10 @@ assume
                                           region := region Union {newCell};
                                         endif
                                       $
+:insert_newCell_unconnected]
                                     i := i + 1;
 :insert_newCell_created]
                                   endwhile
-:insert_connect_loop]
 :insert_prev_low]
 :insert_lvl_inrange]
                                 endif

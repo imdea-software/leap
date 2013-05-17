@@ -1356,7 +1356,13 @@ module Make (K : Level.S) : TSLK_QUERY =
     and variables_from_formula_to_z3 (buf:Buffer.t)
                                      (num_tids:int)
                                      (phi:Expr.formula) : unit =
-      let vars = Expr.remove_nonparam_local_vars (Expr.get_varset_from_formula phi) in
+      verb "Z3TslkQuery, original variables to define:\n{%s}\n"
+        (Expr.VarSet.fold (fun v str ->
+          str ^ (Expr.variable_to_str v) ^ ";"
+        ) (Expr.get_varset_from_formula phi) "");
+      let vars = Expr.add_prevstate_local_vars(
+                   Expr.remove_nonparam_local_vars (
+                     Expr.get_varset_from_formula phi)) in
       verb "Z3TslkQuery, variables to define:\n{%s}\n"
         (Expr.VarSet.fold (fun v str ->
           str ^ (Expr.variable_to_str v) ^ ";"

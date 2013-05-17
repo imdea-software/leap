@@ -188,6 +188,7 @@ module type S =
     val termset_of_sort              : TermSet.t -> sort -> TermSet.t
 
     val remove_nonparam_local_vars : VarSet.t -> VarSet.t
+    val add_prevstate_local_vars : VarSet.t -> VarSet.t
 
     val voc_term : term -> tid list
     val voc : formula -> tid list

@@ -291,7 +291,8 @@ struct
      string list                   * (** New added boolean preds    *)
      valid_t                       * (** Status                     *)
      Tactics.solve_tactic_t option * (** Solving aided tactic       *)
-     Smp.cutoff_strategy_t           * (** Cutoff strategy to be used *)
+     Smp.cutoff_strategy_t         * (** Cutoff strategy to be used *)
+     bool                          * (** Apply pos dp?              *)
      formula_status_t                (** Brief description          *)
     )) Hashtbl.t
   
@@ -1797,7 +1798,7 @@ struct
                        tsl_time  = 0.0;
                      } in
       Hashtbl.add tbl !i (f, p_only, new_preds, Unverified,
-                          info.stac, info.smp, f_status);
+                          info.stac, info.smp, info.try_pos, f_status);
       incr i in
     List.iter iter fs;
     tbl
@@ -1805,14 +1806,14 @@ struct
   
   let support_formula_table (sup:E.formula list)
       (tbl:formula_table_t) : formula_table_t =
-    let iter i (phi, _, _, valid, stac, smp, desc) =
+    let iter i (phi, _, _, valid, stac, smp, try_pos, desc) =
       if valid = NotValid then
         match phi with
         | E.Implies (ante, cons) ->
             let new_phi = support sup ante cons false in
             let new_pos_phi, new_preds = PosExp.keep_locations new_phi in
             Hashtbl.replace tbl i
-              (new_phi, new_pos_phi, new_preds, Unverified, stac, smp, desc)
+              (new_phi, new_pos_phi, new_preds, Unverified, stac, smp, try_pos, desc)
         | _ -> 
             Interface.Err.smsg "support_formula_table" "Unsupported formula" in
     Hashtbl.iter iter tbl;
@@ -1825,7 +1826,7 @@ struct
       let out = open_out_gen [Open_creat;Open_append;Open_wronly] 0o666 out_file in
       output_string out header;
       for i = 1 to (Hashtbl.length vc_tbl) do
-        let (f, pf, _, status, _, _, desc) = Hashtbl.find vc_tbl i in
+        let (f, pf, _, status, _, _, _, desc) = Hashtbl.find vc_tbl i in
         let f_str = E.formula_to_str f in
         let status_str = valid_to_str status in
         output_string out (sprintf "--- %i : %s ---\n%s: %s\n"
@@ -2030,32 +2031,28 @@ struct
     (* Hashtbl.iter (fun i (f, p_f, preds, status, stac, cutoff, desc) -> *)
     for i = 1 to (Hashtbl.length vc_tbl) do
       try begin
-      let (f, p_f, preds, status, stac, cutoff, desc) = Hashtbl.find vc_tbl i in
+      let (f, p_f, preds, status, stac, cutoff, try_pos, desc) = Hashtbl.find vc_tbl i in
 
 (* Ale: I am deactivating the position based decision procedure, as I am getting
         rid of all position predicates through the Simple (in the future Simpl3)
         post-tactic *)
 
-
-
-      let pos_status = NotValid in
-      let pos_time = 0.0 in
-
-(*
-      (* Call position DP *)
       let pos_status, pos_time =
-        if apply_pos_dp () then begin
-          let new_status, calls, _, sats, time = call_pos_dp p_f status in
-          pos_calls := !pos_calls + calls;
-          pos_sats := !pos_sats + sats;
-          let st = if new_status = Unneeded then
-                     status
-                   else
-                     (desc.pos_time <- time; new_status) in
-          Hashtbl.replace vc_tbl i (f, p_f, preds, st, stac, cutoff, desc);
-          (new_status, time)
-        end else (status, 0.0) in
-*)
+        if try_pos then begin
+          (* Call position DP *)
+            if apply_pos_dp () then begin
+              let new_status, calls, _, sats, time = call_pos_dp p_f status in
+              pos_calls := !pos_calls + calls;
+              pos_sats := !pos_sats + sats;
+              let st = if new_status = Unneeded then
+                         status
+                       else
+                         (desc.pos_time <- time; new_status) in
+              Hashtbl.replace vc_tbl i (f, p_f, preds, st, stac, cutoff, try_pos, desc);
+              (new_status, time)
+            end else (status, 0.0)
+        end else
+          (NotValid, 0.0) in
 
       (* Call numeric DP *)
       let num_status, num_time =
@@ -2067,7 +2064,7 @@ struct
                      pos_status
                    else
                      (desc.num_time <- time; new_status) in
-          Hashtbl.replace vc_tbl i (f, p_f, preds, st, stac, cutoff, desc);
+          Hashtbl.replace vc_tbl i (f, p_f, preds, st, stac, cutoff, try_pos, desc);
           (new_status, time)
         end else (Unneeded, 0.0) in
       
@@ -2084,7 +2081,7 @@ struct
                      pos_status
                    else
                      (desc.tll_time <- time; new_status) in
-          Hashtbl.replace vc_tbl i (f, p_f, preds, st, stac, cutoff, desc);
+          Hashtbl.replace vc_tbl i (f, p_f, preds, st, stac, cutoff, try_pos, desc);
           (new_status, time)
         end else (num_status, 0.0) in
 
@@ -2101,7 +2098,7 @@ struct
                      pos_status
                    else
                      (desc.tslk_time <- time; new_status) in
-          Hashtbl.replace vc_tbl i (f, p_f, preds, st, stac, cutoff, desc);
+          Hashtbl.replace vc_tbl i (f, p_f, preds, st, stac, cutoff, try_pos, desc);
           (new_status, time)
         end else (tll_status, 0.0) in
 
@@ -2118,7 +2115,7 @@ struct
                      pos_status
                    else
                      (desc.tsl_time <- time; new_status) in
-          Hashtbl.replace vc_tbl i (f, p_f, preds, st, stac, cutoff, desc);
+          Hashtbl.replace vc_tbl i (f, p_f, preds, st, stac, cutoff, try_pos, desc);
           (new_status, time)
         end else (tll_status, 0.0) in
 
