@@ -1,0 +1,9 @@
+param:
+
+invariant [skiplist_create] :
+
+
+   @insert_newCell_created. -> (insert::newCell != null)
+
+//   @42. -> (insert::newCell != null)
+
