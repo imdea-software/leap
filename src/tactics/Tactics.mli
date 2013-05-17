@@ -12,6 +12,11 @@ type support_info_t
 
 type task_t
 
+type res_info_t
+
+(* res_info_t functions *)
+val try_pos : res_info_t -> bool
+
 (* Describing tactics *)
 val new_tactics : Smp.cutoff_strategy_t option ->
                   solve_tactic_t option ->
@@ -40,7 +45,7 @@ val specialize_tacs : t -> t -> t
 
 val simplify_with_pc : Expression.formula ->
                        Expression.tid ->
-                       int ->
+                       int list ->
                        bool ->
                        Expression.formula
 
@@ -74,4 +79,4 @@ val new_task : Expression.formula list ->
 
 
 val apply_post_tacs : task_t list -> post_tac_t list -> bool ->
-                      Expression.formula list 
+                      (Expression.formula * res_info_t) list 

@@ -27,9 +27,10 @@ sig
   type formula_table_t
   
   type vc_info_t = {  pc  : E.pc_t                     ;
-                      smp : Smp.cutoff_strategy_t        ;
+                      smp : Smp.cutoff_strategy_t      ;
                       stac : Tac.solve_tactic_t option ;
                       mutable supps : Tag.f_tag list   ;
+                      try_pos : bool                   ;
                    }
   
   type dp_info
@@ -265,9 +266,10 @@ struct
   type dp_t = Pos | Num | TLL
   
   type vc_info_t = {  pc  : E.pc_t                     ;
-                      smp : Smp.cutoff_strategy_t        ;
+                      smp : Smp.cutoff_strategy_t      ;
                       stac : Tac.solve_tactic_t option ;
                       mutable supps : Tag.f_tag list   ;
+                      try_pos : bool                   ;
                    }
 
   type formula_status_t =
@@ -1299,7 +1301,7 @@ struct
     let init_conds =
       if List.mem 0 solverInfo.focus then
         List.map (fun x ->
-          let vc_info = {pc = 0; smp = cutoff(); stac = None; supps=[]; } in
+          let vc_info = {pc = 0; smp = cutoff(); stac = None; supps=[]; try_pos=true;} in
             (E.Implies(theta, fst x), vc_info)
         ) inv_list
       else [] in
@@ -1317,7 +1319,7 @@ struct
                                      else
                                       snd f in
                     let new_vc = E.Implies (antecedent, consequent) in
-                    let vc_info = {pc = l; smp = cutoff(); stac = None; supps=[];}
+                    let vc_info = {pc = l; smp = cutoff(); stac = None; supps=[]; try_pos=true}
                     in
                       tran_conds := (new_vc, vc_info) :: !tran_conds
                   ) rho
@@ -1343,7 +1345,8 @@ struct
     let vc_info = {pc   = 0;
                    smp  = assign_cutoff (Tac.smp_cutoff solverInfo.tactics);
                    stac = Tac.solve_tactic solverInfo.tactics;
-                   supps= [];} in
+                   supps= [];
+                   try_pos = true;} in
     let init_cond = (E.Implies (theta, inv.E.formula), vc_info)
     in
       init_cond
@@ -1472,10 +1475,16 @@ struct
        | Extra  -> Tac.extra_supp_list supp_info in
       let task = Tac.new_task supp prem r_final inv
         (Tac.supp_voc supp_info) trans_tid line in
-      let new_vcs = Tac.apply_post_tacs [task] tacs (hide_pres()) in
-      let vc_info = {pc = line; smp = spec_cutoff; stac = spec_stac; supps=[];}
+      let new_vcs = Tac.apply_post_tacs [task] tacs (hide_pres())
       in
-        (List.map (fun phi -> (E.cleanup phi, vc_info)) new_vcs) @ rs
+        (List.map (fun (phi,res_info) ->
+          let vc_info =  {pc = line;
+                          smp = spec_cutoff;
+                          stac = spec_stac;
+                          supps=[];
+                          try_pos=Tac.try_pos res_info;} in
+          (E.cleanup phi, vc_info)
+        ) new_vcs) @ rs
     ) [] rho
 
 
@@ -1523,7 +1532,8 @@ struct
     let gen_vc_info (l:E.pc_t) = {pc  =l;
                                   smp = assign_cutoff (Tac.smp_cutoff solverInfo.tactics);
                                   stac=Tac.solve_tactic solverInfo.tactics;
-                                  supps = [];} in
+                                  supps = [];
+                                  try_pos = true;} in
   
     (* FIX: I think that invariants are not parametrized *)
     (* when the invariant does not contains a tid *)
@@ -1597,10 +1607,17 @@ struct
                       inv.E.voc line in
     List.fold_left (fun rs r ->
       let task = Tac.new_task supp None r inv all_voc trans_tid line in
-      let new_vcs = Tac.apply_post_tacs [task] tacs (hide_pres()) in
-      let vc_info = {pc = line; smp = spec_cutoff; stac = spec_stac; supps=[];}
+      let new_vcs = Tac.apply_post_tacs [task] tacs (hide_pres())
       in
-        (List.map (fun phi -> Printf.printf "DEBUG GENERATED PHI:\n%s\n" (E.formula_to_str (E.cleanup phi)); (E.cleanup phi, vc_info)) new_vcs) @ rs
+        (List.map (fun (phi,res_info) ->
+          let vc_info =  {pc = line;
+                          smp = spec_cutoff;
+                          stac = spec_stac;
+                          supps=[];
+                          try_pos=Tac.try_pos res_info;} in
+          verb "DEBUG GENERATED PHI:%s\n" (E.formula_to_str (E.cleanup phi));
+          (E.cleanup phi, vc_info)
+        ) new_vcs) @ rs
     ) [] rho
 
 
@@ -1707,7 +1724,8 @@ struct
     let gen_vc_info (l:E.pc_t) = {pc  =l;
                                   smp =assign_cutoff (Tac.smp_cutoff solverInfo.tactics);
                                   stac=Tac.solve_tactic solverInfo.tactics;
-                                  supps = [];} in
+                                  supps = [];
+                                  try_pos = true;} in
   
     (* FIX: I think that invariants are not parametrized *)
     (* when the invariant does not contains a tid *)
@@ -2013,6 +2031,17 @@ struct
     for i = 1 to (Hashtbl.length vc_tbl) do
       try begin
       let (f, p_f, preds, status, stac, cutoff, desc) = Hashtbl.find vc_tbl i in
+
+(* Ale: I am deactivating the position based decision procedure, as I am getting
+        rid of all position predicates through the Simple (in the future Simpl3)
+        post-tactic *)
+
+
+
+      let pos_status = NotValid in
+      let pos_time = 0.0 in
+
+(*
       (* Call position DP *)
       let pos_status, pos_time =
         if apply_pos_dp () then begin
@@ -2026,7 +2055,8 @@ struct
           Hashtbl.replace vc_tbl i (f, p_f, preds, st, stac, cutoff, desc);
           (new_status, time)
         end else (status, 0.0) in
-        
+*)
+
       (* Call numeric DP *)
       let num_status, num_time =
         if apply_num_dp () then begin

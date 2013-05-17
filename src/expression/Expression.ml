@@ -3907,6 +3907,12 @@ let rec to_conj_list (phi:formula) : formula list =
   | _           -> [phi]
 
 
+let rec to_disj_list (phi:formula) : formula list =
+  match phi with
+    Or (f1,f2) -> (to_disj_list f1) @ (to_disj_list f2)
+  | _          -> [phi]
+
+
 let rec dnf_count (expr:formula) : (float * float) =
   match expr with
     Iff (e1,e2) -> dnf_count (And (Implies (e1,e2),Implies (e2,e1)))

@@ -535,6 +535,7 @@ val subst_full_assign : tid list -> tid_subst_t -> bool
 val conj_list : formula list -> formula
 val disj_list : formula list -> formula
 val to_conj_list : formula -> formula list
+val to_disj_list : formula -> formula list
 val dnf : formula -> formula list list
 val cnf : formula -> formula list list
 val dnf_count : formula -> (float * float)

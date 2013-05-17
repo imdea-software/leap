@@ -40,6 +40,13 @@ type task_t =
     all_voc           : E.tid list         ;
     trans_tid         : E.tid              ;
     line              : E.pc_t             ;
+    mutable try_posdp : bool               ;
+  }
+
+
+type res_info_t =
+  {
+    try_pos : bool ;
   }
 
 
@@ -95,6 +102,15 @@ let diff_conj (info:support_info_t) : E.formula =
 
 let supp_fresh_tid (info:support_info_t) : E.tid =
   info.supp_fresh_tid
+
+
+(* res_info_t functions *)
+let new_res_info () : res_info_t =
+  {try_pos = true;}
+
+
+let try_pos (info:res_info_t) : bool =
+  info.try_pos
 
 
 (* Tactics specialization *)
@@ -178,6 +194,7 @@ let simplify (phi:E.formula) : E.formula =
 (* Simplifies a formula under the assumption that pc(i)=l *)
 (* pr states whether if considers primed or unprimed pc   *)
 (*                                                        *)
+(*
 let simplify_with_pc (phi:E.formula) (i:E.tid) (l:int) (pr:bool) : E.formula =
   let is_same_tid (j:E.tid) : bool =
     match (i,j) with
@@ -205,6 +222,41 @@ let simplify_with_pc (phi:E.formula) (i:E.tid) (l:int) (pr:bool) : E.formula =
                           E.Literal lit
   in
     simplify_aux phi simplify_pc
+*)
+
+(* Ale: I have modified the function above in order to let it accept a list
+        of candidate pairs (program position, thread id) instead of a single
+        program counter and a single thread.
+*)
+
+let simplify_with_pc (phi:E.formula) (i:E.tid) (ls:int list) (pr:bool) : E.formula =
+  let is_same_tid (j:E.tid) : bool =
+    match (i,j) with
+      E.VarTh(v),E.VarTh(w) -> E.same_var v w
+    | _                     -> false in
+  let matches_tid (a:E.atom) : bool =
+    match a with
+      E.PC(line,Some j,pr)       -> is_same_tid j
+    | E.PCRange(l1,l2,Some j,pr) -> is_same_tid j
+    | _                             -> false in
+  let matches_line (a:E.atom) : bool =
+    match a with
+      E.PC(line,Some j,pr)       -> List.mem line ls
+    | E.PCRange(l1,l2,Some j,pr) -> List.exists (fun l -> l1<= l && l <= l2) ls
+    | _                              -> false in
+  let simplify_pc (lit:E.literal) (pol:polarity) : E.formula =
+    match lit with
+      E.Atom(a)    -> if (matches_tid a) then
+                        (if (matches_line a) then E.True else E.False)
+                      else
+                          E.Literal lit
+    | E.NegAtom(a) -> if (matches_tid a) then
+                        (if (matches_line a) then E.False else E.True)
+                        else
+                          E.Literal lit
+  in
+    simplify_aux phi simplify_pc
+
 
 
 (* This simplification simply removes the whole formula if the vocabulary
@@ -309,17 +361,18 @@ let gen_support (phi_list:E.formula list)
 
 
 (* Conversion function *)
-let task_to_formula (hide_pres:bool) (info:task_t) : E.formula =
+let task_to_formula (hide_pres:bool) (info:task_t) : (E.formula * res_info_t) =
   let diff_list = match info.diff with
                     None -> []
                   | Some phi -> [phi] in
-  let antecedent = E.And (E.conj_list (info.supp_form @ diff_list), info.rho) in
+  let antecedent = E.And (E.conj_list (info.inv.E.formula :: info.supp_form @ diff_list), info.rho) in
   let consequent = if hide_pres then
                      E.prime_modified antecedent (E.unprime info.inv.E.primed)
                    else
-                     info.inv.E.primed
+                     info.inv.E.primed in
+  let res_info = {try_pos = info.try_posdp; }
   in
-    E.Implies (antecedent, consequent)
+    (E.Implies (antecedent, consequent), res_info)
 
 
 (* Task manipulation *)
@@ -339,6 +392,7 @@ let new_task (supp:E.formula list)
     all_voc   = all_voc   ;
     trans_tid = trans_tid ;
     line      = line      ;
+    try_posdp = true      ;
   }
 
 let dupl_task_with_inv (task:task_t) (inv:E.formula_info_t) : task_t =
@@ -350,6 +404,7 @@ let dupl_task_with_inv (task:task_t) (inv:E.formula_info_t) : task_t =
     all_voc = E.voc (E.conj_list (inv.E.formula :: task.supp_form)) ;
     trans_tid = task.trans_tid ;
     line = task.line ;
+    try_posdp = task.try_posdp ;
   }
 
 
@@ -362,6 +417,7 @@ let dupl_task_with_supp (task:task_t) (supp:E.formula list) : task_t =
     all_voc = E.voc (E.conj_list (task.inv.E.formula :: supp)) ;
     trans_tid = task.trans_tid ;
     line = task.line ;
+    try_posdp = task.try_posdp ;
   }
 
 
@@ -384,22 +440,35 @@ let tac_split (task:task_t) (tac:post_tac_t) : task_t list =
 
 
 let tac_simple (task:task_t) (tac:post_tac_t) : task_t list =
+(*
   let (next_pc,tid) = List.fold_left (fun i lit ->
                         match lit with
                         | E.Literal (E.Atom(E.PCUpdate(j,th))) -> (j, th)
                         | _ -> i
                       ) (0,E.NoThid) (E.to_conj_list task.rho) in
+*)
+
+  let nexts = List.fold_left (fun ns cs ->
+                List.fold_left (fun ns phi ->
+                  match phi with
+                  | E.Literal(E.Atom(E.PCUpdate(j,th))) -> j::ns
+                  | _ -> ns
+                ) ns cs
+              ) [] (List.map E.to_disj_list (E.to_conj_list task.rho)) in
+
   let psi_simpl = List.map (fun psi ->
                     let vars = task.inv.E.vars @ (E.all_vars task.rho) in
-                    let simpl_pc = simplify_with_pc psi task.trans_tid task.line false
+                    let simpl_pc = simplify_with_pc psi task.trans_tid [task.line] false
                     in
                       simplify_with_vocabulary simpl_pc vars
                   ) task.supp_form in
-  let inv_simpl = if next_pc > 0 && tid <> E.NoThid then
-                    let _ = Printf.printf "YYYY ORIGINAL INV : %s\n" (E.formula_to_str task.inv.E.formula) in
+  let inv_simpl = if nexts <> [] then
                     let _ = Printf.printf "YYYY ORIGINAL INV': %s\n" (E.formula_to_str task.inv.E.primed) in
-                    let inv_simpl = simplify_with_pc task.inv.E.formula tid task.line false in
-                    let inv_primed_simpl = simplify_with_pc task.inv.E.primed tid next_pc true in
+                    let inv_simpl = simplify_with_pc task.inv.E.formula task.trans_tid [task.line] false in
+                    let inv_primed_simpl = if List.length nexts > 1 then
+                                             task.inv.E.primed
+                                           else
+                                             (task.try_posdp <- false; simplify_with_pc task.inv.E.primed task.trans_tid nexts true) in
                     let _ = Printf.printf "YYYY SIMPLIFIED INV : %s\n" (E.formula_to_str inv_simpl) in
                     let _ = Printf.printf "YYYY SIMPLIFIED INV': %s\n" (E.formula_to_str inv_primed_simpl) in
                     let new_inv_info = E.copy_formula_info task.inv in
@@ -408,14 +477,13 @@ let tac_simple (task:task_t) (tac:post_tac_t) : task_t list =
                     new_inv_info
                   else
                     task.inv in
-  let _ = Printf.printf "ZZZZZ %i %s\n" next_pc (E.tid_to_str tid) in
+  let _ = Printf.printf "ZZZZZ %s %s\n" (E.tid_to_str task.trans_tid) (String.concat ";" (List.map string_of_int nexts)) in
   (* TODO: Extend simplification to diff conjunction *)
   let dupp = dupl_task_with_supp task psi_simpl in
   dupp.inv <- inv_simpl;
   Printf.printf "PPPP INV : %s\n" (E.formula_to_str dupp.inv.E.formula);
   Printf.printf "PPPP INV': %s\n" (E.formula_to_str dupp.inv.E.primed);
   [dupp]
-
 
 
 (*** Tactics functions ***)
@@ -430,7 +498,7 @@ let apply_post_tac (task:task_t) (tac:post_tac_t) : task_t list =
 let apply_post_tacs (tasks:task_t list)
                     (tacs:post_tac_t list)
                     (hide_pres:bool)
-                      : E.formula list =
+                      : (E.formula * res_info_t) list =
   let res = match tacs with
               [] -> tasks
             | _  -> List.fold_left (fun ts tac ->

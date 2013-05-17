@@ -12,12 +12,11 @@
 // -> skiplist_create {union:reduce2|simpl}
 
 // To check
-//-> skiplist_next
+-> skiplist_next {union:reduce2|simpl}
 // [22:levels] // For speedup
-//      {union:reduce2|simpl}
 
 
- -> skiplist_region {union:reduce2|simpl}
+// -> skiplist_region {union:reduce2|simpl}
 
 
 

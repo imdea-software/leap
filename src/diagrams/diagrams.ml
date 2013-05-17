@@ -1321,7 +1321,8 @@ struct
     let vc_info      = { VCG.pc = 0;
                          VCG.stac = Tactics.solve_tactic (VCG.tactics());
                          VCG.smp = VCG.cutoff();
-                         VCG.supps = []; } in
+                         VCG.supps = [];
+                         VCG.try_pos = true; } in
     let init_tbl     = VCG.formula_list_to_table
                          [(vc.initialization, vc_info)] in
 
