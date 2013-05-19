@@ -183,7 +183,9 @@ module type S =
     val varlist_of_sort : variable list -> sort -> varId list
 
     val get_varset_from_conj         : conjunctive_formula -> VarSet.t
+    val get_unparam_varset_from_conj : conjunctive_formula -> VarSet.t
     val get_varset_from_formula      : formula -> VarSet.t
+    val get_unparam_varset_from_formula      : formula -> VarSet.t
     val get_varset_of_sort_from_conj : conjunctive_formula -> sort -> VarSet.t
     val varset_of_sort               : VarSet.t -> sort -> VarSet.t
     val get_termset_from_formula     : formula -> TermSet.t
@@ -492,6 +494,12 @@ module Make (K : Level.S) : S =
         (id,s,pr,Some th,p,info)
 
 
+    let unparam_var (v:variable) : variable =
+      let (id,s,pr,_,p,info) = v
+      in
+        (id,s,pr,None,p,info)
+
+
     let is_global_var (v:variable) : bool =
       let (_,_,_,_,p,_) = v in p = None
 
@@ -653,6 +661,12 @@ module Make (K : Level.S) : S =
       ) s S.empty
 
 
+    let unparam_varset (s:S.t) : S.t =
+      S.fold (fun v tmpset ->
+        S.add (unparam_var v) tmpset
+      ) s S.empty
+
+
     let add_prevstate_local_vars (s:S.t) : S.t =
       S.fold (fun v tmpset ->
         let unprime_v = unprime_var v in
@@ -811,6 +825,9 @@ module Make (K : Level.S) : S =
     and get_varset_from_conj phi =
       unify_varset (get_varset_from_conj_aux phi)
 
+    and get_unparam_varset_from_conj phi =
+      unify_varset (unparam_varset (get_varset_from_conj_aux phi))
+
     and get_varset_from_formula_aux phi =
       match phi with
         Literal l       -> get_varset_literal l
@@ -828,6 +845,9 @@ module Make (K : Level.S) : S =
 
     and get_varset_from_formula phi =
       unify_varset (get_varset_from_formula_aux phi)
+
+    and get_unparam_varset_from_formula phi =
+      unify_varset (unparam_varset (get_varset_from_formula_aux phi))
 
 
     let localize_with_underscore (v:varId) (p_name:string option) : string =

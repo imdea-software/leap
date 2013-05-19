@@ -180,7 +180,9 @@ module type S =
     val varlist_of_sort : variable list -> sort -> varId list
 
     val get_varset_from_conj         : conjunctive_formula -> VarSet.t
+    val get_unparam_varset_from_conj : conjunctive_formula -> VarSet.t
     val get_varset_from_formula      : formula -> VarSet.t
+    val get_unparam_varset_from_formula : formula -> VarSet.t
     val get_varset_of_sort_from_conj : conjunctive_formula -> sort -> VarSet.t
     val varset_of_sort               : VarSet.t -> sort -> VarSet.t
     val get_termset_from_formula     : formula -> TermSet.t
