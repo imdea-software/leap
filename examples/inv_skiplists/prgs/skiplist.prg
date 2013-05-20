@@ -112,6 +112,7 @@ assume
 :insert_curr_in_region[
 :insert_i_eq_max
                                 i := maxLevel;
+:insert_bounded_i_one[
                                 while (0 <= i /\ ~(valueWasIn)) do
                                   curr := prev->arr[i];
                                   while (curr != null /\ curr->data < e) do
@@ -122,8 +123,9 @@ assume
                                   update[i] := prev;
 :insert_updateate_set
                                   i := i - 1;
-                                  valueWasIn := (curr->data = e);
+                                  skip; //valueWasIn := (curr->data = e);
                                 endwhile
+:insert_bounded_i_one]
                                 if (~ (valueWasIn)) then
                                   newCell := mallocSL(e,lvl);
 :insert_newCell_created[
@@ -178,7 +180,7 @@ assume
                                   update[i] := prev;
                                   i := i - 1;
                                 endwhile
-                                valueWasIn := curr->data = e;
+                                skip; //valueWasIn := curr->data = e;
                                 if (valueWasIn) then
                                   i := removeFrom;
                                   while (i >= 0) do

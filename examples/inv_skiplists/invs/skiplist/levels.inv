@@ -7,6 +7,8 @@ invariant [levels] :
 /\ @insert_i_top_maxLevel. -> insert::i = maxLevel + 1
 /\ @insert_maxLevel_eq_i. -> insert::i = maxLevel
 
+/\ @insert_bounded_i_one. -> insert:: i <= maxLevel
+
 
 
 

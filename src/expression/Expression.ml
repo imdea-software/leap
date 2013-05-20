@@ -1224,6 +1224,20 @@ let unprime_int (i:integer) : integer =
   priming_int false None i
 
 
+let prime_addrarr (aa:addrarr) : addrarr =
+  priming_addrarray true None aa
+
+let unprime_int (aa:addrarr) : addrarr =
+  priming_addrarray false None aa
+
+
+let prime_tidarr (tt:tidarr) : tidarr =
+  priming_tidarray true None tt
+
+let unprime_tidarr (tt:tidarr) : tidarr =
+  priming_tidarray false None tt
+
+
 let prime_term (t:term) : term =
   priming_term true None t
 
@@ -4277,10 +4291,12 @@ let construct_term_eq_as_array (v:term)
                                (th_p:tid option)
                                (e:expr_t) : (term list * formula) =
 
+  let _ = Printf.printf "CONSTRUCT_TERM_EQ: %s\n" (term_to_str v) in
   let scope = get_var_owner v in
     match (scope, th_p) with
       (Some _, Some th) ->
         begin
+          let _ = Printf.printf "CASE A\n" in
           let arr        = array_var_from_term v false in
           let primed_arr = array_var_from_term v true in
           let new_expr   =
@@ -4305,7 +4321,22 @@ let construct_term_eq_as_array (v:term)
               construct_term_eq v None modif_arr
 *)
         end
-    | (None, _) -> construct_term_eq v th_p e
+    | (None, _) ->
+        begin
+          match (v,e) with
+          | (AddrT (AddrArrRd(arr,i)), Term (AddrT a)) ->
+              let primed_arr = prime_addrarr arr in
+              let modif_arr = AddrArrayT(AddrArrayUp(arr, i, a)) in
+              let assign = Literal(Atom(Eq(AddrArrayT primed_arr, modif_arr))) in
+              ([AddrArrayT arr], assign)
+          | (ThidT (ThidArrRd(arr,i)), Term (ThidT t)) ->
+              let primed_arr = prime_tidarr arr in
+              let modif_arr = TidArrayT(TidArrayUp(arr, i, t)) in
+              let assign = Literal(Atom(Eq(TidArrayT primed_arr, modif_arr))) in
+              ([TidArrayT arr], assign)
+          | _ -> construct_term_eq v th_p e
+        end
+(*          (let _ = Printf.printf "CASE B\n" in construct_term_eq v th_p e) *)
     | _ -> Interface.Err.msg "Invalid argument" $
                    sprintf "When trying to construct a local array assignment \
                             for term \"%s\" with expression \"%s\", no thread \

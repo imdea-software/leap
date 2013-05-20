@@ -6,7 +6,19 @@ invariant [skiplist_region] :
 
 /\ @insert_prev_in_region. -> insert::prev in region
 
+/\ @insert_curr_in_region. -> insert::curr in region
+
 /\ @insert_newCell_created. -> insert::newCell != null
+
+/\ (@32. \/ @33.) -> insert::curr != null
+
+/\ (@29. \/ @30. \/ @33.) -> rd(heap, insert::prev).arr[insert::i] in region
+
+/\ @insert_i_eq_max. -> rd(heap, insert::curr).arr[maxLevel] in region
+
+/\ @insert_bounded_i_one. -> rd(heap, insert::prev).arr[insert::i] in region
+
+/\ (@31. \/ @32.) -> insert::curr in region
 
 /\   @insert_newCell_unconnected. -> (insert::newCell != null /\ (~ insert::newCell in addr2set(heap, head, insert::i)))
 
