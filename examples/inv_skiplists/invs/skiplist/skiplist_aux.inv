@@ -3,3 +3,6 @@ param:
 invariant [skiplist_prop_subsumes] :
 
    @insert_head_next_i_tail. -> head != tail
+/\ @39. -> region = addr2set(heap, head, 0)
+///\ @insert_prev_in_region. -> region = addr2set(heap, head, 0)
+///\ @insert_curr_in_region. -> region = addr2set(heap, head, 0)

@@ -106,8 +106,10 @@ assume
                                 endif
 :insert_lvl_inrange[
                                 prev := head;
+:insert_prev_in_region[
 :insert_prev_low[
                                 curr := prev->arr[maxLevel];
+:insert_curr_in_region[
 :insert_i_eq_max
                                 i := maxLevel;
                                 while (0 <= i /\ ~(valueWasIn)) do
@@ -126,6 +128,7 @@ assume
                                   newCell := mallocSL(e,lvl);
 :insert_newCell_created[
                                   i := 0;
+:insert_newCell_low_connected[
 :insert_newCell_unconnected[
                                   while (i <= lvl) do
                                     newCell->arr[i] := update[i]->arr[i];
@@ -138,8 +141,11 @@ assume
                                     i := i + 1;
 :insert_newCell_created]
                                   endwhile
+:insert_newCell_low_connected]
 :insert_prev_low]
 :insert_lvl_inrange]
+:insert_prev_in_region]
+:insert_curr_in_region]
                                 endif
                                 return (); // return (~ valueWasIn)
 :insert_body]
