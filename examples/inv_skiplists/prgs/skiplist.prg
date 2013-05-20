@@ -87,7 +87,7 @@ assume
                                   i := maxLevel + 1;
 :insert_i_greater_maxLevel[
                                   while (i <= lvl) do
-:insert_i_lesseq_lvl[
+:insert_i_lesseq_lvl_one[
 :insert_i_top_maxLevel[
                                     head->arr[i] := tail;
 :insert_head_next_i_tail[
@@ -100,7 +100,7 @@ assume
                                     i := i + 1;
 :insert_tail_next_i_null]
 :insert_head_next_i_tail]
-:insert_i_lesseq_lvl]
+:insert_i_lesseq_lvl_one]
                                   endwhile
 :insert_lvl_outrange]
                                 endif
@@ -133,6 +133,7 @@ assume
 :insert_newCell_low_connected[
 :insert_newCell_unconnected[
                                   while (i <= lvl) do
+:insert_i_lesseq_lvl_two[
                                     newCell->arr[i] := update[i]->arr[i];
                                     update[i]->arr[i] := newCell
                                       $ if (i=0) then
@@ -140,6 +141,7 @@ assume
                                         endif
                                       $
 :insert_newCell_unconnected]
+:insert_i_lesseq_lvl_two]
                                     i := i + 1;
 :insert_newCell_created]
                                   endwhile

@@ -256,6 +256,11 @@ let generic_stm_term_eq (mode:eqGenMode)
         ([E.ElemT (E.VarElem (E.var_base_info v))],
             E.And (E.ineq_elem (E.prime_elem (E.param_elem th_p e)) E.LowestElem,
                    E.ineq_elem (E.prime_elem (E.param_elem th_p e)) E.HighestElem))
+    (* HavocLevel *)
+    | (E.IntT (E.VarInt v) as i, E.Term (E.IntT (E.HavocLevel))) ->
+        let e = E.IntT (E.VarInt(E.build_var
+                  E.fresh_int_name E.Int false None None E.Normal)) in
+          eq_generator i th_p (E.Term e)
     (* Remaining cases *)
     | _ -> eq_generator v' th_p new_e in
   (modif @ aux_modif, E.conj_list (formula::aux_f))

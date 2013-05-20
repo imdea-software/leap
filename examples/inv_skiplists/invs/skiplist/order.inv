@@ -12,7 +12,9 @@ invariant [skiplist_order] :
 /\ @insert_newCell_created. -> (rd(heap, insert::newCell).data != rd(heap, head).data /\
                                 rd(heap, insert::newCell).data != rd(heap, tail).data)
 
-/\ @30. -> rd(heap, insert::prev).data < insert::e
+
+/\ @insert_bounded_i_one. -> rd(heap, insert::prev).data < insert::e
+///\ @30. -> rd(heap, insert::prev).data < insert::e
 /\ (@32. \/ @33.) -> rd(heap, insert::curr).data < insert::e
 
 
