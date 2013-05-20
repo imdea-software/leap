@@ -3120,7 +3120,7 @@ let rec param_a_term (pfun:variable option -> tid option) (expr:term) : term =
   | SetElemT(setelem) -> SetElemT   (param_setelem  pfun setelem)
   | PathT(path)       -> PathT      (param_path     pfun path   )
   | MemT(mem)         -> MemT       (param_mem      pfun mem    )
-  | IntT(i)           -> IntT       (param_int      pfun i      )
+  | IntT(i)           -> IntT       (param_int_aux      pfun i      )
   | ArrayT(arr)       -> ArrayT     (param_arrays   pfun arr    )
   | AddrArrayT(arr)   -> AddrArrayT (param_addrarr  pfun arr    )
   | TidArrayT(arr)    -> TidArrayT  (param_tidarr   pfun arr    )
@@ -3145,7 +3145,7 @@ and param_addrarr (pfun:variable option -> tid option) (arr:addrarr) : addrarr =
     VarAddrArray v       -> VarAddrArray (set_var_th v (pfun (Some v)))
       (*TODO: Fix open array case for array variables *)
   | AddrArrayUp(arr,i,a) -> AddrArrayUp(param_addrarr pfun arr,
-                                        param_int pfun i,
+                                        param_int_aux pfun i,
                                         param_addr_aux pfun a)
   | CellArr c            -> CellArr (param_cell_aux pfun c)
 
@@ -3155,7 +3155,7 @@ and param_tidarr (pfun:variable option -> tid option) (arr:tidarr) : tidarr =
     VarTidArray v       -> VarTidArray (set_var_th v (pfun (Some v)))
       (*TODO: Fix open array case for array variables *)
   | TidArrayUp(arr,i,t) -> TidArrayUp(param_tidarr pfun arr,
-                                      param_int pfun i,
+                                      param_int_aux pfun i,
                                       param_tid_aux pfun t)
   | CellTids c            -> CellTids (param_cell_aux pfun c)
 
@@ -3176,7 +3176,7 @@ and param_set (pfun:variable option -> tid option) (e:set) : set =
                                       param_addr_aux pfun addr)
   | AddrToSetAt(mem,a,l) -> AddrToSetAt(param_mem pfun mem,
                                         param_addr_aux pfun a,
-                                        param_int pfun l)
+                                        param_int_aux pfun l)
   | SetArrayRd(arr,t)    -> SetArrayRd(param_arrays pfun arr, t)
 
 
@@ -3186,15 +3186,15 @@ and param_addr_aux (pfun:variable option -> tid option) (a:addr) : addr =
   | Null                      -> Null
   | Next(cell)                -> Next(param_cell_aux pfun cell)
   | NextAt(cell,l)            -> NextAt(param_cell_aux pfun cell,
-                                        param_int pfun l)
+                                        param_int_aux pfun l)
   | FirstLocked(mem,path)     -> FirstLocked(param_mem pfun mem,
                                              param_path pfun path)
   | FirstLockedAt(mem,path,l) -> FirstLockedAt(param_mem pfun mem,
                                                param_path pfun path,
-                                               param_int pfun l)
+                                               param_int_aux pfun l)
   | AddrArrayRd(arr,t)        -> AddrArrayRd(param_arrays pfun arr, t)
   | AddrArrRd(arr,l)          -> AddrArrRd(param_addrarr pfun arr,
-                                           param_int pfun l)
+                                           param_int_aux pfun l)
 
 
 and param_elem_aux (pfun:variable option -> tid option) (e:elem) : elem =
@@ -3214,10 +3214,10 @@ and param_tid_aux (pfun:variable option -> tid option) (th:tid) : tid =
   | NoThid               -> NoThid
   | CellLockId(cell)     -> CellLockId(param_cell_aux pfun cell)
   | CellLockIdAt(cell,l) -> CellLockIdAt(param_cell_aux pfun cell,
-                                         param_int pfun l)
+                                         param_int_aux pfun l)
   | ThidArrayRd(arr,t)   -> ThidArrayRd(param_arrays pfun arr, t)
   | ThidArrRd(arr,l)     -> ThidArrRd(param_tidarr pfun arr,
-                                      param_int pfun l)
+                                      param_int_aux pfun l)
 
 
 and param_cell_aux (pfun:variable option -> tid option) (c:cell) : cell =
@@ -3233,15 +3233,15 @@ and param_cell_aux (pfun:variable option -> tid option) (c:cell) : cell =
   | MkSLCell(data,aa,ta,l) -> MkSLCell(param_elem_aux pfun data,
                                        param_addrarr pfun aa,
                                        param_tidarr pfun ta,
-                                       param_int pfun l)
+                                       param_int_aux pfun l)
   | CellLock(cell,t)       -> CellLock(param_cell_aux pfun cell,
                                        param_tid_aux pfun t)
   | CellLockAt(cell,l, t)  -> CellLockAt(param_cell_aux pfun cell,
-                                         param_int pfun l,
+                                         param_int_aux pfun l,
                                          param_tid_aux pfun t)
   | CellUnlock(cell)       -> CellUnlock(param_cell_aux pfun cell)
   | CellUnlockAt(cell,l)   -> CellUnlockAt(param_cell_aux pfun cell,
-                                           param_int pfun l)
+                                           param_int_aux pfun l)
   | CellAt(mem,addr)       -> CellAt(param_mem pfun mem,
                                      param_addr_aux pfun addr)
   | CellArrayRd(arr,t)     -> CellArrayRd(param_arrays pfun arr, t)
@@ -3265,7 +3265,7 @@ and param_setint (pfun:variable option -> tid option) (s:setint) : setint =
   match s with
     VarSetInt v            -> VarSetInt (set_var_th v (pfun (Some v)))
   | EmptySetInt            -> EmptySetInt
-  | SinglInt(i)            -> SinglInt(param_int pfun i)
+  | SinglInt(i)            -> SinglInt(param_int_aux pfun i)
   | UnionInt(s1,s2)        -> UnionInt(param_setint pfun s1,
                                        param_setint pfun s2)
   | IntrInt(s1,s2)         -> IntrInt(param_setint pfun s1,
@@ -3301,7 +3301,7 @@ and param_path (pfun:variable option -> tid option) (path:path) : path =
   | GetPathAt(mem,add_from,add_to,l) -> GetPathAt(param_mem pfun mem,
                                                   param_addr_aux pfun add_from,
                                                   param_addr_aux pfun add_to,
-                                                  param_int pfun l)
+                                                  param_int_aux pfun l)
   | PathArrayRd(arr,t)           -> PathArrayRd(param_arrays pfun arr, t)
 
 
@@ -3314,19 +3314,19 @@ and param_mem (pfun:variable option -> tid option) (m:mem) : mem =
   | MemArrayRd(arr,t)    -> MemArrayRd(param_arrays pfun arr, t)
 
 
-and param_int (pfun:variable option -> tid option) (i:integer) : integer =
+and param_int_aux (pfun:variable option -> tid option) (i:integer) : integer =
   match i with
     IntVal(i)           -> IntVal(i)
   | VarInt v            -> VarInt (set_var_th v (pfun (Some v)))
-  | IntNeg(i)           -> IntNeg(param_int pfun i)
-  | IntAdd(i1,i2)       -> IntAdd(param_int pfun i1,
-                                  param_int pfun i2)
-  | IntSub(i1,i2)       -> IntSub(param_int pfun i1,
-                                  param_int pfun i2)
-  | IntMul(i1,i2)       -> IntMul(param_int pfun i1,
-                                  param_int pfun i2)
-  | IntDiv(i1,i2)       -> IntDiv(param_int pfun i1,
-                                  param_int pfun i2)
+  | IntNeg(i)           -> IntNeg(param_int_aux pfun i)
+  | IntAdd(i1,i2)       -> IntAdd(param_int_aux pfun i1,
+                                  param_int_aux pfun i2)
+  | IntSub(i1,i2)       -> IntSub(param_int_aux pfun i1,
+                                  param_int_aux pfun i2)
+  | IntMul(i1,i2)       -> IntMul(param_int_aux pfun i1,
+                                  param_int_aux pfun i2)
+  | IntDiv(i1,i2)       -> IntDiv(param_int_aux pfun i1,
+                                  param_int_aux pfun i2)
   | IntArrayRd(arr,t)   -> IntArrayRd(param_arrays pfun arr, t)
   | IntSetMin(s)        -> IntSetMin(param_setint pfun s)
   | IntSetMax(s)        -> IntSetMax(param_setint pfun s)
@@ -3346,14 +3346,14 @@ and param_atom (pfun:variable option -> tid option) (a:atom) : atom =
   | ReachAt(h,a_from,a_to,l,p) -> ReachAt(param_mem pfun h,
                                           param_addr_aux pfun a_from,
                                           param_addr_aux pfun a_to,
-                                          param_int pfun l,
+                                          param_int_aux pfun l,
                                           param_path pfun p)
   | OrderList(h,a_from,a_to)   -> OrderList(param_mem pfun h,
                                             param_addr_aux pfun a_from,
                                             param_addr_aux pfun a_to)
   | Skiplist(h,s,l,a_from,a_to)-> Skiplist(param_mem pfun h,
                                            param_set pfun s,
-                                           param_int pfun l,
+                                           param_int_aux pfun l,
                                            param_addr_aux pfun a_from,
                                            param_addr_aux pfun a_to)
   | In(a,s)                    -> In(param_addr_aux pfun a,
@@ -3364,7 +3364,7 @@ and param_atom (pfun:variable option -> tid option) (a:atom) : atom =
                                        param_setth pfun s)
   | SubsetEqTh(s_in,s_out)     -> SubsetEqTh(param_setth pfun s_in,
                                              param_setth pfun s_out)
-  | InInt(i,s)                 -> InInt(param_int pfun i,
+  | InInt(i,s)                 -> InInt(param_int_aux pfun i,
                                         param_setint pfun s)
   | SubsetEqInt(s_in,s_out)    -> SubsetEqInt(param_setint pfun s_in,
                                               param_setint pfun s_out)
@@ -3372,14 +3372,14 @@ and param_atom (pfun:variable option -> tid option) (a:atom) : atom =
                                          param_setelem pfun s)
   | SubsetEqElem(s_in,s_out)   -> SubsetEqElem(param_setelem pfun s_in,
                                                param_setelem pfun s_out)
-  | Less(i1,i2)                -> Less(param_int pfun i1,
-                                       param_int pfun i2)
-  | Greater(i1,i2)             -> Greater(param_int pfun i1,
-                                          param_int pfun i2)
-  | LessEq(i1,i2)              -> LessEq(param_int pfun i1,
-                                         param_int pfun i2)
-  | GreaterEq(i1,i2)           -> GreaterEq(param_int pfun i1,
-                                            param_int pfun i2)
+  | Less(i1,i2)                -> Less(param_int_aux pfun i1,
+                                       param_int_aux pfun i2)
+  | Greater(i1,i2)             -> Greater(param_int_aux pfun i1,
+                                          param_int_aux pfun i2)
+  | LessEq(i1,i2)              -> LessEq(param_int_aux pfun i1,
+                                         param_int_aux pfun i2)
+  | GreaterEq(i1,i2)           -> GreaterEq(param_int_aux pfun i1,
+                                            param_int_aux pfun i2)
   | LessTid(t1,t2)             -> LessTid(param_tid_aux pfun t1,
                                           param_tid_aux pfun t2)
   | LessElem(e1,e2)            -> LessElem(param_elem_aux pfun e1,
@@ -3466,6 +3466,10 @@ let param_addr (th_p:tid option) (a:addr) : addr =
 
 let param_th (th_p:tid option) (t:tid) : tid =
   param_tid_aux (param_local_only th_p) t
+
+
+let param_int (th_p:tid option) (i:integer) : integer =
+  param_int_aux (param_local_only th_p) i
 
 
 let param_variable (th_p:tid option) (v:variable) : variable =
@@ -4326,12 +4330,12 @@ let construct_term_eq_as_array (v:term)
           match (v,e) with
           | (AddrT (AddrArrRd(arr,i)), Term (AddrT a)) ->
               let primed_arr = prime_addrarr arr in
-              let modif_arr = AddrArrayT(AddrArrayUp(arr, i, a)) in
+              let modif_arr = AddrArrayT(AddrArrayUp(arr, param_int th_p i, param_addr th_p a)) in
               let assign = Literal(Atom(Eq(AddrArrayT primed_arr, modif_arr))) in
               ([AddrArrayT arr], assign)
           | (ThidT (ThidArrRd(arr,i)), Term (ThidT t)) ->
               let primed_arr = prime_tidarr arr in
-              let modif_arr = TidArrayT(TidArrayUp(arr, i, t)) in
+              let modif_arr = TidArrayT(TidArrayUp(arr, param_int th_p i, param_th th_p t)) in
               let assign = Literal(Atom(Eq(TidArrayT primed_arr, modif_arr))) in
               ([TidArrayT arr], assign)
           | _ -> construct_term_eq v th_p e
