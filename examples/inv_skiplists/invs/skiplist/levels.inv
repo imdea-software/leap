@@ -14,4 +14,4 @@ invariant [levels] :
 
 //   @insert_lvl_outrange. -> insert::lvl > maxLevel
 /\ @insert_i_lesseq_lvl_two. -> insert::i <= insert::lvl
-/\ @insert_lvl_inrange. -> insert::lvl <= maxLevel
+///\ @insert_lvl_inrange. -> insert::lvl <= maxLevel

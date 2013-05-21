@@ -113,6 +113,7 @@ assume
 :insert_i_eq_max
                                 i := maxLevel;
 :insert_bounded_i_one[
+:insert_update_higher[
                                 while (0 <= i /\ ~(valueWasIn)) do
                                   curr := prev->arr[i];
                                   while (curr != null /\ curr->data < e) do
@@ -121,8 +122,9 @@ assume
                                     curr := prev->arr[i];
                                   endwhile
                                   update[i] := prev;
-:insert_updateate_set
+:insert_update_set
                                   i := i - 1;
+:insert_update_higher]
                                   skip; //valueWasIn := (curr->data = e);
                                 endwhile
 :insert_bounded_i_one]

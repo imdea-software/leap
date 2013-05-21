@@ -12,19 +12,19 @@
 // -> skiplist_create {union:reduce2|simpl}
 
 // To check
-//-> skiplist_region [26:skiplist_prop_subsumes;
-//                    27:skiplist_prop,skiplist_next;
-//                    28:skiplist_prop,skiplist_next;
-//                    30:skiplist_prop,levels,skiplist_order;
-//                    32:skiplist_prop,skiplist_next,levels,skiplist_order;
-//                    33:skiplist_next;
-//                    36:skiplist_prop,levels,skiplist_next;
-//                    39:skiplist_prop] {union:reduce2|simpl}
+-> skiplist_region [26:skiplist_prop_subsumes;
+                    27:skiplist_prop,skiplist_next;
+                    28:skiplist_prop,skiplist_next;
+                    30:skiplist_prop,levels,skiplist_order;
+                    32:skiplist_prop,skiplist_next,levels,skiplist_order;
+                    33:skiplist_next;
+                    36:skiplist_prop,levels,skiplist_next;
+                    39:skiplist_prop] {union:reduce2|simpl}
 
 
 // -> skiplist_next [23:skiplist_prop_subsumes;
 //                  35:skiplist_prop,levels,skiplist_region] {union:reduce2|simpl}
 
 
--> skiplist_order [28:skiplist_prop,skiplist_next] {union:reduce2|simpl}
+//-> skiplist_order [28:skiplist_prop,skiplist_next] {union:reduce2|simpl}
 

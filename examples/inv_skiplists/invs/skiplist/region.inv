@@ -1,5 +1,7 @@
 param:
 
+int j
+
 invariant [skiplist_region] :
 
    @39. -> (~ insert::newCell in region)
@@ -25,6 +27,14 @@ invariant [skiplist_region] :
 /\   @insert_newCell_low_connected. -> ((insert::i = 0 \/ insert::newCell in addr2set(heap, head, insert::i - 1)) /\
               insert::update[insert::i] in region
              )
+
+///// For update array
+
+/\   (@insert_update_higher. /\ insert::i < j /\ j <= maxLevel) -> insert::update[j] in region
+/\   @insert_update_set. -> insert::update[insert::i] = insert::prev
+
+
+///// For update array
           
 
 /\   @61. -> (remove::curr in region /\
