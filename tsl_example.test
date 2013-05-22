@@ -1,0 +1,8 @@
+param:
+
+tid i
+addr otherAddr
+
+formula:
+
+(insert::prev(i) in region  \/ otherAddr in region) -> region != EmptySet

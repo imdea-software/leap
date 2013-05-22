@@ -27,6 +27,7 @@ PVD=pvd
 NUMINV=numinv
 SPEC_CHECK=spec_check
 TLL=tll
+TSL=tsl
 
 
 # Configuration
@@ -40,7 +41,7 @@ check_tool = @if ( test -e $(TOOLS)/$(1) ) || (test -h $(TOOLS)/$(1) ) ; then \
 						fi
 
 
-.PHONY: clean softclean all expand unexpand leap prog2fts pinv sinv pvd tll numinv spec_check doc tools tests
+.PHONY: clean softclean all expand unexpand leap prog2fts pinv sinv pvd tll tsl numinv spec_check doc tools tests
 
 
 # Flags
@@ -59,7 +60,7 @@ LIBS = unix,str,dynlink,bolt
 # Compilation rules
 
 all: $(PROG2FTS) $(PINV) $(SINV) $(PVD) \
-		 $(NUMINV) $(SPEC_CHECK) $(TLL) $(LEAP) $(LEAP).native $(TOOLS)
+		 $(NUMINV) $(SPEC_CHECK) $(TLL) $(TSL) $(LEAP) $(LEAP).native $(TOOLS)
 
 $(TOOLS) :
 	@echo "Verifying presence of tools in "$(TOOLS)" folder...";
@@ -105,6 +106,10 @@ $(TLL):
 	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(TLL).native
 	@ln -f -s ./_build/src/progs/tll/$(TLL).native $(TLL)
 
+$(TSL):
+	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(TSL).native
+	@ln -f -s ./_build/src/progs/tsl/$(TSL).native $(TSL)
+
 solvertest:
 	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) test.native
 
@@ -118,7 +123,7 @@ doc:
 
 clean:
 	$(OCAMLBUILD) -clean
-	rm -f $(LEAP) $(TLL) $(PROG2FTS) $(PINV) $(SINV) $(PVD) $(NUMINV) $(SPEC_CHECK) test.native
+	rm -f $(LEAP) $(TLL) $(TSL) $(PROG2FTS) $(PINV) $(SINV) $(PVD) $(NUMINV) $(SPEC_CHECK) test.native
 
 softclean:
 	rm -rf _build _log
