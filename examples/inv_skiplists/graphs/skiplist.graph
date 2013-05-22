@@ -20,10 +20,11 @@
                     32:skiplist_prop,skiplist_next,levels,skiplist_order;
                     33:skiplist_next;
                     36:skiplist_prop,levels,skiplist_next;
-                    39:skiplist_prop,skiplist_region_aux;
-                    41:skiplist_prop,levels;
-                    42:skiplist_prop;
-                    43:skiplist_prop,skiplist_region_aux] {union:reduce2|simpl}
+                    38:skiplist_region_aux; // OK
+                    39:skiplist_prop,skiplist_region_aux; //
+                    41:skiplist_prop,levels; //
+                    42:skiplist_prop; //
+                    43:skiplist_prop,skiplist_region_aux] {union:reduce2|simpl} //
 
 
 // -> skiplist_next [23:skiplist_prop_subsumes;
