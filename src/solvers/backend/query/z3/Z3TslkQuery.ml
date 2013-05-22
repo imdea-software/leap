@@ -1133,9 +1133,12 @@ module Make (K : Level.S) : TSLK_QUERY =
       if (List.exists (fun s ->
             s=Expr.Addr || s=Expr.Cell || s=Expr.Path || s=Expr.Set || s=Expr.Mem
           ) req_sorts) then z3_addr_preamble buf num_addr ;
+(*
       if (List.exists (fun s ->
             s=Expr.Thid || s=Expr.Cell || s=Expr.SetTh
           ) req_sorts) then z3_tid_preamble buf num_tid ;
+*)
+      z3_tid_preamble buf num_tid;
       if (List.exists (fun s ->
             s=Expr.Elem || s=Expr.Cell || s=Expr.Mem
           ) req_sorts) then z3_element_preamble buf num_elem ;
