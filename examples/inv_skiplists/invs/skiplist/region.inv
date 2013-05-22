@@ -31,7 +31,9 @@ invariant [skiplist_region] :
 ///// For update array
 
 /\   (@insert_update_higher. /\ insert::i < j /\ j <= maxLevel) -> insert::update[j] in region
-/\   @insert_update_set. -> insert::update[insert::i] = insert::prev
+/\    @insert_update_set. -> insert::update[insert::i] = insert::prev
+
+/\   (@insert_update_all_set. /\ 0 <= j /\ j <= maxLevel) -> insert::update[j] in region
 
 
 ///// For update array

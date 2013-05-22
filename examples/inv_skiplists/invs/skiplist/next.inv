@@ -1,6 +1,5 @@
 param:
 
-int j
 
 invariant [skiplist_next] :
 

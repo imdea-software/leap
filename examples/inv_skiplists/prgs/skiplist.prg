@@ -114,7 +114,7 @@ assume
                                 i := maxLevel;
 :insert_bounded_i_one[
 :insert_update_higher[
-                                while (0 <= i /\ ~(valueWasIn)) do
+                                while (0 <= i) do
                                   curr := prev->arr[i];
                                   while (curr != null /\ curr->data < e) do
 :insert_curr_low
@@ -124,10 +124,11 @@ assume
                                   update[i] := prev;
 :insert_update_set
                                   i := i - 1;
-:insert_update_higher]
                                   skip; //valueWasIn := (curr->data = e);
+:insert_update_higher]
                                 endwhile
 :insert_bounded_i_one]
+:insert_update_all_set[
                                 if (~ (valueWasIn)) then
                                   newCell := mallocSL(e,lvl);
 :insert_newCell_created[
@@ -147,6 +148,7 @@ assume
                                     i := i + 1;
 :insert_newCell_created]
                                   endwhile
+:insert_update_all_set]
 :insert_newCell_low_connected]
 :insert_prev_low]
 :insert_lvl_inrange]
