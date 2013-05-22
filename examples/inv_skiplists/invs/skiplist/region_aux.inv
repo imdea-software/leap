@@ -7,3 +7,6 @@ invariant [skiplist_region_aux] :
 /\ (@39. /\ 0 <= maxLevel /\ maxLevel <= maxLevel) -> insert::update[maxLevel] in region
 /\ (@39. /\ 0 <= 0 /\ 0 <= maxLevel) -> insert::update[0] in region
 
+/\ (@43. /\ 0 <= insert::i /\ insert::i <= maxLevel) -> insert::update[insert::i] in region
+/\ (@43. /\ 0 <= maxLevel /\ maxLevel <= maxLevel) -> insert::update[maxLevel] in region
+/\ (@43. /\ 0 <= 0 /\ 0 <= maxLevel) -> insert::update[0] in region
