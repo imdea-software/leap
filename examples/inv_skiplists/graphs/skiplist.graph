@@ -21,6 +21,8 @@
                     33:skiplist_next;
                     36:skiplist_prop,levels,skiplist_next;
                     39:skiplist_prop,skiplist_region_aux;
+                    41:skiplist_prop,levels;
+                    42:skiplist_prop;
                     43:skiplist_prop,skiplist_region_aux] {union:reduce2|simpl}
 
 

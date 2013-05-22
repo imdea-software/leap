@@ -21,6 +21,6 @@ invariant [skiplist_next] :
 
 
 /\ @61. -> (rd(heap, remove::update[remove::i]).arr[remove::i] = remove::curr /\
-						rd(heap, remove::curr).arr[remove::i] != null)
+            rd(heap, remove::curr).arr[remove::i] != null)
 
 //  @insert_i_eq_max. -> (insert::curr = rd(heap, insert::prev).arr[maxLevel])
