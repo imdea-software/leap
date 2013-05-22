@@ -34,6 +34,7 @@ type cond_op_t =
 
 exception WrongType of Expr.term
 exception Sort_mismatch of Expr.varId * Expr.sort * Expr.sort
+exception Boolean_var_expected of Expr.term
 exception Not_sort_name of string
 exception Duplicated_local_var of Expr.varId * Expr.sort
 exception No_main
@@ -1185,6 +1186,12 @@ literal :
     { Expr.Atom (Expr.Eq($1)) }
   | disequals
     { Expr.Atom (Expr.InEq($1)) }
+	| DOT ident DOT
+		{
+			match $2 with
+			| Expr.VarT v -> Expr.Atom(Expr.BoolVar v)
+			| _						-> RAISE(Boolean_var_expected $2)
+		}
 
 
 
@@ -1198,7 +1205,7 @@ equals :
       let t1 = $1 in
       let t2 = $3 in
 
-      parser_check_compatibility t1 t2 get_str_expr ;
+			parser_check_compatibility t1 t2 get_str_expr ;
       (inject_sort t1, inject_sort t2)
     }
 
@@ -1207,7 +1214,7 @@ equals :
 
 disequals :
   | term NOT_EQUALS term
-    {
+		{
       let get_str_expr () = sprintf "%s != %s" (Expr.term_to_str $1)
                                                (Expr.term_to_str $3) in
       let t1= $1 in

@@ -28,6 +28,9 @@ invariant [skiplist_order] :
             rd(heap, remove::curr).data = remove::e)
 
 
+/\ @remove_section. -> rd(heap, remove::curr).data = remove::e
+
+
 /\ @61. ->  (  remove::curr != null
             /\ (rd(heap, remove::curr).data > remove::e \/
                 rd(heap, remove::curr).data = remove::e)

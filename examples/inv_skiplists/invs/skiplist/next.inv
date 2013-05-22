@@ -16,7 +16,11 @@ invariant [skiplist_next] :
 
 /\ @42. -> (rd(heap, insert::newCell).arr[insert::i] = rd(heap, insert::update[insert::i]).arr[insert::i])
 
+/\ @remove_section. /\ .remove::valueWasIn. -> rd(heap, remove::curr).arr[remove::i] != null
+/\ @remove_section_true. -> .remove::valueWasIn.
+
+
 /\ @61. -> (rd(heap, remove::update[remove::i]).arr[remove::i] = remove::curr /\
-            rd(heap, remove::curr).arr[remove::i] != null)
+						rd(heap, remove::curr).arr[remove::i] != null)
 
 //  @insert_i_eq_max. -> (insert::curr = rd(heap, insert::prev).arr[maxLevel])

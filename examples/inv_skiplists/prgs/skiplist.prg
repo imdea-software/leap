@@ -187,8 +187,11 @@ assume
                                   i := i - 1;
                                 endwhile
                                 skip; //valueWasIn := curr->data = e;
-                                if (valueWasIn) then
-                                  i := removeFrom;
+:remove_section[
+																if (valueWasIn) then
+:remove_section_true[
+																	i := removeFrom;
+:remove_final_loop[
                                   while (i >= 0) do
                                     update[i]->arr[i] := curr->arr[i]
                                     $ if (i=0) then
@@ -196,8 +199,11 @@ assume
                                       endif
                                     $
                                     i := i - 1;
-                                  endwhile
-                                endif
+																	endwhile
+:remove_final_loop]
+																endif
+:remove_section_true]
+:remove_section]
                                 return (); // return (valueWasIn)
 :remove_body]
                               end
