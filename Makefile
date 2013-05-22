@@ -1,3 +1,5 @@
+BOLT_DIR=$(shell ocamlfind query bolt)
+CAMLP4LIB=${BOLT_DIR}
 PROJNAME=leap
 
 # Makefile configuration
@@ -44,7 +46,9 @@ check_tool = @if ( test -e $(TOOLS)/$(1) ) || (test -h $(TOOLS)/$(1) ) ; then \
 # Flags
 
 OCAML_FLAGS= \
-	-pp "`pwd`/prep.sh"
+	-pp "`pwd`/prep.sh" \
+        -lflags -I,"${BOLT_DIR}" \
+	-cflags -I,"${BOLT_DIR}" \
 #	-cflags -warn-error,A \
 #	-cflags -w,Z \
 
@@ -66,19 +70,19 @@ $(TOOLS) :
 
 
 $(LEAP):
-	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(LEAP).byte
+	$(OCAMLBUILD) -use-ocamlfind -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(LEAP).byte
 	@ln -f -s ./_build/src/progs/leap/$(LEAP).byte $(LEAP)
 
 $(LEAP).native:
-	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(LEAP).native
+	$(OCAMLBUILD) -use-ocamlfind -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(LEAP).native
 	@ln -f -s ./_build/src/progs/leap/$(LEAP).native $(LEAP)
 
 $(PROG2FTS):
-	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(PROG2FTS).native
+	$(OCAMLBUILD) -use-ocamlfind -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(PROG2FTS).native
 	@ln -f -s ./_build/src/progs/prog2fts/$(PROG2FTS).native $(PROG2FTS)
 
 $(PINV):
-	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(PINV).native
+	$(OCAMLBUILD) -use-ocamlfind -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(PINV).native
 	@ln -f -s ./_build/src/progs/pinv/$(PINV).native $(PINV)
 
 $(SINV):
@@ -129,3 +133,4 @@ expand:
 
 unexpand:
 	for i in `find examples/* src/* -type f | grep -v \\.swp | grep -v \\.svn` ; do unexpand -t 2 $$i > temp.file ; mv temp.file $$i; done
+
