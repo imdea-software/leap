@@ -1827,7 +1827,10 @@ struct
       output_string out header;
       for i = 1 to (Hashtbl.length vc_tbl) do
         let (f, pf, _, status, _, _, _, desc) = Hashtbl.find vc_tbl i in
-        let f_str = E.formula_to_str f in
+(*				let f_str = E.formula_to_str f in *)
+				let f_str = match f with
+										| E.Implies (ante, conse) -> sprintf ("\nantecedent:\n%s\n\nconsequent:\n%s") (E.formula_to_str ante) (E.formula_to_str conse)
+										| _ -> E.formula_to_str f in
         let status_str = valid_to_str status in
         output_string out (sprintf "--- %i : %s ---\n%s: %s\n"
                             i desc.desc  status_str f_str)
