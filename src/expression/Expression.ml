@@ -1702,14 +1702,14 @@ and formula_to_str (expr:formula) : string =
     Literal(lit)          -> (literal_to_str lit)
   | True                  -> sprintf "true"
   | False                 -> sprintf "false"
-  | And(f1, f2)           -> sprintf "%s /\\ %s" (formula_to_str f1)
-                                                 (formula_to_str f2)
-  | Or(f1,f2)             -> sprintf "%s \\/ %s" (formula_to_str f1)
-                                                 (formula_to_str f2)
-  | Not(f)                -> sprintf "~ %s" (formula_to_str f)
-  | Implies(f1,f2)        -> sprintf "%s -> %s" (formula_to_str f1)
-                                                (formula_to_str f2)
-  | Iff (f1,f2)           -> sprintf "%s <-> %s" (formula_to_str f1)
+	| And(f1, f2)           -> sprintf "(%s /\\ %s)" (formula_to_str f1)
+																								 (formula_to_str f2)
+	| Or(f1,f2)             -> sprintf "(%s \\/ %s)" (formula_to_str f1)
+																								 (formula_to_str f2)
+	| Not(f)                -> sprintf "(~ %s)" (formula_to_str f)
+	| Implies(f1,f2)        -> sprintf "(%s -> %s)" (formula_to_str f1)
+																								(formula_to_str f2)
+	| Iff (f1,f2)           -> sprintf "(%s <-> %s)" (formula_to_str f1)
                                                  (formula_to_str f2)
 
 
