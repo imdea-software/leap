@@ -23,7 +23,7 @@
                     39:skiplist_prop,skiplist_region_aux; // OK, 40 OK
                     41:skiplist_prop,levels; //
                     42:skiplist_prop; //
-                    43:skiplist_prop,skiplist_region_aux] {union:reduce2|simpl propred} // FAILS
+										43:skiplist_prop,skiplist_region_aux] {union:reduce2|simpl} // FAILS
 
 
 // -> skiplist_next [23:skiplist_prop_subsumes;
