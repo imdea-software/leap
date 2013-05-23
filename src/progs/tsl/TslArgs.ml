@@ -16,6 +16,8 @@ let use_z3        = ref false
 let coType        = ref Smp.Pruning (*Smp.Dnf*)
 let hide_pres     = ref false
 let phiFile       = ref ""
+let preTactics    = ref ""
+let postTactics   = ref ""
 
 let assignopt (valref : 'a ref) (valbool : bool ref) (aval : 'a) : unit =
   valref := aval ; valbool := true
@@ -39,9 +41,6 @@ let assigninputfile  (s:string) : unit = assignopt input_file is_input_file s
 
 let opts =
   [
-    ("-f",
-        Arg.String inputFormula,
-        "TLL formula");
     ("-z3",
         Arg.Set use_z3,
         "uses z3 as smt solver");
@@ -54,6 +53,9 @@ let opts =
     ("--show_file_info",
         Arg.Set Debug._debug_show_tmpfile_info_,
         "shows path of temporary files");
+		("--tacs",
+        Arg.String (fun s -> postTactics := s),
+        "tac_1,tac_2,...,tac_n post tactics to be applied");
     ("--debug",
         Arg.Unit setdebug,
         "debug output information");

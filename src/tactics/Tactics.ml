@@ -36,7 +36,7 @@ type task_t =
   {
     supp_form         : E.formula list     ;
     diff              : E.formula option   ;
-    rho               : E.formula          ;
+    mutable rho       : E.formula          ;
     mutable inv       : E.formula_info_t   ;
     all_voc           : E.tid list         ;
     trans_tid         : E.tid              ;
@@ -442,13 +442,11 @@ let tac_split (task:task_t) (tac:post_tac_t) : task_t list =
 
 
 let tac_simple (task:task_t) (tac:post_tac_t) : task_t list =
-(*
-  let (next_pc,tid) = List.fold_left (fun i lit ->
-                        match lit with
-                        | E.Literal (E.Atom(E.PCUpdate(j,th))) -> (j, th)
-                        | _ -> i
-                      ) (0,E.NoThid) (E.to_conj_list task.rho) in
-*)
+  let not_pc (phi:E.formula) : bool =
+    match phi with
+    | E.Literal (E.Atom (E.PC _))       -> false
+    | E.Literal (E.Atom (E.PCUpdate _)) -> false
+    | _ -> true in
 
   let nexts = List.fold_left (fun ns cs ->
                 List.fold_left (fun ns phi ->
@@ -483,6 +481,7 @@ let tac_simple (task:task_t) (tac:post_tac_t) : task_t list =
   (* TODO: Extend simplification to diff conjunction *)
   let dupp = dupl_task_with_supp task psi_simpl in
   dupp.inv <- inv_simpl;
+  dupp.rho <- E.conj_list (List.filter not_pc (E.to_conj_list task.rho));
   Printf.printf "PPPP INV : %s\n" (E.formula_to_str dupp.inv.E.formula);
   Printf.printf "PPPP INV': %s\n" (E.formula_to_str dupp.inv.E.primed);
   [dupp]

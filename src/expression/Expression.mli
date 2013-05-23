@@ -408,6 +408,7 @@ val loc_var_option :varId -> string option -> varId
 
 (* PRIMING FUNCTIONS *)
 val is_primed    : variable -> bool
+val prime_variable : variable -> variable
 (*val prime_var_name : varId -> varId*)
 val prime_addr   : addr -> addr
 val prime_elem   : elem -> elem

@@ -565,11 +565,11 @@ struct
   
   (* SATISFIABILITY STATUS PRINTER *)
   let valid_to_str : valid_t -> string = function
-    | Unverified -> "[   ?   ]"
-    | NotValid -> "[   X   ]"
-    | CheckedLocation -> "[ OK(L) ]"
-    | Checked -> "[  CHK  ]"
-    | Unneeded -> "[   -   ]"
+    | Unverified -> "// [   ?   ]"
+    | NotValid -> "// [   X   ]"
+    | CheckedLocation -> "// [ OK(L) ]"
+    | Checked -> "// [  CHK  ]"
+    | Unneeded -> "// [   -   ]"
   
   
   (* PROGRAM COUNTER FUNCTIONS *)
@@ -1829,23 +1829,25 @@ struct
         let (f, pf, _, status, _, _, _, desc) = Hashtbl.find vc_tbl i in
 (*        let f_str = E.formula_to_str f in *)
 
+        let primed_vars = List.map E.prime_variable (E.primed_vars f) in
         let loc_vars_subs = List.map (fun v ->
                               let new_name = E.variable_to_simple_str v in
                               (v, E.build_var new_name (E.var_sort v) false None None E.Normal)
-                            ) (E.all_local_vars f) in
+                            ) (E.all_local_vars f @ primed_vars) in
         let f_without_locals = E.subst_vars loc_vars_subs f in
 
         let vars_str = String.concat "\n"
                         (List.map (fun v ->
                            (E.sort_to_str (E.var_sort v)) ^ " " ^
                            (E.variable_to_str v)
-                         ) (E.all_vars f_without_locals)) in
+                         ) (E.all_vars f_without_locals @
+                            E.primed_vars f_without_locals)) in
         let f_str = match f_without_locals with
-                    | E.Implies (ante, conse) -> sprintf ("\nantecedent:\n%s\n\nconsequent:\n%s") (E.formula_to_str ante) (E.formula_to_str conse)
+                    | E.Implies (ante, conse) -> sprintf ("\n//antecedent:\n%s\n -> \n//consequent:\n%s") (E.formula_to_str ante) (E.formula_to_str conse)
                     | _ -> E.formula_to_str f_without_locals in
         let status_str = valid_to_str status in
         let full_str = "\nvars:\n\n" ^ vars_str ^ "\nformula:\n\n" ^ f_str in
-        output_string out (sprintf "--- %i : %s ---\n%s: %s\n"
+        output_string out (sprintf "// --- %i : %s ---\n%s: %s\n"
                             i desc.desc  status_str full_str)
       done;
       close_out out
@@ -2188,7 +2190,7 @@ struct
     let vcs = pinv extended_sys inv in
     let vc_list = 
       List.map (fun (vc,desc) -> (post_process vc, desc)) vcs in
-    let res = apply_dp_on_list vc_list "Checked VCs with PINV\n\n" in
+    let res = apply_dp_on_list vc_list "// Checked VCs with PINV\n\n" in
     res
   
   
@@ -2200,7 +2202,7 @@ struct
     let vcs = pinv_plus extended_sys inv in
     let vc_list = 
       List.map (fun (vc,desc) -> (post_process vc, desc)) vcs in
-    let res = apply_dp_on_list vc_list "Checked VCs with PINV+\n\n" in
+    let res = apply_dp_on_list vc_list "// Checked VCs with PINV+\n\n" in
     res
   
   
@@ -2213,7 +2215,7 @@ struct
     let vcs = spinv extended_sys supInv_list inv in
     let vc_list = 
       List.map (fun (vc, desc) -> (post_process vc, desc)) vcs in
-    let res = apply_dp_on_list vc_list "Checked VCs with SINV\n\n" in
+    let res = apply_dp_on_list vc_list "// Checked VCs with SINV\n\n" in
     res
 
 
@@ -2225,7 +2227,7 @@ struct
     let vcs = seq_binv extended_sys inv in
     let vc_list =
       List.map (fun (vc, desc) -> (post_process vc, desc)) vcs in
-    let res = apply_dp_on_list vc_list "Checked VCs with SEQINV\n\n" in
+    let res = apply_dp_on_list vc_list "// Checked VCs with SEQINV\n\n" in
     res
 
 
@@ -2237,7 +2239,7 @@ struct
     let vcs = seq_spinv extended_sys supInv_list inv in
     let vc_list = 
       List.map (fun (vc, desc) -> (post_process vc, desc)) vcs in
-    let res = apply_dp_on_list vc_list "Checked VCs with SEQSINV\n\n" in
+    let res = apply_dp_on_list vc_list "// Checked VCs with SEQSINV\n\n" in
     res
 
 
