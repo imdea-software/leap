@@ -1,10 +1,34 @@
 vars:
 
-tid i
-addr otherAddr
-addr prev
+addr head
+mem heap
+addr insert_curr_k_0
+int insert_i_k_0
+int insert_lvl_k_0
+addr insert_newCell_k_0
+addr insert_prev_k_0
+addrarr insert_update_k_0
+int j
+tid k_0
+int maxLevel
 addrSet region
+addr tail
 
 formula:
 
-(prev in region  \/ otherAddr in region) -> region != EmptySet
+(((((insert_prev_k_0 in region  /\ (insert_curr_k_0 in region  /\ 
+(insert_newCell_k_0 != null /\ ((insert_i_k_0 >= maxLevel \/ (~ 
+insert_newCell_k_0 in addr2set(heap,head,insert_i_k_0) )) /\ (((insert_i_k_0 = 0 
+\/ insert_newCell_k_0 in addr2set(heap,head,insert_i_k_0 - 1) ) /\ 
+insert_update_k_0[insert_i_k_0] in region ) /\ ((0 <= j /\ j <= maxLevel) -> 
+insert_update_k_0[j] in region )))))) /\ ((((((tail != null /\ head != null) /\ 
+head != tail) /\ skiplist(heap,region,maxLevel,head,tail)) /\ rd(heap,head).data 
+= lowestElem) /\ rd(heap,tail).data = highestElem) /\ maxLevel >= 0)) /\ 
+(insert_i_k_0 <= insert_lvl_k_0 /\ insert_lvl_k_0 <= maxLevel)) /\ 
+(((((insert_prev_k_0 in region  /\ insert_curr_k_0 in region ) /\ 
+insert_newCell_k_0 != null) /\ (insert_i_k_0 >= maxLevel \/ (~ 
+insert_newCell_k_0 in addr2set(heap,head,insert_i_k_0) ))) /\ ((insert_i_k_0 = 0 
+\/ insert_newCell_k_0 in addr2set(heap,head,insert_i_k_0 - 1) ) /\ 
+insert_update_k_0[insert_i_k_0] in region )) /\ ((0 <= j /\ j <= maxLevel) -> 
+insert_update_k_0[j] in region ))) /\ true)
+
