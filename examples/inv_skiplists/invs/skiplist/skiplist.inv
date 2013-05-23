@@ -1,4 +1,4 @@
-param:
+vars:
 
 invariant [skiplist_prop] :
 

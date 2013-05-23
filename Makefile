@@ -71,19 +71,19 @@ $(TOOLS) :
 
 
 $(LEAP):
-	$(OCAMLBUILD) -use-ocamlfind -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(LEAP).byte
+	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(LEAP).byte
 	@ln -f -s ./_build/src/progs/leap/$(LEAP).byte $(LEAP)
 
 $(LEAP).native:
-	$(OCAMLBUILD) -use-ocamlfind -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(LEAP).native
+	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(LEAP).native
 	@ln -f -s ./_build/src/progs/leap/$(LEAP).native $(LEAP)
 
 $(PROG2FTS):
-	$(OCAMLBUILD) -use-ocamlfind -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(PROG2FTS).native
+	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(PROG2FTS).native
 	@ln -f -s ./_build/src/progs/prog2fts/$(PROG2FTS).native $(PROG2FTS)
 
 $(PINV):
-	$(OCAMLBUILD) -use-ocamlfind -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(PINV).native
+	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(PINV).native
 	@ln -f -s ./_build/src/progs/pinv/$(PINV).native $(PINV)
 
 $(SINV):

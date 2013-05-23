@@ -1300,9 +1300,16 @@ let rec variable_to_str (var:variable) : string =
 
 and variable_to_simple_str (var:variable) : string =
   let (id,s,pr,th,p,k) = var in
-  let var_str = sprintf "%s%s" (loc_var_option id p) (tid_option_to_str th)
+  
+  let p_str = match p with
+              | None -> ""
+              | Some proc -> proc ^ "_" in
+  let pr_str = if pr then "_prime" else "" in
+  let th_str = match th with
+               | None -> ""
+               | Some t -> "_" ^ (tid_to_str t)
   in
-    if pr then var_str ^ "'" else var_str
+    p_str ^ id ^ pr_str ^ th_str
 
 
 and tid_to_str (th:tid) : string =
@@ -1529,12 +1536,12 @@ and set_to_str (expr:set) : string =
     VarSet v            -> variable_to_str v
   | EmptySet            -> "EmptySet"
   | Singl(addr)         -> sprintf "{ %s }" (addr_to_str addr)
-  | Union(s1,s2)        -> sprintf "%s Union %s" (set_to_str s1)
+  | Union(s1,s2)        -> sprintf "Union(%s,%s)" (set_to_str s1)
+                                                  (set_to_str s2)
+  | Intr(s1,s2)         -> sprintf "Intr(%s,%s)" (set_to_str s1)
                                                  (set_to_str s2)
-  | Intr(s1,s2)         -> sprintf "%s Intr %s" (set_to_str s1)
-                                                (set_to_str s2)
-  | Setdiff(s1,s2)      -> sprintf "%s SetDiff %s" (set_to_str s1)
-                                                   (set_to_str s2)
+  | Setdiff(s1,s2)      -> sprintf "SetDiff(%s,%s)" (set_to_str s1)
+                                                    (set_to_str s2)
   | PathToSet(path)     -> sprintf "path2set(%s)" (path_to_str path)
   | AddrToSet(mem,addr) -> sprintf "addr2set(%s,%s)" (mem_to_str mem)
                                                      (addr_to_str addr)
@@ -1550,12 +1557,12 @@ and setth_to_str (expr:setth) : string =
     VarSetTh v          -> variable_to_str v
   | EmptySetTh          -> "EmptySetTh"
   | SinglTh(th)         -> sprintf "SinglTh(%s)" (tid_to_str th)
-  | UnionTh(s_1,s_2)    -> sprintf "%s UnionTh %s" (setth_to_str s_1)
+  | UnionTh(s_1,s_2)    -> sprintf "UnionTh(%s,%s)" (setth_to_str s_1)
+                                                    (setth_to_str s_2)
+  | IntrTh(s_1,s_2)     -> sprintf "IntrTh(%s,%s)" (setth_to_str s_1)
                                                    (setth_to_str s_2)
-  | IntrTh(s_1,s_2)     -> sprintf "%s IntrTh %s" (setth_to_str s_1)
-                                                  (setth_to_str s_2)
-  | SetdiffTh(s_1,s_2)  -> sprintf "%s SetDiffTh %s" (setth_to_str s_1)
-                                                     (setth_to_str s_2)
+  | SetdiffTh(s_1,s_2)  -> sprintf "SetDiffTh(%s,%s)" (setth_to_str s_1)
+                                                      (setth_to_str s_2)
   | SetThArrayRd(arr,t) -> sprintf "%s%s" (arrays_to_str arr)
                                           (param_tid_to_str t)
 
@@ -1565,12 +1572,12 @@ and setint_to_str (expr:setint) : string =
     VarSetInt v          -> variable_to_str v
   | EmptySetInt          -> "EmptySetInt"
   | SinglInt(th)         -> sprintf "SinglInt(%s)" (integer_to_str th)
-  | UnionInt(s_1,s_2)    -> sprintf "%s UnionInt %s" (setint_to_str s_1)
+  | UnionInt(s_1,s_2)    -> sprintf "UnionInt(%s,%s)" (setint_to_str s_1)
+                                                      (setint_to_str s_2)
+  | IntrInt(s_1,s_2)     -> sprintf "IntrInt(%s,%s)" (setint_to_str s_1)
                                                      (setint_to_str s_2)
-  | IntrInt(s_1,s_2)     -> sprintf "%s IntrInt %s" (setint_to_str s_1)
-                                                    (setint_to_str s_2)
-  | SetdiffInt(s_1,s_2)  -> sprintf "%s SetDiffInt %s" (setint_to_str s_1)
-                                                       (setint_to_str s_2)
+  | SetdiffInt(s_1,s_2)  -> sprintf "SetDiffInt(%s,%s)" (setint_to_str s_1)
+                                                        (setint_to_str s_2)
   | SetIntArrayRd(arr,t) -> sprintf "%s%s" (arrays_to_str arr)
                                            (param_tid_to_str t)
 
@@ -1580,14 +1587,14 @@ and setelem_to_str (expr:setelem) : string =
     VarSetElem v          -> variable_to_str v
   | EmptySetElem          -> "EmptySetElem"
   | SinglElem(e)          -> sprintf "SinglElem(%s)" (elem_to_str e)
-  | UnionElem(s_1,s_2)    -> sprintf "%s UnionElem %s" (setelem_to_str s_1)
+  | UnionElem(s_1,s_2)    -> sprintf "UnionElem(%s,%s)" (setelem_to_str s_1)
+                                                        (setelem_to_str s_2)
+  | IntrElem(s_1,s_2)     -> sprintf "IntrElem(%s,%s)" (setelem_to_str s_1)
                                                        (setelem_to_str s_2)
-  | IntrElem(s_1,s_2)     -> sprintf "%s IntrElem %s" (setelem_to_str s_1)
-                                                      (setelem_to_str s_2)
-  | SetdiffElem(s_1,s_2)  -> sprintf "%s SetDiffElem %s" (setelem_to_str s_1)
+  | SetdiffElem(s_1,s_2)  -> sprintf "SetDiffElem(%s,%s)" (setelem_to_str s_1)
                                                          (setelem_to_str s_2)
-  | SetToElems(s,m)       -> sprintf "SetToElems (%s,%s)" (set_to_str s)
-                                                          (mem_to_str m)
+  | SetToElems(s,m)       -> sprintf "set2elem(%s,%s)" (set_to_str s)
+                                                       (mem_to_str m)
   | SetElemArrayRd(arr,t) -> sprintf "%s%s" (arrays_to_str arr)
                                             (param_tid_to_str t)
 
@@ -1596,7 +1603,7 @@ and cell_to_str (expr:cell) : string =
   let list_str f xs = String.concat "," (List.map f xs) in
   match expr with
     VarCell v              -> variable_to_str v
-  | Error                  -> "Error"
+  | Error                  -> "error"
   | MkCell(data,addr,th)   -> sprintf "mkcell(%s,%s,%s)"
                                            (elem_to_str data)
                                            (addr_to_str addr)
@@ -1616,7 +1623,7 @@ and cell_to_str (expr:cell) : string =
                                                         (integer_to_str l)
                                                         (tid_to_str t)
   | CellUnlock(cell)      -> sprintf "%s.unlock" (cell_to_str cell)
-  | CellUnlockAt(cell,l)  -> sprintf "%s.unlock[%s]" (cell_to_str cell)
+  | CellUnlockAt(cell,l)  -> sprintf "%s.unlockat(%s)" (cell_to_str cell)
                                                      (integer_to_str l)
   | CellAt(mem,addr)      -> sprintf "rd(%s,%s)" (mem_to_str mem)
                                                  (addr_to_str addr)
@@ -1629,8 +1636,8 @@ and addr_to_str (expr:addr) :string =
     VarAddr v                 -> variable_to_str v
   | Null                      -> "null"
   | Next(cell)                -> sprintf "%s.next" (cell_to_str cell)
-  | NextAt(cell,l)            -> sprintf "%s.nextat[%s]" (cell_to_str cell)
-                                                         (integer_to_str l)
+  | NextAt(cell,l)            -> sprintf "%s.arr[%s]" (cell_to_str cell)
+                                                      (integer_to_str l)
   | FirstLocked(mem,path)     -> sprintf "firstlocked(%s,%s)"
                                             (mem_to_str mem)
                                             (path_to_str path)
@@ -1702,14 +1709,14 @@ and formula_to_str (expr:formula) : string =
     Literal(lit)          -> (literal_to_str lit)
   | True                  -> sprintf "true"
   | False                 -> sprintf "false"
-	| And(f1, f2)           -> sprintf "(%s /\\ %s)" (formula_to_str f1)
-																								 (formula_to_str f2)
-	| Or(f1,f2)             -> sprintf "(%s \\/ %s)" (formula_to_str f1)
-																								 (formula_to_str f2)
-	| Not(f)                -> sprintf "(~ %s)" (formula_to_str f)
-	| Implies(f1,f2)        -> sprintf "(%s -> %s)" (formula_to_str f1)
-																								(formula_to_str f2)
-	| Iff (f1,f2)           -> sprintf "(%s <-> %s)" (formula_to_str f1)
+  | And(f1, f2)           -> sprintf "(%s /\\ %s)" (formula_to_str f1)
+                                                 (formula_to_str f2)
+  | Or(f1,f2)             -> sprintf "(%s \\/ %s)" (formula_to_str f1)
+                                                 (formula_to_str f2)
+  | Not(f)                -> sprintf "(~ %s)" (formula_to_str f)
+  | Implies(f1,f2)        -> sprintf "(%s -> %s)" (formula_to_str f1)
+                                                (formula_to_str f2)
+  | Iff (f1,f2)           -> sprintf "(%s <-> %s)" (formula_to_str f1)
                                                  (formula_to_str f2)
 
 
@@ -1852,14 +1859,14 @@ let pc_to_str (p:pc_t) : string =
 
 let sort_to_str (s:sort) : string =
   match s with
-      Set       -> "set"
+      Set       -> "addrSet"
     | Elem      -> "elem"
     | Thid      -> "tid"
     | Addr      -> "addr"
     | Cell      -> "cell"
-    | SetTh     -> "setTh"
-    | SetInt    -> "setInt"
-    | SetElem   -> "setElem"
+    | SetTh     -> "tidSet"
+    | SetInt    -> "intSet"
+    | SetElem   -> "elemSet"
     | Path      -> "path"
     | Mem       -> "mem"
     | Bool      -> "bool"
@@ -3901,6 +3908,333 @@ and subst_tid (subs:tid_subst_t) (phi:formula) : formula =
 let subst_to_str (sub:tid_subst_t) : string =
   "{" ^ (String.concat ", " $
          List.map (fun (i,j) -> (tid_to_str j)^"<-"^(tid_to_str i)) sub) ^ "}"
+
+
+(* VARIABLE SUBSTITUTION FUNCTIONS *)
+
+let rec subst_variable (subs:(variable * variable) list) (v:variable) : variable =
+  try
+    List.assoc v subs
+  with _ -> v
+
+
+and subst_vars_term (subs:(variable * variable) list) (expr:term) : term =
+  match expr with
+    VarT v              -> VarT (subst_variable subs v)
+  | SetT(set)           -> SetT(subst_vars_set subs set)
+  | AddrT(addr)         -> AddrT(subst_vars_addr subs addr)
+  | ElemT(elem)         -> ElemT(subst_vars_elem subs elem)
+  | ThidT(th)           -> ThidT(subst_vars_th subs th)
+  | CellT(cell)         -> CellT(subst_vars_cell subs cell)
+  | SetThT(setth)       -> SetThT(subst_vars_setth subs setth)
+  | SetIntT(setint)     -> SetIntT(subst_vars_setint subs setint)
+  | SetElemT(setelem)   -> SetElemT(subst_vars_setelem subs setelem)
+  | PathT(path)         -> PathT(subst_vars_path subs path)
+  | MemT(mem)           -> MemT(subst_vars_mem subs mem)
+  | IntT(i)             -> IntT(subst_vars_int subs i)
+  | ArrayT(arr)         -> ArrayT(subst_vars_array subs arr)
+  | AddrArrayT(arr)     -> AddrArrayT(subst_vars_addrarr subs arr)
+  | TidArrayT(arr)      -> TidArrayT(subst_vars_tidarr subs arr)
+
+
+and subst_vars_expr (subs:(variable * variable) list) (expr:expr_t) : expr_t =
+  match expr with
+    Term t    -> Term (subst_vars_term subs t)
+  | Formula b -> Formula (subst_vars subs b)
+
+
+and subst_vars_array (subs:(variable * variable) list) (expr:arrays) : arrays =
+  match expr with
+    VarArray v       -> VarArray (subst_variable subs v)
+  | ArrayUp(arr,t,e) -> ArrayUp(subst_vars_array subs arr, t,
+                                subst_vars_expr subs e)
+
+
+and subst_vars_addrarr (subs:(variable * variable) list) (expr:addrarr) : addrarr =
+  match expr with
+    VarAddrArray v       -> VarAddrArray (subst_variable subs v)
+  | AddrArrayUp(arr,i,a) -> AddrArrayUp(subst_vars_addrarr subs arr,
+                                        subst_vars_int subs i,
+                                        subst_vars_addr subs a)
+  | CellArr c            -> CellArr(subst_vars_cell subs c)
+
+
+and subst_vars_tidarr (subs:(variable * variable) list) (expr:tidarr) : tidarr =
+  match expr with
+    VarTidArray v       -> VarTidArray (subst_variable subs v)
+  | TidArrayUp(arr,i,t) -> TidArrayUp(subst_vars_tidarr subs arr,
+                                      subst_vars_int subs i,
+                                      subst_vars_th subs t)
+  | CellTids c            -> CellTids (subst_vars_cell subs c)
+
+
+and subst_vars_set (subs:(variable * variable) list) (e:set) : set =
+  match e with
+    VarSet v            -> VarSet (subst_variable subs v)
+  | EmptySet            -> EmptySet
+  | Singl(addr)         -> Singl(subst_vars_addr subs addr)
+  | Union(s1,s2)        -> Union(subst_vars_set subs s1, subst_vars_set subs s2)
+  | Intr(s1,s2)         -> Intr(subst_vars_set subs s1, subst_vars_set subs s2)
+  | Setdiff(s1,s2)      -> Setdiff(subst_vars_set subs s1,
+                                   subst_vars_set subs s2)
+  | PathToSet(path)     -> PathToSet(subst_vars_path subs path)
+  | AddrToSet(mem,addr) -> AddrToSet(subst_vars_mem subs mem,
+                                     subst_vars_addr subs addr)
+  | AddrToSetAt(mem,a,l)-> AddrToSetAt(subst_vars_mem subs mem,
+                                       subst_vars_addr subs a,
+                                       subst_vars_int subs l)
+  | SetArrayRd(arr,t)   -> SetArrayRd(subst_vars_array subs arr, t)
+
+
+and subst_vars_addr (subs:(variable * variable) list) (a:addr) : addr =
+  match a with
+    VarAddr v                 -> VarAddr(subst_variable subs v)
+  | Null                      -> Null
+  | Next(cell)                -> Next(subst_vars_cell subs cell)
+  | NextAt(cell,l)            -> NextAt(subst_vars_cell subs cell,
+                                        subst_vars_int subs l)
+  | FirstLocked(mem,path)     -> FirstLocked(subst_vars_mem subs mem,
+                                             subst_vars_path subs path)
+  | FirstLockedAt(mem,path,l) -> FirstLockedAt(subst_vars_mem subs mem,
+                                               subst_vars_path subs path,
+                                               subst_vars_int subs l)
+  | AddrArrayRd(arr,t)        -> AddrArrayRd(subst_vars_array subs arr, t)
+  | AddrArrRd(arr,i)          -> AddrArrRd(subst_vars_addrarr subs arr,
+                                           subst_vars_int subs i)
+
+
+and subst_vars_elem (subs:(variable * variable) list) (e:elem) : elem =
+  match e with
+    VarElem v             -> VarElem(subst_variable subs v)
+  | CellData(cell)        -> CellData(subst_vars_cell subs cell)
+  | ElemArrayRd(arr,t)    -> ElemArrayRd(subst_vars_array subs arr, t)
+  | HavocListElem         -> HavocListElem
+  | HavocSkiplistElem     -> HavocSkiplistElem
+  | LowestElem            -> LowestElem
+  | HighestElem           -> HighestElem
+
+
+and subst_vars_cell (subs:(variable * variable) list) (c:cell) : cell =
+  match c with
+    VarCell v              -> VarCell (subst_variable subs v)
+  | Error                  -> Error
+  | MkCell(data,addr,th)   -> MkCell(subst_vars_elem subs data,
+                                     subst_vars_addr subs addr,
+                                     subst_vars_th subs th)
+  | MkSLKCell(data,aa,tt)  -> MkSLKCell(subst_vars_elem subs data,
+                                        List.map (subst_vars_addr subs) aa,
+                                        List.map (subst_vars_th subs) tt)
+  | MkSLCell(data,aa,ta,l) -> MkSLCell(subst_vars_elem subs data,
+                                       subst_vars_addrarr subs aa,
+                                       subst_vars_tidarr subs ta,
+                                       subst_vars_int subs l)
+  | CellLock(cell,t)       -> CellLock(subst_vars_cell subs cell,
+                                       subst_vars_th subs t)
+  | CellLockAt(cell,l,t)   -> CellLockAt(subst_vars_cell subs cell,
+                                         subst_vars_int subs l,
+                                         subst_vars_th subs t)
+  | CellUnlock(cell)       -> CellUnlock(subst_vars_cell subs cell)
+  | CellUnlockAt(cell,l)   -> CellUnlockAt(subst_vars_cell subs cell,
+                                           subst_vars_int subs l)
+  | CellAt(mem,addr)       -> CellAt(subst_vars_mem subs mem,
+                                     subst_vars_addr subs addr)
+  | CellArrayRd(arr,t)     -> CellArrayRd(subst_vars_array subs arr, t)
+
+
+and subst_vars_setth (subs:(variable * variable) list) (s:setth) : setth =
+  match s with
+    VarSetTh v             -> VarSetTh(subst_variable subs v)
+  | EmptySetTh             -> EmptySetTh
+  | SinglTh(th)            -> SinglTh(subst_vars_th subs th)
+  | UnionTh(s1,s2)         -> UnionTh(subst_vars_setth subs s1,
+                                      subst_vars_setth subs s2)
+  | IntrTh(s1,s2)          -> IntrTh(subst_vars_setth subs s1,
+                                     subst_vars_setth subs s2)
+  | SetdiffTh(s1,s2)       -> SetdiffTh(subst_vars_setth subs s1,
+                                        subst_vars_setth subs s2)
+  | SetThArrayRd(arr,t)    -> SetThArrayRd(subst_vars_array subs arr, t)
+
+
+and subst_vars_setint (subs:(variable * variable) list) (s:setint) : setint =
+  match s with
+    VarSetInt v             -> VarSetInt(subst_variable subs v)
+  | EmptySetInt             -> EmptySetInt
+  | SinglInt(i)             -> SinglInt(subst_vars_int subs i)
+  | UnionInt(s1,s2)         -> UnionInt(subst_vars_setint subs s1,
+                                        subst_vars_setint subs s2)
+  | IntrInt(s1,s2)          -> IntrInt(subst_vars_setint subs s1,
+                                       subst_vars_setint subs s2)
+  | SetdiffInt(s1,s2)       -> SetdiffInt(subst_vars_setint subs s1,
+                                          subst_vars_setint subs s2)
+  | SetIntArrayRd(arr,t)    -> SetIntArrayRd(subst_vars_array subs arr, t)
+
+
+and subst_vars_setelem (subs:(variable * variable) list) (s:setelem) : setelem =
+  match s with
+    VarSetElem v             -> VarSetElem(subst_variable subs v)
+  | EmptySetElem             -> EmptySetElem
+  | SinglElem(e)             -> SinglElem(subst_vars_elem subs e)
+  | UnionElem(s1,s2)         -> UnionElem(subst_vars_setelem subs s1,
+                                          subst_vars_setelem subs s2)
+  | IntrElem(s1,s2)          -> IntrElem(subst_vars_setelem subs s1,
+                                         subst_vars_setelem subs s2)
+  | SetdiffElem(s1,s2)       -> SetdiffElem(subst_vars_setelem subs s1,
+                                            subst_vars_setelem subs s2)
+  | SetToElems(s,m)          -> SetToElems(subst_vars_set subs s,
+                                           subst_vars_mem subs m)
+  | SetElemArrayRd(arr,t)    -> SetElemArrayRd(subst_vars_array subs arr, t)
+
+
+and subst_vars_path (subs:(variable * variable) list) (p:path) : path =
+  match p with
+    VarPath v                        -> VarPath(subst_variable subs v)
+  | Epsilon                          -> Epsilon
+  | SimplePath(addr)                 -> SimplePath(subst_vars_addr subs addr)
+  | GetPath(mem,add_from,add_to)     -> GetPath(subst_vars_mem subs mem,
+                                                subst_vars_addr subs add_from,
+                                                subst_vars_addr subs add_to)
+  | GetPathAt(mem,add_from,add_to,l) -> GetPathAt(subst_vars_mem subs mem,
+                                                  subst_vars_addr subs add_from,
+                                                  subst_vars_addr subs add_to,
+                                                  subst_vars_int subs l)
+  | PathArrayRd(arr,t)           -> PathArrayRd(subst_vars_array subs arr, t)
+
+
+and subst_vars_mem (subs:(variable * variable) list) (m:mem) : mem =
+  match m with
+    VarMem v             -> VarMem(subst_variable subs v)
+  | Update(mem,add,cell) -> Update(subst_vars_mem subs mem,
+                                   subst_vars_addr subs add,
+                                   subst_vars_cell subs cell)
+  | MemArrayRd(arr,t)   -> MemArrayRd(subst_vars_array subs arr, t)
+
+
+and subst_vars_int (subs:(variable * variable) list) (i:integer) : integer =
+  match i with
+    IntVal(i)         -> IntVal(i)
+  | VarInt v          -> VarInt(subst_variable subs v)
+  | IntNeg(i)         -> IntNeg(subst_vars_int subs i)
+  | IntAdd(i1,i2)     -> IntAdd(subst_vars_int subs i1, subst_vars_int subs i2)
+  | IntSub(i1,i2)     -> IntSub(subst_vars_int subs i1, subst_vars_int subs i2)
+  | IntMul(i1,i2)     -> IntMul(subst_vars_int subs i1, subst_vars_int subs i2)
+  | IntDiv(i1,i2)     -> IntDiv(subst_vars_int subs i1, subst_vars_int subs i2)
+  | IntArrayRd(arr,t) -> IntArrayRd(subst_vars_array subs arr, t)
+  | IntSetMin(s)      -> IntSetMin(subst_vars_setint subs s)
+  | IntSetMax(s)      -> IntSetMax(subst_vars_setint subs s)
+  | CellMax(c)        -> CellMax(subst_vars_cell subs c)
+  | HavocLevel        -> HavocLevel
+
+
+and subst_vars_th (subs:(variable * variable) list) (t:tid) : tid =
+  match t with
+  | VarTh v -> VarTh (subst_variable subs v)
+  | NoThid -> NoThid
+  | CellLockId c -> CellLockId (subst_vars_cell subs c)
+  | CellLockIdAt (c,l) -> CellLockIdAt (subst_vars_cell subs c,
+                                        subst_vars_int subs l)
+  | ThidArrayRd (a,p) -> ThidArrayRd (subst_vars_array subs a,
+                                      subst_vars_th subs p)
+  | ThidArrRd (a,i) -> ThidArrRd (subst_vars_tidarr subs a,
+                                  subst_vars_int subs i)
+
+
+and subst_vars_atom (subs:(variable * variable) list) (a:atom) : atom =
+  match a with
+    Append(p1,p2,pres)         -> Append(subst_vars_path subs p1,
+                                         subst_vars_path subs p2,
+                                         subst_vars_path subs pres)
+  | Reach(h,add_from,add_to,p) -> Reach(subst_vars_mem subs h,
+                                        subst_vars_addr subs add_from,
+                                        subst_vars_addr subs add_to,
+                                        subst_vars_path subs p)
+  | ReachAt(h,a_from,a_to,l,p) -> ReachAt(subst_vars_mem subs h,
+                                          subst_vars_addr subs a_from,
+                                          subst_vars_addr subs a_to,
+                                          subst_vars_int subs l,
+                                          subst_vars_path subs p)
+  | OrderList(h,a_from,a_to)   -> OrderList(subst_vars_mem subs h,
+                                            subst_vars_addr subs a_from,
+                                            subst_vars_addr subs a_to)
+  | Skiplist(h,s,l,a_from,a_to)-> Skiplist(subst_vars_mem subs h,
+                                           subst_vars_set subs s,
+                                           subst_vars_int subs l,
+                                           subst_vars_addr subs a_from,
+                                           subst_vars_addr subs a_to)
+  | In(a,s)                    -> In(subst_vars_addr subs a,
+                                     subst_vars_set subs s)
+  | SubsetEq(s_in,s_out)       -> SubsetEq(subst_vars_set subs s_in,
+                                           subst_vars_set subs s_out)
+  | InTh(th,s)                 -> InTh(subst_vars_th subs th,
+                                       subst_vars_setth subs s)
+  | SubsetEqTh(s_in,s_out)     -> SubsetEqTh(subst_vars_setth subs s_in,
+                                             subst_vars_setth subs s_out)
+  | InInt(i,s)                 -> InInt(subst_vars_int subs i,
+                                        subst_vars_setint subs s)
+  | SubsetEqInt(s_in,s_out)    -> SubsetEqInt(subst_vars_setint subs s_in,
+                                              subst_vars_setint subs s_out)
+  | InElem(e,s)                -> InElem(subst_vars_elem subs e,
+                                         subst_vars_setelem subs s)
+  | SubsetEqElem(s_in,s_out)   -> SubsetEqElem(subst_vars_setelem subs s_in,
+                                               subst_vars_setelem subs s_out)
+  | Less(i1,i2)                -> Less(subst_vars_int subs i1,
+                                       subst_vars_int subs i2)
+  | Greater(i1,i2)             -> Greater(subst_vars_int subs i1,
+                                          subst_vars_int subs i2)
+  | LessEq(i1,i2)              -> LessEq(subst_vars_int subs i1,
+                                         subst_vars_int subs i2)
+  | GreaterEq(i1,i2)           -> GreaterEq(subst_vars_int subs i1,
+                                            subst_vars_int subs i2)
+  | LessTid(t1,t2)             -> LessTid(subst_vars_th subs t1,
+                                          subst_vars_th subs t2)
+  | LessElem(e1,e2)            -> LessElem(subst_vars_elem subs e1,
+                                           subst_vars_elem subs e2)
+  | GreaterElem(e1,e2)         -> GreaterElem(subst_vars_elem subs e1,
+                                              subst_vars_elem subs e2)
+  | Eq(exp)                    -> Eq(subst_vars_eq subs exp)
+  | InEq(exp)                  -> InEq(subst_vars_ineq subs exp)
+  | BoolVar v                  -> BoolVar(set_var_th v
+                                  (Option.lift (subst_vars_th subs) (var_th v)))
+  | BoolArrayRd(arr,t)         -> BoolArrayRd(subst_vars_array subs arr, t)
+  | PC (pc,t,primed)           -> PC (pc, Option.lift(subst_vars_th subs) t,
+                                      primed)
+  | PCUpdate (pc,t)            -> PCUpdate (pc, subst_vars_th subs t)
+  | PCRange (pc1,pc2,t,primed) -> PCRange (pc1, pc2, Option.lift(subst_vars_th subs) t,
+                                            primed)
+
+
+and subst_vars_literal (subs:(variable * variable) list) (l:literal) : literal =
+  match l with
+    Atom a    -> Atom (subst_vars_atom subs a)
+  | NegAtom a -> NegAtom (subst_vars_atom subs a)
+
+
+and subst_vars_eq (subs:(variable * variable) list) ((t1,t2):eq) : eq =
+  (subst_vars_term subs t1, subst_vars_term subs t2)
+
+
+and subst_vars_ineq (subs:(variable * variable) list) ((t1,t2):diseq) : diseq =
+  (subst_vars_term subs t1, subst_vars_term subs t2)
+
+
+and subst_vars_conjunctive_formula (subs:(variable * variable) list)
+                                   (cf:conjunctive_formula)
+                                    : conjunctive_formula =
+  match cf with
+    FalseConj -> FalseConj
+  | TrueConj  -> TrueConj
+  | Conj ls   -> Conj (List.map (subst_vars_literal subs) ls)
+
+
+and subst_vars (subs:(variable * variable) list) (phi:formula) : formula =
+  match phi with
+    Literal(lit)   -> Literal(subst_vars_literal subs lit)
+  | True           -> True
+  | False          -> False
+  | And(f1,f2)     -> And(subst_vars subs f1, subst_vars subs f2)
+  | Or(f1,f2)      -> Or(subst_vars subs f1, subst_vars subs f2)
+  | Not(f)         -> Not(subst_vars subs f)
+  | Implies(f1,f2) -> Implies(subst_vars subs f1, subst_vars subs f2)
+  | Iff (f1,f2)    -> Iff(subst_vars subs f1, subst_vars subs f2)
 
 
 (* FORMULA MANIPULATION FUNCTIONS *)

@@ -1,4 +1,4 @@
-param:
+vars:
 
 invariant [prev_less] :
 

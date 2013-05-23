@@ -1,10 +1,13 @@
-param:
+vars:
 
 int j
 
 invariant [skiplist_order] :
 
-   @main_e. -> (main::e != lowestElem /\ main::e != highestElem)
+   rd(heap, head).data = lowestElem
+/\ rd(heap, tail).data = highestElem
+
+/\ @main_e. -> (main::e != lowestElem /\ main::e != highestElem)
 /\ @insert_body. -> (insert::e != lowestElem /\ insert::e != lowestElem)
 /\ @remove_body. -> (remove::e != lowestElem /\ remove::e != highestElem)
 

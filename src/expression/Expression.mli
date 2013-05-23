@@ -478,6 +478,7 @@ val tid_to_str        : tid         -> string
 val tid_option_to_str : tid option  -> string
 
 val variable_to_str  : variable     -> string
+val variable_to_simple_str : variable -> string
 
 
 (* CONVERSION FUNCTIONS *)
@@ -530,6 +531,9 @@ val subst_codomain : tid_subst_t -> ThreadSet.t
 val subst_domain_in : tid list -> tid_subst_t -> bool
 val subst_codomain_in : tid list -> tid_subst_t -> bool
 val subst_full_assign : tid list -> tid_subst_t -> bool
+
+(* VARIABLE SUBSTITUTION FUNCTIONS *)
+val subst_vars : (variable * variable) list -> formula -> formula
 
 (* FORMULA MANIPULATION FUNCTIONS *)
 val conj_list : formula list -> formula

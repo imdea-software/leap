@@ -2,12 +2,13 @@ open LeapLib
 open Printf
 
 module E = Expression
+module GenSet = LeapGenericSet
 
 type solve_tactic_t = Cases
 
 type pre_tac_t = Full | Reduce | Reduce2
 
-type post_tac_t = SplitConseq | SimplPCVoc
+type post_tac_t = SplitConseq | SimplPCVoc | PropReduc
 
 type t =
   {
@@ -362,6 +363,7 @@ let gen_support (phi_list:E.formula list)
 
 (* Conversion function *)
 let task_to_formula (hide_pres:bool) (info:task_t) : (E.formula * res_info_t) =
+  let _ = Printf.printf "NNNN SUPPORT FORMULA: %s\n" (String.concat " ;;; " (List.map E.formula_to_str info.supp_form)) in
   let diff_list = match info.diff with
                     None -> []
                   | Some phi -> [phi] in
@@ -486,6 +488,73 @@ let tac_simple (task:task_t) (tac:post_tac_t) : task_t list =
   [dupp]
 
 
+
+let tac_prop_reduc (task:task_t) (tac:post_tac_t) : task_t list =
+  let extract_candidates (phi:E.formula) : E.literal GenSet.t =
+    let l_set = GenSet.empty () in
+    let cs = E.to_conj_list phi in
+    List.iter (fun f -> match f with
+                        | E.Literal l -> GenSet.add l_set l
+                        | _           -> ()
+    ) cs;
+    l_set
+  in
+
+  let initial_phis = task.inv.E.formula ::
+                     task.rho ::
+                     (Option.default E.True task.diff) ::
+                     task.supp_form in
+  let literal_set = List.fold_left (fun set f ->
+                      GenSet.union set (extract_candidates f)
+                    ) (GenSet.empty ()) initial_phis in
+  let simpl_task (l:E.literal) (t:task_t) : task_t =
+    let rec simpl_formula (phi:E.formula) : E.formula =
+      match phi with
+      | E.Implies (E.Literal l1,conse) ->
+          if l1 = l then
+            simpl_formula conse
+          else
+            E.Implies (E.Literal l1, simpl_formula conse)
+      | E.Literal _ -> phi
+      | E.True -> E.True
+      | E.False -> E.False
+      | E.And (phi1,phi2) -> E.And (simpl_formula phi1, simpl_formula phi2)
+      | E.Or (phi1,phi2) -> E.Or (simpl_formula phi1, simpl_formula phi2)
+      | E.Not phi1 -> E.Not (simpl_formula phi1)
+      | E.Implies (phi1,phi2) -> E.Implies (simpl_formula phi1, simpl_formula phi2)
+      | E.Iff (phi1,phi2) -> E.Iff (simpl_formula phi1, simpl_formula phi2) in
+
+    let analyze_formula (in_antecedent:bool) (phi:E.formula) : E.formula =
+      E.conj_list (
+        List.fold_left (fun xs form ->
+          let new_form = simpl_formula form in
+          match new_form with
+          | E.Literal l1 -> if in_antecedent && not (GenSet.mem literal_set l1) then
+                              (GenSet.add literal_set l1; new_form :: xs)
+                            else if not in_antecedent && l = l1 then
+                              xs
+                            else new_form :: xs
+          | _            -> new_form :: xs
+        ) [] (E.to_conj_list phi)
+      ) in
+      
+    let phi_info_new = E.new_formula_info (analyze_formula true t.inv.E.formula) in
+    phi_info_new.E.primed <- analyze_formula false t.inv.E.primed;
+    {
+      supp_form = List.map (analyze_formula true) t.supp_form;
+      diff = Option.lift (analyze_formula true) t.diff;
+      rho = analyze_formula true t.rho;
+      all_voc = t.all_voc ;
+      inv = phi_info_new;
+      trans_tid = t.trans_tid ;
+      line = t.line;
+      try_posdp = t.try_posdp;
+    }
+  in
+    [GenSet.fold simpl_task literal_set task]
+
+
+
 (*** Tactics functions ***)
 
 let apply_post_tac (task:task_t) (tac:post_tac_t) : task_t list =
@@ -493,6 +562,7 @@ let apply_post_tac (task:task_t) (tac:post_tac_t) : task_t list =
   match tac with
     SplitConseq -> tac_split task tac
   | SimplPCVoc -> tac_simple task tac
+  | PropReduc -> tac_prop_reduc task tac
 
 
 let apply_post_tacs (tasks:task_t list)

@@ -28,7 +28,7 @@ let get_line id = snd id
 %token BAR
 %token NORMAL_PREMISE EXTRA_PREMISE
 %token SMP_UNION SMP_PRUNING SMP_DNF
-%token REDUCE_TACTIC REDUCE2_TACTIC SPLIT_TACTIC SIMPL_TACTIC
+%token REDUCE_TACTIC REDUCE2_TACTIC SPLIT_TACTIC SIMPL_TACTIC PROP_REDUCTION_TACTIC
 %token SOLVE_TACT_CASES
 %token EOF
 
@@ -244,3 +244,5 @@ post_tactic :
     { Tactics.SplitConseq }
   | SIMPL_TACTIC
     { Tactics.SimplPCVoc }
+  | PROP_REDUCTION_TACTIC
+    { Tactics.PropReduc }

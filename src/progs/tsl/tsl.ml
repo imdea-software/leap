@@ -14,21 +14,25 @@ module Symtbl  = Exprsymtable
 let _ =
   try
     TslArgs.parse_args ();
+(*
     let ch = TslArgs.open_input () in
     let (tmp_sys,undefTids) = Parser.parse ch (Stmparser.system Stmlexer.norm) in
 
     let sys = System.set_threads tmp_sys 1 in
     TslArgs.close_input ();
+*)
 
     (* We load the system in the formula parser, just in case *)
-    Symtbl.load_system sys;
+(*    Symtbl.load_system sys; *)
 
     let phiVars, phi = Parser.open_and_parse !TslArgs.phiFile 
       (Eparser.single_formula Elexer.norm) in
       
     (* Check whether undef tids are included in invVars *)
+(*
     System.undeftids_in_formula_decl undefTids phiVars;
     let sys = System.add_global_vars sys phiVars in
+*)
 
     (* Create VCGen module *)
     let solver = if !TslArgs.use_z3 then "Z3" else "Yices" in
@@ -37,8 +41,7 @@ let _ =
     let module Tslk = (val TslkSolver.choose solver 1 : TslkSolver.S) in
     let module Num  = (val NumSolver.choose solver    : NumSolver.S)  in
     let module VCG  = VCGen.Make(Pos)(Tll)(Tslk)(Num) in
-    VCG.initialize ((System.get_trans_num sys) + 1) !TslArgs.coType 
-      "" [] !TslArgs.hide_pres false;
+    VCG.initialize 1 !TslArgs.coType "" [] !TslArgs.hide_pres false;
     
     (* Enable TSL Reasoning *)
     VCG.enable_tsl_dp ();

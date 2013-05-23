@@ -3,7 +3,7 @@ type solve_tactic_t = Cases
 
 type pre_tac_t = Full | Reduce | Reduce2
 
-type post_tac_t = SplitConseq | SimplPCVoc
+type post_tac_t = SplitConseq | SimplPCVoc | PropReduc
 
 
 type t

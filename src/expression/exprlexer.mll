@@ -27,7 +27,7 @@ rule norm = parse
   | "default"       { Global.last "default"       ; DEFAULT }
   | "invariant"     { Global.last "invariant"     ; INVARIANT }
   | "formula"       { Global.last "formula"       ; FORMULA }
-  | "param"         { Global.last "param"         ; PARAM }
+  | "vars"          { Global.last "vars"          ; VARS }
   | "error"         { Global.last "error"         ; ERROR }
   | "mkcell"        { Global.last "mkcell"        ; MKCELL }
   | "data"          { Global.last "data"          ; DATA }

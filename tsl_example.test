@@ -1,8 +1,10 @@
-param:
+vars:
 
 tid i
 addr otherAddr
+addr prev
+addrSet region
 
 formula:
 
-(insert::prev(i) in region  \/ otherAddr in region) -> region != EmptySet
+(prev in region  \/ otherAddr in region) -> region != EmptySet

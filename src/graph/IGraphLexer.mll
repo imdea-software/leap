@@ -20,6 +20,7 @@ rule norm = parse
   | "reduce2"     {Global.last "reduce2"      ; REDUCE2_TACTIC }
   | "split"       {Global.last "split"        ; SPLIT_TACTIC }
   | "simpl"       {Global.last "simpl"        ; SIMPL_TACTIC }
+  | "propred"     {Global.last "propred"      ; PROP_REDUCTION_TACTIC }
   | "cases"       {Global.last "cases"        ; SOLVE_TACT_CASES }
   | "->"          {Global.last "->"           ; SEQ_ARROW }
   | "=>"          {Global.last "=>"           ; CONC_ARROW }
