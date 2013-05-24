@@ -1839,11 +1839,11 @@ arrays :
       let i = parser_check_type check_type_int $5 Expr.Int get_str_expr in
       try
         let at = parser_check_type check_type_tidarr $3 Expr.TidArray get_str_expr in
-        let t = parser_check_type check_type_thid $5 Expr.Thid get_str_expr in
+        let t = parser_check_type check_type_thid $7 Expr.Thid get_str_expr in
           Expr.TidArrayT (Expr.TidArrayUp (at,i,t))
       with _ ->
         let aa = parser_check_type check_type_addrarr $3 Expr.AddrArray get_str_expr in
-        let a = parser_check_type check_type_addr $5 Expr.Addr get_str_expr in
+        let a = parser_check_type check_type_addr $7 Expr.Addr get_str_expr in
           Expr.AddrArrayT (Expr.AddrArrayUp (aa,i,a))
     }
 
