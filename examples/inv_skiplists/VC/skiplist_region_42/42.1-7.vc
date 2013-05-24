@@ -1,0 +1,25 @@
+vars:
+
+addr head
+mem heap
+mem heap_prime
+addr insert_curr_k_0
+int insert_i_k_0
+addr insert_newCell_k_0
+addr insert_prev_k_0
+addrarr insert_update_k_0
+int j
+int maxLevel
+tid me
+tid me_prime
+addrSet region
+addrSet region_prime
+addr tail
+formula:
+
+
+//antecedent:
+((((insert_prev_k_0 in region  /\ (insert_curr_k_0 in region  /\ (insert_newCell_k_0 != null /\ ((insert_i_k_0 = maxLevel \/ (~ insert_newCell_k_0 in addr2set(heap,head,insert_i_k_0 + 1) )) /\ ((insert_i_k_0 >= maxLevel \/ (~ insert_newCell_k_0 in addr2set(heap,head,insert_i_k_0) )) /\ (((insert_i_k_0 = 0 \/ insert_newCell_k_0 in addr2set(heap,head,insert_i_k_0 - 1) ) /\ insert_update_k_0[insert_i_k_0] in region ) /\ ((0 <= j /\ j <= maxLevel) -> insert_update_k_0[j] in region ))))))) /\ ((((((tail != null /\ head != null) /\ head != tail) /\ skiplist(heap,region,maxLevel,head,tail)) /\ rd(heap,head).data = lowestElem) /\ rd(heap,tail).data = highestElem) /\ maxLevel >= 0)) /\ ((((((insert_prev_k_0 in region  /\ insert_curr_k_0 in region ) /\ insert_newCell_k_0 != null) /\ (insert_i_k_0 = maxLevel \/ (~ insert_newCell_k_0 in addr2set(heap,head,insert_i_k_0 + 1) ))) /\ (insert_i_k_0 >= maxLevel \/ (~ insert_newCell_k_0 in addr2set(heap,head,insert_i_k_0) ))) /\ ((insert_i_k_0 = 0 \/ insert_newCell_k_0 in addr2set(heap,head,insert_i_k_0 - 1) ) /\ insert_update_k_0[insert_i_k_0] in region )) /\ ((0 <= j /\ j <= maxLevel) -> insert_update_k_0[j] in region ))) /\ (((insert_i_k_0 = 0 /\ me_prime = me) /\ region_prime = Union(region,{ insert_newCell_k_0 })) /\ true))
+ -> 
+//consequent:
+insert_update_k_0[insert_i_k_0] in region_prime

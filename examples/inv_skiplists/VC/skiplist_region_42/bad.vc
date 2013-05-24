@@ -1,0 +1,18 @@
+vars:
+
+addr head
+mem heap
+mem heap_prime
+int insert_i_k_0
+int maxLevel
+addr insert_newCell_k_0
+addrSet region
+
+formula:
+
+
+//antecedent:
+(~ insert_newCell_k_0 in addr2set(heap,head,insert_i_k_0 + 1) )
+-> 
+//consequent:
+(~ insert_newCell_k_0 in addr2set(heap_prime,head,insert_i_k_0 + 1) )

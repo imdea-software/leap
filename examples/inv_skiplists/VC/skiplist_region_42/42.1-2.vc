@@ -1,0 +1,15 @@
+vars:
+
+addr insert_curr_k_0
+addr insert_newCell_k_0
+addrSet region
+addrSet region_prime
+
+formula:
+
+//antecedent:
+(insert_curr_k_0 in region  /\
+ region_prime = Union(region,{ insert_newCell_k_0 }))
+ -> 
+//consequent:
+insert_curr_k_0 in region_prime

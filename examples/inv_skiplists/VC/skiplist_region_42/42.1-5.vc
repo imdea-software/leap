@@ -1,0 +1,36 @@
+vars:
+
+addr head
+addr tail
+int maxLevel
+mem heap
+mem heap_prime
+int insert_i_k_0
+addr insert_newCell_k_0
+cell c
+cell c_prime
+addrarr insert_update_k_0
+addrarr a
+addrarr a_prime
+addrSet region
+addrSet region_prime
+tidarr t
+int m
+elem e
+
+formula:
+
+
+//antecedent:
+(  skiplist(heap,region,maxLevel,head,tail) /\
+  insert_update_k_0[insert_i_k_0] in region /\
+   c       = rd(heap,insert_update_k_0[insert_i_k_0]) /\
+   c       = mkcell(e,a,t,m)  /\
+   c_prime = mkcell(e,a_prime,t,m) /\
+   a_prime = arrUpd(a, insert_i_k_0, insert_newCell_k_0) /\
+   heap_prime = upd(heap,insert_update_k_0[insert_i_k_0],c_prime) /\
+   region_prime = Union(region,{ insert_newCell_k_0 })
+)
+ -> 
+//consequent:
+insert_newCell_k_0 in addr2set(heap_prime,head,insert_i_k_0)
