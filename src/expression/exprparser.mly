@@ -1809,10 +1809,8 @@ integer :
 arrays :
   | term OPEN_BRACKET term CLOSE_BRACKET
     {
-      print_endline "WE ARE HERE!!!";
       let get_str_expr () = sprintf "%s[%s]" (Expr.term_to_str $1)
                                              (Expr.term_to_str $3) in
-      print_endline (get_str_expr());
       let i = parser_check_type check_type_int $3 Expr.Int get_str_expr in
       try
         let at = parser_check_type check_type_tidarr $1 Expr.TidArray get_str_expr in

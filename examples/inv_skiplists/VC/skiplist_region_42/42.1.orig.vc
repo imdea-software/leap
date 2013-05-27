@@ -1,9 +1,9 @@
-//42:			update[i]->arr[i] := newCell
-//			+-------
-//			if (i = 0) then
-/				region := region Union { newCell }
-//			end if
-//			+-------
+//42:     update[i]->arr[i] := newCell
+//      +-------
+//      if (i = 0) then
+/       region := region Union { newCell }
+//      end if
+//      +-------
 //
 // The correct transition relation is:
 //   c       = rd(heap,insert_update_k_0[insert_i_k_0]) /\

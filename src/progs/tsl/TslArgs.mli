@@ -14,8 +14,7 @@ val use_z3 : bool ref
 val coType : Smp.cutoff_strategy_t ref
 val hide_pres : bool ref
 val phiFile : string ref
-val preTactics : string ref
-val postTactics : string ref
+val postTactics : (Tactics.post_tac_t list) ref
 val assignopt : 'a ref -> bool ref -> 'a -> unit
 val setdebug : unit -> unit
 val inputFormula : string -> unit

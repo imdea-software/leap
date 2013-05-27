@@ -1258,7 +1258,7 @@ module Make (K : Level.S) : TSLK_QUERY =
                           (num_tids:int)
                           (v:Expr.variable) : unit =
 (*      verb "**** Z3TslkQuery, defining variable: %s\n" (Expr.variable_to_str v); *)
-      print_endline (Expr.variable_to_full_str v);
+      verb "%s\n" (Expr.variable_to_full_str v);
       let (id,s,pr,th,p,_) = v in
       let sort_str asort = match asort with
                              Expr.Set     -> set_s

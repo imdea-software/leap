@@ -3396,7 +3396,7 @@ let normalize (phi:formula) : formula =
         | IntT (CellMax _) -> ()
         | _ -> begin
                  Hashtbl.add norm_info.processed_term_map t v;
-                 let _ = Printf.printf "PROCESSING: %s ----> %s\n" (term_to_str t) (variable_to_str v) in
+                 verb "PROCESSING: %s ----> %s\n" (term_to_str t) (variable_to_str v);
                  let l = Atom (Eq (make_compatible_term_from_var t v, t)) in
                  let new_l = norm_literal norm_info l in
                  verbstr (Interface.Msg.info "REMAINING TSL LITERAL TO NORMALIZE" (formula_to_str new_l));

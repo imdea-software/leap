@@ -10,20 +10,20 @@ STAT:= $(addsuffix .stat, $(addprefix ${BASENAME}.,${EXT}))
 
 
 table: ${STAT}
-	cat ${STAT}
+  cat ${STAT}
 
 all: ${OUT}
-	@echo ${OUT}
+  @echo ${OUT}
 
 %.out: %.vc
-	$(TSL) $(OPTIONS) $< > $@
+  $(TSL) $(OPTIONS) $< > $@
 
 
 %.stat: %.out
-	@./filter.sh `basename $< .out` $< > $@
-	@(cat $@)
+  @./filter.sh `basename $< .out` $< > $@
+  @(cat $@)
 
 
 
 clean: 
-	rm -f ${OUT} ${STAT}
+  rm -f ${OUT} ${STAT}

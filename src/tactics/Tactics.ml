@@ -51,10 +51,20 @@ type res_info_t =
   }
 
 
+exception Invalid_post_tac of string
+
+
 
 (* Configuration *)
 let default_smp = Smp.Dnf
 
+
+let post_tac_from_string (s:string) : post_tac_t =
+  match s with
+  | "split" -> SplitConseq
+  | "simpl" -> SimplPCVoc
+  | "propagate" -> PropReduc
+  | _ -> RAISE(Invalid_post_tac s)
 
 
 let new_tactics (smp:Smp.cutoff_strategy_t option)

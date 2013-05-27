@@ -740,9 +740,9 @@ let check_sat_by_cases (lines:int)
   let rec check (pa:TslExp.conjunctive_formula)
                 (nc:TslExp.conjunctive_formula)
                 (alpha:TslExp.integer list list) : bool =
-    Printf.printf "BEGIN CHECK\n";
+    verb "BEGIN CHECK\n";
     let alpha_phi = alpha_to_conjunctive_formula alpha in
-    Printf.printf "CONJUNCTIVE CREATED\n";
+    verb "CONJUNCTIVE CREATED\n";
     verb "**** TSL Solver. Check PA formula\n%s\nand NC formula\n%s\nwith arrangement\n%s\n"
           (TslExp.conjunctive_formula_to_str pa)
           (TslExp.conjunctive_formula_to_str nc)
@@ -770,7 +770,7 @@ let check_sat_by_cases (lines:int)
   let tslk_calls = ref 0 in
   Printf.printf "CASES SIZE: %i\n" (List.length cases);
   let rec check_aux cs =
-    Printf.printf "CHECK_AUX WITH CASES: %i\n" (List.length cases);
+    verb "CHECK_AUX WITH CASES: %i\n" (List.length cases);
     match cs with
     | [] -> (false, 1, !tslk_calls)
     | (pa,nc,arrgs)::xs -> begin
@@ -792,8 +792,8 @@ let rec combine_splits_arrgs (sp:(TslExp.conjunctive_formula * TslExp.conjunctiv
             (TslExp.conjunctive_formula *
              TslExp.conjunctive_formula *
              (TslExp.integer list list) GenSet.t) list =
-  Printf.printf "SP SIZE: %i\n" (List.length sp);
-  Printf.printf "ARRGS SIZE: %i\n" (List.length arrgs);
+  verb "SP SIZE: %i\n" (List.length sp);
+  verb "ARRGS SIZE: %i\n" (List.length arrgs);
   match (sp,arrgs) with
   | ([],[])                -> []
   | ((pa,nc)::xs,arrg::ys) -> (pa,nc,arrg)::(combine_splits_arrgs xs ys)

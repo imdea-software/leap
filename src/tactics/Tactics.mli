@@ -14,6 +14,9 @@ type task_t
 
 type res_info_t
 
+
+val post_tac_from_string : string -> post_tac_t
+
 (* res_info_t functions *)
 val try_pos : res_info_t -> bool
 

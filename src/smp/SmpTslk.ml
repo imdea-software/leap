@@ -372,11 +372,11 @@ module Make (TSLK : TSLKExpression.S) =
         Expr.Append _       -> Some a
       | Expr.Reach _        -> Some a
       | Expr.OrderList _    -> Some a
-      | Expr.In _           -> None
+      | Expr.In _           -> Some a
       | Expr.SubsetEq _     -> Some a
-      | Expr.InTh _         -> None
+      | Expr.InTh _         -> Some a
       | Expr.SubsetEqTh _   -> Some a
-      | Expr.InElem _       -> None
+      | Expr.InElem _       -> Some a
       | Expr.SubsetEqElem _ -> Some a
       | Expr.Less _         -> None
       | Expr.Greater _      -> None
@@ -440,9 +440,9 @@ module Make (TSLK : TSLKExpression.S) =
                     | Smp.Union   -> compute_max_cut_off_with_union f
                     | Smp.Pruning -> compute_max_cut_off_with_pruning f
       in
-      verb "SMP TSLK LEVELS: %i\n" model_s.num_levels;
-      verb "SMP TSLK ADDRS: %i\n" model_s.num_addrs;
-      verb "SMP TSLK TIDS  : %i\n" model_s.num_tids;
-      verb "SMP TSLK ELEMS : %i\n" model_s.num_elems;
+      Printf.printf "SMP TSLK LEVELS: %i\n" model_s.num_levels;
+      Printf.printf "SMP TSLK ADDRS: %i\n" model_s.num_addrs;
+      Printf.printf "SMP TSLK TIDS  : %i\n" model_s.num_tids;
+      Printf.printf "SMP TSLK ELEMS : %i\n" model_s.num_elems;
       model_s
   end
