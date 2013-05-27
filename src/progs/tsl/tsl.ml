@@ -15,6 +15,7 @@ let _ =
   try
     TslArgs.parse_args ();
 
+    if !TslArgs.verbose then LeapVerbose.enable_verbose();
     let ch = TslArgs.open_input () in
     let (_,phi) = Parser.parse ch
                     (Eparser.single_formula Elexer.norm) in

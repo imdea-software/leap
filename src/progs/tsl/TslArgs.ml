@@ -13,6 +13,7 @@ let is_input_file = ref false
 let input_file_fd : Unix.file_descr ref = ref Unix.stdin
 
 (* Program arguments *)
+let verbose       = ref false
 let debugFlag     = ref false
 let use_z3        = ref false
 let coType        = ref Smp.Union (*Smp.Dnf*)
@@ -50,7 +51,9 @@ let parse_tac_list (s:string) : Tactics.post_tac_t list =
 let assigninputfile  (s:string) : unit = assignopt input_file is_input_file s
 
 let opts =
-  [
+  [ ("-v",
+        Arg.Set verbose,
+        "verbose");
     ("-z3",
         Arg.Set use_z3,
         "uses z3 as smt solver");

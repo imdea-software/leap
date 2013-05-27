@@ -8,6 +8,7 @@ exception No_file
 
 val input_file : string ref
 val is_input_file : bool ref
+val verbose : bool ref
 val input_file_fd : Unix.file_descr ref
 val debugFlag : bool ref
 val use_z3 : bool ref

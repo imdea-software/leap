@@ -373,7 +373,6 @@ let gen_support (phi_list:E.formula list)
 
 (* Conversion function *)
 let task_to_formula (hide_pres:bool) (info:task_t) : (E.formula * res_info_t) =
-  let _ = Printf.printf "NNNN SUPPORT FORMULA: %s\n" (String.concat " ;;; " (List.map E.formula_to_str info.supp_form)) in
   let diff_list = match info.diff with
                     None -> []
                   | Some phi -> [phi] in
