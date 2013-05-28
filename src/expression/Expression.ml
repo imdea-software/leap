@@ -1467,9 +1467,9 @@ and arrays_to_str (expr:arrays) : string =
 and addrarr_to_str (expr:addrarr) : string =
   match expr with
     VarAddrArray v       -> variable_to_str v
-  | AddrArrayUp(arr,i,a) -> sprintf "%s{%s<-%s}" (addrarr_to_str arr)
-                                                 (integer_to_str i)
-                                                 (addr_to_str a)
+  | AddrArrayUp(arr,i,a) -> sprintf "arrUpd(%s,%s,%s)" (addrarr_to_str arr)
+                                                       (integer_to_str i)
+                                                       (addr_to_str a)
   | CellArr c            -> sprintf "%s.arr" (cell_to_str c)
 
 
