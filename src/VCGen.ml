@@ -551,9 +551,12 @@ struct
     (b, k)
 
   let apply_heap_based_dp () : bool =
+    not (apply_num_dp ())
+(*
     apply_tll_dp ()        ||
     fst (apply_tslk_dp ()) ||
     apply_tsl_dp ()
+*)
 
 
   (* MODE CONVERSION FUNCTION *)
@@ -1873,6 +1876,7 @@ struct
   
   
   let post_process (fs:E.formula) : E.formula =
+    let _ = Printf.printf "IN THE POST-PROCESS THE FORMULA IS: %s\n" (E.formula_to_str fs) in
     let rec clean = function
       | E.Literal (E.Atom (E.Eq (E.MemT _, E.MemT _))) -> E.True
       | E.And (f1,f2) -> E.And(clean f1, clean f2)
@@ -1881,7 +1885,7 @@ struct
       | E.Implies (f1,f2) -> E.Implies(clean f1, clean f2)
       | E.Iff (f1,f2) -> E.Iff(clean f1, clean f2)
       | _ as phi -> phi in
-    if apply_heap_based_dp () then fs else clean fs
+    if apply_heap_based_dp () then (Printf.printf "NOTHING"; fs) else (Printf.printf "EUREKA"; clean fs)
     
   
   let include_count_abs (sys:Sys.system_t) : Sys.system_t =
