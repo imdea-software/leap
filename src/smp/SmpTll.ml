@@ -413,7 +413,7 @@ let compute_max_cut_off_with_pruning (phi:formula) : model_size =
 let cut_off (strat:Smp.cutoff_strategy_t)
             (opt:Smp.cutoff_options_t)
             (f:formula) : model_size =
-  LOG "Strategy: %s\n" (Smp.strategy_to_str strat) LEVEL DEBUG;
+(*  LOG "Strategy: %s\n" (Smp.strategy_to_str strat) LEVEL DEBUG; *)
   options := opt;
   match strat with
   | Smp.Dnf     -> compute_max_cut_off (Expr.dnf f)

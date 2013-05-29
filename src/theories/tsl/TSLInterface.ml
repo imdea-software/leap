@@ -17,8 +17,8 @@ exception UnsupportedTslExpr of string
 
 
 let rec sort_to_tsl_sort (s:Expr.sort) : Tsl.sort =
-  LOG "Entering sort_to_tsl_sort..." LEVEL TRACE;
-  LOG "sort_to_tsl_sort(%s)" (Expr.sort_to_str s) LEVEL DEBUG;
+(*  LOG "Entering sort_to_tsl_sort..." LEVEL TRACE; *)
+(*  LOG "sort_to_tsl_sort(%s)" (Expr.sort_to_str s) LEVEL DEBUG; *)
   match s with
     Expr.Set       -> Tsl.Set
   | Expr.Elem      -> Tsl.Elem
@@ -40,8 +40,8 @@ let rec sort_to_tsl_sort (s:Expr.sort) : Tsl.sort =
 
 
 and build_term_var (v:Expr.variable) : Tsl.term =
-  LOG "Entering build_term_var..." LEVEL TRACE;
-  LOG "build_term_var(%s)" (Expr.variable_to_str v) LEVEL DEBUG;
+(*  LOG "Entering build_term_var..." LEVEL TRACE; *)
+(*  LOG "build_term_var(%s)" (Expr.variable_to_str v) LEVEL DEBUG; *)
   let tsl_v = var_to_tsl_var v in
   match Expr.var_sort v with
     Expr.Set       -> Tsl.SetT       (Tsl.VarSet        tsl_v)
@@ -60,8 +60,8 @@ and build_term_var (v:Expr.variable) : Tsl.term =
 
 
 and var_to_tsl_var (v:Expr.variable) : Tsl.variable =
-  LOG "Entering var_to_tsl_var..." LEVEL TRACE;
-  LOG "var_to_tsl_var(%s)" (Expr.variable_to_str v) LEVEL DEBUG;
+(*  LOG "Entering var_to_tsl_var..." LEVEL TRACE; *)
+(*  LOG "var_to_tsl_var(%s)" (Expr.variable_to_str v) LEVEL DEBUG; *)
   let (id,s,pr,th,p,_) = v
   in
     (id, sort_to_tsl_sort s, pr, Option.lift tid_to_tsl_tid th, p)
@@ -69,8 +69,8 @@ and var_to_tsl_var (v:Expr.variable) : Tsl.variable =
 
 
 and tid_to_tsl_tid (th:Expr.tid) : Tsl.tid =
-  LOG "Entering tid_to_tsl_tid..." LEVEL TRACE;
-  LOG "tid_to_tsl_tid(%s)" (Expr.tid_to_str th) LEVEL DEBUG;
+(*  LOG "Entering tid_to_tsl_tid..." LEVEL TRACE; *)
+(*  LOG "tid_to_tsl_tid(%s)" (Expr.tid_to_str th) LEVEL DEBUG; *)
   match th with
     Expr.VarTh v            -> Tsl.VarTh (var_to_tsl_var v)
   | Expr.NoThid             -> Tsl.NoThid
@@ -82,8 +82,8 @@ and tid_to_tsl_tid (th:Expr.tid) : Tsl.tid =
                                               int_to_tsl_int i)
 
 and term_to_tsl_term (t:Expr.term) : Tsl.term =
-  LOG "Entering term_to_tsl_term..." LEVEL TRACE;
-  LOG "term_to_tsl_term(%s)" (Expr.term_to_str t) LEVEL DEBUG;
+(*  LOG "Entering term_to_tsl_term..." LEVEL TRACE; *)
+(*  LOG "term_to_tsl_term(%s)" (Expr.term_to_str t) LEVEL DEBUG; *)
   match t with
     Expr.VarT v        -> Tsl.VarT (var_to_tsl_var v)
   | Expr.SetT s        -> Tsl.SetT (set_to_tsl_set s)
@@ -115,22 +115,22 @@ and arrays_to_tsl_term (a:Expr.arrays) : Tsl.term =
 
 
 and eq_to_tsl_eq ((t1,t2):Expr.eq) : Tsl.eq =
-  LOG "Entering eq_to_tsl_eq..." LEVEL TRACE;
-  LOG "eq_to_tsl_eq(%s,%s)" (Expr.term_to_str t1)
-                            (Expr.term_to_str t2) LEVEL DEBUG;
+(*  LOG "Entering eq_to_tsl_eq..." LEVEL TRACE; *)
+(*  LOG "eq_to_tsl_eq(%s,%s)" (Expr.term_to_str t1) *)
+(*                            (Expr.term_to_str t2) LEVEL DEBUG; *)
   (term_to_tsl_term t1, term_to_tsl_term t2)
 
 
 and diseq_to_tsl_diseq ((t1,t2):Expr.diseq) : Tsl.diseq =
-  LOG "Entering diseq_to_tsl_diseq..." LEVEL TRACE;
-  LOG "diseq_to_tsl_diseq(%s,%s)" (Expr.term_to_str t1)
-                                  (Expr.term_to_str t2) LEVEL DEBUG;
+(*  LOG "Entering diseq_to_tsl_diseq..." LEVEL TRACE; *)
+(*  LOG "diseq_to_tsl_diseq(%s,%s)" (Expr.term_to_str t1) *)
+(*                                  (Expr.term_to_str t2) LEVEL DEBUG; *)
   (term_to_tsl_term t1, term_to_tsl_term t2)
 
 
 and set_to_tsl_set (s:Expr.set) : Tsl.set =
-  LOG "Entering set_to_tsl_set..." LEVEL TRACE;
-  LOG "set_to_tsl_set(%s)" (Expr.set_to_str s) LEVEL DEBUG;
+(*  LOG "Entering set_to_tsl_set..." LEVEL TRACE; *)
+(*  LOG "set_to_tsl_set(%s)" (Expr.set_to_str s) LEVEL DEBUG; *)
   let to_set = set_to_tsl_set in
   match s with
     Expr.VarSet v            -> Tsl.VarSet (var_to_tsl_var v)
@@ -151,8 +151,8 @@ and set_to_tsl_set (s:Expr.set) : Tsl.set =
 
 
 and elem_to_tsl_elem (e:Expr.elem) : Tsl.elem =
-  LOG "Entering elem_to_tsl_elem..." LEVEL TRACE;
-  LOG "elem_to_tsl_elem(%s)" (Expr.elem_to_str e) LEVEL DEBUG;
+(*  LOG "Entering elem_to_tsl_elem..." LEVEL TRACE; *)
+(*  LOG "elem_to_tsl_elem(%s)" (Expr.elem_to_str e) LEVEL DEBUG; *)
   match e with
     Expr.VarElem v              -> Tsl.VarElem (var_to_tsl_var v)
   | Expr.CellData c             -> Tsl.CellData (cell_to_tsl_cell c)
@@ -167,8 +167,8 @@ and elem_to_tsl_elem (e:Expr.elem) : Tsl.elem =
 
 
 and addr_to_tsl_addr (a:Expr.addr) : Tsl.addr =
-  LOG "Entering addr_to_tsl_addr..." LEVEL TRACE;
-  LOG "addr_to_tsl_addr(%s)" (Expr.addr_to_str a) LEVEL DEBUG;
+(*  LOG "Entering addr_to_tsl_addr..." LEVEL TRACE; *)
+(*  LOG "addr_to_tsl_addr(%s)" (Expr.addr_to_str a) LEVEL DEBUG; *)
   match a with
     Expr.VarAddr v              -> Tsl.VarAddr (var_to_tsl_var v)
   | Expr.Null                   -> Tsl.Null
@@ -185,8 +185,8 @@ and addr_to_tsl_addr (a:Expr.addr) : Tsl.addr =
 
 
 and cell_to_tsl_cell (c:Expr.cell) : Tsl.cell =
-  LOG "Entering cell_to_tsl_cell..." LEVEL TRACE;
-  LOG "cell_to_tsl_cell(%s)" (Expr.cell_to_str c) LEVEL DEBUG;
+(*  LOG "Entering cell_to_tsl_cell..." LEVEL TRACE; *)
+(*  LOG "cell_to_tsl_cell(%s)" (Expr.cell_to_str c) LEVEL DEBUG; *)
   match c with
     Expr.VarCell v            -> Tsl.VarCell (var_to_tsl_var v)
   | Expr.Error                -> Tsl.Error
@@ -213,8 +213,8 @@ and cell_to_tsl_cell (c:Expr.cell) : Tsl.cell =
 
 
 and setth_to_tsl_setth (st:Expr.setth) : Tsl.setth =
-  LOG "Entering setth_to_tsl_setth..." LEVEL TRACE;
-  LOG "setth_to_tsl_setth(%s)" (Expr.setth_to_str st) LEVEL DEBUG;
+(*  LOG "Entering setth_to_tsl_setth..." LEVEL TRACE; *)
+(*  LOG "setth_to_tsl_setth(%s)" (Expr.setth_to_str st) LEVEL DEBUG; *)
   let to_setth = setth_to_tsl_setth in
   match st with
     Expr.VarSetTh v        -> Tsl.VarSetTh (var_to_tsl_var v)
@@ -230,8 +230,8 @@ and setth_to_tsl_setth (st:Expr.setth) : Tsl.setth =
 
 
 and setelem_to_tsl_setelem (se:Expr.setelem) : Tsl.setelem =
-  LOG "Entering setelem_to_tsl_setelem..." LEVEL TRACE;
-  LOG "setelem_to_tsl_setelem(%s)" (Expr.setelem_to_str se) LEVEL DEBUG;
+(*  LOG "Entering setelem_to_tsl_setelem..." LEVEL TRACE; *)
+(*  LOG "setelem_to_tsl_setelem(%s)" (Expr.setelem_to_str se) LEVEL DEBUG; *)
   let to_setelem = setelem_to_tsl_setelem in
   match se with
     Expr.VarSetElem v        -> Tsl.VarSetElem (var_to_tsl_var v)
@@ -249,8 +249,8 @@ and setelem_to_tsl_setelem (se:Expr.setelem) : Tsl.setelem =
 
 
 and path_to_tsl_path (p:Expr.path) : Tsl.path =
-  LOG "Entering path_to_tsl_path..." LEVEL TRACE;
-  LOG "path_to_tsl_path(%s)" (Expr.path_to_str p) LEVEL DEBUG;
+(*  LOG "Entering path_to_tsl_path..." LEVEL TRACE; *)
+(*  LOG "path_to_tsl_path(%s)" (Expr.path_to_str p) LEVEL DEBUG; *)
   match p with
     Expr.VarPath v             -> Tsl.VarPath (var_to_tsl_var v)
   | Expr.Epsilon               -> Tsl.Epsilon
@@ -264,8 +264,8 @@ and path_to_tsl_path (p:Expr.path) : Tsl.path =
 
 
 and mem_to_tsl_mem (m:Expr.mem) : Tsl.mem =
-  LOG "Entering mem_to_tsl_mem..." LEVEL TRACE;
-  LOG "mem_to_tsl_mem(%s)" (Expr.mem_to_str m) LEVEL DEBUG;
+(*  LOG "Entering mem_to_tsl_mem..." LEVEL TRACE; *)
+(*  LOG "mem_to_tsl_mem(%s)" (Expr.mem_to_str m) LEVEL DEBUG; *)
   match m with
     Expr.VarMem v       -> Tsl.VarMem (var_to_tsl_var v)
   | Expr.Update (m,a,c) -> Tsl.Update (mem_to_tsl_mem m,
@@ -279,8 +279,8 @@ and mem_to_tsl_mem (m:Expr.mem) : Tsl.mem =
 
 
 and int_to_tsl_int (i:Expr.integer) : Tsl.integer =
-  LOG "Entering int_to_tsl_int..." LEVEL TRACE;
-  LOG "int_to_tsl_int(%s)" (Expr.integer_to_str i) LEVEL DEBUG;
+(*  LOG "Entering int_to_tsl_int..." LEVEL TRACE; *)
+(*  LOG "int_to_tsl_int(%s)" (Expr.integer_to_str i) LEVEL DEBUG; *)
   match i with
     Expr.IntVal i       -> Tsl.IntVal i
   | Expr.VarInt v       -> Tsl.VarInt (var_to_tsl_var v)
@@ -297,8 +297,8 @@ and int_to_tsl_int (i:Expr.integer) : Tsl.integer =
 
 
 and addrarr_to_tsl_addrarr (arr:Expr.addrarr) : Tsl.addrarr =
-  LOG "Entering addrarr_to_tsl_addrarr..." LEVEL TRACE;
-  LOG "addrarr_to_tsl_addrarr(%s)" (Expr.addrarr_to_str arr) LEVEL DEBUG;
+(*  LOG "Entering addrarr_to_tsl_addrarr..." LEVEL TRACE; *)
+(*  LOG "addrarr_to_tsl_addrarr(%s)" (Expr.addrarr_to_str arr) LEVEL DEBUG; *)
   match arr with
     Expr.VarAddrArray v       -> Tsl.VarAddrArray (var_to_tsl_var v)
   | Expr.AddrArrayUp (aa,i,a) -> Tsl.AddrArrayUp (addrarr_to_tsl_addrarr aa,
@@ -308,8 +308,8 @@ and addrarr_to_tsl_addrarr (arr:Expr.addrarr) : Tsl.addrarr =
 
 
 and tidarr_to_tsl_tidarr (arr:Expr.tidarr) : Tsl.tidarr =
-  LOG "Entering tidarr_to_tsl_tidarr..." LEVEL TRACE;
-  LOG "tidarr_to_tsl_tidarr(%s)" (Expr.tidarr_to_str arr) LEVEL DEBUG;
+(*  LOG "Entering tidarr_to_tsl_tidarr..." LEVEL TRACE; *)
+(*  LOG "tidarr_to_tsl_tidarr(%s)" (Expr.tidarr_to_str arr) LEVEL DEBUG; *)
   match arr with
     Expr.VarTidArray v       -> Tsl.VarTidArray (var_to_tsl_var v)
   | Expr.TidArrayUp (tt,i,t) -> Tsl.TidArrayUp (tidarr_to_tsl_tidarr tt,
@@ -319,8 +319,8 @@ and tidarr_to_tsl_tidarr (arr:Expr.tidarr) : Tsl.tidarr =
 
 
 and atom_to_tsl_atom (a:Expr.atom) : Tsl.atom =
-  LOG "Entering atom_to_tsl_atom..." LEVEL TRACE;
-  LOG "atom_to_tsl_atom(%s)" (Expr.atom_to_str a) LEVEL DEBUG;
+(*  LOG "Entering atom_to_tsl_atom..." LEVEL TRACE; *)
+(*  LOG "atom_to_tsl_atom(%s)" (Expr.atom_to_str a) LEVEL DEBUG; *)
   let path    = path_to_tsl_path       in
   let mem     = mem_to_tsl_mem         in
   let addr    = addr_to_tsl_addr       in
@@ -365,16 +365,16 @@ and atom_to_tsl_atom (a:Expr.atom) : Tsl.atom =
 
 
 and literal_to_tsl_literal (l:Expr.literal) : Tsl.literal =
-  LOG "Entering literal_to_tsl_literal..." LEVEL TRACE;
-  LOG "literal_to_tsl_literal(%s)" (Expr.literal_to_str l) LEVEL DEBUG;
+(*  LOG "Entering literal_to_tsl_literal..." LEVEL TRACE; *)
+(*  LOG "literal_to_tsl_literal(%s)" (Expr.literal_to_str l) LEVEL DEBUG; *)
   match l with
     Expr.Atom a    -> Tsl.Atom (atom_to_tsl_atom a)
   | Expr.NegAtom a -> Tsl.NegAtom (atom_to_tsl_atom a)
 
 
 and formula_to_tsl_formula (f:Expr.formula) : Tsl.formula =
-  LOG "Entering formula_to_tsl_formula..." LEVEL TRACE;
-  LOG "formula_to_tsl_formula(%s)" (Expr.formula_to_str f) LEVEL DEBUG;
+(*  LOG "Entering formula_to_tsl_formula..." LEVEL TRACE; *)
+(*  LOG "formula_to_tsl_formula(%s)" (Expr.formula_to_str f) LEVEL DEBUG; *)
   let to_formula = formula_to_tsl_formula in
   match f with
     Expr.Literal l       -> Tsl.Literal (literal_to_tsl_literal l)

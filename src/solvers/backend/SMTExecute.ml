@@ -124,7 +124,7 @@ let parse_output (ch:Pervasives.in_channel) : (bool * bool) =
 
 let run (cfg:configuration_t) (query:string) : bool =
   (* 1. write query to temp file *)
-  LOG "Entering run..." LEVEL TRACE;
+(*  LOG "Entering run..." LEVEL TRACE; *)
   
   let tmpfile = Filename.temp_file "leap_" cfg.extension in
   let _ = Debug.print_file_name "VC" tmpfile in

@@ -11,6 +11,8 @@ type scope_t = Global | Local
 
 type pc_t = int
 
+type logic_op_t = AndOp | OrOp | ImpliesOp | IffOp | NotOp | NoneOp
+
 and initVal_t = Equality of term | Condition of formula
 
 and var_info_t = sort * initVal_t option * tid option * kind_t
@@ -1459,9 +1461,9 @@ and literal_to_str (expr:literal) : string =
 and arrays_to_str (expr:arrays) : string =
   match expr with
     VarArray v       -> variable_to_str v
-  | ArrayUp(arr,t,e) -> sprintf "%s{%s<-%s}" (arrays_to_str arr)
-                                             (tid_to_str t)
-                                             (expr_to_str e)
+  | ArrayUp(arr,t,e) -> sprintf "arrUpd(%s,%s,%s)" (arrays_to_str arr)
+                                                   (tid_to_str t)
+                                                   (expr_to_str e)
 
 
 and addrarr_to_str (expr:addrarr) : string =
@@ -1476,9 +1478,9 @@ and addrarr_to_str (expr:addrarr) : string =
 and tidarr_to_str (expr:tidarr) : string =
   match expr with
     VarTidArray v       -> variable_to_str v
-  | TidArrayUp(arr,i,t) -> sprintf "%s{%s<-%s}" (tidarr_to_str arr)
-                                                (integer_to_str i)
-                                                (tid_to_str t)
+  | TidArrayUp(arr,i,t) -> sprintf "arrUpd(%s,%s,%s)" (tidarr_to_str arr)
+                                                      (integer_to_str i)
+                                                      (tid_to_str t)
   | CellTids c            -> sprintf "%s.tids" (cell_to_str c)
 
 
@@ -1704,7 +1706,50 @@ and conjunctive_formula_to_str (expr:conjunctive_formula) : string =
   | Conj ls   -> String.concat " /\\ " $ List.map literal_to_str ls
 
 
+and formula_to_str_aux (op:logic_op_t) (phi:formula) : string =
+  match phi with
+  | Literal l -> literal_to_str l
+  | True -> "true"
+  | False -> "false"
+  | And(a,b)     -> let a_str = formula_to_str_aux AndOp a in
+                    let b_str = formula_to_str_aux AndOp b in
+                    if op = AndOp then
+                      a_str ^ " /\\ " ^ b_str
+                    else
+                      "(" ^ a_str ^ " /\\ " ^ b_str ^ ")"
+  | Or(a,b)      -> let a_str = formula_to_str_aux OrOp a in
+                    let b_str = formula_to_str_aux OrOp b in
+                    if op = OrOp then
+                      a_str ^ " \\/ " ^ b_str
+                    else
+                      "(" ^ a_str ^ " \\/ " ^ b_str ^ ")"
+  | Not a        -> let a_str = formula_to_str_aux NotOp a in
+                    if op = NotOp then
+                      "~ " ^ a_str
+                    else
+                      "(~ " ^ a_str ^ ")"
+  | Implies(a,b) -> let a_str = formula_to_str_aux ImpliesOp a in
+                    let b_str = formula_to_str_aux ImpliesOp b in
+                    if op = ImpliesOp then
+                      a_str ^ " -> " ^ b_str
+                    else
+                      "(" ^ a_str ^ " -> " ^ b_str ^ ")"
+  | Iff(a,b)     -> let a_str = formula_to_str_aux IffOp a in
+                    let b_str = formula_to_str_aux IffOp b in
+                    if op = IffOp then
+                      a_str ^ " <-> " ^ b_str
+                    else
+                      "(" ^ a_str ^ " <-> " ^ b_str ^ ")"
+
+
+
+
+
+
+
 and formula_to_str (expr:formula) : string =
+  formula_to_str_aux NoneOp expr
+(*
   match expr with
     Literal(lit)          -> (literal_to_str lit)
   | True                  -> sprintf "true"
@@ -1718,6 +1763,7 @@ and formula_to_str (expr:formula) : string =
                                                 (formula_to_str f2)
   | Iff (f1,f2)           -> sprintf "(%s <-> %s)" (formula_to_str f1)
                                                  (formula_to_str f2)
+*)
 
 
 

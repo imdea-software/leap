@@ -1876,7 +1876,7 @@ struct
                      (copt:Smp.cutoff_options_t)
                      (phi:Expr.formula) : string =
 
-    LOG "Entering formula_to_str..." LEVEL TRACE;
+(*    LOG "Entering formula_to_str..." LEVEL TRACE; *)
     let extra_info_str =
       match stac with
       | None -> ""

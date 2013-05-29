@@ -78,7 +78,7 @@ let sanitize (cf:TslExp.conjunctive_formula) : TslExp.conjunctive_formula =
 
 let guess_arrangements_by_brute_force (cf:TslExp.conjunctive_formula)
       : TslExp.conjunctive_formula list =
-  LOG "Entering guess_arrangements..." LEVEL TRACE;
+(*  LOG "Entering guess_arrangements..." LEVEL TRACE; *)
   let rec cons_var_eq_class (vs:TslExp.variable list) : TslExp.literal list =
     match vs with
     | v1::v2::xs -> Atom(Eq(IntT (VarInt v1), IntT (VarInt v2))) :: cons_var_eq_class (v2::xs)

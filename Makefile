@@ -1,5 +1,3 @@
-BOLT_DIR=$(shell ocamlfind query bolt)
-CAMLP4LIB=${BOLT_DIR}
 PROJNAME=leap
 
 # Makefile configuration
@@ -41,20 +39,17 @@ check_tool = @if ( test -e $(TOOLS)/$(1) ) || (test -h $(TOOLS)/$(1) ) ; then \
 						fi
 
 
-.PHONY: clean softclean all expand unexpand leap prog2fts pinv sinv pvd tll tsl numinv spec_check doc tools tests
+.PHONY: clean softclean all expand unexpand leap prog2fts pinv sinv pvd tll tsl numinv spec_check doc tools tests compile
 
 
 # Flags
 
-OCAML_FLAGS= \
-	-pp "`pwd`/prep.sh" \
-        -lflags -I,"${BOLT_DIR}" \
-	-cflags -I,"${BOLT_DIR}" \
+OCAML_FLAGS=
 #	-cflags -warn-error,A \
 #	-cflags -w,Z \
 
 
-LIBS = unix,str,dynlink,bolt
+LIBS = unix,str
 
 
 # Compilation rules

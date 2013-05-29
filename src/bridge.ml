@@ -55,10 +55,10 @@ let unfold_expression (mInfo:malloc_info)
                       (expr:Stm.expr_t) : (E.expr_t      *
                                            E.term list   *
                                            E.formula list) =
-  LOG "Entering unfold_expression..." LEVEL TRACE;
+(*  LOG "Entering unfold_expression..." LEVEL TRACE; *)
   let gen_malloc (mkcell:E.cell) :
                  (E.expr_t * E.term list * E.formula list) =
-    LOG "unfold_expression::gen_malloc()" LEVEL TRACE;
+(*    LOG "unfold_expression::gen_malloc()" LEVEL TRACE; *)
     let c_fresh = E.VarCell(E.build_var
                       E.fresh_cell_name E.Cell false None None E.Normal) in
     let a_fresh = E.VarAddr(E.build_var
@@ -88,20 +88,20 @@ let unfold_expression (mInfo:malloc_info)
   in
   match expr with
   | Stm.Term (Stm.AddrT (Stm.Malloc(e,a,t))) ->
-      LOG "Malloc translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG;
+(*      LOG "Malloc translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
       let e_expr  = Stm.elem_to_expr_elem e in
       let a_expr  = Stm.addr_to_expr_addr a in
       let t_expr  = Stm.tid_to_expr_tid t in
       let mkcell  = E.param_cell th_p (E.MkCell(e_expr, a_expr, t_expr)) in
         gen_malloc mkcell
   | Stm.Term (Stm.AddrT (Stm.MallocSLK(e,l))) ->
-      LOG "MallocSLK translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG;
+(*      LOG "MallocSLK translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
       let e_expr  = Stm.elem_to_expr_elem e in
       (* FIX: In fact, I am not using the parameter l *)
       let mkcell  = E.param_cell th_p (E.MkSLKCell(e_expr, [], [])) in
         gen_malloc mkcell
   | Stm.Term (Stm.AddrT (Stm.MallocSL(e,l))) ->
-      LOG "MallocSL translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG;
+(*      LOG "MallocSL translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
       let e_expr   = Stm.elem_to_expr_elem e in
       let l_expr   = Stm.integer_to_expr_integer l in
       let aa_fresh = E.VarAddrArray(E.build_var
@@ -123,15 +123,15 @@ let unfold_expression (mInfo:malloc_info)
                                                     (E.NoThid))), f)) fs in
         (t,ms,fs')
   | Stm.Term (Stm.ElemT (Stm.PointerData a)) ->
-      LOG "PointerData translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG;
+(*      LOG "PointerData translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
       let a_expr = Stm.addr_to_expr_addr a in
       (E.Term (E.ElemT (E.CellData (E.CellAt (E.heap,a_expr)))), [], [])
   | Stm.Term (Stm.AddrT (Stm.PointerNext a)) ->
-      LOG "PointerNext translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG;
+(*      LOG "PointerNext translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
       let a_expr = Stm.addr_to_expr_addr a in
       (E.Term (E.AddrT (E.Next (E.CellAt (E.heap,a_expr)))), [], [])
   | Stm.Term (Stm.AddrT (Stm.PointerNextAt (a,l))) ->
-      LOG "PointerNextAt translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG;
+(*      LOG "PointerNextAt translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
       let a_expr = Stm.addr_to_expr_addr a in
       let l_expr = Stm.integer_to_expr_integer l in
       (E.Term (E.AddrT (E.AddrArrRd (E.CellArr (E.CellAt (E.heap,a_expr)), l_expr))), [], [])
@@ -139,11 +139,11 @@ let unfold_expression (mInfo:malloc_info)
       (E.Term (E.AddrT (E.NextAt (E.CellAt (E.heap,a_expr), l_expr))), None, [], [])
 *)
   | Stm.Term (Stm.ThidT (Stm.PointerLockid a)) ->
-      LOG "PointerLockid translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG;
+(*      LOG "PointerLockid translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
       let a_expr = Stm.addr_to_expr_addr a in
       (E.Term (E.ThidT (E.CellLockId (E.CellAt (E.heap,a_expr)))), [], [])
   | Stm.Term (Stm.ThidT (Stm.PointerLockidAt (a,l))) ->
-      LOG "PointerLockidAt translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG;
+(*      LOG "PointerLockidAt translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
       let a_expr = Stm.addr_to_expr_addr a in
       let l_expr = Stm.integer_to_expr_integer l in
       (E.Term (E.ThidT (E.ThidArrRd (E.CellTids (E.CellAt (E.heap,a_expr)), l_expr))), [], [])
@@ -151,7 +151,7 @@ let unfold_expression (mInfo:malloc_info)
       (E.Term (E.ThidT (E.CellLockIdAt (E.CellAt (E.heap,a_expr), l_expr))), None, [], [])
 *)
   | _ ->
-      LOG "Else translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG;
+(*      LOG "Else translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
       (Stm.expr_to_expr_expr expr, [], [])
 
 

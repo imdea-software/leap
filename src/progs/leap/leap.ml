@@ -14,9 +14,9 @@ module Symtbl = Exprsymtable
 (* main         *)
 (****************)
 let _ =
-  LOG "Starting LEAP..." LEVEL TRACE;
+(*  LOG "Starting LEAP..." LEVEL TRACE; *)
   try LeapArgs.parse_args ();
-    LOG "DP selected: %s" (DP.to_str !LeapArgs.dpType) LEVEL DEBUG;
+(*    LOG "DP selected: %s" (DP.to_str !LeapArgs.dpType) LEVEL DEBUG; *)
     if !LeapArgs.verbose then LeapVerbose.enable_verbose();
     let ch = LeapArgs.open_input () in
     let tmp_sys, undefTids = 

@@ -229,7 +229,7 @@ struct
              (stac:Tactics.solve_tactic_t option)
              (co : Smp.cutoff_strategy_t)
              (phi : TllExp.formula) : bool =
-    LOG "Entering is_sat..." LEVEL TRACE;
+(*    LOG "Entering is_sat..." LEVEL TRACE; *)
     verb "**** TLL Solver, about to translate TLL...\n";
     let module Q = (val QueryManager.get_tll_query Solver.identifier) in
     let module Trans = Solver.Translate.Tll.Query(Q) in

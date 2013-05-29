@@ -489,25 +489,25 @@ struct
     assert(isInitialized());
     solverInfo.dp.pos_dp <- true;
     solverInfo.dp.num_dp <- true;
-    LOG "Enabled num DP." LEVEL DEBUG
+(*    LOG "Enabled num DP." LEVEL DEBUG *)
   
   let enable_tll_dp () : unit =
     assert(isInitialized());
     solverInfo.dp.pos_dp <- true;
     solverInfo.dp.tll_dp <- true;
-    LOG "Enabled tll DP." LEVEL DEBUG
+(*    LOG "Enabled tll DP." LEVEL DEBUG *)
 
   let enable_tsl_dp () : unit =
     assert(isInitialized());
     solverInfo.dp.pos_dp  <- true;
     solverInfo.dp.tsl_dp <- true;
-    LOG "Enabled tsl DP." LEVEL DEBUG
+(*    LOG "Enabled tsl DP." LEVEL DEBUG *)
 
   let enable_tslk_dp (k:int) : unit =
     assert(isInitialized());
     solverInfo.dp.pos_dp  <- true;
     solverInfo.dp.tslk_dp <- (true,k);
-    LOG "Enabled tslk DP." LEVEL DEBUG
+(*    LOG "Enabled tslk DP." LEVEL DEBUG *)
   
   let enable_dp : DP.t -> unit = function
     | DP.NoDP   -> ()
@@ -526,28 +526,28 @@ struct
   
   let apply_pos_dp () : bool =
     assert(isInitialized());
-    LOG "Apply Pos DP? %b" solverInfo.dp.pos_dp LEVEL DEBUG;
+(*    LOG "Apply Pos DP? %b" solverInfo.dp.pos_dp LEVEL DEBUG; *)
     solverInfo.dp.pos_dp
   
   let apply_num_dp () : bool =
     assert(isInitialized());
-    LOG "Apply Num DP? %b" solverInfo.dp.num_dp LEVEL DEBUG;
+(*    LOG "Apply Num DP? %b" solverInfo.dp.num_dp LEVEL DEBUG; *)
     solverInfo.dp.num_dp
   
   let apply_tll_dp () : bool =
     assert(isInitialized());
-    LOG "Apply Tll DP? %b" solverInfo.dp.tll_dp LEVEL DEBUG;
+(*    LOG "Apply Tll DP? %b" solverInfo.dp.tll_dp LEVEL DEBUG; *)
     solverInfo.dp.tll_dp
   
   let apply_tsl_dp () : bool =
     assert(isInitialized());
-    LOG "Apply Tsl DP? %b" solverInfo.dp.tsl_dp LEVEL DEBUG;
+(*    LOG "Apply Tsl DP? %b" solverInfo.dp.tsl_dp LEVEL DEBUG; *)
     solverInfo.dp.tsl_dp
 
   let apply_tslk_dp () : (bool * int) =
     assert(isInitialized());
     let (b,k) = solverInfo.dp.tslk_dp in
-    LOG "Apply Tslk[%i] DP? %b" k b LEVEL DEBUG;
+(*    LOG "Apply Tslk[%i] DP? %b" k b LEVEL DEBUG; *)
     (b, k)
 
   let apply_heap_based_dp () : bool =
@@ -1108,7 +1108,7 @@ struct
       (th_list : E.tid list) (* New formula parameters *)
       (p : E.pc_t) (* Statement position *)
       : E.formula list =
-    LOG "Entering rho_for_st..." LEVEL TRACE;
+(*    LOG "Entering rho_for_st..." LEVEL TRACE; *)
     let gSet = Sys.gen_global_vars_as_terms sys in
     let (proc,st) = Sys.get_statement_at sys p in
     (* let remLocList = List.remove_assoc proc allLocList in *)
@@ -1176,7 +1176,7 @@ struct
   let gen_rho (mode : rhoMode) (hide_pres:bool) (count_abs : bool)
       (sys : Sys.system_t) (th_list : E.tid list)
       (p : E.pc_t) : E.formula list =
-    LOG "Entering gen_rho..." LEVEL TRACE;
+(*    LOG "Entering gen_rho..." LEVEL TRACE; *)
     let res = rho_for_st sys mode hide_pres count_abs th_list p in
     verbstr (Interface.Msg.info "GENERATED RHO"
       (String.concat "\n" $ List.map (fun phi -> "[" ^ E.formula_to_str phi ^ "]") res));
@@ -1465,7 +1465,7 @@ struct
               (line : E.pc_t)
               (trans_tid : E.tid)
               (premise : premise_t) : (E.formula * vc_info_t) list =
-    LOG "Entering gen_vcs..." LEVEL TRACE;
+(*    LOG "Entering gen_vcs..." LEVEL TRACE; *)
     let me_subst = E.new_tid_subst [(Sys.me_tid_th, trans_tid)] in
     let rho = gen_rho (ROpenArray (trans_tid, inv.E.voc)) solverInfo.hide_pres 
       solverInfo.count_abs sys (Tac.supp_voc supp_info @ inv.E.voc) line in
@@ -1497,7 +1497,7 @@ struct
                                 (supInvs : E.formula list)
                                 (inv : E.formula_info_t)
                                   : (E.formula * vc_info_t) list =
-    LOG "Entering spinv_premise_transitions..." LEVEL TRACE;
+(*    LOG "Entering spinv_premise_transitions..." LEVEL TRACE; *)
     List.fold_left (fun vcs line ->
       let (n_tags, tmp_n_smp, normal_info, n_tacs, n_stac) =
         load_info supInvs inv line IGraph.Normal in
@@ -1522,7 +1522,7 @@ struct
 
   let seq_binv (sys : Sys.system_t) (inv : E.formula)
         : (E.formula * vc_info_t) list =
-    LOG "Entering seq_binv..." LEVEL TRACE;
+(*    LOG "Entering seq_binv..." LEVEL TRACE; *)
     let th_list = List.filter (fun x -> E.is_tid_var x) (E.voc inv) in
     if th_list <> [] then RAISE(NotSequentialFormula(E.formula_to_str inv));
     let fresh_tid = E.gen_fresh_thread th_list in
@@ -1585,7 +1585,7 @@ struct
                   (spec_cutoff:Smp.cutoff_strategy_t)
                   (tacs : Tac.post_tac_t list)
                   (line : E.pc_t) : (E.formula * vc_info_t) list =
-    LOG "Entering seq_gen_vcs..." LEVEL TRACE;
+(*    LOG "Entering seq_gen_vcs..." LEVEL TRACE; *)
     print_endline "ENTERING SEQ_GEN_VCS";
 
     assert (List.length inv.E.voc <= 1);
@@ -1630,7 +1630,7 @@ struct
                                     (supInvs : E.formula list)
                                     (inv : E.formula_info_t)
                                       : (E.formula * vc_info_t) list =
-    LOG "Entering seq_spinv_premise_transitions..." LEVEL TRACE;
+(*    LOG "Entering seq_spinv_premise_transitions..." LEVEL TRACE; *)
     print_endline "smt2: Entering premise_transitions";
     List.fold_left (fun vcs line ->
       let (tags, tmp_smp, info, tacs, stac) =
@@ -1645,7 +1645,7 @@ struct
 
   let seq_spinv (sys : Sys.system_t) (supInvs:E.formula list)
       (inv : E.formula) : (E.formula * vc_info_t) list =
-    LOG "Entering seq_spinv..." LEVEL TRACE;
+(*    LOG "Entering seq_spinv..." LEVEL TRACE; *)
     let fresh_th = E.gen_fresh_thread (E.voc (E.conj_list (inv::supInvs))) in
     let loc_inv = E.param (Some fresh_th) inv in
     let loc_supInvs = List.map (E.param (Some fresh_th)) supInvs in
@@ -1676,7 +1676,7 @@ struct
   
   let spinv (sys : Sys.system_t) (supInvs:E.formula list)
       (inv : E.formula) : (E.formula * vc_info_t) list =
-    LOG "Entering spinv..." LEVEL TRACE;
+(*    LOG "Entering spinv..." LEVEL TRACE; *)
 (*    let voc_inv = List.filter E.is_tid_var (E.voc inv) in *)
     let need_theta = List.mem 0 solverInfo.focus in
     let lines_to_consider = List.filter (fun x -> x <> 0) solverInfo.focus in
@@ -1702,7 +1702,7 @@ struct
   
   let pinv_plus (sys : Sys.system_t)
       (inv : E.formula) : (E.formula * vc_info_t) list =
-    LOG "Entering pinv_plus..." LEVEL TRACE;
+(*    LOG "Entering pinv_plus..." LEVEL TRACE; *)
     spinv sys [] inv
   
   
@@ -1714,7 +1714,7 @@ struct
   
   let pinv (sys : Sys.system_t) 
       (inv:E.formula) : (E.formula * vc_info_t) list =
-    LOG "Entering pinv..." LEVEL TRACE;
+(*    LOG "Entering pinv..." LEVEL TRACE; *)
     let v = E.voc inv in
     let primed_inv = E.prime inv in
   
@@ -1904,7 +1904,7 @@ struct
   
   
   let prepare_system (sys:Sys.system_t) : Sys.system_t =
-    LOG "Entering prepare_system..." LEVEL TRACE;
+(*    LOG "Entering prepare_system..." LEVEL TRACE; *)
     assert(isInitialized());
     let _ = clear_file solverInfo.out_file in
     let filtered_sys = filter_system sys in
@@ -1914,7 +1914,7 @@ struct
     extended_sys
   
   let call_pos_dp (phi:PosExp.expression) (status:valid_t) : dp_result_t =
-    LOG "Entering call_pos_dp..." LEVEL TRACE;
+(*    LOG "Entering call_pos_dp..." LEVEL TRACE; *)
     assert(isInitialized());
     if status = Unverified || status = NotValid then begin
       let timer = new LeapLib.timer in
@@ -1929,7 +1929,7 @@ struct
   
   
   let call_num_dp (phi : E.formula) (status : valid_t) : dp_result_t =
-    LOG "Entering call_num_dp..." LEVEL TRACE;
+(*    LOG "Entering call_num_dp..." LEVEL TRACE; *)
     assert(isInitialized());
     if status = Unverified || status = NotValid then begin
       let num_phi = NumExp.formula_to_int_formula phi in
@@ -1952,7 +1952,7 @@ struct
                   (stac   : Tac.solve_tactic_t option)
                   (cutoff : Smp.cutoff_strategy_t)
                   (status : valid_t) : dp_result_t =
-    LOG "Entering call_tll_dp..." LEVEL TRACE;
+(*    LOG "Entering call_tll_dp..." LEVEL TRACE; *)
     assert(isInitialized());
     if status = Unverified || status = NotValid then begin
       let tll_phi = TllInterface.formula_to_tll_formula phi in
@@ -1975,7 +1975,7 @@ struct
                    (stac   : Tac.solve_tactic_t option)
                    (cutoff : Smp.cutoff_strategy_t)
                    (status : valid_t) : dp_result_t =
-    LOG "Entering call_tslk_dp..." LEVEL TRACE;
+(*    LOG "Entering call_tslk_dp..." LEVEL TRACE; *)
     assert(isInitialized());
     if status = Unverified || status = NotValid then begin
       let module TSLKExpr = TSLKS.TslkExp in
@@ -2001,7 +2001,7 @@ struct
                   (stac   : Tac.solve_tactic_t option)
                   (cutoff : Smp.cutoff_strategy_t)
                   (status : valid_t) : dp_result_t =
-    LOG "Entering call_tsl_dp..." LEVEL TRACE;
+(*    LOG "Entering call_tsl_dp..." LEVEL TRACE; *)
     assert(isInitialized());
     if status = Unverified || status = NotValid then begin
       verbstr (Interface.Msg.info "TSL FORMULA TO BE TRANSLATED INTO TSLK" (E.formula_to_str phi));
@@ -2025,7 +2025,7 @@ struct
  
  
   let apply_dp_on_table (vc_tbl:formula_table_t) (header:string) : bool =
-    LOG "Entering apply_dp_on_table..." LEVEL TRACE;
+(*    LOG "Entering apply_dp_on_table..." LEVEL TRACE; *)
     assert(isInitialized());
     let analysis_timer = new LeapLib.timer in
     analysis_timer#start;
@@ -2181,14 +2181,14 @@ struct
   
   let apply_dp_on_list (vc_list:(E.formula * vc_info_t) list)
       (header:string) : bool =
-    LOG "Entering apply_dp_on_list..." LEVEL TRACE;
+(*    LOG "Entering apply_dp_on_list..." LEVEL TRACE; *)
     let vc_tbl = formula_list_to_table vc_list in
     apply_dp_on_table vc_tbl header
   
   
   let check_with_pinv (sys : Sys.system_t) (inv : E.formula) : bool =
     assert(isInitialized());
-    LOG "Entering check_with_pinv..." LEVEL TRACE;
+(*    LOG "Entering check_with_pinv..." LEVEL TRACE; *)
     (* Erases output file, if exists *)
     let extended_sys = prepare_system sys in
     let vcs = pinv extended_sys inv in
@@ -2200,7 +2200,7 @@ struct
   
   let check_with_pinv_plus (sys : Sys.system_t) (inv : E.formula) : bool =
     assert(isInitialized());
-    LOG "Entering check_with_pinv_plus..." LEVEL TRACE;
+(*    LOG "Entering check_with_pinv_plus..." LEVEL TRACE; *)
     (* Erases output file, if exists *)
     let extended_sys = prepare_system sys in
     let vcs = pinv_plus extended_sys inv in
@@ -2213,7 +2213,7 @@ struct
   let check_with_spinv (sys : Sys.system_t) (supInv_list : E.formula list)
       (inv : E.formula) : bool =
     assert(isInitialized());
-    LOG "Entering check_with_spinv..." LEVEL TRACE;
+(*    LOG "Entering check_with_spinv..." LEVEL TRACE; *)
     (* Erases output file, if exists *)
     let extended_sys = prepare_system sys in
     let vcs = spinv extended_sys supInv_list inv in
@@ -2225,7 +2225,7 @@ struct
 
   let check_with_seq_binv (sys : Sys.system_t) (inv : E.formula) : bool =
     assert(isInitialized());
-    LOG "Entering check_with_seq_binv..." LEVEL TRACE;
+(*    LOG "Entering check_with_seq_binv..." LEVEL TRACE; *)
     (* Erases output file, if exists *)
     let extended_sys = prepare_system sys in
     let vcs = seq_binv extended_sys inv in
@@ -2238,7 +2238,7 @@ struct
   let check_with_seq_spinv (sys : Sys.system_t) (supInv_list : E.formula list)
       (inv : E.formula) : bool =
     assert(isInitialized());
-    LOG "Entering check_with_seq_spinv..." LEVEL TRACE;
+(*    LOG "Entering check_with_seq_spinv..." LEVEL TRACE; *)
     let extended_sys = prepare_system sys in
     let vcs = seq_spinv extended_sys supInv_list inv in
     let vc_list = 
@@ -2250,7 +2250,7 @@ struct
   let check_with_graph (sys:Sys.system_t)
       (graph:IGraph.iGraph_t) : bool =
     (* Auxiliary function for loading cases *)
-    let _ = LOG "Entering check_with_graph..." LEVEL TRACE in
+(*    let _ = LOG "Entering check_with_graph..." LEVEL TRACE in *)
 
       let load_cases (sc_tbl:special_cases_tag_tbl_t) : special_cases_form_tbl_t =
       let case_tbl = Hashtbl.create (Hashtbl.length sc_tbl) in

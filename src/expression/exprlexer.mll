@@ -8,6 +8,7 @@ exception LexerError
 
 let whitespc = [' ' '\t']
 let letter = ['A'-'Z' 'a'-'z']
+let letterordollar = ['A'-'Z' 'a'-'z' '$']
 let digit = ['0'-'9']
 let alphanum = ['A'-'Z' 'a'-'z' '0'-'9' '_' '/' ''' '@' ]
 let almostany =['A'-'Z' 'a'-'z' '0'-'9' '_' ' ' '.' '/' '-' '(' ')' '\'' ',']
@@ -124,7 +125,7 @@ rule norm = parse
   | "=>"            { Global.last "=>"            ; LARGE_EDGE_ARROW }
   | "arrUpd"        { Global.last "arrUpd"        ; ARR_UPDATE }
   | (digit+) as num { Global.last num; NUMBER (int_of_string num) }
-  | (letter alphanum*) as id { Global.last id; IDENT (id,Global.get_linenum()) }
+  | (letterordollar alphanum*) as id { Global.last id; IDENT (id,Global.get_linenum()) }
   | whitespc          { Global.last "whitespc"; norm lexbuf }
   | '\n'              { Global.last "\\n"; Global.incr_linenum (); norm lexbuf }
   | eof               { Global.last "EOF"; EOF }

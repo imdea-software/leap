@@ -347,7 +347,7 @@ module Make (TSLK : TSLKExpression.S) =
 
 
     and formula_to_tslk_formula (f:Expr.formula) : TSLK.formula =
-      LOG "Entering formula_to_tslk_formula..." LEVEL TRACE;
+(*      LOG "Entering formula_to_tslk_formula..." LEVEL TRACE; *)
       let to_formula = formula_to_tslk_formula in
       match f with
         Expr.Literal l       -> TSLK.Literal (literal_to_tslk_literal l)
