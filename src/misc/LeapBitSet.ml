@@ -19,7 +19,7 @@ let add (f:'a -> int) (v:'a t) (a:'a) : unit =
     let arr_id = id / int_size in
     let mask = 1 lsl (id mod int_size) in
       v.(arr_id) <- (mask lor (v.(arr_id)))
-  with _ -> RAISE(Out_of_bounds)
+  with _ -> raise(Out_of_bounds)
 
 
 let apply_bin_op ((op):int -> int -> int) (v:'a t) (w:'a t) : 'a t =
@@ -30,7 +30,7 @@ let apply_bin_op ((op):int -> int -> int) (v:'a t) (w:'a t) : 'a t =
       new_arr.(i) <- (op v.(i) w.(i))
     done;
     new_arr
-  with _ -> RAISE(Diff_length)
+  with _ -> raise(Diff_length)
 
 
 let apply_unary_op ((op):int -> int) (v:'a t) : 'a t =
@@ -61,7 +61,7 @@ let disjoint (v:'a t) (w:'a t) : bool =
       res := !res && (v.(i) land w.(i) = 0)
     done;
     !res
-  with _ -> RAISE(Diff_length)
+  with _ -> raise(Diff_length)
 
 
 let to_str (v:'a t) : string =

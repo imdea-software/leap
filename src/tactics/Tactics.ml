@@ -64,7 +64,7 @@ let post_tac_from_string (s:string) : post_tac_t =
   | "split" -> SplitConseq
   | "simpl" -> SimplPCVoc
   | "propagate" -> PropReduc
-  | _ -> RAISE(Invalid_post_tac s)
+  | _ -> raise(Invalid_post_tac s)
 
 
 let new_tactics (smp:Smp.cutoff_strategy_t option)

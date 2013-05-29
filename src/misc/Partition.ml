@@ -215,7 +215,7 @@ let load_ineq_tbl (dom:'a list) (p:'a t) (tbl:'a ineq_table_t) : unit =
       with _ -> ()
     ) ds;
     if not (LeapBitSet.disjoint friends enemies) then
-      RAISE(Inconsistent_inequality);
+      raise(Inconsistent_inequality);
       Hashtbl.replace p.ineqs k (friends, enemies)
   ) ks
 
@@ -255,19 +255,19 @@ let rec gen_eq_classes (xs:('a list * 'a LeapBitSet.t * 'a LeapBitSet.t) list) :
 
 let check_in_dom (s:'a GenSet.t) (a:'a) : unit =
   if not (GenSet.mem s a) then
-    RAISE(Not_in_domain)
+    raise(Not_in_domain)
 
 
 let check_inconsistent (a:'a) (b:'a) : unit =
   if a = b then
-    RAISE(Inconsistent_inequality)
+    raise(Inconsistent_inequality)
 
 
 let check_no_ineq (tbl: 'a ineq_table_t) (a:'a) (b:'a) : unit =
   try
     let s = Hashtbl.find tbl a in
     if GenSet.mem s b then
-      RAISE(Inconsistent_inequality)
+      raise(Inconsistent_inequality)
   with _ -> ()
 
 

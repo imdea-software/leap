@@ -1332,7 +1332,7 @@ module Make (K : Level.S) : TSLK_QUERY =
       let aa_size = List.length aa in
       if aa_size > K.level then
         let msg = String.concat "," $ List.map Expr.addr_to_str aa in
-        RAISE(Array_larger_than_parameter(msg,K.level))
+        raise(Array_larger_than_parameter(msg,K.level))
       else
         let str = "((as const (Array " ^level_s^ " " ^addr_s^ ")) null)" in
         let i = ref (-1) in
@@ -1345,7 +1345,7 @@ module Make (K : Level.S) : TSLK_QUERY =
       let tt_size = List.length tt in
       if tt_size > K.level then
         let msg = String.concat "," $ List.map Expr.tid_to_str tt in
-          RAISE(Array_larger_than_parameter(msg,K.level))
+          raise(Array_larger_than_parameter(msg,K.level))
       else
         let str = "((as const (Array " ^level_s^ " " ^tid_s^ ")) null)" in
         let i = ref (-1) in

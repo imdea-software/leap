@@ -177,12 +177,12 @@ let _ =
     if !LeapArgs.useGraph then begin
       if !LeapArgs.invFolder == "" then begin
         Interface.Err.msg "Invariant folder not provided." "";
-        RAISE(LeapArgs.No_inv_folder)
+        raise(LeapArgs.No_inv_folder)
       end;
       if not (Sys.is_directory !LeapArgs.invFolder) then begin
         Interface.Err.msg "Not a valid invariant folder" $
           Printf.sprintf "%s is not a valid folder." !LeapArgs.invFolder;
-        RAISE(LeapArgs.No_inv_folder)
+        raise(LeapArgs.No_inv_folder)
       end;
       (* We load the graph information *)
       let graph = Parser.open_and_parse !LeapArgs.iGraphFile 
@@ -210,7 +210,7 @@ let _ =
         Interface.Err.msg "Undefined tag" $
           Printf.sprintf "Tag %s was used in the invariant graph \
             but it could not be read from the invariant folder." undef_t;
-        RAISE(LeapArgs.Unknown_tag undef_t)
+        raise(LeapArgs.Unknown_tag undef_t)
       end;
       ignore $ VCG.check_with_graph sys graph
     end;
@@ -273,6 +273,6 @@ let _ =
     | Parsing.Parse_error -> Interface.Err.msg "Parsing error" $
         sprintf "Unexpected symbol \"%s\" at line %i" 
           (Global.get_last()) (Global.get_linenum())
-    | e -> RAISE(e)
+    | e -> raise(e)
 
 let _ = LeapDebug.flush()

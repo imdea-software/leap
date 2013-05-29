@@ -46,5 +46,5 @@ rule norm = parse
   | eof               { Global.last "EOF"; EOF }
   | _ as x            { Global.last (String.make 1 x);
                           print_endline ("Bad token: " ^ (String.make 1 x));
-                          RAISE(LexerError)
+                          raise(LexerError)
                       }

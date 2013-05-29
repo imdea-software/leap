@@ -1805,7 +1805,7 @@ struct
           ("(assert (and (= " ^data ("(" ^mkcell_str^ ")")^ " " ^e_str^ ")\n" ^
            "             (= " ^next ("(" ^mkcell_str^ ")")^ " " ^a_str^ ")\n" ^
            "             (= " ^lock ("(" ^mkcell_str^ ")")^ " " ^t_str^ ")))\n")
-    | _ -> RAISE(UnexpectedCellTerm(Expr.cell_to_str c))
+    | _ -> raise(UnexpectedCellTerm(Expr.cell_to_str c))
 
 
   let process_getp (max_addrs:int) ((m,a1,a2):string * string * string) : string =

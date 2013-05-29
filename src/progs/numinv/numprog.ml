@@ -169,10 +169,10 @@ let num_th_to_str (expr:Expr.tid) : string =
   match expr with
     Expr.VarTh v        -> "__" ^ (Expr.variable_to_str v)
   | Expr.NoThid         -> no_tid
-  | Expr.CellLockId _   -> RAISE(No_numerical_expression(Expr.tid_to_str expr))
-  | Expr.CellLockIdAt _ -> RAISE(No_numerical_expression(Expr.tid_to_str expr))
-  | Expr.ThidArrayRd _  -> RAISE(No_numerical_expression(Expr.tid_to_str expr))
-  | Expr.ThidArrRd _    -> RAISE(No_numerical_expression(Expr.tid_to_str expr))
+  | Expr.CellLockId _   -> raise(No_numerical_expression(Expr.tid_to_str expr))
+  | Expr.CellLockIdAt _ -> raise(No_numerical_expression(Expr.tid_to_str expr))
+  | Expr.ThidArrayRd _  -> raise(No_numerical_expression(Expr.tid_to_str expr))
+  | Expr.ThidArrRd _    -> raise(No_numerical_expression(Expr.tid_to_str expr))
 
 
 let num_th_option_to_str (expr:Expr.tid option) : string =
@@ -741,10 +741,10 @@ let param_num_var_id (t:Expr.tid) (id:Expr.varId) : Expr.varId =
   match t with
     Expr.VarTh v        -> id ^ "_" ^ (Expr.variable_to_str v)
   | Expr.NoThid         -> id
-  | Expr.CellLockId _   -> RAISE(No_numerical_expression(Expr.tid_to_str t))
-  | Expr.CellLockIdAt _ -> RAISE(No_numerical_expression(Expr.tid_to_str t))
-  | Expr.ThidArrayRd _  -> RAISE(No_numerical_expression(Expr.tid_to_str t))
-  | Expr.ThidArrRd _    -> RAISE(No_numerical_expression(Expr.tid_to_str t))
+  | Expr.CellLockId _   -> raise(No_numerical_expression(Expr.tid_to_str t))
+  | Expr.CellLockIdAt _ -> raise(No_numerical_expression(Expr.tid_to_str t))
+  | Expr.ThidArrayRd _  -> raise(No_numerical_expression(Expr.tid_to_str t))
+  | Expr.ThidArrRd _    -> raise(No_numerical_expression(Expr.tid_to_str t))
 
 
 let build_trans_info (sys:Sys.system_t)
@@ -1501,7 +1501,7 @@ let iterate (prob:num_problem_t) (dType:domain_t) : inv_table_t option =
                          "When applying widening, information about previous \
                           invariants is expected, and no information could be \
                           found.";
-                        RAISE(No_invariant_info)
+                        raise(No_invariant_info)
             | Some i -> let _ = print_endline "Using widening..." in
                         let _ = widening_steps := !widening_steps + 1 in
                           gen_widening_for_invs i inv'

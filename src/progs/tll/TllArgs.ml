@@ -60,7 +60,7 @@ let opts =
   ]
 
 let anon_fun str = 
-  if !is_input_file then RAISE(MoreThanOneInputFile)
+  if !is_input_file then raise(MoreThanOneInputFile)
   else assigninputfile str
 
 let usagemsg = "Parses a program and generates its FTS."
@@ -70,7 +70,7 @@ let postcheck () = () (*
   if !phiFile = "" then begin
     Interface.Err.msg "Missing file"
       "No file with TLL formula using the -f flag has been provided.";
-    RAISE(No_file)
+    raise(No_file)
   end
 *)
 let parse_args _ = 
@@ -84,7 +84,7 @@ let open_input _ =
       Unix.in_channel_of_descr !input_file_fd
     end
   else
-    RAISE(No_file)
+    raise(No_file)
     (*stdin*)
 
 let close_input _ =

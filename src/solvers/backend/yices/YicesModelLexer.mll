@@ -36,4 +36,4 @@ rule norm = parse
   | '\n'                     {Global.last "\\n"            ; Global.incr_linenum (); norm lexbuf  }
   | eof                      {Global.last "EOF"            ; EOF                                  }
   | _ as x                   {Global.last (String.make 1 x);
-                                print_endline ("Bad token: " ^ (String.make 1 x)); RAISE(LexerError) }
+                                print_endline ("Bad token: " ^ (String.make 1 x)); raise(LexerError) }

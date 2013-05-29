@@ -158,7 +158,7 @@ module MyArgs =
       ]
 
     let anon_fun str = if !is_input_file then
-                         RAISE(MoreThanOneInputFile)
+                         raise(MoreThanOneInputFile)
                        else
                          assigninputfile str
 
@@ -184,7 +184,7 @@ let open_input _ =
       Unix.in_channel_of_descr !input_file_fd
     end
   else
-    RAISE(No_file)
+    raise(No_file)
     (*stdin*)
 
 let close_input _ =
@@ -273,6 +273,6 @@ let _ =
     | Global.ParserError msg -> Interface.Err.msg "numinv: Parsing error" msg
     | Parsing.Parse_error -> Interface.Err.msg "numinv: Parsing error" $
         sprintf "Unexpected symbol \"%s\" at line %i" (Global.get_last()) (Global.get_linenum())
-    | e -> RAISE(e)
+    | e -> raise(e)
 
 let _ = LeapDebug.flush()

@@ -21,7 +21,7 @@ let incLine() = incr line
 let SPACE = [' ''\t''\r']
 
 rule token =
-  | parse eof           { RAISE(EOF) }
+  | parse eof           { raise(EOF) }
   | '\n'                { incLine(); printf "\n"; token lexbuf }
   | "__line__"          { print_int (!line); token lexbuf } 
   | "__file__"          { printf "\"%s\"" (!filename); token lexbuf }
@@ -35,7 +35,7 @@ rule token =
   | _ as c              { print_char c; token lexbuf }
 
 and string =
-  parse eof             { RAISE(EOF) }
+  parse eof             { raise(EOF) }
   | '\n'                { incLine(); printf "\n"; string lexbuf }
   | '"'                 { () }
   | "\\\""              { print_string "\\\""; string lexbuf }
@@ -45,7 +45,7 @@ and string =
 
 {
 let main(args) =
-  let input = try open_in (args.(1)) with e -> RAISE(e) in
+  let input = try open_in (args.(1)) with e -> raise(e) in
   let lexbuf = from_channel input in
   filename := args.(1);
   try token lexbuf with EOF -> ()

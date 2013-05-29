@@ -702,7 +702,7 @@ let term_to_integer (t:term) : integer =
                 sprintf "Impossible to convert to integer a non integer \
                          term. An integer term was expected, but \"%s\" was \
                          received." (term_to_str_aux true t);
-              RAISE(Invalid_argument)
+              raise(Invalid_argument)
 
 
 let term_to_set (t:term) : set =
@@ -712,7 +712,7 @@ let term_to_set (t:term) : set =
                 sprintf "Impossible to convert to set a non set \
                          term. A set term was expected, but \"%s\" was \
                          received." (term_to_str_aux true t);
-              RAISE(Invalid_argument)
+              raise(Invalid_argument)
 
 
 let term_to_setth (t:term) : setth =
@@ -723,7 +723,7 @@ let term_to_setth (t:term) : setth =
                            a non set of thread identifiers term. A set of \
                            thread identifiers term was expected, but \"%s\" \
                            was received." (term_to_str_aux true t);
-                RAISE(Invalid_argument)
+                raise(Invalid_argument)
 
 
 let term_to_setint (t:term) : setint =
@@ -734,7 +734,7 @@ let term_to_setint (t:term) : setint =
                            a non set of integers term. A set of \
                             integers term was expected, but \"%s\" \
                            was received." (term_to_str_aux true t);
-                RAISE(Invalid_argument)
+                raise(Invalid_argument)
 
 
 let term_to_setelem (t:term) : setelem =
@@ -745,7 +745,7 @@ let term_to_setelem (t:term) : setelem =
                              a non set of elements term. A set of \
                              elements term was expected, but \"%s\" \
                              was received." (term_to_str_aux true t);
-                  RAISE(Invalid_argument)
+                  raise(Invalid_argument)
 
 
 
@@ -860,10 +860,10 @@ and tid_to_expr_th (t:tid) : E.tid =
   | CellLockIdAt (c,l) -> E.CellLockIdAt (cell_to_expr_cell c,
                                           integer_to_expr_integer l)
 *)
-  | ThidArrayRd (a,t)  -> RAISE(Not_supported_conversion(tid_to_str true t))
-  | ThidArrRd (a,l)    -> RAISE(Not_supported_conversion(tid_to_str true t))
-  | PointerLockid _    -> RAISE(Not_supported_conversion(tid_to_str true t))
-  | PointerLockidAt _  -> RAISE(Not_supported_conversion(tid_to_str true t))
+  | ThidArrayRd (a,t)  -> raise(Not_supported_conversion(tid_to_str true t))
+  | ThidArrRd (a,l)    -> raise(Not_supported_conversion(tid_to_str true t))
+  | PointerLockid _    -> raise(Not_supported_conversion(tid_to_str true t))
+  | PointerLockidAt _  -> raise(Not_supported_conversion(tid_to_str true t))
 
 
 and elem_to_expr_elem (e:elem) : E.elem =
@@ -896,9 +896,9 @@ and addr_to_expr_addr (a:addr) : E.addr =
                                         tid_to_expr_th t)
   | AddrArrRd (a,i)     -> E.AddrArrRd (addrarray_to_expr_array a,
                                         integer_to_expr_integer i)
-  | Malloc _            -> RAISE(Not_supported_conversion(addr_to_str true a))
-  | MallocSL _          -> RAISE(Not_supported_conversion(addr_to_str true a))
-  | MallocSLK _         -> RAISE(Not_supported_conversion(addr_to_str true a))
+  | Malloc _            -> raise(Not_supported_conversion(addr_to_str true a))
+  | MallocSL _          -> raise(Not_supported_conversion(addr_to_str true a))
+  | MallocSLK _         -> raise(Not_supported_conversion(addr_to_str true a))
   | PointerNext a       -> E.Next(E.CellAt(E.heap,addr_to_expr_addr a))
   | PointerNextAt (a,l) -> E.AddrArrRd (E.CellArr(E.CellAt(E.heap,addr_to_expr_addr a)),
                                         integer_to_expr_integer l)
@@ -1513,7 +1513,7 @@ let rec get_st_info_aux (st:statement_t) : st_info_t =
   | StSeq xs                   -> get_st_info_aux (LeapLib.lastElem xs)
   | StCall (_,_,_,_,Some info) -> info
   | StReturn (_,_,Some info)   -> info
-  | _                          -> RAISE(Statement_info_unavailable)
+  | _                          -> raise(Statement_info_unavailable)
 
 
 let rec get_st_info (st:statement_t) : st_info_t =
@@ -1525,7 +1525,7 @@ let rec get_st_info (st:statement_t) : st_info_t =
         Interface.Err.msg "Information unavailable" $
                   sprintf "Information for statement\n%s\n could not be found"
                   (statement_to_str 1 st);
-        RAISE(Statement_info_unavailable)
+        raise(Statement_info_unavailable)
       end
 
 
@@ -1568,7 +1568,7 @@ let get_forced_st_next_pos (st:statement_t) : E.pc_t =
 
 let rec get_last_st_info (st:statement_t) : st_info_t =
   match st with
-    StSeq [] -> RAISE(Empty_sequence)
+    StSeq [] -> raise(Empty_sequence)
   | StSeq xs -> get_last_st_info (lastElem xs)
   | StIf (_, t_branch, e_branch, _, _) -> begin
                                             match e_branch with
@@ -1604,7 +1604,7 @@ let rec get_last_st_pos (st:statement_t) : E.pc_t =
 (*
 let rec get_last_st_pos (st:statement_t) : pc_t =
   match st with
-    StSeq [] -> RAISE(Empty_sequence)
+    StSeq [] -> raise(Empty_sequence)
   | StSeq xs -> get_last_st_pos (lastElem xs)
   | s        -> get_st_pos s
 *)
@@ -1612,7 +1612,7 @@ let rec get_last_st_pos (st:statement_t) : pc_t =
 
 let rec get_fst_st_pos (st:statement_t) : E.pc_t =
   match st with
-    StSeq [] -> RAISE(Empty_sequence)
+    StSeq [] -> raise(Empty_sequence)
   | StSeq xs -> get_fst_st_pos (List.hd xs)
   | s        -> get_st_pos s
 

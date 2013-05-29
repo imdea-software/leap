@@ -46,7 +46,7 @@ let parse_tac_list (s:string) : Tactics.post_tac_t list =
   try List.map Tactics.post_tac_from_string split
   with e -> Interface.Err.msg"Bad argument" $
       "List of tactics name expected as argument.";
-      RAISE(e)
+      raise(e)
 
 let assigninputfile  (s:string) : unit = assignopt input_file is_input_file s
 
@@ -75,7 +75,7 @@ let opts =
   ]
 
 let anon_fun str = 
-  if !is_input_file then RAISE(MoreThanOneInputFile)
+  if !is_input_file then raise(MoreThanOneInputFile)
   else assigninputfile str
 
 let usagemsg = "Parses a program and generates its FTS."
@@ -85,7 +85,7 @@ let postcheck () = () (*
   if !phiFile = "" then begin
     Interface.Err.msg "Missing file"
       "No file with TLL formula using the -f flag has been provided.";
-    RAISE(No_file)
+    raise(No_file)
   end
 *)
 let parse_args _ = 
@@ -99,7 +99,7 @@ let open_input _ =
       Unix.in_channel_of_descr !input_file_fd
     end
   else
-    RAISE(No_file)
+    raise(No_file)
     (*stdin*)
 
 let close_input _ =

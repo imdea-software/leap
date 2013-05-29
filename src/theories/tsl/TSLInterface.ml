@@ -26,13 +26,13 @@ let rec sort_to_tsl_sort (s:Expr.sort) : Tsl.sort =
   | Expr.Addr      -> Tsl.Addr
   | Expr.Cell      -> Tsl.Cell
   | Expr.SetTh     -> Tsl.SetTh
-  | Expr.SetInt    -> RAISE(UnsupportedSort(Expr.sort_to_str s))
+  | Expr.SetInt    -> raise(UnsupportedSort(Expr.sort_to_str s))
   | Expr.SetElem   -> Tsl.SetElem
   | Expr.Path      -> Tsl.Path
   | Expr.Mem       -> Tsl.Mem
   | Expr.Bool      -> Tsl.Bool
   | Expr.Int       -> Tsl.Int
-  | Expr.Array     -> RAISE(UnsupportedSort(Expr.sort_to_str s))
+  | Expr.Array     -> raise(UnsupportedSort(Expr.sort_to_str s))
   | Expr.AddrArray -> Tsl.AddrArray
   | Expr.TidArray  -> Tsl.TidArray
   | Expr.Unknown   -> Tsl.Unknown
@@ -74,10 +74,10 @@ and tid_to_tsl_tid (th:Expr.tid) : Tsl.tid =
   match th with
     Expr.VarTh v            -> Tsl.VarTh (var_to_tsl_var v)
   | Expr.NoThid             -> Tsl.NoThid
-  | Expr.CellLockId _       -> RAISE(UnsupportedTslExpr(Expr.tid_to_str th))
+  | Expr.CellLockId _       -> raise(UnsupportedTslExpr(Expr.tid_to_str th))
   | Expr.CellLockIdAt (c,l) -> Tsl.CellLockIdAt (cell_to_tsl_cell c,
                                                  int_to_tsl_int l)
-  | Expr.ThidArrayRd _      -> RAISE(UnsupportedTslExpr(Expr.tid_to_str th))
+  | Expr.ThidArrayRd _      -> raise(UnsupportedTslExpr(Expr.tid_to_str th))
   | Expr.ThidArrRd (tt,i)   -> Tsl.ThidArrRd (tidarr_to_tsl_tidarr tt,
                                               int_to_tsl_int i)
 
@@ -92,7 +92,7 @@ and term_to_tsl_term (t:Expr.term) : Tsl.term =
   | Expr.AddrT a       -> Tsl.AddrT (addr_to_tsl_addr a)
   | Expr.CellT c       -> Tsl.CellT (cell_to_tsl_cell c)
   | Expr.SetThT st     -> Tsl.SetThT (setth_to_tsl_setth st)
-  | Expr.SetIntT _     -> RAISE(UnsupportedTslExpr(Expr.term_to_str t))
+  | Expr.SetIntT _     -> raise(UnsupportedTslExpr(Expr.term_to_str t))
   | Expr.SetElemT st   -> Tsl.SetElemT (setelem_to_tsl_setelem st)
   | Expr.PathT p       -> Tsl.PathT (path_to_tsl_path p)
   | Expr.MemT m        -> Tsl.MemT (mem_to_tsl_mem m)
@@ -111,7 +111,7 @@ and arrays_to_tsl_term (a:Expr.arrays) : Tsl.term =
       let tsl_t  = term_to_tsl_term t
       in
         Tsl.VarUpdate (tsl_v, tsl_th, tsl_t)
-  | Expr.ArrayUp (_,_,e) -> RAISE(UnsupportedTslExpr(Expr.expr_to_str e))
+  | Expr.ArrayUp (_,_,e) -> raise(UnsupportedTslExpr(Expr.expr_to_str e))
 
 
 and eq_to_tsl_eq ((t1,t2):Expr.eq) : Tsl.eq =
@@ -140,14 +140,14 @@ and set_to_tsl_set (s:Expr.set) : Tsl.set =
   | Expr.Intr (s1,s2)        -> Tsl.Intr (to_set s1, to_set s2)
   | Expr.Setdiff (s1,s2)     -> Tsl.Setdiff (to_set s1, to_set s2)
   | Expr.PathToSet p         -> Tsl.PathToSet (path_to_tsl_path p)
-  | Expr.AddrToSet _         -> RAISE(UnsupportedTslExpr(Expr.set_to_str s))
+  | Expr.AddrToSet _         -> raise(UnsupportedTslExpr(Expr.set_to_str s))
   | Expr.AddrToSetAt (m,a,l) -> Tsl.AddrToSet (mem_to_tsl_mem m,
                                                addr_to_tsl_addr a,
                                                int_to_tsl_int l)
   | Expr.SetArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
       let v = Expr.build_var id s pr (Some t) p Expr.Normal in
       Tsl.VarSet (var_to_tsl_var v)
-  | Expr.SetArrayRd _        -> RAISE(UnsupportedTslExpr(Expr.set_to_str s))
+  | Expr.SetArrayRd _        -> raise(UnsupportedTslExpr(Expr.set_to_str s))
 
 
 and elem_to_tsl_elem (e:Expr.elem) : Tsl.elem =
@@ -159,8 +159,8 @@ and elem_to_tsl_elem (e:Expr.elem) : Tsl.elem =
   | Expr.ElemArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
       let v = Expr.build_var id s pr (Some t) p Expr.Normal in
       Tsl.VarElem (var_to_tsl_var v)
-  | Expr.ElemArrayRd _          -> RAISE(UnsupportedTslExpr(Expr.elem_to_str e))
-  | Expr.HavocListElem          -> RAISE(UnsupportedTslExpr(Expr.elem_to_str e))
+  | Expr.ElemArrayRd _          -> raise(UnsupportedTslExpr(Expr.elem_to_str e))
+  | Expr.HavocListElem          -> raise(UnsupportedTslExpr(Expr.elem_to_str e))
   | Expr.HavocSkiplistElem      -> Tsl.HavocSkiplistElem
   | Expr.LowestElem             -> Tsl.LowestElem
   | Expr.HighestElem            -> Tsl.HighestElem
@@ -172,14 +172,14 @@ and addr_to_tsl_addr (a:Expr.addr) : Tsl.addr =
   match a with
     Expr.VarAddr v              -> Tsl.VarAddr (var_to_tsl_var v)
   | Expr.Null                   -> Tsl.Null
-  | Expr.Next _                 -> RAISE(UnsupportedTslExpr(Expr.addr_to_str a))
+  | Expr.Next _                 -> raise(UnsupportedTslExpr(Expr.addr_to_str a))
   | Expr.NextAt (c,l)           -> Tsl.NextAt (cell_to_tsl_cell c, int_to_tsl_int l)
-  | Expr.FirstLocked _          -> RAISE(UnsupportedTslExpr(Expr.addr_to_str a))
-  | Expr.FirstLockedAt _        -> RAISE(UnsupportedTslExpr(Expr.addr_to_str a))
+  | Expr.FirstLocked _          -> raise(UnsupportedTslExpr(Expr.addr_to_str a))
+  | Expr.FirstLockedAt _        -> raise(UnsupportedTslExpr(Expr.addr_to_str a))
   | Expr.AddrArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
       let v = Expr.build_var id s pr (Some t) p Expr.Normal in
       Tsl.VarAddr (var_to_tsl_var v)
-  | Expr.AddrArrayRd _          -> RAISE(UnsupportedTslExpr(Expr.addr_to_str a))
+  | Expr.AddrArrayRd _          -> raise(UnsupportedTslExpr(Expr.addr_to_str a))
   | Expr.AddrArrRd (aa,i)       -> Tsl.AddrArrRd (addrarr_to_tsl_addrarr aa,
                                                   int_to_tsl_int i)
 
@@ -190,26 +190,26 @@ and cell_to_tsl_cell (c:Expr.cell) : Tsl.cell =
   match c with
     Expr.VarCell v            -> Tsl.VarCell (var_to_tsl_var v)
   | Expr.Error                -> Tsl.Error
-  | Expr.MkCell _             -> RAISE(UnsupportedTslExpr(Expr.cell_to_str c))
-  | Expr.MkSLKCell _          -> RAISE(UnsupportedTslExpr(Expr.cell_to_str c))
+  | Expr.MkCell _             -> raise(UnsupportedTslExpr(Expr.cell_to_str c))
+  | Expr.MkSLKCell _          -> raise(UnsupportedTslExpr(Expr.cell_to_str c))
   | Expr.MkSLCell (e,aa,tt,l) -> Tsl.MkCell (elem_to_tsl_elem e,
                                              addrarr_to_tsl_addrarr aa,
                                              tidarr_to_tsl_tidarr tt,
                                              int_to_tsl_int l)
   (* Tsl receives two arguments, while current epxression receives only one *)
   (* However, for the list examples, I think we will not need it *)
-  | Expr.CellLock _           -> RAISE(UnsupportedTslExpr(Expr.cell_to_str c))
+  | Expr.CellLock _           -> raise(UnsupportedTslExpr(Expr.cell_to_str c))
   | Expr.CellLockAt (c,l,t)   -> Tsl.CellLockAt (cell_to_tsl_cell c,
                                                  int_to_tsl_int l,
                                                  tid_to_tsl_tid t)
-  | Expr.CellUnlock _         -> RAISE(UnsupportedTslExpr(Expr.cell_to_str c))
+  | Expr.CellUnlock _         -> raise(UnsupportedTslExpr(Expr.cell_to_str c))
   | Expr.CellUnlockAt (c,l)   -> Tsl.CellUnlockAt (cell_to_tsl_cell c,
                                                    int_to_tsl_int l)
   | Expr.CellAt (m,a)         -> Tsl.CellAt (mem_to_tsl_mem m, addr_to_tsl_addr a)
   | Expr.CellArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
       let v = Expr.build_var id s pr (Some t) p Expr.Normal in
       Tsl.VarCell (var_to_tsl_var v)
-  | Expr.CellArrayRd _        -> RAISE(UnsupportedTslExpr(Expr.cell_to_str c))
+  | Expr.CellArrayRd _        -> raise(UnsupportedTslExpr(Expr.cell_to_str c))
 
 
 and setth_to_tsl_setth (st:Expr.setth) : Tsl.setth =
@@ -226,7 +226,7 @@ and setth_to_tsl_setth (st:Expr.setth) : Tsl.setth =
   | Expr.SetThArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
       let v = Expr.build_var id s pr (Some t) p Expr.Normal in
       Tsl.VarSetTh (var_to_tsl_var v)
-  | Expr.SetThArrayRd _    -> RAISE(UnsupportedTslExpr(Expr.setth_to_str st))
+  | Expr.SetThArrayRd _    -> raise(UnsupportedTslExpr(Expr.setth_to_str st))
 
 
 and setelem_to_tsl_setelem (se:Expr.setelem) : Tsl.setelem =
@@ -245,7 +245,7 @@ and setelem_to_tsl_setelem (se:Expr.setelem) : Tsl.setelem =
       Tsl.VarSetElem (var_to_tsl_var v)
   | Expr.SetToElems (s,m)    -> Tsl.SetToElems (set_to_tsl_set s,
                                                 mem_to_tsl_mem m)
-  | Expr.SetElemArrayRd _    -> RAISE(UnsupportedTslExpr(Expr.setelem_to_str se))
+  | Expr.SetElemArrayRd _    -> raise(UnsupportedTslExpr(Expr.setelem_to_str se))
 
 
 and path_to_tsl_path (p:Expr.path) : Tsl.path =
@@ -255,12 +255,12 @@ and path_to_tsl_path (p:Expr.path) : Tsl.path =
     Expr.VarPath v             -> Tsl.VarPath (var_to_tsl_var v)
   | Expr.Epsilon               -> Tsl.Epsilon
   | Expr.SimplePath a          -> Tsl.SimplePath (addr_to_tsl_addr a)
-  | Expr.GetPath _             -> RAISE(UnsupportedTslExpr(Expr.path_to_str p))
+  | Expr.GetPath _             -> raise(UnsupportedTslExpr(Expr.path_to_str p))
   | Expr.GetPathAt (m,a1,a2,l) -> Tsl.GetPath (mem_to_tsl_mem m,
                                                addr_to_tsl_addr a1,
                                                addr_to_tsl_addr a2,
                                                int_to_tsl_int l)
-  | Expr.PathArrayRd _         -> RAISE(UnsupportedTslExpr(Expr.path_to_str p))
+  | Expr.PathArrayRd _         -> raise(UnsupportedTslExpr(Expr.path_to_str p))
 
 
 and mem_to_tsl_mem (m:Expr.mem) : Tsl.mem =
@@ -275,7 +275,7 @@ and mem_to_tsl_mem (m:Expr.mem) : Tsl.mem =
   | Expr.MemArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
       let v = Expr.build_var id s pr (Some t) p Expr.Normal in
       Tsl.VarMem (var_to_tsl_var v)
-  | Expr.MemArrayRd _        -> RAISE(UnsupportedTslExpr(Expr.mem_to_str m))
+  | Expr.MemArrayRd _        -> raise(UnsupportedTslExpr(Expr.mem_to_str m))
 
 
 and int_to_tsl_int (i:Expr.integer) : Tsl.integer =
@@ -290,9 +290,9 @@ and int_to_tsl_int (i:Expr.integer) : Tsl.integer =
   | Expr.IntMul (i1,i2) -> Tsl.IntMul (int_to_tsl_int i1, int_to_tsl_int i2)
   | Expr.IntDiv (i1,i2) -> Tsl.IntDiv (int_to_tsl_int i1, int_to_tsl_int i2)
   | Expr.CellMax (c)    -> Tsl.CellMax (cell_to_tsl_cell c)
-  | Expr.IntArrayRd _   -> RAISE(UnsupportedTslExpr(Expr.integer_to_str i))
-  | Expr.IntSetMin _    -> RAISE(UnsupportedTslExpr(Expr.integer_to_str i))
-  | Expr.IntSetMax _    -> RAISE(UnsupportedTslExpr(Expr.integer_to_str i))
+  | Expr.IntArrayRd _   -> raise(UnsupportedTslExpr(Expr.integer_to_str i))
+  | Expr.IntSetMin _    -> raise(UnsupportedTslExpr(Expr.integer_to_str i))
+  | Expr.IntSetMax _    -> raise(UnsupportedTslExpr(Expr.integer_to_str i))
   | Expr.HavocLevel     -> Tsl.HavocLevel
 
 
@@ -333,7 +333,7 @@ and atom_to_tsl_atom (a:Expr.atom) : Tsl.atom =
   let term    = term_to_tsl_term       in
   match a with
     Expr.Append (p1,p2,p3)    -> Tsl.Append (path p1,path p2,path p3)
-  | Expr.Reach _              -> RAISE(UnsupportedTslExpr(Expr.atom_to_str a))
+  | Expr.Reach _              -> raise(UnsupportedTslExpr(Expr.atom_to_str a))
   | Expr.ReachAt (m,a1,a2,l,p)-> Tsl.Reach (mem m, addr a1, addr a2,
                                             integ l, path p)
   | Expr.OrderList(m,a1,a2)   -> Tsl.OrderList (mem m, addr a1, addr a2)
@@ -343,21 +343,21 @@ and atom_to_tsl_atom (a:Expr.atom) : Tsl.atom =
   | Expr.SubsetEq (s1,s2)     -> Tsl.SubsetEq (set s1, set s2)
   | Expr.InTh (t,s)           -> Tsl.InTh (tid t, setth s)
   | Expr.SubsetEqTh (s1,s2)   -> Tsl.SubsetEqTh (setth s1, setth s2)
-  | Expr.InInt _              -> RAISE(UnsupportedTslExpr(Expr.atom_to_str a))
-  | Expr.SubsetEqInt _        -> RAISE(UnsupportedTslExpr(Expr.atom_to_str a))
+  | Expr.InInt _              -> raise(UnsupportedTslExpr(Expr.atom_to_str a))
+  | Expr.SubsetEqInt _        -> raise(UnsupportedTslExpr(Expr.atom_to_str a))
   | Expr.InElem (e,s)         -> Tsl.InElem (elem_to_tsl_elem e, setelem s)
   | Expr.SubsetEqElem (s1,s2) -> Tsl.SubsetEqElem (setelem s1, setelem s2)
   | Expr.Less (i1,i2)         -> Tsl.Less (integ i1, integ i2)
   | Expr.Greater (i1,i2)      -> Tsl.Greater (integ i1, integ i2)
   | Expr.LessEq (i1,i2)       -> Tsl.LessEq (integ i1, integ i2)
   | Expr.GreaterEq (i1,i2)    -> Tsl.GreaterEq (integ i1, integ i2)
-  | Expr.LessTid _            -> RAISE(UnsupportedTslExpr(Expr.atom_to_str a))
+  | Expr.LessTid _            -> raise(UnsupportedTslExpr(Expr.atom_to_str a))
   | Expr.LessElem (e1,e2)     -> Tsl.LessElem (elem e1, elem e2)
   | Expr.GreaterElem (e1,e2)  -> Tsl.GreaterElem (elem e1, elem e2)
   | Expr.Eq (t1,t2)           -> Tsl.Eq (term t1, term t2)
   | Expr.InEq (t1,t2)         -> Tsl.InEq (term t1, term t2)
   | Expr.BoolVar v            -> Tsl.BoolVar (var_to_tsl_var v)
-  | Expr.BoolArrayRd _        -> RAISE(UnsupportedTslExpr(Expr.atom_to_str a))
+  | Expr.BoolArrayRd _        -> raise(UnsupportedTslExpr(Expr.atom_to_str a))
   | Expr.PC (pc,t,pr)         -> Tsl.PC (pc, Option.lift tid_to_tsl_tid t,pr)
   | Expr.PCUpdate (pc,t)      -> Tsl.PCUpdate (pc, tid_to_tsl_tid t)
   | Expr.PCRange (pc1,pc2,t,pr) -> Tsl.PCRange (pc1, pc2,

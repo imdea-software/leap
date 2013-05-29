@@ -1804,7 +1804,7 @@ module Make (K : Level.S) : S =
                       match c with
                         Conj l -> l
                       | _ -> let msg = "Formula "^(formula_to_str nnfexpr)^" is not in NNF.\n" in
-                               RAISE(ErrorInNNF(msg))
+                               raise(ErrorInNNF(msg))
                     in
                     (* here lx and ly  are lists of Conj none of which is 
                      * True or False *)
@@ -1820,7 +1820,7 @@ module Make (K : Level.S) : S =
         | True       -> [TrueConj]
         | False      -> [FalseConj]
         | _          -> let msg = "Formula " ^(formula_to_str nnfexpr)^ " is not in NNF.\n" in
-                          RAISE(ErrorInNNF(msg))
+                          raise(ErrorInNNF(msg))
       in
         dnf_nnf (nnf expr)
 
@@ -1840,7 +1840,7 @@ module Make (K : Level.S) : S =
                       match d with
                         Disj l -> l
                       | _ -> let msg = "Formula "^(formula_to_str nnfexpr)^" is not in NNF.\n" in
-                               RAISE(ErrorInNNF(msg))
+                               raise(ErrorInNNF(msg))
                     in
                     (* here lx and ly  are lists of Disj none of which is 
                      * True or False *)
@@ -1865,7 +1865,7 @@ module Make (K : Level.S) : S =
         | True       -> [TrueDisj]
         | False      -> [FalseDisj]
         | _          -> let msg = "Formula " ^(formula_to_str nnfexpr)^ " is not in NNF.\n" in
-                          RAISE(ErrorInNNF(msg))
+                          raise(ErrorInNNF(msg))
       in
         cnf_nnf (nnf expr)
 

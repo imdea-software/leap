@@ -81,7 +81,7 @@ let inputClosedSys (s:string) = try
     Interface.Err.msg "Invalid argument" $
       Format.sprintf "Command option --vcgen-closed expects \
         an integer as argument, while \"%s\" was given." s;
-    RAISE(e)
+    raise(e)
 
 
 let inputVd (s:string) =
@@ -100,7 +100,7 @@ let set_dp dp =
         Format.sprintf "One of the following DP options was expected:\n\
                         %s. But %s was passed as argument."
         (String.concat "," (List.map DP.to_str DP.def_dp_list)) s;
-        RAISE(e)
+        raise(e)
     end
 
 
@@ -121,7 +121,7 @@ let parse_int_list (s:string) (field:int list ref) (fieldName:string) : unit =
   try field := List.map int_of_string split
   with e -> Interface.Err.msg"Bad argument" $
       "--" ^ fieldName^ " option expects a list of integers as argument.";
-      RAISE(e)
+      raise(e)
 
 let focusPos (s:string) : unit =
   parse_int_list s focusPC "focus"
@@ -228,7 +228,7 @@ let opts =
    ]
 
 let anon_fun str = 
-  if !is_input_file then RAISE(MoreThanOneInputFile)
+  if !is_input_file then raise(MoreThanOneInputFile)
   else assigninputfile str
 
 let usagemsg = "Parses a program and generates its FTS."
@@ -261,7 +261,7 @@ let open_input _ =
     input_file_fd := Unix.openfile !input_file [Unix.O_RDONLY] 0 ;
     Unix.in_channel_of_descr !input_file_fd
     end
-  else RAISE(No_file)(*stdin*)
+  else raise(No_file)(*stdin*)
 
 let close_input _ =
   if !is_input_file then Unix.close !input_file_fd

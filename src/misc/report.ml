@@ -228,5 +228,5 @@ let report_details_to_file (out_folder:string)
       begin
         Interface.Err.msg "Invalid detailed folder" $
           sprintf "Folder \"%s\" is not a valid folder." out_folder;
-        RAISE(Invalid_folder out_folder)
+        raise(Invalid_folder out_folder)
       end

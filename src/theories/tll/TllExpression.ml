@@ -1685,7 +1685,7 @@ let rec dnf (expr:formula) : conjunctive_formula list =
                   match c with
                     Conj l -> l
                   | _ -> let msg = "Formula "^(formula_to_str nnfexpr)^" is not in NNF.\n" in
-                           RAISE(ErrorInNNF(msg))
+                           raise(ErrorInNNF(msg))
                 in
                 (* here lx and ly  are lists of Conj none of which is 
                  * True or False *)
@@ -1701,7 +1701,7 @@ let rec dnf (expr:formula) : conjunctive_formula list =
     | True       -> [TrueConj]
     | False      -> [FalseConj]
     | _          -> let msg = "Formula " ^(formula_to_str nnfexpr)^ " is not in NNF.\n" in
-                      RAISE(ErrorInNNF(msg))
+                      raise(ErrorInNNF(msg))
   in
     dnf_nnf (nnf expr)
 

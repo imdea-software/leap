@@ -1752,7 +1752,7 @@ struct
           ("(assert (and (= " ^data ("(" ^mkcell_str^ ")")^ " " ^e_str^ ")\n" ^
            "             (= " ^next ("(" ^mkcell_str^ ")")^ " " ^a_str^ ")\n" ^
            "             (= " ^lock ("(" ^mkcell_str^ ")")^ " " ^t_str^ ")))\n")
-    | _ -> RAISE(UnexpectedCellTerm(Expr.cell_to_str c))
+    | _ -> raise(UnexpectedCellTerm(Expr.cell_to_str c))
 
 
   let process_set (max_addrs:int) (s:Expr.set) : string =
@@ -1808,7 +1808,7 @@ struct
         done;
         B.add_string tmpbuf ("(assert (= (address2set " ^m_str^ " " ^a_str^ ") " ^(!auxbuf)^ "))\n");
         B.contents tmpbuf
-    | _ -> RAISE(UnexpectedSetTerm(Expr.set_to_str s))
+    | _ -> raise(UnexpectedSetTerm(Expr.set_to_str s))
 
 
   let process_setth (max_tids:int) (sth:Expr.setth) : string =
@@ -1854,7 +1854,7 @@ struct
         B.add_string tmpbuf
           ("(assert (= (select (setdiffth " ^r_str^ " " ^s_str^ ") tid_witness) (and (select " ^r_str^ " tid_witness) (not (select " ^s_str^ " tid_witness)))))\n");
         B.contents tmpbuf
-    | _ -> RAISE(UnexpectedSetthTerm(Expr.setth_to_str sth))
+    | _ -> raise(UnexpectedSetthTerm(Expr.setth_to_str sth))
 
 
   let process_setelem (max_elems:int) (max_addrs:int) (se:Expr.setelem) : string =
@@ -1918,7 +1918,7 @@ struct
           B.add_string tmpbuf ")))\n"
         done;
         B.contents tmpbuf
-    | _ -> RAISE(UnexpectedSetelemTerm(Expr.setelem_to_str se))
+    | _ -> raise(UnexpectedSetelemTerm(Expr.setelem_to_str se))
 
 
   let process_getp (max_addrs:int) ((m,a1,a2):string * string * string) : string =

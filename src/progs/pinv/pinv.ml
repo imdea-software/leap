@@ -90,6 +90,6 @@ let _ =
     | Global.ParserError msg -> Interface.Err.msg "pinv: Parsing error" msg
     | Parsing.Parse_error -> Interface.Err.msg "pinv: Parsing error" $
         sprintf "Unexpected symbol \"%s\" at line %i" (Global.get_last()) (Global.get_linenum())
-    | e -> RAISE(e)
+    | e -> raise(e)
 
 let _ = LeapDebug.flush ()

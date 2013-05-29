@@ -146,10 +146,10 @@ struct
     | Expr.VarTh v       -> variable_to_str
                               (IntExpr.variable_to_int_variable v)
     | Expr.NoThid        -> "NoThid"
-    | Expr.CellLockId _  -> RAISE(NotSupportedInYices(Expr.tid_to_str t))
-    | Expr.CellLockIdAt _-> RAISE(NotSupportedInYices(Expr.tid_to_str t))
-    | Expr.ThidArrayRd _ -> RAISE(NotSupportedInYices(Expr.tid_to_str t))
-    | Expr.ThidArrRd _   -> RAISE(NotSupportedInYices(Expr.tid_to_str t))
+    | Expr.CellLockId _  -> raise(NotSupportedInYices(Expr.tid_to_str t))
+    | Expr.CellLockIdAt _-> raise(NotSupportedInYices(Expr.tid_to_str t))
+    | Expr.ThidArrayRd _ -> raise(NotSupportedInYices(Expr.tid_to_str t))
+    | Expr.ThidArrRd _   -> raise(NotSupportedInYices(Expr.tid_to_str t))
 
 
   let thid_variable_to_str (th:Expr.tid) : string =
@@ -465,7 +465,7 @@ struct
     let constanttostr t =
       match t with
           IntExpr.Val(n) -> string_of_int n
-        | _ -> RAISE(NotSupportedInYices(IntExpr.int_integer_to_string t)) in
+        | _ -> raise(NotSupportedInYices(IntExpr.int_integer_to_string t)) in
     let tostr = yices_string_of_integer in
       match t with
         IntExpr.Val(n)       -> " " ^ string_of_int n
@@ -475,7 +475,7 @@ struct
       | IntExpr.Sub(x,y)     -> " (- " ^ (tostr x) ^ (tostr y) ^ ")"
       | IntExpr.Mul(x,y)     -> " (* " ^ (tostr x) ^ (tostr y) ^ ")"
       | IntExpr.Div(x,y)     -> " (/ " ^ (tostr x) ^ (tostr y) ^ ")"
-      | IntExpr.ArrayRd(_,_) -> RAISE(NotSupportedInYices(IntExpr.int_integer_to_string t))
+      | IntExpr.ArrayRd(_,_) -> raise(NotSupportedInYices(IntExpr.int_integer_to_string t))
       | IntExpr.SetMin(s)    -> " (setmin " ^ yices_string_of_set s ^ ")"
       | IntExpr.SetMax(s)    -> " (setmax " ^ yices_string_of_set s ^ ")"
 
@@ -546,7 +546,7 @@ struct
                     match t with
                       Expr.VarTh v -> Expr.var_id v
                     | Expr.NoThid  -> "NoThread"
-                    | _ -> RAISE(Not_implemented "sort type in tid_decl")
+                    | _ -> raise(Not_implemented "sort type in tid_decl")
                   ) voc in
     Printf.sprintf "(define-type %s (scalar %s))\n" thid_s
                     (String.concat " " id_list)

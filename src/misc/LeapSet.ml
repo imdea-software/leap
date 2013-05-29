@@ -121,14 +121,14 @@ module MakeImperative2(Ord : OrderedType) = struct
   let for_all f s = match s with
     | Empty -> true
     | Set t -> try
-        T.apply (fun x _ -> if not (f x) then RAISE(FalseForall) else ()) t;
+        T.apply (fun x _ -> if not (f x) then raise(FalseForall) else ()) t;
         true with _ -> false
     
   exception TrueExists
   let exists f s = match s with
     | Empty -> false
     | Set t -> try
-        T.apply (fun x _ -> if f x then RAISE(TrueExists) else ()) t;
+        T.apply (fun x _ -> if f x then raise(TrueExists) else ()) t;
         false with _ -> true
         
   let filter f s = match s with
@@ -154,22 +154,22 @@ module MakeImperative2(Ord : OrderedType) = struct
   exception Elt of elt
   exception InternalError of string*int
   let choose = function
-    | Empty -> RAISE(Not_found)
-    | Set t -> let xs = try T.fold (fun x _ xs -> RAISE(Elt x)) t []
+    | Empty -> raise(Not_found)
+    | Set t -> let xs = try T.fold (fun x _ xs -> raise(Elt x)) t []
                         with Elt x -> [x] in
-        let xs = try T.fold (fun x _ xs -> RAISE(Elt x)) t []
+        let xs = try T.fold (fun x _ xs -> raise(Elt x)) t []
                  with Elt x -> [x] in
         match xs with
-          | []   -> RAISE(InternalError(__file__,__line__))
+          | []   -> raise(InternalError(__file__,__line__))
           | x::l -> x
   
   let min_elt s = match s with
-    | Empty -> RAISE(Not_found)
+    | Empty -> raise(Not_found)
     | Set t -> let min = choose s in
         T.fold (fun x _ m -> if Ord.compare x m < 0 then x else m) t min
         
   let max_elt s = match s with
-    | Empty -> RAISE(Not_found)
+    | Empty -> raise(Not_found)
     | Set t -> let min = choose s in
         T.fold (fun x _ m -> if Ord.compare x m > 0 then x else m) t min
         

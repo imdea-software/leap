@@ -139,4 +139,4 @@ let _ =
       else
   Printf.printf "Some specs unproved.\n"
   with
-      e -> RAISE(e)
+      e -> raise(e)

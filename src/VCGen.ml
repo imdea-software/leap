@@ -464,7 +464,7 @@ struct
     | None -> ()
     | Some tag -> if Tag.tag_table_mem tags tag
         then
-          RAISE(Tag.Duplicated_tag(Tag.tag_id tag))
+          raise(Tag.Duplicated_tag(Tag.tag_id tag))
         else Tag.tag_table_add tags tag phi Tag.new_info
   
   let read_tag (t : Tag.f_tag) : E.formula option =
@@ -488,25 +488,25 @@ struct
   let enable_num_dp () : unit =
     assert(isInitialized());
     solverInfo.dp.pos_dp <- true;
-    solverInfo.dp.num_dp <- true;
+    solverInfo.dp.num_dp <- true
 (*    LOG "Enabled num DP." LEVEL DEBUG *)
   
   let enable_tll_dp () : unit =
     assert(isInitialized());
     solverInfo.dp.pos_dp <- true;
-    solverInfo.dp.tll_dp <- true;
+    solverInfo.dp.tll_dp <- true
 (*    LOG "Enabled tll DP." LEVEL DEBUG *)
 
   let enable_tsl_dp () : unit =
     assert(isInitialized());
     solverInfo.dp.pos_dp  <- true;
-    solverInfo.dp.tsl_dp <- true;
+    solverInfo.dp.tsl_dp <- true
 (*    LOG "Enabled tsl DP." LEVEL DEBUG *)
 
   let enable_tslk_dp (k:int) : unit =
     assert(isInitialized());
     solverInfo.dp.pos_dp  <- true;
-    solverInfo.dp.tslk_dp <- (true,k);
+    solverInfo.dp.tslk_dp <- (true,k)
 (*    LOG "Enabled tslk DP." LEVEL DEBUG *)
   
   let enable_dp : DP.t -> unit = function
@@ -770,7 +770,7 @@ struct
           sprintf "Thread identifier \"%i\" is out of the limits for \
             the a closed system, since a system with only %i \
             threads was declared." i th_num;
-        RAISE(Invalid_argument)
+        raise(Invalid_argument)
       end
     else
       let th_p = E.build_num_tid i in
@@ -1044,7 +1044,7 @@ struct
                                        Printf.sprintf "There is no information \
                                                        on where to jump for \
                                                        procedure %s" proc_name;
-                                     RAISE(Impossible_call proc_name)
+                                     raise(Impossible_call proc_name)
                                    end
                        | Some p -> [p] in
         (* Final transition predicate *)
@@ -1079,7 +1079,7 @@ struct
                               | ROpenArray (k,_) ->
                                   (k, Bridge.construct_stm_term_eq_as_array
                                         mInfo pt ret_t th_p (Stm.Term t))
-                              | _ -> RAISE(Not_implemented
+                              | _ -> raise(Not_implemented
                                               "Extra case on return statement") in
                             let sMode = rhoMode_to_sysMode mode in
                             let pos_assignment =
@@ -1524,7 +1524,7 @@ struct
         : (E.formula * vc_info_t) list =
 (*    LOG "Entering seq_binv..." LEVEL TRACE; *)
     let th_list = List.filter (fun x -> E.is_tid_var x) (E.voc inv) in
-    if th_list <> [] then RAISE(NotSequentialFormula(E.formula_to_str inv));
+    if th_list <> [] then raise(NotSequentialFormula(E.formula_to_str inv));
     let fresh_tid = E.gen_fresh_thread th_list in
 
     let inv_loc = E.param (Some fresh_tid) inv in

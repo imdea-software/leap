@@ -406,7 +406,7 @@ struct
                                    points are:\n%s\n"
                                   (PP.node_id_to_str n)
                                   (PP.delta_fun_to_str d);
-                        RAISE(Impossible_apply_function(d,n))
+                        raise(Impossible_apply_function(d,n))
   
   
   
@@ -492,7 +492,7 @@ struct
                 Interface.Err.msg "Already defined node" $
                   sprintf "Another node with id %s has already been defined."
                     (PP.node_id_to_str n);
-                  RAISE(Duplicated_node n)
+                  raise(Duplicated_node n)
                 end
             else
               Hashtbl.replace nTbl n info
@@ -512,7 +512,7 @@ struct
             sprintf "A node with id \"%s\" has been declared as initial node, \
                      but no node with such id has been previously defined."
                      (PP.node_id_to_str i);
-          RAISE(Undefined_initial_node i)
+          raise(Undefined_initial_node i)
         end
     ) is
   
@@ -532,7 +532,7 @@ struct
                            current system, since a system with %i threads has \
                            been specified."
                           (PP.trans_to_str tran) th_num;
-                RAISE(Unknown_transition tran)
+                raise(Unknown_transition tran)
               end
       | _ -> ()
   
@@ -593,7 +593,7 @@ struct
                                           condition, but such edge has not \
                                           been declared as an edge before."
                                           (PP.edge_arrow_to_str e);
-                               RAISE(Undefined_edge(fst e,snd e))
+                               raise(Undefined_edge(fst e,snd e))
                              end
     ) s
   
@@ -619,7 +619,7 @@ struct
                                    been declared as a diagram node before."
                                    (PP.node_id_to_str one)
                                    (PP.delta_fun_to_str dFunc);
-                        RAISE(Undefined_node one)
+                        raise(Undefined_node one)
                   end
                 else
                   begin
@@ -635,7 +635,7 @@ struct
                                      been declared as a diagram node before."
                                      (PP.node_id_to_str one)
                                      (PP.delta_fun_to_str dFunc);
-                          RAISE(Undefined_node one);
+                          raise(Undefined_node one);
                         end;
                       if not (NodeIdSet.is_empty only_n) then
                         begin
@@ -646,7 +646,7 @@ struct
                                      definition:\n%s\n"
                                      (PP.node_id_to_str one)
                                      (PP.delta_fun_to_str dFunc);
-                          RAISE(Uncovered_node one)
+                          raise(Uncovered_node one)
                         end
                     end
             ) acs
@@ -700,18 +700,18 @@ struct
                                    closed system, a closed thread identifier was \
                                    expected, but instead %s was provided as \
                                    argument." (Expr.tid_to_str th);
-                          RAISE(Open_thread_identifier th)
+                          raise(Open_thread_identifier th)
                         end
                   | (_, Some t) ->
                     Interface.Err.msg "Not a valid thread identifier" $
                       sprintf "The thread \"%s\" is not valid as identifier"
                               (Expr.tid_to_str t);
-                    RAISE(No_thread)
+                    raise(No_thread)
                   | (_, None)                         ->
                     Interface.Err.msg "No thread identifier was provided"
                       "Looking for transition information over a closed system, \
                        a transition with no thread identifier was provided.";
-                    RAISE(No_thread) in
+                    raise(No_thread) in
     let rec find i p lst = match lst with
                             [] -> Interface.Err.msg
                               "No transition relation information found" $
@@ -719,7 +719,7 @@ struct
                                        information for transition %s. No \
                                        information could be found related to \
                                        such transition." (PP.trans_to_str t);
-                              RAISE(Missing_transition_info t)
+                              raise(Missing_transition_info t)
                            | (i',p',f)::xs -> if i=i' && p=p' then
                                                 Expr.disj_list f
                                               else
@@ -737,7 +737,7 @@ struct
             (Expr.IntT i1, Expr.IntT i2) -> Expr.less_form i1 i2
           | _ -> Interface.Err.msg "Unexpected integer format" $
                    sprintf "An expression describing an integer was expected.";
-                 RAISE(Unexpected_format)
+                 raise(Unexpected_format)
         end
     | Expr.Set ->
         begin
@@ -746,7 +746,7 @@ struct
           | _ -> Interface.Err.msg "Unexpected set format" $
                    sprintf "An expression describing a set of addresses was \
                             expected.";
-                 RAISE(Unexpected_format)
+                 raise(Unexpected_format)
         end
     | Expr.SetTh ->
         begin
@@ -755,7 +755,7 @@ struct
           | _ -> Interface.Err.msg "Unexpected set of thread ids format" $
                    sprintf "An expression describing a set of thread identifiers \
                             was expected.";
-                 RAISE(Unexpected_format)
+                 raise(Unexpected_format)
         end
     | Expr.SetInt ->
         begin
@@ -764,14 +764,14 @@ struct
           | _ -> Interface.Err.msg "Unexpected set of integers format" $
                    sprintf "An expression describing a set of integers was \
                             expected.";
-                 RAISE(Unexpected_format)
+                 raise(Unexpected_format)
         end
     | s' -> Interface.Err.msg "Unexpected sort" $
               sprintf "Up to this moment, order relations are limited to \
                       integers only, while a ranking function of sort %s \
                       is trying to be analyzed."
                       (Expr.sort_to_str s');
-          RAISE(Unexpected_sort s')
+          raise(Unexpected_sort s')
   
   
   let gen_vd_vc (hide_pres:bool) (s:Sys.system_t) (vd:vd_t) : vd_vc_t =
@@ -971,7 +971,7 @@ struct
           sprintf "Transition parameters [%s] are not introduced as \
                    parameters of the formula neither as box parameters."
                     (String.concat "," $ List.map Expr.tid_to_str undef);
-        RAISE(Unknown_transition_param undef)
+        raise(Unknown_transition_param undef)
       end
   
   
@@ -1046,7 +1046,7 @@ struct
                 Interface.Err.msg "No edge info" $
                   sprintf "Could not be found information for edge (%s,%s)"
                     (PP.node_id_to_str n) (PP.node_id_to_str n');
-                RAISE(No_edge_info(n,n'))
+                raise(No_edge_info(n,n'))
               end
     
   
@@ -1247,7 +1247,7 @@ struct
                 List.iter (fun t ->
                   let (pc,th_opt) = match t with
                                       (pc,Some th_opt) -> (pc, th_opt)
-                                    | (_, None) -> RAISE(Unparametrized_transition) in
+                                    | (_, None) -> raise(Unparametrized_transition) in
                   let mode        = VCG.new_open_thid_array_mode th_opt [] in
                   let ts          = [th_opt] in
                   let tau_rho     = Expr.conj_list

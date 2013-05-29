@@ -59,7 +59,7 @@ let rec list_of n e =
   if n = 0 then
     []
   else if n < 0 then
-    RAISE(Negative_number n)
+    raise(Negative_number n)
   else
     e::(list_of (n-1) e)
 
@@ -77,14 +77,14 @@ let split_at (xs:'a list) (a:'a) : 'a list * 'a list =
 
 
 let rec lastElem l = match l with
-                       [] -> RAISE(Empty_list)
+                       [] -> raise(Empty_list)
                      | x::[] -> x
                      | _::xs -> lastElem xs
 
 
 let rec first_n n lst =
   if n < 0 then
-    RAISE(Negative_position n)
+    raise(Negative_position n)
   else
     match (n,lst) with
     | (0,_) -> []

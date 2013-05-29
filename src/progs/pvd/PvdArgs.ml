@@ -52,7 +52,7 @@ let set_dp dp =
         Format.sprintf "One of the following DP options was expected:\n\
                         %s. But %s was passed as argument."
         (String.concat "," (List.map DP.to_str DP.def_dp_list)) s;
-        RAISE(e)
+        raise(e)
     end
 
 
@@ -110,7 +110,7 @@ let opts =
    ]
 
 let anon_fun str = if !is_input_file then
-                     RAISE(MoreThanOneInputFile)
+                     raise(MoreThanOneInputFile)
                    else
                      assigninputfile str
 
@@ -128,7 +128,7 @@ let open_input _ =
     input_file_fd := Unix.openfile !input_file [Unix.O_RDONLY] 0 ;
     Unix.in_channel_of_descr !input_file_fd
     end
-  else RAISE(No_file)(*stdin*)
+  else raise(No_file)(*stdin*)
 
 let close_input _ =
   if !is_input_file then Unix.close !input_file_fd
@@ -139,7 +139,7 @@ let open_and_parse_expr file_name the_parser =
     with _ -> begin
       Interface.Err.msg "File not found" $
         Printf.sprintf "File \"%s\" could not be found" file_name;
-          RAISE(File_not_found file_name)
+          raise(File_not_found file_name)
     end in
   let res = the_parser Exprlexer.norm (Lexing.from_channel input) in
   res    

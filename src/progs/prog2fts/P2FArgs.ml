@@ -42,7 +42,7 @@ let opts =
    ]
 
 let anon_fun str = 
-  if !is_input_file then RAISE(MoreThanOneInputFile)
+  if !is_input_file then raise(MoreThanOneInputFile)
   else assigninputfile str
 
 let usagemsg = "Parses a program and generates its FTS."
@@ -59,7 +59,7 @@ let open_input _ =
     input_file_fd := Unix.openfile !input_file [Unix.O_RDONLY] 0 ;
     Unix.in_channel_of_descr !input_file_fd
     end
-  else RAISE(No_file)(*stdin*)
+  else raise(No_file)(*stdin*)
 
 let close_input _ =
   if !is_input_file then Unix.close !input_file_fd

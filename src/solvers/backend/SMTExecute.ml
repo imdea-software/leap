@@ -154,11 +154,11 @@ let run (cfg:configuration_t) (query:string) : bool =
     if response then begin
       Interface.Err.msg "Timeout query" $
         Printf.sprintf "File %s contains a query that timeout after %i seconds." tmpfile cfg.timeout;
-      RAISE(SMT_Timeout(tmpfile,cfg.timeout))
+      raise(SMT_Timeout(tmpfile,cfg.timeout))
     end else begin
       Interface.Err.msg "Malformed query" $
         Printf.sprintf "File %s contains an invalid query." tmpfile;
-      RAISE(SMT_Syntax_Error tmpfile)
+      raise(SMT_Syntax_Error tmpfile)
     end
   end;
   if cfg.comp_model then begin
