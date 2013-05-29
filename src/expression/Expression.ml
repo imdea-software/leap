@@ -5069,3 +5069,336 @@ let gen_focus_list (max_pos:pc_t)
                   ) base_pos_set ignore_xs in
     (PosSet.elements focus_set)
 
+
+
+
+let rec identical_formula  (phi1:formula) (phi2:formula) : bool =
+  match (phi1,phi2) with
+    Literal l1, Literal l2 -> identical_literal l1 l2
+  | True,  True            -> true
+  | False, False           -> true
+  | And(a1,a2),And(b1,b2)  -> 
+           (identical_formula a1 b1 && identical_formula a2 b2) ||
+           (identical_formula a1 b2 && identical_formula a2 b1)
+  | Or(a1,a2),Or(b1,b2)    -> 
+           (identical_formula a1 b1 && identical_formula a2 b2) ||
+           (identical_formula a1 b2 && identical_formula a2 b1)
+  | Not(a), Not(b)         -> identical_formula a b
+  | Implies(a1,a2),Implies(b1,b2) -> 
+           (identical_formula a1 b1 && identical_formula a2 b2)
+  | Iff(a1,a2), Implies(b1,b2) -> 
+           (identical_formula a1 b1 && identical_formula a2 b2) ||
+           (identical_formula a1 b2 && identical_formula a2 b1)
+  | _,_ -> false
+
+and identical_sorts     (s1:sort) (s2:sort) : bool =
+  s1 = s2
+and identical_variable (v1:variable) (v2:variable): bool =
+  v1 = v2
+and identical_term   (t1:term) (t2:term) : bool =
+  t1 = t2
+and identical_eq  (e1: eq) (e2:eq) : bool =
+  let (a1,b1)=e1 in
+  let (a2,b2)=e2 in
+    (identical_term a1 a2 && identical_term b1 b2 ) ||
+    (identical_term a1 b2 && identical_term b1 a2 )
+and identical_diseq (e1: diseq) (e2: diseq) : bool =
+  let (a1,b1)=e1 in
+  let (a2,b2)=e2 in
+    (identical_term a1 a2 && identical_term b1 b2 ) ||
+    (identical_term a1 b2 && identical_term b1 a2 )
+and identical_arrays (a1:arrays) (a2:arrays) : bool =
+  match (a1,a2) with
+  | VarArray(v1), VarArray(v2) -> identical_variable v1 v2
+  | ArrayUp(b1,t1,e1),ArrayUp(b2,t2,e2) -> 
+    identical_arrays b1 b2 && identical_tid t1 t2 && identical_expr_t e2 e2
+  | _,_ -> false
+and identical_addrarr (a1:addrarr) (a2:addrarr) : bool =
+  match (a1,a2) with
+  | VarAddrArray(v1),VarAddrArray(v2) -> identical_variable v1 v2
+  | AddrArrayUp(b1,i1,ad1),AddrArrayUp(b2,i2,ad2) ->
+     identical_addrarr b1 b2 && identical_integer i1 i2 && identical_addr ad1 ad2
+  | CellArr(c1),CellArr(c2) -> identical_cell c1 c2
+  | _,_ -> false
+and identical_tidarr (ta1:tidarr) (ta2:tidarr) : bool =
+  match (ta1,ta2) with
+  | VarTidArray(v1),VarTidArray(v2) -> identical_variable v1 v2
+  | TidArrayUp(b1,i1,t1),TidArrayUp(b2,i2,t2) ->
+     identical_tidarr b1 b2 && identical_integer i1 i2 && identical_tid t1 t2
+  | CellTids(c1),CellTids(c2) -> identical_cell c1 c2
+  | _,_ -> false
+and identical_integer (i1:integer) (i2:integer) : bool =
+  match (i1,i2) with
+    IntVal(val1),IntVal(val2)  -> val1 = val2
+  | VarInt(v1),VarInt(v2) -> identical_variable v1 v2
+  | IntNeg(a), IntNeg(b)  -> identical_integer a b
+  | IntAdd(a1,b1),IntAdd(a2,b2) -> 
+    (identical_integer a1 a2 && identical_integer b1 b2) ||
+    (identical_integer a1 b2 && identical_integer b1 a2)
+  | IntSub(a1,b1),IntSub(a2,b2) ->
+    (identical_integer a1 a2 && identical_integer b1 b2) 
+  | IntMul(a1,b1),IntMul(a2,b2) ->
+    (identical_integer a1 a2 && identical_integer b1 b2) ||
+    (identical_integer a1 b2 && identical_integer b1 a2)
+  | IntDiv(a1,b1),IntMul(a2,b2) ->
+    (identical_integer a1 a2 && identical_integer b1 b2) 
+  | IntArrayRd(arr1,t1),IntArrayRd(arr2,t2) ->
+    (identical_arrays arr1 arr2 && identical_tid t1 t2) 
+  | IntSetMin s1,IntSetMin s2 -> identical_setint s1 s2
+  | IntSetMax s1,IntSetMax s2 -> identical_setint s1 s2
+  | CellMax c1, CellMax c2    -> identical_cell   c1 c2
+  | HavocLevel,HavocLevel     -> true
+  | _,_ -> false
+and identical_set (s1:set) (s2:set) : bool =
+  match (s1,s2) with
+    VarSet(v1),VarSet(v2)   -> identical_variable v1 v2
+  | EmptySet,EmptySet       -> true                    
+  | Singl(add1),Singl(add2) -> identical_addr add1 add2
+  | Union(sa1,sb1),Union(sa2,sb2) -> 
+    (identical_set sa1 sa2 && identical_set sb1 sb2) ||
+    (identical_set sa1 sb2 && identical_set sb1 sa2)
+  | Intr (sa1,sb1),Intr (sa2,sb2) ->
+    (identical_set sa1 sa2 && identical_set sb1 sb2) ||
+    (identical_set sa1 sb2 && identical_set sb1 sa2)
+  | Setdiff(sa1,sb1),Setdiff(sa2,sb2) -> (identical_set sa1 sa2 && identical_set sb1 sb2)
+  | PathToSet(p1),PathToSet(p2) -> identical_path p1 p2
+  | AddrToSet(m1,add1),AddrToSet(m2,add2) -> identical_mem m1 m2 && identical_addr add1 add2 
+  | AddrToSetAt(m1,add1,i1),AddrToSetAt(m2,add2,i2) ->
+    identical_mem m1 m2 && identical_addr add1 add2 && identical_integer i1 i2
+  | SetArrayRd(arr1,t1) ,SetArrayRd(arr2,t2) ->
+    identical_arrays arr1 arr2 && identical_tid t1 t2
+  | _,_ -> false      
+
+and identical_tid (t1:tid) (t2:tid) : bool =
+  match t1,t2 with
+    VarTh(v1),VarTh(v2) -> identical_variable v1 v2
+  | NoThid,NoThid -> true
+  | CellLockId(c1),CellLockId(c2)    -> identical_cell c1 c2
+  | CellLockIdAt(c1,i1),CellLockIdAt(c2,i2) -> 
+    ( identical_cell c1 c2 && identical_integer i1 i2)
+  | ThidArrayRd(arr1,t1),ThidArrayRd(arr2,t2) ->
+    identical_arrays arr1 arr2 && identical_tid t1 t2
+  | ThidArrRd(ta1,i1),ThidArrRd(ta2,i2)  ->
+    identical_tidarr ta1 ta2 && identical_integer i1 i2
+  | _,_ -> false
+and identical_elem (e1:elem) (e2: elem)  : bool =
+  match e1,e2 with
+    VarElem(v1),VarElem(v2) -> identical_variable v1 v2
+  | CellData(c1),CellData(c2) ->  identical_cell c1 c2
+  | ElemArrayRd(arr1,t1),ElemArrayRd(arr2,t2) -> 
+    identical_arrays arr1 arr2 && identical_tid t1 t2
+  | HavocListElem, HavocListElem -> true
+  | HavocSkiplistElem, HavocSkiplistElem -> true
+  | LowestElem,LowestElem -> true
+  | HighestElem,HighestElem -> true
+  | _,_ -> false
+and identical_addr (ad1:addr) (ad2:addr) : bool =
+  match ad1,ad2 with
+    VarAddr(v1), VarAddr(v2) -> identical_variable v1 v2
+  | Null, Null -> true
+  | Next(c1),Next(c2) -> identical_cell c1 c2
+  | NextAt(c1,i1),NextAt(c2,i2) -> identical_cell c1 c2 && identical_integer i1 i2
+  | FirstLocked(m1,p1),FirstLocked(m2,p2) -> 
+    identical_mem m1 m2 && identical_path p1 p2
+  | FirstLockedAt(m1,p1,i1),FirstLockedAt(m2,p2,i2) ->
+    identical_mem m1 m2 && identical_path p1 p2 && identical_integer i1 i2 
+  | AddrArrayRd(a1,t1) ,AddrArrayRd(a2,t2)  ->
+    identical_arrays a1 a2 && identical_tid t1 t2
+  | AddrArrRd(aa1,i1), AddrArrRd(aa2,i2)  ->
+    identical_addrarr aa1 aa2 && identical_integer i1 i2
+  | _,_ -> false
+and identical_cell (c1:cell)  (c2:cell)  : bool =
+  match c1, c2 with
+    VarCell(v1),VarCell(v2) -> identical_variable v1 v2
+  | Error,Error -> true
+  | MkCell(e1,a1,t1),MkCell(e2,a2,t2) -> 
+    identical_elem e1 e2 && identical_addr a1 a2 && identical_tid t1 t2
+  | MkSLKCell(e1,al1,tl1),MkSLKCell(e2,al2,tl2) ->
+    let identical_addr_list l1 l2 = 
+      List.fold_left2 (fun res a1 a2 -> if (not res) then false else identical_addr a1 a2) true l1 l2 in
+    let identical_tid_list l1 l2 =
+      List.fold_left2 (fun res t1 t2 -> if (not res) then false else identical_tid t1 t2) true l1 l2 in
+    identical_elem e1 e2 && identical_addr_list al1 al2 && identical_tid_list tl1 tl2
+  | MkSLCell(e1,ad1,ta1,i1),MkSLCell(e2,ad2,ta2,i2) ->
+    identical_elem e1 e2 && identical_addrarr ad1 ad2 && identical_tidarr ta1 ta2 && identical_integer i1 i2
+  | CellLock(c1,t1),CellLock(c2,t2) ->
+      identical_cell c1 c2 && identical_tid t1 t2
+  | CellLockAt(c1,i1,t1),CellLockAt(c2,i2,t2) ->
+      identical_cell c1 c2 && identical_integer i1 i2 && identical_tid t1 t2
+  | CellUnlock(c1), CellUnlock(c2) -> identical_cell c1 c2
+  | CellUnlockAt(c1,i1),CellUnlockAt(c2,i2) ->
+      identical_cell c1 c2 && identical_integer i1 i2
+  | CellAt(m1,ad1),CellAt(m2,ad2) ->
+      identical_mem m1 m2 && identical_addr ad1 ad2
+  | CellArrayRd(ar1,t1),CellArrayRd(ar2,t2) ->
+      identical_arrays ar1 ar2 && identical_tid t1 t2
+  | _,_ -> false
+and identical_setth (s1:setth) (s2: setth) : bool =
+  match s1, s2 with
+    VarSetTh(v1),VarSetTh(v2) -> identical_variable v1 v2
+  | EmptySetTh,EmptySetTh -> true
+  | SinglTh(t1),SinglTh(t2) -> identical_tid t1 t2
+  | UnionTh(a1,b1),UnionTh(a2,b2)  -> 
+    ( identical_setth a1 a2  && identical_setth b1 b2 ) ||
+    ( identical_setth a1 b2  && identical_setth b1 a2 )
+  | IntrTh(a1,b1),IntrTh(a2,b2)  ->
+    ( identical_setth a1 a2  && identical_setth b1 b2 ) ||
+    ( identical_setth a1 b2  && identical_setth b1 a2 )
+  | SetdiffTh(a1,b1),SetdiffTh(a2,b2) ->
+    ( identical_setth a1 a2  && identical_setth b1 b2 )
+  | SetThArrayRd(ar1,t1),SetThArrayRd(ar2,t2) ->
+    ( identical_arrays ar1 ar2  && identical_tid t1 t2 )
+  | _,_ -> false
+
+and identical_setint (s1:setint) (s2: setint) : bool =
+  match s1, s2 with 
+    VarSetInt(v1),VarSetInt(v2) -> identical_variable v1 v2
+  | EmptySetInt,EmptySetInt -> true
+  | SinglInt(i1),SinglInt(i2) -> identical_integer i1 i2
+  | UnionInt(a1,b1),UnionInt(a2,b2) ->
+    ( identical_setint a1 a2  && identical_setint b1 b2 ) ||
+    ( identical_setint a1 b2  && identical_setint b1 a2 )
+  | IntrInt(a1,b1),IntrInt(a2,b2) ->       
+    ( identical_setint a1 a2  && identical_setint b1 b2 ) ||
+    ( identical_setint a1 b2  && identical_setint b1 a2 )
+  | SetdiffInt(a1,b1),SetdiffInt(a2,b2) ->
+    ( identical_setint a1 a2  && identical_setint b1 b2 )
+  | SetIntArrayRd(arr1,t1), SetIntArrayRd(arr2,t2) ->
+    ( identical_arrays arr1 arr2  && identical_tid t1 t2 )
+  | _,_ -> false
+and identical_setelem (s1: setelem) (s2: setelem) : bool =
+  match s1, s2 with
+    VarSetElem(v1),VarSetElem(v2) -> identical_variable v1 v2
+  | EmptySetElem,EmptySetElem -> true
+  | SinglElem(e1),SinglElem(e2) -> identical_elem e1 e2
+  | UnionElem(a1,b1),UnionElem(a2,b2) ->
+    ( identical_setelem a1 a2  && identical_setelem b1 b2 ) ||
+    ( identical_setelem a1 b2  && identical_setelem b1 a2 )
+  | IntrElem(a1,b1),IntrElem(a2,b2) ->
+    ( identical_setelem a1 a2  && identical_setelem b1 b2 ) ||
+    ( identical_setelem a1 b2  && identical_setelem b1 a2 )
+  | SetdiffElem(a1,b1),SetdiffElem(a2,b2) ->
+    ( identical_setelem a1 a2  && identical_setelem b1 b2 )
+  | SetToElems(s1,m1),SetToElems(s2,m2) ->
+    identical_set s1 s2 && identical_mem m1 m2
+  | SetElemArrayRd(arr1,t1),SetElemArrayRd(arr2,t2) ->
+    identical_arrays arr1 arr2 && identical_tid t1 t2
+  | _,_ -> false
+
+and identical_path  (p1:path) (p2: path) : bool =
+  match p1, p2 with
+    VarPath(v1),VarPath(v2) -> identical_variable v1 v2
+  | Epsilon,Epsilon -> true
+  | SimplePath(ad1),SimplePath(ad2) -> identical_addr ad1 ad2
+  | GetPath(m1,a1,b1),GetPath(m2,a2,b2) ->
+    identical_mem m1 m2 && identical_addr a1 a2 && identical_addr b1 b2
+  | GetPathAt(m1,a1,b1,i1),GetPathAt(m2,a2,b2,i2) ->
+    identical_mem m1 m2 && identical_addr a1 a2 && identical_addr b1 b2 &&
+      identical_integer i1 i2
+  | PathArrayRd(ar1,t1),PathArrayRd(ar2,t2)->
+    identical_arrays ar1 ar2 && identical_tid t1 t2
+  | _,_ -> false
+and identical_mem  (m1:mem) (m2: mem) : bool =
+  match m1 ,m2 with
+    VarMem(v1),VarMem(v2) -> identical_variable v1 v2
+  | Update(m1,a1,c1),Update(m2,a2,c2) ->
+    identical_mem m1 m2 && identical_addr a1 a2 && identical_cell c1 c2
+  | MemArrayRd(ar1,t1),MemArrayRd(ar2,t2) ->
+    identical_arrays ar1 ar2 && identical_tid t1 t2
+  | _,_ -> false
+and identical_atom (a1:atom) (a2: atom) : bool =
+  match a1, a2 with
+    Append(p1,q1,r1),Append(p2,q2,r2) ->
+      identical_path p1 p2 && identical_path q1 q2 && identical_path r1 r2
+  | Reach(m1,ad1,b1,p1),Reach(m2,ad2,b2,p2) ->
+    identical_mem m1 m2 && identical_addr ad1 ad2 && identical_addr b1 b2 && identical_path p1 p2
+  | ReachAt(m1,ad1,b1,i1,p1),ReachAt(m2,ad2,b2,i2,p2) ->
+    identical_mem m1 m2 
+    && identical_addr ad1 ad2 && identical_addr b1 b2 
+    && identical_integer i1 i2 && identical_path p1 p2
+  | OrderList(m1,ad1,b1),OrderList(m2,ad2,b2) ->
+    identical_mem m1 m2 && identical_addr ad1 ad2 && identical_addr b1 b2
+  | Skiplist(m1,s1,i1,ad1,b1),Skiplist(m2,s2,i2,ad2,b2) ->
+    identical_mem m1 m2 && identical_set s1 s2 && identical_integer i1 i2
+    && identical_addr ad1 ad2 && identical_addr b1 b2
+  | In(ad1,s1),In(ad2,s2) ->
+    identical_addr ad1 ad2 && identical_set s1 s2
+  | SubsetEq(s1,r1),SubsetEq(s2,r2) ->
+    identical_set s1 s2 && identical_set r1 r2
+  | InTh(t1,s1),InTh(t2,s2) ->
+    identical_tid t1 t2 && identical_setth s1 s2
+  | SubsetEqTh(s1,r1),SubsetEqTh(s2,r2) ->
+    identical_setth s1 s2 && identical_setth r1 r2
+  | InInt(i1,s1),InInt(i2,s2) ->
+    identical_integer i1 i2 && identical_setint s1 s2
+  | SubsetEqInt(s1,r1),SubsetEqInt(s2,r2) ->
+    identical_setint s1 s2 &&    identical_setint r1 r2
+  | InElem(e1,s1),InElem(e2,s2) ->
+    identical_elem e1 e2 && identical_setelem s1 s2
+  | SubsetEqElem(s1,r1),SubsetEqElem(s2,r2) ->
+    identical_setelem s1 s2 && identical_setelem r1 r2
+  | Less(n1,m1),Less(n2,m2) ->
+    identical_integer n1 m1 && identical_integer n2 m2
+  | Less(n1,m1),Greater(n2,m2) ->
+    identical_integer n1 m2 && identical_integer n2 m1
+  | Greater(n1,m1),Greater(n2,m2) ->
+    identical_integer n1 m1 && identical_integer n2 m2
+  | Greater(n1,m1),Less(n2,m2) ->
+    identical_integer n1 m2 && identical_integer n2 m1
+  | LessEq(n1,m1),LessEq(n2,m2) ->
+    identical_integer n1 m1 && identical_integer n2 m2
+  | LessEq(n1,m1),GreaterEq(n2,m2) ->
+    identical_integer n1 m2 && identical_integer n2 m1
+  | GreaterEq(n1,m1),GreaterEq(n2,m2) ->
+    identical_integer n1 m1 && identical_integer n2 m2
+  | GreaterEq(n1,m1),LessEq(n2,m2) ->
+    identical_integer n1 m2 && identical_integer n2 m2
+  | LessElem(n1,m1),LessElem(n2,m2) ->
+    identical_elem n1 m1 && identical_elem n2 m2
+  | LessElem(n1,m1),GreaterElem(n2,m2) ->
+    identical_elem n1 m2 && identical_elem n2 m1
+  | GreaterElem(n1,m1),GreaterElem(n2,m2) ->
+    identical_elem n1 m1 && identical_elem n2 m2
+  | GreaterElem(n1,m1),LessElem(n2,m2) ->
+    identical_elem n1 m2 && identical_elem n2 m1
+  | Eq(e1),Eq(e2) ->
+    identical_eq e1 e2
+  | InEq(e1),InEq(e2)->
+    identical_diseq e1 e2
+  | BoolVar(v1),BoolVar(v2) ->
+    identical_variable v1 v2
+  | BoolArrayRd(arr1,t1) ,BoolArrayRd(arr2,t2) ->
+    identical_arrays arr1 arr2 && identical_tid t1 t2
+  | PC(p1,None,b1),PC(p2,None,b2) ->
+    identical_pc_t p1 p2 && ((b1 && b2) || ( not b1 && not b2))
+  | PC(p1,Some t1,b1),PC(p2,Some t2,b2) ->
+    identical_pc_t p1 p2 && ((b1 && b2) || ( not b1 && not b2)) &&
+      identical_tid t1 t2
+  | PCUpdate(p1,t1),PCUpdate(p2,t2) ->
+    identical_pc_t p1 p2 && identical_tid t1 t2
+  | PCRange(p1,q1,None,b1),PCRange(p2,q2,None,b2) ->
+    identical_pc_t p1 q1 && identical_pc_t p2 q2 && ((b1 && b2) || ( not b1 && not b2))
+  | PCRange(p1,q1,Some t1,b1),PCRange(p2,q2,Some t2,b2) ->
+    identical_pc_t p1 q1 && identical_pc_t p2 q2 && ((b1 && b2) || ( not b1 && not b2)) && identical_tid t1 t2
+  | _,_ -> false
+and identical_literal (l1:literal) (l2: literal) : bool =
+  match l1, l2 with
+    Atom(a1),Atom (a2)      -> identical_atom a1 a2
+  | NegAtom(a1),NegAtom(a2) -> identical_atom a1 a2
+  | _,_ -> false
+and identical_conjunctive_formula (f1:conjunctive_formula) (f2:conjunctive_formula) : bool =
+  match f1,f2 with
+    FalseConj,FalseConj -> true
+  | TrueConj,TrueConj -> true
+  | Conj l1, Conj l2 ->
+    let some_is_identical c l = List.exists (fun d -> identical_literal c d) l in
+       List.for_all (fun d -> some_is_identical d l2) l1 
+    && List.for_all (fun d -> some_is_identical d l1) l2
+  | _,_ -> false
+and identical_expr_t  (e1:expr_t) (e2: expr_t)  : bool =
+  match e1,e2 with
+    Term(t1),Term(t2) -> identical_term t1 t2
+  | Formula f1,Formula f2 -> identical_formula f1 f2
+  | _,_ -> false
+and identical_pc_t (p1:pc_t) (p2:pc_t) : bool =
+  p1 = p2

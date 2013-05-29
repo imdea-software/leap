@@ -1,4 +1,3 @@
-
 type varId = string
 
 type kind_t = Normal | Ghost
@@ -612,3 +611,29 @@ val gen_focus_list : pc_t -> pc_t list -> pc_t list -> pc_t list
     analyze in case that there are at most [mp] positions, [fs] is the list
     of positions where to focus and [is] the positions to ignore *)
 
+
+(* COMPARISON FUNCTIONS. SYNTACTICALLY (almost) IDENTICAL *)
+val identical_formula  : formula  -> formula  -> bool
+val identical_sorts     : sort     -> sort     -> bool
+val identical_variable  : variable -> variable -> bool
+val identical_term      : term     -> term     -> bool
+val identical_eq        : eq -> eq -> bool
+val identical_diseq : diseq -> diseq -> bool 
+val identical_arrays : arrays -> arrays -> bool
+val identical_addrarr : addrarr -> addrarr -> bool
+val identical_tidarr : tidarr -> tidarr -> bool
+val identical_integer : integer -> integer -> bool
+val identical_set : set -> set -> bool
+val identical_tid : tid -> tid -> bool
+val identical_elem : elem -> elem -> bool
+val identical_addr : addr -> addr -> bool
+val identical_cell : cell -> cell -> bool
+val identical_setth : setth -> setth -> bool
+val identical_setint : setint -> setint -> bool
+val identical_setelem : setelem -> setelem -> bool
+val identical_path : path -> path -> bool
+val identical_mem : mem -> mem -> bool
+val identical_atom : atom -> atom -> bool
+val identical_literal : literal -> literal -> bool
+val identical_conjunctive_formula : conjunctive_formula -> conjunctive_formula -> bool
+val identical_expr_t : expr_t -> expr_t -> bool
