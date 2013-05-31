@@ -1,12 +1,8 @@
 type varId = string
 
-type kind_t = Normal | Ghost
-
 type pc_t = int
 
 and initVal_t = Equality of term | Condition of formula
-
-and var_info_t = sort * initVal_t option * tid option * kind_t
 
 and sort =
     Set
@@ -25,9 +21,7 @@ and sort =
   | AddrArray
   | TidArray
   | Unknown
-
-and variable = varId * sort * bool * tid option * string option * kind_t
-
+and variable = varId * sort * is_primed * shared_or_local * procedure_name * is_ghost
 and term =
     VarT          of variable
   | SetT          of set
@@ -88,7 +82,6 @@ and set =
   | AddrToSet     of mem * addr
   | AddrToSetAt   of mem * addr * integer
   | SetArrayRd    of arrays * tid
-
 and tid =
     VarTh         of variable
   | NoThid
@@ -195,9 +188,9 @@ and atom =
   | InEq          of diseq
   | BoolVar       of variable
   | BoolArrayRd   of arrays * tid
-  | PC            of pc_t * tid option * bool
+  | PC            of pc_t * shared_or_local * is_primed
   | PCUpdate      of pc_t * tid
-  | PCRange       of pc_t * pc_t * tid option * bool
+  | PCRange       of pc_t * pc_t * shared_or_local * is_primed
 
 and literal =
     Atom          of atom
@@ -223,6 +216,11 @@ and expr_t =
   | Formula       of formula
 
 and tid_subst_t = (tid * tid) list
+and is_primed       = NotPrimed | Primed
+and shared_or_local = Shared  | Local of tid
+and procedure_name  = GlobalScope | Scope of string
+and is_ghost        = RealVar | GhostVar
+and var_info_t = sort * initVal_t option * shared_or_local * is_ghost
 
 type formula_info_t =
   {
@@ -303,8 +301,8 @@ val build_pc_range : pc_t -> pc_t -> pc_t list
 
 (* VARIABLE FUNCTIONS *)
 val same_var : variable -> variable -> bool
-val build_var : varId -> sort -> bool -> tid option ->
-                string option -> kind_t -> variable
+val build_var : varId -> sort -> is_primed -> shared_or_local ->
+                procedure_name -> is_ghost -> variable
 val var_clear_param_info : variable -> variable
 
 (** [var_base_info v] returns [v], removing information about priming and
@@ -313,13 +311,13 @@ val var_base_info : variable -> variable
 
 val var_id        : variable -> varId
 val var_sort      : variable -> sort
-val var_pr        : variable -> bool
-val var_th        : variable -> tid option
-val var_proc      : variable -> string option
-val var_k         : variable -> kind_t
+val var_pr        : variable -> is_primed
+val var_th        : variable -> shared_or_local
+val var_proc      : variable -> procedure_name
+val var_k         : variable -> is_ghost
 val var_val       : variable -> int
-val var_full_info : variable -> (varId * sort * bool *
-                                 tid option * string option * kind_t)
+val var_full_info : variable -> (varId * sort * is_primed *
+                                 shared_or_local * procedure_name * is_ghost)
 
 val is_local_var  : variable -> bool
 val is_global_var : variable -> bool
@@ -357,7 +355,7 @@ val ineq_addr  : addr    -> addr    -> formula
 val ineq_elem  : elem    -> elem    -> formula
 val ineq_tid   : tid     -> tid     -> formula
 val atom_form  : atom    -> formula
-val pc_form    : pc_t -> tid option -> bool -> formula
+val pc_form    : pc_t -> shared_or_local -> is_primed -> formula
 val pcupd_form : pc_t -> tid -> formula
 val boolvar    : variable -> formula
 
@@ -384,20 +382,20 @@ val is_tid_lockid : tid -> bool
 (* VARIABLE INFORMATION FUNCTIONS *)
 val var_info_sort : var_info_t -> sort
 val var_info_expr : var_info_t -> initVal_t option
-val var_info_tid  : var_info_t -> tid option
-val var_info_kind : var_info_t -> kind_t
+val var_info_shared_or_local  : var_info_t -> shared_or_local
+val var_info_is_ghost : var_info_t -> is_ghost
 val get_var_id     : term -> varId
-val get_var_thread : term -> tid option
-val get_var_owner  : term -> string option
-val get_var_kind   : term -> kind_t
+val get_var_thread : term -> shared_or_local
+val get_var_owner  : term -> procedure_name
+val get_var_kind   : term -> is_ghost
 
 
 (* THREAD LIST GENERATION FUNCTIONS *)
 val is_tid_var : tid -> bool
-val gen_thread_list : int -> int -> tid list
-val gen_thread_list_except : int -> int -> tid -> tid list
-val gen_fresh_thread : tid list -> tid
-val gen_fresh_thread_list : tid list -> int -> tid list
+val gen_tid_list : int -> int -> tid list
+val gen_tid_list_except : int -> int -> tid -> tid list
+val gen_fresh_tid : tid list -> tid
+val gen_fresh_tid_list : tid list -> int -> tid list
 
 
 (* LOCALIZATION FUNCTIONS *)
@@ -483,21 +481,21 @@ val variable_to_simple_str : variable -> string
 
 (* CONVERSION FUNCTIONS *)
 val array_var_from_term : term -> bool -> arrays
-val construct_var_from_sort : varId -> tid option -> string option -> sort -> 
-                                kind_t -> term
-val convert_var_to_term : string option -> varId -> var_info_t -> term
+val construct_var_from_sort : varId -> shared_or_local-> procedure_name -> sort -> 
+                                is_ghost -> term
+val convert_var_to_term : procedure_name -> varId -> var_info_t -> term
 val cons_arrayRd_eq_from_var : sort ->
                                tid ->
                                arrays ->
                                initVal_t option ->
                                formula list
 
-val construct_term_eq          : term -> tid option -> expr_t ->
+val construct_term_eq          : term -> shared_or_local -> expr_t ->
                                  (term list * formula)
-val construct_term_eq_as_array : term -> tid option -> expr_t ->
+val construct_term_eq_as_array : term -> shared_or_local -> expr_t ->
                                  (term list * formula)
 
-val construct_pres_term        : term -> tid option -> formula
+val construct_pres_term        : term -> shared_or_local -> formula
 
 
 
@@ -507,17 +505,17 @@ val unprimed_voc : formula -> tid list
 
 
 (* GHOST TERMS *)
-val var_kind : kind_t -> expr_t -> term list
+val var_kind : is_ghost -> expr_t -> term list
 
 
 (* PARAMETRIZATION FUNCTIONS *)
-val param_addr : tid option -> addr -> addr
-val param_elem : tid option -> elem -> elem
-val param_cell : tid option -> cell -> cell
-val param_term : tid option -> term -> term
-val param_expr : tid option -> expr_t -> expr_t
-val param : tid option -> formula -> formula
-val param_variable : tid option -> variable -> variable
+val param_addr : shared_or_local -> addr -> addr
+val param_elem : shared_or_local -> elem -> elem
+val param_cell : shared_or_local -> cell -> cell
+val param_term : shared_or_local -> term -> term
+val param_expr : shared_or_local -> expr_t -> expr_t
+val param : shared_or_local -> formula -> formula
+val param_variable : shared_or_local -> variable -> variable
 
 
 (* THREAD SUBSTITUTION FUNCTIONS *)
@@ -551,7 +549,7 @@ val disj_literals : literal list -> formula
 
 
 (* INITIAL ASSIGNMENT FUNCTION *)
-val assign_var : string option -> varId -> var_info_t -> formula list
+val assign_var : procedure_name -> varId -> var_info_t -> formula list
 
 
 

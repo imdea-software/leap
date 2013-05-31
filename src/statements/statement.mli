@@ -32,7 +32,7 @@ type unit_op = Lock | Unlock
 type variable = varId             *
                 Expression.sort   *
                 string option     *
-                Expression.kind_t
+                Expression.is_ghost
 
 type term =
     VarT          of variable
@@ -292,7 +292,7 @@ val me_tid : tid
 
 (* Variable functions *)
 val build_var : varId -> Expression.sort ->
-                string option -> Expression.kind_t -> variable
+                string option -> Expression.is_ghost -> variable
 val var_replace_sort : variable -> Expression.sort -> variable
 
 
@@ -300,7 +300,7 @@ val var_replace_sort : variable -> Expression.sort -> variable
 val construct_var_from_sort : Expression.varId ->
                               string option ->
                               Expression.sort ->
-                              Expression.kind_t ->
+                              Expression.is_ghost ->
                               term
 
 (* Pretty printing functions *)
@@ -310,7 +310,7 @@ val expr_to_str    : expr_t -> string
 
 
 (* Ghost variables query functions *)
-val var_kind : Expression.kind_t -> expr_t -> term list
+val var_kind : Expression.is_ghost -> expr_t -> term list
 
 
 (* Statement conversion functions *)

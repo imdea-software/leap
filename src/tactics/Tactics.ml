@@ -4,144 +4,132 @@ open Printf
 module E = Expression
 module GenSet = LeapGenericSet
 
-type solve_tactic_t = Cases
 
-type pre_tac_t = Full | Reduce | Reduce2
-
-type post_tac_t = SplitConseq | SimplPCVoc | PropReduc
-
-type t =
-  {
-    smp   : Smp.cutoff_strategy_t option ;
-    solve : solve_tactic_t option        ;
-    pre   : pre_tac_t list               ;
-    post  : post_tac_t list              ;
-  }
-
+(***************)
+(* NEW TACTICS *)
+(***************)
 
 type polarity = Pos | Neg | Both
 
+type pre_tacic_t = Full | Reduce | Reduce2
 
-type support_info_t =
+type post_tactic_t = SplitConsequent | SimplifyPC | PropositionalPropagate
+
+type support_info_t {
+  support        : E.formula list ;
+  extra_support  : E.formula list ;
+  tid_constraint : E.formula      ; (* tid inequalities *)
+  vocabulary     : E.tid list     ; (* tids in support  *) 
+  fresh_tid      : E.tid          ;
+}
+
+type verification_condition {
+  (* ANTECEDENT *)
+  antecedent : E.formula ;
+
+  (* CONSEQUENT *)
+  consequent : E.formula ;
+  consequent_renamed : E.formula ;
+
+  (* SUPPORT INFO *)
+  support_info : support_info_t ;
+
+  (* TRANSITION RELATION *)
+  rho                : E.formula ;
+
+  (* EXTRA INFO *)
+  goal               : E.formula  ;
+  transition_tid     : E.tid      ;
+  line               : E.pc_t     ;
+  vocabulary         : E.tid list ;
+}
+
+type proof_plan =
   {
-    supp : E.formula list       ;    (* Normal generated support formula  *)
-    extra_supp : E.formula list ;    (* Extra generated support formula   *)
-    diff_conj : E.formula       ;    (* Vocabulary tid inequality formula *)
-    supp_voc : E.tid list       ;    (* Normal support formula vocabulary *)
-    supp_fresh_tid : E.tid      ;    (* Extra fresh generated tid         *)
+    cutoff_algorithm : Smp.cutoff_strategy_t option ;
+    solve            : solve_tactic_t option        ;
+    pre_tactics      : pre_tactics_t list           ;
+    post_tactics     : post_tactics_t list          ;
   }
 
 
-type task_t =
-  {
-    supp_form         : E.formula list     ;
-    diff              : E.formula option   ;
-    mutable rho       : E.formula          ;
-    mutable inv       : E.formula_info_t   ;
-    all_voc           : E.tid list         ;
-    trans_tid         : E.tid              ;
-    line              : E.pc_t             ;
-    mutable try_posdp : bool               ;
-  }
+(* Conversion function *)
+let task_to_formula (hide_pres:bool) (info:task_t) : (E.formula * res_info_t) =
+  let diff_list = match info.diff with
+                    None -> []
+                  | Some phi -> [phi] in
+  let antecedent = E.And (E.conj_list (info.inv.E.formula :: info.supp_form @ diff_list), info.rho) in
+  let consequent = if hide_pres then
+                     E.prime_modified antecedent (E.unprime info.inv.E.primed)
+                   else
+                     info.inv.E.primed in
+  let res_info = {try_pos = info.try_posdp; }
+  in
+    (E.Implies (antecedent, consequent), res_info)
 
 
-type res_info_t =
-  {
-    try_pos : bool ;
-  }
+let compute_antecedent_consequent (vc:verification_condition) : unit =
+  let tid_constraint = match vc.tid_constraint with
+      None -> []
+    | Some phi -> [phi] in
+  let the_antecedent =
+    E.And (E.conj_list (vc.goal :: vc.support @ tid_constraint), !vc.rho) in
+  let primed_consequent = E.prime vc.goal in
+  let renamed_consequent = E.prime_modify the_antecedent vc.goal in
+  vc.antecedent := the_antecedent ; 
+  vc.consequent := primed_consequent ;
+  vc.consequent_renamed := renamed_consequent
 
+ exception Invalid_post_tac of string
 
-exception Invalid_post_tac of string
-
-
-
-(* Configuration *)
-let default_smp = Smp.Dnf
-
-
-let post_tac_from_string (s:string) : post_tac_t =
+let post_tactic_from_string (s:string) : post_tactic_t =
   match s with
-  | "split" -> SplitConseq
-  | "simpl" -> SimplPCVoc
-  | "propagate" -> PropReduc
+  | "split-consequent"        -> SplitConsequent
+  | "simplify-pc"             -> SimplifyPC
+  | "propositional-propagate" -> PropositionalPropagate
   | _ -> raise(Invalid_post_tac s)
 
 
-let new_tactics (smp:Smp.cutoff_strategy_t option)
-                (solve_tac:solve_tactic_t option)
-                (pre:pre_tac_t list)
-                (post:post_tac_t list) : t =
-  {smp = smp; solve = solve_tac; pre = pre; post = post }
+let default_cutoff_algorithm = Smp.Dnf
+
+(* Get functions for type plan *)
+
+let get_cutoff (plan:proof_plan) : Smp.cutoff_strategy_t option =
+  plan.cutoff_algorithm
+and get_solve (plan:proof_plan) : solve_tactic_t option =
+  plan.solve
+and get_pre_tactics (plan:proof_plan) : pre_tac_t  list =
+  plan.pre_tactics
+and get_post_tactics (plan:proof_plan) : post_tac_t list =
+  plan.post_tactics
 
 
-let smp_cutoff (tacs:t) : Smp.cutoff_strategy_t option =
-  tacs.smp
+(* Get functions for type verification_condition *)
 
-
-let solve_tactic (tacs:t) : solve_tactic_t option =
-  tacs.solve
-
-
-let pre_tacs (tacs:t) : pre_tac_t  list =
-  tacs.pre
-
-
-let post_tacs (tacs:t) : post_tac_t list =
-  tacs.post
-
-
-
-(* supp_info manipulation *)
-
-
-let supp_voc (info:support_info_t) : E.tid list =
-  info.supp_voc
-
-
-
-let supp_list (info:support_info_t) : E.formula list =
-  info.supp
-
-
-let extra_supp_list (info:support_info_t) : E.formula list =
-  info.extra_supp
-
-
-let diff_conj (info:support_info_t) : E.formula =
-  info.diff_conj
-
-
-let supp_fresh_tid (info:support_info_t) : E.tid =
-  info.supp_fresh_tid
-
-
-(* res_info_t functions *)
-let new_res_info () : res_info_t =
-  {try_pos = true;}
-
-
-let try_pos (info:res_info_t) : bool =
-  info.try_pos
-
-
-(* Tactics specialization *)
-
-let specialize_tacs (gral_tacs:t) (spec_tacs:t) : t =
-  let pre_tacs  = match spec_tacs.pre with
-                  | [] -> gral_tacs.pre
-                  | _  -> spec_tacs.pre in
-  let post_tacs = match spec_tacs.post with
-                  | [] -> gral_tacs.post
-                  | _  -> spec_tacs.post in
-  let smp =       match spec_tacs.smp with
-                  | None -> gral_tacs.smp
-                  | _    -> spec_tacs.smp in
-  let solve =     match spec_tacs.solve with
-                  | None -> gral_tacs.solve
-                  | _    -> spec_tacs.solve
-  in
-     { smp = smp; solve = solve; pre = pre_tacs; post = post_tacs }
-
+let get_antecedent (vc:verification_condition) : E.formula=
+  vc.antecedent
+and get_consequent_with_primes (vc:verification_condition) : E.formula=
+  vc.consequent
+and get_consequent_no_primes (vc:verification_condition) : E.formula=
+  vc.consequent_renamed
+and get_support (vc:verification_condition) : E.formula list =
+  vc.support
+and get_tid_constraint (vc:verification_condition) : E.formula =
+  vc.tid_constraint
+and get_suport_vocabulary (vc:verification_condition) : E.tid list =
+  vc.support_vocabulary
+and get_support_fresh_tid (vc:verification_condition) : E.tid =
+  vc.support_fresh_tid
+and get_rho (vc:verification_condition) : E.tid =
+  vc.rho
+and get_goal (vc:verification_condition) : E.tid =
+  vc.goal
+and get_transition_tid (vc:verification_condition) : E.tid =
+  vc.transition_tid
+and get_line (vc:verification_condition) : E.tid =
+  vc.line
+and get_vocabulary (vc:verification_condition) : E.tid =
+  vc.vocabulary
 
 (* Auxiliary simplification functions *)
 
@@ -152,12 +140,12 @@ let invert_polarity pol =
     | Both -> Both
 
 
-let simplify_aux (phi:E.formula) (auxf:E.literal-> polarity->E.formula) : E.formula =
+let simplifier_gen (phi:E.formula) (simp_lit:E.literal-> polarity->E.formula) : E.formula =
   let is_true  (f:E.formula):bool = match f with E.True  -> true | _ -> false in
   let is_false (f:E.formula):bool = match f with E.False -> true | _ -> false in
   let rec simplify_f (f:E.formula) (pol:polarity): E.formula=
     match f with
-        E.Literal(lit) -> (auxf lit pol)
+        E.Literal(lit) -> (simp_lit lit pol)
       | E.True         -> E.True
       | E.False        -> E.False
       | E.And(x,y)     -> let sx = (simplify_f x pol) in
@@ -196,51 +184,12 @@ let simplify_aux (phi:E.formula) (auxf:E.literal-> polarity->E.formula) : E.form
   in
     simplify_f phi Pos
 
-
 let simplify (phi:E.formula) : E.formula =
-  let idf l pol = E.Literal l in
-    simplify_aux phi idf
+  let id l pol = E.Literal l in
+    simplifier_gen phi id
 
-(*                                                        *)
-(* Simplifies a formula under the assumption that pc(i)=l *)
-(* pr states whether if considers primed or unprimed pc   *)
-(*                                                        *)
-(*
-let simplify_with_pc (phi:E.formula) (i:E.tid) (l:int) (pr:bool) : E.formula =
-  let is_same_tid (j:E.tid) : bool =
-    match (i,j) with
-      E.VarTh(v),E.VarTh(w) -> E.same_var v w
-    | _                     -> false in
-  let matches_tid (a:E.atom) : bool =
-    match a with
-      E.PC(line,Some j,pr)       -> is_same_tid j
-    | E.PCRange(l1,l2,Some j,pr) -> is_same_tid j
-    | _                             -> false in
-  let matches_line (a:E.atom) : bool =
-    match a with
-      E.PC(line,Some j,pr)       -> line == l
-    | E.PCRange(l1,l2,Some j,pr) -> l1<=l && l<=l2
-    | _                              -> false in
-  let simplify_pc (lit:E.literal) (pol:polarity) : E.formula =
-    match lit with
-      E.Atom(a)    -> if (matches_tid a) then
-                        (if (matches_line a) then E.True else E.False)
-                      else
-                          E.Literal lit
-    | E.NegAtom(a) -> if (matches_tid a) then
-                        (if (matches_line a) then E.False else E.True)
-                        else
-                          E.Literal lit
-  in
-    simplify_aux phi simplify_pc
-*)
 
-(* Ale: I have modified the function above in order to let it accept a list
-        of candidate pairs (program position, thread id) instead of a single
-        program counter and a single thread.
-*)
-
-let simplify_with_pc (phi:E.formula) (i:E.tid) (ls:int list) (pr:bool) : E.formula =
+let simplify_with_pc (phi:E.formula) (i:E.tid) (lines:int list) (primed:bool) : E.formula =
   let is_same_tid (j:E.tid) : bool =
     match (i,j) with
       E.VarTh(v),E.VarTh(w) -> E.same_var v w
@@ -266,54 +215,45 @@ let simplify_with_pc (phi:E.formula) (i:E.tid) (ls:int list) (pr:bool) : E.formu
                         else
                           E.Literal lit
   in
-    simplify_aux phi simplify_pc
+    simplifier_gen phi simplify_pc
 
 
 
 (* This simplification simply removes the whole formula if the vocabulary
  * is irrelevant *)
-let simplify_with_vocabulary (phi:E.formula) (voc:E.variable list): E.formula =
+let simplify_with_vocabulary (phi:E.formula) (vocabulary:E.variable list): E.formula =
   let vars_in_phi = E.all_vars_as_set phi in
-  let relevant = List.exists (fun v -> E.VarSet.mem v vars_in_phi) voc in
+  let relevant = List.exists (fun v -> E.VarSet.mem v vars_in_phi) vocabulary in
     if relevant then
       phi
     else
       E.True
 
 
-
-(***************************************************************************)
-
-
 let gen_fresh_support_tids (phi_list:E.formula list)
                             : (E.formula list * E.formula list * E.tid list) =
-  let (param, unparam) = List.partition (fun phi -> E.voc phi <> []) phi_list in
+  let (param, no_param) = List.partition (fun phi -> E.voc phi <> []) phi_list in
   let (new_phi_list, voc_list) =
     List.fold_left (fun (fs, vs) phi ->
       let phi_voc  = E.voc phi in
-      let new_tids = E.gen_fresh_thread_list vs (List.length phi_voc) in
+      let new_tids = E.gen_fresh_tid_list vs (List.length phi_voc) in
       let subst    = E.new_tid_subst (List.combine phi_voc new_tids) in
       let new_phi  = E.subst_tid subst phi
       in
         ([new_phi] @ fs, new_tids@vs)
     ) ([],[]) param
   in
-    (unparam, new_phi_list, voc_list)
+    (no_param, new_phi_list, voc_list)
 
 
-(****************** Possible support generation tactics ********************)
-
-(* General support generation *)
-let gen_support (phi_list:E.formula list)
-                (inv_voc:E.tid list)
-                (tacs:pre_tac_t list) : support_info_t =
-  (* Momentary support for a single pre-tactic *)
+let generate_support (phi_list:E.formula list)
+                     (goal_vocabulary:E.tid list)
+                     (tacs:support_tacic list) : support_info_t =
+  (* For now: only support a single pre-tactic *)
   let _ = assert (List.length tacs <= 1) in
-
-  let pre_tac = match tacs with
+  let tactic = match tacs with
                   [] -> Full
                 | _  -> List.hd tacs in
-
   let (unparam_supp, fresh_supp_list, fresh_supp_voc) =
     gen_fresh_support_tids phi_list in
   let fresh_supp = E.conj_list fresh_supp_list in
@@ -360,233 +300,70 @@ let gen_support (phi_list:E.formula list)
       supp_voc = fresh_supp_voc ;
       supp_fresh_tid = supp_fresh_tid ;
     }
+                        
 
-
-
-
-
-
-
-(****************** Possible support generation tactics ********************)
-
-
-
-(* Conversion function *)
-let task_to_formula (hide_pres:bool) (info:task_t) : (E.formula * res_info_t) =
-  let diff_list = match info.diff with
-                    None -> []
-                  | Some phi -> [phi] in
-  let antecedent = E.And (E.conj_list (info.inv.E.formula :: info.supp_form @ diff_list), info.rho) in
-  let consequent = if hide_pres then
-                     E.prime_modified antecedent (E.unprime info.inv.E.primed)
-                   else
-                     info.inv.E.primed in
-  let res_info = {try_pos = info.try_posdp; }
-  in
-    (E.Implies (antecedent, consequent), res_info)
-
-
-(* Task manipulation *)
-
-let new_task (supp:E.formula list)
-             (diff:E.formula option)
-             (rho:E.formula)
-             (inv:E.formula_info_t)
-             (all_voc:E.tid list)
-             (trans_tid:E.tid)
-             (line:E.pc_t) : task_t =
+let create_vc (supp       : E.formula list)
+              (tid_constr : E.formula option)
+              (rho        : E.formula)
+              (goal       : E.formula_info_t)
+              (vocab      : E.tid list)
+              (trans_tid  : E.tid)
+              (line       : E.pc_t) : verification_condition =
+  let the_vc = 
   {
-    supp_form = supp      ;
-    diff      = diff      ;
-    rho       = rho       ;
-    inv       = inv       ;
-    all_voc   = all_voc   ;
-    trans_tid = trans_tid ;
-    line      = line      ;
-    try_posdp = true      ;
-  }
-
-let dupl_task_with_inv (task:task_t) (inv:E.formula_info_t) : task_t =
-  {
-    supp_form = task.supp_form ;
-    diff = task.diff ;
-    rho = task.rho ;
-    inv = inv ;
-    all_voc = E.voc (E.conj_list (inv.E.formula :: task.supp_form)) ;
-    trans_tid = task.trans_tid ;
-    line = task.line ;
-    try_posdp = task.try_posdp ;
-  }
+    suports        = supp ;
+    tid_constraint = tid_constr;
+    rho            = rho ;
+    goal           = goal ;
+    transition_tid = trans_tid ;
+    line           = line ;
+    vocabulary     = vocab ; (* fix: can be computed *)
+    (* missing : support_vocabulary, support_fresh_tid *)
+  } ;
+    compute_antecedent_consequent the_vc ; the_vc
 
 
-let dupl_task_with_supp (task:task_t) (supp:E.formula list) : task_t =
-  {
-    supp_form = supp ;
-    diff = task.diff ;
-    rho = task.rho ;
-    inv = task.inv ;
-    all_voc = E.voc (E.conj_list (task.inv.E.formula :: supp)) ;
-    trans_tid = task.trans_tid ;
-    line = task.line ;
-    try_posdp = task.try_posdp ;
-  }
+let dup_vc_with_goal (vc:verification_condition) (new_goal:formula) : verification_condition =
+  let new_vc =  {
+    suport         = vc.support ;
+    tid_constraint = vc.tid_constraint;
+    rho            = vc.rho ;
+    goal           = new_goal ;
+    transition_tid = vc.transition_tid ;
+    line           = vc.line ;
+    vocabulary     = vc.vocabualry ; (* fix *)
+  } ;
+    compute_antecedent_consequent new_vc ; new_vc
 
 
 (*** Tactics functions ***)
 
-
-let tac_split (task:task_t) (tac:post_tac_t) : task_t list =
-  let _ = printf "Split called\n" in
-  let cases = E.to_conj_list task.inv.E.formula in
+let tactic_split_consequent (vc:verification_condition)  : verification_condition list =
+  let _ = printf "tactic_split_consequent called\n" in
+  let cases = E.to_conj_list vc.goal in
   if List.length cases > 1 then
-    let new_tasks = List.map (fun phi ->
-                      let inv_info = E.new_formula_info phi
-                      in
-                        dupl_task_with_inv task inv_info
+    let new_vcs = List.map (fun phi ->
+                        dup_vc_with_goal vc phi
                     ) cases
     in
-      new_tasks
+      new_vcs
   else
-    [task]
-
-
-let tac_simple (task:task_t) (tac:post_tac_t) : task_t list =
-  let not_pc (phi:E.formula) : bool =
-    match phi with
-    | E.Literal (E.Atom (E.PC _))       -> false
-    | E.Literal (E.Atom (E.PCUpdate _)) -> false
-    | _ -> true in
-
-  let nexts = List.fold_left (fun ns cs ->
-                List.fold_left (fun ns phi ->
-                  match phi with
-                  | E.Literal(E.Atom(E.PCUpdate(j,th))) -> j::ns
-                  | _ -> ns
-                ) ns cs
-              ) [] (List.map E.to_disj_list (E.to_conj_list task.rho)) in
-
-  let psi_simpl = List.map (fun psi ->
-                    let vars = task.inv.E.vars @ (E.all_vars task.rho) in
-                    let simpl_pc = simplify_with_pc psi task.trans_tid [task.line] false
-                    in
-                      simplify_with_vocabulary simpl_pc vars
-                  ) task.supp_form in
-  let inv_simpl = if nexts <> [] then
-                    let _ = Printf.printf "YYYY ORIGINAL INV': %s\n" (E.formula_to_str task.inv.E.primed) in
-                    let inv_simpl = simplify_with_pc task.inv.E.formula task.trans_tid [task.line] false in
-                    let inv_primed_simpl = if List.length nexts > 1 then
-                                             task.inv.E.primed
-                                           else
-                                             (task.try_posdp <- false; simplify_with_pc task.inv.E.primed task.trans_tid nexts true) in
-                    let _ = Printf.printf "YYYY SIMPLIFIED INV : %s\n" (E.formula_to_str inv_simpl) in
-                    let _ = Printf.printf "YYYY SIMPLIFIED INV': %s\n" (E.formula_to_str inv_primed_simpl) in
-                    let new_inv_info = E.copy_formula_info task.inv in
-                    new_inv_info.E.formula <- inv_simpl;
-                    new_inv_info.E.primed <- inv_primed_simpl;
-                    new_inv_info
-                  else
-                    task.inv in
-  let _ = Printf.printf "ZZZZZ %s %s\n" (E.tid_to_str task.trans_tid) (String.concat ";" (List.map string_of_int nexts)) in
-  (* TODO: Extend simplification to diff conjunction *)
-  let dupp = dupl_task_with_supp task psi_simpl in
-  dupp.inv <- inv_simpl;
-  dupp.rho <- E.conj_list (List.filter not_pc (E.to_conj_list task.rho));
-  Printf.printf "PPPP INV : %s\n" (E.formula_to_str dupp.inv.E.formula);
-  Printf.printf "PPPP INV': %s\n" (E.formula_to_str dupp.inv.E.primed);
-  [dupp]
+    [vc]
 
 
 
-let tac_prop_reduc (task:task_t) (tac:post_tac_t) : task_t list =
-  let extract_candidates (phi:E.formula) : E.literal GenSet.t =
-    let l_set = GenSet.empty () in
-    let cs = E.to_conj_list phi in
-    List.iter (fun f -> match f with
-                        | E.Literal l -> GenSet.add l_set l
-                        | _           -> ()
-    ) cs;
-    l_set
-  in
-
-  let initial_phis = task.inv.E.formula ::
-                     task.rho ::
-                     (Option.default E.True task.diff) ::
-                     task.supp_form in
-  let literal_set = List.fold_left (fun set f ->
-                      GenSet.union set (extract_candidates f)
-                    ) (GenSet.empty ()) initial_phis in
-  let simpl_task (l:E.literal) (t:task_t) : task_t =
-    let rec simpl_formula (phi:E.formula) : E.formula =
-      match phi with
-      | E.Implies (E.Literal l1,conse) ->
-          if l1 = l then
-            simpl_formula conse
-          else
-            E.Implies (E.Literal l1, simpl_formula conse)
-      | E.Literal _ -> phi
-      | E.True -> E.True
-      | E.False -> E.False
-      | E.And (phi1,phi2) -> E.And (simpl_formula phi1, simpl_formula phi2)
-      | E.Or (phi1,phi2) -> E.Or (simpl_formula phi1, simpl_formula phi2)
-      | E.Not phi1 -> E.Not (simpl_formula phi1)
-      | E.Implies (phi1,phi2) -> E.Implies (simpl_formula phi1, simpl_formula phi2)
-      | E.Iff (phi1,phi2) -> E.Iff (simpl_formula phi1, simpl_formula phi2) in
-
-    let analyze_formula (in_antecedent:bool) (phi:E.formula) : E.formula =
-      E.conj_list (
-        List.fold_left (fun xs form ->
-          let new_form = simpl_formula form in
-          match new_form with
-          | E.Literal l1 -> if in_antecedent && not (GenSet.mem literal_set l1) then
-                              (GenSet.add literal_set l1; new_form :: xs)
-                            else if not in_antecedent && l = l1 then
-                              xs
-                            else new_form :: xs
-          | _            -> new_form :: xs
-        ) [] (E.to_conj_list phi)
-      ) in
-      
-    let phi_info_new = E.new_formula_info (analyze_formula true t.inv.E.formula) in
-    phi_info_new.E.primed <- analyze_formula false t.inv.E.primed;
-    {
-      supp_form = List.map (analyze_formula true) t.supp_form;
-      diff = Option.lift (analyze_formula true) t.diff;
-      rho = analyze_formula true t.rho;
-      all_voc = t.all_voc ;
-      inv = phi_info_new;
-      trans_tid = t.trans_tid ;
-      line = t.line;
-      try_posdp = t.try_posdp;
-    }
-  in
-    [GenSet.fold simpl_task literal_set task]
 
 
 
-(*** Tactics functions ***)
-
-let apply_post_tac (task:task_t) (tac:post_tac_t) : task_t list =
-  let _ = Printf.printf "POST-TACTIC INVARIANT: %s\n" (E.formula_to_str task.inv.E.formula) in
-  match tac with
-    SplitConseq -> tac_split task tac
-  | SimplPCVoc -> tac_simple task tac
-  | PropReduc -> tac_prop_reduc task tac
 
 
-let apply_post_tacs (tasks:task_t list)
-                    (tacs:post_tac_t list)
-                    (hide_pres:bool)
-                      : (E.formula * res_info_t) list =
-  let res = match tacs with
-              [] -> tasks
-            | _  -> List.fold_left (fun ts tac ->
-                      let new_ts = List.fold_left (fun xs task ->
-                                     let new_tasks = apply_post_tac task tac
-                                     in
-                                       xs @ new_tasks
-                                   ) [] tasks
-                      in
-                        ts @ new_ts
-                    ) [] tacs
-  in
-    List.map (task_to_formula hide_pres) res
+
+
+
+
+
+
+
+
+
+
