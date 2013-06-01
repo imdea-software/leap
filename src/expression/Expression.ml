@@ -2304,9 +2304,9 @@ let all_global_vars (f:formula) : variable list =
 
 
 (* Primes in phi the variables modified in ante *)
-let prime_modified (ante:formula) (phi:formula) : formula =
+let prime_modified (rho:formula) (phi:formula) : formula =
 (*  LOG "Entering prime_modified" LEVEL TRACE; *)
-  let p_vars = primed_vars ante in
+  let p_vars = primed_vars rho in
   let p_set  = construct_var_set p_vars
   in
     prime_only p_set phi
@@ -4958,17 +4958,16 @@ let required_sorts (phi:formula) : sort list =
 
 
 let gen_focus_list (max_pos:pc_t)
-                   (focus_xs:pc_t list)
-                   (ignore_xs:pc_t list) : pc_t list =
+    (focus_xs:pc_t list)
+    (ignore_xs:pc_t list) : pc_t list =
   let full_xs = LeapLib.rangeList 0 max_pos in
   let base_pos_list = if focus_xs = [] then full_xs else focus_xs in
   let base_pos_set = List.fold_left (fun s p ->
-                         PosSet.add p s
-                     ) PosSet.empty base_pos_list in
+    PosSet.add p s
+  ) PosSet.empty base_pos_list in
   let focus_set = List.fold_left (fun s p ->
-                    PosSet.remove p s
-                  ) base_pos_set ignore_xs in
-    (PosSet.elements focus_set)
+    PosSet.remove p s) base_pos_set ignore_xs in
+  (PosSet.elements focus_set)
 
 
 

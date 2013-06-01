@@ -502,7 +502,7 @@ val construct_pres_term        : term -> shared_or_local -> formula
 (* VOCABULARY FUNCTIONS *)
 val voc          : formula -> tid list
 val unprimed_voc : formula -> tid list
-
+val all_voc      : formula -> ThreadSet.t
 
 (* GHOST TERMS *)
 val var_kind : is_ghost -> expr_t -> term list

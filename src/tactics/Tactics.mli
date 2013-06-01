@@ -1,77 +1,103 @@
-(* ?? *)
-type solve_tactic_t = Cases
-
-(* tactics to generate support= *)
-type support_tactic_t = Full | Reduce | Reduce2
-
-(* tactics to simplify formulas *)
-type formula_tactic_t = SplitConsequent | SimplifyPC | PropositionalPropagate
-
-type support_info
+type polarity = Pos | Neg | Both
+type support_t = Expression.formula list
+type vc_info
 type verification_condition
+type implication = {
+  ante : Expression.formula ;
+  conseq : Expression.formula ;
+}
 
-type proof_plan
+type support_tactic = Full | Reduce | Reduce2
+type formula_tactic = SimplifyPC | PropositionalPropagate
+type formula_split_tactic = SplitConsequent
+type solve_tactic = Cases
 
-val support_tactic_from_string : string -> support_tactic
-val formula_tactic_from_string : string -> formula_tactic
+type support_split_tactic_t = vc_info -> vc_info list
+type support_tactic_t = vc_info -> support_t
+type formula_split_tactic_t = implication -> implication list
+type formula_tactic_t = implication -> implication
 
-
-(* Get functions for type proof_plan *)
-val get_cutoff       : proof_plan -> Smp.cutoff_strategy_t option
-val get_solve        : proof_plan -> solve_tactic_t option
-val get_support_tactics  : proof_plan -> pre_tac_t  list
-val get_formula_tactics : proof_plan -> post_tac_t list
-
-(* Get functions for type verification_conditions *)
-val get_antecedent : verification_condition -> Expression.formula
-val get_consequent_with_primes : verification_condition -> Expression.formula
-val get_consequent_no_primes : verification_condition -> Expression.formula
-val get_support : verification_condition -> Expression.formula list 
-val get_tid_constraint : verification_condition -> Expression.formula 
-val get_suport_vocabulary : verification_condition -> Expression.tid list 
-val get_support_fresh_tid : verification_condition -> Expression.tid 
-val get_rho : verification_condition -> Expression.tid 
-val get_goal : verification_condition -> Expression.tid 
-val get_transition_tid : verification_condition -> Expression.tid 
-val get_line : verification_condition -> Expression.tid 
-val get_vocabulary : verification_condition -> Expression.tid 
+type proof_plan =
+  {
+    cutoff_algorithm : Smp.cutoff_strategy_t option     ;
+    solve            : solve_tactic option              ;
+    support_split_tactics : support_split_tactic_t list ;
+    support_tactics  : support_tactic list              ;
+    formula_split_tactics : formula_split_tactic_t list ;
+    formula_tactics  : formula_tactic list              ;
+  }
 
 
 
-val specialize_tacs : t -> t -> t
-
-val simplify : Expression.formula -> Expression.formula
-
-val simplify_with_pc : Expression.formula -> 
-                       Expression.tid -> 
-                       int list ->
-                       bool -> 
-                       Expression.formula
-
-val simplify_with_vocabulary : Expression.formula -> 
-                               Expression.variable list -> 
-                               Expression.formula
-
-val generate_support : Expression.formula list ->
-                       Expression.tid list ->
-                       support_tactic_t list ->
-                       support_info_t
+val vc_info_to_implication : vc_info -> support_t -> implication
 
 
-val create_proof_plan : Smp.cutoff_strategy_t option ->
-                        solve_tactic option ->
-                        suport_tactic list ->
-                        formula_tactic list ->
-                        prood_plan
 
-(* Get functions for proof plans *)
-val get_smp_cutoff       : proof_plan -> Smp.cutoff_strategy_t option
-val get_solve_tactic     : proof_plan -> solve_tactic option
-val get_support_tactics  : proof_plan -> support_tacic list
-val get_formula_tactics  : proof_plan -> formula_tacic list
+(***********************)
+(* CONSTRUCTORS        *)
+(***********************)
+val vc_info_to_formula : vc_info -> support_t -> Expression.formula 
+val vc_info_to_vc : vc_info -> support_t -> verification_condition 
+val formula_tactic_from_string : string ->  formula_tactic 
+val formula_split_tactic_from_string : string -> formula_split_tactic 
+val create_vc_info  : support_t -> 
+                    Expression.formula -> 
+                    Expression.formula -> 
+		    Expression.formula -> 
+		    Expression.tid list -> 
+		    Expression.tid -> 
+		    Expression.pc_t ->   vc_info 
 
-(* TACTIC APPLICATION     *)
+val create_vc  : support_t -> 
+               Expression.formula -> 
+               Expression.formula -> 
+               Expression.formula -> 
+               Expression.tid list -> 
+               Expression.tid -> 
+               Expression.pc_t ->  
+	       support_t -> 
+	       verification_condition 
 
-(* PROOF PLAN APPLICATION *)
+val dup_vc_info_with_goal : vc_info ->  Expression.formula ->   vc_info 
+
+(****************************)
+(* SELECTORS                *)
+(****************************)
+val get_cutoff : proof_plan ->   Smp.cutoff_strategy_t option 
+val get_solve : proof_plan ->    solve_tactic option 
+val get_support_tactics : proof_plan ->   support_tactic list 
+val get_formula_tactics : proof_plan ->   formula_tactic list 
+val get_unprocessed_support_from_info : vc_info ->   support_t 
+val get_tid_constraint_from_info : vc_info ->   Expression.formula  
+val get_vocabulary_from_info : vc_info ->   Expression.tid list      
+val get_rho_from_info : vc_info ->   Expression.formula   
+val get_goal_from_info : vc_info ->   Expression.formula   
+val get_transition_tid_from_info : vc_info ->   Expression.tid   
+val get_line_from_info : vc_info ->   Expression.pc_t   
+val get_antecedent : verification_condition ->   Expression.formula
+val get_consequent : verification_condition ->   Expression.formula
+val get_support : verification_condition ->   support_t 
+val get_unprocessed_support : verification_condition ->   support_t 
+val get_tid_constraint : verification_condition ->   Expression.formula 
+val get_rho : verification_condition ->   Expression.formula 
+val get_goal : verification_condition ->   Expression.formula 
+val get_transition_tid : verification_condition ->   Expression.tid 
+val get_line : verification_condition ->   Expression.pc_t 
+val get_vocabulary : verification_condition ->   Expression.tid list 
+
+
+(***************)
+(* SIMPLIFIERS *)
+(***************)
+val generic_simplifier : Expression.formula ->  
+      (Expression.literal-> polarity->Expression.formula) ->   Expression.formula 
+
+val simplify : Expression.formula ->   Expression.formula 
+val simplify_with_pc : Expression.formula ->  Expression.tid ->  int list ->  bool ->   Expression.formula 
+val simplify_with_vocabulary : Expression.formula ->  Expression.variable list ->  Expression.formula 
+val generate_support : vc_info ->   Expression.formula list 
+val split_implication : implication ->   implication list 
+
+
 
 
