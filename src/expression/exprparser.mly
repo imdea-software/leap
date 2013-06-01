@@ -44,9 +44,9 @@ exception Wrong_assignment of Expr.term
 exception Atomic_double_assignment of Expr.expr_t
 exception Unexpected_statement of string
 exception Ghost_var_in_global_decl
-              of Expr.varId * Expr.sort * Expr.initVal_t option * Expr.kind_t
+              of Expr.varId * Expr.sort * Expr.initVal_t option * Expr.is_ghost
 exception Ghost_var_in_local_decl
-              of Expr.varId * Expr.sort * Expr.initVal_t option * Expr.kind_t
+              of Expr.varId * Expr.sort * Expr.initVal_t option * Expr.is_ghost
 exception Ghost_vars_in_assignment of Expr.term list
 exception Normal_vars_in_ghost_assignment of Expr.term list
 exception No_kind_for_var of Expr.varId
@@ -67,10 +67,10 @@ let get_sort (t:Expr.term) : Expr.sort =
   let p = Expr.get_var_owner t in
   let gVars = System.get_global !Symtbl.sys in
   let (iVars,lVars) = match p with
-                        Some proc -> (System.get_input_by_name !Symtbl.sys proc,
-                                      System.get_local_by_name !Symtbl.sys proc)
-                      | None      -> (System.empty_var_table,
-                                      System.empty_var_table)
+                        Expr.Scope proc  -> (System.get_input_by_name !Symtbl.sys proc,
+                                             System.get_local_by_name !Symtbl.sys proc)
+                      | Expr.GlobalScope -> (System.empty_var_table,
+                                             System.empty_var_table)
   in
     System.get_sort_from_term gVars iVars lVars invVars t
 
@@ -147,7 +147,7 @@ let parser_check_type checker a_term a_sort get_expr_str =
 
 
 let decl_inv_var (v:Expr.varId) (s:Expr.sort) (e:Expr.initVal_t option) : unit =
-  System.add_var invVars v s e None Expr.Normal
+  System.add_var invVars v s e Expr.Shared Expr.RealVar
 
 
 
@@ -161,7 +161,7 @@ let check_sort_var (v:Expr.variable) : unit =
   let s  = Expr.var_sort v in
   let p  = Expr.var_proc v in
   let k  = Expr.var_k    v in
-  let generic_var = Expr.VarT (Expr.build_var id Expr.Unknown false None p k) in
+  let generic_var = Expr.VarT (Expr.build_var id Expr.Unknown Expr.NotPrimed Expr.Shared p k) in
   let knownSort = get_sort generic_var in
     if (knownSort != s) then
       begin
@@ -452,24 +452,24 @@ let check_and_add_delta (tbl:Vd.delta_fun_t)
     ()
 
 
-let define_ident (proc_name:string option)
+let define_ident (proc_name:Expr.procedure_name)
                  (id:string)
-                 (th:Expr.tid option) : Expr.term =
-      let k         = match proc_name with
-                      | Some p -> check_is_procedure p;
-                                  check_var_belongs_to_procedure id p;
-                                  let proc_info = System.get_proc_by_name !Symtbl.sys p in
-                                  let iVars     = System.proc_info_get_input proc_info in
-                                  let lVars     = System.proc_info_get_local proc_info in
-                                  if System.mem_var iVars id then
-                                    System.find_var_kind iVars id
-                                  else
-                                    System.find_var_kind lVars id
-                      | None   -> try
-                                    let gVars = System.get_global !Symtbl.sys in
-                                      System.find_var_kind gVars id
-                                  with _ -> Expr.Normal in
-      inject_sort (Expr.VarT (Expr.build_var id Expr.Unknown false th proc_name k))
+                 (th:Expr.shared_or_local) : Expr.term =
+      let k = match proc_name with
+              | Expr.Scope p ->     check_is_procedure p;
+                                    check_var_belongs_to_procedure id p;
+                                    let proc_info = System.get_proc_by_name !Symtbl.sys p in
+                                    let iVars     = System.proc_info_get_input proc_info in
+                                    let lVars     = System.proc_info_get_local proc_info in
+                                    if System.mem_var iVars id then
+                                      System.find_var_kind iVars id
+                                    else
+                                      System.find_var_kind lVars id
+              | Expr.GlobalScope -> try
+                                      let gVars = System.get_global !Symtbl.sys in
+                                        System.find_var_kind gVars id
+                                    with _ -> Expr.RealVar in
+      inject_sort (Expr.VarT (Expr.build_var id Expr.Unknown Expr.NotPrimed th proc_name k))
 
 
 %}
@@ -569,8 +569,8 @@ let define_ident (proc_name:string option)
 %type <Expr.term list> term_list
 
 %type <Expression.formula> formula
-%type <Expr.tid option> opt_th_param
-%type <Expr.tid option> th_param
+%type <Expr.shared_or_local> opt_th_param
+%type <Expr.shared_or_local> th_param
 %type <Expr.literal> literal
 %type <Expr.term> term
 %type <Expr.cell> cell
@@ -938,7 +938,7 @@ inv_var_decl:
       let s      = check_and_get_sort (get_name $1) in
       let v_name = get_name $2 in
 
-(*      decl_global_var v_name s None Expr.Normal; *)
+(*      decl_global_var v_name s None Expr.RealVar; *)
       decl_inv_var v_name s None
     }
 
@@ -972,7 +972,7 @@ formula :
       {
         let line_num = $2 in
         let th_p     = $3 in
-          Expr.pc_form line_num th_p false
+          Expr.pc_form line_num th_p Expr.NotPrimed
       }
   | AT IDENT opt_th_param DOT
       {
@@ -984,9 +984,9 @@ formula :
         let pc_expr    = match pc_pos with
                            None -> parser_error ("Unknown label: " ^ label_name)
                          | Some (i,e) -> if i = e then
-                                           Expr.PC (i, th_p, false)
+                                           Expr.PC (i, th_p, Expr.NotPrimed)
                                          else
-                                           Expr.PCRange (i, e, th_p, false)
+                                           Expr.PCRange (i, e, th_p, Expr.NotPrimed)
         in
           Expr.Literal (Expr.Atom pc_expr)
 (*          Expr.disj_list pos_list *)
@@ -998,7 +998,7 @@ formula :
 
 opt_th_param:
   |
-    { None }
+    { Expr.Shared }
   | th_param
     { $1 }
 
@@ -1007,12 +1007,12 @@ th_param:
   | OPEN_PAREN IDENT CLOSE_PAREN
     {
       let th_id = get_name $2 in
-        Some (Expr.build_var_tid th_id)
+        Expr.Local (Expr.build_var_tid th_id)
     }
   | OPEN_PAREN NUMBER CLOSE_PAREN
     {
       let th_id = $2 in
-        Some (Expr.build_num_tid th_id)
+        Expr.Local (Expr.build_num_tid th_id)
     }
 
 
@@ -1272,16 +1272,16 @@ term :
 ident :
   IDENT
     {
-      define_ident None (get_name $1) None
+      define_ident Expr.GlobalScope (get_name $1) Expr.Shared
 (*
       let id  = get_name $1 in
-      let var = Expr.build_var id Expr.Unknown false None None Expr.Normal in
+      let var = Expr.build_var id Expr.Unknown false None None Expr.RealVar in
         inject_sort (Expr.VarT var)
 *)
     }
   | IDENT DOUBLECOLON IDENT
     {
-      define_ident (Some (get_name $1)) (get_name $3) None
+      define_ident (Expr.Scope (get_name $1)) (get_name $3) Expr.Shared
 (*
       let proc_name = get_name $1 in
 
@@ -1306,7 +1306,7 @@ ident :
     }
   | IDENT DOUBLECOLON IDENT th_param
     {
-      define_ident (Some (get_name $1)) (get_name $3) $4
+      define_ident (Expr.Scope (get_name $1)) (get_name $3) $4
 (*
       let proc_name = get_name $1 in
 *)

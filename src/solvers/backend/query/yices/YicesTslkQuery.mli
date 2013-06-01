@@ -4,7 +4,7 @@ module Make (TSLK : TSLKExpression.S) :
     val prog_lines : int ref
     (** Number of lines in the program *)
 
-    val formula_to_str : Tactics.solve_tactic_t option ->
+    val formula_to_str : Tactics.proof_plan option ->
                          SmpTslk.cutoff_strategy_t ->
                          SmpTslk.cutoff_options_t ->
                          TSLK.formula -> string

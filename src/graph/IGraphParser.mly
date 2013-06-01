@@ -11,7 +11,7 @@ type graph_t = IGraph.iGraph_t
 type case_t = Expression.pc_t         *
               IGraph.premise_t list   *
               Tag.f_tag list          *
-              Tactics.t
+              Tactics.proof_plan
 
 (* slow way to project: traverse one time per entry *)
 let get_name id = fst id
@@ -49,7 +49,7 @@ let get_line id = snd id
 %type <case_t> case
 %type <case_t> seq_case
 %type <IGraph.premise_t list> premise
-%type <Tactics.t> tactics
+%type <Tactics.proof_plan> tactics
 %type <(Smp.cutoff_strategy_t option * Tactics.solve_tactic_t option)> smp_tactic
 %type <Tactics.solve_tactic_t option> solve_tactic
 %type <Tactics.pre_tac_t list> pre_tactic_list

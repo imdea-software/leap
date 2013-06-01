@@ -5,13 +5,20 @@ open LeapVerbose
 type logic_op_t = AndOp | OrOp | ImpliesOp | IffOp | NotOp | NoneOp
 and initVal_t = Equality of term | Condition of formula
 and varId = string
-and is_primed       = NotPrimed | Primed
 and shared_or_local = Shared  | Local of tid
 and procedure_name  = GlobalScope | Scope of string
-and is_ghost        = RealVar | GhostVar
+and var_nature      = RealVar | GhostVar
 and pc_t = int
-and var_info_t = sort * initVal_t option * shared_or_local * is_ghost
-and variable   = varId * sort * is_primed * shared_or_local * procedure_name * is_ghost
+and var_info_t = sort * initVal_t option * shared_or_local * var_nature
+and variable =
+  {
+            id        : varId           ;
+            sort      : sort            ;
+    mutable is_primed : bool            ;
+    mutable parameter : shared_or_local ;
+            scope     : procedure_name  ;
+            nature    : var_nature      ;
+  }
 and sort =
     Set
   | Elem
@@ -196,9 +203,9 @@ and atom =
   | InEq          of diseq
   | BoolVar       of variable
   | BoolArrayRd   of arrays * tid
-  | PC            of pc_t * shared_or_local * is_primed
+  | PC            of pc_t * shared_or_local * bool
   | PCUpdate      of pc_t * tid
-  | PCRange       of pc_t * pc_t * shared_or_local * is_primed
+  | PCRange       of pc_t * pc_t * shared_or_local * bool
 
 and literal =
     Atom          of atom
@@ -287,14 +294,11 @@ module ThreadSet = Set.Make(
   end )
 
 let same_var (x:variable) (y:variable) : bool =
-  let  (x_id, x_sort, x_primed, x_th, x_proc, x_ghost) = x in
-  let  (y_id, y_sort, y_primed, y_th, y_proc, y_ghost) = y in
-  let same_proc_name = 
-    (x_proc = GlobalScope && (y_proc = GlobalScope || y_proc = Scope "")) ||
-      (y_proc = GlobalScope && (x_proc = GlobalScope || x_proc = Scope "")) 
-  in
-    same_proc_name && 
-    x_id = y_id && x_sort = y_sort && x_th = y_th && x_primed = y_primed
+  let same_proc_name =
+    (x.scope = GlobalScope && (y.scope = GlobalScope || y.scope = Scope "")) ||
+      (y.scope = GlobalScope && (x.scope = GlobalScope || x.scope = Scope "")) in
+    same_proc_name &&
+    x.id = y.id && x.sort = y.sort && x.parameter = y.parameter && x.is_primed = y.is_primed
       
 let var_compare (x:variable) (y:variable) : int =
   if same_var x y then 0
@@ -378,18 +382,38 @@ let fresh_unknown_name  = "$unknown"
 let notid_name      = "NoThread"
 let defCountAbsVar  = "N"
 
-let def_var     : variable = (defCountAbsVar, Int, NotPrimed, Shared, GlobalScope, RealVar)
+let def_var     : variable = {  id = defCountAbsVar;
+                                sort = Int;
+                                is_primed = false;
+                                parameter = Shared;
+                                scope = GlobalScope;
+                                nature = RealVar; }
 let defCountVar : integer  = VarInt def_var
 
 
 
 (* The heap *)
-let heap     = VarMem ("heap", Mem, NotPrimed, Shared, GlobalScope, RealVar)
-let aux_heap = VarMem (fresh_mem_name, Mem, NotPrimed, Shared, GlobalScope, RealVar)
+let heap     = VarMem { id = "heap";
+                        sort = Mem;
+                        is_primed = false;
+                        parameter = Shared;
+                        scope = GlobalScope;
+                        nature = RealVar; }
+let aux_heap = VarMem { id = fresh_mem_name;
+                        sort = Mem;
+                        is_primed = false;
+                        parameter = Shared;
+                        scope = GlobalScope;
+                        nature = RealVar; }
 
 
 (* Fresh auxiliary variables *)
-let fresh_cell = VarCell (fresh_cell_name, Cell, NotPrimed, Shared, GlobalScope, RealVar)
+let fresh_cell = VarCell { id = fresh_cell_name;
+                           sort = Cell;
+                           is_primed = false;
+                           parameter = Shared;
+                           scope = GlobalScope;
+                           nature = RealVar; }
 
 
 (* PROGRAM POSITION FUNCTIONS *)
@@ -402,30 +426,32 @@ let build_pc_range (i:pc_t) (j:pc_t) : pc_t list =
 (* VARIABLE FUNCTIONS *)
 let build_var (id:varId)
               (s:sort)
-              (pr:is_primed)
+              (pr:bool)
               (th:shared_or_local)
               (p:procedure_name)
-              (k:is_ghost) : variable =
-  (id, s, pr, th, p, k)
+              (k:var_nature) : variable =
+  {
+    id = id;
+    sort = s;
+    is_primed = pr;
+    parameter = th;
+    scope = p;
+    nature = k;
+  }
 
 
 let var_clear_param_info (v:variable) : variable =
-  let (id,s,pr,_,p,k) = v
-  in
-    build_var id s pr Shared p k
+  v.parameter <- Shared; v
 
 
 let is_owned_var (v:variable) : bool =
-  let (_,_,_,_,p,_) = v
-  in
-    match p with
-      Scope proc  -> proc <> ""
-    | GlobalScope -> false
+  match v.scope with
+  | Scope proc  -> proc <> ""
+  | GlobalScope -> false
 
 
 let is_local_var (v:variable) : bool =
-  let (_,_,_,_,p,_) = v
-  in match p with
+  match v.scope with
   | GlobalScope -> false
   | Scope p   -> p <> ""  
 
@@ -435,19 +461,17 @@ let is_global_var (v:variable) : bool =
 
 
 let build_num_tid (i:int) : tid =
-  VarTh (build_var ("k" ^ string_of_int i) Thid NotPrimed Shared GlobalScope RealVar)
+  VarTh (build_var ("k" ^ string_of_int i) Thid false Shared GlobalScope RealVar)
 
 
 let build_var_tid (id:varId) : tid =
-  VarTh (build_var id Thid NotPrimed Shared GlobalScope RealVar)
+  VarTh (build_var id Thid false Shared GlobalScope RealVar)
 
 
 let inject_var_sort (v:variable) (s:sort) : variable =
-  let (id,_,pr,th,p,k) = v
-  in
-    (build_var id s pr th p k)
+  build_var v.id s v.is_primed v.parameter v.scope v.nature
 
-
+(*
 let var_id (v:variable) : varId =
   let (id,_,_,_,_,_) = v in id
 and var_sort (v:variable) : sort =
@@ -458,28 +482,22 @@ and var_th (v:variable) : shared_or_local =
   let (_,_,_,th,_,_) = v in th
 and var_proc (v:variable) : procedure_name =
   let (_,_,_,_,p,_) = v in p
-and var_k (v:variable) : is_ghost =
+and var_k (v:variable) : var_nature =
   let (_,_,_,_,_,k) = v in k
+*)
 
 let var_val (v:variable) : int =
-  int_of_string (var_id v)
+  int_of_string v.id
 
-let var_full_info (v:variable) : 
-    (varId * sort * is_primed * shared_or_local * procedure_name * is_ghost) =
-  v
-
-let set_var_id (v:variable) (id:varId) : variable =
-  let (_,s,pr,th,p,k) = v in (id,s,pr,th,p,k)
-
-let set_var_pr (v:variable) (pr:is_primed) : variable =
-  let (id,s,_,th,p,k) = v in (id,s,pr,th,p,k)
+let set_var_pr (v:variable) (pr:bool) : variable =
+  v.is_primed <- pr; v
 
 let set_var_th (v:variable) (th:shared_or_local) : variable =
-  let (id,s,pr,_,p,k) = v in (id,s,pr,th,p,k)
+  v.parameter <- th; v
 
 
 let var_to_term (v:variable) : term =
-  match var_sort v with
+  match v.sort with
     Unknown   -> VarT       v
   | Set       -> SetT       (VarSet        v)
   | Elem      -> ElemT      (VarElem       v)
@@ -518,7 +536,7 @@ let term_to_var (t:term) : variable =
 
 let term_sort (t:term) : sort =
   match t with
-    VarT v       -> var_sort v
+    VarT v       -> v.sort
   | SetT _       -> Set
   | ElemT _      -> Elem
   | ThidT _      -> Thid
@@ -592,7 +610,7 @@ let ineq_tid (t1:tid) (t2:tid) : formula =
 let atom_form (a:atom) : formula =
   Literal (Atom a)
 
-let pc_form (pc:pc_t) (th:shared_or_local) (pr:is_primed) : formula =
+let pc_form (pc:pc_t) (th:shared_or_local) (pr:bool) : formula =
   Literal (Atom (PC (pc,th,pr)))
 
 let pcupd_form (pc:pc_t) (th:tid) : formula =
@@ -731,11 +749,12 @@ let localize_var_id (v:varId) (p_name:string) : varId =
   sprintf "%s::%s" p_name v
 
 
-let loc_var_option (v:varId) (p_name:string option) : varId =
+let loc_var_option (v:varId) (p_name:procedure_name) : varId =
   match p_name with
-    None    -> v
-  | Some "" -> v
-  | Some p  -> localize_var_id v p
+  | GlobalScope -> v
+  | Scope "" -> v
+  | Scope p -> localize_var_id v p
+
 
 let loc_var_procedure (v:varId) (p:procedure_name) : varId =
   match p with
@@ -753,11 +772,7 @@ let prime_var_name (v:varId) : varId =
 
 
 let is_primed (var:variable) : bool =
-  let (_,_,pr,_,_,_) = var in 
-  match pr with
-    Primed    -> true
-  | NotPrimed -> false
-
+  var.is_primed
 
 let rec is_primed_array (a:arrays) : bool =
   match a with
@@ -788,21 +803,18 @@ let is_primed_tid (th:tid) : bool =
 
 
 let prime_variable (var:variable) : variable =
-  let (id,s,_,th,p,k) = var
-  in
-    build_var id s Primed th p k
+  var.is_primed <- true; var
 
 
 let unprime_variable (var:variable) : variable =
-  let (id,s,_,th,p,k) = var
-  in
-    build_var id s NotPrimed th p k
+  var.is_primed <- false; var
+
 
 let var_base_info = var_clear_param_info>>unprime_variable
 
 (* Priming functions used for thread identifiers *)
 
-let rec priming_option_tid (pr:is_primed)
+let rec priming_option_tid (pr:bool)
                            (prime_set:VarSet.t option)
                            (expr:shared_or_local) : shared_or_local =
   (* This statement primes the thread parameter of expressions *)
@@ -811,11 +823,10 @@ let rec priming_option_tid (pr:is_primed)
   expr
 
 
-let priming_variable (pr:is_primed)
+let priming_variable (pr:bool)
                      (prime_set:VarSet.t option)
                      (v:variable) : variable =
-  let (id,s,_,th,p,k) = v in
-  let v' = build_var id s pr th p k
+  let v' = build_var v.id v.sort pr v.parameter v.scope v.nature
   in
     match prime_set with
       None   -> v'
@@ -825,7 +836,7 @@ let priming_variable (pr:is_primed)
 (*      | Some s -> if VarSet.mem v s then v' else v *)
 
 
-let rec priming_term (pr:is_primed)
+let rec priming_term (pr:bool)
                      (prime_set:VarSet.t option)
                      (expr:term) : term =
   match expr with
@@ -846,20 +857,20 @@ let rec priming_term (pr:is_primed)
   | TidArrayT(arr)    -> TidArrayT  (priming_tidarray   pr prime_set arr)
 
 
-and priming_expr (pr:is_primed) (prime_set:VarSet.t option) (expr:expr_t) : expr_t =
+and priming_expr (pr:bool) (prime_set:VarSet.t option) (expr:expr_t) : expr_t =
   match expr with
     Term t    -> Term (priming_term pr prime_set t)
   | Formula b -> Formula (priming_formula pr prime_set b)
 
 
-and priming_array (pr:is_primed) (prime_set:VarSet.t option) (expr:arrays) : arrays =
+and priming_array (pr:bool) (prime_set:VarSet.t option) (expr:arrays) : arrays =
   match expr with
     VarArray v       -> VarArray (priming_variable pr prime_set v)
   | ArrayUp(arr,t,e) -> ArrayUp  (priming_array pr prime_set arr,
                                   priming_tid   pr prime_set t,
                                   priming_expr  pr prime_set e)
 
-and priming_addrarray (pr:is_primed) (prime_set:VarSet.t option) (expr:addrarr)
+and priming_addrarray (pr:bool) (prime_set:VarSet.t option) (expr:addrarr)
       : addrarr =
   match expr with
     VarAddrArray v       -> VarAddrArray (priming_variable pr prime_set v)
@@ -868,7 +879,7 @@ and priming_addrarray (pr:is_primed) (prime_set:VarSet.t option) (expr:addrarr)
                                           priming_addr  pr prime_set a)
   | CellArr c            -> CellArr (priming_cell pr prime_set c)
 
-and priming_tidarray (pr:is_primed) (prime_set:VarSet.t option) (expr:tidarr)
+and priming_tidarray (pr:bool) (prime_set:VarSet.t option) (expr:tidarr)
       : tidarr =
   match expr with
     VarTidArray v       -> VarTidArray (priming_variable pr prime_set v)
@@ -877,7 +888,7 @@ and priming_tidarray (pr:is_primed) (prime_set:VarSet.t option) (expr:tidarr)
                                           priming_tid  pr prime_set t)
   | CellTids c            -> CellTids (priming_cell pr prime_set c)
 
-and priming_set (pr:is_primed) (prime_set:VarSet.t option) (e:set) : set =
+and priming_set (pr:bool) (prime_set:VarSet.t option) (e:set) : set =
   match e with
     VarSet v            -> VarSet (priming_variable pr prime_set v)
   | EmptySet            -> EmptySet
@@ -898,7 +909,7 @@ and priming_set (pr:is_primed) (prime_set:VarSet.t option) (e:set) : set =
                                       priming_tid pr prime_set t)
 
 
-and priming_addr (pr:is_primed) (prime_set:VarSet.t option) (a:addr) : addr =
+and priming_addr (pr:bool) (prime_set:VarSet.t option) (a:addr) : addr =
   match a with
     VarAddr v                 -> VarAddr (priming_variable pr prime_set v)
   | Null                      -> Null
@@ -915,7 +926,7 @@ and priming_addr (pr:is_primed) (prime_set:VarSet.t option) (a:addr) : addr =
   | AddrArrRd(arr,l)          -> AddrArrRd(priming_addrarray pr prime_set arr,
                                            priming_int pr prime_set l)
 
-and priming_elem (pr:is_primed) (prime_set:VarSet.t option) (e:elem) : elem =
+and priming_elem (pr:bool) (prime_set:VarSet.t option) (e:elem) : elem =
   match e with
     VarElem v          -> VarElem (priming_variable pr prime_set v)
   | CellData(cell)     -> CellData(priming_cell pr prime_set cell)
@@ -928,7 +939,7 @@ and priming_elem (pr:is_primed) (prime_set:VarSet.t option) (e:elem) : elem =
   | HighestElem        -> HighestElem
 
 
-and priming_tid (pr:is_primed) (prime_set:VarSet.t option) (th:tid) : tid =
+and priming_tid (pr:bool) (prime_set:VarSet.t option) (th:tid) : tid =
   match th with
     VarTh v              -> VarTh (priming_variable pr prime_set v)
   | NoThid               -> NoThid
@@ -941,7 +952,7 @@ and priming_tid (pr:is_primed) (prime_set:VarSet.t option) (th:tid) : tid =
                                       priming_int pr prime_set l)
 
 
-and priming_cell (pr:is_primed) (prime_set:VarSet.t option) (c:cell) : cell =
+and priming_cell (pr:bool) (prime_set:VarSet.t option) (c:cell) : cell =
   match c with
     VarCell v              -> VarCell (priming_variable pr prime_set v)
   | Error                  -> Error
@@ -969,7 +980,7 @@ and priming_cell (pr:is_primed) (prime_set:VarSet.t option) (c:cell) : cell =
                                           priming_tid pr prime_set t)
 
 
-and priming_setth (pr:is_primed) (prime_set:VarSet.t option) (s:setth) : setth =
+and priming_setth (pr:bool) (prime_set:VarSet.t option) (s:setth) : setth =
   match s with
     VarSetTh v          -> VarSetTh (priming_variable pr prime_set v)
   | EmptySetTh          -> EmptySetTh
@@ -984,7 +995,7 @@ and priming_setth (pr:is_primed) (prime_set:VarSet.t option) (s:setth) : setth =
                                         priming_tid pr prime_set t)
 
 
-and priming_setint (pr:is_primed) (prime_set:VarSet.t option) (s:setint) : setint =
+and priming_setint (pr:bool) (prime_set:VarSet.t option) (s:setint) : setint =
   match s with
     VarSetInt v          -> VarSetInt (priming_variable pr prime_set v)
   | EmptySetInt          -> EmptySetInt
@@ -999,7 +1010,7 @@ and priming_setint (pr:is_primed) (prime_set:VarSet.t option) (s:setint) : setin
                                           priming_tid pr prime_set t)
 
 
-and priming_setelem (pr:is_primed) (prime_set:VarSet.t option) (s:setelem) : setelem =
+and priming_setelem (pr:bool) (prime_set:VarSet.t option) (s:setelem) : setelem =
   match s with
     VarSetElem v          -> VarSetElem (priming_variable pr prime_set v)
   | EmptySetElem          -> EmptySetElem
@@ -1015,7 +1026,7 @@ and priming_setelem (pr:is_primed) (prime_set:VarSet.t option) (s:setelem) : set
   | SetElemArrayRd(arr,t) -> SetElemArrayRd(priming_array pr prime_set arr,
                                             priming_tid pr prime_set t)
 
-and priming_path (pr:is_primed) (prime_set:VarSet.t option) (p:path) : path =
+and priming_path (pr:bool) (prime_set:VarSet.t option) (p:path) : path =
   match p with
     VarPath v                        -> VarPath (priming_variable pr prime_set v)
   | Epsilon                          -> Epsilon
@@ -1031,7 +1042,7 @@ and priming_path (pr:is_primed) (prime_set:VarSet.t option) (p:path) : path =
                                                     priming_tid pr prime_set t)
 
 
-and priming_mem (pr:is_primed) (prime_set:VarSet.t option) (m:mem) : mem =
+and priming_mem (pr:bool) (prime_set:VarSet.t option) (m:mem) : mem =
   match m with
     VarMem v             -> VarMem(priming_variable pr prime_set v)
   | Update(mem,add,cell) -> Update(priming_mem pr prime_set mem,
@@ -1041,7 +1052,7 @@ and priming_mem (pr:is_primed) (prime_set:VarSet.t option) (m:mem) : mem =
                                        priming_tid pr prime_set t)
 
 
-and priming_int (pr:is_primed) (prime_set:VarSet.t option) (i:integer) : integer =
+and priming_int (pr:bool) (prime_set:VarSet.t option) (i:integer) : integer =
   match i with
     IntVal(i)         -> IntVal(i)
   | VarInt v          -> VarInt(priming_variable pr prime_set v)
@@ -1063,7 +1074,7 @@ and priming_int (pr:is_primed) (prime_set:VarSet.t option) (i:integer) : integer
 
 
 
-and priming_atom (pr:is_primed) (prime_set:VarSet.t option) (a:atom) : atom =
+and priming_atom (pr:bool) (prime_set:VarSet.t option) (a:atom) : atom =
   match a with
     Append(p1,p2,pres)         -> Append(priming_path pr prime_set p1,
                                          priming_path pr prime_set p2,
@@ -1125,21 +1136,21 @@ and priming_atom (pr:is_primed) (prime_set:VarSet.t option) (a:atom) : atom =
   | PCRange (pc1,pc2,t,_)      -> PCRange (pc1, pc2, t, pr)
 
 
-and priming_eq (pr:is_primed) (prime_set:VarSet.t option) ((t1,t2):eq) : eq =
+and priming_eq (pr:bool) (prime_set:VarSet.t option) ((t1,t2):eq) : eq =
   (priming_term pr prime_set t1, priming_term pr prime_set t2)
 
 
-and priming_ineq (pr:is_primed) (prime_set:VarSet.t option) ((t1,t2):diseq) : diseq =
+and priming_ineq (pr:bool) (prime_set:VarSet.t option) ((t1,t2):diseq) : diseq =
   (priming_term pr prime_set t1, priming_term pr prime_set t2)
 
 
-and priming_literal (pr:is_primed) (prime_set:VarSet.t option) (l:literal) : literal=
+and priming_literal (pr:bool) (prime_set:VarSet.t option) (l:literal) : literal=
   match l with
     Atom a    -> Atom (priming_atom pr prime_set a)
   | NegAtom a -> NegAtom (priming_atom pr prime_set a)
 
 
-and priming_conjunctive_formula (pr:is_primed)
+and priming_conjunctive_formula (pr:bool)
                                 (prime_set:VarSet.t option)
                                 (cf:conjunctive_formula) : conjunctive_formula =
   match cf with
@@ -1148,7 +1159,7 @@ and priming_conjunctive_formula (pr:is_primed)
   | Conj ls   -> Conj (List.map (priming_literal pr prime_set) ls)
 
 
-and priming_formula (pr:is_primed) (prime_set:VarSet.t option) (phi:formula) : 
+and priming_formula (pr:bool) (prime_set:VarSet.t option) (phi:formula) : 
   formula =
   match phi with
     Literal(lit)         -> Literal(priming_literal pr prime_set lit)
@@ -1166,40 +1177,40 @@ and priming_formula (pr:is_primed) (prime_set:VarSet.t option) (phi:formula) :
 
 (* exported priming functions *)
 
-let prime_addr (a:addr) : addr   =  priming_addr Primed    None a
-let unprime_addr (a:addr) : addr =  priming_addr NotPrimed None a
-let prime_elem (e:elem) : elem   =  priming_elem Primed    None e
-let unprime_elem (e:elem) : elem =  priming_elem NotPrimed None e
-let prime_cell (c:cell) : cell   =  priming_cell Primed    None c
-let unprime_cell (c:cell) : cell =  priming_cell NotPrimed None c
-let prime_mem (m:mem) : mem      =  priming_mem  Primed    None m
-let unprime_mem (m:mem) : mem    =  priming_mem  NotPrimed None m
-let prime_int (i:integer) : integer = priming_int Primed None i
-let unprime_int (i:integer) : integer =  priming_int NotPrimed None i
-let prime_addrarr (aa:addrarr) : addrarr =  priming_addrarray Primed None aa
-let unprime_int (aa:addrarr) : addrarr =  priming_addrarray NotPrimed None aa
-let prime_tidarr (tt:tidarr) : tidarr =  priming_tidarray Primed None tt
-let unprime_tidarr (tt:tidarr) : tidarr =  priming_tidarray NotPrimed None tt
-let prime_term (t:term) : term =  priming_term Primed None t
-let unprime_term (t:term) : term =  priming_term NotPrimed None t
-let prime_atom (a:atom) : atom =  priming_atom Primed None a
-let unprime_atom (a:atom) : atom =  priming_atom NotPrimed None a
-let prime (phi:formula) : formula =  priming_formula Primed None phi
-let unprime (phi:formula) : formula =  priming_formula NotPrimed None phi
+let prime_addr (a:addr) : addr   =  priming_addr true    None a
+let unprime_addr (a:addr) : addr =  priming_addr false None a
+let prime_elem (e:elem) : elem   =  priming_elem true    None e
+let unprime_elem (e:elem) : elem =  priming_elem false None e
+let prime_cell (c:cell) : cell   =  priming_cell true    None c
+let unprime_cell (c:cell) : cell =  priming_cell false None c
+let prime_mem (m:mem) : mem      =  priming_mem  true    None m
+let unprime_mem (m:mem) : mem    =  priming_mem  false None m
+let prime_int (i:integer) : integer = priming_int true None i
+let unprime_int (i:integer) : integer =  priming_int false None i
+let prime_addrarr (aa:addrarr) : addrarr =  priming_addrarray true None aa
+let unprime_int (aa:addrarr) : addrarr =  priming_addrarray false None aa
+let prime_tidarr (tt:tidarr) : tidarr =  priming_tidarray true None tt
+let unprime_tidarr (tt:tidarr) : tidarr =  priming_tidarray false None tt
+let prime_term (t:term) : term =  priming_term true None t
+let unprime_term (t:term) : term =  priming_term false None t
+let prime_atom (a:atom) : atom =  priming_atom true None a
+let unprime_atom (a:atom) : atom =  priming_atom false None a
+let prime (phi:formula) : formula =  priming_formula true None phi
+let unprime (phi:formula) : formula =  priming_formula false None phi
 let prime_only (prime_set:VarSet.t) (phi:formula) : formula =  
-  priming_formula Primed (Some prime_set) phi
+  priming_formula true (Some prime_set) phi
 let unprime_only (prime_set:VarSet.t) (phi:formula) : formula =  
-  priming_formula NotPrimed (Some prime_set) phi
+  priming_formula false (Some prime_set) phi
 let prime_term_only (prime_set:VarSet.t) (t:term) : term =  
-  priming_term Primed (Some prime_set) t
+  priming_term true (Some prime_set) t
 let unprime_term_only (prime_set:VarSet.t) (t:term) : term =  
-  priming_term NotPrimed (Some prime_set) t 
+  priming_term false (Some prime_set) t 
 let prime_option_tid (th:shared_or_local) : shared_or_local =  
-  priming_option_tid Primed None th
+  priming_option_tid true None th
 let unprime_option_tid (th:shared_or_local) : shared_or_local =
-  priming_option_tid NotPrimed None th
-let prime_tid (th:tid) : tid =  priming_tid Primed None th
-let unprime_tid (th:tid) : tid = priming_tid NotPrimed None th
+  priming_option_tid false None th
+let prime_tid (th:tid) : tid =  priming_tid true None th
+let unprime_tid (th:tid) : tid = priming_tid false None th
 
 
 
@@ -1208,25 +1219,22 @@ let unprime_tid (th:tid) : tid = priming_tid NotPrimed None th
 
 (* variable_to_str fold function *)
 let rec variable_to_str (var:variable) : string =
-  let (id,s,pr,th,p,_) = var in
-  let tid_str   = match th with Shared -> "" | Local t -> tid_to_str t in
-  let var_str   = (loc_var_procedure id p)  in
-  let prime_str = match pr with Primed -> "'" | NotPrimed -> "" in
+  let tid_str   = match var.parameter with Shared -> "" | Local t -> tid_to_str t in
+  let var_str   = (loc_var_procedure var.id var.scope)  in
+  let prime_str = if var.is_primed then "'" else "" in
     var_str ^ tid_str ^ prime_str
 
 
 and variable_to_simple_str (var:variable) : string =
-  let (id,s,pr,th,p,k) = var in
-  
-  let p_str = match p with
+  let p_str = match var.scope with
     | GlobalScope -> ""
     | Scope proc -> proc ^ "_" in
-  let pr_str = match pr with Primed -> "_prime" | NotPrimed -> "" in
-  let th_str = match th with
+  let pr_str = if var.is_primed then "_prime" else "" in
+  let th_str = match var.parameter with
     | Shared-> ""
     | Local t -> "_" ^ (tid_to_str t)
   in
-    p_str ^ id ^ pr_str ^ th_str
+    p_str ^ var.id ^ pr_str ^ th_str
 
 
 and tid_to_str (th:tid) : string =
@@ -1244,10 +1252,9 @@ and tid_to_str (th:tid) : string =
 
 and param_tid_to_str (expr:tid) : string =
     match expr with
-    VarTh v       -> let id = var_id v in
-                     begin
+    VarTh v       -> begin
                        try
-                         sprintf "[%i]" (int_of_string id)
+                         sprintf "[%i]" (int_of_string v.id)
                        with
                          _ -> sprintf "(%s)" (variable_to_str v)
                      end
@@ -1343,26 +1350,26 @@ and atom_to_str (expr:atom) : string =
   | BoolArrayRd(arr,t)         -> sprintf "%s%s" (arrays_to_str arr)
                                                  (param_tid_to_str t)
   | PC (pc,t,p)                -> let t_str =
-				    match p with
-				      Primed -> shared_or_local_to_str (prime_option_tid t)
-				    | NotPrimed -> shared_or_local_to_str t in
+            match p with
+              true -> shared_or_local_to_str (prime_option_tid t)
+            | false -> shared_or_local_to_str t in
                                   let v_name =
-				    match p with
-				      Primed    -> prime_var_name pc_name
-				    | NotPrimed -> pc_name
+            match p with
+              true    -> prime_var_name pc_name
+            | false -> pc_name
                                   in
                                     sprintf "%s%s=%i" v_name t_str pc
   | PCUpdate (pc,t)            -> let t_str = tid_to_str t
                                   in
                                     sprintf"pc' = pc{%s<-%i}" t_str pc
   | PCRange (pc1,pc2,t,p)      -> let t_str =
-				    match p with 
-				      Primed -> shared_or_local_to_str (prime_option_tid t)
-				    | NotPrimed -> shared_or_local_to_str t in
+            match p with 
+              true -> shared_or_local_to_str (prime_option_tid t)
+            | false -> shared_or_local_to_str t in
                                   let v_name =
-				    match p with
-				      Primed    -> prime_var_name pc_name
-				    | NotPrimed -> pc_name
+            match p with
+              true    -> prime_var_name pc_name
+            | false -> pc_name
                                   in
                                     sprintf "%s%s = [%i,%i]" v_name t_str pc1 pc2
 
@@ -1689,7 +1696,7 @@ let is_tid_var (t:tid) : bool =
   match t with
     VarTh v -> begin
                  try
-                   let _ = int_of_string (var_id v) in false
+                   let _ = int_of_string v.id in false
                  with
                    _ -> true
                end
@@ -1700,7 +1707,7 @@ let is_tid_val (t:tid) : bool =
   match t with
     VarTh v -> begin
                  try
-                   let _ = int_of_string (var_id v) in true
+                   let _ = int_of_string v.id in true
                  with
                    _ -> false
                end
@@ -1724,12 +1731,12 @@ let is_tid_lockid (t:tid) : bool =
 let var_info_sort ((s,_,_,_):var_info_t) : sort = s
 let var_info_expr ((_,e,_,_):var_info_t) : initVal_t option = e
 let var_info_shared_or_local  ((_,_,t,_):var_info_t) : shared_or_local = t
-let var_info_is_ghost ((_,_,_,k):var_info_t) : is_ghost = k
+let var_info_nature ((_,_,_,k):var_info_t) : var_nature = k
 
 
 let get_var_info (t:term)
-                    : varId * is_primed * shared_or_local * procedure_name * is_ghost =
-  let get_info v = (var_id v, var_pr v, var_th v, var_proc v, var_k v)
+                    : varId * bool * shared_or_local * procedure_name * var_nature =
+  let get_info v = (v.id, v.is_primed, v.parameter, v.scope, v.nature)
   in
   match t with
     VarT v                           -> get_info v
@@ -1749,14 +1756,14 @@ let get_var_info (t:term)
   | CellT(CellUnlock(VarCell v))     -> get_info v
   | CellT(CellLockAt(VarCell v,_,_)) -> get_info v
   | CellT(CellUnlockAt(VarCell v,_)) -> get_info v
-  | _                                -> ("",NotPrimed,Shared,GlobalScope,RealVar)
+  | _                                -> ("",false,Shared,GlobalScope,RealVar)
 
 
 let get_var_id (t:term) : varId =
   let (v,_,_,_,_) = get_var_info t in v
 
 
-let get_var_primed (t:term) : is_primed =
+let get_var_primed (t:term) : bool =
   let (_,pr,_,_,_) = get_var_info t in pr
 
 
@@ -1768,7 +1775,7 @@ let get_var_owner (t:term) : procedure_name =
   let (_,_,_,p,_) = get_var_info t in p
 
 
-let get_var_kind (t:term) : is_ghost =
+let get_var_kind (t:term) : var_nature =
   let (_,_,_,_,k) = get_var_info t in k
 
 
@@ -1798,7 +1805,7 @@ let rec gen_tid_list_except (min:int) (max:int) (t:tid) : tid list =
 let gen_fresh_tid (xs:tid list) : tid =
   let rec find n =
     let th_cand_id = sprintf "k_%i" n in
-    let th_cand = VarTh (build_var th_cand_id Thid NotPrimed Shared GlobalScope RealVar)in
+    let th_cand = VarTh (build_var th_cand_id Thid false Shared GlobalScope RealVar)in
       if List.mem th_cand xs then find (n+1) else th_cand
   in
     find 0
@@ -1914,8 +1921,8 @@ let rec get_vars_term (expr:term)
                       (base:variable -> variable list) : variable list =
   let get_vars_aux t = get_vars_tid t base in
   match expr with
-    VarT v            -> (base v) @ 
-      (match (var_th v) with Shared -> [] | Local t -> get_vars_aux t)
+    VarT v            -> (base v) @
+      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
   | SetT(set)         -> get_vars_set set base
   | AddrT(addr)       -> get_vars_addr addr base
   | ElemT(elem)       -> get_vars_elem elem base
@@ -1943,8 +1950,8 @@ and get_vars_array (a:arrays)
                    (base:variable -> variable list) : variable list =
   let get_vars_aux t = get_vars_tid t base in
   match a with
-    VarArray v       -> (base v) @ 
-      (match (var_th v) with Shared -> [] | Local t -> get_vars_aux t)
+    VarArray v       -> (base v) @
+      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
   | ArrayUp(arr,t,e) -> (get_vars_array arr base) @
                         (get_vars_tid t base)     @
                         (get_vars_expr e base)
@@ -1955,7 +1962,7 @@ and get_vars_addrarr (a:addrarr)
   let get_vars_aux t = get_vars_tid t base in
   match a with
     VarAddrArray v       -> (base v) @
-      (match (var_th v) with Shared -> [] | Local t -> get_vars_aux t)
+      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
   | AddrArrayUp(arr,i,a) -> (get_vars_addrarr arr base) @
                             (get_vars_int i base)       @
                             (get_vars_addr a base)
@@ -1967,7 +1974,7 @@ and get_vars_tidarr (a:tidarr)
   let get_vars_aux t = get_vars_tid t base in
   match a with
     VarTidArray v       -> (base v) @
-      (match (var_th v) with Shared -> [] | Local t -> get_vars_aux t)
+      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
   | TidArrayUp(arr,i,t) -> (get_vars_tidarr arr base) @
                            (get_vars_int i base)      @
                            (get_vars_tid t base)
@@ -1979,7 +1986,7 @@ and get_vars_set (e:set)
   let get_vars_aux t = get_vars_tid t base in
   match e with
     VarSet v            -> (base v) @
-      (match (var_th v) with Shared -> [] | Local t -> get_vars_aux t)
+      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
   | EmptySet            -> []
   | Singl(addr)         -> (get_vars_addr addr base)
   | Union(s1,s2)        -> (get_vars_set s1 base) @ (get_vars_set s2 base)
@@ -1998,7 +2005,7 @@ and get_vars_addr (a:addr)
   let get_vars_aux t = get_vars_tid t base in
   match a with
     VarAddr v                 -> (base v) @
-      (match (var_th v) with Shared -> [] | Local t -> get_vars_aux t)
+      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
   | Null                      -> []
   | Next(cell)                -> (get_vars_cell cell base)
   | NextAt(cell,l)            -> (get_vars_cell cell base) @ (get_vars_int l base)
@@ -2014,7 +2021,7 @@ and get_vars_elem (e:elem)
   let get_vars_aux t = get_vars_tid t base in
   match e with
     VarElem v          -> (base v) @
-      (match (var_th v) with Shared -> [] | Local t -> get_vars_aux t)
+      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
   | CellData(cell)     -> (get_vars_cell cell base)
   | ElemArrayRd(arr,t) -> (get_vars_array arr base)
   | HavocListElem      -> []
@@ -2028,7 +2035,7 @@ and get_vars_tid (th:tid)
   let get_vars_aux t = get_vars_tid t base in
   match th with
     VarTh v              -> (base v) @
-      (match (var_th v) with Shared -> [] | Local t -> get_vars_aux t)
+      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
   | NoThid               -> []
   | CellLockId(cell)     -> (get_vars_cell cell base)
   | CellLockIdAt(cell,l) -> (get_vars_cell cell base) @ (get_vars_int l base)
@@ -2042,7 +2049,7 @@ and get_vars_cell (c:cell)
   let fold f xs = List.fold_left (fun ys x -> (f x base) @ ys) [] xs in
   match c with
     VarCell v              -> (base v) @
-      (match (var_th v) with Shared -> [] | Local t -> get_vars_aux t)
+      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
   | Error                  -> []
   | MkCell(data,addr,th)   -> (get_vars_elem data base) @
                               (get_vars_addr addr base) @
@@ -2071,7 +2078,7 @@ and get_vars_setth (s:setth)
   let get_vars_aux t = get_vars_tid t base in
   match s with
     VarSetTh v          -> (base v) @
-      (match (var_th v) with Shared -> [] | Local t -> get_vars_aux t)
+      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
   | EmptySetTh          -> []
   | SinglTh(th)         -> get_vars_tid th base
   | UnionTh(s1,s2)      -> (get_vars_setth s1 base)@(get_vars_setth s2 base)
@@ -2085,7 +2092,7 @@ and get_vars_setint (s:setint)
   let get_vars_aux t = get_vars_tid t base in
   match s with
     VarSetInt v          -> (base v) @
-      (match (var_th v) with Shared -> [] | Local t -> get_vars_aux t)
+      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
   | EmptySetInt          -> []
   | SinglInt(i)          -> (get_vars_int i base)
   | UnionInt(s1,s2)      -> (get_vars_setint s1 base) @
@@ -2102,7 +2109,7 @@ and get_vars_setelem (s:setelem)
   let get_vars_aux t = get_vars_tid t base in
   match s with
     VarSetElem v          -> (base v) @
-      (match (var_th v) with Shared -> [] | Local t -> get_vars_aux t)
+      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
   | EmptySetElem          -> []
   | SinglElem(e)          -> (get_vars_elem e base)
   | UnionElem(s1,s2)      -> (get_vars_setelem s1 base) @
@@ -2119,8 +2126,8 @@ and get_vars_path (p:path)
                   (base:variable -> variable list) : variable list =
   let get_vars_aux t = get_vars_tid t base in
   match p with
-    VarPath v -> (base v) @ 
-      (match (var_th v) with Shared -> [] | Local t -> get_vars_aux t)
+    VarPath v -> (base v) @
+      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
   | Epsilon                          -> []
   | SimplePath(addr)                 -> (get_vars_addr addr base)
   | GetPath(mem,add_from,add_to)     -> (get_vars_mem mem base) @
@@ -2138,7 +2145,7 @@ and get_vars_mem (m:mem)
   let get_vars_aux t = get_vars_tid t base in
   match m with
     VarMem v             -> (base v) @
-      (match (var_th v) with Shared -> [] | Local t -> get_vars_aux t)
+      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
   | Update(mem,add,cell) -> (get_vars_mem mem base) @
                             (get_vars_addr add base) @
                             (get_vars_cell cell base)
@@ -2151,7 +2158,7 @@ and get_vars_int (i:integer)
   match i with
     IntVal(i)         -> []
   | VarInt v          -> (base v) @
-      (match (var_th v) with Shared -> [] | Local t -> get_vars_aux t)
+      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
   | IntNeg(i)         -> (get_vars_int i base)
   | IntAdd(i1,i2)     -> (get_vars_int i1 base) @ (get_vars_int i2 base)
   | IntSub(i1,i2)     -> (get_vars_int i1 base) @ (get_vars_int i2 base)
@@ -2212,7 +2219,7 @@ and get_vars_atom (a:atom)
   | Eq(exp)                    -> (get_vars_eq exp base)
   | InEq(exp)                  -> (get_vars_ineq exp base)
   | BoolVar v                  -> (base v) @
-      (match (var_th v) with Shared -> [] | Local t -> get_vars_aux t)
+      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
   | BoolArrayRd(arr,t)         -> (get_vars_array arr base)
   | PC (pc,t,_)                -> 
       (match t with Shared -> [] | Local ti -> get_vars_aux ti)
@@ -2324,7 +2331,7 @@ let prime_modified_term (ante:formula) (t:term) : term =
 (* CONVERSION FUNCTIONS *)
 
 let rec array_var_from_term (t:term) (prime:bool) : arrays =
-  let modif_var v = if prime then (set_var_pr v Primed) else v in
+  let modif_var v = if prime then (set_var_pr v true) else v in
   match t with
     VarT v                       -> VarArray (modif_var v)
   | SetT(VarSet v)               -> VarArray (modif_var v)
@@ -2353,8 +2360,8 @@ let construct_var_from_sort (id:varId)
                             (th_p:shared_or_local)
                             (p_name:procedure_name)
                             (s:sort)
-                            (k:is_ghost) : term =
-  let v = build_var id s NotPrimed th_p p_name k in
+                            (k:var_nature) : term =
+  let v = build_var id s false th_p p_name k in
   match s with
     Set       -> SetT       (VarSet       v)
   | Elem      -> ElemT      (VarElem      v)
@@ -2388,8 +2395,7 @@ let convert_var_to_term (p:procedure_name) (id:varId) (info:var_info_t) : term =
     None if the term is not a variable and thus it couldn't be determined *)
 let get_term_scope (t:term) : string option =
   try
-    let p = var_proc (term_to_var t) in
-    match p with
+    match (term_to_var t).scope with
       GlobalScope -> Some ""
     | Scope p     -> Some p
   with
@@ -2415,7 +2421,7 @@ let cons_arrayRd_eq_from_var (s:sort)
     let pr = get_var_primed v_term in
     let p = get_var_owner v_term in
     let k = get_var_kind v_term in
-    let v_arr = VarArray(v_id, s, pr, Shared, p, k) in
+    let v_arr = VarArray (build_var v_id s pr Shared p k) in
       v_arr
   in
   match e with
@@ -2468,12 +2474,12 @@ let cons_arrayRd_eq_from_var (s:sort)
 
 
 let get_tid_in (v:variable) : tid list =
-  match (var_th v) with Shared -> [] | Local t -> [t]
+  match v.parameter with Shared -> [] | Local t -> [t]
 
 (* VOCABULARY FUNCTIONS *)
 let rec voc_term (expr:term) : tid list =
   match expr with
-    VarT v -> (match var_sort v with
+    VarT v -> (match v.sort with
                   Thid -> [VarTh v]
                 | _    -> []
               ) @ get_tid_in v
@@ -2759,9 +2765,9 @@ let unprimed_voc (phi:formula) : tid list =
 
 
 (* GHOST TERMS *)
-let rec var_kind_term (kind:is_ghost) (expr:term) : term list =
+let rec var_kind_term (kind:var_nature) (expr:term) : term list =
   match expr with
-      VarT v            -> if (var_k v) = kind then [expr] else []
+      VarT v            -> if v.nature = kind then [expr] else []
     | SetT(set)         -> var_kind_set kind set
     | AddrT(addr)       -> var_kind_addr kind addr
     | ElemT(elem)       -> var_kind_elem kind elem
@@ -2778,39 +2784,39 @@ let rec var_kind_term (kind:is_ghost) (expr:term) : term list =
     | TidArrayT(arr)    -> var_kind_tidarr kind arr
 
 
-and var_kind_expr (kind:is_ghost) (e:expr_t) : term list =
+and var_kind_expr (kind:var_nature) (e:expr_t) : term list =
   match e with
     Term t    -> var_kind_term kind t
   | Formula b -> var_kind_formula kind b
 
 
-and var_kind_array (kind:is_ghost) (a:arrays) : term list =
+and var_kind_array (kind:var_nature) (a:arrays) : term list =
   match a with
-    VarArray v       -> if (var_k v) = kind then [ArrayT a] else []
+    VarArray v       -> if v.nature = kind then [ArrayT a] else []
   | ArrayUp(arr,t,e) -> (var_kind_array kind arr) @ (var_kind_expr kind e)
 
 
-and var_kind_addrarr (kind:is_ghost) (a:addrarr) : term list =
+and var_kind_addrarr (kind:var_nature) (a:addrarr) : term list =
   match a with
-    VarAddrArray v       -> if (var_k v) = kind then [AddrArrayT a] else []
+    VarAddrArray v       -> if v.nature = kind then [AddrArrayT a] else []
   | AddrArrayUp(arr,i,a) -> (var_kind_addrarr kind arr) @
                             (var_kind_int kind i)       @
                             (var_kind_addr kind a)
   | CellArr c            -> (var_kind_cell kind c)
 
 
-and var_kind_tidarr (kind:is_ghost) (a:tidarr) : term list =
+and var_kind_tidarr (kind:var_nature) (a:tidarr) : term list =
   match a with
-    VarTidArray v       -> if (var_k v) = kind then [TidArrayT a] else []
+    VarTidArray v       -> if v.nature = kind then [TidArrayT a] else []
   | TidArrayUp(arr,i,t) -> (var_kind_tidarr kind arr) @
                            (var_kind_int kind i)      @
                            (var_kind_tid kind t)
   | CellTids c            -> (var_kind_cell kind c)
 
 
-and var_kind_set (kind:is_ghost) (e:set) : term list =
+and var_kind_set (kind:var_nature) (e:set) : term list =
   match e with
-    VarSet v            -> if (var_k v) = kind then [SetT e] else []
+    VarSet v            -> if v.nature = kind then [SetT e] else []
   | EmptySet            -> []
   | Singl(addr)         -> (var_kind_addr kind addr)
   | Union(s1,s2)        -> (var_kind_set kind s1) @ (var_kind_set kind s2)
@@ -2824,9 +2830,9 @@ and var_kind_set (kind:is_ghost) (e:set) : term list =
   | SetArrayRd(arr,t)   -> (var_kind_array kind arr)
 
 
-and var_kind_addr (kind:is_ghost) (a:addr) : term list =
+and var_kind_addr (kind:var_nature) (a:addr) : term list =
   match a with
-    VarAddr v                 -> if (var_k v) = kind then [AddrT a] else []
+    VarAddr v                 -> if v.nature = kind then [AddrT a] else []
   | Null                      -> []
   | Next(cell)                -> (var_kind_cell kind cell)
   | NextAt(cell,l)            -> (var_kind_cell kind cell) @ (var_kind_int kind l)
@@ -2839,9 +2845,9 @@ and var_kind_addr (kind:is_ghost) (a:addr) : term list =
   | AddrArrRd(arr,l)          -> (var_kind_addrarr kind arr) @ (var_kind_int kind l)
 
 
-and var_kind_elem (kind:is_ghost) (e:elem) : term list =
+and var_kind_elem (kind:var_nature) (e:elem) : term list =
   match e with
-    VarElem v          -> if (var_k v) = kind then [ElemT e] else []
+    VarElem v          -> if v.nature = kind then [ElemT e] else []
   | CellData(cell)     -> (var_kind_cell kind cell)
   | ElemArrayRd(arr,t) -> (var_kind_array kind arr)
   | HavocListElem      -> []
@@ -2850,9 +2856,9 @@ and var_kind_elem (kind:is_ghost) (e:elem) : term list =
   | HighestElem        -> []
 
 
-and var_kind_tid (kind:is_ghost) (th:tid) : term list =
+and var_kind_tid (kind:var_nature) (th:tid) : term list =
   match th with
-    VarTh v              -> if (var_k v) = kind then [ThidT th] else []
+    VarTh v              -> if v.nature = kind then [ThidT th] else []
   | NoThid               -> []
   | CellLockId(cell)     -> (var_kind_cell kind cell)
   | CellLockIdAt(cell,l) -> (var_kind_cell kind cell) @ (var_kind_int kind l)
@@ -2860,10 +2866,10 @@ and var_kind_tid (kind:is_ghost) (th:tid) : term list =
   | ThidArrRd(arr,l)     -> (var_kind_tidarr kind arr) @ (var_kind_int kind l)
 
 
-and var_kind_cell (kind:is_ghost) (c:cell) : term list =
+and var_kind_cell (kind:var_nature) (c:cell) : term list =
   let fold f xs = List.fold_left (fun ys x -> (f kind x) @ ys) [] xs in
   match c with
-    VarCell v              -> if (var_k v) = kind then [CellT c] else []
+    VarCell v              -> if v.nature = kind then [CellT c] else []
   | Error                  -> []
   | MkCell(data,addr,th)   -> (var_kind_elem kind data) @
                               (var_kind_addr kind addr) @
@@ -2888,9 +2894,9 @@ and var_kind_cell (kind:is_ghost) (c:cell) : term list =
   | CellArrayRd(arr,t)     -> (var_kind_array kind arr)
 
 
-and var_kind_setth (kind:is_ghost) (s:setth) : term list =
+and var_kind_setth (kind:var_nature) (s:setth) : term list =
   match s with
-    VarSetTh v          -> if (var_k v) = kind then [SetThT s] else []
+    VarSetTh v          -> if v.nature = kind then [SetThT s] else []
   | EmptySetTh          -> []
   | SinglTh(th)         -> (var_kind_tid kind th)
   | UnionTh(s1,s2)      -> (var_kind_setth kind s1) @ (var_kind_setth kind s2)
@@ -2899,9 +2905,9 @@ and var_kind_setth (kind:is_ghost) (s:setth) : term list =
   | SetThArrayRd(arr,t) -> (var_kind_array kind arr)
 
 
-and var_kind_setint (kind:is_ghost) (s:setint) : term list =
+and var_kind_setint (kind:var_nature) (s:setint) : term list =
   match s with
-    VarSetInt v          -> if (var_k v) = kind then [SetIntT s] else []
+    VarSetInt v          -> if v.nature = kind then [SetIntT s] else []
   | EmptySetInt          -> []
   | SinglInt(i)          -> (var_kind_int kind i)
   | UnionInt(s1,s2)      -> (var_kind_setint kind s1) @
@@ -2913,9 +2919,9 @@ and var_kind_setint (kind:is_ghost) (s:setint) : term list =
   | SetIntArrayRd(arr,t) -> (var_kind_array kind arr)
 
 
-and var_kind_setelem (kind:is_ghost) (s:setelem) : term list =
+and var_kind_setelem (kind:var_nature) (s:setelem) : term list =
   match s with
-    VarSetElem v          -> if (var_k v) = kind then [SetElemT s] else []
+    VarSetElem v          -> if v.nature = kind then [SetElemT s] else []
   | EmptySetElem          -> []
   | SinglElem(e)          -> (var_kind_elem kind e)
   | UnionElem(s1,s2)      -> (var_kind_setelem kind s1) @
@@ -2928,9 +2934,9 @@ and var_kind_setelem (kind:is_ghost) (s:setelem) : term list =
   | SetElemArrayRd(arr,t) -> (var_kind_array kind arr)
 
 
-and var_kind_path (kind:is_ghost) (p:path) : term list =
+and var_kind_path (kind:var_nature) (p:path) : term list =
   match p with
-    VarPath v                        -> if (var_k v)= kind then [PathT p] else []
+    VarPath v                        -> if v.nature= kind then [PathT p] else []
   | Epsilon                          -> []
   | SimplePath(addr)                 -> (var_kind_addr kind addr)
   | GetPath(mem,add_from,add_to)     -> (var_kind_mem kind mem) @
@@ -2943,19 +2949,19 @@ and var_kind_path (kind:is_ghost) (p:path) : term list =
   | PathArrayRd(arr,t)               -> (var_kind_array kind arr)
 
 
-and var_kind_mem (kind:is_ghost) (m:mem) : term list =
+and var_kind_mem (kind:var_nature) (m:mem) : term list =
   match m with
-    VarMem v             -> if (var_k v) = kind then [MemT m] else []
+    VarMem v             -> if v.nature = kind then [MemT m] else []
   | Update(mem,add,cell) -> (var_kind_mem kind mem) @
                             (var_kind_addr kind add) @
                             (var_kind_cell kind cell)
   | MemArrayRd(arr,t)    -> (var_kind_array kind arr)
 
 
-and var_kind_int (kind:is_ghost) (i:integer) : term list =
+and var_kind_int (kind:var_nature) (i:integer) : term list =
   match i with
     IntVal(i)         -> []
-  | VarInt v          -> if (var_k v) = kind then [IntT i] else []
+  | VarInt v          -> if v.nature = kind then [IntT i] else []
   | IntNeg(i)         -> (var_kind_int kind i)
   | IntAdd(i1,i2)     -> (var_kind_int kind i1) @ (var_kind_int kind i2)
   | IntSub(i1,i2)     -> (var_kind_int kind i1) @ (var_kind_int kind i2)
@@ -2968,7 +2974,7 @@ and var_kind_int (kind:is_ghost) (i:integer) : term list =
   | HavocLevel        -> []
 
 
-and var_kind_atom (kind:is_ghost) (a:atom) : term list =
+and var_kind_atom (kind:var_nature) (a:atom) : term list =
   match a with
     Append(p1,p2,pres)         -> (var_kind_path kind p1) @
                                   (var_kind_path kind p2) @
@@ -3021,7 +3027,7 @@ and var_kind_atom (kind:is_ghost) (a:atom) : term list =
                                   (var_kind_elem kind e2)
   | Eq(exp)                    -> (var_kind_eq kind exp)
   | InEq(exp)                  -> (var_kind_ineq kind exp)
-  | BoolVar v                  -> if (var_k v) = kind then
+  | BoolVar v                  -> if v.nature = kind then
                                     [VarT v]
                                   else
                                     []
@@ -3031,21 +3037,21 @@ and var_kind_atom (kind:is_ghost) (a:atom) : term list =
   | PCRange (pc1,pc2,t,_)      -> []
 
 
-and var_kind_eq (kind:is_ghost) ((t1,t2):eq) : term list =
+and var_kind_eq (kind:var_nature) ((t1,t2):eq) : term list =
   (var_kind_term kind t1) @ (var_kind_term kind t2)
 
 
-and var_kind_ineq (kind:is_ghost) ((t1,t2):diseq) : term list =
+and var_kind_ineq (kind:var_nature) ((t1,t2):diseq) : term list =
   (var_kind_term kind t1) @ (var_kind_term kind t2)
 
 
-and var_kind_literal (kind:is_ghost) (l:literal) : term list =
+and var_kind_literal (kind:var_nature) (l:literal) : term list =
   match l with
     Atom a    -> var_kind_atom kind a
   | NegAtom a -> var_kind_atom kind a
 
 
-and var_kind_conjunctive_formula (kind:is_ghost)
+and var_kind_conjunctive_formula (kind:var_nature)
                                  (cf:conjunctive_formula) : term list =
   match cf with
     FalseConj -> []
@@ -3053,7 +3059,7 @@ and var_kind_conjunctive_formula (kind:is_ghost)
   | Conj ls   -> List.fold_left (fun xs l -> (var_kind_literal kind l)@xs) [] ls
 
 
-and var_kind_formula (kind:is_ghost) (phi:formula) : term list =
+and var_kind_formula (kind:var_nature) (phi:formula) : term list =
     match phi with
       Literal(lit)       -> (var_kind_literal kind lit)
     | True               -> []
@@ -3069,7 +3075,7 @@ and var_kind_formula (kind:is_ghost) (phi:formula) : term list =
                             (var_kind_formula kind f2)
 
 
-let var_kind (kind:is_ghost) (e:expr_t) : term list =
+let var_kind (kind:var_nature) (e:expr_t) : term list =
   let ghost_list = var_kind_expr kind e in
   let ghost_set = List.fold_left (fun set e -> TermSet.add e set)
                                (TermSet.empty)
@@ -3518,7 +3524,7 @@ and subst_full_assign (tid_list:tid list) (subst:tid_subst_t) : bool =
     List.for_all (fun t -> ThreadSet.mem t dom) tid_list
 and subst_tid_term (subs:tid_subst_t) (expr:term) : term =
   match expr with
-    VarT v              -> VarT (set_var_th v (subst_shared_or_local subs (var_th v)))
+    VarT v              -> VarT (set_var_th v (subst_shared_or_local subs v.parameter))
   | SetT(set)           -> SetT(subst_tid_set subs set)
   | AddrT(addr)         -> AddrT(subst_tid_addr subs addr)
   | ElemT(elem)         -> ElemT(subst_tid_elem subs elem)
@@ -3540,13 +3546,13 @@ and subst_tid_expr (subs:tid_subst_t) (expr:expr_t) : expr_t =
 and subst_tid_array (subs:tid_subst_t) (expr:arrays) : arrays =
   match expr with
     VarArray v       -> VarArray (set_var_th v
-				    (subst_shared_or_local subs (var_th v)))
+            (subst_shared_or_local subs v.parameter))
   | ArrayUp(arr,t,e) -> ArrayUp(subst_tid_array subs arr, t,
                                 subst_tid_expr subs e)
 and subst_tid_addrarr (subs:tid_subst_t) (expr:addrarr) : addrarr =
   match expr with
     VarAddrArray v       -> VarAddrArray (set_var_th v
-					    (subst_shared_or_local subs (var_th v)))
+              (subst_shared_or_local subs v.parameter))
   | AddrArrayUp(arr,i,a) -> AddrArrayUp(subst_tid_addrarr subs arr,
                                         subst_tid_int subs i,
                                         subst_tid_addr subs a)
@@ -3554,7 +3560,7 @@ and subst_tid_addrarr (subs:tid_subst_t) (expr:addrarr) : addrarr =
 and subst_tid_tidarr (subs:tid_subst_t) (expr:tidarr) : tidarr =
   match expr with
     VarTidArray v       -> VarTidArray (set_var_th v
-				    (subst_shared_or_local subs (var_th v)))
+            (subst_shared_or_local subs v.parameter))
   | TidArrayUp(arr,i,t) -> TidArrayUp(subst_tid_tidarr subs arr,
                                       subst_tid_int subs i,
                                       subst_tid_th subs t)
@@ -3562,7 +3568,7 @@ and subst_tid_tidarr (subs:tid_subst_t) (expr:tidarr) : tidarr =
 and subst_tid_set (subs:tid_subst_t) (e:set) : set =
   match e with
     VarSet v            -> VarSet (set_var_th v
-				    (subst_shared_or_local subs (var_th v)))
+            (subst_shared_or_local subs v.parameter))
   | EmptySet            -> EmptySet
   | Singl(addr)         -> Singl(subst_tid_addr subs addr)
   | Union(s1,s2)        -> Union(subst_tid_set subs s1, subst_tid_set subs s2)
@@ -3579,7 +3585,7 @@ and subst_tid_set (subs:tid_subst_t) (e:set) : set =
 and subst_tid_addr (subs:tid_subst_t) (a:addr) : addr =
   match a with
     VarAddr v                 -> VarAddr(set_var_th v
-				    (subst_shared_or_local subs (var_th v)))
+            (subst_shared_or_local subs v.parameter))
   | Null                      -> Null
   | Next(cell)                -> Next(subst_tid_cell subs cell)
   | NextAt(cell,l)            -> NextAt(subst_tid_cell subs cell,
@@ -3595,7 +3601,7 @@ and subst_tid_addr (subs:tid_subst_t) (a:addr) : addr =
 and subst_tid_elem (subs:tid_subst_t) (e:elem) : elem =
   match e with
     VarElem v             -> VarElem(set_var_th v
-				    (subst_shared_or_local subs (var_th v)))
+            (subst_shared_or_local subs v.parameter))
   | CellData(cell)        -> CellData(subst_tid_cell subs cell)
   | ElemArrayRd(arr,t)    -> ElemArrayRd(subst_tid_array subs arr, t)
   | HavocListElem         -> HavocListElem
@@ -3605,7 +3611,7 @@ and subst_tid_elem (subs:tid_subst_t) (e:elem) : elem =
 and subst_tid_cell (subs:tid_subst_t) (c:cell) : cell =
   match c with
     VarCell v              -> VarCell (set_var_th v
-				    (subst_shared_or_local subs (var_th v)))
+            (subst_shared_or_local subs v.parameter))
   | Error                  -> Error
   | MkCell(data,addr,th)   -> MkCell(subst_tid_elem subs data,
                                      subst_tid_addr subs addr,
@@ -3631,7 +3637,7 @@ and subst_tid_cell (subs:tid_subst_t) (c:cell) : cell =
 and subst_tid_setth (subs:tid_subst_t) (s:setth) : setth =
   match s with
     VarSetTh v             -> VarSetTh(set_var_th v
-				    (subst_shared_or_local subs (var_th v)))
+            (subst_shared_or_local subs v.parameter))
   | EmptySetTh             -> EmptySetTh
   | SinglTh(th)            -> SinglTh(subst_tid_th subs th)
   | UnionTh(s1,s2)         -> UnionTh(subst_tid_setth subs s1,
@@ -3644,7 +3650,7 @@ and subst_tid_setth (subs:tid_subst_t) (s:setth) : setth =
 and subst_tid_setint (subs:tid_subst_t) (s:setint) : setint =
   match s with
     VarSetInt v             -> VarSetInt(set_var_th v
-				    (subst_shared_or_local subs (var_th v)))
+            (subst_shared_or_local subs v.parameter))
   | EmptySetInt             -> EmptySetInt
   | SinglInt(i)             -> SinglInt(subst_tid_int subs i)
   | UnionInt(s1,s2)         -> UnionInt(subst_tid_setint subs s1,
@@ -3657,7 +3663,7 @@ and subst_tid_setint (subs:tid_subst_t) (s:setint) : setint =
 and subst_tid_setelem (subs:tid_subst_t) (s:setelem) : setelem =
   match s with
     VarSetElem v             -> VarSetElem(set_var_th v
-				    (subst_shared_or_local subs (var_th v)))
+            (subst_shared_or_local subs v.parameter))
   | EmptySetElem             -> EmptySetElem
   | SinglElem(e)             -> SinglElem(subst_tid_elem subs e)
   | UnionElem(s1,s2)         -> UnionElem(subst_tid_setelem subs s1,
@@ -3672,7 +3678,7 @@ and subst_tid_setelem (subs:tid_subst_t) (s:setelem) : setelem =
 and subst_tid_path (subs:tid_subst_t) (p:path) : path =
   match p with
     VarPath v                        -> VarPath(set_var_th v
-				    (subst_shared_or_local subs (var_th v)))
+            (subst_shared_or_local subs v.parameter))
   | Epsilon                          -> Epsilon
   | SimplePath(addr)                 -> SimplePath(subst_tid_addr subs addr)
   | GetPath(mem,add_from,add_to)     -> GetPath(subst_tid_mem subs mem,
@@ -3686,7 +3692,7 @@ and subst_tid_path (subs:tid_subst_t) (p:path) : path =
 and subst_tid_mem (subs:tid_subst_t) (m:mem) : mem =
   match m with
     VarMem v             -> VarMem(set_var_th v
-				    (subst_shared_or_local subs (var_th v)))
+            (subst_shared_or_local subs v.parameter))
   | Update(mem,add,cell) -> Update(subst_tid_mem subs mem,
                                    subst_tid_addr subs add,
                                    subst_tid_cell subs cell)
@@ -3695,7 +3701,7 @@ and subst_tid_int (subs:tid_subst_t) (i:integer) : integer =
   match i with
     IntVal(i)         -> IntVal(i)
   | VarInt v          -> VarInt(set_var_th v
-				    (subst_shared_or_local subs (var_th v)))
+            (subst_shared_or_local subs v.parameter))
   | IntNeg(i)         -> IntNeg(subst_tid_int subs i)
   | IntAdd(i1,i2)     -> IntAdd(subst_tid_int subs i1, subst_tid_int subs i2)
   | IntSub(i1,i2)     -> IntSub(subst_tid_int subs i1, subst_tid_int subs i2)
@@ -3776,7 +3782,7 @@ and subst_tid_atom (subs:tid_subst_t) (a:atom) : atom =
   | Eq(exp)                    -> Eq(subst_tid_eq subs exp)
   | InEq(exp)                  -> InEq(subst_tid_ineq subs exp)
   | BoolVar v                  -> BoolVar(set_var_th v
-					 (subst_shared_or_local subs (var_th v)))
+           (subst_shared_or_local subs v.parameter))
   | BoolArrayRd(arr,t)         -> BoolArrayRd(subst_tid_array subs arr, t)
   | PC (pc,t,primed)           -> PC (pc, subst_shared_or_local subs t,primed)
   | PCUpdate (pc,t)            -> PCUpdate (pc, subst_tid_th subs t)
@@ -4096,7 +4102,7 @@ and subst_vars_atom (subs:(variable * variable) list) (a:atom) : atom =
                                               subst_vars_elem subs e2)
   | Eq(exp)                    -> Eq(subst_vars_eq subs exp)
   | InEq(exp)                  -> InEq(subst_vars_ineq subs exp)
-  | BoolVar v                  -> BoolVar(set_var_th v (subst_vars_shared_or_local subs (var_th v)))
+  | BoolVar v                  -> BoolVar(set_var_th v (subst_vars_shared_or_local subs v.parameter))
   | BoolArrayRd(arr,t)         -> BoolArrayRd(subst_vars_array subs arr, t)
   | PC (pc,t,primed)           -> PC (pc, subst_vars_shared_or_local subs t, primed)
   | PCUpdate (pc,t)            -> PCUpdate (pc, subst_vars_th subs t)
@@ -4462,7 +4468,7 @@ let construct_term_eq (v:term)
       let modif     = [ThidT(CellLockId(VarCell(var_base_info var)))] in
       let new_tid   = (match th_p with Shared -> NoThid | Local t -> t) in
       let left_term = prime_term (CellT (VarCell
-                        (set_var_th (set_var_pr var NotPrimed) new_th))) in
+                        (set_var_th (set_var_pr var false) new_th))) in
       (modif, Literal (Atom (Eq (left_term, CellT(MkCell(CellData c, Next c, new_tid))))))
 
   (* TOFIX: We are missing the case for TSLK and TSL *)
@@ -4609,11 +4615,11 @@ let new_label_pos_var_id (base:string) (lbl:string) : varId =
 
 
 let new_num_pos_var (base:string) (i:int) : integer =
-  VarInt (new_num_pos_var_id base i, Int, NotPrimed, Shared, Scope "", RealVar)
+  VarInt (build_var (new_num_pos_var_id base i) Int false Shared (Scope "") RealVar)
 
 
 let new_label_pos_var (base:string) (lbl:string) : integer =
-  VarInt (new_label_pos_var_id base lbl, Int, NotPrimed, Shared, Scope "", RealVar)
+  VarInt (build_var (new_label_pos_var_id base lbl) Int false Shared (Scope "") RealVar)
 
 
 let check_numeric (id:varId) (info:var_info_t) : unit =
@@ -4640,7 +4646,7 @@ let expr_and_removing_true (f1:formula) (f2:formula) : formula =
 
 
 let countAbs_var (i:int) : variable =
-  build_var (defCountAbsVar ^ string_of_int i) Int NotPrimed Shared GlobalScope RealVar
+  build_var (defCountAbsVar ^ string_of_int i) Int false Shared GlobalScope RealVar
 
 
 let someone_at (i:int) : formula =
@@ -4932,7 +4938,7 @@ let required_sorts (phi:formula) : sort list =
 
   and req_term (t:term) : SortSet.t =
     match t with
-    | VarT (_,s,_,_,_,_) -> single s
+    | VarT v             -> single v.sort
     | SetT s             -> req_s s
     | ElemT e            -> req_e e
     | ThidT t            -> req_t t

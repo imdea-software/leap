@@ -1,7 +1,17 @@
 open Printf
 open LeapLib
 
-type variable = string * bool * tid option * string option
+
+type variable =
+  {
+            id        : string          ;
+    mutable is_primed : bool            ;
+    mutable parameter : shared_or_local ;
+            scope     : procedure_name  ;
+  }
+
+and shared_or_local = Shared  | Local of tid
+and procedure_name  = GlobalScope | Scope of string
 
 and tid =
     VarTh      of variable
@@ -13,9 +23,9 @@ type expression =
   | Eq            of tid * tid
   | InEq          of tid * tid
   | Pred          of string
-  | PC            of int * tid option * bool
+  | PC            of int * shared_or_local * bool
   | PCUpdate      of int * tid
-  | PCRange       of int * int * tid option * bool
+  | PCRange       of int * int * shared_or_local * bool
   | True
   | False
   | And           of expression * expression

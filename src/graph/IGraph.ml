@@ -9,13 +9,13 @@ type premise_t = Normal | Extra
 type mode_t = Sequential | Concurrent
 
 type case_tbl_t = 
-  (Expr.pc_t * premise_t, Tag.f_tag list * Tactics.t) Hashtbl.t
+  (Expr.pc_t * premise_t, Tag.f_tag list * Tactics.proof_plan) Hashtbl.t
 
 type rule_t = mode_t         *  (* Sequential or Concurrent mode *)
               Tag.f_tag list *  (* List of premises              *)
               Tag.f_tag      *  (* Invariant                     *)
               case_tbl_t     *  (* Special cases                 *)
-              Tactics.t         (* General tactics               *)
+              Tactics.proof_plan         (* General tactics               *)
 
 type iGraph_t = rule_t list
             
@@ -39,8 +39,8 @@ let new_rule (mode:mode_t)
              (cases:(Expr.pc_t       *
                      premise_t list  *
                      Tag.f_tag list  *
-                     Tactics.t) list)
-             (tacs:Tactics.t) : rule_t =
+                     Tactics.proof_plan) list)
+             (tacs:Tactics.proof_plan) : rule_t =
   let tbl = Hashtbl.create 10 in
   let _ = List.iter (fun (pc,prems,tags,ts) ->
             List.iter (fun prem ->
@@ -63,7 +63,7 @@ let graph_info (grp:iGraph_t)
                      Tag.f_tag list *
                      Tag.f_tag      *
                      case_tbl_t     *
-                     Tactics.t ) list =
+                     Tactics.proof_plan ) list =
   grp
 
 

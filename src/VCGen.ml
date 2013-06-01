@@ -51,7 +51,7 @@ sig
   val cutoff : unit -> Smp.cutoff_strategy_t
   val out_file : unit -> string
   val hide_pres : unit -> bool
-  val tactics : unit -> Tactics.t
+  val tactics : unit -> Tactics.proof_plan
   
   val decl_tag : Tag.f_tag option -> Expression.formula -> unit
   val read_tag : Tag.f_tag -> Expression.formula option
@@ -290,7 +290,7 @@ struct
      PosExp.expression             * (** The formula with pos only  *)
      string list                   * (** New added boolean preds    *)
      valid_t                       * (** Status                     *)
-     Tactics.solve_tactic_t option * (** Solving aided tactic       *)
+     Tactics.proof_plan option * (** Solving aided tactic       *)
      Smp.cutoff_strategy_t         * (** Cutoff strategy to be used *)
      bool                          * (** Apply pos dp?              *)
      formula_status_t                (** Brief description          *)
@@ -384,7 +384,7 @@ struct
   let cutoff ()    : Smp.cutoff_strategy_t = solverInfo.cutoff
   let out_file ()  : string                = solverInfo.out_file
   let hide_pres () : bool                  = solverInfo.hide_pres
-  let tactics ()   : Tactics.t             = solverInfo.tactics
+  let tactics ()   : Tactics.proof_plan             = solverInfo.tactics
   (* This should not go here *)
   
   (** Initialization status of the module. *)
@@ -582,12 +582,12 @@ struct
   
     let pc_arr arr id = E.IntT(E.IntArrayRd(arr,id)) in
     let int_val i     = E.IntT(E.IntVal i) in
-    let pc            = E.VarArray(E.pc_name,false,None,None,E.Normal) in
+    let pc            = E.VarArray(E.pc_name,false,None,None,E.RealVar) in
     let curr_pos      = int_val p in
     let curr_eq       = E.Literal(E.Eq(pc_arr pc th, curr_pos)) in
   *)
-    let curr_eq       = E.Literal (E.Atom (E.PC(p, Some th, false))) in 
-    curr_eq
+    let curr_eq       = E.Literal (E.Atom (E.PC(p, E.Local th, E.NotPrimed)))
+      in curr_eq
   
   
   let build_next_pc (mode : Sys.sysMode) (th : E.tid) 
@@ -595,7 +595,7 @@ struct
     assert (List.length next_list > 0);
   (*  let primed_pc_name = E.prime_var_name E.pc_name in *)
   (* FIX: This was before having BPCUpdate. Check if it is alright.         *)
-  (* let pc             = E.VarArray(E.pc_name,false,None,None,E.Normal) in *)
+  (* let pc             = E.VarArray(E.pc_name,false,None,None,E.RealVar) in *)
   
     let fst_next_pos = List.hd next_list in
     let build_eq' i = match mode with
@@ -621,9 +621,9 @@ struct
       (th_list : E.tid list) : E.formula list = match mode with
     | Sys.SClosed -> (* Deprecated *)
         let pc = E.VarArray
-          (E.build_var E.pc_name E.Unknown false None None E.Normal) in
+          (E.build_var E.pc_name E.Unknown E.NotPrimed E.Shared E.GlobalScope E.RealVar) in
         let pc' = E.VarArray
-          (E.build_var E.pc_name E.Unknown true None None E.Normal) in
+          (E.build_var E.pc_name E.Unknown E.NotPrimed E.Shared E.GlobalScope E.RealVar) in
         let pc_arr arr id  = E.IntArrayRd(arr,id) in
         let eq_list = List.map 
           (fun i -> E.eq_int (pc_arr pc' i) (pc_arr pc i)) th_list in
@@ -634,7 +634,7 @@ struct
   let build_pc (mode : rhoMode) (now : E.pc_t)
       (next_list : E.pc_t list) : E.formula list =
     let curr_th, other_ths = match mode with
-      | RClosed (k,m) -> (k, E.gen_thread_list_except 1 m k)
+      | RClosed (k,m) -> (k, E.gen_tid_list_except 1 m k)
       | ROpenArray (k,js) -> (k, js)
       | ROpenExt (k,js) -> (k, js) in
     let sMode = rhoMode_to_sysMode mode in
@@ -647,19 +647,19 @@ struct
   let gen_pres (p_name : string) (gs : E.TermSet.t) (ls : E.TermSet.t)
       (os : (string * E.TermSet.t) list) (ts : E.TermSet.t)
       (mode : rhoMode) : E.formula list =
-    let gTermConj = E.TermSet.fold 
-      (fun x l -> (E.construct_pres_term x None) :: l) gs [] in
+    let gTermConj = E.TermSet.fold
+      (fun x l -> (E.construct_pres_term x E.Shared) :: l) gs [] in
     let lTermConj = match mode with
-      | RClosed (k,_) -> E.TermSet.fold 
-          (fun x l -> (E.construct_pres_term x (Some k))::l) ls []
-      | ROpenArray _ -> E.TermSet.fold 
-          (fun x bs -> (E.construct_pres_term x None)::bs) ls []
+      | RClosed (k,_) -> E.TermSet.fold
+          (fun x l -> (E.construct_pres_term x (E.Local k))::l) ls []
+      | ROpenArray _ -> E.TermSet.fold
+          (fun x bs -> (E.construct_pres_term x E.Shared)::bs) ls []
       | ROpenExt _ -> [] in
     let oTermConj = match mode with
-      | RClosed (k, th_num) -> 
-          let th_list = E.gen_thread_list 1 th_num in
+      | RClosed (k, th_num) ->
+          let th_list = E.gen_tid_list 1 th_num in
           let f p x bs i = if (i<>k || p<>p_name) then
-              (E.construct_pres_term x (Some i))::bs
+              (E.construct_pres_term x (E.Local i))::bs
             else bs in
           let g p x l =
               List.fold_left (f p x) [] th_list @ l in
@@ -667,20 +667,18 @@ struct
             E.TermSet.fold (g p) ts [] in
           List.flatten $ List.map h os
       | ROpenArray _ ->
-          List.flatten $ List.map 
-          (fun (_,ts) -> E.TermSet.fold 
-            (fun x bs -> (E.construct_pres_term x None)::bs) 
-            ts []) 
-          os
+          List.flatten $ List.map
+          (fun (_,ts) -> E.TermSet.fold
+            (fun x bs -> (E.construct_pres_term x E.Shared)::bs) ts []) os
       | ROpenExt (k, ks) ->
-          let f x bs = 
-            let constr_pt t = E.construct_pres_term x (Some t) in
+          let f x bs =
+            let constr_pt t = E.construct_pres_term x (E.Local t) in
             let curr_pres = constr_pt k in
             let others_pres = List.map constr_pt ks in 
             curr_pres :: (others_pres @ bs) in
           List.flatten $ List.map (fun (_,ts) -> E.TermSet.fold f ts []) os in
-    let thTermConj = 
-      E.TermSet.fold (fun x l -> (E.construct_pres_term x None) :: l) ts [] in
+    let thTermConj =
+      E.TermSet.fold (fun x l -> (E.construct_pres_term x E.Shared) :: l) ts [] in
     gTermConj @ lTermConj @ oTermConj @ thTermConj
   
   
@@ -692,8 +690,8 @@ struct
   (* INITIAL CONDITION AUXILIARY FUNCTIONS *)
   let gen_global_init_cond (sys : Sys.system_t) : E.formula list =
     let gVars = Sys.get_global sys in
-    let conds = Hashtbl.fold 
-      (fun v info xs -> (E.assign_var None v info) @ xs ) gVars [] in
+    let conds = Hashtbl.fold
+      (fun v info xs -> (E.assign_var E.GlobalScope v info) @ xs ) gVars [] in
     conds
 
   let gen_local_init_cond (sys : Sys.system_t) 
@@ -702,9 +700,8 @@ struct
     let conds = Hashtbl.fold 
       (fun v info xs -> 
         let (s,e,_,k) = info in
-        let new_info = (s,e,None,k) in
-        (E.assign_var (Some p_name) v new_info) @ xs) 
-      lVars [] in
+        let new_info = (s,e,E.Shared,k) in
+        (E.assign_var (E.Scope p_name) v new_info) @ xs) lVars [] in
     conds
   
   let gen_init_cond (sys : Sys.system_t) (p_name : string)
@@ -715,7 +712,7 @@ struct
       |  [] -> lConds
       | _  -> List.flatten $ List.map 
         (fun t -> let me_subst = E.new_tid_subst [(Sys.me_tid_th,t)]in
-          List.map (fun c -> E.subst_tid me_subst (E.param (Some t) c)) lConds) 
+          List.map (fun c -> E.subst_tid me_subst (E.param (E.Local t) c)) lConds)
         th_list in 
     E.conj_list (gConds @ full_lConds)
 
@@ -746,12 +743,12 @@ struct
       (th_list:E.tid list) : E.formula =
       let conds = ref [] in
       let gVars, lVars = Sys.get_accvars_by_name sys p_name in
-      let _ = Hashtbl.iter 
-        (fun v info -> conds := (E.assign_var None v info) @ !conds) gVars in
+      let _ = Hashtbl.iter
+        (fun v info -> conds := (E.assign_var E.GlobalScope v info) @ !conds) gVars in
       let _ = List.iter 
         (fun th_p -> Hashtbl.iter 
           (fun v (s,e,_,k) ->
-            let arr = E.VarArray(E.build_var v s false None (Some p_name) k) in
+            let arr = E.VarArray(E.build_var v s E.NotPrimed E.Shared (E.Scope p_name) k) in
             let eq = E.cons_arrayRd_eq_from_var s th_p arr e in
             (* Obsolete code *)
             (* let arr = E.VarArray(v, None, Some p_name, k) in    *)
@@ -788,7 +785,7 @@ struct
   let gen_theta (mode : Sys.sysMode) (sys : Sys.system_t) : E.formula =
     let main_proc = Sys.defMainProcedure in
     let param_list = match mode with
-      | Sys.SClosed -> E.gen_thread_list 1 (Sys.get_threads sys)
+      | Sys.SClosed -> E.gen_tid_list 1 (Sys.get_threads sys)
       | Sys.SOpenArray xs -> xs in
     let main_fLine = Sys.get_fLine_by_name sys main_proc in
     let init_line = Pervasives.max 1 main_fLine in
@@ -835,7 +832,7 @@ struct
       (pt:Bridge.prog_type)
       : (E.TermSet.t * E.TermSet.t * E.TermSet.t * E.formula list list) =
     let conv_bool = Stm.boolean_to_expr_formula in
-    let th_p = Some (get_mode_param mode) in
+    let th_p = E.Local (get_mode_param mode) in
     let append_to_ghost gc gS lS tS (ps:E.formula list list) =
       match gc with
       | Some code ->
@@ -967,8 +964,10 @@ struct
       let cell = E.CellAt (E.heap, a) in
       let cond = match op with
         | Stm.Lock   -> E.eq_tid (E.CellLockId cell) E.NoThid
-        | Stm.Unlock -> 
-            E.eq_tid (E.CellLockId cell) (Option.default E.NoThid th_p) in
+        | Stm.Unlock -> E.eq_tid (E.CellLockId cell)
+                                 (match th_p with
+                                  | E.Shared -> E.NoThid
+                                  | E.Local t -> t) in
       let new_tid  = match op with
         | Stm.Lock -> get_mode_param mode
         | Stm.Unlock -> E.NoThid in
@@ -1029,7 +1028,7 @@ struct
                  in
                    List.fold_left (fun (ms,es) ((arg,arg_sort),value) ->
                      let v = Stm.VarT (Stm.build_var arg arg_sort
-                                          (Some proc_name) E.Normal) in
+                                          (Some proc_name) E.RealVar) in
                      let (m,e) = gen_f mInfo pt v th_p (Stm.Term value)
                      in
                        (m@ms, e::es)
@@ -1241,7 +1240,7 @@ struct
     (* Replace supporting formula parameters by fresh ones *)
     let (new_sup,vs) = List.fold_left(fun (fs, vs) f ->
                          let f_voc   = E.voc f in
-                         let new_ths = E.gen_fresh_thread_list
+                         let new_ths = E.gen_fresh_tid_list
                                          (voc_formula @ vs) (List.length f_voc) in
                          let subst   = E.new_tid_subst
                                          (List.combine f_voc new_ths) in
@@ -1280,12 +1279,12 @@ struct
     let v = E.voc inv in
     let th_list = List.filter E.is_tid_var v in
     let th_num = Sys.get_threads sys in
-    let th_id_list = E.gen_thread_list 1 th_num in
+    let th_id_list = E.gen_tid_list 1 th_num in
     let _ = Printf.printf "LIST: [%s]\n" (String.concat ";" (List.map E.tid_to_str th_id_list)) in
     let prog_lines = List.filter (fun x -> x <> 0) solverInfo.focus in
     let len_voc = List.length th_list in
     let thList = E.voc inv in
-    let loc_inv = if th_num = 1 then E.param (Some (List.hd th_id_list)) inv else inv in
+    let loc_inv = if th_num = 1 then E.param (E.Local (List.hd th_id_list)) inv else inv in
     let inv_list =
       if len_voc = 0 then
         [(loc_inv, E.prime loc_inv)]
@@ -1371,7 +1370,7 @@ struct
     let (new_supInv,vs) = 
       let h (fs, vs) f = 
         let f_voc = E.voc f in
-        let new_ths = E.gen_fresh_thread_list
+        let new_ths = E.gen_fresh_tid_list
           (inv.E.voc @ vs) (List.length f_voc) in
         let subst = E.new_tid_subst (List.combine f_voc new_ths) in
         let new_f = E.subst_tid subst f in
@@ -1383,7 +1382,7 @@ struct
 
     (* Vocabulary of the support and a fresh tid for extra premise *)
     let voc_sup    = List.filter E.is_tid_var (E.voc supInv) in
-    let fresh_tid  = E.gen_fresh_thread vs in
+    let fresh_tid  = E.gen_fresh_tid vs in
 
     (* Generates the conjunction of thid disjunctions *)
     let diff_conj  = E.conj_list $ List.map (fun j -> E.ineq_tid fresh_tid j) inv.E.voc in
@@ -1525,9 +1524,9 @@ struct
 (*    LOG "Entering seq_binv..." LEVEL TRACE; *)
     let th_list = List.filter (fun x -> E.is_tid_var x) (E.voc inv) in
     if th_list <> [] then raise(NotSequentialFormula(E.formula_to_str inv));
-    let fresh_tid = E.gen_fresh_thread th_list in
+    let fresh_tid = E.gen_fresh_tid th_list in
 
-    let inv_loc = E.param (Some fresh_tid) inv in
+    let inv_loc = E.param (E.Local fresh_tid) inv in
     let inv_voc = E.voc inv_loc in
     let inv_prime = E.prime inv_loc in
     let sys_lines = List.filter (fun x -> x <> 0) solverInfo.focus in
@@ -1596,8 +1595,8 @@ struct
     let trans_tid = match (inv.E.voc, supp_voc) with
                     | (x::_, _   ) -> x
                     | ([]  , y::_) -> y
-                    | ([]  , []  ) -> E.gen_fresh_thread [] in
-    let supp = List.map (E.param (Some trans_tid)) (Tac.supp_list info) in
+                    | ([]  , []  ) -> E.gen_fresh_tid [] in
+    let supp = List.map (E.param (E.Local trans_tid)) (Tac.supp_list info) in
     let all_voc = trans_tid :: inv.E.voc @ supp_voc in
 
 
@@ -1646,9 +1645,9 @@ struct
   let seq_spinv (sys : Sys.system_t) (supInvs:E.formula list)
       (inv : E.formula) : (E.formula * vc_info_t) list =
 (*    LOG "Entering seq_spinv..." LEVEL TRACE; *)
-    let fresh_th = E.gen_fresh_thread (E.voc (E.conj_list (inv::supInvs))) in
-    let loc_inv = E.param (Some fresh_th) inv in
-    let loc_supInvs = List.map (E.param (Some fresh_th)) supInvs in
+    let fresh_th = E.gen_fresh_tid (E.voc (E.conj_list (inv::supInvs))) in
+    let loc_inv = E.param (E.Local fresh_th) inv in
+    let loc_supInvs = List.map (E.param (E.Local fresh_th)) supInvs in
 
     let need_theta = List.mem 0 solverInfo.focus in
     let lines_to_consider = List.filter (fun x -> x <> 0) solverInfo.focus in
@@ -1721,7 +1720,7 @@ struct
     let th_list = List.filter (fun x -> E.is_tid_var x) v in
     let sys_lines = List.filter (fun x -> x <> 0) solverInfo.focus in
     let need_theta = List.mem 0 solverInfo.focus in
-    let fresh_tid = E.gen_fresh_thread th_list in
+    let fresh_tid = E.gen_fresh_tid th_list in
     let diff_list = List.map (fun j -> E.ineq_tid fresh_tid j) th_list in
     (* TODO: Support Threads as terms? *)
     let diff_conj = E.conj_list diff_list in
@@ -1835,7 +1834,7 @@ struct
         let primed_vars = List.map E.prime_variable (E.primed_vars f) in
         let loc_vars_subs = List.map (fun v ->
                               let new_name = E.variable_to_simple_str v in
-                              (v, E.build_var new_name (E.var_sort v) false None None E.Normal)
+                              (v, E.build_var new_name (E.var_sort v) E.NotPrimed E.Shared E.GlobalScope E.RealVar)
                             ) (E.all_local_vars f @ primed_vars) in
         let f_without_locals = E.subst_vars loc_vars_subs f in
 
@@ -1891,10 +1890,10 @@ struct
   let include_count_abs (sys:Sys.system_t) : Sys.system_t =
     let lines = rangeList 1 (Sys.get_trans_num sys + 1) in
     let tmpVarTbl = Sys.new_var_table in
-    List.iter 
-      (fun i -> Sys.add_var tmpVarTbl (countAbsVarName ^ string_of_int i) 
-       (E.Int) (None) (None) (E.Normal)) 
-      lines;
+    List.iter
+      (fun i -> Sys.add_var tmpVarTbl (countAbsVarName ^ string_of_int i)
+                  (E.Int) (None) (E.Shared) (E.RealVar)
+      ) lines;
     Sys.add_global_vars sys tmpVarTbl
   
   

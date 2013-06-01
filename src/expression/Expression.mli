@@ -21,7 +21,15 @@ and sort =
   | AddrArray
   | TidArray
   | Unknown
-and variable = varId * sort * is_primed * shared_or_local * procedure_name * is_ghost
+and variable =
+  {
+            id        : varId           ;
+            sort      : sort            ;
+    mutable is_primed : bool            ;
+    mutable parameter : shared_or_local ;
+            scope     : procedure_name  ;
+            nature    : var_nature      ;
+  }
 and term =
     VarT          of variable
   | SetT          of set
@@ -188,9 +196,9 @@ and atom =
   | InEq          of diseq
   | BoolVar       of variable
   | BoolArrayRd   of arrays * tid
-  | PC            of pc_t * shared_or_local * is_primed
+  | PC            of pc_t * shared_or_local * bool
   | PCUpdate      of pc_t * tid
-  | PCRange       of pc_t * pc_t * shared_or_local * is_primed
+  | PCRange       of pc_t * pc_t * shared_or_local * bool
 
 and literal =
     Atom          of atom
@@ -216,11 +224,10 @@ and expr_t =
   | Formula       of formula
 
 and tid_subst_t = (tid * tid) list
-and is_primed       = NotPrimed | Primed
 and shared_or_local = Shared  | Local of tid
 and procedure_name  = GlobalScope | Scope of string
-and is_ghost        = RealVar | GhostVar
-and var_info_t = sort * initVal_t option * shared_or_local * is_ghost
+and var_nature      = RealVar | GhostVar
+and var_info_t = sort * initVal_t option * shared_or_local * var_nature
 
 type formula_info_t =
   {
@@ -301,27 +308,26 @@ val build_pc_range : pc_t -> pc_t -> pc_t list
 
 (* VARIABLE FUNCTIONS *)
 val same_var : variable -> variable -> bool
-val build_var : varId -> sort -> is_primed -> shared_or_local ->
-                procedure_name -> is_ghost -> variable
+val build_var : varId -> sort -> bool -> shared_or_local ->
+                procedure_name -> var_nature -> variable
 val var_clear_param_info : variable -> variable
 
 (** [var_base_info v] returns [v], removing information about priming and
     thread id *)
 val var_base_info : variable -> variable
 
+(*
 val var_id        : variable -> varId
 val var_sort      : variable -> sort
 val var_pr        : variable -> is_primed
 val var_th        : variable -> shared_or_local
 val var_proc      : variable -> procedure_name
 val var_k         : variable -> is_ghost
+*)
 val var_val       : variable -> int
-val var_full_info : variable -> (varId * sort * is_primed *
-                                 shared_or_local * procedure_name * is_ghost)
 
 val is_local_var  : variable -> bool
 val is_global_var : variable -> bool
-val var_sort      : variable -> sort
 
 val build_num_tid : int -> tid
 val build_var_tid : varId -> tid
@@ -355,7 +361,7 @@ val ineq_addr  : addr    -> addr    -> formula
 val ineq_elem  : elem    -> elem    -> formula
 val ineq_tid   : tid     -> tid     -> formula
 val atom_form  : atom    -> formula
-val pc_form    : pc_t -> shared_or_local -> is_primed -> formula
+val pc_form    : pc_t -> shared_or_local -> bool -> formula
 val pcupd_form : pc_t -> tid -> formula
 val boolvar    : variable -> formula
 
@@ -383,11 +389,11 @@ val is_tid_lockid : tid -> bool
 val var_info_sort : var_info_t -> sort
 val var_info_expr : var_info_t -> initVal_t option
 val var_info_shared_or_local  : var_info_t -> shared_or_local
-val var_info_is_ghost : var_info_t -> is_ghost
+val var_info_nature : var_info_t -> var_nature
 val get_var_id     : term -> varId
 val get_var_thread : term -> shared_or_local
 val get_var_owner  : term -> procedure_name
-val get_var_kind   : term -> is_ghost
+val get_var_kind   : term -> var_nature
 
 
 (* THREAD LIST GENERATION FUNCTIONS *)
@@ -400,7 +406,7 @@ val gen_fresh_tid_list : tid list -> int -> tid list
 
 (* LOCALIZATION FUNCTIONS *)
 val localize_var_id : varId -> string -> varId
-val loc_var_option :varId -> string option -> varId
+val loc_var_option :varId -> procedure_name -> varId
 
 
 (* PRIMING FUNCTIONS *)
@@ -475,6 +481,8 @@ val expr_to_str       : expr_t      -> string
 val tid_to_str        : tid         -> string
 val tid_option_to_str : tid option  -> string
 
+val shared_or_local_to_str : shared_or_local -> string
+
 val variable_to_str  : variable     -> string
 val variable_to_simple_str : variable -> string
 
@@ -482,7 +490,7 @@ val variable_to_simple_str : variable -> string
 (* CONVERSION FUNCTIONS *)
 val array_var_from_term : term -> bool -> arrays
 val construct_var_from_sort : varId -> shared_or_local-> procedure_name -> sort -> 
-                                is_ghost -> term
+                                var_nature -> term
 val convert_var_to_term : procedure_name -> varId -> var_info_t -> term
 val cons_arrayRd_eq_from_var : sort ->
                                tid ->
@@ -505,7 +513,7 @@ val unprimed_voc : formula -> tid list
 val all_voc      : formula -> ThreadSet.t
 
 (* GHOST TERMS *)
-val var_kind : is_ghost -> expr_t -> term list
+val var_kind : var_nature -> expr_t -> term list
 
 
 (* PARAMETRIZATION FUNCTIONS *)

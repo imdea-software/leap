@@ -107,8 +107,8 @@ val add_var : var_table_t ->
               Expression.varId ->
               Expression.sort ->
               Expression.initVal_t option ->
-              Expression.tid option ->
-              Expression.kind_t ->
+              Expression.shared_or_local ->
+              Expression.var_nature ->
               unit
 val del_var : var_table_t -> Expression.varId -> var_table_t
 val mem_var : var_table_t -> Expression.varId -> bool
@@ -116,8 +116,8 @@ val find_var_type : var_table_t -> Expression.varId -> Expression.sort
 val find_var_expr : var_table_t ->
                     Expression.varId ->
                     Expression.initVal_t option
-val find_var_tid : var_table_t -> Expression.varId -> Expression.tid option
-val find_var_kind : var_table_t -> Expression.varId -> Expression.kind_t
+val find_var_tid : var_table_t -> Expression.varId -> Expression.shared_or_local
+val find_var_kind : var_table_t -> Expression.varId -> Expression.var_nature
 val get_var_id_list : var_table_t -> Expression.varId list
 val get_variable_list : var_table_t -> Expression.variable list
 val get_var_list : var_table_t -> string option -> Expression.variable list

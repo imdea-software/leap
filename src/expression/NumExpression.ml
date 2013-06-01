@@ -1,5 +1,6 @@
 open LeapLib
 
+
 module Expr = Expression
 
 exception NotAnIntExpression of string
@@ -12,8 +13,18 @@ type varId = Expr.varId
 
 type tid = Expr.tid
 
-type variable = varId * sort * bool * tid option * string option
+type shared_or_local = Shared  | Local of tid
 
+type procedure_name  = GlobalScope | Scope of string
+
+type variable =
+  {
+            id        : varId           ;
+            sort      : sort            ;
+    mutable is_primed : bool            ;
+    mutable parameter : shared_or_local ;
+            scope     : procedure_name  ;
+  }
 
 type integer =
     Val           of int
@@ -55,9 +66,9 @@ and atom =
   | TidInEq       of tid * tid
   | FunEq         of fun_term * fun_term
   | FunInEq       of fun_term * fun_term
-  | PC            of int * tid option * bool
+  | PC            of int * Expr.shared_or_local * Expr.is_primed
   | PCUpdate      of int * tid
-  | PCRange       of int * int * tid option * bool
+  | PCRange       of int * int * Expr.shared_or_local * Expr.is_primed
 and literal =
     Atom            of atom
   | NegAtom         of atom
@@ -77,8 +88,8 @@ and formula =
 
 
 let var_compare (x:variable) (y:variable) : int =
-  let cmp_p p1 p2 = (p1 = None && (p2 = None || p2 = Some"")) ||
-                    (p2 = None && (p1 = None || p1 = Some"")) in
+  let cmp_p p1 p2 = (p1 = Expr.GlobalScope && (p2 = Expr.GlobalScope || p2 = Expr.Scope "")) ||
+                    (p2 = Expr.GlobalScope && (p1 = Expr.GlobalScope || p1 = Expr.Scope "")) in
   (* I am not comparing whether ghost/normal kind matches *)
   let (x_id, x_s, x_pr, x_th, x_p) = x in
   let (y_id, y_s, y_pr, y_th, y_p) = y in
@@ -103,9 +114,9 @@ module VarSet = Set.Make(
 (* Variable constructor *)
 let build_var (id:varId)
               (s:sort)
-              (pr:bool)
-              (th:tid option)
-              (p:string option) : variable =
+              (pr:Expr.is_primed)
+              (th:Expr.shared_or_local)
+              (p:Expr.procedure_name) : variable =
   (id,s,pr,th,p)
 
 
@@ -113,15 +124,15 @@ let get_sort (v:variable) : sort =
   let (_,s,_,_,_) = v in s
 
 
-let is_primed_var (v:variable) : bool =
+let is_primed_var (v:variable) : Expr.is_primed =
   let (_,_,pr,_,_) = v in pr
 
 
-let get_proc (v:variable) : string option =
+let get_proc (v:variable) : Expr.procedure_name =
   let (_,_,_,_,p) = v in p
 
 
-let get_th (v:variable) : tid option =
+let get_th (v:variable) : Expr.shared_or_local =
   let (_,_,_,th,_) = v in th
 
 
@@ -132,19 +143,19 @@ let get_id (v:variable) : varId =
 let var_clear_param_info (v:variable) : variable =
   let (id,s,pr,_,p) = v
   in
-    build_var id s pr None p
+    build_var id s pr Expr.Shared p
 
 
 let param_var (v:variable) (th:tid) : variable =
   let (id,s,pr,_,p) = v
   in
-    build_var id s pr (Some th) p
+    build_var id s pr (Expr.Local th) p
 
 
 let var_is_global (v:variable) : bool =
   let (_,_,_,th,p) = v
   in
-    (p = None || p = Some "") && th = None
+    (p = Expr.GlobalScope || p = Expr.Scope "") && th = Expr.Shared
 
 
 
@@ -176,9 +187,10 @@ let sort_to_string (s:sort) : string =
 
 let variable_to_string (v:variable) : string =
   let (id,s,pr,th,p) =  v in
-  let var_str = (Expr.loc_var_option id p) ^ (Expr.tid_option_to_str th)
-  in
-    if pr then var_str ^ "'" else var_str
+  let var_str = (Expr.loc_var_option id p) ^ (Expr.shared_or_local_to_str th) in
+  match pr with
+  | Expr.Primed -> var_str ^ "'"
+  | Expr.NotPrimed -> var_str
 
 
 let rec generic_int_integer_to_string (srf:string -> string) (t:integer) : string =
@@ -246,13 +258,17 @@ let generic_atom_to_string (srf:string -> string) (a:atom) : string =
                               Expr.tid_to_str th2)
   | FunEq (f1,f2)     -> srf (fun_str_f f1  ^ " = "  ^ fun_str_f f2)
   | FunInEq (f1,f2)   -> srf (fun_str_f f1  ^ " != " ^ fun_str_f f2)
-  | PC (pc,th,pr)    -> let i_str  = if pr then "pc" else "pc'" in
-                        let th_str = Expr.tid_option_to_str th in
+  | PC (pc,th,pr)    -> let i_str  = match pr with
+                                     | Expr.Primed -> "pc'"
+                                     | Expr.NotPrimed -> "pc" in
+                        let th_str = Expr.shared_or_local_to_str th in
                           Printf.sprintf "%s(%s) = %i" i_str th_str pc
   | PCUpdate (pc,th) -> let th_str = Expr.tid_to_str th in
                           Printf.sprintf "pc' = pc{%s<-%i}" th_str pc
-  | PCRange (pc1,pc2,th,pr) -> let i_str  = if pr then "pc" else "pc'" in
-                               let th_str = Expr.tid_option_to_str th in
+  | PCRange (pc1,pc2,th,pr) -> let i_str  = match pr with
+                                            | Expr.Primed -> "pc'"
+                                            | Expr.NotPrimed -> "pc" in
+                               let th_str = Expr.shared_or_local_to_str th in
                                  Printf.sprintf "%i <= %s(%s) <= %i" pc1 i_str th_str pc2
 
 
@@ -549,7 +565,7 @@ and formula_to_int_formula phi =
 and int_variable_to_variable (v:variable) : Expr.variable =
   let (id,s,pr,th,p) = v
   in
-    (id, int_sort_to_sort s, pr, th, p, Expr.Normal)
+    (id, int_sort_to_sort s, pr, th, p, Expr.RealVar)
 
 
 and int_formula_to_formula (phi:formula) : Expr.formula =
@@ -888,18 +904,16 @@ let base_setid_all_vars (v:variable) : Expr.VarIdSet.t =
 
 let base_setid_local_vars (v:variable) : Expr.VarIdSet.t =
   let (id,_,_,_,p) = v in
-    if p <> None then
-      Expr.VarIdSet.singleton id
-    else
-      Expr.VarIdSet.empty
+    match p with
+    | Expr.Scope _ -> Expr.VarIdSet.singleton id
+    | Expr.GlobalScope -> Expr.VarIdSet.empty
 
 
 let base_setid_global_vars (v:variable) : Expr.VarIdSet.t =
   let (id,_,_,_,p) = v in
-    if p = None then
-      Expr.VarIdSet.singleton id
-    else
-      Expr.VarIdSet.empty
+    match p with
+    | Expr.GlobalScope -> Expr.VarIdSet.singleton id
+    | Expr.Scope _ -> Expr.VarIdSet.empty
 
 
 
@@ -1248,4 +1262,3 @@ let voc_from_conjlit (cl:conjunction_literals) : Expr.ThreadSet.t =
 
 let voc (phi:formula) : Expr.tid list =
   Expr.ThreadSet.elements (voc_from_int_formula phi)
-

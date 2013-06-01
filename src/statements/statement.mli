@@ -29,10 +29,14 @@ type unit_op = Lock | Unlock
 
 (* Expression representation in program statements *)
 
-type variable = varId             *
-                Expression.sort   *
-                string option     *
-                Expression.is_ghost
+type variable =
+  {
+            id        : varId                     ;
+            sort      : Expression.sort           ;
+            scope     : Expression.procedure_name ;
+            nature    : Expression.var_nature     ;
+  }
+
 
 type term =
     VarT          of variable
@@ -292,7 +296,7 @@ val me_tid : tid
 
 (* Variable functions *)
 val build_var : varId -> Expression.sort ->
-                string option -> Expression.is_ghost -> variable
+                string option -> Expression.var_nature -> variable
 val var_replace_sort : variable -> Expression.sort -> variable
 
 
@@ -300,7 +304,7 @@ val var_replace_sort : variable -> Expression.sort -> variable
 val construct_var_from_sort : Expression.varId ->
                               string option ->
                               Expression.sort ->
-                              Expression.is_ghost ->
+                              Expression.var_nature ->
                               term
 
 (* Pretty printing functions *)
@@ -310,7 +314,7 @@ val expr_to_str    : expr_t -> string
 
 
 (* Ghost variables query functions *)
-val var_kind : Expression.is_ghost -> expr_t -> term list
+val var_kind : Expression.var_nature -> expr_t -> term list
 
 
 (* Statement conversion functions *)
@@ -350,6 +354,6 @@ val addr_used_in_unit_op : unit_operation -> Expression.addr
 val level_used_in_unit_op : unit_operation -> Expression.integer
 val get_unit_op : unit_operation -> unit_op
 
-val enabling_condition : Expression.tid option ->
+val enabling_condition : Expression.shared_or_local ->
                          statement_t ->
                          Expression.formula list

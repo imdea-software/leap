@@ -10,7 +10,7 @@ sig
   type vc_info_t = {
                      pc   : Expression.pc_t               ;
                      smp  : Smp.cutoff_strategy_t         ;
-                     stac : Tactics.solve_tactic_t option ;
+                     stac : Tactics.proof_plan option     ;
                      mutable supps : Tag.f_tag list       ;
                      try_pos : bool                       ;
                    }
@@ -33,7 +33,7 @@ sig
   val cutoff : unit -> Smp.cutoff_strategy_t
   val out_file : unit -> string
   val hide_pres : unit -> bool
-  val tactics : unit -> Tactics.t
+  val tactics : unit -> Tactics.proof_plan
   
   val decl_tag : Tag.f_tag option -> Expression.formula -> unit
   val read_tag : Tag.f_tag -> Expression.formula option
@@ -80,10 +80,10 @@ sig
   val set_detFileName : string -> unit
   
   val set_cases : (Expression.pc_t * IGraph.premise_t, 
-       Expression.formula list * Tactics.t) Hashtbl.t 
+       Expression.formula list * Tactics.proof_plan) Hashtbl.t 
     -> unit
   
-  val set_tactics : Tactics.t -> unit
+  val set_tactics : Tactics.proof_plan -> unit
  
   (** Transition relation generation *)
   val gen_rho : rhoMode

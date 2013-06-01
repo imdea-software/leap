@@ -12,7 +12,7 @@ module Stm      = Statement
 
 (* Types for transitions *)
 type trans_id_t = Expr.pc_t
-type trans_t = trans_id_t * Expr.tid option
+type trans_t = trans_id_t * Expr.shared_or_local
 
 
 (* Types for nodes *)
@@ -152,7 +152,7 @@ module PP = struct
   let trans_to_str (t:trans_t) : string =
     let (id,th) = t
     in
-      sprintf "T_%s%s" (trans_id_to_str id) (Expr.tid_option_to_str th)
+      sprintf "T_%s%s" (trans_id_to_str id) (Expr.shared_or_local_to_str th)
   
   
   let edge_info_to_str (info:edge_info_t) : string =
@@ -296,7 +296,7 @@ sig
   
   val new_box : box_id_t -> node_id_t list -> Expression.tid -> box_t
   
-  val new_trans : Expression.pc_t -> Expression.tid option -> trans_t
+  val new_trans : Expression.pc_t -> Expression.shared_or_local -> trans_t
   
   val new_edge_info : edge_type_t -> trans_t list -> edge_info_t
   val new_edge : node_id_t -> node_id_t -> edge_info_t -> edge_t
@@ -360,7 +360,7 @@ struct
     String.lowercase t1 = String.lowercase t2  
   
   (* CONSTRUCTION FUNCTIONS *)
-  let new_trans (p:Expr.pc_t) (th:Expr.tid option) : trans_t = (p,th)
+  let new_trans (p:Expr.pc_t) (th:Expr.shared_or_local) : trans_t = (p,th)
   
   let new_node_id (i:int) : node_id_t = i
   let new_node_info (f:Expr.formula) : node_info_t = f
@@ -521,8 +521,8 @@ struct
     let (_,t) = tran
     in
       match t with
-        None -> ()
-      | Some ((Expr.VarTh v) as th) ->
+        Expr.Shared -> ()
+      | Expr.Local ((Expr.VarTh v) as th) ->
           if Expr.is_tid_val th then
             let i = int_of_string (Expr.var_id v) in
             if i < 1 || th_num < i then
@@ -559,8 +559,8 @@ struct
     let (id,t) = tran
     in
       match t with
-        None -> []
-      | Some th -> if not (List.mem th box_param) then [th] else []
+        Expr.Shared -> []
+      | Expr.Local th -> if not (List.mem th box_param) then [th] else []
   
   
   let check_and_add_pvd_edges (nTbl:node_table_t)
@@ -690,7 +690,7 @@ struct
   let tran_assoc (t:trans_t)
                  (tLst:(int * Expr.pc_t * Expr.formula list)list) : Expr.formula =
     let (pc,th) = match t with
-                    (i, Some (Expr.VarTh v as th)) ->
+                    (i, Expr.Local (Expr.VarTh v as th)) ->
                       if Expr.is_tid_val th then
                         (i, Expr.var_val v)
                       else
@@ -702,12 +702,12 @@ struct
                                    argument." (Expr.tid_to_str th);
                           raise(Open_thread_identifier th)
                         end
-                  | (_, Some t) ->
+                  | (_, Expr.Local t) ->
                     Interface.Err.msg "Not a valid thread identifier" $
                       sprintf "The thread \"%s\" is not valid as identifier"
                               (Expr.tid_to_str t);
                     raise(No_thread)
-                  | (_, None)                         ->
+                  | (_, Expr.Shared)                         ->
                     Interface.Err.msg "No thread identifier was provided"
                       "Looking for transition information over a closed system, \
                        a transition with no thread identifier was provided.";
@@ -800,7 +800,7 @@ struct
                                    Expr.prime next_conj
                 in
                   conseq := (n,
-                             (pc, Some (Expr.build_num_tid th)),
+                             (pc, Expr.Local (Expr.build_num_tid th)),
                              Expr.Implies (antecedent, consequent)
                             ) :: !conseq
               ) tran_list
@@ -1051,7 +1051,7 @@ struct
     
   
   let gen_fresh_and_build_ineq (ths:Expr.tid list) : (Expr.tid * Expr.formula) =
-    let fresh_tid  = Expr.gen_fresh_thread ths in
+    let fresh_tid  = Expr.gen_fresh_tid ths in
     let diff_list  = List.map (fun j -> Expr.ineq_tid fresh_tid j) ths in
     let diff_conj  = Expr.conj_list diff_list
     in
@@ -1124,7 +1124,7 @@ struct
                                      next_disj in
                   let cond = Expr.Implies (antecedent, consequent)
                   in
-                    conseq := (n, (pc,Some i), cond) :: !conseq
+                    conseq := (n, (pc,Expr.Local i), cond) :: !conseq
                 ) t_voc;
                 (* The extra condition *)
                 let (fresh_tid, diff_conj) = gen_fresh_and_build_ineq t_voc in
@@ -1144,7 +1144,7 @@ struct
                                    next_disj in
                 let extra_cond = Expr.Implies (antecedent, consequent)
                 in
-                  conseq := (n, (pc, Some fresh_tid), extra_cond) :: !conseq
+                  conseq := (n, (pc, Expr.Local fresh_tid), extra_cond) :: !conseq
               ) pc_list
             ) pvd.pvd_nodes in
   
@@ -1246,8 +1246,8 @@ struct
               in
                 List.iter (fun t ->
                   let (pc,th_opt) = match t with
-                                      (pc,Some th_opt) -> (pc, th_opt)
-                                    | (_, None) -> raise(Unparametrized_transition) in
+                                      (pc,Expr.Local th_opt) -> (pc, th_opt)
+                                    | (_, Expr.Shared) -> raise(Unparametrized_transition) in
                   let mode        = VCG.new_open_thid_array_mode th_opt [] in
                   let ts          = [th_opt] in
                   let tau_rho     = Expr.conj_list

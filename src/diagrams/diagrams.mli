@@ -55,7 +55,7 @@ sig
   
   val new_box : box_id_t -> node_id_t list -> Expression.tid -> box_t
   
-  val new_trans : Expression.pc_t -> Expression.tid option -> trans_t
+  val new_trans : Expression.pc_t -> Expression.shared_or_local -> trans_t
   
   val new_edge_info : edge_type_t -> trans_t list -> edge_info_t
   val new_edge : node_id_t -> node_id_t -> edge_info_t -> edge_t

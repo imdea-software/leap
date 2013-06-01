@@ -13,8 +13,8 @@ val new_rule :
   mode_t ->
   Tag.f_tag list ->
   Tag.f_tag ->
-  (Expression.pc_t * premise_t list * Tag.f_tag list * Tactics.t) list ->
-  Tactics.t -> rule_t
+  (Expression.pc_t * premise_t list * Tag.f_tag list * Tactics.proof_plan) list ->
+  Tactics.proof_plan -> rule_t
 
 
 val graph_info :
@@ -22,7 +22,7 @@ val graph_info :
         (mode_t *
          Tag.f_tag list *
          Tag.f_tag *
-         (Expression.pc_t * premise_t, Tag.f_tag list * Tactics.t) Hashtbl.t *
-         Tactics.t) list
+         (Expression.pc_t * premise_t, Tag.f_tag list * Tactics.proof_plan) Hashtbl.t *
+         Tactics.proof_plan) list
 
 val graph_tags : iGraph_t -> Tag.f_tag list

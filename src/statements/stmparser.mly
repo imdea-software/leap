@@ -36,9 +36,9 @@ exception Wrong_assignment of Stm.term
 exception Atomic_double_assignment of Stm.expr_t
 exception Unexpected_statement of string
 exception Ghost_var_in_global_decl
-              of Expr.varId * Expr.sort * Expr.initVal_t option * Expr.kind_t
+              of Expr.varId * Expr.sort * Expr.initVal_t option * Expr.is_ghost
 exception Ghost_var_in_local_decl
-              of Expr.varId * Expr.sort * Expr.initVal_t option * Expr.kind_t
+              of Expr.varId * Expr.sort * Expr.initVal_t option * Expr.is_ghost
 exception Ghost_vars_in_assignment of Stm.term list
 exception Normal_vars_in_ghost_assignment of Stm.term list
 exception No_kind_for_var of Expr.varId
@@ -93,42 +93,42 @@ let get_ghost_list_from_expr (e:Expr.expr_t) = []
 let decl_global_var (v:Expr.varId)
                     (s:Expr.sort)
                     (e:Expr.initVal_t option)
-                    (k:Expr.kind_t) : unit =
+                    (k:Expr.is_ghost) : unit =
   let cond = Option.lift (Expr.get_initVal_restriction) e in
   let _ = match k with
-            Expr.Normal -> let ghosts = Option.map_default
-                                          (Expr.var_kind Expr.Ghost) [] cond
-                           in
-                           if ghosts <> [] then
-                             begin
-                               Interface.Err.msg "Ghost variable used in \
-                                                  non-ghost declaration" $
-                               sprintf "Global variable \"%s\" of sort \"%s\" \
-                                        is assigned in its declaration to \
-                                        expression \"%s\", which contains \
-                                        ghost variables: %s."
+            Expr.RealVar -> let ghosts = Option.map_default
+                                          (Expr.var_kind Expr.GhostVar) [] cond
+                            in
+                            if ghosts <> [] then
+                              begin
+                                Interface.Err.msg "Ghost variable used in \
+                                                   non-ghost declaration" $
+                                sprintf "Global variable \"%s\" of sort \"%s\" \
+                                         is assigned in its declaration to \
+                                         expression \"%s\", which contains \
+                                         ghost variables: %s."
                                  (v)
                                  (Expr.sort_to_str s)
                                  (Option.map_default Expr.expr_to_str "" cond)
                                  (String.concat ", " $
                                      List.map Expr.term_to_str ghosts);
-                               raise(Ghost_var_in_global_decl(v,s,e,k))
-                             end
-           | Expr.Ghost  -> ()
+                                raise(Ghost_var_in_global_decl(v,s,e,k))
+                              end
+           | Expr.GhostVar -> ()
   in
-  System.add_var globalVars v s e None k
+  System.add_var globalVars v s e Expr.Shared k
 
 
 let decl_input_var (v:Expr.varId)
                    (s:Expr.sort)
                    (e:Expr.initVal_t option) : unit =
-  System.add_var inputVars v s e None Expr.Normal
+  System.add_var inputVars v s e Expr.Shared Expr.RealVar
 
 
 let decl_local_var (v:Expr.varId)
                    (s:Expr.sort)
                    (e:Expr.initVal_t option)
-                   (k:Expr.kind_t) : unit =
+                   (k:Expr.is_ghost) : unit =
   let cond = Option.lift (Expr.get_initVal_restriction) e in
   if System.mem_var inputVars v then
     begin
@@ -141,8 +141,8 @@ let decl_local_var (v:Expr.varId)
   else
     begin
     let _ = match k with
-              Expr.Normal -> let ghosts = Option.map_default
-                                            (Expr.var_kind Expr.Ghost) [] cond
+              Expr.RealVar -> let ghosts = Option.map_default
+                                            (Expr.var_kind Expr.GhostVar) [] cond
                              in
                              if ghosts <> [] then
                                begin
@@ -160,16 +160,16 @@ let decl_local_var (v:Expr.varId)
                                        List.map Expr.term_to_str ghosts);
                                  raise(Ghost_var_in_local_decl(v,s,e,k))
                               end
-            | Expr.Ghost  -> ()
+            | Expr.GhostVar  -> ()
     in
-      System.add_var localVars v s e None k
+      System.add_var localVars v s e Expr.Shared k
     end
 
 
 
 
 let decl_inv_var (v:Expr.varId) (s:Expr.sort) (e:Expr.initVal_t option) : unit =
-  System.add_var invVars v s e None Expr.Normal
+  System.add_var invVars v s e Expr.Shared Expr.RealVar
 
 
 let get_sort_from_tables (stm_t:Stm.term)
@@ -192,7 +192,7 @@ let get_sort (stm_t:Stm.term) : Expr.sort =
   get_sort_from_tables stm_t inputVars localVars
 
 
-let get_var_kind (v:Expr.varId) : Expr.kind_t =
+let get_var_kind (v:Expr.varId) : Expr.is_ghost =
   let k = if System.mem_var localVars v then
             System.find_var_kind localVars v
           else if System.mem_var inputVars v then
@@ -203,13 +203,13 @@ let get_var_kind (v:Expr.varId) : Expr.kind_t =
             System.find_var_kind invVars v
           else
             let _ = undefTids := v :: !undefTids in
-            let _ = decl_global_var v Expr.Thid None Expr.Normal in
-              Expr.Normal
+            let _ = decl_global_var v Expr.Thid None Expr.RealVar in
+              Expr.RealVar
   in
     k
 
 
-let get_term_kind (t:Expr.term) : Expr.kind_t =
+let get_term_kind (t:Expr.term) : Expr.is_ghost =
   let v = Expr.get_var_id t in
     get_var_kind v
 
@@ -303,7 +303,7 @@ let get_line id = snd id
 let check_sort_var (v:Expr.varId)
                    (p:string option)
                    (s:Expr.sort)
-                   (k:Expr.kind_t) : unit =
+                   (k:Expr.is_ghost) : unit =
   let generic_var = Stm.VarT (Stm.build_var v Expr.Unknown p k) in
   let knownSort = get_sort generic_var in
     if (knownSort != s) then
@@ -546,8 +546,8 @@ let check_and_get_sort (id:string) : Expr.sort =
 
 
   let check_assignment_kind (t:Stm.term) (e:Stm.expr_t) (str:string) : unit =
-    let t_ghost = Stm.var_kind (Expr.Ghost) (Stm.Term t) in
-    let e_ghost = Stm.var_kind (Expr.Ghost) e in
+    let t_ghost = Stm.var_kind (Expr.GhostVar) (Stm.Term t) in
+    let e_ghost = Stm.var_kind (Expr.GhostVar) e in
     if (t_ghost <> [] || e_ghost <> []) then
       begin
         let ghost_list = t_ghost @ e_ghost in
@@ -563,7 +563,7 @@ let check_and_get_sort (id:string) : Expr.sort =
 
   let check_ghost_assignment_kind (t:Stm.term)
                                   (str:string) : unit =
-    let t_normal = Stm.var_kind (Expr.Normal) (Stm.Term t) in
+    let t_normal = Stm.var_kind (Expr.RealVar) (Stm.Term t) in
     if (t_normal <> []) then
       begin
         Interface.Err.msg "No ghost variable in ghost assignment" $
@@ -733,7 +733,7 @@ let check_return_sort (t_opt:Stm.term option)
                         end
 
 
-let global_decl_cond (k:Expr.kind_t)
+let global_decl_cond (k:Expr.is_ghost)
                      (sort_name:string)
                      (v_name:Expr.varId)
                      (op:cond_op_t)
@@ -885,7 +885,7 @@ let lock_pos_to_str (pos:Stm.integer option) : string =
 %type <unit> local_decl_list
 %type <unit> local_decl
 
-%type <Expr.kind_t> kind
+%type <Expr.is_ghost> kind
 
 %type <unit> procedure_list
 %type <unit> procedure
@@ -1048,9 +1048,9 @@ system :
 
 global_declarations :
   |
-    { (decl_global_var Sys.heap_name Expr.Mem None Expr.Normal) }
+    { (decl_global_var Sys.heap_name Expr.Mem None Expr.RealVar) }
   | global_decl_list
-    { (decl_global_var Sys.heap_name Expr.Mem None Expr.Normal) }
+    { (decl_global_var Sys.heap_name Expr.Mem None Expr.RealVar) }
 
 global_decl_list :
   global_decl
@@ -1092,7 +1092,7 @@ global_decl :
                                                   (v_name)
                                                   (Expr.formula_to_str b) in
       let bool_var = Expr.Literal (Expr.Atom (Expr.BoolVar
-                       (Expr.build_var v_name Expr.Bool false None None k))) in
+                       (Expr.build_var v_name Expr.Bool Expr.NotPrimed Expr.Shared Expr.GlobalScope k))) in
       let cond = Expr.Iff(bool_var, b) in
       let _ = decl_global_var v_name s (Some (Expr.Condition cond)) k
       in
@@ -1205,7 +1205,7 @@ local_decl :
                                                   (v_name)
                                                   (Expr.formula_to_str b) in
       let bool_var = Expr.Literal (Expr.Atom (Expr.BoolVar
-                        (Expr.build_var v_name Expr.Bool false None None k))) in
+                        (Expr.build_var v_name Expr.Bool Expr.NotPrimed Expr.Shared Expr.GlobalScope k))) in
       let cond = Expr.Iff(bool_var, b) in
       let _ = decl_local_var v_name s (Some (Expr.Condition cond)) k
       in
@@ -1214,9 +1214,9 @@ local_decl :
 
 kind :
   |
-    { Expr.Normal }
+    { Expr.RealVar }
   | GHOST
-    { Expr.Ghost }
+    { Expr.GhostVar }
 
 
 
@@ -2647,7 +2647,7 @@ thid :
     }
   | ME
     {
-      Stm.VarTh (Stm.build_var Sys.me_tid Expr.Thid None Expr.Normal)
+      Stm.VarTh (Stm.build_var Sys.me_tid Expr.Thid None Expr.RealVar)
     }
 
 

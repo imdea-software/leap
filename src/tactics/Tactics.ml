@@ -28,7 +28,7 @@ type verification_condition = {
 
   support         : support_t ; 
                                 (* this is the support computed
-				   using some tactic, including 
+           using some tactic, including 
                                    exhaustive brute force *)
   info            : vc_info   ;
 }
@@ -104,10 +104,10 @@ let formula_split_tactic_from_string (s:string): formula_split_tactic =
 let create_vc_info (supp       : support_t)
                    (tid_constr : E.formula)
                    (rho        : E.formula)
-		   (goal       : E.formula)
-		   (vocab      : E.tid list)
-		   (trans_tid  : E.tid)
-		   (line       : E.pc_t) : vc_info =
+       (goal       : E.formula)
+       (vocab      : E.tid list)
+       (trans_tid  : E.tid)
+       (line       : E.pc_t) : vc_info =
     {
       original_support   = supp ;
       tid_constraint     = tid_constr ;
@@ -125,8 +125,8 @@ let create_vc (orig_supp       : support_t)
               (vocab      : E.tid list)
               (trans_tid  : E.tid)
               (line       : E.pc_t) 
-	      (support    : support_t)
-	      : verification_condition =
+        (support    : support_t)
+        : verification_condition =
   vc_info_to_vc (create_vc_info orig_supp tid_constr rho goal vocab trans_tid line) support
 
 

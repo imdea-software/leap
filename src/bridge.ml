@@ -51,7 +51,7 @@ let cond_effect_aux_to_str (cond:cond_effect_aux_t) : string =
 
 (* FIX: This support is not extended to closed systems *)
 let unfold_expression (mInfo:malloc_info)
-                      (th_p:E.tid option)
+                      (th_p:E.shared_or_local)
                       (expr:Stm.expr_t) : (E.expr_t      *
                                            E.term list   *
                                            E.formula list) =
@@ -181,7 +181,7 @@ let generic_stm_term_eq (mode:eqGenMode)
                         (mInfo:malloc_info)
                         (pt:prog_type)
                         (v:Stm.term)
-                        (th_p:E.tid option)
+                        (th_p:E.shared_or_local)
                         (e:Stm.expr_t) : (E.term list * E.formula) =
   let eq_generator = match mode with
                        NormalGenMode -> E.construct_term_eq
@@ -270,7 +270,7 @@ let generic_stm_term_eq (mode:eqGenMode)
 let construct_stm_term_eq (mInfo:malloc_info)
                           (pt:prog_type)
                           (v:Stm.term)
-                          (th_p:E.tid option)
+                          (th_p:E.shared_or_local)
                           (e:Stm.expr_t) : (E.term list * E.formula) =
   generic_stm_term_eq NormalGenMode mInfo pt v th_p e
 
@@ -278,7 +278,7 @@ let construct_stm_term_eq (mInfo:malloc_info)
 let construct_stm_term_eq_as_array (mInfo:malloc_info)
                                    (pt:prog_type)
                                    (v:Stm.term)
-                                   (th_p:E.tid option)
+                                   (th_p:E.shared_or_local)
                                    (e:Stm.expr_t) : (E.term list * E.formula) =
   generic_stm_term_eq ArrayGenMode mInfo pt v th_p e
 
@@ -413,7 +413,7 @@ let rec gen_st_cond_effect_aux (is_ghost:bool)
 let gen_st_cond_effect_for_th (pt:prog_type)
                               (st:Stm.statement_t)
                               (is_ghost:bool)
-                              (th_p:E.tid option) : cond_effect_t list =
+                              (th_p:E.shared_or_local) : cond_effect_t list =
   let aux_conds = gen_st_cond_effect_aux is_ghost st in
 
   (* FIX: Fill the information in mInfo if necessary *)
@@ -424,8 +424,8 @@ let gen_st_cond_effect_for_th (pt:prog_type)
       let (mods,es_list) = List.fold_left (fun (ts,es) (t,e) ->
                              let (t_res, e_res) =
                                match th_p with
-                               | None   -> construct_stm_term_eq mInfo pt t None e
-                               | Some _ -> construct_stm_term_eq_as_array mInfo pt t th_p e in
+                               | E.Shared -> construct_stm_term_eq mInfo pt t E.Shared e
+                               | E.Local _ -> construct_stm_term_eq_as_array mInfo pt t th_p e in
                              (t_res@ts, e_res::es)
                            ) ([],[]) es in
       let es_phi = E.conj_list (
@@ -456,5 +456,5 @@ let gen_st_cond_effect (pt:prog_type)
 let gen_st_cond_effect_as_array (pt:prog_type)
                                 (st:Stm.statement_t)
                                 (is_ghost:bool)
-                                (th_p:E.tid option) : cond_effect_t list =
+                                (th_p:E.shared_or_local) : cond_effect_t list =
   gen_st_cond_effect_for_th pt st is_ghost th_p

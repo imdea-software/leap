@@ -34,7 +34,13 @@ type unit_op = Lock | Unlock
 
 (* Expression representation in program statements *)
 
-type variable = varId * E.sort * string option * E.kind_t
+type variable =
+  {
+            id        : varId                     ;
+            sort      : Expression.sort           ;
+            scope     : Expression.procedure_name ;
+            nature    : Expression.var_nature     ;
+  }
 
 type term =
     VarT          of variable
@@ -1618,7 +1624,7 @@ let rec get_fst_st_pos (st:statement_t) : E.pc_t =
 
 
 let rec enabling_condition_aux (is_ghost:bool)
-                               (th:E.tid option)
+                               (th:E.shared_or_local)
                                (st:statement_t) : E.formula list list =
   let e_cond       = enabling_condition_aux in
   let to_expr      = boolean_to_expr_formula>>(E.param th) in
@@ -1694,7 +1700,7 @@ let rec enabling_condition_aux (is_ghost:bool)
 
 
 
-let enabling_condition (th:E.tid option) (st:statement_t) : E.formula list =
+let enabling_condition (th:E.shared_or_local) (st:statement_t) : E.formula list =
   List.map E.conj_list (enabling_condition_aux false th st)
 
 
@@ -1753,3 +1759,4 @@ let get_unit_op (op:unit_operation) : unit_op =
   | UnitUnlock _   -> Unlock
   | UnitLockAt _   -> Lock
   | UnitUnlockAt _ -> Unlock
+

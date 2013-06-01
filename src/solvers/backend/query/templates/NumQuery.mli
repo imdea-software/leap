@@ -1,5 +1,6 @@
 open CommonQuery
 
+
 module type NUM_QUERY =
 sig
 
@@ -21,11 +22,13 @@ sig
   (** Returns the string representation of an integer formula. *)
 
   val int_formula_with_lines_to_str : NumExpression.formula -> string
-  (** Returns the string representation of an integer formula, taking into 
-      account the number of lines in the program. *)
+  (** Returns the string representation of an integer formula, taking into account
+      the number of lines in the program. *)
 
-  val standard_widening : NumExpression.variable list -> NumExpression.formula 
-        -> NumExpression.literal -> string
+  val standard_widening : NumExpression.variable list ->
+                          NumExpression.formula ->
+                          NumExpression.literal ->
+                          string
   (** Returns the string representation of a standard widening. *)
 
   val get_sort_map : unit -> GenericModel.sort_map_t

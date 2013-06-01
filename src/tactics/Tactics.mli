@@ -43,10 +43,10 @@ val formula_split_tactic_from_string : string -> formula_split_tactic
 val create_vc_info  : support_t -> 
                     Expression.formula -> 
                     Expression.formula -> 
-		    Expression.formula -> 
-		    Expression.tid list -> 
-		    Expression.tid -> 
-		    Expression.pc_t ->   vc_info 
+        Expression.formula -> 
+        Expression.tid list -> 
+        Expression.tid -> 
+        Expression.pc_t ->   vc_info 
 
 val create_vc  : support_t -> 
                Expression.formula -> 
@@ -55,8 +55,8 @@ val create_vc  : support_t ->
                Expression.tid list -> 
                Expression.tid -> 
                Expression.pc_t ->  
-	       support_t -> 
-	       verification_condition 
+         support_t -> 
+         verification_condition 
 
 val dup_vc_info_with_goal : vc_info ->  Expression.formula ->   vc_info 
 

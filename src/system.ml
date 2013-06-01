@@ -70,7 +70,8 @@ let defMainProcedure : string = "main"
 let heap_name        : string = "heap"
 let me_tid           : string = "me"
 let me_tid_var       : Expr.variable = Expr.build_var me_tid Expr.Thid
-                                         false None None Expr.Normal
+                                         Expr.NotPrimed Expr.Shared
+                                         Expr.GlobalScope Expr.RealVar
 let me_tid_th        : Expr.tid = Expr.VarTh me_tid_var
 
 
@@ -103,8 +104,8 @@ let add_var (table:var_table_t)
             (v:Expr.varId)
             (s:Expr.sort)
             (e:Expr.initVal_t option)
-            (t:Expr.tid option)
-            (k:Expr.kind_t) : unit =
+            (t:Expr.shared_or_local)
+            (k:Expr.is_ghost) : unit =
   if Hashtbl.mem table v then
     begin
       let prevSort = Expr.var_info_sort (Hashtbl.find table v) in
@@ -134,12 +135,12 @@ let find_var_expr (table:var_table_t) (v:Expr.varId) : Expr.initVal_t option =
   Expr.var_info_expr (Hashtbl.find table v)
 
 
-let find_var_tid (table:var_table_t) (v:Expr.varId) : Expr.tid option =
-  Expr.var_info_tid (Hashtbl.find table v)
+let find_var_tid (table:var_table_t) (v:Expr.varId) : Expr.shared_or_local =
+  Expr.var_info_shared_or_local (Hashtbl.find table v)
 
 
-let find_var_kind (table:var_table_t) (v:Expr.varId) : Expr.kind_t =
-  Expr.var_info_kind (Hashtbl.find table v)
+let find_var_kind (table:var_table_t) (v:Expr.varId) : Expr.is_ghost =
+  Expr.var_info_nature (Hashtbl.find table v)
 
 
 let get_var_id_list (table:var_table_t) : Expr.varId list =
@@ -151,9 +152,9 @@ let get_var_id_list (table:var_table_t) : Expr.varId list =
 let get_variable_list (table:var_table_t) : Expr.variable list =
   let res = Hashtbl.fold (fun var info xs ->
               let s  = Expr.var_info_sort info in
-              let th = Expr.var_info_tid info
+              let th = Expr.var_info_shared_or_local info
               in
-                (Expr.build_var var s false th None Expr.Normal) :: xs
+                (Expr.build_var var s Expr.NotPrimed th Expr.GlobalScope Expr.RealVar) :: xs
             ) table []
   in
     res
@@ -162,7 +163,10 @@ let get_variable_list (table:var_table_t) : Expr.variable list =
 let get_var_list (table:var_table_t) (p:string option) : Expr.variable list =
   let res = Hashtbl.fold (fun var info xs ->
               let s = Expr.var_info_sort info in
-                (Expr.build_var var s false None p Expr.Normal) :: xs
+              let scope = match p with
+                          | None -> Expr.GlobalScope
+                          | Some proc -> Expr.Scope proc in
+                (Expr.build_var var s Expr.NotPrimed Expr.Shared scope Expr.RealVar) :: xs
             ) table []
   in
     res
@@ -444,17 +448,17 @@ let get_all_vars_id (sys:system_t) : Expr.varId list =
 
 
 let gen_all_vars_as_terms (sys:system_t) : Expr.term list =
-  let param_list = Expr.gen_thread_list 1 (get_threads sys) in
+  let param_list = Expr.gen_tid_list 1 (get_threads sys) in
   let gTbl       = get_global sys in
   let vInfo      = get_accvars sys in
   let allVars    = ref [] in
   let _ = Hashtbl.iter (fun v info ->
-            allVars := (Expr.convert_var_to_term None v info)::!allVars) gTbl in
+            allVars := (Expr.convert_var_to_term Expr.GlobalScope v info)::!allVars) gTbl in
   let _ = List.iter (fun t ->
             List.iter (fun (p,_,l) ->
               Hashtbl.iter (fun v (s,e,_,k) ->
                 allVars := (Expr.convert_var_to_term
-                              (Some p) v (s,e,Some t,k)) :: !allVars
+                              (Expr.Scope p) v (s,e,Expr.Local t,k)) :: !allVars
                            ) l
                       ) vInfo
                     ) param_list
@@ -467,16 +471,16 @@ let gen_all_vars_as_array_terms (sys:system_t) : Expr.term list =
   let vInfo   = get_accvars sys in
   let allVars = ref [] in
   let _ = Hashtbl.iter (fun v info ->
-            let k   = Expr.var_info_kind info in
+            let k   = Expr.var_info_nature info in
             let s   = Expr.var_info_sort info in
-            let var = Expr.build_var v s false None None k in
+            let var = Expr.build_var v s Expr.NotPrimed Expr.Shared Expr.GlobalScope k in
             allVars := Expr.ArrayT(Expr.VarArray var) :: !allVars
           ) gTbl in
   let _ = List.iter (fun (p,_,l) ->
             Hashtbl.iter (fun v info ->
-              let k = Expr.var_info_kind info in
+              let k = Expr.var_info_nature info in
               let s = Expr.var_info_sort info in
-              let var = Expr.build_var v s false None (Some p) k in
+              let var = Expr.build_var v s Expr.NotPrimed Expr.Shared (Expr.Scope p) k in
               allVars :=
                 Expr.ArrayT(Expr.VarArray var) :: !allVars
             ) l
@@ -646,7 +650,7 @@ let gen_global_vars_as_terms (sys:system_t) : Expr.TermSet.t =
   let gTbl = get_global sys in
   let gVars = ref Expr.TermSet.empty in
   let _ = Hashtbl.iter (fun v info ->
-            gVars := Expr.TermSet.add (Expr.convert_var_to_term None v info) 
+            gVars := Expr.TermSet.add (Expr.convert_var_to_term Expr.GlobalScope v info)
                        !gVars) gTbl
   in
     !gVars
@@ -664,7 +668,7 @@ let gen_local_vars_as_terms (sys:system_t) : (string * Expr.TermSet.t) list =
   let _ = List.iter (fun (p,_,l) ->
             Hashtbl.iter (fun v (s,e,_,k) ->
               lVars := Expr.TermSet.add
-                       (Expr.convert_var_to_term (Some p) v (s,e,None,k)) !lVars
+                       (Expr.convert_var_to_term (Expr.Scope p) v (s,e,Expr.Shared,k)) !lVars
             )l;
             resVars := (p, !lVars):: !resVars;
             lVars := Expr.TermSet.empty) vInfo
@@ -679,9 +683,9 @@ let gen_local_vars_as_array_terms (sys:system_t)
   let resVars = ref [] in
   let _ = List.iter (fun (p,_,l) ->
             Hashtbl.iter (fun v info ->
-              let k   = Expr.var_info_kind info in
+              let k   = Expr.var_info_nature info in
               let s   = Expr.var_info_sort info in
-              let var = Expr.build_var v s false None (Some p) k in
+              let var = Expr.build_var v s Expr.NotPrimed Expr.Shared (Expr.Scope p) k in
               lVars   := Expr.TermSet.add (Expr.ArrayT
                            (Expr.VarArray var)
                          ) !lVars) l;
@@ -743,10 +747,10 @@ let var_table_to_str (tbl:var_table_t) : string =
   let decl_to_str v info =
     let s     = Expr.var_info_sort info in
     let e     = Expr.var_info_expr info in
-    let k     = Expr.var_info_kind info in
+    let k     = Expr.var_info_nature info in
     let k_str = match k with
-                  Expr.Normal -> ""
-                | Expr.Ghost  -> "ghost " in
+                  Expr.RealVar -> ""
+                | Expr.GhostVar -> "ghost " in
     let s_str = Expr.sort_to_str s
     in
       match e with

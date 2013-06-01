@@ -1,3 +1,5 @@
+open Expression
+
 exception NotAnIntExpression of string
 
 type sort = Int | Set | Thid
@@ -6,7 +8,18 @@ type varId = Expression.varId
 
 type tid = Expression.tid
 
-type variable = varId * sort * bool * tid option * string option
+type shared_or_local = Shared  | Local of tid
+
+type procedure_name  = GlobalScope | Scope of string
+
+type variable =
+  {
+            id        : varId           ;
+            sort      : sort            ;
+    mutable is_primed : bool            ;
+    mutable parameter : shared_or_local ;
+            scope     : procedure_name  ;
+  }
 
 
 type integer =
@@ -142,4 +155,3 @@ val has_variable      : integer -> bool
 val formula_is_linear : formula -> bool
 val term_is_linear    : integer -> bool
 val literal_is_linear : literal -> bool
-

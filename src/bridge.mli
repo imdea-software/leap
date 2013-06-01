@@ -23,7 +23,7 @@ type prog_type = Num | Heap
 val construct_stm_term_eq : malloc_info ->
                             prog_type ->
                             Statement.term ->
-                            Expression.tid option ->
+                            Expression.shared_or_local ->
                             Statement.expr_t ->
                             (Expression.term list * Expression.formula)
 
@@ -32,7 +32,7 @@ val construct_stm_term_eq : malloc_info ->
 val construct_stm_term_eq_as_array : malloc_info ->
                                      prog_type ->
                                      Statement.term ->
-                                     Expression.tid option ->
+                                     Expression.shared_or_local ->
                                      Statement.expr_t ->
                                      (Expression.term list * Expression.formula)
 
@@ -46,5 +46,5 @@ val gen_st_cond_effect : prog_type ->
 val gen_st_cond_effect_as_array : prog_type ->
                                   Statement.statement_t ->
                                   bool ->
-                                  Expression.tid option ->
+                                  Expression.shared_or_local ->
                                   cond_effect_t list

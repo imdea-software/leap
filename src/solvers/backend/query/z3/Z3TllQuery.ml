@@ -1585,7 +1585,7 @@ struct
     B.contents   buf
 
 
-  let formula_to_str (stac:Tactics.solve_tactic_t option)
+  let formula_to_str (stac:Tactics.proof_plan option)
                      (co:Smp.cutoff_strategy_t)
                      (copt:Smp.cutoff_options_t)
                      (phi:Expr.formula) : string =
