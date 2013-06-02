@@ -28,7 +28,7 @@ sig
   
   type vc_info_t = {  pc  : E.pc_t                     ;
                       smp : Smp.cutoff_strategy_t      ;
-                      stac : Tac.solve_tactic_t option ;
+                      stac : Tac.proof_plan option     ;
                       mutable supps : Tag.f_tag list   ;
                       try_pos : bool                   ;
                    }
@@ -97,11 +97,11 @@ sig
 
   val set_detFileName : string -> unit
  
-  val set_cases : (Expression.pc_t * IGraph.premise_t, 
-       Expression.formula list * Tac.t) Hashtbl.t 
+  val set_cases : (Expression.pc_t * IGraph.premise_t,
+       Expression.formula list * Tac.proof_plan) Hashtbl.t
     -> unit
   
-  val set_tactics : Tac.t -> unit
+  val set_tactics : Tac.proof_plan -> unit
 
   (** Transition relation generation *)
   val gen_rho : rhoMode
@@ -267,7 +267,7 @@ struct
   
   type vc_info_t = {  pc  : E.pc_t                     ;
                       smp : Smp.cutoff_strategy_t      ;
-                      stac : Tac.solve_tactic_t option ;
+                      stac : Tac.proof_plan option ;
                       mutable supps : Tag.f_tag list   ;
                       try_pos : bool                   ;
                    }
@@ -306,10 +306,10 @@ struct
     }
   
   type special_cases_tag_tbl_t = (E.pc_t * IGraph.premise_t,
-                                  Tag.f_tag list * Tac.t) Hashtbl.t
+                                  Tag.f_tag list * Tac.proof_plan) Hashtbl.t
 
   type special_cases_form_tbl_t = (E.pc_t * IGraph.premise_t,
-                                   E.formula list * Tac.t) Hashtbl.t
+                                   E.formula list * Tac.proof_plan) Hashtbl.t
 
   type desc_t =
     {
@@ -336,7 +336,7 @@ struct
       mutable hide_pres : bool;
       mutable count_abs : bool;
       mutable special : special_cases_form_tbl_t;
-      mutable tactics : Tac.t;
+      mutable tactics : Tac.proof_plan;
     }
   
   type spinv_info_t =
@@ -377,7 +377,7 @@ struct
     hide_pres = false;
     count_abs = false;
     special = Hashtbl.create 10;
-    tactics = Tac.new_tactics (Some Smp.Dnf) None [] [];
+    tactics = Tac.new_proof_plan (Some Smp.Dnf) None [] [] [] [];
   }
   
   (* This should not go here *)
@@ -447,11 +447,11 @@ struct
     set_descInv solverInfo.detailed_desc inv
 
 
-  let set_cases (cases : (E.pc_t * IGraph.premise_t, E.formula list * Tac.t) 
+  let set_cases (cases : (E.pc_t * IGraph.premise_t, E.formula list * Tac.proof_plan) 
       Hashtbl.t) : unit =
     solverInfo.special <- cases
   
-  let set_tactics (tactics : Tac.t) : unit = 
+  let set_tactics (tactics : Tac.proof_plan) : unit = 
     solverInfo.tactics <- tactics
   
   (* Tagging formula table *)
@@ -586,7 +586,7 @@ struct
     let curr_pos      = int_val p in
     let curr_eq       = E.Literal(E.Eq(pc_arr pc th, curr_pos)) in
   *)
-    let curr_eq       = E.Literal (E.Atom (E.PC(p, E.Local th, E.NotPrimed)))
+    let curr_eq       = E.Literal (E.Atom (E.PC(p, E.Local th, false)))
       in curr_eq
   
   
@@ -621,9 +621,9 @@ struct
       (th_list : E.tid list) : E.formula list = match mode with
     | Sys.SClosed -> (* Deprecated *)
         let pc = E.VarArray
-          (E.build_var E.pc_name E.Unknown E.NotPrimed E.Shared E.GlobalScope E.RealVar) in
+          (E.build_var E.pc_name E.Unknown false E.Shared E.GlobalScope E.RealVar) in
         let pc' = E.VarArray
-          (E.build_var E.pc_name E.Unknown E.NotPrimed E.Shared E.GlobalScope E.RealVar) in
+          (E.build_var E.pc_name E.Unknown false E.Shared E.GlobalScope E.RealVar) in
         let pc_arr arr id  = E.IntArrayRd(arr,id) in
         let eq_list = List.map 
           (fun i -> E.eq_int (pc_arr pc' i) (pc_arr pc i)) th_list in
@@ -748,7 +748,7 @@ struct
       let _ = List.iter 
         (fun th_p -> Hashtbl.iter 
           (fun v (s,e,_,k) ->
-            let arr = E.VarArray(E.build_var v s E.NotPrimed E.Shared (E.Scope p_name) k) in
+            let arr = E.VarArray(E.build_var v s false E.Shared (E.Scope p_name) k) in
             let eq = E.cons_arrayRd_eq_from_var s th_p arr e in
             (* Obsolete code *)
             (* let arr = E.VarArray(v, None, Some p_name, k) in    *)
@@ -1430,7 +1430,7 @@ struct
          Smp.cutoff_strategy_t option *
          Tac.support_info_t         *
          Tac.post_tac_t list        *
-         Tac.solve_tactic_t option) =
+         Tac.proof_plan option) =
     let basic_supp = inv.E.formula :: supInvs in
     let general_supp_info = Tac.gen_support basic_supp inv.E.voc
                               (Tac.pre_tacs solverInfo.tactics) in
@@ -1458,7 +1458,7 @@ struct
   let gen_vcs (sys : System.system_t)
               (supp_info : Tac.support_info_t)
               (inv : E.formula_info_t)
-              (spec_stac:Tac.solve_tactic_t option)
+              (spec_stac:Tac.proof_plan option)
               (spec_cutoff:Smp.cutoff_strategy_t)
               (tacs : Tac.post_tac_t list)
               (line : E.pc_t)
@@ -1580,7 +1580,7 @@ struct
   let seq_gen_vcs (sys : System.system_t)
                   (info : Tac.support_info_t)
                   (inv : E.formula_info_t)
-                  (spec_stac:Tac.solve_tactic_t option)
+                  (spec_stac:Tac.proof_plan option)
                   (spec_cutoff:Smp.cutoff_strategy_t)
                   (tacs : Tac.post_tac_t list)
                   (line : E.pc_t) : (E.formula * vc_info_t) list =
@@ -1834,7 +1834,7 @@ struct
         let primed_vars = List.map E.prime_variable (E.primed_vars f) in
         let loc_vars_subs = List.map (fun v ->
                               let new_name = E.variable_to_simple_str v in
-                              (v, E.build_var new_name (E.var_sort v) E.NotPrimed E.Shared E.GlobalScope E.RealVar)
+                              (v, E.build_var new_name (E.var_sort v) false E.Shared E.GlobalScope E.RealVar)
                             ) (E.all_local_vars f @ primed_vars) in
         let f_without_locals = E.subst_vars loc_vars_subs f in
 
@@ -1948,7 +1948,7 @@ struct
   
   
   let call_tll_dp (phi    : E.formula)
-                  (stac   : Tac.solve_tactic_t option)
+                  (stac   : Tac.proof_plan option)
                   (cutoff : Smp.cutoff_strategy_t)
                   (status : valid_t) : dp_result_t =
 (*    LOG "Entering call_tll_dp..." LEVEL TRACE; *)
@@ -1971,7 +1971,7 @@ struct
 
 
   let call_tslk_dp (phi    : E.formula)
-                   (stac   : Tac.solve_tactic_t option)
+                   (stac   : Tac.proof_plan option)
                    (cutoff : Smp.cutoff_strategy_t)
                    (status : valid_t) : dp_result_t =
 (*    LOG "Entering call_tslk_dp..." LEVEL TRACE; *)
@@ -1997,7 +1997,7 @@ struct
 
 (* TUKA: Repair this function *)
   let call_tsl_dp (phi    : E.formula)
-                  (stac   : Tac.solve_tactic_t option)
+                  (stac   : Tac.proof_plan option)
                   (cutoff : Smp.cutoff_strategy_t)
                   (status : valid_t) : dp_result_t =
 (*    LOG "Entering call_tsl_dp..." LEVEL TRACE; *)

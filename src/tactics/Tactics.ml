@@ -64,6 +64,21 @@ type proof_plan =
 (***********************)
 (* CONSTRUCTORS        *)
 (***********************)
+
+let new_proof_plan (smp:Smp.cutoff_strategy_t option)
+                   (solve:solve_tactic option)
+                   (supp_split_tacs:support_split_tactic_t list)
+                   (supp_tacs:support_tactic list)
+                   (formula_split_tacs:formula_split_tactic_t list)
+                   (formula_tacs:formula_tactic list) : proof_plan =
+  {
+    cutoff_algorithm = smp;
+    solve = solve;
+    support_split_tactics = supp_split_tacs;
+    support_tactics = supp_tacs;
+    formula_split_tactics = formula_split_tacs;
+    formula_tactics = formula_tacs;
+  }
  
 let vc_info_to_implication (info:vc_info) (sup:support_t): implication =
   let the_antecedent =

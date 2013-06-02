@@ -524,7 +524,7 @@ struct
         Expr.Shared -> ()
       | Expr.Local ((Expr.VarTh v) as th) ->
           if Expr.is_tid_val th then
-            let i = int_of_string (Expr.var_id v) in
+            let i = int_of_string v.Expr.id in
             if i < 1 || th_num < i then
               begin
                 Interface.Err.msg "Transition out of bounds" $
@@ -1319,7 +1319,7 @@ struct
     let vc  = gen_pvd_vc (VCG.hide_pres ()) new_sys pvd in
   
     let vc_info      = { VCG.pc = 0;
-                         VCG.stac = Tactics.solve_tactic (VCG.tactics());
+                         VCG.stac = Tactics.get_solve (VCG.tactics());
                          VCG.smp = VCG.cutoff();
                          VCG.supps = [];
                          VCG.try_pos = true; } in

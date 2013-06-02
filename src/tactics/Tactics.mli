@@ -36,6 +36,14 @@ val vc_info_to_implication : vc_info -> support_t -> implication
 (***********************)
 (* CONSTRUCTORS        *)
 (***********************)
+
+val new_proof_plan : Smp.cutoff_strategy_t option ->
+                     solve_tactic option ->
+                     support_split_tactic_t list ->
+                     support_tactic list ->
+                     formula_split_tactic_t list ->
+                     formula_tactic list ->
+                     proof_plan
 val vc_info_to_formula : vc_info -> support_t -> Expression.formula 
 val vc_info_to_vc : vc_info -> support_t -> verification_condition 
 val formula_tactic_from_string : string ->  formula_tactic 

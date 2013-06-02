@@ -44,9 +44,9 @@ exception Wrong_assignment of Expr.term
 exception Atomic_double_assignment of Expr.expr_t
 exception Unexpected_statement of string
 exception Ghost_var_in_global_decl
-              of Expr.varId * Expr.sort * Expr.initVal_t option * Expr.is_ghost
+              of Expr.varId * Expr.sort * Expr.initVal_t option * Expr.var_nature
 exception Ghost_var_in_local_decl
-              of Expr.varId * Expr.sort * Expr.initVal_t option * Expr.is_ghost
+              of Expr.varId * Expr.sort * Expr.initVal_t option * Expr.var_nature
 exception Ghost_vars_in_assignment of Expr.term list
 exception Normal_vars_in_ghost_assignment of Expr.term list
 exception No_kind_for_var of Expr.varId

@@ -50,12 +50,16 @@ let get_line id = snd id
 %type <case_t> seq_case
 %type <IGraph.premise_t list> premise
 %type <Tactics.proof_plan> tactics
-%type <(Smp.cutoff_strategy_t option * Tactics.solve_tactic_t option)> smp_tactic
-%type <Tactics.solve_tactic_t option> solve_tactic
-%type <Tactics.pre_tac_t list> pre_tactic_list
-%type <Tactics.pre_tac_t> pre_tactic
-%type <Tactics.post_tac_t list> post_tactic_list
-%type <Tactics.post_tac_t> post_tactic
+%type <(Smp.cutoff_strategy_t option * Tactics.solve_tactic option)> smp_tactic
+%type <Tactics.solve_tactic option> solve_tactic
+%type <Tactics.support_tactic list> support_tactic_list
+%type <Tactics.support_tactic> support_tactic
+%type <Tactics.formula_tactic list> formula_tactic_list
+%type <Tactics.formula_tactic> formula_tactic
+%type <Tactics.formula_split_tactic list> formula_split_tactic_list
+%type <Tactics.formula_split_tactic> formula_split_tactic
+%type <Tactics.formula_split_tactic list> formula_split_tactic_list
+%type <Tactics.formula_split_tactic> formula_split_tactic
 
 
 %%
@@ -188,29 +192,40 @@ premise :
 
 tactics :
   |
-    { Tactics.new_tactics None None [] [] }
-  | OPEN_BRACE smp_tactic pre_tactic_list BAR
-      post_tactic_list CLOSE_BRACE
+    { Tactics.new_proof_plan None None [] [] [] [] }
+  | OPEN_BRACE smp_tactic support_tactic_list BAR
+      formula_tactic_list BAR
+      formula_split_tactic_list CLOSE_BRACE
     {
       let (smp,solve_tact) = $2 in
-      let pre = $3 in
-      let post = $5
+      let support_tacs = $3 in
+      let formula_tacs = $5 in
+      let formula_split_tacs = $7
+      (* CONNECT: Fill the empty list we are passing here *)
       in
-        Tactics.new_tactics smp solve_tact pre post
+        Tactics.new_proof_plan smp solve_tact []
+          support_tacs [] formula_tacs
     }
 
 
-pre_tactic_list :
+support_tactic_list :
   |
     { [] }
-  | pre_tactic pre_tactic_list
+  | support_tactic support_tactic_list
     { $1 :: $2 }
 
 
-post_tactic_list :
+formula_tactic_list :
   |
     { [] }
-  | post_tactic post_tactic_list
+  | formula_tactic formula_tactic_list
+    { $1 :: $2 }
+
+
+formula_split_tactic_list :
+  |
+    { [] }
+  | formula_split_tactic formula_split_tactic_list
     { $1 :: $2 }
 
 
@@ -232,17 +247,20 @@ solve_tactic :
     { Some Tactics.Cases }
 
 
-pre_tactic :
+support_tactic :
   | REDUCE_TACTIC
     { Tactics.Reduce }
   | REDUCE2_TACTIC
     { Tactics.Reduce2 }
 
 
-post_tactic :
-  | SPLIT_TACTIC
-    { Tactics.SplitConseq }
+formula_tactic :
   | SIMPL_TACTIC
-    { Tactics.SimplPCVoc }
+    { Tactics.SimplifyPC }
   | PROP_REDUCTION_TACTIC
-    { Tactics.PropReduc }
+    { Tactics.PropositionalPropagate }
+
+
+formula_split_tactic :
+  | SPLIT_TACTIC
+    { Tactics.SplitConsequent }

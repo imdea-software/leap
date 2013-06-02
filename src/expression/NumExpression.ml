@@ -1,7 +1,7 @@
 open LeapLib
 
 
-module Expr = Expression
+module E = Expression
 
 exception NotAnIntExpression of string
 exception NotIntSort of string
@@ -9,9 +9,9 @@ exception MalformedExpression of string
 
 type sort = Int | Set | Thid
 
-type varId = Expr.varId
+type varId = E.varId
 
-type tid = Expr.tid
+type tid = E.tid
 
 type shared_or_local = Shared  | Local of tid
 
@@ -34,7 +34,7 @@ type integer =
   | Sub           of integer * integer
   | Mul           of integer * integer
   | Div           of integer * integer
-  | ArrayRd       of Expr.arrays * Expr.tid
+  | ArrayRd       of E.arrays * E.tid
   | SetMin        of set
   | SetMax        of set
 and set =
@@ -66,9 +66,9 @@ and atom =
   | TidInEq       of tid * tid
   | FunEq         of fun_term * fun_term
   | FunInEq       of fun_term * fun_term
-  | PC            of int * Expr.shared_or_local * Expr.is_primed
+  | PC            of int * E.shared_or_local * bool
   | PCUpdate      of int * tid
-  | PCRange       of int * int * Expr.shared_or_local * Expr.is_primed
+  | PCRange       of int * int * E.shared_or_local * bool
 and literal =
     Atom            of atom
   | NegAtom         of atom
@@ -88,18 +88,17 @@ and formula =
 
 
 let var_compare (x:variable) (y:variable) : int =
-  let cmp_p p1 p2 = (p1 = Expr.GlobalScope && (p2 = Expr.GlobalScope || p2 = Expr.Scope "")) ||
-                    (p2 = Expr.GlobalScope && (p1 = Expr.GlobalScope || p1 = Expr.Scope "")) in
+  let cmp_scope p1 p2 = (p1 = GlobalScope && (p2 = GlobalScope || p2 = Scope "")) ||
+                        (p2 = GlobalScope && (p1 = GlobalScope || p1 = Scope "")) in
   (* I am not comparing whether ghost/normal kind matches *)
-  let (x_id, x_s, x_pr, x_th, x_p) = x in
-  let (y_id, y_s, y_pr, y_th, y_p) = y in
-  let cmp = Pervasives.compare (x_id,x_pr,x_th) (y_id,y_pr,y_th)
+  let cmp = Pervasives.compare (x.id,x.is_primed,x.parameter)
+                               (y.id,y.is_primed,y.parameter)
   in
     if cmp = 0 then
-      if cmp_p x_p y_p then
+      if cmp_scope x.scope y.scope then
         0
       else
-        Pervasives.compare x_p y_p
+        Pervasives.compare x.scope y.scope
     else
       cmp
       
@@ -114,65 +113,65 @@ module VarSet = Set.Make(
 (* Variable constructor *)
 let build_var (id:varId)
               (s:sort)
-              (pr:Expr.is_primed)
-              (th:Expr.shared_or_local)
-              (p:Expr.procedure_name) : variable =
-  (id,s,pr,th,p)
+              (pr:bool)
+              (th:shared_or_local)
+              (p:procedure_name) : variable =
+  {
+    id = id;
+    sort = s;
+    is_primed = pr;
+    parameter = th;
+    scope = p;
+  }
 
-
+(*
 let get_sort (v:variable) : sort =
   let (_,s,_,_,_) = v in s
 
 
-let is_primed_var (v:variable) : Expr.is_primed =
+let is_primed_var (v:variable) : bool =
   let (_,_,pr,_,_) = v in pr
 
 
-let get_proc (v:variable) : Expr.procedure_name =
+let get_proc (v:variable) : E.procedure_name =
   let (_,_,_,_,p) = v in p
 
 
-let get_th (v:variable) : Expr.shared_or_local =
+let get_th (v:variable) : E.shared_or_local =
   let (_,_,_,th,_) = v in th
 
 
 let get_id (v:variable) : varId =
   let (id,_,_,_,_) = v in id
-
+*)
 
 let var_clear_param_info (v:variable) : variable =
-  let (id,s,pr,_,p) = v
-  in
-    build_var id s pr Expr.Shared p
+  v.parameter <- Shared; v
 
 
 let param_var (v:variable) (th:tid) : variable =
-  let (id,s,pr,_,p) = v
-  in
-    build_var id s pr (Expr.Local th) p
+  v.parameter <- Local th; v
 
 
 let var_is_global (v:variable) : bool =
-  let (_,_,_,th,p) = v
-  in
-    (p = Expr.GlobalScope || p = Expr.Scope "") && th = Expr.Shared
+  (v.scope = GlobalScope || v.scope = Scope "") && v.parameter = Shared
 
 
 
 (* Sort conversion *)
-let sort_to_int_sort (s:Expr.sort) : sort =
+let sort_to_int_sort (s:E.sort) : sort =
   match s with
-    Expr.Int    -> Int
-  | Expr.SetInt -> Set
-  | Expr.Thid   -> Thid
-  | _           -> raise(NotIntSort(Expr.sort_to_str s))
+    E.Int    -> Int
+  | E.SetInt -> Set
+  | E.Thid   -> Thid
+  | _           -> raise(NotIntSort(E.sort_to_str s))
 
 
-let int_sort_to_sort (s:sort) : Expr.sort =
+let int_sort_to_sort (s:sort) : E.sort =
   match s with
-    Int  -> Expr.Int
-  | Set  -> Expr.SetInt
-  | Thid -> Expr.Thid
+    Int  -> E.Int
+  | Set  -> E.SetInt
+  | Thid -> E.Thid
 
 
 
@@ -186,11 +185,11 @@ let sort_to_string (s:sort) : string =
 
 
 let variable_to_string (v:variable) : string =
-  let (id,s,pr,th,p) =  v in
-  let var_str = (Expr.loc_var_option id p) ^ (Expr.shared_or_local_to_str th) in
-  match pr with
-  | Expr.Primed -> var_str ^ "'"
-  | Expr.NotPrimed -> var_str
+  let var_str = (E.loc_var_option v.id v.scope) ^ (E.shared_or_local_to_str v.parameter) in
+  if v.is_primed then
+    var_str ^ "'"
+  else
+    var_str
 
 
 let rec generic_int_integer_to_string (srf:string -> string) (t:integer) : string =
@@ -204,8 +203,8 @@ let rec generic_int_integer_to_string (srf:string -> string) (t:integer) : strin
   | Sub (t1,t2)    -> srf (int_str_f t1 ^ " - " ^ int_str_f t2)
   | Mul (t1,t2)    -> srf (int_str_f t1 ^ " * " ^ int_str_f t2)
   | Div (t1,t2)    -> srf (int_str_f t1 ^ " / " ^ int_str_f t2)
-  | ArrayRd (a,th) -> srf (Expr.arrays_to_str a ^ "[" ^
-                           Expr.tid_to_str th ^ "]")
+  | ArrayRd (a,th) -> srf (E.arrays_to_str a ^ "[" ^
+                           E.tid_to_str th ^ "]")
   | SetMin s       -> srf ("setIntMin(" ^ set_str_f s ^ ")")
   | SetMax s       -> srf ("setIntMax(" ^ set_str_f s ^ ")")
 
@@ -233,7 +232,7 @@ let rec generic_funterm_to_string (srf:string -> string) (t:fun_term) : string =
     FunVar v        -> variable_to_string v
   | FunUpd (f,th,v) -> srf (Printf.sprintf "%s{%s<-%s}"
                             (generic_funterm_to_string srf f)
-                            (Expr.tid_to_str th)
+                            (E.tid_to_str th)
                             (generic_int_term_to_string srf v))
 
 
@@ -247,28 +246,28 @@ let generic_atom_to_string (srf:string -> string) (a:atom) : string =
   | Greater (t1,t2)   -> srf (int_str_f t1  ^ " > "  ^ int_str_f t2)
   | LessEq (t1,t2)    -> srf (int_str_f t1  ^ " <= " ^ int_str_f t2)
   | GreaterEq (t1,t2) -> srf (int_str_f t1  ^ " >= " ^ int_str_f t2)
-  | LessTid (th1,th2) -> srf (Expr.tid_to_str th1 ^ " < " ^ Expr.tid_to_str th2)
+  | LessTid (th1,th2) -> srf (E.tid_to_str th1 ^ " < " ^ E.tid_to_str th2)
   | Eq (t1,t2)        -> srf (term_str_f t1 ^ " = "  ^ term_str_f t2)
   | InEq (t1,t2)      -> srf (term_str_f t1 ^ " != " ^ term_str_f t2)
   | In (i,s)          -> srf (int_str_f i   ^ " in " ^ set_str_f s)
   | Subset (s1,s2)    -> srf (set_str_f s1  ^ " subset " ^ set_str_f s2)
-  | TidEq (th1,th2)   -> srf (Expr.tid_to_str th1   ^ " = "  ^
-                              Expr.tid_to_str th2)
-  | TidInEq (th1,th2) -> srf (Expr.tid_to_str th1   ^ " != " ^
-                              Expr.tid_to_str th2)
+  | TidEq (th1,th2)   -> srf (E.tid_to_str th1   ^ " = "  ^
+                              E.tid_to_str th2)
+  | TidInEq (th1,th2) -> srf (E.tid_to_str th1   ^ " != " ^
+                              E.tid_to_str th2)
   | FunEq (f1,f2)     -> srf (fun_str_f f1  ^ " = "  ^ fun_str_f f2)
   | FunInEq (f1,f2)   -> srf (fun_str_f f1  ^ " != " ^ fun_str_f f2)
   | PC (pc,th,pr)    -> let i_str  = match pr with
-                                     | Expr.Primed -> "pc'"
-                                     | Expr.NotPrimed -> "pc" in
-                        let th_str = Expr.shared_or_local_to_str th in
+                                     | E.Primed -> "pc'"
+                                     | E.NotPrimed -> "pc" in
+                        let th_str = E.shared_or_local_to_str th in
                           Printf.sprintf "%s(%s) = %i" i_str th_str pc
-  | PCUpdate (pc,th) -> let th_str = Expr.tid_to_str th in
+  | PCUpdate (pc,th) -> let th_str = E.tid_to_str th in
                           Printf.sprintf "pc' = pc{%s<-%i}" th_str pc
   | PCRange (pc1,pc2,th,pr) -> let i_str  = match pr with
-                                            | Expr.Primed -> "pc'"
-                                            | Expr.NotPrimed -> "pc" in
-                               let th_str = Expr.shared_or_local_to_str th in
+                                            | E.Primed -> "pc'"
+                                            | E.NotPrimed -> "pc" in
+                               let th_str = E.shared_or_local_to_str th in
                                  Printf.sprintf "%i <= %s(%s) <= %i" pc1 i_str th_str pc2
 
 
@@ -344,309 +343,309 @@ let int_formula_to_par_string (f:formula) : string =
 
 (* CHECKERS *)
 
-(* is_int_formula    : Expr.formula -> bool  *)
-(* is_int_literal    : Expr.literal -> bool  *)
-(* is_int_integer      : Expr.term    -> bool  *)
-(* is_int_expression : Expr.expr    -> bool  *)
+(* is_int_formula    : E.formula -> bool  *)
+(* is_int_literal    : E.literal -> bool  *)
+(* is_int_integer      : E.term    -> bool  *)
+(* is_int_expression : E.expr    -> bool  *)
 
-let rec is_int_formula (phi:Expr.formula) : bool =
+let rec is_int_formula (phi:E.formula) : bool =
   match phi with
-    Expr.Literal(l)         -> (is_int_literal l)
-  | Expr.True               -> true
-  | Expr.False              -> true
-  | Expr.And(x,y)           -> (is_int_formula x) && (is_int_formula y)
-  | Expr.Or(x,y)            -> (is_int_formula x) && (is_int_formula y)
-  | Expr.Not(x)             -> (is_int_formula x)
-  | Expr.Implies(x,y)       -> (is_int_formula x) && (is_int_formula y)
-  | Expr.Iff(x,y)           -> (is_int_formula x) && (is_int_formula y)
+    E.Literal(l)         -> (is_int_literal l)
+  | E.True               -> true
+  | E.False              -> true
+  | E.And(x,y)           -> (is_int_formula x) && (is_int_formula y)
+  | E.Or(x,y)            -> (is_int_formula x) && (is_int_formula y)
+  | E.Not(x)             -> (is_int_formula x)
+  | E.Implies(x,y)       -> (is_int_formula x) && (is_int_formula y)
+  | E.Iff(x,y)           -> (is_int_formula x) && (is_int_formula y)
 and is_int_literal lit =
   match lit with
-    Expr.Atom a   -> is_int_atom a
-  | Expr.NegAtom a -> is_int_atom a
+    E.Atom a   -> is_int_atom a
+  | E.NegAtom a -> is_int_atom a
 and is_int_atom ato =
   match ato with
-    Expr.Append(_,_,_)                    -> false
-  | Expr.Reach(_,_,_,_)                   -> false
-  | Expr.ReachAt(_,_,_,_,_)               -> false
-  | Expr.OrderList(_,_,_)                 -> false
-  | Expr.Skiplist(_,_,_,_,_)              -> false
-  | Expr.In(_,_)                          -> false
-  | Expr.SubsetEq(_,_)                    -> false
-  | Expr.InTh(_,_)                        -> false
-  | Expr.SubsetEqTh(_,_)                  -> false
-  | Expr.InInt(_,_)                       -> false
-  | Expr.SubsetEqInt(_,_)                 -> false
-  | Expr.InElem(_,_)                      -> false
-  | Expr.SubsetEqElem(_,_)                -> false
-  | Expr.Less(_,_)                        -> true
-  | Expr.Greater(_,_)                     -> true
-  | Expr.LessEq(_,_)                      -> true
-  | Expr.GreaterEq(_,_)                   -> true
-  | Expr.LessTid(_,_)                     -> true
-  | Expr.LessElem(_,_)                    -> true
-  | Expr.GreaterElem(_,_)                 -> true
-  | Expr.Eq(Expr.ThidT _, Expr.ThidT _)   -> true
-  | Expr.InEq(Expr.ThidT _, Expr.ThidT _) -> true
-  | Expr.Eq(x,y)                          -> (is_int_integer x) && (is_int_integer y)
-  | Expr.InEq(x,y)                        -> (is_int_integer x) && (is_int_integer y)
-  | Expr.BoolVar _                        -> false
-  | Expr.BoolArrayRd (_,_)                -> false
-  | Expr.PC(_)                            -> true
-  | Expr.PCUpdate(_)                      -> true
-  | Expr.PCRange(_)                       -> true
+    E.Append(_,_,_)                    -> false
+  | E.Reach(_,_,_,_)                   -> false
+  | E.ReachAt(_,_,_,_,_)               -> false
+  | E.OrderList(_,_,_)                 -> false
+  | E.Skiplist(_,_,_,_,_)              -> false
+  | E.In(_,_)                          -> false
+  | E.SubsetEq(_,_)                    -> false
+  | E.InTh(_,_)                        -> false
+  | E.SubsetEqTh(_,_)                  -> false
+  | E.InInt(_,_)                       -> false
+  | E.SubsetEqInt(_,_)                 -> false
+  | E.InElem(_,_)                      -> false
+  | E.SubsetEqElem(_,_)                -> false
+  | E.Less(_,_)                        -> true
+  | E.Greater(_,_)                     -> true
+  | E.LessEq(_,_)                      -> true
+  | E.GreaterEq(_,_)                   -> true
+  | E.LessTid(_,_)                     -> true
+  | E.LessElem(_,_)                    -> true
+  | E.GreaterElem(_,_)                 -> true
+  | E.Eq(E.ThidT _, E.ThidT _)   -> true
+  | E.InEq(E.ThidT _, E.ThidT _) -> true
+  | E.Eq(x,y)                          -> (is_int_integer x) && (is_int_integer y)
+  | E.InEq(x,y)                        -> (is_int_integer x) && (is_int_integer y)
+  | E.BoolVar _                        -> false
+  | E.BoolArrayRd (_,_)                -> false
+  | E.PC(_)                            -> true
+  | E.PCUpdate(_)                      -> true
+  | E.PCRange(_)                       -> true
 and is_int_integer t =
   match t with
-    Expr.VarT(_)       -> false
-  | Expr.SetT(_)       -> false
-  | Expr.ElemT(_)      -> false
-  | Expr.ThidT(_)      -> false
-  | Expr.AddrT(_)      -> false
-  | Expr.CellT(_)      -> false
-  | Expr.SetThT(_)     -> false
-  | Expr.SetIntT(_)    -> false
-  | Expr.SetElemT(_)   -> false
-  | Expr.PathT(_)      -> false
-  | Expr.MemT(_)       -> false
-  | Expr.IntT(_)       -> true
-  | Expr.ArrayT(_)     -> false
-  | Expr.AddrArrayT(_) -> false
-  | Expr.TidArrayT(_)  -> false
+    E.VarT(_)       -> false
+  | E.SetT(_)       -> false
+  | E.ElemT(_)      -> false
+  | E.ThidT(_)      -> false
+  | E.AddrT(_)      -> false
+  | E.CellT(_)      -> false
+  | E.SetThT(_)     -> false
+  | E.SetIntT(_)    -> false
+  | E.SetElemT(_)   -> false
+  | E.PathT(_)      -> false
+  | E.MemT(_)       -> false
+  | E.IntT(_)       -> true
+  | E.ArrayT(_)     -> false
+  | E.AddrArrayT(_) -> false
+  | E.TidArrayT(_)  -> false
 and is_int_expression e = 
   match e with
-    Expr.Term(t)      -> is_int_integer t
-  | Expr.Formula(phi) -> is_int_formula phi
+    E.Term(t)      -> is_int_integer t
+  | E.Formula(phi) -> is_int_formula phi
 
 
 (* SUBTYPE CONVERTER: *)
-(* integer_to_int_integer  : Expr.integer -> term *)
-(* term_to_int_integer     : Expr.term -> term    *)
-(* literal_to_int_literal  : Expr.literal -> literal    *)
-(* formula_to_int_formula  : Expr.formula -> formula    *)
+(* integer_to_int_integer  : E.integer -> term *)
+(* term_to_int_integer     : E.term -> term    *)
+(* literal_to_int_literal  : E.literal -> literal    *)
+(* formula_to_int_formula  : E.formula -> formula    *)
 
-let variable_to_int_variable (v:Expr.variable) : variable =
+let variable_to_int_variable (v:E.variable) : variable =
   let (id,s,pr,th,p,_) = v
   in
     (id, sort_to_int_sort s, pr, th ,p)
     (* No evict problems with thid variables within th_p vars *)
 (*
-    if s = Some Expr.Thid then
+    if s = Some E.Thid then
       (id, None, pr, th, p)
     else
       (id, Option.lift sort_to_int_sort s, pr, th, p)
 *)
 
 
-let rec array_to_funterm (x:Expr.arrays) : fun_term =
+let rec array_to_funterm (x:E.arrays) : fun_term =
   match x with
-    Expr.VarArray v -> FunVar (variable_to_int_variable v)
-  | Expr.ArrayUp (a,th,Expr.Term (Expr.IntT i)) ->
+    E.VarArray v -> FunVar (variable_to_int_variable v)
+  | E.ArrayUp (a,th,E.Term (E.IntT i)) ->
       FunUpd (array_to_funterm a, th, IntV (integer_to_int_integer i))
-  | Expr.ArrayUp (a,th,Expr.Term (Expr.SetIntT i)) ->
+  | E.ArrayUp (a,th,E.Term (E.SetIntT i)) ->
       FunUpd (array_to_funterm a, th, SetV (set_to_int_set i))
-  | _ -> raise(NotAnIntExpression(Expr.arrays_to_str x))
+  | _ -> raise(NotAnIntExpression(E.arrays_to_str x))
 
 
-and funterm_to_array (x:fun_term) : Expr.arrays =
+and funterm_to_array (x:fun_term) : E.arrays =
   let from_int  = int_integer_to_integer in
   let from_set  = int_set_to_set in
   match x with
-    FunVar v             -> Expr.VarArray (int_variable_to_variable v)
-  | FunUpd (f,th,IntV i) -> Expr.ArrayUp (funterm_to_array f, th,
-                                          Expr.Term (Expr.IntT (from_int i)))
-  | FunUpd (f,th,SetV s) -> Expr.ArrayUp (funterm_to_array f, th,
-                                          Expr.Term (Expr.SetIntT (from_set s)))
+    FunVar v             -> E.VarArray (int_variable_to_variable v)
+  | FunUpd (f,th,IntV i) -> E.ArrayUp (funterm_to_array f, th,
+                                          E.Term (E.IntT (from_int i)))
+  | FunUpd (f,th,SetV s) -> E.ArrayUp (funterm_to_array f, th,
+                                          E.Term (E.SetIntT (from_set s)))
 
 
-and set_to_int_set (s:Expr.setint) : set =
+and set_to_int_set (s:E.setint) : set =
   let toset = set_to_int_set in
   match s with
-    Expr.VarSetInt v       -> VarSet (variable_to_int_variable v)
-  | Expr.EmptySetInt       -> EmptySet
-  | Expr.SinglInt i        -> Singl (integer_to_int_integer i)
-  | Expr.UnionInt(s1,s2)   -> Union (toset s1, toset s2)
-  | Expr.IntrInt(s1,s2)    -> Intr (toset s1, toset s2)
-  | Expr.SetdiffInt(s1,s2) -> Diff (toset s1, toset s2)
-  | _ -> raise(NotAnIntExpression(Expr.setint_to_str s))
+    E.VarSetInt v       -> VarSet (variable_to_int_variable v)
+  | E.EmptySetInt       -> EmptySet
+  | E.SinglInt i        -> Singl (integer_to_int_integer i)
+  | E.UnionInt(s1,s2)   -> Union (toset s1, toset s2)
+  | E.IntrInt(s1,s2)    -> Intr (toset s1, toset s2)
+  | E.SetdiffInt(s1,s2) -> Diff (toset s1, toset s2)
+  | _ -> raise(NotAnIntExpression(E.setint_to_str s))
 
 
 and integer_to_int_integer t =
   let toint = integer_to_int_integer in
   let toset = set_to_int_set in
     match t with
-      Expr.IntVal(i)       -> Val(i)
-    | Expr.VarInt v        -> Var(variable_to_int_variable v)
-    | Expr.IntNeg(i)       -> Neg(toint i)
-    | Expr.IntAdd(x,y)     -> Add(toint x,toint y)
-    | Expr.IntSub(x,y)     -> Sub(toint x,toint y)
-    | Expr.IntMul(x,y)     -> Mul(toint x,toint y)
-    | Expr.IntDiv(x,y)     -> Div(toint x,toint y)
-    | Expr.IntArrayRd(a,i) -> ArrayRd(a,i)
-    | Expr.IntSetMin(s)    -> SetMin (toset s)
-    | Expr.IntSetMax(s)    -> SetMax (toset s)
-    | Expr.CellMax(c)      -> raise(NotAnIntExpression(Expr.integer_to_str t))
-    | Expr.HavocLevel      -> raise(NotAnIntExpression(Expr.integer_to_str t))
+      E.IntVal(i)       -> Val(i)
+    | E.VarInt v        -> Var(variable_to_int_variable v)
+    | E.IntNeg(i)       -> Neg(toint i)
+    | E.IntAdd(x,y)     -> Add(toint x,toint y)
+    | E.IntSub(x,y)     -> Sub(toint x,toint y)
+    | E.IntMul(x,y)     -> Mul(toint x,toint y)
+    | E.IntDiv(x,y)     -> Div(toint x,toint y)
+    | E.IntArrayRd(a,i) -> ArrayRd(a,i)
+    | E.IntSetMin(s)    -> SetMin (toset s)
+    | E.IntSetMax(s)    -> SetMax (toset s)
+    | E.CellMax(c)      -> raise(NotAnIntExpression(E.integer_to_str t))
+    | E.HavocLevel      -> raise(NotAnIntExpression(E.integer_to_str t))
 
 and term_to_int_integer t =
   match t with
-      Expr.IntT(x) -> integer_to_int_integer x
-    | _            -> raise(NotAnIntExpression(Expr.term_to_str t))
+      E.IntT(x) -> integer_to_int_integer x
+    | _            -> raise(NotAnIntExpression(E.term_to_str t))
 
 and atom_to_int_atom a =
   let toint = integer_to_int_integer in
   let toset = set_to_int_set in
     match a with
-      Expr.Append _      -> raise(NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.Reach _       -> raise(NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.ReachAt _     -> raise(NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.OrderList _   -> raise(NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.Skiplist _    -> raise(NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.In _          -> raise(NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.SubsetEq _    -> raise(NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.InTh _        -> raise(NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.SubsetEqTh _  -> raise(NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.InInt _       -> raise(NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.SubsetEqInt _ -> raise(NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.InElem _      -> raise(NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.SubsetEqElem _-> raise(NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.Less(x,y)     -> Less(toint x,toint y)
-    | Expr.Greater(x,y)  -> Greater(toint x,toint y)
-    | Expr.LessEq(x,y)   -> LessEq(toint x,toint y)
-    | Expr.GreaterEq(x,y)-> GreaterEq(toint x,toint y)
-    | Expr.LessTid(x,y)  -> LessTid(x,y)
-    | Expr.LessElem _    -> raise(NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.GreaterElem _ -> raise(NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.Eq(Expr.ThidT x,Expr.ThidT y)      -> TidEq(x, y)
-    | Expr.InEq(Expr.ThidT x,Expr.ThidT y)    -> TidInEq(x, y)
-    | Expr.Eq(Expr.ArrayT x, Expr.ArrayT y)   -> FunEq (array_to_funterm x,
+      E.Append _      -> raise(NotAnIntExpression(E.atom_to_str a))
+    | E.Reach _       -> raise(NotAnIntExpression(E.atom_to_str a))
+    | E.ReachAt _     -> raise(NotAnIntExpression(E.atom_to_str a))
+    | E.OrderList _   -> raise(NotAnIntExpression(E.atom_to_str a))
+    | E.Skiplist _    -> raise(NotAnIntExpression(E.atom_to_str a))
+    | E.In _          -> raise(NotAnIntExpression(E.atom_to_str a))
+    | E.SubsetEq _    -> raise(NotAnIntExpression(E.atom_to_str a))
+    | E.InTh _        -> raise(NotAnIntExpression(E.atom_to_str a))
+    | E.SubsetEqTh _  -> raise(NotAnIntExpression(E.atom_to_str a))
+    | E.InInt _       -> raise(NotAnIntExpression(E.atom_to_str a))
+    | E.SubsetEqInt _ -> raise(NotAnIntExpression(E.atom_to_str a))
+    | E.InElem _      -> raise(NotAnIntExpression(E.atom_to_str a))
+    | E.SubsetEqElem _-> raise(NotAnIntExpression(E.atom_to_str a))
+    | E.Less(x,y)     -> Less(toint x,toint y)
+    | E.Greater(x,y)  -> Greater(toint x,toint y)
+    | E.LessEq(x,y)   -> LessEq(toint x,toint y)
+    | E.GreaterEq(x,y)-> GreaterEq(toint x,toint y)
+    | E.LessTid(x,y)  -> LessTid(x,y)
+    | E.LessElem _    -> raise(NotAnIntExpression(E.atom_to_str a))
+    | E.GreaterElem _ -> raise(NotAnIntExpression(E.atom_to_str a))
+    | E.Eq(E.ThidT x,E.ThidT y)      -> TidEq(x, y)
+    | E.InEq(E.ThidT x,E.ThidT y)    -> TidInEq(x, y)
+    | E.Eq(E.ArrayT x, E.ArrayT y)   -> FunEq (array_to_funterm x,
                                                         array_to_funterm y)
-    | Expr.InEq(Expr.ArrayT x, Expr.ArrayT y) -> FunInEq (array_to_funterm x,
+    | E.InEq(E.ArrayT x, E.ArrayT y) -> FunInEq (array_to_funterm x,
                                                           array_to_funterm y)
-    | Expr.Eq(Expr.IntT x, Expr.IntT y)       -> Eq(IntV (toint x),
+    | E.Eq(E.IntT x, E.IntT y)       -> Eq(IntV (toint x),
                                                     IntV (toint y))
-    | Expr.Eq(Expr.SetIntT x, Expr.SetIntT y) -> Eq(SetV (toset x),
+    | E.Eq(E.SetIntT x, E.SetIntT y) -> Eq(SetV (toset x),
                                                     SetV (toset y))
-    | Expr.InEq(Expr.IntT x, Expr.IntT y)     -> InEq(IntV(toint x),
+    | E.InEq(E.IntT x, E.IntT y)     -> InEq(IntV(toint x),
                                                       IntV(toint y))
-    | Expr.InEq(Expr.SetIntT x, Expr.SetIntT y) -> InEq(SetV(toset x),
+    | E.InEq(E.SetIntT x, E.SetIntT y) -> InEq(SetV(toset x),
                                                       SetV(toset y))
-    | Expr.Eq (_,_)   -> raise(NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.InEq (_,_) -> raise(NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.BoolVar _      -> raise(NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.BoolArrayRd _  -> raise(NotAnIntExpression(Expr.atom_to_str a))
-    | Expr.PC(i,th,pr)    -> PC (i,th,pr)
-    | Expr.PCUpdate(i,th) -> PCUpdate (i,th)
-    | Expr.PCRange(i,j,th,pr) -> PCRange (i,j,th,pr)
+    | E.Eq (_,_)   -> raise(NotAnIntExpression(E.atom_to_str a))
+    | E.InEq (_,_) -> raise(NotAnIntExpression(E.atom_to_str a))
+    | E.BoolVar _      -> raise(NotAnIntExpression(E.atom_to_str a))
+    | E.BoolArrayRd _  -> raise(NotAnIntExpression(E.atom_to_str a))
+    | E.PC(i,th,pr)    -> PC (i,th,pr)
+    | E.PCUpdate(i,th) -> PCUpdate (i,th)
+    | E.PCRange(i,j,th,pr) -> PCRange (i,j,th,pr)
 
 and literal_to_int_literal lit =
   match lit with
-    Expr.Atom a    -> Atom (atom_to_int_atom a)
-  | Expr.NegAtom a -> NegAtom (atom_to_int_atom a)
+    E.Atom a    -> Atom (atom_to_int_atom a)
+  | E.NegAtom a -> NegAtom (atom_to_int_atom a)
 
 and formula_to_int_formula phi =
   let toint = formula_to_int_formula in
     match phi with
-        Expr.Literal(l)   -> Literal(literal_to_int_literal l)
-      | Expr.True         -> True
-      | Expr.False        -> False
-      | Expr.And(x,y)     -> And(toint x,toint y)
-      | Expr.Or(x,y)      -> Or(toint x,toint y)
-      | Expr.Not(x)       -> Not(toint x)
-      | Expr.Implies(x,y) -> Implies(toint x,toint y)
-      | Expr.Iff(x,y)     -> Iff(toint x,toint y)
+        E.Literal(l)   -> Literal(literal_to_int_literal l)
+      | E.True         -> True
+      | E.False        -> False
+      | E.And(x,y)     -> And(toint x,toint y)
+      | E.Or(x,y)      -> Or(toint x,toint y)
+      | E.Not(x)       -> Not(toint x)
+      | E.Implies(x,y) -> Implies(toint x,toint y)
+      | E.Iff(x,y)     -> Iff(toint x,toint y)
 
 
 (* SUPERTYPE CONVERTER: *)
-(* int_integer_to_term        : term    -> Expr.term *)
-(* int_literal_to_literal : literal -> Expr.literal *)
-(* int_formula_to_formula : formula -> Expr.formula *)
-(* int_expr_to_expr : expr_t -> Expr.expr_t *)
+(* int_integer_to_term        : term    -> E.term *)
+(* int_literal_to_literal : literal -> E.literal *)
+(* int_formula_to_formula : formula -> E.formula *)
+(* int_expr_to_expr : expr_t -> E.expr_t *)
 
 
-and int_variable_to_variable (v:variable) : Expr.variable =
+and int_variable_to_variable (v:variable) : E.variable =
   let (id,s,pr,th,p) = v
   in
-    (id, int_sort_to_sort s, pr, th, p, Expr.RealVar)
+    (id, int_sort_to_sort s, pr, th, p, E.RealVar)
 
 
-and int_formula_to_formula (phi:formula) : Expr.formula =
+and int_formula_to_formula (phi:formula) : E.formula =
   let to_formula = int_formula_to_formula in
   match phi with
-      Literal(l)     -> Expr.Literal(int_literal_to_literal l)
-    | True           -> Expr.True
-    | False          -> Expr.False
-    | And(x,y)       -> Expr.And    (to_formula x, to_formula y)
-    | Or(x,y)        -> Expr.Or     (to_formula x, to_formula y)
-    | Not(x)         -> Expr.Not    (to_formula x)
-    | Implies(x,y)   -> Expr.Implies(to_formula x, to_formula y)
-    | Iff(x,y)       -> Expr.Iff    (to_formula x, to_formula y)
+      Literal(l)     -> E.Literal(int_literal_to_literal l)
+    | True           -> E.True
+    | False          -> E.False
+    | And(x,y)       -> E.And    (to_formula x, to_formula y)
+    | Or(x,y)        -> E.Or     (to_formula x, to_formula y)
+    | Not(x)         -> E.Not    (to_formula x)
+    | Implies(x,y)   -> E.Implies(to_formula x, to_formula y)
+    | Iff(x,y)       -> E.Iff    (to_formula x, to_formula y)
 
-and int_literal_to_literal (l:literal) : Expr.literal =
+and int_literal_to_literal (l:literal) : E.literal =
   match l with
-    Atom a    -> Expr.Atom (int_atom_to_atom a)
-  | NegAtom a -> Expr.NegAtom (int_atom_to_atom a)
+    Atom a    -> E.Atom (int_atom_to_atom a)
+  | NegAtom a -> E.NegAtom (int_atom_to_atom a)
 
-and int_atom_to_atom (a:atom) : Expr.atom =
+and int_atom_to_atom (a:atom) : E.atom =
   let from_int = int_integer_to_integer in
   let from_set = int_set_to_set in
   match a with
-      Less(x,y)           -> Expr.Less        (from_int x,  from_int y)
-    | Greater(x,y)        -> Expr.Greater     (from_int x, from_int y)
-    | LessEq(x,y)         -> Expr.LessEq      (from_int x, from_int y)
-    | GreaterEq(x,y)      -> Expr.GreaterEq   (from_int x, from_int y)
-    | LessTid(x,y)        -> Expr.LessTid     (x, y)
-    | Eq(IntV x,IntV y)   -> Expr.Eq          (Expr.IntT(from_int x),
-                                               Expr.IntT(from_int y))
-    | Eq(SetV x,SetV y)   -> Expr.Eq          (Expr.SetIntT(from_set x),
-                                               Expr.SetIntT(from_set y))
-    | InEq(IntV x,IntV y) -> Expr.InEq        (Expr.IntT(from_int x),
-                                               Expr.IntT(from_int y))
-    | InEq(SetV x,SetV y) -> Expr.InEq        (Expr.SetIntT(from_set x),
-                                               Expr.SetIntT(from_set y))
-    | In(i,s)             -> Expr.InInt       (from_int i, from_set s)
-    | Subset(x,y)         -> Expr.SubsetEqInt (from_set x, from_set y)
-    | TidEq(x,y)          -> Expr.Eq          (Expr.ThidT x, Expr.ThidT y)
-    | TidInEq(x,y)        -> Expr.InEq        (Expr.ThidT x, Expr.ThidT y)
-    | FunEq(x,y)          -> Expr.Eq          (Expr.ArrayT (funterm_to_array x),
-                                               Expr.ArrayT (funterm_to_array y))
-    | FunInEq(x,y)        -> Expr.InEq        (Expr.ArrayT (funterm_to_array x),
-                                               Expr.ArrayT (funterm_to_array y))
+      Less(x,y)           -> E.Less        (from_int x,  from_int y)
+    | Greater(x,y)        -> E.Greater     (from_int x, from_int y)
+    | LessEq(x,y)         -> E.LessEq      (from_int x, from_int y)
+    | GreaterEq(x,y)      -> E.GreaterEq   (from_int x, from_int y)
+    | LessTid(x,y)        -> E.LessTid     (x, y)
+    | Eq(IntV x,IntV y)   -> E.Eq          (E.IntT(from_int x),
+                                               E.IntT(from_int y))
+    | Eq(SetV x,SetV y)   -> E.Eq          (E.SetIntT(from_set x),
+                                               E.SetIntT(from_set y))
+    | InEq(IntV x,IntV y) -> E.InEq        (E.IntT(from_int x),
+                                               E.IntT(from_int y))
+    | InEq(SetV x,SetV y) -> E.InEq        (E.SetIntT(from_set x),
+                                               E.SetIntT(from_set y))
+    | In(i,s)             -> E.InInt       (from_int i, from_set s)
+    | Subset(x,y)         -> E.SubsetEqInt (from_set x, from_set y)
+    | TidEq(x,y)          -> E.Eq          (E.ThidT x, E.ThidT y)
+    | TidInEq(x,y)        -> E.InEq        (E.ThidT x, E.ThidT y)
+    | FunEq(x,y)          -> E.Eq          (E.ArrayT (funterm_to_array x),
+                                               E.ArrayT (funterm_to_array y))
+    | FunInEq(x,y)        -> E.InEq        (E.ArrayT (funterm_to_array x),
+                                               E.ArrayT (funterm_to_array y))
     | Eq(_,_)             -> raise(MalformedExpression(int_atom_to_string a))
     | InEq(_,_)           -> raise(MalformedExpression(int_atom_to_string a))
-    | PC(i,th,pr)         -> Expr.PC (i, th, pr)
-    | PCUpdate(i,th)      -> Expr.PCUpdate (i, th)
-    | PCRange(i,j,th,pr)  -> Expr.PCRange (i, j, th, pr)
+    | PC(i,th,pr)         -> E.PC (i, th, pr)
+    | PCUpdate(i,th)      -> E.PCUpdate (i, th)
+    | PCRange(i,j,th,pr)  -> E.PCRange (i, j, th, pr)
 
 
 
-and int_set_to_set (s:set) : Expr.setint =
+and int_set_to_set (s:set) : E.setint =
   let from_set = int_set_to_set in
   match s with
-    VarSet v     -> Expr.VarSetInt (int_variable_to_variable v)
-  | EmptySet     -> Expr.EmptySetInt
-  | Singl i      -> Expr.SinglInt (int_integer_to_integer i)
-  | Union(s1,s2) -> Expr.UnionInt (from_set s1, from_set s2)
-  | Intr(s1,s2)  -> Expr.IntrInt (from_set s1, from_set s2)
-  | Diff(s1,s2)  -> Expr.SetdiffInt (from_set s1, from_set s2)
+    VarSet v     -> E.VarSetInt (int_variable_to_variable v)
+  | EmptySet     -> E.EmptySetInt
+  | Singl i      -> E.SinglInt (int_integer_to_integer i)
+  | Union(s1,s2) -> E.UnionInt (from_set s1, from_set s2)
+  | Intr(s1,s2)  -> E.IntrInt (from_set s1, from_set s2)
+  | Diff(s1,s2)  -> E.SetdiffInt (from_set s1, from_set s2)
     
 
-and int_integer_to_integer (t:integer) : Expr.integer =
+and int_integer_to_integer (t:integer) : E.integer =
   let from_int = int_integer_to_integer in
   let from_set = int_set_to_set in
   match t with
-      Val(n)       -> Expr.IntVal(n)
-    | Var v        -> Expr.VarInt (int_variable_to_variable v)
-    | Neg(x)       -> Expr.IntNeg(from_int x)
-    | Add(x,y)     -> Expr.IntAdd(from_int x,from_int y)
-    | Sub(x,y)     -> Expr.IntSub(from_int x,from_int y)
-    | Mul(x,y)     -> Expr.IntMul(from_int x,from_int y)
-    | Div(x,y)     -> Expr.IntDiv(from_int x,from_int y)
-    | ArrayRd(a,i) -> Expr.IntArrayRd(a,i)
-    | SetMin(s)    -> Expr.IntSetMin(from_set s)
-    | SetMax(s)    -> Expr.IntSetMax(from_set s)
+      Val(n)       -> E.IntVal(n)
+    | Var v        -> E.VarInt (int_variable_to_variable v)
+    | Neg(x)       -> E.IntNeg(from_int x)
+    | Add(x,y)     -> E.IntAdd(from_int x,from_int y)
+    | Sub(x,y)     -> E.IntSub(from_int x,from_int y)
+    | Mul(x,y)     -> E.IntMul(from_int x,from_int y)
+    | Div(x,y)     -> E.IntDiv(from_int x,from_int y)
+    | ArrayRd(a,i) -> E.IntArrayRd(a,i)
+    | SetMin(s)    -> E.IntSetMin(from_set s)
+    | SetMax(s)    -> E.IntSetMax(from_set s)
 
 
-and int_integer_to_term (t:integer) : Expr.term =
-  Expr.IntT(int_integer_to_integer t)
+and int_integer_to_term (t:integer) : E.term =
+  E.IntT(int_integer_to_integer t)
 
 
 (* CONJUNCTIONS OF LITERAL *)
@@ -669,7 +668,7 @@ let formula_to_conj_literals (phi:formula) : literal list =
     | And(a,b)  -> (try_to_build_conjunction a) @ (try_to_build_conjunction b)
     | True      -> []
     |   _       -> Printf.printf "Error: %s\n"
-                      (Expr.formula_to_str (int_formula_to_formula phi));
+                      (E.formula_to_str (int_formula_to_formula phi));
                    raise(NotConjunctiveExpr phi)
   in
     try_to_build_conjunction phi
@@ -897,92 +896,92 @@ let conjlit_to_string (base:variable -> 'a)
 
 (* Base functions for variables id *)
 
-let base_setid_all_vars (v:variable) : Expr.VarIdSet.t =
+let base_setid_all_vars (v:variable) : E.VarIdSet.t =
   let (id,_,_,_,_) = v in
-    Expr.VarIdSet.singleton id
+    E.VarIdSet.singleton id
 
 
-let base_setid_local_vars (v:variable) : Expr.VarIdSet.t =
+let base_setid_local_vars (v:variable) : E.VarIdSet.t =
   let (id,_,_,_,p) = v in
     match p with
-    | Expr.Scope _ -> Expr.VarIdSet.singleton id
-    | Expr.GlobalScope -> Expr.VarIdSet.empty
+    | E.Scope _ -> E.VarIdSet.singleton id
+    | E.GlobalScope -> E.VarIdSet.empty
 
 
-let base_setid_global_vars (v:variable) : Expr.VarIdSet.t =
+let base_setid_global_vars (v:variable) : E.VarIdSet.t =
   let (id,_,_,_,p) = v in
     match p with
-    | Expr.GlobalScope -> Expr.VarIdSet.singleton id
-    | Expr.Scope _ -> Expr.VarIdSet.empty
+    | E.GlobalScope -> E.VarIdSet.singleton id
+    | E.Scope _ -> E.VarIdSet.empty
 
 
 
 (* Functions for all variables *)
 
-let vset_from_int_integer (t:integer) : Expr.VarIdSet.t =
-  generic_set_from_int_integer base_setid_all_vars Expr.VarIdSet.empty
-                        Expr.VarIdSet.union t
+let vset_from_int_integer (t:integer) : E.VarIdSet.t =
+  generic_set_from_int_integer base_setid_all_vars E.VarIdSet.empty
+                        E.VarIdSet.union t
 
 
-let vset_from_funterm (t:fun_term) : Expr.VarIdSet.t =
-  generic_set_from_funterm base_setid_all_vars Expr.VarIdSet.empty
-                           Expr.VarIdSet.union t
+let vset_from_funterm (t:fun_term) : E.VarIdSet.t =
+  generic_set_from_funterm base_setid_all_vars E.VarIdSet.empty
+                           E.VarIdSet.union t
 
 
-let vset_from_int_formula (f:formula) : Expr.VarIdSet.t =
-  generic_set_from_int_formula base_setid_all_vars Expr.VarIdSet.empty
-                               Expr.VarIdSet.union f
+let vset_from_int_formula (f:formula) : E.VarIdSet.t =
+  generic_set_from_int_formula base_setid_all_vars E.VarIdSet.empty
+                               E.VarIdSet.union f
 
 
-let vset_from_int_literal (l:literal) : Expr.VarIdSet.t =
-  generic_set_from_int_literal base_setid_all_vars Expr.VarIdSet.empty
-                           Expr.VarIdSet.union l
+let vset_from_int_literal (l:literal) : E.VarIdSet.t =
+  generic_set_from_int_literal base_setid_all_vars E.VarIdSet.empty
+                           E.VarIdSet.union l
 
 
 
 (* Functions for global variables *)
 
-let global_vset_from_int_integer (t:integer) : Expr.VarIdSet.t =
-  generic_set_from_int_integer base_setid_global_vars Expr.VarIdSet.empty
-                        Expr.VarIdSet.union t
+let global_vset_from_int_integer (t:integer) : E.VarIdSet.t =
+  generic_set_from_int_integer base_setid_global_vars E.VarIdSet.empty
+                        E.VarIdSet.union t
 
 
-let global_vset_from_funterm (t:fun_term) : Expr.VarIdSet.t =
-  generic_set_from_funterm base_setid_global_vars Expr.VarIdSet.empty
-                           Expr.VarIdSet.union t
+let global_vset_from_funterm (t:fun_term) : E.VarIdSet.t =
+  generic_set_from_funterm base_setid_global_vars E.VarIdSet.empty
+                           E.VarIdSet.union t
 
 
-let global_vset_from_int_literal (l:literal) : Expr.VarIdSet.t =
-  generic_set_from_int_literal base_setid_global_vars Expr.VarIdSet.empty
-                           Expr.VarIdSet.union l
+let global_vset_from_int_literal (l:literal) : E.VarIdSet.t =
+  generic_set_from_int_literal base_setid_global_vars E.VarIdSet.empty
+                           E.VarIdSet.union l
 
 
-let global_vset_from_int_formula (f:formula) : Expr.VarIdSet.t =
-  generic_set_from_int_formula base_setid_global_vars Expr.VarIdSet.empty
-                           Expr.VarIdSet.union f
+let global_vset_from_int_formula (f:formula) : E.VarIdSet.t =
+  generic_set_from_int_formula base_setid_global_vars E.VarIdSet.empty
+                           E.VarIdSet.union f
 
 
 
 (* Functions for local variables *)
 
-let local_vset_from_int_integer (t:integer) : Expr.VarIdSet.t =
-  generic_set_from_int_integer base_setid_local_vars Expr.VarIdSet.empty
-                        Expr.VarIdSet.union t
+let local_vset_from_int_integer (t:integer) : E.VarIdSet.t =
+  generic_set_from_int_integer base_setid_local_vars E.VarIdSet.empty
+                        E.VarIdSet.union t
 
 
-let local_vset_from_funterm (t:fun_term) : Expr.VarIdSet.t =
-  generic_set_from_funterm base_setid_local_vars Expr.VarIdSet.empty
-                           Expr.VarIdSet.union t
+let local_vset_from_funterm (t:fun_term) : E.VarIdSet.t =
+  generic_set_from_funterm base_setid_local_vars E.VarIdSet.empty
+                           E.VarIdSet.union t
 
 
-let local_vset_from_int_literal (l:literal) : Expr.VarIdSet.t =
-  generic_set_from_int_literal base_setid_local_vars Expr.VarIdSet.empty
-                           Expr.VarIdSet.union l
+let local_vset_from_int_literal (l:literal) : E.VarIdSet.t =
+  generic_set_from_int_literal base_setid_local_vars E.VarIdSet.empty
+                           E.VarIdSet.union l
 
 
-let local_vset_from_int_formula (f:formula) : Expr.VarIdSet.t =
-  generic_set_from_int_formula base_setid_local_vars Expr.VarIdSet.empty
-                               Expr.VarIdSet.union f
+let local_vset_from_int_formula (f:formula) : E.VarIdSet.t =
+  generic_set_from_int_formula base_setid_local_vars E.VarIdSet.empty
+                               E.VarIdSet.union f
 
 
 
@@ -991,10 +990,10 @@ let all_varid_set_literal = vset_from_int_literal
 let all_global_varid_set  = global_vset_from_int_formula
 let all_local_varid_set   = local_vset_from_int_formula
 
-let all_varid phi         = Expr.VarIdSet.elements (all_varid_set phi)
-let all_varid_literal l   = Expr.VarIdSet.elements (all_varid_set_literal l)
-let all_local_varid phi   = Expr.VarIdSet.elements (all_local_varid_set phi)
-let all_global_varid phi  = Expr.VarIdSet.elements (all_global_varid_set phi)
+let all_varid phi         = E.VarIdSet.elements (all_varid_set phi)
+let all_varid_literal l   = E.VarIdSet.elements (all_varid_set_literal l)
+let all_local_varid phi   = E.VarIdSet.elements (all_local_varid_set phi)
+let all_global_varid phi  = E.VarIdSet.elements (all_global_varid_set phi)
 
 
 
@@ -1126,86 +1125,86 @@ let all_local_vars_without_param (phi:formula) : variable list =
 
 (* Primed vars *)
 
-let base_primed_vars (v:variable) : Expr.VarIdSet.t =
+let base_primed_vars (v:variable) : E.VarIdSet.t =
   let (id,_,pr,_,_) = v in
     if pr then
-      Expr.VarIdSet.singleton id
+      E.VarIdSet.singleton id
     else
-      Expr.VarIdSet.empty
+      E.VarIdSet.empty
 
 
-let vset_primed_from_int_formula (phi:formula) : Expr.VarIdSet.t =
-  generic_set_from_int_formula base_primed_vars Expr.VarIdSet.empty
-                               Expr.VarIdSet.union phi
+let vset_primed_from_int_formula (phi:formula) : E.VarIdSet.t =
+  generic_set_from_int_formula base_primed_vars E.VarIdSet.empty
+                               E.VarIdSet.union phi
 
 
 
 (* List of vars *)
-let base_list_vars (v:variable) : Expr.VarIdSet.t =
+let base_list_vars (v:variable) : E.VarIdSet.t =
   let (id,_,_,_,_) = v
   in
-    Expr.VarIdSet.singleton id
+    E.VarIdSet.singleton id
 
 
-let vlist_from_int_formula (phi:formula) : Expr.VarIdSet.t =
-  generic_set_from_int_formula base_list_vars Expr.VarIdSet.empty
-                               Expr.VarIdSet.union  phi
+let vlist_from_int_formula (phi:formula) : E.VarIdSet.t =
+  generic_set_from_int_formula base_list_vars E.VarIdSet.empty
+                               E.VarIdSet.union  phi
 
 
 (* Vocabulary functions *)
-let opt_th (th:Expr.tid option) : Expr.ThreadSet.t =
-  Option.map_default Expr.ThreadSet.singleton Expr.ThreadSet.empty th
+let opt_th (th:E.tid option) : E.ThreadSet.t =
+  Option.map_default E.ThreadSet.singleton E.ThreadSet.empty th
 
 
-let thset_from (ths:Expr.tid list) : Expr.ThreadSet.t =
-  List.fold_left (fun s t -> Expr.ThreadSet.add t s) Expr.ThreadSet.empty ths
+let thset_from (ths:E.tid list) : E.ThreadSet.t =
+  List.fold_left (fun s t -> E.ThreadSet.add t s) E.ThreadSet.empty ths
 
 
-let rec voc_from_int_integer (t:integer) : Expr.ThreadSet.t =
+let rec voc_from_int_integer (t:integer) : E.ThreadSet.t =
   match t with
-    Val i                  -> Expr.ThreadSet.empty
+    Val i                  -> E.ThreadSet.empty
   | Var v                  -> opt_th (get_th v)
   | Neg t                  -> voc_from_int_integer t
-  | Add (t1,t2)            -> Expr.ThreadSet.union (voc_from_int_integer t1)
+  | Add (t1,t2)            -> E.ThreadSet.union (voc_from_int_integer t1)
                                                    (voc_from_int_integer t2)
-  | Sub (t1,t2)            -> Expr.ThreadSet.union (voc_from_int_integer t1)
+  | Sub (t1,t2)            -> E.ThreadSet.union (voc_from_int_integer t1)
                                                    (voc_from_int_integer t2)
-  | Mul (t1,t2)            -> Expr.ThreadSet.union (voc_from_int_integer t1)
+  | Mul (t1,t2)            -> E.ThreadSet.union (voc_from_int_integer t1)
                                                    (voc_from_int_integer t2)
-  | Div (t1,t2)            -> Expr.ThreadSet.union (voc_from_int_integer t1)
+  | Div (t1,t2)            -> E.ThreadSet.union (voc_from_int_integer t1)
                                                    (voc_from_int_integer t2)
-  | ArrayRd (a,th)         -> Expr.ThreadSet.empty
-  | SetMin s               -> Expr.ThreadSet.empty
-  | SetMax s               -> Expr.ThreadSet.empty
+  | ArrayRd (a,th)         -> E.ThreadSet.empty
+  | SetMin s               -> E.ThreadSet.empty
+  | SetMax s               -> E.ThreadSet.empty
 
 
-let voc_from_funterm (t:fun_term) : Expr.ThreadSet.t =
+let voc_from_funterm (t:fun_term) : E.ThreadSet.t =
   match t with
     FunVar v        -> opt_th (get_th v)
-  | FunUpd (f,th,v) -> Expr.ThreadSet.singleton th
+  | FunUpd (f,th,v) -> E.ThreadSet.singleton th
 
 
-let rec voc_from_int_set (s:set) : Expr.ThreadSet.t =
+let rec voc_from_int_set (s:set) : E.ThreadSet.t =
   match s with
     VarSet v      -> opt_th (get_th v)
-  | EmptySet      -> Expr.ThreadSet.empty
+  | EmptySet      -> E.ThreadSet.empty
   | Singl i       -> voc_from_int_integer i
-  | Union (s1,s2) -> Expr.ThreadSet.union (voc_from_int_set s1)
+  | Union (s1,s2) -> E.ThreadSet.union (voc_from_int_set s1)
                                           (voc_from_int_set s2)
-  | Intr (s1,s2)  -> Expr.ThreadSet.union (voc_from_int_set s1)
+  | Intr (s1,s2)  -> E.ThreadSet.union (voc_from_int_set s1)
                                           (voc_from_int_set s2)
-  | Diff (s1,s2)  -> Expr.ThreadSet.union (voc_from_int_set s1)
+  | Diff (s1,s2)  -> E.ThreadSet.union (voc_from_int_set s1)
                                           (voc_from_int_set s2)
 
 
-let voc_from_int_term (t:term) : Expr.ThreadSet.t =
+let voc_from_int_term (t:term) : E.ThreadSet.t =
   match t with
     IntV i -> voc_from_int_integer i
   | SetV s -> voc_from_int_set s
 
 
-let voc_from_int_atom (a:atom) : Expr.ThreadSet.t =
-  let union = Expr.ThreadSet.union in
+let voc_from_int_atom (a:atom) : E.ThreadSet.t =
+  let union = E.ThreadSet.union in
   let voc_int  = voc_from_int_integer in
   let voc_term = voc_from_int_term in
   let voc_set  = voc_from_int_set in
@@ -1221,22 +1220,22 @@ let voc_from_int_atom (a:atom) : Expr.ThreadSet.t =
   | Subset (s1,s2)    -> union (voc_set s1) (voc_set s2)
   | TidEq (th1,th2)   -> thset_from [th1;th2]
   | TidInEq (th1,th2) -> thset_from [th1;th2]
-  | FunEq (f1,f2)     -> Expr.ThreadSet.empty
-  | FunInEq (f1,f2)   -> Expr.ThreadSet.empty
+  | FunEq (f1,f2)     -> E.ThreadSet.empty
+  | FunInEq (f1,f2)   -> E.ThreadSet.empty
   | PC (pc,th,pr)     -> opt_th th
-  | PCUpdate (pc,th)  -> Expr.ThreadSet.singleton th
+  | PCUpdate (pc,th)  -> E.ThreadSet.singleton th
   | PCRange (_,_,th,_)-> opt_th th
 
 
-let voc_from_int_literal (l:literal) : Expr.ThreadSet.t =
+let voc_from_int_literal (l:literal) : E.ThreadSet.t =
   match l with
     Atom a    -> voc_from_int_atom a
   | NegAtom a -> voc_from_int_atom a
 
 
-let rec voc_from_int_formula (f:formula) : Expr.ThreadSet.t =
-  let union = Expr.ThreadSet.union in
-  let empty = Expr.ThreadSet.empty in
+let rec voc_from_int_formula (f:formula) : E.ThreadSet.t =
+  let union = E.ThreadSet.union in
+  let empty = E.ThreadSet.empty in
   let voc_formula = voc_from_int_formula in
   match f with
     Literal l        -> voc_from_int_literal l
@@ -1250,15 +1249,15 @@ let rec voc_from_int_formula (f:formula) : Expr.ThreadSet.t =
 
 
 
-let voc_from_conjlit (cl:conjunction_literals) : Expr.ThreadSet.t =
+let voc_from_conjlit (cl:conjunction_literals) : E.ThreadSet.t =
   match cl with
-    ConjTrue     -> Expr.ThreadSet.empty
-  | ConjFalse    -> Expr.ThreadSet.empty
+    ConjTrue     -> E.ThreadSet.empty
+  | ConjFalse    -> E.ThreadSet.empty
   | Conjuncts ls -> List.fold_left (fun s l ->
-                      Expr.ThreadSet.union s (voc_from_int_literal l)
-                    ) Expr.ThreadSet.empty ls
+                      E.ThreadSet.union s (voc_from_int_literal l)
+                    ) E.ThreadSet.empty ls
 
 
 
-let voc (phi:formula) : Expr.tid list =
-  Expr.ThreadSet.elements (voc_from_int_formula phi)
+let voc (phi:formula) : E.tid list =
+  E.ThreadSet.elements (voc_from_int_formula phi)
