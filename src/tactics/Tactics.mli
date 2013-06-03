@@ -104,7 +104,9 @@ val simplify : Expression.formula ->   Expression.formula
 val simplify_with_pc : Expression.formula ->  Expression.tid ->  int list ->  bool ->   Expression.formula 
 val simplify_with_vocabulary : Expression.formula ->  Expression.variable list ->  Expression.formula 
 val generate_support : vc_info ->   Expression.formula list 
-val split_implication : implication ->   implication list 
+val split_implication : implication ->   implication list
+
+val tactic_propositional_propagate : implication -> implication 
 
 
 
