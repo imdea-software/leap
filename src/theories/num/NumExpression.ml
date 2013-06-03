@@ -3,9 +3,6 @@ open LeapLib
 
 module E = Expression
 
-exception NotAnIntExpression of string
-exception NotIntSort of string
-exception MalformedExpression of string
 
 type sort = Int | Set | Thid
 
@@ -87,6 +84,9 @@ and formula =
   | Iff           of formula * formula
 
 
+exception NotConjunctiveExpr of formula
+
+
 let var_compare (x:variable) (y:variable) : int =
   let cmp_scope p1 p2 = (p1 = GlobalScope && (p2 = GlobalScope || p2 = Scope "")) ||
                         (p2 = GlobalScope && (p1 = GlobalScope || p1 = Scope "")) in
@@ -124,26 +124,6 @@ let build_var (id:varId)
     scope = p;
   }
 
-(*
-let get_sort (v:variable) : sort =
-  let (_,s,_,_,_) = v in s
-
-
-let is_primed_var (v:variable) : bool =
-  let (_,_,pr,_,_) = v in pr
-
-
-let get_proc (v:variable) : E.procedure_name =
-  let (_,_,_,_,p) = v in p
-
-
-let get_th (v:variable) : E.shared_or_local =
-  let (_,_,_,th,_) = v in th
-
-
-let get_id (v:variable) : varId =
-  let (id,_,_,_,_) = v in id
-*)
 
 let var_clear_param_info (v:variable) : variable =
   v.parameter <- Shared; v
@@ -158,33 +138,19 @@ let var_is_global (v:variable) : bool =
 
 
 
-(* Sort conversion *)
-let sort_to_int_sort (s:E.sort) : sort =
-  match s with
-    E.Int    -> Int
-  | E.SetInt -> Set
-  | E.Thid   -> Thid
-  | _           -> raise(NotIntSort(E.sort_to_str s))
-
-
-let int_sort_to_sort (s:sort) : E.sort =
-  match s with
-    Int  -> E.Int
-  | Set  -> E.SetInt
-  | Thid -> E.Thid
 
 
 
 (* CONVERTERS TO STRING *)
 (* EXPR TO STR *)
-let sort_to_string (s:sort) : string =
+let sort_to_str (s:sort) : string =
   match s with
     Int  -> "int"
   | Set  -> "set"
   | Thid -> "tid"
 
 
-let rec variable_to_string (v:variable) : string =
+let rec variable_to_str (v:variable) : string =
   let var_str = (loc_var_option v.id v.scope) ^ (shared_or_local_to_str v.parameter) in
   if v.is_primed then
     var_str ^ "'"
@@ -200,17 +166,17 @@ and loc_var_option (v:varId) (p_name:procedure_name) : varId =
 
 
 and shared_or_local_to_str (exp:shared_or_local) : string =
-  match exp with 
-    Shared  -> ""
+  match exp with
+  | Shared  -> ""
   | Local t -> E.param_tid_to_str  t
 
 
-let rec generic_int_integer_to_string (srf:string -> string) (t:integer) : string =
-  let int_str_f = generic_int_integer_to_string srf in
-  let set_str_f = generic_int_set_to_string srf in
+let rec generic_int_integer_to_str (srf:string -> string) (t:integer) : string =
+  let int_str_f = generic_int_integer_to_str srf in
+  let set_str_f = generic_int_set_to_str srf in
   match t with
     Val i          -> string_of_int i
-  | Var v          -> variable_to_string v
+  | Var v          -> variable_to_str v
   | Neg t          -> srf ("-" ^ int_str_f t)
   | Add (t1,t2)    -> srf (int_str_f t1 ^ " + " ^ int_str_f t2)
   | Sub (t1,t2)    -> srf (int_str_f t1 ^ " - " ^ int_str_f t2)
@@ -222,11 +188,11 @@ let rec generic_int_integer_to_string (srf:string -> string) (t:integer) : strin
   | SetMax s       -> srf ("setIntMax(" ^ set_str_f s ^ ")")
 
 
-and generic_int_set_to_string (srf:string -> string) (s:set): string =
-  let int_str_f = generic_int_integer_to_string srf in
-  let set_str_f = generic_int_set_to_string srf in
+and generic_int_set_to_str (srf:string -> string) (s:set): string =
+  let int_str_f = generic_int_integer_to_str srf in
+  let set_str_f = generic_int_set_to_str srf in
   match s with
-    VarSet v      -> variable_to_string v
+    VarSet v      -> variable_to_str v
   | EmptySet      -> srf "emptyset"
   | Singl i       -> srf ("{" ^ int_str_f i ^ "}")
   | Union (s1,s2) -> srf (set_str_f s1 ^ " union " ^ set_str_f s2)
@@ -234,26 +200,26 @@ and generic_int_set_to_string (srf:string -> string) (s:set): string =
   | Diff (s1,s2)  -> srf (set_str_f s1 ^ " diff "  ^ set_str_f s2)
 
 
-let generic_int_term_to_string (srf:string -> string) (t:term) : string =
+let generic_int_term_to_str (srf:string -> string) (t:term) : string =
   match t with
-    IntV i -> generic_int_integer_to_string srf i
-  | SetV s -> generic_int_set_to_string srf s
+    IntV i -> generic_int_integer_to_str srf i
+  | SetV s -> generic_int_set_to_str srf s
 
 
-let rec generic_funterm_to_string (srf:string -> string) (t:fun_term) : string =
+let rec generic_funterm_to_str (srf:string -> string) (t:fun_term) : string =
   match t with
-    FunVar v        -> variable_to_string v
+    FunVar v        -> variable_to_str v
   | FunUpd (f,th,v) -> srf (Printf.sprintf "%s{%s<-%s}"
-                            (generic_funterm_to_string srf f)
+                            (generic_funterm_to_str srf f)
                             (E.tid_to_str th)
-                            (generic_int_term_to_string srf v))
+                            (generic_int_term_to_str srf v))
 
 
-let generic_atom_to_string (srf:string -> string) (a:atom) : string =
-  let int_str_f  = generic_int_integer_to_string srf in
-  let set_str_f  = generic_int_set_to_string srf in
-  let term_str_f = generic_int_term_to_string srf in
-  let fun_str_f  = generic_funterm_to_string srf in
+let generic_atom_to_str (srf:string -> string) (a:atom) : string =
+  let int_str_f  = generic_int_integer_to_str srf in
+  let set_str_f  = generic_int_set_to_str srf in
+  let term_str_f = generic_int_term_to_str srf in
+  let fun_str_f  = generic_funterm_to_str srf in
   match a with
     Less (t1,t2)      -> srf (int_str_f t1  ^ " < "  ^ int_str_f t2)
   | Greater (t1,t2)   -> srf (int_str_f t1  ^ " > "  ^ int_str_f t2)
@@ -281,34 +247,34 @@ let generic_atom_to_string (srf:string -> string) (a:atom) : string =
 
 
 
-let generic_literal_to_string (srf:string -> string) (l:literal) : string =
+let generic_literal_to_str (srf:string -> string) (l:literal) : string =
   match l with
-    Atom a -> generic_atom_to_string srf a
-  | NegAtom a -> srf ("~" ^ generic_atom_to_string srf a)
+    Atom a -> generic_atom_to_str srf a
+  | NegAtom a -> srf ("~" ^ generic_atom_to_str srf a)
 
 
-let rec generic_int_formula_to_string (srf:string -> string)
+let rec generic_int_formula_to_str (srf:string -> string)
                                       (f:formula) : string =
   match f with
-    Literal l        -> generic_literal_to_string srf l
+    Literal l        -> generic_literal_to_str srf l
   | True             -> "true"
   | False            -> "false"
-  | And (f1,f2)      -> srf (generic_int_formula_to_string srf f1 ^ " /\\ " ^
-                             generic_int_formula_to_string srf f2)
-  | Or (f1,f2)       -> srf (generic_int_formula_to_string srf f1 ^ " \\/ " ^
-                             generic_int_formula_to_string srf f2)
-  | Not f1           -> srf ("~" ^ generic_int_formula_to_string srf f1)
-  | Implies (f1,f2)  -> srf (generic_int_formula_to_string srf f1 ^ " -> "  ^
-                             generic_int_formula_to_string srf f2)
-  | Iff (f1,f2)      -> srf (generic_int_formula_to_string srf f1 ^ " <->"  ^
-                             generic_int_formula_to_string srf f2)
+  | And (f1,f2)      -> srf (generic_int_formula_to_str srf f1 ^ " /\\ " ^
+                             generic_int_formula_to_str srf f2)
+  | Or (f1,f2)       -> srf (generic_int_formula_to_str srf f1 ^ " \\/ " ^
+                             generic_int_formula_to_str srf f2)
+  | Not f1           -> srf ("~" ^ generic_int_formula_to_str srf f1)
+  | Implies (f1,f2)  -> srf (generic_int_formula_to_str srf f1 ^ " -> "  ^
+                             generic_int_formula_to_str srf f2)
+  | Iff (f1,f2)      -> srf (generic_int_formula_to_str srf f1 ^ " <->"  ^
+                             generic_int_formula_to_str srf f2)
 
 
-let conjlit_to_string (srf:string -> string) (cl:conjunction_literals) :string =
+let conjlit_to_str (srf:string -> string) (cl:conjunction_literals) :string =
   match cl with
     ConjTrue     -> "true"
   | ConjFalse    -> "false"
-  | Conjuncts ls -> String.concat " /\\ " $ List.map (generic_literal_to_string srf) ls
+  | Conjuncts ls -> String.concat " /\\ " $ List.map (generic_literal_to_str srf) ls
 
 
 
@@ -317,35 +283,35 @@ let no_parenthesis (str:string) : string = str
 let add_parenthesis (str:string) : string = "(" ^ str ^ ")"
 
 (* No parenthesis printing functions *)
-let int_integer_to_string (t:integer) : string =
-  generic_int_integer_to_string no_parenthesis t
+let int_integer_to_str (t:integer) : string =
+  generic_int_integer_to_str no_parenthesis t
 
-let funterm_to_string (t:fun_term) : string =
-  generic_funterm_to_string no_parenthesis t
+let funterm_to_str (t:fun_term) : string =
+  generic_funterm_to_str no_parenthesis t
 
-let int_atom_to_string (a:atom) : string =
-  generic_atom_to_string no_parenthesis a
+let int_atom_to_str (a:atom) : string =
+  generic_atom_to_str no_parenthesis a
 
-let int_literal_to_string (l:literal) : string =
-  generic_literal_to_string no_parenthesis l
+let int_literal_to_str (l:literal) : string =
+  generic_literal_to_str no_parenthesis l
 
-let int_formula_to_string (f:formula) : string =
-  generic_int_formula_to_string no_parenthesis f
+let int_formula_to_str (f:formula) : string =
+  generic_int_formula_to_str no_parenthesis f
 
 
 
 (* Parenthesis printing functions *)
 let int_integer_to_par_string (t:integer) : string =
-  generic_int_integer_to_string add_parenthesis t
+  generic_int_integer_to_str add_parenthesis t
 
 let funterm_to_par_string (t:fun_term) : string =
-  generic_funterm_to_string add_parenthesis t
+  generic_funterm_to_str add_parenthesis t
 
 let int_literal_to_par_string (l:literal) : string =
-  generic_literal_to_string add_parenthesis l
+  generic_literal_to_str add_parenthesis l
 
 let int_formula_to_par_string (f:formula) : string =
-  generic_int_formula_to_string add_parenthesis f
+  generic_int_formula_to_str add_parenthesis f
 
 
 
@@ -425,235 +391,6 @@ and is_int_expression e =
   | E.Formula(phi) -> is_int_formula phi
 
 
-(* SUBTYPE CONVERTER: *)
-(* integer_to_int_integer  : E.integer -> term *)
-(* term_to_int_integer     : E.term -> term    *)
-(* literal_to_int_literal  : E.literal -> literal    *)
-(* formula_to_int_formula  : E.formula -> formula    *)
-
-let variable_to_int_variable (v:E.variable) : variable =
-  build_var v.E.id (sort_to_int_sort v.E.sort) v.E.is_primed v.E.parameter v.E.scope
-    (* No evict problems with thid variables within th_p vars *)
-(*
-    if s = Some E.Thid then
-      (id, None, pr, th, p)
-    else
-      (id, Option.lift sort_to_int_sort s, pr, th, p)
-*)
-
-
-let rec array_to_funterm (x:E.arrays) : fun_term =
-  match x with
-    E.VarArray v -> FunVar (variable_to_int_variable v)
-  | E.ArrayUp (a,th,E.Term (E.IntT i)) ->
-      FunUpd (array_to_funterm a, th, IntV (integer_to_int_integer i))
-  | E.ArrayUp (a,th,E.Term (E.SetIntT i)) ->
-      FunUpd (array_to_funterm a, th, SetV (set_to_int_set i))
-  | _ -> raise(NotAnIntExpression(E.arrays_to_str x))
-
-
-and funterm_to_array (x:fun_term) : E.arrays =
-  let from_int  = int_integer_to_integer in
-  let from_set  = int_set_to_set in
-  match x with
-    FunVar v             -> E.VarArray (int_variable_to_variable v)
-  | FunUpd (f,th,IntV i) -> E.ArrayUp (funterm_to_array f, th,
-                                          E.Term (E.IntT (from_int i)))
-  | FunUpd (f,th,SetV s) -> E.ArrayUp (funterm_to_array f, th,
-                                          E.Term (E.SetIntT (from_set s)))
-
-
-and set_to_int_set (s:E.setint) : set =
-  let toset = set_to_int_set in
-  match s with
-    E.VarSetInt v       -> VarSet (variable_to_int_variable v)
-  | E.EmptySetInt       -> EmptySet
-  | E.SinglInt i        -> Singl (integer_to_int_integer i)
-  | E.UnionInt(s1,s2)   -> Union (toset s1, toset s2)
-  | E.IntrInt(s1,s2)    -> Intr (toset s1, toset s2)
-  | E.SetdiffInt(s1,s2) -> Diff (toset s1, toset s2)
-  | _ -> raise(NotAnIntExpression(E.setint_to_str s))
-
-
-and integer_to_int_integer t =
-  let toint = integer_to_int_integer in
-  let toset = set_to_int_set in
-    match t with
-      E.IntVal(i)       -> Val(i)
-    | E.VarInt v        -> Var(variable_to_int_variable v)
-    | E.IntNeg(i)       -> Neg(toint i)
-    | E.IntAdd(x,y)     -> Add(toint x,toint y)
-    | E.IntSub(x,y)     -> Sub(toint x,toint y)
-    | E.IntMul(x,y)     -> Mul(toint x,toint y)
-    | E.IntDiv(x,y)     -> Div(toint x,toint y)
-    | E.IntArrayRd(a,i) -> ArrayRd(a,i)
-    | E.IntSetMin(s)    -> SetMin (toset s)
-    | E.IntSetMax(s)    -> SetMax (toset s)
-    | E.CellMax(c)      -> raise(NotAnIntExpression(E.integer_to_str t))
-    | E.HavocLevel      -> raise(NotAnIntExpression(E.integer_to_str t))
-
-and term_to_int_integer t =
-  match t with
-      E.IntT(x) -> integer_to_int_integer x
-    | _            -> raise(NotAnIntExpression(E.term_to_str t))
-
-and atom_to_int_atom a =
-  let toint = integer_to_int_integer in
-  let toset = set_to_int_set in
-    match a with
-      E.Append _      -> raise(NotAnIntExpression(E.atom_to_str a))
-    | E.Reach _       -> raise(NotAnIntExpression(E.atom_to_str a))
-    | E.ReachAt _     -> raise(NotAnIntExpression(E.atom_to_str a))
-    | E.OrderList _   -> raise(NotAnIntExpression(E.atom_to_str a))
-    | E.Skiplist _    -> raise(NotAnIntExpression(E.atom_to_str a))
-    | E.In _          -> raise(NotAnIntExpression(E.atom_to_str a))
-    | E.SubsetEq _    -> raise(NotAnIntExpression(E.atom_to_str a))
-    | E.InTh _        -> raise(NotAnIntExpression(E.atom_to_str a))
-    | E.SubsetEqTh _  -> raise(NotAnIntExpression(E.atom_to_str a))
-    | E.InInt _       -> raise(NotAnIntExpression(E.atom_to_str a))
-    | E.SubsetEqInt _ -> raise(NotAnIntExpression(E.atom_to_str a))
-    | E.InElem _      -> raise(NotAnIntExpression(E.atom_to_str a))
-    | E.SubsetEqElem _-> raise(NotAnIntExpression(E.atom_to_str a))
-    | E.Less(x,y)     -> Less(toint x,toint y)
-    | E.Greater(x,y)  -> Greater(toint x,toint y)
-    | E.LessEq(x,y)   -> LessEq(toint x,toint y)
-    | E.GreaterEq(x,y)-> GreaterEq(toint x,toint y)
-    | E.LessTid(x,y)  -> LessTid(x,y)
-    | E.LessElem _    -> raise(NotAnIntExpression(E.atom_to_str a))
-    | E.GreaterElem _ -> raise(NotAnIntExpression(E.atom_to_str a))
-    | E.Eq(E.ThidT x,E.ThidT y)      -> TidEq(x, y)
-    | E.InEq(E.ThidT x,E.ThidT y)    -> TidInEq(x, y)
-    | E.Eq(E.ArrayT x, E.ArrayT y)   -> FunEq (array_to_funterm x,
-                                                        array_to_funterm y)
-    | E.InEq(E.ArrayT x, E.ArrayT y) -> FunInEq (array_to_funterm x,
-                                                          array_to_funterm y)
-    | E.Eq(E.IntT x, E.IntT y)       -> Eq(IntV (toint x),
-                                                    IntV (toint y))
-    | E.Eq(E.SetIntT x, E.SetIntT y) -> Eq(SetV (toset x),
-                                                    SetV (toset y))
-    | E.InEq(E.IntT x, E.IntT y)     -> InEq(IntV(toint x),
-                                                      IntV(toint y))
-    | E.InEq(E.SetIntT x, E.SetIntT y) -> InEq(SetV(toset x),
-                                                      SetV(toset y))
-    | E.Eq (_,_)   -> raise(NotAnIntExpression(E.atom_to_str a))
-    | E.InEq (_,_) -> raise(NotAnIntExpression(E.atom_to_str a))
-    | E.BoolVar _      -> raise(NotAnIntExpression(E.atom_to_str a))
-    | E.BoolArrayRd _  -> raise(NotAnIntExpression(E.atom_to_str a))
-    | E.PC(i,th,pr)    -> PC (i,th,pr)
-    | E.PCUpdate(i,th) -> PCUpdate (i,th)
-    | E.PCRange(i,j,th,pr) -> PCRange (i,j,th,pr)
-
-and literal_to_int_literal lit =
-  match lit with
-    E.Atom a    -> Atom (atom_to_int_atom a)
-  | E.NegAtom a -> NegAtom (atom_to_int_atom a)
-
-and formula_to_int_formula phi =
-  let toint = formula_to_int_formula in
-    match phi with
-        E.Literal(l)   -> Literal(literal_to_int_literal l)
-      | E.True         -> True
-      | E.False        -> False
-      | E.And(x,y)     -> And(toint x,toint y)
-      | E.Or(x,y)      -> Or(toint x,toint y)
-      | E.Not(x)       -> Not(toint x)
-      | E.Implies(x,y) -> Implies(toint x,toint y)
-      | E.Iff(x,y)     -> Iff(toint x,toint y)
-
-
-(* SUPERTYPE CONVERTER: *)
-(* int_integer_to_term        : term    -> E.term *)
-(* int_literal_to_literal : literal -> E.literal *)
-(* int_formula_to_formula : formula -> E.formula *)
-(* int_expr_to_expr : expr_t -> E.expr_t *)
-
-
-and int_variable_to_variable (v:variable) : E.variable =
-  let (id,s,pr,th,p) = v
-  in
-    (id, int_sort_to_sort s, pr, th, p, E.RealVar)
-
-
-and int_formula_to_formula (phi:formula) : E.formula =
-  let to_formula = int_formula_to_formula in
-  match phi with
-      Literal(l)     -> E.Literal(int_literal_to_literal l)
-    | True           -> E.True
-    | False          -> E.False
-    | And(x,y)       -> E.And    (to_formula x, to_formula y)
-    | Or(x,y)        -> E.Or     (to_formula x, to_formula y)
-    | Not(x)         -> E.Not    (to_formula x)
-    | Implies(x,y)   -> E.Implies(to_formula x, to_formula y)
-    | Iff(x,y)       -> E.Iff    (to_formula x, to_formula y)
-
-and int_literal_to_literal (l:literal) : E.literal =
-  match l with
-    Atom a    -> E.Atom (int_atom_to_atom a)
-  | NegAtom a -> E.NegAtom (int_atom_to_atom a)
-
-and int_atom_to_atom (a:atom) : E.atom =
-  let from_int = int_integer_to_integer in
-  let from_set = int_set_to_set in
-  match a with
-      Less(x,y)           -> E.Less        (from_int x,  from_int y)
-    | Greater(x,y)        -> E.Greater     (from_int x, from_int y)
-    | LessEq(x,y)         -> E.LessEq      (from_int x, from_int y)
-    | GreaterEq(x,y)      -> E.GreaterEq   (from_int x, from_int y)
-    | LessTid(x,y)        -> E.LessTid     (x, y)
-    | Eq(IntV x,IntV y)   -> E.Eq          (E.IntT(from_int x),
-                                               E.IntT(from_int y))
-    | Eq(SetV x,SetV y)   -> E.Eq          (E.SetIntT(from_set x),
-                                               E.SetIntT(from_set y))
-    | InEq(IntV x,IntV y) -> E.InEq        (E.IntT(from_int x),
-                                               E.IntT(from_int y))
-    | InEq(SetV x,SetV y) -> E.InEq        (E.SetIntT(from_set x),
-                                               E.SetIntT(from_set y))
-    | In(i,s)             -> E.InInt       (from_int i, from_set s)
-    | Subset(x,y)         -> E.SubsetEqInt (from_set x, from_set y)
-    | TidEq(x,y)          -> E.Eq          (E.ThidT x, E.ThidT y)
-    | TidInEq(x,y)        -> E.InEq        (E.ThidT x, E.ThidT y)
-    | FunEq(x,y)          -> E.Eq          (E.ArrayT (funterm_to_array x),
-                                               E.ArrayT (funterm_to_array y))
-    | FunInEq(x,y)        -> E.InEq        (E.ArrayT (funterm_to_array x),
-                                               E.ArrayT (funterm_to_array y))
-    | Eq(_,_)             -> raise(MalformedExpression(int_atom_to_string a))
-    | InEq(_,_)           -> raise(MalformedExpression(int_atom_to_string a))
-    | PC(i,th,pr)         -> E.PC (i, th, pr)
-    | PCUpdate(i,th)      -> E.PCUpdate (i, th)
-    | PCRange(i,j,th,pr)  -> E.PCRange (i, j, th, pr)
-
-
-
-and int_set_to_set (s:set) : E.setint =
-  let from_set = int_set_to_set in
-  match s with
-    VarSet v     -> E.VarSetInt (int_variable_to_variable v)
-  | EmptySet     -> E.EmptySetInt
-  | Singl i      -> E.SinglInt (int_integer_to_integer i)
-  | Union(s1,s2) -> E.UnionInt (from_set s1, from_set s2)
-  | Intr(s1,s2)  -> E.IntrInt (from_set s1, from_set s2)
-  | Diff(s1,s2)  -> E.SetdiffInt (from_set s1, from_set s2)
-    
-
-and int_integer_to_integer (t:integer) : E.integer =
-  let from_int = int_integer_to_integer in
-  let from_set = int_set_to_set in
-  match t with
-      Val(n)       -> E.IntVal(n)
-    | Var v        -> E.VarInt (int_variable_to_variable v)
-    | Neg(x)       -> E.IntNeg(from_int x)
-    | Add(x,y)     -> E.IntAdd(from_int x,from_int y)
-    | Sub(x,y)     -> E.IntSub(from_int x,from_int y)
-    | Mul(x,y)     -> E.IntMul(from_int x,from_int y)
-    | Div(x,y)     -> E.IntDiv(from_int x,from_int y)
-    | ArrayRd(a,i) -> E.IntArrayRd(a,i)
-    | SetMin(s)    -> E.IntSetMin(from_set s)
-    | SetMax(s)    -> E.IntSetMax(from_set s)
-
-
-and int_integer_to_term (t:integer) : E.term =
-  E.IntT(int_integer_to_integer t)
-
 
 (* CONJUNCTIONS OF LITERAL *)
 let rec is_conjunctive (phi:formula) : bool =
@@ -665,9 +402,6 @@ let rec is_conjunctive (phi:formula) : bool =
     | _          -> false      
 
 
-exception NotConjunctiveExpr of formula
-
-
 let formula_to_conj_literals (phi:formula) : literal list =
   let rec try_to_build_conjunction x =
     match x with
@@ -675,7 +409,7 @@ let formula_to_conj_literals (phi:formula) : literal list =
     | And(a,b)  -> (try_to_build_conjunction a) @ (try_to_build_conjunction b)
     | True      -> []
     |   _       -> Printf.printf "Error: %s\n"
-                      (E.formula_to_str (int_formula_to_formula phi));
+                      (E.formula_to_str (NumInterface.formula_to_expr_formula phi));
                    raise(NotConjunctiveExpr phi)
   in
     try_to_build_conjunction phi
@@ -890,7 +624,7 @@ let rec generic_set_from_int_formula (base:variable -> 'a)
                               (generic_set_from_int_formula base empty union f2)
 
 
-let conjlit_to_string (base:variable -> 'a)
+let conjlit_to_str (base:variable -> 'a)
                       (empty:'a)
                       (union:'a -> 'a -> 'a)
                       (cl:conjunction_literals) : 'a =

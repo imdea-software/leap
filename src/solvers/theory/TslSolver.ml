@@ -689,13 +689,13 @@ let check_sat_by_cases (lines:int)
     | TslExp.Conj ls   ->
         let numSolv_id = BackendSolvers.Yices.identifier in
         let module NumSol = (val NumSolver.choose numSolv_id : NumSolver.S) in
-        let phi_num = NumExpression.formula_to_int_formula
+        let phi_num = NumInterface.formula_to_int_formula
                         (TSLInterface.formula_to_expr_formula
                           (TslExp.from_conjformula_to_formula
                             cf))
         in
         verb "**** TSL Solver will check satisfiability for:\n%s\n"
-                  (NumExpression.int_formula_to_string phi_num);
+                  (NumExpression.int_formula_to_str phi_num);
         NumSol.is_sat phi_num in
 
 

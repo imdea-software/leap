@@ -1,8 +1,8 @@
 open LeapLib
 
 module type CUSTOM_NUMSOLVER = sig
-  module Exp    : ExpressionTypes.EXPRESSION
-  module NumExp : ExpressionTypes.NUMEXP
+  module Exp     : ExpressionTypes.EXPRESSION
+  module NumExp  : ExpressionTypes.NUMEXP
   
   (* Basic invocations *)
   val is_sat              : NumExp.formula -> bool
@@ -119,8 +119,8 @@ struct
   (* Operations with conversion from formulas *)
   
   let implies (ante : Exp.formula) (conse : Exp.formula) : bool =
-    let int_ante  = NumExp.formula_to_int_formula ante in
-    let int_conse = NumExp.formula_to_int_formula conse 
+    let int_ante  = NumInterface.formula_to_int_formula ante in
+    let int_conse = NumInterface.formula_to_int_formula conse
     in int_implies int_ante int_conse
   
   
@@ -129,8 +129,8 @@ struct
   
   
   let equivalent (f1 : Exp.formula) (f2 : Exp.formula) : bool =
-    let int_f1 = NumExp.formula_to_int_formula f1 in
-    let int_f2 = NumExp.formula_to_int_formula f2 
+    let int_f1 = NumInterface.formula_to_int_formula f1 in
+    let int_f2 = NumInterface.formula_to_int_formula f2
     in int_equivalent int_f1 int_f2
   
   

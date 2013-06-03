@@ -1951,7 +1951,7 @@ struct
 (*    LOG "Entering call_num_dp..." LEVEL TRACE; *)
     assert(isInitialized());
     if status = Unverified || status = NotValid then begin
-      let num_phi = NE.formula_to_int_formula phi in
+      let num_phi = NumInterface.formula_to_int_formula phi in
       let timer = new LeapLib.timer in
       timer#start;
       let valid, calls = 

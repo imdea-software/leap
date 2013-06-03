@@ -1,6 +1,3 @@
-open Expression
-
-exception NotAnIntExpression of string
 
 type sort = Int | Set | Thid
 
@@ -102,22 +99,10 @@ val var_is_global : variable -> bool
 
 val is_int_formula : Expression.formula   -> bool
 
-val variable_to_int_variable : Expression.variable -> variable
-val integer_to_int_integer   : Expression.integer  -> integer
-val term_to_int_integer      : Expression.term     -> integer
-val literal_to_int_literal   : Expression.literal  -> literal
-val formula_to_int_formula   : Expression.formula  -> formula
-
-val int_variable_to_variable : variable -> Expression.variable
-val int_integer_to_integer   : integer  -> Expression.integer
-val int_integer_to_term      : integer  -> Expression.term
-val int_literal_to_literal   : literal  -> Expression.literal
-val int_formula_to_formula   : formula  -> Expression.formula
-
-val variable_to_string       : variable -> string
-val int_integer_to_string    : integer  -> string
-val int_formula_to_string    : formula -> string
-val int_literal_to_string    : literal -> string
+val variable_to_str       : variable -> string
+val int_integer_to_str    : integer  -> string
+val int_formula_to_str    : formula -> string
+val int_literal_to_str    : literal -> string
 
 val all_varid             : formula -> Expression.varId list
 val all_varid_literal     : literal -> Expression.varId list
