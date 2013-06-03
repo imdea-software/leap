@@ -22,8 +22,6 @@ type varId = Expression.varId
 
 type kind_t = Normal | Ghost
 
-type scope_t = Global | Local
-
 type unit_op = Lock | Unlock
 
 
@@ -295,8 +293,11 @@ val me_tid : tid
 
 
 (* Variable functions *)
-val build_var : varId -> Expression.sort ->
-                string option -> Expression.var_nature -> variable
+val build_var : varId ->
+                Expression.sort ->
+                Expression.procedure_name ->
+                Expression.var_nature ->
+                variable
 val var_replace_sort : variable -> Expression.sort -> variable
 
 

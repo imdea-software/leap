@@ -28,8 +28,6 @@ type varId = E.varId
 
 type kind_t = Normal | Ghost
 
-type scope_t = Global | Local
-
 type unit_op = Lock | Unlock
 
 (* Expression representation in program statements *)
@@ -313,10 +311,15 @@ exception Invalid_argument
 
 
 (* VARIABLE FUNCTIONS *)
-let build_var (id:varId) (s:E.sort) (p:string option) (k:E.kind_t): variable =
-  (id, s, p, k)
+let build_var (id:varId) (s:E.sort) (p:E.procedure_name) (k:E.kind_t) : variable =
+  {
+    id = id;
+    sort = s;
+    scope = p;
+    nature = k;
+  }
 
-
+(*
 let var_id (v:variable) : varId =
   let (id,_,_,_) = v in id
 
@@ -328,13 +331,14 @@ let var_proc (v:variable) : string option =
 
 let var_k (v:variable) : E.kind_t =
   let (_,_,_,k) = v in k
+*)
 
 let var_replace_sort (v:variable) (s:E.sort) : variable =
-  let (id,_,p,k) = v in (id,s,p,k)
+  build_var v.id s v.scope v.nature
 
 
 (* General constants *)
-let me_tid = VarTh (build_var "me" E.Thid None E.Normal)
+let me_tid = VarTh (build_var "me" E.Thid E.Global E.RealVar)
 
 
 (* Pretty printing for statement formulas *)

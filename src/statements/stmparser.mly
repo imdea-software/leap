@@ -301,7 +301,7 @@ let get_line id = snd id
 
 
 let check_sort_var (v:E.varId)
-                   (p:string option)
+                   (p:E.procedure_name)
                    (s:E.sort)
                    (k:E.var_nature) : unit =
   let generic_var = Stm.VarT (Stm.build_var v E.Unknown p k) in
@@ -325,113 +325,99 @@ let wrong_sort_msg_for (t:Stm.term) (s:E.sort) : unit =
 
 let parser_check_boolean_type a_term get_expr_str =
   match a_term with
-    | Stm.VarT(v,s,p,k) -> check_sort_var v p E.Bool k; a_term
-    | _                 -> parser_typing_error
-                              a_term E.Bool get_expr_str
+    | Stm.VarT v -> check_sort_var v.Stm.id v.Stm.scope E.Bool v.Stm.nature; a_term
+    | _          -> parser_typing_error a_term E.Bool get_expr_str
 
 
 let check_type_int t =
   match t with
-      Stm.IntT(i)        -> i
-    | Stm.VarT(v,s,p,k) -> check_sort_var v p E.Int k;
-                               Stm.VarInt(v,s,p,k)
-    | _                 -> raise(WrongType t)
+      Stm.IntT(i) -> i
+    | Stm.VarT v  -> check_sort_var v.Stm.id v.Stm.scope E.Int v.Stm.nature; Stm.VarInt v
+    | _           -> raise(WrongType t)
 
 
 let check_type_set t =
   match t with
-      Stm.SetT(s)       -> s
-    | Stm.VarT(v,s,p,k) -> check_sort_var v p E.Set k;
-                               Stm.VarSet(v,s,p,k)
-    | _                 -> raise(WrongType t)
+      Stm.SetT(s) -> s
+    | Stm.VarT v  -> check_sort_var v.Stm.id v.Stm.scope E.Set v.Stm.nature; Stm.VarSet v
+    | _           -> raise(WrongType t)
 
 
 let check_type_elem t =
   match t with
-      Stm.ElemT(e)      -> e
-    | Stm.VarT(v,s,p,k) -> check_sort_var v p E.Elem k;
-                               Stm.VarElem(v,s,p,k)
-    | _                 -> raise(WrongType t)
+      Stm.ElemT(e) -> e
+    | Stm.VarT v   -> check_sort_var v.Stm.id v.Stm.scope E.Elem v.Stm.nature; Stm.VarElem v
+    | _            -> raise(WrongType t)
 
 
 let check_type_thid t =
   match t with
-      Stm.ThidT(th)     -> th
-    | Stm.VarT(v,s,p,k) -> check_sort_var v p E.Thid k;
-                               Stm.VarTh(v,s,p,k)
-    | _                 -> raise(WrongType t)
+      Stm.ThidT(th) -> th
+    | Stm.VarT v    -> check_sort_var v.Stm.id v.Stm.scope E.Thid v.Stm.nature; Stm.VarTh v
+    | _             -> raise(WrongType t)
 
 
 let check_type_addr t =
   match t with
-      Stm.AddrT(a)      -> a
-    | Stm.VarT(v,s,p,k) -> check_sort_var v p E.Addr k;
-                               Stm.VarAddr(v,s,p,k)
-    | _                 -> raise(WrongType t)
+      Stm.AddrT(a) -> a
+    | Stm.VarT v   -> check_sort_var v.Stm.id v.Stm.scope E.Addr v.Stm.nature; Stm.VarAddr v
+    | _            -> raise(WrongType t)
 
 
 let check_type_cell t =
   match t with
-      Stm.CellT(c)      -> c
-    | Stm.VarT(v,s,p,k) -> check_sort_var v p E.Cell k;
-                               Stm.VarCell(v,s,p,k)
-    | _                 -> raise(WrongType t)
+      Stm.CellT(c) -> c
+    | Stm.VarT v   -> check_sort_var v.Stm.id v.Stm.scope E.Cell v.Stm.nature; Stm.VarCell v
+    | _            -> raise(WrongType t)
 
 
 let check_type_setth t =
   match t with
-      Stm.SetThT(sth)   -> sth
-    | Stm.VarT(v,s,p,k) -> check_sort_var v p E.SetTh k;
-                               Stm.VarSetTh(v,s,p,k)
-    | _                 -> raise(WrongType t)
+      Stm.SetThT(sth) -> sth
+    | Stm.VarT v      -> check_sort_var v.Stm.id v.Stm.scope E.SetTh v.Stm.nature; Stm.VarSetTh v
+    | _               -> raise(WrongType t)
 
 
 let check_type_setint t =
   match t with
-      Stm.SetIntT(sth)  -> sth
-    | Stm.VarT(v,s,p,k) -> check_sort_var v p E.SetInt k;
-                               Stm.VarSetInt(v,s,p,k)
-    | _                 -> raise(WrongType t)
+      Stm.SetIntT(sth) -> sth
+    | Stm.VarT v       -> check_sort_var v.Stm.id v.Stm.scope E.SetInt v.Stm.nature; Stm.VarSetInt v
+    | _                -> raise(WrongType t)
 
 
 let check_type_setelem t =
   match t with
-      Stm.SetElemT(se)  -> se
-    | Stm.VarT(v,s,p,k) -> check_sort_var v p E.SetElem k;
-                               Stm.VarSetElem(v,s,p,k)
-    | _                 -> raise(WrongType t)
+      Stm.SetElemT(se) -> se
+    | Stm.VarT v       -> check_sort_var v.Stm.id v.Stm.scope E.SetElem v.Stm.nature; Stm.VarSetElem v
+    | _                -> raise(WrongType t)
 
 
 let check_type_path t =
   match t with
-      Stm.PathT(p)      -> p
-    | Stm.VarT(v,s,p,k) -> check_sort_var v p E.Path k;
-                               Stm.VarPath(v,s,p,k)
-    | _                 -> raise(WrongType t)
+      Stm.PathT(p) -> p
+    | Stm.VarT v   -> check_sort_var v.Stm.id v.Stm.scope E.Path v.Stm.nature; Stm.VarPath v
+    | _            -> raise(WrongType t)
 
 
 let check_type_mem t =
   match t with
-      Stm.MemT(m)       -> m
-    | Stm.VarT(v,s,p,k) -> check_sort_var v p E.Mem k;
-                               Stm.VarMem(v,s,p,k)
-    | _                 -> raise(WrongType t)
+      Stm.MemT(m) -> m
+    | Stm.VarT v  -> check_sort_var v.Stm.id v.Stm.scope E.Mem v.Stm.nature; Stm.VarMem v
+    | _           -> raise(WrongType t)
 
 
 let check_type_addrarr t =
   match t with
       Stm.AddrArrayT(arr) -> arr
-    | Stm.VarT(v,s,p,k)   -> check_sort_var v p E.AddrArray k;
-                                 Stm.VarAddrArray(v,s,p,k)
+    | Stm.VarT v          -> check_sort_var v.Stm.id v.Stm.scope E.AddrArray v.Stm.nature; Stm.VarAddrArray v
     | _                   -> raise(WrongType t)
 
 
 let check_type_tidarr t =
   match t with
-      Stm.TidArrayT(arr)  -> arr
-    | Stm.VarT(v,s,p,k)   -> check_sort_var v p E.TidArray k;
-                                 Stm.VarTidArray(v,s,p,k)
-    | _                   -> raise(WrongType t)
+      Stm.TidArrayT(arr) -> arr
+    | Stm.VarT v         -> check_sort_var v.Stm.id v.Stm.scope E.TidArray v.Stm.nature; Stm.VarTidArray v
+    | _                  -> raise(WrongType t)
 
 
 let check_and_get_sort (id:string) : E.sort =
@@ -739,7 +725,7 @@ let global_decl_cond (k:E.var_nature)
                      (op:cond_op_t)
                      (t:Stm.term) : unit =
   let s      = check_and_get_sort sort_name in
-  let var    = Stm.build_var v_name s None k in
+  let var    = Stm.build_var v_name s E.GlobalScope k in
   let (op_symb_str, expr_cond) =
     match op with
       Less        -> ("<",  Stm.Less     (Stm.VarInt var,Stm.term_to_integer t))
@@ -1073,7 +1059,7 @@ global_decl :
       let s      = check_and_get_sort (get_name $2) in
       let v_name = get_name $3 in
       let t      = $5 in
-      let v      = Stm.VarT(Stm.build_var v_name s None k) in
+      let v      = Stm.VarT(Stm.build_var v_name s E.GlobalScope k) in
       let get_str_expr () = sprintf "%s %s := %s" (E.sort_to_str s)
                                                   (v_name)
                                                   (Stm.term_to_str t) in
@@ -1092,7 +1078,7 @@ global_decl :
                                                   (v_name)
                                                   (E.formula_to_str b) in
       let bool_var = E.Literal (E.Atom (E.BoolVar
-                       (E.build_var v_name E.Bool E.NotPrimed E.Shared E.GlobalScope k))) in
+                       (E.build_var v_name E.Bool false E.Shared E.GlobalScope k))) in
       let cond = E.Iff(bool_var, b) in
       let _ = decl_global_var v_name s (Some (E.Condition cond)) k
       in
@@ -1187,7 +1173,7 @@ local_decl :
       let s      = check_and_get_sort (get_name $2) in
       let v_name = get_name $3 in
       let t      = $5 in
-      let v      = Stm.VarT (Stm.build_var v_name s (Some !current_proc) k) in
+      let v      = Stm.VarT (Stm.build_var v_name s (E.Scope !current_proc) k) in
       let get_str_expr () = sprintf "%s %s := %s" (E.sort_to_str s)
                                                   (v_name)
                                                   (Stm.term_to_str t) in
@@ -1205,7 +1191,7 @@ local_decl :
                                                   (v_name)
                                                   (E.formula_to_str b) in
       let bool_var = E.Literal (E.Atom (E.BoolVar
-                        (E.build_var v_name E.Bool E.NotPrimed E.Shared E.GlobalScope k))) in
+                        (E.build_var v_name E.Bool false E.Shared E.GlobalScope k))) in
       let cond = E.Iff(bool_var, b) in
       let _ = decl_local_var v_name s (Some (E.Condition cond)) k
       in
@@ -1398,7 +1384,7 @@ atomic_statement:
     {
       let v = get_name $1 in
       let b = $3 in
-      let _ = check_sort_var v (Some !current_proc) E.Bool in
+      let _ = check_sort_var v (E.Scope !current_proc) E.Bool in
 
       let p_name = if System.mem_var localVars v ||
                       System.mem_var inputVars v then
@@ -1607,7 +1593,7 @@ ghost_statement:
     {
       let v = get_name $1 in
       let b = $3 in
-      let _ = check_sort_var v (Some !current_proc) E.Bool in
+      let _ = check_sort_var v (E.Scope !current_proc) E.Bool in
 
       let p_name = if System.mem_var localVars v ||
                       System.mem_var inputVars v then
@@ -1907,7 +1893,7 @@ statement:
       let v = get_name $2 in
       let b = $4 in
       let g_code = $5 in
-      let _ = check_sort_var v (Some !current_proc) E.Bool in
+      let _ = check_sort_var v (E.Scope !current_proc) E.Bool in
       let st_info = { Stm.pos             = !pos;
                       Stm.next_pos        = !pos+1;
                       Stm.else_pos        = !pos+1;
@@ -2278,13 +2264,13 @@ formula :
 
         if is_input || is_local then
           let c_proc = if !current_proc <> "" then
-                         Some !current_proc
+                         E.Scope !current_proc
                        else
-                         None
+                         E.GlobalScope
           in
             Stm.Literal (Stm.BoolVar (Stm.build_var v E.Bool c_proc k))
         else
-            Stm.Literal (Stm.BoolVar (Stm.build_var v E.Bool None k))
+            Stm.Literal (Stm.BoolVar (Stm.build_var v E.Bool E.GlobalScope k))
       }
 
 
@@ -2529,14 +2515,14 @@ ident :
 
       if is_input || is_local then
         let c_proc = if !current_proc <> "" then
-                       Some !current_proc
+                       E.Scope !current_proc
                      else
-                       None
+                       E.GlobalScope
         in
           inject_sort $ Stm.VarT
                           (Stm.build_var (get_name $1) E.Unknown c_proc k)
       else
-          inject_sort $ Stm.VarT (Stm.build_var v E.Unknown None k)
+          inject_sort $ Stm.VarT (Stm.build_var v E.Unknown E.GlobalScope k)
     }
 
 
@@ -2647,7 +2633,7 @@ thid :
     }
   | ME
     {
-      Stm.VarTh (Stm.build_var Sys.me_tid E.Thid None E.RealVar)
+      Stm.VarTh (Stm.build_var Sys.me_tid E.Thid E.GlobalScope E.RealVar)
     }
 
 

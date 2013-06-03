@@ -10,7 +10,7 @@ sig
   type vc_info_t = {
                      pc   : Expression.pc_t               ;
                      smp  : Smp.cutoff_strategy_t         ;
-                     stac : Tactics.proof_plan option     ;
+                     stac : Tactics.solve_tactic option   ;
                      mutable supps : Tag.f_tag list       ;
                      try_pos : bool                       ;
                    }

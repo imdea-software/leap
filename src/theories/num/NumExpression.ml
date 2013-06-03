@@ -66,9 +66,9 @@ and atom =
   | TidInEq       of tid * tid
   | FunEq         of fun_term * fun_term
   | FunInEq       of fun_term * fun_term
-  | PC            of int * E.shared_or_local * bool
+  | PC            of int * shared_or_local * bool
   | PCUpdate      of int * tid
-  | PCRange       of int * int * E.shared_or_local * bool
+  | PCRange       of int * int * shared_or_local * bool
 and literal =
     Atom            of atom
   | NegAtom         of atom
@@ -184,12 +184,25 @@ let sort_to_string (s:sort) : string =
   | Thid -> "tid"
 
 
-let variable_to_string (v:variable) : string =
-  let var_str = (E.loc_var_option v.id v.scope) ^ (E.shared_or_local_to_str v.parameter) in
+let rec variable_to_string (v:variable) : string =
+  let var_str = (loc_var_option v.id v.scope) ^ (shared_or_local_to_str v.parameter) in
   if v.is_primed then
     var_str ^ "'"
   else
     var_str
+
+
+and loc_var_option (v:varId) (p_name:procedure_name) : varId =
+  match p_name with
+  | GlobalScope -> v
+  | Scope "" -> v
+  | Scope p -> E.localize_var_id v p
+
+
+and shared_or_local_to_str (exp:shared_or_local) : string =
+  match exp with 
+    Shared  -> ""
+  | Local t -> E.param_tid_to_str  t
 
 
 let rec generic_int_integer_to_string (srf:string -> string) (t:integer) : string =
@@ -257,17 +270,13 @@ let generic_atom_to_string (srf:string -> string) (a:atom) : string =
                               E.tid_to_str th2)
   | FunEq (f1,f2)     -> srf (fun_str_f f1  ^ " = "  ^ fun_str_f f2)
   | FunInEq (f1,f2)   -> srf (fun_str_f f1  ^ " != " ^ fun_str_f f2)
-  | PC (pc,th,pr)    -> let i_str  = match pr with
-                                     | E.Primed -> "pc'"
-                                     | E.NotPrimed -> "pc" in
-                        let th_str = E.shared_or_local_to_str th in
+  | PC (pc,th,pr)    -> let i_str = if pr then "pc'" else "pc" in
+                        let th_str = shared_or_local_to_str th in
                           Printf.sprintf "%s(%s) = %i" i_str th_str pc
   | PCUpdate (pc,th) -> let th_str = E.tid_to_str th in
                           Printf.sprintf "pc' = pc{%s<-%i}" th_str pc
-  | PCRange (pc1,pc2,th,pr) -> let i_str  = match pr with
-                                            | E.Primed -> "pc'"
-                                            | E.NotPrimed -> "pc" in
-                               let th_str = E.shared_or_local_to_str th in
+  | PCRange (pc1,pc2,th,pr) -> let i_str = if pr then "pc'" else "pc" in
+                               let th_str = shared_or_local_to_str th in
                                  Printf.sprintf "%i <= %s(%s) <= %i" pc1 i_str th_str pc2
 
 
@@ -423,9 +432,7 @@ and is_int_expression e =
 (* formula_to_int_formula  : E.formula -> formula    *)
 
 let variable_to_int_variable (v:E.variable) : variable =
-  let (id,s,pr,th,p,_) = v
-  in
-    (id, sort_to_int_sort s, pr, th ,p)
+  build_var v.E.id (sort_to_int_sort v.E.sort) v.E.is_primed v.E.parameter v.E.scope
     (* No evict problems with thid variables within th_p vars *)
 (*
     if s = Some E.Thid then

@@ -4,7 +4,7 @@ open Printf
 open LeapLib
 open Global
 
-module Expr   = Expression
+module E      = Expression
 module Vd     = Diagrams
 module Symtbl = Exprsymtable
 
@@ -32,26 +32,26 @@ type cond_op_t =
   | SubsetEqElem
 
 
-exception WrongType of Expr.term
-exception Sort_mismatch of Expr.varId * Expr.sort * Expr.sort
-exception Boolean_var_expected of Expr.term
+exception WrongType of E.term
+exception Sort_mismatch of E.varId * E.sort * E.sort
+exception Boolean_var_expected of E.term
 exception Not_sort_name of string
-exception Duplicated_local_var of Expr.varId * Expr.sort
+exception Duplicated_local_var of E.varId * E.sort
 exception No_main
 exception Unknown_procedure of string
-exception Variable_not_in_procedure of Expr.varId * string
-exception Wrong_assignment of Expr.term
-exception Atomic_double_assignment of Expr.expr_t
+exception Variable_not_in_procedure of E.varId * string
+exception Wrong_assignment of E.term
+exception Atomic_double_assignment of E.expr_t
 exception Unexpected_statement of string
 exception Ghost_var_in_global_decl
-              of Expr.varId * Expr.sort * Expr.initVal_t option * Expr.var_nature
+              of E.varId * E.sort * E.initVal_t option * E.var_nature
 exception Ghost_var_in_local_decl
-              of Expr.varId * Expr.sort * Expr.initVal_t option * Expr.var_nature
-exception Ghost_vars_in_assignment of Expr.term list
-exception Normal_vars_in_ghost_assignment of Expr.term list
-exception No_kind_for_var of Expr.varId
-exception Duplicated_ranking_function of Vd.node_id_t * Expr.term * Expr.term
-exception Ranking_function_unmatched_sort of Expr.sort * Expr.term * Expr.sort
+              of E.varId * E.sort * E.initVal_t option * E.var_nature
+exception Ghost_vars_in_assignment of E.term list
+exception Normal_vars_in_ghost_assignment of E.term list
+exception No_kind_for_var of E.varId
+exception Duplicated_ranking_function of Vd.node_id_t * E.term * E.term
+exception Ranking_function_unmatched_sort of E.sort * E.term * E.sort
 exception Different_argument_length of string * string
 
 
@@ -63,13 +63,13 @@ let curr_box_counter = ref 0
 
 
 (* Looks for a term sort in the global and temporal var tables. *)
-let get_sort (t:Expr.term) : Expr.sort =
-  let p = Expr.get_var_owner t in
+let get_sort (t:E.term) : E.sort =
+  let p = E.get_var_owner t in
   let gVars = System.get_global !Symtbl.sys in
   let (iVars,lVars) = match p with
-                        Expr.Scope proc  -> (System.get_input_by_name !Symtbl.sys proc,
+                        E.Scope proc  -> (System.get_input_by_name !Symtbl.sys proc,
                                              System.get_local_by_name !Symtbl.sys proc)
-                      | Expr.GlobalScope -> (System.empty_var_table,
+                      | E.GlobalScope -> (System.empty_var_table,
                                              System.empty_var_table)
   in
     System.get_sort_from_term gVars iVars lVars invVars t
@@ -83,9 +83,9 @@ let parser_error msg =
 
 
 let parser_typing_error term a_sort get_expr =
-  let term_str = (Expr.term_to_str term) in
-  let term_sort_str = (Expr.sort_to_str (get_sort term)) in
-  let sort_str = (Expr.sort_to_str a_sort) in
+  let term_str = (E.term_to_str term) in
+  let term_sort_str = (E.sort_to_str (get_sort term)) in
+  let sort_str = (E.sort_to_str a_sort) in
   let str_expr = (get_expr ()) in
   let str = sprintf "Term \"%s\" is of sort %s, but it was \
                      expected to be of sort %s in expression \"%s\""
@@ -95,10 +95,10 @@ let parser_typing_error term a_sort get_expr =
 
 
 let parser_types_incompatible t1 t2 get_expr_str =
-  let t1_str = (Expr.term_to_str t1) in
-  let s1_str = (Expr.sort_to_str (get_sort t1)) in
-  let t2_str = (Expr.term_to_str t2) in
-  let s2_str = (Expr.sort_to_str (get_sort t2)) in
+  let t1_str = (E.term_to_str t1) in
+  let s1_str = (E.sort_to_str (get_sort t1)) in
+  let t2_str = (E.term_to_str t2) in
+  let s2_str = (E.sort_to_str (get_sort t2)) in
   let str_expr = (get_expr_str ()) in
   let str = (Printf.sprintf "Unexpectedly \"%s\" is of type \"%s\" and  \
                              \"%s\" is of type \"%s\", when they should \
@@ -119,21 +119,21 @@ let parser_check_compatibility_with_op_cond t1 t2 get_expr_str op =
   let s1 = get_sort t1 in
   let s2 = get_sort t2 in
   match op with
-    In          -> if (s1 != Expr.Addr || s2 != Expr.Set) then
+    In          -> if (s1 != E.Addr || s2 != E.Set) then
                      parser_types_incompatible t1 t2 get_expr_str
-  | SubsetEq    -> if (s1 != Expr.Set || s2 != Expr.Set) then
+  | SubsetEq    -> if (s1 != E.Set || s2 != E.Set) then
                      parser_types_incompatible t1 t2 get_expr_str
-  | InTh        -> if (s1 != Expr.Thid || s2 != Expr.SetTh) then
+  | InTh        -> if (s1 != E.Thid || s2 != E.SetTh) then
                      parser_types_incompatible t1 t2 get_expr_str
-  | SubsetEqTh  -> if (s1 != Expr.SetTh || s2 != Expr.SetTh) then
+  | SubsetEqTh  -> if (s1 != E.SetTh || s2 != E.SetTh) then
                      parser_types_incompatible t1 t2 get_expr_str
-  | InInt       -> if (s1 != Expr.Int || s2 != Expr.SetInt) then
+  | InInt       -> if (s1 != E.Int || s2 != E.SetInt) then
                      parser_types_incompatible t1 t2 get_expr_str
-  | SubsetEqInt -> if (s1 != Expr.SetInt || s2 != Expr.SetInt) then
+  | SubsetEqInt -> if (s1 != E.SetInt || s2 != E.SetInt) then
                      parser_types_incompatible t1 t2 get_expr_str
-  | InElem      -> if (s1 != Expr.Elem || s2 != Expr.SetElem) then
+  | InElem      -> if (s1 != E.Elem || s2 != E.SetElem) then
                      parser_types_incompatible t1 t2 get_expr_str
-  | SubsetEqElem-> if (s1 != Expr.SetElem || s2 != Expr.SetElem) then
+  | SubsetEqElem-> if (s1 != E.SetElem || s2 != E.SetElem) then
                      parser_types_incompatible t1 t2 get_expr_str
   | _           -> if (s1 != s2) then
                      parser_types_incompatible t1 t2 get_expr_str
@@ -146,8 +146,8 @@ let parser_check_type checker a_term a_sort get_expr_str =
     | WrongType(_) -> parser_typing_error a_term a_sort get_expr_str
 
 
-let decl_inv_var (v:Expr.varId) (s:Expr.sort) (e:Expr.initVal_t option) : unit =
-  System.add_var invVars v s e Expr.Shared Expr.RealVar
+let decl_inv_var (v:E.varId) (s:E.sort) (e:E.initVal_t option) : unit =
+  System.add_var invVars v s e E.Shared E.RealVar
 
 
 
@@ -156,173 +156,169 @@ let get_name id = fst id
 let get_line id = snd id
 
 
-let check_sort_var (v:Expr.variable) : unit =
-  let id = Expr.var_id   v in
-  let s  = Expr.var_sort v in
-  let p  = Expr.var_proc v in
-  let k  = Expr.var_k    v in
-  let generic_var = Expr.VarT (Expr.build_var id Expr.Unknown Expr.NotPrimed Expr.Shared p k) in
+let check_sort_var (v:E.variable) : unit =
+  let generic_var = E.VarT (E.build_var v.E.id E.Unknown false E.Shared v.E.scope v.E.nature) in
   let knownSort = get_sort generic_var in
-    if (knownSort != s) then
+    if (knownSort != v.E.sort) then
       begin
         Interface.Err.msg "Mismatch variable type" $
           sprintf "Variable %s is of sort %s, while it is trying to be \
                    assigned to an expression of sort %s"
-                    id (Expr.sort_to_str knownSort) (Expr.sort_to_str s);
-        raise(Sort_mismatch(id,knownSort,s))
+                    v.E.id (E.sort_to_str knownSort) (E.sort_to_str v.E.sort);
+        raise(Sort_mismatch(v.E.id,knownSort,v.E.sort))
       end
 
 
-let wrong_sort_msg_for (t:Expr.term) (s:Expr.sort) : unit =
+let wrong_sort_msg_for (t:E.term) (s:E.sort) : unit =
   Interface.Err.msg "Wrong type" $
   sprintf "A term of sort %s was expected, but term \"%s\" has sort %s."
-              (Expr.sort_to_str s) (Expr.term_to_str t)
-              (Expr.sort_to_str (get_sort t))
+              (E.sort_to_str s) (E.term_to_str t)
+              (E.sort_to_str (get_sort t))
 
 
 let parser_check_boolean_type a_term get_expr_str =
   match a_term with
-    | Expr.VarT v -> let var = Expr.inject_var_sort v Expr.Bool in
+    | E.VarT v -> let var = E.inject_var_sort v E.Bool in
                        check_sort_var var;
-                       Expr.boolvar var
-    | _           -> parser_typing_error a_term Expr.Bool get_expr_str
+                       E.boolvar var
+    | _           -> parser_typing_error a_term E.Bool get_expr_str
 
 
 let check_type_int t =
   match t with
-      Expr.IntT i -> i
-    | Expr.VarT v -> let var = Expr.inject_var_sort v Expr.Int in
+      E.IntT i -> i
+    | E.VarT v -> let var = E.inject_var_sort v E.Int in
                        check_sort_var var;
-                       Expr.VarInt var
+                       E.VarInt var
     | _           -> raise(WrongType t)
 
 
 let check_type_set t =
   match t with
-      Expr.SetT s -> s
-    | Expr.VarT v -> let var = Expr.inject_var_sort v Expr.Set in
+      E.SetT s -> s
+    | E.VarT v -> let var = E.inject_var_sort v E.Set in
                        check_sort_var var;
-                       Expr.VarSet var
+                       E.VarSet var
     | _           -> raise(WrongType t)
 
 
 let check_type_elem t =
   match t with
-      Expr.ElemT e -> e
-    | Expr.VarT v  -> let var = Expr.inject_var_sort v Expr.Elem in
+      E.ElemT e -> e
+    | E.VarT v  -> let var = E.inject_var_sort v E.Elem in
                         check_sort_var var;
-                        Expr.VarElem var
+                        E.VarElem var
     | _            -> raise(WrongType t)
 
 
 let check_type_thid t =
   match t with
-      Expr.ThidT th -> th
-    | Expr.VarT v   -> let var = Expr.inject_var_sort v Expr.Thid in
+      E.ThidT th -> th
+    | E.VarT v   -> let var = E.inject_var_sort v E.Thid in
                          check_sort_var var;
-                         Expr.VarTh var
+                         E.VarTh var
     | _             -> raise(WrongType t)
 
 
 let check_type_addr t =
   match t with
-      Expr.AddrT a -> a
-    | Expr.VarT v  -> let var = Expr.inject_var_sort v Expr.Addr in
+      E.AddrT a -> a
+    | E.VarT v  -> let var = E.inject_var_sort v E.Addr in
                         check_sort_var var;
-                        Expr.VarAddr var
+                        E.VarAddr var
     | _            -> raise(WrongType t)
 
 
 let check_type_cell t =
   match t with
-      Expr.CellT c -> c
-    | Expr.VarT v  -> let var = Expr.inject_var_sort v Expr.Cell in
+      E.CellT c -> c
+    | E.VarT v  -> let var = E.inject_var_sort v E.Cell in
                         check_sort_var var;
-                        Expr.VarCell var
+                        E.VarCell var
     | _            -> raise(WrongType t)
 
 
 let check_type_setth t =
   match t with
-      Expr.SetThT sth -> sth
-    | Expr.VarT v     -> let var = Expr.inject_var_sort v Expr.SetTh in
+      E.SetThT sth -> sth
+    | E.VarT v     -> let var = E.inject_var_sort v E.SetTh in
                            check_sort_var var;
-                           Expr.VarSetTh var
+                           E.VarSetTh var
     | _               -> raise(WrongType t)
 
 
 let check_type_setint t =
   match t with
-      Expr.SetIntT sth -> sth
-    | Expr.VarT v      -> let var = Expr.inject_var_sort v Expr.SetInt in
+      E.SetIntT sth -> sth
+    | E.VarT v      -> let var = E.inject_var_sort v E.SetInt in
                             check_sort_var var;
-                            Expr.VarSetInt var
+                            E.VarSetInt var
     | _                -> raise(WrongType t)
 
 
 let check_type_setelem t =
   match t with
-      Expr.SetElemT se -> se
-    | Expr.VarT v      -> let var = Expr.inject_var_sort v Expr.SetElem in
+      E.SetElemT se -> se
+    | E.VarT v      -> let var = E.inject_var_sort v E.SetElem in
                             check_sort_var var;
-                            Expr.VarSetElem var
+                            E.VarSetElem var
     | _                -> raise(WrongType t)
 
 
 let check_type_path t =
   match t with
-      Expr.PathT p -> p
-    | Expr.VarT v  -> let var = Expr.inject_var_sort v Expr.Path in
+      E.PathT p -> p
+    | E.VarT v  -> let var = E.inject_var_sort v E.Path in
                         check_sort_var var;
-                        Expr.VarPath var
+                        E.VarPath var
     | _            -> raise(WrongType t)
 
 
 let check_type_mem t =
   match t with
-      Expr.MemT m  -> m
-    | Expr.VarT v  -> let var = Expr.inject_var_sort v Expr.Mem in
+      E.MemT m  -> m
+    | E.VarT v  -> let var = E.inject_var_sort v E.Mem in
                         check_sort_var var;
-                        Expr.VarMem var
+                        E.VarMem var
     | _            -> raise(WrongType t)
 
 
 let check_type_addrarr t =
   match t with
-      Expr.AddrArrayT arr -> arr
-    | Expr.VarT v         -> let var = Expr.inject_var_sort v Expr.AddrArray in
+      E.AddrArrayT arr -> arr
+    | E.VarT v         -> let var = E.inject_var_sort v E.AddrArray in
                                check_sort_var var;
-                               Expr.VarAddrArray var
+                               E.VarAddrArray var
     | _                   -> raise(WrongType t)
 
 
 let check_type_tidarr t =
   match t with
-      Expr.TidArrayT arr -> arr
-    | Expr.VarT v        -> let var = Expr.inject_var_sort v Expr.TidArray in
+      E.TidArrayT arr -> arr
+    | E.VarT v        -> let var = E.inject_var_sort v E.TidArray in
                               check_sort_var var;
-                              Expr.VarTidArray var
+                              E.VarTidArray var
     | _                  -> raise(WrongType t)
 
 
 
-let check_and_get_sort (id:string) : Expr.sort =
+let check_and_get_sort (id:string) : E.sort =
   match id with
-    "tid"     -> Expr.Thid
-  | "elem"    -> Expr.Elem
-  | "addr"    -> Expr.Addr
-  | "cell"    -> Expr.Cell
-  | "mem"     -> Expr.Mem
-  | "path"    -> Expr.Path
-  | "bool"    -> Expr.Bool
-  | "addrSet" -> Expr.Set
-  | "tidSet"  -> Expr.SetTh
-  | "intSet"  -> Expr.SetInt
-  | "elemSet" -> Expr.SetElem
-  | "int"     -> Expr.Int
-  | "array"   -> Expr.Array
-  | "addrarr" -> Expr.AddrArray
-  | "tidarr"  -> Expr.TidArray
+    "tid"     -> E.Thid
+  | "elem"    -> E.Elem
+  | "addr"    -> E.Addr
+  | "cell"    -> E.Cell
+  | "mem"     -> E.Mem
+  | "path"    -> E.Path
+  | "bool"    -> E.Bool
+  | "addrSet" -> E.Set
+  | "tidSet"  -> E.SetTh
+  | "intSet"  -> E.SetInt
+  | "elemSet" -> E.SetElem
+  | "int"     -> E.Int
+  | "array"   -> E.Array
+  | "addrarr" -> E.AddrArray
+  | "tidarr"  -> E.TidArray
   | _ -> begin
            Interface.Err.msg "Unrecognized sort" $
              sprintf "A sort was expected, but \"%s\" was found" id;
@@ -340,28 +336,28 @@ let check_is_procedure (id:string) =
     end
 
 
-let inject_sort (exp:Expr.term) : Expr.term =
+let inject_sort (exp:E.term) : E.term =
   match exp with
-    Expr.VarT v -> let s = get_sort exp in
-                   let var = Expr.inject_var_sort v s in
+    E.VarT v -> let s = get_sort exp in
+                   let var = E.inject_var_sort v s in
                      begin
                        match s with
-                         Expr.Set       -> Expr.SetT       (Expr.VarSet       var)
-                       | Expr.Elem      -> Expr.ElemT      (Expr.VarElem      var)
-                       | Expr.Thid      -> Expr.ThidT      (Expr.VarTh        var)
-                       | Expr.Addr      -> Expr.AddrT      (Expr.VarAddr      var)
-                       | Expr.Cell      -> Expr.CellT      (Expr.VarCell      var)
-                       | Expr.SetTh     -> Expr.SetThT     (Expr.VarSetTh     var)
-                       | Expr.SetInt    -> Expr.SetIntT    (Expr.VarSetInt    var)
-                       | Expr.SetElem   -> Expr.SetElemT   (Expr.VarSetElem   var)
-                       | Expr.Path      -> Expr.PathT      (Expr.VarPath      var)
-                       | Expr.Mem       -> Expr.MemT       (Expr.VarMem       var)
-                       | Expr.Bool      -> Expr.VarT       (var)
-                       | Expr.Int       -> Expr.IntT       (Expr.VarInt       var)
-                       | Expr.Array     -> Expr.ArrayT     (Expr.VarArray     var)
-                       | Expr.AddrArray -> Expr.AddrArrayT (Expr.VarAddrArray var)
-                       | Expr.TidArray  -> Expr.TidArrayT  (Expr.VarTidArray  var)
-                       | Expr.Unknown   -> Expr.VarT       (var)
+                         E.Set       -> E.SetT       (E.VarSet       var)
+                       | E.Elem      -> E.ElemT      (E.VarElem      var)
+                       | E.Thid      -> E.ThidT      (E.VarTh        var)
+                       | E.Addr      -> E.AddrT      (E.VarAddr      var)
+                       | E.Cell      -> E.CellT      (E.VarCell      var)
+                       | E.SetTh     -> E.SetThT     (E.VarSetTh     var)
+                       | E.SetInt    -> E.SetIntT    (E.VarSetInt    var)
+                       | E.SetElem   -> E.SetElemT   (E.VarSetElem   var)
+                       | E.Path      -> E.PathT      (E.VarPath      var)
+                       | E.Mem       -> E.MemT       (E.VarMem       var)
+                       | E.Bool      -> E.VarT       (var)
+                       | E.Int       -> E.IntT       (E.VarInt       var)
+                       | E.Array     -> E.ArrayT     (E.VarArray     var)
+                       | E.AddrArray -> E.AddrArrayT (E.VarAddrArray var)
+                       | E.TidArray  -> E.TidArrayT  (E.VarTidArray  var)
+                       | E.Unknown   -> E.VarT       (var)
                      end
   | _           -> exp
 
@@ -375,7 +371,7 @@ let unexpected_statement get_str_expr =
     raise(Unexpected_statement str_expr)
 
 
-let check_var_belongs_to_procedure (v:Expr.varId) (p_name:string) =
+let check_var_belongs_to_procedure (v:E.varId) (p_name:string) =
   let p_info = System.get_proc_by_name !Symtbl.sys p_name in
   let iVars = System.proc_info_get_input p_info in
   let lVars = System.proc_info_get_local p_info in
@@ -388,22 +384,22 @@ let check_var_belongs_to_procedure (v:Expr.varId) (p_name:string) =
       end
 
 
-let check_delta_sort (s:Expr.sort) : unit =
+let check_delta_sort (s:E.sort) : unit =
   match s with
-    Expr.Int    -> ()
-  | Expr.Set    -> ()
-  | Expr.SetTh  -> ()
-  | Expr.SetInt -> ()
+    E.Int    -> ()
+  | E.Set    -> ()
+  | E.SetTh  -> ()
+  | E.SetInt -> ()
   | _        -> Interface.Err.msg "Wrong ranking function sort" $
                   sprintf "By the moment, only expressions of sort %s are \
                            accepted for ranking functions. Instead, an \
                            expression of sort %s was found."
-                          (Expr.sort_to_str Expr.Int)
-                          (Expr.sort_to_str s)
+                          (E.sort_to_str E.Int)
+                          (E.sort_to_str s)
 
 
 let check_and_add_delta (tbl:Vd.delta_fun_t)
-                        (lst:(Vd.delta_range_t list * Expr.term) list)
+                        (lst:(Vd.delta_range_t list * E.term) list)
                           : unit =
   let sort = ref None in
   let add e k =
@@ -415,8 +411,8 @@ let check_and_add_delta (tbl:Vd.delta_fun_t)
                    expression:\n\"%s\",\nbut this node has already been \
                    associated to expression:\n\"%s\"\n"
                    (Vd.PP.node_id_to_str k)
-                   (Expr.term_to_str e)
-                   (Expr.term_to_str prev_e);
+                   (E.term_to_str e)
+                   (E.term_to_str prev_e);
         raise(Duplicated_ranking_function(k,e,prev_e))
       end
     else
@@ -431,9 +427,9 @@ let check_and_add_delta (tbl:Vd.delta_fun_t)
                           Interface.Err.msg"Unmatched sort in ranking function"$
                             sprintf "An expression of sort %s was expected, \
                                      but expression \"%s\" has sort %s."                       
-                                     (Expr.sort_to_str s)
-                                     (Expr.term_to_str e)
-                                     (Expr.sort_to_str e_sort);
+                                     (E.sort_to_str s)
+                                     (E.term_to_str e)
+                                     (E.sort_to_str e_sort);
                           raise(Ranking_function_unmatched_sort(s,e,e_sort))
                         end
         in
@@ -452,11 +448,11 @@ let check_and_add_delta (tbl:Vd.delta_fun_t)
     ()
 
 
-let define_ident (proc_name:Expr.procedure_name)
+let define_ident (proc_name:E.procedure_name)
                  (id:string)
-                 (th:Expr.shared_or_local) : Expr.term =
+                 (th:E.shared_or_local) : E.term =
       let k = match proc_name with
-              | Expr.Scope p ->     check_is_procedure p;
+              | E.Scope p ->     check_is_procedure p;
                                     check_var_belongs_to_procedure id p;
                                     let proc_info = System.get_proc_by_name !Symtbl.sys p in
                                     let iVars     = System.proc_info_get_input proc_info in
@@ -465,11 +461,11 @@ let define_ident (proc_name:Expr.procedure_name)
                                       System.find_var_kind iVars id
                                     else
                                       System.find_var_kind lVars id
-              | Expr.GlobalScope -> try
+              | E.GlobalScope -> try
                                       let gVars = System.get_global !Symtbl.sys in
                                         System.find_var_kind gVars id
-                                    with _ -> Expr.RealVar in
-      inject_sort (Expr.VarT (Expr.build_var id Expr.Unknown Expr.NotPrimed th proc_name k))
+                                    with _ -> E.RealVar in
+      inject_sort (E.VarT (E.build_var id E.Unknown false th proc_name k))
 
 
 %}
@@ -566,35 +562,35 @@ let define_ident (proc_name:Expr.procedure_name)
 %type <unit> inv_var_decl
 %type <Tag.f_tag option> formula_tag
 
-%type <Expr.term list> term_list
+%type <E.term list> term_list
 
 %type <Expression.formula> formula
-%type <Expr.shared_or_local> opt_th_param
-%type <Expr.shared_or_local> th_param
-%type <Expr.literal> literal
-%type <Expr.term> term
-%type <Expr.cell> cell
-%type <Expr.tid> thid
-%type <Expr.elem> elem
-%type <Expr.addr> addr
-%type <Expr.mem> mem
-%type <Expr.path> path
-%type <Expr.set> set
-%type <Expr.setth> setth
-%type <Expr.setint> setint
-%type <Expr.setelem> setelem
-%type <Expr.integer> integer
-%type <Expr.literal> literal
-%type <Expr.eq> equals
-%type <Expr.diseq> disequals
-%type <Expr.term> arrays
-%type <Expr.addrarr> addrarr
-%type <Expr.tidarr> tidarr
+%type <E.shared_or_local> opt_th_param
+%type <E.shared_or_local> th_param
+%type <E.literal> literal
+%type <E.term> term
+%type <E.cell> cell
+%type <E.tid> thid
+%type <E.elem> elem
+%type <E.addr> addr
+%type <E.mem> mem
+%type <E.path> path
+%type <E.set> set
+%type <E.setth> setth
+%type <E.setint> setint
+%type <E.setelem> setelem
+%type <E.integer> integer
+%type <E.literal> literal
+%type <E.eq> equals
+%type <E.diseq> disequals
+%type <E.term> arrays
+%type <E.addrarr> addrarr
+%type <E.tidarr> tidarr
 
 %type <Diagrams.vd_t> diagram
 %type <(Diagrams.pvd_t * Expression.tid list)> param_diagram
-%type <Expr.formula list> support
-%type <Expr.formula list> sup_formula_list
+%type <E.formula list> support
+%type <E.formula list> sup_formula_list
 
 %type <Vd.box_t list> boxes
 %type <Vd.box_t list> box_list
@@ -619,8 +615,8 @@ let define_ident (proc_name:Expr.procedure_name)
 %type <Vd.delta_range_t> delta_node_desc
 %type <Vd.delta_range_t list> delta_node_list
 %type <Vd.delta_range_t list> delta_node_pos
-%type <Vd.delta_range_t list * Expr.term> delta_func
-%type <(Vd.delta_range_t list * Expr.term) list> delta_func_list
+%type <Vd.delta_range_t list * E.term> delta_func
+%type <(Vd.delta_range_t list * E.term) list> delta_func_list
 
 
 %%
@@ -701,7 +697,7 @@ box :
     {
       let nodes_id = $2 in
       let var_name = get_name $5 in
-      let th       = Expr.build_var_tid var_name in
+      let th       = E.build_var_tid var_name in
       let _        = incr curr_box_counter in
 
       VD.new_box !curr_box_counter nodes_id th
@@ -938,7 +934,7 @@ inv_var_decl:
       let s      = check_and_get_sort (get_name $1) in
       let v_name = get_name $2 in
 
-(*      decl_global_var v_name s None Expr.RealVar; *)
+(*      decl_global_var v_name s None E.RealVar; *)
       decl_inv_var v_name s None
     }
 
@@ -953,26 +949,26 @@ formula :
   | OPEN_PAREN formula CLOSE_PAREN
       { $2 }
   | literal
-      { Expr.Literal $1 }
+      { E.Literal $1 }
   | LOGICAL_TRUE
-      { Expr.True }
+      { E.True }
   | LOGICAL_FALSE
-      { Expr.False }
+      { E.False }
   | LOGICAL_NOT formula
-      { Expr.Not $2 }
+      { E.Not $2 }
   | formula LOGICAL_AND formula
-      { Expr.And ($1, $3) }
+      { E.And ($1, $3) }
   | formula LOGICAL_OR formula
-      { Expr.Or ($1, $3) }
+      { E.Or ($1, $3) }
   | formula LOGICAL_THEN formula
-      { Expr.Implies ($1, $3) }
+      { E.Implies ($1, $3) }
   | formula EQUALS formula
-      { Expr.Iff ($1, $3) }
+      { E.Iff ($1, $3) }
   | AT NUMBER opt_th_param DOT
       {
         let line_num = $2 in
         let th_p     = $3 in
-          Expr.pc_form line_num th_p Expr.NotPrimed
+          E.pc_form line_num th_p false
       }
   | AT IDENT opt_th_param DOT
       {
@@ -980,16 +976,16 @@ formula :
         let th_p       = $3 in
         let labelTbl   = System.get_labels !Symtbl.sys in
         let pc_pos     = System.get_label_pos labelTbl label_name in
-(*      let pos_list = List.map (fun p -> Expr.pc_form p th_p false) pc_list *)
+(*      let pos_list = List.map (fun p -> E.pc_form p th_p false) pc_list *)
         let pc_expr    = match pc_pos with
                            None -> parser_error ("Unknown label: " ^ label_name)
                          | Some (i,e) -> if i = e then
-                                           Expr.PC (i, th_p, Expr.NotPrimed)
+                                           E.PC (i, th_p, false)
                                          else
-                                           Expr.PCRange (i, e, th_p, Expr.NotPrimed)
+                                           E.PCRange (i, e, th_p, false)
         in
-          Expr.Literal (Expr.Atom pc_expr)
-(*          Expr.disj_list pos_list *)
+          E.Literal (E.Atom pc_expr)
+(*          E.disj_list pos_list *)
       }
 
 
@@ -998,7 +994,7 @@ formula :
 
 opt_th_param:
   |
-    { Expr.Shared }
+    { E.Shared }
   | th_param
     { $1 }
 
@@ -1007,12 +1003,12 @@ th_param:
   | OPEN_PAREN IDENT CLOSE_PAREN
     {
       let th_id = get_name $2 in
-        Expr.Local (Expr.build_var_tid th_id)
+        E.Local (E.build_var_tid th_id)
     }
   | OPEN_PAREN NUMBER CLOSE_PAREN
     {
       let th_id = $2 in
-        Expr.Local (Expr.build_num_tid th_id)
+        E.Local (E.build_num_tid th_id)
     }
 
 
@@ -1022,178 +1018,178 @@ th_param:
 literal :
   | APPEND OPEN_PAREN term COMMA term COMMA term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "append(%s,%s,%s)" (Expr.term_to_str $3)
-                                                       (Expr.term_to_str $5)
-                                                       (Expr.term_to_str $7) in
-      let p1   = parser_check_type check_type_path $3 Expr.Path get_str_expr in
-      let p2   = parser_check_type check_type_path $5 Expr.Path get_str_expr in
-      let pres = parser_check_type check_type_path $7 Expr.Path get_str_expr in
-        Expr.Atom (Expr.Append (p1,p2,pres))
+      let get_str_expr () = sprintf "append(%s,%s,%s)" (E.term_to_str $3)
+                                                       (E.term_to_str $5)
+                                                       (E.term_to_str $7) in
+      let p1   = parser_check_type check_type_path $3 E.Path get_str_expr in
+      let p2   = parser_check_type check_type_path $5 E.Path get_str_expr in
+      let pres = parser_check_type check_type_path $7 E.Path get_str_expr in
+        E.Atom (E.Append (p1,p2,pres))
     }
   | REACH OPEN_PAREN term COMMA term COMMA term COMMA term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "reach(%s,%s,%s,%s)" (Expr.term_to_str $3)
-                                                         (Expr.term_to_str $5)
-                                                         (Expr.term_to_str $7)
-                                                         (Expr.term_to_str $9) in
-      let h      = parser_check_type check_type_mem  $3 Expr.Mem get_str_expr in
-      let a_from = parser_check_type check_type_addr $5 Expr.Addr get_str_expr in
-      let a_to   = parser_check_type check_type_addr $7 Expr.Addr get_str_expr in
-      let p      = parser_check_type check_type_path $9 Expr.Path get_str_expr in
-        Expr.Atom (Expr.Reach (h,a_from,a_to,p))
+      let get_str_expr () = sprintf "reach(%s,%s,%s,%s)" (E.term_to_str $3)
+                                                         (E.term_to_str $5)
+                                                         (E.term_to_str $7)
+                                                         (E.term_to_str $9) in
+      let h      = parser_check_type check_type_mem  $3 E.Mem get_str_expr in
+      let a_from = parser_check_type check_type_addr $5 E.Addr get_str_expr in
+      let a_to   = parser_check_type check_type_addr $7 E.Addr get_str_expr in
+      let p      = parser_check_type check_type_path $9 E.Path get_str_expr in
+        E.Atom (E.Reach (h,a_from,a_to,p))
     }
   | REACH OPEN_PAREN term COMMA term COMMA term COMMA term COMMA term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "reach(%s,%s,%s,%s,%s)" (Expr.term_to_str $3)
-                                                            (Expr.term_to_str $5)
-                                                            (Expr.term_to_str $7)
-                                                            (Expr.term_to_str $9)
-                                                            (Expr.term_to_str $11) in
-      let h      = parser_check_type check_type_mem  $3 Expr.Mem get_str_expr in
-      let a_from = parser_check_type check_type_addr $5 Expr.Addr get_str_expr in
-      let a_to   = parser_check_type check_type_addr $7 Expr.Addr get_str_expr in
-      let p      = parser_check_type check_type_path $9 Expr.Path get_str_expr in
-      let l      = parser_check_type check_type_int $11 Expr.Int get_str_expr in
-        Expr.Atom (Expr.ReachAt (h,a_from,a_to,l,p))
+      let get_str_expr () = sprintf "reach(%s,%s,%s,%s,%s)" (E.term_to_str $3)
+                                                            (E.term_to_str $5)
+                                                            (E.term_to_str $7)
+                                                            (E.term_to_str $9)
+                                                            (E.term_to_str $11) in
+      let h      = parser_check_type check_type_mem  $3 E.Mem get_str_expr in
+      let a_from = parser_check_type check_type_addr $5 E.Addr get_str_expr in
+      let a_to   = parser_check_type check_type_addr $7 E.Addr get_str_expr in
+      let p      = parser_check_type check_type_path $9 E.Path get_str_expr in
+      let l      = parser_check_type check_type_int $11 E.Int get_str_expr in
+        E.Atom (E.ReachAt (h,a_from,a_to,l,p))
     }
   | ORDERLIST OPEN_PAREN term COMMA term COMMA term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "orderlist(%s,%s,%s)" (Expr.term_to_str $3)
-                                                          (Expr.term_to_str $5)
-                                                          (Expr.term_to_str $7) in
-      let h      = parser_check_type check_type_mem  $3 Expr.Mem get_str_expr in
-      let a_from = parser_check_type check_type_addr $5 Expr.Addr get_str_expr in
-      let a_to   = parser_check_type check_type_addr $7 Expr.Addr get_str_expr in
-        Expr.Atom (Expr.OrderList (h,a_from,a_to))
+      let get_str_expr () = sprintf "orderlist(%s,%s,%s)" (E.term_to_str $3)
+                                                          (E.term_to_str $5)
+                                                          (E.term_to_str $7) in
+      let h      = parser_check_type check_type_mem  $3 E.Mem get_str_expr in
+      let a_from = parser_check_type check_type_addr $5 E.Addr get_str_expr in
+      let a_to   = parser_check_type check_type_addr $7 E.Addr get_str_expr in
+        E.Atom (E.OrderList (h,a_from,a_to))
     }
   | SKIPLIST OPEN_PAREN term COMMA term COMMA term COMMA term COMMA term CLOSE_PAREN
     {
       let get_str_expr () = sprintf "skiplist(%s,%s,%s,%s,%s)"
-                                        (Expr.term_to_str $3)
-                                        (Expr.term_to_str $5)
-                                        (Expr.term_to_str $7)
-                                        (Expr.term_to_str $9)
-                                        (Expr.term_to_str $11) in
-      let h      = parser_check_type check_type_mem  $3  Expr.Mem get_str_expr in
-      let s      = parser_check_type check_type_set  $5  Expr.Set get_str_expr in
-      let l      = parser_check_type check_type_int  $7  Expr.Int get_str_expr in
-      let a_from = parser_check_type check_type_addr $9  Expr.Addr get_str_expr in
-      let a_to   = parser_check_type check_type_addr $11 Expr.Addr get_str_expr in
-        Expr.Atom (Expr.Skiplist (h,s,l,a_from,a_to))
+                                        (E.term_to_str $3)
+                                        (E.term_to_str $5)
+                                        (E.term_to_str $7)
+                                        (E.term_to_str $9)
+                                        (E.term_to_str $11) in
+      let h      = parser_check_type check_type_mem  $3  E.Mem get_str_expr in
+      let s      = parser_check_type check_type_set  $5  E.Set get_str_expr in
+      let l      = parser_check_type check_type_int  $7  E.Int get_str_expr in
+      let a_from = parser_check_type check_type_addr $9  E.Addr get_str_expr in
+      let a_to   = parser_check_type check_type_addr $11 E.Addr get_str_expr in
+        E.Atom (E.Skiplist (h,s,l,a_from,a_to))
     }
   | term IN term
     {
-      let get_str_expr () = sprintf "%s in %s" (Expr.term_to_str $1)
-                                               (Expr.term_to_str $3) in
-      let a = parser_check_type check_type_addr $1 Expr.Addr get_str_expr in
-      let r = parser_check_type check_type_set  $3 Expr.Set get_str_expr in
-        Expr.Atom (Expr.In (a,r))
+      let get_str_expr () = sprintf "%s in %s" (E.term_to_str $1)
+                                               (E.term_to_str $3) in
+      let a = parser_check_type check_type_addr $1 E.Addr get_str_expr in
+      let r = parser_check_type check_type_set  $3 E.Set get_str_expr in
+        E.Atom (E.In (a,r))
     }
   | term SUBSETEQ term
     {
-      let get_str_expr () = sprintf "%s subseteq %s)" (Expr.term_to_str $1)
-                                                      (Expr.term_to_str $3) in
-      let s = parser_check_type check_type_set  $1 Expr.Set get_str_expr in
-      let r = parser_check_type check_type_set  $3 Expr.Set get_str_expr in
-        Expr.Atom (Expr.SubsetEq(s,r))
+      let get_str_expr () = sprintf "%s subseteq %s)" (E.term_to_str $1)
+                                                      (E.term_to_str $3) in
+      let s = parser_check_type check_type_set  $1 E.Set get_str_expr in
+      let r = parser_check_type check_type_set  $3 E.Set get_str_expr in
+        E.Atom (E.SubsetEq(s,r))
     }
   | term INTH term
     {
-      let get_str_expr () = sprintf "%s inTh %s" (Expr.term_to_str $1)
-                                                 (Expr.term_to_str $3) in
-      let th = parser_check_type check_type_thid  $1 Expr.Thid get_str_expr in
-      let s  = parser_check_type check_type_setth $3 Expr.SetTh get_str_expr in
-        Expr.Atom (Expr.InTh (th,s))
+      let get_str_expr () = sprintf "%s inTh %s" (E.term_to_str $1)
+                                                 (E.term_to_str $3) in
+      let th = parser_check_type check_type_thid  $1 E.Thid get_str_expr in
+      let s  = parser_check_type check_type_setth $3 E.SetTh get_str_expr in
+        E.Atom (E.InTh (th,s))
     }
   | term SUBSETEQTH term
     {
-      let get_str_expr () = sprintf "%s subseteqTh %s" (Expr.term_to_str $1)
-                                                       (Expr.term_to_str $3) in
-      let r = parser_check_type check_type_setth $1 Expr.SetTh get_str_expr in
-      let s = parser_check_type check_type_setth $3 Expr.SetTh get_str_expr in
-        Expr.Atom (Expr.SubsetEqTh(r,s))
+      let get_str_expr () = sprintf "%s subseteqTh %s" (E.term_to_str $1)
+                                                       (E.term_to_str $3) in
+      let r = parser_check_type check_type_setth $1 E.SetTh get_str_expr in
+      let s = parser_check_type check_type_setth $3 E.SetTh get_str_expr in
+        E.Atom (E.SubsetEqTh(r,s))
     }
   | term ININT term
     {
-      let get_str_expr () = sprintf "%s inInt %s" (Expr.term_to_str $1)
-                                                  (Expr.term_to_str $3) in
-      let i = parser_check_type check_type_int $1 Expr.Int get_str_expr in
-      let s = parser_check_type check_type_setint $3 Expr.SetInt get_str_expr in
-        Expr.Atom (Expr.InInt (i,s))
+      let get_str_expr () = sprintf "%s inInt %s" (E.term_to_str $1)
+                                                  (E.term_to_str $3) in
+      let i = parser_check_type check_type_int $1 E.Int get_str_expr in
+      let s = parser_check_type check_type_setint $3 E.SetInt get_str_expr in
+        E.Atom (E.InInt (i,s))
     }
   | term SUBSETEQINT term
     {
-      let get_str_expr () = sprintf "%s subseteqInt %s" (Expr.term_to_str $1)
-                                                        (Expr.term_to_str $3) in
-      let r = parser_check_type check_type_setint $1 Expr.SetInt get_str_expr in
-      let s = parser_check_type check_type_setint $3 Expr.SetInt get_str_expr in
-        Expr.Atom (Expr.SubsetEqInt(r,s))
+      let get_str_expr () = sprintf "%s subseteqInt %s" (E.term_to_str $1)
+                                                        (E.term_to_str $3) in
+      let r = parser_check_type check_type_setint $1 E.SetInt get_str_expr in
+      let s = parser_check_type check_type_setint $3 E.SetInt get_str_expr in
+        E.Atom (E.SubsetEqInt(r,s))
     }
   | term INELEM term
     {
-      let get_str_expr () = sprintf "%s inElem %s" (Expr.term_to_str $1)
-                                                   (Expr.term_to_str $3) in
-      let e = parser_check_type check_type_elem $1 Expr.Elem get_str_expr in
-      let s = parser_check_type check_type_setelem $3 Expr.SetElem get_str_expr in
-        Expr.Atom (Expr.InElem (e,s))
+      let get_str_expr () = sprintf "%s inElem %s" (E.term_to_str $1)
+                                                   (E.term_to_str $3) in
+      let e = parser_check_type check_type_elem $1 E.Elem get_str_expr in
+      let s = parser_check_type check_type_setelem $3 E.SetElem get_str_expr in
+        E.Atom (E.InElem (e,s))
     }
   | term SUBSETEQELEM term
     {
-      let get_str_expr () = sprintf "%s subseteqElem %s" (Expr.term_to_str $1)
-                                                         (Expr.term_to_str $3) in
-      let r = parser_check_type check_type_setelem $1 Expr.SetElem get_str_expr in
-      let s = parser_check_type check_type_setelem $3 Expr.SetElem get_str_expr in
-        Expr.Atom (Expr.SubsetEqElem(r,s))
+      let get_str_expr () = sprintf "%s subseteqElem %s" (E.term_to_str $1)
+                                                         (E.term_to_str $3) in
+      let r = parser_check_type check_type_setelem $1 E.SetElem get_str_expr in
+      let s = parser_check_type check_type_setelem $3 E.SetElem get_str_expr in
+        E.Atom (E.SubsetEqElem(r,s))
     }
   | term MATH_LESS term
     {
-      let get_str_expr () = sprintf "%s < %s" (Expr.term_to_str $1)
-                                              (Expr.term_to_str $3) in
+      let get_str_expr () = sprintf "%s < %s" (E.term_to_str $1)
+                                              (E.term_to_str $3) in
       try
-        let e1 = parser_check_type check_type_elem $1 Expr.Elem get_str_expr in
-        let e2 = parser_check_type check_type_elem $3 Expr.Elem get_str_expr in
-          Expr.Atom (Expr.LessElem (e1, e2))
+        let e1 = parser_check_type check_type_elem $1 E.Elem get_str_expr in
+        let e2 = parser_check_type check_type_elem $3 E.Elem get_str_expr in
+          E.Atom (E.LessElem (e1, e2))
       with
-        _ -> let i1 = parser_check_type check_type_int $1 Expr.Int get_str_expr in
-             let i2 = parser_check_type check_type_int $3 Expr.Int get_str_expr in
-               Expr.Atom (Expr.Less (i1, i2))
+        _ -> let i1 = parser_check_type check_type_int $1 E.Int get_str_expr in
+             let i2 = parser_check_type check_type_int $3 E.Int get_str_expr in
+               E.Atom (E.Less (i1, i2))
     }
   | term MATH_GREATER term
     {
-      let get_str_expr () = sprintf "%s > %s" (Expr.term_to_str $1)
-                                              (Expr.term_to_str $3) in
+      let get_str_expr () = sprintf "%s > %s" (E.term_to_str $1)
+                                              (E.term_to_str $3) in
       try
-        let e1 = parser_check_type check_type_elem $1 Expr.Elem get_str_expr in
-        let e2 = parser_check_type check_type_elem $3 Expr.Elem get_str_expr in
-          Expr.Atom (Expr.GreaterElem (e1, e2))
-      with _ -> let i1 = parser_check_type check_type_int $1 Expr.Int get_str_expr in
-                let i2 = parser_check_type check_type_int $3 Expr.Int get_str_expr in
-                  Expr.Atom (Expr.Greater (i1, i2))
+        let e1 = parser_check_type check_type_elem $1 E.Elem get_str_expr in
+        let e2 = parser_check_type check_type_elem $3 E.Elem get_str_expr in
+          E.Atom (E.GreaterElem (e1, e2))
+      with _ -> let i1 = parser_check_type check_type_int $1 E.Int get_str_expr in
+                let i2 = parser_check_type check_type_int $3 E.Int get_str_expr in
+                  E.Atom (E.Greater (i1, i2))
     }
   | term MATH_LESS_EQ term
     {
-      let get_str_expr () = sprintf "%s <= %s" (Expr.term_to_str $1)
-                                               (Expr.term_to_str $3) in
-      let i1 = parser_check_type check_type_int $1 Expr.Int get_str_expr in
-      let i2 = parser_check_type check_type_int $3 Expr.Int get_str_expr in
-        Expr.Atom (Expr.LessEq (i1, i2))
+      let get_str_expr () = sprintf "%s <= %s" (E.term_to_str $1)
+                                               (E.term_to_str $3) in
+      let i1 = parser_check_type check_type_int $1 E.Int get_str_expr in
+      let i2 = parser_check_type check_type_int $3 E.Int get_str_expr in
+        E.Atom (E.LessEq (i1, i2))
     }
   | term MATH_GREATER_EQ term
     {
-      let get_str_expr () = sprintf "%s >= %s" (Expr.term_to_str $1)
-                                               (Expr.term_to_str $3) in
-      let i1 = parser_check_type check_type_int $1 Expr.Int get_str_expr in
-      let i2 = parser_check_type check_type_int $3 Expr.Int get_str_expr in
-        Expr.Atom (Expr.GreaterEq (i1, i2))
+      let get_str_expr () = sprintf "%s >= %s" (E.term_to_str $1)
+                                               (E.term_to_str $3) in
+      let i1 = parser_check_type check_type_int $1 E.Int get_str_expr in
+      let i2 = parser_check_type check_type_int $3 E.Int get_str_expr in
+        E.Atom (E.GreaterEq (i1, i2))
     }
   | equals
-    { Expr.Atom (Expr.Eq($1)) }
+    { E.Atom (E.Eq($1)) }
   | disequals
-    { Expr.Atom (Expr.InEq($1)) }
+    { E.Atom (E.InEq($1)) }
   | DOT ident DOT
     {
       match $2 with
-      | Expr.VarT v -> Expr.Atom(Expr.BoolVar v)
+      | E.VarT v -> E.Atom(E.BoolVar v)
       | _           -> raise(Boolean_var_expected $2)
     }
 
@@ -1204,8 +1200,8 @@ literal :
 equals :
   | term EQUALS term
     {
-      let get_str_expr () = sprintf "%s = %s" (Expr.term_to_str $1)
-                                              (Expr.term_to_str $3) in
+      let get_str_expr () = sprintf "%s = %s" (E.term_to_str $1)
+                                              (E.term_to_str $3) in
       let t1 = $1 in
       let t2 = $3 in
 
@@ -1219,8 +1215,8 @@ equals :
 disequals :
   | term NOT_EQUALS term
     {
-      let get_str_expr () = sprintf "%s != %s" (Expr.term_to_str $1)
-                                               (Expr.term_to_str $3) in
+      let get_str_expr () = sprintf "%s != %s" (E.term_to_str $1)
+                                               (E.term_to_str $3) in
       let t1= $1 in
       let t2= $3 in
 
@@ -1235,33 +1231,33 @@ term :
   | ident
     { $1 }
   | set
-    { Expr.SetT($1) }
+    { E.SetT($1) }
   | elem
-    { Expr.ElemT($1) }
+    { E.ElemT($1) }
   | thid
-    { Expr.ThidT($1) }
+    { E.ThidT($1) }
   | addr
-    { Expr.AddrT($1) }
+    { E.AddrT($1) }
   | cell
-    { Expr.CellT($1) }
+    { E.CellT($1) }
   | setth
-    { Expr.SetThT($1) }
+    { E.SetThT($1) }
   | setint
-    { Expr.SetIntT($1) }
+    { E.SetIntT($1) }
   | setelem
-    { Expr.SetElemT($1) }
+    { E.SetElemT($1) }
   | path
-    { Expr.PathT($1) }
+    { E.PathT($1) }
   | mem
-    { Expr.MemT($1) }
+    { E.MemT($1) }
   | integer
-    { Expr.IntT($1) }
+    { E.IntT($1) }
   | arrays
     { $1 }
   | addrarr
-    { Expr.AddrArrayT($1) }
+    { E.AddrArrayT($1) }
   | tidarr
-    { Expr.TidArrayT($1) }
+    { E.TidArrayT($1) }
   | OPEN_PAREN term CLOSE_PAREN
     { $2 }
 
@@ -1272,16 +1268,16 @@ term :
 ident :
   IDENT
     {
-      define_ident Expr.GlobalScope (get_name $1) Expr.Shared
+      define_ident E.GlobalScope (get_name $1) E.Shared
 (*
       let id  = get_name $1 in
-      let var = Expr.build_var id Expr.Unknown false None None Expr.RealVar in
-        inject_sort (Expr.VarT var)
+      let var = E.build_var id E.Unknown false None None E.RealVar in
+        inject_sort (E.VarT var)
 *)
     }
   | IDENT DOUBLECOLON IDENT
     {
-      define_ident (Expr.Scope (get_name $1)) (get_name $3) Expr.Shared
+      define_ident (E.Scope (get_name $1)) (get_name $3) E.Shared
 (*
       let proc_name = get_name $1 in
 
@@ -1297,8 +1293,8 @@ ident :
                             System.find_var_kind iVars id
                           else
                             System.find_var_kind lVars id in
-      let var           = inject_sort (Expr.VarT
-                            (Expr.build_var id Expr.Unknown false None
+      let var           = inject_sort (E.VarT
+                            (E.build_var id E.Unknown false None
                                             (Some proc_name) k))
       in
         var
@@ -1306,7 +1302,7 @@ ident :
     }
   | IDENT DOUBLECOLON IDENT th_param
     {
-      define_ident (Expr.Scope (get_name $1)) (get_name $3) $4
+      define_ident (E.Scope (get_name $1)) (get_name $3) $4
 (*
       let proc_name = get_name $1 in
 *)
@@ -1331,8 +1327,8 @@ ident :
                             System.find_var_kind iVars id
                           else
                             System.find_var_kind lVars id in
-      let var           = inject_sort (Expr.VarT
-                            (Expr.build_var id Expr.Unknown false th
+      let var           = inject_sort (E.VarT
+                            (E.build_var id E.Unknown false th
                                             (Some proc_name) k))
       in
         var
@@ -1344,60 +1340,60 @@ ident :
 
 set :
   | EMPTYSET
-    { Expr.EmptySet }
+    { E.EmptySet }
   | OPEN_SET term CLOSE_SET
     {
-      let get_str_expr() = sprintf "{ %s }" (Expr.term_to_str $2) in
-      let a = parser_check_type check_type_addr $2 Expr.Addr get_str_expr in
-        Expr.Singl(a)
+      let get_str_expr() = sprintf "{ %s }" (E.term_to_str $2) in
+      let a = parser_check_type check_type_addr $2 E.Addr get_str_expr in
+        E.Singl(a)
     }
   | UNION OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "%s Union %s" (Expr.term_to_str $3)
-                                                 (Expr.term_to_str $5) in
-      let s1 = parser_check_type check_type_set  $3 Expr.Set get_str_expr in
-      let s2 = parser_check_type check_type_set  $5 Expr.Set get_str_expr in
-        Expr.Union(s1,s2)
+      let get_str_expr() = sprintf "%s Union %s" (E.term_to_str $3)
+                                                 (E.term_to_str $5) in
+      let s1 = parser_check_type check_type_set  $3 E.Set get_str_expr in
+      let s2 = parser_check_type check_type_set  $5 E.Set get_str_expr in
+        E.Union(s1,s2)
     }
   | INTR OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "%s Intr %s" (Expr.term_to_str $3)
-                                                (Expr.term_to_str $5) in
-      let s1 = parser_check_type check_type_set  $3 Expr.Set get_str_expr in
-      let s2 = parser_check_type check_type_set  $5 Expr.Set get_str_expr in
-        Expr.Intr(s1,s2)
+      let get_str_expr() = sprintf "%s Intr %s" (E.term_to_str $3)
+                                                (E.term_to_str $5) in
+      let s1 = parser_check_type check_type_set  $3 E.Set get_str_expr in
+      let s2 = parser_check_type check_type_set  $5 E.Set get_str_expr in
+        E.Intr(s1,s2)
     }
   | SETDIFF OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "%s SetDiff %s" (Expr.term_to_str $3)
-                                                   (Expr.term_to_str $5) in
-      let s1 = parser_check_type check_type_set  $3 Expr.Set get_str_expr in
-      let s2 = parser_check_type check_type_set  $5 Expr.Set get_str_expr in
-        Expr.Setdiff(s1,s2)
+      let get_str_expr() = sprintf "%s SetDiff %s" (E.term_to_str $3)
+                                                   (E.term_to_str $5) in
+      let s1 = parser_check_type check_type_set  $3 E.Set get_str_expr in
+      let s2 = parser_check_type check_type_set  $5 E.Set get_str_expr in
+        E.Setdiff(s1,s2)
     }
   | PATH2SET OPEN_PAREN term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "path2set(%s)" (Expr.term_to_str $3) in
-      let p = parser_check_type check_type_path $3 Expr.Path get_str_expr in
-        Expr.PathToSet(p)
+      let get_str_expr () = sprintf "path2set(%s)" (E.term_to_str $3) in
+      let p = parser_check_type check_type_path $3 E.Path get_str_expr in
+        E.PathToSet(p)
     }
   | ADDR2SET OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "addr2set(%s,%s)" (Expr.term_to_str $3)
-                                                      (Expr.term_to_str $5) in
-      let h = parser_check_type check_type_mem  $3 Expr.Mem get_str_expr in
-      let a = parser_check_type check_type_addr $5 Expr.Addr get_str_expr in
-        Expr.AddrToSet(h,a)
+      let get_str_expr () = sprintf "addr2set(%s,%s)" (E.term_to_str $3)
+                                                      (E.term_to_str $5) in
+      let h = parser_check_type check_type_mem  $3 E.Mem get_str_expr in
+      let a = parser_check_type check_type_addr $5 E.Addr get_str_expr in
+        E.AddrToSet(h,a)
     }
   | ADDR2SET OPEN_PAREN term COMMA term COMMA term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "addr2set(%s,%s,%s)" (Expr.term_to_str $3)
-                                                         (Expr.term_to_str $5)
-                                                         (Expr.term_to_str $7) in
-      let h = parser_check_type check_type_mem  $3 Expr.Mem get_str_expr in
-      let a = parser_check_type check_type_addr $5 Expr.Addr get_str_expr in
-      let l = parser_check_type check_type_int $7 Expr.Int get_str_expr in
-        Expr.AddrToSetAt(h,a,l)
+      let get_str_expr () = sprintf "addr2set(%s,%s,%s)" (E.term_to_str $3)
+                                                         (E.term_to_str $5)
+                                                         (E.term_to_str $7) in
+      let h = parser_check_type check_type_mem  $3 E.Mem get_str_expr in
+      let a = parser_check_type check_type_addr $5 E.Addr get_str_expr in
+      let l = parser_check_type check_type_int $7 E.Int get_str_expr in
+        E.AddrToSetAt(h,a,l)
     }
 
 
@@ -1406,17 +1402,17 @@ set :
 elem :
   | term DOT DATA
     {
-      let get_str_expr () = sprintf "%s.data" (Expr.term_to_str $1) in
-      let c = parser_check_type check_type_cell  $1 Expr.Cell get_str_expr in
-        Expr.CellData(c)
+      let get_str_expr () = sprintf "%s.data" (E.term_to_str $1) in
+      let c = parser_check_type check_type_cell  $1 E.Cell get_str_expr in
+        E.CellData(c)
     }
   | LOWEST_ELEM
     {
-      Expr.LowestElem
+      E.LowestElem
     }
   | HIGHEST_ELEM
     {
-      Expr.HighestElem
+      E.HighestElem
     }
 
 
@@ -1425,91 +1421,91 @@ elem :
 thid :
   | term DOT LOCKID
     {
-      let get_str_expr () = sprintf "%s.lockid" (Expr.term_to_str $1) in
-      let c = parser_check_type check_type_cell  $1 Expr.Cell get_str_expr in
-        Expr.CellLockId(c)
+      let get_str_expr () = sprintf "%s.lockid" (E.term_to_str $1) in
+      let c = parser_check_type check_type_cell  $1 E.Cell get_str_expr in
+        E.CellLockId(c)
     }
   | SHARP
-    { Expr.NoThid }
+    { E.NoThid }
 
 
 /* ADDR terms */
 
 addr :
   | NULL
-    { Expr.Null }
+    { E.Null }
   | term DOT NEXT
     {
-      let get_str_expr () = sprintf "%s.data" (Expr.term_to_str $1) in
-      let c = parser_check_type check_type_cell  $1 Expr.Cell get_str_expr in
-        Expr.Next(c)
+      let get_str_expr () = sprintf "%s.data" (E.term_to_str $1) in
+      let c = parser_check_type check_type_cell  $1 E.Cell get_str_expr in
+        E.Next(c)
     }
   | FIRSTLOCKED OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "firstlocked(%s,%s)" (Expr.term_to_str $3)
-                                                         (Expr.term_to_str $5) in
-      let h = parser_check_type check_type_mem  $3 Expr.Mem get_str_expr in
-      let p = parser_check_type check_type_path $5 Expr.Path get_str_expr in
-        Expr.FirstLocked(h,p)
+      let get_str_expr () = sprintf "firstlocked(%s,%s)" (E.term_to_str $3)
+                                                         (E.term_to_str $5) in
+      let h = parser_check_type check_type_mem  $3 E.Mem get_str_expr in
+      let p = parser_check_type check_type_path $5 E.Path get_str_expr in
+        E.FirstLocked(h,p)
     }
   | FIRSTLOCKED OPEN_PAREN term COMMA term COMMA term CLOSE_PAREN
     {
       let get_str_expr () = sprintf "firstlocked(%s,%s,%s)"
-                                          (Expr.term_to_str $3)
-                                          (Expr.term_to_str $5)
-                                          (Expr.term_to_str $7) in
-      let h = parser_check_type check_type_mem  $3 Expr.Mem get_str_expr in
-      let p = parser_check_type check_type_path $5 Expr.Path get_str_expr in
-      let l = parser_check_type check_type_int $7 Expr.Int get_str_expr in
-        Expr.FirstLockedAt(h,p,l)
+                                          (E.term_to_str $3)
+                                          (E.term_to_str $5)
+                                          (E.term_to_str $7) in
+      let h = parser_check_type check_type_mem  $3 E.Mem get_str_expr in
+      let p = parser_check_type check_type_path $5 E.Path get_str_expr in
+      let l = parser_check_type check_type_int $7 E.Int get_str_expr in
+        E.FirstLockedAt(h,p,l)
     }
 
 /* CELL terms */
 
 cell :
   | ERROR
-    { Expr.Error }
+    { E.Error }
   | MKCELL OPEN_PAREN term COMMA term COMMA term CLOSE_PAREN
     {
       let get_str_expr () = sprintf "mkcell(%s,%s,%s)"
-                                           (Expr.term_to_str $3)
-                                           (Expr.term_to_str $5)
-                                           (Expr.term_to_str $7) in
-      let d  = parser_check_type check_type_elem $3 Expr.Elem get_str_expr in
-      let a  = parser_check_type check_type_addr $5 Expr.Addr get_str_expr in
-      let th = parser_check_type check_type_thid $7 Expr.Thid get_str_expr in
-        Expr.MkCell(d,a,th)
+                                           (E.term_to_str $3)
+                                           (E.term_to_str $5)
+                                           (E.term_to_str $7) in
+      let d  = parser_check_type check_type_elem $3 E.Elem get_str_expr in
+      let a  = parser_check_type check_type_addr $5 E.Addr get_str_expr in
+      let th = parser_check_type check_type_thid $7 E.Thid get_str_expr in
+        E.MkCell(d,a,th)
     }
   | MKCELL OPEN_PAREN term COMMA term COMMA term COMMA term CLOSE_PAREN
     {
       let get_str_expr () = sprintf "mkcell(%s,%s,%s,%s)"
-                                           (Expr.term_to_str $3)
-                                           (Expr.term_to_str $5)
-                                           (Expr.term_to_str $7)
-                                           (Expr.term_to_str $9) in
-      let e  = parser_check_type check_type_elem $3 Expr.Elem get_str_expr in
-      let aa = parser_check_type check_type_addrarr $5 Expr.AddrArray get_str_expr in
-      let ta = parser_check_type check_type_tidarr $7 Expr.TidArray get_str_expr in
-      let l  = parser_check_type check_type_int $9 Expr.Int get_str_expr in
-        Expr.MkSLCell(e,aa,ta,l)
+                                           (E.term_to_str $3)
+                                           (E.term_to_str $5)
+                                           (E.term_to_str $7)
+                                           (E.term_to_str $9) in
+      let e  = parser_check_type check_type_elem $3 E.Elem get_str_expr in
+      let aa = parser_check_type check_type_addrarr $5 E.AddrArray get_str_expr in
+      let ta = parser_check_type check_type_tidarr $7 E.TidArray get_str_expr in
+      let l  = parser_check_type check_type_int $9 E.Int get_str_expr in
+        E.MkSLCell(e,aa,ta,l)
     }
   | MKCELL OPEN_PAREN term COMMA
                       OPEN_BRACKET term_list CLOSE_BRACKET COMMA
                       OPEN_BRACKET term_list CLOSE_BRACKET CLOSE_PAREN
     {
-      let list_term_to_str ts = String.concat "," (List.map Expr.term_to_str ts) in
+      let list_term_to_str ts = String.concat "," (List.map E.term_to_str ts) in
       let addrs_str = list_term_to_str $6 in
       let tids_str = list_term_to_str $10 in
       let get_str_expr () = sprintf "mkcell(%s,[%s],[%s])"
-                                           (Expr.term_to_str $3)
+                                           (E.term_to_str $3)
                                            (addrs_str)
                                            (tids_str) in
-      let e  = parser_check_type check_type_elem $3 Expr.Elem get_str_expr in
+      let e  = parser_check_type check_type_elem $3 E.Elem get_str_expr in
       let addrs = List.map (fun a ->
-                    parser_check_type check_type_addr a Expr.Addr get_str_expr
+                    parser_check_type check_type_addr a E.Addr get_str_expr
                   ) $6 in
       let tids = List.map (fun t ->
-                   parser_check_type check_type_thid t Expr.Thid get_str_expr
+                   parser_check_type check_type_thid t E.Thid get_str_expr
                  ) $10 in
       if List.length addrs <> List.length tids then
         begin
@@ -1519,45 +1515,45 @@ cell :
           raise(Different_argument_length(addrs_str,tids_str))
         end
       else
-        Expr.MkSLKCell(e,addrs,tids)
+        E.MkSLKCell(e,addrs,tids)
     }
   | term DOT LOCK OPEN_PAREN term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "%s.lock(%s)" (Expr.term_to_str $1)
-                                                  (Expr.term_to_str $5) in
-      let c = parser_check_type check_type_cell $1 Expr.Cell get_str_expr in
-      let t = parser_check_type check_type_thid $5 Expr.Thid get_str_expr in
-        Expr.CellLock(c,t)
+      let get_str_expr () = sprintf "%s.lock(%s)" (E.term_to_str $1)
+                                                  (E.term_to_str $5) in
+      let c = parser_check_type check_type_cell $1 E.Cell get_str_expr in
+      let t = parser_check_type check_type_thid $5 E.Thid get_str_expr in
+        E.CellLock(c,t)
     }
   | term DOT LOCKAT OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "%s.lock(%s)" (Expr.term_to_str $1)
-                                                  (Expr.term_to_str $5) in
-      let c = parser_check_type check_type_cell $1 Expr.Cell get_str_expr in
-      let l = parser_check_type check_type_int  $5 Expr.Int get_str_expr in
-      let t = parser_check_type check_type_thid $7 Expr.Thid get_str_expr in
-        Expr.CellLockAt(c,l,t)
+      let get_str_expr () = sprintf "%s.lock(%s)" (E.term_to_str $1)
+                                                  (E.term_to_str $5) in
+      let c = parser_check_type check_type_cell $1 E.Cell get_str_expr in
+      let l = parser_check_type check_type_int  $5 E.Int get_str_expr in
+      let t = parser_check_type check_type_thid $7 E.Thid get_str_expr in
+        E.CellLockAt(c,l,t)
     }
   | term DOT UNLOCK
     {
-      let get_str_expr () = sprintf "%s.unlock" (Expr.term_to_str $1) in
-      let c = parser_check_type check_type_cell $1 Expr.Cell get_str_expr in
-        Expr.CellUnlock(c)
+      let get_str_expr () = sprintf "%s.unlock" (E.term_to_str $1) in
+      let c = parser_check_type check_type_cell $1 E.Cell get_str_expr in
+        E.CellUnlock(c)
     }
   | term DOT UNLOCKAT OPEN_PAREN term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "%s.unlock" (Expr.term_to_str $1) in
-      let c = parser_check_type check_type_cell $1 Expr.Cell get_str_expr in
-      let l = parser_check_type check_type_int  $5 Expr.Int get_str_expr in
-        Expr.CellUnlockAt(c,l)
+      let get_str_expr () = sprintf "%s.unlock" (E.term_to_str $1) in
+      let c = parser_check_type check_type_cell $1 E.Cell get_str_expr in
+      let l = parser_check_type check_type_int  $5 E.Int get_str_expr in
+        E.CellUnlockAt(c,l)
     }
   | MEMORY_READ OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "%s [ %s ]" (Expr.term_to_str $3)
-                                                (Expr.term_to_str $5) in
-      let h = parser_check_type check_type_mem  $3 Expr.Mem get_str_expr in
-      let a = parser_check_type check_type_addr $5 Expr.Addr get_str_expr in
-        Expr.CellAt(h,a)
+      let get_str_expr () = sprintf "%s [ %s ]" (E.term_to_str $3)
+                                                (E.term_to_str $5) in
+      let h = parser_check_type check_type_mem  $3 E.Mem get_str_expr in
+      let a = parser_check_type check_type_addr $5 E.Addr get_str_expr in
+        E.CellAt(h,a)
     }
 
 
@@ -1573,116 +1569,116 @@ term_list :
 
 setth :
   | EMPTYSETTH
-  { Expr.EmptySetTh }
+  { E.EmptySetTh }
   | SINGLETH OPEN_PAREN term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "SingleTh(%s)" (Expr.term_to_str $3) in
-      let th = parser_check_type check_type_thid  $3 Expr.Thid get_str_expr in
-        Expr.SinglTh(th)
+      let get_str_expr() = sprintf "SingleTh(%s)" (E.term_to_str $3) in
+      let th = parser_check_type check_type_thid  $3 E.Thid get_str_expr in
+        E.SinglTh(th)
     }
   | UNIONTH OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "%s UnionTh %s" (Expr.term_to_str $3)
-                                                   (Expr.term_to_str $5) in
-      let s1 = parser_check_type check_type_setth  $3 Expr.SetTh get_str_expr in
-      let s2 = parser_check_type check_type_setth  $5 Expr.SetTh get_str_expr in
-        Expr.UnionTh(s1,s2)
+      let get_str_expr() = sprintf "%s UnionTh %s" (E.term_to_str $3)
+                                                   (E.term_to_str $5) in
+      let s1 = parser_check_type check_type_setth  $3 E.SetTh get_str_expr in
+      let s2 = parser_check_type check_type_setth  $5 E.SetTh get_str_expr in
+        E.UnionTh(s1,s2)
     }
   | INTRTH OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "%s IntrTh %s" (Expr.term_to_str $3)
-                                                  (Expr.term_to_str $5) in
-      let s1 = parser_check_type check_type_setth  $3 Expr.SetTh get_str_expr in
-      let s2 = parser_check_type check_type_setth  $5 Expr.SetTh get_str_expr in
-        Expr.IntrTh(s1,s2)
+      let get_str_expr() = sprintf "%s IntrTh %s" (E.term_to_str $3)
+                                                  (E.term_to_str $5) in
+      let s1 = parser_check_type check_type_setth  $3 E.SetTh get_str_expr in
+      let s2 = parser_check_type check_type_setth  $5 E.SetTh get_str_expr in
+        E.IntrTh(s1,s2)
     }
   | SETDIFFTH OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "%s SetDiffTh %s" (Expr.term_to_str $3)
-                                                     (Expr.term_to_str $5) in
-      let s1 = parser_check_type check_type_setth  $3 Expr.SetTh get_str_expr in
-      let s2 = parser_check_type check_type_setth  $5 Expr.SetTh get_str_expr in
-        Expr.SetdiffTh(s1,s2)
+      let get_str_expr() = sprintf "%s SetDiffTh %s" (E.term_to_str $3)
+                                                     (E.term_to_str $5) in
+      let s1 = parser_check_type check_type_setth  $3 E.SetTh get_str_expr in
+      let s2 = parser_check_type check_type_setth  $5 E.SetTh get_str_expr in
+        E.SetdiffTh(s1,s2)
     }
 
 
 /* SETINT terms*/
 setint :
   | EMPTYSETINT
-     { Expr.EmptySetInt }
+     { E.EmptySetInt }
   | SINGLEINT OPEN_PAREN term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "SingleInt(%s)" (Expr.term_to_str $3) in
-      let th = parser_check_type check_type_int $3 Expr.Int get_str_expr in
-        Expr.SinglInt(th)
+      let get_str_expr() = sprintf "SingleInt(%s)" (E.term_to_str $3) in
+      let th = parser_check_type check_type_int $3 E.Int get_str_expr in
+        E.SinglInt(th)
     }
   | UNIONINT OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "UnionInt(%s,%s)" (Expr.term_to_str $3)
-                                                     (Expr.term_to_str $5) in
-      let s1 = parser_check_type check_type_setint  $3 Expr.SetInt get_str_expr in
-      let s2 = parser_check_type check_type_setint  $5 Expr.SetInt get_str_expr in
-        Expr.UnionInt(s1,s2)
+      let get_str_expr() = sprintf "UnionInt(%s,%s)" (E.term_to_str $3)
+                                                     (E.term_to_str $5) in
+      let s1 = parser_check_type check_type_setint  $3 E.SetInt get_str_expr in
+      let s2 = parser_check_type check_type_setint  $5 E.SetInt get_str_expr in
+        E.UnionInt(s1,s2)
     }
   | INTRINT OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "IntrInt(%s,%s)" (Expr.term_to_str $3)
-                                                    (Expr.term_to_str $5) in
-      let s1 = parser_check_type check_type_setint  $3 Expr.SetInt get_str_expr in
-      let s2 = parser_check_type check_type_setint  $5 Expr.SetInt get_str_expr in
-        Expr.IntrInt(s1,s2)
+      let get_str_expr() = sprintf "IntrInt(%s,%s)" (E.term_to_str $3)
+                                                    (E.term_to_str $5) in
+      let s1 = parser_check_type check_type_setint  $3 E.SetInt get_str_expr in
+      let s2 = parser_check_type check_type_setint  $5 E.SetInt get_str_expr in
+        E.IntrInt(s1,s2)
     }
   | SETDIFFINT OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "SetDiffInt(%s,%s)" (Expr.term_to_str $3)
-                                                       (Expr.term_to_str $5) in
-      let s1 = parser_check_type check_type_setint $3 Expr.SetInt get_str_expr in
-      let s2 = parser_check_type check_type_setint $5 Expr.SetInt get_str_expr in
-        Expr.SetdiffInt(s1,s2)
+      let get_str_expr() = sprintf "SetDiffInt(%s,%s)" (E.term_to_str $3)
+                                                       (E.term_to_str $5) in
+      let s1 = parser_check_type check_type_setint $3 E.SetInt get_str_expr in
+      let s2 = parser_check_type check_type_setint $5 E.SetInt get_str_expr in
+        E.SetdiffInt(s1,s2)
     }
 
 
 /* SETELEM terms*/
 setelem :
   | EMPTYSETELEM
-     { Expr.EmptySetElem }
+     { E.EmptySetElem }
   | SINGLEELEM OPEN_PAREN term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "SingleElem(%s)" (Expr.term_to_str $3) in
-      let e = parser_check_type check_type_elem $3 Expr.Elem get_str_expr in
-        Expr.SinglElem(e)
+      let get_str_expr() = sprintf "SingleElem(%s)" (E.term_to_str $3) in
+      let e = parser_check_type check_type_elem $3 E.Elem get_str_expr in
+        E.SinglElem(e)
     }
   | UNIONELEM OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "UnionElem(%s,%s)" (Expr.term_to_str $3)
-                                                      (Expr.term_to_str $5) in
-      let s1 = parser_check_type check_type_setelem $3 Expr.SetElem get_str_expr in
-      let s2 = parser_check_type check_type_setelem $5 Expr.SetElem get_str_expr in
-        Expr.UnionElem(s1,s2)
+      let get_str_expr() = sprintf "UnionElem(%s,%s)" (E.term_to_str $3)
+                                                      (E.term_to_str $5) in
+      let s1 = parser_check_type check_type_setelem $3 E.SetElem get_str_expr in
+      let s2 = parser_check_type check_type_setelem $5 E.SetElem get_str_expr in
+        E.UnionElem(s1,s2)
     }
   | INTRELEM OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "IntrElem(%s,%s)" (Expr.term_to_str $3)
-                                                     (Expr.term_to_str $5) in
-      let s1 = parser_check_type check_type_setelem $3 Expr.SetElem get_str_expr in
-      let s2 = parser_check_type check_type_setelem $5 Expr.SetElem get_str_expr in
-        Expr.IntrElem(s1,s2)
+      let get_str_expr() = sprintf "IntrElem(%s,%s)" (E.term_to_str $3)
+                                                     (E.term_to_str $5) in
+      let s1 = parser_check_type check_type_setelem $3 E.SetElem get_str_expr in
+      let s2 = parser_check_type check_type_setelem $5 E.SetElem get_str_expr in
+        E.IntrElem(s1,s2)
     }
   | SETDIFFELEM OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "SetDiffElem(%s,%s)" (Expr.term_to_str $3)
-                                                        (Expr.term_to_str $5) in
-      let s1 = parser_check_type check_type_setelem $3 Expr.SetElem get_str_expr in
-      let s2 = parser_check_type check_type_setelem $5 Expr.SetElem get_str_expr in
-        Expr.SetdiffElem(s1,s2)
+      let get_str_expr() = sprintf "SetDiffElem(%s,%s)" (E.term_to_str $3)
+                                                        (E.term_to_str $5) in
+      let s1 = parser_check_type check_type_setelem $3 E.SetElem get_str_expr in
+      let s2 = parser_check_type check_type_setelem $5 E.SetElem get_str_expr in
+        E.SetdiffElem(s1,s2)
     }
   | SET2ELEM OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "set2elem(%s,%s)" (Expr.term_to_str $3)
-                                                      (Expr.term_to_str $5) in
-      let m = parser_check_type check_type_mem $3 Expr.Mem get_str_expr in
-      let s = parser_check_type check_type_set $5 Expr.Set get_str_expr in
-        Expr.SetToElems(s,m)
+      let get_str_expr () = sprintf "set2elem(%s,%s)" (E.term_to_str $3)
+                                                      (E.term_to_str $5) in
+      let m = parser_check_type check_type_mem $3 E.Mem get_str_expr in
+      let s = parser_check_type check_type_set $5 E.Set get_str_expr in
+        E.SetToElems(s,m)
     }
 
 
@@ -1690,34 +1686,34 @@ setelem :
 
 path :
   | EPSILON
-    { Expr.Epsilon }
+    { E.Epsilon }
   | OPEN_BRACKET term CLOSE_BRACKET
     {
-      let get_str_expr () = sprintf "[ %s ]" (Expr.term_to_str $2) in
-      let a = parser_check_type check_type_addr $2 Expr.Addr get_str_expr in
-        Expr.SimplePath(a)
+      let get_str_expr () = sprintf "[ %s ]" (E.term_to_str $2) in
+      let a = parser_check_type check_type_addr $2 E.Addr get_str_expr in
+        E.SimplePath(a)
     }
   | GETP OPEN_PAREN term COMMA term COMMA term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "getp(%s,%s,%s)" (Expr.term_to_str $3)
-                                                     (Expr.term_to_str $5)
-                                                     (Expr.term_to_str $7) in
-      let h     = parser_check_type check_type_mem  $3 Expr.Mem get_str_expr in
-      let first = parser_check_type check_type_addr $5 Expr.Addr get_str_expr in
-      let last  = parser_check_type check_type_addr $7 Expr.Addr get_str_expr in
-        Expr.GetPath(h,first,last)
+      let get_str_expr () = sprintf "getp(%s,%s,%s)" (E.term_to_str $3)
+                                                     (E.term_to_str $5)
+                                                     (E.term_to_str $7) in
+      let h     = parser_check_type check_type_mem  $3 E.Mem get_str_expr in
+      let first = parser_check_type check_type_addr $5 E.Addr get_str_expr in
+      let last  = parser_check_type check_type_addr $7 E.Addr get_str_expr in
+        E.GetPath(h,first,last)
     }
   | GETP OPEN_PAREN term COMMA term COMMA term COMMA term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "getp(%s,%s,%s,%s)" (Expr.term_to_str $3)
-                                                        (Expr.term_to_str $5)
-                                                        (Expr.term_to_str $7)
-                                                        (Expr.term_to_str $9) in
-      let h     = parser_check_type check_type_mem  $3 Expr.Mem get_str_expr in
-      let first = parser_check_type check_type_addr $5 Expr.Addr get_str_expr in
-      let last  = parser_check_type check_type_addr $7 Expr.Addr get_str_expr in
-      let l     = parser_check_type check_type_int $9 Expr.Int get_str_expr in
-        Expr.GetPathAt(h,first,last,l)
+      let get_str_expr () = sprintf "getp(%s,%s,%s,%s)" (E.term_to_str $3)
+                                                        (E.term_to_str $5)
+                                                        (E.term_to_str $7)
+                                                        (E.term_to_str $9) in
+      let h     = parser_check_type check_type_mem  $3 E.Mem get_str_expr in
+      let first = parser_check_type check_type_addr $5 E.Addr get_str_expr in
+      let last  = parser_check_type check_type_addr $7 E.Addr get_str_expr in
+      let l     = parser_check_type check_type_int $9 E.Int get_str_expr in
+        E.GetPathAt(h,first,last,l)
   }
 
 
@@ -1726,13 +1722,13 @@ path :
 mem :
   | UPDATE OPEN_PAREN term COMMA term COMMA term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "update(%s,%s,%s)" (Expr.term_to_str $3)
-                                                       (Expr.term_to_str $5)
-                                                       (Expr.term_to_str $7) in
-      let h = parser_check_type check_type_mem  $3 Expr.Mem get_str_expr in
-      let a = parser_check_type check_type_addr $5 Expr.Addr get_str_expr in
-      let c = parser_check_type check_type_cell $7 Expr.Cell get_str_expr in
-        Expr.Update(h,a,c)
+      let get_str_expr () = sprintf "update(%s,%s,%s)" (E.term_to_str $3)
+                                                       (E.term_to_str $5)
+                                                       (E.term_to_str $7) in
+      let h = parser_check_type check_type_mem  $3 E.Mem get_str_expr in
+      let a = parser_check_type check_type_addr $5 E.Addr get_str_expr in
+      let c = parser_check_type check_type_cell $7 E.Cell get_str_expr in
+        E.Update(h,a,c)
     }
 
 
@@ -1740,67 +1736,67 @@ mem :
 
 integer :
   | NUMBER
-    { Expr.IntVal $1 }
+    { E.IntVal $1 }
   | MATH_MINUS term %prec MATH_NEG
     {
-      let get_str_expr () = sprintf "-%s" (Expr.term_to_str $2) in
-      let i  = parser_check_type check_type_int $2 Expr.Int get_str_expr in
-        Expr.IntNeg i
+      let get_str_expr () = sprintf "-%s" (E.term_to_str $2) in
+      let i  = parser_check_type check_type_int $2 E.Int get_str_expr in
+        E.IntNeg i
     }
   | term MATH_PLUS term
     {
-      let get_str_expr () = sprintf "%s+%s" (Expr.term_to_str $1)
-                                            (Expr.term_to_str $3) in
-      let i1  = parser_check_type check_type_int $1 Expr.Int get_str_expr in
-      let i2  = parser_check_type check_type_int $3 Expr.Int get_str_expr in
-        Expr.IntAdd (i1,i2)
+      let get_str_expr () = sprintf "%s+%s" (E.term_to_str $1)
+                                            (E.term_to_str $3) in
+      let i1  = parser_check_type check_type_int $1 E.Int get_str_expr in
+      let i2  = parser_check_type check_type_int $3 E.Int get_str_expr in
+        E.IntAdd (i1,i2)
     }
   | term MATH_MINUS term
     {
-      let get_str_expr () = sprintf "%s-%s" (Expr.term_to_str $1)
-                                            (Expr.term_to_str $3) in
-      let i1  = parser_check_type check_type_int $1 Expr.Int get_str_expr in
-      let i2  = parser_check_type check_type_int $3 Expr.Int get_str_expr in
-        Expr.IntSub (i1,i2)
+      let get_str_expr () = sprintf "%s-%s" (E.term_to_str $1)
+                                            (E.term_to_str $3) in
+      let i1  = parser_check_type check_type_int $1 E.Int get_str_expr in
+      let i2  = parser_check_type check_type_int $3 E.Int get_str_expr in
+        E.IntSub (i1,i2)
     }
   | term MATH_MULT term
     {
-      let get_str_expr () = sprintf "%s*%s" (Expr.term_to_str $1)
-                                            (Expr.term_to_str $3) in
-      let i1  = parser_check_type check_type_int $1 Expr.Int get_str_expr in
-      let i2  = parser_check_type check_type_int $3 Expr.Int get_str_expr in
-        Expr.IntMul (i1,i2)
+      let get_str_expr () = sprintf "%s*%s" (E.term_to_str $1)
+                                            (E.term_to_str $3) in
+      let i1  = parser_check_type check_type_int $1 E.Int get_str_expr in
+      let i2  = parser_check_type check_type_int $3 E.Int get_str_expr in
+        E.IntMul (i1,i2)
     }
   | term MATH_DIV term
     {
-      let get_str_expr () = sprintf "%s/%s" (Expr.term_to_str $1)
-                                            (Expr.term_to_str $3) in
-      let i1  = parser_check_type check_type_int $1 Expr.Int get_str_expr in
-      let i2  = parser_check_type check_type_int $3 Expr.Int get_str_expr in
-        Expr.IntDiv (i1,i2)
+      let get_str_expr () = sprintf "%s/%s" (E.term_to_str $1)
+                                            (E.term_to_str $3) in
+      let i1  = parser_check_type check_type_int $1 E.Int get_str_expr in
+      let i2  = parser_check_type check_type_int $3 E.Int get_str_expr in
+        E.IntDiv (i1,i2)
     }
   | SETINTMIN OPEN_PAREN term CLOSE_PAREN
     {
       let iSet = $3 in
-      let get_str_expr () = sprintf "setIntMin(%s)" (Expr.term_to_str iSet) in
-      let s  = parser_check_type check_type_setint iSet Expr.SetInt get_str_expr
+      let get_str_expr () = sprintf "setIntMin(%s)" (E.term_to_str iSet) in
+      let s  = parser_check_type check_type_setint iSet E.SetInt get_str_expr
       in
-        Expr.IntSetMin (s)
+        E.IntSetMin (s)
     }
   | SETINTMAX OPEN_PAREN term CLOSE_PAREN
     {
       let iSet = $3 in
-      let get_str_expr () = sprintf "setIntMax(%s)" (Expr.term_to_str iSet) in
-      let s  = parser_check_type check_type_setint iSet Expr.SetInt get_str_expr
+      let get_str_expr () = sprintf "setIntMax(%s)" (E.term_to_str iSet) in
+      let s  = parser_check_type check_type_setint iSet E.SetInt get_str_expr
       in
-        Expr.IntSetMax (s)
+        E.IntSetMax (s)
     }
   | term DOT MAX
     {
-      let get_str_expr () = sprintf "%s.max" (Expr.term_to_str $1) in
-      let c  = parser_check_type check_type_cell $1 Expr.Cell get_str_expr
+      let get_str_expr () = sprintf "%s.max" (E.term_to_str $1) in
+      let c  = parser_check_type check_type_cell $1 E.Cell get_str_expr
       in
-        Expr.CellMax (c)
+        E.CellMax (c)
     }
 
 
@@ -1809,40 +1805,40 @@ integer :
 arrays :
   | term OPEN_BRACKET term CLOSE_BRACKET
     {
-      let get_str_expr () = sprintf "%s[%s]" (Expr.term_to_str $1)
-                                             (Expr.term_to_str $3) in
-      let i = parser_check_type check_type_int $3 Expr.Int get_str_expr in
+      let get_str_expr () = sprintf "%s[%s]" (E.term_to_str $1)
+                                             (E.term_to_str $3) in
+      let i = parser_check_type check_type_int $3 E.Int get_str_expr in
       try
-        let at = parser_check_type check_type_tidarr $1 Expr.TidArray get_str_expr in
-          Expr.ThidT (Expr.ThidArrRd (at,i))
+        let at = parser_check_type check_type_tidarr $1 E.TidArray get_str_expr in
+          E.ThidT (E.ThidArrRd (at,i))
       with _ -> try
-        let aa = parser_check_type check_type_addrarr $1 Expr.AddrArray get_str_expr in
-          Expr.AddrT (Expr.AddrArrRd (aa,i))
+        let aa = parser_check_type check_type_addrarr $1 E.AddrArray get_str_expr in
+          E.AddrT (E.AddrArrRd (aa,i))
       with e -> try
-        let t = parser_check_type check_type_thid $1 Expr.Thid get_str_expr in
+        let t = parser_check_type check_type_thid $1 E.Thid get_str_expr in
         match t with
-        | Expr.CellLockId c -> Expr.ThidT (Expr.CellLockIdAt (c,i))
+        | E.CellLockId c -> E.ThidT (E.CellLockIdAt (c,i))
         | _                 -> raise(e)
       with e ->
-        let a = parser_check_type check_type_addr $1 Expr.Addr get_str_expr in
+        let a = parser_check_type check_type_addr $1 E.Addr get_str_expr in
         match a with
-        | Expr.Next c -> Expr.AddrT (Expr.NextAt (c,i))
+        | E.Next c -> E.AddrT (E.NextAt (c,i))
         | _           -> raise(e)
     }
   | ARR_UPDATE OPEN_PAREN term COMMA term COMMA term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "arrUpd (%s,%s,%s)" (Expr.term_to_str $3)
-                                                        (Expr.term_to_str $5)
-                                                        (Expr.term_to_str $7) in
-      let i = parser_check_type check_type_int $5 Expr.Int get_str_expr in
+      let get_str_expr () = sprintf "arrUpd (%s,%s,%s)" (E.term_to_str $3)
+                                                        (E.term_to_str $5)
+                                                        (E.term_to_str $7) in
+      let i = parser_check_type check_type_int $5 E.Int get_str_expr in
       try
-        let at = parser_check_type check_type_tidarr $3 Expr.TidArray get_str_expr in
-        let t = parser_check_type check_type_thid $7 Expr.Thid get_str_expr in
-          Expr.TidArrayT (Expr.TidArrayUp (at,i,t))
+        let at = parser_check_type check_type_tidarr $3 E.TidArray get_str_expr in
+        let t = parser_check_type check_type_thid $7 E.Thid get_str_expr in
+          E.TidArrayT (E.TidArrayUp (at,i,t))
       with _ ->
-        let aa = parser_check_type check_type_addrarr $3 Expr.AddrArray get_str_expr in
-        let a = parser_check_type check_type_addr $7 Expr.Addr get_str_expr in
-          Expr.AddrArrayT (Expr.AddrArrayUp (aa,i,a))
+        let aa = parser_check_type check_type_addrarr $3 E.AddrArray get_str_expr in
+        let a = parser_check_type check_type_addr $7 E.Addr get_str_expr in
+          E.AddrArrayT (E.AddrArrayUp (aa,i,a))
     }
 
 
@@ -1850,9 +1846,9 @@ arrays :
 addrarr :
   | term DOT ARR
     {
-      let get_str_expr () = sprintf "%s.arr" (Expr.term_to_str $1) in
-      let c = parser_check_type check_type_cell $1 Expr.Cell get_str_expr in
-        Expr.CellArr(c)
+      let get_str_expr () = sprintf "%s.arr" (E.term_to_str $1) in
+      let c = parser_check_type check_type_cell $1 E.Cell get_str_expr in
+        E.CellArr(c)
     }
 
 
@@ -1860,8 +1856,8 @@ addrarr :
 tidarr :
   | term DOT TIDS
     {
-      let get_str_expr () = sprintf "%s.tids" (Expr.term_to_str $1) in
-      let c = parser_check_type check_type_cell $1 Expr.Cell get_str_expr in
-        Expr.CellTids(c)
+      let get_str_expr () = sprintf "%s.tids" (E.term_to_str $1) in
+      let c = parser_check_type check_type_cell $1 E.Cell get_str_expr in
+        E.CellTids(c)
     }
 

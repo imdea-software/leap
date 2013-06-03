@@ -4,11 +4,11 @@ open LeapVerbose
 
 module OcamlSys = Sys
 
-module E = Expression
+module E   = Expression
 module Stm = Statement
 module Sys = System
-module NumExp = NumExpression
-module PosExp = PosExpression
+module NE  = NumExpression
+module PE  = PosExpression
 module Tac = Tactics
 
 type valid_t = Unverified | NotValid | CheckedLocation | Checked | Unneeded
@@ -28,7 +28,7 @@ sig
   
   type vc_info_t = {  pc  : E.pc_t                     ;
                       smp : Smp.cutoff_strategy_t      ;
-                      stac : Tac.proof_plan option     ;
+                      stac : Tac.solve_tactic option   ;
                       mutable supps : Tag.f_tag list   ;
                       try_pos : bool                   ;
                    }
@@ -267,7 +267,7 @@ struct
   
   type vc_info_t = {  pc  : E.pc_t                     ;
                       smp : Smp.cutoff_strategy_t      ;
-                      stac : Tac.proof_plan option ;
+                      stac : Tac.solve_tactic option   ;
                       mutable supps : Tag.f_tag list   ;
                       try_pos : bool                   ;
                    }
@@ -287,10 +287,10 @@ struct
   type formula_table_t =
     (int,                            (** An ID for the formula      *)
     (E.formula                     * (** The original formula       *)
-     PosExp.expression             * (** The formula with pos only  *)
+     PE.expression             * (** The formula with pos only  *)
      string list                   * (** New added boolean preds    *)
      valid_t                       * (** Status                     *)
-     Tactics.proof_plan option * (** Solving aided tactic       *)
+     Tactics.solve_tactic option * (** Solving aided tactic       *)
      Smp.cutoff_strategy_t         * (** Cutoff strategy to be used *)
      bool                          * (** Apply pos dp?              *)
      formula_status_t                (** Brief description          *)
@@ -1028,7 +1028,7 @@ struct
                  in
                    List.fold_left (fun (ms,es) ((arg,arg_sort),value) ->
                      let v = Stm.VarT (Stm.build_var arg arg_sort
-                                          (Some proc_name) E.RealVar) in
+                                          (E.Scope proc_name) E.RealVar) in
                      let (m,e) = gen_f mInfo pt v th_p (Stm.Term value)
                      in
                        (m@ms, e::es)
@@ -1115,7 +1115,7 @@ struct
       E.construct_term_set $ List.map (fun x -> E.ThidT x) th_list in
   
     (* For Malloc -- BEGIN *)
-    let is_sort s v = (E.var_sort v = s) in
+    let is_sort s v = (v.E.sort = s) in
     let gVars = Sys.get_variable_list (Sys.get_global sys) in
     let lVars = Sys.get_all_local_vars sys in
     let gAddrVars = List.filter (is_sort E.Addr) gVars in
@@ -1346,8 +1346,8 @@ struct
     let theta = gen_theta_general
                   (Sys.SOpenArray inv.E.voc) sys solverInfo.count_abs in
     let vc_info = {pc   = 0;
-                   smp  = assign_cutoff (Tac.smp_cutoff solverInfo.tactics);
-                   stac = Tac.solve_tactic solverInfo.tactics;
+                   smp  = assign_cutoff (Tac.get_cutoff solverInfo.tactics);
+                   stac = Tac.get_solve solverInfo.tactics;
                    supps= [];
                    try_pos = true;} in
     let init_cond = (E.Implies (theta, inv.E.formula), vc_info)
@@ -1422,48 +1422,55 @@ struct
   
   (* HERE GOES THE NEW CODE *)
 
+
+(* CONNECT *)
+(*
   let load_info (supInvs : E.formula list)
                 (inv : E.formula_info_t)
                 (line : E.pc_t)
                 (p : IGraph.premise_t) :
         (Tag.f_tag list             *
          Smp.cutoff_strategy_t option *
-         Tac.support_info_t         *
-         Tac.post_tac_t list        *
+         Tac.vc_info         *
+         Tac.formula_tactic list *
          Tac.proof_plan option) =
     let basic_supp = inv.E.formula :: supInvs in
-    let general_supp_info = Tac.gen_support basic_supp inv.E.voc
+    let general_supp_info = Tac.generate_support basic_supp inv.E.voc
                               (Tac.pre_tacs solverInfo.tactics) in
     try
       let (supp, tacs) = Hashtbl.find solverInfo.special (line, p) in
       let supp_tags = Hashtbl.find solverInfo.detailed_desc.supp_table (line,p) in
       let final_tacs = Tac.specialize_tacs solverInfo.tactics tacs in
-      let special_supp = Tac.gen_support (basic_supp @ supp)
+      let special_supp = Tac.generate_support (basic_supp @ supp)
                            inv.E.voc (Tac.pre_tacs final_tacs)
       in
         (supp_tags,
          Tac.smp_cutoff final_tacs,
          special_supp,
          Tac.post_tacs final_tacs,
-         Tac.solve_tactic final_tacs)
+         Tac.get_solve final_tacs)
     with
       Not_found -> ([],
                     Tac.smp_cutoff solverInfo.tactics,
                     general_supp_info,
                     Tac.post_tacs solverInfo.tactics,
-                    Tac.solve_tactic solverInfo.tactics)
-
+                    Tac.get_solve solverInfo.tactics)
+*)
  
  
   let gen_vcs (sys : System.system_t)
-              (supp_info : Tac.support_info_t)
+              (supp_info : Tac.vc_info)
               (inv : E.formula_info_t)
               (spec_stac:Tac.proof_plan option)
               (spec_cutoff:Smp.cutoff_strategy_t)
-              (tacs : Tac.post_tac_t list)
+              (tacs : Tac.formula_tactic list)
               (line : E.pc_t)
               (trans_tid : E.tid)
               (premise : premise_t) : (E.formula * vc_info_t) list =
+    []
+
+(* CONNECT *)
+(*
 (*    LOG "Entering gen_vcs..." LEVEL TRACE; *)
     let me_subst = E.new_tid_subst [(Sys.me_tid_th, trans_tid)] in
     let rho = gen_rho (ROpenArray (trans_tid, inv.E.voc)) solverInfo.hide_pres 
@@ -1489,13 +1496,17 @@ struct
           (E.cleanup phi, vc_info)
         ) new_vcs) @ rs
     ) [] rho
-
+*)
 
   let spinv_premise_transitions (sys : Sys.system_t)
                                 (lines_to_consider : int list)
                                 (supInvs : E.formula list)
                                 (inv : E.formula_info_t)
                                   : (E.formula * vc_info_t) list =
+    []
+
+(* CONNECT *)
+(*
 (*    LOG "Entering spinv_premise_transitions..." LEVEL TRACE; *)
     List.fold_left (fun vcs line ->
       let (n_tags, tmp_n_smp, normal_info, n_tacs, n_stac) =
@@ -1517,7 +1528,7 @@ struct
                         (info.supps <- e_tags; (phi,info))) extra_vc in
       vcs @ normal_vc @ extra_vc
     ) [] lines_to_consider
-
+*)
 
   let seq_binv (sys : Sys.system_t) (inv : E.formula)
         : (E.formula * vc_info_t) list =
@@ -1533,8 +1544,8 @@ struct
     let need_theta = List.mem 0 solverInfo.focus in
     (* TODO: Support Threads as terms? *)
     let gen_vc_info (l:E.pc_t) = {pc  =l;
-                                  smp = assign_cutoff (Tac.smp_cutoff solverInfo.tactics);
-                                  stac=Tac.solve_tactic solverInfo.tactics;
+                                  smp = assign_cutoff (Tac.get_cutoff solverInfo.tactics);
+                                  stac=Tac.get_solve solverInfo.tactics;
                                   supps = [];
                                   try_pos = true;} in
   
@@ -1578,12 +1589,15 @@ struct
 
 
   let seq_gen_vcs (sys : System.system_t)
-                  (info : Tac.support_info_t)
+                  (info : Tac.vc_info)
                   (inv : E.formula_info_t)
                   (spec_stac:Tac.proof_plan option)
                   (spec_cutoff:Smp.cutoff_strategy_t)
-                  (tacs : Tac.post_tac_t list)
+                  (tacs : Tac.formula_tactic list)
                   (line : E.pc_t) : (E.formula * vc_info_t) list =
+    []
+(* CONNECT *)
+(*
 (*    LOG "Entering seq_gen_vcs..." LEVEL TRACE; *)
     print_endline "ENTERING SEQ_GEN_VCS";
 
@@ -1622,6 +1636,7 @@ struct
           (E.cleanup phi, vc_info)
         ) new_vcs) @ rs
     ) [] rho
+*)
 
 
   let seq_spinv_premise_transitions (sys : Sys.system_t)
@@ -1629,6 +1644,10 @@ struct
                                     (supInvs : E.formula list)
                                     (inv : E.formula_info_t)
                                       : (E.formula * vc_info_t) list =
+    []
+(* CONNECT *)
+
+(*
 (*    LOG "Entering seq_spinv_premise_transitions..." LEVEL TRACE; *)
     print_endline "smt2: Entering premise_transitions";
     List.fold_left (fun vcs line ->
@@ -1640,6 +1659,7 @@ struct
                         (seq_gen_vcs sys info inv stac smp tacs line) in
       vcs @ new_vc
     ) [] lines_to_consider
+*)
 
 
   let seq_spinv (sys : Sys.system_t) (supInvs:E.formula list)
@@ -1725,8 +1745,8 @@ struct
     (* TODO: Support Threads as terms? *)
     let diff_conj = E.conj_list diff_list in
     let gen_vc_info (l:E.pc_t) = {pc  =l;
-                                  smp =assign_cutoff (Tac.smp_cutoff solverInfo.tactics);
-                                  stac=Tac.solve_tactic solverInfo.tactics;
+                                  smp =assign_cutoff (Tac.get_cutoff solverInfo.tactics);
+                                  stac=Tac.get_solve solverInfo.tactics;
                                   supps = [];
                                   try_pos = true;} in
   
@@ -1785,9 +1805,9 @@ struct
     let tbl = Hashtbl.create defFormulaTableSize in
     let i = ref 1 in
     let iter (f, info) =
-      let (p_only, new_preds) = PosExp.keep_locations f in
+      let (p_only, new_preds) = PE.keep_locations f in
       verbstr (Interface.Msg.info "ORIGINAL FORMULA" (E.formula_to_str f));
-      verbstr (Interface.Msg.info "LOCATION BASED FORMULA" (PosExp.expr_to_str p_only));
+      verbstr (Interface.Msg.info "LOCATION BASED FORMULA" (PE.expr_to_str p_only));
       let f_status = {
                        desc = "T_" ^ string_of_int info.pc;
                        trans = (info.pc, get_id info.pc);
@@ -1813,7 +1833,7 @@ struct
         match phi with
         | E.Implies (ante, cons) ->
             let new_phi = support sup ante cons false in
-            let new_pos_phi, new_preds = PosExp.keep_locations new_phi in
+            let new_pos_phi, new_preds = PE.keep_locations new_phi in
             Hashtbl.replace tbl i
               (new_phi, new_pos_phi, new_preds, Unverified, stac, smp, try_pos, desc)
         | _ -> 
@@ -1834,13 +1854,13 @@ struct
         let primed_vars = List.map E.prime_variable (E.primed_vars f) in
         let loc_vars_subs = List.map (fun v ->
                               let new_name = E.variable_to_simple_str v in
-                              (v, E.build_var new_name (E.var_sort v) false E.Shared E.GlobalScope E.RealVar)
+                              (v, E.build_var new_name v.E.sort false E.Shared E.GlobalScope E.RealVar)
                             ) (E.all_local_vars f @ primed_vars) in
         let f_without_locals = E.subst_vars loc_vars_subs f in
 
         let vars_str = String.concat "\n"
                         (List.map (fun v ->
-                           (E.sort_to_str (E.var_sort v)) ^ " " ^
+                           (E.sort_to_str v.E.sort) ^ " " ^
                            (E.variable_to_str v)
                          ) (E.all_vars f_without_locals @
                             E.primed_vars f_without_locals)) in
@@ -1912,7 +1932,7 @@ struct
       else filtered_sys in
     extended_sys
   
-  let call_pos_dp (phi:PosExp.expression) (status:valid_t) : dp_result_t =
+  let call_pos_dp (phi:PE.expression) (status:valid_t) : dp_result_t =
 (*    LOG "Entering call_pos_dp..." LEVEL TRACE; *)
     assert(isInitialized());
     if status = Unverified || status = NotValid then begin
@@ -1931,7 +1951,7 @@ struct
 (*    LOG "Entering call_num_dp..." LEVEL TRACE; *)
     assert(isInitialized());
     if status = Unverified || status = NotValid then begin
-      let num_phi = NumExp.formula_to_int_formula phi in
+      let num_phi = NE.formula_to_int_formula phi in
       let timer = new LeapLib.timer in
       timer#start;
       let valid, calls = 
@@ -2095,7 +2115,9 @@ struct
           let prev_st = 
             if num_status = Unneeded then pos_status else num_status in
           let new_status, calls, _, sats, time =
-            call_tll_dp f stac cutoff prev_st in
+            (* CONNECT *)
+            (* call_tll_dp f stac cutoff prev_st in *)
+            call_tll_dp f None cutoff prev_st in
           tll_calls := !tll_calls + calls;
           tll_sats := !tll_sats + sats;
           let st = if new_status = Unneeded then
@@ -2112,7 +2134,9 @@ struct
         if apply_tslk then begin
           let prev_st = if num_status = Unneeded then pos_status else num_status in
           let new_status, calls, _, sats, time =
-            call_tslk_dp f stac cutoff prev_st in
+            (* CONNECT *)
+            (* call_tslk_dp f stac cutoff prev_st in *)
+            call_tslk_dp f None cutoff prev_st in
           tslk_calls := !tslk_calls + calls;
           tslk_sats := !tslk_sats + sats;
           let st = if new_status = Unneeded then
@@ -2128,7 +2152,9 @@ struct
         if apply_tsl_dp() then begin
           let prev_st = if num_status = Unneeded then pos_status else num_status in
           let new_status, tsl_call, tslk_call, sats, time =
-            call_tsl_dp f stac cutoff prev_st in
+            (* CONNECT *)
+            (* call_tsl_dp f stac cutoff prev_st in *)
+            call_tsl_dp f None cutoff prev_st in
           tsl_calls := !tsl_calls + tsl_call;
           tsl_aux_calls := !tsl_aux_calls + tslk_call;
           tsl_sats := !tsl_sats + sats;

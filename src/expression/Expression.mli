@@ -407,6 +407,7 @@ val gen_fresh_tid_list : tid list -> int -> tid list
 (* LOCALIZATION FUNCTIONS *)
 val localize_var_id : varId -> string -> varId
 val loc_var_option :varId -> procedure_name -> varId
+val param_tid_to_str : tid -> string
 
 
 (* PRIMING FUNCTIONS *)
