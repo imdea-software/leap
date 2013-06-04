@@ -311,7 +311,7 @@ exception Invalid_argument
 
 
 (* VARIABLE FUNCTIONS *)
-let build_var (id:varId) (s:E.sort) (p:E.procedure_name) (k:E.kind_t) : variable =
+let build_var (id:varId) (s:E.sort) (p:E.procedure_name) (k:E.var_nature) : variable =
   {
     id = id;
     sort = s;
@@ -329,7 +329,7 @@ let var_sort (v:variable) : E.sort =
 let var_proc (v:variable) : string option =
   let (_,_,p,_) = v in p
 
-let var_k (v:variable) : E.kind_t =
+let var_k (v:variable) : E.var_nature =
   let (_,_,_,k) = v in k
 *)
 
@@ -338,7 +338,7 @@ let var_replace_sort (v:variable) (s:E.sort) : variable =
 
 
 (* General constants *)
-let me_tid = VarTh (build_var "me" E.Thid E.Global E.RealVar)
+let me_tid = VarTh (build_var "me" E.Thid E.GlobalScope E.RealVar)
 
 
 (* Pretty printing for statement formulas *)
@@ -347,19 +347,18 @@ let localize_var_id (v:varId) (p_name:string) : varId =
   sprintf "%s::%s" p_name v
 
 
-let loc_var_option (v:varId) (p_name:string option) : varId =
-  Option.map_default (localize_var_id v) v p_name
+let loc_var_option (v:varId) (p_name:E.procedure_name) : varId =
+  match p_name with
+  | E.GlobalScope -> v
+  | E.Scope proc -> localize_var_id v proc
 
 
 (* variable_to_str fold function *)
 let rec variable_to_str (loc:bool) (var:variable) : string =
-  let (id,s,p,k) = var
-  in
-    if loc then
-      loc_var_option id p
-    else
-      id
-
+  if loc then
+    loc_var_option var.id var.scope
+  else
+    var.id
 
 
 and literal_to_str (loc:bool) (expr:literal) : string =
@@ -760,7 +759,7 @@ let term_to_setelem (t:term) : setelem =
 
 
 let variable_to_expr_var (v:variable) :E.variable =
-  let (id,s,p,k) = v in (id, s, false, None, p, k)
+  E.build_var v.id v.sort false E.Shared v.scope v.nature
 
 
 let rec term_to_expr_term (t:term) : E.term =
@@ -1077,9 +1076,9 @@ and expr_to_expr_expr (e:expr_t) : E.expr_t =
 
 
 let construct_var_from_sort (id:varId)
-                            (p_name:string option)
+                            (p_name:E.procedure_name)
                             (s:E.sort)
-                            (k:E.kind_t) : term =
+                            (k:E.var_nature) : term =
   let v = build_var id s p_name k in
   match s with
     E.Set        -> SetT        (VarSet        v)
@@ -1117,9 +1116,9 @@ let expr_to_str (e:expr_t) : string =
 
 
 (* GHOST TERMS *)
-let rec var_kind_term (kind:E.kind_t) (expr:term) : term list =
+let rec var_kind_term (kind:E.var_nature) (expr:term) : term list =
   match expr with
-      VarT(_,_,_,k)     -> if k = kind then [expr] else []
+      VarT v            -> if v.nature = kind then [expr] else []
     | SetT(set)         -> var_kind_set kind set
     | AddrT(addr)       -> var_kind_addr kind addr
     | ElemT(elem)       -> var_kind_elem kind elem
@@ -1136,37 +1135,37 @@ let rec var_kind_term (kind:E.kind_t) (expr:term) : term list =
     | TidArrayT(arr)    -> var_kind_tidarr kind arr
 
 
-and var_kind_expr (kind:E.kind_t) (e:expr_t) : term list =
+and var_kind_expr (kind:E.var_nature) (e:expr_t) : term list =
   match e with
     Term t    -> var_kind_term kind t
   | Formula b -> var_kind_boolean kind b
 
 
-and var_kind_array (kind:E.kind_t) (a:arrays) : term list =
+and var_kind_array (kind:E.var_nature) (a:arrays) : term list =
   match a with
-    VarArray(_,_,_,k) -> if k = kind then [ArrayT a] else []
+    VarArray v        -> if v.nature = kind then [ArrayT a] else []
   | ArrayUp(arr,t,e)  -> (var_kind_array kind arr) @ (var_kind_expr kind e)
 
 
-and var_kind_addrarr (kind:E.kind_t) (a:addrarr) : term list =
+and var_kind_addrarr (kind:E.var_nature) (a:addrarr) : term list =
   match a with
-    VarAddrArray(_,_,_,k) -> if k = kind then [AddrArrayT a] else []
+    VarAddrArray v        -> if v.nature = kind then [AddrArrayT a] else []
   | AddrArrayUp(arr,i,a)  -> (var_kind_addrarr kind arr) @
                              (var_kind_int kind i)       @
                              (var_kind_addr kind a)
 
 
-and var_kind_tidarr (kind:E.kind_t) (a:tidarr) : term list =
+and var_kind_tidarr (kind:E.var_nature) (a:tidarr) : term list =
   match a with
-    VarTidArray(_,_,_,k) -> if k = kind then [TidArrayT a] else []
+    VarTidArray v        -> if v.nature = kind then [TidArrayT a] else []
   | TidArrayUp(arr,i,t)  -> (var_kind_tidarr kind arr) @
                             (var_kind_int kind i)      @
                             (var_kind_th kind t)
 
 
-and var_kind_set (kind:E.kind_t) (e:set) : term list =
+and var_kind_set (kind:E.var_nature) (e:set) : term list =
   match e with
-    VarSet(_,_,_,k)     -> if k = kind then [SetT e] else []
+    VarSet v            -> if v.nature = kind then [SetT e] else []
   | EmptySet            -> []
   | Singl(addr)         -> (var_kind_addr kind addr)
   | Union(s1,s2)        -> (var_kind_set kind s1) @ (var_kind_set kind s2)
@@ -1177,9 +1176,9 @@ and var_kind_set (kind:E.kind_t) (e:set) : term list =
   | SetArrayRd(arr,t)   -> (var_kind_array kind arr)
 
 
-and var_kind_addr (kind:E.kind_t) (a:addr) : term list =
+and var_kind_addr (kind:E.var_nature) (a:addr) : term list =
   match a with
-    VarAddr(_,_,_,k)          -> if k = kind then [AddrT a] else []
+    VarAddr v                 -> if v.nature = kind then [AddrT a] else []
   | Null                      -> []
   | Next(cell)                -> (var_kind_cell kind cell)
   | NextAt(cell,l)            -> (var_kind_cell kind cell) @
@@ -1201,9 +1200,9 @@ and var_kind_addr (kind:E.kind_t) (a:addr) : term list =
                                  (var_kind_int kind l)
 
 
-and var_kind_elem (kind:E.kind_t) (e:elem) : term list =
+and var_kind_elem (kind:E.var_nature) (e:elem) : term list =
   match e with
-    VarElem(_,_,_,k)    -> if k = kind then [ElemT e] else []
+    VarElem v           -> if v.nature = kind then [ElemT e] else []
   | CellData(cell)      -> (var_kind_cell kind cell)
   | ElemArrayRd(arr,t)  -> (var_kind_array kind arr)
   | PointerData a       -> (var_kind_addr kind a)
@@ -1213,9 +1212,9 @@ and var_kind_elem (kind:E.kind_t) (e:elem) : term list =
   | HighestElem         -> []
 
 
-and var_kind_th (kind:E.kind_t) (th:tid) : term list =
+and var_kind_th (kind:E.var_nature) (th:tid) : term list =
   match th with
-    VarTh(_,_,_,k)        -> if k = kind then [ThidT th] else []
+    VarTh v               -> if v.nature = kind then [ThidT th] else []
   | NoThid                -> []
   | CellLockId(cell)      -> (var_kind_cell kind cell)
   | CellLockIdAt(cell,l)  -> (var_kind_cell kind cell) @
@@ -1228,10 +1227,10 @@ and var_kind_th (kind:E.kind_t) (th:tid) : term list =
                              (var_kind_int kind l)
 
 
-and var_kind_cell (kind:E.kind_t) (c:cell) : term list =
+and var_kind_cell (kind:E.var_nature) (c:cell) : term list =
   let fold f xs = List.fold_left (fun ys x -> (f kind x) @ ys) [] xs in
   match c with
-    VarCell(_,_,_,k)       -> if k = kind then [CellT c] else []
+    VarCell v              -> if v.nature = kind then [CellT c] else []
   | Error                  -> []
   | MkCell(data,addr,th)   -> (var_kind_elem kind data) @
                               (var_kind_addr kind addr) @
@@ -1254,9 +1253,9 @@ and var_kind_cell (kind:E.kind_t) (c:cell) : term list =
   | CellArrayRd(arr,t)     -> (var_kind_array kind arr)
 
 
-and var_kind_setth (kind:E.kind_t) (s:setth) : term list =
+and var_kind_setth (kind:E.var_nature) (s:setth) : term list =
   match s with
-    VarSetTh(_,_,_,k)   -> if k = kind then [SetThT s] else []
+    VarSetTh v          -> if v.nature = kind then [SetThT s] else []
   | EmptySetTh          -> []
   | SinglTh(th)         -> (var_kind_th kind th)
   | UnionTh(s1,s2)      -> (var_kind_setth kind s1) @ (var_kind_setth kind s2)
@@ -1265,11 +1264,11 @@ and var_kind_setth (kind:E.kind_t) (s:setth) : term list =
   | SetThArrayRd(arr,t) -> (var_kind_array kind arr)
 
 
-and var_kind_setint (kind:E.kind_t) (s:setint) : term list =
+and var_kind_setint (kind:E.var_nature) (s:setint) : term list =
   match s with
-    VarSetInt(_,_,_,k)   -> if k = kind then [SetIntT s] else []
+    VarSetInt v          -> if v.nature = kind then [SetIntT s] else []
   | EmptySetInt          -> []
-  | SinglInt(i)         -> (var_kind_int kind i)
+  | SinglInt(i)          -> (var_kind_int kind i)
   | UnionInt(s1,s2)      -> (var_kind_setint kind s1) @
                             (var_kind_setint kind s2)
   | IntrInt(s1,s2)       -> (var_kind_setint kind s1) @
@@ -1279,9 +1278,9 @@ and var_kind_setint (kind:E.kind_t) (s:setint) : term list =
   | SetIntArrayRd(arr,t) -> (var_kind_array kind arr)
 
 
-and var_kind_setelem (kind:E.kind_t) (s:setelem) : term list =
+and var_kind_setelem (kind:E.var_nature) (s:setelem) : term list =
   match s with
-    VarSetElem(_,_,_,k)   -> if k = kind then [SetElemT s] else []
+    VarSetElem v          -> if v.nature = kind then [SetElemT s] else []
   | EmptySetElem          -> []
   | SinglElem(e)          -> (var_kind_elem kind e)
   | UnionElem(s1,s2)      -> (var_kind_setelem kind s1) @
@@ -1294,9 +1293,9 @@ and var_kind_setelem (kind:E.kind_t) (s:setelem) : term list =
   | SetElemArrayRd(arr,t) -> (var_kind_array kind arr)
 
 
-and var_kind_path (kind:E.kind_t) (p:path) : term list =
+and var_kind_path (kind:E.var_nature) (p:path) : term list =
   match p with
-    VarPath(_,_,_,k)             -> if k = kind then [PathT p] else []
+    VarPath v                    -> if v.nature = kind then [PathT p] else []
   | Epsilon                      -> []
   | SimplePath(addr)             -> (var_kind_addr kind addr)
   | GetPath(mem,add_from,add_to) -> (var_kind_mem kind mem) @
@@ -1305,19 +1304,19 @@ and var_kind_path (kind:E.kind_t) (p:path) : term list =
   | PathArrayRd(arr,t)           -> (var_kind_array kind arr)
 
 
-and var_kind_mem (kind:E.kind_t) (m:mem) : term list =
+and var_kind_mem (kind:E.var_nature) (m:mem) : term list =
   match m with
-    VarMem(_,_,_,k)      -> if k = kind then [MemT m] else []
+    VarMem v             -> if v.nature = kind then [MemT m] else []
   | Update(mem,add,cell) -> (var_kind_mem kind mem) @
                             (var_kind_addr kind add) @
                             (var_kind_cell kind cell)
   | MemArrayRd(arr,t)    -> (var_kind_array kind arr)
 
 
-and var_kind_int (kind:E.kind_t) (i:integer) : term list =
+and var_kind_int (kind:E.var_nature) (i:integer) : term list =
   match i with
     IntVal(i)         -> []
-  | VarInt(_,_,_,k)   -> if k = kind then [IntT i] else []
+  | VarInt v          -> if v.nature = kind then [IntT i] else []
   | IntNeg(i)         -> (var_kind_int kind i)
   | IntAdd(i1,i2)     -> (var_kind_int kind i1) @ (var_kind_int kind i2)
   | IntSub(i1,i2)     -> (var_kind_int kind i1) @ (var_kind_int kind i2)
@@ -1329,7 +1328,7 @@ and var_kind_int (kind:E.kind_t) (i:integer) : term list =
   | HavocLevel        -> []
 
 
-and var_kind_literal (kind:E.kind_t) (l:literal) : term list =
+and var_kind_literal (kind:E.var_nature) (l:literal) : term list =
   match l with
     Append(p1,p2,pres)           -> (var_kind_path kind p1) @
                                     (var_kind_path kind p2) @
@@ -1378,19 +1377,19 @@ and var_kind_literal (kind:E.kind_t) (l:literal) : term list =
                                     (var_kind_elem kind e2)
   | Eq(exp)                      -> (var_kind_eq kind exp)
   | InEq(exp)                    -> (var_kind_ineq kind exp)
-  | BoolVar v                    -> if (var_k v) = kind then [VarT v] else []
+  | BoolVar v                    -> if v.nature = kind then [VarT v] else []
   | BoolArrayRd(arr,t)           -> (var_kind_array kind arr)
 
 
-and var_kind_eq (kind:E.kind_t) ((t1,t2):eq) : term list =
+and var_kind_eq (kind:E.var_nature) ((t1,t2):eq) : term list =
   (var_kind_term kind t1) @ (var_kind_term kind t2)
 
 
-and var_kind_ineq (kind:E.kind_t) ((t1,t2):diseq) : term list =
+and var_kind_ineq (kind:E.var_nature) ((t1,t2):diseq) : term list =
   (var_kind_term kind t1) @ (var_kind_term kind t2)
     
 
-and var_kind_boolean (kind:E.kind_t) (b:boolean) : term list =
+and var_kind_boolean (kind:E.var_nature) (b:boolean) : term list =
     match b with
       Literal(lit)           -> (var_kind_literal kind lit)
     | True               -> []
@@ -1406,7 +1405,7 @@ and var_kind_boolean (kind:E.kind_t) (b:boolean) : term list =
                             (var_kind_boolean kind f2)
 
 
-let var_kind (kind:E.kind_t) (e:expr_t) : term list =
+let var_kind (kind:E.var_nature) (e:expr_t) : term list =
   let ghost_list = var_kind_expr kind e in
   let ghost_set = List.fold_left (fun set e -> TermSet.add e set)
                                (TermSet.empty)
@@ -1665,8 +1664,8 @@ let rec enabling_condition_aux (is_ghost:bool)
           | Term(CellT(CellUnlock c)) ->
               begin
                 match th with
-                  Some t -> [E.eq_tid (E.CellLockId (to_cell c)) t]
-                | None   -> [E.eq_tid (E.CellLockId (to_cell c)) E.NoThid]
+                | E.Local t -> [E.eq_tid (E.CellLockId (to_cell c)) t]
+                | E.Shared  -> [E.eq_tid (E.CellLockId (to_cell c)) E.NoThid]
               end
           | _ -> []
         end
@@ -1680,15 +1679,15 @@ let rec enabling_condition_aux (is_ghost:bool)
           | UnitUnlock a ->
               begin
                 match th with
-                  Some t -> [E.eq_tid   (read_at a) t]
-                | None   -> [E.ineq_tid (read_at a) E.NoThid]
+                | E.Local t -> [E.eq_tid   (read_at a) t]
+                | E.Shared  -> [E.ineq_tid (read_at a) E.NoThid]
               end
           | UnitLockAt (a,l)   -> [E.eq_tid (read_at a) E.NoThid]
           | UnitUnlockAt (a,l) ->
               begin
                 match th with
-                  Some t -> [E.eq_tid   (read_at a) t]
-                | None   -> [E.ineq_tid (read_at a) E.NoThid]
+                | E.Local t -> [E.eq_tid   (read_at a) t]
+                | E.Shared  -> [E.ineq_tid (read_at a) E.NoThid]
               end
         end
       in

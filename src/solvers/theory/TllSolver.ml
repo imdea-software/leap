@@ -13,17 +13,17 @@ module type CUSTOM_TLLSOLVER = sig
                    : int -> TllExp.formula -> (bool * int)
     
   val is_sat       : int ->
-                     Tactics.proof_plan option ->
+                     Tactics.solve_tactic option ->
                      Smp.cutoff_strategy_t ->
                      TllExp.formula -> bool
   val is_valid     : int ->
-                     Tactics.proof_plan option ->
+                     Tactics.solve_tactic option ->
                      Smp.cutoff_strategy_t ->
                      TllExp.formula -> bool
   
   val is_valid_plus_info 
                    : int ->
-                     Tactics.proof_plan option ->
+                     Tactics.solve_tactic option ->
                      Smp.cutoff_strategy_t ->
                      TllExp.formula -> (bool * int)
 
@@ -226,7 +226,7 @@ struct
   
   (* INVOCATIONS WITHOUT CONVERTING TO DNF *)
   let is_sat (lines : int)
-             (stac:Tactics.proof_plan option)
+             (stac:Tactics.solve_tactic option)
              (co : Smp.cutoff_strategy_t)
              (phi : TllExp.formula) : bool =
 (*    LOG "Entering is_sat..." LEVEL TRACE; *)
@@ -237,13 +237,13 @@ struct
     Solver.sat (Trans.formula stac co cutoff_opt phi)
   
   let is_valid (prog_lines:int)
-               (stac:Tactics.proof_plan option)
+               (stac:Tactics.solve_tactic option)
                (co:Smp.cutoff_strategy_t)
                (phi:TllExp.formula) : bool =
     not (is_sat prog_lines stac co (TllExp.Not phi))
   
   let is_valid_plus_info (prog_lines:int)
-                         (stac:Tactics.proof_plan option)
+                         (stac:Tactics.solve_tactic option)
                          (co:Smp.cutoff_strategy_t)
                          (phi:TllExp.formula) : (bool * int) =
     Solver.reset_calls ();

@@ -1204,9 +1204,9 @@ let gen_widening_for_invs (inv:inv_table_t) (inv':inv_table_t) : inv_table_t =
             let wide      = NumExp.int_formula_to_formula num_wide in
             let _         = Debug.print_widening_formulas
                               (loc)
-                              (NumExp.int_formula_to_string num_form)
-                              (NumExp.int_formula_to_string num_form')
-                              (NumExp.int_formula_to_string num_wide)
+                              (NumExp.formula_to_string num_form)
+                              (NumExp.formula_to_string num_form')
+                              (NumExp.formula_to_string num_wide)
             in
               Hashtbl.add wide_tbl loc wide
           ) inv
@@ -1437,9 +1437,9 @@ let compare_tables (invs:inv_table_t) (invs':inv_table_t) : bool =
     let int_exp  = NumExp.formula_to_int_formula exp in
     let int_exp' = NumExp.formula_to_int_formula exp' in
     let _ = if not (NumExp.formula_is_linear int_exp) then
-      Printf.printf "NOT_LINEAR: %s\n" (NumExp.int_formula_to_string int_exp) in
+      Printf.printf "NOT_LINEAR: %s\n" (NumExp.formula_to_string int_exp) in
     let _ = if not (NumExp.formula_is_linear int_exp') then
-      Printf.printf "NOT_LINEAR: %s\n" (NumExp.int_formula_to_string int_exp') in
+      Printf.printf "NOT_LINEAR: %s\n" (NumExp.formula_to_string int_exp') in
 (*
       Printf.printf "%s\n<=\n%s" (Expr.formula_to_str exp)
                                  (Expr.formula_to_str exp') ;

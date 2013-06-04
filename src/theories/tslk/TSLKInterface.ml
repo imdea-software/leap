@@ -41,7 +41,7 @@ module Make (TSLK : TSLKExpression.S) =
 
     and build_term_var (v:Expr.variable) : TSLK.term =
       let tslk_v = var_to_tslk_var v in
-      match Expr.var_sort v with
+      match v.Expr.sort with
         Expr.Set       -> TSLK.SetT       (TSLK.VarSet        tslk_v)
       | Expr.Elem      -> TSLK.ElemT      (TSLK.VarElem       tslk_v)
       | Expr.Thid      -> TSLK.ThidT      (TSLK.VarTh         tslk_v)
@@ -56,10 +56,23 @@ module Make (TSLK : TSLKExpression.S) =
 
 
     and var_to_tslk_var (v:Expr.variable) : TSLK.variable =
-      let (id,s,pr,th,p,_) = v
-      in
-        TSLK.build_var id (sort_to_tslk_sort s) pr (Option.lift tid_to_tslk_tid th) p
+      TSLK.build_var (v.Expr.id)
+                     (sort_to_tslk_sort v.Expr.sort)
+                     (v.Expr.is_primed)
+                     (shared_to_tslk_shared v.Expr.parameter)
+                     (scope_to_tslk_scope v.Expr.scope)
 
+
+    and shared_to_tslk_shared (th:Expr.shared_or_local) : TSLK.tid option =
+      match th with
+      | Expr.Shared -> None
+      | Expr.Local t -> Some (tid_to_tslk_tid t)
+
+
+    and scope_to_tslk_scope (p:Expr.procedure_name) : string option =
+      match p with
+      | Expr.GlobalScope -> None
+      | Expr.Scope proc -> Some proc
 
 
     and tid_to_tslk_tid (th:Expr.tid) : TSLK.tid =
@@ -125,9 +138,8 @@ module Make (TSLK : TSLKExpression.S) =
       | Expr.AddrToSetAt (m,a,l) -> TSLK.AddrToSet (mem_to_tslk_mem m,
                                                     addr_to_tslk_addr a,
                                                     int_to_tslk_level l)
-      | Expr.SetArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
-          let v = Expr.build_var id s pr (Some t) p Expr.Normal in
-          TSLK.VarSet (var_to_tslk_var v)
+      | Expr.SetArrayRd (Expr.VarArray v,t) ->
+          TSLK.VarSet (var_to_tslk_var (Expr.var_set_param (Expr.Local t) v))
       | Expr.SetArrayRd _        -> raise(UnsupportedTSLKExpr(Expr.set_to_str s))
 
 
@@ -135,9 +147,8 @@ module Make (TSLK : TSLKExpression.S) =
       match e with
         Expr.VarElem v              -> TSLK.VarElem (var_to_tslk_var v)
       | Expr.CellData c             -> TSLK.CellData (cell_to_tslk_cell c)
-      | Expr.ElemArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
-          let v = Expr.build_var id s pr (Some t) p Expr.Normal in
-          TSLK.VarElem (var_to_tslk_var v)
+      | Expr.ElemArrayRd (Expr.VarArray v,t) ->
+          TSLK.VarElem (var_to_tslk_var (Expr.var_set_param (Expr.Local t) v))
       | Expr.ElemArrayRd _          -> raise(UnsupportedTSLKExpr(Expr.elem_to_str e))
       | Expr.HavocListElem          -> raise(UnsupportedTSLKExpr(Expr.elem_to_str e))
       | Expr.HavocSkiplistElem      -> TSLK.HavocSkiplistElem
@@ -155,9 +166,8 @@ module Make (TSLK : TSLKExpression.S) =
       | Expr.FirstLockedAt (m,p,l)  -> TSLK.FirstLockedAt (mem_to_tslk_mem m,
                                                           path_to_tslk_path p,
                                                           int_to_tslk_level l)
-      | Expr.AddrArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
-          let v = Expr.build_var id s pr (Some t) p Expr.Normal in
-          TSLK.VarAddr (var_to_tslk_var v)
+      | Expr.AddrArrayRd (Expr.VarArray v,t) ->
+          TSLK.VarAddr (var_to_tslk_var (Expr.var_set_param (Expr.Local t) v))
       | Expr.AddrArrayRd _          -> raise(UnsupportedTSLKExpr(Expr.addr_to_str a))
       | Expr.AddrArrRd (aa,i)       -> raise(UnsupportedTSLKExpr(Expr.addr_to_str a))
 
@@ -194,9 +204,8 @@ module Make (TSLK : TSLKExpression.S) =
       | Expr.CellUnlockAt (c,l)   -> TSLK.CellUnlockAt (cell_to_tslk_cell c,
                                                        int_to_tslk_level l)
       | Expr.CellAt (m,a)         -> TSLK.CellAt (mem_to_tslk_mem m, addr_to_tslk_addr a)
-      | Expr.CellArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
-          let v = Expr.build_var id s pr (Some t) p Expr.Normal in
-          TSLK.VarCell (var_to_tslk_var v)
+      | Expr.CellArrayRd (Expr.VarArray v,t) ->
+          TSLK.VarCell (var_to_tslk_var (Expr.var_set_param (Expr.Local t) v))
       | Expr.CellArrayRd _        -> raise(UnsupportedTSLKExpr(Expr.cell_to_str c))
 
 
@@ -209,9 +218,8 @@ module Make (TSLK : TSLKExpression.S) =
       | Expr.UnionTh (s1,s2)   -> TSLK.UnionTh (to_setth s1, to_setth s2)
       | Expr.IntrTh (s1,s2)    -> TSLK.IntrTh (to_setth s1, to_setth s2)
       | Expr.SetdiffTh (s1,s2) -> TSLK.SetdiffTh (to_setth s1, to_setth s2)
-      | Expr.SetThArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
-          let v = Expr.build_var id s pr (Some t) p Expr.Normal in
-          TSLK.VarSetTh (var_to_tslk_var v)
+      | Expr.SetThArrayRd (Expr.VarArray v,t) ->
+          TSLK.VarSetTh (var_to_tslk_var (Expr.var_set_param (Expr.Local t) v))
       | Expr.SetThArrayRd _    -> raise(UnsupportedTSLKExpr(Expr.setth_to_str st))
 
 
@@ -224,9 +232,8 @@ module Make (TSLK : TSLKExpression.S) =
       | Expr.UnionElem (s1,s2)   -> TSLK.UnionElem (to_setelem s1, to_setelem s2)
       | Expr.IntrElem (s1,s2)    -> TSLK.IntrElem (to_setelem s1, to_setelem s2)
       | Expr.SetdiffElem (s1,s2) -> TSLK.SetdiffElem (to_setelem s1, to_setelem s2)
-      | Expr.SetElemArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
-          let v = Expr.build_var id s pr (Some t) p Expr.Normal in
-          TSLK.VarSetElem (var_to_tslk_var v)
+      | Expr.SetElemArrayRd (Expr.VarArray v,t) ->
+          TSLK.VarSetElem (var_to_tslk_var (Expr.var_set_param (Expr.Local t) v))
       | Expr.SetToElems (s,m)    -> TSLK.SetToElems (set_to_tslk_set s,
                                                     mem_to_tslk_mem m)
       | Expr.SetElemArrayRd _    -> raise(UnsupportedTSLKExpr(Expr.setelem_to_str st))
@@ -252,9 +259,8 @@ module Make (TSLK : TSLKExpression.S) =
                                            addr_to_tslk_addr a,
                                            cell_to_tslk_cell c)
       (* Missing the case for "emp" *)
-      | Expr.MemArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
-          let v = Expr.build_var id s pr (Some t) p Expr.Normal in
-          TSLK.VarMem (var_to_tslk_var v)
+      | Expr.MemArrayRd (Expr.VarArray v,t) ->
+          TSLK.VarMem (var_to_tslk_var (Expr.var_set_param (Expr.Local t) v))
       | Expr.MemArrayRd _        -> raise(UnsupportedTSLKExpr(Expr.mem_to_str m))
 
 
@@ -334,10 +340,9 @@ module Make (TSLK : TSLKExpression.S) =
       | Expr.InEq (t1,t2)         -> TSLK.InEq (term t1, term t2)
       | Expr.BoolVar v            -> TSLK.BoolVar (var_to_tslk_var v)
       | Expr.BoolArrayRd _        -> raise(UnsupportedTSLKExpr(Expr.atom_to_str a))
-      | Expr.PC (pc,t,pr)         -> TSLK.PC (pc, Option.lift tid_to_tslk_tid t,pr)
+      | Expr.PC (pc,t,pr)         -> TSLK.PC (pc, shared_to_tslk_shared t,pr)
       | Expr.PCUpdate (pc,t)      -> TSLK.PCUpdate (pc, tid_to_tslk_tid t)
-      | Expr.PCRange (pc1,pc2,t,pr) -> TSLK.PCRange (pc1, pc2,
-                                            Option.lift tid_to_tslk_tid t,pr)
+      | Expr.PCRange (pc1,pc2,t,pr) -> TSLK.PCRange (pc1, pc2, shared_to_tslk_shared t, pr)
 
 
     and literal_to_tslk_literal (l:Expr.literal) : TSLK.literal =
@@ -384,9 +389,24 @@ module Make (TSLK : TSLKExpression.S) =
     let rec var_to_expr_var (v:TSLK.variable) : Expr.variable =
       let (id,s,pr,th,p,_) = v
       in
-        (id, sort_to_expr_sort s, pr, Option.lift tid_to_expr_tid th, p, Expr.Normal)
+        Expr.build_var (id)
+                       (sort_to_expr_sort s)
+                       (pr)
+                       (shared_to_expr_shared th)
+                       (scope_to_expr_scope p)
+                       (Expr.RealVar)
+
+    and shared_to_expr_shared (th:TSLK.tid option) : Expr.shared_or_local =
+      match th with
+      | None   -> Expr.Shared
+      | Some t -> Expr.Local (tid_to_expr_tid t)
 
 
+    and scope_to_expr_scope (p:string option) : Expr.procedure_name =
+      match p with
+      | None      -> Expr.GlobalScope
+      | Some proc -> Expr.Scope proc
+                      
 
     and tid_to_expr_tid (th:TSLK.tid) : Expr.tid =
       match th with
@@ -558,10 +578,9 @@ module Make (TSLK : TSLKExpression.S) =
       | TSLK.Eq (t1,t2)           -> Expr.Eq (term t1, term t2)
       | TSLK.InEq (t1,t2)         -> Expr.InEq (term t1, term t2)
       | TSLK.BoolVar v            -> Expr.BoolVar (var_to_expr_var v)
-      | TSLK.PC (pc,t,pr)         -> Expr.PC (pc, Option.lift tid_to_expr_tid t,pr)
+      | TSLK.PC (pc,t,pr)         -> Expr.PC (pc, shared_to_expr_shared t,pr)
       | TSLK.PCUpdate (pc,t)      -> Expr.PCUpdate (pc, tid_to_expr_tid t)
-      | TSLK.PCRange (pc1,pc2,t,pr) -> Expr.PCRange (pc1, pc2,
-                                            Option.lift tid_to_expr_tid t,pr)
+      | TSLK.PCRange (pc1,pc2,t,pr) -> Expr.PCRange (pc1, pc2, shared_to_expr_shared t, pr)
 
 
     and literal_to_expr_literal (l:TSLK.literal) : Expr.literal =

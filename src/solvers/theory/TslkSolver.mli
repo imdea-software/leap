@@ -10,17 +10,17 @@ module type CUSTOM_TSLKSOLVER = sig
                    : int -> TslkExp.formula -> (bool * int)
     
   val is_sat       : int ->
-                     Tactics.proof_plan option ->
+                     Tactics.solve_tactic option ->
                      Smp.cutoff_strategy_t ->
                      TslkExp.formula -> bool
   val is_valid     : int ->
-                     Tactics.proof_plan option ->
+                     Tactics.solve_tactic option ->
                      Smp.cutoff_strategy_t ->
                      TslkExp.formula -> bool
   
   val is_valid_plus_info 
                    : int ->
-                     Tactics.proof_plan option ->
+                     Tactics.solve_tactic option ->
                      Smp.cutoff_strategy_t ->
                      TslkExp.formula -> (bool * int)
 

@@ -8,7 +8,7 @@ sig
 
     include COMMON_QUERY
 
-    val formula_to_str : Tactics.proof_plan option ->
+    val formula_to_str : Tactics.solve_tactic option ->
                          Smp.cutoff_strategy_t ->
                          Smp.cutoff_options_t ->
                          Expr.formula -> string

@@ -444,6 +444,10 @@ let var_clear_param_info (v:variable) : variable =
   v.parameter <- Shared; v
 
 
+let var_set_param (th:shared_or_local) (v:variable) : variable =
+  v.parameter <- th; v
+
+
 let is_owned_var (v:variable) : bool =
   match v.scope with
   | Scope proc  -> proc <> ""

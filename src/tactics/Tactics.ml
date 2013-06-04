@@ -60,7 +60,6 @@ type proof_plan =
   }
 
 
-
 (***********************)
 (* CONSTRUCTORS        *)
 (***********************)
@@ -333,69 +332,18 @@ let split_implication (imp:implication) : implication list =
   List.map (fun phi -> { ante=imp.ante ; conseq=phi }) new_conseqs
 
 
-(* aux functions *)
-let is_true (f:E.formula) : bool =
-  match f with
-  E.True -> true
-  | _  -> false
-
-let is_false (f:E.formula) : bool =
-  match f with
-    E.False -> true
-  | _     -> false
-
-
-let rec get_literals f =
-  match f with
-    E.Literal l  -> [l]
-  | E.And(f1,f2)       -> get_literals f1 @ get_literals f2
-  | E.Not(E.Or(f1,f2)) -> get_literals f1 @ get_literals f2
-  | _          -> []
-
-
-(* simplify_with_fact: takes the given literal as a fact, and removes all
-                         instances of identical literals in the formula for true *)
-let simplify_with_fact (lit:E.literal) (phi:E.formula) : E.formula =
-  let rec simplify_lit f = 
-    match phi with
-      E.Literal l -> if (E.identical_literal l lit) then E.True else phi
-    | E.True        -> E.True
-    | E.False       -> E.False
-    | E.And(f1, f2) -> E.And(simplify_lit f1, simplify_lit f2)
-    | E.Or (f1, f2) -> E.Or (simplify_lit f1, simplify_lit f2)
-    | E.Not f       -> E.Not(simplify_lit f)
-    | E.Implies(f1,f2) -> E.Implies (simplify_lit f1, simplify_lit f2)
-    | E.Iff    (f1,f2) -> E.Iff (simplify_lit f1, simplify_lit f2)
-  in
-  simplify (simplify_lit phi)
-
-let simplify_with_many_facts (ll:E.literal list) (phi:E.formula) : E.formula =
-  let rec simplify_lit f = 
-    match phi with
-      E.Literal l -> 
-       if List.exists (fun lit -> E.identical_literal l lit) ll then E.True else phi
-    | E.True           -> E.True
-    | E.False          -> E.False
-    | E.And(f1,f2)     -> E.And(simplify_lit f1, simplify_lit f2)
-    | E.Or (f1,f2)     -> E.Or (simplify_lit f1, simplify_lit f2)
-    | E.Not f          -> E.Not(simplify_lit f)
-    | E.Implies(f1,f2) -> E.Implies (simplify_lit f1, simplify_lit f2)
-    | E.Iff    (f1,f2) -> E.Iff (simplify_lit f1, simplify_lit f2)
-  in
-  simplify (simplify_lit phi)
+(* let tactic_split_consequent (vc:verification_condition)  : verification_condition list = *)
+(*   let info = vc.info in *)
+(*   let cases = E.to_conj_list info.goal in *)
+(*   if List.length cases > 1 then *)
+(*     let new_vcs = List.map (fun phi -> *)
+(*                         dup_vc_with_goal vc phi *)
+(*                     ) cases *)
+(*     in *)
+(*       new_vcs *)
+(*   else *)
+(*     [vc] *)
 
 let tactic_propositional_propagate (imp:implication) : implication =
-  let rec simplify_propagate (f:implication) (used:E.literal list) : 
-      (implication * E.literal list) =
-    let new_facts = get_literals f.ante in
-    if List.length new_facts = 0 then (f,used) else
-      let new_conseq = simplify_with_many_facts new_facts f.conseq in
-      let new_ante   = simplify_with_many_facts new_facts f.ante in
-      simplify_propagate { ante = new_ante; conseq = new_conseq } (used @ new_facts)
-  in
-  let (new_imp,facts) = simplify_propagate imp [] in
-  let new_ante = E.cleanup (E.And((E.conj_literals facts), new_imp.ante)) in
-  let new_conseq = new_imp.conseq in
-  { ante = new_ante ; conseq = new_conseq }
-
-	     
+  (* To be implemented *)
+  imp

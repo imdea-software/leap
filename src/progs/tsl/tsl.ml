@@ -31,8 +31,9 @@ let _ =
     VCG.initialize 1 !TslArgs.coType "" [] !TslArgs.hide_pres false;
     
     (* Enable TSL Reasoning *)
+(*
     VCG.enable_tsl_dp ();
-
+*)
     (* Create the single task *)
     let (ante, conse) = match phi with
                         | Expr.Implies (a,b) -> (a,b)
@@ -40,15 +41,21 @@ let _ =
     let inv_info = Expr.new_formula_info phi in
     inv_info.Expr.formula <- ante;
     inv_info.Expr.primed <- conse;
+(*
     let task = Tactics.new_task [] None Expr.True inv_info [] Expr.NoThid 0 in
+*)
 
+(*
     let res_tasks = Tactics.apply_post_tacs [task]
                       !TslArgs.postTactics !TslArgs.hide_pres in
+*)
 
     let vc_info = { VCG.pc = 0;      VCG.smp = !TslArgs.coType;
                     VCG.stac = None; VCG.supps = []; try_pos = false; } in
+(*
     let _ = VCG.apply_dp_on_list (List.map (fun (phi,_) -> (phi,vc_info)) res_tasks) ""
     in
+*)
       ()
   with
     | Global.ParserError msg -> Interface.Err.msg "Parsing error" msg

@@ -283,34 +283,34 @@ let no_parenthesis (str:string) : string = str
 let add_parenthesis (str:string) : string = "(" ^ str ^ ")"
 
 (* No parenthesis printing functions *)
-let int_integer_to_str (t:integer) : string =
+let integer_to_str (t:integer) : string =
   generic_int_integer_to_str no_parenthesis t
 
 let funterm_to_str (t:fun_term) : string =
   generic_funterm_to_str no_parenthesis t
 
-let int_atom_to_str (a:atom) : string =
+let atom_to_str (a:atom) : string =
   generic_atom_to_str no_parenthesis a
 
-let int_literal_to_str (l:literal) : string =
+let literal_to_str (l:literal) : string =
   generic_literal_to_str no_parenthesis l
 
-let int_formula_to_str (f:formula) : string =
+let formula_to_str (f:formula) : string =
   generic_int_formula_to_str no_parenthesis f
 
 
 
 (* Parenthesis printing functions *)
-let int_integer_to_par_string (t:integer) : string =
+let integer_to_par_string (t:integer) : string =
   generic_int_integer_to_str add_parenthesis t
 
 let funterm_to_par_string (t:fun_term) : string =
   generic_funterm_to_str add_parenthesis t
 
-let int_literal_to_par_string (l:literal) : string =
+let literal_to_par_string (l:literal) : string =
   generic_literal_to_str add_parenthesis l
 
-let int_formula_to_par_string (f:formula) : string =
+let formula_to_par_string (f:formula) : string =
   generic_int_formula_to_str add_parenthesis f
 
 
@@ -408,8 +408,7 @@ let formula_to_conj_literals (phi:formula) : literal list =
      Literal l -> [l]
     | And(a,b)  -> (try_to_build_conjunction a) @ (try_to_build_conjunction b)
     | True      -> []
-    |   _       -> Printf.printf "Error: %s\n"
-                      (E.formula_to_str (NumInterface.formula_to_expr_formula phi));
+    |   _       -> Printf.printf "Error: %s\n" (formula_to_str phi);
                    raise(NotConjunctiveExpr phi)
   in
     try_to_build_conjunction phi
@@ -638,22 +637,19 @@ let conjlit_to_str (base:variable -> 'a)
 (* Base functions for variables id *)
 
 let base_setid_all_vars (v:variable) : E.VarIdSet.t =
-  let (id,_,_,_,_) = v in
-    E.VarIdSet.singleton id
+  E.VarIdSet.singleton v.id
 
 
 let base_setid_local_vars (v:variable) : E.VarIdSet.t =
-  let (id,_,_,_,p) = v in
-    match p with
-    | E.Scope _ -> E.VarIdSet.singleton id
-    | E.GlobalScope -> E.VarIdSet.empty
+  match v.scope with
+  | Scope _ -> E.VarIdSet.singleton v.id
+  | GlobalScope -> E.VarIdSet.empty
 
 
 let base_setid_global_vars (v:variable) : E.VarIdSet.t =
-  let (id,_,_,_,p) = v in
-    match p with
-    | E.GlobalScope -> E.VarIdSet.singleton id
-    | E.Scope _ -> E.VarIdSet.empty
+  match v.scope with
+  | GlobalScope -> E.VarIdSet.singleton v.id
+  | Scope _ -> E.VarIdSet.empty
 
 
 
@@ -745,19 +741,17 @@ let base_set_all_vars (v:variable) : VarSet.t =
 
 
 let base_set_local_vars (v:variable) : VarSet.t =
-  let (id,s,pr,th,p) = v in
-    if p <> None && p <> Some "" then
-      VarSet.singleton v
-    else
-      VarSet.empty
+  if v.scope <> GlobalScope && v.scope <> Scope "" then
+    VarSet.singleton v
+  else
+    VarSet.empty
 
 
 let base_set_global_vars (v:variable) : VarSet.t =
-  let (id,s,pr,th,p) = v in
-    if p = None || p = Some "" then
-      VarSet.singleton v
-    else
-      VarSet.empty
+  if v.scope = GlobalScope || v.scope = Scope "" then
+    VarSet.singleton v
+  else
+    VarSet.empty
 
 
 
@@ -867,11 +861,10 @@ let all_local_vars_without_param (phi:formula) : variable list =
 (* Primed vars *)
 
 let base_primed_vars (v:variable) : E.VarIdSet.t =
-  let (id,_,pr,_,_) = v in
-    if pr then
-      E.VarIdSet.singleton id
-    else
-      E.VarIdSet.empty
+   if v.is_primed then
+    E.VarIdSet.singleton v.id
+  else
+    E.VarIdSet.empty
 
 
 let vset_primed_from_int_formula (phi:formula) : E.VarIdSet.t =
@@ -882,9 +875,7 @@ let vset_primed_from_int_formula (phi:formula) : E.VarIdSet.t =
 
 (* List of vars *)
 let base_list_vars (v:variable) : E.VarIdSet.t =
-  let (id,_,_,_,_) = v
-  in
-    E.VarIdSet.singleton id
+  E.VarIdSet.singleton v.id
 
 
 let vlist_from_int_formula (phi:formula) : E.VarIdSet.t =
@@ -893,8 +884,10 @@ let vlist_from_int_formula (phi:formula) : E.VarIdSet.t =
 
 
 (* Vocabulary functions *)
-let opt_th (th:E.tid option) : E.ThreadSet.t =
-  Option.map_default E.ThreadSet.singleton E.ThreadSet.empty th
+let opt_th (th:shared_or_local) : E.ThreadSet.t =
+  match th with
+  | Shared -> E.ThreadSet.empty
+  | Local t -> E.ThreadSet.singleton t
 
 
 let thset_from (ths:E.tid list) : E.ThreadSet.t =
@@ -904,16 +897,16 @@ let thset_from (ths:E.tid list) : E.ThreadSet.t =
 let rec voc_from_int_integer (t:integer) : E.ThreadSet.t =
   match t with
     Val i                  -> E.ThreadSet.empty
-  | Var v                  -> opt_th (get_th v)
+  | Var v                  -> opt_th v.parameter
   | Neg t                  -> voc_from_int_integer t
   | Add (t1,t2)            -> E.ThreadSet.union (voc_from_int_integer t1)
-                                                   (voc_from_int_integer t2)
+                                                (voc_from_int_integer t2)
   | Sub (t1,t2)            -> E.ThreadSet.union (voc_from_int_integer t1)
-                                                   (voc_from_int_integer t2)
+                                                (voc_from_int_integer t2)
   | Mul (t1,t2)            -> E.ThreadSet.union (voc_from_int_integer t1)
-                                                   (voc_from_int_integer t2)
+                                                (voc_from_int_integer t2)
   | Div (t1,t2)            -> E.ThreadSet.union (voc_from_int_integer t1)
-                                                   (voc_from_int_integer t2)
+                                                (voc_from_int_integer t2)
   | ArrayRd (a,th)         -> E.ThreadSet.empty
   | SetMin s               -> E.ThreadSet.empty
   | SetMax s               -> E.ThreadSet.empty
@@ -921,21 +914,21 @@ let rec voc_from_int_integer (t:integer) : E.ThreadSet.t =
 
 let voc_from_funterm (t:fun_term) : E.ThreadSet.t =
   match t with
-    FunVar v        -> opt_th (get_th v)
+    FunVar v        -> opt_th v.parameter
   | FunUpd (f,th,v) -> E.ThreadSet.singleton th
 
 
 let rec voc_from_int_set (s:set) : E.ThreadSet.t =
   match s with
-    VarSet v      -> opt_th (get_th v)
+    VarSet v      -> opt_th v.parameter
   | EmptySet      -> E.ThreadSet.empty
   | Singl i       -> voc_from_int_integer i
   | Union (s1,s2) -> E.ThreadSet.union (voc_from_int_set s1)
-                                          (voc_from_int_set s2)
+                                       (voc_from_int_set s2)
   | Intr (s1,s2)  -> E.ThreadSet.union (voc_from_int_set s1)
-                                          (voc_from_int_set s2)
+                                       (voc_from_int_set s2)
   | Diff (s1,s2)  -> E.ThreadSet.union (voc_from_int_set s1)
-                                          (voc_from_int_set s2)
+                                       (voc_from_int_set s2)
 
 
 let voc_from_int_term (t:term) : E.ThreadSet.t =

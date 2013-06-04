@@ -311,6 +311,7 @@ val same_var : variable -> variable -> bool
 val build_var : varId -> sort -> bool -> shared_or_local ->
                 procedure_name -> var_nature -> variable
 val var_clear_param_info : variable -> variable
+val var_set_param : shared_or_local ->  variable -> variable
 
 (** [var_base_info v] returns [v], removing information about priming and
     thread id *)

@@ -1968,7 +1968,7 @@ struct
   
   
   let call_tll_dp (phi    : E.formula)
-                  (stac   : Tac.proof_plan option)
+                  (stac   : Tac.solve_tactic option)
                   (cutoff : Smp.cutoff_strategy_t)
                   (status : valid_t) : dp_result_t =
 (*    LOG "Entering call_tll_dp..." LEVEL TRACE; *)
@@ -1991,7 +1991,7 @@ struct
 
 
   let call_tslk_dp (phi    : E.formula)
-                   (stac   : Tac.proof_plan option)
+                   (stac   : Tac.solve_tactic option)
                    (cutoff : Smp.cutoff_strategy_t)
                    (status : valid_t) : dp_result_t =
 (*    LOG "Entering call_tslk_dp..." LEVEL TRACE; *)
@@ -2017,7 +2017,7 @@ struct
 
 (* TUKA: Repair this function *)
   let call_tsl_dp (phi    : E.formula)
-                  (stac   : Tac.proof_plan option)
+                  (stac   : Tac.solve_tactic option)
                   (cutoff : Smp.cutoff_strategy_t)
                   (status : valid_t) : dp_result_t =
 (*    LOG "Entering call_tsl_dp..." LEVEL TRACE; *)

@@ -59,9 +59,9 @@ and atom =
   | TidInEq       of tid * tid
   | FunEq         of fun_term * fun_term
   | FunInEq       of fun_term * fun_term
-  | PC            of int * tid option * bool
+  | PC            of int * shared_or_local * bool
   | PCUpdate      of int * tid
-  | PCRange       of int * int * tid option * bool
+  | PCRange       of int * int * shared_or_local * bool
 and literal =
     Atom            of atom
   | NegAtom         of atom
@@ -86,12 +86,12 @@ module VarSet : Set.S with type elt = variable
 exception NotConjunctiveExpr of formula
 
 
-val build_var : varId -> sort -> bool -> tid option -> string option -> variable
-val get_id : variable -> varId
-val get_sort : variable -> sort
-val is_primed_var : variable -> bool
-val get_proc : variable -> string option
-val get_th : variable -> tid option
+val build_var : varId ->
+                sort ->
+                bool ->
+                shared_or_local ->
+                procedure_name ->
+                variable
 val var_clear_param_info : variable -> variable
 val param_var : variable -> tid -> variable
 val var_is_global : variable -> bool
@@ -99,10 +99,10 @@ val var_is_global : variable -> bool
 
 val is_int_formula : Expression.formula   -> bool
 
-val variable_to_str       : variable -> string
-val int_integer_to_str    : integer  -> string
-val int_formula_to_str    : formula -> string
-val int_literal_to_str    : literal -> string
+val variable_to_str   : variable -> string
+val integer_to_str    : integer  -> string
+val formula_to_str    : formula -> string
+val literal_to_str    : literal -> string
 
 val all_varid             : formula -> Expression.varId list
 val all_varid_literal     : literal -> Expression.varId list

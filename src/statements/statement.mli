@@ -303,7 +303,7 @@ val var_replace_sort : variable -> Expression.sort -> variable
 
 (* Auxiliary functions *)
 val construct_var_from_sort : Expression.varId ->
-                              string option ->
+                              Expression.procedure_name ->
                               Expression.sort ->
                               Expression.var_nature ->
                               term

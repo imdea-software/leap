@@ -85,7 +85,7 @@ sig
       (** [literal_list ls] translates the list [ls] of literals into its 
           internal representation. *)
      
-      val formula      : Tactics.proof_plan option ->
+      val formula      : Tactics.solve_tactic option ->
                          Smp.cutoff_strategy_t ->
                          Smp.cutoff_options_t ->
                          Exp.formula -> t
@@ -124,7 +124,7 @@ sig
       (** [literal_list ls] translates the list [ls] of literals into its internal 
           internal representation. *)
 
-      val formula      : Tactics.proof_plan option ->
+      val formula      : Tactics.solve_tactic option ->
                          Smp.cutoff_strategy_t ->
                          Smp.cutoff_options_t ->
                          Exp.formula -> t

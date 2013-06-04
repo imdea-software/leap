@@ -19,7 +19,7 @@ let use_z3        = ref false
 let coType        = ref Smp.Union (*Smp.Dnf*)
 let hide_pres     = ref false
 let phiFile       = ref ""
-let postTactics   = ref []
+(*let postTactics   = ref [] *)
 
 let assignopt (valref : 'a ref) (valbool : bool ref) (aval : 'a) : unit =
   valref := aval ; valbool := true
@@ -39,7 +39,7 @@ let set_co co =
   | "pruning" -> coType := Smp.Pruning
   | _ -> ()
 
-
+(*
 let parse_tac_list (s:string) : Tactics.post_tac_t list =
   let regexp = Str.regexp "," in
   let split = Str.split regexp s in
@@ -47,6 +47,7 @@ let parse_tac_list (s:string) : Tactics.post_tac_t list =
   with e -> Interface.Err.msg"Bad argument" $
       "List of tactics name expected as argument.";
       raise(e)
+*)
 
 let assigninputfile  (s:string) : unit = assignopt input_file is_input_file s
 
@@ -66,9 +67,11 @@ let opts =
     ("--show_file_info",
         Arg.Set Debug._debug_show_tmpfile_info_,
         "shows path of temporary files");
+(*
     ("--tacs",
         Arg.String (fun s -> postTactics := (parse_tac_list s)),
         "tac_1,tac_2,...,tac_n post tactics to be applied");
+*)
     ("--debug",
         Arg.Unit setdebug,
         "debug output information");
