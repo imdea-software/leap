@@ -366,7 +366,7 @@ let rec get_literals f =
                          instances of identical literals in the formula for true *)
 let simplify_with_fact (lit:E.literal) (phi:E.formula) : E.formula =
   let rec simplify_lit f = 
-    match phi with
+    match f with
       E.Literal l -> if (E.identical_literal l lit) then E.True else phi
     | E.True        -> E.True
     | E.False       -> E.False
