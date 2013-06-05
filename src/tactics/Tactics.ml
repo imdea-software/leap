@@ -380,30 +380,39 @@ let simplify_with_fact (lit:E.literal) (phi:E.formula) : E.formula =
 
 let simplify_with_many_facts (ll:E.literal list) (phi:E.formula) : E.formula =
   let rec simplify_lit f = 
-    match phi with
+    match f with
       E.Literal l -> 
-       if List.exists (fun lit -> E.identical_literal l lit) ll then E.True else phi
-    | E.True           -> E.True
-    | E.False          -> E.False
+	if List.exists (fun lit -> E.identical_literal l lit) ll then E.True 
+	else phi 
+    | E.True           ->  E.True
+    | E.False          ->  E.False
     | E.And(f1,f2)     -> E.And(simplify_lit f1, simplify_lit f2)
     | E.Or (f1,f2)     -> E.Or (simplify_lit f1, simplify_lit f2)
     | E.Not f          -> E.Not(simplify_lit f)
     | E.Implies(f1,f2) -> E.Implies (simplify_lit f1, simplify_lit f2)
     | E.Iff    (f1,f2) -> E.Iff (simplify_lit f1, simplify_lit f2)
   in
-  simplify (simplify_lit phi)
+  let _ = printf "entering simplify_with_many_facts\n" in
+  let res = simplify (simplify_lit phi) in
+  let _ = printf "exiting simplify_with_many_facts\n" in
+   res
+
 
 let tactic_propositional_propagate (imp:implication) : implication =
   let rec simplify_propagate (f:implication) (used:E.literal list) : 
       (implication * E.literal list) =
     let new_facts = get_literals f.ante in
     if List.length new_facts = 0 then (f,used) else
+      let _ = printf "simplify_propagate with %n literals\n" (List.length new_facts) in
       let new_conseq = simplify_with_many_facts new_facts f.conseq in
       let new_ante   = simplify_with_many_facts new_facts f.ante in
       simplify_propagate { ante = new_ante; conseq = new_conseq } (used @ new_facts)
   in
+  let _ = printf "one\n" in
   let (new_imp,facts) = simplify_propagate imp [] in
+  let _ = printf "two\n" in
   let new_ante = E.cleanup (E.And((E.conj_literals facts), new_imp.ante)) in
+  let _ = printf "three\n" in
   let new_conseq = new_imp.conseq in
   { ante = new_ante ; conseq = new_conseq }
 
@@ -419,4 +428,6 @@ let pick_formula_split_tac (tac_name:formula_split_tactic) : formula_split_tacti
 let pick_formula_tac (tac_name:formula_tactic) : formula_tactic_t =
   match tac_name with
   | SimplifyPC -> id (* TO BE IMPLEMENTED *)
-  | PropositionalPropagate -> tactic_propositional_propagate
+  | PropositionalPropagate -> 
+    let _ = printf "pick\n" in
+    tactic_propositional_propagate

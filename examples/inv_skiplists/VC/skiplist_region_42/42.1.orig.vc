@@ -1,7 +1,7 @@
 //42:     update[i]->arr[i] := newCell
 //      +-------
 //      if (i = 0) then
-/       region := region Union { newCell }
+//       region := region Union { newCell }
 //      end if
 //      +-------
 //
