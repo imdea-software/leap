@@ -5247,21 +5247,21 @@ and identical_atom (a1:atom) (a2: atom) : bool =
   | SubsetEqElem(s1,r1),SubsetEqElem(s2,r2) ->
     identical_setelem s1 s2 && identical_setelem r1 r2
   | Less(n1,m1),Less(n2,m2) ->
-    identical_integer n1 m1 && identical_integer n2 m2
+    identical_integer n1 n2 && identical_integer m1 m2
   | Less(n1,m1),Greater(n2,m2) ->
-    identical_integer n1 m2 && identical_integer n2 m1
+    identical_integer n1 m2 && identical_integer m1 n2
   | Greater(n1,m1),Greater(n2,m2) ->
-    identical_integer n1 m1 && identical_integer n2 m2
+    identical_integer n1 n2 && identical_integer m1 m2
   | Greater(n1,m1),Less(n2,m2) ->
-    identical_integer n1 m2 && identical_integer n2 m1
+    identical_integer n1 m2 && identical_integer m1 n2
   | LessEq(n1,m1),LessEq(n2,m2) ->
-    identical_integer n1 m1 && identical_integer n2 m2
+    identical_integer n1 n2 && identical_integer m1 m2
   | LessEq(n1,m1),GreaterEq(n2,m2) ->
-    identical_integer n1 m2 && identical_integer n2 m1
+    identical_integer n1 m2 && identical_integer m1 n2
   | GreaterEq(n1,m1),GreaterEq(n2,m2) ->
-    identical_integer n1 m1 && identical_integer n2 m2
+    identical_integer n1 n2 && identical_integer m1 m2
   | GreaterEq(n1,m1),LessEq(n2,m2) ->
-    identical_integer n1 m2 && identical_integer n2 m2
+    identical_integer n1 m2 && identical_integer m1 n2
   | LessElem(n1,m1),LessElem(n2,m2) ->
     identical_elem n1 m1 && identical_elem n2 m2
   | LessElem(n1,m1),GreaterElem(n2,m2) ->

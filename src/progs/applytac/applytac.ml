@@ -59,7 +59,7 @@ let _ =
 
     let final_implications =
         List.fold_left (fun ps f_name ->
-          print_endline "HERE!!!";
+          print_endline ("HERE!!! calling" ^ (Tactics.formula_tactic_to_string f_name) ^ "\n");
           print_endline (string_of_int (List.length ps));
           List.map (Tactics.pick_formula_tac f_name) ps
         ) split_implications !ApplyTacArgs.formula_tac_list in

@@ -65,6 +65,9 @@ val default_cutoff_algorithm : Smp.cutoff_strategy_t
 val support_tactic_from_string : string ->  support_tactic
 val formula_tactic_from_string : string ->  formula_tactic
 val formula_split_tactic_from_string : string -> formula_split_tactic
+
+val formula_tactic_to_string :formula_tactic -> string
+
 val create_vc_info  : support_t ->
                       Expression.formula ->
                       Expression.formula ->

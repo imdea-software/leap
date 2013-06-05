@@ -109,14 +109,20 @@ let support_tactic_from_string (s:string) : support_tactic =
   | "full"    -> Full
   | "reduce"  -> Reduce
   | "reduce2" -> Reduce2
-  | _ -> raise(Invalid_tactic (s ^ "is not a support_tactic"))
+  | _ -> raise(Invalid_tactic (s ^ " is not a support_tactic"))
 
 
 let formula_tactic_from_string (s:string) : formula_tactic =
   match s with
   | "simplify-pc"             -> SimplifyPC
   | "propositional-propagate" -> PropositionalPropagate
-  | _ -> raise(Invalid_tactic (s ^ "is not a formula_tactic"))
+  | _ -> raise(Invalid_tactic (s ^ " is not a formula_tactic"))
+
+
+let formula_tactic_to_string (tac:formula_tactic) : string =
+  match tac with
+  | SimplifyPC             -> "simplify-pc"
+  | PropositionalPropagate -> "propositional-propagate"
 
 
 let formula_split_tactic_from_string (s:string): formula_split_tactic =
@@ -213,6 +219,8 @@ and get_line (vc:verification_condition) : E.pc_t =
   get_line_from_info vc.info
 and get_vocabulary (vc:verification_condition) : E.tid list =
   get_vocabulary_from_info vc.info
+
+
 
 
 (***************)
@@ -382,8 +390,8 @@ let simplify_with_many_facts (ll:E.literal list) (phi:E.formula) : E.formula =
   let rec simplify_lit f = 
     match f with
       E.Literal l -> 
-  if List.exists (fun lit -> E.identical_literal l lit) ll then E.True 
-  else phi 
+	if List.exists (fun lit -> E.identical_literal l lit) ll then E.True 
+	else E.Literal l
     | E.True           ->  E.True
     | E.False          ->  E.False
     | E.And(f1,f2)     -> E.And(simplify_lit f1, simplify_lit f2)
@@ -392,27 +400,27 @@ let simplify_with_many_facts (ll:E.literal list) (phi:E.formula) : E.formula =
     | E.Implies(f1,f2) -> E.Implies (simplify_lit f1, simplify_lit f2)
     | E.Iff    (f1,f2) -> E.Iff (simplify_lit f1, simplify_lit f2)
   in
-  let _ = printf "entering simplify_with_many_facts\n" in
   let res = simplify (simplify_lit phi) in
-  let _ = printf "exiting simplify_with_many_facts\n" in
    res
 
 
 let tactic_propositional_propagate (imp:implication) : implication =
+  let _ = print_endline "tactic_propositional_propagate" in
   let rec simplify_propagate (f:implication) (used:E.literal list) : 
       (implication * E.literal list) =
     let new_facts = get_literals f.ante in
     if List.length new_facts = 0 then (f,used) else
-      let _ = printf "simplify_propagate with %n literals\n" (List.length new_facts) in
-      let new_conseq = simplify_with_many_facts new_facts f.conseq in
-      let new_ante   = simplify_with_many_facts new_facts f.ante in
-      simplify_propagate { ante = new_ante; conseq = new_conseq } (used @ new_facts)
+      begin
+	let str = sprintf "simplify_propagate with %n literals" (List.length new_facts) in
+	let _ = print_endline str in
+	let _ = print_endline (E.literal_to_str (List.hd new_facts)) in
+	let new_conseq = simplify_with_many_facts new_facts f.conseq in
+	let new_ante   = simplify_with_many_facts new_facts f.ante in
+	simplify_propagate { ante = new_ante; conseq = new_conseq } (used @ new_facts)
+      end
   in
-  let _ = printf "one\n" in
   let (new_imp,facts) = simplify_propagate imp [] in
-  let _ = printf "two\n" in
   let new_ante = E.cleanup (E.And((E.conj_literals facts), new_imp.ante)) in
-  let _ = printf "three\n" in
   let new_conseq = new_imp.conseq in
   { ante = new_ante ; conseq = new_conseq }
 
