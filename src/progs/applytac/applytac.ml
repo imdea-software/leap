@@ -18,7 +18,25 @@ let _ =
     let original_implications =
       if ApplyTacArgs.is_vc_file () then begin
         (* Here goes the code for vc_info *)
-        []
+        let vc_info = Parser.parse ch (Eparser.vc_info Elexer.norm) in
+        let final_vc_info_list = [vc_info] in
+
+(*
+        let split_vc_info_list =
+            List.fold_left (fun ps f_name ->
+              List.flatten (List.map (Tactics.pick_support_split_tac f_name) ps)
+            ) [vc_info] !ApplyTacArgs.support_split_tac_list
+
+        let final_vc_info_list =
+            List.fold_left (fun ps f_name ->
+              List.map (Tactics.pick_support_tac f_name) ps
+            ) split_vc_info_list !ApplyTacArgs.support_tac_list
+
+        
+*)
+        List.map (fun vc ->
+          Tactics.vc_info_to_implication vc []
+        ) final_vc_info_list
       end else begin
         let (_,phi) = Parser.parse ch (Eparser.single_formula Elexer.norm) in
         print_endline ("FORMULA:\n" ^ (Expression.formula_to_str phi) ^ "\n");
@@ -35,20 +53,16 @@ let _ =
 
 
     let split_implications =
-      if !ApplyTacArgs.formula_split_tac_list <> [] then
         List.fold_left (fun ps f_name ->
           List.flatten (List.map (Tactics.pick_formula_split_tac f_name) ps)
-        ) original_implications !ApplyTacArgs.formula_split_tac_list
-      else
-        original_implications in
+        ) original_implications !ApplyTacArgs.formula_split_tac_list in
 
     let final_implications =
-      if !ApplyTacArgs.formula_tac_list <> [] then
         List.fold_left (fun ps f_name ->
+          print_endline "HERE!!!";
+          print_endline (string_of_int (List.length ps));
           List.map (Tactics.pick_formula_tac f_name) ps
-        ) split_implications !ApplyTacArgs.formula_tac_list
-      else
-        split_implications in
+        ) split_implications !ApplyTacArgs.formula_tac_list in
 
 
     (* Convert implications to formulas *)

@@ -146,4 +146,4 @@ let close_input _ =
   if !is_input_file then Unix.close !input_file_fd
 
 let is_vc_file () : bool =
-	Filename.check_suffix !input_file ".vcfile"
+  Filename.check_suffix !input_file ".vcfile"

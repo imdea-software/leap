@@ -382,8 +382,8 @@ let simplify_with_many_facts (ll:E.literal list) (phi:E.formula) : E.formula =
   let rec simplify_lit f = 
     match f with
       E.Literal l -> 
-	if List.exists (fun lit -> E.identical_literal l lit) ll then E.True 
-	else phi 
+  if List.exists (fun lit -> E.identical_literal l lit) ll then E.True 
+  else phi 
     | E.True           ->  E.True
     | E.False          ->  E.False
     | E.And(f1,f2)     -> E.And(simplify_lit f1, simplify_lit f2)

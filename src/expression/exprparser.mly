@@ -546,7 +546,9 @@ let define_ident (proc_name:E.procedure_name)
 %start invariant
 %start formula
 %start single_formula
+%start vc_info
 
+%type <Tactics.vc_info> vc_info
 
 %type <System.var_table_t * Expression.formula> single_formula
 %type <System.var_table_t * Tag.f_tag option * Expression.formula> invariant
@@ -1573,3 +1575,36 @@ tidarr :
 /************************   TEMPORARY VERIFICATION CONDITIONS **********************/
 
 
+vc_info :
+  | param COLON inv_var_declarations
+    SUPPORT COLON formula_list
+    TID_CONSTRAINT COLON formula
+    RHO COLON formula
+    GOAL COLON formula
+    TRANSITION_TID COLON thid
+    LINE COLON NUMBER
+      {
+        let _ = System.clear_table invVars in
+        let supp_list = $6 in
+        let tid_phi = $9 in
+        let rho_phi = $12 in
+        let goal_phi = $15 in
+        let trans_tid = $18 in
+        let line = $21 in
+        {
+          Tactics.original_support = supp_list ;
+          Tactics.tid_constraint = tid_phi ;
+          Tactics.rho = rho_phi ;
+          Tactics.goal = goal_phi ;
+          Tactics.transition_tid = trans_tid ;
+          Tactics.line = line ;
+          Tactics.vocabulary = Expression.voc (Expression.conj_list [tid_phi;rho_phi;goal_phi]);
+        }
+        
+      }
+
+formula_list :
+  |
+    { [] }
+  | formula formula_list
+    { $1 :: $2 }
