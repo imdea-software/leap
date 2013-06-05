@@ -14,48 +14,33 @@ let _ =
 
     if !ApplyTacArgs.verbose then LeapVerbose.enable_verbose();
     let ch = ApplyTacArgs.open_input () in
-    let (_,phi) = Parser.parse ch
-                    (Eparser.single_formula Elexer.norm) in
+
+    let original_implications =
+      if ApplyTacArgs.is_vc_file () then begin
+        (* Here goes the code for vc_info *)
+        []
+      end else begin
+        let (_,phi) = Parser.parse ch (Eparser.single_formula Elexer.norm) in
+        print_endline ("FORMULA:\n" ^ (Expression.formula_to_str phi) ^ "\n");
+        (* We construct the phi implication *)
+        let (ante, conse) = match phi with
+                            | Expression.Implies (a,b) -> (a,b)
+                            | _ -> (Expression.True, phi) in
+        let phi_implication = { Tactics.ante = ante; Tactics.conseq = conse; }
+        in
+          [phi_implication]
+    end in
     ApplyTacArgs.close_input ();
-(*
-    (* Parse support files *)
-    let supp = List.map (fun file ->
-                 snd (Parser.open_and_parse file (Eparser.single_formula Elexer.norm))
-               ) !ApplyTacArgs.support_files in
-*)
 
-
-    print_endline ("FORMULA:\n" ^ (Expression.formula_to_str phi) ^ "\n");
-(*
-    print_endline "SUPPORT FORMULAS:";
-    List.iter (fun psi -> (print_endline (Expression.formula_to_str psi))) supp;
-*)
-
-
-    (* We construct the phi implication *)
-    let (ante, conse) = match phi with
-                        | Expression.Implies (a,b) -> (a,b)
-                        | _ -> (Expression.True, phi) in
-    let phi_implication =
-      {
-        Tactics.ante = ante;
-        Tactics.conseq = conse;
-      } in
-
-(*
-    List.fold_left (fun ->
-      HERE APPLIES THE TACTICS FUNCTIONS
-    ) [] (!ApplyTacArgs.formula_tac_list)
-*)
 
 
     let split_implications =
       if !ApplyTacArgs.formula_split_tac_list <> [] then
         List.fold_left (fun ps f_name ->
           List.flatten (List.map (Tactics.pick_formula_split_tac f_name) ps)
-        ) [phi_implication] !ApplyTacArgs.formula_split_tac_list
+        ) original_implications !ApplyTacArgs.formula_split_tac_list
       else
-        [phi_implication] in
+        original_implications in
 
     let final_implications =
       if !ApplyTacArgs.formula_tac_list <> [] then
@@ -77,9 +62,10 @@ let _ =
       (* Print files *)
       List.iter (fun phi ->
         let file_name = !ApplyTacArgs.outfile ^ "_" ^ (string_of_int !i) in
-        let out = open_out_gen [Open_creat;Open_append;Open_wronly] 0o666 file_name in
+        let out = open_out_gen [Open_creat;Open_trunc;Open_wronly] 0o666 file_name in
         output_string out (Expression.formula_to_human_str phi);
-        close_out out
+        close_out out;
+        incr i
       ) final_formulas
     end;
 

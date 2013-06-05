@@ -38,3 +38,5 @@ val postcheck : unit -> unit
 val parse_args : 'a -> unit
 val open_input : 'a -> in_channel
 val close_input : 'a -> unit
+
+val is_vc_file : unit -> bool

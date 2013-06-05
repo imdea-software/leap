@@ -503,6 +503,10 @@ let define_ident (proc_name:E.procedure_name)
 %token MATH_PLUS MATH_MINUS MATH_MULT MATH_DIV MATH_LESS MATH_GREATER
 %token MATH_LESS_EQ MATH_GREATER_EQ
 
+
+%token TID_CONSTRAINT RHO GOAL TRANSITION_TID LINE
+
+
 %token EOF
 
 %nonassoc EQUALS NOT_EQUALS MATH_LESS MATH_GREATER MATH_LESS_EQ MATH_GREATER_EQ
@@ -542,6 +546,7 @@ let define_ident (proc_name:E.procedure_name)
 %start invariant
 %start formula
 %start single_formula
+
 
 %type <System.var_table_t * Expression.formula> single_formula
 %type <System.var_table_t * Tag.f_tag option * Expression.formula> invariant
@@ -1564,4 +1569,7 @@ tidarr :
       let c = parser_check_type check_type_cell $1 E.Cell get_str_expr in
         E.CellTids(c)
     }
+
+/************************   TEMPORARY VERIFICATION CONDITIONS **********************/
+
 

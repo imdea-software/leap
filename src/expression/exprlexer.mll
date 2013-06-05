@@ -14,6 +14,16 @@ let alphanum = ['A'-'Z' 'a'-'z' '0'-'9' '_' '/' ''' '@' ]
 let almostany =['A'-'Z' 'a'-'z' '0'-'9' '_' ' ' '.' '/' '-' '(' ')' '\'' ',']
 
 rule norm = parse
+
+
+  | "TidConstraint" { Global.last "TidConstraint" ; TID_CONSTRAINT }
+  | "Rho"           { Global.last "Rho"           ; RHO }
+  | "Goal"          { Global.last "Goal"          ; GOAL }
+  | "Tid"           { Global.last "Tid"           ; TRANSITION_TID }
+  | "Line"          { Global.last "Line"          ; LINE }
+
+
+
   | "Support"       { Global.last "Support"       ; SUPPORT }
   | "Diagram"       { Global.last "Diagram"       ; DIAGRAM }
   | "begin"         { Global.last "begin"         ; BEGIN }
