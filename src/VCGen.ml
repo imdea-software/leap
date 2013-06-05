@@ -1849,28 +1849,10 @@ struct
       output_string out header;
       for i = 1 to (Hashtbl.length vc_tbl) do
         let (f, pf, _, status, _, _, _, desc) = Hashtbl.find vc_tbl i in
-(*        let f_str = E.formula_to_str f in *)
-
-        let primed_vars = List.map E.prime_variable (E.primed_vars f) in
-        let loc_vars_subs = List.map (fun v ->
-                              let new_name = E.variable_to_simple_str v in
-                              (v, E.build_var new_name v.E.sort false E.Shared E.GlobalScope E.RealVar)
-                            ) (E.all_local_vars f @ primed_vars) in
-        let f_without_locals = E.subst_vars loc_vars_subs f in
-
-        let vars_str = String.concat "\n"
-                        (List.map (fun v ->
-                           (E.sort_to_str v.E.sort) ^ " " ^
-                           (E.variable_to_str v)
-                         ) (E.all_vars f_without_locals @
-                            E.primed_vars f_without_locals)) in
-        let f_str = match f_without_locals with
-                    | E.Implies (ante, conse) -> sprintf ("\n//antecedent:\n%s\n -> \n//consequent:\n%s") (E.formula_to_str ante) (E.formula_to_str conse)
-                    | _ -> E.formula_to_str f_without_locals in
+        let f_str = E.formula_to_human_str f in
         let status_str = valid_to_str status in
-        let full_str = "\nvars:\n\n" ^ vars_str ^ "\nformula:\n\n" ^ f_str in
         output_string out (sprintf "// --- %i : %s ---\n%s: %s\n"
-                            i desc.desc  status_str full_str)
+                            i desc.desc  status_str f_str)
       done;
       close_out out
   

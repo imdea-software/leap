@@ -44,17 +44,20 @@ val new_proof_plan : Smp.cutoff_strategy_t option ->
                      formula_split_tactic_t list ->
                      formula_tactic list ->
                      proof_plan
-val vc_info_to_formula : vc_info -> support_t -> Expression.formula 
-val vc_info_to_vc : vc_info -> support_t -> verification_condition 
-val formula_tactic_from_string : string ->  formula_tactic 
-val formula_split_tactic_from_string : string -> formula_split_tactic 
-val create_vc_info  : support_t -> 
-                    Expression.formula -> 
-                    Expression.formula -> 
-        Expression.formula -> 
-        Expression.tid list -> 
-        Expression.tid -> 
-        Expression.pc_t ->   vc_info 
+val vc_info_to_formula : vc_info -> support_t -> Expression.formula
+val vc_info_to_vc : vc_info -> support_t -> verification_condition
+val default_cutoff_algorithm : Smp.cutoff_strategy_t
+val support_tactic_from_string : string ->  support_tactic
+val formula_tactic_from_string : string ->  formula_tactic
+val formula_split_tactic_from_string : string -> formula_split_tactic
+val create_vc_info  : support_t ->
+                      Expression.formula ->
+                      Expression.formula ->
+                      Expression.formula ->
+                      Expression.tid list ->
+                      Expression.tid ->
+                      Expression.pc_t ->
+                      vc_info 
 
 val create_vc  : support_t -> 
                Expression.formula -> 
@@ -110,4 +113,9 @@ val tactic_propositional_propagate : implication -> implication
 
 
 
+(**************************************************************************)
+(* CONVERTERS: From tactic names to tactics functions                     *)
+(**************************************************************************)
 
+val pick_formula_split_tac : formula_split_tactic -> formula_split_tactic_t
+val pick_formula_tac : formula_tactic ->  formula_tactic_t

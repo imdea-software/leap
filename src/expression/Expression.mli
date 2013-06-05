@@ -483,6 +483,8 @@ val expr_to_str       : expr_t      -> string
 val tid_to_str        : tid         -> string
 val tid_option_to_str : tid option  -> string
 
+val formula_to_human_str : formula -> string
+
 val shared_or_local_to_str : shared_or_local -> string
 
 val variable_to_str  : variable     -> string

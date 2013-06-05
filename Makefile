@@ -27,6 +27,7 @@ SPEC_CHECK=spec_check
 TLL=tll
 TSL=tsl
 TMPTSL=tmptsl
+APPLYTAC=applytac
 
 
 # Configuration
@@ -40,7 +41,7 @@ check_tool = @if ( test -e $(TOOLS)/$(1) ) || (test -h $(TOOLS)/$(1) ) ; then \
 						fi
 
 
-.PHONY: clean softclean all expand unexpand leap prog2fts pinv sinv pvd tll tmptsl tsl numinv spec_check doc tools tests compile
+.PHONY: clean softclean all expand unexpand leap prog2fts pinv sinv pvd tll applytac tmptsl tsl numinv spec_check doc tools tests compile
 
 
 # Flags
@@ -109,6 +110,10 @@ $(TSL):
 $(TMPTSL):
 	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(TMPTSL).native
 	@ln -f -s ./_build/src/progs/tmptsl/$(TMPTSL).native $(TMPTSL)
+
+$(APPLYTAC):
+	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(APPLYTAC).native
+	@ln -f -s ./_build/src/progs/applytac/$(APPLYTAC).native $(APPLYTAC)
 
 solvertest:
 	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) test.native

@@ -1668,30 +1668,8 @@ and formula_to_str_aux (op:logic_op_t) (phi:formula) : string =
                       "(" ^ a_str ^ " <-> " ^ b_str ^ ")"
 
 
-
-
-
-
-
 and formula_to_str (expr:formula) : string =
   formula_to_str_aux NoneOp expr
-(*
-  match expr with
-    Literal(lit)          -> (literal_to_str lit)
-  | True                  -> sprintf "true"
-  | False                 -> sprintf "false"
-  | And(f1, f2)           -> sprintf "(%s /\\ %s)" (formula_to_str f1)
-                                                 (formula_to_str f2)
-  | Or(f1,f2)             -> sprintf "(%s \\/ %s)" (formula_to_str f1)
-                                                 (formula_to_str f2)
-  | Not(f)                -> sprintf "(~ %s)" (formula_to_str f)
-  | Implies(f1,f2)        -> sprintf "(%s -> %s)" (formula_to_str f1)
-                                                (formula_to_str f2)
-  | Iff (f1,f2)           -> sprintf "(%s <-> %s)" (formula_to_str f1)
-                                                 (formula_to_str f2)
-*)
-
-
 
 
 
@@ -4980,6 +4958,27 @@ let gen_focus_list (max_pos:pc_t)
   (PosSet.elements focus_set)
 
 
+
+
+let formula_to_human_str (phi:formula) : string =
+  let primed_varset = List.map prime_variable (primed_vars phi) in
+  let loc_vars_subs = List.map (fun v ->
+                        let new_name = variable_to_simple_str v in
+                        (v, build_var new_name v.sort false Shared GlobalScope RealVar)
+                      ) (all_local_vars phi @ primed_varset) in
+  let f_without_locals = subst_vars loc_vars_subs phi in
+
+  let vars_str = String.concat "\n"
+                  (List.map (fun v ->
+                     (sort_to_str v.sort) ^ " " ^
+                     (variable_to_str v)
+                   ) ((all_vars f_without_locals) @
+                      (primed_vars f_without_locals))) in
+  let f_str = match f_without_locals with
+              | Implies (ante, conse) -> sprintf ("\n//antecedent:\n%s\n -> \n//consequent:\n%s") (formula_to_str ante) (formula_to_str conse)
+              | _ -> formula_to_str f_without_locals in
+  let full_str = "\nvars:\n\n" ^ vars_str ^ "\nformula:\n\n" ^ f_str in
+  full_str
 
 
 let rec identical_formula  (phi1:formula) (phi2:formula) : bool =

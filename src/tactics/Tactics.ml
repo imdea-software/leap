@@ -102,13 +102,22 @@ let vc_info_to_vc (info:vc_info) (sup:support_t): verification_condition =
 
 exception Invalid_tactic of string
 
+let default_cutoff_algorithm = Smp.Dnf
+
+let support_tactic_from_string (s:string) : support_tactic =
+  match s with
+  | "full"    -> Full
+  | "reduce"  -> Reduce
+  | "reduce2" -> Reduce2
+  | _ -> raise(Invalid_tactic (s ^ "is not a support_tactic"))
+
+
 let formula_tactic_from_string (s:string) : formula_tactic =
   match s with
   | "simplify-pc"             -> SimplifyPC
   | "propositional-propagate" -> PropositionalPropagate
   | _ -> raise(Invalid_tactic (s ^ "is not a formula_tactic"))
 
-let default_cutoff_algorithm = Smp.Dnf
 
 let formula_split_tactic_from_string (s:string): formula_split_tactic =
   match s with
@@ -398,4 +407,16 @@ let tactic_propositional_propagate (imp:implication) : implication =
   let new_conseq = new_imp.conseq in
   { ante = new_ante ; conseq = new_conseq }
 
-	     
+
+(**************************************************************************)
+(* CONVERTERS: From tactic names to tactics functions                     *)
+(**************************************************************************)
+
+let pick_formula_split_tac (tac_name:formula_split_tactic) : formula_split_tactic_t =
+  match tac_name with
+  | SplitConsequent -> split_implication
+
+let pick_formula_tac (tac_name:formula_tactic) : formula_tactic_t =
+  match tac_name with
+  | SimplifyPC -> id (* TO BE IMPLEMENTED *)
+  | PropositionalPropagate -> tactic_propositional_propagate
