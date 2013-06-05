@@ -1581,7 +1581,7 @@ vc_info :
     TID_CONSTRAINT COLON formula
     RHO COLON formula
     GOAL COLON formula
-    TRANSITION_TID COLON thid
+    TRANSITION_TID COLON term
     LINE COLON NUMBER
       {
         let _ = System.clear_table invVars in
@@ -1589,18 +1589,10 @@ vc_info :
         let tid_phi = $9 in
         let rho_phi = $12 in
         let goal_phi = $15 in
-        let trans_tid = $18 in
+        let trans_tid = parser_check_type check_type_thid $18 E.Thid (fun _ -> (E.term_to_str $18)) in
         let line = $21 in
-        {
-          Tactics.original_support = supp_list ;
-          Tactics.tid_constraint = tid_phi ;
-          Tactics.rho = rho_phi ;
-          Tactics.goal = goal_phi ;
-          Tactics.transition_tid = trans_tid ;
-          Tactics.line = line ;
-          Tactics.vocabulary = Expression.voc (Expression.conj_list [tid_phi;rho_phi;goal_phi]);
-        }
-        
+        let vocab = E.voc (E.conj_list [tid_phi;rho_phi;goal_phi]) in
+        Tactics.create_vc_info supp_list tid_phi rho_phi goal_phi vocab trans_tid line
       }
 
 formula_list :

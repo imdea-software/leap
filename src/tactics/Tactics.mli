@@ -1,21 +1,6 @@
 type polarity = Pos | Neg | Both
 type support_t = Expression.formula list
-
-(* I am exporting the type just for setting it by hand in applytac *)
-(* type vc_info *)
-
-type vc_info = {
-  original_support : support_t ; (* BOXED formulas, tids must be renamed *)
-  tid_constraint   : Expression.formula      ;
-  
-  rho             : Expression.formula ;   (* TRANSITION RELATION *)
-
-  goal            : Expression.formula  ;
-  transition_tid  : Expression.tid      ;
-  line            : Expression.pc_t     ;
-  vocabulary      : Expression.tid list ; (* MAY GO *)
-}
-
+type vc_info
 type verification_condition
 type implication = {
   ante : Expression.formula ;
@@ -67,6 +52,7 @@ val formula_tactic_from_string : string ->  formula_tactic
 val formula_split_tactic_from_string : string -> formula_split_tactic
 
 val formula_tactic_to_string :formula_tactic -> string
+val vc_info_to_str : vc_info -> string
 
 val create_vc_info  : support_t ->
                       Expression.formula ->
