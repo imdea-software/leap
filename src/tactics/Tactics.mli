@@ -8,7 +8,6 @@ type implication = {
 }
 
 type support_tactic = Full | Reduce | Reduce2
-type support_split_tactic = SupportSplitConsequent
 type formula_tactic = SimplifyPC | PropositionalPropagate
 type formula_split_tactic = SplitConsequent
 type solve_tactic = Cases
@@ -45,21 +44,17 @@ val new_proof_plan : Smp.cutoff_strategy_t option ->
                      formula_split_tactic_t list ->
                      formula_tactic list ->
                      proof_plan
-val vc_info_to_formula : vc_info -> support_t -> Expression.formula
-val vc_info_to_vc : vc_info -> support_t -> verification_condition
-val default_cutoff_algorithm : Smp.cutoff_strategy_t
-val support_tactic_from_string : string ->  support_tactic
-val support_split_tactic_from_string : string ->  support_split_tactic
-val formula_tactic_from_string : string ->  formula_tactic
-val formula_split_tactic_from_string : string -> formula_split_tactic
-val create_vc_info  : support_t ->
-                      Expression.formula ->
-                      Expression.formula ->
-                      Expression.formula ->
-                      Expression.tid list ->
-                      Expression.tid ->
-                      Expression.pc_t ->
-                      vc_info
+val vc_info_to_formula : vc_info -> support_t -> Expression.formula 
+val vc_info_to_vc : vc_info -> support_t -> verification_condition 
+val formula_tactic_from_string : string ->  formula_tactic 
+val formula_split_tactic_from_string : string -> formula_split_tactic 
+val create_vc_info  : support_t -> 
+                    Expression.formula -> 
+                    Expression.formula -> 
+        Expression.formula -> 
+        Expression.tid list -> 
+        Expression.tid -> 
+        Expression.pc_t ->   vc_info 
 
 val create_vc  : support_t -> 
                Expression.formula -> 
