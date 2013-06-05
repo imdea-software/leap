@@ -5,16 +5,9 @@ open LeapLib
 open Global
 
 module E      = Expression
-module Vd     = Diagrams
 module Symtbl = Exprsymtable
 
 (* This code should be changed in the future *)
-module Pos  = (val PosSolver.choose  "default"   : PosSolver.S)
-module Tll  = (val TllSolver.choose  "default"   : TllSolver.S)
-module Tslk = (val TslkSolver.choose "default" 1 : TslkSolver.S)
-module Num  = (val NumSolver.choose  "default"   : NumSolver.S)
-module VCG = VCGen.Make(Pos)(Tll)(Tslk)(Num)
-module VD = Diagrams.Make(VCG)
 (* This code should be changed in the future *)
 
 type cond_op_t =
@@ -50,7 +43,6 @@ exception Ghost_var_in_local_decl
 exception Ghost_vars_in_assignment of E.term list
 exception Normal_vars_in_ghost_assignment of E.term list
 exception No_kind_for_var of E.varId
-exception Duplicated_ranking_function of Vd.node_id_t * E.term * E.term
 exception Ranking_function_unmatched_sort of E.sort * E.term * E.sort
 exception Different_argument_length of string * string
 
@@ -397,7 +389,7 @@ let check_delta_sort (s:E.sort) : unit =
                           (E.sort_to_str E.Int)
                           (E.sort_to_str s)
 
-
+(*
 let check_and_add_delta (tbl:Vd.delta_fun_t)
                         (lst:(Vd.delta_range_t list * E.term) list)
                           : unit =
@@ -446,7 +438,7 @@ let check_and_add_delta (tbl:Vd.delta_fun_t)
           ) lst
   in
     ()
-
+*)
 
 let define_ident (proc_name:E.procedure_name)
                  (id:string)
@@ -548,15 +540,11 @@ let define_ident (proc_name:E.procedure_name)
 
 
 %start invariant
-%start vd_formula
-%start diagram
-%start param_diagram
 %start formula
 %start single_formula
 
 %type <System.var_table_t * Expression.formula> single_formula
 %type <System.var_table_t * Tag.f_tag option * Expression.formula> invariant
-%type <System.var_table_t * Tag.f_tag option * Expression.formula> vd_formula
 %type <unit> inv_var_declarations
 %type <unit> inv_var_decl_list
 %type <unit> inv_var_decl
@@ -587,284 +575,9 @@ let define_ident (proc_name:E.procedure_name)
 %type <E.addrarr> addrarr
 %type <E.tidarr> tidarr
 
-%type <Diagrams.vd_t> diagram
-%type <(Diagrams.pvd_t * Expression.tid list)> param_diagram
-%type <E.formula list> support
-%type <E.formula list> sup_formula_list
-
-%type <Vd.box_t list> boxes
-%type <Vd.box_t list> box_list
-%type <Vd.box_t> box
-%type <Vd.node_t list> nodes
-%type <Vd.node_t list> node_list
-%type <Vd.node_t> node
-%type <Vd.node_id_t> node_id
-%type <Vd.node_id_t list> node_id_list
-%type <Vd.node_id_t list> initials
-%type <Vd.edge_t list> edges
-%type <Vd.edge_t list> edge_list
-%type <Vd.edge_t> edge
-%type <Vd.trans_t> transition
-%type <Vd.trans_t list> tran_list
-%type <Vd.acceptance_list_t> acceptance
-%type <Vd.acceptance_pair_t list> accept_list
-%type <Vd.acceptance_pair_t> accept_pair
-%type <(Vd.node_id_t * Vd.node_id_t) list> edge_id_list
-%type <(Vd.node_id_t * Vd.node_id_t)> edge_id
-
-%type <Vd.delta_range_t> delta_node_desc
-%type <Vd.delta_range_t list> delta_node_list
-%type <Vd.delta_range_t list> delta_node_pos
-%type <Vd.delta_range_t list * E.term> delta_func
-%type <(Vd.delta_range_t list * E.term) list> delta_func_list
 
 
 %%
-
-
-/******************   DIAGRAMS **********************/
-
-
-param_diagram :
-  | diagram_init COLON IDENT support nodes initials boxes edges acceptance
-    {
-      let vd_name      = get_name $3 in
-      let sup_formulas = $4 in
-      let nodes        = $5 in
-      let initial      = $6 in
-      let boxes        = $7 in
-      let edges        = $8 in
-      let accept       = $9 in
-        (* By now, we verify that the formula expression written here
-           uses variables from V due to the way in which the parser
-           is constructed. In the future, if the parser is modified,
-           it may be necessary to verify that variables appearing in
-           this formula are contained into V *)
-        (* I think we must now do this verification, as the program
-           is now parsed with statement_parser *)
-        VD.new_param_diagram vd_name sup_formulas nodes initial boxes edges accept
-    }
-
-
-diagram :
-  | diagram_init COLON IDENT
-    THREADS COLON NUMBER
-    nodes initials edges acceptance
-    {
-      let vd_name = get_name $3 in
-      let th_num  = $6 in
-      let nodes   = $7 in
-      let initial = $8 in
-      let edges   = $9 in
-      let accept  = $10 in
-        (* By now, we verify that the formula expression written here
-           uses variables from V due to the way in which the parser
-           is constructed. In the future, if the parser is modified,
-           it may be necessary to verify that variables appearing in
-           this formula are contained into V *)
-        VD.new_diagram vd_name th_num nodes initial edges accept
-    }
-
-diagram_init :
-  | DIAGRAM
-    { }
-
-support :
-  |
-    { [] }
-  | SUPPORT COLON sup_formula_list
-    { $3 }
-
-sup_formula_list :
-  |
-    { [] }
-  | formula sup_formula_list
-    { $1 :: $2 }
-
-
-boxes :
-  | BOXES COLON box_list
-    { $3 }
-
-box_list :
-  |
-    { [] }
-  | box box_list
-    { $1 :: $2 }
-
-box :
-  | OPEN_SET node_id_list CLOSE_SET COLON IDENT
-    {
-      let nodes_id = $2 in
-      let var_name = get_name $5 in
-      let th       = E.build_var_tid var_name in
-      let _        = incr curr_box_counter in
-
-      VD.new_box !curr_box_counter nodes_id th
-    }
-
-nodes :
-  | NODES COLON node_list
-    { $3 }
-
-node_list :
-  |
-    { [] }
-  | node node_list
-    { $1 :: $2 }
-
-node :
-  | node_id COLON OPEN_SET formula CLOSE_SET
-    {
-      let n = $1 in
-      let formula = $4 in
-        VD.new_node n formula
-    }
-
-node_id :
-  | OPEN_BRACKET NUMBER CLOSE_BRACKET
-    { VD.new_node_id $2 }
-
-initials :
-  | INITIAL COLON OPEN_SET node_id_list CLOSE_SET
-    { $4 }
-
-node_id_list :
-  | NUMBER
-    { [VD.new_node_id $1] }
-  | NUMBER COMMA node_id_list
-    { (VD.new_node_id $1) :: $3 }
-
-edges :
-  | EDGES COLON edge_list
-    { $3 }
-
-edge_list :
-  |
-    { [] }
-  | edge edge_list
-    { $1 :: $2 }
-
-edge :
-  | node_id LOGICAL_THEN node_id COLON OPEN_SET tran_list CLOSE_SET
-    {
-      let from_node = $1 in
-      let to_node = $3 in
-      let tran_set = $6 in
-      let edge_info = VD.new_edge_info Vd.Normal tran_set in
-        VD.new_edge from_node to_node edge_info
-    }
-  | node_id LARGE_EDGE_ARROW node_id COLON OPEN_SET tran_list CLOSE_SET
-    {
-      let from_node = $1 in
-      let to_node = $3 in
-      let tran_set = $6 in
-      let edge_info = VD.new_edge_info Vd.Large tran_set in
-        VD.new_edge from_node to_node edge_info
-    }
-
-
-tran_list :
-  |
-    { [] }
-  | transition
-    { [$1] }
-  | transition COMMA tran_list
-    { $1 :: $3 }
-
-
-transition :
-  | NUMBER opt_th_param
-    {
-      let pc = $1 in
-      let th = $2 in
-        VD.new_trans pc th
-    }
-
-
-acceptance :
-  | ACCEPTANCE COLON accept_list
-    {
-      let acc_list = $3 in
-      VD.new_acceptance_list acc_list
-    }
-
-
-accept_list :
-  |
-    { [] }
-  | accept_pair accept_list
-    { $1 :: $2 }
-
-
-accept_pair :
-  | OPEN_SET edge_id_list CLOSE_SET COLON OPEN_SET edge_id_list CLOSE_SET
-    USING BEGIN delta_func_list END
-    {
-      let l1 = $2 in
-      let l2 = $6 in
-      let f_list = $10 in
-      let tbl = Hashtbl.create Vd.initNodeNum in
-      let _ = check_and_add_delta tbl f_list in
-
-      VD.new_acceptance_pair l1 l2 tbl
-    }
-
-
-edge_id_list :
-  |
-    { [] }
-  | edge_id
-    { [$1] }
-  | edge_id COMMA edge_id_list
-    { $1 :: $3 }
-
-
-edge_id :
-  | node_id LOGICAL_THEN node_id
-    {
-      let n1 = $1 in
-      let n2 = $3 in
-      (n1,n2)
-    }
-
-
-delta_func_list :
-  | delta_func
-    { [$1] }
-  | delta_func delta_func_list
-    { $1 :: $2 }
-
-
-delta_func :
-  | delta_node_pos COLON term
-    {
-      let pos_list = $1 in
-      let expr = $3 in
-        (pos_list, expr)
-    }
-
-
-delta_node_pos :
-  | delta_node_list
-    { $1 }
-  | DEFAULT
-    { [Vd.Default] }
-
-
-delta_node_list :
-  | delta_node_desc
-    { [$1] }
-  | delta_node_desc COMMA delta_node_list
-    { $1 :: $3 }
-
-
-delta_node_desc :
-  | NUMBER
-    { Vd.Single (VD.new_node_id $1) }
-  | NUMBER MATH_MINUS NUMBER
-    { Vd.Range (VD.new_node_id $1, VD.new_node_id $3) }
-
 
 /*********************     SINGLE FORMULA    *************************/
 
@@ -879,6 +592,7 @@ single_formula :
     }
 
 
+
 /*********************     INVARIANTS    *************************/
 
 invariant :
@@ -891,16 +605,6 @@ invariant :
         (declInvVars, tag, inv)
     }
 
-
-vd_formula :
-  | param COLON inv_var_declarations FORMULA formula_tag COLON formula
-    { let declPhiVars = System.copy_var_table invVars in
-      let tag         = $5 in
-      let phi         = $7 in
-      let _           = System.clear_table invVars
-      in
-        (declPhiVars, tag, phi)
-    }
 
 formula_tag :
   |

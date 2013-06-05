@@ -53,7 +53,7 @@ and sort_to_expr_sort (s:Tll.sort) : Expr.sort =
 
 and build_term_var (v:Expr.variable) : Tll.term =
   let tll_v = variable_to_tll_var v in
-  match Expr.var_sort v with
+  match v.Expr.sort with
     Expr.Set   -> Tll.SetT   (Tll.VarSet   tll_v)
   | Expr.Elem  -> Tll.ElemT  (Tll.VarElem  tll_v)
   | Expr.Thid  -> Tll.ThidT  (Tll.VarTh    tll_v)
@@ -67,10 +67,23 @@ and build_term_var (v:Expr.variable) : Tll.term =
 
 
 and variable_to_tll_var (v:Expr.variable) : Tll.variable =
-  let (id,s,pr,th,p,_) = v
-  in
-    (id, sort_to_tll_sort s, pr, Option.lift tid_to_tll_tid th, p)
+  Tll.build_var (v.Expr.id)
+                (sort_to_tll_sort v.Expr.sort)
+                (v.Expr.is_primed)
+                (shared_to_tll_shared v.Expr.parameter)
+                (scope_to_tll_scope v.Expr.scope)
 
+
+and shared_to_tll_shared (th:Expr.shared_or_local) : Tll.tid option =
+  match th with
+  | Expr.Shared  -> None
+  | Expr.Local t -> Some (tid_to_tll_tid t)
+
+
+and scope_to_tll_scope (p:Expr.procedure_name) : string option =
+  match p with
+  | Expr.GlobalScope -> None
+  | Expr.Scope proc  -> Some proc
 
 
 and tid_to_tll_tid (th:Expr.tid) : Tll.tid =

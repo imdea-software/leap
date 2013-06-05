@@ -141,6 +141,7 @@ module AtomSet : Set.S with type elt = atom
 module ThreadSet : Set.S with type elt = tid
 
 (* variable manipulation *)
+val build_var : varId -> sort -> bool -> tid option -> string option -> variable
 val param_var : variable -> tid -> variable
 val is_global_var : variable -> bool
 val get_sort : variable -> sort

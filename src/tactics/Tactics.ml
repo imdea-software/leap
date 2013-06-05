@@ -40,6 +40,7 @@ type implication = {
 }
 
 type support_tactic = Full | Reduce | Reduce2
+type support_split_tactic = SupportSplitConsequent
 type formula_tactic = SimplifyPC | PropositionalPropagate
 type formula_split_tactic = SplitConsequent
 type solve_tactic = Cases
@@ -101,18 +102,34 @@ let vc_info_to_vc (info:vc_info) (sup:support_t): verification_condition =
 
 exception Invalid_tactic of string
 
+
+let support_tactic_from_string (s:string) : support_tactic =
+  match s with
+  | "full" -> Full
+  | "reduce" -> Reduce
+  | "reduce2" -> Reduce2
+  | _ -> raise(Invalid_tactic (s ^ "is not a support_tactic"))
+
+
+let support_split_tactic_from_string (s:string) : support_split_tactic =
+  match s with
+  | "split" -> SupportSplitConsequent
+  | _ -> raise(Invalid_tactic (s ^ "is not a support_tactic"))
+
+
 let formula_tactic_from_string (s:string) : formula_tactic =
   match s with
-  | "simplify-pc"             -> SimplifyPC
-  | "propositional-propagate" -> PropositionalPropagate
+  | "simpl" -> SimplifyPC
+  | "prop" -> PropositionalPropagate
   | _ -> raise(Invalid_tactic (s ^ "is not a formula_tactic"))
 
-let default_cutoff_algorithm = Smp.Dnf
 
 let formula_split_tactic_from_string (s:string): formula_split_tactic =
   match s with
-  | "split-consequent"        -> SplitConsequent
+  | "split" -> SplitConsequent
   | _ -> raise(Invalid_tactic (s ^ "is not a formula_split_tactic"))
+
+let default_cutoff_algorithm = Smp.Dnf
 
 
 let create_vc_info (supp       : support_t)

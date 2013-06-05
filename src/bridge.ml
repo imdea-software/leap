@@ -60,16 +60,16 @@ let unfold_expression (mInfo:malloc_info)
                  (E.expr_t * E.term list * E.formula list) =
 (*    LOG "unfold_expression::gen_malloc()" LEVEL TRACE; *)
     let c_fresh = E.VarCell(E.build_var
-                      E.fresh_cell_name E.Cell false None None E.Normal) in
+                      E.fresh_cell_name E.Cell false E.Shared E.GlobalScope E.RealVar) in
     let a_fresh = E.VarAddr(E.build_var
-                      E.fresh_addr_name E.Addr false None None E.Normal) in
+                      E.fresh_addr_name E.Addr false E.Shared E.GlobalScope E.RealVar) in
     let diff_fresh a = E.ineq_addr a_fresh (E.VarAddr a) in
     let not_in_set s = E.Not (E.in_form a_fresh (E.VarSet s)) in
     let gDiffAddr = List.map diff_fresh mInfo.gAddrs in
     let gNotInSet = List.map not_in_set mInfo.gSets in
     let lDiffAddr = List.fold_left (fun xs t ->
                       xs @ List.map (fun v ->
-                             diff_fresh (E.param_variable (Some t) v)
+                             diff_fresh (E.param_variable (E.Local t) v)
                            ) mInfo.lAddrs
                     ) [] mInfo.tids in
     let lNotInSet = List.fold_left (fun xs t ->
@@ -105,11 +105,11 @@ let unfold_expression (mInfo:malloc_info)
       let e_expr   = Stm.elem_to_expr_elem e in
       let l_expr   = Stm.integer_to_expr_integer l in
       let aa_fresh = E.VarAddrArray(E.build_var
-                       E.fresh_addrarr_name E.AddrArray false None None E.Normal) in
+                       E.fresh_addrarr_name E.AddrArray false E.Shared E.GlobalScope E.RealVar) in
       let tt_fresh = E.VarTidArray(E.build_var
-                       E.fresh_tidarr_name E.TidArray false None None E.Normal) in
+                       E.fresh_tidarr_name E.TidArray false E.Shared E.GlobalScope E.RealVar) in
       let i_fresh = E.VarInt(E.build_var
-                       E.fresh_int_name E.Int false None None E.Normal) in
+                       E.fresh_int_name E.Int false E.Shared E.GlobalScope E.RealVar) in
       let mkcell   = E.param_cell th_p
                        (E.MkSLCell(e_expr, aa_fresh, tt_fresh, l_expr)) in
       let (t,ms,fs) = gen_malloc mkcell in
@@ -157,11 +157,6 @@ let unfold_expression (mInfo:malloc_info)
 
 
 (* EXPRESSION PRESERVATION FUNCTIONS *)
-let pres_th_param (t:E.term) (new_th:E.tid option) : E.tid option =
-  let owner = E.get_var_owner t in
-  match owner with
-    Some _ -> new_th
-  | None   -> None
 
 
 (*
@@ -259,7 +254,7 @@ let generic_stm_term_eq (mode:eqGenMode)
     (* HavocLevel *)
     | (E.IntT (E.VarInt v) as i, E.Term (E.IntT (E.HavocLevel))) ->
         let e = E.IntT (E.VarInt(E.build_var
-                  E.fresh_int_name E.Int false None None E.Normal)) in
+                  E.fresh_int_name E.Int false E.Shared E.GlobalScope E.RealVar)) in
           eq_generator i th_p (E.Term e)
     (* Remaining cases *)
     | _ -> eq_generator v' th_p new_e in

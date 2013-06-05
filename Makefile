@@ -26,6 +26,7 @@ NUMINV=numinv
 SPEC_CHECK=spec_check
 TLL=tll
 TSL=tsl
+TMPTSL=tmptsl
 
 
 # Configuration
@@ -39,7 +40,7 @@ check_tool = @if ( test -e $(TOOLS)/$(1) ) || (test -h $(TOOLS)/$(1) ) ; then \
 						fi
 
 
-.PHONY: clean softclean all expand unexpand leap prog2fts pinv sinv pvd tll tsl numinv spec_check doc tools tests compile
+.PHONY: clean softclean all expand unexpand leap prog2fts pinv sinv pvd tll tmptsl tsl numinv spec_check doc tools tests compile
 
 
 # Flags
@@ -105,6 +106,10 @@ $(TSL):
 	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(TSL).native
 	@ln -f -s ./_build/src/progs/tsl/$(TSL).native $(TSL)
 
+$(TMPTSL):
+	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(TMPTSL).native
+	@ln -f -s ./_build/src/progs/tmptsl/$(TMPTSL).native $(TMPTSL)
+
 solvertest:
 	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) test.native
 
@@ -118,7 +123,7 @@ doc:
 
 clean:
 	$(OCAMLBUILD) -clean
-	rm -f $(LEAP) $(TLL) $(TSL) $(PROG2FTS) $(PINV) $(SINV) $(PVD) $(NUMINV) $(SPEC_CHECK) test.native
+	rm -f $(LEAP) $(TLL) $(TMPTSL) $(TSL) $(PROG2FTS) $(PINV) $(SINV) $(PVD) $(NUMINV) $(SPEC_CHECK) test.native
 
 softclean:
 	rm -rf _build _log

@@ -43,7 +43,7 @@ and build_term_var (v:Expr.variable) : Tsl.term =
 (*  LOG "Entering build_term_var..." LEVEL TRACE; *)
 (*  LOG "build_term_var(%s)" (Expr.variable_to_str v) LEVEL DEBUG; *)
   let tsl_v = var_to_tsl_var v in
-  match Expr.var_sort v with
+  match v.Expr.sort with
     Expr.Set       -> Tsl.SetT       (Tsl.VarSet        tsl_v)
   | Expr.Elem      -> Tsl.ElemT      (Tsl.VarElem       tsl_v)
   | Expr.Thid      -> Tsl.ThidT      (Tsl.VarTh         tsl_v)

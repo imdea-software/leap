@@ -41,16 +41,15 @@ let pred_variable_to_str (v:string) : string =
 
 
 let rec variable_to_str (v:PE.variable) : string =
-  let (id, pr, th, p) = v in
-	let pr_str = if v.PE.is_primed then "_prime" else "" in
-	let th_str = match v.PE.parameter with
-							 | PE.Shared -> ""
-							 | PE.Local t -> tid_to_str t in
-	let p_str = match v.PE.scope with
-							| PE.GlobalScope -> ""
-							| PE.Scope proc -> proc ^ "_"
-	in
-    sprintf "%s%s%s%s" p_str id th_str pr_str
+  let pr_str = if v.PE.is_primed then "_prime" else "" in
+  let th_str = match v.PE.parameter with
+               | PE.Shared -> ""
+               | PE.Local t -> tid_to_str t in
+  let p_str = match v.PE.scope with
+              | PE.GlobalScope -> ""
+              | PE.Scope proc -> proc ^ "_"
+  in
+    sprintf "%s%s%s%s" p_str v.PE.id th_str pr_str
 
 
 and tid_to_str (t:PE.tid) : string =
@@ -69,19 +68,22 @@ let thid_variable_to_str (th:PE.tid) : string =
     tid_decl ^ tid_range
 
 
-let pos_to_str (bpc:(int * PE.tid option * bool)) : string =
+let pos_to_str (bpc:(int * PE.shared_or_local * bool)) : string =
   let (i, th, pr) = bpc in
-  let pc_str = if pr then pc_prime_name else pc_name
+  let pc_str = if pr then pc_prime_name else pc_name in
+  let th_str = match th with
+               | PE.Shared -> ""
+               | PE.Local t -> tid_to_str t
   in
-    sprintf "(= (select %s %s) %s)" pc_str
-        (Option.map_default tid_to_str "" th)
-        (linenum_to_str i)
+    sprintf "(= (select %s %s) %s)" pc_str th_str (linenum_to_str i)
 
 
-let posrange_to_str (bpc:(int * int * PE.tid option * bool)) : string =
+let posrange_to_str (bpc:(int * int * PE.shared_or_local * bool)) : string =
   let (i, j, th, pr) = bpc in
   let pc_str = if pr then pc_prime_name else pc_name in
-  let th_str = Option.map_default tid_to_str "" th
+  let th_str = match th with
+               | PE.Shared -> ""
+               | PE.Local t -> tid_to_str t
   in
     sprintf "(and (<= %s (select %s %s)) (<= (select %s %s) %s))"
       (linenum_to_str i) pc_str th_str pc_str th_str (linenum_to_str j)

@@ -1366,9 +1366,9 @@ atomic_statement:
 
       let p_name = if System.mem_var localVars v ||
                       System.mem_var inputVars v then
-                        Some !current_proc
+                        E.Scope !current_proc
                    else
-                        None in
+                        E.GlobalScope in
 
       let k = get_var_kind v in
       let var = inject_sort (Stm.construct_var_from_sort
@@ -1388,9 +1388,9 @@ atomic_statement:
 
       let p_name = if System.mem_var localVars v ||
                       System.mem_var inputVars v then
-                        Some !current_proc
+                        E.Scope !current_proc
                    else
-                        None in
+                        E.GlobalScope in
 
       let k = get_var_kind v in
       let var = Stm.construct_var_from_sort v p_name E.Bool k in
@@ -1573,9 +1573,9 @@ ghost_statement:
 
       let p_name = if System.mem_var localVars v ||
                       System.mem_var inputVars v then
-                        Some !current_proc
+                        E.Scope !current_proc
                    else
-                        None in
+                        E.GlobalScope in
 
       let k = get_var_kind v in
       let var = inject_sort (Stm.construct_var_from_sort
@@ -1597,9 +1597,9 @@ ghost_statement:
 
       let p_name = if System.mem_var localVars v ||
                       System.mem_var inputVars v then
-                        Some !current_proc
+                        E.Scope !current_proc
                    else
-                        None in
+                        E.GlobalScope in
 
       let k = get_var_kind v in
       let var = Stm.construct_var_from_sort v p_name E.Bool k in
@@ -1868,9 +1868,9 @@ statement:
 
       let p_name = if System.mem_var localVars v ||
                       System.mem_var inputVars v then
-                        Some !current_proc
+                        E.Scope !current_proc
                    else
-                        None in
+                        E.GlobalScope in
 
       let k = get_var_kind v in
       let var = inject_sort (Stm.construct_var_from_sort
@@ -1903,9 +1903,9 @@ statement:
                       Stm.return_pos      = []; } in
       let p_name = if System.mem_var localVars v ||
                       System.mem_var inputVars v then
-                        Some !current_proc
+                        E.Scope !current_proc
                    else
-                        None in
+                        E.GlobalScope in
 
       let k = get_var_kind v in
       let var = Stm.construct_var_from_sort v p_name E.Bool k in
@@ -1964,9 +1964,9 @@ statement:
 
       let p_name = if System.mem_var localVars v ||
                       System.mem_var inputVars v then
-                        Some !current_proc
+                        E.Scope !current_proc
                    else
-                        None in
+                        E.GlobalScope in
       let k = get_var_kind v in
       let var = inject_sort (Stm.construct_var_from_sort
                               v p_name (E.Unknown) k) in
