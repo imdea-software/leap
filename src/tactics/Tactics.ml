@@ -39,8 +39,9 @@ type implication = {
   conseq : E.formula ;
 }
 
+type support_split_tactic = SplitGoal
 type support_tactic = Full | Reduce | Reduce2
-type formula_tactic = SimplifyPC | PropositionalPropagate
+type formula_tactic = SimplifyPC | PropositionalPropagate | FilterStrict
 type formula_split_tactic = SplitConsequent
 type solve_tactic = Cases
 
@@ -116,6 +117,7 @@ let formula_tactic_from_string (s:string) : formula_tactic =
   match s with
   | "simplify-pc"             -> SimplifyPC
   | "propositional-propagate" -> PropositionalPropagate
+  | "filter-strict"           -> FilterStrict
   | _ -> raise(Invalid_tactic (s ^ " is not a formula_tactic"))
 
 
@@ -123,6 +125,7 @@ let formula_tactic_to_string (tac:formula_tactic) : string =
   match tac with
   | SimplifyPC             -> "simplify-pc"
   | PropositionalPropagate -> "propositional-propagate"
+  | FilterStrict           -> "filter-strict"
 
 
 let formula_split_tactic_from_string (s:string): formula_split_tactic =
@@ -141,8 +144,7 @@ let vc_info_to_str (vc:vc_info) : string =
                      (E.sort_to_str v.E.sort) ^ " " ^
                      (E.variable_to_str v)
                    ) vars_to_declare)) in
-  let supp_str = String.concat "\n" (List.map E.formula_to_str vc.original_support) in
-  let tidconst_str = E.formula_to_str vc.tid_constraint in
+  let supp_str = String.concat "\n" (List.map E.formula_to_str vc.original_support) in  let tidconst_str = E.formula_to_str vc.tid_constraint in
   let rho_str = E.formula_to_str vc.rho in
   let goal_str = E.formula_to_str vc.goal in
   let tid_str = E.tid_to_str vc.transition_tid in
@@ -376,6 +378,16 @@ let split_implication (imp:implication) : implication list =
   List.map (fun phi -> { ante=imp.ante ; conseq=phi }) new_conseqs
 
 
+let split_goal (info:vc_info) : vc_info list =
+  let new_goals = E.to_conj_list info.goal in
+  List.map (fun phi -> { original_support = info.original_support;
+			  tid_constraint   = info.tid_constraint  ;
+			  rho              = info.rho ;
+			  goal             = phi ;
+			  transition_tid   = info.transition_tid ;
+			  line             = info.line ;
+			  vocabulary       = info.vocabulary ;})
+    new_goals
 (* aux functions *)
 let is_true (f:E.formula) : bool =
   match f with
@@ -429,20 +441,15 @@ let simplify_with_many_facts (ll:E.literal list) (phi:E.formula) : E.formula =
   let res = simplify (simplify_lit phi) in
    res
 
-
 let tactic_propositional_propagate (imp:implication) : implication =
-  let _ = print_endline "tactic_propositional_propagate" in
   let rec simplify_propagate (f:implication) (used:E.literal list) : 
       (implication * E.literal list) =
     let new_facts = get_literals f.ante in
     if List.length new_facts = 0 then (f,used) else
       begin
-  let str = sprintf "simplify_propagate with %n literals" (List.length new_facts) in
-  let _ = print_endline str in
-  let _ = print_endline (E.literal_to_str (List.hd new_facts)) in
-  let new_conseq = simplify_with_many_facts new_facts f.conseq in
-  let new_ante   = simplify_with_many_facts new_facts f.ante in
-  simplify_propagate { ante = new_ante; conseq = new_conseq } (used @ new_facts)
+	let new_conseq = simplify_with_many_facts new_facts f.conseq in
+	let new_ante   = simplify_with_many_facts new_facts f.ante in
+	simplify_propagate { ante = new_ante; conseq = new_conseq } (used @ new_facts)
       end
   in
   let (new_imp,facts) = simplify_propagate imp [] in
@@ -450,6 +457,18 @@ let tactic_propositional_propagate (imp:implication) : implication =
   let new_conseq = new_imp.conseq in
   { ante = new_ante ; conseq = new_conseq }
 
+
+(* eliminate from the antecedent all literals without variables in common
+   with the goal *)
+let filter_with_variables_in_conseq (imp:implication) : implication =
+  let vs_conseq = E.all_vars_as_set imp.conseq in
+  let conjs = E.to_conj_list imp.ante in
+  let share_vars (vl: E.variable list) : bool =
+    List.exists (fun v -> E.VarSet.mem v vs_conseq) vl
+  in
+  let new_conjs = List.filter (fun f -> share_vars (E.all_vars f)) conjs in
+  { ante = E.conj_list new_conjs ; conseq = imp.conseq }
+    
 
 (**************************************************************************)
 (* CONVERTERS: From tactic names to tactics functions                     *)
@@ -462,6 +481,10 @@ let pick_formula_split_tac (tac_name:formula_split_tactic) : formula_split_tacti
 let pick_formula_tac (tac_name:formula_tactic) : formula_tactic_t =
   match tac_name with
   | SimplifyPC -> id (* TO BE IMPLEMENTED *)
-  | PropositionalPropagate -> 
-    let _ = printf "pick\n" in
-    tactic_propositional_propagate
+  | PropositionalPropagate -> tactic_propositional_propagate
+  | FilterStrict ->           filter_with_variables_in_conseq
+
+
+let pick support_support_split_tac (tac_name:support_split_tactic) : support_split_tactic_t =
+  match tac_name with
+  | SplitGoal -> split_goal

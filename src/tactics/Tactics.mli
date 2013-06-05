@@ -8,7 +8,7 @@ type implication = {
 }
 
 type support_tactic = Full | Reduce | Reduce2
-type formula_tactic = SimplifyPC | PropositionalPropagate
+type formula_tactic = SimplifyPC | PropositionalPropagate | FilterStrict
 type formula_split_tactic = SplitConsequent
 type solve_tactic = Cases
 
@@ -112,9 +112,11 @@ val simplify_with_pc : Expression.formula ->  Expression.tid ->  int list ->  bo
 val simplify_with_vocabulary : Expression.formula ->  Expression.variable list ->  Expression.formula 
 val generate_support : vc_info ->   Expression.formula list 
 val split_implication : implication ->   implication list
+val split_goal :vc_info -> vc_info list
 
 val tactic_propositional_propagate : implication -> implication 
 
+val filter_with_variables_in_conseq : implication -> implication
 
 
 (**************************************************************************)
