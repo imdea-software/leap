@@ -62,23 +62,23 @@ and build_term_var (v:E.variable) : SL.term =
 and var_to_tsl_var (v:E.variable) : SL.variable =
 (*  LOG "Entering var_to_tsl_var..." LEVEL TRACE; *)
 (*  LOG "var_to_tsl_var(%s)" (E.variable_to_str v) LEVEL DEBUG; *)
-	SL.build_var (v.E.id)
-							 (sort_to_tsl_sort v.E.sort)
-							 (v.E.is_primed)
-							 (shared_to_tsl_shared v.E.parameter)
-							 (scope_to_tsl_scope v.E.scope)
+  SL.build_var (v.E.id)
+               (sort_to_tsl_sort v.E.sort)
+               (v.E.is_primed)
+               (shared_to_tsl_shared v.E.parameter)
+               (scope_to_tsl_scope v.E.scope)
 
 
 and shared_to_tsl_shared (th:E.shared_or_local) : SL.shared_or_local =
-	match th with
-	| E.Shared  -> SL.Shared
-	| E.Local t -> SL.Local (tid_to_tsl_tid t)
+  match th with
+  | E.Shared  -> SL.Shared
+  | E.Local t -> SL.Local (tid_to_tsl_tid t)
 
 
 and scope_to_tsl_scope (p:E.procedure_name) : SL.procedure_name =
   match p with
-	| E.GlobalScope -> SL.GlobalScope
-	| E.Scope proc  -> SL.Scope proc
+  | E.GlobalScope -> SL.GlobalScope
+  | E.Scope proc  -> SL.Scope proc
 
 
 and tid_to_tsl_tid (th:E.tid) : SL.tid =
@@ -416,26 +416,24 @@ let rec tsl_sort_to_sort (s:SL.sort) : E.sort =
 
 
 and var_to_expr_var (v:SL.variable) : E.variable =
-  let (id,s,pr,th,p) = v
-  in
-    E.build_var (id)
-                (tsl_sort_to_sort s)
-                (pr)
-                (shared_to_expr_shared th)
-                (scope_to_expr_scope p)
-                (E.RealVal)
+  E.build_var (SL.var_id v)
+              (tsl_sort_to_sort (SL.var_sort v))
+              (SL.var_is_primed v)
+              (shared_to_expr_shared (SL.var_parameter v))
+              (scope_to_expr_scope (SL.var_scope v))
+              (E.RealVar)
 
 
-and shared_to_expr_shared (th:SL.tid option) : E.shared_or_local =
+and shared_to_expr_shared (th:SL.shared_or_local) : E.shared_or_local =
   match th with
-  | None   -> E.Shared
-  | Some t -> E.Local t
+  | SL.Shared  -> E.Shared
+  | SL.Local t -> E.Local (tid_to_expr_tid t)
 
 
-and scope_to_expr_scope (p:string option) : E.procedure_name =
+and scope_to_expr_scope (p:SL.procedure_name) : E.procedure_name =
   match p with
-  | None      -> E.GlobalScope
-  | Some proc -> E.Scope proc
+  | SL.GlobalScope -> E.GlobalScope
+  | SL.Scope proc  -> E.Scope proc
 
 
 and tid_to_expr_tid (th:SL.tid) : E.tid =
@@ -636,10 +634,9 @@ and tsl_atom_to_atom (a:SL.atom) : E.atom =
   | SL.Eq (t1,t2)           -> E.Eq (term t1, term t2)
   | SL.InEq (t1,t2)         -> E.InEq (term t1, term t2)
   | SL.BoolVar v            -> E.BoolVar (var_to_expr_var v)
-  | SL.PC (pc,t,pr)         -> E.PC (pc, Option.lift tid_to_expr_tid t,pr)
+  | SL.PC (pc,t,pr)         -> E.PC (pc, shared_to_expr_shared t,pr)
   | SL.PCUpdate (pc,t)      -> E.PCUpdate (pc, tid_to_expr_tid t)
-  | SL.PCRange (pc1,pc2,t,pr) -> E.PCRange (pc1, pc2,
-                                        Option.lift tid_to_expr_tid t,pr)
+  | SL.PCRange (pc1,pc2,t,pr) -> E.PCRange (pc1, pc2,shared_to_expr_shared t,pr)
 
 
 and literal_to_expr_literal (l:SL.literal) : E.literal =

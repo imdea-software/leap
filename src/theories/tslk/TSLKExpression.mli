@@ -6,7 +6,11 @@ module type S =
 
     type var_info_t
 
-    type variable = varId * sort * bool * tid option * string option * var_info_t
+    and shared_or_local = Shared  | Local of tid
+
+    and procedure_name  = GlobalScope | Scope of string
+
+    and variable
 
     and sort =
         Set
@@ -117,9 +121,9 @@ module type S =
       | Eq                of eq
       | InEq              of diseq
       | BoolVar           of variable
-      | PC                of int * tid option * bool
+      | PC                of int * shared_or_local * bool
       | PCUpdate          of int * tid
-      | PCRange           of int * int * tid option * bool
+      | PCRange           of int * int * shared_or_local * bool
     and literal =
         Atom              of atom
       | NegAtom           of atom
@@ -167,12 +171,18 @@ module type S =
     val k : int
 
     (* Variable construction *)
-    val build_var : varId -> sort -> bool -> tid option -> string option -> variable
+    val build_var : varId -> sort -> bool -> shared_or_local -> procedure_name -> variable
+
+    val var_id : variable -> varId
+    val var_sort : variable -> sort
+    val var_is_primed : variable -> bool
+    val var_parameter : variable -> shared_or_local
+    val var_scope : variable -> procedure_name
+    val var_info : variable -> var_info_t
 
     (* variable manipulation *)
-    val param_var : variable -> tid -> variable
+    val var_set_param : shared_or_local -> variable -> variable
     val is_global_var : variable -> bool
-    val get_sort : variable -> sort
 
     (* returns all variables form a formula *)
     val get_varlist_from_conj : conjunctive_formula -> variable list
@@ -203,7 +213,6 @@ module type S =
 
     val prime_var : variable -> variable
     val unprime_var : variable -> variable
-    val is_primed_var : variable -> bool
     val variable_mark_smp_interesting : variable -> bool -> unit
     val variable_mark_fresh : variable -> bool -> unit
     val variable_is_smp_interesting : variable -> bool

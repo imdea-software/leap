@@ -9,7 +9,11 @@ module type S =
 
     type var_info_t
 
-    type variable = varId * sort * bool * tid option * string option * var_info_t
+    and shared_or_local = Shared  | Local of tid
+
+    and procedure_name  = GlobalScope | Scope of string
+
+    and variable
 
     and sort =
         Set
@@ -120,9 +124,9 @@ module type S =
       | Eq                of eq
       | InEq              of diseq
       | BoolVar           of variable
-      | PC                of int * tid option * bool
+      | PC                of int * shared_or_local * bool
       | PCUpdate          of int * tid
-      | PCRange           of int * int * tid option * bool
+      | PCRange           of int * int * shared_or_local * bool
     and literal =
         Atom              of atom
       | NegAtom           of atom
@@ -170,12 +174,18 @@ module type S =
     val k : int
 
     (* Variable construction *)
-    val build_var : varId -> sort -> bool -> tid option -> string option -> variable
+    val build_var : varId -> sort -> bool -> shared_or_local -> procedure_name -> variable
+
+    val var_id : variable -> varId
+    val var_sort : variable -> sort
+    val var_is_primed : variable -> bool
+    val var_parameter : variable -> shared_or_local
+    val var_scope : variable -> procedure_name
+    val var_info : variable -> var_info_t
 
     (* variable manipulation *)
-    val param_var : variable -> tid -> variable
+    val var_set_param : shared_or_local -> variable -> variable
     val is_global_var : variable -> bool
-    val get_sort : variable -> sort
 
     (* returns all variables form a formula *)
     val get_varlist_from_conj : conjunctive_formula -> variable list
@@ -185,14 +195,13 @@ module type S =
     val get_varset_from_conj         : conjunctive_formula -> VarSet.t
     val get_unparam_varset_from_conj : conjunctive_formula -> VarSet.t
     val get_varset_from_formula      : formula -> VarSet.t
-    val get_unparam_varset_from_formula      : formula -> VarSet.t
+    val get_unparam_varset_from_formula : formula -> VarSet.t
     val get_varset_of_sort_from_conj : conjunctive_formula -> sort -> VarSet.t
     val varset_of_sort               : VarSet.t -> sort -> VarSet.t
     val get_termset_from_formula     : formula -> TermSet.t
     val get_termset_from_conjformula : conjunctive_formula -> TermSet.t
     val termset_of_sort              : TermSet.t -> sort -> TermSet.t
 
-    
     val remove_nonparam_local_vars : VarSet.t -> VarSet.t
     val add_prevstate_local_vars : VarSet.t -> VarSet.t
 
@@ -207,16 +216,15 @@ module type S =
 
     val prime_var : variable -> variable
     val unprime_var : variable -> variable
-    val is_primed_var : variable -> bool
     val variable_mark_smp_interesting : variable -> bool -> unit
     val variable_mark_fresh : variable -> bool -> unit
     val variable_is_smp_interesting : variable -> bool
     val variable_is_fresh : variable -> bool
 
+
     (* SMP MARKING FUNCTIONS *)
     val addr_mark_smp_interesting : addr -> bool -> unit
     val tid_mark_smp_interesting : tid -> bool -> unit
-
 
     (* PRETTY_PRINTERS *)
     val variable_to_full_str : variable -> string
@@ -281,7 +289,6 @@ module type S =
     val to_conj_list : formula -> formula list
     val to_disj_list : formula -> formula list
 
-
     (* Equality constructor functions for formulas *)
     val eq_set : set -> set -> formula
     val eq_elem : elem -> elem -> formula
@@ -311,6 +318,7 @@ module type S =
     val greatereq_level : level -> level -> formula
     val subseteq : set -> set -> formula
     val atomlit : atom -> formula
+
   end
 
 
@@ -325,7 +333,19 @@ module Make (K : Level.S) : S =
         mutable fresh : bool;
       }
 
-    type variable = varId * sort * bool * tid option * string option * var_info_t
+    and shared_or_local = Shared  | Local of tid
+
+    and procedure_name  = GlobalScope | Scope of string
+
+    and variable =
+      {
+                id        : varId           ;
+                sort      : sort            ;
+        mutable is_primed : bool            ;
+        mutable parameter : shared_or_local ;
+                scope     : procedure_name  ;
+        mutable info      : var_info_t      ;
+      }
 
     and sort =
         Set
@@ -436,9 +456,9 @@ module Make (K : Level.S) : S =
       | Eq                of eq
       | InEq              of diseq
       | BoolVar           of variable
-      | PC                of int * tid option * bool
+      | PC                of int * shared_or_local * bool
       | PCUpdate          of int * tid
-      | PCRange           of int * int * tid option * bool
+      | PCRange           of int * int * shared_or_local * bool
     and literal =
         Atom              of atom
       | NegAtom           of atom
@@ -483,76 +503,95 @@ module Make (K : Level.S) : S =
     let build_var (id:varId)
                   (s:sort)
                   (pr:bool)
-                  (th:tid option)
-                  (p:string option) : variable =
-      (id,s,pr,th,p,{smp_interesting=false;fresh=false;})
+                  (th:shared_or_local)
+                  (p:procedure_name) : variable =
+      {
+        id = id;
+        sort = s;
+        is_primed = pr;
+        parameter = th;
+        scope = p;
+        info = {smp_interesting=false;fresh=false;};
+      }
 
 
-    let param_var (v:variable) (th:tid) : variable =
-      let (id,s,pr,_,p,info) = v
-      in
-        (id,s,pr,Some th,p,info)
+    let var_set_param (th:shared_or_local) (v:variable ) : variable =
+      v.parameter <- th; v
+
+
+    let var_set_info (v:variable) (info:var_info_t) : variable =
+      v.info <- info; v
 
 
     let unparam_var (v:variable) : variable =
-      let (id,s,pr,_,p,info) = v
-      in
-        (id,s,pr,None,p,info)
+      v.parameter <- Shared; v
+
+
+    let var_id (v:variable) : varId =
+      v.id
+
+    
+    let var_sort (v:variable) : sort =
+      v.sort
+
+
+    let var_is_primed (v:variable) : bool =
+      v.is_primed
+
+
+    let var_parameter (v:variable) : shared_or_local =
+      v.parameter
+
+
+    let var_scope (v:variable) : procedure_name =
+      v.scope
+
+
+    let var_info (v:variable) : var_info_t =
+      v.info
 
 
     let is_global_var (v:variable) : bool =
-      let (_,_,_,_,p,_) = v in p = None
-
-
-    let get_sort (v:variable) : sort =
-      let (_,s,_,_,_,_) = v in s
+      (var_scope v) = GlobalScope
 
 
     let prime_var (v:variable) : variable =
-      let (id,s,_,th,p,info) = v in (id,s,true,th,p,info)
+      v.is_primed <- true; v
 
 
     let unprime_var (v:variable) : variable =
-      let (id,s,_,th,p,info) = v in (id,s,false,th,p,info)
+      v.is_primed <- false; v
 
-
-    let is_primed_var (v:variable) : bool =
-      let (_,_,pr,_,_,_) = v in
-        pr
 
     let variable_mark_smp_interesting (v:variable) (b:bool) : unit =
-      let (_,_,_,_,_,info) = v in
-        info.smp_interesting <- b
+      v.info.smp_interesting <- b
+
 
     let variable_mark_fresh (v:variable) (b:bool) : unit =
-      let (_,_,_,_,_,info) = v in
-        info.fresh <- b
+      v.info.fresh <- b
+
 
     let variable_is_smp_interesting (v:variable) : bool =
-      let (_,_,_,_,_,info) = v in info.smp_interesting
+      v.info.smp_interesting
+
 
     let variable_is_fresh (v:variable) : bool =
 (*    Correct way *)
-(*    let (_,_,_,_,_,info) = v in info.fresh *)
-      let (id,_,_,_,_,info) = v in (id.[0] = '$' || info.fresh)
+(*    v.info.fresh *)
+      (v.id.[0] = '$' || v.info.fresh)
 
 
     let is_primed_tid (th:tid) : bool =
       match th with
-      | VarTh v           -> is_primed_var v
+      | VarTh v           -> var_is_primed v
       | NoThid            -> false
       | CellLockIdAt _    -> false
       (* FIX: Propagate the query inside cell??? *)
 
 
-    let var_th (v:variable) : tid option =
-      let (_,_,_,th,_,_) = v in th
-
-
     let variable_clean_info (v:variable) : unit =
-      let (_,_,_,_,_,info) = v in
-        info.fresh <- false;
-        info.smp_interesting <- false
+      v.info.fresh <- false;
+      v.info.smp_interesting <- false
 
 
     let unify_var_info (info1:var_info_t) (info2:var_info_t) : var_info_t =
@@ -641,20 +680,24 @@ module Make (K : Level.S) : S =
 
     let unify_varset (s:S.t) : S.t =
       let tbl = Hashtbl.create (S.cardinal s) in
-      S.iter (fun (id,s,pr,th,p,info) ->
-        let base = (id,s,pr,th,p) in
+      S.iter (fun v ->
+        let base = (v.id,v.sort,v.is_primed,v.parameter,v.scope) in
         if Hashtbl.mem tbl base then
           let prev_info = Hashtbl.find tbl base in
-          Hashtbl.replace tbl base (unify_var_info info prev_info)
+          Hashtbl.replace tbl base (unify_var_info v.info prev_info)
         else
-          Hashtbl.add tbl base info
+          Hashtbl.add tbl base v.info
       ) s;
-      Hashtbl.fold (fun (id,s,pr,th,p) info set -> S.add (id,s,pr,th,p,info) set) tbl S.empty
+      Hashtbl.fold (fun (id,s,pr,th,p) info set ->
+        let new_var = build_var id s pr th p
+        in
+          S.add new_var set
+      ) tbl S.empty
 
 
     let remove_nonparam_local_vars (s:S.t) : S.t =
       S.fold (fun v tmpset ->
-        if not (is_global_var v) && var_th v = None then
+        if not (is_global_var v) && var_parameter v = Shared then
           tmpset
         else
           S.add v tmpset
@@ -670,7 +713,7 @@ module Make (K : Level.S) : S =
     let add_prevstate_local_vars (s:S.t) : S.t =
       S.fold (fun v tmpset ->
         let unprime_v = unprime_var v in
-        if is_primed_var v && not (S.mem unprime_v s) then
+        if var_is_primed v && not (S.mem unprime_v s) then
           S.add v (S.add unprime_v tmpset)
         else
           S.add v tmpset
@@ -681,11 +724,9 @@ module Make (K : Level.S) : S =
       S.union s1 s2
 
     let get_varset_from_param (v:variable) : S.t =
-      let (_,_,_,th,_,_) = v
-      in
-        match th with
-          Some (VarTh t) -> S.singleton t
-        | _              -> S.empty
+      match v.parameter with
+      | Local (VarTh t) -> S.singleton t
+      | _               -> S.empty
 
 
     let rec get_varset_set s =
@@ -793,9 +834,9 @@ module Make (K : Level.S) : S =
         | Eq((x,y))              -> (get_varset_term x) @@ (get_varset_term y)
         | InEq((x,y))            -> (get_varset_term x) @@ (get_varset_term y)
         | BoolVar v              -> S.singleton v
-        | PC(pc,th,pr)           -> Option.map_default get_varset_tid S.empty th
+        | PC(pc,th,pr)           -> (match th with | Shared -> S.empty | Local t -> get_varset_tid t)
         | PCUpdate (pc,th)       -> (get_varset_tid th)
-        | PCRange(pc1,pc2,th,pr) -> Option.map_default get_varset_tid S.empty th
+        | PCRange(pc1,pc2,th,pr) -> (match th with | Shared -> S.empty | Local t -> get_varset_tid t)
     and get_varset_term t = match t with
           VarT   v            -> S.singleton v @@ get_varset_from_param v
         | SetT   s            -> get_varset_set s
@@ -850,16 +891,16 @@ module Make (K : Level.S) : S =
       unify_varset (unparam_varset (get_varset_from_formula_aux phi))
 
 
-    let localize_with_underscore (v:varId) (p_name:string option) : string =
-      let p_str = Option.map_default (fun p -> p^"_") "" p_name
-      in
-        sprintf "%s%s" p_str v
+    let localize_with_underscore (id:varId) (p_name:procedure_name) : string =
+      match p_name with
+      | GlobalScope -> id
+      | Scope proc  -> proc ^ "_" ^ id
 
 
     let varset_of_sort all s =
-      let filt (v,asort,pr,th,p,info) res =
-        if asort=s then
-          VarSet.add (v,asort,pr,None,p,info) res
+      let filt v res =
+        if v.sort = s then
+          VarSet.add (var_set_param Shared v) res
     (*      VarSet.add ((localize_with_underscore v p) res *)
         else
           res in
@@ -873,8 +914,8 @@ module Make (K : Level.S) : S =
       S.elements (get_varset_from_conj phi)
 
     let varlist_of_sort varlist s =
-      let is_s (_,asort,_,_,_,_) = (asort=s) in
-      List.map (fun (v,_,_,_,p,_) -> (localize_with_underscore v p))
+      let is_s v = (v.sort = s) in
+      List.map (fun v -> (localize_with_underscore v.id v.scope))
                (List.filter is_s varlist)
 
     let get_varlist_of_sort_from_conj phi s =
@@ -905,12 +946,12 @@ module Make (K : Level.S) : S =
       | InEq((x,y))            -> add_list [x;y]
       | BoolVar v              -> add_list [VarT v]
       | PC(pc,th,pr)           -> (match th with
-                                   | None   -> TermSet.empty
-                                   | Some t -> add_list [ThidT t])
+                                   | Shared  -> TermSet.empty
+                                   | Local t -> add_list [ThidT t])
       | PCUpdate (pc,th)       -> add_list [ThidT th]
       | PCRange(pc1,pc2,th,pr) -> (match th with
-                                   | None   -> TermSet.empty
-                                   | Some t -> add_list [ThidT t])
+                                   | Shared  -> TermSet.empty
+                                   | Local t -> add_list [ThidT t])
 
     and get_termset_literal (l:literal) : TermSet.t =
       match l with
@@ -954,7 +995,7 @@ module Make (K : Level.S) : S =
         | Path      -> (match t with | PathT _      -> true | _ -> false)
         | Mem       -> (match t with | MemT _       -> true | _ -> false)
         | Level     -> (match t with | LevelT _     -> true | _ -> false)
-        | Bool      -> (match t with | VarT v -> get_sort v = Bool
+        | Bool      -> (match t with | VarT v       -> v.sort = Bool
                                      | _      -> false)
         | Unknown -> false in
       TermSet.fold (fun t set ->
@@ -1029,7 +1070,7 @@ module Make (K : Level.S) : S =
         | PathT _          -> Path
         | MemT _           -> Mem
         | LevelT _         -> Level
-        | VarUpdate(v,_,_) -> get_sort v
+        | VarUpdate(v,_,_) -> v.sort
       
     let terms_same_type a b =
       (get_sort_from_term a) = (get_sort_from_term b)
@@ -1223,15 +1264,14 @@ module Make (K : Level.S) : S =
 
 
     let rec variable_to_full_str (v:variable) : string =
-      let (id,s,pr,th,p,info) = v in
       "Variable " ^variable_to_str v^ " information\n" ^
-      "Id:              " ^id^ "\n" ^
-      "Sort:            " ^sort_to_str s^ "\n" ^
-      "Primed:          " ^if pr then "true" else "false"^ "\n" ^
-      "Thread:          " ^Option.map_default tid_to_str "None" th^ "\n" ^
-      "Parent:          " ^Option.default "None" p^ "\n" ^
-      "SMP Interesting: " ^if info.smp_interesting then "true" else "false"^ "\n" ^
-      "Fresh:           " ^if info.fresh then "true" else "false"^ "\n"
+      "Id:              " ^v.id^ "\n" ^
+      "Sort:            " ^sort_to_str (v.sort)^ "\n" ^
+      "Primed:          " ^if v.is_primed then "true" else "false"^ "\n" ^
+      "Thread:          " ^ shared_or_local_to_str v.parameter ^ "\n" ^
+      "Parent:          " ^ procedure_name_to_str v.scope ^ "\n" ^
+      "SMP Interesting: " ^if v.info.smp_interesting then "true" else "false"^ "\n" ^
+      "Fresh:           " ^if v.info.fresh then "true" else "false"^ "\n"
 (*
         (variable_to_str v) (id) (sort_to_str s) (pr) (Option.map tid_to_str "None" th)
         (Option.default "None" p) (info.smp_interesting) (info.fresh)
@@ -1239,11 +1279,27 @@ module Make (K : Level.S) : S =
 
 
     and variable_to_str (v:variable) : string =
-      let (id,_,pr,th,p,_) = v in
-      let v_str = sprintf "%s%s" (Option.map_default (localize_var_id id) id p)
-                                 (Option.map_default (fun t -> "(" ^ tid_to_str t ^ ")" ) "" th)
+      let v_str = sprintf "%s%s" (match v.scope with
+                                  | GlobalScope -> v.id
+                                  | Scope proc  -> localize_var_id v.id proc)
+                                 (match v.parameter with
+                                  | Shared -> ""
+                                  | Local t -> "(" ^ tid_to_str t ^ ")")
       in
-        if pr then v_str ^ "'" else v_str
+        if v.is_primed then v_str ^ "'" else v_str
+
+
+    and shared_or_local_to_str (th:shared_or_local) : string =
+      match th with
+      | Shared -> ""
+      | Local t -> tid_to_str t
+
+
+    and procedure_name_to_str (p:procedure_name) : string =
+      match p with
+      | GlobalScope -> ""
+      | Scope proc -> proc
+
 
     and atom_to_str a =
       match a with
@@ -1285,14 +1341,12 @@ module Make (K : Level.S) : S =
       | InEq(exp)                  -> diseq_to_str (exp)
       | BoolVar v                  -> variable_to_str v
       | PC (pc,t,pr)               -> let pc_str = if pr then "pc'" else "pc" in
-                                      let th_str = Option.map_default
-                                                     tid_to_str "" t in
+                                      let th_str = shared_or_local_to_str t in
                                       Printf.sprintf "%s(%s) = %i" pc_str th_str pc
       | PCUpdate (pc,t)            -> let th_str = tid_to_str t in
                                       Printf.sprintf "pc' = pc{%s<-%i}" th_str pc
       | PCRange (pc1,pc2,t,pr)     -> let pc_str = if pr then "pc'" else "pc" in
-                                      let th_str = Option.map_default
-                                                     tid_to_str "" t in
+                                      let th_str = shared_or_local_to_str t in
                                       Printf.sprintf "%i <= %s(%s) <= %i"
                                                       pc1 pc_str th_str pc2
 
@@ -1524,7 +1578,7 @@ module Make (K : Level.S) : S =
       VarIdSet.fold (fun v str -> str ^ v ^ "\n") varset ""
 
     let typed_variable_set_to_str tvarset =
-      let pr (v,s,_,_,_,_) str = (str ^ v ^ ": " ^ (sort_to_str s) ^ "\n") in
+      let pr v str = (str ^ v.id ^ ": " ^ (sort_to_str v.sort) ^ "\n") in
         S.fold pr tvarset ""
 
     let print_variable_set varset =
@@ -1542,16 +1596,13 @@ module Make (K : Level.S) : S =
 
 
     (* VOCABULARY FUNCTIONS *)
-    let rec voc_var (v:variable) : tid list =
-      ( match get_sort v with
-        | Thid -> [VarTh v]
-        | _    -> []
-      ) @ Option.map_default (fun x -> [x]) [] (var_th v)
+    let rec get_tid_in (v:variable) : tid list =
+      match v.parameter with Shared -> [] | Local t -> [t]
 
 
     and voc_term (expr:term) : tid list =
       match expr with
-        | VarT v             -> voc_var v
+        | VarT v             -> get_tid_in v
         | SetT(set)          -> voc_set set
         | AddrT(addr)        -> voc_addr addr
         | ElemT(elem)        -> voc_elem elem
@@ -1562,12 +1613,12 @@ module Make (K : Level.S) : S =
         | PathT(path)        -> voc_path path
         | MemT(mem)          -> voc_mem mem
         | LevelT(i)          -> voc_level i
-        | VarUpdate (v,th,t) -> (voc_var v) @ (voc_tid th) @ (voc_term t)
+        | VarUpdate (v,th,t) -> (get_tid_in v) @ (voc_tid th) @ (voc_term t)
 
 
     and voc_set (e:set) : tid list =
       match e with
-        VarSet v            -> Option.map_default (fun x->[x]) [] (var_th v)
+        VarSet v            -> get_tid_in v
       | EmptySet            -> []
       | Singl(addr)         -> (voc_addr addr)
       | Union(s1,s2)        -> (voc_set s1) @ (voc_set s2)
@@ -1579,7 +1630,7 @@ module Make (K : Level.S) : S =
 
     and voc_addr (a:addr) : tid list =
       match a with
-        VarAddr v                 -> Option.map_default (fun x->[x]) [] (var_th v)
+        VarAddr v                 -> get_tid_in v
       | Null                      -> []
       | NextAt(cell,l)            -> (voc_cell cell) @ (voc_level l)
       | FirstLockedAt(mem,path,l) -> (voc_mem mem) @ (voc_path path) @ (voc_level l)
@@ -1587,7 +1638,7 @@ module Make (K : Level.S) : S =
 
     and voc_elem (e:elem) : tid list =
       match e with
-        VarElem v          -> Option.map_default (fun x->[x]) [] (var_th v)
+        VarElem v          -> get_tid_in v
       | CellData(cell)     -> (voc_cell cell)
       | HavocSkiplistElem  -> []
       | LowestElem         -> []
@@ -1596,7 +1647,7 @@ module Make (K : Level.S) : S =
 
     and voc_tid (th:tid) : tid list =
       match th with
-        VarTh v              -> th :: (Option.map_default (fun x->[x]) [] (var_th v))
+        VarTh v              -> th :: get_tid_in v
       | NoThid               -> []
       | CellLockIdAt(cell,l) -> (voc_cell cell) @ (voc_level l)
 
@@ -1604,7 +1655,7 @@ module Make (K : Level.S) : S =
     and voc_cell (c:cell) : tid list =
       let fold f xs = List.fold_left (fun ys x -> (f x) @ ys) [] xs in
       match c with
-        VarCell v            -> Option.map_default (fun x->[x]) [] (var_th v)
+        VarCell v            -> get_tid_in v
       | Error                -> []
       | MkCell(data,aa,tt)   -> (voc_elem data)    @
                                 (fold voc_addr aa) @
@@ -1616,7 +1667,7 @@ module Make (K : Level.S) : S =
 
     and voc_setth (s:setth) : tid list =
       match s with
-        VarSetTh v          -> Option.map_default (fun x->[x]) [] (var_th v)
+        VarSetTh v          -> get_tid_in v
       | EmptySetTh          -> []
       | SinglTh(th)         -> (voc_tid th)
       | UnionTh(s1,s2)      -> (voc_setth s1) @ (voc_setth s2)
@@ -1626,7 +1677,7 @@ module Make (K : Level.S) : S =
 
     and voc_setelem (s:setelem) : tid list =
       match s with
-        VarSetElem v          -> Option.map_default (fun x->[x]) [] (var_th v)
+        VarSetElem v          -> get_tid_in v
       | EmptySetElem          -> []
       | SinglElem(e)          -> (voc_elem e)
       | UnionElem(s1,s2)      -> (voc_setelem s1) @ (voc_setelem s2)
@@ -1637,7 +1688,7 @@ module Make (K : Level.S) : S =
 
     and voc_path (p:path) : tid list =
       match p with
-        VarPath v                    -> Option.map_default (fun x->[x]) [] (var_th v)
+        VarPath v                    -> get_tid_in v
       | Epsilon                      -> []
       | SimplePath(addr)             -> (voc_addr addr)
       | GetPathAt(mem,a_from,a_to,l) -> (voc_mem mem) @
@@ -1648,7 +1699,7 @@ module Make (K : Level.S) : S =
 
     and voc_mem (m:mem) : tid list =
       match m with
-        VarMem v             -> Option.map_default (fun x->[x]) [] (var_th v)
+        VarMem v             -> get_tid_in v
       | Emp                  -> []
       | Update(mem,add,cell) -> (voc_mem mem) @ (voc_addr add) @ (voc_cell cell)
 
@@ -1656,7 +1707,7 @@ module Make (K : Level.S) : S =
     and voc_level (i:level) : tid list =
       match i with
         LevelVal _  -> []
-      | VarLevel v  -> Option.map_default (fun x->[x]) [] (var_th v)
+      | VarLevel v  -> get_tid_in v
       | LevelSucc l -> voc_level l
       | LevelPred l -> voc_level l
       | HavocLevel  -> []
@@ -1689,10 +1740,10 @@ module Make (K : Level.S) : S =
       | GreaterElem(e1,e2)         -> (voc_elem e1) @ (voc_elem e2)
       | Eq(exp)                    -> (voc_eq exp)
       | InEq(exp)                  -> (voc_ineq exp)
-      | BoolVar v                  -> Option.map_default (fun x->[x]) [] (var_th v)
-      | PC (pc,t,_)                -> Option.map_default (fun x->[x]) [] t
+      | BoolVar v                  -> get_tid_in v
+      | PC (pc,t,_)                -> (match t with | Shared -> [] | Local x -> [x])
       | PCUpdate (pc,t)            -> [t]
-      | PCRange (pc1,pc2,t,_)      -> Option.map_default (fun x->[x]) [] t
+      | PCRange (pc1,pc2,t,_)      -> (match t with | Shared -> [] | Local x -> [x])
 
 
     and voc_eq ((t1,t2):eq) : tid list = (voc_term t1) @ (voc_term t2)
@@ -2009,7 +2060,7 @@ module Make (K : Level.S) : S =
 
       and req_term (t:term) : SortSet.t =
         match t with
-        | VarT (_,s,_,_,_,_)           -> single s
+        | VarT v                       -> single v.sort
         | SetT s                       -> req_s s
         | ElemT e                      -> req_e e
         | ThidT t                      -> req_t t
@@ -2020,7 +2071,7 @@ module Make (K : Level.S) : S =
         | PathT p                      -> req_p p
         | MemT m                       -> req_m m
         | LevelT l                     -> req_lv l
-        | VarUpdate ((_,s,_,_,_,_),t,tr) -> append s [req_t t;req_term tr]
+        | VarUpdate (v,t,tr)           -> append v.sort [req_t t;req_term tr]
       in
         SortSet.elements (req_f phi)
 

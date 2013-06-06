@@ -4,7 +4,9 @@ and shared_or_local = Shared  | Local of tid
 
 and procedure_name  = GlobalScope | Scope of string
 
-and variable =
+and variable
+
+(* =
   {
             id        : varId           ;
             sort      : sort            ;
@@ -12,6 +14,7 @@ and variable =
     mutable parameter : shared_or_local ;
             scope     : procedure_name  ;
   }
+*)
 
 and sort =
     Set

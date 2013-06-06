@@ -444,7 +444,7 @@ let gen_st_cond_effect_for_th (pt:prog_type)
 let gen_st_cond_effect (pt:prog_type)
                        (st:Stm.statement_t)
                        (is_ghost:bool): cond_effect_t list =
-  gen_st_cond_effect_for_th pt st is_ghost None
+  gen_st_cond_effect_for_th pt st is_ghost E.Shared
 
 
 
