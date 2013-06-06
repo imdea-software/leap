@@ -24,7 +24,6 @@ let supp_tac               = ref None
 let supp_split_tac_list    = ref []
 let formula_tac_list       = ref []
 let formula_split_tac_list = ref []
-let support_files          = ref []
 let outfile                = ref ""
 
 let assignopt (valref : 'a ref) (valbool : bool ref) (aval : 'a) : unit =
@@ -101,9 +100,6 @@ let opts =
     ("--formula_split_tac",
         Arg.String (fun s -> formula_split_tac_list := (parse_tac_list Tactics.formula_split_tactic_from_string s)),
         "formula split tactics: split-consequent");
-    ("--supp",
-        Arg.String (fun s -> support_files := (parse_support_files s)),
-        "support files");
     ("-o",
         Arg.String (fun s -> outfile := s),
         "output file");

@@ -1,12 +1,12 @@
 open LeapLib
 
-module Expr=Expression
-module Tsl=TSLExpression
+module E=Expression
+module SL=TSLExpression
 
 
-type varId = Expr.varId
-type sort  = Expr.sort
-type tid   = Expr.tid
+type varId = E.varId
+type sort  = E.sort
+type tid   = E.tid
 
 exception UnsupportedSort of string
 exception UnsupportedTslExpr of string
@@ -16,311 +16,321 @@ exception UnsupportedTslExpr of string
 (* Expression to TslExpression conversion *)
 
 
-let rec sort_to_tsl_sort (s:Expr.sort) : Tsl.sort =
+let rec sort_to_tsl_sort (s:E.sort) : SL.sort =
 (*  LOG "Entering sort_to_tsl_sort..." LEVEL TRACE; *)
-(*  LOG "sort_to_tsl_sort(%s)" (Expr.sort_to_str s) LEVEL DEBUG; *)
+(*  LOG "sort_to_tsl_sort(%s)" (E.sort_to_str s) LEVEL DEBUG; *)
   match s with
-    Expr.Set       -> Tsl.Set
-  | Expr.Elem      -> Tsl.Elem
-  | Expr.Thid      -> Tsl.Thid
-  | Expr.Addr      -> Tsl.Addr
-  | Expr.Cell      -> Tsl.Cell
-  | Expr.SetTh     -> Tsl.SetTh
-  | Expr.SetInt    -> raise(UnsupportedSort(Expr.sort_to_str s))
-  | Expr.SetElem   -> Tsl.SetElem
-  | Expr.Path      -> Tsl.Path
-  | Expr.Mem       -> Tsl.Mem
-  | Expr.Bool      -> Tsl.Bool
-  | Expr.Int       -> Tsl.Int
-  | Expr.Array     -> raise(UnsupportedSort(Expr.sort_to_str s))
-  | Expr.AddrArray -> Tsl.AddrArray
-  | Expr.TidArray  -> Tsl.TidArray
-  | Expr.Unknown   -> Tsl.Unknown
+    E.Set       -> SL.Set
+  | E.Elem      -> SL.Elem
+  | E.Thid      -> SL.Thid
+  | E.Addr      -> SL.Addr
+  | E.Cell      -> SL.Cell
+  | E.SetTh     -> SL.SetTh
+  | E.SetInt    -> raise(UnsupportedSort(E.sort_to_str s))
+  | E.SetElem   -> SL.SetElem
+  | E.Path      -> SL.Path
+  | E.Mem       -> SL.Mem
+  | E.Bool      -> SL.Bool
+  | E.Int       -> SL.Int
+  | E.Array     -> raise(UnsupportedSort(E.sort_to_str s))
+  | E.AddrArray -> SL.AddrArray
+  | E.TidArray  -> SL.TidArray
+  | E.Unknown   -> SL.Unknown
 
 
 
-and build_term_var (v:Expr.variable) : Tsl.term =
+and build_term_var (v:E.variable) : SL.term =
 (*  LOG "Entering build_term_var..." LEVEL TRACE; *)
-(*  LOG "build_term_var(%s)" (Expr.variable_to_str v) LEVEL DEBUG; *)
+(*  LOG "build_term_var(%s)" (E.variable_to_str v) LEVEL DEBUG; *)
   let tsl_v = var_to_tsl_var v in
-  match v.Expr.sort with
-    Expr.Set       -> Tsl.SetT       (Tsl.VarSet        tsl_v)
-  | Expr.Elem      -> Tsl.ElemT      (Tsl.VarElem       tsl_v)
-  | Expr.Thid      -> Tsl.ThidT      (Tsl.VarTh         tsl_v)
-  | Expr.Addr      -> Tsl.AddrT      (Tsl.VarAddr       tsl_v)
-  | Expr.Cell      -> Tsl.CellT      (Tsl.VarCell       tsl_v)
-  | Expr.SetTh     -> Tsl.SetThT     (Tsl.VarSetTh      tsl_v)
-  | Expr.Path      -> Tsl.PathT      (Tsl.VarPath       tsl_v)
-  | Expr.Mem       -> Tsl.MemT       (Tsl.VarMem        tsl_v)
-  | Expr.Int       -> Tsl.IntT       (Tsl.VarInt        tsl_v)
-  | Expr.AddrArray -> Tsl.AddrArrayT (Tsl.VarAddrArray  tsl_v)
-  | Expr.TidArray  -> Tsl.TidArrayT  (Tsl.VarTidArray   tsl_v)
-  | _              -> Tsl.VarT       (tsl_v)
+  match v.E.sort with
+    E.Set       -> SL.SetT       (SL.VarSet        tsl_v)
+  | E.Elem      -> SL.ElemT      (SL.VarElem       tsl_v)
+  | E.Thid      -> SL.ThidT      (SL.VarTh         tsl_v)
+  | E.Addr      -> SL.AddrT      (SL.VarAddr       tsl_v)
+  | E.Cell      -> SL.CellT      (SL.VarCell       tsl_v)
+  | E.SetTh     -> SL.SetThT     (SL.VarSetTh      tsl_v)
+  | E.Path      -> SL.PathT      (SL.VarPath       tsl_v)
+  | E.Mem       -> SL.MemT       (SL.VarMem        tsl_v)
+  | E.Int       -> SL.IntT       (SL.VarInt        tsl_v)
+  | E.AddrArray -> SL.AddrArrayT (SL.VarAddrArray  tsl_v)
+  | E.TidArray  -> SL.TidArrayT  (SL.VarTidArray   tsl_v)
+  | _              -> SL.VarT       (tsl_v)
 
 
 
-and var_to_tsl_var (v:Expr.variable) : Tsl.variable =
+and var_to_tsl_var (v:E.variable) : SL.variable =
 (*  LOG "Entering var_to_tsl_var..." LEVEL TRACE; *)
-(*  LOG "var_to_tsl_var(%s)" (Expr.variable_to_str v) LEVEL DEBUG; *)
-  let (id,s,pr,th,p,_) = v
-  in
-    (id, sort_to_tsl_sort s, pr, Option.lift tid_to_tsl_tid th, p)
+(*  LOG "var_to_tsl_var(%s)" (E.variable_to_str v) LEVEL DEBUG; *)
+  SL.build_var v.E.id (sort_to_tsl_sort v.E.sort) v.E.is_primed
+    (shared_to_tsl_shared v.E.parameter) (scope_to_tsl_scope v.E.scope)
 
 
-
-and tid_to_tsl_tid (th:Expr.tid) : Tsl.tid =
-(*  LOG "Entering tid_to_tsl_tid..." LEVEL TRACE; *)
-(*  LOG "tid_to_tsl_tid(%s)" (Expr.tid_to_str th) LEVEL DEBUG; *)
+and shared_to_tsl_shared (th:E.shared_or_local) : SL.tid option =
   match th with
-    Expr.VarTh v            -> Tsl.VarTh (var_to_tsl_var v)
-  | Expr.NoThid             -> Tsl.NoThid
-  | Expr.CellLockId _       -> raise(UnsupportedTslExpr(Expr.tid_to_str th))
-  | Expr.CellLockIdAt (c,l) -> Tsl.CellLockIdAt (cell_to_tsl_cell c,
+  | E.Shared  -> None
+  | E.Local t -> Some (tid_to_tsl_tid t)
+
+
+and scope_to_tsl_scope (p:E.procedure_name) : string option =
+  match p with
+  | E.GlobalScope -> None
+  | E.Scope proc  -> Some proc
+
+
+and tid_to_tsl_tid (th:E.tid) : SL.tid =
+(*  LOG "Entering tid_to_tsl_tid..." LEVEL TRACE; *)
+(*  LOG "tid_to_tsl_tid(%s)" (E.tid_to_str th) LEVEL DEBUG; *)
+  match th with
+    E.VarTh v            -> SL.VarTh (var_to_tsl_var v)
+  | E.NoThid             -> SL.NoThid
+  | E.CellLockId _       -> raise(UnsupportedTslExpr(E.tid_to_str th))
+  | E.CellLockIdAt (c,l) -> SL.CellLockIdAt (cell_to_tsl_cell c,
                                                  int_to_tsl_int l)
-  | Expr.ThidArrayRd _      -> raise(UnsupportedTslExpr(Expr.tid_to_str th))
-  | Expr.ThidArrRd (tt,i)   -> Tsl.ThidArrRd (tidarr_to_tsl_tidarr tt,
+  | E.ThidArrayRd _      -> raise(UnsupportedTslExpr(E.tid_to_str th))
+  | E.ThidArrRd (tt,i)   -> SL.ThidArrRd (tidarr_to_tsl_tidarr tt,
                                               int_to_tsl_int i)
 
-and term_to_tsl_term (t:Expr.term) : Tsl.term =
+and term_to_tsl_term (t:E.term) : SL.term =
 (*  LOG "Entering term_to_tsl_term..." LEVEL TRACE; *)
-(*  LOG "term_to_tsl_term(%s)" (Expr.term_to_str t) LEVEL DEBUG; *)
+(*  LOG "term_to_tsl_term(%s)" (E.term_to_str t) LEVEL DEBUG; *)
   match t with
-    Expr.VarT v        -> Tsl.VarT (var_to_tsl_var v)
-  | Expr.SetT s        -> Tsl.SetT (set_to_tsl_set s)
-  | Expr.ElemT e       -> Tsl.ElemT (elem_to_tsl_elem e)
-  | Expr.ThidT t       -> Tsl.ThidT (tid_to_tsl_tid t)
-  | Expr.AddrT a       -> Tsl.AddrT (addr_to_tsl_addr a)
-  | Expr.CellT c       -> Tsl.CellT (cell_to_tsl_cell c)
-  | Expr.SetThT st     -> Tsl.SetThT (setth_to_tsl_setth st)
-  | Expr.SetIntT _     -> raise(UnsupportedTslExpr(Expr.term_to_str t))
-  | Expr.SetElemT st   -> Tsl.SetElemT (setelem_to_tsl_setelem st)
-  | Expr.PathT p       -> Tsl.PathT (path_to_tsl_path p)
-  | Expr.MemT m        -> Tsl.MemT (mem_to_tsl_mem m)
-  | Expr.IntT i        -> Tsl.IntT (int_to_tsl_int i)
-  | Expr.AddrArrayT aa -> Tsl.AddrArrayT (addrarr_to_tsl_addrarr aa)
-  | Expr.TidArrayT tt  -> Tsl.TidArrayT (tidarr_to_tsl_tidarr tt)
-  | Expr.ArrayT a      -> arrays_to_tsl_term a
+    E.VarT v        -> SL.VarT (var_to_tsl_var v)
+  | E.SetT s        -> SL.SetT (set_to_tsl_set s)
+  | E.ElemT e       -> SL.ElemT (elem_to_tsl_elem e)
+  | E.ThidT t       -> SL.ThidT (tid_to_tsl_tid t)
+  | E.AddrT a       -> SL.AddrT (addr_to_tsl_addr a)
+  | E.CellT c       -> SL.CellT (cell_to_tsl_cell c)
+  | E.SetThT st     -> SL.SetThT (setth_to_tsl_setth st)
+  | E.SetIntT _     -> raise(UnsupportedTslExpr(E.term_to_str t))
+  | E.SetElemT st   -> SL.SetElemT (setelem_to_tsl_setelem st)
+  | E.PathT p       -> SL.PathT (path_to_tsl_path p)
+  | E.MemT m        -> SL.MemT (mem_to_tsl_mem m)
+  | E.IntT i        -> SL.IntT (int_to_tsl_int i)
+  | E.AddrArrayT aa -> SL.AddrArrayT (addrarr_to_tsl_addrarr aa)
+  | E.TidArrayT tt  -> SL.TidArrayT (tidarr_to_tsl_tidarr tt)
+  | E.ArrayT a      -> arrays_to_tsl_term a
 
 
-and arrays_to_tsl_term (a:Expr.arrays) : Tsl.term =
+and arrays_to_tsl_term (a:E.arrays) : SL.term =
   match a with
-  | Expr.VarArray v -> build_term_var v
-  | Expr.ArrayUp (Expr.VarArray v,th_p,Expr.Term t) ->
+  | E.VarArray v -> build_term_var v
+  | E.ArrayUp (E.VarArray v,th_p,E.Term t) ->
       let tsl_v  = var_to_tsl_var v in
       let tsl_th = tid_to_tsl_tid th_p in
       let tsl_t  = term_to_tsl_term t
       in
-        Tsl.VarUpdate (tsl_v, tsl_th, tsl_t)
-  | Expr.ArrayUp (_,_,e) -> raise(UnsupportedTslExpr(Expr.expr_to_str e))
+        SL.VarUpdate (tsl_v, tsl_th, tsl_t)
+  | E.ArrayUp (_,_,e) -> raise(UnsupportedTslExpr(E.expr_to_str e))
 
 
-and eq_to_tsl_eq ((t1,t2):Expr.eq) : Tsl.eq =
+and eq_to_tsl_eq ((t1,t2):E.eq) : SL.eq =
 (*  LOG "Entering eq_to_tsl_eq..." LEVEL TRACE; *)
-(*  LOG "eq_to_tsl_eq(%s,%s)" (Expr.term_to_str t1) *)
-(*                            (Expr.term_to_str t2) LEVEL DEBUG; *)
+(*  LOG "eq_to_tsl_eq(%s,%s)" (E.term_to_str t1) *)
+(*                            (E.term_to_str t2) LEVEL DEBUG; *)
   (term_to_tsl_term t1, term_to_tsl_term t2)
 
 
-and diseq_to_tsl_diseq ((t1,t2):Expr.diseq) : Tsl.diseq =
+and diseq_to_tsl_diseq ((t1,t2):E.diseq) : SL.diseq =
 (*  LOG "Entering diseq_to_tsl_diseq..." LEVEL TRACE; *)
-(*  LOG "diseq_to_tsl_diseq(%s,%s)" (Expr.term_to_str t1) *)
-(*                                  (Expr.term_to_str t2) LEVEL DEBUG; *)
+(*  LOG "diseq_to_tsl_diseq(%s,%s)" (E.term_to_str t1) *)
+(*                                  (E.term_to_str t2) LEVEL DEBUG; *)
   (term_to_tsl_term t1, term_to_tsl_term t2)
 
 
-and set_to_tsl_set (s:Expr.set) : Tsl.set =
+and set_to_tsl_set (s:E.set) : SL.set =
 (*  LOG "Entering set_to_tsl_set..." LEVEL TRACE; *)
-(*  LOG "set_to_tsl_set(%s)" (Expr.set_to_str s) LEVEL DEBUG; *)
+(*  LOG "set_to_tsl_set(%s)" (E.set_to_str s) LEVEL DEBUG; *)
   let to_set = set_to_tsl_set in
   match s with
-    Expr.VarSet v            -> Tsl.VarSet (var_to_tsl_var v)
-  | Expr.EmptySet            -> Tsl.EmptySet
-  | Expr.Singl a             -> Tsl.Singl (addr_to_tsl_addr a)
-  | Expr.Union (s1,s2)       -> Tsl.Union (to_set s1, to_set s2)
-  | Expr.Intr (s1,s2)        -> Tsl.Intr (to_set s1, to_set s2)
-  | Expr.Setdiff (s1,s2)     -> Tsl.Setdiff (to_set s1, to_set s2)
-  | Expr.PathToSet p         -> Tsl.PathToSet (path_to_tsl_path p)
-  | Expr.AddrToSet _         -> raise(UnsupportedTslExpr(Expr.set_to_str s))
-  | Expr.AddrToSetAt (m,a,l) -> Tsl.AddrToSet (mem_to_tsl_mem m,
+    E.VarSet v            -> SL.VarSet (var_to_tsl_var v)
+  | E.EmptySet            -> SL.EmptySet
+  | E.Singl a             -> SL.Singl (addr_to_tsl_addr a)
+  | E.Union (s1,s2)       -> SL.Union (to_set s1, to_set s2)
+  | E.Intr (s1,s2)        -> SL.Intr (to_set s1, to_set s2)
+  | E.Setdiff (s1,s2)     -> SL.Setdiff (to_set s1, to_set s2)
+  | E.PathToSet p         -> SL.PathToSet (path_to_tsl_path p)
+  | E.AddrToSet _         -> raise(UnsupportedTslExpr(E.set_to_str s))
+  | E.AddrToSetAt (m,a,l) -> SL.AddrToSet (mem_to_tsl_mem m,
                                                addr_to_tsl_addr a,
                                                int_to_tsl_int l)
-  | Expr.SetArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
-      let v = Expr.build_var id s pr (Some t) p Expr.Normal in
-      Tsl.VarSet (var_to_tsl_var v)
-  | Expr.SetArrayRd _        -> raise(UnsupportedTslExpr(Expr.set_to_str s))
+  | E.SetArrayRd (E.VarArray (id,s,pr,th,p,_),t) ->
+      let v = E.build_var id s pr (Some t) p E.Normal in
+      SL.VarSet (var_to_tsl_var v)
+  | E.SetArrayRd _        -> raise(UnsupportedTslExpr(E.set_to_str s))
 
 
-and elem_to_tsl_elem (e:Expr.elem) : Tsl.elem =
+and elem_to_tsl_elem (e:E.elem) : SL.elem =
 (*  LOG "Entering elem_to_tsl_elem..." LEVEL TRACE; *)
-(*  LOG "elem_to_tsl_elem(%s)" (Expr.elem_to_str e) LEVEL DEBUG; *)
+(*  LOG "elem_to_tsl_elem(%s)" (E.elem_to_str e) LEVEL DEBUG; *)
   match e with
-    Expr.VarElem v              -> Tsl.VarElem (var_to_tsl_var v)
-  | Expr.CellData c             -> Tsl.CellData (cell_to_tsl_cell c)
-  | Expr.ElemArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
-      let v = Expr.build_var id s pr (Some t) p Expr.Normal in
-      Tsl.VarElem (var_to_tsl_var v)
-  | Expr.ElemArrayRd _          -> raise(UnsupportedTslExpr(Expr.elem_to_str e))
-  | Expr.HavocListElem          -> raise(UnsupportedTslExpr(Expr.elem_to_str e))
-  | Expr.HavocSkiplistElem      -> Tsl.HavocSkiplistElem
-  | Expr.LowestElem             -> Tsl.LowestElem
-  | Expr.HighestElem            -> Tsl.HighestElem
+    E.VarElem v              -> SL.VarElem (var_to_tsl_var v)
+  | E.CellData c             -> SL.CellData (cell_to_tsl_cell c)
+  | E.ElemArrayRd (E.VarArray (id,s,pr,th,p,_),t) ->
+      let v = E.build_var id s pr (Some t) p E.Normal in
+      SL.VarElem (var_to_tsl_var v)
+  | E.ElemArrayRd _          -> raise(UnsupportedTslExpr(E.elem_to_str e))
+  | E.HavocListElem          -> raise(UnsupportedTslExpr(E.elem_to_str e))
+  | E.HavocSkiplistElem      -> SL.HavocSkiplistElem
+  | E.LowestElem             -> SL.LowestElem
+  | E.HighestElem            -> SL.HighestElem
 
 
-and addr_to_tsl_addr (a:Expr.addr) : Tsl.addr =
+and addr_to_tsl_addr (a:E.addr) : SL.addr =
 (*  LOG "Entering addr_to_tsl_addr..." LEVEL TRACE; *)
-(*  LOG "addr_to_tsl_addr(%s)" (Expr.addr_to_str a) LEVEL DEBUG; *)
+(*  LOG "addr_to_tsl_addr(%s)" (E.addr_to_str a) LEVEL DEBUG; *)
   match a with
-    Expr.VarAddr v              -> Tsl.VarAddr (var_to_tsl_var v)
-  | Expr.Null                   -> Tsl.Null
-  | Expr.Next _                 -> raise(UnsupportedTslExpr(Expr.addr_to_str a))
-  | Expr.NextAt (c,l)           -> Tsl.NextAt (cell_to_tsl_cell c, int_to_tsl_int l)
-  | Expr.FirstLocked _          -> raise(UnsupportedTslExpr(Expr.addr_to_str a))
-  | Expr.FirstLockedAt _        -> raise(UnsupportedTslExpr(Expr.addr_to_str a))
-  | Expr.AddrArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
-      let v = Expr.build_var id s pr (Some t) p Expr.Normal in
-      Tsl.VarAddr (var_to_tsl_var v)
-  | Expr.AddrArrayRd _          -> raise(UnsupportedTslExpr(Expr.addr_to_str a))
-  | Expr.AddrArrRd (aa,i)       -> Tsl.AddrArrRd (addrarr_to_tsl_addrarr aa,
+    E.VarAddr v              -> SL.VarAddr (var_to_tsl_var v)
+  | E.Null                   -> SL.Null
+  | E.Next _                 -> raise(UnsupportedTslExpr(E.addr_to_str a))
+  | E.NextAt (c,l)           -> SL.NextAt (cell_to_tsl_cell c, int_to_tsl_int l)
+  | E.FirstLocked _          -> raise(UnsupportedTslExpr(E.addr_to_str a))
+  | E.FirstLockedAt _        -> raise(UnsupportedTslExpr(E.addr_to_str a))
+  | E.AddrArrayRd (E.VarArray (id,s,pr,th,p,_),t) ->
+      let v = E.build_var id s pr (Some t) p E.Normal in
+      SL.VarAddr (var_to_tsl_var v)
+  | E.AddrArrayRd _          -> raise(UnsupportedTslExpr(E.addr_to_str a))
+  | E.AddrArrRd (aa,i)       -> SL.AddrArrRd (addrarr_to_tsl_addrarr aa,
                                                   int_to_tsl_int i)
 
 
-and cell_to_tsl_cell (c:Expr.cell) : Tsl.cell =
+and cell_to_tsl_cell (c:E.cell) : SL.cell =
 (*  LOG "Entering cell_to_tsl_cell..." LEVEL TRACE; *)
-(*  LOG "cell_to_tsl_cell(%s)" (Expr.cell_to_str c) LEVEL DEBUG; *)
+(*  LOG "cell_to_tsl_cell(%s)" (E.cell_to_str c) LEVEL DEBUG; *)
   match c with
-    Expr.VarCell v            -> Tsl.VarCell (var_to_tsl_var v)
-  | Expr.Error                -> Tsl.Error
-  | Expr.MkCell _             -> raise(UnsupportedTslExpr(Expr.cell_to_str c))
-  | Expr.MkSLKCell _          -> raise(UnsupportedTslExpr(Expr.cell_to_str c))
-  | Expr.MkSLCell (e,aa,tt,l) -> Tsl.MkCell (elem_to_tsl_elem e,
+    E.VarCell v            -> SL.VarCell (var_to_tsl_var v)
+  | E.Error                -> SL.Error
+  | E.MkCell _             -> raise(UnsupportedTslExpr(E.cell_to_str c))
+  | E.MkSLKCell _          -> raise(UnsupportedTslExpr(E.cell_to_str c))
+  | E.MkSLCell (e,aa,tt,l) -> SL.MkCell (elem_to_tsl_elem e,
                                              addrarr_to_tsl_addrarr aa,
                                              tidarr_to_tsl_tidarr tt,
                                              int_to_tsl_int l)
   (* Tsl receives two arguments, while current epxression receives only one *)
   (* However, for the list examples, I think we will not need it *)
-  | Expr.CellLock _           -> raise(UnsupportedTslExpr(Expr.cell_to_str c))
-  | Expr.CellLockAt (c,l,t)   -> Tsl.CellLockAt (cell_to_tsl_cell c,
+  | E.CellLock _           -> raise(UnsupportedTslExpr(E.cell_to_str c))
+  | E.CellLockAt (c,l,t)   -> SL.CellLockAt (cell_to_tsl_cell c,
                                                  int_to_tsl_int l,
                                                  tid_to_tsl_tid t)
-  | Expr.CellUnlock _         -> raise(UnsupportedTslExpr(Expr.cell_to_str c))
-  | Expr.CellUnlockAt (c,l)   -> Tsl.CellUnlockAt (cell_to_tsl_cell c,
+  | E.CellUnlock _         -> raise(UnsupportedTslExpr(E.cell_to_str c))
+  | E.CellUnlockAt (c,l)   -> SL.CellUnlockAt (cell_to_tsl_cell c,
                                                    int_to_tsl_int l)
-  | Expr.CellAt (m,a)         -> Tsl.CellAt (mem_to_tsl_mem m, addr_to_tsl_addr a)
-  | Expr.CellArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
-      let v = Expr.build_var id s pr (Some t) p Expr.Normal in
-      Tsl.VarCell (var_to_tsl_var v)
-  | Expr.CellArrayRd _        -> raise(UnsupportedTslExpr(Expr.cell_to_str c))
+  | E.CellAt (m,a)         -> SL.CellAt (mem_to_tsl_mem m, addr_to_tsl_addr a)
+  | E.CellArrayRd (E.VarArray (id,s,pr,th,p,_),t) ->
+      let v = E.build_var id s pr (Some t) p E.Normal in
+      SL.VarCell (var_to_tsl_var v)
+  | E.CellArrayRd _        -> raise(UnsupportedTslExpr(E.cell_to_str c))
 
 
-and setth_to_tsl_setth (st:Expr.setth) : Tsl.setth =
+and setth_to_tsl_setth (st:E.setth) : SL.setth =
 (*  LOG "Entering setth_to_tsl_setth..." LEVEL TRACE; *)
-(*  LOG "setth_to_tsl_setth(%s)" (Expr.setth_to_str st) LEVEL DEBUG; *)
+(*  LOG "setth_to_tsl_setth(%s)" (E.setth_to_str st) LEVEL DEBUG; *)
   let to_setth = setth_to_tsl_setth in
   match st with
-    Expr.VarSetTh v        -> Tsl.VarSetTh (var_to_tsl_var v)
-  | Expr.EmptySetTh        -> Tsl.EmptySetTh
-  | Expr.SinglTh t         -> Tsl.SinglTh (tid_to_tsl_tid t)
-  | Expr.UnionTh (s1,s2)   -> Tsl.UnionTh (to_setth s1, to_setth s2)
-  | Expr.IntrTh (s1,s2)    -> Tsl.IntrTh (to_setth s1, to_setth s2)
-  | Expr.SetdiffTh (s1,s2) -> Tsl.SetdiffTh (to_setth s1, to_setth s2)
-  | Expr.SetThArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
-      let v = Expr.build_var id s pr (Some t) p Expr.Normal in
-      Tsl.VarSetTh (var_to_tsl_var v)
-  | Expr.SetThArrayRd _    -> raise(UnsupportedTslExpr(Expr.setth_to_str st))
+    E.VarSetTh v        -> SL.VarSetTh (var_to_tsl_var v)
+  | E.EmptySetTh        -> SL.EmptySetTh
+  | E.SinglTh t         -> SL.SinglTh (tid_to_tsl_tid t)
+  | E.UnionTh (s1,s2)   -> SL.UnionTh (to_setth s1, to_setth s2)
+  | E.IntrTh (s1,s2)    -> SL.IntrTh (to_setth s1, to_setth s2)
+  | E.SetdiffTh (s1,s2) -> SL.SetdiffTh (to_setth s1, to_setth s2)
+  | E.SetThArrayRd (E.VarArray (id,s,pr,th,p,_),t) ->
+      let v = E.build_var id s pr (Some t) p E.Normal in
+      SL.VarSetTh (var_to_tsl_var v)
+  | E.SetThArrayRd _    -> raise(UnsupportedTslExpr(E.setth_to_str st))
 
 
-and setelem_to_tsl_setelem (se:Expr.setelem) : Tsl.setelem =
+and setelem_to_tsl_setelem (se:E.setelem) : SL.setelem =
 (*  LOG "Entering setelem_to_tsl_setelem..." LEVEL TRACE; *)
-(*  LOG "setelem_to_tsl_setelem(%s)" (Expr.setelem_to_str se) LEVEL DEBUG; *)
+(*  LOG "setelem_to_tsl_setelem(%s)" (E.setelem_to_str se) LEVEL DEBUG; *)
   let to_setelem = setelem_to_tsl_setelem in
   match se with
-    Expr.VarSetElem v        -> Tsl.VarSetElem (var_to_tsl_var v)
-  | Expr.EmptySetElem        -> Tsl.EmptySetElem
-  | Expr.SinglElem e         -> Tsl.SinglElem (elem_to_tsl_elem e)
-  | Expr.UnionElem (s1,s2)   -> Tsl.UnionElem (to_setelem s1, to_setelem s2)
-  | Expr.IntrElem (s1,s2)    -> Tsl.IntrElem (to_setelem s1, to_setelem s2)
-  | Expr.SetdiffElem (s1,s2) -> Tsl.SetdiffElem (to_setelem s1, to_setelem s2)
-  | Expr.SetElemArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
-      let v = Expr.build_var id s pr (Some t) p Expr.Normal in
-      Tsl.VarSetElem (var_to_tsl_var v)
-  | Expr.SetToElems (s,m)    -> Tsl.SetToElems (set_to_tsl_set s,
+    E.VarSetElem v        -> SL.VarSetElem (var_to_tsl_var v)
+  | E.EmptySetElem        -> SL.EmptySetElem
+  | E.SinglElem e         -> SL.SinglElem (elem_to_tsl_elem e)
+  | E.UnionElem (s1,s2)   -> SL.UnionElem (to_setelem s1, to_setelem s2)
+  | E.IntrElem (s1,s2)    -> SL.IntrElem (to_setelem s1, to_setelem s2)
+  | E.SetdiffElem (s1,s2) -> SL.SetdiffElem (to_setelem s1, to_setelem s2)
+  | E.SetElemArrayRd (E.VarArray (id,s,pr,th,p,_),t) ->
+      let v = E.build_var id s pr (Some t) p E.Normal in
+      SL.VarSetElem (var_to_tsl_var v)
+  | E.SetToElems (s,m)    -> SL.SetToElems (set_to_tsl_set s,
                                                 mem_to_tsl_mem m)
-  | Expr.SetElemArrayRd _    -> raise(UnsupportedTslExpr(Expr.setelem_to_str se))
+  | E.SetElemArrayRd _    -> raise(UnsupportedTslExpr(E.setelem_to_str se))
 
 
-and path_to_tsl_path (p:Expr.path) : Tsl.path =
+and path_to_tsl_path (p:E.path) : SL.path =
 (*  LOG "Entering path_to_tsl_path..." LEVEL TRACE; *)
-(*  LOG "path_to_tsl_path(%s)" (Expr.path_to_str p) LEVEL DEBUG; *)
+(*  LOG "path_to_tsl_path(%s)" (E.path_to_str p) LEVEL DEBUG; *)
   match p with
-    Expr.VarPath v             -> Tsl.VarPath (var_to_tsl_var v)
-  | Expr.Epsilon               -> Tsl.Epsilon
-  | Expr.SimplePath a          -> Tsl.SimplePath (addr_to_tsl_addr a)
-  | Expr.GetPath _             -> raise(UnsupportedTslExpr(Expr.path_to_str p))
-  | Expr.GetPathAt (m,a1,a2,l) -> Tsl.GetPath (mem_to_tsl_mem m,
+    E.VarPath v             -> SL.VarPath (var_to_tsl_var v)
+  | E.Epsilon               -> SL.Epsilon
+  | E.SimplePath a          -> SL.SimplePath (addr_to_tsl_addr a)
+  | E.GetPath _             -> raise(UnsupportedTslExpr(E.path_to_str p))
+  | E.GetPathAt (m,a1,a2,l) -> SL.GetPath (mem_to_tsl_mem m,
                                                addr_to_tsl_addr a1,
                                                addr_to_tsl_addr a2,
                                                int_to_tsl_int l)
-  | Expr.PathArrayRd _         -> raise(UnsupportedTslExpr(Expr.path_to_str p))
+  | E.PathArrayRd _         -> raise(UnsupportedTslExpr(E.path_to_str p))
 
 
-and mem_to_tsl_mem (m:Expr.mem) : Tsl.mem =
+and mem_to_tsl_mem (m:E.mem) : SL.mem =
 (*  LOG "Entering mem_to_tsl_mem..." LEVEL TRACE; *)
-(*  LOG "mem_to_tsl_mem(%s)" (Expr.mem_to_str m) LEVEL DEBUG; *)
+(*  LOG "mem_to_tsl_mem(%s)" (E.mem_to_str m) LEVEL DEBUG; *)
   match m with
-    Expr.VarMem v       -> Tsl.VarMem (var_to_tsl_var v)
-  | Expr.Update (m,a,c) -> Tsl.Update (mem_to_tsl_mem m,
+    E.VarMem v       -> SL.VarMem (var_to_tsl_var v)
+  | E.Update (m,a,c) -> SL.Update (mem_to_tsl_mem m,
                                        addr_to_tsl_addr a,
                                        cell_to_tsl_cell c)
   (* Missing the case for "emp" *)
-  | Expr.MemArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
-      let v = Expr.build_var id s pr (Some t) p Expr.Normal in
-      Tsl.VarMem (var_to_tsl_var v)
-  | Expr.MemArrayRd _        -> raise(UnsupportedTslExpr(Expr.mem_to_str m))
+  | E.MemArrayRd (E.VarArray (id,s,pr,th,p,_),t) ->
+      let v = E.build_var id s pr (Some t) p E.Normal in
+      SL.VarMem (var_to_tsl_var v)
+  | E.MemArrayRd _        -> raise(UnsupportedTslExpr(E.mem_to_str m))
 
 
-and int_to_tsl_int (i:Expr.integer) : Tsl.integer =
+and int_to_tsl_int (i:E.integer) : SL.integer =
 (*  LOG "Entering int_to_tsl_int..." LEVEL TRACE; *)
-(*  LOG "int_to_tsl_int(%s)" (Expr.integer_to_str i) LEVEL DEBUG; *)
+(*  LOG "int_to_tsl_int(%s)" (E.integer_to_str i) LEVEL DEBUG; *)
   match i with
-    Expr.IntVal i       -> Tsl.IntVal i
-  | Expr.VarInt v       -> Tsl.VarInt (var_to_tsl_var v)
-  | Expr.IntNeg i       -> Tsl.IntNeg (int_to_tsl_int i)
-  | Expr.IntAdd (i1,i2) -> Tsl.IntAdd (int_to_tsl_int i1, int_to_tsl_int i2)
-  | Expr.IntSub (i1,i2) -> Tsl.IntSub (int_to_tsl_int i1, int_to_tsl_int i2)
-  | Expr.IntMul (i1,i2) -> Tsl.IntMul (int_to_tsl_int i1, int_to_tsl_int i2)
-  | Expr.IntDiv (i1,i2) -> Tsl.IntDiv (int_to_tsl_int i1, int_to_tsl_int i2)
-  | Expr.CellMax (c)    -> Tsl.CellMax (cell_to_tsl_cell c)
-  | Expr.IntArrayRd _   -> raise(UnsupportedTslExpr(Expr.integer_to_str i))
-  | Expr.IntSetMin _    -> raise(UnsupportedTslExpr(Expr.integer_to_str i))
-  | Expr.IntSetMax _    -> raise(UnsupportedTslExpr(Expr.integer_to_str i))
-  | Expr.HavocLevel     -> Tsl.HavocLevel
+    E.IntVal i       -> SL.IntVal i
+  | E.VarInt v       -> SL.VarInt (var_to_tsl_var v)
+  | E.IntNeg i       -> SL.IntNeg (int_to_tsl_int i)
+  | E.IntAdd (i1,i2) -> SL.IntAdd (int_to_tsl_int i1, int_to_tsl_int i2)
+  | E.IntSub (i1,i2) -> SL.IntSub (int_to_tsl_int i1, int_to_tsl_int i2)
+  | E.IntMul (i1,i2) -> SL.IntMul (int_to_tsl_int i1, int_to_tsl_int i2)
+  | E.IntDiv (i1,i2) -> SL.IntDiv (int_to_tsl_int i1, int_to_tsl_int i2)
+  | E.CellMax (c)    -> SL.CellMax (cell_to_tsl_cell c)
+  | E.IntArrayRd _   -> raise(UnsupportedTslExpr(E.integer_to_str i))
+  | E.IntSetMin _    -> raise(UnsupportedTslExpr(E.integer_to_str i))
+  | E.IntSetMax _    -> raise(UnsupportedTslExpr(E.integer_to_str i))
+  | E.HavocLevel     -> SL.HavocLevel
 
 
-and addrarr_to_tsl_addrarr (arr:Expr.addrarr) : Tsl.addrarr =
+and addrarr_to_tsl_addrarr (arr:E.addrarr) : SL.addrarr =
 (*  LOG "Entering addrarr_to_tsl_addrarr..." LEVEL TRACE; *)
-(*  LOG "addrarr_to_tsl_addrarr(%s)" (Expr.addrarr_to_str arr) LEVEL DEBUG; *)
+(*  LOG "addrarr_to_tsl_addrarr(%s)" (E.addrarr_to_str arr) LEVEL DEBUG; *)
   match arr with
-    Expr.VarAddrArray v       -> Tsl.VarAddrArray (var_to_tsl_var v)
-  | Expr.AddrArrayUp (aa,i,a) -> Tsl.AddrArrayUp (addrarr_to_tsl_addrarr aa,
+    E.VarAddrArray v       -> SL.VarAddrArray (var_to_tsl_var v)
+  | E.AddrArrayUp (aa,i,a) -> SL.AddrArrayUp (addrarr_to_tsl_addrarr aa,
                                                   int_to_tsl_int i,
                                                   addr_to_tsl_addr a)
-  | Expr.CellArr c            -> Tsl.CellArr (cell_to_tsl_cell c)
+  | E.CellArr c            -> SL.CellArr (cell_to_tsl_cell c)
 
 
-and tidarr_to_tsl_tidarr (arr:Expr.tidarr) : Tsl.tidarr =
+and tidarr_to_tsl_tidarr (arr:E.tidarr) : SL.tidarr =
 (*  LOG "Entering tidarr_to_tsl_tidarr..." LEVEL TRACE; *)
-(*  LOG "tidarr_to_tsl_tidarr(%s)" (Expr.tidarr_to_str arr) LEVEL DEBUG; *)
+(*  LOG "tidarr_to_tsl_tidarr(%s)" (E.tidarr_to_str arr) LEVEL DEBUG; *)
   match arr with
-    Expr.VarTidArray v       -> Tsl.VarTidArray (var_to_tsl_var v)
-  | Expr.TidArrayUp (tt,i,t) -> Tsl.TidArrayUp (tidarr_to_tsl_tidarr tt,
+    E.VarTidArray v       -> SL.VarTidArray (var_to_tsl_var v)
+  | E.TidArrayUp (tt,i,t) -> SL.TidArrayUp (tidarr_to_tsl_tidarr tt,
                                                 int_to_tsl_int i,
                                                 tid_to_tsl_tid t)
-  | Expr.CellTids c          -> Tsl.CellTids (cell_to_tsl_cell c)
+  | E.CellTids c          -> SL.CellTids (cell_to_tsl_cell c)
 
 
-and atom_to_tsl_atom (a:Expr.atom) : Tsl.atom =
+and atom_to_tsl_atom (a:E.atom) : SL.atom =
 (*  LOG "Entering atom_to_tsl_atom..." LEVEL TRACE; *)
-(*  LOG "atom_to_tsl_atom(%s)" (Expr.atom_to_str a) LEVEL DEBUG; *)
+(*  LOG "atom_to_tsl_atom(%s)" (E.atom_to_str a) LEVEL DEBUG; *)
   let path    = path_to_tsl_path       in
   let mem     = mem_to_tsl_mem         in
   let addr    = addr_to_tsl_addr       in
@@ -332,59 +342,59 @@ and atom_to_tsl_atom (a:Expr.atom) : Tsl.atom =
   let integ   = int_to_tsl_int         in
   let term    = term_to_tsl_term       in
   match a with
-    Expr.Append (p1,p2,p3)    -> Tsl.Append (path p1,path p2,path p3)
-  | Expr.Reach _              -> raise(UnsupportedTslExpr(Expr.atom_to_str a))
-  | Expr.ReachAt (m,a1,a2,l,p)-> Tsl.Reach (mem m, addr a1, addr a2,
+    E.Append (p1,p2,p3)    -> SL.Append (path p1,path p2,path p3)
+  | E.Reach _              -> raise(UnsupportedTslExpr(E.atom_to_str a))
+  | E.ReachAt (m,a1,a2,l,p)-> SL.Reach (mem m, addr a1, addr a2,
                                             integ l, path p)
-  | Expr.OrderList(m,a1,a2)   -> Tsl.OrderList (mem m, addr a1, addr a2)
-  | Expr.Skiplist(m,s,l,a1,a2)-> Tsl.Skiplist (mem m, set s, integ l,
+  | E.OrderList(m,a1,a2)   -> SL.OrderList (mem m, addr a1, addr a2)
+  | E.Skiplist(m,s,l,a1,a2)-> SL.Skiplist (mem m, set s, integ l,
                                                addr a1, addr a2)
-  | Expr.In (a,s)             -> Tsl.In (addr a, set s)
-  | Expr.SubsetEq (s1,s2)     -> Tsl.SubsetEq (set s1, set s2)
-  | Expr.InTh (t,s)           -> Tsl.InTh (tid t, setth s)
-  | Expr.SubsetEqTh (s1,s2)   -> Tsl.SubsetEqTh (setth s1, setth s2)
-  | Expr.InInt _              -> raise(UnsupportedTslExpr(Expr.atom_to_str a))
-  | Expr.SubsetEqInt _        -> raise(UnsupportedTslExpr(Expr.atom_to_str a))
-  | Expr.InElem (e,s)         -> Tsl.InElem (elem_to_tsl_elem e, setelem s)
-  | Expr.SubsetEqElem (s1,s2) -> Tsl.SubsetEqElem (setelem s1, setelem s2)
-  | Expr.Less (i1,i2)         -> Tsl.Less (integ i1, integ i2)
-  | Expr.Greater (i1,i2)      -> Tsl.Greater (integ i1, integ i2)
-  | Expr.LessEq (i1,i2)       -> Tsl.LessEq (integ i1, integ i2)
-  | Expr.GreaterEq (i1,i2)    -> Tsl.GreaterEq (integ i1, integ i2)
-  | Expr.LessTid _            -> raise(UnsupportedTslExpr(Expr.atom_to_str a))
-  | Expr.LessElem (e1,e2)     -> Tsl.LessElem (elem e1, elem e2)
-  | Expr.GreaterElem (e1,e2)  -> Tsl.GreaterElem (elem e1, elem e2)
-  | Expr.Eq (t1,t2)           -> Tsl.Eq (term t1, term t2)
-  | Expr.InEq (t1,t2)         -> Tsl.InEq (term t1, term t2)
-  | Expr.BoolVar v            -> Tsl.BoolVar (var_to_tsl_var v)
-  | Expr.BoolArrayRd _        -> raise(UnsupportedTslExpr(Expr.atom_to_str a))
-  | Expr.PC (pc,t,pr)         -> Tsl.PC (pc, Option.lift tid_to_tsl_tid t,pr)
-  | Expr.PCUpdate (pc,t)      -> Tsl.PCUpdate (pc, tid_to_tsl_tid t)
-  | Expr.PCRange (pc1,pc2,t,pr) -> Tsl.PCRange (pc1, pc2,
+  | E.In (a,s)             -> SL.In (addr a, set s)
+  | E.SubsetEq (s1,s2)     -> SL.SubsetEq (set s1, set s2)
+  | E.InTh (t,s)           -> SL.InTh (tid t, setth s)
+  | E.SubsetEqTh (s1,s2)   -> SL.SubsetEqTh (setth s1, setth s2)
+  | E.InInt _              -> raise(UnsupportedTslExpr(E.atom_to_str a))
+  | E.SubsetEqInt _        -> raise(UnsupportedTslExpr(E.atom_to_str a))
+  | E.InElem (e,s)         -> SL.InElem (elem_to_tsl_elem e, setelem s)
+  | E.SubsetEqElem (s1,s2) -> SL.SubsetEqElem (setelem s1, setelem s2)
+  | E.Less (i1,i2)         -> SL.Less (integ i1, integ i2)
+  | E.Greater (i1,i2)      -> SL.Greater (integ i1, integ i2)
+  | E.LessEq (i1,i2)       -> SL.LessEq (integ i1, integ i2)
+  | E.GreaterEq (i1,i2)    -> SL.GreaterEq (integ i1, integ i2)
+  | E.LessTid _            -> raise(UnsupportedTslExpr(E.atom_to_str a))
+  | E.LessElem (e1,e2)     -> SL.LessElem (elem e1, elem e2)
+  | E.GreaterElem (e1,e2)  -> SL.GreaterElem (elem e1, elem e2)
+  | E.Eq (t1,t2)           -> SL.Eq (term t1, term t2)
+  | E.InEq (t1,t2)         -> SL.InEq (term t1, term t2)
+  | E.BoolVar v            -> SL.BoolVar (var_to_tsl_var v)
+  | E.BoolArrayRd _        -> raise(UnsupportedTslExpr(E.atom_to_str a))
+  | E.PC (pc,t,pr)         -> SL.PC (pc, Option.lift tid_to_tsl_tid t,pr)
+  | E.PCUpdate (pc,t)      -> SL.PCUpdate (pc, tid_to_tsl_tid t)
+  | E.PCRange (pc1,pc2,t,pr) -> SL.PCRange (pc1, pc2,
                                         Option.lift tid_to_tsl_tid t,pr)
 
 
-and literal_to_tsl_literal (l:Expr.literal) : Tsl.literal =
+and literal_to_tsl_literal (l:E.literal) : SL.literal =
 (*  LOG "Entering literal_to_tsl_literal..." LEVEL TRACE; *)
-(*  LOG "literal_to_tsl_literal(%s)" (Expr.literal_to_str l) LEVEL DEBUG; *)
+(*  LOG "literal_to_tsl_literal(%s)" (E.literal_to_str l) LEVEL DEBUG; *)
   match l with
-    Expr.Atom a    -> Tsl.Atom (atom_to_tsl_atom a)
-  | Expr.NegAtom a -> Tsl.NegAtom (atom_to_tsl_atom a)
+    E.Atom a    -> SL.Atom (atom_to_tsl_atom a)
+  | E.NegAtom a -> SL.NegAtom (atom_to_tsl_atom a)
 
 
-and formula_to_tsl_formula (f:Expr.formula) : Tsl.formula =
+and formula_to_tsl_formula (f:E.formula) : SL.formula =
 (*  LOG "Entering formula_to_tsl_formula..." LEVEL TRACE; *)
-(*  LOG "formula_to_tsl_formula(%s)" (Expr.formula_to_str f) LEVEL DEBUG; *)
+(*  LOG "formula_to_tsl_formula(%s)" (E.formula_to_str f) LEVEL DEBUG; *)
   let to_formula = formula_to_tsl_formula in
   match f with
-    Expr.Literal l       -> Tsl.Literal (literal_to_tsl_literal l)
-  | Expr.True            -> Tsl.True
-  | Expr.False           -> Tsl.False
-  | Expr.And (f1,f2)     -> Tsl.And (to_formula f1, to_formula f2)
-  | Expr.Or (f1,f2)      -> Tsl.Or (to_formula f1, to_formula f2)
-  | Expr.Not f1          -> Tsl.Not (to_formula f1)
-  | Expr.Implies (f1,f2) -> Tsl.Implies (to_formula f1, to_formula f2)
-  | Expr.Iff (f1,f2)     -> Tsl.Iff (to_formula f1, to_formula f2)
+    E.Literal l       -> SL.Literal (literal_to_tsl_literal l)
+  | E.True            -> SL.True
+  | E.False           -> SL.False
+  | E.And (f1,f2)     -> SL.And (to_formula f1, to_formula f2)
+  | E.Or (f1,f2)      -> SL.Or (to_formula f1, to_formula f2)
+  | E.Not f1          -> SL.Not (to_formula f1)
+  | E.Implies (f1,f2) -> SL.Implies (to_formula f1, to_formula f2)
+  | E.Iff (f1,f2)     -> SL.Iff (to_formula f1, to_formula f2)
 
 
 
@@ -392,197 +402,197 @@ and formula_to_tsl_formula (f:Expr.formula) : Tsl.formula =
 (* TslExpression to Expression conversion *)
 
 
-let rec tsl_sort_to_sort (s:Tsl.sort) : Expr.sort =
+let rec tsl_sort_to_sort (s:SL.sort) : E.sort =
   match s with
-  | Tsl.Set       -> Expr.Set
-  | Tsl.Elem      -> Expr.Elem
-  | Tsl.Thid      -> Expr.Thid
-  | Tsl.Addr      -> Expr.Addr
-  | Tsl.Cell      -> Expr.Cell
-  | Tsl.SetTh     -> Expr.SetTh
-  | Tsl.SetElem   -> Expr.SetElem
-  | Tsl.Path      -> Expr.Path
-  | Tsl.Mem       -> Expr.Mem
-  | Tsl.Int       -> Expr.Int
-  | Tsl.AddrArray -> Expr.AddrArray
-  | Tsl.TidArray  -> Expr.TidArray
-  | Tsl.Bool      -> Expr.Bool
-  | Tsl.Unknown   -> Expr.Unknown
+  | SL.Set       -> E.Set
+  | SL.Elem      -> E.Elem
+  | SL.Thid      -> E.Thid
+  | SL.Addr      -> E.Addr
+  | SL.Cell      -> E.Cell
+  | SL.SetTh     -> E.SetTh
+  | SL.SetElem   -> E.SetElem
+  | SL.Path      -> E.Path
+  | SL.Mem       -> E.Mem
+  | SL.Int       -> E.Int
+  | SL.AddrArray -> E.AddrArray
+  | SL.TidArray  -> E.TidArray
+  | SL.Bool      -> E.Bool
+  | SL.Unknown   -> E.Unknown
 
 
-and var_to_expr_var (v:Tsl.variable) : Expr.variable =
+and var_to_expr_var (v:SL.variable) : E.variable =
   let (id,s,pr,th,p) = v
   in
-    (id, tsl_sort_to_sort s, pr, Option.lift tid_to_expr_tid th, p, Expr.Normal)
+    (id, tsl_sort_to_sort s, pr, Option.lift tid_to_expr_tid th, p, E.Normal)
 
 
 
-and tid_to_expr_tid (th:Tsl.tid) : Expr.tid =
+and tid_to_expr_tid (th:SL.tid) : E.tid =
   match th with
-  | Tsl.VarTh v            -> Expr.VarTh (var_to_expr_var v)
-  | Tsl.NoThid             -> Expr.NoThid
-  | Tsl.CellLockIdAt (c,l) -> Expr.CellLockIdAt (cell_to_expr_cell c,
+  | SL.VarTh v            -> E.VarTh (var_to_expr_var v)
+  | SL.NoThid             -> E.NoThid
+  | SL.CellLockIdAt (c,l) -> E.CellLockIdAt (cell_to_expr_cell c,
                                                  int_to_expr_int l)
-  | Tsl.ThidArrRd (tt,i)   -> Expr.ThidArrRd (tidarr_to_expr_tidarr tt,
+  | SL.ThidArrRd (tt,i)   -> E.ThidArrRd (tidarr_to_expr_tidarr tt,
                                               int_to_expr_int i)
 
 
-and term_to_expr_term (t:Tsl.term) : Expr.term =
+and term_to_expr_term (t:SL.term) : E.term =
   match t with
-  | Tsl.VarT v        -> Expr.VarT (var_to_expr_var v)
-  | Tsl.SetT s        -> Expr.SetT (set_to_expr_set s)
-  | Tsl.ElemT e       -> Expr.ElemT (elem_to_expr_elem e)
-  | Tsl.ThidT t       -> Expr.ThidT (tid_to_expr_tid t)
-  | Tsl.AddrT a       -> Expr.AddrT (addr_to_expr_addr a)
-  | Tsl.CellT c       -> Expr.CellT (cell_to_expr_cell c)
-  | Tsl.SetThT st     -> Expr.SetThT (setth_to_expr_setth st)
-  | Tsl.SetElemT st   -> Expr.SetElemT (setelem_to_expr_setelem st)
-  | Tsl.PathT p       -> Expr.PathT (path_to_expr_path p)
-  | Tsl.MemT m        -> Expr.MemT (mem_to_expr_mem m)
-  | Tsl.IntT i        -> Expr.IntT (int_to_expr_int i)
-  | Tsl.AddrArrayT aa -> Expr.AddrArrayT (addrarr_to_expr_addrarr aa)
-  | Tsl.TidArrayT tt  -> Expr.TidArrayT (tidarr_to_expr_tidarr tt)
-  | Tsl.VarUpdate (v,th,t) ->
-      let expr_a  = Expr.VarArray (var_to_expr_var v) in
+  | SL.VarT v        -> E.VarT (var_to_expr_var v)
+  | SL.SetT s        -> E.SetT (set_to_expr_set s)
+  | SL.ElemT e       -> E.ElemT (elem_to_expr_elem e)
+  | SL.ThidT t       -> E.ThidT (tid_to_expr_tid t)
+  | SL.AddrT a       -> E.AddrT (addr_to_expr_addr a)
+  | SL.CellT c       -> E.CellT (cell_to_expr_cell c)
+  | SL.SetThT st     -> E.SetThT (setth_to_expr_setth st)
+  | SL.SetElemT st   -> E.SetElemT (setelem_to_expr_setelem st)
+  | SL.PathT p       -> E.PathT (path_to_expr_path p)
+  | SL.MemT m        -> E.MemT (mem_to_expr_mem m)
+  | SL.IntT i        -> E.IntT (int_to_expr_int i)
+  | SL.AddrArrayT aa -> E.AddrArrayT (addrarr_to_expr_addrarr aa)
+  | SL.TidArrayT tt  -> E.TidArrayT (tidarr_to_expr_tidarr tt)
+  | SL.VarUpdate (v,th,t) ->
+      let expr_a  = E.VarArray (var_to_expr_var v) in
       let expr_th = tid_to_expr_tid th in
-      let expr_t  = Expr.Term (term_to_expr_term t)
+      let expr_t  = E.Term (term_to_expr_term t)
       in
-        Expr.ArrayT (Expr.ArrayUp (expr_a, expr_th, expr_t))
+        E.ArrayT (E.ArrayUp (expr_a, expr_th, expr_t))
 
 
 
-and eq_to_expr_eq ((t1,t2):Tsl.eq) : Expr.eq =
+and eq_to_expr_eq ((t1,t2):SL.eq) : E.eq =
   (term_to_expr_term t1, term_to_expr_term t2)
 
 
-and diseq_to_expr_diseq ((t1,t2):Tsl.diseq) : Expr.diseq =
+and diseq_to_expr_diseq ((t1,t2):SL.diseq) : E.diseq =
   (term_to_expr_term t1, term_to_expr_term t2)
 
 
-and set_to_expr_set (s:Tsl.set) : Expr.set =
+and set_to_expr_set (s:SL.set) : E.set =
   let to_set = set_to_expr_set in
   match s with
-  | Tsl.VarSet v            -> Expr.VarSet (var_to_expr_var v)
-  | Tsl.EmptySet            -> Expr.EmptySet
-  | Tsl.Singl a             -> Expr.Singl (addr_to_expr_addr a)
-  | Tsl.Union (s1,s2)       -> Expr.Union (to_set s1, to_set s2)
-  | Tsl.Intr (s1,s2)        -> Expr.Intr (to_set s1, to_set s2)
-  | Tsl.Setdiff (s1,s2)     -> Expr.Setdiff (to_set s1, to_set s2)
-  | Tsl.PathToSet p         -> Expr.PathToSet (path_to_expr_path p)
-  | Tsl.AddrToSet (m,a,l)   -> Expr.AddrToSetAt (mem_to_expr_mem m,
+  | SL.VarSet v            -> E.VarSet (var_to_expr_var v)
+  | SL.EmptySet            -> E.EmptySet
+  | SL.Singl a             -> E.Singl (addr_to_expr_addr a)
+  | SL.Union (s1,s2)       -> E.Union (to_set s1, to_set s2)
+  | SL.Intr (s1,s2)        -> E.Intr (to_set s1, to_set s2)
+  | SL.Setdiff (s1,s2)     -> E.Setdiff (to_set s1, to_set s2)
+  | SL.PathToSet p         -> E.PathToSet (path_to_expr_path p)
+  | SL.AddrToSet (m,a,l)   -> E.AddrToSetAt (mem_to_expr_mem m,
                                                  addr_to_expr_addr a,
                                                  int_to_expr_int l)
 
 
-and elem_to_expr_elem (e:Tsl.elem) : Expr.elem =
+and elem_to_expr_elem (e:SL.elem) : E.elem =
   match e with
-  | Tsl.VarElem v              -> Expr.VarElem (var_to_expr_var v)
-  | Tsl.CellData c             -> Expr.CellData (cell_to_expr_cell c)
-  | Tsl.HavocSkiplistElem      -> Expr.HavocSkiplistElem
-  | Tsl.LowestElem             -> Expr.LowestElem
-  | Tsl.HighestElem            -> Expr.HighestElem
+  | SL.VarElem v              -> E.VarElem (var_to_expr_var v)
+  | SL.CellData c             -> E.CellData (cell_to_expr_cell c)
+  | SL.HavocSkiplistElem      -> E.HavocSkiplistElem
+  | SL.LowestElem             -> E.LowestElem
+  | SL.HighestElem            -> E.HighestElem
 
 
-and addr_to_expr_addr (a:Tsl.addr) : Expr.addr =
+and addr_to_expr_addr (a:SL.addr) : E.addr =
   match a with
-  | Tsl.VarAddr v              -> Expr.VarAddr (var_to_expr_var v)
-  | Tsl.Null                   -> Expr.Null
-  | Tsl.NextAt (c,l)           -> Expr.NextAt (cell_to_expr_cell c, int_to_expr_int l)
-  | Tsl.AddrArrRd (aa,i)       -> Expr.AddrArrRd (addrarr_to_expr_addrarr aa,
+  | SL.VarAddr v              -> E.VarAddr (var_to_expr_var v)
+  | SL.Null                   -> E.Null
+  | SL.NextAt (c,l)           -> E.NextAt (cell_to_expr_cell c, int_to_expr_int l)
+  | SL.AddrArrRd (aa,i)       -> E.AddrArrRd (addrarr_to_expr_addrarr aa,
                                                   int_to_expr_int i)
 
 
-and cell_to_expr_cell (c:Tsl.cell) : Expr.cell =
+and cell_to_expr_cell (c:SL.cell) : E.cell =
   match c with
-    Tsl.VarCell v          -> Expr.VarCell (var_to_expr_var v)
-  | Tsl.Error              -> Expr.Error
-  | Tsl.MkCell (e,aa,tt,l) -> Expr.MkSLCell (elem_to_expr_elem e,
+    SL.VarCell v          -> E.VarCell (var_to_expr_var v)
+  | SL.Error              -> E.Error
+  | SL.MkCell (e,aa,tt,l) -> E.MkSLCell (elem_to_expr_elem e,
                                              addrarr_to_expr_addrarr aa,
                                              tidarr_to_expr_tidarr tt,
                                              int_to_expr_int l)
-  | Tsl.CellLockAt (c,l, t)-> Expr.CellLockAt (cell_to_expr_cell c,
+  | SL.CellLockAt (c,l, t)-> E.CellLockAt (cell_to_expr_cell c,
                                                int_to_expr_int l,
                                                tid_to_expr_tid t)
-  | Tsl.CellUnlockAt (c,l) -> Expr.CellUnlockAt (cell_to_expr_cell c,
+  | SL.CellUnlockAt (c,l) -> E.CellUnlockAt (cell_to_expr_cell c,
                                                  int_to_expr_int l)
-  | Tsl.CellAt (m,a)       -> Expr.CellAt (mem_to_expr_mem m, addr_to_expr_addr a)
+  | SL.CellAt (m,a)       -> E.CellAt (mem_to_expr_mem m, addr_to_expr_addr a)
 
 
-and setth_to_expr_setth (st:Tsl.setth) : Expr.setth =
+and setth_to_expr_setth (st:SL.setth) : E.setth =
   let to_setth = setth_to_expr_setth in
   match st with
-  | Tsl.VarSetTh v        -> Expr.VarSetTh (var_to_expr_var v)
-  | Tsl.EmptySetTh        -> Expr.EmptySetTh
-  | Tsl.SinglTh t         -> Expr.SinglTh (tid_to_expr_tid t)
-  | Tsl.UnionTh (s1,s2)   -> Expr.UnionTh (to_setth s1, to_setth s2)
-  | Tsl.IntrTh (s1,s2)    -> Expr.IntrTh (to_setth s1, to_setth s2)
-  | Tsl.SetdiffTh (s1,s2) -> Expr.SetdiffTh (to_setth s1, to_setth s2)
+  | SL.VarSetTh v        -> E.VarSetTh (var_to_expr_var v)
+  | SL.EmptySetTh        -> E.EmptySetTh
+  | SL.SinglTh t         -> E.SinglTh (tid_to_expr_tid t)
+  | SL.UnionTh (s1,s2)   -> E.UnionTh (to_setth s1, to_setth s2)
+  | SL.IntrTh (s1,s2)    -> E.IntrTh (to_setth s1, to_setth s2)
+  | SL.SetdiffTh (s1,s2) -> E.SetdiffTh (to_setth s1, to_setth s2)
 
 
-and setelem_to_expr_setelem (st:Tsl.setelem) : Expr.setelem =
+and setelem_to_expr_setelem (st:SL.setelem) : E.setelem =
   let to_setelem = setelem_to_expr_setelem in
   match st with
-  | Tsl.VarSetElem v        -> Expr.VarSetElem (var_to_expr_var v)
-  | Tsl.EmptySetElem        -> Expr.EmptySetElem
-  | Tsl.SinglElem e         -> Expr.SinglElem (elem_to_expr_elem e)
-  | Tsl.UnionElem (s1,s2)   -> Expr.UnionElem (to_setelem s1, to_setelem s2)
-  | Tsl.IntrElem (s1,s2)    -> Expr.IntrElem (to_setelem s1, to_setelem s2)
-  | Tsl.SetdiffElem (s1,s2) -> Expr.SetdiffElem (to_setelem s1, to_setelem s2)
-  | Tsl.SetToElems (s,m)    -> Expr.SetToElems (set_to_expr_set s,
+  | SL.VarSetElem v        -> E.VarSetElem (var_to_expr_var v)
+  | SL.EmptySetElem        -> E.EmptySetElem
+  | SL.SinglElem e         -> E.SinglElem (elem_to_expr_elem e)
+  | SL.UnionElem (s1,s2)   -> E.UnionElem (to_setelem s1, to_setelem s2)
+  | SL.IntrElem (s1,s2)    -> E.IntrElem (to_setelem s1, to_setelem s2)
+  | SL.SetdiffElem (s1,s2) -> E.SetdiffElem (to_setelem s1, to_setelem s2)
+  | SL.SetToElems (s,m)    -> E.SetToElems (set_to_expr_set s,
                                                 mem_to_expr_mem m)
 
 
-and path_to_expr_path (p:Tsl.path) : Expr.path =
+and path_to_expr_path (p:SL.path) : E.path =
   match p with
-  | Tsl.VarPath v             -> Expr.VarPath (var_to_expr_var v)
-  | Tsl.Epsilon               -> Expr.Epsilon
-  | Tsl.SimplePath a          -> Expr.SimplePath (addr_to_expr_addr a)
-  | Tsl.GetPath (m,a1,a2,l)   -> Expr.GetPathAt (mem_to_expr_mem m,
+  | SL.VarPath v             -> E.VarPath (var_to_expr_var v)
+  | SL.Epsilon               -> E.Epsilon
+  | SL.SimplePath a          -> E.SimplePath (addr_to_expr_addr a)
+  | SL.GetPath (m,a1,a2,l)   -> E.GetPathAt (mem_to_expr_mem m,
                                                  addr_to_expr_addr a1,
                                                  addr_to_expr_addr a2,
                                                  int_to_expr_int l)
 
 
-and mem_to_expr_mem (m:Tsl.mem) : Expr.mem =
+and mem_to_expr_mem (m:SL.mem) : E.mem =
   match m with
-  | Tsl.VarMem v       -> Expr.VarMem (var_to_expr_var v)
-  | Tsl.Update (m,a,c) -> Expr.Update (mem_to_expr_mem m,
+  | SL.VarMem v       -> E.VarMem (var_to_expr_var v)
+  | SL.Update (m,a,c) -> E.Update (mem_to_expr_mem m,
                                        addr_to_expr_addr a,
                                        cell_to_expr_cell c)
 
 
-and int_to_expr_int (i:Tsl.integer) : Expr.integer =
+and int_to_expr_int (i:SL.integer) : E.integer =
   match i with
-  | Tsl.IntVal i       -> Expr.IntVal i
-  | Tsl.VarInt v       -> Expr.VarInt (var_to_expr_var v)
-  | Tsl.IntNeg i       -> Expr.IntNeg (int_to_expr_int i)
-  | Tsl.IntAdd (i1,i2) -> Expr.IntAdd (int_to_expr_int i1, int_to_expr_int i2)
-  | Tsl.IntSub (i1,i2) -> Expr.IntSub (int_to_expr_int i1, int_to_expr_int i2)
-  | Tsl.IntMul (i1,i2) -> Expr.IntMul (int_to_expr_int i1, int_to_expr_int i2)
-  | Tsl.IntDiv (i1,i2) -> Expr.IntDiv (int_to_expr_int i1, int_to_expr_int i2)
-  | Tsl.CellMax (c)    -> Expr.CellMax (cell_to_expr_cell c)
-  | Tsl.HavocLevel     -> Expr.HavocLevel
+  | SL.IntVal i       -> E.IntVal i
+  | SL.VarInt v       -> E.VarInt (var_to_expr_var v)
+  | SL.IntNeg i       -> E.IntNeg (int_to_expr_int i)
+  | SL.IntAdd (i1,i2) -> E.IntAdd (int_to_expr_int i1, int_to_expr_int i2)
+  | SL.IntSub (i1,i2) -> E.IntSub (int_to_expr_int i1, int_to_expr_int i2)
+  | SL.IntMul (i1,i2) -> E.IntMul (int_to_expr_int i1, int_to_expr_int i2)
+  | SL.IntDiv (i1,i2) -> E.IntDiv (int_to_expr_int i1, int_to_expr_int i2)
+  | SL.CellMax (c)    -> E.CellMax (cell_to_expr_cell c)
+  | SL.HavocLevel     -> E.HavocLevel
 
 
-and addrarr_to_expr_addrarr (arr:Tsl.addrarr) : Expr.addrarr =
+and addrarr_to_expr_addrarr (arr:SL.addrarr) : E.addrarr =
   match arr with
-  | Tsl.VarAddrArray v       -> Expr.VarAddrArray (var_to_expr_var v)
-  | Tsl.AddrArrayUp (aa,i,a) -> Expr.AddrArrayUp (addrarr_to_expr_addrarr aa,
+  | SL.VarAddrArray v       -> E.VarAddrArray (var_to_expr_var v)
+  | SL.AddrArrayUp (aa,i,a) -> E.AddrArrayUp (addrarr_to_expr_addrarr aa,
                                                   int_to_expr_int i,
                                                   addr_to_expr_addr a)
-  | Tsl.CellArr c            -> Expr.CellArr (cell_to_expr_cell c)
+  | SL.CellArr c            -> E.CellArr (cell_to_expr_cell c)
 
 
-and tidarr_to_expr_tidarr (arr:Tsl.tidarr) : Expr.tidarr =
+and tidarr_to_expr_tidarr (arr:SL.tidarr) : E.tidarr =
   match arr with
-  | Tsl.VarTidArray v       -> Expr.VarTidArray (var_to_expr_var v)
-  | Tsl.TidArrayUp (tt,i,t) -> Expr.TidArrayUp (tidarr_to_expr_tidarr tt,
+  | SL.VarTidArray v       -> E.VarTidArray (var_to_expr_var v)
+  | SL.TidArrayUp (tt,i,t) -> E.TidArrayUp (tidarr_to_expr_tidarr tt,
                                                 int_to_expr_int i,
                                                 tid_to_expr_tid t)
-  | Tsl.CellTids c          -> Expr.CellTids (cell_to_expr_cell c)
+  | SL.CellTids c          -> E.CellTids (cell_to_expr_cell c)
 
 
-and tsl_atom_to_atom (a:Tsl.atom) : Expr.atom =
+and tsl_atom_to_atom (a:SL.atom) : E.atom =
   let path    = path_to_expr_path       in
   let mem     = mem_to_expr_mem         in
   let addr    = addr_to_expr_addr       in
@@ -594,47 +604,47 @@ and tsl_atom_to_atom (a:Tsl.atom) : Expr.atom =
   let integ   = int_to_expr_int         in
   let term    = term_to_expr_term       in
   match a with
-    Tsl.Append (p1,p2,p3)    -> Expr.Append (path p1,path p2,path p3)
-  | Tsl.Reach (m,a1,a2,l,p  )-> Expr.ReachAt (mem m, addr a1, addr a2,
+    SL.Append (p1,p2,p3)    -> E.Append (path p1,path p2,path p3)
+  | SL.Reach (m,a1,a2,l,p  )-> E.ReachAt (mem m, addr a1, addr a2,
                                             integ l, path p)
-  | Tsl.OrderList(m,a1,a2)   -> Expr.OrderList (mem m, addr a1, addr a2)
-  | Tsl.Skiplist(m,s,l,a1,a2)-> Expr.Skiplist (mem m, set s, integ l,
+  | SL.OrderList(m,a1,a2)   -> E.OrderList (mem m, addr a1, addr a2)
+  | SL.Skiplist(m,s,l,a1,a2)-> E.Skiplist (mem m, set s, integ l,
                                                addr a1, addr a2)
-  | Tsl.In (a,s)             -> Expr.In (addr a, set s)
-  | Tsl.SubsetEq (s1,s2)     -> Expr.SubsetEq (set s1, set s2)
-  | Tsl.InTh (t,s)           -> Expr.InTh (tid t, setth s)
-  | Tsl.SubsetEqTh (s1,s2)   -> Expr.SubsetEqTh (setth s1, setth s2)
-  | Tsl.InElem (e,s)         -> Expr.InElem (elem_to_expr_elem e, setelem s)
-  | Tsl.SubsetEqElem (s1,s2) -> Expr.SubsetEqElem (setelem s1, setelem s2)
-  | Tsl.Less (i1,i2)         -> Expr.Less (integ i1, integ i2)
-  | Tsl.Greater (i1,i2)      -> Expr.Greater (integ i1, integ i2)
-  | Tsl.LessEq (i1,i2)       -> Expr.LessEq (integ i1, integ i2)
-  | Tsl.GreaterEq (i1,i2)    -> Expr.GreaterEq (integ i1, integ i2)
-  | Tsl.LessElem (e1,e2)     -> Expr.LessElem (elem e1, elem e2)
-  | Tsl.GreaterElem (e1,e2)  -> Expr.GreaterElem (elem e1, elem e2)
-  | Tsl.Eq (t1,t2)           -> Expr.Eq (term t1, term t2)
-  | Tsl.InEq (t1,t2)         -> Expr.InEq (term t1, term t2)
-  | Tsl.BoolVar v            -> Expr.BoolVar (var_to_expr_var v)
-  | Tsl.PC (pc,t,pr)         -> Expr.PC (pc, Option.lift tid_to_expr_tid t,pr)
-  | Tsl.PCUpdate (pc,t)      -> Expr.PCUpdate (pc, tid_to_expr_tid t)
-  | Tsl.PCRange (pc1,pc2,t,pr) -> Expr.PCRange (pc1, pc2,
+  | SL.In (a,s)             -> E.In (addr a, set s)
+  | SL.SubsetEq (s1,s2)     -> E.SubsetEq (set s1, set s2)
+  | SL.InTh (t,s)           -> E.InTh (tid t, setth s)
+  | SL.SubsetEqTh (s1,s2)   -> E.SubsetEqTh (setth s1, setth s2)
+  | SL.InElem (e,s)         -> E.InElem (elem_to_expr_elem e, setelem s)
+  | SL.SubsetEqElem (s1,s2) -> E.SubsetEqElem (setelem s1, setelem s2)
+  | SL.Less (i1,i2)         -> E.Less (integ i1, integ i2)
+  | SL.Greater (i1,i2)      -> E.Greater (integ i1, integ i2)
+  | SL.LessEq (i1,i2)       -> E.LessEq (integ i1, integ i2)
+  | SL.GreaterEq (i1,i2)    -> E.GreaterEq (integ i1, integ i2)
+  | SL.LessElem (e1,e2)     -> E.LessElem (elem e1, elem e2)
+  | SL.GreaterElem (e1,e2)  -> E.GreaterElem (elem e1, elem e2)
+  | SL.Eq (t1,t2)           -> E.Eq (term t1, term t2)
+  | SL.InEq (t1,t2)         -> E.InEq (term t1, term t2)
+  | SL.BoolVar v            -> E.BoolVar (var_to_expr_var v)
+  | SL.PC (pc,t,pr)         -> E.PC (pc, Option.lift tid_to_expr_tid t,pr)
+  | SL.PCUpdate (pc,t)      -> E.PCUpdate (pc, tid_to_expr_tid t)
+  | SL.PCRange (pc1,pc2,t,pr) -> E.PCRange (pc1, pc2,
                                         Option.lift tid_to_expr_tid t,pr)
 
 
-and literal_to_expr_literal (l:Tsl.literal) : Expr.literal =
+and literal_to_expr_literal (l:SL.literal) : E.literal =
   match l with
-    Tsl.Atom a    -> Expr.Atom (tsl_atom_to_atom a)
-  | Tsl.NegAtom a -> Expr.NegAtom (tsl_atom_to_atom a)
+    SL.Atom a    -> E.Atom (tsl_atom_to_atom a)
+  | SL.NegAtom a -> E.NegAtom (tsl_atom_to_atom a)
 
 
-and formula_to_expr_formula (f:Tsl.formula) : Expr.formula =
+and formula_to_expr_formula (f:SL.formula) : E.formula =
   let to_formula = formula_to_expr_formula in
   match f with
-    Tsl.Literal l       -> Expr.Literal (literal_to_expr_literal l)
-  | Tsl.True            -> Expr.True
-  | Tsl.False           -> Expr.False
-  | Tsl.And (f1,f2)     -> Expr.And (to_formula f1, to_formula f2)
-  | Tsl.Or (f1,f2)      -> Expr.Or (to_formula f1, to_formula f2)
-  | Tsl.Not f1          -> Expr.Not (to_formula f1)
-  | Tsl.Implies (f1,f2) -> Expr.Implies (to_formula f1, to_formula f2)
-  | Tsl.Iff (f1,f2)     -> Expr.Iff (to_formula f1, to_formula f2)
+    SL.Literal l       -> E.Literal (literal_to_expr_literal l)
+  | SL.True            -> E.True
+  | SL.False           -> E.False
+  | SL.And (f1,f2)     -> E.And (to_formula f1, to_formula f2)
+  | SL.Or (f1,f2)      -> E.Or (to_formula f1, to_formula f2)
+  | SL.Not f1          -> E.Not (to_formula f1)
+  | SL.Implies (f1,f2) -> E.Implies (to_formula f1, to_formula f2)
+  | SL.Iff (f1,f2)     -> E.Iff (to_formula f1, to_formula f2)

@@ -19,16 +19,8 @@ let _ =
       if ApplyTacArgs.is_vc_file () then begin
         (* Here goes the code for vc_info *)
         let vc_info = Parser.parse ch (Eparser.vc_info Elexer.norm) in
-        print_endline ("ORIGINAL VC INFO:\n\n" ^ Tactics.vc_info_to_str vc_info);
-
-        (* Parse auxiliary support formulas *)
-        let supp_list = List.map (fun file ->
-                          snd (Parser.open_and_parse file (Eparser.single_formula Elexer.norm))
-                        ) !ApplyTacArgs.support_files in
-
-        print_endline "=============================";
-        print_endline ("SUPPORT LOADED FROM EXTERNAL FILES:\n" ^
-          (String.concat "\n" (List.map Expression.formula_to_str supp_list)));
+        print_endline ("ORIGINAL VC INFO:\n\n" ^ Tactics.vc_info_to_str 
+vc_info);
 
         (* To be removed once we have support tactics *)
 (*        let final_vc_info_list = [vc_info] in *)

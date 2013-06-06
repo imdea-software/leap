@@ -142,7 +142,7 @@ struct
     | E.ThidArrRd _   -> raise(NotSupportedInYices(E.tid_to_str t))
 
 
-  and shred_or_local_to_str (th:shared_or_local) : string =
+  and shared_or_local_to_str (th:NE.shared_or_local) : string =
     match th with
     | NE.Shared  -> ""
     | NE.Local t -> tid_to_str t
@@ -164,7 +164,7 @@ struct
       Printf.sprintf "(define %s::(-> %s %s))\n" v_str thid_s v_sort
 
 
-  let yices_string_of_pos (pc:(int * E.tid option * bool)) : string =
+  let yices_string_of_pos (pc:(int * NE.shared_or_local * bool)) : string =
     let (i, th, pr) = pc in
     let pc_str = if pr then pc_prime_name else pc_name in
     let th_str = shared_or_local_to_str th
@@ -189,17 +189,16 @@ struct
 
 
   let variable_invocation_to_str (v:NE.variable) : string =
-    let (id,s,pr,th,p) = v in
-    let th_str = Option.map_default tid_to_str "" th in
-    let p_str  = proc_name_to_append p in
-    let pr_str = if pr then "'" else ""
+    let th_str = shared_or_local_to_str v.NE.parameter in
+    let p_str  = procedure_name_to_append v.NE.scope in
+    let pr_str = if v.NE.is_primed then "'" else ""
     in
-      match th with
-        None   -> Printf.sprintf " %s%s%s%s" p_str id th_str pr_str
+      match v.NE.parameter with
+      | NE.Shared  -> Printf.sprintf " %s%s%s%s" p_str v.NE.id th_str pr_str
   (* For LEAP *)
-      | Some _ -> Printf.sprintf " (%s%s%s %s)" p_str id pr_str th_str
+      | NE.Local _ -> Printf.sprintf " (%s%s%s %s)" p_str v.NE.id pr_str th_str
   (* For numinv *)
-  (*    | Some _ -> Printf.sprintf " %s%s%s_%s" p_str id pr_str th_str *)
+  (*    | NE.Local _ -> Printf.sprintf " %s%s%s_%s" p_str v.NE.id pr_str th_str *)
 
 
 
@@ -376,7 +375,7 @@ struct
     let i_list = LeapLib.rangeList 1 cutoff in
     List.iter (fun i ->
       let i_name = aux_int ^ string_of_int i in
-      let i_var = NE.build_var i_name NE.Int false None None in
+      let i_var = NE.build_var i_name NE.Int false NE.Shared NE.GlobalScope in
       B.add_string buf (var_to_str i_var)
     ) i_list
 
@@ -386,13 +385,13 @@ struct
                          (voc:E.tid list)
                          (buf:Buffer.t) : unit =
     List.iter (fun v ->
-      if NE.get_sort v = NE.Int then
+      if v.NE.sort = NE.Int then
         let v_str = variable_invocation_to_str v in
         B.add_string buf ("(assert+ (is_legal " ^ v_str ^ "))")
     ) global_vars;
     List.iter (fun v ->
       List.iter (fun t->
-        if NE.get_sort v = NE.Int then
+        if v.NE.sort = NE.Int then
           let v_str = variable_invocation_to_str (NE.param_var v t) in
           B.add_string buf ("(assert+ (is_legal " ^ v_str ^ "))\n")
       ) voc
@@ -414,7 +413,7 @@ struct
     let aux_vars_str = List.map (fun i ->
                          let i_name = aux_int ^ string_of_int i in
                          let i_var = NE.build_var i_name NE.Int
-                                        false None None
+                                        false NE.Shared NE.GlobalScope
                          in
                            variable_invocation_to_str i_var
                        ) (LeapLib.rangeList 1 cutoff) in
@@ -441,12 +440,12 @@ struct
 
   let rec fun_to_str (f:NE.fun_term) : string =
     match f with
-      NE.FunVar ((id,s,pr,th,p) as v) ->
-        if th = None then
+      NE.FunVar v ->
+        if v.NE.parameter = NE.Shared then
           variable_to_str v
         else
-          let v_str  = variable_to_str (NE.build_var id s pr None p) in
-          let th_str = Option.map_default tid_to_str "" th
+          let v_str  = variable_to_str (NE.var_clear_param_info v) in
+          let th_str = shared_or_local_to_str v.NE.parameter
           in
             Printf.sprintf "(%s %s)" v_str th_str
     | NE.FunUpd (f,th,i) ->
@@ -461,7 +460,7 @@ struct
     let constanttostr t =
       match t with
           NE.Val(n) -> string_of_int n
-        | _ -> raise(NotSupportedInYices(NE.int_integer_to_string t)) in
+        | _ -> raise(NotSupportedInYices(NE.integer_to_str t)) in
     let tostr = yices_string_of_integer in
       match t with
         NE.Val(n)       -> " " ^ string_of_int n
@@ -471,7 +470,7 @@ struct
       | NE.Sub(x,y)     -> " (- " ^ (tostr x) ^ (tostr y) ^ ")"
       | NE.Mul(x,y)     -> " (* " ^ (tostr x) ^ (tostr y) ^ ")"
       | NE.Div(x,y)     -> " (/ " ^ (tostr x) ^ (tostr y) ^ ")"
-      | NE.ArrayRd(_,_) -> raise(NotSupportedInYices(NE.int_integer_to_string t))
+      | NE.ArrayRd(_,_) -> raise(NotSupportedInYices(NE.integer_to_str t))
       | NE.SetMin(s)    -> " (setmin " ^ yices_string_of_set s ^ ")"
       | NE.SetMax(s)    -> " (setmax " ^ yices_string_of_set s ^ ")"
 
@@ -540,7 +539,7 @@ struct
   let tid_decl_to_str (voc:NE.tid list) : string =
     let id_list = List.map (fun t ->
                     match t with
-                      E.VarTh v -> E.var_id v
+                      E.VarTh v -> v.E.id
                     | E.NoThid  -> "NoThread"
                     | _ -> raise(Not_implemented "sort type in tid_decl")
                   ) voc in
@@ -565,7 +564,7 @@ struct
   let int_formula_with_lines_to_str (phi:NE.formula) : string =
     let _ = GM.clear_sort_map sort_map in
     let filter_ints xs = List.filter (fun v ->
-                           NE.get_sort v = NE.Int
+                           v.NE.sort = NE.Int
                          ) xs in
     let voc            = NE.voc phi in
     let cutoff         = SmpNum.cut_off phi in

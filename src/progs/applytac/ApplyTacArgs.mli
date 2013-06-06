@@ -20,7 +20,6 @@ val supp_tac               : Tactics.support_tactic option ref
 val supp_split_tac_list    : Tactics.support_split_tactic list ref
 val formula_tac_list       : Tactics.formula_tactic list ref
 val formula_split_tac_list : Tactics.formula_split_tactic list ref
-val support_files : string list ref
 val outfile : string ref
 (*val postTactics : (Tactics.post_tac_t list) ref *)
 val assignopt : 'a ref -> bool ref -> 'a -> unit
