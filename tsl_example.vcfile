@@ -1,0 +1,17 @@
+vars:
+
+addr a
+tid i
+addrSet reg
+
+Support :
+a in reg
+a = null
+
+TidConstraint : true
+
+Rho : reg = EmptySet
+Goal : reg = EmptySet /\ reg != EmptySet
+Tid : i
+Line: 1
+
