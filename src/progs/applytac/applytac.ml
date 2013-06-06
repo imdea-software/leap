@@ -38,14 +38,12 @@ let _ =
               List.flatten (List.map (Tactics.pick_support_split_tac f_name) ps)
             ) [vc_info] !ApplyTacArgs.supp_split_tac_list in
 
-        let final_vc_info_list =
-            List.fold_left (fun ps f_name ->
-              List.map (Tactics.pick_support_tac f_name) ps
-            ) split_vc_info_list !ApplyTacArgs.supp_tac_list in
-
         List.map (fun vc ->
-          Tactics.vc_info_to_implication vc supp_list
-        ) final_vc_info_list
+          let processed_supp = match !ApplyTacArgs.supp_tac with
+                               | None -> Tactics.get_unprocessed_support_from_info vc
+                               | Some tac -> (Tactics.pick_support_tac tac) vc in
+          Tactics.vc_info_to_implication vc processed_supp
+        ) split_vc_info_list
       end else begin
         let (_,phi) = Parser.parse ch (Eparser.single_formula Elexer.norm) in
         print_endline ("FORMULA:\n" ^ (Expression.formula_to_str phi) ^ "\n");

@@ -46,7 +46,7 @@ type formula_split_tactic = SplitConsequent
 type solve_tactic = Cases
 
 type support_split_tactic_t = vc_info -> vc_info list
-type support_tactic_t = vc_info -> vc_info
+type support_tactic_t = vc_info -> support_t
 type formula_split_tactic_t = implication -> implication list
 type formula_tactic_t = implication -> implication
 
@@ -487,7 +487,7 @@ let pick_support_split_tac (tac_name:support_split_tactic) : support_split_tacti
 
 let pick_support_tac (tac_name:support_tactic) : support_tactic_t =
   (* TO BE IMPLEMENTED *)
-  id
+  fun vc -> vc.original_support
 
 
 let pick_formula_split_tac (tac_name:formula_split_tactic) : formula_split_tactic_t =

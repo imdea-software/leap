@@ -20,7 +20,7 @@ let coType                 = ref Tactics.default_cutoff_algorithm (*Smp.Dnf*)
 let solve_tactic           = ref None
 let hide_pres              = ref false
 let phiFile                = ref ""
-let supp_tac_list          = ref []
+let supp_tac               = ref None
 let supp_split_tac_list    = ref []
 let formula_tac_list       = ref []
 let formula_split_tac_list = ref []
@@ -90,7 +90,7 @@ let opts =
         Arg.Symbol (solve_opt_list,set_solve),
         "sets the solve_tactic");
     ("--supp_tac",
-        Arg.String (fun s -> supp_tac_list := (parse_tac_list Tactics.support_tactic_from_string s)),
+        Arg.String (fun s -> supp_tac := Some (Tactics.support_tactic_from_string s)),
         "support tactics: full, reduce, reduce2");
     ("--supp_split_tac",
         Arg.String (fun s -> supp_split_tac_list := (parse_tac_list Tactics.support_split_tactic_from_string s)),

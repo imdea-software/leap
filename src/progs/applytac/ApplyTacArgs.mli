@@ -16,7 +16,7 @@ val coType : Smp.cutoff_strategy_t ref
 val hide_pres : bool ref
 val phiFile : string ref
 val solve_tactic           : Tactics.solve_tactic option ref
-val supp_tac_list          : Tactics.support_tactic list ref
+val supp_tac               : Tactics.support_tactic option ref
 val supp_split_tac_list    : Tactics.support_split_tactic list ref
 val formula_tac_list       : Tactics.formula_tactic list ref
 val formula_split_tac_list : Tactics.formula_split_tactic list ref

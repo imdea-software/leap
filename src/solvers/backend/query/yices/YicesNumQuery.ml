@@ -7,6 +7,7 @@ module YicesNumQuery : NUM_QUERY =
 struct
   module E=Expression
   module NE=NumExpression
+  module NI=NumInterface
   module B = Buffer
   module GM = GenericModel
 
@@ -90,31 +91,32 @@ struct
       ) th_str (NE.VarSet.elements v_set)
 
 
-  and proc_name_to_append (proc:string option) : string =
+  and procedure_name_to_append (proc:NE.procedure_name) : string =
     match proc with
-      None    -> ""
-    | Some "" -> ""
-    | Some p  -> p ^ "_"
+    | NE.GlobalScope -> ""
+    | NE.Scope "" -> ""
+    | NE.Scope p  -> p ^ "_"
 
 
   and variable_to_str (v:NE.variable) : string =
-    let (id, _, pr, th, p) = v in
-    let pr_str = if pr then "'" else "" in
-    let th_str = Option.map_default (fun t ->"_"^tid_to_str t) "" th in
-    let p_str = proc_name_to_append p
+    let pr_str = if v.NE.is_primed then "'" else "" in
+    let th_str = match v.NE.parameter with
+                 | NE.Shared  -> ""
+                 | NE.Local t -> "_" ^ (tid_to_str t) in
+    let p_str = procedure_name_to_append v.NE.scope
     in
-      Printf.sprintf "%s%s%s%s" p_str id th_str pr_str
+      Printf.sprintf "%s%s%s%s" p_str v.NE.id th_str pr_str
 
 
   and var_sort_to_str (v:NE.variable) : string =
-    match NE.get_sort v with
-      NE.Int  -> int_s
+    match v.NE.sort with
+    | NE.Int  -> int_s
     | NE.Set  -> set_s
     | NE.Thid -> thid_s
 
 
   and var_sort_to_gmsort_str (v:NE.variable) : string =
-    match NE.get_sort v with
+    match v.NE.sort with
       NE.Int  -> GM.int_s
     | NE.Set  -> GM.set_s
     | NE.Thid -> GM.tid_s
@@ -132,12 +134,18 @@ struct
   and tid_to_str (t:E.tid) : string =
     match t with
     | E.VarTh v       -> variable_to_str
-                              (NE.variable_to_int_variable v)
+                              (NI.variable_to_int_variable v)
     | E.NoThid        -> "NoThid"
     | E.CellLockId _  -> raise(NotSupportedInYices(E.tid_to_str t))
     | E.CellLockIdAt _-> raise(NotSupportedInYices(E.tid_to_str t))
     | E.ThidArrayRd _ -> raise(NotSupportedInYices(E.tid_to_str t))
     | E.ThidArrRd _   -> raise(NotSupportedInYices(E.tid_to_str t))
+
+
+  and shred_or_local_to_str (th:shared_or_local) : string =
+    match th with
+    | NE.Shared  -> ""
+    | NE.Local t -> tid_to_str t
 
 
   let thid_variable_to_str (th:E.tid) : string =
@@ -158,16 +166,16 @@ struct
 
   let yices_string_of_pos (pc:(int * E.tid option * bool)) : string =
     let (i, th, pr) = pc in
-    let pc_str = if pr then pc_prime_name else pc_name
+    let pc_str = if pr then pc_prime_name else pc_name in
+    let th_str = shared_or_local_to_str th
     in
-      Printf.sprintf "(= (%s %s) %i)" pc_str
-          (Option.map_default tid_to_str "" th) i
+      Printf.sprintf "(= (%s %s) %i)" pc_str th_str i
 
 
-  let yices_string_of_posrange (pc:(int * int * E.tid option * bool)) : string =
+  let yices_string_of_posrange (pc:(int * int * NE.shared_or_local * bool)) : string =
     let (i, j, th, pr) = pc in
     let pc_str = if pr then pc_prime_name else pc_name in
-    let th_str = Option.map_default tid_to_str "" th
+    let th_str = shared_or_local_to_str th
     in
       Printf.sprintf "(and (<= %i (%s %s)) (<= (%s %s) %i))"
           i pc_str th_str pc_str th_str j
