@@ -5,8 +5,8 @@ open LeapLib
 module YicesNumQuery : NUM_QUERY =
 
 struct
-  module Expr=Expression
-  module IntExpr=NumExpression
+  module E=Expression
+  module NE=NumExpression
   module B = Buffer
   module GM = GenericModel
 
@@ -45,50 +45,38 @@ struct
 
 
   (* Translation funtions *)
-  let int_varid_to_str (v:Expr.varId) : string =
+  let int_varid_to_str (v:E.varId) : string =
     let _ = GM.sm_decl_const sort_map v GM.int_s
     in
       Printf.sprintf "(define %s::%s)\n" v int_s
 
 
-  let int_local_varid_to_str (v:Expr.varId) : string =
+  let int_local_varid_to_str (v:E.varId) : string =
     let _ = GM.sm_decl_fun sort_map v [GM.tid_s] [GM.int_s]
     in
       Printf.sprintf "(define %s::(-> %s %s))\n" v thid_s int_s
 
 
-  let int_var_to_str (v:IntExpr.variable) : string =
-    let id = IntExpr.get_id v in
-    let pr_str = if IntExpr.is_primed_var v then "'" else "" in
-    let proc = IntExpr.get_proc v
+  let int_var_to_str (v:NE.variable) : string =
+    let pr_str = if v.NE.is_primed then "'" else ""
     in
-      match proc with
-        None    -> int_varid_to_str (id ^ pr_str)
-      | Some "" -> int_varid_to_str (id ^ pr_str)
-      | Some p  -> int_local_varid_to_str (p^"_"^id^pr_str)
-  (*
-      if IntExpr.var_is_global v then
-        int_varid_to_str id
-      else
-        let v_name = match IntExpr.get_proc v with
-                       None    -> id
-                     | Some "" -> id
-                     | Some p  -> p ^"_"^ id
-        in
-          int_local_varid_to_str v_name
-  *)
+      match v.NE.scope with
+      | NE.GlobalScope -> int_varid_to_str (v.NE.id ^ pr_str)
+      | NE.Scope ""    -> int_varid_to_str (v.NE.id ^ pr_str)
+      | NE.Scope p     -> int_local_varid_to_str (p^"_"^v.NE.id^pr_str)
 
-  let rec int_varlist_to_str (vl:IntExpr.variable list) : string =
+
+  let rec int_varlist_to_str (vl:NE.variable list) : string =
     let add_th th set = match th with
-                          None   -> set
-                        | Some t -> Expr.ThreadSet.add t set in
+                        | NE.Shared  -> set
+                        | NE.Local t -> E.ThreadSet.add t set in
     let (t_set,v_set) = List.fold_left (fun (ts,vs) v ->
-                          (add_th (IntExpr.get_th v) ts,
-                           IntExpr.VarSet.add (IntExpr.var_clear_param_info v) vs)
-                        ) (Expr.ThreadSet.empty, IntExpr.VarSet.empty) vl in
-    let th_str = if Expr.ThreadSet.cardinal t_set <> 0 then
+                          (add_th v.NE.parameter ts,
+                           NE.VarSet.add (NE.var_clear_param_info v) vs)
+                        ) (E.ThreadSet.empty, NE.VarSet.empty) vl in
+    let th_str = if E.ThreadSet.cardinal t_set <> 0 then
                    "(define-type " ^thid_s^ ")\n" ^
-                      Expr.ThreadSet.fold (fun t str ->
+                      E.ThreadSet.fold (fun t str ->
                         let t_str = tid_to_str t in
                         let _ = GM.sm_decl_const sort_map t_str GM.tid_s
                         in
@@ -99,7 +87,7 @@ struct
     in
       List.fold_left (fun str v ->
         str ^ (int_var_to_str v)
-      ) th_str (IntExpr.VarSet.elements v_set)
+      ) th_str (NE.VarSet.elements v_set)
 
 
   and proc_name_to_append (proc:string option) : string =
@@ -109,7 +97,7 @@ struct
     | Some p  -> p ^ "_"
 
 
-  and variable_to_str (v:IntExpr.variable) : string =
+  and variable_to_str (v:NE.variable) : string =
     let (id, _, pr, th, p) = v in
     let pr_str = if pr then "'" else "" in
     let th_str = Option.map_default (fun t ->"_"^tid_to_str t) "" th in
@@ -118,21 +106,21 @@ struct
       Printf.sprintf "%s%s%s%s" p_str id th_str pr_str
 
 
-  and var_sort_to_str (v:IntExpr.variable) : string =
-    match IntExpr.get_sort v with
-      IntExpr.Int  -> int_s
-    | IntExpr.Set  -> set_s
-    | IntExpr.Thid -> thid_s
+  and var_sort_to_str (v:NE.variable) : string =
+    match NE.get_sort v with
+      NE.Int  -> int_s
+    | NE.Set  -> set_s
+    | NE.Thid -> thid_s
 
 
-  and var_sort_to_gmsort_str (v:IntExpr.variable) : string =
-    match IntExpr.get_sort v with
-      IntExpr.Int  -> GM.int_s
-    | IntExpr.Set  -> GM.set_s
-    | IntExpr.Thid -> GM.tid_s
+  and var_sort_to_gmsort_str (v:NE.variable) : string =
+    match NE.get_sort v with
+      NE.Int  -> GM.int_s
+    | NE.Set  -> GM.set_s
+    | NE.Thid -> GM.tid_s
 
 
-  and var_to_str (v:IntExpr.variable) : string =
+  and var_to_str (v:NE.variable) : string =
     let v_str = variable_to_str v in
     let sort_str = var_sort_to_str v in
     let gm_sort_str = var_sort_to_gmsort_str v in
@@ -141,25 +129,25 @@ struct
       Printf.sprintf "(define %s::%s)\n" v_str sort_str
 
 
-  and tid_to_str (t:Expr.tid) : string =
+  and tid_to_str (t:E.tid) : string =
     match t with
-    | Expr.VarTh v       -> variable_to_str
-                              (IntExpr.variable_to_int_variable v)
-    | Expr.NoThid        -> "NoThid"
-    | Expr.CellLockId _  -> raise(NotSupportedInYices(Expr.tid_to_str t))
-    | Expr.CellLockIdAt _-> raise(NotSupportedInYices(Expr.tid_to_str t))
-    | Expr.ThidArrayRd _ -> raise(NotSupportedInYices(Expr.tid_to_str t))
-    | Expr.ThidArrRd _   -> raise(NotSupportedInYices(Expr.tid_to_str t))
+    | E.VarTh v       -> variable_to_str
+                              (NE.variable_to_int_variable v)
+    | E.NoThid        -> "NoThid"
+    | E.CellLockId _  -> raise(NotSupportedInYices(E.tid_to_str t))
+    | E.CellLockIdAt _-> raise(NotSupportedInYices(E.tid_to_str t))
+    | E.ThidArrayRd _ -> raise(NotSupportedInYices(E.tid_to_str t))
+    | E.ThidArrRd _   -> raise(NotSupportedInYices(E.tid_to_str t))
 
 
-  let thid_variable_to_str (th:Expr.tid) : string =
+  let thid_variable_to_str (th:E.tid) : string =
     let t_str = tid_to_str th in
     let _ = GM.sm_decl_const sort_map t_str GM.tid_s
     in
       Printf.sprintf "(define %s::%s)\n" t_str thid_s
 
 
-  let local_var_to_str (v:IntExpr.variable) : string =
+  let local_var_to_str (v:NE.variable) : string =
     let v_str = variable_to_str v in
     let v_sort = var_sort_to_str v in
     let gm_v_sort = var_sort_to_gmsort_str v in
@@ -168,7 +156,7 @@ struct
       Printf.sprintf "(define %s::(-> %s %s))\n" v_str thid_s v_sort
 
 
-  let yices_string_of_pos (pc:(int * Expr.tid option * bool)) : string =
+  let yices_string_of_pos (pc:(int * E.tid option * bool)) : string =
     let (i, th, pr) = pc in
     let pc_str = if pr then pc_prime_name else pc_name
     in
@@ -176,7 +164,7 @@ struct
           (Option.map_default tid_to_str "" th) i
 
 
-  let yices_string_of_posrange (pc:(int * int * Expr.tid option * bool)) : string =
+  let yices_string_of_posrange (pc:(int * int * E.tid option * bool)) : string =
     let (i, j, th, pr) = pc in
     let pc_str = if pr then pc_prime_name else pc_name in
     let th_str = Option.map_default tid_to_str "" th
@@ -185,14 +173,14 @@ struct
           i pc_str th_str pc_str th_str j
 
 
-  let yices_string_of_posupd (pc:(int * Expr.tid)) : string =
+  let yices_string_of_posupd (pc:(int * E.tid)) : string =
     let (i, th) = pc
     in
       Printf.sprintf "(= %s (update %s (%s) %i))" pc_prime_name pc_name
                                            (tid_to_str th) i
 
 
-  let variable_invocation_to_str (v:IntExpr.variable) : string =
+  let variable_invocation_to_str (v:NE.variable) : string =
     let (id,s,pr,th,p) = v in
     let th_str = Option.map_default tid_to_str "" th in
     let p_str  = proc_name_to_append p in
@@ -210,7 +198,7 @@ struct
   (***** Not sure =S ******
       match th with
         None -> Printf.sprintf " %s%s%s%s" p_str id th_str pr_str
-      | Some t -> if Expr.is_tid_val t then
+      | Some t -> if E.is_tid_val t then
                     Printf.sprintf " %s%s%s_%s" p_str id pr_str th_str
                   else
                     Printf.sprintf " (%s%s%s %s)" p_str id pr_str th_str
@@ -380,24 +368,24 @@ struct
     let i_list = LeapLib.rangeList 1 cutoff in
     List.iter (fun i ->
       let i_name = aux_int ^ string_of_int i in
-      let i_var = IntExpr.build_var i_name IntExpr.Int false None None in
+      let i_var = NE.build_var i_name NE.Int false None None in
       B.add_string buf (var_to_str i_var)
     ) i_list
 
 
-  let yices_legal_values (global_vars:IntExpr.variable list)
-                         (local_vars:IntExpr.variable list)
-                         (voc:Expr.tid list)
+  let yices_legal_values (global_vars:NE.variable list)
+                         (local_vars:NE.variable list)
+                         (voc:E.tid list)
                          (buf:Buffer.t) : unit =
     List.iter (fun v ->
-      if IntExpr.get_sort v = IntExpr.Int then
+      if NE.get_sort v = NE.Int then
         let v_str = variable_invocation_to_str v in
         B.add_string buf ("(assert+ (is_legal " ^ v_str ^ "))")
     ) global_vars;
     List.iter (fun v ->
       List.iter (fun t->
-        if IntExpr.get_sort v = IntExpr.Int then
-          let v_str = variable_invocation_to_str (IntExpr.param_var v t) in
+        if NE.get_sort v = NE.Int then
+          let v_str = variable_invocation_to_str (NE.param_var v t) in
           B.add_string buf ("(assert+ (is_legal " ^ v_str ^ "))\n")
       ) voc
     ) local_vars
@@ -405,19 +393,19 @@ struct
 
   (* TODO: Verify, if no set is defined, then do not include the preamble for sets *)
   let yices_preamble (buf:Buffer.t)
-                     (voc:Expr.tid list)
+                     (voc:E.tid list)
                      (cutoff:int)
-                     (gbl_int_vars:IntExpr.variable list)
-                     (lcl_int_vars:IntExpr.variable list) : unit =
+                     (gbl_int_vars:NE.variable list)
+                     (lcl_int_vars:NE.variable list) : unit =
     let loc_vars_str = List.flatten $ List.map (fun t ->
                          List.map (fun v ->
-                           variable_invocation_to_str(IntExpr.param_var v t)
+                           variable_invocation_to_str(NE.param_var v t)
                          ) lcl_int_vars
                        ) voc in
     let glb_vars_str = List.map variable_invocation_to_str gbl_int_vars in
     let aux_vars_str = List.map (fun i ->
                          let i_name = aux_int ^ string_of_int i in
-                         let i_var = IntExpr.build_var i_name IntExpr.Int
+                         let i_var = NE.build_var i_name NE.Int
                                         false None None
                          in
                            variable_invocation_to_str i_var
@@ -443,17 +431,17 @@ struct
   (************************ Preamble definitions ************************)
 
 
-  let rec fun_to_str (f:IntExpr.fun_term) : string =
+  let rec fun_to_str (f:NE.fun_term) : string =
     match f with
-      IntExpr.FunVar ((id,s,pr,th,p) as v) ->
+      NE.FunVar ((id,s,pr,th,p) as v) ->
         if th = None then
           variable_to_str v
         else
-          let v_str  = variable_to_str (IntExpr.build_var id s pr None p) in
+          let v_str  = variable_to_str (NE.build_var id s pr None p) in
           let th_str = Option.map_default tid_to_str "" th
           in
             Printf.sprintf "(%s %s)" v_str th_str
-    | IntExpr.FunUpd (f,th,i) ->
+    | NE.FunUpd (f,th,i) ->
         let f_str = fun_to_str f in
         let th_str = tid_to_str th in
         let i_str = yices_string_of_term i
@@ -461,40 +449,40 @@ struct
           Printf.sprintf "(update %s (%s) %s)" f_str th_str i_str
 
 
-  and yices_string_of_integer (t:IntExpr.integer) : string =
+  and yices_string_of_integer (t:NE.integer) : string =
     let constanttostr t =
       match t with
-          IntExpr.Val(n) -> string_of_int n
-        | _ -> raise(NotSupportedInYices(IntExpr.int_integer_to_string t)) in
+          NE.Val(n) -> string_of_int n
+        | _ -> raise(NotSupportedInYices(NE.int_integer_to_string t)) in
     let tostr = yices_string_of_integer in
       match t with
-        IntExpr.Val(n)       -> " " ^ string_of_int n
-      | IntExpr.Var(v)       -> variable_invocation_to_str v
-      | IntExpr.Neg(x)       -> " -" ^  (constanttostr x)
-      | IntExpr.Add(x,y)     -> " (+ " ^ (tostr x) ^ (tostr y) ^ ")"
-      | IntExpr.Sub(x,y)     -> " (- " ^ (tostr x) ^ (tostr y) ^ ")"
-      | IntExpr.Mul(x,y)     -> " (* " ^ (tostr x) ^ (tostr y) ^ ")"
-      | IntExpr.Div(x,y)     -> " (/ " ^ (tostr x) ^ (tostr y) ^ ")"
-      | IntExpr.ArrayRd(_,_) -> raise(NotSupportedInYices(IntExpr.int_integer_to_string t))
-      | IntExpr.SetMin(s)    -> " (setmin " ^ yices_string_of_set s ^ ")"
-      | IntExpr.SetMax(s)    -> " (setmax " ^ yices_string_of_set s ^ ")"
+        NE.Val(n)       -> " " ^ string_of_int n
+      | NE.Var(v)       -> variable_invocation_to_str v
+      | NE.Neg(x)       -> " -" ^  (constanttostr x)
+      | NE.Add(x,y)     -> " (+ " ^ (tostr x) ^ (tostr y) ^ ")"
+      | NE.Sub(x,y)     -> " (- " ^ (tostr x) ^ (tostr y) ^ ")"
+      | NE.Mul(x,y)     -> " (* " ^ (tostr x) ^ (tostr y) ^ ")"
+      | NE.Div(x,y)     -> " (/ " ^ (tostr x) ^ (tostr y) ^ ")"
+      | NE.ArrayRd(_,_) -> raise(NotSupportedInYices(NE.int_integer_to_string t))
+      | NE.SetMin(s)    -> " (setmin " ^ yices_string_of_set s ^ ")"
+      | NE.SetMax(s)    -> " (setmax " ^ yices_string_of_set s ^ ")"
 
-  and yices_string_of_set (s:IntExpr.set) : string =
+  and yices_string_of_set (s:NE.set) : string =
     let yices_int = yices_string_of_integer in
     let yices_set = yices_string_of_set in
     match s with
-      IntExpr.VarSet (v)   -> variable_invocation_to_str v
-    | IntExpr.EmptySet     -> " emp"
-    | IntExpr.Singl i      -> Printf.sprintf "(singleton %s)" (yices_int i)
-    | IntExpr.Union(s1,s2) -> Printf.sprintf "(union %s %s)" (yices_set s1) (yices_set s2)
-    | IntExpr.Intr(s1,s2)  -> Printf.sprintf "(intersection %s %s)" (yices_set s1) (yices_set s2)
-    | IntExpr.Diff(s1,s2)  -> Printf.sprintf "(setdiff %s %s)" (yices_set s1) (yices_set s2)
+      NE.VarSet (v)   -> variable_invocation_to_str v
+    | NE.EmptySet     -> " emp"
+    | NE.Singl i      -> Printf.sprintf "(singleton %s)" (yices_int i)
+    | NE.Union(s1,s2) -> Printf.sprintf "(union %s %s)" (yices_set s1) (yices_set s2)
+    | NE.Intr(s1,s2)  -> Printf.sprintf "(intersection %s %s)" (yices_set s1) (yices_set s2)
+    | NE.Diff(s1,s2)  -> Printf.sprintf "(setdiff %s %s)" (yices_set s1) (yices_set s2)
 
 
-  and yices_string_of_term (t:IntExpr.term) : string =
+  and yices_string_of_term (t:NE.term) : string =
     match t with
-      IntExpr.IntV i -> yices_string_of_integer i
-    | IntExpr.SetV s -> yices_string_of_set s
+      NE.IntV i -> yices_string_of_integer i
+    | NE.SetV s -> yices_string_of_set s
 
 
   and yices_string_of_atom a =
@@ -502,79 +490,79 @@ struct
     let set_tostr = yices_string_of_set in
     let term_tostr = yices_string_of_term in
       match a with
-        IntExpr.Less(x,y)      -> " (< "  ^ (int_tostr x) ^ (int_tostr y) ^ ")"
-      | IntExpr.Greater(x,y)   -> " (> "  ^ (int_tostr x) ^ (int_tostr y) ^ ")"
-      | IntExpr.LessEq(x,y)    -> " (<= " ^ (int_tostr x) ^ (int_tostr y) ^ ")"
-      | IntExpr.GreaterEq(x,y) -> " (>= " ^ (int_tostr x) ^ (int_tostr y) ^ ")"
-      | IntExpr.LessTid(x,y)   -> " (tid order support for yices not added yet )"
-      | IntExpr.Eq(x,y)        -> " (= "  ^ (term_tostr x) ^ (term_tostr y) ^ ")"
-      | IntExpr.InEq(x,y)      -> " (/= " ^ (term_tostr x) ^ (term_tostr y) ^ ")"
-      | IntExpr.In(i,s)        -> " (" ^ set_tostr s ^ " " ^ int_tostr i ^ ")"
-      | IntExpr.Subset(s1,s2)  -> " (subseteq " ^ set_tostr s1 ^ " " ^ set_tostr s2 ^ ")"
-      | IntExpr.TidEq(x,y)     -> " (= "  ^ (tid_to_str x) ^ " " ^
+        NE.Less(x,y)      -> " (< "  ^ (int_tostr x) ^ (int_tostr y) ^ ")"
+      | NE.Greater(x,y)   -> " (> "  ^ (int_tostr x) ^ (int_tostr y) ^ ")"
+      | NE.LessEq(x,y)    -> " (<= " ^ (int_tostr x) ^ (int_tostr y) ^ ")"
+      | NE.GreaterEq(x,y) -> " (>= " ^ (int_tostr x) ^ (int_tostr y) ^ ")"
+      | NE.LessTid(x,y)   -> " (tid order support for yices not added yet )"
+      | NE.Eq(x,y)        -> " (= "  ^ (term_tostr x) ^ (term_tostr y) ^ ")"
+      | NE.InEq(x,y)      -> " (/= " ^ (term_tostr x) ^ (term_tostr y) ^ ")"
+      | NE.In(i,s)        -> " (" ^ set_tostr s ^ " " ^ int_tostr i ^ ")"
+      | NE.Subset(s1,s2)  -> " (subseteq " ^ set_tostr s1 ^ " " ^ set_tostr s2 ^ ")"
+      | NE.TidEq(x,y)     -> " (= "  ^ (tid_to_str x) ^ " " ^
                                             (tid_to_str y) ^ ")"
-      | IntExpr.TidInEq(x,y)   -> " (/= " ^ (tid_to_str x) ^ " " ^
+      | NE.TidInEq(x,y)   -> " (/= " ^ (tid_to_str x) ^ " " ^
                                             (tid_to_str y) ^ ")"
-      | IntExpr.FunEq(x,y)     -> " (= "  ^ (fun_to_str x) ^ " " ^
+      | NE.FunEq(x,y)     -> " (= "  ^ (fun_to_str x) ^ " " ^
                                             (fun_to_str y) ^ ")"
-      | IntExpr.FunInEq(x,y)   -> " (/= " ^ (fun_to_str x) ^ " " ^
+      | NE.FunInEq(x,y)   -> " (/= " ^ (fun_to_str x) ^ " " ^
                                             (fun_to_str y) ^ ")"
-      | IntExpr.PC (i,th,pr)   -> " " ^ yices_string_of_pos (i,th,pr) ^ " "
-      | IntExpr.PCUpdate(i,th) -> " " ^ yices_string_of_posupd (i,th) ^ " "
-      | IntExpr.PCRange (i,j,th,pr) -> " " ^ yices_string_of_posrange (i,j,th,pr) ^ " "
+      | NE.PC (i,th,pr)   -> " " ^ yices_string_of_pos (i,th,pr) ^ " "
+      | NE.PCUpdate(i,th) -> " " ^ yices_string_of_posupd (i,th) ^ " "
+      | NE.PCRange (i,j,th,pr) -> " " ^ yices_string_of_posrange (i,j,th,pr) ^ " "
 
   and yices_string_of_literal l =
     match l with
-      IntExpr.Atom a    -> yices_string_of_atom a
-    | IntExpr.NegAtom a -> "(not "^ yices_string_of_atom a ^")"
+      NE.Atom a    -> yices_string_of_atom a
+    | NE.NegAtom a -> "(not "^ yices_string_of_atom a ^")"
 
   and yices_string_of_formula  phi =
     let tostr = yices_string_of_formula in
       match phi with
-        IntExpr.Literal(l)   -> yices_string_of_literal l
-      | IntExpr.True         -> " true "
-      | IntExpr.False        -> " false "
-      | IntExpr.And(a,b)     -> " (and " ^ (tostr a) ^ (tostr b) ^ ")"
-      | IntExpr.Or(a,b)      -> " (or "  ^ (tostr a) ^ (tostr b) ^ ")"
-      | IntExpr.Not(a)       -> " (not " ^ (tostr a) ^ ")"
-      | IntExpr.Implies(a,b) -> " (=> "  ^ (tostr a) ^ (tostr b) ^ ")"
-      | IntExpr.Iff(a,b)     -> " (= "   ^ (tostr a) ^ (tostr b) ^ ")"
+        NE.Literal(l)   -> yices_string_of_literal l
+      | NE.True         -> " true "
+      | NE.False        -> " false "
+      | NE.And(a,b)     -> " (and " ^ (tostr a) ^ (tostr b) ^ ")"
+      | NE.Or(a,b)      -> " (or "  ^ (tostr a) ^ (tostr b) ^ ")"
+      | NE.Not(a)       -> " (not " ^ (tostr a) ^ ")"
+      | NE.Implies(a,b) -> " (=> "  ^ (tostr a) ^ (tostr b) ^ ")"
+      | NE.Iff(a,b)     -> " (= "   ^ (tostr a) ^ (tostr b) ^ ")"
 
 
-  let tid_decl_to_str (voc:IntExpr.tid list) : string =
+  let tid_decl_to_str (voc:NE.tid list) : string =
     let id_list = List.map (fun t ->
                     match t with
-                      Expr.VarTh v -> Expr.var_id v
-                    | Expr.NoThid  -> "NoThread"
+                      E.VarTh v -> E.var_id v
+                    | E.NoThid  -> "NoThread"
                     | _ -> raise(Not_implemented "sort type in tid_decl")
                   ) voc in
     Printf.sprintf "(define-type %s (scalar %s))\n" thid_s
                     (String.concat " " id_list)
 
 
-  let int_locVarlist_to_str (vars:IntExpr.VarSet.t) : string =
-    IntExpr.VarSet.fold (fun v str -> str ^ local_var_to_str v) vars ""
+  let int_locVarlist_to_str (vars:NE.VarSet.t) : string =
+    NE.VarSet.fold (fun v str -> str ^ local_var_to_str v) vars ""
 
 
-  let int_formula_to_str (phi:IntExpr.formula) : string =
+  let int_formula_to_str (phi:NE.formula) : string =
     let _ = GM.clear_sort_map sort_map in
     (*  if direct then *)
-    let vars        = IntExpr.all_vars phi in
+    let vars        = NE.all_vars phi in
     let var_str     = int_varlist_to_str vars in
     let formula_str = "(assert+ " ^ (yices_string_of_formula phi) ^ ")\n(check)\n" 
     in
       var_str ^ formula_str
 
 
-  let int_formula_with_lines_to_str (phi:IntExpr.formula) : string =
+  let int_formula_with_lines_to_str (phi:NE.formula) : string =
     let _ = GM.clear_sort_map sort_map in
     let filter_ints xs = List.filter (fun v ->
-                           IntExpr.get_sort v = IntExpr.Int
+                           NE.get_sort v = NE.Int
                          ) xs in
-    let voc            = IntExpr.voc phi in
+    let voc            = NE.voc phi in
     let cutoff         = SmpNum.cut_off phi in
-    let global_vars    = IntExpr.all_global_vars phi in
-    let local_vars     = IntExpr.all_local_vars_without_param phi in
+    let global_vars    = NE.all_global_vars phi in
+    let local_vars     = NE.all_local_vars_without_param phi in
     let glb_int_vars   = filter_ints global_vars in
     let lcl_int_vars   = filter_ints local_vars in
     let buf            = B.create 1024 in
@@ -597,8 +585,8 @@ struct
     in
       B.contents buf
    
-  let standard_widening (vars : IntExpr.variable list) (f : IntExpr.formula) 
-      (l : IntExpr.literal) =
+  let standard_widening (vars : NE.variable list) (f : NE.formula) 
+      (l : NE.literal) =
     let vars' = int_varlist_to_str vars in
     let f'    = int_formula_to_str f in
     let l'    = yices_string_of_literal l

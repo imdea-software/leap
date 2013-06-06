@@ -147,9 +147,8 @@ and set_to_tll_set (s:Expr.set) : Tll.set =
   | Expr.PathToSet p     -> Tll.PathToSet (path_to_tll_path p)
   | Expr.AddrToSet (m,a) -> Tll.AddrToSet (mem_to_tll_mem m, addr_to_tll_addr a)
   | Expr.AddrToSetAt _   -> raise(UnsupportedTllExpr(Expr.set_to_str s))
-  | Expr.SetArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
-      let v = Expr.build_var id s pr (Some t) p Expr.Normal in
-      Tll.VarSet (variable_to_tll_var v)
+  | Expr.SetArrayRd (Expr.VarArray v,t) ->
+      Tll.VarSet (variable_to_tll_var (Expr.var_set_param (Expr.Local t) v))
   | Expr.SetArrayRd _          -> raise(UnsupportedTllExpr(Expr.set_to_str s))
 
 
@@ -157,9 +156,8 @@ and elem_to_tll_elem (e:Expr.elem) : Tll.elem =
   match e with
     Expr.VarElem v              -> Tll.VarElem (variable_to_tll_var v)
   | Expr.CellData c             -> Tll.CellData (cell_to_tll_cell c)
-  | Expr.ElemArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
-      let v = Expr.build_var id s pr (Some t) p Expr.Normal in
-      Tll.VarElem (variable_to_tll_var v)
+  | Expr.ElemArrayRd (Expr.VarArray v,t) ->
+      Tll.VarElem (variable_to_tll_var (Expr.var_set_param (Expr.Local t) v))
   | Expr.ElemArrayRd _          -> raise(UnsupportedTllExpr(Expr.elem_to_str e))
   | Expr.HavocListElem          -> Tll.HavocListElem
   | Expr.HavocSkiplistElem      -> raise(UnsupportedTllExpr(Expr.elem_to_str e))
@@ -176,9 +174,8 @@ and addr_to_tll_addr (a:Expr.addr) : Tll.addr =
   | Expr.FirstLocked (m,p)      -> Tll.FirstLocked (mem_to_tll_mem m,
                                                     path_to_tll_path p)
   | Expr.FirstLockedAt _        -> raise(UnsupportedTllExpr(Expr.addr_to_str a))
-  | Expr.AddrArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
-      let v = Expr.build_var id s pr (Some t) p Expr.Normal in
-      Tll.VarAddr (variable_to_tll_var v)
+  | Expr.AddrArrayRd (Expr.VarArray v,t) ->
+      Tll.VarAddr (variable_to_tll_var (Expr.var_set_param (Expr.Local t) v))
   | Expr.AddrArrayRd _          -> raise(UnsupportedTllExpr(Expr.addr_to_str a))
   | Expr.AddrArrRd _            -> raise(UnsupportedTllExpr(Expr.addr_to_str a))
 
@@ -199,9 +196,8 @@ and cell_to_tll_cell (c:Expr.cell) : Tll.cell =
   | Expr.CellUnlock c   -> Tll.CellUnlock (cell_to_tll_cell c)
   | Expr.CellUnlockAt _ -> raise(UnsupportedTllExpr(Expr.cell_to_str c))
   | Expr.CellAt (m,a)   -> Tll.CellAt (mem_to_tll_mem m, addr_to_tll_addr a)
-  | Expr.CellArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
-      let v = Expr.build_var id s pr (Some t) p Expr.Normal in
-      Tll.VarCell (variable_to_tll_var v)
+  | Expr.CellArrayRd (Expr.VarArray v,t) ->
+      Tll.VarCell (variable_to_tll_var (Expr.var_set_param (Expr.Local t) v))
   | Expr.CellArrayRd _  -> raise(UnsupportedTllExpr(Expr.cell_to_str c))
 
 
@@ -214,9 +210,8 @@ and setth_to_tll_setth (st:Expr.setth) : Tll.setth =
   | Expr.UnionTh (s1,s2)   -> Tll.UnionTh (to_setth s1, to_setth s2)
   | Expr.IntrTh (s1,s2)    -> Tll.IntrTh (to_setth s1, to_setth s2)
   | Expr.SetdiffTh (s1,s2) -> Tll.SetdiffTh (to_setth s1, to_setth s2)
-  | Expr.SetThArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
-      let v = Expr.build_var id s pr (Some t) p Expr.Normal in
-      Tll.VarSetTh (variable_to_tll_var v)
+  | Expr.SetThArrayRd (Expr.VarArray v,t) ->
+      Tll.VarSetTh (variable_to_tll_var (Expr.var_set_param (Expr.Local t) v))
   | Expr.SetThArrayRd _    -> raise(UnsupportedTllExpr(Expr.setth_to_str st))
 
 
@@ -229,9 +224,8 @@ and setelem_to_tll_setelem (st:Expr.setelem) : Tll.setelem =
   | Expr.UnionElem (s1,s2)   -> Tll.UnionElem (to_setelem s1, to_setelem s2)
   | Expr.IntrElem (s1,s2)    -> Tll.IntrElem (to_setelem s1, to_setelem s2)
   | Expr.SetdiffElem (s1,s2) -> Tll.SetdiffElem (to_setelem s1, to_setelem s2)
-  | Expr.SetElemArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
-      let v = Expr.build_var id s pr (Some t) p Expr.Normal in
-      Tll.VarSetElem (variable_to_tll_var v)
+  | Expr.SetElemArrayRd (Expr.VarArray v,t) ->
+      Tll.VarSetElem (variable_to_tll_var (Expr.var_set_param (Expr.Local t) v))
   | Expr.SetToElems (s,m)    -> Tll.SetToElems (set_to_tll_set s,
                                                 mem_to_tll_mem m)
   | Expr.SetElemArrayRd _    -> raise(UnsupportedTllExpr(Expr.setelem_to_str st))
@@ -256,9 +250,8 @@ and mem_to_tll_mem (m:Expr.mem) : Tll.mem =
                                        addr_to_tll_addr a,
                                        cell_to_tll_cell c)
   (* Missing the case for "emp" *)
-  | Expr.MemArrayRd (Expr.VarArray (id,s,pr,th,p,_),t) ->
-      let v = Expr.build_var id s pr (Some t) p Expr.Normal in
-      Tll.VarMem (variable_to_tll_var v)
+  | Expr.MemArrayRd (Expr.VarArray v,t) ->
+      Tll.VarMem (variable_to_tll_var (Expr.var_set_param (Expr.Local t) v))
   | Expr.MemArrayRd _        -> raise(UnsupportedTllExpr(Expr.mem_to_str m))
 
 
@@ -297,10 +290,9 @@ and atom_to_tll_atom (a:Expr.atom) : Tll.atom =
   | Expr.InEq (t1,t2)         -> Tll.InEq (term t1, term t2)
   | Expr.BoolVar v            -> Tll.BoolVar (variable_to_tll_var v)
   | Expr.BoolArrayRd _        -> raise(UnsupportedTllExpr(Expr.atom_to_str a))
-  | Expr.PC (pc,t,pr)         -> Tll.PC (pc, Option.lift tid_to_tll_tid t,pr)
-  | Expr.PCUpdate (pc,t)      -> Tll.PCUpdate (pc, tid_to_tll_tid t)
-  | Expr.PCRange (pc1,pc2,t,pr) -> Tll.PCRange (pc1, pc2,
-                                        Option.lift tid_to_tll_tid t,pr)
+  | Expr.PC (pc,t,pr)         -> Tll.PC (pc, shared_to_tll_shared t, pr)  | 
+  Expr.PCUpdate (pc,t)      -> Tll.PCUpdate (pc, tid_to_tll_tid t)
+  | Expr.PCRange (pc1,pc2,t,pr) -> Tll.PCRange (pc1, pc2, shared_to_tll_shared t, pr)
 
 
 and literal_to_tll_literal (l:Expr.literal) : Tll.literal =

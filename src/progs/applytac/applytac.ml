@@ -31,21 +31,18 @@ let _ =
           (String.concat "\n" (List.map Expression.formula_to_str supp_list)));
 
         (* To be removed once we have support tactics *)
-        let final_vc_info_list = [vc_info] in
+(*        let final_vc_info_list = [vc_info] in *)
 
-(*
         let split_vc_info_list =
             List.fold_left (fun ps f_name ->
               List.flatten (List.map (Tactics.pick_support_split_tac f_name) ps)
-            ) [vc_info] !ApplyTacArgs.support_split_tac_list
+            ) [vc_info] !ApplyTacArgs.supp_split_tac_list in
 
         let final_vc_info_list =
             List.fold_left (fun ps f_name ->
               List.map (Tactics.pick_support_tac f_name) ps
-            ) split_vc_info_list !ApplyTacArgs.support_tac_list
+            ) split_vc_info_list !ApplyTacArgs.supp_tac_list in
 
-        
-*)
         List.map (fun vc ->
           Tactics.vc_info_to_implication vc supp_list
         ) final_vc_info_list

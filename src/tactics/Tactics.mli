@@ -7,13 +7,14 @@ type implication = {
   conseq : Expression.formula ;
 }
 
+type support_split_tactic = SplitGoal
 type support_tactic = Full | Reduce | Reduce2
 type formula_tactic = SimplifyPC | PropositionalPropagate | FilterStrict
 type formula_split_tactic = SplitConsequent
 type solve_tactic = Cases
 
 type support_split_tactic_t = vc_info -> vc_info list
-type support_tactic_t = vc_info -> support_t
+type support_tactic_t = vc_info -> vc_info
 type formula_split_tactic_t = implication -> implication list
 type formula_tactic_t = implication -> implication
 
@@ -48,6 +49,7 @@ val vc_info_to_formula : vc_info -> support_t -> Expression.formula
 val vc_info_to_vc : vc_info -> support_t -> verification_condition
 val default_cutoff_algorithm : Smp.cutoff_strategy_t
 val support_tactic_from_string : string ->  support_tactic
+val support_split_tactic_from_string : string ->  support_split_tactic
 val formula_tactic_from_string : string ->  formula_tactic
 val formula_split_tactic_from_string : string -> formula_split_tactic
 
@@ -123,5 +125,7 @@ val filter_with_variables_in_conseq : implication -> implication
 (* CONVERTERS: From tactic names to tactics functions                     *)
 (**************************************************************************)
 
+val pick_support_split_tac : support_split_tactic -> support_split_tactic_t
+val pick_support_tac : support_tactic -> support_tactic_t
 val pick_formula_split_tac : formula_split_tactic -> formula_split_tactic_t
-val pick_formula_tac : formula_tactic ->  formula_tactic_t
+val pick_formula_tac : formula_tactic -> formula_tactic_t

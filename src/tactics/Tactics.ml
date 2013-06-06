@@ -46,7 +46,7 @@ type formula_split_tactic = SplitConsequent
 type solve_tactic = Cases
 
 type support_split_tactic_t = vc_info -> vc_info list
-type support_tactic_t = vc_info -> support_t
+type support_tactic_t = vc_info -> vc_info
 type formula_split_tactic_t = implication -> implication list
 type formula_tactic_t = implication -> implication
 
@@ -105,12 +105,24 @@ exception Invalid_tactic of string
 
 let default_cutoff_algorithm = Smp.Dnf
 
+let support_split_tactic_from_string (s:string) : support_split_tactic =
+  match s with
+  | "split-goal" -> SplitGoal
+  | _ -> raise(Invalid_tactic (s ^ " is not a support_split_tactic"))
+
+
 let support_tactic_from_string (s:string) : support_tactic =
   match s with
   | "full"    -> Full
   | "reduce"  -> Reduce
   | "reduce2" -> Reduce2
   | _ -> raise(Invalid_tactic (s ^ " is not a support_tactic"))
+
+
+let formula_split_tactic_from_string (s:string): formula_split_tactic =
+  match s with
+  | "split-consequent"        -> SplitConsequent
+  | _ -> raise(Invalid_tactic (s ^ "is not a formula_split_tactic"))
 
 
 let formula_tactic_from_string (s:string) : formula_tactic =
@@ -126,12 +138,6 @@ let formula_tactic_to_string (tac:formula_tactic) : string =
   | SimplifyPC             -> "simplify-pc"
   | PropositionalPropagate -> "propositional-propagate"
   | FilterStrict           -> "filter-strict"
-
-
-let formula_split_tactic_from_string (s:string): formula_split_tactic =
-  match s with
-  | "split-consequent"        -> SplitConsequent
-  | _ -> raise(Invalid_tactic (s ^ "is not a formula_split_tactic"))
 
 
 let vc_info_to_str (vc:vc_info) : string =
@@ -381,12 +387,12 @@ let split_implication (imp:implication) : implication list =
 let split_goal (info:vc_info) : vc_info list =
   let new_goals = E.to_conj_list info.goal in
   List.map (fun phi -> { original_support = info.original_support;
-			  tid_constraint   = info.tid_constraint  ;
-			  rho              = info.rho ;
-			  goal             = phi ;
-			  transition_tid   = info.transition_tid ;
-			  line             = info.line ;
-			  vocabulary       = info.vocabulary ;})
+        tid_constraint   = info.tid_constraint  ;
+        rho              = info.rho ;
+        goal             = phi ;
+        transition_tid   = info.transition_tid ;
+        line             = info.line ;
+        vocabulary       = info.vocabulary ;})
     new_goals
 (* aux functions *)
 let is_true (f:E.formula) : bool =
@@ -447,9 +453,9 @@ let tactic_propositional_propagate (imp:implication) : implication =
     let new_facts = get_literals f.ante in
     if List.length new_facts = 0 then (f,used) else
       begin
-	let new_conseq = simplify_with_many_facts new_facts f.conseq in
-	let new_ante   = simplify_with_many_facts new_facts f.ante in
-	simplify_propagate { ante = new_ante; conseq = new_conseq } (used @ new_facts)
+  let new_conseq = simplify_with_many_facts new_facts f.conseq in
+  let new_ante   = simplify_with_many_facts new_facts f.ante in
+  simplify_propagate { ante = new_ante; conseq = new_conseq } (used @ new_facts)
       end
   in
   let (new_imp,facts) = simplify_propagate imp [] in
@@ -474,9 +480,20 @@ let filter_with_variables_in_conseq (imp:implication) : implication =
 (* CONVERTERS: From tactic names to tactics functions                     *)
 (**************************************************************************)
 
+let pick_support_split_tac (tac_name:support_split_tactic) : support_split_tactic_t =
+  match tac_name with
+  | SplitGoal -> split_goal
+
+
+let pick_support_tac (tac_name:support_tactic) : support_tactic_t =
+  (* TO BE IMPLEMENTED *)
+  id
+
+
 let pick_formula_split_tac (tac_name:formula_split_tactic) : formula_split_tactic_t =
   match tac_name with
   | SplitConsequent -> split_implication
+
 
 let pick_formula_tac (tac_name:formula_tactic) : formula_tactic_t =
   match tac_name with
@@ -485,6 +502,3 @@ let pick_formula_tac (tac_name:formula_tactic) : formula_tactic_t =
   | FilterStrict ->           filter_with_variables_in_conseq
 
 
-let pick support_support_split_tac (tac_name:support_split_tactic) : support_split_tactic_t =
-  match tac_name with
-  | SplitGoal -> split_goal

@@ -1,49 +1,49 @@
-module IntExpr = NumExpression
+module NE = NumExpression
 
 let counter = ref 0
 
-let cut_off (f:IntExpr.formula) : int =
+let cut_off (f:NE.formula) : int =
   let _ = counter := 1 in (* Count 1 to represent undefined value *)
-  let rec cut_off_integer (i:IntExpr.integer) =
+  let rec cut_off_integer (i:NE.integer) =
     match i with
-      IntExpr.Neg j       -> cut_off_integer j
-    | IntExpr.Add (j1,j2) -> (cut_off_integer j1);(cut_off_integer j2)
-    | IntExpr.Sub (j1,j2) -> (cut_off_integer j1);(cut_off_integer j2)
-    | IntExpr.Mul (j1,j2) -> (cut_off_integer j1);(cut_off_integer j2)
-    | IntExpr.Div (j1,j2) -> (cut_off_integer j1);(cut_off_integer j2)
-    | IntExpr.SetMin _    -> incr counter
-    | IntExpr.SetMax _    -> incr counter
+      NE.Neg j       -> cut_off_integer j
+    | NE.Add (j1,j2) -> (cut_off_integer j1);(cut_off_integer j2)
+    | NE.Sub (j1,j2) -> (cut_off_integer j1);(cut_off_integer j2)
+    | NE.Mul (j1,j2) -> (cut_off_integer j1);(cut_off_integer j2)
+    | NE.Div (j1,j2) -> (cut_off_integer j1);(cut_off_integer j2)
+    | NE.SetMin _    -> incr counter
+    | NE.SetMax _    -> incr counter
     | _                   -> () in
-  let cut_off_atom (a:IntExpr.atom) =
+  let cut_off_atom (a:NE.atom) =
     match a with
-    | IntExpr.Less(i1,i2)      -> (cut_off_integer i1);(cut_off_integer i2)
-    | IntExpr.Greater(i1,i2)   -> (cut_off_integer i1);(cut_off_integer i2)
-    | IntExpr.LessEq(i1,i2)    -> (cut_off_integer i1);(cut_off_integer i2)
-    | IntExpr.GreaterEq(i1,i2) -> (cut_off_integer i1);(cut_off_integer i2)
-    | IntExpr.In(i,s)          -> (cut_off_integer i)
-    | IntExpr.Subset _                              -> incr counter
-    | IntExpr.InEq (IntExpr.SetV _, IntExpr.SetV _) -> incr counter
-    | IntExpr.FunInEq (IntExpr.FunVar v, _)     ->
-          if IntExpr.get_sort v = IntExpr.Set then incr counter
-    | IntExpr.FunInEq (IntExpr.FunUpd (_,_,t),_)    ->
+    | NE.Less(i1,i2)      -> (cut_off_integer i1);(cut_off_integer i2)
+    | NE.Greater(i1,i2)   -> (cut_off_integer i1);(cut_off_integer i2)
+    | NE.LessEq(i1,i2)    -> (cut_off_integer i1);(cut_off_integer i2)
+    | NE.GreaterEq(i1,i2) -> (cut_off_integer i1);(cut_off_integer i2)
+    | NE.In(i,s)          -> (cut_off_integer i)
+    | NE.Subset _                              -> incr counter
+    | NE.InEq (NE.SetV _, NE.SetV _) -> incr counter
+    | NE.FunInEq (NE.FunVar v, _)     ->
+          if v.NE.sort = NE.Set then incr counter
+    | NE.FunInEq (NE.FunUpd (_,_,t),_)    ->
           begin
             match t with
-              IntExpr.SetV _ -> incr counter
+              NE.SetV _ -> incr counter
             | _              -> ()
           end
     | _                                             -> () in
-  let rec cut_off_literal (l:IntExpr.literal) =
+  let rec cut_off_literal (l:NE.literal) =
     match l with
-      IntExpr.Atom a    -> (cut_off_atom a)
-    | IntExpr.NegAtom a -> (cut_off_atom a) in
-  let rec cut_off_formula (f:IntExpr.formula) =
+      NE.Atom a    -> (cut_off_atom a)
+    | NE.NegAtom a -> (cut_off_atom a) in
+  let rec cut_off_formula (f:NE.formula) =
     match f with
-      IntExpr.And(f1,f2)     -> (cut_off_formula f1);(cut_off_formula f2)
-    | IntExpr.Or(f1,f2)      -> (cut_off_formula f1);(cut_off_formula f2)
-    | IntExpr.Not (f1)       -> (cut_off_formula f1)
-    | IntExpr.Implies(f1,f2) -> (cut_off_formula f1);(cut_off_formula f2)
-    | IntExpr.Iff(f1,f2)     -> (cut_off_formula f1);(cut_off_formula f2)
-    | IntExpr.Literal l      -> (cut_off_literal l)
+      NE.And(f1,f2)     -> (cut_off_formula f1);(cut_off_formula f2)
+    | NE.Or(f1,f2)      -> (cut_off_formula f1);(cut_off_formula f2)
+    | NE.Not (f1)       -> (cut_off_formula f1)
+    | NE.Implies(f1,f2) -> (cut_off_formula f1);(cut_off_formula f2)
+    | NE.Iff(f1,f2)     -> (cut_off_formula f1);(cut_off_formula f2)
+    | NE.Literal l      -> (cut_off_literal l)
     | _                      -> () in
   let _ = cut_off_formula f
   in

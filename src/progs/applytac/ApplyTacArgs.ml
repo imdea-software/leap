@@ -21,7 +21,7 @@ let solve_tactic           = ref None
 let hide_pres              = ref false
 let phiFile                = ref ""
 let supp_tac_list          = ref []
-(*let supp_split_tac_list    = ref [] *)
+let supp_split_tac_list    = ref []
 let formula_tac_list       = ref []
 let formula_split_tac_list = ref []
 let support_files          = ref []
@@ -92,11 +92,9 @@ let opts =
     ("--supp_tac",
         Arg.String (fun s -> supp_tac_list := (parse_tac_list Tactics.support_tactic_from_string s)),
         "support tactics: full, reduce, reduce2");
-(*
     ("--supp_split_tac",
         Arg.String (fun s -> supp_split_tac_list := (parse_tac_list Tactics.support_split_tactic_from_string s)),
         "support split tactics: split");
-*)
     ("--formula_tac",
         Arg.String (fun s -> formula_tac_list := (parse_tac_list Tactics.formula_tactic_from_string s)),
         "formula tactics: simplify-pc, propositional-propagate");
