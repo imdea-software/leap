@@ -401,46 +401,46 @@ module TranslateTsl (SLK : TSLKExpression.S) =
             (SL.literal_to_str l);
       match l with
       (* c = mkcell(e,k,A,l) *)
-      | SL.Atom(SL.Eq(SL.CellT (VarCell c),SL.CellT(SL.MkCell(e,aa,tt,i))))
-      | SL.Atom(SL.Eq(SL.CellT(SL.MkCell(e,aa,tt,i)),SL.CellT (VarCell c)))
-      | SL.NegAtom(InSL.Eq(SL.CellT (VarCell c),SL.CellT(SL.MkCell(e,aa,tt,i))))
-      | SL.NegAtom(InSL.Eq(SL.CellT(SL.MkCell(e,aa,tt,i)),SL.CellT (VarCell c))) ->
-          let c' = cell_tsl_to_tslk (VarCell c) in
+      | SL.Atom(SL.Eq(SL.CellT (SL.VarCell c),SL.CellT(SL.MkCell(e,aa,tt,i))))
+      | SL.Atom(SL.Eq(SL.CellT(SL.MkCell(e,aa,tt,i)),SL.CellT (SL.VarCell c)))
+      | SL.NegAtom(SL.InEq(SL.CellT (SL.VarCell c),SL.CellT(SL.MkCell(e,aa,tt,i))))
+      | SL.NegAtom(SL.InEq(SL.CellT(SL.MkCell(e,aa,tt,i)),SL.CellT (SL.VarCell c))) ->
+          let c' = cell_tsl_to_tslk (SL.VarCell c) in
           let e' = elem_tsl_to_tslk e in
           let aa' = get_addr_list aa in
           let tt' = get_tid_list tt in
-            SLK.eq_cell (c') (SLK.SL.MkCell(e',aa',tt'))
+            SLK.eq_cell (c') (SLK.MkCell(e',aa',tt'))
       (* c != mkcell(e,k,A,l) *)
-      | SL.NegAtom(SL.Eq(SL.CellT (VarCell c),SL.CellT(SL.MkCell(e,aa,tt,i))))
-      | SL.NegAtom(SL.Eq(SL.CellT(SL.MkCell(e,aa,tt,i)),SL.CellT (VarCell c)))
-      | SL.Atom(InSL.Eq(SL.CellT (VarCell c),SL.CellT(SL.MkCell(e,aa,tt,i))))
-      | SL.Atom(InSL.Eq(SL.CellT(SL.MkCell(e,aa,tt,i)),SL.CellT (VarCell c))) ->
-          SLK.Not (trans_literal (SL.Atom(SL.Eq(SL.CellT(VarCell c), SL.CellT(SL.MkCell(e,aa,tt,i))))))
+      | SL.NegAtom(SL.Eq(SL.CellT (SL.VarCell c),SL.CellT(SL.MkCell(e,aa,tt,i))))
+      | SL.NegAtom(SL.Eq(SL.CellT(SL.MkCell(e,aa,tt,i)),SL.CellT (SL.VarCell c)))
+      | SL.Atom(SL.InEq(SL.CellT (SL.VarCell c),SL.CellT(SL.MkCell(e,aa,tt,i))))
+      | SL.Atom(SL.InEq(SL.CellT(SL.MkCell(e,aa,tt,i)),SL.CellT (SL.VarCell c))) ->
+          SLK.Not (trans_literal (SL.Atom(SL.Eq(SL.CellT(SL.VarCell c), SL.CellT(SL.MkCell(e,aa,tt,i))))))
       (* a = c.arr[l] *)
-      | SL.Atom(SL.Eq(AddrT a, AddrT(AddrArrRd(CellArr c,l))))
-      | SL.Atom(SL.Eq(AddrT(AddrArrRd(CellArr c,l)), AddrT a))
-      | SL.NegAtom(InSL.Eq(AddrT a, AddrT(AddrArrRd(CellArr c,l))))
-      | SL.NegAtom(InSL.Eq(AddrT(AddrArrRd(CellArr c,l)), AddrT a)) ->
+      | SL.Atom(SL.Eq(SL.AddrT a, SL.AddrT(SL.AddrArrRd(SL.CellArr c,l))))
+      | SL.Atom(SL.Eq(SL.AddrT(SL.AddrArrRd(SL.CellArr c,l)), SL.AddrT a))
+      | SL.NegAtom(SL.InEq(SL.AddrT a, SL.AddrT(SL.AddrArrRd(SL.CellArr c,l))))
+      | SL.NegAtom(SL.InEq(SL.AddrT(SL.AddrArrRd(SL.CellArr c,l)), SL.AddrT a)) ->
           let a' = addr_tsl_to_tslk a in
           let c' = cell_tsl_to_tslk c in
           let l' = int_tsl_to_tslk l in
           SLK.addr_mark_smp_interesting a' true;
           SLK.eq_addr a' (SLK.NextAt(c',l'))
       (* t = c.tids[l] *)
-      | SL.Atom(SL.Eq(ThidT t, ThidT(ThidArrRd(SL.CellTids c,l))))
-      | SL.Atom(SL.Eq(ThidT(ThidArrRd(SL.CellTids c,l)), ThidT t))
-      | SL.NegAtom(InSL.Eq(ThidT t, ThidT(ThidArrRd(SL.CellTids c,l))))
-      | SL.NegAtom(InSL.Eq(ThidT(ThidArrRd(SL.CellTids c,l)), ThidT t)) ->
+      | SL.Atom(SL.Eq(SL.ThidT t, SL.ThidT(SL.ThidArrRd(SL.CellTids c,l))))
+      | SL.Atom(SL.Eq(SL.ThidT(SL.ThidArrRd(SL.CellTids c,l)), SL.ThidT t))
+      | SL.NegAtom(SL.InEq(SL.ThidT t, SL.ThidT(SL.ThidArrRd(SL.CellTids c,l))))
+      | SL.NegAtom(SL.InEq(SL.ThidT(SL.ThidArrRd(SL.CellTids c,l)), SL.ThidT t)) ->
           let t' = tid_tsl_to_tslk t in
           let c' = cell_tsl_to_tslk c in
           let l' = int_tsl_to_tslk l in
           SLK.tid_mark_smp_interesting t' true;
           SLK.eq_tid t' (SLK.CellLockIdAt(c',l'))
       (* A != B (addresses) *)
-      | SL.NegAtom(SL.Eq(SL.AddrArrayT(VarAddrArray _ as aa),
-                   SL.AddrArrayT(VarAddrArray _ as bb)))
-      | SL.Atom(InSL.Eq(SL.AddrArrayT(VarAddrArray _ as aa),
-                  SL.AddrArrayT(VarAddrArray _ as bb))) ->
+      | SL.NegAtom(SL.Eq(SL.AddrArrayT(SL.VarAddrArray _ as aa),
+                   SL.AddrArrayT(SL.VarAddrArray _ as bb)))
+      | SL.Atom(SL.InEq(SL.AddrArrayT(SL.VarAddrArray _ as aa),
+                  SL.AddrArrayT(SL.VarAddrArray _ as bb))) ->
           let aa' = get_addr_list aa in
           let bb' = get_addr_list bb in
           let xs = ref [] in
@@ -451,10 +451,10 @@ module TranslateTsl (SLK : TSLKExpression.S) =
           SLK.addr_mark_smp_interesting (List.hd aa') true;
           SLK.disj_list (!xs)
       (* A != B (thread identifiers) *)
-      | SL.NegAtom(SL.Eq(SL.TidArrayT(VarTidArray _ as tt),
-                   SL.TidArrayT(VarTidArray _ as uu)))
-      | SL.Atom(InSL.Eq(SL.TidArrayT(VarTidArray _ as tt),
-                  SL.TidArrayT(VarTidArray _ as uu))) ->
+      | SL.NegAtom(SL.Eq(SL.TidArrayT(SL.VarTidArray _ as tt),
+                   SL.TidArrayT(SL.VarTidArray _ as uu)))
+      | SL.Atom(SL.InEq(SL.TidArrayT(SL.VarTidArray _ as tt),
+                  SL.TidArrayT(SL.VarTidArray _ as uu))) ->
           let tt' = get_tid_list tt in
           let uu' = get_tid_list uu in
           let xs = ref [] in
@@ -465,10 +465,10 @@ module TranslateTsl (SLK : TSLKExpression.S) =
           SLK.tid_mark_smp_interesting (List.hd tt') true;
           SLK.disj_list (!xs)
       (* a = A[i] *)
-      | SL.Atom(SL.Eq(AddrT a, AddrT (AddrArrRd (aa,i))))
-      | SL.Atom(SL.Eq(AddrT (AddrArrRd (aa,i)), AddrT a))
-      | SL.NegAtom(InSL.Eq(AddrT a, AddrT (AddrArrRd (aa,i))))
-      | SL.NegAtom(InSL.Eq(AddrT (AddrArrRd (aa,i)), AddrT a)) ->
+      | SL.Atom(SL.Eq(SL.AddrT a, SL.AddrT (SL.AddrArrRd (aa,i))))
+      | SL.Atom(SL.Eq(SL.AddrT (SL.AddrArrRd (aa,i)), SL.AddrT a))
+      | SL.NegAtom(SL.InEq(SL.AddrT a, SL.AddrT (SL.AddrArrRd (aa,i))))
+      | SL.NegAtom(SL.InEq(SL.AddrT (SL.AddrArrRd (aa,i)), SL.AddrT a)) ->
           let a' = addr_tsl_to_tslk a in
           let aa' = get_addr_list aa in
           let i' = int_tsl_to_tslk i in
@@ -482,16 +482,16 @@ module TranslateTsl (SLK : TSLKExpression.S) =
           SLK.addr_mark_smp_interesting a' true;
           SLK.conj_list (!xs)
       (* a != A[i] *)
-      | SL.NegAtom(SL.Eq(AddrT a, AddrT (AddrArrRd (aa,i))))
-      | SL.NegAtom(SL.Eq(AddrT (AddrArrRd (aa,i)), AddrT a))
-      | SL.Atom(InSL.Eq(AddrT a, AddrT (AddrArrRd (aa,i))))
-      | SL.Atom(InSL.Eq(AddrT (AddrArrRd (aa,i)), AddrT a)) ->
-          SLK.Not (trans_literal (SL.Atom(SL.Eq(AddrT a, AddrT (AddrArrRd (aa,i))))))
+      | SL.NegAtom(SL.Eq(SL.AddrT a, SL.AddrT (SL.AddrArrRd (aa,i))))
+      | SL.NegAtom(SL.Eq(SL.AddrT (SL.AddrArrRd (aa,i)), SL.AddrT a))
+      | SL.Atom(SL.InEq(SL.AddrT a, SL.AddrT (SL.AddrArrRd (aa,i))))
+      | SL.Atom(SL.InEq(SL.AddrT (SL.AddrArrRd (aa,i)), SL.AddrT a)) ->
+          SLK.Not (trans_literal (SL.Atom(SL.Eq(SL.AddrT a, SL.AddrT (SL.AddrArrRd (aa,i))))))
       (* t = A[i] *)
-      | SL.Atom(SL.Eq(ThidT t, ThidT (ThidArrRd (tt,i))))
-      | SL.Atom(SL.Eq(ThidT (ThidArrRd (tt,i)), ThidT t))
-      | SL.NegAtom(InSL.Eq(ThidT t, ThidT (ThidArrRd (tt,i))))
-      | SL.NegAtom(InSL.Eq(ThidT (ThidArrRd (tt,i)), ThidT t)) ->
+      | SL.Atom(SL.Eq(SL.ThidT t, SL.ThidT (SL.ThidArrRd (tt,i))))
+      | SL.Atom(SL.Eq(SL.ThidT (SL.ThidArrRd (tt,i)), SL.ThidT t))
+      | SL.NegAtom(SL.InEq(SL.ThidT t, SL.ThidT (SL.ThidArrRd (tt,i))))
+      | SL.NegAtom(SL.InEq(SL.ThidT (SL.ThidArrRd (tt,i)), SL.ThidT t)) ->
           let t' = tid_tsl_to_tslk t in
           let tt' = get_tid_list tt in
           let i' = int_tsl_to_tslk i in
@@ -505,16 +505,16 @@ module TranslateTsl (SLK : TSLKExpression.S) =
           SLK.tid_mark_smp_interesting t' true;
           SLK.conj_list (!xs)
       (* t != A[i] *)
-      | SL.NegAtom(SL.Eq(ThidT t, ThidT (ThidArrRd (tt,i))))
-      | SL.NegAtom(SL.Eq(ThidT (ThidArrRd (tt,i)), ThidT t))
-      | SL.Atom(InSL.Eq(ThidT t, ThidT (ThidArrRd (tt,i))))
-      | SL.Atom(InSL.Eq(ThidT (ThidArrRd (tt,i)), ThidT t)) ->
-          SLK.Not (trans_literal (SL.Atom(SL.Eq(ThidT t, ThidT (ThidArrRd (tt,i))))))
+      | SL.NegAtom(SL.Eq(SL.ThidT t, SL.ThidT (SL.ThidArrRd (tt,i))))
+      | SL.NegAtom(SL.Eq(SL.ThidT (SL.ThidArrRd (tt,i)), SL.ThidT t))
+      | SL.Atom(SL.InEq(SL.ThidT t, SL.ThidT (SL.ThidArrRd (tt,i))))
+      | SL.Atom(SL.InEq(SL.ThidT (SL.ThidArrRd (tt,i)), SL.ThidT t)) ->
+          SLK.Not (trans_literal (SL.Atom(SL.Eq(SL.ThidT t, SL.ThidT (SL.ThidArrRd (tt,i))))))
       (* B = A {l <- a} *)
       | SL.Atom(SL.Eq(SL.AddrArrayT bb, SL.AddrArrayT (SL.AddrArrayUp(aa,i,a))))
       | SL.Atom(SL.Eq(SL.AddrArrayT (SL.AddrArrayUp(aa,i,a)), SL.AddrArrayT bb))
-      | SL.NegAtom(InSL.Eq(SL.AddrArrayT bb, SL.AddrArrayT (SL.AddrArrayUp(aa,i,a))))
-      | SL.NegAtom(InSL.Eq(SL.AddrArrayT (SL.AddrArrayUp(aa,i,a)), SL.AddrArrayT bb)) ->
+      | SL.NegAtom(SL.InEq(SL.AddrArrayT bb, SL.AddrArrayT (SL.AddrArrayUp(aa,i,a))))
+      | SL.NegAtom(SL.InEq(SL.AddrArrayT (SL.AddrArrayUp(aa,i,a)), SL.AddrArrayT bb)) ->
           let a' = addr_tsl_to_tslk a in
           let i' = int_tsl_to_tslk i in
           let aa' = get_addr_list aa in
@@ -535,14 +535,14 @@ module TranslateTsl (SLK : TSLKExpression.S) =
       (* B != A {l <- a} *)
       | SL.NegAtom(SL.Eq(SL.AddrArrayT bb, SL.AddrArrayT (SL.AddrArrayUp(aa,i,a))))
       | SL.NegAtom(SL.Eq(SL.AddrArrayT (SL.AddrArrayUp(aa,i,a)), SL.AddrArrayT bb))
-      | SL.Atom(InSL.Eq(SL.AddrArrayT bb, SL.AddrArrayT (SL.AddrArrayUp(aa,i,a))))
-      | SL.Atom(InSL.Eq(SL.AddrArrayT (SL.AddrArrayUp(aa,i,a)), SL.AddrArrayT bb)) ->
+      | SL.Atom(SL.InEq(SL.AddrArrayT bb, SL.AddrArrayT (SL.AddrArrayUp(aa,i,a))))
+      | SL.Atom(SL.InEq(SL.AddrArrayT (SL.AddrArrayUp(aa,i,a)), SL.AddrArrayT bb)) ->
           SLK.Not (trans_literal (SL.Atom(SL.Eq(SL.AddrArrayT bb, SL.AddrArrayT (SL.AddrArrayUp(aa,i,a))))))
       (* U = T {l <- t} *)
       | SL.Atom(SL.Eq(SL.TidArrayT uu, SL.TidArrayT (SL.TidArrayUp(tt,i,t))))
       | SL.Atom(SL.Eq(SL.TidArrayT (SL.TidArrayUp(tt,i,t)), SL.TidArrayT uu))
-      | SL.NegAtom(InSL.Eq(SL.TidArrayT uu, SL.TidArrayT (SL.TidArrayUp(tt,i,t))))
-      | SL.NegAtom(InSL.Eq(SL.TidArrayT (SL.TidArrayUp(tt,i,t)), SL.TidArrayT uu)) ->
+      | SL.NegAtom(SL.InEq(SL.TidArrayT uu, SL.TidArrayT (SL.TidArrayUp(tt,i,t))))
+      | SL.NegAtom(SL.InEq(SL.TidArrayT (SL.TidArrayUp(tt,i,t)), SL.TidArrayT uu)) ->
           let t' = tid_tsl_to_tslk t in
           let i' = int_tsl_to_tslk i in
           let tt' = get_tid_list tt in
@@ -563,18 +563,18 @@ module TranslateTsl (SLK : TSLKExpression.S) =
       (* U != T {l <- t} *)
       | SL.NegAtom(SL.Eq(SL.TidArrayT uu, SL.TidArrayT (SL.TidArrayUp(tt,i,t))))
       | SL.NegAtom(SL.Eq(SL.TidArrayT (SL.TidArrayUp(tt,i,t)), SL.TidArrayT uu))
-      | SL.Atom(InSL.Eq(SL.TidArrayT uu, SL.TidArrayT (SL.TidArrayUp(tt,i,t))))
-      | SL.Atom(InSL.Eq(SL.TidArrayT (SL.TidArrayUp(tt,i,t)), SL.TidArrayT uu)) ->
+      | SL.Atom(SL.InEq(SL.TidArrayT uu, SL.TidArrayT (SL.TidArrayUp(tt,i,t))))
+      | SL.Atom(SL.InEq(SL.TidArrayT (SL.TidArrayUp(tt,i,t)), SL.TidArrayT uu)) ->
           SLK.Not (trans_literal (SL.Atom(SL.Eq(SL.TidArrayT uu, SL.TidArrayT (SL.TidArrayUp(tt,i,t))))))
       (* Skiplist (m,s,l,s1,s2) *)
-      | SL.Atom(Skiplist(m,s,l,a1,a2)) ->
+      | SL.Atom(SL.Skiplist(m,s,l,a1,a2)) ->
           let m' = mem_tsl_to_tslk m in
           let s' = set_tsl_to_tslk s in
           let l' = int_tsl_to_tslk l in
           let a1' = addr_tsl_to_tslk a1 in
           let a2' = addr_tsl_to_tslk a2 in
           let xs = ref
-                    [SLK.Literal(SLK.SL.Atom(
+                    [SLK.Literal(SLK.Atom(
                       SLK.OrderList(m',a1',a2')));
                      SLK.eq_set
                       (s')
@@ -588,7 +588,8 @@ module TranslateTsl (SLK : TSLKExpression.S) =
             let n' = SLK.LevelVal n in
             xs := SLK.Implies
                     (SLK.lesseq_level n' l',
-                     SLK.And (SLK.atomlit (SLK.In(a2',SLK.AddrToSet(m',a1',n'))),
+                     SLK.And (SLK.atomlit 
+                                  (SLK.In(a2',SLK.AddrToSet(m',a1',n'))),
                                   SLK.eq_addr (SLK.NextAt(SLK.CellAt(m',a2'),n'))
                                                    SLK.Null)) :: (!xs);
           done;
@@ -612,7 +613,7 @@ module TranslateTsl (SLK : TSLKExpression.S) =
           SLK.addr_mark_smp_interesting a2' true;
           SLK.conj_list (!xs)
       (* ~ Skiplist(m,s,l,a1,a2) *)
-      | SL.NegAtom(Skiplist(m,s,l,a1,a2)) ->
+      | SL.NegAtom(SL.Skiplist(m,s,l,a1,a2)) ->
           let m' = mem_tsl_to_tslk m in
           let s' = set_tsl_to_tslk s in
           let l' = int_tsl_to_tslk l in
@@ -621,7 +622,7 @@ module TranslateTsl (SLK : TSLKExpression.S) =
 
 
           let xs = ref
-                    [SLK.Literal(SLK.SL.NegAtom(
+                    [SLK.Literal(SLK.NegAtom(
                       SLK.OrderList(m',a1',a2')));
                      SLK.ineq_set
                       (s')
@@ -718,7 +719,7 @@ let check_sat_by_cases (lines:int)
            let k = VarSet.cardinal l_vs in
          *)
         let k = if i = -1 then
-                  VarSet.cardinal (varset_of_sort_from_conj cf Int)
+                  SL.VarSet.cardinal (SL.varset_of_sort_from_conj cf SL.Int)
                 else
                   i in
 (*

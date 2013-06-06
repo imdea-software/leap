@@ -114,7 +114,7 @@ module Make (TSLK : TSLKExpression.S) =
 
       let vars_mem_set = if (Smp.forget_primed_mem !options &&
                              not (Smp.group_vars !options)) then
-                           VarSet.filter (fun v -> not (Expr.is_primed_var v))
+                           VarSet.filter (fun v -> not (Expr.var_is_primed v))
                              (Expr.varset_of_sort vars Expr.Mem)
                          else
                            Expr.varset_of_sort vars Expr.Mem in

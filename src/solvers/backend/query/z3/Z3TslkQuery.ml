@@ -1128,7 +1128,7 @@ module Make (K : Level.S) : TSLK_QUERY =
                     (num_elem:int)
                     (req_sorts:Expr.sort list) =
       B.add_string buf
-        ( "; Translation for TSLK[" ^(string_of_int K.level)^ "]\n\n" );
+        ( "; Translation for TExpr[" ^(string_of_int K.level)^ "]\n\n" );
       z3_level_preamble buf;
       if (List.exists (fun s ->
             s=Expr.Addr || s=Expr.Cell || s=Expr.Path || s=Expr.Set || s=Expr.Mem
@@ -1259,7 +1259,7 @@ module Make (K : Level.S) : TSLK_QUERY =
                           (v:Expr.variable) : unit =
 (*      verb "**** Z3TslkQuery, defining variable: %s\n" (Expr.variable_to_str v); *)
       verb "%s\n" (Expr.variable_to_full_str v);
-      let (id,s,pr,th,p,_) = v in
+      let s = Expr.var_sort v in
       let sort_str asort = match asort with
                              Expr.Set     -> set_s
                            | Expr.Elem    -> elem_s
@@ -1274,8 +1274,10 @@ module Make (K : Level.S) : TSLK_QUERY =
                            | Expr.Bool    -> bool_s
                            | Expr.Unknown -> unk_s in
       let s_str = sort_str s in
-      let p_id = Option.map_default (fun str -> str ^ "_" ^ id) id p in
-      let name = if pr then p_id ^ "_prime" else p_id
+      let p_id = match Expr.var_scope v with
+                 | Expr.GlobalScope -> Expr.var_id v
+                 | Expr.Scope proc -> proc ^ "_" ^ (Expr.var_id v) in
+      let name = if Expr.var_is_primed v then p_id ^ "_prime" else p_id
       in
         if Expr.is_global_var v then
           begin
@@ -1303,17 +1305,17 @@ module Make (K : Level.S) : TSLK_QUERY =
                           done
             | Expr.Path -> Expr.VarSet.iter (fun t ->
                         let v_str = variable_invocation_to_str
-                                        (Expr.param_var v (Expr.VarTh t)) in
+                                        (Expr.var_set_param (Expr.Local (Expr.VarTh t)) v) in
                           B.add_string buf ( "(assert (ispath " ^ v_str ^ "))\n" )
                       ) tid_set
             | Expr.Mem -> Expr.VarSet.iter (fun t ->
                         let v_str = variable_invocation_to_str
-                                        (Expr.param_var v (Expr.VarTh t)) in
+                                        (Expr.var_set_param (Expr.Local (Expr.VarTh t)) v) in
                           B.add_string buf ( "(assert (isheap " ^ v_str ^ "))\n" )
                       ) tid_set
             | Expr.Thid -> Expr.VarSet.iter (fun t ->
                         let v_str = variable_invocation_to_str
-                                        (Expr.param_var v (Expr.VarTh t)) in
+                                        (Expr.var_set_param (Expr.Local (Expr.VarTh t)) v) in
                           B.add_string buf ( "(assert (not (= " ^ v_str ^ " NoThread)))\n" )
                       ) tid_set
             | _    -> ()
@@ -1370,15 +1372,21 @@ module Make (K : Level.S) : TSLK_QUERY =
 
 
     and variable_invocation_to_str (v:Expr.variable) : string =
-      let (id,s,pr,th,p,_) = v in
-      let th_str = Option.map_default tidterm_to_str "" th in
-      let p_str  = Option.map_default (fun n -> Printf.sprintf "%s_" n) "" p in
-      let pr_str = if pr then "_prime" else ""
-      in
-        if th = None then
-          Printf.sprintf " %s%s%s%s" p_str id th_str pr_str
-        else
-          Printf.sprintf " (select %s%s%s %s)" p_str id pr_str th_str
+      let id = Expr.var_id v in
+      let th_str = shared_or_local_to_str (Expr.var_parameter v) in
+      let p_str  = match (Expr.var_scope v) with
+                   | Expr.GlobalScope -> ""
+                   | Expr.Scope proc -> proc ^ "_" in
+      let pr_str = if (Expr.var_is_primed v) then "_prime" else "" in
+      match Expr.var_parameter v with
+      | Expr.Shared  -> Printf.sprintf " %s%s%s%s" p_str id th_str pr_str
+      | Expr.Local _ -> Printf.sprintf " (select %s%s%s %s)" p_str id pr_str th_str
+
+
+    and shared_or_local_to_str (th:Expr.shared_or_local) : string =
+      match th with
+      | Expr.Shared -> ""
+      | Expr.Local t -> tidterm_to_str t
 
 
     and z3_build_cell_next_array (aa:Expr.addr list) : string =
@@ -1675,17 +1683,16 @@ module Make (K : Level.S) : TSLK_QUERY =
         | _            -> Printf.sprintf "(not (= %s %s))"            str_t1 str_t2
 
 
-    let pc_to_str (pc:int) (th:Expr.tid option) (pr:bool) : string =
-      let pc_str = if pr then pc_prime_name else pc_name
-      in
-        Printf.sprintf "(= (select %s %s) %s)" pc_str
-            (Option.map_default tidterm_to_str "" th) (linenum_to_str pc)
-
-
-    let pcrange_to_str (pc1:int) (pc2:int)
-                          (th:Expr.tid option) (pr:bool) : string =
+    let pc_to_str (pc:int) (th:Expr.shared_or_local) (pr:bool) : string =
       let pc_str = if pr then pc_prime_name else pc_name in
-      let th_str = Option.map_default tidterm_to_str "" th
+      let th_str = shared_or_local_to_str th
+      in
+        Printf.sprintf "(= (select %s %s) %s)" pc_str th_str (linenum_to_str pc)
+
+
+    let pcrange_to_str (pc1:int) (pc2:int) (th:Expr.shared_or_local) (pr:bool) : string =
+      let pc_str = if pr then pc_prime_name else pc_name in
+      let th_str = shared_or_local_to_str th
       in
         Printf.sprintf "(and (<= %s (select %s %s)) (<= (select %s %s) %s))"
          (linenum_to_str pc1) pc_str th_str pc_str th_str (linenum_to_str pc2)
@@ -1837,7 +1844,8 @@ module Make (K : Level.S) : TSLK_QUERY =
             (* We also filter primed variables *)
             let term_dom = List.filter (fun t ->
                              match t with
-                             | Expr.AddrT (Expr.VarAddr (id,s,pr,th,p,_)) -> th <> None || p = None
+                             | Expr.AddrT (Expr.VarAddr v) -> (Expr.var_parameter v) <> Expr.Shared ||
+                                                            (Expr.var_scope v) = Expr.GlobalScope
                              | _ -> true
                            ) temp_dom in
 
