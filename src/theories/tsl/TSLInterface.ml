@@ -154,9 +154,8 @@ and set_to_tsl_set (s:E.set) : SL.set =
   | E.AddrToSetAt (m,a,l) -> SL.AddrToSet (mem_to_tsl_mem m,
                                                addr_to_tsl_addr a,
                                                int_to_tsl_int l)
-  | E.SetArrayRd (E.VarArray (id,s,pr,th,p,_),t) ->
-      let v = E.build_var id s pr (Some t) p E.Normal in
-      SL.VarSet (var_to_tsl_var v)
+  | E.SetArrayRd (E.VarArray v,t) ->
+      SL.VarSet (var_to_tsl_var (E.var_set_param (E.Local t) v))
   | E.SetArrayRd _        -> raise(UnsupportedTslExpr(E.set_to_str s))
 
 
@@ -166,9 +165,8 @@ and elem_to_tsl_elem (e:E.elem) : SL.elem =
   match e with
     E.VarElem v              -> SL.VarElem (var_to_tsl_var v)
   | E.CellData c             -> SL.CellData (cell_to_tsl_cell c)
-  | E.ElemArrayRd (E.VarArray (id,s,pr,th,p,_),t) ->
-      let v = E.build_var id s pr (Some t) p E.Normal in
-      SL.VarElem (var_to_tsl_var v)
+  | E.ElemArrayRd (E.VarArray v,t) ->
+      SL.VarElem (var_to_tsl_var (E.var_set_param (E.Local t) v))
   | E.ElemArrayRd _          -> raise(UnsupportedTslExpr(E.elem_to_str e))
   | E.HavocListElem          -> raise(UnsupportedTslExpr(E.elem_to_str e))
   | E.HavocSkiplistElem      -> SL.HavocSkiplistElem
@@ -186,9 +184,8 @@ and addr_to_tsl_addr (a:E.addr) : SL.addr =
   | E.NextAt (c,l)           -> SL.NextAt (cell_to_tsl_cell c, int_to_tsl_int l)
   | E.FirstLocked _          -> raise(UnsupportedTslExpr(E.addr_to_str a))
   | E.FirstLockedAt _        -> raise(UnsupportedTslExpr(E.addr_to_str a))
-  | E.AddrArrayRd (E.VarArray (id,s,pr,th,p,_),t) ->
-      let v = E.build_var id s pr (Some t) p E.Normal in
-      SL.VarAddr (var_to_tsl_var v)
+  | E.AddrArrayRd (E.VarArray v,t) ->
+      SL.VarAddr (var_to_tsl_var (E.var_set_param (E.Local t) v))
   | E.AddrArrayRd _          -> raise(UnsupportedTslExpr(E.addr_to_str a))
   | E.AddrArrRd (aa,i)       -> SL.AddrArrRd (addrarr_to_tsl_addrarr aa,
                                                   int_to_tsl_int i)
@@ -216,9 +213,8 @@ and cell_to_tsl_cell (c:E.cell) : SL.cell =
   | E.CellUnlockAt (c,l)   -> SL.CellUnlockAt (cell_to_tsl_cell c,
                                                    int_to_tsl_int l)
   | E.CellAt (m,a)         -> SL.CellAt (mem_to_tsl_mem m, addr_to_tsl_addr a)
-  | E.CellArrayRd (E.VarArray (id,s,pr,th,p,_),t) ->
-      let v = E.build_var id s pr (Some t) p E.Normal in
-      SL.VarCell (var_to_tsl_var v)
+  | E.CellArrayRd (E.VarArray v,t) ->
+      SL.VarCell (var_to_tsl_var (E.var_set_param (E.Local t) v))
   | E.CellArrayRd _        -> raise(UnsupportedTslExpr(E.cell_to_str c))
 
 
@@ -233,9 +229,8 @@ and setth_to_tsl_setth (st:E.setth) : SL.setth =
   | E.UnionTh (s1,s2)   -> SL.UnionTh (to_setth s1, to_setth s2)
   | E.IntrTh (s1,s2)    -> SL.IntrTh (to_setth s1, to_setth s2)
   | E.SetdiffTh (s1,s2) -> SL.SetdiffTh (to_setth s1, to_setth s2)
-  | E.SetThArrayRd (E.VarArray (id,s,pr,th,p,_),t) ->
-      let v = E.build_var id s pr (Some t) p E.Normal in
-      SL.VarSetTh (var_to_tsl_var v)
+  | E.SetThArrayRd (E.VarArray v,t) ->
+      SL.VarSetTh (var_to_tsl_var (E.var_set_param (E.Local t) v))
   | E.SetThArrayRd _    -> raise(UnsupportedTslExpr(E.setth_to_str st))
 
 
@@ -250,9 +245,8 @@ and setelem_to_tsl_setelem (se:E.setelem) : SL.setelem =
   | E.UnionElem (s1,s2)   -> SL.UnionElem (to_setelem s1, to_setelem s2)
   | E.IntrElem (s1,s2)    -> SL.IntrElem (to_setelem s1, to_setelem s2)
   | E.SetdiffElem (s1,s2) -> SL.SetdiffElem (to_setelem s1, to_setelem s2)
-  | E.SetElemArrayRd (E.VarArray (id,s,pr,th,p,_),t) ->
-      let v = E.build_var id s pr (Some t) p E.Normal in
-      SL.VarSetElem (var_to_tsl_var v)
+  | E.SetElemArrayRd (E.VarArray v,t) ->
+      SL.VarSetElem (var_to_tsl_var (E.var_set_param (E.Local t) v))
   | E.SetToElems (s,m)    -> SL.SetToElems (set_to_tsl_set s,
                                                 mem_to_tsl_mem m)
   | E.SetElemArrayRd _    -> raise(UnsupportedTslExpr(E.setelem_to_str se))
@@ -282,9 +276,8 @@ and mem_to_tsl_mem (m:E.mem) : SL.mem =
                                        addr_to_tsl_addr a,
                                        cell_to_tsl_cell c)
   (* Missing the case for "emp" *)
-  | E.MemArrayRd (E.VarArray (id,s,pr,th,p,_),t) ->
-      let v = E.build_var id s pr (Some t) p E.Normal in
-      SL.VarMem (var_to_tsl_var v)
+  | E.MemArrayRd (E.VarArray v,t) ->
+      SL.VarMem (var_to_tsl_var (E.var_set_param (E.Local t) v))
   | E.MemArrayRd _        -> raise(UnsupportedTslExpr(E.mem_to_str m))
 
 
@@ -368,10 +361,9 @@ and atom_to_tsl_atom (a:E.atom) : SL.atom =
   | E.InEq (t1,t2)         -> SL.InEq (term t1, term t2)
   | E.BoolVar v            -> SL.BoolVar (var_to_tsl_var v)
   | E.BoolArrayRd _        -> raise(UnsupportedTslExpr(E.atom_to_str a))
-  | E.PC (pc,t,pr)         -> SL.PC (pc, Option.lift tid_to_tsl_tid t,pr)
+  | E.PC (pc,t,pr)         -> SL.PC (pc, shared_to_tsl_shared t,pr)
   | E.PCUpdate (pc,t)      -> SL.PCUpdate (pc, tid_to_tsl_tid t)
-  | E.PCRange (pc1,pc2,t,pr) -> SL.PCRange (pc1, pc2,
-                                        Option.lift tid_to_tsl_tid t,pr)
+  | E.PCRange (pc1,pc2,t,pr) -> SL.PCRange (pc1, pc2, shared_to_tsl_shared t, pr)
 
 
 and literal_to_tsl_literal (l:E.literal) : SL.literal =
@@ -423,8 +415,24 @@ let rec tsl_sort_to_sort (s:SL.sort) : E.sort =
 and var_to_expr_var (v:SL.variable) : E.variable =
   let (id,s,pr,th,p) = v
   in
-    (id, tsl_sort_to_sort s, pr, Option.lift tid_to_expr_tid th, p, E.Normal)
+    E.build_var (id)
+                (tsl_sort_to_sort s)
+                (pr)
+                (shared_to_expr_shared th)
+                (scope_to_expr_scope p)
+                (E.RealVal)
 
+
+and shared_to_expr_shared (th:SL.tid option) : E.shared_or_local =
+  match th with
+  | None   -> E.Shared
+  | Some t -> E.Local t
+
+
+and scope_to_expr_scope (p:string option) : E.procedure_name =
+  match p with
+  | None      -> E.GlobalScope
+  | Some proc -> E.Scope proc
 
 
 and tid_to_expr_tid (th:SL.tid) : E.tid =
