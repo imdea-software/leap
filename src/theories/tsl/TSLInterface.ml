@@ -62,20 +62,23 @@ and build_term_var (v:E.variable) : SL.term =
 and var_to_tsl_var (v:E.variable) : SL.variable =
 (*  LOG "Entering var_to_tsl_var..." LEVEL TRACE; *)
 (*  LOG "var_to_tsl_var(%s)" (E.variable_to_str v) LEVEL DEBUG; *)
-  SL.build_var v.E.id (sort_to_tsl_sort v.E.sort) v.E.is_primed
-    (shared_to_tsl_shared v.E.parameter) (scope_to_tsl_scope v.E.scope)
+	SL.build_var (v.E.id)
+							 (sort_to_tsl_sort v.E.sort)
+							 (v.E.is_primed)
+							 (shared_to_tsl_shared v.E.parameter)
+							 (scope_to_tsl_scope v.E.scope)
 
 
-and shared_to_tsl_shared (th:E.shared_or_local) : SL.tid option =
-  match th with
-  | E.Shared  -> None
-  | E.Local t -> Some (tid_to_tsl_tid t)
+and shared_to_tsl_shared (th:E.shared_or_local) : SL.shared_or_local =
+	match th with
+	| E.Shared  -> SL.Shared
+	| E.Local t -> SL.Local (tid_to_tsl_tid t)
 
 
-and scope_to_tsl_scope (p:E.procedure_name) : string option =
+and scope_to_tsl_scope (p:E.procedure_name) : SL.procedure_name =
   match p with
-  | E.GlobalScope -> None
-  | E.Scope proc  -> Some proc
+	| E.GlobalScope -> SL.GlobalScope
+	| E.Scope proc  -> SL.Scope proc
 
 
 and tid_to_tsl_tid (th:E.tid) : SL.tid =
