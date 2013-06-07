@@ -41,7 +41,7 @@ module Make (SLK : TSLKExpression.S) =
 
     and build_term_var (v:E.variable) : SLK.term =
       let tslk_v = var_to_tslk_var v in
-      match v.E.sort with
+      match (E.var_sort v) with
         E.Set       -> SLK.SetT       (SLK.VarSet        tslk_v)
       | E.Elem      -> SLK.ElemT      (SLK.VarElem       tslk_v)
       | E.Thid      -> SLK.ThidT      (SLK.VarTh         tslk_v)
@@ -56,11 +56,11 @@ module Make (SLK : TSLKExpression.S) =
 
 
     and var_to_tslk_var (v:E.variable) : SLK.variable =
-      SLK.build_var (v.E.id)
-                     (sort_to_tslk_sort v.E.sort)
-                     (v.E.is_primed)
-                     (shared_to_tslk_shared v.E.parameter)
-                     (scope_to_tslk_scope v.E.scope)
+      SLK.build_var (E.var_id v)
+                    (sort_to_tslk_sort (E.var_sort v))
+                    (E.var_is_primed v)
+                    (shared_to_tslk_shared (E.var_parameter v))
+                    (scope_to_tslk_scope (E.var_scope v))
 
 
     and shared_to_tslk_shared (th:E.shared_or_local) : SLK.shared_or_local =

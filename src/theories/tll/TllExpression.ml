@@ -3,8 +3,18 @@ open LeapLib
 
 type varId = string
 
+and shared_or_local = Shared  | Local of tid
 
-type variable = varId * sort * bool * tid option * string option
+and procedure_name  = GlobalScope | Scope of string
+
+and variable =
+  {
+            id        : varId           ;
+            sort      : sort            ;
+    mutable is_primed : bool            ;
+    mutable parameter : shared_or_local ;
+            scope     : procedure_name  ;
+  }
 
 and sort =
     Set
@@ -103,9 +113,9 @@ and atom =
   | Eq           of eq
   | InEq         of diseq
   | BoolVar      of variable
-  | PC           of int * tid option * bool
+  | PC           of int * shared_or_local * bool
   | PCUpdate     of int * tid
-  | PCRange      of int * int * tid option * bool
+  | PCRange      of int * int * shared_or_local * bool
 and literal =
     Atom    of atom
   | NegAtom of atom
@@ -144,49 +154,59 @@ exception WrongType of term
 let build_var (id:varId)
               (s:sort)
               (pr:bool)
-              (th:tid option)
-              (p:string option) : variable =
-  (id,s,pr,th,p)
+              (th:shared_or_local)
+              (p:procedure_name) : variable =
+  {
+    id = id;
+    sort = s;
+    is_primed = pr;
+    parameter = th;
+    scope = p;
+  }
 
 
-let param_var (v:variable) (th:tid) : variable =
-  let (id,s,pr,_,p) = v
-  in
-    (id,s,pr,Some th,p)
+let var_id (v:variable) : varId =
+  v.id
+
+
+let var_sort (v:variable) : sort =
+  v.sort
+
+
+let var_is_primed (v:variable) : bool =
+  v.is_primed
+
+
+let var_parameter (v:variable) : shared_or_local =
+  v.parameter
+
+
+let var_scope (v:variable) : procedure_name =
+  v.scope
+
+
+let var_set_param (th:shared_or_local) (v:variable) : variable =
+  v.parameter <- th; v
 
 
 let is_global_var (v:variable) : bool =
-  let (_,_,_,_,p) = v in p = None
-
-
-let get_sort (v:variable) : sort =
-  let (_,s,_,_,_) = v in s
+  v.scope = GlobalScope
 
 
 let prime_var (v:variable) : variable =
-  let (id,s,_,th,p) = v in (id,s,true,th,p)
+  v.is_primed <- true; v
 
 
 let unprime_var (v:variable) : variable =
-  let (id,s,_,th,p) = v in (id,s,false,th,p)
-
-
-let is_primed_var (v:variable) : bool =
-  let (_,_,pr,_,_) = v in
-    pr
+  v.is_primed <- false; v
 
 
 let is_primed_tid (th:tid) : bool =
   match th with
-  | VarTh v           -> is_primed_var v
+  | VarTh v           -> v.is_primed
   | NoThid            -> false
   | CellLockId _      -> false
   (* FIX: Propagate the query inside cell??? *)
-
-
-let var_th (v:variable) : tid option =
-  let (_,_,_,th,_) = v in th
-
 
 
 (*******************************)
@@ -255,11 +275,9 @@ let (@@) s1 s2 =
   S.union s1 s2
 
 let get_varset_from_param (v:variable) : S.t =
-  let (_,_,_,th,_) = v
-  in
-    match th with
-      Some (VarTh t) -> S.singleton t
-    | _              -> S.empty
+  match v.parameter with
+  | Local (VarTh t) -> S.singleton t
+  | _               -> S.empty
 
 
 let rec get_varset_set s =
@@ -346,9 +364,9 @@ and get_varset_atom a =
     | Eq((x,y))              -> (get_varset_term x) @@ (get_varset_term y)
     | InEq((x,y))            -> (get_varset_term x) @@ (get_varset_term y)
     | BoolVar v              -> S.singleton v
-    | PC(pc,th,pr)           -> Option.map_default get_varset_tid S.empty th
+    | PC(pc,th,pr)           -> (match th with | Shared -> S.empty | Local t -> get_varset_tid t)
     | PCUpdate (pc,th)       -> (get_varset_tid th)
-    | PCRange(pc1,pc2,th,pr) -> Option.map_default get_varset_tid S.empty th
+    | PCRange(pc1,pc2,th,pr) -> (match th with | Shared -> S.empty | Local t -> get_varset_tid t)
 and get_varset_term t = match t with
       VarT   v            -> S.singleton v @@ get_varset_from_param v
     | SetT   s            -> get_varset_set s
@@ -390,20 +408,21 @@ and get_varset_from_formula phi =
                        (get_varset_from_formula f2)
 
 
-let localize_with_underscore (v:varId) (p_name:string option) : string =
-  let p_str = Option.map_default (fun p -> p^"_") "" p_name
-  in
-    sprintf "%s%s" p_str v
+let localize_with_underscore (id:varId) (p_name:procedure_name) : string =
+  match p_name with
+  | GlobalScope -> id
+  | Scope proc  -> proc ^ "_" ^ id
 
 
 let varset_of_sort all s =
-  let filt (v,asort,pr,th,p) res =
-    if asort=s then
-      VarSet.add (v,asort,pr,None,p) res
+  let filt v res =
+    if v.sort = s then
+      VarSet.add (var_set_param Shared v) res
 (*      VarSet.add ((localize_with_underscore v p) res *)
     else
       res in
     S.fold filt all VarSet.empty
+
 
 let get_varset_of_sort_from_conj phi s =
   varset_of_sort (get_varset_from_conj phi) s
@@ -413,8 +432,8 @@ let get_varlist_from_conj phi =
   S.elements (get_varset_from_conj phi)
 
 let varlist_of_sort varlist s =
-  let is_s (_,asort,_,_,_) = (asort=s) in
-  List.map (fun (v,_,_,_,p) -> (localize_with_underscore v p))
+  let is_s v = (v.sort = s) in
+  List.map (fun v -> (localize_with_underscore v.id v.scope))
            (List.filter is_s varlist)
 
 let get_varlist_of_sort_from_conj phi s =
@@ -439,12 +458,12 @@ let rec get_termset_atom (a:atom) : TermSet.t =
   | InEq((x,y))            -> add_list [x;y]
   | BoolVar v              -> add_list [VarT v]
   | PC(pc,th,pr)           -> (match th with
-                               | None   -> TermSet.empty
-                               | Some t -> add_list [ThidT t])
+                               | Shared  -> TermSet.empty
+                               | Local t -> add_list [ThidT t])
   | PCUpdate (pc,th)       -> add_list [ThidT th]
   | PCRange(pc1,pc2,th,pr) -> (match th with
-                               | None   -> TermSet.empty
-                               | Some t -> add_list [ThidT t])
+                               | Shared  -> TermSet.empty
+                               | Local t -> add_list [ThidT t])
 
 and get_termset_literal (l:literal) : TermSet.t =
   match l with
@@ -488,7 +507,7 @@ let termset_of_sort (all:TermSet.t) (s:sort) : TermSet.t =
     | Path    -> (match t with | PathT _    -> true | _ -> false)
     | Mem     -> (match t with | MemT _     -> true | _ -> false)
     | Bool    -> (match t with
-                  | VarT v -> get_sort v = Bool
+                  | VarT v -> v.sort = Bool
                   | _      -> false)
     | Unknown -> false in
   TermSet.fold (fun t set ->
@@ -559,7 +578,7 @@ let get_sort_from_term t =
     | SetElemT _       -> SetElem
     | PathT _          -> Path
     | MemT _           -> Mem
-    | VarUpdate(v,_,_) -> get_sort v
+    | VarUpdate(v,_,_) -> v.sort
   
 let terms_same_type a b =
   (get_sort_from_term a) = (get_sort_from_term b)
@@ -716,11 +735,27 @@ let localize_var_id (v:varId) (p_name:string) : string =
 
 
 let rec variable_to_str (v:variable) : string =
-  let (id,_,pr,th,p) = v in
-  let v_str = sprintf "%s%s" (Option.map_default (localize_var_id id) id p)
-                             (Option.map_default (fun t -> "(" ^ tid_to_str t ^ ")" ) "" th)
+  let v_str = sprintf "%s%s" (match v.scope with
+                              | GlobalScope -> v.id
+                              | Scope proc  -> localize_var_id v.id proc)
+                             (match v.parameter with
+                              | Shared -> ""
+                              | Local t -> "(" ^ tid_to_str t ^ ")")
   in
-    if pr then v_str ^ "'" else v_str
+    if v.is_primed then v_str ^ "'" else v_str
+
+
+and shared_or_local_to_str (th:shared_or_local) : string =
+  match th with
+  | Shared -> ""
+  | Local t -> tid_to_str t
+
+
+and procedure_name_to_str (p:procedure_name) : string =
+  match p with
+  | GlobalScope -> ""
+  | Scope proc -> proc
+
 
 and atom_to_str a =
   match a with
@@ -753,14 +788,12 @@ and atom_to_str a =
   | InEq(exp)                  -> diseq_to_str (exp)
   | BoolVar v                  -> variable_to_str v
   | PC (pc,t,pr)               -> let pc_str = if pr then "pc'" else "pc" in
-                                  let th_str = Option.map_default
-                                                 tid_to_str "" t in
+                                  let th_str = shared_or_local_to_str t in
                                   Printf.sprintf "%s(%s) = %i" pc_str th_str pc
   | PCUpdate (pc,t)            -> let th_str = tid_to_str t in
                                   Printf.sprintf "pc' = pc{%s<-%i}" th_str pc
   | PCRange (pc1,pc2,t,pr)     -> let pc_str = if pr then "pc'" else "pc" in
-                                  let th_str = Option.map_default
-                                                 tid_to_str "" t in
+                                  let th_str = shared_or_local_to_str t in
                                   Printf.sprintf "%i <= %s(%s) <= %i"
                                                   pc1 pc_str th_str pc2
 
@@ -975,7 +1008,7 @@ let variable_set_to_str varset =
   VarIdSet.fold (fun v str -> str ^ v ^ "\n") varset ""
 
 let typed_variable_set_to_str tvarset =
-  let pr (v,s,_,_,_) str = (str ^ v ^ ": " ^ (sort_to_str s) ^ "\n") in
+  let pr v str = (str ^ v.id ^ ": " ^ (sort_to_str v.sort) ^ "\n") in
     S.fold pr tvarset ""
 
 let print_variable_set varset =
@@ -993,16 +1026,15 @@ let print_typed_variable_set tvarset =
 
 
 (* VOCABULARY FUNCTIONS *)
-let rec voc_var (v:variable) : tid list =
-  ( match get_sort v with
-    | Thid -> [VarTh v]
-    | _    -> []
-  ) @ Option.map_default (fun x -> [x]) [] (var_th v)
+let rec get_tid_in (v:variable) : tid list =
+  match v.parameter with Shared -> [] | Local t -> [t]
 
 
 and voc_term (expr:term) : tid list =
   match expr with
-    | VarT v             -> voc_var v
+    | VarT v             -> (match v.sort with
+                             | Thid -> [VarTh v]
+                             | _    -> [] ) @ get_tid_in v
     | SetT(set)          -> voc_set set
     | AddrT(addr)        -> voc_addr addr
     | ElemT(elem)        -> voc_elem elem
@@ -1012,13 +1044,13 @@ and voc_term (expr:term) : tid list =
     | SetElemT(setelem)  -> voc_setelem setelem
     | PathT(path)        -> voc_path path
     | MemT(mem)          -> voc_mem mem
-    | VarUpdate (v,th,t) -> (voc_var v) @ (voc_tid th) @ (voc_term t)
+    | VarUpdate (v,th,t) -> (get_tid_in v) @ (voc_tid th) @ (voc_term t)
 
 
 
 and voc_set (e:set) : tid list =
   match e with
-    VarSet v            -> Option.map_default (fun x->[x]) [] (var_th v)
+    VarSet v            -> get_tid_in v
   | EmptySet            -> []
   | Singl(addr)         -> (voc_addr addr)
   | Union(s1,s2)        -> (voc_set s1) @ (voc_set s2)
@@ -1030,7 +1062,7 @@ and voc_set (e:set) : tid list =
 
 and voc_addr (a:addr) : tid list =
   match a with
-    VarAddr v             -> Option.map_default (fun x->[x]) [] (var_th v)
+    VarAddr v             -> get_tid_in v
   | Null                  -> []
   | Next(cell)            -> (voc_cell cell)
   | FirstLocked(mem,path) -> (voc_mem mem) @ (voc_path path)
@@ -1038,7 +1070,7 @@ and voc_addr (a:addr) : tid list =
 
 and voc_elem (e:elem) : tid list =
   match e with
-    VarElem v          -> Option.map_default (fun x->[x]) [] (var_th v)
+    VarElem v          -> get_tid_in v
   | CellData(cell)     -> (voc_cell cell)
   | HavocListElem      -> []
   | LowestElem         -> []
@@ -1047,14 +1079,14 @@ and voc_elem (e:elem) : tid list =
 
 and voc_tid (th:tid) : tid list =
   match th with
-    VarTh v            -> th :: (Option.map_default (fun x->[x]) [] (var_th v))
+    VarTh v            -> th :: get_tid_in v
   | NoThid             -> []
   | CellLockId(cell)   -> (voc_cell cell)
 
 
 and voc_cell (c:cell) : tid list =
   match c with
-    VarCell v            -> Option.map_default (fun x->[x]) [] (var_th v)
+    VarCell v            -> get_tid_in v
   | Error                -> []
   | MkCell(data,addr,th) -> (voc_elem data) @
                             (voc_addr addr) @
@@ -1066,7 +1098,7 @@ and voc_cell (c:cell) : tid list =
 
 and voc_setth (s:setth) : tid list =
   match s with
-    VarSetTh v          -> Option.map_default (fun x->[x]) [] (var_th v)
+    VarSetTh v          -> get_tid_in v
   | EmptySetTh          -> []
   | SinglTh(th)         -> (voc_tid th)
   | UnionTh(s1,s2)      -> (voc_setth s1) @ (voc_setth s2)
@@ -1076,7 +1108,7 @@ and voc_setth (s:setth) : tid list =
 
 and voc_setelem (s:setelem) : tid list =
   match s with
-    VarSetElem v          -> Option.map_default (fun x->[x]) [] (var_th v)
+    VarSetElem v          -> get_tid_in v
   | EmptySetElem          -> []
   | SinglElem(e)          -> (voc_elem e)
   | UnionElem(s1,s2)      -> (voc_setelem s1) @ (voc_setelem s2)
@@ -1087,7 +1119,7 @@ and voc_setelem (s:setelem) : tid list =
 
 and voc_path (p:path) : tid list =
   match p with
-    VarPath v                -> Option.map_default (fun x->[x]) [] (var_th v)
+    VarPath v                -> get_tid_in v
   | Epsilon                  -> []
   | SimplePath(addr)         -> (voc_addr addr)
   | GetPath(mem,a_from,a_to) -> (voc_mem mem) @
@@ -1097,7 +1129,7 @@ and voc_path (p:path) : tid list =
 
 and voc_mem (m:mem) : tid list =
   match m with
-    VarMem v             -> Option.map_default (fun x->[x]) [] (var_th v)
+    VarMem v             -> get_tid_in v
   | Emp                  -> []
   | Update(mem,add,cell) -> (voc_mem mem) @ (voc_addr add) @ (voc_cell cell)
 
@@ -1124,10 +1156,10 @@ and voc_atom (a:atom) : tid list =
   | GreaterElem(e1,e2)         -> (voc_elem e1) @ (voc_elem e2)
   | Eq(exp)                    -> (voc_eq exp)
   | InEq(exp)                  -> (voc_ineq exp)
-  | BoolVar v                  -> Option.map_default (fun x->[x]) [] (var_th v)
-  | PC (pc,t,_)                -> Option.map_default (fun x->[x]) [] t
+  | BoolVar v                  -> get_tid_in v
+  | PC (pc,t,_)                -> (match t with | Shared -> [] | Local x -> [x])
   | PCUpdate (pc,t)            -> [t]
-  | PCRange (pc1,pc2,t,_)      -> Option.map_default (fun x->[x]) [] t
+  | PCRange (pc1,pc2,t,_)      -> (match t with | Shared -> [] | Local x -> [x])
 
 
 and voc_eq ((t1,t2):eq) : tid list = (voc_term t1) @ (voc_term t2)
@@ -1831,17 +1863,17 @@ let required_sorts (phi:formula) : sort list =
 
   and req_term (t:term) : SortSet.t =
     match t with
-    | VarT (_,s,_,_,_)             -> single s
-    | SetT s                       -> req_s s
-    | ElemT e                      -> req_e e
-    | ThidT t                      -> req_t t
-    | AddrT a                      -> req_a a
-    | CellT c                      -> req_c c
-    | SetThT s                     -> req_st s
-    | SetElemT s                   -> req_se s
-    | PathT p                      -> req_p p
-    | MemT m                       -> req_m m
-    | VarUpdate ((_,s,_,_,_),t,tr) -> append s [req_t t;req_term tr]
+    | VarT v             -> single v.sort
+    | SetT s             -> req_s s
+    | ElemT e            -> req_e e
+    | ThidT t            -> req_t t
+    | AddrT a            -> req_a a
+    | CellT c            -> req_c c
+    | SetThT s           -> req_st s
+    | SetElemT s         -> req_se s
+    | PathT p            -> req_p p
+    | MemT m             -> req_m m
+    | VarUpdate (v,t,tr) -> append v.sort [req_t t;req_term tr]
   in
     SortSet.elements (req_f phi)
 

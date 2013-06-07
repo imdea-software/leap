@@ -105,7 +105,9 @@ let build_fresh_tid_array_var (t:E.tid) : variable =
 
 
 let rec conv_variable (v:E.variable) : variable =
-  build_var v.E.id v.E.is_primed (conv_shared_or_local v.E.parameter) (conv_procedure_name v.E.scope)
+  build_var (E.var_id v) (E.var_is_primed v)
+            (conv_shared_or_local (E.var_parameter v))
+            (conv_procedure_name (E.var_scope v))
 
 
 and conv_shared_or_local (th:E.shared_or_local) : shared_or_local =

@@ -43,7 +43,7 @@ and build_term_var (v:E.variable) : SL.term =
 (*  LOG "Entering build_term_var..." LEVEL TRACE; *)
 (*  LOG "build_term_var(%s)" (E.variable_to_str v) LEVEL DEBUG; *)
   let tsl_v = var_to_tsl_var v in
-  match v.E.sort with
+  match (E.var_sort v) with
     E.Set       -> SL.SetT       (SL.VarSet        tsl_v)
   | E.Elem      -> SL.ElemT      (SL.VarElem       tsl_v)
   | E.Thid      -> SL.ThidT      (SL.VarTh         tsl_v)
@@ -62,11 +62,11 @@ and build_term_var (v:E.variable) : SL.term =
 and var_to_tsl_var (v:E.variable) : SL.variable =
 (*  LOG "Entering var_to_tsl_var..." LEVEL TRACE; *)
 (*  LOG "var_to_tsl_var(%s)" (E.variable_to_str v) LEVEL DEBUG; *)
-  SL.build_var (v.E.id)
-               (sort_to_tsl_sort v.E.sort)
-               (v.E.is_primed)
-               (shared_to_tsl_shared v.E.parameter)
-               (scope_to_tsl_scope v.E.scope)
+  SL.build_var (E.var_id v)
+               (sort_to_tsl_sort (E.var_sort v))
+               (E.var_is_primed v)
+               (shared_to_tsl_shared (E.var_parameter v))
+               (scope_to_tsl_scope (E.var_scope v))
 
 
 and shared_to_tsl_shared (th:E.shared_or_local) : SL.shared_or_local =

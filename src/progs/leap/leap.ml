@@ -215,6 +215,7 @@ let _ =
       ignore $ VCG.check_with_graph sys graph
     end;
 
+(*
     if (!LeapArgs.vdFile <> "" || !LeapArgs.pvdFile <> "") then begin
       let (vd_phi_voc, phi_vars, vd_phi) = match !LeapArgs.vdFormula with
         | "" -> ([], System.empty_var_table, Expr.True)
@@ -266,6 +267,7 @@ let _ =
             (Diagrams.PP.vc_to_str vc);
       end
     end;
+*)
     timer#stop;
     printf "Total Analysis time: %.3f\n" timer#elapsed_time
   with

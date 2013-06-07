@@ -149,15 +149,16 @@ let get_line id = snd id
 
 
 let check_sort_var (v:E.variable) : unit =
-  let generic_var = E.VarT (E.build_var v.E.id E.Unknown false E.Shared v.E.scope v.E.nature) in
+  let generic_var = E.VarT (E.build_var (E.var_id v) E.Unknown false E.Shared
+                                        (E.var_scope v) (E.var_nature v)) in
   let knownSort = get_sort generic_var in
-    if (knownSort != v.E.sort) then
+    if (knownSort != (E.var_sort v)) then
       begin
         Interface.Err.msg "Mismatch variable type" $
           sprintf "Variable %s is of sort %s, while it is trying to be \
                    assigned to an expression of sort %s"
-                    v.E.id (E.sort_to_str knownSort) (E.sort_to_str v.E.sort);
-        raise(Sort_mismatch(v.E.id,knownSort,v.E.sort))
+                    (E.var_id v) (E.sort_to_str knownSort) (E.sort_to_str (E.var_sort v));
+        raise(Sort_mismatch((E.var_id v),knownSort,(E.var_sort v)))
       end
 
 

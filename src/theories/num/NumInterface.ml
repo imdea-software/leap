@@ -25,11 +25,11 @@ let sort_to_expr_sort (s:NE.sort) : E.sort =
 (* SUBTYPE CONVERTER: *)
 
 let rec variable_to_int_variable (v:E.variable) : NE.variable =
-  NE.build_var (v.E.id)
-               (sort_to_int_sort v.E.sort)
-               (v.E.is_primed)
-               (shared_to_int_shared v.E.parameter)
-               (scope_to_int_scope v.E.scope)
+  NE.build_var (E.var_id v)
+               (sort_to_int_sort (E.var_sort v))
+               (E.var_is_primed v)
+               (shared_to_int_shared (E.var_parameter v))
+               (scope_to_int_scope (E.var_scope v))
 
 
 and shared_to_int_shared (th:E.shared_or_local) : NE.shared_or_local =

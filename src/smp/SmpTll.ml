@@ -70,7 +70,7 @@ let cut_off_normalized (expr:conjunctive_formula) : model_size =
 
   let vars_mem_set = if (Smp.forget_primed_mem !options &&
                           not (Smp.group_vars !options)) then
-                       VarSet.filter (fun v -> not (Expr.is_primed_var v))
+                       VarSet.filter (fun v -> not (Expr.var_is_primed v))
                          (varset_of_sort vars Mem)
                      else
                        varset_of_sort vars Mem in
@@ -97,7 +97,9 @@ let cut_off_normalized (expr:conjunctive_formula) : model_size =
                   let ts = ThreadSet.elements voc in
                   let (global,local) = List.partition Expr.is_global_var vs in
                   let local_param = List.fold_left (fun xs v ->
-                                      (List.map (Expr.param_var v) ts) @ xs
+                                      (List.map (fun t ->
+                                        Expr.var_set_param (Expr.Local t) v
+                                      ) ts) @ xs
                                     ) [] local in
                   let nexts = VarSet.fold (fun m ys ->
                                 ys @ List.map (fun a ->

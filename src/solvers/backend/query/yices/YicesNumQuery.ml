@@ -539,7 +539,7 @@ struct
   let tid_decl_to_str (voc:NE.tid list) : string =
     let id_list = List.map (fun t ->
                     match t with
-                      E.VarTh v -> v.E.id
+                      E.VarTh v -> (E.var_id v)
                     | E.NoThid  -> "NoThread"
                     | _ -> raise(Not_implemented "sort type in tid_decl")
                   ) voc in

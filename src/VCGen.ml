@@ -1115,7 +1115,7 @@ struct
       E.construct_term_set $ List.map (fun x -> E.ThidT x) th_list in
   
     (* For Malloc -- BEGIN *)
-    let is_sort s v = (v.E.sort = s) in
+    let is_sort s v = (E.var_sort v = s) in
     let gVars = Sys.get_variable_list (Sys.get_global sys) in
     let lVars = Sys.get_all_local_vars sys in
     let gAddrVars = List.filter (is_sort E.Addr) gVars in

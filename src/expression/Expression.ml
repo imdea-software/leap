@@ -440,6 +440,30 @@ let build_var (id:varId)
   }
 
 
+let var_id (v:variable) : varId =
+  v.id
+
+
+let var_sort (v:variable) : sort =
+  v.sort
+
+
+let var_is_primed (v:variable) : bool =
+  v.is_primed
+
+
+let var_parameter (v:variable) : shared_or_local =
+  v.parameter
+
+
+let var_scope (v:variable) : procedure_name =
+  v.scope
+
+
+let var_nature (v:variable) : var_nature =
+  v.nature
+
+
 let var_clear_param_info (v:variable) : variable =
   v.parameter <- Shared; v
 

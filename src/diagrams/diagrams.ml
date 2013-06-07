@@ -3,7 +3,7 @@
 open Printf
 open LeapLib
 
-module Expr     = Expression
+module E        = Expression
 module OcamlSys = Sys
 module Sys      = System
 module Stm      = Statement
@@ -11,13 +11,13 @@ module Stm      = Statement
 (* Type declaration *)
 
 (* Types for transitions *)
-type trans_id_t = Expr.pc_t
-type trans_t = trans_id_t * Expr.shared_or_local
+type trans_id_t = E.pc_t
+type trans_t = trans_id_t * E.shared_or_local
 
 
 (* Types for nodes *)
 type node_id_t = int
-type node_info_t = Expr.formula
+type node_info_t = E.formula
 type node_t = node_id_t * node_info_t
 type node_table_t = (node_id_t, node_info_t) Hashtbl.t
 type next_table_t = (node_id_t, node_id_t) Hashtbl.t
@@ -40,8 +40,8 @@ module BoxIdSet = Set.Make(
     type t = box_id_t
   end )
 
-type box_t       = (box_id_t * node_id_t list * Expr.tid)
-type box_table_t = (node_id_t, box_id_t * Expr.tid) Hashtbl.t
+type box_t       = (box_id_t * node_id_t list * E.tid)
+type box_table_t = (node_id_t, box_id_t * E.tid) Hashtbl.t
 
 
 
@@ -64,7 +64,7 @@ type delta_range_t =
     Single of node_id_t
   | Range of node_id_t * node_id_t
   | Default
-type delta_fun_t = (node_id_t, Expr.term) Hashtbl.t
+type delta_fun_t = (node_id_t, E.term) Hashtbl.t
 type acceptance_pair_t = EdgeSet.t * EdgeSet.t * delta_fun_t
 type acceptance_list_t = acceptance_pair_t list
 
@@ -89,7 +89,7 @@ type vd_t = {
 (* Type for Parametrized Verification Diagrams *)
 type pvd_t = {
   pvd_name              : string;
-  pvd_support           : Expr.formula list;
+  pvd_support           : E.formula list;
   pvd_nodes             : node_table_t;
   pvd_nodes_0           : node_id_t list;
   pvd_boxes             : box_t list;
@@ -101,17 +101,17 @@ type pvd_t = {
   pvd_accept            : acceptance_list_t;
   (* Ranking functions *)
   (* Labeling function *)
-  mutable pvd_phi_param : Expr.tid list;
+  mutable pvd_phi_param : E.tid list;
 }
 
 
 (* Verification Diagram Verification conditions *)
 type vd_vc_t = {
-  initialization : Expr.formula;
-  consecution    : (node_id_t * trans_t * Expr.formula) list;
-  acceptance     : Expr.formula list;
-  fairness       : (edge_pair_t * trans_t * Expr.formula) list;
-  satisfaction   : Expr.formula list
+  initialization : E.formula;
+  consecution    : (node_id_t * trans_t * E.formula) list;
+  acceptance     : E.formula list;
+  fairness       : (edge_pair_t * trans_t * E.formula) list;
+  satisfaction   : E.formula list
 }
 
 (* Configuration *)
@@ -131,7 +131,7 @@ module PP = struct
   
   let node_info_to_str (info:node_info_t) : string =
     let f = info in
-      (Expr.formula_to_str f)
+      (E.formula_to_str f)
   
   
   let node_to_str (n:node_t) : string =
@@ -146,13 +146,13 @@ module PP = struct
   
   
   let trans_id_to_str (id:trans_id_t) : string =
-    Expr.pc_to_str id
+    E.pc_to_str id
   
   
   let trans_to_str (t:trans_t) : string =
     let (id,th) = t
     in
-      sprintf "T_%s%s" (trans_id_to_str id) (Expr.shared_or_local_to_str th)
+      sprintf "T_%s%s" (trans_id_to_str id) (E.shared_or_local_to_str th)
   
   
   let edge_info_to_str (info:edge_info_t) : string =
@@ -203,7 +203,7 @@ module PP = struct
   let delta_fun_to_str (fTbl:delta_fun_t) : string =
     let res = Hashtbl.fold (fun pos expr str ->
                 sprintf"%s : %s\n%s" (node_id_to_str pos)
-                                     (Expr.term_to_str expr)
+                                     (E.term_to_str expr)
                                      (str)
               ) fTbl ""
     in
@@ -247,17 +247,17 @@ module PP = struct
              Acceptance:\n%s\n\n\
              Fairness:\n%s\n\n\
              Satisfaction:\n%s\n"
-            (Expr.formula_to_str vc.initialization)
+            (E.formula_to_str vc.initialization)
             (String.concat "\n" $ List.map (fun (n,t,f) ->
                sprintf "Node %s, %s: %s" (node_id_to_str n)
                                          (trans_to_str t)
-                                         (Expr.formula_to_str f)) vc.consecution)
-            (String.concat "\n" $ List.map Expr.formula_to_str vc.acceptance)
+                                         (E.formula_to_str f)) vc.consecution)
+            (String.concat "\n" $ List.map E.formula_to_str vc.acceptance)
             (String.concat "\n" $ List.map (fun (e,t,f) ->
                sprintf "(%s,%s): %s" (edge_arrow_to_str e)
                                      (trans_to_str t)
-                                     (Expr.formula_to_str f)) vc.fairness)
-            (String.concat "\n" $ List.map Expr.formula_to_str vc.satisfaction)
+                                     (E.formula_to_str f)) vc.fairness)
+            (String.concat "\n" $ List.map E.formula_to_str vc.satisfaction)
 end
 
 (* Exceptions *)
@@ -266,14 +266,14 @@ exception Duplicated_node of node_id_t
 exception Undefined_edge of node_id_t * node_id_t
 exception No_edge_info of node_id_t * node_id_t
 exception Unknown_transition of trans_t
-exception Unknown_transition_param of Expr.tid list
+exception Unknown_transition_param of E.tid list
 exception Unparametrized_transition
 exception Missing_transition_info of trans_t
-exception Open_thread_identifier of Expr.tid
+exception Open_thread_identifier of E.tid
 exception No_thread
 exception Undefined_node of node_id_t
 exception Uncovered_node of node_id_t
-exception Unexpected_sort of Expr.sort
+exception Unexpected_sort of E.sort
 exception Unexpected_format
 exception Sort_expected
 exception Impossible_apply_function of delta_fun_t * node_id_t
@@ -360,17 +360,17 @@ struct
     String.lowercase t1 = String.lowercase t2  
   
   (* CONSTRUCTION FUNCTIONS *)
-  let new_trans (p:Expr.pc_t) (th:Expr.shared_or_local) : trans_t = (p,th)
+  let new_trans (p:E.pc_t) (th:E.shared_or_local) : trans_t = (p,th)
   
   let new_node_id (i:int) : node_id_t = i
-  let new_node_info (f:Expr.formula) : node_info_t = f
+  let new_node_info (f:E.formula) : node_info_t = f
   let new_node (n:node_id_t) (info:node_info_t) : node_t = (n,info)
   
   let new_edge_info (et:edge_type_t) (ts:trans_t list) : edge_info_t = (et,ts)
   let new_edge (f:node_id_t) (t:node_id_t) (info:edge_info_t) : edge_t =
     (f, t, info)
   
-  let new_box (id:box_id_t) (ns:node_id_t list) (th:Expr.tid) : box_t =
+  let new_box (id:box_id_t) (ns:node_id_t list) (th:E.tid) : box_t =
     (id, ns, th)
   
   let new_acceptance_pair (p:(node_id_t * node_id_t) list)
@@ -395,7 +395,7 @@ struct
       !ns
   
   
-  let app_delta (d:delta_fun_t) (n:node_id_t) : Expr.term =
+  let app_delta (d:delta_fun_t) (n:node_id_t) : E.term =
     try
       Hashtbl.find d n
     with _ -> try
@@ -416,7 +416,7 @@ struct
     LeapLib.rangeList min max
   
   
-  let node_mu (vd:vd_t) (n:node_id_t) : Expr.formula =
+  let node_mu (vd:vd_t) (n:node_id_t) : E.formula =
     let info = Hashtbl.find vd.nodes n in
       info
   
@@ -426,7 +426,7 @@ struct
       t_list
   
   
-  let pvd_node_mu (pvd:pvd_t) (n:node_id_t) : Expr.formula =
+  let pvd_node_mu (pvd:pvd_t) (n:node_id_t) : E.formula =
     let info = Hashtbl.find pvd.pvd_nodes n in
       info
   
@@ -448,24 +448,24 @@ struct
       t_list
   
   
-  let enabled (sys:Sys.system_t) (t:trans_t) : Expr.formula =
+  let enabled (sys:Sys.system_t) (t:trans_t) : E.formula =
     let (pc,th)      = t in
     let (proc,stm)   = Sys.get_statement_at sys pc in
     let enable_conds = Stm.enabling_condition th stm in
     (* FIX: Until we split "if" transitions into a true and a false transition *)
-    let cond         = Expr.disj_list enable_conds
+    let cond         = E.disj_list enable_conds
     in
       cond
   
   
   (* Returns a list with all parameters of boxes where node 'n' belongs to *)
-  let node_box_param_list (bTbl:box_table_t) (n:node_id_t) : Expr.tid list =
+  let node_box_param_list (bTbl:box_table_t) (n:node_id_t) : E.tid list =
     List.map snd (Hashtbl.find_all bTbl n)
   
   (* As before, but returns a set *)
-  let node_box_param_set (bTbl:box_table_t) (n:node_id_t) : Expr.ThreadSet.t =
-    List.fold_left (fun s t -> Expr.ThreadSet.add t s)
-      Expr.ThreadSet.empty (node_box_param_list bTbl n)
+  let node_box_param_set (bTbl:box_table_t) (n:node_id_t) : E.ThreadSet.t =
+    List.fold_left (fun s t -> E.ThreadSet.add t s)
+      E.ThreadSet.empty (node_box_param_list bTbl n)
   
   
   (* Returns a list with all box identifiers of boxes where node 'n' belongs to *)
@@ -480,12 +480,12 @@ struct
   let add_node (bTbl:box_table_t)
                (nTbl:node_table_t)
                (n:node_id_t)
-               (info:node_info_t) : Expr.ThreadSet.t =
-    let remains = ref Expr.ThreadSet.empty in
-    let mu_voc = Expr.voc info in
+               (info:node_info_t) : E.ThreadSet.t =
+    let remains = ref E.ThreadSet.empty in
+    let mu_voc = E.voc info in
     let box_param = node_box_param_list bTbl n in
     let _ = List.iter (fun x ->
-              remains := Expr.ThreadSet.add x !remains
+              remains := E.ThreadSet.add x !remains
             ) (List.filter (fun x -> not (List.mem x box_param)) mu_voc) in
     let _ = if Hashtbl.mem nTbl n then
               begin
@@ -521,10 +521,10 @@ struct
     let (_,t) = tran
     in
       match t with
-        Expr.Shared -> ()
-      | Expr.Local ((Expr.VarTh v) as th) ->
-          if Expr.is_tid_val th then
-            let i = int_of_string v.Expr.id in
+        E.Shared -> ()
+      | E.Local ((E.VarTh v) as th) ->
+          if E.is_tid_val th then
+            let i = int_of_string (E.var_id v) in
             if i < 1 || th_num < i then
               begin
                 Interface.Err.msg "Transition out of bounds" $
@@ -554,13 +554,13 @@ struct
     ) es
   
   
-  let check_transition_param (bTbl:box_table_t) (n:node_id_t) (tran:trans_t) : Expr.tid list =
+  let check_transition_param (bTbl:box_table_t) (n:node_id_t) (tran:trans_t) : E.tid list =
     let box_param = node_box_param_list bTbl n in
     let (id,t) = tran
     in
       match t with
-        Expr.Shared -> []
-      | Expr.Local th -> if not (List.mem th box_param) then [th] else []
+        E.Shared -> []
+      | E.Local th -> if not (List.mem th box_param) then [th] else []
   
   
   let check_and_add_pvd_edges (nTbl:node_table_t)
@@ -568,13 +568,13 @@ struct
                               (nxtTbl:next_table_t)
                               (tauTbl:(node_id_t * trans_t, node_id_t) Hashtbl.t)
                               (bTbl:box_table_t)
-                              (es:edge_t list) : Expr.ThreadSet.t =
-    let remains = ref Expr.ThreadSet.empty in
+                              (es:edge_t list) : E.ThreadSet.t =
+    let remains = ref E.ThreadSet.empty in
     let _ = List.iter (fun (f,t,(e_type,ts)) ->
               let _    = is_defined nTbl f in
               let _    = is_defined nTbl t in
               let _    = List.iter (fun x ->
-                           remains := Expr.ThreadSet.add x !remains
+                           remains := E.ThreadSet.add x !remains
                          ) (List.flatten $ List.map (check_transition_param bTbl f) ts) in
               let info = new_edge_info e_type ts in
                 Hashtbl.add eTbl (f,t) info;
@@ -688,26 +688,26 @@ struct
   
   (* Auxiliary function for gen_vd_vc *)
   let tran_assoc (t:trans_t)
-                 (tLst:(int * Expr.pc_t * Expr.formula list)list) : Expr.formula =
+                 (tLst:(int * E.pc_t * E.formula list)list) : E.formula =
     let (pc,th) = match t with
-                    (i, Expr.Local (Expr.VarTh v as th)) ->
-                      if Expr.is_tid_val th then
-                        (i, Expr.var_val v)
+                    (i, E.Local (E.VarTh v as th)) ->
+                      if E.is_tid_val th then
+                        (i, E.var_val v)
                       else
                         begin
                           Interface.Err.msg "Not a closed thread id" $
                           sprintf "Looking for transition information over a \
                                    closed system, a closed thread identifier was \
                                    expected, but instead %s was provided as \
-                                   argument." (Expr.tid_to_str th);
+                                   argument." (E.tid_to_str th);
                           raise(Open_thread_identifier th)
                         end
-                  | (_, Expr.Local t) ->
+                  | (_, E.Local t) ->
                     Interface.Err.msg "Not a valid thread identifier" $
                       sprintf "The thread \"%s\" is not valid as identifier"
-                              (Expr.tid_to_str t);
+                              (E.tid_to_str t);
                     raise(No_thread)
-                  | (_, Expr.Shared)                         ->
+                  | (_, E.Shared)                         ->
                     Interface.Err.msg "No thread identifier was provided"
                       "Looking for transition information over a closed system, \
                        a transition with no thread identifier was provided.";
@@ -721,46 +721,46 @@ struct
                                        such transition." (PP.trans_to_str t);
                               raise(Missing_transition_info t)
                            | (i',p',f)::xs -> if i=i' && p=p' then
-                                                Expr.disj_list f
+                                                E.disj_list f
                                               else
                                                 find i p xs
     in
       find th pc tLst
   
   
-  let cons_less_relation (s:Expr.sort) (t1:Expr.term) (t2:Expr.term)
-                              : Expr.formula =
+  let cons_less_relation (s:E.sort) (t1:E.term) (t2:E.term)
+                              : E.formula =
     match s with
-      Expr.Int ->
+      E.Int ->
         begin
           match (t1,t2) with
-            (Expr.IntT i1, Expr.IntT i2) -> Expr.less_form i1 i2
+            (E.IntT i1, E.IntT i2) -> E.less_form i1 i2
           | _ -> Interface.Err.msg "Unexpected integer format" $
                    sprintf "An expression describing an integer was expected.";
                  raise(Unexpected_format)
         end
-    | Expr.Set ->
+    | E.Set ->
         begin
           match (t1,t2) with
-            (Expr.SetT s1, Expr.SetT s2) -> Expr.subset_form s1 s2
+            (E.SetT s1, E.SetT s2) -> E.subset_form s1 s2
           | _ -> Interface.Err.msg "Unexpected set format" $
                    sprintf "An expression describing a set of addresses was \
                             expected.";
                  raise(Unexpected_format)
         end
-    | Expr.SetTh ->
+    | E.SetTh ->
         begin
           match (t1,t2) with
-            (Expr.SetThT s1, Expr.SetThT s2) -> Expr.subsetth_form s1 s2
+            (E.SetThT s1, E.SetThT s2) -> E.subsetth_form s1 s2
           | _ -> Interface.Err.msg "Unexpected set of thread ids format" $
                    sprintf "An expression describing a set of thread identifiers \
                             was expected.";
                  raise(Unexpected_format)
         end
-    | Expr.SetInt ->
+    | E.SetInt ->
         begin
           match (t1,t2) with
-            (Expr.SetIntT s1, Expr.SetIntT s2) -> Expr.subsetint_form s1 s2
+            (E.SetIntT s1, E.SetIntT s2) -> E.subsetint_form s1 s2
           | _ -> Interface.Err.msg "Unexpected set of integers format" $
                    sprintf "An expression describing a set of integers was \
                             expected.";
@@ -770,7 +770,7 @@ struct
               sprintf "Up to this moment, order relations are limited to \
                       integers only, while a ranking function of sort %s \
                       is trying to be analyzed."
-                      (Expr.sort_to_str s');
+                      (E.sort_to_str s');
           raise(Unexpected_sort s')
   
   
@@ -779,8 +779,8 @@ struct
   
     (* Initilization *)
     let theta     = VCG.gen_theta Sys.SClosed sys in
-    let init_mu   = Expr.disj_list $ List.map(fun x -> node_mu vd x) vd.nodes_0 in
-    let init      = Expr.Implies(theta, init_mu) in
+    let init_mu   = E.disj_list $ List.map(fun x -> node_mu vd x) vd.nodes_0 in
+    let init      = E.Implies(theta, init_mu) in
   
     (* Consecution *)
     let tran_list = VCG.vcgen_closed hide_pres false sys in
@@ -790,18 +790,18 @@ struct
               List.iter (fun (th,pc,f) ->
                 let mu_n = node_mu vd n in
                 let next = Hashtbl.find_all vd.next n in
-                let next_conj  = Expr.disj_list $
+                let next_conj  = E.disj_list $
                                    List.map (fun x -> node_mu vd x) next in
-                let rho_form   = Expr.disj_list f in
-                let antecedent = Expr.And (mu_n, rho_form) in
+                let rho_form   = E.disj_list f in
+                let antecedent = E.And (mu_n, rho_form) in
                 let consequent = if hide_pres then
-                                   Expr.prime_modified antecedent next_conj
+                                   E.prime_modified antecedent next_conj
                                  else
-                                   Expr.prime next_conj
+                                   E.prime next_conj
                 in
                   conseq := (n,
-                             (pc, Expr.Local (Expr.build_num_tid th)),
-                             Expr.Implies (antecedent, consequent)
+                             (pc, E.Local (E.build_num_tid th)),
+                             E.Implies (antecedent, consequent)
                             ) :: !conseq
               ) tran_list
             ) vd.nodes in
@@ -814,29 +814,29 @@ struct
               let sComp = EdgeSet.diff eSet (EdgeSet.union pS rS) in
               Hashtbl.iter (fun (n1,n2) _ ->
                 List.iter (fun (th,ps,f) ->
-                  (* The line below shouldn't be Expr.conj_list ???? *)
-                  let rho_form = Expr.disj_list f in
+                  (* The line below shouldn't be E.conj_list ???? *)
+                  let rho_form = E.disj_list f in
                   let mu_n1    = node_mu vd n1 in
                   let mu_n2'   = if hide_pres then
-                                   Expr.prime_modified rho_form (node_mu vd n2)
+                                   E.prime_modified rho_form (node_mu vd n2)
                                  else
-                                   Expr.prime $ node_mu vd n2 in
-                  let pre      = Expr.And(rho_form, Expr.And(mu_n1, mu_n2')) in
+                                   E.prime $ node_mu vd n2 in
+                  let pre      = E.And(rho_form, E.And(mu_n1, mu_n2')) in
                   let delta_n1 = app_delta d n1 in
                   let delta_n2'= if hide_pres then
-                                   Expr.prime_modified_term rho_form
+                                   E.prime_modified_term rho_form
                                           (app_delta d n2)
                                  else
-                                   Expr.prime_term $ app_delta d n2 in
-                  let s        = Expr.term_sort delta_n1 in
+                                   E.prime_term $ app_delta d n2 in
+                  let s        = E.term_sort delta_n1 in
                   let less     = cons_less_relation s delta_n2' delta_n1
                   in
                     if EdgeSet.mem (n1,n2) sDiff then
-                      let eq = Expr.eq_term delta_n2' delta_n1 in
-                      let cond = Expr.Implies(pre, Expr.Or(less,eq)) in
+                      let eq = E.eq_term delta_n2' delta_n1 in
+                      let cond = E.Implies(pre, E.Or(less,eq)) in
                       accept := cond :: !accept
                     else if EdgeSet.mem (n1,n2) sComp then
-                      let cond = Expr.Implies(pre, less) in
+                      let cond = E.Implies(pre, less) in
                       accept := cond :: !accept
                     else
                       ()
@@ -856,13 +856,13 @@ struct
                   let t_next   = Hashtbl.find_all vd.tau (n1,t) in
                   let nxt_list = List.map (node_mu vd) t_next in
                   let nxt_mu   = if hide_pres then
-                                   Expr.prime_modified tau_rho
-                                      (Expr.disj_list nxt_list)
+                                   E.prime_modified tau_rho
+                                      (E.disj_list nxt_list)
                                  else
-                                   Expr.prime (Expr.disj_list nxt_list)
+                                   E.prime (E.disj_list nxt_list)
                   in
-                    fair := (e,t,Expr.Implies (n1_mu, enabled sys t)) ::
-                            (e,t,Expr.Implies (Expr.And(n1_mu,tau_rho), nxt_mu))::
+                    fair := (e,t,E.Implies (n1_mu, enabled sys t)) ::
+                            (e,t,E.Implies (E.And(n1_mu,tau_rho), nxt_mu))::
                             !fair
                 ) edge_tau_list
             ) vd.edges in
@@ -878,18 +878,18 @@ struct
       }
   
   
-  let vd_initialization (vc:vd_vc_t) : Expr.formula = vc.initialization
+  let vd_initialization (vc:vd_vc_t) : E.formula = vc.initialization
   
-  let vd_consecution (vc:vd_vc_t) : (node_id_t * trans_t *Expr.formula) list =
+  let vd_consecution (vc:vd_vc_t) : (node_id_t * trans_t *E.formula) list =
     vc.consecution
   
-  let vd_acceptance (vc:vd_vc_t) : Expr.formula list = vc.acceptance
+  let vd_acceptance (vc:vd_vc_t) : E.formula list = vc.acceptance
   
-  let vd_fairness (vc:vd_vc_t) : (edge_pair_t * trans_t * Expr.formula) list =
+  let vd_fairness (vc:vd_vc_t) : (edge_pair_t * trans_t * E.formula) list =
     vc.fairness
   
   
-  let vd_satisfaction (vc:vd_vc_t) : Expr.formula list = vc.satisfaction
+  let vd_satisfaction (vc:vd_vc_t) : E.formula list = vc.satisfaction
   
   
   (***************  Parametrized Verification Diagrams ****************)
@@ -905,8 +905,8 @@ struct
                              associated to box parameter %s, while it has \
                              already been associated to box parameter %s"
                               (PP.node_id_to_str id)
-                              (Expr.tid_to_str th)
-                              (Expr.tid_to_str (snd (Hashtbl.find tbl id)))
+                              (E.tid_to_str th)
+                              (E.tid_to_str (snd (Hashtbl.find tbl id)))
                 else if not (List.mem id n_id_list) then
                   Interface.Err.msg "Box defined over unrecognized node" $
                     sprintf "A box is defined over node %s, which has not \
@@ -921,24 +921,24 @@ struct
   
   
   let new_param_diagram (d   : string)
-                        (fs  : Expr.formula list)
+                        (fs  : E.formula list)
                         (ns  : node_t list)
                         (is  : node_id_t list)
                         (bs  : box_t list)
                         (es  : edge_t list)
-                        (acs : acceptance_list_t) : (pvd_t * Expr.tid list) =
+                        (acs : acceptance_list_t) : (pvd_t * E.tid list) =
     let bTbl      = check_and_add_boxes ns bs in
     let nTbl      = Hashtbl.create initNodeNum in
     let eTbl      = Hashtbl.create initEdgeNum in
     let nxtTbl    = Hashtbl.create initEdgeNum in
     let tauTbl    = Hashtbl.create initEdgeNum in
     let remains_n = List.fold_left (fun s (n,info) ->
-                      Expr.ThreadSet.union s (add_node bTbl nTbl n info)
-                    ) Expr.ThreadSet.empty ns in
+                      E.ThreadSet.union s (add_node bTbl nTbl n info)
+                    ) E.ThreadSet.empty ns in
     let _         = check_all_defined nTbl is in
     let remains_e = check_and_add_pvd_edges nTbl eTbl nxtTbl tauTbl bTbl es in
     let _         = check_acceptance nTbl eTbl acs in
-    let remains   = Expr.ThreadSet.elements (Expr.ThreadSet.union remains_n remains_e) in
+    let remains   = E.ThreadSet.elements (E.ThreadSet.union remains_n remains_e) in
       (
         {
           pvd_name      = d;
@@ -957,8 +957,8 @@ struct
   
   
   let load_pvd_formula_param (pvd:pvd_t)
-                             (remains:Expr.tid list)
-                             (ths:Expr.tid list) : pvd_t =
+                             (remains:E.tid list)
+                             (ths:E.tid list) : pvd_t =
     if List.for_all (fun x -> List.mem x ths) remains then
       begin
         pvd.pvd_phi_param<-ths;
@@ -970,7 +970,7 @@ struct
         Interface.Err.msg "Missing transition parameter" $
           sprintf "Transition parameters [%s] are not introduced as \
                    parameters of the formula neither as box parameters."
-                    (String.concat "," $ List.map Expr.tid_to_str undef);
+                    (String.concat "," $ List.map E.tid_to_str undef);
         raise(Unknown_transition_param undef)
       end
   
@@ -984,14 +984,14 @@ struct
              Edges:\n%s\n\
              Acceptance:\n%s\n"
             (pvd.pvd_name)
-            (String.concat "\n" $ List.map Expr.formula_to_str pvd.pvd_support)
+            (String.concat "\n" $ List.map E.formula_to_str pvd.pvd_support)
             (PP.node_table_to_str pvd.pvd_nodes)
             (String.concat ", " $ List.map PP.node_id_to_str pvd.pvd_nodes_0)
             (List.fold_left (fun str b ->
               let (box_id,ns,th) = b in
               let node_str = String.concat ", " $ List.map PP.node_id_to_str ns
               in
-                str ^ (sprintf "\n{%s} : %s" node_str (Expr.tid_to_str th))
+                str ^ (sprintf "\n{%s} : %s" node_str (E.tid_to_str th))
             ) "" pvd.pvd_boxes)
             (PP.edge_table_to_str pvd.pvd_edges)
             (PP.acceptance_list_to_str pvd.pvd_accept)
@@ -1000,7 +1000,7 @@ struct
   let tvoc (pvd:pvd_t)
            (n1:node_id_t)
            (ns:node_id_t list)
-           (f_voc:Expr.tid list) : Expr.tid list =
+           (f_voc:E.tid list) : E.tid list =
     let _ = if not $ List.for_all (fun n -> Hashtbl.mem pvd.pvd_nodes n) (n1::ns) then
               Interface.Err.msg "Node not found" $
               sprintf "The node identifier %s is not defined in the parametrized \
@@ -1015,16 +1015,16 @@ struct
                   node_box_param_list pvd.pvd_box_tbl n1
                 else
                   [] in
-    let voc_n1 = Expr.voc mu_n1 in
-    let voc_ns = List.fold_left (fun xs phi -> xs @ (Expr.voc phi)) [] mu_ns in
+    let voc_n1 = E.voc mu_n1 in
+    let voc_ns = List.fold_left (fun xs phi -> xs @ (E.voc phi)) [] mu_ns in
     let voc_set = List.fold_left (fun s t ->
-                    Expr.ThreadSet.add t s
-                  ) Expr.ThreadSet.empty (voc_n1 @ voc_ns @ b @ f_voc)
+                    E.ThreadSet.add t s
+                  ) E.ThreadSet.empty (voc_n1 @ voc_ns @ b @ f_voc)
     in
-      Expr.ThreadSet.elements voc_set
+      E.ThreadSet.elements voc_set
   
   
-  let beta (pvd:pvd_t) (n:node_id_t) (n':node_id_t) : Expr.formula =
+  let beta (pvd:pvd_t) (n:node_id_t) (n':node_id_t) : E.formula =
     let bTbl = pvd.pvd_box_tbl in
     try
       let e_type        = edge_type (Hashtbl.find pvd.pvd_edges (n,n')) in
@@ -1034,14 +1034,14 @@ struct
             && e_type = Normal) then
         let n_box_param_set  = node_box_param_set bTbl n in
         let n'_box_param_set = node_box_param_set bTbl n' in
-        let param_list       = Expr.ThreadSet.elements $
-                                Expr.ThreadSet.union n_box_param_set
+        let param_list       = E.ThreadSet.elements $
+                                E.ThreadSet.union n_box_param_set
                                                      n'_box_param_set in
-        Expr.conj_list $ List.map (fun t ->
-                           Expr.eq_tid (Expr.prime_tid t) t
+        E.conj_list $ List.map (fun t ->
+                           E.eq_tid (E.prime_tid t) t
                          ) param_list
       else
-        Expr.True
+        E.True
     with _ -> begin
                 Interface.Err.msg "No edge info" $
                   sprintf "Could not be found information for edge (%s,%s)"
@@ -1050,10 +1050,10 @@ struct
               end
     
   
-  let gen_fresh_and_build_ineq (ths:Expr.tid list) : (Expr.tid * Expr.formula) =
-    let fresh_tid  = Expr.gen_fresh_tid ths in
-    let diff_list  = List.map (fun j -> Expr.ineq_tid fresh_tid j) ths in
-    let diff_conj  = Expr.conj_list diff_list
+  let gen_fresh_and_build_ineq (ths:E.tid list) : (E.tid * E.formula) =
+    let fresh_tid  = E.gen_fresh_tid ths in
+    let diff_list  = List.map (fun j -> E.ineq_tid fresh_tid j) ths in
+    let diff_conj  = E.conj_list diff_list
     in
       (fresh_tid, diff_conj)
   
@@ -1088,21 +1088,21 @@ struct
     let phi_th = pvd.pvd_phi_param in
   
     (* Initialization *)
-    let init_mu     = Expr.disj_list $ List.map (fun x ->
+    let init_mu     = E.disj_list $ List.map (fun x ->
                                          pvd_node_mu pvd x
                                        ) pvd.pvd_nodes_0 in
-    let init_mu_voc = Expr.voc init_mu in
+    let init_mu_voc = E.voc init_mu in
     let theta       = VCG.gen_theta (Sys.SOpenArray init_mu_voc) sys in
-    let init        = Expr.Implies(theta, init_mu) in
+    let init        = E.Implies(theta, init_mu) in
   
     (* Consecution *)
     let conseq    = ref [] in
   
     let _ = Hashtbl.iter (fun n info ->
               let next = Hashtbl.find_all pvd.pvd_next n in
-              let next_disj = Expr.disj_list $
+              let next_disj = E.disj_list $
                                 List.map (fun n' ->
-                                  Expr.And (Expr.prime (pvd_node_mu pvd n'),
+                                  E.And (E.prime (pvd_node_mu pvd n'),
                                             beta pvd n n')
                                 ) next in
               let mu_n = pvd_node_mu pvd n in
@@ -1110,41 +1110,41 @@ struct
               List.iter (fun pc ->
                 List.iter (fun i ->
                   let mode = VCG.new_open_thid_array_mode i [] in
-                  let rho = Expr.conj_list
+                  let rho = E.conj_list
                               (VCG.gen_rho mode hide_pres false sys t_voc pc) in
-                  let antecedent = Expr.And (mu_n, rho) in
+                  let antecedent = E.And (mu_n, rho) in
                   let consequent = if hide_pres then
-                                     Expr.disj_list $ List.map (fun n' ->
-                                       let p = Expr.prime_modified antecedent
+                                     E.disj_list $ List.map (fun n' ->
+                                       let p = E.prime_modified antecedent
                                                   (pvd_node_mu pvd n')
                                        in
-                                         Expr.And (p, beta pvd n n')
+                                         E.And (p, beta pvd n n')
                                      ) next
                                    else
                                      next_disj in
-                  let cond = Expr.Implies (antecedent, consequent)
+                  let cond = E.Implies (antecedent, consequent)
                   in
-                    conseq := (n, (pc,Expr.Local i), cond) :: !conseq
+                    conseq := (n, (pc,E.Local i), cond) :: !conseq
                 ) t_voc;
                 (* The extra condition *)
                 let (fresh_tid, diff_conj) = gen_fresh_and_build_ineq t_voc in
                 let mode       = VCG.new_open_thid_array_mode fresh_tid [] in
                 let ts         = fresh_tid :: t_voc in
-                let extra_rho  = Expr.conj_list
+                let extra_rho  = E.conj_list
                                    (VCG.gen_rho mode hide_pres false sys ts pc) in
-                let antecedent = Expr.And (mu_n, Expr.And (extra_rho,diff_conj))in
+                let antecedent = E.And (mu_n, E.And (extra_rho,diff_conj))in
                 let consequent = if hide_pres then
-                                   Expr.disj_list $ List.map (fun n' ->
-                                       let p = Expr.prime_modified antecedent
+                                   E.disj_list $ List.map (fun n' ->
+                                       let p = E.prime_modified antecedent
                                                   (pvd_node_mu pvd n')
                                        in
-                                         Expr.And (p, beta pvd n n')
+                                         E.And (p, beta pvd n n')
                                      ) next
                                  else
                                    next_disj in
-                let extra_cond = Expr.Implies (antecedent, consequent)
+                let extra_cond = E.Implies (antecedent, consequent)
                 in
-                  conseq := (n, (pc, Expr.Local fresh_tid), extra_cond) :: !conseq
+                  conseq := (n, (pc, E.Local fresh_tid), extra_cond) :: !conseq
               ) pc_list
             ) pvd.pvd_nodes in
   
@@ -1167,39 +1167,39 @@ struct
               Hashtbl.iter (fun (n1,n2) _ ->
                 let t_voc = tvoc pvd n1 [n2] phi_th in
                 let mu_n1 = pvd_node_mu pvd n1 in
-                let mu_n2' = Expr.prime $ pvd_node_mu pvd n2 in
+                let mu_n2' = E.prime $ pvd_node_mu pvd n2 in
                 let beta_n1_n2 = beta pvd n1 n2 in
                 let delta_n1 = app_delta d n1 in
-                let delta_n2' = Expr.prime_term $ app_delta d n2 in
-                let s = Expr.term_sort delta_n1 in
+                let delta_n2' = E.prime_term $ app_delta d n2 in
+                let s = E.term_sort delta_n1 in
                 let less = cons_less_relation s delta_n2' delta_n1 in
                 List.iter (fun pc ->
                   List.iter (fun i ->
                     let mode      = VCG.new_open_thid_array_mode i [] in
-                    let rho       = Expr.conj_list
+                    let rho       = E.conj_list
                                      (VCG.gen_rho mode hide_pres false sys t_voc pc)in
-                    let modif     = Expr.And(rho, beta_n1_n2) in
+                    let modif     = E.And(rho, beta_n1_n2) in
                     let mu_n2'    = if hide_pres then
-                                      Expr.prime_modified modif (pvd_node_mu pvd n2)
+                                      E.prime_modified modif (pvd_node_mu pvd n2)
                                     else
                                       mu_n2' in
                     let delta_n2' = if hide_pres then
-                                      Expr.prime_modified_term modif (app_delta d n2)
+                                      E.prime_modified_term modif (app_delta d n2)
                                     else
                                       delta_n2' in
                     let less      = if hide_pres then
                                       cons_less_relation s delta_n2' delta_n1
                                     else
                                       less in
-                    let eq        = Expr.eq_term delta_n2' delta_n1 in
+                    let eq        = E.eq_term delta_n2' delta_n1 in
   
-                    let pre       = Expr.conj_list [rho;mu_n1;mu_n2';beta_n1_n2]
+                    let pre       = E.conj_list [rho;mu_n1;mu_n2';beta_n1_n2]
                     in
                       if EdgeSet.mem (n1,n2) sDiff then
-                        let cond = Expr.Implies(pre, Expr.Or(less,eq)) in
+                        let cond = E.Implies(pre, E.Or(less,eq)) in
                           accept := cond :: !accept
                       else if EdgeSet.mem (n1,n2) sComp then
-                        let cond = Expr.Implies(pre, less) in
+                        let cond = E.Implies(pre, less) in
                           accept := cond :: !accept
                       else
                         ()
@@ -1207,29 +1207,29 @@ struct
                   let (fresh_tid, diff_conj) = gen_fresh_and_build_ineq t_voc in
                   let mode      = VCG.new_open_thid_array_mode fresh_tid [] in
                   let ts        = fresh_tid :: t_voc in
-                  let extra_rho = Expr.conj_list
+                  let extra_rho = E.conj_list
                                     (VCG.gen_rho mode hide_pres false sys ts pc) in
-                  let modif   = Expr.conj_list [extra_rho;diff_conj;beta_n1_n2] in
+                  let modif   = E.conj_list [extra_rho;diff_conj;beta_n1_n2] in
                   let mu_n2'    = if hide_pres then
-                                    Expr.prime_modified modif (pvd_node_mu pvd n2)
+                                    E.prime_modified modif (pvd_node_mu pvd n2)
                                   else
                                     mu_n2' in
                   let delta_n2' = if hide_pres then
-                                    Expr.prime_modified_term modif (app_delta d n2)
+                                    E.prime_modified_term modif (app_delta d n2)
                                   else
                                     delta_n2' in
                   let less      = if hide_pres then
                                     cons_less_relation s delta_n2' delta_n1
                                   else
                                     less in
-                  let eq        = Expr.eq_term delta_n2' delta_n1 in
-                  let pre = Expr.conj_list [extra_rho;diff_conj;
+                  let eq        = E.eq_term delta_n2' delta_n1 in
+                  let pre = E.conj_list [extra_rho;diff_conj;
                                             mu_n1;mu_n2';beta_n1_n2] in
                   if EdgeSet.mem (n1,n2) sDiff then
-                    let extra_cond = Expr.Implies (pre, Expr.Or(less,eq)) in
+                    let extra_cond = E.Implies (pre, E.Or(less,eq)) in
                       accept := extra_cond :: !accept
                   else if EdgeSet.mem (n1,n2) sComp then
-                    let extra_cond = Expr.Implies (pre, less) in
+                    let extra_cond = E.Implies (pre, less) in
                       accept := extra_cond :: !accept
                   else
                     ()
@@ -1246,30 +1246,30 @@ struct
               in
                 List.iter (fun t ->
                   let (pc,th_opt) = match t with
-                                      (pc,Expr.Local th_opt) -> (pc, th_opt)
-                                    | (_, Expr.Shared) -> raise(Unparametrized_transition) in
+                                      (pc,E.Local th_opt) -> (pc, th_opt)
+                                    | (_, E.Shared) -> raise(Unparametrized_transition) in
                   let mode        = VCG.new_open_thid_array_mode th_opt [] in
                   let ts          = [th_opt] in
-                  let tau_rho     = Expr.conj_list
+                  let tau_rho     = E.conj_list
                                       (VCG.gen_rho mode hide_pres false sys ts pc) in
                   let t_next      = Hashtbl.find_all pvd.pvd_tau (n1,t) in
                   let next_list   = List.map (pvd_node_mu pvd) t_next in
-                  let next_mu     = Expr.disj_list next_list in
+                  let next_mu     = E.disj_list next_list in
                   (* Preservation of box parameters *)
                   let box_params  = node_box_param_list pvd.pvd_box_tbl n1 in
                   let box_pres    = List.map (fun t ->
-                                      Expr.eq_tid (Expr.prime_tid t) t
+                                      E.eq_tid (E.prime_tid t) t
                                     ) box_params in
                   (* Preservation of box parameters *)
-                  let pre_fair_1  = Expr.conj_list (n1_mu::box_pres) in
-                  let pre_fair_2  = Expr.conj_list (n1_mu::tau_rho::box_pres) in
+                  let pre_fair_1  = E.conj_list (n1_mu::box_pres) in
+                  let pre_fair_2  = E.conj_list (n1_mu::tau_rho::box_pres) in
                   let next_mu'    = if hide_pres then
-                                      Expr.prime_modified pre_fair_2 next_mu
+                                      E.prime_modified pre_fair_2 next_mu
                                     else
-                                      Expr.prime next_mu
+                                      E.prime next_mu
                   in
-                    fair := (e,t,Expr.Implies (pre_fair_1, enabled sys t)) ::
-                            (e,t,Expr.Implies (pre_fair_2, next_mu')) ::
+                    fair := (e,t,E.Implies (pre_fair_1, enabled sys t)) ::
+                            (e,t,E.Implies (pre_fair_2, next_mu')) ::
                             !fair
                 ) edge_tau_list
             ) pvd.pvd_edges in

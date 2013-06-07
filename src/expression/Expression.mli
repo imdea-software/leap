@@ -21,15 +21,9 @@ and sort =
   | AddrArray
   | TidArray
   | Unknown
-and variable =
-  {
-            id        : varId           ;
-            sort      : sort            ;
-    mutable is_primed : bool            ;
-    mutable parameter : shared_or_local ;
-            scope     : procedure_name  ;
-            nature    : var_nature      ;
-  }
+
+and variable
+
 and term =
     VarT          of variable
   | SetT          of set
@@ -310,6 +304,13 @@ val build_pc_range : pc_t -> pc_t -> pc_t list
 val same_var : variable -> variable -> bool
 val build_var : varId -> sort -> bool -> shared_or_local ->
                 procedure_name -> var_nature -> variable
+val var_id        : variable -> varId
+val var_sort      : variable -> sort
+val var_is_primed : variable -> bool
+val var_parameter : variable -> shared_or_local
+val var_scope     : variable -> procedure_name
+val var_nature    : variable -> var_nature
+
 val var_clear_param_info : variable -> variable
 val var_set_param : shared_or_local ->  variable -> variable
 
@@ -317,14 +318,6 @@ val var_set_param : shared_or_local ->  variable -> variable
     thread id *)
 val var_base_info : variable -> variable
 
-(*
-val var_id        : variable -> varId
-val var_sort      : variable -> sort
-val var_pr        : variable -> is_primed
-val var_th        : variable -> shared_or_local
-val var_proc      : variable -> procedure_name
-val var_k         : variable -> is_ghost
-*)
 val var_val       : variable -> int
 
 val is_local_var  : variable -> bool

@@ -543,7 +543,7 @@ let get_sort_from_term (gVars:var_table_t)
                        (t:E.term) : E.sort =
   match t with
     E.SetT(_)           -> E.Set
-  | E.VarT v            -> get_sort_from_variable gVars iVars lVars auxVars v.E.id
+  | E.VarT v            -> get_sort_from_variable gVars iVars lVars auxVars (E.var_id v)
                             (* TODO: Or maybe just s? *)
   | E.ElemT(_)          -> E.Elem
   | E.ThidT(_)          -> E.Thid

@@ -1387,7 +1387,9 @@ let rec get_tid_in (v:variable) : tid list =
 
 and voc_term (expr:term) : tid list =
   match expr with
-    | VarT v             -> get_tid_in v
+    | VarT v             -> (match v.sort with
+                            | Thid -> [VarTh v]
+                            | _    -> []) @ get_tid_in v
     | SetT(set)          -> voc_set set
     | AddrT(addr)        -> voc_addr addr
     | ElemT(elem)        -> voc_elem elem

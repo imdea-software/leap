@@ -147,7 +147,7 @@ let vc_info_to_str (vc:vc_info) : string =
                                                  vc.original_support)) in
   let vars_str = (String.concat "\n"
                    (List.map (fun v ->
-                     (E.sort_to_str v.E.sort) ^ " " ^
+                     (E.sort_to_str (E.var_sort v)) ^ " " ^
                      (E.variable_to_str v)
                    ) vars_to_declare)) in
   let supp_str = String.concat "\n" (List.map E.formula_to_str vc.original_support) in  let tidconst_str = E.formula_to_str vc.tid_constraint in
