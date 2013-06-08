@@ -117,11 +117,6 @@ sig
   
   val all_transitions_to_str : System.system_t -> string
   
-  (** Mode constructor *)
-  val new_open_thid_array_mode : Expression.tid 
-    -> Expression.tid list 
-    -> rhoMode
-  
   (* Theta *)
   
   val gen_global_init_cond : System.system_t 
@@ -140,21 +135,8 @@ sig
   val gen_theta : System.sysMode 
     -> System.system_t 
     -> Expression.formula
-  
-  
-  (** VC generation for a closed system respect to an invariant candidate *)
-  val vcgen_closed : bool 
-    -> bool 
-    -> System.system_t 
-    -> (int * Expression.pc_t * Expression.formula list) list
-  
-  
-  (** VC generation for an open system respect to an invariant candidate *)
-  val vcgen_open_inv : bool 
-    -> bool 
-    -> System.system_t 
-    -> (int * Expression.pc_t * Expression.formula list) list
-  
+ 
+ 
   (** B-INV for a closed system *)
   val binv : System.system_t 
     -> Expression.formula 
@@ -561,7 +543,7 @@ struct
 
   (* MODE CONVERSION FUNCTION *)
   let rhoMode_to_sysMode : rhoMode -> Sys.sysMode = function
-    | RClosed _ -> Sys.SClosed
+    | RClosed _ -> Sys.SClosed 1
     | ROpenArray (k,js) -> Sys.SOpenArray (k::js)
     | ROpenExt (k,js) -> Sys.SOpenArray (k::js)
   
@@ -599,7 +581,7 @@ struct
   
     let fst_next_pos = List.hd next_list in
     let build_eq' i = match mode with
-      | Sys.SClosed -> E.pcupd_form i th
+      | Sys.SClosed _ -> E.pcupd_form i th
       (* FIX: This was before having PCUpdate. Check if it is alright *)
       (* E.eq_int (E.IntArrayRd(pc',th)) (E.IntVal i) *)
       | Sys.SOpenArray _ -> E.pcupd_form i th in
@@ -619,7 +601,7 @@ struct
   
   let build_pres_pc (mode : Sys.sysMode) 
       (th_list : E.tid list) : E.formula list = match mode with
-    | Sys.SClosed -> (* Deprecated *)
+    | Sys.SClosed _ -> (* Deprecated *)
         let pc = E.VarArray
           (E.build_var E.pc_name E.Unknown false E.Shared E.GlobalScope E.RealVar) in
         let pc' = E.VarArray
@@ -758,34 +740,12 @@ struct
         th_list in
       E.conj_list !conds
   
-  (* RHO MODE DEFINITION FUNCTIONS *)
-  let new_closed_mode (sys : Sys.system_t) (i : int) : rhoMode =
-    let th_num = Sys.get_threads sys in
-    if (i < 1 || i > th_num) then
-      begin
-        Interface.Err.msg "Out of bounds parameter" $
-          sprintf "Thread identifier \"%i\" is out of the limits for \
-            the a closed system, since a system with only %i \
-            threads was declared." i th_num;
-        raise(Invalid_argument)
-      end
-    else
-      let th_p = E.build_num_tid i in
-      RClosed (th_p, th_num)
-  
-  let new_open_array_mode (k : E.varId) (p_list : E.varId list) : rhoMode =
-    let k_th = E.build_var_tid k in
-    let other_th = List.map (fun i -> E.build_var_tid i) p_list in
-    ROpenArray (k_th, other_th)
-  
-  let new_open_thid_array_mode (k:E.tid) (p_list:E.tid list) : rhoMode =
-    ROpenArray (k, p_list)
 
   (* THETA FUNCTIONS *)
   let gen_theta (mode : Sys.sysMode) (sys : Sys.system_t) : E.formula =
     let main_proc = Sys.defMainProcedure in
     let param_list = match mode with
-      | Sys.SClosed -> E.gen_tid_list 1 (Sys.get_threads sys)
+      | Sys.SClosed m -> E.gen_tid_list 1 m
       | Sys.SOpenArray xs -> xs in
     let main_fLine = Sys.get_fLine_by_name sys main_proc in
     let init_line = Pervasives.max 1 main_fLine in
@@ -1195,38 +1155,6 @@ struct
           pc (String.concat "\n" $ List.map E.formula_to_str fs)) 
       info_list
   
-  (* VCGEN FOR INVARIANT ON A CLOSED SYSTEM *)
-  let vcgen_closed (hide_pres:bool)
-                   (count_abs:bool)
-                   (sys:Sys.system_t)
-                      : (int * E.pc_t * E.formula list) list =
-    let th_list    = LeapLib.rangeList 1 (Sys.get_threads sys) in
-    let trans_list = LeapLib.rangeList 1 (Sys.get_trans_num sys) in
-    let rho_list   = List.flatten $
-                       List.map (fun t ->
-                         List.map (fun p ->
-                           let mode = new_closed_mode sys t in
-  (* FIX: Maybe the function should get a list of tids *)
-                             (t, p, gen_rho mode hide_pres count_abs sys [] p)
-                         ) trans_list) th_list
-    in
-      rho_list
-  
-  
-  let vcgen_open_inv (hide_pres:bool)
-                     (count_abs)
-                     (sys:Sys.system_t)
-                        : (int * E.pc_t * E.formula list) list =
-    let trans_list = LeapLib.rangeList 1 (Sys.get_trans_num sys) in
-    (* TODO: Make all possible arrangements with info get from inv candidate *)
-    let mode       = new_open_array_mode "k" ["i"; "j"] in
-  (* FIX: Maybe the function should get a list of tids *)
-    let rho_list = List.map (fun p ->
-                     (0, p, gen_rho mode hide_pres count_abs sys [] p)
-                   ) trans_list
-    in
-      rho_list
-  
   
   (* Support generation. Not currently used in SP-INV rule generator *)
   let support (sup_list:E.formula list)
@@ -1276,6 +1204,8 @@ struct
   (* Invariant vcgen for closed systems *)
   let binv (sys : Sys.system_t) 
       (inv : E.formula) : (E.formula * vc_info_t) list =
+      []
+(*
     let v = E.voc inv in
     let th_list = List.filter E.is_tid_var v in
     let th_num = Sys.get_threads sys in
@@ -1331,7 +1261,7 @@ struct
             ) inv_list
     in
       init_conds @ List.rev(!tran_conds)
-
+*)
       
   let tag_binv (sys:Sys.system_t)
                (inv:Tag.f_tag) : (E.formula * vc_info_t) list =

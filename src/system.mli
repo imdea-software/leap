@@ -18,8 +18,13 @@ type system_t
 
 
 type sysMode =
-    SClosed
+  | SClosed of int
   | SOpenArray of Expression.tid list
+
+
+type rhoMode =
+  | Classic
+  | CountingAbs
 
 
 (* Exceptions *)
@@ -63,10 +68,8 @@ val get_assume            : system_t -> Statement.boolean option
 val get_procs             : system_t -> proc_table_t
 val get_trans             : system_t -> tran_table_t
 val get_fair              : system_t -> int list
-val get_threads           : system_t -> int
 val get_statements        : system_t -> st_table_t
 val get_labels            : system_t -> label_table_t
-val set_threads           : system_t -> int -> system_t
 val is_proc               : system_t -> string -> bool
 val get_proc_name_list    : system_t -> bool -> string list
 val get_all_local_vars    : system_t -> (string * Expression.variable list) list
@@ -76,8 +79,6 @@ val get_local_by_name     : system_t -> string -> var_table_t
 val get_accvars_by_name   : system_t -> string -> (var_table_t * var_table_t)
 val get_accvars           : system_t -> (string * var_table_t * var_table_t) list
 val get_all_vars_id       : system_t -> Expression.varId list
-val gen_all_vars_as_terms : system_t -> Expression.term list
-val gen_all_vars_as_array_terms : system_t -> Expression.term list
 val get_sys_var_tables    : system_t ->
                             var_table_t * (string * var_table_t * var_table_t)list
 val get_fLine_by_name     : system_t -> string -> Expression.pc_t
@@ -199,3 +200,7 @@ val check_is_numeric : system_t -> unit
 
 (* PRINTING FUNCTIONS *)
 val system_to_str : system_t -> string
+
+
+(* TRANSITION RELATION FUNCTIONS *)
+(*val gen_theta : sysMode -> system_t -> rhoMode -> Expression.formula *)

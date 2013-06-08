@@ -99,11 +99,6 @@ sig
   
   val all_transitions_to_str : System.system_t -> string
   
-  (** Mode constructor *)
-  val new_open_thid_array_mode : Expression.tid 
-    -> Expression.tid list 
-    -> rhoMode
-  
   (* Theta *)
   
   val gen_global_init_cond : System.system_t 
@@ -123,19 +118,6 @@ sig
     -> System.system_t 
     -> Expression.formula
   
-  
-  (** VC generation for a closed system respect to an invariant candidate *)
-  val vcgen_closed : bool 
-    -> bool 
-    -> System.system_t 
-    -> (int * Expression.pc_t * Expression.formula list) list
-  
-  
-  (** VC generation for an open system respect to an invariant candidate *)
-  val vcgen_open_inv : bool 
-    -> bool 
-    -> System.system_t 
-    -> (int * Expression.pc_t * Expression.formula list) list
   
   (** B-INV for a closed system *)
   val binv : System.system_t 

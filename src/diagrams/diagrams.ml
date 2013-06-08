@@ -774,16 +774,16 @@ struct
           raise(Unexpected_sort s')
   
   
-  let gen_vd_vc (hide_pres:bool) (s:Sys.system_t) (vd:vd_t) : vd_vc_t =
-    let sys       = Sys.set_threads s vd.threads in
+  let gen_vd_vc (hide_pres:bool) (sys:Sys.system_t) (vd:vd_t) : vd_vc_t =
   
     (* Initilization *)
-    let theta     = VCG.gen_theta Sys.SClosed sys in
+    let theta     = VCG.gen_theta (Sys.SClosed 1) sys in
     let init_mu   = E.disj_list $ List.map(fun x -> node_mu vd x) vd.nodes_0 in
     let init      = E.Implies(theta, init_mu) in
   
     (* Consecution *)
-    let tran_list = VCG.vcgen_closed hide_pres false sys in
+    let tran_list = [] in
+(*  let tran_list = VCG.vcgen_closed hide_pres false sys in *)
   
     let conseq    = ref [] in
     let _ = Hashtbl.iter (fun n info ->
@@ -1097,7 +1097,7 @@ struct
   
     (* Consecution *)
     let conseq    = ref [] in
-  
+  (*
     let _ = Hashtbl.iter (fun n info ->
               let next = Hashtbl.find_all pvd.pvd_next n in
               let next_disj = E.disj_list $
@@ -1147,19 +1147,15 @@ struct
                   conseq := (n, (pc, E.Local fresh_tid), extra_cond) :: !conseq
               ) pc_list
             ) pvd.pvd_nodes in
+*)
   
-  (*
-    ((i != j) -> ~ (@crit(i). /\ @crit(j).)) /\
-    (( @active(i). ) -> (main::ticket(i) < avail)) /\
-    ((i != j /\ @active(i). /\ @active(j).) ->
-        (main::ticket(i) != main::ticket(j))) /\
-    (@crit(i). -> (setIntMin(bag) = main::ticket(i)))
-  *)
   
     (* Acceptance *)
     let accept = ref [] in
-  
-    let eSet = Hashtbl.fold (fun e _ s -> EdgeSet.add e s) pvd.pvd_edges EdgeSet.empty in
+ (*
+
+    let eSet = Hashtbl.fold (fun e _ s -> EdgeSet.add e s) pvd.pvd_edges 
+    EdgeSet.empty in
   
     let _ = List.iter (fun (pS,rS,d) ->
               let sDiff = EdgeSet.diff pS rS in
@@ -1236,10 +1232,12 @@ struct
                 ) pc_list
               ) pvd.pvd_edges
             ) pvd.pvd_accept in
-  
+  *)
   
     (* Fairness *)
     let fair   = ref [] in
+
+(*
     let _ = Hashtbl.iter (fun (n1,n2) (_,edge_tau_list) ->
               let e             = (n1,n2) in
               let n1_mu         = pvd_node_mu pvd n1
@@ -1274,6 +1272,7 @@ struct
                 ) edge_tau_list
             ) pvd.pvd_edges in
   
+*)
     (* Satisfaction *)
     let satisf = [] in
   
@@ -1292,7 +1291,6 @@ struct
               }
     in
       post_process res
-  
   
   
   (* Verification conditions check *)

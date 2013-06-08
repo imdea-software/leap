@@ -19,9 +19,8 @@ let _ =
 (*    LOG "DP selected: %s" (DP.to_str !LeapArgs.dpType) LEVEL DEBUG; *)
     if !LeapArgs.verbose then LeapVerbose.enable_verbose();
     let ch = LeapArgs.open_input () in
-    let tmp_sys, undefTids = 
-      Parser.parse ch (Stmparser.system Stmlexer.norm) in
-    let sys = System.set_threads tmp_sys !LeapArgs.num_threads in
+    let sys, undefTids = Parser.parse ch (Stmparser.system Stmlexer.norm) in
+(*    let sys = System.set_threads tmp_sys !LeapArgs.num_threads in *)
     LeapArgs.close_input ();
     LeapArgs.vcgenFlag := 
       (!LeapArgs.binvSys || !LeapArgs.pinvSys || !LeapArgs.pinvPlusSys 

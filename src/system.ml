@@ -30,20 +30,27 @@ type st_table_t = (E.pc_t, (string * Stm.statement_t)) Hashtbl.t
 type label_table_t = (string, E.pc_t * E.pc_t) Hashtbl.t
 
 
-type system_t = (var_table_t          *   (* global variables *)
-                 Stm.boolean option   *   (* the initial assumption *)
-                 proc_table_t         *   (* procedures *)
-                 tran_table_t         *   (* transition relations *)
-                 E.pc_t list       *   (* fair transitions *)
-                 int                  *   (* number of threads *)
-                 st_table_t           *   (* system statements *)
-                 label_table_t)           (* program line labels *)
+type system_t =
+  {
+    globalVars : var_table_t ;         (* global variables *)
+    assumptions : Stm.boolean option ; (* the initial assumption *)
+    procedures : proc_table_t ;        (* procedures *)
+    transitions : tran_table_t ;       (* transition relations *)
+    fair : E.pc_t list ;               (* fair transitions *)
+(*                 int                  *   (* number of threads *) *)
+    statements : st_table_t ;          (* system statements *)
+    labels : label_table_t ;           (* program line labels *)
+  }
 
 
 type sysMode =
-    SClosed
+  | SClosed of int
   | SOpenArray of E.tid list
 
+
+type rhoMode =
+  | Classic
+  | CountingAbs
 
 
 
@@ -76,14 +83,16 @@ let me_tid_th        : E.tid = E.VarTh me_tid_var
 
 let empty_var_table = Hashtbl.create 1
 
-let empty_system = (Hashtbl.create 1,
-                    None,
-                    Hashtbl.create 1,
-                    Hashtbl.create 1,
-                    [],
-                    0,
-                    Hashtbl.create 1,
-                    Hashtbl.create 1)
+let empty_system =
+  {
+    globalVars = Hashtbl.create 1;
+    assumptions = None;
+    procedures = Hashtbl.create 1;
+    transitions = Hashtbl.create 1;
+    fair = [];
+    statements = Hashtbl.create 1;
+    labels = Hashtbl.create 1;
+  }
                     
 
 (* TABLE OF VARIABLES FUNCTIONS *)
@@ -280,21 +289,24 @@ let new_system (gVars:var_table_t)
                (fair:int list)
                (st_table:st_table_t)
                (lt:label_table_t) : system_t =
-  (gVars, assume, procs, trans, fair, 1, st_table, lt)
+  {
+    globalVars = gVars ;
+    assumptions = assume ;
+    procedures = procs ;
+    transitions = trans ;
+    fair = fair ;
+    statements = st_table ;
+    labels = lt ;
+  }
 
 
-let get_global     ((g,_,_,_,_,_,_,_):system_t) : var_table_t = g
-let get_assume     ((_,a,_,_,_,_,_,_):system_t) : Stm.boolean option = a
-let get_procs      ((_,_,p,_,_,_,_,_):system_t) : proc_table_t = p
-let get_trans      ((_,_,_,t,_,_,_,_):system_t) : tran_table_t = t
-let get_fair       ((_,_,_,_,f,_,_,_):system_t) : int list = f
-let get_threads    ((_,_,_,_,_,n,_,_):system_t) : int = n
-let get_statements ((_,_,_,_,_,_,s,_):system_t) : st_table_t = s
-let get_labels     ((_,_,_,_,_,_,_,l):system_t) : label_table_t = l
-
-
-let set_threads    ((g,a,p,t,f,_,s,l):system_t) (n:int) : system_t =
-  (g,a,p,t,f,n,s,l)
+let get_global     (s:system_t) : var_table_t = s.globalVars
+let get_assume     (s:system_t) : Stm.boolean option = s.assumptions
+let get_procs      (s:system_t) : proc_table_t = s.procedures
+let get_trans      (s:system_t) : tran_table_t = s.transitions
+let get_fair       (s:system_t) : int list = s.fair
+let get_statements (s:system_t) : st_table_t = s.statements
+let get_labels     (s:system_t) : label_table_t = s.labels
 
 
 let is_proc (sys:system_t) (p_name:string) : bool =
@@ -379,26 +391,20 @@ let get_trans_num (sys:system_t) : int =
 
 
 let add_global_vars (sys:system_t) (tbl:var_table_t) : system_t =
-  let (g,a,p,t,f,n,s,l) = sys in
-  let _                 = join_var_table g tbl in
-    (g, a, p, t, f, n, s, l)
+  join_var_table sys.globalVars tbl; sys
 
 
 let del_global_var (sys:system_t) (id:E.varId) : system_t =
-  let (g,a,p,t,f,n,s,l) = sys
-  in
-    (del_var g id,a,p,t,f,n,s,l)
+  ignore (del_var sys.globalVars id); sys
 
 
 let del_global_var_regexp (sys:system_t) (expr:Str.regexp) : system_t =
-  let (g,a,p,t,f,n,s,l) = sys in
   let _ = Hashtbl.iter (fun id _ ->
             if (Str.string_match expr id 0) then
-              Hashtbl.remove g id
-          ) g
+              Hashtbl.remove sys.globalVars id
+          ) sys.globalVars
   in
-    (g,a,p,t,f,n,s,l)
-
+    sys
 
 
 (* SYSTEM QUERY FUNCTIONS *)
@@ -444,48 +450,6 @@ let get_all_vars_id (sys:system_t) : E.varId list =
            ) lv_lst
   in
     gv @ (List.flatten lv)
-
-
-let gen_all_vars_as_terms (sys:system_t) : E.term list =
-  let param_list = E.gen_tid_list 1 (get_threads sys) in
-  let gTbl       = get_global sys in
-  let vInfo      = get_accvars sys in
-  let allVars    = ref [] in
-  let _ = Hashtbl.iter (fun v info ->
-            allVars := (E.convert_var_to_term E.GlobalScope v info)::!allVars) gTbl in
-  let _ = List.iter (fun t ->
-            List.iter (fun (p,_,l) ->
-              Hashtbl.iter (fun v (s,e,_,k) ->
-                allVars := (E.convert_var_to_term
-                              (E.Scope p) v (s,e,E.Local t,k)) :: !allVars
-                           ) l
-                      ) vInfo
-                    ) param_list
-  in
-        !allVars
-
-
-let gen_all_vars_as_array_terms (sys:system_t) : E.term list =
-  let gTbl    = get_global sys in
-  let vInfo   = get_accvars sys in
-  let allVars = ref [] in
-  let _ = Hashtbl.iter (fun v info ->
-            let k   = E.var_info_nature info in
-            let s   = E.var_info_sort info in
-            let var = E.build_var v s false E.Shared E.GlobalScope k in
-            allVars := E.ArrayT(E.VarArray var) :: !allVars
-          ) gTbl in
-  let _ = List.iter (fun (p,_,l) ->
-            Hashtbl.iter (fun v info ->
-              let k = E.var_info_nature info in
-              let s = E.var_info_sort info in
-              let var = E.build_var v s false E.Shared (E.Scope p) k in
-              allVars :=
-                E.ArrayT(E.VarArray var) :: !allVars
-            ) l
-          ) vInfo
-  in
-    !allVars
 
 
 let get_sys_var_tables (sys:system_t)
@@ -807,4 +771,134 @@ let system_to_str (sys:system_t) : string =
               %s\
               %s\n\n"
             global_str assume proc_list_str
+
+
+(*********************************************************)
+(*       TRANSITION RELATION GENERATION                  *)
+(*********************************************************)
+
+
+
+(* Program counter *)
+let build_curr_pc (th : E.tid) (p : E.pc_t) : E.formula =
+  E.Literal (E.Atom (E.PC(p, E.Local th, false)))
+
+
+let build_next_pc (mode : sysMode)
+                  (th : E.tid)
+                  (next_list : E.pc_t list) : E.formula =
+  assert (List.length next_list > 0);
+  let fst_next_pos = List.hd next_list in
+  let build_eq' i = match mode with
+    | SClosed _ -> E.pcupd_form i th
+    | SOpenArray _ -> E.pcupd_form i th in
+  let fst_eq = build_eq' fst_next_pos in
+  let next_eq = List.fold_left (fun b p ->
+                  E.Or (build_eq' p,b)
+                ) (fst_eq) (List.tl next_list)
+  in
+    next_eq
+
+
+let build_pres_pc (mode : sysMode)
+                  (th_list : E.tid list) : E.formula list =
+  match mode with
+  | SClosed _ -> (* Deprecated *)
+      let pc = E.VarArray
+        (E.build_var E.pc_name E.Unknown false E.Shared E.GlobalScope E.RealVar) in
+      let pc' = E.VarArray
+        (E.build_var E.pc_name E.Unknown false E.Shared E.GlobalScope E.RealVar) in
+      let pc_arr arr id  = E.IntArrayRd(arr,id) in
+      let eq_list = List.map 
+        (fun i -> E.eq_int (pc_arr pc' i) (pc_arr pc i)) th_list in
+      eq_list
+  | SOpenArray _ -> []
+
+
+let build_pc (mode : sysMode)
+             (curr_th:E.tid)
+             (now : E.pc_t)
+             (next_list : E.pc_t list) : E.formula list =
+  let other_ths =
+    match mode with
+    | SClosed m -> E.gen_tid_list_except 1 m curr_th
+    | SOpenArray js -> List.filter (fun t -> t <> curr_th) js in
+  let curr_eq = build_curr_pc curr_th now in
+  let next_eq = build_next_pc mode curr_th next_list in
+  let pres_eq = build_pres_pc mode other_ths in
+  curr_eq :: next_eq :: pres_eq
+
+
+
+(* Initial condition *)
+
+let gen_global_init_cond (sys : system_t) : E.formula list =
+  let gVars = get_global sys in
+  let conds = Hashtbl.fold
+    (fun v info xs -> (E.assign_var E.GlobalScope v info) @ xs ) gVars [] in
+  conds
+
+let gen_local_init_cond (sys : system_t) 
+    (p_name : string) : E.formula list =
+  let _, lVars = get_accvars_by_name sys p_name in
+  let conds = Hashtbl.fold 
+    (fun v info xs -> 
+      let (s,e,_,k) = info in
+      let new_info = (s,e,E.Shared,k) in
+      (E.assign_var (E.Scope p_name) v new_info) @ xs) lVars [] in
+  conds
+
+let gen_init_cond (sys : system_t) (p_name : string)
+    (th_list : E.tid list) (loc : bool) : E.formula =
+  let gConds = gen_global_init_cond sys in
+  let lConds = gen_local_init_cond sys p_name in
+  let full_lConds = match th_list with
+    |  [] -> lConds
+    | _  -> List.flatten $ List.map 
+      (fun t -> let me_subst = E.new_tid_subst [(me_tid_th,t)]in
+        List.map (fun c -> E.subst_tid me_subst (E.param (E.Local t) c)) lConds)
+      th_list in 
+  E.conj_list (gConds @ full_lConds)
+
+
+let gen_theta_classic (mode : sysMode)
+                      (sys : system_t) : E.formula =
+  let main_proc = defMainProcedure in
+  let param_list = match mode with
+    | SClosed m -> E.gen_tid_list 1 m
+    | SOpenArray xs -> xs in
+  let main_fLine = get_fLine_by_name sys main_proc in
+  let init_line = Pervasives.max 1 main_fLine in
+  let init_pc_list = List.map (fun i->build_curr_pc i init_line) param_list in
+  let init_pc_cond = E.conj_list init_pc_list in
+  let prog_cond = gen_init_cond sys main_proc param_list true in
+  let init_sys_cond = match get_assume sys with
+    | None   -> prog_cond
+    | Some c -> E.And(Stm.boolean_to_expr_formula c, prog_cond) in
+  E.And (init_pc_cond, init_sys_cond)
+
+
+let gen_theta_with_count_abs (mode:sysMode)
+                             (sys:system_t) : E.formula =
+  let theta_cond = gen_theta_classic mode sys in
+  let lines = rangeList 1 (get_trans_num sys + 1) in
+  let main_fLine = get_fLine_by_name sys (defMainProcedure) in
+  let full_cond = List.fold_left 
+    (fun phi i -> if i = main_fLine then
+        (* E.And (E.someone_at main_fLine, phi) *)
+        E.And (E.eq_int (E.VarInt (E.countAbs_var i)) E.defCountVar, phi)
+      else
+        E.And (E.eq_int (E.VarInt (E.countAbs_var i)) (E.IntVal 0), phi)) 
+    theta_cond lines in
+  full_cond
+
+
+let gen_theta (mode:sysMode)
+              (sys:system_t)
+              (rhoMode:rhoMode) : E.formula =
+  match rhoMode with
+  | Classic -> gen_theta_classic mode sys
+  | CountingAbs -> gen_theta_with_count_abs mode sys
+
+(* Transition relations *)
 
