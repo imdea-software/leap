@@ -48,9 +48,9 @@ type sysMode =
   | SOpenArray of E.tid list
 
 
-type rhoMode =
-  | Classic
-  | CountingAbs
+type abstraction =
+  | Nothing
+  | Counting
 
 
 
@@ -63,6 +63,7 @@ exception Not_position of E.pc_t
 exception Duplicated_label of string * E.pc_t * E.pc_t * E.pc_t
 exception Undefined_label of string * E.pc_t
 exception Invalid_argument
+exception Impossible_call of string
 
 
 
@@ -895,10 +896,384 @@ let gen_theta_with_count_abs (mode:sysMode)
 
 let gen_theta (mode:sysMode)
               (sys:system_t)
-              (rhoMode:rhoMode) : E.formula =
-  match rhoMode with
-  | Classic -> gen_theta_classic mode sys
-  | CountingAbs -> gen_theta_with_count_abs mode sys
+              (abs:abstraction) : E.formula =
+  match abs with
+  | Nothing  -> gen_theta_classic mode sys
+  | Counting -> gen_theta_with_count_abs mode sys
 
 (* Transition relations *)
 
+let gen_pres (p_name : string)
+             (gs : E.TermSet.t)
+             (ls : E.TermSet.t)
+             (os : (string * E.TermSet.t) list)
+             (ts : E.TermSet.t)
+             (mode : sysMode)
+             (th:E.tid) : E.formula list =
+  let gTermConj = E.TermSet.fold
+    (fun x l -> (E.construct_pres_term x E.Shared) :: l) gs [] in
+  let lTermConj = match mode with
+    | SClosed _ -> E.TermSet.fold
+        (fun x l -> (E.construct_pres_term x (E.Local th))::l) ls []
+    | SOpenArray _ -> E.TermSet.fold
+        (fun x bs -> (E.construct_pres_term x E.Shared)::bs) ls [] in
+  let oTermConj = match mode with
+    | SClosed m ->
+        let th_list = E.gen_tid_list 1 m in
+        let f p x bs i = if (i<>th || p<>p_name) then
+            (E.construct_pres_term x (E.Local i))::bs
+          else bs in
+        let g p x l =
+            List.fold_left (f p x) [] th_list @ l in
+        let h (p, ts) =
+          E.TermSet.fold (g p) ts [] in
+        List.flatten $ List.map h os
+    | SOpenArray _ ->
+        List.flatten $ List.map
+        (fun (_,ts) -> E.TermSet.fold
+          (fun x bs -> (E.construct_pres_term x E.Shared)::bs) ts []) os in
+  let thTermConj =
+    E.TermSet.fold (fun x l -> (E.construct_pres_term x E.Shared) :: l) ts [] in
+  gTermConj @ lTermConj @ oTermConj @ thTermConj
+
+  
+let rec aux_rho_for_st
+    (sys:system_t)
+    (gSet:E.TermSet.t) (* Global accessible terms. *)
+    (lSet:E.TermSet.t) (* Local accessible terms. *)
+    (thSet:E.TermSet.t) (* Extra formula tids. *)
+    (mode:sysMode) (* System type. *)
+    (st:Stm.statement_t) (* Generate rho for statem. *)
+    (th:E.tid) (* Thread taking the transition *)
+    (is_ghost:bool) (* Is ghost code? *)
+    (abs:abstraction) (* Include counting abstraction? *)
+    (mInfo:Bridge.malloc_info)
+    (pt:Bridge.prog_type)
+    : (E.TermSet.t * E.TermSet.t * E.TermSet.t * E.formula list list) =
+  let conv_bool = Stm.boolean_to_expr_formula in
+  let th_p = E.Local th in
+  let append_to_ghost gc gS lS tS (ps:E.formula list list) =
+    match gc with
+    | Some code ->
+        let _ = Printf.printf "WE HAVE SOME GHOST CODE!!!\n" in
+        let eff_list = Bridge.gen_st_cond_effect_as_array pt code true th_p in
+        let _ = List.iter (fun (c,ass,_,_) ->
+                  Printf.printf "CONDITION: %s\n" (E.formula_to_str c);
+                  Printf.printf "ASSIGNMENTS: %s\n" (E.formula_to_str ass);
+                ) eff_list in
+
+        let rho_list = List.fold_left (fun xs (cond, eff, _, _) ->
+                         (List.map (fun normal_code ->
+                           (E.param th_p cond :: eff :: normal_code)
+                          ) ps) @ xs
+                       ) [] eff_list in
+          (* URGENT FIX: Preservation when no -hp is used *)
+        (E.TermSet.empty, E.TermSet.empty, E.TermSet.empty, rho_list)
+    | None -> (gS, lS, tS, ps) in
+  let make_pos_change (c:int) (ns:int list) : E.formula list =
+    let pc_change = build_pc mode th c ns in
+    let next_pos = 
+      E.disj_list $ List.map (fun n -> E.build_pos_change c n) ns in
+    match abs with
+    | Counting -> [E.someone_at c; next_pos] @ pc_change
+    | Nothing -> pc_change in
+  match (st, is_ghost) with
+  (************************** Skip @topLevel ******************************)
+  | Stm.StSkip (g, Some i), false ->
+      let pred = make_pos_change i.Stm.pos [i.Stm.next_pos] in
+      append_to_ghost g gSet lSet thSet [pred]
+   
+  (************************* Skip @ghostLevel ****************************)
+  | Stm.StSkip _, true -> (gSet, lSet, thSet, [])
+  
+  (************************* Await @topLevel *****************************)
+  | Stm.StAwait (c, g, Some i), false ->
+      let c'    = conv_bool c in
+      let predT = 
+        make_pos_change i.Stm.pos [i.Stm.next_pos] @ [E.param th_p c'] in
+      let predF = 
+        make_pos_change i.Stm.pos [i.Stm.pos] @ [E.param th_p (E.Not c')] in
+      append_to_ghost g gSet lSet thSet [predT; predF]
+      
+  (************************ Await @ghostLevel ****************************)
+  (* I must fix this case, to allow await on atomic statements *)
+  | Stm.StAwait _, true -> (gSet, lSet, thSet, []) (* ????? *)
+  
+  (************************ Noncritical @topLevel ************************)
+  | Stm.StNonCrit (g, Some i), false ->
+      let pred = make_pos_change i.Stm.pos [i.Stm.next_pos] in
+      append_to_ghost g gSet lSet thSet [pred]
+  
+  (************************ Noncritical @ghostLevel **********************)
+  | Stm.StNonCrit _, true -> (gSet, lSet, thSet, []) (* ????? *)
+  
+  (************************ Critical @topLevel ***************************)
+  | Stm.StCrit (g, Some i), false ->
+      let pred = make_pos_change i.Stm.pos [i.Stm.next_pos] in
+      append_to_ghost g gSet lSet thSet [pred]
+      
+  (************************ Critical @ghostLevel *************************)
+  | Stm.StCrit _, true -> (gSet, lSet, thSet, []) (* ????? *)
+  
+  (************************ If @topLevel *********************************)
+  | Stm.StIf (c, t, e, g, Some i), false ->
+      let c' = conv_bool c in
+      let predT = make_pos_change i.Stm.pos [i.Stm.next_pos] @
+                  [E.param th_p c'] in
+      let predF = make_pos_change i.Stm.pos [i.Stm.else_pos] @
+                  [E.param th_p (E.Not c')] in
+      append_to_ghost g gSet lSet thSet [predT; predF]
+  
+  (************************ If @ghostLevel *******************************)
+  | Stm.StIf (c, t, e, _, _), true -> (gSet, lSet, thSet, []) (* ????? *)
+  
+  (************************ While @topLevel ******************************)
+  | Stm.StWhile (c, l, g, Some i), false ->
+      let c' = conv_bool c in
+      let predT = 
+        make_pos_change i.Stm.pos [i.Stm.next_pos] @ [E.param th_p c'] in
+      let predF = 
+        make_pos_change i.Stm.pos [i.Stm.else_pos] 
+        @ [E.param th_p (E.Not c')] in
+      append_to_ghost g gSet lSet thSet [predT; predF]
+   
+  (************************ While @ghostLevel ****************************)
+  | Stm.StWhile _, true -> (gSet, lSet, thSet, []) (* ????? *)
+    
+  (************************ Choice @topLevel *****************************)
+  | Stm.StSelect (xs, g, Some i),  false ->
+      let pred = make_pos_change i.Stm.pos i.Stm.opt_pos in
+      append_to_ghost g gSet lSet thSet [pred]
+  
+  (************************ Choice  @ghostLevel **************************)
+  | Stm.StSelect _,  true -> (gSet, lSet, thSet, []) (* ????? *)
+  
+  (************************ Assignment @anyLevel *************************)
+  | Stm.StAssign (v, e, g, info), is_ghost ->
+    let (gSet',lSet',thSet',equiv) =
+      begin
+        match mode with
+        | SClosed _ ->
+            let modif, equiv = Bridge.construct_stm_term_eq mInfo pt v th_p e in
+            let still_gSet = E.filter_term_set modif gSet in
+            let still_lSet = E.filter_term_set modif lSet in
+            let still_thSet = E.filter_term_set modif thSet in
+            (still_gSet, still_lSet, still_thSet, equiv)
+        | SOpenArray _ ->
+            let (modif, equiv) = Bridge.construct_stm_term_eq_as_array mInfo pt v th_p e in
+            let still_gSet = E.filter_term_set modif gSet in
+            let still_lSet = E.filter_term_set modif lSet in
+            let still_thSet = E.filter_term_set modif thSet in
+            (still_gSet, still_lSet, still_thSet, equiv)
+      end in
+    if is_ghost then (gSet', lSet', thSet', [[equiv]])
+    else begin
+      let _ = assert (info <> None) in
+      let pred = match info with
+        | Some i -> (make_pos_change i.Stm.pos [i.Stm.next_pos]) @ [equiv]
+        | None   -> [] in
+      append_to_ghost g gSet' lSet' thSet' [pred]
+    end
+    
+  (************************ Unit @anyLevel *******************************)
+  | Stm.StUnit (cmd, g, Some i), is_ghost ->
+    let op = Stm.get_unit_op cmd in
+    let a = E.param_addr th_p $ Stm.addr_used_in_unit_op cmd in
+    let cell = E.CellAt (E.heap, a) in
+    let cond = match op with
+      | Stm.Lock   -> E.eq_tid (E.CellLockId cell) E.NoThid
+      | Stm.Unlock -> E.eq_tid (E.CellLockId cell)
+                               (match th_p with
+                                | E.Shared -> E.NoThid
+                                | E.Local t -> t) in
+    let new_tid  = match op with
+      | Stm.Lock -> th
+      | Stm.Unlock -> E.NoThid in
+    let mkcell = E.MkCell (E.CellData (E.CellAt (E.heap, a)), 
+      E.Next (E.CellAt (E.heap, a)), new_tid) in
+    let upd = E.eq_mem (E.prime_mem E.heap) (E.Update (E.heap, a, mkcell)) in
+    let modif = [E.MemT E.heap] in
+    let (gSet',lSet',thSet') = begin
+      match mode with
+      | SClosed _ ->
+          let still_gSet  = E.filter_term_set (modif) gSet in
+          let still_lSet  = E.filter_term_set (modif) lSet in
+          let still_thSet = E.filter_term_set (modif) thSet in
+            (still_gSet, still_lSet, still_thSet)
+      | SOpenArray _ ->
+          let still_gSet  = E.filter_term_set (modif) gSet in
+          let still_lSet  = E.filter_term_set (modif) lSet in
+          let still_thSet = E.filter_term_set (modif) thSet in
+            (still_gSet, still_lSet, still_thSet)
+    end in
+    if is_ghost then (gSet', lSet', thSet', [[cond;upd]])
+    else begin
+      let pred = 
+        (make_pos_change i.Stm.pos [i.Stm.next_pos]) @ [cond;upd] in
+      append_to_ghost g gSet' lSet' thSet' [pred]
+    end
+
+  (************************ Sequences @anyLevel **************************)
+  | Stm.StSeq xs, is_ghost ->
+      let f (g,l,t,fs) cmd =
+        let (gS,lS,tS,fS) =
+          aux_rho_for_st sys g l t mode cmd th is_ghost abs mInfo pt in
+        (gS, lS, tS, fS@fs) in
+      List.fold_left f (gSet, lSet, thSet, []) xs
+      
+  (************************ Ill-formed statements ************************)
+  | Stm.StAtomic (xs, g, Some i), false ->
+      let eff_list = Bridge.gen_st_cond_effect_as_array pt st false th_p in
+      let f (cond, eff, c, n) = 
+        let pos_change = make_pos_change c [n] in
+        [E.conj_list (pos_change @ [E.param th_p cond; eff])] in
+      let rho_list = List.map f eff_list in
+      (E.TermSet.empty, E.TermSet.empty, E.TermSet.empty, rho_list)
+  (************************ Call @topLevel *******************************)
+  | Stm.StCall (t,proc_name,ps,gc,Some i), false ->
+      (* We make the argument assignment *)
+      let (modif_list, equiv_list) =
+        let gen_f = match mode with
+                    | SClosed _ -> Bridge.construct_stm_term_eq
+                    | SOpenArray _ -> Bridge.construct_stm_term_eq_as_array in
+        let call_proc_args = proc_info_get_args
+                               (get_proc_by_name sys proc_name) in
+        let assignments = List.combine call_proc_args ps
+        in
+          List.fold_left (fun (ms,es) ((arg,arg_sort),value) ->
+            let v = Stm.VarT (Stm.build_var arg arg_sort
+                                  (E.Scope proc_name) E.RealVar) in
+            let (m,e) = gen_f mInfo pt v th_p (Stm.Term value)
+            in
+              (m@ms, e::es)
+          ) ([],[]) assignments in
+      let gSet' = E.filter_term_set modif_list gSet in
+      let lSet' = E.filter_term_set modif_list lSet in
+      let thSet' = E.filter_term_set modif_list thSet in
+      (* We make position change *)
+      let call_pos = match i.Stm.call_pos with
+                     | None   -> begin
+                                   Interface.Err.msg "Missing call position" $
+                                     Printf.sprintf "There is no information \
+                                                     on where to jump for \
+                                                     procedure %s" proc_name;
+                                   raise(Impossible_call proc_name)
+                                 end
+                     | Some p -> [p] in
+      (* Final transition predicate *)
+      let pred = (make_pos_change i.Stm.pos call_pos) @ equiv_list
+      in
+        append_to_ghost gc gSet' lSet' thSet' [pred]
+  (************************ Return @topLevel *****************************)
+  | Stm.StReturn (t_opt,gc,Some i), false ->
+      let (gSet', lSet', thSet',equiv) =
+        match t_opt with
+        (* Return value to process *)
+        | Some t ->
+            let _ = printf "Going to process term: %s\n" (Stm.term_to_str t) in
+            begin
+              let ret_pos = i.Stm.called_from_pos in
+              let _ = printf "RETPOS: %s\n" (String.concat ";" $ List.map string_of_int ret_pos) in
+              let (modif,equiv) =
+                List.fold_left (fun (ms,es) pos ->
+                  let call_stm = get_statement_at sys pos in
+                  match call_stm with
+                  | (_, Stm.StCall (Some ret_t, _,_,_,_)) ->
+                    begin
+                      let (k,(m,e)) =
+                        match mode with
+                        | SClosed _   ->
+                            (th, Bridge.construct_stm_term_eq
+                                  mInfo pt ret_t th_p (Stm.Term t))
+                        | SOpenArray _ ->
+                            (th, Bridge.construct_stm_term_eq_as_array
+                                  mInfo pt ret_t th_p (Stm.Term t)) in
+                      let pos_assignment =
+                        E.Implies (build_next_pc mode k [pos], e) in
+                      (m@ms, pos_assignment::es)
+                    end
+                  | _ -> (ms,es)
+                ) ([],[]) ret_pos in
+              let still_gSet = E.filter_term_set modif gSet in
+              let still_lSet = E.filter_term_set modif lSet in
+              let still_thSet = E.filter_term_set modif thSet in
+              (still_gSet, still_lSet, still_thSet, E.conj_list equiv)
+            end
+        (* No return value *)
+        | None   -> (gSet, lSet, thSet, E.True) in
+      let pred = (make_pos_change i.Stm.pos i.Stm.return_pos) @ [equiv] in
+      append_to_ghost gc gSet' lSet' thSet' [pred]
+  | _ -> (gSet, lSet, thSet, [])
+
+
+
+let rho_for_st (sys : system_t)     (* The system                   *)
+               (mode : sysMode)     (* For closed or open system?   *)
+               (p : E.pc_t)         (* Program line                 *)
+               (abs : abstraction)  (* Counting abstraction or not? *)
+               (hide_pres : bool)   (* Hide variable preservation?  *)
+               (th:E.tid)           (* Thread taking the transition *)
+                  : E.formula list =
+(*    LOG "Entering rho_for_st..." LEVEL TRACE; *)
+  let gSet = gen_global_vars_as_terms sys in
+  let (proc,st) = get_statement_at sys p in
+  (* let remLocList = List.remove_assoc proc allLocList in *)
+  let th_list = match mode with
+                | SClosed m -> E.gen_tid_list 1 m
+                | SOpenArray js -> js in
+  let thSet = 
+    E.construct_term_set $ List.map (fun x -> E.ThidT x) th_list in
+
+  (* For Malloc -- BEGIN *)
+  let is_sort s v = (E.var_sort v = s) in
+  let gVars = get_variable_list (get_global sys) in
+  let lVars = get_all_local_vars sys in
+  let gAddrVars = List.filter (is_sort E.Addr) gVars in
+  let gSetVars = List.filter (is_sort E.Set) gVars in
+  let lAddrVars = List.fold_left 
+    (fun xs (_,vs) -> (List.filter (is_sort E.Addr) vs) @ xs) [] lVars in
+  let lSetVars = List.fold_left 
+    (fun xs (_,vs) -> (List.filter (is_sort E.Set) vs) @ xs) [] lVars in
+  let mInfo = {
+    Bridge.tids = th_list;
+    Bridge.gAddrs = gAddrVars; 
+    Bridge.gSets = gSetVars;
+    Bridge.lAddrs = lAddrVars; 
+    Bridge.lSets = lSetVars
+  } in
+  let pt = if mem_var (get_global sys) heap_name then
+    Bridge.Heap
+  else Bridge.Num in
+  (* For Malloc -- END *)
+
+  let all_local, filtered_local =
+    match mode with
+    | SClosed _ ->  let ls = gen_local_vars_as_terms sys in (ls,ls)
+    | SOpenArray _ -> let ls = gen_local_vars_as_array_terms sys in
+        (ls, List.remove_assoc proc ls) in
+  let lSet = List.assoc proc all_local in
+  let (gSet',lSet',thSet',rhoList) =
+    aux_rho_for_st sys gSet lSet thSet mode st th false abs mInfo pt in
+  let phi_list = if hide_pres then rhoList
+    else begin
+      match st with
+      (* If atomic statement, I need to generate the preservation
+         for each list of conjunctions separately *)
+      | Stm.StAtomic _ -> 
+          let f xs = 
+            let phi = E.conj_list xs in
+            let f' v = E.ArrayT (E.VarArray (E.var_clear_param_info v)) in
+            let p_vars = List.map f' (E.primed_vars phi) in
+            let gSet' = E.filter_term_set p_vars gSet in
+            let lSet' = E.filter_term_set p_vars lSet in
+            let thSet' = E.filter_term_set p_vars thSet in
+            let pres = gen_pres proc gSet' lSet' filtered_local thSet' mode th in
+            (phi::pres) in
+          List.map f rhoList
+      (* Otherwise, I already have the terms to be preserved *)
+      | _ ->
+          let pres_list =
+            gen_pres proc gSet' lSet' filtered_local thSet' mode th in
+          List.map (fun x -> x @ pres_list) rhoList 
+    end in
+    List.map E.conj_list phi_list

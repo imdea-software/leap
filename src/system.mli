@@ -22,9 +22,9 @@ type sysMode =
   | SOpenArray of Expression.tid list
 
 
-type rhoMode =
-  | Classic
-  | CountingAbs
+type abstraction =
+  | Nothing
+  | Counting
 
 
 (* Exceptions *)
@@ -203,4 +203,10 @@ val system_to_str : system_t -> string
 
 
 (* TRANSITION RELATION FUNCTIONS *)
-(*val gen_theta : sysMode -> system_t -> rhoMode -> Expression.formula *)
+val gen_theta : sysMode -> system_t -> abstraction -> Expression.formula
+
+(*
+val gen_all_transitions : system_t -> (Expression.pc_t * ) list
+
+val all_transitions_to_str : system_t -> string
+*)
