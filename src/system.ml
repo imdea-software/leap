@@ -49,7 +49,7 @@ type sysMode =
 
 
 type abstraction =
-  | Nothing
+  | NoAbstraction
   | Counting
 
 
@@ -898,7 +898,7 @@ let gen_theta (mode:sysMode)
               (sys:system_t)
               (abs:abstraction) : E.formula =
   match abs with
-  | Nothing  -> gen_theta_classic mode sys
+  | NoAbstraction  -> gen_theta_classic mode sys
   | Counting -> gen_theta_with_count_abs mode sys
 
 (* Transition relations *)
@@ -976,7 +976,7 @@ let rec aux_rho_for_st
       E.disj_list $ List.map (fun n -> E.build_pos_change c n) ns in
     match abs with
     | Counting -> [E.someone_at c; next_pos] @ pc_change
-    | Nothing -> pc_change in
+    | NoAbstraction -> pc_change in
   match (st, is_ghost) with
   (************************** Skip @topLevel ******************************)
   | Stm.StSkip (g, Some i), false ->
@@ -1207,14 +1207,14 @@ let rec aux_rho_for_st
 
 
 
-let rho_for_st (sys : system_t)     (* The system                   *)
-               (mode : sysMode)     (* For closed or open system?   *)
-               (p : E.pc_t)         (* Program line                 *)
-               (abs : abstraction)  (* Counting abstraction or not? *)
-               (hide_pres : bool)   (* Hide variable preservation?  *)
-               (th:E.tid)           (* Thread taking the transition *)
-                  : E.formula list =
-(*    LOG "Entering rho_for_st..." LEVEL TRACE; *)
+let gen_rho (sys : system_t)     (* The system                   *)
+            (mode : sysMode)     (* For closed or open system?   *)
+            (p : E.pc_t)         (* Program line                 *)
+            (abs : abstraction)  (* Counting abstraction or not? *)
+            (hide_pres : bool)   (* Hide variable preservation?  *)
+            (th:E.tid)           (* Thread taking the transition *)
+              : E.formula list =
+(*    LOG "Entering gen_rho..." LEVEL TRACE; *)
   let gSet = gen_global_vars_as_terms sys in
   let (proc,st) = get_statement_at sys p in
   (* let remLocList = List.remove_assoc proc allLocList in *)

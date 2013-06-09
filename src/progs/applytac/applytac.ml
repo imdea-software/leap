@@ -85,6 +85,19 @@ vc_info);
     print_endline (String.concat "\n----------------------------\n"
       (List.map Expression.formula_to_human_str final_formulas));
 
+
+    (* Apply decision procedures if activated *)
+    if !ApplyTacArgs.tslEnable then
+      begin
+        print_endline "Calling the TSL solver...";
+        List.iter (fun phi ->
+          print_endline (Expression.formula_to_str phi);
+          let tsl_phi = TSLInterface.formula_to_tsl_formula phi in
+          let result = TslSolver.is_valid 5 None !ApplyTacArgs.coType tsl_phi in
+          if result then print_endline "VALID" else print_endline "NOT VALID"
+        ) final_formulas
+      end;
+
     ()
   with
     | Global.ParserError msg -> Interface.Err.msg "Parsing error" msg

@@ -856,7 +856,7 @@ let is_valid (prog_lines:int)
              (stac:Tactics.solve_tactic option)
              (co:Smp.cutoff_strategy_t)
              (phi:SL.formula) : bool =
-  not (is_sat prog_lines stac co phi)
+  not (is_sat prog_lines stac co (SL.Not phi))
 
 
 let compute_model (b:bool) : unit =

@@ -24,6 +24,7 @@ let supp_tac               = ref None
 let supp_split_tac_list    = ref []
 let formula_tac_list       = ref []
 let formula_split_tac_list = ref []
+let tslEnable              = ref false
 let outfile                = ref ""
 
 let assignopt (valref : 'a ref) (valbool : bool ref) (aval : 'a) : unit =
@@ -103,6 +104,9 @@ let opts =
     ("-o",
         Arg.String (fun s -> outfile := s),
         "output file");
+    ("-tsl",
+        Arg.Set tslEnable,
+        "enables the use of tsl solver");
     ("--debug",
         Arg.Unit setdebug,
         "debug output information");

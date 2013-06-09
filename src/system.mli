@@ -23,7 +23,7 @@ type sysMode =
 
 
 type abstraction =
-  | Nothing
+  | NoAbstraction
   | Counting
 
 
@@ -205,8 +205,10 @@ val system_to_str : system_t -> string
 (* TRANSITION RELATION FUNCTIONS *)
 val gen_theta : sysMode -> system_t -> abstraction -> Expression.formula
 
-(*
-val gen_all_transitions : system_t -> (Expression.pc_t * ) list
-
-val all_transitions_to_str : system_t -> string
-*)
+val gen_rho : system_t ->
+              sysMode ->
+              Expression.pc_t ->
+              abstraction ->
+              bool ->
+              Expression.tid ->
+              Expression.formula list
