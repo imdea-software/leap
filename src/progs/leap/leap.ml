@@ -211,7 +211,9 @@ let _ =
             but it could not be read from the invariant folder." undef_t;
         raise(LeapArgs.Unknown_tag undef_t)
       end;
-      ignore $ VCG.check_with_graph sys graph
+(*      ignore $ VCG.check_with_graph sys graph *)
+        print_endline "FORMULAS GENERATED FROM GRAPH";
+        List.iter (fun phi -> print_endline (Expr.formula_to_str phi)) (Gen.gen_from_graph sys graph)
     end;
 
 (*

@@ -1823,11 +1823,11 @@ module Make (K : Level.S) : TSLK_QUERY =
       B.contents   buf
 
 
-    let formula_to_str (stac:Tactics.solve_tactic option)
-                       (co:Smp.cutoff_strategy_t)
+    let formula_to_str (co:Smp.cutoff_strategy_t)
                        (copt:Smp.cutoff_options_t)
                        (phi:Expr.formula) : string =
 (*      LOG "Entering formula_to_str..." LEVEL TRACE; *)
+(*
       let extra_info_str =
         match stac with
         | None -> ""
@@ -1865,6 +1865,7 @@ module Make (K : Level.S) : TSLK_QUERY =
             verb "**** Number of cases: %i\n" (List.length parts);
             verb "**** Computation done!!!\n";
             z3_partition_assumptions parts in
+*)
       clean_lists();
       let _ = GM.clear_sort_map sort_map in
       verb "**** Z3TslkQuery will compute the cutoff...\n";
@@ -1886,7 +1887,7 @@ module Make (K : Level.S) : TSLK_QUERY =
         variables_from_formula_to_z3 buf num_tid phi ;
         (* We add extra information if needed *)
         verb "**** Z3TslkQuery, about to compute extra information...\n";
-        B.add_string buf extra_info_str ;
+(*        B.add_string buf extra_info_str ; *)
         post_process buf num_addr num_elem num_tid;
         verb "**** Z3TslkQuery, computed extra information...\n";
         B.add_string buf "(assert\n";

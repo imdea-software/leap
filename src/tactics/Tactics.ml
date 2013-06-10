@@ -43,7 +43,6 @@ type support_split_tactic = SplitGoal
 type support_tactic = Full | Reduce | Reduce2
 type formula_tactic = SimplifyPC | PropositionalPropagate | FilterStrict
 type formula_split_tactic = SplitConsequent
-type solve_tactic = Cases
 
 type support_split_tactic_t = vc_info -> vc_info list
 type support_tactic_t = vc_info -> support_t
@@ -53,7 +52,6 @@ type formula_tactic_t = implication -> implication
 type proof_plan =
   {
     cutoff_algorithm : Smp.cutoff_strategy_t option     ;
-    solve            : solve_tactic option              ;
     support_split_tactics : support_split_tactic_t list ;
     support_tactics  : support_tactic list              ;
     formula_split_tactics : formula_split_tactic_t list ;
@@ -67,14 +65,12 @@ type proof_plan =
 (***********************)
 
 let new_proof_plan (smp:Smp.cutoff_strategy_t option)
-                   (solve:solve_tactic option)
                    (supp_split_tacs:support_split_tactic_t list)
                    (supp_tacs:support_tactic list)
                    (formula_split_tacs:formula_split_tactic_t list)
                    (formula_tacs:formula_tactic list) : proof_plan =
   {
     cutoff_algorithm = smp;
-    solve = solve;
     support_split_tactics = supp_split_tacs;
     support_tactics = supp_tacs;
     formula_split_tactics = formula_split_tacs;
@@ -215,8 +211,6 @@ let dup_vc_info_with_goal (info:vc_info) (new_goal:E.formula) : vc_info =
 
 let get_cutoff (plan:proof_plan) : Smp.cutoff_strategy_t option =
   plan.cutoff_algorithm
-and get_solve (plan:proof_plan)  : solve_tactic option =
-  plan.solve
 and get_support_tactics (plan:proof_plan) : support_tactic list =
   plan.support_tactics
 and get_formula_tactics (plan:proof_plan) : formula_tactic list =

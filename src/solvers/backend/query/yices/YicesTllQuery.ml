@@ -1603,8 +1603,7 @@ struct
     B.contents   buf
 
 
-  let formula_to_str (stac:Tactics.solve_tactic option)
-                     (co:Smp.cutoff_strategy_t)
+  let formula_to_str (co:Smp.cutoff_strategy_t)
                      (copt:Smp.cutoff_options_t)
                      (phi:Expr.formula) : string =
     let _ = GM.clear_sort_map sort_map in

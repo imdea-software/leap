@@ -1878,12 +1878,12 @@ struct
     B.contents   buf
 
 
-  let formula_to_str (stac:Tactics.solve_tactic option)
-                     (co:Smp.cutoff_strategy_t)
+  let formula_to_str (co:Smp.cutoff_strategy_t)
                      (copt:Smp.cutoff_options_t)
                      (phi:Expr.formula) : string =
 
 (*    LOG "Entering formula_to_str..." LEVEL TRACE; *)
+(*
     let extra_info_str =
       match stac with
       | None -> ""
@@ -1919,6 +1919,7 @@ struct
           verb "**** SMTTllQuery. Number of cases: %i\n" (List.length parts);
           verb "**** SMTTllQuery. Computation done!!!\n";
             smt_partition_assumptions parts in
+*)
 
     clean_lists();
     let _ = GM.clear_sort_map sort_map in
@@ -1936,7 +1937,7 @@ struct
       smt_defs     buf num_addr num_tid num_elem req_sorts req_ops;
       variables_from_formula_to_smt buf num_tid phi ;
       (* We add extra information if needed *)
-      B.add_string buf extra_info_str ;
+(*      B.add_string buf extra_info_str ; *)
       post_process buf num_addr num_elem num_tid;
       B.add_string buf "(assert\n";
       B.add_string buf formula_str ;

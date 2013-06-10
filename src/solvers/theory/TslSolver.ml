@@ -676,7 +676,6 @@ module TranslateTsl (SLK : TSLKExpression.S) =
 
 
 let check_sat_by_cases (lines:int)
-                       (stac:Tactics.solve_tactic option)
                        (co : Smp.cutoff_strategy_t)
                        (cases:(SL.conjunctive_formula *                   (* PA formula  *)
                                SL.conjunctive_formula *                   (* NC formula  *)
@@ -732,7 +731,7 @@ let check_sat_by_cases (lines:int)
         verb "**** TSL Solver, about to translate TSL to TSLK...\n";
         let phi_tslk = Trans.to_tslk ls in
         verb "**** TSL Solver, TSL to TSLK translation done...\n";
-        let res = TslkSol.is_sat lines stac co phi_tslk in
+        let res = TslkSol.is_sat lines co phi_tslk in
         tslk_sort_map := TslkSol.get_sort_map ();
         tslk_model := TslkSol.get_model ();
         res in
@@ -803,7 +802,6 @@ let rec combine_splits_arrgs (sp:(SL.conjunctive_formula * SL.conjunctive_formul
 
 
 let is_sat_plus_info (lines : int)
-           (stac:Tactics.solve_tactic option)
            (co : Smp.cutoff_strategy_t)
            (phi : SL.formula) : (bool * int * int) =
   (* 0. Normalize the formula and rewrite it in DNF *)
@@ -829,34 +827,31 @@ let is_sat_plus_info (lines : int)
                                                   "NC:\n" ^ (SL.conjunctive_formula_to_str nc)) splits)));
   (* 4. Call the solver for each possible case *)
   verb "**** Will check TSL formula satisfiability...\n";
-  let (sat,tsl_calls,tslk_calls) = check_sat_by_cases lines stac co
+  let (sat,tsl_calls,tslk_calls) = check_sat_by_cases lines co
                                       (combine_splits_arrgs splits arrgs)
   in
     (sat, tsl_calls, tslk_calls)
 
 
 let is_sat (lines : int)
-           (stac:Tactics.solve_tactic option)
            (co : Smp.cutoff_strategy_t)
            (phi : SL.formula) : bool =
   (* Here goes the code for satisfiability from the paper *)
-  let (s,_,_) = is_sat_plus_info lines stac co phi in s
+  let (s,_,_) = is_sat_plus_info lines co phi in s
 
 
 let is_valid_plus_info (prog_lines:int)
-                       (stac:Tactics.solve_tactic option)
                        (co:Smp.cutoff_strategy_t)
                        (phi:SL.formula) : (bool * int * int) =
-  let (s,tsl_count,tslk_count) = is_sat_plus_info prog_lines stac co
+  let (s,tsl_count,tslk_count) = is_sat_plus_info prog_lines co
                                    (SL.Not phi) in
     (not s, tsl_count, tslk_count)
 
 
 let is_valid (prog_lines:int)
-             (stac:Tactics.solve_tactic option)
              (co:Smp.cutoff_strategy_t)
              (phi:SL.formula) : bool =
-  not (is_sat prog_lines stac co (SL.Not phi))
+  not (is_sat prog_lines co (SL.Not phi))
 
 
 let compute_model (b:bool) : unit =

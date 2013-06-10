@@ -26,10 +26,12 @@ let get_line id = snd id
 %token SEQ_ARROW CONC_ARROW BOX COMMA COLON SEMICOLON
 %token OPEN_BRACK CLOSE_BRACK OPEN_BRACE CLOSE_BRACE OPEN_PAREN CLOSE_PAREN
 %token BAR
-%token NORMAL_PREMISE EXTRA_PREMISE
+%token SELF_PREMISE OTHERS_PREMISE
 %token SMP_UNION SMP_PRUNING SMP_DNF
-%token REDUCE_TACTIC REDUCE2_TACTIC SPLIT_TACTIC SIMPL_TACTIC PROP_REDUCTION_TACTIC
-%token SOLVE_TACT_CASES
+%token SUPP_SPLIT_GOAL_TACTIC
+%token SUPP_FULL_TACTIC SUPP_REDUCE_TACTIC SUPP_REDUCE2_TACTIC
+%token FORMULA_SPLIT_CONSEQUENT_TACTIC
+%token FORMULA_SIMPLIFYPC_TACTIC FORMULA_PROPAGATE_TACTIC FORMULA_FILTER_TACTIC
 %token EOF
 
 
@@ -50,16 +52,15 @@ let get_line id = snd id
 %type <case_t> seq_case
 %type <IGraph.premise_t list> premise
 %type <Tactics.proof_plan> tactics
-%type <(Smp.cutoff_strategy_t option * Tactics.solve_tactic option)> smp_tactic
-%type <Tactics.solve_tactic option> solve_tactic
-%type <Tactics.support_tactic list> support_tactic_list
-%type <Tactics.support_tactic> support_tactic
-%type <Tactics.formula_tactic list> formula_tactic_list
-%type <Tactics.formula_tactic> formula_tactic
-%type <Tactics.formula_split_tactic list> formula_split_tactic_list
-%type <Tactics.formula_split_tactic> formula_split_tactic
-%type <Tactics.formula_split_tactic list> formula_split_tactic_list
-%type <Tactics.formula_split_tactic> formula_split_tactic
+%type <(Smp.cutoff_strategy_t option)> smp_strategy
+%type <(Tactics.support_split_tactic)> support_split_tactic
+%type <(Tactics.support_tactic)> support_tactic
+%type <(Tactics.formula_split_tactic)> formula_split_tactic
+%type <(Tactics.formula_tactic)> formula_tactic
+%type <(Tactics.support_split_tactic list)> support_split_tactic_list
+%type <(Tactics.formula_split_tactic list)> formula_split_tactic_list
+%type <(Tactics.formula_tactic list)> formula_tactic_list
+
 
 
 %%
@@ -177,90 +178,87 @@ seq_case :
       let phi_list = $3 in
       let tacs = $4
       in
-        (pc, [IGraph.Normal], phi_list, tacs)
+        (pc, [IGraph.SelfConseq], phi_list, tacs)
     }
 
 
 premise :
   |
-    { [IGraph.Normal; IGraph.Extra] }
-  | NORMAL_PREMISE COLON
-    { [IGraph.Normal] }
-  | EXTRA_PREMISE COLON
-    { [IGraph.Extra] }
+    { [IGraph.SelfConseq; IGraph.OthersConseq] }
+  | SELF_PREMISE COLON
+    { [IGraph.SelfConseq] }
+  | OTHERS_PREMISE COLON
+    { [IGraph.OthersConseq] }
 
 
 tactics :
   |
-    { Tactics.new_proof_plan None None [] [] [] [] }
-  | OPEN_BRACE smp_tactic support_tactic_list BAR
-      formula_tactic_list BAR
-      formula_split_tactic_list CLOSE_BRACE
+    { Tactics.new_proof_plan None [] [] [] [] }
+  | OPEN_BRACE smp_strategy
+               support_split_tactic_list
+               support_tactic
+               formula_split_tactic_list
+               formula_tactic_list CLOSE_BRACE
     {
-      let (smp,solve_tact) = $2 in
-      let support_tacs = $3 in
-      let formula_tacs = $5 in
-      let formula_split_tacs = $7
-      (* CONNECT: Fill the empty list we are passing here *)
-      in
-        Tactics.new_proof_plan smp solve_tact []
-          support_tacs [] formula_tacs
+      Tactics.new_proof_plan $2 (List.map Tactics.pick_support_split_tac $3) [$4]
+                                (List.map Tactics.pick_formula_split_tac $5) $6
     }
 
 
-support_tactic_list :
+smp_strategy :
   |
-    { [] }
-  | support_tactic support_tactic_list
-    { $1 :: $2 }
+    { None }
+  | SMP_UNION COLON
+    { Some Smp.Union }
+  | SMP_PRUNING COLON
+    { Some Smp.Pruning }
+  | SMP_DNF COLON
+    { Some Smp.Dnf }
 
-
-formula_tactic_list :
-  |
+support_split_tactic_list :
+  | BAR
     { [] }
-  | formula_tactic formula_tactic_list
+  | support_split_tactic support_split_tactic_list
     { $1 :: $2 }
 
 
 formula_split_tactic_list :
-  |
+  | BAR
     { [] }
   | formula_split_tactic formula_split_tactic_list
     { $1 :: $2 }
 
 
-smp_tactic :
-  |
-    { (None, None) }
-  | SMP_UNION solve_tactic COLON
-    { (Some Smp.Union, $2) }
-  | SMP_PRUNING solve_tactic COLON
-    { (Some Smp.Pruning, $2) }
-  | SMP_DNF solve_tactic COLON
-    { (Some Smp.Dnf, $2) }
+formula_tactic_list :
+  | BAR
+    { [] }
+  | formula_tactic formula_tactic_list
+    { $1 :: $2 }
 
 
-solve_tactic :
-  |
-    { None }
-  | OPEN_PAREN SOLVE_TACT_CASES CLOSE_PAREN
-    { Some Tactics.Cases }
+support_split_tactic :
+  | SUPP_SPLIT_GOAL_TACTIC
+    { Tactics.SplitGoal }
 
 
 support_tactic :
-  | REDUCE_TACTIC
+  | SUPP_FULL_TACTIC BAR
+    { Tactics.Full }
+  | SUPP_REDUCE_TACTIC BAR
     { Tactics.Reduce }
-  | REDUCE2_TACTIC
+  | SUPP_REDUCE2_TACTIC BAR
     { Tactics.Reduce2 }
 
 
-formula_tactic :
-  | SIMPL_TACTIC
-    { Tactics.SimplifyPC }
-  | PROP_REDUCTION_TACTIC
-    { Tactics.PropositionalPropagate }
-
-
 formula_split_tactic :
-  | SPLIT_TACTIC
+  | FORMULA_SPLIT_CONSEQUENT_TACTIC
     { Tactics.SplitConsequent }
+
+
+formula_tactic :
+  | FORMULA_SIMPLIFYPC_TACTIC
+    { Tactics.SimplifyPC }
+  | FORMULA_PROPAGATE_TACTIC
+    { Tactics.PropositionalPropagate }
+  | FORMULA_FILTER_TACTIC
+    { Tactics.FilterStrict }

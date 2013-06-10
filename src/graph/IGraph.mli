@@ -1,6 +1,6 @@
 type iGraph_t
 
-type premise_t = Normal | Extra
+type premise_t = SelfConseq | OthersConseq
 
 type mode_t = Sequential | Concurrent
 

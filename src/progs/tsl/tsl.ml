@@ -53,7 +53,7 @@ let _ =
 *)
 
     let vc_info = { VCG.pc = 0;      VCG.smp = !TslArgs.coType;
-                    VCG.stac = None; VCG.supps = []; try_pos = false; } in
+                    VCG.supps = []; try_pos = false; } in
 (*
     let _ = VCG.apply_dp_on_list (List.map (fun (phi,_) -> (phi,vc_info)) res_tasks) ""
     in

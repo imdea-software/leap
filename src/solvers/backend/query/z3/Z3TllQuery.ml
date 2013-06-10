@@ -1592,12 +1592,12 @@ struct
     B.contents   buf
 
 
-  let formula_to_str (stac:Tactics.solve_tactic option)
-                     (co:Smp.cutoff_strategy_t)
+  let formula_to_str (co:Smp.cutoff_strategy_t)
                      (copt:Smp.cutoff_options_t)
                      (phi:Expr.formula) : string =
 
     let _ = LeapDebug.debug "entering Z3TllQuery.formula_to_str...\n" in
+(*
     let extra_info_str =
       match stac with
       | None -> ""
@@ -1633,6 +1633,7 @@ struct
           let _ = LeapDebug.debug "Number of cases: %i\n" (List.length parts) in
           let _ = LeapDebug.debug "Computation done!!!\n" in
             z3_partition_assumptions parts in
+*)
 
     let _ = GM.clear_sort_map sort_map in
     let _ = LeapDebug.debug "Z3TllQuery will compute the cutoff...\n" in
@@ -1649,7 +1650,7 @@ struct
       z3_defs     buf num_addr num_tid num_elem req_sorts req_ops;
       variables_from_formula_to_z3 buf phi ;
       (* We add extra information if needed *)
-      B.add_string buf extra_info_str ;
+(*      B.add_string buf extra_info_str ; *)
       B.add_string buf "(assert\n";
       B.add_string buf formula_str ;
       B.add_string buf ")\n(check-sat)" ;

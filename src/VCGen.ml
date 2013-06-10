@@ -28,7 +28,6 @@ sig
   
   type vc_info_t = {  pc  : E.pc_t                     ;
                       smp : Smp.cutoff_strategy_t      ;
-                      stac : Tac.solve_tactic option   ;
                       mutable supps : Tag.f_tag list   ;
                       try_pos : bool                   ;
                    }
@@ -249,7 +248,6 @@ struct
   
   type vc_info_t = {  pc  : E.pc_t                     ;
                       smp : Smp.cutoff_strategy_t      ;
-                      stac : Tac.solve_tactic option   ;
                       mutable supps : Tag.f_tag list   ;
                       try_pos : bool                   ;
                    }
@@ -272,7 +270,6 @@ struct
      PE.expression             * (** The formula with pos only  *)
      string list                   * (** New added boolean preds    *)
      valid_t                       * (** Status                     *)
-     Tactics.solve_tactic option * (** Solving aided tactic       *)
      Smp.cutoff_strategy_t         * (** Cutoff strategy to be used *)
      bool                          * (** Apply pos dp?              *)
      formula_status_t                (** Brief description          *)
@@ -359,7 +356,7 @@ struct
     hide_pres = false;
     count_abs = false;
     special = Hashtbl.create 10;
-    tactics = Tac.new_proof_plan (Some Smp.Dnf) None [] [] [] [];
+    tactics = Tac.new_proof_plan (Some Smp.Dnf) [] [] [] [];
   }
   
   (* This should not go here *)
@@ -1277,7 +1274,6 @@ struct
                   (Sys.SOpenArray inv.E.voc) sys solverInfo.count_abs in
     let vc_info = {pc   = 0;
                    smp  = assign_cutoff (Tac.get_cutoff solverInfo.tactics);
-                   stac = Tac.get_solve solverInfo.tactics;
                    supps= [];
                    try_pos = true;} in
     let init_cond = (E.Implies (theta, inv.E.formula), vc_info)
@@ -1475,7 +1471,6 @@ struct
     (* TODO: Support Threads as terms? *)
     let gen_vc_info (l:E.pc_t) = {pc  =l;
                                   smp = assign_cutoff (Tac.get_cutoff solverInfo.tactics);
-                                  stac=Tac.get_solve solverInfo.tactics;
                                   supps = [];
                                   try_pos = true;} in
   
@@ -1676,7 +1671,6 @@ struct
     let diff_conj = E.conj_list diff_list in
     let gen_vc_info (l:E.pc_t) = {pc  =l;
                                   smp =assign_cutoff (Tac.get_cutoff solverInfo.tactics);
-                                  stac=Tac.get_solve solverInfo.tactics;
                                   supps = [];
                                   try_pos = true;} in
   
@@ -1750,7 +1744,7 @@ struct
                        tsl_time  = 0.0;
                      } in
       Hashtbl.add tbl !i (f, p_only, new_preds, Unverified,
-                          info.stac, info.smp, info.try_pos, f_status);
+                          info.smp, info.try_pos, f_status);
       incr i in
     List.iter iter fs;
     tbl
@@ -1758,14 +1752,14 @@ struct
   
   let support_formula_table (sup:E.formula list)
       (tbl:formula_table_t) : formula_table_t =
-    let iter i (phi, _, _, valid, stac, smp, try_pos, desc) =
+    let iter i (phi, _, _, valid, smp, try_pos, desc) =
       if valid = NotValid then
         match phi with
         | E.Implies (ante, cons) ->
             let new_phi = support sup ante cons false in
             let new_pos_phi, new_preds = PE.keep_locations new_phi in
             Hashtbl.replace tbl i
-              (new_phi, new_pos_phi, new_preds, Unverified, stac, smp, try_pos, desc)
+              (new_phi, new_pos_phi, new_preds, Unverified, smp, try_pos, desc)
         | _ -> 
             Interface.Err.smsg "support_formula_table" "Unsupported formula" in
     Hashtbl.iter iter tbl;
@@ -1778,7 +1772,7 @@ struct
       let out = open_out_gen [Open_creat;Open_append;Open_wronly] 0o666 out_file in
       output_string out header;
       for i = 1 to (Hashtbl.length vc_tbl) do
-        let (f, pf, _, status, _, _, _, desc) = Hashtbl.find vc_tbl i in
+        let (f, pf, _, status, _, _, desc) = Hashtbl.find vc_tbl i in
         let f_str = E.formula_to_human_str f in
         let status_str = valid_to_str status in
         output_string out (sprintf "// --- %i : %s ---\n%s: %s\n"
@@ -1880,7 +1874,6 @@ struct
   
   
   let call_tll_dp (phi    : E.formula)
-                  (stac   : Tac.solve_tactic option)
                   (cutoff : Smp.cutoff_strategy_t)
                   (status : valid_t) : dp_result_t =
 (*    LOG "Entering call_tll_dp..." LEVEL TRACE; *)
@@ -1890,7 +1883,7 @@ struct
       let timer = new LeapLib.timer in
       timer#start;
       let valid, calls = TS.is_valid_plus_info
-                           solverInfo.prog_lines stac cutoff tll_phi in
+                           solverInfo.prog_lines cutoff tll_phi in
       timer#stop;
       if valid then
         (Checked, calls, calls, 1, timer#elapsed_time)
@@ -1903,7 +1896,6 @@ struct
 
 
   let call_tslk_dp (phi    : E.formula)
-                   (stac   : Tac.solve_tactic option)
                    (cutoff : Smp.cutoff_strategy_t)
                    (status : valid_t) : dp_result_t =
 (*    LOG "Entering call_tslk_dp..." LEVEL TRACE; *)
@@ -1915,7 +1907,7 @@ struct
       let timer = new LeapLib.timer in
       timer#start;
       let valid, calls = TSLKS.is_valid_plus_info
-                           solverInfo.prog_lines stac cutoff tslk_phi in
+                           solverInfo.prog_lines cutoff tslk_phi in
       timer#stop;
       if valid then
         (Checked, calls, calls, 1, timer#elapsed_time)
@@ -1929,7 +1921,6 @@ struct
 
 (* TUKA: Repair this function *)
   let call_tsl_dp (phi    : E.formula)
-                  (stac   : Tac.solve_tactic option)
                   (cutoff : Smp.cutoff_strategy_t)
                   (status : valid_t) : dp_result_t =
 (*    LOG "Entering call_tsl_dp..." LEVEL TRACE; *)
@@ -1943,7 +1934,7 @@ struct
       verb "**** TSL translation done...\n";
       let valid, tsl_calls, tslk_calls =
             TslSolver.is_valid_plus_info
-                solverInfo.prog_lines stac cutoff tsl_phi in
+                solverInfo.prog_lines cutoff tsl_phi in
       timer#stop;
       if valid then
         (Checked, tsl_calls, tslk_calls, 1, timer#elapsed_time)
@@ -1984,7 +1975,8 @@ struct
     (* Hashtbl.iter (fun i (f, p_f, preds, status, stac, cutoff, desc) -> *)
     for i = 1 to (Hashtbl.length vc_tbl) do
       try begin
-      let (f, p_f, preds, status, stac, cutoff, try_pos, desc) = Hashtbl.find vc_tbl i in
+      let (f, p_f, preds, status, cutoff, try_pos, desc) = Hashtbl.find vc_tbl i 
+in
 
 (* Ale: I am deactivating the position based decision procedure, as I am getting
         rid of all position predicates through the Simple (in the future Simpl3)
@@ -2001,7 +1993,8 @@ struct
                          status
                        else
                          (desc.pos_time <- time; new_status) in
-              Hashtbl.replace vc_tbl i (f, p_f, preds, st, stac, cutoff, try_pos, desc);
+              Hashtbl.replace vc_tbl i (f, p_f, preds, st, cutoff, try_pos, 
+              desc);
               (new_status, time)
             end else (status, 0.0)
         end else
@@ -2017,7 +2010,7 @@ struct
                      pos_status
                    else
                      (desc.num_time <- time; new_status) in
-          Hashtbl.replace vc_tbl i (f, p_f, preds, st, stac, cutoff, try_pos, desc);
+          Hashtbl.replace vc_tbl i (f, p_f, preds, st, cutoff, try_pos, desc);
           (new_status, time)
         end else (Unneeded, 0.0) in
       
@@ -2029,14 +2022,14 @@ struct
           let new_status, calls, _, sats, time =
             (* CONNECT *)
             (* call_tll_dp f stac cutoff prev_st in *)
-            call_tll_dp f None cutoff prev_st in
+            call_tll_dp f cutoff prev_st in
           tll_calls := !tll_calls + calls;
           tll_sats := !tll_sats + sats;
           let st = if new_status = Unneeded then
                      pos_status
                    else
                      (desc.tll_time <- time; new_status) in
-          Hashtbl.replace vc_tbl i (f, p_f, preds, st, stac, cutoff, try_pos, desc);
+          Hashtbl.replace vc_tbl i (f, p_f, preds, st, cutoff, try_pos, desc);
           (new_status, time)
         end else (num_status, 0.0) in
 
@@ -2048,14 +2041,14 @@ struct
           let new_status, calls, _, sats, time =
             (* CONNECT *)
             (* call_tslk_dp f stac cutoff prev_st in *)
-            call_tslk_dp f None cutoff prev_st in
+            call_tslk_dp f cutoff prev_st in
           tslk_calls := !tslk_calls + calls;
           tslk_sats := !tslk_sats + sats;
           let st = if new_status = Unneeded then
                      pos_status
                    else
                      (desc.tslk_time <- time; new_status) in
-          Hashtbl.replace vc_tbl i (f, p_f, preds, st, stac, cutoff, try_pos, desc);
+          Hashtbl.replace vc_tbl i (f, p_f, preds, st, cutoff, try_pos, desc);
           (new_status, time)
         end else (tll_status, 0.0) in
 
@@ -2066,7 +2059,7 @@ struct
           let new_status, tsl_call, tslk_call, sats, time =
             (* CONNECT *)
             (* call_tsl_dp f stac cutoff prev_st in *)
-            call_tsl_dp f None cutoff prev_st in
+            call_tsl_dp f cutoff prev_st in
           tsl_calls := !tsl_calls + tsl_call;
           tsl_aux_calls := !tsl_aux_calls + tslk_call;
           tsl_sats := !tsl_sats + sats;
@@ -2074,7 +2067,7 @@ struct
                      pos_status
                    else
                      (desc.tsl_time <- time; new_status) in
-          Hashtbl.replace vc_tbl i (f, p_f, preds, st, stac, cutoff, try_pos, desc);
+          Hashtbl.replace vc_tbl i (f, p_f, preds, st, cutoff, try_pos, desc);
           (new_status, time)
         end else (tll_status, 0.0) in
 

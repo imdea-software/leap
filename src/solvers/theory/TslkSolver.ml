@@ -12,17 +12,14 @@ module type CUSTOM_TSLKSOLVER = sig
                    : int -> TslkExp.formula -> (bool * int)
     
   val is_sat       : int ->
-                     Tactics.solve_tactic option ->
                      Smp.cutoff_strategy_t ->
                      TslkExp.formula -> bool
   val is_valid     : int ->
-                     Tactics.solve_tactic option ->
                      Smp.cutoff_strategy_t ->
                      TslkExp.formula -> bool
   
   val is_valid_plus_info 
                    : int ->
-                     Tactics.solve_tactic option ->
                      Smp.cutoff_strategy_t ->
                      TslkExp.formula -> (bool * int)
 
@@ -237,24 +234,21 @@ struct
   
   (* INVOCATIONS WITHOUT CONVERTING TO DNF *)
   let is_sat (lines : int)
-             (stac:Tactics.solve_tactic option)
              (co : Smp.cutoff_strategy_t)
              (phi : TslkExp.formula) : bool =
     TslkSol.set_prog_lines lines;
-    Solver.sat (TslkSol.formula stac co cutoff_opt phi)
+    Solver.sat (TslkSol.formula co cutoff_opt phi)
   
   let is_valid (prog_lines:int)
-               (stac:Tactics.solve_tactic option)
                (co:Smp.cutoff_strategy_t)
                (phi:TslkExp.formula) : bool =
-    not (is_sat prog_lines stac co (TslkExp.Not phi))
+    not (is_sat prog_lines co (TslkExp.Not phi))
   
   let is_valid_plus_info (prog_lines:int)
-                         (stac:Tactics.solve_tactic option)
                          (co:Smp.cutoff_strategy_t)
                          (phi:TslkExp.formula) : (bool * int) =
     Solver.reset_calls ();
-    let res = is_valid prog_lines stac co phi in
+    let res = is_valid prog_lines co phi in
     (res, Solver.calls_count())
 
 

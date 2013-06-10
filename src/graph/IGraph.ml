@@ -4,7 +4,7 @@ module Expr = Expression
 (* Type rename *)
 (*type Tag.f_tag = Tag.f_tag*)
 
-type premise_t = Normal | Extra
+type premise_t = SelfConseq | OthersConseq
 
 type mode_t = Sequential | Concurrent
 

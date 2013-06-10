@@ -10,17 +10,14 @@ module type CUSTOM_TLLSOLVER = sig
                    : int -> TllExp.formula -> (bool * int)
     
   val is_sat       : int ->
-                     Tactics.solve_tactic option ->
                      Smp.cutoff_strategy_t ->
                      TllExp.formula -> bool
   val is_valid     : int ->
-                     Tactics.solve_tactic option ->
                      Smp.cutoff_strategy_t ->
                      TllExp.formula -> bool
   
   val is_valid_plus_info 
                    : int ->
-                     Tactics.solve_tactic option ->
                      Smp.cutoff_strategy_t ->
                      TllExp.formula -> (bool * int)
 

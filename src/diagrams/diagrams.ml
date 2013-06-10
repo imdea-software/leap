@@ -1317,7 +1317,6 @@ struct
     let vc  = gen_pvd_vc (VCG.hide_pres ()) new_sys pvd in
   
     let vc_info      = { VCG.pc = 0;
-                         VCG.stac = Tactics.get_solve (VCG.tactics());
                          VCG.smp = VCG.cutoff();
                          VCG.supps = [];
                          VCG.try_pos = true; } in

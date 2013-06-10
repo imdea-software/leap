@@ -59,7 +59,7 @@ let solverInfo : solver_info = {
   hide_pres = false;
   abstraction = Sys.NoAbstraction;
   specialCases = Hashtbl.create 10;
-  general_proof_plan = Tac.new_proof_plan (Some Smp.Dnf) None [] [] [] [];
+  general_proof_plan = Tac.new_proof_plan (Some Smp.Dnf) [] [] [] [];
 }
 
 
@@ -270,9 +270,7 @@ let gen_from_graph (sys:Sys.system_t)
           let op_name = "_seq_sinvsp_" ^ supp_ids ^ "->" ^ inv_id in
           solverInfo.out_file <- (solverInfo.out_file ^ op_name);
           let vc_info_list = seq_spinv sys supp inv in
-
-
-          let new_vcs = []
+          let new_vcs = Tac.apply_tactics vc_info_list [] None [] []
           in
             vcs @ new_vcs
         end else begin
