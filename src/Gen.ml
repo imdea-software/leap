@@ -80,10 +80,11 @@ let decl_tag (t : Tag.f_tag option) (phi : E.formula) : unit =
         raise(Tag.Duplicated_tag(Tag.tag_id tag))
       else Tag.tag_table_add tags tag phi Tag.new_info
 
-let read_tag (t : Tag.f_tag) : E.formula option =
+let read_tag (t : Tag.f_tag) : E.formula =
   if Tag.tag_table_mem tags t then
-    Some (Tag.tag_table_get_formula tags t)
-  else None
+    Tag.tag_table_get_formula tags t
+  else
+    raise(Tag.Undefined_tag(Tag.tag_id t))
 
 let is_def_tag (t:Tag.f_tag) : bool =
   Tag.tag_table_mem tags t
@@ -210,7 +211,6 @@ let seq_spinv_premise_transitions (sys:Sys.system_t)
                                   (supp:E.formula list)
                                   (inv:E.formula)
                                     : Tac.vc_info list =
-  let voc = E.voc (E.conj_list (inv::supp)) in
   let trans_tid = match E.voc inv with
                   | [] -> E.gen_fresh_tid []
                   | i::[] -> i
@@ -252,17 +252,50 @@ let tag_seq_spinv (sys : Sys.system_t)
 
 
 let gen_from_graph (sys:Sys.system_t)
-                   (graph:IGraph.iGraph_t) : Tac.vc_info list =
-
-
+                   (graph:IGraph.iGraph_t) : E.formula list =
   let graph_info = IGraph.graph_info graph in
-  List.fold_left (fun vcs (mode, supp, inv, cases, tacs) ->
+  List.fold_left (fun vcs (mode, suppTags, invTag, cases, tacs) ->
+    let supp_ids = String.concat "," $ List.map Tag.tag_id suppTags in
+    let inv_id = Tag.tag_id invTag in
+    let supp = List.map read_tag suppTags in
+    let inv = read_tag invTag in
     match mode with
     | IGraph.Concurrent ->
         (* Add the code for concurrent proof rules *)
         vcs
     | IGraph.Sequential ->
-        vcs
+        if Hashtbl.length cases <> 0 then begin
+          (* Use seq_spinv with particular cases *)
+          print_endline ("seq_spinv with cases for " ^supp_ids^ " -> " ^inv_id);
+          let op_name = "_seq_sinvsp_" ^ supp_ids ^ "->" ^ inv_id in
+          solverInfo.out_file <- (solverInfo.out_file ^ op_name);
+          let vc_info_list = seq_spinv sys supp inv in
+
+
+          let new_vcs = []
+          in
+            vcs @ new_vcs
+        end else begin
+          match supp with
+          | [] -> begin
+                    (* No support. Use b-inv *)
+                    let op_name = "_seq_binv_" ^ inv_id in
+                    print_endline op_name;
+                    solverInfo.out_file <- (solverInfo.out_file ^ op_name);
+                    let new_vcs = []
+                    in
+                      vcs @ new_vcs
+                  end
+          | _  -> begin
+                    (* There's support. Use seq_spinv *)
+                    let op_name = "_seq_sinv_" ^ supp_ids ^ "->" ^ inv_id in
+                    print_endline op_name;
+                    solverInfo.out_file <- (solverInfo.out_file ^ op_name);
+                    let new_vcs = []
+                    in
+                      vcs @ new_vcs
+                  end
+        end
   ) [] graph_info
 
 

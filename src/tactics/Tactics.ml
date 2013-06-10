@@ -502,3 +502,57 @@ let pick_formula_tac (tac_name:formula_tactic) : formula_tactic_t =
   | FilterStrict ->           filter_with_variables_in_conseq
 
 
+
+(**************************************************************************)
+(* APPLICATION OF TACTICS                                                 *)
+(**************************************************************************)
+
+let apply_support_split_tactics (vcs:vc_info list)
+                                (tacs:support_split_tactic list)
+                                  : vc_info list =
+  List.fold_left (fun ps f_name ->
+    List.flatten (List.map (pick_support_split_tac f_name) ps)
+  ) vcs tacs
+
+
+let apply_support_tactic (vcs:vc_info list)
+                         (tac:support_tactic option)
+                            : implication list =
+  List.map (fun vc ->
+    let processed_supp = match tac with
+                               | None -> get_unprocessed_support_from_info vc
+                               | Some t -> (pick_support_tac t) vc in
+    vc_info_to_implication vc processed_supp
+  ) vcs
+
+
+let apply_formula_split_tactics (imps:implication list)
+                                (tacs:formula_split_tactic list)
+                                  : implication list =
+  List.fold_left (fun ps f_name ->
+    List.flatten (List.map (pick_formula_split_tac f_name) ps)
+  ) imps tacs
+
+
+let apply_formula_tactics (imps:implication list)
+                          (tacs:formula_tactic list)
+                            : implication list =
+  List.fold_left (fun ps f_name ->
+    List.map (pick_formula_tac f_name) ps
+  ) imps tacs
+
+
+let apply_tactics (vcs:vc_info list)
+                  (supp_split_tacs:support_split_tactic list)
+                  (supp_tac:support_tactic option)
+                  (formula_split_tacs:formula_split_tactic list)
+                  (formula_tacs:formula_tactic list)
+                    : E.formula list =
+  let split_vc_info_list = apply_support_split_tactics vcs supp_split_tacs in
+  let original_implications = apply_support_tactic split_vc_info_list supp_tac in
+  let split_implications = apply_formula_split_tactics original_implications formula_split_tacs in
+  let final_implications = apply_formula_tactics split_implications formula_tacs
+  in
+    List.map (fun imp ->
+      E.Implies (imp.ante, imp.conseq)
+    ) final_implications

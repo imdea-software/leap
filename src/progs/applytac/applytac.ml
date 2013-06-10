@@ -15,27 +15,17 @@ let _ =
     if !ApplyTacArgs.verbose then LeapVerbose.enable_verbose();
     let ch = ApplyTacArgs.open_input () in
 
+
+
     let original_implications =
       if ApplyTacArgs.is_vc_file () then begin
         (* Here goes the code for vc_info *)
         let vc_info = Parser.parse ch (Eparser.vc_info Elexer.norm) in
-        print_endline ("ORIGINAL VC INFO:\n\n" ^ Tactics.vc_info_to_str 
-vc_info);
+        print_endline ("ORIGINAL VC INFO:\n\n" ^ Tactics.vc_info_to_str vc_info);
 
-        (* To be removed once we have support tactics *)
-(*        let final_vc_info_list = [vc_info] in *)
-
-        let split_vc_info_list =
-            List.fold_left (fun ps f_name ->
-              List.flatten (List.map (Tactics.pick_support_split_tac f_name) ps)
-            ) [vc_info] !ApplyTacArgs.supp_split_tac_list in
-
-        List.map (fun vc ->
-          let processed_supp = match !ApplyTacArgs.supp_tac with
-                               | None -> Tactics.get_unprocessed_support_from_info vc
-                               | Some tac -> (Tactics.pick_support_tac tac) vc in
-          Tactics.vc_info_to_implication vc processed_supp
-        ) split_vc_info_list
+        let split_vc_info_list = Tactics.apply_support_split_tactics
+                                  [vc_info] !ApplyTacArgs.supp_split_tac_list in
+        Tactics.apply_support_tactic split_vc_info_list !ApplyTacArgs.supp_tac
       end else begin
         let (_,phi) = Parser.parse ch (Eparser.single_formula Elexer.norm) in
         print_endline ("FORMULA:\n" ^ (Expression.formula_to_str phi) ^ "\n");
@@ -50,17 +40,12 @@ vc_info);
     ApplyTacArgs.close_input ();
 
 
-
-    let split_implications =
-        List.fold_left (fun ps f_name ->
-          List.flatten (List.map (Tactics.pick_formula_split_tac f_name) ps)
-        ) original_implications !ApplyTacArgs.formula_split_tac_list in
-
-    let final_implications =
-        List.fold_left (fun ps f_name ->
-          List.map (Tactics.pick_formula_tac f_name) ps
-        ) split_implications !ApplyTacArgs.formula_tac_list in
-
+    let split_implications = Tactics.apply_formula_split_tactics
+                                original_implications
+                                !ApplyTacArgs.formula_split_tac_list in
+    let final_implications = Tactics.apply_formula_tactics
+                                split_implications
+                                !ApplyTacArgs.formula_tac_list in
 
     (* Convert implications to formulas *)
     let final_formulas = List.map (fun imp ->

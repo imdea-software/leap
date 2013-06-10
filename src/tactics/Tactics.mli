@@ -129,3 +129,19 @@ val pick_support_split_tac : support_split_tactic -> support_split_tactic_t
 val pick_support_tac : support_tactic -> support_tactic_t
 val pick_formula_split_tac : formula_split_tactic -> formula_split_tactic_t
 val pick_formula_tac : formula_tactic -> formula_tactic_t
+
+
+(**************************************************************************)
+(* APPLICATION OF TACTICS                                                 *)
+(**************************************************************************)
+
+val apply_support_split_tactics : vc_info list -> support_split_tactic list -> vc_info list
+val apply_support_tactic : vc_info list -> support_tactic option -> implication list
+val apply_formula_split_tactics : implication list -> formula_split_tactic list -> implication list
+val apply_formula_tactics : implication list -> formula_tactic list -> implication list
+val apply_tactics : vc_info list ->
+                    support_split_tactic list ->
+                    support_tactic option ->
+                    formula_split_tactic list ->
+                    formula_tactic list ->
+                    Expression.formula list
