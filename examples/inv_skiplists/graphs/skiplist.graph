@@ -22,14 +22,15 @@
                     39:skiplist_prop,skiplist_region_aux; // OK, 40 OK
                     41:skiplist_prop,levels; //
                     42:skiplist_prop; //
-                    43:skiplist_prop,skiplist_region_aux] {union:reduce2|simpl} // FAILS
+                    43:skiplist_prop,skiplist_region_aux] {union:|reduce2||simplify-pc} 
+// FAILS
 
 
 // -> skiplist_next [23:skiplist_prop_subsumes;
-//                   35:skiplist_prop,levels,skiplist_region] {union:reduce2|simpl}
+//                   35:skiplist_prop,levels,skiplist_region] {union:|reduce2||simplify-pc}
 
 
-// -> skiplist_order [28:skiplist_prop,skiplist_next] {union:reduce2|simpl}
+// -> skiplist_order [28:skiplist_prop,skiplist_next] {union:|reduce2||simplify-pc}
 
 // 28 and 41
 

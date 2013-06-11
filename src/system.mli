@@ -70,6 +70,7 @@ val get_trans             : system_t -> tran_table_t
 val get_fair              : system_t -> int list
 val get_statements        : system_t -> st_table_t
 val get_labels            : system_t -> label_table_t
+val lines                 : system_t -> int
 val is_proc               : system_t -> string -> bool
 val get_proc_name_list    : system_t -> bool -> string list
 val get_all_local_vars    : system_t -> (string * Expression.variable list) list

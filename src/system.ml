@@ -280,6 +280,10 @@ let get_labels_for_pos (tbl:label_table_t) (pc:E.pc_t) : string list =
                    ) tbl []
   in
     label_list
+
+
+let lines (sys:system_t) : int =
+  Hashtbl.length sys.statements
   
 
 (* SYSTEM MANIPULATION FUNCTIONS *)

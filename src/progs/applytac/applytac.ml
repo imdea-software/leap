@@ -78,7 +78,7 @@ let _ =
         List.iter (fun phi ->
           print_endline (Expression.formula_to_str phi);
           let tsl_phi = TSLInterface.formula_to_tsl_formula phi in
-          let result = TslSolver.is_valid 5 None !ApplyTacArgs.coType tsl_phi in
+          let result = TslSolver.is_valid 5 !ApplyTacArgs.coType tsl_phi in
           if result then print_endline "VALID" else print_endline "NOT VALID"
         ) final_formulas
       end;

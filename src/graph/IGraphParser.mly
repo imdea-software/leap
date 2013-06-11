@@ -215,6 +215,7 @@ smp_strategy :
   | SMP_DNF COLON
     { Some Smp.Dnf }
 
+
 support_split_tactic_list :
   | BAR
     { [] }
@@ -230,7 +231,7 @@ formula_split_tactic_list :
 
 
 formula_tactic_list :
-  | BAR
+  |
     { [] }
   | formula_tactic formula_tactic_list
     { $1 :: $2 }

@@ -225,7 +225,10 @@ let seq_spinv (sys:Sys.system_t)
               (inv:E.formula) : Tac.vc_info list =
   let need_theta = List.mem 0 solverInfo.focus in
   let lines_to_consider = List.filter (fun x -> x <> 0) solverInfo.focus in
- 
+
+  Printf.printf "LINES TO CONSIDER: %s" (String.concat "," (List.map string_of_int solverInfo.focus));
+  Printf.printf "PROGRAM LINES: %i\n" (Sys.lines sys);
+
   let premise_init = if need_theta then
                        [spinv_premise_init sys inv]
                      else
@@ -269,7 +272,9 @@ let gen_from_graph (sys:Sys.system_t)
           print_endline ("seq_spinv with cases for " ^supp_ids^ " -> " ^inv_id);
           let op_name = "_seq_sinvsp_" ^ supp_ids ^ "->" ^ inv_id in
           solverInfo.out_file <- (solverInfo.out_file ^ op_name);
+          (* Generate the vc_info for each transition *)
           let vc_info_list = seq_spinv sys supp inv in
+          Printf.printf "VC_INFO_LENGTH: %i\n" (List.length vc_info_list);
           let new_vcs = Tac.apply_tactics vc_info_list [] None [] []
           in
             vcs @ new_vcs

@@ -22,9 +22,10 @@ module VCG  = VCGen.Make(Pos)(Tll)(Tslk)(Num)
 let _ =
   try let _ = P2FArgs.parse_args () in
     let ch = P2FArgs.open_input () in
-    let (tmp_sys,undefTids) = 
-      Parser.parse ch (Stmparser.system Stmlexer.norm) in
+    let (sys,undefTids) = Parser.parse ch (Stmparser.system Stmlexer.norm) in
+(*
     let sys = System.set_threads tmp_sys 1 in
+*)
     P2FArgs.close_input ();
 
     (* Shows the parsed system *)

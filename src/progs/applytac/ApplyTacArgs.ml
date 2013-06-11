@@ -17,7 +17,6 @@ let verbose                = ref false
 let debugFlag              = ref false
 let use_z3                 = ref false
 let coType                 = ref Tactics.default_cutoff_algorithm (*Smp.Dnf*)
-let solve_tactic           = ref None
 let hide_pres              = ref false
 let phiFile                = ref ""
 let supp_tac               = ref None
@@ -46,12 +45,6 @@ let set_co co =
   | "pruning" -> coType := Smp.Pruning
   | _ -> ()
 
-(* Solve options *)
-let solve_opt_list = ["cases"]
-let set_solve s =
-  match s with
-  | "cases" -> solve_tactic := Some Tactics.Cases
-  | _ -> ()
 
 let parse_tac_list (f:string -> 'a) (s:string) : 'a list =
   let regexp = Str.regexp "," in
@@ -86,9 +79,6 @@ let opts =
     ("--show_file_info",
         Arg.Set Debug._debug_show_tmpfile_info_,
         "shows path of temporary files");
-    ("--solve",
-        Arg.Symbol (solve_opt_list,set_solve),
-        "sets the solve_tactic");
     ("--supp_tac",
         Arg.String (fun s -> supp_tac := Some (Tactics.support_tactic_from_string s)),
         "support tactics: full, reduce, reduce2");
