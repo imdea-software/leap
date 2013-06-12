@@ -39,10 +39,12 @@ type implication = {
   conseq : E.formula ;
 }
 
+(*
 type support_split_tactic = SplitGoal
 type support_tactic = Full | Reduce | Reduce2
 type formula_tactic = SimplifyPC | PropositionalPropagate | FilterStrict
 type formula_split_tactic = SplitConsequent
+*)
 
 type support_split_tactic_t = vc_info -> vc_info list
 type support_tactic_t = vc_info -> support_t
@@ -53,9 +55,9 @@ type proof_plan =
   {
     cutoff_algorithm : Smp.cutoff_strategy_t option     ;
     support_split_tactics : support_split_tactic_t list ;
-    support_tactics  : support_tactic list              ;
+    support_tactics  : support_tactic_t list            ;
     formula_split_tactics : formula_split_tactic_t list ;
-    formula_tactics  : formula_tactic list              ;
+    formula_tactics  : formula_tactic_t list            ;
   }
 
 
@@ -66,9 +68,9 @@ type proof_plan =
 
 let new_proof_plan (smp:Smp.cutoff_strategy_t option)
                    (supp_split_tacs:support_split_tactic_t list)
-                   (supp_tacs:support_tactic list)
+                   (supp_tacs:support_tactic_t list)
                    (formula_split_tacs:formula_split_tactic_t list)
-                   (formula_tacs:formula_tactic list) : proof_plan =
+                   (formula_tacs:formula_tactic_t list) : proof_plan =
   {
     cutoff_algorithm = smp;
     support_split_tactics = supp_split_tacs;
@@ -100,40 +102,6 @@ let vc_info_to_vc (info:vc_info) (sup:support_t): verification_condition =
 exception Invalid_tactic of string
 
 let default_cutoff_algorithm = Smp.Dnf
-
-let support_split_tactic_from_string (s:string) : support_split_tactic =
-  match s with
-  | "split-goal" -> SplitGoal
-  | _ -> raise(Invalid_tactic (s ^ " is not a support_split_tactic"))
-
-
-let support_tactic_from_string (s:string) : support_tactic =
-  match s with
-  | "full"    -> Full
-  | "reduce"  -> Reduce
-  | "reduce2" -> Reduce2
-  | _ -> raise(Invalid_tactic (s ^ " is not a support_tactic"))
-
-
-let formula_split_tactic_from_string (s:string): formula_split_tactic =
-  match s with
-  | "split-consequent"        -> SplitConsequent
-  | _ -> raise(Invalid_tactic (s ^ "is not a formula_split_tactic"))
-
-
-let formula_tactic_from_string (s:string) : formula_tactic =
-  match s with
-  | "simplify-pc"             -> SimplifyPC
-  | "propositional-propagate" -> PropositionalPropagate
-  | "filter-strict"           -> FilterStrict
-  | _ -> raise(Invalid_tactic (s ^ " is not a formula_tactic"))
-
-
-let formula_tactic_to_string (tac:formula_tactic) : string =
-  match tac with
-  | SimplifyPC             -> "simplify-pc"
-  | PropositionalPropagate -> "propositional-propagate"
-  | FilterStrict           -> "filter-strict"
 
 
 let vc_info_to_str (vc:vc_info) : string =
@@ -211,9 +179,9 @@ let dup_vc_info_with_goal (info:vc_info) (new_goal:E.formula) : vc_info =
 
 let get_cutoff (plan:proof_plan) : Smp.cutoff_strategy_t option =
   plan.cutoff_algorithm
-and get_support_tactics (plan:proof_plan) : support_tactic list =
+and get_support_tactics (plan:proof_plan) : support_tactic_t list =
   plan.support_tactics
-and get_formula_tactics (plan:proof_plan) : formula_tactic list =
+and get_formula_tactics (plan:proof_plan) : formula_tactic_t list =
   plan.formula_tactics
 
 
@@ -470,77 +438,45 @@ let filter_with_variables_in_conseq (imp:implication) : implication =
   { ante = E.conj_list new_conjs ; conseq = imp.conseq }
     
 
-(**************************************************************************)
-(* CONVERTERS: From tactic names to tactics functions                     *)
-(**************************************************************************)
-
-let pick_support_split_tac (tac_name:support_split_tactic) : support_split_tactic_t =
-  match tac_name with
-  | SplitGoal -> split_goal
-
-
-let pick_support_tac (tac_name:support_tactic) : support_tactic_t =
-  (* TO BE IMPLEMENTED *)
-  fun vc -> vc.original_support
-
-
-let pick_formula_split_tac (tac_name:formula_split_tactic) : formula_split_tactic_t =
-  match tac_name with
-  | SplitConsequent -> split_implication
-
-
-let pick_formula_tac (tac_name:formula_tactic) : formula_tactic_t =
-  match tac_name with
-  | SimplifyPC -> id (* TO BE IMPLEMENTED *)
-  | PropositionalPropagate -> tactic_propositional_propagate
-  | FilterStrict ->           filter_with_variables_in_conseq
-
-
 
 (**************************************************************************)
 (* APPLICATION OF TACTICS                                                 *)
 (**************************************************************************)
 
 let apply_support_split_tactics (vcs:vc_info list)
-                                (tacs:support_split_tactic list)
+                                (tacs:support_split_tactic_t list)
                                   : vc_info list =
-  List.fold_left (fun ps f_name ->
-    List.flatten (List.map (pick_support_split_tac f_name) ps)
-  ) vcs tacs
+  List.fold_left (fun ps f -> List.flatten (List.map f ps)) vcs tacs
 
 
 let apply_support_tactic (vcs:vc_info list)
-                         (tac:support_tactic option)
+                         (tac:support_tactic_t option)
                             : implication list =
   List.map (fun vc ->
     let processed_supp = match tac with
                                | None -> get_unprocessed_support_from_info vc
-                               | Some t -> (pick_support_tac t) vc in
+                               | Some f -> f vc in
     vc_info_to_implication vc processed_supp
   ) vcs
 
 
 let apply_formula_split_tactics (imps:implication list)
-                                (tacs:formula_split_tactic list)
+                                (tacs:formula_split_tactic_t list)
                                   : implication list =
-  List.fold_left (fun ps f_name ->
-    List.flatten (List.map (pick_formula_split_tac f_name) ps)
-  ) imps tacs
+  List.fold_left (fun ps f -> List.flatten (List.map f ps)) imps tacs
 
 
 let apply_formula_tactics (imps:implication list)
-                          (tacs:formula_tactic list)
+                          (tacs:formula_tactic_t list)
                             : implication list =
-  List.fold_left (fun ps f_name ->
-    List.map (pick_formula_tac f_name) ps
-  ) imps tacs
+  List.fold_left (fun ps f -> List.map f ps) imps tacs
 
 
 let apply_tactics (vcs:vc_info list)
-                  (supp_split_tacs:support_split_tactic list)
-                  (supp_tac:support_tactic option)
-                  (formula_split_tacs:formula_split_tactic list)
-                  (formula_tacs:formula_tactic list)
+                  (supp_split_tacs:support_split_tactic_t list)
+                  (supp_tac:support_tactic_t option)
+                  (formula_split_tacs:formula_split_tactic_t list)
+                  (formula_tacs:formula_tactic_t list)
                     : E.formula list =
   let split_vc_info_list = apply_support_split_tactics vcs supp_split_tacs in
   let original_implications = apply_support_tactic split_vc_info_list supp_tac in
@@ -550,3 +486,47 @@ let apply_tactics (vcs:vc_info list)
     List.map (fun imp ->
       E.Implies (imp.ante, imp.conseq)
     ) final_implications
+
+
+let apply_tactics_from_proof_plan (vcs:vc_info list)
+                                  (plan:proof_plan) : E.formula list =
+  let support_tac = match plan.support_tactics with
+                    | [] -> None
+                    | xs  -> Some (List.hd xs) in
+  apply_tactics vcs plan.support_split_tactics
+                    support_tac
+                    plan.formula_split_tactics
+                    plan.formula_tactics
+
+
+
+(***************************************************************)
+(*            CONVERTERS FORM STRING TO TACTICS                *)
+(***************************************************************)
+
+let support_split_tactic_from_string (s:string) : support_split_tactic_t =
+  match s with
+  | "split-goal" -> split_goal
+  | _ -> raise(Invalid_tactic (s ^ " is not a support_split_tactic"))
+
+
+let support_tactic_from_string (s:string) : support_tactic_t =
+  match s with
+  | "full"    -> (fun vc -> vc.original_support) (* TO BE IMPLEMENTED *)
+  | "reduce"  -> (fun vc -> vc.original_support) (* TO BE IMPLEMENTED *)
+  | "reduce2" -> (fun vc -> vc.original_support) (* TO BE IMPLEMENTED *)
+  | _ -> raise(Invalid_tactic (s ^ " is not a support_tactic"))
+
+
+let formula_split_tactic_from_string (s:string): formula_split_tactic_t =
+  match s with
+  | "split-consequent"        -> split_implication
+  | _ -> raise(Invalid_tactic (s ^ "is not a formula_split_tactic"))
+
+
+let formula_tactic_from_string (s:string) : formula_tactic_t =
+  match s with
+  | "simplify-pc"             -> id (* TO BE IMPLEMENTED *)
+  | "propositional-propagate" -> tactic_propositional_propagate
+  | "filter-strict"           -> filter_with_variables_in_conseq
+  | _ -> raise(Invalid_tactic (s ^ " is not a formula_tactic"))

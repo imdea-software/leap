@@ -15,10 +15,10 @@ val use_z3 : bool ref
 val coType : Smp.cutoff_strategy_t ref
 val hide_pres : bool ref
 val phiFile : string ref
-val supp_tac               : Tactics.support_tactic option ref
-val supp_split_tac_list    : Tactics.support_split_tactic list ref
-val formula_tac_list       : Tactics.formula_tactic list ref
-val formula_split_tac_list : Tactics.formula_split_tactic list ref
+val supp_tac               : Tactics.support_tactic_t option ref
+val supp_split_tac_list    : Tactics.support_split_tactic_t list ref
+val formula_tac_list       : Tactics.formula_tactic_t list ref
+val formula_split_tac_list : Tactics.formula_split_tactic_t list ref
 val tslEnable : bool ref
 val outfile : string ref
 (*val postTactics : (Tactics.post_tac_t list) ref *)

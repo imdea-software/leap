@@ -1,2 +1,2 @@
-val load_system : System.system_t -> unit
-val sys : System.system_t ref
+val load_system : System.t -> unit
+val sys : System.t ref

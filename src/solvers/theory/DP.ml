@@ -4,18 +4,20 @@ exception Unknown_dp_str of string
 
 type t =
   | NoDP
+  | Loc
   | Num
   | Tll
   | Tsl
   | Tslk of int
 
 
-let def_dp_list : t list = [ Num; Tll; Tsl; Tslk 0 ]
+let def_dp_list : t list = [ Num; Loc; Tll; Tsl; Tslk 0 ]
 
 
 let to_str (dp:t) : string =
   match dp with
   | NoDP   -> ""
+  | Loc    -> "loc"
   | Num    -> "num"
   | Tll    -> "tll"
   | Tsl    -> "tsl"
@@ -26,6 +28,7 @@ let to_str (dp:t) : string =
 let from_str (str:string) : t =
   match str with
   | ""    -> NoDP
+  | "loc" -> Loc
   | "num" -> Num
   | "tll" -> Tll
   | "tsl" -> Tsl

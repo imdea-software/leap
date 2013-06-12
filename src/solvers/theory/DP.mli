@@ -4,6 +4,7 @@ exception Unknown_dp_str of string
 (** Declares all possibilities of available decision procedures *)
 type t =
   | NoDP
+  | Loc
   | Num
   | Tll
   | Tsl

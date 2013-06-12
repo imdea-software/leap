@@ -6,7 +6,7 @@ type results_t =int * int * int * int * int * int * int * int *
 type vc_status = Unverified | NotValid | Valid | Unneeded
 
 val report_inv_cand : Expression.formula -> unit
-val report_system : System.system_t -> unit
+val report_system : System.t -> unit
 val report_sup_inv : inv_t list -> unit
 val report_gen_sup_inv : Expression.formula -> unit
 val report_results : results_t -> unit

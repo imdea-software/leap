@@ -1,4 +1,5 @@
 open Printf
+open Core
 
 open LeapLib
 open Global
@@ -14,7 +15,185 @@ module Symtbl = Exprsymtable
 (* main         *)
 (****************)
 let _ =
-(*  LOG "Starting LEAP..." LEVEL TRACE; *)
+
+  try
+    LeapArgs.parse_args();
+    if !LeapArgs.verbose then LeapVerbose.enable_verbose();
+
+    let ch = LeapArgs.open_input () in
+    let sys, undefTids = Parser.parse ch (Stmparser.system Stmlexer.norm) in
+    LeapArgs.close_input ();
+
+    LeapArgs.vcgenFlag := (!LeapArgs.binvSys     ||
+                           !LeapArgs.pinvSys     ||
+                           !LeapArgs.pinvPlusSys ||
+                           !LeapArgs.spinvSys    ||
+                           !LeapArgs.useGraph);
+    if !LeapArgs.vcgenFlag && (!LeapArgs.invCandidate = "") 
+       && (!LeapArgs.iGraphFile = "") then begin
+      Interface.Err.msg "VCGen requested without invariant candidate"
+        "Generation of verification conditions requested by user, but \
+         no invariant candidate has been provided through the -i \
+         argument.";
+      exit 0
+    end;
+
+    (* We load the system in the formula parser, just in case *)
+    Symtbl.load_system sys;
+
+    (* Shows the parsed system *)
+    if (!LeapArgs.showFlag = true) then Report.report_system sys;
+
+    (* Show label information if required *)
+    if (!LeapArgs.show_label_info) then
+      Report.report_labels (System.get_labels sys);
+
+    (* Configure options *)
+    let module LeapOpt = struct
+                           let sys = sys
+                           let focus = !LeapArgs.focusPC
+                           let ignore = !LeapArgs.ignorePC
+                           let abs = if !LeapArgs.count_abs then System.Counting
+                                     else System.NoAbstraction
+                           let hide_pres = not !LeapArgs.expand_pres
+                           let output_file = !LeapArgs.outFile
+                           let inv_folder = !LeapArgs.invFolder
+                           let dp = !LeapArgs.dpType
+                           let tSolver = if !LeapArgs.use_z3 || !LeapArgs.use_yices_plus_z3 then
+                                           BackendSolvers.Z3.identifier
+                                         else
+                                           BackendSolvers.Yices.identifier
+                           let pSolver = if !LeapArgs.use_sat then
+                                           BackendSolvers.Minisat.identifier
+                                         else if !LeapArgs.use_yices_plus_z3 then
+                                           BackendSolvers.Yices.identifier
+                                         else
+                                           tSolver
+                           let use_smt = !LeapArgs.use_smt
+                           let compute_model = !LeapArgs.show_models
+                           let group_vars = !LeapArgs.group_vars
+                           let forget_primed_mem = (not !LeapArgs.keep_primed_mem)
+                         end in
+
+    (* Instantiate the core *)
+    let module LeapCore = Core.Make(LeapOpt) in
+
+    (* Benchmark timer *)
+    let timer = new LeapLib.timer in
+    timer#start;
+
+
+
+    if (!LeapArgs.vcgenFlag) then begin
+
+      (* Invariant candidate *)
+      if (!LeapArgs.invCandidate <> "") then begin
+        let (invVars, tag, inv) = Parser.open_and_parse !LeapArgs.invCandidate
+                                    (Eparser.invariant Elexer.norm) in
+
+        (* Check whether undef tids are included in invVars *)
+        let _ = System.undeftids_in_formula_decl undefTids invVars in
+        let _ = LeapCore.decl_tag tag inv in
+        let _ = Report.report_inv_cand inv in
+        let sys = System.add_global_vars sys invVars in
+
+        (* Use B-INV *)
+        if !LeapArgs.binvSys then begin
+(*
+          let conds = VCG.binv sys inv in
+            printf "%s\n" $ String.concat "\n--------\n" (List.map (fst>>Expr.formula_to_str) conds)
+*)
+        end;
+
+        (* Use P-INV *)
+        if !LeapArgs.pinvSys then begin
+(*
+          if VCG.some_dp_enabled () then
+            ignore $ VCG.check_with_pinv sys inv
+          else
+            print_endline (String.concat "\n--------\n" $
+              List.map (fst>>Expr.formula_to_str)
+                (VCG.pinv sys inv))
+*)
+        end;
+
+        (* Use P-INV+ *)
+        if !LeapArgs.pinvPlusSys then begin
+(*
+          if VCG.some_dp_enabled () then
+            ignore $ VCG.check_with_pinv_plus sys inv
+          else
+            print_endline (String.concat "\n--------\n" $
+              List.map (fst>>Expr.formula_to_str)
+                (VCG.pinv_plus sys inv))
+*)
+        end;
+
+        (* SP-INV *)
+        if !LeapArgs.spinvSys then begin
+          let supInv_file_list = Str.split (Str.regexp ",") !LeapArgs.supInvariant in
+          let supInv_list = List.map (fun file ->
+                              Parser.open_and_parse file (Eparser.invariant Elexer.norm)
+                            ) supInv_file_list in
+          Report.report_sup_inv supInv_list;
+          let sup_form_list = List.map (fun (_,tag,phi) ->
+                                ignore(LeapCore.decl_tag tag phi); phi
+                              ) supInv_list in
+          ()
+(*
+          if VCG.some_dp_enabled () then
+            ignore $ VCG.check_with_spinv sys sup_form_list inv
+          else
+            print_endline (String.concat "\n--------\n" $
+              List.map (fst>>Expr.formula_to_str)
+                (VCG.spinv sys sup_form_list inv))
+*)
+        end;
+        ()
+        end
+
+
+
+
+    end;
+
+
+    (* Graph parsing *)
+    if !LeapArgs.useGraph then begin
+      (* We load the graph information *)
+      let graph = Parser.open_and_parse !LeapArgs.iGraphFile (Gparser.graph Glexer.norm) in
+      let xs = LeapCore.gen_from_graph graph in
+      Printf.printf "GENERATED %i\n" (List.length xs);
+(*      List.iter (fun phi -> print_endline (Expr.formula_to_str phi)) xs; *)
+      ()
+
+(*
+        List.iter (fun phi -> print_endline (Expr.formula_to_str phi)) (Gen.gen_from_graph sys graph)
+*)
+    end;
+
+
+
+    timer#stop;
+    printf "Total Analysis time: %.3f\n" timer#elapsed_time
+
+
+  with
+    | Global.ParserError msg -> Interface.Err.msg "Parsing error" msg
+    | Parsing.Parse_error -> Interface.Err.msg "Parsing error" $
+        sprintf "Unexpected symbol \"%s\" at line %i" 
+          (Global.get_last()) (Global.get_linenum())
+    | e -> raise(e)
+
+
+let _ = LeapDebug.flush()
+
+
+
+
+
+
+(*
   try LeapArgs.parse_args ();
 (*    LOG "DP selected: %s" (DP.to_str !LeapArgs.dpType) LEVEL DEBUG; *)
     if !LeapArgs.verbose then LeapVerbose.enable_verbose();
@@ -143,11 +322,11 @@ let _ =
             Str.split (Str.regexp ",") !LeapArgs.supInvariant in
           let supInv_list = List.map 
             (fun file -> Parser.open_and_parse file
-              (Eparser.invariant Elexer.norm)) 
+              (Eparser.invariant Elexer.norm))
             supInv_file_list in
           Report.report_sup_inv supInv_list;
           let sup_form_list = List.map 
-            (fun (_,tag,phi) -> ignore(VCG.decl_tag tag phi); phi) 
+            (fun (_,tag,phi) -> ignore(VCG.decl_tag tag phi); phi)
             supInv_list in
           if VCG.some_dp_enabled () then
             ignore $ VCG.check_with_spinv sys sup_form_list inv
@@ -212,8 +391,10 @@ let _ =
         raise(LeapArgs.Unknown_tag undef_t)
       end;
 (*      ignore $ VCG.check_with_graph sys graph *)
-        print_endline "FORMULAS GENERATED FROM GRAPH";
+        print_endline "FORMULAS GENERATED FROM GRAPH"
+(*
         List.iter (fun phi -> print_endline (Expr.formula_to_str phi)) (Gen.gen_from_graph sys graph)
+*)
     end;
 
 (*
@@ -277,5 +458,7 @@ let _ =
         sprintf "Unexpected symbol \"%s\" at line %i" 
           (Global.get_last()) (Global.get_linenum())
     | e -> raise(e)
+*)
 
 let _ = LeapDebug.flush()
+

@@ -30,7 +30,7 @@ type st_table_t = (E.pc_t, (string * Stm.statement_t)) Hashtbl.t
 type label_table_t = (string, E.pc_t * E.pc_t) Hashtbl.t
 
 
-type system_t =
+type t =
   {
     globalVars : var_table_t ;         (* global variables *)
     assumptions : Stm.boolean option ; (* the initial assumption *)
@@ -282,7 +282,7 @@ let get_labels_for_pos (tbl:label_table_t) (pc:E.pc_t) : string list =
     label_list
 
 
-let lines (sys:system_t) : int =
+let lines (sys:t) : int =
   Hashtbl.length sys.statements
   
 
@@ -293,7 +293,7 @@ let new_system (gVars:var_table_t)
                (trans:tran_table_t)
                (fair:int list)
                (st_table:st_table_t)
-               (lt:label_table_t) : system_t =
+               (lt:label_table_t) : t =
   {
     globalVars = gVars ;
     assumptions = assume ;
@@ -305,21 +305,21 @@ let new_system (gVars:var_table_t)
   }
 
 
-let get_global     (s:system_t) : var_table_t = s.globalVars
-let get_assume     (s:system_t) : Stm.boolean option = s.assumptions
-let get_procs      (s:system_t) : proc_table_t = s.procedures
-let get_trans      (s:system_t) : tran_table_t = s.transitions
-let get_fair       (s:system_t) : int list = s.fair
-let get_statements (s:system_t) : st_table_t = s.statements
-let get_labels     (s:system_t) : label_table_t = s.labels
+let get_global     (s:t) : var_table_t = s.globalVars
+let get_assume     (s:t) : Stm.boolean option = s.assumptions
+let get_procs      (s:t) : proc_table_t = s.procedures
+let get_trans      (s:t) : tran_table_t = s.transitions
+let get_fair       (s:t) : int list = s.fair
+let get_statements (s:t) : st_table_t = s.statements
+let get_labels     (s:t) : label_table_t = s.labels
 
 
-let is_proc (sys:system_t) (p_name:string) : bool =
+let is_proc (sys:t) (p_name:string) : bool =
   let proc_tbl = get_procs sys in
     Hashtbl.mem proc_tbl p_name
 
 
-let get_proc_by_name (sys:system_t) (p_name:string) : proc_info_t =
+let get_proc_by_name (sys:t) (p_name:string) : proc_info_t =
   let tbl = get_procs sys in
   if Hashtbl.mem tbl p_name then
     Hashtbl.find tbl p_name
@@ -331,33 +331,33 @@ let get_proc_by_name (sys:system_t) (p_name:string) : proc_info_t =
     end
 
 
-let get_input_by_name (sys:system_t) (p_name:string) : var_table_t =
+let get_input_by_name (sys:t) (p_name:string) : var_table_t =
   let info = get_proc_by_name sys p_name in info.inputVars
 
 
-let get_local_by_name (sys:system_t) (p_name:string) : var_table_t =
+let get_local_by_name (sys:t) (p_name:string) : var_table_t =
   let info = get_proc_by_name sys p_name in info.localVars
 
 
-let get_fLine_by_name (sys:system_t) (p_name:string) : E.pc_t =
+let get_fLine_by_name (sys:t) (p_name:string) : E.pc_t =
   let info = get_proc_by_name sys p_name in info.fLine
 
 
-let get_lLine_by_name (sys:system_t) (p_name:string) : E.pc_t =
+let get_lLine_by_name (sys:t) (p_name:string) : E.pc_t =
   let info = get_proc_by_name sys p_name in info.lLine
 
 
-let get_prog_by_name (sys:system_t) (p_name:string) : Stm.statement_t option =
+let get_prog_by_name (sys:t) (p_name:string) : Stm.statement_t option =
   let info = get_proc_by_name sys p_name in info.prog
 
 
-let proc_sort_func (sys:system_t) (p1:string) (p2:string) : int =
+let proc_sort_func (sys:t) (p1:string) (p2:string) : int =
   let p1_init = get_fLine_by_name sys p1 in
   let p2_init = get_fLine_by_name sys p2 in
     p1_init - p2_init
 
 
-let get_proc_name_list (sys:system_t) (sorted:bool) : string list =
+let get_proc_name_list (sys:t) (sorted:bool) : string list =
   let proc_tbl = get_procs sys in
   let res : string list ref = ref [] in
   let _ = Hashtbl.iter (fun name _ -> res := name :: !res) proc_tbl in
@@ -367,7 +367,7 @@ let get_proc_name_list (sys:system_t) (sorted:bool) : string list =
       !res
 
 
-let get_all_local_vars (sys:system_t) : (string * E.variable list) list =
+let get_all_local_vars (sys:t) : (string * E.variable list) list =
   let procs = get_proc_name_list sys false
   in
     List.map (fun p ->
@@ -378,7 +378,7 @@ let get_all_local_vars (sys:system_t) : (string * E.variable list) list =
     ) procs
 
 
-let get_statement_at (sys:system_t) (pos:E.pc_t) : (string*Stm.statement_t) =
+let get_statement_at (sys:t) (pos:E.pc_t) : (string*Stm.statement_t) =
   let tbl = get_statements sys in
   try
     Hashtbl.find tbl pos
@@ -390,20 +390,20 @@ let get_statement_at (sys:system_t) (pos:E.pc_t) : (string*Stm.statement_t) =
     raise(Not_position pos)
 
 
-let get_trans_num (sys:system_t) : int =
+let get_trans_num (sys:t) : int =
   let tbl = get_statements sys in
   Hashtbl.length tbl
 
 
-let add_global_vars (sys:system_t) (tbl:var_table_t) : system_t =
+let add_global_vars (sys:t) (tbl:var_table_t) : t =
   join_var_table sys.globalVars tbl; sys
 
 
-let del_global_var (sys:system_t) (id:E.varId) : system_t =
+let del_global_var (sys:t) (id:E.varId) : t =
   ignore (del_var sys.globalVars id); sys
 
 
-let del_global_var_regexp (sys:system_t) (expr:Str.regexp) : system_t =
+let del_global_var_regexp (sys:t) (expr:Str.regexp) : t =
   let _ = Hashtbl.iter (fun id _ ->
             if (Str.string_match expr id 0) then
               Hashtbl.remove sys.globalVars id
@@ -413,7 +413,7 @@ let del_global_var_regexp (sys:system_t) (expr:Str.regexp) : system_t =
 
 
 (* SYSTEM QUERY FUNCTIONS *)
-let get_accvars_by_name (sys:system_t)
+let get_accvars_by_name (sys:t)
                         (p_name:string) : (var_table_t * var_table_t) =
   let gVars = get_global sys in
   let iVars = get_input_by_name sys p_name in
@@ -429,7 +429,7 @@ let get_accvars_by_name (sys:system_t)
 (* All global and local variables accessible by each thread *)
 (* Notice that not all global variables may appear fr each process,
    as they may be shadowed by a local variable. *)
-let get_accvars (sys:system_t) : (string * var_table_t * var_table_t) list =
+let get_accvars (sys:t) : (string * var_table_t * var_table_t) list =
   let proc_names = get_proc_name_list sys false in
   let proc_vars  = List.map (fun p ->
                               let accVars = get_accvars_by_name sys p in
@@ -444,7 +444,7 @@ let get_accvars (sys:system_t) : (string * var_table_t * var_table_t) list =
 *)
 
 
-let get_all_vars_id (sys:system_t) : E.varId list =
+let get_all_vars_id (sys:t) : E.varId list =
   let gv_tbl = get_global sys in
   let lv_lst = get_accvars sys in
   let gv = Hashtbl.fold (fun v _ l -> v::l) gv_tbl [] in
@@ -457,7 +457,7 @@ let get_all_vars_id (sys:system_t) : E.varId list =
     gv @ (List.flatten lv)
 
 
-let get_sys_var_tables (sys:system_t)
+let get_sys_var_tables (sys:t)
                           : var_table_t *
                             (string * var_table_t * var_table_t) list =
   let proc_list = get_proc_name_list sys false in
@@ -614,7 +614,7 @@ let proc_table_vars_to_str (pt:proc_table_t) : string =
     @param sys the system where variables are extracted from
     @return the list of global variables in sys represented as terms
   *)
-let gen_global_vars_as_terms (sys:system_t) : E.TermSet.t =
+let gen_global_vars_as_terms (sys:t) : E.TermSet.t =
   let gTbl = get_global sys in
   let gVars = ref E.TermSet.empty in
   let _ = Hashtbl.iter (fun v info ->
@@ -629,7 +629,7 @@ let gen_global_vars_as_terms (sys:system_t) : E.TermSet.t =
     @param sys the system where variables are extracted from
     @return a list of pairs made by the process name and its local variables
   *)
-let gen_local_vars_as_terms (sys:system_t) : (string * E.TermSet.t) list =
+let gen_local_vars_as_terms (sys:t) : (string * E.TermSet.t) list =
   let vInfo   = get_accvars sys in
   let lVars   = ref E.TermSet.empty in
   let resVars = ref [] in
@@ -644,7 +644,7 @@ let gen_local_vars_as_terms (sys:system_t) : (string * E.TermSet.t) list =
     !resVars
 
 
-let gen_local_vars_as_array_terms (sys:system_t)
+let gen_local_vars_as_array_terms (sys:t)
                                     : (string * E.TermSet.t) list =
   let vInfo   = get_accvars sys in
   let lVars   = ref E.TermSet.empty in
@@ -694,7 +694,7 @@ let tran_table_to_str (tt:tran_table_t) : string =
 
 
 (* NUMERIC SYSTEM FUNCTIONS *)
-let check_is_numeric (sys:system_t) : unit =
+let check_is_numeric (sys:t) : unit =
   let gv_tbl = get_global sys in
   let lv_list = get_accvars sys in
 
@@ -738,7 +738,7 @@ let var_table_to_str (tbl:var_table_t) : string =
 tbl_str
 
 
-let procedure_to_str (sys:system_t) (p_name:string) : string =
+let procedure_to_str (sys:t) (p_name:string) : string =
   let proc_arg      = get_input_by_name sys p_name in
   let proc_local    = get_local_by_name sys p_name in
   let proc_prog     = get_prog_by_name sys p_name in
@@ -760,7 +760,7 @@ let procedure_to_str (sys:system_t) (p_name:string) : string =
               p_name arg_str local_str statement_str
 
 
-let system_to_str (sys:system_t) : string =
+let to_str (sys:t) : string =
   let assume        = match get_assume sys with
                         None -> ""
                       | Some f -> sprintf "assume\n\t%s\n\n"
@@ -837,13 +837,13 @@ let build_pc (mode : sysMode)
 
 (* Initial condition *)
 
-let gen_global_init_cond (sys : system_t) : E.formula list =
+let gen_global_init_cond (sys : t) : E.formula list =
   let gVars = get_global sys in
   let conds = Hashtbl.fold
     (fun v info xs -> (E.assign_var E.GlobalScope v info) @ xs ) gVars [] in
   conds
 
-let gen_local_init_cond (sys : system_t) 
+let gen_local_init_cond (sys : t) 
     (p_name : string) : E.formula list =
   let _, lVars = get_accvars_by_name sys p_name in
   let conds = Hashtbl.fold 
@@ -853,7 +853,7 @@ let gen_local_init_cond (sys : system_t)
       (E.assign_var (E.Scope p_name) v new_info) @ xs) lVars [] in
   conds
 
-let gen_init_cond (sys : system_t) (p_name : string)
+let gen_init_cond (sys : t) (p_name : string)
     (th_list : E.tid list) (loc : bool) : E.formula =
   let gConds = gen_global_init_cond sys in
   let lConds = gen_local_init_cond sys p_name in
@@ -867,7 +867,7 @@ let gen_init_cond (sys : system_t) (p_name : string)
 
 
 let gen_theta_classic (mode : sysMode)
-                      (sys : system_t) : E.formula =
+                      (sys : t) : E.formula =
   let main_proc = defMainProcedure in
   let param_list = match mode with
     | SClosed m -> E.gen_tid_list 1 m
@@ -884,7 +884,7 @@ let gen_theta_classic (mode : sysMode)
 
 
 let gen_theta_with_count_abs (mode:sysMode)
-                             (sys:system_t) : E.formula =
+                             (sys:t) : E.formula =
   let theta_cond = gen_theta_classic mode sys in
   let lines = rangeList 1 (get_trans_num sys + 1) in
   let main_fLine = get_fLine_by_name sys (defMainProcedure) in
@@ -899,7 +899,7 @@ let gen_theta_with_count_abs (mode:sysMode)
 
 
 let gen_theta (mode:sysMode)
-              (sys:system_t)
+              (sys:t)
               (abs:abstraction) : E.formula =
   match abs with
   | NoAbstraction  -> gen_theta_classic mode sys
@@ -942,7 +942,7 @@ let gen_pres (p_name : string)
 
   
 let rec aux_rho_for_st
-    (sys:system_t)
+    (sys:t)
     (gSet:E.TermSet.t) (* Global accessible terms. *)
     (lSet:E.TermSet.t) (* Local accessible terms. *)
     (thSet:E.TermSet.t) (* Extra formula tids. *)
@@ -1211,7 +1211,7 @@ let rec aux_rho_for_st
 
 
 
-let gen_rho (sys : system_t)     (* The system                   *)
+let gen_rho (sys : t)     (* The system                   *)
             (mode : sysMode)     (* For closed or open system?   *)
             (p : E.pc_t)         (* Program line                 *)
             (abs : abstraction)  (* Counting abstraction or not? *)

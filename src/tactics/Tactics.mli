@@ -7,10 +7,12 @@ type implication = {
   conseq : Expression.formula ;
 }
 
+(*
 type support_split_tactic = SplitGoal
 type support_tactic = Full | Reduce | Reduce2
 type formula_tactic = SimplifyPC | PropositionalPropagate | FilterStrict
 type formula_split_tactic = SplitConsequent
+*)
 
 type support_split_tactic_t = vc_info -> vc_info list
 type support_tactic_t = vc_info -> support_t
@@ -21,9 +23,9 @@ type proof_plan =
   {
     cutoff_algorithm : Smp.cutoff_strategy_t option     ;
     support_split_tactics : support_split_tactic_t list ;
-    support_tactics  : support_tactic list              ;
+    support_tactics  : support_tactic_t list            ;
     formula_split_tactics : formula_split_tactic_t list ;
-    formula_tactics  : formula_tactic list              ;
+    formula_tactics  : formula_tactic_t list            ;
   }
 
 
@@ -38,19 +40,18 @@ val vc_info_to_implication : vc_info -> support_t -> implication
 
 val new_proof_plan : Smp.cutoff_strategy_t option ->
                      support_split_tactic_t list ->
-                     support_tactic list ->
+                     support_tactic_t list ->
                      formula_split_tactic_t list ->
-                     formula_tactic list ->
+                     formula_tactic_t list ->
                      proof_plan
 val vc_info_to_formula : vc_info -> support_t -> Expression.formula
 val vc_info_to_vc : vc_info -> support_t -> verification_condition
 val default_cutoff_algorithm : Smp.cutoff_strategy_t
-val support_tactic_from_string : string ->  support_tactic
-val support_split_tactic_from_string : string ->  support_split_tactic
-val formula_tactic_from_string : string ->  formula_tactic
-val formula_split_tactic_from_string : string -> formula_split_tactic
+val support_tactic_from_string : string ->  support_tactic_t
+val support_split_tactic_from_string : string ->  support_split_tactic_t
+val formula_tactic_from_string : string ->  formula_tactic_t
+val formula_split_tactic_from_string : string -> formula_split_tactic_t
 
-val formula_tactic_to_string :formula_tactic -> string
 val vc_info_to_str : vc_info -> string
 
 val create_vc_info  : support_t ->
@@ -78,8 +79,8 @@ val dup_vc_info_with_goal : vc_info ->  Expression.formula ->   vc_info
 (* SELECTORS                *)
 (****************************)
 val get_cutoff : proof_plan ->   Smp.cutoff_strategy_t option
-val get_support_tactics : proof_plan ->   support_tactic list
-val get_formula_tactics : proof_plan ->   formula_tactic list
+val get_support_tactics : proof_plan ->   support_tactic_t list
+val get_formula_tactics : proof_plan ->   formula_tactic_t list
 val get_unprocessed_support_from_info : vc_info ->   support_t
 val get_tid_constraint_from_info : vc_info ->   Expression.formula
 val get_vocabulary_from_info : vc_info ->   Expression.tid list
@@ -118,26 +119,17 @@ val filter_with_variables_in_conseq : implication -> implication
 
 
 (**************************************************************************)
-(* CONVERTERS: From tactic names to tactics functions                     *)
-(**************************************************************************)
-
-val pick_support_split_tac : support_split_tactic -> support_split_tactic_t
-val pick_support_tac : support_tactic -> support_tactic_t
-val pick_formula_split_tac : formula_split_tactic -> formula_split_tactic_t
-val pick_formula_tac : formula_tactic -> formula_tactic_t
-
-
-(**************************************************************************)
 (* APPLICATION OF TACTICS                                                 *)
 (**************************************************************************)
 
-val apply_support_split_tactics : vc_info list -> support_split_tactic list -> vc_info list
-val apply_support_tactic : vc_info list -> support_tactic option -> implication list
-val apply_formula_split_tactics : implication list -> formula_split_tactic list -> implication list
-val apply_formula_tactics : implication list -> formula_tactic list -> implication list
+val apply_support_split_tactics : vc_info list -> support_split_tactic_t list -> vc_info list
+val apply_support_tactic : vc_info list -> support_tactic_t option -> implication list
+val apply_formula_split_tactics : implication list -> formula_split_tactic_t list -> implication list
+val apply_formula_tactics : implication list -> formula_tactic_t list -> implication list
 val apply_tactics : vc_info list ->
-                    support_split_tactic list ->
-                    support_tactic option ->
-                    formula_split_tactic list ->
-                    formula_tactic list ->
+                    support_split_tactic_t list ->
+                    support_tactic_t option ->
+                    formula_split_tactic_t list ->
+                    formula_tactic_t list ->
                     Expression.formula list
+val apply_tactics_from_proof_plan : vc_info list -> proof_plan -> Expression.formula list

@@ -40,8 +40,8 @@ let report_inv_cand_to_str (inv:Expr.formula) : string =
   "+---------------------------------------------------------------------\n"
 
 
-let report_system_to_str (sys:System.system_t) : string =
-  let sys_str = System.system_to_str sys
+let report_to_str (sys:System.t) : string =
+  let sys_str = System.to_str sys
   in
   "-- Program description -----------------------------------------------\n" ^
   sys_str ^
@@ -160,8 +160,8 @@ let report_inv_cand (inv:Expr.formula) : unit =
   print_newline(); print_string (report_inv_cand_to_str inv)
 
 
-let report_system (sys:System.system_t) : unit =
-  print_newline(); print_string (report_system_to_str sys)
+let report_system (sys:System.t) : unit =
+  print_newline(); print_string (report_to_str sys)
 
 
 let report_sup_inv (invs:inv_t list) : unit =

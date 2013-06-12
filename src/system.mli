@@ -14,7 +14,7 @@ type st_table_t = (Expression.pc_t, string * Statement.statement_t) Hashtbl.t
 
 type label_table_t = (string, Expression.pc_t * Expression.pc_t) Hashtbl.t
 
-type system_t
+type t
 
 
 type sysMode =
@@ -50,7 +50,7 @@ val me_tid_th        : Expression.tid
 
 
 val empty_var_table : var_table_t
-val empty_system    : system_t
+val empty_system    : t
 
 
 (* SYSTEM MANIPULATION FUNCTIONS *)
@@ -61,41 +61,41 @@ val new_system : var_table_t ->
                  int list ->
                  st_table_t ->
                  label_table_t ->
-                 system_t
+                 t
 
-val get_global            : system_t -> var_table_t
-val get_assume            : system_t -> Statement.boolean option
-val get_procs             : system_t -> proc_table_t
-val get_trans             : system_t -> tran_table_t
-val get_fair              : system_t -> int list
-val get_statements        : system_t -> st_table_t
-val get_labels            : system_t -> label_table_t
-val lines                 : system_t -> int
-val is_proc               : system_t -> string -> bool
-val get_proc_name_list    : system_t -> bool -> string list
-val get_all_local_vars    : system_t -> (string * Expression.variable list) list
-val get_proc_by_name      : system_t -> string -> proc_info_t
-val get_input_by_name     : system_t -> string -> var_table_t
-val get_local_by_name     : system_t -> string -> var_table_t
-val get_accvars_by_name   : system_t -> string -> (var_table_t * var_table_t)
-val get_accvars           : system_t -> (string * var_table_t * var_table_t) list
-val get_all_vars_id       : system_t -> Expression.varId list
-val get_sys_var_tables    : system_t ->
+val get_global            : t -> var_table_t
+val get_assume            : t -> Statement.boolean option
+val get_procs             : t -> proc_table_t
+val get_trans             : t -> tran_table_t
+val get_fair              : t -> int list
+val get_statements        : t -> st_table_t
+val get_labels            : t -> label_table_t
+val lines                 : t -> int
+val is_proc               : t -> string -> bool
+val get_proc_name_list    : t -> bool -> string list
+val get_all_local_vars    : t -> (string * Expression.variable list) list
+val get_proc_by_name      : t -> string -> proc_info_t
+val get_input_by_name     : t -> string -> var_table_t
+val get_local_by_name     : t -> string -> var_table_t
+val get_accvars_by_name   : t -> string -> (var_table_t * var_table_t)
+val get_accvars           : t -> (string * var_table_t * var_table_t) list
+val get_all_vars_id       : t -> Expression.varId list
+val get_sys_var_tables    : t ->
                             var_table_t * (string * var_table_t * var_table_t)list
-val get_fLine_by_name     : system_t -> string -> Expression.pc_t
-val get_lLine_by_name     : system_t -> string -> Expression.pc_t
-val get_prog_by_name      : system_t -> string -> Statement.statement_t option
-val get_statement_at      : system_t ->
+val get_fLine_by_name     : t -> string -> Expression.pc_t
+val get_lLine_by_name     : t -> string -> Expression.pc_t
+val get_prog_by_name      : t -> string -> Statement.statement_t option
+val get_statement_at      : t ->
                             Expression.pc_t ->
                             (string * Statement.statement_t)
-val get_trans_num         : system_t -> int
-val add_global_vars       : system_t -> var_table_t -> system_t
-val del_global_var        : system_t -> Expression.varId -> system_t
-val del_global_var_regexp : system_t -> Str.regexp -> system_t
+val get_trans_num         : t -> int
+val add_global_vars       : t -> var_table_t -> t
+val del_global_var        : t -> Expression.varId -> t
+val del_global_var_regexp : t -> Str.regexp -> t
 
 
 (* SYSTEM QUERY FUNCTIONS *)
-val get_accvars_by_name : system_t ->
+val get_accvars_by_name : t ->
                           string ->
                           (var_table_t * var_table_t)
 
@@ -141,10 +141,10 @@ val get_labels_for_pos : label_table_t -> Expression.pc_t -> string list
 
 
 (* GENERATION FUNCTIONS *)
-val gen_global_vars_as_terms : system_t -> Expression.TermSet.t
-val gen_local_vars_as_terms : system_t ->
+val gen_global_vars_as_terms : t -> Expression.TermSet.t
+val gen_local_vars_as_terms : t ->
                               (string * Expression.TermSet.t) list
-val gen_local_vars_as_array_terms : system_t ->
+val gen_local_vars_as_array_terms : t ->
                                     (string * Expression.TermSet.t) list
 
 
@@ -196,17 +196,17 @@ val get_tran : tran_table_t -> Expression.pc_t -> Expression.formula list
 val tran_table_to_str : tran_table_t -> string
 
 
-val check_is_numeric : system_t -> unit
+val check_is_numeric : t -> unit
 
 
 (* PRINTING FUNCTIONS *)
-val system_to_str : system_t -> string
+val to_str : t -> string
 
 
 (* TRANSITION RELATION FUNCTIONS *)
-val gen_theta : sysMode -> system_t -> abstraction -> Expression.formula
+val gen_theta : sysMode -> t -> abstraction -> Expression.formula
 
-val gen_rho : system_t ->
+val gen_rho : t ->
               sysMode ->
               Expression.pc_t ->
               abstraction ->

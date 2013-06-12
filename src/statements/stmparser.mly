@@ -859,7 +859,7 @@ let lock_pos_to_str (pos:Stm.integer option) : string =
 %start system
 
 
-%type <(System.system_t * Expression.varId list)> system
+%type <(System.t * Expression.varId list)> system
 
 %type <Stm.boolean option> initial_assumption
 

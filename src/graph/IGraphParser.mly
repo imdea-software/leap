@@ -6,10 +6,10 @@ open Global
 
 (* Type rename *)
 
-type graph_t = IGraph.iGraph_t
+type graph_t = IGraph.t
 
 type case_t = Expression.pc_t         *
-              IGraph.premise_t list   *
+              Premise.t list        *
               Tag.f_tag list          *
               Tactics.proof_plan
 
@@ -28,17 +28,13 @@ let get_line id = snd id
 %token BAR
 %token SELF_PREMISE OTHERS_PREMISE
 %token SMP_UNION SMP_PRUNING SMP_DNF
-%token SUPP_SPLIT_GOAL_TACTIC
-%token SUPP_FULL_TACTIC SUPP_REDUCE_TACTIC SUPP_REDUCE2_TACTIC
-%token FORMULA_SPLIT_CONSEQUENT_TACTIC
-%token FORMULA_SIMPLIFYPC_TACTIC FORMULA_PROPAGATE_TACTIC FORMULA_FILTER_TACTIC
 %token EOF
 
 
 %start graph
 
 
-%type <IGraph.iGraph_t> graph
+%type <IGraph.t> graph
 %type <IGraph.rule_t list> rule_list
 %type <IGraph.rule_t> rule
 %type <Tag.f_tag list> maybe_empty_inv_list
@@ -50,16 +46,17 @@ let get_line id = snd id
 %type <case_t list> seq_case_list
 %type <case_t> case
 %type <case_t> seq_case
-%type <IGraph.premise_t list> premise
+%type <Premise.t list> premise
 %type <Tactics.proof_plan> tactics
 %type <(Smp.cutoff_strategy_t option)> smp_strategy
-%type <(Tactics.support_split_tactic)> support_split_tactic
-%type <(Tactics.support_tactic)> support_tactic
-%type <(Tactics.formula_split_tactic)> formula_split_tactic
-%type <(Tactics.formula_tactic)> formula_tactic
-%type <(Tactics.support_split_tactic list)> support_split_tactic_list
-%type <(Tactics.formula_split_tactic list)> formula_split_tactic_list
-%type <(Tactics.formula_tactic list)> formula_tactic_list
+%type <(Tactics.support_split_tactic_t)> support_split_tactic
+%type <(Tactics.support_tactic_t)> support_tactic
+%type <(Tactics.formula_split_tactic_t)> formula_split_tactic
+%type <(Tactics.formula_tactic_t)> formula_tactic
+%type <(Tactics.support_split_tactic_t list)> support_split_tactic_list
+%type <(Tactics.support_tactic_t list)> support_tactic_list
+%type <(Tactics.formula_split_tactic_t list)> formula_split_tactic_list
+%type <(Tactics.formula_tactic_t list)> formula_tactic_list
 
 
 
@@ -178,17 +175,17 @@ seq_case :
       let phi_list = $3 in
       let tacs = $4
       in
-        (pc, [IGraph.SelfConseq], phi_list, tacs)
+        (pc, [Premise.SelfConseq], phi_list, tacs)
     }
 
 
 premise :
   |
-    { [IGraph.SelfConseq; IGraph.OthersConseq] }
+    { [Premise.SelfConseq; Premise.OthersConseq] }
   | SELF_PREMISE COLON
-    { [IGraph.SelfConseq] }
+    { [Premise.SelfConseq] }
   | OTHERS_PREMISE COLON
-    { [IGraph.OthersConseq] }
+    { [Premise.OthersConseq] }
 
 
 tactics :
@@ -196,12 +193,11 @@ tactics :
     { Tactics.new_proof_plan None [] [] [] [] }
   | OPEN_BRACE smp_strategy
                support_split_tactic_list
-               support_tactic
+               support_tactic_list
                formula_split_tactic_list
                formula_tactic_list CLOSE_BRACE
     {
-      Tactics.new_proof_plan $2 (List.map Tactics.pick_support_split_tac $3) [$4]
-                                (List.map Tactics.pick_formula_split_tac $5) $6
+      Tactics.new_proof_plan $2 $3 $4 $5 $6
     }
 
 
@@ -223,6 +219,13 @@ support_split_tactic_list :
     { $1 :: $2 }
 
 
+support_tactic_list :
+  | BAR
+    { [] }
+  | support_tactic support_tactic_list
+    { $1 :: $2 }
+
+
 formula_split_tactic_list :
   | BAR
     { [] }
@@ -238,28 +241,20 @@ formula_tactic_list :
 
 
 support_split_tactic :
-  | SUPP_SPLIT_GOAL_TACTIC
-    { Tactics.SplitGoal }
+  | IDENT
+    { Tactics.support_split_tactic_from_string (get_name $1) }
 
 
 support_tactic :
-  | SUPP_FULL_TACTIC BAR
-    { Tactics.Full }
-  | SUPP_REDUCE_TACTIC BAR
-    { Tactics.Reduce }
-  | SUPP_REDUCE2_TACTIC BAR
-    { Tactics.Reduce2 }
+  | IDENT
+    { Tactics.support_tactic_from_string (get_name $1) }
 
 
 formula_split_tactic :
-  | FORMULA_SPLIT_CONSEQUENT_TACTIC
-    { Tactics.SplitConsequent }
+  | IDENT
+    { Tactics.formula_split_tactic_from_string (get_name $1) }
 
 
 formula_tactic :
-  | FORMULA_SIMPLIFYPC_TACTIC
-    { Tactics.SimplifyPC }
-  | FORMULA_PROPAGATE_TACTIC
-    { Tactics.PropositionalPropagate }
-  | FORMULA_FILTER_TACTIC
-    { Tactics.FilterStrict }
+  | IDENT
+    { Tactics.formula_tactic_from_string (get_name $1) }

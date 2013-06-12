@@ -10,7 +10,8 @@
 // -> skiplist_create {union:reduce2|simpl}
 
 // To check
--> skiplist_region [26:skiplist_prop_subsumes;
+-> skiplist_region [1:{union:||split-consequent|simplify-pc};
+                    26:skiplist_prop_subsumes;
                     27:skiplist_prop,skiplist_next;
                     28:skiplist_prop,skiplist_next;
                     29:skiplist_region_aux;
