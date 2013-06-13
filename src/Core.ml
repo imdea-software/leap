@@ -267,9 +267,13 @@ module Make (Opt:module type of GenOptions) : S =
       let voc = E.voc (E.conj_list (inv::supp)) in
       let rho = System.gen_rho Opt.sys (System.SOpenArray voc) line Opt.abs
                     Opt.hide_pres trans_tid in
+      List.iter (fun phi -> Printf.printf "SEQ_GEN_VCS:%s\n" (E.formula_to_str phi)) rho;
       List.fold_left (fun rs phi ->
-        let new_vc = Tactics.create_vc_info supp E.True phi inv voc trans_tid line
-        in
+        Printf.printf "INSIDE FOLD:%s\n" (E.formula_to_str phi);
+        let new_vc = Tactics.create_vc_info supp E.True phi inv voc trans_tid line in
+        Printf.printf "AFTER CREATION: %s\n" (E.formula_to_str (Tactics.get_rho_from_info new_vc));
+        print_endline (Tactics.vc_info_to_str new_vc);
+        
           new_vc :: rs
       ) [] rho
 
@@ -353,11 +357,13 @@ module Make (Opt:module type of GenOptions) : S =
         let obligations = match IGraph.lookup_case cases line prem with
                           | None       -> Tactics.apply_tactics_from_proof_plan [vc] gral_plan
                           | Some (_,p) -> Tactics.apply_tactics_from_proof_plan [vc] p in
+(*
         Printf.printf "=========================================================\n";
         Printf.printf "FOR VERIFYING THE FOLLOWING VC_INFO:\n\n%s\n" (Tactics.vc_info_to_str vc);
         Printf.printf "THE FOLLOWING FORMULAS MUST BE VALID:\n";
         Printf.printf "----------------------\n%s\n" (String.concat "\n" (List.map E.formula_to_human_str obligations));
         Printf.printf "=========================================================\n";
+*)
         let proof_obligation = new_proof_obligation vc obligations
         in
           proof_obligation :: res

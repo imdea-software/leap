@@ -24,7 +24,7 @@ let cut_off (f:NE.formula) : int =
     | NE.Subset _                              -> incr counter
     | NE.InEq (NE.SetV _, NE.SetV _) -> incr counter
     | NE.FunInEq (NE.FunVar v, _)     ->
-          if v.NE.sort = NE.Set then incr counter
+          if (NE.var_sort v) = NE.Set then incr counter
     | NE.FunInEq (NE.FunUpd (_,_,t),_)    ->
           begin
             match t with

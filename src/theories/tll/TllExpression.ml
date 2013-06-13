@@ -11,8 +11,8 @@ and variable =
   {
             id        : varId           ;
             sort      : sort            ;
-    mutable is_primed : bool            ;
-    mutable parameter : shared_or_local ;
+            is_primed : bool            ;
+            parameter : shared_or_local ;
             scope     : procedure_name  ;
   }
 
@@ -186,7 +186,7 @@ let var_scope (v:variable) : procedure_name =
 
 
 let var_set_param (th:shared_or_local) (v:variable) : variable =
-  v.parameter <- th; v
+  build_var v.id v.sort v.is_primed th v.scope
 
 
 let is_global_var (v:variable) : bool =
@@ -194,11 +194,11 @@ let is_global_var (v:variable) : bool =
 
 
 let prime_var (v:variable) : variable =
-  v.is_primed <- true; v
+  build_var v.id v.sort true v.parameter v.scope
 
 
 let unprime_var (v:variable) : variable =
-  v.is_primed <- false; v
+  build_var v.id v.sort false v.parameter v.scope
 
 
 let is_primed_tid (th:tid) : bool =

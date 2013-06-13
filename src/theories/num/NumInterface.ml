@@ -151,11 +151,11 @@ and formula_to_int_formula (phi:E.formula) : NE.formula =
 
 (* SUPERTYPE CONVERTER: *)
 let rec variable_to_expr_variable (v:NE.variable) : E.variable =
-  E.build_var (v.NE.id)
-              (sort_to_expr_sort v.NE.sort)
-              (v.NE.is_primed)
-              (shared_to_expr_shared v.NE.parameter)
-              (scope_to_expr_scope v.NE.scope)
+  E.build_var (NE.var_id v)
+              (sort_to_expr_sort (NE.var_sort v))
+              (NE.var_is_primed v)
+              (shared_to_expr_shared (NE.var_parameter v))
+              (scope_to_expr_scope (NE.var_scope v))
               (E.RealVar)
 
 

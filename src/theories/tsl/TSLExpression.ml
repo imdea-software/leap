@@ -12,8 +12,8 @@ and variable =
   {
             id        : varId           ;
             sort      : sort            ;
-    mutable is_primed : bool            ;
-    mutable parameter : shared_or_local ;
+            is_primed : bool            ;
+            parameter : shared_or_local ;
             scope     : procedure_name  ;
   }
 

@@ -1093,7 +1093,7 @@ let rec aux_rho_for_st
     let new_tid  = match op with
       | Stm.Lock -> th
       | Stm.Unlock -> E.NoThid in
-    let mkcell = E.MkCell (E.CellData (E.CellAt (E.heap, a)), 
+    let mkcell = E.MkCell (E.CellData (E.CellAt (E.heap, a)),
       E.Next (E.CellAt (E.heap, a)), new_tid) in
     let upd = E.eq_mem (E.prime_mem E.heap) (E.Update (E.heap, a, mkcell)) in
     let modif = [E.MemT E.heap] in
@@ -1258,7 +1258,10 @@ let gen_rho (sys : t)     (* The system                   *)
   let lSet = List.assoc proc all_local in
   let (gSet',lSet',thSet',rhoList) =
     aux_rho_for_st sys gSet lSet thSet mode st th false abs mInfo pt in
-  let phi_list = if hide_pres then rhoList
+
+  let phi_list =
+    if hide_pres then
+      rhoList
     else begin
       match st with
       (* If atomic statement, I need to generate the preservation
@@ -1280,4 +1283,6 @@ let gen_rho (sys : t)     (* The system                   *)
             gen_pres proc gSet' lSet' filtered_local thSet' mode th in
           List.map (fun x -> x @ pres_list) rhoList 
     end in
+    List.iter (fun phi -> Printf.printf "GEN_RHO: %s\n" (E.formula_to_str phi)) (List.map E.conj_list phi_list);
+    print_endline "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-";
     List.map E.conj_list phi_list

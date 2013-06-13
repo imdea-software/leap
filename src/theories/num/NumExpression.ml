@@ -18,8 +18,8 @@ type variable =
   {
             id        : varId           ;
             sort      : sort            ;
-    mutable is_primed : bool            ;
-    mutable parameter : shared_or_local ;
+            is_primed : bool            ;
+            parameter : shared_or_local ;
             scope     : procedure_name  ;
   }
 
@@ -125,12 +125,32 @@ let build_var (id:varId)
   }
 
 
+let var_id (v:variable) : varId =
+  v.id
+
+
+let var_sort (v:variable) : sort =
+  v.sort
+
+
+let var_is_primed (v:variable) : bool =
+  v.is_primed
+
+
+let var_parameter (v:variable) : shared_or_local =
+  v.parameter
+
+
+let var_scope (v:variable) : procedure_name =
+  v.scope
+
+
 let var_clear_param_info (v:variable) : variable =
-  v.parameter <- Shared; v
+  build_var v.id v.sort v.is_primed Shared v.scope
 
 
 let param_var (v:variable) (th:tid) : variable =
-  v.parameter <- Local th; v
+  build_var v.id v.sort v.is_primed (Local th) v.scope
 
 
 let var_is_global (v:variable) : bool =

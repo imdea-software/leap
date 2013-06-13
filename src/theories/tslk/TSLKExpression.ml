@@ -341,10 +341,10 @@ module Make (K : Level.S) : S =
       {
                 id        : varId           ;
                 sort      : sort            ;
-        mutable is_primed : bool            ;
-        mutable parameter : shared_or_local ;
+                is_primed : bool            ;
+                parameter : shared_or_local ;
                 scope     : procedure_name  ;
-        mutable info      : var_info_t      ;
+                info      : var_info_t      ;
       }
 
     and sort =
@@ -500,31 +500,39 @@ module Make (K : Level.S) : S =
     (* VARIABLE MANIPULATION *)
     (*************************)
 
-    let build_var (id:varId)
-                  (s:sort)
-                  (pr:bool)
-                  (th:shared_or_local)
-                  (p:procedure_name) : variable =
+    let build_var_with_info (id:varId)
+                            (s:sort)
+                            (pr:bool)
+                            (th:shared_or_local)
+                            (p:procedure_name)
+                            (info:var_info_t) : variable =
       {
         id = id;
         sort = s;
         is_primed = pr;
         parameter = th;
         scope = p;
-        info = {smp_interesting=false;fresh=false;};
+        info = info;
       }
+
+    let build_var (id:varId)
+                  (s:sort)
+                  (pr:bool)
+                  (th:shared_or_local)
+                  (p:procedure_name) : variable =
+      build_var_with_info id s pr th p {smp_interesting=false;fresh=false;}
 
 
     let var_set_param (th:shared_or_local) (v:variable ) : variable =
-      v.parameter <- th; v
+      build_var_with_info v.id v.sort v.is_primed th v.scope v.info
 
 
     let var_set_info (v:variable) (info:var_info_t) : variable =
-      v.info <- info; v
+      build_var_with_info v.id v.sort v.is_primed v.parameter v.scope info
 
 
     let unparam_var (v:variable) : variable =
-      v.parameter <- Shared; v
+      build_var_with_info v.id v.sort v.is_primed Shared v.scope v.info
 
 
     let var_id (v:variable) : varId =
@@ -556,11 +564,11 @@ module Make (K : Level.S) : S =
 
 
     let prime_var (v:variable) : variable =
-      v.is_primed <- true; v
+      build_var_with_info v.id v.sort true v.parameter v.scope v.info
 
 
     let unprime_var (v:variable) : variable =
-      v.is_primed <- false; v
+      build_var_with_info v.id v.sort false v.parameter v.scope v.info
 
 
     let variable_mark_smp_interesting (v:variable) (b:bool) : unit =

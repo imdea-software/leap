@@ -9,14 +9,7 @@ type shared_or_local = Shared  | Local of tid
 
 type procedure_name  = GlobalScope | Scope of string
 
-type variable =
-  {
-            id        : varId           ;
-            sort      : sort            ;
-    mutable is_primed : bool            ;
-    mutable parameter : shared_or_local ;
-            scope     : procedure_name  ;
-  }
+type variable
 
 
 type integer =
@@ -92,6 +85,13 @@ val build_var : varId ->
                 shared_or_local ->
                 procedure_name ->
                 variable
+
+val var_id : variable -> varId
+val var_sort : variable -> sort
+val var_is_primed : variable -> bool
+val var_parameter : variable -> shared_or_local
+val var_scope : variable -> procedure_name
+
 val var_clear_param_info : variable -> variable
 val param_var : variable -> tid -> variable
 val var_is_global : variable -> bool

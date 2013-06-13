@@ -59,12 +59,12 @@ struct
 
 
   let int_var_to_str (v:NE.variable) : string =
-    let pr_str = if v.NE.is_primed then "'" else ""
+    let pr_str = if (NE.var_is_primed v) then "'" else ""
     in
-      match v.NE.scope with
-      | NE.GlobalScope -> int_varid_to_str (v.NE.id ^ pr_str)
-      | NE.Scope ""    -> int_varid_to_str (v.NE.id ^ pr_str)
-      | NE.Scope p     -> int_local_varid_to_str (p^"_"^v.NE.id^pr_str)
+      match NE.var_scope v with
+      | NE.GlobalScope -> int_varid_to_str ((NE.var_id v) ^ pr_str)
+      | NE.Scope ""    -> int_varid_to_str ((NE.var_id v) ^ pr_str)
+      | NE.Scope p     -> int_local_varid_to_str (p^"_"^(NE.var_id v)^pr_str)
 
 
   let rec int_varlist_to_str (vl:NE.variable list) : string =
@@ -72,7 +72,7 @@ struct
                         | NE.Shared  -> set
                         | NE.Local t -> E.ThreadSet.add t set in
     let (t_set,v_set) = List.fold_left (fun (ts,vs) v ->
-                          (add_th v.NE.parameter ts,
+                          (add_th (NE.var_parameter v) ts,
                            NE.VarSet.add (NE.var_clear_param_info v) vs)
                         ) (E.ThreadSet.empty, NE.VarSet.empty) vl in
     let th_str = if E.ThreadSet.cardinal t_set <> 0 then
@@ -99,24 +99,24 @@ struct
 
 
   and variable_to_str (v:NE.variable) : string =
-    let pr_str = if v.NE.is_primed then "'" else "" in
-    let th_str = match v.NE.parameter with
+    let pr_str = if (NE.var_is_primed v) then "'" else "" in
+    let th_str = match (NE.var_parameter v) with
                  | NE.Shared  -> ""
                  | NE.Local t -> "_" ^ (tid_to_str t) in
-    let p_str = procedure_name_to_append v.NE.scope
+    let p_str = procedure_name_to_append (NE.var_scope v)
     in
-      Printf.sprintf "%s%s%s%s" p_str v.NE.id th_str pr_str
+      Printf.sprintf "%s%s%s%s" p_str (NE.var_id v) th_str pr_str
 
 
   and var_sort_to_str (v:NE.variable) : string =
-    match v.NE.sort with
+    match (NE.var_sort v) with
     | NE.Int  -> int_s
     | NE.Set  -> set_s
     | NE.Thid -> thid_s
 
 
   and var_sort_to_gmsort_str (v:NE.variable) : string =
-    match v.NE.sort with
+    match (NE.var_sort v) with
       NE.Int  -> GM.int_s
     | NE.Set  -> GM.set_s
     | NE.Thid -> GM.tid_s
@@ -189,16 +189,16 @@ struct
 
 
   let variable_invocation_to_str (v:NE.variable) : string =
-    let th_str = shared_or_local_to_str v.NE.parameter in
-    let p_str  = procedure_name_to_append v.NE.scope in
-    let pr_str = if v.NE.is_primed then "'" else ""
+    let th_str = shared_or_local_to_str (NE.var_parameter v) in
+    let p_str  = procedure_name_to_append (NE.var_scope v) in
+    let pr_str = if (NE.var_is_primed v) then "'" else ""
     in
-      match v.NE.parameter with
-      | NE.Shared  -> Printf.sprintf " %s%s%s%s" p_str v.NE.id th_str pr_str
+      match (NE.var_parameter v) with
+      | NE.Shared  -> Printf.sprintf " %s%s%s%s" p_str (NE.var_id v) th_str pr_str
   (* For LEAP *)
-      | NE.Local _ -> Printf.sprintf " (%s%s%s %s)" p_str v.NE.id pr_str th_str
+      | NE.Local _ -> Printf.sprintf " (%s%s%s %s)" p_str (NE.var_id v) pr_str th_str
   (* For numinv *)
-  (*    | NE.Local _ -> Printf.sprintf " %s%s%s_%s" p_str v.NE.id pr_str th_str *)
+  (*    | NE.Local _ -> Printf.sprintf " %s%s%s_%s" p_str (NE.var_id v) pr_str th_str *)
 
 
 
@@ -385,13 +385,13 @@ struct
                          (voc:E.tid list)
                          (buf:Buffer.t) : unit =
     List.iter (fun v ->
-      if v.NE.sort = NE.Int then
+      if (NE.var_sort v) = NE.Int then
         let v_str = variable_invocation_to_str v in
         B.add_string buf ("(assert+ (is_legal " ^ v_str ^ "))")
     ) global_vars;
     List.iter (fun v ->
       List.iter (fun t->
-        if v.NE.sort = NE.Int then
+        if (NE.var_sort v) = NE.Int then
           let v_str = variable_invocation_to_str (NE.param_var v t) in
           B.add_string buf ("(assert+ (is_legal " ^ v_str ^ "))\n")
       ) voc
@@ -441,11 +441,11 @@ struct
   let rec fun_to_str (f:NE.fun_term) : string =
     match f with
       NE.FunVar v ->
-        if v.NE.parameter = NE.Shared then
+        if (NE.var_parameter v) = NE.Shared then
           variable_to_str v
         else
           let v_str  = variable_to_str (NE.var_clear_param_info v) in
-          let th_str = shared_or_local_to_str v.NE.parameter
+          let th_str = shared_or_local_to_str (NE.var_parameter v)
           in
             Printf.sprintf "(%s %s)" v_str th_str
     | NE.FunUpd (f,th,i) ->
@@ -564,7 +564,7 @@ struct
   let int_formula_with_lines_to_str (phi:NE.formula) : string =
     let _ = GM.clear_sort_map sort_map in
     let filter_ints xs = List.filter (fun v ->
-                           v.NE.sort = NE.Int
+                           (NE.var_sort v) = NE.Int
                          ) xs in
     let voc            = NE.voc phi in
     let cutoff         = SmpNum.cut_off phi in
