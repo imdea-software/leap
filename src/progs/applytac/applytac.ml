@@ -30,12 +30,12 @@ let _ =
         let (_,phi) = Parser.parse ch (Eparser.single_formula Elexer.norm) in
         print_endline ("FORMULA:\n" ^ (Expression.formula_to_str phi) ^ "\n");
         (* We construct the phi implication *)
-	let rec faux f = match f with
-	    Expression.Implies (a,b) -> "IMPLIES(" ^  (faux a) ^ "," ^ (faux b) ^ ")"
-	  | Expression.And(a,b)      -> "AND(" ^ (faux a) ^ "," ^ (faux b) ^ ")"
-	  | Expression.Or(a,b)      ->  "OR(" ^ (faux a) ^ "," ^ (faux b) ^ ")"
-	  | _ ->  "OTHER" in
-	let _ = print_endline (faux phi) in
+  let rec faux f = match f with
+      Expression.Implies (a,b) -> "IMPLIES(" ^  (faux a) ^ "," ^ (faux b) ^ ")"
+    | Expression.And(a,b)      -> "AND(" ^ (faux a) ^ "," ^ (faux b) ^ ")"
+    | Expression.Or(a,b)      ->  "OR(" ^ (faux a) ^ "," ^ (faux b) ^ ")"
+    | _ ->  "OTHER" in
+  let _ = print_endline (faux phi) in
         let (ante, conse) = match phi with
                             | Expression.Implies (a,b) -> (a,b)
                             | _ -> (Expression.True, phi) in

@@ -353,6 +353,11 @@ module Make (Opt:module type of GenOptions) : S =
         let obligations = match IGraph.lookup_case cases line prem with
                           | None       -> Tactics.apply_tactics_from_proof_plan [vc] gral_plan
                           | Some (_,p) -> Tactics.apply_tactics_from_proof_plan [vc] p in
+        Printf.printf "=========================================================\n";
+        Printf.printf "FOR VERIFYING THE FOLLOWING VC_INFO:\n\n%s\n" (Tactics.vc_info_to_str vc);
+        Printf.printf "THE FOLLOWING FORMULAS MUST BE VALID:\n";
+        Printf.printf "----------------------\n%s\n" (String.concat "\n" (List.map E.formula_to_human_str obligations));
+        Printf.printf "=========================================================\n";
         let proof_obligation = new_proof_obligation vc obligations
         in
           proof_obligation :: res

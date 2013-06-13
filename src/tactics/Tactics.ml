@@ -382,9 +382,9 @@ let simplify_with_fact (lit:E.literal) (phi:E.formula) : E.formula =
   let rec simplify_lit f = 
     match f with
       E.Literal l -> 
-	if      (E.identical_literal l lit) then E.True 
-	else if (E.opposite_literal  l lit) then E.False
-	else f
+  if      (E.identical_literal l lit) then E.True 
+  else if (E.opposite_literal  l lit) then E.False
+  else f
     | E.True        -> E.True
     | E.False       -> E.False
     | E.And(f1, f2) -> E.And(simplify_lit f1, simplify_lit f2)
@@ -400,11 +400,11 @@ let simplify_with_many_facts (ll:E.literal list) (phi:E.formula) : E.formula =
   let rec simplify_lit f = 
     match f with
       E.Literal l -> 
-	begin
-	  if List.exists (fun lit -> E.identical_literal l lit) ll then E.True 
-	  else if List.exists (fun lit -> E.opposite_literal l lit) ll then E.False
-	  else E.Literal l
-	end
+  begin
+    if List.exists (fun lit -> E.identical_literal l lit) ll then E.True 
+    else if List.exists (fun lit -> E.opposite_literal l lit) ll then E.False
+    else E.Literal l
+  end
     | E.True           ->  E.True
     | E.False          ->  E.False
     | E.And(f1,f2)     -> E.And(simplify_lit f1, simplify_lit f2)
@@ -421,7 +421,7 @@ let get_unrepeated_literals (phi:E.formula) : E.literal list =
   let candidates = get_literals phi in
   List.fold_left 
     (fun res l -> if (List.exists (fun alit -> E.identical_literal alit l) res) then
-	res else res@[l]) [] candidates
+  res else res@[l]) [] candidates
     
 
 let tactic_propositional_propagate (imp:implication) : implication =
@@ -484,7 +484,7 @@ let tactic_conseq_propagate_first_disjunct (imp:implication) : implication =
       let _ = print_endline str in
       let res = apply_literal_to_implication (neg_literal l) imp.ante b in
       let str = "Old conseq: " ^ (E.formula_to_str imp.conseq) ^ 
-	"\nNew conseq:" ^ (E.formula_to_str res.conseq) in
+  "\nNew conseq:" ^ (E.formula_to_str res.conseq) in
       let _ = print_endline str in
       res
   | _ -> { ante = imp.ante; conseq = imp.conseq }
