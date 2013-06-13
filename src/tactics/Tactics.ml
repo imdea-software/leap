@@ -456,7 +456,7 @@ let tactic_filter_vars_nonrec (imp:implication) : implication =
 let is_literal (f:E.formula) : bool =
   match f with  
     E.Literal _ -> true  
-  | _         -> false
+  | _           -> false
 
 
 let neg_literal (l:E.literal) : E.literal =
@@ -474,20 +474,19 @@ let tactic_conseq_propagate_second_disjunct (imp:implication) : implication =
   match imp.conseq with
     E.Or(a ,E.Literal l) -> 
       apply_literal_to_implication (neg_literal l) imp.ante a
+  | E.Implies(a, E.Literal l) ->
+      apply_literal_to_implication (neg_literal l) imp.ante (E.Not a)
   | _ -> { ante = imp.ante; conseq = imp.conseq }
     
 
 let tactic_conseq_propagate_first_disjunct (imp:implication) : implication =
   match imp.conseq with
     E.Or(E.Literal l, b) -> 
-      let str = "Propagating back " ^ (E.literal_to_str l) in
-      let _ = print_endline str in
-      let res = apply_literal_to_implication (neg_literal l) imp.ante b in
-      let str = "Old conseq: " ^ (E.formula_to_str imp.conseq) ^ 
-  "\nNew conseq:" ^ (E.formula_to_str res.conseq) in
-      let _ = print_endline str in
-      res
-  | _ -> { ante = imp.ante; conseq = imp.conseq }
+      apply_literal_to_implication (neg_literal l) imp.ante b
+  | E.Implies(E.Literal l,b) ->
+    apply_literal_to_implication l imp.ante b
+  | _ -> 
+    { ante = imp.ante; conseq = imp.conseq }
 
 
 
