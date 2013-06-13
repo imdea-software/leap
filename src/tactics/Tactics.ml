@@ -393,6 +393,7 @@ let simplify_with_fact (lit:E.literal) (phi:E.formula) : E.formula =
   simplify (simplify_lit phi)
 
 let simplify_with_many_facts (ll:E.literal list) (phi:E.formula) : E.formula =
+  let _ = List.map (fun l -> print_endline ("Simplifying with " ^ (E.literal_to_str l))) ll in 
   let rec simplify_lit f = 
     match f with
       E.Literal l -> 
@@ -409,10 +410,18 @@ let simplify_with_many_facts (ll:E.literal list) (phi:E.formula) : E.formula =
   let res = simplify (simplify_lit phi) in
    res
 
+
+let get_unrepeated_literals (phi:E.formula) : E.literal list = 
+  let candidates = get_literals phi in
+  List.fold_left 
+    (fun res l -> if (List.exists (fun alit -> E.identical_literal alit l) res) then
+	res else res@[l]) [] candidates
+    
+
 let tactic_propositional_propagate (imp:implication) : implication =
   let rec simplify_propagate (f:implication) (used:E.literal list) : 
       (implication * E.literal list) =
-    let new_facts = get_literals f.ante in
+    let new_facts = get_unrepeated_literals f.ante in
     if List.length new_facts = 0 then (f,used) else
       begin
   let new_conseq = simplify_with_many_facts new_facts f.conseq in
