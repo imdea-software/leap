@@ -114,8 +114,9 @@ val split_implication : implication ->   implication list
 val split_goal :vc_info -> vc_info list
 
 val tactic_propositional_propagate : implication -> implication 
-
-val filter_with_variables_in_conseq : implication -> implication
+val tactic_filter_vars_nonrec : implication -> implication
+val tactic_conseq_propagate_second_disjunct : implication -> implication
+val tactic_conseq_propagate_first_disjunct : implication -> implication
 
 
 (**************************************************************************)

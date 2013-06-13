@@ -381,7 +381,10 @@ let rec get_literals f =
 let simplify_with_fact (lit:E.literal) (phi:E.formula) : E.formula =
   let rec simplify_lit f = 
     match f with
-      E.Literal l -> if (E.identical_literal l lit) then E.True else phi
+      E.Literal l -> 
+	if      (E.identical_literal l lit) then E.True 
+	else if (E.opposite_literal  l lit) then E.False
+	else f
     | E.True        -> E.True
     | E.False       -> E.False
     | E.And(f1, f2) -> E.And(simplify_lit f1, simplify_lit f2)
@@ -397,8 +400,11 @@ let simplify_with_many_facts (ll:E.literal list) (phi:E.formula) : E.formula =
   let rec simplify_lit f = 
     match f with
       E.Literal l -> 
-  if List.exists (fun lit -> E.identical_literal l lit) ll then E.True 
-  else E.Literal l
+	begin
+	  if List.exists (fun lit -> E.identical_literal l lit) ll then E.True 
+	  else if List.exists (fun lit -> E.opposite_literal l lit) ll then E.False
+	  else E.Literal l
+	end
     | E.True           ->  E.True
     | E.False          ->  E.False
     | E.And(f1,f2)     -> E.And(simplify_lit f1, simplify_lit f2)
@@ -437,7 +443,7 @@ let tactic_propositional_propagate (imp:implication) : implication =
 
 (* eliminate from the antecedent all literals without variables in common
    with the goal *)
-let filter_with_variables_in_conseq (imp:implication) : implication =
+let tactic_filter_vars_nonrec (imp:implication) : implication =
   let vs_conseq = E.all_vars_as_set imp.conseq in
   let conjs = E.to_conj_list imp.ante in
   let share_vars (vl: E.variable list) : bool =
@@ -445,7 +451,44 @@ let filter_with_variables_in_conseq (imp:implication) : implication =
   in
   let new_conjs = List.filter (fun f -> share_vars (E.all_vars f)) conjs in
   { ante = E.conj_list new_conjs ; conseq = imp.conseq }
+
+
+let is_literal (f:E.formula) : bool =
+  match f with  
+    E.Literal _ -> true  
+  | _         -> false
+
+
+let neg_literal (l:E.literal) : E.literal =
+  match l with 
+    E.Atom(a)    -> E.NegAtom(a)
+  | E.NegAtom(a) -> E.Atom(a)
+
+
+
+let apply_literal_to_implication (l:E.literal) (ante:E.formula) (conseq:E.formula) : implication =
+  { ante   = (E.And((simplify_with_fact l ante), E.Literal l));
+    conseq = (simplify_with_fact l conseq) }
+
+let tactic_conseq_propagate_second_disjunct (imp:implication) : implication =
+  match imp.conseq with
+    E.Or(a ,E.Literal l) -> 
+      apply_literal_to_implication (neg_literal l) imp.ante a
+  | _ -> { ante = imp.ante; conseq = imp.conseq }
     
+
+let tactic_conseq_propagate_first_disjunct (imp:implication) : implication =
+  match imp.conseq with
+    E.Or(E.Literal l, b) -> 
+      let str = "Propagating back " ^ (E.literal_to_str l) in
+      let _ = print_endline str in
+      let res = apply_literal_to_implication (neg_literal l) imp.ante b in
+      let str = "Old conseq: " ^ (E.formula_to_str imp.conseq) ^ 
+	"\nNew conseq:" ^ (E.formula_to_str res.conseq) in
+      let _ = print_endline str in
+      res
+  | _ -> { ante = imp.ante; conseq = imp.conseq }
+
 
 
 (**************************************************************************)
@@ -509,6 +552,7 @@ let apply_tactics_from_proof_plan (vcs:vc_info list)
 
 
 
+
 (***************************************************************)
 (*            CONVERTERS FORM STRING TO TACTICS                *)
 (***************************************************************)
@@ -537,5 +581,7 @@ let formula_tactic_from_string (s:string) : formula_tactic_t =
   match s with
   | "simplify-pc"             -> id (* TO BE IMPLEMENTED *)
   | "propositional-propagate" -> tactic_propositional_propagate
-  | "filter-strict"           -> filter_with_variables_in_conseq
+  | "filter-strict"           -> tactic_filter_vars_nonrec
+  | "propagate-disj-conseq-fst" -> tactic_conseq_propagate_first_disjunct
+  | "propagate-disj-conseq-snd" -> tactic_conseq_propagate_second_disjunct
   | _ -> raise(Invalid_tactic (s ^ " is not a formula_tactic"))

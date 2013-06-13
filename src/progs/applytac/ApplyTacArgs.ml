@@ -87,7 +87,7 @@ let opts =
         "support split tactics: split");
     ("--formula_tac",
         Arg.String (fun s -> formula_tac_list := (parse_tac_list Tactics.formula_tactic_from_string s)),
-        "formula tactics: simplify-pc, propositional-propagate");
+        "formula tactics: simplify-pc, propositional-propagate, filter-strict, propagate-disj-conseq-fst, propagate-disj-conseq-snd");
     ("--formula_split_tac",
         Arg.String (fun s -> formula_split_tac_list := (parse_tac_list Tactics.formula_split_tactic_from_string s)),
         "formula split tactics: split-consequent");
@@ -106,7 +106,7 @@ let anon_fun str =
   if !is_input_file then raise(MoreThanOneInputFile)
   else assigninputfile str
 
-let usagemsg = "Parses a program and generates its FTS."
+let usagemsg = "Applies a tactic to a vc or to a vcinfo file."
 let error msg = Arg.usage opts msg ; exit 0
 let simple_error msg = Printf.eprintf "%s\n" msg ; exit 0
 let postcheck () = () (*

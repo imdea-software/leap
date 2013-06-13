@@ -5313,6 +5313,11 @@ and identical_atom (a1:atom) (a2: atom) : bool =
   | PCRange(p1,q1,Local t1,b1),PCRange(p2,q2,Local t2,b2) ->
     identical_pc_t p1 q1 && identical_pc_t p2 q2 && b1=b2 && identical_tid t1 t2
   | _,_ -> false
+and opposite_literal (l1:literal) (l2:literal) : bool =
+  match l1, l2 with
+    Atom(a1), NegAtom(a2) -> identical_atom a1 a2 
+  | NegAtom(a1), Atom(a2) -> identical_atom a1 a2
+  | _,_ -> false
 and identical_literal (l1:literal) (l2: literal) : bool =
   match l1, l2 with
     Atom(a1),Atom (a2)      -> identical_atom a1 a2

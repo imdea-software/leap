@@ -638,5 +638,6 @@ val identical_path : path -> path -> bool
 val identical_mem : mem -> mem -> bool
 val identical_atom : atom -> atom -> bool
 val identical_literal : literal -> literal -> bool
+val opposite_literal  : literal -> literal -> bool
 val identical_conjunctive_formula : conjunctive_formula -> conjunctive_formula -> bool
 val identical_expr_t : expr_t -> expr_t -> bool
