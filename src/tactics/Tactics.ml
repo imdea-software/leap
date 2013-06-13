@@ -137,13 +137,13 @@ let create_vc_info (supp       : support_t)
        (trans_tid  : E.tid)
        (line       : E.pc_t) : vc_info =
     {
-      original_support   = supp ;
-      tid_constraint     = tid_constr ;
-      rho            = rho ;
-      goal           = goal ;
-      transition_tid = trans_tid ;
-      line           = line ;
-      vocabulary     = vocab ; (* fix: can be computed *)
+      original_support   = List.map E.to_fol_formula supp ;
+      tid_constraint     = E.to_fol_formula tid_constr ;
+      rho                = E.to_fol_formula rho ;
+      goal               = E.to_fol_formula goal ;
+      transition_tid     = trans_tid ;
+      line               = line ;
+      vocabulary         = vocab ; (* fix: can be computed *)
     }
 
 let create_vc (orig_supp       : support_t)

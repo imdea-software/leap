@@ -4529,12 +4529,10 @@ let construct_term_eq_as_array (v:term)
                                (th_p:shared_or_local)
                                (e:expr_t) : (term list * formula) =
 
-  let _ = Printf.printf "CONSTRUCT_TERM_EQ: %s\n" (term_to_str v) in
   let scope = get_var_owner v in
     match (scope, th_p) with
       (Scope _, Local th) ->
         begin
-          let _ = Printf.printf "CASE A\n" in
           let arr        = array_var_from_term v false in
           let primed_arr = array_var_from_term v true in
           let new_expr   =
@@ -4580,7 +4578,6 @@ let construct_term_eq_as_array (v:term)
               ([TidArrayT arr], assign)
           | _ -> construct_term_eq v th_p e
         end
-(*          (let _ = Printf.printf "CASE B\n" in construct_term_eq v th_p e) *)
     | _ -> Interface.Err.msg "Invalid argument" $
                    sprintf "When trying to construct a local array assignment \
                             for term \"%s\" with expression \"%s\", no thread \
@@ -4982,6 +4979,378 @@ let formula_to_human_str (phi:formula) : string =
               | _ -> formula_to_str f_without_locals in
   let full_str = "\nvars:\n\n" ^ vars_str ^ "\nformula:\n\n" ^ f_str in
   full_str
+
+
+
+
+
+(* CONVERSION TO FOL FORMULA *)
+(* Converts var'(k) into var_prime_k and PC into integer variables *)
+(* Notice you are loosing preservation of others PC as they are not any longer arrays *)
+
+let rec to_fol_var (v:variable) : variable =
+  let new_id = variable_to_simple_str v in
+  build_var new_id v.sort false Shared GlobalScope v.nature
+
+
+and build_pc_var (pr:bool) (th:shared_or_local) : variable =
+  let pr_str = if pr then "_prime" else "" in
+  let th_str = match th with
+               | Shared-> ""
+               | Local t -> "_" ^ (tid_to_str t)
+  in
+    build_var ("pc" ^ pr_str ^ th_str) Int false Shared GlobalScope RealVar
+
+
+and to_fol_term (expr:term) : term =
+  match expr with
+    VarT(v)           -> VarT       (to_fol_var v)
+  | SetT(set)         -> SetT       (to_fol_set set)
+  | AddrT(addr)       -> AddrT      (to_fol_addr addr)
+  | ElemT(elem)       -> ElemT      (to_fol_elem elem)
+  | ThidT(th)         -> ThidT      (to_fol_tid th)
+  | CellT(cell)       -> CellT      (to_fol_cell cell)
+  | SetThT(setth)     -> SetThT     (to_fol_setth setth)
+  | SetIntT(setint)   -> SetIntT    (to_fol_setint setint)
+  | SetElemT(setelem) -> SetElemT   (to_fol_setelem setelem)
+  | PathT(path)       -> PathT      (to_fol_path path)
+  | MemT(mem)         -> MemT       (to_fol_mem mem)
+  | IntT(i)           -> IntT       (to_fol_int i)
+  | ArrayT(arr)       -> ArrayT     (to_fol_arrays arr)
+  | AddrArrayT(arr)   -> AddrArrayT (to_fol_addrarr arr)
+  | TidArrayT(arr)    -> TidArrayT  (to_fol_tidarr arr)
+
+
+and to_fol_expr (expr:expr_t): expr_t =
+  match expr with
+    Term t    -> Term (to_fol_term t)
+  | Formula b -> Formula (to_fol_formula b)
+
+
+and to_fol_arrays (arr:arrays) : arrays =
+  match arr with
+    VarArray v       -> VarArray (to_fol_var v)
+      (*TODO: Fix open array case for array variables *)
+  | ArrayUp(arr,t,e) -> ArrayUp(to_fol_arrays arr, t,
+                                to_fol_expr e)
+
+
+and to_fol_addrarr (arr:addrarr) : addrarr =
+  match arr with
+    VarAddrArray v       -> VarAddrArray (to_fol_var v)
+      (*TODO: Fix open array case for array variables *)
+  | AddrArrayUp(arr,i,a) -> AddrArrayUp(to_fol_addrarr arr,
+                                        to_fol_int i,
+                                        to_fol_addr a)
+  | CellArr c            -> CellArr (to_fol_cell c)
+
+
+and to_fol_tidarr (arr:tidarr) : tidarr =
+  match arr with
+    VarTidArray v       -> VarTidArray (to_fol_var v)
+      (*TODO: Fix open array case for array variables *)
+  | TidArrayUp(arr,i,t) -> TidArrayUp(to_fol_tidarr arr,
+                                      to_fol_int i,
+                                      to_fol_tid t)
+  | CellTids c            -> CellTids (to_fol_cell c)
+
+
+and to_fol_set (e:set) : set =
+  match e with
+    VarSet v             -> VarSet (to_fol_var v)
+  | EmptySet             -> EmptySet
+  | Singl(addr)          -> Singl(to_fol_addr addr)
+  | Union(s1,s2)         -> Union(to_fol_set s1,
+                                  to_fol_set s2)
+  | Intr(s1,s2)          -> Intr(to_fol_set s1,
+                                 to_fol_set s2)
+  | Setdiff(s1,s2)       -> Setdiff(to_fol_set s1,
+                                    to_fol_set s2)
+  | PathToSet(path)      -> PathToSet(to_fol_path path)
+  | AddrToSet(mem,addr)  -> AddrToSet(to_fol_mem mem,
+                                      to_fol_addr addr)
+  | AddrToSetAt(mem,a,l) -> AddrToSetAt(to_fol_mem mem,
+                                        to_fol_addr a,
+                                        to_fol_int l)
+  | SetArrayRd(arr,t)    -> SetArrayRd(to_fol_arrays arr, t)
+
+
+and to_fol_addr (a:addr) : addr =
+  match a with
+    VarAddr v                 -> VarAddr (to_fol_var v)
+  | Null                      -> Null
+  | Next(cell)                -> Next(to_fol_cell cell)
+  | NextAt(cell,l)            -> NextAt(to_fol_cell cell,
+                                        to_fol_int l)
+  | FirstLocked(mem,path)     -> FirstLocked(to_fol_mem mem,
+                                             to_fol_path path)
+  | FirstLockedAt(mem,path,l) -> FirstLockedAt(to_fol_mem mem,
+                                               to_fol_path path,
+                                               to_fol_int l)
+  | AddrArrayRd(arr,t)        -> AddrArrayRd(to_fol_arrays arr, t)
+  | AddrArrRd(arr,l)          -> AddrArrRd(to_fol_addrarr arr,
+                                           to_fol_int l)
+
+
+and to_fol_elem (e:elem) : elem =
+  match e with
+    VarElem v            -> VarElem (to_fol_var v)
+  | CellData(cell)       -> CellData(to_fol_cell cell)
+  | ElemArrayRd(arr,t)   -> ElemArrayRd(to_fol_arrays arr, t)
+  | HavocListElem        -> HavocListElem
+  | HavocSkiplistElem    -> HavocSkiplistElem
+  | LowestElem           -> LowestElem
+  | HighestElem          -> HighestElem
+
+
+and to_fol_tid (th:tid) : tid =
+  match th with
+    VarTh v              -> VarTh (to_fol_var v)
+  | NoThid               -> NoThid
+  | CellLockId(cell)     -> CellLockId(to_fol_cell cell)
+  | CellLockIdAt(cell,l) -> CellLockIdAt(to_fol_cell cell,
+                                         to_fol_int l)
+  | ThidArrayRd(arr,t)   -> ThidArrayRd(to_fol_arrays arr, t)
+  | ThidArrRd(arr,l)     -> ThidArrRd(to_fol_tidarr arr,
+                                      to_fol_int l)
+
+
+and to_fol_cell (c:cell) : cell =
+  match c with
+    VarCell v              -> VarCell (to_fol_var v)
+  | Error                  -> Error
+  | MkCell(data,addr,th)   -> MkCell(to_fol_elem data,
+                                   to_fol_addr addr,
+                                   to_fol_tid th)
+  | MkSLKCell(data,aa,tt)  -> MkSLKCell(to_fol_elem data,
+                                        List.map to_fol_addr aa,
+                                        List.map to_fol_tid tt)
+  | MkSLCell(data,aa,ta,l) -> MkSLCell(to_fol_elem data,
+                                       to_fol_addrarr aa,
+                                       to_fol_tidarr ta,
+                                       to_fol_int l)
+  | CellLock(cell,t)       -> CellLock(to_fol_cell cell,
+                                       to_fol_tid t)
+  | CellLockAt(cell,l, t)  -> CellLockAt(to_fol_cell cell,
+                                         to_fol_int l,
+                                         to_fol_tid t)
+  | CellUnlock(cell)       -> CellUnlock(to_fol_cell cell)
+  | CellUnlockAt(cell,l)   -> CellUnlockAt(to_fol_cell cell,
+                                           to_fol_int l)
+  | CellAt(mem,addr)       -> CellAt(to_fol_mem mem,
+                                     to_fol_addr addr)
+  | CellArrayRd(arr,t)     -> CellArrayRd(to_fol_arrays arr, t)
+
+
+and to_fol_setth (s:setth) : setth =
+  match s with
+    VarSetTh v            -> VarSetTh (to_fol_var v)
+  | EmptySetTh            -> EmptySetTh
+  | SinglTh(th)           -> SinglTh(to_fol_tid th)
+  | UnionTh(s1,s2)        -> UnionTh(to_fol_setth s1,
+                                     to_fol_setth s2)
+  | IntrTh(s1,s2)         -> IntrTh(to_fol_setth s1,
+                                    to_fol_setth s2)
+  | SetdiffTh(s1,s2)      -> SetdiffTh(to_fol_setth s1,
+                                       to_fol_setth s2)
+  | SetThArrayRd(arr,t)   -> SetThArrayRd(to_fol_arrays arr, t)
+
+
+and to_fol_setint (s:setint) : setint =
+  match s with
+    VarSetInt v            -> VarSetInt (to_fol_var v)
+  | EmptySetInt            -> EmptySetInt
+  | SinglInt(i)            -> SinglInt(to_fol_int i)
+  | UnionInt(s1,s2)        -> UnionInt(to_fol_setint s1,
+                                       to_fol_setint s2)
+  | IntrInt(s1,s2)         -> IntrInt(to_fol_setint s1,
+                                    to_fol_setint s2)
+  | SetdiffInt(s1,s2)      -> SetdiffInt(to_fol_setint s1,
+                                       to_fol_setint s2)
+  | SetIntArrayRd(arr,t)   -> SetIntArrayRd(to_fol_arrays arr, t)
+
+
+and to_fol_setelem (s:setelem) : setelem =
+  match s with
+    VarSetElem v            -> VarSetElem (to_fol_var v)
+  | EmptySetElem            -> EmptySetElem
+  | SinglElem(e)            -> SinglElem(to_fol_elem e)
+  | UnionElem(s1,s2)        -> UnionElem(to_fol_setelem s1,
+                                         to_fol_setelem s2)
+  | IntrElem(s1,s2)         -> IntrElem(to_fol_setelem s1,
+                                        to_fol_setelem s2)
+  | SetdiffElem(s1,s2)      -> SetdiffElem(to_fol_setelem s1,
+                                           to_fol_setelem s2)
+  | SetToElems(s,m)         -> SetToElems(to_fol_set s, to_fol_mem m)
+  | SetElemArrayRd(arr,t)   -> SetElemArrayRd(to_fol_arrays arr, t)
+
+
+and to_fol_path (path:path) : path =
+  match path with
+    VarPath v                        -> VarPath (to_fol_var v)
+  | Epsilon                          -> Epsilon
+  | SimplePath(addr)                 -> SimplePath(to_fol_addr addr)
+  | GetPath(mem,add_from,add_to)     -> GetPath(to_fol_mem mem,
+                                                to_fol_addr add_from,
+                                                to_fol_addr add_to)
+  | GetPathAt(mem,add_from,add_to,l) -> GetPathAt(to_fol_mem mem,
+                                                  to_fol_addr add_from,
+                                                  to_fol_addr add_to,
+                                                  to_fol_int l)
+  | PathArrayRd(arr,t)           -> PathArrayRd(to_fol_arrays arr, t)
+
+
+and to_fol_mem (m:mem) : mem =
+  match m with
+    VarMem v             -> VarMem (to_fol_var v)
+  | Update(mem,add,cell) -> Update(to_fol_mem mem,
+                                   to_fol_addr add,
+                                   to_fol_cell cell)
+  | MemArrayRd(arr,t)    -> MemArrayRd(to_fol_arrays arr, t)
+
+
+and to_fol_int (i:integer) : integer =
+  match i with
+    IntVal(i)           -> IntVal(i)
+  | VarInt v            -> VarInt (to_fol_var v)
+  | IntNeg(i)           -> IntNeg(to_fol_int i)
+  | IntAdd(i1,i2)       -> IntAdd(to_fol_int i1,
+                                  to_fol_int i2)
+  | IntSub(i1,i2)       -> IntSub(to_fol_int i1,
+                                  to_fol_int i2)
+  | IntMul(i1,i2)       -> IntMul(to_fol_int i1,
+                                  to_fol_int i2)
+  | IntDiv(i1,i2)       -> IntDiv(to_fol_int i1,
+                                  to_fol_int i2)
+  | IntArrayRd(arr,t)   -> IntArrayRd(to_fol_arrays arr, t)
+  | IntSetMin(s)        -> IntSetMin(to_fol_setint s)
+  | IntSetMax(s)        -> IntSetMax(to_fol_setint s)
+  | CellMax(c)          -> CellMax(to_fol_cell c)
+  | HavocLevel          -> HavocLevel
+
+
+and to_fol_atom (a:atom) : atom =
+  match a with
+    Append(p1,p2,pres)         -> Append(to_fol_path p1,
+                                         to_fol_path p2,
+                                         to_fol_path pres)
+  | Reach(h,add_from,add_to,p) -> Reach(to_fol_mem h,
+                                        to_fol_addr add_from,
+                                        to_fol_addr add_to,
+                                        to_fol_path p)
+  | ReachAt(h,a_from,a_to,l,p) -> ReachAt(to_fol_mem h,
+                                          to_fol_addr a_from,
+                                          to_fol_addr a_to,
+                                          to_fol_int l,
+                                          to_fol_path p)
+  | OrderList(h,a_from,a_to)   -> OrderList(to_fol_mem h,
+                                            to_fol_addr a_from,
+                                            to_fol_addr a_to)
+  | Skiplist(h,s,l,a_from,a_to)-> Skiplist(to_fol_mem h,
+                                           to_fol_set s,
+                                           to_fol_int l,
+                                           to_fol_addr a_from,
+                                           to_fol_addr a_to)
+  | In(a,s)                    -> In(to_fol_addr a,
+                                     to_fol_set s)
+  | SubsetEq(s_in,s_out)       -> SubsetEq(to_fol_set s_in,
+                                           to_fol_set s_out)
+  | InTh(th,s)                 -> InTh(to_fol_tid th,
+                                       to_fol_setth s)
+  | SubsetEqTh(s_in,s_out)     -> SubsetEqTh(to_fol_setth s_in,
+                                             to_fol_setth s_out)
+  | InInt(i,s)                 -> InInt(to_fol_int i,
+                                        to_fol_setint s)
+  | SubsetEqInt(s_in,s_out)    -> SubsetEqInt(to_fol_setint s_in,
+                                              to_fol_setint s_out)
+  | InElem(e,s)                -> InElem(to_fol_elem e,
+                                         to_fol_setelem s)
+  | SubsetEqElem(s_in,s_out)   -> SubsetEqElem(to_fol_setelem s_in,
+                                               to_fol_setelem s_out)
+  | Less(i1,i2)                -> Less(to_fol_int i1,
+                                       to_fol_int i2)
+  | Greater(i1,i2)             -> Greater(to_fol_int i1,
+                                          to_fol_int i2)
+  | LessEq(i1,i2)              -> LessEq(to_fol_int i1,
+                                         to_fol_int i2)
+  | GreaterEq(i1,i2)           -> GreaterEq(to_fol_int i1,
+                                            to_fol_int i2)
+  | LessTid(t1,t2)             -> LessTid(to_fol_tid t1,
+                                          to_fol_tid t2)
+  | LessElem(e1,e2)            -> LessElem(to_fol_elem e1,
+                                           to_fol_elem e2)
+  | GreaterElem(e1,e2)         -> GreaterElem(to_fol_elem e1,
+                                              to_fol_elem e2)
+  | Eq(exp)                    -> Eq(to_fol_eq exp)
+  | InEq(exp)                  -> InEq(to_fol_ineq exp)
+  | BoolVar v                  -> BoolVar (to_fol_var v)
+  | BoolArrayRd(arr,t)         -> BoolArrayRd(to_fol_arrays arr, t)
+  | PC (pc,th,p)               -> let pc_var = build_pc_var p th in
+                                    Eq (IntT (VarInt pc_var), IntT (IntVal pc))
+  | PCUpdate (pc,t)            -> let pc_prime_var = build_pc_var true (Local t) in
+                                    Eq (IntT (VarInt pc_prime_var), IntT (IntVal pc))
+  | PCRange (pc1,pc2,th,p)     -> (assert false)
+
+
+and to_fol_literal (l:literal) : literal =
+  match l with
+    Atom a    -> Atom    (to_fol_atom a)
+  | NegAtom a -> NegAtom (to_fol_atom a)
+
+
+and to_fol_eq ((t1,t2):eq) : eq =
+  (to_fol_term t1, to_fol_term t2)
+
+
+and to_fol_ineq ((t1,t2):diseq) : diseq =
+  (to_fol_term t1, to_fol_term t2)
+
+    
+and to_fol_conjunctive_formula (cf:conjunctive_formula) : conjunctive_formula =
+  match cf with
+  | FalseConj -> FalseConj
+  | TrueConj  -> TrueConj
+  | Conj ls   -> Conj (List.map to_fol_literal ls)
+
+
+and to_fol_formula (phi:formula) : formula =
+  match phi with
+  | Literal (Atom (PCRange(pc1,pc2,th,p))) -> let pc_var = build_pc_var p th in
+                                              And (lesseq_form (IntVal pc1) (VarInt pc_var),
+                                                   lesseq_form (VarInt pc_var) (IntVal pc2))
+  | Literal (NegAtom (PCRange(pc1,pc2,th,p))) -> let pc_var = build_pc_var p th in
+                                                  Or (less_form (VarInt pc_var) (IntVal pc1),
+                                                      less_form (IntVal pc2) (VarInt pc_var))
+  | Literal(lit)          -> Literal(to_fol_literal lit)
+  | True                  -> True
+  | False                 -> False
+  | And(f1,f2)            -> And(to_fol_formula f1, to_fol_formula f2)
+  | Or(f1,f2)             -> Or(to_fol_formula f1, to_fol_formula f2)
+  | Not(f)                -> Not(to_fol_formula f)
+  | Implies(f1,f2)        -> Implies(to_fol_formula f1, to_fol_formula f2)
+  | Iff (f1,f2)           -> Iff(to_fol_formula f1, to_fol_formula f2)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 let rec identical_formula  (phi1:formula) (phi2:formula) : bool =

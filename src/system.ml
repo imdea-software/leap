@@ -959,13 +959,7 @@ let rec aux_rho_for_st
   let append_to_ghost gc gS lS tS (ps:E.formula list list) =
     match gc with
     | Some code ->
-        let _ = Printf.printf "WE HAVE SOME GHOST CODE!!!\n" in
         let eff_list = Bridge.gen_st_cond_effect_as_array pt code true th_p in
-        let _ = List.iter (fun (c,ass,_,_) ->
-                  Printf.printf "CONDITION: %s\n" (E.formula_to_str c);
-                  Printf.printf "ASSIGNMENTS: %s\n" (E.formula_to_str ass);
-                ) eff_list in
-
         let rho_list = List.fold_left (fun xs (cond, eff, _, _) ->
                          (List.map (fun normal_code ->
                            (E.param th_p cond :: eff :: normal_code)
@@ -1283,6 +1277,4 @@ let gen_rho (sys : t)     (* The system                   *)
             gen_pres proc gSet' lSet' filtered_local thSet' mode th in
           List.map (fun x -> x @ pres_list) rhoList 
     end in
-    List.iter (fun phi -> Printf.printf "GEN_RHO: %s\n" (E.formula_to_str phi)) (List.map E.conj_list phi_list);
-    print_endline "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-";
     List.map E.conj_list phi_list

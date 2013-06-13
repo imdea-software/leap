@@ -339,7 +339,6 @@ let rec gen_st_cond_effect_aux (is_ghost:bool)
   let me_term             = Stm.ThidT Stm.me_tid in
   let def_assign          = [(me_term, Stm.Term me_term)]
   in
-  let _ = Printf.printf "GEN_ST_COND: %s\n" (Stm.statement_to_str 0 st) in
   match st with
     Stm.StSkip (gc,info)       ->
       add_gc [([],def_assign,curr_p,next_p,true)] gc

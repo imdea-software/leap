@@ -551,6 +551,9 @@ val conj_literals : literal list -> formula
 val disj_literals : literal list -> formula
 
 
+val to_fol_formula : formula -> formula
+
+
 
 
 (* INITIAL ASSIGNMENT FUNCTION *)
