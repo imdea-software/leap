@@ -23,6 +23,7 @@ module GenOptions :
     val compute_model : bool
     val group_vars : bool
     val forget_primed_mem : bool
+    val default_cutoff : Smp.cutoff_strategy_t
 
   end
 
@@ -44,6 +45,7 @@ module GenOptions :
     let compute_model     = false
     let group_vars        = false
     let forget_primed_mem = true
+    let default_cutoff    = Tactics.default_cutoff_algorithm
 
   end
 
@@ -79,10 +81,17 @@ module Make (Opt:module type of GenOptions) : S =
     exception No_invariant_folder
 
 
+    type proof_info_t =
+      {
+        cutoff : Smp.cutoff_strategy_t;
+      }
+
+
     type proof_obligation_t =
       {
         vc : Tactics.vc_info; (* Maybe it should contain less information in the future *)
         obligations : E.formula list;
+        proof_info : proof_info_t;
       }
 
 
@@ -193,10 +202,12 @@ module Make (Opt:module type of GenOptions) : S =
     (******************)
 
     let new_proof_obligation (vc:Tactics.vc_info)
-                             (obligations:E.formula list) : proof_obligation_t =
+                             (obligations:E.formula list)
+                             (proof_info:proof_info_t) : proof_obligation_t =
       {
         vc = vc;
         obligations = obligations;
+        proof_info = proof_info;
       }
 
 
@@ -238,9 +249,31 @@ module Make (Opt:module type of GenOptions) : S =
       add_calls_to Opt.dp n
 
 
-    (***********)
-    (*  SPINV  *)
-    (***********)
+    (**********************)
+    (*  CONCURRENT SPINV  *)
+    (**********************)
+
+
+    let gen_vcs (supp:E.formula list)
+                (inv:E.formula)
+                (line:int)
+                (premise:Premise.t)
+                (trans_tid:E.tid)
+                  : Tactics.vc_info list =
+      let voc = E.voc (E.conj_list (inv::supp)) in
+      let rho = System.gen_rho Opt.sys (System.SOpenArray voc) line Opt.abs
+                    Opt.hide_pres trans_tid in
+      let tid_diff_conj = match premise with
+                          | Premise.SelfConseq -> E.True
+                          | Premise.OthersConseq ->
+                              E.conj_list (List.map (E.ineq_tid trans_tid) voc) in
+      List.fold_left (fun rs phi ->
+        let new_vc = Tactics.create_vc_info supp tid_diff_conj
+                        phi inv voc trans_tid line
+        in
+          new_vc :: rs
+      ) [] rho
+
 
     (* SPINV Initialization *)
     let spinv_premise_init (inv:E.formula) : Tactics.vc_info =
@@ -251,6 +284,57 @@ module Make (Opt:module type of GenOptions) : S =
       in
         Tactics.create_vc_info [] E.True theta inv voc E.NoThid 0
 
+
+    let spinv_transitions (supp:E.formula list)
+                          (inv:E.formula)
+                          (cases:IGraph.case_tbl_t)
+                                : Tactics.vc_info list =
+      let load_support (line:E.pc_t) (prem:Premise.t) : E.formula list =
+        match IGraph.lookup_case cases line prem with
+        | None -> supp
+        | Some (supp_tags,_) -> List.map read_tag supp_tags
+      in
+      List.fold_left (fun vcs line ->
+        let self_conseq_supp  = load_support line Premise.SelfConseq in
+        let other_conseq_supp = load_support line Premise.OthersConseq in
+        let fresh_k = E.gen_fresh_tid (E.voc (E.conj_list (inv::supp@other_conseq_supp))) in
+        let self_conseq_vcs = List.fold_left (fun vcs i ->
+                                gen_vcs self_conseq_supp  inv line Premise.SelfConseq i
+                              ) [] (E.voc inv) in
+        let other_conseq_vcs = gen_vcs other_conseq_supp inv line Premise.OthersConseq fresh_k
+        in
+          vcs @ self_conseq_vcs @ other_conseq_vcs
+      ) [] lines_to_consider
+
+
+    let spinv_with_cases (supp:E.formula list)
+                         (inv:E.formula)
+                         (cases:IGraph.case_tbl_t) : Tactics.vc_info list =
+      let need_theta = List.mem 0 lines_to_consider in
+      let initiation = if need_theta then
+                         [spinv_premise_init inv]
+                       else
+                         [] in
+
+      let transitions = spinv_transitions supp inv cases
+      in
+        initiation @ transitions
+
+
+    let spinv (supp:E.formula list)
+              (inv:E.formula) : Tactics.vc_info list =
+      spinv_with_cases supp inv (IGraph.empty_case_tbl())
+
+
+    (*
+    let tag_spinv (sys : System.t)
+                  (supInv_list : Tag.f_tag list)
+                  (inv : Tag.f_tag) : Tactics.vc_info list =
+      let supInv_list_as_formula =
+        List.map (Tag.tag_table_get_formula tags) supInv_list in
+      let inv_as_formula = Tag.tag_table_get_formula tags inv in
+      spinv sys supInv_list_as_formula inv_as_formula
+    *)
 
 
 
@@ -327,10 +411,73 @@ module Make (Opt:module type of GenOptions) : S =
 
 
 
+    (**********************)
+    (*  SOLVER REASONING  *)
+    (**********************)
+
+
+    let decide_cutoff (cutoff:Smp.cutoff_strategy_t option) : Smp.cutoff_strategy_t =
+      match cutoff with
+      | None     -> Opt.default_cutoff
+      | Some cut -> cut
+
+
+    let solve_proof_obligations (to_analyze:proof_obligation_t list)
+                                    : solved_proof_obligation_t list =
+      let module Pos  = (val posSolver) in
+      let module Num  = (val numSolver) in
+      let module Tll  = (val tllSolver) in
+      let module Tslk = (val tslkSolver) in
+
+      let case_timer = new LeapLib.timer in
+      let phi_timer = new LeapLib.timer in
+      (* Clear the internal data *)
+      Hashtbl.clear calls_counter;
+      (* Clear the internal data *)
+
+      let prog_lines = (System.get_trans_num Opt.sys) in
+
+
+      List.map (fun case ->
+        case_timer#start;
+        let res_list =
+              List.map (fun phi ->
+                phi_timer#start;
+                let status =
+                  if Pos.is_valid prog_lines (fst (PE.keep_locations phi)) then
+                    (add_calls_to DP.Loc 1; Valid DP.Loc)
+                  else begin
+                    let (valid, calls) =
+                      match Opt.dp with
+                      | DP.NoDP   -> (false, 0)
+                      | DP.Loc    -> (false, 0)
+                      | DP.Num    -> let num_phi = NumInterface.formula_to_int_formula phi in
+                                      Num.is_valid_with_lines_plus_info prog_lines num_phi
+                      | DP.Tll    -> let tll_phi = TllInterface.formula_to_tll_formula phi in
+                                      Tll.is_valid_plus_info prog_lines case.proof_info.cutoff tll_phi
+                      | DP.Tsl    -> (false, 0)
+                      | DP.Tslk k -> (false, 0) in
+                    add_calls calls;
+                    set_status valid
+                   end in
+                (* Analyze the formula *)
+                phi_timer#stop;
+                let phi_result = new_resolution_info status (phi_timer#elapsed_time) in
+                (phi, phi_result)
+              ) case.obligations in
+
+        case_timer#stop;
+        let case_result = new_resolution_info Unverified (case_timer#elapsed_time) in
+        new_solved_proof_obligation case.vc res_list case_result
+      ) to_analyze
+
+
+
 
     (************************************************)
     (*              FORMULA ANALYSIS                *)
     (************************************************)
+
 
     let check_well_defined_graph (graph:IGraph.t) : unit =
       let graph_tags = IGraph.graph_tags graph in
@@ -352,18 +499,21 @@ module Make (Opt:module type of GenOptions) : S =
                    | E.True -> Premise.SelfConseq
                    | _      -> Premise.OthersConseq in
         let line = Tactics.get_line_from_info vc in
-        let obligations = match IGraph.lookup_case cases line prem with
-                          | None       -> Tactics.apply_tactics_from_proof_plan [vc] gral_plan
-                          | Some (_,p) -> Tactics.apply_tactics_from_proof_plan [vc] p in
-
+        let (obligations,cutoff) =
+          match IGraph.lookup_case cases line prem with
+          | None       -> (Tactics.apply_tactics_from_proof_plan [vc] gral_plan,
+                           Tactics.get_cutoff gral_plan)
+          | Some (_,p) -> (Tactics.apply_tactics_from_proof_plan [vc] p,
+                           Tactics.get_cutoff p) in
+(*
         Printf.printf "=========================================================\n";
         Printf.printf "FOR VERIFYING THE FOLLOWING VC_INFO:\n\n%s\n" (Tactics.vc_info_to_str vc);
-(*
         Printf.printf "THE FOLLOWING FORMULAS MUST BE VALID:\n";
         Printf.printf "----------------------\n%s\n" (String.concat "\n" (List.map E.formula_to_human_str obligations));
         Printf.printf "=========================================================\n";
 *)
-        let proof_obligation = new_proof_obligation vc obligations
+        let proof_info = {cutoff = decide_cutoff cutoff; } in
+        let proof_obligation = new_proof_obligation vc obligations proof_info
         in
           proof_obligation :: res
       ) [] vcs
@@ -381,41 +531,24 @@ module Make (Opt:module type of GenOptions) : S =
         let inv = read_tag invTag in
         match mode with
         | IGraph.Concurrent ->
-            (* Add the code for concurrent proof rules *)
-            os
+            print_endline ("Concurrent problem for invariant " ^inv_id^
+                           " using as support [" ^supp_ids^ "]" ^
+                           " with " ^string_of_int (IGraph.num_of_cases cases)^ " special cases.");
+              
+            let vc_info_list = spinv_with_cases supp inv cases in
+            Printf.printf "VC_INFO_LENGTH: %i\n" (List.length vc_info_list);
+            let new_obligations = generate_obligations vc_info_list plan cases
+            in
+              os @ new_obligations
         | IGraph.Sequential ->
-            if IGraph.num_of_cases cases <> 0 then begin
-              (* Use seq_spinv with particular cases *)
-              print_endline ("seq_spinv with cases for " ^supp_ids^ " -> " ^inv_id);
-              let op_name = "_seq_sinvsp_" ^ supp_ids ^ "->" ^ inv_id in
-              let out_file = Opt.output_file ^ op_name in
-              (* Generate the vc_info for each transition *)
-              let vc_info_list = seq_spinv_with_cases supp inv cases in
-              Printf.printf "VC_INFO_LENGTH: %i\n" (List.length vc_info_list);
-              let new_obligations = generate_obligations vc_info_list plan cases
-              in
-                os @ new_obligations
-            end else begin
-              match supp with
-              | [] -> begin
-                        (* No support. Use b-inv *)
-                        let op_name = "_seq_binv_" ^ inv_id in
-                        print_endline op_name;
-                        let out_file = Opt.output_file ^ op_name in
-                        let new_obligations = []
-                        in
-                          os @ new_obligations
-                      end
-              | _  -> begin
-                        (* There's support. Use seq_spinv *)
-                        let op_name = "_seq_sinv_" ^ supp_ids ^ "->" ^ inv_id in
-                        print_endline op_name;
-                        let out_file = Opt.output_file ^ op_name in
-                        let new_obligations = []
-                        in
-                          os @ new_obligations
-                      end
-            end
+            print_endline ("Sequential problem for invariant " ^inv_id^
+                           " using as support [" ^supp_ids^ "]" ^
+                           " with " ^string_of_int (IGraph.num_of_cases cases)^ " special cases.");
+            let vc_info_list = seq_spinv_with_cases supp inv cases in
+            Printf.printf "VC_INFO_LENGTH: %i\n" (List.length vc_info_list);
+            let new_obligations = generate_obligations vc_info_list plan cases
+            in
+              os @ new_obligations
       ) [] graph_info
 
 
@@ -423,50 +556,4 @@ module Make (Opt:module type of GenOptions) : S =
       PosSolver.choose Opt.pSolver
 
 
-    let solve_proof_obligations (to_analyze:proof_obligation_t list)
-                                    : solved_proof_obligation_t list =
-      let module Pos  = (val posSolver) in
-      let module Num  = (val numSolver) in
-      let module Tll  = (val tllSolver) in
-      let module Tslk = (val tslkSolver) in
-
-      let case_timer = new LeapLib.timer in
-      let phi_timer = new LeapLib.timer in
-      Hashtbl.clear calls_counter;
-
-      let prog_lines = (System.get_trans_num Opt.sys) in
-
-
-      List.map (fun case ->
-        case_timer#start;
-        let res_list =
-              List.map (fun phi ->
-                phi_timer#start;
-                let status =
-                  if Pos.is_valid prog_lines (fst (PE.keep_locations phi)) then
-                    (add_calls_to DP.Loc 1; Valid DP.Loc)
-                  else begin
-                    let (valid, calls) =
-                      match Opt.dp with
-                      | DP.NoDP   -> (false, 0)
-                      | DP.Loc    -> (false, 0)
-                      | DP.Num    -> let num_phi = NumInterface.formula_to_int_formula phi in
-                                      Num.is_valid_with_lines_plus_info prog_lines num_phi
-                      | DP.Tll    -> (false, 0) (*let tll_phi = TllInterface.formula_to_tll_formula phi in
-                                      Tll.is_valid_plus_info prog_lines cutoff tll_phi*)
-                      | DP.Tsl    -> (false, 0)
-                      | DP.Tslk k -> (false, 0) in
-                    add_calls calls;
-                    set_status valid
-                   end in
-                (* Analyze the formula *)
-                phi_timer#stop;
-                let phi_result = new_resolution_info status (phi_timer#elapsed_time) in
-                (phi, phi_result)
-              ) case.obligations in
-
-        case_timer#stop;
-        let case_result = new_resolution_info Unverified (case_timer#elapsed_time) in
-        new_solved_proof_obligation case.vc res_list case_result
-      ) to_analyze
   end

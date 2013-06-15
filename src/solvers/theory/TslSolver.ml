@@ -823,7 +823,7 @@ let is_sat_plus_info (lines : int)
   verb "**** Will split TSL formula in NC and PA...\n";
   let splits = List.map split phi_san in
   verbstr (Interface.Msg.info "SPLITED FORMULAS"
-    (String.concat "\n" (List.map (fun (pa,nc) -> "PA:\n" ^ (SL.conjunctive_formula_to_str pa) ^
+    (String.concat "\n" (List.map (fun (pa,nc) -> "PA:\n" ^ (SL.conjunctive_formula_to_str pa) ^ "\n" ^
                                                   "NC:\n" ^ (SL.conjunctive_formula_to_str nc)) splits)));
   (* 4. Call the solver for each possible case *)
   verb "**** Will check TSL formula satisfiability...\n";

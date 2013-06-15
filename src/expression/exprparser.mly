@@ -1061,24 +1061,24 @@ set :
     }
   | UNION OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "%s Union %s" (E.term_to_str $3)
-                                                 (E.term_to_str $5) in
+      let get_str_expr() = sprintf "Union(%s,%s)" (E.term_to_str $3)
+                                                  (E.term_to_str $5) in
       let s1 = parser_check_type check_type_set  $3 E.Set get_str_expr in
       let s2 = parser_check_type check_type_set  $5 E.Set get_str_expr in
         E.Union(s1,s2)
     }
   | INTR OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "%s Intr %s" (E.term_to_str $3)
-                                                (E.term_to_str $5) in
+      let get_str_expr() = sprintf "Intr(%s,%s)" (E.term_to_str $3)
+                                                 (E.term_to_str $5) in
       let s1 = parser_check_type check_type_set  $3 E.Set get_str_expr in
       let s2 = parser_check_type check_type_set  $5 E.Set get_str_expr in
         E.Intr(s1,s2)
     }
   | SETDIFF OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "%s SetDiff %s" (E.term_to_str $3)
-                                                   (E.term_to_str $5) in
+      let get_str_expr() = sprintf "SetDiff(%s,%s)" (E.term_to_str $3)
+                                                    (E.term_to_str $5) in
       let s1 = parser_check_type check_type_set  $3 E.Set get_str_expr in
       let s2 = parser_check_type check_type_set  $5 E.Set get_str_expr in
         E.Setdiff(s1,s2)
@@ -1290,24 +1290,24 @@ setth :
     }
   | UNIONTH OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "%s UnionTh %s" (E.term_to_str $3)
-                                                   (E.term_to_str $5) in
+      let get_str_expr() = sprintf "UnionTh(%s,%s)" (E.term_to_str $3)
+                                                    (E.term_to_str $5) in
       let s1 = parser_check_type check_type_setth  $3 E.SetTh get_str_expr in
       let s2 = parser_check_type check_type_setth  $5 E.SetTh get_str_expr in
         E.UnionTh(s1,s2)
     }
   | INTRTH OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "%s IntrTh %s" (E.term_to_str $3)
-                                                  (E.term_to_str $5) in
+      let get_str_expr() = sprintf "IntrTh(%s,%s)" (E.term_to_str $3)
+                                                   (E.term_to_str $5) in
       let s1 = parser_check_type check_type_setth  $3 E.SetTh get_str_expr in
       let s2 = parser_check_type check_type_setth  $5 E.SetTh get_str_expr in
         E.IntrTh(s1,s2)
     }
   | SETDIFFTH OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "%s SetDiffTh %s" (E.term_to_str $3)
-                                                     (E.term_to_str $5) in
+      let get_str_expr() = sprintf "SetDiffTh(%s,%s)" (E.term_to_str $3)
+                                                      (E.term_to_str $5) in
       let s1 = parser_check_type check_type_setth  $3 E.SetTh get_str_expr in
       let s2 = parser_check_type check_type_setth  $5 E.SetTh get_str_expr in
         E.SetdiffTh(s1,s2)

@@ -73,6 +73,7 @@ let _ =
                            let compute_model = !LeapArgs.show_models
                            let group_vars = !LeapArgs.group_vars
                            let forget_primed_mem = (not !LeapArgs.keep_primed_mem)
+                           let default_cutoff = !LeapArgs.coType
                          end in
 
     (* Instantiate the core *)

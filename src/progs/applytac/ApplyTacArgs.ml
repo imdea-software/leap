@@ -97,6 +97,9 @@ let opts =
     ("-tsl",
         Arg.Set tslEnable,
         "enables the use of tsl solver");
+    ("--show_file_info",
+        Arg.Set Debug._debug_show_tmpfile_info_,
+        "shows path of temporary files");
     ("--debug",
         Arg.Unit setdebug,
         "debug output information");

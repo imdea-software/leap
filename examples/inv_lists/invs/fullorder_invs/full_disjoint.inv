@@ -1,4 +1,4 @@
-param:
+vars:
 
 tid i
 tid j

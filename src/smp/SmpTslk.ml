@@ -129,9 +129,11 @@ module Make (TSLK : TSLKExpression.S) =
                 are already expressed through a variable *)
       let numtid = ref (vars_tid + vars_mem * vars_addr * !numlevel) in
 (*      let numaddr = ref (vars_addr + vars_mem * vars_addr * !numlevel) in *)
+(*
       Printf.printf "VARS ARRDS: %i\n" vars_addr;
       Printf.printf "VARS CELLS: %i\n" vars_cell;
       Printf.printf "NUMLEVEL: %i\n" !numlevel;
+*)
       let numaddr = ref (vars_addr + vars_cell * !numlevel) in
       let vars_elem = VarSet.cardinal (Expr.varset_of_sort vars Expr.Elem) in
       let numelem = ref (vars_elem + vars_mem * vars_addr) in
@@ -347,6 +349,12 @@ module Make (TSLK : TSLKExpression.S) =
       let num_elems = varelem_num +                           (* Elem variables     *)
                       varmem_num * num_addrs                  (* Cell data          *)
       in
+      Printf.printf "VARTID_NUM: %i\n" vartid_num;
+      VarSet.iter (fun v -> print_string (Expr.variable_to_str v ^ "; ")) 
+      (Expr.varset_of_sort vars Expr.Thid);
+      Printf.printf "VARCELL_NUM: %i\n" varcell_num;
+      VarSet.iter (fun v -> print_string (Expr.variable_to_str v ^ "; ")) 
+cellvars;
         {
           num_levels = num_levels; num_addrs = num_addrs;
           num_tids = num_tids; num_elems = num_elems;

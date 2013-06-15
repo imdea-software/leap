@@ -475,6 +475,7 @@ val diseq_to_str      : diseq       -> string
 val expr_to_str       : expr_t      -> string
 val tid_to_str        : tid         -> string
 val tid_option_to_str : tid option  -> string
+val conjunctive_formula_to_str : conjunctive_formula -> string
 
 val formula_to_human_str : formula -> string
 
