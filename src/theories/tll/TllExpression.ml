@@ -42,6 +42,14 @@ and term =
   | VarUpdate  of variable * tid * term
 and eq = term * term
 and diseq = term * term
+and integer =
+    IntVal        of int
+  | VarInt        of variable
+  | IntNeg        of integer
+  | IntAdd        of integer * integer
+  | IntSub        of integer * integer
+  | IntMul        of integer * integer
+  | IntDiv        of integer * integer
 and set =
     VarSet of variable
   | EmptySet
@@ -108,6 +116,10 @@ and atom =
   | SubsetEqTh   of setth * setth
   | InElem       of elem * setelem
   | SubsetEqElem of setelem * setelem
+  | Less          of integer * integer
+  | Greater       of integer * integer
+  | LessEq        of integer * integer
+  | GreaterEq     of integer * integer
   | LessElem     of elem * elem
   | GreaterElem  of elem * elem
   | Eq           of eq

@@ -80,10 +80,13 @@ let new_proof_plan (smp:Smp.cutoff_strategy_t option)
   }
  
 let vc_info_to_implication (info:vc_info) (sup:support_t): implication =
+  print_endline "XXXXXXXXXXXXXXXXXXXXXXX";
+  print_endline ("RHO: " ^ (E.formula_to_str info.rho));
+  print_endline ("GOAL: " ^ (E.formula_to_str info.goal));
   let the_antecedent =
     E.conj_list (info.goal::( sup @ [ info.tid_constraint ] @ [info.rho])) in
   let consequent = E.prime_modified info.rho info.goal in
-  { ante = the_antecedent ; conseq = consequent }
+  { ante = E.to_fol_formula the_antecedent ; conseq = E.to_fol_formula consequent }
 
 let vc_info_to_formula  (info:vc_info) (sup:support_t): E.formula =
   let implication = vc_info_to_implication info sup in
@@ -105,18 +108,25 @@ let default_cutoff_algorithm = Smp.Dnf
 
 
 let vc_info_to_str (vc:vc_info) : string =
-  let vars_to_declare = E.all_vars (E.conj_list (vc.tid_constraint ::
-                                                 vc.rho            ::
-                                                 vc.goal           ::
-                                                 vc.original_support)) in
+  let fol_tid_constraint = E.to_fol_formula vc.tid_constraint in
+  let fol_rho = E.to_fol_formula vc.rho in
+  let fol_goal = E.to_fol_formula vc.goal in
+  let fol_supp = List.map E.to_fol_formula vc.original_support in
+
+  let vars_to_declare = E.all_vars (E.conj_list (fol_tid_constraint ::
+                                                 fol_rho            ::
+                                                 fol_goal           ::
+                                                 fol_supp)) in
+
   let vars_str = (String.concat "\n"
                    (List.map (fun v ->
                      (E.sort_to_str (E.var_sort v)) ^ " " ^
                      (E.variable_to_str v)
                    ) vars_to_declare)) in
-  let supp_str = String.concat "\n" (List.map E.formula_to_str vc.original_support) in  let tidconst_str = E.formula_to_str vc.tid_constraint in
-  let rho_str = E.formula_to_str vc.rho in
-  let goal_str = E.formula_to_str vc.goal in
+  let supp_str = String.concat "\n" (List.map E.formula_to_str fol_supp) in
+  let tidconst_str = E.formula_to_str fol_tid_constraint in
+  let rho_str = E.formula_to_str fol_rho in
+  let goal_str = E.formula_to_str fol_goal in
   let tid_str = E.tid_to_str vc.transition_tid in
   let line_str = string_of_int vc.line
   in
@@ -137,10 +147,10 @@ let create_vc_info (supp       : support_t)
        (trans_tid  : E.tid)
        (line       : E.pc_t) : vc_info =
     {
-      original_support   = List.map E.to_fol_formula supp ;
-      tid_constraint     = E.to_fol_formula tid_constr ;
-      rho                = E.to_fol_formula rho ;
-      goal               = E.to_fol_formula goal ;
+      original_support   = supp ;
+      tid_constraint     = tid_constr ;
+      rho                = rho ;
+      goal               = goal ;
       transition_tid     = trans_tid ;
       line               = line ;
       vocabulary         = vocab ; (* fix: can be computed *)
@@ -337,7 +347,11 @@ let generate_support (info:vc_info) : E.formula list =
     (fun supp phi -> (instantiate_one_support phi) @ supp) [] param
   in
   no_param @ instantiated_support
-                        
+
+
+(***************************)
+(*  FORMULA SPLIT TACTICS  *)
+(***************************)
 
 
 
@@ -345,6 +359,10 @@ let split_implication (imp:implication) : implication list =
   let new_conseqs = E.to_conj_list imp.conseq in
   List.map (fun phi -> { ante=imp.ante ; conseq=phi }) new_conseqs
 
+
+(***************************)
+(*  SUPPORT SPLIT TACTICS  *)
+(***************************)
 
 let split_goal (info:vc_info) : vc_info list =
   let new_goals = E.to_conj_list info.goal in
@@ -422,7 +440,47 @@ let get_unrepeated_literals (phi:E.formula) : E.literal list =
   List.fold_left 
     (fun res l -> if (List.exists (fun alit -> E.identical_literal alit l) res) then
   res else res@[l]) [] candidates
-    
+
+
+
+(*********************)
+(*  SUPPORT TACTICS  *)
+(*********************)
+
+let gen_support (f:E.tid list -> E.tid_subst_t -> bool) (info:vc_info) : support_t =
+  let (unparam_support, param_suport) = List.partition (fun phi ->
+                                          E.voc phi <> []
+                                        ) info.original_support in
+  let goal_voc = E.voc info.goal in
+  let voc_to_consider = if List.mem info.transition_tid goal_voc then
+                          goal_voc
+                        else
+                          info.transition_tid :: goal_voc in
+  List.fold_left (fun xs supp_phi ->
+    let supp_voc = E.voc supp_phi in
+    let subst = List.filter (f supp_voc) (E.new_comb_subst supp_voc voc_to_consider) in
+    List.map (fun s ->
+      E.subst_tid s supp_phi
+    ) subst
+  ) unparam_support param_suport
+
+
+let full_support (info:vc_info) : support_t =
+  gen_support (fun _ _ -> true) info
+
+
+let reduce_support (info:vc_info) : support_t =
+  gen_support E.subst_full_assign info
+
+
+let reduce2_support (info:vc_info) : support_t =
+  E.cleanup_dup (gen_support E.subst_full_assign info)
+
+
+(*********************)
+(*  FORMULA TACTICS  *)
+(*********************)
+
 
 let tactic_propositional_propagate (imp:implication) : implication =
   let rec simplify_propagate (f:implication) (used:E.literal list) : 
@@ -564,9 +622,9 @@ let support_split_tactic_from_string (s:string) : support_split_tactic_t =
 
 let support_tactic_from_string (s:string) : support_tactic_t =
   match s with
-  | "full"    -> (fun vc -> vc.original_support) (* TO BE IMPLEMENTED *)
-  | "reduce"  -> (fun vc -> vc.original_support) (* TO BE IMPLEMENTED *)
-  | "reduce2" -> (fun vc -> vc.original_support) (* TO BE IMPLEMENTED *)
+  | "full"    -> full_support
+  | "reduce"  -> reduce_support
+  | "reduce2" -> reduce2_support
   | _ -> raise(Invalid_tactic (s ^ " is not a support_tactic"))
 
 

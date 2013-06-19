@@ -40,8 +40,10 @@ module type S =
     val decl_tag : Tag.f_tag option -> Expression.formula -> unit
 
 
-    val gen_from_graph : IGraph.t ->
-                         proof_obligation_t list
+    val gen_from_graph : IGraph.t -> proof_obligation_t list
+
+    val solve_from_graph : IGraph.t -> solved_proof_obligation_t list
+
 
   end
 

@@ -67,8 +67,9 @@ module type S =
 
     val decl_tag : Tag.f_tag option -> Expression.formula -> unit
 
-    val gen_from_graph : IGraph.t ->
-                         proof_obligation_t list
+    val gen_from_graph : IGraph.t -> proof_obligation_t list
+
+    val solve_from_graph : IGraph.t -> solved_proof_obligation_t list
 
   end
 
@@ -166,10 +167,10 @@ module Make (Opt:module type of GenOptions) : S =
     (*   CONFIGURATION  *)
     (********************)
 
-    let lines_to_consider = E.gen_focus_list (System.get_trans_num Opt.sys)
+    let (requires_theta, lines_to_consider) =
+            E.gen_focus_list (System.get_trans_num Opt.sys)
                              Opt.focus Opt.ignore
 
-  
     let posSolver  : (module PosSolver.S) = PosSolver.choose Opt.pSolver
 
     let numSolver  : (module NumSolver.S) = NumSolver.choose Opt.tSolver
@@ -310,8 +311,7 @@ module Make (Opt:module type of GenOptions) : S =
     let spinv_with_cases (supp:E.formula list)
                          (inv:E.formula)
                          (cases:IGraph.case_tbl_t) : Tactics.vc_info list =
-      let need_theta = List.mem 0 lines_to_consider in
-      let initiation = if need_theta then
+      let initiation = if requires_theta then
                          [spinv_premise_init inv]
                        else
                          [] in
@@ -442,6 +442,7 @@ module Make (Opt:module type of GenOptions) : S =
         case_timer#start;
         let res_list =
               List.map (fun phi ->
+                Printf.printf "FORMULA TO BE ANALYZED: %s\n" (E.formula_to_str phi);
                 phi_timer#start;
                 let status =
                   if Pos.is_valid prog_lines (fst (PE.keep_locations phi)) then
@@ -552,8 +553,8 @@ module Make (Opt:module type of GenOptions) : S =
       ) [] graph_info
 
 
-    let f : (module PosSolver.S) =
-      PosSolver.choose Opt.pSolver
+    let solve_from_graph (graph:IGraph.t) : solved_proof_obligation_t list =
+      solve_proof_obligations (gen_from_graph graph)
 
 
   end
