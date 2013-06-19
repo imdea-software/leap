@@ -80,9 +80,6 @@ let new_proof_plan (smp:Smp.cutoff_strategy_t option)
   }
  
 let vc_info_to_implication (info:vc_info) (sup:support_t): implication =
-  print_endline "XXXXXXXXXXXXXXXXXXXXXXX";
-  print_endline ("RHO: " ^ (E.formula_to_str info.rho));
-  print_endline ("GOAL: " ^ (E.formula_to_str info.goal));
   let the_antecedent =
     E.conj_list (info.goal::( sup @ [ info.tid_constraint ] @ [info.rho])) in
   let consequent = E.prime_modified info.rho info.goal in
@@ -474,6 +471,7 @@ let reduce_support (info:vc_info) : support_t =
 
 
 let reduce2_support (info:vc_info) : support_t =
+  print_endline "USING REDUCE2";
   E.cleanup_dup (gen_support E.subst_full_assign info)
 
 
@@ -622,9 +620,9 @@ let support_split_tactic_from_string (s:string) : support_split_tactic_t =
 
 let support_tactic_from_string (s:string) : support_tactic_t =
   match s with
-  | "full"    -> full_support
-  | "reduce"  -> reduce_support
-  | "reduce2" -> reduce2_support
+  | "full"    -> (print_endline "FULL"; full_support)
+  | "reduce"  -> (print_endline "REDUCE"; reduce_support)
+  | "reduce2" -> (print_endline "REDUCE2"; reduce2_support)
   | _ -> raise(Invalid_tactic (s ^ " is not a support_tactic"))
 
 

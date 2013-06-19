@@ -244,6 +244,9 @@ struct
     verb "**** TLL Solver, about to translate TLL...\n";
     let module Q = (val QueryManager.get_tll_query Solver.identifier) in
     let module Trans = Solver.Translate.Tll.Query(Q) in
+    print_endline "------------------------------------------";
+    print_endline (TllExp.formula_to_str phi);
+    print_endline "------------------------------------------";
     Trans.set_prog_lines lines;
     Solver.sat (Trans.formula co cutoff_opt phi)
   

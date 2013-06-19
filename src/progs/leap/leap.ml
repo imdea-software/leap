@@ -84,7 +84,6 @@ let _ =
     timer#start;
 
 
-
     if (!LeapArgs.vcgenFlag) then begin
 
       (* Invariant candidate *)

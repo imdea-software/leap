@@ -442,7 +442,6 @@ module Make (Opt:module type of GenOptions) : S =
         case_timer#start;
         let res_list =
               List.map (fun phi ->
-                Printf.printf "FORMULA TO BE ANALYZED: %s\n" (E.formula_to_str phi);
                 phi_timer#start;
                 let status =
                   if Pos.is_valid prog_lines (fst (PE.keep_locations phi)) then
@@ -547,6 +546,21 @@ module Make (Opt:module type of GenOptions) : S =
                            " with " ^string_of_int (IGraph.num_of_cases cases)^ " special cases.");
             let vc_info_list = seq_spinv_with_cases supp inv cases in
             Printf.printf "VC_INFO_LENGTH: %i\n" (List.length vc_info_list);
+            let infoTbl = Hashtbl.create (List.length vc_info_list) in
+            List.iter (fun vc_info ->
+              let line = Tactics.get_line_from_info vc_info in
+              let vc_num = try
+                             let prev = Hashtbl.find infoTbl line in
+                             Hashtbl.replace infoTbl line (prev+1);
+                             string_of_int (prev+1)
+                           with _ -> (Hashtbl.add infoTbl line 1; "1") in
+              let out_file = Opt.output_file ^
+                                ("vc_" ^ (string_of_int line) ^ "_" ^ vc_num ^ ".vcfile") in
+              let out_ch = Pervasives.open_out out_file in
+              Pervasives.output_string out_ch (Tactics.vc_info_to_str vc_info);
+              Pervasives.close_out out_ch
+            ) vc_info_list;
+
             let new_obligations = generate_obligations vc_info_list plan cases
             in
               os @ new_obligations
@@ -554,7 +568,8 @@ module Make (Opt:module type of GenOptions) : S =
 
 
     let solve_from_graph (graph:IGraph.t) : solved_proof_obligation_t list =
-      solve_proof_obligations (gen_from_graph graph)
+        gen_from_graph graph; []
+(*      solve_proof_obligations (gen_from_graph graph) *)
 
 
   end
