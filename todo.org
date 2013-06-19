@@ -89,6 +89,7 @@
    Case 2 handles when i and j are not equal, in which case whatever is said about 
    j is not so relevant, but the constraint i\neq j may help the validity proof.
 
+   uni
 
 * OLD pre [2013-06-13 Thu] 
 ** Syntax changes
