@@ -40,6 +40,7 @@ struct
   let setelem_s : string = "SetElem"
   let path_s    : string = "Path"
   let heap_s    : string = "Heap"
+  let int_s     : string = "Int"
   let unk_s     : string = "Unknown"
   let loc_s     : string = "Loc"
 
@@ -1143,6 +1144,7 @@ struct
                          | Expr.SetElem -> setelem_s
                          | Expr.Path    -> path_s
                          | Expr.Mem     -> heap_s
+                         | Expr.Int     -> int_s
                          | Expr.Bool    -> bool_s
                          | Expr.Unknown -> unk_s in
     let s_str = sort_str s in
@@ -1369,6 +1371,21 @@ struct
                                             (cellterm_to_str c)
 
 
+  and intterm_to_str (i:Expr.integer) : string =
+    match i with
+      Expr.IntVal j       -> string_of_int j
+    | Expr.VarInt v       -> variable_invocation_to_str v
+    | Expr.IntNeg j       -> Printf.sprintf "(- %s)" (intterm_to_str j)
+    | Expr.IntAdd (j1,j2) -> Printf.sprintf "(+ %s %s)"
+                                (intterm_to_str j1) (intterm_to_str j2)
+    | Expr.IntSub (j1,j2) -> Printf.sprintf "(- %s %s)"
+                                (intterm_to_str j1) (intterm_to_str j2)
+    | Expr.IntMul (j1,j2) -> Printf.sprintf "(* %s %s)"
+                                (intterm_to_str j1) (intterm_to_str j2)
+    | Expr.IntDiv (j1,j2) -> Printf.sprintf "(/ %s %s)"
+                                (intterm_to_str j1) (intterm_to_str j2)
+
+
   let rec varupdate_to_str (v:Expr.variable)
                            (th:Expr.tid)
                            (t:Expr.term) : string =
@@ -1391,6 +1408,7 @@ struct
     | Expr.SetElemT se       -> setelemterm_to_str se
     | Expr.PathT   p         -> pathterm_to_str p
     | Expr.MemT  m           -> memterm_to_str m
+    | Expr.IntT  i           -> intterm_to_str i
     | Expr.VarUpdate(v,th,t) -> varupdate_to_str v th t
 
 
@@ -1443,6 +1461,22 @@ struct
   let subseteqelem_to_str (r:Expr.setelem) (s:Expr.setelem) : string =
     Printf.sprintf "(subseteqelem %s %s)" (setelemterm_to_str r)
                                           (setelemterm_to_str s)
+
+
+  let less_to_str (i1:Expr.integer) (i2:Expr.integer) : string =
+    Printf.sprintf "(< %s %s)" (intterm_to_str i1) (intterm_to_str i2)
+
+
+  let lesseq_to_str (i1:Expr.integer) (i2:Expr.integer) : string =
+    Printf.sprintf "(<= %s %s)" (intterm_to_str i1) (intterm_to_str i2)
+
+
+  let greater_to_str (i1:Expr.integer) (i2:Expr.integer) : string =
+    Printf.sprintf "(> %s %s)" (intterm_to_str i1) (intterm_to_str i2)
+
+
+  let greatereq_to_str (i1:Expr.integer) (i2:Expr.integer) : string =
+    Printf.sprintf "(>= %s %s)" (intterm_to_str i1) (intterm_to_str i2)
 
 
   let lesselem_to_str (e1:Expr.elem) (e2:Expr.elem) : string =
@@ -1528,6 +1562,10 @@ struct
       | Expr.SubsetEqTh(rt,st)     -> subseteqth_to_str rt st
       | Expr.InElem(e,se)          -> inelem_to_str e se
       | Expr.SubsetEqElem(re,se)   -> subseteqelem_to_str re se
+      | Expr.Less(i1,i2)           -> less_to_str i1 i2
+      | Expr.LessEq(i1,i2)         -> lesseq_to_str i1 i2
+      | Expr.Greater(i1,i2)        -> greater_to_str i1 i2
+      | Expr.GreaterEq(i1,i2)      -> greatereq_to_str i1 i2
       | Expr.LessElem(e1,e2)       -> lesselem_to_str e1 e2
       | Expr.GreaterElem(e1,e2)    -> greaterelem_to_str e1 e2
       | Expr.Eq(x,y)               -> eq_to_str x y

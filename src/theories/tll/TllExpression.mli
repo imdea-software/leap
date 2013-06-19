@@ -16,6 +16,7 @@ and sort =
   | SetElem
   | Path
   | Mem
+  | Int
   | Bool
   | Unknown
 and term =
@@ -29,6 +30,7 @@ and term =
   | SetElemT of setelem
   | PathT    of path
   | MemT     of mem
+  | IntT     of integer
   | VarUpdate  of variable * tid * term
 and eq = term * term
 and diseq = term * term

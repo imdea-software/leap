@@ -168,6 +168,7 @@ let cut_off_normalized (expr:conjunctive_formula) : model_size =
     | SetElemT _ -> numelem := !numelem + 1 (* the witness of se1 != se2 *)
     | PathT _    -> numaddr := !numaddr + 2 (* the witnesses of p1 != p2 *)
     | MemT _     -> ()
+    | IntT _     -> ()
     | VarUpdate _-> () in                (* ALE: Not sure if OK *)
   let process (lit:literal) =
     match lit with
@@ -185,6 +186,10 @@ let cut_off_normalized (expr:conjunctive_formula) : model_size =
           | SubsetEqTh _   -> numtid := !numtid + 1 (* witness of st1 \not\sub st2 *)
           | InElem _       -> ()
           | SubsetEqElem _ -> numelem := !numelem + 1 (* witness of se1 \not\sub se2 *)
+          | Less _         -> ()
+          | LessEq _       -> ()
+          | Greater _      -> ()
+          | GreaterEq _    -> ()
           | LessElem _     -> () (* Not sure *)
           | GreaterElem _  -> () (* Not sure *)
           | Eq(x,y)        -> process_ineq (x,y)
@@ -235,6 +240,7 @@ let union_eq_cutoff (info:union_info) ((x,y):(Expr.term * Expr.term)) : union_in
   | SetElemT _  -> union_count_elem info (Expr.Eq(x,y)) (* the witness of se1 != se2 *)
   | PathT _     -> union_count_addr info (Expr.Eq(x,y)) (* the witnesses of p1 != p2 *)
   | MemT _      -> info
+  | IntT _      -> info
   | VarUpdate _ -> info (* ALE: Not sure if OK *)
 
 
@@ -250,6 +256,7 @@ let union_ineq_cutoff (info:union_info) ((x,y):(Expr.term * Expr.term)) : union_
   | SetElemT _  -> union_count_elem info (Expr.InEq(x,y)) (* the witness of se1 != se2 *)
   | PathT _     -> union_count_addr info (Expr.InEq(x,y)) (* the witnesses of p1 != p2 *)
   | MemT _      -> info
+  | IntT _      -> info
   | VarUpdate _ -> info (* ALE: Not sure if OK *)
 
 
@@ -264,6 +271,10 @@ let union_atom_cutoff (info:union_info) (a:Expr.atom) : union_info =
   | SubsetEqTh _   -> union_count_tid info a
   | InElem _       -> info
   | SubsetEqElem _ -> union_count_elem info a
+  | Less _         -> info
+  | LessEq _       -> info
+  | Greater _      -> info
+  | GreaterEq _    -> info
   | LessElem _     -> union_count_elem info a
   | GreaterElem _  -> union_count_elem info a
   | Eq e           -> union_eq_cutoff info e
@@ -333,6 +344,7 @@ let prune_eq (x:term) (y:term) : (term * term) option =
     | SetElemT _  -> Some (x,y) (* the witness of se1 != se2 *)
     | PathT _     -> Some (x,y) (* the witnesses of p1 != p2 *)
     | MemT _      -> Some (x,y)
+    | IntT _      -> None
     | VarUpdate _ -> assert(false) (* ALE: Not sure if OK *)
 
 
@@ -347,6 +359,10 @@ let prune_atom (a:atom) : atom option =
   | SubsetEqTh _   -> Some a
   | InElem _       -> None
   | SubsetEqElem _ -> Some a
+  | Less _         -> None
+  | LessEq _       -> None
+  | Greater _      -> None
+  | GreaterEq _    -> None
   | LessElem _     -> Some a
   | GreaterElem _  -> Some a
   | Eq (x,y)       -> Option.lift (fun (x',y') -> Eq (x',y')) (prune_eq x y)

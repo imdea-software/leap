@@ -57,6 +57,10 @@ struct
   and is_var_mem = function
       TllExp.VarMem(_) -> true
     | _              -> false
+  and is_var_int = function
+      TllExp.VarInt(_) -> true
+    | _              -> false
+
   and is_var_cell = function
       TllExp.VarCell(_) -> true
     | _               -> false
@@ -87,6 +91,7 @@ struct
     | TllExp.SetElemT(st)-> is_var_setelem st
     | TllExp.PathT(p)    -> is_var_path p
     | TllExp.MemT(m)     -> is_var_mem m
+    | TllExp.IntT(i)     -> is_var_int i
     | TllExp.VarUpdate _ -> false (* ALE: Not sure if OK *)
   
   (* 
@@ -120,6 +125,9 @@ struct
   and is_constant_mem  = function
         TllExp.Emp -> true
       | _        -> false
+  and is_constant_int  = function
+        TllExp.IntVal _ -> true
+      | _        -> false
   
   let is_constant_term = function
         TllExp.VarT(_)     -> false
@@ -132,6 +140,7 @@ struct
       | TllExp.SetElemT(st)-> is_constant_setelem st
       | TllExp.PathT(p)    -> is_constant_path p
       | TllExp.MemT(m)     -> is_constant_mem m
+      | TllExp.IntT(i)     -> is_constant_int i
       | TllExp.VarUpdate _ -> false
   
   (* 
@@ -146,6 +155,7 @@ struct
   and is_flat_addr    a  = is_var_addr    a  || is_constant_addr    a
   and is_flat_cell    c  = is_var_cell    c  || is_constant_cell    c
   and is_flat_mem     m  = is_var_mem     m  || is_constant_mem     m
+  and is_flat_int     i  = is_var_int     i  || is_constant_int     i
   and is_flat_path    p  = is_var_path    p  || is_constant_path    p
   
   let is_flat_term t =
@@ -160,6 +170,7 @@ struct
       | TllExp.SetElemT se -> is_flat_setelem se
       | TllExp.PathT  p    -> is_flat_path p
       | TllExp.MemT   m    -> is_flat_mem m
+      | TllExp.IntT   i    -> is_flat_int i
       | TllExp.VarUpdate _ -> false
   
   
@@ -177,6 +188,10 @@ struct
       | TllExp.SubsetEqTh(st1,st2)   -> is_var_setth st1 && is_var_setth st2
       | TllExp.InElem(e,se)          -> is_var_elem e && is_var_setelem se
       | TllExp.SubsetEqElem(se1,se2) -> is_var_setelem se1 && is_var_setelem se2
+      | TllExp.Less(i1,i2)           -> is_var_int i1 && is_var_int i2
+      | TllExp.LessEq(i1,i2)         -> is_var_int i1 && is_var_int i2
+      | TllExp.Greater(i1,i2)        -> is_var_int i1 && is_var_int i2
+      | TllExp.GreaterEq(i1,i2)      -> is_var_int i1 && is_var_int i2
       | TllExp.LessElem(e1,e2)       -> is_var_elem e1 && is_var_elem e2
       | TllExp.GreaterElem(e1,e2)    -> is_var_elem e1 && is_var_elem e2
       | TllExp.Eq((t1,t2))           -> is_var_term t1 && is_var_term t2

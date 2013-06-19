@@ -29,7 +29,7 @@ let rec sort_to_tll_sort (s:E.sort) : TLL.sort =
   | E.Path      -> TLL.Path
   | E.Mem       -> TLL.Mem
   | E.Bool      -> raise(UnsupportedSort(E.sort_to_str s))
-  | E.Int       -> raise(UnsupportedSort(E.sort_to_str s))
+  | E.Int       -> TLL.Int
   | E.Array     -> raise(UnsupportedSort(E.sort_to_str s))
   | E.AddrArray -> raise(UnsupportedSort(E.sort_to_str s))
   | E.TidArray  -> raise(UnsupportedSort(E.sort_to_str s))
@@ -47,6 +47,7 @@ and sort_to_expr_sort (s:TLL.sort) : E.sort =
   | TLL.SetElem -> E.SetElem
   | TLL.Path    -> E.Path
   | TLL.Mem     -> E.Mem
+  | TLL.Int     -> E.Int
   | TLL.Bool    -> E.Bool
   | TLL.Unknown -> E.Unknown
 
@@ -61,6 +62,7 @@ and build_term_var (v:E.variable) : TLL.term =
   | E.Cell  -> TLL.CellT  (TLL.VarCell  tll_v)
   | E.SetTh -> TLL.SetThT (TLL.VarSetTh tll_v)
   | E.Path  -> TLL.PathT  (TLL.VarPath  tll_v)
+  | E.Int   -> TLL.IntT   (TLL.VarInt   tll_v)
   | E.Mem   -> TLL.MemT   (TLL.VarMem   tll_v)
   | _          -> TLL.VarT   (tll_v)
 
@@ -109,7 +111,7 @@ and term_to_tll_term (t:E.term) : TLL.term =
   | E.SetElemT st  -> TLL.SetElemT (setelem_to_tll_setelem st)
   | E.PathT p      -> TLL.PathT (path_to_tll_path p)
   | E.MemT m       -> TLL.MemT (mem_to_tll_mem m)
-  | E.IntT _       -> raise(UnsupportedTllExpr(E.term_to_str t))
+  | E.IntT i       -> TLL.IntT (int_to_tll_int i)
   | E.AddrArrayT a -> raise(UnsupportedTllExpr(E.term_to_str t))
   | E.TidArrayT a  -> raise(UnsupportedTllExpr(E.term_to_str t))
   | E.ArrayT a     -> arrays_to_tll_term a
@@ -255,6 +257,22 @@ and mem_to_tll_mem (m:E.mem) : TLL.mem =
   | E.MemArrayRd _        -> raise(UnsupportedTllExpr(E.mem_to_str m))
 
 
+and int_to_tll_int (i:E.integer) : TLL.integer =
+  match i with
+    E.IntVal n -> TLL.IntVal n
+  | E.VarInt v -> TLL.VarInt (variable_to_tll_var v)
+  | E.IntNeg j -> TLL.IntNeg (int_to_tll_int j)
+  | E.IntAdd (j1,j2) -> TLL.IntAdd (int_to_tll_int j1, int_to_tll_int j2)
+  | E.IntSub (j1,j2) -> TLL.IntSub (int_to_tll_int j1, int_to_tll_int j2)
+  | E.IntMul (j1,j2) -> TLL.IntMul (int_to_tll_int j1, int_to_tll_int j2)
+  | E.IntDiv (j1,j2) -> TLL.IntDiv (int_to_tll_int j1, int_to_tll_int j2)
+  | E.IntArrayRd _   -> raise(UnsupportedTllExpr(E.integer_to_str i))
+  | E.IntSetMin _    -> raise(UnsupportedTllExpr(E.integer_to_str i))
+  | E.IntSetMax _    -> raise(UnsupportedTllExpr(E.integer_to_str i))
+  | E.CellMax _      -> raise(UnsupportedTllExpr(E.integer_to_str i))
+  | E.HavocLevel     -> raise(UnsupportedTllExpr(E.integer_to_str i))
+
+
 and atom_to_tll_atom (a:E.atom) : TLL.atom =
   let path    = path_to_tll_path       in
   let mem     = mem_to_tll_mem         in
@@ -279,13 +297,13 @@ and atom_to_tll_atom (a:E.atom) : TLL.atom =
   | E.SubsetEqInt _        -> raise(UnsupportedTllExpr(E.atom_to_str a))
   | E.InElem (e,s)         -> TLL.InElem (elem_to_tll_elem e, setelem s)
   | E.SubsetEqElem (s1,s2) -> TLL.SubsetEqElem (setelem s1, setelem s2)
-  | E.Less _               -> raise(UnsupportedTllExpr(E.atom_to_str a))
-  | E.Greater _            -> raise(UnsupportedTllExpr(E.atom_to_str a))
-  | E.LessEq _             -> raise(UnsupportedTllExpr(E.atom_to_str a))
+  | E.Less (i1,i2)         -> TLL.Less (int_to_tll_int i1, int_to_tll_int i2)
+  | E.LessEq (i1,i2)       -> TLL.LessEq (int_to_tll_int i1, int_to_tll_int i2)
+  | E.Greater (i1,i2)      -> TLL.Greater (int_to_tll_int i1, int_to_tll_int i2)
+  | E.GreaterEq (i1,i2)    -> TLL.GreaterEq (int_to_tll_int i1, int_to_tll_int i2)
   | E.LessTid _            -> raise(UnsupportedTllExpr(E.atom_to_str a))
   | E.LessElem (e1,e2)     -> TLL.LessElem (elem e1, elem e2)
   | E.GreaterElem (e1,e2)  -> TLL.GreaterElem (elem e1, elem e2)
-  | E.GreaterEq _          -> raise(UnsupportedTllExpr(E.atom_to_str a))
   | E.Eq (t1,t2)           -> TLL.Eq (term t1, term t2)
   | E.InEq (t1,t2)         -> TLL.InEq (term t1, term t2)
   | E.BoolVar v            -> TLL.BoolVar (variable_to_tll_var v)

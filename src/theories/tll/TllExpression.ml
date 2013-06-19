@@ -26,6 +26,7 @@ and sort =
   | SetElem
   | Path
   | Mem
+  | Int
   | Bool
   | Unknown
 and term =
@@ -39,6 +40,7 @@ and term =
   | SetElemT of setelem
   | PathT    of path
   | MemT     of mem
+  | IntT     of integer
   | VarUpdate  of variable * tid * term
 and eq = term * term
 and diseq = term * term
@@ -302,6 +304,15 @@ let rec get_varset_set s =
     | Setdiff(s1,s2) -> (get_varset_set s1) @@ (get_varset_set s2)
     | PathToSet(p)   -> get_varset_path p
     | AddrToSet(m,a) -> (get_varset_mem m) @@ (get_varset_addr a)
+and get_varset_int i =
+  match i with
+      IntVal _ -> S.empty
+    | VarInt v -> S.singleton v @@ get_varset_from_param v
+    | IntNeg j -> get_varset_int j
+    | IntAdd (j1,j2) -> (get_varset_int j1) @@ (get_varset_int j2)
+    | IntSub (j1,j2) -> (get_varset_int j1) @@ (get_varset_int j2)
+    | IntMul (j1,j2) -> (get_varset_int j1) @@ (get_varset_int j2)
+    | IntDiv (j1,j2) -> (get_varset_int j1) @@ (get_varset_int j2)
 and get_varset_tid th =
   match th with
       VarTh v      -> S.singleton v @@ get_varset_from_param v
@@ -371,6 +382,10 @@ and get_varset_atom a =
     | InElem(e,se)           -> (get_varset_elem e) @@ (get_varset_setelem se)
     | SubsetEqElem(se1,se2)  -> (get_varset_setelem se1) @@
                                 (get_varset_setelem se2)
+    | Less(i1,i2)            -> (get_varset_int i1) @@ (get_varset_int i2)
+    | LessEq(i1,i2)          -> (get_varset_int i1) @@ (get_varset_int i2)
+    | Greater(i1,i2)         -> (get_varset_int i1) @@ (get_varset_int i2)
+    | GreaterEq(i1,i2)       -> (get_varset_int i1) @@ (get_varset_int i2)
     | LessElem(e1,e2)        -> (get_varset_elem e1) @@ (get_varset_elem e2)
     | GreaterElem(e1,e2)     -> (get_varset_elem e1) @@ (get_varset_elem e2)
     | Eq((x,y))              -> (get_varset_term x) @@ (get_varset_term y)
@@ -390,6 +405,7 @@ and get_varset_term t = match t with
     | SetElemT se         -> get_varset_setelem se
     | PathT  p            -> get_varset_path p
     | MemT   m            -> get_varset_mem m
+    | IntT   i            -> get_varset_int i
     | VarUpdate(v,pc,t)   -> (S.singleton v) @@ (get_varset_term t) @@
                              (get_varset_from_param v)
 and get_varset_literal l =
@@ -464,6 +480,10 @@ let rec get_termset_atom (a:atom) : TermSet.t =
   | SubsetEqTh(st1,st2)    -> add_list [SetThT st1; SetThT st2]
   | InElem(e,se)           -> add_list [ElemT e; SetElemT se]
   | SubsetEqElem(se1,se2)  -> add_list [SetElemT se1; SetElemT se2]
+  | Less(i1,i2)            -> add_list [IntT i1; IntT i2]
+  | LessEq(i1,i2)          -> add_list [IntT i1; IntT i2]
+  | Greater(i1,i2)         -> add_list [IntT i1; IntT i2]
+  | GreaterEq(i1,i2)       -> add_list [IntT i1; IntT i2]
   | LessElem(e1,e2)        -> add_list [ElemT e1; ElemT e2]
   | GreaterElem(e1,e2)     -> add_list [ElemT e1; ElemT e2]
   | Eq((x,y))              -> add_list [x;y]
@@ -518,6 +538,7 @@ let termset_of_sort (all:TermSet.t) (s:sort) : TermSet.t =
     | SetElem -> (match t with | SetElemT _ -> true | _ -> false)
     | Path    -> (match t with | PathT _    -> true | _ -> false)
     | Mem     -> (match t with | MemT _     -> true | _ -> false)
+    | Int     -> (match t with | IntT _     -> true | _ -> false)
     | Bool    -> (match t with
                   | VarT v -> v.sort = Bool
                   | _      -> false)
@@ -577,6 +598,9 @@ and is_path_var s =
 and is_mem_var s =
   match s with
       VarMem _ -> true | _ -> false
+and is_int_var i =
+  match i with
+      VarInt _ -> true | _ -> false
 
 let get_sort_from_term t =
   match t with
@@ -590,6 +614,7 @@ let get_sort_from_term t =
     | SetElemT _       -> SetElem
     | PathT _          -> Path
     | MemT _           -> Mem
+    | IntT _           -> Int
     | VarUpdate(v,_,_) -> v.sort
   
 let terms_same_type a b =
@@ -614,6 +639,7 @@ let rec is_term_flat t =
     | SetElemT se -> is_setelem_flat se
     | PathT p     -> is_path_flat p
     | MemT  m     -> is_mem_flat m
+    | IntT i      -> is_int_flat i
     | VarUpdate _ -> true
 
 and is_set_flat t =
@@ -681,7 +707,16 @@ and is_mem_flat t =
       VarMem _ -> true
     | Emp      -> true
     | Update(m,a,c) -> (is_mem_var m) && (is_addr_var a) && (is_cell_var c)
-  
+and is_int_flat i =
+  match i with
+      IntVal _ -> true
+    | VarInt _ -> true
+    | IntNeg j -> is_int_var j
+    | IntAdd (j1,j2) -> (is_int_var j1) && (is_int_var j2)
+    | IntSub (j1,j2) -> (is_int_var j1) && (is_int_var j2)
+    | IntMul (j1,j2) -> (is_int_var j1) && (is_int_var j2)
+    | IntDiv (j1,j2) -> (is_int_var j1) && (is_int_var j2)
+ 
 
 let is_literal_flat lit =
   match lit with
@@ -699,6 +734,10 @@ let is_literal_flat lit =
     | SubsetEqTh(st1,st2)    -> (is_setth_var st1) && (is_setth_var st2)
     | InElem(e,se)           -> (is_elem_var e) && (is_setelem_var se)
     | SubsetEqElem(se1,se2)  -> (is_setelem_var se1) && (is_setelem_var se2)
+    | Less(i1,i2)            -> (is_int_var i1) && (is_int_var i2)
+    | LessEq(i1,i2)          -> (is_int_var i1) && (is_int_var i2)
+    | Greater(i1,i2)         -> (is_int_var i1) && (is_int_var i2)
+    | GreaterEq(i1,i2)       -> (is_int_var i1) && (is_int_var i2)
     | LessElem(e1,e2)        -> (is_elem_var e1) && (is_elem_var e2)
     | GreaterElem(e1,e2)     -> (is_elem_var e1) && (is_elem_var e2)
     | Eq(t1,t2)              -> ((is_term_var t1) && (is_term_var t2)  ||
@@ -724,6 +763,10 @@ let is_literal_flat lit =
     | SubsetEqTh(st1,st2)   -> (is_setth_var st1) && (is_setth_var st2)
     | InElem(e,se)          -> (is_elem_var e) && (is_setelem_var se)
     | SubsetEqElem(se1,se2) -> (is_setelem_var se1) && (is_setelem_var se2)
+    | Less(i1,i2)           -> (is_int_var i1) && (is_int_var i2)
+    | Greater(i1,i2)        -> (is_int_var i1) && (is_int_var i2)
+    | LessEq(i1,i2)         -> (is_int_var i1) && (is_int_var i2)
+    | GreaterEq(i1,i2)      -> (is_int_var i1) && (is_int_var i2)
     | LessElem(e1,e2)       -> (is_elem_var e1) && (is_elem_var e2)
     | GreaterElem(e1,e2)    -> (is_elem_var e1) && (is_elem_var e2)
     | Eq(x,y)               ->  (is_term_var x) && (is_term_var y)
@@ -792,6 +835,14 @@ and atom_to_str a =
                                     (elem_to_str e) (setelem_to_str s)
   | SubsetEqElem(s_in,s_out)   -> Printf.sprintf "%s subseteqElem %s"
                                     (setelem_to_str s_in) (setelem_to_str s_out)
+  | Less (i1,i2)               -> Printf.sprintf "%s < %s"
+                                    (integer_to_str i1) (integer_to_str i2)
+  | LessEq (i1,i2)             -> Printf.sprintf "%s <= %s"
+                                    (integer_to_str i1) (integer_to_str i2)
+  | Greater (i1,i2)            -> Printf.sprintf "%s > %s"
+                                    (integer_to_str i1) (integer_to_str i2)
+  | GreaterEq (i1,i2)          -> Printf.sprintf "%s >= %s"
+                                    (integer_to_str i1) (integer_to_str i2)
   | LessElem(e1,e2)            -> Printf.sprintf "%s < %s"
                                     (elem_to_str e1) (elem_to_str e2)
   | GreaterElem(e1,e2)         -> Printf.sprintf "%s < %s"
@@ -819,6 +870,19 @@ and mem_to_str expr =
     | Emp -> Printf.sprintf "emp"
     | Update(mem,add,cell) -> Printf.sprintf "upd(%s,%s,%s)"
   (mem_to_str mem) (addr_to_str add) (cell_to_str cell)
+and integer_to_str expr =
+  match expr with
+    IntVal (i)        -> string_of_int i
+  | VarInt v          -> variable_to_str v
+  | IntNeg i          -> sprintf "-%s" (integer_to_str i)
+  | IntAdd (i1,i2)    -> sprintf "%s + %s" (integer_to_str i1)
+                                           (integer_to_str i2)
+  | IntSub (i1,i2)    -> sprintf "%s - %s" (integer_to_str i1)
+                                           (integer_to_str i2)
+  | IntMul (i1,i2)    -> sprintf "%s * %s" (integer_to_str i1)
+                                           (integer_to_str i2)
+  | IntDiv (i1,i2)    -> sprintf "%s / %s" (integer_to_str i1)
+                                           (integer_to_str i2)
 and path_to_str expr =
   match expr with
       VarPath(v) -> variable_to_str v
@@ -914,6 +978,7 @@ and term_to_str expr =
     | SetElemT(setelem)  -> (setelem_to_str setelem)
     | PathT(path)        -> (path_to_str path)
     | MemT(mem)          -> (mem_to_str mem)
+    | IntT(i)            -> (integer_to_str i)
     | VarUpdate (v,th,t) -> let v_str = variable_to_str v in
                             let th_str = tid_to_str th in
                             let t_str = term_to_str t in
@@ -958,6 +1023,7 @@ let sort_to_str s =
     | SetElem -> "SetElem"
     | Path    -> "Path"
     | Mem     -> "Mem"
+    | Int     -> "Int"
     | Bool    -> "Bool"
     | Unknown -> "Unknown"
 
@@ -1056,6 +1122,7 @@ and voc_term (expr:term) : tid list =
     | SetElemT(setelem)  -> voc_setelem setelem
     | PathT(path)        -> voc_path path
     | MemT(mem)          -> voc_mem mem
+    | IntT(i)            -> voc_int i
     | VarUpdate (v,th,t) -> (get_tid_in v) @ (voc_tid th) @ (voc_term t)
 
 
@@ -1146,6 +1213,17 @@ and voc_mem (m:mem) : tid list =
   | Update(mem,add,cell) -> (voc_mem mem) @ (voc_addr add) @ (voc_cell cell)
 
 
+and voc_int (i:integer) : tid list =
+  match i with
+    IntVal(i)         -> []
+  | VarInt v          -> get_tid_in v
+  | IntNeg(i)         -> (voc_int i)
+  | IntAdd(i1,i2)     -> (voc_int i1) @ (voc_int i2)
+  | IntSub(i1,i2)     -> (voc_int i1) @ (voc_int i2)
+  | IntMul(i1,i2)     -> (voc_int i1) @ (voc_int i2)
+  | IntDiv(i1,i2)     -> (voc_int i1) @ (voc_int i2)
+
+
 and voc_atom (a:atom) : tid list =
   match a with
     Append(p1,p2,pres)         -> (voc_path p1) @
@@ -1164,6 +1242,10 @@ and voc_atom (a:atom) : tid list =
   | SubsetEqTh(s_in,s_out)     -> (voc_setth s_in) @ (voc_setth s_out)
   | InElem(e,s)                -> (voc_elem e) @ (voc_setelem s)
   | SubsetEqElem(s_in,s_out)   -> (voc_setelem s_in) @ (voc_setelem s_out)
+  | Less(i1,i2)                -> (voc_int i1) @ (voc_int i2)
+  | LessEq(i1,i2)              -> (voc_int i1) @ (voc_int i2)
+  | Greater(i1,i2)             -> (voc_int i1) @ (voc_int i2)
+  | GreaterEq(i1,i2)           -> (voc_int i1) @ (voc_int i2)
   | LessElem(e1,e2)            -> (voc_elem e1) @ (voc_elem e2)
   | GreaterElem(e1,e2)         -> (voc_elem e1) @ (voc_elem e2)
   | Eq(exp)                    -> (voc_eq exp)
@@ -1791,6 +1873,10 @@ let required_sorts (phi:formula) : sort list =
     | SubsetEqTh (s1,s2)  -> list_union [req_st s1;req_st s2]
     | InElem (e,s)        -> list_union [req_e e;req_se s]
     | SubsetEqElem (s1,s2)-> list_union [req_se s1;req_se s2]
+    | Less (i1,i2)        -> list_union [req_i i1; req_i i2]
+    | LessEq (i1,i2)      -> list_union [req_i i1; req_i i2]
+    | Greater (i1,i2)     -> list_union [req_i i1; req_i i2]
+    | GreaterEq (i1,i2)   -> list_union [req_i i1; req_i i2]
     | LessElem  (e1,e2)   -> list_union [req_e e1; req_e e2]
     | GreaterElem (e1,e2) -> list_union [req_e e1; req_e e2]
     | Eq (t1,t2)          -> union (req_term t1) (req_term t2)
@@ -1805,6 +1891,16 @@ let required_sorts (phi:formula) : sort list =
     | VarMem _         -> single Mem
     | Emp              -> single Mem
     | Update (m,a,c)   -> append Mem [req_m m;req_a a;req_c c]
+
+  and req_i (i:integer) : SortSet.t =
+    match i with
+    | IntVal _         -> single Int
+    | VarInt _         -> single Int
+    | IntNeg i         -> append Int [req_i i]
+    | IntAdd (i1,i2)   -> append Int [req_i i1;req_i i2]
+    | IntSub (i1,i2)   -> append Int [req_i i1;req_i i2]
+    | IntMul (i1,i2)   -> append Int [req_i i1;req_i i2]
+    | IntDiv (i1,i2)   -> append Int [req_i i1;req_i i2]
 
   and req_p (p:path) : SortSet.t =
     match p with
@@ -1885,6 +1981,7 @@ let required_sorts (phi:formula) : sort list =
     | SetElemT s         -> req_se s
     | PathT p            -> req_p p
     | MemT m             -> req_m m
+    | IntT i             -> req_i i
     | VarUpdate (v,t,tr) -> append v.sort [req_t t;req_term tr]
   in
     SortSet.elements (req_f phi)
@@ -1925,6 +2022,10 @@ let special_ops (phi:formula) : special_op_t list =
     | SubsetEqTh (s1,s2)  -> list_union [ops_st s1;ops_st s2]
     | InElem (e,s)        -> list_union [ops_e e;ops_se s]
     | SubsetEqElem (s1,s2)-> list_union [ops_se s1;ops_se s2]
+    | Less (i1,i2)        -> list_union [ops_i i1; ops_i i2]
+    | LessEq (i1,i2)      -> list_union [ops_i i1; ops_i i2]
+    | Greater (i1,i2)     -> list_union [ops_i i1; ops_i i2]
+    | GreaterEq (i1,i2)   -> list_union [ops_i i1; ops_i i2]
     | LessElem (e1,e2)    -> append ElemOrder [ops_e e1; ops_e e2]
     | GreaterElem (e1,e2) -> append ElemOrder [ops_e e1; ops_e e2]
     | Eq (t1,t2)          -> list_union [ops_term t1;ops_term t2]
@@ -1939,6 +2040,16 @@ let special_ops (phi:formula) : special_op_t list =
     | VarMem _         -> empty
     | Emp              -> empty
     | Update (m,a,c)   -> list_union [ops_m m;ops_a a;ops_c c]
+
+  and ops_i (i:integer) : OpsSet.t =
+    match i with
+    | IntVal _ -> empty
+    | VarInt v -> empty
+    | IntNeg j -> list_union [ops_i j]
+    | IntAdd (j1,j2) -> list_union [ops_i j1; ops_i j2]
+    | IntSub (j1,j2) -> list_union [ops_i j1; ops_i j2]
+    | IntMul (j1,j2) -> list_union [ops_i j1; ops_i j2]
+    | IntDiv (j1,j2) -> list_union [ops_i j1; ops_i j2]
 
   and ops_p (p:path) : OpsSet.t =
     match p with
@@ -2019,6 +2130,7 @@ let special_ops (phi:formula) : special_op_t list =
     | SetElemT s         -> ops_se s
     | PathT p            -> ops_p p
     | MemT m             -> ops_m m
+    | IntT i             -> ops_i i
     | VarUpdate (_,t,tr) -> list_union [ops_t t;ops_term tr]
   in
     OpsSet.elements (ops_f phi)
