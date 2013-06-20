@@ -463,11 +463,12 @@ let gen_support (f:E.tid list -> E.tid_subst_t -> bool) (info:vc_info) : support
                         else
                           info.transition_tid :: goal_voc in
   List.fold_left (fun xs supp_phi ->
+    printf "PROCESSING SUPP_PHI: %s\n" (E.formula_to_str supp_phi);
     let supp_voc = E.voc supp_phi in
     let subst = List.filter (f supp_voc) (E.new_comb_subst supp_voc voc_to_consider) in
-    List.map (fun s ->
-      E.subst_tid s supp_phi
-    ) subst
+    xs @ List.map (fun s ->
+           E.subst_tid s supp_phi
+         ) subst
   ) unparam_support param_support
 
 
@@ -606,14 +607,9 @@ let apply_tactics (vcs:vc_info list)
 
 let apply_tactics_from_proof_plan (vcs:vc_info list)
                                   (plan:proof_plan) : E.formula list =
-  print_endline "APPLY SUPPORT!!!!";
-  print_endline ("SUPP_SPLIT_TACTICS: " ^ (string_of_int (List.length plan.support_split_tactics)));
-  print_endline ("SUPP_TACTICS: " ^ (string_of_int (List.length plan.support_tactics)));
-  print_endline ("FORMULA_SPLIT_TACTICS: " ^ (string_of_int (List.length plan.formula_split_tactics)));
-  print_endline ("FORMULA_TACTICS: " ^ (string_of_int (List.length plan.formula_tactics)));
   let support_tac = match plan.support_tactics with
-                    | [] -> (print_endline "NONE"; None)
-                    | xs  -> (print_endline "SOME"; Some (List.hd xs)) in
+                    | [] -> None
+                    | xs  -> Some (List.hd xs) in
   apply_tactics vcs plan.support_split_tactics
                     support_tac
                     plan.formula_split_tactics

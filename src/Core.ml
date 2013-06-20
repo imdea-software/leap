@@ -532,6 +532,7 @@ module Make (Opt:module type of GenOptions) : S =
               
             let vc_info_list = spinv_with_cases supp inv cases in
             Printf.printf "VC_INFO_LENGTH: %i\n" (List.length vc_info_list);
+            List.iter (fun vci -> print_endline (Tactics.vc_info_to_str vci)) vc_info_list;
             let new_obligations = generate_obligations vc_info_list plan cases
             in
               os @ new_obligations
@@ -541,6 +542,7 @@ module Make (Opt:module type of GenOptions) : S =
                            " with " ^string_of_int (IGraph.num_of_cases cases)^ " special cases.");
             let vc_info_list = seq_spinv_with_cases supp inv cases in
             Printf.printf "VC_INFO_LENGTH: %i\n" (List.length vc_info_list);
+            List.iter (fun vci -> print_endline (Tactics.vc_info_to_str vci)) vc_info_list;
             let infoTbl = Hashtbl.create (List.length vc_info_list) in
             List.iter (fun vc_info ->
               let line = Tactics.get_line_from_info vc_info in
