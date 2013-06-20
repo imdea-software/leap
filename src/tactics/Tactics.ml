@@ -14,6 +14,7 @@ type vc_info = {
   
   rho             : E.formula ;   (* TRANSITION RELATION *)
 
+  original_goal   : E.formula  ;
   goal            : E.formula  ;
   transition_tid  : E.tid      ;
   line            : E.pc_t     ;
@@ -148,7 +149,8 @@ let create_vc_info (supp       : support_t)
       original_support   = supp ;
       tid_constraint     = tid_constr ;
       rho                = rho ;
-      goal               = goal ;
+      original_goal      = goal ;
+      goal               = E.prime_modified rho goal ;
       transition_tid     = trans_tid ;
       line               = line ;
       vocabulary         = vocab ; (* fix: can be computed *)
@@ -171,6 +173,7 @@ let dup_vc_info_with_goal (info:vc_info) (new_goal:E.formula) : vc_info =
     original_support   = info.original_support ;
     tid_constraint = info.tid_constraint;
     rho            = info.rho ;
+    original_goal  = info.original_goal ;
     goal           = new_goal ;
     transition_tid = info.transition_tid ;
     line           = info.line ;
@@ -368,9 +371,11 @@ let split_implication (imp:implication) : implication list =
 
 let split_goal (info:vc_info) : vc_info list =
   let new_goals = E.to_conj_list info.goal in
-  List.map (fun phi -> { original_support = info.original_support;
+  List.map (fun phi -> {
+        original_support = info.original_support;
         tid_constraint   = info.tid_constraint  ;
         rho              = info.rho ;
+        original_goal    = info.original_goal;
         goal             = phi ;
         transition_tid   = info.transition_tid ;
         line             = info.line ;

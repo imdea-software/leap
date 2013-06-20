@@ -5389,24 +5389,6 @@ and to_fol_formula (fol_mode:fol_mode_t) (phi:formula) : formula =
   | PCVars   -> to_fol_formula_aux {fol_pc=true;  fol_var=to_fol_var;} phi
 
 
-(*
-let find_trans_tid_in_fol_formula (phi:E.formula) : E.tid =
-  List.filter (fun lit ->
-    match lit with
-    | Literal(Atom(Eq(IntT(VarInt v),IntT(IntVal _))))
-    | Literal(Atom(Eq(IntT(IntVal _),IntT(VarInt v))))
-    | Literal(NegAtom(InEq(IntT(VarInt v),IntT(IntVal _))))
-    | Literal(NegAtom(InEq(IntT(IntVal _),IntT(VarInt v)))) ->
-      if String.sub (var_id v) 0 8 = "pc_prime" then
-        let th_id = String.sub
-
-
-    
-  ) (E.to_conj_list phi)
-
-
-*)
-
 
 
 

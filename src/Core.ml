@@ -298,9 +298,9 @@ module Make (Opt:module type of GenOptions) : S =
         let other_conseq_supp = load_support line Premise.OthersConseq in
         let fresh_k = E.gen_fresh_tid (E.voc (E.conj_list (inv::supp@other_conseq_supp))) in
         let self_conseq_vcs = List.fold_left (fun vcs i ->
-                                gen_vcs self_conseq_supp  inv line Premise.SelfConseq i
+                                gen_vcs (inv::self_conseq_supp) inv line Premise.SelfConseq i
                               ) [] (E.voc inv) in
-        let other_conseq_vcs = gen_vcs other_conseq_supp inv line Premise.OthersConseq fresh_k
+        let other_conseq_vcs = gen_vcs (inv::other_conseq_supp) inv line Premise.OthersConseq fresh_k
         in
           vcs @ self_conseq_vcs @ other_conseq_vcs
       ) [] lines_to_consider
@@ -371,7 +371,7 @@ module Make (Opt:module type of GenOptions) : S =
         let specific_supp = match IGraph.lookup_case cases line Premise.SelfConseq with
                             | None -> supp
                             | Some (supp_tags, _) -> List.map read_tag supp_tags in
-        vcs @ seq_gen_vcs specific_supp inv line Premise.SelfConseq trans_tid
+        vcs @ seq_gen_vcs (inv::specific_supp) inv line Premise.SelfConseq trans_tid
       ) [] lines_to_consider
 
 
@@ -380,6 +380,7 @@ module Make (Opt:module type of GenOptions) : S =
     let seq_spinv_with_cases (supp:E.formula list)
                              (inv:E.formula)
                              (cases:IGraph.case_tbl_t) : Tactics.vc_info list =
+      let supp = inv :: supp in
       let need_theta = List.mem 0 lines_to_consider in
       let initiation = if need_theta then
                          [spinv_premise_init inv]
@@ -440,18 +441,20 @@ module Make (Opt:module type of GenOptions) : S =
         case_timer#start;
         let res_list =
               List.map (fun phi ->
+                (* TODO: Choose the right to_fol function *)
+                let fol_phi = phi in
                 phi_timer#start;
                 let status =
-                  if Pos.is_valid prog_lines (fst (PE.keep_locations phi)) then
+                  if Pos.is_valid prog_lines (fst (PE.keep_locations fol_phi)) then
                     (add_calls_to DP.Loc 1; Valid DP.Loc)
                   else begin
                     let (valid, calls) =
                       match Opt.dp with
                       | DP.NoDP   -> (false, 0)
                       | DP.Loc    -> (false, 0)
-                      | DP.Num    -> let num_phi = NumInterface.formula_to_int_formula phi in
+                      | DP.Num    -> let num_phi = NumInterface.formula_to_int_formula fol_phi in
                                       Num.is_valid_with_lines_plus_info prog_lines num_phi
-                      | DP.Tll    -> let tll_phi = TllInterface.formula_to_tll_formula phi in
+                      | DP.Tll    -> let tll_phi = TllInterface.formula_to_tll_formula fol_phi in
                                       Tll.is_valid_plus_info prog_lines case.proof_info.cutoff tll_phi
                       | DP.Tsl    -> (false, 0)
                       | DP.Tslk k -> (false, 0) in
@@ -565,8 +568,8 @@ module Make (Opt:module type of GenOptions) : S =
 
 
     let solve_from_graph (graph:IGraph.t) : solved_proof_obligation_t list =
-(*        gen_from_graph graph; [] *)
-      solve_proof_obligations (gen_from_graph graph)
+        gen_from_graph graph; []
+(*      solve_proof_obligations (gen_from_graph graph) *)
 
 
   end
