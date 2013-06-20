@@ -83,7 +83,7 @@ let vc_info_to_implication (info:vc_info) (sup:support_t): implication =
   let the_antecedent =
     E.conj_list (info.goal::( sup @ [ info.tid_constraint ] @ [info.rho])) in
   let consequent = E.prime_modified info.rho info.goal in
-  { ante = E.to_fol_formula the_antecedent ; conseq = E.to_fol_formula consequent }
+  { ante = the_antecedent ; conseq = consequent }
 
 let vc_info_to_formula  (info:vc_info) (sup:support_t): E.formula =
   let implication = vc_info_to_implication info sup in
@@ -105,10 +105,11 @@ let default_cutoff_algorithm = Smp.Dnf
 
 
 let vc_info_to_str (vc:vc_info) : string =
-  let fol_tid_constraint = E.to_fol_formula vc.tid_constraint in
-  let fol_rho = E.to_fol_formula vc.rho in
-  let fol_goal = E.to_fol_formula vc.goal in
-  let fol_supp = List.map E.to_fol_formula vc.original_support in
+  let to_fol = E.to_fol_formula E.PCVars in
+  let fol_tid_constraint = to_fol vc.tid_constraint in
+  let fol_rho = to_fol vc.rho in
+  let fol_goal = to_fol vc.goal in
+  let fol_supp = List.map to_fol vc.original_support in
 
   let vars_to_declare = E.all_vars (E.conj_list (fol_tid_constraint ::
                                                  fol_rho            ::
@@ -489,6 +490,80 @@ let reduce2_support (info:vc_info) : support_t =
 (*  FORMULA TACTICS  *)
 (*********************)
 
+let tactic_simplify_pc (imp:implication) : implication =
+  imp
+
+    
+(*
+
+  let trans_tid = find_trans_tid imp.ante in
+  let simpl_ante = List.map (fun
+
+
+
+
+
+let tac_simple (task:task_t) (tac:post_tac_t) : task_t list =
+  let not_pc (phi:E.formula) : bool =
+    match phi with
+    | E.Literal (E.Atom (E.PC _))       -> false
+    | E.Literal (E.Atom (E.PCUpdate _)) -> false
+    | _ -> true in
+
+  let nexts = List.fold_left (fun ns cs ->
+                List.fold_left (fun ns phi ->
+                  match phi with
+                  | E.Literal(E.Atom(E.PCUpdate(j,th))) -> j::ns
+                  | _ -> ns
+                ) ns cs
+              ) [] (List.map E.to_disj_list (E.to_conj_list task.rho)) in
+
+  let psi_simpl = List.map (fun psi ->
+                    let vars = task.inv.E.vars @ (E.all_vars task.rho) in
+                    let simpl_pc = simplify_with_pc psi task.trans_tid [task.line] false
+                    in
+                      simplify_with_vocabulary simpl_pc vars
+                  ) task.supp_form in
+  let inv_simpl = if nexts <> [] then
+                    let inv_simpl = simplify_with_pc task.inv.E.formula 
+                    task.trans_tid [task.line] false in
+                    let inv_primed_simpl = if List.length nexts > 1 then
+                                             task.inv.E.primed
+                                           else
+                                             (task.try_posdp <- false; simplify_with_pc task.inv.E.primed task.trans_tid nexts true) in
+                    (E.formula_to_str inv_primed_simpl) in
+                    let new_inv_info = E.copy_formula_info task.inv in
+                    new_inv_info.E.formula <- inv_simpl;
+                    new_inv_info.E.primed <- inv_primed_simpl;
+                    new_inv_info
+                  else
+                    task.inv in
+  (* TODO: Extend simplification to diff conjunction *)
+  let dupp = dupl_task_with_supp task psi_simpl in
+  dupp.inv <- inv_simpl;
+  dupp.rho <- E.conj_list (List.filter not_pc (E.to_conj_list task.rho));
+  [dupp]
+
+*)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 let tactic_propositional_propagate (imp:implication) : implication =
   let rec simplify_propagate (f:implication) (used:E.literal list) : 
@@ -644,7 +719,7 @@ let formula_split_tactic_from_string (s:string): formula_split_tactic_t =
 
 let formula_tactic_from_string (s:string) : formula_tactic_t =
   match s with
-  | "simplify-pc"             -> id (* TO BE IMPLEMENTED *)
+  | "simplify-pc"             -> tactic_simplify_pc
   | "propositional-propagate" -> tactic_propositional_propagate
   | "filter-strict"           -> tactic_filter_vars_nonrec
   | "propagate-disj-conseq-fst" -> tactic_conseq_propagate_first_disjunct

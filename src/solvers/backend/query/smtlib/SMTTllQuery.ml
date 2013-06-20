@@ -264,9 +264,7 @@ struct
 
 
   let smt_pos_preamble buf =
-    ()
 (* No need to define the program counter as now is just a integer variable *)
-(*
     B.add_string buf ("(define-sort " ^loc_s^ " () " ^int_s^ ")\n");
     GM.sm_decl_fun sort_map pc_name [tid_s] [loc_s] ;
     GM.sm_decl_fun sort_map pc_prime_name [tid_s] [loc_s] ;
@@ -277,7 +275,6 @@ struct
                       "        (<= (select pc t) " ^string_of_int !prog_lines^ ")\n" ^
                       "        (<= 1 (select pc_prime t))\n" ^
                       "        (<= (select pc_prime t) " ^ string_of_int !prog_lines^ ")))\n")
-*)
 
 
   (* (define emptyth::setth)     *)
@@ -1353,9 +1350,8 @@ struct
           | Expr.Path -> B.add_string buf ( "(assert (ispath " ^name^ "))\n" )
           | Expr.Mem  -> B.add_string buf ( "(assert (isheap " ^name^ "))\n" )
           | Expr.Thid -> B.add_string buf ( "(assert (not (= " ^ name ^ " notid)))\n" );
-                         B.add_string buf ( "(assert (istid " ^name^ "))\n" )
-(* Disabled since there is not a notion of program counter *)
-(*                         B.add_string buf ( "(assert (in_pos_range " ^ name ^ "))\n" ) *)
+                         B.add_string buf ( "(assert (istid " ^name^ "))\n" );
+                         B.add_string buf ( "(assert (in_pos_range " ^ name ^ "))\n" )
           | _    -> ()
         end
       else

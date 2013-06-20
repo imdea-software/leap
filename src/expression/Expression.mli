@@ -231,6 +231,13 @@ type formula_info_t =
             vars : variable list;
   }
 
+
+type fol_mode_t =
+  | PCOnly
+  | VarsOnly
+  | PCVars
+
+
 (* Pool type for tagging expression, formulas, etc. *)
 
 module type PoolType =
@@ -552,7 +559,7 @@ val conj_literals : literal list -> formula
 val disj_literals : literal list -> formula
 
 
-val to_fol_formula : formula -> formula
+val to_fol_formula : fol_mode_t -> formula -> formula
 
 
 
