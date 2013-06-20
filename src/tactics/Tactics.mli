@@ -81,6 +81,7 @@ val dup_vc_info_with_goal : vc_info ->  Expression.formula ->   vc_info
 val get_cutoff : proof_plan ->   Smp.cutoff_strategy_t option
 val get_support_tactics : proof_plan ->   support_tactic_t list
 val get_formula_tactics : proof_plan ->   formula_tactic_t list
+val is_empty_proof_plan : proof_plan -> bool
 val get_unprocessed_support_from_info : vc_info ->   support_t
 val get_tid_constraint_from_info : vc_info ->   Expression.formula
 val get_vocabulary_from_info : vc_info ->   Expression.tid list

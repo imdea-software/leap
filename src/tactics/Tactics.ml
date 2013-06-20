@@ -139,10 +139,10 @@ let vc_info_to_str (vc:vc_info) : string =
 let create_vc_info (supp       : support_t)
                    (tid_constr : E.formula)
                    (rho        : E.formula)
-       (goal       : E.formula)
-       (vocab      : E.tid list)
-       (trans_tid  : E.tid)
-       (line       : E.pc_t) : vc_info =
+                   (goal       : E.formula)
+                   (vocab      : E.tid list)
+                   (trans_tid  : E.tid)
+                   (line       : E.pc_t) : vc_info =
     {
       original_support   = supp ;
       tid_constraint     = tid_constr ;
@@ -190,6 +190,10 @@ and get_support_tactics (plan:proof_plan) : support_tactic_t list =
   plan.support_tactics
 and get_formula_tactics (plan:proof_plan) : formula_tactic_t list =
   plan.formula_tactics
+and is_empty_proof_plan (plan:proof_plan) : bool =
+  plan.support_split_tactics = [] && plan.support_tactics = [] &&
+  plan.formula_split_tactics = [] && plan.formula_tactics = [] &&
+  plan.cutoff_algorithm = None
 
 
 let get_unprocessed_support_from_info (info:vc_info) : support_t =
@@ -445,9 +449,14 @@ let get_unrepeated_literals (phi:E.formula) : E.literal list =
 (*********************)
 
 let gen_support (f:E.tid list -> E.tid_subst_t -> bool) (info:vc_info) : support_t =
-  let (unparam_support, param_suport) = List.partition (fun phi ->
+  let split_support = List.fold_left (fun xs phi ->
+                        E.to_conj_list phi @ xs
+                      ) [] info.original_support in
+  let (param_support, unparam_support) = List.partition (fun phi ->
                                           E.voc phi <> []
-                                        ) info.original_support in
+                                        ) split_support in
+  printf "UNPARAM SUPPORT: %s\n" (String.concat " ; " (List.map E.formula_to_str unparam_support));
+  printf "PARAM SUPPORT: %s\n" (String.concat " ; " (List.map E.formula_to_str param_support));
   let goal_voc = E.voc info.goal in
   let voc_to_consider = if List.mem info.transition_tid goal_voc then
                           goal_voc
@@ -459,7 +468,7 @@ let gen_support (f:E.tid list -> E.tid_subst_t -> bool) (info:vc_info) : support
     List.map (fun s ->
       E.subst_tid s supp_phi
     ) subst
-  ) unparam_support param_suport
+  ) unparam_support param_support
 
 
 let full_support (info:vc_info) : support_t =
@@ -597,9 +606,14 @@ let apply_tactics (vcs:vc_info list)
 
 let apply_tactics_from_proof_plan (vcs:vc_info list)
                                   (plan:proof_plan) : E.formula list =
+  print_endline "APPLY SUPPORT!!!!";
+  print_endline ("SUPP_SPLIT_TACTICS: " ^ (string_of_int (List.length plan.support_split_tactics)));
+  print_endline ("SUPP_TACTICS: " ^ (string_of_int (List.length plan.support_tactics)));
+  print_endline ("FORMULA_SPLIT_TACTICS: " ^ (string_of_int (List.length plan.formula_split_tactics)));
+  print_endline ("FORMULA_TACTICS: " ^ (string_of_int (List.length plan.formula_tactics)));
   let support_tac = match plan.support_tactics with
-                    | [] -> None
-                    | xs  -> Some (List.hd xs) in
+                    | [] -> (print_endline "NONE"; None)
+                    | xs  -> (print_endline "SOME"; Some (List.hd xs)) in
   apply_tactics vcs plan.support_split_tactics
                     support_tac
                     plan.formula_split_tactics

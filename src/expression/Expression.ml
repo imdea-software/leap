@@ -1240,7 +1240,9 @@ let unprime_tid (th:tid) : tid = priming_tid false None th
 
 (* variable_to_str fold function *)
 let rec variable_to_str (var:variable) : string =
-  let tid_str   = match var.parameter with Shared -> "" | Local t -> tid_to_str t in
+  let tid_str   = match var.parameter with
+                  | Shared -> ""
+                  | Local t -> param_tid_to_str t in
   let var_str   = (loc_var_procedure var.id var.scope)  in
   let prime_str = if var.is_primed then "'" else "" in
     var_str ^ tid_str ^ prime_str

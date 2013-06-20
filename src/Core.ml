@@ -19,7 +19,6 @@ module GenOptions :
     val dp : DP.t
     val pSolver : string
     val tSolver : string
-    val use_smt : bool
     val compute_model : bool
     val group_vars : bool
     val forget_primed_mem : bool
@@ -41,7 +40,6 @@ module GenOptions :
     let dp                = DP.NoDP
     let pSolver           = BackendSolvers.Yices.identifier
     let tSolver           = BackendSolvers.Z3.identifier
-    let use_smt           = false
     let compute_model     = false
     let group_vars        = false
     let forget_primed_mem = true
@@ -503,15 +501,12 @@ module Make (Opt:module type of GenOptions) : S =
           match IGraph.lookup_case cases line prem with
           | None       -> (Tactics.apply_tactics_from_proof_plan [vc] gral_plan,
                            Tactics.get_cutoff gral_plan)
-          | Some (_,p) -> (Tactics.apply_tactics_from_proof_plan [vc] p,
-                           Tactics.get_cutoff p) in
-(*
-        Printf.printf "=========================================================\n";
-        Printf.printf "FOR VERIFYING THE FOLLOWING VC_INFO:\n\n%s\n" (Tactics.vc_info_to_str vc);
-        Printf.printf "THE FOLLOWING FORMULAS MUST BE VALID:\n";
-        Printf.printf "----------------------\n%s\n" (String.concat "\n" (List.map E.formula_to_human_str obligations));
-        Printf.printf "=========================================================\n";
-*)
+          | Some (_,p) -> let joint_plan = if Tactics.is_empty_proof_plan p then
+                                             gral_plan
+                                           else
+                                             p in
+                          (Tactics.apply_tactics_from_proof_plan [vc] joint_plan,
+                           Tactics.get_cutoff joint_plan) in
         let proof_info = {cutoff = decide_cutoff cutoff; } in
         let proof_obligation = new_proof_obligation vc obligations proof_info
         in
@@ -568,8 +563,8 @@ module Make (Opt:module type of GenOptions) : S =
 
 
     let solve_from_graph (graph:IGraph.t) : solved_proof_obligation_t list =
-        gen_from_graph graph; []
-(*      solve_proof_obligations (gen_from_graph graph) *)
+(*        gen_from_graph graph; [] *)
+      solve_proof_obligations (gen_from_graph graph)
 
 
   end

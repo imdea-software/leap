@@ -49,6 +49,7 @@ let _ =
       Report.report_labels (System.get_labels sys);
 
     (* Configure options *)
+    QueryManager.set_smt_usage (!LeapArgs.use_smt);
     let module LeapOpt = struct
                            let sys = sys
                            let focus = !LeapArgs.focusPC

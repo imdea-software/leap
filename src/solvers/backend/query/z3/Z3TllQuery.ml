@@ -240,6 +240,9 @@ struct
 
 
   let z3_pos_preamble buf =
+    ()
+(* No need to define the program counter as now is just a integer variable *)
+(*
     B.add_string buf ("(define-sort " ^loc_s^ " () " ^int_s^ ")\n");
     GM.sm_decl_fun sort_map pc_name [tid_s] [loc_s] ;
     GM.sm_decl_fun sort_map pc_prime_name [tid_s] [loc_s] ;
@@ -252,6 +255,7 @@ struct
                                (<= 1 (select pc_prime t))\n\
                                (<= (select pc_prime t) %i))\n\
                        )\n" tid_s bool_s !prog_lines !prog_lines)
+*)
 
 
   (* (define subseteq::(-> set set bool)  *)
@@ -1019,6 +1023,7 @@ struct
 
   (********************* Preamble Declaration **********************)
   let z3_preamble buf num_addr num_tid num_elem req_sorts =
+    B.add_string buf ";; TLL Z3 Translation\n";
     if (List.exists (fun s ->
           s=Expr.Addr || s=Expr.Cell || s=Expr.Path || s=Expr.Set || s=Expr.Mem
         ) req_sorts) then z3_addr_preamble buf num_addr ;
@@ -1161,10 +1166,9 @@ struct
           match s with
             Expr.Path -> B.add_string buf ( "(assert (ispath " ^ name ^ "))\n" )
           | Expr.Mem  -> B.add_string buf ( "(assert (isheap " ^ name ^ "))\n" )
-          | Expr.Thid -> let _ = B.add_string buf ( "(assert (not (= " ^ name ^ " NoThread)))\n" ) in
-                         let _ = B.add_string buf ( "(assert (in_pos_range " ^ name ^ "))\n")
-                         in
-                           ()
+          | Expr.Thid -> B.add_string buf ( "(assert (not (= " ^ name ^ " NoThread)))\n" )
+(* Disabled since there is not a notion of program counter *)
+(*                         B.add_string buf ( "(assert (in_pos_range " ^ name ^ "))\n") *)
           | _    -> ()
         end
       else
@@ -1202,6 +1206,7 @@ struct
     let varsetelem = Expr.varset_of_sort vars Expr.SetElem in
     let varpath    = Expr.varset_of_sort vars Expr.Path in
     let varmem     = Expr.varset_of_sort vars Expr.Mem  in
+    let varint     = Expr.varset_of_sort vars Expr.Int  in
     let varbool    = Expr.varset_of_sort vars Expr.Bool in
     let varunk     = Expr.varset_of_sort vars Expr.Unknown  in
       Expr.VarSet.iter (z3_define_var buf vartid) varset;
@@ -1213,6 +1218,7 @@ struct
       Expr.VarSet.iter (z3_define_var buf vartid) varsetelem;
       Expr.VarSet.iter (z3_define_var buf vartid) varpath;
       Expr.VarSet.iter (z3_define_var buf vartid) varmem;
+      Expr.VarSet.iter (z3_define_var buf vartid) varint;
       Expr.VarSet.iter (z3_define_var buf vartid) varbool;
       Expr.VarSet.iter (z3_define_var buf vartid) varunk
 
@@ -1684,6 +1690,7 @@ struct
     let formula_str = formula_to_str phi in
     let buf         = B.create 1024
     in
+      B.add_string buf (";; Translation for " ^ (Expr.formula_to_str phi) ^ "\n");
       z3_preamble buf num_addr num_tid num_elem req_sorts;
       z3_defs     buf num_addr num_tid num_elem req_sorts req_ops;
       variables_from_formula_to_z3 buf phi ;

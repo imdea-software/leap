@@ -1055,6 +1055,7 @@ struct
 
   (********************* Preamble Declaration **********************)
   let yices_preamble buf num_addr num_tid num_elem req_sorts =
+    B.add_string buf ";; TLL Yices Translation";
     if (List.exists (fun s ->
           s=Expr.Addr || s=Expr.Cell || s=Expr.Path || s=Expr.Set || s=Expr.Mem
         ) req_sorts) then yices_addr_preamble buf num_addr ;
@@ -1240,6 +1241,7 @@ struct
     let varsetelem = Expr.varset_of_sort vars Expr.SetElem in
     let varpath    = Expr.varset_of_sort vars Expr.Path in
     let varmem     = Expr.varset_of_sort vars Expr.Mem  in
+    let varint     = Expr.varset_of_sort vars Expr.Int  in
     let varunk     = Expr.varset_of_sort vars Expr.Unknown  in
       Expr.VarSet.iter (yices_define_var buf vartid) varset;
       Expr.VarSet.iter (yices_define_var buf vartid) varelem;
@@ -1250,6 +1252,7 @@ struct
       Expr.VarSet.iter (yices_define_var buf vartid) varsetelem;
       Expr.VarSet.iter (yices_define_var buf vartid) varpath;
       Expr.VarSet.iter (yices_define_var buf vartid) varmem;
+      Expr.VarSet.iter (yices_define_var buf vartid) varint;
       Expr.VarSet.iter (yices_define_var buf vartid) varunk
 
 
@@ -1656,6 +1659,7 @@ struct
     let formula_str = formula_to_str phi in
     let buf         = B.create 1024
     in
+      B.add_string buf (";; Translation for " ^ (Expr.formula_to_str phi) ^ "\n");
       yices_preamble                  buf num_addr num_tid num_elem req_sorts;
       yices_defs                      buf num_addr num_tid num_elem
                                           req_sorts req_ops;

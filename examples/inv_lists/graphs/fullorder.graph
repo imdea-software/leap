@@ -2,7 +2,7 @@
 
 => fullPreserve [34:O:fullRegion;
                  35:O:fullRegion,fullNext,fullLock,fullOrder {pruning:|reduce2||simplify-pc};
-                 51:O:fullNext,fullRegion,fullOrder {pruning:|reduce2||simplify-pc}] {pruning:|reduce2||simplify-pc}
+                 51:O:fullNext,fullRegion,fullOrder{pruning:|reduce2||simplify-pc}] {pruning:|reduce2||}
 
 
 

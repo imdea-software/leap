@@ -19,6 +19,7 @@ LINGELING=lingeling-587f
 # Programs
 LEAP=leap
 PROG2FTS=prog2fts
+PRGINFO=prginfo
 PINV=pinv
 SINV=sinv
 PVD=pvd
@@ -41,7 +42,7 @@ check_tool = @if ( test -e $(TOOLS)/$(1) ) || (test -h $(TOOLS)/$(1) ) ; then \
 						fi
 
 
-.PHONY: clean softclean all expand unexpand leap prog2fts pinv sinv pvd tll applytac tmptsl tsl numinv spec_check doc tools tests compile
+.PHONY: clean softclean all expand unexpand leap prog2fts prginfo pinv sinv pvd tll applytac tmptsl tsl numinv spec_check doc tools tests compile
 
 
 # Flags
@@ -56,7 +57,7 @@ LIBS = unix,str
 
 # Compilation rules
 
-all: $(PROG2FTS) $(PINV) $(SINV) $(PVD) \
+all: $(PROG2FTS) $(PRGINFO) $(PINV) $(SINV) $(PVD) \
 		 $(NUMINV) $(SPEC_CHECK) $(TLL) $(TSL) $(LEAP) $(LEAP).native $(TOOLS)
 
 $(TOOLS) :
@@ -74,6 +75,10 @@ $(LEAP):
 $(LEAP).native:
 	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(LEAP).native
 	@ln -f -s ./_build/src/progs/leap/$(LEAP).native $(LEAP)
+
+$(PRGINFO):
+	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(PRGINFO).native
+	@ln -f -s ./_build/src/progs/prginfo/$(PRGINFO).native $(PRGINFO)
 
 $(PROG2FTS):
 	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(PROG2FTS).native

@@ -14,7 +14,6 @@ module GenOptions :
     val dp : DP.t
     val pSolver : string
     val tSolver : string
-    val use_smt : bool
     val compute_model : bool
     val group_vars : bool
     val forget_primed_mem : bool

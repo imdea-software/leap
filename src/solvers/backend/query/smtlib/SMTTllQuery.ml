@@ -264,6 +264,9 @@ struct
 
 
   let smt_pos_preamble buf =
+    ()
+(* No need to define the program counter as now is just a integer variable *)
+(*
     B.add_string buf ("(define-sort " ^loc_s^ " () " ^int_s^ ")\n");
     GM.sm_decl_fun sort_map pc_name [tid_s] [loc_s] ;
     GM.sm_decl_fun sort_map pc_prime_name [tid_s] [loc_s] ;
@@ -274,6 +277,7 @@ struct
                       "        (<= (select pc t) " ^string_of_int !prog_lines^ ")\n" ^
                       "        (<= 1 (select pc_prime t))\n" ^
                       "        (<= (select pc_prime t) " ^ string_of_int !prog_lines^ ")))\n")
+*)
 
 
   (* (define emptyth::setth)     *)
@@ -1199,6 +1203,7 @@ struct
 
   (********************* Preamble Declaration **********************)
   let smt_preamble buf num_addr num_tid num_elem req_sorts =
+    B.add_string buf ";; TLL SMTLib Translation\n";
     if (List.exists (fun s ->
           s=Expr.Addr || s=Expr.Cell || s=Expr.Path || s=Expr.Set || s=Expr.Mem
         ) req_sorts) then smt_addr_preamble buf num_addr ;
@@ -1348,8 +1353,9 @@ struct
           | Expr.Path -> B.add_string buf ( "(assert (ispath " ^name^ "))\n" )
           | Expr.Mem  -> B.add_string buf ( "(assert (isheap " ^name^ "))\n" )
           | Expr.Thid -> B.add_string buf ( "(assert (not (= " ^ name ^ " notid)))\n" );
-                         B.add_string buf ( "(assert (istid " ^name^ "))\n" );
-                         B.add_string buf ( "(assert (in_pos_range " ^ name ^ "))\n" )
+                         B.add_string buf ( "(assert (istid " ^name^ "))\n" )
+(* Disabled since there is not a notion of program counter *)
+(*                         B.add_string buf ( "(assert (in_pos_range " ^ name ^ "))\n" ) *)
           | _    -> ()
         end
       else
@@ -1402,6 +1408,7 @@ struct
     let varsetelem = Expr.varset_of_sort vars Expr.SetElem in
     let varpath    = Expr.varset_of_sort vars Expr.Path in
     let varmem     = Expr.varset_of_sort vars Expr.Mem  in
+    let varint     = Expr.varset_of_sort vars Expr.Int  in
     let varbool    = Expr.varset_of_sort vars Expr.Bool  in
     let varunk     = Expr.varset_of_sort vars Expr.Unknown  in
       Expr.VarSet.iter (smt_define_var buf vartid num_tids) varset;
@@ -1413,6 +1420,7 @@ struct
       Expr.VarSet.iter (smt_define_var buf vartid num_tids) varsetelem;
       Expr.VarSet.iter (smt_define_var buf vartid num_tids) varpath;
       Expr.VarSet.iter (smt_define_var buf vartid num_tids) varmem;
+      Expr.VarSet.iter (smt_define_var buf vartid num_tids) varint;
       Expr.VarSet.iter (smt_define_var buf vartid num_tids) varbool;
       Expr.VarSet.iter (smt_define_var buf vartid num_tids) varunk
 
@@ -1971,6 +1979,7 @@ struct
     let formula_str = formula_to_str phi in
     let buf         = B.create 1024
     in
+      B.add_string buf (";; Translation for " ^ (Expr.formula_to_str phi) ^ "\n");
       smt_preamble buf num_addr num_tid num_elem req_sorts;
       smt_defs     buf num_addr num_tid num_elem req_sorts req_ops;
       variables_from_formula_to_smt buf num_tid phi ;
