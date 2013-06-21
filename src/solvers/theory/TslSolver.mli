@@ -22,7 +22,7 @@ val is_valid     : int ->
   
 val is_sat_plus_info : int ->
                        Smp.cutoff_strategy_t ->
-                       TSLExpression.formula -> (bool * int * int)
+                       TSLExpression.formula -> (bool * int * (DP.t, int) Hashtbl.t)
 (** [is_sat_plus_info lines stac co phi] checks the satisfiability of formula
     [phi], assuming the program contains [lines] lines, using tactics [stac]
     and cutoff strategy [co]. It returns three values. The first value
@@ -33,7 +33,7 @@ val is_sat_plus_info : int ->
 
 val is_valid_plus_info : int ->
                          Smp.cutoff_strategy_t ->
-                         TSLExpression.formula -> (bool * int * int)
+                         TSLExpression.formula -> (bool * int * (DP.t, int) Hashtbl.t)
 (** [is_valid lines stac co phi] checks the validity of formula [phi], assuming
     the program contains [lines] lines, using tactics [stac] and cutoff
     strategy [co]. It returns three values. The first value indicates whether the

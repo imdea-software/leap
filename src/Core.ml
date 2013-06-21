@@ -247,6 +247,9 @@ module Make (Opt:module type of GenOptions) : S =
     let add_calls (n:int) : unit =
       add_calls_to Opt.dp n
 
+    let merge_calls (tbl:(DP.t, int) Hashtbl.t) : unit =
+      Hashtbl.iter add_calls_to tbl
+
 
     (**********************)
     (*  CONCURRENT SPINV  *)
@@ -274,8 +277,8 @@ module Make (Opt:module type of GenOptions) : S =
       ) [] rho
 
 
-    (* SPINV Initialization *)
-    let spinv_premise_init (inv:E.formula) : Tactics.vc_info =
+    (* General Initialization premise *)
+    let premise_init (inv:E.formula) : Tactics.vc_info =
 
       (* Initial condition *)
       let theta = System.gen_theta (System.SOpenArray (E.voc inv)) Opt.sys Opt.abs in
@@ -310,7 +313,7 @@ module Make (Opt:module type of GenOptions) : S =
                          (inv:E.formula)
                          (cases:IGraph.case_tbl_t) : Tactics.vc_info list =
       let initiation = if requires_theta then
-                         [spinv_premise_init inv]
+                         [premise_init inv]
                        else
                          [] in
 
@@ -325,13 +328,12 @@ module Make (Opt:module type of GenOptions) : S =
 
 
     (*
-    let tag_spinv (sys : System.t)
-                  (supInv_list : Tag.f_tag list)
+    let tag_spinv (supInv_list : Tag.f_tag list)
                   (inv : Tag.f_tag) : Tactics.vc_info list =
       let supInv_list_as_formula =
         List.map (Tag.tag_table_get_formula tags) supInv_list in
       let inv_as_formula = Tag.tag_table_get_formula tags inv in
-      spinv sys supInv_list_as_formula inv_as_formula
+      spinv supInv_list_as_formula inv_as_formula
     *)
 
 
@@ -349,6 +351,7 @@ module Make (Opt:module type of GenOptions) : S =
       let voc = E.voc (E.conj_list (inv::supp)) in
       let rho = System.gen_rho Opt.sys (System.SOpenArray voc) line Opt.abs
                     Opt.hide_pres trans_tid in
+      let supp = List.map (E.param (E.Local trans_tid)) supp in
       let inv = match E.voc inv with
                 | [] -> E.param (E.Local trans_tid) inv
                 | _  -> inv in
@@ -383,7 +386,7 @@ module Make (Opt:module type of GenOptions) : S =
       let supp = inv :: supp in
       let need_theta = List.mem 0 lines_to_consider in
       let initiation = if need_theta then
-                         [spinv_premise_init inv]
+                         [premise_init inv]
                        else
                          [] in
 
@@ -436,13 +439,15 @@ module Make (Opt:module type of GenOptions) : S =
 
       let prog_lines = (System.get_trans_num Opt.sys) in
 
-
       List.map (fun case ->
+        let cutoff = case.proof_info.cutoff in
+        Printf.printf "CUTOFF: %s\n" (Smp.strategy_to_str cutoff);
         case_timer#start;
         let res_list =
               List.map (fun phi ->
                 (* TODO: Choose the right to_fol function *)
                 let fol_phi = phi in
+                Printf.printf "FOL_PHI: %s\n" (E.formula_to_str fol_phi);
                 phi_timer#start;
                 let status =
                   if Pos.is_valid prog_lines (fst (PE.keep_locations fol_phi)) then
@@ -455,9 +460,16 @@ module Make (Opt:module type of GenOptions) : S =
                       | DP.Num    -> let num_phi = NumInterface.formula_to_int_formula fol_phi in
                                       Num.is_valid_with_lines_plus_info prog_lines num_phi
                       | DP.Tll    -> let tll_phi = TllInterface.formula_to_tll_formula fol_phi in
-                                      Tll.is_valid_plus_info prog_lines case.proof_info.cutoff tll_phi
-                      | DP.Tsl    -> (false, 0)
-                      | DP.Tslk k -> (false, 0) in
+                                     Tll.is_valid_plus_info prog_lines cutoff tll_phi
+                      | DP.Tsl    -> let tsl_phi = TSLInterface.formula_to_tsl_formula fol_phi in
+                                     let (res,tsl_calls,tslk_calls) =
+                                        TslSolver.is_valid_plus_info prog_lines cutoff tsl_phi in
+                                     merge_calls tslk_calls;
+                                     (res, tsl_calls)
+                      | DP.Tslk k -> let module TSLKIntf = TSLKInterface.Make(Tslk.TslkExp) in
+                                     let tslk_phi = TSLKIntf.formula_to_tslk_formula fol_phi in
+                                     Tslk.is_valid_plus_info prog_lines cutoff tslk_phi
+                    in
                     add_calls calls;
                     set_status valid
                    end in
@@ -527,43 +539,25 @@ module Make (Opt:module type of GenOptions) : S =
         let inv_id = Tag.tag_id invTag in
         let supp = List.map read_tag suppTags in
         let inv = read_tag invTag in
-        match mode with
-        | IGraph.Concurrent ->
-            print_endline ("Concurrent problem for invariant " ^inv_id^
-                           " using as support [" ^supp_ids^ "]" ^
-                           " with " ^string_of_int (IGraph.num_of_cases cases)^ " special cases.");
-              
-            let vc_info_list = spinv_with_cases supp inv cases in
-            Printf.printf "VC_INFO_LENGTH: %i\n" (List.length vc_info_list);
-            List.iter (fun vci -> print_endline (Tactics.vc_info_to_str vci)) vc_info_list;
-            let new_obligations = generate_obligations vc_info_list plan cases
-            in
-              os @ new_obligations
-        | IGraph.Sequential ->
-            print_endline ("Sequential problem for invariant " ^inv_id^
-                           " using as support [" ^supp_ids^ "]" ^
-                           " with " ^string_of_int (IGraph.num_of_cases cases)^ " special cases.");
-            let vc_info_list = seq_spinv_with_cases supp inv cases in
-            Printf.printf "VC_INFO_LENGTH: %i\n" (List.length vc_info_list);
-            List.iter (fun vci -> print_endline (Tactics.vc_info_to_str vci)) vc_info_list;
-            let infoTbl = Hashtbl.create (List.length vc_info_list) in
-            List.iter (fun vc_info ->
-              let line = Tactics.get_line_from_info vc_info in
-              let vc_num = try
-                             let prev = Hashtbl.find infoTbl line in
-                             Hashtbl.replace infoTbl line (prev+1);
-                             string_of_int (prev+1)
-                           with _ -> (Hashtbl.add infoTbl line 1; "1") in
-              let out_file = Opt.output_file ^
-                                ("vc_" ^ (string_of_int line) ^ "_" ^ vc_num ^ ".vcfile") in
-              let out_ch = Pervasives.open_out out_file in
-              Pervasives.output_string out_ch (Tactics.vc_info_to_str vc_info);
-              Pervasives.close_out out_ch
-            ) vc_info_list;
+        let vc_info_list = match mode with
+                           | IGraph.Concurrent ->
+                             print_endline ("Concurrent problem for invariant " ^inv_id^
+                                            " using as support [" ^supp_ids^ "]" ^
+                                            " with " ^string_of_int (IGraph.num_of_cases cases)^
+                                            " special cases.");
+                             spinv_with_cases supp inv cases
+                           | IGraph.Sequential ->
+                             print_endline ("Sequential problem for invariant " ^inv_id^
+                                            " using as support [" ^supp_ids^ "]" ^
+                                            " with " ^string_of_int (IGraph.num_of_cases cases)^
+                                            " special cases.");
+                             seq_spinv_with_cases supp inv cases in
+        Printf.printf "VC_INFO_LENGTH: %i\n" (List.length vc_info_list);
+        Tactics.vc_info_list_to_folder Opt.output_file vc_info_list;
+        let new_obligations = generate_obligations vc_info_list plan cases
+        in
+          os @ new_obligations
 
-            let new_obligations = generate_obligations vc_info_list plan cases
-            in
-              os @ new_obligations
       ) [] graph_info
 
 

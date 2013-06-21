@@ -11,7 +11,6 @@ let use_smtlib = ref false
 
 
 let set_smt_usage (b:bool) : unit =
-  let _ = print_endline "set_smt_usage function called" in
   use_smtlib := b
 
 

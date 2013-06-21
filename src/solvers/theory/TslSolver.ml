@@ -680,7 +680,16 @@ let check_sat_by_cases (lines:int)
                        (cases:(SL.conjunctive_formula *                   (* PA formula  *)
                                SL.conjunctive_formula *                   (* NC formula  *)
                                (SL.integer list list) GenSet.t) list)     (* Arrangements *)
-      : (bool * int * int) =
+      : (bool * int * (DP.t, int) Hashtbl.t) =
+
+  (* TSLK calls counter *)
+  let tslk_calls = Hashtbl.create 1 in
+
+  let count_tslk_calls (k:int) (n:int) : unit =
+  try
+    Hashtbl.replace tslk_calls (DP.Tslk k) ((Hashtbl.find tslk_calls (DP.Tslk k)) + n)
+  with _ -> Hashtbl.add tslk_calls (DP.Tslk k) n in
+
 
   (* PA satisfiability check function *)
   let check_pa (cf:SL.conjunctive_formula) : bool =
@@ -732,6 +741,7 @@ let check_sat_by_cases (lines:int)
         let phi_tslk = Trans.to_tslk ls in
         verb "**** TSL Solver, TSL to TSLK translation done...\n";
         let res = TslkSol.is_sat lines co phi_tslk in
+        count_tslk_calls k 1;
         tslk_sort_map := TslkSol.get_sort_map ();
         tslk_model := TslkSol.get_model ();
         res in
@@ -768,19 +778,19 @@ let check_sat_by_cases (lines:int)
       false in
 
   (* Main call *)
-  let tslk_calls = ref 0 in
+  Hashtbl.clear tslk_calls;
   Printf.printf "CASES SIZE: %i\n" (List.length cases);
   let rec check_aux cs =
     verb "CHECK_AUX WITH CASES: %i\n" (List.length cases);
     match cs with
-    | [] -> (false, 1, !tslk_calls)
+    | [] -> (false, 1, tslk_calls)
     | (pa,nc,arrgs)::xs -> begin
                              let this_case = if GenSet.size arrgs = 0 then
                                                check pa nc []
                                              else
                                                GenSet.exists (check pa nc) arrgs in
                              if this_case then
-                               (true, 1, !tslk_calls)
+                               (true, 1, tslk_calls)
                              else
                                check_aux xs
                            end
@@ -803,7 +813,7 @@ let rec combine_splits_arrgs (sp:(SL.conjunctive_formula * SL.conjunctive_formul
 
 let is_sat_plus_info (lines : int)
            (co : Smp.cutoff_strategy_t)
-           (phi : SL.formula) : (bool * int * int) =
+           (phi : SL.formula) : (bool * int * (DP.t, int) Hashtbl.t) =
   (* 0. Normalize the formula and rewrite it in DNF *)
   verb "**** Will normalize TSL formula...\n";
   let phi_norm = SL.normalize phi in
@@ -842,7 +852,7 @@ let is_sat (lines : int)
 
 let is_valid_plus_info (prog_lines:int)
                        (co:Smp.cutoff_strategy_t)
-                       (phi:SL.formula) : (bool * int * int) =
+                       (phi:SL.formula) : (bool * int * (DP.t, int) Hashtbl.t) =
   let (s,tsl_count,tslk_count) = is_sat_plus_info prog_lines co
                                    (SL.Not phi) in
     (not s, tsl_count, tslk_count)

@@ -138,6 +138,23 @@ let vc_info_to_str (vc:vc_info) : string =
     "Line: " ^ line_str ^ "\n\n"
 
 
+let vc_info_list_to_folder (output_file:string) (vcs:vc_info list) : unit =
+  let infoTbl = Hashtbl.create (List.length vcs) in
+  List.iter (fun vc_info ->
+    let line = vc_info.line in
+    let vc_num = try
+                   let prev = Hashtbl.find infoTbl line in
+                   Hashtbl.replace infoTbl line (prev+1);
+                   string_of_int (prev+1)
+                 with _ -> (Hashtbl.add infoTbl line 1; "1") in
+    let out_file = output_file ^
+                      ("vc_" ^ (string_of_int line) ^ "_" ^ vc_num ^ ".vcfile") in
+    let out_ch = Pervasives.open_out out_file in
+    Pervasives.output_string out_ch (vc_info_to_str vc_info);
+    Pervasives.close_out out_ch
+  ) vcs
+
+
 let create_vc_info (supp       : support_t)
                    (tid_constr : E.formula)
                    (rho        : E.formula)
@@ -409,9 +426,9 @@ let generic_simplify_with_fact (fact:'a)
   let rec simplify_lit f = 
     match f with
       E.Literal l -> 
-	if      (implies fact l)     then E.True 
-	else if (implies_neg fact l) then E.False
-	else f
+  if      (implies fact l)     then E.True 
+  else if (implies_neg fact l) then E.False
+  else f
     | E.True        -> E.True
     | E.False       -> E.False
     | E.And(f1, f2) -> E.And(simplify_lit f1, simplify_lit f2)
@@ -436,9 +453,9 @@ let generic_simplify_with_many_facts (facts:'a list)
   let rec simplify_lit f = 
     match f with
       E.Literal l -> begin
-	if      List.exists (fun p -> implies p l)    facts then  E.True 
-	else if List.exists (fun p -> implies_not p l) facts then E.False
-	else E.Literal l
+  if      List.exists (fun p -> implies p l)    facts then  E.True 
+  else if List.exists (fun p -> implies_not p l) facts then E.False
+  else E.Literal l
       end
     | E.True           ->  E.True
     | E.False          ->  E.False
@@ -482,7 +499,6 @@ let gen_support (f:E.tid list -> E.tid_subst_t -> bool) (info:vc_info) : support
                         else
                           info.transition_tid :: goal_voc in
   List.fold_left (fun xs supp_phi ->
-    printf "PROCESSING SUPP_PHI: %s\n" (E.formula_to_str supp_phi);
     let supp_voc = E.voc supp_phi in
     let subst = List.filter (f supp_voc) (E.new_comb_subst supp_voc voc_to_consider) in
     xs @ List.map (fun s ->
@@ -500,7 +516,6 @@ let reduce_support (info:vc_info) : support_t =
 
 
 let reduce2_support (info:vc_info) : support_t =
-  print_endline "USING REDUCE2";
   E.cleanup_dup (gen_support E.subst_full_assign info)
 
 
@@ -515,9 +530,9 @@ let tactic_propositional_propagate (imp:implication) : implication =
     let new_facts = get_unrepeated_literals f.ante in
     if List.length new_facts = 0 then (f,used) else
       begin
-	let new_conseq = simplify_with_many_facts new_facts implies implies_neg f.conseq in
-	let new_ante   = simplify_with_many_facts new_facts implies implies_neg f.ante in
-	simplify_propagate { ante = new_ante; conseq = new_conseq } (used @ new_facts)
+  let new_conseq = simplify_with_many_facts new_facts implies implies_neg f.conseq in
+  let new_ante   = simplify_with_many_facts new_facts implies implies_neg f.ante in
+  simplify_propagate { ante = new_ante; conseq = new_conseq } (used @ new_facts)
       end
   in
   let (new_imp,facts) = simplify_propagate imp [] in
@@ -608,9 +623,9 @@ let tactic_simplify_pc (imp:implication) : implication =
   let rec get_integer_literals (f:E.formula) : ((E.variable * int) list) =
     match f with
       E.Literal l -> begin
-	match (extract_integer_eq l) with 
-	  Some (v,k) -> [(v,k)] 
-	| None       -> []
+  match (extract_integer_eq l) with 
+    Some (v,k) -> [(v,k)] 
+  | None       -> []
       end
     | E.And(f1,f2)       -> get_integer_literals f1 @ get_integer_literals f2
     | E.Not(E.Or(f1,f2)) -> get_integer_literals f1 @ get_integer_literals f2
@@ -760,9 +775,9 @@ let support_split_tactic_from_string (s:string) : support_split_tactic_t =
 
 let support_tactic_from_string (s:string) : support_tactic_t =
   match s with
-  | "full"    -> (print_endline "FULL"; full_support)
-  | "reduce"  -> (print_endline "REDUCE"; reduce_support)
-  | "reduce2" -> (print_endline "REDUCE2"; reduce2_support)
+  | "full"    -> full_support
+  | "reduce"  -> reduce_support
+  | "reduce2" -> reduce2_support
   | _ -> raise(Invalid_tactic (s ^ " is not a support_tactic"))
 
 

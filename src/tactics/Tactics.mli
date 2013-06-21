@@ -53,6 +53,7 @@ val formula_tactic_from_string : string ->  formula_tactic_t
 val formula_split_tactic_from_string : string -> formula_split_tactic_t
 
 val vc_info_to_str : vc_info -> string
+val vc_info_list_to_folder : string -> vc_info list -> unit
 
 val create_vc_info  : support_t ->
                       Expression.formula ->

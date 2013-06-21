@@ -5390,25 +5390,6 @@ and to_fol_formula (fol_mode:fol_mode_t) (phi:formula) : formula =
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 let rec identical_formula  (phi1:formula) (phi2:formula) : bool =
   match (phi1,phi2) with
     Literal l1, Literal l2 -> identical_literal l1 l2
