@@ -296,34 +296,33 @@ let simplify (phi:E.formula) : E.formula =
     generic_simplifier phi id
 
 
-let simplify_with_pc (phi:E.formula) (i:E.tid) (lines:int list) (primed:bool) : E.formula =
-  let is_same_tid (j:E.tid) : bool =
-    match (i,j) with
-      E.VarTh(v),E.VarTh(w) -> E.same_var v w
-    | _                     -> false in
-  let matches_tid (a:E.atom) : bool =
-    match a with
-      E.PC(line,E.Local j,pr)       -> is_same_tid j
-    | E.PCRange(l1,l2,E.Local j,pr) -> is_same_tid j
-    | _                             -> false in
-  let matches_line (a:E.atom) : bool =
-    match a with
-      E.PC(l,E.Local j,pr)       -> List.mem l lines
-    | E.PCRange(l1,l2,E.Local j,pr) -> List.exists (fun l -> l1<= l && l <= l2) lines
-    | _                              -> false in
-  let simplify_pc (lit:E.literal) (pol:polarity) : E.formula =
-    match lit with
-      E.Atom(a)    -> if (matches_tid a) then
-                        (if (matches_line a) then E.True else E.False)
-                      else
-                          E.Literal lit
-    | E.NegAtom(a) -> if (matches_tid a) then
-                        (if (matches_line a) then E.False else E.True)
-                        else
-                          E.Literal lit
-  in
-  generic_simplifier phi simplify_pc
-
+(* let simplify_with_pc (phi:E.formula) (i:E.tid) (lines:int list) (primed:bool) : E.formula = *)
+(*   let is_same_tid (j:E.tid) : bool = *)
+(*     match (i,j) with *)
+(*       E.VarTh(v),E.VarTh(w) -> E.same_var v w *)
+(*     | _                     -> false in *)
+(*   let matches_tid (a:E.atom) : bool = *)
+(*     match a with *)
+(*       E.PC(line,E.Local j,pr)       -> is_same_tid j *)
+(*     | E.PCRange(l1,l2,E.Local j,pr) -> is_same_tid j *)
+(*     | _                             -> false in *)
+(*   let matches_line (a:E.atom) : bool = *)
+(*     match a with *)
+(*       E.PC(l,E.Local j,pr)       -> List.mem l lines *)
+(*     | E.PCRange(l1,l2,E.Local j,pr) -> List.exists (fun l -> l1<= l && l <= l2) lines *)
+(*     | _                              -> false in *)
+(*   let simplify_pc (lit:E.literal) (pol:polarity) : E.formula = *)
+(*     match lit with *)
+(*       E.Atom(a)    -> if (matches_tid a) then *)
+(*                         (if (matches_line a) then E.True else E.False) *)
+(*                       else *)
+(*                           E.Literal lit *)
+(*     | E.NegAtom(a) -> if (matches_tid a) then *)
+(*                         (if (matches_line a) then E.False else E.True) *)
+(*                         else *)
+(*                           E.Literal lit *)
+(*   in *)
+(*   generic_simplifier phi simplify_pc *)
 
 
 (* simplify_with_vocabulary: simply removes the whole formula if the vocabulary
@@ -403,13 +402,16 @@ let rec get_literals f =
 
 (* simplify_with_fact: takes the given literal as a fact, and removes all
                          instances of identical literals in the formula for true *)
-let simplify_with_fact (lit:E.literal) (phi:E.formula) : E.formula =
+let generic_simplify_with_fact (fact:'a)
+    (implies:'a -> E.literal -> bool)
+    (implies_neg:'a -> E.literal -> bool)
+    (phi:E.formula): E.formula =
   let rec simplify_lit f = 
     match f with
       E.Literal l -> 
-  if      (E.identical_literal l lit) then E.True 
-  else if (E.opposite_literal  l lit) then E.False
-  else f
+	if      (implies fact l)     then E.True 
+	else if (implies_neg fact l) then E.False
+	else f
     | E.True        -> E.True
     | E.False       -> E.False
     | E.And(f1, f2) -> E.And(simplify_lit f1, simplify_lit f2)
@@ -419,17 +421,25 @@ let simplify_with_fact (lit:E.literal) (phi:E.formula) : E.formula =
     | E.Iff    (f1,f2) -> E.Iff (simplify_lit f1, simplify_lit f2)
   in
   simplify (simplify_lit phi)
+  
 
-let simplify_with_many_facts (ll:E.literal list) (phi:E.formula) : E.formula =
-  let _ = List.map (fun l -> print_endline ("Simplifying with " ^ (E.literal_to_str l))) ll in 
+let simplify_with_fact (lit:E.literal) 
+                       (implies:E.literal -> E.literal -> bool)
+                       (implies_neg:E.literal -> E.literal -> bool)
+                       (phi:E.formula) : E.formula =
+  generic_simplify_with_fact lit implies implies_neg phi
+
+let generic_simplify_with_many_facts (facts:'a list)
+    (implies:'a -> E.literal -> bool)
+    (implies_not:'a -> E.literal -> bool)
+    (phi:E.formula) : E.formula =
   let rec simplify_lit f = 
     match f with
-      E.Literal l -> 
-  begin
-    if List.exists (fun lit -> E.identical_literal l lit) ll then E.True 
-    else if List.exists (fun lit -> E.opposite_literal l lit) ll then E.False
-    else E.Literal l
-  end
+      E.Literal l -> begin
+	if      List.exists (fun p -> implies p l)    facts then  E.True 
+	else if List.exists (fun p -> implies_not p l) facts then E.False
+	else E.Literal l
+      end
     | E.True           ->  E.True
     | E.False          ->  E.False
     | E.And(f1,f2)     -> E.And(simplify_lit f1, simplify_lit f2)
@@ -440,15 +450,18 @@ let simplify_with_many_facts (ll:E.literal list) (phi:E.formula) : E.formula =
   in
   let res = simplify (simplify_lit phi) in
    res
-
+  
+let simplify_with_many_facts (ll:E.literal list) 
+    (implies:E.literal -> E.literal -> bool)
+    (implies_neg:E.literal -> E.literal -> bool)
+    (phi:E.formula) : E.formula =
+  generic_simplify_with_many_facts ll implies implies_neg phi
 
 let get_unrepeated_literals (phi:E.formula) : E.literal list = 
   let candidates = get_literals phi in
   List.fold_left 
     (fun res l -> if (List.exists (fun alit -> E.identical_literal alit l) res) then
   res else res@[l]) [] candidates
-
-
 
 (*********************)
 (*  SUPPORT TACTICS  *)
@@ -494,97 +507,132 @@ let reduce2_support (info:vc_info) : support_t =
 (*********************)
 (*  FORMULA TACTICS  *)
 (*********************)
-
-let tactic_simplify_pc (imp:implication) : implication =
-  imp
-
-    
-(*
-
-  let trans_tid = find_trans_tid imp.ante in
-  let simpl_ante = List.map (fun
-
-
-
-
-
-let tac_simple (task:task_t) (tac:post_tac_t) : task_t list =
-  let not_pc (phi:E.formula) : bool =
-    match phi with
-    | E.Literal (E.Atom (E.PC _))       -> false
-    | E.Literal (E.Atom (E.PCUpdate _)) -> false
-    | _ -> true in
-
-  let nexts = List.fold_left (fun ns cs ->
-                List.fold_left (fun ns phi ->
-                  match phi with
-                  | E.Literal(E.Atom(E.PCUpdate(j,th))) -> j::ns
-                  | _ -> ns
-                ) ns cs
-              ) [] (List.map E.to_disj_list (E.to_conj_list task.rho)) in
-
-  let psi_simpl = List.map (fun psi ->
-                    let vars = task.inv.E.vars @ (E.all_vars task.rho) in
-                    let simpl_pc = simplify_with_pc psi task.trans_tid [task.line] false
-                    in
-                      simplify_with_vocabulary simpl_pc vars
-                  ) task.supp_form in
-  let inv_simpl = if nexts <> [] then
-                    let inv_simpl = simplify_with_pc task.inv.E.formula 
-                    task.trans_tid [task.line] false in
-                    let inv_primed_simpl = if List.length nexts > 1 then
-                                             task.inv.E.primed
-                                           else
-                                             (task.try_posdp <- false; simplify_with_pc task.inv.E.primed task.trans_tid nexts true) in
-                    (E.formula_to_str inv_primed_simpl) in
-                    let new_inv_info = E.copy_formula_info task.inv in
-                    new_inv_info.E.formula <- inv_simpl;
-                    new_inv_info.E.primed <- inv_primed_simpl;
-                    new_inv_info
-                  else
-                    task.inv in
-  (* TODO: Extend simplification to diff conjunction *)
-  let dupp = dupl_task_with_supp task psi_simpl in
-  dupp.inv <- inv_simpl;
-  dupp.rho <- E.conj_list (List.filter not_pc (E.to_conj_list task.rho));
-  [dupp]
-
-*)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 let tactic_propositional_propagate (imp:implication) : implication =
+  let implies     = E.identical_literal in
+  let implies_neg = E.opposite_literal in
   let rec simplify_propagate (f:implication) (used:E.literal list) : 
       (implication * E.literal list) =
     let new_facts = get_unrepeated_literals f.ante in
     if List.length new_facts = 0 then (f,used) else
       begin
-  let new_conseq = simplify_with_many_facts new_facts f.conseq in
-  let new_ante   = simplify_with_many_facts new_facts f.ante in
-  simplify_propagate { ante = new_ante; conseq = new_conseq } (used @ new_facts)
+	let new_conseq = simplify_with_many_facts new_facts implies implies_neg f.conseq in
+	let new_ante   = simplify_with_many_facts new_facts implies implies_neg f.ante in
+	simplify_propagate { ante = new_ante; conseq = new_conseq } (used @ new_facts)
       end
   in
   let (new_imp,facts) = simplify_propagate imp [] in
   let new_ante = E.cleanup (E.And((E.conj_literals facts), new_imp.ante)) in
   let new_conseq = new_imp.conseq in
   { ante = new_ante ; conseq = new_conseq }
+
+
+let extract_integer_eq (l:E.literal) : ((E.variable * int) option) =
+  match l with
+    E.Atom(E.Eq(E.VarT(v),          E.IntT(E.IntVal k))) -> Some (v,k)
+  | E.Atom(E.Eq(E.IntT(E.VarInt(v)),E.IntT(E.IntVal k))) -> Some (v,k)
+  | E.Atom(E.Eq(E.IntT(E.IntVal(k)),E.VarT(v)))           -> Some (v,k)
+  | E.Atom(E.Eq(E.IntT(E.IntVal(k)),E.IntT(E.VarInt(v)))) -> Some (v,k)
+  | _  -> None
+
+let integer_implies ((v,k):E.variable * int) (l:E.literal) : bool =
+  let same (v1,k1) (v2,k2) = (E.same_var v1 v2) && (k1=k1) in
+  match l with
+    (* v=k -> v2=k2 *)
+    E.Atom(E.Eq(E.VarT(v2),E.IntT(E.IntVal k2)))            -> 
+      (E.var_sort v2)==E.Int && same (v,k) (v2,k2)
+  |  (* v=k -> v2=k2 *)
+      E.Atom(E.Eq(E.IntT(E.VarInt(v2)),E.IntT(E.IntVal k2)))  -> same (v,k) (v2,k2)
+  | (* v=k -> k2=v2 *)
+      E.Atom(E.Eq(E.IntT(E.IntVal(k2)),E.VarT(v2)))           -> 
+      (E.var_sort v2)==E.Int && same (v,k) (v2,k2)
+  | (* v=k -> k2=v2 *)
+      E.Atom(E.Eq(E.IntT(E.IntVal(k2)),E.IntT(E.VarInt(v2)))) -> same (v,k) (v2,k2)
+  | (* v=k -> k2<v2 *)
+      E.Atom(E.Less(E.IntVal(k2),E.VarInt(v2))) -> (E.same_var v v2) && (k > k2)
+  | (* v=k -> v2>k2 *)
+      E.Atom(E.Greater(E.VarInt(v2),E.IntVal(k2))) -> (E.same_var v v2) && (k > k2)
+  | (* v=k -> v2<k2 *)
+      E.Atom(E.Less(E.VarInt(v2),E.IntVal(k2))) -> (E.same_var v v2) && (k < k2)
+  | (* v=k -> k2>v2 *)
+      E.Atom(E.Greater(E.IntVal(k2),E.VarInt(v2))) -> (E.same_var v v2) && (k < k2)
+  | (* v=k -> k2<=v2 *)
+      E.Atom(E.LessEq(E.IntVal(k2),E.VarInt(v2))) -> (E.same_var v v2) && (k >= k2)
+  | (* v=k -> v2>=k2 *)
+      E.Atom(E.GreaterEq(E.VarInt(v2),E.IntVal(k2))) -> (E.same_var v v2) && (k >= k2)
+  | (* v=k -> v2<=k2 *)
+      E.Atom(E.LessEq(E.VarInt(v2),E.IntVal(k2))) -> (E.same_var v v2) && (k <= k2)
+  | (* v=k -> k2>=v2 *)
+      E.Atom(E.GreaterEq(E.IntVal(k2),E.VarInt(v2))) -> (E.same_var v v2) && (k <= k2)
+  | _ -> false
+
+let integer_implies_neg ((v,k):E.variable * int) (l:E.literal) : bool =
+  let same (v1,k1) (v2,k2) = (E.same_var v1 v2) && (k1=k1) in
+  match l with
+    (* v=k -> v2=k2 *)
+    E.Atom(E.Eq(E.VarT(v2),E.IntT(E.IntVal k2)))            -> 
+      (E.var_sort v2)==E.Int && E.same_var v v2 && k!=k2
+  |  (* v=k -> v2=k2 *)
+      E.Atom(E.Eq(E.IntT(E.VarInt(v2)),E.IntT(E.IntVal k2)))  -> 
+    E.same_var v2 v2 && k!=k2
+  | (* v=k -> k2=v2 *)
+      E.Atom(E.Eq(E.IntT(E.IntVal(k2)),E.VarT(v2)))           -> 
+      (E.var_sort v2)==E.Int && E.same_var v v2 && k!=k2
+  | (* v=k -> k2=v2 *)
+      E.Atom(E.Eq(E.IntT(E.IntVal(k2)),E.IntT(E.VarInt(v2)))) -> 
+    E.same_var v v2 && k!=k2
+  | (* v=k -> k2<v2 *)
+      E.Atom(E.Less(E.IntVal(k2),E.VarInt(v2))) -> (E.same_var v v2) && not (k > k2)
+  | (* v=k -> v2>k2 *)
+      E.Atom(E.Greater(E.VarInt(v2),E.IntVal(k2))) -> (E.same_var v v2) && not (k > k2)
+  | (* v=k -> v2<k2 *)
+      E.Atom(E.Less(E.VarInt(v2),E.IntVal(k2))) -> (E.same_var v v2) && not (k < k2)
+  | (* v=k -> k2>v2 *)
+      E.Atom(E.Greater(E.IntVal(k2),E.VarInt(v2))) -> (E.same_var v v2) && not (k < k2)
+  | (* v=k -> k2<=v2 *)
+      E.Atom(E.LessEq(E.IntVal(k2),E.VarInt(v2))) -> (E.same_var v v2) && not (k >= k2)
+  | (* v=k -> v2>=k2 *)
+      E.Atom(E.GreaterEq(E.VarInt(v2),E.IntVal(k2))) -> (E.same_var v v2) && not (k >= k2)
+  | (* v=k -> v2<=k2 *)
+      E.Atom(E.LessEq(E.VarInt(v2),E.IntVal(k2))) -> (E.same_var v v2) && not (k <= k2)
+  | (* v=k -> k2>=v2 *)
+      E.Atom(E.GreaterEq(E.IntVal(k2),E.VarInt(v2))) -> (E.same_var v v2) && not (k <= k2)
+  | _ -> false
+
+(* tactic_simplify_pc: *)
+(*    discovers all facts of the form v=k and propagates them *)
+(* TODO : Apply recursively until no more facts are discovered. *)
+(* TODO:  perhaps optionally append back facts to the antecedent. *)
+let tactic_simplify_pc (imp:implication) : implication =
+  (* 1. Search for facts of the form "pc = k" or "k = pc" *)
+  let _ = print_endline "tactic_simplify_pc invoked" in
+  let rec get_integer_literals (f:E.formula) : ((E.variable * int) list) =
+    match f with
+      E.Literal l -> begin
+	match (extract_integer_eq l) with 
+	  Some (v,k) -> [(v,k)] 
+	| None       -> []
+      end
+    | E.And(f1,f2)       -> get_integer_literals f1 @ get_integer_literals f2
+    | E.Not(E.Or(f1,f2)) -> get_integer_literals f1 @ get_integer_literals f2
+    | _                  -> []
+  in
+  (* DEBUG *)
+  let print_all facts = 
+    print_endline "Found pc facts:" ;
+    let str = 
+      List.fold_left (fun s (v,k) -> s ^ (sprintf "(%s=%d)" (E.variable_to_str v) k )) "" facts in
+    print_endline str
+  in
+  (* 2. Simplify the antecedent and the consequent with the facts *)
+  let facts     = get_integer_literals imp.ante in
+  let _ = print_all facts in
+  let new_ante  = simplify (generic_simplify_with_many_facts facts integer_implies integer_implies_neg imp.ante) in
+  let new_conseq = simplify (generic_simplify_with_many_facts facts integer_implies integer_implies_neg imp.conseq) in
+  (* 3. Propagate propositional, if new facts are stated,
+        by calling propositional_propagate *)
+  tactic_propositional_propagate { ante = new_ante; conseq = new_conseq }
+
+
 
 
 (* eliminate from the antecedent all literals without variables in common
@@ -613,8 +661,10 @@ let neg_literal (l:E.literal) : E.literal =
 
 
 let apply_literal_to_implication (l:E.literal) (ante:E.formula) (conseq:E.formula) : implication =
-  { ante   = (E.And((simplify_with_fact l ante), E.Literal l));
-    conseq = (simplify_with_fact l conseq) }
+  let implies     = E.identical_literal in
+  let implies_neg = E.opposite_literal in
+  { ante   = (E.And((simplify_with_fact l implies implies_neg ante), E.Literal l));
+    conseq = (simplify_with_fact l implies implies_neg conseq) }
 
 let tactic_conseq_propagate_second_disjunct (imp:implication) : implication =
   match imp.conseq with
