@@ -3531,10 +3531,6 @@ let rec subst_shared_or_local (subst: tid_subst_t) (th:shared_or_local) : shared
   match th with
     Shared -> Shared
   | Local t -> Local (subst_tid_th subst t)
-and subst_full_assign (tid_list:tid list) (subst:tid_subst_t) : bool =
-  let dom = subst_domain subst
-  in
-    List.for_all (fun t -> ThreadSet.mem t dom) tid_list
 and subst_tid_term (subs:tid_subst_t) (expr:term) : term =
   match expr with
     VarT v              -> VarT (var_set_param (subst_shared_or_local subs v.parameter) v)
@@ -3815,6 +3811,23 @@ and subst_tid (subs:tid_subst_t) (phi:formula) : formula =
 let subst_to_str (sub:tid_subst_t) : string =
   "{" ^ (String.concat ", " $
          List.map (fun (i,j) -> (tid_to_str j)^"<-"^(tid_to_str i)) sub) ^ "}"
+
+
+let subst_full_domain_assign (tid_list:tid list) (subst:tid_subst_t) : bool =
+  let dom = subst_domain subst
+  in
+    List.for_all (fun t -> ThreadSet.mem t dom) tid_list
+
+
+let subst_full_codomain_assign (tid_list:tid list) (subst:tid_subst_t) : bool =
+  let codom = subst_codomain subst
+  in
+    List.for_all (fun t -> ThreadSet.mem t codom) tid_list
+
+
+let is_id_subst (subst:tid_subst_t) : bool =
+  List.for_all (fun (i,j) -> i = j) subst
+
 
 
 (* VARIABLE SUBSTITUTION FUNCTIONS *)

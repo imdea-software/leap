@@ -541,7 +541,10 @@ val subst_domain : tid_subst_t -> ThreadSet.t
 val subst_codomain : tid_subst_t -> ThreadSet.t
 val subst_domain_in : tid list -> tid_subst_t -> bool
 val subst_codomain_in : tid list -> tid_subst_t -> bool
-val subst_full_assign : tid list -> tid_subst_t -> bool
+val subst_full_domain_assign : tid list -> tid_subst_t -> bool
+val subst_full_codomain_assign : tid list -> tid_subst_t -> bool
+val is_id_subst : tid_subst_t -> bool
+
 
 (* VARIABLE SUBSTITUTION FUNCTIONS *)
 val subst_vars : (variable * variable) list -> formula -> formula

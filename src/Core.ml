@@ -562,8 +562,8 @@ module Make (Opt:module type of GenOptions) : S =
 
 
     let solve_from_graph (graph:IGraph.t) : solved_proof_obligation_t list =
-        gen_from_graph graph; []
-(*      solve_proof_obligations (gen_from_graph graph) *)
+(*        gen_from_graph graph; [] *)
+      solve_proof_obligations (gen_from_graph graph)
 
 
   end
