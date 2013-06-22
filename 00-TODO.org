@@ -1,3 +1,61 @@
+* Better CUT-OFF
+** Less Extra levels for array updates [2013-06-22 Sat] 
+  In the cut-off theorm for TSL, an extra level must be added when
+  array updates are present: 
+
+  A = B{l<-a}
+
+  Improvement : ONLY one extra level is needed between 
+    consecutive array updates. The main idea is that when pumping-up levels,
+    one must be able to replicate levels that are *not* the modified level.
+
+    One can choose to replicate the next lower level or can choose to
+    replicate the next upper level, but between consecutive array
+    update levels none of these choices are good.
+
+    Particular case: if there is only one array update in the formula,
+    no extra level needs to be added.
+
+** Implicit levels vs Relevant Levels [2013-06-22 Sat]
+   
+   Only three normalized literals depend on levels:
+    r = addr2set(m,a,l)
+    p = getp(m,a1,a2,l)
+    A = B {l<-a}
+    c = mkcell(e,k,A,l) <- l is implicit here
+    skiplist(m,s,a1,a2)
+    
+    In all cases except skiplist, the level variable is explicit.
+
+    All other levels in the proof (for example 0, maxLevel, and the
+    intermediate level added for A=B{l<-a} 
+    
+    IMPROVEMENT: 
+    Do ONLY consider relevant levels in model search.
+
+    In particular, if 0 is not relevant, then take as 0 the first
+    higher relevant level, and remove 0 from the search.  If maxLevel
+    is not relevant, then take as 0 the first lower relevant level,
+    and remove maxLevel from the search.
+
+    JUSTIFICATION:
+    Start from a model of the pruned level, and build a model of the
+    unpruned level, by copying from relevant levels into implicit
+    levels.
+
+   
+
+** Irrelevant fields [2013-06-22 Sat]
+   If there is no query for tids in the formula (as it is in sequential TSL),
+   then if there is a model, there is a model in which ALL tids are the same.
+   Hence, only one tid needs to be added for the STM search.
+
+   JUSTIFICATION:
+   This optimization can be stated as a general theorem in which no
+   predicates that depend on tids exist. One starts with a model with
+   many tids, replaces all tids for the same tid, and checks that all
+   literals in the formula are still satisfied.
+
 * Tactic ideas:
 ** axiom tactics: [2013-06-13 Thu]
    Give TRUE axioms in a theory and apply them to propagate. 
@@ -71,7 +129,6 @@
   relevant for other reasons.
 - A region r is not relevant unless r occurs in the consequent, or
   an (already) relevant region r2
-
 
 ** remove-irrelevant-levels:
    Let L be the set of relevant levels occurring in the consequent.

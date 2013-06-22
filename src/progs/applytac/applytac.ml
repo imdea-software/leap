@@ -30,28 +30,31 @@ let _ =
         let (_,phi) = Parser.parse ch (Eparser.single_formula Elexer.norm) in
         print_endline ("FORMULA:\n" ^ (Expression.formula_to_str phi) ^ "\n");
         (* We construct the phi implication *)
-  let rec faux f = match f with
-      Expression.Implies (a,b) -> "IMPLIES(" ^  (faux a) ^ "," ^ (faux b) ^ ")"
-    | Expression.And(a,b)      -> "AND(" ^ (faux a) ^ "," ^ (faux b) ^ ")"
-    | Expression.Or(a,b)      ->  "OR(" ^ (faux a) ^ "," ^ (faux b) ^ ")"
-    | _ ->  "OTHER" in
-  let _ = print_endline (faux phi) in
-        let (ante, conse) = match phi with
-                            | Expression.Implies (a,b) -> (a,b)
-                            | _ -> (Expression.True, phi) in
-        let phi_implication = { Tactics.ante = ante; Tactics.conseq = conse; }
-        in
-          [phi_implication]
-    end in
+  let rec faux f = 
+      match f with
+	Expression.Implies (a,b) -> "IMPLIES(" ^  (faux a) ^ "," ^ (faux b) ^ ")"
+      | Expression.And(a,b)      -> "AND(" ^ (faux a) ^ "," ^ (faux b) ^ ")"
+      | Expression.Or(a,b)      ->  "OR(" ^ (faux a) ^ "," ^ (faux b) ^ ")"
+      | _ ->  "OTHER" 
+  in
+  let _ = 
+    if false then (* DEBUG *)
+      print_endline (faux phi) 
+  in
+  let (ante, conse) = match phi with
+    | Expression.Implies (a,b) -> (a,b)
+    | _ -> (Expression.True, phi) in
+  let phi_implication = { Tactics.ante = ante; Tactics.conseq = conse; }
+  in
+  [phi_implication]
+      end in
     ApplyTacArgs.close_input ();
-
-
     let split_implications = Tactics.apply_formula_split_tactics
-                                original_implications
-                                !ApplyTacArgs.formula_split_tac_list in
+      original_implications
+      !ApplyTacArgs.formula_split_tac_list in
     let final_implications = Tactics.apply_formula_tactics
-                                split_implications
-                                !ApplyTacArgs.formula_tac_list in
+      split_implications
+      !ApplyTacArgs.formula_tac_list in
 
     (* Convert implications to formulas *)
     let final_formulas = List.map (fun imp ->

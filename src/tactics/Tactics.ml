@@ -455,8 +455,14 @@ let generic_simplify_with_many_facts (facts:'a list)
   let rec simplify_lit f = 
     match f with
       E.Literal l -> begin
-  if      List.exists (fun p -> implies p l)    facts then  E.True 
-  else if List.exists (fun p -> implies_not p l) facts then E.False
+  if      List.exists (fun p -> implies p l)    facts then  
+    let str = "** simplifying " ^ (E.literal_to_str l) ^ " with true" in
+    let _   = print_endline str in
+    E.True 
+  else if List.exists (fun p -> implies_not p l) facts then 
+    let str = "** simplifying " ^ (E.literal_to_str l) ^ " with false" in
+    let _   = print_endline str in
+    E.False
   else E.Literal l
       end
     | E.True           ->  E.True
@@ -570,38 +576,48 @@ let extract_integer_eq (l:E.literal) : ((E.variable * int) option) =
   | _  -> None
 
 let integer_implies ((v,k):E.variable * int) (l:E.literal) : bool =
-  let same (v1,k1) (v2,k2) = (E.same_var v1 v2) && (k1=k1) in
+  let same (v1,k1) (v2,k2) = (E.same_var v1 v2) && (k1=k2) in
   match l with
     (* v=k -> v2=k2 *)
     E.Atom(E.Eq(E.VarT(v2),E.IntT(E.IntVal k2)))            -> 
       (E.var_sort v2)==E.Int && same (v,k) (v2,k2)
   |  (* v=k -> v2=k2 *)
-      E.Atom(E.Eq(E.IntT(E.VarInt(v2)),E.IntT(E.IntVal k2)))  -> same (v,k) (v2,k2)
+      E.Atom(E.Eq(E.IntT(E.VarInt(v2)),E.IntT(E.IntVal k2)))  -> 
+    same (v,k) (v2,k2)
   | (* v=k -> k2=v2 *)
       E.Atom(E.Eq(E.IntT(E.IntVal(k2)),E.VarT(v2)))           -> 
-      (E.var_sort v2)==E.Int && same (v,k) (v2,k2)
+    (E.var_sort v2)==E.Int && same (v,k) (v2,k2)
   | (* v=k -> k2=v2 *)
-      E.Atom(E.Eq(E.IntT(E.IntVal(k2)),E.IntT(E.VarInt(v2)))) -> same (v,k) (v2,k2)
+      E.Atom(E.Eq(E.IntT(E.IntVal(k2)),E.IntT(E.VarInt(v2)))) -> 
+    same (v,k) (v2,k2)
   | (* v=k -> k2<v2 *)
-      E.Atom(E.Less(E.IntVal(k2),E.VarInt(v2))) -> (E.same_var v v2) && (k > k2)
+      E.Atom(E.Less(E.IntVal(k2),E.VarInt(v2))) -> 
+    (E.same_var v v2) && (k > k2)
   | (* v=k -> v2>k2 *)
-      E.Atom(E.Greater(E.VarInt(v2),E.IntVal(k2))) -> (E.same_var v v2) && (k > k2)
+      E.Atom(E.Greater(E.VarInt(v2),E.IntVal(k2))) -> 
+    (E.same_var v v2) && (k > k2)
   | (* v=k -> v2<k2 *)
-      E.Atom(E.Less(E.VarInt(v2),E.IntVal(k2))) -> (E.same_var v v2) && (k < k2)
+      E.Atom(E.Less(E.VarInt(v2),E.IntVal(k2))) -> 
+    (E.same_var v v2) && (k < k2)
   | (* v=k -> k2>v2 *)
-      E.Atom(E.Greater(E.IntVal(k2),E.VarInt(v2))) -> (E.same_var v v2) && (k < k2)
+      E.Atom(E.Greater(E.IntVal(k2),E.VarInt(v2))) -> 
+    (E.same_var v v2) && (k < k2)
   | (* v=k -> k2<=v2 *)
-      E.Atom(E.LessEq(E.IntVal(k2),E.VarInt(v2))) -> (E.same_var v v2) && (k >= k2)
+      E.Atom(E.LessEq(E.IntVal(k2),E.VarInt(v2))) -> 
+    (E.same_var v v2) && (k >= k2)
   | (* v=k -> v2>=k2 *)
-      E.Atom(E.GreaterEq(E.VarInt(v2),E.IntVal(k2))) -> (E.same_var v v2) && (k >= k2)
+      E.Atom(E.GreaterEq(E.VarInt(v2),E.IntVal(k2))) -> 
+    (E.same_var v v2) && (k >= k2)
   | (* v=k -> v2<=k2 *)
-      E.Atom(E.LessEq(E.VarInt(v2),E.IntVal(k2))) -> (E.same_var v v2) && (k <= k2)
+      E.Atom(E.LessEq(E.VarInt(v2),E.IntVal(k2))) -> 
+    (E.same_var v v2) && (k <= k2)
   | (* v=k -> k2>=v2 *)
-      E.Atom(E.GreaterEq(E.IntVal(k2),E.VarInt(v2))) -> (E.same_var v v2) && (k <= k2)
+      E.Atom(E.GreaterEq(E.IntVal(k2),E.VarInt(v2))) -> 
+    (E.same_var v v2) && (k <= k2)
   | _ -> false
 
 let integer_implies_neg ((v,k):E.variable * int) (l:E.literal) : bool =
-  let same (v1,k1) (v2,k2) = (E.same_var v1 v2) && (k1=k1) in
+  let same (v1,k1) (v2,k2) = (E.same_var v1 v2) && (k1=k2) in
   match l with
     (* v=k -> v2=k2 *)
     E.Atom(E.Eq(E.VarT(v2),E.IntT(E.IntVal k2)))            -> 
@@ -680,6 +696,48 @@ let tactic_filter_vars_nonrec (imp:implication) : implication =
   in
   let new_conjs = List.filter (fun f -> share_vars (E.all_vars f)) conjs in
   { ante = E.conj_list new_conjs ; conseq = imp.conseq }
+
+
+(*************************************)
+(* TACTIC FILTER_THEORY : UNFINISHED *)
+(*************************************)
+(* tactic_filter_theory: eliminates from the antecedent all those formulas
+      that are not in some theory in the consequent *)
+(* type theory = Level | Int | Ord | Array | Cell | Mem | Reach | Set | SetTh | Bridge | Other  *)
+
+(* let get_term_theory (t:E.term) : theory = *)
+(*   match t with *)
+(*     SetT _ -> Set *)
+(*   | ElemT  -> Other *)
+(*   | ThidT  -> Other *)
+(*   | AddrT  -> Mem *)
+(*   |  *)
+
+(* let get_atom_theory (a:E.atom) : theory = *)
+(*   match a with *)
+(*     E.Append  _      -> Reach *)
+(*   | E.Reach   _      -> Reach *)
+(*   | E.ReachAt _      -> Reach *)
+(*   | E.OrdList _      -> Bridge *)
+(*   | E.SkipList _     -> Bridge *)
+(*   | E.In _           -> Set *)
+(*   | E.SubsetEq _     -> Set *)
+(*   | E.InTh _         -> SetTh *)
+(*   | E.SubsetEqTh _   -> SetTh *)
+(*   | E.InInt _        -> Other (\* SetInt? *\) *)
+(*   | E.SubseqEqInt _  -> Other *)
+(*   | E.InElem _       -> Elem *)
+(*   | E.SubsetEqElem _ -> Elem *)
+(*   | E.Less _         -> Int (\* or Level *\) *)
+(*   | E.Greater _      -> Int *)
+(*   | E.LessEq _       -> Int *)
+(*   | E.GreaterEq _    -> Int *)
+(*   | E.LessTid _      -> Other *)
+(*   | E.LessElem _     -> Other *)
+(*   | E.GreaterElem _  -> Other *)
+(*   | E.Eq             ->  *)
+let tactic_filter_theory (imp:implication) : implication =
+  imp
 
 
 let is_literal (f:E.formula) : bool =
@@ -813,6 +871,7 @@ let formula_tactic_from_string (s:string) : formula_tactic_t =
   | "simplify-pc"             -> tactic_simplify_pc
   | "propositional-propagate" -> tactic_propositional_propagate
   | "filter-strict"           -> tactic_filter_vars_nonrec
+  | "filter-theory"           -> tactic_filter_theory
   | "propagate-disj-conseq-fst" -> tactic_conseq_propagate_first_disjunct
   | "propagate-disj-conseq-snd" -> tactic_conseq_propagate_second_disjunct
   | _ -> raise(Invalid_tactic (s ^ " is not a formula_tactic"))
