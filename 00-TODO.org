@@ -43,8 +43,6 @@
     unpruned level, by copying from relevant levels into implicit
     levels.
 
-   
-
 ** Irrelevant fields [2013-06-22 Sat]
    If there is no query for tids in the formula (as it is in sequential TSL),
    then if there is a model, there is a model in which ALL tids are the same.
