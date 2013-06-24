@@ -32,7 +32,7 @@ let _ =
         (* We construct the phi implication *)
   let rec faux f = 
       match f with
-	Expression.Implies (a,b) -> "IMPLIES(" ^  (faux a) ^ "," ^ (faux b) ^ ")"
+  Expression.Implies (a,b) -> "IMPLIES(" ^  (faux a) ^ "," ^ (faux b) ^ ")"
       | Expression.And(a,b)      -> "AND(" ^ (faux a) ^ "," ^ (faux b) ^ ")"
       | Expression.Or(a,b)      ->  "OR(" ^ (faux a) ^ "," ^ (faux b) ^ ")"
       | _ ->  "OTHER" 

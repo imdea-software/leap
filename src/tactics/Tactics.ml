@@ -175,6 +175,21 @@ let create_vc_info (supp       : support_t)
       vocabulary         = vocab ; (* fix: can be computed *)
     }
 
+
+let to_fol_vc_info (fol_mode:E.fol_mode_t) (info:vc_info) : vc_info =
+  let f = E.to_fol_formula fol_mode in
+  {
+    original_support = List.map f info.original_support;
+    tid_constraint = f info.tid_constraint;
+    rho = f info.rho;
+    original_goal = f info.original_goal;
+    goal = f info.goal;
+    transition_tid = info.transition_tid;
+    line = info.line;
+    vocabulary = info.vocabulary;
+  }
+
+
 let create_vc (orig_supp       : support_t)
               (tid_constr : E.formula)
               (rho        : E.formula)

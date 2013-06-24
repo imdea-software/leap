@@ -62,7 +62,9 @@ val create_vc_info  : support_t ->
                       Expression.tid list ->
                       Expression.tid ->
                       Expression.pc_t ->
-                      vc_info 
+                      vc_info
+
+val to_fol_vc_info : Expression.fol_mode_t -> vc_info -> vc_info
 
 val create_vc  : support_t -> 
                Expression.formula -> 

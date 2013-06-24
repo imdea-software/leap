@@ -30,6 +30,13 @@ let time_to_str (t:float) : string =
 
 (* Conversion of reports to string *)
 
+let report_generated_vcs_to_str (vcs:Tactics.vc_info list) (n:int) : string =
+  "+- Verification condition generation ---------------------------------\n" ^
+  "| Generated vcs:               " ^(string_of_int (List.length vcs))^ "\n" ^
+  "| Generated proof obligations: " ^(string_of_int n)^ "\n" ^
+  "+- Verification condition generation ---------------------------------\n"
+
+
 let report_inv_cand_to_str (inv:Expr.formula) : string =
   let inv_str = Expr.formula_to_str inv in
   let voc_str = String.concat ", " $ List.map Expr.tid_to_str (Expr.voc inv)
@@ -155,6 +162,11 @@ let report_details_to_file_to_str (prog_name:string)
 
 
 (* Reporting to standard output *)
+
+
+let report_generated_vcs (vcs:Tactics.vc_info list) (n:int) : unit =
+  print_newline(); print_string (report_generated_vcs_to_str vcs n)
+
 
 let report_inv_cand (inv:Expr.formula) : unit =
   print_newline(); print_string (report_inv_cand_to_str inv)

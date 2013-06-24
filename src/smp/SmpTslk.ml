@@ -218,7 +218,9 @@ module Make (TSLK : TSLKExpression.S) =
       | Expr.ElemT _     -> info
       | Expr.ThidT _     -> info
       | Expr.AddrT _     -> info (* no need to look for firstlock, every firstlock has a var *)
-      | Expr.CellT _     -> info
+      | Expr.CellT _     -> (* ALE: I added this *)
+                             (Printf.printf "ADDING DUE TO: %s != %s\n" (Expr.term_to_str x) (Expr.term_to_str y);
+                             union_count_elem (union_count_tid info (Expr.InEq(x,y))) (Expr.InEq(x,y))); (* an element and a tid identifier witness of c1 != c2 *)
       | Expr.SetThT _    -> (Printf.printf "ADDING DUE TO: %s != %s\n" (Expr.term_to_str x) (Expr.term_to_str y); union_count_tid info (Expr.InEq(x,y))) (* the witness of st1 != st2 *)
       | Expr.SetElemT _  -> (Printf.printf "ADDING DUE TO: %s != %s\n" (Expr.term_to_str x) (Expr.term_to_str y); union_count_elem info (Expr.InEq(x,y))) (* the witness of se1 != se2 *)
       | Expr.PathT _     -> (Printf.printf "ADDING DUE TO: %s != %s\n" (Expr.term_to_str x) (Expr.term_to_str y); union_count_addr info (Expr.InEq(x,y))) (* the witnesses of p1 != p2 *)
@@ -342,12 +344,15 @@ module Make (TSLK : TSLKExpression.S) =
 (*                      varcell_num * num_levels              + (* Cell next pointers *) *)
 (*                      varaddr_num * varmem_num * num_levels + (* Cell next pointers *) *)
                       info.num_addrs                          (* Special literals   *) in
-      let num_tids = 1 +                                      (* No thread          *)
-                     vartid_num +                             (* Thid variables     *)
-                     varcell_num * num_levels                 (* Cell locks         *) in
+      let num_tids = 1 + vartid_num + info.num_tids in
+(*                    1 +                                      (* No thread          *)
+                       vartid_num +                             (* Thid variables     *)
+                       varcell_num * num_levels                 (* Cell locks         *) in
 (*                     varmem_num * num_addrs * num_levels      (* Cell locks         *) in *)
-      let num_elems = varelem_num +                           (* Elem variables     *)
-                      varmem_num * num_addrs                  (* Cell data          *)
+*)
+      let num_elems = max 1 (varelem_num + info.num_elems)
+(*                    varelem_num                             (* Elem variables     *) *)
+(*                    varmem_num * num_addrs                  (* Cell data          *) *)
       in
       Printf.printf "VARTID_NUM: %i\n" vartid_num;
       VarSet.iter (fun v -> print_string (Expr.variable_to_str v ^ "; ")) 

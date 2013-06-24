@@ -2,6 +2,8 @@ open Printf
 open LeapLib
 open LeapVerbose
 
+type logic_op_t = AndOp | OrOp | ImpliesOp | IffOp | NotOp | NoneOp
+
 type varId = string
 
 and shared_or_local = Shared  | Local of tid
@@ -1276,16 +1278,46 @@ and conjunctive_formula_to_str form =
       | FalseConj -> Printf.sprintf "false"
       | Conj([]) -> ""
       | Conj(lit :: subform) -> c_to_str subform (literal_to_str lit)
-and formula_to_str form =
-  match form with
-      Literal(lit) -> (literal_to_str lit)
-    | True  -> Printf.sprintf "true"
-    | False -> Printf.sprintf "false"
-    | And(f1, f2)  -> Printf.sprintf "(%s /\\ %s)" (formula_to_str f1) (formula_to_str f2)
-    | Or(f1,f2) -> Printf.sprintf "(%s \\/ %s)" (formula_to_str f1) (formula_to_str f2)
-    | Not(f) -> Printf.sprintf "(~ %s)" (formula_to_str f)
-    | Implies(f1,f2) -> Printf.sprintf "(%s -> %s)" (formula_to_str f1) (formula_to_str f2)
-    | Iff (f1,f2) -> Printf.sprintf "(%s <-> %s)" (formula_to_str f1) (formula_to_str f2)
+
+and formula_to_str_aux (op:logic_op_t) (phi:formula) : string =
+  match phi with
+  | Literal l -> literal_to_str l
+  | True -> "true"
+  | False -> "false"
+  | And(a,b)     -> let a_str = formula_to_str_aux AndOp a in
+                    let b_str = formula_to_str_aux AndOp b in
+                    if op = AndOp then
+                      a_str ^ " /\\ " ^ b_str
+                    else
+                      "(" ^ a_str ^ " /\\ " ^ b_str ^ ")"
+  | Or(a,b)      -> let a_str = formula_to_str_aux OrOp a in
+                    let b_str = formula_to_str_aux OrOp b in
+                    if op = OrOp then
+                      a_str ^ " \\/ " ^ b_str
+                    else
+                      "(" ^ a_str ^ " \\/ " ^ b_str ^ ")"
+  | Not a        -> let a_str = formula_to_str_aux NotOp a in
+                    if op = NotOp then
+                      "~ " ^ a_str
+                    else
+                      "(~ " ^ a_str ^ ")"
+  | Implies(a,b) -> let a_str = formula_to_str_aux ImpliesOp a in
+                    let b_str = formula_to_str_aux ImpliesOp b in
+                    if op = ImpliesOp then
+                      a_str ^ " -> " ^ b_str
+                    else
+                      "(" ^ a_str ^ " -> " ^ b_str ^ ")"
+  | Iff(a,b)     -> let a_str = formula_to_str_aux IffOp a in
+                    let b_str = formula_to_str_aux IffOp b in
+                    if op = IffOp then
+                      a_str ^ " <-> " ^ b_str
+                    else
+                      "(" ^ a_str ^ " <-> " ^ b_str ^ ")"
+
+
+and formula_to_str (expr:formula) : string =
+  formula_to_str_aux NoneOp expr
+
 
 let sort_to_str s =
   match s with

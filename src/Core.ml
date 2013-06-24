@@ -447,7 +447,6 @@ module Make (Opt:module type of GenOptions) : S =
               List.map (fun phi ->
                 (* TODO: Choose the right to_fol function *)
                 let fol_phi = phi in
-                Printf.printf "FOL_PHI: %s\n" (E.formula_to_str fol_phi);
                 phi_timer#start;
                 let status =
                   if Pos.is_valid prog_lines (fst (PE.keep_locations fol_phi)) then
@@ -476,6 +475,7 @@ module Make (Opt:module type of GenOptions) : S =
                 (* Analyze the formula *)
                 phi_timer#stop;
                 let phi_result = new_resolution_info status (phi_timer#elapsed_time) in
+                
                 (phi, phi_result)
               ) case.obligations in
 
@@ -508,6 +508,7 @@ module Make (Opt:module type of GenOptions) : S =
                              (gral_plan:Tactics.proof_plan)
                              (cases:IGraph.case_tbl_t) : proof_obligation_t list =
       List.fold_left (fun res vc ->
+        let vc = Tactics.to_fol_vc_info E.PCVars vc in
         let prem = match Tactics.get_tid_constraint_from_info vc with
                    | E.True -> Premise.SelfConseq
                    | _      -> Premise.OthersConseq in
@@ -552,12 +553,10 @@ module Make (Opt:module type of GenOptions) : S =
                                             " with " ^string_of_int (IGraph.num_of_cases cases)^
                                             " special cases.");
                              seq_spinv_with_cases supp inv cases in
-        Printf.printf "VC_INFO_LENGTH: %i\n" (List.length vc_info_list);
         Tactics.vc_info_list_to_folder Opt.output_file vc_info_list;
-        let new_obligations = generate_obligations vc_info_list plan cases
-        in
+        let new_obligations = generate_obligations vc_info_list plan cases in
+        Report.report_generated_vcs vc_info_list (List.length new_obligations);
           os @ new_obligations
-
       ) [] graph_info
 
 

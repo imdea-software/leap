@@ -5,6 +5,7 @@ type results_t =int * int * int * int * int * int * int * int *
 
 type vc_status = Unverified | NotValid | Valid | Unneeded
 
+val report_generated_vcs : Tactics.vc_info list -> int -> unit
 val report_inv_cand : Expression.formula -> unit
 val report_system : System.t -> unit
 val report_sup_inv : inv_t list -> unit
