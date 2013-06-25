@@ -259,5 +259,4 @@ let rec arrtree_to_str (f:'a -> string) (tree:'a arrtree) : string =
   let Node(e,xs) = tree in
   "{(" ^ (String.concat "," (List.map f e))^ "):[" ^
     (String.concat ";" (List.map (arrtree_to_str f) xs))^ "]}"
-  
-
+ 

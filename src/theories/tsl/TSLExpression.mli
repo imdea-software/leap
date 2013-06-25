@@ -302,6 +302,13 @@ val normalize : formula -> formula
 (** [normalize phi] returns a new formula that is the normalization of
     [phi], adding fresh variables if required *)
 
+val replace_terms_conjunctive_formula : (term, term) Hashtbl.t ->
+                                        conjunctive_formula ->
+                                        conjunctive_formula
+val replace_terms : (term, term) Hashtbl.t ->
+                    formula ->
+                    formula
+
 
 (* Fresh variable generation *)
 val new_fresh_gen_from_conjformula : conjunctive_formula -> fresh_var_gen_t

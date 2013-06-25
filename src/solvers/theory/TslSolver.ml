@@ -771,9 +771,21 @@ let check_sat_by_cases (lines:int)
                          (SL.IntVal 0) :: rs
                        else
                          rs in
+    (* Extract equalities from guesses arrangement *)
+    let (equalities,updated_alpha) = List.fold_left (fun (eq_subst,new_alpha) eqclass ->
+                                       match eqclass with
+                                       | []    -> assert false
+                                       | [x]   -> (eq_subst,new_alpha@[[x]])
+                                       | x::xs -> ((List.map (fun y -> (x,y)) xs) @ eq_subst,
+                                                   new_alpha@[[x]])
+                                     ) ([],[]) alpha in
+    (* Propagate equalities over NC formula *)
+    let updated_nc = SL.replace_terms_conjunctive_formula (Hashtbl.create 10) nc in
+
+    (* Propagate equalities over the arangement *)
     match nc with
-    | SL.TrueConj  -> (alpha, upd_relevant, nc)
-    | SL.FalseConj -> (alpha, upd_relevant, nc)
+    | SL.TrueConj  -> (updated_alpha, upd_relevant, nc)
+    | SL.FalseConj -> (updated_alpha, upd_relevant, nc)
     | SL.Conj ls   -> let no_arr_updates = ref true in
                       List.iter (fun l ->
                         match l with
@@ -784,7 +796,7 @@ let check_sat_by_cases (lines:int)
                         | SL.NegAtom (SL.InEq (SL.AddrArrayT (SL.AddrArrayUp(_,i,_)),_)) ->
                             assert (!no_arr_updates); no_arr_updates := false
                         | _ -> ()
-                      ) ls; (alpha, upd_relevant, nc) in
+                      ) ls; (updated_alpha, upd_relevant, nc) in
 
 
 
@@ -937,10 +949,9 @@ let is_sat_plus_info (lines : int)
   Printf.printf "NUMBER OF FORMULAS RESULTING FROM DNF: %i\n" (List.length phi_dnf);
   (* 1. Extract relevant arrangements *)
   let relevant = List.map relevant_levels phi_dnf in
-
+(*
   List.iter (fun (rs,ss) -> Printf.printf "RELEVANT: {%s}\n" (String.concat ";" (List.map SL.int_to_str rs))) relevant;
-
-  List.iter (fun phi -> Printf.printf "PHI_DNF: %s\n" (SL.conjunctive_formula_to_str phi)) phi_dnf;
+*)
 
   (* 2. Guess arrangements *)
   let arrgs = List.map guess_arrangements phi_dnf in

@@ -178,6 +178,7 @@ type special_op_t =
 
 exception WrongType of term
 exception No_variable_term of term
+exception Incompatible_replacement of term * term
 
 
 
@@ -3470,5 +3471,349 @@ let normalize (phi:formula) : formula =
     phi'
   else
     And (conj_list !lit_list, phi')
-  
 
+
+(**************************)
+(**  TERMS SUBSTITUTION  **)
+(**************************)
+
+let check_well_defined_replace_table (tbl:(term, term) Hashtbl.t) : unit =
+  Hashtbl.iter (fun a b ->
+    match (a,b) with
+    | (VarT _,  VarT _)            -> ()
+    | (SetT _,  SetT _)            -> ()
+    | (ElemT _, ElemT _)           -> ()
+    | (TidT _, TidT _)             -> ()
+    | (AddrT _, AddrT _)           -> ()
+    | (CellT _, CellT _)           -> ()
+    | (SetThT _, SetThT _)         -> ()
+    | (SetElemT _, SetElemT _)     -> ()
+    | (PathT _, PathT _)           -> ()
+    | (MemT _, MemT _)             -> ()
+    | (IntT _, IntT _)             -> ()
+    | (AddrArrayT _, AddrArrayT _) -> ()
+    | (TidArrayT _, TidArrayT _)   -> ()
+    | (VarUpdate _, VarUpdate _)   -> ()
+    | _ -> raise(Incompatible_replacement(a,b))
+  ) tbl
+
+
+
+let rec replace_terms_in_vars (tbl:(term,term) Hashtbl.t) (v:variable) : variable =
+  try
+    match Hashtbl.find tbl (VarT v) with
+    | VarT v -> v
+    | _ -> assert false
+  with _ -> v
+
+
+and replace_terms_term (tbl:(term,term) Hashtbl.t) (expr:term) : term =
+  match expr with
+    VarT(v)           -> VarT       (replace_terms_in_vars tbl v)
+  | SetT(set)         -> SetT       (replace_terms_set tbl set)
+  | AddrT(addr)       -> AddrT      (replace_terms_addr tbl addr)
+  | ElemT(elem)       -> ElemT      (replace_terms_elem tbl elem)
+  | TidT(th)         -> TidT      (replace_terms_tid tbl th)
+  | CellT(cell)       -> CellT      (replace_terms_cell tbl cell)
+  | SetThT(setth)     -> SetThT     (replace_terms_setth tbl setth)
+  | SetElemT(setelem) -> SetElemT   (replace_terms_setelem tbl setelem)
+  | PathT(path)       -> PathT      (replace_terms_path tbl path)
+  | MemT(mem)         -> MemT       (replace_terms_mem tbl mem)
+  | IntT(i)           -> IntT       (replace_terms_int tbl i)
+  | AddrArrayT(arr)   -> AddrArrayT (replace_terms_addrarr tbl arr)
+  | TidArrayT(arr)    -> TidArrayT  (replace_terms_tidarr tbl arr)
+  | VarUpdate(v,th,t) -> VarUpdate  (replace_terms_in_vars tbl v,
+                                     replace_terms_tid tbl th,
+                                     replace_terms_term tbl t)
+
+
+and replace_terms_addrarr (tbl:(term,term) Hashtbl.t) (arr:addrarr) : addrarr =
+  try
+    match Hashtbl.find tbl (AddrArrayT arr) with | AddrArrayT arr' -> arr' | _ -> assert false
+  with _ -> begin
+    match arr with
+      VarAddrArray v       -> VarAddrArray (replace_terms_in_vars tbl v)
+        (*TODO: Fix open array case for array variables *)
+    | AddrArrayUp(arr,i,a) -> AddrArrayUp(replace_terms_addrarr tbl arr,
+                                          replace_terms_int tbl i,
+                                          replace_terms_addr tbl a)
+    | CellArr c            -> CellArr (replace_terms_cell tbl c)
+  end
+
+
+and replace_terms_tidarr (tbl:(term,term) Hashtbl.t) (arr:tidarr) : tidarr =
+  try
+    match Hashtbl.find tbl (TidArrayT arr) with | TidArrayT arr' -> arr' | _ -> assert false
+  with _ -> begin
+    match arr with
+      VarTidArray v       -> VarTidArray (replace_terms_in_vars tbl v)
+        (*TODO: Fix open array case for array variables *)
+    | TidArrayUp(arr,i,t) -> TidArrayUp(replace_terms_tidarr tbl arr,
+                                        replace_terms_int tbl i,
+                                        replace_terms_tid tbl t)
+    | CellTids c            -> CellTids (replace_terms_cell tbl c)
+  end
+
+
+and replace_terms_set (tbl:(term,term) Hashtbl.t) (e:set) : set =
+  try
+    match Hashtbl.find tbl (SetT e) with | SetT e' -> e' | _ -> assert false
+  with _ -> begin
+    match e with
+      VarSet v             -> VarSet (replace_terms_in_vars tbl v)
+    | EmptySet             -> EmptySet
+    | Singl(addr)          -> Singl(replace_terms_addr tbl addr)
+    | Union(s1,s2)         -> Union(replace_terms_set tbl s1,
+                                    replace_terms_set tbl s2)
+    | Intr(s1,s2)          -> Intr(replace_terms_set tbl s1,
+                                   replace_terms_set tbl s2)
+    | Setdiff(s1,s2)       -> Setdiff(replace_terms_set tbl s1,
+                                      replace_terms_set tbl s2)
+    | PathToSet(path)      -> PathToSet(replace_terms_path tbl path)
+    | AddrToSet(mem,a,l)   -> AddrToSet(replace_terms_mem tbl mem,
+                                        replace_terms_addr tbl a,
+                                        replace_terms_int tbl l)
+  end
+
+
+and replace_terms_addr (tbl:(term,term) Hashtbl.t) (a:addr) : addr =
+  try
+    match Hashtbl.find tbl (AddrT a) with | AddrT a' -> a' | _ -> assert false
+  with _ -> begin
+    match a with
+      VarAddr v                 -> VarAddr (replace_terms_in_vars tbl v)
+    | Null                      -> Null
+    | NextAt(cell,l)            -> NextAt(replace_terms_cell tbl cell,
+                                          replace_terms_int tbl l)
+    | AddrArrRd (aa,i)          -> AddrArrRd (replace_terms_addrarr tbl aa,
+                                              replace_terms_int tbl i)
+  end
+
+
+and replace_terms_elem (tbl:(term,term) Hashtbl.t) (e:elem) : elem =
+  try
+    match Hashtbl.find tbl (ElemT e) with | ElemT e' -> e' | _ -> assert false
+  with _ -> begin
+    match e with
+      VarElem v            -> VarElem (replace_terms_in_vars tbl v)
+    | CellData(cell)       -> CellData(replace_terms_cell tbl cell)
+    | HavocSkiplistElem    -> HavocSkiplistElem
+    | LowestElem           -> LowestElem
+    | HighestElem          -> HighestElem
+  end
+
+
+and replace_terms_tid (tbl:(term,term) Hashtbl.t) (th:tid) : tid =
+  try
+    match Hashtbl.find tbl (TidT th) with | TidT th' -> th' | _ -> assert false
+  with _ -> begin
+    match th with
+      VarTh v              -> VarTh (replace_terms_in_vars tbl v)
+    | NoTid               -> NoTid
+    | CellLockIdAt(cell,l) -> CellLockIdAt(replace_terms_cell tbl cell,
+                                           replace_terms_int tbl l)
+    | TidArrRd(arr,l)     -> TidArrRd(replace_terms_tidarr tbl arr,
+                                        replace_terms_int tbl l)
+  end
+
+
+and replace_terms_cell (tbl:(term,term) Hashtbl.t) (c:cell) : cell =
+  try
+    match Hashtbl.find tbl (CellT c) with | CellT c' -> c' | _ -> assert false
+  with _ -> begin
+    match c with
+      VarCell v              -> VarCell (replace_terms_in_vars tbl v)
+    | Error                  -> Error
+    | MkCell(data,aa,ta,l)   -> MkCell(replace_terms_elem tbl data,
+                                       replace_terms_addrarr tbl aa,
+                                       replace_terms_tidarr tbl ta,
+                                       replace_terms_int tbl l)
+    | CellLockAt(cell,l, t)  -> CellLockAt(replace_terms_cell tbl cell,
+                                           replace_terms_int tbl l,
+                                           replace_terms_tid tbl t)
+    | CellUnlockAt(cell,l)   -> CellUnlockAt(replace_terms_cell tbl cell,
+                                             replace_terms_int tbl l)
+    | CellAt(mem,addr)       -> CellAt(replace_terms_mem tbl mem,
+                                       replace_terms_addr tbl addr)
+  end
+
+
+and replace_terms_setth (tbl:(term,term) Hashtbl.t) (s:setth) : setth =
+  try
+    match Hashtbl.find tbl (SetThT s) with | SetThT s' -> s' | _ -> assert false
+  with _ -> begin
+    match s with
+      VarSetTh v            -> VarSetTh (replace_terms_in_vars tbl v)
+    | EmptySetTh            -> EmptySetTh
+    | SinglTh(th)           -> SinglTh(replace_terms_tid tbl th)
+    | UnionTh(s1,s2)        -> UnionTh(replace_terms_setth tbl s1,
+                                       replace_terms_setth tbl s2)
+    | IntrTh(s1,s2)         -> IntrTh(replace_terms_setth tbl s1,
+                                      replace_terms_setth tbl s2)
+    | SetdiffTh(s1,s2)      -> SetdiffTh(replace_terms_setth tbl s1,
+                                         replace_terms_setth tbl s2)
+  end
+
+
+and replace_terms_setelem (tbl:(term,term) Hashtbl.t) (s:setelem) : setelem =
+  try
+    match Hashtbl.find tbl (SetElemT s) with | SetElemT s' -> s' | _ -> assert false
+  with _ -> begin
+    match s with
+      VarSetElem v            -> VarSetElem (replace_terms_in_vars tbl v)
+    | EmptySetElem            -> EmptySetElem
+    | SinglElem(e)            -> SinglElem(replace_terms_elem tbl e)
+    | UnionElem(s1,s2)        -> UnionElem(replace_terms_setelem tbl s1,
+                                           replace_terms_setelem tbl s2)
+    | IntrElem(s1,s2)         -> IntrElem(replace_terms_setelem tbl s1,
+                                          replace_terms_setelem tbl s2)
+    | SetdiffElem(s1,s2)      -> SetdiffElem(replace_terms_setelem tbl s1,
+                                             replace_terms_setelem tbl s2)
+    | SetToElems(s,m)         -> SetToElems(replace_terms_set tbl s, replace_terms_mem tbl m)
+  end
+
+
+and replace_terms_path (tbl:(term,term) Hashtbl.t) (path:path) : path =
+  try
+    match Hashtbl.find tbl (PathT path) with | PathT p' -> p' | _ -> assert false
+  with _ -> begin
+    match path with
+      VarPath v                        -> VarPath (replace_terms_in_vars tbl v)
+    | Epsilon                          -> Epsilon
+    | SimplePath(addr)                 -> SimplePath(replace_terms_addr tbl addr)
+    | GetPath(mem,add_from,add_to,l)   -> GetPath(replace_terms_mem tbl mem,
+                                                  replace_terms_addr tbl add_from,
+                                                  replace_terms_addr tbl add_to,
+                                                  replace_terms_int tbl l)
+  end
+
+
+and replace_terms_mem (tbl:(term,term) Hashtbl.t) (m:mem) : mem =
+  try
+    match Hashtbl.find tbl (MemT m) with | MemT m' -> m' | _ -> assert false
+  with _ -> begin
+    match m with
+      VarMem v             -> VarMem (replace_terms_in_vars tbl v)
+    | Update(mem,add,cell) -> Update(replace_terms_mem tbl mem,
+                                     replace_terms_addr tbl add,
+                                     replace_terms_cell tbl cell)
+  end
+
+
+and replace_terms_int (tbl:(term,term) Hashtbl.t) (i:integer) : integer =
+  try
+    match Hashtbl.find tbl (IntT i) with | IntT j -> j | _ -> assert false
+  with _ -> begin
+    match i with
+      IntVal(i)           -> IntVal(i)
+    | VarInt v            -> VarInt (replace_terms_in_vars tbl v)
+    | IntNeg(i)           -> IntNeg(replace_terms_int tbl i)
+    | IntAdd(i1,i2)       -> IntAdd(replace_terms_int tbl i1,
+                                    replace_terms_int tbl i2)
+    | IntSub(i1,i2)       -> IntSub(replace_terms_int tbl i1,
+                                    replace_terms_int tbl i2)
+    | IntMul(i1,i2)       -> IntMul(replace_terms_int tbl i1,
+                                    replace_terms_int tbl i2)
+    | IntDiv(i1,i2)       -> IntDiv(replace_terms_int tbl i1,
+                                    replace_terms_int tbl i2)
+    | CellMax(c)          -> CellMax(replace_terms_cell tbl c)
+    | HavocLevel          -> HavocLevel
+  end
+
+
+and replace_terms_atom (tbl:(term,term) Hashtbl.t) (a:atom) : atom =
+  match a with
+    Append(p1,p2,pres)         -> Append(replace_terms_path tbl p1,
+                                         replace_terms_path tbl p2,
+                                         replace_terms_path tbl pres)
+  | Reach(h,a_from,a_to,l,p)   -> Reach(replace_terms_mem tbl h,
+                                        replace_terms_addr tbl a_from,
+                                        replace_terms_addr tbl a_to,
+                                        replace_terms_int tbl l,
+                                        replace_terms_path tbl p)
+  | OrderList(h,a_from,a_to)   -> OrderList(replace_terms_mem tbl h,
+                                            replace_terms_addr tbl a_from,
+                                            replace_terms_addr tbl a_to)
+  | Skiplist(h,s,l,a_from,a_to)-> Skiplist(replace_terms_mem tbl h,
+                                           replace_terms_set tbl s,
+                                           replace_terms_int tbl l,
+                                           replace_terms_addr tbl a_from,
+                                           replace_terms_addr tbl a_to)
+  | In(a,s)                    -> In(replace_terms_addr tbl a,
+                                     replace_terms_set tbl s)
+  | SubsetEq(s_in,s_out)       -> SubsetEq(replace_terms_set tbl s_in,
+                                           replace_terms_set tbl s_out)
+  | InTh(th,s)                 -> InTh(replace_terms_tid tbl th,
+                                       replace_terms_setth tbl s)
+  | SubsetEqTh(s_in,s_out)     -> SubsetEqTh(replace_terms_setth tbl s_in,
+                                             replace_terms_setth tbl s_out)
+  | InElem(e,s)                -> InElem(replace_terms_elem tbl e,
+                                         replace_terms_setelem tbl s)
+  | SubsetEqElem(s_in,s_out)   -> SubsetEqElem(replace_terms_setelem tbl s_in,
+                                               replace_terms_setelem tbl s_out)
+  | Less(i1,i2)                -> Less(replace_terms_int tbl i1,
+                                       replace_terms_int tbl i2)
+  | Greater(i1,i2)             -> Greater(replace_terms_int tbl i1,
+                                          replace_terms_int tbl i2)
+  | LessEq(i1,i2)              -> LessEq(replace_terms_int tbl i1,
+                                         replace_terms_int tbl i2)
+  | GreaterEq(i1,i2)           -> GreaterEq(replace_terms_int tbl i1,
+                                            replace_terms_int tbl i2)
+  | LessElem(e1,e2)            -> LessElem(replace_terms_elem tbl e1,
+                                           replace_terms_elem tbl e2)
+  | GreaterElem(e1,e2)         -> GreaterElem(replace_terms_elem tbl e1,
+                                              replace_terms_elem tbl e2)
+  | Eq(exp)                    -> Eq(replace_terms_eq tbl exp)
+  | InEq(exp)                  -> InEq(replace_terms_ineq tbl exp)
+  | BoolVar v                  -> BoolVar (replace_terms_in_vars tbl v)
+  | PC (pc,th,p)               -> begin
+                                    match th with
+                                    | Shared  -> PC (pc,th,p)
+                                    | Local t -> PC (pc, Local (replace_terms_tid tbl t), p)
+                                  end
+  | PCUpdate (pc,t)            -> PCUpdate (pc, replace_terms_tid tbl t)
+  | PCRange (pc1,pc2,th,p)     -> begin
+                                    match th with
+                                    | Shared  -> PCRange (pc1,pc2,th,p)
+                                    | Local t -> PCRange (pc1,pc2,Local(replace_terms_tid tbl t),p)
+                                  end
+
+
+and replace_terms_literal (tbl:(term,term) Hashtbl.t) (l:literal) : literal =
+  match l with
+    Atom a    -> Atom    (replace_terms_atom tbl a)
+  | NegAtom a -> NegAtom (replace_terms_atom tbl a)
+
+
+and replace_terms_eq (tbl:(term,term) Hashtbl.t) ((t1,t2):eq) : eq =
+  (replace_terms_term tbl t1, replace_terms_term tbl t2)
+
+
+and replace_terms_ineq (tbl:(term,term) Hashtbl.t) ((t1,t2):diseq) : diseq =
+  (replace_terms_term tbl t1, replace_terms_term tbl t2)
+
+    
+and replace_terms_conjunctive_formula (tbl:(term,term) Hashtbl.t) (cf:conjunctive_formula)
+      : conjunctive_formula =
+  check_well_defined_replace_table tbl;
+  match cf with
+  | FalseConj -> FalseConj
+  | TrueConj  -> TrueConj
+  | Conj ls   -> Conj (List.map (replace_terms_literal tbl) ls)
+
+
+and replace_terms_formula_aux (tbl:(term,term) Hashtbl.t) (phi:formula) : formula =
+  match phi with
+  | True           -> True
+  | False          -> False
+  | And(f1,f2)     -> And(replace_terms_formula_aux tbl f1, replace_terms_formula_aux tbl f2)
+  | Or(f1,f2)      -> Or(replace_terms_formula_aux tbl f1, replace_terms_formula_aux tbl f2)
+  | Not(f)         -> Not(replace_terms_formula_aux tbl f)
+  | Implies(f1,f2) -> Implies(replace_terms_formula_aux tbl f1, replace_terms_formula_aux tbl f2)
+  | Iff (f1,f2)    -> Iff(replace_terms_formula_aux tbl f1, replace_terms_formula_aux tbl f2)
+  | Literal l      -> Literal (replace_terms_literal tbl l)
+
+
+and replace_terms (tbl:(term, term) Hashtbl.t) (phi:formula) : formula =
+  check_well_defined_replace_table tbl;
+  replace_terms_formula_aux tbl phi
