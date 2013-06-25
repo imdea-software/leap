@@ -112,14 +112,14 @@ struct
     match (NE.var_sort v) with
     | NE.Int  -> int_s
     | NE.Set  -> set_s
-    | NE.Thid -> thid_s
+    | NE.Tid -> thid_s
 
 
   and var_sort_to_gmsort_str (v:NE.variable) : string =
     match (NE.var_sort v) with
       NE.Int  -> GM.int_s
     | NE.Set  -> GM.set_s
-    | NE.Thid -> GM.tid_s
+    | NE.Tid -> GM.tid_s
 
 
   and var_to_str (v:NE.variable) : string =
@@ -135,11 +135,11 @@ struct
     match t with
     | E.VarTh v       -> variable_to_str
                               (NI.variable_to_int_variable v)
-    | E.NoThid        -> "NoThid"
+    | E.NoTid        -> "NoTid"
     | E.CellLockId _  -> raise(NotSupportedInYices(E.tid_to_str t))
     | E.CellLockIdAt _-> raise(NotSupportedInYices(E.tid_to_str t))
-    | E.ThidArrayRd _ -> raise(NotSupportedInYices(E.tid_to_str t))
-    | E.ThidArrRd _   -> raise(NotSupportedInYices(E.tid_to_str t))
+    | E.TidArrayRd _ -> raise(NotSupportedInYices(E.tid_to_str t))
+    | E.TidArrRd _   -> raise(NotSupportedInYices(E.tid_to_str t))
 
 
   and shared_or_local_to_str (th:NE.shared_or_local) : string =
@@ -540,7 +540,7 @@ struct
     let id_list = List.map (fun t ->
                     match t with
                       E.VarTh v -> (E.var_id v)
-                    | E.NoThid  -> "NoThread"
+                    | E.NoTid  -> "NoThread"
                     | _ -> raise(Not_implemented "sort type in tid_decl")
                   ) voc in
     Printf.sprintf "(define-type %s (scalar %s))\n" thid_s

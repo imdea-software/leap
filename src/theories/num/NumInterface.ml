@@ -11,7 +11,7 @@ let sort_to_int_sort (s:E.sort) : NE.sort =
   match s with
     E.Int    -> NE.Int
   | E.SetInt -> NE.Set
-  | E.Thid   -> NE.Thid
+  | E.Tid   -> NE.Tid
   | _           -> raise(NotIntSort(E.sort_to_str s))
 
 
@@ -19,7 +19,7 @@ let sort_to_expr_sort (s:NE.sort) : E.sort =
   match s with
     NE.Int  -> E.Int
   | NE.Set  -> E.SetInt
-  | NE.Thid -> E.Thid
+  | NE.Tid -> E.Tid
 
 
 (* SUBTYPE CONVERTER: *)
@@ -109,8 +109,8 @@ and atom_to_int_atom (a:E.atom) : NE.atom =
     | E.LessTid(x,y)  -> NE.LessTid(x,y)
     | E.LessElem _    -> raise(NotAnIntExpression(E.atom_to_str a))
     | E.GreaterElem _ -> raise(NotAnIntExpression(E.atom_to_str a))
-    | E.Eq(E.ThidT x,E.ThidT y)      -> NE.TidEq(x, y)
-    | E.InEq(E.ThidT x,E.ThidT y)    -> NE.TidInEq(x, y)
+    | E.Eq(E.TidT x,E.TidT y)      -> NE.TidEq(x, y)
+    | E.InEq(E.TidT x,E.TidT y)    -> NE.TidInEq(x, y)
     | E.Eq(E.ArrayT x, E.ArrayT y)   -> NE.FunEq (array_to_funterm x,
                                                         array_to_funterm y)
     | E.InEq(E.ArrayT x, E.ArrayT y) -> NE.FunInEq (array_to_funterm x,
@@ -209,8 +209,8 @@ and atom_to_expr_atom (a:NE.atom) : E.atom =
                                                E.SetIntT(from_set y))
     | NE.In(i,s)             -> E.InInt       (from_int i, from_set s)
     | NE.Subset(x,y)         -> E.SubsetEqInt (from_set x, from_set y)
-    | NE.TidEq(x,y)          -> E.Eq          (E.ThidT x, E.ThidT y)
-    | NE.TidInEq(x,y)        -> E.InEq        (E.ThidT x, E.ThidT y)
+    | NE.TidEq(x,y)          -> E.Eq          (E.TidT x, E.TidT y)
+    | NE.TidInEq(x,y)        -> E.InEq        (E.TidT x, E.TidT y)
     | NE.FunEq(x,y)          -> E.Eq          (E.ArrayT (funterm_to_array x),
                                                E.ArrayT (funterm_to_array y))
     | NE.FunInEq(x,y)        -> E.InEq        (E.ArrayT (funterm_to_array x),

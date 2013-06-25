@@ -49,7 +49,7 @@ let rec variable_to_str (v:PE.variable) : string =
 and tid_to_str (t:PE.tid) : string =
   match t with
     PE.VarTh v      -> variable_to_str v
-  | PE.NoThid       -> "NoThid"
+  | PE.NoTid       -> "NoTid"
   | PE.CellLockId v -> variable_to_str v ^ "_lockid"
 
 

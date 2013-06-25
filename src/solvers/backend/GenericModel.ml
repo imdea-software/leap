@@ -60,7 +60,7 @@ let int_s     : string = "Int"
 let addr_s    : string = "Address"
 let set_s     : string = "Set"
 let elem_s    : string = "Elem"
-let tid_s     : string = "Thid"
+let tid_s     : string = "Tid"
 let cell_s    : string = "Cell"
 let setth_s   : string = "Setth"
 let setint_s  : string = "Setint"
@@ -361,7 +361,7 @@ let conv_sort (s:Expression.sort) : sort =
   match s with
   | Expr.Set       -> set_s
   | Expr.Elem      -> elem_s
-  | Expr.Thid      -> tid_s
+  | Expr.Tid      -> tid_s
   | Expr.Addr      -> addr_s
   | Expr.Cell      -> cell_s
   | Expr.SetTh     -> setth_s

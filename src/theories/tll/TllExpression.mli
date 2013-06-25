@@ -9,7 +9,7 @@ and variable
 and sort =
     Set
   | Elem
-  | Thid
+  | Tid
   | Addr
   | Cell
   | SetTh
@@ -23,7 +23,7 @@ and term =
     VarT     of variable
   | SetT     of set
   | ElemT    of elem
-  | ThidT    of tid
+  | TidT    of tid
   | AddrT    of addr
   | CellT    of cell
   | SetThT   of setth
@@ -53,7 +53,7 @@ and set =
   | AddrToSet of mem * addr
 and tid =
     VarTh of variable
-  | NoThid
+  | NoTid
   | CellLockId of cell
 and elem =
     VarElem of variable

@@ -920,14 +920,14 @@ struct
       let a = E.param_addr th_p $ Stm.addr_used_in_unit_op cmd in
       let cell = E.CellAt (E.heap, a) in
       let cond = match op with
-        | Stm.Lock   -> E.eq_tid (E.CellLockId cell) E.NoThid
+        | Stm.Lock   -> E.eq_tid (E.CellLockId cell) E.NoTid
         | Stm.Unlock -> E.eq_tid (E.CellLockId cell)
                                  (match th_p with
-                                  | E.Shared -> E.NoThid
+                                  | E.Shared -> E.NoTid
                                   | E.Local t -> t) in
       let new_tid  = match op with
         | Stm.Lock -> get_mode_param mode
-        | Stm.Unlock -> E.NoThid in
+        | Stm.Unlock -> E.NoTid in
       let mkcell = E.MkCell (E.CellData (E.CellAt (E.heap, a)), 
         E.Next (E.CellAt (E.heap, a)), new_tid) in
       let upd = E.eq_mem (E.prime_mem E.heap) (E.Update (E.heap, a, mkcell)) in
@@ -1069,7 +1069,7 @@ struct
     let (proc,st) = Sys.get_statement_at sys p in
     (* let remLocList = List.remove_assoc proc allLocList in *)
     let thSet = 
-      E.construct_term_set $ List.map (fun x -> E.ThidT x) th_list in
+      E.construct_term_set $ List.map (fun x -> E.TidT x) th_list in
   
     (* For Malloc -- BEGIN *)
     let is_sort s v = (E.var_sort v = s) in

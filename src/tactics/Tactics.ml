@@ -724,7 +724,7 @@ let tactic_filter_vars_nonrec (imp:implication) : implication =
 (*   match t with *)
 (*     SetT _ -> Set *)
 (*   | ElemT  -> Other *)
-(*   | ThidT  -> Other *)
+(*   | TidT  -> Other *)
 (*   | AddrT  -> Mem *)
 (*   |  *)
 

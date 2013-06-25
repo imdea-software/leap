@@ -284,7 +284,7 @@ module Make (Opt:module type of GenOptions) : S =
       let theta = System.gen_theta (System.SOpenArray (E.voc inv)) Opt.sys Opt.abs in
       let voc = E.voc (E.conj_list [theta;inv])
       in
-        Tactics.create_vc_info [] E.True theta inv voc E.NoThid 0
+        Tactics.create_vc_info [] E.True theta inv voc E.NoTid 0
 
 
     let spinv_transitions (supp:E.formula list)

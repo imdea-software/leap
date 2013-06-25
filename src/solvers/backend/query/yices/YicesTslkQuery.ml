@@ -1055,7 +1055,7 @@ module Make (TSLK : TSLKExpression.S) =
             s=Expr.Addr || s=Expr.Cell || s=Expr.Path || s=Expr.Set || s=Expr.Mem
           ) req_sorts) then yices_addr_preamble buf num_addr ;
       if (List.exists (fun s ->
-            s=Expr.Thid || s=Expr.Cell || s=Expr.SetTh
+            s=Expr.Tid || s=Expr.Cell || s=Expr.SetTh
           ) req_sorts) then yices_tid_preamble buf num_tid ;
       if (List.exists (fun s ->
             s=Expr.Elem || s=Expr.Cell || s=Expr.Mem
@@ -1172,7 +1172,7 @@ module Make (TSLK : TSLKExpression.S) =
                              Expr.Set     -> set_s
                            | Expr.Elem    -> elem_s
                            | Expr.Addr    -> addr_s
-                           | Expr.Thid    -> tid_s
+                           | Expr.Tid    -> tid_s
                            | Expr.Cell    -> cell_s
                            | Expr.SetTh   -> setth_s
                            | Expr.SetElem -> setelem_s
@@ -1192,7 +1192,7 @@ module Make (TSLK : TSLKExpression.S) =
             match s with
               Expr.Path -> B.add_string buf ( "(assert (ispath " ^ name ^ "))\n" )
             | Expr.Mem  -> B.add_string buf ( "(assert (isheap " ^ name ^ "))\n" )
-            | Expr.Thid -> B.add_string buf ( "(assert (/= "^ name ^" NoThread))\n")
+            | Expr.Tid -> B.add_string buf ( "(assert (/= "^ name ^" NoThread))\n")
             | _    -> ()
           end
         else
@@ -1210,7 +1210,7 @@ module Make (TSLK : TSLKExpression.S) =
                                         (Expr.param_var v (Expr.VarTh t)) in
                           B.add_string buf ( "(assert (isheap " ^ v_str ^ "))\n" )
                       ) tid_set
-            | Expr.Thid -> Expr.VarSet.iter (fun t ->
+            | Expr.Tid -> Expr.VarSet.iter (fun t ->
                         let v_str = variable_invocation_to_str
                                         (Expr.param_var v (Expr.VarTh t)) in
                           B.add_string buf ( "(assert (/= " ^ v_str ^ " NoThread))\n" )
@@ -1224,7 +1224,7 @@ module Make (TSLK : TSLKExpression.S) =
       let varset     = Expr.varset_of_sort vars Expr.Set  in
       let varelem    = Expr.varset_of_sort vars Expr.Elem in
       let varaddr    = Expr.varset_of_sort vars Expr.Addr in
-      let vartid     = Expr.varset_of_sort vars Expr.Thid in
+      let vartid     = Expr.varset_of_sort vars Expr.Tid in
       let varcell    = Expr.varset_of_sort vars Expr.Cell in
       let varsetth   = Expr.varset_of_sort vars Expr.SetTh in
       let varsetelem = Expr.varset_of_sort vars Expr.SetElem in
@@ -1300,7 +1300,7 @@ module Make (TSLK : TSLKExpression.S) =
     and tidterm_to_str (th:Expr.tid) : string =
       match th with
         Expr.VarTh v            -> variable_invocation_to_str v
-      | Expr.NoThid             -> "NoThread"
+      | Expr.NoTid             -> "NoThread"
       | Expr.CellLockIdAt (c,l) -> Printf.sprintf "(lock_at %s %s)" (cellterm_to_str c)
                                                                     (levelterm_to_str l)
 
@@ -1412,7 +1412,7 @@ module Make (TSLK : TSLKExpression.S) =
         Expr.VarT  v           -> variable_invocation_to_str v
       | Expr.SetT  s           -> setterm_to_str s
       | Expr.ElemT   e         -> elemterm_to_str e
-      | Expr.ThidT   th        -> tidterm_to_str th
+      | Expr.TidT   th        -> tidterm_to_str th
       | Expr.AddrT   a         -> addrterm_to_str a
       | Expr.CellT   c         -> cellterm_to_str c
       | Expr.SetThT sth        -> setthterm_to_str sth

@@ -4,7 +4,7 @@ open LeapLib
 module E = Expression
 
 
-type sort = Int | Set | Thid
+type sort = Int | Set | Tid
 
 type varId = E.varId
 
@@ -167,7 +167,7 @@ let sort_to_str (s:sort) : string =
   match s with
     Int  -> "int"
   | Set  -> "set"
-  | Thid -> "tid"
+  | Tid -> "tid"
 
 
 let rec variable_to_str (v:variable) : string =
@@ -379,8 +379,8 @@ and is_int_atom ato =
   | E.LessTid(_,_)                     -> true
   | E.LessElem(_,_)                    -> true
   | E.GreaterElem(_,_)                 -> true
-  | E.Eq(E.ThidT _, E.ThidT _)   -> true
-  | E.InEq(E.ThidT _, E.ThidT _) -> true
+  | E.Eq(E.TidT _, E.TidT _)   -> true
+  | E.InEq(E.TidT _, E.TidT _) -> true
   | E.Eq(x,y)                          -> (is_int_integer x) && (is_int_integer y)
   | E.InEq(x,y)                        -> (is_int_integer x) && (is_int_integer y)
   | E.BoolVar _                        -> false
@@ -393,7 +393,7 @@ and is_int_integer t =
     E.VarT(_)       -> false
   | E.SetT(_)       -> false
   | E.ElemT(_)      -> false
-  | E.ThidT(_)      -> false
+  | E.TidT(_)      -> false
   | E.AddrT(_)      -> false
   | E.CellT(_)      -> false
   | E.SetThT(_)     -> false

@@ -7,7 +7,7 @@ and initVal_t = Equality of term | Condition of formula
 and sort =
     Set
   | Elem
-  | Thid
+  | Tid
   | Addr
   | Cell
   | SetTh
@@ -28,7 +28,7 @@ and term =
     VarT          of variable
   | SetT          of set
   | ElemT         of elem
-  | ThidT         of tid
+  | TidT         of tid
   | AddrT         of addr
   | CellT         of cell
   | SetThT        of setth
@@ -86,11 +86,11 @@ and set =
   | SetArrayRd    of arrays * tid
 and tid =
     VarTh         of variable
-  | NoThid
+  | NoTid
   | CellLockId    of cell
   | CellLockIdAt  of cell * integer
-  | ThidArrayRd   of arrays * tid
-  | ThidArrRd     of tidarr * integer
+  | TidArrayRd   of arrays * tid
+  | TidArrRd     of tidarr * integer
 
 and elem =
     VarElem           of variable

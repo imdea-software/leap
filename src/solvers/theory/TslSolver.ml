@@ -164,7 +164,18 @@ let relevant_levels (cf:SL.conjunctive_formula) : (SL.integer list * SL.integer 
     | SL.Atom (SL.Eq (_,SL.TidArrayT (SL.TidArrayUp(_,i,_))))
     | SL.Atom (SL.Eq (SL.TidArrayT (SL.TidArrayUp(_,i,_)),_))
     | SL.NegAtom (SL.InEq (_,SL.TidArrayT (SL.TidArrayUp(_,i,_))))
-    | SL.NegAtom (SL.InEq (SL.TidArrayT (SL.TidArrayUp(_,i,_)),_)) -> GenSet.add relevant_set i
+    | SL.NegAtom (SL.InEq (SL.TidArrayT (SL.TidArrayUp(_,i,_)),_))
+    (* a = A[i] *)
+    | SL.Atom (SL.Eq (_,SL.AddrT(SL.AddrArrRd(_,i))))
+    | SL.Atom (SL.Eq (SL.AddrT(SL.AddrArrRd(_,i)),_))
+    | SL.NegAtom (SL.InEq (_,SL.AddrT(SL.AddrArrRd(_,i))))
+    | SL.NegAtom (SL.InEq (SL.AddrT(SL.AddrArrRd(_,i)),_))
+    (* t = A[i] *)
+    | SL.Atom (SL.Eq (_,SL.TidT(SL.TidArrRd(_,i))))
+    | SL.Atom (SL.Eq (SL.TidT(SL.TidArrRd(_,i)),_))
+    | SL.NegAtom (SL.InEq (_,SL.TidT(SL.TidArrRd(_,i))))
+    | SL.NegAtom (SL.InEq (SL.TidT(SL.TidArrRd(_,i)),_)) -> GenSet.add relevant_set i
+    (* Skiplist(h,r,l,f,t) *)
     | SL.Atom (SL.Skiplist(_,_,i,_,_)) -> GenSet.add skiplist_set i
     (* Remaining cases *)
     | _ -> ()
@@ -412,11 +423,11 @@ module TranslateTsl (SLK : TSLKExpression.S) =
       for n = (SLK.k - 1) downto 0 do
         let v = match tt with
                 | SL.VarTidArray v ->
-                    SLK.VarTh (expand_array_to_var v SLK.Thid n)
+                    SLK.VarTh (expand_array_to_var v SLK.Tid n)
                 | SL.CellTids c ->
                     let l = SLK.LevelVal n in
                     SLK.CellLockIdAt(cell_tsl_to_tslk c, l)
-                | _ -> SLK.NoThid in
+                | _ -> SLK.NoTid in
         xs := v::(!xs)
       done;
       verb "**** TSL Solver, generated thread id list for %s: [%s]\n"
@@ -475,10 +486,10 @@ module TranslateTsl (SLK : TSLKExpression.S) =
           SLK.addr_mark_smp_interesting a' true;
           SLK.eq_addr a' (SLK.NextAt(c',l'))
       (* t = c.tids[l] *)
-      | SL.Atom(SL.Eq(SL.ThidT t, SL.ThidT(SL.ThidArrRd(SL.CellTids c,l))))
-      | SL.Atom(SL.Eq(SL.ThidT(SL.ThidArrRd(SL.CellTids c,l)), SL.ThidT t))
-      | SL.NegAtom(SL.InEq(SL.ThidT t, SL.ThidT(SL.ThidArrRd(SL.CellTids c,l))))
-      | SL.NegAtom(SL.InEq(SL.ThidT(SL.ThidArrRd(SL.CellTids c,l)), SL.ThidT t)) ->
+      | SL.Atom(SL.Eq(SL.TidT t, SL.TidT(SL.TidArrRd(SL.CellTids c,l))))
+      | SL.Atom(SL.Eq(SL.TidT(SL.TidArrRd(SL.CellTids c,l)), SL.TidT t))
+      | SL.NegAtom(SL.InEq(SL.TidT t, SL.TidT(SL.TidArrRd(SL.CellTids c,l))))
+      | SL.NegAtom(SL.InEq(SL.TidT(SL.TidArrRd(SL.CellTids c,l)), SL.TidT t)) ->
           let t' = tid_tsl_to_tslk t in
           let c' = cell_tsl_to_tslk c in
           let l' = int_tsl_to_tslk l in
@@ -536,10 +547,10 @@ module TranslateTsl (SLK : TSLKExpression.S) =
       | SL.Atom(SL.InEq(SL.AddrT (SL.AddrArrRd (aa,i)), SL.AddrT a)) ->
           SLK.Not (trans_literal (SL.Atom(SL.Eq(SL.AddrT a, SL.AddrT (SL.AddrArrRd (aa,i))))))
       (* t = A[i] *)
-      | SL.Atom(SL.Eq(SL.ThidT t, SL.ThidT (SL.ThidArrRd (tt,i))))
-      | SL.Atom(SL.Eq(SL.ThidT (SL.ThidArrRd (tt,i)), SL.ThidT t))
-      | SL.NegAtom(SL.InEq(SL.ThidT t, SL.ThidT (SL.ThidArrRd (tt,i))))
-      | SL.NegAtom(SL.InEq(SL.ThidT (SL.ThidArrRd (tt,i)), SL.ThidT t)) ->
+      | SL.Atom(SL.Eq(SL.TidT t, SL.TidT (SL.TidArrRd (tt,i))))
+      | SL.Atom(SL.Eq(SL.TidT (SL.TidArrRd (tt,i)), SL.TidT t))
+      | SL.NegAtom(SL.InEq(SL.TidT t, SL.TidT (SL.TidArrRd (tt,i))))
+      | SL.NegAtom(SL.InEq(SL.TidT (SL.TidArrRd (tt,i)), SL.TidT t)) ->
           let t' = tid_tsl_to_tslk t in
           let tt' = get_tid_list tt in
           let i' = int_tsl_to_tslk i in
@@ -553,11 +564,11 @@ module TranslateTsl (SLK : TSLKExpression.S) =
           SLK.tid_mark_smp_interesting t' true;
           SLK.conj_list (!xs)
       (* t != A[i] *)
-      | SL.NegAtom(SL.Eq(SL.ThidT t, SL.ThidT (SL.ThidArrRd (tt,i))))
-      | SL.NegAtom(SL.Eq(SL.ThidT (SL.ThidArrRd (tt,i)), SL.ThidT t))
-      | SL.Atom(SL.InEq(SL.ThidT t, SL.ThidT (SL.ThidArrRd (tt,i))))
-      | SL.Atom(SL.InEq(SL.ThidT (SL.ThidArrRd (tt,i)), SL.ThidT t)) ->
-          SLK.Not (trans_literal (SL.Atom(SL.Eq(SL.ThidT t, SL.ThidT (SL.ThidArrRd (tt,i))))))
+      | SL.NegAtom(SL.Eq(SL.TidT t, SL.TidT (SL.TidArrRd (tt,i))))
+      | SL.NegAtom(SL.Eq(SL.TidT (SL.TidArrRd (tt,i)), SL.TidT t))
+      | SL.Atom(SL.InEq(SL.TidT t, SL.TidT (SL.TidArrRd (tt,i))))
+      | SL.Atom(SL.InEq(SL.TidT (SL.TidArrRd (tt,i)), SL.TidT t)) ->
+          SLK.Not (trans_literal (SL.Atom(SL.Eq(SL.TidT t, SL.TidT (SL.TidArrRd (tt,i))))))
       (* B = A {l <- a} *)
       | SL.Atom(SL.Eq(SL.AddrArrayT bb, SL.AddrArrayT (SL.AddrArrayUp(aa,i,a))))
       | SL.Atom(SL.Eq(SL.AddrArrayT (SL.AddrArrayUp(aa,i,a)), SL.AddrArrayT bb))
@@ -926,9 +937,10 @@ let is_sat_plus_info (lines : int)
   Printf.printf "NUMBER OF FORMULAS RESULTING FROM DNF: %i\n" (List.length phi_dnf);
   (* 1. Extract relevant arrangements *)
   let relevant = List.map relevant_levels phi_dnf in
-(*
+
   List.iter (fun (rs,ss) -> Printf.printf "RELEVANT: {%s}\n" (String.concat ";" (List.map SL.int_to_str rs))) relevant;
-*)
+
+  List.iter (fun phi -> Printf.printf "PHI_DNF: %s\n" (SL.conjunctive_formula_to_str phi)) phi_dnf;
 
   (* 2. Guess arrangements *)
   let arrgs = List.map guess_arrangements phi_dnf in

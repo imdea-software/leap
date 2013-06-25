@@ -20,7 +20,7 @@ let rec sort_to_tll_sort (s:E.sort) : TLL.sort =
   match s with
   | E.Set       -> TLL.Set
   | E.Elem      -> TLL.Elem
-  | E.Thid      -> TLL.Thid
+  | E.Tid      -> TLL.Tid
   | E.Addr      -> TLL.Addr
   | E.Cell      -> TLL.Cell
   | E.SetTh     -> TLL.SetTh
@@ -40,7 +40,7 @@ and sort_to_expr_sort (s:TLL.sort) : E.sort =
   match s with
   | TLL.Set     -> E.Set
   | TLL.Elem    -> E.Elem
-  | TLL.Thid    -> E.Thid
+  | TLL.Tid    -> E.Tid
   | TLL.Addr    -> E.Addr
   | TLL.Cell    -> E.Cell
   | TLL.SetTh   -> E.SetTh
@@ -57,7 +57,7 @@ and build_term_var (v:E.variable) : TLL.term =
   match (E.var_sort v) with
     E.Set   -> TLL.SetT   (TLL.VarSet   tll_v)
   | E.Elem  -> TLL.ElemT  (TLL.VarElem  tll_v)
-  | E.Thid  -> TLL.ThidT  (TLL.VarTh    tll_v)
+  | E.Tid  -> TLL.TidT  (TLL.VarTh    tll_v)
   | E.Addr  -> TLL.AddrT  (TLL.VarAddr  tll_v)
   | E.Cell  -> TLL.CellT  (TLL.VarCell  tll_v)
   | E.SetTh -> TLL.SetThT (TLL.VarSetTh tll_v)
@@ -91,11 +91,11 @@ and scope_to_tll_scope (p:E.procedure_name) : TLL.procedure_name =
 and tid_to_tll_tid (th:E.tid) : TLL.tid =
   match th with
     E.VarTh v        -> TLL.VarTh (variable_to_tll_var v)
-  | E.NoThid         -> TLL.NoThid
+  | E.NoTid         -> TLL.NoTid
   | E.CellLockId c   -> TLL.CellLockId (cell_to_tll_cell c)
   | E.CellLockIdAt _ -> raise(UnsupportedTllExpr(E.tid_to_str th))
-  | E.ThidArrayRd _  -> raise(UnsupportedTllExpr(E.tid_to_str th))
-  | E.ThidArrRd _    -> raise(UnsupportedTllExpr(E.tid_to_str th))
+  | E.TidArrayRd _  -> raise(UnsupportedTllExpr(E.tid_to_str th))
+  | E.TidArrRd _    -> raise(UnsupportedTllExpr(E.tid_to_str th))
 
 
 and term_to_tll_term (t:E.term) : TLL.term =
@@ -103,7 +103,7 @@ and term_to_tll_term (t:E.term) : TLL.term =
     E.VarT v       -> TLL.VarT (variable_to_tll_var v)
   | E.SetT s       -> TLL.SetT (set_to_tll_set s)
   | E.ElemT e      -> TLL.ElemT (elem_to_tll_elem e)
-  | E.ThidT t      -> TLL.ThidT (tid_to_tll_tid t)
+  | E.TidT t      -> TLL.TidT (tid_to_tll_tid t)
   | E.AddrT a      -> TLL.AddrT (addr_to_tll_addr a)
   | E.CellT c      -> TLL.CellT (cell_to_tll_cell c)
   | E.SetThT st    -> TLL.SetThT (setth_to_tll_setth st)

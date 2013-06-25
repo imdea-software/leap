@@ -19,7 +19,7 @@ and procedure_name  = GlobalScope | Scope of string
 
 and tid =
     VarTh      of variable
-  | NoThid
+  | NoTid
   | CellLockId of variable
   
 
@@ -89,7 +89,7 @@ let build_var (id:string) (pr:bool) (th:shared_or_local) (p:procedure_name) : va
 
 
 let build_fresh_lockid_var (t:E.tid) : variable =
-  let lockid_term = E.ThidT t in
+  let lockid_term = E.TidT t in
   let cell_tag = E.TermPool.tag term_pool lockid_term in
   let var = build_var (abs_cell_id ^ string_of_int cell_tag) false Shared GlobalScope
   in
@@ -97,7 +97,7 @@ let build_fresh_lockid_var (t:E.tid) : variable =
 
 
 let build_fresh_tid_array_var (t:E.tid) : variable =
-  let tid_array_term = E.ThidT t in
+  let tid_array_term = E.TidT t in
   let tid_tag = E.TermPool.tag term_pool tid_array_term in
   let var = build_var (abs_array_id ^ string_of_int tid_tag) false Shared GlobalScope
   in
@@ -125,11 +125,11 @@ and conv_procedure_name (p:E.procedure_name) : procedure_name =
 and conv_th (th:E.tid) : tid =
   match th with
     E.VarTh v            -> VarTh (conv_variable v)
-  | E.NoThid             -> NoThid
+  | E.NoTid             -> NoTid
   | E.CellLockId _       -> VarTh (build_fresh_lockid_var th)
   | E.CellLockIdAt _     -> VarTh (build_fresh_lockid_var th)
-  | E.ThidArrayRd _      -> VarTh (build_fresh_tid_array_var th)
-  | E.ThidArrRd _        -> VarTh (build_fresh_tid_array_var th)
+  | E.TidArrayRd _      -> VarTh (build_fresh_tid_array_var th)
+  | E.TidArrRd _        -> VarTh (build_fresh_tid_array_var th)
 
 
 let localize_var_id (v:string) (p_name:string) : string =
@@ -158,7 +158,7 @@ and shared_or_local_to_str (exp:shared_or_local) : string =
 and tid_to_str (expr:tid) : string =
   match expr with
     VarTh v -> variable_to_str v
-  | NoThid -> "#"
+  | NoTid -> "#"
   | CellLockId v -> variable_to_str v ^ ".lockid"
 
 
@@ -170,7 +170,7 @@ and param_tid_to_str (expr:tid) : string =
                  with
                    _ -> sprintf "(%s)" (variable_to_str v)
                end
-  | NoThid -> sprintf "(#)"
+  | NoTid -> sprintf "(#)"
   | CellLockId v -> sprintf "(%s)" (tid_to_str expr)
 
 
@@ -187,7 +187,7 @@ and prime_variable (pr:bool) (v:variable) : variable =
 and priming_tid (pr:bool) (t:tid) : tid =
   match t with
     VarTh v -> VarTh (prime_variable pr v)
-  | NoThid -> NoThid
+  | NoTid -> NoTid
   | CellLockId v -> CellLockId (prime_variable pr v)
 
 
@@ -331,16 +331,16 @@ let keep_locations (f:E.formula) : (expression * string list) =
         PCUpdate (i, conv_th th)
     | E.Literal(E.Atom(E.PCRange(i,j,th,pr))) ->
         PCRange (i, j, conv_shared_or_local th, pr)
-    | E.Literal (E.NegAtom (E.Eq (E.ThidT t1, E.ThidT t2))) ->
-        apply $ E.Literal(E.Atom(E.InEq(E.ThidT t1, E.ThidT t2)))
-    | E.Literal (E.Atom (E.Eq (E.ThidT t1, E.ThidT t2))) ->
+    | E.Literal (E.NegAtom (E.Eq (E.TidT t1, E.TidT t2))) ->
+        apply $ E.Literal(E.Atom(E.InEq(E.TidT t1, E.TidT t2)))
+    | E.Literal (E.Atom (E.Eq (E.TidT t1, E.TidT t2))) ->
         let th1 = conv_th t1 in
         let th2 = conv_th t2
         in
           Eq (th1, th2)
-    | E.Literal (E.NegAtom (E.InEq (E.ThidT t1, E.ThidT t2))) ->
-        apply $ E.Literal(E.Atom(E.Eq(E.ThidT t1,E.ThidT t2)))
-    | E.Literal (E.Atom (E.InEq (E.ThidT t1, E.ThidT t2))) ->
+    | E.Literal (E.NegAtom (E.InEq (E.TidT t1, E.TidT t2))) ->
+        apply $ E.Literal(E.Atom(E.Eq(E.TidT t1,E.TidT t2)))
+    | E.Literal (E.Atom (E.InEq (E.TidT t1, E.TidT t2))) ->
         let th1 = conv_th t1 in
         let th2 = conv_th t2
         in

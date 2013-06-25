@@ -43,7 +43,7 @@ module Make (K : Level.S) : TSLK_QUERY =
     let addr_s    : string = "Address"
     let set_s     : string = "Set"
     let elem_s    : string = "Elem"
-    let tid_s     : string = "Thid"
+    let tid_s     : string = "Tid"
     let cell_s    : string = "Cell"
     let setth_s   : string = "Setth"
     let setelem_s : string = "SetElem"
@@ -1135,7 +1135,7 @@ module Make (K : Level.S) : TSLK_QUERY =
           ) req_sorts) then z3_addr_preamble buf num_addr ;
 (*
       if (List.exists (fun s ->
-            s=Expr.Thid || s=Expr.Cell || s=Expr.SetTh
+            s=Expr.Tid || s=Expr.Cell || s=Expr.SetTh
           ) req_sorts) then z3_tid_preamble buf num_tid ;
 *)
       z3_tid_preamble buf num_tid;
@@ -1264,7 +1264,7 @@ module Make (K : Level.S) : TSLK_QUERY =
                              Expr.Set     -> set_s
                            | Expr.Elem    -> elem_s
                            | Expr.Addr    -> addr_s
-                           | Expr.Thid    -> tid_s
+                           | Expr.Tid    -> tid_s
                            | Expr.Cell    -> cell_s
                            | Expr.SetTh   -> setth_s
                            | Expr.SetElem -> setelem_s
@@ -1287,7 +1287,7 @@ module Make (K : Level.S) : TSLK_QUERY =
             | Expr.Path -> B.add_string buf ( "(assert (ispath " ^ name ^ "))\n" )
             | Expr.Mem  -> B.add_string buf ( "(assert (isheap " ^ name ^ "))\n" )
             | Expr.Elem -> B.add_string buf ( "(assert (iselem " ^ name ^ "))\n" )
-            | Expr.Thid -> let _ = B.add_string buf ( "(assert (not (= " ^ name ^ " NoThread)))\n" ) in
+            | Expr.Tid -> let _ = B.add_string buf ( "(assert (not (= " ^ name ^ " NoThread)))\n" ) in
                            let _ = B.add_string buf ( "(assert (in_pos_range " ^ name ^ "))\n")
                            in
                              ()
@@ -1313,7 +1313,7 @@ module Make (K : Level.S) : TSLK_QUERY =
                                         (Expr.var_set_param (Expr.Local (Expr.VarTh t)) v) in
                           B.add_string buf ( "(assert (isheap " ^ v_str ^ "))\n" )
                       ) tid_set
-            | Expr.Thid -> Expr.VarSet.iter (fun t ->
+            | Expr.Tid -> Expr.VarSet.iter (fun t ->
                         let v_str = variable_invocation_to_str
                                         (Expr.var_set_param (Expr.Local (Expr.VarTh t)) v) in
                           B.add_string buf ( "(assert (not (= " ^ v_str ^ " NoThread)))\n" )
@@ -1328,7 +1328,7 @@ module Make (K : Level.S) : TSLK_QUERY =
       let varset     = Expr.varset_of_sort vars Expr.Set  in
       let varelem    = Expr.varset_of_sort vars Expr.Elem in
       let varaddr    = Expr.varset_of_sort vars Expr.Addr in
-      let vartid     = Expr.varset_of_sort vars Expr.Thid in
+      let vartid     = Expr.varset_of_sort vars Expr.Tid in
       let varcell    = Expr.varset_of_sort vars Expr.Cell in
       let varsetth   = Expr.varset_of_sort vars Expr.SetTh in
       let varsetelem = Expr.varset_of_sort vars Expr.SetElem in
@@ -1451,7 +1451,7 @@ module Make (K : Level.S) : TSLK_QUERY =
     and tidterm_to_str (th:Expr.tid) : string =
       match th with
         Expr.VarTh v            -> variable_invocation_to_str v
-      | Expr.NoThid             -> "NoThread"
+      | Expr.NoTid             -> "NoThread"
       | Expr.CellLockIdAt (c,l) -> Printf.sprintf "(select (lock %s) %s)"
                                                       (cellterm_to_str c)
                                                       (levelterm_to_str l)
@@ -1575,7 +1575,7 @@ module Make (K : Level.S) : TSLK_QUERY =
         Expr.VarT  v           -> variable_invocation_to_str v
       | Expr.SetT  s           -> setterm_to_str s
       | Expr.ElemT   e         -> elemterm_to_str e
-      | Expr.ThidT   th        -> tidterm_to_str th
+      | Expr.TidT   th        -> tidterm_to_str th
       | Expr.AddrT   a         -> addrterm_to_str a
       | Expr.CellT   c         -> cellterm_to_str c
       | Expr.SetThT sth        -> setthterm_to_str sth

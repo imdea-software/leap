@@ -63,7 +63,7 @@ let union_model_size (u:union_info) : model_size =
 (* calculates the cut_off *)
 let cut_off_normalized (expr:conjunctive_formula) : model_size =
   let vars = Expr.get_varset_from_conj expr in
-  let vars_tid_set = varset_of_sort vars Thid in
+  let vars_tid_set = varset_of_sort vars Tid in
   let vars_tid = VarSet.cardinal vars_tid_set in
   let vars_addr_set = varset_of_sort vars Addr in
   let vars_addr = VarSet.cardinal vars_addr_set in
@@ -161,7 +161,7 @@ let cut_off_normalized (expr:conjunctive_formula) : model_size =
     | VarT _     -> ()                      (* nothing, y must be a VarT as well *)
     | SetT _     -> numaddr := !numaddr + 1 (* the witness of s1 != s2 *)
     | ElemT _    -> ()
-    | ThidT _    -> ()
+    | TidT _    -> ()
     | AddrT _    -> ()                      (* no need to look for firstlock, every  firstlock has a var *)
     | CellT _    -> ()
     | SetThT _   -> numtid := !numtid + 1   (* the witness of st1 != st2 *)
@@ -233,7 +233,7 @@ let union_eq_cutoff (info:union_info) ((x,y):(Expr.term * Expr.term)) : union_in
     VarT _      -> info (* nothing, y must be a VarT as well *)
   | SetT _      -> union_count_addr info (Expr.Eq(x,y)) (* the witness of s1 != s2 *)
   | ElemT _     -> info
-  | ThidT _     -> info
+  | TidT _     -> info
   | AddrT _     -> info (* no need to look for firstlock, every firstlock has a var *)
   | CellT _     -> info
   | SetThT _    -> union_count_tid info (Expr.Eq(x,y)) (* the witness of st1 != st2 *)
@@ -249,7 +249,7 @@ let union_ineq_cutoff (info:union_info) ((x,y):(Expr.term * Expr.term)) : union_
     VarT _      -> info (* nothing, y must be a VarT as well *)
   | SetT _      -> union_count_addr info (Expr.InEq(x,y)) (* the witness of s1 != s2 *)
   | ElemT _     -> info
-  | ThidT _     -> info
+  | TidT _     -> info
   | AddrT _     -> info (* no need to look for firstlock, every firstlock has a var *)
   | CellT _     -> info
   | SetThT _    -> union_count_tid info (Expr.InEq(x,y)) (* the witness of st1 != st2 *)
@@ -306,7 +306,7 @@ let rec union_formula_cutoff (info:union_info) (phi:Expr.formula) : union_info =
 (* Union SMP *)
 let compute_max_cut_off_with_union (phi:formula) : model_size =
   let vars = Expr.get_varset_from_formula phi in
-  let vartid_num  = VarSet.cardinal (Expr.varset_of_sort vars Thid) in
+  let vartid_num  = VarSet.cardinal (Expr.varset_of_sort vars Tid) in
   let varaddr_num = VarSet.cardinal (Expr.varset_of_sort vars Addr) in
   let varelem_num = VarSet.cardinal (Expr.varset_of_sort vars Elem) in
   let varmem_num  = VarSet.cardinal (Expr.varset_of_sort vars Mem) in
@@ -316,7 +316,7 @@ let compute_max_cut_off_with_union (phi:formula) : model_size =
                   varaddr_num * varmem_num +  (* Cell next pointers *)
                   info.num_addrs              (* Special literals   *) in
   let num_tids = 1 +                          (* No thread          *)
-                 vartid_num +                 (* Thid variables     *)
+                 vartid_num +                 (* Tid variables     *)
                  varmem_num * num_addrs       (* Cell locks         *) in
   let num_elems = varelem_num +               (* Elem variables     *)
                   varmem_num * num_addrs      (* Cell data          *)
@@ -337,7 +337,7 @@ let prune_eq (x:term) (y:term) : (term * term) option =
       VarT _      -> None (* nothing, y must be a VarT as well *)
     | SetT _      -> Some (x,y) (* the witness of s1 != s2 *)
     | ElemT _     -> Some (x,y)
-    | ThidT _     -> Some (x,y)
+    | TidT _     -> Some (x,y)
     | AddrT _     -> Some (x,y) (* For mem[a].next literals *)
     | CellT _     -> None
     | SetThT _    -> Some (x,y) (* the witness of st1 != st2 *)

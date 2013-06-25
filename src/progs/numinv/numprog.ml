@@ -111,7 +111,7 @@ exception No_invariant_info
 
 
 (* CONFIGURATION *)
-let no_tid      : string        = "noThid"
+let no_tid      : string        = "noTid"
 let defLoc      : string        = "loc_"
 let defSelfLoop : string        = "selfloop"
 let defTranName : string        = "tran"
@@ -168,11 +168,11 @@ let absIntMode_to_str (m:absIntMode_t) : string =
 let num_th_to_str (expr:Expr.tid) : string =
   match expr with
     Expr.VarTh v        -> "__" ^ (Expr.variable_to_str v)
-  | Expr.NoThid         -> no_tid
+  | Expr.NoTid         -> no_tid
   | Expr.CellLockId _   -> raise(No_numerical_expression(Expr.tid_to_str expr))
   | Expr.CellLockIdAt _ -> raise(No_numerical_expression(Expr.tid_to_str expr))
-  | Expr.ThidArrayRd _  -> raise(No_numerical_expression(Expr.tid_to_str expr))
-  | Expr.ThidArrRd _    -> raise(No_numerical_expression(Expr.tid_to_str expr))
+  | Expr.TidArrayRd _  -> raise(No_numerical_expression(Expr.tid_to_str expr))
+  | Expr.TidArrRd _    -> raise(No_numerical_expression(Expr.tid_to_str expr))
 
 
 let num_th_option_to_str (expr:Expr.tid option) : string =
@@ -740,11 +740,11 @@ let build_num_pos_eq (np:numprog_pos_t) (expr:Expr.integer) : Expr.formula =
 let param_num_var_id (t:Expr.tid) (id:Expr.varId) : Expr.varId =
   match t with
     Expr.VarTh v        -> id ^ "_" ^ (Expr.variable_to_str v)
-  | Expr.NoThid         -> id
+  | Expr.NoTid         -> id
   | Expr.CellLockId _   -> raise(No_numerical_expression(Expr.tid_to_str t))
   | Expr.CellLockIdAt _ -> raise(No_numerical_expression(Expr.tid_to_str t))
-  | Expr.ThidArrayRd _  -> raise(No_numerical_expression(Expr.tid_to_str t))
-  | Expr.ThidArrRd _    -> raise(No_numerical_expression(Expr.tid_to_str t))
+  | Expr.TidArrayRd _  -> raise(No_numerical_expression(Expr.tid_to_str t))
+  | Expr.TidArrRd _    -> raise(No_numerical_expression(Expr.tid_to_str t))
 
 
 let build_trans_info (sys:Sys.system_t)

@@ -21,7 +21,7 @@ and variable =
 and sort =
     Set
   | Elem
-  | Thid
+  | Tid
   | Addr
   | Cell
   | SetTh
@@ -35,7 +35,7 @@ and term =
     VarT     of variable
   | SetT     of set
   | ElemT    of elem
-  | ThidT    of tid
+  | TidT    of tid
   | AddrT    of addr
   | CellT    of cell
   | SetThT   of setth
@@ -65,7 +65,7 @@ and set =
   | AddrToSet of mem * addr
 and tid =
     VarTh of variable
-  | NoThid
+  | NoTid
   | CellLockId of cell
 and elem =
     VarElem of variable
@@ -220,7 +220,7 @@ let unprime_var (v:variable) : variable =
 let is_primed_tid (th:tid) : bool =
   match th with
   | VarTh v           -> v.is_primed
-  | NoThid            -> false
+  | NoTid            -> false
   | CellLockId _      -> false
   (* FIX: Propagate the query inside cell??? *)
 
@@ -318,7 +318,7 @@ and get_varset_int i =
 and get_varset_tid th =
   match th with
       VarTh v      -> S.singleton v @@ get_varset_from_param v
-    | NoThid       -> S.empty
+    | NoTid       -> S.empty
     | CellLockId c ->  get_varset_cell c
 and get_varset_elem e =
   match e with
@@ -400,7 +400,7 @@ and get_varset_term t = match t with
       VarT   v            -> S.singleton v @@ get_varset_from_param v
     | SetT   s            -> get_varset_set s
     | ElemT  e            -> get_varset_elem e
-    | ThidT  th           -> get_varset_tid th
+    | TidT  th           -> get_varset_tid th
     | AddrT  a            -> get_varset_addr a
     | CellT  c            -> get_varset_cell c
     | SetThT st           -> get_varset_setth st
@@ -478,7 +478,7 @@ let rec get_termset_atom (a:atom) : TermSet.t =
   | OrderList(m,a1,a2)     -> add_list [MemT m; AddrT a1; AddrT a2]
   | In(a,s)                -> add_list [AddrT a; SetT s]
   | SubsetEq(s1,s2)        -> add_list [SetT s1; SetT s2]
-  | InTh(th,st)            -> add_list [ThidT th; SetThT st]
+  | InTh(th,st)            -> add_list [TidT th; SetThT st]
   | SubsetEqTh(st1,st2)    -> add_list [SetThT st1; SetThT st2]
   | InElem(e,se)           -> add_list [ElemT e; SetElemT se]
   | SubsetEqElem(se1,se2)  -> add_list [SetElemT se1; SetElemT se2]
@@ -493,11 +493,11 @@ let rec get_termset_atom (a:atom) : TermSet.t =
   | BoolVar v              -> add_list [VarT v]
   | PC(pc,th,pr)           -> (match th with
                                | Shared  -> TermSet.empty
-                               | Local t -> add_list [ThidT t])
-  | PCUpdate (pc,th)       -> add_list [ThidT th]
+                               | Local t -> add_list [TidT t])
+  | PCUpdate (pc,th)       -> add_list [TidT th]
   | PCRange(pc1,pc2,th,pr) -> (match th with
                                | Shared  -> TermSet.empty
-                               | Local t -> add_list [ThidT t])
+                               | Local t -> add_list [TidT t])
 
 and get_termset_literal (l:literal) : TermSet.t =
   match l with
@@ -533,7 +533,7 @@ let termset_of_sort (all:TermSet.t) (s:sort) : TermSet.t =
     match s with
     | Set     -> (match t with | SetT _     -> true | _ -> false)
     | Elem    -> (match t with | ElemT _    -> true | _ -> false)
-    | Thid    -> (match t with | ThidT _    -> true | _ -> false)
+    | Tid    -> (match t with | TidT _    -> true | _ -> false)
     | Addr    -> (match t with | AddrT _    -> true | _ -> false)
     | Cell    -> (match t with | CellT _    -> true | _ -> false)
     | SetTh   -> (match t with | SetThT _   -> true | _ -> false)
@@ -566,7 +566,7 @@ let is_term_var t =
       VarT(_)             -> true
     | SetT(VarSet(_))     -> true
     | ElemT(VarElem(_))   -> true
-    | ThidT(VarTh  (_))   -> true
+    | TidT(VarTh  (_))   -> true
     | AddrT(VarAddr(_))   -> true
     | CellT(VarCell(_))   -> true
     | SetThT(VarSetTh(_)) -> true
@@ -609,7 +609,7 @@ let get_sort_from_term t =
       VarT _           -> Unknown
     | SetT _           -> Set
     | ElemT _          -> Elem
-    | ThidT _          -> Thid
+    | TidT _          -> Tid
     | AddrT _          -> Addr
     | CellT _          -> Cell
     | SetThT _         -> SetTh
@@ -634,7 +634,7 @@ let rec is_term_flat t =
       VarT(_)     -> true
     | SetT s      -> is_set_flat s
     | ElemT e     -> is_elem_flat   e
-    | ThidT k     -> is_tid_flat k
+    | TidT k     -> is_tid_flat k
     | AddrT a     -> is_addr_flat a
     | CellT c     -> is_cell_flat c
     | SetThT st   -> is_setth_flat st
@@ -657,7 +657,7 @@ and is_set_flat t =
 and is_tid_flat t =
   match t with
       VarTh _       -> true
-    | NoThid        -> true     
+    | NoTid        -> true     
     | CellLockId(c) -> is_cell_var c
 and is_elem_flat t =
   match t with
@@ -953,7 +953,7 @@ and addr_to_str expr =
 and tid_to_str th =
   match th with
       VarTh(v)         -> variable_to_str v
-    | NoThid           -> Printf.sprintf "NoThid"
+    | NoTid           -> Printf.sprintf "NoTid"
     | CellLockId(cell) -> Printf.sprintf "%s.lockid" (cell_to_str cell)
 and eq_to_str expr =
   let (e1,e2) = expr in
@@ -974,7 +974,7 @@ and term_to_str expr =
     | SetT(set)          -> (set_to_str set)
     | AddrT(addr)        -> (addr_to_str addr)
     | ElemT(elem)        -> (elem_to_str elem)
-    | ThidT(th)          -> (tid_to_str th)
+    | TidT(th)          -> (tid_to_str th)
     | CellT(cell)        -> (cell_to_str cell)
     | SetThT(setth)      -> (setth_to_str setth)
     | SetElemT(setelem)  -> (setelem_to_str setelem)
@@ -1041,7 +1041,7 @@ let sort_to_str s =
   match s with
       Set     -> "Set"
     | Elem    -> "Elem"
-    | Thid    -> "Thid"
+    | Tid    -> "Tid"
     | Addr    -> "Addr"
     | Cell    -> "Cell"
     | SetTh   -> "SetTh"
@@ -1136,12 +1136,12 @@ let rec get_tid_in (v:variable) : tid list =
 and voc_term (expr:term) : tid list =
   match expr with
     | VarT v             -> (match v.sort with
-                             | Thid -> [VarTh v]
+                             | Tid -> [VarTh v]
                              | _    -> [] ) @ get_tid_in v
     | SetT(set)          -> voc_set set
     | AddrT(addr)        -> voc_addr addr
     | ElemT(elem)        -> voc_elem elem
-    | ThidT(th)          -> voc_tid th
+    | TidT(th)          -> voc_tid th
     | CellT(cell)        -> voc_cell cell
     | SetThT(setth)      -> voc_setth setth
     | SetElemT(setelem)  -> voc_setelem setelem
@@ -1184,7 +1184,7 @@ and voc_elem (e:elem) : tid list =
 and voc_tid (th:tid) : tid list =
   match th with
     VarTh v            -> th :: get_tid_in v
-  | NoThid             -> []
+  | NoTid             -> []
   | CellLockId(cell)   -> (voc_cell cell)
 
 
@@ -1468,7 +1468,7 @@ let unprimed_voc (phi:formula) : tid list =
 (*       VarT v   -> fs.term_m.term_var_f v *)
 (*     | SetT s   -> fs.term_m.set_f   s (fold_set   fs s) *)
 (*     | ElemT e  -> fs.term_m.elem_f  e (fold_elem  fs e) *)
-(*     | ThidT i  -> fs.term_m.tid_f  i (fold_tid  fs i) *)
+(*     | TidT i  -> fs.term_m.tid_f  i (fold_tid  fs i) *)
 (*     | AddrT a  -> fs.term_m.addr_f  a (fold_addr  fs a) *)
 (*     | CellT c  -> fs.term_m.cell_f  c (fold_cell  fs c) *)
 (*     | SetThT s -> fs.term_m.setth_f s (fold_setth fs s) *)
@@ -1487,7 +1487,7 @@ let unprimed_voc (phi:formula) : tid list =
 (* and fold_tid (fs:('t,'s,'th,'e,'a,'c,'sth,'p,'m,'l,'f) all_maps) (th:tid) = *)
 (*   match th with *)
 (*     VarTh v        -> fs.tid_m.tid_var_f v *)
-(*   | NoThid         -> fs.tid_m.notid_f *)
+(*   | NoTid         -> fs.tid_m.notid_f *)
 (*   | CellLockId (c) -> fs.tid_m.celllockid_f c (fold_cell fs c) *)
 (* and fold_elem (fs:('t,'s,'th,'e,'a,'c,'sth,'p,'m,'l,'f) all_maps) (e:elem) = *)
 (*   match e with *)
@@ -1979,9 +1979,9 @@ let required_sorts (phi:formula) : sort list =
 
   and req_t (t:tid) : SortSet.t =
     match t with
-    | VarTh _           -> single Thid
-    | NoThid            -> single Thid
-    | CellLockId c      -> append Thid [req_c c]
+    | VarTh _           -> single Tid
+    | NoTid            -> single Tid
+    | CellLockId c      -> append Tid [req_c c]
 
   and req_s (s:set) : SortSet.t =
     match s with
@@ -1999,7 +1999,7 @@ let required_sorts (phi:formula) : sort list =
     | VarT v             -> single v.sort
     | SetT s             -> req_s s
     | ElemT e            -> req_e e
-    | ThidT t            -> req_t t
+    | TidT t            -> req_t t
     | AddrT a            -> req_a a
     | CellT c            -> req_c c
     | SetThT s           -> req_st s
@@ -2129,7 +2129,7 @@ let special_ops (phi:formula) : special_op_t list =
   and ops_t (t:tid) : OpsSet.t =
     match t with
     | VarTh _           -> empty
-    | NoThid            -> empty
+    | NoTid            -> empty
     | CellLockId c      -> ops_c c
 
   and ops_s (s:set) : OpsSet.t =
@@ -2148,7 +2148,7 @@ let special_ops (phi:formula) : special_op_t list =
     | VarT _             -> empty
     | SetT s             -> ops_s s
     | ElemT e            -> ops_e e
-    | ThidT t            -> ops_t t
+    | TidT t            -> ops_t t
     | AddrT a            -> ops_a a
     | CellT c            -> ops_c c
     | SetThT s           -> ops_st s

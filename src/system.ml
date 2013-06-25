@@ -76,7 +76,7 @@ let initLabelNum     : int    = 20
 let defMainProcedure : string = "main"
 let heap_name        : string = "heap"
 let me_tid           : string = "me"
-let me_tid_var       : E.variable = E.build_var me_tid E.Thid
+let me_tid_var       : E.variable = E.build_var me_tid E.Tid
                                          false E.Shared
                                          E.GlobalScope E.RealVar
 let me_tid_th        : E.tid = E.VarTh me_tid_var
@@ -493,7 +493,7 @@ let get_sort_from_variable (gVars:var_table_t)
   else if mem_var auxVars v then
     find_var_type auxVars v
   else
-    E.Thid
+    E.Tid
     (* FIX: We are just assuming that undefined variables are used to identify threads *)
 (*
     begin
@@ -515,7 +515,7 @@ let get_sort_from_term (gVars:var_table_t)
   | E.VarT v            -> get_sort_from_variable gVars iVars lVars auxVars (E.var_id v)
                             (* TODO: Or maybe just s? *)
   | E.ElemT(_)          -> E.Elem
-  | E.ThidT(_)          -> E.Thid
+  | E.TidT(_)          -> E.Tid
   | E.AddrT(_)          -> E.Addr
   | E.CellT(_)          -> E.Cell
   | E.SetThT(_)         -> E.SetTh
@@ -1079,14 +1079,14 @@ let rec aux_rho_for_st
     let a = E.param_addr th_p $ Stm.addr_used_in_unit_op cmd in
     let cell = E.CellAt (E.heap, a) in
     let cond = match op with
-      | Stm.Lock   -> E.eq_tid (E.CellLockId cell) E.NoThid
+      | Stm.Lock   -> E.eq_tid (E.CellLockId cell) E.NoTid
       | Stm.Unlock -> E.eq_tid (E.CellLockId cell)
                                (match th_p with
-                                | E.Shared -> E.NoThid
+                                | E.Shared -> E.NoTid
                                 | E.Local t -> t) in
     let new_tid  = match op with
       | Stm.Lock -> th
-      | Stm.Unlock -> E.NoThid in
+      | Stm.Unlock -> E.NoTid in
     let mkcell = E.MkCell (E.CellData (E.CellAt (E.heap, a)),
       E.Next (E.CellAt (E.heap, a)), new_tid) in
     let upd = E.eq_mem (E.prime_mem E.heap) (E.Update (E.heap, a, mkcell)) in
@@ -1220,7 +1220,7 @@ let gen_rho (sys : t)     (* The system                   *)
                 | SClosed m -> E.gen_tid_list 1 m
                 | SOpenArray js -> js in
   let thSet = 
-    E.construct_term_set $ List.map (fun x -> E.ThidT x) th_list in
+    E.construct_term_set $ List.map (fun x -> E.TidT x) th_list in
 
   (* For Malloc -- BEGIN *)
   let is_sort s v = (E.var_sort v = s) in

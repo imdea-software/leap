@@ -18,7 +18,7 @@ module type S =
     and sort =
         Set
       | Elem
-      | Thid
+      | Tid
       | Addr
       | Cell
       | SetTh
@@ -32,7 +32,7 @@ module type S =
         VarT              of variable
       | SetT              of set
       | ElemT             of elem
-      | ThidT             of tid
+      | TidT             of tid
       | AddrT             of addr
       | CellT             of cell
       | SetThT            of setth
@@ -54,7 +54,7 @@ module type S =
       | AddrToSet         of mem * addr * level
     and tid =
         VarTh             of variable
-      | NoThid
+      | NoTid
       | CellLockIdAt      of cell * level
     and elem =
         VarElem           of variable
@@ -352,7 +352,7 @@ module Make (K : Level.S) : S =
     and sort =
         Set
       | Elem
-      | Thid
+      | Tid
       | Addr
       | Cell
       | SetTh
@@ -366,7 +366,7 @@ module Make (K : Level.S) : S =
         VarT              of variable
       | SetT              of set
       | ElemT             of elem
-      | ThidT             of tid
+      | TidT             of tid
       | AddrT             of addr
       | CellT             of cell
       | SetThT            of setth
@@ -388,7 +388,7 @@ module Make (K : Level.S) : S =
       | AddrToSet         of mem * addr * level
     and tid =
         VarTh             of variable
-      | NoThid
+      | NoTid
       | CellLockIdAt      of cell * level
     and elem =
         VarElem           of variable
@@ -594,7 +594,7 @@ module Make (K : Level.S) : S =
     let is_primed_tid (th:tid) : bool =
       match th with
       | VarTh v           -> var_is_primed v
-      | NoThid            -> false
+      | NoTid            -> false
       | CellLockIdAt _    -> false
       (* FIX: Propagate the query inside cell??? *)
 
@@ -754,7 +754,7 @@ module Make (K : Level.S) : S =
     and get_varset_tid th =
       match th with
           VarTh v            -> S.singleton v @@ get_varset_from_param v
-        | NoThid             -> S.empty
+        | NoTid             -> S.empty
         | CellLockIdAt (c,l) -> (get_varset_cell c) @@ (get_varset_level l)
     and get_varset_elem e =
       match e with
@@ -851,7 +851,7 @@ module Make (K : Level.S) : S =
           VarT   v            -> S.singleton v @@ get_varset_from_param v
         | SetT   s            -> get_varset_set s
         | ElemT  e            -> get_varset_elem e
-        | ThidT  th           -> get_varset_tid th
+        | TidT  th           -> get_varset_tid th
         | AddrT  a            -> get_varset_addr a
         | CellT  c            -> get_varset_cell c
         | SetThT st           -> get_varset_setth st
@@ -942,7 +942,7 @@ module Make (K : Level.S) : S =
       | OrderList(m,a1,a2)     -> add_list [MemT m; AddrT a1; AddrT a2]
       | In(a,s)                -> add_list [AddrT a; SetT s]
       | SubsetEq(s1,s2)        -> add_list [SetT s1; SetT s2]
-      | InTh(th,st)            -> add_list [ThidT th; SetThT st]
+      | InTh(th,st)            -> add_list [TidT th; SetThT st]
       | SubsetEqTh(st1,st2)    -> add_list [SetThT st1; SetThT st2]
       | InElem(e,se)           -> add_list [ElemT e; SetElemT se]
       | SubsetEqElem(se1,se2)  -> add_list [SetElemT se1; SetElemT se2]
@@ -957,11 +957,11 @@ module Make (K : Level.S) : S =
       | BoolVar v              -> add_list [VarT v]
       | PC(pc,th,pr)           -> (match th with
                                    | Shared  -> TermSet.empty
-                                   | Local t -> add_list [ThidT t])
-      | PCUpdate (pc,th)       -> add_list [ThidT th]
+                                   | Local t -> add_list [TidT t])
+      | PCUpdate (pc,th)       -> add_list [TidT th]
       | PCRange(pc1,pc2,th,pr) -> (match th with
                                    | Shared  -> TermSet.empty
-                                   | Local t -> add_list [ThidT t])
+                                   | Local t -> add_list [TidT t])
 
     and get_termset_literal (l:literal) : TermSet.t =
       match l with
@@ -997,7 +997,7 @@ module Make (K : Level.S) : S =
         match s with
         | Set       -> (match t with | SetT _       -> true | _ -> false)
         | Elem      -> (match t with | ElemT _      -> true | _ -> false)
-        | Thid      -> (match t with | ThidT _      -> true | _ -> false)
+        | Tid      -> (match t with | TidT _      -> true | _ -> false)
         | Addr      -> (match t with | AddrT _      -> true | _ -> false)
         | Cell      -> (match t with | CellT _      -> true | _ -> false)
         | SetTh     -> (match t with | SetThT _     -> true | _ -> false)
@@ -1029,7 +1029,7 @@ module Make (K : Level.S) : S =
           VarT(_)             -> true
         | SetT(VarSet(_))     -> true
         | ElemT(VarElem(_))   -> true
-        | ThidT(VarTh  (_))   -> true
+        | TidT(VarTh  (_))   -> true
         | AddrT(VarAddr(_))   -> true
         | CellT(VarCell(_))   -> true
         | SetThT(VarSetTh(_)) -> true
@@ -1072,7 +1072,7 @@ module Make (K : Level.S) : S =
           VarT _           -> Unknown
         | SetT _           -> Set
         | ElemT _          -> Elem
-        | ThidT _          -> Thid
+        | TidT _          -> Tid
         | AddrT _          -> Addr
         | CellT _          -> Cell
         | SetThT _         -> SetTh
@@ -1097,7 +1097,7 @@ module Make (K : Level.S) : S =
           VarT(_)        -> true
         | SetT s         -> is_set_flat s
         | ElemT e        -> is_elem_flat   e
-        | ThidT k        -> is_tid_flat k
+        | TidT k        -> is_tid_flat k
         | AddrT a        -> is_addr_flat a
         | CellT c        -> is_cell_flat c
         | SetThT st      -> is_setth_flat st
@@ -1121,7 +1121,7 @@ module Make (K : Level.S) : S =
     and is_tid_flat t =
       match t with
           VarTh _            -> true
-        | NoThid             -> true
+        | NoTid             -> true
         | CellLockIdAt (c,l) -> (is_cell_var c) && (is_int_var l)
     and is_elem_flat t =
       match t with
@@ -1261,7 +1261,7 @@ module Make (K : Level.S) : S =
       match s with
           Set       -> "Set"
         | Elem      -> "Elem"
-        | Thid      -> "Thid"
+        | Tid      -> "Tid"
         | Addr      -> "Addr"
         | Cell      -> "Cell"
         | SetTh     -> "SetTh"
@@ -1455,7 +1455,7 @@ module Make (K : Level.S) : S =
     and tid_to_str th =
       match th with
           VarTh(v)             -> variable_to_str v
-        | NoThid               -> Printf.sprintf "NoThid"
+        | NoTid               -> Printf.sprintf "NoTid"
         | CellLockIdAt(cell,l) -> Printf.sprintf "%s.lockid(%s)"
                                     (cell_to_str cell) (level_to_str l)
     and eq_to_str expr =
@@ -1477,7 +1477,7 @@ module Make (K : Level.S) : S =
         | SetT(set)          -> (set_to_str set)
         | AddrT(addr)        -> (addr_to_str addr)
         | ElemT(elem)        -> (elem_to_str elem)
-        | ThidT(th)          -> (tid_to_str th)
+        | TidT(th)          -> (tid_to_str th)
         | CellT(cell)        -> (cell_to_str cell)
         | SetThT(setth)      -> (setth_to_str setth)
         | SetElemT(setelem)  -> (setelem_to_str setelem)
@@ -1636,12 +1636,12 @@ module Make (K : Level.S) : S =
     and voc_term (expr:term) : tid list =
       match expr with
         | VarT v             -> (match v.sort with
-                                 | Thid -> [VarTh v]
+                                 | Tid -> [VarTh v]
                                  | _    -> [] ) @ get_tid_in v
         | SetT(set)          -> voc_set set
         | AddrT(addr)        -> voc_addr addr
         | ElemT(elem)        -> voc_elem elem
-        | ThidT(th)          -> voc_tid th
+        | TidT(th)          -> voc_tid th
         | CellT(cell)        -> voc_cell cell
         | SetThT(setth)      -> voc_setth setth
         | SetElemT(setelem)  -> voc_setelem setelem
@@ -1683,7 +1683,7 @@ module Make (K : Level.S) : S =
     and voc_tid (th:tid) : tid list =
       match th with
         VarTh v              -> th :: get_tid_in v
-      | NoThid               -> []
+      | NoTid               -> []
       | CellLockIdAt(cell,l) -> (voc_cell cell) @ (voc_level l)
 
 
@@ -2006,8 +2006,8 @@ module Make (K : Level.S) : S =
         | Eq (t1,t2)          -> union (req_term t1) (req_term t2)
         | InEq (t1,t2)        -> union (req_term t1) (req_term t2)
         | BoolVar v           -> single Bool
-        | PC _                -> single Thid
-        | PCUpdate _          -> single Thid
+        | PC _                -> single Tid
+        | PCUpdate _          -> single Tid
         | PCRange _           -> empty
 
       and req_m (m:mem) : SortSet.t =
@@ -2078,9 +2078,9 @@ module Make (K : Level.S) : S =
 
       and req_t (t:tid) : SortSet.t =
         match t with
-        | VarTh _            -> single Thid
-        | NoThid             -> single Thid
-        | CellLockIdAt (c,l) -> append Thid [req_c c;req_lv l]
+        | VarTh _            -> single Tid
+        | NoTid             -> single Tid
+        | CellLockIdAt (c,l) -> append Tid [req_c c;req_lv l]
 
       and req_s (s:set) : SortSet.t =
         match s with
@@ -2098,7 +2098,7 @@ module Make (K : Level.S) : S =
         | VarT v                       -> single v.sort
         | SetT s                       -> req_s s
         | ElemT e                      -> req_e e
-        | ThidT t                      -> req_t t
+        | TidT t                      -> req_t t
         | AddrT a                      -> req_a a
         | CellT c                      -> req_c c
         | SetThT s                     -> req_st s
@@ -2228,7 +2228,7 @@ module Make (K : Level.S) : S =
       and ops_t (t:tid) : OpsSet.t =
         match t with
         | VarTh _            -> empty
-        | NoThid             -> empty
+        | NoTid             -> empty
         | CellLockIdAt (c,l) -> list_union [ops_c c;ops_lv l]
 
       and ops_s (s:set) : OpsSet.t =
@@ -2247,7 +2247,7 @@ module Make (K : Level.S) : S =
         | VarT _             -> empty
         | SetT s             -> ops_s s
         | ElemT e            -> ops_e e
-        | ThidT t            -> ops_t t
+        | TidT t            -> ops_t t
         | AddrT a            -> ops_a a
         | CellT c            -> ops_c c
         | SetThT s           -> ops_st s
@@ -2340,7 +2340,7 @@ module Make (K : Level.S) : S =
       Literal (Atom (Eq (ElemT e1, ElemT e2)))
 
     let eq_tid (t1:tid) (t2:tid) : formula =
-      Literal (Atom (Eq (ThidT t1, ThidT t2)))
+      Literal (Atom (Eq (TidT t1, TidT t2)))
 
     let eq_addr (a1:addr) (a2:addr) : formula =
       Literal (Atom (Eq (AddrT a1, AddrT a2)))
@@ -2385,7 +2385,7 @@ module Make (K : Level.S) : S =
       Literal (Atom (InEq (ElemT e1, ElemT e2)))
 
     let ineq_tid (t1:tid) (t2:tid) : formula =
-      Literal (Atom (InEq (ThidT t1, ThidT t2)))
+      Literal (Atom (InEq (TidT t1, TidT t2)))
 
     let ineq_addr (a1:addr) (a2:addr) : formula =
       Literal (Atom (InEq (AddrT a1, AddrT a2)))

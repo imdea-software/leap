@@ -40,7 +40,7 @@ type term =
     VarT          of variable
   | SetT          of set
   | ElemT         of elem
-  | ThidT         of tid
+  | TidT         of tid
   | AddrT         of addr
   | CellT         of cell
   | SetThT        of setth
@@ -95,13 +95,13 @@ and set =
 
 and tid =
   | VarTh           of variable
-  | NoThid
+  | NoTid
   | CellLockId      of cell
   | CellLockIdAt    of cell * integer
-  | ThidArrayRd     of arrays * tid
+  | TidArrayRd     of arrays * tid
   | PointerLockid   of addr
   | PointerLockidAt of addr * integer
-  | ThidArrRd       of tidarr * integer
+  | TidArrRd       of tidarr * integer
 
 and elem =
     VarElem           of variable

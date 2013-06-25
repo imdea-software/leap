@@ -119,8 +119,8 @@ let unfold_expression (mInfo:malloc_info)
                                         E.And
                                           (E.eq_addr (E.AddrArrRd(aa_fresh, i_fresh))
                                                      (E.Null),
-                                           E.eq_tid (E.ThidArrRd(tt_fresh, i_fresh))
-                                                    (E.NoThid))), f)) fs in
+                                           E.eq_tid (E.TidArrRd(tt_fresh, i_fresh))
+                                                    (E.NoTid))), f)) fs in
         (t,ms,fs')
   | Stm.Term (Stm.ElemT (Stm.PointerData a)) ->
 (*      LOG "PointerData translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
@@ -138,17 +138,17 @@ let unfold_expression (mInfo:malloc_info)
 (*
       (E.Term (E.AddrT (E.NextAt (E.CellAt (E.heap,a_expr), l_expr))), None, [], [])
 *)
-  | Stm.Term (Stm.ThidT (Stm.PointerLockid a)) ->
+  | Stm.Term (Stm.TidT (Stm.PointerLockid a)) ->
 (*      LOG "PointerLockid translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
       let a_expr = Stm.addr_to_expr_addr a in
-      (E.Term (E.ThidT (E.CellLockId (E.CellAt (E.heap,a_expr)))), [], [])
-  | Stm.Term (Stm.ThidT (Stm.PointerLockidAt (a,l))) ->
+      (E.Term (E.TidT (E.CellLockId (E.CellAt (E.heap,a_expr)))), [], [])
+  | Stm.Term (Stm.TidT (Stm.PointerLockidAt (a,l))) ->
 (*      LOG "PointerLockidAt translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
       let a_expr = Stm.addr_to_expr_addr a in
       let l_expr = Stm.integer_to_expr_integer l in
-      (E.Term (E.ThidT (E.ThidArrRd (E.CellTids (E.CellAt (E.heap,a_expr)), l_expr))), [], [])
+      (E.Term (E.TidT (E.TidArrRd (E.CellTids (E.CellAt (E.heap,a_expr)), l_expr))), [], [])
 (*
-      (E.Term (E.ThidT (E.CellLockIdAt (E.CellAt (E.heap,a_expr), l_expr))), None, [], [])
+      (E.Term (E.TidT (E.CellLockIdAt (E.CellAt (E.heap,a_expr), l_expr))), None, [], [])
 *)
   | _ ->
 (*      LOG "Else translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
@@ -219,14 +219,14 @@ let generic_stm_term_eq (mode:eqGenMode)
         let new_term = E.param_term th_p (E.MemT(E.Update(E.heap,a,new_cell))) in
           heap_eq_generator (E.MemT E.heap) th_p (E.Term(new_term))
     (* CellLockId *)
-    | (E.ThidT (E.CellLockId(E.CellAt(h,a))), E.Term(E.ThidT t')) ->
+    | (E.TidT (E.CellLockId(E.CellAt(h,a))), E.Term(E.TidT t')) ->
         let new_cell = E.MkCell(E.CellData(E.CellAt(E.heap,a)),
                                 E.Next(E.CellAt(E.heap,a)),
                                 t') in
           heap_eq_generator (E.MemT E.heap) th_p
               (E.Term(E.MemT(E.Update(E.heap,a,new_cell))))
     (* CellLockIdAt *)
-    | (E.ThidT (E.CellLockIdAt(E.CellAt(h,a),l)), E.Term(E.ThidT t')) ->
+    | (E.TidT (E.CellLockIdAt(E.CellAt(h,a),l)), E.Term(E.TidT t')) ->
         let new_cell = E.MkSLCell(E.CellData(E.CellAt(E.heap,a)),
                                   E.CellArr(E.CellAt(E.heap,a)),
                                   E.TidArrayUp(E.CellTids(E.CellAt(E.heap,a)),l,t'),
@@ -234,7 +234,7 @@ let generic_stm_term_eq (mode:eqGenMode)
           heap_eq_generator (E.MemT E.heap) th_p
               (E.Term(E.MemT(E.Update(E.heap,a,new_cell))))
     (* CellTids *)
-    | (E.ThidT (E.ThidArrRd(E.CellTids(E.CellAt(h,a)),l)), E.Term(E.ThidT t')) ->
+    | (E.TidT (E.TidArrRd(E.CellTids(E.CellAt(h,a)),l)), E.Term(E.TidT t')) ->
         let new_cell = E.MkSLCell(E.CellData(E.CellAt(E.heap,a)),
                                   E.CellArr(E.CellAt(E.heap,a)),
                                   E.TidArrayUp(E.CellTids(E.CellAt(E.heap,a)),l,t'),
@@ -336,7 +336,7 @@ let rec gen_st_cond_effect_aux (is_ghost:bool)
   let curr_p              = Stm.get_forced_st_pos st in
   let next_p              = Stm.get_forced_st_next_pos st in
   let else_p              = Stm.get_forced_st_else_pos st in
-  let me_term             = Stm.ThidT Stm.me_tid in
+  let me_term             = Stm.TidT Stm.me_tid in
   let def_assign          = [(me_term, Stm.Term me_term)]
   in
   match st with

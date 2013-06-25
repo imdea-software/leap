@@ -86,7 +86,7 @@ struct
       TslkExp.VarT(_)     -> true
     | TslkExp.SetT(s)     -> is_var_set s
     | TslkExp.ElemT(e)    -> is_var_elem e
-    | TslkExp.ThidT(t)    -> is_var_thid t
+    | TslkExp.TidT(t)    -> is_var_thid t
     | TslkExp.AddrT(a)    -> is_var_addr a
     | TslkExp.CellT(c)    -> is_var_cell c
     | TslkExp.SetThT(st)  -> is_var_setth st
@@ -130,7 +130,7 @@ struct
         TslkExp.VarT(_)     -> false
       | TslkExp.SetT(s)     -> is_constant_set s
       | TslkExp.ElemT(e)    -> is_constant_elem e
-      | TslkExp.ThidT(th)   -> is_constant_thid th
+      | TslkExp.TidT(th)   -> is_constant_thid th
       | TslkExp.AddrT(a)    -> is_constant_addr a
       | TslkExp.CellT(c)    -> is_constant_cell c
       | TslkExp.SetThT(st)  -> is_constant_setth st
@@ -160,7 +160,7 @@ struct
         TslkExp.VarT   _    -> true
       | TslkExp.SetT   s    -> is_flat_set s
       | TslkExp.ElemT  e    -> is_flat_elem e
-      | TslkExp.ThidT  th   -> is_flat_thid th
+      | TslkExp.TidT  th   -> is_flat_thid th
       | TslkExp.AddrT  a    -> is_flat_addr a
       | TslkExp.CellT  c    -> is_flat_cell c
       | TslkExp.SetThT st   -> is_flat_setth st

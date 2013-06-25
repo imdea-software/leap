@@ -1,5 +1,5 @@
 
-type sort = Int | Set | Thid
+type sort = Int | Set | Tid
 
 type varId = Expression.varId
 

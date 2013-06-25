@@ -203,7 +203,7 @@ let get_var_kind (v:E.varId) : E.var_nature =
             System.find_var_kind invVars v
           else
             let _ = undefTids := v :: !undefTids in
-            let _ = decl_global_var v E.Thid None E.RealVar in
+            let _ = decl_global_var v E.Tid None E.RealVar in
               E.RealVar
   in
     k
@@ -262,7 +262,7 @@ let parser_check_compatibility_with_op_cond t1 t2 get_expr_str op =
                      parser_types_incompatible t1 t2 get_expr_str
   | SubsetEq    -> if (s1 != E.Set || s2 != E.Set) then
                      parser_types_incompatible t1 t2 get_expr_str
-  | InTh        -> if (s1 != E.Thid || s2 != E.SetTh) then
+  | InTh        -> if (s1 != E.Tid || s2 != E.SetTh) then
                      parser_types_incompatible t1 t2 get_expr_str
   | SubsetEqTh  -> if (s1 != E.SetTh || s2 != E.SetTh) then
                      parser_types_incompatible t1 t2 get_expr_str
@@ -352,8 +352,8 @@ let check_type_elem t =
 
 let check_type_thid t =
   match t with
-      Stm.ThidT(th) -> th
-    | Stm.VarT v    -> check_sort_var v.Stm.id v.Stm.scope E.Thid v.Stm.nature; Stm.VarTh v
+      Stm.TidT(th) -> th
+    | Stm.VarT v    -> check_sort_var v.Stm.id v.Stm.scope E.Tid v.Stm.nature; Stm.VarTh v
     | _             -> raise(WrongType t)
 
 
@@ -422,7 +422,7 @@ let check_type_tidarr t =
 
 let check_and_get_sort (id:string) : E.sort =
   match id with
-    "tid"     -> E.Thid
+    "tid"     -> E.Tid
   | "elem"    -> E.Elem
   | "addr"    -> E.Addr
   | "cell"    -> E.Cell
@@ -482,7 +482,7 @@ let check_and_get_sort (id:string) : E.sort =
             match s with
               E.Set       -> Stm.SetT       (Stm.VarSet       modif_v)
             | E.Elem      -> Stm.ElemT      (Stm.VarElem      modif_v)
-            | E.Thid      -> Stm.ThidT      (Stm.VarTh        modif_v)
+            | E.Tid      -> Stm.TidT      (Stm.VarTh        modif_v)
             | E.Addr      -> Stm.AddrT      (Stm.VarAddr      modif_v)
             | E.Cell      -> Stm.CellT      (Stm.VarCell      modif_v)
             | E.SetTh     -> Stm.SetThT     (Stm.VarSetTh     modif_v)
@@ -506,7 +506,7 @@ let check_and_get_sort (id:string) : E.sort =
     | Stm.SetT(Stm.VarSet _)                   -> ()
     | Stm.ElemT(Stm.VarElem _)                 -> ()
     | Stm.ElemT(Stm.CellData(Stm.VarCell _ ))  -> ()
-    | Stm.ThidT(Stm.VarTh _ )                  -> ()
+    | Stm.TidT(Stm.VarTh _ )                  -> ()
     | Stm.AddrT(Stm.VarAddr _)                 -> ()
     | Stm.AddrT(Stm.Next(Stm.VarCell _))       -> ()
     | Stm.CellT(Stm.VarCell _)                 -> ()
@@ -518,9 +518,9 @@ let check_and_get_sort (id:string) : E.sort =
     | Stm.AddrT(Stm.PointerNext _)             -> ()
     | Stm.AddrT(Stm.PointerNextAt _)           -> ()
     | Stm.AddrT(Stm.AddrArrRd _)               -> ()
-    | Stm.ThidT(Stm.PointerLockid _)           -> ()
-    | Stm.ThidT(Stm.PointerLockidAt _)         -> ()
-    | Stm.ThidT(Stm.ThidArrRd _)               -> ()
+    | Stm.TidT(Stm.PointerLockid _)           -> ()
+    | Stm.TidT(Stm.PointerLockidAt _)         -> ()
+    | Stm.TidT(Stm.TidArrRd _)               -> ()
     | _ -> begin
              Interface.Err.msg "Invalid assignment" $
                       sprintf "The assignment \"%s\" is invalid. Assignments \
@@ -2346,7 +2346,7 @@ literal :
     {
       let get_str_expr () = sprintf "%s inTh %s" (Stm.term_to_str $1)
                                                  (Stm.term_to_str $3) in
-      let th = parser_check_type check_type_thid  $1 E.Thid get_str_expr in
+      let th = parser_check_type check_type_thid  $1 E.Tid get_str_expr in
       let s  = parser_check_type check_type_setth $3 E.SetTh get_str_expr in
         Stm.InTh (th,s)
     }
@@ -2479,7 +2479,7 @@ term :
   | elem
     { Stm.ElemT($1) }
   | thid
-    { Stm.ThidT($1) }
+    { Stm.TidT($1) }
   | addr
     { Stm.AddrT($1) }
   | cell
@@ -2623,7 +2623,7 @@ thid :
     }
   | SHARP
     {
-      Stm.NoThid
+      Stm.NoTid
     }
   | term POINTER LOCKID
     {
@@ -2633,7 +2633,7 @@ thid :
     }
   | ME
     {
-      Stm.VarTh (Stm.build_var Sys.me_tid E.Thid E.GlobalScope E.RealVar)
+      Stm.VarTh (Stm.build_var Sys.me_tid E.Tid E.GlobalScope E.RealVar)
     }
 
 
@@ -2672,7 +2672,7 @@ addr :
       in
       let e = parser_check_type check_type_elem $3 E.Elem get_str_expr in
       let a = parser_check_type check_type_addr $5 E.Addr get_str_expr in
-      let t = parser_check_type check_type_thid $7 E.Thid get_str_expr in
+      let t = parser_check_type check_type_thid $7 E.Tid get_str_expr in
 
         Stm.Malloc(e,a,t)
     }
@@ -2724,7 +2724,7 @@ cell :
                                            (Stm.term_to_str $7) in
       let d  = parser_check_type check_type_elem $3 E.Elem get_str_expr in
       let a  = parser_check_type check_type_addr $5 E.Addr get_str_expr in
-      let th = parser_check_type check_type_thid $7 E.Thid get_str_expr in
+      let th = parser_check_type check_type_thid $7 E.Tid get_str_expr in
         Stm.MkCell(d,a,th)
     }
 
@@ -2744,7 +2744,7 @@ cell :
                     parser_check_type check_type_addr a E.Addr get_str_expr
                   ) $6 in
       let tids = List.map (fun t ->
-                   parser_check_type check_type_thid t E.Thid get_str_expr
+                   parser_check_type check_type_thid t E.Tid get_str_expr
                  ) $10 in
       if List.length addrs <> List.length tids then
         begin
@@ -2800,7 +2800,7 @@ setth :
   | SINGLETH OPEN_PAREN term CLOSE_PAREN
     {
       let get_str_expr() = sprintf "SingleTh(%s)" (Stm.term_to_str $3) in
-      let th = parser_check_type check_type_thid  $3 E.Thid get_str_expr in
+      let th = parser_check_type check_type_thid  $3 E.Tid get_str_expr in
         Stm.SinglTh(th)
     }
   | term UNIONTH term
@@ -3024,7 +3024,7 @@ arraylookup :
 
       try
         let arr = parser_check_type check_type_tidarr $1 E.TidArray get_str_expr in
-          Stm.ThidT (Stm.ThidArrRd (arr,i))
+          Stm.TidT (Stm.TidArrRd (arr,i))
       with _ -> try
         let arr = parser_check_type check_type_addrarr $1 E.AddrArray get_str_expr in
                Stm.AddrT (Stm.AddrArrRd (arr,i))

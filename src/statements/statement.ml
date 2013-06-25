@@ -44,7 +44,7 @@ type term =
     VarT          of variable
   | SetT          of set
   | ElemT         of elem
-  | ThidT         of tid
+  | TidT         of tid
   | AddrT         of addr
   | CellT         of cell
   | SetThT        of setth
@@ -99,13 +99,13 @@ and set =
 
 and tid =
   | VarTh           of variable
-  | NoThid
+  | NoTid
   | CellLockId      of cell
   | CellLockIdAt    of cell * integer
-  | ThidArrayRd     of arrays * tid
+  | TidArrayRd     of arrays * tid
   | PointerLockid   of addr
   | PointerLockidAt of addr * integer
-  | ThidArrRd       of tidarr * integer
+  | TidArrRd       of tidarr * integer
 
 and elem =
     VarElem           of variable
@@ -338,7 +338,7 @@ let var_replace_sort (v:variable) (s:E.sort) : variable =
 
 
 (* General constants *)
-let me_tid = VarTh (build_var "me" E.Thid E.GlobalScope E.RealVar)
+let me_tid = VarTh (build_var "me" E.Tid E.GlobalScope E.RealVar)
 
 
 (* Pretty printing for statement formulas *)
@@ -625,16 +625,16 @@ and addr_to_str (loc:bool) (expr:addr) :string =
 and tid_to_str (loc:bool) (th:tid) : string =
   match th with
     VarTh v              -> variable_to_str loc v
-  | NoThid               -> sprintf "#"
+  | NoTid               -> sprintf "#"
   | CellLockId(cell)     -> sprintf "%s.lockid" (cell_to_str loc cell)
   | CellLockIdAt(cell,l) -> sprintf "%s.lockid[%s]" (cell_to_str loc cell)
                                                     (integer_to_str loc l)
-  | ThidArrayRd(arr,t)   -> sprintf "%s%s" (arrays_to_str loc arr)
+  | TidArrayRd(arr,t)   -> sprintf "%s%s" (arrays_to_str loc arr)
                                            (tid_to_str loc t)
   | PointerLockid a      -> sprintf "%s->lockid" (addr_to_str loc a)
   | PointerLockidAt(a,l) -> sprintf "%s->lockid[%s]" (addr_to_str loc a)
                                                      (integer_to_str loc l)
-  | ThidArrRd (arr,i)    -> sprintf "%s[%s]" (tidarr_to_str loc arr)
+  | TidArrRd (arr,i)    -> sprintf "%s[%s]" (tidarr_to_str loc arr)
                                              (integer_to_str loc i)
 
 and eq_to_str (loc:bool) ((e1,e2):eq) : string =
@@ -665,7 +665,7 @@ and term_to_str_aux (loc:bool) (expr:term) : string =
   | SetT(set)           -> (set_to_str loc set)
   | AddrT(addr)         -> (addr_to_str loc addr)
   | ElemT(elem)         -> (elem_to_str loc elem)
-  | ThidT(th)           -> (tid_to_str loc th)
+  | TidT(th)           -> (tid_to_str loc th)
   | CellT(cell)         -> (cell_to_str loc cell)
   | SetThT(setth)       -> (setth_to_str loc setth)
   | SetIntT(setint)     -> (setint_to_str loc setint)
@@ -767,7 +767,7 @@ let rec term_to_expr_term (t:term) : E.term =
     VarT v       -> E.VarT       (variable_to_expr_var v)
   | SetT s       -> E.SetT       (set_to_expr_set s)
   | ElemT e      -> E.ElemT      (elem_to_expr_elem e)
-  | ThidT t      -> E.ThidT      (tid_to_expr_tid t)
+  | TidT t      -> E.TidT      (tid_to_expr_tid t)
   | AddrT a      -> E.AddrT      (addr_to_expr_addr a)
   | CellT c      -> E.CellT      (cell_to_expr_cell c)
   | SetThT s     -> E.SetThT     (setth_to_expr_setth s)
@@ -845,13 +845,13 @@ and set_to_expr_set (s:set) : E.set =
 and tid_to_expr_tid (t:tid) : E.tid =
   match t with
     VarTh v              -> E.VarTh (variable_to_expr_var v)
-  | NoThid               -> E.NoThid
+  | NoTid               -> E.NoTid
   | CellLockId c         -> E.CellLockId (cell_to_expr_cell c)
   | CellLockIdAt(c,l)    -> E.CellLockIdAt (cell_to_expr_cell c,
                                             integer_to_expr_integer l)
-  | ThidArrayRd (a,t)    -> E.ThidArrayRd (array_to_expr_array a,
+  | TidArrayRd (a,t)    -> E.TidArrayRd (array_to_expr_array a,
                                            tid_to_expr_th t)
-  | ThidArrRd (a,l)      -> E.ThidArrRd (tidarray_to_expr_array a,
+  | TidArrRd (a,l)      -> E.TidArrRd (tidarray_to_expr_array a,
                                          integer_to_expr_integer l)
   | PointerLockid a      -> E.CellLockId(E.CellAt(E.heap,addr_to_expr_addr a))
   | PointerLockidAt(a,l) -> E.CellLockIdAt(E.CellAt(E.heap,addr_to_expr_addr a),
@@ -861,16 +861,16 @@ and tid_to_expr_tid (t:tid) : E.tid =
 and tid_to_expr_th (t:tid) : E.tid =
   match t with
     VarTh v            -> E.VarTh (variable_to_expr_var v)
-  | NoThid             -> E.NoThid
+  | NoTid             -> E.NoTid
   | CellLockId c       -> E.CellLockId (cell_to_expr_cell c)
-  | CellLockIdAt (c,l) -> E.ThidArrRd (E.CellTids (cell_to_expr_cell c),
+  | CellLockIdAt (c,l) -> E.TidArrRd (E.CellTids (cell_to_expr_cell c),
                                        integer_to_expr_integer l)
 (*
   | CellLockIdAt (c,l) -> E.CellLockIdAt (cell_to_expr_cell c,
                                           integer_to_expr_integer l)
 *)
-  | ThidArrayRd (a,t)  -> raise(Not_supported_conversion(tid_to_str true t))
-  | ThidArrRd (a,l)    -> raise(Not_supported_conversion(tid_to_str true t))
+  | TidArrayRd (a,t)  -> raise(Not_supported_conversion(tid_to_str true t))
+  | TidArrRd (a,l)    -> raise(Not_supported_conversion(tid_to_str true t))
   | PointerLockid _    -> raise(Not_supported_conversion(tid_to_str true t))
   | PointerLockidAt _  -> raise(Not_supported_conversion(tid_to_str true t))
 
@@ -931,11 +931,11 @@ and cell_to_expr_cell (c:cell) : E.cell =
                                         addrarray_to_expr_array aa,
                                         tidarray_to_expr_array ta,
                                         integer_to_expr_integer l)
-  (* TOFIX: This should not be here nor have a NoThid as an option *)
-  | CellLock c           -> E.CellLock (cell_to_expr_cell c, E.NoThid)
+  (* TOFIX: This should not be here nor have a NoTid as an option *)
+  | CellLock c           -> E.CellLock (cell_to_expr_cell c, E.NoTid)
   | CellLockAt (c,l)     -> E.CellLockAt (cell_to_expr_cell c,
                                           integer_to_expr_integer l,
-                                          E.NoThid)
+                                          E.NoTid)
   | CellUnlock c         -> E.CellUnlock (cell_to_expr_cell c)
   | CellUnlockAt (c,l)   -> E.CellUnlockAt (cell_to_expr_cell c,
                                             integer_to_expr_integer l)
@@ -1083,7 +1083,7 @@ let construct_var_from_sort (id:varId)
   match s with
     E.Set        -> SetT        (VarSet        v)
   | E.Elem       -> ElemT       (VarElem       v)
-  | E.Thid       -> ThidT       (VarTh         v)
+  | E.Tid       -> TidT       (VarTh         v)
   | E.Addr       -> AddrT       (VarAddr       v)
   | E.Cell       -> CellT       (VarCell       v)
   | E.SetTh      -> SetThT      (VarSetTh      v)
@@ -1122,7 +1122,7 @@ let rec var_kind_term (kind:E.var_nature) (expr:term) : term list =
     | SetT(set)         -> var_kind_set kind set
     | AddrT(addr)       -> var_kind_addr kind addr
     | ElemT(elem)       -> var_kind_elem kind elem
-    | ThidT(th)         -> var_kind_th kind th
+    | TidT(th)         -> var_kind_th kind th
     | CellT(cell)       -> var_kind_cell kind cell
     | SetThT(setth)     -> var_kind_setth kind setth
     | SetIntT(setint)   -> var_kind_setint kind setint
@@ -1214,13 +1214,13 @@ and var_kind_elem (kind:E.var_nature) (e:elem) : term list =
 
 and var_kind_th (kind:E.var_nature) (th:tid) : term list =
   match th with
-    VarTh v               -> if v.nature = kind then [ThidT th] else []
-  | NoThid                -> []
+    VarTh v               -> if v.nature = kind then [TidT th] else []
+  | NoTid                -> []
   | CellLockId(cell)      -> (var_kind_cell kind cell)
   | CellLockIdAt(cell,l)  -> (var_kind_cell kind cell) @
                              (var_kind_int kind l)
-  | ThidArrayRd(arr,t)    -> (var_kind_array kind arr)
-  | ThidArrRd(arr,i)      -> (var_kind_tidarr kind arr) @
+  | TidArrayRd(arr,t)    -> (var_kind_array kind arr)
+  | TidArrRd(arr,i)      -> (var_kind_tidarr kind arr) @
                              (var_kind_int kind i)
   | PointerLockid a       -> (var_kind_addr kind a)
   | PointerLockidAt (a,l) -> (var_kind_addr kind a) @
@@ -1660,12 +1660,12 @@ let rec enabling_condition_aux (is_ghost:bool)
         begin
           match e with
             Term(CellT(CellLock c))   ->
-              [E.eq_tid (E.CellLockId (to_cell c)) E.NoThid]
+              [E.eq_tid (E.CellLockId (to_cell c)) E.NoTid]
           | Term(CellT(CellUnlock c)) ->
               begin
                 match th with
                 | E.Local t -> [E.eq_tid (E.CellLockId (to_cell c)) t]
-                | E.Shared  -> [E.eq_tid (E.CellLockId (to_cell c)) E.NoThid]
+                | E.Shared  -> [E.eq_tid (E.CellLockId (to_cell c)) E.NoTid]
               end
           | _ -> []
         end
@@ -1675,19 +1675,19 @@ let rec enabling_condition_aux (is_ghost:bool)
       let cond =
         begin
           match op with
-          | UnitLock a   -> [E.eq_tid (read_at a) E.NoThid]
+          | UnitLock a   -> [E.eq_tid (read_at a) E.NoTid]
           | UnitUnlock a ->
               begin
                 match th with
                 | E.Local t -> [E.eq_tid   (read_at a) t]
-                | E.Shared  -> [E.ineq_tid (read_at a) E.NoThid]
+                | E.Shared  -> [E.ineq_tid (read_at a) E.NoTid]
               end
-          | UnitLockAt (a,l)   -> [E.eq_tid (read_at a) E.NoThid]
+          | UnitLockAt (a,l)   -> [E.eq_tid (read_at a) E.NoTid]
           | UnitUnlockAt (a,l) ->
               begin
                 match th with
                 | E.Local t -> [E.eq_tid   (read_at a) t]
-                | E.Shared  -> [E.ineq_tid (read_at a) E.NoThid]
+                | E.Shared  -> [E.ineq_tid (read_at a) E.NoTid]
               end
         end
       in

@@ -115,7 +115,7 @@ let parser_check_compatibility_with_op_cond t1 t2 get_expr_str op =
                      parser_types_incompatible t1 t2 get_expr_str
   | SubsetEq    -> if (s1 != E.Set || s2 != E.Set) then
                      parser_types_incompatible t1 t2 get_expr_str
-  | InTh        -> if (s1 != E.Thid || s2 != E.SetTh) then
+  | InTh        -> if (s1 != E.Tid || s2 != E.SetTh) then
                      parser_types_incompatible t1 t2 get_expr_str
   | SubsetEqTh  -> if (s1 != E.SetTh || s2 != E.SetTh) then
                      parser_types_incompatible t1 t2 get_expr_str
@@ -206,8 +206,8 @@ let check_type_elem t =
 
 let check_type_thid t =
   match t with
-      E.ThidT th -> th
-    | E.VarT v   -> let var = E.inject_var_sort v E.Thid in
+      E.TidT th -> th
+    | E.VarT v   -> let var = E.inject_var_sort v E.Tid in
                          check_sort_var var;
                          E.VarTh var
     | _             -> raise(WrongType t)
@@ -297,7 +297,7 @@ let check_type_tidarr t =
 
 let check_and_get_sort (id:string) : E.sort =
   match id with
-    "tid"     -> E.Thid
+    "tid"     -> E.Tid
   | "elem"    -> E.Elem
   | "addr"    -> E.Addr
   | "cell"    -> E.Cell
@@ -337,7 +337,7 @@ let inject_sort (exp:E.term) : E.term =
                        match s with
                          E.Set       -> E.SetT       (E.VarSet       var)
                        | E.Elem      -> E.ElemT      (E.VarElem      var)
-                       | E.Thid      -> E.ThidT      (E.VarTh        var)
+                       | E.Tid      -> E.TidT      (E.VarTh        var)
                        | E.Addr      -> E.AddrT      (E.VarAddr      var)
                        | E.Cell      -> E.CellT      (E.VarCell      var)
                        | E.SetTh     -> E.SetThT     (E.VarSetTh     var)
@@ -809,7 +809,7 @@ literal :
     {
       let get_str_expr () = sprintf "%s inTh %s" (E.term_to_str $1)
                                                  (E.term_to_str $3) in
-      let th = parser_check_type check_type_thid  $1 E.Thid get_str_expr in
+      let th = parser_check_type check_type_thid  $1 E.Tid get_str_expr in
       let s  = parser_check_type check_type_setth $3 E.SetTh get_str_expr in
         E.Atom (E.InTh (th,s))
     }
@@ -947,7 +947,7 @@ term :
   | elem
     { E.ElemT($1) }
   | thid
-    { E.ThidT($1) }
+    { E.TidT($1) }
   | addr
     { E.AddrT($1) }
   | cell
@@ -1138,7 +1138,7 @@ thid :
         E.CellLockId(c)
     }
   | SHARP
-    { E.NoThid }
+    { E.NoTid }
 
 
 /* ADDR terms */
@@ -1185,7 +1185,7 @@ cell :
                                            (E.term_to_str $7) in
       let d  = parser_check_type check_type_elem $3 E.Elem get_str_expr in
       let a  = parser_check_type check_type_addr $5 E.Addr get_str_expr in
-      let th = parser_check_type check_type_thid $7 E.Thid get_str_expr in
+      let th = parser_check_type check_type_thid $7 E.Tid get_str_expr in
         E.MkCell(d,a,th)
     }
   | MKCELL OPEN_PAREN term COMMA term COMMA term COMMA term CLOSE_PAREN
@@ -1217,7 +1217,7 @@ cell :
                     parser_check_type check_type_addr a E.Addr get_str_expr
                   ) $6 in
       let tids = List.map (fun t ->
-                   parser_check_type check_type_thid t E.Thid get_str_expr
+                   parser_check_type check_type_thid t E.Tid get_str_expr
                  ) $10 in
       if List.length addrs <> List.length tids then
         begin
@@ -1234,7 +1234,7 @@ cell :
       let get_str_expr () = sprintf "%s.lock(%s)" (E.term_to_str $1)
                                                   (E.term_to_str $5) in
       let c = parser_check_type check_type_cell $1 E.Cell get_str_expr in
-      let t = parser_check_type check_type_thid $5 E.Thid get_str_expr in
+      let t = parser_check_type check_type_thid $5 E.Tid get_str_expr in
         E.CellLock(c,t)
     }
   | term DOT LOCKAT OPEN_PAREN term COMMA term CLOSE_PAREN
@@ -1243,7 +1243,7 @@ cell :
                                                   (E.term_to_str $5) in
       let c = parser_check_type check_type_cell $1 E.Cell get_str_expr in
       let l = parser_check_type check_type_int  $5 E.Int get_str_expr in
-      let t = parser_check_type check_type_thid $7 E.Thid get_str_expr in
+      let t = parser_check_type check_type_thid $7 E.Tid get_str_expr in
         E.CellLockAt(c,l,t)
     }
   | term DOT UNLOCK
@@ -1285,7 +1285,7 @@ setth :
   | SINGLETH OPEN_PAREN term CLOSE_PAREN
     {
       let get_str_expr() = sprintf "SingleTh(%s)" (E.term_to_str $3) in
-      let th = parser_check_type check_type_thid  $3 E.Thid get_str_expr in
+      let th = parser_check_type check_type_thid  $3 E.Tid get_str_expr in
         E.SinglTh(th)
     }
   | UNIONTH OPEN_PAREN term COMMA term CLOSE_PAREN
@@ -1522,14 +1522,14 @@ arrays :
       let i = parser_check_type check_type_int $3 E.Int get_str_expr in
       try
         let at = parser_check_type check_type_tidarr $1 E.TidArray get_str_expr in
-          E.ThidT (E.ThidArrRd (at,i))
+          E.TidT (E.TidArrRd (at,i))
       with _ -> try
         let aa = parser_check_type check_type_addrarr $1 E.AddrArray get_str_expr in
           E.AddrT (E.AddrArrRd (aa,i))
       with e -> try
-        let t = parser_check_type check_type_thid $1 E.Thid get_str_expr in
+        let t = parser_check_type check_type_thid $1 E.Tid get_str_expr in
         match t with
-        | E.CellLockId c -> E.ThidT (E.CellLockIdAt (c,i))
+        | E.CellLockId c -> E.TidT (E.CellLockIdAt (c,i))
         | _                 -> raise(e)
       with e ->
         let a = parser_check_type check_type_addr $1 E.Addr get_str_expr in
@@ -1545,7 +1545,7 @@ arrays :
       let i = parser_check_type check_type_int $5 E.Int get_str_expr in
       try
         let at = parser_check_type check_type_tidarr $3 E.TidArray get_str_expr in
-        let t = parser_check_type check_type_thid $7 E.Thid get_str_expr in
+        let t = parser_check_type check_type_thid $7 E.Tid get_str_expr in
           E.TidArrayT (E.TidArrayUp (at,i,t))
       with _ ->
         let aa = parser_check_type check_type_addrarr $3 E.AddrArray get_str_expr in
@@ -1590,7 +1590,7 @@ vc_info :
         let tid_phi = $9 in
         let rho_phi = $12 in
         let goal_phi = $15 in
-        let trans_tid = parser_check_type check_type_thid $18 E.Thid (fun _ -> (E.term_to_str $18)) in
+        let trans_tid = parser_check_type check_type_thid $18 E.Tid (fun _ -> (E.term_to_str $18)) in
         let line = $21 in
         let vocab = E.voc (E.conj_list [tid_phi;rho_phi;goal_phi]) in
         Tactics.create_vc_info supp_list tid_phi rho_phi goal_phi vocab trans_tid line

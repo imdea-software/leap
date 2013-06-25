@@ -105,7 +105,7 @@ module Make (TSLK : TSLKExpression.S) =
     (* calculates the cut_off *)
     let cut_off_normalized (expr:Expr.conjunctive_formula) : model_size =
       let vars = Expr.get_varset_from_conj expr in
-      let vars_tid_set = Expr.varset_of_sort vars Expr.Thid in
+      let vars_tid_set = Expr.varset_of_sort vars Expr.Tid in
       let vars_tid = VarSet.cardinal vars_tid_set in
       let vars_addr_set = Expr.varset_of_sort vars Expr.Addr in
       let vars_addr = VarSet.cardinal vars_addr_set in
@@ -143,7 +143,7 @@ module Make (TSLK : TSLKExpression.S) =
         | Expr.VarT _      -> ()        (* nothing, y must be a VarT as well *)
         | Expr.SetT _      -> numaddr := !numaddr + 1 (* the witness of s1 != s2 *)
         | Expr.ElemT _     -> ()
-        | Expr.ThidT _     -> ()
+        | Expr.TidT _     -> ()
         | Expr.AddrT _     -> ()                      (* no need to look for firstlock, every  firstlock has a var *)
         | Expr.CellT _     -> ()
         | Expr.SetThT _    -> numtid := !numtid + 1   (* the witness of st1 != st2 *)
@@ -216,7 +216,7 @@ module Make (TSLK : TSLKExpression.S) =
         Expr.VarT _      -> info (* nothing, y must be a VarT as well *)
       | Expr.SetT _      -> (Printf.printf "ADDING DUE TO: %s != %s\n" (Expr.term_to_str x) (Expr.term_to_str y); union_count_addr info (Expr.InEq(x,y))) (* the witness of s1 != s2 *)
       | Expr.ElemT _     -> info
-      | Expr.ThidT _     -> info
+      | Expr.TidT _     -> info
       | Expr.AddrT _     -> info (* no need to look for firstlock, every firstlock has a var *)
       | Expr.CellT _     -> (* ALE: I added this *)
                              (Printf.printf "ADDING DUE TO: %s != %s\n" (Expr.term_to_str x) (Expr.term_to_str y);
@@ -317,7 +317,7 @@ module Make (TSLK : TSLKExpression.S) =
         (VarSet.fold (fun v str -> str ^ (Expr.variable_to_str v) ^ ";") interesting_addrvars "");
       let tmpcellvars = Expr.varset_of_sort vars Expr.Cell in
       let cellvars = VarSet.diff tmpcellvars (redundant_cell_vars phi addrvars) in
-      let vartid_num  = VarSet.cardinal (Expr.varset_of_sort vars Expr.Thid) in
+      let vartid_num  = VarSet.cardinal (Expr.varset_of_sort vars Expr.Tid) in
 (*      let varaddr_num = VarSet.cardinal addrvars in *)
       let varaddr_num = VarSet.cardinal interesting_addrvars in
       let varelem_num = VarSet.cardinal (Expr.varset_of_sort vars Expr.Elem) in
@@ -346,7 +346,7 @@ module Make (TSLK : TSLKExpression.S) =
                       info.num_addrs                          (* Special literals   *) in
       let num_tids = 1 + vartid_num + info.num_tids in
 (*                    1 +                                      (* No thread          *)
-                       vartid_num +                             (* Thid variables     *)
+                       vartid_num +                             (* Tid variables     *)
                        varcell_num * num_levels                 (* Cell locks         *) in
 (*                     varmem_num * num_addrs * num_levels      (* Cell locks         *) in *)
 *)
@@ -356,7 +356,7 @@ module Make (TSLK : TSLKExpression.S) =
       in
       Printf.printf "VARTID_NUM: %i\n" vartid_num;
       VarSet.iter (fun v -> print_string (Expr.variable_to_str v ^ "; ")) 
-      (Expr.varset_of_sort vars Expr.Thid);
+      (Expr.varset_of_sort vars Expr.Tid);
       Printf.printf "VARCELL_NUM: %i\n" varcell_num;
       VarSet.iter (fun v -> print_string (Expr.variable_to_str v ^ "; ")) 
 cellvars;
@@ -372,7 +372,7 @@ cellvars;
           Expr.VarT _      -> None (* nothing, y must be a VarT as well *)
         | Expr.SetT _      -> Some (x,y) (* the witness of s1 != s2 *)
         | Expr.ElemT _     -> Some (x,y)
-        | Expr.ThidT _     -> Some (x,y)
+        | Expr.TidT _     -> Some (x,y)
         | Expr.AddrT _     -> Some (x,y) (* For mem[a].next literals *)
         | Expr.CellT _     -> None
         | Expr.SetThT _    -> Some (x,y) (* the witness of st1 != st2 *)

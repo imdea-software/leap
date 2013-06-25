@@ -22,7 +22,7 @@ let rec sort_to_tsl_sort (s:E.sort) : SL.sort =
   match s with
     E.Set       -> SL.Set
   | E.Elem      -> SL.Elem
-  | E.Thid      -> SL.Thid
+  | E.Tid      -> SL.Tid
   | E.Addr      -> SL.Addr
   | E.Cell      -> SL.Cell
   | E.SetTh     -> SL.SetTh
@@ -46,7 +46,7 @@ and build_term_var (v:E.variable) : SL.term =
   match (E.var_sort v) with
     E.Set       -> SL.SetT       (SL.VarSet        tsl_v)
   | E.Elem      -> SL.ElemT      (SL.VarElem       tsl_v)
-  | E.Thid      -> SL.ThidT      (SL.VarTh         tsl_v)
+  | E.Tid      -> SL.TidT      (SL.VarTh         tsl_v)
   | E.Addr      -> SL.AddrT      (SL.VarAddr       tsl_v)
   | E.Cell      -> SL.CellT      (SL.VarCell       tsl_v)
   | E.SetTh     -> SL.SetThT     (SL.VarSetTh      tsl_v)
@@ -86,12 +86,12 @@ and tid_to_tsl_tid (th:E.tid) : SL.tid =
 (*  LOG "tid_to_tsl_tid(%s)" (E.tid_to_str th) LEVEL DEBUG; *)
   match th with
     E.VarTh v            -> SL.VarTh (var_to_tsl_var v)
-  | E.NoThid             -> SL.NoThid
+  | E.NoTid             -> SL.NoTid
   | E.CellLockId _       -> raise(UnsupportedTslExpr(E.tid_to_str th))
   | E.CellLockIdAt (c,l) -> SL.CellLockIdAt (cell_to_tsl_cell c,
                                                  int_to_tsl_int l)
-  | E.ThidArrayRd _      -> raise(UnsupportedTslExpr(E.tid_to_str th))
-  | E.ThidArrRd (tt,i)   -> SL.ThidArrRd (tidarr_to_tsl_tidarr tt,
+  | E.TidArrayRd _      -> raise(UnsupportedTslExpr(E.tid_to_str th))
+  | E.TidArrRd (tt,i)   -> SL.TidArrRd (tidarr_to_tsl_tidarr tt,
                                               int_to_tsl_int i)
 
 and term_to_tsl_term (t:E.term) : SL.term =
@@ -101,7 +101,7 @@ and term_to_tsl_term (t:E.term) : SL.term =
     E.VarT v        -> SL.VarT (var_to_tsl_var v)
   | E.SetT s        -> SL.SetT (set_to_tsl_set s)
   | E.ElemT e       -> SL.ElemT (elem_to_tsl_elem e)
-  | E.ThidT t       -> SL.ThidT (tid_to_tsl_tid t)
+  | E.TidT t       -> SL.TidT (tid_to_tsl_tid t)
   | E.AddrT a       -> SL.AddrT (addr_to_tsl_addr a)
   | E.CellT c       -> SL.CellT (cell_to_tsl_cell c)
   | E.SetThT st     -> SL.SetThT (setth_to_tsl_setth st)
@@ -401,7 +401,7 @@ let rec tsl_sort_to_sort (s:SL.sort) : E.sort =
   match s with
   | SL.Set       -> E.Set
   | SL.Elem      -> E.Elem
-  | SL.Thid      -> E.Thid
+  | SL.Tid      -> E.Tid
   | SL.Addr      -> E.Addr
   | SL.Cell      -> E.Cell
   | SL.SetTh     -> E.SetTh
@@ -439,10 +439,10 @@ and scope_to_expr_scope (p:SL.procedure_name) : E.procedure_name =
 and tid_to_expr_tid (th:SL.tid) : E.tid =
   match th with
   | SL.VarTh v            -> E.VarTh (var_to_expr_var v)
-  | SL.NoThid             -> E.NoThid
+  | SL.NoTid             -> E.NoTid
   | SL.CellLockIdAt (c,l) -> E.CellLockIdAt (cell_to_expr_cell c,
                                                  int_to_expr_int l)
-  | SL.ThidArrRd (tt,i)   -> E.ThidArrRd (tidarr_to_expr_tidarr tt,
+  | SL.TidArrRd (tt,i)   -> E.TidArrRd (tidarr_to_expr_tidarr tt,
                                               int_to_expr_int i)
 
 
@@ -451,7 +451,7 @@ and term_to_expr_term (t:SL.term) : E.term =
   | SL.VarT v        -> E.VarT (var_to_expr_var v)
   | SL.SetT s        -> E.SetT (set_to_expr_set s)
   | SL.ElemT e       -> E.ElemT (elem_to_expr_elem e)
-  | SL.ThidT t       -> E.ThidT (tid_to_expr_tid t)
+  | SL.TidT t       -> E.TidT (tid_to_expr_tid t)
   | SL.AddrT a       -> E.AddrT (addr_to_expr_addr a)
   | SL.CellT c       -> E.CellT (cell_to_expr_cell c)
   | SL.SetThT st     -> E.SetThT (setth_to_expr_setth st)

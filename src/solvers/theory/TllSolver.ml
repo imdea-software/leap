@@ -84,7 +84,7 @@ struct
       TllExp.VarT(_)     -> true
     | TllExp.SetT(s)     -> is_var_set s
     | TllExp.ElemT(e)    -> is_var_elem e
-    | TllExp.ThidT(t)    -> is_var_thid t
+    | TllExp.TidT(t)    -> is_var_thid t
     | TllExp.AddrT(a)    -> is_var_addr a
     | TllExp.CellT(c)    -> is_var_cell c
     | TllExp.SetThT(st)  -> is_var_setth st
@@ -111,7 +111,7 @@ struct
       | TllExp.HighestElem -> true
       | _                  -> false
   and is_constant_thid = function
-        TllExp.NoThid -> true
+        TllExp.NoTid -> true
       | _             -> false
   and is_constant_addr =  function
         TllExp.Null -> true
@@ -133,7 +133,7 @@ struct
         TllExp.VarT(_)     -> false
       | TllExp.SetT(s)     -> is_constant_set s
       | TllExp.ElemT(e)    -> is_constant_elem e
-      | TllExp.ThidT(th)   -> is_constant_thid th
+      | TllExp.TidT(th)   -> is_constant_thid th
       | TllExp.AddrT(a)    -> is_constant_addr a
       | TllExp.CellT(c)    -> is_constant_cell c
       | TllExp.SetThT(st)  -> is_constant_setth st
@@ -163,7 +163,7 @@ struct
         TllExp.VarT   _    -> true
       | TllExp.SetT   s    -> is_flat_set s
       | TllExp.ElemT  e    -> is_flat_elem e
-      | TllExp.ThidT  th   -> is_flat_thid th
+      | TllExp.TidT  th   -> is_flat_thid th
       | TllExp.AddrT  a    -> is_flat_addr a
       | TllExp.CellT  c    -> is_flat_cell c
       | TllExp.SetThT st   -> is_flat_setth st

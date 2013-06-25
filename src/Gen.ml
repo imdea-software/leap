@@ -135,7 +135,7 @@ let spinv_premise_init (sys:Sys.system_t)
   let theta = Sys.gen_theta (Sys.SOpenArray (E.voc inv)) sys solverInfo.abstraction in
   let voc = E.voc (E.conj_list [theta;inv])
   in
-    Tac.create_vc_info [] E.True theta inv voc E.NoThid 0
+    Tac.create_vc_info [] E.True theta inv voc E.NoTid 0
 
 
 

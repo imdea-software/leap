@@ -19,7 +19,7 @@ and variable
 and sort =
     Set
   | Elem
-  | Thid
+  | Tid
   | Addr
   | Cell
   | SetTh
@@ -35,7 +35,7 @@ and term =
     VarT              of variable
   | SetT              of set
   | ElemT             of elem
-  | ThidT             of tid
+  | TidT             of tid
   | AddrT             of addr
   | CellT             of cell
   | SetThT            of setth
@@ -59,9 +59,9 @@ and set =
   | AddrToSet         of mem * addr * integer
 and tid =
     VarTh             of variable
-  | NoThid
+  | NoTid
   | CellLockIdAt      of cell * integer
-  | ThidArrRd         of tidarr * integer
+  | TidArrRd         of tidarr * integer
 and elem =
     VarElem           of variable
   | CellData          of cell

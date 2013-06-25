@@ -15,7 +15,7 @@ module type S =
     and sort =
         Set
       | Elem
-      | Thid
+      | Tid
       | Addr
       | Cell
       | SetTh
@@ -29,7 +29,7 @@ module type S =
         VarT              of variable
       | SetT              of set
       | ElemT             of elem
-      | ThidT             of tid
+      | TidT             of tid
       | AddrT             of addr
       | CellT             of cell
       | SetThT            of setth
@@ -51,7 +51,7 @@ module type S =
       | AddrToSet         of mem * addr * level
     and tid =
         VarTh             of variable
-      | NoThid
+      | NoTid
       | CellLockIdAt      of cell * level
     and elem =
         VarElem           of variable

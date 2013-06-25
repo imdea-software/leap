@@ -22,7 +22,7 @@ and variable =
 and sort =
     Set
   | Elem
-  | Thid
+  | Tid
   | Addr
   | Cell
   | SetTh
@@ -40,7 +40,7 @@ and term =
     VarT          of variable
   | SetT          of set
   | ElemT         of elem
-  | ThidT         of tid
+  | TidT         of tid
   | AddrT         of addr
   | CellT         of cell
   | SetThT        of setth
@@ -99,11 +99,11 @@ and set =
 
 and tid =
     VarTh         of variable
-  | NoThid
+  | NoTid
   | CellLockId    of cell
   | CellLockIdAt  of cell * integer
-  | ThidArrayRd   of arrays * tid
-  | ThidArrRd     of tidarr * integer
+  | TidArrayRd   of arrays * tid
+  | TidArrRd     of tidarr * integer
 
 and elem =
     VarElem           of variable
@@ -501,11 +501,11 @@ let is_global_var (v:variable) : bool =
 
 
 let build_num_tid (i:int) : tid =
-  VarTh (build_var ("k" ^ string_of_int i) Thid false Shared GlobalScope RealVar)
+  VarTh (build_var ("k" ^ string_of_int i) Tid false Shared GlobalScope RealVar)
 
 
 let build_var_tid (id:varId) : tid =
-  VarTh (build_var id Thid false Shared GlobalScope RealVar)
+  VarTh (build_var id Tid false Shared GlobalScope RealVar)
 
 
 let inject_var_sort (v:variable) (s:sort) : variable =
@@ -534,7 +534,7 @@ let var_to_term (v:variable) : term =
     Unknown   -> VarT       v
   | Set       -> SetT       (VarSet        v)
   | Elem      -> ElemT      (VarElem       v)
-  | Thid      -> ThidT      (VarTh         v)
+  | Tid      -> TidT      (VarTh         v)
   | Addr      -> AddrT      (VarAddr       v)
   | Cell      -> CellT      (VarCell       v)
   | SetTh     -> SetThT     (VarSetTh      v)
@@ -555,7 +555,7 @@ let term_to_var (t:term) : variable =
     VarT v -> v
   | SetT  (VarSet v)   -> inject_var_sort v Set
   | ElemT (VarElem v)  -> inject_var_sort v Elem
-  | ThidT (VarTh v)    -> inject_var_sort v Thid
+  | TidT (VarTh v)    -> inject_var_sort v Tid
   | AddrT (VarAddr v)  -> inject_var_sort v Addr
   | CellT (VarCell v)  -> inject_var_sort v Cell
   | SetThT(VarSetTh v) -> inject_var_sort v SetTh
@@ -572,7 +572,7 @@ let term_sort (t:term) : sort =
     VarT v       -> v.sort
   | SetT _       -> Set
   | ElemT _      -> Elem
-  | ThidT _      -> Thid
+  | TidT _      -> Tid
   | AddrT _      -> Addr
   | CellT _      -> Cell
   | SetThT _     -> SetTh
@@ -596,7 +596,7 @@ let eq_elem (e1:elem) (e2:elem) : formula =
   Literal (Atom (Eq (ElemT e1, ElemT e2)))
 
 let eq_tid (t1:tid) (t2:tid) : formula =
-  Literal (Atom (Eq (ThidT t1, ThidT t2)))
+  Literal (Atom (Eq (TidT t1, TidT t2)))
 
 let eq_addr (a1:addr) (a2:addr) : formula =
   Literal (Atom (Eq (AddrT a1, AddrT a2)))
@@ -629,7 +629,7 @@ let eq_term (t1:term) (t2:term) : formula =
   Literal (Atom (Eq (t1, t2)))
 
 let eq_tid (t1:tid) (t2:tid) : formula =
-  Literal (Atom (Eq (ThidT t1, ThidT t2)))
+  Literal (Atom (Eq (TidT t1, TidT t2)))
 
 let ineq_addr (a1:addr) (a2:addr) : formula =
   Literal (Atom (InEq (AddrT a1, AddrT a2)))
@@ -638,7 +638,7 @@ let ineq_elem (e1:elem) (e2:elem) : formula =
   Literal (Atom (InEq (ElemT e1, ElemT e2)))
 
 let ineq_tid (t1:tid) (t2:tid) : formula =
-  Literal (Atom (InEq (ThidT t1, ThidT t2)))
+  Literal (Atom (InEq (TidT t1, TidT t2)))
 
 let atom_form (a:atom) : formula =
   Literal (Atom a)
@@ -737,14 +737,14 @@ let filter_term_set (t_list:term list) (t_set:TermSet.t) : TermSet.t =
                     else if TermSet.mem (CellT c) s then
                       begin
                         let set'=TermSet.remove(CellT c) s in
-                        let new_terms=[ThidT(CellLockId c); ElemT(CellData c)] 
+                        let new_terms=[TidT(CellLockId c); ElemT(CellData c)] 
                         in
                         let new_elems = construct_term_set new_terms in
                           TermSet.union set' new_elems
                       end
                     else
                       s
-                | ThidT(CellLockId c) ->
+                | TidT(CellLockId c) ->
                     if TermSet.mem t s then
                       TermSet.remove t s
                     else if TermSet.mem (CellT c) s then
@@ -763,7 +763,7 @@ let filter_term_set (t_list:term list) (t_set:TermSet.t) : TermSet.t =
                       begin
                         let set'=TermSet.remove(CellT c) s in
                         let new_terms =
-                              [AddrT(Next c); ThidT(CellLockId c)] in
+                              [AddrT(Next c); TidT(CellLockId c)] in
                         let new_elems = construct_term_set new_terms in
                           TermSet.union set' new_elems
                       end
@@ -827,11 +827,11 @@ let rec is_primed_tidarray (a:tidarr) : bool =
 let is_primed_tid (th:tid) : bool =
   match th with
     VarTh v           -> is_primed v
-  | NoThid            -> false
+  | NoTid            -> false
   | CellLockId _      -> false
   | CellLockIdAt _    -> false
-  | ThidArrayRd (a,_) -> is_primed_array a
-  | ThidArrRd (a,_)   -> is_primed_tidarray a
+  | TidArrayRd (a,_) -> is_primed_array a
+  | TidArrRd (a,_)   -> is_primed_tidarray a
   (* FIX: Propagate the query inside cell??? *)
 
 
@@ -877,7 +877,7 @@ let rec priming_term (pr:bool)
   | SetT(set)         -> SetT       (priming_set        pr prime_set set)
   | AddrT(addr)       -> AddrT      (priming_addr       pr prime_set addr)
   | ElemT(elem)       -> ElemT      (priming_elem       pr prime_set elem)
-  | ThidT(th)         -> ThidT      (priming_tid        pr prime_set th)
+  | TidT(th)         -> TidT      (priming_tid        pr prime_set th)
   | CellT(cell)       -> CellT      (priming_cell       pr prime_set cell)
   | SetThT(setth)     -> SetThT     (priming_setth      pr prime_set setth)
   | SetIntT(setint)   -> SetIntT    (priming_setint     pr prime_set setint)
@@ -975,13 +975,13 @@ and priming_elem (pr:bool) (prime_set:VarSet.t option) (e:elem) : elem =
 and priming_tid (pr:bool) (prime_set:VarSet.t option) (th:tid) : tid =
   match th with
     VarTh v              -> VarTh (priming_variable pr prime_set v)
-  | NoThid               -> NoThid
+  | NoTid               -> NoTid
   | CellLockId(cell)     -> CellLockId(priming_cell pr prime_set cell)
   | CellLockIdAt(cell,l) -> CellLockIdAt(priming_cell pr prime_set cell,
                                          priming_int pr prime_set l)
-  | ThidArrayRd(arr,t)   -> ThidArrayRd(priming_array pr prime_set arr,
+  | TidArrayRd(arr,t)   -> TidArrayRd(priming_array pr prime_set arr,
                                       priming_tid pr prime_set t)
-  | ThidArrRd(arr,l)     -> ThidArrRd(priming_tidarray pr prime_set arr,
+  | TidArrRd(arr,l)     -> TidArrRd(priming_tidarray pr prime_set arr,
                                       priming_int pr prime_set l)
 
 
@@ -1275,13 +1275,13 @@ and variable_to_simple_str (var:variable) : string =
 and tid_to_str (th:tid) : string =
   match th with
     VarTh v              -> variable_to_str v
-  | NoThid               -> sprintf "#"
+  | NoTid               -> sprintf "#"
   | CellLockId(cell)     -> sprintf "%s.lockid" (cell_to_str cell)
   | CellLockIdAt(cell,l) -> sprintf "%s.lockid[%s]" (cell_to_str cell)
                                                     (integer_to_str l)
-  | ThidArrayRd(arr,t)   -> sprintf "%s[%s]" (arrays_to_str arr)
+  | TidArrayRd(arr,t)   -> sprintf "%s[%s]" (arrays_to_str arr)
                                              (param_tid_to_str t)
-  | ThidArrRd(arr,l)     -> sprintf "%s[%s]" (tidarr_to_str arr)
+  | TidArrRd(arr,l)     -> sprintf "%s[%s]" (tidarr_to_str arr)
                                              (integer_to_str l)
 
 
@@ -1293,11 +1293,11 @@ and param_tid_to_str (expr:tid) : string =
                        with
                          _ -> sprintf "(%s)" (variable_to_str v)
                      end
-  | NoThid        -> sprintf "(#)"
+  | NoTid        -> sprintf "(#)"
   | CellLockId _  -> sprintf "(%s)" (tid_to_str expr)
   | CellLockIdAt _-> sprintf "(%s)" (tid_to_str expr)
-  | ThidArrayRd _ -> sprintf "(%s)" (tid_to_str expr)
-  | ThidArrRd _   -> sprintf "(%s)" (tid_to_str expr)
+  | TidArrayRd _ -> sprintf "(%s)" (tid_to_str expr)
+  | TidArrRd _   -> sprintf "(%s)" (tid_to_str expr)
 
 
 and shared_or_local_to_str (exp:shared_or_local) : string =
@@ -1637,7 +1637,7 @@ and term_to_str (expr:term) : string =
   | SetT(set)         -> (set_to_str set)
   | AddrT(addr)       -> (addr_to_str addr)
   | ElemT(elem)       -> (elem_to_str elem)
-  | ThidT(th)         -> (tid_to_str th)
+  | TidT(th)         -> (tid_to_str th)
   | CellT(cell)       -> (cell_to_str cell)
   | SetThT(setth)     -> (setth_to_str setth)
   | SetIntT(setint)   -> (setint_to_str setint)
@@ -1729,7 +1729,7 @@ let is_tid_val (t:tid) : bool =
 
 let is_tid_nolock (t:tid) : bool =
   match t with
-    NoThid -> true
+    NoTid -> true
   | _      -> false
 
 
@@ -1755,7 +1755,7 @@ let get_var_info (t:term)
     VarT v                           -> get_info v
   | SetT(VarSet v)                   -> get_info v
   | ElemT(VarElem v)                 -> get_info v
-  | ThidT(VarTh v)                   -> get_info v
+  | TidT(VarTh v)                   -> get_info v
   | AddrT(VarAddr v)                 -> get_info v
   | CellT(VarCell v)                 -> get_info v
   | SetThT(VarSetTh v)               -> get_info v
@@ -1764,7 +1764,7 @@ let get_var_info (t:term)
   | IntT(VarInt v)                   -> get_info v
   | ElemT(CellData(VarCell v))       -> get_info v
   | AddrT(Next(VarCell v))           -> get_info v
-  | ThidT(CellLockId(VarCell v))     -> get_info v
+  | TidT(CellLockId(VarCell v))     -> get_info v
   | CellT(CellLock(VarCell v,_))     -> get_info v
   | CellT(CellUnlock(VarCell v))     -> get_info v
   | CellT(CellLockAt(VarCell v,_,_)) -> get_info v
@@ -1818,7 +1818,7 @@ let rec gen_tid_list_except (min:int) (max:int) (t:tid) : tid list =
 let gen_fresh_tid (xs:tid list) : tid =
   let rec find n =
     let th_cand_id = sprintf "k_%i" n in
-    let th_cand = VarTh (build_var th_cand_id Thid false Shared GlobalScope RealVar)in
+    let th_cand = VarTh (build_var th_cand_id Tid false Shared GlobalScope RealVar)in
       if List.mem th_cand xs then find (n+1) else th_cand
   in
     find 0
@@ -1842,7 +1842,7 @@ let sort_to_str (s:sort) : string =
   match s with
       Set       -> "addrSet"
     | Elem      -> "elem"
-    | Thid      -> "tid"
+    | Tid      -> "tid"
     | Addr      -> "addr"
     | Cell      -> "cell"
     | SetTh     -> "tidSet"
@@ -1939,7 +1939,7 @@ let rec get_vars_term (expr:term)
   | SetT(set)         -> get_vars_set set base
   | AddrT(addr)       -> get_vars_addr addr base
   | ElemT(elem)       -> get_vars_elem elem base
-  | ThidT(th)         -> get_vars_tid th base
+  | TidT(th)         -> get_vars_tid th base
   | CellT(cell)       -> get_vars_cell cell base
   | SetThT(setth)     -> get_vars_setth setth base
   | SetIntT(setint)   -> get_vars_setint setint base
@@ -2049,11 +2049,11 @@ and get_vars_tid (th:tid)
   match th with
     VarTh v              -> (base v) @
       (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
-  | NoThid               -> []
+  | NoTid               -> []
   | CellLockId(cell)     -> (get_vars_cell cell base)
   | CellLockIdAt(cell,l) -> (get_vars_cell cell base) @ (get_vars_int l base)
-  | ThidArrayRd(arr,t)   -> (get_vars_array arr base)
-  | ThidArrRd(arr,l)     -> (get_vars_tidarr arr base) @ (get_vars_int l base)
+  | TidArrayRd(arr,t)   -> (get_vars_array arr base)
+  | TidArrRd(arr,l)     -> (get_vars_tidarr arr base) @ (get_vars_int l base)
 
 
 and get_vars_cell (c:cell)
@@ -2349,7 +2349,7 @@ let rec array_var_from_term (t:term) (prime:bool) : arrays =
     VarT v                       -> VarArray (modif_var v)
   | SetT(VarSet v)               -> VarArray (modif_var v)
   | ElemT(VarElem v)             -> VarArray (modif_var v)
-  | ThidT(VarTh v)               -> VarArray (modif_var v)
+  | TidT(VarTh v)               -> VarArray (modif_var v)
   | AddrT(VarAddr v)             -> VarArray (modif_var v)
   | CellT(VarCell v)             -> VarArray (modif_var v)
   | SetThT(VarSetTh v)           -> VarArray (modif_var v)
@@ -2359,7 +2359,7 @@ let rec array_var_from_term (t:term) (prime:bool) : arrays =
   | ArrayT(VarArray v)           -> VarArray (modif_var v)
   | ElemT(CellData(VarCell v))   -> VarArray (modif_var v)
   | AddrT(Next(VarCell v))       -> VarArray (modif_var v)
-  | ThidT(CellLockId(VarCell v)) -> VarArray (modif_var v)
+  | TidT(CellLockId(VarCell v)) -> VarArray (modif_var v)
   | _ -> Interface.Err.msg "Invalid argument" $
            sprintf "A non variable or cell field term was \
                     passed to function \"array_var_from_term\". \
@@ -2378,7 +2378,7 @@ let construct_var_from_sort (id:varId)
   match s with
     Set       -> SetT       (VarSet       v)
   | Elem      -> ElemT      (VarElem      v)
-  | Thid      -> ThidT      (VarTh        v)
+  | Tid      -> TidT      (VarTh        v)
   | Addr      -> AddrT      (VarAddr      v)
   | Cell      -> CellT      (VarCell      v)
   | SetTh     -> SetThT     (VarSetTh     v)
@@ -2443,7 +2443,7 @@ let cons_arrayRd_eq_from_var (s:sort)
         match s with
           Set   -> [eq_term (SetT   (SetArrayRd   (arr, th_p))) t]
         | Elem  -> [eq_term (ElemT  (ElemArrayRd  (arr, th_p))) t]
-        | Thid  -> [eq_term (ThidT  (ThidArrayRd  (arr, th_p))) t]
+        | Tid  -> [eq_term (TidT  (TidArrayRd  (arr, th_p))) t]
         | Addr  -> [eq_term (AddrT  (AddrArrayRd  (arr, th_p))) t]
         | Cell  -> [eq_term (CellT  (CellArrayRd  (arr, th_p))) t]
         | SetTh -> [eq_term (SetThT (SetThArrayRd (arr, th_p))) t]
@@ -2466,7 +2466,7 @@ let cons_arrayRd_eq_from_var (s:sort)
       | Literal (Atom (SubsetEq (s1,s2)))   ->
           [exp_subset (SetArrayRd (cons_array Set (SetT s1), th_p)) s2]
       | Literal (Atom (InTh (t,s)))         ->
-          [exp_inth (ThidArrayRd(cons_array Thid (ThidT t), th_p)) s]
+          [exp_inth (TidArrayRd(cons_array Tid (TidT t), th_p)) s]
       | Literal (Atom (SubsetEqTh (s1,s2))) ->
           [exp_subsetth (SetThArrayRd (cons_array SetTh (SetThT s1),th_p)) s2]
       | Literal (Atom (InInt (i,s)))        ->
@@ -2493,13 +2493,13 @@ let get_tid_in (v:variable) : tid list =
 let rec voc_term (expr:term) : tid list =
   match expr with
     VarT v -> (match v.sort with
-                  Thid -> [VarTh v]
+                  Tid -> [VarTh v]
                 | _    -> []
               ) @ get_tid_in v
     | SetT(set)         -> voc_set set
     | AddrT(addr)       -> voc_addr addr
     | ElemT(elem)       -> voc_elem elem
-    | ThidT(th)         -> voc_tid th
+    | TidT(th)         -> voc_tid th
     | CellT(cell)       -> voc_cell cell
     | SetThT(setth)     -> voc_setth setth
     | SetIntT(setint)   -> voc_setint setint
@@ -2578,11 +2578,11 @@ and voc_elem (e:elem) : tid list =
 and voc_tid (th:tid) : tid list =
   match th with
     VarTh v              -> th::(get_tid_in v)
-  | NoThid               -> []
+  | NoTid               -> []
   | CellLockId(cell)     -> (voc_cell cell)
   | CellLockIdAt(cell,l) -> (voc_cell cell) @ (voc_int l)
-  | ThidArrayRd(arr,t)   -> (voc_array arr)
-  | ThidArrRd(arr,l)     -> (voc_tidarr arr) @ (voc_int l)
+  | TidArrayRd(arr,t)   -> (voc_array arr)
+  | TidArrRd(arr,l)     -> (voc_tidarr arr) @ (voc_int l)
 
 
 and voc_cell (c:cell) : tid list =
@@ -2784,7 +2784,7 @@ let rec var_kind_term (kind:var_nature) (expr:term) : term list =
     | SetT(set)         -> var_kind_set kind set
     | AddrT(addr)       -> var_kind_addr kind addr
     | ElemT(elem)       -> var_kind_elem kind elem
-    | ThidT(th)         -> var_kind_tid kind th
+    | TidT(th)         -> var_kind_tid kind th
     | CellT(cell)       -> var_kind_cell kind cell
     | SetThT(setth)     -> var_kind_setth kind setth
     | SetIntT(setint)   -> var_kind_setint kind setint
@@ -2871,12 +2871,12 @@ and var_kind_elem (kind:var_nature) (e:elem) : term list =
 
 and var_kind_tid (kind:var_nature) (th:tid) : term list =
   match th with
-    VarTh v              -> if v.nature = kind then [ThidT th] else []
-  | NoThid               -> []
+    VarTh v              -> if v.nature = kind then [TidT th] else []
+  | NoTid               -> []
   | CellLockId(cell)     -> (var_kind_cell kind cell)
   | CellLockIdAt(cell,l) -> (var_kind_cell kind cell) @ (var_kind_int kind l)
-  | ThidArrayRd(arr,t)   -> (var_kind_array kind arr)
-  | ThidArrRd(arr,l)     -> (var_kind_tidarr kind arr) @ (var_kind_int kind l)
+  | TidArrayRd(arr,t)   -> (var_kind_array kind arr)
+  | TidArrRd(arr,l)     -> (var_kind_tidarr kind arr) @ (var_kind_int kind l)
 
 
 and var_kind_cell (kind:var_nature) (c:cell) : term list =
@@ -3107,7 +3107,7 @@ let rec param_a_term (pfun:variable option -> shared_or_local) (expr:term) : ter
   | SetT(set)         -> SetT       (param_set      pfun set    )
   | AddrT(addr)       -> AddrT      (param_addr_aux pfun addr   )
   | ElemT(elem)       -> ElemT      (param_elem_aux pfun elem   )
-  | ThidT(th)         -> ThidT      (param_tid_aux  pfun th     )
+  | TidT(th)         -> TidT      (param_tid_aux  pfun th     )
   | CellT(cell)       -> CellT      (param_cell_aux pfun cell   )
   | SetThT(setth)     -> SetThT     (param_setth    pfun setth  )
   | SetIntT(setint)   -> SetIntT    (param_setint   pfun setint )
@@ -3205,12 +3205,12 @@ and param_elem_aux (pfun:variable option -> shared_or_local) (e:elem) : elem =
 and param_tid_aux (pfun:variable option -> shared_or_local) (th:tid) : tid =
   match th with
     VarTh v              -> VarTh (var_set_param (pfun (Some v)) v)
-  | NoThid               -> NoThid
+  | NoTid               -> NoTid
   | CellLockId(cell)     -> CellLockId(param_cell_aux pfun cell)
   | CellLockIdAt(cell,l) -> CellLockIdAt(param_cell_aux pfun cell,
                                          param_int_aux pfun l)
-  | ThidArrayRd(arr,t)   -> ThidArrayRd(param_arrays pfun arr, t)
-  | ThidArrRd(arr,l)     -> ThidArrRd(param_tidarr_aux pfun arr,
+  | TidArrayRd(arr,t)   -> TidArrayRd(param_arrays pfun arr, t)
+  | TidArrRd(arr,l)     -> TidArrRd(param_tidarr_aux pfun arr,
                                       param_int_aux pfun l)
 
 
@@ -3537,7 +3537,7 @@ and subst_tid_term (subs:tid_subst_t) (expr:term) : term =
   | SetT(set)           -> SetT(subst_tid_set subs set)
   | AddrT(addr)         -> AddrT(subst_tid_addr subs addr)
   | ElemT(elem)         -> ElemT(subst_tid_elem subs elem)
-  | ThidT(th)           -> ThidT(subst_tid_th subs th)
+  | TidT(th)           -> TidT(subst_tid_th subs th)
   | CellT(cell)         -> CellT(subst_tid_cell subs cell)
   | SetThT(setth)       -> SetThT(subst_tid_setth subs setth)
   | SetIntT(setint)     -> SetIntT(subst_tid_setint subs setint)
@@ -3714,13 +3714,13 @@ and subst_tid_th (subs:tid_subst_t) (t:tid) : tid =
   with _ -> begin
               match t with
               | VarTh _ -> t
-              | NoThid -> t
+              | NoTid -> t
               | CellLockId c -> CellLockId (subst_tid_cell subs c)
               | CellLockIdAt (c,l) -> CellLockIdAt (subst_tid_cell subs c,
                                                     subst_tid_int subs l)
-              | ThidArrayRd (a,p) -> ThidArrayRd (subst_tid_array subs a,
+              | TidArrayRd (a,p) -> TidArrayRd (subst_tid_array subs a,
                                                   subst_tid_th subs p)
-              | ThidArrRd (a,i) -> ThidArrRd (subst_tid_tidarr subs a,
+              | TidArrRd (a,i) -> TidArrRd (subst_tid_tidarr subs a,
                                               subst_tid_int subs i)
   end
 and subst_tid_atom (subs:tid_subst_t) (a:atom) : atom =
@@ -3846,7 +3846,7 @@ and subst_vars_term (subs:(variable * variable) list) (expr:term) : term =
   | SetT(set)           -> SetT(subst_vars_set subs set)
   | AddrT(addr)         -> AddrT(subst_vars_addr subs addr)
   | ElemT(elem)         -> ElemT(subst_vars_elem subs elem)
-  | ThidT(th)           -> ThidT(subst_vars_th subs th)
+  | TidT(th)           -> TidT(subst_vars_th subs th)
   | CellT(cell)         -> CellT(subst_vars_cell subs cell)
   | SetThT(setth)       -> SetThT(subst_vars_setth subs setth)
   | SetIntT(setint)     -> SetIntT(subst_vars_setint subs setint)
@@ -4050,13 +4050,13 @@ and subst_vars_int (subs:(variable * variable) list) (i:integer) : integer =
 and subst_vars_th (subs:(variable * variable) list) (t:tid) : tid =
   match t with
   | VarTh v -> VarTh (subst_variable subs v)
-  | NoThid -> NoThid
+  | NoTid -> NoTid
   | CellLockId c -> CellLockId (subst_vars_cell subs c)
   | CellLockIdAt (c,l) -> CellLockIdAt (subst_vars_cell subs c,
                                         subst_vars_int subs l)
-  | ThidArrayRd (a,p) -> ThidArrayRd (subst_vars_array subs a,
+  | TidArrayRd (a,p) -> TidArrayRd (subst_vars_array subs a,
                                       subst_vars_th subs p)
-  | ThidArrRd (a,i) -> ThidArrRd (subst_vars_tidarr subs a,
+  | TidArrRd (a,i) -> TidArrRd (subst_vars_tidarr subs a,
                                   subst_vars_int subs i)
 
 
@@ -4402,36 +4402,36 @@ let construct_term_eq (v:term)
         (modif, Literal (Atom (Eq (left_term, param_t))))
 
   (* Threads *)
-  | (ThidT (VarTh var), Term t) ->
-      let modif     = [ThidT(VarTh(var_base_info var))] in
+  | (TidT (VarTh var), Term t) ->
+      let modif     = [TidT(VarTh(var_base_info var))] in
       let left_term = prime_term $ param_term th_p v in
       let param_t   = param_term th_p t
       in
         (modif, Literal (Atom (Eq (left_term, param_t))))
 
-  | (ThidT (CellLockId (VarCell var)), Term t) ->
-      let modif     = [ThidT (CellLockId(VarCell(var_base_info var)))] in
+  | (TidT (CellLockId (VarCell var)), Term t) ->
+      let modif     = [TidT (CellLockId(VarCell(var_base_info var)))] in
       let left_term = prime_term $ param_term th_p v in
       let param_t   = param_term th_p t
       in
         (modif, Literal (Atom (Eq (left_term, param_t))))
 
-  | (ThidT (CellLockIdAt (VarCell var, i)), Term t) ->
-      let modif     = [ThidT (CellLockIdAt(VarCell(var_base_info var),i))] in
+  | (TidT (CellLockIdAt (VarCell var, i)), Term t) ->
+      let modif     = [TidT (CellLockIdAt(VarCell(var_base_info var),i))] in
       let left_term = prime_term $ param_term th_p v in
       let param_t   = param_term th_p t
       in
         (modif, Literal (Atom (Eq (left_term, param_t))))
 
-  | (ThidT (ThidArrRd (CellTids (VarCell var), i)), Term t) ->
-      let modif     = [ThidT (ThidArrRd (CellTids(VarCell(var_base_info var)),i))] in
+  | (TidT (TidArrRd (CellTids (VarCell var), i)), Term t) ->
+      let modif     = [TidT (TidArrRd (CellTids(VarCell(var_base_info var)),i))] in
       let left_term = prime_term $ param_term th_p v in
       let param_t   = param_term th_p t
       in
         (modif, Literal (Atom (Eq (left_term, param_t))))
 
-  | (ThidT (ThidArrRd (VarTidArray var,i)), Term t) ->
-      let modif     = [ThidT(ThidArrRd(VarTidArray (var_base_info var),i))] in
+  | (TidT (TidArrRd (VarTidArray var,i)), Term t) ->
+      let modif     = [TidT(TidArrRd(VarTidArray (var_base_info var),i))] in
       let left_term = prime_term $ param_term th_p v in
       let param_t   = param_term th_p t
       in
@@ -4477,8 +4477,8 @@ let construct_term_eq (v:term)
   (* TODO: Not sure if this case is ok *)
   | (CellT (VarCell var as c), Term CellT (CellLock (VarCell _, _))) ->
       let new_th    = pres_th_param v th_p in
-      let modif     = [ThidT(CellLockId(VarCell(var_base_info var)))] in
-      let new_tid   = (match th_p with Shared -> NoThid | Local t -> t) in
+      let modif     = [TidT(CellLockId(VarCell(var_base_info var)))] in
+      let new_tid   = (match th_p with Shared -> NoTid | Local t -> t) in
       let left_term = prime_term (CellT (VarCell
                         (var_set_param new_th (unprime_variable var)))) in
       (modif, Literal (Atom (Eq (left_term, CellT(MkCell(CellData c, Next c, new_tid))))))
@@ -4570,10 +4570,10 @@ let construct_term_eq_as_array (v:term)
             | (AddrT(Next(c)), Term (AddrT a)) ->
                 Term (CellT (MkCell (CellData cell_arr, param_addr th_p a, CellLockId cell_arr)))
             | (CellT (VarCell _), Term (CellT(CellLock(d,_)))) ->
-                let my_tid = (match th_p with Shared -> NoThid | Local t -> t ) in
+                let my_tid = (match th_p with Shared -> NoTid | Local t -> t ) in
                 let new_d  = param_cell th_p d in
                                Term (CellT (MkCell (CellData new_d, Next new_d, my_tid)))
-            | (ThidT(CellLockId(c)), Term (ThidT tid)) ->
+            | (TidT(CellLockId(c)), Term (TidT tid)) ->
                 Term (CellT (MkCell (CellData cell_arr, Next cell_arr, param_th th_p tid)))
             | _ -> param_expr th_p e in
           let modif_arr  = ArrayT(ArrayUp(arr, th, new_expr)) in
@@ -4595,7 +4595,7 @@ let construct_term_eq_as_array (v:term)
               let assign = Literal(Atom(Eq(AddrArrayT (param_addrarr th_p primed_arr),
                                                        modif_arr))) in
               ([AddrArrayT arr], assign)
-          | (ThidT (ThidArrRd(arr,i)), Term (ThidT t)) ->
+          | (TidT (TidArrRd(arr,i)), Term (TidT t)) ->
               let primed_arr = prime_tidarr arr in
               let modif_arr = TidArrayT(TidArrayUp(param_tidarr th_p arr,
                                                    param_int th_p i,
@@ -4636,7 +4636,7 @@ let check_numeric (id:varId) (info:var_info_t) : unit =
   match s with
     Int  -> ()
   (* We allows tid, provided we interpret them as integer later *)
-  | Thid -> ()
+  | Tid -> ()
   | _   -> Interface.Err.msg "Non-numeric variable" $
              sprintf "Variables are expected to be numeric, but variable \
                       %s has sort %s."
@@ -4891,12 +4891,12 @@ let required_sorts (phi:formula) : sort list =
 
   and req_t (t:tid) : SortSet.t =
     match t with
-    | VarTh _            -> single Thid
-    | NoThid             -> single Thid
-    | CellLockId c       -> append Thid [req_c c]
-    | CellLockIdAt (c,l) -> append Thid [req_c c;req_i l]
-    | ThidArrayRd (a,t)  -> append Thid [req_arr a;req_t t]
-    | ThidArrRd (a,l)    -> append Thid [req_tidarr a;req_i l]
+    | VarTh _            -> single Tid
+    | NoTid             -> single Tid
+    | CellLockId c       -> append Tid [req_c c]
+    | CellLockIdAt (c,l) -> append Tid [req_c c;req_i l]
+    | TidArrayRd (a,t)  -> append Tid [req_arr a;req_t t]
+    | TidArrRd (a,l)    -> append Tid [req_tidarr a;req_i l]
 
   and req_s (s:set) : SortSet.t =
     match s with
@@ -4950,7 +4950,7 @@ let required_sorts (phi:formula) : sort list =
     | VarT v             -> single v.sort
     | SetT s             -> req_s s
     | ElemT e            -> req_e e
-    | ThidT t            -> req_t t
+    | TidT t            -> req_t t
     | AddrT a            -> req_a a
     | CellT c            -> req_c c
     | SetThT s           -> req_st s
@@ -5041,7 +5041,7 @@ and to_fol_term (ops:fol_ops_t) (expr:term) : term =
   | SetT(set)         -> SetT       (to_fol_set ops set)
   | AddrT(addr)       -> AddrT      (to_fol_addr ops addr)
   | ElemT(elem)       -> ElemT      (to_fol_elem ops elem)
-  | ThidT(th)         -> ThidT      (to_fol_tid ops th)
+  | TidT(th)         -> TidT      (to_fol_tid ops th)
   | CellT(cell)       -> CellT      (to_fol_cell ops cell)
   | SetThT(setth)     -> SetThT     (to_fol_setth ops setth)
   | SetIntT(setint)   -> SetIntT    (to_fol_setint ops setint)
@@ -5143,13 +5143,13 @@ and to_fol_elem (ops:fol_ops_t) (e:elem) : elem =
 and to_fol_tid (ops:fol_ops_t) (th:tid) : tid =
   match th with
     VarTh v              -> VarTh (ops.fol_var v)
-  | NoThid               -> NoThid
+  | NoTid               -> NoTid
   | CellLockId(cell)     -> CellLockId(to_fol_cell ops cell)
   | CellLockIdAt(cell,l) -> CellLockIdAt(to_fol_cell ops cell,
                                          to_fol_int ops l)
-  | ThidArrayRd(arr,t)   -> ThidArrayRd(to_fol_arrays ops arr,
+  | TidArrayRd(arr,t)   -> TidArrayRd(to_fol_arrays ops arr,
                                         to_fol_tid ops t)
-  | ThidArrRd(arr,l)     -> ThidArrRd(to_fol_tidarr ops arr,
+  | TidArrRd(arr,l)     -> TidArrRd(to_fol_tidarr ops arr,
                                       to_fol_int ops l)
 
 
@@ -5503,13 +5503,13 @@ and identical_set (s1:set) (s2:set) : bool =
 and identical_tid (t1:tid) (t2:tid) : bool =
   match t1,t2 with
     VarTh(v1),VarTh(v2) -> identical_variable v1 v2
-  | NoThid,NoThid -> true
+  | NoTid,NoTid -> true
   | CellLockId(c1),CellLockId(c2)    -> identical_cell c1 c2
   | CellLockIdAt(c1,i1),CellLockIdAt(c2,i2) -> 
     ( identical_cell c1 c2 && identical_integer i1 i2)
-  | ThidArrayRd(arr1,t1),ThidArrayRd(arr2,t2) ->
+  | TidArrayRd(arr1,t1),TidArrayRd(arr2,t2) ->
     identical_arrays arr1 arr2 && identical_tid t1 t2
-  | ThidArrRd(ta1,i1),ThidArrRd(ta2,i2)  ->
+  | TidArrRd(ta1,i1),TidArrRd(ta2,i2)  ->
     identical_tidarr ta1 ta2 && identical_integer i1 i2
   | _,_ -> false
 and identical_elem (e1:elem) (e2: elem)  : bool =

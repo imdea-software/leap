@@ -15,7 +15,7 @@ and procedure_name  = GlobalScope | Scope of string
 
 and tid =
     VarTh      of variable
-  | NoThid
+  | NoTid
   | CellLockId of variable
 
 

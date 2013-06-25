@@ -44,7 +44,7 @@ let _ =
     inv_info.Expr.formula <- ante;
     inv_info.Expr.primed <- conse;
 (*
-    let task = Tactics.new_task [] None Expr.True inv_info [] Expr.NoThid 0 in
+    let task = Tactics.new_task [] None Expr.True inv_info [] Expr.NoTid 0 in
 *)
 
 (*

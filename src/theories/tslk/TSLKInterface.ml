@@ -23,7 +23,7 @@ module Make (SLK : TSLKExpression.S) =
       match s with
         E.Set       -> SLK.Set
       | E.Elem      -> SLK.Elem
-      | E.Thid      -> SLK.Thid
+      | E.Tid      -> SLK.Tid
       | E.Addr      -> SLK.Addr
       | E.Cell      -> SLK.Cell
       | E.SetTh     -> SLK.SetTh
@@ -44,7 +44,7 @@ module Make (SLK : TSLKExpression.S) =
       match (E.var_sort v) with
         E.Set       -> SLK.SetT       (SLK.VarSet        tslk_v)
       | E.Elem      -> SLK.ElemT      (SLK.VarElem       tslk_v)
-      | E.Thid      -> SLK.ThidT      (SLK.VarTh         tslk_v)
+      | E.Tid      -> SLK.TidT      (SLK.VarTh         tslk_v)
       | E.Addr      -> SLK.AddrT      (SLK.VarAddr       tslk_v)
       | E.Cell      -> SLK.CellT      (SLK.VarCell       tslk_v)
       | E.SetTh     -> SLK.SetThT     (SLK.VarSetTh      tslk_v)
@@ -78,19 +78,19 @@ module Make (SLK : TSLKExpression.S) =
     and tid_to_tslk_tid (th:E.tid) : SLK.tid =
       match th with
         E.VarTh v            -> SLK.VarTh (var_to_tslk_var v)
-      | E.NoThid             -> SLK.NoThid
+      | E.NoTid             -> SLK.NoTid
       | E.CellLockId _       -> raise(UnsupportedTSLKExpr(E.tid_to_str th))
       | E.CellLockIdAt (c,l) -> SLK.CellLockIdAt (cell_to_tslk_cell c,
                                                      int_to_tslk_level l)
-      | E.ThidArrayRd _      -> raise(UnsupportedTSLKExpr(E.tid_to_str th))
-      | E.ThidArrRd (tt,i)   -> raise(UnsupportedTSLKExpr(E.tid_to_str th))
+      | E.TidArrayRd _      -> raise(UnsupportedTSLKExpr(E.tid_to_str th))
+      | E.TidArrRd (tt,i)   -> raise(UnsupportedTSLKExpr(E.tid_to_str th))
 
     and term_to_tslk_term (t:E.term) : SLK.term =
       match t with
         E.VarT v        -> SLK.VarT (var_to_tslk_var v)
       | E.SetT s        -> SLK.SetT (set_to_tslk_set s)
       | E.ElemT e       -> SLK.ElemT (elem_to_tslk_elem e)
-      | E.ThidT t       -> SLK.ThidT (tid_to_tslk_tid t)
+      | E.TidT t       -> SLK.TidT (tid_to_tslk_tid t)
       | E.AddrT a       -> SLK.AddrT (addr_to_tslk_addr a)
       | E.CellT c       -> SLK.CellT (cell_to_tslk_cell c)
       | E.SetThT st     -> SLK.SetThT (setth_to_tslk_setth st)
@@ -189,7 +189,7 @@ module Make (SLK : TSLKExpression.S) =
             end
           else
             let aa_pad = LeapLib.list_of (SLK.k - List.length aa) SLK.Null in
-            let tt_pad = LeapLib.list_of (SLK.k - List.length tt) SLK.NoThid in
+            let tt_pad = LeapLib.list_of (SLK.k - List.length tt) SLK.NoTid in
             SLK.MkCell (elem_to_tslk_elem e,
                          (List.map addr_to_tslk_addr aa) @ aa_pad,
                          (List.map tid_to_tslk_tid tt) @ tt_pad)
@@ -373,7 +373,7 @@ module Make (SLK : TSLKExpression.S) =
       match s with
       | SLK.Set     -> E.Set
       | SLK.Elem    -> E.Elem
-      | SLK.Thid    -> E.Thid
+      | SLK.Tid    -> E.Tid
       | SLK.Addr    -> E.Addr
       | SLK.Cell    -> E.Cell
       | SLK.SetTh   -> E.SetTh
@@ -409,7 +409,7 @@ module Make (SLK : TSLKExpression.S) =
     and tid_to_expr_tid (th:SLK.tid) : E.tid =
       match th with
       | SLK.VarTh v            -> E.VarTh (var_to_expr_var v)
-      | SLK.NoThid             -> E.NoThid
+      | SLK.NoTid             -> E.NoTid
       | SLK.CellLockIdAt (c,l) -> E.CellLockIdAt (cell_to_expr_cell c,
                                                      level_to_expr_int l)
 
@@ -419,7 +419,7 @@ module Make (SLK : TSLKExpression.S) =
       | SLK.VarT v             -> E.VarT (var_to_expr_var v)
       | SLK.SetT s             -> E.SetT (set_to_expr_set s)
       | SLK.ElemT e            -> E.ElemT (elem_to_expr_elem e)
-      | SLK.ThidT t            -> E.ThidT (tid_to_expr_tid t)
+      | SLK.TidT t            -> E.TidT (tid_to_expr_tid t)
       | SLK.AddrT a            -> E.AddrT (addr_to_expr_addr a)
       | SLK.CellT c            -> E.CellT (cell_to_expr_cell c)
       | SLK.SetThT st          -> E.SetThT (setth_to_expr_setth st)
