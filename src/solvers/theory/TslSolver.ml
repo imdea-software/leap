@@ -10,6 +10,17 @@ module SLInterf = TSLInterface
 (*module type SLK = TSLKExpression.S *)
 
 
+type case_info_t =
+  {
+    pa : SL.conjunctive_formula ;
+    panc : SL.conjunctive_formula ;
+    nc : SL.conjunctive_formula ;
+    arrgs : (SL.integer list list) GenSet.t ;
+    relevant : SL.integer list ;
+    skiplist_relevant : SL.integer list ;
+  }
+
+
 exception UnexpectedLiteral of string
 
 
@@ -31,6 +42,22 @@ let cutoff_opt : Smp.cutoff_options_t = Smp.opt_empty()
    TSLK solver interface *)
 let tslk_sort_map = ref (GM.new_sort_map())
 let tslk_model = ref (GM.new_model())
+
+
+let new_case_info (pa:SL.conjunctive_formula)
+                  (panc:SL.conjunctive_formula)
+                  (nc:SL.conjunctive_formula)
+                  (arrgs:(SL.integer list list) GenSet.t)
+                  (relevant:SL.integer list)
+                  (sl_relevant:SL.integer list) : case_info_t =
+  {
+    pa = pa;
+    panc = panc;
+    nc = nc;
+    arrgs = arrgs;
+    relevant = relevant;
+    skiplist_relevant = sl_relevant;
+  }
 
 
 let gen_fresh_int_var (vs:SL.VarSet.t) : SL.variable =
@@ -280,55 +307,61 @@ let guess_arrangements (cf:SL.conjunctive_formula) : (SL.integer list list) GenS
 
 
 let split (cf:SL.conjunctive_formula)
-      : SL.conjunctive_formula * SL.conjunctive_formula =
+      : SL.conjunctive_formula * SL.conjunctive_formula * SL.conjunctive_formula =
+  let conj (ls:SL.literal list) : SL.conjunctive_formula =
+    match ls with
+    | [] -> SL.TrueConj
+    | _ -> SL.Conj ls
+  in
   match cf with
-  | SL.TrueConj  -> (SL.TrueConj,  SL.TrueConj)
-  | SL.FalseConj -> (SL.FalseConj, SL.FalseConj)
+  | SL.TrueConj  -> (SL.TrueConj,  SL.TrueConj,  SL.TrueConj)
+  | SL.FalseConj -> (SL.FalseConj, SL.FalseConj, SL.FalseConj)
   | SL.Conj cf   ->
-      let (pa,nc) = List.fold_left (fun (pas,ncs) l ->
-                      match l with
-                        (* l = q *)
-                      | SL.Atom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT(SL.IntVal _)))
-                      | SL.Atom(SL.Eq(SL.IntT(SL.IntVal _),SL.IntT(SL.VarInt _)))
-                      | SL.NegAtom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT(SL.IntVal _)))
-                      | SL.NegAtom(SL.InEq(SL.IntT(SL.IntVal _),SL.IntT(SL.VarInt _))) -> (l::pas,ncs)
-                        (* l1 = l2 *)
-                      | SL.Atom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT(SL.VarInt _)))
-                      | SL.NegAtom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT(SL.VarInt _)))
-                        (* l1 = l2 + 1*)
-                      | SL.Atom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntAdd (SL.VarInt _, SL.IntVal 1))))
-                      | SL.Atom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntAdd (SL.IntVal 1, SL.VarInt _))))
-                      | SL.Atom(SL.Eq(SL.IntT(SL.IntAdd(SL.VarInt _,SL.IntVal 1)),SL.IntT(SL.VarInt _)))
-                      | SL.Atom(SL.Eq(SL.IntT(SL.IntAdd(SL.IntVal 1,SL.VarInt _)),SL.IntT(SL.VarInt _)))
-                      | SL.NegAtom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntAdd (SL.VarInt _, SL.IntVal 1))))
-                      | SL.NegAtom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntAdd (SL.IntVal 1, SL.VarInt _))))
-                      | SL.NegAtom(SL.InEq(SL.IntT(SL.IntAdd(SL.VarInt _,SL.IntVal 1)),SL.IntT(SL.VarInt _)))
-                      | SL.NegAtom(SL.InEq(SL.IntT(SL.IntAdd(SL.IntVal 1,SL.VarInt _)),SL.IntT(SL.VarInt _)))
-                        (* l1 < l2 *) (* l1 <= l2 should not appear here after normalization *)
-                      | SL.Atom(SL.Less(SL.VarInt _,SL.VarInt _))
-                      | SL.Atom(SL.Greater(SL.VarInt _,SL.VarInt _))
-                      | SL.NegAtom(SL.LessEq(SL.VarInt _,SL.VarInt _))
-                      | SL.NegAtom(SL.GreaterEq(SL.VarInt _,SL.VarInt _))
-                        (* But l1 <= l2 literals appear, as well as they are not compared to constants *)
-                      | SL.Atom(SL.LessEq(SL.VarInt _,SL.VarInt _))
-                      | SL.Atom(SL.GreaterEq(SL.VarInt _,SL.VarInt _))
-                      | SL.NegAtom(SL.Less(SL.VarInt _,SL.VarInt _))
-                      | SL.NegAtom(SL.Greater(SL.VarInt _,SL.VarInt _)) -> (l::pas,l::ncs)
-                        (* Cases that should not appear at this point after normalization *)
-                      | SL.Atom(SL.Less(SL.IntVal _,_))          | SL.Atom(SL.Less(_,SL.IntVal _))
-                      | SL.Atom(SL.Greater(SL.IntVal _,_))       | SL.Atom(SL.Greater(_,SL.IntVal _))
-                      | SL.NegAtom(SL.LessEq(SL.IntVal _,_))     | SL.NegAtom(SL.LessEq(_,SL.IntVal _))
-                      | SL.NegAtom(SL.GreaterEq(SL.IntVal _,_))  | SL.NegAtom(SL.GreaterEq(_,SL.IntVal _))
-                      | SL.Atom(SL.LessEq(SL.IntVal _,_))        | SL.Atom(SL.LessEq(_,SL.IntVal _))
-                      | SL.Atom(SL.GreaterEq(SL.IntVal _,_))     | SL.Atom(SL.GreaterEq(_,SL.IntVal _))
-                      | SL.NegAtom(SL.Less(SL.IntVal _,_))       | SL.NegAtom(SL.Less(_,SL.IntVal _))
-                      | SL.NegAtom(SL.Greater(SL.IntVal _,_))    | SL.NegAtom(SL.Greater(_,SL.IntVal _)) ->
-                          assert false
-                        (* Remaining cases *)
-                      | _ -> (pas,l::ncs)
-                    ) ([],[]) cf
+      let (pa,panc,nc) =
+        List.fold_left (fun (pas,pancs,ncs) l ->
+          match l with
+          (* l = q *)
+          | SL.Atom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT(SL.IntVal _)))
+          | SL.Atom(SL.Eq(SL.IntT(SL.IntVal _),SL.IntT(SL.VarInt _)))
+          | SL.NegAtom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT(SL.IntVal _)))
+          | SL.NegAtom(SL.InEq(SL.IntT(SL.IntVal _),SL.IntT(SL.VarInt _))) -> (l::pas,pancs,ncs)
+            (* l1 = l2 *)
+          | SL.Atom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT(SL.VarInt _)))
+          | SL.NegAtom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT(SL.VarInt _)))
+            (* l1 = l2 + 1*)
+          | SL.Atom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntAdd (SL.VarInt _, SL.IntVal 1))))
+          | SL.Atom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntAdd (SL.IntVal 1, SL.VarInt _))))
+          | SL.Atom(SL.Eq(SL.IntT(SL.IntAdd(SL.VarInt _,SL.IntVal 1)),SL.IntT(SL.VarInt _)))
+          | SL.Atom(SL.Eq(SL.IntT(SL.IntAdd(SL.IntVal 1,SL.VarInt _)),SL.IntT(SL.VarInt _)))
+          | SL.NegAtom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntAdd (SL.VarInt _, SL.IntVal 1))))
+          | SL.NegAtom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntAdd (SL.IntVal 1, SL.VarInt _))))
+          | SL.NegAtom(SL.InEq(SL.IntT(SL.IntAdd(SL.VarInt _,SL.IntVal 1)),SL.IntT(SL.VarInt _)))
+          | SL.NegAtom(SL.InEq(SL.IntT(SL.IntAdd(SL.IntVal 1,SL.VarInt _)),SL.IntT(SL.VarInt _)))
+            (* l1 < l2 *) (* l1 <= l2 should not appear here after normalization *)
+          | SL.Atom(SL.Less(SL.VarInt _,SL.VarInt _))
+          | SL.Atom(SL.Greater(SL.VarInt _,SL.VarInt _))
+          | SL.NegAtom(SL.LessEq(SL.VarInt _,SL.VarInt _))
+          | SL.NegAtom(SL.GreaterEq(SL.VarInt _,SL.VarInt _))
+            (* But l1 <= l2 literals appear, as well as they are not compared to constants *)
+          | SL.Atom(SL.LessEq(SL.VarInt _,SL.VarInt _))
+          | SL.Atom(SL.GreaterEq(SL.VarInt _,SL.VarInt _))
+          | SL.NegAtom(SL.Less(SL.VarInt _,SL.VarInt _))
+          | SL.NegAtom(SL.Greater(SL.VarInt _,SL.VarInt _)) -> (pas,l::pancs,ncs)
+            (* Cases that should not appear at this point after normalization *)
+          | SL.Atom(SL.Less(SL.IntVal _,_))          | SL.Atom(SL.Less(_,SL.IntVal _))
+          | SL.Atom(SL.Greater(SL.IntVal _,_))       | SL.Atom(SL.Greater(_,SL.IntVal _))
+          | SL.NegAtom(SL.LessEq(SL.IntVal _,_))     | SL.NegAtom(SL.LessEq(_,SL.IntVal _))
+          | SL.NegAtom(SL.GreaterEq(SL.IntVal _,_))  | SL.NegAtom(SL.GreaterEq(_,SL.IntVal _))
+          | SL.Atom(SL.LessEq(SL.IntVal _,_))        | SL.Atom(SL.LessEq(_,SL.IntVal _))
+          | SL.Atom(SL.GreaterEq(SL.IntVal _,_))     | SL.Atom(SL.GreaterEq(_,SL.IntVal _))
+          | SL.NegAtom(SL.Less(SL.IntVal _,_))       | SL.NegAtom(SL.Less(_,SL.IntVal _))
+          | SL.NegAtom(SL.Greater(SL.IntVal _,_))    | SL.NegAtom(SL.Greater(_,SL.IntVal _)) ->
+              assert false
+            (* Remaining cases *)
+          | _ -> (pas,pancs,l::ncs)
+        ) ([],[],[]) cf
       in
-        (SL.Conj pa, SL.Conj nc)
+        (conj pa, conj panc, conj nc)
 
 
 module TranslateTsl (SLK : TSLKExpression.S) =
@@ -734,12 +767,7 @@ module TranslateTsl (SLK : TSLKExpression.S) =
 
 
 
-let check_sat_by_cases (lines:int)
-                       (co : Smp.cutoff_strategy_t)
-                       (cases:(SL.conjunctive_formula *                   (* PA formula   *)
-                               SL.conjunctive_formula *                   (* NC formula   *)
-                               (SL.integer list list) GenSet.t *          (* Arrangements *)
-                               (SL.integer list * SL.integer list)) list) (* Relevant     *)
+let check_sat_by_cases (lines:int) (co : Smp.cutoff_strategy_t) (cases:case_info_t list)
       : (bool * int * (DP.t, int) Hashtbl.t) =
 
   (* TSLK calls counter *)
@@ -752,52 +780,101 @@ let check_sat_by_cases (lines:int)
 
 
 
-  let sanitize_for_array_updates (alpha:SL.integer list list)
-                                 (relevant:SL.integer list * SL.integer list)
-                                 (nc:SL.conjunctive_formula)
-          : (SL.integer list list * SL.integer list * SL.conjunctive_formula) =
-    let (rs,ss) = relevant in
-    let add_zero = if ss = [] || (List.mem (SL.IntVal 0) rs) then
+  let propagate (alpha:SL.integer list list)
+                (panc:SL.conjunctive_formula)
+                (nc:SL.conjunctive_formula)
+                (relevant:SL.integer list)
+                (skiplist_relevant:SL.integer list)
+          : (SL.integer list list * SL.conjunctive_formula * SL.conjunctive_formula * SL.integer list) =
+
+    (* Add one extra level if there are two array updates at successively but
+       not consecutive levels *)
+    let (pump_alpha, pump_relevant) =
+      match nc with
+      | SL.TrueConj  -> (alpha, relevant)
+      | SL.FalseConj -> (alpha, relevant)
+      | SL.Conj ls   -> begin
+                          let no_arr_updates = ref true in
+                          List.iter (fun l ->
+                            match l with
+                            (* A = B{l <- a} *)
+                            | SL.Atom(SL.Eq(_,SL.AddrArrayT(SL.AddrArrayUp(_,i,_))))
+                            | SL.Atom(SL.Eq(SL.AddrArrayT (SL.AddrArrayUp(_,i,_)),_))
+                            | SL.NegAtom(SL.InEq(_,SL.AddrArrayT(SL.AddrArrayUp(_,i,_))))
+                            | SL.NegAtom(SL.InEq(SL.AddrArrayT(SL.AddrArrayUp(_,i,_)),_)) ->
+                                assert (!no_arr_updates); no_arr_updates := false
+                            | _ -> ()
+                          ) ls; (alpha, relevant)
+                        end in
+    (* Add zero to list of relevant levels, if there is a skiplist literal
+       whose explicit level is lower than any other relevant level *)
+    let add_zero = if skiplist_relevant = [] || (List.mem (SL.IntVal 0) pump_relevant) then
                       false
                    else
                      snd (List.fold_right (fun eqclass (any_rel, res) ->
-                           if (List.exists (fun l -> List.mem l eqclass) ss) then
-                             let rel = List.exists (fun l -> List.mem l eqclass) rs in
+                           if (List.exists (fun l -> List.mem l eqclass) skiplist_relevant) then
+                             let rel = List.exists (fun l -> List.mem l eqclass) pump_relevant in
                                (rel, (not any_rel && not rel) || res)
                            else
-                             (any_rel || List.exists (fun l -> List.mem l eqclass) rs, res)
-                         ) alpha (false, false)) in
-    let upd_relevant = if add_zero then
-                         (SL.IntVal 0) :: rs
-                       else
-                         rs in
-    (* Extract equalities from guesses arrangement *)
-    let (equalities,updated_alpha) = List.fold_left (fun (eq_subst,new_alpha) eqclass ->
-                                       match eqclass with
-                                       | []    -> assert false
-                                       | [x]   -> (eq_subst,new_alpha@[[x]])
-                                       | x::xs -> ((List.map (fun y -> (x,y)) xs) @ eq_subst,
-                                                   new_alpha@[[x]])
-                                     ) ([],[]) alpha in
-    (* Propagate equalities over NC formula *)
-    let updated_nc = SL.replace_terms_conjunctive_formula (Hashtbl.create 10) nc in
-
-    (* Propagate equalities over the arangement *)
-    match nc with
-    | SL.TrueConj  -> (updated_alpha, upd_relevant, nc)
-    | SL.FalseConj -> (updated_alpha, upd_relevant, nc)
-    | SL.Conj ls   -> let no_arr_updates = ref true in
-                      List.iter (fun l ->
-                        match l with
-                        (* A = B{l <- a} *)
-                        | SL.Atom (SL.Eq (_,SL.AddrArrayT (SL.AddrArrayUp(_,i,_))))
-                        | SL.Atom (SL.Eq (SL.AddrArrayT (SL.AddrArrayUp(_,i,_)),_))
-                        | SL.NegAtom (SL.InEq (_,SL.AddrArrayT (SL.AddrArrayUp(_,i,_))))
-                        | SL.NegAtom (SL.InEq (SL.AddrArrayT (SL.AddrArrayUp(_,i,_)),_)) ->
-                            assert (!no_arr_updates); no_arr_updates := false
-                        | _ -> ()
-                      ) ls; (updated_alpha, upd_relevant, nc) in
-
+                             (any_rel || List.exists (fun l -> List.mem l eqclass) pump_relevant, res)
+                         ) pump_alpha (false, false)) in
+    let relevant_with_zero = if add_zero then
+                               (SL.IntVal 0) :: pump_relevant
+                             else
+                                pump_relevant in
+    (* Extract equalities from guessed arrangement. Update arrangements so that it only contains
+       one level for each equivalence class. *)
+    let (equalities,simpl_alpha) = List.fold_left (fun (eq_subst,new_alpha) eqclass ->
+                                     match eqclass with
+                                     | []    -> assert false
+                                     | [x]   -> (eq_subst,new_alpha@[[x]])
+                                     | x::xs -> let relevs = List.filter (fun i ->
+                                                               List.mem i relevant_with_zero
+                                                             ) eqclass in
+                                                begin
+                                                  match relevs with
+                                                  (* No relevant level in the eqclass. Pick any. *)
+                                                  | []   -> ((List.map (fun y -> (y,x)) xs) @ eq_subst,
+                                                             new_alpha@[[x]])
+                                                  (* Relevant levels in the eqclass. Pick a relevant one *)
+                                                  | r::_ -> ((List.map (fun y -> (y,r)) (List.filter (fun e -> e<>r) eqclass)) @ eq_subst,
+                                                             new_alpha@[[r]])
+                                                end
+                                  ) ([],[]) pump_alpha in
+    (* Propagate equalities over PANC and NC formula *)
+    let replace_tbl = Hashtbl.create 10 in
+    List.iter (fun (x,y) -> Hashtbl.add replace_tbl (SL.IntT x) (SL.IntT y)) equalities;
+    let panc_r = match SL.replace_terms_conjunctive_formula replace_tbl panc with
+                 | SL.TrueConj  -> SL.TrueConj
+                 | SL.FalseConj -> SL.FalseConj
+                 | SL.Conj ls -> begin
+                                   let ls_r = List.fold_left (fun xs l ->
+                                                let l_vars = SL.varset_of_sort (SL.Literal l) SL.Int in
+                                                if SL.VarSet.for_all (fun v ->
+                                                    List.mem (SL.VarInt v) relevant_with_zero) l_vars then
+                                                      l::xs
+                                                else
+                                                  xs
+                                             ) [] ls in
+                                    match ls_r with
+                                    | [] -> SL.TrueConj
+                                    | _  -> SL.Conj ls_r
+                                 end in
+    let nc_r = SL.replace_terms_conjunctive_formula replace_tbl nc in
+    (* Ensure nc formula speaks only about relevant levels *)
+    let _ = match nc_r with
+            | SL.TrueConj  -> ()
+            | SL.FalseConj -> ()
+            | SL.Conj ls   -> (* VARIABLES AND CONSTANTS SHOULD BE RELEVANT *)
+                            SL.VarSet.iter (fun v ->
+                              if not (List.mem (SL.VarInt v) relevant_with_zero) then begin
+                                Printf.printf "Variable %s is not in the relevant list [%s]\n"
+                                  (SL.variable_to_str v)
+                                  (String.concat ";" (List.map SL.int_to_str relevant_with_zero));
+                                assert false
+                              end
+                            ) (SL.varset_of_sort_from_conj nc_r SL.Int) in
+      (simpl_alpha, panc_r, nc_r, relevant_with_zero) in
 
 
   (* PA satisfiability check function *)
@@ -858,25 +935,33 @@ let check_sat_by_cases (lines:int)
 
   (* General satisfiability function *)
   let rec check (pa:SL.conjunctive_formula)
+                (panc:SL.conjunctive_formula)
                 (nc:SL.conjunctive_formula)
-                (relevant:SL.integer list * SL.integer list)
+                (relevant:SL.integer list)
+                (skiplist_relevant:SL.integer list)
                 (alpha:SL.integer list list) : bool =
     verb "BEGIN CHECK\n";
     let alpha_phi = alpha_to_conjunctive_formula alpha in
     verb "CONJUNCTIVE CREATED\n";
-    verb "**** TSL Solver. Check PA formula\n%s\nand NC formula\n%s\nwith arrangement\n%s\n"
+    verb "**** TSL Solver. Check PA formula\n%s\nand PANC formula\n%s\nand NC formula\n%s\nwith arrangement\n%s\n"
           (SL.conjunctive_formula_to_str pa)
+          (SL.conjunctive_formula_to_str panc)
           (SL.conjunctive_formula_to_str nc)
           (SL.conjunctive_formula_to_str alpha_phi);
-    let pa_sat = check_pa (SL.combine_conj_formula pa alpha_phi) in
+    let pa_plus_panc = SL.combine_conj_formula pa panc in
+    let pa_sat = check_pa (SL.combine_conj_formula pa_plus_panc alpha_phi) in
     verb "**** TSL Solver, PA sat?: %b\n" pa_sat;
     if pa_sat then
-      (* Add new levels if there are two array updates at successive but non consecutive levels *)
-      let (updated_alpha, updated_relevant, updated_nc) =
-              sanitize_for_array_updates alpha relevant nc in
-      let updated_alpha_phi = alpha_to_conjunctive_formula updated_alpha in
-
-      (* Check NC /\ alpha satisfiability *)
+      (* Propagate equalities and update relevant levels *)
+      let (reduced_alpha, panc_r, nc_r, final_relevant) =
+        propagate alpha panc nc relevant skiplist_relevant in
+      let alpha_r = List.fold_left (fun xs eqc ->
+                      match List.filter (fun e -> List.mem e final_relevant) eqc with
+                      | [] -> xs
+                      | rs -> xs @ [rs]
+                    ) [] reduced_alpha in
+      let alpha_r_phi = alpha_to_conjunctive_formula alpha_r in
+      (* Check PANC_r /\ NC_r /\ alpha_r *)
 (*
   (* ALE: This code explicitly adds the levels in the formula *)
       let i = ref (List.length updated_alpha) in
@@ -890,6 +975,25 @@ let check_sat_by_cases (lines:int)
       (* HERE PUT THE LEVEL ENUMERATION *)
       let levels = List.length updated_alpha in
 *)
+      let levels = List.length final_relevant in
+      let _ = verb "**** TSL Solver will combine candidate arrangement with PANC_R and NC_R.\n" in
+      let comb_phi = SL.combine_conj_formula (SL.combine_conj_formula panc_r nc_r) alpha_r_phi in
+      check_nc comb_phi levels
+    else
+      false in
+
+      (* Add new levels if there are two array updates at successive but non consecutive levels *)
+
+
+(*
+      let (alpha_r, upd_relevant, nc_r) = process_relevants alpha 
+
+      let (updated_alpha, updated_relevant, updated_nc) =
+              sanitize_for_array_updates alpha relevant nc in
+      let updated_alpha_phi = alpha_to_conjunctive_formula updated_alpha in
+*)
+      (* Check NC /\ alpha satisfiability *)
+(*
       let explicit_levels_phi = SL.TrueConj in
       let levels = List.length updated_relevant in
       let _ = verb "**** TSL Solver will combine candidate arrangement wit NC.\n" in
@@ -897,41 +1001,43 @@ let check_sat_by_cases (lines:int)
           explicit_levels_phi) levels
     else
       false in
+*)
 
   (* Main call *)
   Hashtbl.clear tslk_calls;
   Printf.printf "CASES SIZE: %i\n" (List.length cases);
-  let rec check_aux cs =
+  let rec check_aux (cs:case_info_t list) =
     verb "CHECK_AUX WITH CASES: %i\n" (List.length cases);
     match cs with
     | [] -> (false, 1, tslk_calls)
-    | (pa,nc,arrgs,relev)::xs -> begin
-                                   let this_case = if GenSet.size arrgs = 0 then
-                                                     check pa nc relev []
-                                                   else
-                                                     GenSet.exists (check pa nc relev) arrgs in
-                                   if this_case then
-                                     (true, 1, tslk_calls)
-                                   else
-                                     check_aux xs
-                                   end
+    | case::cs -> begin
+                    let this_case = if GenSet.size case.arrgs = 0 then
+                                      check case.pa case.panc case.nc case.relevant case.skiplist_relevant []
+                                    else
+                                      GenSet.exists (check case.pa case.panc case.nc
+                                                     case.relevant case.skiplist_relevant) case.arrgs in
+                    if this_case then
+                      (true, 1, tslk_calls)
+                    else
+                      check_aux cs
+                  end
   in
     check_aux cases
 
 
 let rec combine_splits_arrgs (sp:(SL.conjunctive_formula *                        (* PA formulas     *)
+                                  SL.conjunctive_formula *                        (* PANC formulas   *)
                                   SL.conjunctive_formula)list)                    (* NC formulas     *)
                              (arrgs:((SL.integer list list) GenSet.t) list)       (* Arrangements    *)
-                             (relevant:(SL.integer list * SL.integer list) list) :(* Relevant levels *)
-            (SL.conjunctive_formula *
-             SL.conjunctive_formula *
-             (SL.integer list list) GenSet.t *
-             (SL.integer list * SL.integer list)) list =
+                             (relevant:(SL.integer list * SL.integer list) list)  (* Relevant levels *)
+      : case_info_t list =
   verb "SP SIZE: %i\n" (List.length sp);
   verb "ARRGS SIZE: %i\n" (List.length arrgs);
   match (sp,arrgs,relevant) with
-  | ([],[],[])                -> []
-  | ((pa,nc)::xs,arrg::ys,rel::zs) -> (pa,nc,arrg,rel)::(combine_splits_arrgs xs ys zs)
+  | ([],[],[])                          -> []
+  | ((pa,panc,nc)::xs,arrg::ys,rel::zs) ->
+      let info = new_case_info pa panc nc arrg (fst rel) (snd rel) in
+      info :: (combine_splits_arrgs xs ys zs)
   | _ -> assert false
 
 
@@ -957,15 +1063,13 @@ let is_sat_plus_info (lines : int)
   let arrgs = List.map guess_arrangements phi_dnf in
   (* 3. Split each conjunction into PA y NC *)
 
-(*
-SI NO  HAY NINGUN RELEVANT ENTRE EL PARAMETRO DE SKIPLIST Y 0, ENTONCES EL LITERAL SKIPLIST ANADE EL 0
-*)
-
   verb "**** Will split TSL formula in NC and PA...\n";
   let splits = List.map split phi_dnf in
   verbstr (Interface.Msg.info "SPLITED FORMULAS"
-    (String.concat "\n" (List.map (fun (pa,nc) -> "PA:\n" ^ (SL.conjunctive_formula_to_str pa) ^ "\n" ^
-                                                  "NC:\n" ^ (SL.conjunctive_formula_to_str nc)) splits)));
+    (String.concat "\n" (List.map (fun (pa,panc,nc) ->
+        "PA:\n" ^ (SL.conjunctive_formula_to_str pa) ^ "\n" ^
+        "PANC:\n" ^ (SL.conjunctive_formula_to_str panc) ^ "\n" ^
+        "NC:\n" ^ (SL.conjunctive_formula_to_str nc)) splits)));
   (* 4. Call the solver for each possible case *)
   verb "**** Will check TSL formula satisfiability...\n";
   let (sat,tsl_calls,tslk_calls) = check_sat_by_cases lines co
