@@ -338,6 +338,10 @@ module TermSet = Set.Make(
   end )
 
 
+(************************************************)
+(*  Obtain the set of variables from a formula  *)
+(************************************************)
+
 let (@@) s1 s2 =
   S.union s1 s2
 
@@ -567,6 +571,7 @@ let varset_instances_from_conj (cf:conjunctive_formula) : S.t =
 
 let varset_instances (phi:formula) : S.t =
   get_varset_from_formula true phi
+
 
 
 let localize_with_underscore (id:varId) (p_name:procedure_name) : string =

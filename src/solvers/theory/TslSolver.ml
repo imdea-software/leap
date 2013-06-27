@@ -10,6 +10,7 @@ module SLInterf = TSLInterface
 (*module type SLK = TSLKExpression.S *)
 
 
+
 type case_info_t =
   {
     pa : SL.conjunctive_formula ;
@@ -17,7 +18,6 @@ type case_info_t =
     nc : SL.conjunctive_formula ;
     arrgs : (SL.integer list list) GenSet.t ;
     relevant : SL.integer list ;
-    skiplist_relevant : SL.integer list ;
   }
 
 
@@ -48,15 +48,13 @@ let new_case_info (pa:SL.conjunctive_formula)
                   (panc:SL.conjunctive_formula)
                   (nc:SL.conjunctive_formula)
                   (arrgs:(SL.integer list list) GenSet.t)
-                  (relevant:SL.integer list)
-                  (sl_relevant:SL.integer list) : case_info_t =
+                  (relevant:SL.integer list): case_info_t =
   {
     pa = pa;
     panc = panc;
     nc = nc;
     arrgs = arrgs;
     relevant = relevant;
-    skiplist_relevant = sl_relevant;
   }
 
 
@@ -92,8 +90,8 @@ let sanitize (cf:SL.conjunctive_formula) : SL.conjunctive_formula =
   in
   let fresh_vargen = SL.new_fresh_gen_from_conjformula cf in
   match cf with
-  | SL.FalseConj -> cf
   | SL.TrueConj  -> cf
+  | SL.FalseConj -> cf
   | SL.Conj ls   -> let (cs,ss) = find_candidates ls in
                         let needs_sanit = SL.VarSet.diff cs ss in
                         let ls' = SL.VarSet.fold (fun v xs ->
@@ -159,59 +157,32 @@ let guess_arrangements_by_brute_force (cf:SL.conjunctive_formula)
     are relevant levels for literals involving ddr2set, getp and array update. The
     second list contains relevant levels for skiplist literals.
 *)
-let relevant_levels (cf:SL.conjunctive_formula) : (SL.integer list * SL.integer list) =
+let relevant_levels (cf:SL.conjunctive_formula) : SL.integer list =
   let relevant_set = GenSet.empty() in
-  let skiplist_set = GenSet.empty() in
-  let analyze_literal (l:SL.literal) : unit =
-    match l with
-    (* r = addr2set(m,a,l) *)
-    | SL.Atom (SL.Eq (_,SL.SetT (SL.AddrToSet(_,_,i))))
-    | SL.Atom (SL.Eq (SL.SetT (SL.AddrToSet(_,_,i)),_))
-    | SL.Atom (SL.InEq (_,SL.SetT (SL.AddrToSet(_,_,i))))
-    | SL.Atom (SL.InEq (SL.SetT (SL.AddrToSet(_,_,i)),_))
-    | SL.NegAtom (SL.InEq (_,SL.SetT (SL.AddrToSet(_,_,i))))
-    | SL.NegAtom (SL.InEq (SL.SetT (SL.AddrToSet(_,_,i)),_))
-    | SL.NegAtom (SL.Eq (_,SL.SetT (SL.AddrToSet(_,_,i))))
-    | SL.NegAtom (SL.Eq (SL.SetT (SL.AddrToSet(_,_,i)),_))
-    (* p = getp(m,a1,a2,l) *)
-    | SL.Atom (SL.Eq (_,SL.PathT (SL.GetPath(_,_,_,i))))
-    | SL.Atom (SL.Eq (SL.PathT (SL.GetPath(_,_,_,i)),_))
-    | SL.Atom (SL.InEq (_,SL.PathT (SL.GetPath(_,_,_,i))))
-    | SL.Atom (SL.InEq (SL.PathT (SL.GetPath(_,_,_,i)),_))
-    | SL.NegAtom (SL.InEq (_,SL.PathT (SL.GetPath(_,_,_,i))))
-    | SL.NegAtom (SL.InEq (SL.PathT (SL.GetPath(_,_,_,i)),_))
-    | SL.NegAtom (SL.Eq (_,SL.PathT (SL.GetPath(_,_,_,i))))
-    | SL.NegAtom (SL.Eq (SL.PathT (SL.GetPath(_,_,_,i)),_))
-    (* A = B{l <- a} *)
-    | SL.Atom (SL.Eq (_,SL.AddrArrayT (SL.AddrArrayUp(_,i,_))))
-    | SL.Atom (SL.Eq (SL.AddrArrayT (SL.AddrArrayUp(_,i,_)),_))
-    | SL.NegAtom (SL.InEq (_,SL.AddrArrayT (SL.AddrArrayUp(_,i,_))))
-    | SL.NegAtom (SL.InEq (SL.AddrArrayT (SL.AddrArrayUp(_,i,_)),_))
-    (* A = B{l <- t} *)
-    | SL.Atom (SL.Eq (_,SL.TidArrayT (SL.TidArrayUp(_,i,_))))
-    | SL.Atom (SL.Eq (SL.TidArrayT (SL.TidArrayUp(_,i,_)),_))
-    | SL.NegAtom (SL.InEq (_,SL.TidArrayT (SL.TidArrayUp(_,i,_))))
-    | SL.NegAtom (SL.InEq (SL.TidArrayT (SL.TidArrayUp(_,i,_)),_))
-    (* a = A[i] *)
-    | SL.Atom (SL.Eq (_,SL.AddrT(SL.AddrArrRd(_,i))))
-    | SL.Atom (SL.Eq (SL.AddrT(SL.AddrArrRd(_,i)),_))
-    | SL.NegAtom (SL.InEq (_,SL.AddrT(SL.AddrArrRd(_,i))))
-    | SL.NegAtom (SL.InEq (SL.AddrT(SL.AddrArrRd(_,i)),_))
-    (* t = A[i] *)
-    | SL.Atom (SL.Eq (_,SL.TidT(SL.TidArrRd(_,i))))
-    | SL.Atom (SL.Eq (SL.TidT(SL.TidArrRd(_,i)),_))
-    | SL.NegAtom (SL.InEq (_,SL.TidT(SL.TidArrRd(_,i))))
-    | SL.NegAtom (SL.InEq (SL.TidT(SL.TidArrRd(_,i)),_)) -> GenSet.add relevant_set i
-    (* Skiplist(h,r,l,f,t) *)
-    | SL.Atom (SL.Skiplist(_,_,i,_,_)) -> GenSet.add skiplist_set i
-    (* Remaining cases *)
-    | _ -> ()
-  in
   match cf with
-  | SL.TrueConj  -> ([],[])
-  | SL.FalseConj -> ([],[])
-  | SL.Conj ls   -> List.iter analyze_literal ls;
-                    (GenSet.to_list relevant_set, GenSet.to_list skiplist_set)
+  | SL.TrueConj  -> []
+  | SL.FalseConj -> []
+  | SL.Conj ls   -> begin
+                      SL.TermSet.iter (fun t ->
+                        match t with
+                          (* r = addr2set(m,a,l) *)
+                        | SL.SetT (SL.AddrToSet(_,_,i))
+                          (* p = getp(m,a1,a2,l) *)
+                        | SL.PathT (SL.GetPath(_,_,_,i))
+                          (* A = B{l <- a} *)
+                        | SL.AddrArrayT (SL.AddrArrayUp(_,i,_))
+                          (* A = B{l <- t} *)
+                        | SL.TidArrayT (SL.TidArrayUp(_,i,_))
+                          (* a = A[i] *)
+                        | SL.AddrT (SL.AddrArrRd(_,i))
+                          (* t = A[i] *)
+                        | SL.TidT (SL.TidArrRd(_,i)) -> GenSet.add relevant_set i
+                          (* Remaining cases *)
+                        | _ -> ()
+                      ) (SL.termset_from_conj cf);
+                      (GenSet.to_list relevant_set)
+                    end
+
 
 
 let alpha_to_conjunctive_formula (alpha:SL.integer list list)
@@ -784,7 +755,6 @@ let check_sat_by_cases (lines:int) (co : Smp.cutoff_strategy_t) (cases:case_info
                 (panc:SL.conjunctive_formula)
                 (nc:SL.conjunctive_formula)
                 (relevant:SL.integer list)
-                (skiplist_relevant:SL.integer list)
           : (SL.integer list list * SL.conjunctive_formula * SL.conjunctive_formula * SL.integer list) =
 
     (* Add one extra level if there are two array updates at successively but
@@ -806,13 +776,25 @@ let check_sat_by_cases (lines:int) (co : Smp.cutoff_strategy_t) (cases:case_info
                             | _ -> ()
                           ) ls; (alpha, relevant)
                         end in
+    (*
+
+TODO: Tuka, put here the ideas of the notes. Levels in skiplist predicates should be substituted by
+      the relevant level immediately below. If no relevant level below, subtitute it by 0 and add
+      0 as the lowest element (right most) in the arrangement (list).
+      For mkcell terms, if the level in the mkcell(_,_,_,i) is in the relevant list then keep it.
+      If it is not in the relevant list, then remove the mkcell() predicate, as it is not adding
+      anything new to the formula
+*)
+
     (* Add zero to list of relevant levels, if there is a skiplist literal
        whose explicit level is lower than any other relevant level *)
-    let add_zero = if skiplist_relevant = [] || (List.mem (SL.IntVal 0) pump_relevant) then
+
+(*
+    let add_zero = if levels.skiplist_relevant = [] || (List.mem (SL.IntVal 0) pump_relevant) then
                       false
                    else
                      snd (List.fold_right (fun eqclass (any_rel, res) ->
-                           if (List.exists (fun l -> List.mem l eqclass) skiplist_relevant) then
+                           if (List.exists (fun l -> List.mem l eqclass) levels.skiplist_relevant) then
                              let rel = List.exists (fun l -> List.mem l eqclass) pump_relevant in
                                (rel, (not any_rel && not rel) || res)
                            else
@@ -822,6 +804,10 @@ let check_sat_by_cases (lines:int) (co : Smp.cutoff_strategy_t) (cases:case_info
                                (SL.IntVal 0) :: pump_relevant
                              else
                                 pump_relevant in
+*)
+    let relevant_with_zero = relevant in
+
+
     (* Extract equalities from guessed arrangement. Update arrangements so that it only contains
        one level for each equivalence class. *)
     let (equalities,simpl_alpha) = List.fold_left (fun (eq_subst,new_alpha) eqclass ->
@@ -871,6 +857,7 @@ let check_sat_by_cases (lines:int) (co : Smp.cutoff_strategy_t) (cases:case_info
                                 Printf.printf "Variable %s is not in the relevant list [%s]\n"
                                   (SL.variable_to_str v)
                                   (String.concat ";" (List.map SL.int_to_str relevant_with_zero));
+                                Printf.printf "NC_R: %s\n" (SL.conjunctive_formula_to_str nc_r);
                                 assert false
                               end
                             ) (SL.varset_of_sort_from_conj nc_r SL.Int) in
@@ -938,7 +925,6 @@ let check_sat_by_cases (lines:int) (co : Smp.cutoff_strategy_t) (cases:case_info
                 (panc:SL.conjunctive_formula)
                 (nc:SL.conjunctive_formula)
                 (relevant:SL.integer list)
-                (skiplist_relevant:SL.integer list)
                 (alpha:SL.integer list list) : bool =
     verb "BEGIN CHECK\n";
     let alpha_phi = alpha_to_conjunctive_formula alpha in
@@ -953,8 +939,7 @@ let check_sat_by_cases (lines:int) (co : Smp.cutoff_strategy_t) (cases:case_info
     verb "**** TSL Solver, PA sat?: %b\n" pa_sat;
     if pa_sat then
       (* Propagate equalities and update relevant levels *)
-      let (reduced_alpha, panc_r, nc_r, final_relevant) =
-        propagate alpha panc nc relevant skiplist_relevant in
+      let (reduced_alpha, panc_r, nc_r, final_relevant) = propagate alpha panc nc relevant in
       let alpha_r = List.fold_left (fun xs eqc ->
                       match List.filter (fun e -> List.mem e final_relevant) eqc with
                       | [] -> xs
@@ -982,26 +967,6 @@ let check_sat_by_cases (lines:int) (co : Smp.cutoff_strategy_t) (cases:case_info
     else
       false in
 
-      (* Add new levels if there are two array updates at successive but non consecutive levels *)
-
-
-(*
-      let (alpha_r, upd_relevant, nc_r) = process_relevants alpha 
-
-      let (updated_alpha, updated_relevant, updated_nc) =
-              sanitize_for_array_updates alpha relevant nc in
-      let updated_alpha_phi = alpha_to_conjunctive_formula updated_alpha in
-*)
-      (* Check NC /\ alpha satisfiability *)
-(*
-      let explicit_levels_phi = SL.TrueConj in
-      let levels = List.length updated_relevant in
-      let _ = verb "**** TSL Solver will combine candidate arrangement wit NC.\n" in
-      check_nc (SL.combine_conj_formula (SL.combine_conj_formula updated_nc updated_alpha_phi)
-          explicit_levels_phi) levels
-    else
-      false in
-*)
 
   (* Main call *)
   Hashtbl.clear tslk_calls;
@@ -1012,10 +977,9 @@ let check_sat_by_cases (lines:int) (co : Smp.cutoff_strategy_t) (cases:case_info
     | [] -> (false, 1, tslk_calls)
     | case::cs -> begin
                     let this_case = if GenSet.size case.arrgs = 0 then
-                                      check case.pa case.panc case.nc case.relevant case.skiplist_relevant []
+                                      check case.pa case.panc case.nc case.relevant []
                                     else
-                                      GenSet.exists (check case.pa case.panc case.nc
-                                                     case.relevant case.skiplist_relevant) case.arrgs in
+                                      GenSet.exists (check case.pa case.panc case.nc case.relevant) case.arrgs in
                     if this_case then
                       (true, 1, tslk_calls)
                     else
@@ -1025,18 +989,18 @@ let check_sat_by_cases (lines:int) (co : Smp.cutoff_strategy_t) (cases:case_info
     check_aux cases
 
 
-let rec combine_splits_arrgs (sp:(SL.conjunctive_formula *                        (* PA formulas     *)
-                                  SL.conjunctive_formula *                        (* PANC formulas   *)
-                                  SL.conjunctive_formula)list)                    (* NC formulas     *)
-                             (arrgs:((SL.integer list list) GenSet.t) list)       (* Arrangements    *)
-                             (relevant:(SL.integer list * SL.integer list) list)  (* Relevant levels *)
+let rec combine_splits_arrgs (sp:(SL.conjunctive_formula *                   (* PA formulas     *)
+                                  SL.conjunctive_formula *                   (* PANC formulas   *)
+                                  SL.conjunctive_formula)list)               (* NC formulas     *)
+                             (arrgs:((SL.integer list list) GenSet.t) list)  (* Arrangements    *)
+                             (relevant:SL.integer list list)                 (* Relevant levels *)
       : case_info_t list =
   verb "SP SIZE: %i\n" (List.length sp);
   verb "ARRGS SIZE: %i\n" (List.length arrgs);
   match (sp,arrgs,relevant) with
   | ([],[],[])                          -> []
   | ((pa,panc,nc)::xs,arrg::ys,rel::zs) ->
-      let info = new_case_info pa panc nc arrg (fst rel) (snd rel) in
+      let info = new_case_info pa panc nc arrg rel in
       info :: (combine_splits_arrgs xs ys zs)
   | _ -> assert false
 
@@ -1055,9 +1019,8 @@ let is_sat_plus_info (lines : int)
   Printf.printf "NUMBER OF FORMULAS RESULTING FROM DNF: %i\n" (List.length phi_dnf);
   (* 1. Extract relevant arrangements *)
   let relevant = List.map relevant_levels phi_dnf in
-(*
-  List.iter (fun (rs,ss) -> Printf.printf "RELEVANT: {%s}\n" (String.concat ";" (List.map SL.int_to_str rs))) relevant;
-*)
+  List.iter (fun lvls -> Printf.printf "RELEVANT: {%s}\n"
+                            (String.concat ";" (List.map SL.int_to_str lvls))) relevant;
 
   (* 2. Guess arrangements *)
   let arrgs = List.map guess_arrangements phi_dnf in
@@ -1065,7 +1028,7 @@ let is_sat_plus_info (lines : int)
 
   verb "**** Will split TSL formula in NC and PA...\n";
   let splits = List.map split phi_dnf in
-  verbstr (Interface.Msg.info "SPLITED FORMULAS"
+  print_endline (Interface.Msg.info "SPLITED FORMULAS"
     (String.concat "\n" (List.map (fun (pa,panc,nc) ->
         "PA:\n" ^ (SL.conjunctive_formula_to_str pa) ^ "\n" ^
         "PANC:\n" ^ (SL.conjunctive_formula_to_str panc) ^ "\n" ^

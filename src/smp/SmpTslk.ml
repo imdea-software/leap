@@ -82,7 +82,12 @@ module Make (TSLK : TSLKExpression.S) =
       {
         num_elems = ASet.cardinal e_set;
         num_tids = ASet.cardinal t_set;
-        num_addrs = ASet.cardinal a_set;
+        num_addrs = ASet.cardinal a_set +
+                    (ASet.cardinal (ASet.filter (fun a ->
+                                     match a with
+                                     | Expr.OrderList _ -> true
+                                     | _ -> false
+                                   ) a_set));
         num_levels = ASet.cardinal l_set;
       }
 
@@ -214,16 +219,16 @@ module Make (TSLK : TSLKExpression.S) =
     let union_ineq_cutoff_pol (info:union_info) ((x,y):(Expr.term * Expr.term)) : union_info =
       match x with
         Expr.VarT _      -> info (* nothing, y must be a VarT as well *)
-      | Expr.SetT _      -> (Printf.printf "ADDING DUE TO: %s != %s\n" (Expr.term_to_str x) (Expr.term_to_str y); union_count_addr info (Expr.InEq(x,y))) (* the witness of s1 != s2 *)
+      | Expr.SetT _      -> union_count_addr info (Expr.InEq(x,y)) (* the witness of s1 != s2 *)
       | Expr.ElemT _     -> info
       | Expr.TidT _     -> info
       | Expr.AddrT _     -> info (* no need to look for firstlock, every firstlock has a var *)
       | Expr.CellT _     -> (* ALE: I added this *)
-                             (Printf.printf "ADDING DUE TO: %s != %s\n" (Expr.term_to_str x) (Expr.term_to_str y);
-                             union_count_elem (union_count_tid info (Expr.InEq(x,y))) (Expr.InEq(x,y))); (* an element and a tid identifier witness of c1 != c2 *)
-      | Expr.SetThT _    -> (Printf.printf "ADDING DUE TO: %s != %s\n" (Expr.term_to_str x) (Expr.term_to_str y); union_count_tid info (Expr.InEq(x,y))) (* the witness of st1 != st2 *)
-      | Expr.SetElemT _  -> (Printf.printf "ADDING DUE TO: %s != %s\n" (Expr.term_to_str x) (Expr.term_to_str y); union_count_elem info (Expr.InEq(x,y))) (* the witness of se1 != se2 *)
-      | Expr.PathT _     -> (Printf.printf "ADDING DUE TO: %s != %s\n" (Expr.term_to_str x) (Expr.term_to_str y); union_count_addr info (Expr.InEq(x,y))) (* the witnesses of p1 != p2 *)
+                              union_count_elem (union_count_tid info (Expr.InEq(x,y))) (Expr.InEq(x,y));
+                              (* an element and a tid identifier witness of c1 != c2 *)
+      | Expr.SetThT _    -> union_count_tid info (Expr.InEq(x,y)) (* the witness of st1 != st2 *)
+      | Expr.SetElemT _  -> union_count_elem info (Expr.InEq(x,y)) (* the witness of se1 != se2 *)
+      | Expr.PathT _     -> union_count_addr info (Expr.InEq(x,y)) (* the witnesses of p1 != p2 *)
       | Expr.MemT _      -> info
       | Expr.LevelT _    -> info
       | Expr.VarUpdate _ -> info (* ALE: Not sure if OK *)
@@ -231,11 +236,11 @@ module Make (TSLK : TSLKExpression.S) =
 
     let union_atom_cutoff_pol (pol:polarity_t) (info:union_info) (a:Expr.atom) : union_info =
       match a with
-        Expr.Append _       -> if pol = Pos then info else (Printf.printf "ADDING DUE TO: %s\n" (Expr.atom_to_str a); union_count_addr info a)
-      | Expr.Reach _        -> if pol = Pos then info else (Printf.printf "ADDING DUE TO: %s\n" (Expr.atom_to_str a); union_count_addr info a)
-      | Expr.OrderList _    -> if pol = Pos then info else (Printf.printf "ADDING DUE TO: %s\n" (Expr.atom_to_str a); union_count_addr (union_count_elem info a) a)
+        Expr.Append _       -> if pol = Pos then info else union_count_addr info a
+      | Expr.Reach _        -> info (* if pol = Pos then info else union_count_addr info a *)
+      | Expr.OrderList _    -> if pol = Pos then info else union_count_addr (union_count_elem info a) a
       | Expr.In      _      -> info
-      | Expr.SubsetEq _     -> if pol = Pos then info else (Printf.printf "ADDING DUE TO: %s\n" (Expr.atom_to_str a); union_count_addr info a)
+      | Expr.SubsetEq _     -> if pol = Pos then info else union_count_addr info a
       | Expr.InTh _         -> info
       | Expr.SubsetEqTh _   -> if pol = Pos then info else union_count_tid info a
       | Expr.InElem _       -> info
