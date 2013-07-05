@@ -441,7 +441,7 @@ module Make (Opt:module type of GenOptions) : S =
 
       List.map (fun case ->
         let cutoff = case.proof_info.cutoff in
-        Printf.printf "CUTOFF: %s\n" (Smp.strategy_to_str cutoff);
+        Printf.printf "Verification of this formula requires verifying %i proofs obligations\n" (List.length case.obligations);
         case_timer#start;
         let res_list =
               List.map (fun phi_obligation ->

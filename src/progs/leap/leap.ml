@@ -96,7 +96,7 @@ let _ =
         let _ = System.undeftids_in_formula_decl undefTids invVars in
         let _ = LeapCore.decl_tag tag inv in
         let _ = Report.report_inv_cand inv in
-        let sys = System.add_global_vars sys invVars in
+(*        let sys = System.add_global_vars sys invVars in *)
 
         (* Use B-INV *)
         if !LeapArgs.binvSys then begin
@@ -137,9 +137,11 @@ let _ =
                               Parser.open_and_parse file (Eparser.invariant Elexer.norm)
                             ) supInv_file_list in
           Report.report_sup_inv supInv_list;
+(*
           let sup_form_list = List.map (fun (_,tag,phi) ->
                                 ignore(LeapCore.decl_tag tag phi); phi
                               ) supInv_list in
+*)
           ()
 (*
           if VCG.some_dp_enabled () then

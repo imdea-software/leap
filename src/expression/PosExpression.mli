@@ -40,6 +40,7 @@ val voc : expression -> tid list
 val pos : expression -> int list
 
 val keep_locations : Expression.formula -> (expression * string list)
+val has_pc : expression -> bool
 
 val expr_to_str : expression -> string
 

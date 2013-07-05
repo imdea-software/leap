@@ -360,6 +360,23 @@ let keep_locations (f:E.formula) : (expression * string list) =
     (new_formula, Hashtbl.fold (fun _ p xs -> p::xs) pred_tbl [])
 
 
+let rec has_pc (expr:expression) : bool =
+  match expr with
+  | Eq _            -> false
+  | InEq _          -> false
+  | Pred _          -> false
+  | PC _            -> true
+  | PCUpdate _      -> true
+  | PCRange _       -> true
+  | True            -> false
+  | False           -> false
+  | And (e1,e2)     -> (has_pc e1) || (has_pc e2)
+  | Or (e1,e2)      -> (has_pc e1) || (has_pc e2)
+  | Not e1          -> (has_pc e1)
+  | Implies (e1,e2) -> (has_pc e1) || (has_pc e2)
+  | Iff (e1,e2)     -> (has_pc e1) || (has_pc e2)
+
+
 let rec expand_pc_range (expr:expression) : expression =
   let expand = expand_pc_range in
   match expr with

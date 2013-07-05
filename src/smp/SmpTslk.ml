@@ -327,7 +327,6 @@ module Make (TSLK : TSLKExpression.S) =
       let varaddr_num = VarSet.cardinal interesting_addrvars in
       let varelem_num = VarSet.cardinal (Expr.varset_of_sort vars Expr.Elem) in
       let varcell_num = VarSet.cardinal cellvars in
-      let varmem_num  = VarSet.cardinal (Expr.varset_of_sort vars Expr.Mem ) in
 (*      let info = union_model_size (union_formula_cutoff new_union_count phi) in *)
       let info = try_pseudo_dnf_union_formula_cutoff new_union_count phi in
 (*
