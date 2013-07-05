@@ -444,9 +444,9 @@ module Make (Opt:module type of GenOptions) : S =
         Printf.printf "CUTOFF: %s\n" (Smp.strategy_to_str cutoff);
         case_timer#start;
         let res_list =
-              List.map (fun phi ->
+              List.map (fun phi_obligation ->
                 (* TODO: Choose the right to_fol function *)
-                let fol_phi = phi in
+                let fol_phi = phi_obligation in
                 phi_timer#start;
                 let status =
                   if Pos.is_valid prog_lines (fst (PE.keep_locations fol_phi)) then
@@ -476,7 +476,7 @@ module Make (Opt:module type of GenOptions) : S =
                 phi_timer#stop;
                 let phi_result = new_resolution_info status (phi_timer#elapsed_time) in
                 
-                (phi, phi_result)
+                (phi_obligation, phi_result)
               ) case.obligations in
 
         case_timer#stop;

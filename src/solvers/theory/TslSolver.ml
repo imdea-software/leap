@@ -44,6 +44,9 @@ let tslk_sort_map = ref (GM.new_sort_map())
 let tslk_model = ref (GM.new_model())
 
 
+let arr_table = Hashtbl.create 10
+
+
 let new_case_info (pa:SL.conjunctive_formula)
                   (panc:SL.conjunctive_formula)
                   (nc:SL.conjunctive_formula)
@@ -269,10 +272,22 @@ let guess_arrangements (cf:SL.conjunctive_formula) : (SL.integer list list) GenS
                               | SL.NegAtom(SL.InEq(SL.IntT i1,SL.IntT i2)) -> Arr.add_eq arr i1 i2
                               | _ -> ()
                             ) ls;
-                            verb "**** TSL Solver: known information for arrangments:\n%s\n"
+                            verb "**** TSL Solver: known information for arrangements:\n%s\n"
                                   (Arr.to_str arr SL.int_to_str);
-                            let arrgs = Arr.gen_arrs arr in
-                            verb "**** TSL Solver: generated %i arragements\n" (GenSet.size arrgs);
+                            print_endline ("For formula:\n" ^ (SL.conjunctive_formula_to_str cf));
+                            print_endline ("**** TSL Solver: known information for arrangements:\n" ^(Arr.to_str arr SL.int_to_str)^ "\n");
+                            let arrgs = try
+                                          Hashtbl.find arr_table arr
+                                        with
+                                          _ -> begin
+                                                 let a = Arr.gen_arrs arr in
+                                                 print_endline "GENERATED ARRANGEMENT";
+                                                 Hashtbl.add arr_table arr a;
+                                                 a
+                                               end
+                            in
+                            verb "**** TSL Solver: generated %i arrangements\n" (GenSet.size arrgs);
+                            print_endline ("**** TSL Solver: generated " ^string_of_int (GenSet.size arrgs)^ " arrangements\n");
                             arrgs
                           end
 
@@ -757,6 +772,9 @@ let check_sat_by_cases (lines:int) (co : Smp.cutoff_strategy_t) (cases:case_info
                 (relevant:SL.integer list)
           : (SL.integer list list * SL.conjunctive_formula * SL.conjunctive_formula * SL.integer list) =
 
+    let add_zero = ref false in
+
+
     (* Add one extra level if there are two array updates at successively but
        not consecutive levels *)
     let (pump_alpha, pump_relevant) =
@@ -776,6 +794,53 @@ let check_sat_by_cases (lines:int) (co : Smp.cutoff_strategy_t) (cases:case_info
                             | _ -> ()
                           ) ls; (alpha, relevant)
                         end in
+
+    (* Looks for the relevant level immediately before [i] *)
+    let find_relevant_immediate_below (i:SL.integer) : SL.integer option =
+      let rec search_in xs = match xs with
+                             | [] -> None
+                             | eqs::ys -> if List.mem i eqs then
+                                            try
+                                              Some (List.hd (List.filter (fun x -> List.mem x relevant) eqs))
+                                            with
+                                              _ -> search_in ys
+                                          else
+                                            search_in ys
+      in
+        search_in pump_alpha in
+      
+    (* Replaces skiplist literals and mkcell terms. For skiplist literals, it substitutes
+       it level to the highest relevant level below it. If no relevant level is present, then
+       0 is used and added as relevant. For mkcell terms, if the level parametrizing the term
+       is relevant then it keeps the term, otherwise it removes it *)
+    (* TODO: Not sure, but I think I cannot remove the whole mkcell term, as it may be adding
+       information about its data or next pointers. I think I should stay with the highest
+        relevant level below the parameter of mkcell, as we do for the skiplist literal. *)
+    let post_process_cf (cf:SL.conjunctive_formula) : SL.conjunctive_formula =
+      match cf with
+      | SL.TrueConj  -> SL.TrueConj
+      | SL.FalseConj -> SL.FalseConj
+      | SL.Conj ls   -> begin
+                          let ls_new = List.fold_left (fun xs l ->
+                                         match l with
+                                           (* c = mkcell(e<aa,tt,i) *)
+                                         | SL.Atom(SL.Eq(_,SL.CellT(SL.MkCell(_,_,_,i))))
+                                         | SL.Atom(SL.Eq(SL.CellT(SL.MkCell(_,_,_,i)),_)) ->
+                                           if List.mem i relevant then  l :: xs else xs
+                                         | SL.Atom(SL.Skiplist(h,s,i,a,b)) ->
+                                           begin
+                                             match find_relevant_immediate_below i with
+                                             | Some j -> SL.Atom(SL.Skiplist(h,s,j,a,b)) :: xs
+                                             | None -> (add_zero := true; (SL.Atom(SL.Skiplist(h,s,SL.IntVal 0,a,b))) :: xs)
+                                           end
+                                         | _ -> l::xs
+                                        ) [] ls
+                          in
+                            match ls_new with
+                            | [] -> SL.TrueConj
+                            | _  -> SL.Conj ls_new
+                        end in
+
     (*
 
 TODO: Tuka, put here the ideas of the notes. Levels in skiplist predicates should be substituted by
@@ -786,26 +851,11 @@ TODO: Tuka, put here the ideas of the notes. Levels in skiplist predicates shoul
       anything new to the formula
 *)
 
-    (* Add zero to list of relevant levels, if there is a skiplist literal
-       whose explicit level is lower than any other relevant level *)
-
-(*
-    let add_zero = if levels.skiplist_relevant = [] || (List.mem (SL.IntVal 0) pump_relevant) then
-                      false
-                   else
-                     snd (List.fold_right (fun eqclass (any_rel, res) ->
-                           if (List.exists (fun l -> List.mem l eqclass) levels.skiplist_relevant) then
-                             let rel = List.exists (fun l -> List.mem l eqclass) pump_relevant in
-                               (rel, (not any_rel && not rel) || res)
-                           else
-                             (any_rel || List.exists (fun l -> List.mem l eqclass) pump_relevant, res)
-                         ) pump_alpha (false, false)) in
-    let relevant_with_zero = if add_zero then
-                               (SL.IntVal 0) :: pump_relevant
-                             else
-                                pump_relevant in
-*)
-    let relevant_with_zero = relevant in
+    let (alpha_with_zero, relevant_with_zero) =
+      if !add_zero then
+        (pump_alpha @ [[SL.IntVal 0]], (SL.IntVal 0) :: relevant)
+      else
+        (pump_alpha, relevant) in
 
 
     (* Extract equalities from guessed arrangement. Update arrangements so that it only contains
@@ -826,7 +876,7 @@ TODO: Tuka, put here the ideas of the notes. Levels in skiplist predicates shoul
                                                   | r::_ -> ((List.map (fun y -> (y,r)) (List.filter (fun e -> e<>r) eqclass)) @ eq_subst,
                                                              new_alpha@[[r]])
                                                 end
-                                  ) ([],[]) pump_alpha in
+                                  ) ([],[]) alpha_with_zero in
     (* Propagate equalities over PANC and NC formula *)
     let replace_tbl = Hashtbl.create 10 in
     List.iter (fun (x,y) -> Hashtbl.add replace_tbl (SL.IntT x) (SL.IntT y)) equalities;
@@ -846,7 +896,7 @@ TODO: Tuka, put here the ideas of the notes. Levels in skiplist predicates shoul
                                     | [] -> SL.TrueConj
                                     | _  -> SL.Conj ls_r
                                  end in
-    let nc_r = SL.replace_terms_conjunctive_formula replace_tbl nc in
+    let nc_r = SL.replace_terms_conjunctive_formula replace_tbl (post_process_cf nc) in
     (* Ensure nc formula speaks only about relevant levels *)
     let _ = match nc_r with
             | SL.TrueConj  -> ()
@@ -977,9 +1027,9 @@ TODO: Tuka, put here the ideas of the notes. Levels in skiplist predicates shoul
     | [] -> (false, 1, tslk_calls)
     | case::cs -> begin
                     let this_case = if GenSet.size case.arrgs = 0 then
-                                      check case.pa case.panc case.nc case.relevant []
+                                      (print_endline "A"; check case.pa case.panc case.nc case.relevant [])
                                     else
-                                      GenSet.exists (check case.pa case.panc case.nc case.relevant) case.arrgs in
+                                      (print_endline "B"; GenSet.exists (check case.pa case.panc case.nc case.relevant) case.arrgs) in
                     if this_case then
                       (true, 1, tslk_calls)
                     else
@@ -1008,12 +1058,19 @@ let rec combine_splits_arrgs (sp:(SL.conjunctive_formula *                   (* 
 let is_sat_plus_info (lines : int)
            (co : Smp.cutoff_strategy_t)
            (phi : SL.formula) : (bool * int * (DP.t, int) Hashtbl.t) =
+  print_endline "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=";
+
+  print_endline ("Will analyze formula:\n" ^ (SL.formula_to_str phi));
+
   (* 0. Normalize the formula and rewrite it in DNF *)
   verb "**** Will normalize TSL formula...\n";
   let phi_norm = SL.normalize phi in
   verbstr (Interface.Msg.info "NORMALIZED FORMULA" (SL.formula_to_str phi_norm));
   verb "**** Will do DNF on TSL formula...\n";
+  print_endline "Will compute the DNF";
   let phi_dnf = SL.dnf phi_norm in
+  print_endline "DNF computed";
+
   verbstr (Interface.Msg.info "DNF RESULT"
     (String.concat "\n" (List.map SL.conjunctive_formula_to_str phi_dnf)));
   Printf.printf "NUMBER OF FORMULAS RESULTING FROM DNF: %i\n" (List.length phi_dnf);
@@ -1023,7 +1080,10 @@ let is_sat_plus_info (lines : int)
                             (String.concat ";" (List.map SL.int_to_str lvls))) relevant;
 
   (* 2. Guess arrangements *)
+  Printf.printf "Will compute the arrangements\n";
+  Hashtbl.clear arr_table;
   let arrgs = List.map guess_arrangements phi_dnf in
+  print_endline ("Guessed arrangements: " ^ (string_of_int(List.length arrgs)));
   (* 3. Split each conjunction into PA y NC *)
 
   verb "**** Will split TSL formula in NC and PA...\n";

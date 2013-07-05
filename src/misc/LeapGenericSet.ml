@@ -13,6 +13,13 @@ let empty () : 'a t =
   }
 
 
+let equal (s1:'a t) (s2:'a t) : bool =
+  let eq = ref (s1.counter = s2.counter) in
+  Hashtbl.iter (fun x _ -> try Hashtbl.find s2.elems x with _ -> eq := false) s1.elems;
+  Hashtbl.iter (fun x _ -> try Hashtbl.find s1.elems x with _ -> eq := false) s2.elems;
+  !eq
+
+
 let clear (s:'a t) : unit =
   Hashtbl.clear s.elems;
   s.counter := 0

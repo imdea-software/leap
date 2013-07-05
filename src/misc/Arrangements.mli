@@ -12,6 +12,10 @@ type 'a arrtree = Node of 'a list * 'a arrtree list
     added. *)
 val empty : bool -> 'a t
 
+(** [equal arr1 arr2] returns [true] if arrangements [arr1] and [arr2]
+    contains the same information *)
+val equal : 'a t -> 'a t -> bool
+
 (** [copy arr] returns a duplicate of arrangement [arr] *)
 val copy : 'a t -> 'a t
 

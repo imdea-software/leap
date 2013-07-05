@@ -133,7 +133,19 @@ doc:
 
 clean:
 	$(OCAMLBUILD) -clean
-	rm -f $(LEAP) $(TLL) $(TMPTSL) $(TSL) $(PROG2FTS) $(PINV) $(SINV) $(PVD) $(NUMINV) $(SPEC_CHECK) test.native
+	@rm -f $(LEAP) \
+				$(TLL) \
+				$(TMPTSL) \
+				$(TSL) \
+				$(PROG2FTS) \
+				$(PINV) \
+				$(SINV) \
+				$(PVD) \
+				$(NUMINV) \
+				$(SPEC_CHECK) \
+				$(APPLYTAC) \
+				$(PRGINFO) \
+				test.native
 
 softclean:
 	rm -rf _build _log

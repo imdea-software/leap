@@ -9,6 +9,10 @@ val empty : unit -> 'a t
 (** [clear s] removes all elements stored in [s] *)
 val clear : 'a t -> unit
 
+(** [equal s1 s2] returns [true] if sets [s1] and [s2] contains the
+    same elements *)
+val equal : 'a t -> 'a t -> bool
+
 (** [copy s] returns a new copy of set [s] *)
 val copy : 'a t -> 'a t
 

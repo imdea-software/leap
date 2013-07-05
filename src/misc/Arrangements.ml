@@ -30,6 +30,17 @@ let empty (stc:bool) : 'a t =
     leq_order = [];
   }
 
+(* Test equality between arrangements *)
+let equal (arr1:'a t) (arr2:'a t) : bool =
+  arr1.strict = arr2.strict &&
+  GenSet.equal arr1.dom arr2.dom &&
+  arr1.minimum = arr2.minimum &&
+  GenSet.equal arr1.eqs arr2.eqs &&
+  GenSet.equal arr1.ineqs arr2.ineqs &&
+  arr1.order = arr2.order &&
+  List.for_all (fun e -> List.mem e arr2.leq_order) arr1.leq_order &&
+  List.for_all (fun e -> List.mem e arr1.leq_order) arr2.leq_order
+
 
 let copy (arr:'a t) : 'a t =
   {
