@@ -1,4 +1,5 @@
 
+
 exception Unknown_dp_str of string
 
 
@@ -9,6 +10,9 @@ type t =
   | Tll
   | Tsl
   | Tslk of int
+
+
+type call_tbl_t = (t,int) Hashtbl.t
 
 
 let def_dp_list : t list = [ Num; Loc; Tll; Tsl; Tslk 0 ]
@@ -44,3 +48,28 @@ let get_tslk_param (dp:t) : int =
   match dp with
   | Tslk k -> k
   | _      -> 1
+
+(*******************************)
+(*  COUNTING CALLS TO EACH DP  *)
+(*******************************)
+
+let new_call_tbl() : call_tbl_t =
+  Hashtbl.create 10
+
+
+let clear_call_tbl (tbl:call_tbl_t) : unit =
+  Hashtbl.clear tbl
+
+
+let copy_call_tbl (tbl:call_tbl_t) : call_tbl_t =
+  Hashtbl.copy tbl
+
+
+let add_dp_calls (tbl:call_tbl_t) (dp:t) (n:int) : unit =
+  try
+    Hashtbl.replace tbl dp ((Hashtbl.find tbl dp) + n)
+  with _ -> Hashtbl.add tbl dp n
+
+
+let combine_call_table (src_tbl:call_tbl_t) (dst_tbl:call_tbl_t) : unit =
+  Hashtbl.iter (add_dp_calls dst_tbl) src_tbl

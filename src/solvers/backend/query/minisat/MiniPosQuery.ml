@@ -76,8 +76,6 @@ let pos_expression_to_str (expr:PE.expression) : string =
   let desc_str = sprintf "c SAT description for location reasoning \
                           on formula:\nc %s\n" (PE.expr_to_str full_formula) 
   in
-  let _ = print_endline (desc_str) in
-  let _ = print_endline (string_of_int (List.length cnf_form)) in
   let expr_str = List.fold_left (fun str xs ->
                    str ^ (String.concat " " $
                             List.map (fun t ->

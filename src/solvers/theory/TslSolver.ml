@@ -34,6 +34,9 @@ let tslk_sort_map = ref (GM.new_sort_map())
 let tslk_model = ref (GM.new_model())
 
 
+let arr_table = Hashtbl.create 10
+
+
 
 let gen_fresh_int_var (vs:SL.VarSet.t) : SL.variable =
   let rec find (n:int) : SL.variable =
@@ -448,12 +451,310 @@ module TranslateTsl (SLK : TSLKExpression.S) =
   end
 
 
+(*******************************************)
+(*  MACHINERY FOR CHECKING SATISFIABILITY  *)
+(*******************************************)
+
+
+let split_into_pa_nc (cf:SL.conjunctive_formula)
+      : SL.conjunctive_formula *
+        SL.conjunctive_formula *
+        SL.conjunctive_formula =
+  let conj (ls:SL.literal list) : SL.conjunctive_formula =
+    match ls with
+    | [] -> SL.TrueConj
+    | _ -> SL.Conj ls
+  in
+  match cf with
+  | SL.TrueConj  -> (SL.TrueConj,  SL.TrueConj,  SL.TrueConj)
+  | SL.FalseConj -> (SL.FalseConj, SL.FalseConj, SL.FalseConj)
+  | SL.Conj cf   ->
+      let (pa,panc,nc) =
+        List.fold_left (fun (pas,pancs,ncs) l ->
+          match l with
+          (* l = q *)
+          | SL.Atom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT(SL.IntVal _)))
+          | SL.Atom(SL.Eq(SL.IntT(SL.IntVal _),SL.IntT(SL.VarInt _)))
+          | SL.NegAtom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT(SL.IntVal _)))
+          | SL.NegAtom(SL.InEq(SL.IntT(SL.IntVal _),SL.IntT(SL.VarInt _))) -> (l::pas,pancs,ncs)
+            (* l1 = l2 *)
+          | SL.Atom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT(SL.VarInt _)))
+          | SL.NegAtom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT(SL.VarInt _)))
+            (* l1 = l2 + 1*)
+          | SL.Atom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntAdd (SL.VarInt _, SL.IntVal 1))))
+          | SL.Atom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntAdd (SL.IntVal 1, SL.VarInt _))))
+          | SL.Atom(SL.Eq(SL.IntT(SL.IntAdd(SL.VarInt _,SL.IntVal 1)),SL.IntT(SL.VarInt _)))
+          | SL.Atom(SL.Eq(SL.IntT(SL.IntAdd(SL.IntVal 1,SL.VarInt _)),SL.IntT(SL.VarInt _)))
+          | SL.NegAtom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntAdd (SL.VarInt _, SL.IntVal 1))))
+          | SL.NegAtom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntAdd (SL.IntVal 1, SL.VarInt _))))
+          | SL.NegAtom(SL.InEq(SL.IntT(SL.IntAdd(SL.VarInt _,SL.IntVal 1)),SL.IntT(SL.VarInt _)))
+          | SL.NegAtom(SL.InEq(SL.IntT(SL.IntAdd(SL.IntVal 1,SL.VarInt _)),SL.IntT(SL.VarInt _)))
+            (* l1 < l2 *) (* l1 <= l2 should not appear here after normalization *)
+          | SL.Atom(SL.Less(SL.VarInt _,SL.VarInt _))
+          | SL.Atom(SL.Greater(SL.VarInt _,SL.VarInt _))
+          | SL.NegAtom(SL.LessEq(SL.VarInt _,SL.VarInt _))
+          | SL.NegAtom(SL.GreaterEq(SL.VarInt _,SL.VarInt _))
+            (* But l1 <= l2 literals appear, as well as they are not compared to constants *)
+          | SL.Atom(SL.LessEq(SL.VarInt _,SL.VarInt _))
+          | SL.Atom(SL.GreaterEq(SL.VarInt _,SL.VarInt _))
+          | SL.NegAtom(SL.Less(SL.VarInt _,SL.VarInt _))
+          | SL.NegAtom(SL.Greater(SL.VarInt _,SL.VarInt _)) -> (pas,l::pancs,ncs)
+            (* Cases that should not appear at this point after normalization *)
+          | SL.Atom(SL.Less(SL.IntVal _,_))          | SL.Atom(SL.Less(_,SL.IntVal _))
+          | SL.Atom(SL.Greater(SL.IntVal _,_))       | SL.Atom(SL.Greater(_,SL.IntVal _))
+          | SL.NegAtom(SL.LessEq(SL.IntVal _,_))     | SL.NegAtom(SL.LessEq(_,SL.IntVal _))
+          | SL.NegAtom(SL.GreaterEq(SL.IntVal _,_))  | SL.NegAtom(SL.GreaterEq(_,SL.IntVal _))
+          | SL.Atom(SL.LessEq(SL.IntVal _,_))        | SL.Atom(SL.LessEq(_,SL.IntVal _))
+          | SL.Atom(SL.GreaterEq(SL.IntVal _,_))     | SL.Atom(SL.GreaterEq(_,SL.IntVal _))
+          | SL.NegAtom(SL.Less(SL.IntVal _,_))       | SL.NegAtom(SL.Less(_,SL.IntVal _))
+          | SL.NegAtom(SL.Greater(SL.IntVal _,_))    | SL.NegAtom(SL.Greater(_,SL.IntVal _)) ->
+              assert false
+            (* Remaining cases *)
+          | _ -> (pas,pancs,l::ncs)
+        ) ([],[],[]) cf
+      in
+        (conj pa, conj panc, conj nc)
+
+
+
+let guess_arrangements (cf:SL.conjunctive_formula) : (SL.integer list list) 
+  GenSet.t =
+  let arr = Arr.empty true in
+    match cf with
+    | SL.FalseConj -> GenSet.empty ()
+    | SL.TrueConj  -> GenSet.empty ()
+    | SL.Conj ls   -> begin
+                            let level_vars = SL.varset_instances_of_sort_from_conj cf (SL.Int) in
+                             verb "**** TSL Solver: variables for arrangement...\n{ %s }\n"
+                                    (SL.VarSet.fold (fun v str ->
+                                      str ^ SL.variable_to_str v ^ "; "
+                                    ) level_vars "");
+                            SL.VarSet.iter (fun v -> Arr.add_elem arr (SL.VarInt v)) level_vars;
+                            List.iter (fun l ->
+                              match l with
+                              | SL.Atom(SL.Less(i1,i2)) -> Arr.add_less arr i1 i2
+                              | SL.Atom(SL.Greater(i1,i2)) -> Arr.add_greater arr i1 i2
+                              | SL.Atom(SL.LessEq(i1,i2)) -> Arr.add_lesseq arr i1 i2
+                              | SL.Atom(SL.GreaterEq(i1,i2)) -> Arr.add_greatereq arr i1 i2
+                              | SL.Atom(SL.Eq(SL.IntT (SL.VarInt v1),SL.IntT (SL.IntAdd(SL.VarInt v2,SL.IntVal i))))
+                              | SL.Atom(SL.Eq(SL.IntT (SL.VarInt v1),SL.IntT (SL.IntAdd(SL.IntVal i,SL.VarInt v2))))
+                              | SL.Atom(SL.Eq(SL.IntT (SL.IntAdd(SL.VarInt v2,SL.IntVal i)),SL.IntT (SL.VarInt v1)))
+                              | SL.Atom(SL.Eq(SL.IntT (SL.IntAdd(SL.IntVal i,SL.VarInt v2)),SL.IntT (SL.VarInt v1))) ->
+                                  if i > 0 then Arr.add_greater arr (SL.VarInt v1) (SL.VarInt v2)
+                                  else if i < 0 then Arr.add_less arr (SL.VarInt v1) (SL.VarInt v2)
+                                  else Arr.add_eq arr (SL.VarInt v1) (SL.VarInt v2)
+                              | SL.Atom(SL.Eq(SL.IntT (SL.VarInt varr),SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.VarInt v2,SL.IntVal i)))))
+                              | SL.Atom(SL.Eq(SL.IntT (SL.VarInt varr),SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.IntVal i,SL.VarInt v2)))))
+                              | SL.Atom(SL.Eq(SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.VarInt v2,SL.IntVal i))),SL.IntT (SL.VarInt varr)))
+                              | SL.Atom(SL.Eq(SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.IntVal i,SL.VarInt v2))),SL.IntT (SL.VarInt varr))) ->
+                                  let v1 = SL.var_set_param (SL.Local th) varr in
+                                  if i > 0 then Arr.add_greater arr (SL.VarInt v1) (SL.VarInt v2)
+                                  else if i < 0 then Arr.add_less arr (SL.VarInt v1) (SL.VarInt v2)
+                                  else Arr.add_eq arr (SL.VarInt v1) (SL.VarInt v2)
+                              | SL.Atom(SL.Eq(SL.IntT(SL.VarInt v),SL.IntT(SL.IntVal 0)))
+                              | SL.Atom(SL.Eq(SL.IntT(SL.IntVal 0),SL.IntT(SL.VarInt v))) ->
+                                  Arr.set_minimum arr (SL.VarInt v)
+                              | SL.Atom(SL.Eq(SL.IntT i1,SL.IntT i2)) -> Arr.add_eq arr i1 i2
+                              | SL.Atom(SL.InEq(SL.IntT i1,SL.IntT i2)) -> Arr.add_ineq arr i1 i2
+                              | SL.NegAtom(SL.Less(i1,i2)) -> Arr.add_greatereq arr i1 i2
+                              | SL.NegAtom(SL.Greater(i1,i2)) -> Arr.add_lesseq arr i1 i2
+                              | SL.NegAtom(SL.LessEq(i1,i2)) -> Arr.add_greater arr i1 i2
+                              | SL.NegAtom(SL.GreaterEq(i1,i2)) -> Arr.add_less arr i1 i2
+                              | SL.NegAtom(SL.Eq(SL.IntT i1,SL.IntT i2)) -> Arr.add_ineq arr i1 i2
+                              | SL.NegAtom(SL.InEq(SL.IntT (SL.VarInt v1),SL.IntT (SL.IntAdd(SL.VarInt v2,SL.IntVal i))))
+                              | SL.NegAtom(SL.InEq(SL.IntT (SL.VarInt v1),SL.IntT (SL.IntAdd(SL.IntVal i,SL.VarInt v2))))
+                              | SL.NegAtom(SL.InEq(SL.IntT (SL.IntAdd(SL.VarInt v2,SL.IntVal i)),SL.IntT (SL.VarInt v1)))
+                              | SL.NegAtom(SL.InEq(SL.IntT (SL.IntAdd(SL.IntVal i,SL.VarInt v2)),SL.IntT (SL.VarInt v1))) ->
+                                  if i > 0 then Arr.add_greater arr (SL.VarInt v1) (SL.VarInt v2)
+                                  else if i < 0 then Arr.add_less arr (SL.VarInt v1) (SL.VarInt v2)
+                                  else Arr.add_eq arr (SL.VarInt v1) (SL.VarInt v2)
+                              | SL.NegAtom(SL.InEq(SL.IntT (SL.VarInt varr),SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.VarInt v2,SL.IntVal i)))))
+                              | SL.NegAtom(SL.InEq(SL.IntT (SL.VarInt varr),SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.IntVal i,SL.VarInt v2)))))
+                              | SL.NegAtom(SL.InEq(SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.VarInt v2,SL.IntVal i))),SL.IntT (SL.VarInt varr)))
+                              | SL.NegAtom(SL.InEq(SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.IntVal i,SL.VarInt v2))),SL.IntT (SL.VarInt varr))) ->
+                                  let v1 = SL.var_set_param (SL.Local th) varr in
+                                  if i > 0 then Arr.add_greater arr (SL.VarInt v1) (SL.VarInt v2)
+                                  else if i < 0 then Arr.add_less arr (SL.VarInt v1) (SL.VarInt v2)
+                                  else Arr.add_eq arr (SL.VarInt v1) (SL.VarInt v2)
+                              | SL.NegAtom(SL.InEq(SL.IntT(SL.VarInt v),SL.IntT(SL.IntVal 0)))
+                              | SL.NegAtom(SL.InEq(SL.IntT(SL.IntVal 0),SL.IntT(SL.VarInt v))) ->
+                                  Arr.set_minimum arr (SL.VarInt v)
+                              | SL.NegAtom(SL.InEq(SL.IntT i1,SL.IntT i2)) -> Arr.add_eq arr i1 i2
+                              | _ -> ()
+                            ) ls;
+                            verb "**** TSL Solver: known information for arrangements:\n%s\n"
+                                  (Arr.to_str arr SL.int_to_str);
+                            let arrgs = try
+                                          Hashtbl.find arr_table arr
+                                        with
+                                          _ -> begin
+                                                 let a = Arr.gen_arrs arr in
+                                                 Hashtbl.add arr_table arr a;
+                                                 a
+                                               end
+                            in
+                            verb "**** TSL Solver: generated %i arrangements\n" (GenSet.size arrgs);
+                            print_endline ("**** TSL Solver: generated " ^string_of_int (GenSet.size arrgs)^ " arrangements\n");
+                            arrgs
+                          end
+
+
+let alpha_to_conjunctive_formula (alpha:SL.integer list list)
+    : SL.conjunctive_formula =
+  let rec cons_eq_class (is:SL.integer list) : SL.literal list =
+    match is with
+    | i1::i2::xs -> SL.Atom(SL.Eq(SL.IntT i1, SL.IntT i2)) :: cons_eq_class (i2::xs)
+    | _          -> []
+  in
+  let rec cons_ords (arr:SL.integer list list) : SL.literal list =
+    match arr with
+    | xs::ys::zs -> SL.Atom(SL.Less(List.hd ys,
+                              List.hd xs)) :: cons_ords (ys::zs)
+    | _          -> []
+  in
+  let eqs = List.fold_left (fun ys eq_c ->
+              (cons_eq_class eq_c) @ ys
+            ) [] alpha in
+  let ords = cons_ords alpha in
+    (SL.Conj (eqs @ ords))
+
+
+let pumping (cf:SL.conjunctive_formula) : unit =
+  match cf with
+  | SL.TrueConj  -> ()
+  | SL.FalseConj -> ()
+  | SL.Conj ls   -> begin
+                      let no_arr_updates = ref true in
+                      List.iter (fun l ->
+                        match l with
+                        (* A = B{l <- a} *)
+                        | SL.Atom(SL.Eq(_,SL.AddrArrayT(SL.AddrArrayUp(_,i,_))))
+                        | SL.Atom(SL.Eq(SL.AddrArrayT (SL.AddrArrayUp(_,i,_)),_))
+                        | SL.NegAtom(SL.InEq(_,SL.AddrArrayT(SL.AddrArrayUp(_,i,_))))
+                        | SL.NegAtom(SL.InEq(SL.AddrArrayT(SL.AddrArrayUp(_,i,_)),_)) ->
+                            assert (!no_arr_updates); no_arr_updates := false
+                        | _ -> ()
+                      ) ls
+                    end
+
+
+let relevant_levels (cf:SL.conjunctive_formula) : SL.integer GenSet.t =
+  let relevant_set = GenSet.empty() in
+  match cf with
+  | SL.TrueConj  -> relevant_set
+  | SL.FalseConj -> relevant_set
+  | SL.Conj ls   -> begin
+                      SL.TermSet.iter (fun t ->
+                        match t with
+                          (* r = addr2set(m,a,l) *)
+                        | SL.SetT (SL.AddrToSet(_,_,i))
+                          (* p = getp(m,a1,a2,l) *)
+                        | SL.PathT (SL.GetPath(_,_,_,i))
+                          (* A = B{l <- a} *)
+                        | SL.AddrArrayT (SL.AddrArrayUp(_,i,_))
+                          (* A = B{l <- t} *)
+                        | SL.TidArrayT (SL.TidArrayUp(_,i,_))
+                          (* a = A[i] *)
+                        | SL.AddrT (SL.AddrArrRd(_,i))
+                          (* t = A[i] *)
+                        | SL.TidT (SL.TidArrRd(_,i)) -> GenSet.add relevant_set i
+                          (* Remaining cases *)
+                        | _ -> ()
+                      ) (SL.termset_from_conj cf);
+                      relevant_set
+                    end
+
+
+let update_arrangement (alpha:SL.integer list list) (rel_set:SL.integer GenSet.t)
+      : (SL.integer list * SL.integer option) list =
+  List.map (fun eqclass ->
+    let r = match List.filter (GenSet.mem rel_set) eqclass with
+            | [] -> None
+            | x::xs -> Some x in
+    (eqclass,r)
+  ) alpha
+
+
+let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
+      : (bool * DP.call_tbl_t) =
+  let this_call_tbl = DP.new_call_tbl() in
+
+
+  let check_pa (cf:SL.conjunctive_formula) : bool =
+    match cf with
+    | SL.TrueConj  -> (verb "**** check_pa: true\n"; true)
+    | SL.FalseConj -> (verb "**** check_pa: false\n"; false)
+    | SL.Conj ls   ->
+        let numSolv_id = BackendSolvers.Yices.identifier in
+        let module NumSol = (val NumSolver.choose numSolv_id : NumSolver.S) in
+        let phi_num = NumInterface.formula_to_int_formula
+                        (SLInterf.formula_to_expr_formula
+                          (SL.from_conjformula_to_formula
+                            cf))
+        in
+        verb "**** TSL Solver will check satisfiability for:\n%s\n"
+                  (NumExpression.formula_to_str phi_num);
+        NumSol.is_sat phi_num in
+
+  (* Main verification function *)
+  let check (pa:SL.conjunctive_formula)
+            (panc:SL.conjunctive_formula)
+            (nc:SL.conjunctive_formula)
+            (alpha:SL.integer list list) : bool =
+    let alpha_phi = alpha_to_conjunctive_formula alpha in
+    let pa_sat = check_pa (SL.combine_conj_formula (SL.combine_conj_formula pa panc) alpha_phi) in
+    (* TODO: Some arrangements are invalid, as I am not considering literals of the
+             form "l2 = l1 + 1" to enforce that l2 should be in the immediately consecutive
+             equivalence class of l1
+    assert pa_sat;
+    *)
+    if pa_sat then begin
+      (* We have an arrangement candidate *)
+      pumping nc;
+      let rel_set = relevant_levels nc in
+      let alpha_pair = update_arrangement alpha rel_set in
+      true
+    end else begin
+      (* For this arrangement is UNSAT. Return UNSAT. *)
+      false
+    end in
+
+
+  (* Main body *)
+  let (pa,panc,nc) = split_into_pa_nc cf in
+  (* We clear the table of previously guessed arrangements *)
+  Hashtbl.clear arr_table;
+  (* Generate arrangements *)
+  let arrgs = guess_arrangements (SL.combine_conj_formula pa panc) in
+  (* Verify if some arrangement makes the formula satisfiable *)
+  let answer = GenSet.exists (fun alpha ->
+                 check pa panc nc alpha
+               ) arrgs in
+  (answer, this_call_tbl)
+
+
+(*******************************************)
+(*  MACHINERY FOR CHECKING SATISFIABILITY  *)
+(*******************************************)
+
+
 
 let is_sat_plus_info (lines : int)
            (co : Smp.cutoff_strategy_t)
-           (phi : SL.formula) : (bool * int * (DP.t, int) Hashtbl.t) =
-    print_endline "HERE";
-    (false, 0, Hashtbl.create 10)
+           (phi : SL.formula) : (bool * int * DP.call_tbl_t) =
+    let this_calls_tbl = DP.new_call_tbl() in
+
+    (* STEP 1: Normalize the formula *)
+    let phi_norm = SL.normalize phi in
+    (* STEP 2: DNF of the normalized formula *)
+    let phi_dnf = SL.dnf phi_norm in
+    (* If any of the conjunctions in DNF is SAT, then phi is sat *)
+    let answer = List.exists (fun psi ->
+                   let (res, call_tbl) = dnf_sat lines co psi in
+                   DP.combine_call_table call_tbl this_calls_tbl;
+                   res
+                 ) phi_dnf in
+    (answer, 1, this_calls_tbl)
 
 
 let is_sat (lines : int)
@@ -465,7 +766,7 @@ let is_sat (lines : int)
 
 let is_valid_plus_info (prog_lines:int)
                        (co:Smp.cutoff_strategy_t)
-                       (phi:SL.formula) : (bool * int * (DP.t, int) Hashtbl.t) =
+                       (phi:SL.formula) : (bool * int * DP.call_tbl_t) =
   let (s,tsl_count,tslk_count) = is_sat_plus_info prog_lines co
                                    (SL.Not phi) in
     (not s, tsl_count, tslk_count)

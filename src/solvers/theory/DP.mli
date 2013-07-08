@@ -10,6 +10,9 @@ type t =
   | Tsl
   | Tslk of int
 
+type call_tbl_t
+
+
 val def_dp_list : t list
 (** The list of default decision procedures available to the user *)
 
@@ -26,3 +29,28 @@ val from_str : string -> t
 val get_tslk_param : t -> int
 (** [get_tslk_param dp] returns the TSLK parameter, if [dp] is tslk. Otherwise,
     it returns 1. *)
+
+
+
+val new_call_tbl : unit -> call_tbl_t
+(** [new_call_tbl ()] returns a new table to count calls to each decision
+    procedure *)
+
+
+val clear_call_tbl : call_tbl_t -> unit
+(** [clear_call_tbl tbl] erases all information regarding calls to decision
+    procedures in table [tbl] *)
+
+
+val copy_call_tbl : call_tbl_t -> call_tbl_t
+(** [copy_call_tbl tbl] returns a copy of [tbl] *)
+
+
+val add_dp_calls : call_tbl_t -> t -> int -> unit
+(** [add_dp_calls tbl dp n] adds to table [tbl] the information that decision
+    procedure [dp] has been called [n] times *)
+
+
+val combine_call_table : call_tbl_t -> call_tbl_t -> unit
+(** [combine_call_table src dst] extracts the information in table [src]
+    and adds it to [dst] *)

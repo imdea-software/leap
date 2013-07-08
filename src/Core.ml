@@ -178,7 +178,7 @@ module Make (Opt:module type of GenOptions) : S =
     let tslkSolver : (module TslkSolver.S) = TslkSolver.choose Opt.tSolver
                                               (DP.get_tslk_param Opt.dp)
 
-    let calls_counter : (DP.t, int) Hashtbl.t = Hashtbl.create 5
+    let calls_counter : DP.call_tbl_t = DP.new_call_tbl()
 
 
     (*****************************)
@@ -237,18 +237,8 @@ module Make (Opt:module type of GenOptions) : S =
       if res then Valid Opt.dp else Invalid
 
     
-
-    let add_calls_to (dp:DP.t) (n:int) : unit =
-      try
-        Hashtbl.replace calls_counter dp ((Hashtbl.find calls_counter dp) + n)
-      with _ -> Hashtbl.add calls_counter dp n
-
-
     let add_calls (n:int) : unit =
-      add_calls_to Opt.dp n
-
-    let merge_calls (tbl:(DP.t, int) Hashtbl.t) : unit =
-      Hashtbl.iter add_calls_to tbl
+      DP.add_dp_calls calls_counter Opt.dp n
 
 
     (**********************)
@@ -434,7 +424,7 @@ module Make (Opt:module type of GenOptions) : S =
       let case_timer = new LeapLib.timer in
       let phi_timer = new LeapLib.timer in
       (* Clear the internal data *)
-      Hashtbl.clear calls_counter;
+      DP.clear_call_tbl calls_counter;
       (* Clear the internal data *)
 
       let prog_lines = (System.get_trans_num Opt.sys) in
@@ -449,8 +439,9 @@ module Make (Opt:module type of GenOptions) : S =
                 let fol_phi = phi_obligation in
                 phi_timer#start;
                 let status =
-                  if Pos.is_valid prog_lines (fst (PE.keep_locations fol_phi)) then
-                    (add_calls_to DP.Loc 1; Valid DP.Loc)
+                  if Pos.is_valid prog_lines (fst (PE.keep_locations fol_phi)) 
+                    then
+                    (DP.add_dp_calls calls_counter DP.Loc 1; Valid DP.Loc)
                   else begin
                     let (valid, calls) =
                       match Opt.dp with
@@ -463,7 +454,8 @@ module Make (Opt:module type of GenOptions) : S =
                       | DP.Tsl    -> let tsl_phi = TSLInterface.formula_to_tsl_formula fol_phi in
                                      let (res,tsl_calls,tslk_calls) =
                                         TslSolver.is_valid_plus_info prog_lines cutoff tsl_phi in
-                                     merge_calls tslk_calls;
+                                     DP.combine_call_table tslk_calls 
+calls_counter;
                                      (res, tsl_calls)
                       | DP.Tslk k -> let module TSLKIntf = TSLKInterface.Make(Tslk.TslkExp) in
                                      let tslk_phi = TSLKIntf.formula_to_tslk_formula fol_phi in
