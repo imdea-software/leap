@@ -31,6 +31,10 @@ val size : 'a t -> int
 (** [mem s a] returns [true] if element [a] is in set [s]. Otherwise [false] *)
 val mem : 'a t -> 'a -> bool
 
+(** [subseteq s r] returns [true] if all elements in [s] are contained into [r].
+    Otherwise it returns [false] *)
+val subseteq : 'a t -> 'a t -> bool
+
 (** [iter f s] applies [f] in turn to all elements of [s] *)
 val iter : ('a -> unit) -> 'a t -> unit
 

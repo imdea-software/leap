@@ -107,6 +107,10 @@ let for_all (f:'a -> bool) (s:'a t) : bool =
   List.for_all f (to_list s)
 
 
+let subseteq (s:'a t) (r:'a t) : bool =
+  for_all (mem r) s
+
+
 let copy_without (s:'a t) (ss:'a t list) : 'a t =
   let s_new = empty () in
   let _ = iter (fun e ->

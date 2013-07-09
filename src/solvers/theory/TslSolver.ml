@@ -9,7 +9,7 @@ module SL       = TSLExpression
 module SLInterf = TSLInterface
 (*module type SLK = TSLKExpression.S *)
 
-
+type alpha_pair_t = (SL.integer list * SL.integer option)
 
 exception UnexpectedLiteral of string
 
@@ -665,6 +665,68 @@ let relevant_levels (cf:SL.conjunctive_formula) : SL.integer GenSet.t =
                     end
 
 
+let propagate_levels (alpha_pairs:alpha_pair_t list)
+                     (panc:SL.conjunctive_formula)
+                     (nc:SL.conjunctive_formula)
+      : (SL.conjunctive_formula * (* Updated panc         *)
+         SL.conjunctive_formula * (* Updated nc           *)
+         alpha_pair_t list) =     (* Updated alpha_pairs    *)
+  (* A couple of auxiliary functions *)
+  (* Given an integer and a alpha_pair_t list, returns the alpha_pair_t list
+     section from the eqclass where i was found in decreasing order *)
+  let rec keep_lower_or_equals (i:SL.integer) (ps:alpha_pair_t list) : alpha_pair_t list =
+    match ps with
+    | [] -> []
+    | (eqc,_)::xs -> if List.mem i eqc then ps else keep_lower_or_equals i xs in
+  let rec find_highest_lower_bound (i:SL.integer) (ps:alpha_pair_t list) : SL.integer option =
+    match ps with
+    | [] -> None
+    | (_,r)::xs -> if r = None then find_highest_lower_bound i xs else r in
+
+  (* Main function body *)
+  let add_zero = ref false in
+  let elems_to_zero = ref [] in
+  let replacements = Hashtbl.create 10 in
+  List.iter (fun (eqclass,r) ->
+    match r with
+    | None   -> ()
+    | Some l -> List.iter (fun e ->
+                  Hashtbl.add replacements (SL.IntT e) (SL.IntT l)
+                ) eqclass
+  ) alpha_pairs;
+  let traverse_conj_formula (cf:SL.conjunctive_formula) : SL.conjunctive_formula =
+    match cf with
+    | SL.TrueConj -> SL.TrueConj
+    | SL.FalseConj -> SL.FalseConj
+    | SL.Conj ls -> begin
+                      SL.Conj (List.map (fun lit ->
+                        begin
+                          match lit with
+                          | SL.Atom(SL.Skiplist(_,_,l,_,_))
+                          | SL.Atom(SL.Eq(_,SL.CellT(SL.MkCell(_,_,_,l))))
+                          | SL.Atom(SL.Eq(SL.CellT(SL.MkCell(_,_,_,l)),_))
+                          | SL.NegAtom(SL.InEq(_,SL.CellT(SL.MkCell(_,_,_,l))))
+                          | SL.NegAtom(SL.InEq(SL.CellT(SL.MkCell(_,_,_,l)),_)) ->
+                              if not (Hashtbl.mem replacements (SL.IntT l)) then
+                                let lowers = keep_lower_or_equals l alpha_pairs in
+                                let lower_l = match find_highest_lower_bound l lowers with
+                                              | None   -> (add_zero := true;
+                                                           elems_to_zero := l :: !elems_to_zero;
+                                                           SL.IntVal 0)
+                                              | Some i -> i in
+                                Hashtbl.add replacements (SL.IntT l) (SL.IntT lower_l)
+                          | _ -> ()
+                        end;
+                        SL.replace_terms_literal replacements lit
+                      ) ls)
+                    end
+  in
+    (traverse_conj_formula panc,
+     traverse_conj_formula nc,
+     alpha_pairs @ [(!elems_to_zero,Some (SL.IntVal 0))])
+
+
+
 let update_arrangement (alpha:SL.integer list list) (rel_set:SL.integer GenSet.t)
       : (SL.integer list * SL.integer option) list =
   List.map (fun eqclass ->
@@ -678,7 +740,6 @@ let update_arrangement (alpha:SL.integer list list) (rel_set:SL.integer GenSet.t
 let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
       : (bool * DP.call_tbl_t) =
   let this_call_tbl = DP.new_call_tbl() in
-
 
   let check_pa (cf:SL.conjunctive_formula) : bool =
     match cf with
@@ -712,8 +773,42 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
       (* We have an arrangement candidate *)
       pumping nc;
       let rel_set = relevant_levels nc in
-      let alpha_pair = update_arrangement alpha rel_set in
-      true
+      let alpha_pairs = update_arrangement alpha rel_set in
+      let (panc_r, nc_r, alpha_pairs_r) = propagate_levels alpha_pairs panc nc in
+      let alpha_r = List.rev (List.fold_left (fun xs (eqclass,r) ->
+                                match r with
+                                | None -> xs
+                                | Some relev -> [relev] :: xs
+                              ) [] alpha_pairs_r) in
+      (* Assertions only *)
+      let alpha_relev = GenSet.empty () in
+      List.iter (fun eqclass ->
+        List.iter (fun e -> GenSet.add alpha_relev e) eqclass
+      ) alpha_r;
+      assert (GenSet.subseteq alpha_relev rel_set);
+      let panc_r_level_vars = SL.varset_of_sort_from_conj panc_r SL.Int in
+      let nc_r_level_vars = SL.varset_of_sort_from_conj nc_r SL.Int in
+      assert (SL.VarSet.for_all (fun v -> GenSet.mem alpha_relev (SL.VarInt v)) panc_r_level_vars);
+      assert (SL.VarSet.for_all (fun v -> GenSet.mem alpha_relev (SL.VarInt v)) nc_r_level_vars);
+      (* Assertions only *)
+      let alpha_r_formula = alpha_to_conjunctive_formula alpha_r in
+      let final_formula = List.fold_left SL.combine_conj_formula alpha_r_formula [panc_r;nc_r] in
+      match final_formula with
+      | SL.TrueConj  -> true
+      | SL.FalseConj -> false
+      | SL.Conj ls   -> begin
+                          let k = List.length alpha_r in
+                          let module TslkSol = (val TslkSolver.choose !solver_impl k
+                                         : TslkSolver.S) in
+                          TslkSol.compute_model (!comp_model);
+                          let module Trans = TranslateTsl (TslkSol.TslkExp) in
+                          let phi_tslk = Trans.to_tslk ls in
+                          let res = TslkSol.is_sat lines co phi_tslk in
+                          DP.add_dp_calls this_call_tbl (DP.Tslk k) 1;
+                          tslk_sort_map := TslkSol.get_sort_map ();
+                          tslk_model := TslkSol.get_model ();
+                          res
+                        end
     end else begin
       (* For this arrangement is UNSAT. Return UNSAT. *)
       false
