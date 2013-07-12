@@ -209,12 +209,15 @@ val varidlist_of_sort           : formula -> sort -> varId list
 
 val get_varidlist_of_sort       : variable list -> sort -> varId list
 
-val varset_from_conj            : conjunctive_formula -> VarSet.t
-val varset                      : formula -> VarSet.t
-val varset_instances_from_conj  : conjunctive_formula -> VarSet.t
-val varset_instances            : formula -> VarSet.t
-val varset_of_sort_from_conj    : conjunctive_formula -> sort -> VarSet.t
-val varset_of_sort              : formula -> sort -> VarSet.t
+val varset_from_literal           : literal -> VarSet.t
+val varset_from_conj              : conjunctive_formula -> VarSet.t
+val varset                        : formula -> VarSet.t
+val varset_instances_from_literal : literal -> VarSet.t
+val varset_instances_from_conj    : conjunctive_formula -> VarSet.t
+val varset_instances              : formula -> VarSet.t
+val varset_of_sort_from_literal   : literal -> sort -> VarSet.t
+val varset_of_sort_from_conj      : conjunctive_formula -> sort -> VarSet.t
+val varset_of_sort                : formula -> sort -> VarSet.t
 val varset_instances_of_sort_from_conj : conjunctive_formula -> sort -> VarSet.t
 val varset_instances_of_sort           : formula -> sort -> VarSet.t
 
@@ -292,6 +295,7 @@ val special_ops : formula -> special_op_t list
 
 val cleanup_dup : conjunctive_formula -> conjunctive_formula
 val combine_conj_formula : conjunctive_formula -> conjunctive_formula -> conjunctive_formula
+val combine_conj_formula_list : conjunctive_formula list -> conjunctive_formula
 
 val get_addrs_eqs_conj : conjunctive_formula -> ((addr*addr) list * (addr*addr) list)
 val get_addrs_eqs : formula -> ((addr*addr) list * (addr*addr) list)

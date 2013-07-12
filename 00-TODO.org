@@ -16,6 +16,11 @@
     Particular case: if there is only one array update in the formula,
     no extra level needs to be added.
 
+		UPDATE:
+		Not implemented yet. So far it just checks that there are no two array
+		updates in the same formula. If so, Leap crashes.
+
+
 ** Implicit levels vs Relevant Levels [2013-06-22 Sat]
    
    Only three normalized literals depend on levels:
@@ -41,7 +46,11 @@
     JUSTIFICATION:
     Start from a model of the pruned level, and build a model of the
     unpruned level, by copying from relevant levels into implicit
-    levels.
+		levels.
+
+		UPDATE:
+		Implemented.
+
 
 ** Irrelevant fields [2013-06-22 Sat]
    If there is no query for tids in the formula (as it is in sequential TSL),
@@ -53,6 +62,12 @@
    predicates that depend on tids exist. One starts with a model with
    many tids, replaces all tids for the same tid, and checks that all
    literals in the formula are still satisfied.
+
+	 UPDATE:
+	 Implemented. Tids usually reports domains of 3 elements, considering
+	 "NoThread", "me" and "me'" (the tread taking the transition). I think
+	 "me" is not used, so maybe we could remove it.
+
 
 * Tactic ideas:
 ** axiom tactics: [2013-06-13 Thu]
@@ -145,6 +160,46 @@
    j is not so relevant, but the constraint i\neq j may help the validity proof.
 
    uni
+
+
+* Other ideas:
+
+**  Use SAT instead of SMT for propositional formulas:
+		If the location based formula does not contain information about PC (this
+		may be because PC elimination has been applied as tactic to the formula),
+		then we have a formula with only boolean variables. This means that we could
+		apply CNF over the formula and passed it to a SAT solver instead of an SMT
+		solver. This should be faster.
+
+		UPDATE:
+		Implemented. Yeap, goes twice as faster =D
+
+**  Improve arrangement generation.
+		We are computing many times the same arrangements. That is, starting from
+		the same variables and constraints. Idea: Keep a table of already generated
+		arrangements. If I am generating arrangements starting from the same set of
+		variables and constraints, then just pick the arrangement from the table.
+
+		UPDATE:
+		Implemented.
+
+**  Incrementally build the arrangements.
+		Usually, all guessed arrangements for conjunctions in DNF coming from the
+		same formula will contain the same set of variables. Some of them will have
+		more constraint than others. The most constraints it has, the less 
+		arrangements it will potentially generate. Hence, I could order the
+		arrangements generators by, let's say, constraints, and starting generating
+		the most restrictively one, and then start removing conditions according to
+		new constraints. Be careful that arrangements are only comparable if they 
+		deal with comparable constraints. Disjoint constraints make the arrangements
+		incomparable.
+
+** Treat arrangements as trees.
+		So I do not need to search on all the arrangements, but perhaps only on a
+		branch of the tree.
+
+
+
 
 * OLD pre [2013-06-13 Thu] 
 ** Syntax changes

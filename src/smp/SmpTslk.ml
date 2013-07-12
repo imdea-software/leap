@@ -320,27 +320,10 @@ module Make (TSLK : TSLKExpression.S) =
                                  ) addrvars VarSet.empty in
       verb "CANDIDATE Interesting addresses:%s\n"
         (VarSet.fold (fun v str -> str ^ (Expr.variable_to_str v) ^ ";") interesting_addrvars "");
-      let tmpcellvars = Expr.varset_of_sort vars Expr.Cell in
-      let cellvars = VarSet.diff tmpcellvars (redundant_cell_vars phi addrvars) in
       let vartid_num  = VarSet.cardinal (Expr.varset_of_sort vars Expr.Tid) in
-(*      let varaddr_num = VarSet.cardinal addrvars in *)
       let varaddr_num = VarSet.cardinal interesting_addrvars in
       let varelem_num = VarSet.cardinal (Expr.varset_of_sort vars Expr.Elem) in
-      let varcell_num = VarSet.cardinal cellvars in
-(*      let info = union_model_size (union_formula_cutoff new_union_count phi) in *)
       let info = try_pseudo_dnf_union_formula_cutoff new_union_count phi in
-(*
-      Printf.printf "SMP Formula:\n%s\n" (Expr.formula_to_str phi);
-      Printf.printf "Addr variables:";
-      VarSet.iter (fun v -> Printf.printf "%s;" (Expr.variable_to_str v)) addrvars;
-      Printf.printf "\n";
-      Printf.printf "Cell variables:";
-      VarSet.iter (fun v -> Printf.printf "%s;" (Expr.variable_to_str v)) cellvars;
-      Printf.printf "\n";
-      Printf.printf "Mem variables:";
-      VarSet.iter (fun v -> Printf.printf "%s;" (Expr.variable_to_str v)) (Expr.varset_of_sort vars Expr.Mem);
-      Printf.printf "\n";
-*)
 
       let num_levels = Expr.k in
       let num_addrs = 1 +                                     (* null               *)
@@ -358,12 +341,6 @@ module Make (TSLK : TSLKExpression.S) =
 (*                    varelem_num                             (* Elem variables     *) *)
 (*                    varmem_num * num_addrs                  (* Cell data          *) *)
       in
-      Printf.printf "VARTID_NUM: %i\n" vartid_num;
-      VarSet.iter (fun v -> print_string (Expr.variable_to_str v ^ "; ")) 
-      (Expr.varset_of_sort vars Expr.Tid);
-      Printf.printf "VARCELL_NUM: %i\n" varcell_num;
-      VarSet.iter (fun v -> print_string (Expr.variable_to_str v ^ "; ")) 
-cellvars;
         {
           num_levels = num_levels; num_addrs = num_addrs;
           num_tids = num_tids; num_elems = num_elems;
@@ -460,9 +437,7 @@ cellvars;
                     | Smp.Union   -> compute_max_cut_off_with_union f
                     | Smp.Pruning -> compute_max_cut_off_with_pruning f
       in
-      Printf.printf "SMP TSLK LEVELS: %i\n" model_s.num_levels;
-      Printf.printf "SMP TSLK ADDRS: %i\n" model_s.num_addrs;
-      Printf.printf "SMP TSLK TIDS  : %i\n" model_s.num_tids;
-      Printf.printf "SMP TSLK ELEMS : %i\n" model_s.num_elems;
+      Printf.printf "SMP TSLK DOMAINS. LEVELS:%i - ADDRS:%i - TIDS: %i - ELEMS:%i\n"
+                      model_s.num_levels model_s.num_addrs model_s.num_tids model_s.num_elems;
       model_s
   end

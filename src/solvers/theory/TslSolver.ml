@@ -682,19 +682,35 @@ let propagate_levels (alpha_pairs:alpha_pair_t list)
     match ps with
     | [] -> None
     | (_,r)::xs -> if r = None then find_highest_lower_bound i xs else r in
+  let filter_non_relevant (cf:SL.conjunctive_formula)
+                          (relset:SL.integer GenSet.t) : SL.conjunctive_formula =
+    match cf with
+    | SL.TrueConj  -> SL.TrueConj
+    | SL.FalseConj -> SL.FalseConj
+    | SL.Conj ls   -> begin
+                        SL.Conj (List.fold_left (fun xs lit ->
+                          let v_set = SL.varset_of_sort_from_literal lit SL.Int in
+                          if SL.VarSet.for_all (fun v -> GenSet.mem relset (SL.VarInt v)) v_set then
+                            lit :: xs
+                          else
+                            xs
+                        ) [] ls)
+                      end in
 
   (* Main function body *)
   let add_zero = ref false in
   let elems_to_zero = ref [] in
   let replacements = Hashtbl.create 10 in
+  let alpha_relevant = GenSet.empty() in
   List.iter (fun (eqclass,r) ->
     match r with
     | None   -> ()
-    | Some l -> List.iter (fun e ->
+    | Some l -> GenSet.add alpha_relevant l;
+                List.iter (fun e ->
                   Hashtbl.add replacements (SL.IntT e) (SL.IntT l)
                 ) eqclass
   ) alpha_pairs;
-  let traverse_conj_formula (cf:SL.conjunctive_formula) : SL.conjunctive_formula =
+  let propagate_levels_in_conj_formula (cf:SL.conjunctive_formula) : SL.conjunctive_formula =
     match cf with
     | SL.TrueConj -> SL.TrueConj
     | SL.FalseConj -> SL.FalseConj
@@ -721,8 +737,8 @@ let propagate_levels (alpha_pairs:alpha_pair_t list)
                       ) ls)
                     end
   in
-    (traverse_conj_formula panc,
-     traverse_conj_formula nc,
+    (filter_non_relevant (propagate_levels_in_conj_formula panc) alpha_relevant,
+     propagate_levels_in_conj_formula nc,
      alpha_pairs @ [(!elems_to_zero,Some (SL.IntVal 0))])
 
 
@@ -772,9 +788,25 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
     if pa_sat then begin
       (* We have an arrangement candidate *)
       pumping nc;
+
+      print_endline ("ALPHA: " ^ (String.concat ";" (List.map (fun xs -> "[" ^ (String.concat ";" (List.map SL.int_to_str xs)) ^ "]") alpha)));
+(*
+      print_endline ("PA: " ^ (SL.conjunctive_formula_to_str pa));
+      print_endline ("PANC: " ^ (SL.conjunctive_formula_to_str panc));
+*)
+      print_endline ("NC: " ^ (SL.conjunctive_formula_to_str nc));
       let rel_set = relevant_levels nc in
+
+      print_endline ("RELEVANT LEVELS: " ^ (GenSet.to_str SL.int_to_str rel_set));
+
       let alpha_pairs = update_arrangement alpha rel_set in
       let (panc_r, nc_r, alpha_pairs_r) = propagate_levels alpha_pairs panc nc in
+(*
+      print_endline ("PANC_R: " ^ (SL.conjunctive_formula_to_str panc_r));
+*)
+      print_endline ("NC_R: " ^ (SL.conjunctive_formula_to_str nc_r));
+
+
       let alpha_r = List.rev (List.fold_left (fun xs (eqclass,r) ->
                                 match r with
                                 | None -> xs
@@ -785,12 +817,31 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
       List.iter (fun eqclass ->
         List.iter (fun e -> GenSet.add alpha_relev e) eqclass
       ) alpha_r;
-      assert (GenSet.subseteq alpha_relev rel_set);
+
+      print_endline ("ALPHA RELEVANT: " ^ (GenSet.to_str SL.int_to_str alpha_relev));
+
+(*
+      print_endline "rel_set:";
+      GenSet.iter (fun e -> print_endline (SL.int_to_str e)) rel_set;
+*)
+
+      let rel_set_plus_zero = GenSet.copy rel_set in
+      GenSet.add rel_set_plus_zero (SL.IntVal 0);
+      assert (GenSet.subseteq alpha_relev rel_set_plus_zero);
       let panc_r_level_vars = SL.varset_of_sort_from_conj panc_r SL.Int in
       let nc_r_level_vars = SL.varset_of_sort_from_conj nc_r SL.Int in
+
+(*
+      print_endline ("ALPHA_RELEV: " ^ (GenSet.to_str SL.int_to_str alpha_relev));
+      print_endline ("NC_R VARS:");
+      SL.VarSet.iter (fun v -> print_endline (SL.variable_to_str v)) nc_r_level_vars;
+*)
       assert (SL.VarSet.for_all (fun v -> GenSet.mem alpha_relev (SL.VarInt v)) panc_r_level_vars);
       assert (SL.VarSet.for_all (fun v -> GenSet.mem alpha_relev (SL.VarInt v)) nc_r_level_vars);
       (* Assertions only *)
+
+
+
       let alpha_r_formula = alpha_to_conjunctive_formula alpha_r in
       let final_formula = List.fold_left SL.combine_conj_formula alpha_r_formula [panc_r;nc_r] in
       match final_formula with
@@ -820,7 +871,7 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
   (* We clear the table of previously guessed arrangements *)
   Hashtbl.clear arr_table;
   (* Generate arrangements *)
-  let arrgs = guess_arrangements (SL.combine_conj_formula pa panc) in
+  let arrgs = guess_arrangements (SL.combine_conj_formula_list [pa; panc; nc]) in
   (* Verify if some arrangement makes the formula satisfiable *)
   let answer = GenSet.exists (fun alpha ->
                  check pa panc nc alpha

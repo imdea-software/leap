@@ -557,12 +557,20 @@ let varset (phi:formula) : S.t =
   get_varset_from_formula false phi
 
 
+let varset_from_literal (lit:literal) : S.t =
+  get_varset_literal false lit
+
+
 let varset_from_conj (cf:conjunctive_formula) : S.t =
   get_varset_from_conj false cf
 
 
 let varset (phi:formula) : S.t =
   get_varset_from_formula false phi
+
+
+let varset_instances_from_literal (lit:literal) : S.t =
+  get_varset_literal true lit
 
 
 let varset_instances_from_conj (cf:conjunctive_formula) : S.t =
@@ -589,6 +597,10 @@ let filter_varset_with_sort (all:S.t) (s:sort) : S.t =
     else
       res in
     S.fold filt all VarSet.empty
+
+
+let varset_of_sort_from_literal (lit:literal) (s:sort) =
+  filter_varset_with_sort (varset_from_literal lit) s
 
 
 let varset_of_sort_from_conj (phi:conjunctive_formula) (s:sort) =
@@ -2550,6 +2562,12 @@ let combine_conj_formula (cf1:conjunctive_formula) (cf2:conjunctive_formula)
   | (TrueConj, _)  -> cf2
   | (_, TrueConj)  -> cf1
   | (Conj ls1, Conj ls2) -> Conj (ls1 @ ls2)
+
+
+let combine_conj_formula_list (cfs:conjunctive_formula list) : conjunctive_formula =
+  match cfs with
+  | [] -> TrueConj
+  | x::xs -> List.fold_left combine_conj_formula x xs
 
 
 (* NOTE: I am not considering the possibility of having a1=a2 \/ a1=a3 in the formula *)
