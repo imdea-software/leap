@@ -1,4 +1,4 @@
-=> fullOrder {pruning:|reduce2||simplify-pc}
+=> fullOrder {pruning:|reduce2||simplify-pc propositional-propagate}
 
 //=> fullPreserve [34:O:fullRegion;
 //                 35:O:fullRegion,fullNext,fullLock,fullOrder {pruning(cases):reduce2|simpl};

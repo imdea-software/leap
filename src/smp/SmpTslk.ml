@@ -437,7 +437,7 @@ module Make (TSLK : TSLKExpression.S) =
                     | Smp.Union   -> compute_max_cut_off_with_union f
                     | Smp.Pruning -> compute_max_cut_off_with_pruning f
       in
-      Printf.printf "SMP TSLK DOMAINS. LEVELS:%i - ADDRS:%i - TIDS: %i - ELEMS:%i\n"
+      verb "SMP TSLK DOMAINS. LEVELS:%i - ADDRS:%i - TIDS: %i - ELEMS:%i\n"
                       model_s.num_levels model_s.num_addrs model_s.num_tids model_s.num_elems;
       model_s
   end

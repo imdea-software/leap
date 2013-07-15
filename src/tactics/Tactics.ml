@@ -467,21 +467,22 @@ let generic_simplify_with_many_facts (facts:'a list)
     (implies:'a -> E.literal -> bool)
     (implies_not:'a -> E.literal -> bool)
     (phi:E.formula) : E.formula =
-  let rec simplify_lit f = 
+  let rec simplify_lit f =
     match f with
-      E.Literal l -> begin
-  if      List.exists (fun p -> implies p l)    facts then  
-    let str = "** simplifying " ^ (E.literal_to_str l) ^ " with true" in
-    let _   = print_endline str in
-    E.True 
-  else if List.exists (fun p -> implies_not p l) facts then 
-    let str = "** simplifying " ^ (E.literal_to_str l) ^ " with false" in
-    let _   = print_endline str in
-    E.False
-  else E.Literal l
-      end
-    | E.True           ->  E.True
-    | E.False          ->  E.False
+    | E.Literal l -> begin
+                       if List.exists (fun p -> implies p l) facts then
+                         let str = "** simplifying " ^ (E.literal_to_str l) ^ " with true" in
+                         let _   = print_endline str in
+                         E.True
+                       else if List.exists (fun p -> implies_not p l) facts then
+                         let str = "** simplifying " ^ (E.literal_to_str l) ^ " with false" in
+                         let _   = print_endline str in
+                         E.False
+                       else
+                         E.Literal l
+                     end
+    | E.True           -> E.True
+    | E.False          -> E.False
     | E.And(f1,f2)     -> E.And(simplify_lit f1, simplify_lit f2)
     | E.Or (f1,f2)     -> E.Or (simplify_lit f1, simplify_lit f2)
     | E.Not f          -> E.Not(simplify_lit f)
@@ -499,9 +500,13 @@ let simplify_with_many_facts (ll:E.literal list)
 
 let get_unrepeated_literals (phi:E.formula) : E.literal list = 
   let candidates = get_literals phi in
-  List.fold_left 
-    (fun res l -> if (List.exists (fun alit -> E.identical_literal alit l) res) then
-  res else res@[l]) [] candidates
+  List.fold_left (fun res l ->
+    if (List.exists (fun alit -> E.identical_literal alit l) res) then
+      res
+    else
+      res@[l]
+  ) [] candidates
+
 
 (*********************)
 (*  SUPPORT TACTICS  *)
@@ -568,12 +573,16 @@ let tactic_propositional_propagate (imp:implication) : implication =
   let implies_neg = E.opposite_literal in
   let rec simplify_propagate (f:implication) (used:E.literal list) : 
       (implication * E.literal list) =
-    let new_facts = get_unrepeated_literals f.ante in
+    (* ALE: I have removed from new_facts already learned facts *)
+    let new_facts = List.filter (fun x ->
+                      not (List.mem x used)
+                    ) (get_unrepeated_literals f.ante) in
+    
     if List.length new_facts = 0 then (f,used) else
       begin
-  let new_conseq = simplify_with_many_facts new_facts implies implies_neg f.conseq in
-  let new_ante   = simplify_with_many_facts new_facts implies implies_neg f.ante in
-  simplify_propagate { ante = new_ante; conseq = new_conseq } (used @ new_facts)
+        let new_conseq = simplify_with_many_facts new_facts implies implies_neg f.conseq in
+        let new_ante   = simplify_with_many_facts new_facts implies implies_neg f.ante in
+          simplify_propagate { ante = new_ante; conseq = new_conseq } (used @ new_facts)
       end
   in
   let (new_imp,facts) = simplify_propagate imp [] in
@@ -824,7 +833,8 @@ let apply_formula_split_tactics (imps:implication list)
 let apply_formula_tactics (imps:implication list)
                           (tacs:formula_tactic_t list)
                             : implication list =
-  List.fold_left (fun ps f -> List.map f ps) imps tacs
+  let res = List.fold_left (fun ps f -> List.map f ps) imps tacs in
+  res
 
 
 let apply_tactics (vcs:vc_info list)
@@ -836,8 +846,7 @@ let apply_tactics (vcs:vc_info list)
   let split_vc_info_list = apply_support_split_tactics vcs supp_split_tacs in
   let original_implications = apply_support_tactic split_vc_info_list supp_tac in
   let split_implications = apply_formula_split_tactics original_implications formula_split_tacs in
-  let final_implications = apply_formula_tactics split_implications formula_tacs
-  in
+  let final_implications = apply_formula_tactics split_implications formula_tacs in
     List.map (fun imp ->
       E.Implies (imp.ante, imp.conseq)
     ) final_implications

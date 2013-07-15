@@ -421,6 +421,11 @@ module Make (Opt:module type of GenOptions) : S =
       let module Tll  = (val tllSolver) in
       let module Tslk = (val tslkSolver) in
 
+      Num.compute_model(Opt.compute_model);
+      Tll.compute_model(Opt.compute_model);
+      Tslk.compute_model(Opt.compute_model);
+      TslSolver.compute_model(Opt.compute_model);
+
       let case_timer = new LeapLib.timer in
       let phi_timer = new LeapLib.timer in
       (* Clear the internal data *)
@@ -449,8 +454,8 @@ module Make (Opt:module type of GenOptions) : S =
                       | DP.Loc    -> (false, 0)
                       | DP.Num    -> let num_phi = NumInterface.formula_to_int_formula fol_phi in
                                       Num.is_valid_with_lines_plus_info prog_lines num_phi
-                      | DP.Tll    -> let tll_phi = TllInterface.formula_to_tll_formula fol_phi in
-                                     Tll.is_valid_plus_info prog_lines cutoff tll_phi
+                      | DP.Tll    -> (*let tll_phi = TllInterface.formula_to_tll_formula fol_phi in
+                                     Tll.is_valid_plus_info prog_lines cutoff tll_phi*) (false,0)
                       | DP.Tsl    -> let tsl_phi = TSLInterface.formula_to_tsl_formula fol_phi in
                                      let (res,tsl_calls,tslk_calls) =
                                         TslSolver.is_valid_plus_info prog_lines cutoff tsl_phi in
@@ -461,6 +466,13 @@ calls_counter;
                                      let tslk_phi = TSLKIntf.formula_to_tslk_formula fol_phi in
                                      Tslk.is_valid_plus_info prog_lines cutoff tslk_phi
                     in
+                    let _ = match Opt.dp with
+                            | DP.NoDP   -> ()
+                            | DP.Loc    -> ()
+                            | DP.Num    -> Num.print_model()
+                            | DP.Tll    -> Tll.print_model()
+                            | DP.Tsl    -> TslSolver.print_model()
+                            | DP.Tslk _ -> Tslk.print_model() in
                     add_calls calls;
                     set_status valid
                    end in
@@ -515,9 +527,9 @@ calls_counter;
                                              p in
                           (Tactics.apply_tactics_from_proof_plan [vc] joint_plan,
                            Tactics.get_cutoff joint_plan) in
+
         let proof_info = {cutoff = decide_cutoff cutoff; } in
-        let proof_obligation = new_proof_obligation vc obligations proof_info
-        in
+        let proof_obligation = new_proof_obligation vc obligations proof_info in
           proof_obligation :: res
       ) [] vcs
 

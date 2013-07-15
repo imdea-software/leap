@@ -594,7 +594,6 @@ let guess_arrangements (cf:SL.conjunctive_formula) : (SL.integer list list)
                                                end
                             in
                             verb "**** TSL Solver: generated %i arrangements\n" (GenSet.size arrgs);
-                            print_endline ("**** TSL Solver: generated " ^string_of_int (GenSet.size arrgs)^ " arrangements\n");
                             arrgs
                           end
 
@@ -778,6 +777,7 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
             (panc:SL.conjunctive_formula)
             (nc:SL.conjunctive_formula)
             (alpha:SL.integer list list) : bool =
+    Pervasives.flush (Pervasives.stdout);
     let alpha_phi = alpha_to_conjunctive_formula alpha in
     let pa_sat = check_pa (SL.combine_conj_formula (SL.combine_conj_formula pa panc) alpha_phi) in
     (* TODO: Some arrangements are invalid, as I am not considering literals of the
@@ -788,23 +788,24 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
     if pa_sat then begin
       (* We have an arrangement candidate *)
       pumping nc;
-
-      print_endline ("ALPHA: " ^ (String.concat ";" (List.map (fun xs -> "[" ^ (String.concat ";" (List.map SL.int_to_str xs)) ^ "]") alpha)));
 (*
+      print_endline ("ALPHA: " ^ (String.concat ";" (List.map (fun xs -> "[" ^ (String.concat ";" (List.map SL.int_to_str xs)) ^ "]") alpha)));
       print_endline ("PA: " ^ (SL.conjunctive_formula_to_str pa));
       print_endline ("PANC: " ^ (SL.conjunctive_formula_to_str panc));
-*)
-      print_endline ("NC: " ^ (SL.conjunctive_formula_to_str nc));
-      let rel_set = relevant_levels nc in
 
+      print_endline ("NC: " ^ (SL.conjunctive_formula_to_str nc));
+*)
+      let rel_set = relevant_levels nc in
+(*
       print_endline ("RELEVANT LEVELS: " ^ (GenSet.to_str SL.int_to_str rel_set));
+*)
 
       let alpha_pairs = update_arrangement alpha rel_set in
       let (panc_r, nc_r, alpha_pairs_r) = propagate_levels alpha_pairs panc nc in
 (*
       print_endline ("PANC_R: " ^ (SL.conjunctive_formula_to_str panc_r));
-*)
       print_endline ("NC_R: " ^ (SL.conjunctive_formula_to_str nc_r));
+*)
 
 
       let alpha_r = List.rev (List.fold_left (fun xs (eqclass,r) ->
@@ -817,10 +818,8 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
       List.iter (fun eqclass ->
         List.iter (fun e -> GenSet.add alpha_relev e) eqclass
       ) alpha_r;
-
-      print_endline ("ALPHA RELEVANT: " ^ (GenSet.to_str SL.int_to_str alpha_relev));
-
 (*
+      print_endline ("ALPHA RELEVANT: " ^ (GenSet.to_str SL.int_to_str alpha_relev));
       print_endline "rel_set:";
       GenSet.iter (fun e -> print_endline (SL.int_to_str e)) rel_set;
 *)
@@ -845,8 +844,8 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
       let alpha_r_formula = alpha_to_conjunctive_formula alpha_r in
       let final_formula = List.fold_left SL.combine_conj_formula alpha_r_formula [panc_r;nc_r] in
       match final_formula with
-      | SL.TrueConj  -> true
-      | SL.FalseConj -> false
+      | SL.TrueConj  -> (print_string "T"; true)
+      | SL.FalseConj -> (print_string "F"; false)
       | SL.Conj ls   -> begin
                           let k = List.length alpha_r in
                           let module TslkSol = (val TslkSolver.choose !solver_impl k
@@ -858,10 +857,12 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
                           DP.add_dp_calls this_call_tbl (DP.Tslk k) 1;
                           tslk_sort_map := TslkSol.get_sort_map ();
                           tslk_model := TslkSol.get_model ();
+                          if res then print_string "S" else print_string "X";
                           res
                         end
     end else begin
       (* For this arrangement is UNSAT. Return UNSAT. *)
+      print_string ".";
       false
     end in
 
@@ -888,6 +889,7 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
 let is_sat_plus_info (lines : int)
            (co : Smp.cutoff_strategy_t)
            (phi : SL.formula) : (bool * int * DP.call_tbl_t) =
+    print_endline ("Solving formula: " ^ (SL.formula_to_str phi));
     let this_calls_tbl = DP.new_call_tbl() in
 
     (* STEP 1: Normalize the formula *)
