@@ -391,12 +391,55 @@ let rec expand_pc_range (expr:expression) : expression =
   | _                   -> expr
 
 
+let rec nnf (expr:expression) : expression =
+  match expr with
+  | False -> False
+  | True  -> True
+  | Eq _ | InEq _ | Pred _ | PC _ | PCUpdate _ | PCRange _ -> expr
+  | Iff (e1,e2)            -> And (nnf (Implies (e1,e2)),nnf (Implies(e2,e1)))
+  | Implies(e1,e2)         -> Or (nnf (Not e1), nnf e2)
+  | And(e1,e2)             -> And(nnf e1, nnf e2)
+  | Or(e1,e2)              -> Or(nnf e1, nnf e2)
+  | Not (Not e)            -> nnf e
+  | Not (And (e1,e2))      -> Or (nnf (Not e1), nnf (Not e2))
+  | Not (Or (e1, e2))      -> And (nnf (Not e1), nnf (Not e2))
+  | Not (Implies (e1, e2)) -> And (nnf e1, nnf (Not e2))
+  | Not (Iff (e1, e2))     -> Or(And(nnf e1, nnf (Not e2)),And (nnf (Not e1), nnf e2))
+  | Not (Eq (x,y))         -> InEq (x,y)
+  | Not (InEq (x,y))       -> Eq (x,y)
+  | Not True               -> False
+  | Not False              -> True
+  | Not (Pred _) | Not (PC _) | Not (PCUpdate _) | Not (PCRange _) -> expr
+
+
+let rec dnf (expr:expression) : expression list list =
+  match expr with
+    Iff (e1,e2) -> dnf (Or (And (e1,e2), And (Not e1, Not e2)))
+  | Implies(e1,e2) -> dnf (Or (Not e1, e2))
+  | Or(e1,e2)   -> let e1_dnf = dnf e1 in
+                   let e2_dnf = dnf e2 in
+                     List.fold_left (fun final_lst x1 ->
+                       let lst = List.fold_left (fun l2 x2 ->
+                                    (x1 @ x2) :: l2
+                                 ) [] e2_dnf
+                       in
+                          lst @ final_lst
+                     ) [] e1_dnf
+  | And (e1,e2) -> dnf e1 @ dnf e2
+  | Not (Not e) -> dnf e
+  | Not (And (e1,e2)) -> dnf (Or (Not e1, Not e2))
+  | Not (Or (e1, e2)) -> dnf (And (Not e1, Not e2))
+  | Not (Implies (e1, e2)) -> dnf (And (e1, Not e2))
+  | Not (Iff (e1, e2)) -> dnf (Or (And (e1, Not e2), And (Not e1, e2)))
+  | e -> [[e]]
+
+
 let rec cnf (expr:expression) : expression list list =
   match expr with
-    Iff (e1,e2) -> cnf (And (Implies (e1,e2),Implies (e2,e1)))
+    Iff (e1,e2) -> cnf (Or (And (e1,e2), And (Not e1, Not e2)))
   | Implies(e1,e2) -> cnf (Or (Not e1, e2))
-  | Or(e1,e2)   -> let e1_cnf = cnf e1 in
-                   let e2_cnf = cnf e2 in
+  | And(e1,e2)   -> let e1_cnf = cnf e1 in
+                    let e2_cnf = cnf e2 in
                      List.fold_left (fun final_lst x1 ->
                        let lst = List.fold_left (fun l2 x2 ->
                                     (x1 @ x2) :: l2
@@ -404,7 +447,7 @@ let rec cnf (expr:expression) : expression list list =
                        in
                           lst @ final_lst
                      ) [] e1_cnf
-  | And (e1,e2) -> cnf e1 @ cnf e2
+  | Or (e1,e2) -> cnf e1 @ cnf e2
   | Not (Not e) -> cnf e
   | Not (And (e1,e2)) -> cnf (Or (Not e1, Not e2))
   | Not (Or (e1, e2)) -> cnf (And (Not e1, Not e2))

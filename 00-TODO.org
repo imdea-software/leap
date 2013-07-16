@@ -199,6 +199,37 @@
 		branch of the tree.
 
 
+* Progress
+
+** [2013-07-12]
+*** Integration of SAT solver to the position solver. The idea is that in some
+		cases due to the use of simplification, we can end up with a formula that
+		does not speak at all about PC and PCUpdate. Hence, as we have a
+		propositional formula we could use SAT instead of SMT. Now, when the flag
+		"-sat" is used, if the formula dealing with locations has no info about PC
+		then SAT is used instead of SMT. This speeds up the verification using
+		Positions Decision Procedure. However, in some cases it may be worst, as
+		CNF needs to be computed first and this may blow up.
+
+** [2013-07-15]
+*** Checked TSL solver transformation chain. Seems to work properly. Runs over
+		problematic transition 42 in about 45 minutes. However it still miss some
+		support.
+*** Fixed a bug in simplification algorithm at Tactics, which it did not
+		consider already used literals in propositional propagation.
+
+** [2013-07-16]
+*** Fixed a bug when computing DNF and CNF in Expression and PosExpression.
+		It should not affect nothing in the examples we had so far.
+*** I have removed the model printer when an empty model is returned (ie.
+		no useful information)
+
+** Next thing to do:
+*** Write in the ORG the theorems of reduction (white board in Madrid).
+*** Connect back the report module, so we have clear information whenever a
+		transition is valid or invalid.
+*** Finish with the support for Skiplist example.
+
 
 
 * OLD pre [2013-06-13 Thu] 

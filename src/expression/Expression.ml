@@ -4212,9 +4212,9 @@ let rec dnf_count (expr:formula) : (float * float) =
 
 let rec dnf (expr:formula) : formula list list =
   match expr with
-    Iff (e1,e2) -> dnf (And (Implies (e1,e2),Implies (e2,e1)))
+    Iff (e1,e2) -> dnf (Or (And (e1,e2), And (Not e2, Not e1)))
   | Implies(e1,e2) -> dnf (Or (Not e1, e2))
-  | And(e1,e2)  -> let e1_dnf = dnf e1 in
+  | Or(e1,e2)  -> let e1_dnf = dnf e1 in
                    let e2_dnf = dnf e2 in
                      List.fold_left (fun final_lst x1 ->
                        let lst = List.fold_left (fun l2 x2 ->
@@ -4224,7 +4224,7 @@ let rec dnf (expr:formula) : formula list list =
                        in
                           lst @ final_lst
                      ) [] e1_dnf
-  | Or(e1,e2)   -> dnf e1 @ dnf e2
+  | And(e1,e2)  -> dnf e1 @ dnf e2
   | Not (Not e) -> dnf e
   | Not (And (e1,e2)) -> dnf (Or (Not e1, Not e2))
   | Not (Or (e1, e2)) -> dnf (And (Not e1, Not e2))
@@ -4235,9 +4235,9 @@ let rec dnf (expr:formula) : formula list list =
 
 let rec cnf (expr:formula) : formula list list =
   match expr with
-    Iff (e1,e2) -> cnf (And (Implies (e1,e2),Implies (e2,e1)))
+    Iff (e1,e2) -> cnf (Or (And (e1,e2), And (Not e2, Not e1)))
   | Implies(e1,e2) -> cnf (Or (Not e1, e2))
-  | Or(e1,e2)   -> let e1_cnf = cnf e1 in
+  | And(e1,e2)   -> let e1_cnf = cnf e1 in
                    let e2_cnf = cnf e2 in
                      List.fold_left (fun final_lst x1 ->
                        let lst = List.fold_left (fun l2 x2 ->
@@ -4246,7 +4246,7 @@ let rec cnf (expr:formula) : formula list list =
                        in
                           lst @ final_lst
                      ) [] e1_cnf
-  | And (e1,e2) -> cnf e1 @ cnf e2
+  | Or (e1,e2) -> cnf e1 @ cnf e2
   | Not (Not e) -> cnf e
   | Not (And (e1,e2)) -> cnf (Or (Not e1, Not e2))
   | Not (Or (e1, e2)) -> cnf (And (Not e1, Not e2))

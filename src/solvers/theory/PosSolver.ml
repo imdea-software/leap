@@ -27,8 +27,12 @@ struct
 
     if PosExp.has_pc expr then
       use_smt()
-    else
-      use_sat()
+    else begin
+      if Solver.identifier = Minisat.Minisat.identifier then
+        use_sat()
+      else
+        use_smt()
+    end
 
 
   let is_valid (lines : int) (expr : PosExp.expression) : bool =

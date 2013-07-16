@@ -43,7 +43,9 @@ let pos_expression_to_str (expr:PE.expression) : string =
               some_pos_list := PE.PC (i,PE.Local t,false) :: !some_pos_list
             ) expr_voc
           done in
-  let some_pos = PE.disj_list !some_pos_list in
+  let some_pos = match !some_pos_list with
+                 | [] -> PE.True
+                 | _  -> PE.disj_list !some_pos_list in
   (* All threads are at an unique location *)
   let unique_pos_list = ref [] in
   let _ = for i=1 to !prog_lines do
@@ -74,8 +76,7 @@ let pos_expression_to_str (expr:PE.expression) : string =
   let full_formula = PE.And (some_pos, PE.And(unique_pos, expand_form)) in
   let cnf_form = PE.cnf full_formula in
   let desc_str = sprintf "c SAT description for location reasoning \
-                          on formula:\nc %s\n" (PE.expr_to_str full_formula) 
-  in
+                          on formula:\nc %s\n" (PE.expr_to_str full_formula) in
   let expr_str = List.fold_left (fun str xs ->
                    str ^ (String.concat " " $
                             List.map (fun t ->

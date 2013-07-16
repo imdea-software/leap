@@ -65,7 +65,8 @@ let _ =
                                          else
                                            BackendSolvers.Yices.identifier
                            let pSolver = if !LeapArgs.use_sat then
-                                           BackendSolvers.Minisat.identifier
+                                           (print_endline "USE SAT!!!!";
+                                           BackendSolvers.Minisat.identifier)
                                          else if !LeapArgs.use_yices_plus_z3 then
                                            BackendSolvers.Yices.identifier
                                          else

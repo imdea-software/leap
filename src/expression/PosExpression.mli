@@ -48,4 +48,6 @@ val conj_list : expression list -> expression
 val disj_list : expression list -> expression
 
 val expand_pc_range : expression -> expression
+val nnf : expression -> expression
+val dnf : expression -> expression list list
 val cnf : expression -> expression list list
