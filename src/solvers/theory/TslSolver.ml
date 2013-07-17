@@ -755,6 +755,7 @@ let update_arrangement (alpha:SL.integer list list) (rel_set:SL.integer GenSet.t
 let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
       : (bool * DP.call_tbl_t) =
   let this_call_tbl = DP.new_call_tbl() in
+  let arrg_sat_table : (SL.integer list list, bool) Hashtbl.t = Hashtbl.create 10 in
 
   let check_pa (cf:SL.conjunctive_formula) : bool =
     match cf with
@@ -839,27 +840,32 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
       assert (SL.VarSet.for_all (fun v -> GenSet.mem alpha_relev (SL.VarInt v)) nc_r_level_vars);
       (* Assertions only *)
 
-
-
-      let alpha_r_formula = alpha_to_conjunctive_formula alpha_r in
-      let final_formula = List.fold_left SL.combine_conj_formula alpha_r_formula [panc_r;nc_r] in
-      match final_formula with
-      | SL.TrueConj  -> (print_string "T"; true)
-      | SL.FalseConj -> (print_string "F"; false)
-      | SL.Conj ls   -> begin
-                          let k = List.length alpha_r in
-                          let module TslkSol = (val TslkSolver.choose !solver_impl k
-                                         : TslkSolver.S) in
-                          TslkSol.compute_model (!comp_model);
-                          let module Trans = TranslateTsl (TslkSol.TslkExp) in
-                          let phi_tslk = Trans.to_tslk ls in
-                          let res = TslkSol.is_sat lines co phi_tslk in
-                          DP.add_dp_calls this_call_tbl (DP.Tslk k) 1;
-                          tslk_sort_map := TslkSol.get_sort_map ();
-                          tslk_model := TslkSol.get_model ();
-                          if res then print_string "S" else print_string "X";
-                          res
-                        end
+      try
+        let res = Hashtbl.find arrg_sat_table alpha_r in
+        print_string (if res then "$" else "#");
+        res
+      with Not_found -> begin
+        let alpha_r_formula = alpha_to_conjunctive_formula alpha_r in
+        let final_formula = List.fold_left SL.combine_conj_formula alpha_r_formula [panc_r;nc_r] in
+        match final_formula with
+        | SL.TrueConj  -> (print_string "T"; Hashtbl.add arrg_sat_table alpha_r true; true)
+        | SL.FalseConj -> (print_string "F"; Hashtbl.add arrg_sat_table alpha_r false; false)
+        | SL.Conj ls   -> begin
+                            let k = List.length alpha_r in
+                            let module TslkSol = (val TslkSolver.choose !solver_impl k
+                                           : TslkSolver.S) in
+                            TslkSol.compute_model (!comp_model);
+                            let module Trans = TranslateTsl (TslkSol.TslkExp) in
+                            let phi_tslk = Trans.to_tslk ls in
+                            let res = TslkSol.is_sat lines co phi_tslk in
+                            DP.add_dp_calls this_call_tbl (DP.Tslk k) 1;
+                            tslk_sort_map := TslkSol.get_sort_map ();
+                            tslk_model := TslkSol.get_model ();
+                            if res then print_string "S" else print_string "X";
+                            Hashtbl.add arrg_sat_table alpha_r res;
+                            res
+                          end
+      end
     end else begin
       (* For this arrangement is UNSAT. Return UNSAT. *)
       print_string ".";
@@ -872,6 +878,7 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
   (* We clear the table of previously guessed arrangements *)
   Hashtbl.clear arr_table;
   (* Generate arrangements *)
+  assert (Hashtbl.length arrg_sat_table = 0);
   let arrgs = guess_arrangements (SL.combine_conj_formula_list [pa; panc; nc]) in
   (* Verify if some arrangement makes the formula satisfiable *)
   let answer = GenSet.exists (fun alpha ->
@@ -892,17 +899,24 @@ let is_sat_plus_info (lines : int)
     print_endline ("Solving formula: " ^ (SL.formula_to_str phi));
     let this_calls_tbl = DP.new_call_tbl() in
 
-    (* STEP 1: Normalize the formula *)
-    let phi_norm = SL.normalize phi in
-    (* STEP 2: DNF of the normalized formula *)
-    let phi_dnf = SL.dnf phi_norm in
-    (* If any of the conjunctions in DNF is SAT, then phi is sat *)
-    let answer = List.exists (fun psi ->
-                   let (res, call_tbl) = dnf_sat lines co psi in
-                   DP.combine_call_table call_tbl this_calls_tbl;
-                   res
-                 ) phi_dnf in
-    (answer, 1, this_calls_tbl)
+    match phi with
+    | SL.Not(SL.Implies(_,SL.True)) -> (false, 1, this_calls_tbl)
+    | SL.Not (SL.Implies(SL.False, _)) -> (false, 1, this_calls_tbl)
+    | SL.Implies(SL.False, _) -> (true, 1, this_calls_tbl)
+    | SL.Implies(_, SL.True) -> (true, 1, this_calls_tbl)
+    | _ -> begin
+             (* STEP 1: Normalize the formula *)
+             let phi_norm = SL.normalize phi in
+             (* STEP 2: DNF of the normalized formula *)
+             let phi_dnf = SL.dnf phi_norm in
+             (* If any of the conjunctions in DNF is SAT, then phi is sat *)
+             let answer = List.exists (fun psi ->
+                            let (res, call_tbl) = dnf_sat lines co psi in
+                            DP.combine_call_table call_tbl this_calls_tbl;
+                            res
+                          ) phi_dnf in
+             (answer, 1, this_calls_tbl)
+           end
 
 
 let is_sat (lines : int)

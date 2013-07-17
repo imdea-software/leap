@@ -513,6 +513,7 @@ let get_unrepeated_literals (phi:E.formula) : E.literal list =
 (*********************)
 
 let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
+  print_endline "GEN_SUPPORT";
   match op with
   | KeepOriginal -> info.original_support
   | RestrictSubst f ->
@@ -531,10 +532,10 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
       let (param_support, unparam_support) = List.partition (fun phi ->
                                               E.voc phi <> []
                                             ) split_support in
-    (*
+    
       printf "UNPARAM SUPPORT: %s\n" (String.concat " ; " (List.map E.formula_to_str unparam_support));
       printf "PARAM SUPPORT: %s\n" (String.concat " ; " (List.map E.formula_to_str param_support));
-    *)
+    
       List.fold_left (fun xs supp_phi ->
         let supp_voc = E.voc supp_phi in
         let voc_to_consider = if List.mem info.transition_tid goal_voc then
@@ -542,6 +543,7 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
                               else
                                 info.transition_tid :: supp_voc @ goal_voc in
         let subst = List.filter f (E.new_comb_subst supp_voc voc_to_consider) in
+        Printf.printf "SUBSTS: %s\n" (String.concat " -- " (List.map E.subst_to_str subst));
         xs @ List.map (fun s ->
                E.subst_tid s supp_phi
              ) subst
@@ -569,6 +571,7 @@ let id_support (info:vc_info) : support_t =
 (*  FORMULA TACTICS  *)
 (*********************)
 let tactic_propositional_propagate (imp:implication) : implication =
+  print_endline "Tactic propositional propagate...";
   let implies     = E.identical_literal in
   let implies_neg = E.opposite_literal in
   let rec simplify_propagate (f:implication) (used:E.literal list) : 
@@ -577,6 +580,7 @@ let tactic_propositional_propagate (imp:implication) : implication =
     let new_facts = List.filter (fun x ->
                       not (List.mem x used)
                     ) (get_unrepeated_literals f.ante) in
+    Printf.printf "New facts: %s\n" (String.concat "; " (List.map E.literal_to_str new_facts));
     
     if List.length new_facts = 0 then (f,used) else
       begin
@@ -680,13 +684,15 @@ let integer_implies_neg ((v,k):E.variable * int) (l:E.literal) : bool =
 let tactic_simplify_pc (imp:implication) : implication =
   (* 1. Search for facts of the form "pc = k" or "k = pc" *)
   let _ = print_endline "tactic_simplify_pc invoked" in
+  Printf.printf "SIMPLIFY PC ANTE: %s\nSIMPLIFY PC CONSEQ: %s\n" (E.formula_to_str imp.ante) (E.formula_to_str imp.conseq);
+
   let rec get_integer_literals (f:E.formula) : ((E.variable * int) list) =
     match f with
       E.Literal l -> begin
-  match (extract_integer_eq l) with 
-    Some (v,k) -> [(v,k)] 
-  | None       -> []
-      end
+                       match (extract_integer_eq l) with
+                       | Some (v,k) -> [(v,k)]
+                       | None       -> []
+                     end
     | E.And(f1,f2)       -> get_integer_literals f1 @ get_integer_literals f2
     | E.Not(E.Or(f1,f2)) -> get_integer_literals f1 @ get_integer_literals f2
     | _                  -> []

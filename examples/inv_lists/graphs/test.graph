@@ -1,10 +1,2 @@
-
-
-=> fullLock [28:fullNext{pruning:|identity||};
-             29:S:fullNext;
-             36:S:fullNext;
-             45:S:fullNext;
-             46:S:fullNext;
-             52:S:fullNext] {pruning:|||}
-
+=> fullOrder {pruning:|full||}
 

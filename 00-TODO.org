@@ -164,6 +164,26 @@
 
 * Other ideas:
 
+**  Compare arrangements before calling the theory DP:
+		When analyzing a formula, we generate a great number of arrangements to try
+		over this formula. The arrangement in then reduced to an arrangement
+		composed of only relevant levels. The idea is that before calling the DP
+		we check whether we have previously checked the formula with an equivalent
+		relevant arrangement. If so, we just return the result obtained before and 
+		we do not call the DP. Two arrangements A1 and A2 made of relevant levels
+		are equivalent iff:
+			1) each relevant level l in A1 is also in A2 and vice-versa
+			2) order of relevant levels is preserved
+
+		UPDATE:
+		Implemented. I have added a table that remembers arrangements of relevant
+		levels and their satisfiability value according to the formula. We look up
+		in the table before calling the DP.
+
+
+Instead of calling the DP with each candidate arrangement
+		we keep track of the result obtained if we have
+
 **  Use SAT instead of SMT for propositional formulas:
 		If the location based formula does not contain information about PC (this
 		may be because PC elimination has been applied as tactic to the formula),
@@ -224,7 +244,22 @@
 *** I have removed the model printer when an empty model is returned (ie.
 		no useful information)
 
+
+** [2013-07-17]
+*** Traced a problem to support generation in the concurrent scheme.
+*** Implemented lookup table for already analyzed arrangements in order
+		to speed-up the verification process.
+*** If the formula passed to the satisfiability procedure of TSL is trivially
+		satisfiable of unsatisfiable, then no other computations are done. ie:
+		 i) (false -> A) and (A -> true) are reduced to true (ie. SAT)
+		ii) ~(false -> A) and ~(A -> true) are reduced to false (ie. UNSAT)
+
+
 ** Next thing to do:
+*** Fix support generation for concurrent case. Basically
+		local variables are represented as renamed global variables (v[k] -> v_k)
+		and the support generator at Tactics consider this variables global,
+		generating the support wrong.
 *** Write in the ORG the theorems of reduction (white board in Madrid).
 *** Connect back the report module, so we have clear information whenever a
 		transition is valid or invalid.

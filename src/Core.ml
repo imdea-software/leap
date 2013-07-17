@@ -260,6 +260,7 @@ module Make (Opt:module type of GenOptions) : S =
                           | Premise.OthersConseq ->
                               E.conj_list (List.map (E.ineq_tid trans_tid) voc) in
       List.fold_left (fun rs phi ->
+        print_endline ("Create with support: " ^ (String.concat "\n" (List.map E.formula_to_str supp)));
         let new_vc = Tactics.create_vc_info supp tid_diff_conj
                         phi inv voc trans_tid line
         in

@@ -1,42 +1,47 @@
-// => fullOrder
+=> fullOrder {pruning:|reduce2||simplify-pc}
 
-=> fullPreserve [32:E:fullRegion;
-                 33:E:fullRegion,fullNext,fullLock,fullOrder {pruning(cases):reduce2|simpl};
-                 49:E:fullNext,fullRegion,fullOrder {pruning(cases):reduce2|simpl}] {union:reduce2|simpl}
-
-
-
-=> fullNext [ 4:N:fullPreserve;
-             28:N:fullPreserve,fullRegion;
-             32:N:fullRegion;
-             32:E:fullRegion,fullDisjoint;
-             33:N:fullRegion;
-             33:E:fullLock,fullRegion;
-             39:N:fullPreserve,fullRegion;
-             45:N:fullPreserve,fullRegion;
-             48:N:fullPreserve,fullRegion;
-             49:N:fullPreserve,fullRegion;
-             49:E:fullPreserve,fullLock,fullRegion] {union:reduce2|simpl}
+//=> fullPreserve [34:O:fullRegion;
+//                 35:O:fullRegion,fullNext,fullLock,fullOrder {pruning(cases):reduce2|simpl};
+//                 51:O:fullNext,fullRegion,fullOrder {pruning(cases):reduce2|simpl}] {pruning:reduce2|simpl}
 
 
-=> fullLock [26:N:fullNext;
-             27:N:fullNext;
-             34:N:fullNext;
-             43:N:fullNext;
-             44:N:fullNext;
-             50:N:fullNext] {union:reduce2|simpl}
+=> fullPreserve [34:O:fullRegion;
+                 35:O:fullRegion,fullNext,fullLock,fullOrder {pruning:|reduce2||simplify-pc};
+                 51:O:fullNext,fullRegion,fullOrder {pruning:|reduce2||simplify-pc}] {pruning:|reduce2||simplify-pc}
 
 
-=> fullDisjoint {union:reduce2|simpl}
+
+=> fullNext [ 5:S:fullPreserve;
+             30:S:fullPreserve,fullRegion;
+             34:S:fullRegion;
+             34:O:fullRegion,fullDisjoint;
+             35:S:fullRegion;
+             35:O:fullLock,fullRegion;
+             41:S:fullPreserve,fullRegion;
+             47:S:fullPreserve,fullRegion;
+             50:S:fullPreserve,fullRegion;
+             51:S:fullPreserve,fullRegion;
+             51:O:fullPreserve,fullLock,fullRegion] {pruning:|reduce2||simplify-pc}
 
 
-=> fullRegion [22:N:fullPreserve {pruning:reduce2|simpl};
-               26:N:fullNext;
-               28:N:fullPreserve;
-               33:E:fullDisjoint;
-               39:N:fullPreserve;
-               43:N:fullNext;
-               45:N:fullPreserve,fullNext;
-               49:N:fullPreserve,fullNext;
-               49:E:fullPreserve,fullNext,fullLock {pruning:reduce2|simpl}] {union:reduce2|simpl}
+=> fullLock [28:S:fullNext;
+             29:S:fullNext;
+             36:S:fullNext;
+             45:S:fullNext;
+             46:S:fullNext;
+             52:S:fullNext] {pruning:|reduce2||simplify-pc}
+
+
+=> fullDisjoint {pruning:|reduce2||simplify-pc}
+
+
+=> fullRegion [24:S:fullPreserve {pruning:|reduce2||simplify-pc};
+               28:S:fullNext;
+               30:S:fullPreserve;
+               35:O:fullDisjoint;
+               41:S:fullPreserve;
+               45:S:fullNext;
+               47:S:fullPreserve,fullNext;
+               51:S:fullPreserve,fullNext;
+               51:O:fullPreserve,fullNext,fullLock {pruning:|reduce2||simplify-pc}] {pruning:|reduce2||simplify-pc}
 
