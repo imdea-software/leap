@@ -127,7 +127,7 @@ let run (cfg:configuration_t) (query:string) : bool =
 (*  LOG "Entering run..." LEVEL TRACE; *)
   
   let tmpfile = Filename.temp_file "leap_" cfg.extension in
-  let _ = Debug.print_file_name "VC" tmpfile in
+  Debug.print_file_name "VC" tmpfile;
   let full_query = if cfg.comp_model then
                      (cfg.prequery ^ query ^ cfg.postquery)
                    else
@@ -174,8 +174,9 @@ let run (cfg:configuration_t) (query:string) : bool =
                     Buffer.add_string buf conv
                 done
               with _ -> () in
-      model := cfg.model_parser (Lexing.from_string (Buffer.contents buf)) end
-    else begin
+      if cfg.smt <> Yices then Debug.force_print_file_name "VC" tmpfile;
+      model := cfg.model_parser (Lexing.from_string (Buffer.contents buf));
+    end else begin
       verb "**** SMTExecute, no response with model obtained.\n";
       GenericModel.clear_model !model
     end

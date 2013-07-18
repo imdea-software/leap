@@ -22,6 +22,12 @@ let print_file_name (label:string) (file_name:string) : unit =
       print_endline out_str
 
 
+let force_print_file_name (label:string) (file_name:string) : unit =
+  let out_str = Printf.sprintf "%s information in file %s" label file_name
+  in
+    print_endline out_str
+
+
 let print_smt_result (sat:bool) : unit =
   if !_debug_show_tmpfile_info_ then
     if sat then

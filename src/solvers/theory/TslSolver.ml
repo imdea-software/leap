@@ -836,8 +836,30 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
       print_endline ("NC_R VARS:");
       SL.VarSet.iter (fun v -> print_endline (SL.variable_to_str v)) nc_r_level_vars;
 *)
+
+
+      if not (SL.VarSet.for_all (fun v -> GenSet.mem alpha_relev (SL.VarInt v)) panc_r_level_vars) then begin
+        print_endline ("PANC_R_LEVEL_VARS: " ^ (String.concat ";" (List.map SL.variable_to_str (SL.VarSet.elements panc_r_level_vars))));
+        print_endline ("ALPHA_RELEV: " ^ (GenSet.to_str SL.int_to_str alpha_relev));
+        print_endline ("PANC_R: " ^ (SL.conjunctive_formula_to_str panc_r));
+        print_endline ("ALPHA: " ^ (String.concat ";" (List.map (fun xs -> "[" ^ (String.concat ";" (List.map SL.int_to_str xs)) ^ "]") alpha)));
+        print_endline ("PA: " ^ (SL.conjunctive_formula_to_str pa));
+        print_endline ("PANC: " ^ (SL.conjunctive_formula_to_str panc));
+        print_endline ("NC: " ^ (SL.conjunctive_formula_to_str nc))
+      end;
+
       assert (SL.VarSet.for_all (fun v -> GenSet.mem alpha_relev (SL.VarInt v)) panc_r_level_vars);
+      if not (SL.VarSet.for_all (fun v -> GenSet.mem alpha_relev (SL.VarInt v)) nc_r_level_vars) then begin
+        print_endline ("NC_R_LEVEL_VARS: " ^ (String.concat ";" (List.map SL.variable_to_str (SL.VarSet.elements nc_r_level_vars))));
+        print_endline ("ALPHA_RELEV: " ^ (GenSet.to_str SL.int_to_str alpha_relev));
+        print_endline ("NC_R: " ^ (SL.conjunctive_formula_to_str nc_r));
+        print_endline ("ALPHA: " ^ (String.concat ";" (List.map (fun xs -> "[" ^ (String.concat ";" (List.map SL.int_to_str xs)) ^ "]") alpha)));
+        print_endline ("PA: " ^ (SL.conjunctive_formula_to_str pa));
+        print_endline ("PANC: " ^ (SL.conjunctive_formula_to_str panc));
+        print_endline ("NC: " ^ (SL.conjunctive_formula_to_str nc))
+      end;
       assert (SL.VarSet.for_all (fun v -> GenSet.mem alpha_relev (SL.VarInt v)) nc_r_level_vars);
+      List.iter (fun xs -> assert (List.length xs = 1)) alpha_r;
       (* Assertions only *)
 
       try
