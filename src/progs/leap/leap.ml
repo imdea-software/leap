@@ -19,6 +19,7 @@ let _ =
   try
     LeapArgs.parse_args();
     if !LeapArgs.verbose then LeapVerbose.enable_verbose();
+    Log.set_logFile !LeapArgs.logFile;
 
     let ch = LeapArgs.open_input () in
     let sys, undefTids = Parser.parse ch (Stmparser.system Stmlexer.norm) in
@@ -65,7 +66,7 @@ let _ =
                                          else
                                            BackendSolvers.Yices.identifier
                            let pSolver = if !LeapArgs.use_sat then
-                                           (print_endline "USE SAT!!!!";
+                                           (Log.print_cfg "use sat";
                                            BackendSolvers.Minisat.identifier)
                                          else if !LeapArgs.use_yices_plus_z3 then
                                            BackendSolvers.Yices.identifier
@@ -168,12 +169,7 @@ let _ =
       let graph = Parser.open_and_parse !LeapArgs.iGraphFile (Gparser.graph Glexer.norm) in
       let xs = LeapCore.solve_from_graph graph in
       Printf.printf "GENERATED %i\n" (List.length xs);
-(*      List.iter (fun phi -> print_endline (Expr.formula_to_str phi)) xs; *)
       ()
-
-(*
-        List.iter (fun phi -> print_endline (Expr.formula_to_str phi)) (Gen.gen_from_graph sys graph)
-*)
     end;
 
 
@@ -455,6 +451,7 @@ let _ = LeapDebug.flush()
     end;
 *)
     timer#stop;
+    Log.close();
     printf "Total Analysis time: %.3f\n" timer#elapsed_time
   with
     | Global.ParserError msg -> Interface.Err.msg "Parsing error" msg

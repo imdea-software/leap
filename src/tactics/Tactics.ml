@@ -470,15 +470,13 @@ let generic_simplify_with_many_facts (facts:'a list)
   let rec simplify_lit f =
     match f with
     | E.Literal l -> begin
-                       if List.exists (fun p -> implies p l) facts then
-                         let str = "** simplifying " ^ (E.literal_to_str l) ^ " with true" in
-                         let _   = print_endline str in
+                       if List.exists (fun p -> implies p l) facts then begin
+                         Log.print "** simplifying" ((E.literal_to_str l) ^ " with true");
                          E.True
-                       else if List.exists (fun p -> implies_not p l) facts then
-                         let str = "** simplifying " ^ (E.literal_to_str l) ^ " with false" in
-                         let _   = print_endline str in
+                       end else if List.exists (fun p -> implies_not p l) facts then begin
+                         Log.print "** simplifying" ((E.literal_to_str l) ^ " with false");
                          E.False
-                       else
+                       end else
                          E.Literal l
                      end
     | E.True           -> E.True
@@ -513,7 +511,7 @@ let get_unrepeated_literals (phi:E.formula) : E.literal list =
 (*********************)
 
 let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
-  print_endline "GEN_SUPPORT";
+  Log.print_ocaml "entering gen_support()";
   match op with
   | KeepOriginal -> info.original_support
   | RestrictSubst f ->
@@ -533,8 +531,10 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
                                               E.voc phi <> []
                                             ) split_support in
     
-      printf "UNPARAM SUPPORT: %s\n" (String.concat " ; " (List.map E.formula_to_str unparam_support));
-      printf "PARAM SUPPORT: %s\n" (String.concat " ; " (List.map E.formula_to_str param_support));
+      Log.print "gen_support unparametrized support"
+                (String.concat " ; " (List.map E.formula_to_str unparam_support));
+      Log.print "gen_support parametrized support"
+                (String.concat " ; " (List.map E.formula_to_str param_support));
     
       List.fold_left (fun xs supp_phi ->
         let supp_voc = E.voc supp_phi in
@@ -571,7 +571,7 @@ let id_support (info:vc_info) : support_t =
 (*  FORMULA TACTICS  *)
 (*********************)
 let tactic_propositional_propagate (imp:implication) : implication =
-  print_endline "Tactic propositional propagate...";
+  Log.print_ocaml "entering tactic_propositional_propagate()";
   let implies     = E.identical_literal in
   let implies_neg = E.opposite_literal in
   let rec simplify_propagate (f:implication) (used:E.literal list) : 
@@ -580,7 +580,7 @@ let tactic_propositional_propagate (imp:implication) : implication =
     let new_facts = List.filter (fun x ->
                       not (List.mem x used)
                     ) (get_unrepeated_literals f.ante) in
-    Printf.printf "New facts: %s\n" (String.concat "; " (List.map E.literal_to_str new_facts));
+    Log.print "* New facts:" (String.concat "; " (List.map E.literal_to_str new_facts));
     
     if List.length new_facts = 0 then (f,used) else
       begin
@@ -683,8 +683,9 @@ let integer_implies_neg ((v,k):E.variable * int) (l:E.literal) : bool =
 (* TODO:  perhaps optionally append back facts to the antecedent. *)
 let tactic_simplify_pc (imp:implication) : implication =
   (* 1. Search for facts of the form "pc = k" or "k = pc" *)
-  let _ = print_endline "tactic_simplify_pc invoked" in
-  Printf.printf "SIMPLIFY PC ANTE: %s\nSIMPLIFY PC CONSEQ: %s\n" (E.formula_to_str imp.ante) (E.formula_to_str imp.conseq);
+  Log.print_ocaml "entering tactic_simplify_pc";
+  Log.print "simplify_pc antecedent" (E.formula_to_str imp.ante);
+  Log.print "simplify_pc consequent" (E.formula_to_str imp.conseq);
 
   let rec get_integer_literals (f:E.formula) : ((E.variable * int) list) =
     match f with
@@ -698,11 +699,10 @@ let tactic_simplify_pc (imp:implication) : implication =
     | _                  -> []
   in
   (* DEBUG *)
-  let print_all facts = 
-    print_endline "Found pc facts:" ;
-    let str = 
-      List.fold_left (fun s (v,k) -> s ^ (sprintf "(%s=%d)" (E.variable_to_str v) k )) "" facts in
-    print_endline str
+  let print_all facts =
+    Log.print "" "Found pc facts:";
+    let str = List.fold_left (fun s (v,k) -> s ^ (sprintf "(%s=%d)" (E.variable_to_str v) k )) "" facts in
+    Log.print "" str
   in
   (* 2. Simplify the antecedent and the consequent with the facts *)
   let facts     = get_integer_literals imp.ante in
@@ -849,11 +849,14 @@ let apply_tactics (vcs:vc_info list)
                   (formula_split_tacs:formula_split_tactic_t list)
                   (formula_tacs:formula_tactic_t list)
                     : E.formula list =
+  Log.print_ocaml "entering apply_tactics()";
   let split_vc_info_list = apply_support_split_tactics vcs supp_split_tacs in
   let original_implications = apply_support_tactic split_vc_info_list supp_tac in
   let split_implications = apply_formula_split_tactics original_implications formula_split_tacs in
   let final_implications = apply_formula_tactics split_implications formula_tacs in
     List.map (fun imp ->
+      Log.print "* Resulting formula after applying tactics:"
+                (E.formula_to_str (E.Implies(imp.ante, imp.conseq)));
       E.Implies (imp.ante, imp.conseq)
     ) final_implications
 

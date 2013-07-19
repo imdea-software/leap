@@ -38,6 +38,7 @@ let group_vars        = ref false
 let use_smt           = ref false
 let dpType            = ref (DP.NoDP)
 let coType            = ref Smp.Pruning (*Smp.Dnf*)
+let logFile           = ref ""
 let invCandidate      = ref ""
 let vdFormula         = ref ""
 let supInvariant      = ref ""
@@ -134,6 +135,9 @@ let opts =
   [ ("-v",
         Arg.Set verbose,
         "verbose");
+    ("-l",
+        Arg.String (fun str -> logFile := str),
+        "output log file");
     ("-i",
         Arg.String inputInvariant,
         "invariant candidate");

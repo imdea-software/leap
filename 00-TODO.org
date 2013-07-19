@@ -255,6 +255,17 @@ Instead of calling the DP with each candidate arrangement
 		ii) ~(false -> A) and ~(A -> true) are reduced to false (ie. UNSAT)
 
 
+** [2013-07-18]
+*** Support for skiplist example
+*** Check consistency of assumptions in TSL solver
+
+
+** [2013-07-19]
+*** Continuing with the support for skiplist example
+*** Log module for Leap
+
+
+
 ** Next thing to do:
 *** Fix support generation for concurrent case. Basically
 		local variables are represented as renamed global variables (v[k] -> v_k)

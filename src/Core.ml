@@ -227,6 +227,19 @@ module Make (Opt:module type of GenOptions) : S =
         result = result;
       }
 
+    (*********************)
+    (*  PRETTY PRINTERS  *)
+    (*********************)
+
+    let proof_obligation_to_str (po:proof_obligation_t) : string =
+      Printf.sprintf
+        ("==  Proof obligation  ===================================================\n\
+          %s\n\
+          --  Obligations  --------------------------------------------------------\n\
+          %s\n\
+          =========================================================================\n")
+        (Tactics.vc_info_to_str po.vc)
+        (String.concat "\n" (List.map E.formula_to_str po.obligations))
 
 
     (*************************)
@@ -567,7 +580,10 @@ calls_counter;
 
     let solve_from_graph (graph:IGraph.t) : solved_proof_obligation_t list =
 (*        gen_from_graph graph; [] *)
-      solve_proof_obligations (gen_from_graph graph)
+
+      let proof_obligations = List.rev (gen_from_graph graph) in
+      List.iter (fun po -> print_endline (proof_obligation_to_str po)) proof_obligations;
+      solve_proof_obligations proof_obligations
 
 
   end

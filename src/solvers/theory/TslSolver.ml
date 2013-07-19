@@ -478,6 +478,9 @@ let split_into_pa_nc (cf:SL.conjunctive_formula)
           | SL.NegAtom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT(SL.IntVal _)))
           | SL.NegAtom(SL.InEq(SL.IntT(SL.IntVal _),SL.IntT(SL.VarInt _))) -> (l::pas,pancs,ncs)
             (* l1 = l2 *)
+          | SL.Atom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT(SL.VarInt _)))
+          | SL.NegAtom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT(SL.VarInt _)))
+            (* l1 != l2 *)
           | SL.Atom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT(SL.VarInt _)))
           | SL.NegAtom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT(SL.VarInt _)))
             (* l1 = l2 + 1*)
@@ -885,6 +888,24 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
                             tslk_model := TslkSol.get_model ();
                             if res then print_string "S" else print_string "X";
                             Hashtbl.add arrg_sat_table alpha_r res;
+                            if res then begin
+                              let k = List.length alpha in
+                              let module TslkSol = (val TslkSolver.choose !solver_impl k
+                                             : TslkSolver.S) in
+                              let module Trans = TranslateTsl (TslkSol.TslkExp) in
+                              let alpha_formula = alpha_to_conjunctive_formula alpha in
+                              let second_formula = SL.combine_conj_formula_list [alpha_formula;pa;panc;nc] in
+                              let ls = match second_formula with
+                                       | SL.Conj ls -> ls
+                                       | _ -> [] in
+                              let phi_tslk = Trans.to_tslk ls in
+                              let res = TslkSol.is_sat lines co phi_tslk in
+                              if res then print_string "SECOND S" else print_string "SECOND X";
+                              if res then
+                                print_endline "SECOND VERIFICATION: SAT"
+                              else
+                                print_endline "SECOND VERIFICATION: UNSAT"
+                            end;
                             res
                           end
       end

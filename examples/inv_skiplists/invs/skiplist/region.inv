@@ -28,9 +28,11 @@ invariant [skiplist_region] :
 
 /\   @insert_newCell_unconnected. -> (insert::i >= maxLevel \/ ~ insert::newCell in addr2set(heap, head, insert::i))
 
-/\   @insert_newCell_low_connected. -> ((insert::i = 0 \/ insert::newCell in addr2set(heap, head, insert::i - 1)) /\
-              insert::update[insert::i] in region
+/\   @insert_newCell_low_connected. ->
+          ((insert::i = 0 \/ insert::newCell in addr2set(heap, head, insert::i - 1)) /\
+            insert::update[insert::i] in region
              )
+
 
 ///// For update array
 
