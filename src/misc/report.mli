@@ -3,7 +3,9 @@ type inv_t = System.var_table_t * Tag.f_tag option * Expression.formula
 type results_t =int * int * int * int * int * int * int * int *
                 int * int * int * int * string
 
-type vc_status = Unverified | NotValid | Valid | Unneeded
+type vc_status = NotVerified | NotValid | IsValid | Unneeded
+
+type status_t = Unverified | Invalid | Valid of DP.t
 
 val report_generated_vcs : Tactics.vc_info list -> int -> unit
 val report_inv_cand : Expression.formula -> unit
@@ -25,3 +27,9 @@ val report_labels : System.label_table_t -> unit
 val report_details_to_file : string -> string -> string ->
                              (int * Expression.pc_t * int) -> Tag.f_tag list ->
                              bool -> (string * float) list -> unit
+
+
+val report_vc_header : int -> Tactics.vc_info -> int -> unit
+val report_vc_tail : int -> unit
+val report_obligation_header : int -> Expression.formula -> unit
+val report_obligation_tail : status_t -> float -> unit

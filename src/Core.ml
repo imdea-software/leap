@@ -116,6 +116,17 @@ module Make (Opt:module type of GenOptions) : S =
 
 
     (************************************************)
+    (*                  CONVERTERS                  *)
+    (************************************************)
+
+    let to_report_status (st:solving_status_t) : Report.status_t =
+      match st with
+      | Unverified -> Report.Unverified
+      | Invalid    -> Report.Invalid
+      | Valid dp   -> Report.Valid dp
+
+
+    (************************************************)
     (*             TAGGING INFORMATION              *)
     (************************************************)
 
@@ -448,13 +459,17 @@ module Make (Opt:module type of GenOptions) : S =
 
       let prog_lines = (System.get_trans_num Opt.sys) in
 
+      let vc_counter = ref 1 in
+
       List.map (fun case ->
         let cutoff = case.proof_info.cutoff in
-        Printf.printf "Verification of this formula requires verifying %i proofs obligations\n" (List.length case.obligations);
+        Report.report_vc_header !vc_counter case.vc (List.length case.obligations);
         case_timer#start;
+        let obligation_counter = ref 1 in
         let res_list =
               List.map (fun phi_obligation ->
                 (* TODO: Choose the right to_fol function *)
+                Report.report_obligation_header !obligation_counter phi_obligation;
                 let fol_phi = phi_obligation in
                 phi_timer#start;
                 let status =
@@ -492,13 +507,17 @@ calls_counter;
                    end in
                 (* Analyze the formula *)
                 phi_timer#stop;
-                let phi_result = new_resolution_info status (phi_timer#elapsed_time) in
-                
+                let time = phi_timer#elapsed_time in
+                Report.report_obligation_tail (to_report_status status) time;
+                incr obligation_counter;
+                let phi_result = new_resolution_info status time in
                 (phi_obligation, phi_result)
               ) case.obligations in
 
         case_timer#stop;
         let case_result = new_resolution_info Unverified (case_timer#elapsed_time) in
+        Report.report_vc_tail !vc_counter;
+        incr vc_counter;
         new_solved_proof_obligation case.vc res_list case_result
       ) to_analyze
 
@@ -573,17 +592,16 @@ calls_counter;
                              seq_spinv_with_cases supp inv cases in
         Tactics.vc_info_list_to_folder Opt.output_file vc_info_list;
         let new_obligations = generate_obligations vc_info_list plan cases in
-        Report.report_generated_vcs vc_info_list (List.length new_obligations);
+        let obligations_num = List.fold_left (fun n po ->
+                                n + (List.length po.obligations)
+                              ) 0 new_obligations in
+        Report.report_generated_vcs vc_info_list obligations_num;
           os @ new_obligations
       ) [] graph_info
 
 
     let solve_from_graph (graph:IGraph.t) : solved_proof_obligation_t list =
 (*        gen_from_graph graph; [] *)
-
-      let proof_obligations = List.rev (gen_from_graph graph) in
-      List.iter (fun po -> print_endline (proof_obligation_to_str po)) proof_obligations;
-      solve_proof_obligations proof_obligations
-
+      solve_proof_obligations (List.rev (gen_from_graph graph))
 
   end

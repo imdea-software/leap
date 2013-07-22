@@ -2,14 +2,16 @@
 open Printf
 open LeapLib
 
-module Expr = Expression
+module E = Expression
 
-type inv_t = System.var_table_t * Tag.f_tag option * Expr.formula
+type inv_t = System.var_table_t * Tag.f_tag option * E.formula
 
 type results_t = int * int * int * int * int * int * int * int *
                  int * int * int * int * string
 
-type vc_status = Unverified | NotValid | Valid | Unneeded
+type vc_status = NotVerified | NotValid | IsValid | Unneeded
+
+type status_t = Unverified | Invalid | Valid of DP.t
 
 exception Invalid_folder of string
 
@@ -30,6 +32,14 @@ let time_to_str (t:float) : string =
 
 (* Conversion of reports to string *)
 
+
+let status_to_str (st:status_t) : string =
+  match st with
+  | Unverified -> "Unverified"
+  | Invalid    -> "Invalid"
+  | Valid dp   -> "Valid (" ^DP.to_str dp^ ")"
+
+
 let report_generated_vcs_to_str (vcs:Tactics.vc_info list) (n:int) : string =
   "+- Verification condition generation ---------------------------------\n" ^
   "| Generated vcs:               " ^(string_of_int (List.length vcs))^ "\n" ^
@@ -37,9 +47,9 @@ let report_generated_vcs_to_str (vcs:Tactics.vc_info list) (n:int) : string =
   "+- Verification condition generation ---------------------------------\n"
 
 
-let report_inv_cand_to_str (inv:Expr.formula) : string =
-  let inv_str = Expr.formula_to_str inv in
-  let voc_str = String.concat ", " $ List.map Expr.tid_to_str (Expr.voc inv)
+let report_inv_cand_to_str (inv:E.formula) : string =
+  let inv_str = E.formula_to_str inv in
+  let voc_str = String.concat ", " $ List.map E.tid_to_str (E.voc inv)
   in
   "+- Invariant information ---------------------------------------------\n" ^
   "| Candidate : " ^ inv_str ^ "\n" ^
@@ -59,7 +69,7 @@ let report_to_str (sys:System.t) : string =
 let report_sup_inv_to_str (invs:inv_t list) : string =
   let num = string_of_int (List.length invs) in
   let inv_str = List.fold_left (fun str (s_vars, s_tag, s_inv) ->
-                  let phi_str = Expr.formula_to_str s_inv in
+                  let phi_str = E.formula_to_str s_inv in
                   let voc_list = System.get_var_id_list s_vars in
                   let voc_str = String.concat ", " voc_list
                   in
@@ -72,8 +82,8 @@ let report_sup_inv_to_str (invs:inv_t list) : string =
   inv_str
 
 
-let report_gen_sup_inv_to_str (gen_inv:Expr.formula) : string =
-  let inv_str = Expr.formula_to_str gen_inv
+let report_gen_sup_inv_to_str (gen_inv:E.formula) : string =
+  let inv_str = E.formula_to_str gen_inv
   in
   "+- Generated supporting invariant ------------------------------------\n" ^
   "| " ^ inv_str ^ "\n" ^
@@ -124,10 +134,10 @@ let report_vc_run_to_str (id:int) (pos_status:vc_status)  (pos_time:float)
                                   (tsl_status:vc_status)  (tsl_time:float)
                                   (desc:string) (filename:string) : string =
   let status_to_str st = match st with
-                           Unverified -> "  ?  "
-                         | NotValid   -> "  X  "
-                         | Valid      -> "  √  "
-                         | Unneeded   -> "  -  " in
+                         | NotVerified -> "  ?  "
+                         | NotValid    -> "  X  "
+                         | IsValid     -> "  √  "
+                         | Unneeded    -> "  -  " in
   let id_to_str i = sprintf "%4d " i
   in
     "|" ^ (id_to_str id) ^
@@ -147,7 +157,7 @@ let report_analysis_time_to_str (time:float) : string =
 
 let report_details_to_file_to_str (prog_name:string)
                                   (inv_name:string)
-                                  (num,trans,vers:int * Expr.pc_t * int)
+                                  (num,trans,vers:int * E.pc_t * int)
                                   (support:Tag.f_tag list)
                                   (sat:bool)
                                   (times:(string * float) list) : string =
@@ -161,6 +171,32 @@ let report_details_to_file_to_str (prog_name:string)
     prog_name inv_name num trans vers supp_str sat_str times_str
 
 
+let report_vc_header_to_str (vc_id:int) (vc:Tactics.vc_info) (num_oblig:int) : string =
+  "==  VC " ^(string_of_int vc_id)^
+  "  =================================================================\n" ^
+  (Tactics.vc_info_to_str_simple vc) ^
+  "------------------------------------------------------------------------------\n" ^
+  " VC # "^ string_of_int vc_id^
+  " requires the verification of " ^string_of_int num_oblig^ " proof obligations\n" ^
+  "------------------------------------------------------------------------------\n"
+
+
+let report_vc_tail_to_str (vc_id:int) : string =
+  "--  VC " ^(string_of_int vc_id)^
+  " results  ---------------------------------------------------------\n" ^
+  "============================================================================"
+
+
+let report_obligation_header_to_str (ob_id:int) (oblig:E.formula) : string =
+  "--  Proof obligation " ^string_of_int ob_id^
+  " --------------------------------------------------------\n" ^
+  (E.formula_to_str oblig) ^ "\n"
+
+
+let report_obligation_tail_to_str (st:status_t) (time:float) : string =
+  Printf.sprintf (" Result: %s\n Time  : %.3f\n") (status_to_str st) (time)
+
+
 (* Reporting to standard output *)
 
 
@@ -168,7 +204,7 @@ let report_generated_vcs (vcs:Tactics.vc_info list) (n:int) : unit =
   print_newline(); print_string (report_generated_vcs_to_str vcs n)
 
 
-let report_inv_cand (inv:Expr.formula) : unit =
+let report_inv_cand (inv:E.formula) : unit =
   print_newline(); print_string (report_inv_cand_to_str inv)
 
 
@@ -180,7 +216,7 @@ let report_sup_inv (invs:inv_t list) : unit =
   print_newline(); print_string (report_sup_inv_to_str invs)
 
 
-let report_gen_sup_inv (gen_inv:Expr.formula) : unit =
+let report_gen_sup_inv (gen_inv:E.formula) : unit =
   print_string (report_gen_sup_inv_to_str gen_inv)
 
 
@@ -223,7 +259,7 @@ let report_labels (tbl:System.label_table_t) : unit =
 let report_details_to_file (out_folder:string)
                            (prog_name:string)
                            (inv_name:string)
-                           (num,trans,vers:int * Expr.pc_t * int)
+                           (num,trans,vers:int * E.pc_t * int)
                            (support:Tag.f_tag list)
                            (sat:bool)
                            (times:(string * float) list) : unit =
@@ -242,3 +278,19 @@ let report_details_to_file (out_folder:string)
           sprintf "Folder \"%s\" is not a valid folder." out_folder;
         raise(Invalid_folder out_folder)
       end
+
+
+let report_vc_header (vc_id:int) (vc:Tactics.vc_info) (num_oblig:int) : unit =
+  print_newline(); print_string (report_vc_header_to_str vc_id vc num_oblig)
+
+  
+let report_vc_tail (vc_id:int) : unit =
+  print_newline(); print_string (report_vc_tail_to_str vc_id)
+
+
+let report_obligation_header (ob_id:int) (oblig:E.formula) : unit =
+  print_newline(); print_string (report_obligation_header_to_str ob_id oblig)
+
+
+let report_obligation_tail (status:status_t) (time:float) : unit =
+  print_newline(); print_string (report_obligation_tail_to_str status time)

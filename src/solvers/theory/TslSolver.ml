@@ -585,7 +585,7 @@ let guess_arrangements (cf:SL.conjunctive_formula) : (SL.integer list list)
                               | SL.NegAtom(SL.InEq(SL.IntT i1,SL.IntT i2)) -> Arr.add_eq arr i1 i2
                               | _ -> ()
                             ) ls;
-                            verb "**** TSL Solver: known information for arrangements:\n%s\n"
+                            Log.print "TSL Solver known information for arrangements"
                                   (Arr.to_str arr SL.int_to_str);
                             let arrgs = try
                                           Hashtbl.find arr_table arr
@@ -757,6 +757,8 @@ let update_arrangement (alpha:SL.integer list list) (rel_set:SL.integer GenSet.t
 
 let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
       : (bool * DP.call_tbl_t) =
+  Log.print_ocaml "entering TSLSolver dnf_sat";
+  Log.print "TSLSolver dnf_sat conjunctive formula" (SL.conjunctive_formula_to_str cf);
   let this_call_tbl = DP.new_call_tbl() in
   let arrg_sat_table : (SL.integer list list, bool) Hashtbl.t = Hashtbl.create 10 in
 
@@ -781,6 +783,12 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
             (panc:SL.conjunctive_formula)
             (nc:SL.conjunctive_formula)
             (alpha:SL.integer list list) : bool =
+    Log.print_ocaml "entering TSLSolver check";
+    Log.print "PA formula" (SL.conjunctive_formula_to_str pa);
+    Log.print "PANC formula" (SL.conjunctive_formula_to_str panc);
+    Log.print "NC formula" (SL.conjunctive_formula_to_str nc);
+    Log.print "Alpha arrangement" (String.concat ";" (List.map (fun xs -> "[" ^ (String.concat ";" (List.map SL.int_to_str xs)) ^ "]") alpha));
+
     Pervasives.flush (Pervasives.stdout);
     let alpha_phi = alpha_to_conjunctive_formula alpha in
     let pa_sat = check_pa (SL.combine_conj_formula (SL.combine_conj_formula pa panc) alpha_phi) in
@@ -792,25 +800,14 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
     if pa_sat then begin
       (* We have an arrangement candidate *)
       pumping nc;
-(*
-      print_endline ("ALPHA: " ^ (String.concat ";" (List.map (fun xs -> "[" ^ (String.concat ";" (List.map SL.int_to_str xs)) ^ "]") alpha)));
-      print_endline ("PA: " ^ (SL.conjunctive_formula_to_str pa));
-      print_endline ("PANC: " ^ (SL.conjunctive_formula_to_str panc));
-
-      print_endline ("NC: " ^ (SL.conjunctive_formula_to_str nc));
-*)
       let rel_set = relevant_levels nc in
-(*
-      print_endline ("RELEVANT LEVELS: " ^ (GenSet.to_str SL.int_to_str rel_set));
-*)
+      Log.print "Relevant levels" (GenSet.to_str SL.int_to_str rel_set);
 
       let alpha_pairs = update_arrangement alpha rel_set in
       let (panc_r, nc_r, alpha_pairs_r) = propagate_levels alpha_pairs panc nc in
-(*
-      print_endline ("PANC_R: " ^ (SL.conjunctive_formula_to_str panc_r));
-      print_endline ("NC_R: " ^ (SL.conjunctive_formula_to_str nc_r));
-*)
 
+      Log.print "PANC_R" (SL.conjunctive_formula_to_str panc_r);
+      Log.print "NC_R" (SL.conjunctive_formula_to_str nc_r);
 
       let alpha_r = List.rev (List.fold_left (fun xs (eqclass,r) ->
                                 match r with
@@ -822,11 +819,6 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
       List.iter (fun eqclass ->
         List.iter (fun e -> GenSet.add alpha_relev e) eqclass
       ) alpha_r;
-(*
-      print_endline ("ALPHA RELEVANT: " ^ (GenSet.to_str SL.int_to_str alpha_relev));
-      print_endline "rel_set:";
-      GenSet.iter (fun e -> print_endline (SL.int_to_str e)) rel_set;
-*)
 
       let rel_set_plus_zero = GenSet.copy rel_set in
       GenSet.add rel_set_plus_zero (SL.IntVal 0);
@@ -834,12 +826,7 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
       let panc_r_level_vars = SL.varset_of_sort_from_conj panc_r SL.Int in
       let nc_r_level_vars = SL.varset_of_sort_from_conj nc_r SL.Int in
 
-(*
-      print_endline ("ALPHA_RELEV: " ^ (GenSet.to_str SL.int_to_str alpha_relev));
-      print_endline ("NC_R VARS:");
-      SL.VarSet.iter (fun v -> print_endline (SL.variable_to_str v)) nc_r_level_vars;
-*)
-
+      Log.print "Alpha relevant" (GenSet.to_str SL.int_to_str alpha_relev);
 
       if not (SL.VarSet.for_all (fun v -> GenSet.mem alpha_relev (SL.VarInt v)) panc_r_level_vars) then begin
         print_endline ("PANC_R_LEVEL_VARS: " ^ (String.concat ";" (List.map SL.variable_to_str (SL.VarSet.elements panc_r_level_vars))));
@@ -888,24 +875,6 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
                             tslk_model := TslkSol.get_model ();
                             if res then print_string "S" else print_string "X";
                             Hashtbl.add arrg_sat_table alpha_r res;
-                            if res then begin
-                              let k = List.length alpha in
-                              let module TslkSol = (val TslkSolver.choose !solver_impl k
-                                             : TslkSolver.S) in
-                              let module Trans = TranslateTsl (TslkSol.TslkExp) in
-                              let alpha_formula = alpha_to_conjunctive_formula alpha in
-                              let second_formula = SL.combine_conj_formula_list [alpha_formula;pa;panc;nc] in
-                              let ls = match second_formula with
-                                       | SL.Conj ls -> ls
-                                       | _ -> [] in
-                              let phi_tslk = Trans.to_tslk ls in
-                              let res = TslkSol.is_sat lines co phi_tslk in
-                              if res then print_string "SECOND S" else print_string "SECOND X";
-                              if res then
-                                print_endline "SECOND VERIFICATION: SAT"
-                              else
-                                print_endline "SECOND VERIFICATION: UNSAT"
-                            end;
                             res
                           end
       end
@@ -939,8 +908,9 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
 let is_sat_plus_info (lines : int)
            (co : Smp.cutoff_strategy_t)
            (phi : SL.formula) : (bool * int * DP.call_tbl_t) =
-    print_endline ("Solving formula: " ^ (SL.formula_to_str phi));
+    Log.print_ocaml "entering tslsolver is_sat";
     let this_calls_tbl = DP.new_call_tbl() in
+    Log.print "TSL Solver formula to check satisfiability" (SL.formula_to_str phi);
 
     match phi with
     | SL.Not(SL.Implies(_,SL.True)) -> (false, 1, this_calls_tbl)
@@ -950,6 +920,7 @@ let is_sat_plus_info (lines : int)
     | _ -> begin
              (* STEP 1: Normalize the formula *)
              let phi_norm = SL.normalize phi in
+             Log.print "TSL Solver normalized formula" (SL.formula_to_str phi_norm);
              (* STEP 2: DNF of the normalized formula *)
              let phi_dnf = SL.dnf phi_norm in
              (* If any of the conjunctions in DNF is SAT, then phi is sat *)

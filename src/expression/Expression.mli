@@ -329,6 +329,7 @@ val var_val       : variable -> int
 
 val is_local_var  : variable -> bool
 val is_global_var : variable -> bool
+val is_pc_var     : variable -> bool
 
 val build_num_tid : int -> tid
 val build_var_tid : varId -> tid

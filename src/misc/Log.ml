@@ -26,7 +26,7 @@ let print (label:string) (str:string) : unit =
   if is_set() then begin
     let label_str = match label with
                     | "" -> ""
-                    | _  -> "** " ^ label ^ ": " in
+                    | _  -> "**" ^ label ^ ": " in
     Pervasives.output_string !out (label_str ^ str ^ "\n");
     Pervasives.flush !out
   end

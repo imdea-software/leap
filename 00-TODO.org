@@ -219,6 +219,59 @@ Instead of calling the DP with each candidate arrangement
 		branch of the tree.
 
 
+** Possible tactic for verifying huge programs.
+	 When using propagate, we would like to be able to obtain two formulas:
+
+	 i)  An forgetful formula, without the learned literals.
+
+	 ii) A unforgetful formula, for more general cases, containing also the 
+			 learned literals.
+
+	 To do this, we would like to implement a propagate_integer_basic which 
+	 returns a pair:
+
+	 i)  The forgetful formula (ie. the resulting formula without learned facts)
+
+	 ii) List of learned literals.
+
+	 The forgetful formula (for instance without information regarding PC) is just
+	 the first element of the pair, dropping the learned literals. The unforgetful
+	 formula is the concatenation of forgetful formula with the learned literals.
+	 For example, providing as input the formula:
+
+		 P /\ (P -> Q) /\ (Q /\ P -> R) /\ S -> T
+
+	 propagate_integer_basic returns the pair:
+
+		 (S -> T, (P:: Q::R))
+
+	 propagate_forgetful returns:
+
+		 (S -> T)
+
+	 propagate_unforgetful returns:
+
+		 (P/\ Q/\ R /\ S -> T)
+
+	 Notice that this idea opens the possibility for a faster implementation of
+	 the VCGen as we can codify ALL the transition system as a single big RHO in
+	 a "lazy" way as:
+
+		if (pc = 1) then rho1
+		elseif (pc = 2) then rho2
+			...
+		elseif (pc = 187635188) then rho187635188
+
+	 Hence, if in another part of the formula we have pc = 37, this big if is
+	 then simplified to rho37. We will be doing the conseqution of ALL the system
+	 in a sinhle step since we write a huge formula that includes the unfolding of
+	 "for all transition as a big disjunction".
+
+	 All this means that for programs with millions of lines, we skip the analysis
+	 of silly lines. What in proof by hands we state as: "the only offending
+	 transition is 37, so the only interesting VC is this one".
+
+
 * Progress
 
 ** [2013-07-12]
@@ -263,6 +316,15 @@ Instead of calling the DP with each candidate arrangement
 ** [2013-07-19]
 *** Continuing with the support for skiplist example
 *** Log module for Leap
+
+
+** [2013-07-22]
+*** Support ot skiplist example
+*** Improvement in the report module, to help in the trace of formula conversion
+		and validity verification
+*** Program for testing tactics smaller than applytac
+*** Fixed bug in simplify_pc tactic
+
 
 
 

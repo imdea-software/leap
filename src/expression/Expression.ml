@@ -500,6 +500,10 @@ let is_global_var (v:variable) : bool =
   not (is_local_var v)
 
 
+let is_pc_var (v:variable) : bool =
+  String.sub (var_id v) 0 3 = "pc_"
+
+
 let build_num_tid (i:int) : tid =
   VarTh (build_var ("k" ^ string_of_int i) Tid false Shared GlobalScope RealVar)
 

@@ -140,6 +140,23 @@ let vc_info_to_str (vc:vc_info) : string =
     "Line: " ^ line_str ^ "\n\n"
 
 
+let vc_info_to_str_simple (vc:vc_info) : string =
+  let to_fol = E.to_fol_formula E.PCVars in
+  let fol_supp = List.map to_fol vc.original_support in
+  let fol_tid_constraint = to_fol vc.tid_constraint in
+  let fol_rho = to_fol vc.rho in
+  let fol_goal = to_fol vc.goal in
+  let supp_str = String.concat "\n" (List.map E.formula_to_str fol_supp) in
+  let tidconst_str = E.formula_to_str fol_tid_constraint in
+  let rho_str = E.formula_to_str fol_rho in
+  let goal_str = E.formula_to_str fol_goal
+  in
+    "SUPPORT:\n" ^ supp_str ^ "\n" ^
+    "CONSTRAINT:\n" ^ tidconst_str ^ "\n" ^
+    "RHO:\n" ^ rho_str ^ "\n" ^
+    "GOAL:\n" ^ goal_str ^ "\n"
+
+
 let vc_info_list_to_folder (output_file:string) (vcs:vc_info list) : unit =
   let infoTbl = Hashtbl.create (List.length vcs) in
   List.iter (fun vc_info ->
@@ -595,12 +612,16 @@ let tactic_propositional_propagate (imp:implication) : implication =
   { ante = new_ante ; conseq = new_conseq }
 
 
-let extract_integer_eq (l:E.literal) : ((E.variable * int) option) =
+let extract_pc_integer_eq (l:E.literal) : ((E.variable * int) option) =
   match l with
-    E.Atom(E.Eq(E.VarT(v),          E.IntT(E.IntVal k))) -> Some (v,k)
-  | E.Atom(E.Eq(E.IntT(E.VarInt(v)),E.IntT(E.IntVal k))) -> Some (v,k)
-  | E.Atom(E.Eq(E.IntT(E.IntVal(k)),E.VarT(v)))           -> Some (v,k)
-  | E.Atom(E.Eq(E.IntT(E.IntVal(k)),E.IntT(E.VarInt(v)))) -> Some (v,k)
+    E.Atom(E.Eq(E.VarT(v),          E.IntT(E.IntVal k)))
+  | E.Atom(E.Eq(E.IntT(E.VarInt(v)),E.IntT(E.IntVal k)))
+  | E.Atom(E.Eq(E.IntT(E.IntVal(k)),E.VarT(v)))
+  | E.Atom(E.Eq(E.IntT(E.IntVal(k)),E.IntT(E.VarInt(v)))) ->
+      if E.is_pc_var v then
+        Some (v,k)
+      else
+        None
   | _  -> None
 
 let integer_implies ((v,k):E.variable * int) (l:E.literal) : bool =
@@ -648,17 +669,17 @@ let integer_implies_neg ((v,k):E.variable * int) (l:E.literal) : bool =
   let same (v1,k1) (v2,k2) = (E.same_var v1 v2) && (k1=k2) in
   match l with
     (* v=k -> v2=k2 *)
-    E.Atom(E.Eq(E.VarT(v2),E.IntT(E.IntVal k2)))            -> 
+    E.Atom(E.Eq(E.VarT(v2),E.IntT(E.IntVal k2)))            ->
       (E.var_sort v2)==E.Int && E.same_var v v2 && k!=k2
   |  (* v=k -> v2=k2 *)
-      E.Atom(E.Eq(E.IntT(E.VarInt(v2)),E.IntT(E.IntVal k2)))  -> 
-    E.same_var v2 v2 && k!=k2
+      E.Atom(E.Eq(E.IntT(E.VarInt(v2)),E.IntT(E.IntVal k2)))  ->
+      E.same_var v v2 && k!=k2
   | (* v=k -> k2=v2 *)
-      E.Atom(E.Eq(E.IntT(E.IntVal(k2)),E.VarT(v2)))           -> 
+      E.Atom(E.Eq(E.IntT(E.IntVal(k2)),E.VarT(v2)))           ->
       (E.var_sort v2)==E.Int && E.same_var v v2 && k!=k2
   | (* v=k -> k2=v2 *)
-      E.Atom(E.Eq(E.IntT(E.IntVal(k2)),E.IntT(E.VarInt(v2)))) -> 
-    E.same_var v v2 && k!=k2
+      E.Atom(E.Eq(E.IntT(E.IntVal(k2)),E.IntT(E.VarInt(v2)))) ->
+      E.same_var v v2 && k!=k2
   | (* v=k -> k2<v2 *)
       E.Atom(E.Less(E.IntVal(k2),E.VarInt(v2))) -> (E.same_var v v2) && not (k > k2)
   | (* v=k -> v2>k2 *)
@@ -674,7 +695,8 @@ let integer_implies_neg ((v,k):E.variable * int) (l:E.literal) : bool =
   | (* v=k -> v2<=k2 *)
       E.Atom(E.LessEq(E.VarInt(v2),E.IntVal(k2))) -> (E.same_var v v2) && not (k <= k2)
   | (* v=k -> k2>=v2 *)
-      E.Atom(E.GreaterEq(E.IntVal(k2),E.VarInt(v2))) -> (E.same_var v v2) && not (k <= k2)
+      E.Atom(E.GreaterEq(E.IntVal(k2),E.VarInt(v2))) -> (E.same_var v v2) && not 
+  (k <= k2)
   | _ -> false
 
 (* tactic_simplify_pc: *)
@@ -690,7 +712,7 @@ let tactic_simplify_pc (imp:implication) : implication =
   let rec get_integer_literals (f:E.formula) : ((E.variable * int) list) =
     match f with
       E.Literal l -> begin
-                       match (extract_integer_eq l) with
+                       match (extract_pc_integer_eq l) with
                        | Some (v,k) -> [(v,k)]
                        | None       -> []
                      end
@@ -709,6 +731,8 @@ let tactic_simplify_pc (imp:implication) : implication =
   let _ = print_all facts in
   let new_ante  = simplify (generic_simplify_with_many_facts facts integer_implies integer_implies_neg imp.ante) in
   let new_conseq = simplify (generic_simplify_with_many_facts facts integer_implies integer_implies_neg imp.conseq) in
+  Log.print "simplify_pc new antecedent" (E.formula_to_str new_ante);
+  Log.print "simplify_pc new consequent" (E.formula_to_str new_conseq);
   (* 3. Propagate propositional, if new facts are stated,
         by calling propositional_propagate *)
   tactic_propositional_propagate { ante = new_ante; conseq = new_conseq }
@@ -850,15 +874,19 @@ let apply_tactics (vcs:vc_info list)
                   (formula_tacs:formula_tactic_t list)
                     : E.formula list =
   Log.print_ocaml "entering apply_tactics()";
-  let split_vc_info_list = apply_support_split_tactics vcs supp_split_tacs in
-  let original_implications = apply_support_tactic split_vc_info_list supp_tac in
-  let split_implications = apply_formula_split_tactics original_implications formula_split_tacs in
-  let final_implications = apply_formula_tactics split_implications formula_tacs in
-    List.map (fun imp ->
-      Log.print "* Resulting formula after applying tactics:"
-                (E.formula_to_str (E.Implies(imp.ante, imp.conseq)));
-      E.Implies (imp.ante, imp.conseq)
-    ) final_implications
+  List.fold_left (fun phi_list vc ->
+    let split_vc_info_list = apply_support_split_tactics [vc] supp_split_tacs in
+    let original_implications = apply_support_tactic split_vc_info_list supp_tac in
+    let split_implications = apply_formula_split_tactics original_implications formula_split_tacs in
+    let final_implications = apply_formula_tactics split_implications formula_tacs in
+    Log.print "* From this vc_info" (vc_info_to_str vc);
+    Log.print "* Leap generated the following formulas" "";
+    let final_formulas = List.map (fun imp ->
+                           let phi = E.Implies (imp.ante, imp.conseq) in
+                           Log.print "" (E.formula_to_str phi); phi
+                         ) final_implications in
+    phi_list @ final_formulas
+  ) [] vcs
 
 
 let apply_tactics_from_proof_plan (vcs:vc_info list)
