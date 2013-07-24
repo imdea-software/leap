@@ -326,6 +326,18 @@ Instead of calling the DP with each candidate arrangement
 *** Fixed bug in simplify_pc tactic
 
 
+** [2013-07-23]
+*** Support for skiplist example
+*** Fixed bug in arrangement generation (some invalid arrangements were
+		generated.
+*** Fixed bug regarding reduction of levels to relevant ones. Level "0"
+		was always added despite not being needed in some cases.
+
+
+** [2013-07-24]
+*** Support for skiplist example
+*** Added information to results report of VC verification
+
 
 
 ** Next thing to do:

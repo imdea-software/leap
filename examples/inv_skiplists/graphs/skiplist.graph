@@ -22,7 +22,7 @@
                     38:skiplist_region_aux; // OK
                     39:skiplist_prop,skiplist_region_aux; // OK, 40 OK
                     41:skiplist_prop,levels; //
-                    42:skiplist_prop,levels,skiplist_next; //
+                    42:skiplist_prop,levels,skiplist_next,skiplist_order; //
                     43:skiplist_prop,skiplist_region_aux] {union:split-goal|reduce2|split-consequent|simplify-pc propositional-propagate} 
 // FAILS
 

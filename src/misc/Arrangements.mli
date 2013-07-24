@@ -19,6 +19,9 @@ val equal : 'a t -> 'a t -> bool
 (** [copy arr] returns a duplicate of arrangement [arr] *)
 val copy : 'a t -> 'a t
 
+(** [clear arr] clears all information contained into [arr] *)
+val clear : 'a t -> unit
+
 (** [add_elem arr a] insert a single element in the arrangement [arr]
     without any restriction *)
 val add_elem : 'a t -> 'a -> unit
@@ -80,3 +83,7 @@ val arrtree_set_to_str : ('a -> string) -> ('a list list) LeapGenericSet.t ->
 (** [arrtree_to_str f tree] returns a string representing [tree], using
     function [f] to represent each element *)
 val arrtree_to_str : ('a -> string) -> 'a arrtree -> string
+
+
+
+val test : 'a t -> ('a -> string) -> unit

@@ -181,9 +181,23 @@ let report_vc_header_to_str (vc_id:int) (vc:Tactics.vc_info) (num_oblig:int) : s
   "------------------------------------------------------------------------------\n"
 
 
-let report_vc_tail_to_str (vc_id:int) : string =
+let report_vc_tail_to_str (vc_id:int) (*(res_list:E.formula*num_oblig:int)*)  : string =
   "--  VC " ^(string_of_int vc_id)^
   " results  ---------------------------------------------------------\n" ^
+(*
+  number of proof obligations
+  number of unverified proof obligations
+  number of invalid proof obligations
+  number of valid proof obligations
+
+  fastest proof obligation
+  slowest proof obligation
+  average solving time for obligation
+  total time to verify all proof obligations
+
+  total number of guessed arrangements
+  number of calls to each DP
+*)
   "============================================================================"
 
 

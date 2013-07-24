@@ -503,6 +503,7 @@ calls_counter;
                             | DP.Tsl    -> TslSolver.print_model()
                             | DP.Tslk _ -> Tslk.print_model() in
                     add_calls calls;
+                    if (not valid) then assert false;
                     set_status valid
                    end in
                 (* Analyze the formula *)
@@ -516,7 +517,7 @@ calls_counter;
 
         case_timer#stop;
         let case_result = new_resolution_info Unverified (case_timer#elapsed_time) in
-        Report.report_vc_tail !vc_counter;
+        Report.report_vc_tail !vc_counter (*res_list*);
         incr vc_counter;
         new_solved_proof_obligation case.vc res_list case_result
       ) to_analyze

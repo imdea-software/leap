@@ -729,6 +729,7 @@ let propagate_levels (alpha_pairs:alpha_pair_t list)
                                 let lowers = keep_lower_or_equals l alpha_pairs in
                                 let lower_l = match find_highest_lower_bound l lowers with
                                               | None   -> (add_zero := true;
+                                                           Log.print "Padding" "adding zero as relevant";
                                                            elems_to_zero := l :: !elems_to_zero;
                                                            SL.IntVal 0)
                                               | Some i -> i in
@@ -737,11 +738,16 @@ let propagate_levels (alpha_pairs:alpha_pair_t list)
                         end;
                         SL.replace_terms_literal replacements lit
                       ) ls)
-                    end
+                    end in
+  Log.print "Elements to be mapped to zero" (String.concat ";" (List.map SL.int_to_str !elems_to_zero));
+  let alpha_pairs_with_zero = if !add_zero then
+                                alpha_pairs @ [(!elems_to_zero, Some (SL.IntVal 0))]
+                              else
+                                alpha_pairs
   in
     (filter_non_relevant (propagate_levels_in_conj_formula panc) alpha_relevant,
      propagate_levels_in_conj_formula nc,
-     alpha_pairs @ [(!elems_to_zero,Some (SL.IntVal 0))])
+     alpha_pairs_with_zero)
 
 
 

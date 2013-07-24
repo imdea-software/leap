@@ -54,6 +54,15 @@ let copy (arr:'a t) : 'a t =
   }
 
 
+let clear (arr:'a t) : unit =
+  GenSet.clear arr.dom;
+  arr.minimum <- None;
+  GenSet.clear arr.eqs;
+  GenSet.clear arr.ineqs;
+  Hashtbl.clear arr.order;
+  arr.leq_order <- []
+
+
 let add_elem (arr:'a t) (a:'a) : unit =
   GenSet.add arr.dom a
 
@@ -119,25 +128,6 @@ let set_minimum (arr:'a t) (a:'a) : unit =
 
 
 let rec inject_leq_info (arr:'a t) : ('a t) list =
-(*
-  let apply (f:'a t -> 'a -> 'a -> unit) (arr:'a t) (a:'a) (b:'a) (xs:('a * 'a) list): ('a t) list =
-    f arr a b;
-    arr.leq_order <- xs;
-    inject_leq_info arr in
-  match arr.leq_order with
-  | []        -> [arr]
-  | (a,b)::xs -> (apply add_order (copy arr) a b xs) @
-                 (apply add_eq    (copy arr) a b xs)
-
-
-  match arr.leq_order with
-  | [] -> [arr]
-  | (a,b)::xs -> List.fold_left (fun arrs arr ->
-                   
-                 ) [] ((add_order (copy arr) a b) @ (add_eq (copy arr) a b))
-
-  | xs ->
-*)
   let leq_order = arr.leq_order in
   let arr = copy arr in
   arr.leq_order <- [];
@@ -150,12 +140,6 @@ let rec inject_leq_info (arr:'a t) : ('a t) list =
       ar1 :: ar2 :: ys
     ) [] arrs
   ) [arr] leq_order
-
-(*
-  fold (fun arrs (a,b) ->
-          fold (fun ys arr -> apply eq arr @ apply order arr) [] arrs
-       ) [arr] xs
-*)
 
 
 let to_str (arr:'a t) (f:'a -> string) : string =
@@ -270,4 +254,11 @@ let rec arrtree_to_str (f:'a -> string) (tree:'a arrtree) : string =
   let Node(e,xs) = tree in
   "{(" ^ (String.concat "," (List.map f e))^ "):[" ^
     (String.concat ";" (List.map (arrtree_to_str f) xs))^ "]}"
- 
+
+let test (arr:'a t) (f:'a -> string) : unit =
+  Printf.printf "Original arrangement:\n%s\n\n" (to_str arr f);
+  let arr_list = inject_leq_info arr in
+  print_endline "List information";
+  List.iter (fun a -> print_endline (to_str a f)) arr_list
+
+
