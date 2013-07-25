@@ -167,8 +167,7 @@ let _ =
     if !LeapArgs.useGraph then begin
       (* We load the graph information *)
       let graph = Parser.open_and_parse !LeapArgs.iGraphFile (Gparser.graph Glexer.norm) in
-      let xs = LeapCore.solve_from_graph graph in
-      Printf.printf "GENERATED %i\n" (List.length xs);
+      let graph_solution_list = LeapCore.solve_from_graph graph in
       ()
     end;
 

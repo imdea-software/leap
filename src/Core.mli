@@ -29,11 +29,6 @@ module type S =
 
     type proof_obligation_t
 
-    type solving_status_t =
-      Unverified      |   (* The formula has not been analyzed              *)
-      Invalid         |   (* The formula is invalid                         *)
-      Valid of DP.t       (* The formula is valid                           *)
-
     type solved_proof_obligation_t
 
     val decl_tag : Tag.f_tag option -> Expression.formula -> unit

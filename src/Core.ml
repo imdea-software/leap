@@ -56,11 +56,6 @@ module type S =
 
     type proof_obligation_t
 
-    type solving_status_t =
-      Unverified      |   (* The formula has not been analyzed              *)
-      Invalid         |   (* The formula is invalid                         *)
-      Valid of DP.t       (* The formula is valid                           *)
-
     type solved_proof_obligation_t
 
     val decl_tag : Tag.f_tag option -> Expression.formula -> unit
@@ -94,36 +89,13 @@ module Make (Opt:module type of GenOptions) : S =
       }
 
 
-    type solving_status_t =
-      Unverified      |   (* The formula has not been analyzed              *)
-      Invalid         |   (* The formula is invalid                         *)
-      Valid of DP.t       (* The formula is valid                           *)
-
-
-    type resolution_info_t =
-      {
-        status : solving_status_t;
-        time : float;
-      }
-
-
     type solved_proof_obligation_t =
       {
         vc_info : Tactics.vc_info;
-        solved_obligations : (E.formula * resolution_info_t) list;
-        result : resolution_info_t;
+        solved_obligations : (E.formula * Result.info_t) list;
+        result : Result.info_t;
       }
 
-
-    (************************************************)
-    (*                  CONVERTERS                  *)
-    (************************************************)
-
-    let to_report_status (st:solving_status_t) : Report.status_t =
-      match st with
-      | Unverified -> Report.Unverified
-      | Invalid    -> Report.Invalid
-      | Valid dp   -> Report.Valid dp
 
 
     (************************************************)
@@ -221,17 +193,9 @@ module Make (Opt:module type of GenOptions) : S =
       }
 
 
-    let new_resolution_info (status:solving_status_t)
-                            (time:float) : resolution_info_t =
-      {
-        status = status;
-        time = time;
-      }
-
-
     let new_solved_proof_obligation (vc_info:Tactics.vc_info)
-                                    (solved_oblig:(E.formula * resolution_info_t) list)
-                                    (result:resolution_info_t) : solved_proof_obligation_t =
+                                    (solved_oblig:(E.formula * Result.info_t) list)
+                                    (result:Result.info_t) : solved_proof_obligation_t =
       {
         vc_info = vc_info;
         solved_obligations = solved_oblig;
@@ -257,8 +221,8 @@ module Make (Opt:module type of GenOptions) : S =
     (*  AUXILIARY FUNCTIONS  *)
     (*************************)
 
-    let set_status (res:bool) : solving_status_t =
-      if res then Valid Opt.dp else Invalid
+    let set_status (res:bool) : Result.status_t =
+      if res then Result.Valid Opt.dp else Result.Invalid
 
     
     let add_calls (n:int) : unit =
@@ -461,66 +425,71 @@ module Make (Opt:module type of GenOptions) : S =
 
       let vc_counter = ref 1 in
 
-      List.map (fun case ->
-        let cutoff = case.proof_info.cutoff in
-        Report.report_vc_header !vc_counter case.vc (List.length case.obligations);
-        case_timer#start;
-        let obligation_counter = ref 1 in
-        let res_list =
-              List.map (fun phi_obligation ->
-                (* TODO: Choose the right to_fol function *)
-                Report.report_obligation_header !obligation_counter phi_obligation;
-                let fol_phi = phi_obligation in
-                phi_timer#start;
-                let status =
-                  if Pos.is_valid prog_lines (fst (PE.keep_locations fol_phi)) 
-                    then
-                    (DP.add_dp_calls calls_counter DP.Loc 1; Valid DP.Loc)
-                  else begin
-                    let (valid, calls) =
-                      match Opt.dp with
-                      | DP.NoDP   -> (false, 0)
-                      | DP.Loc    -> (false, 0)
-                      | DP.Num    -> let num_phi = NumInterface.formula_to_int_formula fol_phi in
-                                      Num.is_valid_with_lines_plus_info prog_lines num_phi
-                      | DP.Tll    -> let tll_phi = TllInterface.formula_to_tll_formula fol_phi in
-                                     Tll.is_valid_plus_info prog_lines cutoff tll_phi
-                      | DP.Tsl    -> let tsl_phi = TSLInterface.formula_to_tsl_formula fol_phi in
-                                     let (res,tsl_calls,tslk_calls) =
-                                        TslSolver.is_valid_plus_info prog_lines cutoff tsl_phi in
-                                     DP.combine_call_table tslk_calls 
-calls_counter;
-                                     (res, tsl_calls)
-                      | DP.Tslk k -> let module TSLKIntf = TSLKInterface.Make(Tslk.TslkExp) in
-                                     let tslk_phi = TSLKIntf.formula_to_tslk_formula fol_phi in
-                                     Tslk.is_valid_plus_info prog_lines cutoff tslk_phi
-                    in
-                    let _ = match Opt.dp with
-                            | DP.NoDP   -> ()
-                            | DP.Loc    -> ()
-                            | DP.Num    -> Num.print_model()
-                            | DP.Tll    -> Tll.print_model()
-                            | DP.Tsl    -> TslSolver.print_model()
-                            | DP.Tslk _ -> Tslk.print_model() in
-                    add_calls calls;
-                    if (not valid) then assert false;
-                    set_status valid
-                   end in
-                (* Analyze the formula *)
-                phi_timer#stop;
-                let time = phi_timer#elapsed_time in
-                Report.report_obligation_tail (to_report_status status) time;
-                incr obligation_counter;
-                let phi_result = new_resolution_info status time in
-                (phi_obligation, phi_result)
-              ) case.obligations in
+      let result =
+        List.map (fun case ->
+          let cutoff = case.proof_info.cutoff in
+          let this_calls_counter = DP.new_call_tbl() in
+          Report.report_vc_header !vc_counter case.vc (List.length case.obligations);
+          case_timer#start;
+          let obligation_counter = ref 1 in
+          let res_list =
+                List.map (fun phi_obligation ->
+                  (* TODO: Choose the right to_fol function *)
+                  Report.report_obligation_header !obligation_counter phi_obligation;
+                  let fol_phi = phi_obligation in
+                  phi_timer#start;
+                  let status =
+                    if Pos.is_valid prog_lines (fst (PE.keep_locations fol_phi)) 
+                      then
+                      (DP.add_dp_calls this_calls_counter DP.Loc 1; Result.Valid DP.Loc)
+                    else begin
+                      let (valid, calls) =
+                        match Opt.dp with
+                        | DP.NoDP   -> (false, 0)
+                        | DP.Loc    -> (false, 0)
+                        | DP.Num    -> let num_phi = NumInterface.formula_to_int_formula fol_phi in
+                                        Num.is_valid_with_lines_plus_info prog_lines num_phi
+                        | DP.Tll    -> let tll_phi = TllInterface.formula_to_tll_formula fol_phi in
+                                       Tll.is_valid_plus_info prog_lines cutoff tll_phi
+                        | DP.Tsl    -> let tsl_phi = TSLInterface.formula_to_tsl_formula fol_phi in
+                                       let (res,tsl_calls,tslk_calls) =
+                                          TslSolver.is_valid_plus_info prog_lines cutoff tsl_phi in
+                                       DP.combine_call_table tslk_calls this_calls_counter;
+                                       (res, tsl_calls)
+                        | DP.Tslk k -> let module TSLKIntf = TSLKInterface.Make(Tslk.TslkExp) in
+                                       let tslk_phi = TSLKIntf.formula_to_tslk_formula fol_phi in
+                                       Tslk.is_valid_plus_info prog_lines cutoff tslk_phi
+                      in
+                      let _ = match Opt.dp with
+                              | DP.NoDP   -> ()
+                              | DP.Loc    -> ()
+                              | DP.Num    -> Num.print_model()
+                              | DP.Tll    -> Tll.print_model()
+                              | DP.Tsl    -> TslSolver.print_model()
+                              | DP.Tslk _ -> Tslk.print_model() in
+                      DP.add_dp_calls this_calls_counter Opt.dp calls;
+                      if (not valid) then assert false;
+                      set_status valid
+                     end in
+                  (* Analyze the formula *)
+                  phi_timer#stop;
+                  let time = phi_timer#elapsed_time in
+                  Report.report_obligation_tail status time;
+                  incr obligation_counter;
+                  let phi_result = Result.new_info status time in
+                  (phi_obligation, phi_result)
+                ) case.obligations in
 
-        case_timer#stop;
-        let case_result = new_resolution_info Unverified (case_timer#elapsed_time) in
-        Report.report_vc_tail !vc_counter (*res_list*);
-        incr vc_counter;
-        new_solved_proof_obligation case.vc res_list case_result
-      ) to_analyze
+          case_timer#stop;
+          let case_result = Result.new_info Result.Unverified (case_timer#elapsed_time) in
+          let res = new_solved_proof_obligation case.vc res_list case_result in
+          DP.combine_call_table this_calls_counter calls_counter;
+          Report.report_vc_tail !vc_counter case_result (List.map snd res_list) this_calls_counter;
+          incr vc_counter;
+          res
+        ) to_analyze in
+      Report.report_summary (List.map (fun r -> r.result) result) calls_counter;
+      result
 
 
 
@@ -604,5 +573,6 @@ calls_counter;
     let solve_from_graph (graph:IGraph.t) : solved_proof_obligation_t list =
 (*        gen_from_graph graph; [] *)
       solve_proof_obligations (List.rev (gen_from_graph graph))
+      
 
   end

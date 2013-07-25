@@ -335,7 +335,7 @@ Instead of calling the DP with each candidate arrangement
 
 
 ** [2013-07-24]
-*** Support for skiplist example
+*** Support for skiplist example. Finally transition 42 seems to be valid =)
 *** Added information to results report of VC verification
 
 

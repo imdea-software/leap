@@ -73,3 +73,7 @@ let add_dp_calls (tbl:call_tbl_t) (dp:t) (n:int) : unit =
 
 let combine_call_table (src_tbl:call_tbl_t) (dst_tbl:call_tbl_t) : unit =
   Hashtbl.iter (add_dp_calls dst_tbl) src_tbl
+
+
+let call_tbl_to_list (tbl:call_tbl_t) : (t * int) list =
+  List.sort Pervasives.compare (Hashtbl.fold (fun dp i xs -> (dp,i)::xs) tbl [])

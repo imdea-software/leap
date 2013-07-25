@@ -54,3 +54,9 @@ val add_dp_calls : call_tbl_t -> t -> int -> unit
 val combine_call_table : call_tbl_t -> call_tbl_t -> unit
 (** [combine_call_table src dst] extracts the information in table [src]
     and adds it to [dst] *)
+
+
+val call_tbl_to_list : call_tbl_t -> (t * int) list
+(** [call_tbl_to_list tbl] returns the information stored in [tbl] as
+    a list of pairs of decision procedures with the number of times each
+    decision procedure was called *)

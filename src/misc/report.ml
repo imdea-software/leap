@@ -33,13 +33,6 @@ let time_to_str (t:float) : string =
 (* Conversion of reports to string *)
 
 
-let status_to_str (st:status_t) : string =
-  match st with
-  | Unverified -> "Unverified"
-  | Invalid    -> "Invalid"
-  | Valid dp   -> "Valid (" ^DP.to_str dp^ ")"
-
-
 let report_generated_vcs_to_str (vcs:Tactics.vc_info list) (n:int) : string =
   "+- Verification condition generation ---------------------------------\n" ^
   "| Generated vcs:               " ^(string_of_int (List.length vcs))^ "\n" ^
@@ -181,9 +174,51 @@ let report_vc_header_to_str (vc_id:int) (vc:Tactics.vc_info) (num_oblig:int) : s
   "------------------------------------------------------------------------------\n"
 
 
-let report_vc_tail_to_str (vc_id:int) (*(res_list:E.formula*num_oblig:int)*)  : string =
-  "--  VC " ^(string_of_int vc_id)^
-  " results  ---------------------------------------------------------\n" ^
+let call_tbl_to_str (tbl:DP.call_tbl_t) : string =
+  String.concat ";  " (List.map (fun (dp,i) ->
+                        (DP.to_str dp) ^ " : " ^ (string_of_int i)
+                      ) (DP.call_tbl_to_list tbl))
+
+
+let report_vc_tail_to_str (vc_id:int)
+                          (vc_res:Result.info_t)
+                          (oblig_res_list:Result.info_t list)
+                          (calls_tbl:DP.call_tbl_t) : string =
+  let validity_tbl = DP.new_call_tbl() in
+  let (num_unverif,num_valid,num_invalid,fastest,slowest) =
+    List.fold_left (fun (n_unv,n_val,n_inv,fast,slow) info ->
+      let this_time = Result.get_time info in
+      let (n_unv',n_val',n_inv') =
+        match Result.get_status info with
+        | Result.Unverified -> (n_unv+1,n_val,n_inv)
+        | Result.Valid dp   -> (DP.add_dp_calls validity_tbl dp 1; (n_unv,n_val+1,n_inv))
+        | Result.Invalid    -> (n_unv,n_val,n_inv+1) in
+      let fast' = min fast this_time in
+      let slow' = max slow this_time
+      in
+        (n_unv',n_val',n_inv',fast',slow')
+    ) (0,0,0,9999.0,0.0) oblig_res_list in
+  let total_oblig = List.length oblig_res_list in
+  let total_time = Result.get_time vc_res in
+  let average_time = total_time /. (float_of_int total_oblig) in
+
+    "--  VC " ^string_of_int vc_id^ " results  ---------------------------------------------------------\n" ^
+    "  Proof obligations\n" ^
+    "    Total      : " ^string_of_int total_oblig^ "\n" ^
+    "    Unverified : " ^string_of_int num_unverif^ "\n" ^
+    "    Valid      : " ^string_of_int num_valid^ "\n" ^
+    "    Invalid    : " ^string_of_int num_invalid^ "\n\n" ^
+    "  Verification time for each proof obligation\n" ^
+    "    Fastest    : " ^time_to_str fastest^ "\n" ^
+    "    Slowest    : " ^time_to_str slowest^ "\n" ^
+    "    Average    : " ^time_to_str average_time^ "\n" ^
+    "    Total      : " ^time_to_str total_time^ "\n" ^
+    "  Decision procedures calls used for each proof obligation\n" ^
+    "    " ^call_tbl_to_str validity_tbl^ "\n" ^
+    "  Decision procedures calls in total for all proof obligations\n" ^
+    "    " ^call_tbl_to_str calls_tbl^ "\n" ^
+    "==========================================================================="
+        
 (*
   number of proof obligations
   number of unverified proof obligations
@@ -198,7 +233,25 @@ let report_vc_tail_to_str (vc_id:int) (*(res_list:E.formula*num_oblig:int)*)  : 
   total number of guessed arrangements
   number of calls to each DP
 *)
-  "============================================================================"
+
+
+let report_summary_to_str (vc_list:Result.info_t list)
+                          (call_tbl:DP.call_tbl_t) : string =
+    (* The put a table here *)
+    let (unver,valid,inval) = List.fold_left (fun (n_unv,n_val,n_inv) info ->
+                                match Result.get_status info with
+                                | Result.Unverified -> (n_unv+1,n_val,n_inv)
+                                | Result.Valid _    -> (n_unv,n_val+1,n_inv)
+                                | Result.Invalid    -> (n_unv,n_val,n_inv+1)
+                              ) (0,0,0) vc_list in
+    "==  Summary  ==============================================================\n" ^
+    "  Decision procedures total calls\n" ^
+    "    "^call_tbl_to_str call_tbl^"\n" ^
+    "  Generated VCS       : "^string_of_int (List.length vc_list)^"\n" ^
+    "  Not verified        : "^string_of_int unver^"\n" ^
+    "  Verified as valid   : "^string_of_int valid^"\n" ^
+    "  Remains invalid     : "^string_of_int inval^"\n" ^
+    "===========================================================================\n"
 
 
 let report_obligation_header_to_str (ob_id:int) (oblig:E.formula) : string =
@@ -207,8 +260,8 @@ let report_obligation_header_to_str (ob_id:int) (oblig:E.formula) : string =
   (E.formula_to_str oblig) ^ "\n"
 
 
-let report_obligation_tail_to_str (st:status_t) (time:float) : string =
-  Printf.sprintf (" Result: %s\n Time  : %.3f\n") (status_to_str st) (time)
+let report_obligation_tail_to_str (st:Result.status_t) (time:float) : string =
+  Printf.sprintf (" Result: %s\n Time  : %.3f\n") (Result.status_to_str st) (time)
 
 
 (* Reporting to standard output *)
@@ -298,13 +351,20 @@ let report_vc_header (vc_id:int) (vc:Tactics.vc_info) (num_oblig:int) : unit =
   print_newline(); print_string (report_vc_header_to_str vc_id vc num_oblig)
 
   
-let report_vc_tail (vc_id:int) : unit =
-  print_newline(); print_string (report_vc_tail_to_str vc_id)
+let report_vc_tail (vc_id:int)
+                   (vc_res:Result.info_t)
+                   (oblig_res_list:Result.info_t list)
+                   (calls_tbl:DP.call_tbl_t) : unit =
+  print_newline(); print_string (report_vc_tail_to_str vc_id vc_res oblig_res_list calls_tbl)
 
 
 let report_obligation_header (ob_id:int) (oblig:E.formula) : unit =
   print_newline(); print_string (report_obligation_header_to_str ob_id oblig)
 
 
-let report_obligation_tail (status:status_t) (time:float) : unit =
+let report_obligation_tail (status:Result.status_t) (time:float) : unit =
   print_newline(); print_string (report_obligation_tail_to_str status time)
+
+
+let report_summary (vc_list:Result.info_t list) (call_tbl:DP.call_tbl_t) : unit =
+  print_newline(); print_string (report_summary_to_str vc_list call_tbl)
