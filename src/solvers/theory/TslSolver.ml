@@ -456,6 +456,24 @@ module TranslateTsl (SLK : TSLKExpression.S) =
 (*******************************************)
 
 
+
+
+let try_sat_with_presburger_arithmetic (phi:SL.formula) : bool =
+(*
+  print_endline ("Trying to convert formula:\n" ^SL.formula_to_str phi^ "\n");
+  let phi_expr = SLInterf.formula_to_expr_formula phi in
+  print_endline ("Translation to Expr formula:\n" ^Expression.formula_to_str phi_expr^ "\n");
+  let phi_num = NumInterface.formula_to_int_formula phi_expr in
+  print_endline ("Translation to Num formula:\n" ^NumExpression.formula_to_str phi_num^ "\n");
+*)
+  let numSolv_id = BackendSolvers.Yices.identifier in
+  let module NumSol = (val NumSolver.choose numSolv_id : NumSolver.S) in
+  let phi_num = NumInterface.formula_to_int_formula
+                  (SLInterf.formula_to_expr_formula phi)
+  in
+    NumSol.is_sat phi_num
+
+
 let split_into_pa_nc (cf:SL.conjunctive_formula)
       : SL.conjunctive_formula *
         SL.conjunctive_formula *
@@ -772,17 +790,8 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
     match cf with
     | SL.TrueConj  -> (verb "**** check_pa: true\n"; true)
     | SL.FalseConj -> (verb "**** check_pa: false\n"; false)
-    | SL.Conj ls   ->
-        let numSolv_id = BackendSolvers.Yices.identifier in
-        let module NumSol = (val NumSolver.choose numSolv_id : NumSolver.S) in
-        let phi_num = NumInterface.formula_to_int_formula
-                        (SLInterf.formula_to_expr_formula
-                          (SL.from_conjformula_to_formula
-                            cf))
-        in
-        verb "**** TSL Solver will check satisfiability for:\n%s\n"
-                  (NumExpression.formula_to_str phi_num);
-        NumSol.is_sat phi_num in
+    | SL.Conj ls   -> try_sat_with_presburger_arithmetic
+                        (SL.from_conjformula_to_formula cf) in
 
   (* Main verification function *)
   let check (pa:SL.conjunctive_formula)
@@ -924,18 +933,22 @@ let is_sat_plus_info (lines : int)
     | SL.Implies(SL.False, _) -> (true, 1, this_calls_tbl)
     | SL.Implies(_, SL.True) -> (true, 1, this_calls_tbl)
     | _ -> begin
-             (* STEP 1: Normalize the formula *)
-             let phi_norm = SL.normalize phi in
-             Log.print "TSL Solver normalized formula" (SL.formula_to_str phi_norm);
-             (* STEP 2: DNF of the normalized formula *)
-             let phi_dnf = SL.dnf phi_norm in
-             (* If any of the conjunctions in DNF is SAT, then phi is sat *)
-             let answer = List.exists (fun psi ->
-                            let (res, call_tbl) = dnf_sat lines co psi in
-                            DP.combine_call_table call_tbl this_calls_tbl;
-                            res
-                          ) phi_dnf in
-             (answer, 1, this_calls_tbl)
+             try
+               let sat_using_num = try_sat_with_presburger_arithmetic phi in
+                 (sat_using_num, 1, this_calls_tbl)
+             with _ ->
+               (* STEP 1: Normalize the formula *)
+               let phi_norm = SL.normalize phi in
+               Log.print "TSL Solver normalized formula" (SL.formula_to_str phi_norm);
+               (* STEP 2: DNF of the normalized formula *)
+               let phi_dnf = SL.dnf phi_norm in
+               (* If any of the conjunctions in DNF is SAT, then phi is sat *)
+               let answer = List.exists (fun psi ->
+                              let (res, call_tbl) = dnf_sat lines co psi in
+                              DP.combine_call_table call_tbl this_calls_tbl;
+                              res
+                            ) phi_dnf in
+               (answer, 1, this_calls_tbl)
            end
 
 

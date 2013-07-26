@@ -339,6 +339,9 @@ Instead of calling the DP with each candidate arrangement
 *** Added information to results report of VC verification
 
 
+** [2013-07-25]
+*** Verification that skiplist of arbitrary height is valid
+
 
 ** Next thing to do:
 *** Fix support generation for concurrent case. Basically
