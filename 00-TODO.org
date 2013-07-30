@@ -343,6 +343,12 @@ Instead of calling the DP with each candidate arrangement
 *** Verification that skiplist of arbitrary height is valid
 
 
+** [2013-07-30]
+*** When normalizing a TSL formula, literals of the form (~ skiplist...) where 
+		not normalized.
+
+
+
 ** Next thing to do:
 *** Fix support generation for concurrent case. Basically
 		local variables are represented as renamed global variables (v[k] -> v_k)

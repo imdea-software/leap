@@ -735,37 +735,40 @@ let propagate_levels (alpha_pairs:alpha_pair_t list)
     | SL.TrueConj -> SL.TrueConj
     | SL.FalseConj -> SL.FalseConj
     | SL.Conj ls -> begin
-                      SL.Conj (List.map (fun lit ->
-                        begin
-                          match lit with
-                          | SL.Atom(SL.Skiplist(_,_,l,_,_))
-                          | SL.Atom(SL.Eq(_,SL.CellT(SL.MkCell(_,_,_,l))))
-                          | SL.Atom(SL.Eq(SL.CellT(SL.MkCell(_,_,_,l)),_))
-                          | SL.NegAtom(SL.InEq(_,SL.CellT(SL.MkCell(_,_,_,l))))
-                          | SL.NegAtom(SL.InEq(SL.CellT(SL.MkCell(_,_,_,l)),_)) ->
-                              if not (Hashtbl.mem replacements (SL.IntT l)) then
-                                let lowers = keep_lower_or_equals l alpha_pairs in
-                                let lower_l = match find_highest_lower_bound l lowers with
-                                              | None   -> (add_zero := true;
-                                                           Log.print "Padding" "adding zero as relevant";
-                                                           elems_to_zero := l :: !elems_to_zero;
-                                                           SL.IntVal 0)
-                                              | Some i -> i in
-                                Hashtbl.add replacements (SL.IntT l) (SL.IntT lower_l)
-                          | _ -> ()
-                        end;
-                        SL.replace_terms_literal replacements lit
-                      ) ls)
-                    end in
-  Log.print "Elements to be mapped to zero" (String.concat ";" (List.map SL.int_to_str !elems_to_zero));
+                      let result =
+                        SL.Conj (List.map (fun lit ->
+                          begin
+                            match lit with
+                            | SL.Atom(SL.Skiplist(_,_,l,_,_))
+                            | SL.Atom(SL.Eq(_,SL.CellT(SL.MkCell(_,_,_,l))))
+                            | SL.Atom(SL.Eq(SL.CellT(SL.MkCell(_,_,_,l)),_))
+                            | SL.NegAtom(SL.InEq(_,SL.CellT(SL.MkCell(_,_,_,l))))
+                            | SL.NegAtom(SL.InEq(SL.CellT(SL.MkCell(_,_,_,l)),_)) ->
+                                if not (Hashtbl.mem replacements (SL.IntT l)) then
+                                  let lowers = keep_lower_or_equals l alpha_pairs in
+                                  let lower_l = match find_highest_lower_bound l lowers with
+                                                | None   -> (add_zero := true;
+                                                             Log.print "Padding" "adding zero as relevant";
+                                                             Log.print "Padding" ("Integer " ^(SL.int_to_str l)^ " will be mapped to zero");
+                                                             elems_to_zero := l :: !elems_to_zero;
+                                                             SL.IntVal 0)
+                                                | Some i -> i in
+                                  Hashtbl.add replacements (SL.IntT l) (SL.IntT lower_l)
+                            | _ -> ()
+                          end;
+                          SL.replace_terms_literal replacements lit
+                        ) ls) in
+                        Log.print "Elements to be mapped to zero" (String.concat ";" (List.map SL.int_to_str !elems_to_zero));
+                        result
+                      end in
+  let new_panc = filter_non_relevant (propagate_levels_in_conj_formula panc) alpha_relevant in
+  let new_nc = propagate_levels_in_conj_formula nc in
   let alpha_pairs_with_zero = if !add_zero then
                                 alpha_pairs @ [(!elems_to_zero, Some (SL.IntVal 0))]
                               else
                                 alpha_pairs
   in
-    (filter_non_relevant (propagate_levels_in_conj_formula panc) alpha_relevant,
-     propagate_levels_in_conj_formula nc,
-     alpha_pairs_with_zero)
+    (new_panc, new_nc, alpha_pairs_with_zero)
 
 
 
@@ -820,6 +823,17 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
 
       let alpha_pairs = update_arrangement alpha rel_set in
       let (panc_r, nc_r, alpha_pairs_r) = propagate_levels alpha_pairs panc nc in
+      (* ERASE *)
+      print_endline ("ALPHA_PAIRS_R SIZE: " ^ (string_of_int (List.length alpha_pairs_r)));
+
+
+      let alpha_pairs_str =
+        String.concat ";" (List.map (fun (xs,mi) ->
+          (String.concat "," (List.map SL.int_to_str xs)) ^":"^ (match mi with
+                                                                 | Some i -> SL.int_to_str i
+                                                                 | None -> "None")
+        ) alpha_pairs_r) in
+      print_endline ("ALPHA_PAIRS_R: " ^ alpha_pairs_str);
 
       Log.print "PANC_R" (SL.conjunctive_formula_to_str panc_r);
       Log.print "NC_R" (SL.conjunctive_formula_to_str nc_r);
@@ -829,6 +843,9 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
                                 | None -> xs
                                 | Some relev -> [relev] :: xs
                               ) [] alpha_pairs_r) in
+      (* ERASE *)
+      print_endline ("ALPHA_R SIZE: " ^ (string_of_int (List.length alpha_r)));
+
       (* Assertions only *)
       let alpha_relev = GenSet.empty () in
       List.iter (fun eqclass ->
@@ -845,6 +862,7 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
 
       if not (SL.VarSet.for_all (fun v -> GenSet.mem alpha_relev (SL.VarInt v)) panc_r_level_vars) then begin
         print_endline ("PANC_R_LEVEL_VARS: " ^ (String.concat ";" (List.map SL.variable_to_str (SL.VarSet.elements panc_r_level_vars))));
+        print_endline ("ALPHA_RELEV: " ^ (GenSet.to_str SL.int_to_str alpha_relev));
         print_endline ("ALPHA_RELEV: " ^ (GenSet.to_str SL.int_to_str alpha_relev));
         print_endline ("PANC_R: " ^ (SL.conjunctive_formula_to_str panc_r));
         print_endline ("ALPHA: " ^ (String.concat ";" (List.map (fun xs -> "[" ^ (String.concat ";" (List.map SL.int_to_str xs)) ^ "]") alpha)));
@@ -906,11 +924,16 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
   Hashtbl.clear arr_table;
   (* Generate arrangements *)
   assert (Hashtbl.length arrg_sat_table = 0);
-  let arrgs = guess_arrangements (SL.combine_conj_formula_list [pa; panc; nc]) in
-  (* Verify if some arrangement makes the formula satisfiable *)
-  let answer = GenSet.exists (fun alpha ->
-                 check pa panc nc alpha
-               ) arrgs in
+  let answer =
+    (* If no interesting information in NC formula, then we just check PA and PANC *)
+    if nc = SL.TrueConj || nc = SL.FalseConj then
+      try_sat_with_presburger_arithmetic (SL.from_conjformula_to_formula
+                                          (SL.combine_conj_formula pa panc))
+    else begin
+      let arrgs = guess_arrangements (SL.combine_conj_formula_list [pa; panc; nc]) in
+      (* Verify if some arrangement makes the formula satisfiable *)
+      GenSet.exists (fun alpha -> check pa panc nc alpha) arrgs
+    end in
   (answer, this_call_tbl)
 
 
@@ -932,13 +955,16 @@ let is_sat_plus_info (lines : int)
     | SL.Not (SL.Implies(SL.False, _)) -> (false, 1, this_calls_tbl)
     | SL.Implies(SL.False, _) -> (true, 1, this_calls_tbl)
     | SL.Implies(_, SL.True) -> (true, 1, this_calls_tbl)
-    | _ -> begin
+    | _ -> let answer =
              try
-               let sat_using_num = try_sat_with_presburger_arithmetic phi in
-                 (sat_using_num, 1, this_calls_tbl)
-             with _ ->
+                try_sat_with_presburger_arithmetic phi
+             with _ -> begin
                (* STEP 1: Normalize the formula *)
+               (* ERASE *)
+               print_endline ("PHI: " ^ (SL.formula_to_str phi));
                let phi_norm = SL.normalize phi in
+               (* ERASE *)
+               print_endline ("NORM PHI: " ^ (SL.formula_to_str phi_norm));
                Log.print "TSL Solver normalized formula" (SL.formula_to_str phi_norm);
                (* STEP 2: DNF of the normalized formula *)
                let phi_dnf = SL.dnf phi_norm in
@@ -947,9 +973,11 @@ let is_sat_plus_info (lines : int)
                               let (res, call_tbl) = dnf_sat lines co psi in
                               DP.combine_call_table call_tbl this_calls_tbl;
                               res
-                            ) phi_dnf in
-               (answer, 1, this_calls_tbl)
-           end
+                            ) phi_dnf
+               in
+               answer
+            end in
+            (answer, 1, this_calls_tbl)
 
 
 let is_sat (lines : int)

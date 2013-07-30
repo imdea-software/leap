@@ -7,6 +7,7 @@
 
 
 // -> levels {union:|reduce2||simplify-pc}
+  // Fails T20, T25, T28... due to integer variable update
 
 -> skiplist_create
         {union:split-goal|reduce2|split-consequent|simplify-pc propositional-propagate}
