@@ -173,6 +173,7 @@ assume
 :remove_body[
                                 prev := head;
                                 curr := prev->arr[maxLevel];
+:remove_curr_in_region[
                                 i := maxLevel;
                                 while (i >= 0) do
                                   curr := prev->arr[i];
@@ -192,6 +193,7 @@ assume
 :remove_section_true[
                                   i := removeFrom;
 :remove_final_loop[
+:remove_curr_in_region]
                                   while (i >= 0) do
                                     update[i]->arr[i] := curr->arr[i]
                                     $ if (i=0) then

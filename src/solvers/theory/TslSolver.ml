@@ -439,14 +439,13 @@ module TranslateTsl (SLK : TSLKExpression.S) =
 
 
     let to_tslk (tsl_ls:SL.literal list) : SLK.formula =
-      verbstr (Interface.Msg.info "TSL CONJUNCTIVE FORMULA TO TRANSLATE"
-        (String.concat "\n" (List.map SL.literal_to_str tsl_ls)));
+      Log.print "TslSolver. Formula to translate into TSLK"
+        (String.concat "\n" (List.map SL.literal_to_str tsl_ls));
       Hashtbl.clear addrarr_tbl;
       Hashtbl.clear tidarr_tbl;
       let tslk_ps = List.map trans_literal tsl_ls in
       let tslk_phi = SLK.conj_list tslk_ps in
-      verbstr (Interface.Msg.info "OBTAINED TSLK TRANSLATED FORMULA"
-        (SLK.formula_to_str tslk_phi));
+      Log.print "TslSolver. Obtained formula in TSLK" (SLK.formula_to_str tslk_phi);
       tslk_phi
   end
 
@@ -501,15 +500,24 @@ let split_into_pa_nc (cf:SL.conjunctive_formula)
             (* l1 != l2 *)
           | SL.Atom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT(SL.VarInt _)))
           | SL.NegAtom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT(SL.VarInt _)))
-            (* l1 = l2 + 1*)
-          | SL.Atom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntAdd (SL.VarInt _, SL.IntVal 1))))
-          | SL.Atom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntAdd (SL.IntVal 1, SL.VarInt _))))
-          | SL.Atom(SL.Eq(SL.IntT(SL.IntAdd(SL.VarInt _,SL.IntVal 1)),SL.IntT(SL.VarInt _)))
-          | SL.Atom(SL.Eq(SL.IntT(SL.IntAdd(SL.IntVal 1,SL.VarInt _)),SL.IntT(SL.VarInt _)))
-          | SL.NegAtom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntAdd (SL.VarInt _, SL.IntVal 1))))
-          | SL.NegAtom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntAdd (SL.IntVal 1, SL.VarInt _))))
-          | SL.NegAtom(SL.InEq(SL.IntT(SL.IntAdd(SL.VarInt _,SL.IntVal 1)),SL.IntT(SL.VarInt _)))
-          | SL.NegAtom(SL.InEq(SL.IntT(SL.IntAdd(SL.IntVal 1,SL.VarInt _)),SL.IntT(SL.VarInt _)))
+            (* l1 = l2 + q *)
+          | SL.Atom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntAdd (SL.VarInt _, SL.IntVal _))))
+          | SL.Atom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntAdd (SL.IntVal _, SL.VarInt _))))
+          | SL.Atom(SL.Eq(SL.IntT(SL.IntAdd(SL.VarInt _,SL.IntVal _)),SL.IntT(SL.VarInt _)))
+          | SL.Atom(SL.Eq(SL.IntT(SL.IntAdd(SL.IntVal _,SL.VarInt _)),SL.IntT(SL.VarInt _)))
+          | SL.NegAtom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntAdd (SL.VarInt _, SL.IntVal _))))
+          | SL.NegAtom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntAdd (SL.IntVal _, SL.VarInt _))))
+          | SL.NegAtom(SL.InEq(SL.IntT(SL.IntAdd(SL.VarInt _,SL.IntVal _)),SL.IntT(SL.VarInt _)))
+          | SL.NegAtom(SL.InEq(SL.IntT(SL.IntAdd(SL.IntVal _,SL.VarInt _)),SL.IntT(SL.VarInt _)))
+            (* l1 = l2 - q *)
+          | SL.Atom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntSub (SL.VarInt _, SL.IntVal _))))
+          | SL.Atom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntSub (SL.IntVal _, SL.VarInt _))))
+          | SL.Atom(SL.Eq(SL.IntT(SL.IntSub(SL.VarInt _,SL.IntVal _)),SL.IntT(SL.VarInt _)))
+          | SL.Atom(SL.Eq(SL.IntT(SL.IntSub(SL.IntVal _,SL.VarInt _)),SL.IntT(SL.VarInt _)))
+          | SL.NegAtom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntSub (SL.VarInt _, SL.IntVal _))))
+          | SL.NegAtom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntSub (SL.IntVal _, SL.VarInt _))))
+          | SL.NegAtom(SL.InEq(SL.IntT(SL.IntSub(SL.VarInt _,SL.IntVal _)),SL.IntT(SL.VarInt _)))
+          | SL.NegAtom(SL.InEq(SL.IntT(SL.IntSub(SL.IntVal _,SL.VarInt _)),SL.IntT(SL.VarInt _)))
             (* l1 < l2 *) (* l1 <= l2 should not appear here after normalization *)
           | SL.Atom(SL.Less(SL.VarInt _,SL.VarInt _))
           | SL.Atom(SL.Greater(SL.VarInt _,SL.VarInt _))

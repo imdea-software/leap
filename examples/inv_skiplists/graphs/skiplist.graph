@@ -1,9 +1,9 @@
-//-> skiplist_prop [22:levels;
-//                  24:skiplist_next,levels;
-//                  41:skiplist_order,skiplist_region;
-//                  42:skiplist_order,skiplist_region,skiplist_next,skiplist_create;
-//                  61:skiplist_order,skiplist_region,skiplist_next]
-//      {union:split-goal|reduce2|split-consequent|simplify-pc propositional-propagate}
+-> skiplist_prop [22:levels;
+                  24:skiplist_next,levels;
+                  41:skiplist_order,skiplist_region;
+                  42:skiplist_order,skiplist_region,skiplist_next,skiplist_create;
+                  61:skiplist_order,skiplist_region,skiplist_next]
+      {union:split-goal|reduce2|split-consequent|simplify-pc propositional-propagate}
   // FAILS 22, 23, 24, 61
   // TAKES TIME 41, 42
 
@@ -17,32 +17,37 @@
 // DONE
 
 // To check
--> skiplist_region [1:{union:||split-consequent|simplify-pc};
-                    26:skiplist_prop_subsumes;
-                    27:skiplist_prop,skiplist_next;
-                    28:skiplist_prop,skiplist_next;
-                    29:skiplist_region_aux;
-                    30:skiplist_prop,levels,skiplist_order;
-                    32:skiplist_prop,skiplist_next,levels,skiplist_order;
-                    33:skiplist_next;
-                    36:skiplist_prop,levels,skiplist_next;
-                    38:skiplist_region_aux; // OK
-                    39:skiplist_prop,skiplist_region_aux; // OK, 40 OK
-                    41:skiplist_prop,levels; //
-                    42:skiplist_prop,levels,skiplist_next,skiplist_order; //
-                    43:skiplist_prop,skiplist_region_aux]
-        {union:split-goal|reduce2|split-consequent|simplify-pc propositional-propagate}
+//-> skiplist_region [1:{union:||split-consequent|simplify-pc};
+//                    26:skiplist_prop_subsumes;
+//                    27:skiplist_prop,skiplist_next;
+//                    28:skiplist_prop,skiplist_next;
+//                    29:skiplist_region_aux;
+//                    30:skiplist_prop,levels,skiplist_order;
+//                    32:skiplist_prop,skiplist_next,levels,skiplist_order;
+//                    33:skiplist_next;
+//                    36:skiplist_prop,levels,skiplist_next;
+//                    38:skiplist_region_aux; // OK
+//                    39:skiplist_prop,skiplist_region_aux; // OK, 40 OK
+//                    41:skiplist_prop,levels; //
+//                    42:skiplist_prop,levels,skiplist_next,skiplist_order; //
+//                    43:skiplist_prop,skiplist_region_aux]
+//        {union:split-goal|reduce2|split-consequent|simplify-pc propositional-propagate}
+  // FAILS 35, 40, 41, 43, 60
 
 
 //-> skiplist_next [23:skiplist_prop_subsumes;
-//                  35:skiplist_prop,levels,skiplist_region]
+//                  35:skiplist_prop,levels,skiplist_region;
+//                  59:skiplist_prop,skiplist_region]
 //      {union:split-goal|reduce2||simplify-pc}
   // Fails T27, T57, T59, T62
+  // DONE 27
 
 
-// -> skiplist_order [28:skiplist_prop,skiplist_next]
-//        {union:split-goal|reduce2||simplify-pc}
+// -> skiplist_order [28:skiplist_prop,skiplist_next;
+//                    41:skiplist_prop,skiplist_next,skiplist_region]
+//        {union:split-goal|reduce2|split-consequent|simplify-pc}
   // Fails 41, 60
+  // DONE 60
 
 // 28 and 41
 

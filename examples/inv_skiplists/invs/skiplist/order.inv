@@ -21,6 +21,12 @@ invariant [skiplist_order] :
 /\ (@32. \/ @33.) -> rd(heap, insert::curr).data < insert::e
 
 
+/\ (@insert_update_higher. /\ insert::i < j /\ j <= maxLevel) ->
+          (rd(heap,insert::update[j]).data < insert::e /\
+           rd(heap,rd(heap,insert::update[j]).arr[j]).data > insert::e)
+/\ (@insert_update_all_set. /\ 0 <= j /\ j <= maxLevel) ->
+          (rd(heap,insert::update[j]).data < insert::e /\
+           rd(heap,rd(heap,insert::update[j]).arr[j]).data > insert::e)
 
 /\ @42. -> (rd(heap, insert::update[insert::i]).data < rd(heap, insert::newCell).data /\
             rd(heap, rd(heap, insert::newCell).arr[insert::i]).data > rd(heap, insert::newCell).data
@@ -34,13 +40,14 @@ invariant [skiplist_order] :
 /\ @remove_section. -> rd(heap, remove::curr).data = remove::e
 
 
-/\ @61. ->  (  remove::curr != null
-            /\ (rd(heap, remove::curr).data > remove::e \/
-                rd(heap, remove::curr).data = remove::e)
-            /\ rd(heap, remove::update[remove::i]).data < remove::e
-            /\ rd(heap, remove::curr).data = remove::e
-            /\ (remove::i = maxLevel \/
-                  (rd(heap, remove::update[remove::i + 1]).data < remove::e /\
-                   rd(heap, rd(heap, remove::update[remove::i + 1]).arr[remove::i + 1]).data > remove::e))
+// THIS WAS ACTIVATED
+///\ @61. ->  (  remove::curr != null
+//            /\ (rd(heap, remove::curr).data > remove::e \/
+//                rd(heap, remove::curr).data = remove::e)
+//            /\ rd(heap, remove::update[remove::i]).data < remove::e
+//            /\ rd(heap, remove::curr).data = remove::e
+//            /\ (remove::i = maxLevel \/
+//                  (rd(heap, remove::update[remove::i + 1]).data < remove::e /\
+//                   rd(heap, rd(heap, remove::update[remove::i + 1]).arr[remove::i + 1]).data > remove::e))
 // Not sure if a need the two lines above
-            )
+//            )
