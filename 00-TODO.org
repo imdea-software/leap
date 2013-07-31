@@ -272,6 +272,13 @@ Instead of calling the DP with each candidate arrangement
 	 transition is 37, so the only interesting VC is this one".
 
 
+** We need to improve the propositional-propagate and/or the simplify-pc tactic 
+	 to let them reason when we have a fact that is a disjunction. For instance,
+	 currently if we have:
+		(pc=2 \/ pc=3 \/ pc=4) -> (pc=42 -> foo)
+	 the tactic is not capable of reducing the VC to true.
+
+
 * Progress
 
 ** [2013-07-12]
@@ -346,6 +353,14 @@ Instead of calling the DP with each candidate arrangement
 ** [2013-07-30]
 *** When normalizing a TSL formula, literals of the form (~ skiplist...) where 
 		not normalized.
+*** Modified representation of variable updates. So far we have been using
+		Expression.ArrayUp(arr,t,v) to denote an update on a parametrized variable.
+		However, when in to_fol mode, variables are not represented as arrays but a
+		single variables. Hence, I need to do this modification, otherwise an update
+		of a local variable as an array representation has no sense at all. Notice
+		that this may bring problems with parametrized examples in the future. This
+		modification is only for the time being for skiplist example, as it is a
+		sequential one.
 
 
 

@@ -5066,11 +5066,18 @@ and to_fol_expr(ops:fol_ops_t) (expr:expr_t): expr_t =
 
 and to_fol_arrays (ops:fol_ops_t) (arr:arrays) : arrays =
   match arr with
-    VarArray v       -> VarArray (ops.fol_var v)
+    VarArray v      -> VarArray (ops.fol_var v)
       (*TODO: Fix open array case for array variables *)
-  | ArrayUp(arr,t,e) -> ArrayUp(to_fol_arrays ops arr,
+      (* ALE: Translating ArrayUp to single variable update.
+              That is, v' = v{t <- a} is translated into v_prime = a.
+              This translation is done at literal level, hence this case
+              should not appear at that is why I am asserting false. *)
+  | ArrayUp(aa,t,e) -> (print_endline (arrays_to_str arr); assert false)
+(*
+                        ArrayUp(to_fol_arrays ops aa,
                                 to_fol_tid ops t,
                                 to_fol_expr ops e)
+*)
 
 
 and to_fol_addrarr (ops:fol_ops_t) (arr:addrarr) : addrarr =
@@ -5352,6 +5359,7 @@ and to_fol_atom (ops:fol_ops_t) (a:atom) : atom =
 
 
 and to_fol_literal (ops:fol_ops_t) (l:literal) : literal =
+  print_endline (literal_to_str l);
   match l with
     Atom a    -> Atom    (to_fol_atom ops a)
   | NegAtom a -> NegAtom (to_fol_atom ops a)
@@ -5382,7 +5390,30 @@ and to_fol_formula_aux (ops:fol_ops_t) (phi:formula) : formula =
   | Implies(f1,f2) -> Implies(to_fol_formula_aux ops f1, to_fol_formula_aux ops f2)
   | Iff (f1,f2)    -> Iff(to_fol_formula_aux ops f1, to_fol_formula_aux ops f2)
   | Literal l      -> begin
-                        if ops.fol_pc then
+                        let conv_lit (lit:literal) : formula =
+                          begin
+                            match lit with
+                              (* Update of a local variable of a parametrized system *)
+                            | Atom(Eq(v',ArrayT(ArrayUp(arr,t,e))))
+                            | Atom(Eq(ArrayT(ArrayUp(arr,t,e)),v'))
+                            | NegAtom(InEq(v',ArrayT(ArrayUp(arr,t,e))))
+                            | NegAtom(InEq(ArrayT(ArrayUp(arr,t,e)),v')) ->
+                                print_endline "EUREKA";
+                                let new_v' = prime_variable (var_set_param (Local t) (term_to_var v')) in
+                                let as_var = to_fol_var (inject_var_sort new_v' Bool) in
+                                begin
+                                  match to_fol_expr ops e with
+                                  | Term ter -> let s = term_sort ter in
+                                                let as_term = to_fol_term ops (var_to_term
+                                                                (inject_var_sort new_v' s)) in
+                                                eq_term as_term ter
+                                  | Formula True -> Literal (Atom (BoolVar as_var))
+                                  | Formula False -> Literal (NegAtom (BoolVar as_var))
+                                  | Formula phi -> Iff (Literal (Atom (BoolVar as_var )), phi)
+                                end
+                            | _ -> Literal(to_fol_literal ops lit)
+                          end in
+                        if ops.fol_pc then begin
                           match l with
                           | Atom(PCRange(pc1,pc2,th,p)) ->
                               let pc_var = build_pc_var p th in
@@ -5392,9 +5423,9 @@ and to_fol_formula_aux (ops:fol_ops_t) (phi:formula) : formula =
                               let pc_var = build_pc_var p th in
                                 Or (less_form (VarInt pc_var) (IntVal pc1),
                                     less_form (IntVal pc2) (VarInt pc_var))
-                          | _ -> Literal (to_fol_literal ops l)
-                        else
-                          Literal(to_fol_literal ops l)
+                          | _ -> conv_lit l
+                        end else
+                          conv_lit l
                       end
 
 
