@@ -363,6 +363,16 @@ Instead of calling the DP with each candidate arrangement
 		sequential one.
 
 
+** [2013-07-31]
+*** Fixed bug in PA/NC split function.
+*** More support for skiplist example.
+
+
+** [2013-08-01]
+*** Fixed bug in path declaration on Z3 queries of TSLK.
+*** Substitution of adr2set for path2set(getp(...)) in TSL to TSLK translation.
+		This prevent the inclusion of null as element in the region.
+
 
 ** Next thing to do:
 *** Fix support generation for concurrent case. Basically

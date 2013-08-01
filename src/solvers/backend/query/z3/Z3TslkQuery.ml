@@ -618,9 +618,11 @@ module Make (K : Level.S) : TSLK_QUERY =
     let z3_ispath_def (buf:B.t) (num_addr:int) : unit =
       B.add_string buf
         ("(define-fun check_position ((p " ^path_s^ ") (i RangeAddress)) " ^bool_s^ "\n" ^
-         "  (=> (and (is_valid_range_address i)\n" ^
+         "  (ite (and (is_valid_range_address i)\n" ^
          "           (< i (length p)))\n" ^
-         "      (= i (select (where p) (select (at p) i)))))\n");
+         "       (and (= i (select (where p) (select (at p) i)))\n" ^
+         "            (select (addrs p) (select (at p) i)))\n" ^
+         "       (not (select (addrs p) (select (at p) i)))))\n");
       B.add_string buf
         ("(define-fun ispath ((p " ^path_s^ ")) " ^bool_s^ "\n" ^
          "  (and");

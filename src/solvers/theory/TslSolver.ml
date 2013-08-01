@@ -355,8 +355,8 @@ module TranslateTsl (SLK : TSLKExpression.S) =
                       SLK.OrderList(m',a1',a2')));
                      SLK.eq_set
                       (s')
-                      (SLK.AddrToSet(m',a1',SLK.LevelVal 0))] in
-(*                      (SLK.PathToSet(SLK.GetPathAt(m',a1',a2',SLK.LevelVal 0)))] in *)
+(*                      (SLK.AddrToSet(m',a1',SLK.LevelVal 0))] in *)
+                      (SLK.PathToSet(SLK.GetPathAt(m',a1',a2',SLK.LevelVal 0)))] in
 (*
                         (SLK.Setdiff (SLK.AddrToSet(m',a1',SLK.LevelVal 0),
                                           SLK.AddrToSet(m',a2',SLK.LevelVal 0)))] in
@@ -375,11 +375,12 @@ module TranslateTsl (SLK : TSLKExpression.S) =
             xs := SLK.Implies
                     (SLK.less_level n' l',
                      SLK.subseteq
+(*
                        (SLK.AddrToSet(m',a1',SLK.LevelSucc n'))
                        (SLK.AddrToSet(m',a1',n'))) :: (!xs)
-(*
+*)
                        (SLK.PathToSet(SLK.GetPathAt(m',a1',a2',SLK.LevelSucc n')))
-                       (SLK.PathToSet(SLK.GetPathAt(m',a1',a2',n')))) :: (!xs)*)
+                       (SLK.PathToSet(SLK.GetPathAt(m',a1',a2',n')))) :: (!xs)
 (*
                        (SLK.Setdiff (SLK.AddrToSet(m',a1',SLK.LevelSucc n'), SLK.AddrToSet(m',a2',SLK.LevelSucc n')))
                        (SLK.Setdiff (SLK.AddrToSet(m',a1',n'), SLK.AddrToSet(m',a2',n')))) :: (!xs)
@@ -403,8 +404,8 @@ module TranslateTsl (SLK : TSLKExpression.S) =
                       SLK.OrderList(m',a1',a2')));
                      SLK.ineq_set
                       (s')
-                      (SLK.AddrToSet(m',a1',SLK.LevelVal 0))] in
-(*                      (SLK.PathToSet(SLK.GetPathAt(m',a1',a2',SLK.LevelVal 0)))] in *)
+(*                      (SLK.AddrToSet(m',a1',SLK.LevelVal 0))] in *)
+                      (SLK.PathToSet(SLK.GetPathAt(m',a1',a2',SLK.LevelVal 0)))] in
 (*                      (SLK.Setdiff (SLK.AddrToSet(m',a1',SLK.LevelVal 0), SLK.AddrToSet(m',a2',SLK.LevelVal 0)))] in *)
           for n = 0 to (SLK.k - 1) do
             let n' = SLK.LevelVal n in
@@ -420,13 +421,14 @@ module TranslateTsl (SLK : TSLKExpression.S) =
                     (SLK.less_level n' l',
                      SLK.Not
                       (SLK.subseteq
+(*
                         (SLK.AddrToSet(m',a1',SLK.LevelSucc n'))
                         (SLK.AddrToSet(m',a1',n')))) :: (!xs)
+*)
 
-(*
                         (SLK.PathToSet(SLK.GetPathAt(m',a1',a2',SLK.LevelSucc n')))
                         (SLK.PathToSet(SLK.GetPathAt(m',a1',a2',n'))))) :: (!xs)
-*)
+
 (*
                         (SLK.Setdiff (SLK.AddrToSet(m',a1',SLK.LevelSucc n'), SLK.AddrToSet(m',a2',SLK.LevelSucc n')))
                         (SLK.Setdiff (SLK.AddrToSet(m',a1',n'), SLK.AddrToSet(m',a2',n'))))) :: (!xs)
