@@ -2853,6 +2853,11 @@ let conj_list (bs:formula list) : formula =
   | [] -> True
   | x::xs -> List.fold_left (fun a b -> And(a,b)) x xs
 
+let disj_list (bs:formula list) : formula =
+  match bs with
+  | [] -> True
+  | x::xs -> List.fold_left (fun a b -> Or(a,b)) x xs
+
 
 let make_compatible_term_from_var (t:term) (v:variable) : term =
   match t with
@@ -3208,30 +3213,36 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
       let phi_diff = norm_literal info (Atom(InEq(SetT (VarSet s_var), SetT r))) in
       let phi_a_in_s = norm_literal info (Atom(In(a,VarSet s_var))) in
       let phi_not_subset = norm_literal info (NegAtom(SubsetEq(r,u))) in
-        Or(phi_unordered,
-        Or(And(eq_path p (GetPath(VarMem m_var,VarAddr a1_var,VarAddr a2_var,VarInt zero)),
-           And(eq_set r (PathToSet(p)), phi_diff)),
-        Or(Literal(Atom(Less(VarInt i_var, VarInt  zero))),
-        Or(And(phi_a_in_s,
-           And(eq_cell c (CellAt(VarMem m_var,a)),
-           And(eq_cell c (MkCell(e,aa,tt,l1)),
-               Literal(Atom(Less(VarInt i_var,l1)))))),
-        Or(And(ineq_int (VarInt i_var) (VarInt zero),
-           And(Literal(Atom(LessEq(VarInt zero,l2))),
-           And(Literal(Atom(LessEq(l2,l1))),
-           And(eq_cell c (CellAt(VarMem m_var,VarAddr a2_var)),
-           And(eq_cell c (MkCell(e,aa,tt,l1)),
-           And(eq_addr a (AddrArrRd(aa,l2)),
-               ineq_addr a (VarAddr null))))))),
-           And(ineq_int (VarInt i_var) (VarInt zero),
-           And(Literal(Atom(LessEq(VarInt zero,l1))),
-           And(Literal(Atom(Less(l1,VarInt i_var))),
-           And(eq_int (l2) (IntAdd(l1,IntVal 1)),
-           And(eq_path (p) (GetPath(VarMem m_var,VarAddr a1_var,VarAddr a2_var,l1)),
-           And(eq_path (q) (GetPath(VarMem m_var,VarAddr a1_var,VarAddr a2_var,l2)),
-           And(eq_set (r) (PathToSet p),
-           And(eq_set (u) (PathToSet q),
-               phi_not_subset)))))))))))))
+        disj_list
+          [phi_unordered;
+           conj_list [eq_path p (GetPath(VarMem m_var,VarAddr a1_var,VarAddr a2_var,VarInt zero));
+                      eq_set r (PathToSet(p));
+                      phi_diff];
+           Literal(Atom(Less(VarInt i_var, VarInt  zero)));
+(*
+           conj_list [phi_a_in_s;
+                      eq_cell c (CellAt(VarMem m_var,a));
+                      eq_cell c (MkCell(e,aa,tt,l1));
+                      Literal(Atom(Less(VarInt i_var,l1)))];
+*)
+           conj_list [ineq_int (VarInt i_var) (VarInt zero);
+                      Literal(Atom(LessEq(VarInt zero,l2)));
+                      Literal(Atom(LessEq(l2,l1)));
+                      eq_cell c (CellAt(VarMem m_var,VarAddr a2_var));
+                      eq_cell c (MkCell(e,aa,tt,l1));
+                      Literal(Atom(LessEq(l1, (VarInt i_var))));
+                      eq_addr a (AddrArrRd(aa,l2));
+                      ineq_addr a (VarAddr null)];
+           conj_list [ineq_int (VarInt i_var) (VarInt zero);
+                      Literal(Atom(LessEq(VarInt zero,l1)));
+                      Literal(Atom(Less(l1,VarInt i_var)));
+                      eq_int (l2) (IntAdd(l1,IntVal 1));
+                      eq_path (p) (GetPath(VarMem m_var,VarAddr a1_var,VarAddr a2_var,l1));
+                      eq_path (q) (GetPath(VarMem m_var,VarAddr a1_var,VarAddr a2_var,l2));
+                      eq_set (r) (PathToSet p);
+                      eq_set (u) (PathToSet q);
+                      phi_not_subset]
+          ]
   | NegAtom a -> Literal(NegAtom (norm_atom a))
 
 
@@ -3438,6 +3449,32 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
       let phi_diff = norm_literal info (Atom(InEq(SetT (VarSet s_var), SetT r))) in
       let phi_a_in_s = norm_literal info (Atom(In(a,VarSet s_var))) in
       let phi_not_subset = norm_literal info (NegAtom(SubsetEq(r,u))) in
+        disj_list
+          [(*phi_unordered;*)
+           conj_list [eq_path p (GetPath(VarMem m_var,VarAddr a1_var,VarAddr a2_var,VarInt zero));
+                      eq_set r (PathToSet(p));
+                      phi_diff];
+           Literal(Atom(Less(VarInt i_var, VarInt  zero)));
+           conj_list [phi_a_in_s; eq_cell c (CellAt(VarMem m_var,a));
+                      eq_cell c (MkCell(e,aa,tt,l1)); Literal(Atom(Less(VarInt i_var,l1)))];
+           conj_list [ineq_int (VarInt i_var) (VarInt zero);
+                      Literal(Atom(LessEq(VarInt zero,l2)));
+                      Literal(Atom(LessEq(l2,l1)));
+                      eq_cell c (CellAt(VarMem m_var,VarAddr a2_var));
+                      eq_cell c (MkCell(e,aa,tt,l1));
+                      eq_addr a (AddrArrRd(aa,l2));
+                      ineq_addr a (VarAddr null)];
+           conj_list [ineq_int (VarInt i_var) (VarInt zero);
+                      Literal(Atom(LessEq(VarInt zero,l1)));
+                      Literal(Atom(Less(l1,VarInt i_var)));
+                      eq_int (l2) (IntAdd(l1,IntVal 1));
+                      eq_path (p) (GetPath(VarMem m_var,VarAddr a1_var,VarAddr a2_var,l1));
+                      eq_path (q) (GetPath(VarMem m_var,VarAddr a1_var,VarAddr a2_var,l2));
+                      eq_set (r) (PathToSet p);
+                      eq_set (u) (PathToSet q);
+                      phi_not_subset]
+          ]
+(*
         Or(phi_unordered,
         Or(And(eq_path p (GetPath(VarMem m_var,VarAddr a1_var,VarAddr a2_var,VarInt zero)),
            And(eq_set r (PathToSet(p)), phi_diff)),
@@ -3462,6 +3499,7 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
            And(eq_set (r) (PathToSet p),
            And(eq_set (u) (PathToSet q),
                phi_not_subset)))))))))))))
+*)
 
 
   (* All these are normalized, I just need to ensure inside terms are variables *)

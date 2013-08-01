@@ -616,6 +616,16 @@ module Make (K : Level.S) : TSLK_QUERY =
     (*           (check_position p 4)      *)
     (*           (check_position p 5))))   *)
     let z3_ispath_def (buf:B.t) (num_addr:int) : unit =
+      let str = ref "empty" in
+      for i=0 to num_addr do
+        str := "(setunion \n                            " ^
+                !str ^ "\n                               (addr_in_path p " ^string_of_int i^ "))"
+      done;
+      B.add_string buf
+        ("(define-fun addr_in_path ((p " ^path_s^ ") (i RangeAddress)) " ^set_s^ "\n" ^
+         "  (ite (and (<= 0 i) (<= i (length p)))\n" ^
+         "       (singleton (select (at p) i))\n" ^
+         "       empty))\n");
       B.add_string buf
         ("(define-fun check_position ((p " ^path_s^ ") (i RangeAddress)) " ^bool_s^ "\n" ^
          "  (ite (and (is_valid_range_address i)\n" ^
@@ -628,7 +638,8 @@ module Make (K : Level.S) : TSLK_QUERY =
          "  (and");
       for i=0 to num_addr do
         B.add_string buf
-          ("\n          (check_position p " ^ (string_of_int i) ^ ")")
+          ("\n          (and (check_position p " ^ (string_of_int i) ^ ")\n" ^
+           "               (= (addrs p) " ^ !str ^ "))\n")
       done ;
       B.add_string buf "))\n"
 
@@ -1151,10 +1162,7 @@ module Make (K : Level.S) : TSLK_QUERY =
       if List.mem Expr.Set     req_sorts then z3_set_preamble buf ;
       if List.mem Expr.SetTh   req_sorts then z3_setth_preamble buf ;
       if List.mem Expr.SetElem req_sorts then z3_setelem_preamble buf ;
-      if List.mem Expr.Path    req_sorts then begin
-                                                z3_path_preamble buf num_addr ;
-                                                z3_ispath_def buf num_addr
-                                              end;
+      if List.mem Expr.Path    req_sorts then z3_path_preamble buf num_addr ;
       if List.mem Expr.Unknown req_sorts then z3_unknown_preamble buf ;
       z3_pos_preamble buf
       
@@ -1209,7 +1217,8 @@ module Make (K : Level.S) : TSLK_QUERY =
         end;
       (* OrderedList *)
       if List.mem Expr.OrderedList req_ops then z3_orderlist_def buf num_addr ;
-      (* Path2set *)
+      (* Path2set and is_path *)
+      if List.mem Expr.Path req_sorts then z3_ispath_def buf num_addr ;
       if List.mem Expr.Path2Set req_ops then z3_path2set_def buf ;
       (* Sets of Threads *)
       if List.mem Expr.SetTh req_sorts then

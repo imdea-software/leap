@@ -6,6 +6,7 @@
       {union:split-goal|reduce2|split-consequent|simplify-pc propositional-propagate}
   // FAILS 22, 23, 24, 61
   // TAKES TIME 41, 42
+  // DONE 22, 23,
 
 
 // -> levels
