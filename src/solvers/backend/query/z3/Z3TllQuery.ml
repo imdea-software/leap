@@ -581,17 +581,30 @@ struct
   (*           (check_position p 4)      *)
   (*           (check_position p 5))))   *)
   let z3_ispath_def buf num_addr =
+    let str = ref "empty" in
+    for i=0 to num_addr do
+      str := "(setunion \n                            " ^
+              !str ^ "\n                               (addr_in_path p " ^string_of_int i^ "))"
+    done;
+    B.add_string buf
+      ("(define-fun addr_in_path ((p " ^path_s^ ") (i RangeAddress)) " ^set_s^ "\n" ^
+       "  (ite (and (<= 0 i) (<= i (length p)))\n" ^
+       "       (singleton (select (at p) i))\n" ^
+       "       empty))\n");
     B.add_string buf
       ("(define-fun check_position ((p " ^path_s^ ") (i RangeAddress)) " ^bool_s^ "\n" ^
-       "  (=> (and (is_valid_range_address i)\n" ^
+       "  (ite (and (is_valid_range_address i)\n" ^
        "           (< i (length p)))\n" ^
-       "      (= i (select (where p) (select (at p) i)))))\n");
+       "       (and (= i (select (where p) (select (at p) i)))\n" ^
+       "            (select (addrs p) (select (at p) i)))\n" ^
+       "       (not (select (addrs p) (select (at p) i)))))\n");
     B.add_string buf
       ("(define-fun ispath ((p " ^path_s^ ")) " ^bool_s^ "\n" ^
        "  (and");
     for i=0 to num_addr do
       B.add_string buf
-        ("\n          (check_position p " ^ (string_of_int i) ^ ")")
+        ("\n          (and (check_position p " ^ (string_of_int i) ^ ")\n" ^
+         "               (= (addrs p) " ^ !str ^ "))\n")
     done ;
     B.add_string buf "))\n"
 

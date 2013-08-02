@@ -100,7 +100,7 @@ let _ =
 
 
   (** Example 6 **)
-
+(*
   Arr.clear arr;
   Arr.add_elem arr "int1";
   Arr.add_elem arr "int2";
@@ -119,6 +119,7 @@ let _ =
   Arr.add_less arr "maxlevel" "j";
   Arr.add_less arr "int1" "maxlevel";
   Arr.add_less arr "lvl" "maxlevel";
+*)
 
 (*
     Domain : {maxlevel;int1;int2;j;i_k0;lvl}
@@ -129,6 +130,67 @@ let _ =
     <=     : {}
 *)
 
+  (** Example 7 **)
+(*
+  Arr.clear arr;
+  Arr.add_elem arr "A";
+  Arr.add_elem arr "B";
+  Arr.add_elem arr "C";
+
+  Arr.add_followed_by arr "A" "B";
+*)
+
+
+  (** Example 8 **)
+(*
+  Arr.clear arr;
+
+  Arr.add_elem arr "int3";
+  Arr.add_elem arr "i";
+  Arr.add_elem arr "i_prime";
+  Arr.add_elem arr "int1";
+(*  Arr.add_elem arr "int2"; *)
+(*  Arr.add_elem arr "j"; *)
+(*  Arr.add_elem arr "maxLevel"; *)
+
+(*  Arr.set_minimum arr "int2"; *)
+
+(*  Arr.add_less arr "i" "i_prime"; *)
+  Arr.add_less arr "i" "int3";
+(*  Arr.add_less arr "i_prime" "maxLevel"; *)
+  Arr.add_less arr "int1" "i";
+
+(*  Arr.add_lesseq arr "int2" "maxLevel"; *)
+
+  Arr.add_followed_by arr "i" "i_prime";
+(*  Arr.add_followed_by arr "i" "int3"; *)
+(*  Arr.add_followed_by arr "int1" "i"; *)
+*)
+
+(*
+    Domain : {$int_3;insert_i_k_0;insert_i_prime_k_0;$int_1;$int_2;j;maxLevel}
+    Minimum: $int_2
+    Eqs    : {}
+    Ineqs  : {}
+    Order  : {insert_i_k_0<insert_i_prime_k_0;insert_i_k_0<$int_3;insert_i_prime_k_0<maxLevel;$int_1<insert_i_k_0}
+    <=     : {$int_2<=maxLevel}
+    succ   : {insert_i_k_0->insert_i_prime_k_0;insert_i_k_0->$int_3;$int_1->insert_i_k_0}
+*)
+
+
+  (** Example 9 **)
+
+  Arr.clear arr;
+
+  Arr.add_elem arr "D";
+  Arr.add_elem arr "B";
+  Arr.add_elem arr "C";
+  Arr.add_elem arr "A";
+
+  Arr.add_less arr "B" "D";
+  Arr.add_less arr "A" "B";
+
+  Arr.add_followed_by arr "B" "C";
 
 
 

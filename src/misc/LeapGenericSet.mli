@@ -49,6 +49,10 @@ val union : 'a t -> 'a t -> 'a t
     [s1] and [s2] *)
 val inter : 'a t -> 'a t -> 'a t
 
+(** [diff s1 s2] returns the set resulting from the difference between
+    [s1] and [s2] *)
+val diff : 'a t -> 'a t -> 'a t
+
 (** [from_list xs] generates a new set from the elements in list [xs] *)
 val from_list : 'a list -> 'a t
 

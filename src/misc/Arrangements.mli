@@ -54,6 +54,10 @@ val add_lesseq : 'a t -> 'a -> 'a -> unit
     arrangement [arr], stating that [a] is greater or equal than [b] *)
 val add_greatereq : 'a t -> 'a -> 'a -> unit
 
+(** [add_followed_by arr a b] adds to arrangement [arr] the information that
+    element [a] should be immediately followed by element [b] *)
+val add_followed_by : 'a t -> 'a -> 'a -> unit
+
 (** [set_minimum arr a] forces [a] to be the minimum element in arrangement
     [arr] *)
 val set_minimum : 'a t -> 'a -> unit
@@ -87,3 +91,4 @@ val arrtree_to_str : ('a -> string) -> 'a arrtree -> string
 
 
 val test : 'a t -> ('a -> string) -> unit
+val debug_f : ('a -> string) -> unit

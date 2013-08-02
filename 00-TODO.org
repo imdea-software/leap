@@ -374,6 +374,13 @@ Instead of calling the DP with each candidate arrangement
 		This prevent the inclusion of null as element in the region.
 
 
+** [2013-08-02]
+*** Some VCs for skiplist solved
+*** Added to arrangements the feature to denote that a certain element should be
+		in the immediately following equivalence class of another element when
+		constructing the arrangement.
+
+
 ** Next thing to do:
 *** Fix support generation for concurrent case. Basically
 		local variables are represented as renamed global variables (v[k] -> v_k)
@@ -383,6 +390,25 @@ Instead of calling the DP with each candidate arrangement
 *** Connect back the report module, so we have clear information whenever a
 		transition is valid or invalid.
 *** Finish with the support for Skiplist example.
+
+* Thesis
+
+** When translating ~skiplist, we convert it into a disjunction of conjunctions.  
+	 One of such disjunction asserts that tail points at some level to an address
+	 different than NULL. This is something of the form:
+
+			0 = fresh_int1 /\
+
+			maxLevel != fresh_int1 /\
+			fresh_int1 <= fresh_int3 /\ fresh_int3 <= fresh_int2 /\
+
+			fresh_cell = heap_prime[tail] /\
+			fresh_cell = mkcell (fresh_elem, fresh_addrarr, fresh_int2) /\
+			fresh_addr = fresh_addrarr[fresh_int3] /\
+			fresh_addr != null
+
+	 We should also assert that fresh_int2 is in fact bounded by maxLevel, so that
+	 tail is pointing to a non null address on a valid level.
 
 
 

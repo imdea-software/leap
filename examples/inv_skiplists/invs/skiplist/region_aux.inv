@@ -5,9 +5,11 @@ int j
 
 invariant [skiplist_region_aux] :
 
-   @38. -> insert::update[j] in region
+  true
 
-/\ @39. -> (insert::update[j] in region /\ insert::update[0] in region)
+//   @38. -> insert::update[j] in region
 
-/\ @43. -> (insert::update[insert::i + 1] in region /\ insert::update[j] in region)
+///\ @39. -> (insert::update[j] in region /\ insert::update[0] in region)
+
+// /\ @43. -> (insert::update[insert::i + 1] in region /\ insert::update[j] in region)
 

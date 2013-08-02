@@ -89,6 +89,12 @@ let inter (s:'a t) (r:'a t) : 'a t =
       s_new
 
 
+let diff (s:'a t) (r:'a t) : 'a t =
+  let s_new = empty () in
+  iter (fun e -> if not (mem r e) then add s_new e) s;
+  s_new
+
+
 let from_list (xs:'a list) : 'a t =
   let s = empty () in
   let _ =  List.iter (fun e -> add s e) xs in

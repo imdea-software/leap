@@ -10,6 +10,7 @@ type 'a t = {
               eqs               : ('a * 'a) GenSet.t;
               ineqs             : ('a * 'a) GenSet.t;
               order             : ('a, 'a) Hashtbl.t;
+              succ              : ('a, 'a) Hashtbl.t;
               mutable leq_order : ('a * 'a) list;
             }
 
@@ -27,6 +28,7 @@ let empty (stc:bool) : 'a t =
     eqs = GenSet.empty ();
     ineqs = GenSet.empty ();
     order = Hashtbl.create 10;
+    succ = Hashtbl.create 10;
     leq_order = [];
   }
 
@@ -38,6 +40,7 @@ let equal (arr1:'a t) (arr2:'a t) : bool =
   GenSet.equal arr1.eqs arr2.eqs &&
   GenSet.equal arr1.ineqs arr2.ineqs &&
   arr1.order = arr2.order &&
+  arr1.succ = arr2.succ &&
   List.for_all (fun e -> List.mem e arr2.leq_order) arr1.leq_order &&
   List.for_all (fun e -> List.mem e arr1.leq_order) arr2.leq_order
 
@@ -50,6 +53,7 @@ let copy (arr:'a t) : 'a t =
     eqs = GenSet.copy arr.eqs;
     ineqs = GenSet.copy arr.ineqs;
     order = Hashtbl.copy arr.order;
+    succ = Hashtbl.copy arr.succ;
     leq_order = arr.leq_order;
   }
 
@@ -60,6 +64,7 @@ let clear (arr:'a t) : unit =
   GenSet.clear arr.eqs;
   GenSet.clear arr.ineqs;
   Hashtbl.clear arr.order;
+  Hashtbl.clear arr.succ;
   arr.leq_order <- []
 
 
@@ -123,6 +128,20 @@ let add_greatereq (arr:'a t) (a:'a) (b:'a) : unit =
   add_lesseq arr b a
 
 
+let add_followed_by (arr:'a t) (a:'a) (b:'a) : unit =
+  if proceed arr a b then
+    begin
+      if not (List.mem b (Hashtbl.find_all arr.succ a)) then
+        begin
+          GenSet.add arr.dom a;
+          GenSet.add arr.dom b;
+          add_less arr a b;
+          Hashtbl.add arr.succ a b
+        end
+    end
+
+
+
 let set_minimum (arr:'a t) (a:'a) : unit =
   arr.minimum <- Some a
 
@@ -148,12 +167,14 @@ let to_str (arr:'a t) (f:'a -> string) : string =
   let ineq_list = GenSet.fold (fun (a,b) xs -> ((f a) ^"!="^ (f b)) :: xs) arr.ineqs [] in
   let order_list = Hashtbl.fold (fun a b xs -> ((f a) ^"<"^ (f b)) :: xs) arr.order [] in
   let leq_order_list = List.fold_left (fun xs (a,b) -> ((f a) ^"<="^ (f b)) :: xs) [] arr.leq_order in
+  let succ_list = Hashtbl.fold (fun a b xs -> ((f a) ^"->"^ (f b)) :: xs) arr.succ [] in
   "Domain : {" ^ (String.concat ";" dom_list) ^ "}\n" ^
   "Minimum: " ^ (Option.map_default f "" arr.minimum) ^ "\n" ^
   "Eqs    : {" ^ (String.concat ";" eq_list) ^ "}\n" ^
   "Ineqs  : {" ^ (String.concat ";" ineq_list) ^ "}\n" ^
   "Order  : {" ^ (String.concat ";" order_list) ^ "}\n" ^
-  "<=     : {" ^ (String.concat ";" leq_order_list) ^ "}\n"
+  "<=     : {" ^ (String.concat ";" leq_order_list) ^ "}\n" ^
+  "succ   : {" ^ (String.concat ";" succ_list) ^ "}"
 
 
 let to_id_order (arr:'a t) (p:'a Partition.t) : eqclass_order_t =
@@ -180,17 +201,27 @@ let well_defined_order (arr:'a t) (p:'a Partition.t) : bool =
 
 
 let rec build_cand_tree (graph:eqclass_order_t)
-                        (avail:int GenSet.t)
+                        (follows:(int, int) Hashtbl.t)
+                        (initial_elems:int GenSet.t)
+                        (all_elems:int GenSet.t)
                         (p:'a Partition.t) : 'a arrtree list =
-  GenSet.fold (fun id xs ->
-    let codom = try Hashtbl.find graph id with _ -> GenSet.empty () in
-    if GenSet.inter codom avail = (GenSet.empty ()) then
-      let avail' = GenSet.copy avail in
-      GenSet.remove avail' id;
-      Node (Partition.elems p id, build_cand_tree graph avail' p) :: xs
-    else
-      xs
-  ) avail []
+  let rec build_aux (avail:int GenSet.t) (all_avail:int GenSet.t) : 'a arrtree list =
+    GenSet.fold (fun id xs ->
+      let codom = try Hashtbl.find graph id with _ -> GenSet.empty () in
+      if (GenSet.mem avail id && GenSet.inter codom all_avail = (GenSet.empty ())) then
+        begin
+          let all_avail' = GenSet.copy all_avail in
+          GenSet.remove all_avail' id;
+          let avail' = match Hashtbl.find_all follows id with
+                       | [] -> all_avail'
+                       | ys -> GenSet.inter all_avail' (GenSet.from_list ys) in
+          Node (Partition.elems p id, build_aux avail' all_avail') :: xs
+        end
+      else
+        xs
+    ) all_avail []
+  in
+    build_aux initial_elems all_elems
 
 
 let gen_arrtrees (arr:'a t) : 'a arrtree list =
@@ -220,7 +251,17 @@ let gen_arrtrees (arr:'a t) : 'a arrtree list =
     ) cands;
   *)
     List.fold_left (fun xs (p,id_graph) ->
-      (build_cand_tree id_graph (GenSet.from_list (Partition.keys p)) p) @ xs
+      let all_avail = (GenSet.from_list (Partition.keys p)) in
+      let prev_ids = Hashtbl.create (Hashtbl.length arr.succ) in
+      let have_successor = GenSet.empty() in
+      Hashtbl.iter (fun a b ->
+        let a_id = Partition.id p a in
+        let b_id = Partition.id p b in
+        Hashtbl.add prev_ids b_id a_id;
+        GenSet.add have_successor a_id
+      ) arr.succ;
+      let initial_avail = GenSet.diff all_avail have_successor in
+      (build_cand_tree id_graph prev_ids initial_avail all_avail p) @ xs
     ) [] cands
   in
   let updated_arr = copy arr in

@@ -18,3 +18,15 @@ let _ =
   Hashtbl.add a 1 "a";
   Hashtbl.add a 2 "b";
   Printf.printf "Tables a and b are equal: %b\n" (a = b);
+
+  let r1 = GenSet.empty () in
+  let r2 = GenSet.empty () in
+  GenSet.add r1 "A";
+  GenSet.add r1 "B";
+  GenSet.add r2 "B";
+  GenSet.add r2 "C";
+  Printf.printf "Set r1 = %s\n" (GenSet.to_str (fun x -> x) r1);
+  Printf.printf "Set r2 = %s\n" (GenSet.to_str (fun x -> x) r2);
+  Printf.printf "Set difference r1-r2 = %s\n" (GenSet.to_str (fun x -> x) (GenSet.diff r1 r2))
+  
+
