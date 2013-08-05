@@ -378,7 +378,13 @@ Instead of calling the DP with each candidate arrangement
 *** Some VCs for skiplist solved
 *** Added to arrangements the feature to denote that a certain element should be
 		in the immediately following equivalence class of another element when
-		constructing the arrangement.
+		constructing the arrangement. Now some VCs are much faster (for instance
+		some VC verification time has been reduced from 9 min to 11 sec.)
+
+
+** [2013-08-05]
+*** Fix bug with arrangement generation.
+*** Continue with support for skiplist
 
 
 ** Next thing to do:

@@ -20,6 +20,8 @@ type eqclass_order_t = (int,int GenSet.t) Hashtbl.t
 (** The type of arrangements tree *)
 type 'a arrtree = Node of 'a list * 'a arrtree list
 
+type 'a aux_arrtree = AuxNode of ('a list * bool * 'a aux_arrtree list)
+
 let empty (stc:bool) : 'a t =
   {
     strict = stc;
@@ -200,12 +202,30 @@ let well_defined_order (arr:'a t) (p:'a Partition.t) : bool =
   not (LeapSCC.has_cycles (to_id_order arr p))
 
 
+let prune_incomplete_tree (t:'a aux_arrtree) : 'a arrtree option =
+  let rec f_aux (AuxNode (e,b,xs):'a aux_arrtree) : ('a arrtree * bool) =
+    match xs with
+    | [] -> (Node (e,[]), b)
+    | _  -> begin
+              let xs'= List.fold_left (fun ys (t,c) ->
+                         if c then t::ys else ys
+                       ) [] (List.map f_aux xs) in
+              match xs' with
+              | [] -> (Node (e,[]) , false)
+              | _  -> (Node (e,xs'), true )
+            end
+  in
+  match f_aux t with
+  | (new_t, true ) -> Some new_t
+  | (_    , false) -> None
+
+
 let rec build_cand_tree (graph:eqclass_order_t)
                         (follows:(int, int) Hashtbl.t)
                         (initial_elems:int GenSet.t)
                         (all_elems:int GenSet.t)
                         (p:'a Partition.t) : 'a arrtree list =
-  let rec build_aux (avail:int GenSet.t) (all_avail:int GenSet.t) : 'a arrtree list =
+  let rec build_aux (avail:int GenSet.t) (all_avail:int GenSet.t) : 'a aux_arrtree list =
     GenSet.fold (fun id xs ->
       let codom = try Hashtbl.find graph id with _ -> GenSet.empty () in
       if (GenSet.mem avail id && GenSet.inter codom all_avail = (GenSet.empty ())) then
@@ -215,16 +235,20 @@ let rec build_cand_tree (graph:eqclass_order_t)
           let avail' = match Hashtbl.find_all follows id with
                        | [] -> all_avail'
                        | ys -> GenSet.inter all_avail' (GenSet.from_list ys) in
-          Node (Partition.elems p id, build_aux avail' all_avail') :: xs
+          AuxNode (Partition.elems p id, GenSet.size avail' = 0, build_aux avail' all_avail') :: xs
         end
       else
         xs
     ) all_avail []
   in
-    build_aux initial_elems all_elems
+    List.fold_left (fun xs t ->
+      match prune_incomplete_tree t with
+      | Some tr -> tr :: xs
+      | None -> xs
+    ) [] (build_aux initial_elems all_elems)
 
 
-let gen_arrtrees (arr:'a t) : 'a arrtree list =
+let gen_arrtrees (f_str : 'a -> string) (arr:'a t) : 'a arrtree list =
   let process_arr (arr:'a t) : 'a arrtree list =
     let append_eq ((a,b):'a * 'a) (xs:'a Partition.eqs list) =
       Partition.Eq (a,b)::xs in
@@ -283,7 +307,7 @@ let gen_arrs (arr:'a t) : ('a list list) GenSet.t =
   List.fold_left (fun s t ->
     let ts = arrtree_to_set t in
     GenSet.union s ts
-  ) (GenSet.empty ()) (gen_arrtrees arr)
+  ) (GenSet.empty ()) (gen_arrtrees (fun _ -> "") arr)
 
 
 let arrtree_set_to_str (f:'a -> string) (s:('a list list) GenSet.t) : string =
@@ -301,5 +325,4 @@ let test (arr:'a t) (f:'a -> string) : unit =
   let arr_list = inject_leq_info arr in
   print_endline "List information";
   List.iter (fun a -> print_endline (to_str a f)) arr_list
-
 

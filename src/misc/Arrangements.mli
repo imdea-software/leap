@@ -68,7 +68,7 @@ val to_str : 'a t -> ('a -> string) -> string
 
 (** [gen_arrtrees arr] returns a list with all possible arrangement trees
     that can be generated from [arr] *)
-val gen_arrtrees : 'a t -> 'a arrtree list
+val gen_arrtrees : ('a -> string) -> 'a t -> 'a arrtree list
 
 (** [arrtree_to_set tree] returns a set with all possible branches in [tree] *)
 val arrtree_to_set : 'a arrtree -> ('a list list) LeapGenericSet.t
@@ -91,4 +91,3 @@ val arrtree_to_str : ('a -> string) -> 'a arrtree -> string
 
 
 val test : 'a t -> ('a -> string) -> unit
-val debug_f : ('a -> string) -> unit

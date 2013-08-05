@@ -194,11 +194,12 @@ let _ =
 
 
 
+
   (* Arrangement representation *)
   print_endline (Arr.to_str arr (fun i -> i));
 
   (* Generate arrangement tree list *)
-  let tree_list = Arr.gen_arrtrees  arr in
+  let tree_list = Arr.gen_arrtrees (fun x -> x)  arr in
   (* Print generated arrangement trees *)
   List.iter (fun t -> print_endline (Arr.arrtree_to_str (fun x->x) t)) tree_list;
 
