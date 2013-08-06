@@ -53,7 +53,12 @@ struct
   (* RUNING MINISAT *)
 
   let parse_minisat_output (from_minisat:Pervasives.in_channel) : bool =
-    let answer_str = Pervasives.input_line from_minisat in
+    let last_line = ref "" in
+    let answer_str = try
+                       while true do
+                         last_line := Pervasives.input_line from_minisat
+                       done; ""
+                     with End_of_file -> !last_line in
     let (terminated, outcome) =
       match answer_str with
         "UNSATISFIABLE" -> let _ = Debug.print_smt "unsat\n"
