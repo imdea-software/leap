@@ -434,7 +434,7 @@ module Make (Opt:module type of GenOptions) : S =
           let obligation_counter = ref 1 in
           let res_list =
                 List.map (fun phi_obligation ->
-                  (* TODO: Choose the right to_fol function *)
+                  (* TODO: Choose the right to_plain function *)
                   Report.report_obligation_header !obligation_counter phi_obligation;
                   let fol_phi = phi_obligation in
                   phi_timer#start;
@@ -515,7 +515,7 @@ module Make (Opt:module type of GenOptions) : S =
                              (gral_plan:Tactics.proof_plan)
                              (cases:IGraph.case_tbl_t) : proof_obligation_t list =
       List.fold_left (fun res vc ->
-        let vc = Tactics.to_fol_vc_info E.PCVars vc in
+        let vc = Tactics.to_plain_vc_info E.PCVars vc in
         let prem = match Tactics.get_tid_constraint_from_info vc with
                    | E.True -> Premise.SelfConseq
                    | _      -> Premise.OthersConseq in

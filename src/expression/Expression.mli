@@ -563,7 +563,7 @@ val conj_literals : literal list -> formula
 val disj_literals : literal list -> formula
 
 
-val to_fol_formula : fol_mode_t -> formula -> formula
+val to_plain_formula : fol_mode_t -> formula -> formula
 
 
 

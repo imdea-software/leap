@@ -387,6 +387,12 @@ Instead of calling the DP with each candidate arrangement
 *** Continue with support for skiplist
 
 
+** [2013-08-06]
+*** Updated Minisat Linux version to prevent End_of_file error on Devel.
+
+
+
+
 ** Next thing to do:
 *** Fix support generation for concurrent case. Basically
 		local variables are represented as renamed global variables (v[k] -> v_k)

@@ -108,11 +108,11 @@ let default_cutoff_algorithm = Smp.Dnf
 
 
 let vc_info_to_str (vc:vc_info) : string =
-  let to_fol = E.to_fol_formula E.PCVars in
-  let fol_tid_constraint = to_fol vc.tid_constraint in
-  let fol_rho = to_fol vc.rho in
-  let fol_goal = to_fol vc.goal in
-  let fol_supp = List.map to_fol vc.original_support in
+  let to_plain = E.to_plain_formula E.PCVars in
+  let fol_tid_constraint = to_plain vc.tid_constraint in
+  let fol_rho = to_plain vc.rho in
+  let fol_goal = to_plain vc.goal in
+  let fol_supp = List.map to_plain vc.original_support in
 
   let vars_to_declare = E.all_vars (E.conj_list (fol_tid_constraint ::
                                                  fol_rho            ::
@@ -141,11 +141,11 @@ let vc_info_to_str (vc:vc_info) : string =
 
 
 let vc_info_to_str_simple (vc:vc_info) : string =
-  let to_fol = E.to_fol_formula E.PCVars in
-  let fol_supp = List.map to_fol vc.original_support in
-  let fol_tid_constraint = to_fol vc.tid_constraint in
-  let fol_rho = to_fol vc.rho in
-  let fol_goal = to_fol vc.goal in
+  let to_plain = E.to_plain_formula E.PCVars in
+  let fol_supp = List.map to_plain vc.original_support in
+  let fol_tid_constraint = to_plain vc.tid_constraint in
+  let fol_rho = to_plain vc.rho in
+  let fol_goal = to_plain vc.goal in
   let supp_str = String.concat "\n" (List.map E.formula_to_str fol_supp) in
   let tidconst_str = E.formula_to_str fol_tid_constraint in
   let rho_str = E.formula_to_str fol_rho in
@@ -193,8 +193,8 @@ let create_vc_info (supp       : support_t)
     }
 
 
-let to_fol_vc_info (fol_mode:E.fol_mode_t) (info:vc_info) : vc_info =
-  let f = E.to_fol_formula fol_mode in
+let to_plain_vc_info (fol_mode:E.fol_mode_t) (info:vc_info) : vc_info =
+  let f = E.to_plain_formula fol_mode in
   {
     original_support = List.map f info.original_support;
     tid_constraint = f info.tid_constraint;
