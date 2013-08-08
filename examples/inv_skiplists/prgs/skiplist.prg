@@ -129,11 +129,14 @@ assume
                                 endwhile
 :insert_bounded_i_one]
 :insert_update_all_set[
+:insert_update_all_order[
                                 if (~ (valueWasIn)) then
                                   newCell := mallocSL(e,lvl);
 :insert_newCell_created[
                                   i := 0;
+:insert_update_all_order]
 :insert_newCell_low_connected[
+:insert_update_from_i_order[
 :insert_newCell_unconnected[
                                   while (i <= lvl) do
 :insert_i_lesseq_lvl_two[
@@ -145,6 +148,7 @@ assume
                                       $
 :insert_newCell_unconnected]
 :insert_i_lesseq_lvl_two]
+:insert_update_from_i_order]
                                     i := i + 1;
 :insert_newCell_created]
                                   endwhile
