@@ -30,9 +30,11 @@ invariant [skiplist_order] :
           (rd(heap,insert::update[j]).data < insert::e /\
            rd(heap,rd(heap,insert::update[j]).arr[j]).data > insert::e)
 
+///// MAYBE MOVE IT TO SUPPORT FILE ///////
 /\ @42. -> (rd(heap, insert::update[insert::i]).data < rd(heap, insert::newCell).data /\
             rd(heap, rd(heap, insert::newCell).arr[insert::i]).data > rd(heap, insert::newCell).data
            )
+///// MAYBE MOVE IT TO SUPPORT FILE ///////
 
 /\ @53. -> (remove::curr = null \/
             rd(heap, remove::curr).data > remove::e \/
@@ -57,11 +59,6 @@ invariant [skiplist_order] :
 //////////////////////////////////////////////////////////////////////////////////////////////
 
 
-/\ @39. -> (rd(heap,insert::update[0]).data < insert::e /\
-            rd(heap,rd(heap,insert::update[0]).arr[0]).data > insert::e /\
-            (1 <= maxLevel ->
-              (rd(heap,insert::update[1]).data < insert::e /\
-               rd(heap,rd(heap,insert::update[1]).arr[1]).data > insert::e)))
 
 
 
@@ -70,18 +67,8 @@ invariant [skiplist_order] :
         (rd(heap,insert::update[j]).data < insert::e /\
          rd(heap,rd(heap,insert::update[j]).arr[j]).data > insert::e))
 
-
-
 /\ @43. ->
-      (0 <= insert::i + 1 /\ insert::i+1 <= maxLevel ->
-        (rd(heap,insert::update[insert::i+1]).data < insert::e /\
-         rd(heap,rd(heap,insert::update[insert::i+1]).arr[insert::i+1]).data > insert::e))
-
-/\ @43. -> (rd(heap,insert::update[maxLevel]).data < insert::e /\
-            rd(heap,rd(heap,insert::update[maxLevel]).arr[maxLevel]).data > insert::e /\
-            rd(heap,insert::update[0]).data < insert::e /\
-            rd(heap,rd(heap,insert::update[0]).arr[0]).data > insert::e /\
-            rd(heap,insert::update[1]).data < insert::e /\
-            rd(heap,rd(heap,insert::update[1]).arr[1]).data > insert::e)
-
+      ((insert::i < j /\ j <= maxLevel) ->
+        (rd(heap,insert::update[j]).data < insert::e /\
+         rd(heap,rd(heap,insert::update[j]).arr[j]).data > insert::e))
 

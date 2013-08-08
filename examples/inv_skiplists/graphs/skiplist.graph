@@ -46,11 +46,10 @@
 
 
  -> skiplist_order [28:skiplist_prop,skiplist_next;
-//                    41:skiplist_prop,skiplist_next,skiplist_region,levels]
-                    41:levels]
+                    41:skiplist_order_inst,levels]
         {union:split-goal|reduce2|split-consequent|simplify-pc}
   // Fails 41, 60
-  // DONE 60
+  // DONE 41, 60
 
 
 
