@@ -25,7 +25,13 @@ invariant [skiplist_order] :
 /\ @insert_update_higher. ->
       ((insert::i < j /\ j <= maxLevel) ->
           (rd(heap,insert::update[j]).data < insert::e /\
-           rd(heap,rd(heap,insert::update[j]).arr[j]).data > insert::e))
+           (rd(heap,rd(heap,insert::update[j]).arr[j]).data > insert::e \/
+            rd(heap,rd(heap,insert::update[j]).arr[j]).data = insert::e)))
+/\ (@37. /\ 0 <= j /\ j <= maxLevel) ->
+          (rd(heap,insert::update[j]).data < insert::e /\
+           (rd(heap,rd(heap,insert::update[j]).arr[j]).data > insert::e \/
+            rd(heap,rd(heap,insert::update[j]).arr[j]).data = insert::e))
+
 /\ (@insert_update_all_order. /\ 0 <= j /\ j <= maxLevel) ->
           (rd(heap,insert::update[j]).data < insert::e /\
            rd(heap,rd(heap,insert::update[j]).arr[j]).data > insert::e)
@@ -59,7 +65,12 @@ invariant [skiplist_order] :
 //////////////////////////////////////////////////////////////////////////////////////////////
 
 
+/\ @insert_prev_low. -> rd(heap, insert::prev).data < insert::e
 
+/\ @insert_update_set. -> rd(heap, insert::update[insert::i]).data = rd(heap,insert::prev).data
+
+/\ (@34. \/ @35.) -> (rd(heap,insert::curr).data > insert::e \/
+                      rd(heap,insert::curr).data = insert::e)
 
 
 /\ @insert_update_from_i_order. ->

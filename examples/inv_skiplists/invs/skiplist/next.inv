@@ -13,7 +13,11 @@ invariant [skiplist_next] :
 
 /\ @insert_bounded_i_one. -> insert::prev in addr2set(heap, head, insert::i)
 
-/\ (@31. \/ @32.) -> rd(heap, insert::prev).arr[insert::i] = insert::curr
+/\ (@28. \/ @29. \/ @30. \/ @31. \/ @32. \/ @33. \/ @34. \/ @35. \/ @36.) -> insert::curr != null
+
+/\ (@31. \/ @32. \/ @34. \/ @35.) -> rd(heap, insert::prev).arr[insert::i] = insert::curr
+
+/\ @35. -> insert::update[insert::i] = insert::prev
 
 /\ @33. -> insert::curr = insert::prev
 
@@ -21,6 +25,12 @@ invariant [skiplist_next] :
         (insert::update[j] != null /\ insert::update[j] != tail)
 
 /\ @42. -> (rd(heap, insert::newCell).arr[insert::i] = rd(heap, insert::update[insert::i]).arr[insert::i])
+
+
+
+/\ @insert_prev_in_region. -> insert::prev != null
+
+
 
 /\ @remove_section. -> (.remove::valueWasIn. -> rd(heap, remove::curr).arr[remove::i] != null)
 /\ @remove_section_true. -> .remove::valueWasIn.

@@ -129,8 +129,8 @@ assume
                                 endwhile
 :insert_bounded_i_one]
 :insert_update_all_set[
-:insert_update_all_order[
                                 if (~ (valueWasIn)) then
+:insert_update_all_order[
                                   newCell := mallocSL(e,lvl);
 :insert_newCell_created[
                                   i := 0;

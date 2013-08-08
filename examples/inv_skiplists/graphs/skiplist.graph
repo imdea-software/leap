@@ -38,6 +38,9 @@
 
 
 //-> skiplist_next [23:skiplist_prop_subsumes;
+//                  27:skiplist_prop;
+//                  30:skiplist_prop,skiplist_region,skiplist_order;
+//                  33:skiplist_prop,skiplist_region;
 //                  35:skiplist_prop,levels,skiplist_region;
 //                  59:skiplist_prop,skiplist_region]
 //      {union:split-goal|reduce2||simplify-pc}
@@ -45,10 +48,12 @@
   // DONE 27
 
 
- -> skiplist_order [28:skiplist_prop,skiplist_next;
-                    41:skiplist_order_inst,levels]
-        {union:split-goal|reduce2|split-consequent|simplify-pc}
-  // Fails 41, 60
+// -> skiplist_order [28:skiplist_prop,skiplist_next;
+//                    31:skiplist_next;
+//                    35:skiplist_next;
+//                    41:skiplist_order_inst,levels]
+//        {union:split-goal|reduce2|split-consequent|simplify-pc}
+  // Fails 37, 41, 60
   // DONE 41, 60
 
 
