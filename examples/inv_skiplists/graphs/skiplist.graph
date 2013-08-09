@@ -2,9 +2,9 @@
       22:levels;
       23:levels;
       24:skiplist_next,levels;
-      41:skiplist_order,skiplist_region;
-      42:skiplist_order,skiplist_region,skiplist_next,skiplist_create;
-      61:skiplist_order,skiplist_region,skiplist_next
+      41:skiplist_region_inst;
+      42:skiplist_next,skiplist_region_inst;
+      61:skiplist_order_aux,skiplist_region,skiplist_next
    ] { union : split-goal
              | reduce2
              | split-consequent

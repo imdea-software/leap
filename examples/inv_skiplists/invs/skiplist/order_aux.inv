@@ -1,0 +1,9 @@
+vars:
+
+invariant [skiplist_order_aux] :
+
+
+   @42. -> (rd(heap, insert::update[insert::i]).data < rd(heap, insert::newCell).data /\
+            rd(heap, rd(heap, insert::newCell).arr[insert::i]).data > rd(heap, insert::newCell).data /\
+            rd(heap, insert::newCell).data = insert::e
+           )
