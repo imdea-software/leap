@@ -1,0 +1,11 @@
+vars:
+
+invariant [skiplist_region_inst] :
+
+
+  @insert_update_all_set. ->
+    ((0 <= insert::i /\ insert::i <= maxLevel) ->
+        (insert::update[insert::i] in region /\
+         insert::update[insert::i] in addr2set(heap, head, insert::i) /\
+         rd(heap,insert::update[insert::i]).arr[insert::i] in addr2set(heap, head, insert::i)))
+

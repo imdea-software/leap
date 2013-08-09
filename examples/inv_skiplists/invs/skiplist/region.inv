@@ -14,24 +14,30 @@ invariant [skiplist_region] :
 
 /\ (@32. \/ @33.) -> insert::curr != null
 
-/\ (@29. \/ @30. \/ @33.) -> rd(heap, insert::prev).arr[insert::i] in region
+/\ (@29. \/ @30. \/ @33. \/ @36.) -> rd(heap, insert::prev).arr[insert::i] in region
 
-/\ @insert_i_eq_max. -> rd(heap, insert::curr).arr[maxLevel] in region
+// This was active lately /\ @insert_i_eq_max. -> rd(heap, insert::curr).arr[maxLevel] in region
 
 ///\ @insert_bounded_i_one. -> rd(heap, insert::prev).arr[insert::i] in region
 
 /\ (@31. \/ @32.) -> insert::curr in region
 
-/\ (@42. \/ @43.) -> (insert::i = maxLevel \/ ~ insert::newCell in addr2set(heap, head, insert::i + 1))
+// Old invariant /\ (@40. \/ @41. \/ @42. \/ @43.) -> (insert::i = maxLevel \/ ~ insert::newCell in addr2set(heap, head, insert::i + 1))
 
-/\ @43. -> insert::newCell in addr2set(heap, head, insert::i) 
 
-/\   @insert_newCell_unconnected. -> (insert::i >= maxLevel \/ ~ insert::newCell in addr2set(heap, head, insert::i))
+
+/\ (@40. \/ @41. \/ @42.) ->
+    ((insert::i <= j /\ j <= maxLevel) -> (~ insert::newCell in addr2set(heap, head, j)))
+
+/\ @43. ->
+    ((insert::i < j /\ j <= maxLevel) -> (~ insert::newCell in addr2set(heap, head, j))) // /\
+//      insert::newCell in addr2set(heap, head, insert::i))
+
+/\ @43. -> insert::newCell in addr2set(heap, head, insert::i)
+
 
 /\   @insert_newCell_low_connected. ->
-          ((insert::i = 0 \/ insert::newCell in addr2set(heap, head, insert::i - 1)) /\
-            insert::update[insert::i] in region
-             )
+          ((0 <= j /\ j < insert::i) -> insert::newCell in addr2set(heap, head, j))
 
 
 ///// For update array
@@ -39,11 +45,14 @@ invariant [skiplist_region] :
 /\   (@insert_update_higher. /\ insert::i < j /\ j <= maxLevel) -> insert::update[j] in region
 /\    @insert_update_set. -> insert::update[insert::i] = insert::prev
 
-/\   (@insert_update_all_set. /\ 0 <= j /\ j <= maxLevel) -> insert::update[j] in region
+/\   (@insert_update_all_set. /\ 0 <= j /\ j <= maxLevel) ->
+        (insert::update[j] in region /\
+         insert::update[j] in addr2set(heap, head, j) /\
+         rd(heap,insert::update[j]).arr[j] in addr2set(heap, head, j))
 
 /\ @39. -> insert::update[0] in region
 
-/\ @43. -> (insert::update[insert::i + 1] in region /\ insert::update[j] in region)
+// This was activated lately /\ @43. -> (insert::update[insert::i + 1] in region /\ insert::update[j] in region)
 
 ///// For update array
 
@@ -54,3 +63,5 @@ invariant [skiplist_region] :
               (remove::i = maxLevel \/ ~ (remove::curr in addr2set(heap, head, remove::i + 1))) /\
               (remove::update[remove::i] in region)
              )
+
+

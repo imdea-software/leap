@@ -1,0 +1,13 @@
+
+vars:
+
+invariant [skiplist_order_inst] :
+
+
+   @41. -> (insert::i <= maxLevel ->
+              (rd(heap,insert::update[insert::i]).data < insert::e /\
+               rd(heap,rd(heap,insert::update[insert::i]).arr[insert::i]).data > insert::e))
+
+/\ @43. -> (insert::i + 1 <= maxLevel ->
+              (rd(heap,insert::update[insert::i + 1]).data < insert::e /\
+               rd(heap,rd(heap,insert::update[insert::i + 1]).arr[insert::i + 1]).data > insert::e))
