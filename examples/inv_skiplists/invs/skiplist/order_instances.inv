@@ -11,3 +11,8 @@ invariant [skiplist_order_inst] :
 /\ @43. -> (insert::i + 1 <= maxLevel ->
               (rd(heap,insert::update[insert::i + 1]).data < insert::e /\
                rd(heap,rd(heap,insert::update[insert::i + 1]).arr[insert::i + 1]).data > insert::e))
+
+
+/\ @remove_section. ->
+      ((0 <= remove::i /\ remove::i <= maxLevel) ->
+        remove::update[remove::i] in addr2set(heap, head, remove::i))

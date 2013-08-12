@@ -19,4 +19,5 @@ invariant [levels] :
 /\ @21. -> maxLevel + 1 = insert::i
 
 
+/\ @remove_body. -> remove::removeFrom <= maxLevel
 /\ @remove_final_loop. -> remove::i <= remove::removeFrom

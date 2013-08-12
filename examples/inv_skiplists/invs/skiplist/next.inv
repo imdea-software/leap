@@ -9,7 +9,6 @@ invariant [skiplist_next] :
 /\ @insert_tail_next_i_null. -> rd(heap, tail).arr[insert::i] = null
 
 /\ (@27. \/ @28.) -> (insert::prev = head)
-///\ (@27. \/ @28.) -> (insert::prev = head /\ insert::curr = tail)
 
 /\ @insert_bounded_i_one. -> insert::prev in addr2set(heap, head, insert::i)
 
@@ -32,10 +31,8 @@ invariant [skiplist_next] :
 
 
 
-/\ @remove_section. -> (.remove::valueWasIn. -> rd(heap, remove::curr).arr[remove::i] != null)
-/\ @remove_section_true. -> .remove::valueWasIn.
+/// Remove ////////////////////////////////////////////////////////////////
 
-
-///\ @61. -> (rd(heap, remove::update[remove::i]).arr[remove::i] = remove::curr /\
-//            rd(heap, remove::curr).arr[remove::i] != null)
-
+/\ @remove_section. ->
+      ((0 <= j /\ j <= remove::removeFrom) ->
+          rd(heap, remove::update[j]).arr[j] = remove::curr)

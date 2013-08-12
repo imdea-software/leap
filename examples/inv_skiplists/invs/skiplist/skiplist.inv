@@ -10,3 +10,5 @@ invariant [skiplist_prop] :
 /\ rd(heap, tail).data = highestElem
 /\ maxLevel >= 0
 
+
+

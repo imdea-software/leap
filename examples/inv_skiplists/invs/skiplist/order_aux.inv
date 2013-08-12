@@ -7,3 +7,6 @@ invariant [skiplist_order_aux] :
             rd(heap, rd(heap, insert::newCell).arr[insert::i]).data > rd(heap, insert::newCell).data /\
             rd(heap, insert::newCell).data = insert::e
            )
+
+/\ @remove_body. -> (remove::e != lowestElem /\ remove::e != highestElem)
+/\ @remove_section_true. -> rd(heap, remove::curr).data = remove::e

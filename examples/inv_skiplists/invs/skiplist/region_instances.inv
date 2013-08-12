@@ -12,3 +12,7 @@ invariant [skiplist_region_inst] :
 /\ (@41. \/ @42.) ->
     (insert::i <= maxLevel -> (~ insert::newCell in addr2set(heap, head, insert::i)))
 
+
+/\ @remove_final_loop. ->
+      ((0 <= remove::i /\ remove::i <= remove::removeFrom) ->
+            remove::update[remove::i] in addr2set(heap, head, remove::i))

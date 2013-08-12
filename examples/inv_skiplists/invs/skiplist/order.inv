@@ -18,7 +18,6 @@ invariant [skiplist_order] :
 
 
 /\ @insert_bounded_i_one. -> rd(heap, insert::prev).data < insert::e
-///\ @30. -> rd(heap, insert::prev).data < insert::e
 /\ (@32. \/ @33.) -> rd(heap, insert::curr).data < insert::e
 
 
@@ -42,25 +41,6 @@ invariant [skiplist_order] :
            )
 ///// MAYBE MOVE IT TO SUPPORT FILE ///////
 
-/\ @53. -> (remove::curr = null \/
-            rd(heap, remove::curr).data > remove::e \/
-            rd(heap, remove::curr).data = remove::e)
-
-
-/\ @remove_section. -> rd(heap, remove::curr).data = remove::e
-
-
-// THIS WAS ACTIVATED
-///\ @61. ->  (  remove::curr != null
-//            /\ (rd(heap, remove::curr).data > remove::e \/
-//                rd(heap, remove::curr).data = remove::e)
-//            /\ rd(heap, remove::update[remove::i]).data < remove::e
-//            /\ rd(heap, remove::curr).data = remove::e
-//            /\ (remove::i = maxLevel \/
-//                  (rd(heap, remove::update[remove::i + 1]).data < remove::e /\
-//                   rd(heap, rd(heap, remove::update[remove::i + 1]).arr[remove::i + 1]).data > remove::e))
-// Not sure if a need the two lines above
-//            )
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -82,4 +62,14 @@ invariant [skiplist_order] :
       ((insert::i < j /\ j <= maxLevel) ->
         (rd(heap,insert::update[j]).data < insert::e /\
          rd(heap,rd(heap,insert::update[j]).arr[j]).data > insert::e))
+
+
+///  Remove /////////////////////////////
+
+
+/\ @remove_section_true. -> rd(heap, remove::curr).data = remove::e
+
+/\ @remove_section. ->
+      ((0 <= j /\ j <= maxLevel) ->
+        remove::update[j] in addr2set(heap, head, j))
 
