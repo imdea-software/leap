@@ -13,6 +13,16 @@ invariant [skiplist_order_inst] :
                rd(heap,rd(heap,insert::update[insert::i + 1]).arr[insert::i + 1]).data > insert::e))
 
 
+//  Remove  ///////////////////////////////////////////////////////////////////////
+
+
+/\ (@remove_section. /\ remove::i <= remove::removeFrom) ->
+          (rd(heap, remove::update[remove::i]).data < remove::e /\
+           (rd(heap, rd(heap, remove::update[remove::i]).arr[remove::i]).data > remove::e \/
+            rd(heap, rd(heap, remove::update[remove::i]).arr[remove::i]).data = remove::e))
+
+
+
 /\ @remove_section. ->
       ((0 <= remove::i /\ remove::i <= maxLevel) ->
         remove::update[remove::i] in addr2set(heap, head, remove::i))

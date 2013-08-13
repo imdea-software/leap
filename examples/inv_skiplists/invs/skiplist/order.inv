@@ -66,10 +66,33 @@ invariant [skiplist_order] :
 
 ///  Remove /////////////////////////////
 
+/\ @remove_bounded_prev. -> rd(heap, remove::prev).data < remove::e
+
+/\ @remove_bounded_curr. -> (rd(heap, remove::curr).data > remove::e \/
+                             rd(heap, remove::curr).data = remove::e)
+
+/\ @51. -> rd(heap, remove::curr).data < remove::e
+
+/\ @remove_update_higher_set. ->
+      ((remove::i < j /\ j <= maxLevel) ->
+          (rd(heap, remove::update[j]).data < remove::e /\
+           (rd(heap,rd(heap, remove::update[j]).arr[j]).data > remove::e \/
+            rd(heap,rd(heap, remove::update[j]).arr[j]).data = remove::e)))
+
+
+/\ @remove_section. ->
+      ((0 <= j /\ j <= remove::removeFrom) ->
+          (rd(heap, remove::update[j]).data < remove::e /\
+           (rd(heap, rd(heap, remove::update[j]).arr[j]).data > remove::e \/
+            rd(heap, rd(heap, remove::update[j]).arr[j]).data = remove::e)))
+
+
 
 /\ @remove_section_true. -> rd(heap, remove::curr).data = remove::e
 
 /\ @remove_section. ->
       ((0 <= j /\ j <= maxLevel) ->
         remove::update[j] in addr2set(heap, head, j))
+
+
 

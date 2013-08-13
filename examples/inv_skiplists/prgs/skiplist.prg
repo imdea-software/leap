@@ -176,34 +176,46 @@ assume
                               begin
 :remove_body[
                                 prev := head;
+:remove_prev_is_head[
                                 curr := prev->arr[maxLevel];
 :remove_curr_in_region[
+:remove_curr_not_null[
                                 i := maxLevel;
+:remove_bounded_prev[
+:remove_lookup_loop[
+:remove_update_higher_set[
+:remove_prev_is_head]
                                 while (i >= 0) do
                                   curr := prev->arr[i];
                                   while (curr != null /\ curr->data < e) do
                                     prev := curr;
                                     curr := prev->arr[i];
                                   endwhile
+:remove_bounded_curr[
                                   if (curr != null /\ curr->data != e) then
                                     removeFrom := i - 1;
                                   endif
                                   update[i] := prev;
                                   i := i - 1;
+:remove_bounded_curr]
                                 endwhile
-                                skip; //valueWasIn := curr->data = e;
+:remove_update_higher_set]
+:remove_lookup_loop]
+:remove_curr_not_null]
 :remove_section[
+                                skip; //valueWasIn := curr->data = e;
+:remove_bounded_prev]
                                 if (valueWasIn) then
 :remove_section_true[
                                   i := removeFrom;
 :remove_final_loop[
-:remove_curr_in_region]
                                   while (i >= 0) do
                                     update[i]->arr[i] := curr->arr[i]
                                     $ if (i=0) then
                                         region := region SetDiff {curr};
                                       endif
                                     $
+:remove_curr_in_region]
                                     i := i - 1;
                                   endwhile
 :remove_final_loop]

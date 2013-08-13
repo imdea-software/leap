@@ -2,6 +2,4 @@ vars:
 
 invariant [skiplist_next_inst] :
 
-   (@remove_section. /\ remove::i <= remove::removeFrom) ->
-          rd(heap, remove::update[remove::i]).arr[remove::i] = remove::curr
-
+true

@@ -4,7 +4,7 @@
 //      24:skiplist_next,levels;
 //      41:skiplist_region_inst;
 //      42:skiplist_next,skiplist_region_inst;
-//      61:skiplist_order_aux,skiplist_next_inst,skiplist_region_inst,levels
+//      61:skiplist_order_aux,skiplist_order_inst,skiplist_region_aux,skiplist_region_inst,levels
 //   ] { union : split-goal
 //             | reduce2
 //             | split-consequent
@@ -12,12 +12,12 @@
 //     }
 
 
--> levels
-     { union :
-             | reduce2
-             |
-             | simplify-pc
-     }
+//-> levels
+//     { union :
+//             | reduce2
+//             |
+//             | simplify-pc
+//     }
 
 
 //-> skiplist_create
@@ -57,14 +57,17 @@
 
 
 
-//-> skiplist_order [
-//      31:skiplist_next;
-//      35:skiplist_next;
-//      41:skiplist_order_inst,levels
-//   ] { union : split-goal
-//             | reduce2
-//             | split-consequent
-//             | simplify-pc
-//     }
+-> skiplist_order [
+      31:skiplist_next;
+      35:skiplist_next;
+      41:skiplist_order_inst,levels;
+      47:skiplist_next;
+      50:skiplist_next;
+      56:skiplist_next
+   ] { union : split-goal
+             | reduce2
+             | split-consequent
+             | simplify-pc
+     }
 
 

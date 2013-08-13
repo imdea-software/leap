@@ -33,6 +33,14 @@ invariant [skiplist_next] :
 
 /// Remove ////////////////////////////////////////////////////////////////
 
-/\ @remove_section. ->
-      ((0 <= j /\ j <= remove::removeFrom) ->
-          rd(heap, remove::update[j]).arr[j] = remove::curr)
+/\ @remove_prev_is_head. -> remove::prev = head
+
+
+/\ @remove_curr_not_null. -> remove::curr != null
+
+
+/\ (@50. \/ @51. \/ @53. \/ @54. \/ @55. \/ @56.) -> rd(heap, remove::prev).arr[remove::i] = remove::curr
+
+
+/\ @56. -> remove::update[remove::i] = remove::prev
+
