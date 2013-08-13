@@ -85,6 +85,7 @@ val get_sys_var_tables    : t ->
 val get_fLine_by_name     : t -> string -> Expression.pc_t
 val get_lLine_by_name     : t -> string -> Expression.pc_t
 val get_prog_by_name      : t -> string -> Statement.statement_t option
+val get_proc_init_vals    : t -> string-> (Expression.variable * Expression.initVal_t) list
 val get_statement_at      : t ->
                             Expression.pc_t ->
                             (string * Statement.statement_t)

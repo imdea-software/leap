@@ -351,6 +351,14 @@ let get_prog_by_name (sys:t) (p_name:string) : Stm.statement_t option =
   let info = get_proc_by_name sys p_name in info.prog
 
 
+let get_proc_init_vals (sys:t) (p_name:string) : (E.variable * E.initVal_t) list =
+  Hashtbl.fold (fun v_id (s,val_opt,sh,k) xs ->
+    match val_opt with
+    | Some value -> (E.build_var v_id s false sh (E.Scope p_name) k, value)::xs
+    | None       -> xs
+  ) (get_local_by_name sys p_name) []
+
+
 let proc_sort_func (sys:t) (p1:string) (p2:string) : int =
   let p1_init = get_fLine_by_name sys p1 in
   let p2_init = get_fLine_by_name sys p2 in
@@ -1136,6 +1144,15 @@ let rec aux_rho_for_st
                     | SOpenArray _ -> Bridge.construct_stm_term_eq_as_array in
         let call_proc_args = proc_info_get_args
                                (get_proc_by_name sys proc_name) in
+        let proc_init_vals = (get_proc_init_vals sys proc_name) in
+        let (init_assign,initialized_vars) =
+                  List.fold_left (fun (fs,vs) (v,value) ->
+                    let v_term = E.var_to_term v in
+                    let v' = E.prime_variable (E.var_set_param th_p v) in
+                    match value with
+                    | E.Equality t  -> ((E.eq_term (E.var_to_term v') t)::fs,v_term::vs)
+                    | E.Condition c -> (E.Iff(E.Literal (E.Atom (E.BoolVar v')),c)::fs,v_term::vs)
+                  ) ([],[]) proc_init_vals in
         let assignments = List.combine call_proc_args ps
         in
           List.fold_left (fun (ms,es) ((arg,arg_sort),value) ->
@@ -1144,7 +1161,7 @@ let rec aux_rho_for_st
             let (m,e) = gen_f mInfo pt v th_p (Stm.Term value)
             in
               (m@ms, e::es)
-          ) ([],[]) assignments in
+          ) (initialized_vars,init_assign) assignments in
       let gSet' = E.filter_term_set modif_list gSet in
       let lSet' = E.filter_term_set modif_list lSet in
       let thSet' = E.filter_term_set modif_list thSet in
