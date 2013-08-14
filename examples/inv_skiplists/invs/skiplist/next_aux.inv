@@ -1,0 +1,5 @@
+vars:
+
+invariant [skiplist_next_aux] :
+
+   @insert_newCell_created. -> insert::newCell != null

@@ -10,28 +10,19 @@ invariant [skiplist_region] :
 
 /\ @insert_curr_in_region. -> insert::curr in region
 
-/\ @insert_newCell_created. -> insert::newCell != null
-
-/\ (@32. \/ @33.) -> insert::curr != null
-
 /\ (@29. \/ @30. \/ @33. \/ @36.) -> rd(heap, insert::prev).arr[insert::i] in region
-
-// This was active lately /\ @insert_i_eq_max. -> rd(heap, insert::curr).arr[maxLevel] in region
-
-///\ @insert_bounded_i_one. -> rd(heap, insert::prev).arr[insert::i] in region
 
 /\ (@31. \/ @32.) -> insert::curr in region
 
-// Old invariant /\ (@40. \/ @41. \/ @42. \/ @43.) -> (insert::i = maxLevel \/ ~ insert::newCell in addr2set(heap, head, insert::i + 1))
 
+// /\ @insert_newCell_created. -> insert::newCell != null
 
 
 /\ (@40. \/ @41. \/ @42.) ->
     ((insert::i <= j /\ j <= maxLevel) -> (~ insert::newCell in addr2set(heap, head, j)))
 
 /\ @43. ->
-    ((insert::i < j /\ j <= maxLevel) -> (~ insert::newCell in addr2set(heap, head, j))) // /\
-//      insert::newCell in addr2set(heap, head, insert::i))
+    ((insert::i < j /\ j <= maxLevel) -> (~ insert::newCell in addr2set(heap, head, j)))
 
 /\ @43. -> insert::newCell in addr2set(heap, head, insert::i)
 
@@ -55,9 +46,16 @@ invariant [skiplist_region] :
 
 ///// For update array
 
+///  Remove  ////////////////////////////////////////////////////////////////////////
+
+/\ (@48. \/ @49. \/ @52. \/ @56.) -> rd(heap, remove::prev).arr[remove::i] in region
+
+/\ @remove_prev_in_region. -> remove::prev in region
 
 /\ @remove_curr_in_region. -> remove::curr in region
 
-/\ @remove_final_loop. ->
-      ((0 <= j /\ j <= remove::removeFrom) -> remove::update[j] in addr2set(heap, head, j))
+/\ (@57. \/ @remove_final_if.) ->
+      ((0 <= j /\ j <= remove::removeFrom) ->
+         remove::update[j] in addr2set(heap, head, j))
+
 

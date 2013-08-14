@@ -23,6 +23,8 @@ invariant [skiplist_next] :
 /\ (@insert_update_all_set. /\ 0 <= j /\ j <= maxLevel) ->
         (insert::update[j] != null /\ insert::update[j] != tail)
 
+/\ @insert_newCell_created. -> insert::newCell != null
+
 /\ @42. -> (rd(heap, insert::newCell).arr[insert::i] = rd(heap, insert::update[insert::i]).arr[insert::i])
 
 
@@ -41,6 +43,13 @@ invariant [skiplist_next] :
 
 /\ (@50. \/ @51. \/ @53. \/ @54. \/ @55. \/ @56.) -> rd(heap, remove::prev).arr[remove::i] = remove::curr
 
+/\ @52. -> remove::curr = remove::prev
 
 /\ @56. -> remove::update[remove::i] = remove::prev
+
+
+
+
+
+///////////////////////////////////////////////////////
 

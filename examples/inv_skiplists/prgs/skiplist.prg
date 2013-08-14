@@ -176,6 +176,7 @@ assume
                               begin
 :remove_body[
                                 prev := head;
+:remove_prev_in_region[
 :remove_prev_is_head[
                                 curr := prev->arr[maxLevel];
 :remove_curr_in_region[
@@ -205,6 +206,9 @@ assume
 :remove_section[
                                 skip; //valueWasIn := curr->data = e;
 :remove_bounded_prev]
+:remove_final_if[
+:remove_prev_in_region]
+:remove_curr_in_region]
                                 if (valueWasIn) then
 :remove_section_true[
                                   i := removeFrom;
@@ -215,7 +219,6 @@ assume
                                         region := region SetDiff {curr};
                                       endif
                                     $
-:remove_curr_in_region]
                                     i := i - 1;
                                   endwhile
 :remove_final_loop]
@@ -223,6 +226,7 @@ assume
 :remove_section_true]
 :remove_section]
                                 return (); // return (valueWasIn)
+:remove_final_if]
 :remove_body]
                               end
                             
