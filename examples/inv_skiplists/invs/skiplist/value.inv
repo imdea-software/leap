@@ -1,0 +1,13 @@
+
+vars:
+
+
+invariant [skiplist_value] :
+
+   @insert_valueWasIn_false. -> ~.insert::valueWasIn.
+
+/\ (@29. \/ @37.) ->
+      (.insert::valueWasIn. -> rd(heap, insert::curr).data = insert::e)
+
+
+/\ @58. -> (.remove::valueWasIn. -> rd(heap, remove::curr).data = remove::e)
