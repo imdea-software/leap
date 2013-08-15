@@ -81,6 +81,7 @@ assume
 
                               begin
 :insert_body[
+:insert_valueWasIn_false[
                                 lvl := havocLevel();
                                 if (lvl > maxLevel) then
 :insert_lvl_outrange[
@@ -114,6 +115,7 @@ assume
                                 i := maxLevel;
 :insert_bounded_i_one[
 :insert_update_higher[
+:insert_valueWasIn_false]
                                 while (0 <= i) do
                                   curr := prev->arr[i];
                                   while (curr != null /\ curr->data < e) do
@@ -124,7 +126,7 @@ assume
                                   update[i] := prev;
 :insert_update_set
                                   i := i - 1;
-                                  skip; //valueWasIn := (curr->data = e);
+                                  valueWasIn := (curr->data = e); // skip;
 :insert_update_higher]
                                 endwhile
 :insert_bounded_i_one]
@@ -204,7 +206,7 @@ assume
 :remove_lookup_loop]
 :remove_curr_not_null]
 :remove_section[
-                                skip; //valueWasIn := curr->data = e;
+                                valueWasIn := curr->data = e; // skip;
 :remove_bounded_prev]
 :remove_final_if[
 :remove_prev_in_region]

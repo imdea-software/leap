@@ -109,6 +109,6 @@ invariant [skiplist_order] :
       ((0 <= j /\ j <= maxLevel) ->
         remove::update[j] in addr2set(heap, head, j))
 
-///\ @remove_final_if. -> (remove::valueWasIn <-> rd(heap, remove::curr).data = remove::e)
 
 /\ @remove_section_true. -> rd(heap, remove::curr).data = remove::e
+

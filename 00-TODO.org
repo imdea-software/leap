@@ -159,7 +159,32 @@
    Case 2 handles when i and j are not equal, in which case whatever is said about 
    j is not so relevant, but the constraint i\neq j may help the validity proof.
 
-   uni
+
+** Disjunction of PC in the antecedent
+	 In some transition we have an antecedent of the form:
+
+		(pc = 2 /\ (pc'=3 \/ pc'=7) /\ A) -> C
+
+	 where C may include formulas of the form (pc'=42 -> foo). The problem is that 
+	 simplify-pc tactic is capable extracting information from the antecedent
+	 reasoning only about conjunctions of literals, and not through disjunctions.
+
+	 The first idea was then to create a tactic that split the disjunction into
+	 disjoint cases, converting a formula A->C into A1->C, A2->C and A3->C, where
+	 A->C is valid iff A1->C, A2->C and A3->C are all valid. In this example, A1,
+	 A2 and A3 are:
+
+		A1 : (pc'=3) /\ (pc = 2 /\ (pc'=3 \/ pc'=7) /\ A)
+		A2 : (pc'=7) /\ (pc = 2 /\ (pc'=3 \/ pc'=7) /\ A)
+		A3 : (pc'!=3) /\ (pc'!=7) /\ (pc = 2 /\ (pc'=3 \/ pc'=7) /\ A)
+
+
+	 The, we just need to propagate the pc equalities through the formulas.
+
+	 I propose that only A1->C and A2->C should be checked for validity, as A3->C 
+	 is trivially valid. Hence, I propose that we don't even generate A3->C. At
+	 this moment, Leap does not generate A3->C as it only consumes unnecessary 
+	 computation time.
 
 
 * Other ideas:

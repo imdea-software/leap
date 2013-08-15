@@ -415,6 +415,38 @@ let split_implication (imp:implication) : implication list =
   List.map (fun phi -> { ante=imp.ante ; conseq=phi }) new_conseqs
 
 
+let split_antecedent_pc (imp:implication) : implication list =
+  let candidates (phi:E.formula) : E.formula list =
+    List.fold_left (fun xs conj ->
+      let cand_disj = E.to_disj_list conj in
+      if List.length cand_disj > 1 &&
+         List.for_all (fun x ->
+            match x with
+(*
+            | E.Literal (E.Atom (E.PC (_,_,false))) -> true
+            | E.Literal (E.Atom (E.PCRange (_,_,_,false))) -> true
+*)
+            | E.Literal (E.Atom (E.Eq (E.IntT (E.VarInt v), E.IntT (E.IntVal _))))
+            | E.Literal (E.Atom (E.Eq (E.IntT (E.IntVal _), E.IntT (E.VarInt v)))) -> E.is_pc_var v
+            | _ -> false
+        ) cand_disj then
+            cand_disj @ xs
+      else
+        xs
+    ) [] (E.to_conj_list phi)
+  in
+  let cases = candidates imp.ante in
+  match cases with
+  | [] -> [imp]
+  | _  -> (*let others_case = E.conj_list (List.map (fun x -> E.Not x) cases) in *)
+          List.map (fun a ->
+            {
+              ante = E.And (a,imp.ante);
+              conseq = imp.conseq;
+            }
+          ) ((*others_case::*)cases)
+
+
 (***************************)
 (*  SUPPORT SPLIT TACTICS  *)
 (***************************)
@@ -924,6 +956,7 @@ let support_tactic_from_string (s:string) : support_tactic_t =
 let formula_split_tactic_from_string (s:string): formula_split_tactic_t =
   match s with
   | "split-consequent"        -> split_implication
+  | "split-antecedent-pc"     -> split_antecedent_pc
   | _ -> raise(Invalid_tactic (s ^ "is not a formula_split_tactic"))
 
 
