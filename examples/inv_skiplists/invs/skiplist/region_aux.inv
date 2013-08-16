@@ -5,6 +5,8 @@ int j
 
 invariant [skiplist_region_aux] :
 
-   @remove_curr_in_region. -> remove::curr in region
+   @37. -> ((0<= j /\ j <= maxLevel) -> (insert::update[j] in addr2set(heap, head, j)))
+
+/\ @remove_curr_in_region. -> remove::curr in region
 
 

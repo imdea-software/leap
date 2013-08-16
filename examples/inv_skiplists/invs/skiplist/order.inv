@@ -8,7 +8,7 @@ invariant [skiplist_order] :
 /\ rd(heap, tail).data = highestElem
 
 /\ @main_e. -> (main::e != lowestElem /\ main::e != highestElem)
-/\ @insert_body. -> (insert::e != lowestElem /\ insert::e != lowestElem)
+/\ @insert_body. -> (insert::e != lowestElem /\ insert::e != highestElem)
 /\ @remove_body. -> (remove::e != lowestElem /\ remove::e != highestElem)
 
 
@@ -112,3 +112,8 @@ invariant [skiplist_order] :
 
 /\ @remove_section_true. -> rd(heap, remove::curr).data = remove::e
 
+
+
+
+/////////////////////////////////////////////////////////////////////
+ 

@@ -44,6 +44,9 @@ invariant [skiplist_region] :
 /\ @39. -> insert::update[0] in region
 
 
+/\ @37. -> ((0<= j /\ j <= maxLevel) -> (insert::update[j] in addr2set(heap, head, j)))
+
+
 ///// For update array
 
 ///  Remove  ////////////////////////////////////////////////////////////////////////

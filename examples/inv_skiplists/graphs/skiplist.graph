@@ -3,7 +3,7 @@
       23:levels;
       24:skiplist_next,levels;
       41:skiplist_region_inst;
-      42:skiplist_next,skiplist_region_inst;
+      42:skiplist_next,skiplist_region_inst,levels,skiplist_region,skiplist_order;
       61:skiplist_order_aux,skiplist_order_inst,skiplist_region_aux,skiplist_region_inst,levels
    ] { union : split-goal
              | reduce2
@@ -18,6 +18,7 @@
 //             |
 //             | simplify-pc
 //     }
+// 1 second
 
 
 //-> skiplist_create
@@ -26,14 +27,17 @@
 //             |
 //             | simplify-pc
 //     }
+// 1 second
 
 
-//-> skiplist_value
-//     { union :
+//-> skiplist_value [
+//       3:{union : | | split-antecedent-pc | simplify-pc }
+//   ] { union :
 //             | reduce2
 //             |
 //             | simplify-pc
 //     }
+// 1 second
 
 
 //-> skiplist_region [
@@ -55,6 +59,7 @@
 //             | split-consequent
 //             | simplify-pc propositional-propagate
 //     }
+// 221 seconds
 
 
 //-> skiplist_next [
@@ -73,6 +78,7 @@
 //             |
 //             | simplify-pc
 //     }
+// 10 seconds
 
 
 
@@ -80,6 +86,7 @@
 //       3:{union : | | split-antecedent-pc | simplify-pc };
 //      31:skiplist_next;
 //      35:skiplist_next;
+//      37:skiplist_prop,skiplist_region_aux,skiplist_order_inst,skiplist_value;
 //      41:skiplist_order_inst,levels;
 //      47:skiplist_next;
 //      50:skiplist_next;
@@ -92,4 +99,5 @@
 //             | simplify-pc
 //     }
 
+// 105 seconds
 
