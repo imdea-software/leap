@@ -210,11 +210,11 @@ assume
 :remove_bounded_prev]
 :remove_final_if[
 :remove_prev_in_region]
-:remove_curr_in_region]
                                 if (valueWasIn) then
 :remove_section_true[
                                   i := removeFrom;
 :remove_final_loop[
+:remove_curr_in_region]
                                   while (i >= 0) do
                                     update[i]->arr[i] := curr->arr[i]
                                     $ if (i=0) then

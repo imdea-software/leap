@@ -22,3 +22,5 @@ invariant [levels] :
 /\ @remove_body. -> remove::removeFrom <= maxLevel
 /\ @remove_lookup_loop. -> remove::i <= maxLevel
 /\ @remove_final_loop. -> remove::i <= remove::removeFrom
+
+/\ (@61. \/ @62.) -> remove::i >= 0
