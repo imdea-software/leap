@@ -8,9 +8,9 @@ invariant [skiplist_order_inst] :
               (rd(heap,insert::update[insert::i]).data < insert::e /\
                rd(heap,rd(heap,insert::update[insert::i]).arr[insert::i]).data > insert::e))
 
-/\ @43. -> (insert::i + 1 <= maxLevel ->
-              (rd(heap,insert::update[insert::i + 1]).data < insert::e /\
-               rd(heap,rd(heap,insert::update[insert::i + 1]).arr[insert::i + 1]).data > insert::e))
+///\ @43. -> (insert::i + 1 <= maxLevel ->
+//              (rd(heap,insert::update[insert::i + 1]).data < insert::e /\
+//               rd(heap,rd(heap,insert::update[insert::i + 1]).arr[insert::i + 1]).data > insert::e))
 
 
 /\ (@37. /\ 0 <= maxLevel) ->
@@ -21,6 +21,12 @@ invariant [skiplist_order_inst] :
 
 /\ @insert_update_all_set. ->
     ((0 <= maxLevel) -> insert::update[0] in region)
+
+
+/\ @42. ->
+      ((insert::i <= maxLevel) ->
+        (rd(heap,insert::update[insert::i]).data < insert::e /\
+         rd(heap,rd(heap,insert::update[insert::i]).arr[insert::i]).data > insert::e))
 
 
 //  Remove  ///////////////////////////////////////////////////////////////////////

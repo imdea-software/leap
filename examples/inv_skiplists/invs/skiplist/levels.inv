@@ -1,6 +1,6 @@
 vars:
 
-invariant [levels] :
+invariant [skiplist_levels] :
 
 
    @insert_i_greater_maxLevel. -> insert::i > maxLevel

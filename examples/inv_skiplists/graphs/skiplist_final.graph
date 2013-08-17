@@ -1,23 +1,24 @@
-//-> skiplist_prop [
-//      22:levels;
-//      23:levels;
-//      24:skiplist_next,levels;
-//      41:skiplist_region_inst;
-//      42:skiplist_next,skiplist_region_inst;
-//      61:skiplist_order_aux,skiplist_order_inst,skiplist_region_aux,skiplist_region_inst,levels
-//   ] { union : split-goal
-//             | reduce2
-//             | split-consequent
-//             | simplify-pc propositional-propagate
-//     }
+-> skiplist_prop [
+      22:skiplist_levels;
+      23:skiplist_levels;
+      24:skiplist_next,skiplist_levels;
+      41:skiplist_region_inst,skiplist_levels_aux;
+      42:skiplist_order_inst,skiplist_order_aux,skiplist_next_aux;
+      61:skiplist_order_aux,skiplist_order_inst,skiplist_region_aux,skiplist_region_inst,skiplist_levels,skiplist_value
+   ] { union : split-goal
+             | reduce2
+             | split-consequent
+             | simplify-pc propositional-propagate
+     }
 
 
-//-> levels
+//-> skiplist_levels
 //     { union :
 //             | reduce2
 //             |
 //             | simplify-pc
 //     }
+// 1 second
 
 
 //-> skiplist_create
@@ -26,34 +27,48 @@
 //             |
 //             | simplify-pc
 //     }
+// 1 second
+
+
+//-> skiplist_value [
+//       3:{union : | | split-antecedent-pc | simplify-pc }
+//   ] { union :
+//             | reduce2
+//             |
+//             | simplify-pc
+//     }
+// 1 second
 
 
 //-> skiplist_region [
+//       3:{union : | | split-antecedent-pc | simplify-pc };
 //      27:skiplist_prop,skiplist_next;
 //      28:skiplist_prop,skiplist_next;
-//      32:skiplist_prop,skiplist_next,levels,skiplist_order;
-//      35:skiplist_prop,skiplist_next,levels;
+//      32:skiplist_prop,skiplist_next,skiplist_levels,skiplist_order;
+//      35:skiplist_prop,skiplist_next,skiplist_levels;
 //      39:skiplist_prop,skiplist_next;
-//      42:skiplist_next_aux,levels,skiplist_region_inst;
+//      42:skiplist_next_aux,skiplist_levels,skiplist_region_inst;
 //      46:skiplist_prop,skiplist_next;
 //      47:skiplist_prop,skiplist_next;
 //      51:skiplist_prop,skiplist_next,skiplist_order;
 //      55:skiplist_next;
-//      56:skiplist_prop,levels;
+//      56:skiplist_prop,skiplist_levels;
 //      59:skiplist_prop,skiplist_next
 //   ] { union : split-goal
 //             | reduce2
 //             | split-consequent
 //             | simplify-pc propositional-propagate
 //     }
+// 221 seconds
 
 
 //-> skiplist_next [
+//       3:{union : | | split-antecedent-pc | simplify-pc };
 //      23:skiplist_prop_subsumes;
 //      27:skiplist_prop;
 //      30:skiplist_prop,skiplist_region;
 //      33:skiplist_prop,skiplist_region;
-//      35:skiplist_prop,levels;
+//      35:skiplist_prop,skiplist_levels;
 //      46:skiplist_prop;
 //      49:skiplist_prop,skiplist_region;
 //      52:skiplist_prop,skiplist_region;
@@ -63,21 +78,26 @@
 //             |
 //             | simplify-pc
 //     }
+// 10 seconds
 
 
 
 //-> skiplist_order [
+//       3:{union : | | split-antecedent-pc | simplify-pc };
 //      31:skiplist_next;
 //      35:skiplist_next;
-//      41:skiplist_order_inst,levels;
+//      37:skiplist_prop,skiplist_region_aux,skiplist_order_inst,skiplist_value;
+//      41:skiplist_order_inst,skiplist_levels;
 //      47:skiplist_next;
 //      50:skiplist_next;
 //      56:skiplist_next;
-//      59:levels
+//      58:skiplist_value;
+//      59:skiplist_levels
 //   ] { union : split-goal
 //             | reduce2
 //             | split-consequent
 //             | simplify-pc
 //     }
 
+// 105 seconds
 
