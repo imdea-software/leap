@@ -13,6 +13,18 @@ type vc_status = NotVerified | NotValid | IsValid | Unneeded
 
 type status_t = Unverified | Invalid | Valid of DP.t
 
+type result_info_t =
+  {
+    validity_tbl : DP.call_tbl_t; (* # calls to each DP *)
+    num_unverif  : int;           (* # unverified       *)
+    num_valid    : int;           (* # valid            *)
+    num_invalid  : int;           (* # invalid          *)
+    fastest      : float;         (* fastest time       *)
+    slowest      : float;         (* slowest time       *)
+    total        : float;         (* total time         *)
+    average      : float;         (* average time       *)
+  }
+
 exception Invalid_folder of string
 
 
@@ -180,13 +192,10 @@ let call_tbl_to_str (tbl:DP.call_tbl_t) : string =
                       ) (DP.call_tbl_to_list tbl))
 
 
-let report_vc_tail_to_str (vc_id:int)
-                          (vc_res:Result.info_t)
-                          (oblig_res_list:Result.info_t list)
-                          (calls_tbl:DP.call_tbl_t) : string =
+let extract_result_info (info_list:Result.info_t list) : result_info_t =
   let validity_tbl = DP.new_call_tbl() in
-  let (num_unverif,num_valid,num_invalid,fastest,slowest) =
-    List.fold_left (fun (n_unv,n_val,n_inv,fast,slow) info ->
+  let (num_unverif,num_valid,num_invalid,fastest,slowest,total) =
+    List.fold_left (fun (n_unv,n_val,n_inv,fast,slow,tot) info ->
       let this_time = Result.get_time info in
       let (n_unv',n_val',n_inv') =
         match Result.get_status info with
@@ -194,27 +203,43 @@ let report_vc_tail_to_str (vc_id:int)
         | Result.Valid dp   -> (DP.add_dp_calls validity_tbl dp 1; (n_unv,n_val+1,n_inv))
         | Result.Invalid    -> (n_unv,n_val,n_inv+1) in
       let fast' = min fast this_time in
-      let slow' = max slow this_time
+      let slow' = max slow this_time in
+      let tot' = tot +. this_time
       in
-        (n_unv',n_val',n_inv',fast',slow')
-    ) (0,0,0,9999.0,0.0) oblig_res_list in
+        (n_unv',n_val',n_inv',fast',slow',tot')
+    ) (0,0,0,9999.0,0.0,0.0) info_list in
+  let average = total /. (float_of_int (List.length info_list)) in
+  {
+    validity_tbl = validity_tbl;
+    num_unverif = num_unverif; num_valid = num_valid; num_invalid = num_invalid;
+    fastest = fastest; slowest = slowest; total = total; average = average
+  }
+
+
+let report_vc_tail_to_str (vc_id:int)
+                          (vc_res:Result.info_t)
+                          (oblig_res_list:Result.info_t list)
+                          (calls_tbl:DP.call_tbl_t) : string =
   let total_oblig = List.length oblig_res_list in
+  let res_info = extract_result_info oblig_res_list in
+(*
   let total_time = Result.get_time vc_res in
   let average_time = total_time /. (float_of_int total_oblig) in
+*)
 
     "--  VC " ^string_of_int vc_id^ " results  ---------------------------------------------------------\n" ^
     "  Proof obligations\n" ^
     "    Total      : " ^string_of_int total_oblig^ "\n" ^
-    "    Unverified : " ^string_of_int num_unverif^ "\n" ^
-    "    Valid      : " ^string_of_int num_valid^ "\n" ^
-    "    Invalid    : " ^string_of_int num_invalid^ "\n\n" ^
+    "    Unverified : " ^string_of_int res_info.num_unverif^ "\n" ^
+    "    Valid      : " ^string_of_int res_info.num_valid^ "\n" ^
+    "    Invalid    : " ^string_of_int res_info.num_invalid^ "\n\n" ^
     "  Verification time for each proof obligation\n" ^
-    "    Fastest    : " ^time_to_str fastest^ "\n" ^
-    "    Slowest    : " ^time_to_str slowest^ "\n" ^
-    "    Average    : " ^time_to_str average_time^ "\n" ^
-    "    Total      : " ^time_to_str total_time^ "\n" ^
+    "    Fastest    : " ^time_to_str res_info.fastest^ "\n" ^
+    "    Slowest    : " ^time_to_str res_info.slowest^ "\n" ^
+    "    Average    : " ^time_to_str res_info.average^ "\n" ^
+    "    Total      : " ^time_to_str res_info.total^ "\n" ^
     "  Decision procedures calls used for each proof obligation\n" ^
-    "    " ^call_tbl_to_str validity_tbl^ "\n" ^
+    "    " ^call_tbl_to_str res_info.validity_tbl^ "\n" ^
     "  Decision procedures calls in total for all proof obligations\n" ^
     "    " ^call_tbl_to_str calls_tbl^ "\n" ^
     "==========================================================================="
@@ -235,22 +260,28 @@ let report_vc_tail_to_str (vc_id:int)
 *)
 
 
-let report_summary_to_str (vc_list:Result.info_t list)
+let report_summary_to_str (oblig_num:int)
+                          (vc_list:Result.info_t list)
                           (call_tbl:DP.call_tbl_t) : string =
     (* The put a table here *)
-    let (unver,valid,inval) = List.fold_left (fun (n_unv,n_val,n_inv) info ->
-                                match Result.get_status info with
-                                | Result.Unverified -> (n_unv+1,n_val,n_inv)
-                                | Result.Valid _    -> (n_unv,n_val+1,n_inv)
-                                | Result.Invalid    -> (n_unv,n_val,n_inv+1)
-                              ) (0,0,0) vc_list in
+    let res_info = extract_result_info vc_list in
     "==  Summary  ==============================================================\n" ^
+    "  Proof obligations\n" ^
+    "    Total  : "^string_of_int oblig_num^"\n\n" ^
+    "  Verification time for all verification conditions\n" ^
+    "    Fastest    : " ^time_to_str res_info.fastest^ "\n" ^
+    "    Slowest    : " ^time_to_str res_info.slowest^ "\n" ^
+    "    Average    : " ^time_to_str res_info.average^ "\n" ^
+    "    Total      : " ^time_to_str res_info.total^ "\n\n" ^
+    "  Decision procedures for each VC\n" ^
+    "    "^call_tbl_to_str res_info.validity_tbl^"\n" ^
     "  Decision procedures total calls\n" ^
-    "    "^call_tbl_to_str call_tbl^"\n" ^
-    "  Generated VCS       : "^string_of_int (List.length vc_list)^"\n" ^
-    "  Not verified        : "^string_of_int unver^"\n" ^
-    "  Verified as valid   : "^string_of_int valid^"\n" ^
-    "  Remains invalid     : "^string_of_int inval^"\n" ^
+    "    "^call_tbl_to_str call_tbl^"\n\n" ^
+    "  Verification conditions\n"^
+    "    Total      : "^string_of_int (List.length vc_list)^"\n" ^
+    "    Unverified : "^string_of_int res_info.num_unverif^"\n" ^
+    "    Valid      : "^string_of_int res_info.num_valid^"\n" ^
+    "    Invalid    : "^string_of_int res_info.num_invalid^"\n" ^
     "===========================================================================\n"
 
 
@@ -366,5 +397,7 @@ let report_obligation_tail (status:Result.status_t) (time:float) : unit =
   print_newline(); print_string (report_obligation_tail_to_str status time)
 
 
-let report_summary (vc_list:Result.info_t list) (call_tbl:DP.call_tbl_t) : unit =
-  print_newline(); print_string (report_summary_to_str vc_list call_tbl)
+let report_summary (oblig_num:int)
+                   (vc_list:Result.info_t list)
+                   (call_tbl:DP.call_tbl_t) : unit =
+  print_newline(); print_string (report_summary_to_str oblig_num vc_list call_tbl)

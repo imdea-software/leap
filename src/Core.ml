@@ -424,6 +424,7 @@ module Make (Opt:module type of GenOptions) : S =
       let prog_lines = (System.get_trans_num Opt.sys) in
 
       let vc_counter = ref 1 in
+      let oblig_counter = ref 0 in
 
       let result =
         List.map (fun case ->
@@ -481,14 +482,23 @@ module Make (Opt:module type of GenOptions) : S =
                 ) case.obligations in
 
           case_timer#stop;
-          let case_result = Result.new_info Result.Unverified (case_timer#elapsed_time) in
+          oblig_counter := !oblig_counter + (List.length case.obligations);
+          let forall_res f = List.for_all (fun (_,info) -> f info) res_list in
+          let exist_res  f = List.exists  (fun (_,info) -> f info) res_list in
+          let vc_validity = if forall_res Result.is_valid then
+                              Result.Valid Opt.dp
+                            else if exist_res Result.is_invalid then
+                              Result.Invalid
+                            else
+                              Result.Unverified in
+          let case_result = Result.new_info vc_validity (case_timer#elapsed_time) in
           let res = new_solved_proof_obligation case.vc res_list case_result in
           DP.combine_call_table this_calls_counter calls_counter;
           Report.report_vc_tail !vc_counter case_result (List.map snd res_list) this_calls_counter;
           incr vc_counter;
           res
         ) to_analyze in
-      Report.report_summary (List.map (fun r -> r.result) result) calls_counter;
+      Report.report_summary (!oblig_counter) (List.map (fun r -> r.result) result) calls_counter;
       result
 
 

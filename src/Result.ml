@@ -40,4 +40,18 @@ let get_time (info:info_t) : float =
   info.time
 
 
+let is_unverified (info:info_t) : bool =
+  info.status = Unverified
+
+
+let is_invalid (info:info_t) : bool =
+  info.status = Invalid
+
+
+let is_valid (info:info_t) : bool =
+  match info.status with
+  | Valid _ -> true
+  | _       -> false
+
+
 

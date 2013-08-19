@@ -826,8 +826,9 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
     match cf with
     | SL.TrueConj  -> (verb "**** check_pa: true\n"; true)
     | SL.FalseConj -> (verb "**** check_pa: false\n"; false)
-    | SL.Conj ls   -> try_sat_with_presburger_arithmetic
-                        (SL.from_conjformula_to_formula cf) in
+    | SL.Conj ls   -> (DP.add_dp_calls this_call_tbl DP.Num 1;
+                       try_sat_with_presburger_arithmetic
+                        (SL.from_conjformula_to_formula cf)) in
 
   (* Main verification function *)
   let check (pa:SL.conjunctive_formula)
@@ -856,9 +857,6 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
 
       let alpha_pairs = update_arrangement alpha rel_set in
       let (panc_r, nc_r, alpha_pairs_r) = propagate_levels alpha_pairs panc nc in
-      (* ERASE *)
-      print_endline ("ALPHA_PAIRS_R SIZE: " ^ (string_of_int (List.length alpha_pairs_r)));
-
 
       let alpha_pairs_str =
         String.concat ";" (List.map (fun (xs,mi) ->
@@ -866,7 +864,7 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
                                                                  | Some i -> SL.int_to_str i
                                                                  | None -> "None")
         ) alpha_pairs_r) in
-      print_endline ("ALPHA_PAIRS_R: " ^ alpha_pairs_str);
+      Log.print "ALPHA_PAIRS_R" alpha_pairs_str;
 
       Log.print "PANC_R" (SL.conjunctive_formula_to_str panc_r);
       Log.print "NC_R" (SL.conjunctive_formula_to_str nc_r);
@@ -876,8 +874,6 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
                                 | None -> xs
                                 | Some relev -> [relev] :: xs
                               ) [] alpha_pairs_r) in
-      (* ERASE *)
-      print_endline ("ALPHA_R SIZE: " ^ (string_of_int (List.length alpha_r)));
 
       (* Assertions only *)
       let alpha_relev = GenSet.empty () in
@@ -895,7 +891,6 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
 
       if not (SL.VarSet.for_all (fun v -> GenSet.mem alpha_relev (SL.VarInt v)) panc_r_level_vars) then begin
         print_endline ("PANC_R_LEVEL_VARS: " ^ (String.concat ";" (List.map SL.variable_to_str (SL.VarSet.elements panc_r_level_vars))));
-        print_endline ("ALPHA_RELEV: " ^ (GenSet.to_str SL.int_to_str alpha_relev));
         print_endline ("ALPHA_RELEV: " ^ (GenSet.to_str SL.int_to_str alpha_relev));
         print_endline ("PANC_R: " ^ (SL.conjunctive_formula_to_str panc_r));
         print_endline ("ALPHA: " ^ (String.concat ";" (List.map (fun xs -> "[" ^ (String.concat ";" (List.map SL.int_to_str xs)) ^ "]") alpha)));
@@ -959,10 +954,11 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
   assert (Hashtbl.length arrg_sat_table = 0);
   let answer =
     (* If no interesting information in NC formula, then we just check PA and PANC *)
-    if nc = SL.TrueConj || nc = SL.FalseConj then
+    if nc = SL.TrueConj || nc = SL.FalseConj then begin
+      DP.add_dp_calls this_call_tbl DP.Num 1;
       try_sat_with_presburger_arithmetic (SL.from_conjformula_to_formula
                                           (SL.combine_conj_formula pa panc))
-    else begin
+    end else begin
       let arrgs = guess_arrangements (SL.combine_conj_formula_list [pa; panc; nc]) in
       (* Verify if some arrangement makes the formula satisfiable *)
       GenSet.exists (fun alpha -> check pa panc nc alpha) arrgs
