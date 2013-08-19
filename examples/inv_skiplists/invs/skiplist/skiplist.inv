@@ -11,15 +11,3 @@ invariant [skiplist_prop] :
 /\ maxLevel >= 0
 
 
-///\ @42. ->
-//      rd(heap, insert::newCell).arr[insert::i] = rd(heap, insert::update[insert::i]).arr[insert::i]
-
-///\ @42. ->
-//      rd(heap, insert::update[insert::i]).data < insert::e
-
-///\ @42. ->
-//      rd(heap, rd(heap, insert::update[insert::i]).arr[insert::i]).data > insert::e
-
-///\ @42. ->
-//      rd(heap, insert::newCell).data = insert::e
-
