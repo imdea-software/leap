@@ -1,0 +1,5 @@
+vars:
+
+invariant [skiplist_prop_subsumes] :
+
+   head != tail

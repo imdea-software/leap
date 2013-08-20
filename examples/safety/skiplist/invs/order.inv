@@ -1,0 +1,119 @@
+vars:
+
+int j
+
+invariant [skiplist_order] :
+
+   rd(heap, head).data = lowestElem
+/\ rd(heap, tail).data = highestElem
+
+/\ @main_e. -> (main::e != lowestElem /\ main::e != highestElem)
+/\ @insert_body. -> (insert::e != lowestElem /\ insert::e != highestElem)
+/\ @remove_body. -> (remove::e != lowestElem /\ remove::e != highestElem)
+
+
+/\ @insert_newCell_created. -> (rd(heap, insert::newCell).data != rd(heap, head).data /\
+                                rd(heap, insert::newCell).data != rd(heap, tail).data /\
+                                rd(heap, insert::newCell).data = insert::e)
+
+
+/\ @insert_bounded_i_one. -> rd(heap, insert::prev).data < insert::e
+/\ (@32. \/ @33.) -> rd(heap, insert::curr).data < insert::e
+
+
+/\ @insert_update_higher. ->
+      ((insert::i < j /\ j <= maxLevel) ->
+          (rd(heap,insert::update[j]).data < insert::e /\
+           (rd(heap,rd(heap,insert::update[j]).arr[j]).data > insert::e \/
+            rd(heap,rd(heap,insert::update[j]).arr[j]).data = insert::e)))
+/\ (@37. /\ 0 <= j /\ j <= maxLevel) ->
+          (rd(heap,insert::update[j]).data < insert::e /\
+           (rd(heap,rd(heap,insert::update[j]).arr[j]).data > insert::e \/
+            rd(heap,rd(heap,insert::update[j]).arr[j]).data = insert::e))
+
+/\ (@insert_update_all_order. /\ 0 <= j /\ j <= maxLevel) ->
+          (rd(heap,insert::update[j]).data < insert::e /\
+           rd(heap,rd(heap,insert::update[j]).arr[j]).data > insert::e)
+
+///// MAYBE MOVE IT TO SUPPORT FILE ///////
+/\ @42. -> (rd(heap, insert::update[insert::i]).data < rd(heap, insert::newCell).data /\
+            rd(heap, rd(heap, insert::newCell).arr[insert::i]).data > rd(heap, insert::newCell).data
+           )
+///// MAYBE MOVE IT TO SUPPORT FILE ///////
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+
+/\ @insert_prev_low. -> rd(heap, insert::prev).data < insert::e
+
+/\ @insert_update_set. -> rd(heap, insert::update[insert::i]).data = rd(heap,insert::prev).data
+
+/\ (@34. \/ @35.) -> (rd(heap,insert::curr).data > insert::e \/
+                      rd(heap,insert::curr).data = insert::e)
+
+
+/\ @insert_update_from_i_order. ->
+      ((insert::i <= j /\ j <= maxLevel) ->
+        (rd(heap,insert::update[j]).data < insert::e /\
+         rd(heap,rd(heap,insert::update[j]).arr[j]).data > insert::e))
+
+/\ @43. ->
+      ((insert::i < j /\ j <= maxLevel) ->
+        (rd(heap,insert::update[j]).data < insert::e /\
+         rd(heap,rd(heap,insert::update[j]).arr[j]).data > insert::e))
+
+
+///  Remove /////////////////////////////
+
+/\ @remove_bounded_prev. -> rd(heap, remove::prev).data < remove::e
+
+/\ @remove_bounded_curr. -> (rd(heap, remove::curr).data > remove::e \/
+                             rd(heap, remove::curr).data = remove::e)
+
+/\ @51. -> rd(heap, remove::curr).data < remove::e
+
+/\ @remove_update_higher_set. ->
+      ((remove::i < j /\ j <= maxLevel) ->
+          (rd(heap, remove::update[j]).data < remove::e /\
+           (rd(heap,rd(heap, remove::update[j]).arr[j]).data > remove::e \/
+            rd(heap,rd(heap, remove::update[j]).arr[j]).data = remove::e)))
+
+
+/\ @remove_section. ->
+      ((0 <= j /\ j <= remove::removeFrom) ->
+          rd(heap, remove::update[j]).data < remove::e)
+
+
+/\ (@57. \/ @58. \/ @59.) ->
+      ((0 <= j /\ j <= maxLevel) ->
+         (rd(heap, rd(heap, remove::update[j]).arr[j]).data > remove::e \/
+          rd(heap, rd(heap, remove::update[j]).arr[j]).data = remove::e))
+
+
+/\ (@60. \/ @61.) ->
+      ((0 <= j /\ j <= remove::i) ->
+         (rd(heap, rd(heap, remove::update[j]).arr[j]).data > remove::e \/
+          rd(heap, rd(heap, remove::update[j]).arr[j]).data = remove::e))
+
+
+/\ @62. ->
+      ((0 <= j /\ j < remove::i) ->
+         (rd(heap, rd(heap, remove::update[j]).arr[j]).data > remove::e \/
+          rd(heap, rd(heap, remove::update[j]).arr[j]).data = remove::e))
+
+
+/\ @remove_section_true. -> rd(heap, remove::curr).data = remove::e
+
+/\ @remove_section. ->
+      ((0 <= j /\ j <= maxLevel) ->
+        remove::update[j] in addr2set(heap, head, j))
+
+
+/\ @remove_section_true. -> rd(heap, remove::curr).data = remove::e
+
+
+
+
+/////////////////////////////////////////////////////////////////////
+ 

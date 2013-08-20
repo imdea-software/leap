@@ -1,0 +1,55 @@
+vars:
+
+int j
+
+
+invariant [skiplist_next] :
+
+   @insert_head_next_i_tail. -> rd(heap, head).arr[insert::i] = tail
+/\ @insert_tail_next_i_null. -> rd(heap, tail).arr[insert::i] = null
+
+/\ (@27. \/ @28.) -> (insert::prev = head)
+
+/\ @insert_bounded_i_one. -> insert::prev in addr2set(heap, head, insert::i)
+
+/\ (@28. \/ @29. \/ @30. \/ @31. \/ @32. \/ @33. \/ @34. \/ @35. \/ @36.) -> insert::curr != null
+
+/\ (@31. \/ @32. \/ @34. \/ @35.) -> rd(heap, insert::prev).arr[insert::i] = insert::curr
+
+/\ @35. -> insert::update[insert::i] = insert::prev
+
+/\ @33. -> insert::curr = insert::prev
+
+/\ (@insert_update_all_set. /\ 0 <= j /\ j <= maxLevel) ->
+        (insert::update[j] != null /\ insert::update[j] != tail)
+
+/\ @insert_newCell_created. -> insert::newCell != null
+
+/\ @42. -> (rd(heap, insert::newCell).arr[insert::i] = rd(heap, insert::update[insert::i]).arr[insert::i])
+
+
+
+/\ @insert_prev_in_region. -> insert::prev != null
+
+
+
+/// Remove ////////////////////////////////////////////////////////////////
+
+/\ @remove_prev_is_head. -> remove::prev = head
+
+
+/\ @remove_curr_not_null. -> remove::curr != null
+
+
+/\ (@50. \/ @51. \/ @53. \/ @54. \/ @55. \/ @56.) -> rd(heap, remove::prev).arr[remove::i] = remove::curr
+
+/\ @52. -> remove::curr = remove::prev
+
+/\ @56. -> remove::update[remove::i] = remove::prev
+
+
+
+
+
+///////////////////////////////////////////////////////
+

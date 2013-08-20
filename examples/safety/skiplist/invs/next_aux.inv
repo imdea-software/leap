@@ -1,0 +1,7 @@
+vars:
+
+invariant [skiplist_next_aux] :
+
+   @insert_newCell_created. -> insert::newCell != null
+
+/\ @42. -> (rd(heap, insert::newCell).arr[insert::i] = rd(heap, insert::update[insert::i]).arr[insert::i])

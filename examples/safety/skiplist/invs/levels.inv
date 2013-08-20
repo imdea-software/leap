@@ -1,0 +1,25 @@
+vars:
+
+invariant [skiplist_levels] :
+
+
+   @insert_i_greater_maxLevel. -> insert::i > maxLevel
+/\ @insert_i_top_maxLevel. -> insert::i = maxLevel + 1
+/\ @insert_maxLevel_eq_i. -> insert::i = maxLevel
+
+/\ @insert_bounded_i_one. -> insert:: i <= maxLevel
+
+
+
+
+/\ @insert_i_lesseq_lvl_two. -> insert::i <= insert::lvl
+/\ @insert_lvl_inrange. -> insert::lvl <= maxLevel
+/\ @25. -> maxLevel = insert::i
+/\ @21. -> maxLevel + 1 = insert::i
+
+
+/\ @remove_body. -> remove::removeFrom <= maxLevel
+/\ @remove_lookup_loop. -> remove::i <= maxLevel
+/\ @remove_final_loop. -> remove::i <= remove::removeFrom
+
+/\ (@61. \/ @62.) -> remove::i >= 0

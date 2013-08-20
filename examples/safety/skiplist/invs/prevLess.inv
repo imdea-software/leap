@@ -1,0 +1,8 @@
+vars:
+
+invariant [prev_less] :
+
+
+    @32. -> (rd(heap,insert::prev).data < insert::e)
+//    @insert_prev_low. -> (rd(heap,insert::prev).data < insert::e)
+// /\  @insert_curr_low. -> (rd(heap,insert::curr).data < insert::e)
