@@ -265,7 +265,9 @@ struct
 
   let smt_pos_preamble buf =
 (* No need to define the program counter as now is just a integer variable *)
-    B.add_string buf ("(define-sort " ^loc_s^ " () " ^int_s^ ")\n");
+    B.add_string buf ("(define-sort " ^loc_s^ " () " ^int_s^ ")\n")
+(* Since variables and PC are flat into variables, there's no need of pc and pc_prime as arrays *)
+(*
     GM.sm_decl_fun sort_map pc_name [tid_s] [loc_s] ;
     GM.sm_decl_fun sort_map pc_prime_name [tid_s] [loc_s] ;
     B.add_string buf ("(declare-fun " ^pc_name^ " () (Array " ^tid_s^ " " ^loc_s^ "))\n");
@@ -275,6 +277,8 @@ struct
                       "        (<= (select pc t) " ^string_of_int !prog_lines^ ")\n" ^
                       "        (<= 1 (select pc_prime t))\n" ^
                       "        (<= (select pc_prime t) " ^ string_of_int !prog_lines^ ")))\n")
+*)
+(* Since variables and PC are flat into variables, there's no need of pc and pc_prime as arrays *)
 
 
   (* (define emptyth::setth)     *)
@@ -1367,8 +1371,9 @@ struct
           | Expr.Path -> B.add_string buf ( "(assert (ispath " ^name^ "))\n" )
           | Expr.Mem  -> B.add_string buf ( "(assert (isheap " ^name^ "))\n" )
           | Expr.Tid -> B.add_string buf ( "(assert (not (= " ^ name ^ " notid)))\n" );
-                         B.add_string buf ( "(assert (istid " ^name^ "))\n" );
-                         B.add_string buf ( "(assert (in_pos_range " ^ name ^ "))\n" )
+                         B.add_string buf ( "(assert (istid " ^name^ "))\n" )
+(* Since variables and PC are flat into variables, there's no need of pc and pc_prime as arrays *)
+(*                         B.add_string buf ( "(assert (in_pos_range " ^ name ^ "))\n" ) *)
           | _    -> ()
         end
       else

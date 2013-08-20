@@ -525,7 +525,8 @@ module Make (Opt:module type of GenOptions) : S =
                              (gral_plan:Tactics.proof_plan)
                              (cases:IGraph.case_tbl_t) : proof_obligation_t list =
       List.fold_left (fun res vc ->
-        let vc = Tactics.to_plain_vc_info E.PCVars vc in
+      (* FOR LISTS *)
+(*        let vc = Tactics.to_plain_vc_info E.PCVars vc in*)
         let prem = match Tactics.get_tid_constraint_from_info vc with
                    | E.True -> Premise.SelfConseq
                    | _      -> Premise.OthersConseq in

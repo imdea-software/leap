@@ -311,6 +311,7 @@ val build_pc_range : pc_t -> pc_t -> pc_t list
 val same_var : variable -> variable -> bool
 val build_var : varId -> sort -> bool -> shared_or_local ->
                 procedure_name -> var_nature -> variable
+val build_pc_var : bool -> shared_or_local -> variable
 val var_id        : variable -> varId
 val var_sort      : variable -> sort
 val var_is_primed : variable -> bool
@@ -415,6 +416,7 @@ val param_tid_to_str : tid -> string
 (* PRIMING FUNCTIONS *)
 val is_primed    : variable -> bool
 val prime_variable : variable -> variable
+val unprime_variable : variable -> variable
 (*val prime_var_name : varId -> varId*)
 val prime_addr   : addr -> addr
 val prime_elem   : elem -> elem

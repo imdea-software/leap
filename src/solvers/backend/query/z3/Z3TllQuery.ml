@@ -241,7 +241,9 @@ struct
 
   let z3_pos_preamble buf =
 (* No need to define the program counter as now is just a integer variable *)
-    B.add_string buf ("(define-sort " ^loc_s^ " () " ^int_s^ ")\n");
+    B.add_string buf ("(define-sort " ^loc_s^ " () " ^int_s^ ")\n")
+(* Since variables and PC are flat into variables, there's no need of pc and pc_prime as arrays *)
+(*
     GM.sm_decl_fun sort_map pc_name [tid_s] [loc_s] ;
     GM.sm_decl_fun sort_map pc_prime_name [tid_s] [loc_s] ;
     B.add_string buf ("(declare-const " ^pc_name^ " (Array " ^tid_s^ " " ^loc_s^ "))\n");
@@ -253,6 +255,8 @@ struct
                                (<= 1 (select pc_prime t))\n\
                                (<= (select pc_prime t) %i))\n\
                        )\n" tid_s bool_s !prog_lines !prog_lines)
+*)
+(* Since variables and PC are flat into variables, there's no need of pc and pc_prime as arrays *)
 
 
   (* (define subseteq::(-> set set bool)  *)
@@ -1176,8 +1180,9 @@ struct
           match s with
             Expr.Path -> B.add_string buf ( "(assert (ispath " ^ name ^ "))\n" )
           | Expr.Mem  -> B.add_string buf ( "(assert (isheap " ^ name ^ "))\n" )
-          | Expr.Tid -> B.add_string buf ( "(assert (not (= " ^ name ^ " NoThread)))\n" );
-                         B.add_string buf ( "(assert (in_pos_range " ^ name ^ "))\n")
+          | Expr.Tid -> B.add_string buf ( "(assert (not (= " ^ name ^ " NoThread)))\n" )
+(* Since variables and PC are flat into variables, there's no need of pc and pc_prime as arrays *)
+(*                         B.add_string buf ( "(assert (in_pos_range " ^ name ^ "))\n") *)
           | _    -> ()
         end
       else

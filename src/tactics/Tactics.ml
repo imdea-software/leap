@@ -83,9 +83,40 @@ let new_proof_plan (smp:Smp.cutoff_strategy_t option)
   }
  
 let vc_info_to_implication (info:vc_info) (sup:support_t): implication =
+  (* This code adds equalities that were implicit when we used arrays to represent local vars *)
+  let build_pc pr i = E.build_pc_var pr (E.Local i) in
+  let goal_voc = E.voc info.goal in
+  let pc_updates : (E.variable, E.variable) Hashtbl.t = Hashtbl.create 4 in
+  let var_updates : (E.variable, E.tid list) Hashtbl.t = Hashtbl.create 4 in
+  List.iter (fun i -> Hashtbl.add pc_updates (build_pc false i) (build_pc true i)) goal_voc;
+  List.iter (fun phi ->
+    match phi with
+    | E.Literal (E.Atom (E.PCUpdate (_,i))) -> Hashtbl.remove pc_updates (build_pc false i)
+    | E.Literal (E.Atom (E.Eq (E.ArrayT (E.VarArray v), E.ArrayT (E.ArrayUp (_,i,_))))) ->
+        begin
+          try
+            let old_list = Hashtbl.find var_updates v in
+            let new_list = List.filter (fun j -> j<>i) old_list in
+            Hashtbl.replace var_updates v new_list
+          with _ -> Hashtbl.add var_updates v (List.filter (fun j -> j<>i) goal_voc)
+        end
+    | _ -> ()
+  ) (E.to_conj_list info.rho);
+  let pc_pres = Hashtbl.fold (fun v v' xs -> (v', v) :: xs) pc_updates [] in
+  let var_pres = Hashtbl.fold (fun v' tids xs ->
+                   (List.map (fun i ->
+                      (E.var_set_param (E.Local i) v',
+                       E.var_set_param (E.Local i) (E.unprime_variable v'))
+                    ) tids) @ xs
+                 ) var_updates [] in
+  (* This code adds equalities that were implicit when we used arrays to represent local vars *)
+
   let the_antecedent =
-    E.conj_list (sup @ [ info.tid_constraint ] @ [info.rho]) in
-  let consequent = E.prime_modified info.rho info.goal in
+    E.to_plain_formula E.PCVars
+      (E.conj_list (sup @ [ info.tid_constraint ] @ [info.rho])) in
+  let consequent = E.subst_vars pc_pres
+    (E.to_plain_formula E.PCVars
+      (E.subst_vars var_pres (E.prime_modified info.rho info.goal))) in
   { ante = the_antecedent ; conseq = consequent }
 
 let vc_info_to_formula  (info:vc_info) (sup:support_t): E.formula =
@@ -107,27 +138,34 @@ exception Invalid_tactic of string
 let default_cutoff_algorithm = Smp.Dnf
 
 
+let to_plain_vc_info (fol_mode:E.fol_mode_t) (info:vc_info) : vc_info =
+  let f = E.to_plain_formula fol_mode in
+  {
+    original_support = List.map f info.original_support;
+    tid_constraint = f info.tid_constraint;
+    rho = f info.rho;
+    original_goal = f info.original_goal;
+    goal = f info.goal;
+    transition_tid = info.transition_tid;
+    line = info.line;
+    vocabulary = info.vocabulary;
+  }
+
+
 let vc_info_to_str (vc:vc_info) : string =
-  let to_plain = E.to_plain_formula E.PCVars in
-  let fol_tid_constraint = to_plain vc.tid_constraint in
-  let fol_rho = to_plain vc.rho in
-  let fol_goal = to_plain vc.goal in
-  let fol_supp = List.map to_plain vc.original_support in
-
-  let vars_to_declare = E.all_vars (E.conj_list (fol_tid_constraint ::
-                                                 fol_rho            ::
-                                                 fol_goal           ::
-                                                 fol_supp)) in
-
+  let vars_to_declare = E.all_vars (E.conj_list (vc.tid_constraint  ::
+                                                 vc.rho             ::
+                                                 vc.goal            ::
+                                                 vc.original_support)) in
   let vars_str = (String.concat "\n"
                    (List.map (fun v ->
                      (E.sort_to_str (E.var_sort v)) ^ " " ^
                      (E.variable_to_str v)
                    ) vars_to_declare)) in
-  let supp_str = String.concat "\n" (List.map E.formula_to_str fol_supp) in
-  let tidconst_str = E.formula_to_str fol_tid_constraint in
-  let rho_str = E.formula_to_str fol_rho in
-  let goal_str = E.formula_to_str fol_goal in
+  let supp_str = String.concat "\n" (List.map E.formula_to_str vc.original_support) in
+  let tidconst_str = E.formula_to_str vc.tid_constraint in
+  let rho_str = E.formula_to_str vc.rho in
+  let goal_str = E.formula_to_str vc.goal in
   let tid_str = E.tid_to_str vc.transition_tid in
   let line_str = string_of_int vc.line
   in
@@ -140,16 +178,15 @@ let vc_info_to_str (vc:vc_info) : string =
     "Line: " ^ line_str ^ "\n\n"
 
 
+let vc_info_to_plain_str (vc:vc_info) : string =
+  vc_info_to_str (to_plain_vc_info E.PCVars vc)
+
+
 let vc_info_to_str_simple (vc:vc_info) : string =
-  let to_plain = E.to_plain_formula E.PCVars in
-  let fol_supp = List.map to_plain vc.original_support in
-  let fol_tid_constraint = to_plain vc.tid_constraint in
-  let fol_rho = to_plain vc.rho in
-  let fol_goal = to_plain vc.goal in
-  let supp_str = String.concat "\n" (List.map E.formula_to_str fol_supp) in
-  let tidconst_str = E.formula_to_str fol_tid_constraint in
-  let rho_str = E.formula_to_str fol_rho in
-  let goal_str = E.formula_to_str fol_goal
+  let supp_str = String.concat "\n" (List.map E.formula_to_str vc.original_support) in
+  let tidconst_str = E.formula_to_str vc.tid_constraint in
+  let rho_str = E.formula_to_str vc.rho in
+  let goal_str = E.formula_to_str vc.goal
   in
     "SUPPORT:\n" ^ supp_str ^ "\n" ^
     "CONSTRAINT:\n" ^ tidconst_str ^ "\n" ^
@@ -191,20 +228,6 @@ let create_vc_info (supp       : support_t)
       line               = line ;
       vocabulary         = vocab ; (* fix: can be computed *)
     }
-
-
-let to_plain_vc_info (fol_mode:E.fol_mode_t) (info:vc_info) : vc_info =
-  let f = E.to_plain_formula fol_mode in
-  {
-    original_support = List.map f info.original_support;
-    tid_constraint = f info.tid_constraint;
-    rho = f info.rho;
-    original_goal = f info.original_goal;
-    goal = f info.goal;
-    transition_tid = info.transition_tid;
-    line = info.line;
-    vocabulary = info.vocabulary;
-  }
 
 
 let create_vc (orig_supp       : support_t)
