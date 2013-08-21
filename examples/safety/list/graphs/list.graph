@@ -22,12 +22,12 @@
 // 5.1 seconds
 
 
-=> fullLock [28:S:fullNext;
-             29:S:fullNext;
-             36:S:fullNext;
-             45:S:fullNext;
-             46:S:fullNext;
-             52:S:fullNext] {union:|reduce2||simplify-pc}
+//=> fullLock [28:S:fullNext;
+//             29:S:fullNext;
+//             36:S:fullNext;
+//             45:S:fullNext;
+//             46:S:fullNext;
+//             52:S:fullNext] {pruning:|reduce2||simplify-pc}
 // 1.2 seconds
 
 
@@ -35,13 +35,13 @@
 // 0.6 seconds
 
 
-//=> fullRegion [24:S:fullPreserve {pruning:|reduce2||simplify-pc};
-//               28:S:fullNext;
-//               30:S:fullPreserve;
-//               35:O:fullDisjoint;
-//               41:S:fullPreserve;
-//               45:S:fullNext;
-//               47:S:fullPreserve,fullNext;
-//               51:S:fullPreserve,fullNext;
-//               51:O:fullPreserve,fullNext,fullLock {pruning:|reduce2||simplify-pc}] {pruning:|reduce2||simplify-pc}
+=> fullRegion [24:S:fullPreserve {pruning:|reduce2||simplify-pc};
+               28:S:fullNext;
+               30:S:fullPreserve;
+               35:O:fullDisjoint;
+               41:S:fullPreserve;
+               45:S:fullNext;
+               47:S:fullPreserve,fullNext;
+               51:S:fullPreserve,fullNext;
+               51:O:fullPreserve,fullNext,fullLock {pruning:|reduce2||simplify-pc}] {pruning:|reduce2||simplify-pc}
 // Too many time

@@ -1812,6 +1812,42 @@ let rec nnf expr =
 exception ErrorInNNF of string
 
 
+(* FORMULA MANIPULATION FUNCTIONS *)
+let conj_list (bs:formula list) : formula =
+  match bs with
+    [] -> True
+  | x::xs -> List.fold_left (fun a b -> And(a,b)) x xs
+
+  
+let disj_list (bs:formula list) : formula =
+  match bs with
+    [] -> False
+  | x::xs -> List.fold_left (fun a b -> Or(a,b)) x xs
+
+
+let conj_literals (ls:literal list) :  formula =
+  match ls with
+      []    -> True
+    | x::xs -> List.fold_left (fun phi l -> And(phi,Literal l)) (Literal x) xs  
+
+let disj_literals  (ls:literal list) : formula =
+  match ls with
+      []    -> False
+    | x::xs -> List.fold_left (fun phi l -> Or(phi,Literal l)) (Literal x) xs 
+
+
+let rec to_conj_list (phi:formula) : formula list =
+  match phi with
+    And (f1,f2) -> (to_conj_list f1) @ (to_conj_list f2)
+  | _           -> [phi]
+
+
+let rec to_disj_list (phi:formula) : formula list =
+  match phi with
+    Or (f1,f2) -> (to_disj_list f1) @ (to_disj_list f2)
+  | _          -> [phi]
+
+
 let rec dnf (expr:formula) : conjunctive_formula list =
   let rec dnf_nnf nnfexpr =
     match nnfexpr with

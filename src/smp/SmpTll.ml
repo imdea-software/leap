@@ -76,6 +76,12 @@ let cut_off_normalized (expr:conjunctive_formula) : model_size =
                        varset_of_sort vars Mem in
 
   let vars_mem = VarSet.cardinal vars_mem_set in
+
+  Printf.printf "VAR ADDRS: %i\n" vars_addr;
+  Printf.printf "VAR TIDS: %i\n" vars_tid;
+  Printf.printf "VAR MEMS: %i\n" vars_mem;
+
+
   (* ALE: I need the "2" for next0, firstlocked0.... *)
   (* ALE: No need to add null and NoThread in the counter, as they are added
           separately as an special address and tid respectively *)
@@ -405,26 +411,12 @@ let rec prune_formula (phi:formula) : formula option =
 
 
 let compute_max_cut_off_with_pruning (phi:formula) : model_size =
+  Printf.printf "Original formula: %s\n" (Expr.formula_to_str phi);
   let pruned_phi = Option.default True (prune_formula (Expr.nnf phi)) in
+  Printf.printf "Pruned formula: %s\n" (Expr.formula_to_str pruned_phi);
   let dnf_phi = Expr.dnf pruned_phi in
-(*
-  let _ = List.iter (fun line ->
-            print_endline (match line with
-                           | FalseConj -> "false"
-                           | TrueConj -> "true"
-                           | Conj cs -> String.concat " ;; " (List.map Expr.literal_to_str cs))
-          ) dnf_phi in
-*)
   let new_dnf = List.map Expr.cleanup_dup dnf_phi in
-(*
-  let _ = List.iter (fun line ->
-            print_endline (match line with
-                           | FalseConj -> "false"
-                           | TrueConj -> "true"
-                           | Conj cs -> String.concat " ;; " (List.map Expr.literal_to_str cs))
-          ) new_dnf in
-  let _ = print_endline "Computed DNF" in
-*)
+  List.iter (fun xs -> Printf.printf "DNF Formula: %s\n" (Expr.conjunctive_formula_to_str xs)) new_dnf;
     compute_max_cut_off (new_dnf)
 
 

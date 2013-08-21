@@ -188,6 +188,10 @@ val voc : formula -> tid list
 val conjformula_voc : conjunctive_formula -> tid list
 val unprimed_voc : formula -> tid list
 
+val conj_list : formula list -> formula
+val disj_list : formula list -> formula
+val to_conj_list : formula -> formula list
+val to_disj_list : formula -> formula list
 val nnf : formula -> formula
 val dnf : formula -> conjunctive_formula list
 
