@@ -209,6 +209,7 @@ val gen_theta : sysMode -> t -> abstraction -> Expression.formula
 
 val gen_rho : t ->
               sysMode ->
+              Bridge.prog_type ->
               Expression.pc_t ->
               abstraction ->
               bool ->

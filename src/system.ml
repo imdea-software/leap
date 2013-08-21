@@ -1222,12 +1222,13 @@ let rec aux_rho_for_st
 
 
 
-let gen_rho (sys : t)     (* The system                   *)
-            (mode : sysMode)     (* For closed or open system?   *)
-            (p : E.pc_t)         (* Program line                 *)
-            (abs : abstraction)  (* Counting abstraction or not? *)
-            (hide_pres : bool)   (* Hide variable preservation?  *)
-            (th:E.tid)           (* Thread taking the transition *)
+let gen_rho (sys : t)             (* The system                           *)
+            (mode : sysMode)      (* For closed or open system?           *)
+            (pt:Bridge.prog_type) (* Program type. Heap based or numeric  *)
+            (p : E.pc_t)          (* Program line                         *)
+            (abs : abstraction)   (* Counting abstraction or not?         *)
+            (hide_pres : bool)    (* Hide variable preservation?          *)
+            (th:E.tid)            (* Thread taking the transition         *)
               : E.formula list =
 (*    LOG "Entering gen_rho..." LEVEL TRACE; *)
   let gSet = gen_global_vars_as_terms sys in
@@ -1256,9 +1257,11 @@ let gen_rho (sys : t)     (* The system                   *)
     Bridge.lAddrs = lAddrVars; 
     Bridge.lSets = lSetVars
   } in
+(*
   let pt = if mem_var (get_global sys) heap_name then
     Bridge.Heap
   else Bridge.Num in
+*)
   (* For Malloc -- END *)
 
   let all_local, filtered_local =

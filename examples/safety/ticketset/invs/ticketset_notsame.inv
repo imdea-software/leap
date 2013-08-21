@@ -1,0 +1,8 @@
+vars:
+
+tid i
+tid j
+
+invariant [notSame] :
+
+(i != j /\ @active(i). /\ @active(j).) -> (main::ticket(i) != main::ticket(j))
