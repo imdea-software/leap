@@ -1,0 +1,7 @@
+=> activeLow {pruning:|reduce2||simplify-pc}
+
+=> notSame [3:activeLow] {pruning:|reduce2||simplify-pc}
+
+=> minTicket [6:O:notSame] {pruning:|reduce2||simplify-pc}
+
+=> mutex [4:S:notSame,minTicket] {pruning:|reduce2||simplify-pc}
