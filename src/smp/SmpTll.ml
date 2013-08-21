@@ -70,7 +70,7 @@ let cut_off_normalized (expr:conjunctive_formula) : model_size =
 
   let vars_mem_set = if (Smp.forget_primed_mem !options &&
                           not (Smp.group_vars !options)) then
-                       VarSet.filter (fun v -> not (Expr.var_is_primed v))
+                       VarSet.filter (fun v -> print_endline "INSIDE"; not (Expr.var_is_primed v))
                          (varset_of_sort vars Mem)
                      else
                        varset_of_sort vars Mem in
@@ -81,6 +81,7 @@ let cut_off_normalized (expr:conjunctive_formula) : model_size =
   Printf.printf "VAR TIDS: %i\n" vars_tid;
   Printf.printf "VAR MEMS: %i\n" vars_mem;
 
+  VarSet.iter (fun v -> print_endline (Expr.variable_to_str v)) vars_addr_set;
 
   (* ALE: I need the "2" for next0, firstlocked0.... *)
   (* ALE: No need to add null and NoThread in the counter, as they are added

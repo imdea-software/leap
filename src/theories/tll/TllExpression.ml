@@ -190,7 +190,7 @@ let var_sort (v:variable) : sort =
 
 
 let var_is_primed (v:variable) : bool =
-  v.is_primed
+  v.is_primed || (Str.string_match (Str.regexp ".+_prime.*") v.id 0)
 
 
 let var_parameter (v:variable) : shared_or_local =

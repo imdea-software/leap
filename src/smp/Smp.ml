@@ -23,7 +23,7 @@ let strategy_to_str (s:cutoff_strategy_t) : string =
 
 let opt_empty () =
   {
-    forget_primed_mem = false ;
+    forget_primed_mem = true ;
     group_vars = false ;
   }
 
