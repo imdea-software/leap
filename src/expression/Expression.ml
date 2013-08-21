@@ -5397,7 +5397,6 @@ and to_plain_formula_aux (ops:fol_ops_t) (phi:formula) : formula =
                             | Atom(Eq(ArrayT(ArrayUp(arr,t,e)),v'))
                             | NegAtom(InEq(v',ArrayT(ArrayUp(arr,t,e))))
                             | NegAtom(InEq(ArrayT(ArrayUp(arr,t,e)),v')) ->
-                                print_endline "EUREKA";
                                 let new_v' = prime_variable (var_set_param (Local t) (term_to_var v')) in
                                 let as_var = to_plain_var (inject_var_sort new_v' Bool) in
                                 begin

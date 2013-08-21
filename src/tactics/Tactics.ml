@@ -206,7 +206,7 @@ let vc_info_list_to_folder (output_file:string) (vcs:vc_info list) : unit =
     let out_file = output_file ^
                       ("vc_" ^ (string_of_int line) ^ "_" ^ vc_num ^ ".vcfile") in
     let out_ch = Pervasives.open_out out_file in
-    Pervasives.output_string out_ch (vc_info_to_str vc_info);
+    Pervasives.output_string out_ch (vc_info_to_plain_str vc_info);
     Pervasives.close_out out_ch
   ) vcs
 
@@ -615,7 +615,7 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
                               else
                                 info.transition_tid :: supp_voc @ goal_voc in
         let subst = List.filter f (E.new_comb_subst supp_voc voc_to_consider) in
-        Printf.printf "SUBSTS: %s\n" (String.concat " -- " (List.map E.subst_to_str subst));
+        Log.print "Thread id substitution" (String.concat " -- " (List.map E.subst_to_str subst));
         xs @ List.map (fun s ->
                E.subst_tid s supp_phi
              ) subst
