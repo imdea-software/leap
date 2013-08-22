@@ -71,7 +71,7 @@ and elem =
 and addr =
     VarAddr           of variable
   | Null
-  | NextAt            of cell * integer
+  | ArrAt            of cell * integer
   | AddrArrRd         of addrarr * integer
 (*  | Malloc of elem * addr * tid *)
 and cell =

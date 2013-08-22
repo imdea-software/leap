@@ -118,14 +118,14 @@ and addr =
   | VarAddr       of variable
   | Null
   | Next          of cell
-  | NextAt        of cell * integer
+  | ArrAt        of cell * integer
   | FirstLocked   of mem * path
   | AddrArrayRd   of arrays * tid
   | Malloc        of elem * addr * tid
   | MallocSL      of elem * integer
   | MallocSLK     of elem * integer
   | PointerNext   of addr
-  | PointerNextAt of addr * integer
+  | PointerArrAt of addr * integer
   | AddrArrRd     of addrarr * integer
 
 and cell =

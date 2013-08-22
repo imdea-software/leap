@@ -8,8 +8,8 @@ invariant [skiplist_prop] :
 
 /\ orderlist (heap, head, tail)
 /\ region = addr2set (heap, head, 0)
-/\ rd(heap, tail).arr[0] = null
-/\ rd(heap, tail).arr[1] = null
+/\ rd(heap, tail).nextat[0] = null
+/\ rd(heap, tail).nextat[1] = null
 /\ (addr2set(heap, head, 1)) subseteq (addr2set(heap, head, 0))
 
 /\ rd(heap, head).data = lowestElem

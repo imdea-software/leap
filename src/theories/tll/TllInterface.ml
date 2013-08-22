@@ -172,7 +172,7 @@ and addr_to_tll_addr (a:E.addr) : TLL.addr =
     E.VarAddr v              -> TLL.VarAddr (variable_to_tll_var v)
   | E.Null                   -> TLL.Null
   | E.Next c                 -> TLL.Next (cell_to_tll_cell c)
-  | E.NextAt _               -> raise(UnsupportedTllExpr(E.addr_to_str a))
+  | E.ArrAt _               -> raise(UnsupportedTllExpr(E.addr_to_str a))
   | E.FirstLocked (m,p)      -> TLL.FirstLocked (mem_to_tll_mem m,
                                                     path_to_tll_path p)
   | E.FirstLockedAt _        -> raise(UnsupportedTllExpr(E.addr_to_str a))

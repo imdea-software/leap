@@ -43,6 +43,7 @@ rule norm = parse
   | "mkcell"        { Global.last "mkcell"        ; MKCELL }
   | "data"          { Global.last "data"          ; DATA }
   | "next"          { Global.last "next"          ; NEXT }
+  | "nextat"        { Global.last "nextat"        ; NEXTAT }
   | "arr"           { Global.last "arr"           ; ARR }
   | "tids"          { Global.last "tids"          ; TIDS }
   | "max"           { Global.last "max"           ; MAX }

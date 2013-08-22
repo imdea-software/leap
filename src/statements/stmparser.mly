@@ -516,7 +516,7 @@ let check_and_get_sort (id:string) : E.sort =
     | Stm.IntT(Stm.VarInt _)                   -> ()
     | Stm.ElemT(Stm.PointerData _)             -> ()
     | Stm.AddrT(Stm.PointerNext _)             -> ()
-    | Stm.AddrT(Stm.PointerNextAt _)           -> ()
+    | Stm.AddrT(Stm.PointerArrAt _)           -> ()
     | Stm.AddrT(Stm.AddrArrRd _)               -> ()
     | Stm.TidT(Stm.PointerLockid _)           -> ()
     | Stm.TidT(Stm.PointerLockidAt _)         -> ()
@@ -2664,7 +2664,7 @@ addr :
                                                  (Stm.term_to_str $5) in
       let c = parser_check_type check_type_cell $1 E.Cell get_str_expr in
       let l = parser_check_type check_type_int $5 E.Int get_str_expr in
-        Stm.NextAt(c,l)
+        Stm.ArrAt(c,l)
     }
   | FIRSTLOCKED OPEN_PAREN term COMMA term CLOSE_PAREN
     {
@@ -2716,7 +2716,7 @@ addr :
                                                    (Stm.term_to_str $5) in
       let a = parser_check_type check_type_addr $1 E.Addr get_str_expr in
       let l = parser_check_type check_type_int $5 E.Int get_str_expr in
-        Stm.PointerNextAt (a,l)
+        Stm.PointerArrAt (a,l)
     }
 
 
@@ -3041,7 +3041,7 @@ arraylookup :
       with e ->
         let a = parser_check_type check_type_addr $1 E.Addr get_str_expr in
         match a with
-        | Stm.PointerNext a -> Stm.AddrT (Stm.PointerNextAt (a,i))
+        | Stm.PointerNext a -> Stm.AddrT (Stm.PointerArrAt (a,i))
         | _ -> raise(e)
       
     }

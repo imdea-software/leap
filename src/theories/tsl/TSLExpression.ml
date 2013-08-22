@@ -74,7 +74,7 @@ and elem =
 and addr =
     VarAddr           of variable
   | Null
-  | NextAt            of cell * integer
+  | ArrAt            of cell * integer
   | AddrArrRd         of addrarr * integer
 (*  | Malloc of elem * addr * tid *)
 and cell =
@@ -383,7 +383,7 @@ and get_varset_addr (a:addr) : S.t =
   match a with
       VarAddr v        -> S.singleton v @@ get_varset_from_param v
     | Null             -> S.empty
-    | NextAt (c,l)     -> (get_varset_cell c) @@ (get_varset_integer l)
+    | ArrAt (c,l)     -> (get_varset_cell c) @@ (get_varset_integer l)
     | AddrArrRd (aa,i) -> (get_varset_addrarr aa) @@ (get_varset_integer i)
 (*    | Malloc(e,a,th)   -> (get_varset_elem e) @@ (get_varset_addr a) @@ (get_varset_tid th) *)
 
@@ -918,7 +918,7 @@ and is_addr_flat t =
   match t with
       VarAddr _        -> true
     | Null             -> true
-    | NextAt(c,l)      -> (is_var_cell c) && (is_var_int l)
+    | ArrAt(c,l)      -> (is_var_cell c) && (is_var_int l)
     | AddrArrRd (aa,i) -> (is_var_addrarr aa) && (is_var_int i)
 (*    | Malloc(m,a,k)    -> (is_var_mem m) && (is_var_addr a) && (is_thread_var k) *)
 and is_cell_flat t =
@@ -1239,7 +1239,7 @@ and addr_to_str expr =
   match expr with
       VarAddr(v)            -> variable_to_str v
     | Null                  -> "null"
-    | NextAt(cell,l)        -> Printf.sprintf "%s.next(%s)"
+    | ArrAt(cell,l)        -> Printf.sprintf "%s.next(%s)"
                                  (cell_to_str cell) (int_to_str l)
     | AddrArrRd (aa,i)      -> Printf.sprintf "%s[%s]"
                                  (addrarr_to_str aa) (int_to_str i)
@@ -1471,7 +1471,7 @@ and voc_addr (a:addr) : tid list =
   match a with
     VarAddr v             -> get_tid_in v
   | Null                  -> []
-  | NextAt(cell,l)        -> (voc_cell cell) @ (voc_int l)
+  | ArrAt(cell,l)        -> (voc_cell cell) @ (voc_int l)
   | AddrArrRd (aa,i)      -> (voc_addrarr aa) @ (voc_int i)
 
 
@@ -2319,7 +2319,7 @@ let required_sorts (phi:formula) : sort list =
     match a with
     | VarAddr _         -> single Addr
     | Null              -> single Addr
-    | NextAt (c,l)      -> append Addr [req_c c;req_i l]
+    | ArrAt (c,l)      -> append Addr [req_c c;req_i l]
     | AddrArrRd (aa,i)  -> append Addr [req_aa aa;req_i i]
 
   and req_e (e:elem) : SortSet.t =
@@ -2487,7 +2487,7 @@ let special_ops (phi:formula) : special_op_t list =
     match a with
     | VarAddr _            -> empty
     | Null                 -> empty
-    | NextAt (c,l)         -> list_union [ops_c c;ops_i l]
+    | ArrAt (c,l)         -> list_union [ops_c c;ops_i l]
     | AddrArrRd (aa,i)     -> list_union [ops_aa aa;ops_i i]
 
   and ops_e (e:elem) : OpsSet.t =
@@ -2991,8 +2991,8 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
     match a with
     | VarAddr v -> VarAddr v
     | Null -> Null
-    | NextAt (c,i) -> let i_var = gen_if_not_var (IntT i) Int in
-                        NextAt (norm_cell c, VarInt i_var)
+    | ArrAt (c,i) -> let i_var = gen_if_not_var (IntT i) Int in
+                        ArrAt (norm_cell c, VarInt i_var)
     | AddrArrRd (aa,i) -> let a_var = gen_if_not_var (AddrT a) Addr in
                             VarAddr a_var
 (*                          AddrArrRd (norm_addrarr aa, VarInt i_var) *)
@@ -3261,10 +3261,10 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
       let i  = gen_fresh_int_var info in
         eq_cell (c_var) (MkCell(e_var,aa,tt,i))
   (* a = c.next[l] *)
-  | Atom (Eq (a, AddrT (NextAt (c,i))))
-  | Atom (Eq (AddrT (NextAt (c,i)), a))
-  | NegAtom (InEq (a, AddrT (NextAt (c,i))))
-  | NegAtom (InEq (AddrT (NextAt (c,i)), a)) ->
+  | Atom (Eq (a, AddrT (ArrAt (c,i))))
+  | Atom (Eq (AddrT (ArrAt (c,i)), a))
+  | NegAtom (InEq (a, AddrT (ArrAt (c,i))))
+  | NegAtom (InEq (AddrT (ArrAt (c,i)), a)) ->
       let a_var = gen_if_not_var a Addr in
       let c_var = gen_if_not_var (CellT c) Cell in
       let i_var = gen_if_not_var (IntT i) Int in
@@ -3694,7 +3694,7 @@ and replace_terms_addr (tbl:(term,term) Hashtbl.t) (a:addr) : addr =
     match a with
       VarAddr v                 -> VarAddr (replace_terms_in_vars tbl v)
     | Null                      -> Null
-    | NextAt(cell,l)            -> NextAt(replace_terms_cell tbl cell,
+    | ArrAt(cell,l)            -> ArrAt(replace_terms_cell tbl cell,
                                           replace_terms_int tbl l)
     | AddrArrRd (aa,i)          -> AddrArrRd (replace_terms_addrarr tbl aa,
                                               replace_terms_int tbl i)

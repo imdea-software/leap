@@ -62,7 +62,7 @@ module type S =
     and addr =
         VarAddr           of variable
       | Null
-      | NextAt            of cell * level
+      | ArrAt            of cell * level
       | FirstLockedAt     of mem * path * level
     (*  | Malloc of elem * addr * tid *)
     and cell =

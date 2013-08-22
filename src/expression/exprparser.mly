@@ -471,6 +471,7 @@ let define_ident (proc_name:E.procedure_name)
 %token BEGIN END
 
 %token ERROR MKCELL DATA NEXT ARR TIDS MAX LOCKID LOCK UNLOCK LOCKAT UNLOCKAT
+%token NEXTAT
 %token MEMORY_READ
 %token DOT COMMA
 %token NULL UPDATE
@@ -1148,10 +1149,19 @@ addr :
     { E.Null }
   | term DOT NEXT
     {
-      let get_str_expr () = sprintf "%s.data" (E.term_to_str $1) in
+      let get_str_expr () = sprintf "%s.next" (E.term_to_str $1) in
       let c = parser_check_type check_type_cell  $1 E.Cell get_str_expr in
         E.Next(c)
     }
+  | term DOT NEXTAT OPEN_BRACKET term CLOSE_BRACKET
+    {
+      let get_str_expr () = sprintf "%s.nextat[%s]" (E.term_to_str $1)
+                                                    (E.term_to_str $5) in
+      let c = parser_check_type check_type_cell  $1 E.Cell get_str_expr in
+      let l = parser_check_type check_type_int   $5 E.Cell get_str_expr in
+        E.ArrAt(c,l)
+    }
+
   | FIRSTLOCKED OPEN_PAREN term COMMA term CLOSE_PAREN
     {
       let get_str_expr () = sprintf "firstlocked(%s,%s)" (E.term_to_str $3)
@@ -1534,7 +1544,7 @@ arrays :
       with e ->
         let a = parser_check_type check_type_addr $1 E.Addr get_str_expr in
         match a with
-        | E.Next c -> E.AddrT (E.NextAt (c,i))
+        | E.Next c -> E.AddrT (E.ArrAt (c,i))
         | _           -> raise(e)
     }
   | ARR_UPDATE OPEN_PAREN term COMMA term COMMA term CLOSE_PAREN

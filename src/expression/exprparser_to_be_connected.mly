@@ -1823,7 +1823,7 @@ arrays :
       with e ->
         let a = parser_check_type check_type_addr $1 E.Addr get_str_expr in
         match a with
-        | E.Next c -> E.AddrT (E.NextAt (c,i))
+        | E.Next c -> E.AddrT (E.ArrAt (c,i))
         | _           -> raise(e)
     }
   | ARR_UPDATE OPEN_PAREN term COMMA term COMMA term CLOSE_PAREN

@@ -1309,7 +1309,7 @@ module Make (TSLK : TSLKExpression.S) =
       match a with
           Expr.VarAddr v        -> variable_invocation_to_str v
         | Expr.Null             -> "null"
-        | Expr.NextAt (c,l)     -> Printf.sprintf "(next_at %s %s)"
+        | Expr.ArrAt (c,l)     -> Printf.sprintf "(next_at %s %s)"
                                       (cellterm_to_str c)
                                       (levelterm_to_str l)
         | Expr.FirstLocked(m,p) -> Printf.sprintf "(firstlock %s %s)"

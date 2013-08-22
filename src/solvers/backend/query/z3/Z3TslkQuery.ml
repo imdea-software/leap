@@ -1472,7 +1472,7 @@ module Make (K : Level.S) : TSLK_QUERY =
       match a with
           Expr.VarAddr v            -> variable_invocation_to_str v
         | Expr.Null                 -> "null"
-        | Expr.NextAt (c,l)         -> Printf.sprintf "(select (next %s) %s)"
+        | Expr.ArrAt (c,l)         -> Printf.sprintf "(select (next %s) %s)"
                                           (cellterm_to_str c)
                                           (levelterm_to_str l)
         | Expr.FirstLockedAt(m,p,l) -> Printf.sprintf "(firstlock %s %s %s)"

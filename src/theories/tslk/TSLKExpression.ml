@@ -65,7 +65,7 @@ module type S =
     and addr =
         VarAddr           of variable
       | Null
-      | NextAt            of cell * level
+      | ArrAt            of cell * level
       | FirstLockedAt     of mem * path * level
     (*  | Malloc of elem * addr * tid *)
     and cell =
@@ -399,7 +399,7 @@ module Make (K : Level.S) : S =
     and addr =
         VarAddr           of variable
       | Null
-      | NextAt            of cell * level
+      | ArrAt            of cell * level
       | FirstLockedAt     of mem * path * level
     (*  | Malloc of elem * addr * tid *)
     and cell =
@@ -767,7 +767,7 @@ module Make (K : Level.S) : S =
       match a with
           VarAddr v            -> S.singleton v @@ get_varset_from_param v
         | Null                 -> S.empty
-        | NextAt (c,l)         -> (get_varset_cell c) @@ (get_varset_level l)
+        | ArrAt (c,l)         -> (get_varset_cell c) @@ (get_varset_level l)
         | FirstLockedAt(m,p,l) -> (get_varset_mem m) @@ (get_varset_path p) @@
                                   (get_varset_level l)
     (*    | Malloc(e,a,th)   -> (get_varset_elem e) @@ (get_varset_addr a) @@  (get_varset_tid th) *)
@@ -1134,7 +1134,7 @@ module Make (K : Level.S) : S =
       match t with
           VarAddr _            -> true
         | Null                 -> true
-        | NextAt(c,l)          -> (is_cell_var c) && (is_int_var l)
+        | ArrAt(c,l)          -> (is_cell_var c) && (is_int_var l)
         | FirstLockedAt(m,p,l) -> (is_mem_var m) && (is_path_var p) && (is_int_var l)
     (*    | Malloc(m,a,k)    -> (is_mem_var m) && (is_addr_var a) && (is_thread_var k) *)
     and is_cell_flat t =
@@ -1445,7 +1445,7 @@ module Make (K : Level.S) : S =
       match expr with
           VarAddr(v)                -> variable_to_str v
         | Null                      -> "null"
-        | NextAt(cell,l)            -> Printf.sprintf "%s.next(%s)"
+        | ArrAt(cell,l)            -> Printf.sprintf "%s.next(%s)"
                                          (cell_to_str cell) (level_to_str l)
         | FirstLockedAt(mem,path,l) -> Printf.sprintf "firstlocked(%s,%s,%s)"
                                          (mem_to_str mem)
@@ -1667,7 +1667,7 @@ module Make (K : Level.S) : S =
       match a with
         VarAddr v                 -> get_tid_in v
       | Null                      -> []
-      | NextAt(cell,l)            -> (voc_cell cell) @ (voc_level l)
+      | ArrAt(cell,l)            -> (voc_cell cell) @ (voc_level l)
       | FirstLockedAt(mem,path,l) -> (voc_mem mem) @ (voc_path path) @ (voc_level l)
 
 
@@ -2065,7 +2065,7 @@ module Make (K : Level.S) : S =
         match a with
         | VarAddr _             -> single Addr
         | Null                  -> single Addr
-        | NextAt (c,l)          -> append Addr [req_c c;req_lv l]
+        | ArrAt (c,l)          -> append Addr [req_c c;req_lv l]
         | FirstLockedAt (m,p,l) -> append Addr [req_m m;req_p p;req_lv l]
 
       and req_e (e:elem) : SortSet.t =
@@ -2214,7 +2214,7 @@ module Make (K : Level.S) : S =
         match a with
         | VarAddr _             -> empty
         | Null                  -> empty
-        | NextAt (c,l)          -> list_union [ops_c c;ops_lv l]
+        | ArrAt (c,l)          -> list_union [ops_c c;ops_lv l]
         | FirstLockedAt (m,p,l) -> append FstLocked [ops_m m;ops_p p;ops_lv l]
 
       and ops_e (e:elem) : OpsSet.t =
