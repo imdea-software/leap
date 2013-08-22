@@ -70,18 +70,18 @@ let cut_off_normalized (expr:conjunctive_formula) : model_size =
 
   let vars_mem_set = if (Smp.forget_primed_mem !options &&
                           not (Smp.group_vars !options)) then
-                       VarSet.filter (fun v -> print_endline "INSIDE"; not (Expr.var_is_primed v))
+                       VarSet.filter (fun v -> not (Expr.var_is_primed v))
                          (varset_of_sort vars Mem)
                      else
                        varset_of_sort vars Mem in
 
   let vars_mem = VarSet.cardinal vars_mem_set in
 
-  Printf.printf "VAR ADDRS: %i\n" vars_addr;
-  Printf.printf "VAR TIDS: %i\n" vars_tid;
-  Printf.printf "VAR MEMS: %i\n" vars_mem;
+  Log.print "SmpTll. Addr vars" (string_of_int vars_addr);
+  Log.print "SmpTll. Tid vars" (string_of_int vars_tid);
+  Log.print "SmpTll. Mem vars" (string_of_int vars_mem);
 
-  VarSet.iter (fun v -> print_endline (Expr.variable_to_str v)) vars_addr_set;
+  VarSet.iter (fun v -> Log.print "Smp address variable" (Expr.variable_to_str v)) vars_addr_set;
 
   (* ALE: I need the "2" for next0, firstlocked0.... *)
   (* ALE: No need to add null and NoThread in the counter, as they are added
@@ -412,12 +412,9 @@ let rec prune_formula (phi:formula) : formula option =
 
 
 let compute_max_cut_off_with_pruning (phi:formula) : model_size =
-  Printf.printf "Original formula: %s\n" (Expr.formula_to_str phi);
   let pruned_phi = Option.default True (prune_formula (Expr.nnf phi)) in
-  Printf.printf "Pruned formula: %s\n" (Expr.formula_to_str pruned_phi);
   let dnf_phi = Expr.dnf pruned_phi in
   let new_dnf = List.map Expr.cleanup_dup dnf_phi in
-  List.iter (fun xs -> Printf.printf "DNF Formula: %s\n" (Expr.conjunctive_formula_to_str xs)) new_dnf;
     compute_max_cut_off (new_dnf)
 
 
