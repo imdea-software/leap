@@ -368,8 +368,7 @@ module Make (Opt:module type of GenOptions) : S =
                              (inv:E.formula)
                              (cases:IGraph.case_tbl_t) : Tactics.vc_info list =
       let supp = inv :: supp in
-      let need_theta = List.mem 0 lines_to_consider in
-      let initiation = if need_theta then
+      let initiation = if requires_theta then
                          [premise_init inv]
                        else
                          [] in

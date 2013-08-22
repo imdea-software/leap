@@ -91,6 +91,7 @@ and set =
   | Setdiff       of set * set
   | PathToSet     of path
   | AddrToSet     of mem * addr
+  | AddrToSetAt   of mem * addr * integer
   | SetArrayRd    of arrays * tid
 
 and tid =

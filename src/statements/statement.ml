@@ -95,6 +95,7 @@ and set =
   | Setdiff       of set * set
   | PathToSet     of path
   | AddrToSet     of mem * addr
+  | AddrToSetAt   of mem * addr * integer
   | SetArrayRd    of arrays * tid
 
 and tid =
@@ -513,6 +514,9 @@ and set_to_str (loc:bool) (expr:set) : string =
   | PathToSet(path)     -> sprintf "path2set(%s)" (path_to_str loc path)
   | AddrToSet(mem,addr) -> sprintf "addr2set(%s,%s)" (mem_to_str loc mem)
                                                      (addr_to_str loc addr)
+  | AddrToSetAt(m,a,l)  -> sprintf "addr2set(%s,%s,%s)" (mem_to_str loc m)
+                                                        (addr_to_str loc a)
+                                                        (integer_to_str loc l)
   | SetArrayRd(arr,t)   -> sprintf "%s%s" (arrays_to_str loc arr)
                                           (tid_to_str loc t)
 
@@ -830,15 +834,17 @@ and integer_to_expr_integer (i:integer) : E.integer =
 and set_to_expr_set (s:set) : E.set =
   let to_set = set_to_expr_set in
   match s with
-    VarSet v         -> E.VarSet (variable_to_expr_var v)
-  | EmptySet         -> E.EmptySet
-  | Singl a          -> E.Singl (addr_to_expr_addr a)
-  | Union (s1,s2)    -> E.Union (to_set s1, to_set s2)
-  | Intr (s1,s2)     -> E.Intr (to_set s1, to_set s2)
-  | Setdiff (s1,s2)  -> E.Setdiff (to_set s1, to_set s2)
-  | PathToSet p      -> E.PathToSet (path_to_expr_path p)
-  | AddrToSet (m,a)  -> E.AddrToSet (mem_to_expr_mem m, addr_to_expr_addr a)
-  | SetArrayRd (a,t) -> E.SetArrayRd (array_to_expr_array a,
+    VarSet v            -> E.VarSet (variable_to_expr_var v)
+  | EmptySet            -> E.EmptySet
+  | Singl a             -> E.Singl (addr_to_expr_addr a)
+  | Union (s1,s2)       -> E.Union (to_set s1, to_set s2)
+  | Intr (s1,s2)        -> E.Intr (to_set s1, to_set s2)
+  | Setdiff (s1,s2)     -> E.Setdiff (to_set s1, to_set s2)
+  | PathToSet p         -> E.PathToSet (path_to_expr_path p)
+  | AddrToSet (m,a)     -> E.AddrToSet (mem_to_expr_mem m, addr_to_expr_addr a)
+  | AddrToSetAt (m,a,l) -> E.AddrToSetAt (mem_to_expr_mem m, addr_to_expr_addr a,
+                                          integer_to_expr_integer l)
+  | SetArrayRd (a,t)    -> E.SetArrayRd (array_to_expr_array a,
                                       tid_to_expr_th t)
 
 
@@ -1173,6 +1179,8 @@ and var_kind_set (kind:E.var_nature) (e:set) : term list =
   | Setdiff(s1,s2)      -> (var_kind_set kind s1) @ (var_kind_set kind s2)
   | PathToSet(path)     -> (var_kind_path kind path)
   | AddrToSet(mem,addr) -> (var_kind_mem kind mem) @ (var_kind_addr kind addr)
+  | AddrToSetAt(m,a,l)  -> (var_kind_mem kind m) @ (var_kind_addr kind a) @
+                           (var_kind_int kind l)
   | SetArrayRd(arr,t)   -> (var_kind_array kind arr)
 
 
