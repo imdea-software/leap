@@ -168,7 +168,7 @@ let _ =
       (* We load the graph information *)
       let graph = Parser.open_and_parse !LeapArgs.iGraphFile (Gparser.graph Glexer.norm) in
       let graph_solution_list = LeapCore.solve_from_graph graph in
-      ()
+      (ignore graph_solution_list)
     end;
 
 

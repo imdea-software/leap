@@ -130,6 +130,11 @@ let unfold_expression (mInfo:malloc_info)
 (*      LOG "PointerNext translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
       let a_expr = Stm.addr_to_expr_addr a in
       (E.Term (E.AddrT (E.Next (E.CellAt (E.heap,a_expr)))), [], [])
+  | Stm.Term (Stm.AddrT (Stm.PointerNextAt (a,l))) ->
+(*      LOG "PointerNextAt translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
+      let a_expr = Stm.addr_to_expr_addr a in
+      let l_expr = Stm.integer_to_expr_integer l in
+      (E.Term (E.AddrT (E.NextAt (E.CellAt (E.heap,a_expr),l_expr))), [], [])
   | Stm.Term (Stm.AddrT (Stm.PointerArrAt (a,l))) ->
 (*      LOG "PointerArrAt translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
       let a_expr = Stm.addr_to_expr_addr a in
@@ -202,6 +207,16 @@ let generic_stm_term_eq (mode:eqGenMode)
                                 E.CellLockId(E.CellAt(E.heap,a))) in
         let new_term = E.param_term th_p (E.MemT(E.Update(E.heap,a,new_cell))) in
           heap_eq_generator (E.MemT E.heap) th_p (E.Term(new_term))
+
+
+
+    (* NextAt *)
+    | (E.AddrT (E.NextAt(E.CellAt(h,a),l)), E.Term(E.AddrT a')) ->
+        assert false
+        (* I CAN PUT A SPECIAL STATEMENT THAT IS THEN UNFOLD WHEN CONVERTED INTO TSLK *)
+
+
+
     (* ArrAt *)
     | (E.AddrT (E.ArrAt(E.CellAt(h,a), l)), E.Term(E.AddrT a')) ->
         let new_cell = E.MkSLCell(E.CellData(E.CellAt(E.heap,a)),

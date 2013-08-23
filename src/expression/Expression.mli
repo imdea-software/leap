@@ -105,7 +105,8 @@ and addr =
     VarAddr       of variable
   | Null
   | Next          of cell
-  | ArrAt        of cell * integer
+  | NextAt        of cell * integer
+  | ArrAt         of cell * integer
   | FirstLocked   of mem * path
   | FirstLockedAt of mem * path * integer
   | AddrArrayRd   of arrays * tid

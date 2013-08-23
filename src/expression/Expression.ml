@@ -118,7 +118,8 @@ and addr =
     VarAddr       of variable
   | Null
   | Next          of cell
-  | ArrAt        of cell * integer
+  | NextAt        of cell * integer
+  | ArrAt         of cell * integer
   | FirstLocked   of mem * path
   | FirstLockedAt of mem * path * integer
   | AddrArrayRd   of arrays * tid
@@ -951,7 +952,9 @@ and priming_addr (pr:bool) (prime_set:VarSet.t option) (a:addr) : addr =
     VarAddr v                 -> VarAddr (priming_variable pr prime_set v)
   | Null                      -> Null
   | Next(cell)                -> Next(priming_cell pr prime_set cell)
-  | ArrAt(cell,l)            -> ArrAt(priming_cell pr prime_set cell,
+  | NextAt(cell,l)            -> NextAt(priming_cell pr prime_set cell,
+                                        priming_int pr prime_set l)
+  | ArrAt(cell,l)             -> ArrAt(priming_cell pr prime_set cell,
                                         priming_int pr prime_set l)
   | FirstLocked(mem,path)     -> FirstLocked(priming_mem pr prime_set mem,
                                              priming_path pr prime_set path)
@@ -1599,7 +1602,9 @@ and addr_to_str (expr:addr) :string =
     VarAddr v                 -> variable_to_str v
   | Null                      -> "null"
   | Next(cell)                -> sprintf "%s.next" (cell_to_str cell)
-  | ArrAt(cell,l)            -> sprintf "%s.arr[%s]" (cell_to_str cell)
+  | NextAt(cell,l)            -> sprintf "%s.nextat[%s]" (cell_to_str cell)
+                                                         (integer_to_str l)
+  | ArrAt(cell,l)             -> sprintf "%s.arr[%s]" (cell_to_str cell)
                                                       (integer_to_str l)
   | FirstLocked(mem,path)     -> sprintf "firstlocked(%s,%s)"
                                             (mem_to_str mem)
@@ -2025,7 +2030,8 @@ and get_vars_addr (a:addr)
       (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
   | Null                      -> []
   | Next(cell)                -> (get_vars_cell cell base)
-  | ArrAt(cell,l)            -> (get_vars_cell cell base) @ (get_vars_int l base)
+  | NextAt(cell,l)            -> (get_vars_cell cell base) @ (get_vars_int l base)
+  | ArrAt(cell,l)             -> (get_vars_cell cell base) @ (get_vars_int l base)
   | FirstLocked(mem,path)     -> (get_vars_mem mem base) @ (get_vars_path path base)
   | FirstLockedAt(mem,path,l) -> (get_vars_mem mem base) @ (get_vars_path path base) @
                                  (get_vars_int l base)
@@ -2561,7 +2567,8 @@ and voc_addr (a:addr) : tid list =
     VarAddr v                 -> get_tid_in v
   | Null                      -> []
   | Next(cell)                -> (voc_cell cell)
-  | ArrAt(cell,l)            -> (voc_cell cell) @ (voc_int l)
+  | NextAt(cell,l)            -> (voc_cell cell) @ (voc_int l)
+  | ArrAt(cell,l)             -> (voc_cell cell) @ (voc_int l)
   | FirstLocked(mem,path)     -> (voc_mem mem) @ (voc_path path)
   | FirstLockedAt(mem,path,l) -> (voc_mem mem) @ (voc_path path) @ (voc_int l)
   | AddrArrayRd(arr,t)        -> (voc_array arr)
@@ -2852,7 +2859,8 @@ and var_kind_addr (kind:var_nature) (a:addr) : term list =
     VarAddr v                 -> if v.nature = kind then [AddrT a] else []
   | Null                      -> []
   | Next(cell)                -> (var_kind_cell kind cell)
-  | ArrAt(cell,l)            -> (var_kind_cell kind cell) @ (var_kind_int kind l)
+  | NextAt(cell,l)            -> (var_kind_cell kind cell) @ (var_kind_int kind l)
+  | ArrAt(cell,l)             -> (var_kind_cell kind cell) @ (var_kind_int kind l)
   | FirstLocked(mem,path)     -> (var_kind_mem kind mem) @
                                  (var_kind_path kind path)
   | FirstLockedAt(mem,path,l) -> (var_kind_mem kind mem)   @
@@ -3183,8 +3191,10 @@ and param_addr_aux (pfun:variable option -> shared_or_local) (a:addr) : addr =
     VarAddr v                 -> VarAddr (var_set_param (pfun (Some v)) v)
   | Null                      -> Null
   | Next(cell)                -> Next(param_cell_aux pfun cell)
-  | ArrAt(cell,l)            -> ArrAt(param_cell_aux pfun cell,
+  | NextAt(cell,l)            -> NextAt(param_cell_aux pfun cell,
                                         param_int_aux pfun l)
+  | ArrAt(cell,l)             -> ArrAt(param_cell_aux pfun cell,
+                                       param_int_aux pfun l)
   | FirstLocked(mem,path)     -> FirstLocked(param_mem pfun mem,
                                              param_path pfun path)
   | FirstLockedAt(mem,path,l) -> FirstLockedAt(param_mem pfun mem,
@@ -3596,8 +3606,10 @@ and subst_tid_addr (subs:tid_subst_t) (a:addr) : addr =
     VarAddr v                 -> VarAddr(var_set_param (subst_shared_or_local subs v.parameter) v)
   | Null                      -> Null
   | Next(cell)                -> Next(subst_tid_cell subs cell)
-  | ArrAt(cell,l)            -> ArrAt(subst_tid_cell subs cell,
+  | NextAt(cell,l)            -> NextAt(subst_tid_cell subs cell,
                                         subst_tid_int subs l)
+  | ArrAt(cell,l)             -> ArrAt(subst_tid_cell subs cell,
+                                       subst_tid_int subs l)
   | FirstLocked(mem,path)     -> FirstLocked(subst_tid_mem subs mem,
                                              subst_tid_path subs path)
   | FirstLockedAt(mem,path,l) -> FirstLockedAt(subst_tid_mem subs mem,
@@ -3917,8 +3929,10 @@ and subst_vars_addr (subs:(variable * variable) list) (a:addr) : addr =
     VarAddr v                 -> VarAddr(subst_variable subs v)
   | Null                      -> Null
   | Next(cell)                -> Next(subst_vars_cell subs cell)
-  | ArrAt(cell,l)            -> ArrAt(subst_vars_cell subs cell,
+  | NextAt(cell,l)            -> NextAt(subst_vars_cell subs cell,
                                         subst_vars_int subs l)
+  | ArrAt(cell,l)             -> ArrAt(subst_vars_cell subs cell,
+                                       subst_vars_int subs l)
   | FirstLocked(mem,path)     -> FirstLocked(subst_vars_mem subs mem,
                                              subst_vars_path subs path)
   | FirstLockedAt(mem,path,l) -> FirstLockedAt(subst_vars_mem subs mem,
@@ -4877,7 +4891,8 @@ let required_sorts (phi:formula) : sort list =
     | VarAddr _             -> single Addr
     | Null                  -> single Addr
     | Next c                -> append Addr [req_c c]
-    | ArrAt (c,l)          -> append Addr [req_c c;req_i l]
+    | NextAt (c,l)          -> append Addr [req_c c;req_i l]
+    | ArrAt (c,l)           -> append Addr [req_c c;req_i l]
     | FirstLocked (m,p)     -> append Addr [req_m m;req_p p]
     | FirstLockedAt (m,p,l) -> append Addr [req_m m;req_p p;req_i l]
     | AddrArrayRd (a,t)     -> append Addr [req_arr a; req_t t]
@@ -5126,8 +5141,10 @@ and to_plain_addr (ops:fol_ops_t) (a:addr) : addr =
     VarAddr v                 -> VarAddr (ops.fol_var v)
   | Null                      -> Null
   | Next(cell)                -> Next(to_plain_cell ops cell)
-  | ArrAt(cell,l)            -> ArrAt(to_plain_cell ops cell,
+  | NextAt(cell,l)            -> NextAt(to_plain_cell ops cell,
                                         to_plain_int ops l)
+  | ArrAt(cell,l)             -> ArrAt(to_plain_cell ops cell,
+                                       to_plain_int ops l)
   | FirstLocked(mem,path)     -> FirstLocked(to_plain_mem ops mem,
                                              to_plain_path ops path)
   | FirstLockedAt(mem,path,l) -> FirstLockedAt(to_plain_mem ops mem,

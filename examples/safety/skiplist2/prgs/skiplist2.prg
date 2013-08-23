@@ -10,12 +10,12 @@ assume
 //  skiplist(heap, region, 0, head, tail) /\
   orderlist (heap, head, tail) /\
   region = addr2set (heap, head, 0) /\
-  tail->arr[0] = null /\
-  tail->arr[1] = null /\
+  tail->nextat[0] = null /\
+  tail->nextat[1] = null /\
   (addr2set(heap, head, 1)) subseteq (addr2set(heap, head, 0)) /\
 
-  head->arr[0] = tail /\
-  head->arr[1] = tail /\
+  head->nextat[0] = tail /\
+  head->nextat[1] = tail /\
 
   rd(heap, head).data = lowestElem /\
   rd(heap, tail).data = highestElem /\
@@ -57,12 +57,12 @@ assume
                               begin
                                 i := 1;
                                 prev := head;
-                                curr := prev->arr[i];
+                                curr := prev->nextat[i];
                                 while (0 <= i /\ curr->data != e) do
-                                  curr := prev->arr[i];
+                                  curr := prev->nextat[i];
                                   while (curr->data < e) do
                                     prev := curr;
-                                    curr := prev->arr[i];
+                                    curr := prev->nextat[i];
                                   endwhile
                                   i := i -1;
                                 endwhile
@@ -88,13 +88,13 @@ assume
                                   lvl := 1;
                                 endchoice
                                 prev := head;
-                                curr := prev->arr[1];
+                                curr := prev->nextat[1];
                                 i := 1;
                                 while (0 <= i) do
-                                  curr := prev->arr[i];
+                                  curr := prev->nextat[i];
                                   while (curr != null /\ curr->data < e) do
                                     prev := curr;
-                                    curr := prev->arr[i];
+                                    curr := prev->nextat[i];
                                   endwhile
                                   update[i] := prev;
                                   i := i - 1;
@@ -104,8 +104,8 @@ assume
                                   newCell := mallocSLK(e,lvl);
                                   i := 0;
                                   while (i <= lvl) do
-                                    newCell->arr[i] := update[i]->arr[i];
-                                    update[i]->arr[i] := newCell
+                                    newCell->nextat[i] := update[i]->nextat[i];
+                                    update[i]->nextat[i] := newCell
                                       $ if (i=0) then
                                           region := region Union {newCell};
                                         endif
@@ -128,13 +128,13 @@ assume
                                 bool valueWasIn
                               begin
                                 prev := head;
-                                curr := prev->arr[1];
+                                curr := prev->nextat[1];
                                 i := 1;
                                 while (i >= 0) do
-                                  curr := prev->arr[i];
+                                  curr := prev->nextat[i];
                                   while (curr != null /\ curr->data < e) do
                                     prev := curr;
-                                    curr := prev->arr[i];
+                                    curr := prev->nextat[i];
                                   endwhile
                                   if (curr != null /\ curr->data != e) then
                                     removeFrom := i - 1;
@@ -146,7 +146,7 @@ assume
                                 if (valueWasIn) then
                                   i := removeFrom;
                                   while (i >= 0) do
-                                    update[i]->arr[i] := curr->arr[i]
+                                    update[i]->nextat[i] := curr->nextat[i]
                                     $ if (i=0) then
                                         region := region SetDiff {curr};
                                       endif

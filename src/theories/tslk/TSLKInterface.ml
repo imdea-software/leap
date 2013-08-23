@@ -161,7 +161,9 @@ module Make (SLK : TSLKExpression.S) =
         E.VarAddr v              -> SLK.VarAddr (var_to_tslk_var v)
       | E.Null                   -> SLK.Null
       | E.Next _                 -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
-      | E.ArrAt (c,l)           -> SLK.ArrAt (cell_to_tslk_cell c, int_to_tslk_level l)
+
+      | E.NextAt (c,l)           -> SLK.NextAt (cell_to_tslk_cell c, int_to_tslk_level l)
+      | E.ArrAt (c,l)            -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
       | E.FirstLocked (m,p)      -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
       | E.FirstLockedAt (m,p,l)  -> SLK.FirstLockedAt (mem_to_tslk_mem m,
                                                           path_to_tslk_path p,
@@ -471,7 +473,7 @@ module Make (SLK : TSLKExpression.S) =
       match a with
       | SLK.VarAddr v              -> E.VarAddr (var_to_expr_var v)
       | SLK.Null                   -> E.Null
-      | SLK.ArrAt (c,l)           -> E.ArrAt (cell_to_expr_cell c, level_to_expr_int l)
+      | SLK.NextAt (c,l)           -> E.NextAt (cell_to_expr_cell c, level_to_expr_int l)
       | SLK.FirstLockedAt (m,p,i)  -> E.FirstLockedAt (mem_to_expr_mem m,
                                                            path_to_expr_path p,
                                                            level_to_expr_int i)

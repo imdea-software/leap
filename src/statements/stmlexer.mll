@@ -39,11 +39,12 @@ rule norm = parse
   | "malloc"        { Global.last "malloc"        ; MALLOC }
   | "mallocSL"      { Global.last "mallocSL"      ; MALLOCSL }
   | "mallocSLK"     { Global.last "mallocSLK"     ; MALLOCSLK }
-  | "->"            { Global.last "->"            ; POINTER }
+  | "->"            { Global.last "-"             ; POINTER }
   | "error"         { Global.last "error"         ; ERROR }
   | "mkcell"        { Global.last "mkcell"        ; MKCELL }
   | "data"          { Global.last "data"          ; DATA }
   | "next"          { Global.last "next"          ; NEXT }
+  | "nextat"        { Global.last "nextat"        ; NEXTAT }
   | "arr"           { Global.last "arr"           ; ARR }
   | "firstlocked"   { Global.last "fistlocked"    ; FIRSTLOCKED }
   | "lockid"        { Global.last "lockid"        ; LOCKID }

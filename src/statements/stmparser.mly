@@ -506,9 +506,10 @@ let check_and_get_sort (id:string) : E.sort =
     | Stm.SetT(Stm.VarSet _)                   -> ()
     | Stm.ElemT(Stm.VarElem _)                 -> ()
     | Stm.ElemT(Stm.CellData(Stm.VarCell _ ))  -> ()
-    | Stm.TidT(Stm.VarTh _ )                  -> ()
+    | Stm.TidT(Stm.VarTh _ )                   -> ()
     | Stm.AddrT(Stm.VarAddr _)                 -> ()
     | Stm.AddrT(Stm.Next(Stm.VarCell _))       -> ()
+    | Stm.AddrT(Stm.NextAt(Stm.VarCell _,_))   -> ()
     | Stm.CellT(Stm.VarCell _)                 -> ()
     | Stm.SetThT(Stm.VarSetTh _ )              -> ()
     | Stm.PathT(Stm.VarPath _ )                -> ()
@@ -516,11 +517,12 @@ let check_and_get_sort (id:string) : E.sort =
     | Stm.IntT(Stm.VarInt _)                   -> ()
     | Stm.ElemT(Stm.PointerData _)             -> ()
     | Stm.AddrT(Stm.PointerNext _)             -> ()
-    | Stm.AddrT(Stm.PointerArrAt _)           -> ()
+    | Stm.AddrT(Stm.PointerNextAt _)           -> ()
+    | Stm.AddrT(Stm.PointerArrAt _)            -> ()
     | Stm.AddrT(Stm.AddrArrRd _)               -> ()
-    | Stm.TidT(Stm.PointerLockid _)           -> ()
-    | Stm.TidT(Stm.PointerLockidAt _)         -> ()
-    | Stm.TidT(Stm.TidArrRd _)               -> ()
+    | Stm.TidT(Stm.PointerLockid _)            -> ()
+    | Stm.TidT(Stm.PointerLockidAt _)          -> ()
+    | Stm.TidT(Stm.TidArrRd _)                 -> ()
     | _ -> begin
              Interface.Err.msg "Invalid assignment" $
                       sprintf "The assignment \"%s\" is invalid. Assignments \
@@ -783,7 +785,7 @@ let lock_pos_to_str (pos:Stm.integer option) : string =
 %token POINTER
 %token ME
 
-%token ERROR MKCELL DATA NEXT LOCKID LOCK UNLOCK ARR
+%token ERROR MKCELL DATA NEXT NEXTAT LOCKID LOCK UNLOCK ARR
 %token HAVOCLISTELEM HAVOCSKIPLISTELEM LOWEST_ELEM HIGHEST_ELEM
 %token SKIPLIST
 %token HAVOCLEVEL
@@ -2658,6 +2660,14 @@ addr :
       let c = parser_check_type check_type_cell  $1 E.Cell get_str_expr in
         Stm.Next(c)
     }
+  | term DOT NEXTAT OPEN_BRACKET term CLOSE_BRACKET
+    {
+      let get_str_expr () = sprintf "%s.nextat[%s]" (Stm.term_to_str $1)
+                                                    (Stm.term_to_str $5) in
+      let c = parser_check_type check_type_cell $1 E.Cell get_str_expr in
+      let l = parser_check_type check_type_int $5 E.Int get_str_expr in
+        Stm.NextAt(c,l)
+    }
   | term DOT ARR OPEN_BRACKET term CLOSE_BRACKET
     {
       let get_str_expr () = sprintf "%s.arr[%s]" (Stm.term_to_str $1)
@@ -2709,6 +2719,14 @@ addr :
       let get_str_expr () = sprintf "%s->next" (Stm.term_to_str $1) in
       let a = parser_check_type check_type_addr $1 E.Addr get_str_expr in
         Stm.PointerNext a
+    }
+  | term POINTER NEXTAT OPEN_BRACKET term CLOSE_BRACKET
+    {
+      let get_str_expr () = sprintf "%s->nextat[%s]" (Stm.term_to_str $1)
+                                                     (Stm.term_to_str $5) in
+      let a = parser_check_type check_type_addr $1 E.Addr get_str_expr in
+      let l = parser_check_type check_type_int $5 E.Int get_str_expr in
+        Stm.PointerNextAt (a,l)
     }
   | term POINTER ARR OPEN_BRACKET term CLOSE_BRACKET
     {

@@ -184,7 +184,8 @@ and addr_to_tsl_addr (a:E.addr) : SL.addr =
     E.VarAddr v              -> SL.VarAddr (var_to_tsl_var v)
   | E.Null                   -> SL.Null
   | E.Next _                 -> raise(UnsupportedTslExpr(E.addr_to_str a))
-  | E.ArrAt (c,l)           -> SL.ArrAt (cell_to_tsl_cell c, int_to_tsl_int l)
+  | E.NextAt _               -> raise(UnsupportedTslExpr(E.addr_to_str a))
+  | E.ArrAt (c,l)            -> SL.ArrAt (cell_to_tsl_cell c, int_to_tsl_int l)
   | E.FirstLocked _          -> raise(UnsupportedTslExpr(E.addr_to_str a))
   | E.FirstLockedAt _        -> raise(UnsupportedTslExpr(E.addr_to_str a))
   | E.AddrArrayRd (E.VarArray v,t) ->

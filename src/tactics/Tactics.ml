@@ -721,7 +721,7 @@ let integer_implies ((v,k):E.variable * int) (l:E.literal) : bool =
   | _ -> false
 
 let integer_implies_neg ((v,k):E.variable * int) (l:E.literal) : bool =
-  let same (v1,k1) (v2,k2) = (E.same_var v1 v2) && (k1=k2) in
+(*  let same (v1,k1) (v2,k2) = (E.same_var v1 v2) && (k1=k2) in *)
   match l with
     (* v=k -> v2=k2 *)
     E.Atom(E.Eq(E.VarT(v2),E.IntT(E.IntVal k2)))            ->

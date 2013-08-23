@@ -122,14 +122,16 @@ and addr =
   | VarAddr       of variable
   | Null
   | Next          of cell
-  | ArrAt        of cell * integer
+  | NextAt        of cell * integer
+  | ArrAt         of cell * integer
   | FirstLocked   of mem * path
   | AddrArrayRd   of arrays * tid
   | Malloc        of elem * addr * tid
   | MallocSL      of elem * integer
   | MallocSLK     of elem * integer
   | PointerNext   of addr
-  | PointerArrAt of addr * integer
+  | PointerNextAt of addr * integer
+  | PointerArrAt  of addr * integer
   | AddrArrRd     of addrarr * integer
 
 and cell =
@@ -605,8 +607,10 @@ and addr_to_str (loc:bool) (expr:addr) :string =
     VarAddr v             -> variable_to_str loc v
   | Null                  -> "null"
   | Next(cell)            -> sprintf "%s.next" (cell_to_str loc cell)
-  | ArrAt(cell,l)        -> sprintf "%s.nextat[%s]" (cell_to_str loc cell)
-                                                   (integer_to_str loc l)
+  | NextAt(cell,l)        -> sprintf "%s.nextat[%s]" (cell_to_str loc cell)
+                                                     (integer_to_str loc l)
+  | ArrAt(cell,l)         -> sprintf "%s.arr[%s]" (cell_to_str loc cell)
+                                                  (integer_to_str loc l)
   | FirstLocked(mem,path) -> sprintf "firstlocked(%s,%s)"
                                             (mem_to_str loc mem)
                                             (path_to_str loc path)
@@ -620,8 +624,10 @@ and addr_to_str (loc:bool) (expr:addr) :string =
   | MallocSLK(e,l)        -> sprintf "mallocSLK(%s,%s)" (elem_to_str loc e)
                                                         (integer_to_str loc l)
   | PointerNext a         -> sprintf "%s->next" (addr_to_str loc a)
-  | PointerArrAt(a,l)    -> sprintf "%s->arr[%s]" (addr_to_str loc a)
-                                                    (integer_to_str loc l)
+  | PointerNextAt(a,l)    -> sprintf "%s->nextat[%s]" (addr_to_str loc a)
+                                                      (integer_to_str loc l)
+  | PointerArrAt(a,l)     -> sprintf "%s->arr[%s]" (addr_to_str loc a)
+                                                   (integer_to_str loc l)
   | AddrArrRd (arr,i)     -> sprintf "%s[%s]" (addrarr_to_str loc arr)
                                               (integer_to_str loc i)
 
@@ -899,7 +905,9 @@ and addr_to_expr_addr (a:addr) : E.addr =
     VarAddr v           -> E.VarAddr (variable_to_expr_var v)
   | Null                -> E.Null
   | Next c              -> E.Next (cell_to_expr_cell c)
-  | ArrAt (c,l)        -> E.AddrArrRd (E.CellArr (cell_to_expr_cell c),
+  | NextAt (c,l)        -> E.NextAt (cell_to_expr_cell c,
+                                     integer_to_expr_integer l)
+  | ArrAt (c,l)         -> E.AddrArrRd (E.CellArr (cell_to_expr_cell c),
                                         integer_to_expr_integer l)
 (*
   | ArrAt (c,l)        -> E.ArrAt (cell_to_expr_cell c,
@@ -915,7 +923,9 @@ and addr_to_expr_addr (a:addr) : E.addr =
   | MallocSL _          -> raise(Not_supported_conversion(addr_to_str true a))
   | MallocSLK _         -> raise(Not_supported_conversion(addr_to_str true a))
   | PointerNext a       -> E.Next(E.CellAt(E.heap,addr_to_expr_addr a))
-  | PointerArrAt (a,l) -> E.AddrArrRd (E.CellArr(E.CellAt(E.heap,addr_to_expr_addr a)),
+  | PointerNextAt (a,l) -> E.NextAt(E.CellAt(E.heap,addr_to_expr_addr a),
+                                    integer_to_expr_integer l)
+  | PointerArrAt (a,l)  -> E.AddrArrRd (E.CellArr(E.CellAt(E.heap,addr_to_expr_addr a)),
                                         integer_to_expr_integer l)
 (*
   | PointerArrAt (a,l) -> E.ArrAt(E.CellAt(E.heap,addr_to_expr_addr a),
@@ -1189,7 +1199,9 @@ and var_kind_addr (kind:E.var_nature) (a:addr) : term list =
     VarAddr v                 -> if v.nature = kind then [AddrT a] else []
   | Null                      -> []
   | Next(cell)                -> (var_kind_cell kind cell)
-  | ArrAt(cell,l)            -> (var_kind_cell kind cell) @
+  | NextAt(cell,l)            -> (var_kind_cell kind cell) @
+                                 (var_kind_int kind l)
+  | ArrAt(cell,l)             -> (var_kind_cell kind cell) @
                                  (var_kind_int kind l)
   | FirstLocked(mem,path)     -> (var_kind_mem kind mem) @
                                  (var_kind_path kind path)
@@ -1204,7 +1216,9 @@ and var_kind_addr (kind:E.var_nature) (a:addr) : term list =
   | MallocSLK(data,l)         -> (var_kind_elem kind data) @
                                  (var_kind_int kind l)
   | PointerNext a             -> (var_kind_addr kind a)
-  | PointerArrAt (a,l)       -> (var_kind_addr kind a) @
+  | PointerNextAt (a,l)       -> (var_kind_addr kind a) @
+                                 (var_kind_int kind l)
+  | PointerArrAt (a,l)        -> (var_kind_addr kind a) @
                                  (var_kind_int kind l)
 
 

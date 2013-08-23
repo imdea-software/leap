@@ -3211,7 +3211,7 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
       let phi_unordered = norm_literal info (NegAtom(OrderList
                             (VarMem m_var,VarAddr a1_var,VarAddr a2_var))) in
       let phi_diff = norm_literal info (Atom(InEq(SetT (VarSet s_var), SetT r))) in
-      let phi_a_in_s = norm_literal info (Atom(In(a,VarSet s_var))) in
+(*      let phi_a_in_s = norm_literal info (Atom(In(a,VarSet s_var))) in *)
       let phi_not_subset = norm_literal info (NegAtom(SubsetEq(r,u))) in
         disj_list
           [phi_unordered;

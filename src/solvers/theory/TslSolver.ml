@@ -126,7 +126,7 @@ module TranslateTsl (SLK : TSLKExpression.S) =
                     SLK.VarAddr (expand_array_to_var v SLK.Addr n)
                 | SL.CellArr c ->
                     let l = SLK.LevelVal n in
-                    SLK.ArrAt(cell_tsl_to_tslk c, l)
+                    SLK.NextAt(cell_tsl_to_tslk c, l)
                 | _ -> SLK.Null in
         xs := v::(!xs)
       done;
@@ -202,7 +202,7 @@ module TranslateTsl (SLK : TSLKExpression.S) =
           let c' = cell_tsl_to_tslk c in
           let l' = int_tsl_to_tslk l in
           SLK.addr_mark_smp_interesting a' true;
-          SLK.eq_addr a' (SLK.ArrAt(c',l'))
+          SLK.eq_addr a' (SLK.NextAt(c',l'))
       (* t = c.tids[l] *)
       | SL.Atom(SL.Eq(SL.TidT t, SL.TidT(SL.TidArrRd(SL.CellTids c,l))))
       | SL.Atom(SL.Eq(SL.TidT(SL.TidArrRd(SL.CellTids c,l)), SL.TidT t))
@@ -367,7 +367,7 @@ module TranslateTsl (SLK : TSLKExpression.S) =
                     (SLK.lesseq_level n' l',
                      SLK.And (SLK.atomlit 
                                   (SLK.In(a2',SLK.AddrToSet(m',a1',n'))),
-                                  SLK.eq_addr (SLK.ArrAt(SLK.CellAt(m',a2'),n'))
+                                  SLK.eq_addr (SLK.NextAt(SLK.CellAt(m',a2'),n'))
                                                    SLK.Null)) :: (!xs);
           done;
           for n = 0 to (SLK.k - 2) do
@@ -412,7 +412,7 @@ module TranslateTsl (SLK : TSLKExpression.S) =
             xs := SLK.And
                     (SLK.lesseq_level n' l',
                      SLK.Or (SLK.Not (SLK.atomlit (SLK.In (a2', SLK.AddrToSet(m',a1',n')))),
-                                 SLK.ineq_addr (SLK.ArrAt(SLK.CellAt(m',a2'),n'))
+                                 SLK.ineq_addr (SLK.NextAt(SLK.CellAt(m',a2'),n'))
                                                     SLK.Null)) :: (!xs)
           done;
           for n = 0 to (SLK.k - 2) do

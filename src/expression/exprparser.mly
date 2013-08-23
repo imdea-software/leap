@@ -1159,7 +1159,7 @@ addr :
                                                     (E.term_to_str $5) in
       let c = parser_check_type check_type_cell  $1 E.Cell get_str_expr in
       let l = parser_check_type check_type_int   $5 E.Cell get_str_expr in
-        E.ArrAt(c,l)
+        E.NextAt(c,l)
     }
 
   | FIRSTLOCKED OPEN_PAREN term COMMA term CLOSE_PAREN
