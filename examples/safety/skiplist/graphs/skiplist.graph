@@ -1,23 +1,23 @@
--> skiplist_prop [
-      22:skiplist_levels;
-      23:skiplist_levels;
-      24:skiplist_next,skiplist_levels;
-      41:skiplist_region_inst,skiplist_levels_aux;
-      42:skiplist_order_inst,skiplist_order_aux,skiplist_next_aux;
-      61:skiplist_order_aux,skiplist_order_inst,skiplist_region_aux,skiplist_region_inst,skiplist_levels,skiplist_value
-   ] { union : split-goal
-             | reduce2
-             | split-consequent
-             | simplify-pc propositional-propagate
-     }
-
-
-//-> skiplist_levels
-//     { union :
+//-> skiplist_prop [
+//      22:skiplist_levels;
+//      23:skiplist_levels;
+//      24:skiplist_next,skiplist_levels;
+//      41:skiplist_region_inst,skiplist_levels_aux;
+//      42:skiplist_order_inst,skiplist_order_aux,skiplist_next_aux;
+//      61:skiplist_order_aux,skiplist_order_inst,skiplist_region_aux,skiplist_region_inst,skiplist_levels,skiplist_value
+//   ] { union : split-goal
 //             | reduce2
-//             |
-//             | simplify-pc
+//             | split-consequent
+//             | simplify-pc propositional-propagate
 //     }
+
+
+-> skiplist_levels
+     { union :
+             | reduce2
+             |
+             | simplify-pc
+     }
 // 1 second
 
 

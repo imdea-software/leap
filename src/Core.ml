@@ -266,9 +266,13 @@ module Make (Opt:module type of GenOptions) : S =
 
       (* Initial condition *)
       let theta = System.gen_theta (System.SOpenArray (E.voc inv)) Opt.sys Opt.abs in
-      let voc = E.voc (E.conj_list [theta;inv])
-      in
-        Tactics.create_vc_info [] E.True theta inv voc E.NoTid 0
+      let voc = E.voc (E.conj_list [theta;inv]) in
+      let init_pos = match voc with
+                     | [] -> [E.Literal(E.Atom(E.PC (1,E.Shared,true)))]
+                     | _  -> List.map (fun t ->
+                               E.Literal(E.Atom(E.PC (1,E.Local t,true)))
+                            ) voc in
+        Tactics.create_vc_info [] E.True (E.conj_list (theta::init_pos)) inv voc E.NoTid 0
 
 
     let spinv_transitions (supp:E.formula list)

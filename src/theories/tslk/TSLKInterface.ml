@@ -272,7 +272,7 @@ module Make (SLK : TSLKExpression.S) =
       let pred = (fun x -> SLK.LevelPred x) in
       let tolevel = int_to_tslk_level in
       match i with
-        E.IntVal l       -> if l < 0 || SLK.k <= l then
+        E.IntVal l       -> (*if l < 0 || SLK.k <= l then
                                  begin
                                    Interface.Err.msg "Level out of bounds" $
                                    Printf.sprintf "Level %i is out of the bounds of TSLK[%i], \
@@ -280,7 +280,7 @@ module Make (SLK : TSLKExpression.S) =
                                       l SLK.k (SLK.k-1);
                                    raise(UnsupportedTSLKExpr(E.integer_to_str i))
                                  end
-                               else
+                               else *)
                                  SLK.LevelVal l
       | E.VarInt v       -> SLK.VarLevel (var_to_tslk_var v)
       | E.IntNeg i       -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
