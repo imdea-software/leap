@@ -3551,7 +3551,6 @@ let normalize (phi:formula) : formula =
   let norm_info = new_norm_info_from_formula phi in
   (* Process the original formula *)
   (* ERASE *)
-  print_endline ("NNF FORMULA: " ^ formula_to_str (nnf phi));
   let phi' = norm_formula norm_info (nnf phi) in
   (* Normalize all remaining literals stored in the normalization table *)
   verb "WILL NORMALIZE REMAINING ELEMENTS";

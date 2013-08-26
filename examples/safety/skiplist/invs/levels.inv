@@ -13,6 +13,7 @@ invariant [skiplist_levels] :
 
 
 /\ @insert_i_lesseq_lvl_two. -> insert::i <= insert::lvl
+/\ @insert_i_lesseq_lvl_two. -> insert::i <= maxLevel
 /\ @insert_lvl_inrange. -> insert::lvl <= maxLevel
 /\ @25. -> maxLevel = insert::i
 /\ @21. -> maxLevel + 1 = insert::i
