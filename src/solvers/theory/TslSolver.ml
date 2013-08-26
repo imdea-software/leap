@@ -990,10 +990,9 @@ let is_sat_plus_info (lines : int)
              with _ -> begin
                (* STEP 1: Normalize the formula *)
                (* ERASE *)
-               print_endline ("PHI: " ^ (SL.formula_to_str phi));
+               Log.print "TSL Solver formula" (SL.formula_to_str phi);
                let phi_norm = SL.normalize phi in
                (* ERASE *)
-               print_endline ("NORM PHI: " ^ (SL.formula_to_str phi_norm));
                Log.print "TSL Solver normalized formula" (SL.formula_to_str phi_norm);
                (* STEP 2: DNF of the normalized formula *)
                let phi_dnf = SL.dnf phi_norm in
