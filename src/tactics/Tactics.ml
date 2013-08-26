@@ -91,6 +91,12 @@ let vc_info_to_implication (info:vc_info) (sup:support_t): implication =
   List.iter (fun i -> Hashtbl.add pc_updates (build_pc false i) (build_pc true i)) goal_voc;
   List.iter (fun phi ->
     match phi with
+    | E.Or _ -> begin
+                  match E.to_disj_list phi with
+                  | E.Literal (E.Atom (E.PCUpdate (_,i)))::_ ->
+                      Hashtbl.remove pc_updates (build_pc false i)
+                  | _ -> ()
+                end
     | E.Literal (E.Atom (E.PCUpdate (_,i))) -> Hashtbl.remove pc_updates (build_pc false i)
     | E.Literal (E.Atom (E.Eq (E.ArrayT (E.VarArray v), E.ArrayT (E.ArrayUp (_,i,_))))) ->
         begin

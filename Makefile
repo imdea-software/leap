@@ -18,16 +18,16 @@ LINGELING=lingeling-587f
 
 # Programs
 LEAP=leap
-PROG2FTS=prog2fts
+#PROG2FTS=prog2fts
 PRGINFO=prginfo
-PINV=pinv
-SINV=sinv
-PVD=pvd
-NUMINV=numinv
-SPEC_CHECK=spec_check
-TLL=tll
-TSL=tsl
-TMPTSL=tmptsl
+#PINV=pinv
+#SINV=sinv
+#PVD=pvd
+#NUMINV=numinv
+#SPEC_CHECK=spec_check
+#TLL=tll
+#TSL=tsl
+#TMPTSL=tmptsl
 APPLYTAC=applytac
 
 

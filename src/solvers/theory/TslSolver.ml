@@ -37,6 +37,9 @@ let tslk_model = ref (GM.new_model())
 let arr_table = Hashtbl.create 10
 
 
+let this_call_tbl : DP.call_tbl_t = DP.new_call_tbl()
+
+
 
 let gen_fresh_int_var (vs:SL.VarSet.t) : SL.variable =
   let rec find (n:int) : SL.variable =
@@ -467,6 +470,7 @@ let try_sat_with_presburger_arithmetic (phi:SL.formula) : bool =
   let phi_num = NumInterface.formula_to_int_formula phi_expr in
   print_endline ("Translation to Num formula:\n" ^NumExpression.formula_to_str phi_num^ "\n");
 *)
+  DP.add_dp_calls this_call_tbl DP.Num 1;
   let numSolv_id = BackendSolvers.Yices.identifier in
   let module NumSol = (val NumSolver.choose numSolv_id : NumSolver.S) in
   let phi_num = NumInterface.formula_to_int_formula
@@ -815,19 +819,16 @@ let update_arrangement (alpha:SL.integer list list) (rel_set:SL.integer GenSet.t
   ) alpha
 
 
-let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
-      : (bool * DP.call_tbl_t) =
+let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) : bool =
   Log.print_ocaml "entering TSLSolver dnf_sat";
   Log.print "TSLSolver dnf_sat conjunctive formula" (SL.conjunctive_formula_to_str cf);
-  let this_call_tbl = DP.new_call_tbl() in
   let arrg_sat_table : (SL.integer list list, bool) Hashtbl.t = Hashtbl.create 10 in
 
   let check_pa (cf:SL.conjunctive_formula) : bool =
     match cf with
     | SL.TrueConj  -> (verb "**** check_pa: true\n"; true)
     | SL.FalseConj -> (verb "**** check_pa: false\n"; false)
-    | SL.Conj ls   -> (DP.add_dp_calls this_call_tbl DP.Num 1;
-                       try_sat_with_presburger_arithmetic
+    | SL.Conj ls   -> (try_sat_with_presburger_arithmetic
                         (SL.from_conjformula_to_formula cf)) in
 
   (* Main verification function *)
@@ -955,7 +956,6 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
   let answer =
     (* If no interesting information in NC formula, then we just check PA and PANC *)
     if nc = SL.TrueConj || nc = SL.FalseConj then begin
-      DP.add_dp_calls this_call_tbl DP.Num 1;
       try_sat_with_presburger_arithmetic (SL.from_conjformula_to_formula
                                           (SL.combine_conj_formula pa panc))
     end else begin
@@ -963,7 +963,7 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula)
       (* Verify if some arrangement makes the formula satisfiable *)
       GenSet.exists (fun alpha -> check pa panc nc alpha) arrgs
     end in
-  (answer, this_call_tbl)
+  answer
 
 
 (*******************************************)
@@ -976,14 +976,14 @@ let is_sat_plus_info (lines : int)
            (co : Smp.cutoff_strategy_t)
            (phi : SL.formula) : (bool * int * DP.call_tbl_t) =
     Log.print_ocaml "entering tslsolver is_sat";
-    let this_calls_tbl = DP.new_call_tbl() in
+    DP.clear_call_tbl this_call_tbl;
     Log.print "TSL Solver formula to check satisfiability" (SL.formula_to_str phi);
 
     match phi with
-    | SL.Not(SL.Implies(_,SL.True)) -> (false, 1, this_calls_tbl)
-    | SL.Not (SL.Implies(SL.False, _)) -> (false, 1, this_calls_tbl)
-    | SL.Implies(SL.False, _) -> (true, 1, this_calls_tbl)
-    | SL.Implies(_, SL.True) -> (true, 1, this_calls_tbl)
+    | SL.Not(SL.Implies(_,SL.True)) -> (false, 1, this_call_tbl)
+    | SL.Not (SL.Implies(SL.False, _)) -> (false, 1, this_call_tbl)
+    | SL.Implies(SL.False, _) -> (true, 1, this_call_tbl)
+    | SL.Implies(_, SL.True) -> (true, 1, this_call_tbl)
     | _ -> let answer =
              try
                 try_sat_with_presburger_arithmetic phi
@@ -998,15 +998,11 @@ let is_sat_plus_info (lines : int)
                (* STEP 2: DNF of the normalized formula *)
                let phi_dnf = SL.dnf phi_norm in
                (* If any of the conjunctions in DNF is SAT, then phi is sat *)
-               let answer = List.exists (fun psi ->
-                              let (res, call_tbl) = dnf_sat lines co psi in
-                              DP.combine_call_table call_tbl this_calls_tbl;
-                              res
-                            ) phi_dnf
+               let answer = List.exists (fun psi -> dnf_sat lines co psi) phi_dnf
                in
                answer
             end in
-            (answer, 1, this_calls_tbl)
+            (answer, 1, this_call_tbl)
 
 
 let is_sat (lines : int)
