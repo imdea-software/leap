@@ -3,6 +3,5 @@ vars:
 invariant [skiplist_levels_aux] :
 
 
-//   @insert_lvl_inrange. -> insert::lvl <= maxLevel
+   @insert_lvl_inrange. -> insert::lvl <= maxLevel
 
- @insert_i_lesseq_lvl_two. -> insert::i <= maxLevel
