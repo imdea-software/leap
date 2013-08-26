@@ -1,0 +1,9 @@
+vars:
+
+
+invariant [skiplist_region_inst_two] :
+
+
+   @insert_update_all_set. ->
+    ((0 <= maxLevel) -> insert::update[0] in region)
+
