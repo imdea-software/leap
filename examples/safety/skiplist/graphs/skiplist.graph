@@ -83,15 +83,15 @@
 
 
 -> skiplist_order [
-//       3:{union : | | split-antecedent-pc | simplify-pc };
-//      31:skiplist_next;
-//      35:skiplist_next;
+       3:{union : | | split-antecedent-pc | simplify-pc };
+      31:skiplist_next;
+      35:skiplist_next;
       37:skiplist_prop,skiplist_region_aux,skiplist_order_inst,skiplist_region_inst_two,skiplist_value;
       41:skiplist_order_inst,skiplist_levels;
-//      47:skiplist_next;
-//      50:skiplist_next;
-//      56:skiplist_next;
-//      58:skiplist_value;
+      47:skiplist_next;
+      50:skiplist_next;
+      56:skiplist_next;
+      58:skiplist_value;
       59:skiplist_levels
    ] { union : split-goal
              | reduce2
