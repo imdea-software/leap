@@ -1,0 +1,6 @@
+
+vars:
+
+invariant [skiplist_levels_aux_two] :
+
+  @insert_i_lesseq_lvl_two. -> insert::i <= maxLevel
