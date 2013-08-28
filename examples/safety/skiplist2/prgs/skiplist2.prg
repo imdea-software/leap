@@ -82,6 +82,7 @@ assume
                                 bool valueWasIn := false
 
                               begin
+:insert_body[
                                 choice
                                   lvl := 0;
                                 _or_
@@ -100,20 +101,27 @@ assume
                                   i := i - 1;
                                   valueWasIn := (curr->data = e); // skip;
                                 endwhile
+:insert_update_all_set[
                                 if (~ (valueWasIn)) then
                                   newCell := mallocSLK(e,lvl);
+:insert_newCell_created[
                                   i := 0;
                                   while (i <= lvl) do
+:insert_newCell_disconnected[
                                     newCell->nextat[i] := update[i]->nextat[i];
                                     update[i]->nextat[i] := newCell
                                       $ if (i=0) then
                                           region := region Union {newCell};
                                         endif
                                       $
+:insert_newCell_disconnected]
                                     i := i + 1;
                                   endwhile
+:insert_newCell_created]
                                 endif
+:insert_update_all_set]
                                 return (); // return (~ valueWasIn)
+:insert_body]
                               end
 
 // ----- REMOVE ----------------------------------------------

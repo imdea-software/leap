@@ -210,7 +210,8 @@ module Make (SLK : TSLKExpression.S) =
         | E.FirstLockedAt (m,p,l)  -> E.FirstLockedAt (norm_mem m, norm_path p, norm_int l)
         | E.AddrArrayRd (E.VarArray v,t) -> E.AddrArrayRd (E.VarArray v, norm_tid t)
         | E.AddrArrayRd _          -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
-        | E.AddrArrRd (aa,i)       -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
+        | E.AddrArrRd (aa,i)       -> let a_var = gen_if_not_var (E.AddrT a) E.Addr in
+                                        E.VarAddr a_var
 
       and norm_cell (c:E.cell) : E.cell =
         match c with
@@ -296,7 +297,7 @@ module Make (SLK : TSLKExpression.S) =
 
       and norm_arrays (arr:E.arrays) : E.arrays =
         match arr with
-        | E.VarArray v -> E.VarArray v
+        | E.VarArray v      -> E.VarArray v
         | E.ArrayUp (a,t,e) -> E.ArrayUp (norm_arrays a, norm_tid t, norm_expr e)
 
       and norm_addrarr (aa:E.addrarr) : E.addrarr =
@@ -397,7 +398,7 @@ module Make (SLK : TSLKExpression.S) =
       (* Create a new normalization *)
       let norm_info = new_norm_info_from_formula phi in
       (* Process the original formula *)
-      let phi' = norm_formula norm_info (E.nnf phi) in
+      let phi' = norm_formula norm_info phi in
       (* Normalize all remaining literals stored in the normalization table *)
       let lit_list = ref [] in
       while (Hashtbl.length norm_info.term_map > 0) do
@@ -419,7 +420,9 @@ module Make (SLK : TSLKExpression.S) =
       if !lit_list = [] then
         phi'
       else
-        E.And (E.conj_list !lit_list, phi')
+        match phi' with
+        | E.Implies (ante, conseq) -> E.Implies(E.And(E.conj_list !lit_list, ante),conseq)
+        | _ -> E.And (E.conj_list !lit_list, phi')
 
 
 
@@ -545,7 +548,7 @@ module Make (SLK : TSLKExpression.S) =
         E.VarT v        -> SLK.VarT (var_to_tslk_var v)
       | E.SetT s        -> SLK.SetT (set_to_tslk_set s)
       | E.ElemT e       -> SLK.ElemT (elem_to_tslk_elem e)
-      | E.TidT t       -> SLK.TidT (tid_to_tslk_tid t)
+      | E.TidT t        -> SLK.TidT (tid_to_tslk_tid t)
       | E.AddrT a       -> SLK.AddrT (addr_to_tslk_addr a)
       | E.CellT c       -> SLK.CellT (cell_to_tslk_cell c)
       | E.SetThT st     -> SLK.SetThT (setth_to_tslk_setth st)

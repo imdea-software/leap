@@ -212,8 +212,9 @@ let generic_stm_term_eq (mode:eqGenMode)
         let c_fresh = E.VarCell(E.build_var
                         E.fresh_cell_name E.Cell false E.Shared E.GlobalScope E.RealVar) in
         let new_term = E.param_term th_p (E.MemT(E.Update(E.heap,a,c_fresh))) in
+        let new_phi = E.param th_p (E.eq_cell c_fresh (E.UpdCellAddr(c,l,a'))) in
         let (mods,phi) = heap_eq_generator (E.MemT E.heap) th_p (E.Term(new_term)) in
-          ((E.CellT c_fresh)::mods, E.And(E.eq_cell c (E.UpdCellAddr(c_fresh,l,a')), phi))
+          ((E.CellT c_fresh)::mods, E.And(new_phi, phi))
     (* ArrAt *)
     | (E.AddrT (E.ArrAt(E.CellAt(h,a), l)), E.Term(E.AddrT a')) ->
         let new_cell = E.MkSLCell(E.CellData(E.CellAt(E.heap,a)),
