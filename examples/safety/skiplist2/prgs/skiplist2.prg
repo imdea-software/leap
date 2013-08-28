@@ -102,22 +102,29 @@ assume
                                   valueWasIn := (curr->data = e); // skip;
                                 endwhile
 :insert_update_all_set[
+:insert_update_all_bounds[
                                 if (~ (valueWasIn)) then
+:insert_final_if[
                                   newCell := mallocSLK(e,lvl);
 :insert_newCell_created[
                                   i := 0;
+:insert_update_all_bounds]
+:insert_update_upper_bounds[
                                   while (i <= lvl) do
 :insert_newCell_disconnected[
                                     newCell->nextat[i] := update[i]->nextat[i];
+:insert_newCell_next_connected
                                     update[i]->nextat[i] := newCell
                                       $ if (i=0) then
                                           region := region Union {newCell};
                                         endif
                                       $
+:insert_update_upper_bounds]
 :insert_newCell_disconnected]
                                     i := i + 1;
                                   endwhile
 :insert_newCell_created]
+:insert_final_if]
                                 endif
 :insert_update_all_set]
                                 return (); // return (~ valueWasIn)
@@ -135,8 +142,10 @@ assume
                                 addr curr
                                 bool valueWasIn
                               begin
+:remove_body[
                                 prev := head;
                                 curr := prev->nextat[1];
+:remove_curr_not_null[
                                 i := 1;
                                 while (i >= 0) do
                                   curr := prev->nextat[i];
@@ -150,18 +159,32 @@ assume
                                   update[i] := prev;
                                   i := i - 1;
                                 endwhile
+:remove_section[
                                 valueWasIn := curr->data = e; // skip;
+:remove_final_conditional[
                                 if (valueWasIn) then
+:remove_final_if_true[
                                   i := removeFrom;
+:remove_final_loop[
+:remove_final_while_begins[
                                   while (i >= 0) do
+:remove_final_loop_inside[
                                     update[i]->nextat[i] := curr->nextat[i]
                                     $ if (i=0) then
                                         region := region SetDiff {curr};
                                       endif
                                     $
+:remove_final_while_begins]
                                     i := i - 1;
+:remove_final_loop_inside]
                                   endwhile
+:remove_final_loop]
+:remove_final_if_true]
                                 endif
-                                return (); // return (valueWasIn)
+:remove_final_conditional]
+:remove_section]
+                              return (); // return (valueWasIn)
+:remove_curr_not_null]
+:remove_body]
                               end
                             

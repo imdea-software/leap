@@ -1,0 +1,33 @@
+vars:
+
+invariant [skiplist_order] :
+
+
+   @insert_newCell_created. ->
+      rd(heap, insert::newCell).data = insert::e
+
+/\ @insert_body. ->
+      (insert::e != lowestElem /\ insert::e != highestElem)
+
+
+/\ @insert_update_all_bounds. ->
+      (rd(heap, insert::update[0]).data < insert::e /\
+       rd(heap, rd(heap, insert::update[0]).nextat[0]).data > insert::e /\
+       rd(heap, insert::update[1]).data < insert::e /\
+       rd(heap, rd(heap, insert::update[1]).nextat[1]).data > insert::e)
+
+
+/\ @insert_update_upper_bounds. ->
+      ((insert::i = 0 ->
+          (rd(heap, insert::update[0]).data < insert::e /\
+           rd(heap, rd(heap, insert::update[0]).nextat[0]).data > insert::e /\
+           rd(heap, insert::update[1]).data < insert::e /\
+           rd(heap, rd(heap, insert::update[1]).nextat[1]).data > insert::e)) /\
+       (insert::i = 1 ->
+          (rd(heap, insert::update[1]).data < insert::e /\
+           rd(heap, rd(heap, insert::update[1]).nextat[1]).data > insert::e))
+       )
+
+
+/\ @insert_newCell_created. ->
+      rd(heap, insert::newCell).data = insert::e
