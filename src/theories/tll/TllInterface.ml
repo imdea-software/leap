@@ -202,6 +202,7 @@ and cell_to_tll_cell (c:E.cell) : TLL.cell =
   | E.CellArrayRd (E.VarArray v,t) ->
       TLL.VarCell (variable_to_tll_var (E.var_set_param (E.Local t) v))
   | E.CellArrayRd _  -> raise(UnsupportedTllExpr(E.cell_to_str c))
+  | E.UpdCellAddr _  -> raise(UnsupportedTllExpr(E.cell_to_str c))
 
 
 and setth_to_tll_setth (st:E.setth) : TLL.setth =

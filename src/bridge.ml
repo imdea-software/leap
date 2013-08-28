@@ -207,16 +207,13 @@ let generic_stm_term_eq (mode:eqGenMode)
                                 E.CellLockId(E.CellAt(E.heap,a))) in
         let new_term = E.param_term th_p (E.MemT(E.Update(E.heap,a,new_cell))) in
           heap_eq_generator (E.MemT E.heap) th_p (E.Term(new_term))
-
-
-
     (* NextAt *)
-    | (E.AddrT (E.NextAt(E.CellAt(h,a),l)), E.Term(E.AddrT a')) ->
-        assert false
-        (* I CAN PUT A SPECIAL STATEMENT THAT IS THEN UNFOLD WHEN CONVERTED INTO TSLK *)
-
-
-
+    | (E.AddrT (E.NextAt(E.CellAt(h,a) as c,l)), E.Term(E.AddrT a')) ->
+        let c_fresh = E.VarCell(E.build_var
+                        E.fresh_cell_name E.Cell false E.Shared E.GlobalScope E.RealVar) in
+        let new_term = E.param_term th_p (E.MemT(E.Update(E.heap,a,c_fresh))) in
+        let (mods,phi) = heap_eq_generator (E.MemT E.heap) th_p (E.Term(new_term)) in
+          ((E.CellT c_fresh)::mods, E.And(E.eq_cell c (E.UpdCellAddr(c_fresh,l,a')), phi))
     (* ArrAt *)
     | (E.AddrT (E.ArrAt(E.CellAt(h,a), l)), E.Term(E.AddrT a')) ->
         let new_cell = E.MkSLCell(E.CellData(E.CellAt(E.heap,a)),

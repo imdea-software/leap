@@ -137,6 +137,7 @@ and cell =
   | CellUnlockAt  of cell * integer
   | CellAt        of mem * addr
   | CellArrayRd   of arrays * tid
+  | UpdCellAddr   of cell * integer * addr
 
 and setth =
     VarSetTh      of variable
@@ -1018,6 +1019,9 @@ and priming_cell (pr:bool) (prime_set:VarSet.t option) (c:cell) : cell =
                                      priming_addr pr prime_set addr)
   | CellArrayRd(arr,t)     -> CellArrayRd(priming_array pr prime_set arr,
                                           priming_tid pr prime_set t)
+  | UpdCellAddr(c,i,a)     -> UpdCellAddr(priming_cell pr prime_set c,
+                                          priming_int pr prime_set i,
+                                          priming_addr pr prime_set a)
 
 
 and priming_setth (pr:bool) (prime_set:VarSet.t option) (s:setth) : setth =
@@ -1595,6 +1599,9 @@ and cell_to_str (expr:cell) : string =
                                                  (addr_to_str addr)
   | CellArrayRd(arr,t)    -> sprintf "%s%s" (arrays_to_str arr)
                                             (param_tid_to_str t)
+  | UpdCellAddr(c,i,a)    -> sprintf "updCellAddr(%s,%s,%s)" (cell_to_str c)
+                                                             (integer_to_str i)
+                                                             (addr_to_str a)
 
 
 and addr_to_str (expr:addr) :string =
@@ -2094,6 +2101,9 @@ and get_vars_cell (c:cell)
   | CellAt(mem,addr)       -> (get_vars_mem mem base) @
                               (get_vars_addr addr base)
   | CellArrayRd(arr,t)     -> (get_vars_array arr base)
+  | UpdCellAddr(c,i,a)     -> (get_vars_cell c base) @
+                              (get_vars_int i base)  @
+                              (get_vars_addr a base)
 
 
 and get_vars_setth (s:setth)
@@ -2617,6 +2627,7 @@ and voc_cell (c:cell) : tid list =
   | CellUnlockAt(cell,l)   -> (voc_cell cell) @ (voc_int l)
   | CellAt(mem,addr)       -> (voc_mem mem) @ (voc_addr addr)
   | CellArrayRd(arr,t)     -> (voc_array arr)
+  | UpdCellAddr(c,i,a)     -> (voc_cell c) @ (voc_int i) @ (voc_addr a)
 
 
 and voc_setth (s:setth) : tid list =
@@ -2917,6 +2928,9 @@ and var_kind_cell (kind:var_nature) (c:cell) : term list =
   | CellAt(mem,addr)       -> (var_kind_mem kind mem) @
                               (var_kind_addr kind addr)
   | CellArrayRd(arr,t)     -> (var_kind_array kind arr)
+  | UpdCellAddr(c,i,a)     -> (var_kind_cell kind c) @
+                              (var_kind_int kind i)  @
+                              (var_kind_addr kind a)
 
 
 and var_kind_setth (kind:var_nature) (s:setth) : term list =
@@ -3253,6 +3267,9 @@ and param_cell_aux (pfun:variable option -> shared_or_local) (c:cell) : cell =
   | CellAt(mem,addr)       -> CellAt(param_mem pfun mem,
                                      param_addr_aux pfun addr)
   | CellArrayRd(arr,t)     -> CellArrayRd(param_arrays pfun arr, t)
+  | UpdCellAddr(c,i,a)     -> UpdCellAddr(param_cell_aux pfun c,
+                                          param_int_aux pfun i,
+                                          param_addr_aux pfun a)
 
 
 and param_setth (pfun:variable option -> shared_or_local) (s:setth) : setth =
@@ -3652,6 +3669,9 @@ and subst_tid_cell (subs:tid_subst_t) (c:cell) : cell =
   | CellAt(mem,addr)       -> CellAt(subst_tid_mem subs mem,
                                      subst_tid_addr subs addr)
   | CellArrayRd(arr,t)     -> CellArrayRd(subst_tid_array subs arr, t)
+  | UpdCellAddr(c,i,a)     -> UpdCellAddr(subst_tid_cell subs c,
+                                          subst_tid_int subs i,
+                                          subst_tid_addr subs a)
 and subst_tid_setth (subs:tid_subst_t) (s:setth) : setth =
   match s with
     VarSetTh v             -> VarSetTh(var_set_param (subst_shared_or_local subs v.parameter) v)
@@ -3979,6 +3999,9 @@ and subst_vars_cell (subs:(variable * variable) list) (c:cell) : cell =
   | CellAt(mem,addr)       -> CellAt(subst_vars_mem subs mem,
                                      subst_vars_addr subs addr)
   | CellArrayRd(arr,t)     -> CellArrayRd(subst_vars_array subs arr, t)
+  | UpdCellAddr(c,i,a)     -> UpdCellAddr(subst_vars_cell subs c,
+                                          subst_vars_int subs i,
+                                          subst_vars_addr subs a)
 
 
 and subst_vars_setth (subs:(variable * variable) list) (s:setth) : setth =
@@ -4271,6 +4294,26 @@ let rec cnf (expr:formula) : formula list list =
   | Not (Implies (e1, e2)) -> cnf (And (e1, Not e2))
   | Not (Iff (e1, e2)) -> cnf (Or (And (e1, Not e2), And (Not e1, e2)))
   | e -> [[e]]
+
+
+let rec nnf expr =
+  match expr with
+      False -> False
+    | True  -> True
+    | Iff (e1,e2)    -> And (nnf (Implies (e1,e2)),nnf (Implies(e2,e1)))
+    | Implies(e1,e2) -> Or (nnf (Not e1), nnf e2)
+    | And(e1,e2)     -> And(nnf e1, nnf e2)
+    | Or(e1,e2)      -> Or(nnf e1, nnf e2)
+    | Not (Not e)    -> nnf e
+    | Not (And (e1,e2)) -> Or (nnf (Not e1), nnf (Not e2))
+    | Not (Or (e1, e2)) -> And (nnf (Not e1), nnf (Not e2))
+    | Not (Implies (e1, e2)) ->And (nnf e1, nnf (Not e2))
+    | Not (Iff (e1, e2)) ->  Or (And (nnf e1, nnf (Not e2)), And (nnf (Not e1), nnf e2))
+    | Not Literal(Atom a) -> Literal(NegAtom a)
+    | Not Literal(NegAtom a) -> Literal(Atom a)
+    | Not True  -> False
+    | Not False -> True
+    | Literal(a) -> Literal(a)
 
 
 (* Converts an expression to a format understandable by Sriram's tool "trs" *)
@@ -4885,6 +4928,7 @@ let required_sorts (phi:formula) : sort list =
     | CellUnlockAt (c,l)   -> append Cell [req_c c;req_i l]
     | CellAt (m,a)         -> append Cell [req_m m;req_a a]
     | CellArrayRd (a,t)    -> append Cell [req_arr a;req_t t]
+    | UpdCellAddr (c,i,a)  -> append Cell [req_c c; req_i i; req_a a]
 
   and req_a (a:addr) : SortSet.t =
     match a with
@@ -5207,6 +5251,9 @@ and to_plain_cell (ops:fol_ops_t) (c:cell) : cell =
                                      to_plain_addr ops addr)
   | CellArrayRd(arr,t)     -> CellArrayRd(to_plain_arrays ops arr,
                                           to_plain_tid ops t)
+  | UpdCellAddr(c,i,a)     -> UpdCellAddr(to_plain_cell ops c,
+                                          to_plain_int ops i,
+                                          to_plain_addr ops a)
 
 
 and to_plain_setth (ops:fol_ops_t) (s:setth) : setth =

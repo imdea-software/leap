@@ -1,7 +1,8 @@
--> skiplist_prop
-      { union : split-goal
-              | reduce2
-              | split-consequent
-              | simplify-pc propositional-propagate
+-> skiplist_prop [
+       3:{union : | reduce2 | split-antecedent-pc | simplify-pc };
+      18:{union : | reduce2 | split-antecedent-pc | simplify-pc }
+   ] { union : | reduce2
+              |
+              | simplify-pc
       }
 

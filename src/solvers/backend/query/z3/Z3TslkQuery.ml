@@ -298,7 +298,8 @@ module Make (K : Level.S) : TSLK_QUERY =
 
 
     let z3_pos_preamble (buf:B.t) : unit =
-      B.add_string buf ("(define-sort " ^loc_s^ " () " ^int_s^ ")\n");
+      B.add_string buf ("(define-sort " ^loc_s^ " () " ^int_s^ ")\n")
+(*
       GM.sm_decl_fun sort_map pc_name [tid_s] [loc_s] ;
       GM.sm_decl_fun sort_map pc_prime_name [tid_s] [loc_s] ;
       B.add_string buf ("(declare-const " ^pc_name^ " (Array " ^tid_s^ " " ^loc_s^ "))\n");
@@ -310,6 +311,7 @@ module Make (K : Level.S) : TSLK_QUERY =
                                  (<= 1 (select pc_prime t))\n\
                                  (<= (select pc_prime t) %i))\n\
                          )\n" tid_s bool_s !prog_lines !prog_lines)
+*)
 
 
 
@@ -1299,8 +1301,10 @@ module Make (K : Level.S) : TSLK_QUERY =
             | Expr.Mem  -> B.add_string buf ( "(assert (isheap " ^ name ^ "))\n" )
             | Expr.Elem -> B.add_string buf ( "(assert (iselem " ^ name ^ "))\n" )
             | Expr.Tid -> let _ = B.add_string buf ( "(assert (not (= " ^ name ^ " NoThread)))\n" ) in
+(*
                            let _ = B.add_string buf ( "(assert (in_pos_range " ^ name ^ "))\n")
                            in
+*)
                              ()
             | _    -> ()
           end

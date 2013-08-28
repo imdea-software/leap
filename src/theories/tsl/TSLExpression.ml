@@ -2708,7 +2708,7 @@ let new_fresh_gen (vset:VarIdSet.t) : fresh_var_gen_t =
   let tbl = Hashtbl.create(20) in
     Hashtbl.add tbl Set       (fresh_set_name,     1);
     Hashtbl.add tbl Elem      (fresh_elem_name,    1);
-    Hashtbl.add tbl Tid      (fresh_tid_name,     1);
+    Hashtbl.add tbl Tid       (fresh_tid_name,     1);
     Hashtbl.add tbl Addr      (fresh_addr_name,    1);
     Hashtbl.add tbl Cell      (fresh_cell_name,    1);
     Hashtbl.add tbl SetTh     (fresh_setth_name,   1);
@@ -3550,7 +3550,6 @@ let normalize (phi:formula) : formula =
   (* Create a new normalization *)
   let norm_info = new_norm_info_from_formula phi in
   (* Process the original formula *)
-  (* ERASE *)
   let phi' = norm_formula norm_info (nnf phi) in
   (* Normalize all remaining literals stored in the normalization table *)
   verb "WILL NORMALIZE REMAINING ELEMENTS";

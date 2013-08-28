@@ -124,6 +124,7 @@ and cell =
   | CellUnlockAt  of cell * integer
   | CellAt        of mem * addr
   | CellArrayRd   of arrays * tid
+  | UpdCellAddr   of cell * integer * addr
 
 and setth =
     VarSetTh      of variable
@@ -558,6 +559,7 @@ val conj_list : formula list -> formula
 val disj_list : formula list -> formula
 val to_conj_list : formula -> formula list
 val to_disj_list : formula -> formula list
+val nnf : formula -> formula
 val dnf : formula -> formula list list
 val cnf : formula -> formula list list
 val dnf_count : formula -> (float * float)
