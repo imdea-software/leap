@@ -14,3 +14,15 @@ invariant [skiplist_region] :
 
 /\ @insert_newCell_disconnected. ->
     (insert::i = 1 -> (insert::newCell in addr2set(heap, head, 0)))
+
+
+///////////////////
+
+
+
+/\ @remove_section. ->
+      (remove::update[0] in addr2set(heap, head, 0) /\
+       remove::update[1] in addr2set(heap, head, 1))
+      
+/\ @remove_final_while_begins. ->
+      (remove::i >= 0 -> remove::curr in region)

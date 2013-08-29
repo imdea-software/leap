@@ -6,3 +6,9 @@ invariant [skiplist_next] :
    @insert_newCell_next_connected. ->
       rd(heap, insert::newCell).nextat[insert::i] =
       rd(heap, insert::update[insert::i]).nextat[insert::i]
+
+
+//////////////////////
+
+
+/\ @remove_curr_not_null. -> remove::curr != null

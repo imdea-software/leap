@@ -16,62 +16,28 @@ invariant [skiplist_prop] :
 /\ rd(heap, tail).data = highestElem
 
 
+/\ tail in addr2set(heap, head, 0)
+/\ tail in addr2set(heap, head, 1)
 
 
 
 /////////////////////////////////////////////////
 
-///\ @remove_body. ->
-/\ @56. ->
-      (remove::e != lowestElem /\ remove::e != highestElem)
-
-/\ @remove_final_if_true. ->
-      (rd(heap, remove::curr).data = remove::e)
-
-
-/\ @remove_section. ->
-      ((0 <= remove::removeFrom -> rd(heap,remove::update[0]).data < remove::e) /\
-       (1 <= remove::removeFrom -> rd(heap,remove::update[1]).data < remove::e))
-
-
-/\ @remove_final_while_begins. ->
-          ((rd(heap, rd(heap,remove::update[0]).nextat[0]).data > remove::e \/
-            rd(heap, rd(heap,remove::update[0]).nextat[0]).data = remove::e) /\
-           (rd(heap, rd(heap,remove::update[1]).nextat[1]).data > remove::e \/
-            rd(heap, rd(heap,remove::update[1]).nextat[1]).data = remove::e))
 
 
 
-/\ @remove_section. ->
-      (remove::update[0] in addr2set(heap, head, 0) /\
-       remove::update[1] in addr2set(heap, head, 1))
-      
 
 
-/\ @remove_final_while_begins. ->
-      (remove::i >= 0 -> remove::curr in region)
 
 
-/\ @remove_final_loop. ->
-      ((0 <= remove::removeFrom -> remove::update[0] in addr2set(heap, head, 0)) /\
-       (1 <= remove::removeFrom -> remove::update[1] in addr2set(heap, head, 1)))
 
-/\ @remove_final_loop. ->
-      (remove::i <= remove::removeFrom)
 
-/\ @remove_final_loop_inside. ->
-      (remove::i >= 0)
 
-/\ @remove_final_conditional. ->
-      (.remove::valueWasIn. -> rd(heap, remove::curr).data = remove::e)
 
-/\ @remove_final_if_true. ->
-      (.remove::valueWasIn.)
 
-/\ @remove_curr_not_null. -> remove::curr != null
 
-/\ @56. ->
-    ((remove::i = 0) ->
-      rd(heap, rd(heap, remove::update[1]).nextat[1]).data > remove::e)
 
-/\ @56. -> (remove::update[0] != null /\ remove::update[1] != null)
+
+
+
+
