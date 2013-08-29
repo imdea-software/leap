@@ -12,12 +12,6 @@ invariant [skiplist_region] :
 
 /\ (@29. \/ @30. \/ @33. \/ @36.) -> rd(heap, insert::prev).arr[insert::i] in region
 
-/\ (@31. \/ @32.) -> insert::curr in region
-
-
-// /\ @insert_newCell_created. -> insert::newCell != null
-
-
 /\ (@40. \/ @41. \/ @42.) ->
     ((insert::i <= j /\ j <= maxLevel) -> (~ insert::newCell in addr2set(heap, head, j)))
 
@@ -40,11 +34,6 @@ invariant [skiplist_region] :
         (insert::update[j] in region /\
          insert::update[j] in addr2set(heap, head, j) /\
          rd(heap,insert::update[j]).arr[j] in addr2set(heap, head, j))
-
-/\ @39. -> insert::update[0] in region
-
-
-/\ @37. -> ((0<= j /\ j <= maxLevel) -> (insert::update[j] in addr2set(heap, head, j)))
 
 
 ///// For update array

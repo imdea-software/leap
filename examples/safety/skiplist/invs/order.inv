@@ -110,10 +110,6 @@ invariant [skiplist_order] :
         remove::update[j] in addr2set(heap, head, j))
 
 
-/\ @remove_section_true. -> rd(heap, remove::curr).data = remove::e
-
-
-
 
 /////////////////////////////////////////////////////////////////////
 

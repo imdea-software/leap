@@ -40,7 +40,6 @@ invariant [skiplist_next] :
 
 /\ @remove_curr_not_null. -> remove::curr != null
 
-
 /\ (@50. \/ @51. \/ @53. \/ @54. \/ @55. \/ @56.) -> rd(heap, remove::prev).arr[remove::i] = remove::curr
 
 /\ @52. -> remove::curr = remove::prev
