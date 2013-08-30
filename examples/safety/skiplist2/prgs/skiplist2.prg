@@ -135,7 +135,7 @@ assume
 :insert_update_upper_bounds[
 :insert_newCell_disconnected[
 :insert_final_loop[
-                                  while (~ (all_processed)) do
+                                  while (i <= lvl /\ ~ (all_processed)) do
 :insert_not_all_processed[
                                     newCell->nextat[i] := update[i]->nextat[i];
 :insert_newCell_next_connected
