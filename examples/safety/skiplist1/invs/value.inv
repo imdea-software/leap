@@ -12,8 +12,8 @@ invariant [skiplist_value] :
 
 
 /\ @insert_update_upper_bounds. ->
-			(.insert::all_processed. -> (insert::i = 0 \/ insert::i > insert::lvl) /\
-			((~.insert::all_processed.) -> insert::i <= insert::lvl))
+      (.insert::all_processed. -> (insert::i = 0 \/ insert::i > insert::lvl) /\
+      ((~.insert::all_processed.) -> insert::i <= insert::lvl))
 
 
 /\ @insert_increase_i. ->

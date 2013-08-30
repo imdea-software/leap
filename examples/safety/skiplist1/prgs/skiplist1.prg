@@ -52,7 +52,7 @@ assume
                                 addr prev
                                 addr curr
                               begin
-																i := 0;
+                                i := 0;
                                 prev := head;
                                 curr := prev->nextat[i];
                                 while (0 <= i /\ curr->data != e) do
@@ -83,14 +83,14 @@ assume
 :insert_body[
 :insert_valueWasIn_false[
 :insert_not_all_processed_one[
-																lvl := 0;
-																prev := head;
+                                lvl := 0;
+                                prev := head;
 :insert_prev_in_region[
 :insert_prev_is_head[
-																curr := prev->nextat[0];
+                                curr := prev->nextat[0];
 :insert_curr_in_region[
 :insert_set_i
-																i := 0;
+                                i := 0;
 :insert_valueWasIn_false]
 :insert_prev_is_head]
 :insert_lookup_loop[
@@ -167,7 +167,7 @@ assume
 
                               procedure remove (e:elem)
                                 addrarr update
-																int removeFrom := 0
+                                int removeFrom := 0
                                 int i
                                 addr prev
                                 addr curr
@@ -178,10 +178,10 @@ assume
                                 prev := head;
 :remove_prev_is_head[
 :remove_prev_in_region[
-																curr := prev->nextat[0];
+                                curr := prev->nextat[0];
 :remove_curr_in_region[
 :remove_curr_not_null[
-																i := 0;
+                                i := 0;
 :remove_bounded_prev[
 :remove_prev_is_head]
 :remove_prev_next_region_one[
@@ -203,7 +203,7 @@ assume
                                   endif
                                   update[i] := prev;
 :remove_lookup_i_decreases
-																	i := i - 1;
+                                  i := i - 1;
 :remove_bounded_curr]
                                 endwhile
 :remove_lookup_loop]
