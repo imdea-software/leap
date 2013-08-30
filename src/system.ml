@@ -1151,7 +1151,7 @@ let rec aux_rho_for_st
                     let v' = E.prime_variable (E.var_set_param th_p v) in
                     match value with
                     | E.Equality t  -> ((E.eq_term (E.var_to_term v') t)::fs,v_term::vs)
-                    | E.Condition c -> (Printf.printf "FORMULA: %s\n" (E.formula_to_str c); (E.Iff(E.Literal (E.Atom (E.BoolVar v')),c)::fs,v_term::vs))
+                    | E.Condition c -> (E.Iff(E.Literal (E.Atom (E.BoolVar v')),c)::fs,v_term::vs)
                   ) ([],[]) proc_init_vals in
         let assignments = List.combine call_proc_args ps
         in

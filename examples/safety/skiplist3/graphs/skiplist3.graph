@@ -9,7 +9,7 @@
           {union : split-goal | reduce2 | split-antecedent-pc | simplify-pc };
       59:skiplist_region,skiplist_order,skiplist_next,skiplist_levels,skiplist_value
           {union : split-goal | reduce2 | split-antecedent-pc | simplify-pc }
-   ] { union :
+   ] { union : split-goal
              | reduce2
              |
              | simplify-pc
@@ -63,7 +63,7 @@
       53:skiplist_next;
       54:skiplist_prop;
       62:skiplist_value
-  ] { union :
+   ] { union : split-goal
              | reduce2
              |
              | simplify-pc
@@ -87,7 +87,7 @@
       47:skiplist_prop,skiplist_order;
       50:skiplist_prop,skiplist_region,skiplist_order;
       54:skiplist_prop
-  ] { union :
+   ] { union : split-goal
              | reduce2
              |
              | simplify-pc
@@ -114,7 +114,7 @@
       56:skiplist_value;
       59:skiplist_prop,skiplist_region,skiplist_next,skiplist_value;
       62:skiplist_value
-   ] { union :
+   ] { union : split-goal
              | reduce2
              |
              | simplify-pc
