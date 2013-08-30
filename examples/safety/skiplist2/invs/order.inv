@@ -165,23 +165,41 @@ invariant [skiplist_order] :
 
 
 
-/\ @remove_final_while_begins. ->
-      (((0 <= remove::i /\ ~.remove::all_processed.) ->
-         (rd(heap, rd(heap, remove::update[0]).nextat[0]).data > remove::e \/
-          rd(heap, rd(heap, remove::update[0]).nextat[0]).data = remove::e)) /\
-       ((1 <= remove::i /\ ~.remove::all_processed.)->
-         (rd(heap, rd(heap, remove::update[1]).nextat[1]).data > remove::e \/
-          rd(heap, rd(heap, remove::update[1]).nextat[1]).data = remove::e)))
+
+/\ @remove_update_next_all_greater. ->
+      (((0 <= remove::removeFrom /\ ~.remove::all_processed.) ->
+            rd(heap, rd(heap, remove::update[0]).nextat[0]).data = remove::e) /\
+       ((1 <= remove::removeFrom /\ ~.remove::all_processed.) ->
+            rd(heap, rd(heap, remove::update[1]).nextat[1]).data = remove::e))
+
+/\ @remove_update_next_all_greater. ->
+      (((remove::removeFrom < 0 /\ ~.remove::all_processed.) ->
+            rd(heap, rd(heap, remove::update[0]).nextat[0]).data > remove::e) /\
+       ((remove::removeFrom < 1 /\ ~.remove::all_processed.) ->
+            rd(heap, rd(heap, remove::update[1]).nextat[1]).data > remove::e))
 
 
 
-/\ @remove_newCell_connected. ->
-      ((0 < remove::i ->
-         (rd(heap, rd(heap, remove::update[0]).nextat[0]).data > remove::e \/
-          rd(heap, rd(heap, remove::update[0]).nextat[0]).data = remove::e)) /\
-       (1 < remove::i ->
-         (rd(heap, rd(heap, remove::update[1]).nextat[1]).data > remove::e \/
-          rd(heap, rd(heap, remove::update[1]).nextat[1]).data = remove::e)))
+
+
+
+///\ @remove_final_while_begins. ->
+//      (((0 <= remove::i /\ ~.remove::all_processed.) ->
+//         (rd(heap, rd(heap, remove::update[0]).nextat[0]).data > remove::e \/
+//          rd(heap, rd(heap, remove::update[0]).nextat[0]).data = remove::e)) /\
+//       ((1 <= remove::i /\ ~.remove::all_processed.)->
+//         (rd(heap, rd(heap, remove::update[1]).nextat[1]).data > remove::e \/
+//          rd(heap, rd(heap, remove::update[1]).nextat[1]).data = remove::e)))
+
+
+
+///\ @remove_newCell_connected. ->
+//      ((0 < remove::i ->
+//         (rd(heap, rd(heap, remove::update[0]).nextat[0]).data > remove::e \/
+//          rd(heap, rd(heap, remove::update[0]).nextat[0]).data = remove::e)) /\
+//       (1 < remove::i ->
+//         (rd(heap, rd(heap, remove::update[1]).nextat[1]).data > remove::e \/
+//          rd(heap, rd(heap, remove::update[1]).nextat[1]).data = remove::e)))
 
 
 /\ @remove_final_while_begins. ->
