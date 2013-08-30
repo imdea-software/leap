@@ -85,6 +85,7 @@ assume
                               begin
 :insert_body[
 :insert_valueWasIn_false[
+:insert_not_all_processed_one[
                                 choice
                                   lvl := 0;
                                 _or_
@@ -135,8 +136,9 @@ assume
 :insert_update_upper_bounds[
 :insert_newCell_disconnected[
 :insert_final_loop[
-                                  while (i <= lvl /\ ~ (all_processed)) do
-:insert_not_all_processed[
+:insert_not_all_processed_one]
+                                  while (~ (all_processed)) do
+:insert_not_all_processed_two[
                                     newCell->nextat[i] := update[i]->nextat[i];
 :insert_newCell_next_connected
                                     update[i]->nextat[i] := newCell
@@ -146,11 +148,11 @@ assume
                                       $
 :insert_newCell_disconnected]
 :insert_newCell_connected[
-                                    if (i=1) then
+                                    if (i=lvl) then
 :insert_i_upper_limit
                                       all_processed := true;
                                     endif
-:insert_not_all_processed]
+:insert_not_all_processed_two]
 :insert_update_upper_bounds]
 :insert_increase_i
                                     i := i + 1;

@@ -3,17 +3,23 @@ vars:
 invariant [skiplist_value] :
 
 
-   @insert_not_all_processed. ->
+   (@insert_not_all_processed_one. \/ @insert_not_all_processed_two.) ->
       (~.insert::all_processed.)
 
 
 /\ @insert_i_upper_limit. ->
-      (insert::i = 1)
+      (insert::i = insert::lvl)
+
+
+/\ @insert_update_upper_bounds. ->
+      (.insert::all_processed. -> (insert::i = 1 \/ insert::i > insert::lvl) /\
+      ((~.insert::all_processed.) -> insert::i <= insert::lvl))
 
 
 /\ @insert_increase_i. ->
-      (.insert::all_processed. -> insert::i = 1 /\
-      ((~.insert::all_processed.) -> insert::i != 1))
+      (.insert::all_processed. -> (insert::i = insert::lvl) /\
+      ((~.insert::all_processed.) -> insert::i < insert::lvl))
+
 
 
 /\ @insert_final_if_condition. ->
@@ -39,3 +45,4 @@ invariant [skiplist_value] :
 
 /\ @remove_final_if_true. ->
       (.remove::valueWasIn.)
+

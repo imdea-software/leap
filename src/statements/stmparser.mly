@@ -1081,7 +1081,8 @@ global_decl :
                                                   (E.formula_to_str b) in
       let bool_var = E.Literal (E.Atom (E.BoolVar
                        (E.build_var v_name E.Bool false E.Shared E.GlobalScope k))) in
-      let cond = E.Iff(bool_var, b) in
+(*      let cond = E.Iff(bool_var, b) in *)
+      let cond = b in
       let _ = decl_global_var v_name s (Some (E.Condition cond)) k
       in
         parser_check_var_assign v_name s (E.Bool) get_str_expr
@@ -1194,7 +1195,8 @@ local_decl :
                                                   (E.formula_to_str b) in
       let bool_var = E.Literal (E.Atom (E.BoolVar
                         (E.build_var v_name E.Bool false E.Shared E.GlobalScope k))) in
-      let cond = E.Iff(bool_var, b) in
+(*      let cond = E.Iff(bool_var, b) in *)
+      let cond = b in
       let _ = decl_local_var v_name s (Some (E.Condition cond)) k
       in
         parser_check_var_assign v_name s (E.Bool) get_str_expr

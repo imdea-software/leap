@@ -1882,7 +1882,6 @@ let get_initVal_restriction (v:initVal_t) : expr_t =
   | Condition c ->
       begin
         match c with
-          Iff (_,f) -> Formula f
         | Literal (Atom (In          (_,s))) -> Term (SetT s)
         | Literal (Atom (SubsetEq    (_,s))) -> Term (SetT s)
         | Literal (Atom (InTh        (_,s))) -> Term (SetThT s)
@@ -1893,11 +1892,14 @@ let get_initVal_restriction (v:initVal_t) : expr_t =
         | Literal (Atom (Greater     (_,i))) -> Term (IntT i)
         | Literal (Atom (LessEq      (_,i))) -> Term (IntT i)
         | Literal (Atom (GreaterEq   (_,i))) -> Term (IntT i)
+        | _                                  -> Formula c
+(*
         | _ -> Interface.Err.msg "Invalid argument" $
                 sprintf "Function get_initVal_restrictions was expecting a \
                          condition over integers or sets. Instead, \"%s\" was \
                          received." (formula_to_str c);
                raise(Invalid_argument)
+*)
       end
 
 
