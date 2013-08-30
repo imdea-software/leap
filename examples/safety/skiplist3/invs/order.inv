@@ -210,10 +210,17 @@ invariant [skiplist_order] :
             rd(heap, rd(heap, remove::update[2]).nextat[2]).data > remove::e))
 
 
+
 /\ @remove_newCell_connected. ->
       ((0 < remove::i -> rd(heap, rd(heap, remove::update[0]).nextat[0]).data = remove::e) /\
        (1 < remove::i -> rd(heap, rd(heap, remove::update[1]).nextat[1]).data = remove::e) /\
        (2 < remove::i -> rd(heap, rd(heap, remove::update[2]).nextat[2]).data = remove::e))
+
+
+/\ @remove_newCell_connected. ->
+			((remove::i < 0 -> rd(heap, rd(heap, remove::update[0]).nextat[0]).data > remove::e) /\
+			 (remove::i < 1 -> rd(heap, rd(heap, remove::update[1]).nextat[1]).data > remove::e) /\
+			 (remove::i < 2 -> rd(heap, rd(heap, remove::update[2]).nextat[2]).data > remove::e))
 
 
 /\ @remove_newCell_connected. ->
