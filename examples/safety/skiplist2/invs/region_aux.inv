@@ -1,0 +1,8 @@
+
+vars:
+
+invariant [skiplist_region_aux] :
+
+
+   @remove_final_while_begins. ->
+      ((remove::i >= 0 /\ ~.remove::all_processed.) -> remove::curr in region)
