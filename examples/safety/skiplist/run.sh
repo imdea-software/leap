@@ -1,7 +1,7 @@
 LEAP=../../../leap
 
 #OPTIONS="-l logFile -co union -sm -sat -yices+z3 -dp tsl -do benchmarks --show_file_info"
-OPTIONS="--show_file_info -co union -sm -sat -yices+z3 -dp tsl"
+OPTIONS="--focus $1 --show_file_info -co union -sm -sat -yices+z3 -dp tsl"
 
 PRG=prgs/skiplist.prg
 INV_FOLDER=invs
