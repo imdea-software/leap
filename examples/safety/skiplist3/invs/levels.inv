@@ -1,0 +1,9 @@
+vars:
+
+invariant [skiplist_levels] :
+
+   @remove_final_loop. ->
+      (remove::i <= remove::removeFrom)
+
+/\ @remove_final_loop_inside. ->
+      (remove::i >= 0)
