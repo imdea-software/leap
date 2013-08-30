@@ -1,15 +1,15 @@
-//-> skiplist_prop [
-//      22:skiplist_levels;
-//      23:skiplist_levels;
-//      24:skiplist_next,skiplist_levels;
-//      41:skiplist_region_inst,skiplist_levels_aux;
-//      42:skiplist_order_inst,skiplist_order_aux,skiplist_next_aux;
-//      61:skiplist_order_aux,skiplist_order_inst,skiplist_region_aux,skiplist_region_inst,skiplist_levels,skiplist_value
-//   ] { union : split-goal
-//             | reduce2
-//             | split-consequent
-//             | simplify-pc propositional-propagate
-//     }
+-> skiplist_prop [
+      22:skiplist_levels;
+      23:skiplist_levels;
+      24:skiplist_next,skiplist_levels;
+      41:skiplist_region_inst,skiplist_levels_aux;
+      42:skiplist_order_inst,skiplist_order_aux,skiplist_next_aux;
+      61:skiplist_order_aux,skiplist_order_inst,skiplist_region_aux,skiplist_region_inst,skiplist_levels,skiplist_value
+   ] { union : split-goal
+             | reduce2
+             | split-consequent
+             | simplify-pc propositional-propagate
+     }
 
 
 //-> skiplist_levels
@@ -73,21 +73,21 @@
 
 
 
--> skiplist_order [
-       3:{union : | | split-antecedent-pc | simplify-pc };
-      31:skiplist_next;
-      35:skiplist_next;
-      37:skiplist_prop,skiplist_region_aux,skiplist_order_inst,skiplist_region_inst_two,skiplist_value;
-      41:skiplist_order_inst,skiplist_levels_aux_two;
-      47:skiplist_next;
-      50:skiplist_next;
-      56:skiplist_next;
-      58:skiplist_value;
-      59:skiplist_levels
-   ] { union : split-goal
-             | reduce2
-             | split-consequent
-             | simplify-pc
-     }
+//-> skiplist_order [
+//       3:{union : | | split-antecedent-pc | simplify-pc };
+//      31:skiplist_next;
+//      35:skiplist_next;
+//      37:skiplist_prop,skiplist_region_aux,skiplist_order_inst,skiplist_region_inst_two,skiplist_value;
+//      41:skiplist_order_inst,skiplist_levels_aux_two;
+//      47:skiplist_next;
+//      50:skiplist_next;
+//      56:skiplist_next;
+//      58:skiplist_value;
+//      59:skiplist_levels
+//   ] { union : split-goal
+//             | reduce2
+//             | split-consequent
+//             | simplify-pc
+//     }
 //// 105 seconds
 //

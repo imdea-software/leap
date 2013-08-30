@@ -24,14 +24,3 @@ invariant [skiplist_prop] :
 /////////////////////////////////////////////////
 
 
-
-
-
-///\ @58. -> (rd(heap, remove::update[remove::i]).data < remove::e)
-
-///\ @58. -> (rd(heap, rd(heap, remove::update[0]).nextat[0]).data > remove::e)
-///\ @58. -> (rd(heap, rd(heap, remove::update[1]).nextat[1]).data > remove::e)
-
-/\ @58. -> rd(heap, remove::curr).data = remove::e
-
-/\ @58. -> (remove::i = 0 -> rd(heap, rd(heap, remove::update[1]).nextat[1]).data > remove::e)

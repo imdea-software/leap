@@ -184,20 +184,24 @@ invariant [skiplist_order] :
           rd(heap, rd(heap, remove::update[1]).nextat[1]).data = remove::e)))
 
 
+/\ @remove_final_while_begins. ->
+      (((0 <= remove::i /\ ~.remove::all_processed.) ->
+            rd(heap, rd(heap, remove::update[0]).nextat[0]).data = remove::e) /\
+       ((1 <= remove::i /\ ~.remove::all_processed.) ->
+            rd(heap, rd(heap, remove::update[1]).nextat[1]).data = remove::e))
+
+/\ @remove_final_while_begins. ->
+      (((remove::i < 0 /\ ~.remove::all_processed.) ->
+            rd(heap, rd(heap, remove::update[0]).nextat[0]).data > remove::e) /\
+       ((remove::i < 1 /\ ~.remove::all_processed.) ->
+            rd(heap, rd(heap, remove::update[1]).nextat[1]).data > remove::e))
 
 
-///\ @remove_final_loop. ->
-//    ((remove::i = 0) ->
-//      rd(heap, rd(heap, remove::update[1]).nextat[1]).data > remove::e)
+/\ @remove_newCell_connected. ->
+      ((0 < remove::i -> rd(heap, rd(heap, remove::update[0]).nextat[0]).data = remove::e) /\
+       (1 < remove::i -> rd(heap, rd(heap, remove::update[1]).nextat[1]).data = remove::e))
 
 
-///\ @remove_final_loop. ->
-//    (rd(heap, rd(heap, remove::update[remove::i]).nextat[remove::i]).data = remove::e)
-
-
-
-
-
-
-
+/\ @remove_newCell_connected. ->
+      (rd(heap, rd(heap, remove::update[remove::i]).nextat[remove::i]).data > remove::e)
 
