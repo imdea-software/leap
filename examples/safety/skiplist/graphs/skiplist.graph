@@ -12,24 +12,6 @@
      }
 
 
--> skiplist_levels
-     { union :
-             | reduce2
-             |
-             | simplify-pc
-     }
-// 1 second
-
-
--> skiplist_value [
-       3:{union : | | split-antecedent-pc | simplify-pc }
-   ] { union :
-             | reduce2
-             |
-             | simplify-pc
-     }
-// 1 second
-
 
 -> skiplist_region [
        3:{union : | | split-antecedent-pc | simplify-pc };
@@ -50,7 +32,7 @@
              | split-consequent
              | simplify-pc propositional-propagate
      }
-// 221 seconds
+
 
 
 -> skiplist_next [
@@ -69,7 +51,6 @@
              |
              | simplify-pc
      }
-// 10 seconds
 
 
 
@@ -89,5 +70,22 @@
              | split-consequent
              | simplify-pc
      }
-// 105 seconds
 
+
+
+-> skiplist_value [
+       3:{union : | | split-antecedent-pc | simplify-pc }
+   ] { union :
+             | reduce2
+             |
+             | simplify-pc
+     }
+
+
+
+-> skiplist_levels
+     { union :
+             | reduce2
+             |
+             | simplify-pc
+     }
