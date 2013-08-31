@@ -1,0 +1,140 @@
+\usepackage{hhline}
+
+\newcolumntype{W}{>{\raggedleft\arraybackslash}m{4.2em}<{}}
+\newcolumntype{T}{>{\raggedleft\arraybackslash}m{2.1em}<{}}
+\newcommand{\MulTwo}[1]{\multicolumn{2}{c||}{#1}}
+\newcommand{\MulThree}[1]{\multicolumn{3}{c||}{#1}}
+\newcommand{\MulEight}[1]{\multicolumn{8}{c||}{#1}}
+\newcommand{\MulTwoS}[1]{\multicolumn{2}{c|}{#1}}
+\newcommand{\ColC}[1]{\multicolumn{1}{c|}{#1}}
+\newcommand{\ColCC}[1]{\multicolumn{1}{c||}{#1}}
+
+
+
+
+\newcommand{\ResultsConcurrentInfo}{
+	\begin{tabular}{ |r||T|T|T||T|T|T|T|T|T|T|T||}
+		\cline{2-12}
+		\ColC{} & \MulThree{formula info} & \MulEight{\#calls performed to each DP} \\
+		\cline{2-12}
+		\ColC{}& \ColC{index} & \ColC{\#vc} & \ColCC{\#query} &
+		\ColC{\LocDP} & \ColC{\NumDP} & \ColC{\TLLDP} & \ColC{\TSLDP} &
+		\ColC{\TSLKOneDP} & \ColC{\TSLKTwoDP} & \ColC{\TSLKThreeDP} & \ColCC{\TSLKFourDP} \\
+		\hhline{-*{11}=}
+		$\mutex$     		 & $2$ & $19$ & $19$ & $18$ & $1$ & $-$ & $-$ & $-$ & $-$ & $-$ & $-$ \\ \hline
+		$\minticket$  	 & $1$ & $19$ & $19$ & $18$ & $1$ & $-$ & $-$ & $-$ & $-$ & $-$ & $-$ \\ \hline
+		$\notsame$  		 & $2$ & $19$ & $19$ & $18$ & $1$ & $-$ & $-$ & $-$ & $-$ & $-$ & $-$ \\ \hline
+		$\activelow$ 		 & $1$ & $19$ & $19$ & $17$ & $2$ & $-$ & $-$ & $-$ & $-$ & $-$ & $-$ \\ \hline\hline
+		$\setmutex$  		 & $2$ & $19$ & $19$ & $18$ & $1$ & $-$ & $-$ & $-$ & $-$ & $-$ & $-$ \\ \hline
+		$\setminticket$  & $1$ & $19$ & $19$ & $17$ & $2$ & $-$ & $-$ & $-$ & $-$ & $-$ & $-$ \\ \hline
+		$\setnotsame$  	 & $2$ & $19$ & $19$ & $18$ & $1$ & $-$ & $-$ & $-$ & $-$ & $-$ & $-$ \\ \hline
+		$\setactivelow$	 & $1$ & $19$ & $19$ & $17$ & $2$ & $-$ & $-$ & $-$ & $-$ & $-$ & $-$ \\ \hline\hline
+		$\invPreserve$	 & $0$ & $61$ &$610$ &$472$ & $-$ &$138$& $-$ & $-$ & $-$ & $-$ & $-$ \\ \hline
+		$\invOrder$			 & $1$ &$121$ &$121$ & $69$ & $-$ & $52$& $-$ & $-$ & $-$ & $-$ & $-$ \\ \hline
+		$\invLock$			 & $1$ &$121$ &$121$ & $82$ & $-$ & $39$& $-$ & $-$ & $-$ & $-$ & $-$ \\ \hline
+		$\invNext$			 & $1$ &$121$ &$121$ & $68$ & $-$ & $53$& $-$ & $-$ & $-$ & $-$ & $-$ \\ \hline
+		$\invRegion$		 & $1$ &$121$ &$147$ &$120$ & $-$ & $27$& $-$ & $-$ & $-$ & $-$ & $-$ \\ \hline
+		$\invDisjoint$	 & $2$ &$181$ &$181$ &$177$ & $-$ & $4$ & $-$ & $-$ & $-$ & $-$ & $-$ \\ \hline
+	\end{tabular}
+}
+
+
+\newcommand{\ResultsConcurrentTimes}{
+	\begin{tabular}{|r||T||W|W|W||W|W||}
+		\cline{2-7}
+		\ColC{} & \ColCC{\# queries} &
+		\MulThree{individual vc time (sec.)} &
+		\ColC{total dp} & \ColCC {total analysis}\\
+		\cline{3-5}
+		\ColC{} & \ColCC{} & \ColC{fastest} & \ColC{slowest} & \ColCC{average} &
+		\ColC{time (sec.)} & \ColCC{time (sec.)} \\
+		\hhline{-*{6}=}
+		$\mutex$     		 & $19$ & $0.001$ & $0.008$ & $0.002$ & $0.032$ & $0.080$ \\ \hline
+		$\minticket$ 		 & $19$ & $0.001$ & $0.004$ & $0.001$ & $0.012$ & $0.028$ \\ \hline
+		$\notsame$ 			 & $19$ & $0.001$ & $0.004$ & $0.001$ & $0.024$ & $0.088$ \\ \hline
+		$\activelow$		 & $19$ & $0.001$ & $0.004$ & $0.001$ & $0.008$ & $0.028$ \\ \hline \hline
+		$\mutex$     		 & $19$ & $0.001$ & $0.012$ & $0.002$ & $0.036$ & $0.088$ \\ \hline
+		$\setminticket$	 & $19$ & $0.001$ & $0.008$ & $0.001$ & $0.012$ & $0.040$ \\ \hline
+		$\setnotsame$		 & $19$ & $0.001$ & $0.004$ & $0.001$ & $0.020$ & $0.084$ \\ \hline
+		$\setactivelow$	 & $19$ & $0.001$ & $0.004$ & $0.001$ & $0.008$ & $0.032$ \\ \hline \hline
+		$\invPreserve$ 	 & $61$ & $0.001$ & $9.075$ & $0.250$ &$15.225$ &$16.420$ \\ \hline
+		$\invOrder$ 		 &$121$ & $0.001$ & $0.200$ & $0.020$ & $2.300$ & $3.930$ \\ \hline
+		$\invLock$ 			 &$121$ & $0.001$ & $0.024$ & $0.005$ & $0.588$ & $1.380$ \\ \hline
+		$\invNext$ 			 &$121$ & $0.001$ & $1.024$ & $0.024$ & $2.856$ & $5.170$ \\ \hline
+		$\invRegion$ 		 &$121$ & $0.001$ & $8.160$ & $0.076$ & $9.210$ &$10.333$ \\ \hline
+		$\invDisjoint$	 &$181$ & $0.001$ & $0.020$ & $0.001$ & $0.244$ & $0.864$ \\ \hline
+	\end{tabular}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\newcommand{\ResultsSequentialInfo}{
+	\begin{tabular}{ |r||T|T|T||T|T|T|T|T|T|T|T||}
+		\cline{2-12}
+		\ColC{} & \MulThree{formula info} & \MulEight{\#calls performed to each DP} \\
+		\cline{2-12}
+		\ColC{}& \ColC{index} & \ColC{\#vc} & \ColCC{\#query} &
+		\ColC{\LocDP} & \ColC{\NumDP} & \ColC{\TLLDP} & \ColC{\TSLDP} &
+		\ColC{\TSLKOneDP} & \ColC{\TSLKTwoDP} & \ColC{\TSLKThreeDP} & \ColCC{\TSLKFourDP} \\
+		\hhline{-*{11}=}
+		$\invSkiplistOne$		& $0$ & $77$ &$119$ & $0$ & $-$  & $-$ &  $-$ & $119$ &  $-$  & $-$ & $-$ \\ \hline
+		$\invRegionOne$			& $0$ & $77$ &$119$ & $0$ & $-$  & $-$ &  $-$ & $119$ &  $-$  & $-$ & $-$ \\ \hline
+		$\invNextOne$				& $0$ & $77$ & $79$ & $0$ & $-$  & $-$ &  $-$ &  $79$ &  $-$  & $-$ & $-$ \\ \hline
+		$\invOrderOne$			& $0$ & $77$ & $79$ & $0$ & $-$  & $-$ &  $-$ &  $79$ &  $-$  & $-$ & $-$ \\ \hline
+		$\invValueOne$			& $0$ & $77$ & $79$ & $0$ & $-$  & $-$ &  $-$ &  $79$ &  $-$  & $-$ & $-$ \\ \hline \hline
+		$\invSkiplistTwo$		& $0$ & $79$ &$137$ & $0$ & $-$  & $-$ &  $-$ &  $-$  & $137$ & $-$ & $-$ \\ \hline
+		$\invRegionTwo$			& $0$ & $79$ &$122$ & $0$ & $-$  & $-$ &  $-$ &  $-$  & $122$ & $-$ & $-$ \\ \hline
+		$\invNextTwo$				& $0$ & $79$ & $82$ & $0$ & $-$  & $-$ &  $-$ &  $-$  &  $82$ & $-$ & $-$ \\ \hline
+		$\invOrderTwo$			& $0$ & $79$ & $82$ & $0$ & $-$  & $-$ &  $-$ &  $-$  &  $82$ & $-$ & $-$ \\ \hline
+		$\invValueTwo$			& $0$ & $79$ & $82$ & $0$ & $-$  & $-$ &  $-$ &  $-$  &  $82$ & $-$ & $-$ \\ \hline \hline
+		$\invSkiplist$			& $0$ & $80$ &$560$ & $0$ &$8760$& $-$ & $560$& $47$  &  $94$ &$46$ &$16$ \\ \hline
+		$\invSLRegion$			& $0$ & $80$ &$1346$& $0$ &$7343$& $-$ &$1346$& $160$ & $254$ &$116$& $-$ \\ \hline
+		$\invSLNext$				& $0$ & $80$ &$1346$& $0$ &$1053$& $-$ &$1346$&  $43$ &  $60$ & $30$& $-$ \\ \hline
+		$\invSLOrder$				& $0$ & $80$ &$9559$& $0$ &$2136$& $-$ &$2136$& $643$ & $732$ &$182$& $5$ \\ \hline
+		$\invSLValue$				& $0$ & $80$ & $82$ & $0$ & $11$ & $-$ & $82$ &   $2$ &   $1$ & $-$ & $-$ \\ \hline
+		$\invSLLevels$			& $0$ & $80$ & $80$ & $0$ & $14$ & $-$ & $80$ &   $-$ &   $-$ & $-$ & $-$ \\ \hline
+	\end{tabular}
+}
+
+
+\newcommand{\ResultsSequentialTimes}{
+	\begin{tabular}{|r||T||W|W|W||W|W||}
+		\cline{2-7}
+		\ColC{} & \ColCC{\# queries} &
+		\MulThree{individual vc time (sec.)} &
+		\ColC{total dp} & \ColCC {total analysis}\\
+		\cline{3-5}
+		\ColC{} & \ColCC{} & \ColC{fastest} & \ColC{slowest} & \ColCC{average} &
+		\ColC{time (sec.)} & \ColCC{time (sec.)} \\
+		\hhline{-*{6}=}
+		$\invSkiplistOne$		&  $77$ & $0.001$ & $0.208$ & $0.011$ &  $0.864$ &  $2.060$ \\ \hline
+		$\invRegionOne$			&  $77$ & $0.001$ & $0.128$ & $0.008$ &  $0.628$ &  $3.044$ \\ \hline
+		$\invNextOne$				&  $77$ & $0.001$ & $0.032$ & $0.003$ &  $0.236$ &  $1.560$ \\ \hline
+		$\invOrderOne$			&  $77$ & $0.001$ & $0.056$ & $0.008$ &  $0.624$ &  $4.684$ \\ \hline
+		$\invValueOne$			&  $77$ & $0.001$ & $0.012$ & $0.002$ &  $0.176$ &  $1.024$ \\ \hline \hline
+		$\invSkiplistTwo$		&  $79$ & $0.001$ & $2.856$ & $0.070$ &  $5.556$ &  $7.580$ \\ \hline
+		$\invRegionTwo$			&  $79$ & $0.001$ & $1.036$ & $0.039$ &  $3.048$ &  $6.248$ \\ \hline
+		$\invNextTwo$				&  $79$ & $0.001$ & $0.076$ & $0.006$ &  $0.472$ &  $1.944$ \\ \hline
+		$\invOrderTwo$			&  $79$ & $0.001$ & $0.888$ & $0.020$ &  $1.552$ &  $7.748$ \\ \hline
+		$\invValueTwo$			&  $79$ & $0.001$ & $0.012$ & $0.001$ &  $0.056$ &  $0.992$ \\ \hline \hline
+		$\invSkiplist$			&  $80$ & $0.001$ &$22.185$ & $0.718$ & $57.468$ & $58.556$ \\ \hline
+		$\invSLRegion$			&  $80$ & $0.001$ &$79.205$ & $2.284$ &$182.727$ &$191.712$ \\ \hline
+		$\invSLNext$				&  $80$ & $0.001$ & $0.872$ & $0.063$ &  $5.020$ & $12.929$ \\ \hline
+		$\invSLOrder$				&  $80$ & $0.001$ &$17.681$ & $0.707$ & $56.584$ & $84.925$ \\ \hline
+		$\invSLValue$				&  $80$ & $0.001$ & $0.028$ & $0.001$ &  $0.080$ &  $0.484$ \\ \hline
+		$\invSLLevels$			&  $80$ & $0.001$ & $0.004$ & $0.001$ &  $0.036$ &  $0.748$ \\ \hline
+	\end{tabular}
+}

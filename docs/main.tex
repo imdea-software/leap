@@ -1,0 +1,57 @@
+
+\documentclass[10pt]{article}
+
+
+\usepackage{array}
+\usepackage{xspace}
+
+\usepackage{mdwmath}
+\usepackage{mdwtab}
+\usepackage{eqparbox}
+
+\usepackage{url}
+\usepackage{subfig}
+\usepackage{paralist}
+\usepackage{afterpage}
+\usepackage{wrapfig}
+
+\usepackage{calc}
+
+\usepackage[margin=0.5in]{geometry}
+
+
+\input{results}
+\input{definitions}
+
+\begin{document}
+
+
+\title{\Leap results}
+
+
+
+
+\maketitle
+
+\section{Concurrent examples}
+
+\ResultsConcurrentInfo
+
+\vspace{3em}
+
+\ResultsConcurrentTimes
+
+\section{Sequential examples}
+
+\ResultsSequentialInfo
+
+\vspace{3em}
+
+\ResultsSequentialTimes
+
+\end{document}
+
+
+%%% Local Variables:
+%%% TeX-PDF-mode: t
+%%% End:
