@@ -289,10 +289,11 @@ module Make (Opt:module type of GenOptions) : S =
         let other_conseq_supp = load_support line Premise.OthersConseq in
         let fresh_k = E.gen_fresh_tid (E.voc (E.conj_list (inv::supp@other_conseq_supp))) in
         let self_conseq_vcs = List.fold_left (fun vcs i ->
-                                gen_vcs (inv::self_conseq_supp) inv line Premise.SelfConseq i
+                                (gen_vcs (inv::self_conseq_supp) inv line Premise.SelfConseq i) @ vcs
                               ) [] (E.voc inv) in
         let other_conseq_vcs = gen_vcs (inv::other_conseq_supp) inv line Premise.OthersConseq fresh_k
         in
+
           vcs @ self_conseq_vcs @ other_conseq_vcs
       ) [] lines_to_consider
 
