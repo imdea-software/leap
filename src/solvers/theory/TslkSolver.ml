@@ -237,10 +237,10 @@ struct
              (co : Smp.cutoff_strategy_t)
              (phi : TslkExp.formula) : bool =
     match phi with
-    | TslkExp.Not(TslkExp.Implies(_,TslkExp.True)) -> (print_endline "CASE 1"; Solver.calls_force_incr(); false)
-    | TslkExp.Not (TslkExp.Implies(TslkExp.False, _)) -> (print_endline "CASE 2"; Solver.calls_force_incr(); false)
-    | TslkExp.Implies(TslkExp.False, _) -> (print_endline "CASE 3"; Solver.calls_force_incr(); true)
-    | TslkExp.Implies(_, TslkExp.True) -> (print_endline "CASE 4"; Solver.calls_force_incr(); true)
+    | TslkExp.Not(TslkExp.Implies(_,TslkExp.True)) -> (Solver.calls_force_incr(); false)
+    | TslkExp.Not (TslkExp.Implies(TslkExp.False, _)) -> (Solver.calls_force_incr(); false)
+    | TslkExp.Implies(TslkExp.False, _) -> (Solver.calls_force_incr(); true)
+    | TslkExp.Implies(_, TslkExp.True) -> (Solver.calls_force_incr(); true)
     | _ -> begin
              TslkSol.set_prog_lines lines;
              Solver.sat (TslkSol.formula co cutoff_opt phi)

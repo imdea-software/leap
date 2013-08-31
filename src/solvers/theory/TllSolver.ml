@@ -241,11 +241,18 @@ struct
              (co : Smp.cutoff_strategy_t)
              (phi : TllExp.formula) : bool =
 (*    LOG "Entering is_sat..." LEVEL TRACE; *)
-    verb "**** TLL Solver, about to translate TLL...\n";
-    let module Q = (val QueryManager.get_tll_query Solver.identifier) in
-    let module Trans = Solver.Translate.Tll.Query(Q) in
-    Trans.set_prog_lines lines;
-    Solver.sat (Trans.formula co cutoff_opt phi)
+    match phi with
+    | TllExp.Not(TllExp.Implies(_,TllExp.True)) -> (Solver.calls_force_incr(); false)
+    | TllExp.Not (TllExp.Implies(TllExp.False, _)) -> (Solver.calls_force_incr(); false)
+    | TllExp.Implies(TllExp.False, _) -> (Solver.calls_force_incr(); true)
+    | TllExp.Implies(_, TllExp.True) -> (Solver.calls_force_incr(); true)
+    | _ -> begin
+             verb "**** TLL Solver, about to translate TLL...\n";
+             let module Q = (val QueryManager.get_tll_query Solver.identifier) in
+             let module Trans = Solver.Translate.Tll.Query(Q) in
+             Trans.set_prog_lines lines;
+             Solver.sat (Trans.formula co cutoff_opt phi)
+           end
   
   let is_valid (prog_lines:int)
                (co:Smp.cutoff_strategy_t)
@@ -341,7 +348,7 @@ let search_sets_to_str (model:GM.t) (sm:GM.sort_map_t) (s:GM.sort) : string =
       "\nHeap:\n" ^ heap_str
 
   let print_model () : unit =
-    if !comp_model then
+    if !comp_model && (Solver.get_model() <> GM.new_model()) then
       print_endline (model_to_str())
     else
       ()
