@@ -20,6 +20,10 @@ val reset_calls : configuration_t -> unit
     according to [cfg] *)
 val calls_count : configuration_t -> int
 
+(** [calls_force_incr cfg] forces manually to increment in one the calls
+    counter in [cfg] *)
+val calls_force_incr : configuration_t -> unit
+
 (** [compute_model cfg b] enables or disables the generation of a counter
     example model in [cfg] according to [b] *)
 val compute_model : configuration_t -> bool -> unit

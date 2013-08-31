@@ -36,6 +36,10 @@ struct
   
   (** [calls_count ()] returns the number of calls performed to the SMT. *) 
   let calls_count () = config.calls # get
+
+  (** [calls_force_incr ()] forces to increment by one the number of calls
+      performed by the SMT. *)
+  let calls_force_incr () : unit = config.calls # incr
   
   (** [compute_model b] sets whether a counter model for non valid
       VCs should be computed *)

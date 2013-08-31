@@ -82,6 +82,9 @@ let reset_calls (cfg:configuration_t) : unit =
 let calls_count (cfg:configuration_t) : int =
   cfg.calls # get
 
+let calls_force_incr (cfg:configuration_t) : unit =
+  cfg.calls # incr
+
 let compute_model (cfg:configuration_t) (b:bool) : unit =
   cfg.comp_model <- b
 

@@ -17,6 +17,10 @@ sig
   
   val calls_count : unit -> int
   (** [calls_count ()] returns the number of calls performed to the Solver. *)
+
+  val calls_force_incr : unit -> unit
+  (** [calls_force_incr ()] forces to increment by one the number of calls
+      performed to the Solver. *)
   
   val sat   : t -> bool
   (** Tests whether the formula is satisfiable or not. *)
