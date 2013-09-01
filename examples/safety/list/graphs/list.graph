@@ -1,81 +1,76 @@
-//=> fullOrder
-//        { pruning :
-//                  | reduce2
-//                  |
-//                  | simplify-pc
-//        }
-// 2.7 seconds
+=> fullPreserve [
+      34:O:fullRegion;
+      35:O:fullRegion,fullNext,fullLock,fullOrder;
+      51:O:fullNext,fullRegion,fullOrder
+   ] { pruning : split-goal
+               | reduce2
+               |
+               | simplify-pc
+     }
 
 
-//=> fullPreserve [
-//      34:O:fullRegion;
-//      35:O:fullRegion,fullNext,fullLock,fullOrder;
-//      51:O:fullNext,fullRegion,fullOrder
-//   ] { pruning : split-goal
-//               | reduce2
-//               |
-//               | simplify-pc
-//     }
-// 16 seconds
+=> fullOrder
+        { pruning :
+                  | reduce2
+                  |
+                  | simplify-pc
+        }
 
 
-//=> fullNext [
-//       5:S:fullPreserve;
-//      30:S:fullPreserve,fullRegion;
-//      34:S:fullRegion;
-//      34:O:fullRegion,fullDisjoint;
-//      35:S:fullRegion;
-//      35:O:fullLock,fullRegion;
-//      41:S:fullPreserve,fullRegion;
-//      47:S:fullPreserve,fullRegion;
-//      50:S:fullPreserve,fullRegion;
-//      51:S:fullPreserve,fullRegion;
-//      51:O:fullPreserve,fullLock,fullRegion
-//   ] { pruning :
-//               | reduce2
-//               |
-//               | simplify-pc
-//     }
-// 8 seconds
+=> fullLock [
+      28:S:fullNext;
+      29:S:fullNext;
+      36:S:fullNext;
+      45:S:fullNext;
+      46:S:fullNext;
+      52:S:fullNext
+   ] { pruning :
+               | reduce2
+               |
+               | simplify-pc
+     }
 
 
-//=> fullLock [
-//      28:S:fullNext;
-//      29:S:fullNext;
-//      36:S:fullNext;
-//      45:S:fullNext;
-//      46:S:fullNext;
-//      52:S:fullNext
-//   ] { pruning :
-//               | reduce2
-//               |
-//               | simplify-pc
-//     }
-// 1.4 seconds
+=> fullNext [
+       5:S:fullPreserve;
+      30:S:fullPreserve,fullRegion;
+      34:S:fullRegion;
+      34:O:fullRegion,fullDisjoint;
+      35:S:fullRegion;
+      35:O:fullLock,fullRegion;
+      41:S:fullPreserve,fullRegion;
+      47:S:fullPreserve,fullRegion;
+      50:S:fullPreserve,fullRegion;
+      51:S:fullPreserve,fullRegion;
+      51:O:fullPreserve,fullLock,fullRegion
+   ] { pruning :
+               | reduce2
+               |
+               | simplify-pc
+     }
 
 
-//=> fullDisjoint
-//      { pruning :
-//                | reduce2
-//                |
-//                | simplify-pc
-//      }
-// 0.6 seconds
+=> fullRegion [
+      24:S:fullPreserve;
+      28:S:fullNext;
+      30:S:fullPreserve;
+      35:O:fullDisjoint;
+      41:S:fullPreserve;
+      45:S:fullNext;
+      47:S:fullPreserve,fullNext;
+      51:S:fullPreserve,fullNext{pruning:split-goal|reduce2||simplify-pc};
+      51:O:fullPreserve,fullNext,fullLock{pruning:split-goal|reduce2||simplify-pc}
+   ] { pruning :
+               | reduce2
+               |
+               | simplify-pc
+     }
 
 
-//=> fullRegion [
-//      24:S:fullPreserve;
-//      28:S:fullNext;
-//      30:S:fullPreserve;
-//      35:O:fullDisjoint;
-//      41:S:fullPreserve;
-//      45:S:fullNext;
-//      47:S:fullPreserve,fullNext;
-//      51:S:fullPreserve,fullNext{pruning:split-goal|reduce2||simplify-pc};
-//      51:O:fullPreserve,fullNext,fullLock{pruning:split-goal|reduce2||simplify-pc}
-//   ] { pruning :
-//               | reduce2
-//               |
-//               | simplify-pc
-//     }
-// 10 seconds
+=> fullDisjoint
+      { pruning :
+                | reduce2
+                |
+                | simplify-pc
+      }
+
