@@ -8,6 +8,12 @@ type configuration_t
 (** Exception raised when a query is malformed *)
 exception SMT_Syntax_Error of string
 
+(** Exception raised when a required SMT is not installed in the system *)
+exception SMT_Not_Found of string
+
+(** [check_installed smts] checks whether the SMT solvers provided in the list
+    [smts] are installed in the system. *)
+val check_installed : smt_t list -> unit
 
 (** [new_configuration smt] returns a new configuration containing
     information for executing SMT solver [smt] *)

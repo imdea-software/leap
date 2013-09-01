@@ -39,6 +39,22 @@ let _ =
       exit 0
     end;
 
+    (* Check SMT and SAT solvers are installed if they will be used *)
+    let _ = try
+              let smts = if !LeapArgs.use_z3 || !LeapArgs.use_yices_plus_z3 then
+                           [SMTExecute.Z3;SMTExecute.Yices]
+                         else
+                           [SMTExecute.Yices] in
+              SMTExecute.check_installed smts
+            with
+              SMTExecute.SMT_Not_Found s ->
+                begin
+                  Interface.Err.msg "SMT Solver not found" $
+                  sprintf "SMT solver %s is required but could not be found in the system." s;
+                  exit 1
+                end in
+
+
     (* We load the system in the formula parser, just in case *)
     Symtbl.load_system sys;
 

@@ -5,10 +5,18 @@ type smt_t = Yices | Z3 | CVC4
 
 exception SMT_Syntax_Error of string
 exception SMT_Timeout of string * int
+exception SMT_Not_Found of string
 
 (* SMT Solver dependent information *)
 
 let get_exec_cmd (smt:smt_t) : string =
+  begin
+    match smt with
+    | Yices -> "yices"
+    | Z3 -> "z3"
+    | CVC4 -> "cvc4"
+  end
+(*
   Config.get_exec_path() ^
   begin
     match smt with
@@ -16,6 +24,16 @@ let get_exec_cmd (smt:smt_t) : string =
     | Z3    -> "/tools/z3"
     | CVC4  -> "/tools/cvc4"
   end
+*)
+
+let check_installed (smts:smt_t list) : unit =
+  let check_smt (smt:smt_t) : unit =
+    let cmd = get_exec_cmd smt in
+    match Unix.system (cmd ^ " --help &> /dev/null") with
+    | Unix.WEXITED 0 -> ()
+    | _ -> raise(SMT_Not_Found cmd)
+  in
+    List.iter check_smt smts
 
 
 let get_extension (smt:smt_t) : string =

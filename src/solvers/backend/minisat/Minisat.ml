@@ -19,7 +19,8 @@ struct
   (** the configuration register *)
   let config : configuration = {
     calls      = new counter 0;
-    exec       = Config.get_exec_path() ^ "/tools/minisat -verb=0 ";
+(*    exec       = Config.get_exec_path() ^ "/tools/minisat -verb=0 "; *)
+    exec       = "minisat -verb=0 ";
     comp_model = false;
   }
 
@@ -27,7 +28,8 @@ struct
   let reset () = 
   begin
     config.calls # reset;
-    config.exec       <- Config.get_exec_path() ^ "tools/minisat -verb=0 ";
+(*    config.exec       <- Config.get_exec_path() ^ "tools/minisat -verb=0 "; *)
+    config.exec       <- "minisat -verb=0 ";
     config.comp_model <- false;
   end
 
