@@ -45,6 +45,7 @@ let _ =
                            [SMTExecute.Z3;SMTExecute.Yices]
                          else
                            [SMTExecute.Yices] in
+              if !LeapArgs.use_sat then MinisatCheck.check_installed () else ();
               SMTExecute.check_installed smts
             with
               SMTExecute.SMT_Not_Found s ->
