@@ -196,9 +196,12 @@ let opts =
     ("-yices+z3",
         Arg.Set use_yices_plus_z3,
         "uses yices for position reasoning and z3 for non position reasoning");
+(*
+    THIS WAS REMOVED TO SIMPLIFIED LEAP
     ("-sat",
         Arg.Set use_sat,
         "uses SAT when possible");
+*)
     ("-co",
         Arg.Symbol (co_opt_list,set_co),
         "indicates the method used for computing the cut-off");
