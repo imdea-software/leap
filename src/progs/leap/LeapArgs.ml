@@ -138,15 +138,20 @@ let opts =
     ("-l",
         Arg.String (fun str -> logFile := str),
         "output log file");
+(*
+    THIS WAS REMOVED TO SIMPLIFIED LEAP
     ("-i",
         Arg.String inputInvariant,
         "invariant candidate");
+*)
     ("-d",
         Arg.String inputInvFolder,
         "invariant folder");
     ("-g",
         Arg.String inputInvGraphFile,
         "invariant graph file");
+(*
+    THIS WAS REMOVED TO SIMPLIFIED LEAP
     ("-pinv",
         Arg.Set pinvSys,
         "generate vc for an open system with arrays");
@@ -160,6 +165,7 @@ let opts =
     ("-binv",
         Arg.String inputClosedSys,
         "#th generate vc for a closed system for #th threads");
+*)
     ("--focus",
         Arg.String focusPos,
         "pc1, pc2,... verifies transitions starting only at the given \
@@ -168,6 +174,8 @@ let opts =
         Arg.String ignorePos,
         "pc1, pc2,... ignores the given program transitions. It overrides \
          information loaded with \"focus\".");
+(*
+    THIS WAS REMOVED TO SIMPLIFIED LEAP
     ("-f",
         Arg.String inputFormula,
         "formula to verify using diagrams");
@@ -177,6 +185,7 @@ let opts =
     ("-pvd",
         Arg.String inputPvd,
         "analyzes a parametrized verification diagram");
+*)
     ("-dp",
         Arg.String set_dp,
         "indicates the DP to use. Options are: " ^
@@ -193,24 +202,30 @@ let opts =
     ("-co",
         Arg.Symbol (co_opt_list,set_co),
         "indicates the method used for computing the cut-off");
+(*
+    THIS WAS REMOVED TO SIMPLIFIED LEAP
     ("-ep",
         Arg.Set expand_pres,
         "expands preservation relation in generated VCs");
     ("-ca",
         Arg.Set count_abs,
         "enables counting abstraction");
+*)
     ("-sm",
         Arg.Set show_models,
         "shows counter models for non valid VCs");
     ("-sl",
         Arg.Set show_label_info,
         "shows the information regarding parsed labels");
+(*
+    THIS WAS REMOVED TO SIMPLIFIED LEAP
     ("-kpm",
         Arg.Set keep_primed_mem,
         "does consider primed memory variables when computing SMP cutoff");
     ("-gv",
         Arg.Set group_vars,
         "pre-group variables in equivalence classes when computing SMP cutoff");
+*)
     ("-smt",
         Arg.Set use_smt,
         "enables the use of SMT-LIB translation if available");
@@ -226,9 +241,12 @@ let opts =
     ("-o",
         Arg.Set_string outFile,
         "\"file\" outputs verification conditions to \"file\"");
+(*
+    THIS WAS REMOVED TO SIMPLIFIED LEAP
     ("-do",
         Arg.Set_string detailedOutFile,
         "\"folder\" outputs verification conditions to \"folder\"");
+*)
    ]
 
 let anon_fun str = 
