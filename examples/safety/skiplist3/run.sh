@@ -1,6 +1,6 @@
-LEAP=../../../leap
+#Configure path to Leap
+LEAP=leap
 
-#OPTIONS="-l logFile -co union -sm -sat -yices+z3 -dp tsl -do benchmarks --show_file_info"
 OPTIONS="-co union -sm -yices+z3 -dp tslk[3]"
 
 PRG=prgs/skiplist3.prg

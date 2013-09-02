@@ -1,0 +1,32 @@
+
+This folder contains the example of concurrent lock-coupling single-liked 
+lists.
+
+
+
+In this folder you will find a "run.sh" script to run the example. Inside 
+the script you can configure the options you want Leap to use.
+
+IMPORTANT: You must configure the path to Leap inside the script before you
+           can run it.
+
+
+
+The other folders within this folder are:
+
+  + graphs: contains the proof graph for this example.
+
+  + invs: contains the invariant candidates.
+
+  + prgs: contains the program under verification.
+
+  + vcs: here are output the generated VCs during the verification process, 
+         just to provide extra information.
+
+
+
+For further information regarding how to configure Leap or edit the files 
+within this example, please refer to:
+
+http://software.imdea.org/~asanchez/leap/tutorial.html
+

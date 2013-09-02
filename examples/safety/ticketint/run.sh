@@ -1,5 +1,7 @@
-LEAP=../../../leap
-OPTIONS="-sm -dp num -co pruning -do benchmarks/ticketint"
+#Configure path to Leap
+LEAP=leap
+
+OPTIONS="-sm -dp num -co pruning"
 
 PRG=prgs/ticketint.prg
 INV_FOLDER=invs
