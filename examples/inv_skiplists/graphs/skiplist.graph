@@ -1,32 +1,32 @@
--> skiplist_prop [
-      22:skiplist_levels;
-      23:skiplist_levels;
-      24:skiplist_next,skiplist_levels;
-      41:skiplist_region_inst,skiplist_levels_aux;
-      42:skiplist_order_inst,skiplist_order_aux,skiplist_next_aux;
-      61:skiplist_order_aux,skiplist_order_inst,skiplist_region_aux,skiplist_region_inst,skiplist_levels,skiplist_value
-   ] { union : split-goal
-             | reduce2
-             | split-consequent
-             | simplify-pc propositional-propagate
-     }
+// -> skiplist_prop [
+//       22:skiplist_levels;
+//       23:skiplist_levels;
+//       24:skiplist_next,skiplist_levels;
+//       41:skiplist_region_inst,skiplist_levels_aux;
+//       42:skiplist_order_inst,skiplist_order_aux,skiplist_next_aux;
+//       61:skiplist_order_aux,skiplist_order_inst,skiplist_region_aux,skiplist_region_inst,skiplist_levels,skiplist_value
+//    ] { union : split-goal
+//              | reduce2
+//              | split-consequent
+//              | simplify-pc propositional-propagate
+//      }
 
 
-//-> skiplist_levels
-//     { union :
-//             | reduce2
-//             |
-//             | simplify-pc
-//     }
+ // -> skiplist_levels
+ //      { union :
+ //              | reduce2
+ //              |
+ //              | simplify-pc
+ //      }
 // 1 second
 
 
-//-> skiplist_create
-//     { union :
-//             | reduce2
-//             |
-//             | simplify-pc
-//     }
+ -> skiplist_create
+      { union :
+              | reduce2
+              |
+              | simplify-pc
+      }
 // 1 second
 
 
@@ -40,25 +40,25 @@
 // 1 second
 
 
-//-> skiplist_region [
-//       3:{union : | | split-antecedent-pc | simplify-pc };
-//      27:skiplist_prop,skiplist_next;
-//      28:skiplist_prop,skiplist_next;
-//      32:skiplist_prop,skiplist_next,skiplist_levels,skiplist_order;
-//      35:skiplist_prop,skiplist_next,skiplist_levels;
-//      39:skiplist_prop,skiplist_next;
-//      42:skiplist_next_aux,skiplist_levels,skiplist_region_inst;
-//      46:skiplist_prop,skiplist_next;
-//      47:skiplist_prop,skiplist_next;
-//      51:skiplist_prop,skiplist_next,skiplist_order;
-//      55:skiplist_next;
-//      56:skiplist_prop,skiplist_levels;
-//      59:skiplist_prop,skiplist_next
-//   ] { union : split-goal
-//             | reduce2
-//             | split-consequent
-//             | simplify-pc propositional-propagate
-//     }
+// -> skiplist_region [
+//        3:{union : | | split-antecedent-pc | simplify-pc };
+//       27:skiplist_prop,skiplist_next;
+//       28:skiplist_prop,skiplist_next;
+//       32:skiplist_prop,skiplist_next,skiplist_levels,skiplist_order;
+//       35:skiplist_prop,skiplist_next,skiplist_levels;
+//       39:skiplist_prop,skiplist_next;
+//       42:skiplist_next_aux,skiplist_levels,skiplist_region_inst;
+//       46:skiplist_prop,skiplist_next;
+//       47:skiplist_prop,skiplist_next;
+//       51:skiplist_prop,skiplist_next,skiplist_order;
+//       55:skiplist_next;
+//       56:skiplist_prop,skiplist_levels;
+//       59:skiplist_prop,skiplist_next
+//    ] { union : split-goal
+//              | reduce2
+//              | split-consequent
+//              | simplify-pc propositional-propagate
+//      }
 // 221 seconds
 
 
