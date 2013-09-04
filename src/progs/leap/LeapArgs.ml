@@ -244,6 +244,9 @@ let opts =
     ("-o",
         Arg.Set_string outFile,
         "\"file\" outputs verification conditions to \"file\"");
+    ("--version",
+        Arg.Set Version._enable_,
+        "show the current version");
 (*
     THIS WAS REMOVED TO SIMPLIFIED LEAP
     ("-do",

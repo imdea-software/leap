@@ -19,6 +19,7 @@ let _ =
   try
     LeapArgs.parse_args();
     if !LeapArgs.verbose then LeapVerbose.enable_verbose();
+    Version.show();
     Log.set_logFile !LeapArgs.logFile;
 
     let ch = LeapArgs.open_input () in

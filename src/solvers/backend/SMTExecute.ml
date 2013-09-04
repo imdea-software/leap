@@ -29,7 +29,7 @@ let get_exec_cmd (smt:smt_t) : string =
 let check_installed (smts:smt_t list) : unit =
   let check_smt (smt:smt_t) : unit =
     let cmd = get_exec_cmd smt in
-    match Unix.system (cmd ^ " --help &> /dev/null") with
+    match Unix.system (cmd ^ " -? &> /dev/null") with
     | Unix.WEXITED 0 -> ()
     | _ -> raise(SMT_Not_Found cmd)
   in
