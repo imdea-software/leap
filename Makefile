@@ -1,7 +1,7 @@
 PROJNAME=leap
 
 # Makefile configuration
-OCAMLBUILD=ocamlbuild.native
+OCAMLBUILD=@ocamlbuild.native
 
 # Folders
 SCRIPTS=scripts
@@ -33,6 +33,11 @@ APPLYTAC=applytac
 
 # Configuration
 SYS=`uname -s`
+
+REVISION=`svn info | grep Revision | cut -d ' ' -f 2`
+
+
+
 
 check_tool = @if ( test -e $(TOOLS)/$(1) ) || (test -h $(TOOLS)/$(1) ) ; then \
 							echo "$(1): already installed"; \
@@ -69,6 +74,7 @@ $(TOOLS) :
 
 
 $(LEAP):
+	@sed -i" " 's/revision = [0-9]*/revision = '$(REVISION)'/g' src/progs/Version.ml
 	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(LEAP).byte
 	@ln -f -s ./_build/src/progs/leap/$(LEAP).byte $(LEAP)
 
