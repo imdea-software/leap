@@ -1079,9 +1079,11 @@ global_decl :
       let get_str_expr () = sprintf "%s %s := %s" (E.sort_to_str s)
                                                   (v_name)
                                                   (E.formula_to_str b) in
+(*
       let bool_var = E.Literal (E.Atom (E.BoolVar
                        (E.build_var v_name E.Bool false E.Shared E.GlobalScope k))) in
-(*      let cond = E.Iff(bool_var, b) in *)
+      let cond = E.Iff(bool_var, b) in
+*)
       let cond = b in
       let _ = decl_global_var v_name s (Some (E.Condition cond)) k
       in
@@ -1193,9 +1195,11 @@ local_decl :
       let get_str_expr () = sprintf "%s %s := %s" (E.sort_to_str s)
                                                   (v_name)
                                                   (E.formula_to_str b) in
+(*
       let bool_var = E.Literal (E.Atom (E.BoolVar
                         (E.build_var v_name E.Bool false E.Shared E.GlobalScope k))) in
-(*      let cond = E.Iff(bool_var, b) in *)
+      let cond = E.Iff(bool_var, b) in
+*)
       let cond = b in
       let _ = decl_local_var v_name s (Some (E.Condition cond)) k
       in
