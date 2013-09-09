@@ -13,7 +13,7 @@ invariant [skiplist_next] :
    (@27. \/ @28.) -> (insert::prev = head)
 
 #insert_prev_in_addr2set:
-   @insert_bounded_i_one. -> insert::prev in addr2set(heap, head, insert::i)
+	 @insert_lookup_loop. -> insert::prev in addr2set(heap, head, insert::i)
 
 #insert_curr_not_null:
   (@28. \/ @29. \/ @30. \/ @31. \/ @32. \/ @33. \/ @34. \/ @35. \/ @36.) ->

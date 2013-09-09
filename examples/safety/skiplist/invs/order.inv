@@ -24,14 +24,14 @@ invariant [skiplist_order] :
 
 
 #insert_prev_value_lower_than_e:
-   @insert_bounded_i_one. -> rd(heap, insert::prev).data < insert::e
+	 @insert_lookup_loop. -> rd(heap, insert::prev).data < insert::e
 
 
 #insert_curr_value_lower_than_e:
    (@32. \/ @33.) -> rd(heap, insert::curr).data < insert::e
 
 
-   @insert_update_higher. ->
+	 @insert_lookup_loop. ->
       ((insert::i < j /\ j <= maxLevel) ->
           (rd(heap,insert::update[j]).data < insert::e /\
            (rd(heap,rd(heap,insert::update[j]).arr[j]).data > insert::e \/

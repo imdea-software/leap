@@ -1,7 +1,0 @@
-vars:
-
-invariant [skiplist_levels_aux] :
-
-
-   @insert_lvl_inrange. -> insert::lvl <= maxLevel
-
