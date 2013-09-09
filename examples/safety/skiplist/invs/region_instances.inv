@@ -15,8 +15,8 @@ invariant [skiplist_region_inst] :
 
 
 #newCell_unconnected_at_i:
-   (@41. \/ @42.) ->
-    (insert::i <= maxLevel -> (~ insert::newCell in addr2set(heap, head, insert::i)))
+   @insert_not_all_processed. ->
+      (insert::i <= maxLevel -> (~ insert::newCell in addr2set(heap, head, insert::i)))
 
 
 #remove_update_in_addr2set:

@@ -4,68 +4,94 @@ int j
 
 invariant [skiplist_region] :
 
-   @39. -> (~ insert::newCell in region)
 
-/\ @insert_prev_in_region. -> insert::prev in region
+///////////  Insert  /////////////
 
-/\ @insert_curr_in_region. -> insert::curr in region
+
+   @insert_i_set_zero. ->
+      (~ insert::newCell in region)
+
+
+/\ @insert_prev_in_region. ->
+      insert::prev in region
+
+
+/\ @insert_curr_in_region. ->
+      insert::curr in region
 
 
 #insert_prev_next_i_in_region:
-   (@29. \/ @30. \/ @33. \/ @36.) -> rd(heap, insert::prev).arr[insert::i] in region
-
-   (@40. \/ @41. \/ @42.) ->
-    ((insert::i <= j /\ j <= maxLevel) -> (~ insert::newCell in addr2set(heap, head, j)))
-
-/\ @43. ->
-    ((insert::i < j /\ j <= maxLevel) -> (~ insert::newCell in addr2set(heap, head, j)))
-
-/\ @43. -> insert::newCell in addr2set(heap, head, insert::i)
+   (@insert_prev_next_region_one. \/
+    @insert_prev_is_curr. \/
+    @insert_set_valueWasIn.) ->
+      rd(heap, insert::prev).arr[insert::i] in region
 
 
-/\   @insert_newCell_low_connected. ->
-          ((0 <= j /\ j < insert::i) -> insert::newCell in addr2set(heap, head, j))
+   @insert_newCell_unconnected. ->
+      ((insert::i <= j /\ j <= maxLevel) -> (~ insert::newCell in addr2set(heap, head, j)))
 
 
-///// For update array
+/\ @insert_i_increases. ->
+      ((insert::i < j /\ j <= maxLevel) -> (~ insert::newCell in addr2set(heap, head, j)))
 
-/\   (@insert_lookup_loop. /\ insert::i < j /\ j <= maxLevel) -> insert::update[j] in region
-/\    @insert_update_set. -> insert::update[insert::i] = insert::prev
 
-/\   (@insert_update_all_set. /\ 0 <= j /\ j <= maxLevel) ->
-        insert::update[j] in region
+/\ @insert_i_increases. ->
+      insert::newCell in addr2set(heap, head, insert::i)
+
+
+/\ @insert_newCell_low_connected. ->
+      ((0 <= j /\ j < insert::i) -> insert::newCell in addr2set(heap, head, j))
+
+
+/\ (@insert_lookup_loop. /\ insert::i < j /\ j <= maxLevel) ->
+      insert::update[j] in region
+
+
+/\ @insert_update_set. ->
+      insert::update[insert::i] = insert::prev
+
+
+/\ (@insert_update_all_set. /\ 0 <= j /\ j <= maxLevel) ->
+      insert::update[j] in region
 
 
 #insert_update_j_in_addr2set:
-    (@insert_update_all_set. /\ 0 <= j /\ j <= maxLevel) ->
-         insert::update[j] in addr2set(heap, head, j)
+   (@insert_update_all_set. /\ 0 <= j /\ j <= maxLevel) ->
+      insert::update[j] in addr2set(heap, head, j)
 
 
-    (@insert_update_all_set. /\ 0 <= j /\ j <= maxLevel) ->
-         rd(heap,insert::update[j]).arr[j] in addr2set(heap, head, j)
+   (@insert_update_all_set. /\ 0 <= j /\ j <= maxLevel) ->
+      rd(heap,insert::update[j]).arr[j] in addr2set(heap, head, j)
 
 
-///// For update array
-
-///  Remove  ////////////////////////////////////////////////////////////////////////
+///////////  Remove  /////////////
 
 
 #remove_prev_next_i_in_region:
-   (@48. \/ @49. \/ @52. \/ @56.) -> rd(heap, remove::prev).arr[remove::i] in region
+   (@remove_prev_next_region.  \/
+    @remove_prev_is_curr.      \/
+    @remove_lookup_i_decreases. ) ->
+      rd(heap, remove::prev).arr[remove::i] in region
 
-   @remove_prev_in_region. -> remove::prev in region
 
-/\ @remove_curr_in_region. -> remove::curr in region
+   @remove_prev_in_region. ->
+      remove::prev in region
 
-/\ (@57. \/ @remove_final_if.) ->
+
+/\ @remove_curr_in_region. ->
+      remove::curr in region
+
+
+/\ (@remove_set_valueWasIn. \/ @remove_final_if.) ->
       ((0 <= j /\ j <= remove::removeFrom) ->
-         remove::update[j] in addr2set(heap, head, j))
+            remove::update[j] in addr2set(heap, head, j))
+
 
 #remove_curr_in_region:
-   (@60. \/ @61.) ->
-    (remove::i >= 0 -> remove::curr in region)
+   @remove_final_loop_begins. ->
+      (remove::i >= 0 -> remove::curr in region)
 
-   @62. ->
-    (remove::i > 0 -> remove::curr in region)
 
+   @remove_final_loop_i_decreases. ->
+      (remove::i > 0 -> remove::curr in region)
 

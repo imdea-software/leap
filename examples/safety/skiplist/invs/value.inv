@@ -4,17 +4,25 @@ vars:
 
 invariant [skiplist_value] :
 
-  true
+
+///////////  Insert  /////////////
 
 
-   @37. ->
-    (.insert::valueWasIn. -> rd(heap, rd(heap, insert::update[0]).arr[0]).data = insert::e)
+   @insert_final_if_condition. ->
+      (.insert::valueWasIn. -> rd(heap, rd(heap, insert::update[0]).arr[0]).data = insert::e)
+
 
 #not_valueWasIn:
-   @37. ->
-     (~(.insert::valueWasIn.) -> rd(heap, rd(heap, insert::update[0]).arr[0]).data != insert::e)
+   @insert_final_if_condition. ->
+      (~(.insert::valueWasIn.) -> rd(heap, rd(heap, insert::update[0]).arr[0]).data != insert::e)
 
 
-/\ @remove_final_if. -> (.remove::valueWasIn. -> rd(heap, remove::curr).data = remove::e)
+///////////  Remove  /////////////
 
-/\ @remove_section_true. -> .remove::valueWasIn.
+
+/\ @remove_final_if. ->
+      (.remove::valueWasIn. -> rd(heap, remove::curr).data = remove::e)
+
+
+/\ @remove_section_true. ->
+      .remove::valueWasIn.

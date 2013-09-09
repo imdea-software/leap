@@ -4,88 +4,111 @@ int j
 
 invariant [skiplist_order] :
 
-   rd(heap, head).data = lowestElem
-/\ rd(heap, tail).data = highestElem
 
-/\ @main_e. -> (main::e != lowestElem /\ main::e != highestElem)
+///////////  Insert  /////////////
+
+
+   @main_e. ->
+      (main::e != lowestElem /\ main::e != highestElem)
+
 
 #insert_value_e_is_bounded:
-   @insert_body. -> (insert::e != lowestElem /\ insert::e != highestElem)
+   @insert_body. ->
+      (insert::e != lowestElem /\ insert::e != highestElem)
+
 
 #remove_value_e_is_bounded:
-   @remove_body. -> (remove::e != lowestElem /\ remove::e != highestElem)
+   @remove_body. ->
+      (remove::e != lowestElem /\ remove::e != highestElem)
 
 
    @insert_newCell_created. -> (rd(heap, insert::newCell).data != rd(heap, head).data /\
                                 rd(heap, insert::newCell).data != rd(heap, tail).data)
 
+
 #newCell_has_value_e:
-   @insert_newCell_created. -> rd(heap, insert::newCell).data = insert::e
+   @insert_newCell_created. ->
+      rd(heap, insert::newCell).data = insert::e
 
 
 #insert_prev_value_lower_than_e:
-	 @insert_lookup_loop. -> rd(heap, insert::prev).data < insert::e
+   @insert_lookup_loop. ->
+      rd(heap, insert::prev).data < insert::e
 
 
 #insert_curr_value_lower_than_e:
-   (@32. \/ @33.) -> rd(heap, insert::curr).data < insert::e
+   (@insert_curr_low. \/ @insert_prev_is_curr.) ->
+      rd(heap, insert::curr).data < insert::e
 
 
-	 @insert_lookup_loop. ->
+   @insert_lookup_loop. ->
       ((insert::i < j /\ j <= maxLevel) ->
           (rd(heap,insert::update[j]).data < insert::e /\
            (rd(heap,rd(heap,insert::update[j]).arr[j]).data > insert::e \/
             rd(heap,rd(heap,insert::update[j]).arr[j]).data = insert::e)))
-/\ (@37. /\ 0 <= j /\ j <= maxLevel) ->
+
+
+/\ (@insert_final_if_condition. /\ 0 <= j /\ j <= maxLevel) ->
           (rd(heap,insert::update[j]).data < insert::e /\
            (rd(heap,rd(heap,insert::update[j]).arr[j]).data > insert::e \/
             rd(heap,rd(heap,insert::update[j]).arr[j]).data = insert::e))
+
 
 /\ (@insert_update_all_order. /\ 0 <= j /\ j <= maxLevel) ->
           (rd(heap,insert::update[j]).data < insert::e /\
            rd(heap,rd(heap,insert::update[j]).arr[j]).data > insert::e)
 
-///// MAYBE MOVE IT TO SUPPORT FILE ///////
-/\ @42. -> (rd(heap, insert::update[insert::i]).data < rd(heap, insert::newCell).data /\
-            rd(heap, rd(heap, insert::newCell).arr[insert::i]).data > rd(heap, insert::newCell).data
-           )
-///// MAYBE MOVE IT TO SUPPORT FILE ///////
 
 
-//////////////////////////////////////////////////////////////////////////////////////////////
+/\ @insert_newCell_next_connected. ->
+      (rd(heap, insert::update[insert::i]).data < rd(heap, insert::newCell).data /\
+       rd(heap, rd(heap, insert::newCell).arr[insert::i]).data > rd(heap, insert::newCell).data)
 
 
-/\ @insert_prev_low. -> rd(heap, insert::prev).data < insert::e
-
-/\ @insert_update_set. -> rd(heap, insert::update[insert::i]).data = rd(heap,insert::prev).data
-
-/\ (@34. \/ @35.) -> (rd(heap,insert::curr).data > insert::e \/
-                      rd(heap,insert::curr).data = insert::e)
+/\ @insert_prev_in_region. ->
+      rd(heap, insert::prev).data < insert::e
 
 
-/\ @insert_update_from_i_order. ->
+/\ @insert_update_set. ->
+      rd(heap, insert::update[insert::i]).data = rd(heap,insert::prev).data
+
+
+/\ @insert_prev_next_curr_two. ->
+      (rd(heap,insert::curr).data > insert::e \/
+       rd(heap,insert::curr).data = insert::e)
+
+
+/\ @insert_update_upper_bounds. ->
       ((insert::i <= j /\ j <= maxLevel) ->
         (rd(heap,insert::update[j]).data < insert::e /\
          rd(heap,rd(heap,insert::update[j]).arr[j]).data > insert::e))
 
-/\ @43. ->
+
+/\ @insert_i_increases. ->
       ((insert::i < j /\ j <= maxLevel) ->
         (rd(heap,insert::update[j]).data < insert::e /\
          rd(heap,rd(heap,insert::update[j]).arr[j]).data > insert::e))
 
 
-///  Remove /////////////////////////////
+///////////  Remove  /////////////
+
 
 #remove_prev_lower_than_e:
-   @remove_bounded_prev. -> rd(heap, remove::prev).data < remove::e
+   @remove_bounded_prev. ->
+      rd(heap, remove::prev).data < remove::e
 
-   @remove_bounded_curr. -> (rd(heap, remove::curr).data > remove::e \/
-                             rd(heap, remove::curr).data = remove::e)
+
+   @remove_bounded_curr. ->
+      (rd(heap, remove::curr).data > remove::e \/
+       rd(heap, remove::curr).data = remove::e)
+
 
 #remove_curr_lower_than_e:
-   @51. -> rd(heap, remove::curr).data < remove::e
+   @remove_curr_lower_e. ->
+      rd(heap, remove::curr).data < remove::e
 
-   @remove_update_higher_set. ->
+
+   @remove_lookup_loop. ->
       ((remove::i < j /\ j <= maxLevel) ->
           (rd(heap, remove::update[j]).data < remove::e /\
            (rd(heap,rd(heap, remove::update[j]).arr[j]).data > remove::e \/
@@ -97,31 +120,29 @@ invariant [skiplist_order] :
           rd(heap, remove::update[j]).data < remove::e)
 
 
-/\ (@57. \/ @58. \/ @59.) ->
+/\ @remove_update_next_all_greater. ->
       ((0 <= j /\ j <= maxLevel) ->
          (rd(heap, rd(heap, remove::update[j]).arr[j]).data > remove::e \/
           rd(heap, rd(heap, remove::update[j]).arr[j]).data = remove::e))
 
 
-/\ (@60. \/ @61.) ->
+/\ @remove_final_loop_begins. ->
       ((0 <= j /\ j <= remove::i) ->
          (rd(heap, rd(heap, remove::update[j]).arr[j]).data > remove::e \/
           rd(heap, rd(heap, remove::update[j]).arr[j]).data = remove::e))
 
 
-/\ @62. ->
+/\ @remove_final_loop_i_decreases. ->
       ((0 <= j /\ j < remove::i) ->
          (rd(heap, rd(heap, remove::update[j]).arr[j]).data > remove::e \/
           rd(heap, rd(heap, remove::update[j]).arr[j]).data = remove::e))
 
 
-/\ @remove_section_true. -> rd(heap, remove::curr).data = remove::e
+/\ @remove_section_true. ->
+      rd(heap, remove::curr).data = remove::e
+
 
 /\ @remove_section. ->
       ((0 <= j /\ j <= maxLevel) ->
         remove::update[j] in addr2set(heap, head, j))
-
-
-
-/////////////////////////////////////////////////////////////////////
 

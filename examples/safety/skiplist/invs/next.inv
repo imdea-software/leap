@@ -5,61 +5,91 @@ int j
 
 invariant [skiplist_next] :
 
-   @insert_head_next_i_tail. -> rd(heap, head).arr[insert::i] = tail
-/\ @insert_tail_next_i_null. -> rd(heap, tail).arr[insert::i] = null
+
+///////////  Insert  /////////////
+
+   @insert_head_next_i_tail. ->
+      rd(heap, head).arr[insert::i] = tail
+
+
+/\ @insert_tail_next_i_null. ->
+      rd(heap, tail).arr[insert::i] = null
 
 
 #insert_prev_is_head:
-   (@27. \/ @28.) -> (insert::prev = head)
+   @insert_prev_is_head. ->
+      insert::prev = head
+
 
 #insert_prev_in_addr2set:
-	 @insert_lookup_loop. -> insert::prev in addr2set(heap, head, insert::i)
+   @insert_lookup_loop. ->
+      insert::prev in addr2set(heap, head, insert::i)
+
 
 #insert_curr_not_null:
-  (@28. \/ @29. \/ @30. \/ @31. \/ @32. \/ @33. \/ @34. \/ @35. \/ @36.) ->
+  @insert_lookup_loop_plus_init. ->
     insert::curr != null
 
+
 #insert_prev_next_i_is_curr:
-   (@31. \/ @32. \/ @34. \/ @35.) -> rd(heap, insert::prev).arr[insert::i] = insert::curr
+   (@insert_prev_next_curr_one. \/ @insert_prev_next_curr_two.) ->
+      rd(heap, insert::prev).arr[insert::i] = insert::curr
+
 
 #insert_update_i_is_prev:
-   @35. -> insert::update[insert::i] = insert::prev
+   @insert_update_set. ->
+      insert::update[insert::i] = insert::prev
 
-   @33. -> insert::curr = insert::prev
+
+   @insert_prev_is_curr. ->
+      insert::curr = insert::prev
+
 
 /\ (@insert_update_all_set. /\ 0 <= j /\ j <= maxLevel) ->
-        (insert::update[j] != null /\ insert::update[j] != tail)
+      (insert::update[j] != null /\ insert::update[j] != tail)
+
 
 #newCell_not_null:
-   @insert_newCell_created. -> insert::newCell != null
+   @insert_newCell_created. ->
+      insert::newCell != null
+
 
 #newCell_connected_at_i:
-   @42. -> (rd(heap, insert::newCell).arr[insert::i] =
-                rd(heap, insert::update[insert::i]).arr[insert::i])
+   @insert_newCell_next_connected. ->
+      (rd(heap, insert::newCell).arr[insert::i] =
+            rd(heap, insert::update[insert::i]).arr[insert::i])
 
 
 #insert_prev_in_region:
-   @insert_prev_in_region. -> insert::prev != null
+   @insert_prev_in_region. ->
+      insert::prev != null
 
 
 
-/// Remove ////////////////////////////////////////////////////////////////
-
+///////////  Remove  /////////////
 
 #remove_prev_is_head:
-   @remove_prev_is_head. -> remove::prev = head
+   @remove_prev_is_head. ->
+      remove::prev = head
 
 
 #remove_curr_not_null:
-   @remove_curr_not_null. -> remove::curr != null
+   @remove_curr_not_null. ->
+      remove::curr != null
+
 
 #remove_prev_next_i_is_curr:
-   (@50. \/ @51. \/ @53. \/ @54. \/ @55. \/ @56.) -> rd(heap, remove::prev).arr[remove::i] = remove::curr
+   (@remove_prev_next_curr. \/ @remove_bounded_curr.) ->
+      rd(heap, remove::prev).arr[remove::i] = remove::curr
 
-   @52. -> remove::curr = remove::prev
+
+   @remove_prev_is_curr. ->
+      remove::curr = remove::prev
+
 
 #remove_update_i_is_prev:
-   @56. -> remove::update[remove::i] = remove::prev
+   @remove_lookup_i_decreases. ->
+      remove::update[remove::i] = remove::prev
 
 
 

@@ -2,19 +2,29 @@ vars:
 
 invariant [skiplist_prop] :
 
+
 #tail_not_null:
    tail != null
 
+
    head != null
+
 
 #head_not_tail:
    head != tail
 
+
 #is_skiplist:
    skiplist(heap, region, maxLevel, head, tail)
 
+
+#head_is_lowest:
    rd(heap, head).data = lowestElem
-/\ rd(heap, tail).data = highestElem
+
+
+#tail_is_highest:
+   rd(heap, tail).data = highestElem
+
 
 #maxLevel_is_positive:
    maxLevel >= 0
