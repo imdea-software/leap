@@ -4,7 +4,11 @@ exception Undefined_tag of string
 exception Duplicated_tag of string
 
 (* tag *)
-type f_tag = string
+type f_tag =
+  {
+    master : string;
+    subtag : string;
+  }
 
 (* formula properties or extra information *)
 type f_info = unit
@@ -16,7 +20,7 @@ type tag_table = (f_tag, Expr.formula * f_info) Hashtbl.t
 (* Set of tags *)
 module TagSet = Set.Make(
   struct
-    let compare = String.compare
+    let compare = Pervasives.compare
     type t = f_tag
   end )
 
@@ -25,12 +29,26 @@ let tag_table_initial_size = 20
 
 
 (* builds a new tag from a string identifier *)
-let new_tag (str:string) : f_tag = str
+let new_tag (mst:string) (sub:string) : f_tag =
+  { master = mst; subtag = sub; }
+
 
 let new_info : f_info = ()
 
+
 (* returns the string identifying a tag *)
-let tag_id (t:f_tag) : string = t
+let tag_id (t:f_tag) : string =
+  match t.subtag with
+  | "" -> t.master
+  | _ -> t.master ^"::"^ t.subtag
+
+
+let master_id (t:f_tag) : string =
+  t.master
+
+
+let subtag_id (t:f_tag) : string =
+  t.subtag
 
 
 (* Manipulation of tag table *)
@@ -50,7 +68,7 @@ let tag_table_find (tbl:tag_table) (t:f_tag) : (Expr.formula * f_info) =
   try
     Hashtbl.find tbl t
   with
-    _ -> raise (Undefined_tag t)
+    _ -> raise (Undefined_tag(tag_id t))
 
 let tag_table_get_formula (tbl:tag_table) (t:f_tag) : Expr.formula =
   fst (tag_table_find tbl t)

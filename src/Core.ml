@@ -124,6 +124,23 @@ module Make (Opt:module type of GenOptions) : S =
         raise(Tag.Undefined_tag(Tag.tag_id t))
 
 
+    let read_tags_and_group_by_file (ts : Tag.f_tag list) : E.formula list =
+      let supp_tbl : (string, E.formula list) Hashtbl.t = Hashtbl.create 5 in
+      List.iter (fun tag ->
+        let master_id = Tag.master_id tag in
+        try
+          Hashtbl.replace supp_tbl master_id ((read_tag tag)::(Hashtbl.find supp_tbl master_id))
+        with Not_found -> Hashtbl.add supp_tbl master_id [read_tag tag]
+      ) ts;
+      Hashtbl.fold (fun _ phi_list xs ->
+        (E.conj_list phi_list) :: xs
+      ) supp_tbl []
+
+
+(*    let rad_supp_tags (ts : Tag.f_tag list) : E.formula list = *)
+      
+
+
     let is_def_tag (t:Tag.f_tag) : bool =
       Tag.tag_table_mem tags t
 
@@ -138,9 +155,11 @@ module Make (Opt:module type of GenOptions) : S =
                       ) [] (Sys.readdir folder) in
       let inv_files = List.filter (fun s -> Filename.check_suffix s "inv") all_files in
       List.iter (fun i ->
-        let (phiVars, tag, phi) = Parser.open_and_parse i
-                                      (Eparser.invariant Elexer.norm) in
-          decl_tag tag phi
+        let (phiVars, tag, phi_decls) = Parser.open_and_parse i
+                                          (Eparser.invariant Elexer.norm) in
+        let phi = E.conj_list (List.map snd phi_decls) in
+        List.iter (fun (subtag,subphi) -> decl_tag subtag subphi) phi_decls;
+        decl_tag tag phi
       ) inv_files
 
 
@@ -282,7 +301,7 @@ module Make (Opt:module type of GenOptions) : S =
       let load_support (line:E.pc_t) (prem:Premise.t) : E.formula list =
         match IGraph.lookup_case cases line prem with
         | None -> supp
-        | Some (supp_tags,_) -> List.map read_tag supp_tags
+        | Some (supp_tags,_) -> read_tags_and_group_by_file supp_tags
       in
       List.fold_left (fun vcs line ->
         let self_conseq_supp  = load_support line Premise.SelfConseq in
@@ -362,7 +381,7 @@ module Make (Opt:module type of GenOptions) : S =
       List.fold_left (fun vcs line ->
         let specific_supp = match IGraph.lookup_case cases line Premise.SelfConseq with
                             | None -> supp
-                            | Some (supp_tags, _) -> List.map read_tag supp_tags in
+                            | Some (supp_tags, _) -> read_tags_and_group_by_file supp_tags in
         vcs @ seq_gen_vcs (inv::specific_supp) inv line Premise.SelfConseq trans_tid
       ) [] lines_to_consider
 
@@ -565,7 +584,7 @@ module Make (Opt:module type of GenOptions) : S =
       List.fold_left (fun os (mode, suppTags, invTag, cases, plan) ->
         let supp_ids = String.concat "," $ List.map Tag.tag_id suppTags in
         let inv_id = Tag.tag_id invTag in
-        let supp = List.map read_tag suppTags in
+        let supp = read_tags_and_group_by_file suppTags in
         let inv = read_tag invTag in
         let vc_info_list = match mode with
                            | IGraph.Concurrent ->

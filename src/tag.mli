@@ -7,9 +7,12 @@ type tag_table
 
 module TagSet : Set.S with type elt = f_tag
 
-val new_tag  : string -> f_tag
-val new_info : f_info
-val tag_id   : f_tag -> string
+val new_tag     : string -> string -> f_tag
+val new_info    : f_info
+
+val tag_id    : f_tag -> string
+val master_id : f_tag -> string
+val subtag_id : f_tag -> string
 
 
 val tag_table_new         : tag_table

@@ -53,6 +53,8 @@ let empty_tbl = Hashtbl.create 1
 
 let curr_box_counter = ref 0
 
+let curr_tag : string ref = ref ""
+
 
 (* Looks for a term sort in the global and temporal var tables. *)
 let get_sort (t:E.term) : E.sort =
@@ -553,7 +555,10 @@ let define_ident (proc_name:E.procedure_name)
 %type <Tactics.vc_info> vc_info
 
 %type <System.var_table_t * Expression.formula> single_formula
-%type <System.var_table_t * Tag.f_tag option * Expression.formula> invariant
+%type <System.var_table_t * Tag.f_tag option * (Tag.f_tag option * Expression.formula) list> invariant
+%type <(Tag.f_tag option * Expression.formula) list> formula_decl_list
+%type <(Tag.f_tag option * Expression.formula)> formula_decl
+
 %type <unit> inv_var_declarations
 %type <unit> inv_var_decl_list
 %type <unit> inv_var_decl
@@ -605,13 +610,13 @@ single_formula :
 /*********************     INVARIANTS    *************************/
 
 invariant :
-  | param COLON inv_var_declarations INVARIANT formula_tag COLON formula
+  | param COLON inv_var_declarations INVARIANT formula_tag COLON formula_decl_list
     { let declInvVars = System.copy_var_table invVars in
       let tag         = $5 in
-      let inv         = $7 in
+      let inv_decl    = $7 in
       let _           = System.clear_table invVars
       in
-        (declInvVars, tag, inv)
+        (declInvVars, tag, inv_decl)
     }
 
 
@@ -619,7 +624,28 @@ formula_tag :
   |
     { None }
   | OPEN_BRACKET IDENT CLOSE_BRACKET
-    { Some (Tag.new_tag (get_name $2)) }
+    {
+      let tag_name = get_name $2 in
+      curr_tag := tag_name;
+      Some (Tag.new_tag tag_name "")
+    }
+
+
+formula_decl_list :
+  | formula_decl
+    { [$1] }
+  | formula_decl formula_decl_list
+    { $1 :: $2 }
+
+
+formula_decl :
+  | formula
+    { (None, $1) }
+  | SHARP IDENT COLON formula
+    {
+      let tag_name = get_name $2 in
+      (Some (Tag.new_tag !curr_tag tag_name), $4)
+    }
 
 
 param :

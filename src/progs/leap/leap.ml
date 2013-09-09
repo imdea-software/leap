@@ -109,12 +109,18 @@ let _ =
 
       (* Invariant candidate *)
       if (!LeapArgs.invCandidate <> "") then begin
-        let (invVars, tag, inv) = Parser.open_and_parse !LeapArgs.invCandidate
-                                    (Eparser.invariant Elexer.norm) in
+        let (invVars, tag, inv_decls) = Parser.open_and_parse
+                                        !LeapArgs.invCandidate
+                                        (Eparser.invariant Elexer.norm) in
+        (* Construct the global invariant as the conjuntion of all formulas *)
+        let inv = Expr.conj_list (List.map snd inv_decls) in
 
         (* Check whether undef tids are included in invVars *)
         let _ = System.undeftids_in_formula_decl undefTids invVars in
+        (* Declare the tag of the global formula as the big conjunction *)
         let _ = LeapCore.decl_tag tag inv in
+        (* Declare the tag of each subformula in the parsed file *)
+        let _ = List.iter (fun (tag, phi) -> LeapCore.decl_tag tag phi) inv_decls in
         let _ = Report.report_inv_cand inv in
 (*        let sys = System.add_global_vars sys invVars in *)
 
@@ -152,12 +158,12 @@ let _ =
 
         (* SP-INV *)
         if !LeapArgs.spinvSys then begin
+(*
           let supInv_file_list = Str.split (Str.regexp ",") !LeapArgs.supInvariant in
           let supInv_list = List.map (fun file ->
                               Parser.open_and_parse file (Eparser.invariant Elexer.norm)
                             ) supInv_file_list in
           Report.report_sup_inv supInv_list;
-(*
           let sup_form_list = List.map (fun (_,tag,phi) ->
                                 ignore(LeapCore.decl_tag tag phi); phi
                               ) supInv_list in

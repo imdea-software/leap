@@ -9,7 +9,7 @@ open Global
 type graph_t = IGraph.t
 
 type case_t = Expression.pc_t         *
-              Premise.t list        *
+              Premise.t list          *
               Tag.f_tag list          *
               Tactics.proof_plan
 
@@ -23,7 +23,7 @@ let get_line id = snd id
 %token <string*int> IDENT  // second param is line number
 %token <int> NUMBER
 
-%token SEQ_ARROW CONC_ARROW BOX COMMA COLON SEMICOLON
+%token SEQ_ARROW CONC_ARROW BOX COMMA COLON DOUBLECOLON SEMICOLON
 %token OPEN_BRACK CLOSE_BRACK OPEN_BRACE CLOSE_BRACE OPEN_PAREN CLOSE_PAREN
 %token BAR
 %token SELF_PREMISE OTHERS_PREMISE
@@ -125,7 +125,11 @@ inv_list :
 
 inv :
   | IDENT
-    { Tag.new_tag (get_name $1) }
+    { Tag.new_tag (get_name $1) "" }
+  | IDENT DOUBLECOLON IDENT
+    {
+      Tag.new_tag (get_name $1) (get_name $3)
+    }
 
 
 cases :

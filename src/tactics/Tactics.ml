@@ -248,6 +248,19 @@ let create_vc (orig_supp       : support_t)
   vc_info_to_vc (create_vc_info orig_supp tid_constr rho goal vocab trans_tid line) support
 
 
+let dup_vc_info_with_support (info:vc_info) (new_support:support_t) : vc_info =
+  {
+    original_support = new_support ;
+    tid_constraint   = info.tid_constraint;
+    rho              = info.rho ;
+    original_goal    = info.original_goal ;
+    goal             = info.goal ;
+    transition_tid   = info.transition_tid ;
+    line             = info.line ;
+    vocabulary       = info.vocabulary ; (* FIX need recompute *)
+  }
+
+
 let dup_vc_info_with_goal (info:vc_info) (new_goal:E.formula) : vc_info =
   {
     original_support   = info.original_support ;
@@ -898,6 +911,31 @@ let tactic_conseq_propagate_first_disjunct (imp:implication) : implication =
 (* APPLICATION OF TACTICS                                                 *)
 (**************************************************************************)
 
+let unify_support (vc:vc_info) : vc_info =
+  let unify_tbl : (int, (E.tid list * E.formula) list) Hashtbl.t = Hashtbl.create 4 in
+  List.iter (fun phi ->
+    let this_voc = E.voc phi in
+    let this_voc_size = List.length this_voc in
+    try
+      Hashtbl.replace unify_tbl this_voc_size
+        ((this_voc,phi)::(Hashtbl.find unify_tbl this_voc_size))
+    with Not_found ->
+      Hashtbl.add unify_tbl this_voc_size [(this_voc, phi)]
+  ) vc.original_support;
+  let new_supp = Hashtbl.fold (fun index phi_list xs ->
+                   match phi_list with
+                   | [] -> assert false
+                   | [(voc,phi)] -> phi :: xs
+                   | (voc,phi)::ys -> E.conj_list (phi ::
+                                      (List.map (fun (v,f) ->
+                                         let subs = E.new_tid_subst (List.combine v voc) in
+                                         E.subst_tid subs f
+                                       ) ys)) :: xs
+                 ) unify_tbl [] in
+  dup_vc_info_with_support vc new_supp
+
+
+
 let apply_support_split_tactics (vcs:vc_info list)
                                 (tacs:support_split_tactic_t list)
                                   : vc_info list =
@@ -909,8 +947,8 @@ let apply_support_tactic (vcs:vc_info list)
                             : implication list =
   List.map (fun vc ->
     let processed_supp = match tac with
-                               | None -> get_unprocessed_support_from_info vc
-                               | Some f -> f vc in
+                         | None -> get_unprocessed_support_from_info vc
+                         | Some f -> f vc in
     vc_info_to_implication vc processed_supp
   ) vcs
 
@@ -936,6 +974,12 @@ let apply_tactics (vcs:vc_info list)
                     : E.formula list =
   Log.print_ocaml "entering apply_tactics()";
   List.fold_left (fun phi_list vc ->
+(*
+    print_endline "ABOUT TO UNIFY";
+    let vc = unify_support vc in
+    print_endline "AFTER UNIFY";
+    print_endline (vc_info_to_str vc);
+*)
     let split_vc_info_list = apply_support_split_tactics [vc] supp_split_tacs in
     let original_implications = apply_support_tactic split_vc_info_list supp_tac in
     let split_implications = apply_formula_split_tactics original_implications formula_split_tacs in

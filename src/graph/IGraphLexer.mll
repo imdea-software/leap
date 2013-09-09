@@ -22,6 +22,7 @@ rule norm = parse
   | "[]"                        { Global.last "[]"                ; BOX }
   | ','                         { Global.last ","                 ; COMMA }
   | ':'                         { Global.last ":"                 ; COLON }
+  | "::"                        { Global.last "::"                ; DOUBLECOLON }
   | ';'                         { Global.last ";"                 ; SEMICOLON }
   | '['                         { Global.last "["                 ; OPEN_BRACK }
   | ']'                         { Global.last "]"                 ; CLOSE_BRACK }
