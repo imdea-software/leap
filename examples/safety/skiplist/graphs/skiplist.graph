@@ -1,91 +1,147 @@
--> skiplist_prop [
-      22:skiplist_levels;
-      23:skiplist_levels;
-      24:skiplist_next,skiplist_levels;
-      41:skiplist_region_inst,skiplist_levels_aux;
-      42:skiplist_order_inst,skiplist_order_aux,skiplist_next_aux;
-      61:skiplist_order_aux,skiplist_order_inst,skiplist_region_aux,skiplist_region_inst,skiplist_levels,skiplist_value
-   ] { union : split-goal
-             | reduce2
-             | split-consequent
-             | simplify-pc propositional-propagate
-     }
-
-
-
+//-> skiplist_prop [
+//      22:skiplist_levels;
+//      23:skiplist_levels;
+//      24:skiplist_next,skiplist_levels;
+//      41:skiplist_region_inst::newCell_unconnected_at_i,
+//         skiplist_levels::lvl_lower_maxLevel;
+//      42:skiplist_order_inst,
+//         skiplist_order::newCell_has_value_e,
+//         skiplist_next::newCell_connected_at_i;
+//      61:skiplist_order::remove_value_e_is_bounded,
+//         skiplist_order_inst::remove_update_i_lower,
+//         skiplist_region::remove_curr_in_region,
+//         skiplist_region_inst::remove_update_in_addr2set,
+//         skiplist_levels,
+//         skiplist_value
+//   ] { union : split-goal
+//             | reduce2
+//             | split-consequent
+//             | simplify-pc propositional-propagate
+//     }
+//
+//
+//
 -> skiplist_region [
        3:{union : | | split-antecedent-pc | simplify-pc };
-      27:skiplist_prop,skiplist_next;
-      28:skiplist_prop,skiplist_next;
-      32:skiplist_prop,skiplist_next,skiplist_order;
-      35:skiplist_prop,skiplist_next,skiplist_levels;
-      39:skiplist_prop,skiplist_next;
-      42:skiplist_next_aux,skiplist_levels,skiplist_region_inst;
-      46:skiplist_prop,skiplist_next;
-      47:skiplist_prop,skiplist_next;
-      51:skiplist_prop,skiplist_next,skiplist_order;
-      55:skiplist_next;
-      56:skiplist_prop,skiplist_levels;
-      59:skiplist_prop,skiplist_next
+      27:skiplist_prop::head_not_tail,
+         skiplist_prop::is_skiplist,
+         skiplist_next::insert_prev_is_head;
+      28:skiplist_prop::head_not_tail,
+         skiplist_prop::is_skiplist,
+         skiplist_next::insert_prev_is_head;
+      32:skiplist_prop::is_skiplist,
+         skiplist_next::insert_prev_next_i_is_curr,
+         skiplist_order::insert_value_e_is_bounded,
+         skiplist_order::insert_prev_value_lower_than_e,
+         skiplist_order::insert_curr_value_lower_than_e;
+      35:skiplist_prop::is_skiplist,
+         skiplist_next::insert_prev_in_region,
+         skiplist_next::insert_update_i_is_prev,
+         skiplist_next::insert_prev_next_i_is_curr,
+         skiplist_next::insert_curr_not_null,
+         skiplist_next::insert_prev_in_addr2set,
+         skiplist_levels;
+      39:skiplist_prop::is_skiplist,
+         skiplist_next::newCell_not_null;
+// Review this case
+      42:skiplist_next::newCell_connected_at_i,
+         skiplist_levels,
+         skiplist_region_inst;
+      46:skiplist_prop::tail_not_null,
+         skiplist_prop::head_not_tail,
+         skiplist_prop::is_skiplist,
+         skiplist_next::remove_prev_is_head;
+      47:skiplist_prop::head_not_tail,
+         skiplist_prop::is_skiplist,
+         skiplist_next::remove_prev_is_head;
+      51:skiplist_prop::is_skiplist,
+         skiplist_next::remove_prev_next_i_is_curr,
+         skiplist_order::remove_value_e_is_bounded,
+         skiplist_order::remove_prev_lower_than_e,
+         skiplist_order::remove_curr_lower_than_e;
+      55:skiplist_next::remove_prev_next_i_is_curr;
+      56:skiplist_prop::is_skiplist,
+         skiplist_levels::remove_i_lower_maxLevel
    ] { union : split-goal
              | reduce2
              | split-consequent
              | simplify-pc propositional-propagate
      }
-
-
-
--> skiplist_next [
-       3:{union : | | split-antecedent-pc | simplify-pc };
-      23:skiplist_prop_subsumes;
-      27:skiplist_prop;
-      30:skiplist_prop,skiplist_region;
-      33:skiplist_prop,skiplist_region;
-      35:skiplist_prop,skiplist_levels;
-      46:skiplist_prop;
-      49:skiplist_prop,skiplist_region;
-      52:skiplist_prop,skiplist_region;
-      59:skiplist_prop,skiplist_region
-   ] { union : split-goal
-             | reduce2
-             |
-             | simplify-pc
-     }
-
-
-
--> skiplist_order [
-       3:{union : | | split-antecedent-pc | simplify-pc };
-      31:skiplist_next;
-      35:skiplist_next;
-      37:skiplist_prop,skiplist_region_aux,skiplist_order_inst,skiplist_region_inst_two,skiplist_value;
-      41:skiplist_order_inst,skiplist_levels_aux_two;
-      47:skiplist_next;
-      50:skiplist_next;
-      56:skiplist_next;
-      58:skiplist_value;
-      59:skiplist_levels
-   ] { union : split-goal
-             | reduce2
-             | split-consequent
-             | simplify-pc
-     }
-
-
-
--> skiplist_value [
-       3:{union : | | split-antecedent-pc | simplify-pc }
-   ] { union :
-             | reduce2
-             |
-             | simplify-pc
-     }
-
-
-
--> skiplist_levels
-     { union :
-             | reduce2
-             |
-             | simplify-pc
-     }
+//
+//
+//
+//-> skiplist_next [
+//       3:{union : | | split-antecedent-pc | simplify-pc };
+//      23:skiplist_prop::head_not_tail;
+//      27:skiplist_prop::tail_not_null,
+//         skiplist_prop::head_not_tail,
+//         skiplist_prop::is_skiplist;
+//      30:skiplist_prop::is_skiplist,
+//         skiplist_prop::tail_not_null,
+//         skiplist_region::insert_prev_next_i_in_region;
+//      33:skiplist_prop::is_skiplist,
+//         skiplist_prop::tail_not_null,
+//         skiplist_region::insert_prev_next_i_in_region;
+//      35:skiplist_prop::is_skiplist,
+//         skiplist_prop::head_not_tail,
+//         skiplist_levels::insert_i_lower_maxLevel_one;
+//      46:skiplist_prop::is_skiplist,
+//         skiplist_prop::tail_not_null,
+//         skiplist_prop::head_not_tail;
+//      49:skiplist_prop::is_skiplist,
+//         skiplist_prop::tail_not_null,
+//         skiplist_region::remove_prev_next_i_in_region;
+//      52:skiplist_prop::is_skiplist,
+//         skiplist_prop::tail_not_null,
+//         skiplist_region::remove_prev_next_i_in_region
+//   ] { union : split-goal
+//             | reduce2
+//             |
+//             | simplify-pc
+//     }
+//
+//
+//
+//-> skiplist_order [
+//       3:{union : | | split-antecedent-pc | simplify-pc };
+//      31:skiplist_next::insert_curr_not_null;
+//      35:skiplist_next::insert_prev_next_i_is_curr,
+//         skiplist_next::insert_update_i_is_prev;
+//      37:skiplist_prop::is_skiplist,
+//         skiplist_prop::maxLevel_is_positive,
+//         skiplist_region::insert_update_j_in_addr2set,
+//         skiplist_order_inst::insert_update_data_lower_than_e,
+//         skiplist_region_inst::insert_update_zero_in_region,
+//         skiplist_value::not_valueWasIn;
+//      41:skiplist_order_inst::insert_update_i_data_bounded,
+//         skiplist_levels::insert_i_lower_maxLevel_two;
+//      47:skiplist_next::remove_prev_is_head;
+//      50:skiplist_next::remove_curr_not_null;
+//      56:skiplist_next::remove_prev_next_i_is_curr,
+//         skiplist_next::remove_update_i_is_prev;
+//      58:skiplist_value;
+//      59:skiplist_levels
+//   ] { union : split-goal
+//             | reduce2
+//             | split-consequent
+//             | simplify-pc
+//     }
+//
+//
+//
+//-> skiplist_value [
+//       3:{union : | | split-antecedent-pc | simplify-pc }
+//   ] { union :
+//             | reduce2
+//             |
+//             | simplify-pc
+//     }
+//
+//
+//
+//-> skiplist_levels
+//     { union :
+//             | reduce2
+//             |
+//             | simplify-pc
+//     }

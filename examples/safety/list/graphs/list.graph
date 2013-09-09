@@ -10,11 +10,11 @@
 
 
 => fullOrder
-        { pruning :
-                  | reduce2
-                  |
-                  | simplify-pc
-        }
+     { pruning :
+               | reduce2
+               |
+               | simplify-pc
+     } 
 
 
 => fullLock [
@@ -68,9 +68,9 @@
 
 
 => fullDisjoint
-      { pruning :
-                | reduce2
-                |
-                | simplify-pc
-      }
+     { pruning :
+               | reduce2
+               |
+               | simplify-pc
+     }
 

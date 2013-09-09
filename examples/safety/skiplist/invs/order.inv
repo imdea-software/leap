@@ -8,20 +8,30 @@ invariant [skiplist_order] :
 /\ rd(heap, tail).data = highestElem
 
 /\ @main_e. -> (main::e != lowestElem /\ main::e != highestElem)
-/\ @insert_body. -> (insert::e != lowestElem /\ insert::e != highestElem)
-/\ @remove_body. -> (remove::e != lowestElem /\ remove::e != highestElem)
+
+#insert_value_e_is_bounded:
+   @insert_body. -> (insert::e != lowestElem /\ insert::e != highestElem)
+
+#remove_value_e_is_bounded:
+   @remove_body. -> (remove::e != lowestElem /\ remove::e != highestElem)
 
 
-/\ @insert_newCell_created. -> (rd(heap, insert::newCell).data != rd(heap, head).data /\
-                                rd(heap, insert::newCell).data != rd(heap, tail).data /\
-                                rd(heap, insert::newCell).data = insert::e)
+   @insert_newCell_created. -> (rd(heap, insert::newCell).data != rd(heap, head).data /\
+                                rd(heap, insert::newCell).data != rd(heap, tail).data)
+
+#newCell_has_value_e:
+   @insert_newCell_created. -> rd(heap, insert::newCell).data = insert::e
 
 
-/\ @insert_bounded_i_one. -> rd(heap, insert::prev).data < insert::e
-/\ (@32. \/ @33.) -> rd(heap, insert::curr).data < insert::e
+#insert_prev_value_lower_than_e:
+   @insert_bounded_i_one. -> rd(heap, insert::prev).data < insert::e
 
 
-/\ @insert_update_higher. ->
+#insert_curr_value_lower_than_e:
+   (@32. \/ @33.) -> rd(heap, insert::curr).data < insert::e
+
+
+   @insert_update_higher. ->
       ((insert::i < j /\ j <= maxLevel) ->
           (rd(heap,insert::update[j]).data < insert::e /\
            (rd(heap,rd(heap,insert::update[j]).arr[j]).data > insert::e \/
@@ -66,14 +76,16 @@ invariant [skiplist_order] :
 
 ///  Remove /////////////////////////////
 
-/\ @remove_bounded_prev. -> rd(heap, remove::prev).data < remove::e
+#remove_prev_lower_than_e:
+   @remove_bounded_prev. -> rd(heap, remove::prev).data < remove::e
 
-/\ @remove_bounded_curr. -> (rd(heap, remove::curr).data > remove::e \/
+   @remove_bounded_curr. -> (rd(heap, remove::curr).data > remove::e \/
                              rd(heap, remove::curr).data = remove::e)
 
-/\ @51. -> rd(heap, remove::curr).data < remove::e
+#remove_curr_lower_than_e:
+   @51. -> rd(heap, remove::curr).data < remove::e
 
-/\ @remove_update_higher_set. ->
+   @remove_update_higher_set. ->
       ((remove::i < j /\ j <= maxLevel) ->
           (rd(heap, remove::update[j]).data < remove::e /\
            (rd(heap,rd(heap, remove::update[j]).arr[j]).data > remove::e \/

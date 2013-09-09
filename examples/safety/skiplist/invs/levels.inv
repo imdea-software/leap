@@ -7,20 +7,28 @@ invariant [skiplist_levels] :
 /\ @insert_i_top_maxLevel. -> insert::i = maxLevel + 1
 /\ @insert_maxLevel_eq_i. -> insert::i = maxLevel
 
-/\ @insert_bounded_i_one. -> insert:: i <= maxLevel
+
+#insert_i_lower_maxLevel_one:
+  @insert_bounded_i_one. -> insert:: i <= maxLevel
+
+   @insert_i_lesseq_lvl_two. -> insert::i <= insert::lvl
 
 
+#insert_i_lower_maxLevel_two:
+   @insert_i_lesseq_lvl_two. -> insert::i <= maxLevel
 
+#lvl_lower_maxLevel:
+  @insert_lvl_inrange. -> insert::lvl <= maxLevel
 
-/\ @insert_i_lesseq_lvl_two. -> insert::i <= insert::lvl
-/\ @insert_i_lesseq_lvl_two. -> insert::i <= maxLevel
-/\ @insert_lvl_inrange. -> insert::lvl <= maxLevel
-/\ @25. -> maxLevel = insert::i
+   @25. -> maxLevel = insert::i
 /\ @21. -> maxLevel + 1 = insert::i
 
 
 /\ @remove_body. -> remove::removeFrom <= maxLevel
-/\ @remove_lookup_loop. -> remove::i <= maxLevel
-/\ @remove_final_loop. -> remove::i <= remove::removeFrom
+
+#remove_i_lower_maxLevel:
+   @remove_lookup_loop. -> remove::i <= maxLevel
+
+   @remove_final_loop. -> remove::i <= remove::removeFrom
 
 /\ (@61. \/ @62.) -> remove::i >= 0
