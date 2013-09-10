@@ -191,7 +191,7 @@ and literal =
     Append        of path * path * path
   | Reach         of mem * addr * addr * path
   | OrderList     of mem * addr * addr
-  | Skiplist      of mem * set * integer * addr * addr
+  | Skiplist      of mem * set * integer * addr * addr * setelem
   | In            of addr * set
   | SubsetEq      of set * set
   | InTh          of tid * setth
@@ -366,75 +366,76 @@ let rec variable_to_str (loc:bool) (var:variable) : string =
 
 and literal_to_str (loc:bool) (expr:literal) : string =
   match expr with
-    Append(p1,p2,pres)         -> sprintf "append(%s,%s,%s)"
-                                            (path_to_str loc p1)
-                                            (path_to_str loc p2)
-                                            (path_to_str loc pres)
-  | Reach(h,add_from,add_to,p) -> sprintf "reach(%s,%s,%s,%s)"
-                                            (mem_to_str loc h)
-                                            (addr_to_str loc add_from)
-                                            (addr_to_str loc add_to)
-                                            (path_to_str loc p)
-  | OrderList(h,add_from,add_to)-> sprintf "orderlist(%s,%s,%s)"
-                                            (mem_to_str loc h)
-                                            (addr_to_str loc add_from)
-                                            (addr_to_str loc add_to)
-  | Skiplist (h,s,l,a_from,a_to) -> sprintf "skiplist(%s,%s,%s,%s,%s)"
+    Append(p1,p2,pres)               -> sprintf "append(%s,%s,%s)"
+                                                  (path_to_str loc p1)
+                                                  (path_to_str loc p2)
+                                                  (path_to_str loc pres)
+  | Reach(h,add_from,add_to,p)       -> sprintf "reach(%s,%s,%s,%s)"
+                                                  (mem_to_str loc h)
+                                                  (addr_to_str loc add_from)
+                                                  (addr_to_str loc add_to)
+                                                  (path_to_str loc p)
+  | OrderList(h,add_from,add_to)     -> sprintf "orderlist(%s,%s,%s)"
+                                                  (mem_to_str loc h)
+                                                  (addr_to_str loc add_from)
+                                                  (addr_to_str loc add_to)
+  | Skiplist (h,s,l,a_from,a_to,elems)-> sprintf "skiplist(%s,%s,%s,%s,%s,%s)"
                                             (mem_to_str loc h)
                                             (set_to_str loc s)
                                             (integer_to_str loc l)
                                             (addr_to_str loc a_from)
                                             (addr_to_str loc a_to)
-  | In(a,s)                    -> sprintf "%s in %s "
-                                            (addr_to_str loc a)
-                                            (set_to_str loc s)
-  | SubsetEq(s_in,s_out)       -> sprintf "%s subseteq %s"
-                                            (set_to_str loc s_in)
-                                            (set_to_str loc s_out)
-  | InTh(th,s)                 -> sprintf "%s inTh %s"
-                                            (tid_to_str loc th)
-                                            (setth_to_str loc s)
-  | SubsetEqTh(s_in,s_out)     -> sprintf "%s subseteqTh %s"
-                                            (setth_to_str loc s_in)
-                                            (setth_to_str loc s_out)
-  | InInt(i,s)                 -> sprintf "%s inInt %s"
-                                            (integer_to_str loc i)
-                                            (setint_to_str loc s)
-  | SubsetEqInt(s_in,s_out)    -> sprintf "%s subseteqInt %s"
-                                            (setint_to_str loc s_in)
-                                            (setint_to_str loc s_out)
-  | InElem(e,s)                -> sprintf "%s inElem %s"
-                                            (elem_to_str loc e)
-                                            (setelem_to_str loc s)
-  | SubsetEqElem(s_in,s_out)   -> sprintf "%s subseteqElem %s"
-                                            (setelem_to_str loc s_in)
-                                            (setelem_to_str loc s_out)
-  | Less(i1,i2)                -> sprintf "%s < %s"
-                                            (integer_to_str loc i1)
-                                            (integer_to_str loc i2)
-  | Greater(i1,i2)             -> sprintf "%s > %s"
-                                            (integer_to_str loc i1)
-                                            (integer_to_str loc i2)
-  | LessEq(i1,i2)              -> sprintf "%s <= %s"
-                                            (integer_to_str loc i1)
-                                            (integer_to_str loc i2)
-  | GreaterEq(i1,i2)           -> sprintf "%s >= %s"
-                                            (integer_to_str loc i1)
-                                            (integer_to_str loc i2)
-  | LessTid(t1,t2)             -> sprintf "%s < %s"
-                                            (tid_to_str loc t1)
-                                            (tid_to_str loc t2)
-  | LessElem(e1,e2)            -> sprintf "%s < %s"
-                                            (elem_to_str loc e1)
-                                            (elem_to_str loc e2)
-  | GreaterElem(e1,e2)         -> sprintf "%s > %s"
-                                            (elem_to_str loc e1)
-                                            (elem_to_str loc e2)
-  | Eq(exp)                    -> eq_to_str loc (exp)
-  | InEq(exp)                  -> diseq_to_str loc (exp)
-  | BoolVar v                  -> variable_to_str loc v
-  | BoolArrayRd(arr,t)         -> sprintf "%s%s" (arrays_to_str loc arr)
-                                                 (tid_to_str loc t)
+                                            (setelem_to_str loc elems)
+  | In(a,s)                          -> sprintf "%s in %s "
+                                                  (addr_to_str loc a)
+                                                  (set_to_str loc s)
+  | SubsetEq(s_in,s_out)             -> sprintf "%s subseteq %s"
+                                                  (set_to_str loc s_in)
+                                                  (set_to_str loc s_out)
+  | InTh(th,s)                       -> sprintf "%s inTh %s"
+                                                  (tid_to_str loc th)
+                                                  (setth_to_str loc s)
+  | SubsetEqTh(s_in,s_out)           -> sprintf "%s subseteqTh %s"
+                                                  (setth_to_str loc s_in)
+                                                  (setth_to_str loc s_out)
+  | InInt(i,s)                       -> sprintf "%s inInt %s"
+                                                  (integer_to_str loc i)
+                                                  (setint_to_str loc s)
+  | SubsetEqInt(s_in,s_out)          -> sprintf "%s subseteqInt %s"
+                                                  (setint_to_str loc s_in)
+                                                  (setint_to_str loc s_out)
+  | InElem(e,s)                      -> sprintf "%s inElem %s"
+                                                  (elem_to_str loc e)
+                                                  (setelem_to_str loc s)
+  | SubsetEqElem(s_in,s_out)         -> sprintf "%s subseteqElem %s"
+                                                  (setelem_to_str loc s_in)
+                                                  (setelem_to_str loc s_out)
+  | Less(i1,i2)                      -> sprintf "%s < %s"
+                                                  (integer_to_str loc i1)
+                                                  (integer_to_str loc i2)
+  | Greater(i1,i2)                   -> sprintf "%s > %s"
+                                                  (integer_to_str loc i1)
+                                                  (integer_to_str loc i2)
+  | LessEq(i1,i2)                    -> sprintf "%s <= %s"
+                                                  (integer_to_str loc i1)
+                                                  (integer_to_str loc i2)
+  | GreaterEq(i1,i2)                 -> sprintf "%s >= %s"
+                                                  (integer_to_str loc i1)
+                                                  (integer_to_str loc i2)
+  | LessTid(t1,t2)                   -> sprintf "%s < %s"
+                                                  (tid_to_str loc t1)
+                                                  (tid_to_str loc t2)
+  | LessElem(e1,e2)                  -> sprintf "%s < %s"
+                                                  (elem_to_str loc e1)
+                                                  (elem_to_str loc e2)
+  | GreaterElem(e1,e2)               -> sprintf "%s > %s"
+                                                  (elem_to_str loc e1)
+                                                  (elem_to_str loc e2)
+  | Eq(exp)                          -> eq_to_str loc (exp)
+  | InEq(exp)                        -> diseq_to_str loc (exp)
+  | BoolVar v                        -> variable_to_str loc v
+  | BoolArrayRd(arr,t)               -> sprintf "%s%s" (arrays_to_str loc arr)
+                                                       (tid_to_str loc t)
 
 
 and arrays_to_str (loc:bool) (expr:arrays) : string =
@@ -1026,48 +1027,49 @@ and literal_to_expr_literal (l:literal) : E.literal =
   let to_int = integer_to_expr_integer in
   E.Atom (
   match l with
-    Append (p1,p2,p3)   -> E.Append (path_to_expr_path p1,
-                                     path_to_expr_path p2,
-                                     path_to_expr_path p3)
-  | Reach (m,a1,a2,p)   -> E.Reach (mem_to_expr_mem m,
-                                    addr_to_expr_addr a1,
-                                    addr_to_expr_addr a2,
-                                    path_to_expr_path p)
-  | OrderList (m,a1,a2) -> E.OrderList (mem_to_expr_mem m,
-                                        addr_to_expr_addr a1,
-                                        addr_to_expr_addr a2)
-  | Skiplist (m,s,l,a1,a2) -> E.Skiplist (mem_to_expr_mem m,
-                                          set_to_expr_set s,
-                                          integer_to_expr_integer l,
+    Append (p1,p2,p3)         -> E.Append (path_to_expr_path p1,
+                                           path_to_expr_path p2,
+                                           path_to_expr_path p3)
+  | Reach (m,a1,a2,p)         -> E.Reach (mem_to_expr_mem m,
                                           addr_to_expr_addr a1,
-                                          addr_to_expr_addr a2)
-  | In (a,s)            -> E.In (addr_to_expr_addr a, set_to_expr_set s)
-  | SubsetEq (s1,s2)    -> E.SubsetEq (set_to_expr_set s1, set_to_expr_set s2)
-  | InTh (t,s)          -> E.InTh (tid_to_expr_tid t, setth_to_expr_setth s)
-  | SubsetEqTh (s1,s2)  -> E.SubsetEqTh (setth_to_expr_setth s1,
-                                         setth_to_expr_setth s2)
-  | InInt (i,s)         -> E.InInt (integer_to_expr_integer i,
-                                    setint_to_expr_setint s)
-  | SubsetEqInt (s1,s2) -> E.SubsetEqInt (setint_to_expr_setint s1,
-                                          setint_to_expr_setint s2)
-  | InElem (e,s)        -> E.InElem (elem_to_expr_elem e,
-                                     setelem_to_expr_setelem s)
-  | SubsetEqElem (s1,s2)-> E.SubsetEqElem (setelem_to_expr_setelem s1,
-                                           setelem_to_expr_setelem s2)
-  | Less (i1,i2)        -> E.Less      (to_int i1, to_int i2)
-  | Greater (i1,i2)     -> E.Greater   (to_int i1, to_int i2)
-  | LessEq (i1,i2)      -> E.LessEq    (to_int i1, to_int i2)
-  | GreaterEq (i1,i2)   -> E.GreaterEq (to_int i1, to_int i2)
-  | LessTid (t1,t2)     -> E.LessTid   (tid_to_expr_th t1, tid_to_expr_th t2)
-  | LessElem (e1,e2)    -> E.LessElem  (elem_to_expr_elem e1,
-                                        elem_to_expr_elem e2)
-  | GreaterElem (e1,e2) -> E.GreaterElem (elem_to_expr_elem e1,
-                                          elem_to_expr_elem e2)
-  | Eq e                -> E.Eq        (eq_to_expr_eq e)
-  | InEq d              -> E.InEq      (diseq_to_expr_diseq d)
-  | BoolVar v           -> E.BoolVar (variable_to_expr_var v)
-  | BoolArrayRd (a,t)   -> E.BoolArrayRd (array_to_expr_array a,
-                                          tid_to_expr_th t)
+                                          addr_to_expr_addr a2,
+                                          path_to_expr_path p)
+  | OrderList (m,a1,a2)       -> E.OrderList (mem_to_expr_mem m,
+                                              addr_to_expr_addr a1,
+                                              addr_to_expr_addr a2)
+  | Skiplist (m,s,l,a1,a2,es) -> E.Skiplist (mem_to_expr_mem m,
+                                             set_to_expr_set s,
+                                             integer_to_expr_integer l,
+                                             addr_to_expr_addr a1,
+                                             addr_to_expr_addr a2,
+                                             setelem_to_expr_setelem es)
+  | In (a,s)                  -> E.In (addr_to_expr_addr a, set_to_expr_set s)
+  | SubsetEq (s1,s2)          -> E.SubsetEq (set_to_expr_set s1, set_to_expr_set s2)
+  | InTh (t,s)                -> E.InTh (tid_to_expr_tid t, setth_to_expr_setth s)
+  | SubsetEqTh (s1,s2)        -> E.SubsetEqTh (setth_to_expr_setth s1,
+                                               setth_to_expr_setth s2)
+  | InInt (i,s)               -> E.InInt (integer_to_expr_integer i,
+                                          setint_to_expr_setint s)
+  | SubsetEqInt (s1,s2)       -> E.SubsetEqInt (setint_to_expr_setint s1,
+                                                setint_to_expr_setint s2)
+  | InElem (e,s)              -> E.InElem (elem_to_expr_elem e,
+                                           setelem_to_expr_setelem s)
+  | SubsetEqElem (s1,s2)      -> E.SubsetEqElem (setelem_to_expr_setelem s1,
+                                                 setelem_to_expr_setelem s2)
+  | Less (i1,i2)              -> E.Less      (to_int i1, to_int i2)
+  | Greater (i1,i2)           -> E.Greater   (to_int i1, to_int i2)
+  | LessEq (i1,i2)            -> E.LessEq    (to_int i1, to_int i2)
+  | GreaterEq (i1,i2)         -> E.GreaterEq (to_int i1, to_int i2)
+  | LessTid (t1,t2)           -> E.LessTid   (tid_to_expr_th t1, tid_to_expr_th t2)
+  | LessElem (e1,e2)          -> E.LessElem  (elem_to_expr_elem e1,
+                                              elem_to_expr_elem e2)
+  | GreaterElem (e1,e2)       -> E.GreaterElem (elem_to_expr_elem e1,
+                                                elem_to_expr_elem e2)
+  | Eq e                      -> E.Eq        (eq_to_expr_eq e)
+  | InEq d                    -> E.InEq      (diseq_to_expr_diseq d)
+  | BoolVar v                 -> E.BoolVar (variable_to_expr_var v)
+  | BoolArrayRd (a,t)         -> E.BoolArrayRd (array_to_expr_array a,
+                                                tid_to_expr_th t)
   )
 
 
@@ -1362,11 +1364,12 @@ and var_kind_literal (kind:E.var_nature) (l:literal) : term list =
   | OrderList(h,add_from,add_to) -> (var_kind_mem kind h) @
                                     (var_kind_addr kind add_from) @
                                     (var_kind_addr kind add_to)
-  | Skiplist(h,s,l,a1,a2)        -> (var_kind_mem kind h) @
+  | Skiplist(h,s,l,a1,a2,es)     -> (var_kind_mem kind h) @
                                     (var_kind_set kind s) @
                                     (var_kind_int kind l) @
                                     (var_kind_addr kind a1) @
-                                    (var_kind_addr kind a2)
+                                    (var_kind_addr kind a2) @
+                                    (var_kind_setelem kind es)
   | In(a,s)                      -> (var_kind_addr kind a) @
                                     (var_kind_set kind s)
   | SubsetEq(s_in,s_out)         -> (var_kind_set kind s_in) @

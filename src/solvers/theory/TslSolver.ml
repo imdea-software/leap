@@ -347,15 +347,17 @@ module TranslateTsl (SLK : TSLKExpression.S) =
       | SL.Atom(SL.InEq(SL.TidArrayT (SL.TidArrayUp(tt,i,t)), SL.TidArrayT uu)) ->
           SLK.Not (trans_literal (SL.Atom(SL.Eq(SL.TidArrayT uu, SL.TidArrayT (SL.TidArrayUp(tt,i,t))))))
       (* Skiplist (m,s,l,s1,s2) *)
-      | SL.Atom(SL.Skiplist(m,s,l,a1,a2)) ->
+      | SL.Atom(SL.Skiplist(m,s,l,a1,a2,es)) ->
           let m' = mem_tsl_to_tslk m in
           let s' = set_tsl_to_tslk s in
           let l' = int_tsl_to_tslk l in
           let a1' = addr_tsl_to_tslk a1 in
           let a2' = addr_tsl_to_tslk a2 in
+          let es' = setelem_tsl_to_tslk es in
           let xs = ref
                     [SLK.Literal(SLK.Atom(
                       SLK.OrderList(m',a1',a2')));
+                     SLK.eq_setelem es' (SLK.SetToElems(s',m'));
                      SLK.eq_set
                       (s')
 (*                      (SLK.AddrToSet(m',a1',SLK.LevelVal 0))] in *)
@@ -394,17 +396,19 @@ module TranslateTsl (SLK : TSLKExpression.S) =
           SLK.addr_mark_smp_interesting a2' true;
           SLK.conj_list (!xs)
       (* ~ Skiplist(m,s,l,a1,a2) *)
-      | SL.NegAtom(SL.Skiplist(m,s,l,a1,a2)) ->
+      | SL.NegAtom(SL.Skiplist(m,s,l,a1,a2,es)) ->
           let m' = mem_tsl_to_tslk m in
           let s' = set_tsl_to_tslk s in
           let l' = int_tsl_to_tslk l in
           let a1' = addr_tsl_to_tslk a1 in
           let a2' = addr_tsl_to_tslk a2 in
+          let es' = setelem_tsl_to_tslk es in
 
 
           let xs = ref
                     [SLK.Literal(SLK.NegAtom(
                       SLK.OrderList(m',a1',a2')));
+                     SLK.ineq_setelem es' (SLK.SetToElems(s',m'));
                      SLK.ineq_set
                       (s')
 (*                      (SLK.AddrToSet(m',a1',SLK.LevelVal 0))] in *)
@@ -776,7 +780,7 @@ let propagate_levels (alpha_pairs:alpha_pair_t list)
                         SL.Conj (List.map (fun lit ->
                           begin
                             match lit with
-                            | SL.Atom(SL.Skiplist(_,_,l,_,_))
+                            | SL.Atom(SL.Skiplist(_,_,l,_,_,_))
                             | SL.Atom(SL.Eq(_,SL.CellT(SL.MkCell(_,_,_,l))))
                             | SL.Atom(SL.Eq(SL.CellT(SL.MkCell(_,_,_,l)),_))
                             | SL.NegAtom(SL.InEq(_,SL.CellT(SL.MkCell(_,_,_,l))))

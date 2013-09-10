@@ -129,7 +129,7 @@ and atom =
     Append            of path * path * path
   | Reach             of mem * addr * addr * integer * path
   | OrderList         of mem * addr * addr
-  | Skiplist          of mem * set * integer * addr * addr
+  | Skiplist          of mem * set * integer * addr * addr * setelem
   | In                of addr * set
   | SubsetEq          of set  * set
   | InTh              of tid * setth
@@ -464,44 +464,45 @@ and get_varset_tidarr (arr:tidarr) : S.t =
 
 and get_varset_atom (instances:bool) (a:atom) : S.t =
   match a with
-      Append(p1,p2,p3)       -> (get_varset_path p1) @@ (get_varset_path p2) @@
-                                (get_varset_path p3)
-    | Reach(m,a1,a2,l,p)     -> (get_varset_mem m) @@ (get_varset_addr a1) @@
-                                (get_varset_addr a2) @@ (get_varset_integer l) @@
-                                (get_varset_path p)
-    | OrderList(m,a1,a2)     -> (get_varset_mem m) @@ (get_varset_addr a1) @@
-                                (get_varset_addr a2)
-    | Skiplist(m,s,l,a1,a2)  -> (get_varset_mem m) @@
-                                (get_varset_set s) @@ (get_varset_integer l) @@
-                                (get_varset_addr a1) @@ (get_varset_addr a2)
-    | In(a,s)                -> (get_varset_addr a) @@ (get_varset_set s)
-    | SubsetEq(s1,s2)        -> (get_varset_set s1) @@ (get_varset_set s2)
-    | InTh(th,st)            -> (get_varset_tid th) @@ (get_varset_setth st)
-    | SubsetEqTh(st1,st2)    -> (get_varset_setth st1) @@ (get_varset_setth st2)
-    | InElem(e,se)           -> (get_varset_elem e) @@ (get_varset_setelem se)
-    | SubsetEqElem(se1,se2)  -> (get_varset_setelem se1) @@
-                                (get_varset_setelem se2)
-    | Less (i,j)             -> (get_varset_integer i) @@ (get_varset_integer j)
-    | Greater (i,j)          -> (get_varset_integer i) @@ (get_varset_integer j)
-    | LessEq (i,j)           -> (get_varset_integer i) @@ (get_varset_integer j)
-    | GreaterEq (i,j)        -> (get_varset_integer i) @@ (get_varset_integer j)
-    | LessElem(e1,e2)        -> (get_varset_elem e1) @@ (get_varset_elem e2)
-    | GreaterElem(e1,e2)     -> (get_varset_elem e1) @@ (get_varset_elem e2)
-    | Eq((x,y))              -> if instances then
-                                  match (x,y) with
-                                  | (VarUpdate _, _) -> get_varset_term instances x
-                                  | (_, VarUpdate _) -> get_varset_term instances y
-                                  | _ -> (get_varset_term instances x) @@
-                                         (get_varset_term instances y)
-                                else
-                                  (get_varset_term instances x) @@
+      Append(p1,p2,p3)         -> (get_varset_path p1) @@ (get_varset_path p2) @@
+                                  (get_varset_path p3)
+    | Reach(m,a1,a2,l,p)       -> (get_varset_mem m) @@ (get_varset_addr a1) @@
+                                  (get_varset_addr a2) @@ (get_varset_integer l) @@
+                                  (get_varset_path p)
+    | OrderList(m,a1,a2)       -> (get_varset_mem m) @@ (get_varset_addr a1) @@
+                                  (get_varset_addr a2)
+    | Skiplist(m,s,l,a1,a2,es) -> (get_varset_mem m) @@
+                                  (get_varset_set s) @@ (get_varset_integer l) @@
+                                  (get_varset_addr a1) @@ (get_varset_addr a2) @@
+                                  (get_varset_setelem es)
+    | In(a,s)                  -> (get_varset_addr a) @@ (get_varset_set s)
+    | SubsetEq(s1,s2)          -> (get_varset_set s1) @@ (get_varset_set s2)
+    | InTh(th,st)              -> (get_varset_tid th) @@ (get_varset_setth st)
+    | SubsetEqTh(st1,st2)      -> (get_varset_setth st1) @@ (get_varset_setth st2)
+    | InElem(e,se)             -> (get_varset_elem e) @@ (get_varset_setelem se)
+    | SubsetEqElem(se1,se2)    -> (get_varset_setelem se1) @@
+                                  (get_varset_setelem se2)
+    | Less (i,j)               -> (get_varset_integer i) @@ (get_varset_integer j)
+    | Greater (i,j)            -> (get_varset_integer i) @@ (get_varset_integer j)
+    | LessEq (i,j)             -> (get_varset_integer i) @@ (get_varset_integer j)
+    | GreaterEq (i,j)          -> (get_varset_integer i) @@ (get_varset_integer j)
+    | LessElem(e1,e2)          -> (get_varset_elem e1) @@ (get_varset_elem e2)
+    | GreaterElem(e1,e2)       -> (get_varset_elem e1) @@ (get_varset_elem e2)
+    | Eq((x,y))                -> if instances then
+                                    match (x,y) with
+                                    | (VarUpdate _, _) -> get_varset_term instances x
+                                    | (_, VarUpdate _) -> get_varset_term instances y
+                                    | _ -> (get_varset_term instances x) @@
+                                           (get_varset_term instances y)
+                                  else
+                                    (get_varset_term instances x) @@
+                                    (get_varset_term instances y)
+    | InEq((x,y))              -> (get_varset_term instances x) @@
                                   (get_varset_term instances y)
-    | InEq((x,y))            -> (get_varset_term instances x) @@
-                                (get_varset_term instances y)
-    | BoolVar v              -> (S.singleton v)
-    | PC(pc,th,pr)           -> (match th with | Shared -> S.empty | Local t -> get_varset_tid t)
-    | PCUpdate (pc,th)       -> (get_varset_tid th)
-    | PCRange(pc1,pc2,th,pr) -> (match th with | Shared -> S.empty | Local t -> get_varset_tid t)
+    | BoolVar v                -> (S.singleton v)
+    | PC(pc,th,pr)             -> (match th with | Shared -> S.empty | Local t -> get_varset_tid t)
+    | PCUpdate (pc,th)         -> (get_varset_tid th)
+    | PCRange(pc1,pc2,th,pr)   -> (match th with | Shared -> S.empty | Local t -> get_varset_tid t)
 
 and get_varset_term (instances:bool) (t:term) : S.t =
     match t with
@@ -644,32 +645,32 @@ let varidlist_of_sort (phi:formula) (s:sort) : varId list =
 let rec get_termset_atom (a:atom) : TermSet.t =
   let add_list = List.fold_left (fun s e -> TermSet.add e s) TermSet.empty in
   match a with
-  | Append(p1,p2,p3)       -> add_list [PathT p1; PathT p2; PathT p3]
-  | Reach(m,a1,a2,l,p)     -> add_list [MemT m;AddrT a1;AddrT a2;IntT l;PathT p]
-  | OrderList(m,a1,a2)     -> add_list [MemT m; AddrT a1; AddrT a2]
-  | Skiplist(m,s,l,a1,a2)  -> add_list [MemT m; SetT s; IntT l; AddrT a1; AddrT a2]
-  | In(a,s)                -> add_list [AddrT a; SetT s]
-  | SubsetEq(s1,s2)        -> add_list [SetT s1; SetT s2]
-  | InTh(th,st)            -> add_list [TidT th; SetThT st]
-  | SubsetEqTh(st1,st2)    -> add_list [SetThT st1; SetThT st2]
-  | InElem(e,se)           -> add_list [ElemT e; SetElemT se]
-  | SubsetEqElem(se1,se2)  -> add_list [SetElemT se1; SetElemT se2]
-  | Less (i,j)             -> add_list [IntT i; IntT j]
-  | Greater (i,j)          -> add_list [IntT i; IntT j]
-  | LessEq (i,j)           -> add_list [IntT i; IntT j]
-  | GreaterEq (i,j)        -> add_list [IntT i; IntT j]
-  | LessElem(e1,e2)        -> add_list [ElemT e1; ElemT e2]
-  | GreaterElem(e1,e2)     -> add_list [ElemT e1; ElemT e2]
-  | Eq((x,y))              -> add_list [x;y]
-  | InEq((x,y))            -> add_list [x;y]
-  | BoolVar v              -> add_list [VarT v]
-  | PC(pc,th,pr)           -> (match th with
-                               | Shared  -> TermSet.empty
-                               | Local t -> add_list [TidT t])
-  | PCUpdate (pc,th)       -> add_list [TidT th]
-  | PCRange(pc1,pc2,th,pr) -> (match th with
-                               | Shared  -> TermSet.empty
-                               | Local t -> add_list [TidT t])
+  | Append(p1,p2,p3)         -> add_list [PathT p1; PathT p2; PathT p3]
+  | Reach(m,a1,a2,l,p)       -> add_list [MemT m;AddrT a1;AddrT a2;IntT l;PathT p]
+  | OrderList(m,a1,a2)       -> add_list [MemT m; AddrT a1; AddrT a2]
+  | Skiplist(m,s,l,a1,a2,es) -> add_list [MemT m; SetT s; IntT l; AddrT a1; AddrT a2; SetElemT es]
+  | In(a,s)                  -> add_list [AddrT a; SetT s]
+  | SubsetEq(s1,s2)          -> add_list [SetT s1; SetT s2]
+  | InTh(th,st)              -> add_list [TidT th; SetThT st]
+  | SubsetEqTh(st1,st2)      -> add_list [SetThT st1; SetThT st2]
+  | InElem(e,se)             -> add_list [ElemT e; SetElemT se]
+  | SubsetEqElem(se1,se2)    -> add_list [SetElemT se1; SetElemT se2]
+  | Less (i,j)               -> add_list [IntT i; IntT j]
+  | Greater (i,j)            -> add_list [IntT i; IntT j]
+  | LessEq (i,j)             -> add_list [IntT i; IntT j]
+  | GreaterEq (i,j)          -> add_list [IntT i; IntT j]
+  | LessElem(e1,e2)          -> add_list [ElemT e1; ElemT e2]
+  | GreaterElem(e1,e2)       -> add_list [ElemT e1; ElemT e2]
+  | Eq((x,y))                -> add_list [x;y]
+  | InEq((x,y))              -> add_list [x;y]
+  | BoolVar v                -> add_list [VarT v]
+  | PC(pc,th,pr)             -> (match th with
+                                 | Shared  -> TermSet.empty
+                                 | Local t -> add_list [TidT t])
+  | PCUpdate (pc,th)         -> add_list [TidT th]
+  | PCRange(pc1,pc2,th,pr)   -> (match th with
+                                 | Shared  -> TermSet.empty
+                                 | Local t -> add_list [TidT t])
 
 and get_termset_literal (l:literal) : TermSet.t =
   match l with
@@ -987,69 +988,71 @@ let is_literal_flat lit =
   match lit with
       Atom a ->
   begin match a with
-    | Append(p1,p2,p3)       -> (is_var_path p1) && (is_var_path p2) &&
-                                (is_var_path p3)
-    | Reach(m,a1,a2,l,p)     -> (is_var_mem m) && (is_var_addr a1) &&
-                                (is_var_addr a2) && (is_var_int l) &&
-                                (is_var_path p)
-    | OrderList(m,a1,a2)     -> (is_var_mem m) && (is_var_addr a1) &&
-                                (is_var_addr a2)
-    | Skiplist(m,s,l,a1,a2)  -> (is_var_mem m) &&
-                                (is_var_set s) && (is_var_int l) &&
-                                (is_var_addr a1) && (is_var_addr a2)
-    | In(a,s)                -> (is_var_addr a) && (is_var_set s)
-    | SubsetEq(s1,s2)        -> (is_var_set s1) && (is_var_set s2)
-    | InTh(k,st)             -> (is_var_thid k) && (is_var_setth st)
-    | SubsetEqTh(st1,st2)    -> (is_var_setth st1) && (is_var_setth st2)
-    | InElem(e,se)           -> (is_var_elem e) && (is_var_setelem se)
-    | SubsetEqElem(se1,se2)  -> (is_var_setelem se1) && (is_var_setelem se2)
-    | Less (i1,i2)           -> (is_var_int i1) && (is_var_int i2)
-    | Greater (i1,i2)        -> (is_var_int i1) && (is_var_int i2)
-    | LessEq (i1,i2)         -> (is_var_int i1) && (is_var_int i2)
-    | GreaterEq (i1,i2)      -> (is_var_int i1) && (is_var_int i2)
-    | LessElem(e1,e2)        -> (is_var_elem e1) && (is_var_elem e2)
-    | GreaterElem(e1,e2)     -> (is_var_elem e1) && (is_var_elem e2)
-    | Eq(t1,t2)              -> ((is_var_term t1) && (is_var_term t2)  ||
-                                 (is_var_term t1) && (is_term_flat t2)  ||
-                                 (is_term_flat t1) && (is_var_term t2))
-    | InEq(x,y)              -> (is_var_term x) && (is_var_term y)
-    | BoolVar v              -> true
-    | PC (pc,t,pr)           -> true
-    | PCUpdate (pc,t)        -> true
-    | PCRange (pc1,pc2,t,pr) -> true
+    | Append(p1,p2,p3)         -> (is_var_path p1) && (is_var_path p2) &&
+                                  (is_var_path p3)
+    | Reach(m,a1,a2,l,p)       -> (is_var_mem m) && (is_var_addr a1) &&
+                                  (is_var_addr a2) && (is_var_int l) &&
+                                  (is_var_path p)
+    | OrderList(m,a1,a2)       -> (is_var_mem m) && (is_var_addr a1) &&
+                                  (is_var_addr a2)
+    | Skiplist(m,s,l,a1,a2,es) -> (is_var_mem m) &&
+                                  (is_var_set s) && (is_var_int l) &&
+                                  (is_var_addr a1) && (is_var_addr a2) &&
+                                  (is_var_setelem es)
+    | In(a,s)                  -> (is_var_addr a) && (is_var_set s)
+    | SubsetEq(s1,s2)          -> (is_var_set s1) && (is_var_set s2)
+    | InTh(k,st)               -> (is_var_thid k) && (is_var_setth st)
+    | SubsetEqTh(st1,st2)      -> (is_var_setth st1) && (is_var_setth st2)
+    | InElem(e,se)             -> (is_var_elem e) && (is_var_setelem se)
+    | SubsetEqElem(se1,se2)    -> (is_var_setelem se1) && (is_var_setelem se2)
+    | Less (i1,i2)             -> (is_var_int i1) && (is_var_int i2)
+    | Greater (i1,i2)          -> (is_var_int i1) && (is_var_int i2)
+    | LessEq (i1,i2)           -> (is_var_int i1) && (is_var_int i2)
+    | GreaterEq (i1,i2)        -> (is_var_int i1) && (is_var_int i2)
+    | LessElem(e1,e2)          -> (is_var_elem e1) && (is_var_elem e2)
+    | GreaterElem(e1,e2)       -> (is_var_elem e1) && (is_var_elem e2)
+    | Eq(t1,t2)                -> ((is_var_term t1) && (is_var_term t2)  ||
+                                   (is_var_term t1) && (is_term_flat t2)  ||
+                                   (is_term_flat t1) && (is_var_term t2))
+    | InEq(x,y)                -> (is_var_term x) && (is_var_term y)
+    | BoolVar v                -> true
+    | PC (pc,t,pr)             -> true
+    | PCUpdate (pc,t)          -> true
+    | PCRange (pc1,pc2,t,pr)   -> true
   end
     | NegAtom a ->
   begin match a with
-    | Append(p1,p2,p3)      -> (is_var_path p1) && (is_var_path p2) &&
-                               (is_var_path p3)
-    | Reach(m,a1,a2,l,p)    -> (is_var_mem m) && (is_var_addr a1) &&
-                               (is_var_addr a2) && (is_var_int l) &&
-                               (is_var_path p)
-    | OrderList(m,a1,a2)    -> (is_var_mem m) && (is_var_addr a1) &&
-                               (is_var_addr a2)
-    | Skiplist(m,s,l,a1,a2) -> (is_var_mem m) &&
-                               (is_var_set s) && (is_var_int l) &&
-                               (is_var_addr a1) && (is_var_addr a2)
-    | In(a,s)               -> (is_var_addr a) && (is_var_set s)
-    | SubsetEq(s1,s2)       -> (is_var_set s1) && (is_var_set s2)
-    | InTh(k,st)            -> (is_var_thid k) && (is_var_setth st)
-    | SubsetEqTh(st1,st2)   -> (is_var_setth st1) && (is_var_setth st2)
-    | InElem(e,se)          -> (is_var_elem e) && (is_var_setelem se)
-    | SubsetEqElem(se1,se2) -> (is_var_setelem se1) && (is_var_setelem se2)
-    | Less (i1,i2)          -> (is_var_int i1) && (is_var_int i2)
-    | Greater (i1,i2)       -> (is_var_int i1) && (is_var_int i2)
-    | LessEq (i1,i2)        -> (is_var_int i1) && (is_var_int i2)
-    | GreaterEq (i1,i2)     -> (is_var_int i1) && (is_var_int i2)
-    | LessElem(e1,e2)       -> (is_var_elem e1) && (is_var_elem e2)
-    | GreaterElem(e1,e2)    -> (is_var_elem e1) && (is_var_elem e2)
-    | Eq(x,y)               ->  (is_var_term x) && (is_var_term y)
-    | InEq(t1,t2)           -> ((is_var_term  t1) && (is_var_term  t2) ||
-                                (is_var_term  t1) && (is_term_flat t2) ||
-                                (is_term_flat t1) && (is_var_term  t2) )
-    | BoolVar v             -> true
-    | PC _                  -> true
-    | PCUpdate _            -> true
-    | PCRange _             -> true
+    | Append(p1,p2,p3)          -> (is_var_path p1) && (is_var_path p2) &&
+                                   (is_var_path p3)
+    | Reach(m,a1,a2,l,p)        -> (is_var_mem m) && (is_var_addr a1) &&
+                                   (is_var_addr a2) && (is_var_int l) &&
+                                   (is_var_path p)
+    | OrderList(m,a1,a2)        -> (is_var_mem m) && (is_var_addr a1) &&
+                                   (is_var_addr a2)
+    | Skiplist(m,s,l,a1,a2,es)  -> (is_var_mem m) &&
+                                   (is_var_set s) && (is_var_int l) &&
+                                   (is_var_addr a1) && (is_var_addr a2) &&
+                                   (is_var_setelem es)
+    | In(a,s)                   -> (is_var_addr a) && (is_var_set s)
+    | SubsetEq(s1,s2)           -> (is_var_set s1) && (is_var_set s2)
+    | InTh(k,st)                -> (is_var_thid k) && (is_var_setth st)
+    | SubsetEqTh(st1,st2)       -> (is_var_setth st1) && (is_var_setth st2)
+    | InElem(e,se)              -> (is_var_elem e) && (is_var_setelem se)
+    | SubsetEqElem(se1,se2)     -> (is_var_setelem se1) && (is_var_setelem se2)
+    | Less (i1,i2)              -> (is_var_int i1) && (is_var_int i2)
+    | Greater (i1,i2)           -> (is_var_int i1) && (is_var_int i2)
+    | LessEq (i1,i2)            -> (is_var_int i1) && (is_var_int i2)
+    | GreaterEq (i1,i2)         -> (is_var_int i1) && (is_var_int i2)
+    | LessElem(e1,e2)           -> (is_var_elem e1) && (is_var_elem e2)
+    | GreaterElem(e1,e2)        -> (is_var_elem e1) && (is_var_elem e2)
+    | Eq(x,y)                   ->  (is_var_term x) && (is_var_term y)
+    | InEq(t1,t2)               -> ((is_var_term  t1) && (is_var_term  t2) ||
+                                    (is_var_term  t1) && (is_term_flat t2) ||
+                                    (is_term_flat t1) && (is_var_term  t2) )
+    | BoolVar v                 -> true
+    | PC _                      -> true
+    | PCUpdate _                -> true
+    | PCRange _                 -> true
   end
 
 
@@ -1087,58 +1090,59 @@ and procedure_name_to_str (p:procedure_name) : string =
 
 and atom_to_str a =
   match a with
-  | Append(p1,p2,pres)         -> Printf.sprintf "append(%s,%s,%s)"
-                                    (path_to_str p1) (path_to_str p2)
-                                    (path_to_str pres)
-  | Reach(h,a_from,a_to,l,p)   -> Printf.sprintf "reach(%s,%s,%s,%s,%s)"
-                                    (mem_to_str h) (addr_to_str a_from)
-                                    (addr_to_str a_to) (int_to_str l)
-                                    (path_to_str p)
-  | OrderList(h,a_from,a_to)   -> Printf.sprintf "orderlist(%s,%s,%s)"
-                                    (mem_to_str h) (addr_to_str a_from)
-                                    (addr_to_str a_to)
-  | Skiplist(h,s,l,a_from,a_to)-> Printf.sprintf "skiplist(%s,%s,%s,%s,%s)"
-                                    (mem_to_str h)
-                                    (set_to_str s)
-                                    (int_to_str l)
-                                    (addr_to_str a_from)
-                                    (addr_to_str a_to)
-  | In(a,s)                    -> Printf.sprintf "%s in %s "
-                                    (addr_to_str a) (set_to_str s)
-  | SubsetEq(s_in,s_out)       -> Printf.sprintf "%s subseteq %s"
-                                    (set_to_str s_in) (set_to_str s_out)
-  | InTh(th,s)                 -> Printf.sprintf "%s inTh %s"
-                                    (tid_to_str th) (setth_to_str s)
-  | SubsetEqTh(s_in,s_out)     -> Printf.sprintf "%s subseteqTh %s"
-                                    (setth_to_str s_in) (setth_to_str s_out)
-  | InElem(e,s)                -> Printf.sprintf "%s inElem %s"
-                                    (elem_to_str e) (setelem_to_str s)
-  | SubsetEqElem(s_in,s_out)   -> Printf.sprintf "%s subseteqElem %s"
-                                    (setelem_to_str s_in) (setelem_to_str s_out)
-  | Less (i1,i2)               -> Printf.sprintf "%s < %s"
-                                    (int_to_str i1) (int_to_str i2)
-  | Greater (i1,i2)            -> Printf.sprintf "%s > %s"
-                                    (int_to_str i1) (int_to_str i2)
-  | LessEq (i1,i2)             -> Printf.sprintf "%s <= %s"
-                                    (int_to_str i1) (int_to_str i2)
-  | GreaterEq (i1,i2)          -> Printf.sprintf "%s >= %s"
-                                    (int_to_str i1) (int_to_str i2)
-  | LessElem(e1,e2)            -> Printf.sprintf "%s < %s"
-                                    (elem_to_str e1) (elem_to_str e2)
-  | GreaterElem(e1,e2)         -> Printf.sprintf "%s < %s"
-                                    (elem_to_str e1) (elem_to_str e2)
-  | Eq(exp)                    -> eq_to_str (exp)
-  | InEq(exp)                  -> diseq_to_str (exp)
-  | BoolVar v                  -> variable_to_str v
-  | PC (pc,t,pr)               -> let pc_str = if pr then "pc'" else "pc" in
-                                  let th_str = shared_or_local_to_str t in
-                                  Printf.sprintf "%s(%s) = %i" pc_str th_str pc
-  | PCUpdate (pc,t)            -> let th_str = tid_to_str t in
-                                  Printf.sprintf "pc' = pc{%s<-%i}" th_str pc
-  | PCRange (pc1,pc2,t,pr)     -> let pc_str = if pr then "pc'" else "pc" in
-                                  let th_str = shared_or_local_to_str t in
-                                  Printf.sprintf "%i <= %s(%s) <= %i"
-                                                  pc1 pc_str th_str pc2
+  | Append(p1,p2,pres)                 -> Printf.sprintf "append(%s,%s,%s)"
+                                            (path_to_str p1) (path_to_str p2)
+                                            (path_to_str pres)
+  | Reach(h,a_from,a_to,l,p)           -> Printf.sprintf "reach(%s,%s,%s,%s,%s)"
+                                            (mem_to_str h) (addr_to_str a_from)
+                                            (addr_to_str a_to) (int_to_str l)
+                                            (path_to_str p)
+  | OrderList(h,a_from,a_to)           -> Printf.sprintf "orderlist(%s,%s,%s)"
+                                            (mem_to_str h) (addr_to_str a_from)
+                                            (addr_to_str a_to)
+  | Skiplist(h,s,l,a_from,a_to,elems)  -> Printf.sprintf "skiplist(%s,%s,%s,%s,%s,%s)"
+                                            (mem_to_str h)
+                                            (set_to_str s)
+                                            (int_to_str l)
+                                            (addr_to_str a_from)
+                                            (addr_to_str a_to)
+                                            (setelem_to_str elems)
+  | In(a,s)                            -> Printf.sprintf "%s in %s "
+                                            (addr_to_str a) (set_to_str s)
+  | SubsetEq(s_in,s_out)               -> Printf.sprintf "%s subseteq %s"
+                                            (set_to_str s_in) (set_to_str s_out)
+  | InTh(th,s)                         -> Printf.sprintf "%s inTh %s"
+                                            (tid_to_str th) (setth_to_str s)
+  | SubsetEqTh(s_in,s_out)             -> Printf.sprintf "%s subseteqTh %s"
+                                            (setth_to_str s_in) (setth_to_str s_out)
+  | InElem(e,s)                        -> Printf.sprintf "%s inElem %s"
+                                            (elem_to_str e) (setelem_to_str s)
+  | SubsetEqElem(s_in,s_out)           -> Printf.sprintf "%s subseteqElem %s"
+                                            (setelem_to_str s_in) (setelem_to_str s_out)
+  | Less (i1,i2)                       -> Printf.sprintf "%s < %s"
+                                            (int_to_str i1) (int_to_str i2)
+  | Greater (i1,i2)                    -> Printf.sprintf "%s > %s"
+                                            (int_to_str i1) (int_to_str i2)
+  | LessEq (i1,i2)                     -> Printf.sprintf "%s <= %s"
+                                            (int_to_str i1) (int_to_str i2)
+  | GreaterEq (i1,i2)                  -> Printf.sprintf "%s >= %s"
+                                            (int_to_str i1) (int_to_str i2)
+  | LessElem(e1,e2)                    -> Printf.sprintf "%s < %s"
+                                            (elem_to_str e1) (elem_to_str e2)
+  | GreaterElem(e1,e2)                 -> Printf.sprintf "%s < %s"
+                                            (elem_to_str e1) (elem_to_str e2)
+  | Eq(exp)                            -> eq_to_str (exp)
+  | InEq(exp)                          -> diseq_to_str (exp)
+  | BoolVar v                          -> variable_to_str v
+  | PC (pc,t,pr)                       -> let pc_str = if pr then "pc'" else "pc" in
+                                          let th_str = shared_or_local_to_str t in
+                                          Printf.sprintf "%s(%s) = %i" pc_str th_str pc
+  | PCUpdate (pc,t)                    -> let th_str = tid_to_str t in
+                                          Printf.sprintf "pc' = pc{%s<-%i}" th_str pc
+  | PCRange (pc1,pc2,t,pr)             -> let pc_str = if pr then "pc'" else "pc" in
+                                          let th_str = shared_or_local_to_str t in
+                                          Printf.sprintf "%i <= %s(%s) <= %i"
+                                                          pc1 pc_str th_str pc2
 
 and literal_to_str e =
   match e with
@@ -1572,40 +1576,41 @@ and voc_tidarr (arr:tidarr) : tid list =
 
 and voc_atom (a:atom) : tid list =
   match a with
-    Append(p1,p2,pres)         -> (voc_path p1) @
-                                  (voc_path p2) @
-                                  (voc_path pres)
-  | Reach(h,a_from,a_to,l,p)   -> (voc_mem h) @
-                                  (voc_addr a_from) @
-                                  (voc_addr a_to) @
-                                  (voc_int l) @
-                                  (voc_path p)
-  | OrderList(h,a_from,a_to)   -> (voc_mem h) @
-                                  (voc_addr a_from) @
-                                  (voc_addr a_to)
-  | Skiplist(h,s,l,a_from,a_to)-> (voc_mem h) @
-                                  (voc_set s) @
-                                  (voc_int l) @
-                                  (voc_addr a_from) @
-                                  (voc_addr a_to)
-  | In(a,s)                    -> (voc_addr a) @ (voc_set s)
-  | SubsetEq(s_in,s_out)       -> (voc_set s_in) @ (voc_set s_out)
-  | InTh(th,s)                 -> (voc_tid th) @ (voc_setth s)
-  | SubsetEqTh(s_in,s_out)     -> (voc_setth s_in) @ (voc_setth s_out)
-  | InElem(e,s)                -> (voc_elem e) @ (voc_setelem s)
-  | SubsetEqElem(s_in,s_out)   -> (voc_setelem s_in) @ (voc_setelem s_out)
-  | Less (i1,i2)               -> (voc_int i1) @ (voc_int i2)
-  | Greater (i1,i2)            -> (voc_int i1) @ (voc_int i2)
-  | LessEq (i1,i2)             -> (voc_int i1) @ (voc_int i2)
-  | GreaterEq (i1,i2)          -> (voc_int i1) @ (voc_int i2)
-  | LessElem(e1,e2)            -> (voc_elem e1) @ (voc_elem e2)
-  | GreaterElem(e1,e2)         -> (voc_elem e1) @ (voc_elem e2)
-  | Eq(exp)                    -> (voc_eq exp)
-  | InEq(exp)                  -> (voc_ineq exp)
-  | BoolVar v                  -> get_tid_in v
-  | PC (pc,t,_)                -> (match t with | Shared -> [] | Local x -> [x])
-  | PCUpdate (pc,t)            -> [t]
-  | PCRange (pc1,pc2,t,_)      -> (match t with | Shared -> [] | Local x -> [x])
+    Append(p1,p2,pres)                 -> (voc_path p1) @
+                                          (voc_path p2) @
+                                          (voc_path pres)
+  | Reach(h,a_from,a_to,l,p)           -> (voc_mem h) @
+                                          (voc_addr a_from) @
+                                          (voc_addr a_to) @
+                                          (voc_int l) @
+                                          (voc_path p)
+  | OrderList(h,a_from,a_to)           -> (voc_mem h) @
+                                          (voc_addr a_from) @
+                                          (voc_addr a_to)
+  | Skiplist(h,s,l,a_from,a_to,elems)  -> (voc_mem h) @
+                                          (voc_set s) @
+                                          (voc_int l) @
+                                          (voc_addr a_from) @
+                                          (voc_addr a_to) @
+                                          (voc_setelem elems)
+  | In(a,s)                            -> (voc_addr a) @ (voc_set s)
+  | SubsetEq(s_in,s_out)               -> (voc_set s_in) @ (voc_set s_out)
+  | InTh(th,s)                         -> (voc_tid th) @ (voc_setth s)
+  | SubsetEqTh(s_in,s_out)             -> (voc_setth s_in) @ (voc_setth s_out)
+  | InElem(e,s)                        -> (voc_elem e) @ (voc_setelem s)
+  | SubsetEqElem(s_in,s_out)           -> (voc_setelem s_in) @ (voc_setelem s_out)
+  | Less (i1,i2)                       -> (voc_int i1) @ (voc_int i2)
+  | Greater (i1,i2)                    -> (voc_int i1) @ (voc_int i2)
+  | LessEq (i1,i2)                     -> (voc_int i1) @ (voc_int i2)
+  | GreaterEq (i1,i2)                  -> (voc_int i1) @ (voc_int i2)
+  | LessElem(e1,e2)                    -> (voc_elem e1) @ (voc_elem e2)
+  | GreaterElem(e1,e2)                 -> (voc_elem e1) @ (voc_elem e2)
+  | Eq(exp)                            -> (voc_eq exp)
+  | InEq(exp)                          -> (voc_ineq exp)
+  | BoolVar v                          -> get_tid_in v
+  | PC (pc,t,_)                        -> (match t with | Shared -> [] | Local x -> [x])
+  | PCUpdate (pc,t)                    -> [t]
+  | PCRange (pc1,pc2,t,_)              -> (match t with | Shared -> [] | Local x -> [x])
 
 
 and voc_eq ((t1,t2):eq) : tid list = (voc_term t1) @ (voc_term t2)
@@ -2226,30 +2231,30 @@ let required_sorts (phi:formula) : sort list =
 
   and req_atom (a:atom) : SortSet.t =
     match a with
-    | Append (p1,p2,p3)      -> list_union [req_p p1;req_p p1;req_p p2;req_p p3]
-    | Reach (m,a1,a2,l,p)    -> list_union [req_m m;req_a a1;req_a a2;
-                                            req_i l;req_p p]
-    | OrderList (m,a1,a2)    -> list_union [req_m m;req_a a1;req_a a2]
-    | Skiplist (m,s,l,a1,a2) -> list_union [req_m m;req_s s;req_i l;
-                                            req_a a1;req_a a2]
-    | In (a,s)               -> list_union [req_a a;req_s s]
-    | SubsetEq (s1,s2)       -> list_union [req_s s1;req_s s2]
-    | InTh (t,s)             -> list_union [req_t t;req_st s]
-    | SubsetEqTh (s1,s2)     -> list_union [req_st s1;req_st s2]
-    | InElem (e,s)           -> list_union [req_e e;req_se s]
-    | SubsetEqElem (s1,s2)   -> list_union [req_se s1;req_se s2]
-    | Less (i1,i2)           -> list_union [req_i i1;req_i i2]
-    | Greater (i1,i2)        -> list_union [req_i i1;req_i i2]
-    | LessEq (i1,i2)         -> list_union [req_i i1;req_i i2]
-    | GreaterEq (i1,i2)      -> list_union [req_i i1;req_i i2]
-    | LessElem  (e1,e2)      -> list_union [req_e e1; req_e e2]
-    | GreaterElem (e1,e2)    -> list_union [req_e e1; req_e e2]
-    | Eq (t1,t2)             -> union (req_term t1) (req_term t2)
-    | InEq (t1,t2)           -> union (req_term t1) (req_term t2)
-    | BoolVar v              -> single Bool
-    | PC _                   -> empty
-    | PCUpdate _             -> empty
-    | PCRange _              -> empty
+    | Append (p1,p2,p3)          -> list_union [req_p p1;req_p p1;req_p p2;req_p p3]
+    | Reach (m,a1,a2,l,p)        -> list_union [req_m m;req_a a1;req_a a2;
+                                                req_i l;req_p p]
+    | OrderList (m,a1,a2)        -> list_union [req_m m;req_a a1;req_a a2]
+    | Skiplist (m,s,l,a1,a2,es)  -> list_union [req_m m;req_s s;req_i l;
+                                                req_a a1;req_a a2; req_se es]
+    | In (a,s)                   -> list_union [req_a a;req_s s]
+    | SubsetEq (s1,s2)           -> list_union [req_s s1;req_s s2]
+    | InTh (t,s)                 -> list_union [req_t t;req_st s]
+    | SubsetEqTh (s1,s2)         -> list_union [req_st s1;req_st s2]
+    | InElem (e,s)               -> list_union [req_e e;req_se s]
+    | SubsetEqElem (s1,s2)       -> list_union [req_se s1;req_se s2]
+    | Less (i1,i2)               -> list_union [req_i i1;req_i i2]
+    | Greater (i1,i2)            -> list_union [req_i i1;req_i i2]
+    | LessEq (i1,i2)             -> list_union [req_i i1;req_i i2]
+    | GreaterEq (i1,i2)          -> list_union [req_i i1;req_i i2]
+    | LessElem  (e1,e2)          -> list_union [req_e e1; req_e e2]
+    | GreaterElem (e1,e2)        -> list_union [req_e e1; req_e e2]
+    | Eq (t1,t2)                 -> union (req_term t1) (req_term t2)
+    | InEq (t1,t2)               -> union (req_term t1) (req_term t2)
+    | BoolVar v                  -> single Bool
+    | PC _                       -> empty
+    | PCUpdate _                 -> empty
+    | PCRange _                  -> empty
 
   and req_m (m:mem) : SortSet.t =
     match m with
@@ -2394,30 +2399,30 @@ let special_ops (phi:formula) : special_op_t list =
 
   and ops_atom (a:atom) : OpsSet.t =
     match a with
-    | Append (p1,p2,p3)      -> list_union [ops_p p1;ops_p p1;ops_p p2;ops_p p3]
-    | Reach (m,a1,a2,l,p)    -> append Reachable[ops_m m;ops_a a1;ops_a a2;
-                                                 ops_i l;ops_p p]
-    | OrderList (m,a1,a2)    -> append OrderedList[ops_m m;ops_a a1;ops_a a2]
-    | Skiplist (m,s,l,a1,a2) -> append SkiplistProp[ops_m m;ops_s s; ops_i l;
-                                                    ops_a a1;ops_a a2]
-    | In (a,s)               -> list_union [ops_a a;ops_s s]
-    | SubsetEq (s1,s2)       -> list_union [ops_s s1;ops_s s2]
-    | InTh (t,s)             -> list_union [ops_t t;ops_st s]
-    | SubsetEqTh (s1,s2)     -> list_union [ops_st s1;ops_st s2]
-    | InElem (e,s)           -> list_union [ops_e e;ops_se s]
-    | SubsetEqElem (s1,s2)   -> list_union [ops_se s1;ops_se s2]
-    | Less (i1,i2)           -> list_union [ops_i i1;ops_i i2]
-    | Greater (i1,i2)        -> list_union [ops_i i1;ops_i i2]
-    | LessEq (i1,i2)         -> list_union [ops_i i1;ops_i i2]
-    | GreaterEq (i1,i2)      -> list_union [ops_i i1;ops_i i2]
-    | LessElem (e1,e2)       -> append ElemOrder [ops_e e1; ops_e e2]
-    | GreaterElem (e1,e2)    -> append ElemOrder [ops_e e1; ops_e e2]
-    | Eq (t1,t2)             -> list_union [ops_term t1;ops_term t2]
-    | InEq (t1,t2)           -> list_union [ops_term t1;ops_term t2]
-    | BoolVar v              -> empty
-    | PC _                   -> empty
-    | PCUpdate _             -> empty
-    | PCRange _              -> empty
+    | Append (p1,p2,p3)          -> list_union [ops_p p1;ops_p p1;ops_p p2;ops_p p3]
+    | Reach (m,a1,a2,l,p)        -> append Reachable[ops_m m;ops_a a1;ops_a a2;
+                                                     ops_i l;ops_p p]
+    | OrderList (m,a1,a2)        -> append OrderedList[ops_m m;ops_a a1;ops_a a2]
+    | Skiplist (m,s,l,a1,a2,es)  -> append SkiplistProp[ops_m m;ops_s s; ops_i l;
+                                                        ops_a a1;ops_a a2; ops_se es]
+    | In (a,s)                   -> list_union [ops_a a;ops_s s]
+    | SubsetEq (s1,s2)           -> list_union [ops_s s1;ops_s s2]
+    | InTh (t,s)                 -> list_union [ops_t t;ops_st s]
+    | SubsetEqTh (s1,s2)         -> list_union [ops_st s1;ops_st s2]
+    | InElem (e,s)               -> list_union [ops_e e;ops_se s]
+    | SubsetEqElem (s1,s2)       -> list_union [ops_se s1;ops_se s2]
+    | Less (i1,i2)               -> list_union [ops_i i1;ops_i i2]
+    | Greater (i1,i2)            -> list_union [ops_i i1;ops_i i2]
+    | LessEq (i1,i2)             -> list_union [ops_i i1;ops_i i2]
+    | GreaterEq (i1,i2)          -> list_union [ops_i i1;ops_i i2]
+    | LessElem (e1,e2)           -> append ElemOrder [ops_e e1; ops_e e2]
+    | GreaterElem (e1,e2)        -> append ElemOrder [ops_e e1; ops_e e2]
+    | Eq (t1,t2)                 -> list_union [ops_term t1;ops_term t2]
+    | InEq (t1,t2)               -> list_union [ops_term t1;ops_term t2]
+    | BoolVar v                  -> empty
+    | PC _                       -> empty
+    | PCUpdate _                 -> empty
+    | PCRange _                  -> empty
 
   and ops_m (m:mem) : OpsSet.t =
     match m with
@@ -3103,9 +3108,9 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
                                Reach (norm_mem m, norm_addr a1, norm_addr a2,
                                       VarInt i_var, norm_path p)
     | OrderList (m,a1,a2) -> OrderList (norm_mem m, norm_addr a1, norm_addr a2)
-    | Skiplist(m,s,i,a1,a2) -> let i_var = gen_if_not_var (IntT i) Int in
-                                 Skiplist(norm_mem m, norm_set s, VarInt i_var,
-                                          norm_addr a1, norm_addr a2)
+    | Skiplist(m,s,i,a1,a2,es) -> let i_var = gen_if_not_var (IntT i) Int in
+                                   Skiplist(norm_mem m, norm_set s, VarInt i_var,
+                                            norm_addr a1, norm_addr a2, norm_setelem es)
     | In (a,s) -> In (norm_addr a, norm_set s)
     | SubsetEq (s1,s2) -> SubsetEq (norm_set s1, norm_set s2)
     | InTh (t,s) -> InTh (norm_tid t, norm_setth s)
@@ -3189,12 +3194,13 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
   in
   match l with
   | Atom a -> Literal(Atom (norm_atom a))
-  | NegAtom (Skiplist(m,s,i,a1,a2)) ->
+  | NegAtom (Skiplist(m,s,i,a1,a2,es)) ->
       let m_var = gen_if_not_var (MemT m) Mem in
       let s_var = gen_if_not_var (SetT s) Set in
       let i_var = gen_if_not_var (IntT i) Int in
       let a1_var = gen_if_not_var (AddrT a1) Addr in
       let a2_var = gen_if_not_var (AddrT a2) Addr in
+      let es_var = gen_if_not_var (SetElemT es) SetElem in
       let p = gen_fresh_path_var info in
       let q = gen_fresh_path_var info in
       let r = gen_fresh_set_var info in
@@ -3212,9 +3218,12 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
                             (VarMem m_var,VarAddr a1_var,VarAddr a2_var))) in
       let phi_diff = norm_literal info (Atom(InEq(SetT (VarSet s_var), SetT r))) in
 (*      let phi_a_in_s = norm_literal info (Atom(In(a,VarSet s_var))) in *)
+      let phi_not_elems = norm_literal info (Atom(InEq(SetElemT (VarSetElem es_var),
+                                                       SetElemT(SetToElems(VarSet s_var,VarMem m_var))))) in
       let phi_not_subset = norm_literal info (NegAtom(SubsetEq(r,u))) in
         disj_list
           [phi_unordered;
+           phi_not_elems;
            conj_list [eq_path p (GetPath(VarMem m_var,VarAddr a1_var,VarAddr a2_var,VarInt zero));
                       eq_set r (PathToSet(p));
                       phi_diff];
@@ -3832,60 +3841,61 @@ and replace_terms_int (tbl:(term,term) Hashtbl.t) (i:integer) : integer =
 
 and replace_terms_atom (tbl:(term,term) Hashtbl.t) (a:atom) : atom =
   match a with
-    Append(p1,p2,pres)         -> Append(replace_terms_path tbl p1,
-                                         replace_terms_path tbl p2,
-                                         replace_terms_path tbl pres)
-  | Reach(h,a_from,a_to,l,p)   -> Reach(replace_terms_mem tbl h,
-                                        replace_terms_addr tbl a_from,
-                                        replace_terms_addr tbl a_to,
-                                        replace_terms_int tbl l,
-                                        replace_terms_path tbl p)
-  | OrderList(h,a_from,a_to)   -> OrderList(replace_terms_mem tbl h,
-                                            replace_terms_addr tbl a_from,
-                                            replace_terms_addr tbl a_to)
-  | Skiplist(h,s,l,a_from,a_to)-> Skiplist(replace_terms_mem tbl h,
-                                           replace_terms_set tbl s,
-                                           replace_terms_int tbl l,
-                                           replace_terms_addr tbl a_from,
-                                           replace_terms_addr tbl a_to)
-  | In(a,s)                    -> In(replace_terms_addr tbl a,
-                                     replace_terms_set tbl s)
-  | SubsetEq(s_in,s_out)       -> SubsetEq(replace_terms_set tbl s_in,
-                                           replace_terms_set tbl s_out)
-  | InTh(th,s)                 -> InTh(replace_terms_tid tbl th,
-                                       replace_terms_setth tbl s)
-  | SubsetEqTh(s_in,s_out)     -> SubsetEqTh(replace_terms_setth tbl s_in,
-                                             replace_terms_setth tbl s_out)
-  | InElem(e,s)                -> InElem(replace_terms_elem tbl e,
-                                         replace_terms_setelem tbl s)
-  | SubsetEqElem(s_in,s_out)   -> SubsetEqElem(replace_terms_setelem tbl s_in,
-                                               replace_terms_setelem tbl s_out)
-  | Less(i1,i2)                -> Less(replace_terms_int tbl i1,
-                                       replace_terms_int tbl i2)
-  | Greater(i1,i2)             -> Greater(replace_terms_int tbl i1,
-                                          replace_terms_int tbl i2)
-  | LessEq(i1,i2)              -> LessEq(replace_terms_int tbl i1,
-                                         replace_terms_int tbl i2)
-  | GreaterEq(i1,i2)           -> GreaterEq(replace_terms_int tbl i1,
-                                            replace_terms_int tbl i2)
-  | LessElem(e1,e2)            -> LessElem(replace_terms_elem tbl e1,
-                                           replace_terms_elem tbl e2)
-  | GreaterElem(e1,e2)         -> GreaterElem(replace_terms_elem tbl e1,
-                                              replace_terms_elem tbl e2)
-  | Eq(exp)                    -> Eq(replace_terms_eq tbl exp)
-  | InEq(exp)                  -> InEq(replace_terms_ineq tbl exp)
-  | BoolVar v                  -> BoolVar (replace_terms_in_vars tbl v)
-  | PC (pc,th,p)               -> begin
-                                    match th with
-                                    | Shared  -> PC (pc,th,p)
-                                    | Local t -> PC (pc, Local (replace_terms_tid tbl t), p)
-                                  end
-  | PCUpdate (pc,t)            -> PCUpdate (pc, replace_terms_tid tbl t)
-  | PCRange (pc1,pc2,th,p)     -> begin
-                                    match th with
-                                    | Shared  -> PCRange (pc1,pc2,th,p)
-                                    | Local t -> PCRange (pc1,pc2,Local(replace_terms_tid tbl t),p)
-                                  end
+    Append(p1,p2,pres)                 -> Append(replace_terms_path tbl p1,
+                                                 replace_terms_path tbl p2,
+                                                 replace_terms_path tbl pres)
+  | Reach(h,a_from,a_to,l,p)           -> Reach(replace_terms_mem tbl h,
+                                                replace_terms_addr tbl a_from,
+                                                replace_terms_addr tbl a_to,
+                                                replace_terms_int tbl l,
+                                                replace_terms_path tbl p)
+  | OrderList(h,a_from,a_to)           -> OrderList(replace_terms_mem tbl h,
+                                                    replace_terms_addr tbl a_from,
+                                                    replace_terms_addr tbl a_to)
+  | Skiplist(h,s,l,a_from,a_to,elems)  -> Skiplist(replace_terms_mem tbl h,
+                                                   replace_terms_set tbl s,
+                                                   replace_terms_int tbl l,
+                                                   replace_terms_addr tbl a_from,
+                                                   replace_terms_addr tbl a_to,
+                                                   replace_terms_setelem tbl elems)
+  | In(a,s)                            -> In(replace_terms_addr tbl a,
+                                             replace_terms_set tbl s)
+  | SubsetEq(s_in,s_out)               -> SubsetEq(replace_terms_set tbl s_in,
+                                                   replace_terms_set tbl s_out)
+  | InTh(th,s)                         -> InTh(replace_terms_tid tbl th,
+                                               replace_terms_setth tbl s)
+  | SubsetEqTh(s_in,s_out)             -> SubsetEqTh(replace_terms_setth tbl s_in,
+                                                     replace_terms_setth tbl s_out)
+  | InElem(e,s)                        -> InElem(replace_terms_elem tbl e,
+                                                 replace_terms_setelem tbl s)
+  | SubsetEqElem(s_in,s_out)           -> SubsetEqElem(replace_terms_setelem tbl s_in,
+                                                       replace_terms_setelem tbl s_out)
+  | Less(i1,i2)                        -> Less(replace_terms_int tbl i1,
+                                               replace_terms_int tbl i2)
+  | Greater(i1,i2)                     -> Greater(replace_terms_int tbl i1,
+                                                  replace_terms_int tbl i2)
+  | LessEq(i1,i2)                      -> LessEq(replace_terms_int tbl i1,
+                                                 replace_terms_int tbl i2)
+  | GreaterEq(i1,i2)                   -> GreaterEq(replace_terms_int tbl i1,
+                                                    replace_terms_int tbl i2)
+  | LessElem(e1,e2)                    -> LessElem(replace_terms_elem tbl e1,
+                                                   replace_terms_elem tbl e2)
+  | GreaterElem(e1,e2)                 -> GreaterElem(replace_terms_elem tbl e1,
+                                                      replace_terms_elem tbl e2)
+  | Eq(exp)                            -> Eq(replace_terms_eq tbl exp)
+  | InEq(exp)                          -> InEq(replace_terms_ineq tbl exp)
+  | BoolVar v                          -> BoolVar (replace_terms_in_vars tbl v)
+  | PC (pc,th,p)                       -> begin
+                                            match th with
+                                            | Shared  -> PC (pc,th,p)
+                                            | Local t -> PC (pc, Local (replace_terms_tid tbl t), p)
+                                          end
+  | PCUpdate (pc,t)                    -> PCUpdate (pc, replace_terms_tid tbl t)
+  | PCRange (pc1,pc2,th,p)             -> begin
+                                            match th with
+                                            | Shared  -> PCRange (pc1,pc2,th,p)
+                                            | Local t -> PCRange (pc1,pc2,Local(replace_terms_tid tbl t),p)
+                                          end
 
 
 and replace_terms_literal (tbl:(term,term) Hashtbl.t) (l:literal) : literal =

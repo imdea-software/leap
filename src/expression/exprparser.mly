@@ -801,20 +801,22 @@ literal :
       let a_to   = parser_check_type check_type_addr $7 E.Addr get_str_expr in
         E.Atom (E.OrderList (h,a_from,a_to))
     }
-  | SKIPLIST OPEN_PAREN term COMMA term COMMA term COMMA term COMMA term CLOSE_PAREN
+  | SKIPLIST OPEN_PAREN term COMMA term COMMA term COMMA term COMMA term COMMA term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "skiplist(%s,%s,%s,%s,%s)"
+      let get_str_expr () = sprintf "skiplist(%s,%s,%s,%s,%s,%s)"
                                         (E.term_to_str $3)
                                         (E.term_to_str $5)
                                         (E.term_to_str $7)
                                         (E.term_to_str $9)
-                                        (E.term_to_str $11) in
-      let h      = parser_check_type check_type_mem  $3  E.Mem get_str_expr in
-      let s      = parser_check_type check_type_set  $5  E.Set get_str_expr in
-      let l      = parser_check_type check_type_int  $7  E.Int get_str_expr in
-      let a_from = parser_check_type check_type_addr $9  E.Addr get_str_expr in
-      let a_to   = parser_check_type check_type_addr $11 E.Addr get_str_expr in
-        E.Atom (E.Skiplist (h,s,l,a_from,a_to))
+                                        (E.term_to_str $11)
+                                        (E.term_to_str $13) in
+      let h      = parser_check_type check_type_mem      $3 E.Mem get_str_expr in
+      let s      = parser_check_type check_type_set      $5 E.Set get_str_expr in
+      let l      = parser_check_type check_type_int      $7 E.Int get_str_expr in
+      let a_from = parser_check_type check_type_addr     $9 E.Addr get_str_expr in
+      let a_to   = parser_check_type check_type_addr    $11 E.Addr get_str_expr in
+      let elems  = parser_check_type check_type_setelem $13 E.SetElem get_str_expr in
+        E.Atom (E.Skiplist (h,s,l,a_from,a_to,elems))
     }
   | term IN term
     {

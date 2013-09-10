@@ -363,7 +363,7 @@ and is_int_atom ato =
   | E.Reach(_,_,_,_)                   -> false
   | E.ReachAt(_,_,_,_,_)               -> false
   | E.OrderList(_,_,_)                 -> false
-  | E.Skiplist(_,_,_,_,_)              -> false
+  | E.Skiplist(_,_,_,_,_,_)            -> false
   | E.In(_,_)                          -> false
   | E.SubsetEq(_,_)                    -> false
   | E.InTh(_,_)                        -> false

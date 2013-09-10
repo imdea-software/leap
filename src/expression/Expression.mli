@@ -172,7 +172,7 @@ and atom =
   | Reach         of mem * addr * addr * path
   | ReachAt       of mem * addr * addr * integer * path
   | OrderList     of mem * addr * addr
-  | Skiplist      of mem * set * integer * addr * addr
+  | Skiplist      of mem * set * integer * addr * addr * setelem
   | In            of addr * set
   | SubsetEq      of set * set
   | InTh          of tid * setth
