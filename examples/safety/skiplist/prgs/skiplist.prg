@@ -4,15 +4,17 @@ global
     addr head
     addr tail
     ghost addrSet region
-//  ghost elemSet elements
+    ghost elemSet elements
 
 assume
   region = {head} Union {tail} Union {null} /\
+  elements = UnionElem (SingleElem (lowestElem),
+                        SingleElem (highestElem)) /\
 //  elements = UnionElem (
 //              UnionElem (SingleElem (rd(heap,head).data),
 //                         SingleElem (rd(heap,tail).data)),
 //                         SingleElem (rd(heap,null).data)) /\
-  skiplist(heap, region, 0, head, tail) /\
+  skiplist(heap, region, 0, head, tail, elements) /\
   rd(heap, head).data = lowestElem /\
   rd(heap, tail).data = highestElem /\
   head != tail /\
@@ -161,6 +163,7 @@ assume
                                     update[i]->arr[i] := newCell
                                       $ if (i=0) then
                                           region := region Union {newCell};
+                                          elements := UnionElem (elements, SingleElem(e));
                                         endif
                                       $
 :insert_newCell_unconnected]
@@ -244,6 +247,7 @@ assume
                                     update[i]->arr[i] := curr->arr[i]
                                     $ if (i=0) then
                                         region := region SetDiff {curr};
+                                        elements := SetDiffElem (elements, SingleElem(e));
                                       endif
                                     $
 :remove_final_loop_begins]
