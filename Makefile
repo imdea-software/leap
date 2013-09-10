@@ -74,7 +74,11 @@ $(TOOLS) :
 
 
 $(LEAP):
-	@sed -i '' 's/revision = [0-9]*/revision = '$(REVISION)'/g' src/progs/Version.ml
+	@if [ "`uname -s`" = "Darwin" ]; then \
+		sed -i '' 's/revision = [0-9]*/revision = '$(REVISION)'/g' src/progs/Version.ml; \
+	else \
+		sed -i '' 's/revision = [0-9]*/revision = '$(REVISION)'/g' src/progs/Version.ml; \
+	fi
 	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(LEAP).byte
 	@ln -f -s ./_build/src/progs/leap/$(LEAP).byte $(LEAP)
 
