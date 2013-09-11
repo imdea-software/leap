@@ -800,17 +800,21 @@ let build_curr_pc (th : E.tid) (p : E.pc_t) : E.formula =
 let build_next_pc (mode : sysMode)
                   (th : E.tid)
                   (next_list : E.pc_t list) : E.formula =
-  assert (List.length next_list > 0);
-  let fst_next_pos = List.hd next_list in
-  let build_eq' i = match mode with
-    | SClosed _ -> E.pcupd_form i th
-    | SOpenArray _ -> E.pcupd_form i th in
-  let fst_eq = build_eq' fst_next_pos in
-  let next_eq = List.fold_left (fun b p ->
-                  E.Or (build_eq' p,b)
-                ) (fst_eq) (List.tl next_list)
-  in
-    next_eq
+  match next_list with
+  | [] -> E.True
+  | _ -> begin
+           assert (List.length next_list > 0);
+           let fst_next_pos = List.hd next_list in
+           let build_eq' i = match mode with
+                             | SClosed _ -> E.pcupd_form i th
+                             | SOpenArray _ -> E.pcupd_form i th in
+           let fst_eq = build_eq' fst_next_pos in
+           let next_eq = List.fold_left (fun b p ->
+                           E.Or (build_eq' p,b)
+                         ) (fst_eq) (List.tl next_list)
+           in
+             next_eq
+         end
 
 
 let build_pres_pc (mode : sysMode)

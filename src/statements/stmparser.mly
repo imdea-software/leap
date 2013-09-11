@@ -1939,7 +1939,7 @@ statement:
                               (proc_name)
                               (String.concat "," $ List.map Stm.term_to_str ps) in
       let st_info = { Stm.pos             = !pos;
-                      Stm.next_pos        = 0;
+                      Stm.next_pos        = !pos+1;
                       Stm.else_pos        = 0;
                       Stm.call_pos        = None;
                       Stm.opt_pos         = [];
@@ -1963,7 +1963,7 @@ statement:
       let ps = $7 in
       let g_code = $9 in
       let st_info = { Stm.pos             = !pos;
-                      Stm.next_pos        = 0;
+                      Stm.next_pos        = !pos+1;
                       Stm.else_pos        = 0;
                       Stm.call_pos        = None;
                       Stm.opt_pos         = [];
@@ -2153,7 +2153,7 @@ statement:
       let ps = $5 in
       let g_code = $7 in
       let st_info = {Stm.pos              = !pos;
-                     Stm.next_pos         = 0;
+                     Stm.next_pos         = !pos+1;
                      Stm.else_pos         = 0;
                      Stm.call_pos         = None;
                      Stm.opt_pos          = [];

@@ -835,6 +835,29 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) :
     | SL.Conj ls   -> (try_sat_with_presburger_arithmetic
                         (SL.from_conjformula_to_formula cf)) in
 
+
+  let check_tslk (k:int) (cf:SL.conjunctive_formula) (alpha_r:SL.integer list list option): bool =
+    match cf with
+    | SL.TrueConj -> true
+    | SL.FalseConj -> false
+    | SL.Conj ls -> begin
+                      let module TslkSol = (val TslkSolver.choose !solver_impl k
+                                     : TslkSolver.S) in
+                      TslkSol.compute_model (!comp_model);
+                      let module Trans = TranslateTsl (TslkSol.TslkExp) in
+                      let phi_tslk = Trans.to_tslk ls in
+                      let res = TslkSol.is_sat lines co phi_tslk in
+                      DP.add_dp_calls this_call_tbl (DP.Tslk k) 1;
+                      tslk_sort_map := TslkSol.get_sort_map ();
+                      tslk_model := TslkSol.get_model ();
+                      if res then print_string "S" else print_string "X";
+                      let _ = match alpha_r with
+                              | None -> ()
+                              | Some a -> Hashtbl.add arrg_sat_table a res in
+                      res
+                    end in
+
+
   (* Main verification function *)
   let check (pa:SL.conjunctive_formula)
             (panc:SL.conjunctive_formula)
@@ -928,21 +951,7 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) :
         match final_formula with
         | SL.TrueConj  -> (print_string "T"; Hashtbl.add arrg_sat_table alpha_r true; true)
         | SL.FalseConj -> (print_string "F"; Hashtbl.add arrg_sat_table alpha_r false; false)
-        | SL.Conj ls   -> begin
-                            let k = List.length alpha_r in
-                            let module TslkSol = (val TslkSolver.choose !solver_impl k
-                                           : TslkSolver.S) in
-                            TslkSol.compute_model (!comp_model);
-                            let module Trans = TranslateTsl (TslkSol.TslkExp) in
-                            let phi_tslk = Trans.to_tslk ls in
-                            let res = TslkSol.is_sat lines co phi_tslk in
-                            DP.add_dp_calls this_call_tbl (DP.Tslk k) 1;
-                            tslk_sort_map := TslkSol.get_sort_map ();
-                            tslk_model := TslkSol.get_model ();
-                            if res then print_string "S" else print_string "X";
-                            Hashtbl.add arrg_sat_table alpha_r res;
-                            res
-                          end
+        | SL.Conj ls   -> check_tslk (List.length alpha_r) final_formula (Some alpha_r)
       end
     end else begin
       (* For this arrangement is UNSAT. Return UNSAT. *)
@@ -965,7 +974,10 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) :
     end else begin
       let arrgs = guess_arrangements (SL.combine_conj_formula_list [pa; panc; nc]) in
       (* Verify if some arrangement makes the formula satisfiable *)
-      GenSet.exists (fun alpha -> check pa panc nc alpha) arrgs
+      if GenSet.size arrgs = 0 then
+        check_tslk 1 nc None
+      else
+        GenSet.exists (fun alpha -> check pa panc nc alpha) arrgs
     end in
   answer
 
