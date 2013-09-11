@@ -51,17 +51,13 @@ invariant [skiplist_region] :
       insert::update[insert::i] = insert::prev
 
 
-/\ (@insert_update_all_set. /\ 0 <= j /\ j <= maxLevel) ->
-      insert::update[j] in region
-
 
 #insert_update_j_in_addr2set:
    (@insert_update_all_set. /\ 0 <= j /\ j <= maxLevel) ->
-      insert::update[j] in addr2set(heap, head, j)
+      (insert::update[j] in region /\
+       insert::update[j] in addr2set(heap, head, j) /\
+       rd(heap,insert::update[j]).arr[j] in addr2set(heap, head, j))
 
-
-   (@insert_update_all_set. /\ 0 <= j /\ j <= maxLevel) ->
-      rd(heap,insert::update[j]).arr[j] in addr2set(heap, head, j)
 
 
 ///////////  Remove  /////////////
