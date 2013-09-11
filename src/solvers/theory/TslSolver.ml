@@ -556,108 +556,111 @@ let split_into_pa_nc (cf:SL.conjunctive_formula)
 
 
 
-let guess_arrangements (cf:SL.conjunctive_formula) : (SL.integer list list) 
-  GenSet.t =
+let guess_arrangements (cf:SL.conjunctive_formula) : (SL.integer list list) GenSet.t option =
   let arr = Arr.empty true in
     match cf with
-    | SL.FalseConj -> GenSet.empty ()
-    | SL.TrueConj  -> GenSet.empty ()
+    | SL.FalseConj -> Some (GenSet.empty ())
+    | SL.TrueConj  -> Some (GenSet.empty ())
     | SL.Conj ls   -> begin
-                            let level_vars = SL.varset_instances_of_sort_from_conj cf (SL.Int) in
-                             verb "**** TSL Solver: variables for arrangement...\n{ %s }\n"
-                                    (SL.VarSet.fold (fun v str ->
-                                      str ^ SL.variable_to_str v ^ "; "
-                                    ) level_vars "");
-                            SL.VarSet.iter (fun v -> Arr.add_elem arr (SL.VarInt v)) level_vars;
-                            List.iter (fun l ->
-                              match l with
-                              | SL.Atom(SL.Less(i1,i2)) -> Arr.add_less arr i1 i2
-                              | SL.Atom(SL.Greater(i1,i2)) -> Arr.add_greater arr i1 i2
-                              | SL.Atom(SL.LessEq(i1,i2)) -> Arr.add_lesseq arr i1 i2
-                              | SL.Atom(SL.GreaterEq(i1,i2)) -> Arr.add_greatereq arr i1 i2
-                              | SL.Atom(SL.Eq(SL.IntT (SL.VarInt v1),SL.IntT (SL.IntAdd(SL.VarInt v2,SL.IntVal i))))
-                              | SL.Atom(SL.Eq(SL.IntT (SL.VarInt v1),SL.IntT (SL.IntAdd(SL.IntVal i,SL.VarInt v2))))
-                              | SL.Atom(SL.Eq(SL.IntT (SL.IntAdd(SL.VarInt v2,SL.IntVal i)),SL.IntT (SL.VarInt v1)))
-                              | SL.Atom(SL.Eq(SL.IntT (SL.IntAdd(SL.IntVal i,SL.VarInt v2)),SL.IntT (SL.VarInt v1))) ->
-                                  if i = 1 then Arr.add_followed_by arr (SL.VarInt v2) (SL.VarInt v1)
-                                  else if i = -1 then Arr.add_followed_by arr (SL.VarInt v1) (SL.VarInt v2)
-                                  else if i > 0 then Arr.add_greater arr (SL.VarInt v1) (SL.VarInt v2)
-                                  else if i < 0 then Arr.add_less arr (SL.VarInt v1) (SL.VarInt v2)
-                                  else Arr.add_eq arr (SL.VarInt v1) (SL.VarInt v2)
-                              | SL.Atom(SL.Eq(SL.IntT (SL.VarInt v1),SL.IntT (SL.IntSub(SL.VarInt v2,SL.IntVal i))))
-                              | SL.Atom(SL.Eq(SL.IntT (SL.VarInt v1),SL.IntT (SL.IntSub(SL.IntVal i,SL.VarInt v2))))
-                              | SL.Atom(SL.Eq(SL.IntT (SL.IntSub(SL.VarInt v2,SL.IntVal i)),SL.IntT (SL.VarInt v1)))
-                              | SL.Atom(SL.Eq(SL.IntT (SL.IntSub(SL.IntVal i,SL.VarInt v2)),SL.IntT (SL.VarInt v1))) ->
-                                  if i = 1 then Arr.add_followed_by arr (SL.VarInt v1) (SL.VarInt v2)
-                                  else if i = -1 then Arr.add_followed_by arr (SL.VarInt v2) (SL.VarInt v1)
-                                  else if i > 0 then Arr.add_less arr (SL.VarInt v1) (SL.VarInt v2)
-                                  else if i < 0 then Arr.add_greater arr (SL.VarInt v1) (SL.VarInt v2)
-                                  else Arr.add_eq arr (SL.VarInt v1) (SL.VarInt v2)
-                              | SL.Atom(SL.Eq(SL.IntT (SL.VarInt varr),SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.VarInt v2,SL.IntVal i)))))
-                              | SL.Atom(SL.Eq(SL.IntT (SL.VarInt varr),SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.IntVal i,SL.VarInt v2)))))
-                              | SL.Atom(SL.Eq(SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.VarInt v2,SL.IntVal i))),SL.IntT (SL.VarInt varr)))
-                              | SL.Atom(SL.Eq(SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.IntVal i,SL.VarInt v2))),SL.IntT (SL.VarInt varr))) ->
-                                  let v1 = SL.var_set_param (SL.Local th) varr in
-                                  if i = 1 then Arr.add_followed_by arr (SL.VarInt v2) (SL.VarInt v1)
-                                  else if i = -1 then Arr.add_followed_by arr (SL.VarInt v1) (SL.VarInt v2)
-                                  else if i > 0 then Arr.add_greater arr (SL.VarInt v1) (SL.VarInt v2)
-                                  else if i < 0 then Arr.add_less arr (SL.VarInt v1) (SL.VarInt v2)
-                                  else Arr.add_eq arr (SL.VarInt v1) (SL.VarInt v2)
-                              | SL.Atom(SL.Eq(SL.IntT (SL.VarInt varr),SL.VarUpdate(_,th,SL.IntT(SL.IntSub(SL.VarInt v2,SL.IntVal i)))))
-                              | SL.Atom(SL.Eq(SL.IntT (SL.VarInt varr),SL.VarUpdate(_,th,SL.IntT(SL.IntSub(SL.IntVal i,SL.VarInt v2)))))
-                              | SL.Atom(SL.Eq(SL.VarUpdate(_,th,SL.IntT(SL.IntSub(SL.VarInt v2,SL.IntVal i))),SL.IntT (SL.VarInt varr)))
-                              | SL.Atom(SL.Eq(SL.VarUpdate(_,th,SL.IntT(SL.IntSub(SL.IntVal i,SL.VarInt v2))),SL.IntT (SL.VarInt varr))) ->
-                                  let v1 = SL.var_set_param (SL.Local th) varr in
-                                  if i = 1 then Arr.add_followed_by arr (SL.VarInt v1) (SL.VarInt v2)
-                                  else if i = -1 then Arr.add_followed_by arr (SL.VarInt v2) (SL.VarInt v1)
-                                  else if i > 0 then Arr.add_less arr (SL.VarInt v1) (SL.VarInt v2)
-                                  else if i < 0 then Arr.add_greater arr (SL.VarInt v1) (SL.VarInt v2)
-                                  else Arr.add_eq arr (SL.VarInt v1) (SL.VarInt v2)
-                              | SL.Atom(SL.Eq(SL.IntT(SL.VarInt v),SL.IntT(SL.IntVal 0)))
-                              | SL.Atom(SL.Eq(SL.IntT(SL.IntVal 0),SL.IntT(SL.VarInt v))) ->
-                                  Arr.set_minimum arr (SL.VarInt v)
-                              | SL.Atom(SL.Eq(SL.IntT i1,SL.IntT i2)) -> Arr.add_eq arr i1 i2
-                              | SL.Atom(SL.InEq(SL.IntT i1,SL.IntT i2)) -> Arr.add_ineq arr i1 i2
-                              | SL.NegAtom(SL.Less(i1,i2)) -> Arr.add_greatereq arr i1 i2
-                              | SL.NegAtom(SL.Greater(i1,i2)) -> Arr.add_lesseq arr i1 i2
-                              | SL.NegAtom(SL.LessEq(i1,i2)) -> Arr.add_greater arr i1 i2
-                              | SL.NegAtom(SL.GreaterEq(i1,i2)) -> Arr.add_less arr i1 i2
-                              | SL.NegAtom(SL.Eq(SL.IntT i1,SL.IntT i2)) -> Arr.add_ineq arr i1 i2
-                              | SL.NegAtom(SL.InEq(SL.IntT (SL.VarInt v1),SL.IntT (SL.IntAdd(SL.VarInt v2,SL.IntVal i))))
-                              | SL.NegAtom(SL.InEq(SL.IntT (SL.VarInt v1),SL.IntT (SL.IntAdd(SL.IntVal i,SL.VarInt v2))))
-                              | SL.NegAtom(SL.InEq(SL.IntT (SL.IntAdd(SL.VarInt v2,SL.IntVal i)),SL.IntT (SL.VarInt v1)))
-                              | SL.NegAtom(SL.InEq(SL.IntT (SL.IntAdd(SL.IntVal i,SL.VarInt v2)),SL.IntT (SL.VarInt v1))) ->
-                                  if i > 0 then Arr.add_greater arr (SL.VarInt v1) (SL.VarInt v2)
-                                  else if i < 0 then Arr.add_less arr (SL.VarInt v1) (SL.VarInt v2)
-                                  else Arr.add_eq arr (SL.VarInt v1) (SL.VarInt v2)
-                              | SL.NegAtom(SL.InEq(SL.IntT (SL.VarInt varr),SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.VarInt v2,SL.IntVal i)))))
-                              | SL.NegAtom(SL.InEq(SL.IntT (SL.VarInt varr),SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.IntVal i,SL.VarInt v2)))))
-                              | SL.NegAtom(SL.InEq(SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.VarInt v2,SL.IntVal i))),SL.IntT (SL.VarInt varr)))
-                              | SL.NegAtom(SL.InEq(SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.IntVal i,SL.VarInt v2))),SL.IntT (SL.VarInt varr))) ->
-                                  let v1 = SL.var_set_param (SL.Local th) varr in
-                                  if i > 0 then Arr.add_greater arr (SL.VarInt v1) (SL.VarInt v2)
-                                  else if i < 0 then Arr.add_less arr (SL.VarInt v1) (SL.VarInt v2)
-                                  else Arr.add_eq arr (SL.VarInt v1) (SL.VarInt v2)
-                              | SL.NegAtom(SL.InEq(SL.IntT(SL.VarInt v),SL.IntT(SL.IntVal 0)))
-                              | SL.NegAtom(SL.InEq(SL.IntT(SL.IntVal 0),SL.IntT(SL.VarInt v))) ->
-                                  Arr.set_minimum arr (SL.VarInt v)
-                              | SL.NegAtom(SL.InEq(SL.IntT i1,SL.IntT i2)) -> Arr.add_eq arr i1 i2
-                              | _ -> ()
-                            ) ls;
-                            Log.print "TSL Solver known information for arrangements"
-                                  (Arr.to_str arr SL.int_to_str);
-                            let arrgs = try
-                                          Hashtbl.find arr_table arr
-                                        with
-                                          _ -> begin
-                                                 let a = Arr.gen_arrs arr in
-                                                 Hashtbl.add arr_table arr a;
-                                                 a
-                                               end
-                            in
-                            verb "**** TSL Solver: generated %i arrangements\n" (GenSet.size arrgs);
-                            arrgs
-                          end
+                        let level_vars = SL.varset_instances_of_sort_from_conj cf (SL.Int) in
+                        if SL.VarSet.cardinal level_vars = 0 then
+                          None
+                        else begin
+                          verb "**** TSL Solver: variables for arrangement...\n{ %s }\n"
+                                  (SL.VarSet.fold (fun v str ->
+                                    str ^ SL.variable_to_str v ^ "; "
+                                  ) level_vars "");
+                          SL.VarSet.iter (fun v -> Arr.add_elem arr (SL.VarInt v)) level_vars;
+                          List.iter (fun l ->
+                            match l with
+                            | SL.Atom(SL.Less(i1,i2)) -> Arr.add_less arr i1 i2
+                            | SL.Atom(SL.Greater(i1,i2)) -> Arr.add_greater arr i1 i2
+                            | SL.Atom(SL.LessEq(i1,i2)) -> Arr.add_lesseq arr i1 i2
+                            | SL.Atom(SL.GreaterEq(i1,i2)) -> Arr.add_greatereq arr i1 i2
+                            | SL.Atom(SL.Eq(SL.IntT (SL.VarInt v1),SL.IntT (SL.IntAdd(SL.VarInt v2,SL.IntVal i))))
+                            | SL.Atom(SL.Eq(SL.IntT (SL.VarInt v1),SL.IntT (SL.IntAdd(SL.IntVal i,SL.VarInt v2))))
+                            | SL.Atom(SL.Eq(SL.IntT (SL.IntAdd(SL.VarInt v2,SL.IntVal i)),SL.IntT (SL.VarInt v1)))
+                            | SL.Atom(SL.Eq(SL.IntT (SL.IntAdd(SL.IntVal i,SL.VarInt v2)),SL.IntT (SL.VarInt v1))) ->
+                                if i = 1 then Arr.add_followed_by arr (SL.VarInt v2) (SL.VarInt v1)
+                                else if i = -1 then Arr.add_followed_by arr (SL.VarInt v1) (SL.VarInt v2)
+                                else if i > 0 then Arr.add_greater arr (SL.VarInt v1) (SL.VarInt v2)
+                                else if i < 0 then Arr.add_less arr (SL.VarInt v1) (SL.VarInt v2)
+                                else Arr.add_eq arr (SL.VarInt v1) (SL.VarInt v2)
+                            | SL.Atom(SL.Eq(SL.IntT (SL.VarInt v1),SL.IntT (SL.IntSub(SL.VarInt v2,SL.IntVal i))))
+                            | SL.Atom(SL.Eq(SL.IntT (SL.VarInt v1),SL.IntT (SL.IntSub(SL.IntVal i,SL.VarInt v2))))
+                            | SL.Atom(SL.Eq(SL.IntT (SL.IntSub(SL.VarInt v2,SL.IntVal i)),SL.IntT (SL.VarInt v1)))
+                            | SL.Atom(SL.Eq(SL.IntT (SL.IntSub(SL.IntVal i,SL.VarInt v2)),SL.IntT (SL.VarInt v1))) ->
+                                if i = 1 then Arr.add_followed_by arr (SL.VarInt v1) (SL.VarInt v2)
+                                else if i = -1 then Arr.add_followed_by arr (SL.VarInt v2) (SL.VarInt v1)
+                                else if i > 0 then Arr.add_less arr (SL.VarInt v1) (SL.VarInt v2)
+                                else if i < 0 then Arr.add_greater arr (SL.VarInt v1) (SL.VarInt v2)
+                                else Arr.add_eq arr (SL.VarInt v1) (SL.VarInt v2)
+                            | SL.Atom(SL.Eq(SL.IntT (SL.VarInt varr),SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.VarInt v2,SL.IntVal i)))))
+                            | SL.Atom(SL.Eq(SL.IntT (SL.VarInt varr),SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.IntVal i,SL.VarInt v2)))))
+                            | SL.Atom(SL.Eq(SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.VarInt v2,SL.IntVal i))),SL.IntT (SL.VarInt varr)))
+                            | SL.Atom(SL.Eq(SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.IntVal i,SL.VarInt v2))),SL.IntT (SL.VarInt varr))) ->
+                                let v1 = SL.var_set_param (SL.Local th) varr in
+                                if i = 1 then Arr.add_followed_by arr (SL.VarInt v2) (SL.VarInt v1)
+                                else if i = -1 then Arr.add_followed_by arr (SL.VarInt v1) (SL.VarInt v2)
+                                else if i > 0 then Arr.add_greater arr (SL.VarInt v1) (SL.VarInt v2)
+                                else if i < 0 then Arr.add_less arr (SL.VarInt v1) (SL.VarInt v2)
+                                else Arr.add_eq arr (SL.VarInt v1) (SL.VarInt v2)
+                            | SL.Atom(SL.Eq(SL.IntT (SL.VarInt varr),SL.VarUpdate(_,th,SL.IntT(SL.IntSub(SL.VarInt v2,SL.IntVal i)))))
+                            | SL.Atom(SL.Eq(SL.IntT (SL.VarInt varr),SL.VarUpdate(_,th,SL.IntT(SL.IntSub(SL.IntVal i,SL.VarInt v2)))))
+                            | SL.Atom(SL.Eq(SL.VarUpdate(_,th,SL.IntT(SL.IntSub(SL.VarInt v2,SL.IntVal i))),SL.IntT (SL.VarInt varr)))
+                            | SL.Atom(SL.Eq(SL.VarUpdate(_,th,SL.IntT(SL.IntSub(SL.IntVal i,SL.VarInt v2))),SL.IntT (SL.VarInt varr))) ->
+                                let v1 = SL.var_set_param (SL.Local th) varr in
+                                if i = 1 then Arr.add_followed_by arr (SL.VarInt v1) (SL.VarInt v2)
+                                else if i = -1 then Arr.add_followed_by arr (SL.VarInt v2) (SL.VarInt v1)
+                                else if i > 0 then Arr.add_less arr (SL.VarInt v1) (SL.VarInt v2)
+                                else if i < 0 then Arr.add_greater arr (SL.VarInt v1) (SL.VarInt v2)
+                                else Arr.add_eq arr (SL.VarInt v1) (SL.VarInt v2)
+                            | SL.Atom(SL.Eq(SL.IntT(SL.VarInt v),SL.IntT(SL.IntVal 0)))
+                            | SL.Atom(SL.Eq(SL.IntT(SL.IntVal 0),SL.IntT(SL.VarInt v))) ->
+                                Arr.set_minimum arr (SL.VarInt v)
+                            | SL.Atom(SL.Eq(SL.IntT i1,SL.IntT i2)) -> Arr.add_eq arr i1 i2
+                            | SL.Atom(SL.InEq(SL.IntT i1,SL.IntT i2)) -> Arr.add_ineq arr i1 i2
+                            | SL.NegAtom(SL.Less(i1,i2)) -> Arr.add_greatereq arr i1 i2
+                            | SL.NegAtom(SL.Greater(i1,i2)) -> Arr.add_lesseq arr i1 i2
+                            | SL.NegAtom(SL.LessEq(i1,i2)) -> Arr.add_greater arr i1 i2
+                            | SL.NegAtom(SL.GreaterEq(i1,i2)) -> Arr.add_less arr i1 i2
+                            | SL.NegAtom(SL.Eq(SL.IntT i1,SL.IntT i2)) -> Arr.add_ineq arr i1 i2
+                            | SL.NegAtom(SL.InEq(SL.IntT (SL.VarInt v1),SL.IntT (SL.IntAdd(SL.VarInt v2,SL.IntVal i))))
+                            | SL.NegAtom(SL.InEq(SL.IntT (SL.VarInt v1),SL.IntT (SL.IntAdd(SL.IntVal i,SL.VarInt v2))))
+                            | SL.NegAtom(SL.InEq(SL.IntT (SL.IntAdd(SL.VarInt v2,SL.IntVal i)),SL.IntT (SL.VarInt v1)))
+                            | SL.NegAtom(SL.InEq(SL.IntT (SL.IntAdd(SL.IntVal i,SL.VarInt v2)),SL.IntT (SL.VarInt v1))) ->
+                                if i > 0 then Arr.add_greater arr (SL.VarInt v1) (SL.VarInt v2)
+                                else if i < 0 then Arr.add_less arr (SL.VarInt v1) (SL.VarInt v2)
+                                else Arr.add_eq arr (SL.VarInt v1) (SL.VarInt v2)
+                            | SL.NegAtom(SL.InEq(SL.IntT (SL.VarInt varr),SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.VarInt v2,SL.IntVal i)))))
+                            | SL.NegAtom(SL.InEq(SL.IntT (SL.VarInt varr),SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.IntVal i,SL.VarInt v2)))))
+                            | SL.NegAtom(SL.InEq(SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.VarInt v2,SL.IntVal i))),SL.IntT (SL.VarInt varr)))
+                            | SL.NegAtom(SL.InEq(SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.IntVal i,SL.VarInt v2))),SL.IntT (SL.VarInt varr))) ->
+                                let v1 = SL.var_set_param (SL.Local th) varr in
+                                if i > 0 then Arr.add_greater arr (SL.VarInt v1) (SL.VarInt v2)
+                                else if i < 0 then Arr.add_less arr (SL.VarInt v1) (SL.VarInt v2)
+                                else Arr.add_eq arr (SL.VarInt v1) (SL.VarInt v2)
+                            | SL.NegAtom(SL.InEq(SL.IntT(SL.VarInt v),SL.IntT(SL.IntVal 0)))
+                            | SL.NegAtom(SL.InEq(SL.IntT(SL.IntVal 0),SL.IntT(SL.VarInt v))) ->
+                                Arr.set_minimum arr (SL.VarInt v)
+                            | SL.NegAtom(SL.InEq(SL.IntT i1,SL.IntT i2)) -> Arr.add_eq arr i1 i2
+                            | _ -> ()
+                          ) ls;
+                          Log.print "TSL Solver known information for arrangements"
+                                (Arr.to_str arr SL.int_to_str);
+                          let arrgs = try
+                                        Hashtbl.find arr_table arr
+                                      with
+                                        _ -> begin
+                                               let a = Arr.gen_arrs arr in
+                                               Hashtbl.add arr_table arr a;
+                                               a
+                                             end
+                          in
+                          verb "**** TSL Solver: generated %i arrangements\n" (GenSet.size arrgs);
+                          Some arrgs
+                        end
+                      end
 
 
 let alpha_to_conjunctive_formula (alpha:SL.integer list list)
@@ -972,12 +975,11 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) :
       try_sat_with_presburger_arithmetic (SL.from_conjformula_to_formula
                                           (SL.combine_conj_formula pa panc))
     end else begin
-      let arrgs = guess_arrangements (SL.combine_conj_formula_list [pa; panc; nc]) in
+      let arrgs_opt = guess_arrangements (SL.combine_conj_formula_list [pa; panc; nc]) in
       (* Verify if some arrangement makes the formula satisfiable *)
-      if GenSet.size arrgs = 0 then
-        check_tslk 1 nc None
-      else
-        GenSet.exists (fun alpha -> check pa panc nc alpha) arrgs
+      match arrgs_opt with
+      | None -> check_tslk 1 nc None
+      | Some arrgs -> GenSet.exists (fun alpha -> check pa panc nc alpha) arrgs
     end in
   answer
 

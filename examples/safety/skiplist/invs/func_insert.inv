@@ -2,4 +2,5 @@ vars:
 
 invariant [skiplist_func_insert] :
 
-   @should_be_inserted. -> main::e inElem elements
+//   @should_be_inserted. -> main::e inElem elements
+   @2. -> main::e inElem elements
