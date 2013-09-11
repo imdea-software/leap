@@ -2,7 +2,7 @@ let version_major = 0
 
 let version_minor = 1
 
-let revision = 2001
+let revision = Revision.value
 
 let _enable_ : bool ref = ref false
 
