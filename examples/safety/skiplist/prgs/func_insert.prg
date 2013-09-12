@@ -5,6 +5,7 @@ global
     addr tail
     ghost addrSet region
     ghost elemSet elements
+    ghost elemSet elements_before
 
 assume
   region = {head} Union {tail} Union {null} /\
@@ -31,7 +32,13 @@ assume
                               begin
 :main_body[
 :main_e[
+                                e := havocSLElem()
+                                $
+                                  elements_before := elements;
+                                $
+:main_call_insert
                                 call insert(e);
+:main_insert_e_matches[
 :should_be_inserted
                                 return ();
 :main_e]
@@ -46,6 +53,7 @@ assume
                                 addr prev
                                 addr curr
                               begin
+:glo
                                 i := maxLevel;
                                 prev := head;
                                 curr := prev->arr[i];
@@ -73,6 +81,7 @@ assume
                                 bool valueWasIn := false
 
                               begin
+:global_elements_equal[
 :insert_body[
 :insert_valueWasIn_false[
                                 lvl := havocLevel();
@@ -144,6 +153,7 @@ assume
 :insert_i_set_zero
                                   i := 0;
 :insert_update_all_order]
+:global_elements_equal]
 :insert_newCell_low_connected[
 :insert_update_upper_bounds[
 :insert_newCell_unconnected[
@@ -170,8 +180,10 @@ assume
 :insert_prev_in_region]
 :insert_curr_in_region]
                                 endif
+:insert_return
                                 return (); // return (~ valueWasIn)
 :insert_body]
+:main_insert_e_matches]
                               end
 
 // ----- REMOVE ----------------------------------------------

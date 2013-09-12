@@ -1,0 +1,10 @@
+-> skiplist_func_insert [
+      33:skiplist_prop,
+         skiplist_value,
+         skiplist_next_inst::insert_update_arr_zero_not_null,
+         skiplist_region_inst::insert_update_zero_in_region
+   ] { union :
+             | reduce2
+             |
+             | simplify-pc
+     }

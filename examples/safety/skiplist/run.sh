@@ -4,7 +4,7 @@ LEAP=../../../leap
 OPTIONS="-co union -sm -yices+z3 -dp tsl"
 
 PRG=prgs/skiplist.prg
-INV_FOLDER=invs
+INV_FOLDER=invs/gral
 GRAPH=graphs/skiplist.graph
 OUTPUT=vcs/
 

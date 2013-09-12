@@ -2,7 +2,15 @@ vars:
 
 invariant [skiplist_func_insert] :
 
-//   @should_be_inserted. -> main::e inElem elements
-   @2. -> main::e inElem elements
+   @should_be_inserted. -> (elements = UnionElem (elements_before, SingleElem(main::e)))
 
-/\ @39. -> main::e inElem elements
+/\ @main_insert_e_matches. -> main::e = insert::e
+
+/\ @insert_update_upper_bounds. -> (insert::i <= 0 -> elements = elements_before /\
+                                    insert::i > 0 -> elements = UnionElem (elements_before, SingleElem(insert::e)))
+
+/\ @insert_i_increases. -> elements = UnionElem (elements_before, SingleElem(insert::e))
+
+/\ @insert_return. -> elements = UnionElem (elements_before, SingleElem(insert::e))
+
+/\ (@main_call_insert. \/ @global_elements_equal.) -> elements_before = elements

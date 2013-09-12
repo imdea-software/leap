@@ -1,0 +1,10 @@
+vars:
+
+invariant [skiplist_next_inst] :
+
+
+#insert_update_arr_zero_not_null:
+   @insert_update_all_set. ->
+      rd(heap, insert::update[0]).arr[0] != null
+
+

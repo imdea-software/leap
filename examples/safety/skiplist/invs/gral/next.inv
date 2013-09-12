@@ -49,6 +49,11 @@ invariant [skiplist_next] :
       (insert::update[j] != null /\ insert::update[j] != tail)
 
 
+/\ (@insert_update_all_set. /\ 0 <= j /\ j <= maxLevel) ->
+      (rd(heap, insert::update[j]).arr[j] != null)
+
+
+
 #newCell_not_null:
    @insert_newCell_created. ->
       insert::newCell != null
