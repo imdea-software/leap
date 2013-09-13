@@ -98,9 +98,16 @@ invariant [skiplist_order] :
       rd(heap, remove::prev).data < remove::e
 
 
-   @remove_bounded_curr. ->
+#remove_curr_lower_equal_e:
+   (@remove_bounded_curr. \/ @remove_set_valueWasIn.) ->
       (rd(heap, remove::curr).data > remove::e \/
        rd(heap, remove::curr).data = remove::e)
+
+
+   @remove_test_lookup_loop. ->
+      (remove::i >= 0 \/
+       (rd(heap, remove::curr).data > remove::e \/
+        rd(heap, remove::curr).data = remove::e))
 
 
 #remove_curr_lower_than_e:
@@ -145,4 +152,6 @@ invariant [skiplist_order] :
 /\ @remove_section. ->
       ((0 <= j /\ j <= maxLevel) ->
         remove::update[j] in addr2set(heap, head, j))
+
+/\ @47. -> maxLevel >= 0
 

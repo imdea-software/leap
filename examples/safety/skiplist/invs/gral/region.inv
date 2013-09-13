@@ -70,11 +70,12 @@ invariant [skiplist_region] :
       rd(heap, remove::prev).arr[remove::i] in region
 
 
+#remove_prev_in_region:
    @remove_prev_in_region. ->
       remove::prev in region
 
 
-/\ @remove_curr_in_region. ->
+   @remove_curr_in_region. ->
       remove::curr in region
 
 

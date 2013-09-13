@@ -5,6 +5,7 @@ global
     addr tail
     ghost addrSet region
     ghost elemSet elements
+    ghost elemSet elements_before
 
 assume
   region = {head} Union {tail} Union {null} /\
@@ -30,18 +31,14 @@ assume
                                 elem e
                               begin
 :main_body[
-                                while (true) do
-                                  // Generate random e
-                                  e := havocSLElem();
 :main_e[
-                                  choice
-                                    call search(e);
-                                  _or_
-                                    call insert(e);
-                                  _or_
-                                    call remove(e);
-                                  endchoice
-                                endwhile
+                                e := havocSLElem()
+                                $
+                                  elements_before := elements;
+                                $
+:main_call_remove
+                                call remove(e);
+:should_be_removed
                                 return ();
 :main_e]
 :main_body]
@@ -55,6 +52,7 @@ assume
                                 addr prev
                                 addr curr
                               begin
+:glo
                                 i := maxLevel;
                                 prev := head;
                                 curr := prev->arr[i];
@@ -179,6 +177,7 @@ assume
 :insert_prev_in_region]
 :insert_curr_in_region]
                                 endif
+:insert_return
                                 return (); // return (~ valueWasIn)
 :insert_body]
                               end
@@ -194,6 +193,7 @@ assume
                                 addr curr
                                 bool valueWasIn
                               begin
+:global_elements_equal[
 :remove_body[
                                 prev := head;
 :remove_prev_in_region[
@@ -236,11 +236,13 @@ assume
 :remove_bounded_prev]
 :remove_final_if[
 :remove_prev_in_region]
+:remove_check_valueWasIn
                                 if (valueWasIn) then
 :remove_section_true[
                                   i := removeFrom;
 :remove_update_next_all_greater]
 :remove_curr_in_region]
+:global_elements_equal]
 :remove_final_loop[
 :remove_final_loop_begins[
                                   while (i >= 0) do
@@ -260,6 +262,7 @@ assume
                                 endif
 :remove_section_true]
 :remove_section]
+:remove_return
                                 return (); // return (valueWasIn)
 :remove_final_if]
 :remove_body]

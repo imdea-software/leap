@@ -1,0 +1,12 @@
+-> skiplist_func_remove [
+      53:skiplist_prop::is_skiplist,
+         skiplist_next::remove_prev_next_zero_is_curr,
+         skiplist_region::remove_prev_in_region,
+         skiplist_order::remove_prev_lower_than_e,
+         skiplist_order::remove_curr_lower_equal_e;
+      54:skiplist_prop::is_skiplist
+   ] { union :
+             | reduce2
+             |
+             | simplify-pc
+     }

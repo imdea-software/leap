@@ -97,6 +97,17 @@ invariant [skiplist_next] :
       remove::update[remove::i] = remove::prev
 
 
+   @remove_test_lookup_loop. ->
+      (remove::i >= 0 \/ rd(heap, remove::prev).arr[0] = remove::curr)
+
+
+#remove_prev_next_zero_is_curr:
+   @remove_set_valueWasIn. ->
+      rd(heap, remove::prev).arr[0] = remove::curr
+
+
+   @remove_set_valueWasIn. ->
+      rd(heap, remove::prev).arr[0] = remove::curr
 
 
 

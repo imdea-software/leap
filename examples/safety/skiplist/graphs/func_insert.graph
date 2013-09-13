@@ -1,6 +1,7 @@
 -> skiplist_func_insert [
-      33:skiplist_prop,
-         skiplist_value,
+      33:skiplist_prop::is_skiplist,
+         skiplist_value::valueWasIn,
+         skiplist_value::not_valueWasIn,
          skiplist_next_inst::insert_update_arr_zero_not_null,
          skiplist_region_inst::insert_update_zero_in_region
    ] { union :
