@@ -52,19 +52,39 @@ assume
                                 addr prev
                                 addr curr
                               begin
-:glo
-                                i := maxLevel;
+:search_body[
                                 prev := head;
-                                curr := prev->arr[i];
-                                while (0 <= i /\ curr->data != e) do
+:search_prev_is_head[
+                                curr := prev->arr[maxLevel];
+:search_curr_in_region[
+                                i := maxLevel;
+:search_prev_in_region[
+:search_prev_is_head]
+:search_prev_next_region[
+:search_lookup_loop[
+:search_test_lookup_loop
+                                while (0 <= i) do
                                   curr := prev->arr[i];
-                                  while (curr->data < e) do
+:search_prev_next_region]
+:search_prev_next_curr_one[
+                                  while (curr != null /\ curr->data < e) do
+:search_curr_low
                                     prev := curr;
+:search_prev_next_curr_one]
+:search_prev_is_curr
                                     curr := prev->arr[i];
                                   endwhile
+:search_i_decrements
                                   i := i -1;
                                 endwhile
+:search_lookup_loop]
+:search_after_lookup_loop[
+:search_return
                                 return(); //return (curr->data = v)
+:search_after_lookup_loop]
+:search_prev_in_region]
+:search_curr_in_region]
+:search_body]
                               end
 
 // ----- INSERT ----------------------------------------------

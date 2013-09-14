@@ -24,6 +24,20 @@
 
 -> skiplist_region [
        3:{union : | | split-antecedent-pc | simplify-pc };
+       8:skiplist_prop::is_skiplist;
+       9:skiplist_prop::head_not_tail,
+         skiplist_prop::is_skiplist,
+         skiplist_next::search_prev_is_head;
+      10:skiplist_prop::head_not_tail,
+         skiplist_prop::is_skiplist,
+         skiplist_next::search_prev_is_head;
+      13:skiplist_next::search_prev_next_i_is_curr;
+      14:skiplist_prop::is_skiplist,
+         skiplist_next::search_prev_next_i_is_curr,
+         skiplist_order::search_value_e_is_bounded,
+         skiplist_order::search_prev_value_lower_than_e,
+         skiplist_order::search_curr_value_lower_than_e;
+      16:skiplist_prop, skiplist_levels;
       26:skiplist_prop::is_skiplist;
       27:skiplist_prop::head_not_tail,
          skiplist_prop::is_skiplist,
@@ -76,6 +90,15 @@
 
 -> skiplist_next [
        3:{union : | | split-antecedent-pc | simplify-pc };
+       9:skiplist_prop::tail_not_null,
+         skiplist_prop::head_not_tail,
+         skiplist_prop::is_skiplist;
+      12:skiplist_prop::is_skiplist,
+         skiplist_prop::tail_not_null,
+         skiplist_region::search_prev_next_i_in_region;
+      15:skiplist_prop::is_skiplist,
+         skiplist_prop::tail_not_null,
+         skiplist_region::search_prev_next_i_in_region;
       23:skiplist_prop::head_not_tail;
       26:skiplist_prop::tail_not_null,
          skiplist_prop::is_skiplist;
@@ -110,6 +133,10 @@
 
 -> skiplist_order [
        3:{union : | | split-antecedent-pc | simplify-pc };
+      10:skiplist_prop::head_is_lowest,
+         skiplist_prop::tail_is_highest,
+         skiplist_next::search_prev_is_head;
+      13:skiplist_next::search_curr_not_null;
       26:skiplist_prop::head_is_lowest;
       31:skiplist_next::insert_curr_not_null;
       35:skiplist_next::insert_prev_next_i_is_curr,

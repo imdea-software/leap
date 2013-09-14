@@ -1,0 +1,21 @@
+vars:
+
+invariant [skiplist_func_search] :
+
+
+   @search_check. ->
+      (.result. -> main::e inElem elements     /\
+       ~ .result. -> ~ main::e inElem elements /\
+       elements_before = elements)
+
+
+/\ (@search_check. \/ @search_body.) -> main::e = search::e
+
+
+/\ @search_return. ->
+      (  .result. -> rd(heap, search::curr).data  = search::e /\
+       ~ .result. -> rd(heap, search::curr).data != search::e)
+
+
+/\ (@main_call_search. \/ @search_body.) -> elements_before = elements
+

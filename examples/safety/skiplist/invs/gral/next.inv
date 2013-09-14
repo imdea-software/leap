@@ -6,6 +6,29 @@ int j
 invariant [skiplist_next] :
 
 
+///////////  Search  /////////////
+
+
+#search_prev_is_head:
+   @search_prev_is_head. ->
+      search::prev = head
+
+
+#search_curr_not_null:
+   @search_curr_in_region. ->
+      search::curr != null
+
+
+#search_prev_next_i_is_curr:
+   (@search_prev_next_curr_one. \/ @search_i_decrements.) ->
+      rd(heap, search::prev).arr[search::i] = search::curr
+
+
+#search_prev_next_zero_is_curr:
+   @search_after_lookup_loop. ->
+      rd(heap, search::prev).arr[0] = search::curr
+
+
 ///////////  Insert  /////////////
 
    @insert_head_next_i_tail. ->
@@ -102,10 +125,6 @@ invariant [skiplist_next] :
 
 
 #remove_prev_next_zero_is_curr:
-   @remove_set_valueWasIn. ->
-      rd(heap, remove::prev).arr[0] = remove::curr
-
-
    @remove_set_valueWasIn. ->
       rd(heap, remove::prev).arr[0] = remove::curr
 

@@ -5,6 +5,12 @@ invariant [skiplist_levels] :
 
 ///////////  Insert  /////////////
 
+   @search_lookup_loop. ->
+      (search::i <= maxLevel)
+
+
+///////////  Insert  /////////////
+
    @insert_i_greater_maxLevel. ->
       insert::i > maxLevel
 

@@ -5,6 +5,8 @@ global
     addr tail
     ghost addrSet region
     ghost elemSet elements
+    ghost elemSet elements_before
+    bool result
 
 assume
   region = {head} Union {tail} Union {null} /\
@@ -30,18 +32,14 @@ assume
                                 elem e
                               begin
 :main_body[
-                                while (true) do
-                                  // Generate random e
-                                  e := havocSLElem();
 :main_e[
-                                  choice
-                                    call search(e);
-                                  _or_
-                                    call insert(e);
-                                  _or_
-                                    call remove(e);
-                                  endchoice
-                                endwhile
+                                e := havocSLElem()
+                                $
+                                  elements_before := elements;
+                                $
+:main_call_search
+                                call search(e);
+:search_check
                                 return ();
 :main_e]
 :main_body]
@@ -82,6 +80,7 @@ assume
                                 endwhile
 :search_lookup_loop]
 :search_after_lookup_loop[
+                                result := curr->data = e;
 :search_return
                                 return(); //return (curr->data = v)
 :search_after_lookup_loop]
@@ -89,10 +88,6 @@ assume
 :search_curr_in_region]
 :search_body]
                               end
-
-
-
-
 
 // ----- INSERT ----------------------------------------------
 
@@ -107,6 +102,7 @@ assume
                                 bool valueWasIn := false
 
                               begin
+:global_elements_equal[
 :insert_body[
 :insert_valueWasIn_false[
                                 lvl := havocLevel();
@@ -178,6 +174,7 @@ assume
 :insert_i_set_zero
                                   i := 0;
 :insert_update_all_order]
+:global_elements_equal]
 :insert_newCell_low_connected[
 :insert_update_upper_bounds[
 :insert_newCell_unconnected[

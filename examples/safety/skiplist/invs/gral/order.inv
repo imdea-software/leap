@@ -4,6 +4,36 @@ int j
 
 invariant [skiplist_order] :
 
+///////////  Search  /////////////
+
+
+#search_value_e_is_bounded:
+   @search_body. ->
+      (search::e != lowestElem /\ search::e != highestElem)
+
+
+#search_prev_value_lower_than_e:
+   @search_prev_in_region. ->
+      (rd(heap, search::prev).data < search::e)
+
+
+#search_curr_value_lower_than_e:
+   (@search_curr_low. \/ @search_prev_is_curr.) ->
+      rd(heap, search::curr).data < search::e
+
+
+#search_curr_greater_equal_e:
+   (@search_i_decrements. \/ @search_after_lookup_loop.) ->
+      (rd(heap, search::curr).data > search::e \/
+       rd(heap, search::curr).data = search::e)
+
+
+   @search_test_lookup_loop. ->
+      (search::i >= 0 \/
+       (rd(heap, search::curr).data > search::e \/
+        rd(heap, search::curr).data = search::e))
+
+
 
 ///////////  Insert  /////////////
 
@@ -32,7 +62,7 @@ invariant [skiplist_order] :
 
 
 #insert_prev_value_lower_than_e:
-   @insert_lookup_loop. ->
+   @insert_prev_in_region. ->
       rd(heap, insert::prev).data < insert::e
 
 
@@ -65,10 +95,6 @@ invariant [skiplist_order] :
        rd(heap, rd(heap, insert::newCell).arr[insert::i]).data > rd(heap, insert::newCell).data)
 
 
-/\ @insert_prev_in_region. ->
-      rd(heap, insert::prev).data < insert::e
-
-
 /\ @insert_update_set. ->
       rd(heap, insert::update[insert::i]).data = rd(heap,insert::prev).data
 
@@ -98,7 +124,7 @@ invariant [skiplist_order] :
       rd(heap, remove::prev).data < remove::e
 
 
-#remove_curr_lower_equal_e:
+#remove_curr_greater_equal_e:
    (@remove_bounded_curr. \/ @remove_set_valueWasIn.) ->
       (rd(heap, remove::curr).data > remove::e \/
        rd(heap, remove::curr).data = remove::e)
