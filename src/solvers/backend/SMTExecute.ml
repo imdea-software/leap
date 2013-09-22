@@ -29,9 +29,12 @@ let get_exec_cmd (smt:smt_t) : string =
 let check_installed (smts:smt_t list) : unit =
   let check_smt (smt:smt_t) : unit =
     let cmd = get_exec_cmd smt in
-    match Unix.system (cmd ^ " -? &> /dev/null") with
-    | Unix.WEXITED 0 -> ()
-    | _ -> raise(SMT_Not_Found cmd)
+    let env = Array.of_list [] in
+    let (stdout,stdin,stderr) = Unix.open_process_full (cmd ^ " -?") env in
+    try
+      ignore (Pervasives.input_line stderr);
+      raise(SMT_Not_Found cmd)
+    with End_of_file -> ignore (Unix.close_process_full (stdout,stdin,stderr));
   in
     List.iter check_smt smts
 
