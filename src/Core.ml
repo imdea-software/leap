@@ -497,7 +497,7 @@ module Make (Opt:module type of GenOptions) : S =
                               | DP.Tsl    -> TslSolver.print_model()
                               | DP.Tslk _ -> Tslk.print_model() in
                       DP.add_dp_calls this_calls_counter Opt.dp calls;
-                      if (not valid) then assert false;
+(*                      if (not valid) then assert false; *)
                       set_status valid
                      end in
                   (* Analyze the formula *)
