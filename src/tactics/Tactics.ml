@@ -61,8 +61,13 @@ type gen_supp_op_t =
       (* When generating support keeps the original support unmodified     *)
   | RestrictSubst of (E.tid_subst_t -> bool)
       (* Restricts assignments to the ones satisfies by the given function *)
-  
 
+
+(*********************)
+(**  Configuration  **)
+(*********************)
+
+let fixed_voc : E.tid list ref = ref []
 
 
 (***********************)
@@ -273,6 +278,14 @@ let dup_vc_info_with_goal (info:vc_info) (new_goal:E.formula) : vc_info =
     vocabulary     = info.vocabulary ; (* FIX need recompute *)
   }
 
+
+
+let set_fixed_voc (ts:E.tid list) : unit =
+  fixed_voc := System.me_tid_th :: ts
+
+
+let filter_fixed_voc (ts:E.tid list) : E.tid list =
+  List.filter (fun t -> not (List.mem t !fixed_voc)) (List.map E.unprime_tid ts)
 
 
 (****************************)
@@ -609,7 +622,8 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
       let goal_voc = E.voc info.goal in
       let used_tids = ref (E.voc info.tid_constraint @ E.voc info.rho @ goal_voc) in
       let fresh_original_support = List.map (fun supp ->
-                                     let supp_voc = E.voc supp in
+                                     let supp_voc = filter_fixed_voc (E.voc supp) in
+                                     Printf.printf "SUPP_VOC = %s\n" (String.concat ";" (List.map E.tid_to_str supp_voc));
                                      let fresh_tids = E.gen_fresh_tid_list !used_tids (List.length supp_voc) in
                                      let fresh_subst = E.new_tid_subst (List.combine supp_voc fresh_tids) in
                                      used_tids := !used_tids @ fresh_tids;
@@ -619,7 +633,7 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
                             E.to_conj_list phi @ xs
                           ) [] fresh_original_support in
       let (param_support, unparam_support) = List.partition (fun phi ->
-                                              E.voc phi <> []
+                                              filter_fixed_voc (E.voc phi) <> []
                                             ) split_support in
     
       Log.print "gen_support unparametrized support"
@@ -650,8 +664,10 @@ let reduce_support (info:vc_info) : support_t =
 
 
 let reduce2_support (info:vc_info) : support_t =
+  let voc_to_analyze = filter_fixed_voc (E.voc info.rho @ E.voc info.goal) in
+  Printf.printf "VOCABULARY TO ANALIZE: %s\n" (String.concat ";" (List.map E.tid_to_str voc_to_analyze));
   E.cleanup_dup
-    (gen_support (RestrictSubst (E.subst_codomain_in (E.voc info.rho @ E.voc info.goal))) info)
+    (gen_support (RestrictSubst (E.subst_codomain_in voc_to_analyze)) info)
 
 
 let id_support (info:vc_info) : support_t =

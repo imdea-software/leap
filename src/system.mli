@@ -82,6 +82,8 @@ val get_accvars           : t -> (string * var_table_t * var_table_t) list
 val get_all_vars_id       : t -> Expression.varId list
 val get_sys_var_tables    : t ->
                             var_table_t * (string * var_table_t * var_table_t)list
+val get_vars_of_sort      : t -> Expression.sort -> Expression.variable list
+
 val get_fLine_by_name     : t -> string -> Expression.pc_t
 val get_lLine_by_name     : t -> string -> Expression.pc_t
 val get_prog_by_name      : t -> string -> Statement.statement_t option

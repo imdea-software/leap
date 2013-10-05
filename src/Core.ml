@@ -187,6 +187,9 @@ module Make (Opt:module type of GenOptions) : S =
                                        | DP.Num -> Bridge.Num
                                        | _      -> Bridge.Heap
 
+    let _ = Tactics.set_fixed_voc (List.map (fun v -> E.VarTh v)
+                (System.get_vars_of_sort Opt.sys E.Tid))
+
 
     (*****************************)
     (*    INITIALIZATION CODE    *)
@@ -253,6 +256,10 @@ module Make (Opt:module type of GenOptions) : S =
       DP.add_dp_calls calls_counter Opt.dp n
 
 
+    let filter_me_tid (ts:E.tid list) : E.tid list =
+      List.filter (fun t -> t <> System.me_tid_th) ts
+
+
     (**********************)
     (*  CONCURRENT SPINV  *)
     (**********************)
@@ -307,9 +314,14 @@ module Make (Opt:module type of GenOptions) : S =
         let self_conseq_supp  = load_support line Premise.SelfConseq in
         let other_conseq_supp = load_support line Premise.OthersConseq in
         let fresh_k = E.gen_fresh_tid (E.voc (E.conj_list (inv::supp@other_conseq_supp))) in
+
+        Printf.printf "VOC INVARIANT: %s\n" (String.concat ";" (List.map E.tid_to_str (E.voc inv)));
+        Printf.printf "VOC INVARIANT FILTERED: %s\n" (String.concat ";" (List.map E.tid_to_str (filter_me_tid (E.voc inv))));
+
+
         let self_conseq_vcs = List.fold_left (fun vcs i ->
                                 (gen_vcs (inv::self_conseq_supp) inv line Premise.SelfConseq i) @ vcs
-                              ) [] (E.voc inv) in
+                              ) [] (filter_me_tid (E.voc inv)) in
         let other_conseq_vcs = gen_vcs (inv::other_conseq_supp) inv line Premise.OthersConseq fresh_k
         in
 
@@ -497,7 +509,7 @@ module Make (Opt:module type of GenOptions) : S =
                               | DP.Tsl    -> TslSolver.print_model()
                               | DP.Tslk _ -> Tslk.print_model() in
                       DP.add_dp_calls this_calls_counter Opt.dp calls;
-(*                      if (not valid) then assert false; *)
+                      if (not valid) then assert false;
                       set_status valid
                      end in
                   (* Analyze the formula *)

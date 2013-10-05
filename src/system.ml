@@ -3,6 +3,7 @@ open LeapLib
 
 module E = Expression
 module Stm  = Statement
+module GenSet = LeapGenericSet
 
 
 (* Type declaration *)
@@ -483,6 +484,23 @@ let get_sys_var_tables (sys:t)
                   ) [] proc_list
   in
     (gTbl, full_list)
+
+
+let get_vars_of_sort (sys:t) (s:E.sort) : E.variable list =
+  let process (set:E.variable GenSet.t) (p:E.procedure_name)
+              (id:E.varId) ((s',th,k):(E.sort * E.shared_or_local * E.var_nature))
+    : unit =
+      if s' = s then
+        GenSet.add set (E.build_var id s' false th p k) in
+  let (gTbl, lTbls) = get_sys_var_tables sys in
+  let set = GenSet.empty() in
+
+  Hashtbl.iter (fun id (s',_,th,k) -> process set E.GlobalScope id (s',th,k)) gTbl;
+  List.iter (fun (p,iTbl,lTbl) ->
+    Hashtbl.iter (fun id (s',_,th,k) -> process set (E.Scope p) id (s',th,k)) iTbl;
+    Hashtbl.iter (fun id (s',_,th,k) -> process set (E.Scope p) id (s',th,k)) lTbl
+  ) lTbls;
+  GenSet.to_list set
 
 
 
@@ -981,13 +999,15 @@ let rec aux_rho_for_st
         (E.TermSet.empty, E.TermSet.empty, E.TermSet.empty, rho_list)
     | None -> (gS, lS, tS, ps) in
   let make_pos_change (c:int) (ns:int list) : E.formula list =
+    let running_tid_is_me = E.eq_tid me_tid_th th in
     let pc_change = build_pc mode th c ns in
-    let next_pos = 
+    let next_pos =
       E.disj_list $ List.map (fun n -> E.build_pos_change c n) ns in
     match abs with
-    | Counting -> [E.someone_at c; next_pos] @ pc_change
-    | NoAbstraction -> pc_change in
+    | Counting -> [E.someone_at c; next_pos] @ [running_tid_is_me] @ pc_change
+    | NoAbstraction -> running_tid_is_me :: pc_change in
   match (st, is_ghost) with
+
   (************************** Skip @topLevel ******************************)
   | Stm.StSkip (g, Some i), false ->
       let pred = make_pos_change i.Stm.pos [i.Stm.next_pos] in

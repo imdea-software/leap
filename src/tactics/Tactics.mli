@@ -80,6 +80,8 @@ val create_vc  : support_t ->
 
 val dup_vc_info_with_goal : vc_info ->  Expression.formula ->   vc_info 
 
+val set_fixed_voc : Expression.tid list -> unit
+
 (****************************)
 (* SELECTORS                *)
 (****************************)
