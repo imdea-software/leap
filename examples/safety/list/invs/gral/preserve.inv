@@ -13,3 +13,4 @@ invariant [fullPreserve] :
 /\ rd(heap, head).data = lowestElem
 /\ rd(heap, tail).data = highestElem
 /\ orderlist (heap, head, tail)
+/\ tail in addr2set(heap, head)

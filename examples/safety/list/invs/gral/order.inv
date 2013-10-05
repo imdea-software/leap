@@ -9,8 +9,12 @@ invariant [fullOrder] :
 
 /\ @main_e(i). -> (main::e(i) != lowestElem /\ main::e(i) != highestElem)
 /\ @search_body(i). -> (search::e(i) != lowestElem /\ search::e(i) != highestElem)
-/\ @insert_body(i). -> (insert::e(i) != lowestElem /\ insert::e(i) != highestElem)
-/\ @remove_body(i). -> (remove::e(i) != lowestElem /\ remove::e(i) != highestElem)
+
+#insert_bounded_e:
+	 @insert_body(i). -> (insert::e(i) != lowestElem /\ insert::e(i) != highestElem)
+
+
+	 @remove_body(i). -> (remove::e(i) != lowestElem /\ remove::e(i) != highestElem)
 
 /\ @ins_curr_def(i). -> (rd(heap, insert::curr(i)).data < rd(heap, tail).data \/
                          rd(heap, insert::curr(i)).data = rd(heap, tail).data)
@@ -23,3 +27,9 @@ invariant [fullOrder] :
 /\ @ins_insert(i). -> rd(heap, insert::curr(i)).data > insert::e(i)
 /\ @after_malloc(i). -> rd(heap, insert::aux(i)).data = insert::e(i)
 /\ @rem_remove(i). -> rd(heap, remove::curr(i)).data = remove::e(i)
+
+
+#insert_curr_bounded:
+	 @ins_final_conditional(i). ->
+			(rd(heap,insert::curr(i)).data > insert::e(i) \/
+			 rd(heap,insert::curr(i)).data = insert::e(i))

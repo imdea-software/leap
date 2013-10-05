@@ -4,6 +4,8 @@ global
   addr tail
   ghost addrSet region
   ghost elemSet elements
+	tid choosen
+	elem choosen_e
 
 assume
   region = {head} Union {tail} Union {null} /\
@@ -16,31 +18,53 @@ assume
   head != null /\
   tail != null /\
   head->next = tail /\
-  tail->next = null
+	tail->next = null /\
+
+	choosen_e != lowestElem /\ choosen_e != highestElem
 
 
 // ----- PROGRAM BEGINS --------------------------------------
-                            
-                              procedure main ()
-                                elem e
-                              begin
+
+
+
+
+
+															procedure main ()
+																elem e
+															begin
 :main_body[
-                                while (true) do
-                                  // Generate random e
-                                  e := havocListElem();
+																if me = choosen then
+																	call insert(choosen_e);
+:check_insert
+																	skip;
+																else
+:main_other_threads[
+																	while (true) do
+																		// Generate random e
+																		e := havocListElem();
 :main_e[
-                                  choice
-                                    call search(e);
-                                  _or_
-                                    call insert(e);
-                                  _or_
-                                    call remove(e);
-                                  endchoice
-                                endwhile
-                                return ();
+																		if (e != choosen_e) then
+:main_e_not_choosen[
+																			skip;
+																			choice
+																				call search(e);
+																			_or_
+																				call insert(e);
+																			_or_
+																				call remove(e);
+																			endchoice
+																			skip;
+:main_e_not_choosen]
+																		endif
+																		skip;
+																	endwhile
+:main_other_threads]
+																endif
+																return ();
 :main_e]
 :main_body]
-                              end
+															end
+
 
 // ----- SEARCH ----------------------------------------------
 
@@ -68,14 +92,14 @@ assume
                                 skip;
                                 prev->unlock;
                                 curr->unlock;
+																return ();
 :search_body]
-                                return ();
                               end
 
 // ----- INSERT ----------------------------------------------
 
 
-                              procedure insert (e:elem)
+															procedure insert (e:elem)
                                 addr prev
                                 addr curr
                                 addr aux
@@ -206,7 +230,7 @@ assume
                                 curr->unlock;
 :rem_diff]
 :rem_owns_curr_two]
+																return();
 :remove_body]
-                                return();
                               end
                             

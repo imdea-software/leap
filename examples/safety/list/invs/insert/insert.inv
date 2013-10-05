@@ -1,0 +1,41 @@
+vars:
+
+tid j
+
+invariant [list_insert] :
+
+	 @check_insert(choosen). -> choosen_e inElem elements
+
+/\ @ins_elem_inserted(j). -> insert::e(j) inElem elements
+
+/\ @insert_body(choosen). -> insert::e(choosen) = choosen_e
+
+/\ (@main_other_threads(j). \/ @search_body(j). \/ @remove_body(j).) -> j != choosen
+
+/\ @main_other_threads(choosen). -> me != choosen
+
+/\ @main_e_not_choosen(j). -> main::e(j) != choosen_e
+
+
+
+
+
+
+
+
+
+
+
+
+///\ @insert_body(choosen). -> insert::e(i) = choosen_e
+
+///\ (@insert_body(i). /\ i != choosen) -> insert::e(i) = main::e(i)
+
+///\ @ins_elem_inserted(i). -> insert::e(i) inElem elements
+
+///\ @36(i). -> insert::curr(i) != null
+///\ @36(i). -> insert::curr(choosen) != null
+
+///\ @36(i). -> (rd(heap,insert::curr(i)).data > insert::e(i) \/
+//							 rd(heap,insert::curr(i)).data = insert::e(i))
+

@@ -14,11 +14,11 @@ invariant [fullNext] :
 /\  @ins_diff(j). -> insert::prev(j) != insert::curr(j)
 /\  (@ins_aux_eq_prev(j). -> insert::aux(j) = insert::prev(j))
 /\  (@ins_aux_before_prev(j). -> (insert::aux(j) != insert::prev(j) /\ rd(heap, insert::aux(j)).next = insert::prev(j)))
-/\  @ins_aux_before_curr(j). -> (rd(heap,insert::aux(j)).next = insert::curr(j))
+///\  @ins_aux_before_curr(j). -> (rd(heap,insert::aux(j)).next = insert::curr(j))
 /\  (@ins_follows(j). /\ ~ @ins_equals(j).) -> (insert::prev(j) != insert::curr(j) /\
                                          rd(heap,insert::prev(j)).next = insert::curr(j))
 /\  @ins_equals(j). -> insert::prev(j) = insert::curr(j)
-/\  @ins_while(j). -> insert::curr(j) != null
+///\  @ins_while(j). -> insert::curr(j) != null
 
 
 /\ @rem_prev_is_head(j). -> (remove::prev(j) = head /\ rd(heap, head).next != 
@@ -36,4 +36,15 @@ null)
 /\ @rem_if_two(j). -> (   rd(heap, remove::curr(j)).next = remove::aux(j)
                           /\ remove::prev(j) != remove::aux(j)
                           /\ remove::curr(j) != remove::aux(j))
+
+//////////////////////////////////////
+
+/\	 (@ins_prev_is_head(j). \/ @ins_lookup_loop(j).) -> insert::prev(j) != null
+
+#insert_curr_not_null:
+	 @ins_follows(j). -> insert::curr(j) != null
+
+
+	 @ins_while_begins(j). -> rd(heap, insert::curr(j)).next != null
+
 
