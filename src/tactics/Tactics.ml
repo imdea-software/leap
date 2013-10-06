@@ -623,7 +623,6 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
       let used_tids = ref (E.voc info.tid_constraint @ E.voc info.rho @ goal_voc) in
       let fresh_original_support = List.map (fun supp ->
                                      let supp_voc = filter_fixed_voc (E.voc supp) in
-                                     Printf.printf "SUPP_VOC = %s\n" (String.concat ";" (List.map E.tid_to_str supp_voc));
                                      let fresh_tids = E.gen_fresh_tid_list !used_tids (List.length supp_voc) in
                                      let fresh_subst = E.new_tid_subst (List.combine supp_voc fresh_tids) in
                                      used_tids := !used_tids @ fresh_tids;
@@ -640,13 +639,13 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
                 (String.concat " ; " (List.map E.formula_to_str unparam_support));
       Log.print "gen_support parametrized support"
                 (String.concat " ; " (List.map E.formula_to_str param_support));
-    
+
       List.fold_left (fun xs supp_phi ->
-        let supp_voc = E.voc supp_phi in
-        let voc_to_consider = if List.mem info.transition_tid goal_voc then
-                                supp_voc @ goal_voc
-                              else
-                                info.transition_tid :: supp_voc @ goal_voc in
+        let supp_voc = filter_fixed_voc (E.voc supp_phi) in
+        let voc_to_consider = GenSet.to_list
+                                (GenSet.from_list (info.transition_tid :: supp_voc @ goal_voc)) in
+        
+
         let subst = List.filter f (E.new_comb_subst supp_voc voc_to_consider) in
         Log.print "Thread id substitution" (String.concat " -- " (List.map E.subst_to_str subst));
         xs @ List.map (fun s ->
@@ -664,8 +663,7 @@ let reduce_support (info:vc_info) : support_t =
 
 
 let reduce2_support (info:vc_info) : support_t =
-  let voc_to_analyze = filter_fixed_voc (E.voc info.rho @ E.voc info.goal) in
-  Printf.printf "VOCABULARY TO ANALIZE: %s\n" (String.concat ";" (List.map E.tid_to_str voc_to_analyze));
+  let voc_to_analyze = GenSet.to_list (GenSet.from_list (E.voc info.rho @ E.voc info.goal)) in
   E.cleanup_dup
     (gen_support (RestrictSubst (E.subst_codomain_in voc_to_analyze)) info)
 
@@ -998,6 +996,7 @@ let apply_tactics (vcs:vc_info list)
 *)
     let split_vc_info_list = apply_support_split_tactics [vc] supp_split_tacs in
     let original_implications = apply_support_tactic split_vc_info_list supp_tac in
+
     let split_implications = apply_formula_split_tactics original_implications formula_split_tacs in
     let final_implications = apply_formula_tactics split_implications formula_tacs in
     Log.print "* From this vc_info" (vc_info_to_str vc);

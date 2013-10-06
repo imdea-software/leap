@@ -5090,7 +5090,9 @@ let formula_to_human_str (phi:formula) : string =
 (* Notice you are loosing preservation of others PC as they are not any longer arrays *)
 
 let rec to_plain_var (v:variable) : variable =
-  let new_id = variable_to_simple_str v in
+  let plain_th = to_plain_shared_or_local
+                    {fol_pc=true; fol_var=to_plain_var;} (var_parameter v) in
+  let new_id = variable_to_simple_str (var_set_param plain_th v) in
   build_var new_id v.sort false Shared GlobalScope v.nature
 
 
@@ -5226,7 +5228,7 @@ and to_plain_elem (ops:fol_ops_t) (e:elem) : elem =
 and to_plain_tid (ops:fol_ops_t) (th:tid) : tid =
   match th with
     VarTh v              -> VarTh (ops.fol_var v)
-  | NoTid               -> NoTid
+  | NoTid                -> NoTid
   | CellLockId(cell)     -> CellLockId(to_plain_cell ops cell)
   | CellLockIdAt(cell,l) -> CellLockIdAt(to_plain_cell ops cell,
                                          to_plain_int ops l)
@@ -5490,11 +5492,11 @@ and to_plain_formula_aux (ops:fol_ops_t) (phi:formula) : formula =
                         if ops.fol_pc then begin
                           match l with
                           | Atom(PCRange(pc1,pc2,th,p)) ->
-                              let pc_var = build_pc_var p th in
+                              let pc_var = build_pc_var p (to_plain_shared_or_local ops th) in
                                 And (lesseq_form (IntVal pc1) (VarInt pc_var),
                                      lesseq_form (VarInt pc_var) (IntVal pc2))
                           | NegAtom(PCRange(pc1,pc2,th,p)) ->
-                              let pc_var = build_pc_var p th in
+                              let pc_var = build_pc_var p (to_plain_shared_or_local ops th) in
                                 Or (less_form (VarInt pc_var) (IntVal pc1),
                                     less_form (IntVal pc2) (VarInt pc_var))
                           | _ -> conv_lit l
