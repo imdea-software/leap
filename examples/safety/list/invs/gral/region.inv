@@ -11,9 +11,9 @@ invariant [fullRegion] :
 /\ (@ins_prev_def(i). -> insert::prev(i) in region)
 
 #insert_curr_in_region:
-	 (@ins_curr_def(i). -> insert::curr(i) in region)
+   (@ins_curr_def(i). -> insert::curr(i) in region)
 
-	 (@after_malloc(i). -> ~ (insert::aux(i) in region))
+   (@after_malloc(i). -> ~ (insert::aux(i) in region))
 /\ (@ins_aux_before_prev(i). -> insert::aux(i) in region)
 
 

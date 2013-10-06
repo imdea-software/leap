@@ -4,7 +4,7 @@ tid j
 
 invariant [list_insert] :
 
-	 @check_insert(choosen). -> choosen_e inElem elements
+   @check_insert(choosen). -> choosen_e inElem elements
 
 /\ @ins_elem_inserted(j). -> insert::e(j) inElem elements
 
@@ -16,7 +16,7 @@ invariant [list_insert] :
 
 /\ @main_e_not_choosen(j). -> main::e(j) != choosen_e
 
-
+/\ (@remove_body(j). /\ j != choosen) -> remove::e(j) != choosen_e
 
 
 
@@ -37,5 +37,5 @@ invariant [list_insert] :
 ///\ @36(i). -> insert::curr(choosen) != null
 
 ///\ @36(i). -> (rd(heap,insert::curr(i)).data > insert::e(i) \/
-//							 rd(heap,insert::curr(i)).data = insert::e(i))
+//               rd(heap,insert::curr(i)).data = insert::e(i))
 

@@ -39,12 +39,12 @@ null)
 
 //////////////////////////////////////
 
-/\	 (@ins_prev_is_head(j). \/ @ins_lookup_loop(j).) -> insert::prev(j) != null
+/\   (@ins_prev_is_head(j). \/ @ins_lookup_loop(j).) -> insert::prev(j) != null
 
 #insert_curr_not_null:
-	 @ins_follows(j). -> insert::curr(j) != null
+   @ins_follows(j). -> insert::curr(j) != null
 
 
-	 @ins_while_begins(j). -> rd(heap, insert::curr(j)).next != null
+   @ins_while_begins(j). -> rd(heap, insert::curr(j)).next != null
 
 

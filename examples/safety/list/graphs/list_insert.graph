@@ -1,15 +1,10 @@
 => list_insert [
-			10 : { union : split-goal | reduce2 | | simplify-pc };
-			26 :S: fullPreserve;
-			26 :O: fullPreserve;
-			33 : fullNext::insert_curr_not_null;
-			39 : fullPreserve,
-					 fullRegion::insert_curr_in_region,
-					 fullNext::insert_curr_not_null,
-					 fullOrder::insert_curr_bounded { union : split-goal | reduce2 | | simplify-pc };
-			45 : { union : split-goal | reduce2 | | simplify-pc }
+			39 : S : fullPreserve,
+							 fullRegion::insert_curr_in_region,
+							 fullNext::insert_curr_not_null,
+							 fullOrder::insert_curr_bounded
 	 ] { union :
-						 | reduce2
-						 |
-						 | simplify-pc
-		 }
+             | reduce2
+             |
+             | simplify-pc
+     }

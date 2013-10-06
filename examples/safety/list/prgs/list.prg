@@ -98,7 +98,7 @@ assume
 :ins_owns_curr_one[
 :ins_lookup_loop[
 :ins_lookup_condition
-																while (curr->data < e) do
+                                while (curr->data < e) do
 :ins_while_begins[
 :ins_while[
 :ins_curr_lower[
@@ -144,7 +144,7 @@ assume
 :ins_owns_curr_two]
 :ins_curr_def]
 :ins_diff]
-																return();
+                                return();
 :ins_elem_inserted]
 :insert_body]
                               end
