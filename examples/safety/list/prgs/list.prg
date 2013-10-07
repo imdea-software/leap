@@ -68,8 +68,8 @@ assume
                                 skip;
                                 prev->unlock;
                                 curr->unlock;
-:search_body]
                                 return ();
+:search_body]
                               end
 
 // ----- INSERT ----------------------------------------------
@@ -101,7 +101,6 @@ assume
                                 while (curr->data < e) do
 :ins_while_begins[
 :ins_while[
-:ins_curr_lower[
                                   aux := prev;
 :ins_aux_eq_prev
                                   prev := curr;
@@ -110,7 +109,6 @@ assume
                                   aux->unlock;
                                   curr := curr->next;
 :ins_while_begins]
-:ins_curr_lower]
 :ins_equals]
 :ins_while]
 :ins_owns_curr_one]
@@ -160,6 +158,7 @@ assume
                               begin
 :remove_body[
                                 prev := head;
+:rem_prev_lower[
 :rem_prev_def[
 :rem_prev_is_head[
                                 prev->lock;
@@ -170,7 +169,9 @@ assume
                                 curr->lock;
 :rem_prev_is_head]
 :rem_owns_curr_one[
-                                while (curr != tail /\ curr->data < e) do
+:rem_lookup_loop[
+                                while (curr->data < e) do
+:rem_while_begins[
 :rem_while[
                                   aux := prev;
 :rem_aux_eq_prev
@@ -179,13 +180,16 @@ assume
 :rem_aux_before_prev
                                   aux->unlock;
                                   curr := curr->next;
+:rem_while_begins]
 :rem_equals]
 :rem_while]
 :rem_owns_curr_one]
                                   curr->lock;
 :rem_owns_curr_two[
                                 endwhile
-                                if (curr != tail /\ curr->data = e) then
+:rem_lookup_loop]
+:rem_final_conditional
+                                if (curr->data = e) then
 :rem_remove[
 :rem_if_one
                                   aux := curr->next;
@@ -198,7 +202,9 @@ assume
 :rem_follows]
 :rem_curr_def]
 :rem_remove]
+:rem_prev_lower]
                                 endif
+:rem_elem_removed[
 :rem_diff[
                                 prev->unlock;
 :rem_owns_prev]
@@ -206,7 +212,8 @@ assume
                                 curr->unlock;
 :rem_diff]
 :rem_owns_curr_two]
-:remove_body]
                                 return();
+:rem_elem_removed]
+:remove_body]
                               end
                             

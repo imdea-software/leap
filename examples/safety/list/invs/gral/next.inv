@@ -14,7 +14,7 @@ invariant [fullNext] :
 /\  @ins_diff(j). -> insert::prev(j) != insert::curr(j)
 /\  (@ins_aux_eq_prev(j). -> insert::aux(j) = insert::prev(j))
 /\  (@ins_aux_before_prev(j). -> (insert::aux(j) != insert::prev(j) /\ rd(heap, insert::aux(j)).next = insert::prev(j)))
-///\  @ins_aux_before_curr(j). -> (rd(heap,insert::aux(j)).next = insert::curr(j))
+/\  @ins_aux_before_curr(j). -> (rd(heap,insert::aux(j)).next = insert::curr(j))
 /\  (@ins_follows(j). /\ ~ @ins_equals(j).) -> (insert::prev(j) != insert::curr(j) /\
                                          rd(heap,insert::prev(j)).next = insert::curr(j))
 /\  @ins_equals(j). -> insert::prev(j) = insert::curr(j)
@@ -27,19 +27,22 @@ null)
 /\ (@rem_equals(j). -> remove::prev(j) = remove::curr(j))
 /\ (@rem_aux_before_prev(j). -> (remove::aux(j) != remove::prev(j) /\ rd(heap, remove::aux(j)).next = remove::prev(j)))
 /\ (@rem_equals(j). -> remove::prev(j) = remove::curr(j))
-/\ ((@rem_follows(j). /\ ~ @rem_equals(j).) -> (remove::prev(j) != remove::curr(j) /\
+
+#remove_prev_next_curr:
+   ((@rem_follows(j). /\ ~ @rem_equals(j).) -> (remove::prev(j) != remove::curr(j) /\
                                      rd(heap,remove::prev(j)).next = remove::curr(j)))
 
-/\ @rem_while(j). -> remove::curr(j) != tail
-/\ (@rem_if_one(j). \/ @rem_if_two(j).) -> remove::curr(j) != tail
-/\ @rem_diff(j). -> remove::prev(j) != remove::curr(j)
+//   @rem_while(j). -> remove::curr(j) != tail
+///\ (@rem_if_one(j). \/ @rem_if_two(j).) -> remove::curr(j) != tail
+
+   @rem_diff(j). -> remove::prev(j) != remove::curr(j)
 /\ @rem_if_two(j). -> (   rd(heap, remove::curr(j)).next = remove::aux(j)
                           /\ remove::prev(j) != remove::aux(j)
                           /\ remove::curr(j) != remove::aux(j))
 
 //////////////////////////////////////
 
-/\   (@ins_prev_is_head(j). \/ @ins_lookup_loop(j).) -> insert::prev(j) != null
+/\ (@ins_prev_is_head(j). \/ @ins_lookup_loop(j).) -> insert::prev(j) != null
 
 #insert_curr_not_null:
    @ins_follows(j). -> insert::curr(j) != null
@@ -48,3 +51,10 @@ null)
    @ins_while_begins(j). -> rd(heap, insert::curr(j)).next != null
 
 
+/\ (@rem_prev_is_head(j). \/ @rem_lookup_loop(j).) -> remove::prev(j) != null
+
+#remove_curr_not_null:
+   @rem_follows(j). -> remove::curr(j) != null
+
+
+   @rem_while_begins(j). -> rd(heap, remove::curr(j)).next != null

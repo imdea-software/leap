@@ -34,8 +34,8 @@ assume
                               begin
 :main_body[
                                 if me = choosen then
-                                  call insert(choosen_e);
-:check_insert
+                                  call remove(choosen_e);
+:check_remove
                                   skip;
                                 else
 :main_other_threads[
@@ -125,6 +125,7 @@ assume
                                 while (curr->data < e) do
 :ins_while_begins[
 :ins_while[
+:ins_curr_lower[
                                   aux := prev;
 :ins_aux_eq_prev
                                   prev := curr;
@@ -133,6 +134,7 @@ assume
                                   aux->unlock;
                                   curr := curr->next;
 :ins_while_begins]
+:ins_curr_lower]
 :ins_equals]
 :ins_while]
 :ins_owns_curr_one]
@@ -229,6 +231,7 @@ assume
 :rem_remove]
 :rem_prev_lower]
                                 endif
+:rem_elem_removed[
 :rem_diff[
                                 prev->unlock;
 :rem_owns_prev]
@@ -237,6 +240,7 @@ assume
 :rem_diff]
 :rem_owns_curr_two]
                                 return();
+:rem_elem_removed]
 :remove_body]
                               end
                             

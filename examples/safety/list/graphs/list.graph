@@ -44,9 +44,19 @@
       35:O:fullLock,fullRegion{union : split-goal | reduce2 | | simplify-pc};
       41:S:fullPreserve,fullRegion;
       47:S:fullPreserve,fullRegion;
+      43:fullPreserve,
+         fullRegion::remove_curr_in_region,
+         fullOrder::remove_bounded_e {union : split-goal | reduce2 || simplify-pc} ;
       50:S:fullPreserve,fullRegion;
-      51:S:fullPreserve,fullRegion;
-      51:O:fullPreserve,fullLock,fullRegion
+      51:S:fullPreserve,
+           fullRegion,
+           fullOrder::remove_bounded_e,
+           fullOrder::remove_curr_is_e {union : split-goal | reduce2 | | simplify-pc} ;
+      51:O:fullPreserve,
+           fullLock,
+           fullRegion,
+           fullOrder::remove_bounded_e,
+           fullOrder::remove_curr_is_e {union : split-goal | reduce2 | | simplify-pc}
    ] { union :
              | reduce2
              |
@@ -59,11 +69,19 @@
       28:S:fullNext;
       30:S:fullPreserve;
       35:O:fullDisjoint;
+      39:S:fullPreserve::head_not_null;
       41:S:fullPreserve;
       45:S:fullNext;
       47:S:fullPreserve,fullNext;
-      51:S:fullPreserve,fullNext{pruning:split-goal|reduce2||simplify-pc};
-      51:O:fullPreserve,fullNext,fullLock{pruning:split-goal|reduce2||simplify-pc}
+      51:S:fullPreserve,
+           fullNext,
+           fullOrder::remove_curr_is_e,
+           fullOrder::remove_bounded_e {pruning:split-goal|reduce2||simplify-pc};
+      51:O:fullPreserve,
+           fullNext,
+           fullLock,
+           fullOrder::remove_curr_is_e,
+           fullOrder::remove_bounded_e {pruning:split-goal|reduce2||simplify-pc}
    ] { pruning :
                | reduce2
                |
@@ -77,4 +95,3 @@
                |
                | simplify-pc
      }
-

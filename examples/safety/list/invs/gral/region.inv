@@ -17,10 +17,18 @@ invariant [fullRegion] :
 /\ (@ins_aux_before_prev(i). -> insert::aux(i) in region)
 
 
-/\  tail != null
-/\  head != null
-/\  head != tail
-/\ @rem_prev_def(i). -> remove::prev(i) != tail
-/\ (@rem_prev_def(i). -> (remove::prev(i) != null /\ remove::prev(i) in region))
-/\ (@rem_curr_def(i). -> (remove::curr(i) != null /\ remove::curr(i) in region))
-/\ (@rem_aux_before_prev(i). -> remove::aux(i) in region)
+///\  tail != null
+///\  head != null
+///\  head != tail
+///\ @rem_prev_def(i). -> remove::prev(i) != tail
+
+
+/\ @rem_prev_def(i). -> remove::prev(i) != null
+
+#remove_prev_in_region:
+   @rem_prev_def(i). -> remove::prev(i) in region
+
+#remove_curr_in_region:
+   @rem_curr_def(i). -> remove::curr(i) in region
+
+   (@rem_aux_before_prev(i). -> remove::aux(i) in region)

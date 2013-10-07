@@ -19,23 +19,3 @@ invariant [list_insert] :
 /\ (@remove_body(j). /\ j != choosen) -> remove::e(j) != choosen_e
 
 
-
-
-
-
-
-
-
-
-///\ @insert_body(choosen). -> insert::e(i) = choosen_e
-
-///\ (@insert_body(i). /\ i != choosen) -> insert::e(i) = main::e(i)
-
-///\ @ins_elem_inserted(i). -> insert::e(i) inElem elements
-
-///\ @36(i). -> insert::curr(i) != null
-///\ @36(i). -> insert::curr(choosen) != null
-
-///\ @36(i). -> (rd(heap,insert::curr(i)).data > insert::e(i) \/
-//               rd(heap,insert::curr(i)).data = insert::e(i))
-
