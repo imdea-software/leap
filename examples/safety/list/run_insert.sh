@@ -1,7 +1,7 @@
 #Configure path to Leap
 LEAP=leap
 
-OPTIONS="-l log --focus $1 -sm -yices+z3 -dp tll -co pruning"
+OPTIONS="-smt -sm -yices+z3 -dp tll -co pruning"
 
 PRG=prgs/list_insert.prg
 INV_FOLDER=invs/insert

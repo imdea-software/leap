@@ -33,13 +33,13 @@ assume
                                 elem e
                               begin
 :main_body[
-                                if me = choosen then
-                                  call insert(choosen_e);
+                                while (true) do
+                                  if me = choosen then
+                                    call insert(choosen_e);
 :check_insert
-                                  skip;
-                                else
+                                    skip;
+                                  else
 :main_other_threads[
-                                  while (true) do
                                     // Generate random e
                                     e := havocListElem();
 :main_e[
@@ -58,8 +58,8 @@ assume
                                       skip;
                                     endif
                                     skip;
-                                  endwhile
-                                endif
+                                  endif
+                                endwhile
                                 return ();
 :main_e]
 :main_body]

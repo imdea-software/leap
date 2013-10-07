@@ -1,7 +1,7 @@
 #Configure path to Leap
 LEAP=leap
 
-OPTIONS="--show_file_info -l log --ignore $1 -sm -yices+z3 -dp tll -co pruning"
+OPTIONS="-smt -sm -yices+z3 -dp tll -co pruning"
 
 PRG=prgs/list_remove.prg
 INV_FOLDER=invs/remove
