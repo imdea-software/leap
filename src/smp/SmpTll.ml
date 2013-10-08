@@ -320,7 +320,7 @@ let compute_max_cut_off_with_union (phi:formula) : model_size =
   let info = union_model_size (union_formula_cutoff new_union_count phi) in
   let num_addrs = 1 +                         (* null               *)
                   varaddr_num +               (* Address variables  *)
-                  varaddr_num * varmem_num +  (* Cell next pointers *)
+(*                  varaddr_num * varmem_num +  (* Cell next pointers *) *)
                   info.num_addrs              (* Special literals   *) in
   let num_tids = 1 +                          (* No thread          *)
                  vartid_num +                 (* Tid variables     *)

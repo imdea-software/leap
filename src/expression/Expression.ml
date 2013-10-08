@@ -1951,16 +1951,20 @@ let term_to_setint (t:term) : setint =
 
 (* PRIMING QUERY FUNCTIONS *)
 
-let rec get_vars_term (expr:term)
-                      (base:variable -> variable list) : variable list =
+let (@@) = VarSet.union
+
+
+let rec get_vars_term (expr:term) (base:variable -> VarSet.t) : VarSet.t =
   let get_vars_aux t = get_vars_tid t base in
   match expr with
-    VarT v            -> (base v) @
-      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
+    VarT v            -> VarSet.union (base v)
+                          (match v.parameter with
+                           | Shared -> VarSet.empty
+                           | Local t -> get_vars_aux t)
   | SetT(set)         -> get_vars_set set base
   | AddrT(addr)       -> get_vars_addr addr base
   | ElemT(elem)       -> get_vars_elem elem base
-  | TidT(th)         -> get_vars_tid th base
+  | TidT(th)          -> get_vars_tid th base
   | CellT(cell)       -> get_vars_cell cell base
   | SetThT(setth)     -> get_vars_setth setth base
   | SetIntT(setint)   -> get_vars_setint setint base
@@ -1973,388 +1977,426 @@ let rec get_vars_term (expr:term)
   | TidArrayT(arr)    -> get_vars_tidarr arr base
 
 
-and get_vars_expr (e:expr_t)
-                  (base:variable -> variable list) : variable list =
+and get_vars_expr (e:expr_t) (base:variable -> VarSet.t) : VarSet.t =
   match e with
     Term t    -> get_vars_term t base
   | Formula b -> get_vars_formula b base
 
 
-and get_vars_array (a:arrays)
-                   (base:variable -> variable list) : variable list =
+and get_vars_array (a:arrays) (base:variable -> VarSet.t) : VarSet.t =
   let get_vars_aux t = get_vars_tid t base in
   match a with
-    VarArray v       -> (base v) @
-      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
-  | ArrayUp(arr,t,e) -> (get_vars_array arr base) @
-                        (get_vars_tid t base)     @
+    VarArray v       -> VarSet.union (base v)
+                          (match v.parameter with
+                           | Shared -> VarSet.empty
+                           | Local t -> get_vars_aux t)
+  | ArrayUp(arr,t,e) -> (get_vars_array arr base) @@
+                        (get_vars_tid t base)     @@
                         (get_vars_expr e base)
 
 
-and get_vars_addrarr (a:addrarr)
-                     (base:variable -> variable list) : variable list =
+and get_vars_addrarr (a:addrarr) (base:variable -> VarSet.t) : VarSet.t =
   let get_vars_aux t = get_vars_tid t base in
   match a with
-    VarAddrArray v       -> (base v) @
-      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
-  | AddrArrayUp(arr,i,a) -> (get_vars_addrarr arr base) @
-                            (get_vars_int i base)       @
+    VarAddrArray v       -> VarSet.union (base v)
+                              (match v.parameter with
+                               | Shared -> VarSet.empty
+                               | Local t -> get_vars_aux t)
+  | AddrArrayUp(arr,i,a) -> (get_vars_addrarr arr base) @@
+                            (get_vars_int i base)       @@
                             (get_vars_addr a base)
   | CellArr c            -> (get_vars_cell c base)
 
 
-and get_vars_tidarr (a:tidarr)
-                    (base:variable -> variable list) : variable list =
+and get_vars_tidarr (a:tidarr) (base:variable -> VarSet.t) : VarSet.t =
   let get_vars_aux t = get_vars_tid t base in
   match a with
-    VarTidArray v       -> (base v) @
-      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
-  | TidArrayUp(arr,i,t) -> (get_vars_tidarr arr base) @
-                           (get_vars_int i base)      @
+    VarTidArray v       -> VarSet.union (base v)
+                              (match v.parameter with
+                               | Shared -> VarSet.empty
+                               | Local t -> get_vars_aux t)
+  | TidArrayUp(arr,i,t) -> (get_vars_tidarr arr base) @@
+                           (get_vars_int i base)      @@
                            (get_vars_tid t base)
   | CellTids c            -> (get_vars_cell c base)
 
 
-and get_vars_set (e:set)
-                 (base:variable -> variable list) : variable list =
+and get_vars_set (e:set) (base:variable -> VarSet.t) : VarSet.t =
   let get_vars_aux t = get_vars_tid t base in
   match e with
-    VarSet v            -> (base v) @
-      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
-  | EmptySet            -> []
+    VarSet v            -> VarSet.union (base v)
+                              (match v.parameter with
+                               | Shared -> VarSet.empty
+                               | Local t -> get_vars_aux t)
+  | EmptySet            -> VarSet.empty
   | Singl(addr)         -> (get_vars_addr addr base)
-  | Union(s1,s2)        -> (get_vars_set s1 base) @ (get_vars_set s2 base)
-  | Intr(s1,s2)         -> (get_vars_set s1 base) @ (get_vars_set s2 base)
-  | Setdiff(s1,s2)      -> (get_vars_set s1 base) @ (get_vars_set s2 base)
+  | Union(s1,s2)        -> (get_vars_set s1 base) @@ (get_vars_set s2 base)
+  | Intr(s1,s2)         -> (get_vars_set s1 base) @@ (get_vars_set s2 base)
+  | Setdiff(s1,s2)      -> (get_vars_set s1 base) @@ (get_vars_set s2 base)
   | PathToSet(path)     -> (get_vars_path path base)
-  | AddrToSet(mem,addr) -> (get_vars_mem mem base)@(get_vars_addr addr base)
-  | AddrToSetAt(mem,a,l)-> (get_vars_mem mem base) @
-                           (get_vars_addr a base)  @
+  | AddrToSet(mem,addr) -> (get_vars_mem mem base) @@ (get_vars_addr addr base)
+  | AddrToSetAt(mem,a,l)-> (get_vars_mem mem base) @@
+                           (get_vars_addr a base)  @@
                            (get_vars_int l base)
   | SetArrayRd(arr,t)   -> (get_vars_array arr base)
 
 
-and get_vars_addr (a:addr)
-                  (base:variable -> variable list) : variable list =
+and get_vars_addr (a:addr) (base:variable -> VarSet.t) : VarSet.t =
   let get_vars_aux t = get_vars_tid t base in
   match a with
-    VarAddr v                 -> (base v) @
-      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
-  | Null                      -> []
+    VarAddr v                 -> VarSet.union (base v)
+                                  (match v.parameter with
+                                   | Shared -> VarSet.empty
+                                   | Local t -> get_vars_aux t)
+  | Null                      -> VarSet.empty
   | Next(cell)                -> (get_vars_cell cell base)
-  | NextAt(cell,l)            -> (get_vars_cell cell base) @ (get_vars_int l base)
-  | ArrAt(cell,l)             -> (get_vars_cell cell base) @ (get_vars_int l base)
-  | FirstLocked(mem,path)     -> (get_vars_mem mem base) @ (get_vars_path path base)
-  | FirstLockedAt(mem,path,l) -> (get_vars_mem mem base) @ (get_vars_path path base) @
+  | NextAt(cell,l)            -> (get_vars_cell cell base) @@ (get_vars_int l base)
+  | ArrAt(cell,l)             -> (get_vars_cell cell base) @@ (get_vars_int l base)
+  | FirstLocked(mem,path)     -> (get_vars_mem mem base) @@ (get_vars_path path base)
+  | FirstLockedAt(mem,path,l) -> (get_vars_mem mem base) @@ (get_vars_path path base) @@
                                  (get_vars_int l base)
   | AddrArrayRd(arr,t)        -> (get_vars_array arr base)
-  | AddrArrRd(arr,i)          -> (get_vars_addrarr arr base) @ (get_vars_int i base)
+  | AddrArrRd(arr,i)          -> (get_vars_addrarr arr base) @@ (get_vars_int i base)
 
 
-and get_vars_elem (e:elem)
-                  (base:variable -> variable list) : variable list =
+and get_vars_elem (e:elem) (base:variable -> VarSet.t) : VarSet.t =
   let get_vars_aux t = get_vars_tid t base in
   match e with
-    VarElem v          -> (base v) @
-      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
+    VarElem v          -> VarSet.union (base v)
+                              (match v.parameter with
+                               | Shared -> VarSet.empty
+                               | Local t -> get_vars_aux t)
   | CellData(cell)     -> (get_vars_cell cell base)
   | ElemArrayRd(arr,t) -> (get_vars_array arr base)
-  | HavocListElem      -> []
-  | HavocSkiplistElem  -> []
-  | LowestElem         -> []
-  | HighestElem        -> []
+  | HavocListElem      -> VarSet.empty
+  | HavocSkiplistElem  -> VarSet.empty
+  | LowestElem         -> VarSet.empty
+  | HighestElem        -> VarSet.empty
 
 
-and get_vars_tid (th:tid)
-                 (base:variable -> variable list) : variable list =
+and get_vars_tid (th:tid) (base:variable -> VarSet.t) : VarSet.t =
   let get_vars_aux t = get_vars_tid t base in
   match th with
-    VarTh v              -> (base v) @
-      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
-  | NoTid               -> []
+    VarTh v              -> VarSet.union (base v)
+                              (match v.parameter with
+                               | Shared -> VarSet.empty
+                               | Local t -> get_vars_aux t)
+  | NoTid               -> VarSet.empty
   | CellLockId(cell)     -> (get_vars_cell cell base)
-  | CellLockIdAt(cell,l) -> (get_vars_cell cell base) @ (get_vars_int l base)
+  | CellLockIdAt(cell,l) -> (get_vars_cell cell base) @@ (get_vars_int l base)
   | TidArrayRd(arr,t)   -> (get_vars_array arr base)
-  | TidArrRd(arr,l)     -> (get_vars_tidarr arr base) @ (get_vars_int l base)
+  | TidArrRd(arr,l)     -> (get_vars_tidarr arr base) @@ (get_vars_int l base)
 
 
-and get_vars_cell (c:cell)
-                  (base:variable -> variable list) : variable list =
+and get_vars_cell (c:cell) (base:variable -> VarSet.t) : VarSet.t =
   let get_vars_aux t = get_vars_tid t base in
-  let fold f xs = List.fold_left (fun ys x -> (f x base) @ ys) [] xs in
+  let fold f xs = List.fold_left (fun ys x -> (f x base) @@ ys) VarSet.empty xs in
   match c with
-    VarCell v              -> (base v) @
-      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
-  | Error                  -> []
-  | MkCell(data,addr,th)   -> (get_vars_elem data base) @
-                              (get_vars_addr addr base) @
+    VarCell v              -> VarSet.union (base v)
+                                (match v.parameter with
+                                 | Shared -> VarSet.empty
+                                 | Local t -> get_vars_aux t)
+  | Error                  -> VarSet.empty
+  | MkCell(data,addr,th)   -> (get_vars_elem data base) @@
+                              (get_vars_addr addr base) @@
                               (get_vars_tid th base)
-  | MkSLKCell(data,aa,tt)  -> (get_vars_elem data base) @
-                              (fold get_vars_addr aa)   @
+  | MkSLKCell(data,aa,tt)  -> (get_vars_elem data base) @@
+                              (fold get_vars_addr aa)   @@
                               (fold get_vars_tid tt)
-  | MkSLCell(data,aa,ta,l) -> (get_vars_elem data base) @
-                              (get_vars_addrarr aa base) @
-                              (get_vars_tidarr ta base) @
+  | MkSLCell(data,aa,ta,l) -> (get_vars_elem data base) @@
+                              (get_vars_addrarr aa base) @@
+                              (get_vars_tidarr ta base) @@
                               (get_vars_int l base)
-  | CellLock(cell,t)       -> (get_vars_cell cell base) @ (get_vars_tid t base)
-  | CellLockAt(cell,l,t)   -> (get_vars_cell cell base) @
-                              (get_vars_int l base)     @
+  | CellLock(cell,t)       -> (get_vars_cell cell base) @@ (get_vars_tid t base)
+  | CellLockAt(cell,l,t)   -> (get_vars_cell cell base) @@
+                              (get_vars_int l base)     @@
                               (get_vars_tid t base)
   | CellUnlock(cell)       -> (get_vars_cell cell base)
-  | CellUnlockAt(cell,l)   -> (get_vars_cell cell base) @
+  | CellUnlockAt(cell,l)   -> (get_vars_cell cell base) @@
                               (get_vars_int l base)
-  | CellAt(mem,addr)       -> (get_vars_mem mem base) @
+  | CellAt(mem,addr)       -> (get_vars_mem mem base) @@
                               (get_vars_addr addr base)
   | CellArrayRd(arr,t)     -> (get_vars_array arr base)
-  | UpdCellAddr(c,i,a)     -> (get_vars_cell c base) @
-                              (get_vars_int i base)  @
+  | UpdCellAddr(c,i,a)     -> (get_vars_cell c base) @@
+                              (get_vars_int i base)  @@
                               (get_vars_addr a base)
 
 
-and get_vars_setth (s:setth)
-                   (base:variable -> variable list) : variable list =
+and get_vars_setth (s:setth) (base:variable -> VarSet.t) : VarSet.t =
   let get_vars_aux t = get_vars_tid t base in
   match s with
-    VarSetTh v          -> (base v) @
-      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
-  | EmptySetTh          -> []
+    VarSetTh v          -> (base v) @@
+                            (match v.parameter with
+                             | Shared -> VarSet.empty
+                             | Local t -> get_vars_aux t)
+  | EmptySetTh          -> VarSet.empty
   | SinglTh(th)         -> get_vars_tid th base
-  | UnionTh(s1,s2)      -> (get_vars_setth s1 base)@(get_vars_setth s2 base)
-  | IntrTh(s1,s2)       -> (get_vars_setth s1 base)@(get_vars_setth s2 base)
-  | SetdiffTh(s1,s2)    -> (get_vars_setth s1 base)@(get_vars_setth s2 base)
+  | UnionTh(s1,s2)      -> (get_vars_setth s1 base)@@(get_vars_setth s2 base)
+  | IntrTh(s1,s2)       -> (get_vars_setth s1 base)@@(get_vars_setth s2 base)
+  | SetdiffTh(s1,s2)    -> (get_vars_setth s1 base)@@(get_vars_setth s2 base)
   | SetThArrayRd(arr,t) -> (get_vars_array arr base)
 
 
-and get_vars_setint (s:setint)
-                    (base:variable -> variable list) : variable list =
+and get_vars_setint (s:setint) (base:variable -> VarSet.t) : VarSet.t =
   let get_vars_aux t = get_vars_tid t base in
   match s with
-    VarSetInt v          -> (base v) @
-      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
-  | EmptySetInt          -> []
+    VarSetInt v          -> (base v) @@
+                              (match v.parameter with
+                               | Shared -> VarSet.empty
+                               | Local t -> get_vars_aux t)
+  | EmptySetInt          -> VarSet.empty
   | SinglInt(i)          -> (get_vars_int i base)
-  | UnionInt(s1,s2)      -> (get_vars_setint s1 base) @
+  | UnionInt(s1,s2)      -> (get_vars_setint s1 base) @@
                             (get_vars_setint s2 base)
-  | IntrInt(s1,s2)       -> (get_vars_setint s1 base) @
+  | IntrInt(s1,s2)       -> (get_vars_setint s1 base) @@
                             (get_vars_setint s2 base)
-  | SetdiffInt(s1,s2)    -> (get_vars_setint s1 base) @
+  | SetdiffInt(s1,s2)    -> (get_vars_setint s1 base) @@
                             (get_vars_setint s2 base)
   | SetIntArrayRd(arr,t) -> (get_vars_array arr base)
 
 
-and get_vars_setelem (s:setelem)
-                     (base:variable -> variable list) : variable list =
+and get_vars_setelem (s:setelem) (base:variable -> VarSet.t) : VarSet.t =
   let get_vars_aux t = get_vars_tid t base in
   match s with
-    VarSetElem v          -> (base v) @
-      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
-  | EmptySetElem          -> []
+    VarSetElem v          -> (base v) @@
+                              (match v.parameter with
+                               | Shared -> VarSet.empty
+                               | Local t -> get_vars_aux t)
+  | EmptySetElem          -> VarSet.empty
   | SinglElem(e)          -> (get_vars_elem e base)
-  | UnionElem(s1,s2)      -> (get_vars_setelem s1 base) @
+  | UnionElem(s1,s2)      -> (get_vars_setelem s1 base) @@
                              (get_vars_setelem s2 base)
-  | IntrElem(s1,s2)       -> (get_vars_setelem s1 base) @
+  | IntrElem(s1,s2)       -> (get_vars_setelem s1 base) @@
                              (get_vars_setelem s2 base)
-  | SetdiffElem(s1,s2)    -> (get_vars_setelem s1 base) @
+  | SetdiffElem(s1,s2)    -> (get_vars_setelem s1 base) @@
                              (get_vars_setelem s2 base)
-  | SetToElems(s,m)       -> (get_vars_set s base) @ (get_vars_mem m base)
+  | SetToElems(s,m)       -> (get_vars_set s base) @@ (get_vars_mem m base)
   | SetElemArrayRd(arr,t) -> (get_vars_array arr base)
 
 
-and get_vars_path (p:path)
-                  (base:variable -> variable list) : variable list =
+and get_vars_path (p:path) (base:variable -> VarSet.t) : VarSet.t =
   let get_vars_aux t = get_vars_tid t base in
   match p with
-    VarPath v -> (base v) @
-      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
-  | Epsilon                          -> []
+    VarPath v -> (base v) @@
+                    (match v.parameter with
+                     | Shared -> VarSet.empty
+                     | Local t -> get_vars_aux t)
+  | Epsilon                          -> VarSet.empty
   | SimplePath(addr)                 -> (get_vars_addr addr base)
-  | GetPath(mem,add_from,add_to)     -> (get_vars_mem mem base) @
-                                        (get_vars_addr add_from base) @
+  | GetPath(mem,add_from,add_to)     -> (get_vars_mem mem base) @@
+                                        (get_vars_addr add_from base) @@
                                         (get_vars_addr add_to base)
-  | GetPathAt(mem,add_from,add_to,l) -> (get_vars_mem mem base) @
-                                        (get_vars_addr add_from base) @
-                                        (get_vars_addr add_to base) @
+  | GetPathAt(mem,add_from,add_to,l) -> (get_vars_mem mem base) @@
+                                        (get_vars_addr add_from base) @@
+                                        (get_vars_addr add_to base) @@
                                         (get_vars_int l base)
   | PathArrayRd(arr,t)               -> (get_vars_array arr base)
 
 
-and get_vars_mem (m:mem)
-                 (base:variable -> variable list) : variable list =
+and get_vars_mem (m:mem) (base:variable -> VarSet.t) : VarSet.t =
   let get_vars_aux t = get_vars_tid t base in
   match m with
-    VarMem v             -> (base v) @
-      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
-  | Update(mem,add,cell) -> (get_vars_mem mem base) @
-                            (get_vars_addr add base) @
+    VarMem v             -> (base v) @@
+                                (match v.parameter with
+                                 | Shared -> VarSet.empty
+                                 | Local t -> get_vars_aux t)
+  | Update(mem,add,cell) -> (get_vars_mem mem base) @@
+                            (get_vars_addr add base) @@
                             (get_vars_cell cell base)
   | MemArrayRd(arr,t)    -> (get_vars_array arr base)
 
 
-and get_vars_int (i:integer)
-                 (base:variable -> variable list) : variable list =
+and get_vars_int (i:integer) (base:variable -> VarSet.t) : VarSet.t =
   let get_vars_aux t = get_vars_tid t base in
   match i with
-    IntVal(i)         -> []
-  | VarInt v          -> (base v) @
-      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
+    IntVal(i)         -> VarSet.empty
+  | VarInt v          -> (base v) @@
+                            (match v.parameter with
+                             | Shared -> VarSet.empty
+                             | Local t -> get_vars_aux t)
   | IntNeg(i)         -> (get_vars_int i base)
-  | IntAdd(i1,i2)     -> (get_vars_int i1 base) @ (get_vars_int i2 base)
-  | IntSub(i1,i2)     -> (get_vars_int i1 base) @ (get_vars_int i2 base)
-  | IntMul(i1,i2)     -> (get_vars_int i1 base) @ (get_vars_int i2 base)
-  | IntDiv(i1,i2)     -> (get_vars_int i1 base) @ (get_vars_int i2 base)
+  | IntAdd(i1,i2)     -> (get_vars_int i1 base) @@ (get_vars_int i2 base)
+  | IntSub(i1,i2)     -> (get_vars_int i1 base) @@ (get_vars_int i2 base)
+  | IntMul(i1,i2)     -> (get_vars_int i1 base) @@ (get_vars_int i2 base)
+  | IntDiv(i1,i2)     -> (get_vars_int i1 base) @@ (get_vars_int i2 base)
   | IntArrayRd(arr,t) -> (get_vars_array arr base)
   | IntSetMin(s)      -> (get_vars_setint s base)
   | IntSetMax(s)      -> (get_vars_setint s base)
   | CellMax(c)        -> (get_vars_cell c base)
-  | HavocLevel        -> []
+  | HavocLevel        -> VarSet.empty
 
 
-and get_vars_atom (a:atom)
-                  (base:variable -> variable list) : variable list =
+and get_vars_atom (a:atom) (base:variable -> VarSet.t) : VarSet.t =
   let get_vars_aux t = get_vars_tid t base in
   match a with
-    Append(p1,p2,pres)                 -> (get_vars_path p1 base) @
-                                          (get_vars_path p2 base) @
+    Append(p1,p2,pres)                 -> (get_vars_path p1 base) @@
+                                          (get_vars_path p2 base) @@
                                           (get_vars_path pres base)
-  | Reach(h,add_from,add_to,p)         -> (get_vars_mem h base) @
-                                          (get_vars_addr add_from base) @
-                                          (get_vars_addr add_to base) @
+  | Reach(h,add_from,add_to,p)         -> (get_vars_mem h base) @@
+                                          (get_vars_addr add_from base) @@
+                                          (get_vars_addr add_to base) @@
                                           (get_vars_path p base)
-  | ReachAt(h,a_from,a_to,l,p)         -> (get_vars_mem h base) @
-                                          (get_vars_addr a_from base) @
-                                          (get_vars_addr a_to base) @
-                                          (get_vars_int l base) @
+  | ReachAt(h,a_from,a_to,l,p)         -> (get_vars_mem h base) @@
+                                          (get_vars_addr a_from base) @@
+                                          (get_vars_addr a_to base) @@
+                                          (get_vars_int l base) @@
                                           (get_vars_path p base)
-  | OrderList(h,a_from,a_to)           -> (get_vars_mem h base) @
-                                          (get_vars_addr a_from base) @
+  | OrderList(h,a_from,a_to)           -> (get_vars_mem h base) @@
+                                          (get_vars_addr a_from base) @@
                                           (get_vars_addr a_to base)
-  | Skiplist(h,s,l,a_from,a_to,elems)  -> (get_vars_mem h base) @
-                                          (get_vars_set s base) @
-                                          (get_vars_int l base) @
-                                          (get_vars_addr a_from base) @
-                                          (get_vars_addr a_to base) @
+  | Skiplist(h,s,l,a_from,a_to,elems)  -> (get_vars_mem h base) @@
+                                          (get_vars_set s base) @@
+                                          (get_vars_int l base) @@
+                                          (get_vars_addr a_from base) @@
+                                          (get_vars_addr a_to base) @@
                                           (get_vars_setelem elems base)
-  | In(a,s)                            -> (get_vars_addr a base) @ (get_vars_set s base)
-  | SubsetEq(s_in,s_out)               -> (get_vars_set s_in base) @
+  | In(a,s)                            -> (get_vars_addr a base) @@ (get_vars_set s base)
+  | SubsetEq(s_in,s_out)               -> (get_vars_set s_in base) @@
                                           (get_vars_set s_out base)
-  | InTh(th,s)                         -> (get_vars_tid th base)@(get_vars_setth s base)
-  | SubsetEqTh(s_in,s_out)             -> (get_vars_setth s_in base) @
+  | InTh(th,s)                         -> (get_vars_tid th base)@@(get_vars_setth s base)
+  | SubsetEqTh(s_in,s_out)             -> (get_vars_setth s_in base) @@
                                           (get_vars_setth s_out base)
-  | InInt(i,s)                         -> (get_vars_int i base) @
+  | InInt(i,s)                         -> (get_vars_int i base) @@
                                           (get_vars_setint s base)
-  | SubsetEqInt(s_in,s_out)            -> (get_vars_setint s_in base) @
+  | SubsetEqInt(s_in,s_out)            -> (get_vars_setint s_in base) @@
                                           (get_vars_setint s_out base)
-  | InElem(e,s)                        -> (get_vars_elem e base) @
+  | InElem(e,s)                        -> (get_vars_elem e base) @@
                                           (get_vars_setelem s base)
-  | SubsetEqElem(s_in,s_out)           -> (get_vars_setelem s_in base) @
+  | SubsetEqElem(s_in,s_out)           -> (get_vars_setelem s_in base) @@
                                           (get_vars_setelem s_out base)
-  | Less(i1,i2)                        -> (get_vars_int i1 base) @ (get_vars_int i2 base)
-  | Greater(i1,i2)                     -> (get_vars_int i1 base) @ (get_vars_int i2 base)
-  | LessEq(i1,i2)                      -> (get_vars_int i1 base) @ (get_vars_int i2 base)
-  | GreaterEq(i1,i2)                   -> (get_vars_int i1 base) @ (get_vars_int i2 base)
-  | LessTid(t1,t2)                     -> (get_vars_tid t1 base) @ (get_vars_tid t2 base)
-  | LessElem(e1,e2)                    -> (get_vars_elem e1 base) @ (get_vars_elem e2 base)
-  | GreaterElem(e1,e2)                 -> (get_vars_elem e1 base) @ (get_vars_elem e2 base)
+  | Less(i1,i2)                        -> (get_vars_int i1 base) @@ (get_vars_int i2 base)
+  | Greater(i1,i2)                     -> (get_vars_int i1 base) @@ (get_vars_int i2 base)
+  | LessEq(i1,i2)                      -> (get_vars_int i1 base) @@ (get_vars_int i2 base)
+  | GreaterEq(i1,i2)                   -> (get_vars_int i1 base) @@ (get_vars_int i2 base)
+  | LessTid(t1,t2)                     -> (get_vars_tid t1 base) @@ (get_vars_tid t2 base)
+  | LessElem(e1,e2)                    -> (get_vars_elem e1 base) @@ (get_vars_elem e2 base)
+  | GreaterElem(e1,e2)                 -> (get_vars_elem e1 base) @@ (get_vars_elem e2 base)
   | Eq(exp)                            -> (get_vars_eq exp base)
   | InEq(exp)                          -> (get_vars_ineq exp base)
-  | BoolVar v                          -> (base v) @
-      (match v.parameter with Shared -> [] | Local t -> get_vars_aux t)
+  | BoolVar v                          -> (base v) @@
+                                            (match v.parameter with
+                                             | Shared -> VarSet.empty
+                                             | Local t -> get_vars_aux t)
   | BoolArrayRd(arr,t)                 -> (get_vars_array arr base)
-  | PC (pc,t,_)                        -> 
-      (match t with Shared -> [] | Local ti -> get_vars_aux ti)
+  | PC (pc,t,_)                        -> (match t with
+                                           | Shared -> VarSet.empty
+                                           | Local ti -> get_vars_aux ti)
   | PCUpdate (pc,t)                    -> get_vars_aux t
-  | PCRange (pc1,pc2,t,_)              ->
-      (match t with Shared -> [] | Local ti -> get_vars_aux ti)
+  | PCRange (pc1,pc2,t,_)              -> (match t with
+                                           | Shared -> VarSet.empty
+                                           | Local ti -> get_vars_aux ti)
 
 
-
-and get_vars_eq ((t1,t2):eq) (base:variable -> variable list) : variable list =
-  (get_vars_term t1 base) @ (get_vars_term t2 base)
+and get_vars_eq ((t1,t2):eq) (base:variable -> VarSet.t) : VarSet.t =
+  (get_vars_term t1 base) @@ (get_vars_term t2 base)
 
 
 and get_vars_ineq ((t1,t2):diseq)
-                   (base:variable -> variable list) : variable list =
-  (get_vars_term t1 base) @ (get_vars_term t2 base)
+                   (base:variable -> VarSet.t) : VarSet.t =
+  (get_vars_term t1 base) @@ (get_vars_term t2 base)
 
 
 and get_vars_literal (l:literal)
-                     (base:variable -> variable list) : variable list =
+                     (base:variable -> VarSet.t) : VarSet.t =
   match l with
     Atom a    -> get_vars_atom a base
   | NegAtom a -> get_vars_atom a base
 
 
-and get_vars_conjunctive_formula (phi:conjunctive_formula)
-                                 (base:variable -> variable list)
-                                    : variable list =
+and get_vars_conjunctive_formula (phi:conjunctive_formula) (base:variable -> VarSet.t) : VarSet.t =
   match phi with
-    FalseConj -> []
-  | TrueConj  -> []
-  | Conj ls   -> List.fold_left (fun xs l -> (get_vars_literal l base)@xs) [] ls
+    FalseConj -> VarSet.empty
+  | TrueConj  -> VarSet.empty
+  | Conj ls   -> List.fold_left (fun xs l -> (get_vars_literal l base)@@xs) VarSet.empty ls
 
 
-and get_vars_formula (phi:formula)
-                     (base:variable -> variable list) : variable list =
+and get_vars_formula (phi:formula) (base:variable -> VarSet.t) : VarSet.t =
   match phi with
     Literal(lit)          -> (get_vars_literal lit base)
-  | True                  -> []
-  | False                 -> []
-  | And(f1,f2)            -> (get_vars_formula f1 base) @
+  | True                  -> VarSet.empty
+  | False                 -> VarSet.empty
+  | And(f1,f2)            -> (get_vars_formula f1 base) @@
                              (get_vars_formula f2 base)
-  | Or(f1,f2)             -> (get_vars_formula f1 base) @
+  | Or(f1,f2)             -> (get_vars_formula f1 base) @@
                              (get_vars_formula f2 base)
   | Not(f)                -> (get_vars_formula f base)
-  | Implies(f1,f2)        -> (get_vars_formula f1 base) @
+  | Implies(f1,f2)        -> (get_vars_formula f1 base) @@
                              (get_vars_formula f2 base)
-  | Iff (f1,f2)           -> (get_vars_formula f1 base) @
+  | Iff (f1,f2)           -> (get_vars_formula f1 base) @@
                              (get_vars_formula f2 base)
 
 
 (* Exported vars functions *)
 
-let get_vars_as_set (phi:formula) (base:variable -> variable list) : VarSet.t =
-  let var_list = get_vars_formula phi base in
-  let var_set = List.fold_left (fun set v ->
-                                  VarSet.add (unprime_variable v) set
-                               ) (VarSet.empty) (var_list)
+let get_vars_as_set (phi:formula) (base:variable -> VarSet.t) : VarSet.t =
+  let var_set = VarSet.fold (fun v set ->
+                  VarSet.add (unprime_variable v) set
+                ) (get_vars_formula phi base) (VarSet.empty)
   in
     var_set
 
 
-let get_vars (phi:formula) (base:variable -> variable list) : variable list =
+let get_vars (phi:formula) (base:variable -> VarSet.t) : variable list =
   VarSet.elements (get_vars_as_set phi base)
 
 
+let filtering_condition (f:variable -> bool) (v:variable) : VarSet.t =
+  if f v then VarSet.singleton v else VarSet.empty
+
+
 let primed_vars (f:formula) : variable list =
-  get_vars f (fun v -> if is_primed v then [v] else [])
+  get_vars f (filtering_condition is_primed)
 
 
 let all_vars (f:formula) : variable list =
-  get_vars f (fun v -> [v])
+  get_vars f (fun v -> VarSet.singleton v)
 
 
 let all_vars_as_set (f:formula) : VarSet.t =
-  get_vars_as_set f (fun v -> [v])
+  get_vars_as_set f (fun v -> VarSet.singleton v)
 
 
 let all_local_vars (f:formula) : variable list =
-  get_vars f (fun v -> if is_local_var v then [v] else [])
+  get_vars f (filtering_condition is_local_var)
 
 
 let all_local_owned_vars (f:formula) : variable list =
-  get_vars f (fun v -> if is_owned_var v then [v] else [])
+  get_vars f (filtering_condition is_owned_var)
 
 
 let all_global_vars (f:formula) : variable list =
-  get_vars f (fun v -> if is_global_var v then [v] else [])
+  get_vars f (filtering_condition is_global_var)
 
 
 (* Primes in phi the variables modified in ante *)
 let prime_modified (rho:formula) (phi:formula) : formula =
 (*  LOG "Entering prime_modified" LEVEL TRACE; *)
-  let p_vars = primed_vars rho in
-  let p_set  = construct_var_set p_vars
-  in
+  let base_f = fun v -> if is_primed v then VarSet.singleton v else VarSet.empty in
+  let rec analyze_formula (phi:formula) : VarSet.t =
+    match phi with
+    | Literal l -> analyze_literal l
+    | True -> VarSet.empty
+    | False -> VarSet.empty
+    | And (phi1,phi2) -> VarSet.union (analyze_formula phi1) (analyze_formula phi2)
+    | Or (phi1,phi2) -> VarSet.union (analyze_formula phi1) (analyze_formula phi2)
+    | Not phi1 -> analyze_formula phi1
+    | Implies (phi1,phi2) -> VarSet.union (analyze_formula phi1) (analyze_formula phi2)
+    | Iff (phi1,phi2) -> VarSet.union (analyze_formula phi1) (analyze_formula phi2)
+  and analyze_literal (lit:literal) : VarSet.t =
+    match lit with
+    | Atom a -> analyze_atom a
+    | NegAtom a -> analyze_atom a
+  and analyze_atom (a:atom) : VarSet.t =
+    match a with
+    | Eq (ArrayT (VarArray v), ArrayT (ArrayUp (aa,t,e)))
+    | Eq (ArrayT (ArrayUp (aa,t,e)), ArrayT (VarArray v)) ->
+        VarSet.singleton (var_set_param (Local t) (unprime_variable v))
+    | _ -> get_vars_atom a base_f in
+  let p_set = VarSet.fold (fun v set ->
+                 VarSet.add (unprime_variable v) set
+               ) (analyze_formula rho) VarSet.empty in
+  Printf.printf "RHO: %s\n" (formula_to_str rho);
+  VarSet.iter (fun v -> Printf.printf "PRIMED VAR: %s\n" (variable_to_str v)) p_set;
     prime_only p_set phi
 
 

@@ -28,7 +28,7 @@ let rec sort_to_tll_sort (s:E.sort) : TLL.sort =
   | E.SetElem   -> TLL.SetElem
   | E.Path      -> TLL.Path
   | E.Mem       -> TLL.Mem
-  | E.Bool      -> raise(UnsupportedSort(E.sort_to_str s))
+  | E.Bool      -> TLL.Bool
   | E.Int       -> TLL.Int
   | E.Array     -> raise(UnsupportedSort(E.sort_to_str s))
   | E.AddrArray -> raise(UnsupportedSort(E.sort_to_str s))

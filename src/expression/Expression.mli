@@ -442,7 +442,7 @@ val primed_vars : formula -> variable list
 val prime_modified : formula -> formula -> formula
 val prime_modified_term : formula -> term -> term
 
-val get_vars : formula -> (variable -> VarSet.elt list) -> variable list
+val get_vars : formula -> (variable -> VarSet.t) -> variable list
 
 
 (* GET VARIABLES FROM EXPRESSION *)
