@@ -30,14 +30,14 @@ invariant [list_search] :
 
 
 
-/\ @25(j). -> (
-
-      search::prev(j) in region /\
-      rd(heap, search::prev(j)).next = search::curr(j) /\
-      rd(heap, search::prev(j)).data < search::e(j) /\
-      (rd(heap, search::curr(j)).data > search::e(j) \/
-       rd(heap, search::curr(j)).data = search::e(j))
-  )
+///\ @25(j). -> (
+//
+//      search::prev(j) in region /\
+//      rd(heap, search::prev(j)).next = search::curr(j) /\
+//      rd(heap, search::prev(j)).data < search::e(j) /\
+//      (rd(heap, search::curr(j)).data > search::e(j) \/
+//       rd(heap, search::curr(j)).data = search::e(j))
+//  )
 
 
 

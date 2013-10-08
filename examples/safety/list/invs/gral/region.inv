@@ -8,6 +8,16 @@ invariant [fullRegion] :
    head in region
 /\ tail in region
 /\ null in region
+
+
+#search_prev_in_region:
+   @sch_prev_def(i). -> search::prev(i) in region
+
+   @sch_curr_def(i). -> search::curr(i) in region
+/\ @sch_aux_before_prev(i). -> search::aux(i) in region
+
+
+
 /\ (@ins_prev_def(i). -> insert::prev(i) in region)
 
 #insert_curr_in_region:

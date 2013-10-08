@@ -79,22 +79,40 @@ assume
                               begin
 :search_body[
                                 prev := head;
+:sch_prev_lower[
+:sch_prev_def[
+:sch_prev_is_head[
                                 prev->lock;
                                 curr := prev->next;
+:sch_curr_def[
+:sch_follows[
                                 curr->lock;
+:sch_prev_is_head]
 
                                 while (curr->data < e) do
+:sch_while_begins[
                                   aux := prev;
+:sch_aux_eq_prev
                                   prev := curr;
+:sch_equals[
+:sch_aux_before_prev
                                   aux->unlock;
                                   curr := curr->next;
+:sch_while_begins]
+:sch_equals]
                                   curr->lock;
                                 endwhile
-
+:sch_after_lookup
                                 result := curr->data = e;
+:sch_prev_lower]
 :sch_result_set[
+:sch_diff[
                                 prev->unlock;
+:sch_follows]
+:sch_prev_def]
                                 curr->unlock;
+:sch_diff]
+:sch_curr_def]
                                 return (result);
 :sch_result_set]
 :search_body]

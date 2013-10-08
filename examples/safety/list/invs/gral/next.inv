@@ -9,6 +9,25 @@ invariant [fullNext] :
 /\  head != tail // Same as in remove_region
 /\  tail != null // Same as in remove_region
 /\  rd(heap, head).next != null
+
+
+
+
+
+/\ @sch_prev_is_head(j). -> (search::prev(j) = head /\ rd(heap, head).next != null)
+/\ @sch_aux_eq_prev(j). -> search::aux(j) = search::prev(j)
+/\ @sch_equals(j). -> search::prev(j) = search::curr(j)
+/\ @sch_aux_before_prev(j). -> (search::aux(j) != search::prev(j) /\ rd(heap, search::aux(j)).next = search::prev(j))
+
+
+#search_prev_next_curr:
+   ((@sch_follows(j). /\ ~ @sch_equals(j).) -> (search::prev(j) != search::curr(j) /\
+                                     rd(heap,search::prev(j)).next = search::curr(j)))
+
+   @sch_diff(j). -> search::prev(j) != search::curr(j)
+
+
+
 /\  @ins_head_next_diff(j). -> rd(heap, head).next != head
 /\  @ins_prev_is_head(j). -> insert::prev(j) = head
 /\  @ins_diff(j). -> insert::prev(j) != insert::curr(j)
@@ -26,7 +45,6 @@ null)
 /\ (@rem_aux_eq_prev(j). -> remove::aux(j) = remove::prev(j))
 /\ (@rem_equals(j). -> remove::prev(j) = remove::curr(j))
 /\ (@rem_aux_before_prev(j). -> (remove::aux(j) != remove::prev(j) /\ rd(heap, remove::aux(j)).next = remove::prev(j)))
-/\ (@rem_equals(j). -> remove::prev(j) = remove::curr(j))
 
 #remove_prev_next_curr:
    ((@rem_follows(j). /\ ~ @rem_equals(j).) -> (remove::prev(j) != remove::curr(j) /\

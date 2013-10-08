@@ -1,13 +1,11 @@
 => list_search [
-      25 : fullPreserve
-
-//      56 : fullPreserve,
-//           fullRegion::remove_prev_in_region,
-//           fullNext::remove_prev_next_curr,
-//           fullOrder::remove_prev_lower,
-//           fullOrder::remove_curr_bounded { union : split-goal | reduce2 | | simplify-pc }
-   
-  ] { union : split-goal
+      25 : fullPreserve,
+           fullRegion::search_prev_in_region,
+           fullNext::search_prev_next_curr,
+           fullOrder::search_prev_lower,
+           fullOrder::search_curr_bounded
+            { union : split-goal | reduce2 | | simplify-pc }
+  ] { union :
             | reduce2
             |
             | simplify-pc
