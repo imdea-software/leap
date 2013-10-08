@@ -1211,13 +1211,13 @@ let rec aux_rho_for_st
         | Some t ->
             let _ = printf "Going to process term: %s\n" (Stm.term_to_str t) in
             begin
-              let ret_pos = i.Stm.called_from_pos in
-              let _ = printf "RETPOS: %s\n" (String.concat ";" $ List.map string_of_int ret_pos) in
+              let call_pos = i.Stm.called_from_pos in
+              let _ = printf "RETPOS: %s\n" (String.concat ";" $ List.map string_of_int call_pos) in
               let (modif,equiv) =
                 List.fold_left (fun (ms,es) pos ->
                   let call_stm = get_statement_at sys pos in
                   match call_stm with
-                  | (_, Stm.StCall (Some ret_t, _,_,_,_)) ->
+                  | (_, Stm.StCall (Some ret_t, _,_,_,Some info)) ->
                     begin
                       let (k,(m,e)) =
                         match mode with
@@ -1228,11 +1228,11 @@ let rec aux_rho_for_st
                             (th, Bridge.construct_stm_term_eq_as_array
                                   mInfo pt ret_t th_p (Stm.Term t)) in
                       let pos_assignment =
-                        E.Implies (build_next_pc mode k [pos], e) in
+                        E.Implies (build_next_pc mode k [info.Stm.next_pos], e) in
                       (m@ms, pos_assignment::es)
                     end
                   | _ -> (ms,es)
-                ) ([],[]) ret_pos in
+                ) ([],[]) call_pos in
               let still_gSet = E.filter_term_set modif gSet in
               let still_lSet = E.filter_term_set modif lSet in
               let still_thSet = E.filter_term_set modif thSet in
