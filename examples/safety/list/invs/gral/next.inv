@@ -11,9 +11,7 @@ invariant [fullNext] :
 /\  rd(heap, head).next != null
 
 
-
-
-
+/\ @sch_prev_def(j). -> search::prev(j) != null
 /\ @sch_prev_is_head(j). -> (search::prev(j) = head /\ rd(heap, head).next != null)
 /\ @sch_aux_eq_prev(j). -> search::aux(j) = search::prev(j)
 /\ @sch_equals(j). -> search::prev(j) = search::curr(j)
@@ -24,7 +22,9 @@ invariant [fullNext] :
    ((@sch_follows(j). /\ ~ @sch_equals(j).) -> (search::prev(j) != search::curr(j) /\
                                      rd(heap,search::prev(j)).next = search::curr(j)))
 
-   @sch_diff(j). -> search::prev(j) != search::curr(j)
+   @sch_follows(j). -> search::curr(j) != null
+
+/\ @sch_diff(j). -> search::prev(j) != search::curr(j)
 
 
 

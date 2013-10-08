@@ -83,11 +83,13 @@ assume
 :sch_prev_def[
 :sch_prev_is_head[
                                 prev->lock;
+:sch_owns_prev[
                                 curr := prev->next;
 :sch_curr_def[
 :sch_follows[
                                 curr->lock;
 :sch_prev_is_head]
+:sch_owns_curr_one[
 
                                 while (curr->data < e) do
 :sch_while_begins[
@@ -100,7 +102,9 @@ assume
                                   curr := curr->next;
 :sch_while_begins]
 :sch_equals]
+:sch_owns_curr_one]
                                   curr->lock;
+:sch_owns_curr_two[
                                 endwhile
 :sch_after_lookup
                                 result := curr->data = e;
@@ -108,9 +112,11 @@ assume
 :sch_result_set[
 :sch_diff[
                                 prev->unlock;
+:sch_owns_prev]
 :sch_follows]
 :sch_prev_def]
                                 curr->unlock;
+:sch_owns_curr_two]
 :sch_diff]
 :sch_curr_def]
                                 return (result);
