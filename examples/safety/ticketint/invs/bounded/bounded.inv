@@ -1,0 +1,35 @@
+vars :
+
+tid j
+
+invariant [bounded] :
+
+
+	 (overtaken = 0 \/ overtaken = 1)
+
+/\ (interested = 0 \/ interested = 1)
+/\ victim != taker
+///\ min <= main::ticket(j)
+/\ 0 <= tick
+/\ 0 <= min
+
+/\ (~@active(victim).) -> interested = 0
+/\ interested = 0 -> (~@active(victim).)
+/\ @active(victim). -> interested = 1
+/\ interested = 1 -> @active(victim).
+/\ interested = 0 -> overtaken = 0
+/\ (@4(taker). /\ interested = 1 /\ main::ticket(taker) < main::ticket(victim)) -> overtaken = 0
+
+
+
+////////////////////////////////////
+
+
+/\ main::ticket(taker) != main::ticket(victim)
+/\ main::ticket(taker) >= min
+/\ main::ticket(victim) >= min
+
+///\ (~ @active(j).) -> min <= tick
+///\ @active(j). -> min < tick
+///\ @4(j). -> min <= main::ticket(j)
+

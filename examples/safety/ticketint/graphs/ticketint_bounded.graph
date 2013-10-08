@@ -1,0 +1,9 @@
+=> bounded [
+		3 : activeLow;
+		4 : mutex, notSame, activeLow, minTicket
+	 ] { pruning :
+							 | reduce2
+							 |
+							 | simplify-pc
+		 }
+
