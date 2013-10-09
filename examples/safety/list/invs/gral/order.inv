@@ -17,22 +17,13 @@ invariant [fullOrder] :
    @remove_body(i). -> (remove::e(i) != lowestElem /\ remove::e(i) != highestElem)
 
 
+#search_curr_bounded:
+   @sch_after_lookup(i). ->
+      (rd(heap,search::curr(i)).data > search::e(i) \/
+       rd(heap,search::curr(i)).data = search::e(i))
 
 
-
-
-
-#remove_curr_bounded:
-   @rem_final_conditional(i). ->
-      (rd(heap,remove::curr(i)).data > remove::e(i) \/
-       rd(heap,remove::curr(i)).data = remove::e(i))
-
-
-
-
-
-
-   @sch_prev_def(i). -> (rd(heap, search::prev(i)).data < rd(heap, tail).data \/
+	 @sch_prev_def(i). -> (rd(heap, search::prev(i)).data < rd(heap, tail).data \/
                          rd(heap, search::prev(i)).data = rd(heap, tail).data)
 
 /\ @sch_while_begins(i). -> rd(heap, search::curr(i)).data < search::e(i)
@@ -68,11 +59,10 @@ invariant [fullOrder] :
        rd(heap,insert::curr(i)).data = insert::e(i))
 
 
-#search_curr_bounded:
-   @sch_after_lookup(i). ->
-      (rd(heap,search::curr(i)).data > search::e(i) \/
-       rd(heap,search::curr(i)).data = search::e(i))
-
+#remove_curr_bounded:
+   @rem_final_conditional(i). ->
+      (rd(heap,remove::curr(i)).data > remove::e(i) \/
+       rd(heap,remove::curr(i)).data = remove::e(i))
 
 
    @rem_prev_def(i). -> (rd(heap, remove::prev(i)).data < rd(heap, tail).data \/

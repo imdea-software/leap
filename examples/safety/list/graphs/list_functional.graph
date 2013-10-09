@@ -1,0 +1,13 @@
+=> list_functional [
+			12:fullPreserve,
+				 fullLock,
+				 fullRegion::search_prev_in_region,
+				 fullNext::search_prev_next_curr,
+				 fullOrder::search_prev_lower,
+				 fullOrder::search_curr_bounded;
+			51:fullPreserve
+	 ] {union : split-goal
+            | reduce2
+            |
+            | simplify-pc
+     }
