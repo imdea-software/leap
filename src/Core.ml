@@ -315,10 +315,6 @@ module Make (Opt:module type of GenOptions) : S =
         let other_conseq_supp = load_support line Premise.OthersConseq in
         let fresh_k = E.gen_fresh_tid (E.voc (E.conj_list (inv::supp@other_conseq_supp))) in
 
-        Printf.printf "VOC INVARIANT: %s\n" (String.concat ";" (List.map E.tid_to_str (E.voc inv)));
-        Printf.printf "VOC INVARIANT FILTERED: %s\n" (String.concat ";" (List.map E.tid_to_str (filter_me_tid (E.voc inv))));
-
-
         let self_conseq_vcs = List.fold_left (fun vcs i ->
                                 (gen_vcs (inv::self_conseq_supp) inv line Premise.SelfConseq i) @ vcs
                               ) [] (filter_me_tid (E.voc inv)) in

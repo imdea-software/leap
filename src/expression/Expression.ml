@@ -2395,8 +2395,6 @@ let prime_modified (rho:formula) (phi:formula) : formula =
   let p_set = VarSet.fold (fun v set ->
                  VarSet.add (unprime_variable v) set
                ) (analyze_formula rho) VarSet.empty in
-  Printf.printf "RHO: %s\n" (formula_to_str rho);
-  VarSet.iter (fun v -> Printf.printf "PRIMED VAR: %s\n" (variable_to_str v)) p_set;
     prime_only p_set phi
 
 
