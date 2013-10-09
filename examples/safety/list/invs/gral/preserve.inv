@@ -27,4 +27,4 @@ invariant [fullPreserve] :
 #ordered:
    orderlist (heap, head, tail)
 
-   tail in addr2set(heap, head)
+   tail in region

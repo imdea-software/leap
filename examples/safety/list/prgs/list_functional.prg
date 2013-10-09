@@ -4,8 +4,8 @@ global
   addr tail
   ghost addrSet region
   ghost elemSet elements
-	ghost elemSet historyIns
-	ghost elemSet historyRem
+  ghost elemSet historyIns
+  ghost elemSet historyRem
 
 assume
   region = {head} Union {tail} Union {null} /\
@@ -18,9 +18,9 @@ assume
   head != null /\
   tail != null /\
   head->next = tail /\
-	tail->next = null /\
-	historyIns = elements /\
-	historyRem = EmptySetElem
+  tail->next = null /\
+  historyIns = elements /\
+  historyRem = EmptySetElem
 
 
 // ----- PROGRAM BEGINS --------------------------------------
@@ -33,18 +33,18 @@ assume
                               begin
 :main_body[
                                 while (true) do
-																	// Generate random e
-																	e := havocListElem();
+                                  // Generate random e
+                                  e := havocListElem();
 :main_e[
-																	choice
-																		call search(e);
-																	_or_
-																		call insert(e);
-																	_or_
-																		call remove(e);
-																	endchoice
-																endwhile
-																return ();
+                                  choice
+                                    call search(e);
+                                  _or_
+                                    call insert(e);
+                                  _or_
+                                    call remove(e);
+                                  endchoice
+                                endwhile
+                                return ();
 :main_e]
 :main_body]
                               end
@@ -166,7 +166,7 @@ assume
                                     $
                                       elements := UnionElem (elements, SingleElem(e));
                                       region := region Union {aux};
-																			historyIns := UnionElem (historyIns, SingleElem(e));
+                                      historyIns := UnionElem (historyIns, SingleElem(e));
                                     $
 :ins_follows]
 :after_malloc]
@@ -238,7 +238,7 @@ assume
                                     $
                                       elements := SetDiffElem (elements, SingleElem(e));
                                       region := region SetDiff {curr};
-																			historyRem := UnionElem (historyRem, SingleElem(e));
+                                      historyRem := UnionElem (historyRem, SingleElem(e));
                                     $
 :rem_follows]
 :rem_curr_def]

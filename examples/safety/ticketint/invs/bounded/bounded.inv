@@ -5,7 +5,7 @@ tid j
 invariant [bounded] :
 
 
-	 (overtaken = 0 \/ overtaken = 1)
+   (overtaken = 0 \/ overtaken = 1)
 
 /\ (interested = 0 \/ interested = 1)
 /\ victim != taker
@@ -31,5 +31,9 @@ invariant [bounded] :
 
 ///\ (~ @active(j).) -> min <= tick
 ///\ @active(j). -> min < tick
-///\ @4(j). -> min <= main::ticket(j)
+
+
+/\ @active(taker). -> min <= main::ticket(taker)
+/\ @active(victim). -> min <= main::ticket(victim)
+
 

@@ -32,9 +32,14 @@ invariant [fullNext] :
 /\  @ins_prev_is_head(j). -> insert::prev(j) = head
 /\  @ins_diff(j). -> insert::prev(j) != insert::curr(j)
 /\  (@ins_aux_eq_prev(j). -> insert::aux(j) = insert::prev(j))
-/\  (@ins_aux_before_prev(j). -> (insert::aux(j) != insert::prev(j) /\ rd(heap, insert::aux(j)).next = insert::prev(j)))
-/\  @ins_aux_before_curr(j). -> (rd(heap,insert::aux(j)).next = insert::curr(j))
-/\  (@ins_follows(j). /\ ~ @ins_equals(j).) -> (insert::prev(j) != insert::curr(j) /\
+
+#insert_aux_next_curr:
+   (@ins_aux_before_prev(j). -> (insert::aux(j) != insert::prev(j) /\ rd(heap, insert::aux(j)).next = insert::prev(j)))
+
+   @ins_aux_before_curr(j). -> (rd(heap,insert::aux(j)).next = insert::curr(j))
+
+#insert_prev_next_curr:
+    (@ins_follows(j). /\ ~ @ins_equals(j).) -> (insert::prev(j) != insert::curr(j) /\
                                          rd(heap,insert::prev(j)).next = insert::curr(j))
 /\  @ins_equals(j). -> insert::prev(j) = insert::curr(j)
 ///\  @ins_while(j). -> insert::curr(j) != null

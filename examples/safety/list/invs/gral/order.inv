@@ -23,7 +23,7 @@ invariant [fullOrder] :
        rd(heap,search::curr(i)).data = search::e(i))
 
 
-	 @sch_prev_def(i). -> (rd(heap, search::prev(i)).data < rd(heap, tail).data \/
+   @sch_prev_def(i). -> (rd(heap, search::prev(i)).data < rd(heap, tail).data \/
                          rd(heap, search::prev(i)).data = rd(heap, tail).data)
 
 /\ @sch_while_begins(i). -> rd(heap, search::curr(i)).data < search::e(i)
@@ -45,8 +45,11 @@ invariant [fullOrder] :
 
 ///\ @ins_while(i). -> rd(heap, insert::prev(i)).data < insert::e(i)
 /\ @ins_while_begins(i). -> rd(heap, insert::curr(i)).data < insert::e(i)
-/\ @ins_prev_lower(i). -> rd(heap, insert::prev(i)).data < insert::e(i)
-/\ @ins_insert(i). -> rd(heap, insert::curr(i)).data > insert::e(i)
+
+#insert_prev_lower:
+   @ins_prev_lower(i). -> rd(heap, insert::prev(i)).data < insert::e(i)
+
+   @ins_insert(i). -> rd(heap, insert::curr(i)).data > insert::e(i)
 /\ @after_malloc(i). -> rd(heap, insert::aux(i)).data = insert::e(i)
 
 #remove_curr_is_e:

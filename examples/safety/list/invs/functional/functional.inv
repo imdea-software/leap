@@ -1,48 +1,31 @@
 vars:
 
 tid j
+elem ee
 
 invariant [list_functional] :
 
 
-	 (@sch_after_lookup(j). /\ rd(heap, search::curr(j)).data = search::e(j)) ->
-			search::e(j) inElem elements
+   @sch_after_lookup(j). ->
+      (rd(heap, search::curr(j)).data = search::e(j) -> search::e(j) inElem elements)
+
 
 /\ ((@sch_result_set(j).) /\ .search::result(j).) ->
-			search::e(j) inElem historyIns
+      search::e(j) inElem historyIns
 
-///\ (@sch_result_set(j). /\ (~.search::result(j).)) ->
-//			((~ search::e(j) inElem historyIns) \/ search::e(j) inElem historyRem)
+/\ (@sch_result_set(j). /\ (~.search::result(j).)) ->
+      ((~ search::e(j) inElem historyIns) \/ search::e(j) inElem historyRem)
 
 
 /\ elements subseteqElem historyIns
 
 
 
+/////////////////////////////////////
 
-//   @check_search(choosen). -> (choosen_e inElem elements -> .main::result(choosen). /\
-//															 .main::result(choosen). -> choosen_e inElem elements)
-//
-//
-///\ @sch_result_set(j). -> (search::e(j) inElem elements -> .search::result(j). /\
-//													 .search::result(j). -> search::e(j) inElem elements)
-//
-//
-///\ @sch_result_set(choosen). -> (search::e(choosen) inElem elements -> .search::result(choosen). /\
-//													 .search::result(choosen). -> search::e(choosen) inElem elements)
-//
-//
-///\ @search_body(choosen). -> search::e(choosen) = choosen_e
-//
-///\ (@main_other_threads(j). \/ @insert_body(j). \/ @remove_body(j).) -> j != choosen
-//
-///\ @main_other_threads(choosen). -> me != choosen
-//
-///\ @main_e_not_choosen(j). -> main::e(j) != choosen_e
-//
-///\ @insert_body(j). -> insert::e(j) != choosen_e
-//
-///\ @remove_body(j). -> remove::e(j) != choosen_e
+/\ @sch_after_lookup(j). ->
+      (search::e(j) inElem elements -> rd(heap, search::curr(j)).data = search::e(j))
 
-
+/\ ( ~ ee inElem elements) ->
+      ((~ ee inElem historyIns) \/ ee inElem historyRem)
 
