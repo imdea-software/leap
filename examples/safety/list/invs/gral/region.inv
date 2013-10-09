@@ -13,8 +13,10 @@ invariant [fullRegion] :
 #search_prev_in_region:
    @sch_prev_def(i). -> search::prev(i) in region
 
-   @sch_curr_def(i). -> search::curr(i) in region
-/\ @sch_aux_before_prev(i). -> search::aux(i) in region
+#search_curr_in_region:
+	 @sch_curr_def(i). -> search::curr(i) in region
+
+	 @sch_aux_before_prev(i). -> search::aux(i) in region
 
 
 

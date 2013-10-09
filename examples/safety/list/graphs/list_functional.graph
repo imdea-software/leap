@@ -5,7 +5,13 @@
 				 fullNext::search_prev_next_curr,
 				 fullOrder::search_prev_lower,
 				 fullOrder::search_curr_bounded;
-			51:fullPreserve
+			51:fullPreserve,
+				 fullLock::search_owns_curr,
+				 fullLock::remove_owns_curr,
+				 fullRegion::search_curr_in_region,
+				 fullRegion::remove_curr_in_region,
+				 fullOrder::remove_curr_is_e
+
 	 ] {union : split-goal
             | reduce2
             |

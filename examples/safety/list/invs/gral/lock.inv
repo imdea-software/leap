@@ -4,16 +4,22 @@ tid i
 
 invariant [fullLock] :
 
-(@sch_owns_prev(i). -> rd(heap, search::prev(i)).lockid = i) /\
-((@sch_owns_curr_one(i). \/ @sch_owns_curr_two(i).) -> rd(heap, search::curr(i)).lockid = i) /\
-(@sch_aux_before_prev(i). -> rd(heap, search::aux(i)).lockid = i) /\
+	 (@sch_owns_prev(i). -> rd(heap, search::prev(i)).lockid = i)
+
+#search_owns_curr:
+	 ((@sch_owns_curr_one(i). \/ @sch_owns_curr_two(i).) -> rd(heap, search::curr(i)).lockid = i)
+
+	 (@sch_aux_before_prev(i). -> rd(heap, search::aux(i)).lockid = i)
 
 
-(@ins_owns_prev(i). -> rd(heap, insert::prev(i)).lockid = i) /\
-((@ins_owns_curr_one(i). \/ @ins_owns_curr_two(i).) -> rd(heap, insert::curr(i)).lockid = i) /\
-(@ins_aux_before_prev(i). -> rd(heap, insert::aux(i)).lockid = i) /\
+/\ (@ins_owns_prev(i). -> rd(heap, insert::prev(i)).lockid = i)
+/\ ((@ins_owns_curr_one(i). \/ @ins_owns_curr_two(i).) -> rd(heap, insert::curr(i)).lockid = i)
+/\ (@ins_aux_before_prev(i). -> rd(heap, insert::aux(i)).lockid = i)
 
 
-(@rem_owns_prev(i). -> rd(heap, remove::prev(i)).lockid = i) /\
-((@rem_owns_curr_one(i). \/ @rem_owns_curr_two(i).) -> rd(heap, remove::curr(i)).lockid = i) /\
-(@rem_aux_before_prev(i). -> rd(heap, remove::aux(i)).lockid = i)
+/\ (@rem_owns_prev(i). -> rd(heap, remove::prev(i)).lockid = i)
+
+#remove_owns_curr:
+	 ((@rem_owns_curr_one(i). \/ @rem_owns_curr_two(i).) -> rd(heap, remove::curr(i)).lockid = i)
+
+	 (@rem_aux_before_prev(i). -> rd(heap, remove::aux(i)).lockid = i)
