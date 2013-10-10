@@ -4,7 +4,7 @@
          fullRegion::search_prev_in_region,
          fullNext::search_prev_next_curr,
          fullOrder::search_prev_lower,
-         fullOrder::search_curr_bounded;
+				 fullOrder::search_curr_bounded {pruning : | reduce2 | | simplify-pc};
 
 
 			35:fullPreserve,
@@ -27,7 +27,7 @@
          fullRegion::remove_curr_in_region,
          fullOrder::remove_curr_is_e
 
-   ] {union : split-goal
+	 ] {union :
             | reduce2
             |
             | simplify-pc

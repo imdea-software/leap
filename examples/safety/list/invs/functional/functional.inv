@@ -17,7 +17,7 @@ invariant [list_functional] :
 			search::e(j) inElem historyIns
 
 /\ (@sch_result_set(j). /\ (~.search::result(j).)) ->
-			((~ search::e(j) inElem historyIns) \/ search::e(j) inElem historyRem)
+			((~ search::e(j) inElem search::historyInsCopy(j)) \/ search::e(j) inElem search::historyRemCopy(j))
 
 
 /\ elements subseteqElem historyIns
