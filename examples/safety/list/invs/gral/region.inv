@@ -33,8 +33,10 @@ invariant [fullRegion] :
 #insert_curr_in_region:
    (@ins_curr_def(i). -> insert::curr(i) in region)
 
-   (@after_malloc(i). -> ~ (insert::aux(i) in region))
-/\ (@ins_aux_before_prev(i). -> insert::aux(i) in region)
+#insert_aux_not_in_region:
+	 (@after_malloc(i). -> ~ (insert::aux(i) in region))
+
+	 (@ins_aux_before_prev(i). -> insert::aux(i) in region)
 
 
 ///////  Remove   /////////////////////////
