@@ -1,7 +1,6 @@
 vars:
 
 tid j
-elem ee
 
 invariant [list_functional] :
 
@@ -24,7 +23,4 @@ invariant [list_functional] :
 
 /\ historyIns subseteqElem (UnionElem (elements, historyRem))
 
-
-
-/////////////////////////////////////
 
