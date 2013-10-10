@@ -10,6 +10,10 @@ invariant [fullRegion] :
 /\ null in region
 
 
+
+///////  Search   /////////////////////////
+
+
 #search_prev_in_region:
    @sch_prev_def(i). -> search::prev(i) in region
 
@@ -17,6 +21,10 @@ invariant [fullRegion] :
    @sch_curr_def(i). -> search::curr(i) in region
 
    @sch_aux_before_prev(i). -> search::aux(i) in region
+
+
+
+///////  Insert   /////////////////////////
 
 
 #insert_prev_in_region:
@@ -29,13 +37,11 @@ invariant [fullRegion] :
 /\ (@ins_aux_before_prev(i). -> insert::aux(i) in region)
 
 
-///\  tail != null
-///\  head != null
-///\  head != tail
-///\ @rem_prev_def(i). -> remove::prev(i) != tail
+///////  Remove   /////////////////////////
 
 
-/\ @rem_prev_def(i). -> remove::prev(i) != null
+#remove_prev_not_null:
+   @rem_prev_def(i). -> remove::prev(i) != null
 
 #remove_prev_in_region:
    @rem_prev_def(i). -> remove::prev(i) in region

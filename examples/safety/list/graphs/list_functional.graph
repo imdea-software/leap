@@ -19,7 +19,7 @@
 //         fullRegion::insert_prev_in_region,
 //         fullNext::search_prev_next_curr,
 //         fullNext::insert_prev_next_curr,
-//         fullNext::insert_aux_next_curr,
+//         fullNext::insert_aux_next_prev,
 //         fullOrder::search_prev_lower,
 //         fullOrder::search_curr_bounded,
 //         fullOrder::insert_prev_lower,
