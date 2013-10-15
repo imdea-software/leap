@@ -1,0 +1,13 @@
+vars:
+
+tid j
+
+invariant [list_functional_search_linearization] :
+
+
+   @sch_after_lookup(j). ->
+      (rd(heap, search::curr(j)).data = search::e(j) -> search::e(j) inElem elements)
+
+/\ @sch_after_lookup(j). ->
+      (rd(heap, search::curr(j)).data != search::e(j) -> (~ search::e(j) inElem elements))
+

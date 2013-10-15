@@ -1,0 +1,21 @@
+vars:
+
+tid j
+
+invariant [list_functional_search_false] :
+
+
+   @sch_after_lookup(j). ->
+      (rd(heap, search::curr(j)).data = search::e(j) -> search::e(j) inElem elements)
+
+/\ @sch_after_lookup(j). ->
+      (rd(heap, search::curr(j)).data != search::e(j) -> (~ search::e(j) inElem elements))
+
+
+/\ (@sch_result_set(j). /\ (~.search::result(j).)) ->
+      ((~ search::e(j) inElem search::historyInsCopy(j)) \/ search::e(j) inElem search::historyRemCopy(j))
+
+
+/\ historyIns subseteqElem (UnionElem (elements, historyRem))
+
+
