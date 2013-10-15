@@ -10,14 +10,14 @@ invariant [list_functional] :
       (rd(heap, search::curr(j)).data = search::e(j) -> search::e(j) inElem elements)
 
 /\ @sch_after_lookup(j). ->
-			(rd(heap, search::curr(j)).data != search::e(j) -> (~ search::e(j) inElem elements))
+      (rd(heap, search::curr(j)).data != search::e(j) -> (~ search::e(j) inElem elements))
 
 
 /\ ((@sch_result_set(j).) /\ .search::result(j).) ->
-			search::e(j) inElem historyIns
+      search::e(j) inElem historyIns
 
 /\ (@sch_result_set(j). /\ (~.search::result(j).)) ->
-			((~ search::e(j) inElem historyIns) \/ search::e(j) inElem historyRem)
+      ((~ search::e(j) inElem historyIns) \/ search::e(j) inElem historyRem)
 
 
 /\ elements subseteqElem historyIns

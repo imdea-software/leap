@@ -56,10 +56,10 @@ assume
                               procedure search (e:elem) : bool
                                 addr prev
                                 addr curr
-																addr aux
+                                addr aux
                                 bool result
-																ghost elemSet historyInsCopy
-																ghost elemSet historyRemCopy
+                                ghost elemSet historyInsCopy
+                                ghost elemSet historyRemCopy
 
                               begin
 :search_body[
@@ -92,11 +92,11 @@ assume
 :sch_owns_curr_two[
                                 endwhile
 :sch_after_lookup
-																result := curr->data = e
-																$
-																	historyInsCopy := historyIns;
-																	historyRemCopy := historyRem;
-																$
+                                result := curr->data = e
+                                $
+                                  historyInsCopy := historyIns;
+                                  historyRemCopy := historyRem;
+                                $
 :sch_prev_lower]
 :sch_result_set[
 :sch_diff[

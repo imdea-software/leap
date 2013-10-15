@@ -1,4 +1,4 @@
-=> list_functional [
+=> list_functional_search_linearization [
       12:fullPreserve,
          fullLock,
          fullRegion::search_prev_in_region,
@@ -27,7 +27,7 @@
          fullRegion::remove_curr_in_region,
          fullOrder::remove_curr_is_e
 
-    ] {union :
+   ] {union :
             | reduce2
             |
             | simplify-pc

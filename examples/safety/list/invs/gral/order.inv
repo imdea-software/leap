@@ -48,10 +48,10 @@ invariant [fullOrder] :
    @ins_prev_lower(i). -> rd(heap, insert::prev(i)).data < insert::e(i)
 
 #insert_curr_higher:
-	 @ins_insert(i). -> rd(heap, insert::curr(i)).data > insert::e(i)
+   @ins_insert(i). -> rd(heap, insert::curr(i)).data > insert::e(i)
 
 #insert_aux_is_e:
-	 @after_malloc(i). -> rd(heap, insert::aux(i)).data = insert::e(i)
+   @after_malloc(i). -> rd(heap, insert::aux(i)).data = insert::e(i)
 
 #insert_curr_bounded:
    @ins_final_conditional(i). ->

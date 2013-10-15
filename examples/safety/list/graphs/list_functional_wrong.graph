@@ -7,17 +7,17 @@
          fullOrder::search_curr_bounded;
 
 
-			35:fullPreserve,
-				 fullRegion::search_prev_in_region,
-				 fullRegion::insert_prev_in_region,
-				 fullNext::search_prev_next_curr,
-				 fullNext::insert_prev_next_curr,
-				 fullOrder::search_curr_bounded,
-				 fullOrder::search_prev_lower,
-				 fullOrder::insert_prev_lower,
-				 fullOrder::insert_curr_higher,
-				 fullLock::search_owns_prev,
-				 fullLock::insert_owns_prev;
+      35:fullPreserve,
+         fullRegion::search_prev_in_region,
+         fullRegion::insert_prev_in_region,
+         fullNext::search_prev_next_curr,
+         fullNext::insert_prev_next_curr,
+         fullOrder::search_curr_bounded,
+         fullOrder::search_prev_lower,
+         fullOrder::insert_prev_lower,
+         fullOrder::insert_curr_higher,
+         fullLock::search_owns_prev,
+         fullLock::insert_owns_prev;
 
 
       51:fullPreserve,
