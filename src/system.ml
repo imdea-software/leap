@@ -7,6 +7,8 @@ module GenSet = LeapGenericSet
 
 
 (* Type declaration *)
+type seq_or_conc_t = Sequential | Concurrent
+
 type var_table_t = (E.varId, E.var_info_t) Hashtbl.t
 
 type proc_info_t = {sort : E.sort option;
@@ -973,6 +975,7 @@ let gen_pres (p_name : string)
   
 let rec aux_rho_for_st
     (sys:t)
+    (soc:seq_or_conc_t)
     (gSet:E.TermSet.t) (* Global accessible terms. *)
     (lSet:E.TermSet.t) (* Local accessible terms. *)
     (thSet:E.TermSet.t) (* Extra formula tids. *)
@@ -999,13 +1002,15 @@ let rec aux_rho_for_st
         (E.TermSet.empty, E.TermSet.empty, E.TermSet.empty, rho_list)
     | None -> (gS, lS, tS, ps) in
   let make_pos_change (c:int) (ns:int list) : E.formula list =
-    let running_tid_is_me = E.eq_tid me_tid_th th in
+    let running_tid_is_me = match soc with
+                            | Concurrent -> [E.eq_tid me_tid_th th]
+                            | Sequential -> [] in
     let pc_change = build_pc mode th c ns in
     let next_pos =
       E.disj_list $ List.map (fun n -> E.build_pos_change c n) ns in
     match abs with
-    | Counting -> [E.someone_at c; next_pos] @ [running_tid_is_me] @ pc_change
-    | NoAbstraction -> running_tid_is_me :: pc_change in
+    | Counting -> [E.someone_at c; next_pos] @ running_tid_is_me @ pc_change
+    | NoAbstraction -> running_tid_is_me @ pc_change in
   match (st, is_ghost) with
 
   (************************** Skip @topLevel ******************************)
@@ -1147,7 +1152,7 @@ let rec aux_rho_for_st
   | Stm.StSeq xs, is_ghost ->
       let f (g,l,t,fs) cmd =
         let (gS,lS,tS,fS) =
-          aux_rho_for_st sys g l t mode cmd th is_ghost abs mInfo pt in
+          aux_rho_for_st sys soc g l t mode cmd th is_ghost abs mInfo pt in
         (gS, lS, tS, fS@fs) in
       List.fold_left f (gSet, lSet, thSet, []) xs
       
@@ -1248,6 +1253,7 @@ let rec aux_rho_for_st
 
 let gen_rho (sys : t)             (* The system                           *)
             (mode : sysMode)      (* For closed or open system?           *)
+            (soc:seq_or_conc_t)    (* Sequential or concurrent system      *)
             (pt:Bridge.prog_type) (* Program type. Heap based or numeric  *)
             (p : E.pc_t)          (* Program line                         *)
             (abs : abstraction)   (* Counting abstraction or not?         *)
@@ -1295,7 +1301,7 @@ let gen_rho (sys : t)             (* The system                           *)
         (ls, List.remove_assoc proc ls) in
   let lSet = List.assoc proc all_local in
   let (gSet',lSet',thSet',rhoList) =
-    aux_rho_for_st sys gSet lSet thSet mode st th false abs mInfo pt in
+    aux_rho_for_st sys soc gSet lSet thSet mode st th false abs mInfo pt in
 
   let phi_list =
     if hide_pres then

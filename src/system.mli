@@ -1,4 +1,5 @@
 (* Type declaration *)
+type seq_or_conc_t = Sequential | Concurrent
 
 type var_table_t = (Expression.varId, Expression.var_info_t) Hashtbl.t
 
@@ -211,6 +212,7 @@ val gen_theta : sysMode -> t -> abstraction -> Expression.formula
 
 val gen_rho : t ->
               sysMode ->
+              seq_or_conc_t ->
               Bridge.prog_type ->
               Expression.pc_t ->
               abstraction ->

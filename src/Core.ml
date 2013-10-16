@@ -272,7 +272,8 @@ module Make (Opt:module type of GenOptions) : S =
                 (trans_tid:E.tid)
                   : Tactics.vc_info list =
       let voc = E.voc (E.conj_list (inv::supp)) in
-      let rho = System.gen_rho Opt.sys (System.SOpenArray voc) prog_type line Opt.abs
+      let rho = System.gen_rho Opt.sys (System.SOpenArray voc)
+                    System.Concurrent prog_type line Opt.abs
                     Opt.hide_pres trans_tid in
       let tid_diff_conj = match premise with
                           | Premise.SelfConseq -> E.True
@@ -365,7 +366,8 @@ module Make (Opt:module type of GenOptions) : S =
                     (trans_tid:E.tid)
                       : Tactics.vc_info list =
       let voc = E.voc (E.conj_list (inv::supp)) in
-      let rho = System.gen_rho Opt.sys (System.SOpenArray voc) prog_type line Opt.abs
+      let rho = System.gen_rho Opt.sys (System.SOpenArray voc)
+                    System.Sequential prog_type line Opt.abs
                     Opt.hide_pres trans_tid in
       let supp = List.map (E.param (E.Local trans_tid)) supp in
       let inv = match E.voc inv with
