@@ -811,7 +811,8 @@ let prime_var_name (v:varId) : varId =
 
 
 let is_primed (var:variable) : bool =
-  var.is_primed
+  var.is_primed || (Str.string_match (Str.regexp ".+_prime.*") var.id 0)
+
 
 let rec is_primed_array (a:arrays) : bool =
   match a with

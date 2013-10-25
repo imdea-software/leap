@@ -549,12 +549,13 @@ let define_ident (proc_name:E.procedure_name)
 
 %start invariant
 %start formula
-%start single_formula
 %start vc_info
+%start single_formula
 
 %type <Tactics.vc_info> vc_info
 
-%type <System.var_table_t * Expression.formula> single_formula
+%type <Expression.formula> single_formula
+
 %type <System.var_table_t * Tag.f_tag option * (Tag.f_tag option * Expression.formula) list> invariant
 %type <(Tag.f_tag option * Expression.formula) list> formula_decl_list
 %type <(Tag.f_tag option * Expression.formula)> formula_decl
@@ -592,19 +593,6 @@ let define_ident (proc_name:E.procedure_name)
 
 
 %%
-
-/*********************     SINGLE FORMULA    *************************/
-
-
-single_formula :
-  | param COLON inv_var_declarations FORMULA COLON formula
-    { let declPhiVars = System.copy_var_table invVars in
-      let phi         = $6 in
-      let _           = System.clear_table invVars
-      in
-        (declPhiVars, phi)
-    }
-
 
 
 /*********************     INVARIANTS    *************************/
@@ -1639,3 +1627,17 @@ formula_list :
     { [] }
   | formula formula_list
     { $1 :: $2 }
+
+
+/************************   STRAIGHT FORMULAS   **********************/
+
+
+single_formula :
+  | param COLON inv_var_declarations
+    FORMULA COLON formula
+      {
+        let _ = System.clear_table invVars in
+        let phi = $6 in
+        phi
+      }
+

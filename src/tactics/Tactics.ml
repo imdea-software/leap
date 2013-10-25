@@ -88,7 +88,10 @@ let new_proof_plan (smp:Smp.cutoff_strategy_t option)
   }
  
 let vc_info_to_implication (info:vc_info) (sup:support_t): implication =
-  (* This code adds equalities that were implicit when we used arrays to represent local vars *)
+  (* This code adds equalities that were implicit when we used arrays to
+     represent local vars *)
+
+  Printf.printf "GOAL HERE: %s\n" (E.formula_to_str info.goal);
   let build_pc pr i = E.build_pc_var pr (E.Local i) in
   let goal_voc = E.voc info.goal in
   let pc_updates : (E.variable, E.variable) Hashtbl.t = Hashtbl.create 4 in
@@ -128,6 +131,9 @@ let vc_info_to_implication (info:vc_info) (sup:support_t): implication =
   let consequent = E.subst_vars pc_pres
     (E.to_plain_formula E.PCVars
       (E.subst_vars var_pres (E.prime_modified info.rho info.goal))) in
+
+  Printf.printf "CONSEQUENT: %s\n" (E.formula_to_str consequent);
+
   { ante = the_antecedent ; conseq = consequent }
 
 let vc_info_to_formula  (info:vc_info) (sup:support_t): E.formula =

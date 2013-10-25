@@ -27,7 +27,7 @@ let _ =
                                   [vc_info] !ApplyTacArgs.supp_split_tac_list in
         Tactics.apply_support_tactic split_vc_info_list !ApplyTacArgs.supp_tac
       end else begin
-        let (_,phi) = Parser.parse ch (Eparser.single_formula Elexer.norm) in
+        let phi = Parser.parse ch (Eparser.single_formula Elexer.norm) in
         print_endline ("FORMULA:\n" ^ (Expression.formula_to_str phi) ^ "\n");
         (* We construct the phi implication *)
   let rec faux f = 
