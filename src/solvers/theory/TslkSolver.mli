@@ -2,23 +2,26 @@ module type CUSTOM_TSLKSOLVER = sig
   module TslkExp : ExpressionTypes.TSLKEXP
  
   
-  val is_sat_conj  : int -> TslkExp.conjunctive_formula -> bool
-  val is_sat_dnf   : int -> TslkExp.formula -> bool
+  val is_sat_conj  : int -> bool -> TslkExp.conjunctive_formula -> bool
+  val is_sat_dnf   : int -> bool -> TslkExp.formula -> bool
   
-  val is_valid_dnf : int -> TslkExp.formula -> bool
+  val is_valid_dnf : int -> bool -> TslkExp.formula -> bool
   val is_valid_dnf_pus_info
-                   : int -> TslkExp.formula -> (bool * int)
+                   : int -> bool -> TslkExp.formula -> (bool * int)
     
   val is_sat       : int ->
                      Smp.cutoff_strategy_t ->
+                     bool ->
                      TslkExp.formula -> bool
   val is_valid     : int ->
                      Smp.cutoff_strategy_t ->
+                     bool ->
                      TslkExp.formula -> bool
   
   val is_valid_plus_info 
                    : int ->
                      Smp.cutoff_strategy_t ->
+                     bool ->
                      TslkExp.formula -> (bool * int)
 
   val compute_model: bool -> unit

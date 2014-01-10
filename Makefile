@@ -48,7 +48,7 @@ check_tool = @if ( test -e $(TOOLS)/$(1) ) || (test -h $(TOOLS)/$(1) ) ; then \
 						fi
 
 
-.PHONY: clean softclean all expand unexpand leap prog2fts prginfo pinv sinv pvd tll solve applytac tmptsl tsl numinv spec_check doc tools tests compile
+.PHONY: profile clean softclean all expand unexpand leap prog2fts prginfo pinv sinv pvd tll solve applytac tmptsl tsl numinv spec_check doc tools tests compile
 
 
 # Flags
@@ -73,6 +73,10 @@ $(TOOLS) :
 	$(call check_tool,minisat,$(MINISAT));
 	$(call check_tool,lingeling,$(LINGELING));
 
+profile:
+	@echo "let value = "$(REVISION) > src/progs/Revision.ml
+	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(LEAP).p.native
+	@ln -f -s ./_build/src/progs/leap/$(LEAP).p.native $(LEAP)
 
 $(LEAP):
 	@echo "let value = "$(REVISION) > src/progs/Revision.ml

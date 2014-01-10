@@ -5,6 +5,7 @@ val choose : string -> unit
 
 val is_sat       : int ->
                    Smp.cutoff_strategy_t ->
+                   bool ->
                    TSLExpression.formula -> bool
 (** [is_sat lines stac co phi] checks the satisfiability of formula [phi],
     assuming the program contains [lines] lines, using tactics [stac] and
@@ -14,6 +15,7 @@ val is_sat       : int ->
 
 val is_valid     : int ->
                    Smp.cutoff_strategy_t ->
+                   bool ->
                    TSLExpression.formula -> bool
 (** [is_valid lines stac co phi] checks the validity of formula [phi], assuming
     the program contains [lines] lines, using tactics [stac] and cutoff
@@ -22,6 +24,7 @@ val is_valid     : int ->
   
 val is_sat_plus_info : int ->
                        Smp.cutoff_strategy_t ->
+                       bool ->
                        TSLExpression.formula -> (bool * int * DP.call_tbl_t)
 (** [is_sat_plus_info lines stac co phi] checks the satisfiability of formula
     [phi], assuming the program contains [lines] lines, using tactics [stac]
@@ -33,6 +36,7 @@ val is_sat_plus_info : int ->
 
 val is_valid_plus_info : int ->
                          Smp.cutoff_strategy_t ->
+                         bool ->
                          TSLExpression.formula -> (bool * int * DP.call_tbl_t)
 (** [is_valid lines stac co phi] checks the validity of formula [phi], assuming
     the program contains [lines] lines, using tactics [stac] and cutoff

@@ -4,23 +4,25 @@ module type CUSTOM_TSLKSOLVER = sig
   module TslkExp : ExpressionTypes.TSLKEXP
  
   
-  val is_sat_conj  : int -> TslkExp.conjunctive_formula -> bool
-  val is_sat_dnf   : int -> TslkExp.formula -> bool
+  val is_sat_conj  : int -> bool -> TslkExp.conjunctive_formula -> bool
+  val is_sat_dnf   : int -> bool -> TslkExp.formula -> bool
   
-  val is_valid_dnf : int -> TslkExp.formula -> bool
-  val is_valid_dnf_pus_info 
-                   : int -> TslkExp.formula -> (bool * int)
+  val is_valid_dnf : int -> bool -> TslkExp.formula -> bool
+  val is_valid_dnf_pus_info : int -> bool -> TslkExp.formula -> (bool * int)
     
   val is_sat       : int ->
                      Smp.cutoff_strategy_t ->
+                     bool ->
                      TslkExp.formula -> bool
   val is_valid     : int ->
                      Smp.cutoff_strategy_t ->
+                     bool ->
                      TslkExp.formula -> bool
   
   val is_valid_plus_info 
                    : int ->
                      Smp.cutoff_strategy_t ->
+                     bool ->
                      TslkExp.formula -> (bool * int)
 
   val compute_model: bool -> unit
@@ -204,37 +206,41 @@ struct
       
   
   (* INVOCATIONS TRANSFORMING TO DNF FIRST *)
-  let is_sat_conj (lines : int) (phi : TslkExp.conjunctive_formula) : bool =
+  let is_sat_conj (lines : int)
+                  (use_q:bool)
+                  (phi : TslkExp.conjunctive_formula) : bool =
     match phi with
         TslkExp.TrueConj   -> true
       | TslkExp.FalseConj  -> false
       | TslkExp.Conj conjs -> 
         begin
           TslkSol.set_prog_lines lines;
-          Solver.sat (TslkSol.literal_list conjs)
+          Solver.sat (TslkSol.literal_list use_q conjs)
         end
   
-  let is_sat_dnf (prog_lines : int) (phi : TslkExp.formula) : bool =
+  let is_sat_dnf (prog_lines:int) (use_q:bool) (phi:TslkExp.formula) : bool =
     let dnf_phi = TslkExp.dnf phi in
-      List.exists (is_sat_conj prog_lines) dnf_phi
+      List.exists (is_sat_conj prog_lines use_q) dnf_phi
   
   
-  let is_valid_dnf (prog_lines : int) (phi : TslkExp.formula) : bool =
+  let is_valid_dnf (prog_lines:int) (use_q:bool) (phi:TslkExp.formula) : bool =
     let dnf_phi       = TslkExp.dnf (TslkExp.Not phi) in
-    let is_unsat conj = (not (is_sat_conj prog_lines conj))
+    let is_unsat conj = (not (is_sat_conj prog_lines use_q conj))
     in List.for_all is_unsat dnf_phi
   
   
   let is_valid_dnf_pus_info (prog_lines:int)
-      (phi:TslkExp.formula) : (bool * int) =
+                            (use_q:bool)
+                            (phi:TslkExp.formula) : (bool * int) =
     Solver.reset_calls ();
-    let res = is_valid_dnf prog_lines phi in
+    let res = is_valid_dnf prog_lines use_q phi in
     (res, Solver.calls_count ())
   
   
   (* INVOCATIONS WITHOUT CONVERTING TO DNF *)
   let is_sat (lines : int)
              (co : Smp.cutoff_strategy_t)
+             (use_q:bool)
              (phi : TslkExp.formula) : bool =
     match phi with
     | TslkExp.Not(TslkExp.Implies(_,TslkExp.True)) -> (Solver.calls_force_incr(); false)
@@ -243,19 +249,21 @@ struct
     | TslkExp.Implies(_, TslkExp.True) -> (Solver.calls_force_incr(); true)
     | _ -> begin
              TslkSol.set_prog_lines lines;
-             Solver.sat (TslkSol.formula co cutoff_opt phi)
+             Solver.sat (TslkSol.formula co cutoff_opt use_q phi)
            end
   
   let is_valid (prog_lines:int)
                (co:Smp.cutoff_strategy_t)
+               (use_q:bool)
                (phi:TslkExp.formula) : bool =
-    not (is_sat prog_lines co (TslkExp.Not phi))
+    not (is_sat prog_lines co use_q (TslkExp.Not phi))
   
   let is_valid_plus_info (prog_lines:int)
                          (co:Smp.cutoff_strategy_t)
+                         (use_q:bool)
                          (phi:TslkExp.formula) : (bool * int) =
     Solver.reset_calls ();
-    let res = is_valid prog_lines co phi in
+    let res = is_valid prog_lines co use_q phi in
     (res, Solver.calls_count())
 
 

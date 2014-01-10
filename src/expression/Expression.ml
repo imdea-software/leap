@@ -235,12 +235,32 @@ and expr_t =
 and tid_subst_t = (tid * tid) list
 
 
+let same_var (x:variable) (y:variable) : bool =
+  let same_proc_name =
+    (x.scope = GlobalScope && (y.scope = GlobalScope || y.scope = Scope "")) ||
+      (y.scope = GlobalScope && (x.scope = GlobalScope || x.scope = Scope "")) in
+    same_proc_name &&
+    x.id = y.id && x.sort = y.sort && x.parameter = y.parameter && x.is_primed = y.is_primed
+      
+let var_compare (x:variable) (y:variable) : int =
+  if same_var x y then 0
+  else Pervasives.compare x y
+
+
+
+module VarSet = Set.Make(
+  struct
+    let compare = var_compare
+    type t = variable
+  end )
+
+
 type formula_info_t =
   {
     mutable formula : formula    ;
     mutable primed : formula     ;
             voc : tid list       ;
-            vars : variable list ;
+            vars : VarSet.t      ;
   }
 
 
@@ -306,24 +326,6 @@ module ThreadSet = Set.Make(
     let compare = Pervasives.compare
     type t = tid
   end )
-
-let same_var (x:variable) (y:variable) : bool =
-  let same_proc_name =
-    (x.scope = GlobalScope && (y.scope = GlobalScope || y.scope = Scope "")) ||
-      (y.scope = GlobalScope && (x.scope = GlobalScope || x.scope = Scope "")) in
-    same_proc_name &&
-    x.id = y.id && x.sort = y.sort && x.parameter = y.parameter && x.is_primed = y.is_primed
-      
-let var_compare (x:variable) (y:variable) : int =
-  if same_var x y then 0
-  else Pervasives.compare x y
-
-module VarSet = Set.Make(
-  struct
-    let compare = var_compare
-    type t = variable
-  end )
-
 
 module VarIdSet = Set.Make(
   struct
@@ -2337,19 +2339,19 @@ let get_vars_as_set (phi:formula) (base:variable -> VarSet.t) : VarSet.t =
     var_set
 
 
-let get_vars (phi:formula) (base:variable -> VarSet.t) : variable list =
-  VarSet.elements (get_vars_as_set phi base)
+let get_vars (phi:formula) (base:variable -> VarSet.t) : VarSet.t =
+  get_vars_as_set phi base
 
 
 let filtering_condition (f:variable -> bool) (v:variable) : VarSet.t =
   if f v then VarSet.singleton v else VarSet.empty
 
 
-let primed_vars (f:formula) : variable list =
+let primed_vars (f:formula) : VarSet.t =
   get_vars f (filtering_condition is_primed)
 
 
-let all_vars (f:formula) : variable list =
+let all_vars (f:formula) : VarSet.t =
   get_vars f (fun v -> VarSet.singleton v)
 
 
@@ -2357,15 +2359,15 @@ let all_vars_as_set (f:formula) : VarSet.t =
   get_vars_as_set f (fun v -> VarSet.singleton v)
 
 
-let all_local_vars (f:formula) : variable list =
+let all_local_vars (f:formula) : VarSet.t =
   get_vars f (filtering_condition is_local_var)
 
 
-let all_local_owned_vars (f:formula) : variable list =
+let all_local_owned_vars (f:formula) : VarSet.t =
   get_vars f (filtering_condition is_owned_var)
 
 
-let all_global_vars (f:formula) : variable list =
+let all_global_vars (f:formula) : VarSet.t =
   get_vars f (filtering_condition is_global_var)
 
 
@@ -2400,8 +2402,7 @@ let prime_modified (rho:formula) (phi:formula) : formula =
 
 
 let prime_modified_term (ante:formula) (t:term) : term =
-  let p_vars = primed_vars ante in
-  let p_set  = construct_var_set p_vars
+  let p_set = primed_vars ante
   in
     prime_term_only p_set t
 
@@ -5103,19 +5104,18 @@ let gen_focus_list (max_pos:pc_t)
 
 
 let formula_to_human_str (phi:formula) : string =
-  let primed_varset = List.map prime_variable (primed_vars phi) in
+  let primed_varset = VarSet.fold (fun v set -> VarSet.add (prime_variable v) set ) (primed_vars phi) VarSet.empty in
   let loc_vars_subs = List.map (fun v ->
                         let new_name = variable_to_simple_str v in
                         (v, build_var new_name v.sort false Shared GlobalScope RealVar)
-                      ) (all_local_vars phi @ primed_varset) in
+                      ) (VarSet.elements (VarSet.union (all_local_vars phi) primed_varset)) in
   let f_without_locals = subst_vars loc_vars_subs phi in
 
   let vars_str = String.concat "\n"
-                  (List.map (fun v ->
-                     (sort_to_str v.sort) ^ " " ^
-                     (variable_to_str v)
-                   ) ((all_vars f_without_locals) @
-                      (primed_vars f_without_locals))) in
+                  (VarSet.fold (fun v str_list ->
+                     ((sort_to_str v.sort) ^ " " ^ (variable_to_str v))::str_list
+                   ) (VarSet.union (all_vars f_without_locals)
+                      (primed_vars f_without_locals)) []) in
   let f_str = match f_without_locals with
               | Implies (ante, conse) -> sprintf ("\n//antecedent:\n%s\n -> \n//consequent:\n%s") (formula_to_str ante) (formula_to_str conse)
               | _ -> formula_to_str f_without_locals in

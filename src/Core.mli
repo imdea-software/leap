@@ -18,6 +18,7 @@ module GenOptions :
     val group_vars : bool
     val forget_primed_mem : bool
     val default_cutoff : Smp.cutoff_strategy_t
+    val use_quantifiers : bool
 
   end
 

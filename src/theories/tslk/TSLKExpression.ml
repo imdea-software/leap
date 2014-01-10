@@ -195,6 +195,7 @@ module type S =
     val get_varset_from_conj         : conjunctive_formula -> VarSet.t
     val get_unparam_varset_from_conj : conjunctive_formula -> VarSet.t
     val get_varset_from_formula      : formula -> VarSet.t
+    val get_varset_from_literal      : literal -> VarSet.t
     val get_unparam_varset_from_formula : formula -> VarSet.t
     val get_varset_of_sort_from_conj : conjunctive_formula -> sort -> VarSet.t
     val varset_of_sort               : VarSet.t -> sort -> VarSet.t
@@ -893,6 +894,9 @@ module Make (K : Level.S) : S =
                            (get_varset_from_formula f2)
       | Iff (f1,f2)     -> (get_varset_from_formula f1) @@
                            (get_varset_from_formula f2)
+
+    and get_varset_from_literal lit =
+      unify_varset (get_varset_literal lit)
 
     and get_varset_from_formula phi =
       unify_varset (get_varset_from_formula_aux phi)

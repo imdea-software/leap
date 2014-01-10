@@ -23,6 +23,7 @@ module GenOptions :
     val group_vars : bool
     val forget_primed_mem : bool
     val default_cutoff : Smp.cutoff_strategy_t
+    val use_quantifiers : bool
 
   end
 
@@ -44,6 +45,7 @@ module GenOptions :
     let group_vars        = false
     let forget_primed_mem = true
     let default_cutoff    = Tactics.default_cutoff_algorithm
+    let use_quantifiers   = false
 
   end
 
@@ -492,12 +494,15 @@ module Make (Opt:module type of GenOptions) : S =
                                        Tll.is_valid_plus_info prog_lines cutoff tll_phi
                         | DP.Tsl    -> let tsl_phi = TSLInterface.formula_to_tsl_formula fol_phi in
                                        let (res,tsl_calls,tslk_calls) =
-                                          TslSolver.is_valid_plus_info prog_lines cutoff tsl_phi in
+                                          TslSolver.is_valid_plus_info
+                                            prog_lines cutoff                                
+                                            Opt.use_quantifiers tsl_phi in
                                        DP.combine_call_table tslk_calls this_calls_counter;
                                        (res, tsl_calls)
                         | DP.Tslk k -> let module TSLKIntf = TSLKInterface.Make(Tslk.TslkExp) in
                                        let tslk_phi = TSLKIntf.formula_to_tslk_formula fol_phi in
-                                       Tslk.is_valid_plus_info prog_lines cutoff tslk_phi
+                                       Tslk.is_valid_plus_info prog_lines cutoff
+                                          Opt.use_quantifiers tslk_phi
                       in
                       let _ = match Opt.dp with
                               | DP.NoDP   -> ()

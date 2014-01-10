@@ -1,7 +1,7 @@
 #Configure path to Leap
 LEAP=leap
 
-OPTIONS="-co union -sm -yices+z3 -dp tsl"
+OPTIONS="--focus $1 --show_file_info -co union -sm -yices+z3 -dp tsl"
 
 PRG=prgs/skiplist.prg
 INV_FOLDER=invs/gral

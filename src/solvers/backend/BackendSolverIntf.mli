@@ -123,21 +123,27 @@ sig
 
       module Exp : TSLKEXP
 
-      val literal_list : Exp.literal list -> t
-      (** [literal_list ls] translates the list [ls] of literals into its internal 
-          internal representation. *)
+      val literal_list : bool -> Exp.literal list -> t
+      (** [literal_list useq ls] translates the list [ls] of literals into its
+          internal internal representation. [useq] determines whether
+          quantifiers should be used in the generated query. *)
 
       val formula      : Smp.cutoff_strategy_t ->
                          Smp.cutoff_options_t ->
+                         bool ->
                          Exp.formula -> t
-      (** [formula stat strat copt f] translates the formula [f] following the
+      (** [formula stat strat copt useq f] translates the formula [f] following 
+          the
           strategy [strat] to compute the SMP cutoff and tactic [stat] to
           decide whether or not to include extra information to help the
           future satisfiability analysis of the formula. When computing the SMP
-          it considers the options passes in [copt]. *)
+          it considers the options passes in [copt]. [useq] determines whether
+          quantifiers should be used in the generated query. *)
           
-      val conjformula  : Exp.conjunctive_formula -> t
-      (** [conjformula f] tranlates the conjunctive formula [f]. *)
+      val conjformula  : bool -> Exp.conjunctive_formula -> t
+      (** [conjformula useq f] translates the conjunctive formula [f]. [useq] 
+          determines whether quantifiers should be used in the generated query.
+          *)
 
       val sort_map : unit -> GenericModel.sort_map_t
       (** [sort_map ()] returns the sort mapping obtained from the last

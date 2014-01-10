@@ -17,6 +17,9 @@ exception UnexpectedLiteral of string
 let solver_impl = ref ""
 
 
+let use_quantifier = ref false
+
+
 let choose (s:string) : unit =
   solver_impl := s
 
@@ -839,7 +842,9 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) :
                         (SL.from_conjformula_to_formula cf)) in
 
 
-  let check_tslk (k:int) (cf:SL.conjunctive_formula) (alpha_r:SL.integer list list option): bool =
+  let check_tslk (k:int)
+                 (cf:SL.conjunctive_formula)
+                 (alpha_r:SL.integer list list option) : bool =
     match cf with
     | SL.TrueConj -> true
     | SL.FalseConj -> false
@@ -849,7 +854,8 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) :
                       TslkSol.compute_model (!comp_model);
                       let module Trans = TranslateTsl (TslkSol.TslkExp) in
                       let phi_tslk = Trans.to_tslk ls in
-                      let res = TslkSol.is_sat lines co phi_tslk in
+                      let res = TslkSol.is_sat lines co !use_quantifier phi_tslk 
+                      in
                       DP.add_dp_calls this_call_tbl (DP.Tslk k) 1;
                       tslk_sort_map := TslkSol.get_sort_map ();
                       tslk_model := TslkSol.get_model ();
@@ -992,9 +998,11 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) :
 
 let is_sat_plus_info (lines : int)
            (co : Smp.cutoff_strategy_t)
+           (use_q:bool)
            (phi : SL.formula) : (bool * int * DP.call_tbl_t) =
     Log.print_ocaml "entering tslsolver is_sat";
     DP.clear_call_tbl this_call_tbl;
+    use_quantifier := use_q;
     Log.print "TSL Solver formula to check satisfiability" (SL.formula_to_str phi);
 
     match phi with
@@ -1024,23 +1032,26 @@ let is_sat_plus_info (lines : int)
 
 let is_sat (lines : int)
            (co : Smp.cutoff_strategy_t)
+           (use_q:bool)
            (phi : SL.formula) : bool =
   (* Here goes the code for satisfiability from the paper *)
-  let (s,_,_) = is_sat_plus_info lines co phi in s
+  let (s,_,_) = is_sat_plus_info lines co use_q phi in s
 
 
 let is_valid_plus_info (prog_lines:int)
                        (co:Smp.cutoff_strategy_t)
+                       (use_q:bool)
                        (phi:SL.formula) : (bool * int * DP.call_tbl_t) =
-  let (s,tsl_count,tslk_count) = is_sat_plus_info prog_lines co
+  let (s,tsl_count,tslk_count) = is_sat_plus_info prog_lines co use_q
                                    (SL.Not phi) in
     (not s, tsl_count, tslk_count)
 
 
 let is_valid (prog_lines:int)
              (co:Smp.cutoff_strategy_t)
+             (use_q:bool)
              (phi:SL.formula) : bool =
-  not (is_sat prog_lines co (SL.Not phi))
+  not (is_sat prog_lines co use_q (SL.Not phi))
 
 
 let compute_model (b:bool) : unit =

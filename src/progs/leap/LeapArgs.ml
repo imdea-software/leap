@@ -51,6 +51,7 @@ let pvdFile           = ref ""
 let outFile           = ref ""
 let detailedOutFile   = ref ""
 let num_threads       = ref 1
+let use_quantifiers   = ref false
 
 let assignopt (valref : 'a ref) (valbool : bool ref) (aval : 'a) : unit =
   valref := aval ; valbool := true
@@ -220,6 +221,9 @@ let opts =
     ("-sl",
         Arg.Set show_label_info,
         "shows the information regarding parsed labels");
+    ("-q",
+        Arg.Set use_quantifiers,
+        "use quantifiers over finite domains when constructing SMT queries");
 (*
     THIS WAS REMOVED TO SIMPLIFIED LEAP
     ("-kpm",

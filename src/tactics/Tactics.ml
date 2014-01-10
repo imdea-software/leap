@@ -172,10 +172,10 @@ let vc_info_to_str (vc:vc_info) : string =
                                                  vc.goal            ::
                                                  vc.original_support)) in
   let vars_str = (String.concat "\n"
-                   (List.map (fun v ->
-                     (E.sort_to_str (E.var_sort v)) ^ " " ^
-                     (E.variable_to_str v)
-                   ) vars_to_declare)) in
+                   (E.VarSet.fold (fun v str_list ->
+                     ((E.sort_to_str (E.var_sort v)) ^ " " ^
+                      (E.variable_to_str v))::str_list
+                   ) vars_to_declare [])) in
   let supp_str = String.concat "\n" (List.map E.formula_to_str vc.original_support) in
   let tidconst_str = E.formula_to_str vc.tid_constraint in
   let rho_str = E.formula_to_str vc.rho in
@@ -836,8 +836,8 @@ let tactic_simplify_pc (imp:implication) : implication =
 let tactic_filter_vars_nonrec (imp:implication) : implication =
   let vs_conseq = E.all_vars_as_set imp.conseq in
   let conjs = E.to_conj_list imp.ante in
-  let share_vars (vl: E.variable list) : bool =
-    List.exists (fun v -> E.VarSet.mem v vs_conseq) vl
+  let share_vars (vl: E.VarSet.t) : bool =
+    E.VarSet.exists (fun v -> E.VarSet.mem v vs_conseq) vl
   in
   let new_conjs = List.filter (fun f -> share_vars (E.all_vars f)) conjs in
   { ante = E.conj_list new_conjs ; conseq = imp.conseq }

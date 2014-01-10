@@ -225,12 +225,14 @@ and procedure_name  = GlobalScope | Scope of string
 and var_nature      = RealVar | GhostVar
 and var_info_t = sort * initVal_t option * shared_or_local * var_nature
 
+module VarSet : Set.S with type elt = variable
+
 type formula_info_t =
   {
     mutable formula : formula;
     mutable primed : formula;
             voc : tid list;
-            vars : variable list;
+            vars : VarSet.t;
   }
 
 
@@ -268,7 +270,6 @@ module TermPool : P with type elt = term
 (* TermSet export *)
 module TermSet : Set.S with type elt = term
 module VarIdSet : Set.S with type elt = varId
-module VarSet : Set.S with type elt = variable
 module ThreadSet : Set.S with type elt = tid
 module PosSet : Set.S with type elt = pc_t
 
@@ -438,19 +439,20 @@ val unprime_only : VarSet.t -> formula -> formula
 val prime_term   : term -> term
 val unprime_term : term -> term
 
-val primed_vars : formula -> variable list
+val primed_vars : formula -> VarSet.t
 val prime_modified : formula -> formula -> formula
 val prime_modified_term : formula -> term -> term
 
-val get_vars : formula -> (variable -> VarSet.t) -> variable list
+val get_vars : formula -> (variable -> VarSet.t) -> VarSet.t
+val get_vars_literal : literal -> (variable -> VarSet.t) -> VarSet.t
 
 
 (* GET VARIABLES FROM EXPRESSION *)
-val all_vars : formula -> variable list
+val all_vars : formula -> VarSet.t
 val all_vars_as_set : formula -> VarSet.t
-val all_local_vars : formula -> variable list
-val all_local_owned_vars : formula -> variable list
-val all_global_vars : formula -> variable list
+val all_local_vars : formula -> VarSet.t
+val all_local_owned_vars : formula -> VarSet.t
+val all_global_vars : formula -> VarSet.t
 
 
 (* EXPRESSION CONVERSION FUNCTIONS *)

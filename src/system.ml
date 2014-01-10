@@ -1314,7 +1314,7 @@ let gen_rho (sys : t)             (* The system                           *)
           let f xs = 
             let phi = E.conj_list xs in
             let f' v = E.ArrayT (E.VarArray (E.var_clear_param_info v)) in
-            let p_vars = List.map f' (E.primed_vars phi) in
+            let p_vars = List.map f' (E.VarSet.elements (E.primed_vars phi)) in
             let gSet' = E.filter_term_set p_vars gSet in
             let lSet' = E.filter_term_set p_vars lSet in
             let thSet' = E.filter_term_set p_vars thSet in

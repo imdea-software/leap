@@ -95,6 +95,7 @@ let _ =
                            let group_vars = !LeapArgs.group_vars
                            let forget_primed_mem = (not !LeapArgs.keep_primed_mem)
                            let default_cutoff = !LeapArgs.coType
+                           let use_quantifiers = !LeapArgs.use_quantifiers
                          end in
 
     (* Instantiate the core *)
