@@ -12,6 +12,7 @@ val input_file_fd : Unix.file_descr ref
 val debugFlag : bool ref
 val use_z3 : bool ref
 val dpType : DP.t ref
+val use_quantifiers : bool ref
 val coType : Smp.cutoff_strategy_t ref
 val hide_pres : bool ref
 val phiFile : string ref

@@ -40,12 +40,14 @@ let _ =
                      let module TSLKIntf = TSLKInterface.Make(Tslk.TslkExp) in
                      Tslk.compute_model true;
                      let tslk_phi = TSLKIntf.formula_to_tslk_formula phi in
-                     let valid = Tslk.is_valid 1 !SolveArgs.coType tslk_phi in
+                     let valid = Tslk.is_valid 1 !SolveArgs.coType
+                                   !SolveArgs.use_quantifiers tslk_phi in
                      if not valid then Tslk.print_model();
                      valid
       | DP.Tsl -> let tsl_phi = TSLInterface.formula_to_tsl_formula phi in
                   TslSolver.compute_model true;
-                  let valid = TslSolver.is_valid 1 !SolveArgs.coType tsl_phi in
+                  let valid = TslSolver.is_valid 1 !SolveArgs.coType
+                                !SolveArgs.use_quantifiers tsl_phi in
                   if not valid then TslSolver.print_model();
                   valid
     in

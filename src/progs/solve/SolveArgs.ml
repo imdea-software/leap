@@ -13,12 +13,13 @@ let is_input_file = ref false
 let input_file_fd : Unix.file_descr ref = ref Unix.stdin
 
 (* Program arguments *)
-let debugFlag     = ref false
-let use_z3        = ref false
-let coType        = ref Smp.Pruning (*Smp.Dnf*)
-let hide_pres     = ref false
-let phiFile       = ref ""
-let dpType        = ref (DP.NoDP)
+let debugFlag       = ref false
+let use_z3          = ref false
+let coType          = ref Smp.Pruning (*Smp.Dnf*)
+let hide_pres       = ref false
+let phiFile         = ref ""
+let dpType          = ref (DP.NoDP)
+let use_quantifiers = ref false
 
 let assignopt (valref : 'a ref) (valbool : bool ref) (aval : 'a) : unit =
   valref := aval ; valbool := true
@@ -65,6 +66,9 @@ let opts =
     ("--show_file_info",
         Arg.Set Debug._debug_show_tmpfile_info_,
         "shows path of temporary files");
+    ("-q",
+        Arg.Set use_quantifiers,
+        "use quantifiers over finite domains when constructing SMT queries");
     ("--debug",
         Arg.Unit setdebug,
         "debug output information");
