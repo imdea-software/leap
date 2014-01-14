@@ -402,31 +402,31 @@ module Make (K : Level.S) : TSLK_QUERY =
         done;
         B.add_string buf (")))\n");
         B.add_string buf
-          ("(define-fun range_to_int ((r RangeAddress)) Int\n");
+          ("(define-fun range_to_int ((n RangeAddress)) Int\n");
         let str = ref (string_of_int num_addr) in
         for i = (num_addr - 1) downto 0 do
-          str := "  (ite (= r " ^(rr i)^ ") " ^(string_of_int i)^ " ^ \n" ^(!str)^ ")"
+          str := "  (ite (= n " ^(rr i)^ ") " ^(string_of_int i)^ " \n" ^(!str)^ ")"
         done;
         B.add_string buf (!str ^ "\n)");
         B.add_string buf
           ("(define-fun int_to_range ((i Int)) RangeAddress\n");
         let str = ref (rr num_addr) in
         for i = (num_addr - 1) downto 0 do
-          str := "  (ite (= i " ^(string_of_int i)^ ") " ^(rr i)^ " ^ \n" ^(!str)^ ")"
+          str := "  (ite (= i " ^(string_of_int i)^ ") " ^(rr i)^ " \n" ^(!str)^ ")"
         done;
         B.add_string buf (!str ^ "\n)");
         B.add_string buf
-          ("(define-fun next_range ((r RangeAddress)) RangeAddress\n");
+          ("(define-fun next_range ((n RangeAddress)) RangeAddress\n");
         let str = ref (rr num_addr) in
         for i = (num_addr - 2) downto 0 do
-          str := "  (ite (= i " ^(rr i)^ ") " ^(rr (i+1))^ " ^ \n" ^(!str)^ ")"
+          str := "  (ite (= n " ^(rr i)^ ") " ^(rr (i+1))^ " \n" ^(!str)^ ")"
         done;
         B.add_string buf (!str ^ "\n)")
       end else begin
         B.add_string buf
           ("(define-sort RangeAddress () " ^int_s^ ")\n" ^
-            "(define-fun is_valid_range_address ((i RangeAddress)) " ^bool_s^
-                " (and (<= 0 i) (<= i max_address)))\n")
+            "(define-fun is_valid_range_address ((n RangeAddress)) " ^bool_s^
+                " (and (<= 0 n) (<= n max_address)))\n")
       end
 
 
@@ -887,14 +887,22 @@ module Make (K : Level.S) : TSLK_QUERY =
     (*    (lambda (a::address) *)
     (*      (mk-record length::1 at::(singletonat a) where::(singletonwhere a)))) *)
     let z3_singletonpath_def (buf:B.t) : unit =
+      if !use_quantifiers then begin
+        B.add_string buf
+          ("(define-fun singletonat ((a " ^addr_s^ ")) PathAt\n" ^
+           "  (store ((as const (PathAt)) null) rr_0 a))\n" ^
+           "(define-fun singletonwhere ((a " ^addr_s^ ")) PathWhere\n" ^
+           "  (store ((as const (PathWhere)) rr_1) a rr_0))\n")
+      end else begin
+        B.add_string buf
+          ("(define-fun singletonat ((a " ^addr_s^ ")) PathAt\n" ^
+           "  (store ((as const (PathAt)) null) 0 a))\n" ^
+           "(define-fun singletonwhere ((a " ^addr_s^ ")) PathWhere\n" ^
+           "  (store ((as const (PathWhere)) 1) a 0))\n")
+      end;
       B.add_string buf
-        ("(define-fun singletonat ((a " ^addr_s^ ")) PathAt\n" ^
-         "  (store ((as const (PathAt)) null) 0 a))\n" ^
-         "(define-fun singletonwhere ((a " ^addr_s^ ")) PathWhere\n" ^
-         "  (store ((as const (PathWhere)) 1) a 0))\n" ^
-         "(define-fun singlepath ((a " ^addr_s^ ")) " ^path_s^ "\n" ^
+        ("(define-fun singlepath ((a " ^addr_s^ ")) " ^path_s^ "\n" ^
          "  (mkpath 1 (singletonat a) (singletonwhere a) (singleton a)))\n")
-
 
 
     (* (define check_position::(-> path range_address bool)                          *)
@@ -922,7 +930,7 @@ module Make (K : Level.S) : TSLK_QUERY =
            "       empty))\n");
         B.add_string buf
           ("(define-fun check_position ((p " ^path_s^ ") (i RangeAddress)) " ^bool_s^ "\n" ^
-           "  (ite (< (range_to_int i) (length p)))\n" ^
+           "  (ite (< (range_to_int i) (length p))\n" ^
            "       (and (= i (select (where p) (select (at p) i)))\n" ^
            "            (select (addrs p) (select (at p) i)))\n" ^
            "       (not (select (addrs p) (select (at p) i)))))\n");
@@ -1290,11 +1298,22 @@ module Make (K : Level.S) : TSLK_QUERY =
     (*              (= ((select p length) 1)         *)
     (*              (= ((select p at) 0) a)))))      *)
     let z3_is_singlepath (buf:B.t) : unit =
-      B.add_string buf
-        ("(define-fun is_singlepath ((a " ^addr_s^ ") (p " ^path_s^ ")) " ^bool_s^ "\n" ^
-         "  (and (ispath p)\n" ^
-         "       (= (length p) 1)\n" ^
-         "       (= (select (at p) 0) a)))\n")
+      if !use_quantifiers then begin
+        B.add_string buf
+          ("(define-fun is_singlepath ((a " ^addr_s^ ") (p " ^path_s^ ")) " ^bool_s^ "\n" ^
+           "  (and (ispath p)\n" ^
+           "       (= (length p) 1)\n" ^
+           "       (= (select (at p) rr_0) a)))\n")
+      end else begin
+        B.add_string buf
+          ("(define-fun is_singlepath ((a " ^addr_s^ ") (p " ^path_s^ ")) " ^bool_s^ "\n" ^
+           "  (and (ispath p)\n" ^
+           "       (= (length p) 1)\n" ^
+           "       (= (select (at p) 0) a)))\n")
+      end
+
+
+
 
 
 
@@ -1426,7 +1445,7 @@ module Make (K : Level.S) : TSLK_QUERY =
     (*         (select p1 length)))                 *)
     let z3_path_length_def (buf:B.t) : unit =
       B.add_string buf
-        ("(define-fun path_length ((p " ^path_s^ ")) RangeAddress (length p))\n")
+        ("(define-fun path_length ((p " ^path_s^ ")) Int (length p))\n")
 
 
 
@@ -1515,11 +1534,25 @@ module Make (K : Level.S) : TSLK_QUERY =
 
 
     (********************* Preamble Declaration **********************)
+    let update_requirements (req_sorts:Expr.sort list)
+                            (req_ops:Expr.special_op_t list)
+          : (Expr.sort list * Expr.special_op_t list) =
+    let (res_req_sorts, res_req_ops) = (ref req_sorts, ref req_ops) in
+    if !use_quantifiers then begin
+      if (List.mem Expr.OrderedList req_ops) then begin
+        res_req_sorts := Expr.Path :: !res_req_sorts;
+        res_req_ops := Expr.Getp :: !res_req_ops;
+      end
+    end;
+    (!res_req_sorts, !res_req_ops)
+
+
     let z3_preamble (buf:B.t)
                     (num_addr:int)
                     (num_tid:int)
                     (num_elem:int)
-                    (req_sorts:Expr.sort list) =
+                    (req_sorts:Expr.sort list)
+                    (req_ops:Expr.special_op_t list) =
       B.add_string buf
         ( "; Translation for TExpr[" ^(string_of_int K.level)^ "]\n\n" );
       z3_level_preamble buf;
@@ -1713,7 +1746,8 @@ module Make (K : Level.S) : TSLK_QUERY =
           z3_subseteq_def buf num_addr
         end;
       (* If quantification is used, then we need to declare the heaps at this point *)
-      if !use_quantifiers then
+      if (List.mem Expr.Cell req_sorts || List.mem Expr.Mem req_sorts) &&
+          !use_quantifiers then
         begin
           Expr.VarSet.iter (z3_define_var buf Expr.VarSet.empty num_tid) heaps;
           z3_nextn_def buf heaps
@@ -1727,8 +1761,6 @@ module Make (K : Level.S) : TSLK_QUERY =
           z3_reachable_def buf num_addr ;
           z3_address2set_def buf num_addr
         end;
-      (* OrderedList *)
-      if List.mem Expr.OrderedList req_ops then z3_orderlist_def buf num_addr ;
       (* Path2set and is_path *)
       if List.mem Expr.Path req_sorts then z3_ispath_def buf num_addr ;
       if List.mem Expr.Path2Set req_ops then z3_path2set_def buf ;
@@ -1770,6 +1802,8 @@ module Make (K : Level.S) : TSLK_QUERY =
         end;
       (* Getp *)
       if List.mem Expr.Getp req_ops then z3_getp_def buf num_addr ;
+      (* OrderedList *)
+      if List.mem Expr.OrderedList req_ops then z3_orderlist_def buf num_addr ;
       (* Reachable *)
       if List.mem Expr.Reachable req_ops then z3_reach_def buf
 
@@ -2004,8 +2038,9 @@ module Make (K : Level.S) : TSLK_QUERY =
                           ) Expr.VarSet.empty ls
                         else
                           Expr.VarSet.empty in
+      let (req_sorts, req_ops) = update_requirements req_sorts req_ops in
       let buf = B.create 1024 in
-          z3_preamble buf num_addr num_tid num_elem req_sorts;
+          z3_preamble buf num_addr num_tid num_elem req_sorts req_ops;
           z3_defs    buf num_addr num_tid num_elem req_sorts req_ops heaps;
           variables_to_z3 buf num_tid expr ;
           let add_and_literal l str =
@@ -2083,11 +2118,12 @@ module Make (K : Level.S) : TSLK_QUERY =
       verb "**** Z3TslkQuery, about to translate formula...\n";
       let formula_str = formula_to_str phi in
       verb "**** Z3TslkQuery, formula translation done.\n";
+      let (req_sorts, req_ops) = update_requirements req_sorts req_ops in
       let buf         = B.create 1024
       in
         B.add_string buf (Printf.sprintf "; Formula\n; %s\n\n"
                             (Expr.formula_to_str phi));
-        z3_preamble buf num_addr num_tid num_elem req_sorts;
+        z3_preamble buf num_addr num_tid num_elem req_sorts req_ops;
         z3_defs     buf num_addr num_tid num_elem req_sorts req_ops heaps;
         variables_from_formula_to_z3 buf num_tid phi ;
         (* We add extra information if needed *)
