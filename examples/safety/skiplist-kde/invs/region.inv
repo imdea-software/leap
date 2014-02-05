@@ -1,0 +1,18 @@
+
+vars:
+
+invariant [skiplist_region] :
+
+
+/////////////////   Insert   ///////////////////
+
+@40. -> (insert::update[insert::i] in addr2set(heap, head, 0) /\
+				 ~ (insert::element in region))
+
+@41. -> rd(heap, insert::element).arr[insert::i] =
+				rd(heap, insert::update[insert::i]).arr[insert::i]
+
+
+/////////////////   Remove   ///////////////////
+
+@58. -> remove::element in region

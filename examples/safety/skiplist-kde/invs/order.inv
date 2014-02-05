@@ -1,0 +1,19 @@
+
+vars:
+
+invariant [skiplist_order] :
+
+
+/////////////////   Insert   ///////////////////
+
+@41. -> (rd(heap, insert::update[insert::i]).data < insert::value /\
+				 rd(heap, rd(heap, insert::update[insert::i]).arr[insert::i]).data > insert::value /\
+				 rd(heap, insert::element).data = insert::value)
+
+
+
+/////////////////   Remove   ///////////////////
+
+@58. ->rd(heap, remove::element).data = remove::value
+
+@58. -> rd(heap, remove::update[remove::i]).data < remove::value
