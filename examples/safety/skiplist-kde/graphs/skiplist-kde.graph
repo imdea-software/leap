@@ -1,13 +1,66 @@
 
 
 
--> skiplist_prop [
-			 3:{union : | | split-antecedent-pc | simplify-pc };
-			40:skiplist_region;
-			41:skiplist_region,skiplist_order;
-			58:skiplist_region,skiplist_order
-	] { union : split-goal
-						 | reduce2
-             | split-consequent
-             | simplify-pc propositional-propagate
-		 }
+//-> skiplist_prop [
+//			 3:{union : | | split-antecedent-pc | simplify-pc };
+//			40:skiplist_region_inst;
+//			41:skiplist_next,skiplist_order;
+//			58:skiplist_region,skiplist_order
+//	] { union : split-goal
+//						 | reduce2
+//						 | split-consequent
+//						 | simplify-pc propositional-propagate
+//		 }
+
+
+
+//-> skiplist_next [
+//			 3:{union : | | split-antecedent-pc | simplify-pc }
+//	 ] { union : split-goal
+//						 | reduce2
+//						 |
+//						 | simplify-pc
+//		 }
+
+
+//-> skiplist_region [
+//			 3:{union : | | split-antecedent-pc | simplify-pc };
+//			18:skiplist_prop;
+//			19:skiplist_prop::is_skiplist,
+//				 skiplist_next::insert_element_is_head;
+//			23:skiplist_prop::is_skiplist,
+//				 skiplist_next::insert_element_next_i_is_nextElement,
+//				 skiplist_order::insert_value_is_bounded,
+//				 skiplist_order::insert_element_lower_than_value,
+//				 skiplist_order::insert_nextElement_lower_than_value;
+//			26:skiplist_prop::is_skiplist,
+//				 skiplist_next::insert_element_in_region,
+//				 skiplist_next::insert_update_i_is_element,
+//				 skiplist_next::insert_element_next_i_is_nextElement,
+//				 skiplist_next::insert_nextElement_not_null,
+//				 skiplist_next::insert_element_in_addr2set,
+//				 skiplist_levels;
+//			33:skiplist_prop::is_skiplist;
+//			35:skiplist_prop::is_skiplist,
+//				 skiplist_next::level_increase_loop;
+//			37:skiplist_prop::is_skiplist,
+//				 skiplist_next::newCell_not_null;
+//			40:skiplist_next::newCell_connected_at_i,
+//				 skiplist_next::newCell_not_null,
+//				 skiplist_levels::insert_i_bounded,
+//				 skiplist_region_inst::insert_update_i_addr2set,
+//				 skiplist_region_inst::newCell_unconnected_at_i
+//	 ] { union : split-goal
+//						 | reduce2
+//						 |
+//						 | simplify-pc propositional-propagate
+//		 }
+
+
+-> skiplist_next [
+			 3:{union : | | split-antecedent-pc | simplify-pc }
+	 ] { union : split-goal
+             | reduce2
+             |
+             | simplify-pc
+     }

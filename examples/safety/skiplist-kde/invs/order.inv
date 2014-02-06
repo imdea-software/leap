@@ -1,10 +1,108 @@
 
 vars:
 
+int j
+
 invariant [skiplist_order] :
 
 
 /////////////////   Insert   ///////////////////
+
+
+@main_e. ->
+	(main::e != lowestElem /\ main::e != highestElem)
+
+#insert_value_is_bounded:
+   @insert_body. ->
+			(insert::value != lowestElem /\ insert::value != highestElem)
+
+
+@insert_newCell_created. -> (rd(heap, insert::element).data != rd(heap, head).data /\
+														 rd(heap, insert::element).data != rd(heap, null).data)
+
+
+#element_has_value:
+	 @insert_newCell_created. ->
+			rd(heap, insert::element).data = insert::value
+
+
+#insert_element_lower_than_value:
+	 @insert_element_in_region. ->
+			rd(heap, insert::element).data < insert::value
+
+
+#insert_nextElement_lower_than_value:
+	 (@insert_nextElement_low. \/ @insert_element_is_nextElement.) ->
+			rd(heap, insert::nextElement).data < insert::value
+
+
+
+@insert_lookup_loop. ->
+	((insert::i < j /\ j <= maxLevel) ->
+			(rd(heap,insert::update[j]).data < insert::value /\
+			(rd(heap,rd(heap,insert::update[j]).arr[j]).data > insert::value \/
+			 rd(heap,rd(heap,insert::update[j]).arr[j]).data = insert::value)))
+
+
+(@insert_final_if_condition. /\ 0 <= j /\ j <= maxLevel) ->
+					(rd(heap,insert::update[j]).data < insert::value /\
+					 (rd(heap,rd(heap,insert::update[j]).arr[j]).data > insert::value \/
+						rd(heap,rd(heap,insert::update[j]).arr[j]).data = insert::value))
+
+
+(@insert_update_all_order. /\ 0 <= j /\ j <= maxLevel) ->
+	(rd(heap,insert::update[j]).data < insert::value /\
+	 rd(heap,rd(heap,insert::update[j]).arr[j]).data > insert::value)
+
+
+
+@insert_element_next_connected. ->
+	(rd(heap, insert::update[insert::i]).data < rd(heap, insert::element).data /\
+	 rd(heap, rd(heap, insert::element).arr[insert::i]).data > rd(heap, insert::element).data)
+
+
+
+@insert_update_set. ->
+	rd(heap, insert::update[insert::i]).data = rd(heap,insert::element).data
+
+
+
+@insert_element_nextElement_two. ->
+	(rd(heap,insert::nextElement).data > insert::value \/
+	 rd(heap,insert::nextElement).data = insert::value)
+
+
+@insert_newCell_unconnected. ->
+			((insert::i <= j /\ j <= maxLevel) ->
+				(rd(heap,insert::update[j]).data < insert::value /\
+				 rd(heap,rd(heap,insert::update[j]).arr[j]).data > insert::value))
+
+
+@insert_i_increases. ->
+	((insert::i < j /\ j <= maxLevel) ->
+		(rd(heap,insert::update[j]).data < insert::value /\
+		 rd(heap,rd(heap,insert::update[j]).arr[j]).data > insert::value))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 @41. -> (rd(heap, insert::update[insert::i]).data < insert::value /\
 				 rd(heap, rd(heap, insert::update[insert::i]).arr[insert::i]).data > insert::value /\
@@ -14,6 +112,6 @@ invariant [skiplist_order] :
 
 /////////////////   Remove   ///////////////////
 
-@58. ->rd(heap, remove::element).data = remove::value
+//@58. ->rd(heap, remove::element).data = remove::value
 
-@58. -> rd(heap, remove::update[remove::i]).data < remove::value
+//@58. -> rd(heap, remove::update[remove::i]).data < remove::value
