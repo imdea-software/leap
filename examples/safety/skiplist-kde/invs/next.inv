@@ -1,0 +1,77 @@
+
+vars:
+
+int j
+
+invariant [skiplist_next] :
+
+
+/////////////////   Insert   ///////////////////
+
+
+
+#insert_element_is_head:
+	 @insert_element_is_head. ->
+			insert::element = head
+
+
+#insert_element_in_addr2set:
+	 @insert_lookup_loop. ->
+			insert::element in addr2set(heap, head, insert::i)
+
+
+#insert_nextElement_not_null:
+	@insert_nextElement_low. ->
+		insert::nextElement != null
+
+
+#insert_element_next_i_is_nextElement:
+	 (@insert_element_nextElement_one. \/ @insert_element_nextElement_two.) ->
+			rd(heap, insert::element).arr[insert::i] = insert::nextElement
+
+
+@insert_element_is_nextElement. ->
+			insert::nextElement = insert::element
+
+
+#insert_update_i_is_element:
+	 (@insert_update_set. ->
+			insert::update[insert::i] = insert::element)
+
+
+//(@insert_update_all_set. /\ 0 <= j /\ j <= maxLevel) ->
+//			(insert::update[j] != null)
+
+
+//(@insert_update_all_set. /\ 0 <= j /\ j <= maxLevel) ->
+//			(rd(heap, insert::update[j]).arr[j] != null)
+
+
+#level_increase_loop:
+	(@insert_increasing_level. /\ maxLevel < j /\ j < insert::i) ->
+		insert::update[j] = head
+
+
+@insert_increment_i. -> insert::update[insert::i] = head
+
+
+#all_update_filled:
+	(@insert_new_levels_filled. /\ maxLevel < j /\ j <= insert::newLevel) ->
+		insert::update[j] = head
+
+
+#newCell_not_null:
+	 @insert_newCell_created. ->
+			insert::element != null
+
+
+#newCell_connected_at_i:
+	 @insert_element_next_connected. ->
+			(rd(heap, insert::element).arr[insert::i] =
+            rd(heap, insert::update[insert::i]).arr[insert::i])
+
+
+#insert_element_in_region:
+	 @insert_element_in_region. ->
+			insert::element != null
+

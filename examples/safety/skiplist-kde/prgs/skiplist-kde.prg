@@ -122,13 +122,15 @@ assume
 																	if (newLevel > maxLevel) then
 																		// adjust header level
 																		i := maxLevel + 1;
-:insert_level_increase_loop[
+:insert_increasing_level[
 																		while (i <= newLevel) do
 																			update[i] := head;
+:insert_increment_i
 																			i := i + 1;
+:insert_increasing_level]
 																		endwhile
+:insert_new_levels_filled
 																		maxLevel := newLevel;
-:insert_level_increase_loop]
 																	endif
 
 																	// make new element [NEW *******]
