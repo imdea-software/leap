@@ -52,7 +52,9 @@ invariant [skiplist_next] :
 		insert::update[j] = head
 
 
-@insert_increment_i. -> insert::update[insert::i] = head
+(@insert_update_i_head. \/ @insert_increment_i.) -> insert::update[insert::i] = head
+
+@insert_increment_i. -> rd(heap, insert::update[insert::i]).arr[insert::i] = null
 
 
 #all_update_filled:
@@ -75,3 +77,11 @@ invariant [skiplist_next] :
 	 @insert_element_in_region. ->
 			insert::element != null
 
+
+
+
+(@insert_update_set. /\ insert::i = 0) -> insert::element = insert::update[0]
+(@testing_one. /\ insert::i < 0) -> insert::element = insert::update[0]
+
+#insert_element_is_update_next:
+	@insert_final_if_condition. -> insert::element = rd(heap, insert::update[0]).arr[0]

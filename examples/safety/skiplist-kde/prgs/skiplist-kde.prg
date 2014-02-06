@@ -86,6 +86,7 @@ assume
 :insert_element_is_head]
 :insert_lookup_loop[
 :insert_element_next_region_one[
+:testing_one
 																while (i >= 0) do
 																	nextElement := element->arr[i];
 :insert_element_next_region_one]
@@ -109,6 +110,7 @@ assume
 :insert_element_in_region]
 
 :insert_update_all_set[
+:insert_test_update_zero
 																// key is < value
 																element := element->arr[0];
 
@@ -117,6 +119,7 @@ assume
 																	// new key. add to list
 																	// get new level and fix list level
 
+:insert_update_all_order[
 																	// get new level
 																	newLevel := havocLevel();
 																	if (newLevel > maxLevel) then
@@ -125,6 +128,8 @@ assume
 :insert_increasing_level[
 																		while (i <= newLevel) do
 																			update[i] := head;
+:insert_update_i_head
+																			update[i]->arr[i] := null;
 :insert_increment_i
 																			i := i + 1;
 :insert_increasing_level]
@@ -135,7 +140,6 @@ assume
 
 																	// make new element [NEW *******]
 :insert_newLevel_bounded[
-:insert_update_all_order[
 																	element := mallocSL (value, newLevel);
 :insert_newCell_created[
 :insert_i_set_zero

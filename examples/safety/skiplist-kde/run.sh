@@ -1,7 +1,7 @@
 #Configure path to Leap
 LEAP=leap
 
-OPTIONS="-co union -sm -yices+z3 -dp tsl"
+OPTIONS="--focus $1 -co union -sm -yices+z3 -dp tsl"
 
 PRG=prgs/skiplist-kde.prg
 INV_FOLDER=invs

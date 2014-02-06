@@ -3,12 +3,12 @@
 
 //-> skiplist_prop [
 //			 3:{union : | | split-antecedent-pc | simplify-pc };
-//			39:skiplist_region_inst::newCell_unconnected_at_i;
-//			40:skiplist_order_inst,
+//			40:skiplist_region_inst::newCell_unconnected_at_i;
+//			41:skiplist_order_inst,
 //				 skiplist_order::element_has_value,
 //				 skiplist_next::newCell_connected_at_i;
-//			41:skiplist_next,skiplist_order;
-//			58:skiplist_region,skiplist_order
+//			42:skiplist_next,skiplist_order;
+//			59:skiplist_region,skiplist_order
 //	] { union : split-goal
 //						 | reduce2
 //						 | split-consequent
@@ -34,11 +34,11 @@
 //				 skiplist_next::insert_element_in_addr2set,
 //				 skiplist_levels;
 //			33:skiplist_prop::is_skiplist;
-//			35:skiplist_prop::is_skiplist,
+//			36:skiplist_prop::is_skiplist,
 //				 skiplist_next::all_update_filled;
-//			37:skiplist_prop::is_skiplist,
+//			38:skiplist_prop::is_skiplist,
 //				 skiplist_next::newCell_not_null;
-//			40:skiplist_next::newCell_connected_at_i,
+//			41:skiplist_next::newCell_connected_at_i,
 //				 skiplist_next::newCell_not_null,
 //				 skiplist_levels::insert_i_bounded,
 //				 skiplist_region_inst::insert_update_i_addr2set,
@@ -65,3 +65,34 @@
 //						 |
 //						 | simplify-pc
 //		 }
+
+
+
+-> skiplist_order [
+			 3:{union : | | split-antecedent-pc | simplify-pc };
+			18:skiplist_prop::head_is_lowest;
+			26:skiplist_next::insert_element_next_i_is_nextElement,
+				 skiplist_next::insert_update_i_is_element;
+
+			28:skiplist_prop::is_skiplist,
+				 skiplist_region::insert_update_j_in_addr2set,
+				 skiplist_region_inst::insert_update_zero_in_region,
+				 skiplist_next::insert_element_is_update_next,
+				 skiplist_order_inst::insert_update_bounded;
+
+
+			33:skiplist_prop::is_skiplist,
+				 skiplist_region::insert_update_j_in_addr2set;
+
+
+
+			40:skiplist_order_inst::insert_update_i_data_bounded,
+				 skiplist_levels::insert_i_bounded
+
+
+
+	 ] { union : split-goal
+             | reduce2
+             | split-consequent
+             | simplify-pc
+     }

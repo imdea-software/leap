@@ -23,3 +23,10 @@ invariant [skiplist_order_inst] :
 	((insert::i <= maxLevel) ->
 		(rd(heap,insert::update[insert::i]).data < insert::value /\
 		 rd(heap,rd(heap,insert::update[insert::i]).arr[insert::i]).data > insert::value))
+
+
+#insert_update_bounded:
+	((@insert_final_if_condition. \/ @insert_test_update_zero.) /\ 0 <= maxLevel) ->
+					(rd(heap,insert::update[0]).data < insert::value /\
+					 (rd(heap,rd(heap,insert::update[0]).arr[0]).data > insert::value \/
+						rd(heap,rd(heap,insert::update[0]).arr[0]).data = insert::value))
