@@ -1,8 +1,0 @@
-vars:
-
-addr a
-addrSet region
-
-formula:
-
-a in region \/ (~ a in region)
