@@ -52,9 +52,28 @@ invariant [skiplist_next] :
 		insert::update[j] = head
 
 
+
+((@testing_one. /\ insert::i < 0) -> insert::update[0] = insert::element)
+
+(@insert_update_set. -> insert::update[insert::i] = insert::element)
+
+(@insert_test_update_zero. -> insert::update[0] = insert::element)
+
+
+
 (@insert_update_i_head. \/ @insert_increment_i.) -> insert::update[insert::i] = head
 
 @insert_increment_i. -> rd(heap, insert::update[insert::i]).arr[insert::i] = null
+
+(@insert_increasing_level. /\ maxLevel < j /\ j < insert::i) ->
+	(rd(heap, insert::update[j]).data < insert::value /\
+	 rd(heap, rd(heap, insert::update[j]).arr[j]).data > insert::value)
+
+
+#insert_new_update_set:
+	(@insert_new_levels_filled. /\ maxLevel < j /\ j <= insert::newLevel) ->
+		(rd(heap, insert::update[j]).data < insert::value /\
+		 rd(heap, rd(heap, insert::update[j]).arr[j]).data > insert::value)
 
 
 #all_update_filled:
@@ -85,3 +104,8 @@ invariant [skiplist_next] :
 
 #insert_element_is_update_next:
 	@insert_final_if_condition. -> insert::element = rd(heap, insert::update[0]).arr[0]
+
+
+
+
+

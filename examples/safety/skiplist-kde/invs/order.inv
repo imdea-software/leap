@@ -17,7 +17,8 @@ invariant [skiplist_order] :
 			(insert::value != lowestElem /\ insert::value != highestElem)
 
 
-rd(heap, null).data = highestElem
+#null_is_highest:
+	rd(heap, null).data = highestElem
 
 
 @insert_newCell_created. -> (rd(heap, insert::element).data != rd(heap, head).data /\
