@@ -1,6 +1,6 @@
 {
 open Global
-open Stmparser
+open StmParser
 
 exception LexerError
 

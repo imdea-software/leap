@@ -5,16 +5,9 @@ open LeapLib
 open Global
 
 module E      = Expression
-(*module Vd     = Diagrams *)
-module Symtbl = Exprsymtable
+module Symtbl = ExprSymTable
 
 (* This code should be changed in the future *)
-module Pos  = (val PosSolver.choose  "default"   : PosSolver.S)
-module Tll  = (val TllSolver.choose  "default"   : TllSolver.S)
-module Tslk = (val TslkSolver.choose "default" 1 : TslkSolver.S)
-module Num  = (val NumSolver.choose  "default"   : NumSolver.S)
-module VCG = VCGen.Make(Pos)(Tll)(Tslk)(Num)
-module VD = Diagrams.Make(VCG)
 (* This code should be changed in the future *)
 
 type cond_op_t =
@@ -33,44 +26,45 @@ type cond_op_t =
 
 
 exception WrongType of E.term
-exception Sort_mismatch of E.varId * E.sort * E.sort
+exception Sort_mismatch of E.V.id * E.sort * E.sort
 exception Boolean_var_expected of E.term
 exception Not_sort_name of string
-exception Duplicated_local_var of E.varId * E.sort
+exception Duplicated_local_var of E.V.id * E.sort
 exception No_main
 exception Unknown_procedure of string
-exception Variable_not_in_procedure of E.varId * string
+exception Variable_not_in_procedure of E.V.id * string
 exception Wrong_assignment of E.term
 exception Atomic_double_assignment of E.expr_t
 exception Unexpected_statement of string
 exception Ghost_var_in_global_decl
-              of E.varId * E.sort * E.initVal_t option * E.var_nature
+              of E.V.id * E.sort * E.initVal_t option * E.var_nature
 exception Ghost_var_in_local_decl
-              of E.varId * E.sort * E.initVal_t option * E.var_nature
+              of E.V.id * E.sort * E.initVal_t option * E.var_nature
 exception Ghost_vars_in_assignment of E.term list
 exception Normal_vars_in_ghost_assignment of E.term list
-exception No_kind_for_var of E.varId
-exception Duplicated_ranking_function of Vd.node_id_t * E.term * E.term
+exception No_kind_for_var of E.V.id
 exception Ranking_function_unmatched_sort of E.sort * E.term * E.sort
 exception Different_argument_length of string * string
 
 
-let invVars = Hashtbl.create System.initVarNum
+let invVars = System.empty_var_table ()
 
 let empty_tbl = Hashtbl.create 1
 
 let curr_box_counter = ref 0
 
+let curr_tag : string ref = ref ""
+
 
 (* Looks for a term sort in the global and temporal var tables. *)
 let get_sort (t:E.term) : E.sort =
-  let p = E.get_var_owner t in
+  let p = E.term_scope t in
   let gVars = System.get_global !Symtbl.sys in
   let (iVars,lVars) = match p with
-                        E.Scope proc  -> (System.get_input_by_name !Symtbl.sys proc,
+                        E.V.Scope proc  -> (System.get_input_by_name !Symtbl.sys proc,
                                              System.get_local_by_name !Symtbl.sys proc)
-                      | E.GlobalScope -> (System.empty_var_table,
-                                             System.empty_var_table)
+                      | E.V.GlobalScope -> (System.empty_var_table (),
+                                             System.empty_var_table ())
   in
     System.get_sort_from_term gVars iVars lVars invVars t
 
@@ -146,8 +140,8 @@ let parser_check_type checker a_term a_sort get_expr_str =
     | WrongType(_) -> parser_typing_error a_term a_sort get_expr_str
 
 
-let decl_inv_var (v:E.varId) (s:E.sort) (e:E.initVal_t option) : unit =
-  System.add_var invVars v s e E.Shared E.RealVar
+let decl_inv_var (v:E.V.id) (s:E.sort) (e:E.initVal_t option) : unit =
+  System.add_var invVars v s e E.V.Shared E.RealVar
 
 
 
@@ -156,16 +150,17 @@ let get_name id = fst id
 let get_line id = snd id
 
 
-let check_sort_var (v:E.variable) : unit =
-  let generic_var = E.VarT (E.build_var v.E.id E.Unknown false E.Shared v.E.scope v.E.nature) in
+let check_sort_var (v:E.V.t) : unit =
+  let generic_var = E.VarT (E.build_var (E.V.id v) E.Unknown false E.V.Shared
+                                        (E.V.scope v) ~nature:(E.var_nature v)) in
   let knownSort = get_sort generic_var in
-    if (knownSort != v.E.sort) then
+    if (knownSort != (E.V.sort v)) then
       begin
         Interface.Err.msg "Mismatch variable type" $
           sprintf "Variable %s is of sort %s, while it is trying to be \
                    assigned to an expression of sort %s"
-                    v.E.id (E.sort_to_str knownSort) (E.sort_to_str v.E.sort);
-        raise(Sort_mismatch(v.E.id,knownSort,v.E.sort))
+                    (E.V.id v) (E.sort_to_str knownSort) (E.sort_to_str (E.V.sort v));
+        raise(Sort_mismatch((E.V.id v),knownSort,(E.V.sort v)))
       end
 
 
@@ -178,7 +173,7 @@ let wrong_sort_msg_for (t:E.term) (s:E.sort) : unit =
 
 let parser_check_boolean_type a_term get_expr_str =
   match a_term with
-    | E.VarT v -> let var = E.inject_var_sort v E.Bool in
+    | E.VarT v -> let var = E.V.set_sort v E.Bool in
                        check_sort_var var;
                        E.boolvar var
     | _           -> parser_typing_error a_term E.Bool get_expr_str
@@ -187,7 +182,7 @@ let parser_check_boolean_type a_term get_expr_str =
 let check_type_int t =
   match t with
       E.IntT i -> i
-    | E.VarT v -> let var = E.inject_var_sort v E.Int in
+    | E.VarT v -> let var = E.V.set_sort v E.Int in
                        check_sort_var var;
                        E.VarInt var
     | _           -> raise(WrongType t)
@@ -196,7 +191,7 @@ let check_type_int t =
 let check_type_set t =
   match t with
       E.SetT s -> s
-    | E.VarT v -> let var = E.inject_var_sort v E.Set in
+    | E.VarT v -> let var = E.V.set_sort v E.Set in
                        check_sort_var var;
                        E.VarSet var
     | _           -> raise(WrongType t)
@@ -205,7 +200,7 @@ let check_type_set t =
 let check_type_elem t =
   match t with
       E.ElemT e -> e
-    | E.VarT v  -> let var = E.inject_var_sort v E.Elem in
+    | E.VarT v  -> let var = E.V.set_sort v E.Elem in
                         check_sort_var var;
                         E.VarElem var
     | _            -> raise(WrongType t)
@@ -214,7 +209,7 @@ let check_type_elem t =
 let check_type_thid t =
   match t with
       E.TidT th -> th
-    | E.VarT v   -> let var = E.inject_var_sort v E.Tid in
+    | E.VarT v   -> let var = E.V.set_sort v E.Tid in
                          check_sort_var var;
                          E.VarTh var
     | _             -> raise(WrongType t)
@@ -223,7 +218,7 @@ let check_type_thid t =
 let check_type_addr t =
   match t with
       E.AddrT a -> a
-    | E.VarT v  -> let var = E.inject_var_sort v E.Addr in
+    | E.VarT v  -> let var = E.V.set_sort v E.Addr in
                         check_sort_var var;
                         E.VarAddr var
     | _            -> raise(WrongType t)
@@ -232,7 +227,7 @@ let check_type_addr t =
 let check_type_cell t =
   match t with
       E.CellT c -> c
-    | E.VarT v  -> let var = E.inject_var_sort v E.Cell in
+    | E.VarT v  -> let var = E.V.set_sort v E.Cell in
                         check_sort_var var;
                         E.VarCell var
     | _            -> raise(WrongType t)
@@ -241,7 +236,7 @@ let check_type_cell t =
 let check_type_setth t =
   match t with
       E.SetThT sth -> sth
-    | E.VarT v     -> let var = E.inject_var_sort v E.SetTh in
+    | E.VarT v     -> let var = E.V.set_sort v E.SetTh in
                            check_sort_var var;
                            E.VarSetTh var
     | _               -> raise(WrongType t)
@@ -250,7 +245,7 @@ let check_type_setth t =
 let check_type_setint t =
   match t with
       E.SetIntT sth -> sth
-    | E.VarT v      -> let var = E.inject_var_sort v E.SetInt in
+    | E.VarT v      -> let var = E.V.set_sort v E.SetInt in
                             check_sort_var var;
                             E.VarSetInt var
     | _                -> raise(WrongType t)
@@ -259,7 +254,7 @@ let check_type_setint t =
 let check_type_setelem t =
   match t with
       E.SetElemT se -> se
-    | E.VarT v      -> let var = E.inject_var_sort v E.SetElem in
+    | E.VarT v      -> let var = E.V.set_sort v E.SetElem in
                             check_sort_var var;
                             E.VarSetElem var
     | _                -> raise(WrongType t)
@@ -268,7 +263,7 @@ let check_type_setelem t =
 let check_type_path t =
   match t with
       E.PathT p -> p
-    | E.VarT v  -> let var = E.inject_var_sort v E.Path in
+    | E.VarT v  -> let var = E.V.set_sort v E.Path in
                         check_sort_var var;
                         E.VarPath var
     | _            -> raise(WrongType t)
@@ -277,7 +272,7 @@ let check_type_path t =
 let check_type_mem t =
   match t with
       E.MemT m  -> m
-    | E.VarT v  -> let var = E.inject_var_sort v E.Mem in
+    | E.VarT v  -> let var = E.V.set_sort v E.Mem in
                         check_sort_var var;
                         E.VarMem var
     | _            -> raise(WrongType t)
@@ -286,7 +281,7 @@ let check_type_mem t =
 let check_type_addrarr t =
   match t with
       E.AddrArrayT arr -> arr
-    | E.VarT v         -> let var = E.inject_var_sort v E.AddrArray in
+    | E.VarT v         -> let var = E.V.set_sort v E.AddrArray in
                                check_sort_var var;
                                E.VarAddrArray var
     | _                   -> raise(WrongType t)
@@ -295,7 +290,7 @@ let check_type_addrarr t =
 let check_type_tidarr t =
   match t with
       E.TidArrayT arr -> arr
-    | E.VarT v        -> let var = E.inject_var_sort v E.TidArray in
+    | E.VarT v        -> let var = E.V.set_sort v E.TidArray in
                               check_sort_var var;
                               E.VarTidArray var
     | _                  -> raise(WrongType t)
@@ -339,7 +334,7 @@ let check_is_procedure (id:string) =
 let inject_sort (exp:E.term) : E.term =
   match exp with
     E.VarT v -> let s = get_sort exp in
-                   let var = E.inject_var_sort v s in
+                   let var = E.V.set_sort v s in
                      begin
                        match s with
                          E.Set       -> E.SetT       (E.VarSet       var)
@@ -371,7 +366,7 @@ let unexpected_statement get_str_expr =
     raise(Unexpected_statement str_expr)
 
 
-let check_var_belongs_to_procedure (v:E.varId) (p_name:string) =
+let check_var_belongs_to_procedure (v:E.V.id) (p_name:string) =
   let p_info = System.get_proc_by_name !Symtbl.sys p_name in
   let iVars = System.proc_info_get_input p_info in
   let lVars = System.proc_info_get_local p_info in
@@ -448,11 +443,11 @@ let check_and_add_delta (tbl:Vd.delta_fun_t)
     ()
 *)
 
-let define_ident (proc_name:E.procedure_name)
+let define_ident (proc_name:E.V.procedure_name)
                  (id:string)
-                 (th:E.shared_or_local) : E.term =
+                 (th:E.V.shared_or_local) : E.term =
       let k = match proc_name with
-              | E.Scope p ->     check_is_procedure p;
+              | E.V.Scope p ->      check_is_procedure p;
                                     check_var_belongs_to_procedure id p;
                                     let proc_info = System.get_proc_by_name !Symtbl.sys p in
                                     let iVars     = System.proc_info_get_input proc_info in
@@ -461,11 +456,11 @@ let define_ident (proc_name:E.procedure_name)
                                       System.find_var_kind iVars id
                                     else
                                       System.find_var_kind lVars id
-              | E.GlobalScope -> try
+              | E.V.GlobalScope -> try
                                       let gVars = System.get_global !Symtbl.sys in
                                         System.find_var_kind gVars id
                                     with _ -> E.RealVar in
-      inject_sort (E.VarT (E.build_var id E.Unknown false th proc_name k))
+      inject_sort (E.VarT (E.build_var id E.Unknown false th proc_name ~nature:k))
 
 
 %}
@@ -478,6 +473,7 @@ let define_ident (proc_name:E.procedure_name)
 %token BEGIN END
 
 %token ERROR MKCELL DATA NEXT ARR TIDS MAX LOCKID LOCK UNLOCK LOCKAT UNLOCKAT
+%token NEXTAT
 %token MEMORY_READ
 %token DOT COMMA
 %token NULL UPDATE
@@ -510,6 +506,10 @@ let define_ident (proc_name:E.procedure_name)
 %token AT UNDERSCORE SHARP
 %token MATH_PLUS MATH_MINUS MATH_MULT MATH_DIV MATH_LESS MATH_GREATER
 %token MATH_LESS_EQ MATH_GREATER_EQ
+
+
+%token TID_CONSTRAINT RHO GOAL TRANSITION_TID LINE
+
 
 %token EOF
 
@@ -548,15 +548,18 @@ let define_ident (proc_name:E.procedure_name)
 
 
 %start invariant
-%start vd_formula
-%start diagram
-%start param_diagram
 %start formula
+%start vc_info
 %start single_formula
 
-%type <System.var_table_t * Expression.formula> single_formula
-%type <System.var_table_t * Tag.f_tag option * Expression.formula> invariant
-%type <System.var_table_t * Tag.f_tag option * Expression.formula> vd_formula
+%type <Tactics.vc_info> vc_info
+
+%type <Expression.formula> single_formula
+
+%type <System.var_table_t * Tag.f_tag option * (Tag.f_tag option * Expression.formula) list> invariant
+%type <(Tag.f_tag option * Expression.formula) list> formula_decl_list
+%type <(Tag.f_tag option * Expression.formula)> formula_decl
+
 %type <unit> inv_var_declarations
 %type <unit> inv_var_decl_list
 %type <unit> inv_var_decl
@@ -565,8 +568,8 @@ let define_ident (proc_name:E.procedure_name)
 %type <E.term list> term_list
 
 %type <Expression.formula> formula
-%type <E.shared_or_local> opt_th_param
-%type <E.shared_or_local> th_param
+%type <E.V.shared_or_local> opt_th_param
+%type <E.V.shared_or_local> th_param
 %type <E.literal> literal
 %type <E.term> term
 %type <E.cell> cell
@@ -587,327 +590,50 @@ let define_ident (proc_name:E.procedure_name)
 %type <E.addrarr> addrarr
 %type <E.tidarr> tidarr
 
-%type <Diagrams.vd_t> diagram
-%type <(Diagrams.pvd_t * Expression.tid list)> param_diagram
-%type <E.formula list> support
-%type <E.formula list> sup_formula_list
 
-/*
-%type <Vd.box_t list> boxes
-%type <Vd.box_t list> box_list
-%type <Vd.box_t> box
-%type <Vd.node_t list> nodes
-%type <Vd.node_t list> node_list
-%type <Vd.node_t> node
-%type <Vd.node_id_t> node_id
-%type <Vd.node_id_t list> node_id_list
-%type <Vd.node_id_t list> initials
-%type <Vd.edge_t list> edges
-%type <Vd.edge_t list> edge_list
-%type <Vd.edge_t> edge
-%type <Vd.trans_t> transition
-%type <Vd.trans_t list> tran_list
-%type <Vd.acceptance_list_t> acceptance
-%type <Vd.acceptance_pair_t list> accept_list
-%type <Vd.acceptance_pair_t> accept_pair
-%type <(Vd.node_id_t * Vd.node_id_t) list> edge_id_list
-%type <(Vd.node_id_t * Vd.node_id_t)> edge_id
-
-%type <Vd.delta_range_t> delta_node_desc
-%type <Vd.delta_range_t list> delta_node_list
-%type <Vd.delta_range_t list> delta_node_pos
-%type <Vd.delta_range_t list * E.term> delta_func
-%type <(Vd.delta_range_t list * E.term) list> delta_func_list
-*/
 
 %%
-
-
-/******************   DIAGRAMS **********************/
-
-/*
-param_diagram :
-  | diagram_init COLON IDENT support nodes initials boxes edges acceptance
-    {
-      let vd_name      = get_name $3 in
-      let sup_formulas = $4 in
-      let nodes        = $5 in
-      let initial      = $6 in
-      let boxes        = $7 in
-      let edges        = $8 in
-      let accept       = $9 in
-        (* By now, we verify that the formula expression written here
-           uses variables from V due to the way in which the parser
-           is constructed. In the future, if the parser is modified,
-           it may be necessary to verify that variables appearing in
-           this formula are contained into V *)
-        (* I think we must now do this verification, as the program
-           is now parsed with statement_parser *)
-        VD.new_param_diagram vd_name sup_formulas nodes initial boxes edges accept
-    }
-
-
-diagram :
-  | diagram_init COLON IDENT
-    THREADS COLON NUMBER
-    nodes initials edges acceptance
-    {
-      let vd_name = get_name $3 in
-      let th_num  = $6 in
-      let nodes   = $7 in
-      let initial = $8 in
-      let edges   = $9 in
-      let accept  = $10 in
-        (* By now, we verify that the formula expression written here
-           uses variables from V due to the way in which the parser
-           is constructed. In the future, if the parser is modified,
-           it may be necessary to verify that variables appearing in
-           this formula are contained into V *)
-        VD.new_diagram vd_name th_num nodes initial edges accept
-    }
-
-diagram_init :
-  | DIAGRAM
-    { }
-
-support :
-  |
-    { [] }
-  | SUPPORT COLON sup_formula_list
-    { $3 }
-
-sup_formula_list :
-  |
-    { [] }
-  | formula sup_formula_list
-    { $1 :: $2 }
-
-
-boxes :
-  | BOXES COLON box_list
-    { $3 }
-
-box_list :
-  |
-    { [] }
-  | box box_list
-    { $1 :: $2 }
-
-box :
-  | OPEN_SET node_id_list CLOSE_SET COLON IDENT
-    {
-      let nodes_id = $2 in
-      let var_name = get_name $5 in
-      let th       = E.build_var_tid var_name in
-      let _        = incr curr_box_counter in
-
-      VD.new_box !curr_box_counter nodes_id th
-    }
-
-nodes :
-  | NODES COLON node_list
-    { $3 }
-
-node_list :
-  |
-    { [] }
-  | node node_list
-    { $1 :: $2 }
-
-node :
-  | node_id COLON OPEN_SET formula CLOSE_SET
-    {
-      let n = $1 in
-      let formula = $4 in
-        VD.new_node n formula
-    }
-
-node_id :
-  | OPEN_BRACKET NUMBER CLOSE_BRACKET
-    { VD.new_node_id $2 }
-
-initials :
-  | INITIAL COLON OPEN_SET node_id_list CLOSE_SET
-    { $4 }
-
-node_id_list :
-  | NUMBER
-    { [VD.new_node_id $1] }
-  | NUMBER COMMA node_id_list
-    { (VD.new_node_id $1) :: $3 }
-
-edges :
-  | EDGES COLON edge_list
-    { $3 }
-
-edge_list :
-  |
-    { [] }
-  | edge edge_list
-    { $1 :: $2 }
-
-edge :
-  | node_id LOGICAL_THEN node_id COLON OPEN_SET tran_list CLOSE_SET
-    {
-      let from_node = $1 in
-      let to_node = $3 in
-      let tran_set = $6 in
-      let edge_info = VD.new_edge_info Vd.Normal tran_set in
-        VD.new_edge from_node to_node edge_info
-    }
-  | node_id LARGE_EDGE_ARROW node_id COLON OPEN_SET tran_list CLOSE_SET
-    {
-      let from_node = $1 in
-      let to_node = $3 in
-      let tran_set = $6 in
-      let edge_info = VD.new_edge_info Vd.Large tran_set in
-        VD.new_edge from_node to_node edge_info
-    }
-
-
-tran_list :
-  |
-    { [] }
-  | transition
-    { [$1] }
-  | transition COMMA tran_list
-    { $1 :: $3 }
-
-
-transition :
-  | NUMBER opt_th_param
-    {
-      let pc = $1 in
-      let th = $2 in
-        VD.new_trans pc th
-    }
-
-
-acceptance :
-  | ACCEPTANCE COLON accept_list
-    {
-      let acc_list = $3 in
-      VD.new_acceptance_list acc_list
-    }
-
-
-accept_list :
-  |
-    { [] }
-  | accept_pair accept_list
-    { $1 :: $2 }
-
-
-accept_pair :
-  | OPEN_SET edge_id_list CLOSE_SET COLON OPEN_SET edge_id_list CLOSE_SET
-    USING BEGIN delta_func_list END
-    {
-      let l1 = $2 in
-      let l2 = $6 in
-      let f_list = $10 in
-      let tbl = Hashtbl.create Vd.initNodeNum in
-      let _ = check_and_add_delta tbl f_list in
-
-      VD.new_acceptance_pair l1 l2 tbl
-    }
-
-
-edge_id_list :
-  |
-    { [] }
-  | edge_id
-    { [$1] }
-  | edge_id COMMA edge_id_list
-    { $1 :: $3 }
-
-
-edge_id :
-  | node_id LOGICAL_THEN node_id
-    {
-      let n1 = $1 in
-      let n2 = $3 in
-      (n1,n2)
-    }
-
-
-delta_func_list :
-  | delta_func
-    { [$1] }
-  | delta_func delta_func_list
-    { $1 :: $2 }
-
-
-delta_func :
-  | delta_node_pos COLON term
-    {
-      let pos_list = $1 in
-      let expr = $3 in
-        (pos_list, expr)
-    }
-
-
-delta_node_pos :
-  | delta_node_list
-    { $1 }
-  | DEFAULT
-    { [Vd.Default] }
-
-
-delta_node_list :
-  | delta_node_desc
-    { [$1] }
-  | delta_node_desc COMMA delta_node_list
-    { $1 :: $3 }
-
-
-delta_node_desc :
-  | NUMBER
-    { Vd.Single (VD.new_node_id $1) }
-  | NUMBER MATH_MINUS NUMBER
-    { Vd.Range (VD.new_node_id $1, VD.new_node_id $3) }
-
-
-/*********************     SINGLE FORMULA    *************************/
-
-
-single_formula :
-  | param COLON inv_var_declarations FORMULA COLON formula
-    { let declPhiVars = System.copy_var_table invVars in
-      let phi         = $6 in
-      let _           = System.clear_table invVars
-      in
-        (declPhiVars, phi)
-    }
 
 
 /*********************     INVARIANTS    *************************/
 
 invariant :
-  | param COLON inv_var_declarations INVARIANT formula_tag COLON formula
+  | param COLON inv_var_declarations INVARIANT formula_tag COLON formula_decl_list
     { let declInvVars = System.copy_var_table invVars in
       let tag         = $5 in
-      let inv         = $7 in
+      let inv_decl    = $7 in
       let _           = System.clear_table invVars
       in
-        (declInvVars, tag, inv)
+        (declInvVars, tag, inv_decl)
     }
 
-
-vd_formula :
-  | param COLON inv_var_declarations FORMULA formula_tag COLON formula
-    { let declPhiVars = System.copy_var_table invVars in
-      let tag         = $5 in
-      let phi         = $7 in
-      let _           = System.clear_table invVars
-      in
-        (declPhiVars, tag, phi)
-    }
 
 formula_tag :
   |
     { None }
   | OPEN_BRACKET IDENT CLOSE_BRACKET
-    { Some (Tag.new_tag (get_name $2)) }
+    {
+      let tag_name = get_name $2 in
+      curr_tag := tag_name;
+      Some (Tag.new_tag tag_name "")
+    }
+
+
+formula_decl_list :
+  | formula_decl
+    { [$1] }
+  | formula_decl formula_decl_list
+    { $1 :: $2 }
+
+
+formula_decl :
+  | formula
+    { (None, $1) }
+  | SHARP IDENT COLON formula
+    {
+      let tag_name = get_name $2 in
+      (Some (Tag.new_tag !curr_tag tag_name), $4)
+    }
 
 
 param :
@@ -938,7 +664,7 @@ inv_var_decl:
 (*      decl_global_var v_name s None E.RealVar; *)
       decl_inv_var v_name s None
     }
-*/
+
 
 /***********************    FORMULAS    ************************/
 
@@ -950,21 +676,21 @@ formula :
   | OPEN_PAREN formula CLOSE_PAREN
       { $2 }
   | literal
-      { E.Literal $1 }
+      { Formula.Literal $1 }
   | LOGICAL_TRUE
-      { E.True }
+      { Formula.True }
   | LOGICAL_FALSE
-      { E.False }
+      { Formula.False }
   | LOGICAL_NOT formula
-      { E.Not $2 }
+      { Formula.Not $2 }
   | formula LOGICAL_AND formula
-      { E.And ($1, $3) }
+      { Formula.And ($1, $3) }
   | formula LOGICAL_OR formula
-      { E.Or ($1, $3) }
+      { Formula.Or ($1, $3) }
   | formula LOGICAL_THEN formula
-      { E.Implies ($1, $3) }
+      { Formula.Implies ($1, $3) }
   | formula EQUALS formula
-      { E.Iff ($1, $3) }
+      { Formula.Iff ($1, $3) }
   | AT NUMBER opt_th_param DOT
       {
         let line_num = $2 in
@@ -981,12 +707,11 @@ formula :
         let pc_expr    = match pc_pos with
                            None -> parser_error ("Unknown label: " ^ label_name)
                          | Some (i,e) -> if i = e then
-                                           E.PC (i, th_p, false)
+                                           E.pc_form i th_p false
                                          else
-                                           E.PCRange (i, e, th_p, false)
+                                           E.pcrange_form i e th_p false
         in
-          E.Literal (E.Atom pc_expr)
-(*          E.disj_list pos_list *)
+          pc_expr
       }
 
 
@@ -995,7 +720,7 @@ formula :
 
 opt_th_param:
   |
-    { E.Shared }
+    { E.V.Shared }
   | th_param
     { $1 }
 
@@ -1004,12 +729,12 @@ th_param:
   | OPEN_PAREN IDENT CLOSE_PAREN
     {
       let th_id = get_name $2 in
-        E.Local (E.build_var_tid th_id)
+        E.V.Local (E.build_global_var th_id E.Tid)
     }
   | OPEN_PAREN NUMBER CLOSE_PAREN
     {
       let th_id = $2 in
-        E.Local (E.build_num_tid th_id)
+        E.V.Local (E.build_num_tid_var th_id)
     }
 
 
@@ -1025,7 +750,7 @@ literal :
       let p1   = parser_check_type check_type_path $3 E.Path get_str_expr in
       let p2   = parser_check_type check_type_path $5 E.Path get_str_expr in
       let pres = parser_check_type check_type_path $7 E.Path get_str_expr in
-        E.Atom (E.Append (p1,p2,pres))
+        Formula.Atom (E.Append (p1,p2,pres))
     }
   | REACH OPEN_PAREN term COMMA term COMMA term COMMA term CLOSE_PAREN
     {
@@ -1037,7 +762,7 @@ literal :
       let a_from = parser_check_type check_type_addr $5 E.Addr get_str_expr in
       let a_to   = parser_check_type check_type_addr $7 E.Addr get_str_expr in
       let p      = parser_check_type check_type_path $9 E.Path get_str_expr in
-        E.Atom (E.Reach (h,a_from,a_to,p))
+        Formula.Atom (E.Reach (h,a_from,a_to,p))
     }
   | REACH OPEN_PAREN term COMMA term COMMA term COMMA term COMMA term CLOSE_PAREN
     {
@@ -1051,7 +776,7 @@ literal :
       let a_to   = parser_check_type check_type_addr $7 E.Addr get_str_expr in
       let p      = parser_check_type check_type_path $9 E.Path get_str_expr in
       let l      = parser_check_type check_type_int $11 E.Int get_str_expr in
-        E.Atom (E.ReachAt (h,a_from,a_to,l,p))
+        Formula.Atom (E.ReachAt (h,a_from,a_to,l,p))
     }
   | ORDERLIST OPEN_PAREN term COMMA term COMMA term CLOSE_PAREN
     {
@@ -1061,22 +786,24 @@ literal :
       let h      = parser_check_type check_type_mem  $3 E.Mem get_str_expr in
       let a_from = parser_check_type check_type_addr $5 E.Addr get_str_expr in
       let a_to   = parser_check_type check_type_addr $7 E.Addr get_str_expr in
-        E.Atom (E.OrderList (h,a_from,a_to))
+        Formula.Atom (E.OrderList (h,a_from,a_to))
     }
-  | SKIPLIST OPEN_PAREN term COMMA term COMMA term COMMA term COMMA term CLOSE_PAREN
+  | SKIPLIST OPEN_PAREN term COMMA term COMMA term COMMA term COMMA term COMMA term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "skiplist(%s,%s,%s,%s,%s)"
+      let get_str_expr () = sprintf "skiplist(%s,%s,%s,%s,%s,%s)"
                                         (E.term_to_str $3)
                                         (E.term_to_str $5)
                                         (E.term_to_str $7)
                                         (E.term_to_str $9)
-                                        (E.term_to_str $11) in
-      let h      = parser_check_type check_type_mem  $3  E.Mem get_str_expr in
-      let s      = parser_check_type check_type_set  $5  E.Set get_str_expr in
-      let l      = parser_check_type check_type_int  $7  E.Int get_str_expr in
-      let a_from = parser_check_type check_type_addr $9  E.Addr get_str_expr in
-      let a_to   = parser_check_type check_type_addr $11 E.Addr get_str_expr in
-        E.Atom (E.Skiplist (h,s,l,a_from,a_to))
+                                        (E.term_to_str $11)
+                                        (E.term_to_str $13) in
+      let h      = parser_check_type check_type_mem      $3 E.Mem get_str_expr in
+      let s      = parser_check_type check_type_set      $5 E.Set get_str_expr in
+      let l      = parser_check_type check_type_int      $7 E.Int get_str_expr in
+      let a_from = parser_check_type check_type_addr     $9 E.Addr get_str_expr in
+      let a_to   = parser_check_type check_type_addr    $11 E.Addr get_str_expr in
+      let elems  = parser_check_type check_type_setelem $13 E.SetElem get_str_expr in
+        Formula.Atom (E.Skiplist (h,s,l,a_from,a_to,elems))
     }
   | term IN term
     {
@@ -1084,7 +811,7 @@ literal :
                                                (E.term_to_str $3) in
       let a = parser_check_type check_type_addr $1 E.Addr get_str_expr in
       let r = parser_check_type check_type_set  $3 E.Set get_str_expr in
-        E.Atom (E.In (a,r))
+        Formula.Atom (E.In (a,r))
     }
   | term SUBSETEQ term
     {
@@ -1092,7 +819,7 @@ literal :
                                                       (E.term_to_str $3) in
       let s = parser_check_type check_type_set  $1 E.Set get_str_expr in
       let r = parser_check_type check_type_set  $3 E.Set get_str_expr in
-        E.Atom (E.SubsetEq(s,r))
+        Formula.Atom (E.SubsetEq(s,r))
     }
   | term INTH term
     {
@@ -1100,7 +827,7 @@ literal :
                                                  (E.term_to_str $3) in
       let th = parser_check_type check_type_thid  $1 E.Tid get_str_expr in
       let s  = parser_check_type check_type_setth $3 E.SetTh get_str_expr in
-        E.Atom (E.InTh (th,s))
+        Formula.Atom (E.InTh (th,s))
     }
   | term SUBSETEQTH term
     {
@@ -1108,7 +835,7 @@ literal :
                                                        (E.term_to_str $3) in
       let r = parser_check_type check_type_setth $1 E.SetTh get_str_expr in
       let s = parser_check_type check_type_setth $3 E.SetTh get_str_expr in
-        E.Atom (E.SubsetEqTh(r,s))
+        Formula.Atom (E.SubsetEqTh(r,s))
     }
   | term ININT term
     {
@@ -1116,7 +843,7 @@ literal :
                                                   (E.term_to_str $3) in
       let i = parser_check_type check_type_int $1 E.Int get_str_expr in
       let s = parser_check_type check_type_setint $3 E.SetInt get_str_expr in
-        E.Atom (E.InInt (i,s))
+        Formula.Atom (E.InInt (i,s))
     }
   | term SUBSETEQINT term
     {
@@ -1124,7 +851,7 @@ literal :
                                                         (E.term_to_str $3) in
       let r = parser_check_type check_type_setint $1 E.SetInt get_str_expr in
       let s = parser_check_type check_type_setint $3 E.SetInt get_str_expr in
-        E.Atom (E.SubsetEqInt(r,s))
+        Formula.Atom (E.SubsetEqInt(r,s))
     }
   | term INELEM term
     {
@@ -1132,7 +859,7 @@ literal :
                                                    (E.term_to_str $3) in
       let e = parser_check_type check_type_elem $1 E.Elem get_str_expr in
       let s = parser_check_type check_type_setelem $3 E.SetElem get_str_expr in
-        E.Atom (E.InElem (e,s))
+        Formula.Atom (E.InElem (e,s))
     }
   | term SUBSETEQELEM term
     {
@@ -1140,7 +867,7 @@ literal :
                                                          (E.term_to_str $3) in
       let r = parser_check_type check_type_setelem $1 E.SetElem get_str_expr in
       let s = parser_check_type check_type_setelem $3 E.SetElem get_str_expr in
-        E.Atom (E.SubsetEqElem(r,s))
+        Formula.Atom (E.SubsetEqElem(r,s))
     }
   | term MATH_LESS term
     {
@@ -1149,11 +876,11 @@ literal :
       try
         let e1 = parser_check_type check_type_elem $1 E.Elem get_str_expr in
         let e2 = parser_check_type check_type_elem $3 E.Elem get_str_expr in
-          E.Atom (E.LessElem (e1, e2))
+          Formula.Atom (E.LessElem (e1, e2))
       with
         _ -> let i1 = parser_check_type check_type_int $1 E.Int get_str_expr in
              let i2 = parser_check_type check_type_int $3 E.Int get_str_expr in
-               E.Atom (E.Less (i1, i2))
+               Formula.Atom (E.Less (i1, i2))
     }
   | term MATH_GREATER term
     {
@@ -1162,10 +889,10 @@ literal :
       try
         let e1 = parser_check_type check_type_elem $1 E.Elem get_str_expr in
         let e2 = parser_check_type check_type_elem $3 E.Elem get_str_expr in
-          E.Atom (E.GreaterElem (e1, e2))
+          Formula.Atom (E.GreaterElem (e1, e2))
       with _ -> let i1 = parser_check_type check_type_int $1 E.Int get_str_expr in
                 let i2 = parser_check_type check_type_int $3 E.Int get_str_expr in
-                  E.Atom (E.Greater (i1, i2))
+                  Formula.Atom (E.Greater (i1, i2))
     }
   | term MATH_LESS_EQ term
     {
@@ -1173,7 +900,7 @@ literal :
                                                (E.term_to_str $3) in
       let i1 = parser_check_type check_type_int $1 E.Int get_str_expr in
       let i2 = parser_check_type check_type_int $3 E.Int get_str_expr in
-        E.Atom (E.LessEq (i1, i2))
+        Formula.Atom (E.LessEq (i1, i2))
     }
   | term MATH_GREATER_EQ term
     {
@@ -1181,16 +908,16 @@ literal :
                                                (E.term_to_str $3) in
       let i1 = parser_check_type check_type_int $1 E.Int get_str_expr in
       let i2 = parser_check_type check_type_int $3 E.Int get_str_expr in
-        E.Atom (E.GreaterEq (i1, i2))
+        Formula.Atom (E.GreaterEq (i1, i2))
     }
   | equals
-    { E.Atom (E.Eq($1)) }
+    { Formula.Atom (E.Eq($1)) }
   | disequals
-    { E.Atom (E.InEq($1)) }
+    { Formula.Atom (E.InEq($1)) }
   | DOT ident DOT
     {
       match $2 with
-      | E.VarT v -> E.Atom(E.BoolVar v)
+      | E.VarT v -> Formula.Atom(E.BoolVar v)
       | _           -> raise(Boolean_var_expected $2)
     }
 
@@ -1269,7 +996,7 @@ term :
 ident :
   IDENT
     {
-      define_ident E.GlobalScope (get_name $1) E.Shared
+      define_ident E.V.GlobalScope (get_name $1) E.V.Shared
 (*
       let id  = get_name $1 in
       let var = E.build_var id E.Unknown false None None E.RealVar in
@@ -1278,7 +1005,7 @@ ident :
     }
   | IDENT DOUBLECOLON IDENT
     {
-      define_ident (E.Scope (get_name $1)) (get_name $3) E.Shared
+      define_ident (E.V.Scope (get_name $1)) (get_name $3) E.V.Shared
 (*
       let proc_name = get_name $1 in
 
@@ -1303,7 +1030,7 @@ ident :
     }
   | IDENT DOUBLECOLON IDENT th_param
     {
-      define_ident (E.Scope (get_name $1)) (get_name $3) $4
+      define_ident (E.V.Scope (get_name $1)) (get_name $3) $4
 (*
       let proc_name = get_name $1 in
 *)
@@ -1350,24 +1077,24 @@ set :
     }
   | UNION OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "%s Union %s" (E.term_to_str $3)
-                                                 (E.term_to_str $5) in
+      let get_str_expr() = sprintf "Union(%s,%s)" (E.term_to_str $3)
+                                                  (E.term_to_str $5) in
       let s1 = parser_check_type check_type_set  $3 E.Set get_str_expr in
       let s2 = parser_check_type check_type_set  $5 E.Set get_str_expr in
         E.Union(s1,s2)
     }
   | INTR OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "%s Intr %s" (E.term_to_str $3)
-                                                (E.term_to_str $5) in
+      let get_str_expr() = sprintf "Intr(%s,%s)" (E.term_to_str $3)
+                                                 (E.term_to_str $5) in
       let s1 = parser_check_type check_type_set  $3 E.Set get_str_expr in
       let s2 = parser_check_type check_type_set  $5 E.Set get_str_expr in
         E.Intr(s1,s2)
     }
   | SETDIFF OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "%s SetDiff %s" (E.term_to_str $3)
-                                                   (E.term_to_str $5) in
+      let get_str_expr() = sprintf "SetDiff(%s,%s)" (E.term_to_str $3)
+                                                    (E.term_to_str $5) in
       let s1 = parser_check_type check_type_set  $3 E.Set get_str_expr in
       let s2 = parser_check_type check_type_set  $5 E.Set get_str_expr in
         E.Setdiff(s1,s2)
@@ -1437,10 +1164,19 @@ addr :
     { E.Null }
   | term DOT NEXT
     {
-      let get_str_expr () = sprintf "%s.data" (E.term_to_str $1) in
+      let get_str_expr () = sprintf "%s.next" (E.term_to_str $1) in
       let c = parser_check_type check_type_cell  $1 E.Cell get_str_expr in
         E.Next(c)
     }
+  | term DOT NEXTAT OPEN_BRACKET term CLOSE_BRACKET
+    {
+      let get_str_expr () = sprintf "%s.nextat[%s]" (E.term_to_str $1)
+                                                    (E.term_to_str $5) in
+      let c = parser_check_type check_type_cell  $1 E.Cell get_str_expr in
+      let l = parser_check_type check_type_int   $5 E.Cell get_str_expr in
+        E.NextAt(c,l)
+    }
+
   | FIRSTLOCKED OPEN_PAREN term COMMA term CLOSE_PAREN
     {
       let get_str_expr () = sprintf "firstlocked(%s,%s)" (E.term_to_str $3)
@@ -1579,24 +1315,24 @@ setth :
     }
   | UNIONTH OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "%s UnionTh %s" (E.term_to_str $3)
-                                                   (E.term_to_str $5) in
+      let get_str_expr() = sprintf "UnionTh(%s,%s)" (E.term_to_str $3)
+                                                    (E.term_to_str $5) in
       let s1 = parser_check_type check_type_setth  $3 E.SetTh get_str_expr in
       let s2 = parser_check_type check_type_setth  $5 E.SetTh get_str_expr in
         E.UnionTh(s1,s2)
     }
   | INTRTH OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "%s IntrTh %s" (E.term_to_str $3)
-                                                  (E.term_to_str $5) in
+      let get_str_expr() = sprintf "IntrTh(%s,%s)" (E.term_to_str $3)
+                                                   (E.term_to_str $5) in
       let s1 = parser_check_type check_type_setth  $3 E.SetTh get_str_expr in
       let s2 = parser_check_type check_type_setth  $5 E.SetTh get_str_expr in
         E.IntrTh(s1,s2)
     }
   | SETDIFFTH OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "%s SetDiffTh %s" (E.term_to_str $3)
-                                                     (E.term_to_str $5) in
+      let get_str_expr() = sprintf "SetDiffTh(%s,%s)" (E.term_to_str $3)
+                                                      (E.term_to_str $5) in
       let s1 = parser_check_type check_type_setth  $3 E.SetTh get_str_expr in
       let s2 = parser_check_type check_type_setth  $5 E.SetTh get_str_expr in
         E.SetdiffTh(s1,s2)
@@ -1861,4 +1597,46 @@ tidarr :
       let c = parser_check_type check_type_cell $1 E.Cell get_str_expr in
         E.CellTids(c)
     }
+
+/************************   TEMPORARY VERIFICATION CONDITIONS **********************/
+
+
+vc_info :
+  | param COLON inv_var_declarations
+    SUPPORT COLON formula_list
+    TID_CONSTRAINT COLON formula
+    RHO COLON formula
+    GOAL COLON formula
+    TRANSITION_TID COLON term
+    LINE COLON NUMBER
+      {
+        let _ = System.clear_table invVars in
+        let supp_list = $6 in
+        let tid_phi = $9 in
+        let rho_phi = $12 in
+        let goal_phi = $15 in
+        let trans_tid = parser_check_type check_type_thid $18 E.Tid (fun _ -> (E.term_to_str $18)) in
+        let line = $21 in
+        let vocab = E.voc (Formula.conj_list [tid_phi;rho_phi;goal_phi]) in
+        Tactics.create_vc_info supp_list tid_phi rho_phi goal_phi vocab trans_tid line
+      }
+
+formula_list :
+  |
+    { [] }
+  | formula formula_list
+    { $1 :: $2 }
+
+
+/************************   STRAIGHT FORMULAS   **********************/
+
+
+single_formula :
+  | param COLON inv_var_declarations
+    FORMULA COLON formula
+      {
+        let _ = System.clear_table invVars in
+        let phi = $6 in
+        phi
+      }
 

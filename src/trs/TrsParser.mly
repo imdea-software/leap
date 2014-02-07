@@ -150,13 +150,13 @@ th_param :
     }
   | DOUBLE_UNDERSCORE NUMBER
     {
-      Some (Expr.build_num_tid $2)
+      Some (Expr.VarTh (Expr.build_num_tid_var $2))
     }
   | DOUBLE_UNDERSCORE IDENT
     {
       let id = get_name $2
       in
-        Some (Expr.build_var_tid id)
+        Some (Expr.VarTh (Expr.build_global_var id Expr.Tid))
     }
 
 primed :

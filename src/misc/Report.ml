@@ -54,7 +54,8 @@ let report_generated_vcs_to_str (vcs:Tactics.vc_info list) (n:int) : string =
 
 let report_inv_cand_to_str (inv:E.formula) : string =
   let inv_str = E.formula_to_str inv in
-  let voc_str = String.concat ", " $ List.map E.tid_to_str (E.voc inv)
+  let voc_str = E.ThreadSet.fold (fun t str -> str ^ (E.tid_to_str t) ^ ";") (E.voc inv) ""
+(*  let voc_str = String.concat ", " $ List.map E.tid_to_str (E.voc inv) *)
   in
   "+- Invariant information ---------------------------------------------\n" ^
   "| Candidate : " ^ inv_str ^ "\n" ^

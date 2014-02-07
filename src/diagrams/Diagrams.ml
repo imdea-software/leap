@@ -12,7 +12,7 @@ module Stm      = Statement
 
 (* Types for transitions *)
 type trans_id_t = E.pc_t
-type trans_t = trans_id_t * E.shared_or_local
+type trans_t = trans_id_t * E.V.shared_or_local
 
 
 (* Types for nodes *)
@@ -152,7 +152,7 @@ module PP = struct
   let trans_to_str (t:trans_t) : string =
     let (id,th) = t
     in
-      sprintf "T_%s%s" (trans_id_to_str id) (E.shared_or_local_to_str th)
+      sprintf "T_%s%s" (trans_id_to_str id) (E.V.shared_or_local_to_str th)
   
   
   let edge_info_to_str (info:edge_info_t) : string =
@@ -360,7 +360,7 @@ struct
     String.lowercase t1 = String.lowercase t2  
   
   (* CONSTRUCTION FUNCTIONS *)
-  let new_trans (p:E.pc_t) (th:E.shared_or_local) : trans_t = (p,th)
+  let new_trans (p:E.pc_t) (th:E.V.shared_or_local) : trans_t = (p,th)
   
   let new_node_id (i:int) : node_id_t = i
   let new_node_info (f:E.formula) : node_info_t = f
@@ -521,10 +521,10 @@ struct
     let (_,t) = tran
     in
       match t with
-        E.Shared -> ()
-      | E.Local ((E.VarTh v) as th) ->
+        E.V.Shared -> ()
+      | E.V.Local ((E.VarTh v) as th) ->
           if E.is_tid_val th then
-            let i = int_of_string (E.var_id v) in
+            let i = int_of_string (E.V.id v) in
             if i < 1 || th_num < i then
               begin
                 Interface.Err.msg "Transition out of bounds" $
@@ -559,8 +559,8 @@ struct
     let (id,t) = tran
     in
       match t with
-        E.Shared -> []
-      | E.Local th -> if not (List.mem th box_param) then [th] else []
+        E.V.Shared -> []
+      | E.V.Local th -> if not (List.mem th box_param) then [th] else []
   
   
   let check_and_add_pvd_edges (nTbl:node_table_t)
@@ -690,8 +690,10 @@ struct
   let tran_assoc (t:trans_t)
                  (tLst:(int * E.pc_t * E.formula list)list) : E.formula =
     let (pc,th) = match t with
-                    (i, E.Local (E.VarTh v as th)) ->
+                    (i, E.V.Local (E.VarTh v as th)) ->
                       if E.is_tid_val th then
+                        (* var_val function just returned the int of a variable
+                           id, assuming the name of the variable is a number *)
                         (i, E.var_val v)
                       else
                         begin
@@ -702,12 +704,12 @@ struct
                                    argument." (E.tid_to_str th);
                           raise(Open_thread_identifier th)
                         end
-                  | (_, E.Local t) ->
+                  | (_, E.V.Local t) ->
                     Interface.Err.msg "Not a valid thread identifier" $
                       sprintf "The thread \"%s\" is not valid as identifier"
                               (E.tid_to_str t);
                     raise(No_thread)
-                  | (_, E.Shared)                         ->
+                  | (_, E.V.Shared)                         ->
                     Interface.Err.msg "No thread identifier was provided"
                       "Looking for transition information over a closed system, \
                        a transition with no thread identifier was provided.";
@@ -800,7 +802,7 @@ struct
                                    E.prime next_conj
                 in
                   conseq := (n,
-                             (pc, E.Local (E.build_num_tid th)),
+                             (pc, E.V.Local (E.build_num_tid th)),
                              E.Implies (antecedent, consequent)
                             ) :: !conseq
               ) tran_list
@@ -1124,7 +1126,7 @@ struct
                                      next_disj in
                   let cond = E.Implies (antecedent, consequent)
                   in
-                    conseq := (n, (pc,E.Local i), cond) :: !conseq
+                    conseq := (n, (pc,E.V.Local i), cond) :: !conseq
                 ) t_voc;
                 (* The extra condition *)
                 let (fresh_tid, diff_conj) = gen_fresh_and_build_ineq t_voc in
@@ -1144,7 +1146,7 @@ struct
                                    next_disj in
                 let extra_cond = E.Implies (antecedent, consequent)
                 in
-                  conseq := (n, (pc, E.Local fresh_tid), extra_cond) :: !conseq
+                  conseq := (n, (pc, E.V.Local fresh_tid), extra_cond) :: !conseq
               ) pc_list
             ) pvd.pvd_nodes in
 *)
@@ -1244,8 +1246,8 @@ struct
               in
                 List.iter (fun t ->
                   let (pc,th_opt) = match t with
-                                      (pc,E.Local th_opt) -> (pc, th_opt)
-                                    | (_, E.Shared) -> raise(Unparametrized_transition) in
+                                      (pc,E.V.Local th_opt) -> (pc, th_opt)
+                                    | (_, E.V.Shared) -> raise(Unparametrized_transition) in
                   let mode        = VCG.new_open_thid_array_mode th_opt [] in
                   let ts          = [th_opt] in
                   let tau_rho     = E.conj_list
@@ -1277,7 +1279,7 @@ struct
     let satisf = [] in
   
     (* Clean heap occurrences? *)
-    let _ = if Sys.mem_var (Sys.get_global sys) Sys.heap_name then
+    let _ = if Sys.mem_var (Sys.get_global sys) Conf.heap_name then
       VCG.enable_tll_dp ()
     else
       VCG.enable_num_dp () in

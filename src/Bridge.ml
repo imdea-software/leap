@@ -3,6 +3,7 @@ open Printf
 
 module Stm = Statement
 module E   = Expression
+module F   = Formula
 
 type cond_effect_aux_t = E.formula list               * (*Condition list*)
                          (Stm.term * Stm.expr_t) list * (*Term/Expr assignment*)
@@ -20,10 +21,10 @@ type eqGenMode = NormalGenMode | ArrayGenMode
 type malloc_info =
   {
     tids       : E.tid list;
-    gAddrs     : E.variable list;
-    gSets      : E.variable list;
-    lAddrs     : E.variable list;
-    lSets      : E.variable list;
+    gAddrs     : E.V.t list;
+    gSets      : E.V.t list;
+    lAddrs     : E.V.t list;
+    lSets      : E.V.t list;
   }
 
 type prog_type = Num | Heap
@@ -32,6 +33,13 @@ type prog_type = Num | Heap
 exception Invalid_argument
 exception Not_implemented of string
 
+(* Configuration *)
+
+let fresh_cell_name : string = "freshcell"
+let fresh_addr_name : string = "freshaddr"
+let fresh_addrarr_name : string = "freshaddrarr"
+let fresh_tidarr_name : string = "freshtidarr"
+let fresh_int_name : string = "freshaddrarr"
 
 (* Pretty printers *)
 
@@ -51,7 +59,7 @@ let cond_effect_aux_to_str (cond:cond_effect_aux_t) : string =
 
 (* FIX: This support is not extended to closed systems *)
 let unfold_expression (mInfo:malloc_info)
-                      (th_p:E.shared_or_local)
+                      (th_p:E.V.shared_or_local)
                       (expr:Stm.expr_t) : (E.expr_t      *
                                            E.term list   *
                                            E.formula list) =
@@ -59,17 +67,15 @@ let unfold_expression (mInfo:malloc_info)
   let gen_malloc (mkcell:E.cell) :
                  (E.expr_t * E.term list * E.formula list) =
 (*    LOG "unfold_expression::gen_malloc()" LEVEL TRACE; *)
-    let c_fresh = E.VarCell(E.build_var
-                      E.fresh_cell_name E.Cell false E.Shared E.GlobalScope E.RealVar) in
-    let a_fresh = E.VarAddr(E.build_var
-                      E.fresh_addr_name E.Addr false E.Shared E.GlobalScope E.RealVar) in
+    let c_fresh = E.VarCell(E.build_global_var fresh_cell_name E.Cell) in
+    let a_fresh = E.VarAddr(E.build_global_var fresh_addr_name E.Addr) in
     let diff_fresh a = E.ineq_addr a_fresh (E.VarAddr a) in
-    let not_in_set s = E.Not (E.in_form a_fresh (E.VarSet s)) in
+    let not_in_set s = F.Not (E.in_form a_fresh (E.VarSet s)) in
     let gDiffAddr = List.map diff_fresh mInfo.gAddrs in
     let gNotInSet = List.map not_in_set mInfo.gSets in
     let lDiffAddr = List.fold_left (fun xs t ->
                       xs @ List.map (fun v ->
-                             diff_fresh (E.param_variable (E.Local t) v)
+                             diff_fresh (E.param_variable (E.V.Local (E.voc_to_var t)) v)
                            ) mInfo.lAddrs
                     ) [] mInfo.tids in
     let lNotInSet = List.fold_left (fun xs t ->
@@ -77,7 +83,7 @@ let unfold_expression (mInfo:malloc_info)
                              not_in_set (E.param_variable th_p v)
                            ) mInfo.lSets
                     ) [] mInfo.tids in
-    let new_f = E.conj_list $
+    let new_f = F.conj_list $
                   gDiffAddr @ gNotInSet @ lDiffAddr @ lNotInSet @
                   [
                     E.eq_cell c_fresh mkcell;
@@ -104,19 +110,16 @@ let unfold_expression (mInfo:malloc_info)
 (*      LOG "MallocSL translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
       let e_expr   = Stm.elem_to_expr_elem e in
       let l_expr   = Stm.integer_to_expr_integer l in
-      let aa_fresh = E.VarAddrArray(E.build_var
-                       E.fresh_addrarr_name E.AddrArray false E.Shared E.GlobalScope E.RealVar) in
-      let tt_fresh = E.VarTidArray(E.build_var
-                       E.fresh_tidarr_name E.TidArray false E.Shared E.GlobalScope E.RealVar) in
-      let i_fresh = E.VarInt(E.build_var
-                       E.fresh_int_name E.Int false E.Shared E.GlobalScope E.RealVar) in
+      let aa_fresh = E.VarAddrArray(E.build_global_var fresh_addrarr_name E.AddrArray) in
+      let tt_fresh = E.VarTidArray(E.build_global_var fresh_tidarr_name E.TidArray) in
+      let i_fresh = E.VarInt(E.build_global_var fresh_int_name E.Int) in
       let mkcell   = E.param_cell th_p
                        (E.MkSLCell(e_expr, aa_fresh, tt_fresh, l_expr)) in
       let (t,ms,fs) = gen_malloc mkcell in
-      let fs' = List.map (fun f -> E.And
-                                     (E.Implies
+      let fs' = List.map (fun f -> F.And
+                                     (F.Implies
                                        (E.lesseq_form (E.IntVal 0) i_fresh,
-                                        E.And
+                                        F.And
                                           (E.eq_addr (E.AddrArrRd(aa_fresh, i_fresh))
                                                      (E.Null),
                                            E.eq_tid (E.TidArrRd(tt_fresh, i_fresh))
@@ -181,7 +184,7 @@ let generic_stm_term_eq (mode:eqGenMode)
                         (mInfo:malloc_info)
                         (pt:prog_type)
                         (v:Stm.term)
-                        (th_p:E.shared_or_local)
+                        (th_p:E.V.shared_or_local)
                         (e:Stm.expr_t) : (E.term list * E.formula) =
   let eq_generator = match mode with
                        NormalGenMode -> E.construct_term_eq
@@ -209,12 +212,11 @@ let generic_stm_term_eq (mode:eqGenMode)
           heap_eq_generator (E.MemT E.heap) th_p (E.Term(new_term))
     (* NextAt *)
     | (E.AddrT (E.NextAt(E.CellAt(h,a) as c,l)), E.Term(E.AddrT a')) ->
-        let c_fresh = E.VarCell(E.build_var
-                        E.fresh_cell_name E.Cell false E.Shared E.GlobalScope E.RealVar) in
+        let c_fresh = E.VarCell(E.build_global_var fresh_cell_name E.Cell) in
         let new_term = E.param_term th_p (E.MemT(E.Update(E.heap,a,c_fresh))) in
         let new_phi = E.param th_p (E.eq_cell c_fresh (E.UpdCellAddr(c,l,a'))) in
         let (mods,phi) = heap_eq_generator (E.MemT E.heap) th_p (E.Term(new_term)) in
-          ((E.CellT c_fresh)::mods, E.And(new_phi, phi))
+          ((E.CellT c_fresh)::mods, F.And(new_phi, phi))
     (* ArrAt *)
     | (E.AddrT (E.ArrAt(E.CellAt(h,a), l)), E.Term(E.AddrT a')) ->
         let new_cell = E.MkSLCell(E.CellData(E.CellAt(E.heap,a)),
@@ -257,28 +259,27 @@ let generic_stm_term_eq (mode:eqGenMode)
     (* HavocListElem *)
     | (E.ElemT (E.VarElem v as e), E.Term (E.ElemT (E.HavocListElem))) ->
         ([E.ElemT (E.VarElem (E.var_base_info v))],
-            E.And (E.ineq_elem (E.prime_elem (E.param_elem th_p e)) E.LowestElem,
+            F.And (E.ineq_elem (E.prime_elem (E.param_elem th_p e)) E.LowestElem,
                    E.ineq_elem (E.prime_elem (E.param_elem th_p e)) E.HighestElem))
     (* HavocSkiplistElem *)
     | (E.ElemT (E.VarElem v as e), E.Term (E.ElemT (E.HavocSkiplistElem))) ->
         ([E.ElemT (E.VarElem (E.var_base_info v))],
-            E.And (E.ineq_elem (E.prime_elem (E.param_elem th_p e)) E.LowestElem,
+            F.And (E.ineq_elem (E.prime_elem (E.param_elem th_p e)) E.LowestElem,
                    E.ineq_elem (E.prime_elem (E.param_elem th_p e)) E.HighestElem))
     (* HavocLevel *)
     | (E.IntT (E.VarInt v) as i, E.Term (E.IntT (E.HavocLevel))) ->
-        let e = E.IntT (E.VarInt(E.build_var
-                  E.fresh_int_name E.Int false E.Shared E.GlobalScope E.RealVar)) in
+        let e = E.IntT (E.VarInt(E.build_global_var fresh_int_name E.Int)) in
           eq_generator i th_p (E.Term e)
     (* Remaining cases *)
     | _ -> eq_generator v' th_p new_e in
-  (modif @ aux_modif, E.conj_list (formula::aux_f))
+  (modif @ aux_modif, F.conj_list (formula::aux_f))
 
 
 
 let construct_stm_term_eq (mInfo:malloc_info)
                           (pt:prog_type)
                           (v:Stm.term)
-                          (th_p:E.shared_or_local)
+                          (th_p:E.V.shared_or_local)
                           (e:Stm.expr_t) : (E.term list * E.formula) =
   generic_stm_term_eq NormalGenMode mInfo pt v th_p e
 
@@ -286,7 +287,7 @@ let construct_stm_term_eq (mInfo:malloc_info)
 let construct_stm_term_eq_as_array (mInfo:malloc_info)
                                    (pt:prog_type)
                                    (v:Stm.term)
-                                   (th_p:E.shared_or_local)
+                                   (th_p:E.V.shared_or_local)
                                    (e:Stm.expr_t) : (E.term list * E.formula) =
   generic_stm_term_eq ArrayGenMode mInfo pt v th_p e
 
@@ -302,7 +303,7 @@ let rec gen_atomic_st_cond_effect (conds:cond_effect_aux_t list)
     Stm.StAwait(b,_,_)    -> List.fold_left (fun zs (cs,es,c,n,ext) ->
                                if ext then
                                  ((to_expr b)::cs,          es,c,n,ext)::
-                                 ((to_expr (Stm.Not b))::cs,es,c,c,false)::zs
+                                 ((to_expr (F.Not b))::cs,es,c,c,false)::zs
                                else
                                  (cs,es,c,n,ext) :: zs
                              ) [] conds
@@ -320,7 +321,7 @@ let rec gen_atomic_st_cond_effect (conds:cond_effect_aux_t list)
                                             ) conds in
                              let else_map = List.map (fun (cs,es,c,n,ext) ->
                                               if ext then
-                                                (to_expr(Stm.Not b)::cs,es,c,n,ext)
+                                                (to_expr(F.Not b)::cs,es,c,n,ext)
                                               else
                                                 (cs,es,c,n,ext)
                                             ) conds in
@@ -359,7 +360,7 @@ let rec gen_st_cond_effect_aux (is_ghost:bool)
       add_gc [([to_expr c],def_assign,curr_p,next_p,true)] gc
   | Stm.StAwait (c,gc,info)    ->
       add_gc [([to_expr c],         def_assign,curr_p,next_p,true);
-              ([to_expr(Stm.Not c)],def_assign,curr_p,curr_p,false)] gc
+              ([to_expr(F.Not c)],def_assign,curr_p,curr_p,false)] gc
   | Stm.StNonCrit (gc,info)    ->
       add_gc [([],def_assign,curr_p,next_p,true)] gc
   | Stm.StCrit (gc,info)       ->
@@ -369,16 +370,16 @@ let rec gen_st_cond_effect_aux (is_ghost:bool)
       if is_ghost then
         let true_res = append (to_expr c) (gen_st_cond_effect_aux true t) in
         let false_res = match e with
-                        | None   -> [([to_expr(Stm.Not c)],def_assign,curr_p,else_p,true)]
-                        | Some s -> append (to_expr(Stm.Not c)) (gen_st_cond_effect_aux true s)
+                        | None   -> [([to_expr(F.Not c)],def_assign,curr_p,else_p,true)]
+                        | Some s -> append (to_expr(F.Not c)) (gen_st_cond_effect_aux true s)
         in
           true_res @ false_res
       else
          [([to_expr c],         def_assign,curr_p,next_p,true);
-          ([to_expr(Stm.Not c)],def_assign,curr_p,else_p,true)]
+          ([to_expr(F.Not c)],def_assign,curr_p,else_p,true)]
   | Stm.StWhile (c,l,gc,info)  ->
       add_gc [([to_expr c],         def_assign,curr_p,next_p,true);
-              ([to_expr(Stm.Not c)],def_assign,curr_p,else_p,true)] gc
+              ([to_expr(F.Not c)],def_assign,curr_p,else_p,true)] gc
   | Stm.StSelect (xs,gc,info)  ->
       let conds = match info with
                   | None     -> [([],def_assign,curr_p,next_p,true)]
@@ -420,22 +421,22 @@ let rec gen_st_cond_effect_aux (is_ghost:bool)
 let gen_st_cond_effect_for_th (pt:prog_type)
                               (st:Stm.statement_t)
                               (is_ghost:bool)
-                              (th_p:E.shared_or_local) : cond_effect_t list =
+                              (th_p:E.V.shared_or_local) : cond_effect_t list =
   let aux_conds = gen_st_cond_effect_aux is_ghost st in
 
   (* FIX: Fill the information in mInfo if necessary *)
   let mInfo = {tids=[]; gAddrs=[]; gSets=[]; lAddrs=[]; lSets=[]}
   in
     List.map (fun (cs,es,c,n,_) ->
-      let cs_phi = E.conj_list cs in
+      let cs_phi = F.conj_list cs in
       let (mods,es_list) = List.fold_left (fun (ts,es) (t,e) ->
                              let (t_res, e_res) =
                                match th_p with
-                               | E.Shared -> construct_stm_term_eq mInfo pt t E.Shared e
-                               | E.Local _ -> construct_stm_term_eq_as_array mInfo pt t th_p e in
+                               | E.V.Shared -> construct_stm_term_eq mInfo pt t E.V.Shared e
+                               | E.V.Local _ -> construct_stm_term_eq_as_array mInfo pt t th_p e in
                              (t_res@ts, e_res::es)
                            ) ([],[]) es in
-      let es_phi = E.conj_list (
+      let es_phi = F.conj_list (
                      match pt with
                      | Num  -> es_list
                      | Heap -> begin
@@ -446,7 +447,7 @@ let gen_st_cond_effect_for_th (pt:prog_type)
                                end)
       in
         if (c = n) && not(is_ghost) then
-          (cs_phi, E.True, c, n)
+          (cs_phi, F.True, c, n)
         else
           (cs_phi, es_phi, c, n)
     ) aux_conds
@@ -456,12 +457,12 @@ let gen_st_cond_effect_for_th (pt:prog_type)
 let gen_st_cond_effect (pt:prog_type)
                        (st:Stm.statement_t)
                        (is_ghost:bool): cond_effect_t list =
-  gen_st_cond_effect_for_th pt st is_ghost E.Shared
+  gen_st_cond_effect_for_th pt st is_ghost E.V.Shared
 
 
 
 let gen_st_cond_effect_as_array (pt:prog_type)
                                 (st:Stm.statement_t)
                                 (is_ghost:bool)
-                                (th_p:E.shared_or_local) : cond_effect_t list =
+                                (th_p:E.V.shared_or_local) : cond_effect_t list =
   gen_st_cond_effect_for_th pt st is_ghost th_p

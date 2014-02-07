@@ -17,22 +17,21 @@ type st_info_t = {
   mutable return_pos      : Expression.pc_t list;
   }
 
-
-type varId = Expression.varId
-
-type kind_t = Normal | Ghost
+type varId = string
 
 type unit_op = Lock | Unlock
+
+type procedure_name = GlobalScope | Scope of string
 
 
 (* Expression representation in program statements *)
 
 type variable =
   {
-            id        : varId                     ;
-            sort      : Expression.sort           ;
-            scope     : Expression.procedure_name ;
-            nature    : Expression.var_nature     ;
+            id        : string                ;
+            sort      : Expression.sort       ;
+            scope     : procedure_name        ;
+            nature    : Expression.var_nature ;
   }
 
 
@@ -183,7 +182,7 @@ and mem =
   | Update        of mem * addr * cell
   | MemArrayRd    of arrays * tid
 
-and literal =
+and atom =
     Append        of path * path * path
   | Reach         of mem * addr * addr * path
   | OrderList     of mem * addr * addr
@@ -209,6 +208,8 @@ and literal =
   | BoolArrayRd   of arrays * tid
 
 and boolean =
+  atom Formula.formula
+(*
     Literal       of literal
   | True
   | False
@@ -217,6 +218,7 @@ and boolean =
   | Not           of boolean
   | Implies       of boolean * boolean
   | Iff           of boolean * boolean
+*)
 
 
 and expr_t =
@@ -296,17 +298,17 @@ val me_tid : tid
 
 
 (* Variable functions *)
-val build_var : varId ->
+val build_var : ?nature:Expression.var_nature ->
+                varId ->
                 Expression.sort ->
-                Expression.procedure_name ->
-                Expression.var_nature ->
+                procedure_name ->
                 variable
 val var_replace_sort : variable -> Expression.sort -> variable
 
 
 (* Auxiliary functions *)
-val construct_var_from_sort : Expression.varId ->
-                              Expression.procedure_name ->
+val construct_var_from_sort : varId ->
+                              procedure_name ->
                               Expression.sort ->
                               Expression.var_nature ->
                               term
@@ -334,7 +336,7 @@ val tid_to_expr_tid : tid -> Expression.tid
 val integer_to_expr_integer : integer -> Expression.integer
 
 val term_to_expr_term : term -> Expression.term
-val literal_to_expr_literal : literal -> Expression.literal
+val atom_to_expr_atom : atom -> Expression.atom
 val boolean_to_expr_formula : boolean -> Expression.formula
 val expr_to_expr_expr : expr_t -> Expression.expr_t
 
@@ -358,6 +360,6 @@ val addr_used_in_unit_op : unit_operation -> Expression.addr
 val level_used_in_unit_op : unit_operation -> Expression.integer
 val get_unit_op : unit_operation -> unit_op
 
-val enabling_condition : Expression.shared_or_local ->
+val enabling_condition : Expression.V.shared_or_local ->
                          statement_t ->
                          Expression.formula list

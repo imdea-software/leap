@@ -1,6 +1,6 @@
 {
 open Global
-open Specparser
+open SpecParser
 
 exception LexerError
 

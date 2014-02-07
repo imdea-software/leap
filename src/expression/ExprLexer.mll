@@ -1,6 +1,6 @@
 {
 open Global
-open Exprparser
+open ExprParser
 
 exception LexerError
 

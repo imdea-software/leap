@@ -9,7 +9,13 @@ module GenSet = LeapGenericSet
 (* Type declaration *)
 type seq_or_conc_t = Sequential | Concurrent
 
-type var_table_t = (E.varId, E.var_info_t) Hashtbl.t
+type sys_var_info_t =
+    E.sort *
+    E.initVal_t option *
+    E.V.shared_or_local *
+    E.var_nature
+
+type var_table_t = (E.V.id, sys_var_info_t) Hashtbl.t
 
 type proc_info_t = {sort : E.sort option;
                     inputVars : var_table_t;
@@ -58,17 +64,16 @@ type abstraction =
 
 
 (* Exceptions *)
-exception Duplicated_var of E.varId * E.sort * E.sort
+exception Duplicated_var of E.V.id * E.sort * E.sort
 exception Duplicated_procedure of string
 exception Unknown_procedure of string
-exception Undefined_variable of E.varId
+exception Undefined_variable of E.V.id
 exception Not_position of E.pc_t
 exception Duplicated_label of string * E.pc_t * E.pc_t * E.pc_t
 exception Undefined_label of string * E.pc_t
 exception Invalid_argument
 exception Impossible_call of string
-
-
+exception No_numeric_variable of E.V.id * E.sort
 
 
 (* Configuration *)
@@ -77,17 +82,16 @@ let initProcNum      : int    = 10
 let initTranNum      : int    = 200
 let initLabelNum     : int    = 20
 let defMainProcedure : string = "main"
-let heap_name        : string = "heap"
 let me_tid           : string = "me"
-let me_tid_var       : E.variable = E.build_var me_tid E.Tid
-                                         false E.Shared
-                                         E.GlobalScope E.RealVar
+let me_tid_var       : E.V.t = E.build_var me_tid E.Tid
+                                         false E.V.Shared
+                                         E.V.GlobalScope
 let me_tid_th        : E.tid = E.VarTh me_tid_var
 
 
-let empty_var_table = Hashtbl.create 1
+let empty_var_table () = Hashtbl.create 1
 
-let empty_system =
+let empty_system () =
   {
     globalVars = Hashtbl.create 1;
     assumptions = None;
@@ -100,6 +104,19 @@ let empty_system =
                     
 
 (* TABLE OF VARIABLES FUNCTIONS *)
+let var_info_sort (info:sys_var_info_t) : E.sort =
+  let (s,_,_,_) = info in s
+
+let var_info_expr (info:sys_var_info_t) : E.initVal_t option =
+  let (_,e,_,_) = info in e
+
+let var_info_shared_or_local (info:sys_var_info_t) : E.V.shared_or_local =
+  let (_,_,th,_) = info in th
+
+let var_info_nature (info:sys_var_info_t) : E.var_nature =
+  let (_,_,_,nat) = info in nat
+
+
 let new_var_table : var_table_t =
   Hashtbl.create initVarNum
 
@@ -113,14 +130,14 @@ let join_var_table (dst:var_table_t) (src:var_table_t) : unit =
 
 
 let add_var (table:var_table_t)
-            (v:E.varId)
+            (v:E.V.id)
             (s:E.sort)
             (e:E.initVal_t option)
-            (t:E.shared_or_local)
+            (t:E.V.shared_or_local)
             (k:E.var_nature) : unit =
   if Hashtbl.mem table v then
     begin
-      let prevSort = E.var_info_sort (Hashtbl.find table v) in
+      let prevSort = var_info_sort (Hashtbl.find table v) in
       Interface.Err.msg "Variable already defined" $
         sprintf "Variable \"%s\" of sort %s has already been defined \
                  previously with sort %s." v (E.sort_to_str s)
@@ -131,54 +148,54 @@ let add_var (table:var_table_t)
     Hashtbl.replace table v (s,e,t,k)
 
 
-let del_var (table:var_table_t) (v:E.varId) : var_table_t =
+let del_var (table:var_table_t) (v:E.V.id) : var_table_t =
   Hashtbl.remove table v; table
 
 
-let mem_var (table:var_table_t) (v:E.varId) : bool =
+let mem_var (table:var_table_t) (v:E.V.id) : bool =
   Hashtbl.mem table v
 
 
-let find_var_type (table:var_table_t) (v:E.varId) : E.sort =
-  E.var_info_sort (Hashtbl.find table v)
+let find_var_type (table:var_table_t) (v:E.V.id) : E.sort =
+  var_info_sort (Hashtbl.find table v)
 
 
-let find_var_expr (table:var_table_t) (v:E.varId) : E.initVal_t option =
-  E.var_info_expr (Hashtbl.find table v)
+let find_var_expr (table:var_table_t) (v:E.V.id) : E.initVal_t option =
+  var_info_expr (Hashtbl.find table v)
 
 
-let find_var_tid (table:var_table_t) (v:E.varId) : E.shared_or_local =
-  E.var_info_shared_or_local (Hashtbl.find table v)
+let find_var_tid (table:var_table_t) (v:E.V.id) : E.V.shared_or_local =
+  var_info_shared_or_local (Hashtbl.find table v)
 
 
-let find_var_kind (table:var_table_t) (v:E.varId) : E.var_nature =
-  E.var_info_nature (Hashtbl.find table v)
+let find_var_kind (table:var_table_t) (v:E.V.id) : E.var_nature =
+  var_info_nature (Hashtbl.find table v)
 
 
-let get_var_id_list (table:var_table_t) : E.varId list =
+let get_var_id_list (table:var_table_t) : E.V.id list =
   let res = Hashtbl.fold (fun var _ xs -> var :: xs) table []
   in
     res
 
 
-let get_variable_list (table:var_table_t) : E.variable list =
+let get_variable_list (table:var_table_t) : E.V.t list =
   let res = Hashtbl.fold (fun var info xs ->
-              let s  = E.var_info_sort info in
-              let th = E.var_info_shared_or_local info
+              let s  = var_info_sort info in
+              let th = var_info_shared_or_local info
               in
-                (E.build_var var s false th E.GlobalScope E.RealVar) :: xs
+                (E.build_var var s false th E.V.GlobalScope) :: xs
             ) table []
   in
     res
 
 
-let get_var_list (table:var_table_t) (p:string option) : E.variable list =
+let get_var_list (table:var_table_t) (p:string option) : E.V.t list =
   let res = Hashtbl.fold (fun var info xs ->
-              let s = E.var_info_sort info in
+              let s = var_info_sort info in
               let scope = match p with
-                          | None -> E.GlobalScope
-                          | Some proc -> E.Scope proc in
-                (E.build_var var s false E.Shared scope E.RealVar) :: xs
+                          | None -> E.V.GlobalScope
+                          | Some proc -> E.V.Scope proc in
+                (E.build_var var s false E.V.Shared scope) :: xs
             ) table []
   in
     res
@@ -189,7 +206,7 @@ let clear_table (table:var_table_t) : unit =
   Hashtbl.clear table
 
 
-let filter_table (table:var_table_t) (vars:E.varId list) : unit =
+let filter_table (table:var_table_t) (vars:E.V.id list) : unit =
   List.iter (Hashtbl.remove table) vars
 
 
@@ -197,7 +214,7 @@ let num_of_vars (table:var_table_t) : int =
   Hashtbl.length table
 
 
-let undeftids_in_formula_decl (ts:E.varId list) (invVars:var_table_t) :unit =
+let undeftids_in_formula_decl (ts:E.V.id list) (invVars:var_table_t) :unit =
   List.iter (fun id ->
     if not (mem_var invVars id) then
       begin
@@ -354,10 +371,10 @@ let get_prog_by_name (sys:t) (p_name:string) : Stm.statement_t option =
   let info = get_proc_by_name sys p_name in info.prog
 
 
-let get_proc_init_vals (sys:t) (p_name:string) : (E.variable * E.initVal_t) list =
+let get_proc_init_vals (sys:t) (p_name:string) : (E.V.t * E.initVal_t) list =
   Hashtbl.fold (fun v_id (s,val_opt,sh,k) xs ->
     match val_opt with
-    | Some value -> (E.build_var v_id s false sh (E.Scope p_name) k, value)::xs
+    | Some value -> (E.build_var v_id s false sh (E.V.Scope p_name) ~nature:k, value)::xs
     | None       -> xs
   ) (get_local_by_name sys p_name) []
 
@@ -378,7 +395,7 @@ let get_proc_name_list (sys:t) (sorted:bool) : string list =
       !res
 
 
-let get_all_local_vars (sys:t) : (string * E.variable list) list =
+let get_all_local_vars (sys:t) : (string * E.V.t list) list =
   let procs = get_proc_name_list sys false
   in
     List.map (fun p ->
@@ -410,7 +427,7 @@ let add_global_vars (sys:t) (tbl:var_table_t) : t =
   join_var_table sys.globalVars tbl; sys
 
 
-let del_global_var (sys:t) (id:E.varId) : t =
+let del_global_var (sys:t) (id:E.V.id) : t =
   ignore (del_var sys.globalVars id); sys
 
 
@@ -455,13 +472,13 @@ let get_accvars (sys:t) : (string * var_table_t * var_table_t) list =
 *)
 
 
-let get_all_vars_id (sys:t) : E.varId list =
+let get_all_vars_id (sys:t) : E.V.id list =
   let gv_tbl = get_global sys in
   let lv_lst = get_accvars sys in
   let gv = Hashtbl.fold (fun v _ l -> v::l) gv_tbl [] in
   let lv = List.map (fun (p,_,lt) ->
              Hashtbl.fold (fun v _ xs ->
-               (E.localize_var_id v p)::xs
+               (E.V.localize_var_id v p)::xs
              ) lt []
            ) lv_lst
   in
@@ -488,19 +505,19 @@ let get_sys_var_tables (sys:t)
     (gTbl, full_list)
 
 
-let get_vars_of_sort (sys:t) (s:E.sort) : E.variable list =
-  let process (set:E.variable GenSet.t) (p:E.procedure_name)
-              (id:E.varId) ((s',th,k):(E.sort * E.shared_or_local * E.var_nature))
+let get_vars_of_sort (sys:t) (s:E.sort) : E.V.t list =
+  let process (set:E.V.t GenSet.t) (p:E.V.procedure_name)
+              (id:E.V.id) ((s',th,k):(E.sort * E.V.shared_or_local * E.var_nature))
     : unit =
       if s' = s then
-        GenSet.add set (E.build_var id s' false th p k) in
+        GenSet.add set (E.build_var id s' false th p ~nature:k) in
   let (gTbl, lTbls) = get_sys_var_tables sys in
   let set = GenSet.empty() in
 
-  Hashtbl.iter (fun id (s',_,th,k) -> process set E.GlobalScope id (s',th,k)) gTbl;
+  Hashtbl.iter (fun id (s',_,th,k) -> process set E.V.GlobalScope id (s',th,k)) gTbl;
   List.iter (fun (p,iTbl,lTbl) ->
-    Hashtbl.iter (fun id (s',_,th,k) -> process set (E.Scope p) id (s',th,k)) iTbl;
-    Hashtbl.iter (fun id (s',_,th,k) -> process set (E.Scope p) id (s',th,k)) lTbl
+    Hashtbl.iter (fun id (s',_,th,k) -> process set (E.V.Scope p) id (s',th,k)) iTbl;
+    Hashtbl.iter (fun id (s',_,th,k) -> process set (E.V.Scope p) id (s',th,k)) lTbl
   ) lTbls;
   GenSet.to_list set
 
@@ -511,7 +528,7 @@ let get_sort_from_variable (gVars:var_table_t)
                            (iVars:var_table_t)
                            (lVars:var_table_t)
                            (auxVars:var_table_t)
-                           (v:E.varId) : E.sort =
+                           (v:E.V.id) : E.sort =
   if mem_var gVars v then
     find_var_type gVars v
   else if mem_var iVars v then
@@ -540,7 +557,7 @@ let get_sort_from_term (gVars:var_table_t)
                        (t:E.term) : E.sort =
   match t with
     E.SetT(_)           -> E.Set
-  | E.VarT v            -> get_sort_from_variable gVars iVars lVars auxVars (E.var_id v)
+  | E.VarT v            -> get_sort_from_variable gVars iVars lVars auxVars (E.V.id v)
                             (* TODO: Or maybe just s? *)
   | E.ElemT(_)          -> E.Elem
   | E.TidT(_)          -> E.Tid
@@ -562,7 +579,7 @@ let get_sort_from_term (gVars:var_table_t)
 let new_proc_info (s:E.sort option)
                   (input : var_table_t)
                   (local : var_table_t)
-                  (args : (E.varId * E.sort) list)
+                  (args : (E.V.id * E.sort) list)
                   (fLine : E.pc_t)
                   (lLine : E.pc_t)
                   (prog : Stm.statement_t option)
@@ -595,7 +612,7 @@ let proc_last_line (info:proc_info_t) : E.pc_t =
   info.lLine
 
 
-let proc_info_get_args (info:proc_info_t) : (E.varId * E.sort) list =
+let proc_info_get_args (info:proc_info_t) : (E.V.id * E.sort) list =
   info.args
 
 
@@ -645,9 +662,11 @@ let proc_table_vars_to_str (pt:proc_table_t) : string =
 let gen_global_vars_as_terms (sys:t) : E.TermSet.t =
   let gTbl = get_global sys in
   let gVars = ref E.TermSet.empty in
-  let _ = Hashtbl.iter (fun v info ->
-            gVars := E.TermSet.add (E.convert_var_to_term E.GlobalScope v info)
-                       !gVars) gTbl
+  let _ = Hashtbl.iter (fun id info ->
+            let (s,init,th,nat) = info in
+            let v = E.build_var id s false th E.V.GlobalScope ~nature:nat in
+            gVars := E.TermSet.add (E.var_to_term v) !gVars
+          ) gTbl
   in
     !gVars
 
@@ -662,9 +681,10 @@ let gen_local_vars_as_terms (sys:t) : (string * E.TermSet.t) list =
   let lVars   = ref E.TermSet.empty in
   let resVars = ref [] in
   let _ = List.iter (fun (p,_,l) ->
-            Hashtbl.iter (fun v (s,e,_,k) ->
-              lVars := E.TermSet.add
-                       (E.convert_var_to_term (E.Scope p) v (s,e,E.Shared,k)) !lVars
+            Hashtbl.iter (fun id info ->
+              let (s,init,th,nat) = info in
+              let v = E.build_var id s false E.V.Shared (E.V.Scope p) ~nature:nat in
+              lVars := E.TermSet.add (E.var_to_term v) !lVars
             )l;
             resVars := (p, !lVars):: !resVars;
             lVars := E.TermSet.empty) vInfo
@@ -679,9 +699,9 @@ let gen_local_vars_as_array_terms (sys:t)
   let resVars = ref [] in
   let _ = List.iter (fun (p,_,l) ->
             Hashtbl.iter (fun v info ->
-              let k   = E.var_info_nature info in
-              let s   = E.var_info_sort info in
-              let var = E.build_var v s false E.Shared (E.Scope p) k in
+              let k   = var_info_nature info in
+              let s   = var_info_sort info in
+              let var = E.build_var v s false E.V.Shared (E.V.Scope p) ~nature:k in
               lVars   := E.TermSet.add (E.ArrayT
                            (E.VarArray var)
                          ) !lVars) l;
@@ -723,13 +743,25 @@ let tran_table_to_str (tt:tran_table_t) : string =
 
 (* NUMERIC SYSTEM FUNCTIONS *)
 let check_is_numeric (sys:t) : unit =
+  let check_numeric (id:E.V.id) (info:sys_var_info_t) : unit =
+    let s = var_info_sort info in
+    match s with
+    | E.Int  -> ()
+    (* We allows tid, provided we interpret them as integer later *)
+    | E.Tid -> ()
+    | _   -> Interface.Err.msg "Non-numeric variable" $
+               sprintf "Variables are expected to be numeric, but variable \
+                        %s has sort %s."
+                        (id)
+                        (E.sort_to_str s);
+             raise(No_numeric_variable(id,s)) in
   let gv_tbl = get_global sys in
   let lv_list = get_accvars sys in
 
-  let _ = Hashtbl.iter E.check_numeric gv_tbl in
+  let _ = Hashtbl.iter check_numeric gv_tbl in
   let _ = List.iter (fun (p,_,lt) ->
             Hashtbl.iter (fun v info ->
-              E.check_numeric (E.localize_var_id v p) info
+              check_numeric (E.V.localize_var_id v p) info
             ) lt
           ) lv_list
   in
@@ -741,11 +773,11 @@ let check_is_numeric (sys:t) : unit =
 (* PRINTING FUNCTIONS *)
 let var_table_to_str (tbl:var_table_t) : string =
   let decl_to_str v info =
-    let s     = E.var_info_sort info in
-    let e     = E.var_info_expr info in
-    let k     = E.var_info_nature info in
+    let s     = var_info_sort info in
+    let e     = var_info_expr info in
+    let k     = var_info_nature info in
     let k_str = match k with
-                  E.RealVar -> ""
+                | E.RealVar -> ""
                 | E.GhostVar -> "ghost " in
     let s_str = E.sort_to_str s
     in
@@ -773,7 +805,7 @@ let procedure_to_str (sys:t) (p_name:string) : string =
 
   let arg_str       = String.concat ", " $
                      Hashtbl.fold (fun v info xs ->
-                       let s = E.var_info_sort info in
+                       let s = var_info_sort info in
                          (sprintf "%s:%s" v (E.sort_to_str s))::xs
                                   ) proc_arg [] in
   let local_str     = var_table_to_str proc_local in
@@ -814,14 +846,14 @@ let to_str (sys:t) : string =
 
 (* Program counter *)
 let build_curr_pc (th : E.tid) (p : E.pc_t) : E.formula =
-  E.Literal (E.Atom (E.PC(p, E.Local th, false)))
+  E.pc_form p (E.V.Local (E.voc_to_var th)) false
 
 
 let build_next_pc (mode : sysMode)
                   (th : E.tid)
                   (next_list : E.pc_t list) : E.formula =
   match next_list with
-  | [] -> E.True
+  | [] -> Formula.True
   | _ -> begin
            assert (List.length next_list > 0);
            let fst_next_pos = List.hd next_list in
@@ -830,7 +862,7 @@ let build_next_pc (mode : sysMode)
                              | SOpenArray _ -> E.pcupd_form i th in
            let fst_eq = build_eq' fst_next_pos in
            let next_eq = List.fold_left (fun b p ->
-                           E.Or (build_eq' p,b)
+                           Formula.Or (build_eq' p,b)
                          ) (fst_eq) (List.tl next_list)
            in
              next_eq
@@ -842,9 +874,9 @@ let build_pres_pc (mode : sysMode)
   match mode with
   | SClosed _ -> (* Deprecated *)
       let pc = E.VarArray
-        (E.build_var E.pc_name E.Unknown false E.Shared E.GlobalScope E.RealVar) in
+        (E.build_var Conf.pc_name E.Unknown false E.V.Shared E.V.GlobalScope) in
       let pc' = E.VarArray
-        (E.build_var E.pc_name E.Unknown false E.Shared E.GlobalScope E.RealVar) in
+        (E.build_var Conf.pc_name E.Unknown false E.V.Shared E.V.GlobalScope) in
       let pc_arr arr id  = E.IntArrayRd(arr,id) in
       let eq_list = List.map 
         (fun i -> E.eq_int (pc_arr pc' i) (pc_arr pc i)) th_list in
@@ -871,18 +903,22 @@ let build_pc (mode : sysMode)
 
 let gen_global_init_cond (sys : t) : E.formula list =
   let gVars = get_global sys in
-  let conds = Hashtbl.fold
-    (fun v info xs -> (E.assign_var E.GlobalScope v info) @ xs ) gVars [] in
+  let conds = Hashtbl.fold (fun id info xs ->
+                let (s,init,th,nat) = info in
+                let v = E.build_var id s false th E.V.GlobalScope ~nature:nat in
+                (E.assign_var v init) @ xs
+              ) gVars [] in
   conds
 
 let gen_local_init_cond (sys : t) 
     (p_name : string) : E.formula list =
   let _, lVars = get_accvars_by_name sys p_name in
-  let conds = Hashtbl.fold 
-    (fun v info xs -> 
-      let (s,e,_,k) = info in
-      let new_info = (s,e,E.Shared,k) in
-      (E.assign_var (E.Scope p_name) v new_info) @ xs) lVars [] in
+  let conds = Hashtbl.fold
+    (fun id info xs ->
+      let (s,init,th,nat) = info in
+      let v = E.build_var id s false E.V.Shared (E.V.Scope p_name) ~nature:nat in
+      (E.assign_var v init) @ xs
+    ) lVars [] in
   conds
 
 let gen_init_cond (sys : t) (p_name : string)
@@ -893,9 +929,9 @@ let gen_init_cond (sys : t) (p_name : string)
     |  [] -> lConds
     | _  -> List.flatten $ List.map 
       (fun t -> let me_subst = E.new_tid_subst [(me_tid_th,t)]in
-        List.map (fun c -> E.subst_tid me_subst (E.param (E.Local t) c)) lConds)
+        List.map (fun c -> E.subst_tid me_subst (E.param (E.V.Local (E.voc_to_var t)) c)) lConds)
       th_list in 
-  E.conj_list (gConds @ full_lConds)
+  Formula.conj_list (gConds @ full_lConds)
 
 
 let gen_theta_classic (mode : sysMode)
@@ -907,12 +943,12 @@ let gen_theta_classic (mode : sysMode)
   let main_fLine = get_fLine_by_name sys main_proc in
   let init_line = Pervasives.max 1 main_fLine in
   let init_pc_list = List.map (fun i->build_curr_pc i init_line) param_list in
-  let init_pc_cond = E.conj_list init_pc_list in
+  let init_pc_cond = Formula.conj_list init_pc_list in
   let prog_cond = gen_init_cond sys main_proc param_list true in
   let init_sys_cond = match get_assume sys with
     | None   -> prog_cond
-    | Some c -> E.And(Stm.boolean_to_expr_formula c, prog_cond) in
-  E.And (init_pc_cond, init_sys_cond)
+    | Some c -> Formula.And(Stm.boolean_to_expr_formula c, prog_cond) in
+  Formula.And (init_pc_cond, init_sys_cond)
 
 
 let gen_theta_with_count_abs (mode:sysMode)
@@ -922,10 +958,10 @@ let gen_theta_with_count_abs (mode:sysMode)
   let main_fLine = get_fLine_by_name sys (defMainProcedure) in
   let full_cond = List.fold_left 
     (fun phi i -> if i = main_fLine then
-        (* E.And (E.someone_at main_fLine, phi) *)
-        E.And (E.eq_int (E.VarInt (E.countAbs_var i)) E.defCountVar, phi)
+        (* Formula.And (E.someone_at main_fLine, phi) *)
+        Formula.And (E.eq_int (E.VarInt (E.countAbs_var i)) E.defCountVar, phi)
       else
-        E.And (E.eq_int (E.VarInt (E.countAbs_var i)) (E.IntVal 0), phi)) 
+        Formula.And (E.eq_int (E.VarInt (E.countAbs_var i)) (E.IntVal 0), phi)) 
     theta_cond lines in
   full_cond
 
@@ -947,17 +983,17 @@ let gen_pres (p_name : string)
              (mode : sysMode)
              (th:E.tid) : E.formula list =
   let gTermConj = E.TermSet.fold
-    (fun x l -> (E.construct_pres_term x E.Shared) :: l) gs [] in
+    (fun x l -> (E.construct_pres_term x E.V.Shared) :: l) gs [] in
   let lTermConj = match mode with
     | SClosed _ -> E.TermSet.fold
-        (fun x l -> (E.construct_pres_term x (E.Local th))::l) ls []
+        (fun x l -> (E.construct_pres_term x (E.V.Local (E.voc_to_var th)))::l) ls []
     | SOpenArray _ -> E.TermSet.fold
-        (fun x bs -> (E.construct_pres_term x E.Shared)::bs) ls [] in
+        (fun x bs -> (E.construct_pres_term x E.V.Shared)::bs) ls [] in
   let oTermConj = match mode with
     | SClosed m ->
         let th_list = E.gen_tid_list 1 m in
         let f p x bs i = if (i<>th || p<>p_name) then
-            (E.construct_pres_term x (E.Local i))::bs
+            (E.construct_pres_term x (E.V.Local (E.voc_to_var i)))::bs
           else bs in
         let g p x l =
             List.fold_left (f p x) [] th_list @ l in
@@ -967,9 +1003,9 @@ let gen_pres (p_name : string)
     | SOpenArray _ ->
         List.flatten $ List.map
         (fun (_,ts) -> E.TermSet.fold
-          (fun x bs -> (E.construct_pres_term x E.Shared)::bs) ts []) os in
+          (fun x bs -> (E.construct_pres_term x E.V.Shared)::bs) ts []) os in
   let thTermConj =
-    E.TermSet.fold (fun x l -> (E.construct_pres_term x E.Shared) :: l) ts [] in
+    E.TermSet.fold (fun x l -> (E.construct_pres_term x E.V.Shared) :: l) ts [] in
   gTermConj @ lTermConj @ oTermConj @ thTermConj
 
   
@@ -988,7 +1024,7 @@ let rec aux_rho_for_st
     (pt:Bridge.prog_type)
     : (E.TermSet.t * E.TermSet.t * E.TermSet.t * E.formula list list) =
   let conv_bool = Stm.boolean_to_expr_formula in
-  let th_p = E.Local th in
+  let th_p = E.V.Local (E.voc_to_var th) in
   let append_to_ghost gc gS lS tS (ps:E.formula list list) =
     match gc with
     | Some code ->
@@ -1007,7 +1043,7 @@ let rec aux_rho_for_st
                             | Sequential -> [] in
     let pc_change = build_pc mode th c ns in
     let next_pos =
-      E.disj_list $ List.map (fun n -> E.build_pos_change c n) ns in
+      Formula.disj_list $ List.map (fun n -> E.build_pos_change c n) ns in
     match abs with
     | Counting -> [E.someone_at c; next_pos] @ running_tid_is_me @ pc_change
     | NoAbstraction -> running_tid_is_me @ pc_change in
@@ -1026,8 +1062,8 @@ let rec aux_rho_for_st
       let c'    = conv_bool c in
       let predT = 
         make_pos_change i.Stm.pos [i.Stm.next_pos] @ [E.param th_p c'] in
-      let predF = 
-        make_pos_change i.Stm.pos [i.Stm.pos] @ [E.param th_p (E.Not c')] in
+      let predF = make_pos_change i.Stm.pos
+                    [i.Stm.pos] @ [E.param th_p (Formula.Not c')] in
       append_to_ghost g gSet lSet thSet [predT; predF]
       
   (************************ Await @ghostLevel ****************************)
@@ -1056,7 +1092,7 @@ let rec aux_rho_for_st
       let predT = make_pos_change i.Stm.pos [i.Stm.next_pos] @
                   [E.param th_p c'] in
       let predF = make_pos_change i.Stm.pos [i.Stm.else_pos] @
-                  [E.param th_p (E.Not c')] in
+                  [E.param th_p (Formula.Not c')] in
       append_to_ghost g gSet lSet thSet [predT; predF]
   
   (************************ If @ghostLevel *******************************)
@@ -1067,9 +1103,8 @@ let rec aux_rho_for_st
       let c' = conv_bool c in
       let predT = 
         make_pos_change i.Stm.pos [i.Stm.next_pos] @ [E.param th_p c'] in
-      let predF = 
-        make_pos_change i.Stm.pos [i.Stm.else_pos] 
-        @ [E.param th_p (E.Not c')] in
+      let predF = make_pos_change i.Stm.pos
+                    [i.Stm.else_pos] @ [E.param th_p (Formula.Not c')] in
       append_to_ghost g gSet lSet thSet [predT; predF]
    
   (************************ While @ghostLevel ****************************)
@@ -1119,8 +1154,8 @@ let rec aux_rho_for_st
       | Stm.Lock   -> E.eq_tid (E.CellLockId cell) E.NoTid
       | Stm.Unlock -> E.eq_tid (E.CellLockId cell)
                                (match th_p with
-                                | E.Shared -> E.NoTid
-                                | E.Local t -> t) in
+                                | E.V.Shared -> E.NoTid
+                                | E.V.Local t -> (E.VarTh t)) in
     let new_tid  = match op with
       | Stm.Lock -> th
       | Stm.Unlock -> E.NoTid in
@@ -1161,7 +1196,7 @@ let rec aux_rho_for_st
       let eff_list = Bridge.gen_st_cond_effect_as_array pt st false th_p in
       let f (cond, eff, c, n) = 
         let pos_change = make_pos_change c [n] in
-        [E.conj_list (pos_change @ [E.param th_p cond; eff])] in
+        [Formula.conj_list (pos_change @ [E.param th_p cond; eff])] in
       let rho_list = List.map f eff_list in
       (E.TermSet.empty, E.TermSet.empty, E.TermSet.empty, rho_list)
   (************************ Call @topLevel *******************************)
@@ -1177,16 +1212,15 @@ let rec aux_rho_for_st
         let (init_assign,initialized_vars) =
                   List.fold_left (fun (fs,vs) (v,value) ->
                     let v_term = E.var_to_term v in
-                    let v' = E.prime_variable (E.var_set_param th_p v) in
+                    let v' = E.V.prime (E.V.set_param v th_p) in
                     match value with
                     | E.Equality t  -> ((E.eq_term (E.var_to_term v') t)::fs,v_term::vs)
-                    | E.Condition c -> (E.Iff(E.Literal (E.Atom (E.BoolVar v')),c)::fs,v_term::vs)
+                    | E.Condition c -> (Formula.Iff(E.boolvar v',c)::fs,v_term::vs)
                   ) ([],[]) proc_init_vals in
         let assignments = List.combine call_proc_args ps
         in
           List.fold_left (fun (ms,es) ((arg,arg_sort),value) ->
-            let v = Stm.VarT (Stm.build_var arg arg_sort
-                                  (E.Scope proc_name) E.RealVar) in
+            let v = Stm.VarT (Stm.build_var arg arg_sort (Stm.Scope proc_name)) in
             let (m,e) = gen_f mInfo pt v th_p (Stm.Term value)
             in
               (m@ms, e::es)
@@ -1233,7 +1267,7 @@ let rec aux_rho_for_st
                             (th, Bridge.construct_stm_term_eq_as_array
                                   mInfo pt ret_t th_p (Stm.Term t)) in
                       let pos_assignment =
-                        E.Implies (build_next_pc mode k [info.Stm.next_pos], e) in
+                        Formula.Implies (build_next_pc mode k [info.Stm.next_pos], e) in
                       (m@ms, pos_assignment::es)
                     end
                   | _ -> (ms,es)
@@ -1241,10 +1275,10 @@ let rec aux_rho_for_st
               let still_gSet = E.filter_term_set modif gSet in
               let still_lSet = E.filter_term_set modif lSet in
               let still_thSet = E.filter_term_set modif thSet in
-              (still_gSet, still_lSet, still_thSet, E.conj_list equiv)
+              (still_gSet, still_lSet, still_thSet, Formula.conj_list equiv)
             end
         (* No return value *)
-        | None   -> (gSet, lSet, thSet, E.True) in
+        | None   -> (gSet, lSet, thSet, Formula.True) in
       let pred = (make_pos_change i.Stm.pos i.Stm.return_pos) @ [equiv] in
       append_to_ghost gc gSet' lSet' thSet' [pred]
   | _ -> (gSet, lSet, thSet, [])
@@ -1271,7 +1305,7 @@ let gen_rho (sys : t)             (* The system                           *)
     E.construct_term_set $ List.map (fun x -> E.TidT x) th_list in
 
   (* For Malloc -- BEGIN *)
-  let is_sort s v = (E.var_sort v = s) in
+  let is_sort s v = (E.V.sort v = s) in
   let gVars = get_variable_list (get_global sys) in
   let lVars = get_all_local_vars sys in
   let gAddrVars = List.filter (is_sort E.Addr) gVars in
@@ -1287,12 +1321,6 @@ let gen_rho (sys : t)             (* The system                           *)
     Bridge.lAddrs = lAddrVars; 
     Bridge.lSets = lSetVars
   } in
-(*
-  let pt = if mem_var (get_global sys) heap_name then
-    Bridge.Heap
-  else Bridge.Num in
-*)
-  (* For Malloc -- END *)
 
   let all_local, filtered_local =
     match mode with
@@ -1312,9 +1340,9 @@ let gen_rho (sys : t)             (* The system                           *)
          for each list of conjunctions separately *)
       | Stm.StAtomic _ -> 
           let f xs = 
-            let phi = E.conj_list xs in
-            let f' v = E.ArrayT (E.VarArray (E.var_clear_param_info v)) in
-            let p_vars = List.map f' (E.VarSet.elements (E.primed_vars phi)) in
+            let phi = Formula.conj_list xs in
+            let f' v = E.ArrayT (E.VarArray (E.V.unparam v)) in
+            let p_vars = List.map f' (E.primed_vars phi) in
             let gSet' = E.filter_term_set p_vars gSet in
             let lSet' = E.filter_term_set p_vars lSet in
             let thSet' = E.filter_term_set p_vars thSet in
@@ -1327,4 +1355,4 @@ let gen_rho (sys : t)             (* The system                           *)
             gen_pres proc gSet' lSet' filtered_local thSet' mode th in
           List.map (fun x -> x @ pres_list) rhoList 
     end in
-    List.map E.conj_list phi_list
+    List.map Formula.conj_list phi_list

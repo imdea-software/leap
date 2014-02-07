@@ -3,6 +3,7 @@ open LeapLib
 
 
 module E = Expression
+module F = Formula
 
 
 (* Statement declaration *)
@@ -24,20 +25,20 @@ type st_info_t = {
   mutable return_pos      : E.pc_t list;
   }
 
-type varId = E.varId
-
-type kind_t = Normal | Ghost
+type varId = string
 
 type unit_op = Lock | Unlock
+
+type procedure_name = GlobalScope | Scope of string
 
 (* Expression representation in program statements *)
 
 type variable =
   {
-            id        : varId                     ;
-            sort      : Expression.sort           ;
-            scope     : Expression.procedure_name ;
-            nature    : Expression.var_nature     ;
+            id        : varId          ;
+            sort      : E.sort         ;
+            scope     : procedure_name ;
+            nature    : E.var_nature   ;
   }
 
 type term =
@@ -187,7 +188,7 @@ and mem =
   | Update        of mem * addr * cell
   | MemArrayRd    of arrays * tid
 
-and literal =
+and atom =
     Append        of path * path * path
   | Reach         of mem * addr * addr * path
   | OrderList     of mem * addr * addr
@@ -213,6 +214,8 @@ and literal =
   | BoolArrayRd   of arrays * tid
 
 and boolean =
+  atom F.formula
+(*
     Literal       of literal
   | True
   | False
@@ -221,6 +224,7 @@ and boolean =
   | Not           of boolean
   | Implies       of boolean * boolean
   | Iff           of boolean * boolean
+*)
 
 
 and expr_t =
@@ -314,12 +318,16 @@ exception Invalid_argument
 
 
 (* VARIABLE FUNCTIONS *)
-let build_var (id:varId) (s:E.sort) (p:E.procedure_name) (k:E.var_nature) : variable =
+let build_var ?(nature=E.RealVar)
+              (id:varId)
+              (s:E.sort)
+              (p:procedure_name)
+      : variable =
   {
     id = id;
     sort = s;
     scope = p;
-    nature = k;
+    nature = nature;
   }
 
 (*
@@ -337,11 +345,11 @@ let var_k (v:variable) : E.var_nature =
 *)
 
 let var_replace_sort (v:variable) (s:E.sort) : variable =
-  build_var v.id s v.scope v.nature
+  build_var v.id s v.scope ~nature:v.nature
 
 
 (* General constants *)
-let me_tid = VarTh (build_var "me" E.Tid E.GlobalScope E.RealVar)
+let me_tid = VarTh (build_var "me" E.Tid GlobalScope)
 
 
 (* Pretty printing for statement formulas *)
@@ -350,10 +358,10 @@ let localize_var_id (v:varId) (p_name:string) : varId =
   sprintf "%s::%s" p_name v
 
 
-let loc_var_option (v:varId) (p_name:E.procedure_name) : varId =
+let loc_var_option (v:varId) (p_name:procedure_name) : varId =
   match p_name with
-  | E.GlobalScope -> v
-  | E.Scope proc -> localize_var_id v proc
+  | GlobalScope -> v
+  | Scope proc -> localize_var_id v proc
 
 
 (* variable_to_str fold function *)
@@ -364,7 +372,7 @@ let rec variable_to_str (loc:bool) (var:variable) : string =
     var.id
 
 
-and literal_to_str (loc:bool) (expr:literal) : string =
+and atom_to_str (loc:bool) (expr:atom) : string =
   match expr with
     Append(p1,p2,pres)               -> sprintf "append(%s,%s,%s)"
                                                   (path_to_str loc p1)
@@ -697,8 +705,10 @@ and expr_to_str_aux (loc:bool) (expr:expr_t) : string =
 
 
 and boolean_to_str_aux (loc:bool) (expr:boolean) : string =
+  F.formula_to_str (atom_to_str loc) expr
+(*
   match expr with
-    Literal(lit)          -> (literal_to_str loc lit)
+    Literal(lit)          -> (atom_to_str loc lit)
   | True                  -> sprintf "true"
   | False                 -> sprintf "false"
   | And(f1, f2)           -> sprintf "%s /\\ %s" (boolean_to_str_aux loc f1)
@@ -710,6 +720,7 @@ and boolean_to_str_aux (loc:bool) (expr:boolean) : string =
                                                 (boolean_to_str_aux loc f2)
   | Iff (f1,f2)           -> sprintf "%s <-> %s" (boolean_to_str_aux loc f1)
                                                  (boolean_to_str_aux loc f2)
+*)
 
 
 (* Type conversion functions *)
@@ -769,8 +780,11 @@ let term_to_setelem (t:term) : setelem =
 
 
 
-let variable_to_expr_var (v:variable) :E.variable =
-  E.build_var v.id v.sort false E.Shared v.scope v.nature
+let variable_to_expr_var (v:variable) :E.V.t =
+  let new_scope = match v.scope with
+                  | GlobalScope -> E.V.GlobalScope
+                  | Scope p -> E.V.Scope p in
+  E.build_var v.id v.sort false E.V.Shared new_scope ~nature:v.nature
 
 
 let rec term_to_expr_term (t:term) : E.term =
@@ -1023,10 +1037,9 @@ and mem_to_expr_mem (m:mem) : E.mem =
                                       tid_to_expr_th t)
 
 
-and literal_to_expr_literal (l:literal) : E.literal =
+and atom_to_expr_atom (a:atom) : E.atom =
   let to_int = integer_to_expr_integer in
-  E.Atom (
-  match l with
+  match a with
     Append (p1,p2,p3)         -> E.Append (path_to_expr_path p1,
                                            path_to_expr_path p2,
                                            path_to_expr_path p3)
@@ -1070,10 +1083,11 @@ and literal_to_expr_literal (l:literal) : E.literal =
   | BoolVar v                 -> E.BoolVar (variable_to_expr_var v)
   | BoolArrayRd (a,t)         -> E.BoolArrayRd (array_to_expr_array a,
                                                 tid_to_expr_th t)
-  )
 
 
 and boolean_to_expr_formula (b:boolean) : E.formula =
+  F.formula_conv atom_to_expr_atom b
+(*
   let to_formula = boolean_to_expr_formula in
   match b with
     Literal l         -> E.Literal (literal_to_expr_literal l)
@@ -1084,6 +1098,7 @@ and boolean_to_expr_formula (b:boolean) : E.formula =
   | Not b             -> E.Not     (to_formula b)
   | Implies (b1,b2)   -> E.Implies (to_formula b1, to_formula b2)
   | Iff (b1,b2)       -> E.Iff     (to_formula b1, to_formula b2)
+*)
 
 
 and expr_to_expr_expr (e:expr_t) : E.expr_t =
@@ -1094,14 +1109,14 @@ and expr_to_expr_expr (e:expr_t) : E.expr_t =
 
 
 let construct_var_from_sort (id:varId)
-                            (p_name:E.procedure_name)
+                            (p_name:procedure_name)
                             (s:E.sort)
                             (k:E.var_nature) : term =
-  let v = build_var id s p_name k in
+  let v = build_var id s p_name ~nature:k in
   match s with
     E.Set        -> SetT        (VarSet        v)
   | E.Elem       -> ElemT       (VarElem       v)
-  | E.Tid       -> TidT       (VarTh         v)
+  | E.Tid        -> TidT        (VarTh         v)
   | E.Addr       -> AddrT       (VarAddr       v)
   | E.Cell       -> CellT       (VarCell       v)
   | E.SetTh      -> SetThT      (VarSetTh      v)
@@ -1352,8 +1367,8 @@ and var_kind_int (kind:E.var_nature) (i:integer) : term list =
   | HavocLevel        -> []
 
 
-and var_kind_literal (kind:E.var_nature) (l:literal) : term list =
-  match l with
+and var_kind_atom (kind:E.var_nature) (a:atom) : term list =
+  match a with
     Append(p1,p2,pres)           -> (var_kind_path kind p1) @
                                     (var_kind_path kind p2) @
                                     (var_kind_path kind pres)
@@ -1406,6 +1421,13 @@ and var_kind_literal (kind:E.var_nature) (l:literal) : term list =
   | BoolArrayRd(arr,t)           -> (var_kind_array kind arr)
 
 
+and var_kind_fs () = F.make_fold
+                       F.GenericLiteralFold
+                       (fun info a -> var_kind_atom info a)
+                       (fun info -> [])
+                       (@)
+
+
 and var_kind_eq (kind:E.var_nature) ((t1,t2):eq) : term list =
   (var_kind_term kind t1) @ (var_kind_term kind t2)
 
@@ -1415,6 +1437,8 @@ and var_kind_ineq (kind:E.var_nature) ((t1,t2):diseq) : term list =
     
 
 and var_kind_boolean (kind:E.var_nature) (b:boolean) : term list =
+  F.formula_fold (var_kind_fs()) kind b
+(*
     match b with
       Literal(lit)           -> (var_kind_literal kind lit)
     | True               -> []
@@ -1428,6 +1452,7 @@ and var_kind_boolean (kind:E.var_nature) (b:boolean) : term list =
                             (var_kind_boolean kind f2)
     | Iff (f1,f2)        -> (var_kind_boolean kind f1) @
                             (var_kind_boolean kind f2)
+*)
 
 
 let var_kind (kind:E.var_nature) (e:expr_t) : term list =
@@ -1524,10 +1549,12 @@ let rec statement_to_str (n:int) (s:statement_t) =
 
 
 (* Statement formula manipulation *)
+(*
 let conj_list (bs:boolean list) : boolean =
   match bs with
     [] -> True
   | x::xs -> List.fold_left (fun a b -> And(a,b)) x xs
+*)
 
 
 (* STATEMENT INFORMATION *)
@@ -1652,7 +1679,7 @@ let rec get_fst_st_pos (st:statement_t) : E.pc_t =
 
 
 let rec enabling_condition_aux (is_ghost:bool)
-                               (th:E.shared_or_local)
+                               (th:E.V.shared_or_local)
                                (st:statement_t) : E.formula list list =
   let e_cond       = enabling_condition_aux in
   let to_expr      = boolean_to_expr_formula>>(E.param th) in
@@ -1676,9 +1703,9 @@ let rec enabling_condition_aux (is_ghost:bool)
   | StNonCrit (      g,info) -> [pos info @ ghost g]
   | StCrit    (      g,info) -> [pos info @ ghost g]
   | StIf      (c,_,_,g,info) -> [(to_expr c) :: pos info @ ghost g;
-                                 (to_expr (Not c)) :: pos info @ ghost g]
+                                 (to_expr (F.Not c)) :: pos info @ ghost g]
   | StWhile   (c,_,  g,info) -> [(to_expr c) :: pos info @ ghost g;
-                                 (to_expr (Not c)) :: pos info @ ghost g]
+                                 (to_expr (F.Not c)) :: pos info @ ghost g]
   | StSelect  (_,    g,info) -> [pos info @ ghost g]
   | StAssign  (t,e,  g,info) ->
       let cond =
@@ -1689,8 +1716,8 @@ let rec enabling_condition_aux (is_ghost:bool)
           | Term(CellT(CellUnlock c)) ->
               begin
                 match th with
-                | E.Local t -> [E.eq_tid (E.CellLockId (to_cell c)) t]
-                | E.Shared  -> [E.eq_tid (E.CellLockId (to_cell c)) E.NoTid]
+                | E.V.Local t -> [E.eq_tid (E.CellLockId (to_cell c)) (E.VarTh t)]
+                | E.V.Shared  -> [E.eq_tid (E.CellLockId (to_cell c)) E.NoTid]
               end
           | _ -> []
         end
@@ -1704,15 +1731,15 @@ let rec enabling_condition_aux (is_ghost:bool)
           | UnitUnlock a ->
               begin
                 match th with
-                | E.Local t -> [E.eq_tid   (read_at a) t]
-                | E.Shared  -> [E.ineq_tid (read_at a) E.NoTid]
+                | E.V.Local t -> [E.eq_tid   (read_at a) (E.VarTh t)]
+                | E.V.Shared  -> [E.ineq_tid (read_at a) E.NoTid]
               end
           | UnitLockAt (a,l)   -> [E.eq_tid (read_at a) E.NoTid]
           | UnitUnlockAt (a,l) ->
               begin
                 match th with
-                | E.Local t -> [E.eq_tid   (read_at a) t]
-                | E.Shared  -> [E.ineq_tid (read_at a) E.NoTid]
+                | E.V.Local t -> [E.eq_tid   (read_at a) (E.VarTh t)]
+                | E.V.Shared  -> [E.ineq_tid (read_at a) E.NoTid]
               end
         end
       in
@@ -1728,8 +1755,8 @@ let rec enabling_condition_aux (is_ghost:bool)
 
 
 
-let enabling_condition (th:E.shared_or_local) (st:statement_t) : E.formula list =
-  List.map E.conj_list (enabling_condition_aux false th st)
+let enabling_condition (th:E.V.shared_or_local) (st:statement_t) : E.formula list =
+  List.map F.conj_list (enabling_condition_aux false th st)
 
 
 (*

@@ -1,6 +1,6 @@
 {
 open Global
-open Trsparser
+open TrsParser
 
 exception LexerError
 

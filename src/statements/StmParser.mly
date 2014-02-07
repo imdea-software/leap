@@ -7,6 +7,7 @@ open Global
 module E = Expression
 module Sys  = System
 module Stm  = Statement
+module F = Formula
 
 
 type cond_op_t =
@@ -25,38 +26,35 @@ type cond_op_t =
 
 
 exception WrongType of Stm.term
-exception Sort_mismatch of E.varId * E.sort * E.sort
+exception Sort_mismatch of E.V.id * E.sort * E.sort
 exception Not_sort_name of string
-exception Duplicated_local_var of E.varId * E.sort
+exception Duplicated_local_var of E.V.id * E.sort
 exception No_main
 exception No_valid_main
 exception Unknown_procedure of string
-exception Variable_not_in_procedure of E.varId * string
+exception Variable_not_in_procedure of E.V.id * string
 exception Wrong_assignment of Stm.term
 exception Atomic_double_assignment of Stm.expr_t
 exception Unexpected_statement of string
 exception Ghost_var_in_global_decl
-              of E.varId * E.sort * E.initVal_t option * E.var_nature
+              of E.V.id * E.sort * E.initVal_t option * E.var_nature
 exception Ghost_var_in_local_decl
-              of E.varId * E.sort * E.initVal_t option * E.var_nature
+              of E.V.id * E.sort * E.initVal_t option * E.var_nature
 exception Ghost_vars_in_assignment of Stm.term list
 exception Normal_vars_in_ghost_assignment of Stm.term list
-exception No_kind_for_var of E.varId
+exception No_kind_for_var of E.V.id
 exception Procedure_args_mismatch of string
-exception Impossible_find_sort of E.varId
+exception Impossible_find_sort of E.V.id
 exception Incompatible_call_sort of Stm.term * string
 exception Incompatible_return_sort of string
 exception Different_argument_length of string * string
 
 
 (* Temporal variable tables for input and local variables *)
-let globalVars = Hashtbl.create System.initVarNum
-
-let inputVars = Hashtbl.create System.initVarNum
-
-let localVars = Hashtbl.create System.initVarNum
-
-let invVars = Hashtbl.create System.initVarNum
+let globalVars = System.empty_var_table ()
+let inputVars = System.empty_var_table ()
+let localVars = System.empty_var_table ()
+let invVars = System.empty_var_table ()
 
 let transitions = System.new_tran_table
 
@@ -75,7 +73,7 @@ let flag_parsingInv : bool ref = ref false
 
 let flag_parsingDia : bool ref = ref false
 
-let undefTids : E.varId list ref = ref []
+let undefTids : E.V.id list ref = ref []
 
 
 (* Position and jump management for procedures *)
@@ -90,7 +88,7 @@ let pos_st : (E.pc_t, string * Statement.statement_t) Hashtbl.t =
 let get_ghost_list_from_expr (e:E.expr_t) = []
 
 
-let decl_global_var (v:E.varId)
+let decl_global_var (v:E.V.id)
                     (s:E.sort)
                     (e:E.initVal_t option)
                     (k:E.var_nature) : unit =
@@ -116,16 +114,16 @@ let decl_global_var (v:E.varId)
                               end
            | E.GhostVar -> ()
   in
-  System.add_var globalVars v s e E.Shared k
+  System.add_var globalVars v s e E.V.Shared k
 
 
-let decl_input_var (v:E.varId)
+let decl_input_var (v:E.V.id)
                    (s:E.sort)
                    (e:E.initVal_t option) : unit =
-  System.add_var inputVars v s e E.Shared E.RealVar
+  System.add_var inputVars v s e E.V.Shared E.RealVar
 
 
-let decl_local_var (v:E.varId)
+let decl_local_var (v:E.V.id)
                    (s:E.sort)
                    (e:E.initVal_t option)
                    (k:E.var_nature) : unit =
@@ -162,14 +160,14 @@ let decl_local_var (v:E.varId)
                               end
             | E.GhostVar  -> ()
     in
-      System.add_var localVars v s e E.Shared k
+      System.add_var localVars v s e E.V.Shared k
     end
 
 
 
 
-let decl_inv_var (v:E.varId) (s:E.sort) (e:E.initVal_t option) : unit =
-  System.add_var invVars v s e E.Shared E.RealVar
+let decl_inv_var (v:E.V.id) (s:E.sort) (e:E.initVal_t option) : unit =
+  System.add_var invVars v s e E.V.Shared E.RealVar
 
 
 let get_sort_from_tables (stm_t:Stm.term)
@@ -192,7 +190,7 @@ let get_sort (stm_t:Stm.term) : E.sort =
   get_sort_from_tables stm_t inputVars localVars
 
 
-let get_var_kind (v:E.varId) : E.var_nature =
+let get_var_kind (v:E.V.id) : E.var_nature =
   let k = if System.mem_var localVars v then
             System.find_var_kind localVars v
           else if System.mem_var inputVars v then
@@ -207,12 +205,6 @@ let get_var_kind (v:E.varId) : E.var_nature =
               E.RealVar
   in
     k
-
-
-let get_term_kind (t:E.term) : E.var_nature =
-  let v = E.get_var_id t in
-    get_var_kind v
-
 
 (* Parsing error message funtion *)
 let parser_error msg =
@@ -300,11 +292,11 @@ let get_name id = fst id
 let get_line id = snd id
 
 
-let check_sort_var (v:E.varId)
-                   (p:E.procedure_name)
+let check_sort_var (v:Stm.varId)
+                   (p:Stm.procedure_name)
                    (s:E.sort)
                    (k:E.var_nature) : unit =
-  let generic_var = Stm.VarT (Stm.build_var v E.Unknown p k) in
+  let generic_var = Stm.VarT (Stm.build_var v E.Unknown p ~nature:k) in
   let knownSort = get_sort generic_var in
     if (knownSort != s) then
       begin
@@ -633,7 +625,7 @@ let unexpected_statement get_str_expr =
     raise(Unexpected_statement str_expr)
 
 
-let check_var_belongs_to_procedure (v:E.varId) (p_name:string) =
+let check_var_belongs_to_procedure (v:E.V.id) (p_name:string) =
   let p_info = List.assoc p_name !procedures in
   let iVars = System.proc_info_get_input p_info in
   let lVars = System.proc_info_get_local p_info in
@@ -723,11 +715,11 @@ let check_return_sort (t_opt:Stm.term option)
 
 let global_decl_cond (k:E.var_nature)
                      (sort_name:string)
-                     (v_name:E.varId)
+                     (v_name:E.V.id)
                      (op:cond_op_t)
                      (t:Stm.term) : unit =
   let s      = check_and_get_sort sort_name in
-  let var    = Stm.build_var v_name s E.GlobalScope k in
+  let var    = Stm.build_var v_name s Stm.GlobalScope ~nature:k in
   let (op_symb_str, expr_cond) =
     match op with
       Less        -> ("<",  Stm.Less     (Stm.VarInt var,Stm.term_to_integer t))
@@ -749,7 +741,7 @@ let global_decl_cond (k:E.var_nature)
                                                       Stm.term_to_setelem t))
     | SubsetEqElem-> ("subseteqElem",Stm.SubsetEqElem(Stm.VarSetElem var,
                                                       Stm.term_to_setelem t)) in
-  let cond = Stm.boolean_to_expr_formula (Stm.Literal expr_cond) in
+  let cond = Stm.boolean_to_expr_formula (Formula.atom_to_formula expr_cond) in 
   let get_str_expr () = sprintf "%s %s %s %s" (E.sort_to_str s)
                                               (v_name)
                                               (op_symb_str)
@@ -861,7 +853,7 @@ let lock_pos_to_str (pos:Stm.integer option) : string =
 %start system
 
 
-%type <(System.t * Expression.varId list)> system
+%type <(System.t * Expression.V.id list)> system
 
 %type <Stm.boolean option> initial_assumption
 
@@ -879,9 +871,9 @@ let lock_pos_to_str (pos:Stm.integer option) : string =
 %type <unit> procedure
 %type <E.sort option> procedure_sort
 %type <string> procedure_name
-%type <(E.varId * E.sort) list> args
-%type <(E.varId * E.sort) list> arg_list
-%type <(E.varId * E.sort)> arg
+%type <(E.V.id * E.sort) list> args
+%type <(E.V.id * E.sort) list> arg_list
+%type <(E.V.id * E.sort)> arg
 
 %type <Stm.term list> params
 %type <Stm.term list> param_list
@@ -914,7 +906,6 @@ let lock_pos_to_str (pos:Stm.integer option) : string =
 %type <Stm.term list> term_list
 
 %type <Statement.boolean> formula
-%type <Stm.literal> literal
 %type <Stm.term> term
 %type <Stm.cell> cell
 %type <Stm.tid> thid
@@ -927,7 +918,7 @@ let lock_pos_to_str (pos:Stm.integer option) : string =
 %type <Stm.setint> setint
 %type <Stm.setelem> setelem
 %type <Stm.integer> integer
-%type <Stm.literal> literal
+%type <Stm.atom> atom
 %type <Stm.eq> equals
 %type <Stm.diseq> disequals
 %type <Stm.term> arraylookup
@@ -1036,9 +1027,9 @@ system :
 
 global_declarations :
   |
-    { (decl_global_var Sys.heap_name E.Mem None E.RealVar) }
+    { (decl_global_var Conf.heap_name E.Mem None E.RealVar) }
   | global_decl_list
-    { (decl_global_var Sys.heap_name E.Mem None E.RealVar) }
+    { (decl_global_var Conf.heap_name E.Mem None E.RealVar) }
 
 global_decl_list :
   global_decl
@@ -1061,7 +1052,7 @@ global_decl :
       let s      = check_and_get_sort (get_name $2) in
       let v_name = get_name $3 in
       let t      = $5 in
-      let v      = Stm.VarT(Stm.build_var v_name s E.GlobalScope k) in
+      let v      = Stm.VarT(Stm.build_var v_name s Stm.GlobalScope ~nature:k) in
       let get_str_expr () = sprintf "%s %s := %s" (E.sort_to_str s)
                                                   (v_name)
                                                   (Stm.term_to_str t) in
@@ -1081,7 +1072,7 @@ global_decl :
                                                   (E.formula_to_str b) in
 (*
       let bool_var = E.Literal (E.Atom (E.BoolVar
-                       (E.build_var v_name E.Bool false E.Shared E.GlobalScope k))) in
+                       (E.build_var v_name E.Bool false E.V.Shared Stm.GlobalScope k))) in
       let cond = E.Iff(bool_var, b) in
 *)
       let cond = b in
@@ -1178,7 +1169,7 @@ local_decl :
       let s      = check_and_get_sort (get_name $2) in
       let v_name = get_name $3 in
       let t      = $5 in
-      let v      = Stm.VarT (Stm.build_var v_name s (E.Scope !current_proc) k) in
+      let v      = Stm.VarT (Stm.build_var v_name s (Stm.Scope !current_proc) ~nature:k) in
       let get_str_expr () = sprintf "%s %s := %s" (E.sort_to_str s)
                                                   (v_name)
                                                   (Stm.term_to_str t) in
@@ -1197,7 +1188,7 @@ local_decl :
                                                   (E.formula_to_str b) in
 (*
       let bool_var = E.Literal (E.Atom (E.BoolVar
-                        (E.build_var v_name E.Bool false E.Shared E.GlobalScope k))) in
+                        (E.build_var v_name E.Bool false E.V.Shared Stm.GlobalScope k))) in
       let cond = E.Iff(bool_var, b) in
 *)
       let cond = b in
@@ -1374,9 +1365,9 @@ atomic_statement:
 
       let p_name = if System.mem_var localVars v ||
                       System.mem_var inputVars v then
-                        E.Scope !current_proc
+                        Stm.Scope !current_proc
                    else
-                        E.GlobalScope in
+                        Stm.GlobalScope in
 
       let k = get_var_kind v in
       let var = inject_sort (Stm.construct_var_from_sort
@@ -1392,13 +1383,13 @@ atomic_statement:
     {
       let v = get_name $1 in
       let b = $3 in
-      let _ = check_sort_var v (E.Scope !current_proc) E.Bool in
+      let _ = check_sort_var v (Stm.Scope !current_proc) E.Bool in
 
       let p_name = if System.mem_var localVars v ||
                       System.mem_var inputVars v then
-                        E.Scope !current_proc
+                        Stm.Scope !current_proc
                    else
-                        E.GlobalScope in
+                        Stm.GlobalScope in
 
       let k = get_var_kind v in
       let var = Stm.construct_var_from_sort v p_name E.Bool k in
@@ -1581,9 +1572,9 @@ ghost_statement:
 
       let p_name = if System.mem_var localVars v ||
                       System.mem_var inputVars v then
-                        E.Scope !current_proc
+                        Stm.Scope !current_proc
                    else
-                        E.GlobalScope in
+                        Stm.GlobalScope in
 
       let k = get_var_kind v in
       let var = inject_sort (Stm.construct_var_from_sort
@@ -1601,13 +1592,13 @@ ghost_statement:
     {
       let v = get_name $1 in
       let b = $3 in
-      let _ = check_sort_var v (E.Scope !current_proc) E.Bool in
+      let _ = check_sort_var v (Stm.Scope !current_proc) E.Bool in
 
       let p_name = if System.mem_var localVars v ||
                       System.mem_var inputVars v then
-                        E.Scope !current_proc
+                        Stm.Scope !current_proc
                    else
-                        E.GlobalScope in
+                        Stm.GlobalScope in
 
       let k = get_var_kind v in
       let var = Stm.construct_var_from_sort v p_name E.Bool k in
@@ -1876,9 +1867,9 @@ statement:
 
       let p_name = if System.mem_var localVars v ||
                       System.mem_var inputVars v then
-                        E.Scope !current_proc
+                        Stm.Scope !current_proc
                    else
-                        E.GlobalScope in
+                        Stm.GlobalScope in
 
       let k = get_var_kind v in
       let var = inject_sort (Stm.construct_var_from_sort
@@ -1901,7 +1892,7 @@ statement:
       let v = get_name $2 in
       let b = $4 in
       let g_code = $5 in
-      let _ = check_sort_var v (E.Scope !current_proc) E.Bool in
+      let _ = check_sort_var v (Stm.Scope !current_proc) E.Bool in
       let st_info = { Stm.pos             = !pos;
                       Stm.next_pos        = !pos+1;
                       Stm.else_pos        = !pos+1;
@@ -1911,9 +1902,9 @@ statement:
                       Stm.return_pos      = []; } in
       let p_name = if System.mem_var localVars v ||
                       System.mem_var inputVars v then
-                        E.Scope !current_proc
+                        Stm.Scope !current_proc
                    else
-                        E.GlobalScope in
+                        Stm.GlobalScope in
 
       let k = get_var_kind v in
       let var = Stm.construct_var_from_sort v p_name E.Bool k in
@@ -1972,9 +1963,9 @@ statement:
 
       let p_name = if System.mem_var localVars v ||
                       System.mem_var inputVars v then
-                        E.Scope !current_proc
+                        Stm.Scope !current_proc
                    else
-                        E.GlobalScope in
+                        Stm.GlobalScope in
       let k = get_var_kind v in
       let var = inject_sort (Stm.construct_var_from_sort
                               v p_name (E.Unknown) k) in
@@ -2247,22 +2238,22 @@ statements_choice:
 formula :
   | OPEN_PAREN formula CLOSE_PAREN
       { $2 }
-  | literal
-      { Stm.Literal $1 }
+  | atom
+      { F.atom_to_formula $1 }
   | LOGICAL_TRUE
-      { Stm.True }
+      { F.True }
   | LOGICAL_FALSE
-      { Stm.False }
+      { F.False }
   | LOGICAL_NOT formula
-      { Stm.Not $2 }
+      { F.Not $2 }
   | formula LOGICAL_AND formula
-      { Stm.And ($1, $3) }
+      { F.And ($1, $3) }
   | formula LOGICAL_OR formula
-      { Stm.Or ($1, $3) }
+      { F.Or ($1, $3) }
   | formula LOGICAL_THEN formula
-      { Stm.Implies ($1, $3) }
+      { F.Implies ($1, $3) }
   | formula EQUALS formula
-      { Stm.Iff ($1, $3) }
+      { F.Iff ($1, $3) }
   | OPEN_PAREN IDENT CLOSE_PAREN
       {
         let v        = get_name $2 in
@@ -2272,20 +2263,20 @@ formula :
 
         if is_input || is_local then
           let c_proc = if !current_proc <> "" then
-                         E.Scope !current_proc
+                         Stm.Scope !current_proc
                        else
-                         E.GlobalScope
+                         Stm.GlobalScope
           in
-            Stm.Literal (Stm.BoolVar (Stm.build_var v E.Bool c_proc k))
+            F.atom_to_formula (Stm.BoolVar (Stm.build_var v E.Bool c_proc ~nature:k))
         else
-            Stm.Literal (Stm.BoolVar (Stm.build_var v E.Bool E.GlobalScope k))
+            F.atom_to_formula (Stm.BoolVar (Stm.build_var v E.Bool Stm.GlobalScope ~nature:k))
       }
 
 
 
 /* LITERALS */
 
-literal :
+atom :
   | APPEND OPEN_PAREN term COMMA term COMMA term CLOSE_PAREN
     {
       let get_str_expr () = sprintf "append(%s,%s,%s)" (Stm.term_to_str $3)
@@ -2524,14 +2515,14 @@ ident :
 
       if is_input || is_local then
         let c_proc = if !current_proc <> "" then
-                       E.Scope !current_proc
+                       Stm.Scope !current_proc
                      else
-                       E.GlobalScope
+                       Stm.GlobalScope
         in
           inject_sort $ Stm.VarT
-                          (Stm.build_var (get_name $1) E.Unknown c_proc k)
+                          (Stm.build_var (get_name $1) E.Unknown c_proc ~nature:k)
       else
-          inject_sort $ Stm.VarT (Stm.build_var v E.Unknown E.GlobalScope k)
+          inject_sort $ Stm.VarT (Stm.build_var v E.Unknown Stm.GlobalScope ~nature:k)
     }
 
 
@@ -2652,7 +2643,7 @@ thid :
     }
   | ME
     {
-      Stm.VarTh (Stm.build_var Sys.me_tid E.Tid E.GlobalScope E.RealVar)
+      Stm.VarTh (Stm.build_var Sys.me_tid E.Tid Stm.GlobalScope)
     }
 
 
