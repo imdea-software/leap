@@ -9,7 +9,7 @@ sig
   val set_prog_lines : int -> unit
   (** [set_prog_lines n] sets the number of program lines to [n]. *)
 
-  val int_varlist_to_str : NumExpression.variable list -> string
+  val int_varlist_to_str : NumExpression.V.t list -> string
   (** Translates a list of integer variables into its string representation *)
 
   val yices_string_of_formula  : NumExpression.formula -> string
@@ -25,7 +25,7 @@ sig
   (** Returns the string representation of an integer formula, taking into account
       the number of lines in the program. *)
 
-  val standard_widening : NumExpression.variable list ->
+  val standard_widening : NumExpression.V.t list ->
                           NumExpression.formula ->
                           NumExpression.literal ->
                           string

@@ -14,7 +14,7 @@ module Expr = Expression
 let _ =
   try let _ = PrgInfoArgs.parse_args () in
     let ch = PrgInfoArgs.open_input () in
-    let (sys,undefTids) = Parser.parse ch (Stmparser.system Stmlexer.norm) in
+    let (sys,undefTids) = Parser.parse ch (StmParser.system StmLexer.norm) in
 (*
     let sys = System.set_threads tmp_sys 1 in
 *)

@@ -1,7 +1,7 @@
 module E = Expression
 
 let _ =
-  let v1 = E.build_var "A" E.Int false E.Shared E.GlobalScope E.RealVar in
+  let v1 = E.build_var "A" E.Int false E.V.Shared E.V.GlobalScope E.RealVar in
   let ante = [E.eq_int (E.VarInt v1) (E.IntVal 42)] in
 
   let imp = {

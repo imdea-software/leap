@@ -72,7 +72,7 @@ struct
   
   
   let is_valid (phi : NumExp.formula) : bool =
-    not (is_sat (NumExp.Not phi))
+    not (is_sat (Formula.Not phi))
   
   
   let is_valid_plus_info (phi : NumExp.formula) : (bool * int) =
@@ -90,7 +90,7 @@ struct
   
   
   let is_valid_with_lines (prog_lines : int) (phi : NumExp.formula) : bool =
-    not (is_sat_with_lines prog_lines (NumExp.Not phi))
+    not (is_sat_with_lines prog_lines (Formula.Not phi))
   
   
   let is_valid_with_lines_plus_info (prog_lines : int) (phi : NumExp.formula) 
@@ -101,11 +101,11 @@ struct
 
   
   let int_implies (ante : NumExp.formula) (conse : NumExp.formula) : bool =
-      is_valid (NumExp.Implies(ante, conse))
+      is_valid (Formula.Implies(ante, conse))
   
   
   let int_equivalent (f1 : NumExp.formula) (f2 : NumExp.formula) : bool =
-      is_valid (NumExp.Iff(f1, f2))
+      is_valid (Formula.Iff(f1, f2))
   
   
   let compare_int_formulas (pre:NumExp.formula) (post:NumExp.formula) : bool =
@@ -143,8 +143,8 @@ struct
   let standard_widening (x : NumExp.formula) (y : NumExp.formula) 
     : NumExp.formula =
     let x_conj = NumExp.formula_to_conj_literals x in
-    let vars_set = NumExp.VarSet.elements
-      (NumExp.VarSet.union (NumExp.all_vars_set x) (NumExp.all_vars_set y)) in
+    let vars_set = NumExp.V.VarSet.elements
+      (NumExp.V.VarSet.union (NumExp.all_vars_set x) (NumExp.all_vars_set y)) in
     let var_str = Solver.int_varlist vars_set in
     let y_str    = Solver.formula y in
     let is_preserved c = let c_str = Solver.literal c in
@@ -156,21 +156,21 @@ struct
     *)
   let standard_widening 
         (x : NumExp.formula) (y : NumExp.formula) : NumExp.formula =
-    let x_conj = NumExp.formula_to_conj_literals x in
-    let vars_set = NumExp.VarSet.elements
-      (NumExp.VarSet.union (NumExp.all_vars_set x) (NumExp.all_vars_set y)) in
+    let x_conj = Formula.to_conj_literals x in
+    let vars_set = NumExp.V.VarSet.elements
+      (NumExp.V.VarSet.union (NumExp.all_vars_set x) (NumExp.all_vars_set y)) in
     let module Q = (val QueryManager.get_num_query Solver.identifier) in
     let module Trans = Solver.Translate.Num.Query(Q) in
     let is_preserved c = Solver.unsat (Trans.std_widening vars_set y c)
-    in NumExp.list_literals_to_formula (List.filter is_preserved x_conj)
+    in Formula.conj_literals (List.filter is_preserved x_conj)
   
   let standard_widening_conj (x : NumExp.literal list) 
         (y : NumExp.literal list) : NumExp.literal list =
-    let vars_set = NumExp.VarSet.elements
+    let vars_set = NumExp.V.VarSet.elements
       (List.fold_left (fun s lit ->
-          NumExp.VarSet.union s (NumExp.all_vars_set_literal lit)
-        ) NumExp.VarSet.empty (x @ y)) in
-    let y' = NumExp.list_literals_to_formula y in
+          NumExp.V.VarSet.union s (NumExp.all_vars_set (Formula.Literal lit))
+        ) NumExp.V.VarSet.empty (x @ y)) in
+    let y' = Formula.conj_literals y in
     let module Q = (val QueryManager.get_num_query Solver.identifier) in
     let module Trans = Solver.Translate.Num.Query(Q) in
     let is_preserved c = Solver.unsat (Trans.std_widening vars_set y' c)

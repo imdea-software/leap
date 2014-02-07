@@ -6,12 +6,12 @@ open Printf
 open LeapLib
 open Global
 
-open Specparser
-open Speclexer
+open SpecParser
+open SpecLexer
 open Debug
 
-module Pars = Specparser
-module Lex = Speclexer
+module Pars = SpecParser
+module Lex = SpecLexer
 
 module NumExp = NumExpression
 module NumSolver = (val NumSolver.choose "default" : NumSolver.S)

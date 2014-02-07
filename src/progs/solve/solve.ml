@@ -2,10 +2,10 @@ open Printf
 open LeapLib
 
 
-module Eparser = Exprparser
-module Elexer  = Exprlexer
+module Eparser = ExprParser
+module Elexer  = ExprLexer
 module Expr    = Expression
-module Symtbl  = Exprsymtable
+module Symtbl  = ExprSymTable
 
 (****************)
 (* main         *)

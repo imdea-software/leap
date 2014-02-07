@@ -40,7 +40,7 @@ let pos_expression_to_str (expr:PE.expression) : string =
   let some_pos_list = ref [] in
   let _ = for i=1 to !prog_lines do
             List.iter (fun t ->
-              some_pos_list := PE.PC (i,PE.Local t,false) :: !some_pos_list
+              some_pos_list := PE.PC (i,PE.V.Local (PE.voc_to_var t),false) :: !some_pos_list
             ) expr_voc
           done in
   let some_pos = match !some_pos_list with
@@ -52,20 +52,21 @@ let pos_expression_to_str (expr:PE.expression) : string =
             List.iter (fun t ->
               let not_pos = ref [] in
               let not_pos' = ref [] in
+              let t_as_var = PE.voc_to_var t in
               let _ = for j=1 to !prog_lines do
                         if i!=j then
                           begin
-                            not_pos := PE.Not(PE.PC(j,PE.Local t,false))
+                            not_pos := PE.Not(PE.PC(j,PE.V.Local t_as_var,false))
                                           :: !not_pos;
-                            not_pos':= PE.Not(PE.PC(j,PE.Local t,true))
+                            not_pos':= PE.Not(PE.PC(j,PE.V.Local t_as_var,true))
                                           :: !not_pos'
                           end
                       done in
               let no_other_pos = PE.conj_list !not_pos in
               let no_other_pos' = PE.conj_list !not_pos' in
-              let impl = PE.Implies (PE.PC (i,PE.Local t,false),
+              let impl = PE.Implies (PE.PC (i,PE.V.Local t_as_var,false),
                                         no_other_pos) in
-              let impl' = PE.Implies (PE.PC (i,PE.Local t,true),
+              let impl' = PE.Implies (PE.PC (i,PE.V.Local t_as_var,true),
                                          no_other_pos')
               in
                 unique_pos_list := impl :: impl' :: !unique_pos_list

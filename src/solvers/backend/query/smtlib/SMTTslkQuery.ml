@@ -22,8 +22,7 @@ module Make (K : Level.S) : TSLK_QUERY =
     let prog_lines : int ref = ref 0
 
 
-    let pc_name        : string = "pc"
-    let pc_prime_name  : string = pc_name ^ "_prime"
+    let pc_prime_name  : string = Conf.pc_name ^ "_prime"
     let loc_str        : string = "loc_"
     let range_addr_str : string = "rg_addr_"
     let range_tid_str  : string = "rg_tid_"
@@ -287,9 +286,9 @@ module Make (K : Level.S) : TSLK_QUERY =
 
     let z3_pos_preamble (buf:B.t) : unit =
       B.add_string buf ("(define-sort " ^loc_s^ " () " ^int_s^ ")\n");
-      GM.sm_decl_fun sort_map pc_name [tid_s] [loc_s] ;
+      GM.sm_decl_fun sort_map Conf.pc_name [tid_s] [loc_s] ;
       GM.sm_decl_fun sort_map pc_prime_name [tid_s] [loc_s] ;
-      B.add_string buf ("(declare-const " ^pc_name^ " (Array " ^tid_s^ " " ^loc_s^ "))\n");
+      B.add_string buf ("(declare-const " ^Conf.pc_name^ " (Array " ^tid_s^ " " ^loc_s^ "))\n");
       B.add_string buf ("(declare-const " ^pc_prime_name^ " (Array " ^tid_s^ " " ^loc_s^ "))\n");
       B.add_string buf
         (Printf.sprintf "(define-fun in_pos_range ((t %s)) %s\n\
@@ -1198,10 +1197,10 @@ module Make (K : Level.S) : TSLK_QUERY =
 
 
     let rec z3_define_var (buf:Buffer.t)
-                          (tid_set:Expr.VarSet.t)
+                          (tid_set:Expr.V.VarSet.t)
                           (num_tids:int)
-                          (v:Expr.variable) : unit =
-      verb "**** Z3TslkQuery, defining variable: %s\n" (Expr.variable_to_str v);
+                          (v:Expr.V.t) : unit =
+      verbl _LONG_INFO "**** Z3TslkQuery, defining variable: %s\n" (Expr.V.t_to_str v);
       let (id,s,pr,th,p) = v in
       let sort_str asort = match asort with
                              Expr.Set     -> set_s
@@ -1220,7 +1219,7 @@ module Make (K : Level.S) : TSLK_QUERY =
       let p_id = Option.map_default (fun str -> str ^ "_" ^ id) id p in
       let name = if pr then p_id ^ "_prime" else p_id
       in
-        if Expr.is_global_var v then
+        if Expr.V.is_global v then
           begin
             GM.sm_decl_const sort_map name (GM.conv_sort (Interf.sort_to_expr_sort s)) ;
             B.add_string buf ( "(declare-const " ^ name ^ " " ^ s_str ^ ")\n" );
@@ -1250,19 +1249,19 @@ module Make (K : Level.S) : TSLK_QUERY =
                            for i = 1 to num_tids do
                              B.add_string buf ("(assert (islevel (select " ^name^ " " ^tid_prefix ^ (string_of_int i)^ ")))\n")
                            done
-            | Expr.Path -> Expr.VarSet.iter (fun t ->
+            | Expr.Path -> Expr.V.VarSet.iter (fun t ->
                         let v_str = variable_invocation_to_str
-                                        (Expr.param_var v (Expr.VarTh t)) in
+                                        (Expr.V.set_param v (Expr.VarTh t)) in
                           B.add_string buf ( "(assert (ispath " ^ v_str ^ "))\n" )
                       ) tid_set
-            | Expr.Mem -> Expr.VarSet.iter (fun t ->
+            | Expr.Mem -> Expr.V.VarSet.iter (fun t ->
                         let v_str = variable_invocation_to_str
-                                        (Expr.param_var v (Expr.VarTh t)) in
+                                        (Expr.V.set_param v (Expr.VarTh t)) in
                           B.add_string buf ( "(assert (isheap " ^ v_str ^ "))\n" )
                       ) tid_set
-            | Expr.Tid -> Expr.VarSet.iter (fun t ->
+            | Expr.Tid -> Expr.V.VarSet.iter (fun t ->
                         let v_str = variable_invocation_to_str
-                                        (Expr.param_var v (Expr.VarTh t)) in
+                                        (Expr.V.set_param v (Expr.VarTh t)) in
                           B.add_string buf ( "(assert (not (= " ^ v_str ^ " NoThread)))\n" )
                       ) tid_set
             | _    -> ()
@@ -1270,7 +1269,7 @@ module Make (K : Level.S) : TSLK_QUERY =
           end
 
 
-    and define_variables (buf:Buffer.t) (num_tids:int) (vars:Expr.VarSet.t) : unit =
+    and define_variables (buf:Buffer.t) (num_tids:int) (vars:Expr.V.VarSet.t) : unit =
       let varlevel   = Expr.varset_of_sort vars Expr.Level in
       let varset     = Expr.varset_of_sort vars Expr.Set  in
       let varelem    = Expr.varset_of_sort vars Expr.Elem in
@@ -1283,18 +1282,18 @@ module Make (K : Level.S) : TSLK_QUERY =
       let varmem     = Expr.varset_of_sort vars Expr.Mem  in
       let varbool    = Expr.varset_of_sort vars Expr.Bool  in
       let varunk     = Expr.varset_of_sort vars Expr.Unknown  in
-        Expr.VarSet.iter (z3_define_var buf vartid num_tids) varlevel;
-        Expr.VarSet.iter (z3_define_var buf vartid num_tids) varset;
-        Expr.VarSet.iter (z3_define_var buf vartid num_tids) varelem;
-        Expr.VarSet.iter (z3_define_var buf vartid num_tids) vartid;
-        Expr.VarSet.iter (z3_define_var buf vartid num_tids) varaddr;
-        Expr.VarSet.iter (z3_define_var buf vartid num_tids) varcell;
-        Expr.VarSet.iter (z3_define_var buf vartid num_tids) varsetth;
-        Expr.VarSet.iter (z3_define_var buf vartid num_tids) varsetelem;
-        Expr.VarSet.iter (z3_define_var buf vartid num_tids) varpath;
-        Expr.VarSet.iter (z3_define_var buf vartid num_tids) varmem;
-        Expr.VarSet.iter (z3_define_var buf vartid num_tids) varbool;
-        Expr.VarSet.iter (z3_define_var buf vartid num_tids) varunk
+        Expr.V.VarSet.iter (z3_define_var buf vartid num_tids) varlevel;
+        Expr.V.VarSet.iter (z3_define_var buf vartid num_tids) varset;
+        Expr.V.VarSet.iter (z3_define_var buf vartid num_tids) varelem;
+        Expr.V.VarSet.iter (z3_define_var buf vartid num_tids) vartid;
+        Expr.V.VarSet.iter (z3_define_var buf vartid num_tids) varaddr;
+        Expr.V.VarSet.iter (z3_define_var buf vartid num_tids) varcell;
+        Expr.V.VarSet.iter (z3_define_var buf vartid num_tids) varsetth;
+        Expr.V.VarSet.iter (z3_define_var buf vartid num_tids) varsetelem;
+        Expr.V.VarSet.iter (z3_define_var buf vartid num_tids) varpath;
+        Expr.V.VarSet.iter (z3_define_var buf vartid num_tids) varmem;
+        Expr.V.VarSet.iter (z3_define_var buf vartid num_tids) varbool;
+        Expr.V.VarSet.iter (z3_define_var buf vartid num_tids) varunk
 
 
     and variables_to_z3 (buf:Buffer.t)
@@ -1309,14 +1308,14 @@ module Make (K : Level.S) : TSLK_QUERY =
                                      (num_tids:int)
                                      (phi:Expr.formula) : unit =
       let vars = Expr.get_varset_from_formula phi in
-      verb "Z3TslkQuery, variables to define:\n{%s}\n"
-        (Expr.VarSet.fold (fun v str ->
-          str ^ (Expr.variable_to_str v) ^ ";"
+      verbl _LONG_INFO "Z3TslkQuery, variables to define:\n{%s}\n"
+        (Expr.V.VarSet.fold (fun v str ->
+          str ^ (Expr.V.t_to_str v) ^ ";"
         ) vars "");
         define_variables buf num_tids vars
 
 
-    and variable_invocation_to_str (v:Expr.variable) : string =
+    and variable_invocation_to_str (v:Expr.V.t) : string =
       let (id,s,pr,th,p) = v in
       let th_str = Option.map_default tidterm_to_str "" th in
       let p_str  = Option.map_default (fun n -> Printf.sprintf "%s_" n) "" p in
@@ -1499,7 +1498,7 @@ module Make (K : Level.S) : TSLK_QUERY =
 
 
 
-    let rec varupdate_to_str (v:Expr.variable)
+    let rec varupdate_to_str (v:Expr.V.t)
                              (th:Expr.tid)
                              (t:Expr.term) : string =
       let v_str = variable_invocation_to_str v in
@@ -1623,7 +1622,7 @@ module Make (K : Level.S) : TSLK_QUERY =
 
 
     let pc_to_str (pc:int) (th:Expr.tid option) (pr:bool) : string =
-      let pc_str = if pr then pc_prime_name else pc_name
+      let pc_str = if pr then pc_prime_name else Conf.pc_name
       in
         Printf.sprintf "(= (select %s %s) %s)" pc_str
             (Option.map_default tidterm_to_str "" th) (linenum_to_str pc)
@@ -1631,7 +1630,7 @@ module Make (K : Level.S) : TSLK_QUERY =
 
     let pcrange_to_str (pc1:int) (pc2:int)
                           (th:Expr.tid option) (pr:bool) : string =
-      let pc_str = if pr then pc_prime_name else pc_name in
+      let pc_str = if pr then pc_prime_name else Conf.pc_name in
       let th_str = Option.map_default tidterm_to_str "" th
       in
         Printf.sprintf "(and (<= %s (select %s %s)) (<= (select %s %s) %s))"
@@ -1640,7 +1639,7 @@ module Make (K : Level.S) : TSLK_QUERY =
 
     let pcupdate_to_str (pc:int) (th:Expr.tid) : string =
       Printf.sprintf "(= %s (store %s %s %s))"
-        pc_prime_name pc_name (tidterm_to_str th) (linenum_to_str pc)
+        pc_prime_name Conf.pc_name (tidterm_to_str th) (linenum_to_str pc)
 
 
     let z3_partition_assumptions (parts:'a Partition.t list) : string =
@@ -1757,6 +1756,7 @@ module Make (K : Level.S) : TSLK_QUERY =
           let formula_str = List.fold_right add_and_literal ls ""
           in
       post_process buf num_addr num_elem num_tid;
+      B.add_string buf ("(push)\n");
       B.add_string buf "(assert\n   (and";
       B.add_string buf formula_str ;
       B.add_string buf "))\n(check-sat)" ;
@@ -1790,8 +1790,8 @@ module Make (K : Level.S) : TSLK_QUERY =
 
             let assumps = List.map (fun (x,y) -> Partition.Eq (Expr.AddrT x, Expr.AddrT y)) eq @
                           List.map (fun (x,y) -> Partition.Ineq (Expr.AddrT x, Expr.AddrT y)) ineq in
-            verb "**** Domain: %i\n{%s}\n" (List.length term_dom) (String.concat ";" (List.map Expr.term_to_str term_dom));
-            verb "**** Assumptions: %i\n%s\n" (List.length assumps) (Partition.assumptions_to_str Expr.term_to_str assumps);
+            verbl _LONG_INFO "**** Domain: %i\n{%s}\n" (List.length term_dom) (String.concat ";" (List.map Expr.term_to_str term_dom));
+            verbl _LONG_INFO "**** Assumptions: %i\n%s\n" (List.length assumps) (Partition.assumptions_to_str Expr.term_to_str assumps);
 
             print_endline "Going to compute partitions...";
             let parts = Partition.gen_partitions term_dom assumps in
@@ -1800,21 +1800,21 @@ module Make (K : Level.S) : TSLK_QUERY =
                         LeapDebug.debug "Partitions:\n%s\n"
                           (Partition.to_str Expr.term_to_str p)
                       ) parts in
-            verb "**** Number of cases: %i\n" (List.length parts);
-            verb "**** Computation done!!!\n";
+            verbl _LONG_INFO "**** Number of cases: %i\n" (List.length parts);
+            verbl _LONG_INFO "**** Computation done!!!\n";
             z3_partition_assumptions parts in
       clean_lists();
       let _ = GM.clear_sort_map sort_map in
-      verb "**** Z3TslkQuery will compute the cutoff...\n";
+      verbl _LONG_INFO "**** Z3TslkQuery will compute the cutoff...\n";
       let max_cut_off = Smp4Tslk.cut_off co copt phi in
       let num_addr    = max_cut_off.SmpTslk.num_addrs in
       let num_tid     = max_cut_off.SmpTslk.num_tids in
       let num_elem    = max_cut_off.SmpTslk.num_elems in
       let req_sorts   = Expr.required_sorts phi in
       let req_ops     = Expr.special_ops phi in
-      verb "**** Z3TslkQuery, about to translate formula...\n";
+      verbl _LONG_INFO "**** Z3TslkQuery, about to translate formula...\n";
       let formula_str = formula_to_str phi in
-      verb "**** Z3TslkQuery, formula translation done.\n";
+      verbl _LONG_INFO "**** Z3TslkQuery, formula translation done.\n";
       let buf         = B.create 1024
       in
         B.add_string buf (Printf.sprintf "; Formula\n; %s\n\n"
@@ -1823,14 +1823,15 @@ module Make (K : Level.S) : TSLK_QUERY =
         z3_defs     buf num_addr num_tid num_elem req_sorts req_ops;
         variables_from_formula_to_z3 buf num_tid phi ;
         (* We add extra information if needed *)
-        verb "**** Z3TslkQuery, about to compute extra information...\n";
+        verbl _LONG_INFO "**** Z3TslkQuery, about to compute extra information...\n";
         B.add_string buf extra_info_str ;
         post_process buf num_addr num_elem num_tid;
-        verb "**** Z3TslkQuery, computed extra information...\n";
+        verbl _LONG_INFO "**** Z3TslkQuery, computed extra information...\n";
+        B.add_string buf ("(push)\n");
         B.add_string buf "(assert\n";
         B.add_string buf formula_str ;
         B.add_string buf ")\n(check-sat)" ;
-        verb "**** exiting Z3TslkQuery.formula_to_str...\n";
+        verbl _LONG_INFO "**** exiting Z3TslkQuery.formula_to_str...\n";
         B.contents   buf
 
 

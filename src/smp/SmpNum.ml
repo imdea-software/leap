@@ -24,7 +24,7 @@ let cut_off (f:NE.formula) : int =
     | NE.Subset _                              -> incr counter
     | NE.InEq (NE.SetV _, NE.SetV _) -> incr counter
     | NE.FunInEq (NE.FunVar v, _)     ->
-          if (NE.var_sort v) = NE.Set then incr counter
+          if (NE.V.sort v) = NE.Set then incr counter
     | NE.FunInEq (NE.FunUpd (_,_,t),_)    ->
           begin
             match t with
@@ -32,6 +32,16 @@ let cut_off (f:NE.formula) : int =
             | _              -> ()
           end
     | _                                             -> () in
+
+  let cutoff_fs = Formula.make_fold
+                    Formula.GenericLiteralFold
+                    (fun info a -> cut_off_atom a)
+                    (fun info -> ())
+                    (fun a b -> a;b) in
+
+  let cut_off_formula (phi:NE.formula) : unit =
+    Formula.formula_fold cutoff_fs () phi in
+(*
   let rec cut_off_literal (l:NE.literal) =
     match l with
       NE.Atom a    -> (cut_off_atom a)
@@ -45,6 +55,7 @@ let cut_off (f:NE.formula) : int =
     | NE.Iff(f1,f2)     -> (cut_off_formula f1);(cut_off_formula f2)
     | NE.Literal l      -> (cut_off_literal l)
     | _                      -> () in
+*)
   let _ = cut_off_formula f
   in
     !counter

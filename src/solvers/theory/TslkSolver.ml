@@ -41,10 +41,11 @@ module type S = CUSTOM_TSLKSOLVER
 module Make(K : Level.S) (Solver : BackendSolverIntf.BACKEND_TSLK) : S =
 struct
 (*  module Q = (val QueryManager.get_tslk_query Solver.indentifier) *)
-  module TslkSol = Solver.Translate.Tslk(K)
-  module TslkExp = TslkSol.Exp
-  module VarIdSet = TslkExp.VarIdSet
+  module TslkSol  = Solver.Translate.Tslk(K)
+  module TslkExp  = TslkSol.Exp
+  module VarIdSet = TslkExp.V.VarIdSet
   module GM       = GenericModel
+  module F        = Formula
 
   let comp_model : bool ref = ref false
 
@@ -210,21 +211,20 @@ struct
                   (use_q:bool)
                   (phi : TslkExp.conjunctive_formula) : bool =
     match phi with
-        TslkExp.TrueConj   -> true
-      | TslkExp.FalseConj  -> false
-      | TslkExp.Conj conjs -> 
-        begin
+        F.TrueConj   -> true
+      | F.FalseConj  -> false
+      | F.Conj conjs -> begin
           TslkSol.set_prog_lines lines;
           Solver.sat (TslkSol.literal_list use_q conjs)
         end
   
   let is_sat_dnf (prog_lines:int) (use_q:bool) (phi:TslkExp.formula) : bool =
-    let dnf_phi = TslkExp.dnf phi in
+    let dnf_phi = F.dnf phi in
       List.exists (is_sat_conj prog_lines use_q) dnf_phi
   
   
   let is_valid_dnf (prog_lines:int) (use_q:bool) (phi:TslkExp.formula) : bool =
-    let dnf_phi       = TslkExp.dnf (TslkExp.Not phi) in
+    let dnf_phi       = F.dnf (F.Not phi) in
     let is_unsat conj = (not (is_sat_conj prog_lines use_q conj))
     in List.for_all is_unsat dnf_phi
   
@@ -243,10 +243,10 @@ struct
              (use_q:bool)
              (phi : TslkExp.formula) : bool =
     match phi with
-    | TslkExp.Not(TslkExp.Implies(_,TslkExp.True)) -> (Solver.calls_force_incr(); false)
-    | TslkExp.Not (TslkExp.Implies(TslkExp.False, _)) -> (Solver.calls_force_incr(); false)
-    | TslkExp.Implies(TslkExp.False, _) -> (Solver.calls_force_incr(); true)
-    | TslkExp.Implies(_, TslkExp.True) -> (Solver.calls_force_incr(); true)
+    | F.Not(F.Implies(_,F.True)) -> (Solver.calls_force_incr(); false)
+    | F.Not (F.Implies(F.False, _)) -> (Solver.calls_force_incr(); false)
+    | F.Implies(F.False, _) -> (Solver.calls_force_incr(); true)
+    | F.Implies(_, F.True) -> (Solver.calls_force_incr(); true)
     | _ -> begin
              TslkSol.set_prog_lines lines;
              Solver.sat (TslkSol.formula co cutoff_opt use_q phi)
@@ -256,7 +256,7 @@ struct
                (co:Smp.cutoff_strategy_t)
                (use_q:bool)
                (phi:TslkExp.formula) : bool =
-    not (is_sat prog_lines co use_q (TslkExp.Not phi))
+    not (is_sat prog_lines co use_q (F.Not phi))
   
   let is_valid_plus_info (prog_lines:int)
                          (co:Smp.cutoff_strategy_t)

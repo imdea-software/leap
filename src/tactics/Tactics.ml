@@ -3,6 +3,7 @@ open Printf
 
 module E = Expression
 module GenSet = LeapGenericSet
+module F = Formula
 
 type polarity = Pos | Neg | Both
 
@@ -18,7 +19,7 @@ type vc_info = {
   goal            : E.formula  ;
   transition_tid  : E.tid      ;
   line            : E.pc_t     ;
-  vocabulary      : E.tid list ; (* MAY GO *)
+  vocabulary      : E.ThreadSet.t ; (* MAY GO *)
 }
 
 
@@ -67,7 +68,7 @@ type gen_supp_op_t =
 (**  Configuration  **)
 (*********************)
 
-let fixed_voc : E.tid list ref = ref []
+let fixed_voc : E.ThreadSet.t ref = ref E.ThreadSet.empty
 
 
 (***********************)
@@ -88,54 +89,95 @@ let new_proof_plan (smp:Smp.cutoff_strategy_t option)
   }
  
 let vc_info_to_implication (info:vc_info) (sup:support_t): implication =
-  (* This code adds equalities that were implicit when we used arrays to
-     represent local vars *)
 
-  let build_pc pr i = E.build_pc_var pr (E.Local i) in
+  (* This code adds equalities that were implicit when we used arrays to represent local vars *)
+  let build_pc pr i = E.build_pc_var pr (E.V.Local (E.voc_to_var i)) in
   let goal_voc = E.voc info.goal in
-  let pc_updates : (E.variable, E.variable) Hashtbl.t = Hashtbl.create 4 in
-  let var_updates : (E.variable, E.tid list) Hashtbl.t = Hashtbl.create 4 in
-  List.iter (fun i -> Hashtbl.add pc_updates (build_pc false i) (build_pc true i)) goal_voc;
+  let pc_updates : (E.V.t, E.V.t) Hashtbl.t = Hashtbl.create 4 in
+  let var_updates : (E.V.t, E.ThreadSet.t) Hashtbl.t = Hashtbl.create 4 in
+
+
+  E.ThreadSet.iter (fun i -> Hashtbl.add pc_updates (build_pc false i) (build_pc true i)) goal_voc;
   List.iter (fun phi ->
     match phi with
-    | E.Or _ -> begin
-                  match E.to_disj_list phi with
-                  | E.Literal (E.Atom (E.PCUpdate (_,i)))::_ ->
+    | F.Or (F.Literal (F.Atom (E.PCUpdate (_,i))), _)
+    | F.Literal (F.Atom (E.PCUpdate (_,i))) ->
+        Hashtbl.remove pc_updates (build_pc false i)
+(*
+           -> begin
+                  match F.to_disj_list phi with
+                  | F.Literal (F.Atom (E.PCUpdate (_,i)))::_ ->
                       Hashtbl.remove pc_updates (build_pc false i)
                   | _ -> ()
                 end
-    | E.Literal (E.Atom (E.PCUpdate (_,i))) -> Hashtbl.remove pc_updates (build_pc false i)
-    | E.Literal (E.Atom (E.Eq (E.ArrayT (E.VarArray v), E.ArrayT (E.ArrayUp (_,i,_))))) ->
+*)
+    | F.Literal (F.Atom (E.Eq (E.ArrayT (E.VarArray v), E.ArrayT (E.ArrayUp (_,i,_))))) ->
         begin
           try
-            let old_list = Hashtbl.find var_updates v in
-            let new_list = List.filter (fun j -> j<>i) old_list in
-            Hashtbl.replace var_updates v new_list
-          with _ -> Hashtbl.add var_updates v (List.filter (fun j -> j<>i) goal_voc)
+            Hashtbl.replace var_updates v (E.ThreadSet.remove i (Hashtbl.find var_updates v))
+(*
+            let old_set = Hashtbl.find var_updates v in
+            let new_set = E.ThreadSet.filter (fun j -> j<>i) old_set in
+            Hashtbl.replace var_updates v new_set
+*)
+          with _ -> Hashtbl.add var_updates v (E.ThreadSet.remove i goal_voc)
         end
     | _ -> ()
-  ) (E.to_conj_list info.rho);
-  let pc_pres = Hashtbl.fold (fun v v' xs -> (v', v) :: xs) pc_updates [] in
+  ) (F.to_conj_list info.rho);
+
+  let pc_pres = E.V.new_subst () in
+  Hashtbl.iter (fun v v' -> E.V.add_subst pc_pres v' v) pc_updates;
+  let var_pres = E.V.new_subst () in
+  Hashtbl.iter (fun v' tids ->
+    E.V.VarSet.iter (fun i ->
+      E.V.add_subst var_pres (E.V.set_param v' (E.V.Local i))
+                             (E.V.set_param (E.V.unprime v') (E.V.Local i))
+    ) (E.voc_to_vars tids)
+  ) var_updates;
+
+
+
+(*
+
+  Hashtbl.iter (fun v' tids ->
+    let tids_as_vars = E.V.VarSet.elements (E.voc_to_vars tids) in
+    List.iter (fun i ->
+      E.V.add_subst var_pres (E.V.set_param v' (E.V.Local i))
+                             (E.V.set_param (E.V.unprime v') (E.V.Local i))
+    ) tids_as_vars
+  ) var_updates;
+*)
+(*
   let var_pres = Hashtbl.fold (fun v' tids xs ->
+                   let tids_as_vars = E.voc_to_vars tids in
                    (List.map (fun i ->
-                      (E.var_set_param (E.Local i) v',
-                       E.var_set_param (E.Local i) (E.unprime_variable v'))
-                    ) tids) @ xs
+                      (E.V.set_param v' (E.V.Local i),
+                       E.V.set_param (E.V.unprime v') (E.V.Local i))
+                    ) tids_as_vars) @ xs
                  ) var_updates [] in
+*)
   (* This code adds equalities that were implicit when we used arrays to represent local vars *)
+
 
   let the_antecedent =
     E.to_plain_formula E.PCVars
-      (E.conj_list (sup @ [ info.tid_constraint ] @ [info.rho])) in
-  let consequent = E.subst_vars pc_pres
+      (F.And (F.conj_list sup, F.And (info.tid_constraint, info.rho))) in
+(*      (F.conj_list (sup @ [ info.tid_constraint ] @ [info.rho])) in *)
+
+
+
+  let the_consequent = E.subst_vars pc_pres
     (E.to_plain_formula E.PCVars
       (E.subst_vars var_pres (E.prime_modified info.rho info.goal))) in
 
-  { ante = the_antecedent ; conseq = consequent }
+
+  { ante = the_antecedent ; conseq = the_consequent }
+
+
 
 let vc_info_to_formula  (info:vc_info) (sup:support_t): E.formula =
   let implication = vc_info_to_implication info sup in
-  E.Implies (implication.ante, implication.conseq)
+  Formula.Implies (implication.ante, implication.conseq)
 
 
 let vc_info_to_vc (info:vc_info) (sup:support_t): verification_condition =
@@ -167,15 +209,15 @@ let to_plain_vc_info (fol_mode:E.fol_mode_t) (info:vc_info) : vc_info =
 
 
 let vc_info_to_str (vc:vc_info) : string =
-  let vars_to_declare = E.all_vars (E.conj_list (vc.tid_constraint  ::
+  let vars_to_declare = E.all_vars (F.conj_list (vc.tid_constraint  ::
                                                  vc.rho             ::
                                                  vc.goal            ::
                                                  vc.original_support)) in
   let vars_str = (String.concat "\n"
-                   (E.VarSet.fold (fun v str_list ->
-                     ((E.sort_to_str (E.var_sort v)) ^ " " ^
-                      (E.variable_to_str v))::str_list
-                   ) vars_to_declare [])) in
+                   (List.map (fun v ->
+                     (E.sort_to_str (E.V.sort v)) ^ " " ^
+                     (E.V.to_str v)
+                   ) vars_to_declare)) in
   let supp_str = String.concat "\n" (List.map E.formula_to_str vc.original_support) in
   let tidconst_str = E.formula_to_str vc.tid_constraint in
   let rho_str = E.formula_to_str vc.rho in
@@ -229,7 +271,7 @@ let create_vc_info (supp       : support_t)
                    (tid_constr : E.formula)
                    (rho        : E.formula)
                    (goal       : E.formula)
-                   (vocab      : E.tid list)
+                   (vocab      : E.ThreadSet.t)
                    (trans_tid  : E.tid)
                    (line       : E.pc_t) : vc_info =
     {
@@ -248,7 +290,7 @@ let create_vc (orig_supp       : support_t)
               (tid_constr : E.formula)
               (rho        : E.formula)
               (goal       : E.formula)
-              (vocab      : E.tid list)
+              (vocab      : E.ThreadSet.t)
               (trans_tid  : E.tid)
               (line       : E.pc_t) 
         (support    : support_t)
@@ -283,12 +325,15 @@ let dup_vc_info_with_goal (info:vc_info) (new_goal:E.formula) : vc_info =
 
 
 
-let set_fixed_voc (ts:E.tid list) : unit =
-  fixed_voc := System.me_tid_th :: ts
+let set_fixed_voc (ts:E.ThreadSet.t) : unit =
+  fixed_voc := E.ThreadSet.add System.me_tid_th ts
 
 
-let filter_fixed_voc (ts:E.tid list) : E.tid list =
-  List.filter (fun t -> not (List.mem t !fixed_voc)) (List.map E.unprime_tid ts)
+let filter_fixed_voc (ts:E.ThreadSet.t) : E.ThreadSet.t =
+  let unprimed_ts = E.ThreadSet.fold (fun t set ->
+                      E.ThreadSet.add (E.unprime_tid t) set
+                    ) ts E.ThreadSet.empty in
+  E.ThreadSet.diff unprimed_ts !fixed_voc
 
 
 (****************************)
@@ -312,7 +357,7 @@ and is_empty_proof_plan (plan:proof_plan) : bool =
 let get_unprocessed_support_from_info (info:vc_info) : support_t =
   info.original_support
 and get_tid_constraint_from_info (info:vc_info) : E.formula = info.tid_constraint
-and get_vocabulary_from_info (info:vc_info) : E.tid list    =  info.vocabulary
+and get_vocabulary_from_info (info:vc_info) : E.ThreadSet.t    =  info.vocabulary
 and get_rho_from_info (info:vc_info) : E.formula =  info.rho
 and get_goal_from_info (info:vc_info) : E.formula =  info.goal
 and get_transition_tid_from_info (info:vc_info) : E.tid =  info.transition_tid
@@ -337,7 +382,7 @@ and get_transition_tid (vc:verification_condition) : E.tid =
   get_transition_tid_from_info vc.info
 and get_line (vc:verification_condition) : E.pc_t =
   get_line_from_info vc.info
-and get_vocabulary (vc:verification_condition) : E.tid list =
+and get_vocabulary (vc:verification_condition) : E.ThreadSet.t =
   get_vocabulary_from_info vc.info
 
 
@@ -357,103 +402,104 @@ let invert_polarity pol =
 
 
 let generic_simplifier (phi:E.formula) (simp_lit:E.literal-> polarity->E.formula) : E.formula =
-  let is_true  (f:E.formula):bool = match f with E.True  -> true | _ -> false in
-  let is_false (f:E.formula):bool = match f with E.False -> true | _ -> false in
+  let is_true  (f:E.formula):bool = match f with F.True  -> true | _ -> false in
+  let is_false (f:E.formula):bool = match f with F.False -> true | _ -> false in
   let rec simplify_f (f:E.formula) (pol:polarity): E.formula=
     match f with
-        E.Literal(lit) -> (simp_lit lit pol)
-      | E.True         -> E.True
-      | E.False        -> E.False
-      | E.And(x,y)     -> let sx = (simplify_f x pol) in
+        F.Literal(lit) -> (simp_lit lit pol)
+      | F.True         -> F.True
+      | F.False        -> F.False
+      | F.And(x,y)     -> let sx = (simplify_f x pol) in
                           let sy = (simplify_f y pol) in
-                            if (is_false sx || is_false sy) then E.False
-                            else if (is_true sx && is_true sy) then E.True
+                            if (is_false sx || is_false sy) then F.False
+                            else if (is_true sx && is_true sy) then F.True
                             else if (is_true sx) then sy
                             else if (is_true sy) then sx
-                            else E.And(sx,sy)
-      | E.Or(x,y)      -> let sx = (simplify_f x pol) in
+                            else F.And(sx,sy)
+      | F.Or(x,y)      -> let sx = (simplify_f x pol) in
                           let sy = (simplify_f y pol) in
-                            if (is_true sx || is_true sy) then E.True
-                            else if (is_false sx && is_false sy) then E.False
+                            if (is_true sx || is_true sy) then F.True
+                            else if (is_false sx && is_false sy) then F.False
                             else if (is_false sx ) then sy
                             else if (is_false sy ) then sx
-                            else E.Or(sx,sy)
-      | E.Not(x)       -> let sx = (simplify_f x (invert_polarity pol)) in
-                            if (is_true sx) then E.False
-                            else if(is_false sx) then E.True
-                            else E.Not(sx)
-      | E.Implies(x,y) -> let sx = (simplify_f x (invert_polarity pol)) in
+                            else F.Or(sx,sy)
+      | F.Not(x)       -> let sx = (simplify_f x (invert_polarity pol)) in
+                            if (is_true sx) then F.False
+                            else if(is_false sx) then F.True
+                            else F.Not(sx)
+      | F.Implies(x,y) -> let sx = (simplify_f x (invert_polarity pol)) in
                           let sy = (simplify_f y pol) in
-                            if (is_false sx || is_true sy) then E.True
+                            if (is_false sx || is_true sy) then F.True
                             else if (is_true sx) then sy
-                            else if (is_false sy) then E.Not(sx)
-                            else E.Implies(sx,sy)
-      | E.Iff(x,y)     -> let sx = (simplify_f x Both) in
+                            else if (is_false sy) then F.Not(sx)
+                            else F.Implies(sx,sy)
+      | F.Iff(x,y)     -> let sx = (simplify_f x Both) in
                           let sy = (simplify_f y Both) in
-                            if (is_false sx && is_false sy) then E.True
-                            else if (is_true sx && is_true sy) then E.True
+                            if (is_false sx && is_false sy) then F.True
+                            else if (is_true sx && is_true sy) then F.True
                             else if (is_true sx) then sy
                             else if (is_true sy) then sx
-                            else if (is_false sx) then E.Not(sy)
-                            else if (is_false sy) then E.Not(sx)
-                            else E.Iff(sx,sy)
+                            else if (is_false sx) then F.Not(sy)
+                            else if (is_false sy) then F.Not(sx)
+                            else F.Iff(sx,sy)
   in
     simplify_f phi Pos
 
 let simplify (phi:E.formula) : E.formula =
-  let id l pol = E.Literal l in
+  let id l pol = F.Literal l in
     generic_simplifier phi id
 
 
 (* let simplify_with_pc (phi:E.formula) (i:E.tid) (lines:int list) (primed:bool) : E.formula = *)
 (*   let is_same_tid (j:E.tid) : bool = *)
 (*     match (i,j) with *)
-(*       E.VarTh(v),E.VarTh(w) -> E.same_var v w *)
+(*       E.VarTh(v),E.VarTh(w) -> E.V.same_var v w *)
 (*     | _                     -> false in *)
 (*   let matches_tid (a:E.atom) : bool = *)
 (*     match a with *)
-(*       E.PC(line,E.Local j,pr)       -> is_same_tid j *)
-(*     | E.PCRange(l1,l2,E.Local j,pr) -> is_same_tid j *)
+(*       E.PC(line,E.V.Local j,pr)       -> is_same_tid j *)
+(*     | E.PCRange(l1,l2,E.V.Local j,pr) -> is_same_tid j *)
 (*     | _                             -> false in *)
 (*   let matches_line (a:E.atom) : bool = *)
 (*     match a with *)
-(*       E.PC(l,E.Local j,pr)       -> List.mem l lines *)
-(*     | E.PCRange(l1,l2,E.Local j,pr) -> List.exists (fun l -> l1<= l && l <= l2) lines *)
+(*       E.PC(l,E.V.Local j,pr)       -> List.mem l lines *)
+(*     | E.PCRange(l1,l2,E.V.Local j,pr) -> List.exists (fun l -> l1<= l && l <= l2) lines *)
 (*     | _                              -> false in *)
 (*   let simplify_pc (lit:E.literal) (pol:polarity) : E.formula = *)
 (*     match lit with *)
-(*       E.Atom(a)    -> if (matches_tid a) then *)
-(*                         (if (matches_line a) then E.True else E.False) *)
+(*       F.Atom(a)    -> if (matches_tid a) then *)
+(*                         (if (matches_line a) then F.True else F.False) *)
 (*                       else *)
-(*                           E.Literal lit *)
-(*     | E.NegAtom(a) -> if (matches_tid a) then *)
-(*                         (if (matches_line a) then E.False else E.True) *)
+(*                           F.Literal lit *)
+(*     | F.NegAtom(a) -> if (matches_tid a) then *)
+(*                         (if (matches_line a) then F.False else F.True) *)
 (*                         else *)
-(*                           E.Literal lit *)
+(*                           F.Literal lit *)
 (*   in *)
 (*   generic_simplifier phi simplify_pc *)
 
 
 (* simplify_with_vocabulary: simply removes the whole formula if the vocabulary
  *                           is irrelevant *)
-let simplify_with_vocabulary (phi:E.formula) (vocabulary:E.variable list): E.formula =
+let simplify_with_vocabulary (phi:E.formula) (vocabulary:E.V.t list): E.formula =
   let vars_in_phi = E.all_vars_as_set phi in
-  let relevant = List.exists (fun v -> E.VarSet.mem v vars_in_phi) vocabulary in
+  let relevant = List.exists (fun v -> E.V.VarSet.mem v vars_in_phi) vocabulary in
     if relevant then
       phi
     else
-      E.True
+      F.True
 
 
 (**************************************************************************)
 (* SUPPORT TACTICS, that generate support (E.formula list) from vc_info   *)
 (**************************************************************************)
 let generate_support (info:vc_info) : E.formula list =
-  let (param,no_param) =  
-    List.partition (fun phi -> E.voc phi <> []) info.original_support in
-  let target_voc = E.voc (E.And (info.goal, info.rho)) in
+  (* FIX THIS *)
+  let (no_param,param) =
+    List.partition (fun phi -> E.ThreadSet.is_empty (E.voc phi)) info.original_support in
+  let target_voc = E.ThreadSet.elements (E.voc (F.And (info.goal, info.rho))) in (* FIX THIS *)
   let instantiate_one_support phi =
-    let subst = E.new_comb_subst (E.voc phi) target_voc in
+    let subst = E.new_comb_subst (E.ThreadSet.elements (E.voc phi)) target_voc in
     List.map (fun s -> E.subst_tid s phi) subst 
   in
   let instantiated_support = List.fold_left 
@@ -469,37 +515,37 @@ let generate_support (info:vc_info) : E.formula list =
 
 
 let split_implication (imp:implication) : implication list =
-  let new_conseqs = E.to_conj_list imp.conseq in
+  let new_conseqs = F.to_conj_list imp.conseq in
   List.map (fun phi -> { ante=imp.ante ; conseq=phi }) new_conseqs
 
 
 let split_antecedent_pc (imp:implication) : implication list =
   let candidates (phi:E.formula) : E.formula list =
     List.fold_left (fun xs conj ->
-      let cand_disj = E.to_disj_list conj in
+      let cand_disj = F.to_disj_list conj in
       if List.length cand_disj > 1 &&
          List.for_all (fun x ->
             match x with
 (*
-            | E.Literal (E.Atom (E.PC (_,_,false))) -> true
-            | E.Literal (E.Atom (E.PCRange (_,_,_,false))) -> true
+            | F.Literal (F.Atom (E.PC (_,_,false))) -> true
+            | F.Literal (F.Atom (E.PCRange (_,_,_,false))) -> true
 *)
-            | E.Literal (E.Atom (E.Eq (E.IntT (E.VarInt v), E.IntT (E.IntVal _))))
-            | E.Literal (E.Atom (E.Eq (E.IntT (E.IntVal _), E.IntT (E.VarInt v)))) -> E.is_pc_var v
+            | F.Literal (F.Atom (E.Eq (E.IntT (E.VarInt v), E.IntT (E.IntVal _))))
+            | F.Literal (F.Atom (E.Eq (E.IntT (E.IntVal _), E.IntT (E.VarInt v)))) -> E.is_pc_var v
             | _ -> false
         ) cand_disj then
             cand_disj @ xs
       else
         xs
-    ) [] (E.to_conj_list phi)
+    ) [] (F.to_conj_list phi)
   in
   let cases = candidates imp.ante in
   match cases with
   | [] -> [imp]
-  | _  -> (*let others_case = E.conj_list (List.map (fun x -> E.Not x) cases) in *)
+  | _  -> (*let others_case = E.conj_list (List.map (fun x -> F.Not x) cases) in *)
           List.map (fun a ->
             {
-              ante = E.And (a,imp.ante);
+              ante = F.And (a,imp.ante);
               conseq = imp.conseq;
             }
           ) ((*others_case::*)cases)
@@ -510,7 +556,7 @@ let split_antecedent_pc (imp:implication) : implication list =
 (***************************)
 
 let split_goal (info:vc_info) : vc_info list =
-  let new_goals = E.to_conj_list info.goal in
+  let new_goals = F.to_conj_list info.goal in
   List.map (fun phi -> {
         original_support = info.original_support;
         tid_constraint   = info.tid_constraint  ;
@@ -524,20 +570,20 @@ let split_goal (info:vc_info) : vc_info list =
 (* aux functions *)
 let is_true (f:E.formula) : bool =
   match f with
-  E.True -> true
+  F.True -> true
   | _  -> false
 
 let is_false (f:E.formula) : bool =
   match f with
-    E.False -> true
+    F.False -> true
   | _     -> false
 
 
 let rec get_literals f =
   match f with
-    E.Literal l  -> [l]
-  | E.And(f1,f2)       -> get_literals f1 @ get_literals f2
-  | E.Not(E.Or(f1,f2)) -> get_literals f1 @ get_literals f2
+    F.Literal l  -> [l]
+  | F.And(f1,f2)       -> get_literals f1 @ get_literals f2
+  | F.Not(F.Or(f1,f2)) -> get_literals f1 @ get_literals f2
   | _          -> []
 
 
@@ -549,17 +595,17 @@ let generic_simplify_with_fact (fact:'a)
     (phi:E.formula): E.formula =
   let rec simplify_lit f = 
     match f with
-      E.Literal l -> 
-  if      (implies fact l)     then E.True 
-  else if (implies_neg fact l) then E.False
+      F.Literal l -> 
+  if      (implies fact l)     then F.True 
+  else if (implies_neg fact l) then F.False
   else f
-    | E.True        -> E.True
-    | E.False       -> E.False
-    | E.And(f1, f2) -> E.And(simplify_lit f1, simplify_lit f2)
-    | E.Or (f1, f2) -> E.Or (simplify_lit f1, simplify_lit f2)
-    | E.Not f       -> E.Not(simplify_lit f)
-    | E.Implies(f1,f2) -> E.Implies (simplify_lit f1, simplify_lit f2)
-    | E.Iff    (f1,f2) -> E.Iff (simplify_lit f1, simplify_lit f2)
+    | F.True        -> F.True
+    | F.False       -> F.False
+    | F.And(f1, f2) -> F.And(simplify_lit f1, simplify_lit f2)
+    | F.Or (f1, f2) -> F.Or (simplify_lit f1, simplify_lit f2)
+    | F.Not f       -> F.Not(simplify_lit f)
+    | F.Implies(f1,f2) -> F.Implies (simplify_lit f1, simplify_lit f2)
+    | F.Iff    (f1,f2) -> F.Iff (simplify_lit f1, simplify_lit f2)
   in
   simplify (simplify_lit phi)
   
@@ -576,23 +622,23 @@ let generic_simplify_with_many_facts (facts:'a list)
     (phi:E.formula) : E.formula =
   let rec simplify_lit f =
     match f with
-    | E.Literal l -> begin
+    | F.Literal l -> begin
                        if List.exists (fun p -> implies p l) facts then begin
                          Log.print "** simplifying" ((E.literal_to_str l) ^ " with true");
-                         E.True
+                         F.True
                        end else if List.exists (fun p -> implies_not p l) facts then begin
                          Log.print "** simplifying" ((E.literal_to_str l) ^ " with false");
-                         E.False
+                         F.False
                        end else
-                         E.Literal l
+                         F.Literal l
                      end
-    | E.True           -> E.True
-    | E.False          -> E.False
-    | E.And(f1,f2)     -> E.And(simplify_lit f1, simplify_lit f2)
-    | E.Or (f1,f2)     -> E.Or (simplify_lit f1, simplify_lit f2)
-    | E.Not f          -> E.Not(simplify_lit f)
-    | E.Implies(f1,f2) -> E.Implies (simplify_lit f1, simplify_lit f2)
-    | E.Iff    (f1,f2) -> E.Iff (simplify_lit f1, simplify_lit f2)
+    | F.True           -> F.True
+    | F.False          -> F.False
+    | F.And(f1,f2)     -> F.And(simplify_lit f1, simplify_lit f2)
+    | F.Or (f1,f2)     -> F.Or (simplify_lit f1, simplify_lit f2)
+    | F.Not f          -> F.Not(simplify_lit f)
+    | F.Implies(f1,f2) -> F.Implies (simplify_lit f1, simplify_lit f2)
+    | F.Iff    (f1,f2) -> F.Iff (simplify_lit f1, simplify_lit f2)
   in
   let res = simplify (simplify_lit phi) in
    res
@@ -623,19 +669,70 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
   | KeepOriginal -> info.original_support
   | RestrictSubst f ->
       let goal_voc = E.voc info.goal in
-      let used_tids = ref (E.voc info.tid_constraint @ E.voc info.rho @ goal_voc) in
+      let used_tids = ref (E.ThreadSet.union (E.voc info.tid_constraint)
+                           (E.ThreadSet.union (E.voc info.rho) goal_voc)) in
+
+
+      let (unparam_support, param_support) =
+        List.fold_left (fun (u_set,p_set) supp ->
+          let supp_voc = filter_fixed_voc (E.voc supp) in
+          let fresh_tids = E.gen_fresh_tid_set !used_tids (E.ThreadSet.cardinal supp_voc) in
+          let fresh_subst = E.new_tid_subst
+                              (List.combine (E.ThreadSet.elements supp_voc)
+                                            (E.ThreadSet.elements fresh_tids)) in
+          used_tids := E.ThreadSet.union fresh_tids !used_tids;
+          let fresh_supp = E.subst_tid fresh_subst supp in
+          let split_supp = F.to_conj_list fresh_supp in
+          List.fold_left (fun (us,ps) phi ->
+            if E.ThreadSet.is_empty (filter_fixed_voc (E.voc phi)) then
+              (E.FormulaSet.add phi us,ps)
+            else
+              (us,E.FormulaSet.add phi ps)
+          ) (u_set,p_set) split_supp
+        ) (E.FormulaSet.empty,E.FormulaSet.empty) info.original_support in
+
+(*
+      Log.print "gen_support unparametrized support"
+        (E.FormulaSet.fold (fun phi str -> str ^ (E.formula_to_str phi) ^ ";" ) unparam_support "");
+      Log.print "gen_support parametrized support"
+        (E.FormulaSet.fold (fun phi str -> str ^ (E.formula_to_str phi) ^ ";" ) param_support "");
+*)
+
+
+      let processed_support =
+        E.FormulaSet.fold (fun phi set ->
+          let supp_voc = filter_fixed_voc (E.voc phi) in
+          let voc_to_consider = E.ThreadSet.add info.transition_tid
+                                  (E.ThreadSet.union supp_voc goal_voc) in
+          let subst = List.filter f
+                        (E.new_comb_subst
+                          (E.ThreadSet.elements supp_voc)
+                          (E.ThreadSet.elements voc_to_consider)) in
+
+          Log.print "Thread id substitution" (String.concat " -- " (List.map E.subst_to_str subst));
+          List.fold_left (fun set s ->
+            E.FormulaSet.add (E.subst_tid s phi) set
+          ) set subst
+        ) param_support unparam_support in
+      E.FormulaSet.elements processed_support
+
+
+(*
+
       let fresh_original_support = List.map (fun supp ->
                                      let supp_voc = filter_fixed_voc (E.voc supp) in
-                                     let fresh_tids = E.gen_fresh_tid_list !used_tids (List.length supp_voc) in
-                                     let fresh_subst = E.new_tid_subst (List.combine supp_voc fresh_tids) in
-                                     used_tids := !used_tids @ fresh_tids;
+                                     let fresh_tids = E.gen_fresh_tid_set !used_tids (E.ThreadSet.cardinal supp_voc) in
+                                     let fresh_subst = E.new_tid_subst
+                                                        (List.combine (E.ThreadSet.elements supp_voc)
+                                                                      (E.ThreadSet.elements fresh_tids)) in
+                                     used_tids := E.ThreadSet.union fresh_tids !used_tids;
                                        E.subst_tid fresh_subst supp
                                    ) info.original_support in
       let split_support = List.fold_left (fun xs phi ->
-                            E.to_conj_list phi @ xs
+                            F.to_conj_list phi @ xs
                           ) [] fresh_original_support in
       let (param_support, unparam_support) = List.partition (fun phi ->
-                                              filter_fixed_voc (E.voc phi) <> []
+                                              not (E.ThreadSet.is_empty (filter_fixed_voc (E.voc phi)))
                                             ) split_support in
     
       Log.print "gen_support unparametrized support"
@@ -643,18 +740,29 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
       Log.print "gen_support parametrized support"
                 (String.concat " ; " (List.map E.formula_to_str param_support));
 
+
       List.fold_left (fun xs supp_phi ->
         let supp_voc = filter_fixed_voc (E.voc supp_phi) in
+        let voc_to_consider = E.ThreadSet.add info.transition_tid
+                                (E.ThreadSet.union supp_voc goal_voc) in
+(*
         let voc_to_consider = GenSet.to_list
                                 (GenSet.from_list (info.transition_tid :: supp_voc @ goal_voc)) in
+*)
         
 
-        let subst = List.filter f (E.new_comb_subst supp_voc voc_to_consider) in
+        let subst = List.filter f
+                      (E.new_comb_subst
+                        (E.ThreadSet.elements supp_voc)
+                        (E.ThreadSet.elements voc_to_consider)) in
         Log.print "Thread id substitution" (String.concat " -- " (List.map E.subst_to_str subst));
         xs @ List.map (fun s ->
                E.subst_tid s supp_phi
              ) subst
       ) unparam_support param_support
+*)
+
+
 
 
 let full_support (info:vc_info) : support_t =
@@ -662,17 +770,21 @@ let full_support (info:vc_info) : support_t =
 
 
 let reduce_support (info:vc_info) : support_t =
-  gen_support (RestrictSubst (E.subst_codomain_in (E.voc info.rho @ E.voc info.goal))) info
+  let voc_to_analyze = E.ThreadSet.union (E.voc info.rho) (E.voc info.goal) in
+    gen_support (RestrictSubst (E.subst_codomain_in voc_to_analyze)) info
 
 
 let reduce2_support (info:vc_info) : support_t =
-  let voc_to_analyze = GenSet.to_list (GenSet.from_list (E.voc info.rho @ E.voc info.goal)) in
-  E.cleanup_dup
+  let voc_to_analyze = E.ThreadSet.union (E.voc info.rho) (E.voc info.goal) in
+(*
+  let voc_to_analyze = GenSet.to_list (GenSet.from_list (E.ThreadSet.elements (E.voc info.rho) @ E.ThreadSet.elements (E.voc info.goal))) in
+*)
+  F.cleanup_dups
     (gen_support (RestrictSubst (E.subst_codomain_in voc_to_analyze)) info)
 
 
 let id_support (info:vc_info) : support_t =
-  E.cleanup_dup (gen_support KeepOriginal info)
+  F.cleanup_dups (gen_support KeepOriginal info)
 
 
 (*********************)
@@ -698,95 +810,95 @@ let tactic_propositional_propagate (imp:implication) : implication =
       end
   in
   let (new_imp,facts) = simplify_propagate imp [] in
-  let new_ante = E.cleanup (E.And((E.conj_literals facts), new_imp.ante)) in
+  let new_ante = F.cleanup (F.And((F.conj_literals facts), new_imp.ante)) in
   let new_conseq = new_imp.conseq in
   { ante = new_ante ; conseq = new_conseq }
 
 
-let extract_pc_integer_eq (l:E.literal) : ((E.variable * int) option) =
+let extract_pc_integer_eq (l:E.literal) : ((E.V.t * int) option) =
   match l with
-    E.Atom(E.Eq(E.VarT(v),          E.IntT(E.IntVal k)))
-  | E.Atom(E.Eq(E.IntT(E.VarInt(v)),E.IntT(E.IntVal k)))
-  | E.Atom(E.Eq(E.IntT(E.IntVal(k)),E.VarT(v)))
-  | E.Atom(E.Eq(E.IntT(E.IntVal(k)),E.IntT(E.VarInt(v)))) ->
+    F.Atom(E.Eq(E.VarT(v),          E.IntT(E.IntVal k)))
+  | F.Atom(E.Eq(E.IntT(E.VarInt(v)),E.IntT(E.IntVal k)))
+  | F.Atom(E.Eq(E.IntT(E.IntVal(k)),E.VarT(v)))
+  | F.Atom(E.Eq(E.IntT(E.IntVal(k)),E.IntT(E.VarInt(v)))) ->
       if E.is_pc_var v then
         Some (v,k)
       else
         None
   | _  -> None
 
-let integer_implies ((v,k):E.variable * int) (l:E.literal) : bool =
-  let same (v1,k1) (v2,k2) = (E.same_var v1 v2) && (k1=k2) in
+let integer_implies ((v,k):E.V.t * int) (l:E.literal) : bool =
+  let same (v1,k1) (v2,k2) = (E.V.same_var v1 v2) && (k1=k2) in
   match l with
     (* v=k -> v2=k2 *)
-    E.Atom(E.Eq(E.VarT(v2),E.IntT(E.IntVal k2)))            -> 
-      (E.var_sort v2)==E.Int && same (v,k) (v2,k2)
+    F.Atom(E.Eq(E.VarT(v2),E.IntT(E.IntVal k2)))            -> 
+      (E.V.sort v2)==E.Int && same (v,k) (v2,k2)
   |  (* v=k -> v2=k2 *)
-      E.Atom(E.Eq(E.IntT(E.VarInt(v2)),E.IntT(E.IntVal k2)))  -> 
+      F.Atom(E.Eq(E.IntT(E.VarInt(v2)),E.IntT(E.IntVal k2)))  -> 
     same (v,k) (v2,k2)
   | (* v=k -> k2=v2 *)
-      E.Atom(E.Eq(E.IntT(E.IntVal(k2)),E.VarT(v2)))           -> 
-    (E.var_sort v2)==E.Int && same (v,k) (v2,k2)
+      F.Atom(E.Eq(E.IntT(E.IntVal(k2)),E.VarT(v2)))           -> 
+    (E.V.sort v2)==E.Int && same (v,k) (v2,k2)
   | (* v=k -> k2=v2 *)
-      E.Atom(E.Eq(E.IntT(E.IntVal(k2)),E.IntT(E.VarInt(v2)))) -> 
+      F.Atom(E.Eq(E.IntT(E.IntVal(k2)),E.IntT(E.VarInt(v2)))) -> 
     same (v,k) (v2,k2)
   | (* v=k -> k2<v2 *)
-      E.Atom(E.Less(E.IntVal(k2),E.VarInt(v2))) -> 
-    (E.same_var v v2) && (k > k2)
+      F.Atom(E.Less(E.IntVal(k2),E.VarInt(v2))) -> 
+    (E.V.same_var v v2) && (k > k2)
   | (* v=k -> v2>k2 *)
-      E.Atom(E.Greater(E.VarInt(v2),E.IntVal(k2))) -> 
-    (E.same_var v v2) && (k > k2)
+      F.Atom(E.Greater(E.VarInt(v2),E.IntVal(k2))) -> 
+    (E.V.same_var v v2) && (k > k2)
   | (* v=k -> v2<k2 *)
-      E.Atom(E.Less(E.VarInt(v2),E.IntVal(k2))) -> 
-    (E.same_var v v2) && (k < k2)
+      F.Atom(E.Less(E.VarInt(v2),E.IntVal(k2))) -> 
+    (E.V.same_var v v2) && (k < k2)
   | (* v=k -> k2>v2 *)
-      E.Atom(E.Greater(E.IntVal(k2),E.VarInt(v2))) -> 
-    (E.same_var v v2) && (k < k2)
+      F.Atom(E.Greater(E.IntVal(k2),E.VarInt(v2))) -> 
+    (E.V.same_var v v2) && (k < k2)
   | (* v=k -> k2<=v2 *)
-      E.Atom(E.LessEq(E.IntVal(k2),E.VarInt(v2))) -> 
-    (E.same_var v v2) && (k >= k2)
+      F.Atom(E.LessEq(E.IntVal(k2),E.VarInt(v2))) -> 
+    (E.V.same_var v v2) && (k >= k2)
   | (* v=k -> v2>=k2 *)
-      E.Atom(E.GreaterEq(E.VarInt(v2),E.IntVal(k2))) -> 
-    (E.same_var v v2) && (k >= k2)
+      F.Atom(E.GreaterEq(E.VarInt(v2),E.IntVal(k2))) -> 
+    (E.V.same_var v v2) && (k >= k2)
   | (* v=k -> v2<=k2 *)
-      E.Atom(E.LessEq(E.VarInt(v2),E.IntVal(k2))) -> 
-    (E.same_var v v2) && (k <= k2)
+      F.Atom(E.LessEq(E.VarInt(v2),E.IntVal(k2))) -> 
+    (E.V.same_var v v2) && (k <= k2)
   | (* v=k -> k2>=v2 *)
-      E.Atom(E.GreaterEq(E.IntVal(k2),E.VarInt(v2))) -> 
-    (E.same_var v v2) && (k <= k2)
+      F.Atom(E.GreaterEq(E.IntVal(k2),E.VarInt(v2))) -> 
+    (E.V.same_var v v2) && (k <= k2)
   | _ -> false
 
-let integer_implies_neg ((v,k):E.variable * int) (l:E.literal) : bool =
-(*  let same (v1,k1) (v2,k2) = (E.same_var v1 v2) && (k1=k2) in *)
+let integer_implies_neg ((v,k):E.V.t * int) (l:E.literal) : bool =
+(*  let same (v1,k1) (v2,k2) = (E.V.same_var v1 v2) && (k1=k2) in *)
   match l with
     (* v=k -> v2=k2 *)
-    E.Atom(E.Eq(E.VarT(v2),E.IntT(E.IntVal k2)))            ->
-      (E.var_sort v2)==E.Int && E.same_var v v2 && k!=k2
+    F.Atom(E.Eq(E.VarT(v2),E.IntT(E.IntVal k2)))            ->
+      (E.V.sort v2)==E.Int && E.V.same_var v v2 && k!=k2
   |  (* v=k -> v2=k2 *)
-      E.Atom(E.Eq(E.IntT(E.VarInt(v2)),E.IntT(E.IntVal k2)))  ->
-      E.same_var v v2 && k!=k2
+      F.Atom(E.Eq(E.IntT(E.VarInt(v2)),E.IntT(E.IntVal k2)))  ->
+      E.V.same_var v v2 && k!=k2
   | (* v=k -> k2=v2 *)
-      E.Atom(E.Eq(E.IntT(E.IntVal(k2)),E.VarT(v2)))           ->
-      (E.var_sort v2)==E.Int && E.same_var v v2 && k!=k2
+      F.Atom(E.Eq(E.IntT(E.IntVal(k2)),E.VarT(v2)))           ->
+      (E.V.sort v2)==E.Int && E.V.same_var v v2 && k!=k2
   | (* v=k -> k2=v2 *)
-      E.Atom(E.Eq(E.IntT(E.IntVal(k2)),E.IntT(E.VarInt(v2)))) ->
-      E.same_var v v2 && k!=k2
+      F.Atom(E.Eq(E.IntT(E.IntVal(k2)),E.IntT(E.VarInt(v2)))) ->
+      E.V.same_var v v2 && k!=k2
   | (* v=k -> k2<v2 *)
-      E.Atom(E.Less(E.IntVal(k2),E.VarInt(v2))) -> (E.same_var v v2) && not (k > k2)
+      F.Atom(E.Less(E.IntVal(k2),E.VarInt(v2))) -> (E.V.same_var v v2) && not (k > k2)
   | (* v=k -> v2>k2 *)
-      E.Atom(E.Greater(E.VarInt(v2),E.IntVal(k2))) -> (E.same_var v v2) && not (k > k2)
+      F.Atom(E.Greater(E.VarInt(v2),E.IntVal(k2))) -> (E.V.same_var v v2) && not (k > k2)
   | (* v=k -> v2<k2 *)
-      E.Atom(E.Less(E.VarInt(v2),E.IntVal(k2))) -> (E.same_var v v2) && not (k < k2)
+      F.Atom(E.Less(E.VarInt(v2),E.IntVal(k2))) -> (E.V.same_var v v2) && not (k < k2)
   | (* v=k -> k2>v2 *)
-      E.Atom(E.Greater(E.IntVal(k2),E.VarInt(v2))) -> (E.same_var v v2) && not (k < k2)
+      F.Atom(E.Greater(E.IntVal(k2),E.VarInt(v2))) -> (E.V.same_var v v2) && not (k < k2)
   | (* v=k -> k2<=v2 *)
-      E.Atom(E.LessEq(E.IntVal(k2),E.VarInt(v2))) -> (E.same_var v v2) && not (k >= k2)
+      F.Atom(E.LessEq(E.IntVal(k2),E.VarInt(v2))) -> (E.V.same_var v v2) && not (k >= k2)
   | (* v=k -> v2>=k2 *)
-      E.Atom(E.GreaterEq(E.VarInt(v2),E.IntVal(k2))) -> (E.same_var v v2) && not (k >= k2)
+      F.Atom(E.GreaterEq(E.VarInt(v2),E.IntVal(k2))) -> (E.V.same_var v v2) && not (k >= k2)
   | (* v=k -> v2<=k2 *)
-      E.Atom(E.LessEq(E.VarInt(v2),E.IntVal(k2))) -> (E.same_var v v2) && not (k <= k2)
+      F.Atom(E.LessEq(E.VarInt(v2),E.IntVal(k2))) -> (E.V.same_var v v2) && not (k <= k2)
   | (* v=k -> k2>=v2 *)
-      E.Atom(E.GreaterEq(E.IntVal(k2),E.VarInt(v2))) -> (E.same_var v v2) && not 
+      F.Atom(E.GreaterEq(E.IntVal(k2),E.VarInt(v2))) -> (E.V.same_var v v2) && not 
   (k <= k2)
   | _ -> false
 
@@ -800,21 +912,21 @@ let tactic_simplify_pc (imp:implication) : implication =
   Log.print "simplify_pc antecedent" (E.formula_to_str imp.ante);
   Log.print "simplify_pc consequent" (E.formula_to_str imp.conseq);
 
-  let rec get_integer_literals (f:E.formula) : ((E.variable * int) list) =
+  let rec get_integer_literals (f:E.formula) : ((E.V.t * int) list) =
     match f with
-      E.Literal l -> begin
+      F.Literal l -> begin
                        match (extract_pc_integer_eq l) with
                        | Some (v,k) -> [(v,k)]
                        | None       -> []
                      end
-    | E.And(f1,f2)       -> get_integer_literals f1 @ get_integer_literals f2
-    | E.Not(E.Or(f1,f2)) -> get_integer_literals f1 @ get_integer_literals f2
+    | F.And(f1,f2)       -> get_integer_literals f1 @ get_integer_literals f2
+    | F.Not(F.Or(f1,f2)) -> get_integer_literals f1 @ get_integer_literals f2
     | _                  -> []
   in
   (* DEBUG *)
   let print_all facts =
     Log.print "" "Found pc facts:";
-    let str = List.fold_left (fun s (v,k) -> s ^ (sprintf "(%s=%d)" (E.variable_to_str v) k )) "" facts in
+    let str = List.fold_left (fun s (v,k) -> s ^ (sprintf "(%s=%d)" (E.V.to_str v) k )) "" facts in
     Log.print "" str
   in
   (* 2. Simplify the antecedent and the consequent with the facts *)
@@ -835,12 +947,12 @@ let tactic_simplify_pc (imp:implication) : implication =
    with the goal *)
 let tactic_filter_vars_nonrec (imp:implication) : implication =
   let vs_conseq = E.all_vars_as_set imp.conseq in
-  let conjs = E.to_conj_list imp.ante in
-  let share_vars (vl: E.VarSet.t) : bool =
-    E.VarSet.exists (fun v -> E.VarSet.mem v vs_conseq) vl
+  let conjs = F.to_conj_list imp.ante in
+  let share_vars (vl: E.V.t list) : bool =
+    List.exists (fun v -> E.V.VarSet.mem v vs_conseq) vl
   in
   let new_conjs = List.filter (fun f -> share_vars (E.all_vars f)) conjs in
-  { ante = E.conj_list new_conjs ; conseq = imp.conseq }
+  { ante = F.conj_list new_conjs ; conseq = imp.conseq }
 
 
 (*************************************)
@@ -863,7 +975,7 @@ let tactic_filter_vars_nonrec (imp:implication) : implication =
 (*     E.Append  _      -> Reach *)
 (*   | E.Reach   _      -> Reach *)
 (*   | E.ReachAt _      -> Reach *)
-(*   | E.OrdList _      -> Bridge *)
+(*   | F.OrdList _      -> Bridge *)
 (*   | E.SkipList _     -> Bridge *)
 (*   | E.In _           -> Set *)
 (*   | E.SubsetEq _     -> Set *)
@@ -887,37 +999,37 @@ let tactic_filter_theory (imp:implication) : implication =
 
 let is_literal (f:E.formula) : bool =
   match f with  
-    E.Literal _ -> true  
+    F.Literal _ -> true  
   | _           -> false
 
 
 let neg_literal (l:E.literal) : E.literal =
   match l with 
-    E.Atom(a)    -> E.NegAtom(a)
-  | E.NegAtom(a) -> E.Atom(a)
+    F.Atom(a)    -> F.NegAtom(a)
+  | F.NegAtom(a) -> F.Atom(a)
 
 
 
 let apply_literal_to_implication (l:E.literal) (ante:E.formula) (conseq:E.formula) : implication =
   let implies     = E.identical_literal in
   let implies_neg = E.opposite_literal in
-  { ante   = (E.And((simplify_with_fact l implies implies_neg ante), E.Literal l));
+  { ante   = (F.And((simplify_with_fact l implies implies_neg ante), F.Literal l));
     conseq = (simplify_with_fact l implies implies_neg conseq) }
 
 let tactic_conseq_propagate_second_disjunct (imp:implication) : implication =
   match imp.conseq with
-    E.Or(a ,E.Literal l) -> 
+    F.Or(a ,F.Literal l) -> 
       apply_literal_to_implication (neg_literal l) imp.ante a
-  | E.Implies(a, E.Literal l) ->
-      apply_literal_to_implication (neg_literal l) imp.ante (E.Not a)
+  | F.Implies(a, F.Literal l) ->
+      apply_literal_to_implication (neg_literal l) imp.ante (F.Not a)
   | _ -> { ante = imp.ante; conseq = imp.conseq }
     
 
 let tactic_conseq_propagate_first_disjunct (imp:implication) : implication =
   match imp.conseq with
-    E.Or(E.Literal l, b) -> 
+    F.Or(F.Literal l, b) -> 
       apply_literal_to_implication (neg_literal l) imp.ante b
-  | E.Implies(E.Literal l,b) ->
+  | F.Implies(F.Literal l,b) ->
     apply_literal_to_implication l imp.ante b
   | _ -> 
     { ante = imp.ante; conseq = imp.conseq }
@@ -931,7 +1043,7 @@ let tactic_conseq_propagate_first_disjunct (imp:implication) : implication =
 let unify_support (vc:vc_info) : vc_info =
   let unify_tbl : (int, (E.tid list * E.formula) list) Hashtbl.t = Hashtbl.create 4 in
   List.iter (fun phi ->
-    let this_voc = E.voc phi in
+    let this_voc = E.ThreadSet.elements (E.voc phi) in
     let this_voc_size = List.length this_voc in
     try
       Hashtbl.replace unify_tbl this_voc_size
@@ -943,7 +1055,7 @@ let unify_support (vc:vc_info) : vc_info =
                    match phi_list with
                    | [] -> assert false
                    | [(voc,phi)] -> phi :: xs
-                   | (voc,phi)::ys -> E.conj_list (phi ::
+                   | (voc,phi)::ys -> F.conj_list (phi ::
                                       (List.map (fun (v,f) ->
                                          let subs = E.new_tid_subst (List.combine v voc) in
                                          E.subst_tid subs f
@@ -957,6 +1069,17 @@ let apply_support_split_tactics (vcs:vc_info list)
                                 (tacs:support_split_tactic_t list)
                                   : vc_info list =
   List.fold_left (fun ps f -> List.flatten (List.map f ps)) vcs tacs
+(*
+  List.fold_left (fun ps f ->
+    
+  ) vcs tacs
+
+
+  List.map (fun vc ->
+    List.fold_left (fun new_vcs f ->
+    ) 
+  ) vcs
+*)
 
 
 let apply_support_tactic (vcs:vc_info list)
@@ -979,8 +1102,7 @@ let apply_formula_split_tactics (imps:implication list)
 let apply_formula_tactics (imps:implication list)
                           (tacs:formula_tactic_t list)
                             : implication list =
-  let res = List.fold_left (fun ps f -> List.map f ps) imps tacs in
-  res
+  List.fold_left (fun ps f -> List.map f ps) imps tacs
 
 
 let apply_tactics (vcs:vc_info list)
@@ -999,15 +1121,17 @@ let apply_tactics (vcs:vc_info list)
 *)
     let split_vc_info_list = apply_support_split_tactics [vc] supp_split_tacs in
     let original_implications = apply_support_tactic split_vc_info_list supp_tac in
-
     let split_implications = apply_formula_split_tactics original_implications formula_split_tacs in
     let final_implications = apply_formula_tactics split_implications formula_tacs in
+
+
     Log.print "* From this vc_info" (vc_info_to_str vc);
     Log.print "* Leap generated the following formulas" "";
     let final_formulas = List.map (fun imp ->
-                           let phi = E.Implies (imp.ante, imp.conseq) in
-                           Log.print "" (E.formula_to_str phi); phi
+                           let phi = F.Implies (imp.ante, imp.conseq) in phi
+(*                           Log.print "" (E.formula_to_str phi); phi *)
                          ) final_implications in
+
     phi_list @ final_formulas
   ) [] vcs
 

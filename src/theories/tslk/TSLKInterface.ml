@@ -6,8 +6,8 @@ module Make (SLK : TSLKExpression.S) =
   struct
 
     module E = Expression
+    module F = Formula
 
-    type varId = E.varId
     type sort  = E.sort
     type tid   = E.tid
 
@@ -17,25 +17,6 @@ module Make (SLK : TSLKExpression.S) =
     exception UnsupportedExpr of string
 
 
-    (*****************)
-    (* CONFIGURATION *)
-    (*****************)
-
-    let fresh_set_name      = E.fresh_set_name
-    let fresh_elem_name     = E.fresh_elem_name
-    let fresh_tid_name      = E.fresh_tid_name
-    let fresh_addr_name     = E.fresh_addr_name
-    let fresh_cell_name     = E.fresh_cell_name
-    let fresh_setth_name    = E.fresh_setth_name
-    let fresh_setelem_name  = E.fresh_setelem_name
-    let fresh_path_name     = E.fresh_path_name
-    let fresh_mem_name      = E.fresh_mem_name
-    let fresh_int_name      = E.fresh_int_name
-    let fresh_addrarr_name  = E.fresh_addrarr_name
-    let fresh_tidarr_name   = E.fresh_tidarr_name
-    let fresh_unknown_name  = E.fresh_unknown_name
-
-
     (*******************************)
     (*                             *)
     (*   Normalization functions   *)
@@ -43,40 +24,7 @@ module Make (SLK : TSLKExpression.S) =
     (*******************************)
 
 
-    (* Fresh variables generation *)
-    type fresh_var_gen_t =
-      {
-        tbl : (E.sort, string * int) Hashtbl.t;
-        vars : E.VarIdSet.t;
-      }
-
-
-    let new_fresh_gen (vset:E.VarIdSet.t) : fresh_var_gen_t =
-      let tbl = Hashtbl.create(20) in
-        Hashtbl.add tbl E.Set       (fresh_set_name,     1);
-        Hashtbl.add tbl E.Elem      (fresh_elem_name,    1);
-        Hashtbl.add tbl E.Tid       (fresh_tid_name,     1);
-        Hashtbl.add tbl E.Addr      (fresh_addr_name,    1);
-        Hashtbl.add tbl E.Cell      (fresh_cell_name,    1);
-        Hashtbl.add tbl E.SetTh     (fresh_setth_name,   1);
-        Hashtbl.add tbl E.SetElem   (fresh_setelem_name, 1);
-        Hashtbl.add tbl E.Path      (fresh_path_name,    1);
-        Hashtbl.add tbl E.Mem       (fresh_mem_name,     1);
-        Hashtbl.add tbl E.Int       (fresh_int_name,     1);
-        Hashtbl.add tbl E.AddrArray (fresh_addrarr_name, 1);
-        Hashtbl.add tbl E.TidArray  (fresh_tidarr_name,  1);
-        Hashtbl.add tbl E.Unknown   (fresh_unknown_name, 1);
-        {tbl=tbl; vars=vset;}
-
-
-    let new_fresh_gen_from_formula (phi:E.formula) : fresh_var_gen_t =
-      let vars = E.VarSet.fold (fun v s ->
-                   E.VarIdSet.add (E.var_id v) s
-                 ) (E.all_vars_as_set phi) E.VarIdSet.empty in
-      new_fresh_gen vars
-
-
-    let make_compatible_term_from_var (t:E.term) (v:E.variable) : E.term =
+    let make_compatible_term_from_var (t:E.term) (v:E.V.t) : E.term =
       match t with
       | E.VarT _       -> E.VarT v
       | E.SetT _       -> E.SetT       (E.VarSet v)
@@ -99,10 +47,17 @@ module Make (SLK : TSLKExpression.S) =
 
     type norm_info_t =
       {
-        term_map : (E.term, E.variable) Hashtbl.t ;
-        processed_term_map : (E.term, E.variable) Hashtbl.t ;
-        fresh_gen_info : fresh_var_gen_t ;
+        term_map : (E.term, E.V.t) Hashtbl.t ;
+        processed_term_map : (E.term, E.V.t) Hashtbl.t ;
+        fresh_gen_info : E.V.fresh_var_gen_t ;
       }
+
+
+    let new_fresh_gen_from_formula (phi:E.formula) : E.V.fresh_var_gen_t =
+      let vars = E.V.VarSet.fold (fun v s ->
+                   E.V.VarIdSet.add (E.V.id v) s
+                 ) (E.all_vars_as_set phi) E.V.VarIdSet.empty in
+      E.V.new_fresh_gen vars
 
 
     let new_norm_info_from_formula (phi:E.formula) : norm_info_t =
@@ -112,19 +67,6 @@ module Make (SLK : TSLKExpression.S) =
         fresh_gen_info = new_fresh_gen_from_formula phi ;
       }
 
-
-    let gen_fresh_var (gen:fresh_var_gen_t) (s:E.sort) : E.variable =
-      let rec find (var_prefix, n) =
-        let var_cand_id = Printf.sprintf "%s_%i" var_prefix n in
-          if E.VarIdSet.mem var_cand_id gen.vars then
-            find (var_prefix, n+1)
-          else
-            begin
-              Hashtbl.replace gen.tbl s (var_prefix, n+1);
-              E.build_var var_cand_id s false E.Shared E.GlobalScope E.RealVar
-            end
-      in
-        find (Hashtbl.find gen.tbl s)
 
     let rec norm_formula (info:norm_info_t) (phi:E.formula) : E.formula =
       let is_var_term t =
@@ -145,28 +87,29 @@ module Make (SLK : TSLKExpression.S) =
         | E.AddrArrayT(E.VarAddrArray _)
         | E.TidArrayT(E.VarTidArray _) -> true
         | _ -> false in
-      let append_if_diff (t:E.term) (v:E.variable) : unit =
+      let append_if_diff (t:E.term) (v:E.V.t) : unit =
         if is_var_term t then
           (if (E.term_to_var t) <> v then Hashtbl.add info.term_map t v)
         else
           Hashtbl.add info.term_map t v in
-      let gen_if_not_var (t:E.term) (s:E.sort) : E.variable =
+      let gen_if_not_var (t:E.term) (s:E.sort) : E.V.t =
         if is_var_term t then E.term_to_var t
         else try
                try
                  Hashtbl.find info.processed_term_map t
                with _ -> Hashtbl.find info.term_map t
              with _ -> begin
-                         let v = gen_fresh_var info.fresh_gen_info s in
+                         let v = E.gen_fresh_var info.fresh_gen_info s in
                          append_if_diff t v; v
                        end in
-
+(*
       let rec norm_literal (l:E.literal) : E.literal =
         match l with
         | E.Atom a -> E.Atom (norm_atom a)
         | E.NegAtom a -> E.NegAtom (norm_atom a)
+*)
 
-      and norm_set (s:E.set) : E.set =
+      let rec norm_set (s:E.set) : E.set =
         match s with
         | E.VarSet v            -> E.VarSet v
         | E.EmptySet            -> E.EmptySet
@@ -364,16 +307,29 @@ module Make (SLK : TSLKExpression.S) =
         | E.BoolArrayRd _         -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
         | E.PC (i,topt,pr)        -> let norm_topt =
                                        match topt with
-                                       | E.Shared -> E.Shared
-                                       | E.Local t -> E.Local (norm_tid t) in
+                                       | E.V.Shared -> E.V.Shared
+                                          (* CHANGES: This was before *)
+(*                                       | E.V.Local t -> E.V.Local (norm_tid t) in*)
+                                       | E.V.Local t -> E.V.Local t in
                                      E.PC (i, norm_topt, pr)
         | E.PCUpdate (i,t)        -> E.PCUpdate (i, norm_tid t)
         | E.PCRange (i,j,topt,pr) -> let norm_topt =
                                        match topt with
-                                       | E.Shared -> E.Shared
-                                       | E.Local t -> E.Local (norm_tid t) in
-                                     E.PCRange (i, j, norm_topt, pr)
+                                       | E.V.Shared -> E.V.Shared
+                                        (* CHANGES: Before *)
+(*                                       | E.V.Local t -> E.V.Local (norm_tid t) in*)
+                                       | E.V.Local t -> E.V.Local t in
+                                     E.PCRange (i, j, norm_topt, pr) in
+
+      let norm_fs = Formula.make_trans
+                      Formula.GenericLiteralTrans
+                      (fun info a -> norm_atom a) in
+
+      let norm_formula (phi:E.formula) : E.formula =
+        Formula.formula_trans norm_fs () phi
     in
+      norm_formula phi
+(*
       match phi with
       | E.Literal l                     -> E.Literal (norm_literal l)
       | E.True                          -> E.True
@@ -389,6 +345,7 @@ module Make (SLK : TSLKExpression.S) =
                                                       norm_formula info psi2)
       | E.Iff (psi1,psi2)               -> E.Iff (norm_formula info psi1,
                                                   norm_formula info psi2)
+*)
 
 
 
@@ -405,11 +362,11 @@ module Make (SLK : TSLKExpression.S) =
         Hashtbl.iter (fun t v ->
           begin
             Hashtbl.add norm_info.processed_term_map t v;
-            let l = E.Literal (E.Atom (E.Eq (make_compatible_term_from_var t v, t))) in
+            let l = E.eq_term (make_compatible_term_from_var t v) t in
             let new_l = norm_formula norm_info l in
             let lit_to_add = match new_l with
-                             | E.Literal(E.Atom(E.Eq(t1,t2)))
-                             | E.Literal(E.NegAtom(E.InEq(t1,t2))) ->
+                             | F.Literal(F.Atom(E.Eq(t1,t2)))
+                             | F.Literal(F.NegAtom(E.InEq(t1,t2))) ->
                                   if t1 <> t2 then new_l else l
                              | _ -> new_l in
             lit_list := lit_to_add :: !lit_list
@@ -421,8 +378,8 @@ module Make (SLK : TSLKExpression.S) =
         phi'
       else
         match phi' with
-        | E.Implies (ante, conseq) -> E.Implies(E.And(E.conj_list !lit_list, ante),conseq)
-        | _ -> E.And (E.conj_list !lit_list, phi')
+        | F.Implies (ante, conseq) -> F.Implies(F.And(F.conj_list !lit_list, ante),conseq)
+        | _ -> F.And (F.conj_list !lit_list, phi')
 
 
 
@@ -433,21 +390,20 @@ module Make (SLK : TSLKExpression.S) =
     let addrarr_tbl : (E.addrarr, SLK.addr list) Hashtbl.t = Hashtbl.create 10
 
 
-    let rec expand_array_to_var (v:E.variable)
+    let rec expand_array_to_var (v:E.V.t)
                             (s:SLK.sort)
-                            (n:int) : SLK.variable =
-      let id_str = E.var_id v in
-      let pr_str = if E.var_is_primed v then "_prime" else "" in
-      let th_str = match E.var_parameter v with
-                   | E.Shared -> ""
-                   | E.Local tid -> "_" ^ (E.tid_to_str tid) in
-      let p_str = match E.var_scope v with
-                  | E.GlobalScope -> ""
-                  | E.Scope p -> p ^ "_" in
+                            (n:int) : SLK.V.t =
+      let id_str = E.V.id v in
+      let pr_str = if E.V.is_primed v then "_prime" else "" in
+      let th_str = match E.V.parameter v with
+                   | E.V.Shared -> ""
+                   | E.V.Local t -> "_" ^ (E.V.to_str t) in
+      let p_str = match E.V.scope v with
+                  | E.V.GlobalScope -> ""
+                  | E.V.Scope p -> p ^ "_" in
       let new_id = p_str ^ id_str ^ th_str ^ pr_str ^ "__" ^ (string_of_int n) in
-      let v_fresh = SLK.build_var new_id s false SLK.Shared SLK.GlobalScope in
-      verb "FRESH VAR: %s\n" new_id;
-      SLK.variable_mark_fresh v_fresh true;
+      let v_fresh = SLK.build_var new_id s false SLK.V.Shared SLK.V.GlobalScope ~fresh:true in
+      verbl _LONG_INFO "FRESH VAR: %s\n" new_id;
       v_fresh
 
 
@@ -461,7 +417,7 @@ module Make (SLK : TSLKExpression.S) =
                 | _ -> SLK.Null in
         xs := v::(!xs)
       done;
-      verb "**** TSL Solver, generated address list for %s: [%s]\n"
+      verbl _LONG_INFO "**** TSL Solver, generated address list for %s: [%s]\n"
               (E.addrarr_to_str aa)
               (String.concat ";" (List.map SLK.addr_to_str !xs));
       !xs
@@ -497,9 +453,9 @@ module Make (SLK : TSLKExpression.S) =
       | E.Unknown   -> SLK.Unknown
 
 
-    and build_term_var (v:E.variable) : SLK.term =
+    and build_term_var (v:E.V.t) : SLK.term =
       let tslk_v = var_to_tslk_var v in
-      match (E.var_sort v) with
+      match (E.V.sort v) with
         E.Set       -> SLK.SetT       (SLK.VarSet        tslk_v)
       | E.Elem      -> SLK.ElemT      (SLK.VarElem       tslk_v)
       | E.Tid      -> SLK.TidT      (SLK.VarTh         tslk_v)
@@ -513,24 +469,24 @@ module Make (SLK : TSLKExpression.S) =
 
 
 
-    and var_to_tslk_var (v:E.variable) : SLK.variable =
-      SLK.build_var (E.var_id v)
-                    (sort_to_tslk_sort (E.var_sort v))
-                    (E.var_is_primed v)
-                    (shared_to_tslk_shared (E.var_parameter v))
-                    (scope_to_tslk_scope (E.var_scope v))
+    and var_to_tslk_var (v:E.V.t) : SLK.V.t =
+      SLK.build_var (E.V.id v)
+                    (sort_to_tslk_sort (E.V.sort v))
+                    (E.V.is_primed v)
+                    (shared_to_tslk_shared (E.V.parameter v))
+                    (scope_to_tslk_scope (E.V.scope v))
 
 
-    and shared_to_tslk_shared (th:E.shared_or_local) : SLK.shared_or_local =
+    and shared_to_tslk_shared (th:E.V.shared_or_local) : SLK.V.shared_or_local =
       match th with
-      | E.Shared -> SLK.Shared
-      | E.Local t -> SLK.Local (tid_to_tslk_tid t)
+      | E.V.Shared -> SLK.V.Shared
+      | E.V.Local t -> SLK.V.Local (var_to_tslk_var t)
 
 
-    and scope_to_tslk_scope (p:E.procedure_name) : SLK.procedure_name =
+    and scope_to_tslk_scope (p:E.V.procedure_name) : SLK.V.procedure_name =
       match p with
-      | E.GlobalScope -> SLK.GlobalScope
-      | E.Scope proc -> SLK.Scope proc
+      | E.V.GlobalScope -> SLK.V.GlobalScope
+      | E.V.Scope proc -> SLK.V.Scope proc
 
 
     and tid_to_tslk_tid (th:E.tid) : SLK.tid =
@@ -589,7 +545,7 @@ module Make (SLK : TSLKExpression.S) =
                                                     addr_to_tslk_addr a,
                                                     int_to_tslk_level l)
       | E.SetArrayRd (E.VarArray v,t) ->
-          SLK.VarSet (var_to_tslk_var (E.var_set_param (E.Local t) v))
+          SLK.VarSet (var_to_tslk_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
       | E.SetArrayRd _        -> raise(UnsupportedTSLKExpr(E.set_to_str s))
 
 
@@ -598,7 +554,7 @@ module Make (SLK : TSLKExpression.S) =
         E.VarElem v              -> SLK.VarElem (var_to_tslk_var v)
       | E.CellData c             -> SLK.CellData (cell_to_tslk_cell c)
       | E.ElemArrayRd (E.VarArray v,t) ->
-          SLK.VarElem (var_to_tslk_var (E.var_set_param (E.Local t) v))
+          SLK.VarElem (var_to_tslk_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
       | E.ElemArrayRd _          -> raise(UnsupportedTSLKExpr(E.elem_to_str e))
       | E.HavocListElem          -> raise(UnsupportedTSLKExpr(E.elem_to_str e))
       | E.HavocSkiplistElem      -> SLK.HavocSkiplistElem
@@ -619,7 +575,7 @@ module Make (SLK : TSLKExpression.S) =
                                                           path_to_tslk_path p,
                                                           int_to_tslk_level l)
       | E.AddrArrayRd (E.VarArray v,t) ->
-          SLK.VarAddr (var_to_tslk_var (E.var_set_param (E.Local t) v))
+          SLK.VarAddr (var_to_tslk_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
       | E.AddrArrayRd _          -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
       | E.AddrArrRd (aa,i)       -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
 
@@ -657,7 +613,7 @@ module Make (SLK : TSLKExpression.S) =
                                                        int_to_tslk_level l)
       | E.CellAt (m,a)         -> SLK.CellAt (mem_to_tslk_mem m, addr_to_tslk_addr a)
       | E.CellArrayRd (E.VarArray v,t) ->
-          SLK.VarCell (var_to_tslk_var (E.var_set_param (E.Local t) v))
+          SLK.VarCell (var_to_tslk_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
       | E.CellArrayRd _        -> raise(UnsupportedTSLKExpr(E.cell_to_str c))
       | E.UpdCellAddr (c,i,a)  -> raise(UnsupportedTSLKExpr(E.cell_to_str c))
 
@@ -672,7 +628,7 @@ module Make (SLK : TSLKExpression.S) =
       | E.IntrTh (s1,s2)    -> SLK.IntrTh (to_setth s1, to_setth s2)
       | E.SetdiffTh (s1,s2) -> SLK.SetdiffTh (to_setth s1, to_setth s2)
       | E.SetThArrayRd (E.VarArray v,t) ->
-          SLK.VarSetTh (var_to_tslk_var (E.var_set_param (E.Local t) v))
+          SLK.VarSetTh (var_to_tslk_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
       | E.SetThArrayRd _    -> raise(UnsupportedTSLKExpr(E.setth_to_str st))
 
 
@@ -686,7 +642,7 @@ module Make (SLK : TSLKExpression.S) =
       | E.IntrElem (s1,s2)    -> SLK.IntrElem (to_setelem s1, to_setelem s2)
       | E.SetdiffElem (s1,s2) -> SLK.SetdiffElem (to_setelem s1, to_setelem s2)
       | E.SetElemArrayRd (E.VarArray v,t) ->
-          SLK.VarSetElem (var_to_tslk_var (E.var_set_param (E.Local t) v))
+          SLK.VarSetElem (var_to_tslk_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
       | E.SetToElems (s,m)    -> SLK.SetToElems (set_to_tslk_set s,
                                                     mem_to_tslk_mem m)
       | E.SetElemArrayRd _    -> raise(UnsupportedTSLKExpr(E.setelem_to_str st))
@@ -703,7 +659,7 @@ module Make (SLK : TSLKExpression.S) =
                                                       addr_to_tslk_addr a2,
                                                       int_to_tslk_level l)
       | E.PathArrayRd (E.VarArray v,t) ->
-          SLK.VarPath (var_to_tslk_var (E.var_set_param (E.Local t) v))
+          SLK.VarPath (var_to_tslk_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
       | E.PathArrayRd _         -> raise(UnsupportedTSLKExpr(E.path_to_str p))
 
 
@@ -715,7 +671,7 @@ module Make (SLK : TSLKExpression.S) =
                                            cell_to_tslk_cell c)
       (* Missing the case for "emp" *)
       | E.MemArrayRd (E.VarArray v,t) ->
-          SLK.VarMem (var_to_tslk_var (E.var_set_param (E.Local t) v))
+          SLK.VarMem (var_to_tslk_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
       | E.MemArrayRd _        -> raise(UnsupportedTSLKExpr(E.mem_to_str m))
 
 
@@ -802,8 +758,8 @@ module Make (SLK : TSLKExpression.S) =
 
     and literal_to_tslk_literal (l:E.literal) : SLK.literal =
       match l with
-        E.Atom a    -> SLK.Atom (atom_to_tslk_atom a)
-      | E.NegAtom a -> SLK.NegAtom (atom_to_tslk_atom a)
+        F.Atom a    -> F.Atom (atom_to_tslk_atom a)
+      | F.NegAtom a -> F.NegAtom (atom_to_tslk_atom a)
 
 
     and formula_to_tslk_formula_aux (f:E.formula) : SLK.formula =
@@ -811,10 +767,10 @@ module Make (SLK : TSLKExpression.S) =
       let to_formula = formula_to_tslk_formula_aux in
       match f with
       (* Translation of literals of the form B = A {l <- a} *)
-      | E.Literal(E.Atom(E.Eq(E.AddrArrayT(E.VarAddrArray _ as bb),E.AddrArrayT(E.AddrArrayUp(aa,l,a)))))
-      | E.Literal(E.Atom(E.Eq(E.AddrArrayT(E.AddrArrayUp(aa,l,a)),E.AddrArrayT(E.VarAddrArray _ as bb))))
-      | E.Literal(E.NegAtom(E.InEq(E.AddrArrayT(E.VarAddrArray _ as bb),E.AddrArrayT(E.AddrArrayUp(aa,l,a)))))
-      | E.Literal(E.NegAtom(E.InEq(E.AddrArrayT(E.AddrArrayUp(aa,l,a)),E.AddrArrayT(E.VarAddrArray _ as bb)))) ->
+      | F.Literal(F.Atom(E.Eq(E.AddrArrayT(E.VarAddrArray _ as bb),E.AddrArrayT(E.AddrArrayUp(aa,l,a)))))
+      | F.Literal(F.Atom(E.Eq(E.AddrArrayT(E.AddrArrayUp(aa,l,a)),E.AddrArrayT(E.VarAddrArray _ as bb))))
+      | F.Literal(F.NegAtom(E.InEq(E.AddrArrayT(E.VarAddrArray _ as bb),E.AddrArrayT(E.AddrArrayUp(aa,l,a)))))
+      | F.Literal(F.NegAtom(E.InEq(E.AddrArrayT(E.AddrArrayUp(aa,l,a)),E.AddrArrayT(E.VarAddrArray _ as bb)))) ->
           begin
             let a' = addr_to_tslk_addr a in
             let l' = int_to_tslk_level l in
@@ -823,49 +779,49 @@ module Make (SLK : TSLKExpression.S) =
             let xs = ref [] in
             for n = 0 to (SLK.k - 1) do
               let n' = SLK.LevelVal n in
-              xs := (SLK.Implies
+              xs := (F.Implies
                       (SLK.eq_level l' n',
                        SLK.eq_addr a' (List.nth bb' n))) ::
-                    (SLK.Implies
+                    (F.Implies
                       (SLK.ineq_level l' n',
                        SLK.eq_addr (List.nth aa' n) (List.nth bb' n))) ::
                     (!xs)
             done;
             SLK.addr_mark_smp_interesting a' true;
-            SLK.conj_list (!xs)
+            F.conj_list (!xs)
           end
       (* Translation of literals of the form a = A[i] *)
-      | E.Literal(E.Atom(E.Eq(E.AddrT a,E.AddrT(E.AddrArrRd(aa,i)))))
-      | E.Literal(E.Atom(E.Eq(E.AddrT(E.AddrArrRd(aa,i)),E.AddrT a)))
-      | E.Literal(E.NegAtom(E.InEq(E.AddrT a,E.AddrT(E.AddrArrRd(aa,i)))))
-      | E.Literal(E.NegAtom(E.InEq(E.AddrT(E.AddrArrRd(aa,i)),E.AddrT a))) ->
+      | F.Literal(F.Atom(E.Eq(E.AddrT a,E.AddrT(E.AddrArrRd(aa,i)))))
+      | F.Literal(F.Atom(E.Eq(E.AddrT(E.AddrArrRd(aa,i)),E.AddrT a)))
+      | F.Literal(F.NegAtom(E.InEq(E.AddrT a,E.AddrT(E.AddrArrRd(aa,i)))))
+      | F.Literal(F.NegAtom(E.InEq(E.AddrT(E.AddrArrRd(aa,i)),E.AddrT a))) ->
           let a' = addr_to_tslk_addr a in
           let aa' = get_addr_list aa in
           let i' = int_to_tslk_level i in
           let xs = ref [] in
           for n = 0 to (SLK.k - 1) do
             let n' = SLK.LevelVal n in
-            xs := (SLK.Implies
+            xs := (F.Implies
                     (SLK.eq_level i' n',
                      SLK.eq_addr a' (List.nth aa' n))) :: (!xs)
           done;
           SLK.addr_mark_smp_interesting a' true;
-          SLK.conj_list (!xs)
+          F.conj_list (!xs)
       (* Translation of literals of the form a = c.nextat[i] *)
-      | E.Literal(E.Atom(E.Eq(E.AddrT a,E.AddrT(E.NextAt(c,i)))))
-      | E.Literal(E.Atom(E.Eq(E.AddrT(E.NextAt(c,i)),E.AddrT a)))
-      | E.Literal(E.NegAtom(E.InEq(E.AddrT a,E.AddrT(E.NextAt(c,i)))))
-      | E.Literal(E.NegAtom(E.InEq(E.AddrT(E.NextAt(c,i)),E.AddrT a))) ->
+      | F.Literal(F.Atom(E.Eq(E.AddrT a,E.AddrT(E.NextAt(c,i)))))
+      | F.Literal(F.Atom(E.Eq(E.AddrT(E.NextAt(c,i)),E.AddrT a)))
+      | F.Literal(F.NegAtom(E.InEq(E.AddrT a,E.AddrT(E.NextAt(c,i)))))
+      | F.Literal(F.NegAtom(E.InEq(E.AddrT(E.NextAt(c,i)),E.AddrT a))) ->
           let a' = addr_to_tslk_addr a in
           let c' = cell_to_tslk_cell c in
           let i' = int_to_tslk_level i in
           SLK.addr_mark_smp_interesting a' true;
           SLK.eq_addr a' (SLK.NextAt(c',i'))
       (* Translation of literals of the form c' = updCellAddr(c, i, a) *)
-      | E.Literal(E.Atom(E.Eq(E.CellT d,E.CellT(E.UpdCellAddr(c,i,a)))))
-      | E.Literal(E.Atom(E.Eq(E.CellT(E.UpdCellAddr(c,i,a)),E.CellT d)))
-      | E.Literal(E.NegAtom(E.InEq(E.CellT d,E.CellT(E.UpdCellAddr(c,i,a)))))
-      | E.Literal(E.NegAtom(E.InEq(E.CellT(E.UpdCellAddr(c,i,a)),E.CellT d))) ->
+      | F.Literal(F.Atom(E.Eq(E.CellT d,E.CellT(E.UpdCellAddr(c,i,a)))))
+      | F.Literal(F.Atom(E.Eq(E.CellT(E.UpdCellAddr(c,i,a)),E.CellT d)))
+      | F.Literal(F.NegAtom(E.InEq(E.CellT d,E.CellT(E.UpdCellAddr(c,i,a)))))
+      | F.Literal(F.NegAtom(E.InEq(E.CellT(E.UpdCellAddr(c,i,a)),E.CellT d))) ->
           begin
             let d' = cell_to_tslk_cell d in
             let c' = cell_to_tslk_cell c in
@@ -874,25 +830,25 @@ module Make (SLK : TSLKExpression.S) =
             let xs = ref [SLK.eq_elem (SLK.CellData d') (SLK.CellData c')] in
             for n = 0 to (SLK.k-1) do
               let n' = SLK.LevelVal n in
-              xs := (SLK.Implies
+              xs := (F.Implies
                       (SLK.eq_level i' n',
                        SLK.eq_addr (SLK.NextAt(d',n')) a')) ::
-                    (SLK.Implies
+                    (F.Implies
                       (SLK.ineq_level i' n',
                        SLK.eq_addr (SLK.NextAt(d',n')) (SLK.NextAt(c',n')))) ::
                     (SLK.eq_tid (SLK.CellLockIdAt(d',n')) (SLK.CellLockIdAt(c',n'))) ::
                     (!xs)
             done;
-            SLK.conj_list (!xs)
+            F.conj_list (!xs)
           end
-      | E.Literal l       -> SLK.Literal (literal_to_tslk_literal l)
-      | E.True            -> SLK.True
-      | E.False           -> SLK.False
-      | E.And (f1,f2)     -> SLK.And (to_formula f1, to_formula f2)
-      | E.Or (f1,f2)      -> SLK.Or (to_formula f1, to_formula f2)
-      | E.Not f1          -> SLK.Not (to_formula f1)
-      | E.Implies (f1,f2) -> SLK.Implies (to_formula f1, to_formula f2)
-      | E.Iff (f1,f2)     -> SLK.Iff (to_formula f1, to_formula f2)
+      | F.Literal l       -> F.Literal (literal_to_tslk_literal l)
+      | F.True            -> F.True
+      | F.False           -> F.False
+      | F.And (f1,f2)     -> F.And (to_formula f1, to_formula f2)
+      | F.Or (f1,f2)      -> F.Or (to_formula f1, to_formula f2)
+      | F.Not f1          -> F.Not (to_formula f1)
+      | F.Implies (f1,f2) -> F.Implies (to_formula f1, to_formula f2)
+      | F.Iff (f1,f2)     -> F.Iff (to_formula f1, to_formula f2)
 
 
     and formula_to_tslk_formula (phi:E.formula) : SLK.formula =
@@ -906,7 +862,7 @@ module Make (SLK : TSLKExpression.S) =
       match s with
       | SLK.Set     -> E.Set
       | SLK.Elem    -> E.Elem
-      | SLK.Tid    -> E.Tid
+      | SLK.Tid     -> E.Tid
       | SLK.Addr    -> E.Addr
       | SLK.Cell    -> E.Cell
       | SLK.SetTh   -> E.SetTh
@@ -919,24 +875,24 @@ module Make (SLK : TSLKExpression.S) =
 
 
 
-    let rec var_to_expr_var (v:SLK.variable) : E.variable =
-      E.build_var (SLK.var_id v)
-                  (sort_to_expr_sort (SLK.var_sort v))
-                  (SLK.var_is_primed v)
-                  (shared_to_expr_shared (SLK.var_parameter v))
-                  (scope_to_expr_scope (SLK.var_scope v))
-                  (E.RealVar)
+    let rec var_to_expr_var (v:SLK.V.t) : E.V.t =
+      E.build_var (SLK.V.id v)
+                  (sort_to_expr_sort (SLK.V.sort v))
+                  (SLK.V.is_primed v)
+                  (shared_to_expr_shared (SLK.V.parameter v))
+                  (scope_to_expr_scope (SLK.V.scope v))
+                  ~nature:E.RealVar
 
-    and shared_to_expr_shared (th:SLK.shared_or_local) : E.shared_or_local =
+    and shared_to_expr_shared (th:SLK.V.shared_or_local) : E.V.shared_or_local =
       match th with
-      | SLK.Shared  -> E.Shared
-      | SLK.Local t -> E.Local (tid_to_expr_tid t)
+      | SLK.V.Shared  -> E.V.Shared
+      | SLK.V.Local t -> E.V.Local (var_to_expr_var t)
 
 
-    and scope_to_expr_scope (p:SLK.procedure_name) : E.procedure_name =
+    and scope_to_expr_scope (p:SLK.V.procedure_name) : E.V.procedure_name =
       match p with
-      | SLK.GlobalScope -> E.GlobalScope
-      | SLK.Scope proc  -> E.Scope proc
+      | SLK.V.GlobalScope -> E.V.GlobalScope
+      | SLK.V.Scope proc  -> E.V.Scope proc
                       
 
     and tid_to_expr_tid (th:SLK.tid) : E.tid =
@@ -1114,25 +1070,26 @@ module Make (SLK : TSLKExpression.S) =
       | SLK.PCRange (pc1,pc2,t,pr) -> E.PCRange (pc1, pc2, shared_to_expr_shared t, pr)
 
 
+    and formula_to_expr_formula (phi:SLK.formula) : E.formula =
+      Formula.formula_conv atom_to_expr_atom phi
+(*
     and literal_to_expr_literal (l:SLK.literal) : E.literal =
       match l with
-        SLK.Atom a    -> E.Atom (atom_to_expr_atom a)
-      | SLK.NegAtom a -> E.NegAtom (atom_to_expr_atom a)
+        F.Atom a    -> F.Atom (atom_to_expr_atom a)
+      | F.NegAtom a -> F.NegAtom (atom_to_expr_atom a)
 
 
     and formula_to_expr_formula (f:SLK.formula) : E.formula =
       let to_formula = formula_to_expr_formula in
       match f with
-        SLK.Literal l       -> E.Literal (literal_to_expr_literal l)
-      | SLK.True            -> E.True
-      | SLK.False           -> E.False
-      | SLK.And (f1,f2)     -> E.And (to_formula f1, to_formula f2)
-      | SLK.Or (f1,f2)      -> E.Or (to_formula f1, to_formula f2)
-      | SLK.Not f1          -> E.Not (to_formula f1)
-      | SLK.Implies (f1,f2) -> E.Implies (to_formula f1, to_formula f2)
-      | SLK.Iff (f1,f2)     -> E.Iff (to_formula f1, to_formula f2)
-
-
-
+        F.Literal l       -> F.Literal (literal_to_expr_literal l)
+      | F.True            -> F.True
+      | F.False           -> F.False
+      | F.And (f1,f2)     -> F.And (to_formula f1, to_formula f2)
+      | F.Or (f1,f2)      -> F.Or (to_formula f1, to_formula f2)
+      | F.Not f1          -> F.Not (to_formula f1)
+      | F.Implies (f1,f2) -> F.Implies (to_formula f1, to_formula f2)
+      | F.Iff (f1,f2)     -> F.Iff (to_formula f1, to_formula f2)
+*)
 
   end

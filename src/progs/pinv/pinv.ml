@@ -6,9 +6,9 @@ open Global
 
 module Expr    = Expression
 module Sys     = System
-module Eparser = Exprparser
-module Elexer  = Exprlexer
-module Symtbl  = Exprsymtable
+module Eparser = ExprParser
+module Elexer  = ExprLexer
+module Symtbl  = ExprSymTable
 
 (****************)
 (* main         *)
@@ -17,7 +17,7 @@ module Symtbl  = Exprsymtable
 let _ =
   try let _ = PinvArgs.parse_args () in
     let ch = PinvArgs.open_input () in
-    let (sys,undefTids) = Parser.parse ch (Stmparser.system Stmlexer.norm) in
+    let (sys,undefTids) = Parser.parse ch (StmParser.system StmLexer.norm) in
     let _ = PinvArgs.close_input () in
 
     if !PinvArgs.invCandidate = "" then begin

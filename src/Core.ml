@@ -24,6 +24,7 @@ module GenOptions :
     val forget_primed_mem : bool
     val default_cutoff : Smp.cutoff_strategy_t
     val use_quantifiers : bool
+    val output_vcs : bool
 
   end
 
@@ -31,7 +32,7 @@ module GenOptions :
 
   struct
 
-    let sys               = System.empty_system
+    let sys               = System.empty_system ()
     let focus             = []
     let ignore            = []
     let abs               = System.NoAbstraction
@@ -46,6 +47,7 @@ module GenOptions :
     let forget_primed_mem = true
     let default_cutoff    = Tactics.default_cutoff_algorithm
     let use_quantifiers   = false
+    let output_vcs        = false
 
   end
 
@@ -71,8 +73,8 @@ module type S =
 module Make (Opt:module type of GenOptions) : S =
   struct
 
-    module Eparser = Exprparser
-    module Elexer = Exprlexer
+    module Eparser = ExprParser
+    module Elexer = ExprLexer
 
     exception No_invariant_folder
 
@@ -135,7 +137,7 @@ module Make (Opt:module type of GenOptions) : S =
         with Not_found -> Hashtbl.add supp_tbl master_id [read_tag tag]
       ) ts;
       Hashtbl.fold (fun _ phi_list xs ->
-        (E.conj_list phi_list) :: xs
+        (Formula.conj_list phi_list) :: xs
       ) supp_tbl []
 
 
@@ -159,7 +161,7 @@ module Make (Opt:module type of GenOptions) : S =
       List.iter (fun i ->
         let (phiVars, tag, phi_decls) = Parser.open_and_parse i
                                           (Eparser.invariant Elexer.norm) in
-        let phi = E.conj_list (List.map snd phi_decls) in
+        let phi = Formula.conj_list (List.map snd phi_decls) in
         List.iter (fun (subtag,subphi) -> decl_tag subtag subphi) phi_decls;
         decl_tag tag phi
       ) inv_files
@@ -189,8 +191,19 @@ module Make (Opt:module type of GenOptions) : S =
                                        | DP.Num -> Bridge.Num
                                        | _      -> Bridge.Heap
 
+    let _ = Tactics.set_fixed_voc
+              (List.fold_left (fun set v ->
+                 E.ThreadSet.add (E.VarTh v) set
+               ) E.ThreadSet.empty (System.get_vars_of_sort Opt.sys E.Tid))
+(*
+              (List.map (fun v -> E.VarTh v)
+                (System.get_vars_of_sort Opt.sys E.Tid))
+*)
+
+(*
     let _ = Tactics.set_fixed_voc (List.map (fun v -> E.VarTh v)
                 (System.get_vars_of_sort Opt.sys E.Tid))
+*)
 
 
     (*****************************)
@@ -258,8 +271,8 @@ module Make (Opt:module type of GenOptions) : S =
       DP.add_dp_calls calls_counter Opt.dp n
 
 
-    let filter_me_tid (ts:E.tid list) : E.tid list =
-      List.filter (fun t -> t <> System.me_tid_th) ts
+    let filter_me_tid (ts:E.ThreadSet.t) : E.ThreadSet.t =
+      E.ThreadSet.remove System.me_tid_th ts
 
 
     (**********************)
@@ -273,14 +286,17 @@ module Make (Opt:module type of GenOptions) : S =
                 (premise:Premise.t)
                 (trans_tid:E.tid)
                   : Tactics.vc_info list =
-      let voc = E.voc (E.conj_list (inv::supp)) in
-      let rho = System.gen_rho Opt.sys (System.SOpenArray voc)
+      let voc = E.voc (Formula.conj_list (inv::supp)) in
+      let rho = System.gen_rho Opt.sys (System.SOpenArray (E.ThreadSet.elements voc))
                     System.Concurrent prog_type line Opt.abs
                     Opt.hide_pres trans_tid in
       let tid_diff_conj = match premise with
-                          | Premise.SelfConseq -> E.True
+                          | Premise.SelfConseq -> Formula.True
                           | Premise.OthersConseq ->
-                              E.conj_list (List.map (E.ineq_tid trans_tid) voc) in
+                              Formula.conj_list (E.ThreadSet.fold (fun t xs ->
+                                                  (E.ineq_tid trans_tid t) :: xs
+                                                ) voc []) in
+(*                              Formula.conj_list (List.map (E.ineq_tid trans_tid) voc) in *)
       List.fold_left (fun rs phi ->
         Log.print "Create with support" (String.concat "\n" (List.map E.formula_to_str supp));
         let new_vc = Tactics.create_vc_info supp tid_diff_conj
@@ -294,14 +310,16 @@ module Make (Opt:module type of GenOptions) : S =
     let premise_init (inv:E.formula) : Tactics.vc_info =
 
       (* Initial condition *)
-      let theta = System.gen_theta (System.SOpenArray (E.voc inv)) Opt.sys Opt.abs in
-      let voc = E.voc (E.conj_list [theta;inv]) in
-      let init_pos = match voc with
-                     | [] -> [E.Literal(E.Atom(E.PC (1,E.Shared,true)))]
-                     | _  -> List.map (fun t ->
-                               E.Literal(E.Atom(E.PC (1,E.Local t,true)))
-                            ) voc in
-        Tactics.create_vc_info [] E.True (E.conj_list (theta::init_pos)) inv voc E.NoTid 0
+      let theta = System.gen_theta (System.SOpenArray (E.ThreadSet.elements (E.voc inv))) Opt.sys Opt.abs in
+      let voc = E.voc (Formula.conj_list [theta;inv]) in
+      let init_pos = if E.ThreadSet.is_empty voc then
+                       [E.pc_form 1 E.V.Shared true]
+                     else
+                       E.V.VarSet.fold (fun v xs ->
+                         E.pc_form 1 (E.V.Local v) true :: xs
+                       ) (E.voc_to_vars voc) [] in
+        Tactics.create_vc_info [] Formula.True
+                  (Formula.conj_list (theta::init_pos)) inv voc E.NoTid 0
 
 
     let spinv_transitions (supp:E.formula list)
@@ -316,11 +334,11 @@ module Make (Opt:module type of GenOptions) : S =
       List.fold_left (fun vcs line ->
         let self_conseq_supp  = load_support line Premise.SelfConseq in
         let other_conseq_supp = load_support line Premise.OthersConseq in
-        let fresh_k = E.gen_fresh_tid (E.voc (E.conj_list (inv::supp@other_conseq_supp))) in
+        let fresh_k = E.gen_fresh_tid (E.voc (Formula.conj_list (inv::supp@other_conseq_supp))) in
 
-        let self_conseq_vcs = List.fold_left (fun vcs i ->
+        let self_conseq_vcs = E.ThreadSet.fold (fun i vcs ->
                                 (gen_vcs (inv::self_conseq_supp) inv line Premise.SelfConseq i) @ vcs
-                              ) [] (filter_me_tid (E.voc inv)) in
+                              ) (filter_me_tid (E.voc inv)) [] in
         let other_conseq_vcs = gen_vcs (inv::other_conseq_supp) inv line Premise.OthersConseq fresh_k
         in
 
@@ -367,16 +385,19 @@ module Make (Opt:module type of GenOptions) : S =
                     (premise:Premise.t)
                     (trans_tid:E.tid)
                       : Tactics.vc_info list =
-      let voc = E.voc (E.conj_list (inv::supp)) in
-      let rho = System.gen_rho Opt.sys (System.SOpenArray voc)
+      let trans_var = E.voc_to_var trans_tid in
+      let voc = E.voc (Formula.conj_list (inv::supp)) in
+      let rho = System.gen_rho Opt.sys (System.SOpenArray (E.ThreadSet.elements voc))
                     System.Sequential prog_type line Opt.abs
                     Opt.hide_pres trans_tid in
-      let supp = List.map (E.param (E.Local trans_tid)) supp in
-      let inv = match E.voc inv with
-                | [] -> E.param (E.Local trans_tid) inv
-                | _  -> inv in
+      let supp = List.map (E.param (E.V.Local trans_var)) supp in
+      let inv = if E.ThreadSet.is_empty (E.voc inv) then
+                  E.param (E.V.Local trans_var) inv
+                else
+                  inv in
       List.fold_left (fun rs phi ->
-        let new_vc = Tactics.create_vc_info supp E.True phi inv voc trans_tid line in
+        let new_vc = Tactics.create_vc_info supp Formula.True
+                                            phi inv voc trans_tid line in
           new_vc :: rs
       ) [] rho
 
@@ -386,10 +407,14 @@ module Make (Opt:module type of GenOptions) : S =
                               (inv:E.formula)
                               (cases:IGraph.case_tbl_t)
                                 : Tactics.vc_info list =
-      let trans_tid = match E.voc inv with
-                      | [] -> E.gen_fresh_tid []
-                      | i::[] -> i
-                      | i::_ -> assert false in (* More than one thread parametrizing the invariant *)
+      let inv_voc = E.voc inv in
+      let trans_tid = if E.ThreadSet.is_empty inv_voc then
+                        E.gen_fresh_tid E.ThreadSet.empty
+                      else
+                        try
+                          E.ThreadSet.choose inv_voc
+                        with Not_found -> assert false in
+                        (* More than one thread parameterizing the invariant *)
       List.fold_left (fun vcs line ->
         let specific_supp = match IGraph.lookup_case cases line Premise.SelfConseq with
                             | None -> supp
@@ -455,6 +480,8 @@ module Make (Opt:module type of GenOptions) : S =
       Tslk.compute_model(Opt.compute_model);
       TslSolver.compute_model(Opt.compute_model);
 
+      print_endline "Analyzing VCs...";
+
       let case_timer = new LeapLib.timer in
       let phi_timer = new LeapLib.timer in
       (* Clear the internal data *)
@@ -466,17 +493,22 @@ module Make (Opt:module type of GenOptions) : S =
       let vc_counter = ref 1 in
       let oblig_counter = ref 0 in
 
+      let show_progress = not (LeapVerbose.is_verbose_enabled()) in
+      Progress.init (List.length to_analyze);
+
       let result =
         List.map (fun case ->
           let cutoff = case.proof_info.cutoff in
           let this_calls_counter = DP.new_call_tbl() in
-          Report.report_vc_header !vc_counter case.vc (List.length case.obligations);
+          if LeapVerbose.is_verbose_level_enabled(LeapVerbose._SHORT_INFO) then
+            Report.report_vc_header !vc_counter case.vc (List.length case.obligations);
           case_timer#start;
           let obligation_counter = ref 1 in
           let res_list =
                 List.map (fun phi_obligation ->
                   (* TODO: Choose the right to_plain function *)
-                  Report.report_obligation_header !obligation_counter phi_obligation;
+                  if LeapVerbose.is_verbose_level_enabled(LeapVerbose._SHORT_INFO) then
+                    Report.report_obligation_header !obligation_counter phi_obligation;
                   let fol_phi = phi_obligation in
                   phi_timer#start;
                   let status =
@@ -494,15 +526,14 @@ module Make (Opt:module type of GenOptions) : S =
                                        Tll.is_valid_plus_info prog_lines cutoff tll_phi
                         | DP.Tsl    -> let tsl_phi = TSLInterface.formula_to_tsl_formula fol_phi in
                                        let (res,tsl_calls,tslk_calls) =
-                                          TslSolver.is_valid_plus_info
-                                            prog_lines cutoff                                
+                                          TslSolver.is_valid_plus_info prog_lines cutoff
                                             Opt.use_quantifiers tsl_phi in
                                        DP.combine_call_table tslk_calls this_calls_counter;
                                        (res, tsl_calls)
                         | DP.Tslk k -> let module TSLKIntf = TSLKInterface.Make(Tslk.TslkExp) in
                                        let tslk_phi = TSLKIntf.formula_to_tslk_formula fol_phi in
                                        Tslk.is_valid_plus_info prog_lines cutoff
-                                          Opt.use_quantifiers tslk_phi
+                                            Opt.use_quantifiers tslk_phi
                       in
                       let _ = match Opt.dp with
                               | DP.NoDP   -> ()
@@ -518,7 +549,8 @@ module Make (Opt:module type of GenOptions) : S =
                   (* Analyze the formula *)
                   phi_timer#stop;
                   let time = phi_timer#elapsed_time in
-                  Report.report_obligation_tail status time;
+                  if LeapVerbose.is_verbose_level_enabled(LeapVerbose._SHORT_INFO) then
+                    Report.report_obligation_tail status time;
                   incr obligation_counter;
                   let phi_result = Result.new_info status time in
                   (phi_obligation, phi_result)
@@ -537,7 +569,10 @@ module Make (Opt:module type of GenOptions) : S =
           let case_result = Result.new_info vc_validity (case_timer#elapsed_time) in
           let res = new_solved_proof_obligation case.vc res_list case_result in
           DP.combine_call_table this_calls_counter calls_counter;
-          Report.report_vc_tail !vc_counter case_result (List.map snd res_list) this_calls_counter;
+          if show_progress then
+            Progress.current (!vc_counter);
+          if LeapVerbose.is_verbose_level_enabled(LeapVerbose._SHORT_INFO) then
+            Report.report_vc_tail !vc_counter case_result (List.map snd res_list) this_calls_counter;
           incr vc_counter;
           res
         ) to_analyze in
@@ -567,12 +602,15 @@ module Make (Opt:module type of GenOptions) : S =
     let generate_obligations (vcs:Tactics.vc_info list)
                              (gral_plan:Tactics.proof_plan)
                              (cases:IGraph.case_tbl_t) : proof_obligation_t list =
+      let vc_count = ref 1 in
+      let show_progress = not (LeapVerbose.is_verbose_enabled()) in
+      Progress.init (List.length vcs);
       List.fold_left (fun res vc ->
       (* FOR LISTS *)
 (*        let vc = Tactics.to_plain_vc_info E.PCVars vc in*)
         let prem = match Tactics.get_tid_constraint_from_info vc with
-                   | E.True -> Premise.SelfConseq
-                   | _      -> Premise.OthersConseq in
+                   | Formula.True -> Premise.SelfConseq
+                   | _ -> Premise.OthersConseq in
         let line = Tactics.get_line_from_info vc in
         let (obligations,cutoff) =
           match IGraph.lookup_case cases line prem with
@@ -587,6 +625,7 @@ module Make (Opt:module type of GenOptions) : S =
 
         let proof_info = {cutoff = decide_cutoff cutoff; } in
         let proof_obligation = new_proof_obligation vc obligations proof_info in
+        if show_progress then (Progress.current !vc_count; incr vc_count);
           proof_obligation :: res
       ) [] vcs
 
@@ -603,30 +642,45 @@ module Make (Opt:module type of GenOptions) : S =
         let inv = read_tag invTag in
         let vc_info_list = match mode with
                            | IGraph.Concurrent ->
-                             print_endline ("Concurrent problem for invariant " ^inv_id^
-                                            " using as support [" ^supp_ids^ "]" ^
-                                            " with " ^string_of_int (IGraph.num_of_cases cases)^
-                                            " special cases.");
+                              if LeapVerbose.is_verbose_enabled() then
+                                LeapVerbose.verbstr
+                                  ("Concurrent problem for invariant " ^inv_id^
+                                   " using as support [" ^supp_ids^ "]" ^
+                                   " with " ^string_of_int (IGraph.num_of_cases cases)^
+                                   " special cases.\n")
+                              else
+                                print_endline ("Generating verification conditions for " ^ inv_id);
                              spinv_with_cases supp inv cases
                            | IGraph.Sequential ->
-                             print_endline ("Sequential problem for invariant " ^inv_id^
-                                            " using as support [" ^supp_ids^ "]" ^
-                                            " with " ^string_of_int (IGraph.num_of_cases cases)^
-                                            " special cases.");
+                              if LeapVerbose.is_verbose_enabled() then
+                                LeapVerbose.verbstr
+                                  ("Sequential problem for invariant " ^inv_id^
+                                   " using as support [" ^supp_ids^ "]" ^
+                                   " with " ^string_of_int (IGraph.num_of_cases cases)^
+                                   " special cases.\n")
+                              else
+                                print_endline ("Generating verification conditions for " ^ inv_id);
                              seq_spinv_with_cases supp inv cases in
-        Tactics.vc_info_list_to_folder Opt.output_file vc_info_list;
+        if Opt.output_vcs then
+          Tactics.vc_info_list_to_folder Opt.output_file vc_info_list;
         let new_obligations = generate_obligations vc_info_list plan cases in
         let obligations_num = List.fold_left (fun n po ->
                                 n + (List.length po.obligations)
                               ) 0 new_obligations in
-        Report.report_generated_vcs vc_info_list obligations_num;
-          os @ new_obligations
+        if (not (LeapVerbose.is_verbose_enabled())) then
+          print_endline ("Generated: " ^ (string_of_int (List.length vc_info_list)) ^
+                         " VC with " ^(string_of_int obligations_num) ^
+                         " proofs obligations\n")
+        else
+          if LeapVerbose.is_verbose_level_enabled(LeapVerbose._SHORT_INFO) then
+            Report.report_generated_vcs vc_info_list obligations_num;
+        os @ new_obligations
       ) [] graph_info
 
 
     let solve_from_graph (graph:IGraph.t) : solved_proof_obligation_t list =
 (*        gen_from_graph graph; [] *)
-      solve_proof_obligations (List.rev (gen_from_graph graph))
+      solve_proof_obligations (gen_from_graph graph)
       
 
   end

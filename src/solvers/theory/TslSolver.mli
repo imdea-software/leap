@@ -7,7 +7,7 @@ val is_sat       : int ->
                    Smp.cutoff_strategy_t ->
                    bool ->
                    TSLExpression.formula -> bool
-(** [is_sat lines stac co phi] checks the satisfiability of formula [phi],
+(** [is_sat lines co useq phi] checks the satisfiability of formula [phi],
     assuming the program contains [lines] lines, using tactics [stac] and
     cutoff strategy [co]. It returns true if the formula is satisfiable,
     otherwise false. *)
@@ -17,7 +17,7 @@ val is_valid     : int ->
                    Smp.cutoff_strategy_t ->
                    bool ->
                    TSLExpression.formula -> bool
-(** [is_valid lines stac co phi] checks the validity of formula [phi], assuming
+(** [is_valid lines co useq phi] checks the validity of formula [phi], assuming
     the program contains [lines] lines, using tactics [stac] and cutoff
     strategy [co]. It returns true if the formula is valid, otherwise false. *)
 
@@ -26,7 +26,7 @@ val is_sat_plus_info : int ->
                        Smp.cutoff_strategy_t ->
                        bool ->
                        TSLExpression.formula -> (bool * int * DP.call_tbl_t)
-(** [is_sat_plus_info lines stac co phi] checks the satisfiability of formula
+(** [is_sat_plus_info lines co useq phi] checks the satisfiability of formula
     [phi], assuming the program contains [lines] lines, using tactics [stac]
     and cutoff strategy [co]. It returns three values. The first value
     indicates whether the formula is satisfiable. The second value is the
@@ -38,7 +38,7 @@ val is_valid_plus_info : int ->
                          Smp.cutoff_strategy_t ->
                          bool ->
                          TSLExpression.formula -> (bool * int * DP.call_tbl_t)
-(** [is_valid lines stac co phi] checks the validity of formula [phi], assuming
+(** [is_valid lines co useq phi] checks the validity of formula [phi], assuming
     the program contains [lines] lines, using tactics [stac] and cutoff
     strategy [co]. It returns three values. The first value indicates whether the
     formula is satisfiable. The second value is the number of calls made to

@@ -1,4 +1,3 @@
-
 open LeapLib
 open LeapVerbose
 
@@ -7,6 +6,7 @@ module GenSet   = LeapGenericSet
 module GM       = GenericModel
 module SL       = TSLExpression
 module SLInterf = TSLInterface
+module F = Formula
 (*module type SLK = TSLKExpression.S *)
 
 type alpha_pair_t = (SL.integer list * SL.integer option)
@@ -15,7 +15,6 @@ exception UnexpectedLiteral of string
 
 
 let solver_impl = ref ""
-
 
 let use_quantifier = ref false
 
@@ -44,12 +43,12 @@ let this_call_tbl : DP.call_tbl_t = DP.new_call_tbl()
 
 
 
-let gen_fresh_int_var (vs:SL.VarSet.t) : SL.variable =
-  let rec find (n:int) : SL.variable =
+let gen_fresh_int_var (vs:SL.V.VarSet.t) : SL.V.t =
+  let rec find (n:int) : SL.V.t =
     let v_cand_id = "fresh_int_" ^ (string_of_int n) in
-    let v_cand = SL.build_var v_cand_id SL.Int false SL.Shared SL.GlobalScope
+    let v_cand = SL.build_var v_cand_id SL.Int false SL.V.Shared SL.V.GlobalScope
       in
-      if SL.VarSet.mem v_cand vs then find (n+1) else v_cand
+      if SL.V.VarSet.mem v_cand vs then find (n+1) else v_cand
   in
     find 0
 
@@ -101,26 +100,26 @@ module TranslateTsl (SLK : TSLKExpression.S) =
 
     let int_tsl_to_tslk (i:SL.integer) : SLK.level =
       SLKInterf.int_to_tslk_level(SLInterf.int_to_expr_int i)
-
+(*
     let literal_tsl_to_tslk (l:SL.literal) : SLK.literal =
       SLKInterf.literal_to_tslk_literal(SLInterf.literal_to_expr_literal l)
+*)
 
 
-    let expand_array_to_var (v:SL.variable)
+    let expand_array_to_var (v:SL.V.t)
                             (s:SLK.sort)
-                            (n:int) : SLK.variable =
-      let id_str = SL.var_id v in
-      let pr_str = if SL.var_is_primed v then "_prime" else "" in
-      let th_str = match SL.var_parameter v with
-                   | SL.Shared -> ""
-                   | SL.Local tid -> "_" ^ (SL.tid_to_str tid) in
-      let p_str = match SL.var_scope v with
-                  | SL.GlobalScope -> ""
-                  | SL.Scope p -> p ^ "_" in
+                            (n:int) : SLK.V.t =
+      let id_str = SL.V.id v in
+      let pr_str = if SL.V.is_primed v then "_prime" else "" in
+      let th_str = match SL.V.parameter v with
+                   | SL.V.Shared -> ""
+                   | SL.V.Local t -> "_" ^ (SL.V.to_str t) in
+      let p_str = match SL.V.scope v with
+                  | SL.V.GlobalScope -> ""
+                  | SL.V.Scope p -> p ^ "_" in
       let new_id = p_str ^ id_str ^ th_str ^ pr_str ^ "__" ^ (string_of_int n) in
-      let v_fresh = SLK.build_var new_id s false SLK.Shared SLK.GlobalScope in
-      verb "FRESH VAR: %s\n" new_id;
-      SLK.variable_mark_fresh v_fresh true;
+      let v_fresh = SLK.build_var new_id s false SLK.V.Shared SLK.V.GlobalScope ~fresh:true in
+      verbl _LONG_INFO "FRESH VAR: %s\n" new_id;
       v_fresh
 
 
@@ -136,7 +135,7 @@ module TranslateTsl (SLK : TSLKExpression.S) =
                 | _ -> SLK.Null in
         xs := v::(!xs)
       done;
-      verb "**** TSL Solver, generated address list for %s: [%s]\n"
+      verbl _LONG_INFO "**** TSL Solver, generated address list for %s: [%s]\n"
               (SL.addrarr_to_str aa)
               (String.concat ";" (List.map SLK.addr_to_str !xs));
       !xs
@@ -154,7 +153,7 @@ module TranslateTsl (SLK : TSLKExpression.S) =
                 | _ -> SLK.NoTid in
         xs := v::(!xs)
       done;
-      verb "**** TSL Solver, generated thread id list for %s: [%s]\n"
+      verbl _LONG_INFO "**** TSL Solver, generated thread id list for %s: [%s]\n"
               (SL.tidarr_to_str tt)
               (String.concat ";" (List.map SLK.tid_to_str !xs));
       !xs
@@ -180,49 +179,49 @@ module TranslateTsl (SLK : TSLKExpression.S) =
 
 
     let rec trans_literal (l:SL.literal) : SLK.formula =
-      verb "**** TSL Solver. Literal to be translated: %s\n"
+      verbl _LONG_INFO "**** TSL Solver. Literal to be translated: %s\n"
             (SL.literal_to_str l);
       match l with
       (* c = mkcell(e,k,A,l) *)
-      | SL.Atom(SL.Eq(SL.CellT (SL.VarCell c),SL.CellT(SL.MkCell(e,aa,tt,i))))
-      | SL.Atom(SL.Eq(SL.CellT(SL.MkCell(e,aa,tt,i)),SL.CellT (SL.VarCell c)))
-      | SL.NegAtom(SL.InEq(SL.CellT (SL.VarCell c),SL.CellT(SL.MkCell(e,aa,tt,i))))
-      | SL.NegAtom(SL.InEq(SL.CellT(SL.MkCell(e,aa,tt,i)),SL.CellT (SL.VarCell c))) ->
+      | F.Atom(SL.Eq(SL.CellT (SL.VarCell c),SL.CellT(SL.MkCell(e,aa,tt,i))))
+      | F.Atom(SL.Eq(SL.CellT(SL.MkCell(e,aa,tt,i)),SL.CellT (SL.VarCell c)))
+      | F.NegAtom(SL.InEq(SL.CellT (SL.VarCell c),SL.CellT(SL.MkCell(e,aa,tt,i))))
+      | F.NegAtom(SL.InEq(SL.CellT(SL.MkCell(e,aa,tt,i)),SL.CellT (SL.VarCell c))) ->
           let c' = cell_tsl_to_tslk (SL.VarCell c) in
           let e' = elem_tsl_to_tslk e in
           let aa' = get_addr_list aa in
           let tt' = get_tid_list tt in
             SLK.eq_cell (c') (SLK.MkCell(e',aa',tt'))
       (* c != mkcell(e,k,A,l) *)
-      | SL.NegAtom(SL.Eq(SL.CellT (SL.VarCell c),SL.CellT(SL.MkCell(e,aa,tt,i))))
-      | SL.NegAtom(SL.Eq(SL.CellT(SL.MkCell(e,aa,tt,i)),SL.CellT (SL.VarCell c)))
-      | SL.Atom(SL.InEq(SL.CellT (SL.VarCell c),SL.CellT(SL.MkCell(e,aa,tt,i))))
-      | SL.Atom(SL.InEq(SL.CellT(SL.MkCell(e,aa,tt,i)),SL.CellT (SL.VarCell c))) ->
-          SLK.Not (trans_literal (SL.Atom(SL.Eq(SL.CellT(SL.VarCell c), SL.CellT(SL.MkCell(e,aa,tt,i))))))
+      | F.NegAtom(SL.Eq(SL.CellT (SL.VarCell c),SL.CellT(SL.MkCell(e,aa,tt,i))))
+      | F.NegAtom(SL.Eq(SL.CellT(SL.MkCell(e,aa,tt,i)),SL.CellT (SL.VarCell c)))
+      | F.Atom(SL.InEq(SL.CellT (SL.VarCell c),SL.CellT(SL.MkCell(e,aa,tt,i))))
+      | F.Atom(SL.InEq(SL.CellT(SL.MkCell(e,aa,tt,i)),SL.CellT (SL.VarCell c))) ->
+          F.Not (trans_literal (F.Atom(SL.Eq(SL.CellT(SL.VarCell c), SL.CellT(SL.MkCell(e,aa,tt,i))))))
       (* a = c.arr[l] *)
-      | SL.Atom(SL.Eq(SL.AddrT a, SL.AddrT(SL.AddrArrRd(SL.CellArr c,l))))
-      | SL.Atom(SL.Eq(SL.AddrT(SL.AddrArrRd(SL.CellArr c,l)), SL.AddrT a))
-      | SL.NegAtom(SL.InEq(SL.AddrT a, SL.AddrT(SL.AddrArrRd(SL.CellArr c,l))))
-      | SL.NegAtom(SL.InEq(SL.AddrT(SL.AddrArrRd(SL.CellArr c,l)), SL.AddrT a)) ->
+      | F.Atom(SL.Eq(SL.AddrT a, SL.AddrT(SL.AddrArrRd(SL.CellArr c,l))))
+      | F.Atom(SL.Eq(SL.AddrT(SL.AddrArrRd(SL.CellArr c,l)), SL.AddrT a))
+      | F.NegAtom(SL.InEq(SL.AddrT a, SL.AddrT(SL.AddrArrRd(SL.CellArr c,l))))
+      | F.NegAtom(SL.InEq(SL.AddrT(SL.AddrArrRd(SL.CellArr c,l)), SL.AddrT a)) ->
           let a' = addr_tsl_to_tslk a in
           let c' = cell_tsl_to_tslk c in
           let l' = int_tsl_to_tslk l in
           SLK.addr_mark_smp_interesting a' true;
           SLK.eq_addr a' (SLK.NextAt(c',l'))
       (* t = c.tids[l] *)
-      | SL.Atom(SL.Eq(SL.TidT t, SL.TidT(SL.TidArrRd(SL.CellTids c,l))))
-      | SL.Atom(SL.Eq(SL.TidT(SL.TidArrRd(SL.CellTids c,l)), SL.TidT t))
-      | SL.NegAtom(SL.InEq(SL.TidT t, SL.TidT(SL.TidArrRd(SL.CellTids c,l))))
-      | SL.NegAtom(SL.InEq(SL.TidT(SL.TidArrRd(SL.CellTids c,l)), SL.TidT t)) ->
+      | F.Atom(SL.Eq(SL.TidT t, SL.TidT(SL.TidArrRd(SL.CellTids c,l))))
+      | F.Atom(SL.Eq(SL.TidT(SL.TidArrRd(SL.CellTids c,l)), SL.TidT t))
+      | F.NegAtom(SL.InEq(SL.TidT t, SL.TidT(SL.TidArrRd(SL.CellTids c,l))))
+      | F.NegAtom(SL.InEq(SL.TidT(SL.TidArrRd(SL.CellTids c,l)), SL.TidT t)) ->
           let t' = tid_tsl_to_tslk t in
           let c' = cell_tsl_to_tslk c in
           let l' = int_tsl_to_tslk l in
           SLK.tid_mark_smp_interesting t' true;
           SLK.eq_tid t' (SLK.CellLockIdAt(c',l'))
       (* A != B (addresses) *)
-      | SL.NegAtom(SL.Eq(SL.AddrArrayT(SL.VarAddrArray _ as aa),
+      | F.NegAtom(SL.Eq(SL.AddrArrayT(SL.VarAddrArray _ as aa),
                    SL.AddrArrayT(SL.VarAddrArray _ as bb)))
-      | SL.Atom(SL.InEq(SL.AddrArrayT(SL.VarAddrArray _ as aa),
+      | F.Atom(SL.InEq(SL.AddrArrayT(SL.VarAddrArray _ as aa),
                   SL.AddrArrayT(SL.VarAddrArray _ as bb))) ->
           let aa' = get_addr_list aa in
           let bb' = get_addr_list bb in
@@ -232,11 +231,11 @@ module TranslateTsl (SLK : TSLKExpression.S) =
           done;
           (* I need one witness for array difference *)
           SLK.addr_mark_smp_interesting (List.hd aa') true;
-          SLK.disj_list (!xs)
+          F.disj_list (!xs)
       (* A != B (thread identifiers) *)
-      | SL.NegAtom(SL.Eq(SL.TidArrayT(SL.VarTidArray _ as tt),
+      | F.NegAtom(SL.Eq(SL.TidArrayT(SL.VarTidArray _ as tt),
                    SL.TidArrayT(SL.VarTidArray _ as uu)))
-      | SL.Atom(SL.InEq(SL.TidArrayT(SL.VarTidArray _ as tt),
+      | F.Atom(SL.InEq(SL.TidArrayT(SL.VarTidArray _ as tt),
                   SL.TidArrayT(SL.VarTidArray _ as uu))) ->
           let tt' = get_tid_list tt in
           let uu' = get_tid_list uu in
@@ -246,58 +245,58 @@ module TranslateTsl (SLK : TSLKExpression.S) =
           done;
           (* I need one witness for array difference *)
           SLK.tid_mark_smp_interesting (List.hd tt') true;
-          SLK.disj_list (!xs)
+          F.disj_list (!xs)
       (* a = A[i] *)
-      | SL.Atom(SL.Eq(SL.AddrT a, SL.AddrT (SL.AddrArrRd (aa,i))))
-      | SL.Atom(SL.Eq(SL.AddrT (SL.AddrArrRd (aa,i)), SL.AddrT a))
-      | SL.NegAtom(SL.InEq(SL.AddrT a, SL.AddrT (SL.AddrArrRd (aa,i))))
-      | SL.NegAtom(SL.InEq(SL.AddrT (SL.AddrArrRd (aa,i)), SL.AddrT a)) ->
+      | F.Atom(SL.Eq(SL.AddrT a, SL.AddrT (SL.AddrArrRd (aa,i))))
+      | F.Atom(SL.Eq(SL.AddrT (SL.AddrArrRd (aa,i)), SL.AddrT a))
+      | F.NegAtom(SL.InEq(SL.AddrT a, SL.AddrT (SL.AddrArrRd (aa,i))))
+      | F.NegAtom(SL.InEq(SL.AddrT (SL.AddrArrRd (aa,i)), SL.AddrT a)) ->
           let a' = addr_tsl_to_tslk a in
           let aa' = get_addr_list aa in
           let i' = int_tsl_to_tslk i in
           let xs = ref [] in
           for n = 0 to (SLK.k - 1) do
             let n' = SLK.LevelVal n in
-            xs := (SLK.Implies
+            xs := (F.Implies
                     (SLK.eq_level i' n',
                      SLK.eq_addr a' (List.nth aa' n))) :: (!xs)
           done;
           SLK.addr_mark_smp_interesting a' true;
-          SLK.conj_list (!xs)
+          F.conj_list (!xs)
       (* a != A[i] *)
-      | SL.NegAtom(SL.Eq(SL.AddrT a, SL.AddrT (SL.AddrArrRd (aa,i))))
-      | SL.NegAtom(SL.Eq(SL.AddrT (SL.AddrArrRd (aa,i)), SL.AddrT a))
-      | SL.Atom(SL.InEq(SL.AddrT a, SL.AddrT (SL.AddrArrRd (aa,i))))
-      | SL.Atom(SL.InEq(SL.AddrT (SL.AddrArrRd (aa,i)), SL.AddrT a)) ->
-          SLK.Not (trans_literal (SL.Atom(SL.Eq(SL.AddrT a, SL.AddrT (SL.AddrArrRd (aa,i))))))
+      | F.NegAtom(SL.Eq(SL.AddrT a, SL.AddrT (SL.AddrArrRd (aa,i))))
+      | F.NegAtom(SL.Eq(SL.AddrT (SL.AddrArrRd (aa,i)), SL.AddrT a))
+      | F.Atom(SL.InEq(SL.AddrT a, SL.AddrT (SL.AddrArrRd (aa,i))))
+      | F.Atom(SL.InEq(SL.AddrT (SL.AddrArrRd (aa,i)), SL.AddrT a)) ->
+          F.Not (trans_literal (F.Atom(SL.Eq(SL.AddrT a, SL.AddrT (SL.AddrArrRd (aa,i))))))
       (* t = A[i] *)
-      | SL.Atom(SL.Eq(SL.TidT t, SL.TidT (SL.TidArrRd (tt,i))))
-      | SL.Atom(SL.Eq(SL.TidT (SL.TidArrRd (tt,i)), SL.TidT t))
-      | SL.NegAtom(SL.InEq(SL.TidT t, SL.TidT (SL.TidArrRd (tt,i))))
-      | SL.NegAtom(SL.InEq(SL.TidT (SL.TidArrRd (tt,i)), SL.TidT t)) ->
+      | F.Atom(SL.Eq(SL.TidT t, SL.TidT (SL.TidArrRd (tt,i))))
+      | F.Atom(SL.Eq(SL.TidT (SL.TidArrRd (tt,i)), SL.TidT t))
+      | F.NegAtom(SL.InEq(SL.TidT t, SL.TidT (SL.TidArrRd (tt,i))))
+      | F.NegAtom(SL.InEq(SL.TidT (SL.TidArrRd (tt,i)), SL.TidT t)) ->
           let t' = tid_tsl_to_tslk t in
           let tt' = get_tid_list tt in
           let i' = int_tsl_to_tslk i in
           let xs = ref [] in
           for n = 0 to (SLK.k - 1) do
             let n' = SLK.LevelVal n in
-            xs := (SLK.Implies
+            xs := (F.Implies
                     (SLK.eq_level i' n',
                      SLK.eq_tid t' (List.nth tt' n))) :: (!xs)
           done;
           SLK.tid_mark_smp_interesting t' true;
-          SLK.conj_list (!xs)
+          F.conj_list (!xs)
       (* t != A[i] *)
-      | SL.NegAtom(SL.Eq(SL.TidT t, SL.TidT (SL.TidArrRd (tt,i))))
-      | SL.NegAtom(SL.Eq(SL.TidT (SL.TidArrRd (tt,i)), SL.TidT t))
-      | SL.Atom(SL.InEq(SL.TidT t, SL.TidT (SL.TidArrRd (tt,i))))
-      | SL.Atom(SL.InEq(SL.TidT (SL.TidArrRd (tt,i)), SL.TidT t)) ->
-          SLK.Not (trans_literal (SL.Atom(SL.Eq(SL.TidT t, SL.TidT (SL.TidArrRd (tt,i))))))
+      | F.NegAtom(SL.Eq(SL.TidT t, SL.TidT (SL.TidArrRd (tt,i))))
+      | F.NegAtom(SL.Eq(SL.TidT (SL.TidArrRd (tt,i)), SL.TidT t))
+      | F.Atom(SL.InEq(SL.TidT t, SL.TidT (SL.TidArrRd (tt,i))))
+      | F.Atom(SL.InEq(SL.TidT (SL.TidArrRd (tt,i)), SL.TidT t)) ->
+          F.Not (trans_literal (F.Atom(SL.Eq(SL.TidT t, SL.TidT (SL.TidArrRd (tt,i))))))
       (* B = A {l <- a} *)
-      | SL.Atom(SL.Eq(SL.AddrArrayT bb, SL.AddrArrayT (SL.AddrArrayUp(aa,i,a))))
-      | SL.Atom(SL.Eq(SL.AddrArrayT (SL.AddrArrayUp(aa,i,a)), SL.AddrArrayT bb))
-      | SL.NegAtom(SL.InEq(SL.AddrArrayT bb, SL.AddrArrayT (SL.AddrArrayUp(aa,i,a))))
-      | SL.NegAtom(SL.InEq(SL.AddrArrayT (SL.AddrArrayUp(aa,i,a)), SL.AddrArrayT bb)) ->
+      | F.Atom(SL.Eq(SL.AddrArrayT bb, SL.AddrArrayT (SL.AddrArrayUp(aa,i,a))))
+      | F.Atom(SL.Eq(SL.AddrArrayT (SL.AddrArrayUp(aa,i,a)), SL.AddrArrayT bb))
+      | F.NegAtom(SL.InEq(SL.AddrArrayT bb, SL.AddrArrayT (SL.AddrArrayUp(aa,i,a))))
+      | F.NegAtom(SL.InEq(SL.AddrArrayT (SL.AddrArrayUp(aa,i,a)), SL.AddrArrayT bb)) ->
           let a' = addr_tsl_to_tslk a in
           let i' = int_tsl_to_tslk i in
           let aa' = get_addr_list aa in
@@ -305,27 +304,27 @@ module TranslateTsl (SLK : TSLKExpression.S) =
           let xs = ref [] in
           for n = 0 to (SLK.k - 1) do
             let n' = SLK.LevelVal n in
-            xs := (SLK.Implies
+            xs := (F.Implies
                     (SLK.eq_level i' n',
                      SLK.eq_addr a' (List.nth bb' n))) ::
-                  (SLK.Implies
+                  (F.Implies
                     (SLK.ineq_level i' n',
                      SLK.eq_addr (List.nth aa' n) (List.nth bb' n))) ::
                   (!xs)
           done;
           SLK.addr_mark_smp_interesting a' true;
-          SLK.conj_list (!xs)
+          F.conj_list (!xs)
       (* B != A {l <- a} *)
-      | SL.NegAtom(SL.Eq(SL.AddrArrayT bb, SL.AddrArrayT (SL.AddrArrayUp(aa,i,a))))
-      | SL.NegAtom(SL.Eq(SL.AddrArrayT (SL.AddrArrayUp(aa,i,a)), SL.AddrArrayT bb))
-      | SL.Atom(SL.InEq(SL.AddrArrayT bb, SL.AddrArrayT (SL.AddrArrayUp(aa,i,a))))
-      | SL.Atom(SL.InEq(SL.AddrArrayT (SL.AddrArrayUp(aa,i,a)), SL.AddrArrayT bb)) ->
-          SLK.Not (trans_literal (SL.Atom(SL.Eq(SL.AddrArrayT bb, SL.AddrArrayT (SL.AddrArrayUp(aa,i,a))))))
+      | F.NegAtom(SL.Eq(SL.AddrArrayT bb, SL.AddrArrayT (SL.AddrArrayUp(aa,i,a))))
+      | F.NegAtom(SL.Eq(SL.AddrArrayT (SL.AddrArrayUp(aa,i,a)), SL.AddrArrayT bb))
+      | F.Atom(SL.InEq(SL.AddrArrayT bb, SL.AddrArrayT (SL.AddrArrayUp(aa,i,a))))
+      | F.Atom(SL.InEq(SL.AddrArrayT (SL.AddrArrayUp(aa,i,a)), SL.AddrArrayT bb)) ->
+          F.Not (trans_literal (F.Atom(SL.Eq(SL.AddrArrayT bb, SL.AddrArrayT (SL.AddrArrayUp(aa,i,a))))))
       (* U = T {l <- t} *)
-      | SL.Atom(SL.Eq(SL.TidArrayT uu, SL.TidArrayT (SL.TidArrayUp(tt,i,t))))
-      | SL.Atom(SL.Eq(SL.TidArrayT (SL.TidArrayUp(tt,i,t)), SL.TidArrayT uu))
-      | SL.NegAtom(SL.InEq(SL.TidArrayT uu, SL.TidArrayT (SL.TidArrayUp(tt,i,t))))
-      | SL.NegAtom(SL.InEq(SL.TidArrayT (SL.TidArrayUp(tt,i,t)), SL.TidArrayT uu)) ->
+      | F.Atom(SL.Eq(SL.TidArrayT uu, SL.TidArrayT (SL.TidArrayUp(tt,i,t))))
+      | F.Atom(SL.Eq(SL.TidArrayT (SL.TidArrayUp(tt,i,t)), SL.TidArrayT uu))
+      | F.NegAtom(SL.InEq(SL.TidArrayT uu, SL.TidArrayT (SL.TidArrayUp(tt,i,t))))
+      | F.NegAtom(SL.InEq(SL.TidArrayT (SL.TidArrayUp(tt,i,t)), SL.TidArrayT uu)) ->
           let t' = tid_tsl_to_tslk t in
           let i' = int_tsl_to_tslk i in
           let tt' = get_tid_list tt in
@@ -333,24 +332,24 @@ module TranslateTsl (SLK : TSLKExpression.S) =
           let xs = ref [] in
           for n = 0 to (SLK.k - 1) do
             let n' = SLK.LevelVal n in
-            xs := (SLK.Implies
+            xs := (F.Implies
                     (SLK.eq_level i' n',
                      SLK.eq_tid t' (List.nth uu' n))) ::
-                  (SLK.Implies
+                  (F.Implies
                     (SLK.ineq_level i' n',
                      SLK.eq_tid (List.nth tt' n) (List.nth uu' n))) ::
                   (!xs)
           done;
           SLK.tid_mark_smp_interesting t' true;
-          SLK.conj_list (!xs)
+          F.conj_list (!xs)
       (* U != T {l <- t} *)
-      | SL.NegAtom(SL.Eq(SL.TidArrayT uu, SL.TidArrayT (SL.TidArrayUp(tt,i,t))))
-      | SL.NegAtom(SL.Eq(SL.TidArrayT (SL.TidArrayUp(tt,i,t)), SL.TidArrayT uu))
-      | SL.Atom(SL.InEq(SL.TidArrayT uu, SL.TidArrayT (SL.TidArrayUp(tt,i,t))))
-      | SL.Atom(SL.InEq(SL.TidArrayT (SL.TidArrayUp(tt,i,t)), SL.TidArrayT uu)) ->
-          SLK.Not (trans_literal (SL.Atom(SL.Eq(SL.TidArrayT uu, SL.TidArrayT (SL.TidArrayUp(tt,i,t))))))
+      | F.NegAtom(SL.Eq(SL.TidArrayT uu, SL.TidArrayT (SL.TidArrayUp(tt,i,t))))
+      | F.NegAtom(SL.Eq(SL.TidArrayT (SL.TidArrayUp(tt,i,t)), SL.TidArrayT uu))
+      | F.Atom(SL.InEq(SL.TidArrayT uu, SL.TidArrayT (SL.TidArrayUp(tt,i,t))))
+      | F.Atom(SL.InEq(SL.TidArrayT (SL.TidArrayUp(tt,i,t)), SL.TidArrayT uu)) ->
+          F.Not (trans_literal (F.Atom(SL.Eq(SL.TidArrayT uu, SL.TidArrayT (SL.TidArrayUp(tt,i,t))))))
       (* Skiplist (m,s,l,s1,s2) *)
-      | SL.Atom(SL.Skiplist(m,s,l,a1,a2,es)) ->
+      | F.Atom(SL.Skiplist(m,s,l,a1,a2,es)) ->
           let m' = mem_tsl_to_tslk m in
           let s' = set_tsl_to_tslk s in
           let l' = int_tsl_to_tslk l in
@@ -358,8 +357,8 @@ module TranslateTsl (SLK : TSLKExpression.S) =
           let a2' = addr_tsl_to_tslk a2 in
           let es' = setelem_tsl_to_tslk es in
           let xs = ref
-                    [SLK.Literal(SLK.Atom(
-                      SLK.OrderList(m',a1',a2')));
+                    [F.atom_to_formula(
+                      SLK.OrderList(m',a1',a2'));
                      SLK.eq_setelem es' (SLK.SetToElems(s',m'));
                      SLK.eq_set
                       (s')
@@ -371,16 +370,16 @@ module TranslateTsl (SLK : TSLKExpression.S) =
 *)
           for n = 0 to (SLK.k - 1) do
             let n' = SLK.LevelVal n in
-            xs := SLK.Implies
+            xs := F.Implies
                     (SLK.lesseq_level n' l',
-                     SLK.And (SLK.atomlit 
+                     F.And (SLK.atomlit 
                                   (SLK.In(a2',SLK.AddrToSet(m',a1',n'))),
                                   SLK.eq_addr (SLK.NextAt(SLK.CellAt(m',a2'),n'))
                                                    SLK.Null)) :: (!xs);
           done;
           for n = 0 to (SLK.k - 2) do
             let n' = SLK.LevelVal n in
-            xs := SLK.Implies
+            xs := F.Implies
                     (SLK.less_level n' l',
                      SLK.subseteq
 (*
@@ -397,9 +396,9 @@ module TranslateTsl (SLK : TSLKExpression.S) =
           done;
           SLK.addr_mark_smp_interesting a1' true;
           SLK.addr_mark_smp_interesting a2' true;
-          SLK.conj_list (!xs)
+          F.conj_list (!xs)
       (* ~ Skiplist(m,s,l,a1,a2) *)
-      | SL.NegAtom(SL.Skiplist(m,s,l,a1,a2,es)) ->
+      | F.NegAtom(SL.Skiplist(m,s,l,a1,a2,es)) ->
           let m' = mem_tsl_to_tslk m in
           let s' = set_tsl_to_tslk s in
           let l' = int_tsl_to_tslk l in
@@ -409,8 +408,8 @@ module TranslateTsl (SLK : TSLKExpression.S) =
 
 
           let xs = ref
-                    [SLK.Literal(SLK.NegAtom(
-                      SLK.OrderList(m',a1',a2')));
+                    [F.negatom_to_formula(
+                      SLK.OrderList(m',a1',a2'));
                      SLK.ineq_setelem es' (SLK.SetToElems(s',m'));
                      SLK.ineq_set
                       (s')
@@ -419,17 +418,17 @@ module TranslateTsl (SLK : TSLKExpression.S) =
 (*                      (SLK.Setdiff (SLK.AddrToSet(m',a1',SLK.LevelVal 0), SLK.AddrToSet(m',a2',SLK.LevelVal 0)))] in *)
           for n = 0 to (SLK.k - 1) do
             let n' = SLK.LevelVal n in
-            xs := SLK.And
+            xs := F.And
                     (SLK.lesseq_level n' l',
-                     SLK.Or (SLK.Not (SLK.atomlit (SLK.In (a2', SLK.AddrToSet(m',a1',n')))),
+                     F.Or (F.Not (F.atom_to_formula (SLK.In (a2', SLK.AddrToSet(m',a1',n')))),
                                  SLK.ineq_addr (SLK.NextAt(SLK.CellAt(m',a2'),n'))
                                                     SLK.Null)) :: (!xs)
           done;
           for n = 0 to (SLK.k - 2) do
             let n' = SLK.LevelVal n in
-            xs := SLK.And
+            xs := F.And
                     (SLK.less_level n' l',
-                     SLK.Not
+                     F.Not
                       (SLK.subseteq
 (*
                         (SLK.AddrToSet(m',a1',SLK.LevelSucc n'))
@@ -446,8 +445,11 @@ module TranslateTsl (SLK : TSLKExpression.S) =
           done;
           SLK.addr_mark_smp_interesting a1' true;
           SLK.addr_mark_smp_interesting a2' true;
-          SLK.disj_list (!xs)
-      | _ -> SLK.Literal (literal_tsl_to_tslk l)
+          F.disj_list (!xs)
+      | F.Atom a -> SLKInterf.formula_to_tslk_formula(
+                       SLInterf.formula_to_expr_formula (Formula.atom_to_formula a))
+      | F.NegAtom a -> SLKInterf.formula_to_tslk_formula(
+                          SLInterf.formula_to_expr_formula (Formula.negatom_to_formula a))
 
 
     let to_tslk (tsl_ls:SL.literal list) : SLK.formula =
@@ -456,7 +458,7 @@ module TranslateTsl (SLK : TSLKExpression.S) =
       Hashtbl.clear addrarr_tbl;
       Hashtbl.clear tidarr_tbl;
       let tslk_ps = List.map trans_literal tsl_ls in
-      let tslk_phi = SLK.conj_list tslk_ps in
+      let tslk_phi = F.conj_list tslk_ps in
       Log.print "TslSolver. Obtained formula in TSLK" (SLK.formula_to_str tslk_phi);
       tslk_phi
   end
@@ -492,64 +494,64 @@ let split_into_pa_nc (cf:SL.conjunctive_formula)
         SL.conjunctive_formula =
   let conj (ls:SL.literal list) : SL.conjunctive_formula =
     match ls with
-    | [] -> SL.TrueConj
-    | _ -> SL.Conj ls
+    | [] -> F.TrueConj
+    | _ -> F.Conj ls
   in
   match cf with
-  | SL.TrueConj  -> (SL.TrueConj,  SL.TrueConj,  SL.TrueConj)
-  | SL.FalseConj -> (SL.FalseConj, SL.FalseConj, SL.FalseConj)
-  | SL.Conj cf   ->
+  | F.TrueConj  -> (F.TrueConj,  F.TrueConj,  F.TrueConj)
+  | F.FalseConj -> (F.FalseConj, F.FalseConj, F.FalseConj)
+  | F.Conj cf   ->
       let (pa,panc,nc) =
         List.fold_left (fun (pas,pancs,ncs) l ->
           match l with
           (* l = q *)
-          | SL.Atom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT(SL.IntVal _)))
-          | SL.Atom(SL.Eq(SL.IntT(SL.IntVal _),SL.IntT(SL.VarInt _)))
-          | SL.NegAtom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT(SL.IntVal _)))
-          | SL.NegAtom(SL.InEq(SL.IntT(SL.IntVal _),SL.IntT(SL.VarInt _))) -> (l::pas,pancs,ncs)
+          | F.Atom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT(SL.IntVal _)))
+          | F.Atom(SL.Eq(SL.IntT(SL.IntVal _),SL.IntT(SL.VarInt _)))
+          | F.NegAtom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT(SL.IntVal _)))
+          | F.NegAtom(SL.InEq(SL.IntT(SL.IntVal _),SL.IntT(SL.VarInt _))) -> (l::pas,pancs,ncs)
             (* l1 = l2 *)
-          | SL.Atom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT(SL.VarInt _)))
-          | SL.NegAtom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT(SL.VarInt _)))
+          | F.Atom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT(SL.VarInt _)))
+          | F.NegAtom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT(SL.VarInt _)))
             (* l1 != l2 *)
-          | SL.Atom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT(SL.VarInt _)))
-          | SL.NegAtom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT(SL.VarInt _)))
+          | F.Atom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT(SL.VarInt _)))
+          | F.NegAtom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT(SL.VarInt _)))
             (* l1 = l2 + q *)
-          | SL.Atom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntAdd (SL.VarInt _, SL.IntVal _))))
-          | SL.Atom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntAdd (SL.IntVal _, SL.VarInt _))))
-          | SL.Atom(SL.Eq(SL.IntT(SL.IntAdd(SL.VarInt _,SL.IntVal _)),SL.IntT(SL.VarInt _)))
-          | SL.Atom(SL.Eq(SL.IntT(SL.IntAdd(SL.IntVal _,SL.VarInt _)),SL.IntT(SL.VarInt _)))
-          | SL.NegAtom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntAdd (SL.VarInt _, SL.IntVal _))))
-          | SL.NegAtom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntAdd (SL.IntVal _, SL.VarInt _))))
-          | SL.NegAtom(SL.InEq(SL.IntT(SL.IntAdd(SL.VarInt _,SL.IntVal _)),SL.IntT(SL.VarInt _)))
-          | SL.NegAtom(SL.InEq(SL.IntT(SL.IntAdd(SL.IntVal _,SL.VarInt _)),SL.IntT(SL.VarInt _)))
+          | F.Atom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntAdd (SL.VarInt _, SL.IntVal _))))
+          | F.Atom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntAdd (SL.IntVal _, SL.VarInt _))))
+          | F.Atom(SL.Eq(SL.IntT(SL.IntAdd(SL.VarInt _,SL.IntVal _)),SL.IntT(SL.VarInt _)))
+          | F.Atom(SL.Eq(SL.IntT(SL.IntAdd(SL.IntVal _,SL.VarInt _)),SL.IntT(SL.VarInt _)))
+          | F.NegAtom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntAdd (SL.VarInt _, SL.IntVal _))))
+          | F.NegAtom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntAdd (SL.IntVal _, SL.VarInt _))))
+          | F.NegAtom(SL.InEq(SL.IntT(SL.IntAdd(SL.VarInt _,SL.IntVal _)),SL.IntT(SL.VarInt _)))
+          | F.NegAtom(SL.InEq(SL.IntT(SL.IntAdd(SL.IntVal _,SL.VarInt _)),SL.IntT(SL.VarInt _)))
             (* l1 = l2 - q *)
-          | SL.Atom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntSub (SL.VarInt _, SL.IntVal _))))
-          | SL.Atom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntSub (SL.IntVal _, SL.VarInt _))))
-          | SL.Atom(SL.Eq(SL.IntT(SL.IntSub(SL.VarInt _,SL.IntVal _)),SL.IntT(SL.VarInt _)))
-          | SL.Atom(SL.Eq(SL.IntT(SL.IntSub(SL.IntVal _,SL.VarInt _)),SL.IntT(SL.VarInt _)))
-          | SL.NegAtom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntSub (SL.VarInt _, SL.IntVal _))))
-          | SL.NegAtom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntSub (SL.IntVal _, SL.VarInt _))))
-          | SL.NegAtom(SL.InEq(SL.IntT(SL.IntSub(SL.VarInt _,SL.IntVal _)),SL.IntT(SL.VarInt _)))
-          | SL.NegAtom(SL.InEq(SL.IntT(SL.IntSub(SL.IntVal _,SL.VarInt _)),SL.IntT(SL.VarInt _)))
+          | F.Atom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntSub (SL.VarInt _, SL.IntVal _))))
+          | F.Atom(SL.Eq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntSub (SL.IntVal _, SL.VarInt _))))
+          | F.Atom(SL.Eq(SL.IntT(SL.IntSub(SL.VarInt _,SL.IntVal _)),SL.IntT(SL.VarInt _)))
+          | F.Atom(SL.Eq(SL.IntT(SL.IntSub(SL.IntVal _,SL.VarInt _)),SL.IntT(SL.VarInt _)))
+          | F.NegAtom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntSub (SL.VarInt _, SL.IntVal _))))
+          | F.NegAtom(SL.InEq(SL.IntT(SL.VarInt _),SL.IntT (SL.IntSub (SL.IntVal _, SL.VarInt _))))
+          | F.NegAtom(SL.InEq(SL.IntT(SL.IntSub(SL.VarInt _,SL.IntVal _)),SL.IntT(SL.VarInt _)))
+          | F.NegAtom(SL.InEq(SL.IntT(SL.IntSub(SL.IntVal _,SL.VarInt _)),SL.IntT(SL.VarInt _)))
             (* l1 < l2 *) (* l1 <= l2 should not appear here after normalization *)
-          | SL.Atom(SL.Less(SL.VarInt _,SL.VarInt _))
-          | SL.Atom(SL.Greater(SL.VarInt _,SL.VarInt _))
-          | SL.NegAtom(SL.LessEq(SL.VarInt _,SL.VarInt _))
-          | SL.NegAtom(SL.GreaterEq(SL.VarInt _,SL.VarInt _))
+          | F.Atom(SL.Less(SL.VarInt _,SL.VarInt _))
+          | F.Atom(SL.Greater(SL.VarInt _,SL.VarInt _))
+          | F.NegAtom(SL.LessEq(SL.VarInt _,SL.VarInt _))
+          | F.NegAtom(SL.GreaterEq(SL.VarInt _,SL.VarInt _))
             (* But l1 <= l2 literals appear, as well as they are not compared to constants *)
-          | SL.Atom(SL.LessEq(SL.VarInt _,SL.VarInt _))
-          | SL.Atom(SL.GreaterEq(SL.VarInt _,SL.VarInt _))
-          | SL.NegAtom(SL.Less(SL.VarInt _,SL.VarInt _))
-          | SL.NegAtom(SL.Greater(SL.VarInt _,SL.VarInt _)) -> (pas,l::pancs,ncs)
+          | F.Atom(SL.LessEq(SL.VarInt _,SL.VarInt _))
+          | F.Atom(SL.GreaterEq(SL.VarInt _,SL.VarInt _))
+          | F.NegAtom(SL.Less(SL.VarInt _,SL.VarInt _))
+          | F.NegAtom(SL.Greater(SL.VarInt _,SL.VarInt _)) -> (pas,l::pancs,ncs)
             (* Cases that should not appear at this point after normalization *)
-          | SL.Atom(SL.Less(SL.IntVal _,_))          | SL.Atom(SL.Less(_,SL.IntVal _))
-          | SL.Atom(SL.Greater(SL.IntVal _,_))       | SL.Atom(SL.Greater(_,SL.IntVal _))
-          | SL.NegAtom(SL.LessEq(SL.IntVal _,_))     | SL.NegAtom(SL.LessEq(_,SL.IntVal _))
-          | SL.NegAtom(SL.GreaterEq(SL.IntVal _,_))  | SL.NegAtom(SL.GreaterEq(_,SL.IntVal _))
-          | SL.Atom(SL.LessEq(SL.IntVal _,_))        | SL.Atom(SL.LessEq(_,SL.IntVal _))
-          | SL.Atom(SL.GreaterEq(SL.IntVal _,_))     | SL.Atom(SL.GreaterEq(_,SL.IntVal _))
-          | SL.NegAtom(SL.Less(SL.IntVal _,_))       | SL.NegAtom(SL.Less(_,SL.IntVal _))
-          | SL.NegAtom(SL.Greater(SL.IntVal _,_))    | SL.NegAtom(SL.Greater(_,SL.IntVal _)) ->
+          | F.Atom(SL.Less(SL.IntVal _,_))          | F.Atom(SL.Less(_,SL.IntVal _))
+          | F.Atom(SL.Greater(SL.IntVal _,_))       | F.Atom(SL.Greater(_,SL.IntVal _))
+          | F.NegAtom(SL.LessEq(SL.IntVal _,_))     | F.NegAtom(SL.LessEq(_,SL.IntVal _))
+          | F.NegAtom(SL.GreaterEq(SL.IntVal _,_))  | F.NegAtom(SL.GreaterEq(_,SL.IntVal _))
+          | F.Atom(SL.LessEq(SL.IntVal _,_))        | F.Atom(SL.LessEq(_,SL.IntVal _))
+          | F.Atom(SL.GreaterEq(SL.IntVal _,_))     | F.Atom(SL.GreaterEq(_,SL.IntVal _))
+          | F.NegAtom(SL.Less(SL.IntVal _,_))       | F.NegAtom(SL.Less(_,SL.IntVal _))
+          | F.NegAtom(SL.Greater(SL.IntVal _,_))    | F.NegAtom(SL.Greater(_,SL.IntVal _)) ->
               assert false
             (* Remaining cases *)
           | _ -> (pas,pancs,l::ncs)
@@ -562,91 +564,91 @@ let split_into_pa_nc (cf:SL.conjunctive_formula)
 let guess_arrangements (cf:SL.conjunctive_formula) : (SL.integer list list) GenSet.t option =
   let arr = Arr.empty true in
     match cf with
-    | SL.FalseConj -> Some (GenSet.empty ())
-    | SL.TrueConj  -> Some (GenSet.empty ())
-    | SL.Conj ls   -> begin
+    | F.FalseConj -> Some (GenSet.empty ())
+    | F.TrueConj  -> Some (GenSet.empty ())
+    | F.Conj ls   -> begin
                         let level_vars = SL.varset_instances_of_sort_from_conj cf (SL.Int) in
-                        if SL.VarSet.cardinal level_vars = 0 then
+                        if SL.V.VarSet.cardinal level_vars = 0 then
                           None
                         else begin
-                          verb "**** TSL Solver: variables for arrangement...\n{ %s }\n"
-                                  (SL.VarSet.fold (fun v str ->
-                                    str ^ SL.variable_to_str v ^ "; "
+                          verbl _LONG_INFO "**** TSL Solver: variables for arrangement...\n{ %s }\n"
+                                  (SL.V.VarSet.fold (fun v str ->
+                                    str ^ SL.V.to_str v ^ "; "
                                   ) level_vars "");
-                          SL.VarSet.iter (fun v -> Arr.add_elem arr (SL.VarInt v)) level_vars;
+                          SL.V.VarSet.iter (fun v -> Arr.add_elem arr (SL.VarInt v)) level_vars;
                           List.iter (fun l ->
                             match l with
-                            | SL.Atom(SL.Less(i1,i2)) -> Arr.add_less arr i1 i2
-                            | SL.Atom(SL.Greater(i1,i2)) -> Arr.add_greater arr i1 i2
-                            | SL.Atom(SL.LessEq(i1,i2)) -> Arr.add_lesseq arr i1 i2
-                            | SL.Atom(SL.GreaterEq(i1,i2)) -> Arr.add_greatereq arr i1 i2
-                            | SL.Atom(SL.Eq(SL.IntT (SL.VarInt v1),SL.IntT (SL.IntAdd(SL.VarInt v2,SL.IntVal i))))
-                            | SL.Atom(SL.Eq(SL.IntT (SL.VarInt v1),SL.IntT (SL.IntAdd(SL.IntVal i,SL.VarInt v2))))
-                            | SL.Atom(SL.Eq(SL.IntT (SL.IntAdd(SL.VarInt v2,SL.IntVal i)),SL.IntT (SL.VarInt v1)))
-                            | SL.Atom(SL.Eq(SL.IntT (SL.IntAdd(SL.IntVal i,SL.VarInt v2)),SL.IntT (SL.VarInt v1))) ->
+                            | F.Atom(SL.Less(i1,i2)) -> Arr.add_less arr i1 i2
+                            | F.Atom(SL.Greater(i1,i2)) -> Arr.add_greater arr i1 i2
+                            | F.Atom(SL.LessEq(i1,i2)) -> Arr.add_lesseq arr i1 i2
+                            | F.Atom(SL.GreaterEq(i1,i2)) -> Arr.add_greatereq arr i1 i2
+                            | F.Atom(SL.Eq(SL.IntT (SL.VarInt v1),SL.IntT (SL.IntAdd(SL.VarInt v2,SL.IntVal i))))
+                            | F.Atom(SL.Eq(SL.IntT (SL.VarInt v1),SL.IntT (SL.IntAdd(SL.IntVal i,SL.VarInt v2))))
+                            | F.Atom(SL.Eq(SL.IntT (SL.IntAdd(SL.VarInt v2,SL.IntVal i)),SL.IntT (SL.VarInt v1)))
+                            | F.Atom(SL.Eq(SL.IntT (SL.IntAdd(SL.IntVal i,SL.VarInt v2)),SL.IntT (SL.VarInt v1))) ->
                                 if i = 1 then Arr.add_followed_by arr (SL.VarInt v2) (SL.VarInt v1)
                                 else if i = -1 then Arr.add_followed_by arr (SL.VarInt v1) (SL.VarInt v2)
                                 else if i > 0 then Arr.add_greater arr (SL.VarInt v1) (SL.VarInt v2)
                                 else if i < 0 then Arr.add_less arr (SL.VarInt v1) (SL.VarInt v2)
                                 else Arr.add_eq arr (SL.VarInt v1) (SL.VarInt v2)
-                            | SL.Atom(SL.Eq(SL.IntT (SL.VarInt v1),SL.IntT (SL.IntSub(SL.VarInt v2,SL.IntVal i))))
-                            | SL.Atom(SL.Eq(SL.IntT (SL.VarInt v1),SL.IntT (SL.IntSub(SL.IntVal i,SL.VarInt v2))))
-                            | SL.Atom(SL.Eq(SL.IntT (SL.IntSub(SL.VarInt v2,SL.IntVal i)),SL.IntT (SL.VarInt v1)))
-                            | SL.Atom(SL.Eq(SL.IntT (SL.IntSub(SL.IntVal i,SL.VarInt v2)),SL.IntT (SL.VarInt v1))) ->
+                            | F.Atom(SL.Eq(SL.IntT (SL.VarInt v1),SL.IntT (SL.IntSub(SL.VarInt v2,SL.IntVal i))))
+                            | F.Atom(SL.Eq(SL.IntT (SL.VarInt v1),SL.IntT (SL.IntSub(SL.IntVal i,SL.VarInt v2))))
+                            | F.Atom(SL.Eq(SL.IntT (SL.IntSub(SL.VarInt v2,SL.IntVal i)),SL.IntT (SL.VarInt v1)))
+                            | F.Atom(SL.Eq(SL.IntT (SL.IntSub(SL.IntVal i,SL.VarInt v2)),SL.IntT (SL.VarInt v1))) ->
                                 if i = 1 then Arr.add_followed_by arr (SL.VarInt v1) (SL.VarInt v2)
                                 else if i = -1 then Arr.add_followed_by arr (SL.VarInt v2) (SL.VarInt v1)
                                 else if i > 0 then Arr.add_less arr (SL.VarInt v1) (SL.VarInt v2)
                                 else if i < 0 then Arr.add_greater arr (SL.VarInt v1) (SL.VarInt v2)
                                 else Arr.add_eq arr (SL.VarInt v1) (SL.VarInt v2)
-                            | SL.Atom(SL.Eq(SL.IntT (SL.VarInt varr),SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.VarInt v2,SL.IntVal i)))))
-                            | SL.Atom(SL.Eq(SL.IntT (SL.VarInt varr),SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.IntVal i,SL.VarInt v2)))))
-                            | SL.Atom(SL.Eq(SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.VarInt v2,SL.IntVal i))),SL.IntT (SL.VarInt varr)))
-                            | SL.Atom(SL.Eq(SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.IntVal i,SL.VarInt v2))),SL.IntT (SL.VarInt varr))) ->
-                                let v1 = SL.var_set_param (SL.Local th) varr in
+                            | F.Atom(SL.Eq(SL.IntT (SL.VarInt varr),SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.VarInt v2,SL.IntVal i)))))
+                            | F.Atom(SL.Eq(SL.IntT (SL.VarInt varr),SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.IntVal i,SL.VarInt v2)))))
+                            | F.Atom(SL.Eq(SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.VarInt v2,SL.IntVal i))),SL.IntT (SL.VarInt varr)))
+                            | F.Atom(SL.Eq(SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.IntVal i,SL.VarInt v2))),SL.IntT (SL.VarInt varr))) ->
+                                let v1 = SL.V.set_param varr (SL.V.Local (SL.voc_to_var th)) in
                                 if i = 1 then Arr.add_followed_by arr (SL.VarInt v2) (SL.VarInt v1)
                                 else if i = -1 then Arr.add_followed_by arr (SL.VarInt v1) (SL.VarInt v2)
                                 else if i > 0 then Arr.add_greater arr (SL.VarInt v1) (SL.VarInt v2)
                                 else if i < 0 then Arr.add_less arr (SL.VarInt v1) (SL.VarInt v2)
                                 else Arr.add_eq arr (SL.VarInt v1) (SL.VarInt v2)
-                            | SL.Atom(SL.Eq(SL.IntT (SL.VarInt varr),SL.VarUpdate(_,th,SL.IntT(SL.IntSub(SL.VarInt v2,SL.IntVal i)))))
-                            | SL.Atom(SL.Eq(SL.IntT (SL.VarInt varr),SL.VarUpdate(_,th,SL.IntT(SL.IntSub(SL.IntVal i,SL.VarInt v2)))))
-                            | SL.Atom(SL.Eq(SL.VarUpdate(_,th,SL.IntT(SL.IntSub(SL.VarInt v2,SL.IntVal i))),SL.IntT (SL.VarInt varr)))
-                            | SL.Atom(SL.Eq(SL.VarUpdate(_,th,SL.IntT(SL.IntSub(SL.IntVal i,SL.VarInt v2))),SL.IntT (SL.VarInt varr))) ->
-                                let v1 = SL.var_set_param (SL.Local th) varr in
+                            | F.Atom(SL.Eq(SL.IntT (SL.VarInt varr),SL.VarUpdate(_,th,SL.IntT(SL.IntSub(SL.VarInt v2,SL.IntVal i)))))
+                            | F.Atom(SL.Eq(SL.IntT (SL.VarInt varr),SL.VarUpdate(_,th,SL.IntT(SL.IntSub(SL.IntVal i,SL.VarInt v2)))))
+                            | F.Atom(SL.Eq(SL.VarUpdate(_,th,SL.IntT(SL.IntSub(SL.VarInt v2,SL.IntVal i))),SL.IntT (SL.VarInt varr)))
+                            | F.Atom(SL.Eq(SL.VarUpdate(_,th,SL.IntT(SL.IntSub(SL.IntVal i,SL.VarInt v2))),SL.IntT (SL.VarInt varr))) ->
+                                let v1 = SL.V.set_param varr (SL.V.Local (SL.voc_to_var th)) in
                                 if i = 1 then Arr.add_followed_by arr (SL.VarInt v1) (SL.VarInt v2)
                                 else if i = -1 then Arr.add_followed_by arr (SL.VarInt v2) (SL.VarInt v1)
                                 else if i > 0 then Arr.add_less arr (SL.VarInt v1) (SL.VarInt v2)
                                 else if i < 0 then Arr.add_greater arr (SL.VarInt v1) (SL.VarInt v2)
                                 else Arr.add_eq arr (SL.VarInt v1) (SL.VarInt v2)
-                            | SL.Atom(SL.Eq(SL.IntT(SL.VarInt v),SL.IntT(SL.IntVal 0)))
-                            | SL.Atom(SL.Eq(SL.IntT(SL.IntVal 0),SL.IntT(SL.VarInt v))) ->
+                            | F.Atom(SL.Eq(SL.IntT(SL.VarInt v),SL.IntT(SL.IntVal 0)))
+                            | F.Atom(SL.Eq(SL.IntT(SL.IntVal 0),SL.IntT(SL.VarInt v))) ->
                                 Arr.set_minimum arr (SL.VarInt v)
-                            | SL.Atom(SL.Eq(SL.IntT i1,SL.IntT i2)) -> Arr.add_eq arr i1 i2
-                            | SL.Atom(SL.InEq(SL.IntT i1,SL.IntT i2)) -> Arr.add_ineq arr i1 i2
-                            | SL.NegAtom(SL.Less(i1,i2)) -> Arr.add_greatereq arr i1 i2
-                            | SL.NegAtom(SL.Greater(i1,i2)) -> Arr.add_lesseq arr i1 i2
-                            | SL.NegAtom(SL.LessEq(i1,i2)) -> Arr.add_greater arr i1 i2
-                            | SL.NegAtom(SL.GreaterEq(i1,i2)) -> Arr.add_less arr i1 i2
-                            | SL.NegAtom(SL.Eq(SL.IntT i1,SL.IntT i2)) -> Arr.add_ineq arr i1 i2
-                            | SL.NegAtom(SL.InEq(SL.IntT (SL.VarInt v1),SL.IntT (SL.IntAdd(SL.VarInt v2,SL.IntVal i))))
-                            | SL.NegAtom(SL.InEq(SL.IntT (SL.VarInt v1),SL.IntT (SL.IntAdd(SL.IntVal i,SL.VarInt v2))))
-                            | SL.NegAtom(SL.InEq(SL.IntT (SL.IntAdd(SL.VarInt v2,SL.IntVal i)),SL.IntT (SL.VarInt v1)))
-                            | SL.NegAtom(SL.InEq(SL.IntT (SL.IntAdd(SL.IntVal i,SL.VarInt v2)),SL.IntT (SL.VarInt v1))) ->
+                            | F.Atom(SL.Eq(SL.IntT i1,SL.IntT i2)) -> Arr.add_eq arr i1 i2
+                            | F.Atom(SL.InEq(SL.IntT i1,SL.IntT i2)) -> Arr.add_ineq arr i1 i2
+                            | F.NegAtom(SL.Less(i1,i2)) -> Arr.add_greatereq arr i1 i2
+                            | F.NegAtom(SL.Greater(i1,i2)) -> Arr.add_lesseq arr i1 i2
+                            | F.NegAtom(SL.LessEq(i1,i2)) -> Arr.add_greater arr i1 i2
+                            | F.NegAtom(SL.GreaterEq(i1,i2)) -> Arr.add_less arr i1 i2
+                            | F.NegAtom(SL.Eq(SL.IntT i1,SL.IntT i2)) -> Arr.add_ineq arr i1 i2
+                            | F.NegAtom(SL.InEq(SL.IntT (SL.VarInt v1),SL.IntT (SL.IntAdd(SL.VarInt v2,SL.IntVal i))))
+                            | F.NegAtom(SL.InEq(SL.IntT (SL.VarInt v1),SL.IntT (SL.IntAdd(SL.IntVal i,SL.VarInt v2))))
+                            | F.NegAtom(SL.InEq(SL.IntT (SL.IntAdd(SL.VarInt v2,SL.IntVal i)),SL.IntT (SL.VarInt v1)))
+                            | F.NegAtom(SL.InEq(SL.IntT (SL.IntAdd(SL.IntVal i,SL.VarInt v2)),SL.IntT (SL.VarInt v1))) ->
                                 if i > 0 then Arr.add_greater arr (SL.VarInt v1) (SL.VarInt v2)
                                 else if i < 0 then Arr.add_less arr (SL.VarInt v1) (SL.VarInt v2)
                                 else Arr.add_eq arr (SL.VarInt v1) (SL.VarInt v2)
-                            | SL.NegAtom(SL.InEq(SL.IntT (SL.VarInt varr),SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.VarInt v2,SL.IntVal i)))))
-                            | SL.NegAtom(SL.InEq(SL.IntT (SL.VarInt varr),SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.IntVal i,SL.VarInt v2)))))
-                            | SL.NegAtom(SL.InEq(SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.VarInt v2,SL.IntVal i))),SL.IntT (SL.VarInt varr)))
-                            | SL.NegAtom(SL.InEq(SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.IntVal i,SL.VarInt v2))),SL.IntT (SL.VarInt varr))) ->
-                                let v1 = SL.var_set_param (SL.Local th) varr in
+                            | F.NegAtom(SL.InEq(SL.IntT (SL.VarInt varr),SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.VarInt v2,SL.IntVal i)))))
+                            | F.NegAtom(SL.InEq(SL.IntT (SL.VarInt varr),SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.IntVal i,SL.VarInt v2)))))
+                            | F.NegAtom(SL.InEq(SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.VarInt v2,SL.IntVal i))),SL.IntT (SL.VarInt varr)))
+                            | F.NegAtom(SL.InEq(SL.VarUpdate(_,th,SL.IntT(SL.IntAdd(SL.IntVal i,SL.VarInt v2))),SL.IntT (SL.VarInt varr))) ->
+                                let v1 = SL.V.set_param varr (SL.V.Local (SL.voc_to_var th)) in
                                 if i > 0 then Arr.add_greater arr (SL.VarInt v1) (SL.VarInt v2)
                                 else if i < 0 then Arr.add_less arr (SL.VarInt v1) (SL.VarInt v2)
                                 else Arr.add_eq arr (SL.VarInt v1) (SL.VarInt v2)
-                            | SL.NegAtom(SL.InEq(SL.IntT(SL.VarInt v),SL.IntT(SL.IntVal 0)))
-                            | SL.NegAtom(SL.InEq(SL.IntT(SL.IntVal 0),SL.IntT(SL.VarInt v))) ->
+                            | F.NegAtom(SL.InEq(SL.IntT(SL.VarInt v),SL.IntT(SL.IntVal 0)))
+                            | F.NegAtom(SL.InEq(SL.IntT(SL.IntVal 0),SL.IntT(SL.VarInt v))) ->
                                 Arr.set_minimum arr (SL.VarInt v)
-                            | SL.NegAtom(SL.InEq(SL.IntT i1,SL.IntT i2)) -> Arr.add_eq arr i1 i2
+                            | F.NegAtom(SL.InEq(SL.IntT i1,SL.IntT i2)) -> Arr.add_eq arr i1 i2
                             | _ -> ()
                           ) ls;
                           Log.print "TSL Solver known information for arrangements"
@@ -660,7 +662,7 @@ let guess_arrangements (cf:SL.conjunctive_formula) : (SL.integer list list) GenS
                                                a
                                              end
                           in
-                          verb "**** TSL Solver: generated %i arrangements\n" (GenSet.size arrgs);
+                          verbl _LONG_INFO "**** TSL Solver: generated %i arrangements\n" (GenSet.size arrgs);
                           Some arrgs
                         end
                       end
@@ -670,12 +672,12 @@ let alpha_to_conjunctive_formula (alpha:SL.integer list list)
     : SL.conjunctive_formula =
   let rec cons_eq_class (is:SL.integer list) : SL.literal list =
     match is with
-    | i1::i2::xs -> SL.Atom(SL.Eq(SL.IntT i1, SL.IntT i2)) :: cons_eq_class (i2::xs)
+    | i1::i2::xs -> F.Atom(SL.Eq(SL.IntT i1, SL.IntT i2)) :: cons_eq_class (i2::xs)
     | _          -> []
   in
   let rec cons_ords (arr:SL.integer list list) : SL.literal list =
     match arr with
-    | xs::ys::zs -> SL.Atom(SL.Less(List.hd ys,
+    | xs::ys::zs -> F.Atom(SL.Less(List.hd ys,
                               List.hd xs)) :: cons_ords (ys::zs)
     | _          -> []
   in
@@ -683,22 +685,22 @@ let alpha_to_conjunctive_formula (alpha:SL.integer list list)
               (cons_eq_class eq_c) @ ys
             ) [] alpha in
   let ords = cons_ords alpha in
-    (SL.Conj (eqs @ ords))
+    (F.Conj (eqs @ ords))
 
 
 let pumping (cf:SL.conjunctive_formula) : unit =
   match cf with
-  | SL.TrueConj  -> ()
-  | SL.FalseConj -> ()
-  | SL.Conj ls   -> begin
+  | F.TrueConj  -> ()
+  | F.FalseConj -> ()
+  | F.Conj ls   -> begin
                       let no_arr_updates = ref true in
                       List.iter (fun l ->
                         match l with
                         (* A = B{l <- a} *)
-                        | SL.Atom(SL.Eq(_,SL.AddrArrayT(SL.AddrArrayUp(_,i,_))))
-                        | SL.Atom(SL.Eq(SL.AddrArrayT (SL.AddrArrayUp(_,i,_)),_))
-                        | SL.NegAtom(SL.InEq(_,SL.AddrArrayT(SL.AddrArrayUp(_,i,_))))
-                        | SL.NegAtom(SL.InEq(SL.AddrArrayT(SL.AddrArrayUp(_,i,_)),_)) ->
+                        | F.Atom(SL.Eq(_,SL.AddrArrayT(SL.AddrArrayUp(_,i,_))))
+                        | F.Atom(SL.Eq(SL.AddrArrayT (SL.AddrArrayUp(_,i,_)),_))
+                        | F.NegAtom(SL.InEq(_,SL.AddrArrayT(SL.AddrArrayUp(_,i,_))))
+                        | F.NegAtom(SL.InEq(SL.AddrArrayT(SL.AddrArrayUp(_,i,_)),_)) ->
                             assert (!no_arr_updates); no_arr_updates := false
                         | _ -> ()
                       ) ls
@@ -708,9 +710,9 @@ let pumping (cf:SL.conjunctive_formula) : unit =
 let relevant_levels (cf:SL.conjunctive_formula) : SL.integer GenSet.t =
   let relevant_set = GenSet.empty() in
   match cf with
-  | SL.TrueConj  -> relevant_set
-  | SL.FalseConj -> relevant_set
-  | SL.Conj ls   -> begin
+  | F.TrueConj  -> relevant_set
+  | F.FalseConj -> relevant_set
+  | F.Conj ls   -> begin
                       SL.TermSet.iter (fun t ->
                         match t with
                           (* r = addr2set(m,a,l) *)
@@ -752,12 +754,12 @@ let propagate_levels (alpha_pairs:alpha_pair_t list)
   let filter_non_relevant (cf:SL.conjunctive_formula)
                           (relset:SL.integer GenSet.t) : SL.conjunctive_formula =
     match cf with
-    | SL.TrueConj  -> SL.TrueConj
-    | SL.FalseConj -> SL.FalseConj
-    | SL.Conj ls   -> begin
-                        SL.Conj (List.fold_left (fun xs lit ->
+    | F.TrueConj  -> F.TrueConj
+    | F.FalseConj -> F.FalseConj
+    | F.Conj ls   -> begin
+                        F.Conj (List.fold_left (fun xs lit ->
                           let v_set = SL.varset_of_sort_from_literal lit SL.Int in
-                          if SL.VarSet.for_all (fun v -> GenSet.mem relset (SL.VarInt v)) v_set then
+                          if SL.V.VarSet.for_all (fun v -> GenSet.mem relset (SL.VarInt v)) v_set then
                             lit :: xs
                           else
                             xs
@@ -779,18 +781,18 @@ let propagate_levels (alpha_pairs:alpha_pair_t list)
   ) alpha_pairs;
   let propagate_levels_in_conj_formula (cf:SL.conjunctive_formula) : SL.conjunctive_formula =
     match cf with
-    | SL.TrueConj -> SL.TrueConj
-    | SL.FalseConj -> SL.FalseConj
-    | SL.Conj ls -> begin
+    | F.TrueConj -> F.TrueConj
+    | F.FalseConj -> F.FalseConj
+    | F.Conj ls -> begin
                       let result =
-                        SL.Conj (List.map (fun lit ->
+                        F.Conj (List.map (fun lit ->
                           begin
                             match lit with
-                            | SL.Atom(SL.Skiplist(_,_,l,_,_,_))
-                            | SL.Atom(SL.Eq(_,SL.CellT(SL.MkCell(_,_,_,l))))
-                            | SL.Atom(SL.Eq(SL.CellT(SL.MkCell(_,_,_,l)),_))
-                            | SL.NegAtom(SL.InEq(_,SL.CellT(SL.MkCell(_,_,_,l))))
-                            | SL.NegAtom(SL.InEq(SL.CellT(SL.MkCell(_,_,_,l)),_)) ->
+                            | F.Atom(SL.Skiplist(_,_,l,_,_,_))
+                            | F.Atom(SL.Eq(_,SL.CellT(SL.MkCell(_,_,_,l))))
+                            | F.Atom(SL.Eq(SL.CellT(SL.MkCell(_,_,_,l)),_))
+                            | F.NegAtom(SL.InEq(_,SL.CellT(SL.MkCell(_,_,_,l))))
+                            | F.NegAtom(SL.InEq(SL.CellT(SL.MkCell(_,_,_,l)),_)) ->
                                 if not (Hashtbl.mem replacements (SL.IntT l)) then
                                   let lowers = keep_lower_or_equals l alpha_pairs in
                                   let lower_l = match find_highest_lower_bound l lowers with
@@ -836,30 +838,30 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) :
 
   let check_pa (cf:SL.conjunctive_formula) : bool =
     match cf with
-    | SL.TrueConj  -> (verb "**** check_pa: true\n"; true)
-    | SL.FalseConj -> (verb "**** check_pa: false\n"; false)
-    | SL.Conj ls   -> (try_sat_with_presburger_arithmetic
-                        (SL.from_conjformula_to_formula cf)) in
+    | F.TrueConj  -> (verbl _LONG_INFO "**** check_pa: true\n"; true)
+    | F.FalseConj -> (verbl _LONG_INFO "**** check_pa: false\n"; false)
+    | F.Conj ls   -> (try_sat_with_presburger_arithmetic
+                        (F.conjunctive_to_formula cf)) in
 
 
   let check_tslk (k:int)
                  (cf:SL.conjunctive_formula)
                  (alpha_r:SL.integer list list option) : bool =
     match cf with
-    | SL.TrueConj -> true
-    | SL.FalseConj -> false
-    | SL.Conj ls -> begin
+    | F.TrueConj -> true
+    | F.FalseConj -> false
+    | F.Conj ls -> begin
                       let module TslkSol = (val TslkSolver.choose !solver_impl k
                                      : TslkSolver.S) in
                       TslkSol.compute_model (!comp_model);
                       let module Trans = TranslateTsl (TslkSol.TslkExp) in
                       let phi_tslk = Trans.to_tslk ls in
-                      let res = TslkSol.is_sat lines co !use_quantifier phi_tslk 
-                      in
+                      let res = TslkSol.is_sat lines co !use_quantifier phi_tslk in
                       DP.add_dp_calls this_call_tbl (DP.Tslk k) 1;
                       tslk_sort_map := TslkSol.get_sort_map ();
                       tslk_model := TslkSol.get_model ();
-                      if res then print_string "S" else print_string "X";
+                      if LeapVerbose.is_verbose_level_enabled(LeapVerbose._SHORT_INFO) then
+                        if res then print_string "S" else print_string "X";
                       let _ = match alpha_r with
                               | None -> ()
                               | Some a -> Hashtbl.add arrg_sat_table a res in
@@ -880,7 +882,7 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) :
 
     Pervasives.flush (Pervasives.stdout);
     let alpha_phi = alpha_to_conjunctive_formula alpha in
-    let pa_sat = check_pa (SL.combine_conj_formula (SL.combine_conj_formula pa panc) alpha_phi) in
+    let pa_sat = check_pa (F.combine_conjunctive (F.combine_conjunctive pa panc) alpha_phi) in
     (* TODO: Some arrangements are invalid, as I am not considering literals of the
              form "l2 = l1 + 1" to enforce that l2 should be in the immediately consecutive
              equivalence class of l1
@@ -926,8 +928,8 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) :
 
       Log.print "Alpha relevant" (GenSet.to_str SL.int_to_str alpha_relev);
 
-      if not (SL.VarSet.for_all (fun v -> GenSet.mem alpha_relev (SL.VarInt v)) panc_r_level_vars) then begin
-        print_endline ("PANC_R_LEVEL_VARS: " ^ (String.concat ";" (List.map SL.variable_to_str (SL.VarSet.elements panc_r_level_vars))));
+      if not (SL.V.VarSet.for_all (fun v -> GenSet.mem alpha_relev (SL.VarInt v)) panc_r_level_vars) then begin
+        print_endline ("PANC_R_LEVEL_VARS: " ^ (String.concat ";" (List.map SL.V.to_str (SL.V.VarSet.elements panc_r_level_vars))));
         print_endline ("ALPHA_RELEV: " ^ (GenSet.to_str SL.int_to_str alpha_relev));
         print_endline ("PANC_R: " ^ (SL.conjunctive_formula_to_str panc_r));
         print_endline ("ALPHA: " ^ (String.concat ";" (List.map (fun xs -> "[" ^ (String.concat ";" (List.map SL.int_to_str xs)) ^ "]") alpha)));
@@ -936,9 +938,9 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) :
         print_endline ("NC: " ^ (SL.conjunctive_formula_to_str nc))
       end;
 
-      assert (SL.VarSet.for_all (fun v -> GenSet.mem alpha_relev (SL.VarInt v)) panc_r_level_vars);
-      if not (SL.VarSet.for_all (fun v -> GenSet.mem alpha_relev (SL.VarInt v)) nc_r_level_vars) then begin
-        print_endline ("NC_R_LEVEL_VARS: " ^ (String.concat ";" (List.map SL.variable_to_str (SL.VarSet.elements nc_r_level_vars))));
+      assert (SL.V.VarSet.for_all (fun v -> GenSet.mem alpha_relev (SL.VarInt v)) panc_r_level_vars);
+      if not (SL.V.VarSet.for_all (fun v -> GenSet.mem alpha_relev (SL.VarInt v)) nc_r_level_vars) then begin
+        print_endline ("NC_R_LEVEL_VARS: " ^ (String.concat ";" (List.map SL.V.to_str (SL.V.VarSet.elements nc_r_level_vars))));
         print_endline ("ALPHA_RELEV: " ^ (GenSet.to_str SL.int_to_str alpha_relev));
         print_endline ("NC_R: " ^ (SL.conjunctive_formula_to_str nc_r));
         print_endline ("ALPHA: " ^ (String.concat ";" (List.map (fun xs -> "[" ^ (String.concat ";" (List.map SL.int_to_str xs)) ^ "]") alpha)));
@@ -946,25 +948,27 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) :
         print_endline ("PANC: " ^ (SL.conjunctive_formula_to_str panc));
         print_endline ("NC: " ^ (SL.conjunctive_formula_to_str nc))
       end;
-      assert (SL.VarSet.for_all (fun v -> GenSet.mem alpha_relev (SL.VarInt v)) nc_r_level_vars);
-      List.iter (fun xs -> assert (List.length xs = 1)) alpha_r;
+      assert (SL.V.VarSet.for_all (fun v -> GenSet.mem alpha_relev (SL.VarInt v)) nc_r_level_vars);
+
       (* Assertions only *)
 
       try
         let res = Hashtbl.find arrg_sat_table alpha_r in
-        print_string (if res then "$" else "#");
+        if (LeapVerbose.is_verbose_level_enabled(LeapVerbose._SHORT_INFO)) then
+          print_string (if res then "$" else "#");
         res
       with Not_found -> begin
         let alpha_r_formula = alpha_to_conjunctive_formula alpha_r in
-        let final_formula = List.fold_left SL.combine_conj_formula alpha_r_formula [panc_r;nc_r] in
+        let final_formula = List.fold_left F.combine_conjunctive alpha_r_formula [panc_r;nc_r] in
         match final_formula with
-        | SL.TrueConj  -> (print_string "T"; Hashtbl.add arrg_sat_table alpha_r true; true)
-        | SL.FalseConj -> (print_string "F"; Hashtbl.add arrg_sat_table alpha_r false; false)
-        | SL.Conj ls   -> check_tslk (List.length alpha_r) final_formula (Some alpha_r)
+        | F.TrueConj  -> (Hashtbl.add arrg_sat_table alpha_r true; true)
+        | F.FalseConj -> (Hashtbl.add arrg_sat_table alpha_r false; false)
+        | F.Conj ls   -> check_tslk (List.length alpha_r) final_formula (Some alpha_r)
       end
     end else begin
       (* For this arrangement is UNSAT. Return UNSAT. *)
-      print_string ".";
+      if LeapVerbose.is_verbose_level_enabled(LeapVerbose._SHORT_INFO) then
+        print_string ".";
       false
     end in
 
@@ -977,11 +981,11 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) :
   assert (Hashtbl.length arrg_sat_table = 0);
   let answer =
     (* If no interesting information in NC formula, then we just check PA and PANC *)
-    if nc = SL.TrueConj || nc = SL.FalseConj then begin
-      try_sat_with_presburger_arithmetic (SL.from_conjformula_to_formula
-                                          (SL.combine_conj_formula pa panc))
+    if nc = F.TrueConj || nc = F.FalseConj then begin
+      try_sat_with_presburger_arithmetic (F.conjunctive_to_formula
+                                          (F.combine_conjunctive pa panc))
     end else begin
-      let arrgs_opt = guess_arrangements (SL.combine_conj_formula_list [pa; panc; nc]) in
+      let arrgs_opt = guess_arrangements (F.combine_conjunctive_list [pa; panc; nc]) in
       (* Verify if some arrangement makes the formula satisfiable *)
       match arrgs_opt with
       | None -> check_tslk 1 nc None
@@ -1006,10 +1010,10 @@ let is_sat_plus_info (lines : int)
     Log.print "TSL Solver formula to check satisfiability" (SL.formula_to_str phi);
 
     match phi with
-    | SL.Not(SL.Implies(_,SL.True)) -> (false, 1, this_call_tbl)
-    | SL.Not (SL.Implies(SL.False, _)) -> (false, 1, this_call_tbl)
-    | SL.Implies(SL.False, _) -> (true, 1, this_call_tbl)
-    | SL.Implies(_, SL.True) -> (true, 1, this_call_tbl)
+    | F.Not(F.Implies(_,F.True)) -> (false, 1, this_call_tbl)
+    | F.Not (F.Implies(F.False, _)) -> (false, 1, this_call_tbl)
+    | F.Implies(F.False, _) -> (true, 1, this_call_tbl)
+    | F.Implies(_, F.True) -> (true, 1, this_call_tbl)
     | _ -> let answer =
              try
                 try_sat_with_presburger_arithmetic phi
@@ -1021,7 +1025,7 @@ let is_sat_plus_info (lines : int)
                (* ERASE *)
                Log.print "TSL Solver normalized formula" (SL.formula_to_str phi_norm);
                (* STEP 2: DNF of the normalized formula *)
-               let phi_dnf = SL.dnf phi_norm in
+               let phi_dnf = F.dnf phi_norm in
                (* If any of the conjunctions in DNF is SAT, then phi is sat *)
                let answer = List.exists (fun psi -> dnf_sat lines co psi) phi_dnf
                in
@@ -1043,15 +1047,15 @@ let is_valid_plus_info (prog_lines:int)
                        (use_q:bool)
                        (phi:SL.formula) : (bool * int * DP.call_tbl_t) =
   let (s,tsl_count,tslk_count) = is_sat_plus_info prog_lines co use_q
-                                   (SL.Not phi) in
-    (not s, tsl_count, tslk_count)
+                                    (F.Not phi) in
+  (not s, tsl_count, tslk_count)
 
 
 let is_valid (prog_lines:int)
              (co:Smp.cutoff_strategy_t)
              (use_q:bool)
              (phi:SL.formula) : bool =
-  not (is_sat prog_lines co use_q (SL.Not phi))
+  not (is_sat prog_lines co use_q (F.Not phi))
 
 
 let compute_model (b:bool) : unit =
@@ -1093,9 +1097,12 @@ let model_to_str () : string =
 
 
 let print_model () : unit =
+(*
+  FIX THIS
   if !comp_model && (!tslk_model <> GM.new_model()) then
     print_endline (model_to_str())
   else
+*)
     ()
 
 

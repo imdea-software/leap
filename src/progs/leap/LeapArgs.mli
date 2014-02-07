@@ -11,7 +11,6 @@ exception Unknown_tag of string
 val input_file : string ref
 val is_input_file : bool ref
 val input_file_fd : Unix.file_descr ref
-val verbose : bool ref
 val showFlag : bool ref
 val debugFlag : bool ref
 val pinvSys : bool ref
@@ -49,6 +48,8 @@ val outFile : string ref
 val detailedOutFile : string ref
 val num_threads : int ref
 val use_quantifiers : bool ref
+val output_vcs : bool ref
+
 val assignopt : 'a ref -> bool ref -> 'a -> unit
 val setdebug : unit -> unit
 val inputInvFolder : string -> unit

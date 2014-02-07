@@ -2,10 +2,10 @@ open Printf
 open LeapLib
 
 
-module Eparser = Exprparser
-module Elexer  = Exprlexer
+module Eparser = ExprParser
+module Elexer  = ExprLexer
 module Expr    = Expression
-module Symtbl  = Exprsymtable
+module Symtbl  = ExprSymTable
 
 (****************)
 (* main         *)
@@ -15,7 +15,7 @@ let _ =
   try
     TllArgs.parse_args ();
     let ch = TllArgs.open_input () in
-    let (tmp_sys,undefTids) = Parser.parse ch (Stmparser.system Stmlexer.norm) in
+    let (tmp_sys,undefTids) = Parser.parse ch (StmParser.system StmLexer.norm) in
 
     let sys = System.set_threads tmp_sys 1 in
     TllArgs.close_input ();

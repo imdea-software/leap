@@ -19,8 +19,7 @@ struct
   let prog_lines = ref 0
 
 
-  let pc_name        : string = "pc"
-  let pc_prime_name  : string = pc_name ^ "_prime"
+  let pc_prime_name  : string = Conf.pc_name ^ "_prime"
   let loc_str        : string = "loc_"
   let range_addr_str : string = "rg_addr_"
   let range_tid_str  : string = "rg_tid_"
@@ -270,9 +269,9 @@ struct
 
   let smt_pos_preamble buf =
     B.add_string buf ("(define-sort " ^loc_s^ " () " ^int_s^ ")\n");
-    GM.sm_decl_fun sort_map pc_name [tid_s] [loc_s] ;
+    GM.sm_decl_fun sort_map Conf.pc_name [tid_s] [loc_s] ;
     GM.sm_decl_fun sort_map pc_prime_name [tid_s] [loc_s] ;
-    B.add_string buf ("(declare-fun " ^pc_name^ " () (Array " ^tid_s^ " " ^loc_s^ "))\n");
+    B.add_string buf ("(declare-fun " ^Conf.pc_name^ " () (Array " ^tid_s^ " " ^loc_s^ "))\n");
     B.add_string buf ("(declare-fun " ^pc_prime_name^ " () (Array " ^tid_s^ " " ^loc_s^ "))\n");
     B.add_string buf ("(define-fun in_pos_range ((t " ^tid_s^ ")) " ^bool_s^ "\n" ^
                       "   (and (<= 1 (select pc t))\n" ^
@@ -1253,9 +1252,9 @@ struct
 
 
   let rec smt_define_var (buf:Buffer.t)
-                        (tid_set:Expr.VarSet.t)
+                        (tid_set:Expr.V.VarSet.t)
                         (num_tids:int)
-                        (v:Expr.variable) : unit =
+                        (v:Expr.V.t) : unit =
     let (id,s,pr,th,p) = v in
     let sort_str asort = match asort with
                            Expr.Set     -> set_s
@@ -1272,7 +1271,7 @@ struct
     let p_id = Option.map_default (fun str -> str ^ "_" ^ id) id p in
     let name = if pr then p_id ^ "_prime" else p_id
     in
-      if Expr.is_global_var v then
+      if Expr.V.is_global v then
         begin
           GM.sm_decl_const sort_map name
             (GM.conv_sort (TllInterface.sort_to_expr_sort s)) ;
@@ -1302,19 +1301,19 @@ struct
                          for i = 1 to num_tids do
                            B.add_string buf ("(assert (iselem (select " ^name^ " " ^tid_prefix ^ (string_of_int i)^ ")))\n")
                          done
-          | Expr.Path -> Expr.VarSet.iter (fun t ->
+          | Expr.Path -> Expr.V.VarSet.iter (fun t ->
                            let v_str = variable_invocation_to_str
-                                         (Expr.param_var v (Expr.VarTh t)) in
+                                         (Expr.V.set_param v (Expr.VarTh t)) in
                            B.add_string buf ( "(assert (ispath " ^ v_str ^ "))\n" )
                          ) tid_set
-          | Expr.Mem -> Expr.VarSet.iter (fun t ->
+          | Expr.Mem -> Expr.V.VarSet.iter (fun t ->
                           let v_str = variable_invocation_to_str
-                                        (Expr.param_var v (Expr.VarTh t)) in
+                                        (Expr.V.set_param v (Expr.VarTh t)) in
                           B.add_string buf ( "(assert (isheap " ^ v_str ^ "))\n" )
                         ) tid_set
-          | Expr.Tid -> Expr.VarSet.iter (fun t ->
+          | Expr.Tid -> Expr.V.VarSet.iter (fun t ->
                            let v_str = variable_invocation_to_str
-                                         (Expr.param_var v (Expr.VarTh t)) in
+                                         (Expr.V.set_param v (Expr.VarTh t)) in
                            B.add_string buf ( "(assert (not (= " ^ v_str ^ " notid)))\n" )
                          ) tid_set;
                          B.add_string buf ("(assert (istid (select " ^name^ " notid)))\n");
@@ -1327,7 +1326,7 @@ struct
         end
 
 
-  and define_variables (buf:Buffer.t) (num_tids:int) (vars:Expr.VarSet.t) : unit =
+  and define_variables (buf:Buffer.t) (num_tids:int) (vars:Expr.V.VarSet.t) : unit =
     let varset     = Expr.varset_of_sort vars Expr.Set  in
     let varelem    = Expr.varset_of_sort vars Expr.Elem in
     let varaddr    = Expr.varset_of_sort vars Expr.Addr in
@@ -1338,16 +1337,16 @@ struct
     let varpath    = Expr.varset_of_sort vars Expr.Path in
     let varmem     = Expr.varset_of_sort vars Expr.Mem  in
     let varunk     = Expr.varset_of_sort vars Expr.Unknown  in
-      Expr.VarSet.iter (smt_define_var buf vartid num_tids) varset;
-      Expr.VarSet.iter (smt_define_var buf vartid num_tids) varelem;
-      Expr.VarSet.iter (smt_define_var buf vartid num_tids) vartid;
-      Expr.VarSet.iter (smt_define_var buf vartid num_tids) varaddr;
-      Expr.VarSet.iter (smt_define_var buf vartid num_tids) varcell;
-      Expr.VarSet.iter (smt_define_var buf vartid num_tids) varsetth;
-      Expr.VarSet.iter (smt_define_var buf vartid num_tids) varsetelem;
-      Expr.VarSet.iter (smt_define_var buf vartid num_tids) varpath;
-      Expr.VarSet.iter (smt_define_var buf vartid num_tids) varmem;
-      Expr.VarSet.iter (smt_define_var buf vartid num_tids) varunk
+      Expr.V.VarSet.iter (smt_define_var buf vartid num_tids) varset;
+      Expr.V.VarSet.iter (smt_define_var buf vartid num_tids) varelem;
+      Expr.V.VarSet.iter (smt_define_var buf vartid num_tids) vartid;
+      Expr.V.VarSet.iter (smt_define_var buf vartid num_tids) varaddr;
+      Expr.V.VarSet.iter (smt_define_var buf vartid num_tids) varcell;
+      Expr.V.VarSet.iter (smt_define_var buf vartid num_tids) varsetth;
+      Expr.V.VarSet.iter (smt_define_var buf vartid num_tids) varsetelem;
+      Expr.V.VarSet.iter (smt_define_var buf vartid num_tids) varpath;
+      Expr.V.VarSet.iter (smt_define_var buf vartid num_tids) varmem;
+      Expr.V.VarSet.iter (smt_define_var buf vartid num_tids) varunk
 
 
   and variables_to_smt (buf:Buffer.t)
@@ -1366,7 +1365,7 @@ struct
       define_variables buf num_tids vars
 
 
-  and variable_invocation_to_str (v:Expr.variable) : string =
+  and variable_invocation_to_str (v:Expr.V.t) : string =
     let (id,s,pr,th,p) = v in
     let th_str = Option.map_default tidterm_to_str "" th in
     let p_str  = Option.map_default (fun n -> Printf.sprintf "%s_" n) "" p in
@@ -1520,7 +1519,7 @@ struct
                                             (cellterm_to_str c)
 
 
-  let rec varupdate_to_str (v:Expr.variable)
+  let rec varupdate_to_str (v:Expr.V.t)
                            (th:Expr.tid)
                            (t:Expr.term) : string =
     let v_str = variable_invocation_to_str v in
@@ -1624,7 +1623,7 @@ struct
 
 
   let pc_to_str (pc:int) (th:Expr.tid option) (pr:bool) : string =
-    let pc_str = if pr then pc_prime_name else pc_name
+    let pc_str = if pr then pc_prime_name else Conf.pc_name
     in
       Printf.sprintf "(= (select %s %s) %s)" pc_str
           (Option.map_default tidterm_to_str "" th) (linenum_to_str pc)
@@ -1632,7 +1631,7 @@ struct
 
   let pcrange_to_str (pc1:int) (pc2:int)
                         (th:Expr.tid option) (pr:bool) : string =
-    let pc_str = if pr then pc_prime_name else pc_name in
+    let pc_str = if pr then pc_prime_name else Conf.pc_name in
     let th_str = Option.map_default tidterm_to_str "" th
     in
       Printf.sprintf "(and (<= %s (select %s %s)) (<= (select %s %s) %s))"
@@ -1641,7 +1640,7 @@ struct
 
   let pcupdate_to_str (pc:int) (th:Expr.tid) : string =
     Printf.sprintf "(= %s (store %s %s %s))"
-      pc_prime_name pc_name (tidterm_to_str th) (linenum_to_str pc)
+      pc_prime_name Conf.pc_name (tidterm_to_str th) (linenum_to_str pc)
 
 
   let smt_partition_assumptions (parts:'a Partition.t list) : string =
@@ -2022,22 +2021,22 @@ struct
 
           let assumps = List.map (fun (x,y) -> Partition.Eq (Expr.AddrT x, Expr.AddrT y)) eq @
                         List.map (fun (x,y) -> Partition.Ineq (Expr.AddrT x, Expr.AddrT y)) ineq in
-          verb "**** SMTTllQuery. Domain: %i\n" (List.length term_dom);
-          verb "**** SMTTllQuery. Assumptions: %i\n" (List.length assumps);
+          verbl _LONG_INFO "**** SMTTllQuery. Domain: %i\n" (List.length term_dom);
+          verbl _LONG_INFO "**** SMTTllQuery. Assumptions: %i\n" (List.length assumps);
 
           let parts = Partition.gen_partitions term_dom assumps in
           let _ = if LeapDebug.is_debug_enabled() then
                     List.iter (fun p ->
-                      verb "**** SMTTllQuery. Partitions:\n%s\n"
+                      verbl _LONG_INFO "**** SMTTllQuery. Partitions:\n%s\n"
                            (Partition.to_str Expr.term_to_str p);
                     ) parts in
-          verb "**** SMTTllQuery. Number of cases: %i\n" (List.length parts);
-          verb "**** SMTTllQuery. Computation done!!!\n";
+          verbl _LONG_INFO "**** SMTTllQuery. Number of cases: %i\n" (List.length parts);
+          verbl _LONG_INFO "**** SMTTllQuery. Computation done!!!\n";
             smt_partition_assumptions parts in
 
     clean_lists();
     let _ = GM.clear_sort_map sort_map in
-    verb "**** SMTTllQuery. Will compute the cutoff...\n";
+    verbl _LONG_INFO "**** SMTTllQuery. Will compute the cutoff...\n";
     let max_cut_off = SmpTll.cut_off co copt phi in
     let num_addr    = max_cut_off.SmpTll.num_addrs in
     let num_tid     = max_cut_off.SmpTll.num_tids in

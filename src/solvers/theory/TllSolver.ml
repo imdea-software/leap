@@ -38,7 +38,7 @@ module type S = CUSTOM_TLLSOLVER
 module Make(Solver : BackendSolverIntf.BACKEND_TLL) : S =
 struct
   module TllExp   = Solver.Translate.Tll.Exp
-  module VarIdSet = TllExp.VarIdSet
+  module VarIdSet = TllExp.V.VarIdSet
   module GM       = GenericModel
 
   let comp_model : bool ref = ref false
@@ -208,9 +208,9 @@ struct
   (* INVOCATIONS TRANSFORMING TO DNF FIRST *)
   let is_sat_conj (lines : int) (phi : TllExp.conjunctive_formula) : bool =
     match phi with
-        TllExp.TrueConj   -> true
-      | TllExp.FalseConj  -> false
-      | TllExp.Conj conjs ->
+        Formula.TrueConj   -> true
+      | Formula.FalseConj  -> false
+      | Formula.Conj conjs ->
         begin
           let module Q = (val QueryManager.get_tll_query Solver.identifier) in
           let module Trans = Solver.Translate.Tll.Query(Q) in
@@ -219,12 +219,12 @@ struct
         end
   
   let is_sat_dnf (prog_lines : int) (phi : TllExp.formula) : bool =
-    let dnf_phi = TllExp.dnf phi in
+    let dnf_phi = Formula.dnf phi in
       List.exists (is_sat_conj prog_lines) dnf_phi
   
   
   let is_valid_dnf (prog_lines : int) (phi : TllExp.formula) : bool =
-    let dnf_phi       = TllExp.dnf (TllExp.Not phi) in
+    let dnf_phi       = Formula.dnf (Formula.Not phi) in
     let is_unsat conj = (not (is_sat_conj prog_lines conj))
     in List.for_all is_unsat dnf_phi
   
@@ -242,12 +242,12 @@ struct
              (phi : TllExp.formula) : bool =
 (*    LOG "Entering is_sat..." LEVEL TRACE; *)
     match phi with
-    | TllExp.Not(TllExp.Implies(_,TllExp.True)) -> (Solver.calls_force_incr(); false)
-    | TllExp.Not (TllExp.Implies(TllExp.False, _)) -> (Solver.calls_force_incr(); false)
-    | TllExp.Implies(TllExp.False, _) -> (Solver.calls_force_incr(); true)
-    | TllExp.Implies(_, TllExp.True) -> (Solver.calls_force_incr(); true)
+    | Formula.Not(Formula.Implies(_,Formula.True)) -> (Solver.calls_force_incr(); false)
+    | Formula.Not (Formula.Implies(Formula.False, _)) -> (Solver.calls_force_incr(); false)
+    | Formula.Implies(Formula.False, _) -> (Solver.calls_force_incr(); true)
+    | Formula.Implies(_, Formula.True) -> (Solver.calls_force_incr(); true)
     | _ -> begin
-             verb "**** TLL Solver, about to translate TLL...\n";
+             verbl _LONG_INFO "**** TLL Solver, about to translate TLL...\n";
              let module Q = (val QueryManager.get_tll_query Solver.identifier) in
              let module Trans = Solver.Translate.Tll.Query(Q) in
              Trans.set_prog_lines lines;
@@ -257,7 +257,7 @@ struct
   let is_valid (prog_lines:int)
                (co:Smp.cutoff_strategy_t)
                (phi:TllExp.formula) : bool =
-    not (is_sat prog_lines co (TllExp.Not phi))
+    not (is_sat prog_lines co (Formula.Not phi))
   
   let is_valid_plus_info (prog_lines:int)
                          (co:Smp.cutoff_strategy_t)

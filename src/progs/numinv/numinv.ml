@@ -40,7 +40,7 @@ let noSelfLoopFlag        = ref false
 let show_stat_info        = ref false
 let useLabelsFlag         = ref false
 let invOutFile            = ref ""
-let composedThreadsParams = ref [Expr.build_var_tid ("i1")]
+let composedThreadsParams = ref [Expr.VarTh (Expr.build_global_var "i1" Expr.Tid)]
 let domainType            = ref Numprog.Poly
 let tacticType            = ref None
 let absIntMode            = ref Numprog.Eager
@@ -89,7 +89,7 @@ let set_compose_threads i =
   let th_list = LeapLib.rangeList 1 i
   in
     composedThreadsParams := List.map (fun i ->
-                               Expr.build_var_tid ("i" ^ (string_of_int i))
+                               Expr.VarTh (Expr.build_global_var ("i" ^ (string_of_int i)) Expr.Tid)
                              ) th_list
 
 
@@ -201,11 +201,11 @@ let _ =
   try
     let _        = parse_args () in
     let ch       = open_input () in
-    let (tSys,_) = Parser.parse ch (Stmparser.system Stmlexer.norm) in
+    let (tSys,_) = Parser.parse ch (StmParser.system StmLexer.norm) in
     let _        = close_input () in
 
     (* We do not need the heap in numeric programs *)
-    let sys      = Sys.del_global_var tSys Sys.heap_name in
+    let sys      = Sys.del_global_var tSys Conf.heap_name in
 
     let _        = Sys.check_is_numeric sys in
 (*    let orig_widening_steps = !Numprog.wait_for_widening in *)

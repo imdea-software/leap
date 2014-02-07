@@ -8,7 +8,7 @@ invariant [skiplist_prop] :
 
 
 #is_skiplist:
-	 skiplist(heap, region, maxLevel, head, null, elements)
+   skiplist(heap, region, maxLevel, head, null, elements)
 
 
 #head_is_lowest:

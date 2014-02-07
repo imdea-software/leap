@@ -1,30 +1,27 @@
 
 type sort = Int | Set | Tid
 
-type varId = Expression.varId
-
-type tid = Expression.tid
-
-type shared_or_local = Shared  | Local of tid
-
-type procedure_name  = GlobalScope | Scope of string
-
-type variable
+module V : Variable.S
+  with type sort = sort
+  with type info = unit
 
 
-type integer =
+type tid =
+  | VarTh of V.t
+  | NoTid
+and integer =
     Val           of int
-  | Var           of variable
+  | Var           of V.t
   | Neg           of integer
   | Add           of integer * integer
   | Sub           of integer * integer
   | Mul           of integer * integer
   | Div           of integer * integer
-  | ArrayRd       of Expression.arrays * Expression.tid
+  | ArrayRd       of Expression.arrays * tid
   | SetMin        of set
   | SetMax        of set
 and set =
-    VarSet        of variable
+    VarSet        of V.t
   | EmptySet
   | Singl         of integer
   | Union         of set * set
@@ -34,7 +31,7 @@ and term =
   | IntV          of integer
   | SetV          of set
 and fun_term =
-  | FunVar        of variable
+  | FunVar        of V.t
   | FunUpd        of fun_term * tid * term
 and eq =          term * term
 and diseq =       term * term
@@ -52,87 +49,53 @@ and atom =
   | TidInEq       of tid * tid
   | FunEq         of fun_term * fun_term
   | FunInEq       of fun_term * fun_term
-  | PC            of int * shared_or_local * bool
+  | PC            of int * V.shared_or_local * bool
   | PCUpdate      of int * tid
-  | PCRange       of int * int * shared_or_local * bool
-and literal =
-    Atom            of atom
-  | NegAtom         of atom
-and conjunction_literals =
-    ConjTrue
-  | ConjFalse    
-  | Conjuncts     of literal list
-and formula =
-    Literal       of literal
-  | True
-  | False
-  | And           of formula * formula
-  | Or            of formula * formula
-  | Not           of formula
-  | Implies       of formula * formula
-  | Iff           of formula * formula
+  | PCRange       of int * int * V.shared_or_local * bool
+and literal = atom Formula.literal
 
+and conjunctive_formula = atom Formula.conjunctive_formula
 
-module VarSet : Set.S with type elt = variable
+and formula = atom Formula.formula
 
 
 exception NotConjunctiveExpr of formula
 
+module ThreadSet : Set.S with type elt = tid
 
-val build_var : varId ->
+val build_var : ?fresh:bool ->
+                V.id ->
                 sort ->
                 bool ->
-                shared_or_local ->
-                procedure_name ->
-                variable
-
-val var_id : variable -> varId
-val var_sort : variable -> sort
-val var_is_primed : variable -> bool
-val var_parameter : variable -> shared_or_local
-val var_scope : variable -> procedure_name
-
-val var_clear_param_info : variable -> variable
-val param_var : variable -> tid -> variable
-val var_is_global : variable -> bool
-
+                V.shared_or_local ->
+                V.procedure_name ->
+                V.t
 
 val is_int_formula : Expression.formula   -> bool
 
-val variable_to_str : variable -> string
 val integer_to_str  : integer  -> string
 val formula_to_str  : formula -> string
 val literal_to_str  : literal -> string
 val atom_to_str     : atom -> string
 
-val all_varid             : formula -> Expression.varId list
-val all_varid_literal     : literal -> Expression.varId list
-val all_global_varid      : formula -> Expression.varId list
-val all_local_varid       : formula -> Expression.varId list
-val all_varid_set         : formula -> Expression.VarIdSet.t
-val all_varid_set_literal : literal -> Expression.VarIdSet.t
-val all_global_varid_set  : formula -> Expression.VarIdSet.t
-val all_local_varid_set   : formula -> Expression.VarIdSet.t
+val all_varid             : formula -> V.id list
+val all_global_varid      : formula -> V.id list
+val all_local_varid       : formula -> V.id list
+val all_varid_set         : formula -> V.VarIdSet.t
+val all_global_varid_set  : formula -> V.VarIdSet.t
+val all_local_varid_set   : formula -> V.VarIdSet.t
 
-val all_vars              : formula -> variable list
-val all_vars_literal      : literal -> variable list
-val all_global_vars       : formula -> variable list
-val all_local_vars        : formula -> variable list
-val all_vars_set          : formula -> VarSet.t
-val all_vars_set_literal  : literal -> VarSet.t
-val all_global_vars_set   : formula -> VarSet.t
-val all_local_vars_set    : formula -> VarSet.t
+val all_vars              : formula -> V.t list
+val all_global_vars       : formula -> V.t list
+val all_local_vars        : formula -> V.t list
+val all_vars_set          : formula -> V.VarSet.t
+val all_global_vars_set   : formula -> V.VarSet.t
+val all_local_vars_set    : formula -> V.VarSet.t
 
-val all_global_vars_without_param : formula -> variable list
-val all_local_vars_without_param  : formula -> variable list
+val all_global_vars_without_param : formula -> V.t list
+val all_local_vars_without_param  : formula -> V.t list
 
 val voc : formula -> tid list
-
-(* CONJUNCTIONS OF LITERALS *)
-val is_conjunctive            : formula -> bool
-val formula_to_conj_literals  : formula -> literal list
-val list_literals_to_formula  : literal list -> formula
-val conj_literals_to_formula  : conjunction_literals -> formula
 
 
 (* LINEARITY *)
@@ -140,4 +103,6 @@ val has_variable      : integer -> bool
 
 val formula_is_linear : formula -> bool
 val term_is_linear    : integer -> bool
-val literal_is_linear : literal -> bool
+
+
+val voc_to_var : tid -> V.t

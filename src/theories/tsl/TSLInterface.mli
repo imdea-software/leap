@@ -1,6 +1,6 @@
 
 
-val var_to_tsl_var : Expression.variable -> TSLExpression.variable
+val var_to_tsl_var : Expression.V.t -> TSLExpression.V.t
 val tid_to_tsl_tid : Expression.tid -> TSLExpression.tid
 val term_to_tsl_term : Expression.term -> TSLExpression.term
 val set_to_tsl_set : Expression.set -> TSLExpression.set
@@ -14,11 +14,10 @@ val mem_to_tsl_mem : Expression.mem -> TSLExpression.mem
 val int_to_tsl_int : Expression.integer -> TSLExpression.integer
 val addrarr_to_tsl_addrarr : Expression.addrarr -> TSLExpression.addrarr
 val tidarr_to_tsl_tidarr : Expression.tidarr -> TSLExpression.tidarr
-val literal_to_tsl_literal : Expression.literal -> TSLExpression.literal
 val formula_to_tsl_formula : Expression.formula -> TSLExpression.formula
 
 
-val var_to_expr_var : TSLExpression.variable -> Expression.variable
+val var_to_expr_var : TSLExpression.V.t -> Expression.V.t
 val tid_to_expr_tid : TSLExpression.tid -> Expression.tid
 val term_to_expr_term : TSLExpression.term -> Expression.term
 val set_to_expr_set : TSLExpression.set -> Expression.set
@@ -32,5 +31,4 @@ val mem_to_expr_mem : TSLExpression.mem -> Expression.mem
 val int_to_expr_int : TSLExpression.integer -> Expression.integer
 val addrarr_to_expr_addrarr : TSLExpression.addrarr -> Expression.addrarr
 val tidarr_to_expr_tidarr : TSLExpression.tidarr -> Expression.tidarr
-val literal_to_expr_literal : TSLExpression.literal -> Expression.literal
 val formula_to_expr_formula : TSLExpression.formula -> Expression.formula

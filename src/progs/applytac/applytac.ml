@@ -1,7 +1,7 @@
 open LeapLib
 
-module Eparser = Exprparser
-module Elexer  = Exprlexer
+module Eparser = ExprParser
+module Elexer  = ExprLexer
 
 
 (****************)

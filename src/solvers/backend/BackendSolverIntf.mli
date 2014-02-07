@@ -132,18 +132,16 @@ sig
                          Smp.cutoff_options_t ->
                          bool ->
                          Exp.formula -> t
-      (** [formula stat strat copt useq f] translates the formula [f] following 
-          the
-          strategy [strat] to compute the SMP cutoff and tactic [stat] to
+      (** [formula stat strat copt useq f] translates the formula [f] following
+          the strategy [strat] to compute the SMP cutoff and tactic [stat] to
           decide whether or not to include extra information to help the
           future satisfiability analysis of the formula. When computing the SMP
           it considers the options passes in [copt]. [useq] determines whether
           quantifiers should be used in the generated query. *)
           
       val conjformula  : bool -> Exp.conjunctive_formula -> t
-      (** [conjformula useq f] translates the conjunctive formula [f]. [useq] 
-          determines whether quantifiers should be used in the generated query.
-          *)
+      (** [conjformula useq f] tranlates the conjunctive formula [f]. [useq]
+          determines whether quantifiers should be used in the generated query. *)
 
       val sort_map : unit -> GenericModel.sort_map_t
       (** [sort_map ()] returns the sort mapping obtained from the last
@@ -169,7 +167,7 @@ sig
     sig
       include GeneralBackend with type t := t
 
-      val int_varlist  : Exp.variable list -> t
+      val int_varlist  : Exp.V.t list -> t
       (** [int_varlist vs] tranlates the list [vs] of intege/r variables
           into its corresponding internal representation. *)
       
@@ -187,8 +185,7 @@ sig
           account the number of lines previously passed through [set_prog_lines].
           *)
       
-      val std_widening : Exp.variable list -> Exp.formula 
-                           -> Exp.literal -> t
+      val std_widening : Exp.V.t list -> Exp.formula -> Exp.literal -> t
       (** [std_widening vars f l] constructs an internal representation of 
           a standard widening. *)
 

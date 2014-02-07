@@ -2,102 +2,102 @@
 
 
 -> skiplist_prop [
-			 3:{union : | | split-antecedent-pc | simplify-pc };
-			40:skiplist_region_inst::newCell_unconnected_at_i;
-			41:skiplist_order_inst,
-				 skiplist_order::element_has_value,
-				 skiplist_next::newCell_connected_at_i;
-			42:skiplist_next,skiplist_order;
-			59:skiplist_region,skiplist_order
-	] { union : split-goal
-						 | reduce2
-						 | split-consequent
-						 | simplify-pc propositional-propagate
-		 }
+       3:{union : | | split-antecedent-pc | simplify-pc };
+      40:skiplist_region_inst::newCell_unconnected_at_i;
+      41:skiplist_order_inst,
+         skiplist_order::element_has_value,
+         skiplist_next::newCell_connected_at_i;
+      42:skiplist_next,skiplist_order;
+      59:skiplist_region,skiplist_order
+  ] { union : split-goal
+             | reduce2
+             | split-consequent
+             | simplify-pc propositional-propagate
+     }
 
 
 
 -> skiplist_region [
-			 3:{union : | | split-antecedent-pc | simplify-pc };
-			18:skiplist_prop;
-			19:skiplist_prop::is_skiplist,
-				 skiplist_next::insert_element_is_head;
-			23:skiplist_prop::is_skiplist,
-				 skiplist_next::insert_element_next_i_is_nextElement,
-				 skiplist_order::insert_value_is_bounded,
-				 skiplist_order::insert_element_lower_than_value,
-				 skiplist_order::insert_nextElement_lower_than_value;
-			26:skiplist_prop::is_skiplist,
-				 skiplist_next::insert_element_in_region,
-				 skiplist_next::insert_update_i_is_element,
-				 skiplist_next::insert_element_next_i_is_nextElement,
-				 skiplist_next::insert_element_in_addr2set,
-				 skiplist_levels;
-			33:skiplist_prop::is_skiplist;
-			36:skiplist_prop::is_skiplist,
-				 skiplist_next::all_update_filled;
-			38:skiplist_prop::is_skiplist,
-				 skiplist_next::newCell_not_null;
-			41:skiplist_next::newCell_connected_at_i,
-				 skiplist_next::newCell_not_null,
-				 skiplist_levels::insert_i_bounded,
-				 skiplist_region_inst::insert_update_i_addr2set,
-				 skiplist_region_inst::newCell_unconnected_at_i
-	 ] { union : split-goal
-						 | reduce2
-						 |
-						 | simplify-pc propositional-propagate
-		 }
+       3:{union : | | split-antecedent-pc | simplify-pc };
+      18:skiplist_prop;
+      19:skiplist_prop::is_skiplist,
+         skiplist_next::insert_element_is_head;
+      23:skiplist_prop::is_skiplist,
+         skiplist_next::insert_element_next_i_is_nextElement,
+         skiplist_order::insert_value_is_bounded,
+         skiplist_order::insert_element_lower_than_value,
+         skiplist_order::insert_nextElement_lower_than_value;
+      26:skiplist_prop::is_skiplist,
+         skiplist_next::insert_element_in_region,
+         skiplist_next::insert_update_i_is_element,
+         skiplist_next::insert_element_next_i_is_nextElement,
+         skiplist_next::insert_element_in_addr2set,
+         skiplist_levels;
+      33:skiplist_prop::is_skiplist;
+      36:skiplist_prop::is_skiplist,
+         skiplist_next::all_update_filled;
+      38:skiplist_prop::is_skiplist,
+         skiplist_next::newCell_not_null;
+      41:skiplist_next::newCell_connected_at_i,
+         skiplist_next::newCell_not_null,
+         skiplist_levels::insert_i_bounded,
+         skiplist_region_inst::insert_update_i_addr2set,
+         skiplist_region_inst::newCell_unconnected_at_i
+   ] { union : split-goal
+             | reduce2
+             |
+             | simplify-pc propositional-propagate
+     }
 
 
 -> skiplist_next [
-			 3:{union : | | split-antecedent-pc | simplify-pc };
-			18:skiplist_prop::head_not_null,
-				 skiplist_prop::is_skiplist;
-			21:skiplist_prop::is_skiplist,
-				 skiplist_prop::head_not_null,
-				 skiplist_region::insert_element_next_i_in_region;
-			26:skiplist_prop::is_skiplist,
-				 skiplist_levels::insert_i_lower_maxLevel_one;
-			33:skiplist_levels::insert_i_higher_than_maxLevel;
-			35:skiplist_prop::head_is_lowest,
-				 skiplist_order::null_is_highest,
-				 skiplist_order::insert_value_is_bounded
-	 ] { union : split-goal
-						 | reduce2
-						 |
-						 | simplify-pc
-		 }
+       3:{union : | | split-antecedent-pc | simplify-pc };
+      18:skiplist_prop::head_not_null,
+         skiplist_prop::is_skiplist;
+      21:skiplist_prop::is_skiplist,
+         skiplist_prop::head_not_null,
+         skiplist_region::insert_element_next_i_in_region;
+      26:skiplist_prop::is_skiplist,
+         skiplist_levels::insert_i_lower_maxLevel_one;
+      33:skiplist_levels::insert_i_higher_than_maxLevel;
+      35:skiplist_prop::head_is_lowest,
+         skiplist_order::null_is_highest,
+         skiplist_order::insert_value_is_bounded
+   ] { union : split-goal
+             | reduce2
+             |
+             | simplify-pc
+     }
 
 
 
 -> skiplist_order [
-			 3:{union : | | split-antecedent-pc | simplify-pc };
-			18:skiplist_prop::head_is_lowest;
-			26:skiplist_next::insert_element_next_i_is_nextElement,
-				 skiplist_next::insert_update_i_is_element;
-			28:skiplist_prop::is_skiplist,
-				 skiplist_region::insert_update_j_in_addr2set,
-				 skiplist_region_inst::insert_update_zero_in_region,
-				 skiplist_next::insert_element_is_update_next,
-				 skiplist_order_inst::insert_update_bounded;
-			33:skiplist_prop::is_skiplist,
-				 skiplist_region::insert_update_j_in_addr2set;
-			36:skiplist_next::insert_new_update_set;
-			40:skiplist_order_inst::insert_update_i_data_bounded,
-				 skiplist_levels::insert_i_bounded
-	 ] { union : split-goal
-						 | reduce2
-						 | split-consequent
-						 | simplify-pc
-	 }
+       3:{union : | | split-antecedent-pc | simplify-pc };
+      18:skiplist_prop::head_is_lowest;
+      26:skiplist_next::insert_element_next_i_is_nextElement,
+         skiplist_next::insert_update_i_is_element;
+      28:skiplist_prop::is_skiplist,
+         skiplist_region::insert_update_j_in_addr2set,
+         skiplist_region_inst::insert_update_zero_in_region,
+         skiplist_next::insert_element_is_update_next,
+         skiplist_order_inst::insert_update_bounded;
+      33:skiplist_prop::is_skiplist,
+         skiplist_region::insert_update_j_in_addr2set;
+      36:skiplist_next::insert_new_update_set;
+      40:skiplist_order_inst::insert_update_i_data_bounded,
+         skiplist_levels::insert_i_bounded
+   ] { union : split-goal
+             | reduce2
+             | split-consequent
+             | simplify-pc
+   }
 
 
 -> skiplist_levels [
-			38:skiplist_prop::maxLevel_is_positive
-	 ] { union :
-						 | reduce2
-						 |
-						 | simplify-pc
-		 }
+      38:skiplist_prop::maxLevel_is_positive
+   ] { union :
+             | reduce2
+             |
+             | simplify-pc
+     }
 

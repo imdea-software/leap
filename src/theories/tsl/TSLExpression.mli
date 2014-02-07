@@ -1,22 +1,5 @@
-type varId = string
 
-and shared_or_local = Shared  | Local of tid
-
-and procedure_name  = GlobalScope | Scope of string
-
-and variable
-
-(* =
-  {
-            id        : varId           ;
-            sort      : sort            ;
-    mutable is_primed : bool            ;
-    mutable parameter : shared_or_local ;
-            scope     : procedure_name  ;
-  }
-*)
-
-and sort =
+type sort =
     Set
   | Elem
   | Tid
@@ -31,11 +14,16 @@ and sort =
   | TidArray
   | Bool
   | Unknown
-and term =
-    VarT              of variable
+
+module V : Variable.S
+  with type sort = sort
+  with type info = unit
+
+type term =
+    VarT              of V.t
   | SetT              of set
   | ElemT             of elem
-  | TidT             of tid
+  | TidT              of tid
   | AddrT             of addr
   | CellT             of cell
   | SetThT            of setth
@@ -45,11 +33,11 @@ and term =
   | IntT              of integer
   | AddrArrayT        of addrarr
   | TidArrayT         of tidarr
-  | VarUpdate         of variable * tid * term
+  | VarUpdate         of V.t * tid * term
 and eq = term * term
 and diseq = term * term
 and set =
-    VarSet            of variable
+    VarSet            of V.t
   | EmptySet
   | Singl             of addr
   | Union             of set * set
@@ -58,38 +46,38 @@ and set =
   | PathToSet         of path
   | AddrToSet         of mem * addr * integer
 and tid =
-    VarTh             of variable
+    VarTh             of V.t
   | NoTid
   | CellLockIdAt      of cell * integer
   | TidArrRd         of tidarr * integer
 and elem =
-    VarElem           of variable
+    VarElem           of V.t
   | CellData          of cell
   | HavocSkiplistElem
   | LowestElem
   | HighestElem
 and addr =
-    VarAddr           of variable
+    VarAddr           of V.t
   | Null
   | ArrAt            of cell * integer
   | AddrArrRd         of addrarr * integer
 (*  | Malloc of elem * addr * tid *)
 and cell =
-    VarCell           of variable
+    VarCell           of V.t
   | Error
   | MkCell            of elem * addrarr * tidarr * integer
   | CellLockAt        of cell * integer * tid
   | CellUnlockAt      of cell * integer
   | CellAt            of mem * addr
 and setth =
-    VarSetTh          of variable
+    VarSetTh          of V.t
   | EmptySetTh
   | SinglTh           of tid
   | UnionTh           of setth * setth
   | IntrTh            of setth * setth
   | SetdiffTh         of setth * setth
 and setelem =
-    VarSetElem        of variable
+    VarSetElem        of V.t
   | EmptySetElem
   | SinglElem         of elem
   | UnionElem         of setelem * setelem
@@ -97,16 +85,16 @@ and setelem =
   | SetToElems        of set * mem
   | SetdiffElem       of setelem * setelem
 and path =
-    VarPath           of variable
+    VarPath           of V.t
   | Epsilon
   | SimplePath        of addr
   | GetPath           of mem * addr * addr * integer
 and mem =
-    VarMem            of variable
+    VarMem            of V.t
   | Update            of mem * addr * cell
 and integer =
     IntVal            of int
-  | VarInt            of variable
+  | VarInt            of V.t
   | IntNeg            of integer
   | IntAdd            of integer * integer
   | IntSub            of integer * integer
@@ -115,11 +103,11 @@ and integer =
   | CellMax           of cell
   | HavocLevel
 and addrarr =
-  | VarAddrArray      of variable
+  | VarAddrArray      of V.t
   | AddrArrayUp       of addrarr * integer * addr
   | CellArr           of cell
 and tidarr =
-  | VarTidArray       of variable
+  | VarTidArray       of V.t
   | TidArrayUp        of tidarr * integer * tid
   | CellTids          of cell
 and atom =
@@ -141,10 +129,15 @@ and atom =
   | GreaterElem       of elem * elem
   | Eq                of eq
   | InEq              of diseq
-  | BoolVar           of variable
-  | PC                of int * shared_or_local * bool
+  | BoolVar           of V.t
+  | PC                of int * V.shared_or_local * bool
   | PCUpdate          of int * tid
-  | PCRange           of int * int * shared_or_local * bool
+  | PCRange           of int * int * V.shared_or_local * bool
+and literal = atom Formula.literal
+and conjunctive_formula = atom Formula.conjunctive_formula
+and disjunctive_formula = atom Formula.disjunctive_formula
+and formula = atom Formula.formula
+(*
 and literal =
     Atom              of atom
   | NegAtom           of atom
@@ -161,6 +154,7 @@ and formula =
   | Not               of formula
   | Implies           of formula * formula
   | Iff               of formula * formula
+*)
 
 
 type special_op_t =
@@ -175,71 +169,58 @@ type special_op_t =
   | SkiplistProp
 
 
-(* Fresh variable generation *)
-type fresh_var_gen_t
-
-
 exception WrongType of term
 
 (* CALCULATE SET OF VARS *)
-module VarIdSet : Set.S with type elt = varId
-module VarSet : Set.S with type elt = variable
 module TermSet : Set.S with type elt = term
 module AtomSet : Set.S with type elt = atom
 module ThreadSet : Set.S with type elt = tid
 
-(* variable manipulation *)
-val build_var : varId -> sort -> bool -> shared_or_local -> procedure_name -> variable
-val var_id : variable -> varId
-val var_sort : variable -> sort
-val var_is_primed : variable -> bool
-val var_scope : variable -> procedure_name
-val var_parameter : variable -> shared_or_local
-val var_set_param : shared_or_local -> variable -> variable
-val is_global_var : variable -> bool
-
-val unlocalize_variable : variable -> variable
+val build_var : ?fresh:bool ->
+                V.id ->
+                sort ->
+                bool ->
+                V.shared_or_local ->
+                V.procedure_name ->
+                V.t
 
 (* returns all variables form a formula *)
-val varlist_from_conj           : conjunctive_formula -> variable list
-val varlist                     : formula -> variable list
+val varlist_from_conj           : conjunctive_formula -> V.t list
+val varlist                     : formula -> V.t list
 
-val varidlist_of_sort_from_conj : conjunctive_formula -> sort -> varId list
-val varidlist_of_sort           : formula -> sort -> varId list
+val varidlist_of_sort_from_conj : conjunctive_formula -> sort -> V.id list
+val varidlist_of_sort           : formula -> sort -> V.id list
 
-val get_varidlist_of_sort       : variable list -> sort -> varId list
+(*val varset_from_literal           : literal -> V.VarSet.t *)
+val varset_from_conj              : conjunctive_formula -> V.VarSet.t
+val varset                        : formula -> V.VarSet.t
+(*val varset_instances_from_literal : literal -> V.VarSet.t *)
+val varset_instances_from_conj    : conjunctive_formula -> V.VarSet.t
+val varset_instances              : formula -> V.VarSet.t
+val varset_of_sort_from_literal   : literal -> sort -> V.VarSet.t
+val varset_of_sort_from_conj      : conjunctive_formula -> sort -> V.VarSet.t
+val varset_of_sort                : formula -> sort -> V.VarSet.t
+val varset_instances_of_sort_from_conj : conjunctive_formula -> sort -> V.VarSet.t
+val varset_instances_of_sort           : formula -> sort -> V.VarSet.t
 
-val varset_from_literal           : literal -> VarSet.t
-val varset_from_conj              : conjunctive_formula -> VarSet.t
-val varset                        : formula -> VarSet.t
-val varset_instances_from_literal : literal -> VarSet.t
-val varset_instances_from_conj    : conjunctive_formula -> VarSet.t
-val varset_instances              : formula -> VarSet.t
-val varset_of_sort_from_literal   : literal -> sort -> VarSet.t
-val varset_of_sort_from_conj      : conjunctive_formula -> sort -> VarSet.t
-val varset_of_sort                : formula -> sort -> VarSet.t
-val varset_instances_of_sort_from_conj : conjunctive_formula -> sort -> VarSet.t
-val varset_instances_of_sort           : formula -> sort -> VarSet.t
-
-val filter_varset_with_sort     : VarSet.t -> sort -> VarSet.t
 val termset                     : formula -> TermSet.t
 val termset_from_conj           : conjunctive_formula -> TermSet.t
 val filter_termset_with_sort    : TermSet.t -> sort -> TermSet.t
 
-val voc_term : term -> tid list
-val voc : formula -> tid list
-val conjformula_voc : conjunctive_formula -> tid list
-val unprimed_voc : formula -> tid list
+val voc_term : term -> ThreadSet.t
+val voc : formula -> ThreadSet.t
+val voc_conjunctive_formula : conjunctive_formula -> ThreadSet.t
+val unprimed_voc : formula -> ThreadSet.t
 
+val voc_to_var : tid -> V.t
+
+(*
 val nnf : formula -> formula
 val dnf : formula -> conjunctive_formula list
-
-val prime_var : variable -> variable
-val unprime_var : variable -> variable
+*)
 
 
 (* PRETTY_PRINTERS *)
-val variable_to_str : variable -> string
 val atom_to_str     : atom    -> string
 val literal_to_str  : literal -> string
 val conjunctive_formula_to_str : conjunctive_formula -> string
@@ -261,11 +242,6 @@ val formula_to_str  : formula -> string
 (* val diseq_to_str   : diseq  -> string *)
 
 val sort_to_str : sort -> string
-val variable_list_to_str : varId list -> string
-val typed_variable_list_to_str : (varId * sort) list -> string
-
-val variable_set_to_str : VarIdSet.t -> string
-val typed_variable_set_to_str : VarSet.t -> string
 
 
 val print_formula : formula -> unit
@@ -280,22 +256,20 @@ val print_mem   : mem   -> unit
 val print_path  : path  -> unit
 val print_set   : set   -> unit
 val print_setth : setth -> unit
-val print_variable_list : varId list -> unit
-val print_typed_variable_list : (varId * sort) list -> unit
-val print_variable_set : VarIdSet.t -> unit
-val print_typed_variable_set : VarSet.t -> unit
   
-val generic_printer : ('a -> string) -> 'a -> unit
-
+(*
 val split_conj : formula -> formula list
 val from_conjformula_to_formula : conjunctive_formula -> formula
+*)
 
 val required_sorts : formula -> sort list
 val special_ops : formula -> special_op_t list
 
+(*
 val cleanup_dup : conjunctive_formula -> conjunctive_formula
 val combine_conj_formula : conjunctive_formula -> conjunctive_formula -> conjunctive_formula
 val combine_conj_formula_list : conjunctive_formula list -> conjunctive_formula
+*)
 
 val get_addrs_eqs_conj : conjunctive_formula -> ((addr*addr) list * (addr*addr) list)
 val get_addrs_eqs : formula -> ((addr*addr) list * (addr*addr) list)
@@ -307,15 +281,17 @@ val normalize : formula -> formula
     [phi], adding fresh variables if required *)
 
 val replace_terms_literal : (term, term) Hashtbl.t -> literal -> literal
+(*
 val replace_terms_conjunctive_formula : (term, term) Hashtbl.t ->
                                         conjunctive_formula ->
                                         conjunctive_formula
+*)
+
 val replace_terms : (term, term) Hashtbl.t ->
                     formula ->
                     formula
 
 
 (* Fresh variable generation *)
-val new_fresh_gen_from_conjformula : conjunctive_formula -> fresh_var_gen_t
-val new_fresh_gen_from_formula : formula -> fresh_var_gen_t
-val gen_fresh_var : fresh_var_gen_t -> sort -> variable
+val new_fresh_gen_from_conjformula : conjunctive_formula -> V.fresh_var_gen_t
+val new_fresh_gen_from_formula : formula -> V.fresh_var_gen_t

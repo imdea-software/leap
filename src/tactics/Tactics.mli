@@ -61,26 +61,26 @@ val create_vc_info  : support_t ->
                       Expression.formula ->
                       Expression.formula ->
                       Expression.formula ->
-                      Expression.tid list ->
+                      Expression.ThreadSet.t ->
                       Expression.tid ->
                       Expression.pc_t ->
                       vc_info
 
 val to_plain_vc_info : Expression.fol_mode_t -> vc_info -> vc_info
 
-val create_vc  : support_t -> 
-               Expression.formula -> 
-               Expression.formula -> 
-               Expression.formula -> 
-               Expression.tid list -> 
-               Expression.tid -> 
-               Expression.pc_t ->  
-         support_t -> 
-         verification_condition 
+val create_vc  : support_t ->
+               Expression.formula ->
+               Expression.formula ->
+               Expression.formula ->
+               Expression.ThreadSet.t ->
+               Expression.tid ->
+               Expression.pc_t ->
+               support_t ->
+               verification_condition 
 
 val dup_vc_info_with_goal : vc_info ->  Expression.formula ->   vc_info 
 
-val set_fixed_voc : Expression.tid list -> unit
+val set_fixed_voc : Expression.ThreadSet.t -> unit
 
 (****************************)
 (* SELECTORS                *)
@@ -91,7 +91,7 @@ val get_formula_tactics : proof_plan ->   formula_tactic_t list
 val is_empty_proof_plan : proof_plan -> bool
 val get_unprocessed_support_from_info : vc_info ->   support_t
 val get_tid_constraint_from_info : vc_info ->   Expression.formula
-val get_vocabulary_from_info : vc_info ->   Expression.tid list
+val get_vocabulary_from_info : vc_info ->   Expression.ThreadSet.t
 val get_rho_from_info : vc_info ->   Expression.formula
 val get_goal_from_info : vc_info ->   Expression.formula
 val get_transition_tid_from_info : vc_info ->   Expression.tid
@@ -105,7 +105,7 @@ val get_rho : verification_condition ->   Expression.formula
 val get_goal : verification_condition ->   Expression.formula
 val get_transition_tid : verification_condition ->   Expression.tid
 val get_line : verification_condition ->   Expression.pc_t
-val get_vocabulary : verification_condition ->   Expression.tid list 
+val get_vocabulary : verification_condition ->   Expression.ThreadSet.t
 
 
 (***************)
@@ -114,9 +114,9 @@ val get_vocabulary : verification_condition ->   Expression.tid list
 val generic_simplifier : Expression.formula ->  
       (Expression.literal-> polarity->Expression.formula) ->   Expression.formula 
 
-val simplify : Expression.formula ->   Expression.formula 
-val simplify_with_vocabulary : Expression.formula ->  Expression.variable list ->  Expression.formula 
-val generate_support : vc_info ->   Expression.formula list 
+val simplify : Expression.formula -> Expression.formula
+val simplify_with_vocabulary : Expression.formula ->  Expression.V.t list -> Expression.formula
+val generate_support : vc_info -> Expression.formula list
 val split_implication : implication ->   implication list
 val split_goal :vc_info -> vc_info list
 

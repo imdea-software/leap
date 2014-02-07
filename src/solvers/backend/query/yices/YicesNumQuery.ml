@@ -10,6 +10,7 @@ struct
   module NI=NumInterface
   module B = Buffer
   module GM = GenericModel
+  module F = Formula
 
 
   exception NotSupportedInYices of string
@@ -18,8 +19,7 @@ struct
 
 
   (* Configuration *)
-  let pc_name       : string = "pc"
-  let pc_prime_name : string = pc_name ^ "'"
+  let pc_prime_name : string = Conf.pc_name ^ "'"
   let aux_int       : string = "ai_"
   let undefInt      : string = "undefined_int"
 
@@ -46,38 +46,38 @@ struct
 
 
   (* Translation funtions *)
-  let int_varid_to_str (v:E.varId) : string =
+  let int_varid_to_str (v:E.V.id) : string =
     let _ = GM.sm_decl_const sort_map v GM.int_s
     in
       Printf.sprintf "(define %s::%s)\n" v int_s
 
 
-  let int_local_varid_to_str (v:E.varId) : string =
+  let int_local_varid_to_str (v:E.V.id) : string =
     let _ = GM.sm_decl_fun sort_map v [GM.tid_s] [GM.int_s]
     in
       Printf.sprintf "(define %s::(-> %s %s))\n" v thid_s int_s
 
 
-  let int_var_to_str (v:NE.variable) : string =
-    let pr_str = if (NE.var_is_primed v) then "'" else ""
+  let int_var_to_str (v:NE.V.t) : string =
+    let pr_str = if (NE.V.is_primed v) then "'" else ""
     in
-      match NE.var_scope v with
-      | NE.GlobalScope -> int_varid_to_str ((NE.var_id v) ^ pr_str)
-      | NE.Scope ""    -> int_varid_to_str ((NE.var_id v) ^ pr_str)
-      | NE.Scope p     -> int_local_varid_to_str (p^"_"^(NE.var_id v)^pr_str)
+      match NE.V.scope v with
+      | NE.V.GlobalScope -> int_varid_to_str ((NE.V.id v) ^ pr_str)
+      | NE.V.Scope ""    -> int_varid_to_str ((NE.V.id v) ^ pr_str)
+      | NE.V.Scope p     -> int_local_varid_to_str (p^"_"^(NE.V.id v)^pr_str)
 
 
-  let rec int_varlist_to_str (vl:NE.variable list) : string =
+  let rec int_varlist_to_str (vl:NE.V.t list) : string =
     let add_th th set = match th with
-                        | NE.Shared  -> set
-                        | NE.Local t -> E.ThreadSet.add t set in
+                        | NE.V.Shared  -> set
+                        | NE.V.Local t -> NE.ThreadSet.add (NE.VarTh t) set in
     let (t_set,v_set) = List.fold_left (fun (ts,vs) v ->
-                          (add_th (NE.var_parameter v) ts,
-                           NE.VarSet.add (NE.var_clear_param_info v) vs)
-                        ) (E.ThreadSet.empty, NE.VarSet.empty) vl in
-    let th_str = if E.ThreadSet.cardinal t_set <> 0 then
+                          (add_th (NE.V.parameter v) ts,
+                           NE.V.VarSet.add (NE.V.unparam v) vs)
+                        ) (NE.ThreadSet.empty, NE.V.VarSet.empty) vl in
+    let th_str = if NE.ThreadSet.cardinal t_set <> 0 then
                    "(define-type " ^thid_s^ ")\n" ^
-                      E.ThreadSet.fold (fun t str ->
+                      NE.ThreadSet.fold (fun t str ->
                         let t_str = tid_to_str t in
                         let _ = GM.sm_decl_const sort_map t_str GM.tid_s
                         in
@@ -88,41 +88,41 @@ struct
     in
       List.fold_left (fun str v ->
         str ^ (int_var_to_str v)
-      ) th_str (NE.VarSet.elements v_set)
+      ) th_str (NE.V.VarSet.elements v_set)
 
 
-  and procedure_name_to_append (proc:NE.procedure_name) : string =
+  and procedure_name_to_append (proc:NE.V.procedure_name) : string =
     match proc with
-    | NE.GlobalScope -> ""
-    | NE.Scope "" -> ""
-    | NE.Scope p  -> p ^ "_"
+    | NE.V.GlobalScope -> ""
+    | NE.V.Scope "" -> ""
+    | NE.V.Scope p  -> p ^ "_"
 
 
-  and variable_to_str (v:NE.variable) : string =
-    let pr_str = if (NE.var_is_primed v) then "'" else "" in
-    let th_str = match (NE.var_parameter v) with
-                 | NE.Shared  -> ""
-                 | NE.Local t -> "_" ^ (tid_to_str t) in
-    let p_str = procedure_name_to_append (NE.var_scope v)
+  and variable_to_str (v:NE.V.t) : string =
+    let pr_str = if (NE.V.is_primed v) then "'" else "" in
+    let th_str = match (NE.V.parameter v) with
+                 | NE.V.Shared  -> ""
+                 | NE.V.Local t -> "_" ^ (NE.V.to_str t) in
+    let p_str = procedure_name_to_append (NE.V.scope v)
     in
-      Printf.sprintf "%s%s%s%s" p_str (NE.var_id v) th_str pr_str
+      Printf.sprintf "%s%s%s%s" p_str (NE.V.id v) th_str pr_str
 
 
-  and var_sort_to_str (v:NE.variable) : string =
-    match (NE.var_sort v) with
+  and var_sort_to_str (v:NE.V.t) : string =
+    match (NE.V.sort v) with
     | NE.Int  -> int_s
     | NE.Set  -> set_s
     | NE.Tid -> thid_s
 
 
-  and var_sort_to_gmsort_str (v:NE.variable) : string =
-    match (NE.var_sort v) with
+  and var_sort_to_gmsort_str (v:NE.V.t) : string =
+    match (NE.V.sort v) with
       NE.Int  -> GM.int_s
     | NE.Set  -> GM.set_s
     | NE.Tid -> GM.tid_s
 
 
-  and var_to_str (v:NE.variable) : string =
+  and var_to_str (v:NE.V.t) : string =
     let v_str = variable_to_str v in
     let sort_str = var_sort_to_str v in
     let gm_sort_str = var_sort_to_gmsort_str v in
@@ -131,31 +131,26 @@ struct
       Printf.sprintf "(define %s::%s)\n" v_str sort_str
 
 
-  and tid_to_str (t:E.tid) : string =
+  and tid_to_str (t:NE.tid) : string =
     match t with
-    | E.VarTh v       -> variable_to_str
-                              (NI.variable_to_int_variable v)
-    | E.NoTid        -> "NoTid"
-    | E.CellLockId _  -> raise(NotSupportedInYices(E.tid_to_str t))
-    | E.CellLockIdAt _-> raise(NotSupportedInYices(E.tid_to_str t))
-    | E.TidArrayRd _ -> raise(NotSupportedInYices(E.tid_to_str t))
-    | E.TidArrRd _   -> raise(NotSupportedInYices(E.tid_to_str t))
+    | NE.VarTh v       -> variable_to_str v
+    | NE.NoTid         -> "NoTid"
 
 
-  and shared_or_local_to_str (th:NE.shared_or_local) : string =
+  and shared_or_local_to_str (th:NE.V.shared_or_local) : string =
     match th with
-    | NE.Shared  -> ""
-    | NE.Local t -> tid_to_str t
+    | NE.V.Shared  -> ""
+    | NE.V.Local t -> NE.V.to_str t
 
 
-  let thid_variable_to_str (th:E.tid) : string =
+  let tid_variable_to_str (th:NE.tid) : string =
     let t_str = tid_to_str th in
     let _ = GM.sm_decl_const sort_map t_str GM.tid_s
     in
       Printf.sprintf "(define %s::%s)\n" t_str thid_s
 
 
-  let local_var_to_str (v:NE.variable) : string =
+  let local_var_to_str (v:NE.V.t) : string =
     let v_str = variable_to_str v in
     let v_sort = var_sort_to_str v in
     let gm_v_sort = var_sort_to_gmsort_str v in
@@ -164,41 +159,41 @@ struct
       Printf.sprintf "(define %s::(-> %s %s))\n" v_str thid_s v_sort
 
 
-  let yices_string_of_pos (pc:(int * NE.shared_or_local * bool)) : string =
+  let yices_string_of_pos (pc:(int * NE.V.shared_or_local * bool)) : string =
     let (i, th, pr) = pc in
-    let pc_str = if pr then pc_prime_name else pc_name in
+    let pc_str = if pr then pc_prime_name else Conf.pc_name in
     let th_str = shared_or_local_to_str th
     in
       Printf.sprintf "(= (%s %s) %i)" pc_str th_str i
 
 
-  let yices_string_of_posrange (pc:(int * int * NE.shared_or_local * bool)) : string =
+  let yices_string_of_posrange (pc:(int * int * NE.V.shared_or_local * bool)) : string =
     let (i, j, th, pr) = pc in
-    let pc_str = if pr then pc_prime_name else pc_name in
+    let pc_str = if pr then pc_prime_name else Conf.pc_name in
     let th_str = shared_or_local_to_str th
     in
       Printf.sprintf "(and (<= %i (%s %s)) (<= (%s %s) %i))"
           i pc_str th_str pc_str th_str j
 
 
-  let yices_string_of_posupd (pc:(int * E.tid)) : string =
+  let yices_string_of_posupd (pc:(int * NE.tid)) : string =
     let (i, th) = pc
     in
-      Printf.sprintf "(= %s (update %s (%s) %i))" pc_prime_name pc_name
+      Printf.sprintf "(= %s (update %s (%s) %i))" pc_prime_name Conf.pc_name
                                            (tid_to_str th) i
 
 
-  let variable_invocation_to_str (v:NE.variable) : string =
-    let th_str = shared_or_local_to_str (NE.var_parameter v) in
-    let p_str  = procedure_name_to_append (NE.var_scope v) in
-    let pr_str = if (NE.var_is_primed v) then "'" else ""
+  let variable_invocation_to_str (v:NE.V.t) : string =
+    let th_str = shared_or_local_to_str (NE.V.parameter v) in
+    let p_str  = procedure_name_to_append (NE.V.scope v) in
+    let pr_str = if (NE.V.is_primed v) then "'" else ""
     in
-      match (NE.var_parameter v) with
-      | NE.Shared  -> Printf.sprintf " %s%s%s%s" p_str (NE.var_id v) th_str pr_str
+      match (NE.V.parameter v) with
+      | NE.V.Shared  -> Printf.sprintf " %s%s%s%s" p_str (NE.V.id v) th_str pr_str
   (* For LEAP *)
-      | NE.Local _ -> Printf.sprintf " (%s%s%s %s)" p_str (NE.var_id v) pr_str th_str
+      | NE.V.Local _ -> Printf.sprintf " (%s%s%s %s)" p_str (NE.V.id v) pr_str th_str
   (* For numinv *)
-  (*    | NE.Local _ -> Printf.sprintf " %s%s%s_%s" p_str (NE.var_id v) pr_str th_str *)
+  (*    | NE.V.Local _ -> Printf.sprintf " %s%s%s_%s" p_str (NE.V.id v) pr_str th_str *)
 
 
 
@@ -362,10 +357,10 @@ struct
   (************************ Preamble definitions ************************)
 
   let yices_pc_def (buf:Buffer.t) : unit =
-    let _ = GM.sm_decl_fun sort_map pc_name [GM.tid_s] [GM.loc_s] in
+    let _ = GM.sm_decl_fun sort_map Conf.pc_name [GM.tid_s] [GM.loc_s] in
     let _ = GM.sm_decl_fun sort_map pc_prime_name [GM.tid_s] [GM.loc_s]
     in
-      B.add_string buf ("(define " ^pc_name^
+      B.add_string buf ("(define " ^Conf.pc_name^
                           "::(-> " ^thid_s^ " " ^loc_s^ "))\n");
       B.add_string buf ("(define " ^pc_prime_name^
                           "::(-> " ^thid_s^ " " ^loc_s^ "))\n")
@@ -375,45 +370,45 @@ struct
     let i_list = LeapLib.rangeList 1 cutoff in
     List.iter (fun i ->
       let i_name = aux_int ^ string_of_int i in
-      let i_var = NE.build_var i_name NE.Int false NE.Shared NE.GlobalScope in
+      let i_var = NE.build_var i_name NE.Int false NE.V.Shared NE.V.GlobalScope in
       B.add_string buf (var_to_str i_var)
     ) i_list
 
 
-  let yices_legal_values (global_vars:NE.variable list)
-                         (local_vars:NE.variable list)
-                         (voc:E.tid list)
+  let yices_legal_values (global_vars:NE.V.t list)
+                         (local_vars:NE.V.t list)
+                         (voc:NE.tid list)
                          (buf:Buffer.t) : unit =
     List.iter (fun v ->
-      if (NE.var_sort v) = NE.Int then
+      if (NE.V.sort v) = NE.Int then
         let v_str = variable_invocation_to_str v in
-        B.add_string buf ("(assert+ (is_legal " ^ v_str ^ "))")
+        B.add_string buf ("(assert (is_legal " ^ v_str ^ "))")
     ) global_vars;
     List.iter (fun v ->
       List.iter (fun t->
-        if (NE.var_sort v) = NE.Int then
-          let v_str = variable_invocation_to_str (NE.param_var v t) in
-          B.add_string buf ("(assert+ (is_legal " ^ v_str ^ "))\n")
+        if (NE.V.sort v) = NE.Int then
+          let v_str = variable_invocation_to_str (NE.V.set_param v (NE.V.Local (NE.voc_to_var t))) in
+          B.add_string buf ("(assert (is_legal " ^ v_str ^ "))\n")
       ) voc
     ) local_vars
 
 
   (* TODO: Verify, if no set is defined, then do not include the preamble for sets *)
   let yices_preamble (buf:Buffer.t)
-                     (voc:E.tid list)
+                     (voc:NE.tid list)
                      (cutoff:int)
-                     (gbl_int_vars:NE.variable list)
-                     (lcl_int_vars:NE.variable list) : unit =
+                     (gbl_int_vars:NE.V.t list)
+                     (lcl_int_vars:NE.V.t list) : unit =
     let loc_vars_str = List.flatten $ List.map (fun t ->
                          List.map (fun v ->
-                           variable_invocation_to_str(NE.param_var v t)
+                           variable_invocation_to_str(NE.V.set_param v (NE.V.Local (NE.voc_to_var t)))
                          ) lcl_int_vars
                        ) voc in
     let glb_vars_str = List.map variable_invocation_to_str gbl_int_vars in
     let aux_vars_str = List.map (fun i ->
                          let i_name = aux_int ^ string_of_int i in
                          let i_var = NE.build_var i_name NE.Int
-                                        false NE.Shared NE.GlobalScope
+                                        false NE.V.Shared NE.V.GlobalScope
                          in
                            variable_invocation_to_str i_var
                        ) (LeapLib.rangeList 1 cutoff) in
@@ -441,11 +436,11 @@ struct
   let rec fun_to_str (f:NE.fun_term) : string =
     match f with
       NE.FunVar v ->
-        if (NE.var_parameter v) = NE.Shared then
+        if (NE.V.parameter v) = NE.V.Shared then
           variable_to_str v
         else
-          let v_str  = variable_to_str (NE.var_clear_param_info v) in
-          let th_str = shared_or_local_to_str (NE.var_parameter v)
+          let v_str  = variable_to_str (NE.V.unparam v) in
+          let th_str = shared_or_local_to_str (NE.V.parameter v)
           in
             Printf.sprintf "(%s %s)" v_str th_str
     | NE.FunUpd (f,th,i) ->
@@ -520,35 +515,34 @@ struct
 
   and yices_string_of_literal l =
     match l with
-      NE.Atom a    -> yices_string_of_atom a
-    | NE.NegAtom a -> "(not "^ yices_string_of_atom a ^")"
+      F.Atom a    -> yices_string_of_atom a
+    | F.NegAtom a -> "(not "^ yices_string_of_atom a ^")"
 
   and yices_string_of_formula  phi =
     let tostr = yices_string_of_formula in
       match phi with
-        NE.Literal(l)   -> yices_string_of_literal l
-      | NE.True         -> " true "
-      | NE.False        -> " false "
-      | NE.And(a,b)     -> " (and " ^ (tostr a) ^ (tostr b) ^ ")"
-      | NE.Or(a,b)      -> " (or "  ^ (tostr a) ^ (tostr b) ^ ")"
-      | NE.Not(a)       -> " (not " ^ (tostr a) ^ ")"
-      | NE.Implies(a,b) -> " (=> "  ^ (tostr a) ^ (tostr b) ^ ")"
-      | NE.Iff(a,b)     -> " (= "   ^ (tostr a) ^ (tostr b) ^ ")"
+        F.Literal(l)   -> yices_string_of_literal l
+      | F.True         -> " true "
+      | F.False        -> " false "
+      | F.And(a,b)     -> " (and " ^ (tostr a) ^ (tostr b) ^ ")"
+      | F.Or(a,b)      -> " (or "  ^ (tostr a) ^ (tostr b) ^ ")"
+      | F.Not(a)       -> " (not " ^ (tostr a) ^ ")"
+      | F.Implies(a,b) -> " (=> "  ^ (tostr a) ^ (tostr b) ^ ")"
+      | F.Iff(a,b)     -> " (= "   ^ (tostr a) ^ (tostr b) ^ ")"
 
 
   let tid_decl_to_str (voc:NE.tid list) : string =
     let id_list = List.map (fun t ->
                     match t with
-                      E.VarTh v -> (E.var_id v)
-                    | E.NoTid  -> "NoThread"
-                    | _ -> raise(Not_implemented "sort type in tid_decl")
+                    | NE.VarTh v -> (NE.V.id v)
+                    | NE.NoTid  -> "NoThread"
                   ) voc in
     Printf.sprintf "(define-type %s (scalar %s))\n" thid_s
                     (String.concat " " id_list)
 
 
-  let int_locVarlist_to_str (vars:NE.VarSet.t) : string =
-    NE.VarSet.fold (fun v str -> str ^ local_var_to_str v) vars ""
+  let int_locVarlist_to_str (vars:NE.V.VarSet.t) : string =
+    NE.V.VarSet.fold (fun v str -> str ^ local_var_to_str v) vars ""
 
 
   let int_formula_to_str (phi:NE.formula) : string =
@@ -556,15 +550,14 @@ struct
     (*  if direct then *)
     let vars        = NE.all_vars phi in
     let var_str     = int_varlist_to_str vars in
-    let formula_str = "(assert+ " ^ (yices_string_of_formula phi) ^ ")\n(check)\n" 
-    in
+    let formula_str = "(assert " ^ (yices_string_of_formula phi) ^ ")\n(check)\n" in
       var_str ^ formula_str
 
 
   let int_formula_with_lines_to_str (phi:NE.formula) : string =
     let _ = GM.clear_sort_map sort_map in
     let filter_ints xs = List.filter (fun v ->
-                           (NE.var_sort v) = NE.Int
+                           (NE.V.sort v) = NE.Int
                          ) xs in
     let voc            = NE.voc phi in
     let cutoff         = SmpNum.cut_off phi in
@@ -575,7 +568,7 @@ struct
     let buf            = B.create 1024 in
     let _              = yices_type_decl !prog_lines buf in
     let _              = List.iter (fun v ->
-                           B.add_string buf (thid_variable_to_str v)
+                           B.add_string buf (tid_variable_to_str v)
                          ) voc in
     let _              = List.iter (fun v ->
                            B.add_string buf (var_to_str v)
@@ -586,18 +579,17 @@ struct
     let _              = yices_preamble buf voc cutoff
                             glb_int_vars lcl_int_vars in
     let _              = yices_legal_values global_vars local_vars voc buf in
-    let _              = B.add_string buf ("(assert+ " ^ (yices_string_of_formula 
-                                            phi) ^
+    let _              = B.add_string buf ("(assert " ^ (yices_string_of_formula phi) ^
                                             ")\n(check)\n")
     in
       B.contents buf
    
-  let standard_widening (vars : NE.variable list) (f : NE.formula) 
+  let standard_widening (vars : NE.V.t list) (f : NE.formula) 
       (l : NE.literal) =
     let vars' = int_varlist_to_str vars in
     let f'    = int_formula_to_str f in
     let l'    = yices_string_of_literal l
-    in Printf.sprintf "%s\n(assert+ (not (=> %s %s)))\n(check)\n" vars' f' l'
+    in Printf.sprintf "%s\n(assert (not (=> %s %s)))\n(check)\n" vars' f' l'
 
 
   let get_sort_map () : GM.sort_map_t =

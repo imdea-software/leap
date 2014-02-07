@@ -39,9 +39,10 @@ module Make (TSLK : TSLKExpression.S) =
   struct
 
     module Expr     = TSLK
-    module VarIdSet = TSLK.VarIdSet
-    module VarSet   = TSLK.VarSet
+    module V        = TSLK.V
+    module VarSet   = V.VarSet
     module ASet     = TSLK.AtomSet
+    module F        = Formula
 
 
     type union_info = (ASet.t * ASet.t * ASet.t * ASet.t)
@@ -93,12 +94,12 @@ module Make (TSLK : TSLKExpression.S) =
 
     let rec redundant_cell_vars (phi:Expr.formula) (aset:VarSet.t) : VarSet.t =
       match phi with
-      | Expr.And (phi1,phi2) -> VarSet.union (redundant_cell_vars phi1 aset)
+      | F.And (phi1,phi2) -> VarSet.union (redundant_cell_vars phi1 aset)
                                              (redundant_cell_vars phi2 aset)
-      | Expr.Literal(Expr.Atom(Expr.Eq(Expr.CellT(Expr.VarCell c),
-                                       Expr.CellT(Expr.MkCell(_,addrs,_)))))
-      | Expr.Literal(Expr.NegAtom(Expr.InEq(Expr.CellT(Expr.VarCell c),
-                                            Expr.CellT(Expr.MkCell(_,addrs,_))))) ->
+      | F.Literal(F.Atom(Expr.Eq(Expr.CellT(Expr.VarCell c),
+                                 Expr.CellT(Expr.MkCell(_,addrs,_)))))
+      | F.Literal(F.NegAtom(Expr.InEq(Expr.CellT(Expr.VarCell c),
+                                      Expr.CellT(Expr.MkCell(_,addrs,_))))) ->
         let addrsset = List.fold_left (fun s a -> match a with
                                                   | Expr.VarAddr v -> VarSet.add v s
                                                   | _              -> s
@@ -110,19 +111,19 @@ module Make (TSLK : TSLKExpression.S) =
     (* calculates the cut_off *)
     let cut_off_normalized (expr:Expr.conjunctive_formula) : model_size =
       let vars = Expr.get_varset_from_conj expr in
-      let vars_tid_set = Expr.varset_of_sort vars Expr.Tid in
+      let vars_tid_set = V.varset_of_sort vars Expr.Tid in
       let vars_tid = VarSet.cardinal vars_tid_set in
-      let vars_addr_set = Expr.varset_of_sort vars Expr.Addr in
+      let vars_addr_set = V.varset_of_sort vars Expr.Addr in
       let vars_addr = VarSet.cardinal vars_addr_set in
-      let vars_cell_set = Expr.varset_of_sort vars Expr.Cell in
+      let vars_cell_set = V.varset_of_sort vars Expr.Cell in
       let vars_cell = VarSet.cardinal vars_cell_set in
 
       let vars_mem_set = if (Smp.forget_primed_mem !options &&
                              not (Smp.group_vars !options)) then
-                           VarSet.filter (fun v -> not (Expr.var_is_primed v))
-                             (Expr.varset_of_sort vars Expr.Mem)
+                           VarSet.filter (fun v -> not (V.is_primed v))
+                             (V.varset_of_sort vars Expr.Mem)
                          else
-                           Expr.varset_of_sort vars Expr.Mem in
+                           V.varset_of_sort vars Expr.Mem in
 
       let vars_mem = VarSet.cardinal vars_mem_set in
       (* ALE: No need to add null and NoThread in the counter,
@@ -140,7 +141,7 @@ module Make (TSLK : TSLKExpression.S) =
       Printf.printf "NUMLEVEL: %i\n" !numlevel;
 *)
       let numaddr = ref (vars_addr + vars_cell * !numlevel) in
-      let vars_elem = VarSet.cardinal (Expr.varset_of_sort vars Expr.Elem) in
+      let vars_elem = VarSet.cardinal (V.varset_of_sort vars Expr.Elem) in
       let numelem = ref (vars_elem + vars_mem * vars_addr) in
 
       let process_ineq (x,y) =
@@ -159,9 +160,9 @@ module Make (TSLK : TSLKExpression.S) =
         | Expr.VarUpdate _ -> () in                (* ALE: Not sure if OK *)
       let process (lit:Expr.literal) =
         match lit with
-        | Expr.Atom(Expr.InEq(x,y)) -> process_ineq(x,y)
-        | Expr.Atom(_) -> ()
-        | Expr.NegAtom a ->
+        | F.Atom(Expr.InEq(x,y)) -> process_ineq(x,y)
+        | F.Atom(_) -> ()
+        | F.NegAtom a ->
             begin
               match a with
               | Expr.Append _       -> numaddr := !numaddr + 2 (* witness of either p1 intersect p2, or (p1;p2) is different from p3 *)
@@ -188,15 +189,15 @@ module Make (TSLK : TSLKExpression.S) =
             end
       in
         match expr with
-        | Expr.TrueConj  -> { num_addrs = 1 ; num_tids = 1 ; num_elems = 1 ; num_levels = 1 }
-        | Expr.FalseConj -> { num_addrs = 1 ; num_tids = 1 ; num_elems = 1 ; num_levels = 1 }
-        | Expr.Conj l    -> let _ = List.iter process l in
-                            {
-                              num_addrs  = !numaddr  ; (* null is accounted for      *)
-                              num_tids   = !numtid   ; (* NotThread is accounted for *)
-                              num_elems  = !numelem  ;
-                              num_levels = !numlevel ;
-                            }
+        | F.TrueConj  -> { num_addrs = 1 ; num_tids = 1 ; num_elems = 1 ; num_levels = 1 }
+        | F.FalseConj -> { num_addrs = 1 ; num_tids = 1 ; num_elems = 1 ; num_levels = 1 }
+        | F.Conj l    -> let _ = List.iter process l in
+                         {
+                           num_addrs  = !numaddr  ; (* null is accounted for      *)
+                           num_tids   = !numtid   ; (* NotThread is accounted for *)
+                           num_elems  = !numelem  ;
+                           num_levels = !numlevel ;
+                         }
 
 
     let compute_max_cut_off (conj_list:Expr.conjunctive_formula list)
@@ -261,21 +262,21 @@ module Make (TSLK : TSLKExpression.S) =
 
     let union_literal_cutoff_pol (pol:polarity_t) (info:union_info) (l:Expr.literal) : union_info =
       match l with
-        Expr.Atom a    -> union_atom_cutoff_pol pol info a
-      | Expr.NegAtom a -> union_atom_cutoff_pol (invert_polarity pol) info a
+        F.Atom a    -> union_atom_cutoff_pol pol info a
+      | F.NegAtom a -> union_atom_cutoff_pol (invert_polarity pol) info a
 
 
     let rec union_formula_cutoff_pol (pol:polarity_t) (info:union_info) (phi:Expr.formula) : union_info =
       let apply_cut = union_formula_cutoff_pol in
       match phi with
-      | Expr.Literal l       -> union_literal_cutoff_pol pol info l
-      | Expr.True            -> info
-      | Expr.False           -> info
-      | Expr.And (f1,f2)     -> apply_cut pol (apply_cut pol info f1) f2
-      | Expr.Or (f1,f2)      -> apply_cut pol (apply_cut pol info f1) f2
-      | Expr.Not f           -> apply_cut (invert_polarity pol) info f
-      | Expr.Implies (f1,f2) -> apply_cut pol (apply_cut (invert_polarity pol) info f1) f2
-      | Expr.Iff (f1,f2)     -> apply_cut Both (apply_cut Both info f2) f2
+      | F.Literal l       -> union_literal_cutoff_pol pol info l
+      | F.True            -> info
+      | F.False           -> info
+      | F.And (f1,f2)     -> apply_cut pol (apply_cut pol info f1) f2
+      | F.Or (f1,f2)      -> apply_cut pol (apply_cut pol info f1) f2
+      | F.Not f           -> apply_cut (invert_polarity pol) info f
+      | F.Implies (f1,f2) -> apply_cut pol (apply_cut (invert_polarity pol) info f1) f2
+      | F.Iff (f1,f2)     -> apply_cut Both (apply_cut Both info f2) f2
 
 
     let union_formula_cutoff (info:union_info) (phi:Expr.formula) : union_info =
@@ -283,8 +284,8 @@ module Make (TSLK : TSLKExpression.S) =
 
 
     let try_pseudo_dnf_union_formula_cutoff (info:union_info) (phi:Expr.formula) : model_size =
-      verb "TRYING PSEUDO DNF\n";
-      let split = List.map Expr.to_disj_list (Expr.to_conj_list phi) in
+      verbl _LONG_INFO "TRYING PSEUDO DNF\n";
+      let split = List.map F.to_disj_list (F.to_conj_list phi) in
       let (atomics,disjs) = List.partition (fun xs -> List.length xs <= 1) split in
       let others_problematic = List.fold_left (fun i xs ->
                                  match xs with
@@ -293,7 +294,7 @@ module Make (TSLK : TSLKExpression.S) =
                                  | _           -> i
                                ) 0 atomics in
       if List.length disjs = 1 && others_problematic = 0 then
-        let _ = verb "WE HAVE A CANDIDATE\n" in
+        let _ = verbl _LONG_INFO "WE HAVE A CANDIDATE\n" in
         List.fold_left (fun tmp_info aphi ->
           let this_info = union_model_size (union_formula_cutoff_pol Pos new_union_count aphi) in
           {
@@ -304,25 +305,26 @@ module Make (TSLK : TSLKExpression.S) =
           }
         ) (empty_model_size()) (List.hd disjs)
       else
-        let _ = verb "WE DON'T HAVE A CANDIDATE: %s\n" (Expr.formula_to_str phi) in
+        let _ = verbl _LONG_INFO "WE DON'T HAVE A CANDIDATE: %s\n" (Expr.formula_to_str phi) in
         union_model_size (union_formula_cutoff_pol Pos info phi)
 
 
     (* Union SMP *)
     let compute_max_cut_off_with_union (phi:Expr.formula) : model_size =
       let vars = Expr.get_varset_from_formula phi in
-      let addrvars = Expr.varset_of_sort vars Expr.Addr in
+      let addrvars = V.varset_of_sort vars Expr.Addr in
       let interesting_addrvars = VarSet.fold (fun v s ->
-                                   if (not (Expr.variable_is_fresh v)) || Expr.variable_is_smp_interesting v then
+                                   if (not (V.is_fresh v)) || TSLK.variable_is_smp_interesting v then
                                      (Expr.variable_mark_smp_interesting v true; VarSet.add v s)
                                    else
                                      s
                                  ) addrvars VarSet.empty in
-      verb "CANDIDATE Interesting addresses:%s\n"
-        (VarSet.fold (fun v str -> str ^ (Expr.variable_to_str v) ^ ";") interesting_addrvars "");
-      let vartid_num  = VarSet.cardinal (Expr.varset_of_sort vars Expr.Tid) in
+      verbl _LONG_INFO "CANDIDATE Interesting addresses:%s\n"
+        (VarSet.fold (fun v str -> str ^ (Expr.V.to_str v) ^ ";") 
+      interesting_addrvars "");
+      let vartid_num  = VarSet.cardinal (V.varset_of_sort vars Expr.Tid) in
       let varaddr_num = VarSet.cardinal interesting_addrvars in
-      let varelem_num = VarSet.cardinal (Expr.varset_of_sort vars Expr.Elem) in
+      let varelem_num = VarSet.cardinal (V.varset_of_sort vars Expr.Elem) in
       let info = try_pseudo_dnf_union_formula_cutoff new_union_count phi in
 
       let num_levels = Expr.k in
@@ -391,39 +393,38 @@ module Make (TSLK : TSLKExpression.S) =
 
     let prune_literal (lit:Expr.literal) : Expr.literal option =
       match lit with
-        Expr.Atom a    -> Option.lift (fun a' -> Expr.Atom a') (prune_atom a)
-      | Expr.NegAtom a -> Option.lift (fun a' -> Expr.NegAtom a') (prune_atom a)
+        F.Atom a    -> Option.lift (fun a' -> F.Atom a') (prune_atom a)
+      | F.NegAtom a -> Option.lift (fun a' -> F.NegAtom a') (prune_atom a)
 
 
     let rec prune_formula (phi:Expr.formula) : Expr.formula option =
       match phi with
-        Expr.Literal lit     -> Option.lift (fun l -> Expr.Literal l) (prune_literal lit)
-      | Expr.True            -> None
-      | Expr.False           -> None
-      | Expr.And (f1,f2)     -> begin
-                             match (prune_formula f1, prune_formula f2) with
-                               (Some f1', Some f2') -> Some (Expr.And (f1',f2'))
-                             | (Some f1', None    ) -> Some f1'
-                             | (None    , Some f2') -> Some f2'
-                             | (None    , None    ) -> None
-                           end
-      | Expr.Or (f1,f2)      -> begin
-                             match (prune_formula f1, prune_formula f2) with
-                               (Some f1', Some f2') -> Some (Expr.Or (f1',f2'))
-                             | (Some f1', None    ) -> Some f1'
-                             | (None    , Some f2') -> Some f2'
-                             | (None    , None    ) -> None
-                           end
-      | Expr.Not (f)         -> Option.lift (fun f'-> Expr.Not f') (prune_formula f)
-      | Expr.Implies (f1,f2) -> prune_formula (Expr.Or (Expr.Not f1, f2))
-      | Expr.Iff (f1,f2)     -> prune_formula (Expr.And (Expr.Implies (f1,f2), Expr.Implies (f2,f1)))
+        F.Literal lit     -> Option.lift (fun l -> F.Literal l) (prune_literal lit)
+      | F.True            -> None
+      | F.False           -> None
+      | F.And (f1,f2)     -> begin
+                               match (prune_formula f1, prune_formula f2) with
+                                 (Some f1', Some f2') -> Some (F.And (f1',f2'))
+                               | (Some f1', None    ) -> Some f1'
+                               | (None    , Some f2') -> Some f2'
+                               | (None    , None    ) -> None
+                             end
+      | F.Or (f1,f2)      -> begin
+                               match (prune_formula f1, prune_formula f2) with
+                                 (Some f1', Some f2') -> Some (F.Or (f1',f2'))
+                               | (Some f1', None    ) -> Some f1'
+                               | (None    , Some f2') -> Some f2'
+                               | (None    , None    ) -> None
+                             end
+      | F.Not (f)         -> Option.lift (fun f'-> F.Not f') (prune_formula f)
+      | F.Implies (f1,f2) -> prune_formula (F.Or (F.Not f1, f2))
+      | F.Iff (f1,f2)     -> prune_formula (F.And (F.Implies (f1,f2), F.Implies (f2,f1)))
         
 
 
     let compute_max_cut_off_with_pruning (phi:Expr.formula) : model_size =
-      let pruned_phi = Option.default Expr.True (prune_formula (Expr.nnf phi)) in
-      let dnf_phi = Expr.dnf pruned_phi in
-      let new_dnf = List.map Expr.cleanup_dup dnf_phi in
+      let pruned_phi = Option.default F.True (prune_formula (F.nnf phi)) in
+      let new_dnf = List.map F.cleanup_conj (F.dnf pruned_phi) in
         compute_max_cut_off (new_dnf)
 
 
@@ -433,11 +434,11 @@ module Make (TSLK : TSLKExpression.S) =
 (*      LOG "Strategy: %s\n" (Smp.strategy_to_str strat) LEVEL DEBUG; *)
       options := opt;
       let model_s = match strat with
-                    | Smp.Dnf     -> compute_max_cut_off (Expr.dnf f)
+                    | Smp.Dnf     -> compute_max_cut_off (F.dnf f)
                     | Smp.Union   -> compute_max_cut_off_with_union f
                     | Smp.Pruning -> compute_max_cut_off_with_pruning f
       in
-      verb "SMP TSLK DOMAINS. LEVELS:%i - ADDRS:%i - TIDS: %i - ELEMS:%i\n"
+      verbl _LONG_INFO "SMP TSLK DOMAINS. LEVELS:%i - ADDRS:%i - TIDS: %i - ELEMS:%i\n"
                       model_s.num_levels model_s.num_addrs model_s.num_tids model_s.num_elems;
       model_s
   end

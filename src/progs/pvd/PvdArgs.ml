@@ -141,5 +141,5 @@ let open_and_parse_expr file_name the_parser =
         Printf.sprintf "File \"%s\" could not be found" file_name;
           raise(File_not_found file_name)
     end in
-  let res = the_parser Exprlexer.norm (Lexing.from_channel input) in
+  let res = the_parser ExprLexer.norm (Lexing.from_channel input) in
   res    

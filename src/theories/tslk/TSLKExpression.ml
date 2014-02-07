@@ -1,21 +1,10 @@
 open Printf
 open LeapLib
 
-
 module type S =
   sig
 
-    type varId = string
-
-    type var_info_t
-
-    and shared_or_local = Shared  | Local of tid
-
-    and procedure_name  = GlobalScope | Scope of string
-
-    and variable
-
-    and sort =
+    type sort =
         Set
       | Elem
       | Tid
@@ -28,11 +17,18 @@ module type S =
       | Level
       | Bool
       | Unknown
-    and term =
-        VarT              of variable
+
+    type var_info_t
+
+    module V : Variable.S
+      with type sort = sort
+      with type info = var_info_t
+
+    type term =
+        VarT              of V.t
       | SetT              of set
       | ElemT             of elem
-      | TidT             of tid
+      | TidT              of tid
       | AddrT             of addr
       | CellT             of cell
       | SetThT            of setth
@@ -40,11 +36,11 @@ module type S =
       | PathT             of path
       | MemT              of mem
       | LevelT            of level
-      | VarUpdate         of variable * tid * term
+      | VarUpdate         of V.t * tid * term
     and eq = term * term
     and diseq = term * term
     and set =
-        VarSet            of variable
+        VarSet            of V.t
       | EmptySet
       | Singl             of addr
       | Union             of set * set
@@ -53,37 +49,37 @@ module type S =
       | PathToSet         of path
       | AddrToSet         of mem * addr * level
     and tid =
-        VarTh             of variable
+        VarTh             of V.t
       | NoTid
       | CellLockIdAt      of cell * level
     and elem =
-        VarElem           of variable
+        VarElem           of V.t
       | CellData          of cell
       | HavocSkiplistElem
       | LowestElem
       | HighestElem
     and addr =
-        VarAddr           of variable
+        VarAddr           of V.t
       | Null
-      | NextAt             of cell * level
+      | NextAt            of cell * level
       | FirstLockedAt     of mem * path * level
     (*  | Malloc of elem * addr * tid *)
     and cell =
-        VarCell           of variable
+        VarCell           of V.t
       | Error
       | MkCell            of elem * addr list * tid list
       | CellLockAt        of cell * level * tid
       | CellUnlockAt      of cell * level
       | CellAt            of mem * addr
     and setth =
-        VarSetTh          of variable
+        VarSetTh          of V.t
       | EmptySetTh
       | SinglTh           of tid
       | UnionTh           of setth * setth
       | IntrTh            of setth * setth
       | SetdiffTh         of setth * setth
     and setelem =
-        VarSetElem        of variable
+        VarSetElem        of V.t
       | EmptySetElem
       | SinglElem         of elem
       | UnionElem         of setelem * setelem
@@ -91,17 +87,17 @@ module type S =
       | SetToElems        of set * mem
       | SetdiffElem       of setelem * setelem
     and path =
-        VarPath           of variable
+        VarPath           of V.t
       | Epsilon
       | SimplePath        of addr
       | GetPathAt         of mem * addr * addr * level
     and mem =
-        VarMem            of variable
+        VarMem            of V.t
       | Emp
       | Update            of mem * addr * cell
     and level =
         LevelVal          of int
-      | VarLevel          of variable
+      | VarLevel          of V.t
       | LevelSucc         of level
       | LevelPred         of level
       | HavocLevel
@@ -123,10 +119,15 @@ module type S =
       | GreaterElem       of elem * elem
       | Eq                of eq
       | InEq              of diseq
-      | BoolVar           of variable
-      | PC                of int * shared_or_local * bool
+      | BoolVar           of V.t
+      | PC                of int * V.shared_or_local * bool
       | PCUpdate          of int * tid
-      | PCRange           of int * int * shared_or_local * bool
+      | PCRange           of int * int * V.shared_or_local * bool
+    and literal = atom Formula.literal
+    and conjunctive_formula = atom Formula.conjunctive_formula
+    and disjunctive_formula = atom Formula.disjunctive_formula
+    and formula = atom Formula.formula
+(*
     and literal =
         Atom              of atom
       | NegAtom           of atom
@@ -147,6 +148,7 @@ module type S =
       | Not               of formula
       | Implies           of formula * formula
       | Iff               of formula * formula
+*)
 
 
     type special_op_t =
@@ -164,8 +166,7 @@ module type S =
     exception WrongType of term
 
     (* CALCULATE SET OF VARS *)
-    module VarIdSet : Set.S with type elt = varId
-    module VarSet : Set.S with type elt = variable
+
     module TermSet : Set.S with type elt = term
     module AtomSet : Set.S with type elt = atom
     module ThreadSet : Set.S with type elt = tid
@@ -174,53 +175,38 @@ module type S =
     val k : int
 
     (* Variable construction *)
-    val build_var : varId -> sort -> bool -> shared_or_local -> procedure_name -> variable
-
-    val var_id : variable -> varId
-    val var_sort : variable -> sort
-    val var_is_primed : variable -> bool
-    val var_parameter : variable -> shared_or_local
-    val var_scope : variable -> procedure_name
-    val var_info : variable -> var_info_t
-
-    (* variable manipulation *)
-    val var_set_param : shared_or_local -> variable -> variable
-    val is_global_var : variable -> bool
+    val build_var : ?fresh:bool ->
+                    V.id ->
+                    sort ->
+                    bool ->
+                    V.shared_or_local ->
+                    V.procedure_name ->
+                    V.t
 
     (* returns all variables form a formula *)
-    val get_varlist_from_conj : conjunctive_formula -> variable list
-    val get_varlist_of_sort_from_conj : conjunctive_formula -> sort -> varId list
-    val varlist_of_sort : variable list -> sort -> varId list
+    val get_varlist_from_conj : conjunctive_formula -> V.t list
+    val get_varlist_of_sort_from_conj : conjunctive_formula -> sort -> V.id list
+    val varlist_of_sort : V.t list -> sort -> V.id list
 
-    val get_varset_from_conj         : conjunctive_formula -> VarSet.t
-    val get_unparam_varset_from_conj : conjunctive_formula -> VarSet.t
-    val get_varset_from_formula      : formula -> VarSet.t
-    val get_varset_from_literal      : literal -> VarSet.t
-    val get_unparam_varset_from_formula : formula -> VarSet.t
-    val get_varset_of_sort_from_conj : conjunctive_formula -> sort -> VarSet.t
-    val varset_of_sort               : VarSet.t -> sort -> VarSet.t
+    val get_varset_from_literal      : literal -> V.VarSet.t
+    val get_varset_from_conj         : conjunctive_formula -> V.VarSet.t
+    val get_unparam_varset_from_conj : conjunctive_formula -> V.VarSet.t
+    val get_varset_from_formula      : formula -> V.VarSet.t
+    val get_unparam_varset_from_formula : formula -> V.VarSet.t
+    val get_varset_of_sort_from_conj : conjunctive_formula -> sort -> V.VarSet.t
     val get_termset_from_formula     : formula -> TermSet.t
-    val get_termset_from_conjformula : conjunctive_formula -> TermSet.t
     val termset_of_sort              : TermSet.t -> sort -> TermSet.t
 
-    val remove_nonparam_local_vars : VarSet.t -> VarSet.t
-    val add_prevstate_local_vars : VarSet.t -> VarSet.t
+    val remove_nonparam_local_vars : V.VarSet.t -> V.VarSet.t
+    val add_prevstate_local_vars : V.VarSet.t -> V.VarSet.t
 
-    val voc_term : term -> tid list
-    val voc : formula -> tid list
-    val conjformula_voc : conjunctive_formula -> tid list
-    val unprimed_voc : formula -> tid list
+    val voc_term : term -> ThreadSet.t
+    val voc : formula -> ThreadSet.t
+    val conjformula_voc : conjunctive_formula -> ThreadSet.t
+    val unprimed_voc : formula -> ThreadSet.t
 
-    val nnf : formula -> formula
-    val dnf : formula -> conjunctive_formula list
-    val cnf : formula -> disjunctive_formula list
-
-    val prime_var : variable -> variable
-    val unprime_var : variable -> variable
-    val variable_mark_smp_interesting : variable -> bool -> unit
-    val variable_mark_fresh : variable -> bool -> unit
-    val variable_is_smp_interesting : variable -> bool
-    val variable_is_fresh : variable -> bool
+    val variable_mark_smp_interesting : V.t -> bool -> unit
+    val variable_is_smp_interesting : V.t -> bool
 
 
     (* SMP MARKING FUNCTIONS *)
@@ -228,8 +214,7 @@ module type S =
     val tid_mark_smp_interesting : tid -> bool -> unit
 
     (* PRETTY_PRINTERS *)
-    val variable_to_full_str : variable -> string
-    val variable_to_str : variable -> string
+    val variable_to_full_str : V.t -> string
     val atom_to_str     : atom    -> string
     val literal_to_str  : literal -> string
     val conjunctive_formula_to_str : conjunctive_formula -> string
@@ -238,7 +223,7 @@ module type S =
     val addr_to_str     : addr   -> string
     val cell_to_str     : cell   -> string
     val elem_to_str     : elem   -> string
-    val tid_to_str      : tid   -> string
+    val tid_to_str      : tid    -> string
     val mem_to_str      : mem    -> string
     val path_to_str     : path   -> string
     val set_to_str      : set    -> string
@@ -249,12 +234,7 @@ module type S =
     (* val diseq_to_str   : diseq  -> string *)
 
     val sort_to_str : sort -> string
-    val variable_list_to_str : varId list -> string
-    val typed_variable_list_to_str : (varId * sort) list -> string
-
-    val variable_set_to_str : VarIdSet.t -> string
-    val typed_variable_set_to_str : VarSet.t -> string
-
+    val info_to_str : var_info_t -> string
 
     val print_formula : formula -> unit
     val print_conjunctive_formula: conjunctive_formula -> unit
@@ -263,32 +243,17 @@ module type S =
     val print_addr  : addr  -> unit
     val print_cell  : cell  -> unit
     val print_elem  : elem  -> unit
-    val print_tid  : tid  -> unit
+    val print_tid   : tid  -> unit
     val print_mem   : mem   -> unit
     val print_path  : path  -> unit
     val print_set   : set   -> unit
     val print_setth : setth -> unit
-    val print_variable_list : varId list -> unit
-    val print_typed_variable_list : (varId * sort) list -> unit
-    val print_variable_set : VarIdSet.t -> unit
-    val print_typed_variable_set : VarSet.t -> unit
-      
-    val generic_printer : ('a -> string) -> 'a -> unit
-
-    val split_conj : formula -> formula list
 
     val required_sorts : formula -> sort list
     val special_ops : formula -> special_op_t list
 
-    val cleanup_dup : conjunctive_formula -> conjunctive_formula
-
     val get_addrs_eqs_conj : conjunctive_formula -> ((addr*addr) list * (addr*addr) list)
     val get_addrs_eqs : formula -> ((addr*addr) list * (addr*addr) list)
-
-    val conj_list : formula list -> formula
-    val disj_list : formula list -> formula
-    val to_conj_list : formula -> formula list
-    val to_disj_list : formula -> formula list
 
     (* Equality constructor functions for formulas *)
     val eq_set : set -> set -> formula
@@ -326,31 +291,9 @@ module type S =
 module Make (K : Level.S) : S =
   struct
 
-    type logic_op_t = AndOp | OrOp | ImpliesOp | IffOp | NotOp | NoneOp
+    module F = Formula
 
-    type varId = string
-
-    type var_info_t =
-      {
-        mutable smp_interesting : bool;
-        mutable fresh : bool;
-      }
-
-    and shared_or_local = Shared  | Local of tid
-
-    and procedure_name  = GlobalScope | Scope of string
-
-    and variable =
-      {
-                id        : varId           ;
-                sort      : sort            ;
-                is_primed : bool            ;
-                parameter : shared_or_local ;
-                scope     : procedure_name  ;
-                info      : var_info_t      ;
-      }
-
-    and sort =
+    type sort =
         Set
       | Elem
       | Tid
@@ -363,11 +306,29 @@ module Make (K : Level.S) : S =
       | Level
       | Bool
       | Unknown
-    and term =
-        VarT              of variable
+
+
+    type var_info_t =
+      {
+        mutable smp_interesting : bool;
+        (* CHANGES: Remove the fresh field from here *)
+        mutable fresh : bool;
+      }
+
+
+    module V = Variable.Make (
+      struct
+        type sort_t = sort
+        type info_t = var_info_t
+      end )
+
+    type logic_op_t = AndOp | OrOp | ImpliesOp | IffOp | NotOp | NoneOp
+
+    type term =
+        VarT              of V.t
       | SetT              of set
       | ElemT             of elem
-      | TidT             of tid
+      | TidT              of tid
       | AddrT             of addr
       | CellT             of cell
       | SetThT            of setth
@@ -375,11 +336,11 @@ module Make (K : Level.S) : S =
       | PathT             of path
       | MemT              of mem
       | LevelT            of level
-      | VarUpdate         of variable * tid * term
+      | VarUpdate         of V.t * tid * term
     and eq = term * term
     and diseq = term * term
     and set =
-        VarSet            of variable
+        VarSet            of V.t
       | EmptySet
       | Singl             of addr
       | Union             of set * set
@@ -388,37 +349,37 @@ module Make (K : Level.S) : S =
       | PathToSet         of path
       | AddrToSet         of mem * addr * level
     and tid =
-        VarTh             of variable
+        VarTh             of V.t
       | NoTid
       | CellLockIdAt      of cell * level
     and elem =
-        VarElem           of variable
+        VarElem           of V.t
       | CellData          of cell
       | HavocSkiplistElem
       | LowestElem
       | HighestElem
     and addr =
-        VarAddr           of variable
+        VarAddr           of V.t
       | Null
       | NextAt            of cell * level
       | FirstLockedAt     of mem * path * level
     (*  | Malloc of elem * addr * tid *)
     and cell =
-        VarCell           of variable
+        VarCell           of V.t
       | Error
       | MkCell            of elem * addr list * tid list
       | CellLockAt        of cell * level * tid
       | CellUnlockAt      of cell * level
       | CellAt            of mem * addr
     and setth =
-        VarSetTh          of variable
+        VarSetTh          of V.t
       | EmptySetTh
       | SinglTh           of tid
       | UnionTh           of setth * setth
       | IntrTh            of setth * setth
       | SetdiffTh         of setth * setth
     and setelem =
-        VarSetElem        of variable
+        VarSetElem        of V.t
       | EmptySetElem
       | SinglElem         of elem
       | UnionElem         of setelem * setelem
@@ -426,17 +387,17 @@ module Make (K : Level.S) : S =
       | SetToElems        of set * mem
       | SetdiffElem       of setelem * setelem
     and path =
-        VarPath           of variable
+        VarPath           of V.t
       | Epsilon
       | SimplePath        of addr
       | GetPathAt         of mem * addr * addr * level
     and mem =
-        VarMem            of variable
+        VarMem            of V.t
       | Emp
       | Update            of mem * addr * cell
     and level =
         LevelVal          of int
-      | VarLevel          of variable
+      | VarLevel          of V.t
       | LevelSucc         of level
       | LevelPred         of level
       | HavocLevel
@@ -458,10 +419,15 @@ module Make (K : Level.S) : S =
       | GreaterElem       of elem * elem
       | Eq                of eq
       | InEq              of diseq
-      | BoolVar           of variable
-      | PC                of int * shared_or_local * bool
+      | BoolVar           of V.t
+      | PC                of int * V.shared_or_local * bool
       | PCUpdate          of int * tid
-      | PCRange           of int * int * shared_or_local * bool
+      | PCRange           of int * int * V.shared_or_local * bool
+    and literal = atom Formula.literal
+    and conjunctive_formula = atom Formula.conjunctive_formula
+    and disjunctive_formula = atom Formula.disjunctive_formula
+    and formula = atom Formula.formula
+(*
     and literal =
         Atom              of atom
       | NegAtom           of atom
@@ -482,6 +448,7 @@ module Make (K : Level.S) : S =
       | Not               of formula
       | Implies           of formula * formula
       | Iff               of formula * formula
+*)
 
     type special_op_t =
       | Reachable
@@ -503,113 +470,36 @@ module Make (K : Level.S) : S =
     (* VARIABLE MANIPULATION *)
     (*************************)
 
-    let build_var_with_info (id:varId)
-                            (s:sort)
-                            (pr:bool)
-                            (th:shared_or_local)
-                            (p:procedure_name)
-                            (info:var_info_t) : variable =
-      {
-        id = id;
-        sort = s;
-        is_primed = pr;
-        parameter = th;
-        scope = p;
-        info = info;
-      }
 
-    let build_var (id:varId)
+    let build_var ?(fresh=false)
+                  (id:V.id)
                   (s:sort)
                   (pr:bool)
-                  (th:shared_or_local)
-                  (p:procedure_name) : variable =
-      build_var_with_info id s pr th p {smp_interesting=false;fresh=false;}
+                  (th:V.shared_or_local)
+                  (p:V.procedure_name)
+                     : V.t =
+      V.build id s pr th p {smp_interesting = false; fresh = false; } ~fresh:fresh
 
 
-    let var_set_param (th:shared_or_local) (v:variable ) : variable =
-      build_var_with_info v.id v.sort v.is_primed th v.scope v.info
+    let variable_clean_info (v:V.t) : unit =
+      (V.info v).fresh <- false;
+      (V.info v).smp_interesting <- false
 
 
-    let var_set_info (v:variable) (info:var_info_t) : variable =
-      build_var_with_info v.id v.sort v.is_primed v.parameter v.scope info
+    let variable_mark_smp_interesting (v:V.t) (b:bool) : unit =
+      (V.info v).smp_interesting <- b
 
 
-    let unparam_var (v:variable) : variable =
-      build_var_with_info v.id v.sort v.is_primed Shared v.scope v.info
-
-
-    let var_id (v:variable) : varId =
-      v.id
-
-    
-    let var_sort (v:variable) : sort =
-      v.sort
-
-
-    let var_is_primed (v:variable) : bool =
-      v.is_primed
-
-
-    let var_parameter (v:variable) : shared_or_local =
-      v.parameter
-
-
-    let var_scope (v:variable) : procedure_name =
-      v.scope
-
-
-    let var_info (v:variable) : var_info_t =
-      v.info
-
-
-    let is_global_var (v:variable) : bool =
-      (var_scope v) = GlobalScope
-
-
-    let prime_var (v:variable) : variable =
-      build_var_with_info v.id v.sort true v.parameter v.scope v.info
-
-
-    let unprime_var (v:variable) : variable =
-      build_var_with_info v.id v.sort false v.parameter v.scope v.info
-
-
-    let variable_mark_smp_interesting (v:variable) (b:bool) : unit =
-      v.info.smp_interesting <- b
-
-
-    let variable_mark_fresh (v:variable) (b:bool) : unit =
-      v.info.fresh <- b
-
-
-    let variable_is_smp_interesting (v:variable) : bool =
-      v.info.smp_interesting
-
-
-    let variable_is_fresh (v:variable) : bool =
-(*    Correct way *)
-(*    v.info.fresh *)
-      (v.id.[0] = '$' || v.info.fresh)
+    let variable_is_smp_interesting (v:V.t) : bool =
+      (V.info v).smp_interesting
 
 
     let is_primed_tid (th:tid) : bool =
       match th with
-      | VarTh v           -> var_is_primed v
+      | VarTh v          -> V.is_primed v
       | NoTid            -> false
-      | CellLockIdAt _    -> false
+      | CellLockIdAt _   -> false
       (* FIX: Propagate the query inside cell??? *)
-
-
-    let variable_clean_info (v:variable) : unit =
-      v.info.fresh <- false;
-      v.info.smp_interesting <- false
-
-
-    let unify_var_info (info1:var_info_t) (info2:var_info_t) : var_info_t =
-      {
-        fresh = (info1.fresh || info2.fresh);
-        smp_interesting = (info1.smp_interesting || info2.smp_interesting);
-      }
 
 
     (*******************************)
@@ -630,20 +520,6 @@ module Make (K : Level.S) : S =
     (*******************************)
     (* VARLIST/VARSET FOR FORMULAS *)
     (*******************************)
-
-    module VarSet = Set.Make(
-      struct
-        let compare = Pervasives.compare
-        type t = variable
-      end )
-
-    module S=VarSet
-
-    module VarIdSet = Set.Make(
-      struct
-        let compare = Pervasives.compare
-        type t = varId
-      end )
 
 
     module AtomSet = Set.Make (
@@ -689,61 +565,69 @@ module Make (K : Level.S) : S =
       end )
 
 
-    let unify_varset (s:S.t) : S.t =
-      let tbl = Hashtbl.create (S.cardinal s) in
-      S.iter (fun v ->
-        let base = (v.id,v.sort,v.is_primed,v.parameter,v.scope) in
+    let unify_var_info (info1:var_info_t) (info2:var_info_t) : var_info_t =
+      {
+        fresh = (info1.fresh || info2.fresh);
+        smp_interesting = (info1.smp_interesting || info2.smp_interesting);
+      }
+
+
+    let unify_varset (s:V.VarSet.t) : V.VarSet.t =
+      let tbl = Hashtbl.create (V.VarSet.cardinal s) in
+      V.VarSet.iter (fun v ->
+        let base = (V.id v, V.sort v, V.is_primed v,
+                    V.parameter v, V.scope v) in
         if Hashtbl.mem tbl base then
           let prev_info = Hashtbl.find tbl base in
-          Hashtbl.replace tbl base (unify_var_info v.info prev_info)
+          Hashtbl.replace tbl base (unify_var_info (V.info v) prev_info)
         else
-          Hashtbl.add tbl base v.info
+          Hashtbl.add tbl base (V.info v)
       ) s;
       Hashtbl.fold (fun (id,s,pr,th,p) info set ->
         let new_var = build_var id s pr th p
         in
-          S.add new_var set
-      ) tbl S.empty
+          V.VarSet.add new_var set
+      ) tbl V.VarSet.empty
 
 
-    let remove_nonparam_local_vars (s:S.t) : S.t =
-      S.fold (fun v tmpset ->
-        if not (is_global_var v) && var_parameter v = Shared then
+    let remove_nonparam_local_vars (s:V.VarSet.t) : V.VarSet.t =
+      V.VarSet.fold (fun v tmpset ->
+        if not (V.is_global v) && V.parameter v = V.Shared then
           tmpset
         else
-          S.add v tmpset
-      ) s S.empty
+          V.VarSet.add v tmpset
+      ) s V.VarSet.empty
 
 
-    let unparam_varset (s:S.t) : S.t =
-      S.fold (fun v tmpset ->
-        S.add (unparam_var v) tmpset
-      ) s S.empty
+    let unparam_varset (s:V.VarSet.t) : V.VarSet.t =
+      V.VarSet.fold (fun v tmpset ->
+        V.VarSet.add (V.unparam v) tmpset
+      ) s V.VarSet.empty
 
 
-    let add_prevstate_local_vars (s:S.t) : S.t =
-      S.fold (fun v tmpset ->
-        let unprime_v = unprime_var v in
-        if var_is_primed v && not (S.mem unprime_v s) then
-          S.add v (S.add unprime_v tmpset)
+    let add_prevstate_local_vars (s:V.VarSet.t) : V.VarSet.t =
+      V.VarSet.fold (fun v tmpset ->
+        let unprime_v = V.unprime v in
+        if V.is_primed v && not (V.VarSet.mem unprime_v s) then
+          V.VarSet.add v (V.VarSet.add unprime_v tmpset)
         else
-          S.add v tmpset
-      ) s S.empty
+          V.VarSet.add v tmpset
+      ) s V.VarSet.empty
 
 
     let (@@) s1 s2 =
-      S.union s1 s2
+      V.VarSet.union s1 s2
 
-    let get_varset_from_param (v:variable) : S.t =
-      match v.parameter with
-      | Local (VarTh t) -> S.singleton t
-      | _               -> S.empty
+    let get_varset_from_param (v:V.t) : V.VarSet.t =
+      match (V.parameter v) with
+      | V.Local t -> V.VarSet.singleton t
+      | _         -> V.VarSet.empty
 
 
     let rec get_varset_set s =
       match s with
-          VarSet v         -> S.singleton v @@ get_varset_from_param v
-        | EmptySet         -> S.empty
+          VarSet v         -> V.VarSet.singleton v @@ get_varset_from_param v
+        | EmptySet         -> V.VarSet.empty
         | Singl(a)         -> get_varset_addr a
         | Union(s1,s2)     -> (get_varset_set s1) @@ (get_varset_set s2)
         | Intr(s1,s2)      -> (get_varset_set s1) @@ (get_varset_set s2)
@@ -754,29 +638,29 @@ module Make (K : Level.S) : S =
                               (get_varset_level l)
     and get_varset_tid th =
       match th with
-          VarTh v            -> S.singleton v @@ get_varset_from_param v
-        | NoTid             -> S.empty
+          VarTh v            -> V.VarSet.singleton v @@ get_varset_from_param v
+        | NoTid             -> V.VarSet.empty
         | CellLockIdAt (c,l) -> (get_varset_cell c) @@ (get_varset_level l)
     and get_varset_elem e =
       match e with
-          VarElem v         -> S.singleton v @@ get_varset_from_param v
+          VarElem v         -> V.VarSet.singleton v @@ get_varset_from_param v
         | CellData c        -> get_varset_cell c
-        | HavocSkiplistElem -> S.empty
-        | LowestElem        -> S.empty
-        | HighestElem       -> S.empty
+        | HavocSkiplistElem -> V.VarSet.empty
+        | LowestElem        -> V.VarSet.empty
+        | HighestElem       -> V.VarSet.empty
     and get_varset_addr a =
       match a with
-          VarAddr v            -> S.singleton v @@ get_varset_from_param v
-        | Null                 -> S.empty
+          VarAddr v            -> V.VarSet.singleton v @@ get_varset_from_param v
+        | Null                 -> V.VarSet.empty
         | NextAt (c,l)         -> (get_varset_cell c) @@ (get_varset_level l)
         | FirstLockedAt(m,p,l) -> (get_varset_mem m) @@ (get_varset_path p) @@
                                   (get_varset_level l)
     (*    | Malloc(e,a,th)   -> (get_varset_elem e) @@ (get_varset_addr a) @@  (get_varset_tid th) *)
     and get_varset_cell c =
-      let fold f xs = List.fold_left (fun set x -> (f x) @@ set) S.empty xs in
+      let fold f xs = List.fold_left (fun set x -> (f x) @@ set) V.VarSet.empty xs in
       match c with
-          VarCell v           -> S.singleton v @@ get_varset_from_param v
-        | Error               -> S.empty
+          VarCell v           -> V.VarSet.singleton v @@ get_varset_from_param v
+        | Error               -> V.VarSet.empty
         | MkCell(e,aa,tt)     -> (get_varset_elem e) @@
                                  (fold get_varset_addr aa) @@
                                  (fold get_varset_tid tt)
@@ -786,16 +670,16 @@ module Make (K : Level.S) : S =
         | CellAt(m,a)         -> (get_varset_mem  m) @@ (get_varset_addr a)
     and get_varset_setth sth =
       match sth with
-          VarSetTh v         -> S.singleton v @@ get_varset_from_param v
-        | EmptySetTh         -> S.empty
+          VarSetTh v         -> V.VarSet.singleton v @@ get_varset_from_param v
+        | EmptySetTh         -> V.VarSet.empty
         | SinglTh(th)        -> (get_varset_tid th)
         | UnionTh(st1,st2)   -> (get_varset_setth st1) @@ (get_varset_setth st2)
         | IntrTh(st1,st2)    -> (get_varset_setth st1) @@ (get_varset_setth st2)
         | SetdiffTh(st1,st2) -> (get_varset_setth st1) @@ (get_varset_setth st2)
     and get_varset_setelem se =
       match se with
-          VarSetElem v         -> S.singleton v @@ get_varset_from_param v
-        | EmptySetElem         -> S.empty
+          VarSetElem v         -> V.VarSet.singleton v @@ get_varset_from_param v
+        | EmptySetElem         -> V.VarSet.empty
         | SinglElem(e)         -> (get_varset_elem e)
         | UnionElem(st1,st2)   -> (get_varset_setelem st1) @@ (get_varset_setelem st2)
         | IntrElem(st1,st2)    -> (get_varset_setelem st1) @@ (get_varset_setelem st2)
@@ -803,23 +687,23 @@ module Make (K : Level.S) : S =
         | SetdiffElem(st1,st2) -> (get_varset_setelem st1) @@ (get_varset_setelem st2)
     and get_varset_path p =
       match p with
-          VarPath v            -> S.singleton v @@ get_varset_from_param v
-        | Epsilon              -> S.empty
+          VarPath v            -> V.VarSet.singleton v @@ get_varset_from_param v
+        | Epsilon              -> V.VarSet.empty
         | SimplePath(a)        -> (get_varset_addr a)
         | GetPathAt(m,a1,a2,l) -> (get_varset_mem m) @@ (get_varset_addr a1) @@
                                   (get_varset_addr a2) @@ (get_varset_level l)
     and get_varset_mem m =
       match m with
-          VarMem v           -> S.singleton v @@ get_varset_from_param v
-        | Emp                -> S.empty
+          VarMem v           -> V.VarSet.singleton v @@ get_varset_from_param v
+        | Emp                -> V.VarSet.empty
         | Update(m,a,c)      -> (get_varset_mem m) @@ (get_varset_addr a) @@ (get_varset_cell c)
     and get_varset_level i =
       match i with
-          LevelVal _  -> S.empty
-        | VarLevel v  -> S.singleton v
+          LevelVal _  -> V.VarSet.empty
+        | VarLevel v  -> V.VarSet.singleton v
         | LevelSucc l -> (get_varset_level l)
         | LevelPred l -> (get_varset_level l)
-        | HavocLevel  -> S.empty
+        | HavocLevel  -> V.VarSet.empty
     and get_varset_atom a =
       match a with
           Append(p1,p2,p3)       -> (get_varset_path p1) @@ (get_varset_path p2) @@
@@ -844,15 +728,19 @@ module Make (K : Level.S) : S =
         | GreaterElem(e1,e2)     -> (get_varset_elem e1) @@ (get_varset_elem e2)
         | Eq((x,y))              -> (get_varset_term x) @@ (get_varset_term y)
         | InEq((x,y))            -> (get_varset_term x) @@ (get_varset_term y)
-        | BoolVar v              -> S.singleton v
-        | PC(pc,th,pr)           -> (match th with | Shared -> S.empty | Local t -> get_varset_tid t)
+        | BoolVar v              -> V.VarSet.singleton v
+        | PC(pc,th,pr)           -> (match th with
+                                     | V.Shared -> V.VarSet.empty
+                                     | V.Local t -> V.VarSet.singleton t)
         | PCUpdate (pc,th)       -> (get_varset_tid th)
-        | PCRange(pc1,pc2,th,pr) -> (match th with | Shared -> S.empty | Local t -> get_varset_tid t)
+        | PCRange(pc1,pc2,th,pr) -> (match th with
+                                     | V.Shared -> V.VarSet.empty
+                                     | V.Local t -> V.VarSet.singleton t)
     and get_varset_term t = match t with
-          VarT   v            -> S.singleton v @@ get_varset_from_param v
+          VarT   v            -> V.VarSet.singleton v @@ get_varset_from_param v
         | SetT   s            -> get_varset_set s
         | ElemT  e            -> get_varset_elem e
-        | TidT  th           -> get_varset_tid th
+        | TidT  th            -> get_varset_tid th
         | AddrT  a            -> get_varset_addr a
         | CellT  c            -> get_varset_cell c
         | SetThT st           -> get_varset_setth st
@@ -860,8 +748,9 @@ module Make (K : Level.S) : S =
         | PathT  p            -> get_varset_path p
         | MemT   m            -> get_varset_mem m
         | LevelT l            -> get_varset_level l
-        | VarUpdate(v,pc,t)   -> (S.singleton v) @@ (get_varset_term t) @@
+        | VarUpdate(v,pc,t)   -> (V.VarSet.singleton v) @@ (get_varset_term t) @@
                                  (get_varset_from_param v)
+(*
     and get_varset_literal l =
       match l with
           Atom a    -> get_varset_atom a
@@ -870,9 +759,9 @@ module Make (K : Level.S) : S =
     and get_varset_from_conj_aux phi =
       let another_lit vars alit = vars @@ (get_varset_literal alit) in
       match phi with
-          TrueConj   -> S.empty
-        | FalseConj  -> S.empty
-        | Conj l     -> List.fold_left (another_lit) S.empty l
+          TrueConj   -> V.VarSet.empty
+        | FalseConj  -> V.VarSet.empty
+        | Conj l     -> List.fold_left (another_lit) V.VarSet.empty l
 
     and get_varset_from_conj phi =
       unify_varset (get_varset_from_conj_aux phi)
@@ -883,8 +772,8 @@ module Make (K : Level.S) : S =
     and get_varset_from_formula_aux phi =
       match phi with
         Literal l       -> get_varset_literal l
-      | True            -> S.empty
-      | False           -> S.empty
+      | True            -> V.VarSet.empty
+      | False           -> V.VarSet.empty
       | And (f1,f2)     -> (get_varset_from_formula f1) @@
                            (get_varset_from_formula f2)
       | Or (f1,f2)      -> (get_varset_from_formula f1) @@
@@ -895,41 +784,44 @@ module Make (K : Level.S) : S =
       | Iff (f1,f2)     -> (get_varset_from_formula f1) @@
                            (get_varset_from_formula f2)
 
-    and get_varset_from_literal lit =
-      unify_varset (get_varset_literal lit)
-
     and get_varset_from_formula phi =
       unify_varset (get_varset_from_formula_aux phi)
 
     and get_unparam_varset_from_formula phi =
       unify_varset (unparam_varset (get_varset_from_formula_aux phi))
+*)
 
+    let varset_fs = Formula.make_fold
+                      Formula.GenericLiteralFold
+                      (fun info a -> get_varset_atom a)
+                      (fun info -> V.VarSet.empty)
+                      (@@)
 
-    let localize_with_underscore (id:varId) (p_name:procedure_name) : string =
-      match p_name with
-      | GlobalScope -> id
-      | Scope proc  -> proc ^ "_" ^ id
+    let get_varset_from_literal (l:literal) : V.VarSet.t =
+      unify_varset (Formula.literal_fold varset_fs () l)
 
+    let get_varset_from_conj (cf:conjunctive_formula) : V.VarSet.t =
+      unify_varset (Formula.conjunctive_formula_fold varset_fs () cf)
 
-    let varset_of_sort all s =
-      let filt v res =
-        if v.sort = s then
-          VarSet.add (var_set_param Shared v) res
-    (*      VarSet.add ((localize_with_underscore v p) res *)
-        else
-          res in
-        S.fold filt all VarSet.empty
+    let get_unparam_varset_from_conj (cf:conjunctive_formula) : V.VarSet.t =
+      unify_varset (unparam_varset (get_varset_from_conj cf))
+
+    let get_varset_from_formula (phi:formula) : V.VarSet.t =
+      unify_varset (Formula.formula_fold varset_fs () phi)
+
+    let get_unparam_varset_from_formula (phi:formula) : V.VarSet.t =
+      unify_varset (unparam_varset (get_varset_from_formula phi))
 
     let get_varset_of_sort_from_conj phi s =
-      varset_of_sort (get_varset_from_conj phi) s
+      V.varset_of_sort (get_varset_from_conj phi) s
 
 
     let get_varlist_from_conj phi =
-      S.elements (get_varset_from_conj phi)
+      V.VarSet.elements (get_varset_from_conj phi)
 
     let varlist_of_sort varlist s =
-      let is_s v = (v.sort = s) in
-      List.map (fun v -> (localize_with_underscore v.id v.scope))
+      let is_s v = ((V.sort v) = s) in
+      List.map (fun v -> (V.localize_with_underscore (V.id v) (V.scope v)))
                (List.filter is_s varlist)
 
     let get_varlist_of_sort_from_conj phi s =
@@ -960,13 +852,24 @@ module Make (K : Level.S) : S =
       | InEq((x,y))            -> add_list [x;y]
       | BoolVar v              -> add_list [VarT v]
       | PC(pc,th,pr)           -> (match th with
-                                   | Shared  -> TermSet.empty
-                                   | Local t -> add_list [TidT t])
+                                   | V.Shared  -> TermSet.empty
+                                   | V.Local t -> add_list [TidT (VarTh t)])
       | PCUpdate (pc,th)       -> add_list [TidT th]
       | PCRange(pc1,pc2,th,pr) -> (match th with
-                                   | Shared  -> TermSet.empty
-                                   | Local t -> add_list [TidT t])
+                                   | V.Shared  -> TermSet.empty
+                                   | V.Local t -> add_list [TidT (VarTh t)])
 
+    let termset_fs = Formula.make_fold
+                       Formula.GenericLiteralFold
+                       (fun info a -> get_termset_atom a)
+                       (fun info -> TermSet.empty)
+                       TermSet.union
+
+    let get_termset_from_formula (phi:formula) : TermSet.t =
+      Formula.formula_fold termset_fs () phi
+
+
+(*
     and get_termset_literal (l:literal) : TermSet.t =
       match l with
       | Atom a    -> get_termset_atom a
@@ -994,6 +897,7 @@ module Make (K : Level.S) : S =
                                          (get_termset_from_formula f2)
       | Iff (f1,f2)     -> TermSet.union (get_termset_from_formula f1)
                                          (get_termset_from_formula f2)
+*)
 
 
     let termset_of_sort (all:TermSet.t) (s:sort) : TermSet.t =
@@ -1009,7 +913,7 @@ module Make (K : Level.S) : S =
         | Path      -> (match t with | PathT _      -> true | _ -> false)
         | Mem       -> (match t with | MemT _       -> true | _ -> false)
         | Level     -> (match t with | LevelT _     -> true | _ -> false)
-        | Bool      -> (match t with | VarT v       -> v.sort = Bool
+        | Bool      -> (match t with | VarT v       -> (V.sort v) = Bool
                                      | _      -> false)
         | Unknown -> false in
       TermSet.fold (fun t set ->
@@ -1084,7 +988,7 @@ module Make (K : Level.S) : S =
         | PathT _          -> Path
         | MemT _           -> Mem
         | LevelT _         -> Level
-        | VarUpdate(v,_,_) -> v.sort
+        | VarUpdate(v,_,_) -> (V.sort v)
       
     let terms_same_type a b =
       (get_sort_from_term a) = (get_sort_from_term b)
@@ -1187,7 +1091,46 @@ module Make (K : Level.S) : S =
         | LevelSucc l -> is_level_flat l
         | LevelPred l -> is_level_flat l
         | HavocLevel   -> true
+    and is_atom_flat (a:atom) : bool =
+      match a with
+      | Append(p1,p2,p3)       -> (is_path_var p1) && (is_path_var p2) &&
+                                  (is_path_var p3)
+      | Reach(m,a1,a2,l,p)     -> (is_mem_var m) && (is_addr_var a1) &&
+                                  (is_addr_var a2) && (is_int_var l) &&
+                                  (is_path_var p)
+      | OrderList(m,a1,a2)     -> (is_mem_var m) && (is_addr_var a1) &&
+                                  (is_addr_var a2)
+      | In(a,s)                -> (is_addr_var a) && (is_set_var s)
+      | SubsetEq(s1,s2)        -> (is_set_var s1) && (is_set_var s2)
+      | InTh(k,st)             -> (is_tid_var k) && (is_setth_var st)
+      | SubsetEqTh(st1,st2)    -> (is_setth_var st1) && (is_setth_var st2)
+      | InElem(e,se)           -> (is_elem_var e) && (is_setelem_var se)
+      | SubsetEqElem(se1,se2)  -> (is_setelem_var se1) && (is_setelem_var se2)
+      | Less (i1,i2)           -> (is_int_var i1) && (is_int_var i2)
+      | Greater (i1,i2)        -> (is_int_var i1) && (is_int_var i2)
+      | LessEq (i1,i2)         -> (is_int_var i1) && (is_int_var i2)
+      | GreaterEq (i1,i2)      -> (is_int_var i1) && (is_int_var i2)
+      | LessElem(e1,e2)        -> (is_elem_var e1) && (is_elem_var e2)
+      | GreaterElem(e1,e2)     -> (is_elem_var e1) && (is_elem_var e2)
+      | Eq(t1,t2)              -> ((is_term_var t1) && (is_term_var t2)  ||
+                                   (is_term_var t1) && (is_term_flat t2)  ||
+                                   (is_term_flat t1) && (is_term_var t2))
+      | InEq(x,y)              -> (is_term_var x) && (is_term_var y)
+      | BoolVar v              -> true
+      | PC (pc,t,pr)           -> true
+      | PCUpdate (pc,t)        -> true
+      | PCRange (pc1,pc2,t,pr) -> true
 
+    let is_flat_fs = Formula.make_fold
+                       Formula.GenericLiteralFold
+                       (fun info a -> is_atom_flat a)
+                       (fun info -> true)
+                       (&&)
+
+    let is_literal_flat (l:literal) : bool =
+      Formula.literal_fold is_flat_fs () l
+
+(*
     let is_literal_flat lit =
       match lit with
           Atom a ->
@@ -1250,6 +1193,7 @@ module Make (K : Level.S) : S =
         | PCUpdate _            -> true
         | PCRange _             -> true
       end
+*)
 
 
     (*******************)
@@ -1257,8 +1201,6 @@ module Make (K : Level.S) : S =
     (* WIHOUT FOLD     *)
     (*******************)
 
-    let localize_var_id (v:varId) (p_name:string) : string =
-      sprintf "%s::%s" p_name v
 
 
     let sort_to_str s =
@@ -1277,43 +1219,12 @@ module Make (K : Level.S) : S =
         | Unknown   -> "Unknown"
 
 
-    let rec variable_to_full_str (v:variable) : string =
-      "Variable " ^variable_to_str v^ " information\n" ^
-      "Id:              " ^v.id^ "\n" ^
-      "Sort:            " ^sort_to_str (v.sort)^ "\n" ^
-      "Primed:          " ^if v.is_primed then "true" else "false"^ "\n" ^
-      "Thread:          " ^ shared_or_local_to_str v.parameter ^ "\n" ^
-      "Parent:          " ^ procedure_name_to_str v.scope ^ "\n" ^
-      "SMP Interesting: " ^if v.info.smp_interesting then "true" else "false"^ "\n" ^
-      "Fresh:           " ^if v.info.fresh then "true" else "false"^ "\n"
-(*
-        (variable_to_str v) (id) (sort_to_str s) (pr) (Option.map tid_to_str "None" th)
-        (Option.default "None" p) (info.smp_interesting) (info.fresh)
-*)
+    let info_to_str (info:var_info_t) : string =
+      "SMP Interesting: " ^if info.smp_interesting then "true" else "false"^ "\n" ^
+      "Fresh:           " ^if info.fresh then "true" else "false"^ "\n"
 
 
-    and variable_to_str (v:variable) : string =
-      let v_str = sprintf "%s%s" (match v.scope with
-                                  | GlobalScope -> v.id
-                                  | Scope proc  -> localize_var_id v.id proc)
-                                 (match v.parameter with
-                                  | Shared -> ""
-                                  | Local t -> "(" ^ tid_to_str t ^ ")")
-      in
-        if v.is_primed then v_str ^ "'" else v_str
-
-
-    and shared_or_local_to_str (th:shared_or_local) : string =
-      match th with
-      | Shared -> ""
-      | Local t -> tid_to_str t
-
-
-    and procedure_name_to_str (p:procedure_name) : string =
-      match p with
-      | GlobalScope -> ""
-      | Scope proc -> proc
-
+    let rec variable_to_full_str = V.to_full_str sort_to_str info_to_str
 
     and atom_to_str a =
       match a with
@@ -1353,37 +1264,38 @@ module Make (K : Level.S) : S =
                                         (elem_to_str e1) (elem_to_str e2)
       | Eq(exp)                    -> eq_to_str (exp)
       | InEq(exp)                  -> diseq_to_str (exp)
-      | BoolVar v                  -> variable_to_str v
+      | BoolVar v                  -> V.to_str v
       | PC (pc,t,pr)               -> let pc_str = if pr then "pc'" else "pc" in
-                                      let th_str = shared_or_local_to_str t in
+                                      let th_str = (V.shared_or_local_to_str t) in
                                       Printf.sprintf "%s(%s) = %i" pc_str th_str pc
       | PCUpdate (pc,t)            -> let th_str = tid_to_str t in
                                       Printf.sprintf "pc' = pc{%s<-%i}" th_str pc
       | PCRange (pc1,pc2,t,pr)     -> let pc_str = if pr then "pc'" else "pc" in
-                                      let th_str = shared_or_local_to_str t in
+                                      let th_str = (V.shared_or_local_to_str t) in
                                       Printf.sprintf "%i <= %s(%s) <= %i"
                                                       pc1 pc_str th_str pc2
-
+(*
     and literal_to_str e =
       match e with
           Atom(a)    -> atom_to_str a 
         | NegAtom(a) -> Printf.sprintf "(~ %s)" (atom_to_str a)
+*)
     and mem_to_str expr =
       match expr with
-          VarMem(v) -> variable_to_str v
+          VarMem(v) -> V.to_str v
         | Emp -> Printf.sprintf "emp"
         | Update(mem,add,cell) -> Printf.sprintf "upd(%s,%s,%s)"
             (mem_to_str mem) (addr_to_str add) (cell_to_str cell)
     and level_to_str expr =
       match expr with
           LevelVal n       -> string_of_int n
-        | VarLevel v       -> variable_to_str v
+        | VarLevel v       -> V.to_str v
         | LevelSucc l -> Printf.sprintf "succ (%s)" (level_to_str l)
         | LevelPred l -> Printf.sprintf "pred (%s)" (level_to_str l)
         | HavocLevel     -> Printf.sprintf "havocLevel()"
     and path_to_str expr =
       match expr with
-          VarPath(v)                       -> variable_to_str v
+          VarPath(v)                       -> V.to_str v
         | Epsilon                          -> Printf.sprintf "epsilon"
         | SimplePath(addr)                 -> Printf.sprintf "[ %s ]" (addr_to_str addr)
         | GetPathAt(mem,add_from,add_to,l) -> Printf.sprintf "getp(%s,%s,%s,%s)"
@@ -1393,7 +1305,7 @@ module Make (K : Level.S) : S =
                                                 (level_to_str l)
     and set_to_str e =
       match e with
-          VarSet(v)             -> variable_to_str v
+          VarSet(v)             -> V.to_str v
         | EmptySet              -> "EmptySet"
         | Singl(addr)           -> Printf.sprintf "{ %s }" (addr_to_str addr)
         | Union(s1,s2)          -> Printf.sprintf "%s Union %s"
@@ -1409,7 +1321,7 @@ module Make (K : Level.S) : S =
                                       (level_to_str l)
     and setth_to_str e =
       match e with
-          VarSetTh(v)  -> variable_to_str v
+          VarSetTh(v)  -> V.to_str v
         | EmptySetTh  -> "EmptySetTh"
         | SinglTh(th) -> Printf.sprintf "[ %s ]" (tid_to_str th)
         | UnionTh(s_1,s_2) -> Printf.sprintf "%s UnionTh %s"
@@ -1420,7 +1332,7 @@ module Make (K : Level.S) : S =
                                 (setth_to_str s_1) (setth_to_str s_2)
     and setelem_to_str e =
       match e with
-          VarSetElem(v)  -> variable_to_str v
+          VarSetElem(v)  -> V.to_str v
         | EmptySetElem  -> "EmptySetElem"
         | SinglElem(e) -> Printf.sprintf "[ %s ]" (elem_to_str e)
         | UnionElem(s_1,s_2) -> Printf.sprintf "%s UnionElem %s"
@@ -1434,7 +1346,7 @@ module Make (K : Level.S) : S =
     and cell_to_str e =
       let concat f xs = String.concat "," (List.map f xs) in
       match e with
-          VarCell(v)            -> variable_to_str v
+          VarCell(v)            -> V.to_str v
         | Error                 -> "Error"
         | MkCell(data,aa,tt)    -> Printf.sprintf "mkcell(%s,[%s],[%s])"
                                      (elem_to_str data) (concat addr_to_str aa)
@@ -1447,7 +1359,7 @@ module Make (K : Level.S) : S =
                                      (mem_to_str mem) (addr_to_str addr)
     and addr_to_str expr =
       match expr with
-          VarAddr(v)                -> variable_to_str v
+          VarAddr(v)                -> V.to_str v
         | Null                      -> "null"
         | NextAt(cell,l)            -> Printf.sprintf "%s.next(%s)"
                                          (cell_to_str cell) (level_to_str l)
@@ -1458,7 +1370,7 @@ module Make (K : Level.S) : S =
     (*    | Malloc(e,a,t)     -> Printf.sprintf "malloc(%s,%s,%s)" (elem_to_str e) (addr_to_str a) (tid_to_str t) *)
     and tid_to_str th =
       match th with
-          VarTh(v)             -> variable_to_str v
+          VarTh(v)             -> V.to_str v
         | NoTid               -> Printf.sprintf "NoTid"
         | CellLockIdAt(cell,l) -> Printf.sprintf "%s.lockid(%s)"
                                     (cell_to_str cell) (level_to_str l)
@@ -1470,14 +1382,14 @@ module Make (K : Level.S) : S =
         Printf.sprintf "%s != %s" (term_to_str e1) (term_to_str e2)
     and elem_to_str elem =
       match elem with
-          VarElem(v)         -> variable_to_str v
+          VarElem(v)         -> V.to_str v
         | CellData(cell)     -> Printf.sprintf "%s.data" (cell_to_str cell)
         | HavocSkiplistElem  -> "havocSkiplistElem()"
         | LowestElem         -> "lowestElem"
         | HighestElem        -> "highestElem"
     and term_to_str expr =
       match expr with
-          VarT(v) -> variable_to_str v
+          VarT(v) -> V.to_str v
         | SetT(set)          -> (set_to_str set)
         | AddrT(addr)        -> (addr_to_str addr)
         | ElemT(elem)        -> (elem_to_str elem)
@@ -1488,10 +1400,24 @@ module Make (K : Level.S) : S =
         | PathT(path)        -> (path_to_str path)
         | MemT(mem)          -> (mem_to_str mem)
         | LevelT(i)          -> (level_to_str i)
-        | VarUpdate (v,th,t) -> let v_str = variable_to_str v in
+        | VarUpdate (v,th,t) -> let v_str = V.to_str v in
                                 let th_str = tid_to_str th in
                                 let t_str = term_to_str t in
                                   Printf.sprintf "%s{%s<-%s}" v_str th_str t_str
+
+    and literal_to_str (l:literal) : string =
+      Formula.literal_to_str atom_to_str l
+
+    and conjunctive_formula_to_str (cf:conjunctive_formula) : string =
+      Formula.conjunctive_formula_to_str atom_to_str cf
+
+    and disjunctive_formula_to_str (df:disjunctive_formula) : string =
+      Formula.disjunctive_formula_to_str atom_to_str df
+
+    and formula_to_str (phi:formula) : string =
+      Formula.formula_to_str atom_to_str phi
+
+(*
     and conjunctive_formula_to_str form =
       let rec c_to_str f str =
         match f with
@@ -1554,243 +1480,237 @@ module Make (K : Level.S) : S =
 
     and formula_to_str (expr:formula) : string =
       formula_to_str_aux NoneOp expr
-
-
-    let generic_printer aprinter x =
-      Printf.printf "%s" (aprinter x)
+*)
 
     let print_atom a =
-      generic_printer atom_to_str a
+      Printer.generic atom_to_str a
 
     let print_formula f =
-      generic_printer formula_to_str f 
+      Printer.generic formula_to_str f 
 
     let print_conjunctive_formula f = 
-      generic_printer conjunctive_formula_to_str f
+      Printer.generic conjunctive_formula_to_str f
 
     let print_literal b =
-      generic_printer literal_to_str b
+      Printer.generic literal_to_str b
 
     let print_addr a =
-      generic_printer addr_to_str a
+      Printer.generic addr_to_str a
 
     let print_cell  c =
-      generic_printer cell_to_str c
+      Printer.generic cell_to_str c
 
     let print_elem  e =
-      generic_printer elem_to_str e
+      Printer.generic elem_to_str e
 
     let print_tid  t =
-      generic_printer tid_to_str t
+      Printer.generic tid_to_str t
 
     let print_mem   m =
-      generic_printer mem_to_str m
+      Printer.generic mem_to_str m
 
     let print_path  p =
-      generic_printer path_to_str p
+      Printer.generic path_to_str p
 
     let print_set   s =
-      generic_printer set_to_str s
+      Printer.generic set_to_str s
 
     let print_setth sth =
-      generic_printer setth_to_str sth
+      Printer.generic setth_to_str sth
 
-    let variable_list_to_str varlist =
-      List.fold_left (fun v str -> str ^ v ^ "\n") "" varlist
-
-    let print_variable_list varlist =
-      generic_printer variable_list_to_str varlist
-
-    let typed_variable_list_to_str tvarlist =
-      let pr str (v,s) = (str ^ v ^ ": " ^ (sort_to_str s) ^ "\n") in
-        List.fold_left pr "" tvarlist
-
-    let print_variable_list varlist =
-      generic_printer variable_list_to_str varlist
-
-    let print_typed_variable_list tvarlist =
-      generic_printer typed_variable_list_to_str tvarlist
-
-    let variable_set_to_str varset =
-      VarIdSet.fold (fun v str -> str ^ v ^ "\n") varset ""
-
-    let typed_variable_set_to_str tvarset =
-      let pr v str = (str ^ v.id ^ ": " ^ (sort_to_str v.sort) ^ "\n") in
-        S.fold pr tvarset ""
-
-    let print_variable_set varset =
-      generic_printer variable_set_to_str varset
-
-    let print_typed_variable_set tvarset =
-      generic_printer typed_variable_set_to_str tvarset
 
 
     (* let print_eq    e = *)
-    (*   generic_printer eq_to_str e *)
+    (*   Printer.generic eq_to_str e *)
 
     (* let print_diseq e = *)
-    (*   generic_printer eq_to_str e *)
+    (*   Printer.generic eq_to_str e *)
 
 
     (* VOCABULARY FUNCTIONS *)
-    let rec get_tid_in (v:variable) : tid list =
-      match v.parameter with Shared -> [] | Local t -> [t]
+    let (@@) = ThreadSet.union
+
+    let rec get_tid_in (v:V.t) : ThreadSet.t =
+      match (V.parameter v) with
+      | V.Shared -> ThreadSet.empty
+      | V.Local t -> ThreadSet.singleton (VarTh t)
 
 
-    and voc_term (expr:term) : tid list =
+    and voc_term (expr:term) : ThreadSet.t =
       match expr with
-        | VarT v             -> (match v.sort with
-                                 | Tid -> [VarTh v]
-                                 | _    -> [] ) @ get_tid_in v
+        | VarT v             -> (match (V.sort v) with
+                                 | Tid -> ThreadSet.singleton (VarTh v)
+                                 | _   -> ThreadSet.empty ) @@ get_tid_in v
         | SetT(set)          -> voc_set set
         | AddrT(addr)        -> voc_addr addr
         | ElemT(elem)        -> voc_elem elem
-        | TidT(th)          -> voc_tid th
+        | TidT(th)           -> voc_tid th
         | CellT(cell)        -> voc_cell cell
         | SetThT(setth)      -> voc_setth setth
         | SetElemT(setelem)  -> voc_setelem setelem
         | PathT(path)        -> voc_path path
         | MemT(mem)          -> voc_mem mem
         | LevelT(i)          -> voc_level i
-        | VarUpdate (v,th,t) -> (get_tid_in v) @ (voc_tid th) @ (voc_term t)
+        | VarUpdate (v,th,t) -> (get_tid_in v) @@ (voc_tid th) @@ (voc_term t)
 
 
-    and voc_set (e:set) : tid list =
+    and voc_set (e:set) : ThreadSet.t =
       match e with
         VarSet v            -> get_tid_in v
-      | EmptySet            -> []
+      | EmptySet            -> ThreadSet.empty
       | Singl(addr)         -> (voc_addr addr)
-      | Union(s1,s2)        -> (voc_set s1) @ (voc_set s2)
-      | Intr(s1,s2)         -> (voc_set s1) @ (voc_set s2)
-      | Setdiff(s1,s2)      -> (voc_set s1) @ (voc_set s2)
+      | Union(s1,s2)        -> (voc_set s1) @@ (voc_set s2)
+      | Intr(s1,s2)         -> (voc_set s1) @@ (voc_set s2)
+      | Setdiff(s1,s2)      -> (voc_set s1) @@ (voc_set s2)
       | PathToSet(path)     -> (voc_path path)
-      | AddrToSet(mem,a,l)  -> (voc_mem mem) @ (voc_addr a) @ (voc_level l)
+      | AddrToSet(mem,a,l)  -> (voc_mem mem) @@ (voc_addr a) @@ (voc_level l)
 
 
-    and voc_addr (a:addr) : tid list =
+    and voc_addr (a:addr) : ThreadSet.t =
       match a with
         VarAddr v                 -> get_tid_in v
-      | Null                      -> []
-      | NextAt(cell,l)            -> (voc_cell cell) @ (voc_level l)
-      | FirstLockedAt(mem,path,l) -> (voc_mem mem) @ (voc_path path) @ (voc_level l)
+      | Null                      -> ThreadSet.empty
+      | NextAt(cell,l)            -> (voc_cell cell) @@ (voc_level l)
+      | FirstLockedAt(mem,path,l) -> (voc_mem mem) @@ (voc_path path) @@ (voc_level l)
 
 
-    and voc_elem (e:elem) : tid list =
+    and voc_elem (e:elem) : ThreadSet.t =
       match e with
         VarElem v          -> get_tid_in v
       | CellData(cell)     -> (voc_cell cell)
-      | HavocSkiplistElem  -> []
-      | LowestElem         -> []
-      | HighestElem        -> []
+      | HavocSkiplistElem  -> ThreadSet.empty
+      | LowestElem         -> ThreadSet.empty
+      | HighestElem        -> ThreadSet.empty
 
 
-    and voc_tid (th:tid) : tid list =
+    and voc_tid (th:tid) : ThreadSet.t =
       match th with
-        VarTh v              -> th :: get_tid_in v
-      | NoTid               -> []
-      | CellLockIdAt(cell,l) -> (voc_cell cell) @ (voc_level l)
+        VarTh v              -> ThreadSet.add th (get_tid_in v)
+      | NoTid                -> ThreadSet.empty
+      | CellLockIdAt(cell,l) -> (voc_cell cell) @@ (voc_level l)
 
 
-    and voc_cell (c:cell) : tid list =
-      let fold f xs = List.fold_left (fun ys x -> (f x) @ ys) [] xs in
+    and voc_cell (c:cell) : ThreadSet.t =
+      let fold f xs = List.fold_left (fun ys x -> (f x) @@ ys) ThreadSet.empty xs in
       match c with
         VarCell v            -> get_tid_in v
-      | Error                -> []
-      | MkCell(data,aa,tt)   -> (voc_elem data)    @
-                                (fold voc_addr aa) @
+      | Error                -> ThreadSet.empty
+      | MkCell(data,aa,tt)   -> (voc_elem data)    @@
+                                (fold voc_addr aa) @@
                                 (fold voc_tid tt)
-      | CellLockAt(cell,l,th)-> (voc_cell cell) @ (voc_level l) @ (voc_tid th)
-      | CellUnlockAt(cell,l) -> (voc_cell cell) @ (voc_level l)
-      | CellAt(mem,addr)     -> (voc_mem mem) @ (voc_addr addr)
+      | CellLockAt(cell,l,th)-> (voc_cell cell) @@ (voc_level l) @@ (voc_tid th)
+      | CellUnlockAt(cell,l) -> (voc_cell cell) @@ (voc_level l)
+      | CellAt(mem,addr)     -> (voc_mem mem) @@ (voc_addr addr)
 
 
-    and voc_setth (s:setth) : tid list =
+    and voc_setth (s:setth) : ThreadSet.t =
       match s with
         VarSetTh v          -> get_tid_in v
-      | EmptySetTh          -> []
+      | EmptySetTh          -> ThreadSet.empty
       | SinglTh(th)         -> (voc_tid th)
-      | UnionTh(s1,s2)      -> (voc_setth s1) @ (voc_setth s2)
-      | IntrTh(s1,s2)       -> (voc_setth s1) @ (voc_setth s2)
-      | SetdiffTh(s1,s2)    -> (voc_setth s1) @ (voc_setth s2)
+      | UnionTh(s1,s2)      -> (voc_setth s1) @@ (voc_setth s2)
+      | IntrTh(s1,s2)       -> (voc_setth s1) @@ (voc_setth s2)
+      | SetdiffTh(s1,s2)    -> (voc_setth s1) @@ (voc_setth s2)
 
 
-    and voc_setelem (s:setelem) : tid list =
+    and voc_setelem (s:setelem) : ThreadSet.t =
       match s with
         VarSetElem v          -> get_tid_in v
-      | EmptySetElem          -> []
+      | EmptySetElem          -> ThreadSet.empty
       | SinglElem(e)          -> (voc_elem e)
-      | UnionElem(s1,s2)      -> (voc_setelem s1) @ (voc_setelem s2)
-      | IntrElem(s1,s2)       -> (voc_setelem s1) @ (voc_setelem s2)
-      | SetdiffElem(s1,s2)    -> (voc_setelem s1) @ (voc_setelem s2)
-      | SetToElems(s,m)       -> (voc_set s) @ (voc_mem m)
+      | UnionElem(s1,s2)      -> (voc_setelem s1) @@ (voc_setelem s2)
+      | IntrElem(s1,s2)       -> (voc_setelem s1) @@ (voc_setelem s2)
+      | SetdiffElem(s1,s2)    -> (voc_setelem s1) @@ (voc_setelem s2)
+      | SetToElems(s,m)       -> (voc_set s) @@ (voc_mem m)
 
 
-    and voc_path (p:path) : tid list =
+    and voc_path (p:path) : ThreadSet.t =
       match p with
         VarPath v                    -> get_tid_in v
-      | Epsilon                      -> []
+      | Epsilon                      -> ThreadSet.empty
       | SimplePath(addr)             -> (voc_addr addr)
-      | GetPathAt(mem,a_from,a_to,l) -> (voc_mem mem) @
-                                        (voc_addr a_from) @
-                                        (voc_addr a_to) @
+      | GetPathAt(mem,a_from,a_to,l) -> (voc_mem mem) @@
+                                        (voc_addr a_from) @@
+                                        (voc_addr a_to) @@
                                         (voc_level l)
 
 
-    and voc_mem (m:mem) : tid list =
+    and voc_mem (m:mem) : ThreadSet.t =
       match m with
         VarMem v             -> get_tid_in v
-      | Emp                  -> []
-      | Update(mem,add,cell) -> (voc_mem mem) @ (voc_addr add) @ (voc_cell cell)
+      | Emp                  -> ThreadSet.empty
+      | Update(mem,add,cell) -> (voc_mem mem) @@ (voc_addr add) @@ (voc_cell cell)
 
 
-    and voc_level (i:level) : tid list =
+    and voc_level (i:level) : ThreadSet.t =
       match i with
-        LevelVal _  -> []
+        LevelVal _  -> ThreadSet.empty
       | VarLevel v  -> get_tid_in v
       | LevelSucc l -> voc_level l
       | LevelPred l -> voc_level l
-      | HavocLevel  -> []
+      | HavocLevel  -> ThreadSet.empty
 
 
-    and voc_atom (a:atom) : tid list =
+    and voc_atom (a:atom) : ThreadSet.t =
       match a with
-        Append(p1,p2,pres)         -> (voc_path p1) @
-                                      (voc_path p2) @
+        Append(p1,p2,pres)         -> (voc_path p1) @@
+                                      (voc_path p2) @@
                                       (voc_path pres)
-      | Reach(h,a_from,a_to,l,p)   -> (voc_mem h) @
-                                      (voc_addr a_from) @
-                                      (voc_addr a_to) @
-                                      (voc_level l) @
+      | Reach(h,a_from,a_to,l,p)   -> (voc_mem h) @@
+                                      (voc_addr a_from) @@
+                                      (voc_addr a_to) @@
+                                      (voc_level l) @@
                                       (voc_path p)
-      | OrderList(h,a_from,a_to)   -> (voc_mem h) @
-                                      (voc_addr a_from) @
+      | OrderList(h,a_from,a_to)   -> (voc_mem h) @@
+                                      (voc_addr a_from) @@
                                       (voc_addr a_to)
-      | In(a,s)                    -> (voc_addr a) @ (voc_set s)
-      | SubsetEq(s_in,s_out)       -> (voc_set s_in) @ (voc_set s_out)
-      | InTh(th,s)                 -> (voc_tid th) @ (voc_setth s)
-      | SubsetEqTh(s_in,s_out)     -> (voc_setth s_in) @ (voc_setth s_out)
-      | InElem(e,s)                -> (voc_elem e) @ (voc_setelem s)
-      | SubsetEqElem(s_in,s_out)   -> (voc_setelem s_in) @ (voc_setelem s_out)
-      | Less (i1,i2)               -> (voc_level i1) @ (voc_level i2)
-      | Greater (i1,i2)            -> (voc_level i1) @ (voc_level i2)
-      | LessEq (i1,i2)             -> (voc_level i1) @ (voc_level i2)
-      | GreaterEq (i1,i2)          -> (voc_level i1) @ (voc_level i2)
-      | LessElem(e1,e2)            -> (voc_elem e1) @ (voc_elem e2)
-      | GreaterElem(e1,e2)         -> (voc_elem e1) @ (voc_elem e2)
+      | In(a,s)                    -> (voc_addr a) @@ (voc_set s)
+      | SubsetEq(s_in,s_out)       -> (voc_set s_in) @@ (voc_set s_out)
+      | InTh(th,s)                 -> (voc_tid th) @@ (voc_setth s)
+      | SubsetEqTh(s_in,s_out)     -> (voc_setth s_in) @@ (voc_setth s_out)
+      | InElem(e,s)                -> (voc_elem e) @@ (voc_setelem s)
+      | SubsetEqElem(s_in,s_out)   -> (voc_setelem s_in) @@ (voc_setelem s_out)
+      | Less (i1,i2)               -> (voc_level i1) @@ (voc_level i2)
+      | Greater (i1,i2)            -> (voc_level i1) @@ (voc_level i2)
+      | LessEq (i1,i2)             -> (voc_level i1) @@ (voc_level i2)
+      | GreaterEq (i1,i2)          -> (voc_level i1) @@ (voc_level i2)
+      | LessElem(e1,e2)            -> (voc_elem e1) @@ (voc_elem e2)
+      | GreaterElem(e1,e2)         -> (voc_elem e1) @@ (voc_elem e2)
       | Eq(exp)                    -> (voc_eq exp)
       | InEq(exp)                  -> (voc_ineq exp)
       | BoolVar v                  -> get_tid_in v
-      | PC (pc,t,_)                -> (match t with | Shared -> [] | Local x -> [x])
-      | PCUpdate (pc,t)            -> [t]
-      | PCRange (pc1,pc2,t,_)      -> (match t with | Shared -> [] | Local x -> [x])
+      | PC (pc,t,_)                -> (match t with
+                                       | V.Shared -> ThreadSet.empty
+                                       | V.Local x -> ThreadSet.singleton (VarTh x))
+      | PCUpdate (pc,t)            -> ThreadSet.singleton t
+      | PCRange (pc1,pc2,t,_)      -> (match t with
+                                       | V.Shared -> ThreadSet.empty
+                                       | V.Local x -> ThreadSet.singleton (VarTh x))
 
 
-    and voc_eq ((t1,t2):eq) : tid list = (voc_term t1) @ (voc_term t2)
+    and voc_eq ((t1,t2):eq) : ThreadSet.t = (voc_term t1) @@ (voc_term t2)
 
 
-    and voc_ineq ((t1,t2):diseq) : tid list = (voc_term t1) @ (voc_term t2)
+    and voc_ineq ((t1,t2):diseq) : ThreadSet.t = (voc_term t1) @@ (voc_term t2)
 
 
+    let voc_fs = Formula.make_fold
+                   Formula.GenericLiteralFold
+                   (fun info a -> voc_atom a)
+                   (fun info -> ThreadSet.empty)
+                   (@@)
+
+    let voc_literal (l:literal) : ThreadSet.t =
+      Formula.literal_fold voc_fs () l
+
+
+    let voc_conjunctive_formula (cf:conjunctive_formula) : ThreadSet.t =
+      Formula.conjunctive_formula_fold voc_fs () cf
+
+    let voc_formula (phi:formula) : ThreadSet.t =
+      Formula.formula_fold voc_fs () phi
+
+(*
     and voc_literal (l:literal) : tid list =
       match l with
         Atom a    -> voc_atom a
@@ -1814,8 +1734,9 @@ module Make (K : Level.S) : S =
         | Not(f)                -> (voc_formula f)
         | Implies(f1,f2)        -> (voc_formula f1) @ (voc_formula f2)
         | Iff (f1,f2)           -> (voc_formula f1) @ (voc_formula f2)
+*)
 
-
+(*
     let all_voc (phi:formula) : ThreadSet.t =
       let th_list = voc_formula phi in
       let th_set  = List.fold_left (fun set e -> ThreadSet.add e set)
@@ -1823,147 +1744,47 @@ module Make (K : Level.S) : S =
                                    (th_list)
       in
         th_set
+*)
 
 
-    let voc (phi:formula) : tid list =
+    let voc (phi:formula) : ThreadSet.t =
+      voc_formula phi
+(*
       ThreadSet.elements (all_voc phi)
+*)
 
 
-    let conjformula_voc (cf:conjunctive_formula) : tid list =
+    let conjformula_voc (cf:conjunctive_formula) : ThreadSet.t =
+      voc_conjunctive_formula cf
+
+(*
       let th_list = voc_conjunctive_formula cf in
       let th_set = List.fold_left (fun set e -> ThreadSet.add e set)
                                   (ThreadSet.empty)
                                   (th_list)
       in
         ThreadSet.elements th_set
+*)
 
 
-    let unprimed_voc (phi:formula) : tid list =
+    let unprimed_voc (phi:formula) : ThreadSet.t =
+      ThreadSet.filter (is_primed_tid>>not) (voc phi)
+(*
       let voc_set = ThreadSet.filter (is_primed_tid>>not) (all_voc phi)
       in
         ThreadSet.elements voc_set
+*)
 
 
     (******************************)
     (* DNF                        *)
     (******************************)
-
-    let rec nnf expr =
-      match expr with
-          False -> False
-        | True  -> True
-        | Iff (e1,e2)    -> And (nnf (Implies (e1,e2)),nnf (Implies(e2,e1)))
-        | Implies(e1,e2) -> Or (nnf (Not e1), nnf e2)
-        | And(e1,e2)     -> And(nnf e1, nnf e2)
-        | Or(e1,e2)      -> Or(nnf e1, nnf e2)
-        | Not (Not e)    -> nnf e
-        | Not (And (e1,e2)) -> Or (nnf (Not e1), nnf (Not e2))
-        | Not (Or (e1, e2)) -> And (nnf (Not e1), nnf (Not e2))
-        | Not (Implies (e1, e2)) ->And (nnf e1, nnf (Not e2))
-        | Not (Iff (e1, e2)) ->  Or (And (nnf e1, nnf (Not e2)), And (nnf (Not e1), nnf e2))
-        | Not Literal(Atom a) -> Literal(NegAtom a)
-        | Not Literal(NegAtom a) -> Literal(Atom a)
-        | Not True  -> False
-        | Not False -> True
-        | Literal(a) -> Literal(a)
-          
-    exception ErrorInNNF of string
-
-
-    let rec dnf (expr:formula) : conjunctive_formula list =
-      let rec dnf_nnf nnfexpr =
-        match nnfexpr with
-          Or(e1,e2)  ->
-            begin
-              match (dnf_nnf e1, dnf_nnf e2) with
-                ([TrueConj],_)  -> [TrueConj]
-              | (_,[TrueConj])  -> [TrueConj]
-              | ([FalseConj],x) -> x
-              | (x,[FalseConj]) -> x
-              | (lx,ly) -> lx @ ly
-            end
-        | And(e1,e2) ->
-            begin
-              match (dnf_nnf e1, dnf_nnf e2) with
-                ([FalseConj],_) -> [FalseConj]
-              | (_,[FalseConj]) -> [FalseConj]
-              | ([TrueConj],x)  -> x
-              | (x,[TrueConj])  -> x
-              | (e1_dnf, e2_dnf) ->
-                    let get_conjuncts c =
-                      match c with
-                        Conj l -> l
-                      | _ -> let msg = "Formula "^(formula_to_str nnfexpr)^" is not in NNF.\n" in
-                               raise(ErrorInNNF(msg))
-                    in
-                    (* here lx and ly  are lists of Conj none of which is 
-                     * True or False *)
-                    let add_to_all_in_e2 final_list x1 =
-                      let lx1 = get_conjuncts x1 in
-                      let add_x1 l2 x2 = Conj(lx1 @ (get_conjuncts x2))::l2 in
-                      let lst = List.fold_left add_x1 [] e2_dnf in
-                        lst @ final_list
-                    in
-                      List.fold_left add_to_all_in_e2 [] e1_dnf
-            end
-        | Literal(l) -> [ Conj [ l ]]
-        | True       -> [TrueConj]
-        | False      -> [FalseConj]
-        | _          -> let msg = "Formula " ^(formula_to_str nnfexpr)^ " is not in NNF.\n" in
-                          raise(ErrorInNNF(msg))
-      in
-        dnf_nnf (nnf expr)
-
-
-    let rec cnf (expr:formula) : disjunctive_formula list =
-      let rec cnf_nnf nnfexpr =
-        match nnfexpr with
-          Or(e1,e2)  ->
-            begin
-              match (cnf_nnf e1, cnf_nnf e2) with
-                ([TrueDisj],_)  -> [TrueDisj]
-              | (_,[TrueDisj])  -> [TrueDisj]
-              | ([FalseDisj],x) -> x
-              | (x,[FalseDisj]) -> x
-              | (e1_cnf, e2_cnf) ->
-                    let get_disjuncts d =
-                      match d with
-                        Disj l -> l
-                      | _ -> let msg = "Formula "^(formula_to_str nnfexpr)^" is not in NNF.\n" in
-                               raise(ErrorInNNF(msg))
-                    in
-                    (* here lx and ly  are lists of Disj none of which is 
-                     * True or False *)
-                    let add_to_all_in_e2 final_list x1 =
-                      let lx1 = get_disjuncts x1 in
-                      let add_x1 l2 x2 = Disj(lx1 @ (get_disjuncts x2))::l2 in
-                      let lst = List.fold_left add_x1 [] e2_cnf in
-                        lst @ final_list
-                    in
-                      List.fold_left add_to_all_in_e2 [] e1_cnf
-            end
-        | And(e1,e2) ->
-            begin
-              match (cnf_nnf e1, cnf_nnf e2) with
-                ([FalseDisj],_) -> [FalseDisj]
-              | (_,[FalseDisj]) -> [FalseDisj]
-              | ([TrueDisj],x)  -> x
-              | (x,[TrueDisj])  -> x
-              | (lx,ly) -> lx @ ly
-            end
-        | Literal(l) -> [ Disj [ l ]]
-        | True       -> [TrueDisj]
-        | False      -> [FalseDisj]
-        | _          -> let msg = "Formula " ^(formula_to_str nnfexpr)^ " is not in NNF.\n" in
-                          raise(ErrorInNNF(msg))
-      in
-        cnf_nnf (nnf expr)
-
-
+(*
     let rec split_conj (phi:formula) : formula list =
       match phi with
         And (phi1, phi2) -> (split_conj phi1) @ (split_conj phi2)
       | _                -> [phi]
+*)
 
 
     let required_sorts (phi:formula) : sort list =
@@ -1973,7 +1794,7 @@ module Make (K : Level.S) : S =
       let single = SortSet.singleton in
       let list_union xs = List.fold_left union empty xs in
       let append s sets = add s (List.fold_left union empty sets) in
-
+(*
       let rec req_f (phi:formula) : SortSet.t =
         match phi with
         | Literal l       -> req_l l
@@ -1989,8 +1810,8 @@ module Make (K : Level.S) : S =
         match l with
         | Atom a    -> req_atom a
         | NegAtom a -> req_atom a
-
-      and req_atom (a:atom) : SortSet.t =
+*)
+      let rec req_atom (a:atom) : SortSet.t =
         match a with
         | Append (p1,p2,p3)   -> list_union [req_p p1;req_p p1;req_p p2;req_p p3]
         | Reach (m,a1,a2,l,p) -> list_union [req_m m;req_a a1;req_a a2;req_lv l;req_p p]
@@ -2099,7 +1920,7 @@ module Make (K : Level.S) : S =
 
       and req_term (t:term) : SortSet.t =
         match t with
-        | VarT v                       -> single v.sort
+        | VarT v                       -> single (V.sort v)
         | SetT s                       -> req_s s
         | ElemT e                      -> req_e e
         | TidT t                      -> req_t t
@@ -2110,7 +1931,17 @@ module Make (K : Level.S) : S =
         | PathT p                      -> req_p p
         | MemT m                       -> req_m m
         | LevelT l                     -> req_lv l
-        | VarUpdate (v,t,tr)           -> append v.sort [req_t t;req_term tr]
+        | VarUpdate (v,t,tr)           -> append (V.sort v) [req_t t;req_term tr] in
+
+      let req_fs = Formula.make_fold
+                     Formula.GenericLiteralFold
+                     (fun info a -> req_atom a)
+                     (fun info -> empty)
+                     union in
+
+      let req_f (phi:formula) : SortSet.t =
+        Formula.formula_fold req_fs () phi
+
       in
         SortSet.elements (req_f phi)
 
@@ -2122,7 +1953,7 @@ module Make (K : Level.S) : S =
       let add = OpsSet.add in
       let list_union xs = List.fold_left union empty xs in
       let append s sets = add s (List.fold_left union empty sets) in
-
+(*
       let rec ops_f (phi:formula) : OpsSet.t =
         match phi with
         | Literal l       -> ops_l l
@@ -2138,8 +1969,9 @@ module Make (K : Level.S) : S =
         match l with
         | Atom a    -> ops_atom a
         | NegAtom a -> ops_atom a
+*)
 
-      and ops_atom (a:atom) : OpsSet.t =
+      let rec ops_atom (a:atom) : OpsSet.t =
         match a with
         | Append (p1,p2,p3)   -> list_union [ops_p p1;ops_p p1;ops_p p2;ops_p p3]
         | Reach (m,a1,a2,l,p) -> append Reachable[ops_m m;ops_a a1;ops_a a2;ops_lv l;ops_p p]
@@ -2259,12 +2091,21 @@ module Make (K : Level.S) : S =
         | PathT p            -> ops_p p
         | MemT m             -> ops_m m
         | LevelT i           -> ops_lv i
-        | VarUpdate (_,t,tr) -> list_union [ops_t t;ops_term tr]
+        | VarUpdate (_,t,tr) -> list_union [ops_t t;ops_term tr] in
+
+      let ops_fs = Formula.make_fold
+                     Formula.GenericLiteralFold
+                     (fun info a -> ops_atom a)
+                     (fun info -> empty)
+                     union in
+
+      let ops_f (phi:formula) : OpsSet.t =
+        Formula.formula_fold ops_fs () phi
       in
         OpsSet.elements (ops_f phi)
 
 
-
+(*
     let cleanup_dup (cf:conjunctive_formula) : conjunctive_formula =
       let clean_lits (ls:literal list) : literal list =
         let (_, xs) = List.fold_left (fun (s,xs) l ->
@@ -2280,31 +2121,32 @@ module Make (K : Level.S) : S =
         | TrueConj -> TrueConj
         | FalseConj -> FalseConj
         | Conj ls -> Conj (clean_lits ls)
+*)
 
 
     (* NOTE: I am not considering the possibility of having a1=a2 \/ a1=a3 in the formula *)
     let rec get_addrs_eqs (phi:formula) : ((addr*addr) list * (addr*addr) list) =
       match phi with
-      | Literal l   -> get_addrs_eqs_lit l
-      | And (f1,f2) -> let (es1,is1) = get_addrs_eqs f1 in
-                       let (es2,is2) = get_addrs_eqs f2 in
-                         (es1@es2, is1@is2)
-      | Not f       -> let (es,is) = get_addrs_eqs f in (is,es)
-      | _           -> ([],[])
+      | F.Literal l   -> get_addrs_eqs_lit l
+      | F.And (f1,f2) -> let (es1,is1) = get_addrs_eqs f1 in
+                         let (es2,is2) = get_addrs_eqs f2 in
+                           (es1@es2, is1@is2)
+      | F.Not f       -> let (es,is) = get_addrs_eqs f in (is,es)
+      | _             -> ([],[])
 
     and get_addrs_eqs_conj (cf:conjunctive_formula) : ((addr*addr) list * (addr*addr) list) =
       match cf with
-      | TrueConj -> ([],[])
-      | FalseConj -> ([],[])
-      | Conj xs -> List.fold_left (fun (es,is) l ->
-                     let (es',is') = get_addrs_eqs_lit l in
-                     (es@es', is@is')
-                   ) ([],[]) xs
+      | F.TrueConj -> ([],[])
+      | F.FalseConj -> ([],[])
+      | F.Conj xs -> List.fold_left (fun (es,is) l ->
+                       let (es',is') = get_addrs_eqs_lit l in
+                       (es@es', is@is')
+                     ) ([],[]) xs
 
     and get_addrs_eqs_lit (l:literal) : ((addr*addr) list * (addr*addr) list) =
       match l with
-      | Atom a -> get_addrs_eqs_atom a
-      | NegAtom a -> let (es,is) = get_addrs_eqs_atom a in (is,es)
+      | F.Atom a -> get_addrs_eqs_atom a
+      | F.NegAtom a -> let (es,is) = get_addrs_eqs_atom a in (is,es)
 
     and get_addrs_eqs_atom (a:atom) : ((addr*addr) list * (addr*addr) list) =
       match a with
@@ -2312,7 +2154,7 @@ module Make (K : Level.S) : S =
       | InEq (AddrT a1, AddrT a2) -> ([],[(a1,a2)])
       | _ -> ([],[])
 
-
+(*
     let conj_list (bs:formula list) : formula =
       match bs with
       | [] -> True
@@ -2334,92 +2176,93 @@ module Make (K : Level.S) : S =
       match phi with
       | Or (f1,f2) -> (to_disj_list f1) @ (to_disj_list f2)
       | _          -> [phi]
+*)
 
 
     (* Equality constructor functions for formulas *)
     let eq_set (s1:set) (s2:set) : formula =
-      Literal (Atom (Eq (SetT s1, SetT s2)))
+      Formula.atom_to_formula (Eq (SetT s1, SetT s2))
 
     let eq_elem (e1:elem) (e2:elem) : formula =
-      Literal (Atom (Eq (ElemT e1, ElemT e2)))
+      Formula.atom_to_formula (Eq (ElemT e1, ElemT e2))
 
     let eq_tid (t1:tid) (t2:tid) : formula =
-      Literal (Atom (Eq (TidT t1, TidT t2)))
+      Formula.atom_to_formula (Eq (TidT t1, TidT t2))
 
     let eq_addr (a1:addr) (a2:addr) : formula =
-      Literal (Atom (Eq (AddrT a1, AddrT a2)))
+      Formula.atom_to_formula (Eq (AddrT a1, AddrT a2))
 
     let eq_cell (c1:cell) (c2:cell) : formula =
-      Literal (Atom (Eq (CellT c1, CellT c2)))
+      Formula.atom_to_formula (Eq (CellT c1, CellT c2))
 
     let eq_setth (s1:setth) (s2:setth) : formula =
-      Literal (Atom (Eq (SetThT s1, SetThT s2)))
+      Formula.atom_to_formula (Eq (SetThT s1, SetThT s2))
 
     let eq_setelem (s1:setelem) (s2:setelem) : formula =
-      Literal (Atom (Eq (SetElemT s1, SetElemT s2)))
+      Formula.atom_to_formula (Eq (SetElemT s1, SetElemT s2))
 
     let eq_path (p1:path) (p2:path) : formula =
-      Literal (Atom (Eq (PathT p1, PathT p2)))
+      Formula.atom_to_formula (Eq (PathT p1, PathT p2))
 
     let eq_mem (m1:mem) (m2:mem) : formula =
-      Literal (Atom (Eq (MemT m1, MemT m2)))
+      Formula.atom_to_formula (Eq (MemT m1, MemT m2))
 
     let eq_level (l1:level) (l2:level) : formula =
-      Literal (Atom (Eq (LevelT l1, LevelT l2)))
+      Formula.atom_to_formula (Eq (LevelT l1, LevelT l2))
 
     let less_level (l1:level) (l2:level) : formula =
-      Literal (Atom (Less (l1, l2)))
+      Formula.atom_to_formula (Less (l1, l2))
 
     let lesseq_level (l1:level) (l2:level) : formula =
-      Literal (Atom (LessEq (l1, l2)))
+      Formula.atom_to_formula (LessEq (l1, l2))
 
     let greater_level (l1:level) (l2:level) : formula =
-      Literal (Atom (Greater (l1, l2)))
+      Formula.atom_to_formula (Greater (l1, l2))
 
     let greatereq_level (l1:level) (l2:level) : formula =
-      Literal (Atom (GreaterEq (l1, l2)))
+      Formula.atom_to_formula (GreaterEq (l1, l2))
 
     let eq_term (t1:term) (t2:term) : formula =
-      Literal (Atom (Eq (t1, t2)))
+      Formula.atom_to_formula (Eq (t1, t2))
 
     let ineq_set (s1:set) (s2:set) : formula =
-      Literal (Atom (InEq (SetT s1, SetT s2)))
+      Formula.atom_to_formula (InEq (SetT s1, SetT s2))
 
     let ineq_elem (e1:elem) (e2:elem) : formula =
-      Literal (Atom (InEq (ElemT e1, ElemT e2)))
+      Formula.atom_to_formula (InEq (ElemT e1, ElemT e2))
 
     let ineq_tid (t1:tid) (t2:tid) : formula =
-      Literal (Atom (InEq (TidT t1, TidT t2)))
+      Formula.atom_to_formula (InEq (TidT t1, TidT t2))
 
     let ineq_addr (a1:addr) (a2:addr) : formula =
-      Literal (Atom (InEq (AddrT a1, AddrT a2)))
+      Formula.atom_to_formula (InEq (AddrT a1, AddrT a2))
 
     let ineq_cell (c1:cell) (c2:cell) : formula =
-      Literal (Atom (InEq (CellT c1, CellT c2)))
+      Formula.atom_to_formula (InEq (CellT c1, CellT c2))
 
     let ineq_setth (s1:setth) (s2:setth) : formula =
-      Literal (Atom (InEq (SetThT s1, SetThT s2)))
+      Formula.atom_to_formula (InEq (SetThT s1, SetThT s2))
 
     let ineq_setelem (s1:setelem) (s2:setelem) : formula =
-      Literal (Atom (InEq (SetElemT s1, SetElemT s2)))
+      Formula.atom_to_formula (InEq (SetElemT s1, SetElemT s2))
 
     let ineq_path (p1:path) (p2:path) : formula =
-      Literal (Atom (InEq (PathT p1, PathT p2)))
+      Formula.atom_to_formula (InEq (PathT p1, PathT p2))
 
     let ineq_mem (m1:mem) (m2:mem) : formula =
-      Literal (Atom (InEq (MemT m1, MemT m2)))
+      Formula.atom_to_formula (InEq (MemT m1, MemT m2))
 
     let ineq_level (l1:level) (l2:level) : formula =
-      Literal (Atom (InEq (LevelT l1, LevelT l2)))
+      Formula.atom_to_formula (InEq (LevelT l1, LevelT l2))
 
     let ineq_term (t1:term) (t2:term) : formula =
-      Literal (Atom (InEq (t1, t2)))
+      Formula.atom_to_formula (InEq (t1, t2))
 
     let subseteq (s1:set) (s2:set) : formula =
-      Literal (Atom (SubsetEq (s1,s2)))
+      Formula.atom_to_formula (SubsetEq (s1,s2))
 
     let atomlit (a:atom) : formula =
-      Literal (Atom a)
+      Formula.atom_to_formula a
 
   end
 

@@ -5,8 +5,7 @@ module PE = PosExpression
 module GM = GenericModel
 
 (* Configuration *)
-let pc_name       : string = "pc"
-let pc_prime_name : string = pc_name ^ "_prime"
+let pc_prime_name : string = Conf.pc_name ^ "_prime"
 let loc_str       : string = "loc_"
 
 
@@ -40,16 +39,16 @@ let pred_variable_to_str (v:string) : string =
     Printf.sprintf "(declare-const %s %s)\n" v bool_s
 
 
-let rec variable_to_str (v:PE.variable) : string =
-  let pr_str = if v.PE.is_primed then "_prime" else "" in
-  let th_str = match v.PE.parameter with
-               | PE.Shared -> ""
-               | PE.Local t -> tid_to_str t in
-  let p_str = match v.PE.scope with
-              | PE.GlobalScope -> ""
-              | PE.Scope proc -> proc ^ "_"
+let rec variable_to_str (v:PE.V.t) : string =
+  let pr_str = if PE.V.is_primed v then "_prime" else "" in
+  let th_str = match PE.V.parameter v with
+               | PE.V.Shared -> ""
+               | PE.V.Local t -> PE.V.to_str t in
+  let p_str = match PE.V.scope v with
+              | PE.V.GlobalScope -> ""
+              | PE.V.Scope proc -> proc ^ "_"
   in
-    sprintf "%s%s%s%s" p_str v.PE.id th_str pr_str
+    sprintf "%s%s%s%s" p_str (PE.V.id v) th_str pr_str
 
 
 and tid_to_str (t:PE.tid) : string =
@@ -68,22 +67,22 @@ let thid_variable_to_str (th:PE.tid) : string =
     tid_decl ^ tid_range
 
 
-let pos_to_str (bpc:(int * PE.shared_or_local * bool)) : string =
+let pos_to_str (bpc:(int * PE.V.shared_or_local * bool)) : string =
   let (i, th, pr) = bpc in
-  let pc_str = if pr then pc_prime_name else pc_name in
+  let pc_str = if pr then pc_prime_name else Conf.pc_name in
   let th_str = match th with
-               | PE.Shared -> ""
-               | PE.Local t -> tid_to_str t
+               | PE.V.Shared -> ""
+               | PE.V.Local t -> PE.V.to_str t
   in
     sprintf "(= (select %s %s) %s)" pc_str th_str (linenum_to_str i)
 
 
-let posrange_to_str (bpc:(int * int * PE.shared_or_local * bool)) : string =
+let posrange_to_str (bpc:(int * int * PE.V.shared_or_local * bool)) : string =
   let (i, j, th, pr) = bpc in
-  let pc_str = if pr then pc_prime_name else pc_name in
+  let pc_str = if pr then pc_prime_name else Conf.pc_name in
   let th_str = match th with
-               | PE.Shared -> ""
-               | PE.Local t -> tid_to_str t
+               | PE.V.Shared -> ""
+               | PE.V.Local t -> PE.V.to_str t
   in
     sprintf "(and (<= %s (select %s %s)) (<= (select %s %s) %s))"
       (linenum_to_str i) pc_str th_str pc_str th_str (linenum_to_str j)
@@ -92,7 +91,7 @@ let posrange_to_str (bpc:(int * int * PE.shared_or_local * bool)) : string =
 let posupd_to_str (pc:(int * PE.tid)) : string =
   let (i, th) = pc
   in
-    sprintf "(= %s (store %s %s %s))" pc_prime_name pc_name
+    sprintf "(= %s (store %s %s %s))" pc_prime_name Conf.pc_name
                                       (tid_to_str th)
                                       (linenum_to_str i)
 
@@ -125,9 +124,9 @@ let pos_expression_to_str (expr:PE.expression) : string =
   let set_logic_str = "(set-logic QF_AUFLIA)\n" in
   let thid_decl_str = "(declare-sort " ^thid_s^ ")\n" in
   let loc_decl_str  = sprintf "(define-sort " ^loc_s^ " () " ^int_s^ ")\n" in
-  let _             = GM.sm_decl_fun sort_map pc_name [thid_s] [loc_s] in
+  let _             = GM.sm_decl_fun sort_map Conf.pc_name [thid_s] [loc_s] in
   let _             = GM.sm_decl_fun sort_map pc_prime_name [thid_s] [loc_s] in
-  let pc_str        = ("(declare-const " ^pc_name^ " (Array " ^thid_s^ " "
+  let pc_str        = ("(declare-const " ^Conf.pc_name^ " (Array " ^thid_s^ " "
                           ^loc_s^ "))\n") in
   let pc_prime_str  = ("(declare-const " ^pc_prime_name^ " (Array " ^thid_s^
                       " " ^loc_s^ "))\n") in

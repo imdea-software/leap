@@ -1,35 +1,28 @@
-
 open Printf
 open LeapLib
 
-
 module E = Expression
+module F = Formula
 
+module V = Variable.Make (
+  struct
+    type sort_t = unit
+    type info_t = unit
+  end )
 
-type variable =
-  {
-            id        : string          ;
-    mutable is_primed : bool            ;
-    mutable parameter : shared_or_local ;
-            scope     : procedure_name  ;
-  }
-
-and shared_or_local = Shared  | Local of tid
-and procedure_name  = GlobalScope | Scope of string
-
-and tid =
-    VarTh      of variable
+type tid =
+  | VarTh      of V.t
   | NoTid
-  | CellLockId of variable
+  | CellLockId of V.t
   
 
 type expression =
   | Eq            of tid * tid
   | InEq          of tid * tid
   | Pred          of string
-  | PC            of int * shared_or_local * bool
+  | PC            of int * V.shared_or_local * bool
   | PCUpdate      of int * tid
-  | PCRange       of int * int * shared_or_local * bool
+  | PCRange       of int * int * V.shared_or_local * bool
   | True
   | False
   | And           of expression * expression
@@ -41,9 +34,8 @@ type expression =
 
 type pred_table_t = (E.formula, string) Hashtbl.t
 
-
 exception NotSupportedInPosEession of string
-
+exception Not_tid_var of tid
 
 module ThreadSet = Set.Make(
   struct
@@ -65,12 +57,18 @@ module PosSet = Set.Make(
     type t = int
   end )
 
+module TermPool =
+  Pool.Make (
+    struct
+      type t = E.term
+      let compare = Pervasives.compare
+    end)
+
 (* Pool of terms *)
-let term_pool = E.TermPool.empty
+let term_pool = TermPool.empty
 
 
 (* Configuration *)
-let pc_name = "pc"
 let abs_cell_id = "abs_cell_lock_"
 let abs_array_id = "abs_tid_array_"
 let defPredTableSize = 200
@@ -79,122 +77,93 @@ let defPredTableSize = 200
 let abs_cell_counter = ref 0
 
 
-let build_var (id:string) (pr:bool) (th:shared_or_local) (p:procedure_name) : variable =
-  {
-    id = id ;
-    is_primed = pr ;
-    parameter = th ;
-    scope = p ;
-  }
+let build_var ?(fresh=false)
+              (id:V.id)
+              (pr:bool)
+              (th:V.shared_or_local)
+              (p:V.procedure_name)
+                 : V.t =
+  V.build id () pr th p () ~fresh:fresh
 
 
-let build_fresh_lockid_var (t:E.tid) : variable =
+let build_fresh_lockid_var (t:E.tid) : V.t =
   let lockid_term = E.TidT t in
-  let cell_tag = E.TermPool.tag term_pool lockid_term in
-  let var = build_var (abs_cell_id ^ string_of_int cell_tag) false Shared GlobalScope
+  let cell_tag = TermPool.tag term_pool lockid_term in
+  let id = (abs_cell_id ^ string_of_int cell_tag) in
+  let var = build_var id false V.Shared V.GlobalScope ~fresh:true
   in
     var
 
 
-let build_fresh_tid_array_var (t:E.tid) : variable =
+let build_fresh_tid_array_var (t:E.tid) : V.t =
   let tid_array_term = E.TidT t in
-  let tid_tag = E.TermPool.tag term_pool tid_array_term in
-  let var = build_var (abs_array_id ^ string_of_int tid_tag) false Shared GlobalScope
+  let tid_tag = TermPool.tag term_pool tid_array_term in
+  let id = (abs_array_id ^ string_of_int tid_tag) in
+  let var = build_var id false V.Shared V.GlobalScope ~fresh:true
   in
     var
 
 
-let rec conv_variable (v:E.variable) : variable =
-  build_var (E.var_id v) (E.var_is_primed v)
-            (conv_shared_or_local (E.var_parameter v))
-            (conv_procedure_name (E.var_scope v))
+let rec conv_variable (v:E.V.t) : V.t =
+  build_var (E.V.id v) (E.V.is_primed v)
+            (conv_shared_or_local (E.V.parameter v))
+            (conv_procedure_name (E.V.scope v))
+            ~fresh:(E.V.is_fresh v)
 
 
-and conv_shared_or_local (th:E.shared_or_local) : shared_or_local =
+and conv_shared_or_local (th:E.V.shared_or_local) : V.shared_or_local =
   match th with
-  | E.Shared -> Shared
-  | E.Local t -> Local (conv_th t)
+  | E.V.Shared -> V.Shared
+  | E.V.Local t -> V.Local (conv_variable t)
 
 
-and conv_procedure_name (p:E.procedure_name) : procedure_name =
+and conv_procedure_name (p:E.V.procedure_name) : V.procedure_name =
   match p with
-  | E.GlobalScope -> GlobalScope
-  | E.Scope proc -> Scope proc
+  | E.V.GlobalScope -> V.GlobalScope
+  | E.V.Scope proc -> V.Scope proc
+
 
 
 and conv_th (th:E.tid) : tid =
   match th with
-    E.VarTh v            -> VarTh (conv_variable v)
+    E.VarTh v           -> VarTh (conv_variable v)
   | E.NoTid             -> NoTid
-  | E.CellLockId _       -> VarTh (build_fresh_lockid_var th)
-  | E.CellLockIdAt _     -> VarTh (build_fresh_lockid_var th)
+  | E.CellLockId _      -> VarTh (build_fresh_lockid_var th)
+  | E.CellLockIdAt _    -> VarTh (build_fresh_lockid_var th)
   | E.TidArrayRd _      -> VarTh (build_fresh_tid_array_var th)
   | E.TidArrRd _        -> VarTh (build_fresh_tid_array_var th)
 
 
-let localize_var_id (v:string) (p_name:string) : string =
-  sprintf "%s::%s" p_name v
-
-
-let loc_var_option (v:string) (p_name:procedure_name) : string =
-  match p_name with
-  | GlobalScope -> v
-  | Scope proc -> localize_var_id v proc
-
-
-let rec variable_to_str (var:variable) : string =
-  let var_str = sprintf "%s%s" (loc_var_option var.id var.scope)
-                               (shared_or_local_to_str var.parameter)
-  in
-    if var.is_primed then var_str ^ "'" else var_str
-
-
-and shared_or_local_to_str (exp:shared_or_local) : string =
-  match exp with 
-    Shared  -> ""
-  | Local t -> param_tid_to_str  t
-
-
-and tid_to_str (expr:tid) : string =
+let rec tid_to_str (expr:tid) : string =
   match expr with
-    VarTh v -> variable_to_str v
+    VarTh v -> V.to_str v
   | NoTid -> "#"
-  | CellLockId v -> variable_to_str v ^ ".lockid"
+  | CellLockId v -> V.to_str v ^ ".lockid"
 
 
 and param_tid_to_str (expr:tid) : string =
   match expr with
     VarTh v -> begin
                  try
-                   sprintf "[%i]" (int_of_string v.id)
+                   sprintf "[%i]" (int_of_string (V.id v))
                  with
-                   _ -> sprintf "(%s)" (variable_to_str v)
+                   _ -> sprintf "(%s)" (V.to_str v)
                end
   | NoTid -> sprintf "(#)"
   | CellLockId v -> sprintf "(%s)" (tid_to_str expr)
 
 
-and var_to_str id pr th p k =
-  let var_str = sprintf "%s%s" (loc_var_option id p) (shared_or_local_to_str th)
-  in
-    if pr then var_str ^ "'" else var_str
-
-
-and prime_variable (pr:bool) (v:variable) : variable =
-  v.is_primed <- pr; v
-
-
 and priming_tid (pr:bool) (t:tid) : tid =
   match t with
-    VarTh v -> VarTh (prime_variable pr v)
+    VarTh v -> VarTh (V.prime v)
   | NoTid -> NoTid
-  | CellLockId v -> CellLockId (prime_variable pr v)
+  | CellLockId v -> CellLockId (V.prime v)
 
 
-and priming_option_tid (pr:bool) (expr:shared_or_local) : shared_or_local =
+and priming_option_tid (pr:bool) (expr:V.shared_or_local) : V.shared_or_local =
   match expr with
-  | Shared -> Shared
-  | Local t -> Local (priming_tid pr t)
+  | V.Shared -> V.Shared
+  | V.Local t -> V.Local (V.prime t)
 
 
 let rec expr_to_str (expr:expression) : string =
@@ -202,19 +171,19 @@ let rec expr_to_str (expr:expression) : string =
     Eq (t1,t2)            -> sprintf "%s = %s" (tid_to_str t1) (tid_to_str t2)
   | InEq (t1, t2)         -> sprintf "%s != %s" (tid_to_str t1) (tid_to_str t2)
   | Pred p                -> p
-  | PC (pc,t,p)           -> let t_str = shared_or_local_to_str t in
-                             let v_name = if p then pc_name ^ "'" else pc_name in
+  | PC (pc,t,p)           -> let t_str = V.shared_or_local_to_str t in
+                             let v_name = if p then Conf.pc_name ^ "'" else Conf.pc_name in
                                sprintf "%s%s=%i" v_name t_str pc
   | PCUpdate (pc,t)       -> sprintf "%s' = %s{%s<-%i}"
-                                pc_name pc_name (tid_to_str t) pc
+                                Conf.pc_name Conf.pc_name (tid_to_str t) pc
   | PCRange (pc1,pc2,t,p) -> let t_str = if p then
-                                           shared_or_local_to_str (priming_option_tid p t)
+                                           V.shared_or_local_to_str (priming_option_tid p t)
                                          else
-                                           shared_or_local_to_str t in
+                                           V.shared_or_local_to_str t in
                              let v_name = if p then
-                                            pc_name ^ "'"
+                                            Conf.pc_name ^ "'"
                                           else
-                                            pc_name
+                                            Conf.pc_name
                               in
                                 sprintf "%i <= %s%s <=%i" pc1 v_name t_str pc2
   | True                  -> sprintf "true"
@@ -267,14 +236,14 @@ let rec voc (expr:expression) : tid list =
   | InEq (t1,t2)    -> [t1;t2]
   | PC (i,th,p)     -> begin
                          match th with
-                         | Shared -> []
-                         | Local t -> [t]
+                         | V.Shared -> []
+                         | V.Local t -> [VarTh t]
                        end
   | PCUpdate (i,th) -> [th]
   | PCRange (i,j,th,p) -> begin
                             match th with
-                            | Shared -> []
-                            | Local t -> [t]
+                            | V.Shared -> []
+                            | V.Local t -> [VarTh t]
                           end
   | And (e1,e2)     -> voc_aux e1 @ voc_aux e2
   | Or (e1,e2)      -> voc_aux e1 @ voc_aux e2
@@ -317,30 +286,30 @@ let keep_locations (f:E.formula) : (expression * string list) =
   let pred_tbl = Hashtbl.create defPredTableSize in
   let rec apply (f:E.formula) =
     match f with
-      E.True             -> True
-    | E.False            -> False
-    | E.And(e1,e2)       -> And (apply e1, apply e2)
-    | E.Or (e1, e2)      -> Or (apply e1, apply e2)
-    | E.Not e            -> Not (apply e)
-    | E.Implies (e1, e2) -> Implies (apply e1, apply e2)
-    | E.Iff (e1, e2)     -> apply (E.And (E.Implies (e1,e2),
-                                                E.Implies (e2,e1)))
-    | E.Literal(E.Atom(E.PC(i,th,pr)))     ->
+      F.True             -> True
+    | F.False            -> False
+    | F.And(e1,e2)       -> And (apply e1, apply e2)
+    | F.Or (e1, e2)      -> Or (apply e1, apply e2)
+    | F.Not e            -> Not (apply e)
+    | F.Implies (e1, e2) -> Implies (apply e1, apply e2)
+    | F.Iff (e1, e2)     -> apply (F.And (F.Implies (e1,e2),
+                                          F.Implies (e2,e1)))
+    | F.Literal(F.Atom(E.PC(i,th,pr)))     ->
         PC (i, conv_shared_or_local th, pr)
-    | E.Literal(E.Atom(E.PCUpdate (i,th))) ->
+    | F.Literal(F.Atom(E.PCUpdate (i,th))) ->
         PCUpdate (i, conv_th th)
-    | E.Literal(E.Atom(E.PCRange(i,j,th,pr))) ->
+    | F.Literal(F.Atom(E.PCRange(i,j,th,pr))) ->
         PCRange (i, j, conv_shared_or_local th, pr)
-    | E.Literal (E.NegAtom (E.Eq (E.TidT t1, E.TidT t2))) ->
-        apply $ E.Literal(E.Atom(E.InEq(E.TidT t1, E.TidT t2)))
-    | E.Literal (E.Atom (E.Eq (E.TidT t1, E.TidT t2))) ->
+    | F.Literal (F.NegAtom (E.Eq (E.TidT t1, E.TidT t2))) ->
+        apply (E.ineq_tid t1 t2)
+    | F.Literal (F.Atom (E.Eq (E.TidT t1, E.TidT t2))) ->
         let th1 = conv_th t1 in
         let th2 = conv_th t2
         in
           Eq (th1, th2)
-    | E.Literal (E.NegAtom (E.InEq (E.TidT t1, E.TidT t2))) ->
-        apply $ E.Literal(E.Atom(E.Eq(E.TidT t1,E.TidT t2)))
-    | E.Literal (E.Atom (E.InEq (E.TidT t1, E.TidT t2))) ->
+    | F.Literal (F.NegAtom (E.InEq (E.TidT t1, E.TidT t2))) ->
+        apply (E.eq_tid t1 t2)
+    | F.Literal (F.Atom (E.InEq (E.TidT t1, E.TidT t2))) ->
         let th1 = conv_th t1 in
         let th2 = conv_th t2
         in
@@ -454,3 +423,10 @@ let rec cnf (expr:expression) : expression list list =
   | Not (Implies (e1, e2)) -> cnf (And (e1, Not e2))
   | Not (Iff (e1, e2)) -> cnf (Or (And (e1, Not e2), And (Not e1, e2)))
   | e -> [[e]]
+
+
+(* Vocabulary to variable conversion *)
+let voc_to_var (t:tid) : V.t =
+  match t with
+  | VarTh v -> v
+  | _ -> raise(Not_tid_var t)

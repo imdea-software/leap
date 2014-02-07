@@ -2,30 +2,24 @@ open Printf
 open LeapLib
 
 
-type variable =
-  {
-            id        : string          ;
-    mutable is_primed : bool            ;
-    mutable parameter : shared_or_local ;
-            scope     : procedure_name  ;
-  }
+module V : Variable.S
+  with type sort = unit
+  with type info = unit
 
-and shared_or_local = Shared  | Local of tid
-and procedure_name  = GlobalScope | Scope of string
 
-and tid =
-    VarTh      of variable
+type tid =
+    VarTh      of V.t
   | NoTid
-  | CellLockId of variable
+  | CellLockId of V.t
 
 
 type expression =
   | Eq            of tid * tid
   | InEq          of tid * tid
   | Pred          of string
-  | PC            of int * shared_or_local * bool
+  | PC            of int * V.shared_or_local * bool
   | PCUpdate      of int * tid
-  | PCRange       of int * int * shared_or_local * bool
+  | PCRange       of int * int * V.shared_or_local * bool
   | True
   | False
   | And           of expression * expression
@@ -51,3 +45,5 @@ val expand_pc_range : expression -> expression
 val nnf : expression -> expression
 val dnf : expression -> expression list list
 val cnf : expression -> expression list list
+
+val voc_to_var : tid -> V.t

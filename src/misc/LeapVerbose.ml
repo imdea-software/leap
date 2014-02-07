@@ -2,8 +2,12 @@
 let verbose_enabled = ref false
 let verbose_level = ref 999
 
+let _SHORT_INFO = 1
+let _LONG_INFO = 2
+
 
 let enable_verbose () =
+  verbose_level := _SHORT_INFO;
   verbose_enabled := true
 
 
@@ -27,8 +31,8 @@ let verb (msg : ('a, Format.formatter, unit) format) : 'a =
     Format.ifprintf Format.std_formatter msg
 
 
-let verbl (l:int) (msg : ('a, Format.formatter, unit) format) : 'a  =
-  if (!verbose_enabled && l <= !verbose_level) then
+let verbl (l:int) (msg : ('a, Format.formatter, unit) format) : 'a =
+  if !verbose_enabled && l <= !verbose_level then
     let res = Format.printf msg in
       Pervasives.flush Pervasives.stdout; res
   else
@@ -41,7 +45,12 @@ let verbstr (msg:string) : unit =
   else
     ()
 
+let verblstr (l:int) (msg:string) : unit =
+  if !verbose_enabled && l <= !verbose_level then
+    verbstr msg
 
 let is_verbose_enabled () : bool =
   !verbose_enabled
 
+let is_verbose_level_enabled (l:int) : bool =
+  !verbose_enabled && l <= !verbose_level

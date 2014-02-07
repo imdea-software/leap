@@ -5,11 +5,11 @@ open LeapLib
 open Global
 
 module Expr = Expression
-module Eparser = Exprparser
-module Elexer = Exprlexer
+module Eparser = ExprParser
+module Elexer = ExprLexer
 module Gparser = IGraphParser
 module Glexer = IGraphLexer
-module Symtbl = Exprsymtable
+module Symtbl = ExprSymTable
 
 (****************)
 (* main         *)
@@ -18,12 +18,11 @@ let _ =
 
   try
     LeapArgs.parse_args();
-    if !LeapArgs.verbose then LeapVerbose.enable_verbose();
     Version.show();
     Log.set_logFile !LeapArgs.logFile;
 
     let ch = LeapArgs.open_input () in
-    let sys, undefTids = Parser.parse ch (Stmparser.system Stmlexer.norm) in
+    let sys, undefTids = Parser.parse ch (StmParser.system StmLexer.norm) in
     LeapArgs.close_input ();
 
     LeapArgs.vcgenFlag := (!LeapArgs.binvSys     ||
@@ -96,6 +95,7 @@ let _ =
                            let forget_primed_mem = (not !LeapArgs.keep_primed_mem)
                            let default_cutoff = !LeapArgs.coType
                            let use_quantifiers = !LeapArgs.use_quantifiers
+                           let output_vcs = !LeapArgs.output_vcs
                          end in
 
     (* Instantiate the core *)
@@ -114,7 +114,7 @@ let _ =
                                         !LeapArgs.invCandidate
                                         (Eparser.invariant Elexer.norm) in
         (* Construct the global invariant as the conjuntion of all formulas *)
-        let inv = Expr.conj_list (List.map snd inv_decls) in
+        let inv = Formula.conj_list (List.map snd inv_decls) in
 
         (* Check whether undef tids are included in invVars *)
         let _ = System.undeftids_in_formula_decl undefTids invVars in
@@ -222,7 +222,7 @@ let _ = LeapDebug.flush()
 (*    LOG "DP selected: %s" (DP.to_str !LeapArgs.dpType) LEVEL DEBUG; *)
     if !LeapArgs.verbose then LeapVerbose.enable_verbose();
     let ch = LeapArgs.open_input () in
-    let sys, undefTids = Parser.parse ch (Stmparser.system Stmlexer.norm) in
+    let sys, undefTids = Parser.parse ch (StmParser.system StmLexer.norm) in
 (*    let sys = System.set_threads tmp_sys !LeapArgs.num_threads in *)
     LeapArgs.close_input ();
     LeapArgs.vcgenFlag := 
@@ -424,7 +424,7 @@ let _ = LeapDebug.flush()
 (*
     if (!LeapArgs.vdFile <> "" || !LeapArgs.pvdFile <> "") then begin
       let (vd_phi_voc, phi_vars, vd_phi) = match !LeapArgs.vdFormula with
-        | "" -> ([], System.empty_var_table, Expr.True)
+        | "" -> ([], System.empty_var_table (), Expr.True)
         | _  -> 
           let phi_vars, phi_tag, phi = 
             Parser.open_and_parse !LeapArgs.vdFormula 

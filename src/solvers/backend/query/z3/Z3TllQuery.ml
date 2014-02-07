@@ -6,17 +6,19 @@ module Z3TllQuery : TLL_QUERY =
 struct
 
   module Expr     = TllExpression
-  module VarIdSet = TllExpression.VarIdSet
+  module V        = TllExpression.V
+  module VarIdSet = V.VarIdSet
+  module VarSet   = V.VarSet
   module B        = Buffer
   module GM       = GenericModel
+  module F        = Formula
 
 
 
   let prog_lines = ref 0
 
 
-  let pc_name        : string = "pc"
-  let pc_prime_name  : string = pc_name ^ "_prime"
+  let pc_prime_name  : string = Conf.pc_name ^ "_prime"
   let loc_str        : string = "loc_"
   let range_addr_str : string = "rg_addr_"
   let range_tid_str  : string = "rg_tid_"
@@ -244,9 +246,9 @@ struct
     B.add_string buf ("(define-sort " ^loc_s^ " () " ^int_s^ ")\n")
 (* Since variables and PC are flat into variables, there's no need of pc and pc_prime as arrays *)
 (*
-    GM.sm_decl_fun sort_map pc_name [tid_s] [loc_s] ;
+    GM.sm_decl_fun sort_map Conf.pc_name [tid_s] [loc_s] ;
     GM.sm_decl_fun sort_map pc_prime_name [tid_s] [loc_s] ;
-    B.add_string buf ("(declare-const " ^pc_name^ " (Array " ^tid_s^ " " ^loc_s^ "))\n");
+    B.add_string buf ("(declare-const " ^Conf.pc_name^ " (Array " ^tid_s^ " " ^loc_s^ "))\n");
     B.add_string buf ("(declare-const " ^pc_prime_name^ " (Array " ^tid_s^ " " ^loc_s^ "))\n");
     B.add_string buf
       (Printf.sprintf "(define-fun in_pos_range ((t %s)) %s\n\
@@ -1150,9 +1152,9 @@ struct
 
 
   let rec z3_define_var (buf:Buffer.t)
-                           (tid_set:Expr.VarSet.t)
-                           (v:Expr.variable) : unit =
-    let s = Expr.var_sort v in
+                        (tid_set:VarSet.t)
+                        (v:Expr.V.t) : unit =
+    let s = Expr.V.sort v in
     let sort_str asort = match asort with
                            Expr.Set     -> set_s
                          | Expr.Elem    -> elem_s
@@ -1167,12 +1169,12 @@ struct
                          | Expr.Bool    -> bool_s
                          | Expr.Unknown -> unk_s in
     let s_str = sort_str s in
-    let p_id = match Expr.var_scope v with
-               | Expr.GlobalScope -> Expr.var_id v
-               | Expr.Scope proc -> proc ^ "_" ^ (Expr.var_id v) in
-    let name = if Expr.var_is_primed v then p_id ^ "_prime" else p_id
+    let p_id = match Expr.V.scope v with
+               | Expr.V.GlobalScope -> Expr.V.id v
+               | Expr.V.Scope proc -> proc ^ "_" ^ (Expr.V.id v) in
+    let name = if Expr.V.is_primed v then p_id ^ "_prime" else p_id
     in
-      if Expr.is_global_var v then
+      if Expr.V.is_global v then
         begin
           GM.sm_decl_const sort_map name
             (GM.conv_sort (TllInterface.sort_to_expr_sort s)) ;
@@ -1190,19 +1192,19 @@ struct
           GM.sm_decl_fun sort_map name [tid_s] [s_str] ;
           B.add_string buf ( "(declare-const " ^ name ^ " (Array " ^tid_s^ " " ^ s_str ^ "))\n" );
           match s with
-            Expr.Path -> Expr.VarSet.iter (fun t ->
+            Expr.Path -> VarSet.iter (fun t ->
                       let v_str = variable_invocation_to_str
-                                      (Expr.var_set_param (Expr.Local (Expr.VarTh t)) v) in
+                                      (Expr.V.set_param v (Expr.V.Local t)) in
                         B.add_string buf ( "(assert (ispath " ^ v_str ^ "))\n" )
                     ) tid_set
-          | Expr.Mem -> Expr.VarSet.iter (fun t ->
+          | Expr.Mem -> VarSet.iter (fun t ->
                       let v_str = variable_invocation_to_str
-                                      (Expr.var_set_param (Expr.Local (Expr.VarTh t)) v) in
+                                      (Expr.V.set_param v (Expr.V.Local t)) in
                         B.add_string buf ( "(assert (isheap " ^ v_str ^ "))\n" )
                     ) tid_set
-          | Expr.Tid -> Expr.VarSet.iter (fun t ->
+          | Expr.Tid -> VarSet.iter (fun t ->
                       let v_str = variable_invocation_to_str
-                                      (Expr.var_set_param (Expr.Local (Expr.VarTh t)) v) in
+                                      (Expr.V.set_param v (Expr.V.Local t)) in
                         B.add_string buf ( "(assert (not (= " ^ v_str ^ " NoThread)))\n" )
                     ) tid_set
           | _    -> ()
@@ -1210,31 +1212,31 @@ struct
         end
 
 
-  and define_variables (buf:Buffer.t) (vars:Expr.VarSet.t) : unit =
-    let varset     = Expr.varset_of_sort vars Expr.Set  in
-    let varelem    = Expr.varset_of_sort vars Expr.Elem in
-    let varaddr    = Expr.varset_of_sort vars Expr.Addr in
-    let vartid     = Expr.varset_of_sort vars Expr.Tid in
-    let varcell    = Expr.varset_of_sort vars Expr.Cell in
-    let varsetth   = Expr.varset_of_sort vars Expr.SetTh in
-    let varsetelem = Expr.varset_of_sort vars Expr.SetElem in
-    let varpath    = Expr.varset_of_sort vars Expr.Path in
-    let varmem     = Expr.varset_of_sort vars Expr.Mem  in
-    let varint     = Expr.varset_of_sort vars Expr.Int  in
-    let varbool    = Expr.varset_of_sort vars Expr.Bool in
-    let varunk     = Expr.varset_of_sort vars Expr.Unknown  in
-      Expr.VarSet.iter (z3_define_var buf vartid) varset;
-      Expr.VarSet.iter (z3_define_var buf vartid) varelem;
-      Expr.VarSet.iter (z3_define_var buf vartid) vartid;
-      Expr.VarSet.iter (z3_define_var buf vartid) varaddr;
-      Expr.VarSet.iter (z3_define_var buf vartid) varcell;
-      Expr.VarSet.iter (z3_define_var buf vartid) varsetth;
-      Expr.VarSet.iter (z3_define_var buf vartid) varsetelem;
-      Expr.VarSet.iter (z3_define_var buf vartid) varpath;
-      Expr.VarSet.iter (z3_define_var buf vartid) varmem;
-      Expr.VarSet.iter (z3_define_var buf vartid) varint;
-      Expr.VarSet.iter (z3_define_var buf vartid) varbool;
-      Expr.VarSet.iter (z3_define_var buf vartid) varunk
+  and define_variables (buf:Buffer.t) (vars:VarSet.t) : unit =
+    let varset     = V.varset_of_sort vars Expr.Set  in
+    let varelem    = V.varset_of_sort vars Expr.Elem in
+    let varaddr    = V.varset_of_sort vars Expr.Addr in
+    let vartid     = V.varset_of_sort vars Expr.Tid in
+    let varcell    = V.varset_of_sort vars Expr.Cell in
+    let varsetth   = V.varset_of_sort vars Expr.SetTh in
+    let varsetelem = V.varset_of_sort vars Expr.SetElem in
+    let varpath    = V.varset_of_sort vars Expr.Path in
+    let varmem     = V.varset_of_sort vars Expr.Mem  in
+    let varint     = V.varset_of_sort vars Expr.Int  in
+    let varbool    = V.varset_of_sort vars Expr.Bool in
+    let varunk     = V.varset_of_sort vars Expr.Unknown  in
+      VarSet.iter (z3_define_var buf vartid) varset;
+      VarSet.iter (z3_define_var buf vartid) varelem;
+      VarSet.iter (z3_define_var buf vartid) vartid;
+      VarSet.iter (z3_define_var buf vartid) varaddr;
+      VarSet.iter (z3_define_var buf vartid) varcell;
+      VarSet.iter (z3_define_var buf vartid) varsetth;
+      VarSet.iter (z3_define_var buf vartid) varsetelem;
+      VarSet.iter (z3_define_var buf vartid) varpath;
+      VarSet.iter (z3_define_var buf vartid) varmem;
+      VarSet.iter (z3_define_var buf vartid) varint;
+      VarSet.iter (z3_define_var buf vartid) varbool;
+      VarSet.iter (z3_define_var buf vartid) varunk
 
 
   and variables_to_z3 (buf:Buffer.t) (expr:Expr.conjunctive_formula) : unit =
@@ -1250,22 +1252,22 @@ struct
       define_variables buf vars
 
 
-  and variable_invocation_to_str (v:Expr.variable) : string =
-    let id = Expr.var_id v in
-    let th_str = shared_or_local_to_str (Expr.var_parameter v) in
-    let p_str  = match (Expr.var_scope v) with
-                 | Expr.GlobalScope -> ""
-                 | Expr.Scope proc -> proc ^ "_" in
-    let pr_str = if (Expr.var_is_primed v) then "_prime" else "" in
-    match Expr.var_parameter v with
-    | Expr.Shared  -> Printf.sprintf " %s%s%s%s" p_str id th_str pr_str
-    | Expr.Local _ -> Printf.sprintf " (select %s%s%s %s)" p_str id pr_str th_str
+  and variable_invocation_to_str (v:Expr.V.t) : string =
+    let id = Expr.V.id v in
+    let th_str = shared_or_local_to_str (Expr.V.parameter v) in
+    let p_str  = match (Expr.V.scope v) with
+                 | Expr.V.GlobalScope -> ""
+                 | Expr.V.Scope proc -> proc ^ "_" in
+    let pr_str = if (Expr.V.is_primed v) then "_prime" else "" in
+    match Expr.V.parameter v with
+    | Expr.V.Shared  -> Printf.sprintf " %s%s%s%s" p_str id th_str pr_str
+    | Expr.V.Local _ -> Printf.sprintf " (select %s%s%s %s)" p_str id pr_str th_str
 
 
-  and shared_or_local_to_str (th:Expr.shared_or_local) : string =
+  and shared_or_local_to_str (th:Expr.V.shared_or_local) : string =
     match th with
-    | Expr.Shared -> ""
-    | Expr.Local t -> tidterm_to_str t
+    | Expr.V.Shared -> ""
+    | Expr.V.Local t -> variable_invocation_to_str t
 
 
   and setterm_to_str (s:Expr.set) : string =
@@ -1406,7 +1408,7 @@ struct
                                 (intterm_to_str j1) (intterm_to_str j2)
 
 
-  let rec varupdate_to_str (v:Expr.variable)
+  let rec varupdate_to_str (v:Expr.V.t)
                            (th:Expr.tid)
                            (t:Expr.term) : string =
     let v_str = variable_invocation_to_str v in
@@ -1523,15 +1525,15 @@ struct
       | _            -> Printf.sprintf "(not (= %s %s))"            str_t1 str_t2
 
 
-  let pc_to_str (pc:int) (th:Expr.shared_or_local) (pr:bool) : string =
-    let pc_str = if pr then pc_prime_name else pc_name in
+  let pc_to_str (pc:int) (th:Expr.V.shared_or_local) (pr:bool) : string =
+    let pc_str = if pr then pc_prime_name else Conf.pc_name in
     let th_str = shared_or_local_to_str th
     in
       Printf.sprintf "(= (select %s %s) %s)" pc_str th_str (linenum_to_str pc)
 
 
-  let pcrange_to_str (pc1:int) (pc2:int) (th:Expr.shared_or_local) (pr:bool) : string =
-    let pc_str = if pr then pc_prime_name else pc_name in
+  let pcrange_to_str (pc1:int) (pc2:int) (th:Expr.V.shared_or_local) (pr:bool) : string =
+    let pc_str = if pr then pc_prime_name else Conf.pc_name in
     let th_str = shared_or_local_to_str th
     in
       Printf.sprintf "(and (<= %s (select %s %s)) (<= (select %s %s) %s))"
@@ -1540,7 +1542,7 @@ struct
 
   let pcupdate_to_str (pc:int) (th:Expr.tid) : string =
     Printf.sprintf "(= %s (store %s %s %s))"
-      pc_prime_name pc_name (tidterm_to_str th) (linenum_to_str pc)
+      pc_prime_name Conf.pc_name (tidterm_to_str th) (linenum_to_str pc)
 
 
   let z3_partition_assumptions (parts:'a Partition.t list) : string =
@@ -1598,23 +1600,23 @@ struct
 
   let literal_to_str (lit:Expr.literal) : string =
     match lit with
-        Expr.Atom(a)    -> (atom_to_str a)
-      | Expr.NegAtom(a) -> ("(not " ^ (atom_to_str a) ^")")
+        F.Atom(a)    -> (atom_to_str a)
+      | F.NegAtom(a) -> ("(not " ^ (atom_to_str a) ^")")
 
   let rec formula_to_str (phi:Expr.formula) : string =
     let to_z3 = formula_to_str in
     match phi with
-      Expr.Literal l       -> literal_to_str l
-    | Expr.True            -> " true "
-    | Expr.False           -> " false "
-    | Expr.And (f1,f2)     -> Printf.sprintf "(and %s %s)" (to_z3 f1)
+      F.Literal l       -> literal_to_str l
+    | F.True            -> " true "
+    | F.False           -> " false "
+    | F.And (f1,f2)     -> Printf.sprintf "(and %s %s)" (to_z3 f1)
                                                            (to_z3 f2)
-    | Expr.Or (f1,f2)      -> Printf.sprintf "(or %s %s)" (to_z3 f1)
+    | F.Or (f1,f2)      -> Printf.sprintf "(or %s %s)" (to_z3 f1)
                                                           (to_z3 f2)
-    | Expr.Not f           -> Printf.sprintf "(not %s)"   (to_z3 f)
-    | Expr.Implies (f1,f2) -> Printf.sprintf "(=> %s %s)" (to_z3 f1)
+    | F.Not f           -> Printf.sprintf "(not %s)"   (to_z3 f)
+    | F.Implies (f1,f2) -> Printf.sprintf "(=> %s %s)" (to_z3 f1)
                                                           (to_z3 f2)
-    | Expr.Iff (f1,f2)     -> Printf.sprintf "(= %s %s)" (to_z3 f1)
+    | F.Iff (f1,f2)     -> Printf.sprintf "(= %s %s)" (to_z3 f1)
                                                          (to_z3 f2)
 
 
@@ -1624,14 +1626,14 @@ struct
 
   let literal_list_to_str (ls:Expr.literal list) : string =
     let _ = GM.clear_sort_map sort_map in
-    let expr = Expr.Conj ls in
+    let expr = F.Conj ls in
     let c = SmpTll.cut_off_normalized expr in
     let num_addr = c.SmpTll.num_addrs in
     let num_tid = c.SmpTll.num_tids in
     let num_elem = c.SmpTll.num_elems in
     let (req_sorts, req_ops) =
       List.fold_left (fun (ss,os) lit ->
-        let phi = Expr.Literal lit
+        let phi = F.Literal lit
         in
           (Expr.required_sorts phi @ ss, Expr.special_ops phi @ os)
       ) ([],[]) ls in
@@ -1644,6 +1646,7 @@ struct
         in
         let formula_str = List.fold_right add_and_literal ls ""
         in
+    B.add_string buf ("(push)\n");
     B.add_string buf "(assert\n   (and";
     B.add_string buf formula_str ;
     B.add_string buf "))\n(check-sat)" ;
@@ -1672,8 +1675,8 @@ struct
           (* We also filter primed variables *)
           let term_dom = List.filter (fun t ->
                            match t with
-                           | Expr.AddrT (Expr.VarAddr v) -> Expr.var_parameter v <> Expr.Shared ||
-                                                            Expr.var_scope v = Expr.GlobalScope
+                           | Expr.AddrT (Expr.VarAddr v) -> Expr.V.parameter v <> Expr.V.Shared ||
+                                                            Expr.V.scope v = Expr.V.GlobalScope
                            | _ -> true
                          ) temp_dom in
 
@@ -1710,6 +1713,7 @@ struct
       variables_from_formula_to_z3 buf phi ;
       (* We add extra information if needed *)
 (*      B.add_string buf extra_info_str ; *)
+      B.add_string buf ("(push)\n");
       B.add_string buf "(assert\n";
       B.add_string buf formula_str ;
       B.add_string buf ")\n(check-sat)" ;
@@ -1719,9 +1723,9 @@ struct
 
   let conjformula_to_str (expr:Expr.conjunctive_formula) : string =
     match expr with
-      Expr.TrueConj   -> "(assert true)\n(check-sat)"
-    | Expr.FalseConj  -> "(assert false)\n(check-sat)"
-    | Expr.Conj conjs -> literal_list_to_str conjs
+      F.TrueConj   -> "(assert true)\n(check-sat)"
+    | F.FalseConj  -> "(assert false)\n(check-sat)"
+    | F.Conj conjs -> literal_list_to_str conjs
 
 
   let get_sort_map () : GM.sort_map_t =

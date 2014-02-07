@@ -2,9 +2,12 @@ open LeapLib
 open TllExpression
 
 module Expr     = TllExpression
-module VarIdSet = TllExpression.VarIdSet
+module V        = TllExpression.V
+module VarSet   = V.VarSet
+module VarIdSet = V.VarIdSet
 module ASet     = TllExpression.AtomSet
 
+module F        = Formula
 
 type model_size =
     { 
@@ -63,17 +66,17 @@ let union_model_size (u:union_info) : model_size =
 (* calculates the cut_off *)
 let cut_off_normalized (expr:conjunctive_formula) : model_size =
   let vars = Expr.get_varset_from_conj expr in
-  let vars_tid_set = varset_of_sort vars Tid in
+  let vars_tid_set = V.varset_of_sort vars Tid in
   let vars_tid = VarSet.cardinal vars_tid_set in
-  let vars_addr_set = varset_of_sort vars Addr in
+  let vars_addr_set = V.varset_of_sort vars Addr in
   let vars_addr = VarSet.cardinal vars_addr_set in
 
   let vars_mem_set = if (Smp.forget_primed_mem !options &&
                           not (Smp.group_vars !options)) then
-                       VarSet.filter (fun v -> not (Expr.var_is_primed v))
-                         (varset_of_sort vars Mem)
+                       VarSet.filter (fun v -> not (Expr.V.is_primed v))
+                         (V.varset_of_sort vars Mem)
                      else
-                       varset_of_sort vars Mem in
+                       V.varset_of_sort vars Mem in
 
   let vars_mem = VarSet.cardinal vars_mem_set in
 
@@ -81,7 +84,7 @@ let cut_off_normalized (expr:conjunctive_formula) : model_size =
   Log.print "SmpTll. Tid vars" (string_of_int vars_tid);
   Log.print "SmpTll. Mem vars" (string_of_int vars_mem);
 
-  VarSet.iter (fun v -> Log.print "Smp address variable" (Expr.variable_to_str v)) vars_addr_set;
+  VarSet.iter (fun v -> Log.print "Smp address variable" (Expr.V.to_str v)) vars_addr_set;
 
   (* ALE: I need the "2" for next0, firstlocked0.... *)
   (* ALE: No need to add null and NoThread in the counter, as they are added
@@ -95,17 +98,15 @@ let cut_off_normalized (expr:conjunctive_formula) : model_size =
                                         (Expr.get_termset_from_conjformula expr)
                                           Expr.Addr in
                   let voc = TermSet.fold (fun ta set ->
-                              List.fold_left (fun s t ->
-                                ThreadSet.add t s
-                              ) set (Expr.voc_term ta)
+                              Expr.ThreadSet.fold ThreadSet.add set (Expr.voc_term ta)
                             ) all_addr_terms ThreadSet.empty in
 
                   let vs = VarSet.elements vars_addr_set in
                   let ts = ThreadSet.elements voc in
-                  let (global,local) = List.partition Expr.is_global_var vs in
+                  let (global,local) = List.partition Expr.V.is_global vs in
                   let local_param = List.fold_left (fun xs v ->
                                       (List.map (fun t ->
-                                        Expr.var_set_param (Expr.Local t) v
+                                        Expr.V.set_param v (Expr.V.Local (Expr.voc_to_var t))
                                       ) ts) @ xs
                                     ) [] local in
                   let nexts = VarSet.fold (fun m ys ->
@@ -154,7 +155,7 @@ let cut_off_normalized (expr:conjunctive_formula) : model_size =
                 else
                   ref (vars_addr + vars_mem * vars_addr) in
 
-  let vars_elem = VarSet.cardinal (varset_of_sort vars Elem) in
+  let vars_elem = VarSet.cardinal (V.varset_of_sort vars Elem) in
 
   let numtid = ref (vars_tid) in
   let numelem = ref (vars_elem + vars_mem * vars_addr) in
@@ -179,9 +180,9 @@ let cut_off_normalized (expr:conjunctive_formula) : model_size =
     | VarUpdate _-> () in                (* ALE: Not sure if OK *)
   let process (lit:literal) =
     match lit with
-    | Atom(InEq(x,y)) -> process_ineq(x,y)
-    | Atom(_) -> ()
-    | NegAtom a ->
+    | F.Atom(InEq(x,y)) -> process_ineq(x,y)
+    | F.Atom(_) -> ()
+    | F.NegAtom a ->
         begin
           match a with
           | Append _       -> numaddr := !numaddr + 2 (* witness of either p1 intersect p2, or (p1;p2) is different from p3 *)
@@ -208,16 +209,16 @@ let cut_off_normalized (expr:conjunctive_formula) : model_size =
         end
   in
     match expr with
-    | TrueConj  -> { num_addrs = 1 ; num_tids = 1 ; num_elems = 1 }
-    | FalseConj -> { num_addrs = 1 ; num_tids = 1 ; num_elems = 1 }
-    | Conj l    -> let _ = List.iter process l in
+    | F.TrueConj  -> { num_addrs = 1 ; num_tids = 1 ; num_elems = 1 }
+    | F.FalseConj -> { num_addrs = 1 ; num_tids = 1 ; num_elems = 1 }
+    | F.Conj l    -> let _ = List.iter process l in
                    (*let _ = numtid := !numtid + vars_mem * !numaddr in
                    let _ = numelem := !numelem + vars_mem * !numaddr in*)
-                   {
-                     num_addrs = !numaddr ; (* null is accounted for      *)
-                     num_tids  = !numtid  ; (* NotThread is accounted for *)
-                     num_elems = !numelem ;
-                   }
+                     {
+                       num_addrs = !numaddr ; (* null is accounted for      *)
+                       num_tids  = !numtid  ; (* NotThread is accounted for *)
+                       num_elems = !numelem ;
+                     }
 
 
 let compute_max_cut_off (conj_list:conjunctive_formula list) : model_size =
@@ -292,10 +293,22 @@ let union_atom_cutoff (info:union_info) (a:Expr.atom) : union_info =
   | PCRange _      -> info
 
 
+let union_fs = Formula.make_fold
+                 Formula.GenericLiteralFold
+                 union_atom_cutoff
+                 (fun info -> info)
+                 (fun (e1,t1,a1) (e2,t2,a2) -> (ASet.union e1 e2,
+                                                ASet.union t1 t2,
+                                                ASet.union a1 a2))
+
+let union_formula_cutoff (info:union_info) (phi:Expr.formula) : union_info =
+  Formula.formula_fold union_fs info phi
+
+(*
 let union_literal_cutoff (info:union_info) (l:Expr.literal) : union_info =
   match l with
-    Atom a    -> union_atom_cutoff info a
-  | NegAtom a -> union_atom_cutoff info a
+  | F.Atom a    -> union_atom_cutoff info a
+  | F.NegAtom a -> union_atom_cutoff info a
 
 
 let rec union_formula_cutoff (info:union_info) (phi:Expr.formula) : union_info =
@@ -308,15 +321,16 @@ let rec union_formula_cutoff (info:union_info) (phi:Expr.formula) : union_info =
   | Not f           -> union_formula_cutoff info f
   | Implies (f1,f2) -> union_formula_cutoff (union_formula_cutoff info f1) f2
   | Iff (f1,f2)     -> union_formula_cutoff (union_formula_cutoff info f2) f2
+*)
 
 
 (* Union SMP *)
 let compute_max_cut_off_with_union (phi:formula) : model_size =
   let vars = Expr.get_varset_from_formula phi in
-  let vartid_num  = VarSet.cardinal (Expr.varset_of_sort vars Tid) in
-  let varaddr_num = VarSet.cardinal (Expr.varset_of_sort vars Addr) in
-  let varelem_num = VarSet.cardinal (Expr.varset_of_sort vars Elem) in
-  let varmem_num  = VarSet.cardinal (Expr.varset_of_sort vars Mem) in
+  let vartid_num  = VarSet.cardinal (V.varset_of_sort vars Tid) in
+  let varaddr_num = VarSet.cardinal (V.varset_of_sort vars Addr) in
+  let varelem_num = VarSet.cardinal (V.varset_of_sort vars Elem) in
+  let varmem_num  = VarSet.cardinal (V.varset_of_sort vars Mem) in
   let info = union_model_size (union_formula_cutoff new_union_count phi) in
   let num_addrs = 1 +                         (* null               *)
                   varaddr_num +               (* Address variables  *)
@@ -382,39 +396,38 @@ let prune_atom (a:atom) : atom option =
 
 let prune_literal (lit:literal) : literal option =
   match lit with
-    Atom a    -> Option.lift (fun a' -> Atom a') (prune_atom a)
-  | NegAtom a -> Option.lift (fun a' -> NegAtom a') (prune_atom a)
+  | F.Atom a    -> Option.lift (fun a' -> F.Atom a') (prune_atom a)
+  | F.NegAtom a -> Option.lift (fun a' -> F.NegAtom a') (prune_atom a)
 
 
 let rec prune_formula (phi:formula) : formula option =
   match phi with
-    Literal lit     -> Option.lift (fun l -> Literal l) (prune_literal lit)
-  | True            -> None
-  | False           -> None
-  | And (f1,f2)     -> begin
+  | F.Literal lit     -> Option.lift (fun l -> F.Literal l) (prune_literal lit)
+  | F.True            -> None
+  | F.False           -> None
+  | F.And (f1,f2)     -> begin
                          match (prune_formula f1, prune_formula f2) with
-                           (Some f1', Some f2') -> Some (And (f1',f2'))
+                           (Some f1', Some f2') -> Some (F.And (f1',f2'))
                          | (Some f1', None    ) -> Some f1'
                          | (None    , Some f2') -> Some f2'
                          | (None    , None    ) -> None
                        end
-  | Or (f1,f2)      -> begin
+  | F.Or (f1,f2)      -> begin
                          match (prune_formula f1, prune_formula f2) with
-                           (Some f1', Some f2') -> Some (Or (f1',f2'))
+                           (Some f1', Some f2') -> Some (F.Or (f1',f2'))
                          | (Some f1', None    ) -> Some f1'
                          | (None    , Some f2') -> Some f2'
                          | (None    , None    ) -> None
                        end
-  | Not (f)         -> Option.lift (fun f'-> Not f') (prune_formula f)
-  | Implies (f1,f2) -> prune_formula (Or (Not f1, f2))
-  | Iff (f1,f2)     -> prune_formula (And (Implies (f1,f2), Implies (f2,f1)))
+  | F.Not (f)         -> Option.lift (fun f'-> F.Not f') (prune_formula f)
+  | F.Implies (f1,f2) -> prune_formula (F.Or (F.Not f1, f2))
+  | F.Iff (f1,f2)     -> prune_formula (F.And (F.Implies (f1,f2), F.Implies (f2,f1)))
     
 
 
 let compute_max_cut_off_with_pruning (phi:formula) : model_size =
-  let pruned_phi = Option.default True (prune_formula (Expr.nnf phi)) in
-  let dnf_phi = Expr.dnf pruned_phi in
-  let new_dnf = List.map Expr.cleanup_dup dnf_phi in
+  let pruned_phi = Option.default F.True (prune_formula (F.nnf phi)) in
+  let new_dnf = List.map F.cleanup_conj (F.dnf pruned_phi) in
     compute_max_cut_off (new_dnf)
 
 
@@ -424,6 +437,6 @@ let cut_off (strat:Smp.cutoff_strategy_t)
 (*  LOG "Strategy: %s\n" (Smp.strategy_to_str strat) LEVEL DEBUG; *)
   options := opt;
   match strat with
-  | Smp.Dnf     -> compute_max_cut_off (Expr.dnf f)
+  | Smp.Dnf     -> compute_max_cut_off (F.dnf f)
   | Smp.Union   -> compute_max_cut_off_with_union f
   | Smp.Pruning -> compute_max_cut_off_with_pruning f

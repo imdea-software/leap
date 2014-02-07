@@ -6,8 +6,8 @@ open Global
 
 module Expr    = Expression
 module Sys     = System
-module Eparser = Exprparser
-module Symtbl  = Exprsymtable
+module Eparser = ExprParser
+module Symtbl  = ExprSymTable
 
 
 exception MoreThanOneInputFile
@@ -24,7 +24,7 @@ let _ =
   try let _ = PvdArgs.parse_args () in
     let ch = PvdArgs.open_input () in
     let (sys,undefTids) = 
-      Stmparser.system Stmlexer.norm (Lexing.from_channel ch) in
+      StmParser.system StmLexer.norm (Lexing.from_channel ch) in
     let _ = PvdArgs.close_input () in
 
     (* We load the system in the formula parser, just in case *)
@@ -63,7 +63,7 @@ let _ =
 
     if (!PvdArgs.vdFile <> "" || !PvdArgs.pvdFile <> "") then begin
       let (vd_phi_voc, phi_vars, vd_phi) = match !PvdArgs.vdFormula with
-        | "" -> ([], Sys.empty_var_table, Expr.True)
+        | "" -> ([], Sys.empty_var_table (), Expr.True)
         | _  -> 
           let (phi_vars, tag, phi) = 
             PvdArgs.open_and_parse_expr !PvdArgs.vdFormula Eparser.vd_formula in

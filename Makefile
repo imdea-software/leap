@@ -4,21 +4,15 @@ PROJNAME=leap
 OCAMLBUILD=@ocamlbuild.native
 
 # Folders
-SCRIPTS=scripts
-TOOLS=tools
-TOOLS_SRC=../../../../others/tools
+SRC=src
+BIN=bin
+PROGS=$(SRC)/progs
 
 
 # Tools
-Z3=z3-4.3.1
-YICES=yices-1.0.34
-MINISAT=minisat
-LINGELING=lingeling-587f
-
 
 # Programs
 LEAP=leap
-#PROG2FTS=prog2fts
 PRGINFO=prginfo
 #PINV=pinv
 #SINV=sinv
@@ -30,140 +24,137 @@ SOLVE=solve
 #TSL=tsl
 #TMPTSL=tmptsl
 APPLYTAC=applytac
+TOOLS=tools
 
 
 # Configuration
 SYS=`uname -s`
 
-REVISION=`svn info | grep Revision | cut -d ' ' -f 2`
+#REVISION=`svn info | grep Revision | cut -d ' ' -f 2`
+REVISION=0
 
 
 
-
-check_tool = @if ( test -e $(TOOLS)/$(1) ) || (test -h $(TOOLS)/$(1) ) ; then \
-							echo "$(1): already installed"; \
-						else \
-							echo "$(1): not installed. Linking to $(TOOLS_SRC)/$(1)/bin/$(2)-$(SYS)"; \
-							ln -s $(TOOLS_SRC)/$(1)/bin/$(2)-$(SYS) $(TOOLS)/$(1); \
-						fi
+check_tool = @if [[ `command -v $(1)` ]] ; then \
+							 echo "[ OK ]  --  $(1)"; \
+						 else \
+							 echo "[    ]  --  $(1)"; \
+						 fi
 
 
-.PHONY: profile clean softclean all expand unexpand leap prog2fts prginfo pinv sinv pvd tll solve applytac tmptsl tsl numinv spec_check doc tools tests compile
-
+.PHONY: profile clean all expand unexpand leap prog2fts prginfo pinv sinv pvd tll solve applytac tmptsl tsl numinv spec_check doc tools tests
 
 # Flags
 
+OCAMLBUILD_FLAGS= -j 0 -build-dir _build
+
 OCAML_FLAGS=
+#-cflags -w,K
 #	-cflags -warn-error,A \
 #	-cflags -w,Z \
 
+PROFILE_FLAGS=-ocamlc ocamlcp -ocamlopt ocamloptp
 
 LIBS = unix,str
 
 
 # Compilation rules
 
-all: $(PROG2FTS) $(PRGINFO) $(PINV) $(SINV) $(PVD) \
-		 $(NUMINV) $(SPEC_CHECK) $(TLL) $(TSL) $(SOLVE) $(LEAP) $(LEAP).native $(TOOLS)
+all: $(PRGINFO) \
+		 $(PINV) \
+		 $(SINV) \
+		 $(PVD) \
+		 $(NUMINV) \
+		 $(SPEC_CHECK) \
+		 $(TLL) \
+		 $(TSL) \
+		 $(SOLVE) \
+		 $(LEAP) \
+		 $(TOOLS)
 
 $(TOOLS) :
-	@echo "Verifying presence of tools in "$(TOOLS)" folder...";
-	$(call check_tool,z3,$(Z3));
-	$(call check_tool,yices,$(YICES));
-	$(call check_tool,minisat,$(MINISAT));
-	$(call check_tool,lingeling,$(LINGELING));
+	@echo "Verifying presence of tools in the system...";
+	$(call check_tool,z3);
+	$(call check_tool,yices);
+	$(call check_tool,minisat);
+	$(call check_tool,lingeling);
+	$(call check_tool,cvc4)
+
 
 profile:
-	@echo "let value = "$(REVISION) > src/progs/Revision.ml
-	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(LEAP).p.native
-	@ln -f -s ./_build/src/progs/leap/$(LEAP).p.native $(LEAP)
+	@echo "let value = "$(REVISION) > $(PROGS)/Revision.ml
+	$(OCAMLBUILD) $(PROFILE_FLAGS) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $(LEAP).p.native
+	@cp ./_build/$(PROGS)/leap/$(LEAP).p.native $(BIN)/$(LEAP).p.native
+
+$(LEAP).byte:
+	@echo "let value = "$(REVISION) > $(PROGS)/Revision.ml
+	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@
+	@cp ./_build/$(PROGS)/leap/$@.byte $(BIN)/$@.byte
 
 $(LEAP):
-	@echo "let value = "$(REVISION) > src/progs/Revision.ml
-	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(LEAP).byte
-	@ln -f -s ./_build/src/progs/leap/$(LEAP).byte $(LEAP)
-
-$(LEAP).native:
-	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(LEAP).native
-	@ln -f -s ./_build/src/progs/leap/$(LEAP).native $(LEAP)
+	@echo "let value = "$(REVISION) > $(PROGS)/Revision.ml
+	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
+	@cp ./_build/$(PROGS)/leap/$@.native $(BIN)/$@
 
 $(PRGINFO):
-	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(PRGINFO).native
-	@ln -f -s ./_build/src/progs/prginfo/$(PRGINFO).native $(PRGINFO)
-
-$(PROG2FTS):
-	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(PROG2FTS).native
-	@ln -f -s ./_build/src/progs/prog2fts/$(PROG2FTS).native $(PROG2FTS)
+	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
+	@cp ./_build/$(PROGS)/prginfo/$@.native $(BIN)/$@
 
 $(PINV):
-	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(PINV).native
-	@ln -f -s ./_build/src/progs/pinv/$(PINV).native $(PINV)
+	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
+	@cp ./_build/$(PROGS)/pinv/$@.native $(BIN)/$@
 
 $(SINV):
-	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(SINV).native
-	@ln -f -s ./_build/src/progs/sinv/$(SINV).native $(SINV)
+	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
+	@cp ./_build/$(PROGS)/sinv/$@.native $(BIN)/$@
 
 $(PVD):
-	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(PVD).native
-	@ln -f -s ./_build/src/progs/pvd/$(PVD).native $(PVD)
+	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
+	@cp ./_build/$(PROGS)/pvd/$@.native $(BIN)/$@
 
 $(NUMINV):
-	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(NUMINV).native
-	@ln -f -s ./_build/src/progs/numinv/$(NUMINV).native $(NUMINV)
+	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
+	@cp ./_build/$(PROGS)/numinv/$@.native $(BIN)/$@
 
 $(SPEC_CHECK):
-	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(SPEC_CHECK).native
-	@ln -f -s ./_build/src/progs/spec_check/$(SPEC_CHECK).native $(SPEC_CHECK)
+	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
+	@cp ./_build/$(PROGS)/spec_check/$@.native $(BIN)/$@
 
 $(TLL):
-	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(TLL).native
-	@ln -f -s ./_build/src/progs/tll/$(TLL).native $(TLL)
+	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
+	@cp ./_build/$(PROGS)/tll/$@.native $(BIN)/$@
 
 $(TSL):
-	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(TSL).native
-	@ln -f -s ./_build/src/progs/tsl/$(TSL).native $(TSL)
+	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
+	@cp ./_build/$(PROGS)/tsl/$@.native $(BIN)/$@
 
 $(SOLVE):
-	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(SOLVE).native
-	@ln -f -s ./_build/src/progs/tll/$(SOLVE).native $(SOLVE)
+	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
+	@cp ./_build/$(PROGS)/solve/$@.native $(BIN)/$@
 
 $(TMPTSL):
-	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(TMPTSL).native
-	@ln -f -s ./_build/src/progs/tmptsl/$(TMPTSL).native $(TMPTSL)
+	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
+	@cp ./_build/$(PROGS)/tmptsl/$@.native $(BIN)/$@
 
 $(APPLYTAC):
-	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) $(APPLYTAC).native
-	@ln -f -s ./_build/src/progs/applytac/$(APPLYTAC).native $(APPLYTAC)
+	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
+	@cp ./_build/$(PROGS)/applytac/$@.native $(BIN)/$@
 
 solvertest:
-	$(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) test.native
+	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) test.native
 
 tests:
-	@for i in src/tests/*.ml; do $(OCAMLBUILD) -j 0 $(OCAML_FLAGS) -libs $(LIBS) "$$(expr "$$i" : '\(.*\)\.ml').byte" ; done
+	@for i in $(SRC)/tests/*.ml; do $(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) "$$(expr "$$i" : '\(.*\)\.ml').byte" ; done
 
 
 doc:
-	@find src/* \( -name *.ml -o -name *.mli -o -name *.mll -o -name *.mly \) | cut -d"." -f1 | sort -u > leap.odocl
+	@find $(SRC)/* \( -name *.ml -o -name *.mli -o -name *.mll -o -name *.mly \) | cut -d"." -f1 | sort -u > leap.odocl
 	$(OCAMLBUILD) -ocamldoc "ocamldoc.opt -hide-warnings" leap.docdir/index.html
 
 clean:
 	$(OCAMLBUILD) -clean
-	@rm -f $(LEAP) \
-				$(TLL) \
-				$(TMPTSL) \
-				$(TSL) \
-				$(PROG2FTS) \
-				$(PINV) \
-				$(SINV) \
-				$(PVD) \
-				$(NUMINV) \
-				$(SPEC_CHECK) \
-				$(APPLYTAC) \
-				$(PRGINFO) \
-				test.native
+	@rm -rf $(BIN)/*
 
-softclean:
-	rm -rf _build _log
 
 dist:   clean
 	tar  zcvf ../${PROJNAME}-`date +"%Y-%m-%d-%H-%M-%S"`.tar.gz \
@@ -171,8 +162,13 @@ dist:   clean
 				--exclude=yices --exclude=z3 --exclude=trsParse . 
 
 expand:
-	for i in `find examples/* src/* -type f | grep -v \\.swp | grep -v \\.svn` ; do expand -t 2 $$i > temp.file ; mv temp.file $$i; done
+	for i in `find examples/* $(SRC)/* -type f | grep -v \\.swp | grep -v \\.svn` ; do expand -t 2 $$i > temp.file ; mv temp.file $$i; done
 
 unexpand:
-	for i in `find examples/* src/* -type f | grep -v \\.swp | grep -v \\.svn` ; do unexpand -t 2 $$i > temp.file ; mv temp.file $$i; done
+	for i in `find examples/* $(SRC)/* -type f | grep -v \\.swp | grep -v \\.svn` ; do unexpand -t 2 $$i > temp.file ; mv temp.file $$i; done
+
+cleartmp:
+	@echo "Erasing temporary editor's files..."
+	@for i in `find examples/* $(SRC)/* -type f | grep \\.swp` ; do rm $$i ; done
+	@echo "OK"
 

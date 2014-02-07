@@ -3,7 +3,7 @@
 module Make (TSLK : TSLKExpression.S) :
   sig
     val sort_to_tslk_sort : Expression.sort -> TSLK.sort
-    val var_to_tslk_var : Expression.variable -> TSLK.variable
+    val var_to_tslk_var : Expression.V.t -> TSLK.V.t
     val tid_to_tslk_tid : Expression.tid -> TSLK.tid
     val term_to_tslk_term : Expression.term -> TSLK.term
     val set_to_tslk_set : Expression.set -> TSLK.set
@@ -15,11 +15,10 @@ module Make (TSLK : TSLKExpression.S) :
     val path_to_tslk_path : Expression.path -> TSLK.path
     val mem_to_tslk_mem : Expression.mem -> TSLK.mem
     val int_to_tslk_level : Expression.integer -> TSLK.level
-    val literal_to_tslk_literal : Expression.literal -> TSLK.literal
     val formula_to_tslk_formula : Expression.formula -> TSLK.formula
 
     val sort_to_expr_sort : TSLK.sort -> Expression.sort
-    val var_to_expr_var : TSLK.variable -> Expression.variable
+    val var_to_expr_var : TSLK.V.t -> Expression.V.t
     val tid_to_expr_tid : TSLK.tid -> Expression.tid
     val term_to_expr_term : TSLK.term -> Expression.term
     val set_to_expr_set : TSLK.set -> Expression.set
@@ -31,7 +30,6 @@ module Make (TSLK : TSLKExpression.S) :
     val path_to_expr_path : TSLK.path -> Expression.path
     val mem_to_expr_mem : TSLK.mem -> Expression.mem
     val level_to_expr_int : TSLK.level -> Expression.integer
-    val literal_to_expr_literal : TSLK.literal -> Expression.literal
     val formula_to_expr_formula : TSLK.formula -> Expression.formula
 
   end

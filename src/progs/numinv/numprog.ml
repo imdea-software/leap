@@ -1,6 +1,6 @@
 open Printf
 open LeapLib
-open Trslexer
+open TrsLexer
 open Interface
 
 module Expr = Expression
@@ -30,7 +30,7 @@ type trans_rel_t = Expr.formula
 
 type num_assign_t = Expr.varId * Expr.integer
 
-type num_trans_info_t = loc_t * loc_t * guard_t * trans_rel_t * Expr.variable list
+type num_trans_info_t = loc_t * loc_t * guard_t * trans_rel_t * Expr.V.t list
 
 type num_trans_prj_t = (int * int * int, Expr.formula * Expr.formula) Hashtbl.t
 
@@ -64,7 +64,7 @@ type inv_table_t = (loc_t, Expr.formula) Hashtbl.t
 
 type num_problem_t =
   {         name  : string                 ; (* The problem name             *)
-            vars  : Expr.variable list     ; (* The problem variables        *)
+            vars  : Expr.V.t list     ; (* The problem variables        *)
     mutable locs  : num_location_t list    ; (* The location list            *)
             mats  : num_trans_t list       ; (* The main thread transitions  *)
     mutable self  : num_trans_t list       ; (* The spaghetti transitions    *)
@@ -123,13 +123,13 @@ let trsCmdLazy  : string        = "../numericalInvGen-v2/" ^ trsParser
 let pProject    : string        = "pProject"
 let pProjectCmd : string        = "../polyProject/" ^ pProject
 
-let spagetthi_param : Expr.tid  = Expr.build_var_tid "k"
+let spagetthi_param : Expr.tid  = Expr.VarTh (Expr.build_global_var "k" Expr.Tid)
 
 
 
 
 (* VARIABLE DATABASE *)
-let all_vars : Expr.VarSet.t ref = ref Expr.VarSet.empty
+let all_vars : Expr.V.VarSet.t ref = ref Expr.V.VarSet.empty
 
 
 (* VARIABLE PRINTING *)
@@ -167,7 +167,7 @@ let absIntMode_to_str (m:absIntMode_t) : string =
 
 let num_th_to_str (expr:Expr.tid) : string =
   match expr with
-    Expr.VarTh v        -> "__" ^ (Expr.variable_to_str v)
+    Expr.VarTh v        -> "__" ^ (Expr.V.t_to_str v)
   | Expr.NoTid         -> no_tid
   | Expr.CellLockId _   -> raise(No_numerical_expression(Expr.tid_to_str expr))
   | Expr.CellLockIdAt _ -> raise(No_numerical_expression(Expr.tid_to_str expr))
@@ -191,8 +191,8 @@ let numvar_to_str (id:Expr.varId)
     if pr then var_name ^ "'" else var_name
 
 
-let numvariable_to_str (v:Expr.variable) : string =
-  let id = Expr.var_id   v in
+let numvariable_to_str (v:Expr.V.t) : string =
+  let id = Expr.V.id   v in
   let pr = Expr.var_pr   v in
   let th = Expr.var_th   v in
   let p  = Expr.var_proc v
@@ -215,11 +215,11 @@ let num_apply_localization (base:Expr.varId -> Expr.varId list)
   | Some p -> List.map (fun v -> num_localize_var_id v p) (base v)
 
 
-let num_primed_vars (f:Expr.formula) : Expr.variable list =
+let num_primed_vars (f:Expr.formula) : Expr.V.t list =
   Expr.primed_vars f
 
 
-let num_all_vars (f:Expr.formula) : Expr.variable list =
+let num_all_vars (f:Expr.formula) : Expr.V.t list =
   Expr.all_vars f
 
 
@@ -244,9 +244,9 @@ let new_trans_info (s_loc:loc_t)
                    (t_rel:trans_rel_t) : num_trans_info_t =
   let p_vars = num_primed_vars t_rel in
   let pres_vars = List.fold_left (fun s e ->
-                    Expr.VarSet.remove e s
+                    Expr.V.VarSet.remove e s
                   ) !all_vars p_vars in
-    (s_loc, e_loc, guard, t_rel, Expr.VarSet.elements pres_vars)
+    (s_loc, e_loc, guard, t_rel, Expr.V.VarSet.elements pres_vars)
 
 
 
@@ -254,7 +254,7 @@ let get_info_sloc  ((s_loc,_,_,_,_):num_trans_info_t) : loc_t = s_loc
 let get_info_eloc  ((_,e_loc,_,_,_):num_trans_info_t) : loc_t = e_loc
 let get_info_guard ((_,_,guard,_,_):num_trans_info_t) : guard_t = guard
 let get_info_relat ((_,_,_,relat,_):num_trans_info_t) : trans_rel_t = relat
-let get_info_pres  ((_,_,_,_, pres):num_trans_info_t) : Expr.variable list = pres
+let get_info_pres  ((_,_,_,_, pres):num_trans_info_t) : Expr.V.t list = pres
 
 
 
@@ -289,10 +289,10 @@ let new_tran_label (from_loc:int list) (to_loc:int list) (variant:int) :string =
 let numprog_pos_name (p:numprog_pos_t) : Expr.varId =
   let (n,_) = p
   in
-    Expr.defCountAbsVar ^ n
+    Conf.defCountAbs_name ^ n
 
 
-let numprog_pos_to_variable (p:numprog_pos_t) : Expr.variable =
+let numprog_pos_to_variable (p:numprog_pos_t) : Expr.V.t =
   let var_name = numprog_pos_name p
   in
     Expr.build_var var_name Expr.Int false None None Expr.Normal
@@ -302,7 +302,7 @@ let numprog_pos_to_str (p:numprog_pos_t) : string =
   let (n,t) = p in
   let t_str = Option.map_default num_th_to_str "" t
   in
-    Expr.defCountAbsVar ^ n ^ t_str
+    Conf.defCountAbs_name ^ n ^ t_str
 
 
 
@@ -500,10 +500,10 @@ let update_param_trans_info (t_info:num_trans_info_t)
   let param_trel = Expr.param (Some th) trel in
   let p_vars = num_primed_vars param_trel in
   let pres_vars = List.fold_left (fun s e ->
-                    Expr.VarSet.remove e s
+                    Expr.V.VarSet.remove e s
                   ) !all_vars p_vars
   in
-    (from_loc, to_loc, param_guard, param_trel, Expr.VarSet.elements pres_vars)
+    (from_loc, to_loc, param_guard, param_trel, Expr.V.VarSet.elements pres_vars)
 
 
 
@@ -572,7 +572,7 @@ let num_location_to_str (loc:num_location_t) : string =
 let num_problem_to_str (prob:num_problem_t) : string =
   (* let vars_str  = String.concat "," $ List.map numvariable_to_str prob.vars in *)
   (* Partition prob.vars into local and global vars *)
-  let locVars,glbVars = List.partition (Expr.is_local_var) prob.vars in
+  let locVars,glbVars = List.partition (Expr.V.is_local) prob.vars in
   let allVars_str = String.concat " , " (List.map numvariable_to_str prob.vars) in
 
   let glbVars = List.filter (fun v -> v <> Sys.me_tid_var) glbVars in
@@ -617,8 +617,8 @@ let num_problem_to_str (prob:num_problem_t) : string =
           prob.name gvars_str lvars_str locs_str trans_str self_str
 
 
-let exist_elimination_to_str (gVars:Expr.variable list)
-    (lVars:Expr.variable list)
+let exist_elimination_to_str (gVars:Expr.V.t list)
+    (lVars:Expr.V.t list)
     (cond:Expr.formula) : string =
   let gVars_str = String.concat ", " $ List.map numvariable_to_str gVars in
   let lVars_str = String.concat ", " $ List.map numvariable_to_str lVars in
@@ -673,28 +673,28 @@ let stat_info_str (sys:Sys.system_t) (prob:num_problem_t) : string =
 let gen_all_position_vars (sys:Sys.system_t) : Expr.varId list =
   let prog_lines = Sys.get_trans_num sys
   in
-    List.map (Expr.new_num_pos_var_id Expr.defCountAbsVar) $
+    List.map (Expr.new_num_pos_var_id Conf.defCountAbs_name) $
       LeapLib.rangeList 1 (prog_lines+1)
 
 
 let gen_all_position_vars_from_labels (sys:Sys.system_t) : Expr.varId list =
   let label_list = Sys.get_labels_list (Sys.get_labels sys)
   in
-    List.map (Expr.new_label_pos_var_id Expr.defCountAbsVar) label_list
+    List.map (Expr.new_label_pos_var_id Conf.defCountAbs_name) label_list
 
 
 let get_all_num_vars_from_sys (sys:Sys.system_t) : Expr.varId list =
   let var_ids    = Sys.get_all_vars_id sys in
   let pos_vars   = gen_all_position_vars sys
   in
-    var_ids @ [Expr.defCountAbsVar] @ pos_vars
+    var_ids @ [Conf.defCountAbs_name] @ pos_vars
 
 
 let get_all_numlabel_vars_from_sys (sys:Sys.system_t) : Expr.varId list =
   let var_ids = Sys.get_all_vars_id sys in
   let labels_vars = gen_all_position_vars_from_labels sys
   in
-    var_ids @ [Expr.defCountAbsVar] @ labels_vars
+    var_ids @ [Conf.defCountAbs_name] @ labels_vars
 
 
 
@@ -739,7 +739,7 @@ let build_num_pos_eq (np:numprog_pos_t) (expr:Expr.integer) : Expr.formula =
 
 let param_num_var_id (t:Expr.tid) (id:Expr.varId) : Expr.varId =
   match t with
-    Expr.VarTh v        -> id ^ "_" ^ (Expr.variable_to_str v)
+    Expr.VarTh v        -> id ^ "_" ^ (Expr.V.t_to_str v)
   | Expr.NoTid         -> id
   | Expr.CellLockId _   -> raise(No_numerical_expression(Expr.tid_to_str t))
   | Expr.CellLockIdAt _ -> raise(No_numerical_expression(Expr.tid_to_str t))
@@ -854,7 +854,7 @@ let build_loc_init_cond (sys:Sys.system_t)
 
 let gen_all_num_vars (sys:Sys.system_t)
                      (ths:Expr.tid list)
-                     (use_labels:bool) : Expr.variable list =
+                     (use_labels:bool) : Expr.V.t list =
   let (gTbl, l_list) = Sys.get_sys_var_tables sys in
   let gVars = Sys.get_var_list gTbl None in
   let lVars = List.fold_left (fun xs (p,iTbl,lTbl) ->
@@ -872,11 +872,11 @@ let gen_all_num_vars (sys:Sys.system_t)
                    | _  -> List.flatten $
                              List.map (fun t ->
                                List.map (fun v ->
-                                  Expr.param_variable (Some t) v
+                                  Expr.V.set_paramiable (Some t) v
                                ) lVars
                              ) ths in
   let pos_vars_list = List.map numprog_pos_to_variable pos_vars in
-  let def_n_var = Expr.build_var Expr.defCountAbsVar Expr.Int
+  let def_n_var = Expr.build_var Conf.defCountAbs_name Expr.Int
                                  false None None Expr.Normal
   in
     Sys.me_tid_var :: gVars @ lVars_list @ [def_n_var] @ pos_vars_list
@@ -977,7 +977,7 @@ let gen_transitions (trans_tbl:num_trans_info_table_t)
 (* Given a formula, makes the query of such formula to polyProject *)
 let call_polyProject (phi:Expr.formula) (ths:Expr.tid list) : Expr.formula =
   let gVars = Expr.all_global_vars phi in
-  let lVars = Sys.me_tid_var :: Expr.all_local_owned_vars phi in
+  let lVars = Sys.me_tid_var :: Expr.all_local_vars phi in
   let (prjVars, keepVars) = List.partition (fun v ->
                               match Expr.var_th v with
                                 None -> false
@@ -1000,7 +1000,7 @@ let call_polyProject (phi:Expr.formula) (ths:Expr.tid list) : Expr.formula =
     let cmd = pProjectCmd ^ " " ^ temp in
     let in_ch = Unix.open_process_in cmd in
     let pProjectRes = Interface.File.readChannel in_ch in
-    let prjForm = Trsparser.exists_projector norm
+    let prjForm = TrsParser.exists_projector norm
                       (Lexing.from_string pProjectRes) in
     let _ = Debug.msg (sprintf "Given formula:\n%s\n"
                                 (Expr.formula_to_str phi)) 4 in
@@ -1079,7 +1079,7 @@ let new_num_problem (name:string)
   let sys = Sys.del_global_var_regexp sys pos_regexp in
   (**********************************************************************)
   let vars = gen_all_num_vars sys ths use_labels in
-  let _ = all_vars := Expr.construct_var_set vars in
+  let _ = all_vars := Expr.V.varset_from_list vars in
   let (locs, init_loc) = gen_locations sys ths use_labels in
   let info_tbl = build_trans_info sys use_labels in
 (*  let prj_tbl = build_prj_table info_tbl ths in *)
@@ -1189,7 +1189,7 @@ let call_trs (prob:num_problem_t) (dType:domain_t) : inv_table_t =
 
   let _           = print_endline "Parsing generated invariants..." in
   let _           = Printf.printf "%s\n" trs_str in
-  let inv_tbl     = Trsparser.invariant_info norm (Lexing.from_string trs_str)
+  let inv_tbl     = TrsParser.invariant_info norm (Lexing.from_string trs_str)
   in
     inv_tbl
 

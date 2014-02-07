@@ -14,8 +14,7 @@ module Make (TSLK : TSLKExpression.S) =
 
     let prog_lines = ref 0
 
-    let pc_name       : string = "pc"
-    let pc_prime_name : string = pc_name ^ "_prime"
+    let pc_prime_name : string = Conf.pc_name ^ "_prime"
 
     let addr_prefix = "aa_"
     let tid_prefix = "tt_"
@@ -171,9 +170,9 @@ module Make (TSLK : TSLKExpression.S) =
     let yices_pos_preamble buf =
       B.add_string buf
         (Printf.sprintf "(define-type %s (subrange 1 %i))\n" loc_s !prog_lines);
-      GM.sm_decl_fun sort_map pc_name [tid_s] [loc_s] ;
+      GM.sm_decl_fun sort_map Conf.pc_name [tid_s] [loc_s] ;
       GM.sm_decl_fun sort_map pc_prime_name [tid_s] [loc_s] ;
-      B.add_string buf ("(define " ^pc_name^ "::(-> " ^tid_s^ " " ^loc_s^ "))\n");
+      B.add_string buf ("(define " ^Conf.pc_name^ "::(-> " ^tid_s^ " " ^loc_s^ "))\n");
       B.add_string buf ("(define " ^pc_prime_name^
                             "::(-> " ^tid_s^ " " ^loc_s^ "))\n")
 
@@ -1165,8 +1164,8 @@ module Make (TSLK : TSLKExpression.S) =
 
 
     let rec yices_define_var (buf:Buffer.t)
-                             (tid_set:Expr.VarSet.t)
-                             (v:Expr.variable) : unit =
+                             (tid_set:Expr.V.VarSet.t)
+                             (v:Expr.V.t) : unit =
       let (id,s,pr,th,p) = v in
       let sort_str asort = match asort with
                              Expr.Set     -> set_s
@@ -1184,7 +1183,7 @@ module Make (TSLK : TSLKExpression.S) =
       let p_id = Option.map_default (fun str -> str ^ "_" ^ id) id p in
       let name = if pr then p_id ^ "'" else p_id
       in
-        if Expr.is_global_var v then
+        if Expr.V.is_global v then
           begin
             GM.sm_decl_const sort_map name
               (GM.conv_sort (Interf.sort_to_expr_sort s)) ;
@@ -1200,19 +1199,19 @@ module Make (TSLK : TSLKExpression.S) =
             GM.sm_decl_fun sort_map name [tid_s] [s_str] ;
             B.add_string buf ( "(define " ^ name ^ "::(-> " ^tid_s^ " " ^ s_str ^ "))\n" );
             match s with
-              Expr.Path -> Expr.VarSet.iter (fun t ->
+              Expr.Path -> Expr.V.VarSet.iter (fun t ->
                         let v_str = variable_invocation_to_str
-                                        (Expr.param_var v (Expr.VarTh t)) in
+                                        (Expr.V.set_param v (Expr.VarTh t)) in
                           B.add_string buf ( "(assert (ispath " ^ v_str ^ "))\n" )
                       ) tid_set
-            | Expr.Mem -> Expr.VarSet.iter (fun t ->
+            | Expr.Mem -> Expr.V.VarSet.iter (fun t ->
                         let v_str = variable_invocation_to_str
-                                        (Expr.param_var v (Expr.VarTh t)) in
+                                        (Expr.V.set_param v (Expr.VarTh t)) in
                           B.add_string buf ( "(assert (isheap " ^ v_str ^ "))\n" )
                       ) tid_set
-            | Expr.Tid -> Expr.VarSet.iter (fun t ->
+            | Expr.Tid -> Expr.V.VarSet.iter (fun t ->
                         let v_str = variable_invocation_to_str
-                                        (Expr.param_var v (Expr.VarTh t)) in
+                                        (Expr.V.set_param v (Expr.VarTh t)) in
                           B.add_string buf ( "(assert (/= " ^ v_str ^ " NoThread))\n" )
                       ) tid_set
             | _    -> ()
@@ -1220,7 +1219,7 @@ module Make (TSLK : TSLKExpression.S) =
           end
 
 
-    and define_variables (buf:Buffer.t) (vars:Expr.VarSet.t) : unit =
+    and define_variables (buf:Buffer.t) (vars:Expr.V.VarSet.t) : unit =
       let varset     = Expr.varset_of_sort vars Expr.Set  in
       let varelem    = Expr.varset_of_sort vars Expr.Elem in
       let varaddr    = Expr.varset_of_sort vars Expr.Addr in
@@ -1231,16 +1230,16 @@ module Make (TSLK : TSLKExpression.S) =
       let varpath    = Expr.varset_of_sort vars Expr.Path in
       let varmem     = Expr.varset_of_sort vars Expr.Mem  in
       let varunk     = Expr.varset_of_sort vars Expr.Unknown  in
-        Expr.VarSet.iter (yices_define_var buf vartid) varset;
-        Expr.VarSet.iter (yices_define_var buf vartid) varelem;
-        Expr.VarSet.iter (yices_define_var buf vartid) vartid;
-        Expr.VarSet.iter (yices_define_var buf vartid) varaddr;
-        Expr.VarSet.iter (yices_define_var buf vartid) varcell;
-        Expr.VarSet.iter (yices_define_var buf vartid) varsetth;
-        Expr.VarSet.iter (yices_define_var buf vartid) varsetelem;
-        Expr.VarSet.iter (yices_define_var buf vartid) varpath;
-        Expr.VarSet.iter (yices_define_var buf vartid) varmem;
-        Expr.VarSet.iter (yices_define_var buf vartid) varunk
+        Expr.V.VarSet.iter (yices_define_var buf vartid) varset;
+        Expr.V.VarSet.iter (yices_define_var buf vartid) varelem;
+        Expr.V.VarSet.iter (yices_define_var buf vartid) vartid;
+        Expr.V.VarSet.iter (yices_define_var buf vartid) varaddr;
+        Expr.V.VarSet.iter (yices_define_var buf vartid) varcell;
+        Expr.V.VarSet.iter (yices_define_var buf vartid) varsetth;
+        Expr.V.VarSet.iter (yices_define_var buf vartid) varsetelem;
+        Expr.V.VarSet.iter (yices_define_var buf vartid) varpath;
+        Expr.V.VarSet.iter (yices_define_var buf vartid) varmem;
+        Expr.V.VarSet.iter (yices_define_var buf vartid) varunk
 
 
     and variables_to_yices (buf:Buffer.t) (expr:Expr.conjunctive_formula) : unit =
@@ -1256,7 +1255,7 @@ module Make (TSLK : TSLKExpression.S) =
         define_variables buf vars
 
 
-    and variable_invocation_to_str (v:Expr.variable) : string =
+    and variable_invocation_to_str (v:Expr.V.t) : string =
       let (id,s,pr,th,p) = v in
       let th_str = Option.map_default tidterm_to_str "" th in
       let p_str  = Option.map_default (fun n -> Printf.sprintf "%s_" n) "" p in
@@ -1522,7 +1521,7 @@ module Make (TSLK : TSLKExpression.S) =
 
 
     let pc_to_str (pc:int) (th:Expr.tid option) (pr:bool) : string =
-      let pc_str = if pr then pc_prime_name else pc_name
+      let pc_str = if pr then pc_prime_name else Conf.pc_name
       in
         Printf.sprintf "(= (%s %s) %i)" pc_str
             (Option.map_default tidterm_to_str "" th) pc
@@ -1530,7 +1529,7 @@ module Make (TSLK : TSLKExpression.S) =
 
     let pcrange_to_str (pc1:int) (pc2:int)
                              (th:Expr.tid option) (pr:bool) : string =
-      let pc_str = if pr then pc_prime_name else pc_name in
+      let pc_str = if pr then pc_prime_name else Conf.pc_name in
       let th_str = Option.map_default tidterm_to_str "" th
       in
         Printf.sprintf "(and (<= %i (%s %s)) (<= (%s %s) %i))"
@@ -1539,7 +1538,7 @@ module Make (TSLK : TSLKExpression.S) =
 
     let pcupdate_to_str (pc:int) (th:Expr.tid) : string =
       Printf.sprintf "(= %s (update %s (%s) %i))"
-        pc_prime_name pc_name (tidterm_to_str th) pc
+        pc_prime_name Conf.pc_name (tidterm_to_str th) pc
 
 
     let atom_to_str (at:Expr.atom) : string =

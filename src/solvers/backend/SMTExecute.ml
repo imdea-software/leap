@@ -135,7 +135,7 @@ let get_model () : GenericModel.t =
 (* Running the SMT solver *)
 let parse_output (ch:Pervasives.in_channel) : (bool * bool) =
   let answer_str = Pervasives.input_line ch in
-  verb "**** SMTExecute answer: %s\n" answer_str;
+  verbl _LONG_INFO "**** SMTExecute answer: %s\n" answer_str;
   let (terminated, outcome) =
     match answer_str with
       "unsat"   -> (Debug.print_smt "unsat\n"; (true, false))
@@ -171,9 +171,9 @@ let run (cfg:configuration_t) (query:string) : bool =
                        (tmpfile) in
   let env = Array.of_list [] in
   let (stdout,stdin,stderr) = Unix.open_process_full cmd env in
-  verb "**** STMExecute will parse output.\n";
+  verbl _LONG_INFO "**** STMExecute will parse output.\n";
   let (terminated,response) = parse_output stdout in
-  verb "**** SMTExecute, response read.\n";
+  verbl _LONG_INFO "**** SMTExecute, response read.\n";
   if (not terminated) then begin
     if response then begin
       Interface.Err.msg "Timeout query" $
@@ -187,7 +187,7 @@ let run (cfg:configuration_t) (query:string) : bool =
   end;
   if cfg.comp_model then begin
     if response then begin
-      verb "**** SMTExecute, response with model obtained.\n";
+      verbl _LONG_INFO "**** SMTExecute, response with model obtained.\n";
       let buf = Buffer.create 1024 in
       let _ = try
                 while true do
@@ -201,12 +201,12 @@ let run (cfg:configuration_t) (query:string) : bool =
       if cfg.smt <> Yices then Debug.force_print_file_name "VC" tmpfile;
       model := cfg.model_parser (Lexing.from_string (Buffer.contents buf));
     end else begin
-      verb "**** SMTExecute, no response with model obtained.\n";
+      verbl _LONG_INFO "**** SMTExecute, no response with model obtained.\n";
       GenericModel.clear_model !model
     end
   end;
   let _ = Unix.close_process_full (stdout,stdin,stderr) in
   cfg.calls # incr;
-  verb "**** SMTExecute, will print results.\n";
+  verbl _LONG_INFO "**** SMTExecute, will print results.\n";
   Debug.print_smt_result response;
     terminated && response

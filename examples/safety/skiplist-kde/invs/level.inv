@@ -5,16 +5,16 @@ invariant [skiplist_levels] :
 
 
 #insert_i_lower_maxLevel_one:
-	@insert_lookup_loop. -> (insert::i <= maxLevel)
+  @insert_lookup_loop. -> (insert::i <= maxLevel)
 
 
 #insert_i_bounded:
-	(@insert_not_all_processed.) ->
-		(insert::i <= maxLevel)
+  (@insert_not_all_processed.) ->
+    (insert::i <= maxLevel)
 
 
 @insert_newLevel_bounded. -> insert::newLevel <= maxLevel
 
 
 #insert_i_higher_than_maxLevel:
-	(@insert_increasing_level. -> maxLevel < insert::i)
+  (@insert_increasing_level. -> maxLevel < insert::i)

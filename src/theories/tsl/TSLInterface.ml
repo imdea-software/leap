@@ -4,7 +4,7 @@ module E=Expression
 module SL=TSLExpression
 
 
-type varId = E.varId
+type varId = E.V.id
 type sort  = E.sort
 type tid   = E.tid
 
@@ -39,11 +39,11 @@ let rec sort_to_tsl_sort (s:E.sort) : SL.sort =
 
 
 
-and build_term_var (v:E.variable) : SL.term =
+and build_term_var (v:E.V.t) : SL.term =
 (*  LOG "Entering build_term_var..." LEVEL TRACE; *)
-(*  LOG "build_term_var(%s)" (E.variable_to_str v) LEVEL DEBUG; *)
+(*  LOG "build_term_var(%s)" (E.V.to_str v) LEVEL DEBUG; *)
   let tsl_v = var_to_tsl_var v in
-  match (E.var_sort v) with
+  match (E.V.sort v) with
     E.Set       -> SL.SetT       (SL.VarSet        tsl_v)
   | E.Elem      -> SL.ElemT      (SL.VarElem       tsl_v)
   | E.Tid      -> SL.TidT      (SL.VarTh         tsl_v)
@@ -59,26 +59,26 @@ and build_term_var (v:E.variable) : SL.term =
 
 
 
-and var_to_tsl_var (v:E.variable) : SL.variable =
+and var_to_tsl_var (v:E.V.t) : SL.V.t =
 (*  LOG "Entering var_to_tsl_var..." LEVEL TRACE; *)
-(*  LOG "var_to_tsl_var(%s)" (E.variable_to_str v) LEVEL DEBUG; *)
-  SL.build_var (E.var_id v)
-               (sort_to_tsl_sort (E.var_sort v))
-               (E.var_is_primed v)
-               (shared_to_tsl_shared (E.var_parameter v))
-               (scope_to_tsl_scope (E.var_scope v))
+(*  LOG "var_to_tsl_var(%s)" (E.V.to_str v) LEVEL DEBUG; *)
+  SL.build_var (E.V.id v)
+               (sort_to_tsl_sort (E.V.sort v))
+               (E.V.is_primed v)
+               (shared_to_tsl_shared (E.V.parameter v))
+               (scope_to_tsl_scope (E.V.scope v))
 
 
-and shared_to_tsl_shared (th:E.shared_or_local) : SL.shared_or_local =
+and shared_to_tsl_shared (th:E.V.shared_or_local) : SL.V.shared_or_local =
   match th with
-  | E.Shared  -> SL.Shared
-  | E.Local t -> SL.Local (tid_to_tsl_tid t)
+  | E.V.Shared  -> SL.V.Shared
+  | E.V.Local t -> SL.V.Local (var_to_tsl_var t)
 
 
-and scope_to_tsl_scope (p:E.procedure_name) : SL.procedure_name =
+and scope_to_tsl_scope (p:E.V.procedure_name) : SL.V.procedure_name =
   match p with
-  | E.GlobalScope -> SL.GlobalScope
-  | E.Scope proc  -> SL.Scope proc
+  | E.V.GlobalScope -> SL.V.GlobalScope
+  | E.V.Scope proc  -> SL.V.Scope proc
 
 
 and tid_to_tsl_tid (th:E.tid) : SL.tid =
@@ -158,7 +158,7 @@ and set_to_tsl_set (s:E.set) : SL.set =
                                                addr_to_tsl_addr a,
                                                int_to_tsl_int l)
   | E.SetArrayRd (E.VarArray v,t) ->
-      SL.VarSet (var_to_tsl_var (E.var_set_param (E.Local t) v))
+      SL.VarSet (var_to_tsl_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
   | E.SetArrayRd _        -> raise(UnsupportedTslExpr(E.set_to_str s))
 
 
@@ -169,7 +169,7 @@ and elem_to_tsl_elem (e:E.elem) : SL.elem =
     E.VarElem v              -> SL.VarElem (var_to_tsl_var v)
   | E.CellData c             -> SL.CellData (cell_to_tsl_cell c)
   | E.ElemArrayRd (E.VarArray v,t) ->
-      SL.VarElem (var_to_tsl_var (E.var_set_param (E.Local t) v))
+      SL.VarElem (var_to_tsl_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
   | E.ElemArrayRd _          -> raise(UnsupportedTslExpr(E.elem_to_str e))
   | E.HavocListElem          -> raise(UnsupportedTslExpr(E.elem_to_str e))
   | E.HavocSkiplistElem      -> SL.HavocSkiplistElem
@@ -189,7 +189,7 @@ and addr_to_tsl_addr (a:E.addr) : SL.addr =
   | E.FirstLocked _          -> raise(UnsupportedTslExpr(E.addr_to_str a))
   | E.FirstLockedAt _        -> raise(UnsupportedTslExpr(E.addr_to_str a))
   | E.AddrArrayRd (E.VarArray v,t) ->
-      SL.VarAddr (var_to_tsl_var (E.var_set_param (E.Local t) v))
+      SL.VarAddr (var_to_tsl_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
   | E.AddrArrayRd _          -> raise(UnsupportedTslExpr(E.addr_to_str a))
   | E.AddrArrRd (aa,i)       -> SL.AddrArrRd (addrarr_to_tsl_addrarr aa,
                                                   int_to_tsl_int i)
@@ -218,7 +218,7 @@ and cell_to_tsl_cell (c:E.cell) : SL.cell =
                                                    int_to_tsl_int l)
   | E.CellAt (m,a)         -> SL.CellAt (mem_to_tsl_mem m, addr_to_tsl_addr a)
   | E.CellArrayRd (E.VarArray v,t) ->
-      SL.VarCell (var_to_tsl_var (E.var_set_param (E.Local t) v))
+      SL.VarCell (var_to_tsl_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
   | E.CellArrayRd _        -> raise(UnsupportedTslExpr(E.cell_to_str c))
   | E.UpdCellAddr _        -> raise(UnsupportedTslExpr(E.cell_to_str c))
 
@@ -235,7 +235,7 @@ and setth_to_tsl_setth (st:E.setth) : SL.setth =
   | E.IntrTh (s1,s2)    -> SL.IntrTh (to_setth s1, to_setth s2)
   | E.SetdiffTh (s1,s2) -> SL.SetdiffTh (to_setth s1, to_setth s2)
   | E.SetThArrayRd (E.VarArray v,t) ->
-      SL.VarSetTh (var_to_tsl_var (E.var_set_param (E.Local t) v))
+      SL.VarSetTh (var_to_tsl_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
   | E.SetThArrayRd _    -> raise(UnsupportedTslExpr(E.setth_to_str st))
 
 
@@ -251,7 +251,7 @@ and setelem_to_tsl_setelem (se:E.setelem) : SL.setelem =
   | E.IntrElem (s1,s2)    -> SL.IntrElem (to_setelem s1, to_setelem s2)
   | E.SetdiffElem (s1,s2) -> SL.SetdiffElem (to_setelem s1, to_setelem s2)
   | E.SetElemArrayRd (E.VarArray v,t) ->
-      SL.VarSetElem (var_to_tsl_var (E.var_set_param (E.Local t) v))
+      SL.VarSetElem (var_to_tsl_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
   | E.SetToElems (s,m)    -> SL.SetToElems (set_to_tsl_set s,
                                                 mem_to_tsl_mem m)
   | E.SetElemArrayRd _    -> raise(UnsupportedTslExpr(E.setelem_to_str se))
@@ -282,7 +282,7 @@ and mem_to_tsl_mem (m:E.mem) : SL.mem =
                                        cell_to_tsl_cell c)
   (* Missing the case for "emp" *)
   | E.MemArrayRd (E.VarArray v,t) ->
-      SL.VarMem (var_to_tsl_var (E.var_set_param (E.Local t) v))
+      SL.VarMem (var_to_tsl_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
   | E.MemArrayRd _        -> raise(UnsupportedTslExpr(E.mem_to_str m))
 
 
@@ -370,7 +370,10 @@ and atom_to_tsl_atom (a:E.atom) : SL.atom =
   | E.PCUpdate (pc,t)          -> SL.PCUpdate (pc, tid_to_tsl_tid t)
   | E.PCRange (pc1,pc2,t,pr)   -> SL.PCRange (pc1, pc2, shared_to_tsl_shared t, pr)
 
+and formula_to_tsl_formula (phi:E.formula) : SL.formula =
+  Formula.formula_conv atom_to_tsl_atom phi
 
+(*
 and literal_to_tsl_literal (l:E.literal) : SL.literal =
 (*  LOG "Entering literal_to_tsl_literal..." LEVEL TRACE; *)
 (*  LOG "literal_to_tsl_literal(%s)" (E.literal_to_str l) LEVEL DEBUG; *)
@@ -392,6 +395,7 @@ and formula_to_tsl_formula (f:E.formula) : SL.formula =
   | E.Not f1          -> SL.Not (to_formula f1)
   | E.Implies (f1,f2) -> SL.Implies (to_formula f1, to_formula f2)
   | E.Iff (f1,f2)     -> SL.Iff (to_formula f1, to_formula f2)
+*)
 
 
 
@@ -417,25 +421,24 @@ let rec tsl_sort_to_sort (s:SL.sort) : E.sort =
   | SL.Unknown   -> E.Unknown
 
 
-and var_to_expr_var (v:SL.variable) : E.variable =
-  E.build_var (SL.var_id v)
-              (tsl_sort_to_sort (SL.var_sort v))
-              (SL.var_is_primed v)
-              (shared_to_expr_shared (SL.var_parameter v))
-              (scope_to_expr_scope (SL.var_scope v))
-              (E.RealVar)
+and var_to_expr_var (v:SL.V.t) : E.V.t =
+  E.build_var (SL.V.id v)
+              (tsl_sort_to_sort (SL.V.sort v))
+              (SL.V.is_primed v)
+              (shared_to_expr_shared (SL.V.parameter v))
+              (scope_to_expr_scope (SL.V.scope v))
 
 
-and shared_to_expr_shared (th:SL.shared_or_local) : E.shared_or_local =
+and shared_to_expr_shared (th:SL.V.shared_or_local) : E.V.shared_or_local =
   match th with
-  | SL.Shared  -> E.Shared
-  | SL.Local t -> E.Local (tid_to_expr_tid t)
+  | SL.V.Shared  -> E.V.Shared
+  | SL.V.Local t -> E.V.Local (var_to_expr_var t)
 
 
-and scope_to_expr_scope (p:SL.procedure_name) : E.procedure_name =
+and scope_to_expr_scope (p:SL.V.procedure_name) : E.V.procedure_name =
   match p with
-  | SL.GlobalScope -> E.GlobalScope
-  | SL.Scope proc  -> E.Scope proc
+  | SL.V.GlobalScope -> E.V.GlobalScope
+  | SL.V.Scope proc  -> E.V.Scope proc
 
 
 and tid_to_expr_tid (th:SL.tid) : E.tid =
@@ -640,7 +643,9 @@ and tsl_atom_to_atom (a:SL.atom) : E.atom =
   | SL.PCUpdate (pc,t)          -> E.PCUpdate (pc, tid_to_expr_tid t)
   | SL.PCRange (pc1,pc2,t,pr)   -> E.PCRange (pc1, pc2,shared_to_expr_shared t,pr)
 
-
+and formula_to_expr_formula (phi:SL.formula) : E.formula =
+  Formula.formula_conv tsl_atom_to_atom phi
+(*
 and literal_to_expr_literal (l:SL.literal) : E.literal =
   match l with
     SL.Atom a    -> E.Atom (tsl_atom_to_atom a)
@@ -658,3 +663,4 @@ and formula_to_expr_formula (f:SL.formula) : E.formula =
   | SL.Not f1          -> E.Not (to_formula f1)
   | SL.Implies (f1,f2) -> E.Implies (to_formula f1, to_formula f2)
   | SL.Iff (f1,f2)     -> E.Iff (to_formula f1, to_formula f2)
+*)

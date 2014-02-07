@@ -14,7 +14,6 @@ let is_input_file = ref false
 let input_file_fd : Unix.file_descr ref = ref Unix.stdin
 
 (* Program arguments *)
-let verbose           = ref false
 let showFlag          = ref false
 let debugFlag         = ref false
 let pinvSys           = ref false
@@ -52,6 +51,7 @@ let outFile           = ref ""
 let detailedOutFile   = ref ""
 let num_threads       = ref 1
 let use_quantifiers   = ref false
+let output_vcs        = ref false
 
 let assignopt (valref : 'a ref) (valbool : bool ref) (aval : 'a) : unit =
   valref := aval ; valbool := true
@@ -134,8 +134,8 @@ let ignorePos (s:string) : unit =
 
 let opts =
   [ ("-v",
-        Arg.Set verbose,
-        "verbose");
+        Arg.Int (fun i -> LeapVerbose.enable_verbose_up_to i),
+        "verbosity level");
     ("-l",
         Arg.String (fun str -> logFile := str),
         "output log file");
@@ -224,6 +224,9 @@ let opts =
     ("-q",
         Arg.Set use_quantifiers,
         "use quantifiers over finite domains when constructing SMT queries");
+    ("-ovc",
+        Arg.Set output_vcs,
+        "output VC information to a vcs folder");
 (*
     THIS WAS REMOVED TO SIMPLIFIED LEAP
     ("-kpm",

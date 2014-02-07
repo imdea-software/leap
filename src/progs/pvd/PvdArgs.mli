@@ -40,4 +40,4 @@ val open_input : 'a -> in_channel
 val close_input : 'a -> unit
 val open_and_parse_expr :
   string ->
-  ((Lexing.lexbuf -> Exprparser.token) -> Lexing.lexbuf -> 'a) -> 'a
+  ((Lexing.lexbuf -> ExprParser.token) -> Lexing.lexbuf -> 'a) -> 'a

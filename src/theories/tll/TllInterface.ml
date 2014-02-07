@@ -4,7 +4,7 @@ module E   = Expression
 module TLL = TllExpression
 
 
-type varId = E.varId
+type varId = E.V.id
 type sort  = E.sort
 type tid   = E.tid
 
@@ -52,9 +52,9 @@ and sort_to_expr_sort (s:TLL.sort) : E.sort =
   | TLL.Unknown -> E.Unknown
 
 
-and build_term_var (v:E.variable) : TLL.term =
+and build_term_var (v:E.V.t) : TLL.term =
   let tll_v = variable_to_tll_var v in
-  match (E.var_sort v) with
+  match (E.V.sort v) with
     E.Set   -> TLL.SetT   (TLL.VarSet   tll_v)
   | E.Elem  -> TLL.ElemT  (TLL.VarElem  tll_v)
   | E.Tid  -> TLL.TidT  (TLL.VarTh    tll_v)
@@ -68,24 +68,24 @@ and build_term_var (v:E.variable) : TLL.term =
 
 
 
-and variable_to_tll_var (v:E.variable) : TLL.variable =
-  TLL.build_var (E.var_id v)
-                (sort_to_tll_sort (E.var_sort v))
-                (E.var_is_primed v)
-                (shared_to_tll_shared (E.var_parameter v))
-                (scope_to_tll_scope (E.var_scope v))
+and variable_to_tll_var (v:E.V.t) : TLL.V.t =
+  TLL.build_var (E.V.id v)
+                (sort_to_tll_sort (E.V.sort v))
+                (E.V.is_primed v)
+                (shared_to_tll_shared (E.V.parameter v))
+                (scope_to_tll_scope (E.V.scope v))
 
 
-and shared_to_tll_shared (th:E.shared_or_local) : TLL.shared_or_local =
+and shared_to_tll_shared (th:E.V.shared_or_local) : TLL.V.shared_or_local =
   match th with
-  | E.Shared  -> TLL.Shared
-  | E.Local t -> TLL.Local (tid_to_tll_tid t)
+  | E.V.Shared  -> TLL.V.Shared
+  | E.V.Local t -> TLL.V.Local (variable_to_tll_var t)
 
 
-and scope_to_tll_scope (p:E.procedure_name) : TLL.procedure_name =
+and scope_to_tll_scope (p:E.V.procedure_name) : TLL.V.procedure_name =
   match p with
-  | E.GlobalScope -> TLL.GlobalScope
-  | E.Scope proc  -> TLL.Scope proc
+  | E.V.GlobalScope -> TLL.V.GlobalScope
+  | E.V.Scope proc  -> TLL.V.Scope proc
 
 
 and tid_to_tll_tid (th:E.tid) : TLL.tid =
@@ -150,7 +150,7 @@ and set_to_tll_set (s:E.set) : TLL.set =
   | E.AddrToSet (m,a) -> TLL.AddrToSet (mem_to_tll_mem m, addr_to_tll_addr a)
   | E.AddrToSetAt _   -> raise(UnsupportedTllExpr(E.set_to_str s))
   | E.SetArrayRd (E.VarArray v,t) ->
-      TLL.VarSet (variable_to_tll_var (E.var_set_param (E.Local t) v))
+      TLL.VarSet (variable_to_tll_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
   | E.SetArrayRd _          -> raise(UnsupportedTllExpr(E.set_to_str s))
 
 
@@ -159,7 +159,7 @@ and elem_to_tll_elem (e:E.elem) : TLL.elem =
     E.VarElem v              -> TLL.VarElem (variable_to_tll_var v)
   | E.CellData c             -> TLL.CellData (cell_to_tll_cell c)
   | E.ElemArrayRd (E.VarArray v,t) ->
-      TLL.VarElem (variable_to_tll_var (E.var_set_param (E.Local t) v))
+      TLL.VarElem (variable_to_tll_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
   | E.ElemArrayRd _          -> raise(UnsupportedTllExpr(E.elem_to_str e))
   | E.HavocListElem          -> TLL.HavocListElem
   | E.HavocSkiplistElem      -> raise(UnsupportedTllExpr(E.elem_to_str e))
@@ -178,7 +178,7 @@ and addr_to_tll_addr (a:E.addr) : TLL.addr =
                                                     path_to_tll_path p)
   | E.FirstLockedAt _        -> raise(UnsupportedTllExpr(E.addr_to_str a))
   | E.AddrArrayRd (E.VarArray v,t) ->
-      TLL.VarAddr (variable_to_tll_var (E.var_set_param (E.Local t) v))
+      TLL.VarAddr (variable_to_tll_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
   | E.AddrArrayRd _          -> raise(UnsupportedTllExpr(E.addr_to_str a))
   | E.AddrArrRd _            -> raise(UnsupportedTllExpr(E.addr_to_str a))
 
@@ -200,7 +200,7 @@ and cell_to_tll_cell (c:E.cell) : TLL.cell =
   | E.CellUnlockAt _ -> raise(UnsupportedTllExpr(E.cell_to_str c))
   | E.CellAt (m,a)   -> TLL.CellAt (mem_to_tll_mem m, addr_to_tll_addr a)
   | E.CellArrayRd (E.VarArray v,t) ->
-      TLL.VarCell (variable_to_tll_var (E.var_set_param (E.Local t) v))
+      TLL.VarCell (variable_to_tll_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
   | E.CellArrayRd _  -> raise(UnsupportedTllExpr(E.cell_to_str c))
   | E.UpdCellAddr _  -> raise(UnsupportedTllExpr(E.cell_to_str c))
 
@@ -215,7 +215,7 @@ and setth_to_tll_setth (st:E.setth) : TLL.setth =
   | E.IntrTh (s1,s2)    -> TLL.IntrTh (to_setth s1, to_setth s2)
   | E.SetdiffTh (s1,s2) -> TLL.SetdiffTh (to_setth s1, to_setth s2)
   | E.SetThArrayRd (E.VarArray v,t) ->
-      TLL.VarSetTh (variable_to_tll_var (E.var_set_param (E.Local t) v))
+      TLL.VarSetTh (variable_to_tll_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
   | E.SetThArrayRd _    -> raise(UnsupportedTllExpr(E.setth_to_str st))
 
 
@@ -229,7 +229,7 @@ and setelem_to_tll_setelem (st:E.setelem) : TLL.setelem =
   | E.IntrElem (s1,s2)    -> TLL.IntrElem (to_setelem s1, to_setelem s2)
   | E.SetdiffElem (s1,s2) -> TLL.SetdiffElem (to_setelem s1, to_setelem s2)
   | E.SetElemArrayRd (E.VarArray v,t) ->
-      TLL.VarSetElem (variable_to_tll_var (E.var_set_param (E.Local t) v))
+      TLL.VarSetElem (variable_to_tll_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
   | E.SetToElems (s,m)    -> TLL.SetToElems (set_to_tll_set s,
                                                 mem_to_tll_mem m)
   | E.SetElemArrayRd _    -> raise(UnsupportedTllExpr(E.setelem_to_str st))
@@ -255,7 +255,7 @@ and mem_to_tll_mem (m:E.mem) : TLL.mem =
                                        cell_to_tll_cell c)
   (* Missing the case for "emp" *)
   | E.MemArrayRd (E.VarArray v,t) ->
-      TLL.VarMem (variable_to_tll_var (E.var_set_param (E.Local t) v))
+      TLL.VarMem (variable_to_tll_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
   | E.MemArrayRd _        -> raise(UnsupportedTllExpr(E.mem_to_str m))
 
 
@@ -314,7 +314,9 @@ and atom_to_tll_atom (a:E.atom) : TLL.atom =
   E.PCUpdate (pc,t)      -> TLL.PCUpdate (pc, tid_to_tll_tid t)
   | E.PCRange (pc1,pc2,t,pr) -> TLL.PCRange (pc1, pc2, shared_to_tll_shared t, pr)
 
-
+and formula_to_tll_formula (phi:E.formula) : TLL.formula =
+  Formula.formula_conv atom_to_tll_atom phi
+(*
 and literal_to_tll_literal (l:E.literal) : TLL.literal =
   match l with
     E.Atom a    -> TLL.Atom (atom_to_tll_atom a)
@@ -332,3 +334,4 @@ and formula_to_tll_formula (f:E.formula) : TLL.formula =
   | E.Not f1          -> TLL.Not (to_formula f1)
   | E.Implies (f1,f2) -> TLL.Implies (to_formula f1, to_formula f2)
   | E.Iff (f1,f2)     -> TLL.Iff (to_formula f1, to_formula f2)
+*)
