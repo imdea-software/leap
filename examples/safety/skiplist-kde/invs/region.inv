@@ -47,7 +47,6 @@ invariant [skiplist_region] :
 @insert_update_set. -> insert::update[insert::i] = insert::element
 
 
-
 #insert_update_j_in_addr2set:
    (@insert_update_all_set. /\ 0 <= j /\ j <= maxLevel) ->
       (insert::update[j] in region /\

@@ -9,8 +9,11 @@ invariant [skiplist_levels] :
 
 
 #insert_i_bounded:
-	(@insert_newCell_unconnected. \/ @insert_i_increases.) ->
-		(0 <= insert::i /\ insert::i <= maxLevel)
+	(@insert_not_all_processed.) ->
+		(insert::i <= maxLevel)
+
+
+@insert_newLevel_bounded. -> insert::newLevel <= maxLevel
 
 
 #insert_i_higher_than_maxLevel:
