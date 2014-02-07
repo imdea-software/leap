@@ -1,14 +1,14 @@
 
-This folder contains the example of sequential skiplists with an arbitrary 
-number of levels.
+This folder contains the example of a sequential skiplists extracted from the 
+KDE open source project:
+
+http://api.kde.org/4.1-api/kdeedu-apidocs/kstars/html/classSkipList.html
 
 
 
 In this folder you will find a "run.sh" script to run the example. Inside 
-the script you can configure the options you want Leap to use. It also 
-contains three scripts named "run_func_search.sh", "run_func_insert.sh" and 
-"run_func_remove.sh" which can be used to verify the functional properties 
-over the skiplist.
+the script you can configure the options you want Leap to use.
+
 
 IMPORTANT: You must configure the path to Leap inside the script before you
            can run it.
