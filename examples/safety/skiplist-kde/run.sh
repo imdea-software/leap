@@ -1,7 +1,7 @@
 #Configure path to Leap
 LEAP=../../../bin/leap
 
-OPTIONS="-q -co union -sm -yices+z3 -dp tsl"
+OPTIONS="-v 1 -q -co union -sm -yices+z3 -dp tsl"
 
 PRG=prgs/skiplist-kde.prg
 INV_FOLDER=invs
