@@ -1,7 +1,7 @@
 #Configure path to Leap
 LEAP=leap
 
-OPTIONS="-co union -sm -yices+z3 -dp tsl"
+OPTIONS="-v 1 -q -co union -sm -yices+z3 -dp tsl"
 
 PRG=prgs/func_search.prg
 INV_FOLDER=invs/func_search

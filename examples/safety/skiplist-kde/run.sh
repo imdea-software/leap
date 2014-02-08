@@ -1,5 +1,5 @@
 #Configure path to Leap
-LEAP=../../../bin/leap
+LEAP=leap
 
 OPTIONS="-v 1 -q -co union -sm -yices+z3 -dp tsl"
 

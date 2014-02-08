@@ -30,8 +30,8 @@ TOOLS=tools
 # Configuration
 SYS=`uname -s`
 
-#REVISION=`svn info | grep Revision | cut -d ' ' -f 2`
-REVISION=0
+REVISION=`svn info | grep Revision | cut -d ' ' -f 2`
+#REVISION=0
 
 
 
