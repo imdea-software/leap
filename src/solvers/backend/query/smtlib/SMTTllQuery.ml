@@ -1937,7 +1937,7 @@ struct
         let formula_str = List.fold_right add_and_literal ls ""
         in
     post_process buf num_addr num_elem num_tid;
-		B.add_string buf "(assert\n   (and";
+    B.add_string buf "(assert\n   (and";
     B.add_string buf formula_str ;
     B.add_string buf "))\n";
     B.add_string buf "(check-sat)\n" ;
@@ -2006,7 +2006,7 @@ struct
       (* We add extra information if needed *)
 (*      B.add_string buf extra_info_str ; *)
       post_process buf num_addr num_elem num_tid;
-			B.add_string buf "(assert\n";
+      B.add_string buf "(assert\n";
       B.add_string buf formula_str ;
       B.add_string buf ")\n";
       B.add_string buf "(check-sat)\n" ;

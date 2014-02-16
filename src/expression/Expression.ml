@@ -4736,21 +4736,6 @@ let required_sorts (phi:formula) : sort list =
     SortSet.elements (req_f phi)
 
 
-let gen_focus_list (max_pos:pc_t)
-                   (focus_xs:pc_t list)
-                   (ignore_xs:pc_t list) : (bool * pc_t list) =
-  let full_xs = LeapLib.rangeList 0 max_pos in
-  let base_pos_list = if focus_xs = [] then full_xs else focus_xs in
-  let base_pos_set = List.fold_left (fun s p ->
-    PosSet.add p s
-  ) PosSet.empty base_pos_list in
-  let focus_set = List.fold_left (fun s p ->
-    PosSet.remove p s) base_pos_set ignore_xs in
-  let consider_theta = PosSet.mem 0 focus_set in
-  let focus_set_without_zero = PosSet.remove 0 focus_set in
-  (consider_theta, (PosSet.elements focus_set_without_zero))
-
-
 let formula_to_human_str (phi:formula) : string =
   let primed_varset = List.map V.prime (primed_vars phi) in
   let loc_vars_subs = V.new_subst () in
@@ -5542,4 +5527,5 @@ and identical_pc_t (p1:pc_t) (p2:pc_t) : bool =
 
 let gen_fresh_var (gen:V.fresh_var_gen_t) (s:sort) : V.t =
   V.gen_fresh_var sort_to_str {nature = RealVar;} gen s
+
 

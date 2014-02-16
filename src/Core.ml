@@ -101,6 +101,12 @@ module Make (Opt:module type of GenOptions) : S =
       }
 
 
+    module IntSet = Set.Make(
+      struct
+        let compare = Pervasives.compare
+        type t = int
+      end )
+
 
     (************************************************)
     (*             TAGGING INFORMATION              *)
@@ -172,8 +178,27 @@ module Make (Opt:module type of GenOptions) : S =
     (********************)
 
     let (requires_theta, lines_to_consider) =
-            E.gen_focus_list (System.get_trans_num Opt.sys)
-                             Opt.focus Opt.ignore
+      let focus_set = match Opt.focus with
+                      | [] -> begin
+                                let universe = ref IntSet.empty in
+                                for i = 0 to (System.get_trans_num Opt.sys) do
+                                  universe := IntSet.add i (!universe)
+                                done;
+                                !universe
+                              end
+                      | _ -> List.fold_left (fun set i ->
+                               IntSet.add i set
+                             ) IntSet.empty Opt.focus in
+      let ignore_set = List.fold_left (fun set i ->
+                        IntSet.add i set
+                      ) IntSet.empty Opt.ignore in
+      let final_set = IntSet.diff focus_set ignore_set in
+      if IntSet.mem 0 final_set then
+        (true, IntSet.elements (IntSet.remove 0 final_set))
+      else
+        (false, IntSet.elements final_set)
+
+
 
     let posSolver  : (module PosSolver.S) = PosSolver.choose Opt.pSolver
 

@@ -22,7 +22,7 @@ for i in ${!EXAMPLES[*]} ; do
   ex=${EXAMPLES[$i]};
   zip -r9 $DEPLOYMENT_FOLDER/$ex.zip $ex;
   mkdir $ALL_EXAMPLES/$ex;
-	cp -R $ex $ALL_EXAMPLES;
+  cp -R $ex $ALL_EXAMPLES;
   echo $ale ;
 done;
 zip -r9 $DEPLOYMENT_FOLDER/$ALL_EXAMPLES.zip $ALL_EXAMPLES;

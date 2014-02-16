@@ -524,14 +524,6 @@ val keep_locations : formula -> (formula * (tid * tid) list * (tid * tid) list)
 val required_sorts : formula -> sort list
 (** [required_sorts phi] returns the list of sorts the formula reasons about *)
 
-val gen_focus_list : pc_t -> pc_t list -> pc_t list -> (bool * pc_t list)
-(** [gen_focus_list mp fs is] generates the list of program positions to
-    analyze in case that there are at most [mp] positions, [fs] is the list
-    of positions where to focus and [is] the positions to ignore. Returns
-    a boolean indicating whether the initial position should be considered
-    and a list with the positions to be considered (without considering
-    position 0 as a member of the list) *)
-
 
 (* COMPARISON FUNCTIONS. SYNTACTICALLY (almost) IDENTICAL *)
 val identical_formula  : formula  -> formula  -> bool
@@ -559,3 +551,5 @@ val identical_literal : literal -> literal -> bool
 val opposite_literal  : literal -> literal -> bool
 val identical_conjunctive_formula : conjunctive_formula -> conjunctive_formula -> bool
 val identical_expr_t : expr_t -> expr_t -> bool
+
+
