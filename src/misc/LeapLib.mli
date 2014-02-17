@@ -58,6 +58,8 @@ val mid_comb       : 'a list -> int -> 'a -> int -> 'a list list
 val choose         : 'a list -> int -> 'a list list
 val choose_range   : 'a list -> int -> int -> 'a list list
 
+val gen_fresh : 'set -> 'set -> ('a -> 'set -> 'set) ->
+                ('a -> 'set -> bool) -> (int -> 'a) -> int -> 'set
 
 (** [print_list f l] prints the list [l] after applying [f] to each argument. *)
 val print_list     : ('a -> string) -> 'a list -> string

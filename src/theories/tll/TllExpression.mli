@@ -23,7 +23,7 @@ type term =
     VarT     of V.t
   | SetT     of set
   | ElemT    of elem
-  | TidT    of tid
+  | TidT     of tid
   | AddrT    of addr
   | CellT    of cell
   | SetThT   of setth
@@ -139,12 +139,21 @@ type special_op_t =
   | OrderedList
 
 
-exception WrongType of term
-
-(* CALCULATE SET OF VARS *)
 module TermSet : Set.S with type elt = term
 module AtomSet : Set.S with type elt = atom
 module ThreadSet : Set.S with type elt = tid
+
+
+include GenericExpression.S
+  with type sort_t := sort
+  with type tid_t := tid
+  with type t := formula
+  with module V := V
+  with module ThreadSet := ThreadSet
+
+
+exception WrongType of term
+
 
 (* variable manipulation *)
 val build_var : ?fresh:bool ->

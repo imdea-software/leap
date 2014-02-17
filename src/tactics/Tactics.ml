@@ -129,10 +129,11 @@ let vc_info_to_implication (info:vc_info) (sup:support_t): implication =
   Hashtbl.iter (fun v v' -> E.V.add_subst pc_pres v' v) pc_updates;
   let var_pres = E.V.new_subst () in
   Hashtbl.iter (fun v' tids ->
-    E.V.VarSet.iter (fun i ->
+    E.ThreadSet.iter (fun t ->
+      let i = E.voc_to_var t in
       E.V.add_subst var_pres (E.V.set_param v' (E.V.Local i))
                              (E.V.set_param (E.V.unprime v') (E.V.Local i))
-    ) (E.voc_to_vars tids)
+    ) tids
   ) var_updates;
 
 
@@ -676,7 +677,7 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
       let (unparam_support, param_support) =
         List.fold_left (fun (u_set,p_set) supp ->
           let supp_voc = filter_fixed_voc (E.voc supp) in
-          let fresh_tids = E.gen_fresh_tid_set !used_tids (E.ThreadSet.cardinal supp_voc) in
+          let fresh_tids = E.ThreadSet.empty in (* FIX!!! gen_fresh_tid_set !used_tids (E.ThreadSet.cardinal supp_voc) in *)
           let fresh_subst = E.new_tid_subst
                               (List.combine (E.ThreadSet.elements supp_voc)
                                             (E.ThreadSet.elements fresh_tids)) in

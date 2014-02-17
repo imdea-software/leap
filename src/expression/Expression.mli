@@ -342,8 +342,8 @@ val term_nature : term -> var_nature
 val is_tid_var : tid -> bool
 val gen_tid_list : int -> int -> tid list
 val gen_tid_list_except : int -> int -> tid -> tid list
-val gen_fresh_tid : ThreadSet.t -> tid
-val gen_fresh_tid_set : ThreadSet.t -> int -> ThreadSet.t
+val gen_fresh_tids : ThreadSet.t -> int -> ThreadSet.t
+(*val gen_fresh_tid_set : ThreadSet.t -> int -> ThreadSet.t *)
 val gen_fresh_var : V.fresh_var_gen_t-> sort -> V.t
 
 
@@ -445,7 +445,6 @@ val construct_pres_term        : term -> V.shared_or_local -> formula
 val voc          : formula -> ThreadSet.t
 val unprimed_voc : formula -> ThreadSet.t
 val voc_to_var   : tid -> V.t
-val voc_to_vars  : ThreadSet.t -> V.VarSet.t
 
 (* GHOST TERMS *)
 val var_kind : var_nature -> expr_t -> term list

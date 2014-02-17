@@ -1310,10 +1310,6 @@ let voc_to_var (t:tid) : V.t =
   | _ -> raise(Not_tid_var t)
 
 
-let voc_to_vars (ts:ThreadSet.t) : V.VarSet.t =
-  ThreadSet.fold (fun t set ->
-    V.VarSet.add (voc_to_var t) set
-  ) ts V.VarSet.empty
 (*
   List.map voc_to_var ts
 *)
@@ -1615,20 +1611,25 @@ let rec gen_tid_list_except (min:int) (max:int) (t:tid) : tid list =
       gen_tid_list_except (min+1) max t
 
 
-let gen_fresh_tid (set:ThreadSet.t) : tid =
+let gen_fresh_tids (set:ThreadSet.t) (n:int) : ThreadSet.t =
+  LeapLib.gen_fresh set ThreadSet.empty ThreadSet.add ThreadSet.mem
+    (fun i -> VarTh (build_global_var ("k_" ^ (string_of_int i)) Tid)) n
+(*
   let rec find n =
     let th_cand_id = sprintf "k_%i" n in
     let th_cand = VarTh (build_global_var th_cand_id Tid)in
       if ThreadSet.mem th_cand set then find (n+1) else th_cand
   in
     find 0
+*)
 
-
+(*
 let rec gen_fresh_tid_set (set:ThreadSet.t) (n:int) : ThreadSet.t =
   match n with
     0 -> ThreadSet.empty
   | m -> let new_th = gen_fresh_tid set in
            ThreadSet.add new_th (gen_fresh_tid_set (ThreadSet.add new_th set) (m-1))
+*)
 
 
 (* PRINTING FUNCTIONS *)

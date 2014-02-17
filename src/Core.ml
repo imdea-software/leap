@@ -340,9 +340,9 @@ module Make (Opt:module type of GenOptions) : S =
       let init_pos = if E.ThreadSet.is_empty voc then
                        [E.pc_form 1 E.V.Shared true]
                      else
-                       E.V.VarSet.fold (fun v xs ->
-                         E.pc_form 1 (E.V.Local v) true :: xs
-                       ) (E.voc_to_vars voc) [] in
+                       E.ThreadSet.fold (fun t xs ->
+                         E.pc_form 1 (E.V.Local (E.voc_to_var t)) true :: xs
+                       ) voc [] in
         Tactics.create_vc_info [] Formula.True
                   (Formula.conj_list (theta::init_pos)) inv voc E.NoTid 0
 
@@ -359,7 +359,8 @@ module Make (Opt:module type of GenOptions) : S =
       List.fold_left (fun vcs line ->
         let self_conseq_supp  = load_support line Premise.SelfConseq in
         let other_conseq_supp = load_support line Premise.OthersConseq in
-        let fresh_k = E.gen_fresh_tid (E.voc (Formula.conj_list (inv::supp@other_conseq_supp))) in
+        let fresh_k = E.ThreadSet.choose
+                        (E.gen_fresh_tids (E.voc (Formula.conj_list (inv::supp@other_conseq_supp))) 1) in
 
         let self_conseq_vcs = E.ThreadSet.fold (fun i vcs ->
                                 (gen_vcs (inv::self_conseq_supp) inv line Premise.SelfConseq i) @ vcs
@@ -434,7 +435,7 @@ module Make (Opt:module type of GenOptions) : S =
                                 : Tactics.vc_info list =
       let inv_voc = E.voc inv in
       let trans_tid = if E.ThreadSet.is_empty inv_voc then
-                        E.gen_fresh_tid E.ThreadSet.empty
+                        E.ThreadSet.choose (E.gen_fresh_tids E.ThreadSet.empty 1)
                       else
                         try
                           E.ThreadSet.choose inv_voc
