@@ -1,6 +1,7 @@
 open Printf
 open LeapLib
 
+module F = Formula
 
 type sort =
   | Set
@@ -126,11 +127,11 @@ and atom =
   | PCUpdate     of int * tid
   | PCRange      of int * int * V.shared_or_local * bool
 
-and literal = atom Formula.literal
+and literal = atom F.literal
 
-and conjunctive_formula = atom Formula.conjunctive_formula
+and conjunctive_formula = atom F.conjunctive_formula
 
-and formula = atom Formula.formula
+and formula = atom F.formula
 
 type special_op_t =
   | Reachable
@@ -433,6 +434,235 @@ let make_fold ?(addr_f=fold_addr)
     setth_f = setth_f fs; atom_f = atom_f fs; term_f = term_f fs;
     var_f = var_f fs; }
 
+
+(**********  Mapping  ***************)
+(*
+type ('info, 'a) map_ops_t =
+  {
+    var_f : ('info,'a) map_ops_t -> 'info -> V.t -> V.t;
+    mutable addr_f : ('info,'a) map_ops_t -> 'info -> addr -> addr;
+    mutable elem_f : ('info,'a) map_ops_t -> 'info -> elem -> elem;
+    mutable tid_f : ('info,'a) map_ops_t -> 'info -> tid -> tid;
+    mutable int_f : ('info,'a) map_ops_t -> 'info -> integer -> integer;
+    mutable cell_f : ('info,'a) map_ops_t -> 'info -> cell -> cell;
+    mutable mem_f : ('info,'a) map_ops_t -> 'info -> mem -> mem;
+    mutable path_f : ('info,'a) map_ops_t -> 'info -> path -> path;
+    mutable set_f : ('info,'a) map_ops_t -> 'info -> set -> set;
+    mutable setelem_f : ('info,'a) map_ops_t -> 'info -> setelem -> setelem;
+    mutable setth_f : ('info,'a) map_ops_t -> 'info -> setth ->setth;
+    mutable atom_f : ('info,'a) map_ops_t -> 'info -> atom -> atom;
+    mutable term_f : ('info,'a) map_ops_t -> 'info -> term -> term;
+  }
+
+type ('info, 'a) mapping_t =
+  {
+    var_f : 'info -> V.t -> V.t;
+    addr_f : 'info -> addr -> addr;
+    elem_f : 'info -> elem -> elem;
+    tid_f : 'info -> tid -> tid;
+    int_f : 'info -> integer -> integer;
+    cell_f : 'info -> cell -> cell;
+    mem_f : 'info -> mem -> mem;
+    path_f : 'info -> path -> path;
+    set_f : 'info -> set -> set;
+    setelem_f : 'info -> setelem -> setelem;
+    setth_f : 'info -> setth -> setth;
+    atom_f : 'info -> atom -> atom;
+    term_f : 'info -> term -> term;
+  }
+
+
+
+let rec map_addr (fs:('info,'a) map_ops_t) (info:'info) (a:addr) : addr =
+  match a with
+  | VarAddr v        -> VarAddr (fs.var_f fs info v)
+  | Null             -> Null
+  | Next c           -> Next (fs.cell_f fs info c)
+  | FirstLocked(m,p) -> FirstLocked(fs.mem_f fs info m, fs.path_f fs info p)
+
+and map_elem (fs:('info,'a) map_ops_t) (info:'info) (e:elem) : elem =
+  match e with
+  | VarElem v     -> VarElem (fs.var_f fs info v)
+  | CellData c    -> CellData (fs.cell_f fs info c)
+  | HavocListElem -> HavocListElem
+  | LowestElem    -> LowestElem
+  | HighestElem   -> HighestElem
+
+and map_tid (fs:('info,'a) map_ops_t) (info:'info) (t:tid) : tid =
+  match t with
+  | VarTh v      -> VarTh (fs.var_f fs info v)
+  | NoTid        -> NoTid
+  | CellLockId c -> CellLockId (fs.cell_f fs info c)
+
+and map_int (fs:('info,'a) map_ops_t) (info:'info) (i:integer) : integer =
+  match i with
+  | IntVal j -> IntVal j
+  | VarInt v -> VarInt (fs.var_f fs info v)
+  | IntNeg j -> IntNeg (fs.int_f fs info j)
+  | IntAdd (j1,j2) -> IntAdd (fs.int_f fs info j1, fs.int_f fs info j2)
+  | IntSub (j1,j2) -> IntSub (fs.int_f fs info j1, fs.int_f fs info j2)
+  | IntMul (j1,j2) -> IntMul (fs.int_f fs info j1, fs.int_f fs info j2)
+  | IntDiv (j1,j2) -> IntDiv (fs.int_f fs info j1, fs.int_f fs info j2)
+
+and map_cell (fs:('info,'a) map_ops_t) (info:'info) (c:cell) : cell =
+  match c with
+  | VarCell v      -> VarCell (fs.var_f fs info v)
+  | Error          -> Error
+  | MkCell(e,a,th) -> MkCell(fs.elem_f fs info e,
+                             fs.addr_f fs info a,
+                             fs.tid_f fs info th)
+  | CellLock(c,th) -> CellLock (fs.cell_f fs info c, fs.tid_f fs info th)
+  | CellUnlock(c)  -> CellUnlock (fs.cell_f fs info c)
+  | CellAt(m,a)    -> CellAt (fs.mem_f fs info m, fs.addr_f fs info a)
+
+and map_mem (fs:('info,'a) map_ops_t) (info:'info) (m:mem) : mem =
+  match m with
+  | VarMem v      -> VarMem (fs.var_f fs info v)
+  | Emp           -> Emp
+  | Update(m,a,c) -> Update (fs.mem_f fs info m,
+                             fs.addr_f fs info a,
+                             fs.cell_f fs info c)
+
+and map_path (fs:('info,'a) map_ops_t) (info:'info) (p:path) : path =
+  match p with
+  | VarPath v        -> VarPath (fs.var_f fs info v)
+  | Epsilon          -> Epsilon
+  | SimplePath(a)    -> SimplePath (fs.addr_f fs info a)
+  | GetPath(m,a1,a2) -> GetPath (fs.mem_f fs info m,
+                                 fs.addr_f fs info a1,
+                                 fs.addr_f fs info a2)
+
+and map_set (fs:('info,'a) map_ops_t) (info:'info) (s:set) : set =
+  match s with
+  | VarSet v       -> VarSet (fs.var_f fs info v)
+  | EmptySet       -> EmptySet
+  | Singl(a)       -> Singl (fs.addr_f fs info a)
+  | Union(s1,s2)   -> Union (fs.set_f fs info s1, fs.set_f fs info s2)
+  | Intr(s1,s2)    -> Intr (fs.set_f fs info s1, fs.set_f fs info s2)
+  | Setdiff(s1,s2) -> Setdiff (fs.set_f fs info s1, fs.set_f fs info s2)
+  | PathToSet(p)   -> PathToSet (fs.path_f fs info p)
+  | AddrToSet(m,a) -> AddrToSet (fs.mem_f fs info m, fs.addr_f fs info a)
+
+and map_setelem (fs:('info,'a) map_ops_t) (info:'info) (se:setelem) : setelem =
+  match se with
+  | VarSetElem v         -> VarSetElem (fs.var_f fs info v)
+  | EmptySetElem         -> EmptySetElem
+  | SinglElem(e)         -> SinglElem (fs.elem_f fs info e)
+  | UnionElem(st1,st2)   -> UnionElem (fs.setelem_f fs info st1,
+                                       fs.setelem_f fs info st2)
+  | IntrElem(st1,st2)    -> IntrElem (fs.setelem_f fs info st1,
+                                      fs.setelem_f fs info st2)
+  | SetToElems(s,m)      -> SetToElems (fs.set_f fs info s, fs.mem_f fs info m)
+  | SetdiffElem(st1,st2) -> SetdiffElem (fs.setelem_f fs info st1,
+                                         fs.setelem_f fs info st2)
+
+and map_setth (fs:('info,'a) map_ops_t) (info:'info) (sth:setth) : setth =
+  match sth with
+  | VarSetTh v         -> VarSetTh (fs.var_f fs info v)
+  | EmptySetTh         -> EmptySetTh
+  | SinglTh(th)        -> SinglTh (fs.tid_f fs info th)
+  | UnionTh(st1,st2)   -> UnionTh (fs.setth_f fs info st1,
+                                   fs.setth_f fs info st2)
+  | IntrTh(st1,st2)    -> IntrTh (fs.setth_f fs info st1,
+                                  fs.setth_f fs info st2)
+  | SetdiffTh(st1,st2) -> SetdiffTh (fs.setth_f fs info st1,
+                                     fs.setth_f fs info st2)
+
+and map_atom (fs:('info,'a) map_ops_t) (info:'info) (a:atom) : atom =
+  match a with
+  | Append(p1,p2,p3)       -> Append (fs.path_f fs info p1,
+                                      fs.path_f fs info p2,
+                                      fs.path_f fs info p3)
+  | Reach(m,a1,a2,p)       -> Reach (fs.mem_f fs info m,
+                                     fs.addr_f fs info a1,
+                                     fs.addr_f fs info a2,
+                                     fs.path_f fs info p)
+  | OrderList(m,a1,a2)     -> OrderList (fs.mem_f fs info m,
+                                         fs.addr_f fs info a1,
+                                         fs.addr_f fs info a2)
+  | In(a,s)                -> In (fs.addr_f fs info a, fs.set_f fs info s)
+  | SubsetEq(s1,s2)        -> SubsetEq (fs.set_f fs info s1,
+                                        fs.set_f fs info s2)
+  | InTh(th,st)            -> InTh (fs.tid_f fs info th, fs.setth_f fs info st)
+  | SubsetEqTh(st1,st2)    -> SubsetEqTh (fs.setth_f fs info st1,
+                                          fs.setth_f fs info st2)
+  | InElem(e,se)           -> InElem (fs.elem_f fs info e,
+                                      fs.setelem_f fs info se)
+  | SubsetEqElem(se1,se2)  -> SubsetEqElem (fs.setelem_f fs info se1,
+                                            fs.setelem_f fs info se2)
+  | Less(i1,i2)            -> Less (fs.int_f fs info i1, fs.int_f fs info i2)
+  | LessEq(i1,i2)          -> LessEq (fs.int_f fs info i1, fs.int_f fs info i2)
+  | Greater(i1,i2)         -> Greater (fs.int_f fs info i1, fs.int_f fs info i2)
+  | GreaterEq(i1,i2)       -> GreaterEq (fs.int_f fs info i1,
+                                         fs.int_f fs info i2)
+  | LessElem(e1,e2)        -> LessElem (fs.elem_f fs info e1,
+                                        fs.elem_f fs info e2)
+  | GreaterElem(e1,e2)     -> GreaterElem (fs.elem_f fs info e1,
+                                           fs.elem_f fs info e2)
+  | Eq((x,y))              -> Eq (fs.term_f fs info x, fs.term_f fs info y)
+  | InEq((x,y))            -> InEq (fs.term_f fs info x, fs.term_f fs info y)
+  | BoolVar v              -> BoolVar (fs.var_f fs info v)
+  | PC(pc,th,pr)           -> PC(pc, match th with
+                                     | V.Shared -> V.Shared
+                                     | V.Local t -> V.Local(fs.var_f fs info t),
+                                 pr)
+  | PCUpdate (pc,th)       -> PCUpdate (pc, fs.tid_f fs info th)
+  | PCRange(pc1,pc2,th,pr) -> PCRange (pc1, pc2,
+                                       match th with
+                                       | V.Shared -> V.Shared
+                                       | V.Local t -> V.Local(fs.var_f fs info t),
+                                       pr)
+
+and map_term (fs:('info,'a) map_ops_t) (info:'info) (t:term) : term =
+  match t with
+  | VarT   v          -> VarT (fs.var_f fs info v)
+  | SetT   s          -> SetT (fs.set_f fs info s)
+  | ElemT  e          -> ElemT (fs.elem_f fs info e)
+  | TidT  th          -> TidT (fs.tid_f fs info th)
+  | AddrT  a          -> AddrT (fs.addr_f fs info a)
+  | CellT  c          -> CellT (fs.cell_f fs info c)
+  | SetThT st         -> SetThT (fs.setth_f fs info st)
+  | SetElemT se       -> SetElemT (fs.setelem_f fs info se)
+  | PathT  p          -> PathT (fs.path_f fs info p)
+  | MemT   m          -> MemT (fs.mem_f fs info m)
+  | IntT   i          -> IntT (fs.int_f fs info i)
+  | VarUpdate(v,pc,t) -> VarUpdate (fs.var_f fs info v,
+                                    fs.tid_f fs info pc,
+                                    fs.term_f fs info t)
+
+
+
+let make_map ?(addr_f=map_addr)
+             ?(elem_f=map_elem)
+             ?(tid_f=map_tid)
+             ?(int_f=map_int)
+             ?(cell_f=map_cell)
+             ?(mem_f=map_mem)
+             ?(path_f=map_path)
+             ?(set_f=map_set)
+             ?(setelem_f=map_setelem)
+             ?(setth_f=map_setth)
+             ?(atom_f=map_atom)
+             ?(term_f=map_term)
+              (var_f :(('info,'a) map_ops_t -> 'info -> V.t -> V.t))
+    : ('info,'a) mapping_t =
+  let fs = {
+    addr_f = addr_f; elem_f = elem_f; tid_f = tid_f;
+    int_f = int_f; cell_f = cell_f; mem_f = mem_f;
+    path_f = path_f; set_f = set_f; setelem_f = setelem_f;
+    setth_f = setth_f; atom_f = atom_f; term_f = term_f;
+    base = base; concat = concat; var_f = var_f; } in
+  { addr_f = addr_f fs; elem_f = elem_f fs; tid_f = tid_f fs;
+    int_f = int_f fs; cell_f = cell_f fs; mem_f = mem_f fs;
+    path_f = path_f fs; set_f = set_f fs; setelem_f = setelem_f fs;
+    setth_f = setth_f fs; atom_f = atom_f fs; term_f = term_f fs;
+    var_f = var_f fs; }
+
+*)
+
+
+
+
 (* Set of variables *)
 
 let get_varset_from_param (v:V.t) : V.VarSet.t =
@@ -573,18 +803,18 @@ and get_varset_term t = match t with
                              (get_varset_from_param v)
 *)
 
-let varset_fs = Formula.make_fold
-                  Formula.GenericLiteralFold
+let varset_fs = F.make_fold
+                  F.GenericLiteralFold
                   (varset_fold.atom_f)
                   (fun info -> V.VarSet.empty)
                   V.VarSet.union
 
 
 let get_varset_from_conj (cf:conjunctive_formula) : V.VarSet.t =
-  Formula.conjunctive_formula_fold varset_fs () cf
+  F.conjunctive_formula_fold varset_fs () cf
 
 let get_varset_from_formula (phi:formula) : V.VarSet.t =
-  Formula.formula_fold varset_fs () phi
+  F.formula_fold varset_fs () phi
 
 
 let get_varset_of_sort_from_conj phi s =
@@ -632,17 +862,17 @@ let rec get_termset_atom (a:atom) : TermSet.t =
                                | V.Shared  -> TermSet.empty
                                | V.Local t -> add_list [TidT (VarTh t)])
 
-let termset_fs = Formula.make_fold
-                    Formula.GenericLiteralFold
+let termset_fs = F.make_fold
+                    F.GenericLiteralFold
                     (fun info a -> get_termset_atom a)
                     (fun info -> TermSet.empty)
                     TermSet.union
 
 let get_termset_from_conjformula (cf:conjunctive_formula) : TermSet.t =
-  Formula.conjunctive_formula_fold termset_fs () cf
+  F.conjunctive_formula_fold termset_fs () cf
 
 let get_termset_from_formula (phi:formula) : TermSet.t =
-  Formula.formula_fold termset_fs () phi
+  F.formula_fold termset_fs () phi
 
 
 let termset_of_sort (all:TermSet.t) (s:sort) : TermSet.t =
@@ -677,7 +907,7 @@ let termset_of_sort (all:TermSet.t) (s:sort) : TermSet.t =
 (*******************)
 (* FLAT NORMALIZED *)
 (*******************)
-
+(*
 let is_term_var t =
   match t with
       VarT(_)             -> true
@@ -735,23 +965,30 @@ let get_sort_from_term t =
     | MemT _           -> Mem
     | IntT _           -> Int
     | VarUpdate(v,_,_) -> (V.sort v)
+*)
   
+(*
 let terms_same_type a b =
   (get_sort_from_term a) = (get_sort_from_term b)
+*)
 
+(*
 let is_ineq_normalized a b =
   (terms_same_type a b) && (is_term_var a && is_term_var b)
 
 let is_eq_normalized a b =
   (terms_same_type a b) && (is_term_var a || is_term_var b)
+*)
 
 (* TODO: propagate equalities of vars x = y *)
 
 let is_flat_fold =
   make_fold (fun _ -> true) (&&) (fun _ _ _ -> true)
+(*
   ~term_f:(fun fs info t -> match t with
                             | VarUpdate _ -> true
                             | _ -> fold_term fs info t)
+*)
   ~atom_f:(fun fs info a -> match a with
                             | BoolVar _
                             | PC _
@@ -885,14 +1122,14 @@ and is_atom_flat a =
 *)
 
 
-let is_flat_fs = Formula.make_fold
-                   Formula.GenericLiteralFold
+let is_flat_fs = F.make_fold
+                   F.GenericLiteralFold
                    (is_flat_fold.atom_f)
                    (fun info -> false)
                    (&&)
 
 let is_literal_flat (l:literal) : bool =
-  Formula.literal_fold is_flat_fs () l
+  F.literal_fold is_flat_fs () l
 
 
 (*******************)
@@ -1071,13 +1308,13 @@ and term_to_str expr =
 
 
 and literal_to_str (l:literal) : string =
-  Formula.literal_to_str atom_to_str l
+  F.literal_to_str atom_to_str l
 
 let conjunctive_formula_to_str (cf:conjunctive_formula) : string =
-  Formula.conjunctive_formula_to_str atom_to_str cf
+  F.conjunctive_formula_to_str atom_to_str cf
 
 and formula_to_str (phi:formula) : string =
-  Formula.formula_to_str atom_to_str phi
+  F.formula_to_str atom_to_str phi
 
 let sort_to_str s =
   match s with
@@ -1176,6 +1413,9 @@ let voc_fold =
   make_fold (fun _ -> ThreadSet.empty)
             (ThreadSet.union)
             (fun _ _ v -> get_tid_in v)
+  ~tid_f:(fun fs info th -> match th with
+                            | VarTh v -> ThreadSet.add th (get_tid_in v)
+                            | _ -> fold_tid fs info th)
   ~term_f:(fun fs info t -> match t with
                             | VarT v -> let v_set = get_tid_in v in
                                         (match (V.sort v) with
@@ -1355,18 +1595,18 @@ and voc_ineq ((t1,t2):diseq) : ThreadSet.t = (voc_term t1) @@ (voc_term t2)
 
 let voc_term (t:term) : ThreadSet.t = voc_fold.term_f () t
 
-let voc_fs = Formula.make_fold
-               Formula.GenericLiteralFold
+let voc_fs = F.make_fold
+               F.GenericLiteralFold
                (voc_fold.atom_f)
                (fun info -> ThreadSet.empty)
                (ThreadSet.union)
 
-let voc_conjunctive_formula (cf:atom Formula.conjunctive_formula) : ThreadSet.t =
-  Formula.conjunctive_formula_fold voc_fs () cf
+let voc_conjunctive_formula (cf:atom F.conjunctive_formula) : ThreadSet.t =
+  F.conjunctive_formula_fold voc_fs () cf
 
 
-let voc_formula (phi:atom Formula.formula) : ThreadSet.t =
-  Formula.formula_fold voc_fs () phi
+let voc_formula (phi:atom F.formula) : ThreadSet.t =
+  F.formula_fold voc_fs () phi
 
 
 let voc (phi:formula) : ThreadSet.t =
@@ -1518,14 +1758,14 @@ let required_sorts (phi:formula) : sort list =
     | IntT i             -> req_i i
     | VarUpdate (v,t,tr) -> append (V.sort v) [req_t t;req_term tr] in
 
-  let req_fs = Formula.make_fold
-                 Formula.GenericLiteralFold
+  let req_fs = F.make_fold
+                 F.GenericLiteralFold
                  (fun info a -> req_atom a)
                  (fun info -> empty)
                  union in
 
   let req_f (phi:formula) : SortSet.t =
-    Formula.formula_fold req_fs () phi
+    F.formula_fold req_fs () phi
 
   in
     SortSet.elements (req_f phi)
@@ -1662,14 +1902,14 @@ let special_ops (phi:formula) : special_op_t list =
     | VarUpdate (_,t,tr) -> list_union [ops_t t;ops_term tr] in
 
 
-  let ops_fs = Formula.make_fold
-                 Formula.GenericLiteralFold
+  let ops_fs = F.make_fold
+                 F.GenericLiteralFold
                  (fun info a -> ops_atom a)
                  (fun info -> empty)
                  union in
 
   let ops_f (phi:formula) : OpsSet.t =
-    Formula.formula_fold ops_fs () phi
+    F.formula_fold ops_fs () phi
 
   in
     OpsSet.elements (ops_f phi)
@@ -1679,26 +1919,26 @@ let special_ops (phi:formula) : special_op_t list =
 (* NOTE: I am not considering the possibility of having a1=a2 \/ a1=a3 in the formula *)
 let rec get_addrs_eqs (phi:formula) : ((addr*addr) list * (addr*addr) list) =
   match phi with
-  | Formula.Literal l -> get_addrs_eqs_lit l
-  | Formula.And (f1,f2) -> let (es1,is1) = get_addrs_eqs f1 in
+  | F.Literal l -> get_addrs_eqs_lit l
+  | F.And (f1,f2) -> let (es1,is1) = get_addrs_eqs f1 in
                            let (es2,is2) = get_addrs_eqs f2 in
                              (es1@es2, is1@is2)
-  | Formula.Not f -> let (es,is) = get_addrs_eqs f in (is,es)
+  | F.Not f -> let (es,is) = get_addrs_eqs f in (is,es)
   | _ -> ([],[])
 
 and get_addrs_eqs_conj (cf:conjunctive_formula) : ((addr*addr) list * (addr*addr) list) =
   match cf with
-  | Formula.TrueConj -> ([],[])
-  | Formula.FalseConj -> ([],[])
-  | Formula.Conj xs -> List.fold_left (fun (es,is) l ->
+  | F.TrueConj -> ([],[])
+  | F.FalseConj -> ([],[])
+  | F.Conj xs -> List.fold_left (fun (es,is) l ->
                          let (es',is') = get_addrs_eqs_lit l in
                          (es@es', is@is')
                        ) ([],[]) xs
 
 and get_addrs_eqs_lit (l:literal) : ((addr*addr) list * (addr*addr) list) =
   match l with
-  | Formula.Atom a -> get_addrs_eqs_atom a
-  | Formula.NegAtom a -> let (es,is) = get_addrs_eqs_atom a in (is,es)
+  | F.Atom a -> get_addrs_eqs_atom a
+  | F.NegAtom a -> let (es,is) = get_addrs_eqs_atom a in (is,es)
 
 and get_addrs_eqs_atom (a:atom) : ((addr*addr) list * (addr*addr) list) =
   match a with
@@ -1718,10 +1958,10 @@ let no_tid : tid = NoTid
 let to_str (phi:formula) : string = formula_to_str phi
 
 let ineq_tid (t1:tid) (t2:tid) : formula =
-  Formula.atom_to_formula (InEq(TidT t1, TidT t2))
+  F.atom_to_formula (InEq(TidT t1, TidT t2))
 
 let pc_form (i:int) (scope:V.shared_or_local) (pr:bool) : formula =
-  Formula.atom_to_formula (PC(i,scope,pr))
+  F.atom_to_formula (PC(i,scope,pr))
 
 let gen_fresh_tids (set:ThreadSet.t) (n:int) : ThreadSet.t =
   let gen_cand i = VarTh (build_var ("k_" ^ (string_of_int i))

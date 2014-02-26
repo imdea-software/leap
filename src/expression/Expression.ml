@@ -1623,13 +1623,20 @@ let gen_fresh_tids (set:ThreadSet.t) (n:int) : ThreadSet.t =
     find 0
 *)
 
-(*
+let gen_fresh_tid (set:ThreadSet.t) : tid =
+  let rec find n =
+    let th_cand_id = sprintf "k_%i" n in
+    let th_cand = VarTh (build_global_var th_cand_id Tid)in
+      if ThreadSet.mem th_cand set then find (n+1) else th_cand
+  in
+    find 0
+
 let rec gen_fresh_tid_set (set:ThreadSet.t) (n:int) : ThreadSet.t =
   match n with
     0 -> ThreadSet.empty
   | m -> let new_th = gen_fresh_tid set in
            ThreadSet.add new_th (gen_fresh_tid_set (ThreadSet.add new_th set) (m-1))
-*)
+
 
 
 (* PRINTING FUNCTIONS *)

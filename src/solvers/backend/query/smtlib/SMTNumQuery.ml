@@ -2,7 +2,7 @@ open NumQuery
 open LeapLib
 
 
-module YicesNumQuery : NUM_QUERY =
+module SMTNumQuery : NUM_QUERY =
 
 struct
   module E=Expression
@@ -13,7 +13,7 @@ struct
   module F = Formula
 
 
-  exception NotSupportedInYices of string
+  exception NotSupportedInSMT of string
   exception UntypedVariable of string
   exception Not_implemented of string
 
@@ -29,11 +29,11 @@ struct
 
 
   (* Sort names *)
-  let int_s : string = "int"
-  let thid_s : string = "thid"
-  let set_s : string = "set"
-  let bool_s : string = "bool"
-  let loc_s : string = "int"
+  let int_s : string = "Int"
+  let tid_s : string = "Tid"
+  let set_s : string = "Set"
+  let bool_s : string = "Bool"
+  let loc_s : string = "Int"
 
 
   (* Information storage *)
@@ -47,15 +47,13 @@ struct
 
   (* Translation funtions *)
   let int_varid_to_str (v:E.V.id) : string =
-    let _ = GM.sm_decl_const sort_map v GM.int_s
-    in
-      Printf.sprintf "(define %s::%s)\n" v int_s
+    GM.sm_decl_const sort_map v GM.int_s;
+    "(declare-fun " ^v^ " () " ^int_s^ ")\n"
 
 
   let int_local_varid_to_str (v:E.V.id) : string =
-    let _ = GM.sm_decl_fun sort_map v [GM.tid_s] [GM.int_s]
-    in
-      Printf.sprintf "(define %s::(-> %s %s))\n" v thid_s int_s
+    GM.sm_decl_fun sort_map v [GM.tid_s] [GM.int_s];
+    "(declare-fun " ^v^ " () (Array " ^tid_s^ " " ^int_s^ "))\n"
 
 
   let int_var_to_str (v:NE.V.t) : string =
@@ -76,12 +74,11 @@ struct
                            NE.V.VarSet.add (NE.V.unparam v) vs)
                         ) (NE.ThreadSet.empty, NE.V.VarSet.empty) vl in
     let th_str = if NE.ThreadSet.cardinal t_set <> 0 then
-                   "(define-type " ^thid_s^ ")\n" ^
+                   "(define-sort " ^tid_s^ " () " ^int_s^")\n" ^
                       NE.ThreadSet.fold (fun t str ->
                         let t_str = tid_to_str t in
-                        let _ = GM.sm_decl_const sort_map t_str GM.tid_s
-                        in
-                          str ^ (Printf.sprintf "(define %s::%s)\n" t_str thid_s)
+                        GM.sm_decl_const sort_map t_str GM.tid_s;
+                        str ^ ("(declare-fun " ^t_str^ " () " ^tid_s^ ")\n")
                    ) t_set ""
                  else
                    ""
@@ -105,19 +102,19 @@ struct
                  | NE.V.Local t -> "_" ^ (NE.V.to_str t) in
     let p_str = procedure_name_to_append (NE.V.scope v)
     in
-      Printf.sprintf "%s%s%s%s" p_str (NE.V.id v) th_str pr_str
+      p_str ^ (NE.V.id v) ^ th_str ^ pr_str
 
 
   and var_sort_to_str (v:NE.V.t) : string =
     match (NE.V.sort v) with
     | NE.Int  -> int_s
     | NE.Set  -> set_s
-    | NE.Tid -> thid_s
+    | NE.Tid -> tid_s
 
 
   and var_sort_to_gmsort_str (v:NE.V.t) : string =
     match (NE.V.sort v) with
-      NE.Int  -> GM.int_s
+    | NE.Int  -> GM.int_s
     | NE.Set  -> GM.set_s
     | NE.Tid -> GM.tid_s
 
@@ -128,7 +125,7 @@ struct
     let gm_sort_str = var_sort_to_gmsort_str v in
     let _ = GM.sm_decl_const sort_map v_str gm_sort_str
     in
-      Printf.sprintf "(define %s::%s)\n" v_str sort_str
+      "(declare-fun " ^v_str^ " () " ^sort_str^ ")\n"
 
 
   and tid_to_str (t:NE.tid) : string =
@@ -146,40 +143,39 @@ struct
   let tid_variable_to_str (th:NE.tid) : string =
     let t_str = tid_to_str th in
     GM.sm_decl_const sort_map t_str GM.tid_s;
-    ("(define " ^t_str^ "::" ^thid_s^ ")\n")
+    ("(declare-fun " ^t_str^ " () " ^tid_s^ ")\n" ^
+      "(assert (and (<= 0 (select " ^Conf.pc_name^ " " ^t_str^ ")) (<= (select " ^Conf.pc_name^ " " ^t_str^ ") " ^(string_of_int (!prog_lines))^ ")))\n" ^
+      "(assert (and (<= 0 (select " ^pc_prime_name^ " " ^t_str^ ")) (<= (select " ^pc_Prime_name^ " " ^t_str^ ") " ^(string_of_int (!prog_lines))^ ")))\n")
+
 
 
   let local_var_to_str (v:NE.V.t) : string =
     let v_str = variable_to_str v in
     let v_sort = var_sort_to_str v in
     let gm_v_sort = var_sort_to_gmsort_str v in
-    let _ = GM.sm_decl_fun sort_map v_str [GM.tid_s] [gm_v_sort]
-    in
-      Printf.sprintf "(define %s::(-> %s %s))\n" v_str thid_s v_sort
+    GM.sm_decl_fun sort_map v_str [GM.tid_s] [gm_v_sort];
+    "(declare-fun " ^v_str^ " () (Array " ^tid_s^ " " ^v_sort^ "))\n"
 
 
-  let yices_string_of_pos (pc:(int * NE.V.shared_or_local * bool)) : string =
+  let smt_string_of_pos (pc:(int * NE.V.shared_or_local * bool)) : string =
     let (i, th, pr) = pc in
     let pc_str = if pr then pc_prime_name else Conf.pc_name in
     let th_str = shared_or_local_to_str th
-    in
-      Printf.sprintf "(= (%s %s) %i)" pc_str th_str i
+    "(= (select " ^pc_str^ " " ^th_str^ ") " ^(string_of_int i)^ ")"
 
 
-  let yices_string_of_posrange (pc:(int * int * NE.V.shared_or_local * bool)) : string =
+  let smt_string_of_posrange (pc:(int * int * NE.V.shared_or_local * bool)) : string =
     let (i, j, th, pr) = pc in
     let pc_str = if pr then pc_prime_name else Conf.pc_name in
     let th_str = shared_or_local_to_str th
     in
-      Printf.sprintf "(and (<= %i (%s %s)) (<= (%s %s) %i))"
-          i pc_str th_str pc_str th_str j
+      "(and (<= " ^(string_of_int i)^ " (select " ^pc_str^ " " ^th_str^ ")) (<= (select " ^pc_str^ " " ^th_str^ ") " ^(string_of_int j)^ "))"
 
 
-  let yices_string_of_posupd (pc:(int * NE.tid)) : string =
+  let smt_string_of_posupd (pc:(int * NE.tid)) : string =
     let (i, th) = pc
     in
-      Printf.sprintf "(= %s (update %s (%s) %i))" pc_prime_name Conf.pc_name
-                                           (tid_to_str th) i
+      "(= " ^pc_prime_name^ " (store " ^Conf.pc_name^ " " ^(tid_to_str th)^ " " ^()string_of_int i^ "))"
 
 
   let variable_invocation_to_str (v:NE.V.t) : string =
@@ -188,9 +184,9 @@ struct
     let pr_str = if (NE.V.is_primed v) then "'" else ""
     in
       match (NE.V.parameter v) with
-      | NE.V.Shared  -> Printf.sprintf " %s%s%s%s" p_str (NE.V.id v) th_str pr_str
+      | NE.V.Shared  -> " " ^ p_str ^ (NE.V.id v) ^ th_str ^ pr_str
   (* For LEAP *)
-      | NE.V.Local _ -> Printf.sprintf " (%s%s%s %s)" p_str (NE.V.id v) pr_str th_str
+      | NE.V.Local _ -> " (select " ^ p_str ^ (NE.V.id v) ^ pr_str ^ " " ^ th_str ^ ")"
   (* For numinv *)
   (*    | NE.V.Local _ -> Printf.sprintf " %s%s%s_%s" p_str (NE.V.id v) pr_str th_str *)
 
@@ -208,50 +204,51 @@ struct
 
   (************************** Support for sets **************************)
 
-  let yices_type_decl (prog_lines:int) (buf:Buffer.t) : unit =
-    B.add_string buf ("(define-type " ^thid_s^ ")\n");
-    B.add_string buf (Printf.sprintf "(define-type %s (-> %s %s))\n"
-                        set_s int_s bool_s)
+  let smt_type_decl (prog_lines:int) (buf:Buffer.t) : unit =
+    B.add_string buf ("(define-sort " ^tid_s^ " () " ^int_s^ ")\n");
+    B.add_string buf (Printf.sprintf "(define-sort " ^set_s^ " () (Array " ^int_s^ " " ^bool_s^ "))\n")
 (*
     B.add_string buf (Printf.sprintf "(define-type %s (subrange 1 %i))\n"
                         loc_s prog_lines)
 *)
 
 
-  let yices_undefined_decl (buf:Buffer.t) : unit =
+  let smt_undefined_decl (buf:Buffer.t) : unit =
     let _ = GM.sm_decl_const sort_map undefInt GM.int_s in
-      B.add_string buf ("(define " ^ undefInt ^ "::" ^ int_s ^ ")\n");
-      B.add_string buf ("(define is_legal::(-> " ^int_s^ " " ^bool_s^ ")\n" ^
-                        "  (lambda (e::" ^int_s^ ") (/= e " ^
-                            undefInt ^ ")))\n")
+      B.add_string buf ("(declare-fun " ^ undefInt ^ " () " ^ int_s ^ ")\n");
+      B.add_string buf ("(define-fun is_legal ((e " ^int_s^ ")) " ^bool_s^ "\n" ^
+                        "  (not (= e " ^undefInt^ ")))\n")
 
 
   (* (define emp::set)               *)
   (*   (lambda (a::address) (false)) *)
-  let yices_emp_def (buf:Buffer.t) : unit =
+  let smt_emp_def (buf:Buffer.t) (all_int_vars:string list) : unit =
     B.add_string buf
-      ("(define emp::" ^set_s^ "\n" ^
-       "  (lambda (a::" ^int_s ^ ") false))\n")
+      ("(declare-fun empty () " ^set_s^ ")\n");
+    List.iter (fun v ->
+      B.add_string buf
+        ("(assert (= (empty " ^v^ ") false)\n")
+    ) all_int_vars
+
 
   (* (define singleton::(-> int set)       *)
   (*     (lambda (a::int)                  *)
   (*         (lambda (b::int)              *)
   (*             (= a b))))                *)
-  let yices_singleton_def (buf:Buffer.t) : unit =
+  let smt_singleton_def (buf:Buffer.t) : unit =
     B.add_string buf
-      ( "(define singleton::(-> " ^int_s^ " " ^set_s^ ")\n" ^
-        "    (lambda (a::" ^int_s^ ")\n" ^
-        "        (lambda (b::" ^int_s^ ")\n" ^
-        "            (= a b))))\n" )
+      ( "(define-fun singleton ((i " ^int_s^ ")) " ^set_s^ "\n" ^
+        "  (store empty i true))\n")
+
 
   (* (define union::(-> set set set)        *)
   (*     (lambda (s::set r::set)            *)
   (*         (lambda (a::int)               *)
   (*             (or (s a) (r a)))))        *)
-  let yices_union_def (buf:Buffer.t) : unit =
+  let smt_union_def (buf:Buffer.t) : unit =
     B.add_string buf
-      ( "(define union::(-> " ^set_s^ " " ^set_s^ " " ^set_s^ ")\n" ^
-        "    (lambda (s::" ^set_s^ " r::" ^set_s^ ")\n" ^
+      ( "(declare-fun union (" ^set_s^ " " ^set_s^ ") " ^set_s^ ")\n" ^
+        "(assert (forall ((s1 set) (s2 set) (    (lambda (s::" ^set_s^ " r::" ^set_s^ ")\n" ^
         "        (lambda (a::" ^int_s^ ")\n" ^
         "            (or (s a) (r a)))))\n" )
 
@@ -259,7 +256,7 @@ struct
   (*     (lambda (s::set r::set)            *)
   (*         (lambda (a::int)               *)
   (*             (and (s a) (not (r a)))))) *)
-  let yices_setdiff_def (buf:Buffer.t) : unit =
+  let smt_setdiff_def (buf:Buffer.t) : unit =
     B.add_string buf
       ( "(define setdiff::(-> " ^set_s^ " " ^set_s^ " " ^set_s^ ")\n" ^
         "    (lambda (s::" ^set_s^ " r::" ^set_s^ ")\n" ^
@@ -270,7 +267,7 @@ struct
   (*     (lambda (s::set r::set) *)
   (*         (lambda (a::address) *)
   (*             (and (s a) (r a))))) *)
-  let yices_intersection_def (buf:Buffer.t) : unit =
+  let smt_intersection_def (buf:Buffer.t) : unit =
     B.add_string buf
     ("(define intersection::(-> " ^set_s^ " " ^set_s^ " " ^set_s^ ")\n" ^
      "   (lambda (s::" ^set_s^ " r::" ^set_s^ ")\n" ^
@@ -286,7 +283,7 @@ struct
   (*          (if (s1 a3) (s2 a3))        *)
   (*          (if (s1 a4) (s2 a4))        *)
   (*          (if (s1 a5) (s2 a5)))))     *)
-  let yices_subseteq_def (vars_rep:string list) (buf:Buffer.t) : unit =
+  let smt_subseteq_def (vars_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
         ("(define subseteq::(-> " ^set_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
          "  (lambda (s1::" ^set_s^ " s2::" ^set_s^ ")\n" ^
@@ -298,7 +295,7 @@ struct
     B.add_string buf ")))\n"
 
 
-  let yices_is_min_def (vars_rep:string list) (buf:Buffer.t) : unit =
+  let smt_is_min_def (vars_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
         ("(define is_min::(-> " ^int_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
          "  (lambda (int_v::" ^int_s^ " set_v::" ^set_s^ ")\n" ^
@@ -310,7 +307,7 @@ struct
     B.add_string buf ")))\n"
 
 
-  let yices_is_max_def (vars_rep:string list) (buf:Buffer.t) : unit =
+  let smt_is_max_def (vars_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
         ("(define is_max::(-> " ^int_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
          "  (lambda (int_v::" ^int_s^ " set_v::" ^set_s^ ")\n" ^
@@ -322,14 +319,14 @@ struct
     B.add_string buf ")))\n"
 
 
-  let yices_is_in_def (buf:Buffer.t) : unit =
+  let smt_is_in_def (buf:Buffer.t) : unit =
     B.add_string buf
     ("(define is_in::(-> " ^int_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
      "   (lambda (int_v::" ^int_s^ " set_v::" ^set_s^ ")\n" ^
      "       (set_v int_v)))\n")
 
 
-  let yices_min_def (vars_rep:string list) (buf:Buffer.t) : unit =
+  let smt_min_def (vars_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
     ("(define setmin::(-> " ^set_s^ " " ^int_s^ ")\n" ^
      "   (lambda (set_v::" ^set_s^ ")\n" ^
@@ -341,7 +338,7 @@ struct
      "))\n")
 
 
-  let yices_max_def (vars_rep:string list) (buf:Buffer.t) : unit =
+  let smt_max_def (vars_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
     ("(define setmax::(-> " ^set_s^ " " ^int_s^ ")\n" ^
      "   (lambda (set_v::" ^set_s^ ")\n" ^
@@ -357,17 +354,17 @@ struct
 
   (************************ Preamble definitions ************************)
 
-  let yices_pc_def (buf:Buffer.t) : unit =
+  let smt_pc_def (buf:Buffer.t) : unit =
     let _ = GM.sm_decl_fun sort_map Conf.pc_name [GM.tid_s] [GM.loc_s] in
     let _ = GM.sm_decl_fun sort_map pc_prime_name [GM.tid_s] [GM.loc_s]
     in
       B.add_string buf ("(define " ^Conf.pc_name^
-                          "::(-> " ^thid_s^ " " ^loc_s^ "))\n");
+                          "::(-> " ^tid_s^ " " ^loc_s^ "))\n");
       B.add_string buf ("(define " ^pc_prime_name^
-                          "::(-> " ^thid_s^ " " ^loc_s^ "))\n")
+                          "::(-> " ^tid_s^ " " ^loc_s^ "))\n")
 
 
-  let yices_aux_int_def (cutoff:int) (buf:Buffer.t) : unit =
+  let smt_aux_int_def (cutoff:int) (buf:Buffer.t) : unit =
     let i_list = LeapLib.rangeList 1 cutoff in
     List.iter (fun i ->
       let i_name = aux_int ^ string_of_int i in
@@ -376,7 +373,7 @@ struct
     ) i_list
 
 
-  let yices_legal_values (global_vars:NE.V.t list)
+  let smt_legal_values (global_vars:NE.V.t list)
                          (local_vars:NE.V.t list)
                          (voc:NE.tid list)
                          (buf:Buffer.t) : unit =
@@ -395,11 +392,11 @@ struct
 
 
   (* TODO: Verify, if no set is defined, then do not include the preamble for sets *)
-  let yices_preamble (buf:Buffer.t)
-                     (voc:NE.tid list)
-                     (cutoff:int)
-                     (gbl_int_vars:NE.V.t list)
-                     (lcl_int_vars:NE.V.t list) : unit =
+  let smt_preamble (buf:Buffer.t)
+                   (voc:NE.tid list)
+                   (cutoff:int)
+                   (gbl_int_vars:NE.V.t list)
+                   (lcl_int_vars:NE.V.t list) : unit =
     let loc_vars_str = List.flatten $ List.map (fun t ->
                          List.map (fun v ->
                            variable_invocation_to_str(NE.V.set_param v (NE.V.Local (NE.voc_to_var t)))
@@ -414,21 +411,22 @@ struct
                            variable_invocation_to_str i_var
                        ) (LeapLib.rangeList 1 cutoff) in
     let all_vars_str = glb_vars_str @ loc_vars_str @ aux_vars_str
+    B.add_string buf "(set-logic QF_AUFLIA)\n";
     in
-      yices_undefined_decl             buf;
-      yices_aux_int_def cutoff         buf;
-      yices_emp_def                    buf;
-      yices_singleton_def              buf;
-      yices_union_def                  buf;
-      yices_setdiff_def                buf;
-      yices_intersection_def           buf;
-      yices_subseteq_def all_vars_str  buf;
-      yices_is_min_def all_vars_str    buf;
-      yices_is_max_def all_vars_str    buf;
-      yices_is_in_def                  buf;
-      yices_min_def all_vars_str       buf;
-      yices_max_def all_vars_str       buf;
-      yices_pc_def                     buf
+      smt_undefined_decl             buf;
+      smt_aux_int_def cutoff         buf;
+      smt_emp_def                    buf all_vars_str;
+      smt_singleton_def              buf;
+      smt_union_def                  buf all_vars_str;
+      smt_setdiff_def                buf;
+      smt_intersection_def           buf;
+      smt_subseteq_def all_vars_str  buf;
+      smt_is_min_def all_vars_str    buf;
+      smt_is_max_def all_vars_str    buf;
+      smt_is_in_def                  buf;
+      smt_min_def all_vars_str       buf;
+      smt_max_def all_vars_str       buf;
+      smt_pc_def                     buf
 
 
   (************************ Preamble definitions ************************)
@@ -447,17 +445,17 @@ struct
     | NE.FunUpd (f,th,i) ->
         let f_str = fun_to_str f in
         let th_str = tid_to_str th in
-        let i_str = yices_string_of_term i
+        let i_str = smt_string_of_term i
         in
           Printf.sprintf "(update %s (%s) %s)" f_str th_str i_str
 
 
-  and yices_string_of_integer (t:NE.integer) : string =
+  and smt_string_of_integer (t:NE.integer) : string =
     let constanttostr t =
       match t with
           NE.Val(n) -> string_of_int n
-        | _ -> raise(NotSupportedInYices(NE.integer_to_str t)) in
-    let tostr = yices_string_of_integer in
+        | _ -> raise(NotSupportedInSMT(NE.integer_to_str t)) in
+    let tostr = smt_string_of_integer in
       match t with
         NE.Val(n)       -> " " ^ string_of_int n
       | NE.Var(v)       -> variable_invocation_to_str v
@@ -466,32 +464,32 @@ struct
       | NE.Sub(x,y)     -> " (- " ^ (tostr x) ^ (tostr y) ^ ")"
       | NE.Mul(x,y)     -> " (* " ^ (tostr x) ^ (tostr y) ^ ")"
       | NE.Div(x,y)     -> " (/ " ^ (tostr x) ^ (tostr y) ^ ")"
-      | NE.ArrayRd(_,_) -> raise(NotSupportedInYices(NE.integer_to_str t))
-      | NE.SetMin(s)    -> " (setmin " ^ yices_string_of_set s ^ ")"
-      | NE.SetMax(s)    -> " (setmax " ^ yices_string_of_set s ^ ")"
+      | NE.ArrayRd(_,_) -> raise(NotSupportedInSMT(NE.integer_to_str t))
+      | NE.SetMin(s)    -> " (setmin " ^ smt_string_of_set s ^ ")"
+      | NE.SetMax(s)    -> " (setmax " ^ smt_string_of_set s ^ ")"
 
-  and yices_string_of_set (s:NE.set) : string =
-    let yices_int = yices_string_of_integer in
-    let yices_set = yices_string_of_set in
+  and smt_string_of_set (s:NE.set) : string =
+    let smt_int = smt_string_of_integer in
+    let smt_set = smt_string_of_set in
     match s with
       NE.VarSet (v)   -> variable_invocation_to_str v
-    | NE.EmptySet     -> " emp"
-    | NE.Singl i      -> Printf.sprintf "(singleton %s)" (yices_int i)
-    | NE.Union(s1,s2) -> Printf.sprintf "(union %s %s)" (yices_set s1) (yices_set s2)
-    | NE.Intr(s1,s2)  -> Printf.sprintf "(intersection %s %s)" (yices_set s1) (yices_set s2)
-    | NE.Diff(s1,s2)  -> Printf.sprintf "(setdiff %s %s)" (yices_set s1) (yices_set s2)
+    | NE.EmptySet     -> " empty"
+    | NE.Singl i      -> Printf.sprintf "(singleton %s)" (smt_int i)
+    | NE.Union(s1,s2) -> Printf.sprintf "(union %s %s)" (smt_set s1) (smt_set s2)
+    | NE.Intr(s1,s2)  -> Printf.sprintf "(intersection %s %s)" (smt_set s1) (smt_set s2)
+    | NE.Diff(s1,s2)  -> Printf.sprintf "(setdiff %s %s)" (smt_set s1) (smt_set s2)
 
 
-  and yices_string_of_term (t:NE.term) : string =
+  and smt_string_of_term (t:NE.term) : string =
     match t with
-      NE.IntV i -> yices_string_of_integer i
-    | NE.SetV s -> yices_string_of_set s
+      NE.IntV i -> smt_string_of_integer i
+    | NE.SetV s -> smt_string_of_set s
 
 
-  and yices_string_of_atom a =
-    let int_tostr = yices_string_of_integer in
-    let set_tostr = yices_string_of_set in
-    let term_tostr = yices_string_of_term in
+  and smt_string_of_atom a =
+    let int_tostr = smt_string_of_integer in
+    let set_tostr = smt_string_of_set in
+    let term_tostr = smt_string_of_term in
       match a with
         NE.Less(x,y)      -> " (< "  ^ (int_tostr x) ^ (int_tostr y) ^ ")"
       | NE.Greater(x,y)   -> " (> "  ^ (int_tostr x) ^ (int_tostr y) ^ ")"
@@ -510,19 +508,19 @@ struct
                                             (fun_to_str y) ^ ")"
       | NE.FunInEq(x,y)   -> " (/= " ^ (fun_to_str x) ^ " " ^
                                             (fun_to_str y) ^ ")"
-      | NE.PC (i,th,pr)   -> " " ^ yices_string_of_pos (i,th,pr) ^ " "
-      | NE.PCUpdate(i,th) -> " " ^ yices_string_of_posupd (i,th) ^ " "
-      | NE.PCRange (i,j,th,pr) -> " " ^ yices_string_of_posrange (i,j,th,pr) ^ " "
+      | NE.PC (i,th,pr)   -> " " ^ smt_string_of_pos (i,th,pr) ^ " "
+      | NE.PCUpdate(i,th) -> " " ^ smt_string_of_posupd (i,th) ^ " "
+      | NE.PCRange (i,j,th,pr) -> " " ^ smt_string_of_posrange (i,j,th,pr) ^ " "
 
-  and yices_string_of_literal l =
+  and smt_string_of_literal l =
     match l with
-      F.Atom a    -> yices_string_of_atom a
-    | F.NegAtom a -> "(not "^ yices_string_of_atom a ^")"
+      F.Atom a    -> smt_string_of_atom a
+    | F.NegAtom a -> "(not "^ smt_string_of_atom a ^")"
 
-  and yices_string_of_formula  phi =
-    let tostr = yices_string_of_formula in
+  and smt_string_of_formula  phi =
+    let tostr = smt_string_of_formula in
       match phi with
-        F.Literal(l)   -> yices_string_of_literal l
+        F.Literal(l)   -> smt_string_of_literal l
       | F.True         -> " true "
       | F.False        -> " false "
       | F.And(a,b)     -> " (and " ^ (tostr a) ^ (tostr b) ^ ")"
@@ -538,7 +536,7 @@ struct
                     | NE.VarTh v -> (NE.V.id v)
                     | NE.NoTid  -> "NoThread"
                   ) voc in
-    Printf.sprintf "(define-type %s (scalar %s))\n" thid_s
+    Printf.sprintf "(define-type %s (scalar %s))\n" tid_s
                     (String.concat " " id_list)
 
 
@@ -551,7 +549,7 @@ struct
     (*  if direct then *)
     let vars        = NE.all_vars phi in
     let var_str     = int_varlist_to_str vars in
-    let formula_str = "(assert " ^ (yices_string_of_formula phi) ^ ")\n(check)\n" in
+    let formula_str = "(assert " ^ (smt_string_of_formula phi) ^ ")\n(check)\n" in
       var_str ^ formula_str
 
 
@@ -567,7 +565,7 @@ struct
     let glb_int_vars   = filter_ints global_vars in
     let lcl_int_vars   = filter_ints local_vars in
     let buf            = B.create 1024 in
-    let _              = yices_type_decl !prog_lines buf in
+    let _              = smt_type_decl !prog_lines buf in
     let _              = List.iter (fun v ->
                            B.add_string buf (tid_variable_to_str v)
                          ) voc in
@@ -577,10 +575,10 @@ struct
     let _              = List.iter (fun v ->
                           B.add_string buf (local_var_to_str v)
                          ) local_vars in
-    let _              = yices_preamble buf voc cutoff
+    let _              = smt_preamble buf voc cutoff
                             glb_int_vars lcl_int_vars in
-    let _              = yices_legal_values global_vars local_vars voc buf in
-    let _              = B.add_string buf ("(assert " ^ (yices_string_of_formula phi) ^
+    let _              = smt_legal_values global_vars local_vars voc buf in
+    let _              = B.add_string buf ("(assert " ^ (smt_string_of_formula phi) ^
                                             ")\n(check)\n")
     in
       B.contents buf
@@ -589,7 +587,7 @@ struct
       (l : NE.literal) =
     let vars' = int_varlist_to_str vars in
     let f'    = int_formula_to_str f in
-    let l'    = yices_string_of_literal l
+    let l'    = smt_string_of_literal l
     in Printf.sprintf "%s\n(assert (not (=> %s %s)))\n(check)\n" vars' f' l'
 
 

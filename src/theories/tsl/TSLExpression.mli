@@ -176,6 +176,15 @@ module TermSet : Set.S with type elt = term
 module AtomSet : Set.S with type elt = atom
 module ThreadSet : Set.S with type elt = tid
 
+
+include GenericExpression.S
+  with type sort_t := sort
+  with type tid_t := tid
+  with type t := formula
+  with module V := V
+  with module ThreadSet := ThreadSet
+
+
 val build_var : ?fresh:bool ->
                 V.id ->
                 sort ->
@@ -207,7 +216,7 @@ val termset                     : formula -> TermSet.t
 val termset_from_conj           : conjunctive_formula -> TermSet.t
 val filter_termset_with_sort    : TermSet.t -> sort -> TermSet.t
 
-val voc_term : term -> ThreadSet.t
+(*val voc_term : term -> ThreadSet.t *)
 val voc : formula -> ThreadSet.t
 val voc_conjunctive_formula : conjunctive_formula -> ThreadSet.t
 val unprimed_voc : formula -> ThreadSet.t
