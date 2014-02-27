@@ -504,6 +504,268 @@ let make_fold ?(addr_f=fold_addr)
     var_f = var_f fs; }
 
 
+(**********  Mapping  ***************)
+
+type 'info map_ops_t =
+  {
+    var_f : 'info map_ops_t -> 'info -> V.t -> V.t;
+    mutable addr_f : 'info map_ops_t -> 'info -> addr -> addr;
+    mutable elem_f : 'info map_ops_t -> 'info -> elem -> elem;
+    mutable tid_f : 'info map_ops_t -> 'info -> tid -> tid;
+    mutable int_f : 'info map_ops_t -> 'info -> integer -> integer;
+    mutable cell_f : 'info map_ops_t -> 'info -> cell -> cell;
+    mutable mem_f : 'info map_ops_t -> 'info -> mem -> mem;
+    mutable path_f : 'info map_ops_t -> 'info -> path -> path;
+    mutable set_f : 'info map_ops_t -> 'info -> set -> set;
+    mutable setelem_f : 'info map_ops_t -> 'info -> setelem -> setelem;
+    mutable setth_f : 'info map_ops_t -> 'info -> setth -> setth;
+    mutable addrarr_f : 'info map_ops_t -> 'info -> addrarr -> addrarr;
+    mutable tidarr_f : 'info map_ops_t -> 'info -> tidarr -> tidarr;
+    mutable atom_f : 'info map_ops_t -> 'info -> atom -> atom;
+    mutable term_f : 'info map_ops_t -> 'info -> term -> term;
+  }
+
+type 'info mapping_t =
+  {
+    var_f : 'info -> V.t -> V.t;
+    addr_f : 'info -> addr -> addr;
+    elem_f : 'info -> elem -> elem;
+    tid_f : 'info -> tid -> tid;
+    int_f : 'info -> integer -> integer;
+    cell_f : 'info -> cell -> cell;
+    mem_f : 'info -> mem -> mem;
+    path_f : 'info -> path -> path;
+    set_f : 'info -> set -> set;
+    setelem_f : 'info -> setelem -> setelem;
+    setth_f : 'info -> setth -> setth;
+    addrarr_f : 'info -> addrarr -> addrarr;
+    tidarr_f : 'info -> tidarr -> tidarr;
+    atom_f : 'info -> atom -> atom;
+    term_f : 'info -> term -> term;
+  }
+
+
+
+let rec map_addr (fs:'info map_ops_t) (info:'info) (a:addr) : addr =
+  match a with
+  | VarAddr v       -> VarAddr (fs.var_f fs info v)
+  | Null            -> Null
+  | ArrAt (c,i)     -> ArrAt (fs.cell_f fs info c, fs.int_f fs info i)
+  | AddrArrRd(aa,i) -> AddrArrRd (fs.addrarr_f fs info aa, fs.int_f fs info i)
+
+and map_elem (fs:'info map_ops_t) (info:'info) (e:elem) : elem =
+  match e with
+  | VarElem v         -> VarElem (fs.var_f fs info v)
+  | CellData c        -> CellData (fs.cell_f fs info c)
+  | HavocSkiplistElem -> HavocSkiplistElem
+  | LowestElem        -> LowestElem
+  | HighestElem       -> HighestElem
+
+and map_tid (fs:'info map_ops_t) (info:'info) (t:tid) : tid =
+  match t with
+  | VarTh v            -> VarTh (fs.var_f fs info v)
+  | NoTid              -> NoTid
+  | CellLockIdAt (c,i) -> CellLockIdAt (fs.cell_f fs info c, fs.int_f fs info i)
+  | TidArrRd (tt,i)    -> TidArrRd (fs.tidarr_f fs info tt, fs.int_f fs info i)
+
+and map_int (fs:'info map_ops_t) (info:'info) (i:integer) : integer =
+  match i with
+  | IntVal j -> IntVal j
+  | VarInt v -> VarInt (fs.var_f fs info v)
+  | IntNeg j -> IntNeg (fs.int_f fs info j)
+  | IntAdd (j1,j2) -> IntAdd (fs.int_f fs info j1, fs.int_f fs info j2)
+  | IntSub (j1,j2) -> IntSub (fs.int_f fs info j1, fs.int_f fs info j2)
+  | IntMul (j1,j2) -> IntMul (fs.int_f fs info j1, fs.int_f fs info j2)
+  | IntDiv (j1,j2) -> IntDiv (fs.int_f fs info j1, fs.int_f fs info j2)
+  | CellMax c -> CellMax (fs.cell_f fs info c)
+  | HavocLevel -> HavocLevel
+
+and map_cell (fs:'info map_ops_t) (info:'info) (c:cell) : cell =
+  match c with
+  | VarCell v          -> VarCell (fs.var_f fs info v)
+  | Error              -> Error
+  | MkCell(e,aa,tt,i)  -> MkCell (fs.elem_f fs info e,
+                                  fs.addrarr_f fs info aa,
+                                  fs.tidarr_f fs info tt,
+                                  fs.int_f fs info i)
+  | CellLockAt(c,i,th) -> CellLockAt(fs.cell_f fs info c,
+                                     fs.int_f fs info i,
+                                     fs.tid_f fs info th)
+  | CellUnlockAt(c,i)  -> CellUnlockAt (fs.cell_f fs info c, fs.int_f fs info i)
+  | CellAt(m,a)        -> CellAt (fs.mem_f fs info m, fs.addr_f fs info a)
+
+and map_mem (fs:'info map_ops_t) (info:'info) (m:mem) : mem =
+  match m with
+  | VarMem v      -> VarMem (fs.var_f fs info v)
+  | Update(m,a,c) -> Update (fs.mem_f fs info m,
+                             fs.addr_f fs info a,
+                             fs.cell_f fs info c)
+
+and map_path (fs:'info map_ops_t) (info:'info) (p:path) : path =
+  match p with
+  | VarPath v          -> VarPath (fs.var_f fs info v)
+  | Epsilon            -> Epsilon
+  | SimplePath(a)      -> SimplePath (fs.addr_f fs info a)
+  | GetPath(m,a1,a2,i) -> GetPath (fs.mem_f fs info m,
+                                   fs.addr_f fs info a1,
+                                   fs.addr_f fs info a2,
+                                   fs.int_f fs info i)
+
+and map_set (fs:'info map_ops_t) (info:'info) (s:set) : set =
+  match s with
+  | VarSet v         -> VarSet (fs.var_f fs info v)
+  | EmptySet         -> EmptySet
+  | Singl(a)         -> Singl (fs.addr_f fs info a)
+  | Union(s1,s2)     -> Union (fs.set_f fs info s1, fs.set_f fs info s2)
+  | Intr(s1,s2)      -> Intr (fs.set_f fs info s1, fs.set_f fs info s2)
+  | Setdiff(s1,s2)   -> Setdiff (fs.set_f fs info s1, fs.set_f fs info s2)
+  | PathToSet(p)     -> PathToSet (fs.path_f fs info p)
+  | AddrToSet(m,a,i) -> AddrToSet (fs.mem_f fs info m,
+                                   fs.addr_f fs info a,
+                                   fs.int_f fs info i)
+
+and map_setelem (fs:'info map_ops_t) (info:'info) (se:setelem) : setelem =
+  match se with
+  | VarSetElem v         -> VarSetElem (fs.var_f fs info v)
+  | EmptySetElem         -> EmptySetElem
+  | SinglElem(e)         -> SinglElem (fs.elem_f fs info e)
+  | UnionElem(st1,st2)   -> UnionElem (fs.setelem_f fs info st1,
+                                       fs.setelem_f fs info st2)
+  | IntrElem(st1,st2)    -> IntrElem (fs.setelem_f fs info st1,
+                                      fs.setelem_f fs info st2)
+  | SetToElems(s,m)      -> SetToElems (fs.set_f fs info s, fs.mem_f fs info m)
+  | SetdiffElem(st1,st2) -> SetdiffElem (fs.setelem_f fs info st1,
+                                         fs.setelem_f fs info st2)
+
+and map_setth (fs:'info map_ops_t) (info:'info) (sth:setth) : setth =
+  match sth with
+  | VarSetTh v         -> VarSetTh (fs.var_f fs info v)
+  | EmptySetTh         -> EmptySetTh
+  | SinglTh(th)        -> SinglTh (fs.tid_f fs info th)
+  | UnionTh(st1,st2)   -> UnionTh (fs.setth_f fs info st1, fs.setth_f fs info st2)
+  | IntrTh(st1,st2)    -> IntrTh (fs.setth_f fs info st1, fs.setth_f fs info st2)
+  | SetdiffTh(st1,st2) -> SetdiffTh (fs.setth_f fs info st1, fs.setth_f fs info st2)
+
+and map_addrarr (fs:'info map_ops_t) (info:'info) (aa:addrarr) : addrarr =
+  match aa with
+  | VarAddrArray v -> VarAddrArray (fs.var_f fs info v)
+  | AddrArrayUp (aa,i,a) -> AddrArrayUp (fs.addrarr_f fs info aa,
+                                         fs.int_f fs info i,
+                                         fs.addr_f fs info a)
+  | CellArr c -> CellArr (fs.cell_f fs info c)
+
+and map_tidarr (fs:'info map_ops_t) (info:'info) (tt:tidarr) : tidarr =
+  match tt with
+  | VarTidArray v -> VarTidArray (fs.var_f fs info v)
+  | TidArrayUp (tt,i,th) -> TidArrayUp (fs.tidarr_f fs info tt,
+                                        fs.int_f fs info i,
+                                        fs.tid_f fs info th)
+  | CellTids c -> CellTids (fs.cell_f fs info c)
+
+and map_atom (fs:'info map_ops_t) (info:'info) (a:atom) : atom =
+  match a with
+  | Append(p1,p2,p3)          -> Append (fs.path_f fs info p1,
+                                         fs.path_f fs info p2,
+                                         fs.path_f fs info p3)
+  | Reach(m,a1,a2,i,p)        -> Reach (fs.mem_f fs info m,
+                                        fs.addr_f fs info a1,
+                                        fs.addr_f fs info a2,
+                                        fs.int_f fs info i,
+                                        fs.path_f fs info p)
+  | OrderList(m,a1,a2)        -> OrderList (fs.mem_f fs info m,
+                                            fs.addr_f fs info a1,
+                                            fs.addr_f fs info a2)
+  | Skiplist (m,s,i,a1,a2,se) -> Skiplist (fs.mem_f fs info m,
+                                           fs.set_f fs info s,
+                                           fs.int_f fs info i,
+                                           fs.addr_f fs info a1,
+                                           fs.addr_f fs info a2,
+                                           fs.setelem_f fs info se)
+  | In(a,s)                   -> In (fs.addr_f fs info a, fs.set_f fs info s)
+  | SubsetEq(s1,s2)           -> SubsetEq (fs.set_f fs info s1, fs.set_f fs info s2)
+  | InTh(th,st)               -> InTh (fs.tid_f fs info th, fs.setth_f fs info st)
+  | SubsetEqTh(st1,st2)       -> SubsetEqTh (fs.setth_f fs info st1,
+                                             fs.setth_f fs info st2)
+  | InElem(e,se)              -> InElem (fs.elem_f fs info e,
+                                         fs.setelem_f fs info se)
+  | SubsetEqElem(se1,se2)     -> SubsetEqElem (fs.setelem_f fs info se1,
+                                               fs.setelem_f fs info se2)
+  | Less(i1,i2)               -> Less (fs.int_f fs info i1,
+                                       fs.int_f fs info i2)
+  | LessEq(i1,i2)             -> LessEq (fs.int_f fs info i1,
+                                         fs.int_f fs info i2)
+  | Greater(i1,i2)            -> Greater (fs.int_f fs info i1,
+                                          fs.int_f fs info i2)
+  | GreaterEq(i1,i2)          -> GreaterEq (fs.int_f fs info i1,
+                                            fs.int_f fs info i2)
+  | LessElem(e1,e2)           -> LessElem (fs.elem_f fs info e1,
+                                           fs.elem_f fs info e2)
+  | GreaterElem(e1,e2)        -> GreaterElem (fs.elem_f fs info e1,
+                                              fs.elem_f fs info e2)
+  | Eq((x,y))                 -> Eq (fs.term_f fs info x,
+                                     fs.term_f fs info y)
+  | InEq((x,y))               -> InEq (fs.term_f fs info x,
+                                       fs.term_f fs info y)
+  | BoolVar v                 -> BoolVar (fs.var_f fs info v)
+  | PC(pc,th,pr)              -> PC(pc, (match th with
+                                         | V.Shared -> V.Shared
+                                         | V.Local t -> V.Local(fs.var_f fs info t)),
+                                    pr)
+  | PCUpdate (pc,th)          -> PCUpdate (pc, fs.tid_f fs info th)
+  | PCRange(pc1,pc2,th,pr)    -> PCRange (pc1, pc2,
+                                          (match th with
+                                           | V.Shared -> V.Shared
+                                           | V.Local t -> V.Local(fs.var_f fs info t)),
+                                          pr)
+
+and map_term (fs:'info map_ops_t) (info:'info) (t:term) : term =
+  match t with
+  | VarT   v          -> VarT (fs.var_f fs info v)
+  | SetT   s          -> SetT (fs.set_f fs info s)
+  | ElemT  e          -> ElemT (fs.elem_f fs info e)
+  | TidT  th          -> TidT (fs.tid_f fs info th)
+  | AddrT  a          -> AddrT (fs.addr_f fs info a)
+  | CellT  c          -> CellT (fs.cell_f fs info c)
+  | SetThT st         -> SetThT (fs.setth_f fs info st)
+  | SetElemT se       -> SetElemT (fs.setelem_f fs info se)
+  | PathT  p          -> PathT (fs.path_f fs info p)
+  | MemT   m          -> MemT (fs.mem_f fs info m)
+  | IntT   i          -> IntT (fs.int_f fs info i)
+  | AddrArrayT aa     -> AddrArrayT (fs.addrarr_f fs info aa)
+  | TidArrayT tt      -> TidArrayT (fs.tidarr_f fs info tt)
+  | VarUpdate(v,pc,t) -> VarUpdate (fs.var_f fs info v,
+                                    fs.tid_f fs info pc,
+                                    fs.term_f fs info t)
+
+
+
+let make_map ?(addr_f=map_addr)
+             ?(elem_f=map_elem)
+             ?(tid_f=map_tid)
+             ?(int_f=map_int)
+             ?(cell_f=map_cell)
+             ?(mem_f=map_mem)
+             ?(path_f=map_path)
+             ?(set_f=map_set)
+             ?(setelem_f=map_setelem)
+             ?(setth_f=map_setth)
+             ?(addrarr_f=map_addrarr)
+             ?(tidarr_f=map_tidarr)
+             ?(atom_f=map_atom)
+             ?(term_f=map_term)
+             (var_f :('info map_ops_t -> 'info -> V.t -> V.t))
+    : 'info mapping_t =
+  let fs : 'info map_ops_t = {
+    addr_f = addr_f; elem_f = elem_f; tid_f = tid_f;
+    int_f = int_f; cell_f = cell_f; mem_f = mem_f;
+    path_f = path_f; set_f = set_f; setelem_f = setelem_f;
+    setth_f = setth_f; addrarr_f = addrarr_f; tidarr_f = tidarr_f;
+    atom_f = atom_f; term_f = term_f; var_f = var_f; } in
+  { addr_f = addr_f fs; elem_f = elem_f fs; tid_f = tid_f fs;
+    int_f = int_f fs; cell_f = cell_f fs; mem_f = mem_f fs;
+    path_f = path_f fs; set_f = set_f fs; setelem_f = setelem_f fs;
+    setth_f = setth_f fs; addrarr_f = addrarr_f fs; tidarr_f = tidarr_f fs;
+    atom_f = atom_f fs; term_f = term_f fs; var_f = var_f fs; }
 
 
 
@@ -3573,6 +3835,13 @@ let voc_to_var (t:tid) : V.t =
   | _ -> raise(Not_tid_var t)
 
 
+let param_map =
+  make_map (fun _ pfun v -> V.set_param v (pfun (Some v)))
+
+let param_fs =
+  F.make_trans F.GenericLiteralTrans param_map.atom_f
+
+
 (**********************  Generic Expression Functions  ********************)
 
 let tid_sort : sort = Tid
@@ -3595,5 +3864,6 @@ let gen_fresh_tids (set:ThreadSet.t) (n:int) : ThreadSet.t =
   LeapLib.gen_fresh
     set ThreadSet.empty ThreadSet.add ThreadSet.mem gen_cand n
 
-let param (p:V.shared_or_local) (phi:formula) = phi (*** FIX!!! *)
+let param (p:V.shared_or_local) (phi:formula) =
+  F.formula_trans param_fs (V.param_local_only p) phi
 

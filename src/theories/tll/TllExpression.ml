@@ -1,5 +1,5 @@
-open Printf
 open LeapLib
+
 
 module F = Formula
 
@@ -422,7 +422,7 @@ let make_fold ?(addr_f=fold_addr)
               (concat:('a -> 'a -> 'a))
               (var_f :(('info,'a) fold_ops_t -> 'info -> V.t -> 'a))
     : ('info,'a) folding_t =
-  let fs = {
+  let fs : ('info,'a) fold_ops_t = {
     addr_f = addr_f; elem_f = elem_f; tid_f = tid_f;
     int_f = int_f; cell_f = cell_f; mem_f = mem_f;
     path_f = path_f; set_f = set_f; setelem_f = setelem_f;
@@ -436,25 +436,25 @@ let make_fold ?(addr_f=fold_addr)
 
 
 (**********  Mapping  ***************)
-(*
-type ('info, 'a) map_ops_t =
+
+type 'info map_ops_t =
   {
-    var_f : ('info,'a) map_ops_t -> 'info -> V.t -> V.t;
-    mutable addr_f : ('info,'a) map_ops_t -> 'info -> addr -> addr;
-    mutable elem_f : ('info,'a) map_ops_t -> 'info -> elem -> elem;
-    mutable tid_f : ('info,'a) map_ops_t -> 'info -> tid -> tid;
-    mutable int_f : ('info,'a) map_ops_t -> 'info -> integer -> integer;
-    mutable cell_f : ('info,'a) map_ops_t -> 'info -> cell -> cell;
-    mutable mem_f : ('info,'a) map_ops_t -> 'info -> mem -> mem;
-    mutable path_f : ('info,'a) map_ops_t -> 'info -> path -> path;
-    mutable set_f : ('info,'a) map_ops_t -> 'info -> set -> set;
-    mutable setelem_f : ('info,'a) map_ops_t -> 'info -> setelem -> setelem;
-    mutable setth_f : ('info,'a) map_ops_t -> 'info -> setth ->setth;
-    mutable atom_f : ('info,'a) map_ops_t -> 'info -> atom -> atom;
-    mutable term_f : ('info,'a) map_ops_t -> 'info -> term -> term;
+    var_f : ('info map_ops_t) -> 'info -> V.t -> V.t;
+    mutable addr_f : 'info map_ops_t -> 'info -> addr -> addr;
+    mutable elem_f : 'info map_ops_t -> 'info -> elem -> elem;
+    mutable tid_f : 'info map_ops_t -> 'info -> tid -> tid;
+    mutable int_f : 'info map_ops_t -> 'info -> integer -> integer;
+    mutable cell_f : 'info map_ops_t -> 'info -> cell -> cell;
+    mutable mem_f : 'info map_ops_t -> 'info -> mem -> mem;
+    mutable path_f : 'info map_ops_t -> 'info -> path -> path;
+    mutable set_f : 'info map_ops_t -> 'info -> set -> set;
+    mutable setelem_f : 'info map_ops_t -> 'info -> setelem -> setelem;
+    mutable setth_f : 'info map_ops_t -> 'info -> setth ->setth;
+    mutable atom_f : 'info map_ops_t -> 'info -> atom -> atom;
+    mutable term_f : 'info map_ops_t -> 'info -> term -> term;
   }
 
-type ('info, 'a) mapping_t =
+type 'info mapping_t =
   {
     var_f : 'info -> V.t -> V.t;
     addr_f : 'info -> addr -> addr;
@@ -473,14 +473,14 @@ type ('info, 'a) mapping_t =
 
 
 
-let rec map_addr (fs:('info,'a) map_ops_t) (info:'info) (a:addr) : addr =
+let rec map_addr (fs:'info map_ops_t) (info:'info) (a:addr) : addr =
   match a with
   | VarAddr v        -> VarAddr (fs.var_f fs info v)
   | Null             -> Null
   | Next c           -> Next (fs.cell_f fs info c)
   | FirstLocked(m,p) -> FirstLocked(fs.mem_f fs info m, fs.path_f fs info p)
 
-and map_elem (fs:('info,'a) map_ops_t) (info:'info) (e:elem) : elem =
+and map_elem (fs:'info map_ops_t) (info:'info) (e:elem) : elem =
   match e with
   | VarElem v     -> VarElem (fs.var_f fs info v)
   | CellData c    -> CellData (fs.cell_f fs info c)
@@ -488,13 +488,13 @@ and map_elem (fs:('info,'a) map_ops_t) (info:'info) (e:elem) : elem =
   | LowestElem    -> LowestElem
   | HighestElem   -> HighestElem
 
-and map_tid (fs:('info,'a) map_ops_t) (info:'info) (t:tid) : tid =
+and map_tid (fs:'info map_ops_t) (info:'info) (t:tid) : tid =
   match t with
   | VarTh v      -> VarTh (fs.var_f fs info v)
   | NoTid        -> NoTid
   | CellLockId c -> CellLockId (fs.cell_f fs info c)
 
-and map_int (fs:('info,'a) map_ops_t) (info:'info) (i:integer) : integer =
+and map_int (fs:'info map_ops_t) (info:'info) (i:integer) : integer =
   match i with
   | IntVal j -> IntVal j
   | VarInt v -> VarInt (fs.var_f fs info v)
@@ -504,7 +504,7 @@ and map_int (fs:('info,'a) map_ops_t) (info:'info) (i:integer) : integer =
   | IntMul (j1,j2) -> IntMul (fs.int_f fs info j1, fs.int_f fs info j2)
   | IntDiv (j1,j2) -> IntDiv (fs.int_f fs info j1, fs.int_f fs info j2)
 
-and map_cell (fs:('info,'a) map_ops_t) (info:'info) (c:cell) : cell =
+and map_cell (fs:'info map_ops_t) (info:'info) (c:cell) : cell =
   match c with
   | VarCell v      -> VarCell (fs.var_f fs info v)
   | Error          -> Error
@@ -515,7 +515,7 @@ and map_cell (fs:('info,'a) map_ops_t) (info:'info) (c:cell) : cell =
   | CellUnlock(c)  -> CellUnlock (fs.cell_f fs info c)
   | CellAt(m,a)    -> CellAt (fs.mem_f fs info m, fs.addr_f fs info a)
 
-and map_mem (fs:('info,'a) map_ops_t) (info:'info) (m:mem) : mem =
+and map_mem (fs:'info map_ops_t) (info:'info) (m:mem) : mem =
   match m with
   | VarMem v      -> VarMem (fs.var_f fs info v)
   | Emp           -> Emp
@@ -523,7 +523,7 @@ and map_mem (fs:('info,'a) map_ops_t) (info:'info) (m:mem) : mem =
                              fs.addr_f fs info a,
                              fs.cell_f fs info c)
 
-and map_path (fs:('info,'a) map_ops_t) (info:'info) (p:path) : path =
+and map_path (fs:'info map_ops_t) (info:'info) (p:path) : path =
   match p with
   | VarPath v        -> VarPath (fs.var_f fs info v)
   | Epsilon          -> Epsilon
@@ -532,7 +532,7 @@ and map_path (fs:('info,'a) map_ops_t) (info:'info) (p:path) : path =
                                  fs.addr_f fs info a1,
                                  fs.addr_f fs info a2)
 
-and map_set (fs:('info,'a) map_ops_t) (info:'info) (s:set) : set =
+and map_set (fs:'info map_ops_t) (info:'info) (s:set) : set =
   match s with
   | VarSet v       -> VarSet (fs.var_f fs info v)
   | EmptySet       -> EmptySet
@@ -543,7 +543,7 @@ and map_set (fs:('info,'a) map_ops_t) (info:'info) (s:set) : set =
   | PathToSet(p)   -> PathToSet (fs.path_f fs info p)
   | AddrToSet(m,a) -> AddrToSet (fs.mem_f fs info m, fs.addr_f fs info a)
 
-and map_setelem (fs:('info,'a) map_ops_t) (info:'info) (se:setelem) : setelem =
+and map_setelem (fs:'info map_ops_t) (info:'info) (se:setelem) : setelem =
   match se with
   | VarSetElem v         -> VarSetElem (fs.var_f fs info v)
   | EmptySetElem         -> EmptySetElem
@@ -556,7 +556,7 @@ and map_setelem (fs:('info,'a) map_ops_t) (info:'info) (se:setelem) : setelem =
   | SetdiffElem(st1,st2) -> SetdiffElem (fs.setelem_f fs info st1,
                                          fs.setelem_f fs info st2)
 
-and map_setth (fs:('info,'a) map_ops_t) (info:'info) (sth:setth) : setth =
+and map_setth (fs:'info map_ops_t) (info:'info) (sth:setth) : setth =
   match sth with
   | VarSetTh v         -> VarSetTh (fs.var_f fs info v)
   | EmptySetTh         -> EmptySetTh
@@ -568,7 +568,7 @@ and map_setth (fs:('info,'a) map_ops_t) (info:'info) (sth:setth) : setth =
   | SetdiffTh(st1,st2) -> SetdiffTh (fs.setth_f fs info st1,
                                      fs.setth_f fs info st2)
 
-and map_atom (fs:('info,'a) map_ops_t) (info:'info) (a:atom) : atom =
+and map_atom (fs:'info map_ops_t) (info:'info) (a:atom) : atom =
   match a with
   | Append(p1,p2,p3)       -> Append (fs.path_f fs info p1,
                                       fs.path_f fs info p2,
@@ -602,18 +602,18 @@ and map_atom (fs:('info,'a) map_ops_t) (info:'info) (a:atom) : atom =
   | Eq((x,y))              -> Eq (fs.term_f fs info x, fs.term_f fs info y)
   | InEq((x,y))            -> InEq (fs.term_f fs info x, fs.term_f fs info y)
   | BoolVar v              -> BoolVar (fs.var_f fs info v)
-  | PC(pc,th,pr)           -> PC(pc, match th with
-                                     | V.Shared -> V.Shared
-                                     | V.Local t -> V.Local(fs.var_f fs info t),
+  | PC(pc,th,pr)           -> PC(pc, (match th with
+                                      | V.Shared -> V.Shared
+                                      | V.Local t -> V.Local(fs.var_f fs info t)),
                                  pr)
   | PCUpdate (pc,th)       -> PCUpdate (pc, fs.tid_f fs info th)
   | PCRange(pc1,pc2,th,pr) -> PCRange (pc1, pc2,
-                                       match th with
-                                       | V.Shared -> V.Shared
-                                       | V.Local t -> V.Local(fs.var_f fs info t),
+                                       (match th with
+                                        | V.Shared -> V.Shared
+                                        | V.Local t -> V.Local(fs.var_f fs info t)),
                                        pr)
 
-and map_term (fs:('info,'a) map_ops_t) (info:'info) (t:term) : term =
+and map_term (fs:'info map_ops_t) (info:'info) (t:term) : term =
   match t with
   | VarT   v          -> VarT (fs.var_f fs info v)
   | SetT   s          -> SetT (fs.set_f fs info s)
@@ -644,21 +644,20 @@ let make_map ?(addr_f=map_addr)
              ?(setth_f=map_setth)
              ?(atom_f=map_atom)
              ?(term_f=map_term)
-              (var_f :(('info,'a) map_ops_t -> 'info -> V.t -> V.t))
-    : ('info,'a) mapping_t =
-  let fs = {
+              (var_f :(('info map_ops_t) -> 'info -> V.t -> V.t))
+    : 'info mapping_t =
+  let fs : 'info map_ops_t = {
     addr_f = addr_f; elem_f = elem_f; tid_f = tid_f;
     int_f = int_f; cell_f = cell_f; mem_f = mem_f;
     path_f = path_f; set_f = set_f; setelem_f = setelem_f;
     setth_f = setth_f; atom_f = atom_f; term_f = term_f;
-    base = base; concat = concat; var_f = var_f; } in
+    var_f = var_f; } in
   { addr_f = addr_f fs; elem_f = elem_f fs; tid_f = tid_f fs;
     int_f = int_f fs; cell_f = cell_f fs; mem_f = mem_f fs;
     path_f = path_f fs; set_f = set_f fs; setelem_f = setelem_f fs;
     setth_f = setth_f fs; atom_f = atom_f fs; term_f = term_f fs;
     var_f = var_f fs; }
 
-*)
 
 
 
@@ -1139,151 +1138,127 @@ let is_literal_flat (l:literal) : bool =
 
 let rec atom_to_str a =
   match a with
-  | Append(p1,p2,pres)         -> Printf.sprintf "append(%s,%s,%s)"
-                                    (path_to_str p1) (path_to_str p2)
-                                    (path_to_str pres)
-  | Reach(h,add_from,add_to,p) -> Printf.sprintf "reach(%s,%s,%s,%s)"
-                                    (mem_to_str h) (addr_to_str add_from)
-                                    (addr_to_str add_to) (path_to_str p)
-  | OrderList(h,a_from,a_to)   -> Printf.sprintf "orderlist(%s,%s,%s)"
-                                    (mem_to_str h) (addr_to_str a_from)
-                                    (addr_to_str a_to)
-  | In(a,s)                    -> Printf.sprintf "%s in %s "
-                                    (addr_to_str a) (set_to_str s)
-  | SubsetEq(s_in,s_out)       -> Printf.sprintf "%s subseteq %s"
-                                    (set_to_str s_in) (set_to_str s_out)
-  | InTh(th,s)                 -> Printf.sprintf "%s inTh %s"
-                                    (tid_to_str th) (setth_to_str s)
-  | SubsetEqTh(s_in,s_out)     -> Printf.sprintf "%s subseteqTh %s"
-                                    (setth_to_str s_in) (setth_to_str s_out)
-  | InElem(e,s)                -> Printf.sprintf "%s inElem %s"
-                                    (elem_to_str e) (setelem_to_str s)
-  | SubsetEqElem(s_in,s_out)   -> Printf.sprintf "%s subseteqElem %s"
-                                    (setelem_to_str s_in) (setelem_to_str s_out)
-  | Less (i1,i2)               -> Printf.sprintf "%s < %s"
-                                    (integer_to_str i1) (integer_to_str i2)
-  | LessEq (i1,i2)             -> Printf.sprintf "%s <= %s"
-                                    (integer_to_str i1) (integer_to_str i2)
-  | Greater (i1,i2)            -> Printf.sprintf "%s > %s"
-                                    (integer_to_str i1) (integer_to_str i2)
-  | GreaterEq (i1,i2)          -> Printf.sprintf "%s >= %s"
-                                    (integer_to_str i1) (integer_to_str i2)
-  | LessElem(e1,e2)            -> Printf.sprintf "%s < %s"
-                                    (elem_to_str e1) (elem_to_str e2)
-  | GreaterElem(e1,e2)         -> Printf.sprintf "%s < %s"
-                                    (elem_to_str e1) (elem_to_str e2)
+  | Append(p1,p2,pres)         -> "append(" ^(path_to_str p1)^ "," ^
+                                             (path_to_str p2)^ "," ^
+                                             (path_to_str pres)^")"
+  | Reach(h,add_from,add_to,p) -> "reach(" ^(mem_to_str h)^ "," ^
+                                            (addr_to_str add_from)^ ", " ^
+                                            (addr_to_str add_to)^ "," ^
+                                            (path_to_str p)^ ")"
+  | OrderList(h,a_from,a_to)   -> "orderlist(" ^(mem_to_str h)^ "," ^
+                                                (addr_to_str a_from)^ "," ^
+                                                (addr_to_str a_to)^ ")"
+  | In(a,s)                    -> (addr_to_str a)^ " in " ^(set_to_str s)
+  | SubsetEq(s_in,s_out)       -> (set_to_str s_in)^ " subseteq " ^ (set_to_str s_out)
+  | InTh(th,s)                 -> (tid_to_str th)^ " inTh " ^(setth_to_str s)
+  | SubsetEqTh(s_in,s_out)     -> (setth_to_str s_in)^ " subseteqTh " ^
+                                  (setth_to_str s_out)
+  | InElem(e,s)                -> (elem_to_str e)^ " inElem " ^(setelem_to_str s)
+  | SubsetEqElem(s_in,s_out)   -> (setelem_to_str s_in)^ " subseteqElem " ^
+                                  (setelem_to_str s_out)
+  | Less (i1,i2)               -> (integer_to_str i1)^ " < " ^(integer_to_str i2)
+  | LessEq (i1,i2)             -> (integer_to_str i1)^ " <= " ^(integer_to_str i2)
+  | Greater (i1,i2)            -> (integer_to_str i1)^ " > " ^(integer_to_str i2)
+  | GreaterEq (i1,i2)          -> (integer_to_str i1)^ " >= " ^(integer_to_str i2)
+  | LessElem(e1,e2)            -> (elem_to_str e1)^ " < " ^(elem_to_str e2)
+  | GreaterElem(e1,e2)         -> (elem_to_str e1)^ " < " ^(elem_to_str e2)
   | Eq(exp)                    -> eq_to_str (exp)
   | InEq(exp)                  -> diseq_to_str (exp)
   | BoolVar v                  -> V.to_str v
   | PC (pc,t,pr)               -> let pc_str = if pr then "pc'" else "pc" in
                                   let th_str = V.shared_or_local_to_str t in
-                                  Printf.sprintf "%s(%s) = %i" pc_str th_str pc
+                                  pc_str^th_str^ " = " ^(string_of_int pc)
   | PCUpdate (pc,t)            -> let th_str = tid_to_str t in
-                                  Printf.sprintf "pc' = pc{%s<-%i}" th_str pc
+                                  "pc' = pc{" ^th_str^ "<-" ^(string_of_int pc)^ "}"
   | PCRange (pc1,pc2,t,pr)     -> let pc_str = if pr then "pc'" else "pc" in
                                   let th_str = V.shared_or_local_to_str t in
-                                  Printf.sprintf "%i <= %s(%s) <= %i"
-                                                  pc1 pc_str th_str pc2
+                                  (string_of_int pc1)^ " <= " ^
+                                    pc_str^ "(" ^th_str^ ") <= "^(string_of_int pc2)
 
 and mem_to_str expr =
   match expr with
       VarMem(v) -> V.to_str v
-    | Emp -> Printf.sprintf "emp"
-    | Update(mem,add,cell) -> Printf.sprintf "upd(%s,%s,%s)"
-  (mem_to_str mem) (addr_to_str add) (cell_to_str cell)
+    | Emp -> "emp"
+    | Update(mem,add,cell) -> "upd(" ^(mem_to_str mem)^ "," ^
+                                      (addr_to_str add)^ "," ^
+                                      (cell_to_str cell)^ ")"
 and integer_to_str expr =
   match expr with
     IntVal (i)        -> string_of_int i
   | VarInt v          -> V.to_str v
-  | IntNeg i          -> sprintf "-%s" (integer_to_str i)
-  | IntAdd (i1,i2)    -> sprintf "%s + %s" (integer_to_str i1)
-                                           (integer_to_str i2)
-  | IntSub (i1,i2)    -> sprintf "%s - %s" (integer_to_str i1)
-                                           (integer_to_str i2)
-  | IntMul (i1,i2)    -> sprintf "%s * %s" (integer_to_str i1)
-                                           (integer_to_str i2)
-  | IntDiv (i1,i2)    -> sprintf "%s / %s" (integer_to_str i1)
-                                           (integer_to_str i2)
+  | IntNeg i          -> "-" ^ (integer_to_str i)
+  | IntAdd (i1,i2)    -> (integer_to_str i1)^ " + " ^(integer_to_str i2)
+  | IntSub (i1,i2)    -> (integer_to_str i1)^ " - " ^(integer_to_str i2)
+  | IntMul (i1,i2)    -> (integer_to_str i1)^ " * " ^(integer_to_str i2)
+  | IntDiv (i1,i2)    -> (integer_to_str i1)^ " / " ^(integer_to_str i2)
 and path_to_str expr =
   match expr with
       VarPath(v) -> V.to_str v
-    | Epsilon -> Printf.sprintf "epsilon"
-    | SimplePath(addr) -> Printf.sprintf "[ %s ]" (addr_to_str addr)
-    | GetPath(mem,add_from,add_to) -> Printf.sprintf "getp(%s,%s,%s)"
-  (mem_to_str mem) (addr_to_str add_from) (addr_to_str add_to)
+    | Epsilon -> "epsilon"
+    | SimplePath(addr) -> "[ " ^(addr_to_str addr)^ " ]"
+    | GetPath(mem,add_from,add_to) -> "getp(" ^(mem_to_str mem)^ "," ^
+                                               (addr_to_str add_from)^ "," ^
+                                               (addr_to_str add_to)^ ")"
 and set_to_str e =
   match e with
       VarSet(v)  -> V.to_str v
     | EmptySet  -> "EmptySet"
-    | Singl(addr) -> Printf.sprintf "{ %s }" (addr_to_str addr)
-    | Union(s1,s2) -> Printf.sprintf "%s Union %s"
-  (set_to_str s1) (set_to_str s2)
-    | Intr(s1,s2) -> Printf.sprintf "%s Intr %s"
-  (set_to_str s1) (set_to_str s2)
-    | Setdiff(s1,s2) -> Printf.sprintf "%s SetDiff %s"
-  (set_to_str s1) (set_to_str s2)
-    | PathToSet(path) -> Printf.sprintf "path2set(%s)"
-  (path_to_str path)
-    | AddrToSet(mem,addr) -> Printf.sprintf "addr2set(%s,%s)"
-  (mem_to_str mem) (addr_to_str addr)
+    | Singl(addr) -> "{ " ^(addr_to_str addr)^ " }"
+    | Union(s1,s2) -> (set_to_str s1)^ " Union " ^(set_to_str s2)
+    | Intr(s1,s2) -> (set_to_str s1)^ " Intr " ^(set_to_str s2)
+    | Setdiff(s1,s2) -> (set_to_str s1)^ " SetDiff " ^ (set_to_str s2)
+    | PathToSet(path) -> "path2set(" ^(path_to_str path)^ ")"
+    | AddrToSet(mem,addr) -> "addr2set(" ^(mem_to_str mem)^ "," ^
+                                          (addr_to_str addr)^ ")"
 and setth_to_str e =
   match e with
       VarSetTh(v)  -> V.to_str v
     | EmptySetTh  -> "EmptySetTh"
-    | SinglTh(th) -> Printf.sprintf "[ %s ]" (tid_to_str th)
-    | UnionTh(s_1,s_2) -> Printf.sprintf "%s UnionTh %s"
-                            (setth_to_str s_1) (setth_to_str s_2)
-    | IntrTh(s_1,s_2) -> Printf.sprintf "%s IntrTh %s"
-                            (setth_to_str s_1) (setth_to_str s_2)
-    | SetdiffTh(s_1,s_2) -> Printf.sprintf "%s SetDiffTh %s"
-                            (setth_to_str s_1) (setth_to_str s_2)
+    | SinglTh(th) -> "[ " ^(tid_to_str th)^ " ]"
+    | UnionTh(s1,s2) -> (setth_to_str s1)^ " UnionTh " ^(setth_to_str s2)
+    | IntrTh(s1,s2) -> (setth_to_str s1)^ " IntrTh " ^(setth_to_str s2)
+    | SetdiffTh(s1,s2) -> (setth_to_str s1)^ " SetDiffTh " ^(setth_to_str s2)
 and setelem_to_str e =
   match e with
       VarSetElem(v)  -> V.to_str v
     | EmptySetElem  -> "EmptySetElem"
-    | SinglElem(e) -> Printf.sprintf "[ %s ]" (elem_to_str e)
-    | UnionElem(s_1,s_2) -> Printf.sprintf "%s UnionElem %s"
-                            (setelem_to_str s_1) (setelem_to_str s_2)
-    | IntrElem(s_1,s_2) -> Printf.sprintf "%s IntrElem %s"
-                            (setelem_to_str s_1) (setelem_to_str s_2)
-    | SetToElems(s,m) -> Printf.sprintf "SetToElems(%s,%s)"
-                            (set_to_str s) (mem_to_str m)
-    | SetdiffElem(s_1,s_2) -> Printf.sprintf "%s SetDiffElem %s"
-                            (setelem_to_str s_1) (setelem_to_str s_2)
+    | SinglElem(e) -> "[ " ^(elem_to_str e)^ " ]"
+    | UnionElem(s1,s2) -> (setelem_to_str s1)^ " UnionElem " ^(setelem_to_str s2)
+    | IntrElem(s1,s2) -> (setelem_to_str s1)^ " IntrElem " ^(setelem_to_str s2)
+    | SetToElems(s,m) -> "SetToElems(" ^(set_to_str s)^ "," ^(mem_to_str m)^ ")"
+    | SetdiffElem(s1,s2) -> (setelem_to_str s1 )^ " SetDiffElem " ^(setelem_to_str s2)
 and cell_to_str e =
   match e with
       VarCell(v) -> V.to_str v
     | Error -> "Error"
-    | MkCell(data,addr,th) -> Printf.sprintf "mkcell(%s,%s,%s)"
-  (elem_to_str data) (addr_to_str addr) (tid_to_str th)
-    | CellLock(cell,th)   -> Printf.sprintf "%s.lock(%s)"
-  (cell_to_str cell) (tid_to_str th)
-    | CellUnlock(cell) -> Printf.sprintf "%s.unlock"
-  (cell_to_str cell)
-    | CellAt(mem,addr) -> Printf.sprintf "%s [ %s ]" (mem_to_str mem) (addr_to_str addr)
+    | MkCell(data,addr,th) -> "mkcell(" ^(elem_to_str data)^ "," ^
+                                         (addr_to_str addr)^ "," ^
+                                         (tid_to_str th)^ ")"
+    | CellLock(cell,th)   -> (cell_to_str cell)^ ".lock(" ^(tid_to_str th)^ ")"
+    | CellUnlock(cell) -> (cell_to_str cell)^ ".unlock"
+    | CellAt(mem,addr) -> (mem_to_str mem) ^ "[ " ^(addr_to_str addr)^ " ]"
 and addr_to_str expr =
   match expr with
       VarAddr(v) -> V.to_str v
     | Null    -> "null"
-    | Next(cell)           -> Printf.sprintf "%s.next" (cell_to_str cell)
-    | FirstLocked(mem,path) -> Printf.sprintf "firstlocked(%s,%s)"
-  (mem_to_str mem) (path_to_str path)
-(*    | Malloc(e,a,t)     -> Printf.sprintf "malloc(%s,%s,%s)" (elem_to_str e) (addr_to_str a) (tid_to_str t) *)
+    | Next(cell)           -> (cell_to_str cell)^ ".next"
+    | FirstLocked(mem,path) -> "firstlocked(" ^(mem_to_str mem)^ "," ^
+                                               (path_to_str path)^ ")"
 and tid_to_str th =
   match th with
       VarTh(v)         -> V.to_str v
-    | NoTid           -> Printf.sprintf "NoTid"
-    | CellLockId(cell) -> Printf.sprintf "%s.lockid" (cell_to_str cell)
+    | NoTid           -> "NoTid"
+    | CellLockId(cell) -> (cell_to_str cell)^ ".lockid"
 and eq_to_str expr =
   let (e1,e2) = expr in
-    Printf.sprintf "%s = %s" (term_to_str e1) (term_to_str e2)
+    (term_to_str e1)^ " = " ^(term_to_str e2)
 and diseq_to_str expr =
   let (e1,e2) = expr in
-    Printf.sprintf "%s != %s" (term_to_str e1) (term_to_str e2)
+    (term_to_str e1)^ " != " ^(term_to_str e2)
 and elem_to_str elem =
   match elem with
       VarElem(v)     -> V.to_str v
-    | CellData(cell) -> Printf.sprintf "%s.data" (cell_to_str cell)
+    | CellData(cell) -> (cell_to_str cell)^ ".data"
     | HavocListElem  -> "havocListElem()"
     | LowestElem     -> "lowestElem"
     | HighestElem    -> "highestElem"
@@ -1303,7 +1278,7 @@ and term_to_str expr =
     | VarUpdate (v,th,t) -> let v_str = V.to_str v in
                             let th_str = tid_to_str th in
                             let t_str = term_to_str t in
-                              Printf.sprintf "%s{%s<-%s}" v_str th_str t_str
+                              v_str^ "{" ^th_str^ "<-" ^t_str^ "}"
 
 
 
@@ -1947,6 +1922,13 @@ and get_addrs_eqs_atom (a:atom) : ((addr*addr) list * (addr*addr) list) =
   | _ -> ([],[])
 
 
+let param_map =
+  make_map (fun _ pfun v -> V.set_param v (pfun (Some v)))
+
+let param_fs =
+  F.make_trans F.GenericLiteralTrans param_map.atom_f
+
+
 (**********************  Generic Expression Functions  ********************)
 
 let tid_sort : sort = Tid
@@ -1969,6 +1951,5 @@ let gen_fresh_tids (set:ThreadSet.t) (n:int) : ThreadSet.t =
   LeapLib.gen_fresh
     set ThreadSet.empty ThreadSet.add ThreadSet.mem gen_cand n
 
-let param (p:V.shared_or_local) (phi:formula) = phi (*** FIX!!! *)
-
-
+let param (p:V.shared_or_local) (phi:formula) =
+  F.formula_trans param_fs (V.param_local_only p) phi

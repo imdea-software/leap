@@ -71,6 +71,7 @@ module type S =
     val localize_var_id : id -> string -> id
     val localize_var_id_with_procedure : id -> procedure_name -> id
     val localize_with_underscore : id -> procedure_name -> id
+    val param_local_only : shared_or_local -> t option -> shared_or_local
 
 
     (*********************************)
@@ -264,7 +265,6 @@ module Make (VS : VarSpec.S) =
       v.fresh
 
 
-
     (****************)
     (**   Setters  **)
     (****************)
@@ -345,6 +345,13 @@ module Make (VS : VarSpec.S) =
       | GlobalScope
       | Scope "" -> id
       | Scope proc  -> proc ^ "_" ^ id
+
+
+    let param_local_only (th_p:shared_or_local)
+                         (v_opt:t option) : shared_or_local =
+      match v_opt with
+      | None -> th_p
+      | Some v -> if is_local v then th_p else Shared
 
 
     (*********************************)
