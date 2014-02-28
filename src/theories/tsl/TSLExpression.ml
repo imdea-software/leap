@@ -3092,8 +3092,8 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
     else
       Hashtbl.add info.term_map t v in
   let gen_if_not_var (t:term) (s:sort) : V.t =
-    let _ = verbl _LONG_INFO "GEN_IF_NOT_VAR FOR TERM: %s\n" (term_to_str t) in
-    if is_var_fold.term_f () t then (verbl _LONG_INFO "WAS A VARIABLE\n"; term_to_var t)
+		verbl _LONG_INFO "GEN_IF_NOT_VAR FOR TERM: %s\n" (term_to_str t);
+		if is_var_fold.term_f () t then (verbl _LONG_INFO "WAS A VARIABLE\n"; term_to_var t)
     else try
            verbl _LONG_INFO "EXISTING PAIRS:\n";
            Hashtbl.iter (fun t v -> verbl _LONG_INFO "%s ----> %s\n" (term_to_str t) (V.to_str v)) info.term_map;
@@ -3112,240 +3112,149 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
     with _ ->
       (append_if_diff t v; v) in
 *)
-  let rec norm_set (s:set) : set =
-    match s with
-    | VarSet v -> VarSet v
-    | EmptySet -> EmptySet
-    | Singl a -> Singl (norm_addr a)
-    | Union (s1,s2) -> Union (norm_set s1, norm_set s2)
-    | Intr (s1,s2) -> Intr (norm_set s1, norm_set s2)
-    | Setdiff (s1,s2) -> Setdiff (norm_set s1, norm_set s2)
-    | PathToSet p -> PathToSet (norm_path p)
-    | AddrToSet (m,a,i) -> let i_var = gen_if_not_var (IntT i) Int in
-                             AddrToSet (norm_mem m, norm_addr a, VarInt i_var)
+	let norm_map =
+		make_map (fun _ _ v -> v)
+		~set_f:(fun fs info s ->
+				match s with
+				| AddrToSet (m,a,i) -> let i_var = gen_if_not_var (IntT i) Int in
+																 AddrToSet (fs.mem_f fs info m,
+																						fs.addr_f fs info a,
+																						VarInt i_var)
+				| _ -> map_set fs info s)
+		~tid_f:(fun fs info t ->
+				match t with
+				| TidArrRd (tt,i) -> let t_var = gen_if_not_var (TidT t) Tid in
+															 VarTh t_var
+				| _ -> map_tid fs info t)
+		~addr_f:(fun fs info a ->
+				match a with
+				| ArrAt (c,i) -> let i_var = gen_if_not_var (IntT i) Int in
+													 ArrAt (fs.cell_f fs info c, VarInt i_var)
+				| AddrArrRd (aa,i) -> let a_var = gen_if_not_var (AddrT a) Addr in
+																VarAddr a_var
+				| _ -> map_addr fs info a)
+		~cell_f:(fun fs info c ->
+				match c with
+				| MkCell (e,aa,tt,i) -> let c_var = gen_if_not_var (CellT c) Cell in
+																	VarCell c_var
+				| CellLockAt (c,i,t) -> let i_var = gen_if_not_var (IntT i) Int in
+																	CellLockAt (fs.cell_f fs info c,
+																							VarInt i_var,
+																							fs.tid_f fs info t)
+				| CellUnlockAt (c,i) -> let i_var = gen_if_not_var (IntT i) Int in
+																	CellUnlockAt (fs.cell_f fs info c, VarInt i_var)
+				| _ -> map_cell fs info c)
+		~path_f:(fun fs info p ->
+				match p with
+				| GetPath (m,a1,a2,i) -> let i_var = gen_if_not_var (IntT i) Int in
+																	 GetPath (fs.mem_f fs info m,
+																						fs.addr_f fs info a1,
+																						fs.addr_f fs info a2,
+																						VarInt i_var)
+				| _ -> map_path fs info p)
+		~int_f:(fun fs info i ->
+				match i with
+				| IntVal j -> VarInt (gen_if_not_var (IntT i) Int)
+				| CellMax c -> let l = gen_if_not_var (IntT i) Int in
+												 VarInt l
+				| _ -> map_int fs info i)
+		~addrarr_f:(fun fs info aa ->
+				match aa with
+				| AddrArrayUp (bb,i,a) -> let i_var = gen_if_not_var (IntT i) Int in
+																		AddrArrayUp (fs.addrarr_f fs info bb,
+																								 VarInt i_var,
+																								 fs.addr_f fs info a)
+				| _ -> map_addrarr fs info aa)
+		~tidarr_f:(fun fs info tt ->
+				match tt with
+				| TidArrayUp (yy,i,t) -> let i_var = gen_if_not_var (IntT i) Int in
+																	 TidArrayUp (fs.tidarr_f fs info yy,
+																							 VarInt i_var,
+																							 fs.tid_f fs info t)
+				| _ -> map_tidarr fs info tt)
+		~atom_f:(fun fs info a ->
+				match a with
+				| Reach (m,a1,a2,i,p) -> let i_var = gen_if_not_var (IntT i) Int in
+																	 Reach (fs.mem_f fs info m,
+																					fs.addr_f fs info a1,
+																					fs.addr_f fs info a2,
+																					VarInt i_var,
+																					fs.path_f fs info p)
+				| Skiplist(m,s,i,a1,a2,es) -> let i_var = gen_if_not_var (IntT i) Int in
+																				Skiplist(fs.mem_f fs info m,
+																								 fs.set_f fs info s,
+																								 VarInt i_var,
+																								 fs.addr_f fs info a1,
+																								 fs.addr_f fs info a2,
+																								 fs.setelem_f fs info es)
+				| Less (i1,i2) -> let i1_var = gen_if_not_var (IntT i1) Int in
+													let i2_var = gen_if_not_var (IntT i2) Int in
+														Less (VarInt i1_var, VarInt i2_var)
+				| Greater (i1,i2) -> let i1_var = gen_if_not_var (IntT i1) Int in
+														 let i2_var = gen_if_not_var (IntT i2) Int in
+															 Greater (VarInt i1_var, VarInt i2_var)
+				| LessEq (i1,i2) -> let i1_var = gen_if_not_var (IntT i1) Int in
+														let i2_var = gen_if_not_var (IntT i2) Int in
+															LessEq (VarInt i1_var, VarInt i2_var)
+				| GreaterEq (i1,i2) -> let i1_var = gen_if_not_var (IntT i1) Int in
+															 let i2_var = gen_if_not_var (IntT i2) Int in
+																 GreaterEq (VarInt i1_var, VarInt i2_var)
+				(* Equality between cell variable and MkCell *)
+				| Eq (CellT (VarCell v), CellT (MkCell (e,aa,tt,i)))
+				| Eq (CellT (MkCell (e,aa,tt,i)), CellT (VarCell v)) ->
+						let i_var = gen_if_not_var (IntT i) Int in
+						let aa_norm = fs.addrarr_f fs info aa in
+						let tt_norm = fs.tidarr_f fs info tt in
+						let aa' = match aa_norm with
+											| AddrArrayUp _ -> VarAddrArray (gen_if_not_var
+																					(AddrArrayT aa_norm) AddrArray)
+											| _ -> aa_norm in
+						let tt' = match tt_norm with
+											| TidArrayUp _ -> VarTidArray (gen_if_not_var
+																					(TidArrayT tt_norm) TidArray)
+											| _ -> tt_norm in
+							Eq (CellT (VarCell v), CellT (MkCell(fs.elem_f fs info e, aa',
+																									 tt', VarInt i_var)))
+				(* Inequality between cell variable and MkCell *)
+				| InEq (CellT (VarCell v), CellT (MkCell (e,aa,tt,i)))
+				| InEq (CellT (MkCell (e,aa,tt,i)), CellT (VarCell v)) ->
+						let i_var = gen_if_not_var (IntT i) Int in
+							InEq (CellT (VarCell v), CellT (MkCell(fs.elem_f fs info e,
+																										 fs.addrarr_f fs info aa,
+																										 fs.tidarr_f fs info tt,
+																										 VarInt i_var)))
+				(* Equality between address variable and address array *)
+				| Eq (AddrT (VarAddr a), AddrT (AddrArrRd(aa,i)))
+				| Eq (AddrT (AddrArrRd(aa,i)), AddrT (VarAddr a)) ->
+						let i_var = gen_if_not_var (IntT i) Int in
+							Eq (AddrT (VarAddr a),
+									AddrT (AddrArrRd(fs.addrarr_f fs info aa, VarInt i_var)))
+				(* Inequality between address variable and address array *)
+				| InEq (AddrT (VarAddr a), AddrT (AddrArrRd(aa,i)))
+				| InEq (AddrT (AddrArrRd(aa,i)), AddrT (VarAddr a)) ->
+						let i_var = gen_if_not_var (IntT i) Int in
+							InEq (AddrT (VarAddr a),
+										AddrT (AddrArrRd(fs.addrarr_f fs info aa,VarInt i_var)))
+				(* Equality between tid variable  and tids array *)
+				| Eq (TidT (VarTh a), TidT (TidArrRd(tt,i)))
+				| Eq (TidT (TidArrRd(tt,i)), TidT (VarTh a)) ->
+						let i_var = gen_if_not_var (IntT i) Int in
+							Eq (TidT (VarTh a),
+									TidT (TidArrRd(fs.tidarr_f fs info tt, VarInt i_var)))
+				(* Inequality between tid variable and tids array *)
+				| InEq (TidT (VarTh a), TidT (TidArrRd(tt,i)))
+				| InEq (TidT (TidArrRd(tt,i)), TidT (VarTh a)) ->
+						let i_var = gen_if_not_var (IntT i) Int in
+							InEq (TidT (VarTh a),
+										TidT (TidArrRd(fs.tidarr_f fs info tt, VarInt i_var)))
+				| PCUpdate (i,t) -> PCUpdate (i, fs.tid_f fs info t)
+				| _ -> map_atom fs info a)
 
-  and norm_tid (t:tid) : tid =
-    match t with
-    | VarTh v -> VarTh v
-    | NoTid -> NoTid
-    | CellLockIdAt (c,i) -> CellLockIdAt (norm_cell c, norm_int i)
-    | TidArrRd (tt,i) -> let t_var = gen_if_not_var (TidT t) Tid in
-                            VarTh t_var
-(*                          TidArrRd (norm_tidarr tt, VarInt i_var) *)
 
-  and norm_elem (e:elem) : elem =
-    match e with
-    | VarElem v -> VarElem v
-    | CellData c -> CellData (norm_cell c)
-    | HavocSkiplistElem -> HavocSkiplistElem
-    | LowestElem -> LowestElem
-    | HighestElem -> HighestElem
-
-  and norm_addr (a:addr) : addr =
-    match a with
-    | VarAddr v -> VarAddr v
-    | Null -> Null
-    | ArrAt (c,i) -> let i_var = gen_if_not_var (IntT i) Int in
-                        ArrAt (norm_cell c, VarInt i_var)
-    | AddrArrRd (aa,i) -> let a_var = gen_if_not_var (AddrT a) Addr in
-                            VarAddr a_var
-(*                          AddrArrRd (norm_addrarr aa, VarInt i_var) *)
-
-  and norm_cell (c:cell) : cell =
-    match c with
-    | VarCell v -> VarCell v
-    | Error -> Error
-    | MkCell (e,aa,tt,i) -> let c_var = gen_if_not_var (CellT c) Cell in
-                              VarCell c_var
-                              (*MkCell (norm_elem e, norm_addrarr aa,
-                                      norm_tidarr tt, VarInt i_var) *)
-    | CellLockAt (c,i,t) -> let i_var = gen_if_not_var (IntT i) Int in
-                              CellLockAt (norm_cell c, VarInt i_var, norm_tid t)
-    | CellUnlockAt (c,i) -> let i_var = gen_if_not_var (IntT i) Int in
-                              CellUnlockAt (norm_cell c, VarInt i_var)
-    | CellAt (m,a) -> CellAt (norm_mem m, norm_addr a)
-
-  and norm_setth (s:setth) : setth =
-    match s with
-    | VarSetTh v -> VarSetTh v
-    | EmptySetTh -> EmptySetTh
-    | SinglTh t -> SinglTh (norm_tid t)
-    | UnionTh (s1,s2) -> UnionTh (norm_setth s1, norm_setth s2)
-    | IntrTh (s1,s2) -> IntrTh (norm_setth s1, norm_setth s2)
-    | SetdiffTh (s1,s2) -> SetdiffTh (norm_setth s1, norm_setth s2)
-
-  and norm_setelem (s:setelem) : setelem =
-    match s with
-    | VarSetElem v -> VarSetElem v
-    | EmptySetElem -> EmptySetElem
-    | SinglElem e -> SinglElem (norm_elem e)
-    | UnionElem (s1,s2) -> UnionElem (norm_setelem s1, norm_setelem s2)
-    | IntrElem (s1,s2) -> IntrElem (norm_setelem s1, norm_setelem s2)
-    | SetToElems (s,m) -> SetToElems (norm_set s, norm_mem m)
-    | SetdiffElem (s1,s2) -> SetdiffElem (norm_setelem s1, norm_setelem s2)
-
-  and norm_path (p:path) : path =
-    match p with
-    | VarPath v -> VarPath v
-    | Epsilon -> Epsilon
-    | SimplePath a -> SimplePath (norm_addr a)
-    | GetPath (m,a1,a2,i) -> let i_var = gen_if_not_var (IntT i) Int in
-                               GetPath (norm_mem m, norm_addr a1,
-                                        norm_addr a2, VarInt i_var)
-
-  and norm_mem (m:mem) : mem =
-    match m with
-    | VarMem v -> VarMem v
-    | Update (m,a,c) -> Update (norm_mem m, norm_addr a, norm_cell c)
-
-  and norm_int (i:integer) : integer =
-    match i with
-    | IntVal j -> VarInt (gen_if_not_var (IntT i) Int)
-    | VarInt v -> VarInt v
-    | IntNeg j -> IntNeg j
-    | IntAdd (j1,j2) -> IntAdd (j1,j2)
-    | IntSub (j1,j2) -> IntSub (j1,j2)
-    | IntMul (j1,j2) -> IntMul (j1,j2)
-    | IntDiv (j1,j2) -> IntDiv (j1,j2)
-    | CellMax c -> let l = gen_if_not_var (IntT i) Int in
-                   VarInt l
-(*
-    | CellMax c -> let l' = gen_fresh_var info.fresh_gen_info Int in
-                   let c_norm = norm_cell (MkCell(CellData c, CellArr c, CellTids c, VarInt l')) in
-
-                   let _ = gen_if_not_var (CellT c_norm) Cell in
-                   VarInt l'
-*)
-    | HavocLevel -> HavocLevel
-
-  and norm_addrarr (aa:addrarr) : addrarr =
-    match aa with
-    | VarAddrArray v -> VarAddrArray v
-    | AddrArrayUp (bb,i,a) -> let i_var = gen_if_not_var (IntT i) Int in
-                                AddrArrayUp (norm_addrarr bb, VarInt i_var, norm_addr a)
-    | CellArr c -> CellArr (norm_cell c)
-
-  and norm_tidarr (tt:tidarr) : tidarr =
-    match tt with
-    | VarTidArray v -> VarTidArray v
-    | TidArrayUp (yy,i,t) -> let i_var = gen_if_not_var (IntT i) Int in
-                                TidArrayUp (norm_tidarr yy, VarInt i_var, norm_tid t)
-    | CellTids c -> CellTids (norm_cell c)
-
-  and norm_term (t:term) : term =
-    match t with
-    | VarT v -> VarT v
-    | SetT s -> SetT (norm_set s)
-    | ElemT e -> ElemT (norm_elem e)
-    | TidT t -> TidT (norm_tid t)
-    | AddrT a -> AddrT (norm_addr a)
-    | CellT c -> CellT (norm_cell c)
-    | SetThT s -> SetThT (norm_setth s)
-    | SetElemT s -> SetElemT (norm_setelem s)
-    | PathT p -> PathT (norm_path p)
-    | MemT m -> MemT (norm_mem m)
-    | IntT i -> IntT (norm_int i)
-    | AddrArrayT aa -> AddrArrayT (norm_addrarr aa)
-    | TidArrayT tt -> TidArrayT (norm_tidarr tt)
-    | VarUpdate (v,th,t) -> VarUpdate (v, norm_tid th, norm_term t)
-
-
-  and norm_atom (a:atom) : atom =
-    match a with
-    | Append (p1,p2,p3) -> Append (norm_path p1, norm_path p2, norm_path p3)
-    | Reach (m,a1,a2,i,p) -> let i_var = gen_if_not_var (IntT i) Int in
-                               Reach (norm_mem m, norm_addr a1, norm_addr a2,
-                                      VarInt i_var, norm_path p)
-    | OrderList (m,a1,a2) -> OrderList (norm_mem m, norm_addr a1, norm_addr a2)
-    | Skiplist(m,s,i,a1,a2,es) -> let i_var = gen_if_not_var (IntT i) Int in
-                                   Skiplist(norm_mem m, norm_set s, VarInt i_var,
-                                            norm_addr a1, norm_addr a2, norm_setelem es)
-    | In (a,s) -> In (norm_addr a, norm_set s)
-    | SubsetEq (s1,s2) -> SubsetEq (norm_set s1, norm_set s2)
-    | InTh (t,s) -> InTh (norm_tid t, norm_setth s)
-    | SubsetEqTh (s1,s2) -> SubsetEqTh (norm_setth s1, norm_setth s2)
-    | InElem (e,s) -> InElem (norm_elem e, norm_setelem s)
-    | SubsetEqElem (s1,s2) -> SubsetEqElem (norm_setelem s1, norm_setelem s2)
-    | Less (i1,i2) -> let i1_var = gen_if_not_var (IntT i1) Int in
-                      let i2_var = gen_if_not_var (IntT i2) Int in
-                        Less (VarInt i1_var, VarInt i2_var)
-    | Greater (i1,i2) -> let i1_var = gen_if_not_var (IntT i1) Int in
-                         let i2_var = gen_if_not_var (IntT i2) Int in
-                           Greater (VarInt i1_var, VarInt i2_var)
-    | LessEq (i1,i2) -> let i1_var = gen_if_not_var (IntT i1) Int in
-                        let i2_var = gen_if_not_var (IntT i2) Int in
-                        LessEq (VarInt i1_var, VarInt i2_var)
-    | GreaterEq (i1,i2) -> let i1_var = gen_if_not_var (IntT i1) Int in
-                           let i2_var = gen_if_not_var (IntT i2) Int in
-                           GreaterEq (VarInt i1_var, VarInt i2_var)
-    | LessElem (e1,e2) -> LessElem (norm_elem e1, norm_elem e2)
-    | GreaterElem (e1,e2) -> GreaterElem (norm_elem e1, norm_elem e2)
-    (* Equality between cell variable and MkCell *)
-    | Eq (CellT (VarCell v), CellT (MkCell (e,aa,tt,i)))
-    | Eq (CellT (MkCell (e,aa,tt,i)), CellT (VarCell v)) ->
-        let i_var = gen_if_not_var (IntT i) Int in
-        let aa_norm = norm_addrarr aa in
-        let tt_norm = norm_tidarr tt in
-        let aa' = match aa_norm with
-                  | AddrArrayUp _ -> VarAddrArray (gen_if_not_var
-                                      (AddrArrayT aa_norm) AddrArray)
-                  | _ -> aa_norm in
-        let tt' = match tt_norm with
-                  | TidArrayUp _ -> VarTidArray (gen_if_not_var
-                                      (TidArrayT tt_norm) TidArray)
-                  | _ -> tt_norm in
-          Eq (CellT (VarCell v), CellT (MkCell(norm_elem e, aa',
-                                               tt', VarInt i_var)))
-    (* Inequality between cell variable and MkCell *)
-    | InEq (CellT (VarCell v), CellT (MkCell (e,aa,tt,i)))
-    | InEq (CellT (MkCell (e,aa,tt,i)), CellT (VarCell v)) ->
-        let i_var = gen_if_not_var (IntT i) Int in
-          InEq (CellT (VarCell v), CellT (MkCell(norm_elem e, norm_addrarr aa,
-                                                 norm_tidarr tt, VarInt i_var)))
-    (* Equality between address variable and address array *)
-    | Eq (AddrT (VarAddr a), AddrT (AddrArrRd(aa,i)))
-    | Eq (AddrT (AddrArrRd(aa,i)), AddrT (VarAddr a)) ->
-        let i_var = gen_if_not_var (IntT i) Int in
-          Eq (AddrT (VarAddr a),
-              AddrT (AddrArrRd(norm_addrarr aa, VarInt i_var)))
-    (* Inequality between address variable and address array *)
-    | InEq (AddrT (VarAddr a), AddrT (AddrArrRd(aa,i)))
-    | InEq (AddrT (AddrArrRd(aa,i)), AddrT (VarAddr a)) ->
-        let i_var = gen_if_not_var (IntT i) Int in
-          InEq (AddrT (VarAddr a),
-                AddrT (AddrArrRd(norm_addrarr aa,VarInt i_var)))
-    (* Equality between tid variable  and tids array *)
-    | Eq (TidT (VarTh a), TidT (TidArrRd(tt,i)))
-    | Eq (TidT (TidArrRd(tt,i)), TidT (VarTh a)) ->
-        let i_var = gen_if_not_var (IntT i) Int in
-          Eq (TidT (VarTh a),
-              TidT (TidArrRd(norm_tidarr tt, VarInt i_var)))
-    (* Inequality between tid variable and tids array *)
-    | InEq (TidT (VarTh a), TidT (TidArrRd(tt,i)))
-    | InEq (TidT (TidArrRd(tt,i)), TidT (VarTh a)) ->
-        let i_var = gen_if_not_var (IntT i) Int in
-          InEq (TidT (VarTh a),
-                TidT (TidArrRd(norm_tidarr tt, VarInt i_var)))
-    (* General equalities and inequalities *)
-    | Eq (t1,t2) -> Eq (norm_term t1, norm_term t2)
-    | InEq (t1,t2) -> InEq (norm_term t1, norm_term t2)
-    | BoolVar v -> BoolVar v
-    | PC (i,topt,pr) -> let norm_topt = match topt with
-                                        | V.Shared -> V.Shared
-(*                                        | V.Local t -> V.Local (norm_tid t) in *)
-                                        | V.Local t -> V.Local t in
-                        PC (i, norm_topt, pr)
-    | PCUpdate (i,t) -> PCUpdate (i, norm_tid t)
-    | PCRange (i,j,topt,pr) -> let norm_topt = match topt with
-                                              | V.Shared -> V.Shared
-(*                                              | V.Local t -> V.Local (norm_tid t) in*)
-                                              | V.Local t -> V.Local t in
-                               PCRange (i, j, norm_topt, pr)
-
-  in
+	in
   match l with
-  | F.Atom a -> F.Literal(F.Atom (norm_atom a))
-  | F.NegAtom (Skiplist(m,s,i,a1,a2,es)) ->
+	| F.Atom a -> F.Literal(F.Atom (norm_map.atom_f () a))
+	| F.NegAtom (Skiplist(m,s,i,a1,a2,es)) ->
       let m_var = gen_if_not_var (MemT m) Mem in
       let s_var = gen_if_not_var (SetT s) Set in
       let i_var = gen_if_not_var (IntT i) Int in
@@ -3403,7 +3312,7 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
                         eq_set (u) (PathToSet q);
                         phi_not_subset]
           ]
-  | F.NegAtom a -> F.Literal(F.NegAtom (norm_atom a))
+	| F.NegAtom a -> F.Literal(F.NegAtom (norm_map.atom_f () a))
 
 
 let rec norm_formula (info:norm_info_t) (phi:formula) : formula =
@@ -3494,305 +3403,92 @@ let check_well_defined_replace_table (tbl:(term, term) Hashtbl.t) : unit =
 
 
 
-let rec replace_terms_in_vars (tbl:(term,term) Hashtbl.t) (v:V.t) : V.t =
-  try
+let replace_terms_in_vars (tbl:(term,term) Hashtbl.t) (v:V.t) : V.t =
+	try
     match Hashtbl.find tbl (VarT v) with
     | VarT v -> v
     | _ -> assert false
   with _ -> v
 
 
-and replace_terms_term (tbl:(term,term) Hashtbl.t) (expr:term) : term =
-  match expr with
-    VarT(v)           -> VarT       (replace_terms_in_vars tbl v)
-  | SetT(set)         -> SetT       (replace_terms_set tbl set)
-  | AddrT(addr)       -> AddrT      (replace_terms_addr tbl addr)
-  | ElemT(elem)       -> ElemT      (replace_terms_elem tbl elem)
-  | TidT(th)         -> TidT      (replace_terms_tid tbl th)
-  | CellT(cell)       -> CellT      (replace_terms_cell tbl cell)
-  | SetThT(setth)     -> SetThT     (replace_terms_setth tbl setth)
-  | SetElemT(setelem) -> SetElemT   (replace_terms_setelem tbl setelem)
-  | PathT(path)       -> PathT      (replace_terms_path tbl path)
-  | MemT(mem)         -> MemT       (replace_terms_mem tbl mem)
-  | IntT(i)           -> IntT       (replace_terms_int tbl i)
-  | AddrArrayT(arr)   -> AddrArrayT (replace_terms_addrarr tbl arr)
-  | TidArrayT(arr)    -> TidArrayT  (replace_terms_tidarr tbl arr)
-  | VarUpdate(v,th,t) -> VarUpdate  (replace_terms_in_vars tbl v,
-                                     replace_terms_tid tbl th,
-                                     replace_terms_term tbl t)
+let replace_terms_map =
+	make_map (fun _ tbl v -> replace_terms_in_vars tbl v)
+	~addrarr_f:(fun fs tbl aa ->
+			try
+				match Hashtbl.find tbl (AddrArrayT aa) with
+				| AddrArrayT aa' -> aa'
+				| _ -> assert false
+			with _ -> map_addrarr fs tbl aa)
+	~tidarr_f:(fun fs tbl tt ->
+			try
+				match Hashtbl.find tbl (TidArrayT tt) with
+				| TidArrayT tt' -> tt'
+				| _ -> assert false
+			with _ -> map_tidarr fs tbl tt)
+	~set_f:(fun fs tbl s ->
+			try
+				match Hashtbl.find tbl (SetT s) with
+				| SetT s' -> s'
+				| _ -> assert false
+			with _ -> map_set fs tbl s)
+	~addr_f:(fun fs tbl a ->
+			try
+				match Hashtbl.find tbl (AddrT a) with
+				| AddrT a' -> a'
+				| _ -> assert false
+			with _ -> map_addr fs tbl a)
+	~elem_f:(fun fs tbl e ->
+			try
+				match Hashtbl.find tbl (ElemT e) with
+				| ElemT e' -> e'
+				| _ -> assert false
+			with _ -> map_elem fs tbl e)
+	~tid_f:(fun fs tbl t ->
+			try
+				match Hashtbl.find tbl (TidT t) with
+				| TidT t' -> t'
+				| _ -> assert false
+			with _ -> map_tid fs tbl t)
+	~cell_f:(fun fs tbl c ->
+			try
+				match Hashtbl.find tbl (CellT c) with
+				| CellT c' -> c'
+				| _ -> assert false
+			with _ -> map_cell fs tbl c)
+	~setth_f:(fun fs tbl st ->
+			try
+				match Hashtbl.find tbl (SetThT st) with
+				| SetThT st' -> st'
+				| _ -> assert false
+			with _ -> map_setth fs tbl st)
+	~setelem_f:(fun fs tbl se ->
+			try
+				match Hashtbl.find tbl (SetElemT se) with
+				| SetElemT se' -> se'
+				| _ -> assert false
+			with _ -> map_setelem fs tbl se)
+	~path_f:(fun fs tbl p ->
+			try
+				match Hashtbl.find tbl (PathT p) with
+				| PathT p' -> p'
+				| _ -> assert false
+			with _ -> map_path fs tbl p)
+	~mem_f:(fun fs tbl m ->
+			try
+				match Hashtbl.find tbl (MemT m) with
+				| MemT m' -> m'
+				| _ -> assert false
+			with _ -> map_mem fs tbl m)
+	~int_f:(fun fs tbl i ->
+			try
+				match Hashtbl.find tbl (IntT i) with
+				| IntT i' -> i'
+				| _ -> assert false
+			with _ -> map_int fs tbl i)
 
 
-and replace_terms_addrarr (tbl:(term,term) Hashtbl.t) (arr:addrarr) : addrarr =
-  try
-    match Hashtbl.find tbl (AddrArrayT arr) with | AddrArrayT arr' -> arr' | _ -> assert false
-  with _ -> begin
-    match arr with
-      VarAddrArray v       -> VarAddrArray (replace_terms_in_vars tbl v)
-        (*TODO: Fix open array case for array variables *)
-    | AddrArrayUp(arr,i,a) -> AddrArrayUp(replace_terms_addrarr tbl arr,
-                                          replace_terms_int tbl i,
-                                          replace_terms_addr tbl a)
-    | CellArr c            -> CellArr (replace_terms_cell tbl c)
-  end
 
-
-and replace_terms_tidarr (tbl:(term,term) Hashtbl.t) (arr:tidarr) : tidarr =
-  try
-    match Hashtbl.find tbl (TidArrayT arr) with | TidArrayT arr' -> arr' | _ -> assert false
-  with _ -> begin
-    match arr with
-      VarTidArray v       -> VarTidArray (replace_terms_in_vars tbl v)
-        (*TODO: Fix open array case for array variables *)
-    | TidArrayUp(arr,i,t) -> TidArrayUp(replace_terms_tidarr tbl arr,
-                                        replace_terms_int tbl i,
-                                        replace_terms_tid tbl t)
-    | CellTids c            -> CellTids (replace_terms_cell tbl c)
-  end
-
-
-and replace_terms_set (tbl:(term,term) Hashtbl.t) (e:set) : set =
-  try
-    match Hashtbl.find tbl (SetT e) with | SetT e' -> e' | _ -> assert false
-  with _ -> begin
-    match e with
-      VarSet v             -> VarSet (replace_terms_in_vars tbl v)
-    | EmptySet             -> EmptySet
-    | Singl(addr)          -> Singl(replace_terms_addr tbl addr)
-    | Union(s1,s2)         -> Union(replace_terms_set tbl s1,
-                                    replace_terms_set tbl s2)
-    | Intr(s1,s2)          -> Intr(replace_terms_set tbl s1,
-                                   replace_terms_set tbl s2)
-    | Setdiff(s1,s2)       -> Setdiff(replace_terms_set tbl s1,
-                                      replace_terms_set tbl s2)
-    | PathToSet(path)      -> PathToSet(replace_terms_path tbl path)
-    | AddrToSet(mem,a,l)   -> AddrToSet(replace_terms_mem tbl mem,
-                                        replace_terms_addr tbl a,
-                                        replace_terms_int tbl l)
-  end
-
-
-and replace_terms_addr (tbl:(term,term) Hashtbl.t) (a:addr) : addr =
-  try
-    match Hashtbl.find tbl (AddrT a) with | AddrT a' -> a' | _ -> assert false
-  with _ -> begin
-    match a with
-      VarAddr v                 -> VarAddr (replace_terms_in_vars tbl v)
-    | Null                      -> Null
-    | ArrAt(cell,l)            -> ArrAt(replace_terms_cell tbl cell,
-                                          replace_terms_int tbl l)
-    | AddrArrRd (aa,i)          -> AddrArrRd (replace_terms_addrarr tbl aa,
-                                              replace_terms_int tbl i)
-  end
-
-
-and replace_terms_elem (tbl:(term,term) Hashtbl.t) (e:elem) : elem =
-  try
-    match Hashtbl.find tbl (ElemT e) with | ElemT e' -> e' | _ -> assert false
-  with _ -> begin
-    match e with
-      VarElem v            -> VarElem (replace_terms_in_vars tbl v)
-    | CellData(cell)       -> CellData(replace_terms_cell tbl cell)
-    | HavocSkiplistElem    -> HavocSkiplistElem
-    | LowestElem           -> LowestElem
-    | HighestElem          -> HighestElem
-  end
-
-
-and replace_terms_tid (tbl:(term,term) Hashtbl.t) (th:tid) : tid =
-  try
-    match Hashtbl.find tbl (TidT th) with | TidT th' -> th' | _ -> assert false
-  with _ -> begin
-    match th with
-      VarTh v              -> VarTh (replace_terms_in_vars tbl v)
-    | NoTid               -> NoTid
-    | CellLockIdAt(cell,l) -> CellLockIdAt(replace_terms_cell tbl cell,
-                                           replace_terms_int tbl l)
-    | TidArrRd(arr,l)     -> TidArrRd(replace_terms_tidarr tbl arr,
-                                        replace_terms_int tbl l)
-  end
-
-
-and replace_terms_cell (tbl:(term,term) Hashtbl.t) (c:cell) : cell =
-  try
-    match Hashtbl.find tbl (CellT c) with | CellT c' -> c' | _ -> assert false
-  with _ -> begin
-    match c with
-      VarCell v              -> VarCell (replace_terms_in_vars tbl v)
-    | Error                  -> Error
-    | MkCell(data,aa,ta,l)   -> MkCell(replace_terms_elem tbl data,
-                                       replace_terms_addrarr tbl aa,
-                                       replace_terms_tidarr tbl ta,
-                                       replace_terms_int tbl l)
-    | CellLockAt(cell,l, t)  -> CellLockAt(replace_terms_cell tbl cell,
-                                           replace_terms_int tbl l,
-                                           replace_terms_tid tbl t)
-    | CellUnlockAt(cell,l)   -> CellUnlockAt(replace_terms_cell tbl cell,
-                                             replace_terms_int tbl l)
-    | CellAt(mem,addr)       -> CellAt(replace_terms_mem tbl mem,
-                                       replace_terms_addr tbl addr)
-  end
-
-
-and replace_terms_setth (tbl:(term,term) Hashtbl.t) (s:setth) : setth =
-  try
-    match Hashtbl.find tbl (SetThT s) with | SetThT s' -> s' | _ -> assert false
-  with _ -> begin
-    match s with
-      VarSetTh v            -> VarSetTh (replace_terms_in_vars tbl v)
-    | EmptySetTh            -> EmptySetTh
-    | SinglTh(th)           -> SinglTh(replace_terms_tid tbl th)
-    | UnionTh(s1,s2)        -> UnionTh(replace_terms_setth tbl s1,
-                                       replace_terms_setth tbl s2)
-    | IntrTh(s1,s2)         -> IntrTh(replace_terms_setth tbl s1,
-                                      replace_terms_setth tbl s2)
-    | SetdiffTh(s1,s2)      -> SetdiffTh(replace_terms_setth tbl s1,
-                                         replace_terms_setth tbl s2)
-  end
-
-
-and replace_terms_setelem (tbl:(term,term) Hashtbl.t) (s:setelem) : setelem =
-  try
-    match Hashtbl.find tbl (SetElemT s) with | SetElemT s' -> s' | _ -> assert false
-  with _ -> begin
-    match s with
-      VarSetElem v            -> VarSetElem (replace_terms_in_vars tbl v)
-    | EmptySetElem            -> EmptySetElem
-    | SinglElem(e)            -> SinglElem(replace_terms_elem tbl e)
-    | UnionElem(s1,s2)        -> UnionElem(replace_terms_setelem tbl s1,
-                                           replace_terms_setelem tbl s2)
-    | IntrElem(s1,s2)         -> IntrElem(replace_terms_setelem tbl s1,
-                                          replace_terms_setelem tbl s2)
-    | SetdiffElem(s1,s2)      -> SetdiffElem(replace_terms_setelem tbl s1,
-                                             replace_terms_setelem tbl s2)
-    | SetToElems(s,m)         -> SetToElems(replace_terms_set tbl s, replace_terms_mem tbl m)
-  end
-
-
-and replace_terms_path (tbl:(term,term) Hashtbl.t) (path:path) : path =
-  try
-    match Hashtbl.find tbl (PathT path) with | PathT p' -> p' | _ -> assert false
-  with _ -> begin
-    match path with
-      VarPath v                        -> VarPath (replace_terms_in_vars tbl v)
-    | Epsilon                          -> Epsilon
-    | SimplePath(addr)                 -> SimplePath(replace_terms_addr tbl addr)
-    | GetPath(mem,add_from,add_to,l)   -> GetPath(replace_terms_mem tbl mem,
-                                                  replace_terms_addr tbl add_from,
-                                                  replace_terms_addr tbl add_to,
-                                                  replace_terms_int tbl l)
-  end
-
-
-and replace_terms_mem (tbl:(term,term) Hashtbl.t) (m:mem) : mem =
-  try
-    match Hashtbl.find tbl (MemT m) with | MemT m' -> m' | _ -> assert false
-  with _ -> begin
-    match m with
-      VarMem v             -> VarMem (replace_terms_in_vars tbl v)
-    | Update(mem,add,cell) -> Update(replace_terms_mem tbl mem,
-                                     replace_terms_addr tbl add,
-                                     replace_terms_cell tbl cell)
-  end
-
-
-and replace_terms_int (tbl:(term,term) Hashtbl.t) (i:integer) : integer =
-  try
-    match Hashtbl.find tbl (IntT i) with | IntT j -> j | _ -> assert false
-  with _ -> begin
-    match i with
-      IntVal(i)           -> IntVal(i)
-    | VarInt v            -> VarInt (replace_terms_in_vars tbl v)
-    | IntNeg(i)           -> IntNeg(replace_terms_int tbl i)
-    | IntAdd(i1,i2)       -> IntAdd(replace_terms_int tbl i1,
-                                    replace_terms_int tbl i2)
-    | IntSub(i1,i2)       -> IntSub(replace_terms_int tbl i1,
-                                    replace_terms_int tbl i2)
-    | IntMul(i1,i2)       -> IntMul(replace_terms_int tbl i1,
-                                    replace_terms_int tbl i2)
-    | IntDiv(i1,i2)       -> IntDiv(replace_terms_int tbl i1,
-                                    replace_terms_int tbl i2)
-    | CellMax(c)          -> CellMax(replace_terms_cell tbl c)
-    | HavocLevel          -> HavocLevel
-  end
-
-
-and replace_terms_atom (tbl:(term,term) Hashtbl.t) (a:atom) : atom =
-  match a with
-    Append(p1,p2,pres)                 -> Append(replace_terms_path tbl p1,
-                                                 replace_terms_path tbl p2,
-                                                 replace_terms_path tbl pres)
-  | Reach(h,a_from,a_to,l,p)           -> Reach(replace_terms_mem tbl h,
-                                                replace_terms_addr tbl a_from,
-                                                replace_terms_addr tbl a_to,
-                                                replace_terms_int tbl l,
-                                                replace_terms_path tbl p)
-  | OrderList(h,a_from,a_to)           -> OrderList(replace_terms_mem tbl h,
-                                                    replace_terms_addr tbl a_from,
-                                                    replace_terms_addr tbl a_to)
-  | Skiplist(h,s,l,a_from,a_to,elems)  -> Skiplist(replace_terms_mem tbl h,
-                                                   replace_terms_set tbl s,
-                                                   replace_terms_int tbl l,
-                                                   replace_terms_addr tbl a_from,
-                                                   replace_terms_addr tbl a_to,
-                                                   replace_terms_setelem tbl elems)
-  | In(a,s)                            -> In(replace_terms_addr tbl a,
-                                             replace_terms_set tbl s)
-  | SubsetEq(s_in,s_out)               -> SubsetEq(replace_terms_set tbl s_in,
-                                                   replace_terms_set tbl s_out)
-  | InTh(th,s)                         -> InTh(replace_terms_tid tbl th,
-                                               replace_terms_setth tbl s)
-  | SubsetEqTh(s_in,s_out)             -> SubsetEqTh(replace_terms_setth tbl s_in,
-                                                     replace_terms_setth tbl s_out)
-  | InElem(e,s)                        -> InElem(replace_terms_elem tbl e,
-                                                 replace_terms_setelem tbl s)
-  | SubsetEqElem(s_in,s_out)           -> SubsetEqElem(replace_terms_setelem tbl s_in,
-                                                       replace_terms_setelem tbl s_out)
-  | Less(i1,i2)                        -> Less(replace_terms_int tbl i1,
-                                               replace_terms_int tbl i2)
-  | Greater(i1,i2)                     -> Greater(replace_terms_int tbl i1,
-                                                  replace_terms_int tbl i2)
-  | LessEq(i1,i2)                      -> LessEq(replace_terms_int tbl i1,
-                                                 replace_terms_int tbl i2)
-  | GreaterEq(i1,i2)                   -> GreaterEq(replace_terms_int tbl i1,
-                                                    replace_terms_int tbl i2)
-  | LessElem(e1,e2)                    -> LessElem(replace_terms_elem tbl e1,
-                                                   replace_terms_elem tbl e2)
-  | GreaterElem(e1,e2)                 -> GreaterElem(replace_terms_elem tbl e1,
-                                                      replace_terms_elem tbl e2)
-  | Eq(exp)                            -> Eq(replace_terms_eq tbl exp)
-  | InEq(exp)                          -> InEq(replace_terms_ineq tbl exp)
-  | BoolVar v                          -> BoolVar (replace_terms_in_vars tbl v)
-  | PC (pc,th,p)                       -> begin
-                                            match th with
-                                            | V.Shared  -> PC (pc,th,p)
-                                            | V.Local t -> PC (pc, V.Local (replace_terms_in_vars tbl t), p)
-                                          end
-  | PCUpdate (pc,t)                    -> PCUpdate (pc, replace_terms_tid tbl t)
-  | PCRange (pc1,pc2,th,p)             -> begin
-                                            match th with
-                                            | V.Shared  -> PCRange (pc1,pc2,th,p)
-                                            | V.Local t -> PCRange (pc1,pc2,V.Local(replace_terms_in_vars tbl t),p)
-                                          end
-
-(*
-and replace_terms_literal (tbl:(term,term) Hashtbl.t) (l:literal) : literal =
-  match l with
-    Atom a    -> Atom    (replace_terms_atom tbl a)
-  | NegAtom a -> NegAtom (replace_terms_atom tbl a)
-*)
-
-
-and replace_terms_eq (tbl:(term,term) Hashtbl.t) ((t1,t2):eq) : eq =
-  (replace_terms_term tbl t1, replace_terms_term tbl t2)
-
-
-and replace_terms_ineq (tbl:(term,term) Hashtbl.t) ((t1,t2):diseq) : diseq =
-  (replace_terms_term tbl t1, replace_terms_term tbl t2)
-
-
-let replace_fs = F.make_trans
-                   F.GenericLiteralTrans
-                   (fun info a -> replace_terms_atom info a)
+let replace_fs = F.make_trans F.GenericLiteralTrans replace_terms_map.atom_f
 
 let replace_terms_literal (tbl:(term,term) Hashtbl.t) (l:literal) : literal =
   F.literal_trans replace_fs tbl l
@@ -3865,5 +3561,4 @@ let gen_fresh_tids (set:ThreadSet.t) (n:int) : ThreadSet.t =
     set ThreadSet.empty ThreadSet.add ThreadSet.mem gen_cand n
 
 let param (p:V.shared_or_local) (phi:formula) =
-  F.formula_trans param_fs (V.param_local_only p) phi
-
+	F.formula_trans param_fs (V.param_local_only p) phi
