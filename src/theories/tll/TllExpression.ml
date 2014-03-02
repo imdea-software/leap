@@ -1604,290 +1604,97 @@ let voc_to_var (t:tid) : V.t =
 (* FORMULA MANIPULATION FUNCTIONS *)
 
 let required_sorts (phi:formula) : sort list =
-  let empty = SortSet.empty in
-  let union = SortSet.union in
-  let add = SortSet.add in
-  let single = SortSet.singleton in
-  let list_union xs = List.fold_left union empty xs in
-  let append s sets = add s (List.fold_left union empty sets) in
+  let req_fold =
+    make_fold (fun _ -> SortSet.empty) SortSet.union
+              (fun _ _ _ -> SortSet.empty)
+    ~atom_f:(fun fs info a ->
+        match a with
+        | BoolVar _ -> SortSet.singleton Bool
+        | PC _
+        | PCUpdate _
+        | PCRange _ -> SortSet.empty
+        | _ -> fold_atom fs info a)
+    ~mem_f:(fun fs info m ->
+        SortSet.add Mem (fold_mem fs info m))
+    ~int_f:(fun fs info i ->
+        SortSet.add Int (fold_int fs info i))
+    ~path_f:(fun fs info p ->
+        SortSet.add Path (fold_path fs info p))
+    ~setth_f:(fun fs info st ->
+        SortSet.add SetTh (fold_setth fs info st))
+    ~setelem_f:(fun fs info se ->
+        SortSet.add SetElem (fold_setelem fs info se))
+    ~cell_f:(fun fs info c ->
+        SortSet.add Cell (fold_cell fs info c))
+    ~addr_f:(fun fs info a ->
+        SortSet.add Addr (fold_addr fs info a))
+    ~elem_f:(fun fs info e ->
+        SortSet.add Elem (fold_elem fs info e))
+    ~tid_f:(fun fs info th ->
+        SortSet.add Tid (fold_tid fs info th))
+    ~set_f:(fun fs info s ->
+        SortSet.add Set (fold_set fs info s))
+    ~term_f:(fun fs info t ->
+        match t with
+        | VarT v -> SortSet.singleton (V.sort v)
+        | VarUpdate (v,t,tr) -> SortSet.add (V.sort v)
+                                  (fs.concat (fs.tid_f fs info t)
+                                             (fs.term_f fs info tr))
+        | _ -> fold_term fs info t) in
 
-  let rec req_atom (a:atom) : SortSet.t =
-    match a with
-    | Append (p1,p2,p3)   -> list_union [req_p p1;req_p p1;req_p p2;req_p p3]
-    | Reach (m,a1,a2,p)   -> list_union [req_m m;req_a a1;req_a a2;req_p p]
-    | OrderList (m,a1,a2) -> list_union [req_m m;req_a a1;req_a a2]
-    | In (a,s)            -> list_union [req_a a;req_s s]
-    | SubsetEq (s1,s2)    -> list_union [req_s s1;req_s s2]
-    | InTh (t,s)          -> list_union [req_t t;req_st s]
-    | SubsetEqTh (s1,s2)  -> list_union [req_st s1;req_st s2]
-    | InElem (e,s)        -> list_union [req_e e;req_se s]
-    | SubsetEqElem (s1,s2)-> list_union [req_se s1;req_se s2]
-    | Less (i1,i2)        -> list_union [req_i i1; req_i i2]
-    | LessEq (i1,i2)      -> list_union [req_i i1; req_i i2]
-    | Greater (i1,i2)     -> list_union [req_i i1; req_i i2]
-    | GreaterEq (i1,i2)   -> list_union [req_i i1; req_i i2]
-    | LessElem  (e1,e2)   -> list_union [req_e e1; req_e e2]
-    | GreaterElem (e1,e2) -> list_union [req_e e1; req_e e2]
-    | Eq (t1,t2)          -> union (req_term t1) (req_term t2)
-    | InEq (t1,t2)        -> union (req_term t1) (req_term t2)
-    | BoolVar _           -> single Bool
-    | PC _                -> empty
-    | PCUpdate _          -> empty
-    | PCRange _           -> empty
-
-  and req_m (m:mem) : SortSet.t =
-    match m with
-    | VarMem _         -> single Mem
-    | Emp              -> single Mem
-    | Update (m,a,c)   -> append Mem [req_m m;req_a a;req_c c]
-
-  and req_i (i:integer) : SortSet.t =
-    match i with
-    | IntVal _         -> single Int
-    | VarInt _         -> single Int
-    | IntNeg i         -> append Int [req_i i]
-    | IntAdd (i1,i2)   -> append Int [req_i i1;req_i i2]
-    | IntSub (i1,i2)   -> append Int [req_i i1;req_i i2]
-    | IntMul (i1,i2)   -> append Int [req_i i1;req_i i2]
-    | IntDiv (i1,i2)   -> append Int [req_i i1;req_i i2]
-
-  and req_p (p:path) : SortSet.t =
-    match p with
-    | VarPath _         -> single Path
-    | Epsilon           -> single Path
-    | SimplePath a      -> append Path [req_a a]
-    | GetPath (m,a1,a2) -> append Path [req_m m;req_a a1;req_a a2]
-
-  and req_st (s:setth) : SortSet.t =
-    match s with
-    | VarSetTh _         -> single SetTh
-    | EmptySetTh         -> single SetTh
-    | SinglTh t          -> append SetTh [req_t t]
-    | UnionTh (s1,s2)    -> append SetTh [req_st s1;req_st s2]
-    | IntrTh (s1,s2)     -> append SetTh [req_st s1;req_st s2]
-    | SetdiffTh (s1,s2)  -> append SetTh [req_st s1;req_st s2]
-
-  and req_se (s:setelem) : SortSet.t =
-    match s with
-    | VarSetElem _         -> single SetElem
-    | EmptySetElem         -> single SetElem
-    | SinglElem e          -> append SetElem [req_e e]
-    | UnionElem (s1,s2)    -> append SetElem [req_se s1;req_se s2]
-    | IntrElem (s1,s2)     -> append SetElem [req_se s1;req_se s2]
-    | SetToElems (s,m)     -> append SetElem [req_s   s;req_m   m]
-    | SetdiffElem (s1,s2)  -> append SetElem [req_se s1;req_se s2]
-
-  and req_c (c:cell) : SortSet.t =
-    match c with
-    | VarCell _         -> single Cell
-    | Error             -> single Cell
-    | MkCell (e,a,t)    -> append Cell [req_e e;req_a a; req_t t]
-    | CellLock (c,t)    -> append Cell [req_c c;req_t t]
-    | CellUnlock c      -> append Cell [req_c c]
-    | CellAt (m,a)      -> append Cell [req_m m;req_a a]
-
-  and req_a (a:addr) : SortSet.t =
-    match a with
-    | VarAddr _         -> single Addr
-    | Null              -> single Addr
-    | Next c            -> append Addr [req_c c]
-    | FirstLocked (m,p) -> append Addr [req_m m;req_p p]
-
-  and req_e (e:elem) : SortSet.t =
-    match e with
-    | VarElem _         -> single Elem
-    | CellData c        -> append Elem [req_c c]
-    | HavocListElem     -> single Elem
-    | LowestElem        -> single Elem
-    | HighestElem       -> single Elem
-
-  and req_t (t:tid) : SortSet.t =
-    match t with
-    | VarTh _           -> single Tid
-    | NoTid            -> single Tid
-    | CellLockId c      -> append Tid [req_c c]
-
-  and req_s (s:set) : SortSet.t =
-    match s with
-    | VarSet _         -> single Set
-    | EmptySet         -> single Set
-    | Singl a          -> append Set  [req_a a]
-    | Union (s1,s2)    -> append Set [req_s s1;req_s s2]
-    | Intr (s1,s2)     -> append Set [req_s s1;req_s s2]
-    | Setdiff (s1,s2)  -> append Set [req_s s1;req_s s2]
-    | PathToSet p      -> append Set [req_p p]
-    | AddrToSet (m,a)  -> append Set [req_m m;req_a a]
-
-  and req_term (t:term) : SortSet.t =
-    match t with
-    | VarT v             -> single (V.sort v)
-    | SetT s             -> req_s s
-    | ElemT e            -> req_e e
-    | TidT t             -> req_t t
-    | AddrT a            -> req_a a
-    | CellT c            -> req_c c
-    | SetThT s           -> req_st s
-    | SetElemT s         -> req_se s
-    | PathT p            -> req_p p
-    | MemT m             -> req_m m
-    | IntT i             -> req_i i
-    | VarUpdate (v,t,tr) -> append (V.sort v) [req_t t;req_term tr] in
 
   let req_fs = F.make_fold
                  F.GenericLiteralFold
-                 (fun info a -> req_atom a)
-                 (fun info -> empty)
-                 union in
-
-  let req_f (phi:formula) : SortSet.t =
-    F.formula_fold req_fs () phi
-
+                 (req_fold.atom_f)
+                 (fun info -> SortSet.empty)
+                 SortSet.union
   in
-    SortSet.elements (req_f phi)
+    SortSet.elements (F.formula_fold req_fs () phi)
 
  
 
 let special_ops (phi:formula) : special_op_t list =
-  let empty = OpsSet.empty in
-  let union = OpsSet.union in
-  let add = OpsSet.add in
-  let list_union xs = List.fold_left union empty xs in
-  let append s sets = add s (List.fold_left union empty sets) in
-
-  let rec ops_atom (a:atom) : OpsSet.t =
-    match a with
-    | Append (p1,p2,p3)   -> list_union [ops_p p1;ops_p p1;ops_p p2;ops_p p3]
-    | Reach (m,a1,a2,p)   -> append Reachable[ops_m m;ops_a a1;ops_a a2;ops_p p]
-    | OrderList (m,a1,a2) -> append OrderedList[ops_m m;ops_a a1;ops_a a2]
-    | In (a,s)            -> list_union [ops_a a;ops_s s]
-    | SubsetEq (s1,s2)    -> list_union [ops_s s1;ops_s s2]
-    | InTh (t,s)          -> list_union [ops_t t;ops_st s]
-    | SubsetEqTh (s1,s2)  -> list_union [ops_st s1;ops_st s2]
-    | InElem (e,s)        -> list_union [ops_e e;ops_se s]
-    | SubsetEqElem (s1,s2)-> list_union [ops_se s1;ops_se s2]
-    | Less (i1,i2)        -> list_union [ops_i i1; ops_i i2]
-    | LessEq (i1,i2)      -> list_union [ops_i i1; ops_i i2]
-    | Greater (i1,i2)     -> list_union [ops_i i1; ops_i i2]
-    | GreaterEq (i1,i2)   -> list_union [ops_i i1; ops_i i2]
-    | LessElem (e1,e2)    -> append ElemOrder [ops_e e1; ops_e e2]
-    | GreaterElem (e1,e2) -> append ElemOrder [ops_e e1; ops_e e2]
-    | Eq (t1,t2)          -> list_union [ops_term t1;ops_term t2]
-    | InEq (t1,t2)        -> list_union [ops_term t1;ops_term t2]
-    | BoolVar v           -> empty
-    | PC _                -> empty
-    | PCUpdate _          -> empty
-    | PCRange _           -> empty
-
-  and ops_m (m:mem) : OpsSet.t =
-    match m with
-    | VarMem _         -> empty
-    | Emp              -> empty
-    | Update (m,a,c)   -> list_union [ops_m m;ops_a a;ops_c c]
-
-  and ops_i (i:integer) : OpsSet.t =
-    match i with
-    | IntVal _ -> empty
-    | VarInt v -> empty
-    | IntNeg j -> list_union [ops_i j]
-    | IntAdd (j1,j2) -> list_union [ops_i j1; ops_i j2]
-    | IntSub (j1,j2) -> list_union [ops_i j1; ops_i j2]
-    | IntMul (j1,j2) -> list_union [ops_i j1; ops_i j2]
-    | IntDiv (j1,j2) -> list_union [ops_i j1; ops_i j2]
-
-  and ops_p (p:path) : OpsSet.t =
-    match p with
-    | VarPath _         -> empty
-    | Epsilon           -> empty
-    | SimplePath a      -> ops_a a
-    | GetPath (m,a1,a2) -> append Getp [ops_m m;ops_a a1;ops_a a2]
-
-  and ops_st (s:setth) : OpsSet.t =
-    match s with
-    | VarSetTh _         -> empty
-    | EmptySetTh         -> empty
-    | SinglTh t          -> ops_t t
-    | UnionTh (s1,s2)    -> list_union [ops_st s1;ops_st s2]
-    | IntrTh (s1,s2)     -> list_union [ops_st s1;ops_st s2]
-    | SetdiffTh (s1,s2)  -> list_union [ops_st s1;ops_st s2]
-
-  and ops_se (s:setelem) : OpsSet.t =
-    match s with
-    | VarSetElem _         -> empty
-    | EmptySetElem         -> empty
-    | SinglElem e          -> ops_e e
-    | UnionElem (s1,s2)    -> list_union [ops_se s1;ops_se s2]
-    | IntrElem (s1,s2)     -> list_union [ops_se s1;ops_se s2]
-    | SetToElems(s,m)      -> append Set2Elem [ops_s s;ops_m m]
-    | SetdiffElem (s1,s2)  -> list_union [ops_se s1;ops_se s2]
-
-  and ops_c (c:cell) : OpsSet.t =
-    match c with
-    | VarCell _         -> empty
-    | Error             -> empty
-    | MkCell (e,a,t)    -> list_union [ops_e e;ops_a a; ops_t t]
-    | CellLock (c,t)    -> list_union [ops_c c;ops_t t]
-    | CellUnlock c      -> list_union [ops_c c]
-    | CellAt (m,a)      -> list_union [ops_m m;ops_a a]
-
-  and ops_a (a:addr) : OpsSet.t =
-    match a with
-    | VarAddr _         -> empty
-    | Null              -> empty
-    | Next c            -> list_union [ops_c c]
-    | FirstLocked (m,p) -> append FstLocked [ops_m m;ops_p p]
-
-  and ops_e (e:elem) : OpsSet.t =
-    match e with
-    | VarElem _         -> empty
-    | CellData c        -> ops_c c
-    | HavocListElem     -> empty
-    | LowestElem        -> empty
-    | HighestElem       -> empty
-
-  and ops_t (t:tid) : OpsSet.t =
-    match t with
-    | VarTh _           -> empty
-    | NoTid            -> empty
-    | CellLockId c      -> ops_c c
-
-  and ops_s (s:set) : OpsSet.t =
-    match s with
-    | VarSet _         -> empty
-    | EmptySet         -> empty
-    | Singl a          -> ops_a a
-    | Union (s1,s2)    -> list_union [ops_s s1;ops_s s2]
-    | Intr (s1,s2)     -> list_union [ops_s s1;ops_s s2]
-    | Setdiff (s1,s2)  -> list_union [ops_s s1;ops_s s2]
-    | PathToSet p      -> append Path2Set [ops_p p]
-    | AddrToSet (m,a)  -> append Addr2Set [ops_m m;ops_a a]
-
-  and ops_term (t:term) : OpsSet.t =
-    match t with
-    | VarT _             -> empty
-    | SetT s             -> ops_s s
-    | ElemT e            -> ops_e e
-    | TidT t            -> ops_t t
-    | AddrT a            -> ops_a a
-    | CellT c            -> ops_c c
-    | SetThT s           -> ops_st s
-    | SetElemT s         -> ops_se s
-    | PathT p            -> ops_p p
-    | MemT m             -> ops_m m
-    | IntT i             -> ops_i i
-    | VarUpdate (_,t,tr) -> list_union [ops_t t;ops_term tr] in
+  let ops_fold =
+    make_fold (fun _ -> OpsSet.empty) OpsSet.union
+              (fun _ _ _ -> OpsSet.empty)
+    ~atom_f:(fun fs info a ->
+        match a with
+        | Reach _ -> OpsSet.add Reachable (fold_atom fs info a)
+        | OrderList _ -> OpsSet.add OrderedList (fold_atom fs info a)
+        | LessElem _ -> OpsSet.add ElemOrder (fold_atom fs info a)
+        | GreaterElem _ -> OpsSet.add ElemOrder (fold_atom fs info a)
+        | BoolVar _
+        | PC _
+        | PCUpdate _
+        | PCRange _ -> OpsSet.empty
+        | _ -> fold_atom fs info a)
+    ~path_f:(fun fs info p ->
+      match p with
+      | GetPath _ -> OpsSet.add Getp (fold_path fs info p)
+      | _ -> fold_path fs info p)
+    ~setelem_f:(fun fs info se ->
+      match se with
+      | SetToElems _ -> OpsSet.add Set2Elem (fold_setelem fs info se)
+      | _ -> fold_setelem fs info se)
+    ~addr_f:(fun fs info a ->
+      match a with
+      | FirstLocked _ -> OpsSet.add FstLocked (fold_addr fs info a)
+      | _ -> fold_addr fs info a)
+    ~set_f:(fun fs info s ->
+      match s with
+      | PathToSet _ -> OpsSet.add Path2Set (fold_set fs info s)
+      | AddrToSet _ -> OpsSet.add Addr2Set (fold_set fs info s)
+      | _ -> fold_set fs info s) in
 
 
   let ops_fs = F.make_fold
                  F.GenericLiteralFold
-                 (fun info a -> ops_atom a)
-                 (fun info -> empty)
-                 union in
-
-  let ops_f (phi:formula) : OpsSet.t =
-    F.formula_fold ops_fs () phi
+                 (ops_fold.atom_f)
+                 (fun info -> OpsSet.empty)
+                 OpsSet.union
 
   in
-    OpsSet.elements (ops_f phi)
+    OpsSet.elements (F.formula_fold ops_fs () phi)
 
 
 
