@@ -807,188 +807,6 @@ let varset_fold =
       | _ -> fold_term fs instances t)
 
 
-
-(*
-let rec get_varset_set (s:set) : V.VarSet.t =
-  match s with
-      VarSet v         -> V.VarSet.singleton v @@ get_varset_from_param v
-    | EmptySet         -> V.VarSet.empty
-    | Singl(a)         -> get_varset_addr a
-    | Union(s1,s2)     -> (get_varset_set s1) @@ (get_varset_set s2)
-    | Intr(s1,s2)      -> (get_varset_set s1) @@ (get_varset_set s2)
-    | Setdiff(s1,s2)   -> (get_varset_set s1) @@ (get_varset_set s2)
-    | PathToSet(p)     -> get_varset_path p
-    | AddrToSet(m,a,l) -> (get_varset_mem m)  @@
-                          (get_varset_addr a) @@
-                          (get_varset_integer l)
-
-and get_varset_tid (th:tid) : V.VarSet.t=
-  match th with
-      VarTh v            -> V.VarSet.singleton v @@ get_varset_from_param v
-    | NoTid             -> V.VarSet.empty
-    | CellLockIdAt (c,l) -> (get_varset_cell c) @@ (get_varset_integer l)
-    | TidArrRd (ta,i)   -> (get_varset_tidarr ta) @@ (get_varset_integer i)
-
-and get_varset_elem (e:elem) : V.VarSet.t =
-  match e with
-      VarElem v         -> V.VarSet.singleton v @@ get_varset_from_param v
-    | CellData c        -> get_varset_cell c
-    | HavocSkiplistElem -> V.VarSet.empty
-    | LowestElem        -> V.VarSet.empty
-    | HighestElem       -> V.VarSet.empty
-
-and get_varset_addr (a:addr) : V.VarSet.t =
-  match a with
-      VarAddr v        -> V.VarSet.singleton v @@ get_varset_from_param v
-    | Null             -> V.VarSet.empty
-    | ArrAt (c,l)     -> (get_varset_cell c) @@ (get_varset_integer l)
-    | AddrArrRd (aa,i) -> (get_varset_addrarr aa) @@ (get_varset_integer i)
-(*    | Malloc(e,a,th)   -> (get_varset_elem e) @@ (get_varset_addr a) @@ (get_varset_tid th) *)
-
-and get_varset_cell (c:cell) : V.VarSet.t =
-    match c with
-      VarCell v           -> V.VarSet.singleton v @@ get_varset_from_param v
-    | Error               -> V.VarSet.empty
-    | MkCell(e,aa,tt,l)   -> (get_varset_elem e) @@ (get_varset_addrarr aa) @@
-                             (get_varset_tidarr tt) @@ (get_varset_integer l)
-    | CellLockAt (c,l,th) -> (get_varset_cell c) @@ (get_varset_integer l) @@
-                             (get_varset_tid th)
-    | CellUnlockAt (c,l)  -> (get_varset_cell c) @@ (get_varset_integer l)
-    | CellAt(m,a)         -> (get_varset_mem  m) @@ (get_varset_addr a)
-
-and get_varset_setth (sth:setth) : V.VarSet.t =
-  match sth with
-      VarSetTh v         -> V.VarSet.singleton v @@ get_varset_from_param v
-    | EmptySetTh         -> V.VarSet.empty
-    | SinglTh(th)        -> (get_varset_tid th)
-    | UnionTh(st1,st2)   -> (get_varset_setth st1) @@ (get_varset_setth st2)
-    | IntrTh(st1,st2)    -> (get_varset_setth st1) @@ (get_varset_setth st2)
-    | SetdiffTh(st1,st2) -> (get_varset_setth st1) @@ (get_varset_setth st2)
-
-and get_varset_setelem (se:setelem) : V.VarSet.t =
-  match se with
-      VarSetElem v         -> V.VarSet.singleton v @@ get_varset_from_param v
-    | EmptySetElem         -> V.VarSet.empty
-    | SinglElem(e)         -> (get_varset_elem e)
-    | UnionElem(st1,st2)   -> (get_varset_setelem st1) @@ (get_varset_setelem st2)
-    | IntrElem(st1,st2)    -> (get_varset_setelem st1) @@ (get_varset_setelem st2)
-    | SetToElems(s,m)      -> (get_varset_set s) @@ (get_varset_mem m)
-    | SetdiffElem(st1,st2) -> (get_varset_setelem st1) @@ (get_varset_setelem st2)
-
-and get_varset_path (p:path) : V.VarSet.t =
-  match p with
-      VarPath v          -> V.VarSet.singleton v @@ get_varset_from_param v
-    | Epsilon            -> V.VarSet.empty
-    | SimplePath(a)      -> (get_varset_addr a)
-    | GetPath(m,a1,a2,l) -> (get_varset_mem m)   @@
-                            (get_varset_addr a1) @@
-                            (get_varset_addr a2) @@
-                            (get_varset_integer l)
-
-and get_varset_mem (m:mem) : V.VarSet.t =
-  match m with
-      VarMem v           -> V.VarSet.singleton v @@ get_varset_from_param v
-    | Update(m,a,c)      -> (get_varset_mem m) @@ (get_varset_addr a) @@ (get_varset_cell c)
-
-and get_varset_integer (i:integer) : V.VarSet.t =
-  match i with
-      IntVal _     -> V.VarSet.empty
-    | VarInt v     -> V.VarSet.singleton v
-    | IntNeg i     -> (get_varset_integer i)
-    | IntAdd (i,j) -> (get_varset_integer i) @@ (get_varset_integer j)
-    | IntSub (i,j) -> (get_varset_integer i) @@ (get_varset_integer j)
-    | IntMul (i,j) -> (get_varset_integer i) @@ (get_varset_integer j)
-    | IntDiv (i,j) -> (get_varset_integer i) @@ (get_varset_integer j)
-    | CellMax c    -> (get_varset_cell c)
-    | HavocLevel   -> V.VarSet.empty
-
-and get_varset_addrarr (arr:addrarr) : V.VarSet.t =
-  match arr with
-      VarAddrArray v       -> V.VarSet.singleton v
-    | AddrArrayUp (aa,i,a) -> (get_varset_addrarr aa) @@
-                              (get_varset_integer i)  @@
-                              (get_varset_addr a)
-    | CellArr c            -> (get_varset_cell c)
-
-
-and get_varset_tidarr (arr:tidarr) : V.VarSet.t =
-  match arr with
-      VarTidArray v       -> V.VarSet.singleton v
-    | TidArrayUp (aa,i,t) -> (get_varset_tidarr aa) @@
-                             (get_varset_integer i) @@
-                             (get_varset_tid t)
-    | CellTids c          -> (get_varset_cell c)
-
-
-and get_varset_atom (instances:bool) (a:atom) : V.VarSet.t =
-  match a with
-      Append(p1,p2,p3)         -> (get_varset_path p1) @@ (get_varset_path p2) @@
-                                  (get_varset_path p3)
-    | Reach(m,a1,a2,l,p)       -> (get_varset_mem m) @@ (get_varset_addr a1) @@
-                                  (get_varset_addr a2) @@ (get_varset_integer l) @@
-                                  (get_varset_path p)
-    | OrderList(m,a1,a2)       -> (get_varset_mem m) @@ (get_varset_addr a1) @@
-                                  (get_varset_addr a2)
-    | Skiplist(m,s,l,a1,a2,es) -> (get_varset_mem m) @@
-                                  (get_varset_set s) @@ (get_varset_integer l) @@
-                                  (get_varset_addr a1) @@ (get_varset_addr a2) @@
-                                  (get_varset_setelem es)
-    | In(a,s)                  -> (get_varset_addr a) @@ (get_varset_set s)
-    | SubsetEq(s1,s2)          -> (get_varset_set s1) @@ (get_varset_set s2)
-    | InTh(th,st)              -> (get_varset_tid th) @@ (get_varset_setth st)
-    | SubsetEqTh(st1,st2)      -> (get_varset_setth st1) @@ (get_varset_setth st2)
-    | InElem(e,se)             -> (get_varset_elem e) @@ (get_varset_setelem se)
-    | SubsetEqElem(se1,se2)    -> (get_varset_setelem se1) @@
-                                  (get_varset_setelem se2)
-    | Less (i,j)               -> (get_varset_integer i) @@ (get_varset_integer j)
-    | Greater (i,j)            -> (get_varset_integer i) @@ (get_varset_integer j)
-    | LessEq (i,j)             -> (get_varset_integer i) @@ (get_varset_integer j)
-    | GreaterEq (i,j)          -> (get_varset_integer i) @@ (get_varset_integer j)
-    | LessElem(e1,e2)          -> (get_varset_elem e1) @@ (get_varset_elem e2)
-    | GreaterElem(e1,e2)       -> (get_varset_elem e1) @@ (get_varset_elem e2)
-    | Eq((x,y))                -> if instances then
-                                    match (x,y) with
-                                    | (VarUpdate _, _) -> get_varset_term instances x
-                                    | (_, VarUpdate _) -> get_varset_term instances y
-                                    | _ -> (get_varset_term instances x) @@
-                                           (get_varset_term instances y)
-                                  else
-                                    (get_varset_term instances x) @@
-                                    (get_varset_term instances y)
-    | InEq((x,y))              -> (get_varset_term instances x) @@
-                                  (get_varset_term instances y)
-    | BoolVar v                -> (V.VarSet.singleton v)
-    | PC(pc,th,pr)             -> (match th with
-                                   | V.Shared -> V.VarSet.empty
-                                   | V.Local t -> V.VarSet.singleton t)
-    | PCUpdate (pc,th)         -> (get_varset_tid th)
-    | PCRange(pc1,pc2,th,pr)   -> (match th with
-                                   | V.Shared -> V.VarSet.empty
-                                   | V.Local t -> V.VarSet.singleton t)
-
-and get_varset_term (instances:bool) (t:term) : V.VarSet.t =
-    match t with
-      VarT   v            -> V.VarSet.singleton v @@ get_varset_from_param v
-    | SetT   s            -> get_varset_set s
-    | ElemT  e            -> get_varset_elem e
-    | TidT  th           -> get_varset_tid th
-    | AddrT  a            -> get_varset_addr a
-    | CellT  c            -> get_varset_cell c
-    | SetThT st           -> get_varset_setth st
-    | SetElemT se         -> get_varset_setelem se
-    | PathT  p            -> get_varset_path p
-    | MemT   m            -> get_varset_mem m
-    | IntT   i            -> get_varset_integer i
-    | AddrArrayT aa       -> get_varset_addrarr aa
-    | TidArrayT  tt       -> get_varset_tidarr tt
-    | VarUpdate(v,pc,t)   -> if instances then
-                               get_varset_term instances t
-                             else
-                               (V.VarSet.singleton v) @@
-                               (get_varset_term instances t) @@
-                               (get_varset_from_param v)
-*)
-
 let varset_fs = F.make_fold
                   F.GenericLiteralFold
                   (varset_fold.atom_f)
@@ -1002,34 +820,6 @@ let get_varset_from_conj (instances:bool) (cf:conjunctive_formula) : V.VarSet.t 
 let get_varset_from_formula (instances:bool) (phi:formula) : V.VarSet.t =
   F.formula_fold varset_fs instances phi
 
-(*
-let get_varset_literal (instances:bool) (l:literal) : V.VarSet.t =
-  match l with
-      Atom a    -> get_varset_atom instances a
-    | NegAtom a -> get_varset_atom instances a
-
-and get_varset_from_conj (instances:bool) (phi:conjunctive_formula) : V.VarSet.t =
-  let another_lit vars alit = vars @@ (get_varset_literal instances alit) in
-  match phi with
-      TrueConj   -> V.VarSet.empty
-    | FalseConj  -> V.VarSet.empty
-    | Conj l     -> List.fold_left (another_lit) V.VarSet.empty l
-
-and get_varset_from_formula (instances:bool) (phi:formula) : V.VarSet.t =
-  match phi with
-    Literal l       -> get_varset_literal instances l
-  | True            -> V.VarSet.empty
-  | False           -> V.VarSet.empty
-  | And (f1,f2)     -> (get_varset_from_formula instances f1) @@
-                       (get_varset_from_formula instances f2)
-  | Or (f1,f2)      -> (get_varset_from_formula instances f1) @@
-                       (get_varset_from_formula instances f2)
-  | Not f           -> (get_varset_from_formula instances f)
-  | Implies (f1,f2) -> (get_varset_from_formula instances f1) @@
-                       (get_varset_from_formula instances f2)
-  | Iff (f1,f2)     -> (get_varset_from_formula instances f1) @@
-                       (get_varset_from_formula instances f2)
-*)
 
 
 let varset (phi:formula) : V.VarSet.t =
@@ -1130,35 +920,6 @@ let get_termset_from_conjformula (cf:conjunctive_formula) : TermSet.t =
 let get_termset_from_formula (phi:formula) : TermSet.t =
   F.formula_fold termset_fs () phi
 
-(*
-and get_termset_literal (l:literal) : TermSet.t =
-  match l with
-  | Atom a    -> get_termset_atom a
-  | NegAtom a -> get_termset_atom a
-
-and get_termset_from_conjformula (cf:conjunctive_formula) : TermSet.t =
-  match cf with
-  | TrueConj  -> TermSet.empty
-  | FalseConj -> TermSet.empty
-  | Conj ls   -> List.fold_left (fun set l ->
-                   TermSet.union set (get_termset_literal l)
-                 ) TermSet.empty ls
-
-and get_termset_from_formula (phi:formula) : TermSet.t =
-  match phi with
-  | Literal l       -> get_termset_literal l
-  | True            -> TermSet.empty
-  | False           -> TermSet.empty
-  | And (f1,f2)     -> TermSet.union (get_termset_from_formula f1)
-                                     (get_termset_from_formula f2)
-  | Or (f1,f2)      -> TermSet.union (get_termset_from_formula f1)
-                                     (get_termset_from_formula f2)
-  | Not f           -> (get_termset_from_formula f)
-  | Implies (f1,f2) -> TermSet.union (get_termset_from_formula f1)
-                                     (get_termset_from_formula f2)
-  | Iff (f1,f2)     -> TermSet.union (get_termset_from_formula f1)
-                                     (get_termset_from_formula f2)
-*)
 
 
 let termset (phi:formula) : TermSet.t =
@@ -1200,150 +961,6 @@ let filter_termset_with_sort (all:TermSet.t) (s:sort) : TermSet.t =
 let is_var_fold =
   make_fold (fun _ -> false) (fun _ _ -> false) (fun _ _ _ -> true)
 
-(*
-let is_var_path (p:path) : bool =
-  match p with
-  | VarPath(_) -> true
-  | _          -> false
-and is_var_addr (a:addr) : bool =
-  match a with
-  | VarAddr(_) -> true
-  | _          -> false
-and is_var_mem (m:mem) : bool =
-  match m with
-  | VarMem(_) -> true
-  | _         -> false
-and is_var_cell (c:cell) : bool =
-  match c with
-  | VarCell(_) -> true
-  | _          -> false
-and is_var_elem (e:elem) : bool =
-  match e with
-  | VarElem(_) -> true
-  | _          -> false
-and is_var_thid (t:tid) : bool =
-  match t with
-  | VarTh(_) -> true
-  | _        -> false
-and is_var_set (s:set) : bool =
-  match s with
-  | VarSet(_) -> true
-  | _         -> false
-and is_var_setth (s:setth) : bool =
-  match s with
-  | VarSetTh(_) -> true
-  | _           -> false
-and is_var_setelem (s:setelem) : bool =
-  match s with
-  | VarSetElem(_) -> true
-  | _             -> false
-and is_var_int (i:integer) : bool =
-  match i with
-  | VarInt(_) -> true
-  | _         -> false
-and is_var_addrarr (aa:addrarr) : bool =
-  match aa with
-  | VarAddrArray(_) -> true
-  | _               -> false
-and is_var_thidarr (tt:tidarr) : bool =
-  match tt with
-  | VarTidArray(_) -> true
-  | _              -> false
-
-
-let is_var_term (t:term) : bool =
-  match t with
-  | VarT(_)        -> true
-  | SetT(s)        -> is_var_set s
-  | ElemT(e)       -> is_var_elem e
-  | TidT(t)       -> is_var_thid t
-  | AddrT(a)       -> is_var_addr a
-  | CellT(c)       -> is_var_cell c
-  | SetThT(st)     -> is_var_setth st
-  | SetElemT(st)   -> is_var_setelem st
-  | PathT(p)       -> is_var_path p
-  | MemT(m)        -> is_var_mem m
-  | IntT(i)        -> is_var_int i
-  | AddrArrayT(aa) -> is_var_addrarr aa
-  | TidArrayT(tt)  -> is_var_thidarr tt
-  | VarUpdate _    -> false
-*)
-
-
-(* is_constant *)
-(*
-is_constant_fold =
-  make_fold (fun _ -> true) (fun _ _ -> false) (fun _ _ _ -> false)
-*)
-
-(*
-let is_constant_set (s:set) : bool =
-  match s with
-  | EmptySet -> true
-  | _        -> false
-and is_constant_setth (s:setth) : bool =
-  match s with
-  | EmptySetTh -> true
-  | _          -> false
-and is_constant_setelem (s:setelem) : bool =
-  match s with
-  | EmptySetElem -> true
-  | _            -> false
-and is_constant_elem (e:elem) : bool =
-  match e with
-  | LowestElem  -> true
-  | HighestElem -> true
-  | _           -> false
-and is_constant_thid (t:tid) : bool =
-  match t with
-  | NoTid -> true
-  | _      -> false
-and is_constant_addr (a:addr) : bool =
-  match a with
-  | Null -> true
-  | _    -> false
-and is_constant_cell (c:cell) : bool =
-  match c with
-  | Error -> true
-  | _     -> false
-and is_constant_path (p:path) : bool =
-  match p with
-  | Epsilon -> true
-  | _       -> false
-and is_constant_mem (m:mem) : bool = false
-and is_constant_int (i:integer) : bool =
-  match i with
-  | IntVal _ -> true
-  | _        -> false
-and is_constant_addrarr (aa:addrarr) : bool = false
-and is_constant_tidarr (tt:tidarr) : bool = false
-
-let is_constant_term (t:term) : bool =
-  match t with
-  | VarT(_)        -> false
-  | SetT(s)        -> is_constant_set s
-  | ElemT(e)       -> is_constant_elem e
-  | TidT(th)      -> is_constant_thid th
-  | AddrT(a)       -> is_constant_addr a
-  | CellT(c)       -> is_constant_cell c
-  | SetThT(st)     -> is_constant_setth st
-  | SetElemT(st)   -> is_constant_setelem st
-  | PathT(p)       -> is_constant_path p
-  | MemT(m)        -> is_constant_mem m
-  | IntT(i)        -> is_constant_int i
-  | AddrArrayT(aa) -> is_constant_addrarr aa
-  | TidArrayT(tt)  -> is_constant_tidarr tt
-  | VarUpdate _    -> false
-*)
-
-(*
-let is_ineq_normalized a b =
-  (is_var_term a || is_var_term b)
-
-let is_eq_normalized a b =
-  (is_var_term a || is_var_term b)
-*)
-
 
 (* TODO: propagate equalities of vars x = y *)
 
@@ -1356,190 +973,6 @@ let is_flat_fold =
                             | PCUpdate _
                             | PCRange _ -> true
                             | _ -> fold_atom fs info a)
-(*
-
-let rec is_term_flat t =
-  match t with
-      VarT(_)        -> true
-    | SetT s         -> is_set_flat s
-    | ElemT e        -> is_elem_flat   e
-    | TidT k        -> is_tid_flat k
-    | AddrT a        -> is_addr_flat a
-    | CellT c        -> is_cell_flat c
-    | SetThT st      -> is_setth_flat st
-    | SetElemT se    -> is_setelem_flat se
-    | PathT p        -> is_path_flat p
-    | MemT  m        -> is_mem_flat m
-    | IntT  i        -> is_int_flat i
-    | AddrArrayT aa  -> is_addrarr_flat aa
-    | TidArrayT tt   -> is_tidarr_flat tt
-    | VarUpdate _    -> false
-
-and is_set_flat t =
-  match t with
-      VarSet _         -> true
-    | EmptySet         -> true
-    | Singl(a)         -> is_var_addr  a
-    | Union(s1,s2)     -> (is_var_set s1) && (is_var_set s2)
-    | Intr(s1,s2)      -> (is_var_set s1) && (is_var_set s2)
-    | Setdiff(s1,s2)   -> (is_var_set s1) && (is_var_set s2)
-    | PathToSet(p)     -> (is_var_path p)
-    | AddrToSet(m,a,l) -> (is_var_mem m) && (is_var_addr a) && (is_var_int l)
-and is_tid_flat t =
-  match t with
-      VarTh _            -> true
-    | NoTid             -> true
-    | CellLockIdAt (c,l) -> (is_var_cell c) && (is_var_int l)
-    | TidArrRd (tt,i)   -> (is_var_thidarr tt) && (is_var_int i)
-and is_elem_flat t =
-  match t with
-      VarElem _         -> true
-    | CellData(c)       -> is_var_cell c
-    | HavocSkiplistElem -> true
-    | LowestElem        -> true
-    | HighestElem       -> true
-and is_addr_flat t =
-  match t with
-      VarAddr _        -> true
-    | Null             -> true
-    | ArrAt(c,l)      -> (is_var_cell c) && (is_var_int l)
-    | AddrArrRd (aa,i) -> (is_var_addrarr aa) && (is_var_int i)
-(*    | Malloc(m,a,k)    -> (is_var_mem m) && (is_var_addr a) && (is_thread_var k) *)
-and is_cell_flat t =
-  match t with
-      VarCell _           -> true
-    | Error               -> true
-    | MkCell (e,aa,tt,l)  -> (is_var_elem e) && (is_var_addrarr aa) &&
-                             (is_var_thidarr tt) && (is_var_int l)
-    | CellLockAt (c,l,th) -> (is_var_cell c) && (is_var_int l) && (is_var_thid th)
-    | CellUnlockAt (c,l)  -> (is_var_cell c) && (is_var_int l)
-    | CellAt(m,a)         -> (is_var_mem m) && (is_var_addr a)
-and is_setth_flat t =
-  match t with
-      VarSetTh _ -> true
-    | EmptySetTh -> true
-    | SinglTh(k)         -> (is_var_thid k)
-    | UnionTh(st1,st2)   -> (is_var_setth st1) && (is_var_setth st2)
-    | IntrTh(st1,st2)    -> (is_var_setth st1) && (is_var_setth st2)
-    | SetdiffTh(st1,st2) -> (is_var_setth st1) && (is_var_setth st2)
-and is_setelem_flat t =
-  match t with
-      VarSetElem _ -> true
-    | EmptySetElem -> true
-    | SinglElem(k)         -> (is_var_elem k)
-    | UnionElem(st1,st2)   -> (is_var_setelem st1) && (is_var_setelem st2)
-    | IntrElem(st1,st2)    -> (is_var_setelem st1) && (is_var_setelem st2)
-    | SetToElems(s,m)      -> (is_var_set s) && (is_var_mem m)
-    | SetdiffElem(st1,st2) -> (is_var_setelem st1) && (is_var_setelem st2)
-and is_path_flat t =
-  match t with
-      VarPath _          -> true
-    | Epsilon            -> true
-    | SimplePath(a)      -> is_var_addr a
-    | GetPath(m,a1,a2,l) -> (is_var_mem m) && (is_var_addr a1) &&
-                            (is_var_addr a2) && (is_var_int l)
-and is_mem_flat t =
-  match t with
-      VarMem _ -> true
-    | Update(m,a,c) -> (is_var_mem m) && (is_var_addr a) && (is_var_cell c)
-and is_int_flat t =
-  match t with
-      IntVal _     -> true
-    | VarInt _     -> true
-    | IntNeg i     -> is_int_flat i
-    | IntAdd (i,j) -> (is_int_flat i) && (is_int_flat j)
-    | IntSub (i,j) -> (is_int_flat i) && (is_int_flat j)
-    | IntMul (i,j) -> (is_int_flat i) && (is_int_flat j)
-    | IntDiv (i,j) -> (is_int_flat i) && (is_int_flat j)
-    | CellMax c    -> (is_cell_flat c)
-    | HavocLevel   -> true
-and is_addrarr_flat t =
-  match t with
-      VarAddrArray _       -> true
-    | AddrArrayUp (aa,i,a) -> (is_addrarr_flat aa) && (is_int_flat i) &&
-                              (is_addr_flat a)
-    | CellArr c            -> (is_cell_flat c)
-
-and is_tidarr_flat t =
-  match t with
-      VarTidArray _       -> true
-    | TidArrayUp (tt,i,t) -> (is_tidarr_flat tt) && (is_int_flat i) &&
-                             (is_tid_flat t)
-    | CellTids c          -> (is_cell_flat c)
-
-let is_atom_flat (a:atom) : bool =
-  match a with
-  | Append(p1,p2,p3)         -> (is_var_path p1) && (is_var_path p2) &&
-                                (is_var_path p3)
-  | Reach(m,a1,a2,l,p)       -> (is_var_mem m) && (is_var_addr a1) &&
-                                (is_var_addr a2) && (is_var_int l) &&
-                                (is_var_path p)
-  | OrderList(m,a1,a2)       -> (is_var_mem m) && (is_var_addr a1) &&
-                                (is_var_addr a2)
-  | Skiplist(m,s,l,a1,a2,es) -> (is_var_mem m) &&
-                                (is_var_set s) && (is_var_int l) &&
-                                (is_var_addr a1) && (is_var_addr a2) &&
-                                (is_var_setelem es)
-  | In(a,s)                  -> (is_var_addr a) && (is_var_set s)
-  | SubsetEq(s1,s2)          -> (is_var_set s1) && (is_var_set s2)
-  | InTh(k,st)               -> (is_var_thid k) && (is_var_setth st)
-  | SubsetEqTh(st1,st2)      -> (is_var_setth st1) && (is_var_setth st2)
-  | InElem(e,se)             -> (is_var_elem e) && (is_var_setelem se)
-  | SubsetEqElem(se1,se2)    -> (is_var_setelem se1) && (is_var_setelem se2)
-  | Less (i1,i2)             -> (is_var_int i1) && (is_var_int i2)
-  | Greater (i1,i2)          -> (is_var_int i1) && (is_var_int i2)
-  | LessEq (i1,i2)           -> (is_var_int i1) && (is_var_int i2)
-  | GreaterEq (i1,i2)        -> (is_var_int i1) && (is_var_int i2)
-  | LessElem(e1,e2)          -> (is_var_elem e1) && (is_var_elem e2)
-  | GreaterElem(e1,e2)       -> (is_var_elem e1) && (is_var_elem e2)
-  | Eq(t1,t2)                -> ((is_var_term t1) && (is_var_term t2)  ||
-                                 (is_var_term t1) && (is_term_flat t2)  ||
-                                 (is_term_flat t1) && (is_var_term t2))
-  | InEq(x,y)                -> (is_var_term x) && (is_var_term y)
-  | BoolVar v                -> true
-  | PC (pc,t,pr)             -> true
-  | PCUpdate (pc,t)          -> true
-  | PCRange (pc1,pc2,t,pr)   -> true
-
-    
-(*
-              end
-    | NegAtom a ->
-  begin match a with
-    | Append(p1,p2,p3)          -> (is_var_path p1) && (is_var_path p2) &&
-                                   (is_var_path p3)
-    | Reach(m,a1,a2,l,p)        -> (is_var_mem m) && (is_var_addr a1) &&
-                                   (is_var_addr a2) && (is_var_int l) &&
-                                   (is_var_path p)
-    | OrderList(m,a1,a2)        -> (is_var_mem m) && (is_var_addr a1) &&
-                                   (is_var_addr a2)
-    | Skiplist(m,s,l,a1,a2,es)  -> (is_var_mem m) &&
-                                   (is_var_set s) && (is_var_int l) &&
-                                   (is_var_addr a1) && (is_var_addr a2) &&
-                                   (is_var_setelem es)
-    | In(a,s)                   -> (is_var_addr a) && (is_var_set s)
-    | SubsetEq(s1,s2)           -> (is_var_set s1) && (is_var_set s2)
-    | InTh(k,st)                -> (is_var_thid k) && (is_var_setth st)
-    | SubsetEqTh(st1,st2)       -> (is_var_setth st1) && (is_var_setth st2)
-    | InElem(e,se)              -> (is_var_elem e) && (is_var_setelem se)
-    | SubsetEqElem(se1,se2)     -> (is_var_setelem se1) && (is_var_setelem se2)
-    | Less (i1,i2)              -> (is_var_int i1) && (is_var_int i2)
-    | Greater (i1,i2)           -> (is_var_int i1) && (is_var_int i2)
-    | LessEq (i1,i2)            -> (is_var_int i1) && (is_var_int i2)
-    | GreaterEq (i1,i2)         -> (is_var_int i1) && (is_var_int i2)
-    | LessElem(e1,e2)           -> (is_var_elem e1) && (is_var_elem e2)
-    | GreaterElem(e1,e2)        -> (is_var_elem e1) && (is_var_elem e2)
-    | Eq(x,y)                   ->  (is_var_term x) && (is_var_term y)
-    | InEq(t1,t2)               -> ((is_var_term  t1) && (is_var_term  t2) ||
-                                    (is_var_term  t1) && (is_term_flat t2) ||
-                                    (is_term_flat t1) && (is_var_term  t2) )
-    | BoolVar v                 -> true
-    | PC _                      -> true
-    | PCUpdate _                -> true
-    | PCRange _                 -> true
-  end
-*)
-*)
 
 (*******************)
 (* PRETTY PRINTERS *)
@@ -1602,12 +1035,6 @@ let rec atom_to_str a =
                                           let th_str = V.shared_or_local_to_str t in
                                           Printf.sprintf "%i <= %s(%s) <= %i"
                                                           pc1 pc_str th_str pc2
-(*
-and literal_to_str e =
-  match e with
-      Atom(a)    -> atom_to_str a 
-    | NegAtom(a) -> Printf.sprintf "(~ %s)" (atom_to_str a)
-*)
 and mem_to_str expr =
   match expr with
       VarMem(v) -> V.to_str v
@@ -1707,7 +1134,6 @@ and addr_to_str expr =
                                  (cell_to_str cell) (int_to_str l)
     | AddrArrRd (aa,i)      -> Printf.sprintf "%s[%s]"
                                  (addrarr_to_str aa) (int_to_str i)
-(*    | Malloc(e,a,t)     -> Printf.sprintf "malloc(%s,%s,%s)" (elem_to_str e) (addr_to_str a) (tid_to_str t) *)
 and tid_to_str th =
   match th with
       VarTh(v)             -> V.to_str v
@@ -1761,59 +1187,6 @@ let disjunctive_formula_to_str (df:disjunctive_formula) : string =
 let formula_to_str (phi:formula) : string =
   F.formula_to_str atom_to_str phi
 
-(*
-and conjunctive_formula_to_str form =
-  let rec c_to_str f str =
-    match f with
-  [] -> str
-      | lit::sub ->
-    c_to_str sub (Printf.sprintf "%s /\\ %s" str (literal_to_str lit))
-  in
-    match form with
-      | TrueConj  -> Printf.sprintf "true"
-      | FalseConj -> Printf.sprintf "false"
-      | Conj([]) -> ""
-      | Conj(lit :: subform) -> c_to_str subform (literal_to_str lit)
-
-and formula_to_str_aux (op:logic_op_t) (phi:formula) : string =
-  match phi with
-  | Literal l -> literal_to_str l
-  | True -> "true"
-  | False -> "false"
-  | And(a,b)     -> let a_str = formula_to_str_aux AndOp a in
-                    let b_str = formula_to_str_aux AndOp b in
-                    if op = AndOp then
-                      a_str ^ " /\\ " ^ b_str
-                    else
-                      "(" ^ a_str ^ " /\\ " ^ b_str ^ ")"
-  | Or(a,b)      -> let a_str = formula_to_str_aux OrOp a in
-                    let b_str = formula_to_str_aux OrOp b in
-                    if op = OrOp then
-                      a_str ^ " \\/ " ^ b_str
-                    else
-                      "(" ^ a_str ^ " \\/ " ^ b_str ^ ")"
-  | Not a        -> let a_str = formula_to_str_aux NotOp a in
-                    if op = NotOp then
-                      "~ " ^ a_str
-                    else
-                      "(~ " ^ a_str ^ ")"
-  | Implies(a,b) -> let a_str = formula_to_str_aux ImpliesOp a in
-                    let b_str = formula_to_str_aux ImpliesOp b in
-                    if op = ImpliesOp then
-                      a_str ^ " -> " ^ b_str
-                    else
-                      "(" ^ a_str ^ " -> " ^ b_str ^ ")"
-  | Iff(a,b)     -> let a_str = formula_to_str_aux IffOp a in
-                    let b_str = formula_to_str_aux IffOp b in
-                    if op = IffOp then
-                      a_str ^ " <-> " ^ b_str
-                    else
-                      "(" ^ a_str ^ " <-> " ^ b_str ^ ")"
-
-
-and formula_to_str (expr:formula) : string =
-  formula_to_str_aux NoneOp expr
-*)
 
 
 let sort_to_str s =
@@ -1871,11 +1244,6 @@ let print_setth sth =
   Printer.generic setth_to_str sth
 
 
-(* let print_eq    e = *)
-(*   Printer.generic eq_to_str e *)
-
-(* let print_diseq e = *)
-(*   Printer.generic eq_to_str e *)
 
 
 (* VOCABULARY FUNCTIONS *)
@@ -1913,200 +1281,6 @@ let voc_fold =
 
 
 
-(*
-
-let (@@) = ThreadSet.union
-
-let rec get_tid_in (v:V.t) : ThreadSet.t =
-  match V.parameter v with
-  | V.Shared -> ThreadSet.empty
-  | V.Local t -> ThreadSet.singleton (VarTh t)
-
-
-and voc_term (expr:term) : ThreadSet.t =
-  match expr with
-    | VarT v             -> (match V.sort v with
-                            | Tid -> ThreadSet.singleton (VarTh v)
-                            | _   -> ThreadSet.empty) @@ get_tid_in v
-    | SetT(set)          -> voc_set set
-    | AddrT(addr)        -> voc_addr addr
-    | ElemT(elem)        -> voc_elem elem
-    | TidT(th)           -> voc_tid th
-    | CellT(cell)        -> voc_cell cell
-    | SetThT(setth)      -> voc_setth setth
-    | SetElemT(setelem)  -> voc_setelem setelem
-    | PathT(path)        -> voc_path path
-    | MemT(mem)          -> voc_mem mem
-    | IntT(i)            -> voc_int i
-    | AddrArrayT(aa)     -> voc_addrarr aa
-    | TidArrayT(tt)      -> voc_tidarr tt
-    | VarUpdate (v,th,t) -> (get_tid_in v) @@ (voc_tid th) @@ (voc_term t)
-
-
-and voc_set (e:set) : ThreadSet.t =
-  match e with
-    VarSet v           -> get_tid_in v
-  | EmptySet           -> ThreadSet.empty
-  | Singl(addr)        -> (voc_addr addr)
-  | Union(s1,s2)       -> (voc_set s1) @@ (voc_set s2)
-  | Intr(s1,s2)        -> (voc_set s1) @@ (voc_set s2)
-  | Setdiff(s1,s2)     -> (voc_set s1) @@ (voc_set s2)
-  | PathToSet(path)    -> (voc_path path)
-  | AddrToSet(mem,a,l) -> (voc_mem mem) @@ (voc_addr a) @@ (voc_int l)
-
-
-and voc_addr (a:addr) : ThreadSet.t =
-  match a with
-    VarAddr v             -> get_tid_in v
-  | Null                  -> ThreadSet.empty
-  | ArrAt(cell,l)         -> (voc_cell cell) @@ (voc_int l)
-  | AddrArrRd (aa,i)      -> (voc_addrarr aa) @@ (voc_int i)
-
-
-and voc_elem (e:elem) : ThreadSet.t =
-  match e with
-    VarElem v          -> get_tid_in v
-  | CellData(cell)     -> (voc_cell cell)
-  | HavocSkiplistElem  -> ThreadSet.empty
-  | LowestElem         -> ThreadSet.empty
-  | HighestElem        -> ThreadSet.empty
-
-
-and voc_tid (th:tid) : ThreadSet.t =
-  match th with
-    VarTh v              -> ThreadSet.add th (get_tid_in v)
-  | NoTid                -> ThreadSet.empty
-  | CellLockIdAt(cell,l) -> (voc_cell cell) @@ (voc_int l)
-  | TidArrRd (tt,i)      -> (voc_tidarr tt) @@ (voc_int i)
-
-
-and voc_cell (c:cell) : ThreadSet.t =
-  match c with
-    VarCell v            -> get_tid_in v
-  | Error                -> ThreadSet.empty
-  | MkCell(data,aa,tt,l) -> (voc_elem data)  @@
-                            (voc_addrarr aa) @@
-                            (voc_tidarr tt)  @@
-                            (voc_int l)
-  | CellLockAt(cell,l,th)-> (voc_cell cell) @@ (voc_int l) @@ (voc_tid th)
-  | CellUnlockAt(cell,l) -> (voc_cell cell) @@ (voc_int l)
-  | CellAt(mem,addr)     -> (voc_mem mem) @@ (voc_addr addr)
-
-
-and voc_setth (s:setth) : ThreadSet.t =
-  match s with
-    VarSetTh v          -> get_tid_in v
-  | EmptySetTh          -> ThreadSet.empty
-  | SinglTh(th)         -> (voc_tid th)
-  | UnionTh(s1,s2)      -> (voc_setth s1) @@ (voc_setth s2)
-  | IntrTh(s1,s2)       -> (voc_setth s1) @@ (voc_setth s2)
-  | SetdiffTh(s1,s2)    -> (voc_setth s1) @@ (voc_setth s2)
-
-
-and voc_setelem (s:setelem) : ThreadSet.t =
-  match s with
-    VarSetElem v          -> get_tid_in v
-  | EmptySetElem          -> ThreadSet.empty
-  | SinglElem(e)          -> (voc_elem e)
-  | UnionElem(s1,s2)      -> (voc_setelem s1) @@ (voc_setelem s2)
-  | IntrElem(s1,s2)       -> (voc_setelem s1) @@ (voc_setelem s2)
-  | SetdiffElem(s1,s2)    -> (voc_setelem s1) @@ (voc_setelem s2)
-  | SetToElems(s,m)       -> (voc_set s) @@ (voc_mem m)
-
-
-and voc_path (p:path) : ThreadSet.t =
-  match p with
-    VarPath v                  -> get_tid_in v
-  | Epsilon                    -> ThreadSet.empty
-  | SimplePath(addr)           -> (voc_addr addr)
-  | GetPath(mem,a_from,a_to,l) -> (voc_mem mem) @@
-                                  (voc_addr a_from) @@
-                                  (voc_addr a_to)   @@
-                                  (voc_int l)
-
-
-and voc_mem (m:mem) : ThreadSet.t =
-  match m with
-    VarMem v             -> get_tid_in v
-  | Update(mem,add,cell) -> (voc_mem mem) @@ (voc_addr add) @@ (voc_cell cell)
-
-
-and voc_int (i:integer) : ThreadSet.t =
-  match i with
-    IntVal _       -> ThreadSet.empty
-  | VarInt v       -> get_tid_in v
-  | IntNeg i       -> voc_int i
-  | IntAdd (i1,i2) -> (voc_int i1) @@ (voc_int i2)
-  | IntSub (i1,i2) -> (voc_int i1) @@ (voc_int i2)
-  | IntMul (i1,i2) -> (voc_int i1) @@ (voc_int i2)
-  | IntDiv (i1,i2) -> (voc_int i1) @@ (voc_int i2)
-  | CellMax c      -> (voc_cell c)
-  | HavocLevel     -> ThreadSet.empty
-
-
-and voc_addrarr (arr:addrarr) : ThreadSet.t =
-  match arr with
-    VarAddrArray v       -> get_tid_in v
-  | AddrArrayUp (aa,i,a) -> (voc_addrarr aa) @@ (voc_int i) @@ (voc_addr a)
-  | CellArr c            -> (voc_cell c)
-
-
-and voc_tidarr (arr:tidarr) : ThreadSet.t =
-  match arr with
-    VarTidArray v       -> get_tid_in v
-  | TidArrayUp (tt,i,t) -> (voc_tidarr tt) @@ (voc_int i) @@ (voc_tid t)
-  | CellTids c          -> (voc_cell c)
-
-
-and voc_atom (a:atom) : ThreadSet.t =
-  match a with
-    Append(p1,p2,pres)                 -> (voc_path p1) @@
-                                          (voc_path p2) @@
-                                          (voc_path pres)
-  | Reach(h,a_from,a_to,l,p)           -> (voc_mem h) @@
-                                          (voc_addr a_from) @@
-                                          (voc_addr a_to) @@
-                                          (voc_int l) @@
-                                          (voc_path p)
-  | OrderList(h,a_from,a_to)           -> (voc_mem h) @@
-                                          (voc_addr a_from) @@
-                                          (voc_addr a_to)
-  | Skiplist(h,s,l,a_from,a_to,elems)  -> (voc_mem h) @@
-                                          (voc_set s) @@
-                                          (voc_int l) @@
-                                          (voc_addr a_from) @@
-                                          (voc_addr a_to) @@
-                                          (voc_setelem elems)
-  | In(a,s)                            -> (voc_addr a) @@ (voc_set s)
-  | SubsetEq(s_in,s_out)               -> (voc_set s_in) @@ (voc_set s_out)
-  | InTh(th,s)                         -> (voc_tid th) @@ (voc_setth s)
-  | SubsetEqTh(s_in,s_out)             -> (voc_setth s_in) @@ (voc_setth s_out)
-  | InElem(e,s)                        -> (voc_elem e) @@ (voc_setelem s)
-  | SubsetEqElem(s_in,s_out)           -> (voc_setelem s_in) @@ (voc_setelem s_out)
-  | Less (i1,i2)                       -> (voc_int i1) @@ (voc_int i2)
-  | Greater (i1,i2)                    -> (voc_int i1) @@ (voc_int i2)
-  | LessEq (i1,i2)                     -> (voc_int i1) @@ (voc_int i2)
-  | GreaterEq (i1,i2)                  -> (voc_int i1) @@ (voc_int i2)
-  | LessElem(e1,e2)                    -> (voc_elem e1) @@ (voc_elem e2)
-  | GreaterElem(e1,e2)                 -> (voc_elem e1) @@ (voc_elem e2)
-  | Eq(exp)                            -> (voc_eq exp)
-  | InEq(exp)                          -> (voc_ineq exp)
-  | BoolVar v                          -> get_tid_in v
-  | PC (pc,t,_)                        -> (match t with
-                                           | V.Shared -> ThreadSet.empty
-                                           | V.Local x -> ThreadSet.singleton (VarTh x))
-  | PCUpdate (pc,t)                    -> ThreadSet.singleton t
-  | PCRange (pc1,pc2,t,_)              -> (match t with
-                                           | V.Shared -> ThreadSet.empty
-                                           | V.Local x -> ThreadSet.singleton (VarTh x))
-
-
-and voc_eq ((t1,t2):eq) : ThreadSet.t = (voc_term t1) @@ (voc_term t2)
-
-
-and voc_ineq ((t1,t2):diseq) : ThreadSet.t = (voc_term t1) @@ (voc_term t2)
-*)
-
 let voc_fs = F.make_fold
                F.GenericLiteralFold
                (voc_fold.atom_f)
@@ -2122,188 +1296,20 @@ let voc_conjunctive_formula (cf:conjunctive_formula) : ThreadSet.t =
 let voc_formula (phi:formula) : ThreadSet.t =
   F.formula_fold voc_fs () phi
 
-(*
-and voc_literal (l:literal) : tid list =
-  match l with
-    Atom a    -> voc_atom a
-  | NegAtom a -> voc_atom a
-
-
-and voc_conjunctive_formula (cf:conjunctive_formula) : tid list =
-  match cf with
-    FalseConj -> []
-  | TrueConj  -> []
-  | Conj ls   -> List.fold_left (fun xs l -> (voc_literal l)@xs) [] ls
-
-
-and voc_formula (phi:formula) : tid list =
-    match phi with
-      Literal(lit)          -> (voc_literal lit)
-    | True                  -> []
-    | False                 -> []
-    | And(f1,f2)            -> (voc_formula f1) @ (voc_formula f2)
-    | Or(f1,f2)             -> (voc_formula f1) @ (voc_formula f2)
-    | Not(f)                -> (voc_formula f)
-    | Implies(f1,f2)        -> (voc_formula f1) @ (voc_formula f2)
-    | Iff (f1,f2)           -> (voc_formula f1) @ (voc_formula f2)
-*)
-
-(*
-let all_voc (phi:formula) : ThreadSet.t =
-  let th_list = voc_formula phi in
-  let th_set  = List.fold_left (fun set e -> ThreadSet.add e set)
-                               (ThreadSet.empty)
-                               (th_list)
-  in
-    th_set
-*)
 
 
 let voc (phi:formula) : ThreadSet.t =
   voc_formula phi
-(*
-  ThreadSet.elements (all_voc phi)
-*)
-
-(*
-let conjformula_voc (cf:conjunctive_formula) : ThreadSet.t =
-  F.conjunctive_formula_fold voc_fs () cf
-*)
-  
-(*
-  let th_list = voc_conjunctive_formula cf in
-  let th_set = List.fold_left (fun set e -> ThreadSet.add e set)
-                              (ThreadSet.empty)
-                              (th_list)
-  in
-    ThreadSet.elements th_set
-*)
 
 
 let unprimed_voc (phi:formula) : ThreadSet.t =
   ThreadSet.filter (is_primed_tid>>not) (voc phi)
-(*
-  let voc_set = ThreadSet.filter (is_primed_tid>>not) (all_voc phi)
-  in
-    ThreadSet.elements voc_set
-*)
 
 
-(******************************)
-(* DNF                        *)
-(******************************)
-(*
-let rec nnf expr =
-  match expr with
-      False -> False
-    | True  -> True
-    | Iff (e1,e2)    -> And (nnf (Implies (e1,e2)),nnf (Implies(e2,e1)))
-    | Implies(e1,e2) -> Or (nnf (Not e1), nnf e2)
-    | And(e1,e2)     -> And(nnf e1, nnf e2)
-    | Or(e1,e2)      -> Or(nnf e1, nnf e2)
-    | Not (Not e)    -> nnf e
-    | Not (And (e1,e2)) -> Or (nnf (Not e1), nnf (Not e2))
-    | Not (Or (e1, e2)) -> And (nnf (Not e1), nnf (Not e2))
-    | Not (Implies (e1, e2)) ->And (nnf e1, nnf (Not e2))
-    | Not (Iff (e1, e2)) ->  Or (And (nnf e1, nnf (Not e2)), And (nnf (Not e1), nnf e2))
-    | Not Literal(Atom a) -> Literal(NegAtom a)
-    | Not Literal(NegAtom a) -> Literal(Atom a)
-    | Not True  -> False
-    | Not False -> True
-    | Literal(a) -> Literal(a)
-      
-exception ErrorInNNF of string
 
-
-let rec dnf (expr:formula) : conjunctive_formula list =
-  let rec dnf_nnf nnfexpr =
-    match nnfexpr with
-      Or(e1,e2)  ->
-        begin
-          match (dnf_nnf e1, dnf_nnf e2) with
-            ([TrueConj],_)  -> [TrueConj]
-          | (_,[TrueConj])  -> [TrueConj]
-          | ([FalseConj],x) -> x
-          | (x,[FalseConj]) -> x
-          | (lx,ly) -> lx @ ly
-        end
-    | And(e1,e2) ->
-        begin
-          match (dnf_nnf e1, dnf_nnf e2) with
-            ([FalseConj],_) -> [FalseConj]
-          | (_,[FalseConj]) -> [FalseConj]
-          | ([TrueConj],x)  -> x
-          | (x,[TrueConj])  -> x
-          | (e1_dnf, e2_dnf) ->
-                let get_conjuncts c =
-                  match c with
-                    Conj l -> l
-                  | _ -> let msg = "Formula "^(formula_to_str nnfexpr)^" is not in NNF.\n" in
-                           raise(ErrorInNNF(msg))
-                in
-                (* here lx and ly  are lists of Conj none of which is 
-                 * True or False *)
-                let add_to_all_in_e2 final_list x1 =
-                  let lx1 = get_conjuncts x1 in
-                  let add_x1 l2 x2 = Conj(lx1 @ (get_conjuncts x2))::l2 in
-                  let lst = List.fold_left add_x1 [] e2_dnf in
-                    lst @ final_list
-                in
-                  List.fold_left add_to_all_in_e2 [] e1_dnf
-        end
-    | Literal(l) -> [ Conj [ l ]]
-    | True       -> [TrueConj]
-    | False      -> [FalseConj]
-    | _          -> let msg = "Formula " ^(formula_to_str nnfexpr)^ " is not in NNF.\n" in
-                      raise(ErrorInNNF(msg))
-  in
-    dnf_nnf (nnf expr)
-
-
-let rec split_conj (phi:formula) : formula list =
-  match phi with
-    And (phi1, phi2) -> (split_conj phi1) @ (split_conj phi2)
-  | _                -> [phi]
-
-
-let from_conjformula_to_formula (cf:conjunctive_formula) : formula =
-  match cf with
-  | TrueConj     -> True
-  | FalseConj    -> False
-  | Conj []      -> True
-  | Conj (l::ls) -> List.fold_left (fun phi l ->
-                      And (phi, Literal l)
-                    ) (Literal l) ls
-*)
 
 
 let required_sorts (phi:formula) : sort list =
-(*
-  let empty = SortSet.empty in
-  let union = SortSet.union in
-  let add = SortSet.add in
-  let single = SortSet.singleton in
-  let list_union xs = List.fold_left union empty xs in
-  let append s sets = add s (List.fold_left union empty sets) in
-*)
-(*
-  let rec req_f (phi:formula) : SortSet.t =
-    match phi with
-    | Literal l       -> req_l l
-    | True            -> empty
-    | False           -> empty
-    | And (f1,f2)     -> union (req_f f1) (req_f f2)
-    | Or (f1,f2)      -> union (req_f f1) (req_f f2)
-    | Not f           -> req_f f
-    | Implies (f1,f2) -> union (req_f f1) (req_f f2)
-    | Iff (f1,f2)     -> union (req_f f1) (req_f f2)
-
-  and req_l (l:literal) : SortSet.t =
-    match l with
-    | Atom a    -> req_atom a
-    | NegAtom a -> req_atom a
-*)
-
   let req_fold =
     make_fold (fun _ -> SortSet.empty) SortSet.union
               (fun _ _ _ -> SortSet.empty)
@@ -2358,185 +1364,8 @@ let required_sorts (phi:formula) : sort list =
     SortSet.elements (F.formula_fold req_fs () phi)
 
 
-(*
-  and req_f (phi:formula) : SortSet.t =
-    F.formula_fold (req_fs()) () phi
-
-
-
-  and req_atom (a:atom) : SortSet.t =
-    match a with
-    | Append (p1,p2,p3)          -> list_union [req_p p1;req_p p1;req_p p2;req_p p3]
-    | Reach (m,a1,a2,l,p)        -> list_union [req_m m;req_a a1;req_a a2;
-                                                req_i l;req_p p]
-    | OrderList (m,a1,a2)        -> list_union [req_m m;req_a a1;req_a a2]
-    | Skiplist (m,s,l,a1,a2,es)  -> list_union [req_m m;req_s s;req_i l;
-                                                req_a a1;req_a a2; req_se es]
-    | In (a,s)                   -> list_union [req_a a;req_s s]
-    | SubsetEq (s1,s2)           -> list_union [req_s s1;req_s s2]
-    | InTh (t,s)                 -> list_union [req_t t;req_st s]
-    | SubsetEqTh (s1,s2)         -> list_union [req_st s1;req_st s2]
-    | InElem (e,s)               -> list_union [req_e e;req_se s]
-    | SubsetEqElem (s1,s2)       -> list_union [req_se s1;req_se s2]
-    | Less (i1,i2)               -> list_union [req_i i1;req_i i2]
-    | Greater (i1,i2)            -> list_union [req_i i1;req_i i2]
-    | LessEq (i1,i2)             -> list_union [req_i i1;req_i i2]
-    | GreaterEq (i1,i2)          -> list_union [req_i i1;req_i i2]
-    | LessElem  (e1,e2)          -> list_union [req_e e1; req_e e2]
-    | GreaterElem (e1,e2)        -> list_union [req_e e1; req_e e2]
-    | Eq (t1,t2)                 -> union (req_term t1) (req_term t2)
-    | InEq (t1,t2)               -> union (req_term t1) (req_term t2)
-    | BoolVar v                  -> single Bool
-    | PC _                       -> empty
-    | PCUpdate _                 -> empty
-    | PCRange _                  -> empty
-
-  and req_m (m:mem) : SortSet.t =
-    match m with
-    | VarMem _         -> single Mem
-    | Update (m,a,c)   -> append Mem [req_m m;req_a a;req_c c]
-
-  and req_i (i:integer) : SortSet.t =
-    match i with
-    | IntVal _           -> single Int
-    | VarInt _           -> single Int
-    | IntNeg i           -> append Int [req_i i]
-    | IntAdd (i1,i2)     -> append Int [req_i i1;req_i i2]
-    | IntSub (i1,i2)     -> append Int [req_i i1;req_i i2]
-    | IntMul (i1,i2)     -> append Int [req_i i1;req_i i2]
-    | IntDiv (i1,i2)     -> append Int [req_i i1;req_i i2]
-    | CellMax c          -> append Int [req_c c]
-    | HavocLevel         -> empty
-
-  and req_aa (arr:addrarr) : SortSet.t =
-    match arr with
-    | VarAddrArray _       -> single AddrArray
-    | AddrArrayUp (aa,i,a) -> append AddrArray [req_aa aa;req_i i;req_a a]
-    | CellArr c            -> append AddrArray [req_c c]
-
-  and req_tt (arr:tidarr) : SortSet.t =
-    match arr with
-    | VarTidArray _       -> single TidArray
-    | TidArrayUp (tt,i,t) -> append TidArray [req_tt tt;req_i i;req_t t]
-    | CellTids c          -> append TidArray [req_c c]
-
-  and req_p (p:path) : SortSet.t =
-    match p with
-    | VarPath _           -> single Path
-    | Epsilon             -> single Path
-    | SimplePath a        -> append Path [req_a a]
-    | GetPath (m,a1,a2,l) -> append Path [req_m m;req_a a1;req_a a2;req_i l]
-
-  and req_st (s:setth) : SortSet.t =
-    match s with
-    | VarSetTh _         -> single SetTh
-    | EmptySetTh         -> single SetTh
-    | SinglTh t          -> append SetTh [req_t t]
-    | UnionTh (s1,s2)    -> append SetTh [req_st s1;req_st s2]
-    | IntrTh (s1,s2)     -> append SetTh [req_st s1;req_st s2]
-    | SetdiffTh (s1,s2)  -> append SetTh [req_st s1;req_st s2]
-
-  and req_se (s:setelem) : SortSet.t =
-    match s with
-    | VarSetElem _         -> single SetElem
-    | EmptySetElem         -> single SetElem
-    | SinglElem e          -> append SetElem [req_e e]
-    | UnionElem (s1,s2)    -> append SetElem [req_se s1;req_se s2]
-    | IntrElem (s1,s2)     -> append SetElem [req_se s1;req_se s2]
-    | SetToElems (s,m)     -> append SetElem [req_s   s;req_m   m]
-    | SetdiffElem (s1,s2)  -> append SetElem [req_se s1;req_se s2]
-
-  and req_c (c:cell) : SortSet.t =
-    match c with
-    | VarCell _          -> single Cell
-    | Error              -> single Cell
-    | MkCell (e,aa,tt,l) -> append Cell [req_e e;req_aa aa; req_tt tt;req_i l]
-    | CellLockAt (c,l,t) -> append Cell [req_c c;req_i l;req_t t]
-    | CellUnlockAt (c,l) -> append Cell [req_c c;req_i l]
-    | CellAt (m,a)       -> append Cell [req_m m;req_a a]
-
-  and req_a (a:addr) : SortSet.t =
-    match a with
-    | VarAddr _         -> single Addr
-    | Null              -> single Addr
-    | ArrAt (c,l)      -> append Addr [req_c c;req_i l]
-    | AddrArrRd (aa,i)  -> append Addr [req_aa aa;req_i i]
-
-  and req_e (e:elem) : SortSet.t =
-    match e with
-    | VarElem _         -> single Elem
-    | CellData c        -> append Elem [req_c c]
-    | HavocSkiplistElem -> single Elem
-    | LowestElem        -> single Elem
-    | HighestElem       -> single Elem
-
-  and req_t (t:tid) : SortSet.t =
-    match t with
-    | VarTh _            -> single Tid
-    | NoTid             -> single Tid
-    | CellLockIdAt (c,l) -> append Tid [req_c c;req_i l]
-    | TidArrRd (tt,i)   -> append Tid [req_tt tt;req_i i]
-
-  and req_s (s:set) : SortSet.t =
-    match s with
-    | VarSet _         -> single Set
-    | EmptySet         -> single Set
-    | Singl a          -> append Set  [req_a a]
-    | Union (s1,s2)    -> append Set [req_s s1;req_s s2]
-    | Intr (s1,s2)     -> append Set [req_s s1;req_s s2]
-    | Setdiff (s1,s2)  -> append Set [req_s s1;req_s s2]
-    | PathToSet p      -> append Set [req_p p]
-    | AddrToSet (m,a,l)-> append Set [req_m m;req_a a;req_i l]
-
-  and req_term (t:term) : SortSet.t =
-    match t with
-    | VarT v                       -> single (V.sort v)
-    | SetT s                       -> req_s s
-    | ElemT e                      -> req_e e
-    | TidT t                      -> req_t t
-    | AddrT a                      -> req_a a
-    | CellT c                      -> req_c c
-    | SetThT s                     -> req_st s
-    | SetElemT s                   -> req_se s
-    | PathT p                      -> req_p p
-    | MemT m                       -> req_m m
-    | IntT i                       -> req_i i
-    | AddrArrayT aa                -> req_aa aa
-    | TidArrayT tt                 -> req_tt tt
-    | VarUpdate (v,t,tr)           -> append (V.sort v) [req_t t;req_term tr]
-  in
-    SortSet.elements (req_f phi)
-*)
-
- 
 
 let special_ops (phi:formula) : special_op_t list =
-(*
-  let empty = OpsSet.empty in
-  let union = OpsSet.union in
-  let add = OpsSet.add in
-  let list_union xs = List.fold_left union empty xs in
-  let append s sets = add s (List.fold_left union empty sets) in
-*)
-
-(*
-  let rec ops_f (phi:formula) : OpsSet.t =
-    match phi with
-    | Literal l       -> ops_l l
-    | True            -> empty
-    | False           -> empty
-    | And (f1,f2)     -> union (ops_f f1) (ops_f f2)
-    | Or (f1,f2)      -> union (ops_f f1) (ops_f f2)
-    | Not f           -> ops_f f
-    | Implies (f1,f2) -> union (ops_f f1) (ops_f f2)
-    | Iff (f1,f2)     -> union (ops_f f1) (ops_f f2)
-
-  and ops_l (l:literal) : OpsSet.t =
-    match l with
-    | Atom a    -> ops_atom a
-    | NegAtom a -> ops_atom a
-*)
-
   let ops_fold =
     make_fold (fun _ -> OpsSet.empty) OpsSet.union
               (fun _ _ _ -> OpsSet.empty)
@@ -2574,188 +1403,6 @@ let special_ops (phi:formula) : special_op_t list =
 
   OpsSet.elements (F.formula_fold ops_fs () phi)
 
-(*
-  and ops_f (phi:formula) : OpsSet.t =
-    F.formula_fold (ops_fs()) () phi
-
-  and ops_atom (a:atom) : OpsSet.t =
-    match a with
-    | Append (p1,p2,p3)          -> list_union [ops_p p1;ops_p p1;ops_p p2;ops_p p3]
-    | Reach (m,a1,a2,l,p)        -> append Reachable[ops_m m;ops_a a1;ops_a a2;
-                                                     ops_i l;ops_p p]
-    | OrderList (m,a1,a2)        -> append OrderedList[ops_m m;ops_a a1;ops_a a2]
-    | Skiplist (m,s,l,a1,a2,es)  -> append SkiplistProp[ops_m m;ops_s s; ops_i l;
-                                                        ops_a a1;ops_a a2; ops_se es]
-    | In (a,s)                   -> list_union [ops_a a;ops_s s]
-    | SubsetEq (s1,s2)           -> list_union [ops_s s1;ops_s s2]
-    | InTh (t,s)                 -> list_union [ops_t t;ops_st s]
-    | SubsetEqTh (s1,s2)         -> list_union [ops_st s1;ops_st s2]
-    | InElem (e,s)               -> list_union [ops_e e;ops_se s]
-    | SubsetEqElem (s1,s2)       -> list_union [ops_se s1;ops_se s2]
-    | Less (i1,i2)               -> list_union [ops_i i1;ops_i i2]
-    | Greater (i1,i2)            -> list_union [ops_i i1;ops_i i2]
-    | LessEq (i1,i2)             -> list_union [ops_i i1;ops_i i2]
-    | GreaterEq (i1,i2)          -> list_union [ops_i i1;ops_i i2]
-    | LessElem (e1,e2)           -> append ElemOrder [ops_e e1; ops_e e2]
-    | GreaterElem (e1,e2)        -> append ElemOrder [ops_e e1; ops_e e2]
-    | Eq (t1,t2)                 -> list_union [ops_term t1;ops_term t2]
-    | InEq (t1,t2)               -> list_union [ops_term t1;ops_term t2]
-    | BoolVar v                  -> empty
-    | PC _                       -> empty
-    | PCUpdate _                 -> empty
-    | PCRange _                  -> empty
-
-  and ops_m (m:mem) : OpsSet.t =
-    match m with
-    | VarMem _         -> empty
-    | Update (m,a,c)   -> list_union [ops_m m;ops_a a;ops_c c]
-
-  and ops_i (i:integer) : OpsSet.t =
-    match i with
-    | IntVal _       -> empty
-    | VarInt _       -> empty
-    | IntNeg i       -> list_union [ops_i i]
-    | IntAdd (i1,i2) -> list_union [ops_i i1; ops_i i2]
-    | IntSub (i1,i2) -> list_union [ops_i i1; ops_i i2]
-    | IntMul (i1,i2) -> list_union [ops_i i1; ops_i i2]
-    | IntDiv (i1,i2) -> list_union [ops_i i1; ops_i i2]
-    | CellMax c      -> list_union [ops_c c]
-    | HavocLevel     -> empty
-
-  and ops_aa (arr:addrarr) : OpsSet.t =
-    match arr with
-    | VarAddrArray _       -> empty
-    | AddrArrayUp (aa,i,a) -> list_union [ops_aa aa; ops_i i; ops_a a]
-    | CellArr c            -> list_union [ops_c c]
-
-  and ops_tt (arr:tidarr) : OpsSet.t =
-    match arr with
-    | VarTidArray _       -> empty
-    | TidArrayUp (tt,i,t) -> list_union [ops_tt tt; ops_i i; ops_t t]
-    | CellTids c          -> list_union [ops_c c]
-
-  and ops_p (p:path) : OpsSet.t =
-    match p with
-    | VarPath _           -> empty
-    | Epsilon             -> empty
-    | SimplePath a        -> ops_a a
-    | GetPath (m,a1,a2,l) -> append Getp [ops_m m;ops_a a1;ops_a a2;ops_i l]
-
-  and ops_st (s:setth) : OpsSet.t =
-    match s with
-    | VarSetTh _         -> empty
-    | EmptySetTh         -> empty
-    | SinglTh t          -> ops_t t
-    | UnionTh (s1,s2)    -> list_union [ops_st s1;ops_st s2]
-    | IntrTh (s1,s2)     -> list_union [ops_st s1;ops_st s2]
-    | SetdiffTh (s1,s2)  -> list_union [ops_st s1;ops_st s2]
-
-  and ops_se (s:setelem) : OpsSet.t =
-    match s with
-    | VarSetElem _         -> empty
-    | EmptySetElem         -> empty
-    | SinglElem e          -> ops_e e
-    | UnionElem (s1,s2)    -> list_union [ops_se s1;ops_se s2]
-    | IntrElem (s1,s2)     -> list_union [ops_se s1;ops_se s2]
-    | SetToElems(s,m)      -> append Set2Elem [ops_s s;ops_m m]
-    | SetdiffElem (s1,s2)  -> list_union [ops_se s1;ops_se s2]
-
-  and ops_c (c:cell) : OpsSet.t =
-    match c with
-    | VarCell _          -> empty
-    | Error              -> empty
-    | MkCell (e,aa,tt,l) -> list_union [ops_e e;ops_aa aa;ops_tt tt;ops_i l]
-    | CellLockAt (c,l,t) -> list_union [ops_c c;ops_i l;ops_t t]
-    | CellUnlockAt (c,l) -> list_union [ops_c c;ops_i l]
-    | CellAt (m,a)       -> list_union [ops_m m;ops_a a]
-
-  and ops_a (a:addr) : OpsSet.t =
-    match a with
-    | VarAddr _            -> empty
-    | Null                 -> empty
-    | ArrAt (c,l)         -> list_union [ops_c c;ops_i l]
-    | AddrArrRd (aa,i)     -> list_union [ops_aa aa;ops_i i]
-
-  and ops_e (e:elem) : OpsSet.t =
-    match e with
-    | VarElem _         -> empty
-    | CellData c        -> ops_c c
-    | HavocSkiplistElem -> empty
-    | LowestElem        -> empty
-    | HighestElem       -> empty
-
-  and ops_t (t:tid) : OpsSet.t =
-    match t with
-    | VarTh _            -> empty
-    | NoTid             -> empty
-    | CellLockIdAt (c,l) -> list_union [ops_c c;ops_i l]
-    | TidArrRd (tt,i)   -> list_union [ops_tt tt;ops_i i]
-
-  and ops_s (s:set) : OpsSet.t =
-    match s with
-    | VarSet _          -> empty
-    | EmptySet          -> empty
-    | Singl a           -> ops_a a
-    | Union (s1,s2)     -> list_union [ops_s s1;ops_s s2]
-    | Intr (s1,s2)      -> list_union [ops_s s1;ops_s s2]
-    | Setdiff (s1,s2)   -> list_union [ops_s s1;ops_s s2]
-    | PathToSet p       -> append Path2Set [ops_p p]
-    | AddrToSet (m,a,l) -> append Addr2Set [ops_m m;ops_a a;ops_i l]
-
-  and ops_term (t:term) : OpsSet.t =
-    match t with
-    | VarT _             -> empty
-    | SetT s             -> ops_s s
-    | ElemT e            -> ops_e e
-    | TidT t            -> ops_t t
-    | AddrT a            -> ops_a a
-    | CellT c            -> ops_c c
-    | SetThT s           -> ops_st s
-    | SetElemT s         -> ops_se s
-    | PathT p            -> ops_p p
-    | MemT m             -> ops_m m
-    | IntT i             -> ops_i i
-    | AddrArrayT aa      -> ops_aa aa
-    | TidArrayT tt       -> ops_tt tt
-    | VarUpdate (_,t,tr) -> list_union [ops_t t;ops_term tr]
-  in
-    OpsSet.elements (ops_f phi)
-*)
-
-(*
-let cleanup_dup (cf:conjunctive_formula) : conjunctive_formula =
-  let clean_lits (ls:literal list) : literal list =
-    let (_, xs) = List.fold_left (fun (s,xs) l ->
-                    if LiteralSet.mem l s then
-                      (s,xs)
-                    else
-                      (LiteralSet.add l s, l::xs)
-                  ) (LiteralSet.empty, []) ls
-    in
-      List.rev xs
-  in
-    match cf with
-    | TrueConj -> TrueConj
-    | FalseConj -> FalseConj
-    | Conj ls -> Conj (clean_lits ls)
-*)
-
-(*
-let combine_conj_formula (cf1:conjunctive_formula) (cf2:conjunctive_formula)
-      : conjunctive_formula =
-  match (cf1,cf2) with
-  | (FalseConj, _) -> FalseConj
-  | (_, FalseConj) -> FalseConj
-  | (TrueConj, _)  -> cf2
-  | (_, TrueConj)  -> cf1
-  | (Conj ls1, Conj ls2) -> Conj (ls1 @ ls2)
-
-
-let combine_conj_formula_list (cfs:conjunctive_formula list) : conjunctive_formula =
-  match cfs with
-  | [] -> TrueConj
-  | x::xs -> List.fold_left combine_conj_formula x xs
-*)
 
 
 (* NOTE: I am not considering the possibility of having a1=a2 \/ a1=a3 in the formula *)
@@ -2979,38 +1626,6 @@ let gen_fresh_tidarr_var (info:norm_info_t) : tidarr =
 
 
 
-(* Formula manipulation *)
-(*
-let rec nnf (phi:formula) =
-  match phi with
-    | False -> False
-    | True  -> True
-    | Iff (e1,e2)    -> And (nnf (Implies (e1,e2)),nnf (Implies(e2,e1)))
-    | Implies(e1,e2) -> Or (nnf (Not e1), nnf e2)
-    | And(e1,e2)     -> And(nnf e1, nnf e2)
-    | Or(e1,e2)      -> Or(nnf e1, nnf e2)
-    | Not (Not e)    -> nnf e
-    | Not (And (e1,e2)) -> Or (nnf (Not e1), nnf (Not e2))
-    | Not (Or (e1, e2)) -> And (nnf (Not e1), nnf (Not e2))
-    | Not (Implies (e1, e2)) ->And (nnf e1, nnf (Not e2))
-    | Not (Iff (e1, e2)) ->  Or (And (nnf e1, nnf (Not e2)), And (nnf (Not e1), nnf e2))
-    | Not Literal(Atom a) -> Literal(NegAtom a)
-    | Not Literal(NegAtom a) -> Literal(Atom a)
-    | Not True  -> False
-    | Not False -> True
-    | Literal(a) -> Literal(a)
-
-
-let conj_list (bs:formula list) : formula =
-  match bs with
-  | [] -> True
-  | x::xs -> List.fold_left (fun a b -> And(a,b)) x xs
-
-let disj_list (bs:formula list) : formula =
-  match bs with
-  | [] -> True
-  | x::xs -> List.fold_left (fun a b -> Or(a,b)) x xs
-*)
 
 
 let make_compatible_term_from_var (t:term) (v:V.t) : term =
@@ -3092,8 +1707,8 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
     else
       Hashtbl.add info.term_map t v in
   let gen_if_not_var (t:term) (s:sort) : V.t =
-		verbl _LONG_INFO "GEN_IF_NOT_VAR FOR TERM: %s\n" (term_to_str t);
-		if is_var_fold.term_f () t then (verbl _LONG_INFO "WAS A VARIABLE\n"; term_to_var t)
+    let _ = verbl _LONG_INFO "GEN_IF_NOT_VAR FOR TERM: %s\n" (term_to_str t) in
+    if is_var_fold.term_f () t then (verbl _LONG_INFO "WAS A VARIABLE\n"; term_to_var t)
     else try
            verbl _LONG_INFO "EXISTING PAIRS:\n";
            Hashtbl.iter (fun t v -> verbl _LONG_INFO "%s ----> %s\n" (term_to_str t) (V.to_str v)) info.term_map;
@@ -3105,156 +1720,150 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
                      verbl _LONG_INFO "APPENDING A NEW VARIABLE: %s\n" (V.to_str v);
                      append_if_diff t v; v
                    end in
-(*
-  let append_assert (v:V.t) (t:term) : V.t =
-    try
-      Hashtbl.find info.term_map t
-    with _ ->
-      (append_if_diff t v; v) in
-*)
-	let norm_map =
-		make_map (fun _ _ v -> v)
-		~set_f:(fun fs info s ->
-				match s with
-				| AddrToSet (m,a,i) -> let i_var = gen_if_not_var (IntT i) Int in
-																 AddrToSet (fs.mem_f fs info m,
-																						fs.addr_f fs info a,
-																						VarInt i_var)
-				| _ -> map_set fs info s)
-		~tid_f:(fun fs info t ->
-				match t with
-				| TidArrRd (tt,i) -> let t_var = gen_if_not_var (TidT t) Tid in
-															 VarTh t_var
-				| _ -> map_tid fs info t)
-		~addr_f:(fun fs info a ->
-				match a with
-				| ArrAt (c,i) -> let i_var = gen_if_not_var (IntT i) Int in
-													 ArrAt (fs.cell_f fs info c, VarInt i_var)
-				| AddrArrRd (aa,i) -> let a_var = gen_if_not_var (AddrT a) Addr in
-																VarAddr a_var
-				| _ -> map_addr fs info a)
-		~cell_f:(fun fs info c ->
-				match c with
-				| MkCell (e,aa,tt,i) -> let c_var = gen_if_not_var (CellT c) Cell in
-																	VarCell c_var
-				| CellLockAt (c,i,t) -> let i_var = gen_if_not_var (IntT i) Int in
-																	CellLockAt (fs.cell_f fs info c,
-																							VarInt i_var,
-																							fs.tid_f fs info t)
-				| CellUnlockAt (c,i) -> let i_var = gen_if_not_var (IntT i) Int in
-																	CellUnlockAt (fs.cell_f fs info c, VarInt i_var)
-				| _ -> map_cell fs info c)
-		~path_f:(fun fs info p ->
-				match p with
-				| GetPath (m,a1,a2,i) -> let i_var = gen_if_not_var (IntT i) Int in
-																	 GetPath (fs.mem_f fs info m,
-																						fs.addr_f fs info a1,
-																						fs.addr_f fs info a2,
-																						VarInt i_var)
-				| _ -> map_path fs info p)
-		~int_f:(fun fs info i ->
-				match i with
-				| IntVal j -> VarInt (gen_if_not_var (IntT i) Int)
-				| CellMax c -> let l = gen_if_not_var (IntT i) Int in
-												 VarInt l
-				| _ -> map_int fs info i)
-		~addrarr_f:(fun fs info aa ->
-				match aa with
-				| AddrArrayUp (bb,i,a) -> let i_var = gen_if_not_var (IntT i) Int in
-																		AddrArrayUp (fs.addrarr_f fs info bb,
-																								 VarInt i_var,
-																								 fs.addr_f fs info a)
-				| _ -> map_addrarr fs info aa)
-		~tidarr_f:(fun fs info tt ->
-				match tt with
-				| TidArrayUp (yy,i,t) -> let i_var = gen_if_not_var (IntT i) Int in
-																	 TidArrayUp (fs.tidarr_f fs info yy,
-																							 VarInt i_var,
-																							 fs.tid_f fs info t)
-				| _ -> map_tidarr fs info tt)
-		~atom_f:(fun fs info a ->
-				match a with
-				| Reach (m,a1,a2,i,p) -> let i_var = gen_if_not_var (IntT i) Int in
-																	 Reach (fs.mem_f fs info m,
-																					fs.addr_f fs info a1,
-																					fs.addr_f fs info a2,
-																					VarInt i_var,
-																					fs.path_f fs info p)
-				| Skiplist(m,s,i,a1,a2,es) -> let i_var = gen_if_not_var (IntT i) Int in
-																				Skiplist(fs.mem_f fs info m,
-																								 fs.set_f fs info s,
-																								 VarInt i_var,
-																								 fs.addr_f fs info a1,
-																								 fs.addr_f fs info a2,
-																								 fs.setelem_f fs info es)
-				| Less (i1,i2) -> let i1_var = gen_if_not_var (IntT i1) Int in
-													let i2_var = gen_if_not_var (IntT i2) Int in
-														Less (VarInt i1_var, VarInt i2_var)
-				| Greater (i1,i2) -> let i1_var = gen_if_not_var (IntT i1) Int in
-														 let i2_var = gen_if_not_var (IntT i2) Int in
-															 Greater (VarInt i1_var, VarInt i2_var)
-				| LessEq (i1,i2) -> let i1_var = gen_if_not_var (IntT i1) Int in
-														let i2_var = gen_if_not_var (IntT i2) Int in
-															LessEq (VarInt i1_var, VarInt i2_var)
-				| GreaterEq (i1,i2) -> let i1_var = gen_if_not_var (IntT i1) Int in
-															 let i2_var = gen_if_not_var (IntT i2) Int in
-																 GreaterEq (VarInt i1_var, VarInt i2_var)
-				(* Equality between cell variable and MkCell *)
-				| Eq (CellT (VarCell v), CellT (MkCell (e,aa,tt,i)))
-				| Eq (CellT (MkCell (e,aa,tt,i)), CellT (VarCell v)) ->
-						let i_var = gen_if_not_var (IntT i) Int in
-						let aa_norm = fs.addrarr_f fs info aa in
-						let tt_norm = fs.tidarr_f fs info tt in
-						let aa' = match aa_norm with
-											| AddrArrayUp _ -> VarAddrArray (gen_if_not_var
-																					(AddrArrayT aa_norm) AddrArray)
-											| _ -> aa_norm in
-						let tt' = match tt_norm with
-											| TidArrayUp _ -> VarTidArray (gen_if_not_var
-																					(TidArrayT tt_norm) TidArray)
-											| _ -> tt_norm in
-							Eq (CellT (VarCell v), CellT (MkCell(fs.elem_f fs info e, aa',
-																									 tt', VarInt i_var)))
-				(* Inequality between cell variable and MkCell *)
-				| InEq (CellT (VarCell v), CellT (MkCell (e,aa,tt,i)))
-				| InEq (CellT (MkCell (e,aa,tt,i)), CellT (VarCell v)) ->
-						let i_var = gen_if_not_var (IntT i) Int in
-							InEq (CellT (VarCell v), CellT (MkCell(fs.elem_f fs info e,
-																										 fs.addrarr_f fs info aa,
-																										 fs.tidarr_f fs info tt,
-																										 VarInt i_var)))
-				(* Equality between address variable and address array *)
-				| Eq (AddrT (VarAddr a), AddrT (AddrArrRd(aa,i)))
-				| Eq (AddrT (AddrArrRd(aa,i)), AddrT (VarAddr a)) ->
-						let i_var = gen_if_not_var (IntT i) Int in
-							Eq (AddrT (VarAddr a),
-									AddrT (AddrArrRd(fs.addrarr_f fs info aa, VarInt i_var)))
-				(* Inequality between address variable and address array *)
-				| InEq (AddrT (VarAddr a), AddrT (AddrArrRd(aa,i)))
-				| InEq (AddrT (AddrArrRd(aa,i)), AddrT (VarAddr a)) ->
-						let i_var = gen_if_not_var (IntT i) Int in
-							InEq (AddrT (VarAddr a),
-										AddrT (AddrArrRd(fs.addrarr_f fs info aa,VarInt i_var)))
-				(* Equality between tid variable  and tids array *)
-				| Eq (TidT (VarTh a), TidT (TidArrRd(tt,i)))
-				| Eq (TidT (TidArrRd(tt,i)), TidT (VarTh a)) ->
-						let i_var = gen_if_not_var (IntT i) Int in
-							Eq (TidT (VarTh a),
-									TidT (TidArrRd(fs.tidarr_f fs info tt, VarInt i_var)))
-				(* Inequality between tid variable and tids array *)
-				| InEq (TidT (VarTh a), TidT (TidArrRd(tt,i)))
-				| InEq (TidT (TidArrRd(tt,i)), TidT (VarTh a)) ->
-						let i_var = gen_if_not_var (IntT i) Int in
-							InEq (TidT (VarTh a),
-										TidT (TidArrRd(fs.tidarr_f fs info tt, VarInt i_var)))
-				| PCUpdate (i,t) -> PCUpdate (i, fs.tid_f fs info t)
-				| _ -> map_atom fs info a)
+
+  let norm_map =
+    make_map (fun _ _ v -> v)
+    ~set_f:(fun fs info s ->
+        match s with
+        | AddrToSet (m,a,i) -> let i_var = gen_if_not_var (IntT i) Int in
+                                 AddrToSet (fs.mem_f fs info m,
+                                            fs.addr_f fs info a,
+                                            VarInt i_var)
+        | _ -> map_set fs info s)
+    ~tid_f:(fun fs info t ->
+        match t with
+        | TidArrRd (tt,i) -> let t_var = gen_if_not_var (TidT t) Tid in
+                               VarTh t_var
+        | _ -> map_tid fs info t)
+    ~addr_f:(fun fs info a ->
+        match a with
+        | ArrAt (c,i) -> let i_var = gen_if_not_var (IntT i) Int in
+                           ArrAt (fs.cell_f fs info c, VarInt i_var)
+        | AddrArrRd (aa,i) -> let a_var = gen_if_not_var (AddrT a) Addr in
+                                VarAddr a_var
+        | _ -> map_addr fs info a)
+    ~cell_f:(fun fs info c ->
+        match c with
+        | MkCell (e,aa,tt,i) -> let c_var = gen_if_not_var (CellT c) Cell in
+                                  VarCell c_var
+        | CellLockAt (c,i,t) -> let i_var = gen_if_not_var (IntT i) Int in
+                                  CellLockAt (fs.cell_f fs info c,
+                                              VarInt i_var,
+                                              fs.tid_f fs info t)
+        | CellUnlockAt (c,i) -> let i_var = gen_if_not_var (IntT i) Int in
+                                  CellUnlockAt (fs.cell_f fs info c, VarInt i_var)
+        | _ -> map_cell fs info c)
+    ~path_f:(fun fs info p ->
+        match p with
+        | GetPath (m,a1,a2,i) -> let i_var = gen_if_not_var (IntT i) Int in
+                                   GetPath (fs.mem_f fs info m,
+                                            fs.addr_f fs info a1,
+                                            fs.addr_f fs info a2,
+                                            VarInt i_var)
+        | _ -> map_path fs info p)
+    ~int_f:(fun fs info i ->
+        match i with
+        | IntVal j -> VarInt (gen_if_not_var (IntT i) Int)
+        | CellMax c -> let l = gen_if_not_var (IntT i) Int in
+                         VarInt l
+        | _ -> i)
+    ~addrarr_f:(fun fs info aa ->
+        match aa with
+        | AddrArrayUp (bb,i,a) -> let i_var = gen_if_not_var (IntT i) Int in
+                                    AddrArrayUp (fs.addrarr_f fs info bb,
+                                                 VarInt i_var,
+                                                 fs.addr_f fs info a)
+        | _ -> map_addrarr fs info aa)
+    ~tidarr_f:(fun fs info tt ->
+        match tt with
+        | TidArrayUp (yy,i,t) -> let i_var = gen_if_not_var (IntT i) Int in
+                                   TidArrayUp (fs.tidarr_f fs info yy,
+                                               VarInt i_var,
+                                               fs.tid_f fs info t)
+        | _ -> map_tidarr fs info tt)
+    ~atom_f:(fun fs info a ->
+        match a with
+        | Reach (m,a1,a2,i,p) -> let i_var = gen_if_not_var (IntT i) Int in
+                                   Reach (fs.mem_f fs info m,
+                                          fs.addr_f fs info a1,
+                                          fs.addr_f fs info a2,
+                                          VarInt i_var,
+                                          fs.path_f fs info p)
+        | Skiplist(m,s,i,a1,a2,es) -> let i_var = gen_if_not_var (IntT i) Int in
+                                        Skiplist(fs.mem_f fs info m,
+                                                 fs.set_f fs info s,
+                                                 VarInt i_var,
+                                                 fs.addr_f fs info a1,
+                                                 fs.addr_f fs info a2,
+                                                 fs.setelem_f fs info es)
+        | Less (i1,i2) -> let i1_var = gen_if_not_var (IntT i1) Int in
+                          let i2_var = gen_if_not_var (IntT i2) Int in
+                            Less (VarInt i1_var, VarInt i2_var)
+        | Greater (i1,i2) -> let i1_var = gen_if_not_var (IntT i1) Int in
+                             let i2_var = gen_if_not_var (IntT i2) Int in
+                               Greater (VarInt i1_var, VarInt i2_var)
+        | LessEq (i1,i2) -> let i1_var = gen_if_not_var (IntT i1) Int in
+                            let i2_var = gen_if_not_var (IntT i2) Int in
+                              LessEq (VarInt i1_var, VarInt i2_var)
+        | GreaterEq (i1,i2) -> let i1_var = gen_if_not_var (IntT i1) Int in
+                               let i2_var = gen_if_not_var (IntT i2) Int in
+                                 GreaterEq (VarInt i1_var, VarInt i2_var)
+        (* Equality between cell variable and MkCell *)
+        | Eq (CellT (VarCell v), CellT (MkCell (e,aa,tt,i)))
+        | Eq (CellT (MkCell (e,aa,tt,i)), CellT (VarCell v)) ->
+            let i_var = gen_if_not_var (IntT i) Int in
+            let aa_norm = fs.addrarr_f fs info aa in
+            let tt_norm = fs.tidarr_f fs info tt in
+            let aa' = match aa_norm with
+                      | AddrArrayUp _ -> VarAddrArray (gen_if_not_var
+                                          (AddrArrayT aa_norm) AddrArray)
+                      | _ -> aa_norm in
+            let tt' = match tt_norm with
+                      | TidArrayUp _ -> VarTidArray (gen_if_not_var
+                                          (TidArrayT tt_norm) TidArray)
+                      | _ -> tt_norm in
+              Eq (CellT (VarCell v), CellT (MkCell(fs.elem_f fs info e, aa',
+                                                   tt', VarInt i_var)))
+        (* Inequality between cell variable and MkCell *)
+        | InEq (CellT (VarCell v), CellT (MkCell (e,aa,tt,i)))
+        | InEq (CellT (MkCell (e,aa,tt,i)), CellT (VarCell v)) ->
+            let i_var = gen_if_not_var (IntT i) Int in
+              InEq (CellT (VarCell v), CellT (MkCell(fs.elem_f fs info e,
+                                                     fs.addrarr_f fs info aa,
+                                                     fs.tidarr_f fs info tt,
+                                                     VarInt i_var)))
+        (* Equality between address variable and address array *)
+        | Eq (AddrT (VarAddr a), AddrT (AddrArrRd(aa,i)))
+        | Eq (AddrT (AddrArrRd(aa,i)), AddrT (VarAddr a)) ->
+            let i_var = gen_if_not_var (IntT i) Int in
+              Eq (AddrT (VarAddr a),
+                  AddrT (AddrArrRd(fs.addrarr_f fs info aa, VarInt i_var)))
+        (* Inequality between address variable and address array *)
+        | InEq (AddrT (VarAddr a), AddrT (AddrArrRd(aa,i)))
+        | InEq (AddrT (AddrArrRd(aa,i)), AddrT (VarAddr a)) ->
+            let i_var = gen_if_not_var (IntT i) Int in
+              InEq (AddrT (VarAddr a),
+                    AddrT (AddrArrRd(fs.addrarr_f fs info aa,VarInt i_var)))
+        (* Equality between tid variable  and tids array *)
+        | Eq (TidT (VarTh a), TidT (TidArrRd(tt,i)))
+        | Eq (TidT (TidArrRd(tt,i)), TidT (VarTh a)) ->
+            let i_var = gen_if_not_var (IntT i) Int in
+              Eq (TidT (VarTh a),
+                  TidT (TidArrRd(fs.tidarr_f fs info tt, VarInt i_var)))
+        (* Inequality between tid variable and tids array *)
+        | InEq (TidT (VarTh a), TidT (TidArrRd(tt,i)))
+        | InEq (TidT (TidArrRd(tt,i)), TidT (VarTh a)) ->
+            let i_var = gen_if_not_var (IntT i) Int in
+              InEq (TidT (VarTh a),
+                    TidT (TidArrRd(fs.tidarr_f fs info tt, VarInt i_var)))
+        | PCUpdate (i,t) -> PCUpdate (i, fs.tid_f fs info t)
+        | _ -> map_atom fs info a)
 
 
-	in
+  in
   match l with
-	| F.Atom a -> F.Literal(F.Atom (norm_map.atom_f () a))
-	| F.NegAtom (Skiplist(m,s,i,a1,a2,es)) ->
+  | F.Atom a -> F.Literal(F.Atom (norm_map.atom_f () a))
+  | F.NegAtom (Skiplist(m,s,i,a1,a2,es)) ->
       let m_var = gen_if_not_var (MemT m) Mem in
       let s_var = gen_if_not_var (SetT s) Set in
       let i_var = gen_if_not_var (IntT i) Int in
@@ -3312,7 +1921,7 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
                         eq_set (u) (PathToSet q);
                         phi_not_subset]
           ]
-	| F.NegAtom a -> F.Literal(F.NegAtom (norm_map.atom_f () a))
+  | F.NegAtom a -> F.Literal(F.NegAtom (norm_map.atom_f () a))
 
 
 let rec norm_formula (info:norm_info_t) (phi:formula) : formula =
@@ -3336,6 +1945,8 @@ let rec norm_formula (info:norm_info_t) (phi:formula) : formula =
                                           norm_formula info psi2)
   | F.Iff (psi1,psi2)           -> F.Iff (norm_formula info psi1,
                                       norm_formula info psi2)
+
+
 
 
 let normalize (phi:formula) : formula =
@@ -3403,8 +2014,8 @@ let check_well_defined_replace_table (tbl:(term, term) Hashtbl.t) : unit =
 
 
 
-let replace_terms_in_vars (tbl:(term,term) Hashtbl.t) (v:V.t) : V.t =
-	try
+let rec replace_terms_in_vars (tbl:(term,term) Hashtbl.t) (v:V.t) : V.t =
+  try
     match Hashtbl.find tbl (VarT v) with
     | VarT v -> v
     | _ -> assert false
@@ -3412,80 +2023,79 @@ let replace_terms_in_vars (tbl:(term,term) Hashtbl.t) (v:V.t) : V.t =
 
 
 let replace_terms_map =
-	make_map (fun _ tbl v -> replace_terms_in_vars tbl v)
-	~addrarr_f:(fun fs tbl aa ->
-			try
-				match Hashtbl.find tbl (AddrArrayT aa) with
-				| AddrArrayT aa' -> aa'
-				| _ -> assert false
-			with _ -> map_addrarr fs tbl aa)
-	~tidarr_f:(fun fs tbl tt ->
-			try
-				match Hashtbl.find tbl (TidArrayT tt) with
-				| TidArrayT tt' -> tt'
-				| _ -> assert false
-			with _ -> map_tidarr fs tbl tt)
-	~set_f:(fun fs tbl s ->
-			try
-				match Hashtbl.find tbl (SetT s) with
-				| SetT s' -> s'
-				| _ -> assert false
-			with _ -> map_set fs tbl s)
-	~addr_f:(fun fs tbl a ->
-			try
-				match Hashtbl.find tbl (AddrT a) with
-				| AddrT a' -> a'
-				| _ -> assert false
-			with _ -> map_addr fs tbl a)
-	~elem_f:(fun fs tbl e ->
-			try
-				match Hashtbl.find tbl (ElemT e) with
-				| ElemT e' -> e'
-				| _ -> assert false
-			with _ -> map_elem fs tbl e)
-	~tid_f:(fun fs tbl t ->
-			try
-				match Hashtbl.find tbl (TidT t) with
-				| TidT t' -> t'
-				| _ -> assert false
-			with _ -> map_tid fs tbl t)
-	~cell_f:(fun fs tbl c ->
-			try
-				match Hashtbl.find tbl (CellT c) with
-				| CellT c' -> c'
-				| _ -> assert false
-			with _ -> map_cell fs tbl c)
-	~setth_f:(fun fs tbl st ->
-			try
-				match Hashtbl.find tbl (SetThT st) with
-				| SetThT st' -> st'
-				| _ -> assert false
-			with _ -> map_setth fs tbl st)
-	~setelem_f:(fun fs tbl se ->
-			try
-				match Hashtbl.find tbl (SetElemT se) with
-				| SetElemT se' -> se'
-				| _ -> assert false
-			with _ -> map_setelem fs tbl se)
-	~path_f:(fun fs tbl p ->
-			try
-				match Hashtbl.find tbl (PathT p) with
-				| PathT p' -> p'
-				| _ -> assert false
-			with _ -> map_path fs tbl p)
-	~mem_f:(fun fs tbl m ->
-			try
-				match Hashtbl.find tbl (MemT m) with
-				| MemT m' -> m'
-				| _ -> assert false
-			with _ -> map_mem fs tbl m)
-	~int_f:(fun fs tbl i ->
-			try
-				match Hashtbl.find tbl (IntT i) with
-				| IntT i' -> i'
-				| _ -> assert false
-			with _ -> map_int fs tbl i)
-
+  make_map (fun _ tbl v -> replace_terms_in_vars tbl v)
+  ~addrarr_f:(fun fs tbl aa ->
+      try
+        match Hashtbl.find tbl (AddrArrayT aa) with
+        | AddrArrayT aa' -> aa'
+        | _ -> assert false
+      with _ -> map_addrarr fs tbl aa)
+  ~tidarr_f:(fun fs tbl tt ->
+      try
+        match Hashtbl.find tbl (TidArrayT tt) with
+        | TidArrayT tt' -> tt'
+        | _ -> assert false
+      with _ -> map_tidarr fs tbl tt)
+  ~set_f:(fun fs tbl s ->
+      try
+        match Hashtbl.find tbl (SetT s) with
+        | SetT s' -> s'
+        | _ -> assert false
+      with _ -> map_set fs tbl s)
+  ~addr_f:(fun fs tbl a ->
+      try
+        match Hashtbl.find tbl (AddrT a) with
+        | AddrT a' -> a'
+        | _ -> assert false
+      with _ -> map_addr fs tbl a)
+  ~elem_f:(fun fs tbl e ->
+      try
+        match Hashtbl.find tbl (ElemT e) with
+        | ElemT e' -> e'
+        | _ -> assert false
+      with _ -> map_elem fs tbl e)
+  ~tid_f:(fun fs tbl t ->
+      try
+        match Hashtbl.find tbl (TidT t) with
+        | TidT t' -> t'
+        | _ -> assert false
+      with _ -> map_tid fs tbl t)
+  ~cell_f:(fun fs tbl c ->
+      try
+        match Hashtbl.find tbl (CellT c) with
+        | CellT c' -> c'
+        | _ -> assert false
+      with _ -> map_cell fs tbl c)
+  ~setth_f:(fun fs tbl st ->
+      try
+        match Hashtbl.find tbl (SetThT st) with
+        | SetThT st' -> st'
+        | _ -> assert false
+      with _ -> map_setth fs tbl st)
+  ~setelem_f:(fun fs tbl se ->
+      try
+        match Hashtbl.find tbl (SetElemT se) with
+        | SetElemT se' -> se'
+        | _ -> assert false
+      with _ -> map_setelem fs tbl se)
+  ~path_f:(fun fs tbl p ->
+      try
+        match Hashtbl.find tbl (PathT p) with
+        | PathT p' -> p'
+        | _ -> assert false
+      with _ -> map_path fs tbl p)
+  ~mem_f:(fun fs tbl m ->
+      try
+        match Hashtbl.find tbl (MemT m) with
+        | MemT m' -> m'
+        | _ -> assert false
+      with _ -> map_mem fs tbl m)
+  ~int_f:(fun fs tbl i ->
+      try
+        match Hashtbl.find tbl (IntT i) with
+        | IntT i' -> i'
+        | _ -> assert false
+      with _ -> map_int fs tbl i)
 
 
 let replace_fs = F.make_trans F.GenericLiteralTrans replace_terms_map.atom_f
@@ -3495,28 +2105,6 @@ let replace_terms_literal (tbl:(term,term) Hashtbl.t) (l:literal) : literal =
 
 let replace_terms_formula_aux (tbl:(term,term) Hashtbl.t) (phi:formula) : formula =
   F.formula_trans replace_fs tbl phi
-
-(*
-and replace_terms_conjunctive_formula (tbl:(term,term) Hashtbl.t) (cf:conjunctive_formula)
-      : conjunctive_formula =
-  check_well_defined_replace_table tbl;
-  match cf with
-  | FalseConj -> FalseConj
-  | TrueConj  -> TrueConj
-  | Conj ls   -> Conj (List.map (replace_terms_literal tbl) ls)
-
-
-and replace_terms_formula_aux (tbl:(term,term) Hashtbl.t) (phi:formula) : formula =
-  match phi with
-  | True           -> True
-  | False          -> False
-  | And(f1,f2)     -> And(replace_terms_formula_aux tbl f1, replace_terms_formula_aux tbl f2)
-  | Or(f1,f2)      -> Or(replace_terms_formula_aux tbl f1, replace_terms_formula_aux tbl f2)
-  | Not(f)         -> Not(replace_terms_formula_aux tbl f)
-  | Implies(f1,f2) -> Implies(replace_terms_formula_aux tbl f1, replace_terms_formula_aux tbl f2)
-  | Iff (f1,f2)    -> Iff(replace_terms_formula_aux tbl f1, replace_terms_formula_aux tbl f2)
-  | Literal l      -> Literal (replace_terms_literal tbl l)
-*)
 
 
 let replace_terms (tbl:(term, term) Hashtbl.t) (phi:formula) : formula =
@@ -3561,4 +2149,5 @@ let gen_fresh_tids (set:ThreadSet.t) (n:int) : ThreadSet.t =
     set ThreadSet.empty ThreadSet.add ThreadSet.mem gen_cand n
 
 let param (p:V.shared_or_local) (phi:formula) =
-	F.formula_trans param_fs (V.param_local_only p) phi
+  F.formula_trans param_fs (V.param_local_only p) phi
+

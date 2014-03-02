@@ -677,7 +677,7 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
       let (unparam_support, param_support) =
         List.fold_left (fun (u_set,p_set) supp ->
           let supp_voc = filter_fixed_voc (E.voc supp) in
-          let fresh_tids = E.ThreadSet.empty in (* FIX!!! gen_fresh_tid_set !used_tids (E.ThreadSet.cardinal supp_voc) in *)
+          let fresh_tids = E.gen_fresh_tid_set !used_tids (E.ThreadSet.cardinal supp_voc) in
           let fresh_subst = E.new_tid_subst
                               (List.combine (E.ThreadSet.elements supp_voc)
                                             (E.ThreadSet.elements fresh_tids)) in
