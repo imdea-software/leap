@@ -61,7 +61,6 @@ and addr =
   | Null
   | ArrAt            of cell * integer
   | AddrArrRd         of addrarr * integer
-(*  | Malloc of elem * addr * tid *)
 and cell =
     VarCell           of V.t
   | Error
@@ -137,24 +136,6 @@ and literal = atom Formula.literal
 and conjunctive_formula = atom Formula.conjunctive_formula
 and disjunctive_formula = atom Formula.disjunctive_formula
 and formula = atom Formula.formula
-(*
-and literal =
-    Atom              of atom
-  | NegAtom           of atom
-and conjunctive_formula =
-    FalseConj
-  | TrueConj
-  | Conj              of literal list
-and formula =
-    Literal           of literal
-  | True
-  | False
-  | And               of formula * formula
-  | Or                of formula * formula
-  | Not               of formula
-  | Implies           of formula * formula
-  | Iff               of formula * formula
-*)
 
 
 type special_op_t =
@@ -223,10 +204,6 @@ val unprimed_voc : formula -> ThreadSet.t
 
 val voc_to_var : tid -> V.t
 
-(*
-val nnf : formula -> formula
-val dnf : formula -> conjunctive_formula list
-*)
 
 
 (* PRETTY_PRINTERS *)

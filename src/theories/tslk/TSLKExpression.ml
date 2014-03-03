@@ -127,28 +127,6 @@ module type S =
     and conjunctive_formula = atom Formula.conjunctive_formula
     and disjunctive_formula = atom Formula.disjunctive_formula
     and formula = atom Formula.formula
-(*
-    and literal =
-        Atom              of atom
-      | NegAtom           of atom
-    and conjunctive_formula =
-        FalseConj
-      | TrueConj
-      | Conj              of literal list
-    and disjunctive_formula =
-      | FalseDisj
-      | TrueDisj
-      | Disj              of literal list
-    and formula =
-        Literal           of literal
-      | True
-      | False
-      | And               of formula * formula
-      | Or                of formula * formula
-      | Not               of formula
-      | Implies           of formula * formula
-      | Iff               of formula * formula
-*)
 
 
     type special_op_t =
@@ -170,6 +148,13 @@ module type S =
     module TermSet : Set.S with type elt = term
     module AtomSet : Set.S with type elt = atom
     module ThreadSet : Set.S with type elt = tid
+
+    include GenericExpression.S
+      with type sort_t := sort
+      with type tid_t := tid
+      with type t := formula
+      with module V := V
+      with module ThreadSet := ThreadSet
 
     (* Expression height *)
     val k : int
@@ -427,28 +412,6 @@ module Make (K : Level.S) : S =
     and conjunctive_formula = atom Formula.conjunctive_formula
     and disjunctive_formula = atom Formula.disjunctive_formula
     and formula = atom Formula.formula
-(*
-    and literal =
-        Atom              of atom
-      | NegAtom           of atom
-    and conjunctive_formula =
-        FalseConj
-      | TrueConj
-      | Conj              of literal list
-    and disjunctive_formula =
-      | FalseDisj
-      | TrueDisj
-      | Disj              of literal list
-    and formula =
-        Literal           of literal
-      | True
-      | False
-      | And               of formula * formula
-      | Or                of formula * formula
-      | Not               of formula
-      | Implies           of formula * formula
-      | Iff               of formula * formula
-*)
 
     type special_op_t =
       | Reachable
@@ -565,11 +528,250 @@ module Make (K : Level.S) : S =
       end )
 
 
-    let unify_var_info (info1:var_info_t) (info2:var_info_t) : var_info_t =
+
+    (**********  Folding  ***************)
+
+    type ('info, 'a) fold_ops_t =
       {
-        fresh = (info1.fresh || info2.fresh);
-        smp_interesting = (info1.smp_interesting || info2.smp_interesting);
+        base : 'info -> 'a;
+        concat : 'a -> 'a -> 'a;
+        var_f : ('info,'a) fold_ops_t -> 'info -> V.t -> 'a;
+        mutable addr_f : ('info,'a) fold_ops_t -> 'info -> addr -> 'a;
+        mutable elem_f : ('info,'a) fold_ops_t -> 'info -> elem -> 'a;
+        mutable tid_f : ('info,'a) fold_ops_t -> 'info -> tid -> 'a;
+        mutable level_f : ('info,'a) fold_ops_t -> 'info -> level -> 'a;
+        mutable cell_f : ('info,'a) fold_ops_t -> 'info -> cell -> 'a;
+        mutable mem_f : ('info,'a) fold_ops_t -> 'info -> mem -> 'a;
+        mutable path_f : ('info,'a) fold_ops_t -> 'info -> path -> 'a;
+        mutable set_f : ('info,'a) fold_ops_t -> 'info -> set -> 'a;
+        mutable setelem_f : ('info,'a) fold_ops_t -> 'info -> setelem -> 'a;
+        mutable setth_f : ('info,'a) fold_ops_t -> 'info -> setth -> 'a;
+        mutable atom_f : ('info,'a) fold_ops_t -> 'info -> atom -> 'a;
+        mutable term_f : ('info,'a) fold_ops_t -> 'info -> term -> 'a;
       }
+
+    type ('info, 'a) folding_t =
+      {
+        var_f : 'info -> V.t -> 'a;
+        addr_f : 'info -> addr -> 'a;
+        elem_f : 'info -> elem -> 'a;
+        tid_f : 'info -> tid -> 'a;
+        level_f : 'info -> level -> 'a;
+        cell_f : 'info -> cell -> 'a;
+        mem_f : 'info -> mem -> 'a;
+        path_f : 'info -> path -> 'a;
+        set_f : 'info -> set -> 'a;
+        setelem_f : 'info -> setelem -> 'a;
+        setth_f : 'info -> setth -> 'a;
+        atom_f : 'info -> atom -> 'a;
+        term_f : 'info -> term -> 'a;
+      }
+
+
+
+    let rec fold_addr (fs:('info,'a) fold_ops_t) (info:'info) (a:addr) : 'a =
+      match a with
+      | VarAddr v       -> fs.var_f fs info v
+      | Null            -> fs.base info
+      | NextAt (c,l)    -> fs.concat (fs.cell_f fs info c)
+                                     (fs.level_f fs info l)
+      | FirstLockedAt (m,p,l) -> fs.concat (fs.mem_f fs info m)
+                                           (fs.concat (fs.path_f fs info p)
+                                                      (fs.level_f fs info l))
+
+    and fold_elem (fs:('info,'a) fold_ops_t) (info:'info) (e:elem) : 'a =
+      match e with
+      | VarElem v         -> fs.var_f fs info v
+      | CellData c        -> fs.cell_f fs info c
+      | HavocSkiplistElem -> fs.base info
+      | LowestElem        -> fs.base info
+      | HighestElem       -> fs.base info
+
+    and fold_tid (fs:('info,'a) fold_ops_t) (info:'info) (t:tid) : 'a =
+      match t with
+      | VarTh v            -> fs.var_f fs info v
+      | NoTid              -> fs.base info
+      | CellLockIdAt (c,l) -> fs.concat (fs.cell_f fs info c)
+                                        (fs.level_f fs info l)
+
+    and fold_level (fs:('info,'a) fold_ops_t) (info:'info) (l:level) : 'a =
+      match l with
+      | LevelVal _ -> fs.base info
+      | VarLevel v -> fs.var_f fs info v
+      | LevelSucc j -> fs.base info
+      | LevelPred j -> fs.base info
+      | HavocLevel -> fs.base info
+
+    and fold_cell (fs:('info,'a) fold_ops_t) (info:'info) (c:cell) : 'a =
+      match c with
+      | VarCell v          -> fs.var_f fs info v
+      | Error              -> fs.base info
+      | MkCell(e,aa,tt)    -> fs.concat (fs.elem_f fs info e)
+                                (fs.concat
+                                        (List.fold_left (fun res a ->
+                                          fs.concat res (fs.addr_f fs info a)
+                                         ) (fs.base info) aa)
+                                        (List.fold_left (fun res t ->
+                                          fs.concat res (fs.tid_f fs info t)
+                                         ) (fs.base info) tt))
+      | CellLockAt(c,l,th) -> fs.concat (fs.cell_f fs info c)
+                                        (fs.concat (fs.level_f fs info l)
+                                                   (fs.tid_f fs info th))
+      | CellUnlockAt(c,l)  -> fs.concat (fs.cell_f fs info c) (fs.level_f fs info l)
+      | CellAt(m,a)        -> fs.concat (fs.mem_f fs info m) (fs.addr_f fs info a)
+
+    and fold_mem (fs:('info,'a) fold_ops_t) (info:'info) (m:mem) : 'a =
+      match m with
+      | VarMem v      -> fs.var_f fs info v
+      | Emp           -> fs.base info
+      | Update(m,a,c) -> fs.concat (fs.mem_f fs info m)
+                                   (fs.concat (fs.addr_f fs info a)
+                                              (fs.cell_f fs info c))
+
+    and fold_path (fs:('info,'a) fold_ops_t) (info:'info) (p:path) : 'a =
+      match p with
+      | VarPath v            -> fs.var_f fs info v
+      | Epsilon              -> fs.base info
+      | SimplePath(a)        -> fs.addr_f fs info a
+      | GetPathAt(m,a1,a2,l) -> fs.concat (fs.mem_f fs info m)
+                                          (fs.concat (fs.addr_f fs info a1)
+                                                     (fs.concat (fs.addr_f fs info a2)
+                                                                (fs.level_f fs info l)))
+
+    and fold_set (fs:('info,'a) fold_ops_t) (info:'info) (s:set) : 'a =
+      match s with
+      | VarSet v         -> fs.var_f fs info v
+      | EmptySet         -> fs.base info
+      | Singl(a)         -> fs.addr_f fs info a
+      | Union(s1,s2)     -> fs.concat (fs.set_f fs info s1) (fs.set_f fs info s2)
+      | Intr(s1,s2)      -> fs.concat (fs.set_f fs info s1) (fs.set_f fs info s2)
+      | Setdiff(s1,s2)   -> fs.concat (fs.set_f fs info s1) (fs.set_f fs info s2)
+      | PathToSet(p)     -> fs.path_f fs info p
+      | AddrToSet(m,a,l) -> fs.concat (fs.mem_f fs info m)
+                                      (fs.concat (fs.addr_f fs info a)
+                                                 (fs.level_f fs info l))
+
+    and fold_setelem (fs:('info,'a) fold_ops_t) (info:'info) (se:setelem) : 'a =
+      match se with
+      | VarSetElem v         -> fs.var_f fs info v
+      | EmptySetElem         -> fs.base info
+      | SinglElem(e)         -> fs.elem_f fs info e
+      | UnionElem(st1,st2)   -> fs.concat (fs.setelem_f fs info st1)
+                                          (fs.setelem_f fs info st2)
+      | IntrElem(st1,st2)    -> fs.concat (fs.setelem_f fs info st1)
+                                          (fs.setelem_f fs info st2)
+      | SetToElems(s,m)      -> fs.concat (fs.set_f fs info s) (fs.mem_f fs info m)
+      | SetdiffElem(st1,st2) -> fs.concat (fs.setelem_f fs info st1)
+                                          (fs.setelem_f fs info st2)
+
+    and fold_setth (fs:('info,'a) fold_ops_t) (info:'info) (sth:setth) : 'a =
+      match sth with
+      | VarSetTh v         -> fs.var_f fs info v
+      | EmptySetTh         -> fs.base info
+      | SinglTh(th)        -> fs.tid_f fs info th
+      | UnionTh(st1,st2)   -> fs.concat (fs.setth_f fs info st1) (fs.setth_f fs info st2)
+      | IntrTh(st1,st2)    -> fs.concat (fs.setth_f fs info st1) (fs.setth_f fs info st2)
+      | SetdiffTh(st1,st2) -> fs.concat (fs.setth_f fs info st1) (fs.setth_f fs info st2)
+
+    and fold_atom (fs:('info,'a) fold_ops_t) (info:'info) (a:atom) : 'a =
+      match a with
+      | Append(p1,p2,p3)          -> fs.concat (fs.path_f fs info p1)
+                                        (fs.concat (fs.path_f fs info p2)
+                                          (fs.path_f fs info p3))
+      | Reach(m,a1,a2,l,p)        -> fs.concat (fs.mem_f fs info m)
+                                        (fs.concat (fs.addr_f fs info a1)
+                                            (fs.concat (fs.addr_f fs info a2)
+                                                (fs.concat (fs.level_f fs info l)
+                                                    (fs.path_f fs info p))))
+      | OrderList(m,a1,a2)        -> fs.concat (fs.mem_f fs info m)
+                                        (fs.concat (fs.addr_f fs info a1)
+                                            (fs.addr_f fs info a2))
+      | In(a,s)                   -> fs.concat (fs.addr_f fs info a) (fs.set_f fs info s)
+      | SubsetEq(s1,s2)           -> fs.concat (fs.set_f fs info s1) (fs.set_f fs info s2)
+      | InTh(th,st)               -> fs.concat (fs.tid_f fs info th) (fs.setth_f fs info st)
+      | SubsetEqTh(st1,st2)       -> fs.concat (fs.setth_f fs info st1)
+                                               (fs.setth_f fs info st2)
+      | InElem(e,se)              -> fs.concat (fs.elem_f fs info e)
+                                               (fs.setelem_f fs info se)
+      | SubsetEqElem(se1,se2)     -> fs.concat (fs.setelem_f fs info se1)
+                                               (fs.setelem_f fs info se2)
+      | Less(l1,l2)               -> fs.concat (fs.level_f fs info l1)
+                                               (fs.level_f fs info l2)
+      | LessEq(l1,l2)             -> fs.concat (fs.level_f fs info l1)
+                                               (fs.level_f fs info l2)
+      | Greater(l1,l2)            -> fs.concat (fs.level_f fs info l1)
+                                               (fs.level_f fs info l2)
+      | GreaterEq(l1,l2)          -> fs.concat (fs.level_f fs info l1)
+                                               (fs.level_f fs info l2)
+      | LessElem(e1,e2)           -> fs.concat (fs.elem_f fs info e1)
+                                               (fs.elem_f fs info e2)
+      | GreaterElem(e1,e2)        -> fs.concat (fs.elem_f fs info e1)
+                                               (fs.elem_f fs info e2)
+      | Eq((x,y))                 -> fs.concat (fs.term_f fs info x)
+                                               (fs.term_f fs info y)
+      | InEq((x,y))               -> fs.concat (fs.term_f fs info x)
+                                               (fs.term_f fs info y)
+      | BoolVar v                 -> fs.var_f fs info v
+      | PC(pc,th,pr)              -> (match th with
+                                       | V.Shared -> fs.base info
+                                       | V.Local t -> fs.var_f fs info t)
+      | PCUpdate (pc,th)          -> fs.tid_f fs info th
+      | PCRange(pc1,pc2,th,pr)    -> (match th with
+                                       | V.Shared -> fs.base info
+                                       | V.Local t -> fs.var_f fs info t)
+
+    and fold_term (fs:('info,'a) fold_ops_t) (info:'info) (t:term) : 'a =
+      match t with
+      | VarT   v          -> fs.var_f fs info v
+      | SetT   s          -> fs.set_f fs info s
+      | ElemT  e          -> fs.elem_f fs info e
+      | TidT  th          -> fs.tid_f fs info th
+      | AddrT  a          -> fs.addr_f fs info a
+      | CellT  c          -> fs.cell_f fs info c
+      | SetThT st         -> fs.setth_f fs info st
+      | SetElemT se       -> fs.setelem_f fs info se
+      | PathT  p          -> fs.path_f fs info p
+      | MemT   m          -> fs.mem_f fs info m
+      | LevelT l          -> fs.level_f fs info l
+      | VarUpdate(v,pc,t) -> fs.concat (fs.var_f fs info v)
+                                       (fs.concat (fs.tid_f fs info pc)
+                                                  (fs.term_f fs info t))
+
+
+
+    let make_fold ?(addr_f=fold_addr)
+                  ?(elem_f=fold_elem)
+                  ?(tid_f=fold_tid)
+                  ?(level_f=fold_level)
+                  ?(cell_f=fold_cell)
+                  ?(mem_f=fold_mem)
+                  ?(path_f=fold_path)
+                  ?(set_f=fold_set)
+                  ?(setelem_f=fold_setelem)
+                  ?(setth_f=fold_setth)
+                  ?(atom_f=fold_atom)
+                  ?(term_f=fold_term)
+                  (base:('info -> 'a))
+                  (concat:('a -> 'a -> 'a))
+                  (var_f :(('info,'a) fold_ops_t -> 'info -> V.t -> 'a))
+        : ('info,'a) folding_t =
+      let fs = {
+        addr_f = addr_f; elem_f = elem_f; tid_f = tid_f;
+        level_f = level_f; cell_f = cell_f; mem_f = mem_f;
+        path_f = path_f; set_f = set_f; setelem_f = setelem_f;
+        setth_f = setth_f; atom_f = atom_f; term_f = term_f;
+        base = base; concat = concat; var_f = var_f; } in
+      { addr_f = addr_f fs; elem_f = elem_f fs; tid_f = tid_f fs;
+        level_f = level_f fs; cell_f = cell_f fs; mem_f = mem_f fs;
+        path_f = path_f fs; set_f = set_f fs; setelem_f = setelem_f fs;
+        setth_f = setth_f fs; atom_f = atom_f fs; term_f = term_f fs;
+        var_f = var_f fs; }
+
+        let unify_var_info (info1:var_info_t) (info2:var_info_t) : var_info_t =
+          {
+            fresh = (info1.fresh || info2.fresh);
+            smp_interesting = (info1.smp_interesting || info2.smp_interesting);
+          }
 
 
     let unify_varset (s:V.VarSet.t) : V.VarSet.t =
