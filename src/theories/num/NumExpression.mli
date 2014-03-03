@@ -108,7 +108,6 @@ val voc : formula -> tid list
 val has_variable      : integer -> bool
 
 val formula_is_linear : formula -> bool
-val term_is_linear    : integer -> bool
 
 
 val voc_to_var : tid -> V.t

@@ -650,26 +650,7 @@ let rec has_variable (t:integer) : bool =
     | SetMax(s)    -> false
 
 
-(* formula_is_linear : formula -> bool *)
-(* term_is_linear    : term    -> bool *)
-(* literal_is_linear : literal -> bool *)
-(* expr_is_linear    : expr    -> bool *)
-
-
 (*
-let rec formula_is_linear (phi:formula) : bool =
-  let is_linear = formula_is_linear in
-    match phi with
-      Literal(l)   -> literal_is_linear l
-    | True         -> true
-    | False        -> true
-    | And(x,y)     -> (is_linear x) && (is_linear y)
-    | Or(x,y)      -> (is_linear x) && (is_linear y)
-    | Not(x)       -> (is_linear x)
-    | Implies(x,y) -> (is_linear x) && (is_linear y)
-    | Iff(x,y)     -> (is_linear x) && (is_linear y)
-*)
-
 let rec term_is_linear t =
   let is_linear = term_is_linear in
     match t with
@@ -683,39 +664,38 @@ let rec term_is_linear t =
     | Div(x,y)       -> false
     | SetMin(s)      -> true
     | SetMax(s)      -> true
-(*
-and literal_is_linear l =
-  match l with
-    Atom a    -> (atom_is_linear a)
-  | NegAtom a -> (atom_is_linear a)
 *)
 
-and atom_is_linear a =
-  let is_linear = term_is_linear in
-  match a with
-    Less(x,y)            -> (is_linear x) && (is_linear y)
-  | Greater(x,y)         -> (is_linear x) && (is_linear y)
-  | LessEq(x,y)          -> (is_linear x) && (is_linear y)
-  | GreaterEq(x,y)       -> (is_linear x) && (is_linear y)
-  | LessTid(x,y)         -> false
-  | Eq(IntT x,IntT y)    -> (is_linear x) && (is_linear y)
-  | InEq(IntT x, IntT y) -> (is_linear x) && (is_linear y)
-  | Eq(_,_)              -> false
-  | InEq(_,_)            -> false
-  | In (_,_)             -> false
-  | Subset (_,_)         -> false
-  | PC _                 -> false
-  | PCUpdate _           -> false
-  | PCRange _            -> false
+let is_linear_fold =
+  make_fold (fun _ -> false) (&&) (fun _ _ v -> false)
+  ~int_f:(fun fs info i ->
+      match i with
+      | Mul(x,y) -> (fs.int_f fs info x) && (fs.int_f fs info y) &&
+                    (not ((has_variable x) && (has_variable y)))
+      | Div _ -> false
+      | Val _
+      | Var _
+      | SetMin _
+      | SetMax _ -> true
+      | _ -> fold_int fs info i)
+  ~atom_f:(fun fs info a ->
+      match a with
+      | Less(x,y)            
+      | Greater(x,y)         
+      | LessEq(x,y)          
+      | GreaterEq(x,y)       
+      | Eq(IntT x,IntT y)    
+      | InEq(IntT x, IntT y) -> fold_atom fs info a
+      | _ -> false)
 
-and is_linear_fs () = Formula.make_fold
-                        Formula.GenericLiteralFold
-                        (fun info a -> atom_is_linear a)
-                        (fun info -> true)
-                        (&&)
+let is_linear_fs = Formula.make_fold
+                     Formula.GenericLiteralFold
+                     (is_linear_fold.atom_f)
+                     (fun info -> true)
+                     (&&)
 
-and formula_is_linear (phi:formula) : bool =
-  Formula.formula_fold (is_linear_fs()) () phi
+let formula_is_linear (phi:formula) : bool =
+  Formula.formula_fold is_linear_fs () phi
 
 
 
