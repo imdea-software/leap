@@ -466,7 +466,6 @@ struct
       | NE.Sub(x,y)     -> " (- " ^ (tostr x) ^ (tostr y) ^ ")"
       | NE.Mul(x,y)     -> " (* " ^ (tostr x) ^ (tostr y) ^ ")"
       | NE.Div(x,y)     -> " (/ " ^ (tostr x) ^ (tostr y) ^ ")"
-      | NE.ArrayRd(_,_) -> raise(NotSupportedInYices(NE.integer_to_str t))
       | NE.SetMin(s)    -> " (setmin " ^ yices_string_of_set s ^ ")"
       | NE.SetMax(s)    -> " (setmax " ^ yices_string_of_set s ^ ")"
 
@@ -484,9 +483,10 @@ struct
 
   and yices_string_of_term (t:NE.term) : string =
     match t with
-      NE.IntV i -> yices_string_of_integer i
-    | NE.SetV s -> yices_string_of_set s
-
+      NE.IntT i -> yices_string_of_integer i
+    | NE.SetT s -> yices_string_of_set s
+    | NE.FuntermT t -> fun_to_str t
+    | NE.TidT th -> tid_to_str th
 
   and yices_string_of_atom a =
     let int_tostr = yices_string_of_integer in
@@ -502,14 +502,6 @@ struct
       | NE.InEq(x,y)      -> " (/= " ^ (term_tostr x) ^ (term_tostr y) ^ ")"
       | NE.In(i,s)        -> " (" ^ set_tostr s ^ " " ^ int_tostr i ^ ")"
       | NE.Subset(s1,s2)  -> " (subseteq " ^ set_tostr s1 ^ " " ^ set_tostr s2 ^ ")"
-      | NE.TidEq(x,y)     -> " (= "  ^ (tid_to_str x) ^ " " ^
-                                            (tid_to_str y) ^ ")"
-      | NE.TidInEq(x,y)   -> " (/= " ^ (tid_to_str x) ^ " " ^
-                                            (tid_to_str y) ^ ")"
-      | NE.FunEq(x,y)     -> " (= "  ^ (fun_to_str x) ^ " " ^
-                                            (fun_to_str y) ^ ")"
-      | NE.FunInEq(x,y)   -> " (/= " ^ (fun_to_str x) ^ " " ^
-                                            (fun_to_str y) ^ ")"
       | NE.PC (i,th,pr)   -> " " ^ yices_string_of_pos (i,th,pr) ^ " "
       | NE.PCUpdate(i,th) -> " " ^ yices_string_of_posupd (i,th) ^ " "
       | NE.PCRange (i,j,th,pr) -> " " ^ yices_string_of_posrange (i,j,th,pr) ^ " "

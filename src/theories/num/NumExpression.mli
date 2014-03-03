@@ -17,7 +17,6 @@ and integer =
   | Sub           of integer * integer
   | Mul           of integer * integer
   | Div           of integer * integer
-  | ArrayRd       of Expression.arrays * tid
   | SetMin        of set
   | SetMax        of set
 and set =
@@ -28,8 +27,10 @@ and set =
   | Intr          of set * set
   | Diff          of set * set
 and term =
-  | IntV          of integer
-  | SetV          of set
+  | IntT          of integer
+  | SetT          of set
+  | FuntermT      of fun_term
+  | TidT          of tid
 and fun_term =
   | FunVar        of V.t
   | FunUpd        of fun_term * tid * term
@@ -45,10 +46,6 @@ and atom =
   | Subset        of set * set
   | Eq            of eq
   | InEq          of diseq
-  | TidEq         of tid * tid
-  | TidInEq       of tid * tid
-  | FunEq         of fun_term * fun_term
-  | FunInEq       of fun_term * fun_term
   | PC            of int * V.shared_or_local * bool
   | PCUpdate      of int * tid
   | PCRange       of int * int * V.shared_or_local * bool
@@ -63,6 +60,16 @@ exception NotConjunctiveExpr of formula
 
 module ThreadSet : Set.S with type elt = tid
 
+(*
+include GenericExpression.S
+  with type sort_t := sort
+  with type tid_t := tid
+  with type t := formula
+  with module V := V
+  with module ThreadSet := ThreadSet
+*)
+
+
 val build_var : ?fresh:bool ->
                 V.id ->
                 sort ->
@@ -76,6 +83,7 @@ val is_int_formula : Expression.formula   -> bool
 val integer_to_str  : integer  -> string
 val formula_to_str  : formula -> string
 val literal_to_str  : literal -> string
+val funterm_to_str  : fun_term -> string
 val atom_to_str     : atom -> string
 
 val all_varid             : formula -> V.id list

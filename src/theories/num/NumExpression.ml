@@ -22,7 +22,6 @@ and integer =
   | Sub           of integer * integer
   | Mul           of integer * integer
   | Div           of integer * integer
-  | ArrayRd       of E.arrays * tid
   | SetMin        of set
   | SetMax        of set
 and set =
@@ -33,8 +32,10 @@ and set =
   | Intr          of set * set
   | Diff          of set * set
 and term =
-  | IntV          of integer
-  | SetV          of set
+  | IntT          of integer
+  | SetT          of set
+  | FuntermT      of fun_term
+  | TidT          of tid
 and fun_term =
   | FunVar        of V.t
   | FunUpd        of fun_term * tid * term
@@ -50,10 +51,12 @@ and atom =
   | Subset        of set * set
   | Eq            of eq
   | InEq          of diseq
+(*
   | TidEq         of tid * tid
   | TidInEq       of tid * tid
   | FunEq         of fun_term * fun_term
   | FunInEq       of fun_term * fun_term
+*)
   | PC            of int * V.shared_or_local * bool
   | PCUpdate      of int * tid
   | PCRange       of int * int * V.shared_or_local * bool
@@ -91,6 +94,115 @@ module ThreadSet = Set.Make(
     let compare = Pervasives.compare
     type t = tid
   end )
+
+(*
+
+(**********  Folding  ***************)
+
+type ('info, 'a) fold_ops_t =
+  {
+    base : 'info -> 'a;
+    concat : 'a -> 'a -> 'a;
+    var_f : ('info,'a) fold_ops_t -> 'info -> V.t -> 'a;
+    mutable tid_f : ('info,'a) fold_ops_t -> 'info -> tid -> 'a;
+    mutable int_f : ('info,'a) fold_ops_t -> 'info -> integer -> 'a;
+    mutable set_f : ('info,'a) fold_ops_t -> 'info -> set -> 'a;
+    mutable funterm_f : ('info,'a) fold_ops_t -> 'info -> fun_term -> 'a;
+    mutable atom_f : ('info,'a) fold_ops_t -> 'info -> atom -> 'a;
+    mutable term_f : ('info,'a) fold_ops_t -> 'info -> term -> 'a;
+  }
+
+type ('info, 'a) folding_t =
+  {
+    var_f : 'info -> V.t -> 'a;
+    tid_f : 'info -> tid -> 'a;
+    int_f : 'info -> integer -> 'a;
+    set_f : 'info -> set -> 'a;
+    funterm_f : 'info -> fun_term -> 'a;
+    atom_f : 'info -> atom -> 'a;
+    term_f : 'info -> term -> 'a;
+  }
+
+
+
+let rec fold_tid (fs:('info,'a) fold_ops_t) (info:'info) (t:tid) : 'a =
+  match t with
+  | VarTh v -> fs.var_f fs info v
+  | NoTid   -> fs.base info
+
+and fold_int (fs:('info,'a) fold_ops_t) (info:'info) (i:integer) : 'a =
+  match i with
+  | Val _ -> fs.base info
+  | Var v -> fs.var_f fs info v
+  | Neg j -> fs.int_f fs info j
+  | Add (j1,j2) -> fs.concat (fs.int_f fs info j1) (fs.int_f fs info j2)
+  | Sub (j1,j2) -> fs.concat (fs.int_f fs info j1) (fs.int_f fs info j2)
+  | Mul (j1,j2) -> fs.concat (fs.int_f fs info j1) (fs.int_f fs info j2)
+  | Div (j1,j2) -> fs.concat (fs.int_f fs info j1) (fs.int_f fs info j2)
+  | SetMin s -> fs.set_f fs info s
+  | SetMax s -> fs.set_f fs info s
+
+and fold_funterm (fs:('info,'a) fold_ops_t) (info:'info) (f:fun_term) : 'a =
+  match f with
+  | FunVar v -> fs.var_f fs info v
+  | FunUpd (ft,th,t) -> fs.concat (fs.funterm_f fs info ft)
+                                  (fs.concat (fs.tid_f fs info th)
+                                             (fs.term_f fs info t))
+
+and fold_atom (fs:('info,'a) fold_ops_t) (info:'info) (a:atom) : 'a =
+  match a with
+  | Less(i1,i2)               -> fs.concat (fs.int_f fs info i1)
+                                           (fs.int_f fs info i2)
+  | LessEq(i1,i2)             -> fs.concat (fs.int_f fs info i1)
+                                           (fs.int_f fs info i2)
+  | Greater(i1,i2)            -> fs.concat (fs.int_f fs info i1)
+                                           (fs.int_f fs info i2)
+  | GreaterEq(i1,i2)          -> fs.concat (fs.int_f fs info i1)
+                                           (fs.int_f fs info i2)
+  | LessTid (t1,t2)           -> fs.concat (fs.tid_f fs info t1)
+                                           (fs.tid_f fs info t2)
+  | In(i,s)                   -> fs.concat (fs.int_f fs info a) (fs.set_f fs info s)
+  | Subset(s1,s2)             -> fs.concat (fs.set_f fs info s1) (fs.set_f fs info s2)
+  | Eq((x,y))                 -> fs.concat (fs.term_f fs info x)
+                                           (fs.term_f fs info y)
+  | InEq((x,y))               -> fs.concat (fs.term_f fs info x)
+                                           (fs.term_f fs info y)
+  | PC(pc,th,pr)              -> (match th with
+                                   | V.Shared -> fs.base info
+                                   | V.Local t -> fs.var_f fs info t)
+  | PCUpdate (pc,th)          -> fs.tid_f fs info th
+  | PCRange(pc1,pc2,th,pr)    -> (match th with
+                                   | V.Shared -> fs.base info
+                                   | V.Local t -> fs.var_f fs info t)
+
+and fold_term (fs:('info,'a) fold_ops_t) (info:'info) (t:term) : 'a =
+  match t with
+
+  | IntT   i   -> fs.int_f fs info i
+  | SetT   s   -> fs.set_f fs info s
+  | TidT  th   -> fs.tid_f fs info th
+  | FuntermT t -> fs.funterm_f fs info t  
+
+
+let make_fold ?(tid_f=fold_tid)
+              ?(int_f=fold_int)
+              ?(set_f=fold_set)
+              ?(funterm_f=fold_funterm)
+              ?(atom_f=fold_atom)
+              ?(term_f=fold_term)
+              (base:('info -> 'a))
+              (concat:('a -> 'a -> 'a))
+              (var_f :(('info,'a) fold_ops_t -> 'info -> V.t -> 'a))
+    : ('info,'a) folding_t =
+  let fs = {
+    tid_f = tid_f; int_f = int_f; set_f = set_f; funterm_f = funterm_f;
+    atom_f = atom_f; term_f = term_f;
+    base = base; concat = concat; var_f = var_f; } in
+  { tid_f = tid_f fs; int_f = int_f fs; set_f = set_f fs;
+    funterm_f = funterm_f fs; atom_f = atom_f fs; term_f = term_f fs;
+    var_f = var_f fs; }
+*)
+
 
 
 (*
@@ -154,8 +266,6 @@ let rec generic_int_integer_to_str (srf:string -> string) (t:integer) : string =
   | Sub (t1,t2)    -> srf (int_str_f t1 ^ " - " ^ int_str_f t2)
   | Mul (t1,t2)    -> srf (int_str_f t1 ^ " * " ^ int_str_f t2)
   | Div (t1,t2)    -> srf (int_str_f t1 ^ " / " ^ int_str_f t2)
-  | ArrayRd (a,th) -> srf (E.arrays_to_str a ^ "[" ^
-                           tid_str_f th ^ "]")
   | SetMin s       -> srf ("setIntMin(" ^ set_str_f s ^ ")")
   | SetMax s       -> srf ("setIntMax(" ^ set_str_f s ^ ")")
 
@@ -172,13 +282,15 @@ and generic_int_set_to_str (srf:string -> string) (s:set): string =
   | Diff (s1,s2)  -> srf (set_str_f s1 ^ " diff "  ^ set_str_f s2)
 
 
-let generic_int_term_to_str (srf:string -> string) (t:term) : string =
+and generic_int_term_to_str (srf:string -> string) (t:term) : string =
   match t with
-    IntV i -> generic_int_integer_to_str srf i
-  | SetV s -> generic_int_set_to_str srf s
+    IntT i -> generic_int_integer_to_str srf i
+  | SetT s -> generic_int_set_to_str srf s
+  | FuntermT t -> generic_funterm_to_str srf t
+  | TidT th -> generic_int_tid_to_str srf th
 
 
-let rec generic_funterm_to_str (srf:string -> string) (t:fun_term) : string =
+and generic_funterm_to_str (srf:string -> string) (t:fun_term) : string =
   match t with
     FunVar v        -> V.to_str v
   | FunUpd (f,th,v) -> srf (Printf.sprintf "%s{%s<-%s}"
@@ -203,12 +315,6 @@ let rec generic_atom_to_str (srf:string -> string) (a:atom) : string =
   | InEq (t1,t2)      -> srf (term_str_f t1 ^ " != " ^ term_str_f t2)
   | In (i,s)          -> srf (int_str_f i   ^ " in " ^ set_str_f s)
   | Subset (s1,s2)    -> srf (set_str_f s1  ^ " subset " ^ set_str_f s2)
-  | TidEq (th1,th2)   -> srf (tid_str_f th1   ^ " = "  ^
-                              tid_str_f th2)
-  | TidInEq (th1,th2) -> srf (tid_str_f th1   ^ " != " ^
-                              tid_str_f th2)
-  | FunEq (f1,f2)     -> srf (fun_str_f f1  ^ " = "  ^ fun_str_f f2)
-  | FunInEq (f1,f2)   -> srf (fun_str_f f1  ^ " != " ^ fun_str_f f2)
   | PC (pc,th,pr)    -> let i_str = if pr then "pc'" else "pc" in
                         let th_str = V.shared_or_local_to_str th in
                           Printf.sprintf "%s(%s) = %i" i_str th_str pc
@@ -345,7 +451,7 @@ and is_int_integer t =
     E.VarT(_)       -> false
   | E.SetT(_)       -> false
   | E.ElemT(_)      -> false
-  | E.TidT(_)      -> false
+  | E.TidT(_)       -> false
   | E.AddrT(_)      -> false
   | E.CellT(_)      -> false
   | E.SetThT(_)     -> false
@@ -415,7 +521,6 @@ let rec has_variable (t:integer) : bool =
     | Sub(x,y)     -> has_variable x || has_variable y
     | Mul(x,y)     -> has_variable x || has_variable y
     | Div(x,y)     -> has_variable x || has_variable y
-    | ArrayRd(a,i) -> false
     | SetMin(s)    -> false
     | SetMax(s)    -> false
 
@@ -451,7 +556,6 @@ let rec term_is_linear t =
     | Mul(x,y)       -> (is_linear x) && (is_linear y) &&
                         ( not ((has_variable x) && (has_variable y)))
     | Div(x,y)       -> false
-    | ArrayRd(a,i)   -> true
     | SetMin(s)      -> true
     | SetMax(s)      -> true
 (*
@@ -469,16 +573,12 @@ and atom_is_linear a =
   | LessEq(x,y)          -> (is_linear x) && (is_linear y)
   | GreaterEq(x,y)       -> (is_linear x) && (is_linear y)
   | LessTid(x,y)         -> false
-  | Eq(IntV x,IntV y)    -> (is_linear x) && (is_linear y)
-  | InEq(IntV x, IntV y) -> (is_linear x) && (is_linear y)
+  | Eq(IntT x,IntT y)    -> (is_linear x) && (is_linear y)
+  | InEq(IntT x, IntT y) -> (is_linear x) && (is_linear y)
   | Eq(_,_)              -> false
   | InEq(_,_)            -> false
   | In (_,_)             -> false
   | Subset (_,_)         -> false
-  | TidEq(x,y)           -> false
-  | TidInEq(x,y)         -> false
-  | FunEq(x,y)           -> false
-  | FunInEq(x,y)         -> false
   | PC _                 -> false
   | PCUpdate _           -> false
   | PCRange _            -> false
@@ -519,7 +619,6 @@ let rec generic_set_from_int_integer (base:V.t -> 'a)
                                 base empty union t1)
                             (generic_set_from_int_integer
                                 base empty union t2)
-  | ArrayRd (a,th) -> empty
   | SetMin s       -> generic_set_from_int_set base empty union s
   | SetMax s       -> generic_set_from_int_set base empty union s
 
@@ -553,8 +652,10 @@ let generic_set_from_int_term (base:V.t -> 'a)
                               (union:'a -> 'a -> 'a)
                               (t:term) : 'a =
   match t with
-    IntV i -> generic_set_from_int_integer base empty union i
-  | SetV s -> generic_set_from_int_set base empty union s
+    IntT i -> generic_set_from_int_integer base empty union i
+  | SetT s -> generic_set_from_int_set base empty union s
+  | FuntermT t -> generic_set_from_funterm base empty union t
+  | TidT th -> empty
 
 
 let generic_set_from_int_atom (base:V.t -> 'a)
@@ -575,10 +676,6 @@ let generic_set_from_int_atom (base:V.t -> 'a)
   | InEq (t1,t2)      -> union (term_f t1) (term_f t2)
   | In (i,s)          -> union (int_f i) (set_f s)
   | Subset (s1,s2)    -> union (set_f s1) (set_f s2)
-  | TidEq (th1,th2)   -> empty
-  | TidInEq (th1,th2) -> empty
-  | FunEq (f1,f2)     -> union (fun_f f1) (fun_f f2)
-  | FunInEq (f1,f2)   -> union (fun_f f1) (fun_f f2)
   | PC (pc,th,pr)     -> empty
   | PCUpdate (pc,th)  -> empty
   | PCRange (_,_,_,_) -> empty
@@ -818,7 +915,6 @@ let rec voc_from_int_integer (t:integer) : ThreadSet.t =
                                                 (voc_from_int_integer t2)
   | Div (t1,t2)            -> ThreadSet.union (voc_from_int_integer t1)
                                                 (voc_from_int_integer t2)
-  | ArrayRd (a,th)         -> ThreadSet.empty
   | SetMin s               -> ThreadSet.empty
   | SetMax s               -> ThreadSet.empty
 
@@ -844,8 +940,10 @@ let rec voc_from_int_set (s:set) : ThreadSet.t =
 
 let voc_from_int_term (t:term) : ThreadSet.t =
   match t with
-    IntV i -> voc_from_int_integer i
-  | SetV s -> voc_from_int_set s
+    IntT i -> voc_from_int_integer i
+  | SetT s -> voc_from_int_set s
+  | FuntermT t -> voc_from_funterm t
+  | TidT th -> ThreadSet.singleton th
 
 
 let voc_from_int_atom (a:atom) : ThreadSet.t =
@@ -863,10 +961,6 @@ let voc_from_int_atom (a:atom) : ThreadSet.t =
   | InEq (t1,t2)      -> union (voc_term t1) (voc_term t2)
   | In (i,s)          -> union (voc_int i) (voc_set s)
   | Subset (s1,s2)    -> union (voc_set s1) (voc_set s2)
-  | TidEq (th1,th2)   -> thset_from [th1;th2]
-  | TidInEq (th1,th2) -> thset_from [th1;th2]
-  | FunEq (f1,f2)     -> ThreadSet.empty
-  | FunInEq (f1,f2)   -> ThreadSet.empty
   | PC (pc,th,pr)     -> opt_th th
   | PCUpdate (pc,th)  -> ThreadSet.singleton th
   | PCRange (_,_,th,_)-> opt_th th
