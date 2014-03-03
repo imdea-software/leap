@@ -95,7 +95,7 @@ module ThreadSet = Set.Make(
     type t = tid
   end )
 
-(*
+
 
 (**********  Folding  ***************)
 
@@ -142,6 +142,15 @@ and fold_int (fs:('info,'a) fold_ops_t) (info:'info) (i:integer) : 'a =
   | SetMin s -> fs.set_f fs info s
   | SetMax s -> fs.set_f fs info s
 
+and fold_set (fs:('info,'a) fold_ops_t) (info:'info) (s:set) : 'a =
+  match s with
+  | VarSet v     -> fs.var_f fs info v
+  | EmptySet     -> fs.base info
+  | Singl(i)     -> fs.int_f fs info i
+  | Union(s1,s2) -> fs.concat (fs.set_f fs info s1) (fs.set_f fs info s2)
+  | Intr(s1,s2)  -> fs.concat (fs.set_f fs info s1) (fs.set_f fs info s2)
+  | Diff(s1,s2)  -> fs.concat (fs.set_f fs info s1) (fs.set_f fs info s2)
+
 and fold_funterm (fs:('info,'a) fold_ops_t) (info:'info) (f:fun_term) : 'a =
   match f with
   | FunVar v -> fs.var_f fs info v
@@ -161,7 +170,7 @@ and fold_atom (fs:('info,'a) fold_ops_t) (info:'info) (a:atom) : 'a =
                                            (fs.int_f fs info i2)
   | LessTid (t1,t2)           -> fs.concat (fs.tid_f fs info t1)
                                            (fs.tid_f fs info t2)
-  | In(i,s)                   -> fs.concat (fs.int_f fs info a) (fs.set_f fs info s)
+  | In(i,s)                   -> fs.concat (fs.int_f fs info i) (fs.set_f fs info s)
   | Subset(s1,s2)             -> fs.concat (fs.set_f fs info s1) (fs.set_f fs info s2)
   | Eq((x,y))                 -> fs.concat (fs.term_f fs info x)
                                            (fs.term_f fs info y)
@@ -201,7 +210,123 @@ let make_fold ?(tid_f=fold_tid)
   { tid_f = tid_f fs; int_f = int_f fs; set_f = set_f fs;
     funterm_f = funterm_f fs; atom_f = atom_f fs; term_f = term_f fs;
     var_f = var_f fs; }
-*)
+
+
+(**********  Mapping  ***************)
+
+type 'info map_ops_t =
+  {
+    var_f : 'info map_ops_t -> 'info -> V.t -> V.t;
+    mutable tid_f : 'info map_ops_t -> 'info -> tid -> tid;
+    mutable int_f : 'info map_ops_t -> 'info -> integer -> integer;
+    mutable set_f : 'info map_ops_t -> 'info -> set -> set;
+    mutable funterm_f : 'info map_ops_t -> 'info -> fun_term -> fun_term;
+    mutable atom_f : 'info map_ops_t -> 'info -> atom -> atom;
+    mutable term_f : 'info map_ops_t -> 'info -> term -> term;
+  }
+
+type 'info mapping_t =
+  {
+    var_f : 'info -> V.t -> V.t;
+    tid_f : 'info -> tid -> tid;
+    int_f : 'info -> integer -> integer;
+    set_f : 'info -> set -> set;
+    funterm_f : 'info -> fun_term -> fun_term;
+    atom_f : 'info -> atom -> atom;
+    term_f : 'info -> term -> term;
+  }
+
+
+
+let rec map_tid (fs:'info map_ops_t) (info:'info) (t:tid) : tid =
+  match t with
+  | VarTh v            -> VarTh (fs.var_f fs info v)
+  | NoTid              -> NoTid
+
+and map_int (fs:'info map_ops_t) (info:'info) (i:integer) : integer =
+  match i with
+  | Val j -> Val j
+  | Var v -> Var (fs.var_f fs info v)
+  | Neg j -> Neg (fs.int_f fs info j)
+  | Add (j1,j2) -> Add (fs.int_f fs info j1, fs.int_f fs info j2)
+  | Sub (j1,j2) -> Sub (fs.int_f fs info j1, fs.int_f fs info j2)
+  | Mul (j1,j2) -> Mul (fs.int_f fs info j1, fs.int_f fs info j2)
+  | Div (j1,j2) -> Div (fs.int_f fs info j1, fs.int_f fs info j2)
+  | SetMin s -> SetMin (fs.set_f fs info s)
+  | SetMax s -> SetMax (fs.set_f fs info s)
+
+and map_set (fs:'info map_ops_t) (info:'info) (s:set) : set =
+  match s with
+  | VarSet v     -> VarSet (fs.var_f fs info v)
+  | EmptySet     -> EmptySet
+  | Singl(i)     -> Singl (fs.int_f fs info i)
+  | Union(s1,s2) -> Union (fs.set_f fs info s1, fs.set_f fs info s2)
+  | Intr(s1,s2)  -> Intr (fs.set_f fs info s1, fs.set_f fs info s2)
+  | Diff(s1,s2)  -> Diff (fs.set_f fs info s1, fs.set_f fs info s2)
+
+and map_funterm (fs:'info map_ops_t) (info:'info) (f:fun_term) : fun_term =
+  match f with
+  | FunVar v -> FunVar (fs.var_f fs info v)
+  | FunUpd (ft,th,t) -> FunUpd (fs.funterm_f fs info ft,
+                                fs.tid_f fs info th,
+                                fs.term_f fs info t)
+
+
+and map_atom (fs:'info map_ops_t) (info:'info) (a:atom) : atom =
+  match a with
+
+
+  | Less(i1,i2)               -> Less (fs.int_f fs info i1,
+                                       fs.int_f fs info i2)
+  | Greater(i1,i2)            -> Greater (fs.int_f fs info i1,
+                                          fs.int_f fs info i2)
+  | LessEq(i1,i2)             -> LessEq (fs.int_f fs info i1,
+                                         fs.int_f fs info i2)
+  | GreaterEq(i1,i2)          -> GreaterEq (fs.int_f fs info i1,
+                                            fs.int_f fs info i2)
+  | LessTid(t1,t2)            -> LessTid (fs.tid_f fs info t1,
+                                          fs.tid_f fs info t2)
+  | In(i,s)                   -> In (fs.int_f fs info i, fs.set_f fs info s)
+  | Subset(s1,s2)             -> Subset (fs.set_f fs info s1, fs.set_f fs info s2)
+  | Eq((x,y))                 -> Eq (fs.term_f fs info x,
+                                     fs.term_f fs info y)
+  | InEq((x,y))               -> InEq (fs.term_f fs info x,
+                                       fs.term_f fs info y)
+  | PC(pc,th,pr)              -> PC(pc, (match th with
+                                         | V.Shared -> V.Shared
+                                         | V.Local t -> V.Local(fs.var_f fs info t)),
+                                    pr)
+  | PCUpdate (pc,th)          -> PCUpdate (pc, fs.tid_f fs info th)
+  | PCRange(pc1,pc2,th,pr)    -> PCRange (pc1, pc2,
+                                          (match th with
+                                           | V.Shared -> V.Shared
+                                           | V.Local t -> V.Local(fs.var_f fs info t)),
+                                          pr)
+
+and map_term (fs:'info map_ops_t) (info:'info) (t:term) : term =
+  match t with
+  | SetT   s   -> SetT (fs.set_f fs info s)
+  | TidT  th   -> TidT (fs.tid_f fs info th)
+  | IntT   i   -> IntT (fs.int_f fs info i)
+  | FuntermT t -> FuntermT (fs.funterm_f fs info t)
+
+
+
+let make_map ?(tid_f=map_tid)
+             ?(int_f=map_int)
+             ?(set_f=map_set)
+             ?(funterm_f=map_funterm)
+             ?(atom_f=map_atom)
+             ?(term_f=map_term)
+             (var_f :('info map_ops_t -> 'info -> V.t -> V.t))
+    : 'info mapping_t =
+  let fs : 'info map_ops_t = {
+    tid_f = tid_f; int_f = int_f; set_f = set_f; funterm_f = funterm_f;
+    atom_f = atom_f; term_f = term_f; var_f = var_f; } in
+  { tid_f = tid_f fs; int_f = int_f fs; set_f = set_f fs;
+    funterm_f = funterm_f fs;
+    atom_f = atom_f fs; term_f = term_f fs; var_f = var_f fs; }
+
 
 
 
@@ -255,7 +380,6 @@ let generic_int_tid_to_str (srf:string -> string) (t:tid) : string =
   | NoTid -> "#"
 
 let rec generic_int_integer_to_str (srf:string -> string) (t:integer) : string =
-  let tid_str_f = generic_int_tid_to_str srf in
   let int_str_f = generic_int_integer_to_str srf in
   let set_str_f = generic_int_set_to_str srf in
   match t with
@@ -304,7 +428,6 @@ let rec generic_atom_to_str (srf:string -> string) (a:atom) : string =
   let int_str_f  = generic_int_integer_to_str srf in
   let set_str_f  = generic_int_set_to_str srf in
   let term_str_f = generic_int_term_to_str srf in
-  let fun_str_f  = generic_funterm_to_str srf in
   match a with
     Less (t1,t2)      -> srf (int_str_f t1  ^ " < "  ^ int_str_f t2)
   | Greater (t1,t2)   -> srf (int_str_f t1  ^ " > "  ^ int_str_f t2)
@@ -415,6 +538,8 @@ and is_int_literal lit =
     E.Atom a   -> is_int_atom a
   | E.NegAtom a -> is_int_atom a
 *)
+
+(*
 let rec is_int_atom ato =
   match ato with
     E.Append(_,_,_)                    -> false
@@ -476,7 +601,7 @@ and is_int_fs () = Formula.make_fold
 
 and is_int_formula (phi:E.formula) : bool =
   Formula.formula_fold (is_int_fs()) () phi
-
+*)
 
 (* CONJUNCTIONS OF LITERAL *)
 
@@ -665,7 +790,6 @@ let generic_set_from_int_atom (base:V.t -> 'a)
   let int_f  = generic_set_from_int_integer base empty union in
   let set_f  = generic_set_from_int_set base empty union in
   let term_f = generic_set_from_int_term base empty union in
-  let fun_f  = generic_set_from_funterm base empty union in
   match a with
     Less (t1,t2)      -> union (int_f t1) (int_f t2)
   | Greater (t1,t2)   -> union (int_f t1) (int_f t2)
@@ -1017,3 +1141,36 @@ let voc_to_var (t:tid) : V.t =
   match t with
   | VarTh v -> v
   | _ -> raise(Not_tid_var t)
+
+
+let param_map =
+  make_map (fun _ pfun v -> V.set_param v (pfun (Some v)))
+
+let param_fs =
+  F.make_trans F.GenericLiteralTrans param_map.atom_f
+
+
+(**********************  Generic Expression Functions  ********************)
+
+let tid_sort : sort = Tid
+
+let tid_var (v:V.t) : tid = VarTh v
+
+let no_tid : tid = NoTid
+
+let to_str (phi:formula) : string = formula_to_str phi
+
+let ineq_tid (t1:tid) (t2:tid) : formula =
+  F.atom_to_formula (InEq(TidT t1, TidT t2))
+
+let pc_form (i:int) (scope:V.shared_or_local) (pr:bool) : formula =
+  F.atom_to_formula (PC(i,scope,pr))
+
+let gen_fresh_tids (set:ThreadSet.t) (n:int) : ThreadSet.t =
+  let gen_cand i = VarTh (build_var ("k_" ^ (string_of_int i))
+                           Tid false V.Shared V.GlobalScope) in
+  LeapLib.gen_fresh
+    set ThreadSet.empty ThreadSet.add ThreadSet.mem gen_cand n
+
+let param (p:V.shared_or_local) (phi:formula) =
+  F.formula_trans param_fs (V.param_local_only p) phi

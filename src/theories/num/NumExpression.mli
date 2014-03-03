@@ -60,14 +60,14 @@ exception NotConjunctiveExpr of formula
 
 module ThreadSet : Set.S with type elt = tid
 
-(*
+
 include GenericExpression.S
   with type sort_t := sort
   with type tid_t := tid
   with type t := formula
   with module V := V
   with module ThreadSet := ThreadSet
-*)
+
 
 
 val build_var : ?fresh:bool ->
@@ -77,8 +77,6 @@ val build_var : ?fresh:bool ->
                 V.shared_or_local ->
                 V.procedure_name ->
                 V.t
-
-val is_int_formula : Expression.formula   -> bool
 
 val integer_to_str  : integer  -> string
 val formula_to_str  : formula -> string

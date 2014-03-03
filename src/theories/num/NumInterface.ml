@@ -80,7 +80,6 @@ and set_to_int_set (s:E.setint) : NE.set =
 
 
 and integer_to_int_integer (t:E.integer) : NE.integer =
-  let totid = tid_to_int_tid in
   let toint = integer_to_int_integer in
   let toset = set_to_int_set in
     match t with
@@ -276,7 +275,6 @@ and set_to_expr_set (s:NE.set) : E.setint =
     
 
 and integer_to_expr_integer (t:NE.integer) : E.integer =
-  let from_tid = tid_to_expr_tid in
   let from_int = integer_to_expr_integer in
   let from_set = set_to_expr_set in
   match t with
