@@ -140,6 +140,7 @@ module type S =
 
 
     exception WrongType of term
+    exception Not_tid_var of tid
 
     (* CALCULATE SET OF VARS *)
 
@@ -185,7 +186,6 @@ module type S =
     val remove_nonparam_local_vars : V.VarSet.t -> V.VarSet.t
     val add_prevstate_local_vars : V.VarSet.t -> V.VarSet.t
 
-    val voc_term : term -> ThreadSet.t
     val voc : formula -> ThreadSet.t
     val conjformula_voc : conjunctive_formula -> ThreadSet.t
     val unprimed_voc : formula -> ThreadSet.t
