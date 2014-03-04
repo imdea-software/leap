@@ -82,6 +82,7 @@ val integer_to_str  : integer  -> string
 val formula_to_str  : formula -> string
 val literal_to_str  : literal -> string
 val funterm_to_str  : fun_term -> string
+val tid_to_str      : tid -> string
 val atom_to_str     : atom -> string
 
 val all_varid             : formula -> V.id list

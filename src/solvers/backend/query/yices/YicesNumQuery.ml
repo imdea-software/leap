@@ -547,11 +547,17 @@ struct
                            (NE.V.sort v) = NE.Int
                          ) xs in
     let voc            = NE.voc phi in
+    print_endline ("THIS IS THE VOCABULARY: " ^ (String.concat ";" (List.map 
+NE.tid_to_str voc)));
+
     let cutoff         = SmpNum.cut_off phi in
     let global_vars    = NE.all_global_vars phi in
     let local_vars     = NE.all_local_vars_without_param phi in
     let glb_int_vars   = filter_ints global_vars in
     let lcl_int_vars   = filter_ints local_vars in
+    print_endline ("GLOBAL VARS: " ^ (String.concat ";" (List.map NE.V.to_str glb_int_vars)));
+    print_endline ("LOCAL VARS: " ^ (String.concat ";" (List.map NE.V.to_str lcl_int_vars)));
+
     let buf            = B.create 1024 in
     let _              = yices_type_decl !prog_lines buf in
     let _              = List.iter (fun v ->
@@ -559,7 +565,7 @@ struct
                          ) voc in
     let _              = List.iter (fun v ->
                            B.add_string buf (var_to_str v)
-                         ) global_vars in
+                         ) glb_int_vars in
     let _              = List.iter (fun v ->
                           B.add_string buf (local_var_to_str v)
                          ) local_vars in
