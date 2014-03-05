@@ -78,7 +78,6 @@ module Make (Opt:module type of GenOptions) : S =
 
     exception No_invariant_folder
 
-
     type proof_info_t =
       {
         cutoff : Smp.cutoff_strategy_t;

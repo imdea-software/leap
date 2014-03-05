@@ -1,10 +1,9 @@
 module type S =
   sig
-    type t
+    type formula
 
-    type sort_t
-(*    type var_info_t *)
-    type tid_t
+    type sort
+    type tid
 
 (*
     module V : Variable.S
@@ -15,23 +14,22 @@ module type S =
     module ThreadSet : Set.S
 
     (* Basic Thread ID operations *)
-    val tid_sort : sort_t
-    val tid_var : V.t -> tid_t
-    val no_tid : tid_t
+    val tid_sort : sort
+    val tid_var : V.t -> tid
+    val no_tid : tid
 
     (* Expression operations *)
-    val to_str : t -> string
-    val voc : t -> ThreadSet.t
+    val to_str : formula -> string
+    val voc : formula -> ThreadSet.t
 
     (* Expression constructors *)
-    val ineq_tid : tid_t -> tid_t -> t
-    val pc_form : int -> V.shared_or_local -> bool -> t
+    val ineq_tid : tid -> tid -> formula
+    val pc_form : int -> V.shared_or_local -> bool -> formula
 
     (* Vocabulary *)
-    val voc_to_var : tid_t -> V.t
+    val voc_to_var : tid -> V.t
     val gen_fresh_tids : ThreadSet.t -> int -> ThreadSet.t
-    val param : V.shared_or_local -> t -> t
-
+    val param : V.shared_or_local -> formula -> formula
 
   end
 

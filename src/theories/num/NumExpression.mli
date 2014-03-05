@@ -62,9 +62,9 @@ module ThreadSet : Set.S with type elt = tid
 
 
 include GenericExpression.S
-  with type sort_t := sort
-  with type tid_t := tid
-  with type t := formula
+  with type sort := sort
+  with type tid := tid
+  with type formula := formula
   with module V := V
   with module ThreadSet := ThreadSet
 
