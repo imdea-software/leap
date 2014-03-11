@@ -2,7 +2,7 @@ open LeapLib
 open Printf
 
 
-module E = Expression
+(*module E = Expression *)
 module PE = PosExpression
 
 
@@ -62,7 +62,9 @@ module type S =
 
     type solved_proof_obligation_t
 
-    val decl_tag : Tag.f_tag option -> Expression.formula -> unit
+    type formula
+
+    val decl_tag : Tag.f_tag option -> formula -> unit
 
     val gen_from_graph : IGraph.t -> proof_obligation_t list
 
@@ -70,13 +72,16 @@ module type S =
 
   end
 
-module Make (Opt:module type of GenOptions) : S =
+module Make (E:GenericExpression.S)
+            (Opt:module type of GenOptions) : S =
   struct
 
     module Eparser = ExprParser
     module Elexer = ExprLexer
 
     exception No_invariant_folder
+
+    type formula = E.formula
 
     type proof_info_t =
       {
@@ -111,24 +116,26 @@ module Make (Opt:module type of GenOptions) : S =
     (*             TAGGING INFORMATION              *)
     (************************************************)
 
-    let tags : Tag.tag_table = Tag.tag_table_new
+    module ETag = Tag.Make (E)
+
+    let tags : ETag.tag_table = ETag.tag_table_new
 
 
-    let tags_num () : int = Tag.tag_table_size tags
+    let tags_num () : int = ETag.tag_table_size tags
 
 
     let decl_tag (t : Tag.f_tag option) (phi : E.formula) : unit =
       match t with
       | None -> ()
-      | Some tag -> if Tag.tag_table_mem tags tag
+      | Some tag -> if ETag.tag_table_mem tags tag
           then
             raise(Tag.Duplicated_tag(Tag.tag_id tag))
-          else Tag.tag_table_add tags tag phi Tag.new_info
+          else ETag.tag_table_add tags tag phi ETag.new_info
 
 
     let read_tag (t : Tag.f_tag) : E.formula =
-      if Tag.tag_table_mem tags t then
-        Tag.tag_table_get_formula tags t
+      if ETag.tag_table_mem tags t then
+        ETag.tag_table_get_formula tags t
       else
         raise(Tag.Undefined_tag(Tag.tag_id t))
 
@@ -151,11 +158,11 @@ module Make (Opt:module type of GenOptions) : S =
 
 
     let is_def_tag (t:Tag.f_tag) : bool =
-      Tag.tag_table_mem tags t
+      ETag.tag_table_mem tags t
 
 
     let clear_tags () : unit =
-      Tag.tag_table_clear tags
+      ETag.tag_table_clear tags
 
 
     let load_tags_from_folder (folder:string) : unit =
@@ -166,8 +173,9 @@ module Make (Opt:module type of GenOptions) : S =
       List.iter (fun i ->
         let (phiVars, tag, phi_decls) = Parser.open_and_parse i
                                           (Eparser.invariant Elexer.norm) in
-        let phi = Formula.conj_list (List.map snd phi_decls) in
-        List.iter (fun (subtag,subphi) -> decl_tag subtag subphi) phi_decls;
+        let phi_decls' = List.map (fun (tag,phi) -> (tag, E.cast phi)) phi_decls in
+        let phi = Formula.conj_list (List.map snd phi_decls') in
+        List.iter (fun (subtag,subphi) -> decl_tag subtag subphi) phi_decls';
         decl_tag tag phi
       ) inv_files
 
@@ -217,8 +225,10 @@ module Make (Opt:module type of GenOptions) : S =
 
     let _ = Tactics.set_fixed_voc
               (List.fold_left (fun set v ->
-                 E.ThreadSet.add (E.VarTh v) set
-               ) E.ThreadSet.empty (System.get_vars_of_sort Opt.sys E.Tid))
+                 E.ThreadSet.add (E.tid_var v) set
+               ) E.ThreadSet.empty
+                  (List.map E.cast_var
+                      (System.get_vars_of_sort Opt.sys Expression.Tid)))
 (*
               (List.map (fun v -> E.VarTh v)
                 (System.get_vars_of_sort Opt.sys E.Tid))

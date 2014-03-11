@@ -125,7 +125,7 @@ and literal = atom Formula.literal
 
 and conjunctive_formula = atom Formula.conjunctive_formula
 
-and formula = atom Formula.formula
+(*and formula = atom Formula.formula *)
 
 
 type special_op_t =
@@ -147,7 +147,7 @@ module ThreadSet : Set.S with type elt = tid
 include GenericExpression.S
   with type sort := sort
   with type tid := tid
-  with type formula := formula
+  with type atom := atom
   with module V := V
   with module ThreadSet := ThreadSet
 

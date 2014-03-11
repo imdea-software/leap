@@ -3,7 +3,6 @@
 
 module GenOptions :
   sig
-
     val sys : System.t
     val focus : Expression.pc_t list
     val ignore : Expression.pc_t list
@@ -29,11 +28,13 @@ module type S =
 
     exception No_invariant_folder
 
+    type formula
+
     type proof_obligation_t
 
     type solved_proof_obligation_t
 
-    val decl_tag : Tag.f_tag option -> Expression.formula -> unit
+    val decl_tag : Tag.f_tag option -> formula -> unit
 
 
     val gen_from_graph : IGraph.t -> proof_obligation_t list
@@ -43,4 +44,6 @@ module type S =
 
   end
 
-module Make (Opt:module type of GenOptions) : S
+module Make (E:GenericExpression.S)
+            (Opt:module type of GenOptions) : S
+  with type formula = E.formula

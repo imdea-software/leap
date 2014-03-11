@@ -1,6 +1,7 @@
 module type S =
   sig
-    type formula
+    type atom
+    type formula = atom Formula.formula
 
     type sort
     type tid
@@ -11,12 +12,17 @@ module type S =
       with type info = var_info_t
 *)
     module V : Variable.S
-    module ThreadSet : Set.S
+    module ThreadSet : Set.S with type elt = tid
+
+    (* Casting *)
+    val cast : Expression.formula -> formula
+    val cast_var : Expression.V.t -> V.t
 
     (* Basic Thread ID operations *)
     val tid_sort : sort
     val tid_var : V.t -> tid
     val no_tid : tid
+    val tid_to_str : tid -> string
 
     (* Expression operations *)
     val to_str : formula -> string

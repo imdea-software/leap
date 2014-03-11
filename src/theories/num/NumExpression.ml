@@ -63,6 +63,8 @@ and formula = atom Formula.formula
 
 exception NotConjunctiveExpr of formula
 exception Not_tid_var of tid
+exception UnsupportedNumExpr of string
+exception UnsupportedSort of string
 
 module ThreadSet = Set.Make(
   struct
@@ -702,12 +704,8 @@ let voc_fs = Formula.make_fold
                (fun info -> ThreadSet.empty)
                ThreadSet.union
 
-let voc_from_int_formula (phi:formula) : ThreadSet.t =
+let voc (phi:formula) : ThreadSet.t =
   Formula.formula_fold voc_fs () phi
-
-
-let voc (phi:formula) : tid list =
-  ThreadSet.elements (voc_from_int_formula phi)
 
 
 let voc_to_var (t:tid) : V.t =
@@ -722,8 +720,131 @@ let param_map =
 let param_fs =
   F.make_trans F.GenericLiteralTrans param_map.atom_f
 
+(* Conversion from Expression to NumExpression *)
+
+(* Sort conversion *)
+let sort_to_int_sort (s:E.sort) : sort =
+  match s with
+    E.Int    -> Int
+  | E.SetInt -> Set
+  | E.Tid    -> Tid
+  | _        -> raise(UnsupportedSort(E.sort_to_str s))
+
+
+let rec variable_to_int_variable (v:E.V.t) : V.t =
+  build_var (E.V.id v)
+               (sort_to_int_sort (E.V.sort v))
+               (E.V.is_primed v)
+               (shared_to_int_shared (E.V.parameter v))
+               (scope_to_int_scope (E.V.scope v))
+
+
+and shared_to_int_shared (th:E.V.shared_or_local) : V.shared_or_local =
+  match th with
+  | E.V.Shared -> V.Shared
+  | E.V.Local t -> V.Local (variable_to_int_variable t)
+
+
+and scope_to_int_scope (p:E.V.procedure_name) : V.procedure_name =
+  match p with
+  | E.V.GlobalScope -> V.GlobalScope
+  | E.V.Scope proc -> V.Scope proc
+
+
+
+let rec tid_to_int_tid (th:E.tid) : tid =
+  match th with
+  | E.VarTh t -> VarTh (variable_to_int_variable t)
+  | E.NoTid -> NoTid
+  | _ -> raise(UnsupportedNumExpr(E.tid_to_str th))
+
+
+and array_to_funterm (x:E.arrays) : fun_term =
+  match x with
+    E.VarArray v -> FunVar (variable_to_int_variable v)
+  | E.ArrayUp (a,th,E.Term (E.IntT i)) ->
+      FunUpd (array_to_funterm a,
+      tid_to_int_tid th,
+      IntT (integer_to_int_integer i))
+  | E.ArrayUp (a,th,E.Term (E.SetIntT i)) ->
+      FunUpd (array_to_funterm a,
+      tid_to_int_tid th,
+      SetT (set_to_int_set i))
+  | _ -> raise(UnsupportedNumExpr(E.arrays_to_str x))
+
+
+and set_to_int_set (s:E.setint) : set =
+  let toset = set_to_int_set in
+  match s with
+    E.VarSetInt v       -> VarSet (variable_to_int_variable v)
+  | E.EmptySetInt       -> EmptySet
+  | E.SinglInt i        -> Singl (integer_to_int_integer i)
+  | E.UnionInt(s1,s2)   -> Union (toset s1, toset s2)
+  | E.IntrInt(s1,s2)    -> Intr (toset s1, toset s2)
+  | E.SetdiffInt(s1,s2) -> Diff (toset s1, toset s2)
+  | _ -> raise(UnsupportedNumExpr(E.setint_to_str s))
+
+
+and integer_to_int_integer (t:E.integer) : integer =
+  let toint = integer_to_int_integer in
+  let toset = set_to_int_set in
+    match t with
+      E.IntVal(i)       -> Val(i)
+    | E.VarInt v        -> Var(variable_to_int_variable v)
+    | E.IntNeg(i)       -> Neg(toint i)
+    | E.IntAdd(x,y)     -> Add(toint x,toint y)
+    | E.IntSub(x,y)     -> Sub(toint x,toint y)
+    | E.IntMul(x,y)     -> Mul(toint x,toint y)
+    | E.IntDiv(x,y)     -> Div(toint x,toint y)
+    | E.IntArrayRd(a,i) -> raise(UnsupportedNumExpr(E.integer_to_str t))
+    | E.IntSetMin(s)    -> SetMin (toset s)
+    | E.IntSetMax(s)    -> SetMax (toset s)
+    | E.CellMax(c)      -> raise(UnsupportedNumExpr(E.integer_to_str t))
+    | E.HavocLevel      -> raise(UnsupportedNumExpr(E.integer_to_str t))
+
+
+and atom_to_int_atom (a:E.atom) : atom =
+  let totid = tid_to_int_tid in
+  let toint = integer_to_int_integer in
+  let toset = set_to_int_set in
+    match a with
+    | E.Less(x,y)     -> Less(toint x,toint y)
+    | E.Greater(x,y)  -> Greater(toint x,toint y)
+    | E.LessEq(x,y)   -> LessEq(toint x,toint y)
+    | E.GreaterEq(x,y)-> GreaterEq(toint x,toint y)
+    | E.LessTid(x,y)  -> LessTid(totid x, totid y)
+    | E.Eq(E.TidT x,E.TidT y)      -> Eq(TidT (totid x),
+                                            TidT (totid y))
+    | E.InEq(E.TidT x,E.TidT y)    -> Eq(TidT (totid x),
+                                            TidT (totid y))
+    | E.Eq(E.ArrayT x, E.ArrayT y)   -> Eq (FuntermT (array_to_funterm x),
+                                               FuntermT (array_to_funterm y))
+    | E.InEq(E.ArrayT x, E.ArrayT y) -> InEq (FuntermT (array_to_funterm x),
+                                                 FuntermT (array_to_funterm y))
+    | E.Eq(E.IntT x, E.IntT y)       -> Eq(IntT (toint x),
+                                              IntT (toint y))
+    | E.Eq(E.SetIntT x, E.SetIntT y) -> Eq(SetT (toset x),
+                                              SetT (toset y))
+    | E.InEq(E.IntT x, E.IntT y)     -> InEq(IntT(toint x),
+                                                IntT(toint y))
+    | E.InEq(E.SetIntT x, E.SetIntT y) -> InEq(SetT(toset x),
+                                                  SetT(toset y))
+    | E.PC(i,th,pr)    -> PC (i,shared_to_int_shared th,pr)
+    | E.PCUpdate(i,th) -> PCUpdate (i,totid th)
+    | E.PCRange(i,j,th,pr) -> PCRange (i,j,shared_to_int_shared th,pr)
+    | _ -> raise(UnsupportedNumExpr(E.atom_to_str a))
+
+and formula_to_int_formula (phi:E.formula) : formula =
+  Formula.formula_conv atom_to_int_atom phi
+
 
 (**********************  Generic Expression Functions  ********************)
+
+let cast (phi:Expression.formula) : formula =
+  formula_to_int_formula phi
+
+let cast_var (v:Expression.V.t) : V.t =
+  variable_to_int_variable v
 
 let tid_sort : sort = Tid
 

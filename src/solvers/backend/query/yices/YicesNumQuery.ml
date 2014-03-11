@@ -373,7 +373,7 @@ struct
 
   let yices_legal_values (global_vars:NE.V.t list)
                          (local_vars:NE.V.t list)
-                         (voc:NE.tid list)
+                         (voc:NE.ThreadSet.t)
                          (buf:Buffer.t) : unit =
     List.iter (fun v ->
       if (NE.V.sort v) = NE.Int then
@@ -381,7 +381,7 @@ struct
         B.add_string buf ("(assert (is_legal " ^ v_str ^ "))")
     ) global_vars;
     List.iter (fun v ->
-      List.iter (fun t->
+      NE.ThreadSet.iter (fun t->
         if (NE.V.sort v) = NE.Int then
           let v_str = variable_invocation_to_str (NE.V.set_param v (NE.V.Local (NE.voc_to_var t))) in
           B.add_string buf ("(assert (is_legal " ^ v_str ^ "))\n")
@@ -391,15 +391,15 @@ struct
 
   (* TODO: Verify, if no set is defined, then do not include the preamble for sets *)
   let yices_preamble (buf:Buffer.t)
-                     (voc:NE.tid list)
+                     (voc:NE.ThreadSet.t)
                      (cutoff:int)
                      (gbl_int_vars:NE.V.t list)
                      (lcl_int_vars:NE.V.t list) : unit =
-    let loc_vars_str = List.flatten $ List.map (fun t ->
-                         List.map (fun v ->
-                           variable_invocation_to_str(NE.V.set_param v (NE.V.Local (NE.voc_to_var t)))
-                         ) lcl_int_vars
-                       ) voc in
+    let loc_vars_str = NE.ThreadSet.fold (fun t xs ->
+                         xs @ (List.map (fun v ->
+                                variable_invocation_to_str(NE.V.set_param v (NE.V.Local (NE.voc_to_var t)))
+                              ) lcl_int_vars)
+                       ) voc [] in
     let glb_vars_str = List.map variable_invocation_to_str gbl_int_vars in
     let aux_vars_str = List.map (fun i ->
                          let i_name = aux_int ^ string_of_int i in
@@ -547,20 +547,15 @@ struct
                            (NE.V.sort v) = NE.Int
                          ) xs in
     let voc            = NE.voc phi in
-    print_endline ("THIS IS THE VOCABULARY: " ^ (String.concat ";" (List.map 
-NE.tid_to_str voc)));
-
     let cutoff         = SmpNum.cut_off phi in
     let global_vars    = NE.all_global_vars phi in
     let local_vars     = NE.all_local_vars_without_param phi in
     let glb_int_vars   = filter_ints global_vars in
     let lcl_int_vars   = filter_ints local_vars in
-    print_endline ("GLOBAL VARS: " ^ (String.concat ";" (List.map NE.V.to_str glb_int_vars)));
-    print_endline ("LOCAL VARS: " ^ (String.concat ";" (List.map NE.V.to_str lcl_int_vars)));
 
     let buf            = B.create 1024 in
     let _              = yices_type_decl !prog_lines buf in
-    let _              = List.iter (fun v ->
+    let _              = NE.ThreadSet.iter (fun v ->
                            B.add_string buf (tid_variable_to_str v)
                          ) voc in
     let _              = List.iter (fun v ->

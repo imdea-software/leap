@@ -11,6 +11,8 @@ module Gparser = IGraphParser
 module Glexer = IGraphLexer
 module Symtbl = ExprSymTable
 
+exception Unsupported_expression of DP.t
+
 (****************)
 (* main         *)
 (****************)
@@ -99,12 +101,22 @@ let _ =
                          end in
 
     (* Instantiate the core *)
-    let module LeapCore = Core.Make(LeapOpt) in
+    let e = match !LeapArgs.dpType with
+            | DP.Num -> (module NumExpression : GenericExpression.S)
+            | DP.Tll -> (module TllExpression : GenericExpression.S)
+            | DP.Tsl -> (module TSLExpression : GenericExpression.S)
+            | DP.Tslk k -> (module TSLKExpression.Make
+                              (struct let level = k end) : GenericExpression.S)
+            | _ -> raise(Unsupported_expression !LeapArgs.dpType) in
+            
+    let module E = (val e : GenericExpression.S) in
+
+    let module LeapCore = Core.Make (E)(LeapOpt) in
+    let module ReportE = Report.Make (E) in
 
     (* Benchmark timer *)
     let timer = new LeapLib.timer in
     timer#start;
-
 
     if (!LeapArgs.vcgenFlag) then begin
 
@@ -114,15 +126,15 @@ let _ =
                                         !LeapArgs.invCandidate
                                         (Eparser.invariant Elexer.norm) in
         (* Construct the global invariant as the conjuntion of all formulas *)
-        let inv = Formula.conj_list (List.map snd inv_decls) in
+        let inv = E.cast (Formula.conj_list (List.map snd inv_decls)) in
 
         (* Check whether undef tids are included in invVars *)
         let _ = System.undeftids_in_formula_decl undefTids invVars in
         (* Declare the tag of the global formula as the big conjunction *)
         let _ = LeapCore.decl_tag tag inv in
         (* Declare the tag of each subformula in the parsed file *)
-        let _ = List.iter (fun (tag, phi) -> LeapCore.decl_tag tag phi) inv_decls in
-        let _ = Report.report_inv_cand inv in
+        let _ = List.iter (fun (tag, phi) -> LeapCore.decl_tag tag (E.cast phi)) inv_decls in
+        let _ = ReportE.report_inv_cand inv in
 (*        let sys = System.add_global_vars sys invVars in *)
 
         (* Use B-INV *)
@@ -314,7 +326,7 @@ let _ = LeapDebug.flush()
         (* Check whether undef tids are included in invVars *)
         let _ = System.undeftids_in_formula_decl undefTids invVars in
         let _ = VCG.decl_tag tag inv in
-        let _ = Report.report_inv_cand inv in
+        let _ = ReportE.report_inv_cand inv in
         let sys = System.add_global_vars sys invVars in
         if !LeapArgs.binvSys then begin
           let conds = 
@@ -348,7 +360,7 @@ let _ = LeapDebug.flush()
             (fun file -> Parser.open_and_parse file
               (Eparser.invariant Elexer.norm))
             supInv_file_list in
-          Report.report_sup_inv supInv_list;
+          ReportE.report_sup_inv supInv_list;
           let sup_form_list = List.map 
             (fun (_,tag,phi) -> ignore(VCG.decl_tag tag phi); phi)
             supInv_list in

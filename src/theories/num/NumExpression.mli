@@ -53,20 +53,22 @@ and literal = atom Formula.literal
 
 and conjunctive_formula = atom Formula.conjunctive_formula
 
-and formula = atom Formula.formula
-
-
-exception NotConjunctiveExpr of formula
+(*and formula = atom Formula.formula *)
 
 module ThreadSet : Set.S with type elt = tid
-
 
 include GenericExpression.S
   with type sort := sort
   with type tid := tid
-  with type formula := formula
+  with type atom := atom
   with module V := V
   with module ThreadSet := ThreadSet
+
+
+exception NotConjunctiveExpr of formula
+
+
+
 
 
 
@@ -102,7 +104,7 @@ val all_local_vars_set    : formula -> V.VarSet.t
 val all_global_vars_without_param : formula -> V.t list
 val all_local_vars_without_param  : formula -> V.t list
 
-val voc : formula -> tid list
+val voc : formula -> ThreadSet.t
 
 
 (* LINEARITY *)

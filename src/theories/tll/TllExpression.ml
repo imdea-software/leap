@@ -1,6 +1,7 @@
 open LeapLib
 
 
+module E = Expression
 module F = Formula
 
 type sort =
@@ -145,6 +146,8 @@ type special_op_t =
 
 exception WrongType of term
 exception Not_tid_var of tid
+exception UnsupportedSort of string
+exception UnsupportedTllExpr of string
 
 
 
@@ -1242,8 +1245,276 @@ let param_map =
 let param_fs =
   F.make_trans F.GenericLiteralTrans param_map.atom_f
 
+(* Conversion of Expression to TllExpression *)
+
+let rec sort_to_tll_sort (s:E.sort) : sort =
+  match s with
+  | E.Set       -> Set
+  | E.Elem      -> Elem
+  | E.Tid      -> Tid
+  | E.Addr      -> Addr
+  | E.Cell      -> Cell
+  | E.SetTh     -> SetTh
+  | E.SetInt    -> raise(UnsupportedSort(E.sort_to_str s))
+  | E.SetElem   -> SetElem
+  | E.Path      -> Path
+  | E.Mem       -> Mem
+  | E.Bool      -> Bool
+  | E.Int       -> Int
+  | E.Array     -> raise(UnsupportedSort(E.sort_to_str s))
+  | E.AddrArray -> raise(UnsupportedSort(E.sort_to_str s))
+  | E.TidArray  -> raise(UnsupportedSort(E.sort_to_str s))
+  | E.Unknown   -> Unknown
+
+
+and build_term_var (v:E.V.t) : term =
+  let tll_v = variable_to_tll_var v in
+  match (E.V.sort v) with
+    E.Set   -> SetT   (VarSet   tll_v)
+  | E.Elem  -> ElemT  (VarElem  tll_v)
+  | E.Tid  -> TidT  (VarTh    tll_v)
+  | E.Addr  -> AddrT  (VarAddr  tll_v)
+  | E.Cell  -> CellT  (VarCell  tll_v)
+  | E.SetTh -> SetThT (VarSetTh tll_v)
+  | E.Path  -> PathT  (VarPath  tll_v)
+  | E.Int   -> IntT   (VarInt   tll_v)
+  | E.Mem   -> MemT   (VarMem   tll_v)
+  | _          -> VarT   (tll_v)
+
+
+
+and variable_to_tll_var (v:E.V.t) : V.t =
+  build_var (E.V.id v)
+                (sort_to_tll_sort (E.V.sort v))
+                (E.V.is_primed v)
+                (shared_to_tll_shared (E.V.parameter v))
+                (scope_to_tll_scope (E.V.scope v))
+
+
+and shared_to_tll_shared (th:E.V.shared_or_local) : V.shared_or_local =
+  match th with
+  | E.V.Shared  -> V.Shared
+  | E.V.Local t -> V.Local (variable_to_tll_var t)
+
+
+and scope_to_tll_scope (p:E.V.procedure_name) : V.procedure_name =
+  match p with
+  | E.V.GlobalScope -> V.GlobalScope
+  | E.V.Scope proc  -> V.Scope proc
+
+
+and tid_to_tll_tid (th:E.tid) : tid =
+  match th with
+    E.VarTh v        -> VarTh (variable_to_tll_var v)
+  | E.NoTid          -> NoTid
+  | E.CellLockId c   -> CellLockId (cell_to_tll_cell c)
+  | _                -> raise(UnsupportedTllExpr(E.tid_to_str th))
+
+
+and term_to_tll_term (t:E.term) : term =
+  match t with
+    E.VarT v       -> VarT (variable_to_tll_var v)
+  | E.SetT s       -> SetT (set_to_tll_set s)
+  | E.ElemT e      -> ElemT (elem_to_tll_elem e)
+  | E.TidT t       -> TidT (tid_to_tll_tid t)
+  | E.AddrT a      -> AddrT (addr_to_tll_addr a)
+  | E.CellT c      -> CellT (cell_to_tll_cell c)
+  | E.SetThT st    -> SetThT (setth_to_tll_setth st)
+  | E.SetElemT st  -> SetElemT (setelem_to_tll_setelem st)
+  | E.PathT p      -> PathT (path_to_tll_path p)
+  | E.MemT m       -> MemT (mem_to_tll_mem m)
+  | E.IntT i       -> IntT (int_to_tll_int i)
+  | E.ArrayT a     -> arrays_to_tll_term a
+  | _              -> raise(UnsupportedTllExpr(E.term_to_str t))
+
+
+and arrays_to_tll_term (a:E.arrays) : term =
+  match a with
+  | E.VarArray v -> build_term_var v
+  | E.ArrayUp (E.VarArray v,th_p,E.Term t) ->
+      let tll_v  = variable_to_tll_var v in
+      let tll_th = tid_to_tll_tid th_p in
+      let tll_t  = term_to_tll_term t
+      in
+        VarUpdate (tll_v, tll_th, tll_t)
+  | E.ArrayUp (_,_,e) -> raise(UnsupportedTllExpr(E.expr_to_str e))
+
+
+and eq_to_tll_eq ((t1,t2):E.eq) : eq =
+  (term_to_tll_term t1, term_to_tll_term t2)
+
+
+and diseq_to_tll_eq ((t1,t2):E.diseq) : diseq =
+  (term_to_tll_term t1, term_to_tll_term t2)
+
+
+and set_to_tll_set (s:E.set) : set =
+  let to_set = set_to_tll_set in
+  match s with
+    E.VarSet v        -> VarSet (variable_to_tll_var v)
+  | E.EmptySet        -> EmptySet
+  | E.Singl a         -> Singl (addr_to_tll_addr a)
+  | E.Union (s1,s2)   -> Union (to_set s1, to_set s2)
+  | E.Intr (s1,s2)    -> Intr (to_set s1, to_set s2)
+  | E.Setdiff (s1,s2) -> Setdiff (to_set s1, to_set s2)
+  | E.PathToSet p     -> PathToSet (path_to_tll_path p)
+  | E.AddrToSet (m,a) -> AddrToSet (mem_to_tll_mem m, addr_to_tll_addr a)
+  | E.SetArrayRd (E.VarArray v,t) ->
+      VarSet (variable_to_tll_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
+  | _                 -> raise(UnsupportedTllExpr(E.set_to_str s))
+
+
+and elem_to_tll_elem (e:E.elem) : elem =
+  match e with
+    E.VarElem v              -> VarElem (variable_to_tll_var v)
+  | E.CellData c             -> CellData (cell_to_tll_cell c)
+  | E.ElemArrayRd (E.VarArray v,t) ->
+      VarElem (variable_to_tll_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
+  | E.HavocListElem          -> HavocListElem
+  | E.LowestElem             -> LowestElem
+  | E.HighestElem            -> HighestElem
+  | _                        -> raise(UnsupportedTllExpr(E.elem_to_str e))
+
+
+and addr_to_tll_addr (a:E.addr) : addr =
+  match a with
+    E.VarAddr v              -> VarAddr (variable_to_tll_var v)
+  | E.Null                   -> Null
+  | E.Next c                 -> Next (cell_to_tll_cell c)
+  | E.FirstLocked (m,p)      -> FirstLocked (mem_to_tll_mem m,
+                                                    path_to_tll_path p)
+  | E.AddrArrayRd (E.VarArray v,t) ->
+      VarAddr (variable_to_tll_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
+  | _                        -> raise(UnsupportedTllExpr(E.addr_to_str a))
+
+
+and cell_to_tll_cell (c:E.cell) : cell =
+  match c with
+    E.VarCell v      -> VarCell (variable_to_tll_var v)
+  | E.Error          -> Error
+  | E.MkCell (e,a,t) -> MkCell (elem_to_tll_elem e,
+                                       addr_to_tll_addr a,
+                                       tid_to_tll_tid t)
+  (* Tll receives two arguments, while current epxression receives only one *)
+  (* However, for the list examples, I think we will not need it *)
+  | E.CellLock (c,t) -> CellLock (cell_to_tll_cell c, tid_to_tll_tid t)
+  | E.CellUnlock c   -> CellUnlock (cell_to_tll_cell c)
+  | E.CellAt (m,a)   -> CellAt (mem_to_tll_mem m, addr_to_tll_addr a)
+  | E.CellArrayRd (E.VarArray v,t) ->
+      VarCell (variable_to_tll_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
+  | _                -> raise(UnsupportedTllExpr(E.cell_to_str c))
+
+
+and setth_to_tll_setth (st:E.setth) : setth =
+  let to_setth = setth_to_tll_setth in
+  match st with
+    E.VarSetTh v        -> VarSetTh (variable_to_tll_var v)
+  | E.EmptySetTh        -> EmptySetTh
+  | E.SinglTh t         -> SinglTh (tid_to_tll_tid t)
+  | E.UnionTh (s1,s2)   -> UnionTh (to_setth s1, to_setth s2)
+  | E.IntrTh (s1,s2)    -> IntrTh (to_setth s1, to_setth s2)
+  | E.SetdiffTh (s1,s2) -> SetdiffTh (to_setth s1, to_setth s2)
+  | E.SetThArrayRd (E.VarArray v,t) ->
+      VarSetTh (variable_to_tll_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
+  | _                   -> raise(UnsupportedTllExpr(E.setth_to_str st))
+
+
+and setelem_to_tll_setelem (st:E.setelem) : setelem =
+  let to_setelem = setelem_to_tll_setelem in
+  match st with
+    E.VarSetElem v        -> VarSetElem (variable_to_tll_var v)
+  | E.EmptySetElem        -> EmptySetElem
+  | E.SinglElem e         -> SinglElem (elem_to_tll_elem e)
+  | E.UnionElem (s1,s2)   -> UnionElem (to_setelem s1, to_setelem s2)
+  | E.IntrElem (s1,s2)    -> IntrElem (to_setelem s1, to_setelem s2)
+  | E.SetdiffElem (s1,s2) -> SetdiffElem (to_setelem s1, to_setelem s2)
+  | E.SetElemArrayRd (E.VarArray v,t) ->
+      VarSetElem (variable_to_tll_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
+  | E.SetToElems (s,m)    -> SetToElems (set_to_tll_set s,
+                                                mem_to_tll_mem m)
+  | _                     -> raise(UnsupportedTllExpr(E.setelem_to_str st))
+
+
+and path_to_tll_path (p:E.path) : path =
+  match p with
+    E.VarPath v         -> VarPath (variable_to_tll_var v)
+  | E.Epsilon           -> Epsilon
+  | E.SimplePath a      -> SimplePath (addr_to_tll_addr a)
+  | E.GetPath (m,a1,a2) -> GetPath (mem_to_tll_mem m,
+                                           addr_to_tll_addr a1,
+                                           addr_to_tll_addr a2)
+  | _                   -> raise(UnsupportedTllExpr(E.path_to_str p))
+
+
+and mem_to_tll_mem (m:E.mem) : mem =
+  match m with
+    E.VarMem v       -> VarMem (variable_to_tll_var v)
+  | E.Update (m,a,c) -> Update (mem_to_tll_mem m,
+                                       addr_to_tll_addr a,
+                                       cell_to_tll_cell c)
+  (* Missing the case for "emp" *)
+  | E.MemArrayRd (E.VarArray v,t) ->
+      VarMem (variable_to_tll_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
+  | _ -> raise(UnsupportedTllExpr(E.mem_to_str m))
+
+
+and int_to_tll_int (i:E.integer) : integer =
+  match i with
+    E.IntVal n -> IntVal n
+  | E.VarInt v -> VarInt (variable_to_tll_var v)
+  | E.IntNeg j -> IntNeg (int_to_tll_int j)
+  | E.IntAdd (j1,j2) -> IntAdd (int_to_tll_int j1, int_to_tll_int j2)
+  | E.IntSub (j1,j2) -> IntSub (int_to_tll_int j1, int_to_tll_int j2)
+  | E.IntMul (j1,j2) -> IntMul (int_to_tll_int j1, int_to_tll_int j2)
+  | E.IntDiv (j1,j2) -> IntDiv (int_to_tll_int j1, int_to_tll_int j2)
+  | _                -> raise(UnsupportedTllExpr(E.integer_to_str i))
+
+
+and atom_to_tll_atom (a:E.atom) : atom =
+  let path    = path_to_tll_path       in
+  let mem     = mem_to_tll_mem         in
+  let addr    = addr_to_tll_addr       in
+  let elem    = elem_to_tll_elem       in
+  let set     = set_to_tll_set         in
+  let tid     = tid_to_tll_tid         in
+  let setth   = setth_to_tll_setth     in
+  let setelem = setelem_to_tll_setelem in
+  let term    = term_to_tll_term       in
+  match a with
+    E.Append (p1,p2,p3)    -> Append (path p1,path p2,path p3)
+  | E.Reach (m,a1,a2,p)    -> Reach (mem m, addr a1, addr a2, path p)
+  | E.OrderList(m,a1,a2)   -> OrderList (mem m, addr a1, addr a2)
+  | E.In (a,s)             -> In (addr a, set s)
+  | E.SubsetEq (s1,s2)     -> SubsetEq (set s1, set s2)
+  | E.InTh (t,s)           -> InTh (tid t, setth s)
+  | E.SubsetEqTh (s1,s2)   -> SubsetEqTh (setth s1, setth s2)
+  | E.InElem (e,s)         -> InElem (elem_to_tll_elem e, setelem s)
+  | E.SubsetEqElem (s1,s2) -> SubsetEqElem (setelem s1, setelem s2)
+  | E.Less (i1,i2)         -> Less (int_to_tll_int i1, int_to_tll_int i2)
+  | E.LessEq (i1,i2)       -> LessEq (int_to_tll_int i1, int_to_tll_int i2)
+  | E.Greater (i1,i2)      -> Greater (int_to_tll_int i1, int_to_tll_int i2)
+  | E.GreaterEq (i1,i2)    -> GreaterEq (int_to_tll_int i1, int_to_tll_int i2)
+  | E.LessElem (e1,e2)     -> LessElem (elem e1, elem e2)
+  | E.GreaterElem (e1,e2)  -> GreaterElem (elem e1, elem e2)
+  | E.Eq (t1,t2)           -> Eq (term t1, term t2)
+  | E.InEq (t1,t2)         -> InEq (term t1, term t2)
+  | E.BoolVar v            -> BoolVar (variable_to_tll_var v)
+  | E.PC (pc,t,pr)         -> PC (pc, shared_to_tll_shared t, pr)
+  | E.PCUpdate (pc,t)      -> PCUpdate (pc, tid_to_tll_tid t)
+  | E.PCRange (pc1,pc2,t,pr) -> PCRange (pc1, pc2, shared_to_tll_shared t, pr)
+  | _                      -> raise(UnsupportedTllExpr(E.atom_to_str a))
+
+and formula_to_tll_formula (phi:E.formula) : formula =
+  Formula.formula_conv atom_to_tll_atom phi
+
 
 (**********************  Generic Expression Functions  ********************)
+
+let cast (phi:Expression.formula) : formula =
+  formula_to_tll_formula phi
+
+let cast_var (v:Expression.V.t) : V.t =
+  variable_to_tll_var v
 
 let tid_sort : sort = Tid
 

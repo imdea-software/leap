@@ -135,7 +135,7 @@ and atom =
 and literal = atom Formula.literal
 and conjunctive_formula = atom Formula.conjunctive_formula
 and disjunctive_formula = atom Formula.disjunctive_formula
-and formula = atom Formula.formula
+(*and formula = atom Formula.formula *)
 
 
 type special_op_t =
@@ -151,6 +151,8 @@ type special_op_t =
 
 
 exception WrongType of term
+exception UnsupportedSort of string
+exception UnsupportedTslExpr of string
 
 (* CALCULATE SET OF VARS *)
 module TermSet : Set.S with type elt = term
@@ -161,7 +163,7 @@ module ThreadSet : Set.S with type elt = tid
 include GenericExpression.S
   with type sort := sort
   with type tid := tid
-  with type formula := formula
+  with type atom := atom
   with module V := V
   with module ThreadSet := ThreadSet
 

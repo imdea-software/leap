@@ -1,5 +1,6 @@
 open Printf
 open LeapLib
+open LeapVerbose
 
 module type S =
   sig
@@ -125,7 +126,7 @@ module type S =
     and literal = atom Formula.literal
     and conjunctive_formula = atom Formula.conjunctive_formula
     and disjunctive_formula = atom Formula.disjunctive_formula
-    and formula = atom Formula.formula
+(*    and formula = atom Formula.formula*)
 
 
     type special_op_t =
@@ -142,6 +143,8 @@ module type S =
 
     exception WrongType of term
     exception Not_tid_var of tid
+    exception UnsupportedTSLKExpr of string
+    exception UnsupportedSort of string
 
     (* CALCULATE SET OF VARS *)
 
@@ -152,7 +155,7 @@ module type S =
     include GenericExpression.S
       with type sort := sort
       with type tid := tid
-      with type formula := formula
+      with type atom := atom
       with module V := V
       with module ThreadSet := ThreadSet
 
@@ -275,6 +278,7 @@ module type S =
 module Make (K : Level.S) : S =
   struct
 
+    module E = Expression
     module F = Formula
 
     type sort =
@@ -424,6 +428,8 @@ module Make (K : Level.S) : S =
 
     exception WrongType of term
     exception Not_tid_var of tid
+    exception UnsupportedTSLKExpr of string
+    exception UnsupportedSort of string
 
 
     let k = K.level
@@ -1762,8 +1768,451 @@ module Make (K : Level.S) : S =
     let param_fs =
       F.make_trans F.GenericLiteralTrans param_map.atom_f
 
+    (*********************  Expression to TSLK Expression  ********************)
+
+
+    (* Machinery for array conversion *)
+    let addrarr_tbl : (E.addrarr, addr list) Hashtbl.t = Hashtbl.create 10
+
+
+    let rec expand_array_to_var (v:E.V.t)
+                            (s:sort)
+                            (n:int) : V.t =
+      let id_str = E.V.id v in
+      let pr_str = if E.V.is_primed v then "_prime" else "" in
+      let th_str = match E.V.parameter v with
+                   | E.V.Shared -> ""
+                   | E.V.Local t -> "_" ^ (E.V.to_str t) in
+      let p_str = match E.V.scope v with
+                  | E.V.GlobalScope -> ""
+                  | E.V.Scope p -> p ^ "_" in
+      let new_id = p_str ^ id_str ^ th_str ^ pr_str ^ "__" ^ (string_of_int n) in
+      let v_fresh = build_var new_id s false V.Shared V.GlobalScope ~fresh:true in
+      verbl _LONG_INFO "FRESH VAR: %s\n" new_id;
+      v_fresh
+
+
+    and gen_addr_list (aa:E.addrarr) : addr list =
+      let xs = ref [] in
+      for n = (k - 1) downto 0 do
+        let v = match aa with
+                | E.VarAddrArray v ->
+                    VarAddr (expand_array_to_var v Addr n)
+                | E.CellArr c -> raise(UnsupportedTSLKExpr(E.addrarr_to_str aa))
+                | _ -> Null in
+        xs := v::(!xs)
+      done;
+      verbl _LONG_INFO "**** TSL Solver, generated address list for %s: [%s]\n"
+              (E.addrarr_to_str aa)
+              (String.concat ";" (List.map addr_to_str !xs));
+      !xs
+
+
+    and get_addr_list (aa:E.addrarr) : addr list =
+      try
+        Hashtbl.find addrarr_tbl aa
+      with _ -> begin
+        let aa' = gen_addr_list aa in
+        Hashtbl.add addrarr_tbl aa aa'; aa'
+      end
+
+
+    let rec sort_to_tslk_sort (s:E.sort) : sort =
+      match s with
+        E.Set       -> Set
+      | E.Elem      -> Elem
+      | E.Tid      -> Tid
+      | E.Addr      -> Addr
+      | E.Cell      -> Cell
+      | E.SetTh     -> SetTh
+      | E.SetElem   -> SetElem
+      | E.Path      -> Path
+      | E.Mem       -> Mem
+      | E.Bool      -> Bool
+      | E.Int       -> Level
+      | E.Unknown   -> Unknown
+      | _           -> raise(UnsupportedSort(E.sort_to_str s))
+
+
+    and build_term_var (v:E.V.t) : term =
+      let tslk_v = var_to_tslk_var v in
+      match (E.V.sort v) with
+        E.Set       -> SetT       (VarSet        tslk_v)
+      | E.Elem      -> ElemT      (VarElem       tslk_v)
+      | E.Tid       -> TidT       (VarTh         tslk_v)
+      | E.Addr      -> AddrT      (VarAddr       tslk_v)
+      | E.Cell      -> CellT      (VarCell       tslk_v)
+      | E.SetTh     -> SetThT     (VarSetTh      tslk_v)
+      | E.Path      -> PathT      (VarPath       tslk_v)
+      | E.Mem       -> MemT       (VarMem        tslk_v)
+      | E.Int       -> LevelT     (VarLevel      tslk_v)
+      | _           -> VarT       (tslk_v)
+
+
+
+    and var_to_tslk_var (v:E.V.t) : V.t =
+      build_var (E.V.id v)
+                    (sort_to_tslk_sort (E.V.sort v))
+                    (E.V.is_primed v)
+                    (shared_to_tslk_shared (E.V.parameter v))
+                    (scope_to_tslk_scope (E.V.scope v))
+
+
+    and shared_to_tslk_shared (th:E.V.shared_or_local) : V.shared_or_local =
+      match th with
+      | E.V.Shared -> V.Shared
+      | E.V.Local t -> V.Local (var_to_tslk_var t)
+
+
+    and scope_to_tslk_scope (p:E.V.procedure_name) : V.procedure_name =
+      match p with
+      | E.V.GlobalScope -> V.GlobalScope
+      | E.V.Scope proc -> V.Scope proc
+
+
+    and tid_to_tslk_tid (th:E.tid) : tid =
+      match th with
+        E.VarTh v            -> VarTh (var_to_tslk_var v)
+      | E.NoTid              -> NoTid
+      | E.CellLockIdAt (c,l) -> CellLockIdAt (cell_to_tslk_cell c,
+                                                     int_to_tslk_level l)
+      | _                    -> raise(UnsupportedTSLKExpr(E.tid_to_str th))
+
+    and term_to_tslk_term (t:E.term) : term =
+      match t with
+        E.VarT v        -> VarT (var_to_tslk_var v)
+      | E.SetT s        -> SetT (set_to_tslk_set s)
+      | E.ElemT e       -> ElemT (elem_to_tslk_elem e)
+      | E.TidT t        -> TidT (tid_to_tslk_tid t)
+      | E.AddrT a       -> AddrT (addr_to_tslk_addr a)
+      | E.CellT c       -> CellT (cell_to_tslk_cell c)
+      | E.SetThT st     -> SetThT (setth_to_tslk_setth st)
+      | E.SetElemT st   -> SetElemT (setelem_to_tslk_setelem st)
+      | E.PathT p       -> PathT (path_to_tslk_path p)
+      | E.MemT m        -> MemT (mem_to_tslk_mem m)
+      | E.IntT i        -> LevelT (int_to_tslk_level i)
+      | E.ArrayT a      -> arrays_to_tslk_term a
+      | _               -> raise(UnsupportedTSLKExpr(E.term_to_str t))
+
+
+    and arrays_to_tslk_term (a:E.arrays) : term =
+      match a with
+      | E.VarArray v -> build_term_var v
+      | E.ArrayUp (E.VarArray v,th_p,E.Term t) ->
+          let tslk_v  = var_to_tslk_var v in
+          let tslk_th = tid_to_tslk_tid th_p in
+          let tslk_t  = term_to_tslk_term t
+          in
+            VarUpdate (tslk_v, tslk_th, tslk_t)
+      | _ -> raise(UnsupportedTSLKExpr(E.arrays_to_str a))
+
+
+    and set_to_tslk_set (s:E.set) : set =
+      let to_set = set_to_tslk_set in
+      match s with
+        E.VarSet v            -> VarSet (var_to_tslk_var v)
+      | E.EmptySet            -> EmptySet
+      | E.Singl a             -> Singl (addr_to_tslk_addr a)
+      | E.Union (s1,s2)       -> Union (to_set s1, to_set s2)
+      | E.Intr (s1,s2)        -> Intr (to_set s1, to_set s2)
+      | E.Setdiff (s1,s2)     -> Setdiff (to_set s1, to_set s2)
+      | E.PathToSet p         -> PathToSet (path_to_tslk_path p)
+      | E.AddrToSetAt (m,a,l) -> AddrToSet (mem_to_tslk_mem m,
+                                                    addr_to_tslk_addr a,
+                                                    int_to_tslk_level l)
+      | E.SetArrayRd (E.VarArray v,t) ->
+          VarSet (var_to_tslk_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
+      | _                     -> raise(UnsupportedTSLKExpr(E.set_to_str s))
+
+
+    and elem_to_tslk_elem (e:E.elem) : elem =
+      match e with
+        E.VarElem v              -> VarElem (var_to_tslk_var v)
+      | E.CellData c             -> CellData (cell_to_tslk_cell c)
+      | E.ElemArrayRd (E.VarArray v,t) ->
+          VarElem (var_to_tslk_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
+      | E.HavocSkiplistElem      -> HavocSkiplistElem
+      | E.LowestElem             -> LowestElem
+      | E.HighestElem            -> HighestElem
+      | _                        -> raise(UnsupportedTSLKExpr(E.elem_to_str e))
+
+
+    and addr_to_tslk_addr (a:E.addr) : addr =
+      match a with
+        E.VarAddr v              -> VarAddr (var_to_tslk_var v)
+      | E.Null                   -> Null
+      | E.NextAt (c,l)           -> NextAt (cell_to_tslk_cell c, int_to_tslk_level l)
+      | E.FirstLockedAt (m,p,l)  -> FirstLockedAt (mem_to_tslk_mem m,
+                                                          path_to_tslk_path p,
+                                                          int_to_tslk_level l)
+      | E.AddrArrayRd (E.VarArray v,t) ->
+          VarAddr (var_to_tslk_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
+      | _                        -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
+
+
+    and cell_to_tslk_cell (c:E.cell) : cell =
+      match c with
+        E.VarCell v            -> VarCell (var_to_tslk_var v)
+      | E.Error                -> Error
+      | E.MkSLKCell (e,aa,tt)  ->
+          if List.length aa > k || List.length tt > k then
+            begin
+              Interface.Err.msg "Too many addresses or threads ids in MkCell" $
+                Printf.sprintf "Tried to build a term:\n%s\n while in TSLK[%i]. \
+                                Notice the number of addresses or threads identifiers \
+                                exceeds the parameter of the theory."
+                                (E.cell_to_str c) k;
+              raise(UnsupportedTSLKExpr(E.cell_to_str c))
+            end
+          else
+            let aa_pad = LeapLib.list_of (k - List.length aa) Null in
+            let tt_pad = LeapLib.list_of (k - List.length tt) NoTid in
+            MkCell (elem_to_tslk_elem e,
+                         (List.map addr_to_tslk_addr aa) @ aa_pad,
+                         (List.map tid_to_tslk_tid tt) @ tt_pad)
+      (* TSLK receives two arguments, while current epxression receives only one *)
+      (* However, for the list examples, I think we will not need it *)
+      | E.CellLockAt (c,l,t)   -> CellLockAt (cell_to_tslk_cell c,
+                                                     int_to_tslk_level l,
+                                                     tid_to_tslk_tid t)
+      | E.CellUnlockAt (c,l)   -> CellUnlockAt (cell_to_tslk_cell c,
+                                                       int_to_tslk_level l)
+      | E.CellAt (m,a)         -> CellAt (mem_to_tslk_mem m, addr_to_tslk_addr a)
+      | E.CellArrayRd (E.VarArray v,t) ->
+          VarCell (var_to_tslk_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
+      | _ -> raise(UnsupportedTSLKExpr(E.cell_to_str c))
+
+
+    and setth_to_tslk_setth (st:E.setth) : setth =
+      let to_setth = setth_to_tslk_setth in
+      match st with
+        E.VarSetTh v        -> VarSetTh (var_to_tslk_var v)
+      | E.EmptySetTh        -> EmptySetTh
+      | E.SinglTh t         -> SinglTh (tid_to_tslk_tid t)
+      | E.UnionTh (s1,s2)   -> UnionTh (to_setth s1, to_setth s2)
+      | E.IntrTh (s1,s2)    -> IntrTh (to_setth s1, to_setth s2)
+      | E.SetdiffTh (s1,s2) -> SetdiffTh (to_setth s1, to_setth s2)
+      | E.SetThArrayRd (E.VarArray v,t) ->
+          VarSetTh (var_to_tslk_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
+      | _                   -> raise(UnsupportedTSLKExpr(E.setth_to_str st))
+
+
+    and setelem_to_tslk_setelem (st:E.setelem) : setelem =
+      let to_setelem = setelem_to_tslk_setelem in
+      match st with
+        E.VarSetElem v        -> VarSetElem (var_to_tslk_var v)
+      | E.EmptySetElem        -> EmptySetElem
+      | E.SinglElem e         -> SinglElem (elem_to_tslk_elem e)
+      | E.UnionElem (s1,s2)   -> UnionElem (to_setelem s1, to_setelem s2)
+      | E.IntrElem (s1,s2)    -> IntrElem (to_setelem s1, to_setelem s2)
+      | E.SetdiffElem (s1,s2) -> SetdiffElem (to_setelem s1, to_setelem s2)
+      | E.SetElemArrayRd (E.VarArray v,t) ->
+          VarSetElem (var_to_tslk_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
+      | E.SetToElems (s,m)    -> SetToElems (set_to_tslk_set s,
+                                                    mem_to_tslk_mem m)
+      | _                     -> raise(UnsupportedTSLKExpr(E.setelem_to_str st))
+
+
+    and path_to_tslk_path (p:E.path) : path =
+      match p with
+        E.VarPath v             -> VarPath (var_to_tslk_var v)
+      | E.Epsilon               -> Epsilon
+      | E.SimplePath a          -> SimplePath (addr_to_tslk_addr a)
+      | E.GetPathAt (m,a1,a2,l) -> GetPathAt (mem_to_tslk_mem m,
+                                                      addr_to_tslk_addr a1,
+                                                      addr_to_tslk_addr a2,
+                                                      int_to_tslk_level l)
+      | E.PathArrayRd (E.VarArray v,t) ->
+          VarPath (var_to_tslk_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
+      | _ -> raise(UnsupportedTSLKExpr(E.path_to_str p))
+
+
+    and mem_to_tslk_mem (m:E.mem) : mem =
+      match m with
+        E.VarMem v       -> VarMem (var_to_tslk_var v)
+      | E.Update (m,a,c) -> Update (mem_to_tslk_mem m,
+                                           addr_to_tslk_addr a,
+                                           cell_to_tslk_cell c)
+      (* Missing the case for "emp" *)
+      | E.MemArrayRd (E.VarArray v,t) ->
+          VarMem (var_to_tslk_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
+      | _ -> raise(UnsupportedTSLKExpr(E.mem_to_str m))
+
+
+    and int_to_tslk_level (i:E.integer) : level =
+      let rec apply n f x = if n <= 1 then f x else apply (n-1) f (f x) in
+      let succ = (fun x -> LevelSucc x) in
+      let pred = (fun x -> LevelPred x) in
+      let tolevel = int_to_tslk_level in
+      match i with
+        E.IntVal l       -> (*if l < 0 || k <= l then
+                                 begin
+                                   Interface.Err.msg "Level out of bounds" $
+                                   Printf.sprintf "Level %i is out of the bounds of TSLK[%i], \
+                                                   which goes from 0 to %i."
+                                      l k (k-1);
+                                   raise(UnsupportedTSLKExpr(E.integer_to_str i))
+                                 end
+                               else *)
+                                 LevelVal l
+      | E.VarInt v       -> VarLevel (var_to_tslk_var v)
+      | E.IntAdd (i1,i2) -> begin
+                                 match (i1,i2) with
+                                 | (E.IntVal j1, E.IntVal j2) -> LevelVal (j1+j2)
+                                 | (E.VarInt v , E.IntVal j ) -> apply j succ (tolevel i1)
+                                 | (E.IntVal j , E.VarInt v ) -> apply j succ (tolevel i2)
+                                 | _ -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
+                               end
+      | E.IntSub (i1,i2) -> begin
+                                 match (i1,i2) with
+                                 | (E.IntVal j1, E.IntVal j2) -> LevelVal (j1-j2)
+                                 | (E.VarInt v , E.IntVal j ) -> apply j pred (tolevel i1)
+                                 | _ -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
+                               end
+      | E.CellMax (c)    -> LevelVal k
+      | E.HavocLevel     -> HavocLevel
+      | _                -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
+
+
+    and atom_to_tslk_atom (a:E.atom) : atom =
+      let path    = path_to_tslk_path       in
+      let mem     = mem_to_tslk_mem         in
+      let addr    = addr_to_tslk_addr       in
+      let elem    = elem_to_tslk_elem       in
+      let set     = set_to_tslk_set         in
+      let tid     = tid_to_tslk_tid         in
+      let setth   = setth_to_tslk_setth     in
+      let setelem = setelem_to_tslk_setelem in
+      let integ   = int_to_tslk_level       in
+      let term    = term_to_tslk_term       in
+      match a with
+        E.Append (p1,p2,p3)    -> Append (path p1,path p2,path p3)
+      | E.ReachAt (m,a1,a2,l,p)-> Reach (mem m, addr a1, addr a2, integ l, path p)
+      | E.OrderList(m,a1,a2)   -> OrderList (mem m, addr a1, addr a2)
+      | E.In (a,s)             -> In (addr a, set s)
+      | E.SubsetEq (s1,s2)     -> SubsetEq (set s1, set s2)
+      | E.InTh (t,s)           -> InTh (tid t, setth s)
+      | E.SubsetEqTh (s1,s2)   -> SubsetEqTh (setth s1, setth s2)
+      | E.InElem (e,s)         -> InElem (elem_to_tslk_elem e, setelem s)
+      | E.SubsetEqElem (s1,s2) -> SubsetEqElem (setelem s1, setelem s2)
+      | E.Less (i1,i2)         -> Less (integ i1, integ i2)
+      | E.Greater (i1,i2)      -> Greater (integ i1, integ i2)
+      | E.LessEq (i1,i2)       -> LessEq (integ i1, integ i2)
+      | E.GreaterEq (i1,i2)    -> GreaterEq (integ i1, integ i2)
+      | E.LessElem (e1,e2)     -> LessElem (elem e1, elem e2)
+      | E.GreaterElem (e1,e2)  -> GreaterElem (elem e1, elem e2)
+      | E.Eq (t1,t2)           -> Eq (term t1, term t2)
+      | E.InEq (t1,t2)         -> InEq (term t1, term t2)
+      | E.BoolVar v            -> BoolVar (var_to_tslk_var v)
+      | E.PC (pc,t,pr)         -> PC (pc, shared_to_tslk_shared t,pr)
+      | E.PCUpdate (pc,t)      -> PCUpdate (pc, tid_to_tslk_tid t)
+      | E.PCRange (pc1,pc2,t,pr) -> PCRange (pc1, pc2, shared_to_tslk_shared t, pr)
+      | _                      -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
+
+
+    and literal_to_tslk_literal (l:E.literal) : literal =
+      match l with
+        F.Atom a    -> F.Atom (atom_to_tslk_atom a)
+      | F.NegAtom a -> F.NegAtom (atom_to_tslk_atom a)
+
+
+    and formula_to_tslk_formula (f:E.formula) : formula =
+(*      LOG "Entering formula_to_tslk_formula..." LEVEL TRACE; *)
+      let to_formula = formula_to_tslk_formula in
+      match f with
+      (* Translation of literals of the form B = A {l <- a} *)
+      | F.Literal(F.Atom(E.Eq(E.AddrArrayT(E.VarAddrArray _ as bb),E.AddrArrayT(E.AddrArrayUp(aa,l,a)))))
+      | F.Literal(F.Atom(E.Eq(E.AddrArrayT(E.AddrArrayUp(aa,l,a)),E.AddrArrayT(E.VarAddrArray _ as bb))))
+      | F.Literal(F.NegAtom(E.InEq(E.AddrArrayT(E.VarAddrArray _ as bb),E.AddrArrayT(E.AddrArrayUp(aa,l,a)))))
+      | F.Literal(F.NegAtom(E.InEq(E.AddrArrayT(E.AddrArrayUp(aa,l,a)),E.AddrArrayT(E.VarAddrArray _ as bb)))) ->
+          begin
+            let a' = addr_to_tslk_addr a in
+            let l' = int_to_tslk_level l in
+            let aa' = get_addr_list aa in
+            let bb' = get_addr_list bb in
+            let xs = ref [] in
+            for n = 0 to (k - 1) do
+              let n' = LevelVal n in
+              xs := (F.Implies
+                      (eq_level l' n',
+                       eq_addr a' (List.nth bb' n))) ::
+                    (F.Implies
+                      (ineq_level l' n',
+                       eq_addr (List.nth aa' n) (List.nth bb' n))) ::
+                    (!xs)
+            done;
+            addr_mark_smp_interesting a' true;
+            F.conj_list (!xs)
+          end
+      (* Translation of literals of the form a = A[i] *)
+      | F.Literal(F.Atom(E.Eq(E.AddrT a,E.AddrT(E.AddrArrRd(aa,i)))))
+      | F.Literal(F.Atom(E.Eq(E.AddrT(E.AddrArrRd(aa,i)),E.AddrT a)))
+      | F.Literal(F.NegAtom(E.InEq(E.AddrT a,E.AddrT(E.AddrArrRd(aa,i)))))
+      | F.Literal(F.NegAtom(E.InEq(E.AddrT(E.AddrArrRd(aa,i)),E.AddrT a))) ->
+          let a' = addr_to_tslk_addr a in
+          let aa' = get_addr_list aa in
+          let i' = int_to_tslk_level i in
+          let xs = ref [] in
+          for n = 0 to (k - 1) do
+            let n' = LevelVal n in
+            xs := (F.Implies
+                    (eq_level i' n',
+                     eq_addr a' (List.nth aa' n))) :: (!xs)
+          done;
+          addr_mark_smp_interesting a' true;
+          F.conj_list (!xs)
+      (* Translation of literals of the form a = c.nextat[i] *)
+      | F.Literal(F.Atom(E.Eq(E.AddrT a,E.AddrT(E.NextAt(c,i)))))
+      | F.Literal(F.Atom(E.Eq(E.AddrT(E.NextAt(c,i)),E.AddrT a)))
+      | F.Literal(F.NegAtom(E.InEq(E.AddrT a,E.AddrT(E.NextAt(c,i)))))
+      | F.Literal(F.NegAtom(E.InEq(E.AddrT(E.NextAt(c,i)),E.AddrT a))) ->
+          let a' = addr_to_tslk_addr a in
+          let c' = cell_to_tslk_cell c in
+          let i' = int_to_tslk_level i in
+          addr_mark_smp_interesting a' true;
+          eq_addr a' (NextAt(c',i'))
+      (* Translation of literals of the form c' = updCellAddr(c, i, a) *)
+      | F.Literal(F.Atom(E.Eq(E.CellT d,E.CellT(E.UpdCellAddr(c,i,a)))))
+      | F.Literal(F.Atom(E.Eq(E.CellT(E.UpdCellAddr(c,i,a)),E.CellT d)))
+      | F.Literal(F.NegAtom(E.InEq(E.CellT d,E.CellT(E.UpdCellAddr(c,i,a)))))
+      | F.Literal(F.NegAtom(E.InEq(E.CellT(E.UpdCellAddr(c,i,a)),E.CellT d))) ->
+          begin
+            let d' = cell_to_tslk_cell d in
+            let c' = cell_to_tslk_cell c in
+            let i' = int_to_tslk_level i in
+            let a' = addr_to_tslk_addr a in
+            let xs = ref [eq_elem (CellData d') (CellData c')] in
+            for n = 0 to (k-1) do
+              let n' = LevelVal n in
+              xs := (F.Implies
+                      (eq_level i' n',
+                       eq_addr (NextAt(d',n')) a')) ::
+                    (F.Implies
+                      (ineq_level i' n',
+                       eq_addr (NextAt(d',n')) (NextAt(c',n')))) ::
+                    (eq_tid (CellLockIdAt(d',n')) (CellLockIdAt(c',n'))) ::
+                    (!xs)
+            done;
+            F.conj_list (!xs)
+          end
+      | F.Literal l       -> F.Literal (literal_to_tslk_literal l)
+      | F.True            -> F.True
+      | F.False           -> F.False
+      | F.And (f1,f2)     -> F.And (to_formula f1, to_formula f2)
+      | F.Or (f1,f2)      -> F.Or (to_formula f1, to_formula f2)
+      | F.Not f1          -> F.Not (to_formula f1)
+      | F.Implies (f1,f2) -> F.Implies (to_formula f1, to_formula f2)
+      | F.Iff (f1,f2)     -> F.Iff (to_formula f1, to_formula f2)
+
+
 
     (**********************  Generic Expression Functions  ********************)
+
+    let cast (phi:Expression.formula) : formula =
+      formula_to_tslk_formula phi
+
+    let cast_var (v:Expression.V.t) : V.t =
+      var_to_tslk_var v
 
     let tid_sort : sort = Tid
 
