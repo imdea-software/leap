@@ -1,8 +1,11 @@
-type polarity = Pos | Neg | Both
+(*type polarity = Pos | Neg | Both*)
 
 module type S =
   sig
     type formula
+    type tid
+    module ThreadSet : Set.S with type elt = tid
+
     type support_t = formula list
     type vc_info
     type verification_condition
@@ -65,26 +68,26 @@ module type S =
                           formula ->
                           formula ->
                           formula ->
-                          Expression.ThreadSet.t ->
-                          Expression.tid ->
-                          Expression.pc_t ->
+                          ThreadSet.t ->
+                          tid ->
+                          int ->
                           vc_info
 
-    val to_plain_vc_info : Expression.fol_mode_t -> vc_info -> vc_info
+    val to_plain_vc_info : ExtendedExpression.fol_mode_t -> vc_info -> vc_info
 
     val create_vc  : support_t ->
                    formula ->
                    formula ->
                    formula ->
-                   Expression.ThreadSet.t ->
-                   Expression.tid ->
-                   Expression.pc_t ->
+                   ThreadSet.t ->
+                   tid ->
+                   int ->
                    support_t ->
                    verification_condition 
 
     val dup_vc_info_with_goal : vc_info ->  formula ->   vc_info 
 
-    val set_fixed_voc : Expression.ThreadSet.t -> unit
+    val set_fixed_voc : ThreadSet.t -> unit
 
     (****************************)
     (* SELECTORS                *)
@@ -95,11 +98,11 @@ module type S =
     val is_empty_proof_plan : proof_plan -> bool
     val get_unprocessed_support_from_info : vc_info ->   support_t
     val get_tid_constraint_from_info : vc_info ->   formula
-    val get_vocabulary_from_info : vc_info ->   Expression.ThreadSet.t
+    val get_vocabulary_from_info : vc_info -> ThreadSet.t
     val get_rho_from_info : vc_info ->   formula
     val get_goal_from_info : vc_info ->   formula
-    val get_transition_tid_from_info : vc_info ->   Expression.tid
-    val get_line_from_info : vc_info ->   Expression.pc_t
+    val get_transition_tid_from_info : vc_info -> tid
+    val get_line_from_info : vc_info -> int
     val get_antecedent : verification_condition ->   formula
     val get_consequent : verification_condition ->   formula
     val get_support : verification_condition ->   support_t
@@ -107,19 +110,20 @@ module type S =
     val get_tid_constraint : verification_condition ->   formula
     val get_rho : verification_condition ->   formula
     val get_goal : verification_condition ->   formula
-    val get_transition_tid : verification_condition ->   Expression.tid
-    val get_line : verification_condition ->   Expression.pc_t
-    val get_vocabulary : verification_condition ->   Expression.ThreadSet.t
+    val get_transition_tid : verification_condition -> tid
+    val get_line : verification_condition -> int
+    val get_vocabulary : verification_condition -> ThreadSet.t
 
 
     (***************)
     (* SIMPLIFIERS *)
     (***************)
-    val generic_simplifier : formula ->  
-          (Expression.literal-> polarity->formula) ->   formula 
+(*
+    val generic_simplifier : formula ->  (Expression.literal-> polarity->formula) ->   formula
 
     val simplify : formula -> formula
     val simplify_with_vocabulary : formula ->  Expression.V.t list -> formula
+*)
     val generate_support : vc_info -> formula list
     val split_implication : implication ->   implication list
     val split_goal :vc_info -> vc_info list
@@ -150,3 +154,4 @@ module type S =
 
 module Make (E:GenericExpression.S) : S
   with type formula = E.formula
+  with type tid = E.tid

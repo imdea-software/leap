@@ -306,7 +306,8 @@ module Make (E:GenericExpression.S)
 
 
     let filter_me_tid (ts:E.ThreadSet.t) : E.ThreadSet.t =
-      E.ThreadSet.remove System.me_tid_th ts
+      E.ThreadSet.remove (E.tid_var
+        (E.V.build_global System.me_tid E.tid_sort (E.defInfo()))) ts
 
 
     (**********************)

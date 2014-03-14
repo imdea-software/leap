@@ -45,6 +45,7 @@ exception Normal_vars_in_ghost_assignment of E.term list
 exception No_kind_for_var of E.V.id
 exception Ranking_function_unmatched_sort of E.sort * E.term * E.sort
 exception Different_argument_length of string * string
+exception Unsupported_theory of DP.t
 
 
 let invVars = System.empty_var_table ()
@@ -496,6 +497,7 @@ let define_ident (proc_name:E.V.procedure_name)
 %token OPEN_PAREN CLOSE_PAREN
 %token VERTICAL_BAR
 %token COLON DOUBLECOLON SEMICOLON EQUALS NOT_EQUALS
+%token THEORY
 %token ASSIGN
 %token LOGICAL_AND LOGICAL_OR LOGICAL_NOT LOGICAL_THEN LOGICAL_IFF
 %token LOGICAL_TRUE LOGICAL_FALSE
@@ -549,10 +551,10 @@ let define_ident (proc_name:E.V.procedure_name)
 
 %start invariant
 %start formula
-%start vc_info
+/* %start vc_info */
 %start single_formula
 
-%type <Tactics.vc_info> vc_info
+/* %type <Tactics.S.vc_info> vc_info */
 
 %type <Expression.formula> single_formula
 
@@ -1600,9 +1602,10 @@ tidarr :
 
 /************************   TEMPORARY VERIFICATION CONDITIONS **********************/
 
-
+/*
 vc_info :
-  | param COLON inv_var_declarations
+  | THEORY COLON IDENT
+    param COLON inv_var_declarations
     SUPPORT COLON formula_list
     TID_CONSTRAINT COLON formula
     RHO COLON formula
@@ -1610,16 +1613,26 @@ vc_info :
     TRANSITION_TID COLON term
     LINE COLON NUMBER
       {
-        let _ = System.clear_table invVars in
-        let supp_list = $6 in
-        let tid_phi = $9 in
-        let rho_phi = $12 in
-        let goal_phi = $15 in
-        let trans_tid = parser_check_type check_type_thid $18 E.Tid (fun _ -> (E.term_to_str $18)) in
-        let line = $21 in
+        System.clear_table invVars;
+        let theory = match DP.from_str (get_name $3) with
+                     | DP.Num -> (module NumExpression : GenericExpression.S)
+                     | DP.Tll -> (module TllExpression : GenericExpression.S)
+                     | DP.Tsl -> (module TSLExpression : GenericExpression.S)
+                     | DP.Tslk k -> (module TSLKExpression.Make
+                                      (struct let level = k end) : GenericExpression.S)
+                     | _ -> raise(Unsupported_theory !LeapArgs.dpType) in
+        let module E = (val e : GenericExpression.S) in
+        let module ETactics = Tag.Make (E) in
+        let supp_list = $9 in
+        let tid_phi = $12 in
+        let rho_phi = $15 in
+        let goal_phi = $18 in
+        let trans_tid = parser_check_type check_type_thid $21 E.Tid (fun _ -> (E.term_to_str $21)) in
+        let line = $24 in
         let vocab = E.voc (Formula.conj_list [tid_phi;rho_phi;goal_phi]) in
-        Tactics.create_vc_info supp_list tid_phi rho_phi goal_phi vocab trans_tid line
+        ETactics.create_vc_info supp_list tid_phi rho_phi goal_phi vocab trans_tid line
       }
+*/
 
 formula_list :
   |

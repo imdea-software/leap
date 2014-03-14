@@ -59,6 +59,7 @@ module ThreadSet : Set.S with type elt = tid
 
 include GenericExpression.S
   with type sort := sort
+  with type v_info := unit
   with type tid := tid
   with type atom := atom
   with module V := V

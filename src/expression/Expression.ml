@@ -3369,7 +3369,7 @@ let param_variable (th_p:V.shared_or_local) (v:V.t) : V.t =
 
 let new_tid_subst (info:(tid * tid) list) : tid_subst_t = info
 
-
+(*
 let new_multiple_tid_subst (ths:tid list)
                            (assigns:tid list list) : tid_subst_t list =
   let _ = assert (List.for_all (fun l ->
@@ -3381,6 +3381,7 @@ let new_multiple_tid_subst (ths:tid list)
     List.fold_left (fun xs a ->
       (List.combine ths a) :: xs
     ) [] assigns
+*)
 
 
 let new_comb_subst (th_domain:tid list)
@@ -3718,21 +3719,24 @@ let subst_to_str (sub:tid_subst_t) : string =
   "{" ^ (String.concat ", " $
          List.map (fun (i,j) -> (tid_to_str j)^"<-"^(tid_to_str i)) sub) ^ "}"
 
-
+(*
 let subst_full_domain_assign (tid_list:tid list) (subst:tid_subst_t) : bool =
   let dom = subst_domain subst
   in
     List.for_all (fun t -> ThreadSet.mem t dom) tid_list
+*)
 
-
+(*
 let subst_full_codomain_assign (tid_list:tid list) (subst:tid_subst_t) : bool =
   let codom = subst_codomain subst
   in
     List.for_all (fun t -> ThreadSet.mem t codom) tid_list
+*)
 
-
+(*
 let is_id_subst (subst:tid_subst_t) : bool =
   List.for_all (fun (i,j) -> i = j) subst
+*)
 
 
 
@@ -5200,7 +5204,7 @@ and to_plain_formula (fol_mode:fol_mode_t) (phi:formula) : formula =
   | PCVars   -> to_plain_formula_aux {fol_pc=true;  fol_var=to_plain_var;} phi
 
 
-
+(*
 let rec identical_formula  (phi1:formula) (phi2:formula) : bool =
   match (phi1,phi2) with
   | F.Literal l1, F.Literal l2 -> identical_literal l1 l2
@@ -5215,7 +5219,8 @@ let rec identical_formula  (phi1:formula) (phi2:formula) : bool =
   | F.Iff(a1,a2), F.Implies(b1,b2) -> (identical_formula a1 b1 && identical_formula a2 b2) ||
                                     (identical_formula a1 b2 && identical_formula a2 b1)
   | _,_ -> false
-
+*)
+(*
 and identical_sorts     (s1:sort) (s2:sort) : bool =
   s1 = s2
 and identical_variable (v1:V.t) (v2:V.t): bool =
@@ -5531,6 +5536,7 @@ and identical_expr_t  (e1:expr_t) (e2: expr_t)  : bool =
   | _,_ -> false
 and identical_pc_t (p1:pc_t) (p2:pc_t) : bool =
   p1 = p2
+*)
 
 
 let gen_fresh_var (gen:V.fresh_var_gen_t) (s:sort) : V.t =

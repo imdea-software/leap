@@ -5,12 +5,15 @@ open Printf
 module GenSet = LeapGenericSet
 module F = Formula
 
-type polarity = Pos | Neg | Both
+(*type polarity = Pos | Neg | Both*)
 
 
 module type S =
   sig
     type formula
+    type tid
+    module ThreadSet : Set.S with type elt = tid
+
     type support_t = formula list
     type vc_info
     type verification_condition
@@ -73,26 +76,26 @@ module type S =
                           formula ->
                           formula ->
                           formula ->
-                          Expression.ThreadSet.t ->
-                          Expression.tid ->
-                          Expression.pc_t ->
+                          ThreadSet.t ->
+                          tid ->
+                          int ->
                           vc_info
 
-    val to_plain_vc_info : Expression.fol_mode_t -> vc_info -> vc_info
+    val to_plain_vc_info : ExtendedExpression.fol_mode_t -> vc_info -> vc_info
 
     val create_vc  : support_t ->
                    formula ->
                    formula ->
                    formula ->
-                   Expression.ThreadSet.t ->
-                   Expression.tid ->
-                   Expression.pc_t ->
+                   ThreadSet.t ->
+                   tid ->
+                   int ->
                    support_t ->
                    verification_condition 
 
     val dup_vc_info_with_goal : vc_info ->  formula ->   vc_info 
 
-    val set_fixed_voc : Expression.ThreadSet.t -> unit
+    val set_fixed_voc : ThreadSet.t -> unit
 
     (****************************)
     (* SELECTORS                *)
@@ -103,11 +106,11 @@ module type S =
     val is_empty_proof_plan : proof_plan -> bool
     val get_unprocessed_support_from_info : vc_info ->   support_t
     val get_tid_constraint_from_info : vc_info ->   formula
-    val get_vocabulary_from_info : vc_info ->   Expression.ThreadSet.t
+    val get_vocabulary_from_info : vc_info -> ThreadSet.t
     val get_rho_from_info : vc_info ->   formula
     val get_goal_from_info : vc_info ->   formula
-    val get_transition_tid_from_info : vc_info ->   Expression.tid
-    val get_line_from_info : vc_info ->   Expression.pc_t
+    val get_transition_tid_from_info : vc_info -> tid
+    val get_line_from_info : vc_info -> int
     val get_antecedent : verification_condition ->   formula
     val get_consequent : verification_condition ->   formula
     val get_support : verification_condition ->   support_t
@@ -115,19 +118,20 @@ module type S =
     val get_tid_constraint : verification_condition ->   formula
     val get_rho : verification_condition ->   formula
     val get_goal : verification_condition ->   formula
-    val get_transition_tid : verification_condition ->   Expression.tid
-    val get_line : verification_condition ->   Expression.pc_t
-    val get_vocabulary : verification_condition ->   Expression.ThreadSet.t
+    val get_transition_tid : verification_condition -> tid
+    val get_line : verification_condition -> int
+    val get_vocabulary : verification_condition -> ThreadSet.t
 
 
     (***************)
     (* SIMPLIFIERS *)
     (***************)
-    val generic_simplifier : formula ->  
-          (Expression.literal-> polarity->formula) ->   formula 
+(*
+    val generic_simplifier : formula ->  (Expression.literal-> polarity->formula) ->   formula
 
     val simplify : formula -> formula
     val simplify_with_vocabulary : formula ->  Expression.V.t list -> formula
+*)
     val generate_support : vc_info -> formula list
     val split_implication : implication ->   implication list
     val split_goal :vc_info -> vc_info list
@@ -160,7 +164,17 @@ module type S =
 module Make (E:GenericExpression.S) =
   struct
 
-    type formula = formula
+    type formula = E.formula
+    type tid = E.tid
+
+    module ThreadSet = E.ThreadSet
+
+    module FormulaSet = Set.Make(
+      struct
+        type t = formula
+        let compare = Pervasives.compare
+      end)
+
     type support_t = formula list
     type vc_info = { 
       original_support : support_t ; (* BOXED formulas, tids must be renamed *)
@@ -170,8 +184,8 @@ module Make (E:GenericExpression.S) =
 
       original_goal   : formula  ;
       goal            : formula  ;
-      transition_tid  : E.tid      ;
-      line            : E.pc_t     ;
+      transition_tid  : E.tid    ;
+      line            : int      ;
       vocabulary      : E.ThreadSet.t ; (* MAY GO *)
     }
 
@@ -252,30 +266,29 @@ module Make (E:GenericExpression.S) =
 
       E.ThreadSet.iter (fun i -> Hashtbl.add pc_updates (build_pc false i) (build_pc true i)) goal_voc;
       List.iter (fun phi ->
+        match (E.is_pc_update phi, E.is_var_update phi) with
+        | ((true,_,i), _) -> Hashtbl.remove pc_updates (build_pc false i)
+        | (_, (true,v,i)) ->
+            begin
+              try
+                Hashtbl.replace var_updates v (E.ThreadSet.remove i (Hashtbl.find var_updates v))
+              with _ -> Hashtbl.add var_updates v (E.ThreadSet.remove i goal_voc)
+            end
+        | _ -> ()
+
+(********  FIX THIS PART
         match phi with
         | F.Or (F.Literal (F.Atom (E.PCUpdate (_,i))), _)
         | F.Literal (F.Atom (E.PCUpdate (_,i))) ->
             Hashtbl.remove pc_updates (build_pc false i)
-    (*
-               -> begin
-                      match F.to_disj_list phi with
-                      | F.Literal (F.Atom (E.PCUpdate (_,i)))::_ ->
-                          Hashtbl.remove pc_updates (build_pc false i)
-                      | _ -> ()
-                    end
-    *)
         | F.Literal (F.Atom (E.Eq (E.ArrayT (E.VarArray v), E.ArrayT (E.ArrayUp (_,i,_))))) ->
             begin
               try
                 Hashtbl.replace var_updates v (E.ThreadSet.remove i (Hashtbl.find var_updates v))
-    (*
-                let old_set = Hashtbl.find var_updates v in
-                let new_set = E.ThreadSet.filter (fun j -> j<>i) old_set in
-                Hashtbl.replace var_updates v new_set
-    *)
               with _ -> Hashtbl.add var_updates v (E.ThreadSet.remove i goal_voc)
             end
         | _ -> ()
+************   FIX THIS PART    ****)
       ) (F.to_conj_list info.rho);
 
       let pc_pres = E.V.new_subst () in
@@ -314,14 +327,14 @@ module Make (E:GenericExpression.S) =
 
 
       let the_antecedent =
-        E.to_plain_formula E.PCVars
+        E.plain ExtendedExpression.PCVars
           (F.And (F.conj_list sup, F.And (info.tid_constraint, info.rho))) in
     (*      (F.conj_list (sup @ [ info.tid_constraint ] @ [info.rho])) in *)
 
 
 
       let the_consequent = E.subst_vars pc_pres
-        (E.to_plain_formula E.PCVars
+        (E.plain ExtendedExpression.PCVars
           (E.subst_vars var_pres (E.prime_modified info.rho info.goal))) in
 
 
@@ -348,8 +361,9 @@ module Make (E:GenericExpression.S) =
     let default_cutoff_algorithm = Smp.Dnf
 
 
-    let to_plain_vc_info (fol_mode:E.fol_mode_t) (info:vc_info) : vc_info =
-      let f = E.to_plain_formula fol_mode in
+    let to_plain_vc_info (fol_mode:ExtendedExpression.fol_mode_t)
+                         (info:vc_info) : vc_info =
+      let f = E.plain fol_mode in
       {
         original_support = List.map f info.original_support;
         tid_constraint = f info.tid_constraint;
@@ -368,14 +382,14 @@ module Make (E:GenericExpression.S) =
                                                      vc.goal            ::
                                                      vc.original_support)) in
       let vars_str = (String.concat "\n"
-                       (List.map (fun v ->
-                         (E.sort_to_str (E.V.sort v)) ^ " " ^
-                         (E.V.to_str v)
-                       ) vars_to_declare)) in
-      let supp_str = String.concat "\n" (List.map formula_to_str vc.original_support) in
-      let tidconst_str = formula_to_str vc.tid_constraint in
-      let rho_str = formula_to_str vc.rho in
-      let goal_str = formula_to_str vc.goal in
+                       (E.V.VarSet.fold (fun v xs ->
+                         ((E.sort_to_str (E.V.sort v)) ^ " " ^
+                         (E.V.to_str v)) :: xs
+                       ) vars_to_declare [])) in
+      let supp_str = String.concat "\n" (List.map E.to_str vc.original_support) in
+      let tidconst_str = E.to_str vc.tid_constraint in
+      let rho_str = E.to_str vc.rho in
+      let goal_str = E.to_str vc.goal in
       let tid_str = E.tid_to_str vc.transition_tid in
       let line_str = string_of_int vc.line
       in
@@ -389,14 +403,14 @@ module Make (E:GenericExpression.S) =
 
 
     let vc_info_to_plain_str (vc:vc_info) : string =
-      vc_info_to_str (to_plain_vc_info E.PCVars vc)
+      vc_info_to_str (to_plain_vc_info ExtendedExpression.PCVars vc)
 
 
     let vc_info_to_str_simple (vc:vc_info) : string =
-      let supp_str = String.concat "\n" (List.map formula_to_str vc.original_support) in
-      let tidconst_str = formula_to_str vc.tid_constraint in
-      let rho_str = formula_to_str vc.rho in
-      let goal_str = formula_to_str vc.goal
+      let supp_str = String.concat "\n" (List.map E.to_str vc.original_support) in
+      let tidconst_str = E.to_str vc.tid_constraint in
+      let rho_str = E.to_str vc.rho in
+      let goal_str = E.to_str vc.goal
       in
         "SUPPORT:\n" ^ supp_str ^ "\n" ^
         "CONSTRAINT:\n" ^ tidconst_str ^ "\n" ^
@@ -427,7 +441,7 @@ module Make (E:GenericExpression.S) =
                        (goal       : formula)
                        (vocab      : E.ThreadSet.t)
                        (trans_tid  : E.tid)
-                       (line       : E.pc_t) : vc_info =
+                       (line       : int) : vc_info =
         {
           original_support   = supp ;
           tid_constraint     = tid_constr ;
@@ -446,7 +460,7 @@ module Make (E:GenericExpression.S) =
                   (goal       : formula)
                   (vocab      : E.ThreadSet.t)
                   (trans_tid  : E.tid)
-                  (line       : E.pc_t) 
+                  (line       : int) 
             (support    : support_t)
             : verification_condition =
       vc_info_to_vc (create_vc_info orig_supp tid_constr rho goal vocab trans_tid line) support
@@ -480,7 +494,8 @@ module Make (E:GenericExpression.S) =
 
 
     let set_fixed_voc (ts:E.ThreadSet.t) : unit =
-      fixed_voc := E.ThreadSet.add System.me_tid_th ts
+      fixed_voc := E.ThreadSet.add (E.tid_var
+                      (E.V.build_global System.me_tid E.tid_sort (E.defInfo()))) ts
 
 
     let filter_fixed_voc (ts:E.ThreadSet.t) : E.ThreadSet.t =
@@ -515,7 +530,7 @@ module Make (E:GenericExpression.S) =
     and get_rho_from_info (info:vc_info) : formula =  info.rho
     and get_goal_from_info (info:vc_info) : formula =  info.goal
     and get_transition_tid_from_info (info:vc_info) : E.tid =  info.transition_tid
-    and get_line_from_info (info:vc_info) : E.pc_t =  info.line
+    and get_line_from_info (info:vc_info) : int =  info.line
 
 
     let rec get_antecedent (vc:verification_condition) : formula=
@@ -534,7 +549,7 @@ module Make (E:GenericExpression.S) =
       get_goal_from_info vc.info
     and get_transition_tid (vc:verification_condition) : E.tid =
       get_transition_tid_from_info vc.info
-    and get_line (vc:verification_condition) : E.pc_t =
+    and get_line (vc:verification_condition) : int =
       get_line_from_info vc.info
     and get_vocabulary (vc:verification_condition) : E.ThreadSet.t =
       get_vocabulary_from_info vc.info
@@ -548,6 +563,7 @@ module Make (E:GenericExpression.S) =
 
     (* Auxiliary simplification functions *)
 
+(***********************  FIX THIS
     let invert_polarity pol =
       match pol with
           Pos -> Neg
@@ -602,7 +618,7 @@ module Make (E:GenericExpression.S) =
     let simplify (phi:formula) : formula =
       let id l pol = F.Literal l in
         generic_simplifier phi id
-
+********************* FIX THIS *)
 
     (* let simplify_with_pc (phi:formula) (i:E.tid) (lines:int list) (primed:bool) : formula = *)
     (*   let is_same_tid (j:E.tid) : bool = *)
@@ -636,7 +652,7 @@ module Make (E:GenericExpression.S) =
     (* simplify_with_vocabulary: simply removes the whole formula if the vocabulary
      *                           is irrelevant *)
     let simplify_with_vocabulary (phi:formula) (vocabulary:E.V.t list): formula =
-      let vars_in_phi = E.all_vars_as_set phi in
+      let vars_in_phi = E.all_vars phi in
       let relevant = List.exists (fun v -> E.V.VarSet.mem v vars_in_phi) vocabulary in
         if relevant then
           phi
@@ -651,9 +667,9 @@ module Make (E:GenericExpression.S) =
       (* FIX THIS *)
       let (no_param,param) =
         List.partition (fun phi -> E.ThreadSet.is_empty (E.voc phi)) info.original_support in
-      let target_voc = E.ThreadSet.elements (E.voc (F.And (info.goal, info.rho))) in (* FIX THIS *)
+      let target_voc = E.voc (F.And (info.goal, info.rho)) in (* FIX THIS *)
       let instantiate_one_support phi =
-        let subst = E.new_comb_subst (E.ThreadSet.elements (E.voc phi)) target_voc in
+        let subst = E.new_comb_subst (E.voc phi) target_voc in
         List.map (fun s -> E.subst_tid s phi) subst 
       in
       let instantiated_support = List.fold_left 
@@ -679,14 +695,14 @@ module Make (E:GenericExpression.S) =
           let cand_disj = F.to_disj_list conj in
           if List.length cand_disj > 1 &&
              List.for_all (fun x ->
-                match x with
-    (*
-                | F.Literal (F.Atom (E.PC (_,_,false))) -> true
-                | F.Literal (F.Atom (E.PCRange (_,_,_,false))) -> true
-    *)
+                match E.is_int_val_assign x with
+                | (true,v,_) -> E.is_pc_var v
+                | _ -> false
+(************ FIX THIS
                 | F.Literal (F.Atom (E.Eq (E.IntT (E.VarInt v), E.IntT (E.IntVal _))))
                 | F.Literal (F.Atom (E.Eq (E.IntT (E.IntVal _), E.IntT (E.VarInt v)))) -> E.is_pc_var v
                 | _ -> false
+***************** FIX THIS *)
             ) cand_disj then
                 cand_disj @ xs
           else
@@ -733,14 +749,14 @@ module Make (E:GenericExpression.S) =
       | _     -> false
 
 
-    let rec get_literals f =
-      match f with
-        F.Literal l  -> [l]
+    let rec get_literals (phi:E.formula) : E.atom F.literal list =
+      match phi with
+      | F.Literal l  -> [l]
       | F.And(f1,f2)       -> get_literals f1 @ get_literals f2
       | F.Not(F.Or(f1,f2)) -> get_literals f1 @ get_literals f2
       | _          -> []
 
-
+(*
     (* simplify_with_fact: takes the given literal as a fact, and removes all
                              instances of identical literals in the formula for true *)
     let generic_simplify_with_fact (fact:'a)
@@ -799,14 +815,19 @@ module Make (E:GenericExpression.S) =
       
     let simplify_with_many_facts (ll:E.literal list) 
         (implies:E.literal -> E.literal -> bool)
-        (implies_neg:E.literal -> E.literal -> bool)
+        (implies_neg:E.literal-> E.literal -> bool)
         (phi:formula) : formula =
       generic_simplify_with_many_facts ll implies implies_neg phi
-
-    let get_unrepeated_literals (phi:formula) : E.literal list = 
-      let candidates = get_literals phi in
+*)
+    let get_unrepeated_literals (phi:formula) : E.atom F.literal list =
+    let candidates = get_literals phi in
       List.fold_left (fun res l ->
-        if (List.exists (fun alit -> E.identical_literal alit l) res) then
+        if (List.exists (fun alit ->
+          match (alit, l) with
+          | (F.Atom a1, F.Atom a2) -> E.canonical a1 = E.canonical a2
+          | (F.NegAtom a1, F.NegAtom a2) -> E.canonical a1 = E.canonical a2
+          | _ -> false
+          ) res) then
           res
         else
           res@[l]
@@ -830,7 +851,8 @@ module Make (E:GenericExpression.S) =
           let (unparam_support, param_support) =
             List.fold_left (fun (u_set,p_set) supp ->
               let supp_voc = filter_fixed_voc (E.voc supp) in
-              let fresh_tids = E.gen_fresh_tid_set !used_tids (E.ThreadSet.cardinal supp_voc) in
+              let fresh_tids = E.gen_fresh_tids !used_tids
+                                  (E.ThreadSet.cardinal supp_voc) in
               let fresh_subst = E.new_tid_subst
                                   (List.combine (E.ThreadSet.elements supp_voc)
                                                 (E.ThreadSet.elements fresh_tids)) in
@@ -839,36 +861,33 @@ module Make (E:GenericExpression.S) =
               let split_supp = F.to_conj_list fresh_supp in
               List.fold_left (fun (us,ps) phi ->
                 if E.ThreadSet.is_empty (filter_fixed_voc (E.voc phi)) then
-                  (E.FormulaSet.add phi us,ps)
+                  (FormulaSet.add phi us,ps)
                 else
-                  (us,E.FormulaSet.add phi ps)
+                  (us,FormulaSet.add phi ps)
               ) (u_set,p_set) split_supp
-            ) (E.FormulaSet.empty,E.FormulaSet.empty) info.original_support in
+            ) (FormulaSet.empty,FormulaSet.empty) info.original_support in
 
     (*
           Log.print "gen_support unparametrized support"
-            (E.FormulaSet.fold (fun phi str -> str ^ (formula_to_str phi) ^ ";" ) unparam_support "");
+            (FormulaSet.fold (fun phi str -> str ^ (E.to_str phi) ^ ";" ) unparam_support "");
           Log.print "gen_support parametrized support"
-            (E.FormulaSet.fold (fun phi str -> str ^ (formula_to_str phi) ^ ";" ) param_support "");
+            (FormulaSet.fold (fun phi str -> str ^ (E.to_str phi) ^ ";" ) param_support "");
     *)
 
 
           let processed_support =
-            E.FormulaSet.fold (fun phi set ->
+            FormulaSet.fold (fun phi set ->
               let supp_voc = filter_fixed_voc (E.voc phi) in
               let voc_to_consider = E.ThreadSet.add info.transition_tid
                                       (E.ThreadSet.union supp_voc goal_voc) in
-              let subst = List.filter f
-                            (E.new_comb_subst
-                              (E.ThreadSet.elements supp_voc)
-                              (E.ThreadSet.elements voc_to_consider)) in
+              let subst = List.filter f (E.new_comb_subst supp_voc voc_to_consider) in
 
               Log.print "Thread id substitution" (String.concat " -- " (List.map E.subst_to_str subst));
               List.fold_left (fun set s ->
-                E.FormulaSet.add (E.subst_tid s phi) set
+                FormulaSet.add (E.subst_tid s phi) set
               ) set subst
             ) param_support unparam_support in
-          E.FormulaSet.elements processed_support
+          FormulaSet.elements processed_support
 
 
     (*
@@ -890,9 +909,9 @@ module Make (E:GenericExpression.S) =
                                                 ) split_support in
         
           Log.print "gen_support unparametrized support"
-                    (String.concat " ; " (List.map formula_to_str unparam_support));
+                    (String.concat " ; " (List.map E.to_str unparam_support));
           Log.print "gen_support parametrized support"
-                    (String.concat " ; " (List.map formula_to_str param_support));
+                    (String.concat " ; " (List.map E.to_str param_support));
 
 
           List.fold_left (fun xs supp_phi ->
@@ -946,20 +965,20 @@ module Make (E:GenericExpression.S) =
     (*********************)
     let tactic_propositional_propagate (imp:implication) : implication =
       Log.print_ocaml "entering tactic_propositional_propagate()";
-      let implies     = E.identical_literal in
-      let implies_neg = E.opposite_literal in
-      let rec simplify_propagate (f:implication) (used:E.literal list) : 
-          (implication * E.literal list) =
+      let implies     = F.identical_literal E.canonical in
+      let implies_neg = F.opposite_literal E.canonical in
+      let rec simplify_propagate (f:implication) (used:E.atom F.literal list)
+            : (implication * E.atom F.literal list) =
         (* ALE: I have removed from new_facts already learned facts *)
         let new_facts = List.filter (fun x ->
                           not (List.mem x used)
                         ) (get_unrepeated_literals f.ante) in
-        Log.print "* New facts:" (String.concat "; " (List.map E.literal_to_str new_facts));
+(*        Log.print "* New facts:" (String.concat "; " (List.map E.literal_to_str new_facts));*)
         
         if List.length new_facts = 0 then (f,used) else
           begin
-            let new_conseq = simplify_with_many_facts new_facts implies implies_neg f.conseq in
-            let new_ante   = simplify_with_many_facts new_facts implies implies_neg f.ante in
+            let new_conseq = F.simplify_with_many_facts new_facts implies implies_neg f.conseq in
+            let new_ante   = F.simplify_with_many_facts new_facts implies implies_neg f.ante in
               simplify_propagate { ante = new_ante; conseq = new_conseq } (used @ new_facts)
           end
       in
@@ -969,7 +988,11 @@ module Make (E:GenericExpression.S) =
       { ante = new_ante ; conseq = new_conseq }
 
 
-    let extract_pc_integer_eq (l:E.literal) : ((E.V.t * int) option) =
+    let extract_pc_integer_eq (l:E.atom F.literal) : ((E.V.t * int) option) =
+      match E.is_int_val_assign (F.Literal l) with
+      | (true, v, k) -> if E.is_pc_var v then Some (v,k) else None
+      | _ -> None
+(*
       match l with
         F.Atom(E.Eq(E.VarT(v),          E.IntT(E.IntVal k)))
       | F.Atom(E.Eq(E.IntT(E.VarInt(v)),E.IntT(E.IntVal k)))
@@ -980,7 +1003,9 @@ module Make (E:GenericExpression.S) =
           else
             None
       | _  -> None
+*)
 
+(*****************  FIX THIS. MOVE TO EACH EXPRESSION IMPLEMENTING GENERIC EXPRESSION 
     let integer_implies ((v,k):E.V.t * int) (l:E.literal) : bool =
       let same (v1,k1) (v2,k2) = (E.V.same_var v1 v2) && (k1=k2) in
       match l with
@@ -994,7 +1019,7 @@ module Make (E:GenericExpression.S) =
           F.Atom(E.Eq(E.IntT(E.IntVal(k2)),E.VarT(v2)))           -> 
         (E.V.sort v2)==E.Int && same (v,k) (v2,k2)
       | (* v=k -> k2=v2 *)
-          F.Atom(E.Eq(E.IntT(E.IntVal(k2)),E.IntT(E.VarInt(v2)))) -> 
+          F.Atom(E.Eq(E.IntT(E.IntVal(k2)),E.IntT(E.VarInt(v2)))) -> same (v,k) (v2,k2)
         same (v,k) (v2,k2)
       | (* v=k -> k2<v2 *)
           F.Atom(E.Less(E.IntVal(k2),E.VarInt(v2))) -> 
@@ -1055,6 +1080,9 @@ module Make (E:GenericExpression.S) =
           F.Atom(E.GreaterEq(E.IntVal(k2),E.VarInt(v2))) -> (E.V.same_var v v2) && not 
       (k <= k2)
       | _ -> false
+*****************    FIX THIS *)
+
+
 
     (* tactic_simplify_pc: *)
     (*    discovers all facts of the form v=k and propagates them *)
@@ -1063,8 +1091,8 @@ module Make (E:GenericExpression.S) =
     let tactic_simplify_pc (imp:implication) : implication =
       (* 1. Search for facts of the form "pc = k" or "k = pc" *)
       Log.print_ocaml "entering tactic_simplify_pc";
-      Log.print "simplify_pc antecedent" (formula_to_str imp.ante);
-      Log.print "simplify_pc consequent" (formula_to_str imp.conseq);
+      Log.print "simplify_pc antecedent" (E.to_str imp.ante);
+      Log.print "simplify_pc consequent" (E.to_str imp.conseq);
 
       let rec get_integer_literals (f:formula) : ((E.V.t * int) list) =
         match f with
@@ -1086,10 +1114,10 @@ module Make (E:GenericExpression.S) =
       (* 2. Simplify the antecedent and the consequent with the facts *)
       let facts     = get_integer_literals imp.ante in
       let _ = print_all facts in
-      let new_ante  = simplify (generic_simplify_with_many_facts facts integer_implies integer_implies_neg imp.ante) in
-      let new_conseq = simplify (generic_simplify_with_many_facts facts integer_implies integer_implies_neg imp.conseq) in
-      Log.print "simplify_pc new antecedent" (formula_to_str new_ante);
-      Log.print "simplify_pc new consequent" (formula_to_str new_conseq);
+      let new_ante  = F.simplify (F.simplify_with_many_facts facts E.integer_implies E.integer_implies_neg imp.ante) in
+      let new_conseq = F.simplify (F.simplify_with_many_facts facts E.integer_implies E.integer_implies_neg imp.conseq) in
+      Log.print "simplify_pc new antecedent" (E.to_str new_ante);
+      Log.print "simplify_pc new consequent" (E.to_str new_conseq);
       (* 3. Propagate propositional, if new facts are stated,
             by calling propositional_propagate *)
       tactic_propositional_propagate { ante = new_ante; conseq = new_conseq }
@@ -1100,10 +1128,10 @@ module Make (E:GenericExpression.S) =
     (* eliminate from the antecedent all literals without variables in common
        with the goal *)
     let tactic_filter_vars_nonrec (imp:implication) : implication =
-      let vs_conseq = E.all_vars_as_set imp.conseq in
+      let vs_conseq = E.all_vars imp.conseq in
       let conjs = F.to_conj_list imp.ante in
-      let share_vars (vl: E.V.t list) : bool =
-        List.exists (fun v -> E.V.VarSet.mem v vs_conseq) vl
+      let share_vars (vl: E.V.VarSet.t) : bool =
+        E.V.VarSet.exists (fun v -> E.V.VarSet.mem v vs_conseq) vl
       in
       let new_conjs = List.filter (fun f -> share_vars (E.all_vars f)) conjs in
       { ante = F.conj_list new_conjs ; conseq = imp.conseq }
@@ -1151,38 +1179,26 @@ module Make (E:GenericExpression.S) =
       imp
 
 
-    let is_literal (f:formula) : bool =
-      match f with  
-        F.Literal _ -> true  
-      | _           -> false
+    let apply_literal_to_implication (l:E.atom F.literal)
+                                     (ante:formula)
+                                     (conseq:formula) : implication =
+      let implies     = F.identical_literal E.canonical in
+      let implies_neg = F.opposite_literal E.canonical in
+      { ante   = F.And((F.simplify_with_fact l implies implies_neg ante),F.Literal l);
+        conseq = F.simplify_with_fact l implies implies_neg conseq }
 
-
-    let neg_literal (l:E.literal) : E.literal =
-      match l with 
-        F.Atom(a)    -> F.NegAtom(a)
-      | F.NegAtom(a) -> F.Atom(a)
-
-
-
-    let apply_literal_to_implication (l:E.literal) (ante:formula) (conseq:formula) : implication =
-      let implies     = E.identical_literal in
-      let implies_neg = E.opposite_literal in
-      { ante   = (F.And((simplify_with_fact l implies implies_neg ante), F.Literal l));
-        conseq = (simplify_with_fact l implies implies_neg conseq) }
 
     let tactic_conseq_propagate_second_disjunct (imp:implication) : implication =
       match imp.conseq with
-        F.Or(a ,F.Literal l) -> 
-          apply_literal_to_implication (neg_literal l) imp.ante a
+      | F.Or(a ,F.Literal l) -> apply_literal_to_implication (F.neg_literal l) imp.ante a
       | F.Implies(a, F.Literal l) ->
-          apply_literal_to_implication (neg_literal l) imp.ante (F.Not a)
+          apply_literal_to_implication (F.neg_literal l) imp.ante (F.Not a)
       | _ -> { ante = imp.ante; conseq = imp.conseq }
         
 
     let tactic_conseq_propagate_first_disjunct (imp:implication) : implication =
       match imp.conseq with
-        F.Or(F.Literal l, b) -> 
-          apply_literal_to_implication (neg_literal l) imp.ante b
+        F.Or(F.Literal l, b) -> apply_literal_to_implication (F.neg_literal l) imp.ante b
       | F.Implies(F.Literal l,b) ->
         apply_literal_to_implication l imp.ante b
       | _ -> 
@@ -1283,7 +1299,7 @@ module Make (E:GenericExpression.S) =
         Log.print "* Leap generated the following formulas" "";
         let final_formulas = List.map (fun imp ->
                                let phi = F.Implies (imp.ante, imp.conseq) in phi
-    (*                           Log.print "" (formula_to_str phi); phi *)
+    (*                           Log.print "" (E.to_str phi); phi *)
                              ) final_implications in
 
         phi_list @ final_formulas

@@ -28,6 +28,8 @@ type 'atom formula =
   | Iff               of 'atom formula * 'atom formula
 
 
+type polarity = Pos | Neg | Both
+
 (*************************)
 (**  Folding datatypes  **)
 (*************************)
@@ -171,8 +173,26 @@ val combine_conjunctive_list : 'atom conjunctive_formula list ->
 val atom_to_formula : 'atom -> 'atom formula
 val negatom_to_formula : 'atom -> 'atom formula
 
+val neg_literal : 'atom literal -> 'atom literal
+
 val is_conjunctive : 'atom formula -> bool
 
+val simplify : 'atom formula -> 'atom formula
+val simplify_with_fact : 'fact ->
+                         ('fact -> 'atom literal -> bool) ->
+                         ('fact -> 'atom literal -> bool) ->
+                         'atom formula -> 'atom formula
+val simplify_with_many_facts : 'fact list ->
+                               ('fact -> 'atom literal -> bool) ->
+                               ('fact -> 'atom literal -> bool) ->
+                               'atom formula -> 'atom formula
+
+val identical_literal : ('atom -> 'atom) ->
+                        'atom literal -> 'atom literal -> bool
+val opposite_literal : ('atom -> 'atom) ->
+                       'atom literal -> 'atom literal -> bool
+val identical_formula : ('atom -> 'atom) ->
+                        'atom formula -> 'atom formula -> bool
 
 (***********************)
 (**  Pretty printers  **)

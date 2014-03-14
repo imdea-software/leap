@@ -462,7 +462,7 @@ val param_variable : V.shared_or_local -> V.t -> V.t
 
 (* THREAD SUBSTITUTION FUNCTIONS *)
 val new_tid_subst : (tid * tid) list -> tid_subst_t
-val new_multiple_tid_subst : tid list -> tid list list -> tid_subst_t list
+(*val new_multiple_tid_subst : tid list -> tid list list -> tid_subst_t list *)
 val new_comb_subst : tid list -> tid list -> tid_subst_t list
 val subst_tid : tid_subst_t -> formula -> formula
 val subst_to_str : tid_subst_t -> string
@@ -470,9 +470,11 @@ val subst_domain : tid_subst_t -> ThreadSet.t
 val subst_codomain : tid_subst_t -> ThreadSet.t
 val subst_domain_in : ThreadSet.t -> tid_subst_t -> bool
 val subst_codomain_in : ThreadSet.t -> tid_subst_t -> bool
+(*
 val subst_full_domain_assign : tid list -> tid_subst_t -> bool
 val subst_full_codomain_assign : tid list -> tid_subst_t -> bool
-val is_id_subst : tid_subst_t -> bool
+*)
+(*val is_id_subst : tid_subst_t -> bool*)
 
 
 (* VARIABLE SUBSTITUTION FUNCTIONS *)
@@ -525,6 +527,7 @@ val required_sorts : formula -> sort list
 
 
 (* COMPARISON FUNCTIONS. SYNTACTICALLY (almost) IDENTICAL *)
+(*
 val identical_formula  : formula  -> formula  -> bool
 val identical_sorts     : sort     -> sort     -> bool
 val identical_variable  : V.t -> V.t -> bool
@@ -550,5 +553,5 @@ val identical_literal : literal -> literal -> bool
 val opposite_literal  : literal -> literal -> bool
 val identical_conjunctive_formula : conjunctive_formula -> conjunctive_formula -> bool
 val identical_expr_t : expr_t -> expr_t -> bool
-
+*)
 

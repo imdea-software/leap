@@ -153,6 +153,7 @@ module type S =
 
     include GenericExpression.S
       with type sort := sort
+      with type v_info := var_info_t
       with type tid := tid
       with type atom := atom
       with module V := V

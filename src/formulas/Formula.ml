@@ -22,6 +22,8 @@ type 'atom formula =
   | Implies           of 'atom formula * 'atom formula
   | Iff               of 'atom formula * 'atom formula
 
+type polarity = Pos | Neg | Both
+
 type ('atom, 'info, 'a) functions_t =
   {
     mutable literal_f : 'info -> 'atom literal -> 'a;
@@ -542,6 +544,12 @@ let negatom_to_formula (a:'atom) : 'atom formula =
   Literal (NegAtom a)
 
 
+let neg_literal (l:'atom literal) : 'atom literal =
+  match l with
+  | Atom a    -> NegAtom a
+  | NegAtom a -> Atom a
+
+
 let rec is_conjunctive (phi:'atom formula) : bool =
   match phi with
   | Literal _ -> true
@@ -550,6 +558,148 @@ let rec is_conjunctive (phi:'atom formula) : bool =
   | And(f,g)  -> (is_conjunctive f) && (is_conjunctive g)
   | _         -> false
 
+
+(******************)
+(**  Simplifier  **)
+(******************)
+
+let invert_polarity (pol:polarity) : polarity =
+  match pol with
+  | Pos -> Neg
+  | Neg -> Pos
+  | Both -> Both
+
+
+let generic_simplifier (phi:'atom formula)
+                       (simp_atom:'atom-> polarity->'atom formula) : 'atom formula =
+  let is_true  (f:'atom formula):bool = match f with True  -> true | _ -> false in
+  let is_false (f:'atom formula):bool = match f with False -> true | _ -> false in
+  let rec simplify_f (f:'atom formula) (pol:polarity): 'atom formula =
+    match f with
+    | Literal(Atom a)    -> (simp_atom a pol)
+    | Literal(NegAtom a) -> (simp_atom a (invert_polarity pol))
+    | True         -> True
+    | False        -> False
+    | And(x,y)     -> let sx = (simplify_f x pol) in
+                      let sy = (simplify_f y pol) in
+                        if (is_false sx || is_false sy) then False
+                        else if (is_true sx && is_true sy) then True
+                        else if (is_true sx) then sy
+                        else if (is_true sy) then sx
+                        else And(sx,sy)
+    | Or(x,y)      -> let sx = (simplify_f x pol) in
+                      let sy = (simplify_f y pol) in
+                        if (is_true sx || is_true sy) then True
+                        else if (is_false sx && is_false sy) then False
+                        else if (is_false sx ) then sy
+                        else if (is_false sy ) then sx
+                        else Or(sx,sy)
+    | Not(x)       -> let sx = (simplify_f x (invert_polarity pol)) in
+                        if (is_true sx) then False
+                        else if(is_false sx) then True
+                        else Not(sx)
+    | Implies(x,y) -> let sx = (simplify_f x (invert_polarity pol)) in
+                      let sy = (simplify_f y pol) in
+                        if (is_false sx || is_true sy) then True
+                        else if (is_true sx) then sy
+                        else if (is_false sy) then Not(sx)
+                        else Implies(sx,sy)
+    | Iff(x,y)     -> let sx = (simplify_f x Both) in
+                      let sy = (simplify_f y Both) in
+                        if (is_false sx && is_false sy) then True
+                        else if (is_true sx && is_true sy) then True
+                        else if (is_true sx) then sy
+                        else if (is_true sy) then sx
+                        else if (is_false sx) then Not(sy)
+                        else if (is_false sy) then Not(sx)
+                        else Iff(sx,sy)
+  in
+    simplify_f phi Pos
+
+let simplify (phi:'atom formula) : 'atom formula =
+  let id a pol = Literal (Atom a) in
+    generic_simplifier phi id
+
+
+let simplify_with_fact (fact:'a)
+                       (implies:'a -> 'atom literal -> bool)
+                       (implies_neg:'a -> 'atom literal -> bool)
+                       (phi:'atom formula): 'atom formula =
+  let rec simplify_lit f =
+    match f with
+    | Literal l   -> if      (implies fact l) then True
+                     else if (implies_neg fact l) then False
+                     else    f
+    | True        -> True
+    | False       -> False
+    | And(f1, f2) -> And(simplify_lit f1, simplify_lit f2)
+    | Or (f1, f2) -> Or (simplify_lit f1, simplify_lit f2)
+    | Not f       -> Not(simplify_lit f)
+    | Implies(f1,f2) -> Implies (simplify_lit f1, simplify_lit f2)
+    | Iff    (f1,f2) -> Iff (simplify_lit f1, simplify_lit f2)
+  in
+  simplify (simplify_lit phi)
+
+
+let simplify_with_many_facts (facts:'a list)
+                             (implies:'a -> 'atom literal -> bool)
+                             (implies_not:'a -> 'atom literal -> bool)
+                             (phi:'atom formula) : 'atom formula =
+  let rec simplify_lit f =
+    match f with
+    | Literal l ->
+        begin
+          if      List.exists (fun p -> implies p l) facts then True
+          else if List.exists (fun p -> implies_not p l) facts then False
+          else f
+        end
+    | True           -> True
+    | False          -> False
+    | And(f1,f2)     -> And(simplify_lit f1, simplify_lit f2)
+    | Or (f1,f2)     -> Or (simplify_lit f1, simplify_lit f2)
+    | Not f          -> Not(simplify_lit f)
+    | Implies(f1,f2) -> Implies (simplify_lit f1, simplify_lit f2)
+    | Iff    (f1,f2) -> Iff (simplify_lit f1, simplify_lit f2)
+  in
+  let res = simplify (simplify_lit phi) in
+   res
+
+
+let identical_literal (canonical:'atom -> 'atom)
+                      (l1:'atom literal)
+                      (l2:'atom literal) : bool =
+  match (l1,l2) with
+  | (Atom a1, Atom a2)       -> (canonical a1) = (canonical a2)
+  | (NegAtom a1, NegAtom a2) -> (canonical a1) = (canonical a2)
+  | _ -> false
+
+
+let opposite_literal (canonical:'atom -> 'atom)
+                     (l1:'atom literal)
+                     (l2:'atom literal) : bool =
+  match (l1,l2) with
+  | (Atom a1, NegAtom a2) -> (canonical a1) = (canonical a2)
+  | (NegAtom a1, Atom a2) -> (canonical a1) = (canonical a2)
+  | _ -> false
+
+
+let rec identical_formula (canonical:'atom -> 'atom)
+                          (phi1:'atom formula)
+                          (phi2:'atom formula) : bool =
+  let ident = identical_formula canonical in
+  match (phi1,phi2) with
+  | (Literal l1, Literal l2) -> identical_literal canonical l1 l2
+  | (True, True) -> true
+  | (False, False) -> true
+  | (And(a1,a2), And(b1,b2)) -> (ident a1 b1 && ident a2 b2) ||
+                                (ident a1 b2 && ident a2 b1)
+  | (Or(a1,a2), Or(b1,b2)) -> (ident a1 b1 && ident a2 b2) ||
+                              (ident a1 b2 && ident a2 b1)
+  | (Not a, Not b) -> ident a b
+  | (Implies(a1,a2),Implies(b1,b2)) -> (ident a1 b1 && ident a2 b2)
+  | (Iff(a1,a2), Iff(b1,b2)) -> (ident a1 b1 && ident a2 b2) ||
+                                (ident a1 b2 && ident a2 b1)
+  | _ -> false
 
 
 (***********************)

@@ -2,6 +2,7 @@ open LeapLib
 
 module E = Expression
 module F = Formula
+module EE = ExtendedExpression
 
 type sort = Int | Set | Tid
 
@@ -60,17 +61,24 @@ and conjunctive_formula = atom Formula.conjunctive_formula
 
 and formula = atom Formula.formula
 
+type tid_subst_t = (tid, tid) Hashtbl.t
+
 
 exception NotConjunctiveExpr of formula
 exception Not_tid_var of tid
 exception UnsupportedNumExpr of string
 exception UnsupportedSort of string
+exception No_variable_term of string
+exception No_sort_for_term of string
 
 module ThreadSet = Set.Make(
   struct
     let compare = Pervasives.compare
     type t = tid
   end )
+
+(*include (DefaultExpression.Make (ThreadSet) (V)) *)
+
 
 
 
@@ -321,7 +329,7 @@ let build_var ?(fresh=false)
 (* EXPR TO STR *)
 let sort_to_str (s:sort) : string =
   match s with
-    Int  -> "int"
+  | Int  -> "int"
   | Set  -> "set"
   | Tid -> "tid"
 
@@ -405,6 +413,9 @@ and add_parenthesis (str:string) : string = "(" ^ str ^ ")"
 (* No parenthesis printing functions *)
 and integer_to_str (t:integer) : string =
   generic_int_integer_to_str no_parenthesis t
+
+and term_to_str (t:term) : string =
+  generic_int_term_to_str no_parenthesis t
 
 and funterm_to_str (t:fun_term) : string =
   generic_funterm_to_str no_parenthesis t
@@ -657,6 +668,34 @@ let vset_primed_from_int_formula (phi:formula) : V.VarIdSet.t =
 
 
 
+
+
+let priming_variable (pr:bool)
+                     (prime_set:V.VarSet.t option)
+                     (v:V.t) : V.t =
+  let v' = if pr then V.prime v else V.unprime v in
+  match prime_set with
+  | None   -> v'
+(* DO NOT ERASE: This may be needed!!!! *)
+  | Some s -> if (V.VarSet.mem (V.set_param v V.Shared) s ||
+                  V.VarSet.mem (v) s                  ) then v' else v
+(*      | Some s -> if V.VarSet.mem v s then v' else v *)
+
+
+
+
+let prime_map =
+  make_map (fun _ (pr,prime_set) v ->
+              let v' = if pr then V.prime v else V.unprime v in
+              match prime_set with
+              | None -> v'
+              | Some s -> if (V.VarSet.mem (V.set_param v V.Shared) s ||
+                              V.VarSet.mem v s) then v' else v)
+
+let prime_fs =
+  F.make_trans F.GenericLiteralTrans prime_map.atom_f
+
+
 (* List of vars *)
 let base_list_vars (v:V.t) : V.VarIdSet.t =
   V.VarIdSet.singleton (V.id v)
@@ -719,6 +758,34 @@ let param_map =
 
 let param_fs =
   F.make_trans F.GenericLiteralTrans param_map.atom_f
+
+
+let canonical_map =
+  make_map (fun _ _ v -> v)
+  ~atom_f:(fun fs info a ->
+        match a with
+        | Eq (x,y) -> if compare x y > 0 then
+                        Eq(fs.term_f fs info y, fs.term_f fs info x) else a
+        | InEq (x,y) -> if compare x y > 0 then
+                          InEq(fs.term_f fs info y, fs.term_f fs info x) else a
+        | _ -> map_atom fs info a)
+  ~int_f:(fun fs info i ->
+        match i with
+        | Add(x,y) -> if compare x y > 0 then
+                        Add (fs.int_f fs info y, fs.int_f fs info x) else i
+        | Mul(x,y) -> if compare x y > 0 then
+                        Mul (fs.int_f fs info y, fs.int_f fs info x) else i
+        | _ -> map_int fs info i)
+  ~set_f:(fun fs info s ->
+        match s with
+        | Union(x,y) -> if compare x y > 0 then
+                          Union (fs.set_f fs info y, fs.set_f fs info x) else s
+        | Intr(x,y) -> if compare x y > 0 then
+                         Intr (fs.set_f fs info y, fs.set_f fs info x) else s
+        | _ -> map_set fs info s)
+
+
+
 
 (* Conversion from Expression to NumExpression *)
 
@@ -838,6 +905,248 @@ and formula_to_int_formula (phi:E.formula) : formula =
   Formula.formula_conv atom_to_int_atom phi
 
 
+(* Integer implications *)
+let integer_implies ((v,k):V.t * int) (l:literal) : bool =
+  let same (v1,k1) (v2,k2) = (V.same_var v1 v2) && (k1=k2) in
+  match l with
+  | (* v=k -> v2=k2 *)
+      F.Atom(Eq(IntT(Var v2),IntT(Val k2))) -> same (v,k) (v2,k2)
+  | (* v=k -> k2=v2 *)
+      F.Atom(Eq(IntT(Val k2 ),IntT(Var v2))) -> same (v,k) (v2,k2)
+  | (* v=k -> k2<v2 *)
+      F.Atom(Less(Val k2, Var v2)) -> (V.same_var v v2) && (k > k2)
+  | (* v=k -> v2>k2 *)
+      F.Atom(Greater(Var v2, Val k2)) -> (V.same_var v v2) && (k > k2)
+  | (* v=k -> v2<k2 *)
+      F.Atom(Less(Var v2, Val k2)) -> (V.same_var v v2) && (k < k2)
+  | (* v=k -> k2>v2 *)
+      F.Atom(Greater(Val k2, Var v2)) -> (V.same_var v v2) && (k < k2)
+  | (* v=k -> k2<=v2 *)
+      F.Atom(LessEq(Val k2 ,Var v2)) -> (V.same_var v v2) && (k >= k2)
+  | (* v=k -> v2>=k2 *)
+      F.Atom(GreaterEq(Var v2 ,Val k2)) -> (V.same_var v v2) && (k >= k2)
+  | (* v=k -> v2<=k2 *)
+      F.Atom(LessEq(Var v2,Val k2)) -> (V.same_var v v2) && (k <= k2)
+  | (* v=k -> k2>=v2 *)
+      F.Atom(GreaterEq(Val k2 ,Var v2)) -> (V.same_var v v2) && (k <= k2)
+  | _ -> false
+
+
+let integer_implies_neg ((v,k):V.t * int) (l:literal) : bool =
+  match l with
+  |  (* v=k -> v2=k2 *)
+      F.Atom(Eq(IntT(Var v2),IntT(Val k2))) -> V.same_var v v2 && k!=k2
+  | (* v=k -> k2=v2 *)
+      F.Atom(Eq(IntT(Val k2),IntT(Var v2))) -> V.same_var v v2 && k!=k2
+  | (* v=k -> k2<v2 *)
+      F.Atom(Less(Val k2,Var v2)) -> (V.same_var v v2) && not (k > k2)
+  | (* v=k -> v2>k2 *)
+      F.Atom(Greater(Var v2, Val k2)) -> (V.same_var v v2) && not (k > k2)
+  | (* v=k -> v2<k2 *)
+      F.Atom(Less(Var v2, Val k2)) -> (V.same_var v v2) && not (k < k2)
+  | (* v=k -> k2>v2 *)
+      F.Atom(Greater(Val k2, Var v2)) -> (V.same_var v v2) && not (k < k2)
+  | (* v=k -> k2<=v2 *)
+      F.Atom(LessEq(Val k2, Var v2)) -> (V.same_var v v2) && not (k >= k2)
+  | (* v=k -> v2>=k2 *)
+      F.Atom(GreaterEq(Var v2, Val k2)) -> (V.same_var v v2) && not (k >= k2)
+  | (* v=k -> v2<=k2 *)
+      F.Atom(LessEq(Var v2, Val k2)) -> (V.same_var v v2) && not (k <= k2)
+  | (* v=k -> k2>=v2 *)
+      F.Atom(GreaterEq(Val k2, Var v2)) -> (V.same_var v v2) && not (k <= k2)
+  | _ -> false
+
+(* Matching *)
+let defVar = V.build_global "" Int ()
+
+let is_int_val_assign (phi:formula) : (bool * V.t * int) =
+  match phi with
+  | F.Literal (F.Atom (Eq (IntT (Var v), IntT (Val i))))
+  | F.Literal (F.Atom (Eq (IntT (Val i), IntT (Var v)))) -> (true, v, i)
+  | _ -> (false, defVar, -1)
+
+
+let is_var_update (phi:formula) : (bool * V.t * tid) =
+  match phi with
+  | F.Literal (F.Atom (Eq (FuntermT (FunVar v), FuntermT (FunUpd (_,i,_))))) ->
+      (true, v, i)
+  | _ -> (false, defVar, NoTid)
+
+
+let is_pc_update (phi:formula) : (bool * int * tid) =
+  match phi with
+  | F.Or (F.Literal (F.Atom (PCUpdate (pc,i))), _)
+  | F.Literal (F.Atom (PCUpdate (pc,i))) -> (true, pc, i)
+  | _ -> (false, 0, NoTid)
+
+
+let build_pc_var (pr:bool) (th:V.shared_or_local) : V.t =
+  let pr_str = if pr then "_prime" else "" in
+  let th_str = match th with
+               | V.Shared-> ""
+               | V.Local t -> "_" ^ (V.to_simple_str t)
+  in
+    V.build_global ("pc" ^ pr_str ^ th_str) Int ()
+
+
+let is_pc_var (v:V.t) : bool =
+  String.sub (V.id v) 0 3 = "pc_"
+
+
+let to_plain_shared_or_local (ops:V.t EE.fol_ops_t)
+                             (th:V.shared_or_local) : V.shared_or_local =
+  match th with
+  | V.Shared  -> V.Shared
+  | V.Local t -> V.Local (ops.EE.fol_var t)
+
+
+let rec to_plain_var (v:V.t) : V.t =
+  let plain_th = to_plain_shared_or_local
+                    {EE.fol_pc=true; EE.fol_var=to_plain_var;} (V.parameter v) in
+  let new_id = V.to_simple_str (V.set_param v plain_th) in
+  build_var new_id (V.sort v) (V.is_primed v) V.Shared V.GlobalScope
+
+
+let prime_modified (rho:formula) (phi:formula) : formula =
+  let base_f = fun v -> if V.is_primed v then
+                          V.VarSet.singleton v
+                        else V.VarSet.empty in
+  let rec analyze_fs () = Formula.make_fold
+                            Formula.GenericLiteralFold
+                            (fun info a -> analyze_atom a)
+                            (fun info -> V.VarSet.empty)
+                            (V.VarSet.union)
+  and analyze_formula (phi:formula) : V.VarSet.t =
+    Formula.formula_fold (analyze_fs()) () phi
+  and analyze_atom (a:atom) : V.VarSet.t =
+    match a with
+    | Eq (FuntermT (FunVar v), FuntermT (FunUpd (aa,t,e)))
+    | Eq (FuntermT (FunUpd (aa,t,e)), FuntermT (FunVar v)) ->
+        V.VarSet.singleton (V.set_param (V.unprime v) (V.Local (voc_to_var t)))
+    | _ -> varset_fold.atom_f base_f a in
+  let p_set = V.VarSet.fold (fun v set ->
+                 V.VarSet.add (V.unprime v) set
+               ) (analyze_formula rho) V.VarSet.empty in
+    F.formula_trans prime_fs (true, Some p_set) phi
+
+
+let plain_map =
+  make_map (fun _ ops v -> ops.EE.fol_var v)
+  ~atom_f:(fun fs ops a ->
+      match a with
+      | PC (pc,th,p) -> if ops.EE.fol_pc then
+                          let pc_var = build_pc_var p (to_plain_shared_or_local ops th) in
+                            Eq(IntT(Var pc_var),IntT(Val pc))
+                        else
+                            PC (pc,to_plain_shared_or_local ops th,p)
+      | PCUpdate (pc,t) -> if ops.EE.fol_pc then
+                             let pc_prime_var = build_pc_var true (V.Local (voc_to_var (fs.tid_f fs ops t))) in
+                               Eq (IntT (Var pc_prime_var), IntT (Val pc))
+                             else
+                               PCUpdate (pc, fs.tid_f fs ops t)
+      | PCRange (pc1,pc2,th,p) -> if ops.EE.fol_pc then
+                                    (assert false)
+                                  else
+                                    PCRange (pc1,pc2,to_plain_shared_or_local ops th,p)
+      | _ -> map_atom fs ops a)
+
+
+let plain_fs =
+  F.make_trans F.GenericLiteralTrans plain_map.atom_f
+
+
+let var_to_term (v:V.t) : term =
+  match V.sort v with
+  | Set -> SetT(VarSet v)
+  | Tid -> TidT(VarTh  v)
+  | Int -> IntT(Var    v)
+
+
+
+let term_to_var (t:term) : V.t =
+  match t with
+  | SetT    (VarSet v) -> V.set_sort v Set
+  | TidT    (VarTh  v) -> V.set_sort v Tid
+  | IntT    (Var    v) -> V.set_sort v Int
+  | _                  -> raise(No_variable_term(term_to_str t))
+
+
+let term_sort (t:term) : sort =
+  match t with
+  | SetT _     -> Set
+  | TidT _     -> Tid
+  | IntT _     -> Int
+  | FuntermT _ -> raise(No_sort_for_term (term_to_str t))
+
+(**** FIX: Take this function out, to DefaultExpression *)
+let rec to_plain_formula (ops:V.t EE.fol_ops_t) (phi:formula) : formula =
+  match phi with
+  | F.True           -> F.True
+  | F.False          -> F.False
+  | F.And(f1,f2)     -> F.And(to_plain_formula ops f1, to_plain_formula ops f2)
+  | F.Or(f1,f2)      -> F.Or(to_plain_formula ops f1, to_plain_formula ops f2)
+  | F.Not(f)         -> F.Not(to_plain_formula ops f)
+  | F.Implies(f1,f2) -> F.Implies(to_plain_formula ops f1, to_plain_formula ops f2)
+  | F.Iff (f1,f2)    -> F.Iff(to_plain_formula ops f1, to_plain_formula ops f2)
+  | F.Literal l      -> begin
+                        let conv_lit (lit:literal) : formula =
+                          begin
+                            match lit with
+                              (* Update of a local variable of a parametrized system *)
+                            | F.Atom(Eq(v',FuntermT(FunUpd(arr,t,ter))))
+                            | F.Atom(Eq(FuntermT(FunUpd(arr,t,ter)),v'))
+                            | F.NegAtom(InEq(v',FuntermT(FunUpd(arr,t,ter))))
+                            | F.NegAtom(InEq(FuntermT(FunUpd(arr,t,ter)),v')) ->
+                                let new_v' = V.prime (V.set_param (term_to_var v')
+                                                (V.Local (voc_to_var t))) in
+                                let s = term_sort ter in
+                                let as_term = plain_map.term_f ops (var_to_term
+                                                  (V.set_sort new_v' s)) in
+                                  F.atom_to_formula (Eq (as_term, ter))
+                            | _ -> F.Literal(F.literal_trans plain_fs ops lit)
+                          end in
+                        if ops.EE.fol_pc then begin
+                          match l with
+                          | F.Atom(PCRange(pc1,pc2,th,p)) ->
+                              let pc_var = build_pc_var p (to_plain_shared_or_local ops th) in
+                                F.And (F.atom_to_formula (LessEq (Val pc1, Var pc_var)),
+                                       F.atom_to_formula (LessEq (Var pc_var, Val pc2)))
+                          | F.NegAtom(PCRange(pc1,pc2,th,p)) ->
+                              let pc_var = build_pc_var p (to_plain_shared_or_local ops th) in
+                                F.Or (F.atom_to_formula (Less (Var pc_var, Val pc1)),
+                                      F.atom_to_formula (Less (Val pc2, Var pc_var)))
+                          | _ -> conv_lit l
+                        end else
+                          conv_lit l
+                      end
+
+
+let substVars_map =
+  make_map (fun _ subs v -> V.subst subs v)
+
+let substVars_fs =
+  F.make_trans Formula.GenericLiteralTrans (substVars_map.atom_f)
+
+
+let subst_shared_or_local (subst: tid_subst_t)
+                          (th:V.shared_or_local) : V.shared_or_local =
+  match th with
+  | V.Shared -> V.Shared
+  | V.Local t -> V.Local (try (voc_to_var (Hashtbl.find subst (VarTh t))) with _ -> t)
+
+
+let substTid_map =
+  make_map (fun _ subs v -> V.set_param v (subst_shared_or_local subs (V.parameter v)))
+  ~atom_f:(fun fs subs a ->
+      match a with
+      | PC (pc,t,primed)           -> PC (pc, subst_shared_or_local subs t,primed)
+      | PCRange (pc1,pc2,t,primed) -> PCRange (pc1, pc2, subst_shared_or_local subs t, primed)
+      | _ -> map_atom fs subs a)
+
+let substTid_fs =
+  F.make_trans F.GenericLiteralTrans substTid_map.atom_f
+
+
 (**********************  Generic Expression Functions  ********************)
 
 let cast (phi:Expression.formula) : formula =
@@ -868,3 +1177,78 @@ let gen_fresh_tids (set:ThreadSet.t) (n:int) : ThreadSet.t =
 
 let param (p:V.shared_or_local) (phi:formula) =
   F.formula_trans param_fs (V.param_local_only p) phi
+
+let canonical (a:atom) : atom =
+  canonical_map.atom_f () a
+
+(*module Ex = ExtendedExpression.Make (struct type atom_t = atom end) *)
+
+
+let plain = ExtendedExpression.plain
+(*
+let plain (mode:EE.fol_mode_t) (phi:formula) : formula =
+  let rec to_plain_var (v:V.t) : V.t =
+    let plain_th = to_plain_shared_or_local
+                      {EE.fol_pc=true; EE.fol_var=to_plain_var;} (V.parameter v) in
+    let new_id = V.to_simple_str (V.set_param v plain_th) in
+    build_var new_id (V.sort v) (V.is_primed v) V.Shared V.GlobalScope in
+  let ops = match mode with
+            | EE.PCOnly -> {EE.fol_pc=true; EE.fol_var=id;}
+            | EE.VarsOnly -> {EE.fol_pc=false; EE.fol_var=to_plain_var;}
+            | EE.PCVars -> {EE.fol_pc=true; EE.fol_var=to_plain_var;} in
+  F.formula_trans plain_fs ops phi
+*)
+
+let defInfo () : unit = ()
+
+let unprime_tid (t:tid) : tid =
+  prime_map.tid_f (false,None) t
+
+let subst_vars (subs:V.subst_t) (phi:formula) : formula =
+  F.formula_trans substVars_fs subs phi
+
+let subst_tid (subs:tid_subst_t) (phi:formula) : formula =
+  F.formula_trans substTid_fs subs phi
+
+let subst_domain (subst:tid_subst_t) : ThreadSet.t =
+  Hashtbl.fold (fun d _ set -> ThreadSet.add d set) subst ThreadSet.empty
+
+let subst_codomain (subst:tid_subst_t) : ThreadSet.t =
+  Hashtbl.fold (fun _ r set -> ThreadSet.add r set) subst ThreadSet.empty
+
+let subst_domain_in (tid_set:ThreadSet.t) (subst:tid_subst_t) : bool =
+  Hashtbl.fold (fun d _ b -> if (not b) then false else ThreadSet.mem d tid_set) subst true
+
+let subst_codomain_in (tid_set:ThreadSet.t) (subst:tid_subst_t) : bool =
+  Hashtbl.fold (fun _ r b -> if (not b) then
+                               false
+                             else
+                               ThreadSet.mem r tid_set) subst true
+
+
+let subst_to_str (sub:tid_subst_t) : string =
+  "{" ^ (Hashtbl.fold (fun i j str -> str^(tid_to_str j)^"<-"^(tid_to_str i)^";") sub "") ^ "}"
+
+
+let new_tid_subst (info:(tid * tid) list) : tid_subst_t =
+  let subs = Hashtbl.create (List.length info) in
+  List.iter (fun (x,y) ->
+    Hashtbl.add subs x y
+  ) info;
+  subs
+
+
+let new_comb_subst (th_domain:ThreadSet.t)
+                   (th_range:ThreadSet.t) : tid_subst_t list =
+  let domain_list = ThreadSet.elements th_domain in
+  let range_list = ThreadSet.elements th_range in
+  let comb_th_domain = choose_range domain_list 1 (List.length domain_list)
+  in
+    List.flatten $
+      List.map (fun xs ->
+        let ln = List.length xs in
+        let assign_comb = comb range_list ln in
+        List.map (fun ys ->
+          new_tid_subst (List.combine xs ys)
+        ) assign_comb
+      ) comb_th_domain

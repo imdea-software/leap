@@ -41,13 +41,6 @@ let time_to_str (t:float) : string =
 (* Conversion of reports to string *)
 
 
-let report_generated_vcs_to_str (vcs:Tactics.vc_info list) (n:int) : string =
-  "+- Verification condition generation ---------------------------------\n" ^
-  "| Generated vcs:               " ^(string_of_int (List.length vcs))^ "\n" ^
-  "| Generated proof obligations: " ^(string_of_int n)^ "\n" ^
-  "+- Verification condition generation ---------------------------------\n"
-
-
 let report_to_str (sys:System.t) : string =
   let sys_str = System.to_str sys
   in
@@ -135,16 +128,6 @@ let report_details_to_file_to_str (prog_name:string)
                     ) times in
   sprintf "%s :: %s :: %i :: line %i[%i] :: support %s :: %s :: %s"
     prog_name inv_name num trans vers supp_str sat_str times_str
-
-
-let report_vc_header_to_str (vc_id:int) (vc:Tactics.vc_info) (num_oblig:int) : string =
-  "==  VC " ^(string_of_int vc_id)^
-  "  =================================================================\n" ^
-  (Tactics.vc_info_to_str_simple vc) ^
-  "------------------------------------------------------------------------------\n" ^
-  " VC # "^ string_of_int vc_id^
-  " requires the verification of " ^string_of_int num_oblig^ " proof obligations\n" ^
-  "------------------------------------------------------------------------------\n"
 
 
 let call_tbl_to_str (tbl:DP.call_tbl_t) : string =
@@ -253,10 +236,6 @@ let report_obligation_tail_to_str (st:Result.status_t) (time:float) : string =
 (* Reporting to standard output *)
 
 
-let report_generated_vcs (vcs:Tactics.vc_info list) (n:int) : unit =
-  print_newline(); print_string (report_generated_vcs_to_str vcs n)
-
-
 let report_system (sys:System.t) : unit =
   print_newline(); print_string (report_to_str sys)
 
@@ -320,10 +299,6 @@ let report_details_to_file (out_folder:string)
         raise(Invalid_folder out_folder)
       end
 
-
-let report_vc_header (vc_id:int) (vc:Tactics.vc_info) (num_oblig:int) : unit =
-  print_newline(); print_string (report_vc_header_to_str vc_id vc num_oblig)
-
   
 let report_vc_tail (vc_id:int)
                    (vc_res:Result.info_t)
@@ -345,20 +320,35 @@ let report_summary (oblig_num:int)
 module type S =
   sig
     type formula
+    type vc_info
 
     type inv_t = System.var_table_t * Tag.f_tag option * formula
 
+    val report_generated_vcs : vc_info list -> int -> unit
     val report_inv_cand : formula -> unit
     val report_sup_inv : inv_t list -> unit
     val report_gen_sup_inv : formula -> unit
     val report_obligation_header : int -> formula -> unit
+    val report_vc_header : int -> vc_info -> int -> unit
   end
 
 module Make (E:GenericExpression.S) =
   struct
+    module ETacs = Tactics.Make(E)
+
     type formula = E.formula
 
+    type vc_info = ETacs.vc_info
+
     type inv_t = System.var_table_t * Tag.f_tag option * formula
+
+
+    let report_generated_vcs_to_str (vcs:vc_info list) (n:int) : string =
+      "+- Verification condition generation ---------------------------------\n" ^
+      "| Generated vcs:               " ^(string_of_int (List.length vcs))^ "\n" ^
+      "| Generated proof obligations: " ^(string_of_int n)^ "\n" ^
+      "+- Verification condition generation ---------------------------------\n"
+
 
     let report_inv_cand_to_str (inv:formula) : string =
       let inv_str = E.to_str inv in
@@ -402,6 +392,19 @@ module Make (E:GenericExpression.S) =
       (E.to_str oblig) ^ "\n"
 
 
+    let report_vc_header_to_str (vc_id:int) (vc:vc_info) (num_oblig:int) : string =
+      "==  VC " ^(string_of_int vc_id)^
+      "  =================================================================\n" ^
+      (ETacs.vc_info_to_str_simple vc) ^
+      "------------------------------------------------------------------------------\n" ^
+      " VC # "^ string_of_int vc_id^
+      " requires the verification of " ^string_of_int num_oblig^ " proof obligations\n" ^
+      "------------------------------------------------------------------------------\n"
+
+
+    let report_generated_vcs (vcs:vc_info list) (n:int) : unit =
+      print_newline(); print_string (report_generated_vcs_to_str vcs n)
+
 
     let report_inv_cand (inv:formula) : unit =
       print_newline(); print_string (report_inv_cand_to_str inv)
@@ -417,6 +420,10 @@ module Make (E:GenericExpression.S) =
 
     let report_obligation_header (ob_id:int) (oblig:formula) : unit =
       print_newline(); print_string (report_obligation_header_to_str ob_id oblig)
+
+
+    let report_vc_header (vc_id:int) (vc:vc_info) (num_oblig:int) : unit =
+      print_newline(); print_string (report_vc_header_to_str vc_id vc num_oblig)
 
   end
 

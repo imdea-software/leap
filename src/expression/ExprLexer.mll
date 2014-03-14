@@ -21,9 +21,7 @@ rule norm = parse
   | "Goal"          { Global.last "Goal"          ; GOAL }
   | "Tid"           { Global.last "Tid"           ; TRANSITION_TID }
   | "Line"          { Global.last "Line"          ; LINE }
-
-
-
+  | "Theory"        { Global.last "Theory"        ; THEORY }
   | "Support"       { Global.last "Support"       ; SUPPORT }
   | "Diagram"       { Global.last "Diagram"       ; DIAGRAM }
   | "begin"         { Global.last "begin"         ; BEGIN }
