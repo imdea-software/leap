@@ -77,10 +77,6 @@ module ThreadSet = Set.Make(
     type t = tid
   end )
 
-(*include (DefaultExpression.Make (ThreadSet) (V)) *)
-
-
-
 
 (**********  Folding  ***************)
 
@@ -993,20 +989,6 @@ let is_pc_var (v:V.t) : bool =
   String.sub (V.id v) 0 3 = "pc_"
 
 
-let to_plain_shared_or_local (ops:V.t EE.fol_ops_t)
-                             (th:V.shared_or_local) : V.shared_or_local =
-  match th with
-  | V.Shared  -> V.Shared
-  | V.Local t -> V.Local (ops.EE.fol_var t)
-
-
-let rec to_plain_var (v:V.t) : V.t =
-  let plain_th = to_plain_shared_or_local
-                    {EE.fol_pc=true; EE.fol_var=to_plain_var;} (V.parameter v) in
-  let new_id = V.to_simple_str (V.set_param v plain_th) in
-  build_var new_id (V.sort v) (V.is_primed v) V.Shared V.GlobalScope
-
-
 let prime_modified (rho:formula) (phi:formula) : formula =
   let base_f = fun v -> if V.is_primed v then
                           V.VarSet.singleton v
@@ -1028,6 +1010,13 @@ let prime_modified (rho:formula) (phi:formula) : formula =
                  V.VarSet.add (V.unprime v) set
                ) (analyze_formula rho) V.VarSet.empty in
     F.formula_trans prime_fs (true, Some p_set) phi
+
+
+let to_plain_shared_or_local (ops:V.t EE.fol_ops_t)
+                             (th:V.shared_or_local) : V.shared_or_local =
+  match th with
+  | V.Shared  -> V.Shared
+  | V.Local t -> V.Local (ops.EE.fol_var t)
 
 
 let plain_map =
@@ -1078,7 +1067,7 @@ let term_sort (t:term) : sort =
   | IntT _     -> Int
   | FuntermT _ -> raise(No_sort_for_term (term_to_str t))
 
-(**** FIX: Take this function out, to DefaultExpression *)
+
 let rec to_plain_formula (ops:V.t EE.fol_ops_t) (phi:formula) : formula =
   match phi with
   | F.True           -> F.True
@@ -1149,6 +1138,12 @@ let substTid_fs =
 
 (**********************  Generic Expression Functions  ********************)
 
+include DefaultExpression.Make(V)
+        (struct
+          let build_var id s pr sh sc = build_var id s pr sh sc ()
+          let plain_formula = F.formula_trans plain_fs
+         end)
+
 let cast (phi:Expression.formula) : formula =
   formula_to_int_formula phi
 
@@ -1182,21 +1177,11 @@ let canonical (a:atom) : atom =
   canonical_map.atom_f () a
 
 (*module Ex = ExtendedExpression.Make (struct type atom_t = atom end) *)
+(*include ExtendedExpression *)
 
 
-let plain = ExtendedExpression.plain
+(*let plain = ExtendedExpression.plain *)
 (*
-let plain (mode:EE.fol_mode_t) (phi:formula) : formula =
-  let rec to_plain_var (v:V.t) : V.t =
-    let plain_th = to_plain_shared_or_local
-                      {EE.fol_pc=true; EE.fol_var=to_plain_var;} (V.parameter v) in
-    let new_id = V.to_simple_str (V.set_param v plain_th) in
-    build_var new_id (V.sort v) (V.is_primed v) V.Shared V.GlobalScope in
-  let ops = match mode with
-            | EE.PCOnly -> {EE.fol_pc=true; EE.fol_var=id;}
-            | EE.VarsOnly -> {EE.fol_pc=false; EE.fol_var=to_plain_var;}
-            | EE.PCVars -> {EE.fol_pc=true; EE.fol_var=to_plain_var;} in
-  F.formula_trans plain_fs ops phi
 *)
 
 let defInfo () : unit = ()

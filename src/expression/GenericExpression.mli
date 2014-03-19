@@ -1,7 +1,3 @@
-module type ExtendedExpressionInfo =
-  sig
-    type atom
-  end
 
 module type S =
   sig

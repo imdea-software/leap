@@ -10,11 +10,6 @@ type 'var fol_ops_t =
     fol_var : 'var -> 'var;
   }
 
-module type ExtendedExpressionInfo =
-  sig
-    type atom_t
-  end
-
 module type S =
   sig
     type atom
@@ -23,4 +18,6 @@ module type S =
     val plain : fol_mode_t -> formula -> formula
   end
 
+(*
 val plain : fol_mode_t -> 'atom Formula.formula -> 'atom Formula.formula
+*)
