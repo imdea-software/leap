@@ -59,11 +59,11 @@ and array_to_funterm (x:E.arrays) : NE.fun_term =
   | E.ArrayUp (a,th,E.Term (E.IntT i)) ->
       NE.FunUpd (array_to_funterm a,
       tid_to_int_tid th,
-      NE.IntT (integer_to_int_integer i))
+      NE.IntV (integer_to_int_integer i))
   | E.ArrayUp (a,th,E.Term (E.SetIntT i)) ->
       NE.FunUpd (array_to_funterm a,
       tid_to_int_tid th,
-      NE.SetT (set_to_int_set i))
+      NE.SetV (set_to_int_set i))
   | _ -> raise(NotAnIntExpression(E.arrays_to_str x))
 
 
@@ -80,6 +80,7 @@ and set_to_int_set (s:E.setint) : NE.set =
 
 
 and integer_to_int_integer (t:E.integer) : NE.integer =
+  let totid = tid_to_int_tid in
   let toint = integer_to_int_integer in
   let toset = set_to_int_set in
     match t with
@@ -90,7 +91,7 @@ and integer_to_int_integer (t:E.integer) : NE.integer =
     | E.IntSub(x,y)     -> NE.Sub(toint x,toint y)
     | E.IntMul(x,y)     -> NE.Mul(toint x,toint y)
     | E.IntDiv(x,y)     -> NE.Div(toint x,toint y)
-    | E.IntArrayRd(a,i) -> raise(NotAnIntExpression(E.integer_to_str t))
+    | E.IntArrayRd(a,i) -> NE.ArrayRd(a,totid i)
     | E.IntSetMin(s)    -> NE.SetMin (toset s)
     | E.IntSetMax(s)    -> NE.SetMax (toset s)
     | E.CellMax(c)      -> raise(NotAnIntExpression(E.integer_to_str t))
@@ -122,22 +123,20 @@ and atom_to_int_atom (a:E.atom) : NE.atom =
     | E.LessTid(x,y)  -> NE.LessTid(totid x, totid y)
     | E.LessElem _    -> raise(NotAnIntExpression(E.atom_to_str a))
     | E.GreaterElem _ -> raise(NotAnIntExpression(E.atom_to_str a))
-    | E.Eq(E.TidT x,E.TidT y)      -> NE.Eq(NE.TidT (totid x),
-                                            NE.TidT (totid y))
-    | E.InEq(E.TidT x,E.TidT y)    -> NE.Eq(NE.TidT (totid x),
-                                            NE.TidT (totid y))
-    | E.Eq(E.ArrayT x, E.ArrayT y)   -> NE.Eq (NE.FuntermT (array_to_funterm x),
-                                               NE.FuntermT (array_to_funterm y))
-    | E.InEq(E.ArrayT x, E.ArrayT y) -> NE.InEq (NE.FuntermT (array_to_funterm x),
-                                                 NE.FuntermT (array_to_funterm y))
-    | E.Eq(E.IntT x, E.IntT y)       -> NE.Eq(NE.IntT (toint x),
-                                              NE.IntT (toint y))
-    | E.Eq(E.SetIntT x, E.SetIntT y) -> NE.Eq(NE.SetT (toset x),
-                                              NE.SetT (toset y))
-    | E.InEq(E.IntT x, E.IntT y)     -> NE.InEq(NE.IntT(toint x),
-                                                NE.IntT(toint y))
-    | E.InEq(E.SetIntT x, E.SetIntT y) -> NE.InEq(NE.SetT(toset x),
-                                                  NE.SetT(toset y))
+    | E.Eq(E.TidT x,E.TidT y)      -> NE.TidEq(totid x, totid y)
+    | E.InEq(E.TidT x,E.TidT y)    -> NE.TidInEq(totid x, totid y)
+    | E.Eq(E.ArrayT x, E.ArrayT y)   -> NE.FunEq (array_to_funterm x,
+                                                        array_to_funterm y)
+    | E.InEq(E.ArrayT x, E.ArrayT y) -> NE.FunInEq (array_to_funterm x,
+                                                          array_to_funterm y)
+    | E.Eq(E.IntT x, E.IntT y)       -> NE.Eq(NE.IntV (toint x),
+                                                    NE.IntV (toint y))
+    | E.Eq(E.SetIntT x, E.SetIntT y) -> NE.Eq(NE.SetV (toset x),
+                                                    NE.SetV (toset y))
+    | E.InEq(E.IntT x, E.IntT y)     -> NE.InEq(NE.IntV(toint x),
+                                                      NE.IntV(toint y))
+    | E.InEq(E.SetIntT x, E.SetIntT y) -> NE.InEq(NE.SetV(toset x),
+                                                      NE.SetV(toset y))
     | E.Eq (_,_)   -> raise(NotAnIntExpression(E.atom_to_str a))
     | E.InEq (_,_) -> raise(NotAnIntExpression(E.atom_to_str a))
     | E.BoolVar _      -> raise(NotAnIntExpression(E.atom_to_str a))
@@ -221,22 +220,22 @@ and atom_to_expr_atom (a:NE.atom) : E.atom =
     | NE.LessEq(x,y)         -> E.LessEq      (from_int x, from_int y)
     | NE.GreaterEq(x,y)      -> E.GreaterEq   (from_int x, from_int y)
     | NE.LessTid(x,y)        -> E.LessTid     (from_tid x, from_tid y)
-    | NE.Eq(NE.IntT x,NE.IntT y) -> E.Eq      (E.IntT(from_int x),
+    | NE.Eq(NE.IntV x,NE.IntV y) -> E.Eq      (E.IntT(from_int x),
                                                E.IntT(from_int y))
-    | NE.Eq(NE.SetT x,NE.SetT y) -> E.Eq      (E.SetIntT(from_set x),
+    | NE.Eq(NE.SetV x,NE.SetV y) -> E.Eq      (E.SetIntT(from_set x),
                                                E.SetIntT(from_set y))
-    | NE.InEq(NE.IntT x,NE.IntT y) -> E.InEq  (E.IntT(from_int x),
+    | NE.InEq(NE.IntV x,NE.IntV y) -> E.InEq  (E.IntT(from_int x),
                                                E.IntT(from_int y))
-    | NE.InEq(NE.SetT x,NE.SetT y) -> E.InEq  (E.SetIntT(from_set x),
+    | NE.InEq(NE.SetV x,NE.SetV y) -> E.InEq  (E.SetIntT(from_set x),
                                                E.SetIntT(from_set y))
     | NE.In(i,s)             -> E.InInt       (from_int i, from_set s)
     | NE.Subset(x,y)         -> E.SubsetEqInt (from_set x, from_set y)
-    | NE.Eq(NE.TidT x,NE.TidT y) -> E.Eq (E.TidT (from_tid x), E.TidT (from_tid y))
-    | NE.InEq(NE.TidT x, NE.TidT y) -> E.InEq (E.TidT (from_tid x), E.TidT (from_tid y))
-    | NE.Eq(NE.FuntermT x, NE.FuntermT y) -> E.Eq (E.ArrayT (funterm_to_array x),
-                                                   E.ArrayT (funterm_to_array y))
-    | NE.InEq(NE.FuntermT x, NE.FuntermT y) -> E.InEq (E.ArrayT (funterm_to_array x),
-                                                       E.ArrayT (funterm_to_array y))
+    | NE.TidEq(x,y)          -> E.Eq          (E.TidT (from_tid x), E.TidT (from_tid y))
+    | NE.TidInEq(x,y)        -> E.InEq        (E.TidT (from_tid x), E.TidT (from_tid y))
+    | NE.FunEq(x,y)          -> E.Eq          (E.ArrayT (funterm_to_array x),
+                                               E.ArrayT (funterm_to_array y))
+    | NE.FunInEq(x,y)        -> E.InEq        (E.ArrayT (funterm_to_array x),
+                                               E.ArrayT (funterm_to_array y))
     | NE.Eq(_,_)             -> raise(MalformedExpression(NE.atom_to_str a))
     | NE.InEq(_,_)           -> raise(MalformedExpression(NE.atom_to_str a))
     | NE.PC(i,th,pr)         -> E.PC (i, shared_to_expr_shared th, pr)
@@ -256,11 +255,10 @@ and funterm_to_array (x:NE.fun_term) : E.arrays =
   let from_set  = set_to_expr_set in
   match x with
     NE.FunVar v                -> E.VarArray (variable_to_expr_variable v)
-  | NE.FunUpd (f,th,NE.IntT i) -> E.ArrayUp (funterm_to_array f, from_tid th,
+  | NE.FunUpd (f,th,NE.IntV i) -> E.ArrayUp (funterm_to_array f, from_tid th,
                                               E.Term (E.IntT (from_int i)))
-  | NE.FunUpd (f,th,NE.SetT s) -> E.ArrayUp (funterm_to_array f, from_tid th,
+  | NE.FunUpd (f,th,NE.SetV s) -> E.ArrayUp (funterm_to_array f, from_tid th,
                                               E.Term (E.SetIntT (from_set s)))
-  | NE.FunUpd (_,_,_) -> raise(MalformedExpression(NE.funterm_to_str x))
 
 
 and set_to_expr_set (s:NE.set) : E.setint =
@@ -275,6 +273,7 @@ and set_to_expr_set (s:NE.set) : E.setint =
     
 
 and integer_to_expr_integer (t:NE.integer) : E.integer =
+  let from_tid = tid_to_expr_tid in
   let from_int = integer_to_expr_integer in
   let from_set = set_to_expr_set in
   match t with
@@ -285,5 +284,6 @@ and integer_to_expr_integer (t:NE.integer) : E.integer =
     | NE.Sub(x,y)     -> E.IntSub(from_int x,from_int y)
     | NE.Mul(x,y)     -> E.IntMul(from_int x,from_int y)
     | NE.Div(x,y)     -> E.IntDiv(from_int x,from_int y)
+    | NE.ArrayRd(a,i) -> E.IntArrayRd(a,from_tid i)
     | NE.SetMin(s)    -> E.IntSetMin(from_set s)
     | NE.SetMax(s)    -> E.IntSetMax(from_set s)

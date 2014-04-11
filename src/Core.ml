@@ -2,7 +2,7 @@ open LeapLib
 open Printf
 
 
-(*module E = Expression *)
+module E = Expression
 module PE = PosExpression
 
 
@@ -62,9 +62,7 @@ module type S =
 
     type solved_proof_obligation_t
 
-    type formula
-
-    val decl_tag : Tag.f_tag option -> formula -> unit
+    val decl_tag : Tag.f_tag option -> Expression.formula -> unit
 
     val gen_from_graph : IGraph.t -> proof_obligation_t list
 
@@ -72,8 +70,7 @@ module type S =
 
   end
 
-module Make (E:GenericExpression.S)
-            (Opt:module type of GenOptions) : S =
+module Make (Opt:module type of GenOptions) : S =
   struct
 
     module Eparser = ExprParser
@@ -81,7 +78,6 @@ module Make (E:GenericExpression.S)
 
     exception No_invariant_folder
 
-    type formula = E.formula
 
     type proof_info_t =
       {
@@ -105,37 +101,29 @@ module Make (E:GenericExpression.S)
       }
 
 
-    module IntSet = Set.Make(
-      struct
-        let compare = Pervasives.compare
-        type t = int
-      end )
-
 
     (************************************************)
     (*             TAGGING INFORMATION              *)
     (************************************************)
 
-    module ETag = Tag.Make (E)
-
-    let tags : ETag.tag_table = ETag.tag_table_new
+    let tags : Tag.tag_table = Tag.tag_table_new
 
 
-    let tags_num () : int = ETag.tag_table_size tags
+    let tags_num () : int = Tag.tag_table_size tags
 
 
     let decl_tag (t : Tag.f_tag option) (phi : E.formula) : unit =
       match t with
       | None -> ()
-      | Some tag -> if ETag.tag_table_mem tags tag
+      | Some tag -> if Tag.tag_table_mem tags tag
           then
             raise(Tag.Duplicated_tag(Tag.tag_id tag))
-          else ETag.tag_table_add tags tag phi ETag.new_info
+          else Tag.tag_table_add tags tag phi Tag.new_info
 
 
     let read_tag (t : Tag.f_tag) : E.formula =
-      if ETag.tag_table_mem tags t then
-        ETag.tag_table_get_formula tags t
+      if Tag.tag_table_mem tags t then
+        Tag.tag_table_get_formula tags t
       else
         raise(Tag.Undefined_tag(Tag.tag_id t))
 
@@ -158,11 +146,11 @@ module Make (E:GenericExpression.S)
 
 
     let is_def_tag (t:Tag.f_tag) : bool =
-      ETag.tag_table_mem tags t
+      Tag.tag_table_mem tags t
 
 
     let clear_tags () : unit =
-      ETag.tag_table_clear tags
+      Tag.tag_table_clear tags
 
 
     let load_tags_from_folder (folder:string) : unit =
@@ -173,9 +161,8 @@ module Make (E:GenericExpression.S)
       List.iter (fun i ->
         let (phiVars, tag, phi_decls) = Parser.open_and_parse i
                                           (Eparser.invariant Elexer.norm) in
-        let phi_decls' = List.map (fun (tag,phi) -> (tag, E.cast phi)) phi_decls in
-        let phi = Formula.conj_list (List.map snd phi_decls') in
-        List.iter (fun (subtag,subphi) -> decl_tag subtag subphi) phi_decls';
+        let phi = Formula.conj_list (List.map snd phi_decls) in
+        List.iter (fun (subtag,subphi) -> decl_tag subtag subphi) phi_decls;
         decl_tag tag phi
       ) inv_files
 
@@ -185,27 +172,8 @@ module Make (E:GenericExpression.S)
     (********************)
 
     let (requires_theta, lines_to_consider) =
-      let focus_set = match Opt.focus with
-                      | [] -> begin
-                                let universe = ref IntSet.empty in
-                                for i = 0 to (System.get_trans_num Opt.sys) do
-                                  universe := IntSet.add i (!universe)
-                                done;
-                                !universe
-                              end
-                      | _ -> List.fold_left (fun set i ->
-                               IntSet.add i set
-                             ) IntSet.empty Opt.focus in
-      let ignore_set = List.fold_left (fun set i ->
-                        IntSet.add i set
-                      ) IntSet.empty Opt.ignore in
-      let final_set = IntSet.diff focus_set ignore_set in
-      if IntSet.mem 0 final_set then
-        (true, IntSet.elements (IntSet.remove 0 final_set))
-      else
-        (false, IntSet.elements final_set)
-
-
+            E.gen_focus_list (System.get_trans_num Opt.sys)
+                             Opt.focus Opt.ignore
 
     let posSolver  : (module PosSolver.S) = PosSolver.choose Opt.pSolver
 
@@ -225,10 +193,8 @@ module Make (E:GenericExpression.S)
 
     let _ = Tactics.set_fixed_voc
               (List.fold_left (fun set v ->
-                 E.ThreadSet.add (E.tid_var v) set
-               ) E.ThreadSet.empty
-                  (List.map E.cast_var
-                      (System.get_vars_of_sort Opt.sys Expression.Tid)))
+                 E.ThreadSet.add (E.VarTh v) set
+               ) E.ThreadSet.empty (System.get_vars_of_sort Opt.sys E.Tid))
 (*
               (List.map (fun v -> E.VarTh v)
                 (System.get_vars_of_sort Opt.sys E.Tid))
@@ -306,8 +272,7 @@ module Make (E:GenericExpression.S)
 
 
     let filter_me_tid (ts:E.ThreadSet.t) : E.ThreadSet.t =
-      E.ThreadSet.remove (E.tid_var
-        (E.V.build_global System.me_tid E.tid_sort (E.defInfo()))) ts
+      E.ThreadSet.remove System.me_tid_th ts
 
 
     (**********************)
@@ -350,9 +315,9 @@ module Make (E:GenericExpression.S)
       let init_pos = if E.ThreadSet.is_empty voc then
                        [E.pc_form 1 E.V.Shared true]
                      else
-                       E.ThreadSet.fold (fun t xs ->
-                         E.pc_form 1 (E.V.Local (E.voc_to_var t)) true :: xs
-                       ) voc [] in
+                       E.V.VarSet.fold (fun v xs ->
+                         E.pc_form 1 (E.V.Local v) true :: xs
+                       ) (E.voc_to_vars voc) [] in
         Tactics.create_vc_info [] Formula.True
                   (Formula.conj_list (theta::init_pos)) inv voc E.NoTid 0
 
@@ -369,8 +334,7 @@ module Make (E:GenericExpression.S)
       List.fold_left (fun vcs line ->
         let self_conseq_supp  = load_support line Premise.SelfConseq in
         let other_conseq_supp = load_support line Premise.OthersConseq in
-        let fresh_k = E.ThreadSet.choose
-                        (E.gen_fresh_tids (E.voc (Formula.conj_list (inv::supp@other_conseq_supp))) 1) in
+        let fresh_k = E.gen_fresh_tid (E.voc (Formula.conj_list (inv::supp@other_conseq_supp))) in
 
         let self_conseq_vcs = E.ThreadSet.fold (fun i vcs ->
                                 (gen_vcs (inv::self_conseq_supp) inv line Premise.SelfConseq i) @ vcs
@@ -445,7 +409,7 @@ module Make (E:GenericExpression.S)
                                 : Tactics.vc_info list =
       let inv_voc = E.voc inv in
       let trans_tid = if E.ThreadSet.is_empty inv_voc then
-                        E.ThreadSet.choose (E.gen_fresh_tids E.ThreadSet.empty 1)
+                        E.gen_fresh_tid E.ThreadSet.empty
                       else
                         try
                           E.ThreadSet.choose inv_voc

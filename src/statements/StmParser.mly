@@ -2050,6 +2050,7 @@ statement:
                       Stm.opt_pos         = [];
                       Stm.called_from_pos = [];
                       Stm.return_pos      = []; } in
+      Printf.printf "IF POS: %i\n; NEXT: %i\n; ELSE: %i\n" n next_p else_p;
       let st = Stm.StIf (cond, Stm.StSeq then_st, else_st, g_code, Some st_info) in
 
       Hashtbl.replace pos_st n (!current_proc, st);
@@ -2163,7 +2164,7 @@ statement:
       let g_code = $6 in
       let st_info = {Stm.pos              = !pos;
                      Stm.next_pos         = 0;
-                     Stm.else_pos         = 0;
+                     Stm.else_pos         = !pos+1;
                      Stm.call_pos         = None;
                      Stm.opt_pos          = [];
                      Stm.called_from_pos  = [];

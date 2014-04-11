@@ -144,27 +144,6 @@ let choose_range (xs:'a list) (n:int) (m:int) : 'a list list =
   List.flatten $ List.map (choose xs) (rangeList n m)
 
 
-let gen_fresh (original:'set)
-              (empty:'set)
-              (add:'a -> 'set -> 'set)
-              (mem:'a -> 'set -> bool)
-              (gen:int -> 'a)
-              (num:int) : 'set =
-  let gen_one (set:'set) : 'a =
-    let rec find n =
-      let cand = gen n in
-        if mem cand set then find (n+1) else cand
-      in
-        find 0 in
-  let rec gen_n (n:int) (set:'set) : 'set =
-    match n with
-    | 0 -> empty
-    | m -> let fresh = gen_one set in
-             add fresh (gen_n (m-1) (add fresh set)) in
-  gen_n num original
-
-
-
 let print_list (print_f:'a -> string) (xs:'a list) : string =
   match xs with
     []    -> ""

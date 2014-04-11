@@ -11,8 +11,6 @@ module Gparser = IGraphParser
 module Glexer = IGraphLexer
 module Symtbl = ExprSymTable
 
-exception Unsupported_expression of DP.t
-
 (****************)
 (* main         *)
 (****************)
@@ -27,13 +25,14 @@ let _ =
     let sys, undefTids = Parser.parse ch (StmParser.system StmLexer.norm) in
     LeapArgs.close_input ();
 
-    LeapArgs.vcgenFlag := (!LeapArgs.binvSys     ||
-                           !LeapArgs.pinvSys     ||
-                           !LeapArgs.pinvPlusSys ||
-                           !LeapArgs.spinvSys    ||
-                           !LeapArgs.useGraph);
-    if !LeapArgs.vcgenFlag && (!LeapArgs.invCandidate = "") 
-       && (!LeapArgs.iGraphFile = "") then begin
+    LeapArgs.vcgenFlag := (!LeapArgs.binvSys       ||
+                           !LeapArgs.pinvSys       ||
+                           !LeapArgs.pinvPlusSys   ||
+                           !LeapArgs.spinvSys      ||
+                           !LeapArgs.useGraph      ||
+                           (!LeapArgs.pvdFile <> ""));
+    if !LeapArgs.vcgenFlag && (!LeapArgs.invCandidate = "") && 
+       (!LeapArgs.iGraphFile = "" && (!LeapArgs.pvdFile = "")) then begin
       Interface.Err.msg "VCGen requested without invariant candidate"
         "Generation of verification conditions requested by user, but \
          no invariant candidate has been provided through the -i \
@@ -101,22 +100,12 @@ let _ =
                          end in
 
     (* Instantiate the core *)
-    let e = match !LeapArgs.dpType with
-            | DP.Num -> (module NumExpression : GenericExpression.S)
-            | DP.Tll -> (module TllExpression : GenericExpression.S)
-            | DP.Tsl -> (module TSLExpression : GenericExpression.S)
-            | DP.Tslk k -> (module TSLKExpression.Make
-                              (struct let level = k end) : GenericExpression.S)
-            | _ -> raise(Unsupported_expression !LeapArgs.dpType) in
-            
-    let module E = (val e : GenericExpression.S) in
-
-    let module LeapCore = Core.Make (E)(LeapOpt) in
-    let module ReportE = Report.Make (E) in
+    let module LeapCore = Core.Make(LeapOpt) in
 
     (* Benchmark timer *)
     let timer = new LeapLib.timer in
     timer#start;
+
 
     if (!LeapArgs.vcgenFlag) then begin
 
@@ -126,15 +115,15 @@ let _ =
                                         !LeapArgs.invCandidate
                                         (Eparser.invariant Elexer.norm) in
         (* Construct the global invariant as the conjuntion of all formulas *)
-        let inv = E.cast (Formula.conj_list (List.map snd inv_decls)) in
+        let inv = Formula.conj_list (List.map snd inv_decls) in
 
         (* Check whether undef tids are included in invVars *)
         let _ = System.undeftids_in_formula_decl undefTids invVars in
         (* Declare the tag of the global formula as the big conjunction *)
         let _ = LeapCore.decl_tag tag inv in
         (* Declare the tag of each subformula in the parsed file *)
-        let _ = List.iter (fun (tag, phi) -> LeapCore.decl_tag tag (E.cast phi)) inv_decls in
-        let _ = ReportE.report_inv_cand inv in
+        let _ = List.iter (fun (tag, phi) -> LeapCore.decl_tag tag phi) inv_decls in
+        let _ = Report.report_inv_cand inv in
 (*        let sys = System.add_global_vars sys invVars in *)
 
         (* Use B-INV *)
@@ -208,6 +197,12 @@ let _ =
       (ignore graph_solution_list)
     end;
 
+    (* PVD Parsings *)
+    if !LeapArgs.pvdFile <> "" then begin
+      let pvd = Parser.open_and_parse !LeapArgs.pvdFile (Eparser.pvd Elexer.norm) in
+      print_endline "PVD";
+      print_endline (Diagrams.to_str pvd)
+    end;
 
 
     timer#stop;
@@ -326,7 +321,7 @@ let _ = LeapDebug.flush()
         (* Check whether undef tids are included in invVars *)
         let _ = System.undeftids_in_formula_decl undefTids invVars in
         let _ = VCG.decl_tag tag inv in
-        let _ = ReportE.report_inv_cand inv in
+        let _ = Report.report_inv_cand inv in
         let sys = System.add_global_vars sys invVars in
         if !LeapArgs.binvSys then begin
           let conds = 
@@ -360,7 +355,7 @@ let _ = LeapDebug.flush()
             (fun file -> Parser.open_and_parse file
               (Eparser.invariant Elexer.norm))
             supInv_file_list in
-          ReportE.report_sup_inv supInv_list;
+          Report.report_sup_inv supInv_list;
           let sup_form_list = List.map 
             (fun (_,tag,phi) -> ignore(VCG.decl_tag tag phi); phi)
             supInv_list in

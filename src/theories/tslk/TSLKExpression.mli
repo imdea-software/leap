@@ -124,7 +124,29 @@ module type S =
     and literal = atom Formula.literal
     and conjunctive_formula = atom Formula.conjunctive_formula
     and disjunctive_formula = atom Formula.disjunctive_formula
-(*    and formula = atom Formula.formula *)
+    and formula = atom Formula.formula
+(*
+    and literal =
+        Atom              of atom
+      | NegAtom           of atom
+    and conjunctive_formula =
+        FalseConj
+      | TrueConj
+      | Conj              of literal list
+    and disjunctive_formula =
+      | FalseDisj
+      | TrueDisj
+      | Disj              of literal list
+    and formula =
+        Literal           of literal
+      | True
+      | False
+      | And               of formula * formula
+      | Or                of formula * formula
+      | Not               of formula
+      | Implies           of formula * formula
+      | Iff               of formula * formula
+*)
 
 
     type special_op_t =
@@ -140,25 +162,12 @@ module type S =
 
 
     exception WrongType of term
-    exception Not_tid_var of tid
-    exception UnsupportedTSLKExpr of string
-    exception UnsupportedSort of string
 
     (* CALCULATE SET OF VARS *)
 
     module TermSet : Set.S with type elt = term
     module AtomSet : Set.S with type elt = atom
     module ThreadSet : Set.S with type elt = tid
-
-
-    include GenericExpression.S
-      with type sort := sort
-      with type v_info := var_info_t
-      with type tid := tid
-      with type atom := atom
-      with module V := V
-      with module ThreadSet := ThreadSet
-
 
     (* Expression height *)
     val k : int
@@ -189,6 +198,7 @@ module type S =
     val remove_nonparam_local_vars : V.VarSet.t -> V.VarSet.t
     val add_prevstate_local_vars : V.VarSet.t -> V.VarSet.t
 
+    val voc_term : term -> ThreadSet.t
     val voc : formula -> ThreadSet.t
     val conjformula_voc : conjunctive_formula -> ThreadSet.t
     val unprimed_voc : formula -> ThreadSet.t

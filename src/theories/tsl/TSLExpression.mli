@@ -61,6 +61,7 @@ and addr =
   | Null
   | ArrAt            of cell * integer
   | AddrArrRd         of addrarr * integer
+(*  | Malloc of elem * addr * tid *)
 and cell =
     VarCell           of V.t
   | Error
@@ -135,7 +136,25 @@ and atom =
 and literal = atom Formula.literal
 and conjunctive_formula = atom Formula.conjunctive_formula
 and disjunctive_formula = atom Formula.disjunctive_formula
-(*and formula = atom Formula.formula *)
+and formula = atom Formula.formula
+(*
+and literal =
+    Atom              of atom
+  | NegAtom           of atom
+and conjunctive_formula =
+    FalseConj
+  | TrueConj
+  | Conj              of literal list
+and formula =
+    Literal           of literal
+  | True
+  | False
+  | And               of formula * formula
+  | Or                of formula * formula
+  | Not               of formula
+  | Implies           of formula * formula
+  | Iff               of formula * formula
+*)
 
 
 type special_op_t =
@@ -151,23 +170,11 @@ type special_op_t =
 
 
 exception WrongType of term
-exception UnsupportedSort of string
-exception UnsupportedTslExpr of string
 
 (* CALCULATE SET OF VARS *)
 module TermSet : Set.S with type elt = term
 module AtomSet : Set.S with type elt = atom
 module ThreadSet : Set.S with type elt = tid
-
-
-include GenericExpression.S
-  with type sort := sort
-  with type v_info := unit
-  with type tid := tid
-  with type atom := atom
-  with module V := V
-  with module ThreadSet := ThreadSet
-
 
 val build_var : ?fresh:bool ->
                 V.id ->
@@ -200,13 +207,17 @@ val termset                     : formula -> TermSet.t
 val termset_from_conj           : conjunctive_formula -> TermSet.t
 val filter_termset_with_sort    : TermSet.t -> sort -> TermSet.t
 
-(*val voc_term : term -> ThreadSet.t *)
+val voc_term : term -> ThreadSet.t
 val voc : formula -> ThreadSet.t
 val voc_conjunctive_formula : conjunctive_formula -> ThreadSet.t
 val unprimed_voc : formula -> ThreadSet.t
 
 val voc_to_var : tid -> V.t
 
+(*
+val nnf : formula -> formula
+val dnf : formula -> conjunctive_formula list
+*)
 
 
 (* PRETTY_PRINTERS *)

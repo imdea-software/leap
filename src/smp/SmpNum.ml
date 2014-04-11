@@ -22,14 +22,14 @@ let cut_off (f:NE.formula) : int =
     | NE.GreaterEq(i1,i2) -> (cut_off_integer i1);(cut_off_integer i2)
     | NE.In(i,s)          -> (cut_off_integer i)
     | NE.Subset _                              -> incr counter
-    | NE.InEq (NE.SetT _, NE.SetT _) -> incr counter
-    | NE.InEq (NE.FuntermT (NE.FunVar v), _) ->
+    | NE.InEq (NE.SetV _, NE.SetV _) -> incr counter
+    | NE.FunInEq (NE.FunVar v, _)     ->
           if (NE.V.sort v) = NE.Set then incr counter
-    | NE.InEq (NE.FuntermT (NE.FunUpd (_,_,t)),_) ->
+    | NE.FunInEq (NE.FunUpd (_,_,t),_)    ->
           begin
             match t with
-              NE.SetT _ -> incr counter
-            | _         -> ()
+              NE.SetV _ -> incr counter
+            | _              -> ()
           end
     | _                                             -> () in
 

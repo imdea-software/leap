@@ -17,6 +17,7 @@ and integer =
   | Sub           of integer * integer
   | Mul           of integer * integer
   | Div           of integer * integer
+  | ArrayRd       of Expression.arrays * tid
   | SetMin        of set
   | SetMax        of set
 and set =
@@ -27,10 +28,8 @@ and set =
   | Intr          of set * set
   | Diff          of set * set
 and term =
-  | IntT          of integer
-  | SetT          of set
-  | FuntermT      of fun_term
-  | TidT          of tid
+  | IntV          of integer
+  | SetV          of set
 and fun_term =
   | FunVar        of V.t
   | FunUpd        of fun_term * tid * term
@@ -46,6 +45,10 @@ and atom =
   | Subset        of set * set
   | Eq            of eq
   | InEq          of diseq
+  | TidEq         of tid * tid
+  | TidInEq       of tid * tid
+  | FunEq         of fun_term * fun_term
+  | FunInEq       of fun_term * fun_term
   | PC            of int * V.shared_or_local * bool
   | PCUpdate      of int * tid
   | PCRange       of int * int * V.shared_or_local * bool
@@ -53,25 +56,12 @@ and literal = atom Formula.literal
 
 and conjunctive_formula = atom Formula.conjunctive_formula
 
-(*and formula = atom Formula.formula *)
-
-module ThreadSet : Set.S with type elt = tid
-
-include GenericExpression.S
-  with type sort := sort
-  with type v_info := unit
-  with type tid := tid
-  with type atom := atom
-  with module V := V
-  with module ThreadSet := ThreadSet
+and formula = atom Formula.formula
 
 
 exception NotConjunctiveExpr of formula
 
-
-
-
-
+module ThreadSet : Set.S with type elt = tid
 
 val build_var : ?fresh:bool ->
                 V.id ->
@@ -81,11 +71,11 @@ val build_var : ?fresh:bool ->
                 V.procedure_name ->
                 V.t
 
+val is_int_formula : Expression.formula   -> bool
+
 val integer_to_str  : integer  -> string
 val formula_to_str  : formula -> string
 val literal_to_str  : literal -> string
-val funterm_to_str  : fun_term -> string
-val tid_to_str      : tid -> string
 val atom_to_str     : atom -> string
 
 val all_varid             : formula -> V.id list
@@ -105,13 +95,14 @@ val all_local_vars_set    : formula -> V.VarSet.t
 val all_global_vars_without_param : formula -> V.t list
 val all_local_vars_without_param  : formula -> V.t list
 
-val voc : formula -> ThreadSet.t
+val voc : formula -> tid list
 
 
 (* LINEARITY *)
 val has_variable      : integer -> bool
 
 val formula_is_linear : formula -> bool
+val term_is_linear    : integer -> bool
 
 
 val voc_to_var : tid -> V.t

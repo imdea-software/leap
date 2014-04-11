@@ -88,6 +88,7 @@ let unfold_expression (mInfo:malloc_info)
                   [
                     E.eq_cell c_fresh mkcell;
                     E.eq_cell (E.CellAt (E.heap, a_fresh)) E.Error;
+                    E.ineq_addr a_fresh E.Null;
                     E.eq_mem (E.prime_mem E.heap) (E.Update (E.heap, a_fresh, c_fresh))]
     in
       (E.Term (E.AddrT a_fresh), [E.MemT E.heap], [new_f])
@@ -270,6 +271,40 @@ let generic_stm_term_eq (mode:eqGenMode)
     | (E.IntT (E.VarInt v) as i, E.Term (E.IntT (E.HavocLevel))) ->
         let e = E.IntT (E.VarInt(E.build_global_var fresh_int_name E.Int)) in
           eq_generator i th_p (E.Term e)
+    (* Locked *)
+    | (E.CellT (E.VarCell v), E.Term (E.CellT (E.CellLock (d, _)))) ->
+        let (m,e) = eq_generator v' th_p new_e in
+        let cons =
+            F.atom_to_formula (E.Eq (E.TidT (E.CellLockId d), E.TidT E.NoTid)) in
+        (m, F.And (cons,e))
+    (* Unlocked *)
+    | (E.CellT (E.VarCell v), E.Term (E.CellT (E.CellUnlock d))) ->
+        let (m,e) = eq_generator v' th_p new_e in
+        let cons =
+            match th_p with
+            | E.V.Shared -> F.atom_to_formula (E.InEq (E.TidT (E.CellLockId d),
+                                                       E.TidT E.NoTid))
+            | E.V.Local v -> F.atom_to_formula (E.Eq (E.TidT (E.CellLockId d),
+                                                      E.TidT (E.VarTh v))) in
+        (m, F.And (cons,e))
+    (* LockedAt *)
+    | (E.CellT (E.VarCell v), E.Term (E.CellT (E.CellLockAt (d,i,_)))) ->
+        let (m,e) = eq_generator v' th_p new_e in
+        let cons =
+            F.atom_to_formula (E.Eq (E.TidT (E.CellLockIdAt (d,i)), E.TidT E.NoTid)) in
+        (m, F.And (cons,e))
+    (* UnlockedAt *)
+    | (E.CellT (E.VarCell v), E.Term (E.CellT (E.CellUnlockAt (d,i)))) ->
+        let (m,e) = eq_generator v' th_p new_e in
+        let cons =
+            match th_p with
+            | E.V.Shared -> F.atom_to_formula (E.InEq (E.TidT (E.CellLockIdAt (d,i)),
+                                                       E.TidT E.NoTid))
+            | E.V.Local v -> F.atom_to_formula (E.Eq (E.TidT (E.CellLockIdAt (d,i)),
+                                                      E.TidT (E.VarTh v))) in
+        (m, F.And (cons,e))
+
+
     (* Remaining cases *)
     | _ -> eq_generator v' th_p new_e in
   (modif @ aux_modif, F.conj_list (formula::aux_f))

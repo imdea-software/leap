@@ -13,10 +13,6 @@ the script you can configure the options you want Leap to use.
 IMPORTANT: You must configure the path to Leap inside the script before you
            can run it.
 
-IMPORTANT: Currently LEAP is compatible with Yices 1.x. We are working in making
-           LEAP compatible with Yices2. If Yices2 is installed in your system
-           instead of Yices 1.x, the examples on this folder will fail to work
-           properly.
 
 
 The other folders within this folder are:

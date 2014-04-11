@@ -22,7 +22,7 @@ val to_str : t -> string
 
 
 val from_str : string -> t
-(** [from_str s] parses [s] and returns the decision procedure it represents. If
+(** [from_str s] parses [s] and returns the decision procedure it represents. It
     it cannot match any decision procedure, then [NoDP] is returned. *)
 
 

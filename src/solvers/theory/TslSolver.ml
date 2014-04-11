@@ -944,7 +944,6 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) :
         print_endline ("ALPHA_RELEV: " ^ (GenSet.to_str SL.int_to_str alpha_relev));
         print_endline ("NC_R: " ^ (SL.conjunctive_formula_to_str nc_r));
         print_endline ("ALPHA: " ^ (String.concat ";" (List.map (fun xs -> "[" ^ (String.concat ";" (List.map SL.int_to_str xs)) ^ "]") alpha)));
-        print_endline ("ALPHA_R: " ^ (String.concat ";" (List.map (fun xs -> "[" ^ (String.concat ";" (List.map SL.int_to_str xs)) ^ "]") alpha_r)));
         print_endline ("PA: " ^ (SL.conjunctive_formula_to_str pa));
         print_endline ("PANC: " ^ (SL.conjunctive_formula_to_str panc));
         print_endline ("NC: " ^ (SL.conjunctive_formula_to_str nc))

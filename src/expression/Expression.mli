@@ -342,7 +342,7 @@ val term_nature : term -> var_nature
 val is_tid_var : tid -> bool
 val gen_tid_list : int -> int -> tid list
 val gen_tid_list_except : int -> int -> tid -> tid list
-val gen_fresh_tids : ThreadSet.t -> int -> ThreadSet.t
+val gen_fresh_tid : ThreadSet.t -> tid
 val gen_fresh_tid_set : ThreadSet.t -> int -> ThreadSet.t
 val gen_fresh_var : V.fresh_var_gen_t-> sort -> V.t
 
@@ -445,6 +445,7 @@ val construct_pres_term        : term -> V.shared_or_local -> formula
 val voc          : formula -> ThreadSet.t
 val unprimed_voc : formula -> ThreadSet.t
 val voc_to_var   : tid -> V.t
+val voc_to_vars  : ThreadSet.t -> V.VarSet.t
 
 (* GHOST TERMS *)
 val var_kind : var_nature -> expr_t -> term list
@@ -462,7 +463,7 @@ val param_variable : V.shared_or_local -> V.t -> V.t
 
 (* THREAD SUBSTITUTION FUNCTIONS *)
 val new_tid_subst : (tid * tid) list -> tid_subst_t
-(*val new_multiple_tid_subst : tid list -> tid list list -> tid_subst_t list *)
+val new_multiple_tid_subst : tid list -> tid list list -> tid_subst_t list
 val new_comb_subst : tid list -> tid list -> tid_subst_t list
 val subst_tid : tid_subst_t -> formula -> formula
 val subst_to_str : tid_subst_t -> string
@@ -470,11 +471,9 @@ val subst_domain : tid_subst_t -> ThreadSet.t
 val subst_codomain : tid_subst_t -> ThreadSet.t
 val subst_domain_in : ThreadSet.t -> tid_subst_t -> bool
 val subst_codomain_in : ThreadSet.t -> tid_subst_t -> bool
-(*
 val subst_full_domain_assign : tid list -> tid_subst_t -> bool
 val subst_full_codomain_assign : tid list -> tid_subst_t -> bool
-*)
-(*val is_id_subst : tid_subst_t -> bool*)
+val is_id_subst : tid_subst_t -> bool
 
 
 (* VARIABLE SUBSTITUTION FUNCTIONS *)
@@ -525,9 +524,16 @@ val keep_locations : formula -> (formula * (tid * tid) list * (tid * tid) list)
 val required_sorts : formula -> sort list
 (** [required_sorts phi] returns the list of sorts the formula reasons about *)
 
+val gen_focus_list : pc_t -> pc_t list -> pc_t list -> (bool * pc_t list)
+(** [gen_focus_list mp fs is] generates the list of program positions to
+    analyze in case that there are at most [mp] positions, [fs] is the list
+    of positions where to focus and [is] the positions to ignore. Returns
+    a boolean indicating whether the initial position should be considered
+    and a list with the positions to be considered (without considering
+    position 0 as a member of the list) *)
+
 
 (* COMPARISON FUNCTIONS. SYNTACTICALLY (almost) IDENTICAL *)
-(*
 val identical_formula  : formula  -> formula  -> bool
 val identical_sorts     : sort     -> sort     -> bool
 val identical_variable  : V.t -> V.t -> bool
@@ -553,5 +559,3 @@ val identical_literal : literal -> literal -> bool
 val opposite_literal  : literal -> literal -> bool
 val identical_conjunctive_formula : conjunctive_formula -> conjunctive_formula -> bool
 val identical_expr_t : expr_t -> expr_t -> bool
-*)
-

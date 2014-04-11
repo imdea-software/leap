@@ -183,10 +183,10 @@ let opts =
     ("-vd",
         Arg.String inputVd,
         "analyzes a verification diagram");
+*)
     ("-pvd",
         Arg.String inputPvd,
         "analyzes a parametrized verification diagram");
-*)
     ("-dp",
         Arg.String set_dp,
         "indicates the DP to use. Options are: " ^

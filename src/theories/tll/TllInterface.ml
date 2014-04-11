@@ -20,7 +20,7 @@ let rec sort_to_tll_sort (s:E.sort) : TLL.sort =
   match s with
   | E.Set       -> TLL.Set
   | E.Elem      -> TLL.Elem
-  | E.Tid       -> TLL.Tid
+  | E.Tid      -> TLL.Tid
   | E.Addr      -> TLL.Addr
   | E.Cell      -> TLL.Cell
   | E.SetTh     -> TLL.SetTh

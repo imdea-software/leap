@@ -21,7 +21,6 @@ rule norm = parse
   | "Goal"          { Global.last "Goal"          ; GOAL }
   | "Tid"           { Global.last "Tid"           ; TRANSITION_TID }
   | "Line"          { Global.last "Line"          ; LINE }
-  | "Theory"        { Global.last "Theory"        ; THEORY }
   | "Support"       { Global.last "Support"       ; SUPPORT }
   | "Diagram"       { Global.last "Diagram"       ; DIAGRAM }
   | "begin"         { Global.last "begin"         ; BEGIN }
@@ -130,8 +129,13 @@ rule norm = parse
   | '@'             { Global.last "@"             ; AT }
   | '_'             { Global.last "_"             ; UNDERSCORE }
   | '#'             { Global.last "#"             ; SHARP }
-  | "->"            { Global.last "->"            ; EDGE_ARROW }
-  | "=>"            { Global.last "=>"            ; LARGE_EDGE_ARROW }
+  | "-->"           { Global.last "-->"           ; EDGE_ARROW }
+  | "-{"            { Global.last "-{"            ; EDGE_ARROW_OPEN }
+  | "}->"           { Global.last "}->"           ; EDGE_ARROW_CLOSE }
+  | "<<"            { Global.last "<<"            ; OPEN_ANGLE }
+  | ">>"            { Global.last ">>"            ; CLOSE_ANGLE }
+  | "Good"          { Global.last "Good"          ; GOOD }
+  | "Bad"           { Global.last "Bad"           ; BAD }
   | "arrUpd"        { Global.last "arrUpd"        ; ARR_UPDATE }
   | (digit+) as num { Global.last num; NUMBER (int_of_string num) }
   | (letterordollar alphanum*) as id { Global.last id; IDENT (id,Global.get_linenum()) }

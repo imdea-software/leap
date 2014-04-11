@@ -6,6 +6,7 @@ open Global
 
 module E      = Expression
 module Symtbl = ExprSymTable
+module D      = Diagrams
 
 (* This code should be changed in the future *)
 (* This code should be changed in the future *)
@@ -45,7 +46,7 @@ exception Normal_vars_in_ghost_assignment of E.term list
 exception No_kind_for_var of E.V.id
 exception Ranking_function_unmatched_sort of E.sort * E.term * E.sort
 exception Different_argument_length of string * string
-exception Unsupported_theory of DP.t
+exception Wrong_edge_acceptance_argument of string
 
 
 let invVars = System.empty_var_table ()
@@ -469,7 +470,7 @@ let define_ident (proc_name:E.V.procedure_name)
 %token <int> NUMBER
 
 %token DIAGRAM SUPPORT THREADS BOXES NODES INITIAL EDGES ACCEPTANCE USING DEFAULT
-%token EDGE_ARROW LARGE_EDGE_ARROW
+%token EDGE_ARROW EDGE_ARROW_OPEN EDGE_ARROW_CLOSE
 
 %token BEGIN END
 
@@ -495,9 +496,10 @@ let define_ident (proc_name:E.V.procedure_name)
 %token OPEN_BRACKET CLOSE_BRACKET
 %token OPEN_SET CLOSE_SET
 %token OPEN_PAREN CLOSE_PAREN
+%token OPEN_ANGLE CLOSE_ANGLE
+%token GOOD BAD
 %token VERTICAL_BAR
 %token COLON DOUBLECOLON SEMICOLON EQUALS NOT_EQUALS
-%token THEORY
 %token ASSIGN
 %token LOGICAL_AND LOGICAL_OR LOGICAL_NOT LOGICAL_THEN LOGICAL_IFF
 %token LOGICAL_TRUE LOGICAL_FALSE
@@ -551,10 +553,11 @@ let define_ident (proc_name:E.V.procedure_name)
 
 %start invariant
 %start formula
-/* %start vc_info */
+%start vc_info
 %start single_formula
+%start pvd
 
-/* %type <Tactics.S.vc_info> vc_info */
+%type <Tactics.vc_info> vc_info
 
 %type <Expression.formula> single_formula
 
@@ -592,9 +595,179 @@ let define_ident (proc_name:E.V.procedure_name)
 %type <E.addrarr> addrarr
 %type <E.tidarr> tidarr
 
+%type <Diagrams.pvd_t> pvd
+%type <(D.node_id_t * E.formula) list> node_list
+%type <(D.node_id_t * E.formula)> node
+%type <D.node_id_t list> node_id_list
+%type <(D.box_id_t * D.node_id_t list * E.ThreadSet.elt) list> box_list
+%type <(D.box_id_t * D.node_id_t list * E.ThreadSet.elt)> box
+%type <(int * E.V.t) list> trans_list
+%type <(int * E.V.t)> trans
+%type <(D.node_id_t * D.node_id_t * (D.edge_type_t * D.trans_t)) list> edge_list
+%type <(D.node_id_t * D.node_id_t * (D.edge_type_t * D.trans_t))> edge
+%type <(D.accept_triple_t) list> accept_edge_list
+%type <(D.accept_triple_t)> accept_edge
+%type <(D.accept_triple_t list * D.accept_triple_t list * E.formula) list> acceptance_list
+%type <(D.accept_triple_t list * D.accept_triple_t list * E.formula)> acceptance
+
 
 
 %%
+
+
+/*********************     DIAGRAMS    *************************/
+
+pvd :
+  | DIAGRAM OPEN_BRACKET IDENT CLOSE_BRACKET
+    NODES COLON node_list
+    BOXES COLON box_list
+    INITIAL COLON node_id_list
+    EDGES COLON edge_list
+    ACCEPTANCE COLON acceptance_list
+    { let name = get_name $3 in
+      let nodes = $7 in
+      let boxes = $10 in
+      let initial = $13 in
+      let edges = $16 in
+      let acceptance = $19 in
+      Diagrams.new_pvd name nodes boxes initial edges acceptance
+    }
+
+
+node_list :
+  | node
+    { [$1] }
+  | node COMMA node_list
+    { $1 :: $3 }
+
+
+node :
+  | IDENT
+    {
+      let n = get_name $1 in
+      (n, Formula.True)
+    }
+  | IDENT OPEN_SET formula CLOSE_SET
+    { let n = get_name $1 in
+      let phi = $3 in
+      (n,phi)
+    }
+
+
+node_id_list :
+  | IDENT
+    { [get_name $1] }
+  | IDENT COMMA node_id_list
+    { (get_name $1) :: $3 }
+
+
+box_list :
+  | box
+    { [$1] }
+  | box COMMA box_list
+    { $1 :: $3 }
+      
+
+box :
+  | OPEN_SET IDENT OPEN_BRACKET IDENT CLOSE_BRACKET COLON node_id_list CLOSE_SET
+    { let box_id = get_name $2 in
+      let param = E.VarTh (E.build_global_var (get_name $4) E.Tid) in
+      let nodes = $7 in
+      (box_id, nodes, param)
+    }
+
+
+trans_list :
+  | trans
+    { [$1] }
+  | trans COMMA trans_list
+    { $1 :: $3 }
+
+
+trans :
+  | NUMBER OPEN_BRACKET IDENT CLOSE_BRACKET
+    {
+      let i = $1 in
+      let t = E.build_global_var (get_name $3) E.Tid in
+      (i, t)
+    }
+
+edge_list :
+  | edge
+    { [$1] }
+  | edge edge_list
+    { $1 :: $2 }
+
+
+edge :
+  | OPEN_BRACKET IDENT EDGE_ARROW IDENT CLOSE_BRACKET SEMICOLON
+    {
+      let n1 = get_name $2 in
+      let n2 = get_name $4 in
+      (n1, n2, (D.Pres, D.NoLabel))
+    }
+  | IDENT EDGE_ARROW IDENT SEMICOLON
+    {
+      let n1 = get_name $1 in
+      let n2 = get_name $3 in
+      (n1, n2, (D.Any, D.NoLabel))
+    }
+  | OPEN_BRACKET IDENT EDGE_ARROW_OPEN trans_list EDGE_ARROW_CLOSE IDENT
+    CLOSE_BRACKET SEMICOLON
+    {
+      let n1 = get_name $2 in
+      let n2 = get_name $6 in
+      let trans = $4 in
+      (n1, n2, (D.Pres, D.Label trans))
+    }
+  | IDENT EDGE_ARROW_OPEN trans_list EDGE_ARROW_CLOSE IDENT SEMICOLON
+    {
+      let n1 = get_name $1 in
+      let n2 = get_name $5 in
+      let trans = $3 in
+      (n1, n2, (D.Any, D.Label trans))
+    }
+
+
+acceptance_list :
+  | acceptance
+    { [$1] }
+  | acceptance acceptance_list
+    { $1 :: $2 }
+
+
+accept_edge_list :
+  |
+    { [] }
+  | accept_edge
+    { [$1] }
+  | accept_edge COMMA accept_edge_list
+    { $1 :: $3 }
+
+
+accept_edge :
+  | OPEN_PAREN IDENT COMMA IDENT COMMA IDENT CLOSE_PAREN
+    {
+      let n1 = get_name $2 in
+      let n2 = get_name $4 in
+      let p = match (get_name $6) with
+              | "any" -> D.Any
+              | "pres" -> D.Pres
+              | _ -> raise(Wrong_edge_acceptance_argument (get_name $6)) in
+      (n1,n2,p)
+    }
+
+
+acceptance :
+  | OPEN_ANGLE GOOD COLON OPEN_SET accept_edge_list CLOSE_SET SEMICOLON
+               BAD  COLON OPEN_SET accept_edge_list CLOSE_SET SEMICOLON
+               formula CLOSE_ANGLE
+    {
+      let good = $5 in
+      let bad = $11 in
+      let delta = $14 in
+      (good, bad, delta)
+    }
 
 
 /*********************     INVARIANTS    *************************/
@@ -1602,10 +1775,9 @@ tidarr :
 
 /************************   TEMPORARY VERIFICATION CONDITIONS **********************/
 
-/*
+
 vc_info :
-  | THEORY COLON IDENT
-    param COLON inv_var_declarations
+  | param COLON inv_var_declarations
     SUPPORT COLON formula_list
     TID_CONSTRAINT COLON formula
     RHO COLON formula
@@ -1613,26 +1785,16 @@ vc_info :
     TRANSITION_TID COLON term
     LINE COLON NUMBER
       {
-        System.clear_table invVars;
-        let theory = match DP.from_str (get_name $3) with
-                     | DP.Num -> (module NumExpression : GenericExpression.S)
-                     | DP.Tll -> (module TllExpression : GenericExpression.S)
-                     | DP.Tsl -> (module TSLExpression : GenericExpression.S)
-                     | DP.Tslk k -> (module TSLKExpression.Make
-                                      (struct let level = k end) : GenericExpression.S)
-                     | _ -> raise(Unsupported_theory !LeapArgs.dpType) in
-        let module E = (val e : GenericExpression.S) in
-        let module ETactics = Tag.Make (E) in
-        let supp_list = $9 in
-        let tid_phi = $12 in
-        let rho_phi = $15 in
-        let goal_phi = $18 in
-        let trans_tid = parser_check_type check_type_thid $21 E.Tid (fun _ -> (E.term_to_str $21)) in
-        let line = $24 in
+        let _ = System.clear_table invVars in
+        let supp_list = $6 in
+        let tid_phi = $9 in
+        let rho_phi = $12 in
+        let goal_phi = $15 in
+        let trans_tid = parser_check_type check_type_thid $18 E.Tid (fun _ -> (E.term_to_str $18)) in
+        let line = $21 in
         let vocab = E.voc (Formula.conj_list [tid_phi;rho_phi;goal_phi]) in
-        ETactics.create_vc_info supp_list tid_phi rho_phi goal_phi vocab trans_tid line
+        Tactics.create_vc_info supp_list tid_phi rho_phi goal_phi vocab trans_tid line
       }
-*/
 
 formula_list :
   |
