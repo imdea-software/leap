@@ -101,6 +101,7 @@ let _ =
 
     (* Instantiate the core *)
     let module LeapCore = Core.Make(LeapOpt) in
+    let module LeapParamInv = ParamInv.Make(LeapCore) in
 
     (* Benchmark timer *)
     let timer = new LeapLib.timer in
@@ -193,13 +194,14 @@ let _ =
     if !LeapArgs.useGraph then begin
       (* We load the graph information *)
       let graph = Parser.open_and_parse !LeapArgs.iGraphFile (Gparser.graph Glexer.norm) in
-      let graph_solution_list = LeapCore.solve_from_graph graph in
+      let graph_solution_list = LeapParamInv.solve_from_graph graph in
       (ignore graph_solution_list)
     end;
 
     (* PVD Parsings *)
     if !LeapArgs.pvdFile <> "" then begin
       let pvd = Parser.open_and_parse !LeapArgs.pvdFile (Eparser.pvd Elexer.norm) in
+      let module DSolver = DiagramsSolver.Make(LeapCore) in
       print_endline "PVD";
       print_endline (Diagrams.to_str pvd)
     end;

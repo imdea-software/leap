@@ -45,13 +45,12 @@ type next_table_t = (node_id_t, NodeIdSet.t) Hashtbl.t
 type tau_table_t = (node_id_t * int * E.V.t, NodeIdSet.t) Hashtbl.t
 
 
-exception Undefined_initial_node of node_id_t
 exception Duplicated_node of node_id_t
 exception Undefined_node of node_id_t
 exception Undefined_edge of edge_t
 exception BadBoxedEdge of edge_t
 exception BadBox of box_id_t
-
+exception No_initial
 
 
 (* Type for Parametrized Verification Diagrams *)
@@ -66,6 +65,7 @@ type pvd_t = {
   acceptance : acceptance_t list;
   free_voc   : E.ThreadSet.t;
 }
+
 
 (**  Configuration  **)
 let initNodeNum = 30
@@ -131,12 +131,24 @@ let to_str (pvd:pvd_t) : string =
                       | Pres -> "\n  [" ^ e_str ^ "];" ^ str
                     ) infoSet "") ^ str
                   ) pvd.edges "" in
-
+  let acceptance_str = List.fold_left (fun str acc ->
+                         let map xs = List.map (fun (n1,n2,k) ->
+                                        "(" ^(node_id_to_str n1)^ "," ^
+                                             (node_id_to_str n2)^ "," ^
+                                             (kind_to_str k)^ ")"
+                                      ) xs in
+                         let good_list_str = String.concat "," (map acc.good) in
+                         let bad_list_str = String.concat "," (map acc.bad) in
+                         "\n  << Good : {" ^good_list_str^ "};\n" ^
+                           "     Bad  : {" ^bad_list_str^ "};\n" ^
+                           "     " ^(E.formula_to_str acc.delta)^ " >>" ^ str
+                       ) "" pvd.acceptance in
   ("Diagram[" ^pvd.name^ "]\n\n" ^
    "Nodes: " ^nodes_str^ "\n\n" ^
    "Boxes: " ^boxes_str^ "\n\n" ^
    "Initial: " ^initial_str^ "\n\n" ^
-   "Edges: " ^edges_str^ "\n")
+   "Edges: " ^edges_str^ "\n\n" ^
+   "Acceptance: " ^acceptance_str^ "\n")
    
 
 
@@ -201,6 +213,19 @@ let well_defined_boxed_edge (nTbl:node_table_t) (e:edge_t) : unit =
                             (node_id_to_str n1) (node_id_to_str n2);
                   raise(BadBoxedEdge e)
                 end
+
+
+let build_initial (nTbl:node_table_t) (is:node_id_t list) : NodeIdSet.t =
+  match is with
+  | [] -> begin
+            Interface.Err.msg "No initial nodes" $
+              "No initial node was declared";
+            raise(No_initial)
+          end
+  | _ -> List.fold_left (fun set n_id ->
+           is_defined nTbl n_id;
+           NodeIdSet.add n_id set
+         ) NodeIdSet.empty is
 
 
 let check_and_define_nodes (nodes:node_t list)
@@ -354,19 +379,7 @@ let new_pvd (name:string)
   print_endline ("A");
   let (nTbl,bTbl,free_voc_nodes) = check_and_define_nodes ns bs in
   print_endline ("B");
-  let iSet = List.fold_left (fun set n_id ->
-               if (not (Hashtbl.mem nTbl n_id)) then
-                 begin
-                   Interface.Err.msg "Undefined initial node" $
-                     Printf.sprintf "A node with id \"%s\" has been declared \
-                                     as initial node, but no node with such id \
-                                     has been previously defined."
-                                       (node_id_to_str n_id);
-                   raise(Undefined_initial_node n_id)
-                 end
-               else
-                 NodeIdSet.add n_id set
-             ) NodeIdSet.empty is in
+  let iSet = build_initial nTbl is in
   print_endline ("C");
   let (eTbl, nextTbl, tTbl, free_voc_edges) = check_and_define_edges nTbl bTbl es in
   let accept_list = check_acceptance nTbl eTbl acs in
@@ -382,3 +395,4 @@ let new_pvd (name:string)
     acceptance = accept_list;
     free_voc = E.ThreadSet.union free_voc_nodes free_voc_edges;
   }
+
