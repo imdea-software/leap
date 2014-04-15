@@ -1,6 +1,7 @@
 open LeapLib
 
 module E = Expression
+module F = Formula
 
 (* Types for nodes *)
 type node_id_t = string
@@ -64,6 +65,11 @@ type pvd_t = {
   edges      : edge_table_t;
   acceptance : acceptance_t list;
   free_voc   : E.ThreadSet.t;
+}
+
+
+type pvd_vc_t = {
+	initiation : Tactics.vc_info;
 }
 
 
@@ -396,3 +402,26 @@ let new_pvd (name:string)
     free_voc = E.ThreadSet.union free_voc_nodes free_voc_edges;
   }
 
+
+module type S =
+  sig
+		val gen_vcs : pvd_t -> pvd_vc_t
+	end
+
+
+module Make (C:Core.S) : S =
+  struct
+
+		let gen_initiation (pvd:pvd_t) : Tactics.vc_info =
+			let init_mu = F.disj_list (NodeIdSet.fold (fun n xs ->
+																	(Hashtbl.find pvd.nodes n).mu :: xs
+																) pvd.initial []) in
+			let (theta, voc) = C.theta (E.voc init_mu) in
+			Tactics.create_vc_info [] F.True theta init_mu voc E.NoTid 0
+
+
+		let gen_vcs (pvd:pvd_t) : vc_t =
+			{
+				initiation = gen_initiation pvd;
+      }
+	end

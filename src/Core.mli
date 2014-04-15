@@ -43,11 +43,6 @@ module type S =
 
     val report_vcs : Tactics.vc_info list -> unit
 
-    val decl_tag : Tag.f_tag option -> Expression.formula -> unit
-    val is_def_tag : Tag.f_tag -> bool
-		val read_tag : Tag.f_tag -> Expression.formula
-    val read_tags_and_group_by_file : Tag.f_tag list -> Expression.formula list
-
 		val theta : Expression.formula -> (Expression.formula * Expression.ThreadSet.t)
 		val rho : System.seq_or_conc_t ->
 							Expression.ThreadSet.t ->

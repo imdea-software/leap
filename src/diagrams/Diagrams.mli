@@ -5,6 +5,7 @@ type trans_t = NoLabel | Label of (int * Expression.V.t) list
 type accept_triple_t = (node_id_t * node_id_t * edge_type_t)
 
 type pvd_t
+type pvd_vc_t
 
 val new_pvd : string ->
               (node_id_t * Expression.formula) list ->
@@ -16,3 +17,10 @@ val new_pvd : string ->
 
 val to_str : pvd_t -> string
 
+
+module type S =
+	sig
+		val gen_vcs : pvd_t -> pvd_vc_t
+  end
+
+module Make (C:Core.S) : S
