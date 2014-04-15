@@ -768,6 +768,8 @@ let check_is_numeric (sys:t) : unit =
     ()
 
 
+	let filter_me_tid (ts:E.ThreadSet.t) : E.ThreadSet.t =
+		E.ThreadSet.remove me_tid_th ts
 
 
 (* PRINTING FUNCTIONS *)

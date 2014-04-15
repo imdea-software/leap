@@ -6,6 +6,27 @@ module E = Expression
 module PE = PosExpression
 
 
+type proof_info_t =
+	{
+		cutoff : Smp.cutoff_strategy_t;
+	}
+
+
+type proof_obligation_t =
+	{
+		vc : Tactics.vc_info; (* Maybe it should contain less information in the future *)
+		obligations : E.formula list;
+		proof_info : proof_info_t;
+	}
+
+
+type solved_proof_obligation_t =
+	{
+		vc_info : Tactics.vc_info;
+		solved_obligations : (E.formula * Result.info_t) list;
+		result : Result.info_t;
+	}
+
 module GenOptions :
   sig
 
@@ -52,33 +73,37 @@ module GenOptions :
   end
 
 
-
 module type S =
   sig
 
     exception No_invariant_folder
 
-    type proof_obligation_t
+		val new_proof_info : Smp.cutoff_strategy_t option -> proof_info_t
+		val new_proof_obligation : Tactics.vc_info ->
+															 Expression.formula list ->
+															 proof_info_t ->
+															 proof_obligation_t
+		val obligations : proof_obligation_t -> Expression.formula list
 
-    type solved_proof_obligation_t
-
-    (* Getters *)
-    val sys : System.t
-    val abs : System.abstraction
-    val hide_pres : bool
-    val output_vcs : bool
-    val prog_type : Bridge.prog_type
-    val lines_to_consider : int list
+		val lines_to_consider : int list
     val requires_theta : bool
-    val filter_me_tid : Expression.ThreadSet.t -> Expression.ThreadSet.t
 
     val report_vcs : Tactics.vc_info list -> unit
 
     val decl_tag : Tag.f_tag option -> Expression.formula -> unit
     val is_def_tag : Tag.f_tag -> bool
+		val read_tag : Tag.f_tag -> Expression.formula
     val read_tags_and_group_by_file : Tag.f_tag list -> Expression.formula list
 
-    val gen_theta : Expression.formula -> (Expression.formula * Expression.ThreadSet.t)
+		val theta : Expression.formula -> (Expression.formula * Expression.ThreadSet.t)
+		val rho : System.seq_or_conc_t ->
+							Expression.ThreadSet.t ->
+							int ->
+							Expression.ThreadSet.elt ->
+							Expression.formula list
+
+		val solve_proof_obligations : proof_obligation_t list ->
+																	solved_proof_obligation_t list
 
   end
 
@@ -91,39 +116,7 @@ module Make (Opt:module type of GenOptions) : S =
     exception No_invariant_folder
 
 
-    type proof_info_t =
-      {
-        cutoff : Smp.cutoff_strategy_t;
-      }
-
-
-    type proof_obligation_t =
-      {
-        vc : Tactics.vc_info; (* Maybe it should contain less information in the future *)
-        obligations : E.formula list;
-        proof_info : proof_info_t;
-      }
-
-
-    type solved_proof_obligation_t =
-      {
-        vc_info : Tactics.vc_info;
-        solved_obligations : (E.formula * Result.info_t) list;
-        result : Result.info_t;
-      }
-
-
-    (************************************************)
-    (*               OPTION GETTERS                 *)
-    (************************************************)
-    let sys : System.t = Opt.sys
-    let abs : System.abstraction = Opt.abs
-    let hide_pres : bool = Opt.hide_pres
-    let output_vcs : bool = Opt.output_vcs
-
-
-
-    (************************************************)
+		(************************************************)
     (*             TAGGING INFORMATION              *)
     (************************************************)
 
@@ -190,7 +183,7 @@ module Make (Opt:module type of GenOptions) : S =
 
     (********************)
     (*   CONFIGURATION  *)
-    (********************)
+		(********************)
 
     let (requires_theta, lines_to_consider) =
             E.gen_focus_list (System.get_trans_num Opt.sys)
@@ -256,6 +249,10 @@ module Make (Opt:module type of GenOptions) : S =
       }
 
 
+		let obligations (po:proof_obligation_t) : E.formula list =
+			po.obligations
+
+
     let new_solved_proof_obligation (vc_info:Tactics.vc_info)
                                     (solved_oblig:(E.formula * Result.info_t) list)
                                     (result:Result.info_t) : solved_proof_obligation_t =
@@ -303,11 +300,7 @@ module Make (Opt:module type of GenOptions) : S =
       DP.add_dp_calls calls_counter Opt.dp n
 
 
-    let filter_me_tid (ts:E.ThreadSet.t) : E.ThreadSet.t =
-      E.ThreadSet.remove System.me_tid_th ts
-
-
-    let gen_theta (phi:E.formula) : (E.formula * E.ThreadSet.t) =
+		let theta (phi:E.formula) : (E.formula * E.ThreadSet.t) =
       let theta = System.gen_theta (System.SOpenArray (E.ThreadSet.elements (E.voc phi))) Opt.sys Opt.abs in
       let voc = E.voc (Formula.conj_list [theta;phi]) in
       let init_pos = if E.ThreadSet.is_empty voc then
@@ -319,6 +312,13 @@ module Make (Opt:module type of GenOptions) : S =
       (Formula.conj_list (theta::init_pos), voc)
 
 
+	let rho (seq_or_conc:System.seq_or_conc_t)
+					(voc:E.ThreadSet.t)
+					(line:int)
+					(th:E.ThreadSet.elt) : E.formula list =
+		System.gen_rho Opt.sys (System.SOpenArray (E.ThreadSet.elements voc))
+			seq_or_conc prog_type line Opt.abs Opt.hide_pres th
+
 
     (**********************)
     (*  SOLVER REASONING  *)
@@ -329,6 +329,13 @@ module Make (Opt:module type of GenOptions) : S =
       match cutoff with
       | None     -> Opt.default_cutoff
       | Some cut -> cut
+
+
+		let new_proof_info (cutoff:Smp.cutoff_strategy_t option) : proof_info_t =
+			{
+				cutoff = decide_cutoff cutoff;
+			}
+
 
 
     let solve_proof_obligations (to_analyze:proof_obligation_t list)

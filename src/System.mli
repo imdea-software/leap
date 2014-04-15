@@ -199,6 +199,7 @@ val tran_table_to_str : tran_table_t -> string
 
 
 val check_is_numeric : t -> unit
+val filter_me_tid : Expression.ThreadSet.t -> Expression.ThreadSet.t
 
 
 (* PRINTING FUNCTIONS *)
