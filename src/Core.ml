@@ -95,7 +95,7 @@ module type S =
 		val read_tag : Tag.f_tag -> Expression.formula
     val read_tags_and_group_by_file : Tag.f_tag list -> Expression.formula list
 
-		val theta : ThreadSet.t -> (Expression.formula * Expression.ThreadSet.t)
+		val theta : Expression.ThreadSet.t -> (Expression.formula * Expression.ThreadSet.t)
 		val rho : System.seq_or_conc_t ->
 							Expression.ThreadSet.t ->
 							int ->
@@ -110,7 +110,75 @@ module type S =
 module Make (Opt:module type of GenOptions) : S =
   struct
 
+    module Eparser = ExprParser
+    module Elexer = ExprLexer
+
     exception No_invariant_folder
+
+
+		(************************************************)
+    (*             TAGGING INFORMATION              *)
+    (************************************************)
+
+    let tags : Tag.tag_table = Tag.tag_table_new
+
+
+    let tags_num () : int = Tag.tag_table_size tags
+
+
+    let decl_tag (t : Tag.f_tag option) (phi : E.formula) : unit =
+      match t with
+      | None -> ()
+      | Some tag -> if Tag.tag_table_mem tags tag
+          then
+            raise(Tag.Duplicated_tag(Tag.tag_id tag))
+          else Tag.tag_table_add tags tag phi Tag.new_info
+
+
+    let read_tag (t : Tag.f_tag) : E.formula =
+      if Tag.tag_table_mem tags t then
+        Tag.tag_table_get_formula tags t
+      else
+        raise(Tag.Undefined_tag(Tag.tag_id t))
+
+
+    let read_tags_and_group_by_file (ts : Tag.f_tag list) : E.formula list =
+      let supp_tbl : (string, E.formula list) Hashtbl.t = Hashtbl.create 5 in
+      List.iter (fun tag ->
+        let master_id = Tag.master_id tag in
+        try
+          Hashtbl.replace supp_tbl master_id ((read_tag tag)::(Hashtbl.find supp_tbl master_id))
+        with Not_found -> Hashtbl.add supp_tbl master_id [read_tag tag]
+      ) ts;
+      Hashtbl.fold (fun _ phi_list xs ->
+        (Formula.conj_list phi_list) :: xs
+      ) supp_tbl []
+
+
+(*    let rad_supp_tags (ts : Tag.f_tag list) : E.formula list = *)
+      
+
+
+    let is_def_tag (t:Tag.f_tag) : bool =
+      Tag.tag_table_mem tags t
+
+
+    let clear_tags () : unit =
+      Tag.tag_table_clear tags
+
+
+    let load_tags_from_folder (folder:string) : unit =
+      let all_files = Array.fold_left (fun xs f ->
+                        (folder ^ "/" ^ f)::xs
+                      ) [] (Sys.readdir folder) in
+      let inv_files = List.filter (fun s -> Filename.check_suffix s "inv") all_files in
+      List.iter (fun i ->
+        let (phiVars, tag, phi_decls) = Parser.open_and_parse i
+                                          (Eparser.invariant Elexer.norm) in
+        let phi = Formula.conj_list (List.map snd phi_decls) in
+        List.iter (fun (subtag,subphi) -> decl_tag subtag subphi) phi_decls;
+        decl_tag tag phi
+      ) inv_files
 
 
     (********************)
@@ -232,10 +300,10 @@ module Make (Opt:module type of GenOptions) : S =
       DP.add_dp_calls calls_counter Opt.dp n
 
 
-		let theta (orig_voc:E.ThreadSet.t) : (E.formula * E.ThreadSet.t) =
-			let theta = System.gen_theta (System.SOpenArray (E.ThreadSet.elements orig_voc)) Opt.sys Opt.abs in
-			let voc = E.ThreadSet.union (E.voc theta) orig_voc in
-			let init_pos = if E.ThreadSet.is_empty voc then
+		let theta (voc:E.ThreadSet.t) : (E.formula * E.ThreadSet.t) =
+			let theta = System.gen_theta (System.SOpenArray (E.ThreadSet.elements voc)) Opt.sys Opt.abs in
+			let voc = E.ThreadSet.union voc (E.voc theta) in
+      let init_pos = if E.ThreadSet.is_empty voc then
                        [E.pc_form 1 E.V.Shared true]
                      else
                        E.V.VarSet.fold (fun v xs ->

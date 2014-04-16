@@ -6,7 +6,6 @@ open Global
 
 module E      = Expression
 module Symtbl = ExprSymTable
-module D      = Diagrams
 
 (* This code should be changed in the future *)
 (* This code should be changed in the future *)
@@ -595,20 +594,20 @@ let define_ident (proc_name:E.V.procedure_name)
 %type <E.addrarr> addrarr
 %type <E.tidarr> tidarr
 
-%type <Diagrams.pvd_t> pvd
-%type <(D.node_id_t * E.formula) list> node_list
-%type <(D.node_id_t * E.formula)> node
-%type <D.node_id_t list> node_id_list
-%type <(D.box_id_t * D.node_id_t list * E.ThreadSet.elt) list> box_list
-%type <(D.box_id_t * D.node_id_t list * E.ThreadSet.elt)> box
+%type <PVD.t> pvd
+%type <(PVD.node_id_t * E.formula) list> node_list
+%type <(PVD.node_id_t * E.formula)> node
+%type <PVD.node_id_t list> node_id_list
+%type <(PVD.box_id_t * PVD.node_id_t list * E.ThreadSet.elt) list> box_list
+%type <(PVD.box_id_t * PVD.node_id_t list * E.ThreadSet.elt)> box
 %type <(int * E.V.t) list> trans_list
 %type <(int * E.V.t)> trans
-%type <(D.node_id_t * D.node_id_t * (D.edge_type_t * D.trans_t)) list> edge_list
-%type <(D.node_id_t * D.node_id_t * (D.edge_type_t * D.trans_t))> edge
-%type <(D.accept_triple_t) list> accept_edge_list
-%type <(D.accept_triple_t)> accept_edge
-%type <(D.accept_triple_t list * D.accept_triple_t list * E.formula) list> acceptance_list
-%type <(D.accept_triple_t list * D.accept_triple_t list * E.formula)> acceptance
+%type <(PVD.node_id_t * PVD.node_id_t * (PVD.edge_type_t * PVD.trans_t)) list> edge_list
+%type <(PVD.node_id_t * PVD.node_id_t * (PVD.edge_type_t * PVD.trans_t))> edge
+%type <(PVD.accept_triple_t) list> accept_edge_list
+%type <(PVD.accept_triple_t)> accept_edge
+%type <(PVD.accept_triple_t list * PVD.accept_triple_t list * E.formula) list> acceptance_list
+%type <(PVD.accept_triple_t list * PVD.accept_triple_t list * E.formula)> acceptance
 
 
 
@@ -624,13 +623,14 @@ pvd :
     INITIAL COLON node_id_list
     EDGES COLON edge_list
     ACCEPTANCE COLON acceptance_list
-    { let name = get_name $3 in
-      let nodes = $7 in
+		{
+			let name = get_name $3 in
+			let nodes = $7 in
       let boxes = $10 in
       let initial = $13 in
       let edges = $16 in
-      let acceptance = $19 in
-      Diagrams.new_pvd name nodes boxes initial edges acceptance
+			let acceptance = $19 in
+			PVD.new_pvd name nodes boxes initial edges acceptance
     }
 
 
@@ -702,15 +702,15 @@ edge_list :
 edge :
   | OPEN_BRACKET IDENT EDGE_ARROW IDENT CLOSE_BRACKET SEMICOLON
     {
-      let n1 = get_name $2 in
+			let n1 = get_name $2 in
       let n2 = get_name $4 in
-      (n1, n2, (D.Pres, D.NoLabel))
+			(n1, n2, (PVD.Pres, PVD.NoLabel))
     }
   | IDENT EDGE_ARROW IDENT SEMICOLON
     {
       let n1 = get_name $1 in
-      let n2 = get_name $3 in
-      (n1, n2, (D.Any, D.NoLabel))
+			let n2 = get_name $3 in
+			(n1, n2, (PVD.Any, PVD.NoLabel))
     }
   | OPEN_BRACKET IDENT EDGE_ARROW_OPEN trans_list EDGE_ARROW_CLOSE IDENT
     CLOSE_BRACKET SEMICOLON
@@ -718,14 +718,14 @@ edge :
       let n1 = get_name $2 in
       let n2 = get_name $6 in
       let trans = $4 in
-      (n1, n2, (D.Pres, D.Label trans))
+			(n1, n2, (PVD.Pres, PVD.Label trans))
     }
   | IDENT EDGE_ARROW_OPEN trans_list EDGE_ARROW_CLOSE IDENT SEMICOLON
     {
       let n1 = get_name $1 in
       let n2 = get_name $5 in
       let trans = $3 in
-      (n1, n2, (D.Any, D.Label trans))
+			(n1, n2, (PVD.Any, PVD.Label trans))
     }
 
 
@@ -751,8 +751,8 @@ accept_edge :
       let n1 = get_name $2 in
       let n2 = get_name $4 in
       let p = match (get_name $6) with
-              | "any" -> D.Any
-              | "pres" -> D.Pres
+							| "any" -> PVD.Any
+							| "pres" -> PVD.Pres
               | _ -> raise(Wrong_edge_acceptance_argument (get_name $6)) in
       (n1,n2,p)
     }

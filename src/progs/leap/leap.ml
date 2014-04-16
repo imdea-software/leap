@@ -201,9 +201,9 @@ let _ =
     (* PVD Parsings *)
     if !LeapArgs.pvdFile <> "" then begin
       let pvd = Parser.open_and_parse !LeapArgs.pvdFile (Eparser.pvd Elexer.norm) in
-      let module DSolver = DiagramsSolver.Make(LeapCore) in
+(*			let module DSolver = Diagrams.Make(LeapCore) in *)
       print_endline "PVD";
-      print_endline (Diagrams.to_str pvd)
+			print_endline (PVD.to_str pvd)
     end;
 
 
