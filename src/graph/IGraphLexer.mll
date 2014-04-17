@@ -31,6 +31,8 @@ rule norm = parse
   | '('                         { Global.last "("                 ; OPEN_PAREN }
   | ')'                         { Global.last ")"                 ; CLOSE_PAREN }
   | '|'                         { Global.last "|"                 ; BAR }
+  | "Tactics"                   { Global.last "Tactics"           ; TACTICS }
+  | "Facts"                     { Global.last "Facts"             ; FACTS }
   | "union"                     { Global.last "union"             ; SMP_UNION }
   | "pruning"                   { Global.last "pruning"           ; SMP_PRUNING }
   | "dnf"                       { Global.last "dnf"               ; SMP_DNF }

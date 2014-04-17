@@ -5,9 +5,9 @@ module type S =
 
     exception No_invariant_folder
 
-		val gen_from_graph : IGraph.t -> Core.proof_obligation_t list
+    val gen_from_graph : IGraph.t -> Core.proof_obligation_t list
 
-		val solve_from_graph : IGraph.t -> Core.solved_proof_obligation_t list
+    val solve_from_graph : IGraph.t -> Core.solved_proof_obligation_t list
 
   end
 

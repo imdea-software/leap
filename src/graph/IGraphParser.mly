@@ -28,11 +28,18 @@ let get_line id = snd id
 %token BAR
 %token SELF_PREMISE OTHERS_PREMISE
 %token SMP_UNION SMP_PRUNING SMP_DNF
+%token TACTICS FACTS
 %token EOF
 
 
 %start graph
+%start pvd_support
 
+%type <PVD.support_t> pvd_support
+%type <(PVD.supp_line_t * Tactics.proof_plan)> tactic_case
+%type <(PVD.supp_line_t * Tactics.proof_plan) list> tactic_case_list
+%type <(PVD.supp_line_t * Tag.f_tag list)> fact
+%type <(PVD.supp_line_t * Tag.f_tag list) list> fact_list
 
 %type <IGraph.t> graph
 %type <IGraph.rule_t list> rule_list
@@ -61,6 +68,45 @@ let get_line id = snd id
 
 
 %%
+
+/* PVD SUPPORT */
+
+pvd_support :
+  | TACTICS COLON tactic_case_list
+    FACTS COLON fact_list
+    {
+      let tactics = $3 in
+      let facts = $6 in
+      PVD.new_support tactics facts
+    }
+
+
+tactic_case_list :
+  |
+    { [] }
+  | tactic_case tactic_case_list
+    { $1 :: $2 }
+
+
+tactic_case :
+  | tactics SEMICOLON
+    { (PVD.All, $1) }
+  | NUMBER COLON tactics SEMICOLON
+    { (PVD.Trans $1, $3) }
+
+
+fact_list :
+  |
+    { [] }
+  | fact fact_list
+    { $1 :: $2 }
+
+
+fact :
+  | inv_list SEMICOLON
+    { (PVD.All, $1) }
+  | NUMBER COLON inv_list SEMICOLON
+    { (PVD.Trans $1, $3) }
 
 
 /* GRAPH PARSER */

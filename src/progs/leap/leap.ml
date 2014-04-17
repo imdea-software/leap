@@ -201,9 +201,15 @@ let _ =
     (* PVD Parsings *)
     if !LeapArgs.pvdFile <> "" then begin
       let pvd = Parser.open_and_parse !LeapArgs.pvdFile (Eparser.pvd Elexer.norm) in
-(*			let module DSolver = Diagrams.Make(LeapCore) in *)
+      let pvd_support = match !LeapArgs.pvdSupport with
+                        | "" -> None
+                        | file -> Some (Parser.open_and_parse file
+                                    (Gparser.pvd_support Glexer.norm)) in
+      let module PVDSolver = Diagrams.Make(LeapCore) in
+(*      let module DSolver = Diagrams.Make(LeapCore) in *)
       print_endline "PVD";
-			print_endline (PVD.to_str pvd)
+      print_endline (PVD.to_str pvd);
+      ignore (PVDSolver.solve_from_pvd pvd pvd_support)
     end;
 
 

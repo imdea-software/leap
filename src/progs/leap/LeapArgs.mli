@@ -44,6 +44,7 @@ val focusPC : int list ref
 val ignorePC : int list ref
 val vdFile : string ref
 val pvdFile : string ref
+val pvdSupport : string ref
 val outFile : string ref
 val detailedOutFile : string ref
 val num_threads : int ref

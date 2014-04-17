@@ -468,7 +468,7 @@ let define_ident (proc_name:E.V.procedure_name)
 %token <string*int> IDENT  // second param is line number
 %token <int> NUMBER
 
-%token DIAGRAM SUPPORT THREADS BOXES NODES INITIAL EDGES ACCEPTANCE USING DEFAULT
+%token DIAGRAM SUPPORT BOXES NODES INITIAL EDGES ACCEPTANCE
 %token EDGE_ARROW EDGE_ARROW_OPEN EDGE_ARROW_CLOSE
 
 %token BEGIN END
@@ -623,14 +623,14 @@ pvd :
     INITIAL COLON node_id_list
     EDGES COLON edge_list
     ACCEPTANCE COLON acceptance_list
-		{
-			let name = get_name $3 in
-			let nodes = $7 in
+    {
+      let name = get_name $3 in
+      let nodes = $7 in
       let boxes = $10 in
       let initial = $13 in
       let edges = $16 in
-			let acceptance = $19 in
-			PVD.new_pvd name nodes boxes initial edges acceptance
+      let acceptance = $19 in
+      PVD.new_pvd name nodes boxes initial edges acceptance
     }
 
 
@@ -702,15 +702,15 @@ edge_list :
 edge :
   | OPEN_BRACKET IDENT EDGE_ARROW IDENT CLOSE_BRACKET SEMICOLON
     {
-			let n1 = get_name $2 in
+      let n1 = get_name $2 in
       let n2 = get_name $4 in
-			(n1, n2, (PVD.Pres, PVD.NoLabel))
+      (n1, n2, (PVD.Pres, PVD.NoLabel))
     }
   | IDENT EDGE_ARROW IDENT SEMICOLON
     {
       let n1 = get_name $1 in
-			let n2 = get_name $3 in
-			(n1, n2, (PVD.Any, PVD.NoLabel))
+      let n2 = get_name $3 in
+      (n1, n2, (PVD.Any, PVD.NoLabel))
     }
   | OPEN_BRACKET IDENT EDGE_ARROW_OPEN trans_list EDGE_ARROW_CLOSE IDENT
     CLOSE_BRACKET SEMICOLON
@@ -718,14 +718,14 @@ edge :
       let n1 = get_name $2 in
       let n2 = get_name $6 in
       let trans = $4 in
-			(n1, n2, (PVD.Pres, PVD.Label trans))
+      (n1, n2, (PVD.Pres, PVD.Label trans))
     }
   | IDENT EDGE_ARROW_OPEN trans_list EDGE_ARROW_CLOSE IDENT SEMICOLON
     {
       let n1 = get_name $1 in
       let n2 = get_name $5 in
       let trans = $3 in
-			(n1, n2, (PVD.Any, PVD.Label trans))
+      (n1, n2, (PVD.Any, PVD.Label trans))
     }
 
 
@@ -751,8 +751,8 @@ accept_edge :
       let n1 = get_name $2 in
       let n2 = get_name $4 in
       let p = match (get_name $6) with
-							| "any" -> PVD.Any
-							| "pres" -> PVD.Pres
+              | "any" -> PVD.Any
+              | "pres" -> PVD.Pres
               | _ -> raise(Wrong_edge_acceptance_argument (get_name $6)) in
       (n1,n2,p)
     }

@@ -25,14 +25,11 @@ rule norm = parse
   | "Diagram"       { Global.last "Diagram"       ; DIAGRAM }
   | "begin"         { Global.last "begin"         ; BEGIN }
   | "end"           { Global.last "end"           ; END }
-  | "Threads"       { Global.last "Threads"       ; THREADS }
   | "Boxes"         { Global.last "Boxes"         ; BOXES }
   | "Nodes"         { Global.last "Nodes"         ; NODES }
   | "Initial"       { Global.last "Initial"       ; INITIAL }
   | "Edges"         { Global.last "Edges"         ; EDGES }
   | "Acceptance"    { Global.last "Acceptance"    ; ACCEPTANCE }
-  | "using"         { Global.last "using"         ; USING }
-  | "default"       { Global.last "default"       ; DEFAULT }
   | "invariant"     { Global.last "invariant"     ; INVARIANT }
   | "formula"       { Global.last "formula"       ; FORMULA }
   | "vars"          { Global.last "vars"          ; VARS }

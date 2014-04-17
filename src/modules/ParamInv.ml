@@ -11,9 +11,9 @@ module type S =
 
     exception No_invariant_folder
 
-		val gen_from_graph : IGraph.t -> Core.proof_obligation_t list
+    val gen_from_graph : IGraph.t -> Core.proof_obligation_t list
 
-		val solve_from_graph : IGraph.t -> Core.solved_proof_obligation_t list
+    val solve_from_graph : IGraph.t -> Core.solved_proof_obligation_t list
 
   end
 
@@ -29,7 +29,7 @@ module Make (C:Core.S) : S =
 
     (* General Initialization premise *)
     let premise_init (inv:E.formula) : Tactics.vc_info =
-			let (initial_cond, voc) = C.theta inv in
+      let (initial_cond, voc) = C.theta inv in
       Tactics.create_vc_info [] Formula.True initial_cond inv voc E.NoTid 0
 
 
@@ -45,8 +45,8 @@ module Make (C:Core.S) : S =
                       : Tactics.vc_info list =
       let trans_var = E.voc_to_var trans_tid in
       let voc = E.voc (Formula.conj_list (inv::supp)) in
-			let rho = C.rho System.Sequential voc line trans_tid in
-			let supp = List.map (E.param (E.V.Local trans_var)) supp in
+      let rho = C.rho System.Sequential voc line trans_tid in
+      let supp = List.map (E.param (E.V.Local trans_var)) supp in
       let inv = if E.ThreadSet.is_empty (E.voc inv) then
                   E.param (E.V.Local trans_var) inv
                 else
@@ -123,8 +123,8 @@ module Make (C:Core.S) : S =
                 (trans_tid:E.tid)
                   : Tactics.vc_info list =
       let voc = E.voc (Formula.conj_list (inv::supp)) in
-			let rho = C.rho System.Concurrent voc line trans_tid in
-			let tid_diff_conj = match premise with
+      let rho = C.rho System.Concurrent voc line trans_tid in
+      let tid_diff_conj = match premise with
                           | Premise.SelfConseq -> Formula.True
                           | Premise.OthersConseq ->
                               Formula.conj_list (E.ThreadSet.fold (fun t xs ->
@@ -156,7 +156,7 @@ module Make (C:Core.S) : S =
 
         let self_conseq_vcs = E.ThreadSet.fold (fun i vcs ->
                                 (gen_vcs (inv::self_conseq_supp) inv line Premise.SelfConseq i) @ vcs
-															) (System.filter_me_tid (E.voc inv)) [] in
+                              ) (System.filter_me_tid (E.voc inv)) [] in
         let other_conseq_vcs = gen_vcs (inv::other_conseq_supp) inv line Premise.OthersConseq fresh_k
         in
 
@@ -211,7 +211,7 @@ module Make (C:Core.S) : S =
 
     let generate_obligations (vcs:Tactics.vc_info list)
                              (gral_plan:Tactics.proof_plan)
-														 (cases:IGraph.case_tbl_t) : Core.proof_obligation_t list =
+                             (cases:IGraph.case_tbl_t) : Core.proof_obligation_t list =
       let vc_count = ref 1 in
       let show_progress = not (LeapVerbose.is_verbose_enabled()) in
       Progress.init (List.length vcs);
@@ -233,14 +233,14 @@ module Make (C:Core.S) : S =
                           (Tactics.apply_tactics_from_proof_plan [vc] joint_plan,
                            Tactics.get_cutoff joint_plan) in
 
-				let proof_info = C.new_proof_info cutoff in
-				let proof_obligation = C.new_proof_obligation vc obligations proof_info in
+        let proof_info = C.new_proof_info cutoff in
+        let proof_obligation = C.new_proof_obligation vc obligations proof_info in
         if show_progress then (Progress.current !vc_count; incr vc_count);
           proof_obligation :: res
       ) [] vcs
 
 
-		let gen_from_graph (graph:IGraph.t) : Core.proof_obligation_t list =
+    let gen_from_graph (graph:IGraph.t) : Core.proof_obligation_t list =
       check_well_defined_graph graph;
 
       (* Process the graph *)
@@ -249,7 +249,7 @@ module Make (C:Core.S) : S =
         let supp_ids = String.concat "," $ List.map Tag.tag_id suppTags in
         let inv_id = Tag.tag_id invTag in
         let supp = C.read_tags_and_group_by_file suppTags in
-				let inv = C.read_tag invTag in
+        let inv = C.read_tag invTag in
         let vc_info_list = match mode with
                            | IGraph.Concurrent ->
                               if LeapVerbose.is_verbose_enabled() then
@@ -274,7 +274,7 @@ module Make (C:Core.S) : S =
         C.report_vcs vc_info_list;
         let new_obligations = generate_obligations vc_info_list plan cases in
         let obligations_num = List.fold_left (fun n po ->
-																n + (List.length (C.obligations po))
+                                n + (List.length (C.obligations po))
                               ) 0 new_obligations in
         if (not (LeapVerbose.is_verbose_enabled())) then
           print_endline ("Generated: " ^ (string_of_int (List.length vc_info_list)) ^
@@ -287,9 +287,9 @@ module Make (C:Core.S) : S =
       ) [] graph_info
 
 
-		let solve_from_graph (graph:IGraph.t) : Core.solved_proof_obligation_t list =
+    let solve_from_graph (graph:IGraph.t) : Core.solved_proof_obligation_t list =
 (*        gen_from_graph graph; [] *)
-			C.solve_proof_obligations (gen_from_graph graph)
+      C.solve_proof_obligations (gen_from_graph graph)
       
 
-	end
+  end

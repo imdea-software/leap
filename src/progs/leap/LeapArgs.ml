@@ -47,6 +47,7 @@ let focusPC           = ref []
 let ignorePC          = ref []
 let vdFile            = ref ""
 let pvdFile           = ref ""
+let pvdSupport        = ref ""
 let outFile           = ref ""
 let detailedOutFile   = ref ""
 let num_threads       = ref 1
@@ -91,6 +92,9 @@ let inputVd (s:string) =
 
 let inputPvd (s:string) =
   pvdFile := s
+
+let inputPvdSupport (s:string) =
+  pvdSupport := s
 
 (* let dp_opt_list = List.map DP.to_str DP.def_dp_list *)
 let set_dp dp =
@@ -187,6 +191,9 @@ let opts =
     ("-pvd",
         Arg.String inputPvd,
         "analyzes a parametrized verification diagram");
+    ("-ps",
+        Arg.String inputPvdSupport,
+        "adds support for parametrized verification diagrams");
     ("-dp",
         Arg.String set_dp,
         "indicates the DP to use. Options are: " ^
