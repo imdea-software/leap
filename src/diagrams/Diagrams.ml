@@ -6,6 +6,7 @@ module F = Formula
 
 type pvd_vc_t = {
   initiation : Tactics.vc_info;
+  consecution : Tactics.vc_info list;
 }
 
 
@@ -36,6 +37,7 @@ module Make (C:Core.S) : S =
     let tmp =
       {
         initiation = gen_initiation pvd;
+        consecution = [];
       }
     in
       print_endline (Tactics.vc_info_to_str tmp.initiation); tmp
@@ -52,6 +54,25 @@ module Make (C:Core.S) : S =
         raise(Tag.Undefined_tag undef_t)
       end
 
+    let generate_obligations (orig_vc:Tactics.vc_info)
+                             (supp_opt:PVD.support_t option)
+        : Core.proof_obligation_t =
+      let line = Tactics.get_line_from_info orig_vc in
+      let (vc, plan) =
+        match supp_opt with
+        | None -> (orig_vc, Tactics.empty_proof_plan)
+        | Some supp ->
+            begin
+              let supp_tags = PVD.supp_fact supp line in
+              let supp_formulas = C.read_tags_and_group_by_file supp_tags in
+                (Tactics.vc_info_add_support orig_vc supp_formulas,
+                 PVD.supp_plan supp line)
+            end in
+      let obligations = Tactics.apply_tactics_from_proof_plan [vc] plan in
+      let proof_info = C.new_proof_info (Tactics.get_cutoff plan) in
+      let proof_obligation = C.new_proof_obligation vc obligations proof_info in
+        proof_obligation
+
 
     let gen_from_pvd (pvd:PVD.t) (supp:PVD.support_t option)
         : Core.proof_obligation_t list =
@@ -59,7 +80,15 @@ module Make (C:Core.S) : S =
               | None -> ()
               | Some s -> check_well_defined_supp s in
       let pvd_vcs = gen_vcs pvd in
-      []
+      let vc_list = pvd_vcs.initiation :: pvd_vcs.consecution in
+      let vc_count = ref 1 in
+      let show_progress = not (LeapVerbose.is_verbose_enabled()) in
+      Progress.init (List.length vc_list);
+      List.fold_left (fun os vc ->
+        let new_obligation = generate_obligations vc supp in
+        if show_progress then (Progress.current !vc_count; incr vc_count);
+        new_obligation :: os
+      ) [] vc_list
 
 
     let solve_from_pvd (pvd:PVD.t)

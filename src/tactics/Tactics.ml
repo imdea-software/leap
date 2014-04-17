@@ -329,6 +329,20 @@ let set_fixed_voc (ts:E.ThreadSet.t) : unit =
   fixed_voc := E.ThreadSet.add System.me_tid_th ts
 
 
+let vc_info_add_support (info:vc_info) (supp:support_t) : vc_info =
+  {
+    original_support = supp ;
+    tid_constraint   = info.tid_constraint;
+    rho              = info.rho ;
+    original_goal    = info.original_goal ;
+    goal             = info.goal ;
+    transition_tid   = info.transition_tid ;
+    line             = info.line ;
+    vocabulary       = info.vocabulary ; (* FIX need recompute *)
+  }
+  
+
+
 let filter_fixed_voc (ts:E.ThreadSet.t) : E.ThreadSet.t =
   let unprimed_ts = E.ThreadSet.fold (fun t set ->
                       E.ThreadSet.add (E.unprime_tid t) set
@@ -352,6 +366,9 @@ and is_empty_proof_plan (plan:proof_plan) : bool =
   plan.support_split_tactics = [] && plan.support_tactics = [] &&
   plan.formula_split_tactics = [] && plan.formula_tactics = [] &&
   plan.cutoff_algorithm = None
+and empty_proof_plan : proof_plan =
+  new_proof_plan None [] [] [] []
+
 
 
 let get_unprocessed_support_from_info (info:vc_info) : support_t =
