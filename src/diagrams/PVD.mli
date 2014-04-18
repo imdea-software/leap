@@ -2,10 +2,12 @@ type node_id_t = string
 type box_id_t = string
 type supp_line_t = All | Trans of int
 type edge_type_t = Any | Pres
+type edge_info_t = (edge_type_t * trans_t)
 type trans_t = NoLabel | Label of (int * Expression.V.t) list
 type accept_triple_t = (node_id_t * node_id_t * edge_type_t)
 
 module NodeIdSet : Set.S with type elt = node_id_t
+module EdgeInfoSet : Set.S with type elt = edge_info_t
 
 type t
 type support_t
@@ -20,8 +22,13 @@ val new_pvd : string ->
               t
 
 val initial : t -> NodeIdSet.t
+val nodes : t -> NodeIdSet.t
 val node_mu : t -> node_id_t -> Expression.formula
 val node_box : t -> node_id_t -> box_id_t option
+val next : t -> node_id_t -> NodeIdSet.t
+val box_param : t -> box_id_t -> Expression.ThreadSet.elt
+val edges : t -> node_id_t -> node_id_t -> EdgeInfoSet.t
+val free_voc : t -> Expression.ThreadSet.t
 
 
 val new_support : (supp_line_t * Tactics.proof_plan) list ->

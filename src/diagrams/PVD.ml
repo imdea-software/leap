@@ -84,6 +84,10 @@ let initNodeNum = 30
 let initEdgeNum = 50
 
 
+(**  Cache  **)
+let cached_nodes : NodeIdSet.t option ref = ref None
+
+
 (**  Selectors  **)
 let box_param (nTbl:node_table_t)
               (bTbl:box_table_t)
@@ -419,12 +423,42 @@ let initial (pvd:t) : NodeIdSet.t =
   pvd.initial
 
 
+let nodes (pvd:t) : NodeIdSet.t =
+  match !cached_nodes with
+  | Some n -> n
+  | None -> begin
+              let nSet = Hashtbl.fold (fun n info set ->
+                           NodeIdSet.add n set
+                         ) pvd.nodes NodeIdSet.empty in
+              cached_nodes := Some nSet;
+              nSet
+            end
+
+
 let node_mu (pvd:t) (n:node_id_t) : E.formula =
   (Hashtbl.find pvd.nodes n).mu
 
 
 let node_box (pvd:t) (n:node_id_t) : box_id_t option =
   (Hashtbl.find pvd.nodes n).box
+
+
+let next (pvd:t) (n:node_id_t) : NodeIdSet.t =
+  Hashtbl.find pvd.next n
+
+
+let box_param (pvd:t) (b:box_id_t) : E.ThreadSet.elt =
+  snd (Hashtbl.find pvd.boxes b)
+
+
+let edges (pvd:t) (n1:node_id_t) (n2:node_id_t) : EdgeInfoSet.t =
+  try
+    Hashtbl.find pvd.edges (n1,n2)
+  with Not_found -> EdgeInfoSet.empty
+
+
+let free_voc (pvd:t) : E.ThreadSet.t =
+  pvd.free_voc
 
 
 let new_support (ts:(supp_line_t * Tactics.proof_plan) list)

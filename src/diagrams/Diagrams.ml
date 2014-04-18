@@ -33,11 +33,48 @@ module Make (C:Core.S) : S =
       Tactics.create_vc_info [] F.True theta init_mu voc E.NoTid 0
 
 
+    let gen_consecution (pvd:PVD.t) : Tactics.vc_info list =
+      let nodes = PVD.nodes pvd in
+      NodeIdSet.fold (fun n xs ->
+        let free_voc = PVD.free_voc pvd in
+        let voc = match PVD.node_box pvd n with
+                  | None -> free_voc
+                  | Some b -> E.ThreadSet.add b free_voc in
+        let mu_n = PVD.node_mu pvd n in
+        let next = PVD.next n in
+        let next_disj =
+          F.disj_list
+            (PVD.NodeIdSet.fold (fun n' xs ->
+              let beta =
+                match (node_box pvd n, node_box pvd n') with
+                | (Some b, Some b') -> if b = b' and XXXXX then
+                                         let p = PVD.box_param pvd b in
+                                         F.atom_to_formula
+                                           (E.Eq(E.TidT (prime_tid p, E.TidT p))
+                                       else F.True
+                | _ -> F.True in
+              F.And (node_mu vd x, beta) :: xs
+            ) next []) in
+        let rho_phi = C.rho System.Concurrent (E.voc (F.Implies (mu_n, next_disj)))
+                        PVD.
+
+
+        let antecedent = F.And (mu_n, rho_form)
+        (* Self-consecution *)
+        let self_c = E.ThreadSet.fold (fun t ys ->
+                       ys
+                     ) voc [] in
+        (* Others-consecution *)
+        let other_c = [] in
+        other_c :: self_c @ xs
+      ) nodes []
+
+
     let gen_vcs (pvd:PVD.t) : pvd_vc_t =
     let tmp =
       {
         initiation = gen_initiation pvd;
-        consecution = [];
+        consecution = gen_consecution pvd;
       }
     in
       print_endline (Tactics.vc_info_to_str tmp.initiation); tmp
