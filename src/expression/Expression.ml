@@ -400,8 +400,8 @@ let priming_variable (pr:bool)
                      (prime_set:(V.VarSet.t option * bool))
                      (v:V.t) : V.t =
   let v' = if pr then V.prime v else V.unprime v in
-	match (fst prime_set) with
-	| None   -> v'
+  match (fst prime_set) with
+  | None   -> v'
 (* DO NOT ERASE: This may be needed!!!! *)
   | Some s -> if (V.VarSet.mem (V.set_param v V.Shared) s ||
                   V.VarSet.mem (v) s                  ) then v' else v
@@ -709,9 +709,9 @@ and priming_atom (pr:bool) (prime_set:(V.VarSet.t option * bool)) (a:atom) : ato
   | BoolVar v                         -> BoolVar (priming_variable pr prime_set v)
   | BoolArrayRd (a,t)                 -> BoolArrayRd (priming_array pr prime_set a,
                                                       priming_tid pr prime_set t)
-	| PC (pc,t,_)                       -> PC (pc, t, snd prime_set)
-	| PCUpdate (pc,t)                   -> PCUpdate (pc,t)
-	| PCRange (pc1,pc2,t,_)             -> PCRange (pc1, pc2, t, snd prime_set)
+  | PC (pc,t,_)                       -> PC (pc, t, snd prime_set)
+  | PCUpdate (pc,t)                   -> PCUpdate (pc,t)
+  | PCRange (pc1,pc2,t,_)             -> PCRange (pc1, pc2, t, snd prime_set)
 
 
 and priming_eq (pr:bool) (prime_set:(V.VarSet.t option * bool)) ((t1,t2):eq) : eq =
@@ -719,7 +719,7 @@ and priming_eq (pr:bool) (prime_set:(V.VarSet.t option * bool)) ((t1,t2):eq) : e
 
 
 and priming_ineq (pr:bool) (prime_set:(V.VarSet.t option * bool)) ((t1,t2):diseq) : diseq =
-	(priming_term pr prime_set t1, priming_term pr prime_set t2)
+  (priming_term pr prime_set t1, priming_term pr prime_set t2)
 
 
 and priming_fs () = Formula.make_trans
@@ -787,17 +787,17 @@ let unprime_atom (a:atom) : atom =  priming_atom false (None, false) a
 let prime (phi:formula) : formula =  priming_formula true (None, true) phi
 let unprime (phi:formula) : formula =  priming_formula false (None, false) phi
 let prime_only (prime_set:V.VarSet.t) (pPC:bool) (phi:formula) : formula =
-	priming_formula true (Some prime_set, pPC) phi
+  priming_formula true (Some prime_set, pPC) phi
 let unprime_only (prime_set:V.VarSet.t) (pPC:bool) (phi:formula) : formula =
-	priming_formula false (Some prime_set, pPC) phi
+  priming_formula false (Some prime_set, pPC) phi
 let prime_term_only (prime_set:V.VarSet.t) (t:term) : term =
-	priming_term true (Some prime_set, true) t
+  priming_term true (Some prime_set, true) t
 let unprime_term_only (prime_set:V.VarSet.t) (t:term) : term =
-	priming_term false (Some prime_set, false) t
+  priming_term false (Some prime_set, false) t
 let prime_option_tid (th:V.shared_or_local) : V.shared_or_local =
-	priming_option_tid true (None, true) th
+  priming_option_tid true (None, true) th
 let unprime_option_tid (th:V.shared_or_local) : V.shared_or_local =
-	priming_option_tid false (None, false) th
+  priming_option_tid false (None, false) th
 let prime_tid (th:tid) : tid =  priming_tid true (None, true) th
 let unprime_tid (th:tid) : tid = priming_tid false (None, false) th
 
@@ -2148,10 +2148,10 @@ let prime_modified (rho:formula) (phi:formula) : formula =
   let rec analyze_fs () = Formula.make_fold
                             Formula.GenericLiteralFold
                             (fun info a -> analyze_atom a)
-														(fun info -> (V.VarSet.empty, false))
-														(fun (s1,b1) (s2,b2) -> (V.VarSet.union s1 s2, b1 || b2))
+                            (fun info -> (V.VarSet.empty, false))
+                            (fun (s1,b1) (s2,b2) -> (V.VarSet.union s1 s2, b1 || b2))
 
-	and analyze_formula (phi:formula) : (V.VarSet.t * bool) =
+  and analyze_formula (phi:formula) : (V.VarSet.t * bool) =
     Formula.formula_fold (analyze_fs()) () phi
 
 (*
@@ -2170,20 +2170,20 @@ let prime_modified (rho:formula) (phi:formula) : formula =
     | Atom a -> analyze_atom a
     | NegAtom a -> analyze_atom a
 *)
-	and analyze_atom (a:atom) : (V.VarSet.t * bool) =
-		match a with
+  and analyze_atom (a:atom) : (V.VarSet.t * bool) =
+    match a with
     | Eq (ArrayT (VarArray v), ArrayT (ArrayUp (aa,t,e)))
     | Eq (ArrayT (ArrayUp (aa,t,e)), ArrayT (VarArray v)) ->
-				(V.VarSet.singleton (V.set_param (V.unprime v) (V.Local (voc_to_var t))), false)
-		| PC(_,_,true)
-		| PCUpdate _
-		| PCRange (_,_,_,true) -> (V.VarSet.empty, true)
-		| _ -> (get_vars_atom a base_f, false) in
-	let (pSet,pPC) = analyze_formula rho in
-	let p_set = V.VarSet.fold (fun v set ->
+        (V.VarSet.singleton (V.set_param (V.unprime v) (V.Local (voc_to_var t))), false)
+    | PC(_,_,true)
+    | PCUpdate _
+    | PCRange (_,_,_,true) -> (V.VarSet.empty, true)
+    | _ -> (get_vars_atom a base_f, false) in
+  let (pSet,pPC) = analyze_formula rho in
+  let p_set = V.VarSet.fold (fun v set ->
                  V.VarSet.add (V.unprime v) set
-							 ) pSet V.VarSet.empty in
-		prime_only p_set pPC phi
+               ) pSet V.VarSet.empty in
+    prime_only p_set pPC phi
 
 
 let prime_modified_term (ante:formula) (t:term) : term =

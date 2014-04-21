@@ -1,2 +1,0 @@
-
-type t = SelfConseq | OthersConseq

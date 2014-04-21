@@ -275,8 +275,8 @@ let create_vc_info (supp       : support_t)
                    (trans_tid  : E.tid)
                    (line       : E.pc_t) : vc_info =
 (*
-		print_endline ("ORIGINAL GOAL: " ^ (E.formula_to_str goal));
-		print_endline ("PROCESSED GOAL: " ^ (E.formula_to_str (E.prime_modified rho goal)));
+    print_endline ("ORIGINAL GOAL: " ^ (E.formula_to_str goal));
+    print_endline ("PROCESSED GOAL: " ^ (E.formula_to_str (E.prime_modified rho goal)));
 *)
     {
       original_support   = supp ;
