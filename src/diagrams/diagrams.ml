@@ -1,0 +1,198 @@
+open LeapLib
+
+module E = Expression
+module F = Formula
+
+
+type pvd_vc_t = {
+  initiation : Tactics.vc_info;
+  consecution : Tactics.vc_info list;
+  fairness : Tactics.vc_info list;
+}
+
+
+module type S =
+  sig
+    val gen_vcs : PVD.t -> pvd_vc_t
+    val gen_from_pvd : PVD.t ->
+                       PVD.support_t option ->
+                       Core.proof_obligation_t list
+    val solve_from_pvd : PVD.t ->
+                         PVD.support_t option ->
+                         Core.solved_proof_obligation_t list
+  end
+
+
+module Make (C:Core.S) : S =
+  struct
+
+
+    let gen_initiation (pvd:PVD.t) : Tactics.vc_info =
+      let init_mu = F.disj_list (PVD.NodeIdSet.fold (fun n xs ->
+                                  (PVD.node_mu pvd n) :: xs
+                                ) (PVD.initial pvd) []) in
+      let (theta, voc) = C.theta (E.voc init_mu) in
+      print_endline ("INIT_MU: " ^ (E.formula_to_str init_mu));
+      Tactics.create_vc_info [] F.True theta init_mu voc E.NoTid 0
+
+
+    let gen_consecution (pvd:PVD.t) : Tactics.vc_info list = []
+(*
+      let nodes = PVD.nodes pvd in
+      PVD.NodeIdSet.fold (fun n vcs ->
+        let free_voc = PVD.free_voc pvd in
+        let n_voc = match PVD.node_box pvd n with
+                    | None -> free_voc
+                    | Some b -> E.ThreadSet.add (PVD.box_param pvd b) free_voc in
+        let mu_n = PVD.node_mu pvd n in
+        let next = PVD.next pvd n in
+        let next_disj =
+          F.disj_list $
+            PVD.NodeIdSet.fold (fun n' ys ->
+              let mu_n' = PVD.node_mu pvd n' in
+              let edges = PVD.edges pvd n n' in
+              let beta = F.conj_list $
+                           PVD.EdgeInfoSet.fold (fun (kind,_) zs ->
+                             (match (PVD.node_box pvd n, PVD.node_box pvd n') with
+                              | (Some b, Some b') ->
+                                  if b = b' && kind = PVD.Pres then
+                                    let p = PVD.box_param pvd b in
+                                    F.atom_to_formula
+                                      (E.Eq(E.TidT (E.prime_tid p), E.TidT p))
+                                  else F.True
+                              | _ -> F.True) :: zs
+                           ) edges [] in
+              F.And (mu_n', beta) :: ys
+            ) next [] in
+        let full_voc = E.ThreadSet.union n_voc (E.voc (F.And (mu_n,next_disj))) in
+        let n_vcs = ref [] in
+        for line = 1 to (System.lines C.system) do
+          (* Self-consecution *)
+          let self_vcs =
+            E.ThreadSet.fold (fun t ys ->
+              let self_rho = C.rho System.Concurrent full_voc line t in
+              (List.map (fun rho ->
+                Tactics.create_vc_info [] F.True (F.And (mu_n, rho)) next_disj
+                                      full_voc t line) self_rho) @ ys
+            ) n_voc [] in
+          (* Others-consecution *)
+          let fresh_k = E.gen_fresh_tid full_voc in
+          let other_rho = C.rho System.Concurrent full_voc line fresh_k in
+          let tid_diff_conj = Formula.conj_list (E.ThreadSet.fold (fun t xs ->
+                                                  (E.ineq_tid fresh_k t) :: xs
+                                                ) full_voc []) in
+          let others_vcs = List.map (fun rho ->
+                             Tactics.create_vc_info [] tid_diff_conj (F.And (mu_n, rho))
+                                        next_disj full_voc fresh_k line) other_rho in
+          n_vcs := self_vcs @ others_vcs @ !n_vcs
+        done;
+        !n_vcs @ vcs
+      ) nodes []
+*)
+
+
+    let gen_fairness (pvd:PVD.t) : Tactics.vc_info list = []
+(*
+      let edges = PVD.edge_list pvd in
+      List.fold_left (fun vcs (n1,n2,info) ->
+        let mu_n1 = PVD.node_mu pvd n1 in
+        (PVD.EdgeInfoSet.fold (fun (_,trans) xs ->
+          match trans with
+          | PVD.NoLabel -> xs
+          | PVD.Label trans_list ->
+              (List.fold_left (fun gen_vcs (line,v) ->
+                 let voc = E.voc mu_n1 in
+                 let th = E.VarTh v in
+                 let (_,stm) = System.get_statement_at C.system line in
+                 let rho_list = C.rho System.Concurrent voc line th in
+                 let next_mu =
+                    F.disj_list $
+                      PVD.NodeIdSet.fold (fun n xs ->
+                        (PVD.node_mu pvd n) :: xs
+                      ) (PVD.succesor pvd n1 line v) [] in
+                 let conds =
+                   F.disj_list (Statement.enabling_condition (E.V.Local v) stm) in
+                  (* Enabled *)
+                  let enable_vc = Tactics.create_vc_info [] F.True mu_n1
+                                    conds voc th line in
+                  (* Successor *)
+                  let successor_vcs =
+                    List.map (fun rho ->
+                      Tactics.create_vc_info [] F.True (F.And (mu_n1,rho)) next_mu
+                          voc th line
+                    ) rho_list in
+                  enable_vc :: successor_vcs @ gen_vcs
+              ) [] trans_list) @ xs
+        ) info []) @ vcs
+      ) [] edges
+*)
+
+
+
+    let gen_vcs (pvd:PVD.t) : pvd_vc_t =
+    let tmp =
+      {
+        initiation = gen_initiation pvd;
+        consecution = gen_consecution pvd;
+        fairness = gen_fairness pvd;
+      }
+    in
+      print_endline (Tactics.vc_info_to_str tmp.initiation); tmp
+
+
+    let check_well_defined_supp (supp:PVD.support_t) : unit =
+      let tags = PVD.supp_tags supp in
+      let undef_tags = List.filter (fun t -> not (C.is_def_tag t)) tags in
+      if undef_tags <> [] then begin
+        let undef_t = Tag.tag_id (List.hd undef_tags) in
+        Interface.Err.msg "Undefined tag" $
+          Printf.sprintf "Tag %s was used in PVD support \
+            but it could not be read from the invariant folder." undef_t;
+        raise(Tag.Undefined_tag undef_t)
+      end
+
+    let generate_obligations (orig_vc:Tactics.vc_info)
+                             (supp_opt:PVD.support_t option)
+        : Core.proof_obligation_t =
+      let line = Tactics.get_line_from_info orig_vc in
+      let (vc, plan) =
+        match supp_opt with
+        | None -> (orig_vc, Tactics.empty_proof_plan)
+        | Some supp ->
+            begin
+              let supp_tags = PVD.supp_fact supp line in
+              let supp_formulas = C.read_tags_and_group_by_file supp_tags in
+                (Tactics.vc_info_add_support orig_vc supp_formulas,
+                 PVD.supp_plan supp line)
+            end in
+      let obligations = Tactics.apply_tactics_from_proof_plan [vc] plan in
+      let proof_info = C.new_proof_info (Tactics.get_cutoff plan) in
+      let proof_obligation = C.new_proof_obligation vc obligations proof_info in
+        proof_obligation
+
+
+    let gen_from_pvd (pvd:PVD.t) (supp:PVD.support_t option)
+        : Core.proof_obligation_t list =
+      let _ = match supp with
+              | None -> ()
+              | Some s -> check_well_defined_supp s in
+      let pvd_vcs = gen_vcs pvd in
+      let vc_list = [pvd_vcs.initiation] in (*  ::
+                    pvd_vcs.consecution @
+                    pvd_vcs.fairness in *)
+      let vc_count = ref 1 in
+      let show_progress = not (LeapVerbose.is_verbose_enabled()) in
+      Progress.init (List.length vc_list);
+      List.fold_left (fun os vc ->
+        let new_obligation = generate_obligations vc supp in
+        if show_progress then (Progress.current !vc_count; incr vc_count);
+        new_obligation :: os
+      ) [] vc_list
+
+
+    let solve_from_pvd (pvd:PVD.t)
+                       (supp:PVD.support_t option)
+          : Core.solved_proof_obligation_t list =
+      C.solve_proof_obligations (gen_from_pvd pvd supp)
+
+  end
