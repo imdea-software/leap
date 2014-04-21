@@ -95,6 +95,8 @@ module type S =
     val read_tag : Tag.f_tag -> Expression.formula
     val read_tags_and_group_by_file : Tag.f_tag list -> Expression.formula list
 
+    val system : System.t
+
     val theta : Expression.ThreadSet.t -> (Expression.formula * Expression.ThreadSet.t)
     val rho : System.seq_or_conc_t ->
               Expression.ThreadSet.t ->
@@ -300,6 +302,10 @@ module Make (Opt:module type of GenOptions) : S =
       DP.add_dp_calls calls_counter Opt.dp n
 
 
+    let system : System.t =
+      Opt.sys
+
+
     let theta (voc:E.ThreadSet.t) : (E.formula * E.ThreadSet.t) =
       let theta = System.gen_theta (System.SOpenArray (E.ThreadSet.elements voc)) Opt.sys Opt.abs in
       let voc = E.ThreadSet.union voc (E.voc theta) in
@@ -309,7 +315,7 @@ module Make (Opt:module type of GenOptions) : S =
                        E.V.VarSet.fold (fun v xs ->
                          E.pc_form 1 (E.V.Local v) true :: xs
                        ) (E.voc_to_vars voc) [] in
-      (Formula.conj_list (theta::init_pos), voc)
+      (Formula.conj_list ([theta]), voc)
 
 
   let rho (seq_or_conc:System.seq_or_conc_t)
