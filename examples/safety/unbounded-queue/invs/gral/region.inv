@@ -1,0 +1,9 @@
+vars:
+
+tid j
+
+invariant [queueRegion] :
+
+  true
+//   @n_not_null(j). -> ~(enqueue::n(j) in region)
+

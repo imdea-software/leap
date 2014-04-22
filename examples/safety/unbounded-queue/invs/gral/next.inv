@@ -1,0 +1,13 @@
+vars:
+
+tid j
+
+invariant [queueNext] :
+
+   @head_next_not_null(j). -> rd(heap, head).next != null
+/\ @tail_next_n(j). -> rd(heap, tail).next = enqueue::n(j)
+/\ @n_not_null(j). -> (enqueue::n(j) != null /\
+                       rd(heap, enqueue::n(j)).next = null /\
+                       tail != enqueue::n(j))
+/\ @dequeue_point(j). -> dequeue::result(j) = rd(heap, rd(heap, head).next).data
+/\ @n_not_null(j). -> rd(heap, enqueue::n(j)).data = enqueue::e(j)

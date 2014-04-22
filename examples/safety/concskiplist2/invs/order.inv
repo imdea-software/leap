@@ -1,0 +1,208 @@
+vars:
+
+invariant [skiplist_order] :
+
+
+   rd(heap, head).data = lowestElem
+
+/\ rd(heap, tail).data = highestElem
+
+
+/\ @main_e. -> (main::e != lowestElem /\ main::e != highestElem)
+
+/\ @insert_body. -> (insert::e != lowestElem /\ insert::e != highestElem)
+
+/\ @remove_body. -> (remove::e != lowestElem /\ remove::e != highestElem)
+
+
+/\ @insert_newCell_created. ->
+      (rd(heap, insert::newCell).data != rd(heap, head).data /\
+       rd(heap, insert::newCell).data != rd(heap, tail).data /\
+       rd(heap, insert::newCell).data = insert::e)
+
+
+/\ @insert_lookup_loop. ->
+      (rd(heap, insert::prev).data < insert::e)
+
+
+/\ @insert_lookup_inside. ->
+      (rd(heap, insert::curr).data < insert::e)
+
+
+
+/\ @insert_lookup_loop. ->
+      ((insert::i < 0 -> (rd(heap,insert::update[0]).data < insert::e /\
+                         (rd(heap,rd(heap,insert::update[0]).nextat[0]).data > insert::e \/
+                          rd(heap,rd(heap,insert::update[0]).nextat[0]).data = insert::e))) /\
+       (insert::i < 1 -> (rd(heap,insert::update[1]).data < insert::e /\
+                         (rd(heap,rd(heap,insert::update[1]).nextat[1]).data > insert::e \/
+                          rd(heap,rd(heap,insert::update[1]).nextat[1]).data = insert::e))))
+
+
+/\ @insert_final_if_condition. ->
+      ((rd(heap,insert::update[0]).data < insert::e /\
+       (rd(heap,rd(heap,insert::update[0]).nextat[0]).data > insert::e \/
+        rd(heap,rd(heap,insert::update[0]).nextat[0]).data = insert::e)) /\
+       (rd(heap,insert::update[1]).data < insert::e /\
+       (rd(heap,rd(heap,insert::update[1]).nextat[1]).data > insert::e \/
+        rd(heap,rd(heap,insert::update[1]).nextat[1]).data = insert::e)))
+
+
+
+/\ @insert_update_all_bounds. ->
+      (rd(heap, insert::update[0]).data < insert::e /\
+       rd(heap, rd(heap, insert::update[0]).nextat[0]).data > insert::e /\
+       rd(heap, insert::update[1]).data < insert::e /\
+       rd(heap, rd(heap, insert::update[1]).nextat[1]).data > insert::e)
+
+
+///\ @insert_update_upper_bounds. ->
+//      ((insert::i = 0 ->
+//          (rd(heap, insert::update[0]).data < insert::e /\
+//           rd(heap, rd(heap, insert::update[0]).nextat[0]).data > insert::e /\
+//           rd(heap, insert::update[1]).data < insert::e /\
+//           rd(heap, rd(heap, insert::update[1]).nextat[1]).data > insert::e)) /\
+//       (insert::i = 1 ->
+//          (rd(heap, insert::update[1]).data < insert::e /\
+//           rd(heap, rd(heap, insert::update[1]).nextat[1]).data > insert::e))
+//       )
+
+
+
+
+/\ @insert_newCell_next_connected. ->
+        (rd(heap, insert::update[insert::i]).data < rd(heap, insert::newCell).data /\
+         rd(heap, rd(heap, insert::newCell).nextat[insert::i]).data > rd(heap, insert::newCell).data)
+
+
+
+/\ @insert_prev_in_region. ->
+        (rd(heap, insert::prev).data < insert::e)
+
+
+
+
+/\ @insert_update_set. ->
+        (rd(heap, insert::update[insert::i]).data = rd(heap,insert::prev).data)
+
+
+/\ @insert_curr_greater_e. ->
+      (rd(heap,insert::curr).data > insert::e \/
+       rd(heap,insert::curr).data = insert::e)
+
+
+/\ @insert_newCell_disconnected. ->
+      (((insert::i <= 0 /\ ~.insert::all_processed.) ->
+            (rd(heap,insert::update[0]).data < insert::e /\
+             rd(heap,rd(heap,insert::update[0]).nextat[0]).data > insert::e)) /\
+       ((insert::i <= 1 /\ ~.insert::all_processed.) ->
+            (rd(heap,insert::update[1]).data < insert::e /\
+             rd(heap,rd(heap,insert::update[1]).nextat[1]).data > insert::e)))
+
+
+/\ @insert_newCell_connected. ->
+      ((insert::i < 0 -> (rd(heap,insert::update[0]).data < insert::e /\
+                          rd(heap,rd(heap,insert::update[0]).nextat[0]).data > insert::e)) /\
+       (insert::i < 1 -> (rd(heap,insert::update[1]).data < insert::e /\
+                          rd(heap,rd(heap,insert::update[1]).nextat[1]).data > insert::e)))
+
+
+
+
+////////////////////////
+
+
+/\ @remove_bounded_prev. ->
+      (rd(heap, remove::prev).data < remove::e)
+
+
+/\ @remove_bounded_curr. ->
+      (rd(heap, remove::curr).data > remove::e \/
+       rd(heap, remove::curr).data = remove::e)
+
+
+
+/\ @remove_curr_lower_e. ->
+      (rd(heap, remove::curr).data < remove::e)
+
+
+/\ @remove_lookup_loop. ->
+      ((remove::i < 0 -> (rd(heap, remove::update[0]).data < remove::e /\
+                          (rd(heap,rd(heap, remove::update[0]).nextat[0]).data > remove::e \/
+                           rd(heap,rd(heap, remove::update[0]).nextat[0]).data = remove::e))) /\
+       (remove::i < 1 -> (rd(heap, remove::update[1]).data < remove::e /\
+                          (rd(heap,rd(heap, remove::update[1]).nextat[1]).data > remove::e \/
+                           rd(heap,rd(heap, remove::update[1]).nextat[1]).data = remove::e))))
+
+
+/\ @remove_section. ->
+        (remove::update[0] in addr2set(heap, head, 0) /\
+         remove::update[1] in addr2set(heap, head, 1))
+
+
+
+
+
+
+//////////////////////////////////////
+
+
+
+
+
+/\ @remove_final_if_true. ->
+      (rd(heap, remove::curr).data = remove::e)
+
+/\ @remove_section. ->
+      (rd(heap,remove::update[0]).data < remove::e /\
+       rd(heap,remove::update[1]).data < remove::e)
+
+/\ @remove_update_next_all_greater. ->
+          ((rd(heap, rd(heap,remove::update[0]).nextat[0]).data > remove::e \/
+            rd(heap, rd(heap,remove::update[0]).nextat[0]).data = remove::e) /\
+           (rd(heap, rd(heap,remove::update[1]).nextat[1]).data > remove::e \/
+            rd(heap, rd(heap,remove::update[1]).nextat[1]).data = remove::e))
+
+
+
+
+/\ @remove_update_next_all_greater. ->
+      (((0 <= remove::removeFrom /\ ~.remove::all_processed.) ->
+            rd(heap, rd(heap, remove::update[0]).nextat[0]).data = remove::e) /\
+       ((1 <= remove::removeFrom /\ ~.remove::all_processed.) ->
+            rd(heap, rd(heap, remove::update[1]).nextat[1]).data = remove::e))
+
+/\ @remove_update_next_all_greater. ->
+      (((remove::removeFrom < 0 /\ ~.remove::all_processed.) ->
+            rd(heap, rd(heap, remove::update[0]).nextat[0]).data > remove::e) /\
+       ((remove::removeFrom < 1 /\ ~.remove::all_processed.) ->
+            rd(heap, rd(heap, remove::update[1]).nextat[1]).data > remove::e))
+
+
+
+/\ @remove_final_while_begins. ->
+      (((0 <= remove::i /\ ~.remove::all_processed.) ->
+            rd(heap, rd(heap, remove::update[0]).nextat[0]).data = remove::e) /\
+       ((1 <= remove::i /\ ~.remove::all_processed.) ->
+            rd(heap, rd(heap, remove::update[1]).nextat[1]).data = remove::e))
+
+/\ @remove_final_while_begins. ->
+      (((remove::i < 0 /\ ~.remove::all_processed.) ->
+            rd(heap, rd(heap, remove::update[0]).nextat[0]).data > remove::e) /\
+       ((remove::i < 1 /\ ~.remove::all_processed.) ->
+            rd(heap, rd(heap, remove::update[1]).nextat[1]).data > remove::e))
+
+
+/\ @remove_newCell_connected. ->
+      ((0 < remove::i -> rd(heap, rd(heap, remove::update[0]).nextat[0]).data = remove::e) /\
+       (1 < remove::i -> rd(heap, rd(heap, remove::update[1]).nextat[1]).data = remove::e))
+
+
+/\ @remove_newCell_connected. ->
+      ((remove::i < 0 -> rd(heap, rd(heap, remove::update[0]).nextat[0]).data > remove::e) /\
+       (remove::i < 1 -> rd(heap, rd(heap, remove::update[1]).nextat[1]).data > remove::e))
+
+
+/\ @remove_newCell_connected. ->
+      (rd(heap, rd(heap, remove::update[remove::i]).nextat[remove::i]).data > remove::e)
+

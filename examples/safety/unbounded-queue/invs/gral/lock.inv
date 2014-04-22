@@ -1,0 +1,11 @@
+vars:
+
+tid j
+
+invariant [queueLock] :
+
+   (@locked_enqueue(j). \/ @locked_dequeue_one(j). \/ @locked_dequeue_two(j).) ->
+      queueLock.lockid = j
+
+/\ (~ (@locked_enqueue(j). \/ @locked_dequeue_one(j). \/ @locked_dequeue_two(j).)) ->
+      queueLock.lockid != j

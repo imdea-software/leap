@@ -1,0 +1,20 @@
+vars:
+
+tid j
+
+invariant [queuePreserve] :
+
+   null in region
+/\ tail in region
+
+//#region:
+   region = addr2set(heap, head)
+
+
+
+ tail != null
+
+#head_not_null:
+   head != null
+
+
