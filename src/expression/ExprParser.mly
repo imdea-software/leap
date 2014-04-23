@@ -685,7 +685,7 @@ trans_list :
 
 
 trans :
-  | NUMBER OPEN_BRACKET IDENT CLOSE_BRACKET
+  | NUMBER OPEN_PAREN IDENT CLOSE_PAREN
     {
       let i = $1 in
       let t = E.build_global_var (get_name $3) E.Tid in

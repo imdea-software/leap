@@ -1,24 +1,33 @@
 Diagram[ticketset]
 
-Nodes: n1{@1(k).},n2,n3
+Nodes: n0 {@1(k). \/ @2(k). \/ @6(k). \/ @7(k).},
+       n1 {@3(k).},
+       n2 {@4(t).},
+       n3 {@5(t).},
+       n4 {@6(t).},
+       n5 {@4(k).},
+       n6 {@5(k). \/ @6(k).}
 
-Boxes: {b1[t]:n1,n2}
+Boxes: {b1[t]:n2,n3,n4}
 
-Initial: n1
+Initial: n0
 
-Edges: [n1 --> n2]; // Boxed edge (preserves parameter)
-        n2 --> n3;  // Unboxed edge (does not preserve parameter)
-        n2 --> n1;
-       [n2 -{2[t],4[k]}-> n1]; // Boxed labeled edge
-        n3 -{1[k]}-> n1; // Unboxed labeled edge
+Edges:  n0 --> n1;
+        n1 -{3(k)}-> n2;
+        n1 -{3(k)}-> n3;
+        n1 -{3(k)}-> n4;
+        n1 -{3(k)}-> n5;
+       [n2 -{4(t)}-> n3];
+       [n3 -{5(t)}-> n4];
+        n4 -{6(t)}-> n2;
+        n4 -{6(t)}-> n3;
+        n4 -{6(t)}-> n4;
+        n4 -{6(t)}-> n5;
+        n5 -{4(k)}-> n6;
+        n6 --> n0;
 
 Acceptance:
-  <<Good:{(n2,n3,any),(n1,n2,pres)};
-    Bad:{};
+  <<Good:{(n4,n2,any),(n4,n3,any),(n4,n4,any),(n4,n5,any)};
+    Bad :{(n6,n0,any)};
     null = null >>
-
-  <<Good:{(n2,n3,any),(n1,n2,pres)};
-    Bad:{};
-    null = null >>
-
 

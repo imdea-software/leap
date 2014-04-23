@@ -5,5 +5,3 @@ Tactics :
          | simplify-pc } ;
 
 Facts :
-   activeLow, notSame;
- 5:minTicket;

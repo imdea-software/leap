@@ -41,6 +41,8 @@ check_tool = @if [[ `command -v $(1)` ]] ; then \
 							 echo "[    ]  --  $(1)"; \
 						 fi
 
+copy = @mkdir -p $(2); cp $(1) $(2)/$(3)
+
 
 .PHONY: profile clean all expand unexpand leap prog2fts prginfo pinv sinv pvd tll solve applytac tmptsl tsl numinv spec_check doc tools tests
 
@@ -84,61 +86,61 @@ $(TOOLS) :
 profile:
 	@echo "let value = "$(REVISION) > $(PROGS)/Revision.ml
 	$(OCAMLBUILD) $(PROFILE_FLAGS) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $(LEAP).p.native
-	@cp ./_build/$(PROGS)/leap/$(LEAP).p.native $(BIN)/$(LEAP).p.native
+	$(call copy,./_build/$(PROGS)/leap/$(LEAP).p.native,$(BIN),$(LEAP).p.native)
 
 $(LEAP).byte:
 	@echo "let value = "$(REVISION) > $(PROGS)/Revision.ml
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@
-	@cp ./_build/$(PROGS)/leap/$@.byte $(BIN)/$@.byte
+	$(call copy,./_build/$(PROGS)/leap/$@.byte,$(BIN),$@.byte)
 
 $(LEAP):
 	@echo "let value = "$(REVISION) > $(PROGS)/Revision.ml
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
-	@cp ./_build/$(PROGS)/leap/$@.native $(BIN)/$@
+	$(call copy,./_build/$(PROGS)/leap/$@.native,$(BIN),$@)
 
 $(PRGINFO):
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
-	@cp ./_build/$(PROGS)/prginfo/$@.native $(BIN)/$@
+	$(call copy,./_build/$(PROGS)/prginfo/$@.native,$(BIN),$@)
 
 $(PINV):
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
-	@cp ./_build/$(PROGS)/pinv/$@.native $(BIN)/$@
+	$(call copy,./_build/$(PROGS)/pinv/$@.native,$(BIN),$@)
 
 $(SINV):
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
-	@cp ./_build/$(PROGS)/sinv/$@.native $(BIN)/$@
+	$(call copy,./_build/$(PROGS)/sinv/$@.native,$(BIN),$@)
 
 $(PVD):
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
-	@cp ./_build/$(PROGS)/pvd/$@.native $(BIN)/$@
+	$(call copy,./_build/$(PROGS)/pvd/$@.native,$(BIN),$@)
 
 $(NUMINV):
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
-	@cp ./_build/$(PROGS)/numinv/$@.native $(BIN)/$@
+	$(call copy,./_build/$(PROGS)/numinv/$@.native,$(BIN),$@)
 
 $(SPEC_CHECK):
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
-	@cp ./_build/$(PROGS)/spec_check/$@.native $(BIN)/$@
+	$(call copy,./_build/$(PROGS)/spec_check/$@.native,$(BIN),$@)
 
 $(TLL):
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
-	@cp ./_build/$(PROGS)/tll/$@.native $(BIN)/$@
+	$(call copy,./_build/$(PROGS)/tll/$@.native,$(BIN),$@)
 
 $(TSL):
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
-	@cp ./_build/$(PROGS)/tsl/$@.native $(BIN)/$@
+	$(call copy,./_build/$(PROGS)/tsl/$@.native,$(BIN),$@)
 
 $(SOLVE):
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
-	@cp ./_build/$(PROGS)/solve/$@.native $(BIN)/$@
+	$(call copy,./_build/$(PROGS)/solve/$@.native,$(BIN),$@)
 
 $(TMPTSL):
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
-	@cp ./_build/$(PROGS)/tmptsl/$@.native $(BIN)/$@
+	$(call copy,./_build/$(PROGS)/tmptsl/$@.native,$(BIN),$@)
 
 $(APPLYTAC):
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
-	@cp ./_build/$(PROGS)/applytac/$@.native $(BIN)/$@
+	$(call copy,./_build/$(PROGS)/applytac/$@.native,$(BIN),$@)
 
 solvertest:
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) test.native
@@ -162,13 +164,18 @@ dist:   clean
 				--exclude=yices --exclude=z3 --exclude=trsParse . 
 
 expand:
-	for i in `find examples/* $(SRC)/* -type f | grep -v \\.swp | grep -v \\.svn` ; do expand -t 2 $$i > temp.file ; mv temp.file $$i; done
+	@echo "Expanding tabs..."
+	@for i in `find examples/* $(SRC)/* -type f | grep -v \\.swp | grep -v \\.svn` ; do expand -t 2 $$i > temp.file ; mv temp.file $$i; done
+	@for i in `find examples/* $(SRC)/* -type f | grep \\.sh` ; do chmod +x $$i; done
+
 
 unexpand:
-	for i in `find examples/* $(SRC)/* -type f | grep -v \\.swp | grep -v \\.svn` ; do unexpand -t 2 $$i > temp.file ; mv temp.file $$i; done
+	@echo "Unexpanding tabs..."
+	@for i in `find examples/* $(SRC)/* -type f | grep -v \\.swp | grep -v \\.svn` ; do unexpand -t 2 $$i > temp.file ; mv temp.file $$i; done
+	@for i in `find examples/* $(SRC)/* -type f | grep \\.sh` ; do chmod +x $$i; done
 
 cleartmp:
 	@echo "Erasing temporary editor's files..."
-	@for i in `find examples/* $(SRC)/* -type f | grep \\.swp` ; do rm $$i ; done
+	@for i in `find . -type f | grep \\.sw` ; do rm $$i ; done
 	@echo "OK"
 

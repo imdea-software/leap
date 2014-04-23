@@ -310,10 +310,10 @@ module Make (Opt:module type of GenOptions) : S =
       let theta = System.gen_theta (System.SOpenArray (E.ThreadSet.elements voc)) Opt.sys Opt.abs in
       let voc = E.ThreadSet.union voc (E.voc theta) in
       let init_pos = if E.ThreadSet.is_empty voc then
-                       [E.pc_form 1 E.V.Shared true]
+                       [E.pc_form 1 E.V.Shared false]
                      else
                        E.V.VarSet.fold (fun v xs ->
-                         E.pc_form 1 (E.V.Local v) true :: xs
+                         E.pc_form 1 (E.V.Local v) false :: xs
                        ) (E.voc_to_vars voc) [] in
       (Formula.conj_list (theta::init_pos), voc)
 
