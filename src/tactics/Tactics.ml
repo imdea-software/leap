@@ -274,10 +274,6 @@ let create_vc_info (supp       : support_t)
                    (vocab      : E.ThreadSet.t)
                    (trans_tid  : E.tid)
                    (line       : E.pc_t) : vc_info =
-(*
-    print_endline ("ORIGINAL GOAL: " ^ (E.formula_to_str goal));
-    print_endline ("PROCESSED GOAL: " ^ (E.formula_to_str (E.prime_modified rho goal)));
-*)
     {
       original_support   = supp ;
       tid_constraint     = tid_constr ;
@@ -304,7 +300,7 @@ let create_vc (orig_supp       : support_t)
 
 let dup_vc_info_with_support (info:vc_info) (new_support:support_t) : vc_info =
   {
-    original_support = info.original_support @ new_support ;
+    original_support = new_support ;
     tid_constraint   = info.tid_constraint;
     rho              = info.rho ;
     original_goal    = info.original_goal ;
@@ -335,7 +331,7 @@ let set_fixed_voc (ts:E.ThreadSet.t) : unit =
 
 let vc_info_add_support (info:vc_info) (supp:support_t) : vc_info =
   {
-    original_support = supp ;
+    original_support = info.original_support @ supp ;
     tid_constraint   = info.tid_constraint;
     rho              = info.rho ;
     original_goal    = info.original_goal ;

@@ -33,83 +33,6 @@ module Make (C:Core.S) : S =
       Tactics.create_vc_info [] Formula.True initial_cond inv voc E.NoTid 0
 
 
-    (**********************)
-    (*  SEQUENTIAL SPINV  *)
-    (**********************)
-
-    let seq_gen_vcs (supp:E.formula list)
-                    (inv:E.formula)
-                    (line:int)
-                    (premise:Premise.t)
-                    (trans_tid:E.tid)
-                      : Tactics.vc_info list =
-      let trans_var = E.voc_to_var trans_tid in
-      let voc = E.voc (Formula.conj_list (inv::supp)) in
-      let rho = C.rho System.Sequential voc line trans_tid in
-      let supp = List.map (E.param (E.V.Local trans_var)) supp in
-      let inv = if E.ThreadSet.is_empty (E.voc inv) then
-                  E.param (E.V.Local trans_var) inv
-                else
-                  inv in
-      List.fold_left (fun rs phi ->
-        let new_vc = Tactics.create_vc_info supp Formula.True
-                                            phi inv voc trans_tid line in
-          new_vc :: rs
-      ) [] rho
-
-
-
-    let seq_spinv_transitions (supp:E.formula list)
-                              (inv:E.formula)
-                              (cases:IGraph.case_tbl_t)
-                                : Tactics.vc_info list =
-      let inv_voc = E.voc inv in
-      let trans_tid = if E.ThreadSet.is_empty inv_voc then
-                        E.gen_fresh_tid E.ThreadSet.empty
-                      else
-                        try
-                          E.ThreadSet.choose inv_voc
-                        with Not_found -> assert false in
-                        (* More than one thread parameterizing the invariant *)
-      List.fold_left (fun vcs line ->
-        let specific_supp = match IGraph.lookup_case cases line Premise.SelfConseq with
-                            | None -> supp
-                            | Some (supp_tags, _) -> C.read_tags_and_group_by_file supp_tags in
-        vcs @ seq_gen_vcs (inv::specific_supp) inv line Premise.SelfConseq trans_tid
-      ) [] C.lines_to_consider
-
-
-
-
-    let seq_spinv_with_cases (supp:E.formula list)
-                             (inv:E.formula)
-                             (cases:IGraph.case_tbl_t) : Tactics.vc_info list =
-      let supp = inv :: supp in
-      let initiation = if C.requires_theta then
-                         [premise_init inv]
-                       else
-                         [] in
-
-      let transitions = seq_spinv_transitions supp inv cases
-      in
-        initiation @ transitions
-
-
-    let seq_spinv (supp:E.formula list)
-                  (inv:E.formula) : Tactics.vc_info list =
-      seq_spinv_with_cases supp inv (IGraph.empty_case_tbl())
-
-
-    (*
-    let tag_seq_spinv (sys : System.t)
-                      (supInv_list : Tag.f_tag list)
-                      (inv : Tag.f_tag) : Tactics.vc_info list =
-      let supInv_list_as_formula =
-        List.map (Tag.tag_table_get_formula tags) supInv_list in
-      let inv_as_formula = Tag.tag_table_get_formula tags inv in
-      seq_spinv sys supInv_list_as_formula inv_as_formula
-    *)
-
 
     (**********************)
     (*  CONCURRENT SPINV  *)
@@ -123,7 +46,14 @@ module Make (C:Core.S) : S =
                 (trans_tid:E.tid)
                   : Tactics.vc_info list =
       let voc = E.voc (Formula.conj_list (inv::supp)) in
-      let rho = C.rho System.Concurrent voc line trans_tid in
+(*      let rho = C.rho System.Concurrent voc line trans_tid in *)
+
+      let rho = System.gen_rho (C.system()) (System.SOpenArray 
+                    (E.ThreadSet.elements voc))
+                    System.Concurrent Bridge.Heap line System.NoAbstraction
+                    true trans_tid in
+
+
       let tid_diff_conj = match premise with
                           | Premise.SelfConseq -> Formula.True
                           | Premise.OthersConseq ->
@@ -189,6 +119,90 @@ module Make (C:Core.S) : S =
         List.map (Tag.tag_table_get_formula tags) supInv_list in
       let inv_as_formula = Tag.tag_table_get_formula tags inv in
       spinv supInv_list_as_formula inv_as_formula
+    *)
+
+
+    (**********************)
+    (*  SEQUENTIAL SPINV  *)
+    (**********************)
+
+    let seq_gen_vcs (supp:E.formula list)
+                    (inv:E.formula)
+                    (line:int)
+                    (premise:Premise.t)
+                    (trans_tid:E.tid)
+                      : Tactics.vc_info list =
+      let trans_var = E.voc_to_var trans_tid in
+      let voc = E.voc (Formula.conj_list (inv::supp)) in
+(*
+      let rho = C.rho System.Sequential voc line trans_tid in
+*)
+      let rho = System.gen_rho (C.system()) (System.SOpenArray 
+                    (E.ThreadSet.elements voc))
+                    System.Sequential Bridge.Heap line System.NoAbstraction
+                    true trans_tid in
+      let supp = List.map (E.param (E.V.Local trans_var)) supp in
+      let inv = if E.ThreadSet.is_empty (E.voc inv) then
+                  E.param (E.V.Local trans_var) inv
+                else
+                  inv in
+      List.fold_left (fun rs phi ->
+        let new_vc = Tactics.create_vc_info supp Formula.True
+                                            phi inv voc trans_tid line in
+          new_vc :: rs
+      ) [] rho
+
+
+
+    let seq_spinv_transitions (supp:E.formula list)
+                              (inv:E.formula)
+                              (cases:IGraph.case_tbl_t)
+                                : Tactics.vc_info list =
+      let inv_voc = E.voc inv in
+      let trans_tid = if E.ThreadSet.is_empty inv_voc then
+                        E.gen_fresh_tid E.ThreadSet.empty
+                      else
+                        try
+                          E.ThreadSet.choose inv_voc
+                        with Not_found -> assert false in
+                        (* More than one thread parameterizing the invariant *)
+      List.fold_left (fun vcs line ->
+        let specific_supp = match IGraph.lookup_case cases line Premise.SelfConseq with
+                            | None -> supp
+                            | Some (supp_tags, _) -> C.read_tags_and_group_by_file supp_tags in
+        vcs @ seq_gen_vcs (inv::specific_supp) inv line Premise.SelfConseq trans_tid
+      ) [] C.lines_to_consider
+
+
+
+
+    let seq_spinv_with_cases (supp:E.formula list)
+                             (inv:E.formula)
+                             (cases:IGraph.case_tbl_t) : Tactics.vc_info list =
+      let supp = inv :: supp in
+      let initiation = if C.requires_theta then
+                         [premise_init inv]
+                       else
+                         [] in
+
+      let transitions = seq_spinv_transitions supp inv cases
+      in
+        initiation @ transitions
+
+
+    let seq_spinv (supp:E.formula list)
+                  (inv:E.formula) : Tactics.vc_info list =
+      seq_spinv_with_cases supp inv (IGraph.empty_case_tbl())
+
+
+    (*
+    let tag_seq_spinv (sys : System.t)
+                      (supInv_list : Tag.f_tag list)
+                      (inv : Tag.f_tag) : Tactics.vc_info list =
+      let supInv_list_as_formula =
+        List.map (Tag.tag_table_get_formula tags) supInv_list in
+      let inv_as_formula = Tag.tag_table_get_formula tags inv in
+      seq_spinv sys supInv_list_as_formula inv_as_formula
     *)
 
 

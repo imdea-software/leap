@@ -1358,4 +1358,3 @@ let gen_rho (sys : t)             (* The system                           *)
           List.map (fun x -> x @ pres_list) rhoList 
     end in
     List.map Formula.conj_list phi_list
-
