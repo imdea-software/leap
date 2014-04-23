@@ -469,6 +469,16 @@ let succesor (pvd:t) (n:node_id_t) (line:int) (t:E.V.t) : NodeIdSet.t =
   with Not_found -> NodeIdSet.empty
 
 
+let cond_next (pvd:t) (cond:edge_type_t) (n:node_id_t) : NodeIdSet.t =
+  NodeIdSet.fold (fun n' set ->
+    let e_info_set = edges pvd n n' in
+    if EdgeInfoSet.exists (fun (k,_) -> k = cond) e_info_set then
+      NodeIdSet.add n' set
+    else
+      set
+  ) (next pvd n) NodeIdSet.empty
+
+
 let free_voc (pvd:t) : E.ThreadSet.t =
   pvd.free_voc
 

@@ -26,6 +26,7 @@ val nodes : t -> NodeIdSet.t
 val node_mu : t -> node_id_t -> Expression.formula
 val node_box : t -> node_id_t -> box_id_t option
 val next : t -> node_id_t -> NodeIdSet.t
+val cond_next : t -> edge_type_t -> node_id_t -> NodeIdSet.t
 val box_param : t -> box_id_t -> Expression.ThreadSet.elt
 val edges : t -> node_id_t -> node_id_t -> EdgeInfoSet.t
 val edge_list : t -> (node_id_t * node_id_t * EdgeInfoSet.t) list

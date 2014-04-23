@@ -5,3 +5,4 @@ Tactics :
          | simplify-pc } ;
 
 Facts :
+//  activeLow, notSame, minTicket, mutex;

@@ -46,14 +46,7 @@ module Make (C:Core.S) : S =
                 (trans_tid:E.tid)
                   : Tactics.vc_info list =
       let voc = E.voc (Formula.conj_list (inv::supp)) in
-(*      let rho = C.rho System.Concurrent voc line trans_tid in *)
-
-      let rho = System.gen_rho (C.system()) (System.SOpenArray 
-                    (E.ThreadSet.elements voc))
-                    System.Concurrent Bridge.Heap line System.NoAbstraction
-                    true trans_tid in
-
-
+      let rho = C.rho System.Concurrent voc line trans_tid in
       let tid_diff_conj = match premise with
                           | Premise.SelfConseq -> Formula.True
                           | Premise.OthersConseq ->
@@ -134,13 +127,7 @@ module Make (C:Core.S) : S =
                       : Tactics.vc_info list =
       let trans_var = E.voc_to_var trans_tid in
       let voc = E.voc (Formula.conj_list (inv::supp)) in
-(*
       let rho = C.rho System.Sequential voc line trans_tid in
-*)
-      let rho = System.gen_rho (C.system()) (System.SOpenArray 
-                    (E.ThreadSet.elements voc))
-                    System.Sequential Bridge.Heap line System.NoAbstraction
-                    true trans_tid in
       let supp = List.map (E.param (E.V.Local trans_var)) supp in
       let inv = if E.ThreadSet.is_empty (E.voc inv) then
                   E.param (E.V.Local trans_var) inv

@@ -48,7 +48,7 @@ module type S =
     val read_tag : Tag.f_tag -> Expression.formula
     val read_tags_and_group_by_file : Tag.f_tag list -> Expression.formula list
 
-    val system : unit -> System.t
+    val system : System.t
 
     val theta : Expression.ThreadSet.t -> (Expression.formula * Expression.ThreadSet.t)
     val rho : System.seq_or_conc_t ->

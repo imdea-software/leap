@@ -36,8 +36,7 @@ module Make (C:Core.S) : S =
       Tactics.create_vc_info [] F.True theta init_mu voc E.NoTid 0
 
 
-    let gen_consecution (pvd:PVD.t) : Tactics.vc_info list = []
-(*
+    let gen_consecution (pvd:PVD.t) : Tactics.vc_info list =
       let nodes = PVD.nodes pvd in
       PVD.NodeIdSet.fold (fun n vcs ->
         let free_voc = PVD.free_voc pvd in
@@ -45,26 +44,36 @@ module Make (C:Core.S) : S =
                     | None -> free_voc
                     | Some b -> E.ThreadSet.add (PVD.box_param pvd b) free_voc in
         let mu_n = PVD.node_mu pvd n in
-        let next = PVD.next pvd n in
-        let next_disj =
-          F.disj_list $
-            PVD.NodeIdSet.fold (fun n' ys ->
-              let mu_n' = PVD.node_mu pvd n' in
-              let edges = PVD.edges pvd n n' in
-              let beta = F.conj_list $
-                           PVD.EdgeInfoSet.fold (fun (kind,_) zs ->
-                             (match (PVD.node_box pvd n, PVD.node_box pvd n') with
-                              | (Some b, Some b') ->
-                                  if b = b' && kind = PVD.Pres then
-                                    let p = PVD.box_param pvd b in
-                                    F.atom_to_formula
-                                      (E.Eq(E.TidT (E.prime_tid p), E.TidT p))
-                                  else F.True
-                              | _ -> F.True) :: zs
-                           ) edges [] in
-              F.And (mu_n', beta) :: ys
-            ) next [] in
-        let full_voc = E.ThreadSet.union n_voc (E.voc (F.And (mu_n,next_disj))) in
+        let boxed_next = PVD.cond_next pvd PVD.Pres n in
+        let other_next = PVD.cond_next pvd PVD.Any n in
+        let boxed_next_disj = F.disj_list (PVD.NodeIdSet.fold (fun n' xs ->
+                                            (PVD.node_mu pvd n') :: xs
+                                          ) boxed_next []) in
+        let other_next_disj = F.disj_list (PVD.NodeIdSet.fold (fun n' xs ->
+                                            (PVD.node_mu pvd n') :: xs
+                                          ) other_next []) in
+        let full_voc = List.fold_left (fun vSet phi ->
+                         E.ThreadSet.union vSet (E.voc phi)
+                       ) n_voc [mu_n; boxed_next_disj; other_next_disj] in
+        let fresh_t = E.gen_fresh_tid full_voc in
+
+        let (full_mu_n, goal) =
+          match PVD.node_box pvd n with
+          | None ->
+              begin
+                assert (PVD.NodeIdSet.is_empty boxed_next);
+                (mu_n, other_next_disj)
+              end
+          | Some b ->
+              begin
+                let t = PVD.box_param pvd b in
+                let t_cond = F.atom_to_formula (E.Eq(E.TidT (E.prime_tid t),
+                                                     E.TidT t)) in
+                let t_subst = E.new_tid_subst [(t,fresh_t)] in
+                let fresh_other_next_disj = E.subst_tid t_subst other_next_disj in
+                (F.And (mu_n, t_cond), F.Or (boxed_next_disj, fresh_other_next_disj))
+              end in
+        let full_voc = E.ThreadSet.add fresh_t full_voc in
         let n_vcs = ref [] in
         for line = 1 to (System.lines C.system) do
           (* Self-consecution *)
@@ -72,7 +81,7 @@ module Make (C:Core.S) : S =
             E.ThreadSet.fold (fun t ys ->
               let self_rho = C.rho System.Concurrent full_voc line t in
               (List.map (fun rho ->
-                Tactics.create_vc_info [] F.True (F.And (mu_n, rho)) next_disj
+                Tactics.create_vc_info [] F.True (F.And (full_mu_n, rho)) goal
                                       full_voc t line) self_rho) @ ys
             ) n_voc [] in
           (* Others-consecution *)
@@ -82,13 +91,12 @@ module Make (C:Core.S) : S =
                                                   (E.ineq_tid fresh_k t) :: xs
                                                 ) full_voc []) in
           let others_vcs = List.map (fun rho ->
-                             Tactics.create_vc_info [] tid_diff_conj (F.And (mu_n, rho))
-                                        next_disj full_voc fresh_k line) other_rho in
+                             Tactics.create_vc_info [] tid_diff_conj (F.And (full_mu_n, rho))
+                                        goal full_voc fresh_k line) other_rho in
           n_vcs := self_vcs @ others_vcs @ !n_vcs
         done;
         !n_vcs @ vcs
       ) nodes []
-*)
 
 
     let gen_fairness (pvd:PVD.t) : Tactics.vc_info list = []
@@ -177,8 +185,8 @@ module Make (C:Core.S) : S =
               | None -> ()
               | Some s -> check_well_defined_supp s in
       let pvd_vcs = gen_vcs pvd in
-      let vc_list = [pvd_vcs.initiation] in (*  ::
-                    pvd_vcs.consecution @
+      let vc_list = pvd_vcs.initiation ::
+                    pvd_vcs.consecution in (*
                     pvd_vcs.fairness in *)
       let vc_count = ref 1 in
       let show_progress = not (LeapVerbose.is_verbose_enabled()) in

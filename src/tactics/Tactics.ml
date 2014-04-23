@@ -929,16 +929,27 @@ let tactic_simplify_pc (imp:implication) : implication =
   Log.print "simplify_pc antecedent" (E.formula_to_str imp.ante);
   Log.print "simplify_pc consequent" (E.formula_to_str imp.conseq);
 
-  let rec get_integer_literals (f:E.formula) : ((E.V.t * int) list) =
-    match f with
-      F.Literal l -> begin
-                       match (extract_pc_integer_eq l) with
-                       | Some (v,k) -> [(v,k)]
-                       | None       -> []
-                     end
-    | F.And(f1,f2)       -> get_integer_literals f1 @ get_integer_literals f2
-    | F.Not(F.Or(f1,f2)) -> get_integer_literals f1 @ get_integer_literals f2
-    | _                  -> []
+  let get_integer_literals (f:E.formula) : ((E.V.t * int) list * bool) =
+    let facts = Hashtbl.create 10 in
+    let contradiction = ref false in
+    let try_to_store (v:E.V.t) (i:int) : unit =
+      try
+        let prev = Hashtbl.find facts v in
+        if prev <> i then contradiction := true
+      with Not_found -> Hashtbl.add facts v i in
+    let rec find (phi:E.formula) : unit =
+      match phi with
+        F.Literal l -> begin
+                         match (extract_pc_integer_eq l) with
+                         | Some (v,k) -> try_to_store v k
+                         | None       -> ()
+                       end
+      | F.And(f1,f2)       -> (find f1; find f2)
+      | F.Not(F.Or(f1,f2)) -> (find f1; find f2)
+      | _                  -> ()
+    in
+      find f;
+      (Hashtbl.fold (fun v i xs -> (v,i)::xs) facts [], !contradiction)
   in
   (* DEBUG *)
   let print_all facts =
@@ -947,9 +958,13 @@ let tactic_simplify_pc (imp:implication) : implication =
     Log.print "" str
   in
   (* 2. Simplify the antecedent and the consequent with the facts *)
-  let facts     = get_integer_literals imp.ante in
+  let (facts, contradiction) = get_integer_literals imp.ante in
   let _ = print_all facts in
-  let new_ante  = simplify (generic_simplify_with_many_facts facts integer_implies integer_implies_neg imp.ante) in
+  let new_ante  = if contradiction then
+                    F.False
+                  else
+                    simplify (generic_simplify_with_many_facts facts
+                                integer_implies integer_implies_neg imp.ante) in
   let new_conseq = simplify (generic_simplify_with_many_facts facts integer_implies integer_implies_neg imp.conseq) in
   Log.print "simplify_pc new antecedent" (E.formula_to_str new_ante);
   Log.print "simplify_pc new consequent" (E.formula_to_str new_conseq);
