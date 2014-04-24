@@ -3,7 +3,7 @@ open LeapLib
 module E = Expression
 module F = Formula
 
-type sort = Int | Set | Tid
+type sort = Int | Set | Tid | SetPair
 
 module V = Variable.Make (
   struct
@@ -32,9 +32,17 @@ and set =
   | Union         of set * set
   | Intr          of set * set
   | Diff          of set * set
+and setpair =
+    VarSetPair    of V.t
+  | EmptySetPair
+  | SinglPair     of integer * tid
+  | UnionPair     of setpair * setpair
+  | IntrPair      of setpair * setpair
+  | DiffPair      of setpair * setpair
 and term =
   | IntV          of integer
   | SetV          of set
+  | SetPairV      of setpair
 and fun_term =
   | FunVar        of V.t
   | FunUpd        of fun_term * tid * term
@@ -48,6 +56,8 @@ and atom =
   | LessTid       of tid * tid
   | In            of integer * set
   | Subset        of set * set
+  | InPair        of integer * tid * setpair
+  | SubsetPair    of setpair * setpair
   | Eq            of eq
   | InEq          of diseq
   | TidEq         of tid * tid
@@ -133,9 +143,10 @@ let build_var ?(fresh=false)
 (* EXPR TO STR *)
 let sort_to_str (s:sort) : string =
   match s with
-    Int  -> "int"
-  | Set  -> "set"
-  | Tid -> "tid"
+    Int     -> "int"
+  | Set     -> "set"
+  | Tid     -> "tid"
+  | SetPair -> "setpair"
 
 let generic_int_tid_to_str (srf:string -> string) (t:tid) : string =
   match t with
@@ -172,10 +183,24 @@ and generic_int_set_to_str (srf:string -> string) (s:set): string =
   | Diff (s1,s2)  -> srf (set_str_f s1 ^ " diff "  ^ set_str_f s2)
 
 
+and generic_int_setpair_to_str (srf:string -> string) (s:setpair): string =
+  let int_str_f = generic_int_integer_to_str srf in
+  let tid_str_f = generic_int_tid_to_str srf in
+  let set_str_f = generic_int_setpair_to_str srf in
+  match s with
+    VarSetPair v      -> V.to_str v
+  | EmptySetPair      -> srf "emptysetpair"
+  | SinglPair (i,t)   -> srf ("{(" ^ int_str_f i ^ "," ^ tid_str_f t^ ")}")
+  | UnionPair (s1,s2) -> srf (set_str_f s1 ^ " union " ^ set_str_f s2)
+  | IntrPair (s1,s2)  -> srf (set_str_f s1 ^ " intr "  ^ set_str_f s2)
+  | DiffPair (s1,s2)  -> srf (set_str_f s1 ^ " diff "  ^ set_str_f s2)
+
+
 let generic_int_term_to_str (srf:string -> string) (t:term) : string =
   match t with
     IntV i -> generic_int_integer_to_str srf i
   | SetV s -> generic_int_set_to_str srf s
+  | SetPairV s -> generic_int_setpair_to_str srf s
 
 
 let rec generic_funterm_to_str (srf:string -> string) (t:fun_term) : string =
@@ -191,6 +216,7 @@ let rec generic_atom_to_str (srf:string -> string) (a:atom) : string =
   let tid_str_f  = generic_int_tid_to_str srf in
   let int_str_f  = generic_int_integer_to_str srf in
   let set_str_f  = generic_int_set_to_str srf in
+  let setpair_str_f  = generic_int_setpair_to_str srf in
   let term_str_f = generic_int_term_to_str srf in
   let fun_str_f  = generic_funterm_to_str srf in
   match a with
@@ -203,6 +229,8 @@ let rec generic_atom_to_str (srf:string -> string) (a:atom) : string =
   | InEq (t1,t2)      -> srf (term_str_f t1 ^ " != " ^ term_str_f t2)
   | In (i,s)          -> srf (int_str_f i   ^ " in " ^ set_str_f s)
   | Subset (s1,s2)    -> srf (set_str_f s1  ^ " subset " ^ set_str_f s2)
+  | InPair (i,t,s)    -> srf ("(" ^ int_str_f i ^ "," ^ tid_str_f t ^ ") inPair " ^ setpair_str_f s)
+  | SubsetPair (s1,s2)-> srf (setpair_str_f s1  ^ " subsetPair " ^ setpair_str_f s2)
   | TidEq (th1,th2)   -> srf (tid_str_f th1   ^ " = "  ^
                               tid_str_f th2)
   | TidInEq (th1,th2) -> srf (tid_str_f th1   ^ " != " ^
@@ -324,6 +352,8 @@ let rec is_int_atom ato =
   | E.SubsetEqInt(_,_)                 -> false
   | E.InElem(_,_)                      -> false
   | E.SubsetEqElem(_,_)                -> false
+  | E.InPair(_,_,_)                    -> false
+  | E.SubsetEqPair(_,_)                -> false
   | E.Less(_,_)                        -> true
   | E.Greater(_,_)                     -> true
   | E.LessEq(_,_)                      -> true
@@ -476,6 +506,8 @@ and atom_is_linear a =
   | InEq(_,_)            -> false
   | In (_,_)             -> false
   | Subset (_,_)         -> false
+  | InPair (_,_,_)       -> false
+  | SubsetPair (_,_)     -> false
   | TidEq(x,y)           -> false
   | TidInEq(x,y)         -> false
   | FunEq(x,y)           -> false
@@ -549,6 +581,21 @@ and generic_set_from_int_set (base:V.t -> 'a)
   | Diff (s1,s2)  -> union (set_f s1) (set_f s2)
 
 
+and generic_setpair_from_int_setpair (base:V.t -> 'a)
+                                     (empty:'a)
+                                     (union:'a -> 'a -> 'a)
+                                     (s:setpair) : 'a =
+  let int_f  = generic_set_from_int_integer base empty union in
+  let set_f  = generic_setpair_from_int_setpair base empty union in
+  match s with
+    VarSetPair (v)    -> base v
+  | EmptySetPair      -> empty
+  | SinglPair (i,t)   -> int_f i
+  | UnionPair (s1,s2) -> union (set_f s1) (set_f s2)
+  | IntrPair (s1,s2)  -> union (set_f s1) (set_f s2)
+  | DiffPair (s1,s2)  -> union (set_f s1) (set_f s2)
+
+
 let generic_set_from_int_term (base:V.t -> 'a)
                               (empty:'a)
                               (union:'a -> 'a -> 'a)
@@ -556,6 +603,7 @@ let generic_set_from_int_term (base:V.t -> 'a)
   match t with
     IntV i -> generic_set_from_int_integer base empty union i
   | SetV s -> generic_set_from_int_set base empty union s
+  | SetPairV s -> generic_setpair_from_int_setpair base empty union s
 
 
 let generic_set_from_int_atom (base:V.t -> 'a)
@@ -564,6 +612,7 @@ let generic_set_from_int_atom (base:V.t -> 'a)
                               (a:atom) : 'a =
   let int_f  = generic_set_from_int_integer base empty union in
   let set_f  = generic_set_from_int_set base empty union in
+  let setpair_f  = generic_setpair_from_int_setpair base empty union in
   let term_f = generic_set_from_int_term base empty union in
   let fun_f  = generic_set_from_funterm base empty union in
   match a with
@@ -576,6 +625,8 @@ let generic_set_from_int_atom (base:V.t -> 'a)
   | InEq (t1,t2)      -> union (term_f t1) (term_f t2)
   | In (i,s)          -> union (int_f i) (set_f s)
   | Subset (s1,s2)    -> union (set_f s1) (set_f s2)
+  | InPair (i,t,s)    -> union (int_f i) (setpair_f s)
+  | SubsetPair (s1,s2)-> union (setpair_f s1) (setpair_f s2)
   | TidEq (th1,th2)   -> empty
   | TidInEq (th1,th2) -> empty
   | FunEq (f1,f2)     -> union (fun_f f1) (fun_f f2)
@@ -843,10 +894,24 @@ let rec voc_from_int_set (s:set) : ThreadSet.t =
                                        (voc_from_int_set s2)
 
 
+let rec voc_from_int_setpair (s:setpair) : ThreadSet.t =
+  match s with
+    VarSetPair v      -> opt_th (V.parameter v)
+  | EmptySetPair      -> ThreadSet.empty
+  | SinglPair (i,t)   -> ThreadSet.add t (voc_from_int_integer i)
+  | UnionPair (s1,s2) -> ThreadSet.union (voc_from_int_setpair s1)
+                                         (voc_from_int_setpair s2)
+  | IntrPair (s1,s2)  -> ThreadSet.union (voc_from_int_setpair s1)
+                                         (voc_from_int_setpair s2)
+  | DiffPair (s1,s2)  -> ThreadSet.union (voc_from_int_setpair s1)
+                                         (voc_from_int_setpair s2)
+
+
 let voc_from_int_term (t:term) : ThreadSet.t =
   match t with
     IntV i -> voc_from_int_integer i
   | SetV s -> voc_from_int_set s
+  | SetPairV s -> voc_from_int_setpair s
 
 
 let voc_from_int_atom (a:atom) : ThreadSet.t =
@@ -854,6 +919,7 @@ let voc_from_int_atom (a:atom) : ThreadSet.t =
   let voc_int  = voc_from_int_integer in
   let voc_term = voc_from_int_term in
   let voc_set  = voc_from_int_set in
+  let voc_setpair = voc_from_int_setpair in
   match a with
     Less (t1,t2)      -> union (voc_int t1) (voc_int t2)
   | Greater (t1,t2)   -> union (voc_int t1) (voc_int t2)
@@ -864,6 +930,8 @@ let voc_from_int_atom (a:atom) : ThreadSet.t =
   | InEq (t1,t2)      -> union (voc_term t1) (voc_term t2)
   | In (i,s)          -> union (voc_int i) (voc_set s)
   | Subset (s1,s2)    -> union (voc_set s1) (voc_set s2)
+  | InPair (i,t,s)    -> ThreadSet.add t (union (voc_int i) (voc_setpair s))
+  | SubsetPair (s1,s2)-> union (voc_setpair s1) (voc_setpair s2)
   | TidEq (th1,th2)   -> thset_from [th1;th2]
   | TidInEq (th1,th2) -> thset_from [th1;th2]
   | FunEq (f1,f2)     -> ThreadSet.empty

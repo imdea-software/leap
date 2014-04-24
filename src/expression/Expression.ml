@@ -220,6 +220,8 @@ and atom =
   | SubsetEqInt   of setint * setint
   | InElem        of elem * setelem
   | SubsetEqElem  of setelem * setelem
+  | InPair        of integer * tid * setpair
+  | SubsetEqPair  of setpair * setpair
   | Less          of integer * integer
   | Greater       of integer * integer
   | LessEq        of integer * integer
@@ -721,6 +723,11 @@ and priming_atom (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (
                                                 priming_setelem pr prime_set s)
   | SubsetEqElem(s_in,s_out)          -> SubsetEqElem(priming_setelem pr prime_set s_in,
                                                       priming_setelem pr prime_set s_out)
+  | InPair(i,t,s)                     -> InPair(priming_int pr prime_set i,
+                                                priming_tid pr prime_set t,
+                                                priming_setpair pr prime_set s)
+  | SubsetEqPair(s_in,s_out)          -> SubsetEqPair(priming_setpair pr prime_set s_in,
+                                                      priming_setpair pr prime_set s_out)
   | Less(i1,i2)                       -> Less(priming_int pr prime_set i1,
                                               priming_int pr prime_set i2)
   | Greater(i1,i2)                    -> Greater(priming_int pr prime_set i1,
@@ -934,6 +941,13 @@ and atom_to_str (expr:atom) : string =
   | SubsetEqElem(s_in,s_out)          -> sprintf "%s subseteqElem %s"
                                                     (setelem_to_str s_in)
                                                     (setelem_to_str s_out)
+  | InPair(i,t,s)                     -> sprintf "(%s,%s) inPair %s"
+                                                    (integer_to_str i)
+                                                    (tid_to_str t)
+                                                    (setpair_to_str s)
+  | SubsetEqPair(s_in,s_out)          -> sprintf "%s subseteqPair %s"
+                                                    (setpair_to_str s_in)
+                                                    (setpair_to_str s_out)
   | Less(i1,i2)                       -> sprintf "%s < %s"
                                                     (integer_to_str i1)
                                                     (integer_to_str i2)
@@ -2117,6 +2131,11 @@ and get_vars_atom (a:atom) (base:V.t -> V.VarSet.t) : V.VarSet.t =
                                           (get_vars_setelem s base)
   | SubsetEqElem(s_in,s_out)           -> (get_vars_setelem s_in base) @@
                                           (get_vars_setelem s_out base)
+  | InPair(i,t,s)                      -> (get_vars_int i base) @@
+                                          (get_vars_tid t base) @@
+                                          (get_vars_setpair s base)
+  | SubsetEqPair(s_in,s_out)           -> (get_vars_setpair s_in base) @@
+                                          (get_vars_setpair s_out base)
   | Less(i1,i2)                        -> (get_vars_int i1 base) @@ (get_vars_int i2 base)
   | Greater(i1,i2)                     -> (get_vars_int i1 base) @@ (get_vars_int i2 base)
   | LessEq(i1,i2)                      -> (get_vars_int i1 base) @@ (get_vars_int i2 base)
@@ -2640,6 +2659,8 @@ and voc_atom (a:atom) : ThreadSet.t =
   | SubsetEqInt(s_in,s_out)            -> (voc_setint s_in) @@ (voc_setint s_out)
   | InElem(e,s)                        -> (voc_elem e) @@ (voc_setelem s)
   | SubsetEqElem(s_in,s_out)           -> (voc_setelem s_in) @@ (voc_setelem s_out)
+  | InPair(i,t,s)                      -> (voc_int i) @@ (voc_tid t) @@ (voc_setpair s)
+  | SubsetEqPair(s_in,s_out)           -> (voc_setpair s_in) @@ (voc_setpair s_out)
   | Less(i1,i2)                        -> (voc_int i1) @@ (voc_int i2)
   | Greater(i1,i2)                     -> (voc_int i1) @@ (voc_int i2)
   | LessEq(i1,i2)                      -> (voc_int i1) @@ (voc_int i2)
@@ -2995,6 +3016,11 @@ and var_kind_atom (kind:var_nature) (a:atom) : term list =
                                           (var_kind_setelem kind s)
   | SubsetEqElem(s_in,s_out)           -> (var_kind_setelem kind s_in) @
                                           (var_kind_setelem kind s_out)
+  | InPair(i,t,s)                      -> (var_kind_int kind i) @
+                                          (var_kind_tid kind t) @
+                                          (var_kind_setpair kind s)
+  | SubsetEqPair(s_in,s_out)           -> (var_kind_setpair kind s_in) @
+                                          (var_kind_setpair kind s_out)
   | Less(i1,i2)                        -> (var_kind_int kind i1) @
                                           (var_kind_int kind i2)
   | Greater(i1,i2)                     -> (var_kind_int kind i1) @
@@ -3371,6 +3397,11 @@ and param_atom (pfun:V.t option -> V.shared_or_local) (a:atom) : atom =
                                                  param_setelem pfun s)
   | SubsetEqElem(s_in,s_out)           -> SubsetEqElem(param_setelem pfun s_in,
                                                        param_setelem pfun s_out)
+  | InPair(i,t,s)                      -> InPair(param_int_aux pfun i,
+                                                 param_tid_aux pfun t,
+                                                 param_setpair pfun s)
+  | SubsetEqPair(s_in,s_out)           -> SubsetEqPair(param_setpair pfun s_in,
+                                                       param_setpair pfun s_out)
   | Less(i1,i2)                        -> Less(param_int_aux pfun i1,
                                                param_int_aux pfun i2)
   | Greater(i1,i2)                     -> Greater(param_int_aux pfun i1,
@@ -3799,6 +3830,11 @@ and subst_tid_atom (subs:tid_subst_t) (a:atom) : atom =
                                                  subst_tid_setelem subs s)
   | SubsetEqElem(s_in,s_out)           -> SubsetEqElem(subst_tid_setelem subs s_in,
                                                        subst_tid_setelem subs s_out)
+  | InPair(i,t,s)                      -> InPair(subst_tid_int subs i,
+                                                 subst_tid_th subs t,
+                                                 subst_tid_setpair subs s)
+  | SubsetEqPair(s_in,s_out)           -> SubsetEqPair(subst_tid_setpair subs s_in,
+                                                       subst_tid_setpair subs s_out)
   | Less(i1,i2)                        -> Less(subst_tid_int subs i1,
                                                subst_tid_int subs i2)
   | Greater(i1,i2)                     -> Greater(subst_tid_int subs i1,
@@ -4163,6 +4199,11 @@ and subst_vars_atom (subs:V.subst_t) (a:atom) : atom =
                                                  subst_vars_setelem subs s)
   | SubsetEqElem(s_in,s_out)           -> SubsetEqElem(subst_vars_setelem subs s_in,
                                                        subst_vars_setelem subs s_out)
+  | InPair(i,t,s)                      -> InPair(subst_vars_int subs i,
+                                                 subst_vars_th subs t,
+                                                 subst_vars_setpair subs s)
+  | SubsetEqPair(s_in,s_out)           -> SubsetEqPair(subst_vars_setpair subs s_in,
+                                                       subst_vars_setpair subs s_out)
   | Less(i1,i2)                        -> Less(subst_vars_int subs i1,
                                                subst_vars_int subs i2)
   | Greater(i1,i2)                     -> Greater(subst_vars_int subs i1,
@@ -5301,6 +5342,11 @@ and to_plain_atom (ops:fol_ops_t) (a:atom) : atom =
                                                  to_plain_setelem ops s)
   | SubsetEqElem(s_in,s_out)           -> SubsetEqElem(to_plain_setelem ops s_in,
                                                        to_plain_setelem ops s_out)
+  | InPair(i,t,s)                      -> InPair(to_plain_int ops i,
+                                                 to_plain_tid ops t,
+                                                 to_plain_setpair ops s)
+  | SubsetEqPair(s_in,s_out)           -> SubsetEqPair(to_plain_setpair ops s_in,
+                                                       to_plain_setpair ops s_out)
   | Less(i1,i2)                        -> Less(to_plain_int ops i1,
                                                to_plain_int ops i2)
   | Greater(i1,i2)                     -> Greater(to_plain_int ops i1,

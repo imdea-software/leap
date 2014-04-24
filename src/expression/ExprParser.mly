@@ -501,6 +501,7 @@ let define_ident (proc_name:E.V.procedure_name)
 %token INTH SUBSETEQTH
 %token ININT SUBSETEQINT
 %token INELEM SUBSETEQELEM
+%token INPAIR SUBSETEQPAIR
 %token SETINTMIN SETINTMAX
 %token THREAD
 %token OPEN_BRACKET CLOSE_BRACKET
@@ -545,6 +546,7 @@ let define_ident (proc_name:E.V.procedure_name)
 %nonassoc INTH SUBSETEQTH
 %nonassoc ININT SUBSETEQINT
 %nonassoc INELEM SUBSETEQELEM
+%nonassoc INPAIR SUBSETEQPAIR
 
 
 %nonassoc GHOST_DELIMITER
@@ -1055,6 +1057,24 @@ literal :
       let r = parser_check_type check_type_setelem $1 E.SetElem get_str_expr in
       let s = parser_check_type check_type_setelem $3 E.SetElem get_str_expr in
         Formula.Atom (E.SubsetEqElem(r,s))
+    }
+  | OPEN_PAREN term COMMA term CLOSE_PAREN INPAIR term
+    {
+      let get_str_expr () = sprintf "(%s,%s) inPair %s" (E.term_to_str $2)
+                                                        (E.term_to_str $4)
+                                                        (E.term_to_str $7) in
+      let i = parser_check_type check_type_int $2 E.Int get_str_expr in
+      let t = parser_check_type check_type_thid $4 E.Tid get_str_expr in
+      let s = parser_check_type check_type_setpair $7 E.SetPair get_str_expr in
+        Formula.Atom (E.InPair (i,t,s))
+    }
+  | term SUBSETEQPAIR term
+    {
+      let get_str_expr () = sprintf "%s subseteqPair %s" (E.term_to_str $1)
+                                                         (E.term_to_str $3) in
+      let r = parser_check_type check_type_setpair $1 E.SetPair get_str_expr in
+      let s = parser_check_type check_type_setpair $3 E.SetPair get_str_expr in
+        Formula.Atom (E.SubsetEqPair(r,s))
     }
   | term MATH_LESS term
     {

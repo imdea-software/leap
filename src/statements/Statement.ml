@@ -211,6 +211,8 @@ and atom =
   | SubsetEqInt   of setint * setint
   | InElem        of elem * setelem
   | SubsetEqElem  of setelem * setelem
+  | InPair        of integer * tid * setpair
+  | SubsetEqPair  of setpair * setpair
   | Less          of integer * integer
   | Greater       of integer * integer
   | LessEq        of integer * integer
@@ -428,6 +430,13 @@ and atom_to_str (loc:bool) (expr:atom) : string =
   | SubsetEqElem(s_in,s_out)         -> sprintf "%s subseteqElem %s"
                                                   (setelem_to_str loc s_in)
                                                   (setelem_to_str loc s_out)
+  | InPair(i,t,s)                    -> sprintf "(%s,%s) inPair %s"
+                                                  (integer_to_str loc i)
+                                                  (tid_to_str loc t)
+                                                  (setpair_to_str loc s)
+  | SubsetEqPair(s_in,s_out)         -> sprintf "%s subseteqPair %s"
+                                                  (setpair_to_str loc s_in)
+                                                  (setpair_to_str loc s_out)
   | Less(i1,i2)                      -> sprintf "%s < %s"
                                                   (integer_to_str loc i1)
                                                   (integer_to_str loc i2)
@@ -807,6 +816,16 @@ let term_to_setelem (t:term) : setelem =
                   raise(Invalid_argument)
 
 
+let term_to_setpair (t:term) : setpair =
+  match t with
+    SetPairT s -> s
+  | _          -> Interface.Err.msg "Not a set of pairs term" $
+                    sprintf "Impossible to convert to set of pairs \
+                             a non set of pairs term. A set of \
+                             pairs term was expected, but \"%s\" \
+                             was received." (term_to_str_aux true t);
+                  raise(Invalid_argument)
+
 
 let variable_to_expr_var (v:variable) :E.V.t =
   let new_scope = match v.scope with
@@ -1112,6 +1131,11 @@ and atom_to_expr_atom (a:atom) : E.atom =
                                            setelem_to_expr_setelem s)
   | SubsetEqElem (s1,s2)      -> E.SubsetEqElem (setelem_to_expr_setelem s1,
                                                  setelem_to_expr_setelem s2)
+  | InPair (i,t,s)            -> E.InPair (integer_to_expr_integer i,
+                                           tid_to_expr_tid t,
+                                           setpair_to_expr_setpair s)
+  | SubsetEqPair (s1,s2)      -> E.SubsetEqPair (setpair_to_expr_setpair s1,
+                                                 setpair_to_expr_setpair s2)
   | Less (i1,i2)              -> E.Less      (to_int i1, to_int i2)
   | Greater (i1,i2)           -> E.Greater   (to_int i1, to_int i2)
   | LessEq (i1,i2)            -> E.LessEq    (to_int i1, to_int i2)
@@ -1460,6 +1484,11 @@ and var_kind_atom (kind:E.var_nature) (a:atom) : term list =
                                     (var_kind_setelem kind s)
   | SubsetEqElem(s_in,s_out)     -> (var_kind_setelem kind s_in) @
                                     (var_kind_setelem kind s_out)
+  | InPair(i,t,s)                -> (var_kind_int kind i) @
+                                    (var_kind_th kind t) @
+                                    (var_kind_setpair kind s)
+  | SubsetEqPair(s_in,s_out)     -> (var_kind_setpair kind s_in) @
+                                    (var_kind_setpair kind s_out)
   | Less(i1,i2)                  -> (var_kind_int kind i1) @
                                     (var_kind_int kind i2)
   | Greater(i1,i2)               -> (var_kind_int kind i1) @

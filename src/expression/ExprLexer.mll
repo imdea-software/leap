@@ -93,6 +93,8 @@ rule norm = parse
   | "subseteqInt"   { Global.last "subseteqInt"   ; SUBSETEQINT }
   | "inElem"        { Global.last "inElem"        ; INELEM }
   | "subseteqElem"  { Global.last "subseteqElem"  ; SUBSETEQELEM }
+  | "inPair"        { Global.last "inPair"        ; INPAIR }
+  | "subseteqPair"  { Global.last "subseteqPair"  ; SUBSETEQPAIR }
   | "setIntMin"     { Global.last "setIntMin"     ; SETINTMIN }
   | "setIntMax"     { Global.last "setIntMax"     ; SETINTMAX }
   | "Th"            { Global.last "Th"            ; THREAD }

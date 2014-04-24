@@ -357,6 +357,8 @@ and atom_to_tsl_atom (a:E.atom) : SL.atom =
   | E.SubsetEqInt _            -> raise(UnsupportedTslExpr(E.atom_to_str a))
   | E.InElem (e,s)             -> SL.InElem (elem_to_tsl_elem e, setelem s)
   | E.SubsetEqElem (s1,s2)     -> SL.SubsetEqElem (setelem s1, setelem s2)
+  | E.InPair _                 -> raise(UnsupportedTslExpr(E.atom_to_str a))
+  | E.SubsetEqPair _           -> raise(UnsupportedTslExpr(E.atom_to_str a))
   | E.Less (i1,i2)             -> SL.Less (integ i1, integ i2)
   | E.Greater (i1,i2)          -> SL.Greater (integ i1, integ i2)
   | E.LessEq (i1,i2)           -> SL.LessEq (integ i1, integ i2)

@@ -1,5 +1,5 @@
 
-type sort = Int | Set | Tid
+type sort = Int | Set | Tid | SetPair
 
 module V : Variable.S
   with type sort = sort
@@ -27,9 +27,17 @@ and set =
   | Union         of set * set
   | Intr          of set * set
   | Diff          of set * set
+and setpair =
+    VarSetPair    of V.t
+  | EmptySetPair
+  | SinglPair     of integer * tid
+  | UnionPair     of setpair * setpair
+  | IntrPair      of setpair * setpair
+  | DiffPair      of setpair * setpair
 and term =
   | IntV          of integer
   | SetV          of set
+  | SetPairV      of setpair
 and fun_term =
   | FunVar        of V.t
   | FunUpd        of fun_term * tid * term
@@ -43,6 +51,8 @@ and atom =
   | LessTid       of tid * tid
   | In            of integer * set
   | Subset        of set * set
+  | InPair        of integer * tid * setpair
+  | SubsetPair    of setpair * setpair
   | Eq            of eq
   | InEq          of diseq
   | TidEq         of tid * tid
