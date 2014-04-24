@@ -99,8 +99,7 @@ module Make (C:Core.S) : S =
       ) nodes []
 
 
-    let gen_fairness (pvd:PVD.t) : Tactics.vc_info list = []
-(*
+    let gen_fairness (pvd:PVD.t) : Tactics.vc_info list =
       let edges = PVD.edge_list pvd in
       List.fold_left (fun vcs (n1,n2,info) ->
         let mu_n1 = PVD.node_mu pvd n1 in
@@ -133,7 +132,6 @@ module Make (C:Core.S) : S =
               ) [] trans_list) @ xs
         ) info []) @ vcs
       ) [] edges
-*)
 
 
 

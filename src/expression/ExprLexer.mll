@@ -67,11 +67,16 @@ rule norm = parse
   | "UnionInt"      { Global.last "UnionInt"      ; UNIONINT }
   | "IntrInt"       { Global.last "IntrInt"       ; INTRINT }
   | "SetDiffInt"    { Global.last "SetDiffInt"    ; SETDIFFINT }
-  | "EmptySetElem"  { Global.last "EmptySetElem  "; EMPTYSETELEM }
+  | "EmptySetElem"  { Global.last "EmptySetElem"  ; EMPTYSETELEM }
   | "SingleElem"    { Global.last "SingleElem"    ; SINGLEELEM }
   | "UnionElem"     { Global.last "UnionElem"     ; UNIONELEM }
   | "IntrElem"      { Global.last "IntrElem"      ; INTRELEM }
   | "SetDiffElem"   { Global.last "SetDiffElem"   ; SETDIFFELEM }
+  | "EmptySetPair"  { Global.last "EmptySetPair"  ; EMPTYSETPAIR }
+  | "SinglePair"    { Global.last "SinglePair"    ; SINGLEPAIR }
+  | "UnionPair"     { Global.last "UnionPair"     ; UNIONPAIR }
+  | "IntrPair"      { Global.last "IntrPair"      ; INTRPAIR }
+  | "SetDiffPair"   { Global.last "SetDiffPair"   ; SETDIFFPAIR }
   | "set2elem"      { Global.last "set2elem"      ; SET2ELEM }
   | "path2set"      { Global.last "path2set"      ; PATH2SET }
   | "addr2set"      { Global.last "addr2set"      ; ADDR2SET }

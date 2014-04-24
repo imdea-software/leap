@@ -4,7 +4,7 @@ open LeapVerbose
 
 
 type sort =
-    Set
+  | Set
   | Elem
   | Tid
   | Addr
@@ -12,6 +12,7 @@ type sort =
   | SetTh
   | SetInt
   | SetElem
+  | SetPair
   | Path
   | Mem
   | Bool
@@ -61,6 +62,7 @@ and term =
   | SetThT        of setth
   | SetIntT       of setint
   | SetElemT      of setelem
+  | SetPairT      of setpair
   | PathT         of path
   | MemT          of mem
   | IntT          of integer
@@ -181,6 +183,15 @@ and setelem =
   | SetdiffElem    of setelem * setelem
   | SetToElems     of set * mem
   | SetElemArrayRd of arrays * tid
+
+and setpair =
+    VarSetPair     of V.t
+  | EmptySetPair
+  | SinglPair      of integer * tid
+  | UnionPair      of setpair * setpair
+  | IntrPair       of setpair * setpair
+  | SetdiffPair    of setpair * setpair
+  | SetPairArrayRd of arrays * tid
 
 and path =
   | VarPath       of V.t
@@ -423,6 +434,7 @@ let rec priming_term (pr:bool)
   | SetThT(setth)     -> SetThT     (priming_setth      pr prime_set setth)
   | SetIntT(setint)   -> SetIntT    (priming_setint     pr prime_set setint)
   | SetElemT(setelem) -> SetElemT   (priming_setelem    pr prime_set setelem)
+  | SetPairT(setpair) -> SetPairT   (priming_setpair    pr prime_set setpair)
   | PathT(path)       -> PathT      (priming_path       pr prime_set path)
   | MemT(mem)         -> MemT       (priming_mem        pr prime_set mem)
   | IntT(i)           -> IntT       (priming_int        pr prime_set i)
@@ -603,6 +615,23 @@ and priming_setelem (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)
   | SetToElems(s,m)       -> SetToElems(priming_set pr prime_set s,
                                         priming_mem pr prime_set m)
   | SetElemArrayRd(arr,t) -> SetElemArrayRd(priming_array pr prime_set arr,
+                                            priming_tid pr prime_set t)
+
+
+and priming_setpair (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t 
+  option)) (s:setpair) : setpair =
+  match s with
+    VarSetPair v          -> VarSetPair (priming_variable pr prime_set v)
+  | EmptySetPair          -> EmptySetPair
+  | SinglPair(i,t)        -> SinglPair(priming_int pr prime_set i,
+                                       priming_tid pr prime_set t)
+  | UnionPair(s1,s2)      -> UnionPair(priming_setpair pr prime_set s1,
+                                       priming_setpair pr prime_set s2)
+  | IntrPair(s1,s2)       -> IntrPair(priming_setpair pr prime_set s1,
+                                      priming_setpair pr prime_set s2)
+  | SetdiffPair(s1,s2)    -> SetdiffPair(priming_setpair pr prime_set s1,
+                                         priming_setpair pr prime_set s2)
+  | SetPairArrayRd(arr,t) -> SetPairArrayRd(priming_array pr prime_set arr,
                                             priming_tid pr prime_set t)
 
 and priming_path (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (p:path) : path =
@@ -1106,6 +1135,22 @@ and setelem_to_str (expr:setelem) : string =
                                             (param_tid_to_str t)
 
 
+and setpair_to_str (expr:setpair) : string =
+  match expr with
+    VarSetPair v          -> V.to_str v
+  | EmptySetPair          -> "EmptySetPair"
+  | SinglPair(i,t)        -> sprintf "SinglPair(%s,%s)" (integer_to_str i)
+                                                        (tid_to_str t)
+  | UnionPair(s_1,s_2)    -> sprintf "UnionPair(%s,%s)" (setpair_to_str s_1)
+                                                        (setpair_to_str s_2)
+  | IntrPair(s_1,s_2)     -> sprintf "IntrPair(%s,%s)" (setpair_to_str s_1)
+                                                       (setpair_to_str s_2)
+  | SetdiffPair(s_1,s_2)  -> sprintf "SetDiffPair(%s,%s)" (setpair_to_str s_1)
+                                                         (setpair_to_str s_2)
+  | SetPairArrayRd(arr,t) -> sprintf "%s%s" (arrays_to_str arr)
+                                            (param_tid_to_str t)
+
+
 and cell_to_str (expr:cell) : string =
   let list_str f xs = String.concat "," (List.map f xs) in
   match expr with
@@ -1195,6 +1240,7 @@ and term_to_str (expr:term) : string =
   | SetThT(setth)     -> (setth_to_str setth)
   | SetIntT(setint)   -> (setint_to_str setint)
   | SetElemT(setelem) -> (setelem_to_str setelem)
+  | SetPairT(setpair) -> (setpair_to_str setpair)
   | PathT(path)       -> (path_to_str path)
   | MemT(mem)         -> (mem_to_str mem)
   | IntT(i)           -> (integer_to_str i)
@@ -1274,6 +1320,7 @@ let var_to_term (v:V.t) : term =
   | SetTh     -> SetThT     (VarSetTh      v)
   | SetInt    -> SetIntT    (VarSetInt     v)
   | SetElem   -> SetElemT   (VarSetElem    v)
+  | SetPair   -> SetPairT   (VarSetPair    v)
   | Path      -> PathT      (VarPath       v)
   | Mem       -> MemT       (VarMem        v)
   | Int       -> IntT       (VarInt        v)
@@ -1286,17 +1333,22 @@ let var_to_term (v:V.t) : term =
 let term_to_var (t:term) : V.t =
   match t with
     VarT v -> v
-  | SetT  (VarSet v)   -> V.set_sort v Set
-  | ElemT (VarElem v)  -> V.set_sort v Elem
-  | TidT  (VarTh v)    -> V.set_sort v Tid
-  | AddrT (VarAddr v)  -> V.set_sort v Addr
-  | CellT (VarCell v)  -> V.set_sort v Cell
-  | SetThT(VarSetTh v) -> V.set_sort v SetTh
-  | PathT (VarPath v)  -> V.set_sort v Path
-  | MemT  (VarMem v)   -> V.set_sort v Mem
-  | IntT  (VarInt v)   -> V.set_sort v Int
-  | ArrayT(VarArray v) -> V.set_sort v Array
-  | _                  -> raise(No_variable_term(term_to_str t))
+  | SetT      (VarSet v)       -> V.set_sort v Set
+  | ElemT     (VarElem v)      -> V.set_sort v Elem
+  | TidT      (VarTh v)        -> V.set_sort v Tid
+  | AddrT     (VarAddr v)      -> V.set_sort v Addr
+  | CellT     (VarCell v)      -> V.set_sort v Cell
+  | SetThT    (VarSetTh v)     -> V.set_sort v SetTh
+  | SetIntT   (VarSetInt v)    -> V.set_sort v SetInt
+  | SetElemT  (VarSetElem v)   -> V.set_sort v SetElem
+  | SetPairT  (VarSetPair v)   -> V.set_sort v SetPair
+  | PathT     (VarPath v)      -> V.set_sort v Path
+  | MemT      (VarMem v)       -> V.set_sort v Mem
+  | IntT      (VarInt v)       -> V.set_sort v Int
+  | ArrayT    (VarArray v)     -> V.set_sort v Array
+  | AddrArrayT(VarAddrArray v) -> V.set_sort v AddrArray
+  | TidArrayT (VarTidArray v)  -> V.set_sort v TidArray
+  | _                          -> raise(No_variable_term(term_to_str t))
 
 
 
@@ -1311,6 +1363,7 @@ let term_sort (t:term) : sort =
   | SetThT _     -> SetTh
   | SetIntT _    -> SetInt
   | SetElemT _   -> SetElem
+  | SetPairT _   -> SetPair
   | PathT _      -> Path
   | MemT _       -> Mem
   | IntT _       -> Int
@@ -1663,6 +1716,7 @@ let sort_to_str (s:sort) : string =
     | SetTh     -> "tidSet"
     | SetInt    -> "intSet"
     | SetElem   -> "elemSet"
+    | SetPair   -> "pairSet"
     | Path      -> "path"
     | Mem       -> "mem"
     | Bool      -> "bool"
@@ -1764,6 +1818,7 @@ let rec get_vars_term (expr:term) (base:V.t -> V.VarSet.t) : V.VarSet.t =
   | SetThT(setth)     -> get_vars_setth setth base
   | SetIntT(setint)   -> get_vars_setint setint base
   | SetElemT(setelem) -> get_vars_setelem setelem base
+  | SetPairT(setpair) -> get_vars_setpair setpair base
   | PathT(path)       -> get_vars_path path base
   | MemT(mem)         -> get_vars_mem mem base
   | IntT(i)           -> get_vars_int i base
@@ -1956,6 +2011,24 @@ and get_vars_setelem (s:setelem) (base:V.t -> V.VarSet.t) : V.VarSet.t =
                              (get_vars_setelem s2 base)
   | SetToElems(s,m)       -> (get_vars_set s base) @@ (get_vars_mem m base)
   | SetElemArrayRd(arr,t) -> (get_vars_array arr base)
+
+
+and get_vars_setpair (s:setpair) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+  match s with
+    VarSetPair v          -> (base v) @@
+                              (match V.parameter v with
+                               | V.Shared -> V.VarSet.empty
+                               | V.Local t -> base t)
+  | EmptySetPair          -> V.VarSet.empty
+  | SinglPair(i,t)        -> (get_vars_int i base) @@
+                             (get_vars_tid t base)
+  | UnionPair(s1,s2)      -> (get_vars_setpair s1 base) @@
+                             (get_vars_setpair s2 base)
+  | IntrPair(s1,s2)       -> (get_vars_setpair s1 base) @@
+                             (get_vars_setpair s2 base)
+  | SetdiffPair(s1,s2)    -> (get_vars_setpair s1 base) @@
+                             (get_vars_setpair s2 base)
+  | SetPairArrayRd(arr,t) -> (get_vars_array arr base)
 
 
 and get_vars_path (p:path) (base:V.t -> V.VarSet.t) : V.VarSet.t =
@@ -2346,6 +2419,7 @@ let rec voc_term (expr:term) : ThreadSet.t =
     | SetThT(setth)     -> voc_setth setth
     | SetIntT(setint)   -> voc_setint setint
     | SetElemT(setelem) -> voc_setelem setelem
+    | SetPairT(setpair) -> voc_setpair setpair
     | PathT(path)       -> voc_path path
     | MemT(mem)         -> voc_mem mem
     | IntT(i)           -> voc_int i
@@ -2484,6 +2558,17 @@ and voc_setelem (s:setelem) : ThreadSet.t =
   | SetdiffElem(s1,s2)    -> (voc_setelem s1) @@ (voc_setelem s2)
   | SetToElems(s,m)       -> (voc_set s) @@ (voc_mem m)
   | SetElemArrayRd(arr,t) -> (voc_array arr)
+
+
+and voc_setpair (s:setpair) : ThreadSet.t =
+  match s with
+    VarSetPair v          -> get_tid_in v
+  | EmptySetPair          -> ThreadSet.empty
+  | SinglPair(i,t)        -> (voc_int i) @@ (voc_tid t)
+  | UnionPair(s1,s2)      -> (voc_setpair s1) @@ (voc_setpair s2)
+  | IntrPair(s1,s2)       -> (voc_setpair s1) @@ (voc_setpair s2)
+  | SetdiffPair(s1,s2)    -> (voc_setpair s1) @@ (voc_setpair s2)
+  | SetPairArrayRd(arr,t) -> (voc_array arr)
 
 
 and voc_path (p:path) : ThreadSet.t =
@@ -2654,6 +2739,7 @@ let rec var_kind_term (kind:var_nature) (expr:term) : term list =
     | SetThT(setth)     -> var_kind_setth kind setth
     | SetIntT(setint)   -> var_kind_setint kind setint
     | SetElemT(setelem) -> var_kind_setelem kind setelem
+    | SetPairT(setpair) -> var_kind_setpair kind setpair
     | PathT(path)       -> var_kind_path kind path
     | MemT(mem)         -> var_kind_mem kind mem
     | IntT(i)           -> var_kind_int kind i
@@ -2814,6 +2900,21 @@ and var_kind_setelem (kind:var_nature) (s:setelem) : term list =
                              (var_kind_setelem kind s2)
   | SetToElems(s,m)       -> (var_kind_set kind s) @ (var_kind_mem kind m)
   | SetElemArrayRd(arr,t) -> (var_kind_array kind arr)
+
+
+and var_kind_setpair (kind:var_nature) (s:setpair) : term list =
+  match s with
+    VarSetPair v          -> if var_nature v = kind then [SetPairT s] else []
+  | EmptySetPair          -> []
+  | SinglPair(i,t)        -> (var_kind_int kind i) @
+                             (var_kind_tid kind t)
+  | UnionPair(s1,s2)      -> (var_kind_setpair kind s1) @
+                             (var_kind_setpair kind s2)
+  | IntrPair(s1,s2)       -> (var_kind_setpair kind s1) @
+                             (var_kind_setpair kind s2)
+  | SetdiffPair(s1,s2)    -> (var_kind_setpair kind s1) @
+                             (var_kind_setpair kind s2)
+  | SetPairArrayRd(arr,t) -> (var_kind_array kind arr)
 
 
 and var_kind_path (kind:var_nature) (p:path) : term list =
@@ -2994,6 +3095,7 @@ let rec param_a_term (pfun:V.t option -> V.shared_or_local) (expr:term) : term =
   | SetThT(setth)     -> SetThT     (param_setth    pfun setth  )
   | SetIntT(setint)   -> SetIntT    (param_setint   pfun setint )
   | SetElemT(setelem) -> SetElemT   (param_setelem  pfun setelem)
+  | SetPairT(setpair) -> SetPairT   (param_setpair  pfun setpair)
   | PathT(path)       -> PathT      (param_path     pfun path   )
   | MemT(mem)         -> MemT       (param_mem      pfun mem    )
   | IntT(i)           -> IntT       (param_int_aux      pfun i      )
@@ -3169,6 +3271,21 @@ and param_setelem (pfun:V.t option -> V.shared_or_local) (s:setelem) : setelem =
                                            param_setelem pfun s2)
   | SetToElems(s,m)         -> SetToElems(param_set pfun s, param_mem pfun m)
   | SetElemArrayRd(arr,t)   -> SetElemArrayRd(param_arrays pfun arr, t)
+
+
+and param_setpair (pfun:V.t option -> V.shared_or_local) (s:setpair) : setpair =
+  match s with
+    VarSetPair v            -> VarSetPair (V.set_param v (pfun (Some v)))
+  | EmptySetPair            -> EmptySetPair
+  | SinglPair(i,t)          -> SinglPair(param_int_aux pfun i,
+                                         param_tid_aux pfun t)
+  | UnionPair(s1,s2)        -> UnionPair(param_setpair pfun s1,
+                                         param_setpair pfun s2)
+  | IntrPair(s1,s2)         -> IntrPair(param_setpair pfun s1,
+                                        param_setpair pfun s2)
+  | SetdiffPair(s1,s2)      -> SetdiffPair(param_setpair pfun s1,
+                                           param_setpair pfun s2)
+  | SetPairArrayRd(arr,t)   -> SetPairArrayRd(param_arrays pfun arr, t)
 
 
 and param_path (pfun:V.t option -> V.shared_or_local) (path:path) : path =
@@ -3443,6 +3560,7 @@ and subst_tid_term (subs:tid_subst_t) (expr:term) : term =
   | SetThT(setth)       -> SetThT(subst_tid_setth subs setth)
   | SetIntT(setint)     -> SetIntT(subst_tid_setint subs setint)
   | SetElemT(setelem)   -> SetElemT(subst_tid_setelem subs setelem)
+  | SetPairT(setpair)   -> SetPairT(subst_tid_setpair subs setpair)
   | PathT(path)         -> PathT(subst_tid_path subs path)
   | MemT(mem)           -> MemT(subst_tid_mem subs mem)
   | IntT(i)             -> IntT(subst_tid_int subs i)
@@ -3580,6 +3698,19 @@ and subst_tid_setelem (subs:tid_subst_t) (s:setelem) : setelem =
   | SetToElems(s,m)          -> SetToElems(subst_tid_set subs s,
                                            subst_tid_mem subs m)
   | SetElemArrayRd(arr,t)    -> SetElemArrayRd(subst_tid_array subs arr, t)
+and subst_tid_setpair (subs:tid_subst_t) (s:setpair) : setpair =
+  match s with
+    VarSetPair v             -> VarSetPair(V.set_param v (subst_shared_or_local subs (V.parameter v)))
+  | EmptySetPair             -> EmptySetPair
+  | SinglPair(i,t)           -> SinglPair(subst_tid_int subs i,
+                                          subst_tid_th subs t)
+  | UnionPair(s1,s2)         -> UnionPair(subst_tid_setpair subs s1,
+                                          subst_tid_setpair subs s2)
+  | IntrPair(s1,s2)          -> IntrPair(subst_tid_setpair subs s1,
+                                         subst_tid_setpair subs s2)
+  | SetdiffPair(s1,s2)       -> SetdiffPair(subst_tid_setpair subs s1,
+                                            subst_tid_setpair subs s2)
+  | SetPairArrayRd(arr,t)    -> SetPairArrayRd(subst_tid_array subs arr, t)
 and subst_tid_path (subs:tid_subst_t) (p:path) : path =
   match p with
     VarPath v                        -> VarPath(V.set_param v (subst_shared_or_local subs (V.parameter v)))
@@ -3763,6 +3894,7 @@ let rec subst_vars_term (subs:V.subst_t) (expr:term) : term =
   | SetThT(setth)       -> SetThT(subst_vars_setth subs setth)
   | SetIntT(setint)     -> SetIntT(subst_vars_setint subs setint)
   | SetElemT(setelem)   -> SetElemT(subst_vars_setelem subs setelem)
+  | SetPairT(setpair)   -> SetPairT(subst_vars_setpair subs setpair)
   | PathT(path)         -> PathT(subst_vars_path subs path)
   | MemT(mem)           -> MemT(subst_vars_mem subs mem)
   | IntT(i)             -> IntT(subst_vars_int subs i)
@@ -3922,6 +4054,21 @@ and subst_vars_setelem (subs:V.subst_t) (s:setelem) : setelem =
   | SetToElems(s,m)          -> SetToElems(subst_vars_set subs s,
                                            subst_vars_mem subs m)
   | SetElemArrayRd(arr,t)    -> SetElemArrayRd(subst_vars_array subs arr, t)
+
+
+and subst_vars_setpair (subs:V.subst_t) (s:setpair) : setpair =
+  match s with
+    VarSetPair v             -> VarSetPair(V.subst subs v)
+  | EmptySetPair             -> EmptySetPair
+  | SinglPair(i,t)           -> SinglPair(subst_vars_int subs i,
+                                          subst_vars_th subs t)
+  | UnionPair(s1,s2)         -> UnionPair(subst_vars_setpair subs s1,
+                                          subst_vars_setpair subs s2)
+  | IntrPair(s1,s2)          -> IntrPair(subst_vars_setpair subs s1,
+                                         subst_vars_setpair subs s2)
+  | SetdiffPair(s1,s2)       -> SetdiffPair(subst_vars_setpair subs s1,
+                                            subst_vars_setpair subs s2)
+  | SetPairArrayRd(arr,t)    -> SetPairArrayRd(subst_vars_array subs arr, t)
 
 
 and subst_vars_path (subs:V.subst_t) (p:path) : path =
@@ -4624,6 +4771,18 @@ let required_sorts (phi:formula) : sort list =
     | SetToElems (s,m)     -> append SetElem [req_s   s;req_m   m]
     | SetElemArrayRd (a,t) -> append SetElem [req_arr a;req_t   t]
 
+
+  and req_sp (s:setpair) : SortSet.t =
+    match s with
+    | VarSetPair _         -> single SetPair
+    | EmptySetPair         -> single SetPair
+    | SinglPair (i,t)      -> append SetPair [req_i   i;req_t   t]
+    | UnionPair (s1,s2)    -> append SetPair [req_sp s1;req_sp s2]
+    | IntrPair (s1,s2)     -> append SetPair [req_sp s1;req_sp s2]
+    | SetdiffPair (s1,s2)  -> append SetPair [req_sp s1;req_sp s2]
+    | SetPairArrayRd (a,t) -> append SetPair [req_arr a;req_t   t]
+
+
   and req_st (s:setth) : SortSet.t =
     match s with
     | VarSetTh _         -> single SetTh
@@ -4742,6 +4901,7 @@ let required_sorts (phi:formula) : sort list =
     | SetThT s           -> req_st s
     | SetIntT s          -> req_si s
     | SetElemT s         -> req_se s
+    | SetPairT s         -> req_sp s
     | PathT p            -> req_p p
     | MemT m             -> req_m m
     | IntT i             -> req_i i
@@ -4845,6 +5005,7 @@ and to_plain_term (ops:fol_ops_t) (expr:term) : term =
   | SetThT(setth)     -> SetThT     (to_plain_setth ops setth)
   | SetIntT(setint)   -> SetIntT    (to_plain_setint ops setint)
   | SetElemT(setelem) -> SetElemT   (to_plain_setelem ops setelem)
+  | SetPairT(setpair) -> SetPairT   (to_plain_setpair ops setpair)
   | PathT(path)       -> PathT      (to_plain_path ops path)
   | MemT(mem)         -> MemT       (to_plain_mem ops mem)
   | IntT(i)           -> IntT       (to_plain_int ops i)
@@ -5035,6 +5196,22 @@ and to_plain_setelem (ops:fol_ops_t) (s:setelem) : setelem =
                                            to_plain_setelem ops s2)
   | SetToElems(s,m)         -> SetToElems(to_plain_set ops s, to_plain_mem ops m)
   | SetElemArrayRd(arr,t)   -> SetElemArrayRd(to_plain_arrays ops arr,
+                                              to_plain_tid ops t)
+
+
+and to_plain_setpair (ops:fol_ops_t) (s:setpair) : setpair =
+  match s with
+    VarSetPair v            -> VarSetPair (ops.fol_var v)
+  | EmptySetPair            -> EmptySetPair
+  | SinglPair(i,t)          -> SinglPair(to_plain_int ops i,
+                                         to_plain_tid ops t)
+  | UnionPair(s1,s2)        -> UnionPair(to_plain_setpair ops s1,
+                                         to_plain_setpair ops s2)
+  | IntrPair(s1,s2)         -> IntrPair(to_plain_setpair ops s1,
+                                        to_plain_setpair ops s2)
+  | SetdiffPair(s1,s2)      -> SetdiffPair(to_plain_setpair ops s1,
+                                           to_plain_setpair ops s2)
+  | SetPairArrayRd(arr,t)   -> SetPairArrayRd(to_plain_arrays ops arr,
                                               to_plain_tid ops t)
 
 

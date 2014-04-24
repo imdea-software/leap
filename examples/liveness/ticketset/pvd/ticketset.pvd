@@ -2,11 +2,11 @@ Diagram[ticketset]
 
 Nodes: n0 {@1(k). \/ @2(k). \/ @6(k). \/ @7(k). \/ @8(k).},
        n1 {@3(k).},
-       n2 {@4(t). /\ t!=k /\ @4(k).},
-       n3 {@5(t). /\ t!=k /\ @4(k).},
-       n4 {@6(t). /\ t!=k /\ @4(k).},
-       n5 {@4(k).},
-       n6 {@5(k). \/ @6(k).}
+       n2 {@4(t). /\ t!=k /\ @4(k). /\ setIntMin(bag) = main::ticket(t)},
+       n3 {@5(t). /\ t!=k /\ @4(k). /\ setIntMin(bag) = main::ticket(t)},
+       n4 {@6(t). /\ t!=k /\ @4(k). /\ setIntMin(bag) = main::ticket(t)},
+       n5 {@4(k). /\ setIntMin(bag) = main::ticket(k)},
+       n6 {(@5(k). \/ @6(k).) /\ setIntMin(bag) = main::ticket(k)}
 
 Boxes: {b1[t]:n2,n3,n4}
 

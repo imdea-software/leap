@@ -9,6 +9,7 @@ type sort =
   | SetTh
   | SetInt
   | SetElem
+  | SetPair
   | Path
   | Mem
   | Bool
@@ -32,12 +33,13 @@ and term =
     VarT          of V.t
   | SetT          of set
   | ElemT         of elem
-  | TidT         of tid
+  | TidT          of tid
   | AddrT         of addr
   | CellT         of cell
   | SetThT        of setth
   | SetIntT       of setint
   | SetElemT      of setelem
+  | SetPairT      of setpair
   | PathT         of path
   | MemT          of mem
   | IntT          of integer
@@ -157,6 +159,15 @@ and setelem =
   | SetdiffElem    of setelem * setelem
   | SetToElems     of set * mem
   | SetElemArrayRd of arrays * tid
+
+and setpair =
+    VarSetPair     of V.t
+  | EmptySetPair
+  | SinglPair      of integer * tid
+  | UnionPair      of setpair * setpair
+  | IntrPair       of setpair * setpair
+  | SetdiffPair    of setpair * setpair
+  | SetPairArrayRd of arrays * tid
 
 and path =
     VarPath       of V.t
