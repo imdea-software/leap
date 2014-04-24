@@ -378,8 +378,8 @@ val prime_term   : term -> term
 val unprime_term : term -> term
 val prime        : formula -> formula
 val unprime      : formula -> formula
-val prime_only   : V.VarSet.t -> V.VarSet.t -> formula -> formula
-val unprime_only : V.VarSet.t -> V.VarSet.t -> formula -> formula
+val prime_only   : V.VarSet.t -> bool -> V.VarSet.t -> formula -> formula
+val unprime_only : V.VarSet.t -> bool -> V.VarSet.t -> formula -> formula
 val prime_term   : term -> term
 val unprime_term : term -> term
 

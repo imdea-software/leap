@@ -403,7 +403,7 @@ let var_base_info = V.unparam>>V.unprime
 (* Priming functions used for thread identifiers *)
 
 let rec priming_option_tid (pr:bool)
-                           (prime_set:(V.VarSet.t option * V.VarSet.t option))
+                           (prime_set:(V.VarSet.t option * bool * V.VarSet.t option))
                            (expr:V.shared_or_local) : V.shared_or_local =
   (* This statement primes the thread parameter of expressions *)
   (* Option.lift (priming_th_t pr) expr *)
@@ -412,10 +412,11 @@ let rec priming_option_tid (pr:bool)
 
 
 let priming_variable (pr:bool)
-                     (prime_set:(V.VarSet.t option * V.VarSet.t option))
+                     (prime_set:(V.VarSet.t option * bool * V.VarSet.t option))
                      (v:V.t) : V.t =
   let v' = if pr then V.prime v else V.unprime v in
-  match (fst prime_set) with
+  let (pSet,_,_) = prime_set in
+  match pSet with
   | None   -> v'
 (* DO NOT ERASE: This may be needed!!!! *)
   | Some s -> if (V.VarSet.mem (V.set_param v V.Shared) s ||
@@ -424,7 +425,7 @@ let priming_variable (pr:bool)
 
 
 let rec priming_term (pr:bool)
-                     (prime_set:(V.VarSet.t option * V.VarSet.t option))
+                     (prime_set:(V.VarSet.t option * bool * V.VarSet.t option))
                      (expr:term) : term =
   match expr with
     VarT v            -> VarT       (priming_variable   pr prime_set v)
@@ -445,20 +446,26 @@ let rec priming_term (pr:bool)
   | TidArrayT(arr)    -> TidArrayT  (priming_tidarray   pr prime_set arr)
 
 
-and priming_expr (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (expr:expr_t) : expr_t =
+and priming_expr (pr:bool)
+                 (prime_set:(V.VarSet.t option * bool * V.VarSet.t option))
+                 (expr:expr_t) : expr_t =
   match expr with
     Term t    -> Term (priming_term pr prime_set t)
   | Formula b -> Formula (priming_formula pr prime_set b)
 
 
-and priming_array (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (expr:arrays) : arrays =
+and priming_array (pr:bool)
+                  (prime_set:(V.VarSet.t option * bool * V.VarSet.t option))
+                  (expr:arrays) : arrays =
   match expr with
     VarArray v       -> VarArray (priming_variable pr prime_set v)
   | ArrayUp(arr,t,e) -> ArrayUp  (priming_array pr prime_set arr,
                                   priming_tid   pr prime_set t,
                                   priming_expr  pr prime_set e)
 
-and priming_addrarray (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (expr:addrarr)
+and priming_addrarray (pr:bool)
+                      (prime_set:(V.VarSet.t option * bool * V.VarSet.t option))
+                      (expr:addrarr)
       : addrarr =
   match expr with
     VarAddrArray v       -> VarAddrArray (priming_variable pr prime_set v)
@@ -467,7 +474,9 @@ and priming_addrarray (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t optio
                                           priming_addr  pr prime_set a)
   | CellArr c            -> CellArr (priming_cell pr prime_set c)
 
-and priming_tidarray (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (expr:tidarr)
+and priming_tidarray (pr:bool)
+                     (prime_set:(V.VarSet.t option * bool * V.VarSet.t option))
+                     (expr:tidarr)
       : tidarr =
   match expr with
     VarTidArray v       -> VarTidArray (priming_variable pr prime_set v)
@@ -476,7 +485,9 @@ and priming_tidarray (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option
                                           priming_tid  pr prime_set t)
   | CellTids c            -> CellTids (priming_cell pr prime_set c)
 
-and priming_set (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (e:set) : set =
+and priming_set (pr:bool)
+                (prime_set:(V.VarSet.t option * bool * V.VarSet.t option))
+                (e:set) : set =
   match e with
     VarSet v            -> VarSet (priming_variable pr prime_set v)
   | EmptySet            -> EmptySet
@@ -497,7 +508,9 @@ and priming_set (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (e
                                       priming_tid pr prime_set t)
 
 
-and priming_addr (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (a:addr) : addr =
+and priming_addr (pr:bool)
+                 (prime_set:(V.VarSet.t option * bool * V.VarSet.t option))
+                 (a:addr) : addr =
   match a with
     VarAddr v                 -> VarAddr (priming_variable pr prime_set v)
   | Null                      -> Null
@@ -516,7 +529,9 @@ and priming_addr (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (
   | AddrArrRd(arr,l)          -> AddrArrRd(priming_addrarray pr prime_set arr,
                                            priming_int pr prime_set l)
 
-and priming_elem (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (e:elem) : elem =
+and priming_elem (pr:bool)
+                 (prime_set:(V.VarSet.t option * bool * V.VarSet.t option))
+                 (e:elem) : elem =
   match e with
     VarElem v          -> VarElem (priming_variable pr prime_set v)
   | CellData(cell)     -> CellData(priming_cell pr prime_set cell)
@@ -529,7 +544,9 @@ and priming_elem (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (
   | HighestElem        -> HighestElem
 
 
-and priming_tid (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (th:tid) : tid =
+and priming_tid (pr:bool)
+                (prime_set:(V.VarSet.t option * bool * V.VarSet.t option))
+                (th:tid) : tid =
   match th with
     VarTh v              -> VarTh (priming_variable pr prime_set v)
   | NoTid               -> NoTid
@@ -542,7 +559,9 @@ and priming_tid (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (t
                                       priming_int pr prime_set l)
 
 
-and priming_cell (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (c:cell) : cell =
+and priming_cell (pr:bool)
+                 (prime_set:(V.VarSet.t option * bool * V.VarSet.t option))
+                 (c:cell) : cell =
   match c with
     VarCell v              -> VarCell (priming_variable pr prime_set v)
   | Error                  -> Error
@@ -573,7 +592,9 @@ and priming_cell (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (
                                           priming_addr pr prime_set a)
 
 
-and priming_setth (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (s:setth) : setth =
+and priming_setth (pr:bool)
+                  (prime_set:(V.VarSet.t option * bool * V.VarSet.t option))
+                  (s:setth) : setth =
   match s with
     VarSetTh v          -> VarSetTh (priming_variable pr prime_set v)
   | EmptySetTh          -> EmptySetTh
@@ -588,7 +609,9 @@ and priming_setth (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) 
                                         priming_tid pr prime_set t)
 
 
-and priming_setint (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (s:setint) : setint =
+and priming_setint (pr:bool)
+                   (prime_set:(V.VarSet.t option * bool * V.VarSet.t option))
+                   (s:setint) : setint =
   match s with
     VarSetInt v          -> VarSetInt (priming_variable pr prime_set v)
   | EmptySetInt          -> EmptySetInt
@@ -603,7 +626,9 @@ and priming_setint (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option))
                                           priming_tid pr prime_set t)
 
 
-and priming_setelem (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (s:setelem) : setelem =
+and priming_setelem (pr:bool)
+                    (prime_set:(V.VarSet.t option * bool * V.VarSet.t option))
+                    (s:setelem) : setelem =
   match s with
     VarSetElem v          -> VarSetElem (priming_variable pr prime_set v)
   | EmptySetElem          -> EmptySetElem
@@ -620,8 +645,9 @@ and priming_setelem (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)
                                             priming_tid pr prime_set t)
 
 
-and priming_setpair (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t 
-  option)) (s:setpair) : setpair =
+and priming_setpair (pr:bool)
+                    (prime_set:(V.VarSet.t option * bool * V.VarSet.t option))
+                    (s:setpair) : setpair =
   match s with
     VarSetPair v          -> VarSetPair (priming_variable pr prime_set v)
   | EmptySetPair          -> EmptySetPair
@@ -636,7 +662,9 @@ and priming_setpair (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t
   | SetPairArrayRd(arr,t) -> SetPairArrayRd(priming_array pr prime_set arr,
                                             priming_tid pr prime_set t)
 
-and priming_path (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (p:path) : path =
+and priming_path (pr:bool)
+                 (prime_set:(V.VarSet.t option * bool * V.VarSet.t option))
+                 (p:path) : path =
   match p with
     VarPath v                        -> VarPath (priming_variable pr prime_set v)
   | Epsilon                          -> Epsilon
@@ -652,7 +680,9 @@ and priming_path (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (
                                                     priming_tid pr prime_set t)
 
 
-and priming_mem (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (m:mem) : mem =
+and priming_mem (pr:bool)
+                (prime_set:(V.VarSet.t option * bool * V.VarSet.t option))
+                (m:mem) : mem =
   match m with
     VarMem v             -> VarMem(priming_variable pr prime_set v)
   | Update(mem,add,cell) -> Update(priming_mem pr prime_set mem,
@@ -662,7 +692,9 @@ and priming_mem (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (m
                                        priming_tid pr prime_set t)
 
 
-and priming_int (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (i:integer) : integer =
+and priming_int (pr:bool)
+                (prime_set:(V.VarSet.t option * bool * V.VarSet.t option))
+                (i:integer) : integer =
   match i with
     IntVal(i)         -> IntVal(i)
   | VarInt v          -> VarInt(priming_variable pr prime_set v)
@@ -684,7 +716,10 @@ and priming_int (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (i
 
 
 
-and priming_atom (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (a:atom) : atom =
+and priming_atom (pr:bool)
+                 (prime_set:(V.VarSet.t option * bool * V.VarSet.t option))
+                 (a:atom) : atom =
+  let (_,pGlobal,pLocal) = prime_set in
   match a with
     Append(p1,p2,pres)                -> Append(priming_path pr prime_set p1,
                                                 priming_path pr prime_set p2,
@@ -747,30 +782,36 @@ and priming_atom (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (
   | BoolVar v                         -> BoolVar (priming_variable pr prime_set v)
   | BoolArrayRd (a,t)                 -> BoolArrayRd (priming_array pr prime_set a,
                                                       priming_tid pr prime_set t)
-  | PC (pc,t,_)                       -> begin
-                                           match (snd prime_set, t) with
-                                           | (Some s, V.Local v) ->
-                                                if V.VarSet.mem v s then
-                                                  PC (pc, t, pr)
-                                                else a
-                                           | _ -> PC (pc, t, pr)
+  | PC (pc,V.Shared,_)                -> if pGlobal then PC (pc, V.Shared, pr) else a
+  | PC (pc,V.Local v,_)               -> begin
+                                           match pLocal with
+                                           | Some s ->
+                                               if V.VarSet.mem v s then
+                                                 PC (pc, V.Local v, pr)
+                                               else a
+                                           | _ -> PC (pc, V.Local v, pr)
                                          end
   | PCUpdate (pc,t)                   -> PCUpdate (pc,t)
-  | PCRange (pc1,pc2,t,_)             -> begin
-                                           match (snd prime_set, t) with
-                                           | (Some s, V.Local v) ->
-                                                if V.VarSet.mem v s then
-                                                  PCRange (pc1, pc2, t, pr)
-                                                else a
-                                           | _ -> PCRange (pc1, pc2, t, pr)
+  | PCRange (pc1,pc2,V.Shared,_)      -> if pGlobal then PCRange (pc1, pc2, V.Shared, pr) else a
+  | PCRange (pc1,pc2,V.Local v,_)     -> begin
+                                           match pLocal with
+                                           | Some s ->
+                                               if V.VarSet.mem v s then
+                                                 PCRange (pc1, pc2, V.Local v, pr)
+                                               else a
+                                           | _ -> PCRange (pc1, pc2, V.Local v, pr)
                                          end
 
 
-and priming_eq (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) ((t1,t2):eq) : eq =
+and priming_eq (pr:bool)
+               (prime_set:(V.VarSet.t option * bool * V.VarSet.t option))
+               ((t1,t2):eq) : eq =
   (priming_term pr prime_set t1, priming_term pr prime_set t2)
 
 
-and priming_ineq (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) ((t1,t2):diseq) : diseq =
+and priming_ineq (pr:bool)
+                 (prime_set:(V.VarSet.t option * bool * V.VarSet.t option))
+                 ((t1,t2):diseq) : diseq =
   (priming_term pr prime_set t1, priming_term pr prime_set t2)
 
 
@@ -778,7 +819,9 @@ and priming_fs () = Formula.make_trans
                       Formula.GenericLiteralTrans
                       (fun (pr,prime_set) a -> priming_atom pr prime_set a)
 
-and priming_formula (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (phi:formula) =
+and priming_formula (pr:bool)
+                    (prime_set:(V.VarSet.t option * bool * V.VarSet.t option))
+                    (phi:formula) =
   Formula.formula_trans (priming_fs()) (pr,prime_set) phi
 
 (*
@@ -818,40 +861,40 @@ and priming_formula (pr:bool) (prime_set:V.VarSet.t option) (phi:formula) :
 
 (* exported priming functions *)
 
-let prime_addr (a:addr) : addr   =  priming_addr true    (None, None) a
-let unprime_addr (a:addr) : addr =  priming_addr false (None, None) a
-let prime_elem (e:elem) : elem   =  priming_elem true    (None, None) e
-let unprime_elem (e:elem) : elem =  priming_elem false (None, None) e
-let prime_cell (c:cell) : cell   =  priming_cell true    (None, None) c
-let unprime_cell (c:cell) : cell =  priming_cell false (None, None) c
-let prime_mem (m:mem) : mem      =  priming_mem  true    (None, None) m
-let unprime_mem (m:mem) : mem    =  priming_mem  false (None, None) m
-let prime_int (i:integer) : integer = priming_int true (None, None) i
-let unprime_int (i:integer) : integer =  priming_int false (None, None) i
-let prime_addrarr (aa:addrarr) : addrarr =  priming_addrarray true (None, None) aa
-let unprime_int (aa:addrarr) : addrarr =  priming_addrarray false (None, None) aa
-let prime_tidarr (tt:tidarr) : tidarr =  priming_tidarray true (None, None) tt
-let unprime_tidarr (tt:tidarr) : tidarr =  priming_tidarray false (None, None) tt
-let prime_term (t:term) : term =  priming_term true (None, None) t
-let unprime_term (t:term) : term =  priming_term false (None, None) t
-let prime_atom (a:atom) : atom =  priming_atom true (None, None) a
-let unprime_atom (a:atom) : atom =  priming_atom false (None, None) a
-let prime (phi:formula) : formula =  priming_formula true (None, None) phi
-let unprime (phi:formula) : formula =  priming_formula false (None, None) phi
-let prime_only (prime_set:V.VarSet.t) (pPC:V.VarSet.t) (phi:formula) : formula =
-  priming_formula true (Some prime_set, Some pPC) phi
-let unprime_only (prime_set:V.VarSet.t) (pPC:V.VarSet.t) (phi:formula) : formula =
-  priming_formula false (Some prime_set, Some pPC) phi
+let prime_addr (a:addr) : addr   =  priming_addr true    (None, true, None) a
+let unprime_addr (a:addr) : addr =  priming_addr false (None, false, None) a
+let prime_elem (e:elem) : elem   =  priming_elem true    (None, true, None) e
+let unprime_elem (e:elem) : elem =  priming_elem false (None, false, None) e
+let prime_cell (c:cell) : cell   =  priming_cell true    (None, true, None) c
+let unprime_cell (c:cell) : cell =  priming_cell false (None, false, None) c
+let prime_mem (m:mem) : mem      =  priming_mem  true    (None, true, None) m
+let unprime_mem (m:mem) : mem    =  priming_mem  false (None, false, None) m
+let prime_int (i:integer) : integer = priming_int true (None, true, None) i
+let unprime_int (i:integer) : integer =  priming_int false (None, false, None) i
+let prime_addrarr (aa:addrarr) : addrarr =  priming_addrarray true (None, true, None) aa
+let unprime_int (aa:addrarr) : addrarr =  priming_addrarray false (None, false, None) aa
+let prime_tidarr (tt:tidarr) : tidarr =  priming_tidarray true (None, true, None) tt
+let unprime_tidarr (tt:tidarr) : tidarr =  priming_tidarray false (None, false, None) tt
+let prime_term (t:term) : term =  priming_term true (None, true, None) t
+let unprime_term (t:term) : term =  priming_term false (None, false, None) t
+let prime_atom (a:atom) : atom =  priming_atom true (None, true, None) a
+let unprime_atom (a:atom) : atom =  priming_atom false (None, false, None) a
+let prime (phi:formula) : formula =  priming_formula true (None, true, None) phi
+let unprime (phi:formula) : formula =  priming_formula false (None, false, None) phi
+let prime_only (prime_set:V.VarSet.t) (pGlobal:bool) (pLocal:V.VarSet.t) (phi:formula) : formula =
+  priming_formula true (Some prime_set, pGlobal, Some pLocal) phi
+let unprime_only (prime_set:V.VarSet.t) (pGlobal:bool) (pLocal:V.VarSet.t) (phi:formula) : formula =
+  priming_formula false (Some prime_set, pGlobal, Some pLocal) phi
 let prime_term_only (prime_set:V.VarSet.t) (t:term) : term =
-  priming_term true (Some prime_set, None) t
+  priming_term true (Some prime_set, true, None) t
 let unprime_term_only (prime_set:V.VarSet.t) (t:term) : term =
-  priming_term false (Some prime_set, None) t
+  priming_term false (Some prime_set, false, None) t
 let prime_option_tid (th:V.shared_or_local) : V.shared_or_local =
-  priming_option_tid true (None, None) th
+  priming_option_tid true (None, true, None) th
 let unprime_option_tid (th:V.shared_or_local) : V.shared_or_local =
-  priming_option_tid false (None, None) th
-let prime_tid (th:tid) : tid =  priming_tid true (None, None) th
-let unprime_tid (th:tid) : tid = priming_tid false (None, None) th
+  priming_option_tid false (None, false, None) th
+let prime_tid (th:tid) : tid =  priming_tid true (None, true, None) th
+let unprime_tid (th:tid) : tid = priming_tid false (None, false, None) th
 
 
 
@@ -2256,11 +2299,12 @@ let prime_modified (rho:formula) (phi:formula) : formula =
   let rec analyze_fs () = Formula.make_fold
                             Formula.GenericLiteralFold
                             (fun info a -> analyze_atom a)
-                            (fun info -> (V.VarSet.empty, V.VarSet.empty))
-                            (fun (s1,t1) (s2,t2) -> (V.VarSet.union s1 s2,
-                                                     V.VarSet.union t1 t2))
+                            (fun info -> (V.VarSet.empty, false, V.VarSet.empty))
+                            (fun (s1,b1,t1) (s2,b2,t2) -> (V.VarSet.union s1 s2,
+                                                           b1 || b2,
+                                                           V.VarSet.union t1 t2))
 
-  and analyze_formula (phi:formula) : (V.VarSet.t * V.VarSet.t) =
+  and analyze_formula (phi:formula) : (V.VarSet.t * bool * V.VarSet.t) =
     Formula.formula_fold (analyze_fs()) () phi
 
 (*
@@ -2279,21 +2323,24 @@ let prime_modified (rho:formula) (phi:formula) : formula =
     | Atom a -> analyze_atom a
     | NegAtom a -> analyze_atom a
 *)
-  and analyze_atom (a:atom) : (V.VarSet.t * V.VarSet.t) =
+  and analyze_atom (a:atom) : (V.VarSet.t * bool * V.VarSet.t) =
     match a with
     | Eq (ArrayT (VarArray v), ArrayT (ArrayUp (aa,t,e)))
     | Eq (ArrayT (ArrayUp (aa,t,e)), ArrayT (VarArray v)) ->
         (V.VarSet.singleton (V.set_param (V.unprime v) (V.Local (voc_to_var t))),
+         false,
          V.VarSet.empty)
     | PC (_,V.Local v, true)
     | PCUpdate (_, VarTh v)
-    | PCRange (_,_,V.Local v,true) -> (get_vars_atom a base_f, V.VarSet.singleton v)
-    | _ -> (get_vars_atom a base_f, V.VarSet.empty) in
+    | PCRange (_,_,V.Local v,true) -> (get_vars_atom a base_f, false, V.VarSet.singleton v)
+    | PC (_,V.Shared, true)
+    | PCRange (_,_,V.Shared,true) -> (get_vars_atom a base_f, true, V.VarSet.empty)
+    | _ -> (get_vars_atom a base_f, false, V.VarSet.empty) in
   let unprime_set vSet = V.VarSet.fold (fun v set ->
                            V.VarSet.add (V.unprime v) set
                          ) vSet V.VarSet.empty in
-  let (pSet,pPC) = analyze_formula rho in
-    prime_only (unprime_set pSet) (unprime_set pPC) phi
+  let (pSet,pGlobal,pLocal) = analyze_formula rho in
+    prime_only (unprime_set pSet) pGlobal (unprime_set pLocal) phi
 
 
 let prime_modified_term (ante:formula) (t:term) : term =

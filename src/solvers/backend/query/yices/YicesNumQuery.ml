@@ -367,7 +367,7 @@ struct
   let yices_singletonPair_def (buf:Buffer.t) : unit =
     B.add_string buf
       ( "(define singletonPair::(-> " ^pair_s^ " " ^setpair_s^ ")\n" ^
-        "    (lambda (p::" ^pair_s^ ")\n" ^
+        "    (lambda (a::" ^pair_s^ ")\n" ^
         "        (lambda (b::" ^pair_s^ ")\n" ^
         "            (= a b))))\n" )
 
