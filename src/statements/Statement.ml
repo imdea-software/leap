@@ -86,6 +86,7 @@ and integer =
   | IntArrayRd    of arrays * tid
   | IntSetMin     of setint
   | IntSetMax     of setint
+  | SetPairMinInt of setpair
   | HavocLevel
 
 and set =
@@ -105,10 +106,11 @@ and tid =
   | NoTid
   | CellLockId      of cell
   | CellLockIdAt    of cell * integer
-  | TidArrayRd     of arrays * tid
+  | TidArrayRd      of arrays * tid
   | PointerLockid   of addr
   | PointerLockidAt of addr * integer
-  | TidArrRd       of tidarr * integer
+  | SetPairMinTid   of setpair
+  | TidArrRd        of tidarr * integer
 
 and elem =
     VarElem           of variable
@@ -503,6 +505,7 @@ and integer_to_str (loc:bool) (expr:integer) : string =
                                             (tid_to_str loc t)
   | IntSetMin(s)          -> sprintf "setIntMin(%s)" (setint_to_str loc s)
   | IntSetMax(s)          -> sprintf "setIntMax(%s)" (setint_to_str loc s)
+  | SetPairMinInt(s)      -> sprintf "setPairMinInt(%s)" (setpair_to_str loc s)
   | HavocLevel            -> sprintf "havocLevel()"
 
 
@@ -689,6 +692,7 @@ and tid_to_str (loc:bool) (th:tid) : string =
   | PointerLockid a      -> sprintf "%s->lockid" (addr_to_str loc a)
   | PointerLockidAt(a,l) -> sprintf "%s->lockid[%s]" (addr_to_str loc a)
                                                      (integer_to_str loc l)
+  | SetPairMinTid s     -> sprintf "setPairMinTid(%s)" (setpair_to_str loc s)
   | TidArrRd (arr,i)    -> sprintf "%s[%s]" (tidarr_to_str loc arr)
                                              (integer_to_str loc i)
 
@@ -897,6 +901,7 @@ and integer_to_expr_integer (i:integer) : E.integer =
                                       tid_to_expr_th t)
   | IntSetMin s      -> E.IntSetMin (setint_to_expr_setint s)
   | IntSetMax s      -> E.IntSetMax (setint_to_expr_setint s)
+  | SetPairMinInt s  -> E.SetPairMinInt (setpair_to_expr_setpair s)
   | HavocLevel       -> E.HavocLevel
 
 
@@ -931,6 +936,7 @@ and tid_to_expr_tid (t:tid) : E.tid =
   | PointerLockid a      -> E.CellLockId(E.CellAt(E.heap,addr_to_expr_addr a))
   | PointerLockidAt(a,l) -> E.CellLockIdAt(E.CellAt(E.heap,addr_to_expr_addr a),
                                            integer_to_expr_integer l)
+  | SetPairMinTid s      -> E.SetPairMinTid (setpair_to_expr_setpair s)
 
 
 and tid_to_expr_th (t:tid) : E.tid =
@@ -946,6 +952,7 @@ and tid_to_expr_th (t:tid) : E.tid =
 *)
   | TidArrayRd (a,t)  -> raise(Not_supported_conversion(tid_to_str true t))
   | TidArrRd (a,l)    -> raise(Not_supported_conversion(tid_to_str true t))
+  | SetPairMinTid _    -> raise(Not_supported_conversion(tid_to_str true t))
   | PointerLockid _    -> raise(Not_supported_conversion(tid_to_str true t))
   | PointerLockidAt _  -> raise(Not_supported_conversion(tid_to_str true t))
 
@@ -1323,16 +1330,17 @@ and var_kind_elem (kind:E.var_nature) (e:elem) : term list =
 and var_kind_th (kind:E.var_nature) (th:tid) : term list =
   match th with
     VarTh v               -> if v.nature = kind then [TidT th] else []
-  | NoTid                -> []
+  | NoTid                 -> []
   | CellLockId(cell)      -> (var_kind_cell kind cell)
   | CellLockIdAt(cell,l)  -> (var_kind_cell kind cell) @
                              (var_kind_int kind l)
-  | TidArrayRd(arr,t)    -> (var_kind_array kind arr)
-  | TidArrRd(arr,i)      -> (var_kind_tidarr kind arr) @
+  | TidArrayRd(arr,t)     -> (var_kind_array kind arr)
+  | TidArrRd(arr,i)       -> (var_kind_tidarr kind arr) @
                              (var_kind_int kind i)
   | PointerLockid a       -> (var_kind_addr kind a)
   | PointerLockidAt (a,l) -> (var_kind_addr kind a) @
                              (var_kind_int kind l)
+  | SetPairMinTid(s)      -> (var_kind_setpair kind s)
 
 
 and var_kind_cell (kind:E.var_nature) (c:cell) : term list =
@@ -1447,6 +1455,7 @@ and var_kind_int (kind:E.var_nature) (i:integer) : term list =
   | IntArrayRd(arr,t) -> (var_kind_array kind arr)
   | IntSetMin(s)      -> (var_kind_setint kind s)
   | IntSetMax(s)      -> (var_kind_setint kind s)
+  | SetPairMinInt(s)  -> (var_kind_setpair kind s)
   | HavocLevel        -> []
 
 

@@ -129,6 +129,7 @@ module Make (SLK : TSLKExpression.S) =
         | E.NoTid              -> E.NoTid
         | E.CellLockId _       -> raise(UnsupportedTSLKExpr(E.tid_to_str t))
         | E.CellLockIdAt (c,i) -> E.CellLockIdAt (norm_cell c, norm_int i)
+        | E.SetPairMinTid _    -> raise(UnsupportedTSLKExpr(E.tid_to_str t))
         | E.TidArrayRd _       -> raise(UnsupportedTSLKExpr(E.tid_to_str t))
         | E.TidArrRd _         -> raise(UnsupportedTSLKExpr(E.tid_to_str t))
 
@@ -248,6 +249,7 @@ module Make (SLK : TSLKExpression.S) =
         | E.IntArrayRd _   -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
         | E.IntSetMin _    -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
         | E.IntSetMax _    -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
+        | E.SetPairMinInt _ -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
         | E.HavocLevel     -> E.HavocLevel
 
       and norm_arrays (arr:E.arrays) : E.arrays =
@@ -512,6 +514,7 @@ module Make (SLK : TSLKExpression.S) =
       | E.CellLockId _       -> raise(UnsupportedTSLKExpr(E.tid_to_str th))
       | E.CellLockIdAt (c,l) -> SLK.CellLockIdAt (cell_to_tslk_cell c,
                                                      int_to_tslk_level l)
+      | E.SetPairMinTid _    -> raise(UnsupportedTSLKExpr(E.tid_to_str th))
       | E.TidArrayRd _       -> raise(UnsupportedTSLKExpr(E.tid_to_str th))
       | E.TidArrRd (tt,i)    -> raise(UnsupportedTSLKExpr(E.tid_to_str th))
 
@@ -729,6 +732,7 @@ module Make (SLK : TSLKExpression.S) =
       | E.IntArrayRd _   -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
       | E.IntSetMin _    -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
       | E.IntSetMax _    -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
+      | E.SetPairMinInt _ -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
       | E.HavocLevel     -> SLK.HavocLevel
 
 

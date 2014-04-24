@@ -99,6 +99,7 @@ and integer =
   | IntArrayRd    of arrays * tid
   | IntSetMin     of setint
   | IntSetMax     of setint
+  | SetPairMinInt of setpair
   | CellMax       of cell
   | HavocLevel
 
@@ -119,6 +120,7 @@ and tid =
   | NoTid
   | CellLockId    of cell
   | CellLockIdAt  of cell * integer
+  | SetPairMinTid of setpair
   | TidArrayRd    of arrays * tid
   | TidArrRd      of tidarr * integer
 
@@ -389,10 +391,11 @@ let rec is_primed_tidarray (a:tidarr) : bool =
 
 let is_primed_tid (th:tid) : bool =
   match th with
-    VarTh v           -> V.is_primed v
+    VarTh v          -> V.is_primed v
   | NoTid            -> false
-  | CellLockId _      -> false
-  | CellLockIdAt _    -> false
+  | CellLockId _     -> false
+  | CellLockIdAt _   -> false
+  | SetPairMinTid s  -> false
   | TidArrayRd (a,_) -> is_primed_array a
   | TidArrRd (a,_)   -> is_primed_tidarray a
   (* FIX: Propagate the query inside cell??? *)
@@ -553,6 +556,7 @@ and priming_tid (pr:bool)
   | CellLockId(cell)     -> CellLockId(priming_cell pr prime_set cell)
   | CellLockIdAt(cell,l) -> CellLockIdAt(priming_cell pr prime_set cell,
                                          priming_int pr prime_set l)
+  | SetPairMinTid s     -> SetPairMinTid (priming_setpair pr prime_set s)
   | TidArrayRd(arr,t)   -> TidArrayRd(priming_array pr prime_set arr,
                                       priming_tid pr prime_set t)
   | TidArrRd(arr,l)     -> TidArrRd(priming_tidarray pr prime_set arr,
@@ -711,6 +715,7 @@ and priming_int (pr:bool)
                                     priming_tid pr prime_set t)
   | IntSetMin(s)      -> IntSetMin(priming_setint pr prime_set s)
   | IntSetMax(s)      -> IntSetMax(priming_setint pr prime_set s)
+  | SetPairMinInt s   -> SetPairMinInt (priming_setpair pr prime_set s)
   | CellMax c         -> CellMax (priming_cell pr prime_set c)
   | HavocLevel        -> HavocLevel
 
@@ -904,13 +909,14 @@ let unprime_tid (th:tid) : tid = priming_tid false (None, false, None) th
 let rec tid_to_str (th:tid) : string =
   match th with
     VarTh v              -> V.to_str v
-  | NoTid               -> sprintf "#"
+  | NoTid                -> sprintf "#"
   | CellLockId(cell)     -> sprintf "%s.lockid" (cell_to_str cell)
   | CellLockIdAt(cell,l) -> sprintf "%s.lockid[%s]" (cell_to_str cell)
                                                     (integer_to_str l)
-  | TidArrayRd(arr,t)   -> sprintf "%s[%s]" (arrays_to_str arr)
+  | SetPairMinTid s      -> sprintf "setPairMinTid(%s)" (setpair_to_str s)
+  | TidArrayRd(arr,t)    -> sprintf "%s[%s]" (arrays_to_str arr)
                                              (param_tid_to_str t)
-  | TidArrRd(arr,l)     -> sprintf "%s[%s]" (tidarr_to_str arr)
+  | TidArrRd(arr,l)      -> sprintf "%s[%s]" (tidarr_to_str arr)
                                              (integer_to_str l)
 
 
@@ -925,6 +931,7 @@ and param_tid_to_str (expr:tid) : string =
   | NoTid        -> sprintf "(#)"
   | CellLockId _  -> sprintf "(%s)" (tid_to_str expr)
   | CellLockIdAt _-> sprintf "(%s)" (tid_to_str expr)
+  | SetPairMinTid _ -> sprintf "%s" (tid_to_str expr)
   | TidArrayRd _ -> sprintf "(%s)" (tid_to_str expr)
   | TidArrRd _   -> sprintf "(%s)" (tid_to_str expr)
 
@@ -1092,6 +1099,7 @@ and integer_to_str (expr:integer) : string =
                                         (param_tid_to_str t)
   | IntSetMin(s)      -> sprintf "setIntMin(%s)" (setint_to_str s)
   | IntSetMax(s)      -> sprintf "setIntMax(%s)" (setint_to_str s)
+  | SetPairMinInt s   -> sprintf "setPairMinInt(%s)" (setpair_to_str s)
   | CellMax(c)        -> sprintf "%s.max" (cell_to_str c)
   | HavocLevel        -> sprintf "havocLevel()"
 
@@ -1984,6 +1992,7 @@ and get_vars_tid (th:tid) (base:V.t -> V.VarSet.t) : V.VarSet.t =
   | NoTid               -> V.VarSet.empty
   | CellLockId(cell)     -> (get_vars_cell cell base)
   | CellLockIdAt(cell,l) -> (get_vars_cell cell base) @@ (get_vars_int l base)
+  | SetPairMinTid (s)   -> (get_vars_setpair s base)
   | TidArrayRd(arr,t)   -> (get_vars_array arr base)
   | TidArrRd(arr,l)     -> (get_vars_tidarr arr base) @@ (get_vars_int l base)
 
@@ -2133,6 +2142,7 @@ and get_vars_int (i:integer) (base:V.t -> V.VarSet.t) : V.VarSet.t =
   | IntArrayRd(arr,t) -> (get_vars_array arr base)
   | IntSetMin(s)      -> (get_vars_setint s base)
   | IntSetMax(s)      -> (get_vars_setint s base)
+  | SetPairMinInt (s) -> (get_vars_setpair s base)
   | CellMax(c)        -> (get_vars_cell c base)
   | HavocLevel        -> V.VarSet.empty
 
@@ -2564,6 +2574,7 @@ and voc_tid (th:tid) : ThreadSet.t =
   | NoTid               -> ThreadSet.empty
   | CellLockId(cell)     -> (voc_cell cell)
   | CellLockIdAt(cell,l) -> (voc_cell cell) @@ (voc_int l)
+  | SetPairMinTid (s)   -> (voc_setpair s)
   | TidArrayRd(arr,t)   -> (voc_array arr)
   | TidArrRd(arr,l)     -> (voc_tidarr arr) @@ (voc_int l)
 
@@ -2671,6 +2682,7 @@ and voc_int (i:integer) : ThreadSet.t =
   | IntArrayRd(arr,t) -> (voc_array arr)
   | IntSetMin(s)      -> (voc_setint s)
   | IntSetMax(s)      -> (voc_setint s)
+  | SetPairMinInt (s) -> (voc_setpair s)
   | CellMax(c)        -> (voc_cell c)
   | HavocLevel        -> ThreadSet.empty
 
@@ -2895,6 +2907,7 @@ and var_kind_tid (kind:var_nature) (th:tid) : term list =
   | NoTid               -> []
   | CellLockId(cell)     -> (var_kind_cell kind cell)
   | CellLockIdAt(cell,l) -> (var_kind_cell kind cell) @ (var_kind_int kind l)
+  | SetPairMinTid (s)   -> (var_kind_setpair kind s)
   | TidArrayRd(arr,t)   -> (var_kind_array kind arr)
   | TidArrRd(arr,l)     -> (var_kind_tidarr kind arr) @ (var_kind_int kind l)
 
@@ -3021,6 +3034,7 @@ and var_kind_int (kind:var_nature) (i:integer) : term list =
   | IntArrayRd(arr,t) -> (var_kind_array kind arr)
   | IntSetMin(s)      -> (var_kind_setint kind s)
   | IntSetMax(s)      -> (var_kind_setint kind s)
+  | SetPairMinInt (s) -> (var_kind_setpair kind s)
   | CellMax(c)        -> (var_kind_cell kind c)
   | HavocLevel        -> []
 
@@ -3268,6 +3282,7 @@ and param_tid_aux (pfun:V.t option -> V.shared_or_local) (th:tid) : tid =
   | CellLockId(cell)     -> CellLockId(param_cell_aux pfun cell)
   | CellLockIdAt(cell,l) -> CellLockIdAt(param_cell_aux pfun cell,
                                          param_int_aux pfun l)
+  | SetPairMinTid (s)   -> SetPairMinTid(param_setpair pfun s)
   | TidArrayRd(arr,t)   -> TidArrayRd(param_arrays pfun arr, t)
   | TidArrRd(arr,l)     -> TidArrRd(param_tidarr_aux pfun arr,
                                       param_int_aux pfun l)
@@ -3401,6 +3416,7 @@ and param_int_aux (pfun:V.t option -> V.shared_or_local) (i:integer) : integer =
   | IntArrayRd(arr,t)   -> IntArrayRd(param_arrays pfun arr, t)
   | IntSetMin(s)        -> IntSetMin(param_setint pfun s)
   | IntSetMax(s)        -> IntSetMax(param_setint pfun s)
+  | SetPairMinInt (s)   -> SetPairMinInt(param_setpair pfun s)
   | CellMax(c)          -> CellMax(param_cell_aux pfun c)
   | HavocLevel          -> HavocLevel
 
@@ -3821,6 +3837,7 @@ and subst_tid_int (subs:tid_subst_t) (i:integer) : integer =
   | IntArrayRd(arr,t) -> IntArrayRd(subst_tid_array subs arr, t)
   | IntSetMin(s)      -> IntSetMin(subst_tid_setint subs s)
   | IntSetMax(s)      -> IntSetMax(subst_tid_setint subs s)
+  | SetPairMinInt(s)  -> SetPairMinInt(subst_tid_setpair subs s)
   | CellMax(c)        -> CellMax(subst_tid_cell subs c)
   | HavocLevel        -> HavocLevel
 and subst_tid_th (subs:tid_subst_t) (t:tid) : tid =
@@ -3833,6 +3850,7 @@ and subst_tid_th (subs:tid_subst_t) (t:tid) : tid =
               | CellLockId c -> CellLockId (subst_tid_cell subs c)
               | CellLockIdAt (c,l) -> CellLockIdAt (subst_tid_cell subs c,
                                                     subst_tid_int subs l)
+              | SetPairMinTid (s) -> SetPairMinTid (subst_tid_setpair subs s)
               | TidArrayRd (a,p) -> TidArrayRd (subst_tid_array subs a,
                                                   subst_tid_th subs p)
               | TidArrRd (a,i) -> TidArrRd (subst_tid_tidarr subs a,
@@ -4190,6 +4208,7 @@ and subst_vars_int (subs:V.subst_t) (i:integer) : integer =
   | IntArrayRd(arr,t) -> IntArrayRd(subst_vars_array subs arr, t)
   | IntSetMin(s)      -> IntSetMin(subst_vars_setint subs s)
   | IntSetMax(s)      -> IntSetMax(subst_vars_setint subs s)
+  | SetPairMinInt(s)  -> SetPairMinInt(subst_vars_setpair subs s)
   | CellMax(c)        -> CellMax(subst_vars_cell subs c)
   | HavocLevel        -> HavocLevel
 
@@ -4201,6 +4220,7 @@ and subst_vars_th (subs:V.subst_t) (t:tid) : tid =
   | CellLockId c -> CellLockId (subst_vars_cell subs c)
   | CellLockIdAt (c,l) -> CellLockIdAt (subst_vars_cell subs c,
                                         subst_vars_int subs l)
+  | SetPairMinTid(s)  -> SetPairMinTid(subst_vars_setpair subs s)
   | TidArrayRd (a,p) -> TidArrayRd (subst_vars_array subs a,
                                       subst_vars_th subs p)
   | TidArrRd (a,i) -> TidArrRd (subst_vars_tidarr subs a,
@@ -4928,6 +4948,7 @@ let required_sorts (phi:formula) : sort list =
     | NoTid             -> single Tid
     | CellLockId c       -> append Tid [req_c c]
     | CellLockIdAt (c,l) -> append Tid [req_c c;req_i l]
+    | SetPairMinTid (s) -> append Tid [req_sp s]
     | TidArrayRd (a,t)  -> append Tid [req_arr a;req_t t]
     | TidArrRd (a,l)    -> append Tid [req_tidarr a;req_i l]
 
@@ -4956,6 +4977,7 @@ let required_sorts (phi:formula) : sort list =
     | IntArrayRd (a,t) -> append Int [req_arr a;req_t t]
     | IntSetMin s      -> append Int [req_si s]
     | IntSetMax s      -> append Int [req_si s]
+    | SetPairMinInt (s)-> append Int [req_sp s]
     | CellMax c        -> append Int [req_c c]
     | HavocLevel       -> single Int
 
@@ -5204,6 +5226,7 @@ and to_plain_tid (ops:fol_ops_t) (th:tid) : tid =
   | CellLockId(cell)     -> CellLockId(to_plain_cell ops cell)
   | CellLockIdAt(cell,l) -> CellLockIdAt(to_plain_cell ops cell,
                                          to_plain_int ops l)
+  | SetPairMinTid(s)    -> SetPairMinTid(to_plain_setpair ops s)
   | TidArrayRd(arr,t)   -> TidArrayRd(to_plain_arrays ops arr,
                                         to_plain_tid ops t)
   | TidArrRd(arr,l)     -> TidArrRd(to_plain_tidarr ops arr,
@@ -5346,6 +5369,7 @@ and to_plain_int (ops:fol_ops_t) (i:integer) : integer =
                                       to_plain_tid ops t)
   | IntSetMin(s)        -> IntSetMin(to_plain_setint ops s)
   | IntSetMax(s)        -> IntSetMax(to_plain_setint ops s)
+  | SetPairMinInt(s)    -> SetPairMinInt(to_plain_setpair ops s)
   | CellMax(c)          -> CellMax(to_plain_cell ops c)
   | HavocLevel          -> HavocLevel
 

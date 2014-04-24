@@ -80,6 +80,7 @@ and integer =
   | IntArrayRd    of arrays * tid
   | IntSetMin     of setint
   | IntSetMax     of setint
+  | SetPairMinInt of setpair
   | HavocLevel
 
 and set =
@@ -102,6 +103,7 @@ and tid =
   | TidArrayRd     of arrays * tid
   | PointerLockid   of addr
   | PointerLockidAt of addr * integer
+  | SetPairMinTid   of setpair
   | TidArrRd       of tidarr * integer
 
 and elem =

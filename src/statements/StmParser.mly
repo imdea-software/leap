@@ -433,6 +433,7 @@ let check_and_get_sort (id:string) : E.sort =
   | "tidSet"  -> E.SetTh
   | "intSet"  -> E.SetInt
   | "elemSet" -> E.SetElem
+  | "pairSet" -> E.SetPair
   | "int"     -> E.Int
   | "addrarr" -> E.AddrArray
   | "tidarr"  -> E.TidArray
@@ -801,6 +802,7 @@ let lock_pos_to_str (pos:Stm.integer option) : string =
 %token EMPTYSETINT UNIONINT INTRINT SETDIFFINT SINGLEINT
 %token EMPTYSETELEM UNIONELEM INTRELEM SETDIFFELEM SINGLEELEM SET2ELEM
 %token EMPTYSETPAIR UNIONPAIR INTRPAIR SETDIFFPAIR SINGLEPAIR SET2PAIR
+%token SETPAIRMININT SETPAIRMINTID
 %token PATH2SET ADDR2SET GETP FIRSTLOCKED ORDERLIST
 %token APPEND REACH
 %token IN SUBSETEQ
@@ -2684,6 +2686,14 @@ thid :
     {
       Stm.VarTh (Stm.build_var Sys.me_tid E.Tid Stm.GlobalScope)
     }
+  | SETPAIRMINTID OPEN_PAREN term CLOSE_PAREN
+    {
+      let pSet = $3 in
+      let get_str_expr () = sprintf "setPairMinTid(%s)" (Stm.term_to_str pSet) in
+      let s  = parser_check_type check_type_setpair pSet E.SetPair get_str_expr
+      in
+        Stm.SetPairMinTid (s)
+    }
 
 
 /* ADDR terms */
@@ -3109,6 +3119,16 @@ integer :
       in
         Stm.IntSetMax (s)
     }
+  | SETPAIRMININT OPEN_PAREN term CLOSE_PAREN
+    {
+      let pSet = $3 in
+      let get_str_expr () = sprintf "setPairMinInt(%s)" (Stm.term_to_str pSet) in
+      let s  = parser_check_type check_type_setpair pSet E.SetPair get_str_expr
+      in
+        Stm.SetPairMinInt (s)
+    }
+
+
   | HAVOCLEVEL OPEN_PAREN CLOSE_PAREN
     {
       Stm.HavocLevel

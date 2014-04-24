@@ -76,6 +76,7 @@ and integer =
   | IntArrayRd    of arrays * tid
   | IntSetMin     of setint
   | IntSetMax     of setint
+  | SetPairMinInt of setpair
   | CellMax       of cell
   | HavocLevel
 
@@ -95,8 +96,9 @@ and tid =
   | NoTid
   | CellLockId    of cell
   | CellLockIdAt  of cell * integer
-  | TidArrayRd   of arrays * tid
-  | TidArrRd     of tidarr * integer
+  | SetPairMinTid of setpair
+  | TidArrayRd    of arrays * tid
+  | TidArrRd      of tidarr * integer
 
 and elem =
     VarElem           of V.t

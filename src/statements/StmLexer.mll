@@ -8,30 +8,32 @@ exception LexerError
 let keyword_table = Hashtbl.create 40
 let _ =
   List.iter (fun (kwd, tok) -> Hashtbl.add keyword_table kwd tok)
-    [ "EmptySet",    EMPTYSET;
-      "Union",       UNION;
-      "Intr",        INTR;
-      "SetDiff",     SETDIFF;
-      "EmptySetTh",  EMPTYSETTH;
-      "SingleTh",    SINGLETH;
-      "UnionTh",     UNIONTH;
-      "IntrTh",      INTRTH;
-      "SetDiffTh",   SETDIFFTH;
-      "EmptySetInt", EMPTYSETINT;
-      "SingleInt",   SINGLEINT;
-      "UnionInt",    UNIONINT;
-      "IntrInt",     INTRINT;
-      "SetDiffInt",  SETDIFFINT;
-      "EmptySetElem",EMPTYSETELEM;
-      "SingleElem",  SINGLEELEM;
-      "UnionElem",   UNIONELEM;
-      "IntrElem",    INTRELEM;
-      "SetDiffElem", SETDIFFELEM;
-      "EmptySetPair",EMPTYSETPAIR;
-      "SinglePair",  SINGLEPAIR;
-      "UnionPair",   UNIONPAIR;
-      "IntrPair",    INTRPAIR;
-      "SetDiffPair", SETDIFFPAIR]
+    [ "EmptySet",      EMPTYSET;
+      "Union",         UNION;
+      "Intr",          INTR;
+      "SetDiff",       SETDIFF;
+      "EmptySetTh",    EMPTYSETTH;
+      "SingleTh",      SINGLETH;
+      "UnionTh",       UNIONTH;
+      "IntrTh",        INTRTH;
+      "SetDiffTh",     SETDIFFTH;
+      "EmptySetInt",   EMPTYSETINT;
+      "SingleInt",     SINGLEINT;
+      "UnionInt",      UNIONINT;
+      "IntrInt",       INTRINT;
+      "SetDiffInt",    SETDIFFINT;
+      "EmptySetElem",  EMPTYSETELEM;
+      "SingleElem",    SINGLEELEM;
+      "UnionElem",     UNIONELEM;
+      "IntrElem",      INTRELEM;
+      "SetDiffElem",   SETDIFFELEM;
+      "EmptySetPair",  EMPTYSETPAIR;
+      "SinglePair",    SINGLEPAIR;
+      "UnionPair",     UNIONPAIR;
+      "IntrPair",      INTRPAIR;
+      "SetDiffPair",   SETDIFFPAIR;
+      "setPairMinInt", SETPAIRMININT;
+      "setPairMinTid", SETPAIRMININT]
 
 }
 
