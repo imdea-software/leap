@@ -480,6 +480,7 @@ let check_and_get_sort (id:string) : E.sort =
             | E.SetTh     -> Stm.SetThT     (Stm.VarSetTh     modif_v)
             | E.SetInt    -> Stm.SetIntT    (Stm.VarSetInt    modif_v)
             | E.SetElem   -> Stm.SetElemT   (Stm.VarSetElem   modif_v)
+            | E.SetPair   -> Stm.SetPairT   (Stm.VarSetPair   modif_v)
             | E.Path      -> Stm.PathT      (Stm.VarPath      modif_v)
             | E.Mem       -> Stm.MemT       (Stm.VarMem       modif_v)
             | E.Bool      -> Stm.VarT       modif_v
@@ -2933,6 +2934,7 @@ setelem :
       let s = parser_check_type check_type_set $5 E.Set get_str_expr in
         Stm.SetToElems(s,m)
     }
+
 
 
 

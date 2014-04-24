@@ -35,6 +35,7 @@ module Make (SLK : TSLKExpression.S) =
       | E.SetThT _     -> E.SetThT     (E.VarSetTh v)
       | E.SetIntT _    -> E.SetIntT    (E.VarSetInt v)
       | E.SetElemT _   -> E.SetElemT   (E.VarSetElem v)
+      | E.SetPairT _   -> E.SetPairT   (E.VarSetPair v)
       | E.PathT _      -> E.PathT      (E.VarPath v)
       | E.MemT _       -> E.MemT       (E.VarMem v)
       | E.IntT _       -> E.IntT       (E.VarInt v)
@@ -206,6 +207,17 @@ module Make (SLK : TSLKExpression.S) =
         | E.SetElemArrayRd (E.VarArray v,t) -> E.SetElemArrayRd(E.VarArray v, norm_tid t)
         | E.SetElemArrayRd _      -> raise(UnsupportedTSLKExpr(E.setelem_to_str s))
 
+      and norm_setpair (s:E.setpair) : E.setpair =
+        match s with
+        | E.VarSetPair v        -> E.VarSetPair v
+        | E.EmptySetPair        -> E.EmptySetPair
+        | E.SinglPair (i,t)     -> E.SinglPair (norm_int i, norm_tid t)
+        | E.UnionPair (s1,s2)   -> E.UnionPair (norm_setpair s1, norm_setpair s2)
+        | E.IntrPair (s1,s2)    -> E.IntrPair (norm_setpair s1, norm_setpair s2)
+        | E.SetdiffPair (s1,s2) -> E.SetdiffPair (norm_setpair s1, norm_setpair s2)
+        | E.SetPairArrayRd (E.VarArray v,t) -> E.SetPairArrayRd(E.VarArray v, norm_tid t)
+        | E.SetPairArrayRd _      -> raise(UnsupportedTSLKExpr(E.setpair_to_str s))
+
       and norm_path (p:E.path) : E.path =
         match p with
         | E.VarPath v             -> E.VarPath v
@@ -266,6 +278,7 @@ module Make (SLK : TSLKExpression.S) =
         | E.SetThT s           -> E.SetThT (norm_setth s)
         | E.SetIntT s          -> E.SetIntT (norm_setint s)
         | E.SetElemT s         -> E.SetElemT (norm_setelem s)
+        | E.SetPairT s         -> E.SetPairT (norm_setpair s)
         | E.PathT p            -> E.PathT (norm_path p)
         | E.MemT m             -> E.MemT (norm_mem m)
         | E.IntT i             -> E.IntT (norm_int i)
@@ -443,6 +456,7 @@ module Make (SLK : TSLKExpression.S) =
       | E.SetTh     -> SLK.SetTh
       | E.SetInt    -> raise(UnsupportedSort(E.sort_to_str s))
       | E.SetElem   -> SLK.SetElem
+      | E.SetPair   -> raise(UnsupportedSort(E.sort_to_str s))
       | E.Path      -> SLK.Path
       | E.Mem       -> SLK.Mem
       | E.Bool      -> SLK.Bool
@@ -510,6 +524,7 @@ module Make (SLK : TSLKExpression.S) =
       | E.SetThT st     -> SLK.SetThT (setth_to_tslk_setth st)
       | E.SetIntT _     -> raise(UnsupportedTSLKExpr(E.term_to_str t))
       | E.SetElemT st   -> SLK.SetElemT (setelem_to_tslk_setelem st)
+      | E.SetPairT _    -> raise(UnsupportedTSLKExpr(E.term_to_str t))
       | E.PathT p       -> SLK.PathT (path_to_tslk_path p)
       | E.MemT m        -> SLK.MemT (mem_to_tslk_mem m)
       | E.IntT i        -> SLK.LevelT (int_to_tslk_level i)

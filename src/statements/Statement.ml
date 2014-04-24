@@ -45,12 +45,13 @@ type term =
     VarT          of variable
   | SetT          of set
   | ElemT         of elem
-  | TidT         of tid
+  | TidT          of tid
   | AddrT         of addr
   | CellT         of cell
   | SetThT        of setth
   | SetIntT       of setint
   | SetElemT      of setelem
+  | SetPairT      of setpair
   | PathT         of path
   | MemT          of mem
   | IntT          of integer
@@ -175,6 +176,15 @@ and setelem =
   | SetdiffElem    of setelem * setelem
   | SetToElems     of set * mem
   | SetElemArrayRd of arrays * tid
+
+and setpair =
+    VarSetPair     of variable
+  | EmptySetPair
+  | SinglPair      of integer * tid
+  | UnionPair      of setpair * setpair
+  | IntrPair       of setpair * setpair
+  | SetdiffPair    of setpair * setpair
+  | SetPairArrayRd of arrays * tid
 
 and path =
     VarPath       of variable
@@ -581,6 +591,23 @@ and setelem_to_str (loc:bool) (expr:setelem) : string =
                                                (tid_to_str loc t)
 
 
+and setpair_to_str (loc:bool) (expr:setpair) : string =
+  match expr with
+    VarSetPair v             -> variable_to_str loc v
+  | EmptySetPair             -> "EmptySetPair"
+  | SinglPair(i,t)           -> sprintf "SinglPair(%s,%s)" (integer_to_str loc i)
+                                                           (tid_to_str loc t)
+  | UnionPair(s_1,s_2)       -> sprintf "%s UnionPair %s" (setpair_to_str loc s_1)
+                                                          (setpair_to_str loc s_2)
+  | IntrPair(s_1,s_2)        -> sprintf "%s IntrPair %s" (setpair_to_str loc s_1)
+                                                         (setpair_to_str loc s_2)
+  | SetdiffPair(s_1,s_2)     -> sprintf "%s SetDiffPair %s"
+                                                  (setpair_to_str loc s_1)
+                                                  (setpair_to_str loc s_2)
+  | SetPairArrayRd(arr,t)    -> sprintf "%s%s" (arrays_to_str loc arr)
+                                               (tid_to_str loc t)
+
+
 and cell_to_str (loc:bool) (expr:cell) : string =
   let apply_str f xs = String.concat "," (List.map f xs) in
   match expr with
@@ -689,6 +716,7 @@ and term_to_str_aux (loc:bool) (expr:term) : string =
   | SetThT(setth)       -> (setth_to_str loc setth)
   | SetIntT(setint)     -> (setint_to_str loc setint)
   | SetElemT(setelem)   -> (setelem_to_str loc setelem)
+  | SetPairT(setpair)   -> (setpair_to_str loc setpair)
   | PathT(path)         -> (path_to_str loc path)
   | MemT(mem)           -> (mem_to_str loc mem)
   | IntT(i)             -> (integer_to_str loc i)
@@ -798,6 +826,7 @@ let rec term_to_expr_term (t:term) : E.term =
   | SetThT s     -> E.SetThT     (setth_to_expr_setth s)
   | SetIntT s    -> E.SetIntT    (setint_to_expr_setint s)
   | SetElemT s   -> E.SetElemT   (setelem_to_expr_setelem s)
+  | SetPairT s   -> E.SetPairT   (setpair_to_expr_setpair s)
   | PathT p      -> E.PathT      (path_to_expr_path p)
   | MemT m       -> E.MemT       (mem_to_expr_mem m)
   | IntT i       -> E.IntT       (integer_to_expr_integer i)
@@ -1015,6 +1044,20 @@ and setelem_to_expr_setelem (s:setelem) : E.setelem =
                                             tid_to_expr_th t)
 
 
+and setpair_to_expr_setpair (s:setpair) : E.setpair =
+  let to_setpair = setpair_to_expr_setpair in
+  match s with
+    VarSetPair v         -> E.VarSetPair(variable_to_expr_var v)
+  | EmptySetPair         -> E.EmptySetPair
+  | SinglPair (i,t)      -> E.SinglPair (integer_to_expr_integer i,
+                                         tid_to_expr_th t)
+  | UnionPair (s1,s2)    -> E.UnionPair (to_setpair s1, to_setpair s2)
+  | IntrPair (s1,s2)     -> E.IntrPair (to_setpair s1, to_setpair s2)
+  | SetdiffPair (s1,s2)  -> E.SetdiffPair (to_setpair s1, to_setpair s2)
+  | SetPairArrayRd (a,t) -> E.SetPairArrayRd (array_to_expr_array a,
+                                            tid_to_expr_th t)
+
+
 and path_to_expr_path (p:path) : E.path =
   match p with
     VarPath v         -> E.VarPath (variable_to_expr_var v)
@@ -1122,6 +1165,7 @@ let construct_var_from_sort (id:varId)
   | E.SetTh      -> SetThT      (VarSetTh      v)
   | E.SetInt     -> SetIntT     (VarSetInt     v)
   | E.SetElem    -> SetElemT    (VarSetElem    v)
+  | E.SetPair    -> SetPairT    (VarSetPair    v)
   | E.Path       -> PathT       (VarPath       v)
   | E.Mem        -> MemT        (VarMem        v)
   | E.Bool       -> VarT        v
@@ -1160,6 +1204,7 @@ let rec var_kind_term (kind:E.var_nature) (expr:term) : term list =
     | SetThT(setth)     -> var_kind_setth kind setth
     | SetIntT(setint)   -> var_kind_setint kind setint
     | SetElemT(setelem) -> var_kind_setelem kind setelem
+    | SetPairT(setpair) -> var_kind_setpair kind setpair
     | PathT(path)       -> var_kind_path kind path
     | MemT(mem)         -> var_kind_mem kind mem
     | IntT(i)           -> var_kind_int kind i
@@ -1330,6 +1375,20 @@ and var_kind_setelem (kind:E.var_nature) (s:setelem) : term list =
                              (var_kind_setelem kind s2)
   | SetToElems(s,m)       -> (var_kind_set kind s) @ (var_kind_mem kind m)
   | SetElemArrayRd(arr,t) -> (var_kind_array kind arr)
+
+
+and var_kind_setpair (kind:E.var_nature) (s:setpair) : term list =
+  match s with
+    VarSetPair v          -> if v.nature = kind then [SetPairT s] else []
+  | EmptySetPair          -> []
+  | SinglPair(i,t)        -> (var_kind_int kind i) @ (var_kind_th kind t)
+  | UnionPair(s1,s2)      -> (var_kind_setpair kind s1) @
+                             (var_kind_setpair kind s2)
+  | IntrPair(s1,s2)       -> (var_kind_setpair kind s1) @
+                             (var_kind_setpair kind s2)
+  | SetdiffPair(s1,s2)    -> (var_kind_setpair kind s1) @
+                             (var_kind_setpair kind s2)
+  | SetPairArrayRd(arr,t) -> (var_kind_array kind arr)
 
 
 and var_kind_path (kind:E.var_nature) (p:path) : term list =

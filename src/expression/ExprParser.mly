@@ -261,6 +261,15 @@ let check_type_setelem t =
     | _                -> raise(WrongType t)
 
 
+let check_type_setpair t =
+  match t with
+      E.SetPairT se -> se
+    | E.VarT v      -> let var = E.V.set_sort v E.SetPair in
+                            check_sort_var var;
+                            E.VarSetPair var
+    | _                -> raise(WrongType t)
+
+
 let check_type_path t =
   match t with
       E.PathT p -> p
@@ -346,6 +355,7 @@ let inject_sort (exp:E.term) : E.term =
                        | E.SetTh     -> E.SetThT     (E.VarSetTh     var)
                        | E.SetInt    -> E.SetIntT    (E.VarSetInt    var)
                        | E.SetElem   -> E.SetElemT   (E.VarSetElem   var)
+                       | E.SetPair   -> E.SetPairT   (E.VarSetPair   var)
                        | E.Path      -> E.PathT      (E.VarPath      var)
                        | E.Mem       -> E.MemT       (E.VarMem       var)
                        | E.Bool      -> E.VarT       (var)
@@ -1562,32 +1572,32 @@ setpair :
     {
       let get_str_expr() = sprintf "SinglePair(%s,%s)" (E.term_to_str $3)
                                                        (E.term_to_str $5) in
-      let n = parser_check_type check_type_elem $3 E.Int get_str_expr in
-      let t = parser_check_type check_type_elem $5 E.Tid get_str_expr in
-        E.SinglPair(n,t)
+      let i = parser_check_type check_type_int $3 E.Int get_str_expr in
+      let t = parser_check_type check_type_thid $5 E.Tid get_str_expr in
+        E.SinglPair(i,t)
     }
   | UNIONPAIR OPEN_PAREN term COMMA term CLOSE_PAREN
     {
       let get_str_expr() = sprintf "UnionPair(%s,%s)" (E.term_to_str $3)
                                                       (E.term_to_str $5) in
-      let s1 = parser_check_type check_type_setelem $3 E.SetPair get_str_expr in
-      let s2 = parser_check_type check_type_setelem $5 E.SetPair get_str_expr in
+      let s1 = parser_check_type check_type_setpair $3 E.SetPair get_str_expr in
+      let s2 = parser_check_type check_type_setpair $5 E.SetPair get_str_expr in
         E.UnionPair(s1,s2)
     }
   | INTRPAIR OPEN_PAREN term COMMA term CLOSE_PAREN
     {
       let get_str_expr() = sprintf "IntrPair(%s,%s)" (E.term_to_str $3)
                                                      (E.term_to_str $5) in
-      let s1 = parser_check_type check_type_setelem $3 E.SetPair get_str_expr in
-      let s2 = parser_check_type check_type_setelem $5 E.SetPair get_str_expr in
+      let s1 = parser_check_type check_type_setpair $3 E.SetPair get_str_expr in
+      let s2 = parser_check_type check_type_setpair $5 E.SetPair get_str_expr in
         E.IntrPair(s1,s2)
     }
   | SETDIFFPAIR OPEN_PAREN term COMMA term CLOSE_PAREN
     {
       let get_str_expr() = sprintf "SetDiffPair(%s,%s)" (E.term_to_str $3)
                                                         (E.term_to_str $5) in
-      let s1 = parser_check_type check_type_setelem $3 E.SetPair get_str_expr in
-      let s2 = parser_check_type check_type_setelem $5 E.SetPair get_str_expr in
+      let s1 = parser_check_type check_type_setpair $3 E.SetPair get_str_expr in
+      let s2 = parser_check_type check_type_setpair $5 E.SetPair get_str_expr in
         E.SetdiffPair(s1,s2)
     }
 

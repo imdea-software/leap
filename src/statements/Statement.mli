@@ -45,6 +45,7 @@ type term =
   | SetThT        of setth
   | SetIntT       of setint
   | SetElemT      of setelem
+  | SetPairT      of setpair
   | PathT         of path
   | MemT          of mem
   | IntT          of integer
@@ -169,6 +170,15 @@ and setelem =
   | SetdiffElem    of setelem * setelem
   | SetToElems     of set * mem
   | SetElemArrayRd of arrays * tid
+
+and setpair =
+    VarSetPair     of variable
+  | EmptySetPair
+  | SinglPair      of integer * tid
+  | UnionPair      of setpair * setpair
+  | IntrPair       of setpair * setpair
+  | SetdiffPair    of setpair * setpair
+  | SetPairArrayRd of arrays * tid
 
 and path =
     VarPath       of variable

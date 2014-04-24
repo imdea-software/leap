@@ -566,6 +566,7 @@ let get_sort_from_term (gVars:var_table_t)
   | E.SetThT(_)         -> E.SetTh
   | E.SetIntT(_)        -> E.SetInt
   | E.SetElemT(_)       -> E.SetElem
+  | E.SetPairT(_)       -> E.SetPair
   | E.PathT(_)          -> E.Path
   | E.MemT(_)           -> E.Mem
   | E.IntT(_)           -> E.Int

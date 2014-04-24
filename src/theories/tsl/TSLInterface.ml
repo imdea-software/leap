@@ -28,6 +28,7 @@ let rec sort_to_tsl_sort (s:E.sort) : SL.sort =
   | E.SetTh     -> SL.SetTh
   | E.SetInt    -> raise(UnsupportedSort(E.sort_to_str s))
   | E.SetElem   -> SL.SetElem
+  | E.SetPair   -> raise(UnsupportedSort(E.sort_to_str s))
   | E.Path      -> SL.Path
   | E.Mem       -> SL.Mem
   | E.Bool      -> SL.Bool
@@ -107,6 +108,7 @@ and term_to_tsl_term (t:E.term) : SL.term =
   | E.SetThT st     -> SL.SetThT (setth_to_tsl_setth st)
   | E.SetIntT _     -> raise(UnsupportedTslExpr(E.term_to_str t))
   | E.SetElemT st   -> SL.SetElemT (setelem_to_tsl_setelem st)
+  | E.SetPairT _    -> raise(UnsupportedTslExpr(E.term_to_str t))
   | E.PathT p       -> SL.PathT (path_to_tsl_path p)
   | E.MemT m        -> SL.MemT (mem_to_tsl_mem m)
   | E.IntT i        -> SL.IntT (int_to_tsl_int i)

@@ -345,12 +345,13 @@ and is_int_integer t =
     E.VarT(_)       -> false
   | E.SetT(_)       -> false
   | E.ElemT(_)      -> false
-  | E.TidT(_)      -> false
+  | E.TidT(_)       -> false
   | E.AddrT(_)      -> false
   | E.CellT(_)      -> false
   | E.SetThT(_)     -> false
   | E.SetIntT(_)    -> false
   | E.SetElemT(_)   -> false
+  | E.SetPairT(_)   -> false
   | E.PathT(_)      -> false
   | E.MemT(_)       -> false
   | E.IntT(_)       -> true
