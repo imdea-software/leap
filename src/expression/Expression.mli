@@ -9,7 +9,6 @@ type sort =
   | SetTh
   | SetInt
   | SetElem
-  | SetPair
   | Path
   | Mem
   | Bool
@@ -33,13 +32,12 @@ and term =
     VarT          of V.t
   | SetT          of set
   | ElemT         of elem
-  | TidT          of tid
+  | TidT         of tid
   | AddrT         of addr
   | CellT         of cell
   | SetThT        of setth
   | SetIntT       of setint
   | SetElemT      of setelem
-  | SetPairT      of setpair
   | PathT         of path
   | MemT          of mem
   | IntT          of integer
@@ -76,7 +74,6 @@ and integer =
   | IntArrayRd    of arrays * tid
   | IntSetMin     of setint
   | IntSetMax     of setint
-  | SetPairMinInt of setpair
   | CellMax       of cell
   | HavocLevel
 
@@ -96,9 +93,8 @@ and tid =
   | NoTid
   | CellLockId    of cell
   | CellLockIdAt  of cell * integer
-  | SetPairMinTid of setpair
-  | TidArrayRd    of arrays * tid
-  | TidArrRd      of tidarr * integer
+  | TidArrayRd   of arrays * tid
+  | TidArrRd     of tidarr * integer
 
 and elem =
     VarElem           of V.t
@@ -150,6 +146,7 @@ and setint =
   | UnionInt      of setint * setint
   | IntrInt       of setint * setint
   | SetdiffInt    of setint * setint
+  | SetLower      of setint * integer
   | SetIntArrayRd of arrays * tid
 
 and setelem =
@@ -161,15 +158,6 @@ and setelem =
   | SetdiffElem    of setelem * setelem
   | SetToElems     of set * mem
   | SetElemArrayRd of arrays * tid
-
-and setpair =
-    VarSetPair     of V.t
-  | EmptySetPair
-  | SinglPair      of integer * tid
-  | UnionPair      of setpair * setpair
-  | IntrPair       of setpair * setpair
-  | SetdiffPair    of setpair * setpair
-  | SetPairArrayRd of arrays * tid
 
 and path =
     VarPath       of V.t
@@ -198,8 +186,6 @@ and atom =
   | SubsetEqInt   of setint * setint
   | InElem        of elem * setelem
   | SubsetEqElem  of setelem * setelem
-  | InPair        of integer * tid * setpair
-  | SubsetEqPair  of setpair * setpair
   | Less          of integer * integer
   | Greater       of integer * integer
   | LessEq        of integer * integer
@@ -380,8 +366,8 @@ val prime_term   : term -> term
 val unprime_term : term -> term
 val prime        : formula -> formula
 val unprime      : formula -> formula
-val prime_only   : V.VarSet.t -> bool -> V.VarSet.t -> formula -> formula
-val unprime_only : V.VarSet.t -> bool -> V.VarSet.t -> formula -> formula
+val prime_only   : V.VarSet.t -> V.VarSet.t -> formula -> formula
+val unprime_only : V.VarSet.t -> V.VarSet.t -> formula -> formula
 val prime_term   : term -> term
 val unprime_term : term -> term
 
@@ -425,7 +411,6 @@ val path_to_str       : path        -> string
 val set_to_str        : set         -> string
 val setth_to_str      : setth       -> string
 val setelem_to_str    : setelem     -> string
-val setpair_to_str    : setpair     -> string
 val setint_to_str     : setint      -> string
 val addrarr_to_str    : addrarr     -> string
 val tidarr_to_str     : tidarr      -> string
@@ -458,10 +443,12 @@ val construct_pres_term        : term -> V.shared_or_local -> formula
 
 
 (* VOCABULARY FUNCTIONS *)
-val voc          : formula -> ThreadSet.t
-val unprimed_voc : formula -> ThreadSet.t
-val voc_to_var   : tid -> V.t
-val voc_to_vars  : ThreadSet.t -> V.VarSet.t
+val voc           : formula -> ThreadSet.t
+val voc_term      : term -> ThreadSet.t
+val voc_from_list : formula list -> ThreadSet.t
+val unprimed_voc  : formula -> ThreadSet.t
+val voc_to_var    : tid -> V.t
+val voc_to_vars   : ThreadSet.t -> V.VarSet.t
 
 (* GHOST TERMS *)
 val var_kind : var_nature -> expr_t -> term list

@@ -261,15 +261,6 @@ let check_type_setelem t =
     | _                -> raise(WrongType t)
 
 
-let check_type_setpair t =
-  match t with
-      E.SetPairT se -> se
-    | E.VarT v      -> let var = E.V.set_sort v E.SetPair in
-                            check_sort_var var;
-                            E.VarSetPair var
-    | _                -> raise(WrongType t)
-
-
 let check_type_path t =
   match t with
       E.PathT p -> p
@@ -355,7 +346,6 @@ let inject_sort (exp:E.term) : E.term =
                        | E.SetTh     -> E.SetThT     (E.VarSetTh     var)
                        | E.SetInt    -> E.SetIntT    (E.VarSetInt    var)
                        | E.SetElem   -> E.SetElemT   (E.VarSetElem   var)
-                       | E.SetPair   -> E.SetPairT   (E.VarSetPair   var)
                        | E.Path      -> E.PathT      (E.VarPath      var)
                        | E.Mem       -> E.MemT       (E.VarMem       var)
                        | E.Bool      -> E.VarT       (var)
@@ -492,16 +482,14 @@ let define_ident (proc_name:E.V.procedure_name)
 %token EPSILON
 %token EMPTYSET UNION INTR SETDIFF
 %token EMPTYSETTH UNIONTH INTRTH SETDIFFTH SINGLETH
-%token EMPTYSETINT UNIONINT INTRINT SETDIFFINT SINGLEINT
+%token EMPTYSETINT UNIONINT INTRINT SETDIFFINT SINGLEINT SETLOWER
 %token EMPTYSETELEM UNIONELEM INTRELEM SETDIFFELEM SINGLEELEM SET2ELEM
-%token EMPTYSETPAIR UNIONPAIR INTRPAIR SETDIFFPAIR SINGLEPAIR SET2PAIR
 %token PATH2SET ADDR2SET GETP FIRSTLOCKED ORDERLIST SKIPLIST
 %token APPEND REACH
 %token IN SUBSETEQ
 %token INTH SUBSETEQTH
 %token ININT SUBSETEQINT
 %token INELEM SUBSETEQELEM
-%token INPAIR SUBSETEQPAIR
 %token SETINTMIN SETINTMAX
 %token THREAD
 %token OPEN_BRACKET CLOSE_BRACKET
@@ -516,6 +504,7 @@ let define_ident (proc_name:E.V.procedure_name)
 %token LOGICAL_TRUE LOGICAL_FALSE
 %token DOT
 %token ARR_UPDATE
+%token WF_INTSUBSET WF_INTLESS
 
 %token INVARIANT FORMULA VARS
 %token AT UNDERSCORE SHARP
@@ -546,7 +535,6 @@ let define_ident (proc_name:E.V.procedure_name)
 %nonassoc INTH SUBSETEQTH
 %nonassoc ININT SUBSETEQINT
 %nonassoc INELEM SUBSETEQELEM
-%nonassoc INPAIR SUBSETEQPAIR
 
 
 %nonassoc GHOST_DELIMITER
@@ -599,7 +587,6 @@ let define_ident (proc_name:E.V.procedure_name)
 %type <E.setth> setth
 %type <E.setint> setint
 %type <E.setelem> setelem
-%type <E.setpair> setpair
 %type <E.integer> integer
 %type <E.literal> literal
 %type <E.eq> equals
@@ -620,8 +607,9 @@ let define_ident (proc_name:E.V.procedure_name)
 %type <(PVD.node_id_t * PVD.node_id_t * (PVD.edge_type_t * PVD.trans_t))> edge
 %type <(PVD.accept_triple_t) list> accept_edge_list
 %type <(PVD.accept_triple_t)> accept_edge
-%type <(PVD.accept_triple_t list * PVD.accept_triple_t list * E.formula) list> acceptance_list
-%type <(PVD.accept_triple_t list * PVD.accept_triple_t list * E.formula)> acceptance
+%type <PVD.wf_op_t> wf_op
+%type <(PVD.accept_triple_t list * PVD.accept_triple_t list * (E.term * PVD.wf_op_t)) list> acceptance_list
+%type <(PVD.accept_triple_t list * PVD.accept_triple_t list * (E.term * PVD.wf_op_t))> acceptance
 
 
 
@@ -773,15 +761,22 @@ accept_edge :
 
 
 acceptance :
-  | OPEN_ANGLE GOOD COLON OPEN_SET accept_edge_list CLOSE_SET SEMICOLON
-               BAD  COLON OPEN_SET accept_edge_list CLOSE_SET SEMICOLON
-               formula CLOSE_ANGLE
+  | OPEN_ANGLE BAD COLON OPEN_SET accept_edge_list CLOSE_SET SEMICOLON
+               GOOD COLON OPEN_SET accept_edge_list CLOSE_SET SEMICOLON
+               OPEN_PAREN term COMMA wf_op CLOSE_PAREN CLOSE_ANGLE
     {
-      let good = $5 in
-      let bad = $11 in
-      let delta = $14 in
-      (good, bad, delta)
+      let bad = $5 in
+      let good = $11 in
+      let delta = ($15, $17) in
+      (bad, good, delta)
     }
+
+
+wf_op :
+  | WF_INTSUBSET
+    { PVD.WFIntSubset }
+  | WF_INTLESS
+    { PVD.WFIntLess }
 
 
 /*********************     INVARIANTS    *************************/
@@ -1058,24 +1053,6 @@ literal :
       let s = parser_check_type check_type_setelem $3 E.SetElem get_str_expr in
         Formula.Atom (E.SubsetEqElem(r,s))
     }
-  | OPEN_PAREN term COMMA term CLOSE_PAREN INPAIR term
-    {
-      let get_str_expr () = sprintf "(%s,%s) inPair %s" (E.term_to_str $2)
-                                                        (E.term_to_str $4)
-                                                        (E.term_to_str $7) in
-      let i = parser_check_type check_type_int $2 E.Int get_str_expr in
-      let t = parser_check_type check_type_thid $4 E.Tid get_str_expr in
-      let s = parser_check_type check_type_setpair $7 E.SetPair get_str_expr in
-        Formula.Atom (E.InPair (i,t,s))
-    }
-  | term SUBSETEQPAIR term
-    {
-      let get_str_expr () = sprintf "%s subseteqPair %s" (E.term_to_str $1)
-                                                         (E.term_to_str $3) in
-      let r = parser_check_type check_type_setpair $1 E.SetPair get_str_expr in
-      let s = parser_check_type check_type_setpair $3 E.SetPair get_str_expr in
-        Formula.Atom (E.SubsetEqPair(r,s))
-    }
   | term MATH_LESS term
     {
       let get_str_expr () = sprintf "%s < %s" (E.term_to_str $1)
@@ -1181,8 +1158,6 @@ term :
     { E.SetIntT($1) }
   | setelem
     { E.SetElemT($1) }
-  | setpair
-    { E.SetPairT($1) }
   | path
     { E.PathT($1) }
   | mem
@@ -1582,43 +1557,13 @@ setint :
       let s2 = parser_check_type check_type_setint $5 E.SetInt get_str_expr in
         E.SetdiffInt(s1,s2)
     }
-
-
-/* SETPAIR terms*/
-setpair :
-  | EMPTYSETPAIR
-     { E.EmptySetPair }
-  | SINGLEPAIR OPEN_PAREN term COMMA term CLOSE_PAREN
+  | SETLOWER OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "SinglePair(%s,%s)" (E.term_to_str $3)
-                                                       (E.term_to_str $5) in
-      let i = parser_check_type check_type_int $3 E.Int get_str_expr in
-      let t = parser_check_type check_type_thid $5 E.Tid get_str_expr in
-        E.SinglPair(i,t)
-    }
-  | UNIONPAIR OPEN_PAREN term COMMA term CLOSE_PAREN
-    {
-      let get_str_expr() = sprintf "UnionPair(%s,%s)" (E.term_to_str $3)
-                                                      (E.term_to_str $5) in
-      let s1 = parser_check_type check_type_setpair $3 E.SetPair get_str_expr in
-      let s2 = parser_check_type check_type_setpair $5 E.SetPair get_str_expr in
-        E.UnionPair(s1,s2)
-    }
-  | INTRPAIR OPEN_PAREN term COMMA term CLOSE_PAREN
-    {
-      let get_str_expr() = sprintf "IntrPair(%s,%s)" (E.term_to_str $3)
+      let get_str_expr() = sprintf "SetLower(%s,%s)" (E.term_to_str $3)
                                                      (E.term_to_str $5) in
-      let s1 = parser_check_type check_type_setpair $3 E.SetPair get_str_expr in
-      let s2 = parser_check_type check_type_setpair $5 E.SetPair get_str_expr in
-        E.IntrPair(s1,s2)
-    }
-  | SETDIFFPAIR OPEN_PAREN term COMMA term CLOSE_PAREN
-    {
-      let get_str_expr() = sprintf "SetDiffPair(%s,%s)" (E.term_to_str $3)
-                                                        (E.term_to_str $5) in
-      let s1 = parser_check_type check_type_setpair $3 E.SetPair get_str_expr in
-      let s2 = parser_check_type check_type_setpair $5 E.SetPair get_str_expr in
-        E.SetdiffPair(s1,s2)
+      let s = parser_check_type check_type_setint $3 E.SetInt get_str_expr in
+      let i = parser_check_type check_type_int $5 E.Int get_str_expr in
+        E.SetLower(s,i)
     }
 
 

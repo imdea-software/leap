@@ -32,8 +32,6 @@ struct
   let int_s : string = "int"
   let thid_s : string = "thid"
   let set_s : string = "set"
-  let setpair_s : string = "setpair"
-  let pair_s : string = "(tuple " ^int_s^ " " ^thid_s^ ")"
   let bool_s : string = "bool"
   let loc_s : string = "loc"
 
@@ -112,18 +110,16 @@ struct
 
   and var_sort_to_str (v:NE.V.t) : string =
     match (NE.V.sort v) with
-    | NE.Int     -> int_s
-    | NE.Set     -> set_s
-    | NE.Tid     -> thid_s
-    | NE.SetPair -> setpair_s
+    | NE.Int  -> int_s
+    | NE.Set  -> set_s
+    | NE.Tid -> thid_s
 
 
   and var_sort_to_gmsort_str (v:NE.V.t) : string =
     match (NE.V.sort v) with
-      NE.Int     -> GM.int_s
-    | NE.Set     -> GM.set_s
-    | NE.Tid     -> GM.tid_s
-    | NE.SetPair -> GM.setpair_s
+      NE.Int  -> GM.int_s
+    | NE.Set  -> GM.set_s
+    | NE.Tid -> GM.tid_s
 
 
   and var_to_str (v:NE.V.t) : string =
@@ -218,9 +214,7 @@ struct
     B.add_string buf (Printf.sprintf "(define-type %s (-> %s %s))\n"
                         set_s int_s bool_s);
     B.add_string buf (Printf.sprintf "(define-type %s (subrange 1 %i))\n"
-                        loc_s prog_lines);
-    B.add_string buf (Printf.sprintf "(define-type %s (-> %s %s))\n"
-                        setpair_s pair_s bool_s)
+                        loc_s prog_lines)
 
 
   let yices_undefined_decl (buf:Buffer.t) : unit =
@@ -292,15 +286,22 @@ struct
   (*          (if (s1 a4) (s2 a4))        *)
   (*          (if (s1 a5) (s2 a5)))))     *)
   let yices_subseteq_def (vars_rep:string list) (buf:Buffer.t) : unit =
+(*
+    B.add_string buf
+        ("(define subseteq::(-> " ^set_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
+         "  (lambda (s1::" ^set_s^ " s2::" ^set_s^ ")\n" ^
+         "    (= emp (setdiff s1 s2))))\n")
+*)
     B.add_string buf
         ("(define subseteq::(-> " ^set_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
          "  (lambda (s1::" ^set_s^ " s2::" ^set_s^ ")\n" ^
          "    (and") ;
     List.iter (fun v ->
       B.add_string buf
-        ("\n         (if (s1 " ^ v ^ ") (s2 " ^ v ^ "))")
+        ("\n         (if (s1 " ^ v ^ ") (s2 " ^ v ^ ") true)")
     ) vars_rep;
     B.add_string buf ")))\n"
+
 
 
   let yices_is_min_def (vars_rep:string list) (buf:Buffer.t) : unit =
@@ -358,57 +359,24 @@ struct
      "))\n")
 
 
-  let yices_empPair_def (buf:Buffer.t) : unit =
+  let yices_filter_set_def (vars_rep:string list) (buf:Buffer.t) : unit =
+    let or_cond =
+      match vars_rep with
+      | [] -> "true"
+      | _ -> "(or" ^ (List.fold_left (fun str v -> str ^ " (= a " ^v^ ")") "" vars_rep) ^ ")" in
     B.add_string buf
-      ("(define empPair::" ^setpair_s^ "\n" ^
-       "  (lambda (p::" ^pair_s ^ ") false))\n")
+    ( "(define filter_set::(-> " ^set_s^ " " ^set_s^ ")\n" ^
+      "  (lambda (s::" ^set_s^ ")\n" ^
+      "    (lambda (a::" ^int_s^ ")\n" ^
+      "      (and (s a) " ^or_cond^ "))))\n")
 
 
-  let yices_singletonPair_def (buf:Buffer.t) : unit =
+  let yices_lower_def (buf:Buffer.t) : unit =
     B.add_string buf
-      ( "(define singletonPair::(-> " ^pair_s^ " " ^setpair_s^ ")\n" ^
-        "    (lambda (a::" ^pair_s^ ")\n" ^
-        "        (lambda (b::" ^pair_s^ ")\n" ^
-        "            (= a b))))\n" )
-
-
-  let yices_unionPair_def (buf:Buffer.t) : unit =
-    B.add_string buf
-      ( "(define unionPair::(-> " ^setpair_s^ " " ^setpair_s^ " " ^setpair_s^ ")\n" ^
-        "    (lambda (s::" ^setpair_s^ " r::" ^setpair_s^ ")\n" ^
-        "        (lambda (a::" ^pair_s^ ")\n" ^
-        "            (or (s a) (r a)))))\n" )
-
-
-  let yices_setdiffPair_def (buf:Buffer.t) : unit =
-    B.add_string buf
-      ( "(define setdiffPair::(-> " ^setpair_s^ " " ^setpair_s^ " " ^setpair_s^ ")\n" ^
-        "    (lambda (s::" ^setpair_s^ " r::" ^setpair_s^ ")\n" ^
-        "        (lambda (a::" ^pair_s^ ")\n" ^
-        "            (and (s a) (not (r a))))))\n" )
-
-
-  let yices_intersectionPair_def (buf:Buffer.t) : unit =
-    B.add_string buf
-    ("(define intersectionPair::(-> " ^setpair_s^ " " ^setpair_s^ " " ^setpair_s^ ")\n" ^
-     "   (lambda (s::" ^setpair_s^ " r::" ^setpair_s^ ")\n" ^
-     "       (lambda (a::" ^pair_s^ ")\n" ^
-     "           (and (s a) (r a)))))\n")
-
-
-  let yices_is_in_pair_def (buf:Buffer.t) : unit =
-    B.add_string buf
-    ("(define is_in_pair::(-> " ^pair_s^ " " ^setpair_s^ " " ^bool_s^ ")\n" ^
-     "   (lambda (pair_v::" ^pair_s^ " set_v::" ^setpair_s^ ")\n" ^
-     "       (set_v pair_v)))\n")
-
-
-  let yices_subseteqPair_def (buf:Buffer.t) : unit =
-    B.add_string buf
-        ("(define subseteqPair::(-> " ^setpair_s^ " " ^setpair_s^ " " ^bool_s^ ")\n" ^
-         "  (lambda (s1::" ^setpair_s^ " s2::" ^setpair_s^ ")\n" ^
-         "    (= (setdiffPair s1 s2) empPair)))\n")
-
+    ("(define lower::(-> " ^set_s^ " " ^int_s^ " " ^set_s^ ")\n" ^
+     "  (lambda (s::" ^set_s^ " i::" ^int_s^ ")\n" ^
+     "    (lambda (a::" ^int_s^ ")\n" ^
+     "      (and (s a) (<= a i)))))\n")
 
 
   (************************** Support for sets **************************)
@@ -440,15 +408,23 @@ struct
                          (voc:NE.tid list)
                          (buf:Buffer.t) : unit =
     List.iter (fun v ->
-      if (NE.V.sort v) = NE.Int then
-        let v_str = variable_invocation_to_str v in
-        B.add_string buf ("(assert (is_legal " ^ v_str ^ "))")
+      match NE.V.sort v with
+      | NE.Int -> let v_str = variable_invocation_to_str v in
+                    B.add_string buf ("(assert (is_legal " ^ v_str ^ "))\n")
+      | NE.Set -> let v_str = variable_invocation_to_str v in
+                    B.add_string buf ("(assert (= " ^v_str^ " (filter_set " ^v_str^ ")))\n")
+      | _ -> ()
     ) global_vars;
     List.iter (fun v ->
       List.iter (fun t->
-        if (NE.V.sort v) = NE.Int then
-          let v_str = variable_invocation_to_str (NE.V.set_param v (NE.V.Local (NE.voc_to_var t))) in
-          B.add_string buf ("(assert (is_legal " ^ v_str ^ "))\n")
+        match NE.V.sort v with
+        | NE.Int -> let v_str = variable_invocation_to_str
+                          (NE.V.set_param v (NE.V.Local (NE.voc_to_var t))) in
+                      B.add_string buf ("(assert (is_legal " ^ v_str ^ "))\n")
+        | NE.Set -> let v_str = variable_invocation_to_str
+                          (NE.V.set_param v (NE.V.Local (NE.voc_to_var t))) in
+                      B.add_string buf ("(assert (= " ^v_str^ " (filter_set " ^v_str^ ")))\n")
+        | _ -> ()
       ) voc
     ) local_vars
 
@@ -474,27 +450,22 @@ struct
                        ) (LeapLib.rangeList 1 cutoff) in
     let all_vars_str = glb_vars_str @ loc_vars_str @ aux_vars_str
     in
-      yices_undefined_decl             buf;
-      yices_aux_int_def cutoff         buf;
-      yices_emp_def                    buf;
-      yices_singleton_def              buf;
-      yices_union_def                  buf;
-      yices_setdiff_def                buf;
-      yices_intersection_def           buf;
-      yices_subseteq_def all_vars_str  buf;
-      yices_is_min_def all_vars_str    buf;
-      yices_is_max_def all_vars_str    buf;
-      yices_is_in_def                  buf;
-      yices_min_def all_vars_str       buf;
-      yices_max_def all_vars_str       buf;
-      yices_empPair_def                buf;
-      yices_singletonPair_def          buf;
-      yices_unionPair_def              buf;
-      yices_setdiffPair_def            buf;
-      yices_intersectionPair_def       buf;
-      yices_subseteqPair_def           buf;
-      yices_is_in_pair_def             buf;
-      yices_pc_def                     buf
+      yices_undefined_decl              buf;
+      yices_aux_int_def cutoff          buf;
+      yices_emp_def                     buf;
+      yices_singleton_def               buf;
+      yices_union_def                   buf;
+      yices_setdiff_def                 buf;
+      yices_intersection_def            buf;
+      yices_subseteq_def all_vars_str   buf;
+      yices_is_min_def all_vars_str     buf;
+      yices_is_max_def all_vars_str     buf;
+      yices_is_in_def                   buf;
+      yices_min_def all_vars_str        buf;
+      yices_max_def all_vars_str        buf;
+      yices_filter_set_def all_vars_str buf;
+      yices_lower_def                   buf;
+      yices_pc_def                      buf
 
 
   (************************ Preamble definitions ************************)
@@ -546,30 +517,18 @@ struct
     | NE.Union(s1,s2) -> Printf.sprintf "(union %s %s)" (yices_set s1) (yices_set s2)
     | NE.Intr(s1,s2)  -> Printf.sprintf "(intersection %s %s)" (yices_set s1) (yices_set s2)
     | NE.Diff(s1,s2)  -> Printf.sprintf "(setdiff %s %s)" (yices_set s1) (yices_set s2)
-
-  and yices_string_of_setpair (s:NE.setpair) : string =
-    let yices_int = yices_string_of_integer in
-    let yices_setpair = yices_string_of_setpair in
-    match s with
-      NE.VarSetPair (v)   -> variable_invocation_to_str v
-    | NE.EmptySetPair     -> " empPair"
-    | NE.SinglPair (i,t)  -> Printf.sprintf "(singletonPair (mk-tuple %s %s))" (yices_int i) (tid_to_str t)
-    | NE.UnionPair(s1,s2) -> Printf.sprintf "(unionPair %s %s)" (yices_setpair s1) (yices_setpair s2)
-    | NE.IntrPair(s1,s2)  -> Printf.sprintf "(intersectionPair %s %s)" (yices_setpair s1) (yices_setpair s2)
-    | NE.DiffPair(s1,s2)  -> Printf.sprintf "(setdiffPair %s %s)" (yices_setpair s1) (yices_setpair s2)
+    | NE.Lower(s,i)   -> Printf.sprintf "(lower %s %s)" (yices_set s) (yices_int i)
 
 
   and yices_string_of_term (t:NE.term) : string =
     match t with
       NE.IntV i -> yices_string_of_integer i
     | NE.SetV s -> yices_string_of_set s
-    | NE.SetPairV s -> yices_string_of_setpair s
 
 
   and yices_string_of_atom a =
     let int_tostr = yices_string_of_integer in
     let set_tostr = yices_string_of_set in
-    let setpair_tostr = yices_string_of_setpair in
     let term_tostr = yices_string_of_term in
       match a with
         NE.Less(x,y)      -> " (< "  ^ (int_tostr x) ^ (int_tostr y) ^ ")"
@@ -580,9 +539,7 @@ struct
       | NE.Eq(x,y)        -> " (= "  ^ (term_tostr x) ^ (term_tostr y) ^ ")"
       | NE.InEq(x,y)      -> " (/= " ^ (term_tostr x) ^ (term_tostr y) ^ ")"
       | NE.In(i,s)        -> " (" ^ set_tostr s ^ " " ^ int_tostr i ^ ")"
-      | NE.Subset(s1,s2)  -> " (subseteq " ^ (set_tostr s1) ^ " " ^ (set_tostr s2) ^ ")"
-      | NE.InPair(i,t,s)  -> " (" ^ (setpair_tostr s) ^ " (mk-tuple " ^ (int_tostr i) ^ " " ^ (tid_to_str t) ^ "))"
-      | NE.SubsetPair(s1,s2)  -> " (subseteqPair " ^ setpair_tostr s1 ^ " " ^ setpair_tostr s2 ^ ")"
+      | NE.Subset(s1,s2)  -> " (subseteq " ^ set_tostr s1 ^ " " ^ set_tostr s2 ^ ")"
       | NE.TidEq(x,y)     -> " (= "  ^ (tid_to_str x) ^ " " ^
                                             (tid_to_str y) ^ ")"
       | NE.TidInEq(x,y)   -> " (/= " ^ (tid_to_str x) ^ " " ^

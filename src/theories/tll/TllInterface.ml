@@ -26,7 +26,6 @@ let rec sort_to_tll_sort (s:E.sort) : TLL.sort =
   | E.SetTh     -> TLL.SetTh
   | E.SetInt    -> raise(UnsupportedSort(E.sort_to_str s))
   | E.SetElem   -> TLL.SetElem
-  | E.SetPair   -> raise(UnsupportedSort(E.sort_to_str s))
   | E.Path      -> TLL.Path
   | E.Mem       -> TLL.Mem
   | E.Bool      -> TLL.Bool
@@ -104,13 +103,12 @@ and term_to_tll_term (t:E.term) : TLL.term =
     E.VarT v       -> TLL.VarT (variable_to_tll_var v)
   | E.SetT s       -> TLL.SetT (set_to_tll_set s)
   | E.ElemT e      -> TLL.ElemT (elem_to_tll_elem e)
-  | E.TidT t       -> TLL.TidT (tid_to_tll_tid t)
+  | E.TidT t      -> TLL.TidT (tid_to_tll_tid t)
   | E.AddrT a      -> TLL.AddrT (addr_to_tll_addr a)
   | E.CellT c      -> TLL.CellT (cell_to_tll_cell c)
   | E.SetThT st    -> TLL.SetThT (setth_to_tll_setth st)
   | E.SetIntT _    -> raise(UnsupportedTllExpr(E.term_to_str t))
   | E.SetElemT st  -> TLL.SetElemT (setelem_to_tll_setelem st)
-  | E.SetPairT _   -> raise(UnsupportedTllExpr(E.term_to_str t))
   | E.PathT p      -> TLL.PathT (path_to_tll_path p)
   | E.MemT m       -> TLL.MemT (mem_to_tll_mem m)
   | E.IntT i       -> TLL.IntT (int_to_tll_int i)
@@ -301,8 +299,6 @@ and atom_to_tll_atom (a:E.atom) : TLL.atom =
   | E.SubsetEqInt _        -> raise(UnsupportedTllExpr(E.atom_to_str a))
   | E.InElem (e,s)         -> TLL.InElem (elem_to_tll_elem e, setelem s)
   | E.SubsetEqElem (s1,s2) -> TLL.SubsetEqElem (setelem s1, setelem s2)
-  | E.InPair _             -> raise(UnsupportedTllExpr(E.atom_to_str a))
-  | E.SubsetEqPair _       -> raise(UnsupportedTllExpr(E.atom_to_str a))
   | E.Less (i1,i2)         -> TLL.Less (int_to_tll_int i1, int_to_tll_int i2)
   | E.LessEq (i1,i2)       -> TLL.LessEq (int_to_tll_int i1, int_to_tll_int i2)
   | E.Greater (i1,i2)      -> TLL.Greater (int_to_tll_int i1, int_to_tll_int i2)

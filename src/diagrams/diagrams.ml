@@ -7,6 +7,7 @@ module F = Formula
 type pvd_vc_t = {
   initiation : Tactics.vc_info;
   consecution : Tactics.vc_info list;
+  acceptance : Tactics.vc_info list;
   fairness : Tactics.vc_info list;
 }
 
@@ -37,9 +38,9 @@ module Make (C:Core.S) : S =
 
 
     let gen_consecution (pvd:PVD.t) : Tactics.vc_info list =
+      let free_voc = PVD.free_voc pvd in
       let nodes = PVD.nodes pvd in
       PVD.NodeIdSet.fold (fun n vcs ->
-        let free_voc = PVD.free_voc pvd in
         let n_voc = match PVD.node_box pvd n with
                     | None -> free_voc
                     | Some b -> E.ThreadSet.add (PVD.box_param pvd b) free_voc in
@@ -99,6 +100,60 @@ module Make (C:Core.S) : S =
       ) nodes []
 
 
+    let gen_acceptance (pvd:PVD.t) : Tactics.vc_info list =
+      let free_voc = PVD.free_voc pvd in
+      let acceptance_list = PVD.acceptance_list pvd in
+      let edges = PVD.edge_list pvd in
+      List.fold_left (fun acc_vcs accept ->
+        (List.fold_left (fun edge_vcs (n,m,e_info_set) ->
+          let n_voc = match PVD.node_box pvd n with
+                      | None -> free_voc
+                      | Some b -> E.ThreadSet.add (PVD.box_param pvd b) free_voc in
+          let mu_n = PVD.node_mu pvd n in
+          let mu_m = E.prime (PVD.node_mu pvd n) in
+
+          (PVD.EdgeInfoSet.fold (fun (kind,_) xs ->
+            let beta = PVD.beta pvd (n,m,kind) in
+            let voc = E.ThreadSet.union (E.voc_term (fst accept.PVD.delta))
+                                        (E.voc_from_list [mu_n;mu_m;beta]) in
+            let n_vcs = ref [] in
+            for line = 1 to (System.lines C.system) do
+              (* Self-consecution *)
+              let self_vcs =
+                E.ThreadSet.fold (fun t ys ->
+                  let self_rho = C.rho System.Concurrent voc line t in
+                  (List.map (fun rho ->
+                    let antecedent = F.conj_list [mu_n; rho; mu_m; beta] in
+                    let consequent = PVD.ranking_function antecedent accept (n,m,kind) in
+                    Tactics.create_vc_info [] F.True antecedent consequent voc t line
+                  ) self_rho) @ ys
+                ) n_voc [] in
+              (* Others-consecution *)
+              let fresh_k = E.gen_fresh_tid voc in
+              let other_rho = C.rho System.Concurrent voc line fresh_k in
+              let tid_diff_conj = Formula.conj_list (E.ThreadSet.fold (fun t ys ->
+                                                      (E.ineq_tid fresh_k t) :: ys
+                                                    ) voc []) in
+              let others_vcs = List.map (fun rho ->
+                                 let antecedent = F.conj_list [mu_n; rho; mu_m; beta] in
+                                 let consequent = PVD.ranking_function antecedent accept (n,m,kind) in
+                                 Tactics.create_vc_info [] tid_diff_conj antecedent
+                                            consequent voc fresh_k line
+                               ) other_rho in
+              n_vcs := self_vcs @ others_vcs @ !n_vcs
+            done;
+            !n_vcs @ xs
+
+          ) e_info_set []) @ edge_vcs
+
+        ) [] edges)
+        @ acc_vcs
+      ) [] acceptance_list
+
+      
+
+
+
     let gen_fairness (pvd:PVD.t) : Tactics.vc_info list =
       let edges = PVD.edge_list pvd in
       List.fold_left (fun vcs (n1,n2,info) ->
@@ -135,11 +190,13 @@ module Make (C:Core.S) : S =
 
 
 
+
     let gen_vcs (pvd:PVD.t) : pvd_vc_t =
     let tmp =
       {
         initiation = gen_initiation pvd;
         consecution = gen_consecution pvd;
+        acceptance = gen_acceptance pvd;
         fairness = gen_fairness pvd;
       }
     in
@@ -184,7 +241,8 @@ module Make (C:Core.S) : S =
               | Some s -> check_well_defined_supp s in
       let pvd_vcs = gen_vcs pvd in
       let vc_list = pvd_vcs.initiation ::
-                    pvd_vcs.consecution in (*
+                    pvd_vcs.consecution @
+                    pvd_vcs.acceptance in (*
                     pvd_vcs.fairness in *)
       let vc_count = ref 1 in
       let show_progress = not (LeapVerbose.is_verbose_enabled()) in

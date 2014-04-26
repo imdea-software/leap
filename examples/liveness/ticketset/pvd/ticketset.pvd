@@ -2,11 +2,11 @@ Diagram[ticketset]
 
 Nodes: n0 {@1(k). \/ @2(k). \/ @6(k). \/ @7(k). \/ @8(k).},
        n1 {@3(k).},
-       n2 {@4(t). /\ t!=k /\ @4(k). /\ setIntMin(bag) = main::ticket(t)},
-       n3 {@5(t). /\ t!=k /\ @4(k). /\ setIntMin(bag) = main::ticket(t)},
-       n4 {@6(t). /\ t!=k /\ @4(k). /\ setIntMin(bag) = main::ticket(t)},
-       n5 {@4(k). /\ setIntMin(bag) = main::ticket(k)},
-       n6 {(@5(k). \/ @6(k).) /\ setIntMin(bag) = main::ticket(k)}
+       n2 {@4(t). /\ k!=t /\ @4(k). /\ setIntMin(bag) = main::ticket(t)},
+       n3 {@5(t). /\ k!=t /\ @4(k). /\ setIntMin(bag) = main::ticket(t)},
+       n4 {@6(t). /\ k!=t /\ @4(k). /\ setIntMin(bag) = main::ticket(t)},
+       n5 {@4(k).},
+       n6 {@5(k). \/ @6(k).}
 
 Boxes: {b1[t]:n2,n3,n4}
 
@@ -35,7 +35,7 @@ Edges:  n0 --> n1;
         n6 --> n6;
 
 Acceptance:
-  <<Good:{(n4,n2,any),(n4,n3,any),(n4,n4,any),(n4,n5,any)};
-    Bad :{(n6,n0,any)};
-    null = null >>
+  <<Bad :{(n4,n2,any),(n4,n3,any),(n4,n4,any),(n4,n5,any)};
+    Good:{(n6,n0,any)};
+    (SetLower(bag,main::ticket(k)), subset_op) >>
 

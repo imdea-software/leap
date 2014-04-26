@@ -45,7 +45,6 @@ type term =
   | SetThT        of setth
   | SetIntT       of setint
   | SetElemT      of setelem
-  | SetPairT      of setpair
   | PathT         of path
   | MemT          of mem
   | IntT          of integer
@@ -80,7 +79,6 @@ and integer =
   | IntArrayRd    of arrays * tid
   | IntSetMin     of setint
   | IntSetMax     of setint
-  | SetPairMinInt of setpair
   | HavocLevel
 
 and set =
@@ -103,7 +101,6 @@ and tid =
   | TidArrayRd     of arrays * tid
   | PointerLockid   of addr
   | PointerLockidAt of addr * integer
-  | SetPairMinTid   of setpair
   | TidArrRd       of tidarr * integer
 
 and elem =
@@ -173,15 +170,6 @@ and setelem =
   | SetToElems     of set * mem
   | SetElemArrayRd of arrays * tid
 
-and setpair =
-    VarSetPair     of variable
-  | EmptySetPair
-  | SinglPair      of integer * tid
-  | UnionPair      of setpair * setpair
-  | IntrPair       of setpair * setpair
-  | SetdiffPair    of setpair * setpair
-  | SetPairArrayRd of arrays * tid
-
 and path =
     VarPath       of variable
   | Epsilon
@@ -207,8 +195,6 @@ and atom =
   | SubsetEqInt   of setint * setint
   | InElem        of elem * setelem
   | SubsetEqElem  of setelem * setelem
-  | InPair        of integer * tid * setpair
-  | SubsetEqPair  of setpair * setpair
   | Less          of integer * integer
   | Greater       of integer * integer
   | LessEq        of integer * integer
@@ -343,7 +329,6 @@ val term_to_set     : term -> set
 val term_to_setth   : term -> setth
 val term_to_setint  : term -> setint
 val term_to_setelem : term -> setelem
-val term_to_setpair : term -> setpair
 
 val elem_to_expr_elem : elem -> Expression.elem
 val addr_to_expr_addr : addr -> Expression.addr

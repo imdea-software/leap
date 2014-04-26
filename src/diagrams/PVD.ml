@@ -38,9 +38,24 @@ type edge_table_t = ((node_id_t * node_id_t), EdgeInfoSet.t) Hashtbl.t
 
 (* Types for acceptance conditions *)
 type accept_triple_t = (node_id_t * node_id_t * edge_type_t)
-type acceptance_t = {good : accept_triple_t list;
-                     bad  : accept_triple_t list;
-                     delta: E.formula; }
+
+module AcceptanceSet = Set.Make(
+  struct
+    let compare = Pervasives.compare
+    type t = accept_triple_t
+  end )
+
+type wf_op_t =
+  | WFIntSubset
+  | WFIntLess
+
+type delta_op_t =
+  | Preserve
+  | Decrement
+
+type acceptance_t = {good : AcceptanceSet.t;
+                     bad  : AcceptanceSet.t;
+                     delta: (E.term * wf_op_t); }
 
 type next_table_t = (node_id_t, NodeIdSet.t) Hashtbl.t
 type tau_table_t = (node_id_t * int * E.V.t, NodeIdSet.t) Hashtbl.t
@@ -62,6 +77,7 @@ exception Undefined_edge of edge_t
 exception BadBoxedEdge of edge_t
 exception BadBox of box_id_t
 exception No_initial
+exception Incorrect_ranking_function of string
 exception Malformed_PVD_support
 
 
@@ -104,6 +120,12 @@ let kind_to_str (k:edge_type_t) : string =
   match k with
   | Any -> "any"
   | Pres -> "pres"
+
+
+let wf_op_to_str (op:wf_op_t) : string =
+  match op with
+  | WFIntSubset -> "subset_op"
+  | WFIntLess   -> "less_op"
 
 
 let node_id_to_str (id:node_id_t) : string =
@@ -154,16 +176,17 @@ let to_str (pvd:t) : string =
                     ) infoSet "") ^ str
                   ) pvd.edges "" in
   let acceptance_str = List.fold_left (fun str acc ->
-                         let map xs = List.map (fun (n1,n2,k) ->
-                                        "(" ^(node_id_to_str n1)^ "," ^
+                         let map s = AcceptanceSet.fold (fun (n1,n2,k) xs ->
+                                       ("(" ^(node_id_to_str n1)^ "," ^
                                              (node_id_to_str n2)^ "," ^
-                                             (kind_to_str k)^ ")"
-                                      ) xs in
+                                             (kind_to_str k)^ ")") :: xs
+                                     ) s [] in
                          let good_list_str = String.concat "," (map acc.good) in
                          let bad_list_str = String.concat "," (map acc.bad) in
-                         "\n  << Good : {" ^good_list_str^ "};\n" ^
-                           "     Bad  : {" ^bad_list_str^ "};\n" ^
-                           "     " ^(E.formula_to_str acc.delta)^ " >>" ^ str
+                         "\n  << Bad : {" ^bad_list_str^ "};\n" ^
+                           "     Good: {" ^good_list_str^ "};\n" ^
+                           "     (" ^(E.term_to_str (fst acc.delta))^ "," ^
+                                      (wf_op_to_str (snd acc.delta))^ " >>" ^ str
                        ) "" pvd.acceptance in
   ("Diagram[" ^pvd.name^ "]\n\n" ^
    "Nodes: " ^nodes_str^ "\n\n" ^
@@ -373,19 +396,36 @@ let check_and_define_edges (nTbl:node_table_t)
 
 let check_acceptance (nTbl:node_table_t)
                      (eTbl:edge_table_t)
-                     (acs:(accept_triple_t list * accept_triple_t list * E.formula) list)
+                     (acs:(accept_triple_t list * accept_triple_t list * (E.term * wf_op_t)) list)
         : acceptance_t list =
-  List.map (fun (goods, bads, delta) ->
+  let fill_set xs = List.fold_left (fun set info ->
+                      AcceptanceSet.add info set
+                    ) AcceptanceSet.empty xs in
+  let validate_delta (t:E.term) (op:wf_op_t) : unit =
+    match (E.term_sort t, op) with
+    | (E.SetInt, WFIntSubset)
+    | (E.Int, WFIntLess) -> ()
+    | _ -> begin
+             Interface.Err.msg "Unsupported ranking function" $
+               Printf.sprintf "Term %s was provided as ranking function, \
+                               but is not supported with operation %s."
+                  (E.term_to_str t) (wf_op_to_str op);
+             raise(Incorrect_ranking_function(E.term_to_str t))
+           end in
+  List.map (fun (bads, goods, (delta,op)) ->
+    validate_delta delta op;
     List.iter (fun (n1,n2,kind) ->
       is_defined nTbl n1;
       is_defined nTbl n2;
       well_defined_acceptance_edge eTbl (n1,n2, (kind,NoLabel));
       well_defined_boxed_edge nTbl (n1,n2,(kind,NoLabel));
-    ) (goods @ bads);
+    ) (bads @ goods);
+    let goodSet = fill_set goods in
+    let badSet = fill_set bads in
     {
-      good = goods;
-      bad = bads;
-      delta = delta;
+      good = goodSet;
+      bad = badSet;
+      delta = (delta, op);
     }
   ) acs
 
@@ -397,7 +437,7 @@ let new_pvd (name:string)
             (bs:box_t list)
             (is:node_id_t list)
             (es:edge_t list)
-            (acs:(accept_triple_t list * accept_triple_t list * E.formula) list) : t =
+            (acs:(accept_triple_t list * accept_triple_t list * (E.term * wf_op_t)) list) : t =
   print_endline ("A");
   let (nTbl,bTbl,free_voc_nodes) = check_and_define_nodes ns bs in
   print_endline ("B");
@@ -477,6 +517,55 @@ let cond_next (pvd:t) (cond:edge_type_t) (n:node_id_t) : NodeIdSet.t =
     else
       set
   ) (next pvd n) NodeIdSet.empty
+
+
+let acceptance_list (pvd:t) : acceptance_t list =
+  pvd.acceptance
+
+
+let beta (pvd:t) ((n1,n2,kind):(node_id_t * node_id_t * edge_type_t)) : E.formula =
+  try
+    let edgeSet = Hashtbl.find pvd.edges (n1,n2) in
+    match (node_box pvd n1, node_box pvd n2) with
+    | (Some b1, Some b2) ->
+        if b1 = b2 && kind = Pres && EdgeInfoSet.exists (fun (k,_) -> k = kind) edgeSet then
+        let t = snd (Hashtbl.find pvd.boxes b1) in
+          F.atom_to_formula (E.Eq (E.prime_term (E.TidT t), E.TidT t))
+        else
+          F.True
+    | _ -> F.True
+  with Not_found -> F.True
+
+
+let ranking_function (ante:E.formula)
+                     (accept:acceptance_t)
+                     (e:(node_id_t * node_id_t * edge_type_t)) : E.formula =
+  let form = F.atom_to_formula in
+  let cons (t1:E.term) (t2:E.term) (eq:delta_op_t) : E.formula =
+    match (snd accept.delta, eq) with
+    | (_, Preserve) -> form (E.Eq (t2, t1))
+    | (WFIntSubset, Decrement) -> begin
+                                    match (t1, t2) with
+                                    | (E.SetIntT s1, E.SetIntT s2) ->
+                                        F.And(form (E.InEq (t2, t1)),
+                                              form (E.SubsetEqInt (s2, s1)))
+                                    | _ -> assert false
+                                  end
+    | (WFIntLess, Decrement) -> begin
+                                  match (t1, t2) with
+                                  | (E.IntT i1, E.IntT i2) -> form(E.Less (i2, i1))
+                                  | _ -> assert false
+                                end in
+  if AcceptanceSet.mem e accept.bad then
+    let pre = fst accept.delta in
+    let post = E.prime_modified_term ante (fst accept.delta) in
+    cons pre post Decrement
+  else if (not (AcceptanceSet.mem e (AcceptanceSet.union accept.good accept.bad))) then
+    let pre = fst accept.delta in
+    let post = E.prime_modified_term ante (fst accept.delta) in
+    cons pre post Preserve
+  else
+    F.True
 
 
 let free_voc (pvd:t) : E.ThreadSet.t =

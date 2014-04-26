@@ -67,16 +67,12 @@ rule norm = parse
   | "UnionInt"      { Global.last "UnionInt"      ; UNIONINT }
   | "IntrInt"       { Global.last "IntrInt"       ; INTRINT }
   | "SetDiffInt"    { Global.last "SetDiffInt"    ; SETDIFFINT }
-  | "EmptySetElem"  { Global.last "EmptySetElem"  ; EMPTYSETELEM }
+  | "SetLower"      { Global.last "SetLower"      ; SETLOWER }
+  | "EmptySetElem"  { Global.last "EmptySetElem  "; EMPTYSETELEM }
   | "SingleElem"    { Global.last "SingleElem"    ; SINGLEELEM }
   | "UnionElem"     { Global.last "UnionElem"     ; UNIONELEM }
   | "IntrElem"      { Global.last "IntrElem"      ; INTRELEM }
   | "SetDiffElem"   { Global.last "SetDiffElem"   ; SETDIFFELEM }
-  | "EmptySetPair"  { Global.last "EmptySetPair"  ; EMPTYSETPAIR }
-  | "SinglePair"    { Global.last "SinglePair"    ; SINGLEPAIR }
-  | "UnionPair"     { Global.last "UnionPair"     ; UNIONPAIR }
-  | "IntrPair"      { Global.last "IntrPair"      ; INTRPAIR }
-  | "SetDiffPair"   { Global.last "SetDiffPair"   ; SETDIFFPAIR }
   | "set2elem"      { Global.last "set2elem"      ; SET2ELEM }
   | "path2set"      { Global.last "path2set"      ; PATH2SET }
   | "addr2set"      { Global.last "addr2set"      ; ADDR2SET }
@@ -93,8 +89,6 @@ rule norm = parse
   | "subseteqInt"   { Global.last "subseteqInt"   ; SUBSETEQINT }
   | "inElem"        { Global.last "inElem"        ; INELEM }
   | "subseteqElem"  { Global.last "subseteqElem"  ; SUBSETEQELEM }
-  | "inPair"        { Global.last "inPair"        ; INPAIR }
-  | "subseteqPair"  { Global.last "subseteqPair"  ; SUBSETEQPAIR }
   | "setIntMin"     { Global.last "setIntMin"     ; SETINTMIN }
   | "setIntMax"     { Global.last "setIntMax"     ; SETINTMAX }
   | "Th"            { Global.last "Th"            ; THREAD }
@@ -141,6 +135,8 @@ rule norm = parse
   | "Good"          { Global.last "Good"          ; GOOD }
   | "Bad"           { Global.last "Bad"           ; BAD }
   | "arrUpd"        { Global.last "arrUpd"        ; ARR_UPDATE }
+  | "subset_op"     { Global.last "subset_op"     ; WF_INTSUBSET }
+  | "less_op"       { Global.last "less_op"       ; WF_INTLESS }
   | (digit+) as num { Global.last num; NUMBER (int_of_string num) }
   | (letterordollar alphanum*) as id { Global.last id; IDENT (id,Global.get_linenum()) }
   | whitespc          { Global.last "whitespc"; norm lexbuf }

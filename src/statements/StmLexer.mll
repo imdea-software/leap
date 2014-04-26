@@ -4,37 +4,6 @@ open StmParser
 
 exception LexerError
 
-
-let keyword_table = Hashtbl.create 40
-let _ =
-  List.iter (fun (kwd, tok) -> Hashtbl.add keyword_table kwd tok)
-    [ "EmptySet",      EMPTYSET;
-      "Union",         UNION;
-      "Intr",          INTR;
-      "SetDiff",       SETDIFF;
-      "EmptySetTh",    EMPTYSETTH;
-      "SingleTh",      SINGLETH;
-      "UnionTh",       UNIONTH;
-      "IntrTh",        INTRTH;
-      "SetDiffTh",     SETDIFFTH;
-      "EmptySetInt",   EMPTYSETINT;
-      "SingleInt",     SINGLEINT;
-      "UnionInt",      UNIONINT;
-      "IntrInt",       INTRINT;
-      "SetDiffInt",    SETDIFFINT;
-      "EmptySetElem",  EMPTYSETELEM;
-      "SingleElem",    SINGLEELEM;
-      "UnionElem",     UNIONELEM;
-      "IntrElem",      INTRELEM;
-      "SetDiffElem",   SETDIFFELEM;
-      "EmptySetPair",  EMPTYSETPAIR;
-      "SinglePair",    SINGLEPAIR;
-      "UnionPair",     UNIONPAIR;
-      "IntrPair",      INTRPAIR;
-      "SetDiffPair",   SETDIFFPAIR;
-      "setPairMinInt", SETPAIRMININT;
-      "setPairMinTid", SETPAIRMININT]
-
 }
 
 let whitespc = [' ' '\t']
@@ -42,7 +11,6 @@ let letter = ['A'-'Z' 'a'-'z']
 let digit = ['0'-'9']
 let alphanum = ['A'-'Z' 'a'-'z' '0'-'9' '_' '/' ''' '@' ]
 let almostany =['A'-'Z' 'a'-'z' '0'-'9' '_' ' ' '.' '/' '-' '(' ')' '\'' ',']
-
 
 rule norm = parse
   | "global"        { Global.last "global"        ; GLOBAL }
@@ -93,6 +61,25 @@ rule norm = parse
   | "upd"           { Global.last "upd"           ; UPDATE }
   | "epsilon"       { Global.last "epsilon"       ; EPSILON }
   | "singlePath"    { Global.last "singlePath"    ; SINGLE_PATH }
+  | "EmptySet"      { Global.last "EmptySet"      ; EMPTYSET }
+  | "Union"         { Global.last "Union"         ; UNION }
+  | "Intr"          { Global.last "Intr"          ; INTR }
+  | "SetDiff"       { Global.last "SetDiff"       ; SETDIFF }
+  | "EmptySetTh"    { Global.last "EmptySetTh"    ; EMPTYSETTH }
+  | "SingleTh"      { Global.last "SingleTh"      ; SINGLETH }
+  | "UnionTh"       { Global.last "UnionTh"       ; UNIONTH }
+  | "IntrTh"        { Global.last "IntrTh"        ; INTRTH }
+  | "SetDiffTh"     { Global.last "SetDiffTh"     ; SETDIFFTH }
+  | "EmptySetInt"   { Global.last "EmptySetInt"   ; EMPTYSETINT }
+  | "SingleInt"     { Global.last "SingleInt"     ; SINGLEINT }
+  | "UnionInt"      { Global.last "UnionInt"      ; UNIONINT }
+  | "IntrInt"       { Global.last "IntrInt"       ; INTRINT }
+  | "SetDiffInt"    { Global.last "SetDiffInt"    ; SETDIFFINT }
+  | "EmptySetElem"  { Global.last "EmptySetElem"  ; EMPTYSETELEM }
+  | "SingleElem"    { Global.last "SingleElem"    ; SINGLEELEM }
+  | "UnionElem"     { Global.last "UnionElem"     ; UNIONELEM }
+  | "IntrElem"      { Global.last "IntrElem"      ; INTRELEM }
+  | "SetDiffElem"   { Global.last "SetDiffElem"   ; SETDIFFELEM }
   | "set2elem"      { Global.last "set2elem"      ; SET2ELEM }
   | "path2set"      { Global.last "path2set"      ; PATH2SET }
   | "addr2set"      { Global.last "addr2set"      ; ADDR2SET }
@@ -108,8 +95,6 @@ rule norm = parse
   | "subseteqInt"   { Global.last "subseteqInt"   ; SUBSETEQINT }
   | "inElem"        { Global.last "inElem"        ; INELEM }
   | "subseteqElem"  { Global.last "subseteqElem"  ; SUBSETEQELEM }
-  | "inPair"        { Global.last "inPair"        ; INPAIR }
-  | "subseteqPair"  { Global.last "subseteqPair"  ; SUBSETEQPAIR }
   | "setIntMin"     { Global.last "setIntMin"     ; SETINTMIN }
   | "setIntMax"     { Global.last "setIntMax"     ; SETINTMAX }
   | "Th"            { Global.last "Th"            ; THREAD }
@@ -151,11 +136,7 @@ rule norm = parse
   | '_'             { Global.last "_"             ; UNDERSCORE }
   | '#'             { Global.last "#"             ; SHARP }
   | (digit+) as num { Global.last num; NUMBER (int_of_string num) }
-  | (letter alphanum*) as id { Global.last id;
-                               try
-                                 Hashtbl.find keyword_table id
-                               with Not_found ->
-                                 IDENT (id,Global.get_linenum()) }
+  | (letter alphanum*) as id { Global.last id; IDENT (id,Global.get_linenum()) }
   | whitespc          { Global.last "whitespc"; norm lexbuf }
   | '\n'              { Global.last "\\n"; Global.incr_linenum (); norm lexbuf }
   | "\r\n"            { Global.last "\\r\\n"; Global.incr_linenum (); norm lexbuf }

@@ -6,6 +6,16 @@ type trans_t = NoLabel | Label of (int * Expression.V.t) list
 type edge_info_t = (edge_type_t * trans_t)
 type accept_triple_t = (node_id_t * node_id_t * edge_type_t)
 
+module AcceptanceSet : Set.S with type elt = accept_triple_t
+
+type wf_op_t =
+  | WFIntSubset
+  | WFIntLess
+
+type acceptance_t = {good : AcceptanceSet.t;
+                     bad  : AcceptanceSet.t;
+                     delta: (Expression.term * wf_op_t); }
+
 module NodeIdSet : Set.S with type elt = node_id_t
 module EdgeInfoSet : Set.S with type elt = edge_info_t
 
@@ -17,8 +27,7 @@ val new_pvd : string ->
               (box_id_t * node_id_t list * Expression.ThreadSet.elt) list ->
               (node_id_t list) ->
               (node_id_t * node_id_t * (edge_type_t * trans_t)) list ->
-              (accept_triple_t list * accept_triple_t list * Expression.formula) 
-              list ->
+              (accept_triple_t list * accept_triple_t list * (Expression.term * wf_op_t)) list ->
               t
 
 val initial : t -> NodeIdSet.t
@@ -31,6 +40,12 @@ val box_param : t -> box_id_t -> Expression.ThreadSet.elt
 val edges : t -> node_id_t -> node_id_t -> EdgeInfoSet.t
 val edge_list : t -> (node_id_t * node_id_t * EdgeInfoSet.t) list
 val succesor : t -> node_id_t -> int -> Expression.V.t -> NodeIdSet.t
+val acceptance_list : t -> acceptance_t list
+val beta : t -> (node_id_t * node_id_t * edge_type_t) -> Expression.formula
+val ranking_function : Expression.formula ->
+                       acceptance_t ->
+                       (node_id_t * node_id_t * edge_type_t) ->
+                       Expression.formula
 val free_voc : t -> Expression.ThreadSet.t
 
 

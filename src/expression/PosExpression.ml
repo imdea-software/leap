@@ -130,7 +130,6 @@ and conv_th (th:E.tid) : tid =
   | E.NoTid             -> NoTid
   | E.CellLockId _      -> VarTh (build_fresh_lockid_var th)
   | E.CellLockIdAt _    -> VarTh (build_fresh_lockid_var th)
-  | E.SetPairMinTid _   -> VarTh (build_fresh_lockid_var th)
   | E.TidArrayRd _      -> VarTh (build_fresh_tid_array_var th)
   | E.TidArrRd _        -> VarTh (build_fresh_tid_array_var th)
 

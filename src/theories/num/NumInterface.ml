@@ -18,10 +18,9 @@ let sort_to_int_sort (s:E.sort) : NE.sort =
 
 let sort_to_expr_sort (s:NE.sort) : E.sort =
   match s with
-    NE.Int     -> E.Int
-  | NE.Set     -> E.SetInt
-  | NE.Tid     -> E.Tid
-  | NE.SetPair -> E.SetPair
+    NE.Int  -> E.Int
+  | NE.Set  -> E.SetInt
+  | NE.Tid -> E.Tid
 
 
 (* SUBTYPE CONVERTER: *)
@@ -69,28 +68,17 @@ and array_to_funterm (x:E.arrays) : NE.fun_term =
 
 
 and set_to_int_set (s:E.setint) : NE.set =
+  let toint = integer_to_int_integer in
   let toset = set_to_int_set in
   match s with
     E.VarSetInt v       -> NE.VarSet (variable_to_int_variable v)
   | E.EmptySetInt       -> NE.EmptySet
-  | E.SinglInt i        -> NE.Singl (integer_to_int_integer i)
+  | E.SinglInt i        -> NE.Singl (toint i)
   | E.UnionInt(s1,s2)   -> NE.Union (toset s1, toset s2)
   | E.IntrInt(s1,s2)    -> NE.Intr (toset s1, toset s2)
   | E.SetdiffInt(s1,s2) -> NE.Diff (toset s1, toset s2)
+  | E.SetLower(s,i)     -> NE.Lower (toset s, toint i)
   | _ -> raise(NotAnIntExpression(E.setint_to_str s))
-
-
-and setpair_to_int_setpair (s:E.setpair) : NE.setpair =
-  let tosetpair = setpair_to_int_setpair in
-  match s with
-    E.VarSetPair v       -> NE.VarSetPair (variable_to_int_variable v)
-  | E.EmptySetPair       -> NE.EmptySetPair
-  | E.SinglPair (i,t)    -> NE.SinglPair (integer_to_int_integer i,
-                                          tid_to_int_tid t)
-  | E.UnionPair(s1,s2)   -> NE.UnionPair (tosetpair s1, tosetpair s2)
-  | E.IntrPair(s1,s2)    -> NE.IntrPair (tosetpair s1, tosetpair s2)
-  | E.SetdiffPair(s1,s2) -> NE.DiffPair (tosetpair s1, tosetpair s2)
-  | _ -> raise(NotAnIntExpression(E.setpair_to_str s))
 
 
 and integer_to_int_integer (t:E.integer) : NE.integer =
@@ -116,7 +104,6 @@ and atom_to_int_atom (a:E.atom) : NE.atom =
   let totid = tid_to_int_tid in
   let toint = integer_to_int_integer in
   let toset = set_to_int_set in
-  let tosetpair = setpair_to_int_setpair in
     match a with
       E.Append _      -> raise(NotAnIntExpression(E.atom_to_str a))
     | E.Reach _       -> raise(NotAnIntExpression(E.atom_to_str a))
@@ -128,11 +115,9 @@ and atom_to_int_atom (a:E.atom) : NE.atom =
     | E.InTh _        -> raise(NotAnIntExpression(E.atom_to_str a))
     | E.SubsetEqTh _  -> raise(NotAnIntExpression(E.atom_to_str a))
     | E.InInt (i,s)   -> NE.In (toint i, toset s)
-    | E.SubsetEqInt (s1,s2) -> NE.Subset (toset s1, toset s2)
+    | E.SubsetEqInt (s1,s2) -> NE.Subset(toset s1, toset s2)
     | E.InElem _      -> raise(NotAnIntExpression(E.atom_to_str a))
     | E.SubsetEqElem _-> raise(NotAnIntExpression(E.atom_to_str a))
-    | E.InPair (i,t,s) -> NE.InPair (toint i, totid t, tosetpair s)
-    | E.SubsetEqPair (s1,s2) -> NE.SubsetPair (tosetpair s1, tosetpair s2)
     | E.Less(x,y)     -> NE.Less(toint x,toint y)
     | E.Greater(x,y)  -> NE.Greater(toint x,toint y)
     | E.LessEq(x,y)   -> NE.LessEq(toint x,toint y)
@@ -231,7 +216,6 @@ and atom_to_expr_atom (a:NE.atom) : E.atom =
   let from_tid = tid_to_expr_tid in
   let from_int = integer_to_expr_integer in
   let from_set = set_to_expr_set in
-  let from_setpair = setpair_to_expr_setpair in
   match a with
       NE.Less(x,y)           -> E.Less        (from_int x,  from_int y)
     | NE.Greater(x,y)        -> E.Greater     (from_int x, from_int y)
@@ -248,8 +232,6 @@ and atom_to_expr_atom (a:NE.atom) : E.atom =
                                                E.SetIntT(from_set y))
     | NE.In(i,s)             -> E.InInt       (from_int i, from_set s)
     | NE.Subset(x,y)         -> E.SubsetEqInt (from_set x, from_set y)
-    | NE.InPair(i,t,s)       -> E.InPair      (from_int i, from_tid t, from_setpair s)
-    | NE.SubsetPair(x,y)     -> E.SubsetEqPair(from_setpair x, from_setpair y)
     | NE.TidEq(x,y)          -> E.Eq          (E.TidT (from_tid x), E.TidT (from_tid y))
     | NE.TidInEq(x,y)        -> E.InEq        (E.TidT (from_tid x), E.TidT (from_tid y))
     | NE.FunEq(x,y)          -> E.Eq          (E.ArrayT (funterm_to_array x),
@@ -273,39 +255,26 @@ and funterm_to_array (x:NE.fun_term) : E.arrays =
   let from_tid  = tid_to_expr_tid in
   let from_int  = integer_to_expr_integer in
   let from_set  = set_to_expr_set in
-  let from_setpair  = setpair_to_expr_setpair in
   match x with
     NE.FunVar v                -> E.VarArray (variable_to_expr_variable v)
   | NE.FunUpd (f,th,NE.IntV i) -> E.ArrayUp (funterm_to_array f, from_tid th,
                                               E.Term (E.IntT (from_int i)))
   | NE.FunUpd (f,th,NE.SetV s) -> E.ArrayUp (funterm_to_array f, from_tid th,
                                               E.Term (E.SetIntT (from_set s)))
-  | NE.FunUpd (f,th,NE.SetPairV s) -> E.ArrayUp (funterm_to_array f, from_tid th,
-                                              E.Term (E.SetPairT (from_setpair s)))
 
 
 and set_to_expr_set (s:NE.set) : E.setint =
+  let from_int = integer_to_expr_integer in
   let from_set = set_to_expr_set in
   match s with
     NE.VarSet v     -> E.VarSetInt (variable_to_expr_variable v)
   | NE.EmptySet     -> E.EmptySetInt
-  | NE.Singl i      -> E.SinglInt (integer_to_expr_integer i)
+  | NE.Singl i      -> E.SinglInt (from_int i)
   | NE.Union(s1,s2) -> E.UnionInt (from_set s1, from_set s2)
   | NE.Intr(s1,s2)  -> E.IntrInt (from_set s1, from_set s2)
   | NE.Diff(s1,s2)  -> E.SetdiffInt (from_set s1, from_set s2)
-
+  | NE.Lower(s,i)   -> E.SetLower (from_set s, from_int i)
     
-and setpair_to_expr_setpair (s:NE.setpair) : E.setpair =
-  let from_setpair = setpair_to_expr_setpair in
-  match s with
-    NE.VarSetPair v     -> E.VarSetPair (variable_to_expr_variable v)
-  | NE.EmptySetPair     -> E.EmptySetPair
-  | NE.SinglPair (i,t)  -> E.SinglPair (integer_to_expr_integer i,
-                                        tid_to_expr_tid t)
-  | NE.UnionPair(s1,s2) -> E.UnionPair (from_setpair s1, from_setpair s2)
-  | NE.IntrPair(s1,s2)  -> E.IntrPair (from_setpair s1, from_setpair s2)
-  | NE.DiffPair(s1,s2)  -> E.SetdiffPair (from_setpair s1, from_setpair s2)
-
 
 and integer_to_expr_integer (t:NE.integer) : E.integer =
   let from_tid = tid_to_expr_tid in
