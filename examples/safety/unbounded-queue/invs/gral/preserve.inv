@@ -6,21 +6,11 @@ invariant [queuePreserve] :
 
    null in region
 /\ tail in region
+/\ tail != null
+/\ region = addr2set(heap, head)
 
-//#region:
-   region = addr2set(heap, head)
-
-
-   (queueLock.lockid = # \/ (queueLock.lockid = j /\ (~ @10(j).)))-> rd(heap, tail).next = null
-   
-
- tail != null
 
 #head_not_null:
    head != null
 
-//#elements:
-//   elements = set2elem(heap, SetDiff(region, {null}))
-
-//   rd(heap, head).data = lowestElem
 

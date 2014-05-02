@@ -11,3 +11,5 @@ invariant [queueNext] :
                        tail != enqueue::n(j))
 /\ @dequeue_point(j). -> dequeue::result(j) = rd(heap, rd(heap, head).next).data
 /\ @n_not_null(j). -> rd(heap, enqueue::n(j)).data = enqueue::e(j)
+/\ (queueLock.lockid = # \/ (queueLock.lockid = j /\ (~ @tail_next_n(j).))) ->
+			rd(heap, tail).next = null
