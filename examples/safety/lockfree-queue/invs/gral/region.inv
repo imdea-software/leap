@@ -1,0 +1,9 @@
+
+vars:
+
+tid j
+
+invariant [queueRegion] :
+
+@last_was_tail(j). -> enqueue::last(j) in region
+/\ (@n_disconnected(j). \/ @next_not_null(j).) -> ~(enqueue::n(j) in region)

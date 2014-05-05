@@ -1,0 +1,9 @@
+
+vars:
+
+tid j
+tid i
+
+invariant [queueDisjoint] :
+
+(@n_created(i). /\ @n_created(j). /\ i != j) -> enqueue::n(i) != enqueue::n(j)
