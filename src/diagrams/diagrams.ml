@@ -33,7 +33,6 @@ module Make (C:Core.S) : S =
                                   (PVD.node_mu pvd n) :: xs
                                 ) (PVD.initial pvd) []) in
       let (theta, voc) = C.theta (E.voc init_mu) in
-      print_endline ("INIT_MU: " ^ (E.formula_to_str init_mu));
       Tactics.create_vc_info [] F.True theta init_mu voc E.NoTid 0
 
 
@@ -106,50 +105,90 @@ module Make (C:Core.S) : S =
       let edges = PVD.edge_list pvd in
       List.fold_left (fun acc_vcs accept ->
         (List.fold_left (fun edge_vcs (n,m,e_info_set) ->
+          if n = "n4" && m = "n2" then begin
+          print_endline "THE EDGE WE ARE LOOKING FOR";
+
           let n_voc = match PVD.node_box pvd n with
                       | None -> free_voc
                       | Some b -> E.ThreadSet.add (PVD.box_param pvd b) free_voc in
           let mu_n = PVD.node_mu pvd n in
-          let mu_m = E.prime (PVD.node_mu pvd n) in
+          let mu_m = match PVD.node_box pvd m with
+                     | Some b -> begin
+                                   let p = PVD.box_param pvd b in
+                                   let subst = E.new_tid_subst [(p, E.prime_tid p)] in
+                                   E.subst_tid subst (E.prime (PVD.node_mu pvd m))
+                                 end
+                     | None -> E.prime (PVD.node_mu pvd m) in
 
-          (PVD.EdgeInfoSet.fold (fun (kind,_) xs ->
+
+          (PVD.EdgeInfoSet.fold (fun (kind,trans) xs ->
             let beta = PVD.beta pvd (n,m,kind) in
+            
+
+
             let voc = E.ThreadSet.union (E.voc_term (fst accept.PVD.delta))
                                         (E.voc_from_list [mu_n;mu_m;beta]) in
-            let n_vcs = ref [] in
-            for line = 1 to (System.lines C.system) do
-              (* Self-consecution *)
-              let self_vcs =
-                E.ThreadSet.fold (fun t ys ->
-                  let self_rho = C.rho System.Concurrent voc line t in
-                  (List.map (fun rho ->
-                    let antecedent = F.conj_list [mu_n; rho; mu_m; beta] in
-                    let consequent = PVD.ranking_function antecedent accept (n,m,kind) in
-                    Tactics.create_vc_info [] F.True antecedent consequent voc t line
-                  ) self_rho) @ ys
-                ) n_voc [] in
-              (* Others-consecution *)
-              let fresh_k = E.gen_fresh_tid voc in
-              let other_rho = C.rho System.Concurrent voc line fresh_k in
-              let tid_diff_conj = Formula.conj_list (E.ThreadSet.fold (fun t ys ->
-                                                      (E.ineq_tid fresh_k t) :: ys
-                                                    ) voc []) in
-              let others_vcs = List.map (fun rho ->
-                                 let antecedent = F.conj_list [mu_n; rho; mu_m; beta] in
-                                 let consequent = PVD.ranking_function antecedent accept (n,m,kind) in
-                                 Tactics.create_vc_info [] tid_diff_conj antecedent
-                                            consequent voc fresh_k line
-                               ) other_rho in
-              n_vcs := self_vcs @ others_vcs @ !n_vcs
-            done;
-            !n_vcs @ xs
-
+            match trans with
+            | PVD.NoLabel ->
+                begin
+                  let n_vcs = ref [] in
+                  for line = 1 to (System.lines C.system) do
+                    (* Self-acceptance *)
+                    let self_vcs =
+                      E.ThreadSet.fold (fun t ys ->
+                        let v_t = match t with
+                                  | E.VarTh v -> v
+                                  | _ -> assert false in
+                        if PVD.NodeIdSet.is_empty (PVD.succesor pvd n line v_t) then begin
+                          let self_rho = C.rho System.Concurrent voc line t in
+                          (List.map (fun rho ->
+                            let antecedent = F.conj_list [mu_n; rho; mu_m; beta] in
+                            let consequent = PVD.ranking_function antecedent accept (n,m,kind) in
+                            Tactics.create_vc_info [] F.True antecedent consequent voc t line
+                          ) self_rho) @ ys
+                        end else ys
+                        ) n_voc [] in
+                    (* Others-acceptance *)
+                    let fresh_k = E.gen_fresh_tid voc in
+                    let other_rho = C.rho System.Concurrent voc line fresh_k in
+                    let tid_diff_conj = Formula.conj_list (E.ThreadSet.fold (fun t ys ->
+                                                            (E.ineq_tid fresh_k t) :: ys
+                                                          ) voc []) in
+                    let others_vcs = List.map (fun rho ->
+                                       let antecedent = F.conj_list [mu_n; rho; mu_m; beta] in
+                                       let consequent = PVD.ranking_function antecedent
+                                                              accept (n,m,kind) in
+                                       Tactics.create_vc_info [] tid_diff_conj antecedent
+                                                  consequent voc fresh_k line
+                                     ) other_rho in
+                    n_vcs := self_vcs @ others_vcs @ !n_vcs
+                  done;
+                  !n_vcs @ xs
+                end
+            | PVD.Label ts ->
+                begin
+                  (List.fold_left (fun ys (line,v) ->
+                    print_endline "ITERATING..";
+                    let t = E.VarTh v in
+                    let rho_list = C.rho System.Concurrent voc line t in
+                    (List.map (fun rho ->
+                      print_endline "THERE IS A RHO...";
+                      let antecedent = F.conj_list [mu_n; rho; mu_m; beta] in
+                      let consequent = PVD.ranking_function antecedent accept (n,m,kind) in
+                      Tactics.create_vc_info [] F.True antecedent consequent voc t line
+                    ) rho_list) @ ys
+                  ) [] ts ) @ xs
+                end
           ) e_info_set []) @ edge_vcs
 
-        ) [] edges)
-        @ acc_vcs
+          end else edge_vcs
+        ) [] edges) @ acc_vcs
       ) [] acceptance_list
 
+
+(*
+
+*)
       
 
 
@@ -192,15 +231,13 @@ module Make (C:Core.S) : S =
 
 
     let gen_vcs (pvd:PVD.t) : pvd_vc_t =
-    let tmp =
+      Printf.printf "ACCEPTANCE VCS: %i\n" (List.length (gen_acceptance pvd));
       {
         initiation = gen_initiation pvd;
         consecution = gen_consecution pvd;
         acceptance = gen_acceptance pvd;
         fairness = gen_fairness pvd;
       }
-    in
-      print_endline (Tactics.vc_info_to_str tmp.initiation); tmp
 
 
     let check_well_defined_supp (supp:PVD.support_t) : unit =
@@ -240,9 +277,9 @@ module Make (C:Core.S) : S =
               | None -> ()
               | Some s -> check_well_defined_supp s in
       let pvd_vcs = gen_vcs pvd in
-      let vc_list = pvd_vcs.initiation ::
-                    pvd_vcs.consecution @
-                    pvd_vcs.acceptance in (*
+      let vc_list = (*pvd_vcs.initiation ::
+                    pvd_vcs.consecution in @ *)
+                    pvd_vcs.acceptance in (*in
                     pvd_vcs.fairness in *)
       let vc_count = ref 1 in
       let show_progress = not (LeapVerbose.is_verbose_enabled()) in

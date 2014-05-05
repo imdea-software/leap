@@ -438,14 +438,16 @@ let new_pvd (name:string)
             (is:node_id_t list)
             (es:edge_t list)
             (acs:(accept_triple_t list * accept_triple_t list * (E.term * wf_op_t)) list) : t =
-  print_endline ("A");
   let (nTbl,bTbl,free_voc_nodes) = check_and_define_nodes ns bs in
-  print_endline ("B");
   let iSet = build_initial nTbl is in
-  print_endline ("C");
-  let (eTbl, nextTbl, tTbl, free_voc_edges) = check_and_define_edges nTbl bTbl es in
+  (* We implicitly add self-loops *)
+  let es' = Hashtbl.fold (fun n info xs ->
+              match info.box with
+              | None -> (n,n,(Any,NoLabel)) :: xs
+              | Some _ -> (n,n,(Pres,NoLabel)) :: xs
+            ) nTbl es in
+  let (eTbl, nextTbl, tTbl, free_voc_edges) = check_and_define_edges nTbl bTbl es' in
   let accept_list = check_acceptance nTbl eTbl acs in
-  print_endline ("D");
   {
     name = name;
     nodes = nTbl;

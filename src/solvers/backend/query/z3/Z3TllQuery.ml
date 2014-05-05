@@ -14,6 +14,8 @@ struct
   module F        = Formula
 
 
+  (* Configuration *)
+  let use_quantifiers : bool ref = ref false
 
   let prog_lines = ref 0
 
@@ -47,6 +49,10 @@ struct
   let loc_s     : string = "Loc"
 
 
+  (* Configuration *)
+  let set_configuration (set_q:bool) : unit =
+    use_quantifiers := set_q
+
   (* Information storage *)
   let sort_map : GM.sort_map_t = GM.new_sort_map()
 
@@ -74,6 +80,20 @@ struct
 
 
 
+  (********************** Auxiliary labeling ***********************)
+  let aa (i:int) : string =
+    addr_prefix ^ (string_of_int i)
+
+
+  let tt (i:int) : string =
+    tid_prefix ^ (string_of_int i)
+
+
+  let ee (i:int) : string =
+    elem_prefix ^ (string_of_int i)
+
+
+
   (************************* Declarations **************************)
 
   (* (define-type address (scalar null aa_1 aa_2 aa_3 aa_4 aa_5))   *)
@@ -89,7 +109,7 @@ struct
 
     B.add_string buf ("(declare-datatypes () ((" ^addr_s^ " null") ;
     for i = 1 to num_addr do
-      B.add_string buf (" " ^ addr_prefix ^ (string_of_int i))
+      B.add_string buf (" " ^ (aa i))
     done ;
     B.add_string buf ")))\n" ;
     (****** NOTE: In case we use integers to represent addresses ******)
@@ -122,7 +142,7 @@ struct
   *)
     B.add_string buf ("(declare-datatypes () ((" ^tid_s^ " NoThread") ;
     for i = 1 to num_tids do
-      B.add_string buf (" " ^ tid_prefix ^ (string_of_int i))
+      B.add_string buf (" " ^ (tt i))
     done ;
     B.add_string buf ")))\n" ;
     B.add_string buf "; I need the line below to prevent an unknown constant error\n";
@@ -139,7 +159,7 @@ struct
   let z3_element_preamble buf num_elems =
     B.add_string buf ("(declare-datatypes () ((" ^ elem_s^ " LowestElem HighestElem") ;
     for i = 1 to num_elems do
-      B.add_string buf (" " ^ elem_prefix ^ (string_of_int i))
+      B.add_string buf (" " ^ (ee i))
     done ;
     B.add_string buf ")))\n"
   (*  B.add_string buf ("(declare-sort " ^elem_s^ ")\n") *)
@@ -455,9 +475,8 @@ struct
   let z3_settoelems_def buf num_addr =
     let str = ref "    (store emptyelem (data (select m null)) (select s null))\n" in
     for i=1 to num_addr do
-      let aa_i = addr_prefix ^ (string_of_int i) in
       str := "  (unionelem\n" ^ !str ^
-             "    (store emptyelem (data (select m " ^aa_i^ ")) (select s " ^aa_i^ ")))\n"
+             "    (store emptyelem (data (select m " ^(aa i)^ ")) (select s " ^(aa i)^ ")))\n"
     done;
     B.add_string buf
     ("(define-fun set2elem ((s " ^set_s^ ") (m " ^heap_s^ ")) " ^setelem_s^
@@ -671,12 +690,12 @@ struct
     B.add_string buf ("(assert (not (lesselem HighestElem HighestElem)))\n");
     B.add_string buf ("(assert (lesselem LowestElem HighestElem))\n");
     for i = 1 to num_elem do
-      let x = elem_prefix ^ (string_of_int i) in
+      let x = ee i  in
       B.add_string buf ("(assert (not (lesselem " ^x^ " " ^x^ ")))\n") ;
       B.add_string buf ("(assert (lesselem LowestElem " ^x^ "))\n");
       B.add_string buf ("(assert (lesselem " ^x^ " HighestElem))\n");
       for j = i+1 to num_elem do
-        let y = elem_prefix ^ (string_of_int j) in
+        let y = ee j in
           B.add_string buf ("(assert (or (lesselem " ^x^ " " ^y^ ") (lesselem " ^y^ " " ^x^ ")))\n")
       done
     done ;
@@ -685,7 +704,7 @@ struct
     (* Transitivity *)
     let name_elem (i:int) = if (i = 0) then "LowestElem"
                             else if (i = num_elem + 1) then "HighestElem"
-                            else elem_prefix ^ (string_of_int i) in
+                            else ee i in
     for i = 0 to (num_elem + 1) do
       for j = 0 to (num_elem + 1) do
         for k = 0 to (num_elem + 1) do
@@ -1559,7 +1578,7 @@ struct
                                else
                                  begin
                                    incr counter;
-                                   addr_prefix ^ (string_of_int (!counter))
+                                   (aa (!counter))
                                   end in
                       let elems_str = List.fold_left (fun str e ->
                                         str ^ (Printf.sprintf "(= %s %s) "
@@ -1625,7 +1644,8 @@ struct
 
 
   let literal_list_to_str (ls:Expr.literal list) : string =
-    let _ = GM.clear_sort_map sort_map in
+    set_configuration true;
+    GM.clear_sort_map sort_map;
     let expr = F.Conj ls in
     let c = SmpTll.cut_off_normalized expr in
     let num_addr = c.SmpTll.num_addrs in
@@ -1656,46 +1676,8 @@ struct
   let formula_to_str (co:Smp.cutoff_strategy_t)
                      (copt:Smp.cutoff_options_t)
                      (phi:Expr.formula) : string =
-
+    set_configuration true;
     let _ = LeapDebug.debug "entering Z3TllQuery.formula_to_str...\n" in
-(*
-    let extra_info_str =
-      match stac with
-      | None -> ""
-      | Some Tactics.Cases ->
-          let (ante,(eq,ineq)) =
-            match phi with
-            | Expr.Not (Expr.Implies (ante,cons)) -> (ante, Expr.get_addrs_eqs ante)
-            | _ -> (phi, ([],[])) in
-
-          let temp_dom = Expr.TermSet.elements
-                          (Expr.termset_of_sort
-                            (Expr.get_termset_from_formula ante) Expr.Addr) in
-
-          (* We also filter primed variables *)
-          let term_dom = List.filter (fun t ->
-                           match t with
-                           | Expr.AddrT (Expr.VarAddr v) -> Expr.V.parameter v <> Expr.V.Shared ||
-                                                            Expr.V.scope v = Expr.V.GlobalScope
-                           | _ -> true
-                         ) temp_dom in
-
-          let assumps = List.map (fun (x,y) -> Partition.Eq (Expr.AddrT x, Expr.AddrT y)) eq @
-                        List.map (fun (x,y) -> Partition.Ineq (Expr.AddrT x, Expr.AddrT y)) ineq in
-          let _ = LeapDebug.debug "Domain: %i\n" (List.length term_dom) in
-          let _ = LeapDebug.debug "Assumptions: %i\n" (List.length assumps) in
-
-          let parts = Partition.gen_partitions term_dom assumps in
-          let _ = if LeapDebug.is_debug_enabled() then
-                    List.iter (fun p ->
-                      LeapDebug.debug "Partitions:\n%s\n"
-                        (Partition.to_str Expr.term_to_str p)
-                    ) parts in
-          let _ = LeapDebug.debug "Number of cases: %i\n" (List.length parts) in
-          let _ = LeapDebug.debug "Computation done!!!\n" in
-            z3_partition_assumptions parts in
-*)
-
     let _ = GM.clear_sort_map sort_map in
     let _ = LeapDebug.debug "Z3TllQuery will compute the cutoff...\n" in
     let max_cut_off = SmpTll.cut_off co copt phi in
@@ -1704,6 +1686,10 @@ struct
     let num_elem    = max_cut_off.SmpTll.num_elems in
     let req_sorts   = Expr.required_sorts phi in
     let req_ops     = Expr.special_ops phi in
+    let phi_var_tbl = if !use_quantifiers then
+                        V.split_by_sort (Expr.get_varset_from_formula phi)
+                      else
+                        Hashtbl.create 1 in
     let formula_str = formula_to_str phi in
     let buf         = B.create 1024
     in
@@ -1713,6 +1699,19 @@ struct
       variables_from_formula_to_z3 buf phi ;
       (* We add extra information if needed *)
 (*      B.add_string buf extra_info_str ; *)
+
+
+        (* Use symmetry over addresses *)
+        if !use_quantifiers then begin
+          let addr_vars = VarSet.elements (V.find_in_table_sort phi_var_tbl 
+          Expr.Addr) in
+          B.add_string buf
+            (Z3Symmetry.symmetry variable_invocation_to_str addrterm_to_str aa
+                          addr_vars [Expr.Null] num_addr)
+        end;
+
+
+
       B.add_string buf ("(push)\n");
       B.add_string buf "(assert\n";
       B.add_string buf formula_str ;

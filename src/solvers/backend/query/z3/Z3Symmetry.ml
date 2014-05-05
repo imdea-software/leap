@@ -6,7 +6,7 @@ let symmetry (fx:'a -> string)
              (xs:'a list)
              (sp_dom:'b list)
              (dom:int) : string =
-  if List.length xs > 0 && (List.length sp_dom > 0 || dom > 0) then begin
+  if List.length xs > 0 && dom > 0 then begin
     let xs_str = List.map fx xs in
     let sp_dom_str = List.map f_spdom sp_dom in
     
