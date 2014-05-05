@@ -1,6 +1,19 @@
-=> queuePreserve
-     { pruning : split-goal
+//=> queuePreserve [
+//    13:queueNext, queueRegion;
+//    15:queueNext, queueRegion;
+//    17:queueNext, queueRegion
+//   ] { pruning : split-goal
+//               | reduce2
+//               |
+//               | simplify-pc
+//     }
+
+=> queueRegion [
+     9:queuePreserve;
+    13:queueDisjoint
+   ] { pruning : split-goal
                | reduce2
                |
                | simplify-pc
      }
+

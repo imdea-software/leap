@@ -9,9 +9,6 @@ global
 
 assume
   region = {head} Union {null} /\
-//  elements = SingleElem (rd(heap,head).data) /\
-  // or orderlist (heap, head, null)
-//  rd(heap, head).data = lowestElem /\
   head = tail /\
   head != null /\
   head->next = null /\
@@ -54,18 +51,27 @@ assume
 
                               begin
                                 n := malloc(e, null, #);
+:n_created[
+:n_disconnected[
                                 while (true) do
                                   last := tail;
+:last_was_tail[
                                   nextptr := last->next;
+:next_follows_last[
                                   if (last = tail) then
                                     if (nextptr = null) then
+:nextptr_is_null[
                                       {
                                         if (last->next = nextptr) then
                                           last->next := n;
                                           comparison := true;
                                         endif
                                       }
+                                          $region := region Union {n};$
+:n_disconnected]
+:comparison_done[
                                       if (comparison) then
+:comparison_holds
                                         {
                                           if (tail = last) then
                                             tail := n;
@@ -73,15 +79,21 @@ assume
                                         }
                                         return ();
                                       endif
+:comparison_done]
+:nextptr_is_null]
                                     else
+:next_not_null
                                       {
                                         if (tail = last) then
                                           tail := nextptr;
                                         endif
                                       }
                                     endif
+:last_was_tail]
                                   endif
+:next_follows_last]
                                 endwhile
+:n_created]
                               end
 
 // ----- REMOVE ----------------------------------------------

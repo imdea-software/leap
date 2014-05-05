@@ -6,15 +6,9 @@ invariant [queuePreserve] :
 
    null in region
 /\ tail in region
-
-//#region:
-   region = addr2set(heap, head)
-
-
-
- tail != null
-
-#head_not_null:
-   head != null
+/\ tail != null
+/\ head != null
+/\ region = addr2set(heap, head)
 
 
+@nextptr_is_null(j). -> enqueue::nextptr(j) = null

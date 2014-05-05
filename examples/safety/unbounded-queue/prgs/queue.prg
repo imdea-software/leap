@@ -10,7 +10,7 @@ global
 
 assume
   region = {head} Union {null} /\
-	head = tail /\
+  head = tail /\
   head != null /\
   head->next = null /\
   queueLock.lockid = # /\
@@ -27,8 +27,8 @@ assume
                                 while (true) do
 :main_e[
                                   choice
-																		// Generate random e
-																		e := havocListElem();
+                                    // Generate random e
+                                    e := havocListElem();
                                     call enqueue(e);
                                   _or_
                                     call dequeue();
@@ -53,7 +53,7 @@ assume
 :locked_enqueue[
                                 n := malloc(e, null, #);
 :n_not_null[
-																tail->next := n
+                                tail->next := n
                                 $
                                   region := region Union {n};
                                   enqueuSet := UnionElem (enqueuSet, SingleElem(e));
