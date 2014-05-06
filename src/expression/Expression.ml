@@ -1645,6 +1645,12 @@ let gen_fresh_tid (set:ThreadSet.t) : tid =
     find 0
 
 
+let gen_fresh_tid_as_var (set:ThreadSet.t) : V.t =
+  match gen_fresh_tid set with
+  | VarTh v -> v
+  | _ -> assert false
+
+
 let rec gen_fresh_tid_set (set:ThreadSet.t) (n:int) : ThreadSet.t =
   match n with
     0 -> ThreadSet.empty

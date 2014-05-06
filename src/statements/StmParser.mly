@@ -75,6 +75,8 @@ let flag_parsingDia : bool ref = ref false
 
 let undefTids : E.V.id list ref = ref []
 
+let cond_stm_list : (E.pc_t list) ref = ref []
+
 
 (* Position and jump management for procedures *)
 let pos : int ref = ref 1
@@ -934,6 +936,36 @@ let lock_pos_to_str (pos:Stm.integer option) : string =
 system :
   GLOBAL global_declarations initial_assumption procedure_list
     {
+      (* Fix conditional jump positions *)
+      List.iter (fun n ->
+        try
+          let (_,stm) = Hashtbl.find pos_st n in
+          match stm with
+          | Stm.StIf(_,Stm.StSeq xs,else_stm,_,_) ->
+              begin
+                let jump_pos = match else_stm with
+                               | None -> (Stm.get_st_info stm).Stm.else_pos
+                               | Some ys -> (Stm.get_last_st_info ys).Stm.next_pos in
+								let last_xs = lastElem xs in
+                match last_xs with
+                | Stm.StWhile _
+                | Stm.StReturn _ -> ()
+                | Stm.StIf (_,Stm.StSeq xs,None,_,_) ->
+                    (Stm.get_st_info(lastElem xs)).Stm.next_pos <- jump_pos
+                | Stm.StIf (_,Stm.StSeq xs,Some ys,_,_) ->
+                    begin
+                      (Stm.get_st_info (lastElem xs)).Stm.next_pos <- jump_pos;
+                      (Stm.get_last_st_info ys).Stm.next_pos <- jump_pos
+                    end
+                | _ -> begin
+												(Stm.get_st_info last_xs).Stm.next_pos <- jump_pos
+                       end
+              end
+          | _ -> ()
+        with Not_found -> ()
+      ) !cond_stm_list;
+
+
       let proc_tbl    = System.new_proc_table_from_list !procedures in
       let assume_cond = $3 in
       (* Update pos_st hashtbl with information about calls and returns *)
@@ -980,6 +1012,7 @@ system :
       let _      = current_proc := "" in
       let ts     = !undefTids in
       let _      = undefTids := [] in
+      let _      = cond_stm_list := [] in
 
       if System.is_proc sys Sys.defMainProcedure then
         (* Check whether the last statement in main is a return() *)
@@ -2033,6 +2066,41 @@ statement:
       let g_code  = $7 in
 
       let (next_p, else_p) =
+        match (then_st, else_st) with
+        | ([], None) -> (n+1, n+1)
+        | ([], Some ys) -> (Stm.get_last_st_pos ys + 1, Stm.get_fst_st_pos ys)
+        | (xs, None) -> begin
+													let last_xs = lastElem xs in
+                          cond_stm_list := n :: (!cond_stm_list);
+(*
+                          (match last_xs with
+                           | Stm.StIf (_,_,Some _,_,_) -> ()
+                           | _ -> (Stm.get_st_info last_xs).Stm.else_pos <-
+                                    (Stm.get_last_st_info last_xs).Stm.else_pos);
+*)
+                          (n+1, (Stm.get_last_st_info last_xs).Stm.else_pos);
+                        end
+        | (xs, Some ys) -> begin
+                             let last_xs = lastElem xs in
+                             cond_stm_list := n :: (!cond_stm_list);
+                             (match last_xs with
+                              | Stm.StIf (_,_,Some _,_,_) -> ()
+                              | _ -> (Stm.get_st_info last_xs).Stm.else_pos <-
+                                        (Stm.get_last_st_info ys).Stm.next_pos);
+                             (n+1, Stm.get_fst_st_pos ys)
+                           end in
+
+      let st_info = { Stm.pos             = n;
+                      Stm.next_pos        = next_p;
+                      Stm.else_pos        = else_p;
+                      Stm.call_pos        = None;
+                      Stm.opt_pos         = [];
+                      Stm.called_from_pos = [];
+                      Stm.return_pos      = []; } in
+      (*
+
+
+      let (next_p, else_p) =
         (match (then_st, else_st) with
            ([], None)    -> (n+1, n+1)
          | ([], Some ys) -> ((Stm.get_last_st_pos ys)+1, n+1)
@@ -2050,6 +2118,8 @@ statement:
                       Stm.opt_pos         = [];
                       Stm.called_from_pos = [];
                       Stm.return_pos      = []; } in
+*)
+
       let st = Stm.StIf (cond, Stm.StSeq then_st, else_st, g_code, Some st_info) in
 
       Hashtbl.replace pos_st n (!current_proc, st);
@@ -2074,7 +2144,12 @@ statement:
                                   begin
                                     match e with
                                     | Some s -> [t;s]
-                                    | None   -> [t]
+                                    | None   -> begin
+                                                  (match info with
+                                                   | None -> ()
+                                                   | Some i -> i.Stm.else_pos <- n);
+                                                  [t]
+                                                end
                                   end
                                | _ -> [lst]
                       in
@@ -2172,7 +2247,7 @@ statement:
       let st = Stm.StReturn (t, g_code, Some st_info) in
       Hashtbl.replace pos_st !pos (!current_proc, st);
       pos := !pos + 1;
-      st
+			st
     }
 
 

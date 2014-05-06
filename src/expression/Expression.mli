@@ -344,6 +344,7 @@ val is_tid_var : tid -> bool
 val gen_tid_list : int -> int -> tid list
 val gen_tid_list_except : int -> int -> tid -> tid list
 val gen_fresh_tid : ThreadSet.t -> tid
+val gen_fresh_tid_as_var : ThreadSet.t -> V.t
 val gen_fresh_tid_set : ThreadSet.t -> int -> ThreadSet.t
 val gen_fresh_var : V.fresh_var_gen_t-> sort -> V.t
 

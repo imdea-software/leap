@@ -29,8 +29,16 @@ module Make (C:Core.S) : S =
 
     (* General Initialization premise *)
     let premise_init (inv:E.formula) : Tactics.vc_info =
-      let (initial_cond, voc) = C.theta (E.voc inv) in
-      Tactics.create_vc_info [] Formula.True initial_cond inv voc E.NoTid 0
+      let inv_voc = E.voc inv in
+      let (new_voc, new_inv) =
+        if E.ThreadSet.is_empty inv_voc then
+          let new_t = E.gen_fresh_tid_as_var inv_voc in
+          let new_i = E.param (E.V.Local new_t) inv in
+          (E.ThreadSet.singleton (E.VarTh new_t), new_i)
+        else
+          (inv_voc, inv) in
+      let (initial_cond, voc) = C.theta new_voc in
+      Tactics.create_vc_info [] Formula.True initial_cond new_inv voc E.NoTid 0
 
 
 
