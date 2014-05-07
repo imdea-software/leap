@@ -50,6 +50,7 @@ assume
                                 bool comparison := false
 
                               begin
+:not_compared[
                                 n := malloc(e, null, #);
 :n_created[
 :n_disconnected[
@@ -67,7 +68,11 @@ assume
                                           comparison := true;
                                         endif
                                       }
-                                          $region := region Union {n};$
+                                      $ if (last->next = nextptr) then
+                                          region := region Union {n};
+                                        endif$
+:not_compared]
+:next_follows_last]
 :n_disconnected]
 :comparison_done[
                                       if (comparison) then
@@ -91,9 +96,9 @@ assume
                                     endif
 :last_was_tail]
                                   endif
-:next_follows_last]
                                 endwhile
 :n_created]
+                                return();
                               end
 
 // ----- REMOVE ----------------------------------------------

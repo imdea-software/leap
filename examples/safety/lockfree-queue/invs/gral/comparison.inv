@@ -1,0 +1,8 @@
+
+vars:
+
+tid j
+
+invariant [queueComparison] :
+
+(@not_compared(j). \/ @next_not_null(j).) -> ~ .enqueue::comparison(j).

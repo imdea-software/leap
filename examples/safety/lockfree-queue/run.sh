@@ -1,7 +1,7 @@
 #Configure path to Leap
 LEAP=leap
 
-OPTIONS="--show_file_info --focus $1 -v 1 -sm -yices+z3 -dp tll -co pruning"
+OPTIONS="--focus $1 --show_file_info -v 1 -sm -yices+z3 -dp tll -co pruning"
 
 PRG=prgs/queue.prg
 INV_FOLDER=invs/gral

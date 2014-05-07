@@ -759,6 +759,41 @@ let lock_pos_to_str (pos:Stm.integer option) : string =
   | Some i -> sprintf "[%s]" (Stm.term_to_str (Stm.IntT i))
 
 
+let fix_conditional_jumps () : unit =
+  List.iter (fun n ->
+    try
+      let (_,stm) = Hashtbl.find pos_st n in
+      match stm with
+      | Stm.StIf(_,Stm.StSeq xs,else_stm,_,_) ->
+          begin
+            let jump_pos = match else_stm with
+                           | None -> (Stm.get_st_info stm).Stm.else_pos
+                           | Some ys -> (Stm.get_last_st_info ys).Stm.next_pos in
+            let last_xs = lastElem xs in
+            match last_xs with
+            | Stm.StWhile _
+            | Stm.StReturn _ -> ()
+            | Stm.StIf (_,Stm.StSeq xs,None,_,_) ->
+                begin
+                  (Stm.get_st_info last_xs).Stm.else_pos <- jump_pos
+                end
+            | Stm.StIf (_,Stm.StSeq xs,Some ys,_,_) ->
+                begin
+                  (match (lastElem xs) with
+                   | Stm.StIf _ -> ()
+                   | _ -> (Stm.get_st_info (lastElem xs)).Stm.next_pos <- jump_pos
+                  );
+                  (Stm.get_last_st_info ys).Stm.next_pos <- jump_pos
+                end
+            | _ -> begin
+                    (Stm.get_st_info last_xs).Stm.next_pos <- jump_pos
+                   end
+          end
+      | _ -> ()
+    with Not_found -> ()
+  ) !cond_stm_list
+
+
 
 
 %}
@@ -937,34 +972,7 @@ system :
   GLOBAL global_declarations initial_assumption procedure_list
     {
       (* Fix conditional jump positions *)
-      List.iter (fun n ->
-        try
-          let (_,stm) = Hashtbl.find pos_st n in
-          match stm with
-          | Stm.StIf(_,Stm.StSeq xs,else_stm,_,_) ->
-              begin
-                let jump_pos = match else_stm with
-                               | None -> (Stm.get_st_info stm).Stm.else_pos
-                               | Some ys -> (Stm.get_last_st_info ys).Stm.next_pos in
-								let last_xs = lastElem xs in
-                match last_xs with
-                | Stm.StWhile _
-                | Stm.StReturn _ -> ()
-                | Stm.StIf (_,Stm.StSeq xs,None,_,_) ->
-                    (Stm.get_st_info(lastElem xs)).Stm.next_pos <- jump_pos
-                | Stm.StIf (_,Stm.StSeq xs,Some ys,_,_) ->
-                    begin
-                      (Stm.get_st_info (lastElem xs)).Stm.next_pos <- jump_pos;
-                      (Stm.get_last_st_info ys).Stm.next_pos <- jump_pos
-                    end
-                | _ -> begin
-												(Stm.get_st_info last_xs).Stm.next_pos <- jump_pos
-                       end
-              end
-          | _ -> ()
-        with Not_found -> ()
-      ) !cond_stm_list;
-
+      fix_conditional_jumps();
 
       let proc_tbl    = System.new_proc_table_from_list !procedures in
       let assume_cond = $3 in
@@ -2070,7 +2078,7 @@ statement:
         | ([], None) -> (n+1, n+1)
         | ([], Some ys) -> (Stm.get_last_st_pos ys + 1, Stm.get_fst_st_pos ys)
         | (xs, None) -> begin
-													let last_xs = lastElem xs in
+                          let last_xs = lastElem xs in
                           cond_stm_list := n :: (!cond_stm_list);
 (*
                           (match last_xs with
@@ -2247,7 +2255,7 @@ statement:
       let st = Stm.StReturn (t, g_code, Some st_info) in
       Hashtbl.replace pos_st !pos (!current_proc, st);
       pos := !pos + 1;
-			st
+      st
     }
 
 

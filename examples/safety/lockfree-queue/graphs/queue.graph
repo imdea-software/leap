@@ -2,18 +2,44 @@
 //    13:queueNext, queueRegion;
 //    15:queueNext, queueRegion;
 //    17:queueNext, queueRegion
-//   ] { pruning : split-goal
+//   ] { union : split-goal
 //               | reduce2
 //               |
 //               | simplify-pc
 //     }
 
-=> queueRegion [
-     9:queuePreserve;
-    13:queueDisjoint
-   ] { pruning : split-goal
+//=> queueRegion [
+//     9:queuePreserve;
+//    10:queuePreserve;
+//    13:queuePreserve, queueDisjoint, queueComparison
+//   ] { union : split-goal
+//               | reduce2
+//               |
+//               | simplify-pc
+//     }
+
+
+//=> queueDisjoint
+//     { union : split-goal
+//               | reduce2
+//               |
+//               | simplify-pc
+//     }
+
+
+=> queueNext [
+    13:queueRegion
+   ] { union : split-goal
                | reduce2
                |
                | simplify-pc
      }
+
+
+//=> queueComparison
+//     { union : split-goal
+//               | reduce2
+//               |
+//               | simplify-pc
+//     }
 

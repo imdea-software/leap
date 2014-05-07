@@ -1104,6 +1104,26 @@ literal :
       | E.VarT v -> Formula.Atom(E.BoolVar v)
       | _           -> raise(Boolean_var_expected $2)
     }
+  | DOT IDENT DOUBLECOLON IDENT th_param DOT
+    {
+      let p = get_name $2 in
+      let proc_name = E.V.Scope p in
+      let id = get_name $4 in
+      let th = $5 in
+
+      check_is_procedure p;
+      check_var_belongs_to_procedure id p;
+      let proc_info = System.get_proc_by_name !Symtbl.sys p in
+      let iVars     = System.proc_info_get_input proc_info in
+      let lVars     = System.proc_info_get_local proc_info in
+      let k = if System.mem_var iVars id then
+                System.find_var_kind iVars id
+              else
+                System.find_var_kind lVars id
+              in
+      let v = E.build_var id E.Bool false th proc_name ~nature:k in
+      Formula.Atom(E.BoolVar v)
+    }
 
 
 

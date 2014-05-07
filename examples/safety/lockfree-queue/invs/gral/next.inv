@@ -7,7 +7,8 @@ invariant [queueNext] :
    @nextptr_is_null(j). -> enqueue::nextptr(j) = null
 /\ @next_not_null(j). -> enqueue::nextptr(j) != null
 /\ @n_created(j). -> enqueue::n(j) != null
-/\ @n_disconnected(j). -> rd(heap, enqueue::n(j)).next = null
-/\ @next_follows_last(j). -> rd(heap, enqueue::last(j)).next = enqueue::nextptr(j)
-/\ @comparison_done(j). -> (.enqueue::comparison. -> rd(heap, enqueue::last(j)).next = enqueue::n(j))
-/\ @comparison_holds(j). -> .enqueue::comparison.
+/\ (@n_disconnected(j). \/
+    @next_not_null(j). \/
+    (@comparison_done(j). /\ ~.enqueue::comparison(j).)) ->
+      rd(heap, enqueue::n(j)).next = null
+/\ @comparison_holds(j). -> .enqueue::comparison(j).
