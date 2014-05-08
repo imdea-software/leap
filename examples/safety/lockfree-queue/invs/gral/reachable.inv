@@ -5,7 +5,7 @@ tid j
 
 invariant [queueReach] :
 
-@enqueue_last_was_tail(j). -> tail in addr2set(heap, enqueue::last(j))
+   @enqueue_last_was_tail(j). -> tail in addr2set(heap, enqueue::last(j))
+/\ @dequeue_last_was_tail(j). -> tail in addr2set(heap, dequeue::last(j))
+/\ @dequeue_last_was_tail(j). -> dequeue::last(j) in addr2set(heap, dequeue::first(j))
 
-   (@not_compared(j). \/ @enqueue_next_not_null(j).) -> ~ .enqueue::comparison(j).
-/\ @comparison_holds(j). -> .enqueue::comparison(j).

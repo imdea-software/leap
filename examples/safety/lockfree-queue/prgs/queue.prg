@@ -121,6 +121,7 @@ assume
 :next_follows_first[
                                   if (first = head) then
                                     if (first = last) then
+:first_is_last[
                                       if (nextptr = null) then
                                         return (lowestElem);
                                       endif
@@ -130,6 +131,7 @@ assume
                                           tail := nextptr;
                                         endif
                                       }
+:first_is_last]
                                     else
 :first_not_last[
                                       value := nextptr->data;
