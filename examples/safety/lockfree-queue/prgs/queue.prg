@@ -56,7 +56,7 @@ assume
 :n_disconnected[
                                 while (true) do
                                   last := tail;
-:last_was_tail[
+:enqueue_last_was_tail[
                                   nextptr := last->next;
 :next_follows_last[
                                   if (last = tail) then
@@ -72,7 +72,6 @@ assume
                                           region := region Union {n};
                                         endif$
 :not_compared]
-:next_follows_last]
 :n_disconnected]
 :comparison_done[
                                       if (comparison) then
@@ -87,15 +86,16 @@ assume
 :comparison_done]
 :nextptr_is_null]
                                     else
-:next_not_null
+:enqueue_next_not_null
                                       {
                                         if (tail = last) then
                                           tail := nextptr;
                                         endif
                                       }
                                     endif
-:last_was_tail]
                                   endif
+:next_follows_last]
+:enqueue_last_was_tail]
                                 endwhile
 :n_created]
                                 return();
@@ -114,19 +114,24 @@ assume
                               begin
                                 while (true) do
                                   first := head;
+:dequeue_first_was_head[
                                   last := tail;
+:dequeue_last_was_tail[
                                   nextptr := first->next;
+:next_follows_first[
                                   if (first = head) then
                                     if (first = last) then
                                       if (nextptr = null) then
                                         return (lowestElem);
                                       endif
+:dequeue_next_not_null
                                       {
                                         if (tail = last) then
                                           tail := nextptr;
                                         endif
                                       }
                                     else
+:first_not_last[
                                       value := nextptr->data;
                                       {
                                         if (head = first) then
@@ -134,11 +139,19 @@ assume
                                           comparison := true;
                                         endif
                                       }
+                                      $ if (head = first) then
+                                          region := region SetDiff {first};
+                                        endif$
+:first_not_last]
                                       if (comparison) then
                                         return (value);
                                       endif
                                     endif
                                   endif
+:next_follows_first]
                                 endwhile
+:dequeue_first_was_head]
+:dequeue_last_was_tail]
+                                skip;
                               end
                             

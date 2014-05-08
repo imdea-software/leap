@@ -1,7 +1,9 @@
 //=> queuePreserve [
 //    13:queueNext, queueRegion;
-//    15:queueNext, queueRegion;
-//    17:queueNext, queueRegion
+//    15:queueNext, queueRegion, queueComparison;
+//    17:queueNext, queueRegion, queueReach
+//    27:queueNext, queueRegion;
+//    29:queueNext, queueRegion
 //   ] { union : split-goal
 //               | reduce2
 //               |
@@ -9,9 +11,7 @@
 //     }
 
 //=> queueRegion [
-//     9:queuePreserve;
-//    10:queuePreserve;
-//    13:queuePreserve, queueDisjoint, queueComparison
+//    13:queueDisjoint
 //   ] { union : split-goal
 //               | reduce2
 //               |
@@ -27,13 +27,14 @@
 //     }
 
 
-=> queueNext [
-    13:queueRegion
-   ] { union : split-goal
-               | reduce2
-               |
-               | simplify-pc
-     }
+//=> queueNext [
+//     9:queuePreserve;
+//    13:queuePreserve, queueRegion, queueReach
+//   ] { union : split-goal
+//               | reduce2
+//               |
+//               | simplify-pc
+//     }
 
 
 //=> queueComparison
@@ -43,3 +44,13 @@
 //               | simplify-pc
 //     }
 
+
+=> queueReach [
+    13:queuePreserve, queueNext;
+    15:queueNext, queueRegion;
+    17:queueNext, queueRegion
+   ] { union : split-goal
+               | reduce2
+               |
+               | simplify-pc
+     }

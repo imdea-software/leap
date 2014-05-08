@@ -5,9 +5,18 @@ tid j
 
 invariant [queueRegion] :
 
-   @last_was_tail(j). -> enqueue::last(j) in region
-/\ (@next_follows_last(j). \/ @next_not_null(j).) -> enqueue::nextptr(j) in region
-/\ (@n_disconnected(j). \/ @next_not_null(j).) -> ~(enqueue::n(j) in region)
-/\ (@comparison_done(j). /\ ~ .enqueue::comparison(j).) -> ~enqueue::n(j) in region
-/\ (@comparison_done(j). /\ .enqueue::comparison(j).) -> enqueue::n(j) in region
 
+   (@n_disconnected(j). \/ @enqueue_next_not_null(j).) -> ~(enqueue::n(j) in region)
+/\ (@comparison_done(j). /\ ~ .enqueue::comparison(j).) -> ~enqueue::n(j) in region
+
+
+
+
+//   @enqueue_last_was_tail(j). -> enqueue::last(j) in region
+///\ (@next_follows_last(j). \/ @enqueue_next_not_null(j).) -> enqueue::nextptr(j) in region
+///\ (@comparison_done(j). /\ .enqueue::comparison(j).) -> enqueue::n(j) in region
+
+
+///\ @dequeue_first_was_head(j). -> dequeue::first(j) in region
+///\ @dequeue_last_was_tail(j). -> dequeue::last(j) in region
+///\ @next_follows_first(j). -> dequeue::nextptr(j) in region

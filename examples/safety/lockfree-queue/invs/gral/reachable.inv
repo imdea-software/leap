@@ -3,7 +3,9 @@ vars:
 
 tid j
 
-invariant [queueComparison] :
+invariant [queueReach] :
+
+@enqueue_last_was_tail(j). -> tail in addr2set(heap, enqueue::last(j))
 
    (@not_compared(j). \/ @enqueue_next_not_null(j).) -> ~ .enqueue::comparison(j).
 /\ @comparison_holds(j). -> .enqueue::comparison(j).

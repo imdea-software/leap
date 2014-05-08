@@ -10,5 +10,3 @@ invariant [queuePreserve] :
 /\ head != null
 /\ region = addr2set(heap, head)
 
-
-@nextptr_is_null(j). -> enqueue::nextptr(j) = null

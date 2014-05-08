@@ -5,10 +5,36 @@ tid j
 invariant [queueNext] :
 
    @nextptr_is_null(j). -> enqueue::nextptr(j) = null
-/\ @next_not_null(j). -> enqueue::nextptr(j) != null
-/\ @n_created(j). -> enqueue::n(j) != null
 /\ (@n_disconnected(j). \/
-    @next_not_null(j). \/
+    @enqueue_next_not_null(j). \/
     (@comparison_done(j). /\ ~.enqueue::comparison(j).)) ->
       rd(heap, enqueue::n(j)).next = null
-/\ @comparison_holds(j). -> .enqueue::comparison(j).
+/\ (@enqueue_last_was_tail(j).) ->
+        (enqueue::last(j) in region \/
+         (~ enqueue::last(j) in region /\ rd(heap, enqueue::last(j)).next != null))
+/\ @comparison_done(j). -> rd(heap, enqueue::last(j)).next != null
+/\ @comparison_done(j). ->
+      (.enqueue::comparison(j). -> rd(heap,enqueue::last(j)).next = enqueue::n(j))
+
+
+///\ (@next_follows_last(j). \/ @enqueue_next_not_null(j).) ->
+//      rd(heap, enqueue::last(j)).next = enqueue::nextptr(j)
+/\ @enqueue_next_not_null(j). -> enqueue::nextptr(j) != null
+/\ @next_follows_last(j). -> enqueue::nextptr(j) in addr2set(heap, enqueue::last(j))
+
+
+
+///\ @enqueue_next_not_null(j). -> enqueue::nextptr(j) != null
+///\ @n_created(j). -> enqueue::n(j) != null
+///\ (@n_disconnected(j). \/
+//    @enqueue_next_not_null(j). \/
+//    (@comparison_done(j). /\ ~.enqueue::comparison(j).)) ->
+//      rd(heap, enqueue::n(j)).next = null
+///\ @comparison_holds(j). -> .enqueue::comparison(j).
+
+
+///\ @dequeue_next_not_null(j). -> dequeue::nextptr(j) != null
+///\ @first_not_last(j). -> head != tail
+///\ @first_not_last(j). -> rd(heap, head).next = dequeue::nextptr(j)
+
+///\ @first_not_last(j). -> dequeue::first(j) != null
