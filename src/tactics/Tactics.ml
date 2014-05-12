@@ -974,6 +974,48 @@ let tactic_simplify_pc (imp:implication) : implication =
 
 
 
+(* tactic_simplify_pc_plus: *)
+(* Checks the consequent. If the consequent is an implication whose
+   antecedent is based on a condition over the program counter of a thread,
+   then it simplifies the antecedent of the formula, removing unnecessary
+   assumptions *)
+let tactic_simplify_pc_plus (imp:implication) : implication =
+  (* Apply simplify_pc by default *)
+  let imp = tactic_simplify_pc imp in
+  (* 1. search for facts of the form "pc = k" or "k = pc" in the consequent *)
+  let fact =
+    match imp.conseq with
+    | F.Implies(F.Literal(F.Atom(E.Eq(E.VarT v,E.IntT(E.IntVal k)))), _)
+    | F.Implies(F.Literal(F.Atom(E.Eq(E.IntT(E.IntVal k),E.VarT v))), _)
+    | F.Implies(F.Literal(F.Atom(E.Eq(E.IntT(E.VarInt v),E.IntT(E.IntVal k)))), _)
+    | F.Implies(F.Literal(F.Atom(E.Eq(E.IntT(E.IntVal k),E.IntT(E.VarInt v)))), _) ->
+        if E.is_pc_var v then Some (v,k,k) else None
+    | F.Implies(F.And(F.Literal(F.Atom(E.LessEq(E.IntVal n,E.VarInt v1))),
+                      F.Literal(F.Atom(E.LessEq(E.VarInt v2,E.IntVal m)))),_) ->
+        if v1 = v2 && E.is_pc_var v1 then Some (v1,n,m) else None
+    | _ -> None in
+  (* 2. if there is some fact, then remove useless implications from the antecedent *)
+  match fact with
+  | None -> imp
+  | Some (w,i,j) ->
+      begin
+        let new_ante =
+          F.conj_list
+            ( List.fold_left (fun xs phi ->
+              match phi with
+              | F.Implies(F.Literal(F.Atom(E.Eq(E.VarT v,E.IntT(E.IntVal k)))), _)
+              | F.Implies(F.Literal(F.Atom(E.Eq(E.IntT(E.IntVal k),E.VarT v))), _)
+              | F.Implies(F.Literal(F.Atom(E.Eq(E.IntT(E.VarInt v),E.IntT(E.IntVal k)))), _)
+              | F.Implies(F.Literal(F.Atom(E.Eq(E.IntT(E.IntVal k),E.IntT(E.VarInt v)))), _) ->
+                  if v = w && (k < i || j < k) then xs else phi::xs
+              | F.Implies(F.And(F.Literal(F.Atom(E.LessEq(E.IntVal n,E.VarInt v1))),
+                                F.Literal(F.Atom(E.LessEq(E.VarInt v2,E.IntVal m)))),_) ->
+                  if v1 = v2 && v1 = w && (m < i || j < n) then xs else phi::xs
+              | _ -> phi::xs
+            ) [] (F.split_conj imp.ante)) in
+        { ante = new_ante; conseq = imp.conseq; }
+      end
+
 
 (* eliminate from the antecedent all literals without variables in common
    with the goal *)
@@ -1210,6 +1252,7 @@ let formula_split_tactic_from_string (s:string): formula_split_tactic_t =
 let formula_tactic_from_string (s:string) : formula_tactic_t =
   match s with
   | "simplify-pc"             -> tactic_simplify_pc
+  | "simplify-pc-plus"        -> tactic_simplify_pc_plus
   | "propositional-propagate" -> tactic_propositional_propagate
   | "filter-strict"           -> tactic_filter_vars_nonrec
   | "filter-theory"           -> tactic_filter_theory

@@ -1,14 +1,14 @@
 //=> queuePreserve [
-//		13:queueNext, queueRegion;
-//		15:queueNext, queueRegion, queueComparison;
-//		17:queueNext, queueRegion, queueReach;
-//		27:queueNext;
-//		29:queueNext, queueReach
-//	 ] { union : split-goal
-//							 | reduce2
-//							 |
-//							 | simplify-pc
-//		 }
+//    13:queueNext, queueRegion;
+//    15:queueNext, queueRegion, queueComparison;
+//    17:queueNext, queueRegion, queueReach;
+//    27:queueNext;
+//    29:queueNext, queueReach
+//   ] { union : split-goal
+//               | reduce2
+//               |
+//               | simplify-pc
+//     }
 
 
 //=> queueRegion [
@@ -47,16 +47,16 @@
 
 
 => queueReach [
-		13:queuePreserve, queueNext;
-		15:queueNext, queueRegion;
-		17:queueNext, queueRegion;
-		21:queuePreserve;
-		27:queuePreserve,
-//			 queueNext::next_reachable_from_first,
-			 queueNext::dequeue_next_not_null,
-			 queueNext::first_is_last
-	 ] { union : split-goal
-							 | reduce2
-							 |
-							 | simplify-pc
-		 }
+    13:queuePreserve, queueNext;
+    15:queueNext, queueRegion;
+    17:queueNext, queueRegion;
+    21:queuePreserve;
+    27:queuePreserve,
+//       queueNext,
+       queueNext::dequeue_next_not_null,
+       queueNext::first_is_last
+   ] { union : split-goal
+               | reduce2
+               |
+               | simplify-pc-plus
+     }

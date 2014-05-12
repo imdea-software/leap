@@ -1075,8 +1075,7 @@ struct
     if List.mem Expr.SetTh   req_sorts then z3_setth_preamble buf ;
     if List.mem Expr.SetElem req_sorts then z3_setelem_preamble buf ;
     if List.mem Expr.Path    req_sorts then begin
-                                              z3_path_preamble buf num_addr ;
-                                              z3_ispath_def buf num_addr
+                                              z3_path_preamble buf num_addr
                                             end;
     if List.mem Expr.Unknown req_sorts then z3_unknown_preamble buf ;
     z3_pos_preamble buf
@@ -1125,6 +1124,7 @@ struct
     (* OrderedList *)
     if List.mem Expr.OrderedList req_ops then z3_orderlist_def buf num_addr ;
     (* Path2set *)
+    if List.mem Expr.Path req_sorts then z3_ispath_def buf num_addr;
     if List.mem Expr.Path2Set req_ops then z3_path2set_def buf ;
     (* Sets of Threads *)
     if List.mem Expr.SetTh req_sorts then
