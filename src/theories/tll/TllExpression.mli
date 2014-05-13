@@ -161,6 +161,7 @@ val get_varlist_from_conj : conjunctive_formula -> V.t list
 val get_varlist_of_sort_from_conj : conjunctive_formula -> sort -> V.id list
 val varlist_of_sort : V.t list -> sort -> V.id list
 
+val get_varset_from_literal      : literal -> V.VarSet.t
 val get_varset_from_conj         : conjunctive_formula -> V.VarSet.t
 val get_varset_from_formula      : formula -> V.VarSet.t
 val get_varset_of_sort_from_conj : conjunctive_formula -> sort -> V.VarSet.t

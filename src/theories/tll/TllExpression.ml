@@ -369,6 +369,10 @@ and get_varset_literal (l:literal) : V.VarSet.t =
     | NegAtom a -> get_varset_atom a
 *)
 
+let get_varset_from_literal (l:literal) : V.VarSet.t =
+  Formula.literal_fold varset_fs () l
+
+
 let get_varset_from_conj (cf:conjunctive_formula) : V.VarSet.t =
   Formula.conjunctive_formula_fold varset_fs () cf
 (*

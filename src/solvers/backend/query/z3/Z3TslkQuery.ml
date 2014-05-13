@@ -2210,10 +2210,6 @@ module Make (K : Level.S) : TSLK_QUERY =
       Hashtbl.iter (fun e _ -> B.add_string buf (process_elem e)) elem_tbl
 
 
-    let post_process (buf:B.t) (num_addrs:int) (num_elems:int) (num_tids:int) : unit =
-      Hashtbl.iter (fun e _ -> B.add_string buf (process_elem e)) elem_tbl
-
-
     let literal_list_to_str (use_q:bool) (ls:Expr.literal list) : string =
       clean_lists();
       set_configuration use_q;
