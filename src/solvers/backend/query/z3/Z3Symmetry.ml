@@ -23,6 +23,6 @@ let symmetry (fx:'a -> string)
           (str ^ "  (or " ^ sp_dom_assert ^ !dom_assert ^ ")\n", i+1)
         end else begin (str, i) end
       ) ("",1) xs_str in
-    "(assert (and\n" ^ or_assert ^ "))\n"
+    if or_assert = "" then "" else "(assert (and\n" ^ or_assert ^ "))\n"
   end else
     ""

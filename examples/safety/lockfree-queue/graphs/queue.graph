@@ -1,14 +1,14 @@
-//=> queuePreserve [
-//    13:queueNext, queueRegion;
-//    15:queueNext, queueRegion, queueComparison;
-//    17:queueNext, queueRegion, queueReach;
-//    27:queueNext;
-//    29:queueNext, queueReach
-//   ] { union : split-goal
-//               | reduce2
-//               |
-//               | simplify-pc
-//     }
+=> queuePreserve [
+    13:queueNext, queueRegion;
+    15:queueNext, queueRegion, queueComparison;
+    17:queueNext, queueRegion;
+    27:queueNext;
+    29:queueNext, queueReach
+   ] { union : split-goal
+               | reduce2
+               |
+               | simplify-pc-plus
+     }
 
 
 //=> queueRegion [
@@ -30,11 +30,13 @@
 
 //=> queueNext [
 //     9:queuePreserve;
-//    13:queuePreserve, queueRegion, queueReach
+//    13:queuePreserve, queueReach, queueDisjoint;
+////    13:queuePreserve, queueRegion, queueReach;
+//    22:queuePreserve, queueReach
 //   ] { union : split-goal
 //               | reduce2
 //               |
-//               | simplify-pc
+//               | simplify-pc-plus
 //     }
 
 
@@ -46,17 +48,20 @@
 //     }
 
 
+
 => queueReach [
     13:queuePreserve, queueNext;
-    15:queueNext, queueRegion;
-    17:queueNext, queueRegion;
+    15:queuePreserve,
+       queueComparison,
+       queueNext::n_follows_last;
+    17:queuePreserve,
+       queueNext::next_follows_last;
     21:queuePreserve;
-    27:queuePreserve,
-//       queueNext,
-       queueNext::dequeue_next_not_null,
-       queueNext::first_is_last
+    22:queuePreserve;
+    27:queuePreserve, queueNext
    ] { union : split-goal
                | reduce2
                |
                | simplify-pc-plus
      }
+

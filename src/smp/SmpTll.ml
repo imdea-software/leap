@@ -24,6 +24,16 @@ type union_info = (ASet.t * ASet.t * ASet.t)
 let options : Smp.cutoff_options_t ref = ref (Smp.opt_empty())
 
 
+type polarity_t = Pos | Neg | Both
+
+
+let invert_polarity (p:polarity_t) : polarity_t =
+  match p with
+  | Pos  -> Neg
+  | Neg  -> Pos
+  | Both -> Both
+
+
 (* model_size functions *)
 let model_size_to_str ms =
   "num_elems  = " ^ (string_of_int ms.num_elems)  ^ "\n" ^
@@ -268,41 +278,54 @@ let union_ineq_cutoff (info:union_info) ((x,y):(Expr.term * Expr.term)) : union_
   | VarUpdate _ -> info (* ALE: Not sure if OK *)
 
 
-let union_atom_cutoff (info:union_info) (a:Expr.atom) : union_info =
+let union_atom_cutoff_pol (pol:polarity_t) (info:union_info) (a:Expr.atom) : union_info =
   match a with
-    Append _       -> union_count_addr info a
+    Append _       -> if pol = Pos then info else union_count_addr info a
   | Reach _        -> union_count_addr info a
-  | OrderList _    -> union_count_elem info a
+  | OrderList _    -> if pol = Pos then info else union_count_elem info a
   | In      _      -> info
-  | SubsetEq _     -> union_count_addr info a
+  | SubsetEq _     -> if pol = Pos then info else union_count_addr info a
   | InTh _         -> info
-  | SubsetEqTh _   -> union_count_tid info a
+  | SubsetEqTh _   -> if pol = Pos then info else union_count_tid info a
   | InElem _       -> info
-  | SubsetEqElem _ -> union_count_elem info a
+  | SubsetEqElem _ -> if pol = Pos then info else union_count_elem info a
   | Less _         -> info
   | LessEq _       -> info
   | Greater _      -> info
   | GreaterEq _    -> info
   | LessElem _     -> union_count_elem info a
   | GreaterElem _  -> union_count_elem info a
-  | Eq e           -> union_eq_cutoff info e
-  | InEq e         -> union_ineq_cutoff info e
+  | Eq e           -> if pol = Pos then info else union_eq_cutoff info e
+  | InEq e         -> if pol = Neg then info else union_ineq_cutoff info e
   | BoolVar _      -> info
   | PC _           -> info
   | PCUpdate _     -> info
   | PCRange _      -> info
 
 
-let union_fs = Formula.make_fold
-                 Formula.GenericLiteralFold
-                 union_atom_cutoff
-                 (fun info -> info)
-                 (fun (e1,t1,a1) (e2,t2,a2) -> (ASet.union e1 e2,
-                                                ASet.union t1 t2,
-                                                ASet.union a1 a2))
+
+let union_literal_cutoff_pol (pol:polarity_t) (info:union_info) (l:Expr.literal) : union_info =
+  match l with
+    F.Atom a    -> union_atom_cutoff_pol pol info a
+  | F.NegAtom a -> union_atom_cutoff_pol (invert_polarity pol) info a
+
+
+let rec union_formula_cutoff_pol (pol:polarity_t) (info:union_info) (phi:Expr.formula) : union_info =
+  let apply_cut = union_formula_cutoff_pol in
+  match phi with
+  | F.Literal l       -> union_literal_cutoff_pol pol info l
+  | F.True            -> info
+  | F.False           -> info
+  | F.And (f1,f2)     -> apply_cut pol (apply_cut pol info f1) f2
+  | F.Or (f1,f2)      -> apply_cut pol (apply_cut pol info f1) f2
+  | F.Not f           -> apply_cut (invert_polarity pol) info f
+  | F.Implies (f1,f2) -> apply_cut pol (apply_cut (invert_polarity pol) info f1) f2
+  | F.Iff (f1,f2)     -> apply_cut Both (apply_cut Both info f2) f2
+
 
 let union_formula_cutoff (info:union_info) (phi:Expr.formula) : union_info =
-  Formula.formula_fold union_fs info phi
+  union_formula_cutoff_pol Pos info phi
+
 
 (*
 let union_literal_cutoff (info:union_info) (l:Expr.literal) : union_info =
@@ -332,7 +355,7 @@ let compute_max_cut_off_with_union (phi:formula) : model_size =
   let varelem_num = VarSet.cardinal (V.varset_of_sort vars Elem) in
   let varmem_num  = VarSet.cardinal (V.varset_of_sort vars Mem) in
   let info = union_model_size (union_formula_cutoff new_union_count phi) in
-  let num_addrs = 1 +                         (* null               *)
+  let num_addrs = (* 1 + *)                   (* null (null is already unique) *)
                   varaddr_num +               (* Address variables  *)
 (*                  varaddr_num * varmem_num +  (* Cell next pointers *) *)
                   info.num_addrs              (* Special literals   *) in

@@ -328,7 +328,7 @@ module Make (TSLK : TSLKExpression.S) =
       let info = try_pseudo_dnf_union_formula_cutoff new_union_count phi in
 
       let num_levels = Expr.k in
-      let num_addrs = 1 +                                     (* null               *)
+      let num_addrs = (* 1 + *)                               (* null (is already unique) *)
                       varaddr_num +                           (* Address variables  *)
 (*                      varcell_num * num_levels              + (* Cell next pointers *) *)
 (*                      varaddr_num * varmem_num * num_levels + (* Cell next pointers *) *)

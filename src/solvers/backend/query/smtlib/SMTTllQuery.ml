@@ -1228,7 +1228,7 @@ struct
           s=Expr.Addr || s=Expr.Cell || s=Expr.Path || s=Expr.Set || s=Expr.Mem
         ) req_sorts) then smt_addr_preamble buf num_addr ;
     if (List.exists (fun s ->
-          s=Expr.Tid || s=Expr.Cell || s=Expr.SetTh
+          s=Expr.Tid || s=Expr.Cell || s=Expr.SetTh || s=Expr.Mem
         ) req_sorts) then smt_tid_preamble buf num_tid ;
     if (List.exists (fun s ->
           s=Expr.Elem || s=Expr.Cell || s=Expr.Mem
