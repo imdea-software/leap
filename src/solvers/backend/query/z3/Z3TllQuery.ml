@@ -741,11 +741,13 @@ struct
   (*          (and (= e (data (m aa_2))) (s aa_2))      *)
   (*          (and (= e (data (m aa_3))) (s aa_3))))))  *)
   let z3_settoelems_def buf num_addr =
+(*
     if !use_quantifiers then begin
       B.add_string buf
         ("(define-fun set2elem ((s " ^set_s^ ") (h " ^heap_s^ ") (se " ^setelem_s^ ")) " ^bool_s^ "\n" ^
          "  (forall ((a " ^addr_s^ ")) (= (select s a) (select se (data (select h a))))))\n")
     end else begin
+*)
       let str = ref "    (store emptyelem (data (select m null)) (select s null))\n" in
       for i=1 to num_addr do
         str := "  (unionelem\n" ^ !str ^
@@ -754,7 +756,9 @@ struct
       B.add_string buf
       ("(define-fun set2elem ((s " ^set_s^ ") (m " ^heap_s^ ")) " ^setelem_s^
         "\n" ^ !str ^ ")\n")
+(*
     end
+*)
 
 
 
@@ -1465,7 +1469,8 @@ struct
         ) req_sorts) then z3_element_preamble buf num_elem ;
     if List.mem Expr.Cell req_sorts || List.mem Expr.Mem req_sorts then
       z3_cell_preamble buf ;
-    if List.mem Expr.Mem     req_sorts then z3_heap_preamble buf ;
+    if List.mem Expr.Cell req_sorts || List.mem Expr.Mem req_sorts then
+      z3_heap_preamble buf ;
     if List.mem Expr.Set     req_sorts then z3_set_preamble buf ;
     if List.mem Expr.SetTh   req_sorts then z3_setth_preamble buf ;
     if List.mem Expr.SetElem req_sorts then z3_setelem_preamble buf ;

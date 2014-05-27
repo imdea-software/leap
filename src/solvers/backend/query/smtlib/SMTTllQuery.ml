@@ -1235,7 +1235,8 @@ struct
         ) req_sorts) then smt_element_preamble buf num_elem ;
     if List.mem Expr.Cell req_sorts || List.mem Expr.Mem req_sorts then
       smt_cell_preamble buf ;
-    if List.mem Expr.Mem     req_sorts then smt_heap_preamble buf ;
+    if List.mem Expr.Cell req_sorts || List.mem Expr.Mem req_sorts then
+      smt_heap_preamble buf ;
     if List.mem Expr.Set     req_sorts then smt_set_preamble buf ;
     if List.mem Expr.SetTh   req_sorts then smt_setth_preamble buf ;
     if List.mem Expr.SetElem req_sorts then smt_setelem_preamble buf ;
