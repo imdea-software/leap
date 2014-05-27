@@ -70,6 +70,7 @@ assume
                                       }
                                       $ if (last->next = nextptr) then
                                           region := region Union {n};
+																					enqueuSet := UnionElem (enqueuSet, SingleElem(e));
                                         endif$
 :not_compared]
 :n_disconnected]
@@ -134,7 +135,8 @@ assume
 :first_is_last]
                                     else
 :first_not_last[
-                                      value := nextptr->data;
+																			value := nextptr->data;
+:value_assigned
                                       {
                                         if (head = first) then
                                           head := nextptr;
@@ -143,6 +145,7 @@ assume
                                       }
                                       $ if (head = first) then
                                           region := region SetDiff {first};
+																					dequeueSet := UnionElem (dequeueSet, SingleElem(value));
                                         endif$
 :first_not_last]
                                       if (comparison) then
