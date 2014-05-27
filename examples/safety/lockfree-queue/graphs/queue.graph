@@ -4,7 +4,7 @@
     17:queueNext, queueRegion;
     27:queueNext, queueReach;
     29:queueNext, queuePreserve, queueReach
-   ] { union : split-goal
+   ] { union : 
                | reduce2
                |
                | simplify-pc-plus
@@ -13,7 +13,7 @@
 
 => queueRegion [
     13:queueDisjoint
-   ] { union : split-goal
+   ] { union : 
                | reduce2
                |
                | simplify-pc
@@ -21,7 +21,7 @@
 
 
 => queueDisjoint
-     { union : split-goal
+     { union : 
                | reduce2
                |
                | simplify-pc
@@ -34,7 +34,7 @@
     13:queuePreserve, queueDisjoint, queueComparison;
     22:queuePreserve, queueReach;
     29:queuePreserve, queueReach
-   ] { union : split-goal
+   ] { union : 
                | reduce2
                |
                | simplify-pc-plus
@@ -42,7 +42,7 @@
 
 
 => queueComparison
-     { union : split-goal
+     { union : 
                | reduce2
                |
                | simplify-pc
@@ -60,7 +60,7 @@
     21:queuePreserve;
     22:queuePreserve;
     27:queuePreserve, queueNext
-   ] { union : split-goal
+   ] { union : 
                | reduce2
                |
                | simplify-pc-plus
