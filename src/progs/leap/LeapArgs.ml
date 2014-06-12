@@ -171,11 +171,11 @@ let opts =
         Arg.String inputClosedSys,
         "#th generate vc for a closed system for #th threads");
 *)
-    ("--focus",
+    ("-focus",
         Arg.String focusPos,
         "pc1, pc2,... verifies transitions starting only at the given \
          program positions");
-    ("--ignore",
+    ("-ignore",
         Arg.String ignorePos,
         "pc1, pc2,... ignores the given program transitions. It overrides \
          information loaded with \"focus\".");
@@ -246,19 +246,19 @@ let opts =
     ("-smt",
         Arg.Set use_smt,
         "enables the use of SMT-LIB translation if available");
-    ("--debug",
+    ("-debug",
         Arg.Unit setdebug,
         "debug output information");
-    ("--show",
+    ("-show",
         Arg.Set showFlag,
         "show parsed program");
-    ("--show_file_info",
+    ("-sf",
         Arg.Set Debug._debug_show_tmpfile_info_,
         "shows path of temporary files");
     ("-o",
         Arg.Set_string outFile,
         "\"file\" outputs verification conditions to \"file\"");
-    ("--version",
+    ("-version",
         Arg.Set Version._enable_,
         "show the current version");
 (*

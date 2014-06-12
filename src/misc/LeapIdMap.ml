@@ -16,6 +16,10 @@ let create (n:int) : ('a, 'b) t =
   }
 
 
+let is_empty (idmap:('a,'b)t) : bool =
+  H.length idmap.map = 0 && H.length idmap.rev = 0
+
+
 let clear (idmap:('a,'b)t) : unit =
   let _ = H.clear idmap.map in
   let _ = H.clear idmap.rev

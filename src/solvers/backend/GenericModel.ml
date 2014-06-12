@@ -137,6 +137,13 @@ let new_model () : t =
   }
 
 
+let is_empty_model (m:t) : bool =
+  !(m.id_counter) = 0 &&
+  LeapIdMap.is_empty m.const_map &&
+  Hashtbl.length m.fun_map = 0 &&
+  Hashtbl.length m.values = 0
+
+
 let clear_model (m:t) : unit =
   let _ = m.id_counter := 0 in
   let _ = LeapIdMap.clear m.const_map in

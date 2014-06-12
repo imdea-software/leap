@@ -1097,12 +1097,6 @@ let model_to_str () : string =
 
 
 let print_model () : unit =
-(*
-  FIX THIS
-  if !comp_model && (!tslk_model <> GM.new_model()) then
-    print_endline (model_to_str())
-  else
-*)
     ()
 
 

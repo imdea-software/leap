@@ -1266,10 +1266,8 @@ let rec aux_rho_for_st
         match t_opt with
         (* Return value to process *)
         | Some t ->
-            let _ = printf "Going to process term: %s\n" (Stm.term_to_str t) in
             begin
               let call_pos = i.Stm.called_from_pos in
-              let _ = printf "RETPOS: %s\n" (String.concat ";" $ List.map string_of_int call_pos) in
               let (modif,equiv) =
                 List.fold_left (fun (ms,es) pos ->
                   let call_stm = get_statement_at sys pos in

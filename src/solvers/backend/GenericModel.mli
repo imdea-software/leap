@@ -69,6 +69,10 @@ val new_model : unit -> t
 (** [new_model ()] return a new empty generic model *)
 
 
+val is_empty_model : t -> bool
+(** [is_empty_model m] return true if [m] is empty. Otherwise, false. *)
+
+
 val clear_model : t -> unit
 (** [clear_model m] removes all information within model [m] *)
 

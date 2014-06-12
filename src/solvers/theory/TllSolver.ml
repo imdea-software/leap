@@ -348,7 +348,7 @@ let search_sets_to_str (model:GM.t) (sm:GM.sort_map_t) (s:GM.sort) : string =
       "\nHeap:\n" ^ heap_str
 
   let print_model () : unit =
-    if !comp_model && (Solver.get_model() <> GM.new_model()) then
+    if !comp_model && (not (GM.is_empty_model (Solver.get_model()))) then
       print_endline (model_to_str())
     else
       ()

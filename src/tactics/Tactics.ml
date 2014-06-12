@@ -767,17 +767,11 @@ let reduce_support (info:vc_info) : support_t =
 
 let reduce2_support (info:vc_info) : support_t =
   let voc_to_analyze = E.ThreadSet.union (E.voc info.rho) (E.voc info.goal) in
-  print_endline ("XXX VOC TO ANALIZE: " ^ (String.concat ";" (List.map (E.tid_to_str) (E.ThreadSet.elements voc_to_analyze))));
 (*
   let voc_to_analyze = GenSet.to_list (GenSet.from_list (E.ThreadSet.elements (E.voc info.rho) @ E.ThreadSet.elements (E.voc info.goal))) in
 *)
-  print_endline ("XXX IF FULL SUPPORT: " ^ (String.concat ";" (List.map E.formula_to_str (full_support info))));
-  let aa =
-
   F.cleanup_dups
-    (gen_support (RestrictSubst (E.subst_codomain_in voc_to_analyze)) info) in
-  print_endline ("XXX REDUCE2 SUPPORT: " ^ (String.concat ";" (List.map E.formula_to_str aa)));
-  aa
+    (gen_support (RestrictSubst (E.subst_codomain_in voc_to_analyze)) info)
 
 
 let id_support (info:vc_info) : support_t =
@@ -1151,7 +1145,6 @@ let apply_support_tactic (vcs:vc_info list)
     let vc_cases =
       begin
         if requires_tid_propagation then begin
-          print_endline "XXX: More than one thread";
           let parts = Partition.gen_partitions (E.ThreadSet.elements goal_voc) [] in
           List.map (fun part ->
             let eq_classes = Partition.to_list part in
@@ -1163,27 +1156,16 @@ let apply_support_tactic (vcs:vc_info list)
                                (List.map (fun j -> (j, i)) (List.tl eq_class))
                                ) [] eq_classes in
             let subst = E.new_tid_subst eq_pairs in
-            print_endline (E.subst_to_str subst);
             let subst_goal = E.subst_tid subst vc.goal in
             let tid_eqs = List.map (fun (i,j) -> E.eq_tid i j) eq_pairs in
             let tid_ineqs = build_ineqs eq_classes in
             let new_support = List.map (E.subst_tid subst) (process_supp vc) in
             let new_rho = E.subst_tid subst vc.rho in
-(*
-            print_endline "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
-            print_endline ("XXX SUBST: " ^ (E.subst_to_str subst));
-            print_endline ("XXX ORIGINAL_GOAL: " ^ (E.formula_to_str vc.goal));
-            print_endline ("XXX SUBST_GOAL: " ^ (E.formula_to_str subst_goal));
-            print_endline ("XXX ORIGINAL SUPPORT\n" ^ (List.fold_left (fun str phi -> ("XXX " ^ (E.formula_to_str phi) ^ "\n") ^str) "" vc.original_support));
-            print_endline ("XXX NEW SUPPORT\n" ^ (List.fold_left (fun str phi -> ("XXX " ^ (E.formula_to_str phi) ^ "\n") ^ str) "" new_support));
-            print_endline "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
-*)
             let new_constr = F.And (vc.tid_constraint, F.And(F.conj_list tid_eqs, F.conj_list tid_ineqs)) in
             (dup_vc_info_with_supp_constr_rho_and_goal
                 vc new_support new_constr new_rho subst_goal, new_support)
           ) parts
         end else begin
-          print_endline "XXX: Only one thread";
           [(vc, process_supp vc)]
         end
       end in

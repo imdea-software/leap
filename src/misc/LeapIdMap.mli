@@ -1,6 +1,7 @@
 type ('a,'b) t
 
 val create : int -> ('a,'b) t
+val is_empty : ('a,'b) t -> bool
 val clear : ('a,'b) t -> unit
 val copy : ('a,'b) t -> ('a,'b) t
 
