@@ -1,0 +1,34 @@
+
+vars:
+
+tid j
+tid i
+
+invariant [stackReach] :
+
+
+#n_not_reachable_from_oldTop:
+   (@n_disconnected(j). \/ (@push_compare(j). /\ (~.push::comparison(j).))) ->
+    (~ (push::n(j) in addr2set(heap, pop::oldTop(i))))
+
+
+ (@n_disconnected(j). \/ (@push_compare(j). /\ (~.push::comparison(j).))) ->
+    (~ (push::n(j) in addr2set(heap, top)))
+
+
+/\ (@n_disconnected(j). \/ (@push_compare(j). /\ (~.push::comparison(j).))) ->
+    (~ (push::n(j) in addr2set(heap, pop::newTop(i))))
+
+
+
+// Auxiliary invariants
+   (@n_disconnected(j). \/ (@push_compare(j). /\ (~.push::comparison(j).))) ->
+    (~ (push::n(j) in addr2set(heap, rd(heap, pop::oldTop(i)).next)))
+
+/\ (@n_disconnected(j). \/ (@push_compare(j). /\ (~.push::comparison(j).))) ->
+    (~ (push::n(j) in addr2set(heap, rd(heap, pop::newTop(i)).next)))
+
+/\ (@n_disconnected(j). \/ (@push_compare(j). /\ (~.push::comparison(j).))) ->
+    (~ (push::n(j) in addr2set(heap, rd(heap, top).next)))
+
+

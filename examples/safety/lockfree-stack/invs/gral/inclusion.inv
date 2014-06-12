@@ -1,0 +1,6 @@
+vars:
+
+invariant [stackInclusion] :
+
+pushSet = UnionElem(set2elem(heap, SetDiff(region, {null})),popSet)
+

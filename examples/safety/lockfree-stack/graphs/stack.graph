@@ -1,0 +1,66 @@
+=> stackPreserve [
+    10:stackRegion;
+    11:stackNext;
+    21:stackNext
+   ] { union :
+             | reduce2
+             |
+             | simplify-pc
+     }
+
+=> stackDisjoint
+     { union : split-goal
+             | reduce2
+             |
+             | simplify-pc
+     }
+
+
+=> stackRegion [
+    11:stackDisjoint
+   ] { union :
+             | reduce2
+             |
+             | simplify-pc
+     }
+
+
+=> stackNext [
+    10:stackDisjoint, stackReach
+   ] { union :
+             | reduce2
+             |
+             | simplify-pc
+     }
+
+
+=> stackReach [
+    7:stackPreserve {union : split-goal | reduce2 | | simplify-pc filter-strict};
+    10: {union : | reduce2 | | simplify-pc};
+    11:stackNext, stackDisjoint;
+    19:stackPreserve
+   ] { union :
+             | reduce2
+             |
+             | simplify-pc
+     }
+
+
+=> stackInclusion [
+    11:stackNext, stackValues;
+    21:stackPreserve, stackNext, stackValues
+   ] { union :
+             | reduce2
+             |
+             | simplify-pc
+     }
+
+
+=> stackValues
+     { union :
+             | reduce2
+             |
+             | simplify-pc
+     }
+
+

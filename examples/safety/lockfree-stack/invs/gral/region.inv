@@ -1,0 +1,10 @@
+
+vars:
+
+tid j
+
+invariant [stackRegion] :
+
+   @n_disconnected(j). -> ~(push::n(j) in region)
+/\ @push_compare(j). -> (~ .push::comparison(j). -> ~ (push::n(j) in region))
+

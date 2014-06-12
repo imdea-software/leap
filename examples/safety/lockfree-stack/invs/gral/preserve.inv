@@ -1,0 +1,16 @@
+vars:
+
+tid j
+
+invariant [stackPreserve] :
+
+   null in region
+/\ top in region
+/\ region = addr2set(heap, top)
+
+
+
+
+
+
+
