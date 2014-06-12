@@ -125,6 +125,10 @@ val find_var_kind : var_table_t -> Expression.V.id -> Expression.var_nature
 val get_var_id_list : var_table_t -> Expression.V.id list
 val get_variable_list : var_table_t -> Expression.V.t list
 val get_var_list : var_table_t -> string option -> Expression.V.t list
+val get_var_list_of_sort : var_table_t ->
+                           Expression.sort ->
+                           string option ->
+                           Expression.V.t list
 val clear_table : var_table_t -> unit
 val filter_table : var_table_t ->  Expression.V.id list -> unit
 val num_of_vars : var_table_t -> int

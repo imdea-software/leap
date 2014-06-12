@@ -118,7 +118,7 @@ module Make (SLK : TSLKExpression.S) =
         | E.Intr (s1,s2)        -> E.Intr (norm_set s1, norm_set s2)
         | E.Setdiff (s1,s2)     -> E.Setdiff (norm_set s1, norm_set s2)
         | E.PathToSet p         -> E.PathToSet (norm_path p)
-        | E.AddrToSet _         -> raise(UnsupportedTSLKExpr(E.set_to_str s))
+        | E.AddrToSet (m,a)     -> E.AddrToSetAt (norm_mem m, norm_addr a, E.IntVal 0)
         | E.AddrToSetAt (m,a,i) -> E.AddrToSetAt (norm_mem m, norm_addr a, norm_int i)
         | E.SetArrayRd _        -> raise(UnsupportedTSLKExpr(E.set_to_str s))
 
@@ -282,7 +282,8 @@ module Make (SLK : TSLKExpression.S) =
       and norm_atom (a:E.atom) : E.atom =
         match a with
         | E.Append (p1,p2,p3)     -> E.Append (norm_path p1, norm_path p2, norm_path p3)
-        | E.Reach _               -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
+        | E.Reach (m,a1,a2,p)     -> E.ReachAt (norm_mem m, norm_addr a1, norm_addr a2,
+                                          E.IntVal 0, norm_path p)
         | E.ReachAt (m,a1,a2,i,p) -> E.ReachAt (norm_mem m, norm_addr a1, norm_addr a2,
                                           norm_int i, norm_path p)
         | E.OrderList (m,a1,a2)   -> E.OrderList (norm_mem m, norm_addr a1, norm_addr a2)
@@ -541,7 +542,9 @@ module Make (SLK : TSLKExpression.S) =
       | E.Intr (s1,s2)        -> SLK.Intr (to_set s1, to_set s2)
       | E.Setdiff (s1,s2)     -> SLK.Setdiff (to_set s1, to_set s2)
       | E.PathToSet p         -> SLK.PathToSet (path_to_tslk_path p)
-      | E.AddrToSet _         -> raise(UnsupportedTSLKExpr(E.set_to_str s))
+      | E.AddrToSet   (m,a)   -> SLK.AddrToSet (mem_to_tslk_mem m,
+                                                    addr_to_tslk_addr a,
+                                                    SLK.LevelVal 0)
       | E.AddrToSetAt (m,a,l) -> SLK.AddrToSet (mem_to_tslk_mem m,
                                                     addr_to_tslk_addr a,
                                                     int_to_tslk_level l)
@@ -729,7 +732,7 @@ module Make (SLK : TSLKExpression.S) =
       let term    = term_to_tslk_term       in
       match a with
         E.Append (p1,p2,p3)    -> SLK.Append (path p1,path p2,path p3)
-      | E.Reach _              -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
+      | E.Reach (m,a1,a2,p)    -> SLK.Reach (mem m, addr a1, addr a2, SLK.LevelVal 0, path p)
       | E.ReachAt (m,a1,a2,l,p)-> SLK.Reach (mem m, addr a1, addr a2, integ l, path p)
       | E.OrderList(m,a1,a2)   -> SLK.OrderList (mem m, addr a1, addr a2)
       | E.Skiplist _           -> raise(UnsupportedTSLKExpr(E.atom_to_str a))

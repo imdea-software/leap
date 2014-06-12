@@ -1,7 +1,5 @@
 vars:
 
-tid j
-
 invariant [queueInclusion] :
 
 enqueuSet = UnionElem(set2elem(heap, SetDiff(region, Union ({head},{null}))),dequeueSet)

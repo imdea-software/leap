@@ -27,6 +27,8 @@ type solved_proof_obligation_t =
     result : Result.info_t;
   }
 
+
+
 module GenOptions :
   sig
 
@@ -90,10 +92,11 @@ module type S =
 
     val report_vcs : Tactics.vc_info list -> unit
 
-    val decl_tag : Tag.f_tag option -> Expression.formula -> unit
+    val decl_tag : Tag.f_tag option -> Expression.formula -> System.var_table_t -> unit
     val is_def_tag : Tag.f_tag -> bool
     val read_tag : Tag.f_tag -> Expression.formula
     val read_tags_and_group_by_file : Tag.f_tag list -> Expression.formula list
+    val read_tag_info : Tag.f_tag -> Tag.f_info
 
     val system : System.t
 
@@ -128,13 +131,15 @@ module Make (Opt:module type of GenOptions) : S =
     let tags_num () : int = Tag.tag_table_size tags
 
 
-    let decl_tag (t : Tag.f_tag option) (phi : E.formula) : unit =
+    let decl_tag (t : Tag.f_tag option)
+                 (phi : E.formula)
+                 (vTbl:System.var_table_t) : unit =
       match t with
       | None -> ()
       | Some tag -> if Tag.tag_table_mem tags tag
           then
             raise(Tag.Duplicated_tag(Tag.tag_id tag))
-          else Tag.tag_table_add tags tag phi Tag.new_info
+          else Tag.tag_table_add tags tag phi (Tag.new_info vTbl)
 
 
     let read_tag (t : Tag.f_tag) : E.formula =
@@ -155,6 +160,13 @@ module Make (Opt:module type of GenOptions) : S =
       Hashtbl.fold (fun _ phi_list xs ->
         (Formula.conj_list phi_list) :: xs
       ) supp_tbl []
+
+
+    let read_tag_info (t : Tag.f_tag) : Tag.f_info =
+      if Tag.tag_table_mem tags t then
+        Tag.tag_table_get_info tags t
+      else
+        raise(Tag.Undefined_tag(Tag.tag_id t))
 
 
 (*    let rad_supp_tags (ts : Tag.f_tag list) : E.formula list = *)
@@ -178,8 +190,8 @@ module Make (Opt:module type of GenOptions) : S =
         let (phiVars, tag, phi_decls) = Parser.open_and_parse i
                                           (Eparser.invariant Elexer.norm) in
         let phi = Formula.conj_list (List.map snd phi_decls) in
-        List.iter (fun (subtag,subphi) -> decl_tag subtag subphi) phi_decls;
-        decl_tag tag phi
+        List.iter (fun (subtag,subphi) -> decl_tag subtag subphi phiVars) phi_decls;
+        decl_tag tag phi phiVars
       ) inv_files
 
 

@@ -23,7 +23,6 @@ module GenOptions :
     val default_cutoff : Smp.cutoff_strategy_t
     val use_quantifiers : bool
     val output_vcs : bool
-
   end
 
 module type S =
@@ -43,10 +42,11 @@ module type S =
 
     val report_vcs : Tactics.vc_info list -> unit
 
-    val decl_tag : Tag.f_tag option -> Expression.formula -> unit
+    val decl_tag : Tag.f_tag option -> Expression.formula -> System.var_table_t -> unit
     val is_def_tag : Tag.f_tag -> bool
     val read_tag : Tag.f_tag -> Expression.formula
     val read_tags_and_group_by_file : Tag.f_tag list -> Expression.formula list
+    val read_tag_info : Tag.f_tag -> Tag.f_info
 
     val system : System.t
 

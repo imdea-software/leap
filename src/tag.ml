@@ -11,7 +11,7 @@ type f_tag =
   }
 
 (* formula properties or extra information *)
-type f_info = unit
+type f_info = {params : System.var_table_t;}
 
 
 (* mapping table for tags *)
@@ -33,7 +33,12 @@ let new_tag (mst:string) (sub:string) : f_tag =
   { master = mst; subtag = sub; }
 
 
-let new_info : f_info = ()
+let new_info (vTbl:System.var_table_t) : f_info =
+  {params = vTbl;}
+
+
+let info_params (info:f_info) : System.var_table_t =
+  info.params
 
 
 (* returns the string identifying a tag *)

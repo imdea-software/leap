@@ -96,35 +96,20 @@ let vc_info_to_implication (info:vc_info) (sup:support_t): implication =
   let pc_updates : (E.V.t, E.V.t) Hashtbl.t = Hashtbl.create 4 in
   let var_updates : (E.V.t, E.ThreadSet.t) Hashtbl.t = Hashtbl.create 4 in
 
-
   E.ThreadSet.iter (fun i -> Hashtbl.add pc_updates (build_pc false i) (build_pc true i)) goal_voc;
   List.iter (fun phi ->
     match phi with
     | F.Or (F.Literal (F.Atom (E.PCUpdate (_,i))), _)
     | F.Literal (F.Atom (E.PCUpdate (_,i))) ->
         Hashtbl.remove pc_updates (build_pc false i)
-(*
-           -> begin
-                  match F.to_disj_list phi with
-                  | F.Literal (F.Atom (E.PCUpdate (_,i)))::_ ->
-                      Hashtbl.remove pc_updates (build_pc false i)
-                  | _ -> ()
-                end
-*)
     | F.Literal (F.Atom (E.Eq (E.ArrayT (E.VarArray v), E.ArrayT (E.ArrayUp (_,i,_))))) ->
         begin
           try
             Hashtbl.replace var_updates v (E.ThreadSet.remove i (Hashtbl.find var_updates v))
-(*
-            let old_set = Hashtbl.find var_updates v in
-            let new_set = E.ThreadSet.filter (fun j -> j<>i) old_set in
-            Hashtbl.replace var_updates v new_set
-*)
           with _ -> Hashtbl.add var_updates v (E.ThreadSet.remove i goal_voc)
         end
     | _ -> ()
   ) (F.to_conj_list info.rho);
-
   let pc_pres = E.V.new_subst () in
   Hashtbl.iter (fun v v' -> E.V.add_subst pc_pres v' v) pc_updates;
   let var_pres = E.V.new_subst () in
@@ -134,48 +119,18 @@ let vc_info_to_implication (info:vc_info) (sup:support_t): implication =
                              (E.V.set_param (E.V.unprime v') (E.V.Local i))
     ) (E.voc_to_vars tids)
   ) var_updates;
-
-
-
-(*
-
-  Hashtbl.iter (fun v' tids ->
-    let tids_as_vars = E.V.VarSet.elements (E.voc_to_vars tids) in
-    List.iter (fun i ->
-      E.V.add_subst var_pres (E.V.set_param v' (E.V.Local i))
-                             (E.V.set_param (E.V.unprime v') (E.V.Local i))
-    ) tids_as_vars
-  ) var_updates;
-*)
-(*
-  let var_pres = Hashtbl.fold (fun v' tids xs ->
-                   let tids_as_vars = E.voc_to_vars tids in
-                   (List.map (fun i ->
-                      (E.V.set_param v' (E.V.Local i),
-                       E.V.set_param (E.V.unprime v') (E.V.Local i))
-                    ) tids_as_vars) @ xs
-                 ) var_updates [] in
-*)
   (* This code adds equalities that were implicit when we used arrays to represent local vars *)
-
-
   let the_antecedent =
-    E.to_plain_formula E.PCVars
-      (F.And (F.conj_list sup, F.And (info.tid_constraint, info.rho))) in
-(*      (F.conj_list (sup @ [ info.tid_constraint ] @ [info.rho])) in *)
+    E.to_plain_formula E.PCVars (F.And (F.conj_list sup, F.And (info.tid_constraint, info.rho))) in
+
+  let the_consequent =
+      E.subst_vars pc_pres
+        (E.to_plain_formula E.PCVars
+        (E.subst_vars var_pres (E.prime_modified info.rho info.goal))) in
+  { ante = the_antecedent; conseq = the_consequent; }
 
 
-
-  let the_consequent = E.subst_vars pc_pres
-    (E.to_plain_formula E.PCVars
-      (E.subst_vars var_pres (E.prime_modified info.rho info.goal))) in
-
-
-  { ante = the_antecedent ; conseq = the_consequent }
-
-
-
-let vc_info_to_formula  (info:vc_info) (sup:support_t): E.formula =
+let vc_info_to_formula (info:vc_info) (sup:support_t): E.formula =
   let implication = vc_info_to_implication info sup in
   Formula.Implies (implication.ante, implication.conseq)
 
@@ -322,6 +277,25 @@ let dup_vc_info_with_goal (info:vc_info) (new_goal:E.formula) : vc_info =
     line           = info.line ;
     vocabulary     = info.vocabulary ; (* FIX need recompute *)
   }
+
+
+let dup_vc_info_with_supp_constr_rho_and_goal (info:vc_info)
+                                              (new_support:support_t)
+                                              (new_constr:E.formula)
+                                              (new_rho:E.formula)
+                                              (new_goal:E.formula) : vc_info =
+  {
+    original_support = new_support ;
+    tid_constraint = new_constr;
+    rho            = new_rho ;
+    original_goal  = info.original_goal ;
+    goal           = new_goal ;
+    transition_tid = info.transition_tid ;
+    line           = info.line ;
+    vocabulary     = info.vocabulary ; (* FIX need recompute *)
+  }
+
+
 
 
 
@@ -793,11 +767,17 @@ let reduce_support (info:vc_info) : support_t =
 
 let reduce2_support (info:vc_info) : support_t =
   let voc_to_analyze = E.ThreadSet.union (E.voc info.rho) (E.voc info.goal) in
+  print_endline ("XXX VOC TO ANALIZE: " ^ (String.concat ";" (List.map (E.tid_to_str) (E.ThreadSet.elements voc_to_analyze))));
 (*
   let voc_to_analyze = GenSet.to_list (GenSet.from_list (E.ThreadSet.elements (E.voc info.rho) @ E.ThreadSet.elements (E.voc info.goal))) in
 *)
+  print_endline ("XXX IF FULL SUPPORT: " ^ (String.concat ";" (List.map E.formula_to_str (full_support info))));
+  let aa =
+
   F.cleanup_dups
-    (gen_support (RestrictSubst (E.subst_codomain_in voc_to_analyze)) info)
+    (gen_support (RestrictSubst (E.subst_codomain_in voc_to_analyze)) info) in
+  print_endline ("XXX REDUCE2 SUPPORT: " ^ (String.concat ";" (List.map E.formula_to_str aa)));
+  aa
 
 
 let id_support (info:vc_info) : support_t =
@@ -1143,28 +1123,74 @@ let apply_support_split_tactics (vcs:vc_info list)
                                 (tacs:support_split_tactic_t list)
                                   : vc_info list =
   List.fold_left (fun ps f -> List.flatten (List.map f ps)) vcs tacs
-(*
-  List.fold_left (fun ps f ->
-    
-  ) vcs tacs
-
-
-  List.map (fun vc ->
-    List.fold_left (fun new_vcs f ->
-    ) 
-  ) vcs
-*)
 
 
 let apply_support_tactic (vcs:vc_info list)
                          (tac:support_tactic_t option)
                             : implication list =
-  List.map (fun vc ->
-    let processed_supp = match tac with
-                         | None -> get_unprocessed_support_from_info vc
-                         | Some f -> f vc in
-    vc_info_to_implication vc processed_supp
-  ) vcs
+  let rec build_ineqs (parts:E.tid list list) : E.formula list =
+    match parts with
+    | [] -> []
+    | _::[] -> []
+    | eqc::xs -> begin
+                   let i = List.hd eqc in
+                   (List.map (fun ys -> E.ineq_tid i (List.hd ys)) xs) @ (build_ineqs xs)
+                 end in
+  let process_supp (this_vc:vc_info) : support_t =
+    match tac with
+    | None -> get_unprocessed_support_from_info this_vc
+    | Some f -> f this_vc in
+
+  List.fold_left (fun imps vc ->
+    let goal_voc = E.voc vc.original_goal in
+    let requires_tid_propagation = (E.ThreadSet.cardinal goal_voc) > 1 in
+
+    (* If necessary, from a vc_info we create multiple vc_info following equalities of
+        thread ids parametrizing the goal *)
+
+    let vc_cases =
+      begin
+        if requires_tid_propagation then begin
+          print_endline "XXX: More than one thread";
+          let parts = Partition.gen_partitions (E.ThreadSet.elements goal_voc) [] in
+          List.map (fun part ->
+            let eq_classes = Partition.to_list part in
+            let eq_pairs = List.fold_left (fun xs eq_class ->
+                             if List.mem vc.transition_tid eq_class then
+                               (List.map (fun j -> (j,vc.transition_tid)) eq_class)
+                             else
+                               let i = List.hd eq_class in
+                               (List.map (fun j -> (j, i)) (List.tl eq_class))
+                               ) [] eq_classes in
+            let subst = E.new_tid_subst eq_pairs in
+            print_endline (E.subst_to_str subst);
+            let subst_goal = E.subst_tid subst vc.goal in
+            let tid_eqs = List.map (fun (i,j) -> E.eq_tid i j) eq_pairs in
+            let tid_ineqs = build_ineqs eq_classes in
+            let new_support = List.map (E.subst_tid subst) (process_supp vc) in
+            let new_rho = E.subst_tid subst vc.rho in
+(*
+            print_endline "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+            print_endline ("XXX SUBST: " ^ (E.subst_to_str subst));
+            print_endline ("XXX ORIGINAL_GOAL: " ^ (E.formula_to_str vc.goal));
+            print_endline ("XXX SUBST_GOAL: " ^ (E.formula_to_str subst_goal));
+            print_endline ("XXX ORIGINAL SUPPORT\n" ^ (List.fold_left (fun str phi -> ("XXX " ^ (E.formula_to_str phi) ^ "\n") ^str) "" vc.original_support));
+            print_endline ("XXX NEW SUPPORT\n" ^ (List.fold_left (fun str phi -> ("XXX " ^ (E.formula_to_str phi) ^ "\n") ^ str) "" new_support));
+            print_endline "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+*)
+            let new_constr = F.And (vc.tid_constraint, F.And(F.conj_list tid_eqs, F.conj_list tid_ineqs)) in
+            (dup_vc_info_with_supp_constr_rho_and_goal
+                vc new_support new_constr new_rho subst_goal, new_support)
+          ) parts
+        end else begin
+          print_endline "XXX: Only one thread";
+          [(vc, process_supp vc)]
+        end
+      end in
+    (List.map (fun (vc_case, supp) ->
+      (vc_info_to_implication vc_case supp)
+     ) vc_cases) @ imps
+  ) [] vcs
 
 
 let apply_formula_split_tactics (imps:implication list)

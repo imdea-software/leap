@@ -8,7 +8,8 @@ type tag_table
 module TagSet : Set.S with type elt = f_tag
 
 val new_tag     : string -> string -> f_tag
-val new_info    : f_info
+val new_info    : System.var_table_t -> f_info
+val info_params : f_info -> System.var_table_t
 
 val tag_id    : f_tag -> string
 val master_id : f_tag -> string

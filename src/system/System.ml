@@ -199,7 +199,23 @@ let get_var_list (table:var_table_t) (p:string option) : E.V.t list =
             ) table []
   in
     res
-    
+
+
+let get_var_list_of_sort (table:var_table_t)
+                         (s:E.sort)
+                         (p:string option) : E.V.t list =
+  let res = Hashtbl.fold (fun var info xs ->
+              let v_s = var_info_sort info in
+              let scope = match p with
+                          | None -> E.V.GlobalScope
+                          | Some proc -> E.V.Scope proc in
+                if s = v_s then
+                  (E.build_var var v_s false E.V.Shared scope) :: xs
+                else
+                  xs
+            ) table []
+  in
+    res 
 
 
 let clear_table (table:var_table_t) : unit =

@@ -2,14 +2,14 @@
      9:queueNext, queueLock;
     10:queueNext;
     18:queueNext, queueLock
-   ] { pruning : split-goal
+   ] { pruning :
                | reduce2
                |
                | simplify-pc
      }
 
 => queueLock
-     { pruning : split-goal
+     { pruning :
                | reduce2
                |
                | simplify-pc
@@ -20,7 +20,7 @@
      9:queueLock;
     10:queueLock;
     18:queueLock
-   ] { pruning : split-goal
+   ] { pruning :
                | reduce2
                |
                | simplify-pc
@@ -30,7 +30,7 @@
 => queueInclusion [
      9:queuePreserve,queueNext;
     18:queuePreserve,queueNext
-   ] { pruning : split-goal
+   ] { pruning :
                | reduce2
                |
                | simplify-pc

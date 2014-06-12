@@ -150,8 +150,8 @@ struct
       Expr.VarElem v     -> variable_invocation_to_str v
     | Expr.CellData c    -> Printf.sprintf "(data %s)" (cellterm_to_str c)
     | Expr.HavocListElem -> "" (* Don't need a representation for this *)
-    | Expr.LowestElem    -> "LowestElem"
-    | Expr.HighestElem   -> "HighestElem"
+    | Expr.LowestElem    -> "lowestElem"
+    | Expr.HighestElem   -> "highestElem"
 
 
   and tidterm_to_str (th:Expr.tid) : string =
@@ -1465,7 +1465,7 @@ struct
           s=Expr.Tid || s=Expr.Cell || s=Expr.SetTh || s=Expr.Mem
         ) req_sorts) then z3_tid_preamble buf num_tid ;
     if (List.exists (fun s ->
-          s=Expr.Elem || s=Expr.Cell || s=Expr.Mem
+          s=Expr.Elem || s=Expr.Cell || s=Expr.Mem || s=Expr.SetElem
         ) req_sorts) then z3_element_preamble buf num_elem ;
     if List.mem Expr.Cell req_sorts || List.mem Expr.Mem req_sorts then
       z3_cell_preamble buf ;

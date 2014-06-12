@@ -153,7 +153,9 @@ and set_to_tsl_set (s:E.set) : SL.set =
   | E.Intr (s1,s2)        -> SL.Intr (to_set s1, to_set s2)
   | E.Setdiff (s1,s2)     -> SL.Setdiff (to_set s1, to_set s2)
   | E.PathToSet p         -> SL.PathToSet (path_to_tsl_path p)
-  | E.AddrToSet _         -> raise(UnsupportedTslExpr(E.set_to_str s))
+  | E.AddrToSet (m,a)     -> SL.AddrToSet (mem_to_tsl_mem m,
+                                           addr_to_tsl_addr a,
+                                           SL.IntVal 0)
   | E.AddrToSetAt (m,a,l) -> SL.AddrToSet (mem_to_tsl_mem m,
                                                addr_to_tsl_addr a,
                                                int_to_tsl_int l)
@@ -341,7 +343,8 @@ and atom_to_tsl_atom (a:E.atom) : SL.atom =
   let term    = term_to_tsl_term       in
   match a with
     E.Append (p1,p2,p3)        -> SL.Append (path p1,path p2,path p3)
-  | E.Reach _                  -> raise(UnsupportedTslExpr(E.atom_to_str a))
+  | E.Reach (m,a1,a2,p)        -> SL.Reach (mem m, addr a1, addr a2,
+                                                SL.IntVal 0, path p)
   | E.ReachAt (m,a1,a2,l,p)    -> SL.Reach (mem m, addr a1, addr a2,
                                                 integ l, path p)
   | E.OrderList(m,a1,a2)       -> SL.OrderList (mem m, addr a1, addr a2)

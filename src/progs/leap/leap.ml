@@ -121,9 +121,9 @@ let _ =
         (* Check whether undef tids are included in invVars *)
         let _ = System.undeftids_in_formula_decl undefTids invVars in
         (* Declare the tag of the global formula as the big conjunction *)
-        let _ = LeapCore.decl_tag tag inv in
+        let _ = LeapCore.decl_tag tag inv invVars in
         (* Declare the tag of each subformula in the parsed file *)
-        let _ = List.iter (fun (tag, phi) -> LeapCore.decl_tag tag phi) inv_decls in
+        let _ = List.iter (fun (tag, phi) -> LeapCore.decl_tag tag phi invVars) inv_decls in
         let _ = Report.report_inv_cand inv in
 (*        let sys = System.add_global_vars sys invVars in *)
 

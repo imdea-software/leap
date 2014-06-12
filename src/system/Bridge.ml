@@ -63,6 +63,13 @@ let unfold_expression (mInfo:malloc_info)
                       (expr:Stm.expr_t) : (E.expr_t      *
                                            E.term list   *
                                            E.formula list) =
+  let apply_local (vs:E.V.t list) (f:E.tid -> E.V.t -> E.formula) : E.formula list =
+    List.fold_left (fun xs t ->
+      xs @ List.map (fun v ->
+        f t v
+      ) vs
+    ) [] mInfo.tids in
+
 (*  LOG "Entering unfold_expression..." LEVEL TRACE; *)
   let gen_malloc (mkcell:E.cell) :
                  (E.expr_t * E.term list * E.formula list) =
@@ -71,20 +78,16 @@ let unfold_expression (mInfo:malloc_info)
     let a_fresh = E.VarAddr(E.build_global_var fresh_addr_name E.Addr) in
     let diff_fresh a = E.ineq_addr a_fresh (E.VarAddr a) in
     let not_in_set s = F.Not (E.in_form a_fresh (E.VarSet s)) in
+    let not_reach a = F.Not (E.in_form a_fresh (E.AddrToSet(E.heap, (E.VarAddr a)))) in
     let gDiffAddr = List.map diff_fresh mInfo.gAddrs in
     let gNotInSet = List.map not_in_set mInfo.gSets in
-    let lDiffAddr = List.fold_left (fun xs t ->
-                      xs @ List.map (fun v ->
-                             diff_fresh (E.param_variable (E.V.Local (E.voc_to_var t)) v)
-                           ) mInfo.lAddrs
-                    ) [] mInfo.tids in
-    let lNotInSet = List.fold_left (fun xs t ->
-                      xs @ List.map (fun v ->
-                             not_in_set (E.param_variable th_p v)
-                           ) mInfo.lSets
-                    ) [] mInfo.tids in
+    let gNotReach = List.map not_reach mInfo.gAddrs in
+    let lDiffAddr = apply_local mInfo.lAddrs (fun t v -> diff_fresh (E.param_variable (E.V.Local (E.voc_to_var t)) v)) in
+    let lNotInSet = apply_local mInfo.lSets (fun _ v -> not_in_set (E.param_variable th_p v)) in
+    let lNotReach = apply_local mInfo.lAddrs (fun t v -> not_reach (E.param_variable (E.V.Local (E.voc_to_var t)) v)) in
+
     let new_f = F.conj_list $
-                  gDiffAddr @ gNotInSet @ lDiffAddr @ lNotInSet @
+                  gDiffAddr @ gNotInSet @ gNotReach @ lDiffAddr @ lNotInSet @ lNotReach @
                   [
                     E.eq_cell c_fresh mkcell;
                     E.eq_cell (E.CellAt (E.heap, a_fresh)) E.Error;

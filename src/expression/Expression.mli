@@ -486,7 +486,6 @@ val subst_vars : V.subst_t -> formula -> formula
 (* FORMULA MANIPULATION FUNCTIONS *)
 val to_trs : formula -> formula
 
-
 val to_plain_formula : fol_mode_t -> formula -> formula
 
 

@@ -4863,6 +4863,12 @@ and build_pc_var (pr:bool) (th:V.shared_or_local) : V.t =
     build_global_var ("pc" ^ pr_str ^ th_str) Int
 
 
+and build_pc_var_from_tid (pr:bool) (t:tid) : V.t =
+  match t with
+  | VarTh v -> build_pc_var pr (V.Local v)
+  | _ -> raise(Not_tid_var t)
+
+
 and to_plain_term (ops:fol_ops_t) (expr:term) : term =
   match expr with
     VarT(v)           -> VarT       (ops.fol_var v)
@@ -5205,52 +5211,53 @@ and to_plain_ineq (ops:fol_ops_t) ((t1,t2):diseq) : diseq =
 
     
 and to_plain_formula_aux (ops:fol_ops_t) (phi:formula) : formula =
-  match phi with
-  | F.True           -> F.True
-  | F.False          -> F.False
-  | F.And(f1,f2)     -> F.And(to_plain_formula_aux ops f1, to_plain_formula_aux ops f2)
-  | F.Or(f1,f2)      -> F.Or(to_plain_formula_aux ops f1, to_plain_formula_aux ops f2)
-  | F.Not(f)         -> F.Not(to_plain_formula_aux ops f)
-  | F.Implies(f1,f2) -> F.Implies(to_plain_formula_aux ops f1, to_plain_formula_aux ops f2)
-  | F.Iff (f1,f2)    -> F.Iff(to_plain_formula_aux ops f1, to_plain_formula_aux ops f2)
-  | F.Literal l      -> begin
-                        let conv_lit (lit:literal) : formula =
-                          begin
-                            match lit with
-                              (* Update of a local variable of a parametrized system *)
-                            | F.Atom(Eq(v',ArrayT(ArrayUp(arr,t,e))))
-                            | F.Atom(Eq(ArrayT(ArrayUp(arr,t,e)),v'))
-                            | F.NegAtom(InEq(v',ArrayT(ArrayUp(arr,t,e))))
-                            | F.NegAtom(InEq(ArrayT(ArrayUp(arr,t,e)),v')) ->
-                                let new_v' = V.prime (V.set_param (term_to_var v') (V.Local (voc_to_var t))) in
-                                let as_var = to_plain_var (V.set_sort new_v' Bool) in
-                                begin
-                                  match to_plain_expr ops e with
-                                  | Term ter -> let s = term_sort ter in
-                                                let as_term = to_plain_term ops (var_to_term
-                                                                (V.set_sort new_v' s)) in
-                                                eq_term as_term ter
-                                  | Formula F.True -> F.Literal (F.Atom (BoolVar as_var))
-                                  | Formula F.False -> F.Literal (F.NegAtom (BoolVar as_var))
-                                  | Formula phi -> F.Iff (F.Literal (F.Atom (BoolVar as_var )), phi)
-                                end
-                            | _ -> F.Literal(to_plain_literal ops lit)
-                          end in
-                        if ops.fol_pc then begin
-                          match l with
-                          | F.Atom(PCRange(pc1,pc2,th,p)) ->
-                              let pc_var = build_pc_var p (to_plain_shared_or_local ops th) in
-                                F.And (lesseq_form (IntVal pc1) (VarInt pc_var),
-                                       lesseq_form (VarInt pc_var) (IntVal pc2))
-                          | F.NegAtom(PCRange(pc1,pc2,th,p)) ->
-                              let pc_var = build_pc_var p (to_plain_shared_or_local ops th) in
-                                F.Or (less_form (VarInt pc_var) (IntVal pc1),
-                                      less_form (IntVal pc2) (VarInt pc_var))
-                          | _ -> conv_lit l
-                        end else
-                          conv_lit l
-                      end
-
+  let phi_conv =
+    match phi with
+    | F.True           -> F.True
+    | F.False          -> F.False
+    | F.And(f1,f2)     -> F.And(to_plain_formula_aux ops f1, to_plain_formula_aux ops f2)
+    | F.Or(f1,f2)      -> F.Or(to_plain_formula_aux ops f1, to_plain_formula_aux ops f2)
+    | F.Not(f)         -> F.Not(to_plain_formula_aux ops f)
+    | F.Implies(f1,f2) -> F.Implies(to_plain_formula_aux ops f1, to_plain_formula_aux ops f2)
+    | F.Iff (f1,f2)    -> F.Iff(to_plain_formula_aux ops f1, to_plain_formula_aux ops f2)
+    | F.Literal l      -> begin
+                          let conv_lit (lit:literal) : formula =
+                            begin
+                              match lit with
+                                (* Update of a local variable of a parametrized system *)
+                              | F.Atom(Eq(v',ArrayT(ArrayUp(arr,t,e))))
+                              | F.Atom(Eq(ArrayT(ArrayUp(arr,t,e)),v'))
+                              | F.NegAtom(InEq(v',ArrayT(ArrayUp(arr,t,e))))
+                              | F.NegAtom(InEq(ArrayT(ArrayUp(arr,t,e)),v')) ->
+                                  let new_v' = V.prime (V.set_param (term_to_var v') (V.Local (voc_to_var t))) in
+                                  let as_var = to_plain_var (V.set_sort new_v' Bool) in
+                                  begin
+                                    match to_plain_expr ops e with
+                                    | Term ter -> let s = term_sort ter in
+                                                  let as_term = to_plain_term ops (var_to_term
+                                                                  (V.set_sort new_v' s)) in
+                                                  eq_term as_term ter
+                                    | Formula F.True -> F.Literal (F.Atom (BoolVar as_var))
+                                    | Formula F.False -> F.Literal (F.NegAtom (BoolVar as_var))
+                                    | Formula phi -> F.Iff (F.Literal (F.Atom (BoolVar as_var )), phi)
+                                  end
+                              | _ -> F.Literal(to_plain_literal ops lit)
+                            end in
+                          if ops.fol_pc then begin
+                            match l with
+                            | F.Atom(PCRange(pc1,pc2,th,p)) ->
+                                let pc_var = build_pc_var p (to_plain_shared_or_local ops th) in
+                                  F.And (lesseq_form (IntVal pc1) (VarInt pc_var),
+                                         lesseq_form (VarInt pc_var) (IntVal pc2))
+                            | F.NegAtom(PCRange(pc1,pc2,th,p)) ->
+                                let pc_var = build_pc_var p (to_plain_shared_or_local ops th) in
+                                  F.Or (less_form (VarInt pc_var) (IntVal pc1),
+                                        less_form (IntVal pc2) (VarInt pc_var))
+                            | _ -> conv_lit l
+                          end else
+                            conv_lit l
+                        end in
+  phi_conv
 
 
 and to_plain_formula (fol_mode:fol_mode_t) (phi:formula) : formula =
@@ -5595,4 +5602,5 @@ and identical_pc_t (p1:pc_t) (p2:pc_t) : bool =
 
 let gen_fresh_var (gen:V.fresh_var_gen_t) (s:sort) : V.t =
   V.gen_fresh_var sort_to_str {nature = RealVar;} gen s
+
 

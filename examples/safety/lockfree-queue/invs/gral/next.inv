@@ -28,7 +28,7 @@ invariant [queueNext] :
   @next_follows_last(j). -> enqueue::nextptr(j) in addr2set(heap, enqueue::last(j))
 
 
-	@n_created(j). -> rd(heap, enqueue::n(j)).data = enqueue::e(j)
+  @n_created(j). -> rd(heap, enqueue::n(j)).data = enqueue::e(j)
 
 
 #first_is_last:
