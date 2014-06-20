@@ -4599,22 +4599,30 @@ let required_sorts (phi:formula) : sort list =
     | Append (p1,p2,p3)     -> append Bool [req_p p1;req_p p2;req_p p3]
     | Reach (m,a1,a2,p)     -> append Bool [req_m m;req_a a1;req_a a2;req_p p]
     | ReachAt (m,a1,a2,l,p) -> append Bool [req_m m;req_a a1;req_a a2;req_i l;req_p p]
+    | OrderList (m,a1,a2)   -> append Bool [req_m m;req_a a1;req_a a2]
+    | Skiplist(m,s,l,a1,a2,se) -> append Bool [req_m m;req_s s;req_a a1;req_a a2;req_se se]
     | In (a,s)              -> append Bool [req_a a;req_s s]
     | SubsetEq (s1,s2)      -> append Bool [req_s s1;req_s s2]
     | InTh (t,s)            -> append Bool [req_t t;req_st s]
     | SubsetEqTh (s1,s2)    -> append Bool [req_st s1;req_st s2]
     | InInt (i,s)           -> append Bool [req_i i;req_si s]
     | SubsetEqInt (s1,s2)   -> append Bool [req_si s1;req_si s2]
+    | InElem(e,se)          -> append Bool [req_e e;req_se se]
+    | SubsetEqElem (se1,se2)-> append Bool [req_se se1;req_se se2]
     | Less (i1,i2)          -> append Bool [req_i i1;req_i i2]
     | Greater (i1,i2)       -> append Bool [req_i i1;req_i i2]
     | LessEq (i1,i2)        -> append Bool [req_i i1;req_i i2]
     | GreaterEq (i1,i2)     -> append Bool [req_i i1;req_i i2]
     | LessTid (t1,t2)       -> append Bool [req_t t1;req_t t2]
+    | LessElem (e1,e2)      -> append Bool [req_e e1;req_e e2]
+    | GreaterElem (e1,e2)   -> append Bool [req_e e1;req_e e2]
     | Eq (t1,t2)            -> union (req_term t1) (req_term t2)
     | InEq (t1,t2)          -> union (req_term t1) (req_term t2)
     | BoolVar _             -> single Bool
     | BoolArrayRd (a,t)     -> append Bool [req_arr a; req_t t]
-    | _                     -> empty
+    | PC _
+    | PCUpdate _
+    | PCRange _             -> empty
 
   and req_m (m:mem) : SortSet.t =
     match m with

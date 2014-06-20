@@ -1069,17 +1069,12 @@ module Make (K : Level.S) : TSLK_QUERY =
         find_in_cache (DefIspath (num_addr, !use_quantifiers)) buf
       with Not_found ->
         let tmpbuf = Buffer.create 32 in
-        let str = ref "empty" in
-        for i=0 to num_addr do
-          str := "(setunion \n                            " ^
-                  !str ^ "\n                               (addr_in_path p " ^string_of_int i^ "))"
-        done;
         if !use_quantifiers then begin
           B.add_string tmpbuf
             ("(define-fun addr_in_path ((p " ^path_s^ ") (i RangeAddress)) " ^set_s^ "\n" ^
              "  (ite (and (<= 0 (range_to_int i)) (<= (range_to_int i) (length p)))\n" ^
-             "       (singleton (select (at p) i))\n" ^
-             "       empty))\n");
+             "       (store ((as const " ^set_s^ ") false) (select (at p) i) true)\n" ^
+             "       ((as const " ^set_s^ ") false)))\n");
           B.add_string tmpbuf
             ("(define-fun check_position ((p " ^path_s^ ") (i RangeAddress)) " ^bool_s^ "\n" ^
              "  (ite (< (range_to_int i) (length p))\n" ^
@@ -1093,6 +1088,11 @@ module Make (K : Level.S) : TSLK_QUERY =
              "                                (and (<= 0 (range_to_int (select (where p) a)))\n" ^
              "                                     (<= (range_to_int (select (where p) a)) (length p)))))))\n")
         end else begin
+          let str = ref "empty" in
+          for i=0 to num_addr do
+            str := "(setunion \n                            " ^
+                    !str ^ "\n                               (addr_in_path p " ^string_of_int i^ "))"
+          done;
           B.add_string tmpbuf
             ("(define-fun addr_in_path ((p " ^path_s^ ") (i RangeAddress)) " ^set_s^ "\n" ^
              "  (ite (and (<= 0 i) (<= i (length p)))\n" ^
@@ -1379,12 +1379,11 @@ module Make (K : Level.S) : TSLK_QUERY =
         find_in_cache (DefNextiter num_addr) buf
       with Not_found ->
         let tmpbuf = Buffer.create 32 in
-        if (num_addr >= 2) then
-          B.add_string  tmpbuf
-            ("(define-fun next0 ((h " ^heap_s^ ") (a " ^addr_s^ ") (l " ^level_s^ ")) " ^addr_s^ " a)\n");
-          B.add_string  tmpbuf
-            ("(define-fun next1 ((h " ^heap_s^ ") (a " ^addr_s^ ") (l " ^level_s^ ")) " ^addr_s^ "\n" ^
-             "  (select (next (select h a)) l))\n");
+        B.add_string  tmpbuf
+          ("(define-fun next0 ((h " ^heap_s^ ") (a " ^addr_s^ ") (l " ^level_s^ ")) " ^addr_s^ " a)\n");
+        B.add_string  tmpbuf
+          ("(define-fun next1 ((h " ^heap_s^ ") (a " ^addr_s^ ") (l " ^level_s^ ")) " ^addr_s^ "\n" ^
+           "  (select (next (select h a)) l))\n");
         for i=2 to num_addr do
           B.add_string tmpbuf
             ("(define-fun next"^ (string_of_int i) ^" ((h " ^heap_s^ ") (a " ^addr_s^ ") (l " ^level_s^ ")) " ^addr_s^ "\n" ^
@@ -1961,7 +1960,9 @@ module Make (K : Level.S) : TSLK_QUERY =
           z3_nextn_def buf heaps
         end;
       (* Iterations over next *)
-      if List.mem Expr.Addr2Set req_ops || List.mem Expr.OrderedList req_ops then
+      if List.mem Expr.Addr2Set req_ops
+          || List.mem Expr.OrderedList req_ops
+          || List.mem Expr.Getp req_ops then
         z3_nextiter_def buf num_addr ;
       (* Address2set *)
       if List.mem Expr.Addr2Set req_ops then

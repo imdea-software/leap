@@ -48,6 +48,7 @@ module GenOptions :
     val default_cutoff : Smp.cutoff_strategy_t
     val use_quantifiers : bool
     val output_vcs : bool
+    val stop_on_invalid : bool
 
   end
 
@@ -71,6 +72,7 @@ module GenOptions :
     let default_cutoff    = Tactics.default_cutoff_algorithm
     let use_quantifiers   = false
     let output_vcs        = false
+    let stop_on_invalid   = false
 
   end
 
@@ -378,7 +380,7 @@ module Make (Opt:module type of GenOptions) : S =
 
       let prog_lines = (System.get_trans_num Opt.sys) in
 
-      let vc_counter = ref 1 in
+      let vc_counter = ref 0 in
       let oblig_counter = ref 0 in
 
       let show_progress = not (LeapVerbose.is_verbose_enabled()) in
@@ -431,7 +433,7 @@ module Make (Opt:module type of GenOptions) : S =
                               | DP.Tsl    -> TslSolver.print_model()
                               | DP.Tslk _ -> Tslk.print_model() in
                       DP.add_dp_calls this_calls_counter Opt.dp calls;
-                      if (not valid) then assert false;
+                      if Opt.stop_on_invalid && (not valid) then assert false;
                       set_status valid
                      end in
                   (* Analyze the formula *)
@@ -464,7 +466,8 @@ module Make (Opt:module type of GenOptions) : S =
           incr vc_counter;
           res
         ) to_analyze in
-      Report.report_summary (!oblig_counter) (List.map (fun r -> r.result) result) calls_counter;
+      Report.report_summary (!oblig_counter)
+        (List.map (fun r -> r.result) result) calls_counter;
       result
 
 

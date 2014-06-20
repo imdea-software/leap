@@ -267,19 +267,19 @@ let report_summary_to_str (oblig_num:int)
     (* The put a table here *)
     let res_info = extract_result_info vc_list in
     "==  Summary  ==============================================================\n" ^
-    "  Proof obligations\n" ^
-    "    Total  : "^string_of_int oblig_num^"\n\n" ^
+    "  Conditions\n" ^
+    "    Total proof obligations       : "^string_of_int oblig_num^"\n\n" ^
     "  Verification time for all verification conditions\n" ^
     "    Fastest    : " ^time_to_str res_info.fastest^ "\n" ^
     "    Slowest    : " ^time_to_str res_info.slowest^ "\n" ^
     "    Average    : " ^time_to_str res_info.average^ "\n" ^
-    "    Total      : " ^time_to_str res_info.total^ "\n\n" ^
+    "    Total DP   : " ^time_to_str res_info.total^ "\n\n" ^
     "  Decision procedures for each VC\n" ^
     "    "^call_tbl_to_str res_info.validity_tbl^"\n" ^
     "  Decision procedures total calls\n" ^
     "    "^call_tbl_to_str call_tbl^"\n\n" ^
     "  Verification conditions\n"^
-    "    Total      : "^string_of_int (List.length vc_list)^"\n" ^
+    "    Total VC   : "^string_of_int (List.length vc_list)^"\n" ^
     "    Unverified : "^string_of_int res_info.num_unverif^"\n" ^
     "    Valid      : "^string_of_int res_info.num_valid^"\n" ^
     "    Invalid    : "^string_of_int res_info.num_invalid^"\n" ^

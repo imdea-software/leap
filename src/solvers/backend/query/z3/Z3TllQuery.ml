@@ -303,6 +303,9 @@ struct
                           List.map path_len_to_str (LeapLib.rangeList 0 (num_addr+1)) in
   *)
 
+    B.add_string buf
+        ( "(declare-const max_address " ^int_s^ ")\n" ^
+          "(assert (= max_address " ^ (string_of_int num_addr) ^ "))\n");
     B.add_string buf ("(declare-datatypes () ((" ^addr_s^ " null") ;
     for i = 1 to num_addr do
       B.add_string buf (" " ^ (aa i))
@@ -346,9 +349,7 @@ struct
       B.add_string buf (!str ^ "\n)")
     end else begin
       B.add_string buf
-        ( "(declare-const max_address " ^int_s^ ")\n" ^
-          "(assert (= max_address " ^ (string_of_int num_addr) ^ "))\n" ^
-          "(define-sort RangeAddress () " ^int_s^ ")\n" ^
+         ("(define-sort RangeAddress () " ^int_s^ ")\n" ^
           "(define-fun is_valid_range_address ((i RangeAddress)) " ^bool_s^
               " (and (<= 0 i) (<= i max_address)))\n")
     (*
@@ -893,17 +894,12 @@ struct
   (*           (check_position p 4)      *)
   (*           (check_position p 5))))   *)
   let z3_ispath_def buf num_addr =
-    let str = ref "empty" in
-    for i=0 to num_addr do
-      str := "(setunion \n                            " ^
-              !str ^ "\n                               (addr_in_path p " ^string_of_int i^ "))"
-    done;
     if !use_quantifiers then begin
       B.add_string buf
         ("(define-fun addr_in_path ((p " ^path_s^ ") (i RangeAddress)) " ^set_s^ "\n" ^
          "  (ite (and (<= 0 (range_to_int i)) (<= (range_to_int i) (length p)))\n" ^
-         "       (singleton (select (at p) i))\n" ^
-         "       empty))\n");
+         "       (store ((as const " ^set_s^ ") false) (select (at p) i) true)\n" ^
+         "       ((as const " ^set_s^ ") false)))\n");
       B.add_string buf
         ("(define-fun check_position ((p " ^path_s^ ") (i RangeAddress)) " ^bool_s^ "\n" ^
          "  (ite (< (range_to_int i) (length p))\n" ^
@@ -917,6 +913,11 @@ struct
          "                                (and (<= 0 (range_to_int (select (where p) a)))\n" ^
          "                                     (<= (range_to_int (select (where p) a)) (length p)))))))\n")
     end else begin
+      let str = ref "empty" in
+      for i=0 to num_addr do
+        str := "(setunion \n                            " ^
+                !str ^ "\n                               (addr_in_path p " ^string_of_int i^ "))"
+      done;
       B.add_string buf
         ("(define-fun addr_in_path ((p " ^path_s^ ") (i RangeAddress)) " ^set_s^ "\n" ^
          "  (ite (and (<= 0 i) (<= i (length p)))\n" ^
@@ -1053,8 +1054,8 @@ struct
          "                    (data (select h (select (at p) (next_range n))))))\n" ^
          "    (=> (<= (range_to_int n) (length p))\n" ^
          "        (iselem (data (select h (select (at p) n)))))))))\n" ^
-         "(define-fun orderlist ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ") (l " ^int_s^ ")) " ^bool_s^ "\n" ^
-         "  (ordered h from to (getp h from to))\n")
+         "(define-fun orderlist ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ")) " ^bool_s^ "\n" ^
+         "  (ordered h from to (getp h from to)))\n")
     end else begin
       let idlast = string_of_int num_addr in
       B.add_string buf
@@ -1122,12 +1123,11 @@ struct
   (*                      (= (next3 from) to)                                    *)
   (*                      (= (next4 from) to))))                                 *)
   let z3_nextiter_def buf num_addr =
-    if (num_addr >= 2) then
-      B.add_string  buf
-        ("(define-fun next0 ((h " ^heap_s^ ") (a " ^addr_s^ ")) " ^addr_s^ " a)\n");
-      B.add_string  buf
-        ("(define-fun next1 ((h " ^heap_s^ ") (a " ^addr_s^ ")) " ^addr_s^ "\n" ^
-         "  (next (select h a)))\n");
+    B.add_string  buf
+      ("(define-fun next0 ((h " ^heap_s^ ") (a " ^addr_s^ ")) " ^addr_s^ " a)\n");
+    B.add_string  buf
+      ("(define-fun next1 ((h " ^heap_s^ ") (a " ^addr_s^ ")) " ^addr_s^ "\n" ^
+       "  (next (select h a)))\n");
     for i=2 to num_addr do
       B.add_string buf
         ("(define-fun next"^ (string_of_int i) ^" ((h " ^heap_s^ ") (a " ^addr_s^ ")) " ^addr_s^ "\n" ^
@@ -1357,7 +1357,7 @@ struct
   (*         (select p1 length)))                 *)
   let z3_path_length_def buf =
     B.add_string buf
-      ("(define-fun path_length ((p " ^path_s^ ")) RangeAddress (length p))\n")
+      ("(define-fun path_length ((p " ^path_s^ ")) PathLength (length p))\n")
 
 
   (* (define at_path::(-> path range_address address) *)
@@ -1638,7 +1638,9 @@ struct
         z3_nextn_def buf heaps
       end;
     (* Iterations over next *)
-    if List.mem Expr.Addr2Set req_ops || List.mem Expr.OrderedList req_ops then
+    if List.mem Expr.Addr2Set req_ops
+        || List.mem Expr.OrderedList req_ops
+        || List.mem Expr.Getp req_ops then
       z3_nextiter_def buf num_addr ;
     (* Address2set *)
     if List.mem Expr.Addr2Set req_ops then
@@ -1646,8 +1648,6 @@ struct
         z3_reachable_def buf num_addr ;
         z3_address2set_def buf num_addr
       end;
-    (* OrderedList *)
-    if List.mem Expr.OrderedList req_ops then z3_orderlist_def buf num_addr ;
     (* Path2set *)
     if List.mem Expr.Path2Set req_ops then z3_path2set_def buf ;
     (* Sets of Threads *)
@@ -1688,6 +1688,8 @@ struct
       end;
     (* Getp *)
     if List.mem Expr.Getp req_ops then z3_getp_def buf num_addr ;
+    (* OrderedList *)
+    if List.mem Expr.OrderedList req_ops then z3_orderlist_def buf num_addr ;
     (* Reachable *)
     if List.mem Expr.Reachable req_ops then z3_reach_def buf
 
@@ -1774,6 +1776,7 @@ struct
     let str_t2 = (term_to_str t2) in
     match (t1,t2) with
       | (Expr.PathT _, _) -> "(eqpath " ^str_t1^ " " ^str_t2^ ")"
+(*
       | (Expr.SetElemT se, Expr.SetElemT (Expr.SetToElems(s,m)))
       | (Expr.SetElemT (Expr.SetToElems(s,m)), Expr.SetElemT se) ->
           if !use_quantifiers then
@@ -1781,7 +1784,9 @@ struct
                           (memterm_to_str m)^ " " ^
                           (setelemterm_to_str se)^ ")"
           else
+
             "(= " ^str_t1^ " " ^str_t2^ ")"
+*)
       | _ -> "(= " ^str_t1^ " " ^str_t2^ ")"
 
 
@@ -1960,6 +1965,7 @@ struct
                       else
                         Hashtbl.create 1 in
     let heaps       = V.find_in_table_sort phi_var_tbl Expr.Mem in
+    let (req_sorts, req_ops) = update_requirements req_sorts req_ops in
     let formula_str = formula_to_str phi in
     let buf         = B.create 1024
     in

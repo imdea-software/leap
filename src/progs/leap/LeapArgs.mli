@@ -50,6 +50,7 @@ val detailedOutFile : string ref
 val num_threads : int ref
 val use_quantifiers : bool ref
 val output_vcs : bool ref
+val stop_on_invalid : bool ref
 
 val assignopt : 'a ref -> bool ref -> 'a -> unit
 val setdebug : unit -> unit

@@ -23,6 +23,7 @@ module GenOptions :
     val default_cutoff : Smp.cutoff_strategy_t
     val use_quantifiers : bool
     val output_vcs : bool
+    val stop_on_invalid : bool
   end
 
 module type S =

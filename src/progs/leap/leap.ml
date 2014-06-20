@@ -97,6 +97,7 @@ let _ =
                            let default_cutoff = !LeapArgs.coType
                            let use_quantifiers = !LeapArgs.use_quantifiers
                            let output_vcs = !LeapArgs.output_vcs
+                           let stop_on_invalid = !LeapArgs.stop_on_invalid
                          end in
 
     (* Instantiate the core *)

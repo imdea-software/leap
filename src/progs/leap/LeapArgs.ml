@@ -53,6 +53,7 @@ let detailedOutFile   = ref ""
 let num_threads       = ref 1
 let use_quantifiers   = ref false
 let output_vcs        = ref false
+let stop_on_invalid   = ref false
 
 let assignopt (valref : 'a ref) (valbool : bool ref) (aval : 'a) : unit =
   valref := aval ; valbool := true
@@ -222,6 +223,9 @@ let opts =
         Arg.Set count_abs,
         "enables counting abstraction");
 *)
+    ("-si",
+        Arg.Set stop_on_invalid,
+        "stops execution as soon as an invalid VC is found");
     ("-sm",
         Arg.Set show_models,
         "shows counter models for non valid VCs");
