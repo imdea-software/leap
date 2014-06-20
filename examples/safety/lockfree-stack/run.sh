@@ -1,3 +1,5 @@
+#!/bin/sh
+
 #Configure path to Leap
 LEAP=leap
 

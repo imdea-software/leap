@@ -37,7 +37,7 @@
           {union : split-goal | reduce2 | | simplify-pc-plus};
     22:queuePreserve, queueReach;
     29:queuePreserve, queueReach
-          {union : split-goal | reduce2 | | simplify-pc}
+          {pruning : split-goal | reduce2 | | simplify-pc-plus}
    ] { union :
              | reduce2
              |
