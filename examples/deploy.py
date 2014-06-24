@@ -28,8 +28,8 @@ Case = namedtuple("Case", 'name content')
 
 # Result keys
 keys = ['R_NAME', 'R_TOTAL_VC', 'R_TOTAL_OBLIG', 'R_FASTEST', 'R_SLOWEST', 'R_AVERAGE',
-				'R_TOTAL_DP', 'R_UNVERIFIED_VC', 'R_VALID_VC', 'R_INVALID_VC', 'R_DP_VC',
-				'R_DP_CALLS', 'R_LEAP_TIME', 'R_TOTAL_ANALYSIS']
+				'R_TOTAL_DP', 'R_UNVERIFIED_VC', 'R_VALID_VC', 'R_INVALID_VC', 'R_ORIG_DP_VC',
+				'R_DP_VC', 'R_DP_CALLS', 'R_LEAP_TIME', 'R_TOTAL_ANALYSIS']
 
 
 def key_to_str(key):
@@ -43,6 +43,7 @@ def key_to_str(key):
 	if key == 'R_UNVERIFIED_VC'		: return ('"Total number of unverified VCs"')
 	if key == 'R_VALID_VC'				: return ('"Total number of valid VCs"')
 	if key == 'R_INVALID_VC'			: return ('"Total number of invalid VCs"')
+	if key == 'R_ORIG_DP_VC'			: return ('"Total number of original VCs verified with each DP"')
 	if key == 'R_DP_VC'						: return ('"Total number of VCs verified with each DP"')
 	if key == 'R_DP_CALLS'				: return ('"Total number of calls performed to each DP"')
 	if key == 'R_LEAP_TIME'				: return ('"Total analysis time employed by Leap without DP"')
@@ -202,6 +203,7 @@ def parse_dps(line):
 
 def run_script(script,k,ex,case_name):
 	summary_started = False
+	orig_dp_vc = False
 	dp_vc = False
 	dp_calls = False
 	results = [('R_NAME', '{}_{}_{}'.format(k,ex,case_name))]
@@ -216,10 +218,13 @@ def run_script(script,k,ex,case_name):
 		out.write (line)
 		summary_started = summary_started or 'Summary' in line
 		if summary_started:
+			if orig_dp_vc:
+				results.append(('R_ORIG_DP_VC',parse_dps(line)))
 			if dp_vc:
 				results.append(('R_DP_VC',parse_dps(line)))
 			if dp_calls:
 				results.append(('R_DP_CALLS',parse_dps(line)))
+			orig_dp_vc = False
 			dp_vc = False
 			dp_calls = False
 			parse_result_line (line, results, 'R_TOTAL_OBLIG', 'Total proof obligations')
@@ -232,6 +237,8 @@ def run_script(script,k,ex,case_name):
 			parse_result_line (line, results, 'R_UNVERIFIED_VC', 'Unverified')
 			parse_result_line (line, results, 'R_VALID_VC', 'Valid')
 			parse_result_line (line, results, 'R_INVALID_VC', 'Invalid')
+			if 'Decision procedures for each original VC' in line:
+				orig_dp_vc = True
 			if 'Decision procedures for each VC' in line:
 				dp_vc = True
 			if 'Decision procedures total calls' in line:
@@ -250,16 +257,16 @@ def run_script(script,k,ex,case_name):
 
 # Summary output
 def write_summary_head(out):
-	out.write ('{:<60}{:>8}{:>8}{:>8}{:>8}{:>8}{:>11}{:>11}{:>11}{:>11}{:>11}{:>11} {:<40}{}\n'.format(
+	out.write ('{:<60}{:>8}{:>8}{:>8}{:>8}{:>8}{:>11}{:>11}{:>11}{:>11}{:>11}{:>11}  {:<40}{:<40}{}\n'.format(
 							'Example', 'VCS', 'Oblig', 'Unverif', 'Valid', 'Invalid', 'Fastest',
-							'Slowest', 'Average', 'Total DP', 'Leap', 'Total', 'VC calls', 'Oblig. calls'))
-	out.write ('=' * 248 + '\n')
+							'Slowest', 'Average', 'Total DP', 'Leap', 'Total', 'Orig. VC calls', 'VC calls', 'Oblig. calls'))
+	out.write ('=' * 288 + '\n')
 	out.flush()
 
 
 def write_summary_line(out,results):
 	results_dict = dict(results)
-	out.write ('{:<60}{:>8}{:>8}{:>8}{:>8}{:>8}{:11.2f}{:11.2f}{:11.2f}{:11.2f}{:11.2f}{:11.2f}  {:<40}{}\n'.format(
+	out.write ('{:<60}{:>8}{:>8}{:>8}{:>8}{:>8}{:11.2f}{:11.2f}{:11.2f}{:11.2f}{:11.2f}{:11.2f}  {:<40}{:<40}{}\n'.format(
 				results_dict['R_NAME'],
 				results_dict['R_TOTAL_VC'],
 				results_dict['R_TOTAL_OBLIG'],
@@ -272,6 +279,7 @@ def write_summary_line(out,results):
 				float(results_dict['R_TOTAL_DP']),
 				float(results_dict['R_LEAP_TIME']),
 				float(results_dict['R_TOTAL_ANALYSIS']),
+				'--'.join([dp + ':' + n for (dp,n) in results_dict['R_ORIG_DP_VC']]),
 				'--'.join([dp + ':' + n for (dp,n) in results_dict['R_DP_VC']]),
 				'--'.join([dp + ':' + n for (dp,n) in results_dict['R_DP_CALLS']])))
 	out.flush()
@@ -296,8 +304,9 @@ def read_summary_file(filename):
 									 ('R_TOTAL_DP', values[9].strip()),
 									 ('R_LEAP_TIME', values[10].strip()),
 									 ('R_TOTAL_ANALYSIS', values[11].strip()),
-									 ('R_DP_VC', [v.strip() for v in values[12].split('--')]),
-									 ('R_DP_CALLS', [v.strip() for v in values[13].split('--')])]))
+									 ('R_ORIG_DP_VC', [v.strip() for v in values[12].split('--')]),
+									 ('R_DP_VC', [v.strip() for v in values[13].split('--')]),
+									 ('R_DP_CALLS', [v.strip() for v in values[14].split('--')])]))
 	in_file.close()
 	return info
 
@@ -493,6 +502,7 @@ def test_deployment(verbose):
 								compare_range(case.name, 'R_TOTAL_DP', vals, result, 10.0, 20.0, changes)
 								compare_range(case.name, 'R_LEAP_TIME', vals, result, 10.0, 20.0, changes)
 								compare_range(case.name, 'R_TOTAL_ANALYSIS', vals, result, 10.0, 20.0, changes)
+								compare_list(case.name, 'R_ORIG_DP_VC', 'equal', vals, result, changes)
 								compare_list(case.name, 'R_DP_VC', 'equal', vals, result, changes)
 								compare_list(case.name, 'R_DP_CALLS', 'equal', vals, result, changes)
 					orig_graph_out = open(graph_path, 'w')
@@ -537,8 +547,9 @@ def deploy(examples):
 
 def generate_latex(filename):
 	def read(vals, key):
+		dic = dict([(v.split(':')[0],v.split(':')[1]) for v in vals])
 		try:
-			return (dict(vals)[key])
+			return (dic[key])
 		except:
 			return ('0')
 	file_path = join(current_path,filename)
@@ -547,18 +558,19 @@ def generate_latex(filename):
 	out.seek(0)
 	out.truncate()
 	buf = '\\scriptsize\n'
-	buf = buf + '\\begin{tabular}{|r|l|' + ('r|' * 20) + '}\n\\hline \\\\'
-	buf = buf + ' & Example & \\# VCS & \\# Oblig. & Pos & Num & TLL & TSLK[1] & TSLK[2] & TSLK[3] & TSLK[4] & TSLK[\\_] & TSL & Unverf. & Valid & Invalid & Slowest & Fastest & Average & DP time(s) & Leap (s.) & Total time \\\\ \\hline\n'
+	buf = buf + '\\begin{tabular}{|r|l|' + ('r|' * 29) + '}\n\\hline \\\\'
+	buf = buf + ' & Example & \\# VCS & \\# Oblig. & O. Pos & O. Num & O. TLL & O. TSLK[1] & O. TSLK[2] & O. TSLK[3] & O. TSLK[4] & O. TSLK[\\_] & O. TSL & Pos & Num & TLL & TSLK[1] & TSLK[2] & TSLK[3] & TSLK[4] & TSLK[\\_] & TSL & Unverf. & Valid & Invalid & Slowest & Fastest & Average & DP time(s) & Leap (s.) & Total time \\\\ \\hline\n'
 	n = 1
 	for line in values:
 		info = dict(line[1])
 		vc_calls = info['R_DP_CALLS']
-		buf = buf + ('${:>4}$ & {:<60} ' + ('& ${:>4}$' * 14) + ('& ${:>9}$' * 6) + '\\\\ \\hline\n').format(
+		orig_vc_calls = info['R_ORIG_DP_VC']
+		buf = buf + ('${:>4}$ & {:<60} ' + ('& ${:>4}$' * 23) + ('& ${:>9}$' * 6) + '\\\\ \\hline\n').format(
 							 n,
 							 line[0].replace('_', '\\_'),
 							 info['R_TOTAL_VC'],
 							 info['R_TOTAL_OBLIG'],
-							 read(vc_calls, 'pos'),
+							 read(vc_calls, 'loc'),
 							 read(vc_calls, 'num'),
 							 read(vc_calls, 'tll'),
 							 read(vc_calls, 'tslk[1]'),
@@ -567,6 +579,15 @@ def generate_latex(filename):
 							 read(vc_calls, 'tslk[4]'),
 							 read(vc_calls, 'tslk[_]'),
 							 read(vc_calls, 'tsl'),
+							 read(orig_vc_calls, 'loc'),
+							 read(orig_vc_calls, 'num'),
+							 read(orig_vc_calls, 'tll'),
+							 read(orig_vc_calls, 'tslk[1]'),
+							 read(orig_vc_calls, 'tslk[2]'),
+							 read(orig_vc_calls, 'tslk[3]'),
+							 read(orig_vc_calls, 'tslk[4]'),
+							 read(orig_vc_calls, 'tslk[_]'),
+							 read(orig_vc_calls, 'tsl'),
 							 info['R_UNVERIFIED_VC'],
 							 info['R_VALID_VC'],
 							 info['R_INVALID_VC'],
@@ -590,10 +611,10 @@ def main(argv):
 												 help='the file containing the list of examples to be delivered')
 	parser.add_argument('-latex', metavar='table_file', type=str,
 												help='translates a table of results to latex format')
-	parser.add_argument('-test', action='store_true', default=False,
-												help='runs the examples and compare the results against historic values')
 	parser.add_argument('-clean', action='store_true', default=False,
 												help='deletes all temporary vcs, swap files, testing and deployment folders')
+	parser.add_argument('-test', action='store_true', default=False,
+												help='compares the current state with the historic results')
 	parser.add_argument('-deploy', action='store_true', default=False,
 												help='deploys the examples so they can be published later')
 	parser.add_argument('-verbose', action='store_true', default=False,

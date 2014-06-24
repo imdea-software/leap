@@ -1,7 +1,5 @@
 vars:
 
-tid j
-
 invariant [stackPreserve] :
 
    null in region
