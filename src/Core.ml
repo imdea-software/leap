@@ -388,6 +388,7 @@ module Make (Opt:module type of GenOptions) : S =
 
       let result =
         List.map (fun case ->
+          let orig_id = Tactics.get_original_vc_id case.vc in
           let cutoff = case.proof_info.cutoff in
           let this_calls_counter = DP.new_call_tbl() in
           if LeapVerbose.is_verbose_level_enabled(LeapVerbose._SHORT_INFO) then
@@ -402,10 +403,10 @@ module Make (Opt:module type of GenOptions) : S =
                   let fol_phi = phi_obligation in
                   phi_timer#start;
                   let status =
-                    if Pos.is_valid prog_lines (fst (PE.keep_locations fol_phi)) 
-                      then
-                      (DP.add_dp_calls this_calls_counter DP.Loc 1; Result.Valid DP.Loc)
-                    else begin
+                    if Pos.is_valid prog_lines (fst (PE.keep_locations fol_phi)) then begin
+                      DP.add_dp_calls this_calls_counter DP.Loc 1 ~vc_id:orig_id;
+                      Result.Valid DP.Loc
+                    end else begin
                       let (valid, calls) =
                         match Opt.dp with
                         | DP.NoDP   -> (false, 0)
@@ -432,7 +433,7 @@ module Make (Opt:module type of GenOptions) : S =
                               | DP.Tll    -> Tll.print_model()
                               | DP.Tsl    -> TslSolver.print_model()
                               | DP.Tslk _ -> Tslk.print_model() in
-                      DP.add_dp_calls this_calls_counter Opt.dp calls;
+                      DP.add_dp_calls this_calls_counter Opt.dp calls ~vc_id:orig_id;
                       if Opt.stop_on_invalid && (not valid) then assert false;
                       set_status valid
                      end in

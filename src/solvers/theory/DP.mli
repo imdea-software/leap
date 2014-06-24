@@ -46,9 +46,10 @@ val copy_call_tbl : call_tbl_t -> call_tbl_t
 (** [copy_call_tbl tbl] returns a copy of [tbl] *)
 
 
-val add_dp_calls : call_tbl_t -> t -> int -> unit
-(** [add_dp_calls tbl dp n] adds to table [tbl] the information that decision
-    procedure [dp] has been called [n] times *)
+val add_dp_calls : ?vc_id:int -> call_tbl_t -> t -> int -> unit
+(** [add_dp_calls tbl dp n vc] adds to table [tbl] the information that decision
+    procedure [dp] has been called [n] times to solve verification condition
+    with id [vc] *)
 
 
 val combine_call_table : call_tbl_t -> call_tbl_t -> unit
@@ -60,3 +61,11 @@ val call_tbl_to_list : call_tbl_t -> (t * int) list
 (** [call_tbl_to_list tbl] returns the information stored in [tbl] as
     a list of pairs of decision procedures with the number of times each
     decision procedure was called *)
+
+
+val call_tbl_solving_to_list : call_tbl_t -> (t * int) list
+(** [call_tbl_solving_to_list tbl] returns a list containing the number of
+    original verification conditions solved by each decision procedure. If
+    more than one decision procedure was required, then the most powerful
+    decision procedure is taking into consideration *)
+

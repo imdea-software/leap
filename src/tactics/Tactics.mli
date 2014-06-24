@@ -98,6 +98,7 @@ val get_rho_from_info : vc_info ->   Expression.formula
 val get_goal_from_info : vc_info ->   Expression.formula
 val get_transition_tid_from_info : vc_info ->   Expression.tid
 val get_line_from_info : vc_info ->   Expression.pc_t
+val get_original_vc_id : vc_info -> int
 val get_antecedent : verification_condition ->   Expression.formula
 val get_consequent : verification_condition ->   Expression.formula
 val get_support : verification_condition ->   support_t

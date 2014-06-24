@@ -193,6 +193,12 @@ let call_tbl_to_str (tbl:DP.call_tbl_t) : string =
                       ) (DP.call_tbl_to_list tbl))
 
 
+let solving_tbl_to_str (tbl:DP.call_tbl_t) : string =
+  String.concat ";  " (List.map (fun (dp,i) ->
+                        (DP.to_str dp) ^ " : " ^ (string_of_int i)
+                      ) (DP.call_tbl_solving_to_list tbl))
+
+
 let extract_result_info (info_list:Result.info_t list) : result_info_t =
   let validity_tbl = DP.new_call_tbl() in
   let (num_unverif,num_valid,num_invalid,fastest,slowest,total) =
@@ -274,6 +280,8 @@ let report_summary_to_str (oblig_num:int)
     "    Slowest    : " ^time_to_str res_info.slowest^ "\n" ^
     "    Average    : " ^time_to_str res_info.average^ "\n" ^
     "    Total DP   : " ^time_to_str res_info.total^ "\n\n" ^
+    "  Decision procedures for each original VC\n" ^
+    "    "^solving_tbl_to_str call_tbl^ "\n" ^
     "  Decision procedures for each VC\n" ^
     "    "^call_tbl_to_str res_info.validity_tbl^"\n" ^
     "  Decision procedures total calls\n" ^

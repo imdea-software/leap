@@ -7,6 +7,10 @@ module F = Formula
 
 type polarity = Pos | Neg | Both
 
+type vc_extra_info_t =
+  {
+    orig_vc_id : int
+  }
 
 type support_t = E.formula list
 type vc_info = { 
@@ -20,6 +24,7 @@ type vc_info = {
   transition_tid  : E.tid      ;
   line            : E.pc_t     ;
   vocabulary      : E.ThreadSet.t ; (* MAY GO *)
+  extra_info      : vc_extra_info_t;
 }
 
 
@@ -69,6 +74,8 @@ type gen_supp_op_t =
 (*********************)
 
 let fixed_voc : E.ThreadSet.t ref = ref E.ThreadSet.empty
+
+let unique_vc_id = ref 1
 
 
 (***********************)
@@ -160,6 +167,7 @@ let to_plain_vc_info (fol_mode:E.fol_mode_t) (info:vc_info) : vc_info =
     transition_tid = info.transition_tid;
     line = info.line;
     vocabulary = info.vocabulary;
+    extra_info = info.extra_info;
   }
 
 
@@ -229,6 +237,8 @@ let create_vc_info (supp       : support_t)
                    (vocab      : E.ThreadSet.t)
                    (trans_tid  : E.tid)
                    (line       : E.pc_t) : vc_info =
+  let id = !unique_vc_id in
+  incr unique_vc_id;
     {
       original_support   = supp ;
       tid_constraint     = tid_constr ;
@@ -238,6 +248,7 @@ let create_vc_info (supp       : support_t)
       transition_tid     = trans_tid ;
       line               = line ;
       vocabulary         = vocab ; (* fix: can be computed *)
+      extra_info         = {orig_vc_id = id;} ;
     }
 
 
@@ -263,6 +274,7 @@ let dup_vc_info_with_support (info:vc_info) (new_support:support_t) : vc_info =
     transition_tid   = info.transition_tid ;
     line             = info.line ;
     vocabulary       = info.vocabulary ; (* FIX need recompute *)
+    extra_info       = info.extra_info ;
   }
 
 
@@ -276,6 +288,7 @@ let dup_vc_info_with_goal (info:vc_info) (new_goal:E.formula) : vc_info =
     transition_tid = info.transition_tid ;
     line           = info.line ;
     vocabulary     = info.vocabulary ; (* FIX need recompute *)
+    extra_info       = info.extra_info ;
   }
 
 
@@ -293,6 +306,7 @@ let dup_vc_info_with_supp_constr_rho_and_goal (info:vc_info)
     transition_tid = info.transition_tid ;
     line           = info.line ;
     vocabulary     = info.vocabulary ; (* FIX need recompute *)
+    extra_info       = info.extra_info ;
   }
 
 
@@ -313,6 +327,7 @@ let vc_info_add_support (info:vc_info) (supp:support_t) : vc_info =
     transition_tid   = info.transition_tid ;
     line             = info.line ;
     vocabulary       = info.vocabulary ; (* FIX need recompute *)
+    extra_info       = info.extra_info ;
   }
   
 
@@ -352,7 +367,8 @@ and get_vocabulary_from_info (info:vc_info) : E.ThreadSet.t    =  info.vocabular
 and get_rho_from_info (info:vc_info) : E.formula =  info.rho
 and get_goal_from_info (info:vc_info) : E.formula =  info.goal
 and get_transition_tid_from_info (info:vc_info) : E.tid =  info.transition_tid
-and get_line_from_info (info:vc_info) : E.pc_t =  info.line
+and get_line_from_info (info:vc_info) : E.pc_t = info.line
+and get_original_vc_id (info:vc_info) : int = info.extra_info.orig_vc_id
 
 
 let rec get_antecedent (vc:verification_condition) : E.formula=
@@ -556,7 +572,9 @@ let split_goal (info:vc_info) : vc_info list =
         goal             = phi ;
         transition_tid   = info.transition_tid ;
         line             = info.line ;
-        vocabulary       = info.vocabulary ;})
+        vocabulary       = info.vocabulary ;
+        extra_info       = info.extra_info ;
+    })
     new_goals
 (* aux functions *)
 let is_true (f:E.formula) : bool =

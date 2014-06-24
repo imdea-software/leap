@@ -12,7 +12,11 @@ type t =
   | Tslk of int
 
 
-type call_tbl_t = (t,int) Hashtbl.t
+type call_tbl_t =
+  {
+    calls : (t,int) Hashtbl.t;
+    solving : (int,t) Hashtbl.t;
+  }
 
 
 let def_dp_list : t list = [ Num; Loc; Tll; Tsl; Tslk 0 ]
@@ -49,31 +53,74 @@ let get_tslk_param (dp:t) : int =
   | Tslk k -> k
   | _      -> 1
 
+
+let stronger (dp1:t) (dp2:t) : t =
+  match (dp1,dp2) with
+  | (Tsl, _) | (_, Tsl) -> Tsl
+  | (Tslk i, Tslk j) -> if i>j then dp1 else dp2
+  | (Tslk _, _) -> dp1
+  | (_, Tslk _) -> dp2
+  | (Tll, _) | (_, Tll) -> Tll
+  | (Num, _) | (_, Num) -> Num
+  | (Loc, _) | (_, Loc) -> Loc
+  | _ -> NoDP
+  
+
 (*******************************)
 (*  COUNTING CALLS TO EACH DP  *)
 (*******************************)
 
 let new_call_tbl() : call_tbl_t =
-  Hashtbl.create 10
+  {
+    calls = Hashtbl.create 10;
+    solving = Hashtbl.create 10;
+  }
 
 
 let clear_call_tbl (tbl:call_tbl_t) : unit =
-  Hashtbl.clear tbl
+  Hashtbl.clear tbl.calls;
+  Hashtbl.clear tbl.solving
 
 
 let copy_call_tbl (tbl:call_tbl_t) : call_tbl_t =
-  Hashtbl.copy tbl
+  {
+    calls = Hashtbl.copy tbl.calls;
+    solving = Hashtbl.copy tbl.solving;
+  }
 
 
-let add_dp_calls (tbl:call_tbl_t) (dp:t) (n:int) : unit =
+let add_calls (tbl:call_tbl_t) (dp:t) (n:int) : unit =
   try
-    Hashtbl.replace tbl dp ((Hashtbl.find tbl dp) + n)
-  with _ -> Hashtbl.add tbl dp n
+    Hashtbl.replace tbl.calls dp ((Hashtbl.find tbl.calls dp) + n)
+  with _ -> Hashtbl.add tbl.calls dp n
+
+
+let add_solving (tbl:call_tbl_t) (vc_id:int) (dp:t) : unit =
+  try
+    Hashtbl.replace tbl.solving vc_id
+      (stronger (Hashtbl.find tbl.solving vc_id) dp)
+  with _ -> Hashtbl.add tbl.solving vc_id dp
+
+
+let add_dp_calls ?(vc_id = -1) (tbl:call_tbl_t) (dp:t) (n:int) : unit =
+  add_calls tbl dp n;
+  add_solving tbl vc_id dp
 
 
 let combine_call_table (src_tbl:call_tbl_t) (dst_tbl:call_tbl_t) : unit =
-  Hashtbl.iter (add_dp_calls dst_tbl) src_tbl
+  Hashtbl.iter (add_calls dst_tbl) src_tbl.calls;
+  Hashtbl.iter (add_solving dst_tbl) src_tbl.solving
 
 
 let call_tbl_to_list (tbl:call_tbl_t) : (t * int) list =
-  List.sort Pervasives.compare (Hashtbl.fold (fun dp i xs -> (dp,i)::xs) tbl [])
+  List.sort Pervasives.compare (Hashtbl.fold (fun dp i xs -> (dp,i)::xs) tbl.calls [])
+
+
+let call_tbl_solving_to_list (tbl:call_tbl_t) : (t * int) list =
+  let res = Hashtbl.create 10 in
+  (Hashtbl.iter (fun id dp ->
+    if id <> -1 then
+       try
+         Hashtbl.replace res dp ((Hashtbl.find res dp) + 1)
+       with _ -> Hashtbl.add res dp 1) tbl.solving);
+  Hashtbl.fold (fun dp n xs -> (dp,n)::xs) res []
