@@ -1620,7 +1620,7 @@ struct
     B.add_string buf (literal_to_str lit)
 
 
-  let literal_list_to_str (ls:Expr.literal list) : string =
+  let literal_list_to_str (use_q:bool) (ls:Expr.literal list) : string =
     let _ = GM.clear_sort_map sort_map in
     let expr = F.Conj ls in
     let c = SmpTll.cut_off_normalized expr in
@@ -1650,6 +1650,7 @@ struct
 
   let formula_to_str (co:Smp.cutoff_strategy_t)
                      (copt:Smp.cutoff_options_t)
+                     (use_q:bool)
                      (phi:Expr.formula) : string =
     let _ = GM.clear_sort_map sort_map in
     let max_cut_off = SmpTll.cut_off co copt phi in
@@ -1672,11 +1673,11 @@ struct
       B.contents   buf
 
 
-  let conjformula_to_str (expr:Expr.conjunctive_formula) : string =
+  let conjformula_to_str (use_q:bool) (expr:Expr.conjunctive_formula) : string =
     match expr with
       F.TrueConj   -> "(assert+ true)\n(check)"
     | F.FalseConj  -> "(assert+ false)\n(check)"
-    | F.Conj conjs -> literal_list_to_str conjs
+    | F.Conj conjs -> literal_list_to_str use_q conjs
 
 
   let get_sort_map () : GM.sort_map_t =

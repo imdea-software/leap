@@ -1913,7 +1913,7 @@ struct
     Hashtbl.iter (fun f _ -> B.add_string buf (process_fstlock num_addrs f)) fstlock_tbl
 
 
-  let literal_list_to_str (ls:Expr.literal list) : string =
+  let literal_list_to_str (use_q:bool) (ls:Expr.literal list) : string =
     clean_lists();
     let _ = GM.clear_sort_map sort_map in
     let expr = F.Conj ls in
@@ -1946,6 +1946,7 @@ struct
 
   let formula_to_str (co:Smp.cutoff_strategy_t)
                      (copt:Smp.cutoff_options_t)
+                     (use_q:bool)
                      (phi:Expr.formula) : string =
 
 (*    LOG "Entering formula_to_str..." LEVEL TRACE; *)
@@ -2013,11 +2014,11 @@ struct
       B.contents   buf
 
 
-  let conjformula_to_str (expr:Expr.conjunctive_formula) : string =
+  let conjformula_to_str (use_q:bool) (expr:Expr.conjunctive_formula) : string =
     match expr with
       F.TrueConj   -> "(assert true)\n(check-sat)"
     | F.FalseConj  -> "(assert false)\n(check-sat)"
-    | F.Conj conjs -> literal_list_to_str conjs
+    | F.Conj conjs -> literal_list_to_str use_q conjs
 
 
   let get_sort_map () : GM.sort_map_t =

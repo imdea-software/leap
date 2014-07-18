@@ -414,7 +414,8 @@ module Make (Opt:module type of GenOptions) : S =
                         | DP.Num    -> let num_phi = NumInterface.formula_to_int_formula fol_phi in
                                         Num.is_valid_with_lines_plus_info prog_lines num_phi
                         | DP.Tll    -> let tll_phi = TllInterface.formula_to_tll_formula fol_phi in
-                                       Tll.is_valid_plus_info prog_lines cutoff tll_phi
+                                       Tll.is_valid_plus_info prog_lines cutoff
+                                            Opt.use_quantifiers tll_phi
                         | DP.Tsl    -> let tsl_phi = TSLInterface.formula_to_tsl_formula fol_phi in
                                        let (res,tsl_calls,tslk_calls) =
                                           TslSolver.is_valid_plus_info prog_lines cutoff

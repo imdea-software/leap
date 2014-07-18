@@ -5,23 +5,25 @@ module type CUSTOM_TLLSOLVER = sig
   module TllExp : ExpressionTypes.TLLEXP
   
   
-  val is_sat_conj  : int -> TllExp.conjunctive_formula -> bool
-  val is_sat_dnf   : int -> TllExp.formula -> bool
+  val is_sat_conj  : int -> bool -> TllExp.conjunctive_formula -> bool
+  val is_sat_dnf   : int -> bool -> TllExp.formula -> bool
   
-  val is_valid_dnf : int -> TllExp.formula -> bool
-  val is_valid_dnf_pus_info 
-                   : int -> TllExp.formula -> (bool * int)
+  val is_valid_dnf : int -> bool -> TllExp.formula -> bool
+  val is_valid_dnf_pus_info : int -> bool -> TllExp.formula -> (bool * int)
     
   val is_sat       : int ->
                      Smp.cutoff_strategy_t ->
+                     bool ->
                      TllExp.formula -> bool
   val is_valid     : int ->
                      Smp.cutoff_strategy_t ->
+                     bool ->
                      TllExp.formula -> bool
   
   val is_valid_plus_info 
                    : int ->
                      Smp.cutoff_strategy_t ->
+                     bool ->
                      TllExp.formula -> (bool * int)
 
   val compute_model: bool -> unit
@@ -206,7 +208,9 @@ struct
       
   
   (* INVOCATIONS TRANSFORMING TO DNF FIRST *)
-  let is_sat_conj (lines : int) (phi : TllExp.conjunctive_formula) : bool =
+  let is_sat_conj (lines : int)
+                  (use_q : bool)
+                  (phi : TllExp.conjunctive_formula) : bool =
     match phi with
         Formula.TrueConj   -> true
       | Formula.FalseConj  -> false
@@ -215,30 +219,36 @@ struct
           let module Q = (val QueryManager.get_tll_query Solver.identifier) in
           let module Trans = Solver.Translate.Tll.Query(Q) in
           Trans.set_prog_lines lines;
-          Solver.sat (Trans.literal_list conjs)
+          Solver.sat (Trans.literal_list use_q conjs)
         end
   
-  let is_sat_dnf (prog_lines : int) (phi : TllExp.formula) : bool =
+  let is_sat_dnf (prog_lines : int)
+                 (use_q : bool)
+                 (phi : TllExp.formula) : bool =
     let dnf_phi = Formula.dnf phi in
-      List.exists (is_sat_conj prog_lines) dnf_phi
+      List.exists (is_sat_conj prog_lines use_q) dnf_phi
   
   
-  let is_valid_dnf (prog_lines : int) (phi : TllExp.formula) : bool =
+  let is_valid_dnf (prog_lines : int)
+                   (use_q : bool)
+                   (phi : TllExp.formula) : bool =
     let dnf_phi       = Formula.dnf (Formula.Not phi) in
-    let is_unsat conj = (not (is_sat_conj prog_lines conj))
+    let is_unsat conj = (not (is_sat_conj prog_lines use_q conj))
     in List.for_all is_unsat dnf_phi
   
   
   let is_valid_dnf_pus_info (prog_lines:int)
-      (phi:TllExp.formula) : (bool * int) =
+                            (use_q : bool)
+                            (phi:TllExp.formula) : (bool * int) =
     Solver.reset_calls ();
-    let res = is_valid_dnf prog_lines phi in
+    let res = is_valid_dnf prog_lines use_q phi in
     (res, Solver.calls_count ())
   
   
   (* INVOCATIONS WITHOUT CONVERTING TO DNF *)
   let is_sat (lines : int)
              (co : Smp.cutoff_strategy_t)
+             (use_q : bool)
              (phi : TllExp.formula) : bool =
 (*    LOG "Entering is_sat..." LEVEL TRACE; *)
     match phi with
@@ -251,19 +261,21 @@ struct
              let module Q = (val QueryManager.get_tll_query Solver.identifier) in
              let module Trans = Solver.Translate.Tll.Query(Q) in
              Trans.set_prog_lines lines;
-             Solver.sat (Trans.formula co cutoff_opt phi)
+             Solver.sat (Trans.formula co cutoff_opt use_q phi)
            end
   
   let is_valid (prog_lines:int)
                (co:Smp.cutoff_strategy_t)
+               (use_q : bool)
                (phi:TllExp.formula) : bool =
-    not (is_sat prog_lines co (Formula.Not phi))
+    not (is_sat prog_lines co use_q (Formula.Not phi))
   
   let is_valid_plus_info (prog_lines:int)
                          (co:Smp.cutoff_strategy_t)
+                         (use_q : bool)
                          (phi:TllExp.formula) : (bool * int) =
     Solver.reset_calls ();
-    let res = is_valid prog_lines co phi in
+    let res = is_valid prog_lines co use_q phi in
     (res, Solver.calls_count())
 
 

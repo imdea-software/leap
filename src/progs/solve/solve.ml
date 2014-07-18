@@ -33,7 +33,8 @@ let _ =
       | DP.Tll -> let module Tll = (val (TllSolver.choose BackendSolvers.Z3.identifier)) in
                   Tll.compute_model true;
                   let tll_phi = TllInterface.formula_to_tll_formula phi in
-                  let valid = Tll.is_valid 1 !SolveArgs.coType tll_phi in
+                  let valid = Tll.is_valid 1 !SolveArgs.coType
+                                !SolveArgs.use_quantifiers tll_phi in
                   if not valid then Tll.print_model();
                   valid
       | DP.Tslk k -> let module Tslk = (val (TslkSolver.choose BackendSolvers.Z3.identifier k)) in

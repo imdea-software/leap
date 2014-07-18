@@ -1905,9 +1905,9 @@ struct
     Hashtbl.iter (fun e _ -> B.add_string buf (process_elem e)) elem_tbl
 
 
-  let literal_list_to_str (ls:Expr.literal list) : string =
+  let literal_list_to_str (use_q:bool) (ls:Expr.literal list) : string =
     clean_lists();
-    set_configuration true;
+    set_configuration use_q;
     GM.clear_sort_map sort_map;
     let expr = F.Conj ls in
     let c = SmpTll.cut_off_normalized expr in
@@ -1948,9 +1948,10 @@ struct
 
   let formula_to_str (co:Smp.cutoff_strategy_t)
                      (copt:Smp.cutoff_options_t)
+                     (use_q:bool)
                      (phi:Expr.formula) : string =
     clean_lists();
-    set_configuration true;
+    set_configuration use_q;
     let _ = LeapDebug.debug "entering Z3TllQuery.formula_to_str...\n" in
     let _ = GM.clear_sort_map sort_map in
     let _ = LeapDebug.debug "Z3TllQuery will compute the cutoff...\n" in
@@ -1994,11 +1995,11 @@ struct
       B.contents   buf
 
 
-  let conjformula_to_str (expr:Expr.conjunctive_formula) : string =
+  let conjformula_to_str (use_q:bool) (expr:Expr.conjunctive_formula) : string =
     match expr with
       F.TrueConj   -> "(assert true)\n(check-sat)"
     | F.FalseConj  -> "(assert false)\n(check-sat)"
-    | F.Conj conjs -> literal_list_to_str conjs
+    | F.Conj conjs -> literal_list_to_str use_q conjs
 
 
   let get_sort_map () : GM.sort_map_t =
