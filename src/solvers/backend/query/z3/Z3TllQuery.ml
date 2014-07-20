@@ -846,10 +846,16 @@ struct
       B.add_string buf
         ("(declare-const epsilonat PathAt)\n" ^
          "(assert (= epsilonat ((as const PathAt) null)))\n" ^
-         "(declare-const epsilonwhere PathWhere)\n" ^
-         "(assert (= epsilonwhere ((as const PathWhere) 0)))\n" ^
-         "(declare-const epsilon " ^path_s^ ")\n" ^
-         "(assert (= epsilon (mkpath 0 epsilonat epsilonwhere empty)))\n")
+         "(declare-const epsilonwhere PathWhere)\n");
+      if !use_quantifiers then
+        B.add_string buf
+          ("(assert (= epsilonwhere ((as const PathWhere) rr_0)))\n")
+      else
+        B.add_string buf
+          ("(assert (= epsilonwhere ((as const PathWhere) 0)))\n");
+      B.add_string buf
+          ("(declare-const epsilon " ^path_s^ ")\n" ^
+           "(assert (= epsilon (mkpath 0 epsilonat epsilonwhere empty)))\n")
 
 
   (* (define singletonat::(-> address range_address address) *)
@@ -1044,19 +1050,19 @@ struct
 
   (* Ordered list predicate definition *)
   let z3_orderlist_def buf num_addr =
+(*
     if !use_quantifiers then begin
       B.add_string buf
         ("(define-fun ordered ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ") (p " ^path_s^ ")) " ^bool_s^ "\n" ^
          "  (forall ((n RangeAddress))\n" ^
          "    (=> (<= (range_to_int n) (length p))\n" ^
-         "        (and (=> (< (range_to_int n) (length p))\n" ^
-         "                 (< (data (select h (select (at p) n)))\n" ^
-         "                    (data (select h (select (at p) (next_range n))))))\n" ^
-         "    (=> (<= (range_to_int n) (length p))\n" ^
-         "        (iselem (data (select h (select (at p) n)))))))))\n" ^
+         "        (=> (< (range_to_int n) (length p))\n" ^
+         "            (< (data (select h (select (at p) n)))\n" ^
+         "               (data (select h (select (at p) (next_range n)))))))))\n" ^
          "(define-fun orderlist ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ")) " ^bool_s^ "\n" ^
          "  (ordered h from to (getp h from to)))\n")
     end else begin
+*)
       let idlast = string_of_int num_addr in
       B.add_string buf
         ("(define-fun orderlist" ^idlast^ " ((h " ^heap_s^ ") " ^
@@ -1080,7 +1086,9 @@ struct
            "      (and (< (data (select h a))\n" ^
            "              (data (select h (next1 h a))))\n" ^
            "           (orderlist1 h a b))))\n")
+(*
     end
+*)
 
 
   (* (define error::cell) *)
