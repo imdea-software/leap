@@ -198,7 +198,7 @@ let run (cfg:configuration_t) (query:string) : bool =
                     Buffer.add_string buf conv
                 done
               with _ -> () in
-      if cfg.smt <> Yices then Debug.force_print_file_name "VC" tmpfile;
+(*      if cfg.smt <> Yices then Debug.force_print_file_name "VC" tmpfile; *)
       model := cfg.model_parser (Lexing.from_string (Buffer.contents buf));
     end else begin
       verbl _LONG_INFO "**** SMTExecute, no response with model obtained.\n";

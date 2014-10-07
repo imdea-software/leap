@@ -14,7 +14,7 @@ let input_file_fd : Unix.file_descr ref = ref Unix.stdin
 let debugFlag     = ref false
 let use_z3        = ref false
 let coType        = ref Smp.Pruning (*Smp.Dnf*)
-let hide_pres     = ref false
+let hide_pres     = ref true
 let phiFile       = ref ""
 
 let assignopt (valref : 'a ref) (valbool : bool ref) (aval : 'a) : unit =
@@ -42,14 +42,15 @@ let opts =
     ("-f",
         Arg.String inputFormula,
         "TLL formula");
-    ("-z3",
-        Arg.Set use_z3,
+(*    ("-z3",
+				Arg.Set use_z3,
         "uses z3 as smt solver");
+*)
     ("-co",
         Arg.Symbol (co_opt_list,set_co),
         "indicates the method used for computing the cut-off");
     ("-hp",
-        Arg.Set hide_pres,
+				Arg.Set hide_pres,
         "hides preservation relation in generated VCs");
     ("--show_file_info",
         Arg.Set Debug._debug_show_tmpfile_info_,
