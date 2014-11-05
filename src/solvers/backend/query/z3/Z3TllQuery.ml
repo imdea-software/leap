@@ -903,7 +903,7 @@ struct
     if !use_quantifiers then begin
       B.add_string buf
         ("(define-fun addr_in_path ((p " ^path_s^ ") (i RangeAddress)) " ^set_s^ "\n" ^
-         "  (ite (and (<= 0 (range_to_int i)) (<= (range_to_int i) (length p)))\n" ^
+         "  (ite (and (<= 0 (range_to_int i)) (< (range_to_int i) (length p)))\n" ^
          "       (store ((as const " ^set_s^ ") false) (select (at p) i) true)\n" ^
          "       ((as const " ^set_s^ ") false)))\n");
       B.add_string buf
@@ -926,7 +926,7 @@ struct
       done;
       B.add_string buf
         ("(define-fun addr_in_path ((p " ^path_s^ ") (i RangeAddress)) " ^set_s^ "\n" ^
-         "  (ite (and (<= 0 i) (<= i (length p)))\n" ^
+         "  (ite (and (<= 0 i) (< i (length p)))\n" ^
          "       (singleton (select (at p) i))\n" ^
          "       empty))\n");
       B.add_string buf

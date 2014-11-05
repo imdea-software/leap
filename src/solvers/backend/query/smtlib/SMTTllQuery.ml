@@ -775,7 +775,7 @@ struct
     done;
     B.add_string buf
       ("(define-fun addr_in_path ((p " ^path_s^ ") (i RangeAddress)) " ^set_s^ "\n" ^
-       "  (and (=> (and (<= 0 i) (<= i (length p)))\n" ^
+       "  (and (=> (and (<= 0 i) (< i (length p)))\n" ^
        "           (singleton (select (at p) i)))\n" ^
        "       (=> (not (and (<= 0 i) (<= i (length p))))\n" ^
        "           empty)))\n");
