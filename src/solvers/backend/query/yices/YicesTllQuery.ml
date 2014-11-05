@@ -1056,6 +1056,18 @@ struct
 
 
   (********************* Preamble Declaration **********************)
+  let update_requirements (req_sorts:Expr.sort list)
+                          (req_ops:Expr.special_op_t list)
+        : (Expr.sort list * Expr.special_op_t list) =
+  let (res_req_sorts, res_req_ops) = (ref req_sorts, ref req_ops) in
+  (* If "path" is a required sort, then we need to add "set" as required sort
+     since "set" is part of the definition of sort "path" (required by "addrs"
+     field) *)
+  if (List.mem Expr.Path req_sorts) then
+    res_req_sorts := Expr.Set :: !res_req_sorts ;
+  (!res_req_sorts, !res_req_ops)
+
+
   let yices_preamble buf num_addr num_tid num_elem req_sorts =
     B.add_string buf ";; TLL Yices Translation";
     if (List.exists (fun s ->
@@ -1080,7 +1092,6 @@ struct
     if List.mem Expr.Unknown req_sorts then yices_unknown_preamble buf ;
     yices_pos_preamble buf
 
-   
 
   let yices_defs buf num_addr num_tid num_elem req_sorts req_ops =
     (* Elements *)
@@ -1633,6 +1644,7 @@ struct
         in
           (Expr.required_sorts phi @ ss, Expr.special_ops phi @ os)
       ) ([],[]) ls in
+    let (req_sorts, req_ops) = update_requirements req_sorts req_ops in
     let buf = B.create 1024 in
         yices_preamble buf num_addr num_tid num_elem req_sorts;
         yices_defs     buf num_addr num_tid num_elem req_sorts req_ops;
@@ -1660,6 +1672,7 @@ struct
     let req_sorts   = Expr.required_sorts phi in
     let req_ops     = Expr.special_ops phi in
     let formula_str = formula_to_str phi in
+    let (req_sorts, req_ops) = update_requirements req_sorts req_ops in
     let buf         = B.create 1024
     in
       B.add_string buf (";; Translation for " ^ (Expr.formula_to_str phi) ^ "\n");

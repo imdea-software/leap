@@ -41,16 +41,16 @@ let opts =
   [
     ("-f",
         Arg.String inputFormula,
-				"TSL formula");
+        "TSL formula");
 (*    ("-z3",
-				Arg.Set use_z3,
+        Arg.Set use_z3,
         "uses z3 as smt solver");
 *)
     ("-co",
         Arg.Symbol (co_opt_list,set_co),
         "indicates the method used for computing the cut-off");
     ("-hp",
-				Arg.Set hide_pres,
+        Arg.Set hide_pres,
         "hides preservation relation in generated VCs");
     ("--show_file_info",
         Arg.Set Debug._debug_show_tmpfile_info_,
@@ -70,7 +70,7 @@ let simple_error msg = Printf.eprintf "%s\n" msg ; exit 0
 let postcheck () = () (*
   if !phiFile = "" then begin
     Interface.Err.msg "Missing file"
-			"No file with TSL formula using the -f flag has been provided.";
+      "No file with TSL formula using the -f flag has been provided.";
     raise(No_file)
   end
 *)

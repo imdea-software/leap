@@ -13,19 +13,19 @@ module Symtbl  = ExprSymTable
 
 let _ =
   try
-		TslArgs.parse_args ();
+    TslArgs.parse_args ();
 
-		let phi = Parser.open_and_parse !TslArgs.phiFile
-				(Eparser.single_formula Elexer.norm) in
+    let phi = Parser.open_and_parse !TslArgs.phiFile
+        (Eparser.single_formula Elexer.norm) in
       
 
-		let tsl_phi = TSLInterface.formula_to_tsl_formula phi in
-		let sat = TslSolver.is_sat 1 (!TslArgs.coType) false tsl_phi in                                     
-		if sat then
-			print_endline "SAT"
-		else
-			print_endline "UNSAT";
-		()
+    let tsl_phi = TSLInterface.formula_to_tsl_formula phi in
+    let sat = TslSolver.is_sat 1 (!TslArgs.coType) false tsl_phi in                                     
+    if sat then
+      print_endline "SAT"
+    else
+      print_endline "UNSAT";
+    ()
   with
     | Global.ParserError msg -> Interface.Err.msg "Parsing error" msg
     | Parsing.Parse_error -> Interface.Err.msg "Parsing error" $

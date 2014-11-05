@@ -1745,6 +1745,11 @@ module Make (K : Level.S) : TSLK_QUERY =
                             (req_ops:Expr.special_op_t list)
           : (Expr.sort list * Expr.special_op_t list) =
     let (res_req_sorts, res_req_ops) = (ref req_sorts, ref req_ops) in
+    (* If "path" is a required sort, then we need to add "set" as required sort
+       since "set" is part of the definition of sort "path" (required by "addrs"
+       field) *)
+    if (List.mem Expr.Path req_sorts) then
+      res_req_sorts := Expr.Set :: !res_req_sorts ;
     if !use_quantifiers then begin
       if (List.mem Expr.OrderedList req_ops) then begin
         res_req_sorts := Expr.Path :: !res_req_sorts;
@@ -1782,7 +1787,7 @@ module Make (K : Level.S) : TSLK_QUERY =
       if List.mem Expr.Set     req_sorts then z3_set_preamble buf ;
       if List.mem Expr.SetTh   req_sorts then z3_setth_preamble buf ;
       if List.mem Expr.SetElem req_sorts then z3_setelem_preamble buf ;
-      if List.mem Expr.Path    req_sorts then z3_path_preamble buf num_addr ;
+      if List.mem Expr.Path    req_sorts then z3_path_preamble buf num_addr;
       if List.mem Expr.Unknown req_sorts then z3_unknown_preamble buf ;
       z3_pos_preamble buf
 

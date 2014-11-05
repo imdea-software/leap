@@ -1455,6 +1455,11 @@ struct
                           (req_ops:Expr.special_op_t list)
         : (Expr.sort list * Expr.special_op_t list) =
   let (res_req_sorts, res_req_ops) = (ref req_sorts, ref req_ops) in
+  (* If "path" is a required sort, then we need to add "set" as required sort
+     since "set" is part of the definition of sort "path" (required by "addrs"       
+    field) *)
+  if (List.mem Expr.Path req_sorts) then
+    res_req_sorts := Expr.Set :: !res_req_sorts ;
   if !use_quantifiers then begin
     if (List.mem Expr.OrderedList req_ops) then begin
       res_req_sorts := Expr.Path :: !res_req_sorts;
