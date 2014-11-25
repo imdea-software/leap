@@ -1820,6 +1820,7 @@ module Make (K : Level.S) : TSLK_QUERY =
       let p_id = match Expr.V.scope v with
                  | Expr.V.GlobalScope -> Expr.V.id v
                  | Expr.V.Scope proc -> proc ^ "_" ^ (Expr.V.id v) in
+      print_endline ("VARIABLE P_ID IS: " ^ p_id);
       let name = if Expr.V.is_primed v then p_id ^ "_prime" else p_id
       in
         if Expr.V.is_global v then
@@ -1967,6 +1968,7 @@ module Make (K : Level.S) : TSLK_QUERY =
       (* Iterations over next *)
       if List.mem Expr.Addr2Set req_ops
           || List.mem Expr.OrderedList req_ops
+          || List.mem Expr.Reachable req_ops
           || List.mem Expr.Getp req_ops then
         z3_nextiter_def buf num_addr ;
       (* Address2set *)
@@ -2015,7 +2017,8 @@ module Make (K : Level.S) : TSLK_QUERY =
           z3_is_append_def buf num_addr
         end;
       (* Getp *)
-      if List.mem Expr.Getp req_ops then z3_getp_def buf num_addr ;
+      if List.mem Expr.Getp req_ops ||
+         List.mem Expr.Reachable req_ops then z3_getp_def buf num_addr ;
       (* OrderedList *)
       if List.mem Expr.OrderedList req_ops then z3_orderlist_def buf num_addr ;
       (* Reachable *)

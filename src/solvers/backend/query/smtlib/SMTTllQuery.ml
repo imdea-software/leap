@@ -1292,7 +1292,9 @@ struct
         smt_eqset_def buf num_addr
       end;
     (* Iterations over next *)
-    if List.mem Expr.Addr2Set req_ops || List.mem Expr.OrderedList req_ops then
+    if List.mem Expr.Addr2Set req_ops
+       || List.mem Expr.Reachable req_ops
+       || List.mem Expr.OrderedList req_ops then
       smt_nextiter_def buf num_addr ;
     (* Address2set *)
     if List.mem Expr.Addr2Set req_ops then
@@ -1343,7 +1345,8 @@ struct
         smt_is_append_def buf num_addr
       end;
     (* Getp *)
-    if List.mem Expr.Getp req_ops then smt_getp_def buf num_addr ;
+    if List.mem Expr.Getp req_ops ||
+       List.mem Expr.Reachable req_ops then smt_getp_def buf num_addr ;
     (* Reachable *)
     if List.mem Expr.Reachable req_ops then smt_reach_def buf
 

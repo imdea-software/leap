@@ -730,6 +730,14 @@ let relevant_levels (cf:SL.conjunctive_formula) : SL.integer GenSet.t =
                           (* Remaining cases *)
                         | _ -> ()
                       ) (SL.termset_from_conj cf);
+                      List.iter (fun l ->
+                        match l with
+                          (* reach(m,a,b,i,p) *)
+                        | F.Atom (SL.Reach(_,_,_,i,_))
+                        | F.NegAtom (SL.Reach(_,_,_,i,_)) -> GenSet.add relevant_set i
+                          (* Remaining cases *)
+                        | _ -> ()
+                      ) ls;
                       relevant_set
                     end
 
@@ -893,7 +901,7 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) :
       pumping nc;
       let rel_set = relevant_levels nc in
       Log.print "Relevant levels" (GenSet.to_str SL.int_to_str rel_set);
-
+      
       let alpha_pairs = update_arrangement alpha rel_set in
       let (panc_r, nc_r, alpha_pairs_r) = propagate_levels alpha_pairs panc nc in
 
@@ -904,7 +912,6 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) :
                                                                  | None -> "None")
         ) alpha_pairs_r) in
       Log.print "ALPHA_PAIRS_R" alpha_pairs_str;
-
       Log.print "PANC_R" (SL.conjunctive_formula_to_str panc_r);
       Log.print "NC_R" (SL.conjunctive_formula_to_str nc_r);
 
