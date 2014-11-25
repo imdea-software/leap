@@ -1820,7 +1820,6 @@ module Make (K : Level.S) : TSLK_QUERY =
       let p_id = match Expr.V.scope v with
                  | Expr.V.GlobalScope -> Expr.V.id v
                  | Expr.V.Scope proc -> proc ^ "_" ^ (Expr.V.id v) in
-      print_endline ("VARIABLE P_ID IS: " ^ p_id);
       let name = if Expr.V.is_primed v then p_id ^ "_prime" else p_id
       in
         if Expr.V.is_global v then
@@ -2327,6 +2326,7 @@ module Make (K : Level.S) : TSLK_QUERY =
       let (req_sorts, req_ops) = update_requirements req_sorts req_ops in
       let buf         = B.create 1024
       in
+
         B.add_string buf ("; Formula\n; " ^(Expr.formula_to_str phi)^ "\n\n");
         z3_preamble buf num_addr num_tid num_elem req_sorts req_ops;
         z3_defs     buf num_addr num_tid num_elem req_sorts req_ops heaps;
