@@ -1,0 +1,7 @@
+vars:
+
+tid i
+
+invariant [minIsActive] :
+
+(setIntMin(bag) = main::ticket(i)) -> (@active(i).)

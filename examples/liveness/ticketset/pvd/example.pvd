@@ -1,0 +1,24 @@
+Diagram[ticketset]
+
+Nodes: n1{@1(k).},n2,n3
+
+Boxes: {b1[t]:n1,n2}
+
+Initial: n1
+
+Edges: [n1 --> n2]; // Boxed edge (preserves parameter)
+        n2 --> n3;  // Unboxed edge (does not preserve parameter)
+        n2 --> n1;
+       [n2 -{2(t),4(k)}-> n1]; // Boxed labeled edge
+        n3 -{1(k)}-> n1; // Unboxed labeled edge
+
+Acceptance:
+  <<Good:{(n2,n3,any),(n1,n2,pres)};
+    Bad:{};
+    null = null >>
+
+  <<Good:{(n2,n3,any),(n1,n2,pres)};
+    Bad:{};
+    null = null >>
+
+

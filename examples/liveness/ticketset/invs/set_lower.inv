@@ -1,0 +1,8 @@
+vars:
+
+int n
+
+invariant [setLower] :
+
+bag = EmptySetInt \/ setIntMax(bag) < avail
+

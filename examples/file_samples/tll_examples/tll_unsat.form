@@ -1,0 +1,12 @@
+vars:
+
+addr head
+addr a
+mem heap
+
+formula:
+
+null in addr2set(heap, head) /\
+a in addr2set(heap, head) /\
+a != null /\
+(~ null in addr2set (heap, a))
