@@ -1,0 +1,14 @@
+Leap has been tested with the following versions:
+
+Yices 2.2.2
+Copyright SRI International.
+Linked with GMP 5.1.3
+Copyright Free Software Foundation, Inc.
+Build date: 2014-08-05
+Platform: x86_64-apple-darwin13.3.0 (release/static)
+
+Z3 version 4.3.1
+
+
+NOTE: Seems to have problems with Z3 version 4.3.2, as Leap does not waits the 
+answer from Z3.
