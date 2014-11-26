@@ -111,9 +111,9 @@ let compute_model (cfg:configuration_t) (b:bool) : unit =
 
 let gen_timeout_str (cfg:configuration_t) : string =
   match cfg.smt with
-  | Yices -> Printf.sprintf " -tc --timeout=%i " cfg.timeout
+  | Yices -> " "
   | Z3    -> Printf.sprintf " -t:%i " cfg.timeout
-  | CVC4  -> ""
+  | CVC4  -> " "
 
 let gen_debugsupp_str (cfg:configuration_t) : string =
   if !Debug._debug_ then
@@ -169,6 +169,7 @@ let run (cfg:configuration_t) (query:string) : bool =
   let cmd = cfg.exec ^ (gen_timeout_str cfg)   ^
                        (gen_debugsupp_str cfg) ^
                        (tmpfile) in
+
   let env = Array.of_list [] in
   let (stdout,stdin,stderr) = Unix.open_process_full cmd env in
   verbl _LONG_INFO "**** STMExecute will parse output.\n";

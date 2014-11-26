@@ -32,7 +32,7 @@ let remove_comments_from_str (str:string) : string =
 
 let remove_comments (ch:Pervasives.in_channel) : string =
   let len = Pervasives.in_channel_length ch in
-  let buf = String.create len in
+  let buf = Bytes.create len in
   let _   = Pervasives.really_input ch buf 0 len
   in
     remove_comments_from_str buf

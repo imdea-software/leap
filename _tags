@@ -4,4 +4,4 @@ true: -traverse
 
 # Options
 #"src/misc/leap_pp.ml": pp_camlp4of, use_camlp4
-<src/**/*.ml{,i}>: warnings
+#<src/**/*.ml{,i}>: warnings
