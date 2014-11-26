@@ -112,7 +112,7 @@ let compute_model (cfg:configuration_t) (b:bool) : unit =
 let gen_timeout_str (cfg:configuration_t) : string =
   match cfg.smt with
   | Yices -> " "
-  | Z3    -> Printf.sprintf " -t:%i " cfg.timeout
+  | Z3    -> Printf.sprintf " -T:%i " cfg.timeout
   | CVC4  -> " "
 
 let gen_debugsupp_str (cfg:configuration_t) : string =
