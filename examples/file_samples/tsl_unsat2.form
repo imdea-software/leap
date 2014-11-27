@@ -1,0 +1,29 @@
+
+vars:
+
+mem heap
+mem new_heap
+addrSet reg
+int l
+int i
+addr head
+addr tail
+addr a
+elemSet elems
+cell c
+
+formula:
+
+ skiplist(heap,reg,l,head, tail, elems) /\
+ head != null /\
+ tail != null /\
+ head != tail /\
+ a != tail /\
+ l = 3 /\
+ i < l /\
+ a = rd(heap, head).arr[i] /\
+ tail != rd(heap, a).arr[0] /\
+ c.arr = arrUpd(rd(heap,a).arr, 0, null) /\
+ new_heap = upd(heap, a, c) /\
+ skiplist(new_heap,reg,l,head, tail, elems)
+

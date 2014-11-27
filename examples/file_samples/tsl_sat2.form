@@ -1,0 +1,27 @@
+vars:
+
+int i
+addr head
+addr tail
+addr a
+addr b
+cell c
+path p1
+path p2
+path p
+mem heap
+mem heap_prime
+
+
+formula:
+
+(i = 0 /\
+ c.arr = arrUpd(rd(heap,a).arr, i, b) /\
+ p1 = getp(heap, head, a, 0) /\
+ p2 = getp(heap, b, tail, 0) /\
+ append(p1, p2, p) /\
+ heap_prime = upd(heap, a, c)
+
+)
+
+ -> reach(heap_prime, head, tail, p, 0)
