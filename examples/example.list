@@ -6,6 +6,7 @@ safety:
   skiplist2
   skiplist3
   skiplist4
+  skiplist5
   ticketint
   ticketset
   lockfree-queue
