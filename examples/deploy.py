@@ -72,11 +72,11 @@ def print_info(str):
 
 def print_info_and_log(str):
 	print_info(str)
-	log.write(str)
+	log.write(str + '\n')
 
 def print_and_log(str):
 	print(str)
-	log.write(str)
+	log.write(str + '\n')
 
 def test_call(status):
 	if status == 0:
