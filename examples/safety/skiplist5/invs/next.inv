@@ -31,8 +31,8 @@ invariant [skiplist_next] :
       (insert::update[0] != null /\ insert::update[0] != tail /\
        insert::update[1] != null /\ insert::update[1] != tail /\
        insert::update[2] != null /\ insert::update[2] != tail /\
-			 insert::update[3] != null /\ insert::update[3] != tail /\
-			 insert::update[4] != null /\ insert::update[4] != tail)
+       insert::update[3] != null /\ insert::update[3] != tail /\
+       insert::update[4] != null /\ insert::update[4] != tail)
 
 
 /\ @insert_newCell_created. ->
@@ -70,7 +70,7 @@ invariant [skiplist_next] :
       (remove::prev != null)
 
 /\ @remove_prev_is_head. ->
-			(remove::prev in addr2set(heap, head, 4))
+      (remove::prev in addr2set(heap, head, 4))
 
 /\ @remove_lookup_loop. ->
       (remove::prev in addr2set(heap, head, remove::i))

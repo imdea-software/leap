@@ -1,7 +1,7 @@
 PROJNAME=leap
 
 # Makefile configuration
-OCAMLBUILD=@ocamlbuild.native
+OCAMLBUILD=ocamlbuild.native
 
 # Folders
 SRC=src

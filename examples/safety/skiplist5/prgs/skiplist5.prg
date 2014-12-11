@@ -14,17 +14,17 @@ assume
   tail->nextat[1] = null /\
   tail->nextat[2] = null /\
   tail->nextat[3] = null /\
-	tail->nextat[4] = null /\
-	(addr2set(heap, head, 4)) subseteq (addr2set(heap, head, 3)) /\
-	(addr2set(heap, head, 3)) subseteq (addr2set(heap, head, 2)) /\
+  tail->nextat[4] = null /\
+  (addr2set(heap, head, 4)) subseteq (addr2set(heap, head, 3)) /\
+  (addr2set(heap, head, 3)) subseteq (addr2set(heap, head, 2)) /\
   (addr2set(heap, head, 2)) subseteq (addr2set(heap, head, 1)) /\
   (addr2set(heap, head, 1)) subseteq (addr2set(heap, head, 0)) /\
 
   head->nextat[0] = tail /\
   head->nextat[1] = tail /\
-	head->nextat[2] = tail /\
+  head->nextat[2] = tail /\
   head->nextat[3] = tail /\
-	head->nextat[4] = tail /\
+  head->nextat[4] = tail /\
 
   rd(heap, head).data = lowestElem /\
   rd(heap, tail).data = highestElem /\
@@ -64,9 +64,9 @@ assume
                                 addr prev
                                 addr curr
                               begin
-																i := 4;
+                                i := 4;
                                 prev := head;
-																curr := prev->nextat[i];
+                                curr := prev->nextat[i];
                                 while (0 <= i /\ curr->data != e) do
                                   curr := prev->nextat[i];
                                   while (curr->data < e) do
@@ -103,16 +103,16 @@ assume
                                   lvl := 2;
                                 _or_
                                   lvl := 3;
-																_or_
-																	lvl := 4;
-																endchoice
+                                _or_
+                                  lvl := 4;
+                                endchoice
                                 prev := head;
 :insert_prev_in_region[
 :insert_prev_is_head[
-																curr := prev->nextat[4];
+                                curr := prev->nextat[4];
 :insert_curr_in_region[
 :insert_set_i
-																i := 4;
+                                i := 4;
 :insert_valueWasIn_false]
 :insert_prev_is_head]
 :insert_lookup_loop[
@@ -189,7 +189,7 @@ assume
 
                               procedure remove (e:elem)
                                 addrarr update
-																int removeFrom := 4
+                                int removeFrom := 4
                                 int i
                                 addr prev
                                 addr curr
@@ -200,10 +200,10 @@ assume
                                 prev := head;
 :remove_prev_is_head[
 :remove_prev_in_region[
-																curr := prev->nextat[4];
+                                curr := prev->nextat[4];
 :remove_curr_in_region[
 :remove_curr_not_null[
-																i := 4;
+                                i := 4;
 :remove_bounded_prev[
 :remove_prev_is_head]
 :remove_prev_next_region_one[

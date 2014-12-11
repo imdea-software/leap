@@ -14,10 +14,14 @@ let empty () : 'a t =
 
 
 let equal (s1:'a t) (s2:'a t) : bool =
-  let eq = ref (s1.counter = s2.counter) in
-  Hashtbl.iter (fun x _ -> try Hashtbl.find s2.elems x with _ -> eq := false) s1.elems;
-  Hashtbl.iter (fun x _ -> try Hashtbl.find s1.elems x with _ -> eq := false) s2.elems;
-  !eq
+  if s1.counter <> s2.counter then
+    false
+  else begin
+    try
+      Hashtbl.iter (fun x _ -> ignore (Hashtbl.find s2.elems x)) s1.elems;
+      true
+    with Not_found -> false
+  end
 
 
 let clear (s:'a t) : unit =

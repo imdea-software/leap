@@ -42,10 +42,10 @@ invariant [skiplist_order] :
                           rd(heap,rd(heap,insert::update[2]).nextat[2]).data = insert::e))) /\
        (insert::i < 3 -> (rd(heap,insert::update[3]).data < insert::e /\
                          (rd(heap,rd(heap,insert::update[3]).nextat[3]).data > insert::e \/
-													rd(heap,rd(heap,insert::update[3]).nextat[3]).data = insert::e))) /\
-			 (insert::i < 4 -> (rd(heap,insert::update[4]).data < insert::e /\
-												 (rd(heap,rd(heap,insert::update[4]).nextat[4]).data > insert::e \/
-													rd(heap,rd(heap,insert::update[4]).nextat[4]).data = insert::e))))
+                          rd(heap,rd(heap,insert::update[3]).nextat[3]).data = insert::e))) /\
+       (insert::i < 4 -> (rd(heap,insert::update[4]).data < insert::e /\
+                         (rd(heap,rd(heap,insert::update[4]).nextat[4]).data > insert::e \/
+                          rd(heap,rd(heap,insert::update[4]).nextat[4]).data = insert::e))))
 
 
 
@@ -61,10 +61,10 @@ invariant [skiplist_order] :
         rd(heap,rd(heap,insert::update[2]).nextat[2]).data = insert::e)) /\
        (rd(heap,insert::update[3]).data < insert::e /\
        (rd(heap,rd(heap,insert::update[3]).nextat[3]).data > insert::e \/
-				rd(heap,rd(heap,insert::update[3]).nextat[3]).data = insert::e)) /\
-			 (rd(heap,insert::update[4]).data < insert::e /\
-			 (rd(heap,rd(heap,insert::update[4]).nextat[4]).data > insert::e \/
-				rd(heap,rd(heap,insert::update[4]).nextat[4]).data = insert::e)))
+        rd(heap,rd(heap,insert::update[3]).nextat[3]).data = insert::e)) /\
+       (rd(heap,insert::update[4]).data < insert::e /\
+       (rd(heap,rd(heap,insert::update[4]).nextat[4]).data > insert::e \/
+        rd(heap,rd(heap,insert::update[4]).nextat[4]).data = insert::e)))
 
 
 /\ @insert_update_all_bounds. ->
@@ -75,9 +75,9 @@ invariant [skiplist_order] :
        rd(heap, insert::update[2]).data < insert::e /\
        rd(heap, rd(heap, insert::update[2]).nextat[2]).data > insert::e /\
        rd(heap, insert::update[3]).data < insert::e /\
-			 rd(heap, rd(heap, insert::update[3]).nextat[3]).data > insert::e /\
-			 rd(heap, insert::update[4]).data < insert::e /\
-			 rd(heap, rd(heap, insert::update[4]).nextat[4]).data > insert::e)
+       rd(heap, rd(heap, insert::update[3]).nextat[3]).data > insert::e /\
+       rd(heap, insert::update[4]).data < insert::e /\
+       rd(heap, rd(heap, insert::update[4]).nextat[4]).data > insert::e)
 
 
 
@@ -114,10 +114,10 @@ invariant [skiplist_order] :
              rd(heap,rd(heap,insert::update[2]).nextat[2]).data > insert::e)) /\
        ((insert::i <= 3 /\ ~.insert::all_processed.) ->
             (rd(heap,insert::update[3]).data < insert::e /\
-						 rd(heap,rd(heap,insert::update[3]).nextat[3]).data > insert::e)) /\
-			 ((insert::i <= 4 /\ ~.insert::all_processed.) ->
-						(rd(heap,insert::update[4]).data < insert::e /\
-						 rd(heap,rd(heap,insert::update[4]).nextat[4]).data > insert::e)))
+             rd(heap,rd(heap,insert::update[3]).nextat[3]).data > insert::e)) /\
+       ((insert::i <= 4 /\ ~.insert::all_processed.) ->
+            (rd(heap,insert::update[4]).data < insert::e /\
+             rd(heap,rd(heap,insert::update[4]).nextat[4]).data > insert::e)))
 
 
 /\ @insert_newCell_connected. ->
@@ -128,9 +128,9 @@ invariant [skiplist_order] :
        (insert::i < 2 -> (rd(heap,insert::update[2]).data < insert::e /\
                           rd(heap,rd(heap,insert::update[2]).nextat[2]).data > insert::e)) /\
        (insert::i < 3 -> (rd(heap,insert::update[3]).data < insert::e /\
-													rd(heap,rd(heap,insert::update[3]).nextat[3]).data > insert::e)) /\
-			 (insert::i < 4 -> (rd(heap,insert::update[4]).data < insert::e /\
-													rd(heap,rd(heap,insert::update[4]).nextat[4]).data > insert::e)))
+                          rd(heap,rd(heap,insert::update[3]).nextat[3]).data > insert::e)) /\
+       (insert::i < 4 -> (rd(heap,insert::update[4]).data < insert::e /\
+                          rd(heap,rd(heap,insert::update[4]).nextat[4]).data > insert::e)))
 
 
 
@@ -164,10 +164,10 @@ invariant [skiplist_order] :
                            rd(heap,rd(heap, remove::update[2]).nextat[2]).data = remove::e))) /\
        (remove::i < 3 -> (rd(heap, remove::update[3]).data < remove::e /\
                           (rd(heap,rd(heap, remove::update[3]).nextat[3]).data > remove::e \/
-													 rd(heap,rd(heap, remove::update[3]).nextat[3]).data = remove::e))) /\
-			 (remove::i < 4 -> (rd(heap, remove::update[4]).data < remove::e /\
-													(rd(heap,rd(heap, remove::update[4]).nextat[4]).data > remove::e \/
-													 rd(heap,rd(heap, remove::update[4]).nextat[4]).data = remove::e))))
+                           rd(heap,rd(heap, remove::update[3]).nextat[3]).data = remove::e))) /\
+       (remove::i < 4 -> (rd(heap, remove::update[4]).data < remove::e /\
+                          (rd(heap,rd(heap, remove::update[4]).nextat[4]).data > remove::e \/
+                           rd(heap,rd(heap, remove::update[4]).nextat[4]).data = remove::e))))
 
 
 
@@ -175,8 +175,8 @@ invariant [skiplist_order] :
         (remove::update[0] in addr2set(heap, head, 0) /\
          remove::update[1] in addr2set(heap, head, 1) /\
          remove::update[2] in addr2set(heap, head, 2) /\
-				 remove::update[3] in addr2set(heap, head, 3) /\
-				 remove::update[4] in addr2set(heap, head, 4))
+         remove::update[3] in addr2set(heap, head, 3) /\
+         remove::update[4] in addr2set(heap, head, 4))
 
 
 
@@ -197,8 +197,8 @@ invariant [skiplist_order] :
       (rd(heap,remove::update[0]).data < remove::e /\
        rd(heap,remove::update[1]).data < remove::e /\
        rd(heap,remove::update[2]).data < remove::e /\
-			 rd(heap,remove::update[3]).data < remove::e /\
-			 rd(heap,remove::update[4]).data < remove::e)
+       rd(heap,remove::update[3]).data < remove::e /\
+       rd(heap,remove::update[4]).data < remove::e)
 
 
 /\ @remove_update_next_all_greater. ->
@@ -208,10 +208,10 @@ invariant [skiplist_order] :
             rd(heap, rd(heap,remove::update[1]).nextat[1]).data = remove::e) /\
            (rd(heap, rd(heap,remove::update[2]).nextat[2]).data > remove::e \/
             rd(heap, rd(heap,remove::update[2]).nextat[2]).data = remove::e) /\
-					 (rd(heap, rd(heap,remove::update[3]).nextat[3]).data > remove::e \/
-						rd(heap, rd(heap,remove::update[3]).nextat[3]).data = remove::e) /\
-					 (rd(heap, rd(heap,remove::update[4]).nextat[4]).data > remove::e \/
-						rd(heap, rd(heap,remove::update[4]).nextat[4]).data = remove::e))
+           (rd(heap, rd(heap,remove::update[3]).nextat[3]).data > remove::e \/
+            rd(heap, rd(heap,remove::update[3]).nextat[3]).data = remove::e) /\
+           (rd(heap, rd(heap,remove::update[4]).nextat[4]).data > remove::e \/
+            rd(heap, rd(heap,remove::update[4]).nextat[4]).data = remove::e))
 
 
 
@@ -221,11 +221,11 @@ invariant [skiplist_order] :
        ((1 <= remove::removeFrom /\ ~.remove::all_processed.) ->
             rd(heap, rd(heap, remove::update[1]).nextat[1]).data = remove::e) /\
        ((2 <= remove::removeFrom /\ ~.remove::all_processed.) ->
-						rd(heap, rd(heap, remove::update[2]).nextat[2]).data = remove::e) /\
+            rd(heap, rd(heap, remove::update[2]).nextat[2]).data = remove::e) /\
        ((3 <= remove::removeFrom /\ ~.remove::all_processed.) ->
-						rd(heap, rd(heap, remove::update[3]).nextat[3]).data = remove::e) /\
-			 ((4 <= remove::removeFrom /\ ~.remove::all_processed.) ->
-						rd(heap, rd(heap, remove::update[4]).nextat[4]).data = remove::e))
+            rd(heap, rd(heap, remove::update[3]).nextat[3]).data = remove::e) /\
+       ((4 <= remove::removeFrom /\ ~.remove::all_processed.) ->
+            rd(heap, rd(heap, remove::update[4]).nextat[4]).data = remove::e))
 
 
 /\ @remove_update_next_all_greater. ->
@@ -235,10 +235,10 @@ invariant [skiplist_order] :
             rd(heap, rd(heap, remove::update[1]).nextat[1]).data > remove::e) /\
        ((remove::removeFrom < 2 /\ ~.remove::all_processed.) ->
             rd(heap, rd(heap, remove::update[2]).nextat[2]).data > remove::e) /\
-			 ((remove::removeFrom < 3 /\ ~.remove::all_processed.) ->
-						rd(heap, rd(heap, remove::update[3]).nextat[3]).data > remove::e) /\
-			 ((remove::removeFrom < 4 /\ ~.remove::all_processed.) ->
-						rd(heap, rd(heap, remove::update[4]).nextat[4]).data > remove::e))
+       ((remove::removeFrom < 3 /\ ~.remove::all_processed.) ->
+            rd(heap, rd(heap, remove::update[3]).nextat[3]).data > remove::e) /\
+       ((remove::removeFrom < 4 /\ ~.remove::all_processed.) ->
+            rd(heap, rd(heap, remove::update[4]).nextat[4]).data > remove::e))
 
 
 
@@ -248,11 +248,11 @@ invariant [skiplist_order] :
        ((1 <= remove::i /\ ~.remove::all_processed.) ->
             rd(heap, rd(heap, remove::update[1]).nextat[1]).data = remove::e) /\
        ((2 <= remove::i /\ ~.remove::all_processed.) ->
-						rd(heap, rd(heap, remove::update[2]).nextat[2]).data = remove::e) /\
+            rd(heap, rd(heap, remove::update[2]).nextat[2]).data = remove::e) /\
        ((3 <= remove::i /\ ~.remove::all_processed.) ->
-						rd(heap, rd(heap, remove::update[3]).nextat[3]).data = remove::e) /\
-			 ((4 <= remove::i /\ ~.remove::all_processed.) ->
-						rd(heap, rd(heap, remove::update[4]).nextat[4]).data = remove::e))
+            rd(heap, rd(heap, remove::update[3]).nextat[3]).data = remove::e) /\
+       ((4 <= remove::i /\ ~.remove::all_processed.) ->
+            rd(heap, rd(heap, remove::update[4]).nextat[4]).data = remove::e))
 
 
 /\ @remove_final_while_begins. ->
@@ -263,26 +263,26 @@ invariant [skiplist_order] :
        ((remove::i < 2 /\ ~.remove::all_processed.) ->
             rd(heap, rd(heap, remove::update[2]).nextat[2]).data > remove::e) /\
        ((remove::i < 3 /\ ~.remove::all_processed.) ->
-						rd(heap, rd(heap, remove::update[3]).nextat[3]).data > remove::e) /\
-			 ((remove::i < 4 /\ ~.remove::all_processed.) ->
-						rd(heap, rd(heap, remove::update[4]).nextat[4]).data > remove::e))
+            rd(heap, rd(heap, remove::update[3]).nextat[3]).data > remove::e) /\
+       ((remove::i < 4 /\ ~.remove::all_processed.) ->
+            rd(heap, rd(heap, remove::update[4]).nextat[4]).data > remove::e))
 
 
 
 /\ @remove_newCell_connected. ->
       ((0 < remove::i -> rd(heap, rd(heap, remove::update[0]).nextat[0]).data = remove::e) /\
        (1 < remove::i -> rd(heap, rd(heap, remove::update[1]).nextat[1]).data = remove::e) /\
-			 (2 < remove::i -> rd(heap, rd(heap, remove::update[2]).nextat[2]).data = remove::e) /\
-			 (3 < remove::i -> rd(heap, rd(heap, remove::update[3]).nextat[3]).data = remove::e) /\
-			 (4 < remove::i -> rd(heap, rd(heap, remove::update[4]).nextat[4]).data = remove::e))
+       (2 < remove::i -> rd(heap, rd(heap, remove::update[2]).nextat[2]).data = remove::e) /\
+       (3 < remove::i -> rd(heap, rd(heap, remove::update[3]).nextat[3]).data = remove::e) /\
+       (4 < remove::i -> rd(heap, rd(heap, remove::update[4]).nextat[4]).data = remove::e))
 
 
 /\ @remove_newCell_connected. ->
       ((remove::i < 0 -> rd(heap, rd(heap, remove::update[0]).nextat[0]).data > remove::e) /\
        (remove::i < 1 -> rd(heap, rd(heap, remove::update[1]).nextat[1]).data > remove::e) /\
-			 (remove::i < 2 -> rd(heap, rd(heap, remove::update[2]).nextat[2]).data > remove::e) /\
-			 (remove::i < 3 -> rd(heap, rd(heap, remove::update[3]).nextat[3]).data > remove::e) /\
-			 (remove::i < 4 -> rd(heap, rd(heap, remove::update[4]).nextat[4]).data > remove::e))
+       (remove::i < 2 -> rd(heap, rd(heap, remove::update[2]).nextat[2]).data > remove::e) /\
+       (remove::i < 3 -> rd(heap, rd(heap, remove::update[3]).nextat[3]).data > remove::e) /\
+       (remove::i < 4 -> rd(heap, rd(heap, remove::update[4]).nextat[4]).data > remove::e))
 
 
 /\ @remove_newCell_connected. ->
