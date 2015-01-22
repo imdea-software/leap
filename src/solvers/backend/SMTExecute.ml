@@ -12,7 +12,7 @@ exception SMT_Not_Found of string
 let get_exec_cmd (smt:smt_t) : string =
   begin
     match smt with
-    | Yices -> "yices"
+    | Yices -> "yices-smt2"
     | Z3 -> "z3"
     | CVC4 -> "cvc4"
   end
@@ -30,7 +30,11 @@ let check_installed (smts:smt_t list) : unit =
   let check_smt (smt:smt_t) : unit =
     let cmd = get_exec_cmd smt in
     let env = Array.of_list [] in
-    let (stdout,stdin,stderr) = Unix.open_process_full (cmd ^ " -?") env in
+    let check_method = match smt with
+                       | Yices -> " -h"
+                       | _ -> " -?" in
+    let (stdout,stdin,stderr) = Unix.open_process_full (cmd ^ check_method) env in
+    print_endline (cmd ^ check_method);
     try
       ignore (Pervasives.input_line stderr);
       raise(SMT_Not_Found cmd)
@@ -54,10 +58,13 @@ let get_modelparser (smt:smt_t) : Lexing.lexbuf -> GenericModel.t =
 
 
 let get_prequery (smt:smt_t) : string =
+  "(set-option :produce-assignments true)\n"
+  (*
   match smt with
   | Yices -> "(set-evidence! true)\n"
   | Z3    -> "(set-option :produce-assignments true)\n"
   | CVC4  -> "(set-option :produce-assignments true)\n"
+  *)
 
 
 let get_postquery (smt:smt_t) : string =
