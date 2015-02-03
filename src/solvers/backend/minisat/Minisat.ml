@@ -94,7 +94,7 @@ struct
       let (from_minisat,to_minisat,stderr) = Unix.open_process_full
                                                minisat_cmd env in
       let response = parse_minisat_output from_minisat in
-      let _ = Debug.print_smt_result (Sat.is_sat response) in
+      let _ = Debug.print_smt_result response in
       let _ = Unix.close_process_full (from_minisat,to_minisat,stderr)
       in
         response

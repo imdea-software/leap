@@ -212,7 +212,7 @@ let run (cfg:configuration_t) (query:string) : Sat.t =
   let _ = Unix.close_process_full (stdout,stdin,stderr) in
   cfg.calls # incr;
   verbl _LONG_INFO "**** SMTExecute, will print results.\n";
-  Debug.print_smt_result (Sat.is_sat response);
+  Debug.print_smt_result response;
   if terminated then
     response
   else

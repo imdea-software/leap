@@ -28,12 +28,9 @@ let force_print_file_name (label:string) (file_name:string) : unit =
     print_endline out_str
 
 
-let print_smt_result (sat:bool) : unit =
+let print_smt_result (sat:Sat.t) : unit =
   if !_debug_show_tmpfile_info_ then
-    if sat then
-      print_endline "[ SAT]"
-    else
-      print_endline "[UNSAT]"
+    print_endline ("[" ^ Sat.to_str sat ^ "]")
 
 
 let print_trsProblem (prob_str:string) : unit =

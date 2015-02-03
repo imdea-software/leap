@@ -10,7 +10,7 @@ val _debug_show_smt_ : bool ref
 val msg : string -> int -> unit
 val print_file_name : string -> string -> unit
 val force_print_file_name : string -> string -> unit
-val print_smt_result : bool -> unit
+val print_smt_result : Sat.t -> unit
 val print_trsProblem : string -> unit
 val print_invTables : string -> string -> unit
 val print_widening_formulas : int list -> string -> string -> string -> unit
