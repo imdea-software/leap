@@ -13,9 +13,9 @@ let prog_lines : int ref = ref 0
 
 
 (* Sort names *)
-let bool_s : string = "Bool"
-let tid_s : string = "Tid"
-let loc_s  : string = "Int"
+let bool_s : string = "bool"
+let tid_s : string = "tid"
+let loc_s  : string = "loc"
 
 
 (* Program lines manipulation *)
@@ -30,7 +30,7 @@ let sort_map : GM.sort_map_t = GM.new_sort_map()
 let pred_variable_to_str (v:string) : string =
   let _ = GM.sm_decl_const sort_map v bool_s
   in
-    sprintf "(declare-fun %s () %s)\n" v bool_s
+    sprintf "(define %s::%s)\n" v bool_s
 
 
 let rec variable_to_str (v:PE.V.t) : string =
@@ -56,7 +56,7 @@ let thid_variable_to_str (th:PE.tid) : string =
   let var_id = tid_to_str th in
   let _ = GM.sm_decl_const sort_map var_id tid_s
   in
-    sprintf "(declare-fun %s () %s)\n" var_id tid_s
+    sprintf "(define %s::%s)\n" var_id tid_s
 
 
 let pos_to_str (bpc:(int * PE.V.shared_or_local * bool)) : string =
@@ -92,8 +92,8 @@ let rec expr_to_str (expr:PE.expression) : string =
     match expr with
     | PE.Eq(x,y)         ->" (= " ^ (tid_to_str x) ^ " "
                                      ^ (tid_to_str y) ^ ")"
-    | PE.InEq(x,y)       ->" (not (= "^ (tid_to_str x) ^ " "
-                                      ^ (tid_to_str y) ^ "))"
+    | PE.InEq(x,y)       ->" (/= "^ (tid_to_str x) ^ " "
+                                  ^ (tid_to_str y) ^ ")"
     | PE.Pred p          -> " " ^ p ^ " "
     | PE.PC (i,th,pr)    -> " " ^ pos_to_str (i,th,pr) ^ " "
     | PE.PCUpdate (i,th) -> " " ^ posupd_to_str (i,th) ^ " "
@@ -112,25 +112,12 @@ let pos_expression_to_str (expr:PE.expression) : string =
   let _             = GM.clear_sort_map sort_map in
   let voc           = PE.voc expr in
   let preds         = PE.all_preds expr in
-  let logic_decl_str= "(set-logic QF_AUFLIA)\n" in
-  let thid_decl_str = sprintf "(declare-sort %s 0)\n" tid_s in
-  let pc_str        = sprintf "(declare-fun pc (%s) %s)\n" tid_s loc_s in
-  let pc_prime_str  = sprintf "(declare-fun pc_prime (%s) %s)\n"
-                        tid_s loc_s in
-(*
+  let thid_decl_str = sprintf "(define-type %s)\n" tid_s in
   let loc_decl_str  = sprintf "(define-type %s (subrange 1 %i))\n"
                         loc_s !prog_lines in
   let pc_str        = sprintf "(define pc::(-> %s %s))\n" tid_s loc_s in
   let pc_prime_str  = sprintf "(define pc_prime::(-> %s %s))\n"
                         tid_s loc_s in
-*)
-  let pc_assert_str = List.fold_left (fun str t ->
-                        let t_str = tid_to_str t in
-                        str ^ (sprintf "(assert (and (>= (pc %s) 0) (<= (pc %s) %i)))\n"
-                                t_str t_str !prog_lines)
-                            ^ (sprintf "(assert (and (>= (pc_prime %s) 0) (<= (pc_prime %s) %i)))\n"
-                                t_str t_str !prog_lines)
-                      ) "" voc in
   let _             = GM.sm_decl_fun sort_map "pc" [tid_s] [loc_s] in
   let _             = GM.sm_decl_fun sort_map "pc_prime" [tid_s] [loc_s] in
   let voc_str       = List.fold_left (fun s v ->
@@ -139,12 +126,12 @@ let pos_expression_to_str (expr:PE.expression) : string =
   let pred_str      = List.fold_left (fun s v ->
                         s ^ (pred_variable_to_str v)
                       ) "" preds in
-  let formula_str   = "(assert " ^ (expr_to_str expr) ^ ")\n(check-sat)\n"
+  let formula_str   = "(assert " ^ (expr_to_str expr) ^ ")\n(check)\n"
   in
-    logic_decl_str ^ thid_decl_str ^
-    pc_str ^ pc_prime_str ^
+    thid_decl_str ^
+    loc_decl_str ^ pc_str ^ pc_prime_str ^
     voc_str ^ pred_str ^
-    pc_assert_str ^ formula_str
+    formula_str
 
 
 let get_sort_map () : GM.sort_map_t =

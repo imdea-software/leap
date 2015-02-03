@@ -165,13 +165,13 @@ dist:   clean
 
 expand:
 	@echo "Expanding tabs..."
-	@for i in `find examples/* $(SRC)/* -type f | grep -v \\.swp | grep -v \\.svn` ; do expand -t 2 $$i > temp.file ; mv temp.file $$i; done
+	@for i in `find examples/* $(SRC)/* -type f | grep -v \\.swp | grep -v \\.svn | grep -v \\.py` ; do expand -t 2 $$i > temp.file ; mv temp.file $$i; done
 	@for i in `find examples/* $(SRC)/* -type f | grep \\.sh` ; do chmod +x $$i; done
 
 
 unexpand:
 	@echo "Unexpanding tabs..."
-	@for i in `find examples/* $(SRC)/* -type f | grep -v \\.swp | grep -v \\.svn` ; do unexpand -t 2 $$i > temp.file ; mv temp.file $$i; done
+	@for i in `find examples/* $(SRC)/* -type f | grep -v \\.swp | grep -v \\.svn | grep -v \\.py` ; do unexpand -t 2 $$i > temp.file ; mv temp.file $$i; done
 	@for i in `find examples/* $(SRC)/* -type f | grep \\.sh` ; do chmod +x $$i; done
 
 cleartmp:
