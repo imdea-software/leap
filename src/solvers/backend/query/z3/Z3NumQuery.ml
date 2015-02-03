@@ -2,7 +2,7 @@ open NumQuery
 open LeapLib
 
 
-module YicesNumQuery : NUM_QUERY =
+module Z3NumQuery : NUM_QUERY =
 
 struct
   module E=Expression
@@ -13,7 +13,7 @@ struct
   module F = Formula
 
 
-  exception NotSupportedInYices of string
+  exception NotSupportedInZ3 of string
   exception UntypedVariable of string
   exception Not_implemented of string
 
@@ -159,7 +159,7 @@ struct
       Printf.sprintf "(define %s::(-> %s %s))\n" v_str thid_s v_sort
 
 
-  let yices_string_of_pos (pc:(int * NE.V.shared_or_local * bool)) : string =
+  let z3_string_of_pos (pc:(int * NE.V.shared_or_local * bool)) : string =
     let (i, th, pr) = pc in
     let pc_str = if pr then pc_prime_name else Conf.pc_name in
     let th_str = shared_or_local_to_str th
@@ -167,7 +167,7 @@ struct
       Printf.sprintf "(= (%s %s) %i)" pc_str th_str i
 
 
-  let yices_string_of_posrange (pc:(int * int * NE.V.shared_or_local * bool)) : string =
+  let z3_string_of_posrange (pc:(int * int * NE.V.shared_or_local * bool)) : string =
     let (i, j, th, pr) = pc in
     let pc_str = if pr then pc_prime_name else Conf.pc_name in
     let th_str = shared_or_local_to_str th
@@ -176,7 +176,7 @@ struct
           i pc_str th_str pc_str th_str j
 
 
-  let yices_string_of_posupd (pc:(int * NE.tid)) : string =
+  let z3_string_of_posupd (pc:(int * NE.tid)) : string =
     let (i, th) = pc
     in
       Printf.sprintf "(= %s (update %s (%s) %i))" pc_prime_name Conf.pc_name
@@ -209,7 +209,7 @@ struct
 
   (************************** Support for sets **************************)
 
-  let yices_type_decl (prog_lines:int) (buf:Buffer.t) : unit =
+  let z3_type_decl (prog_lines:int) (buf:Buffer.t) : unit =
     B.add_string buf ("(define-type " ^thid_s^ ")\n");
     B.add_string buf (Printf.sprintf "(define-type %s (-> %s %s))\n"
                         set_s int_s bool_s);
@@ -217,7 +217,7 @@ struct
                         loc_s prog_lines)
 
 
-  let yices_undefined_decl (buf:Buffer.t) : unit =
+  let z3_undefined_decl (buf:Buffer.t) : unit =
     let _ = GM.sm_decl_const sort_map undefInt GM.int_s in
       B.add_string buf ("(define " ^ undefInt ^ "::" ^ int_s ^ ")\n");
       B.add_string buf ("(define is_legal::(-> " ^int_s^ " " ^bool_s^ ")\n" ^
@@ -227,7 +227,7 @@ struct
 
   (* (define emp::set)               *)
   (*   (lambda (a::address) (false)) *)
-  let yices_emp_def (buf:Buffer.t) : unit =
+  let z3_emp_def (buf:Buffer.t) : unit =
     B.add_string buf
       ("(define emp::" ^set_s^ "\n" ^
        "  (lambda (a::" ^int_s ^ ") false))\n")
@@ -236,7 +236,7 @@ struct
   (*     (lambda (a::int)                  *)
   (*         (lambda (b::int)              *)
   (*             (= a b))))                *)
-  let yices_singleton_def (buf:Buffer.t) : unit =
+  let z3_singleton_def (buf:Buffer.t) : unit =
     B.add_string buf
       ( "(define singleton::(-> " ^int_s^ " " ^set_s^ ")\n" ^
         "    (lambda (a::" ^int_s^ ")\n" ^
@@ -247,7 +247,7 @@ struct
   (*     (lambda (s::set r::set)            *)
   (*         (lambda (a::int)               *)
   (*             (or (s a) (r a)))))        *)
-  let yices_union_def (buf:Buffer.t) : unit =
+  let z3_union_def (buf:Buffer.t) : unit =
     B.add_string buf
       ( "(define union::(-> " ^set_s^ " " ^set_s^ " " ^set_s^ ")\n" ^
         "    (lambda (s::" ^set_s^ " r::" ^set_s^ ")\n" ^
@@ -258,7 +258,7 @@ struct
   (*     (lambda (s::set r::set)            *)
   (*         (lambda (a::int)               *)
   (*             (and (s a) (not (r a)))))) *)
-  let yices_setdiff_def (buf:Buffer.t) : unit =
+  let z3_setdiff_def (buf:Buffer.t) : unit =
     B.add_string buf
       ( "(define setdiff::(-> " ^set_s^ " " ^set_s^ " " ^set_s^ ")\n" ^
         "    (lambda (s::" ^set_s^ " r::" ^set_s^ ")\n" ^
@@ -269,7 +269,7 @@ struct
   (*     (lambda (s::set r::set) *)
   (*         (lambda (a::address) *)
   (*             (and (s a) (r a))))) *)
-  let yices_intersection_def (buf:Buffer.t) : unit =
+  let z3_intersection_def (buf:Buffer.t) : unit =
     B.add_string buf
     ("(define intersection::(-> " ^set_s^ " " ^set_s^ " " ^set_s^ ")\n" ^
      "   (lambda (s::" ^set_s^ " r::" ^set_s^ ")\n" ^
@@ -285,7 +285,7 @@ struct
   (*          (if (s1 a3) (s2 a3))        *)
   (*          (if (s1 a4) (s2 a4))        *)
   (*          (if (s1 a5) (s2 a5)))))     *)
-  let yices_subseteq_def (vars_rep:string list) (buf:Buffer.t) : unit =
+  let z3_subseteq_def (vars_rep:string list) (buf:Buffer.t) : unit =
 (*
     B.add_string buf
         ("(define subseteq::(-> " ^set_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
@@ -304,7 +304,7 @@ struct
 
 
 
-  let yices_is_min_def (vars_rep:string list) (buf:Buffer.t) : unit =
+  let z3_is_min_def (vars_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
         ("(define is_min::(-> " ^int_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
          "  (lambda (int_v::" ^int_s^ " set_v::" ^set_s^ ")\n" ^
@@ -316,7 +316,7 @@ struct
     B.add_string buf ")))\n"
 
 
-  let yices_is_max_def (vars_rep:string list) (buf:Buffer.t) : unit =
+  let z3_is_max_def (vars_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
         ("(define is_max::(-> " ^int_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
          "  (lambda (int_v::" ^int_s^ " set_v::" ^set_s^ ")\n" ^
@@ -328,14 +328,14 @@ struct
     B.add_string buf ")))\n"
 
 
-  let yices_is_in_def (buf:Buffer.t) : unit =
+  let z3_is_in_def (buf:Buffer.t) : unit =
     B.add_string buf
     ("(define is_in::(-> " ^int_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
      "   (lambda (int_v::" ^int_s^ " set_v::" ^set_s^ ")\n" ^
      "       (set_v int_v)))\n")
 
 
-  let yices_min_def (vars_rep:string list) (buf:Buffer.t) : unit =
+  let z3_min_def (vars_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
     ("(define setmin::(-> " ^set_s^ " " ^int_s^ ")\n" ^
      "   (lambda (set_v::" ^set_s^ ")\n" ^
@@ -347,7 +347,7 @@ struct
      "))\n")
 
 
-  let yices_max_def (vars_rep:string list) (buf:Buffer.t) : unit =
+  let z3_max_def (vars_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
     ("(define setmax::(-> " ^set_s^ " " ^int_s^ ")\n" ^
      "   (lambda (set_v::" ^set_s^ ")\n" ^
@@ -359,7 +359,7 @@ struct
      "))\n")
 
 
-  let yices_filter_set_def (vars_rep:string list) (buf:Buffer.t) : unit =
+  let z3_filter_set_def (vars_rep:string list) (buf:Buffer.t) : unit =
     let or_cond =
       match vars_rep with
       | [] -> "true"
@@ -371,7 +371,7 @@ struct
       "      (and (s a) " ^or_cond^ "))))\n")
 
 
-  let yices_lower_def (buf:Buffer.t) : unit =
+  let z3_lower_def (buf:Buffer.t) : unit =
     B.add_string buf
     ("(define lower::(-> " ^set_s^ " " ^int_s^ " " ^set_s^ ")\n" ^
      "  (lambda (s::" ^set_s^ " i::" ^int_s^ ")\n" ^
@@ -384,7 +384,7 @@ struct
 
   (************************ Preamble definitions ************************)
 
-  let yices_pc_def (buf:Buffer.t) : unit =
+  let z3_pc_def (buf:Buffer.t) : unit =
     let _ = GM.sm_decl_fun sort_map Conf.pc_name [GM.tid_s] [GM.loc_s] in
     let _ = GM.sm_decl_fun sort_map pc_prime_name [GM.tid_s] [GM.loc_s]
     in
@@ -394,7 +394,7 @@ struct
                           "::(-> " ^thid_s^ " " ^loc_s^ "))\n")
 
 
-  let yices_aux_int_def (cutoff:int) (buf:Buffer.t) : unit =
+  let z3_aux_int_def (cutoff:int) (buf:Buffer.t) : unit =
     let i_list = LeapLib.rangeList 1 cutoff in
     List.iter (fun i ->
       let i_name = aux_int ^ string_of_int i in
@@ -403,7 +403,7 @@ struct
     ) i_list
 
 
-  let yices_legal_values (global_vars:NE.V.t list)
+  let z3_legal_values (global_vars:NE.V.t list)
                          (local_vars:NE.V.t list)
                          (voc:NE.tid list)
                          (buf:Buffer.t) : unit =
@@ -430,7 +430,7 @@ struct
 
 
   (* TODO: Verify, if no set is defined, then do not include the preamble for sets *)
-  let yices_preamble (buf:Buffer.t)
+  let z3_preamble (buf:Buffer.t)
                      (voc:NE.tid list)
                      (cutoff:int)
                      (gbl_int_vars:NE.V.t list)
@@ -450,22 +450,22 @@ struct
                        ) (LeapLib.rangeList 1 cutoff) in
     let all_vars_str = glb_vars_str @ loc_vars_str @ aux_vars_str
     in
-      yices_undefined_decl              buf;
-      yices_aux_int_def cutoff          buf;
-      yices_emp_def                     buf;
-      yices_singleton_def               buf;
-      yices_union_def                   buf;
-      yices_setdiff_def                 buf;
-      yices_intersection_def            buf;
-      yices_subseteq_def all_vars_str   buf;
-      yices_is_min_def all_vars_str     buf;
-      yices_is_max_def all_vars_str     buf;
-      yices_is_in_def                   buf;
-      yices_min_def all_vars_str        buf;
-      yices_max_def all_vars_str        buf;
-      yices_filter_set_def all_vars_str buf;
-      yices_lower_def                   buf;
-      yices_pc_def                      buf
+      z3_undefined_decl              buf;
+      z3_aux_int_def cutoff          buf;
+      z3_emp_def                     buf;
+      z3_singleton_def               buf;
+      z3_union_def                   buf;
+      z3_setdiff_def                 buf;
+      z3_intersection_def            buf;
+      z3_subseteq_def all_vars_str   buf;
+      z3_is_min_def all_vars_str     buf;
+      z3_is_max_def all_vars_str     buf;
+      z3_is_in_def                   buf;
+      z3_min_def all_vars_str        buf;
+      z3_max_def all_vars_str        buf;
+      z3_filter_set_def all_vars_str buf;
+      z3_lower_def                   buf;
+      z3_pc_def                      buf
 
 
   (************************ Preamble definitions ************************)
@@ -484,17 +484,17 @@ struct
     | NE.FunUpd (f,th,i) ->
         let f_str = fun_to_str f in
         let th_str = tid_to_str th in
-        let i_str = yices_string_of_term i
+        let i_str = z3_string_of_term i
         in
           Printf.sprintf "(update %s (%s) %s)" f_str th_str i_str
 
 
-  and yices_string_of_integer (t:NE.integer) : string =
+  and z3_string_of_integer (t:NE.integer) : string =
     let constanttostr t =
       match t with
           NE.Val(n) -> string_of_int n
-        | _ -> raise(NotSupportedInYices(NE.integer_to_str t)) in
-    let tostr = yices_string_of_integer in
+        | _ -> raise(NotSupportedInZ3(NE.integer_to_str t)) in
+    let tostr = z3_string_of_integer in
       match t with
         NE.Val(n)       -> " " ^ string_of_int n
       | NE.Var(v)       -> variable_invocation_to_str v
@@ -503,39 +503,39 @@ struct
       | NE.Sub(x,y)     -> " (- " ^ (tostr x) ^ (tostr y) ^ ")"
       | NE.Mul(x,y)     -> " (* " ^ (tostr x) ^ (tostr y) ^ ")"
       | NE.Div(x,y)     -> " (/ " ^ (tostr x) ^ (tostr y) ^ ")"
-      | NE.ArrayRd(_,_) -> raise(NotSupportedInYices(NE.integer_to_str t))
-      | NE.SetMin(s)    -> " (setmin " ^ yices_string_of_set s ^ ")"
-      | NE.SetMax(s)    -> " (setmax " ^ yices_string_of_set s ^ ")"
+      | NE.ArrayRd(_,_) -> raise(NotSupportedInZ3(NE.integer_to_str t))
+      | NE.SetMin(s)    -> " (setmin " ^ z3_string_of_set s ^ ")"
+      | NE.SetMax(s)    -> " (setmax " ^ z3_string_of_set s ^ ")"
 
-  and yices_string_of_set (s:NE.set) : string =
-    let yices_int = yices_string_of_integer in
-    let yices_set = yices_string_of_set in
+  and z3_string_of_set (s:NE.set) : string =
+    let z3_int = z3_string_of_integer in
+    let z3_set = z3_string_of_set in
     match s with
       NE.VarSet (v)   -> variable_invocation_to_str v
     | NE.EmptySet     -> " emp"
-    | NE.Singl i      -> Printf.sprintf "(singleton %s)" (yices_int i)
-    | NE.Union(s1,s2) -> Printf.sprintf "(union %s %s)" (yices_set s1) (yices_set s2)
-    | NE.Intr(s1,s2)  -> Printf.sprintf "(intersection %s %s)" (yices_set s1) (yices_set s2)
-    | NE.Diff(s1,s2)  -> Printf.sprintf "(setdiff %s %s)" (yices_set s1) (yices_set s2)
-    | NE.Lower(s,i)   -> Printf.sprintf "(lower %s %s)" (yices_set s) (yices_int i)
+    | NE.Singl i      -> Printf.sprintf "(singleton %s)" (z3_int i)
+    | NE.Union(s1,s2) -> Printf.sprintf "(union %s %s)" (z3_set s1) (z3_set s2)
+    | NE.Intr(s1,s2)  -> Printf.sprintf "(intersection %s %s)" (z3_set s1) (z3_set s2)
+    | NE.Diff(s1,s2)  -> Printf.sprintf "(setdiff %s %s)" (z3_set s1) (z3_set s2)
+    | NE.Lower(s,i)   -> Printf.sprintf "(lower %s %s)" (z3_set s) (z3_int i)
 
 
-  and yices_string_of_term (t:NE.term) : string =
+  and z3_string_of_term (t:NE.term) : string =
     match t with
-      NE.IntV i -> yices_string_of_integer i
-    | NE.SetV s -> yices_string_of_set s
+      NE.IntV i -> z3_string_of_integer i
+    | NE.SetV s -> z3_string_of_set s
 
 
-  and yices_string_of_atom a =
-    let int_tostr = yices_string_of_integer in
-    let set_tostr = yices_string_of_set in
-    let term_tostr = yices_string_of_term in
+  and z3_string_of_atom a =
+    let int_tostr = z3_string_of_integer in
+    let set_tostr = z3_string_of_set in
+    let term_tostr = z3_string_of_term in
       match a with
         NE.Less(x,y)      -> " (< "  ^ (int_tostr x) ^ (int_tostr y) ^ ")"
       | NE.Greater(x,y)   -> " (> "  ^ (int_tostr x) ^ (int_tostr y) ^ ")"
       | NE.LessEq(x,y)    -> " (<= " ^ (int_tostr x) ^ (int_tostr y) ^ ")"
       | NE.GreaterEq(x,y) -> " (>= " ^ (int_tostr x) ^ (int_tostr y) ^ ")"
-      | NE.LessTid(x,y)   -> " (tid order support for yices not added yet )"
+      | NE.LessTid(x,y)   -> " (tid order support for z3 not added yet )"
       | NE.Eq(x,y)        -> " (= "  ^ (term_tostr x) ^ (term_tostr y) ^ ")"
       | NE.InEq(x,y)      -> " (/= " ^ (term_tostr x) ^ (term_tostr y) ^ ")"
       | NE.In(i,s)        -> " (" ^ set_tostr s ^ " " ^ int_tostr i ^ ")"
@@ -548,14 +548,14 @@ struct
                                             (fun_to_str y) ^ ")"
       | NE.FunInEq(x,y)   -> " (/= " ^ (fun_to_str x) ^ " " ^
                                             (fun_to_str y) ^ ")"
-      | NE.PC (i,th,pr)   -> " " ^ yices_string_of_pos (i,th,pr) ^ " "
-      | NE.PCUpdate(i,th) -> " " ^ yices_string_of_posupd (i,th) ^ " "
-      | NE.PCRange (i,j,th,pr) -> " " ^ yices_string_of_posrange (i,j,th,pr) ^ " "
+      | NE.PC (i,th,pr)   -> " " ^ z3_string_of_pos (i,th,pr) ^ " "
+      | NE.PCUpdate(i,th) -> " " ^ z3_string_of_posupd (i,th) ^ " "
+      | NE.PCRange (i,j,th,pr) -> " " ^ z3_string_of_posrange (i,j,th,pr) ^ " "
 
   and string_of_literal l =
     match l with
-      F.Atom a    -> yices_string_of_atom a
-    | F.NegAtom a -> "(not "^ yices_string_of_atom a ^")"
+      F.Atom a    -> z3_string_of_atom a
+    | F.NegAtom a -> "(not "^ z3_string_of_atom a ^")"
 
   and string_of_formula  phi =
     let tostr = string_of_formula in
@@ -605,7 +605,7 @@ struct
     let glb_int_vars   = filter_ints global_vars in
     let lcl_int_vars   = filter_ints local_vars in
     let buf            = B.create 1024 in
-    let _              = yices_type_decl !prog_lines buf in
+    let _              = z3_type_decl !prog_lines buf in
     let _              = List.iter (fun v ->
                            B.add_string buf (tid_variable_to_str v)
                          ) voc in
@@ -615,9 +615,9 @@ struct
     let _              = List.iter (fun v ->
                           B.add_string buf (local_var_to_str v)
                          ) local_vars in
-    let _              = yices_preamble buf voc cutoff
+    let _              = z3_preamble buf voc cutoff
                             glb_int_vars lcl_int_vars in
-    let _              = yices_legal_values global_vars local_vars voc buf in
+    let _              = z3_legal_values global_vars local_vars voc buf in
     let _              = B.add_string buf ("(assert " ^ (string_of_formula phi) ^
                                             ")\n(check)\n")
     in
@@ -628,7 +628,7 @@ struct
     let vars' = int_varlist_to_str vars in
     let f'    = int_formula_to_str f in
     let l'    = string_of_literal l
-    in Printf.sprintf "%s\n(assert (not (=> %s %s)))\n(check)\n" vars' f' l'
+    in Printf.sprintf "HOLAMUNDO%s\n(assert (not (=> %s %s)))\n(check)\n" vars' f' l'
 
 
   let get_sort_map () : GM.sort_map_t =

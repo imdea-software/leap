@@ -12,10 +12,10 @@ sig
   val int_varlist_to_str : NumExpression.V.t list -> string
   (** Translates a list of integer variables into its string representation *)
 
-  val yices_string_of_formula  : NumExpression.formula -> string
+  val string_of_formula  : NumExpression.formula -> string
   (** Translates a numeric formula into a Yices string *)
 
-  val yices_string_of_literal  : NumExpression.literal -> string
+  val string_of_literal  : NumExpression.literal -> string
   (** Translates a literal into its corresponding Yices string representation. *)
 
   val int_formula_to_str : NumExpression.formula -> string

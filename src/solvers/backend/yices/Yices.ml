@@ -97,8 +97,8 @@ struct
       struct
         let set_prog_lines         = Q.set_prog_lines
         let int_varlist            = Q.int_varlist_to_str
-        let formula                = Q.yices_string_of_formula
-        let literal                = Q.yices_string_of_literal
+        let formula                = Q.string_of_formula
+        let literal                = Q.string_of_literal
         let int_formula            = Q.int_formula_to_str
         let int_formula_with_lines = Q.int_formula_with_lines_to_str
         let std_widening           = Q.standard_widening

@@ -3,6 +3,7 @@ open NumQuery
 open TllQuery
 open TslkQuery
 open YicesNumQuery
+open Z3NumQuery
 open YicesTllQuery
 open Z3TllQuery
 open SMTTllQuery
@@ -17,6 +18,7 @@ let set_smt_usage (b:bool) : unit =
 let get_num_query (id:string) : (module NUM_QUERY) =
   match (id,!use_smtlib) with
   | ("Yices", _) -> (module YicesNumQuery)
+  | ("Z3",    _) -> (module Z3NumQuery)
   | _            -> (module YicesNumQuery)
 
 
