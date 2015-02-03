@@ -2,26 +2,26 @@ module type CUSTOM_TLLSOLVER = sig
   module TllExp : ExpressionTypes.TLLEXP
   
   
-  val is_sat_conj  : int -> bool -> TllExp.conjunctive_formula -> bool
-  val is_sat_dnf   : int -> bool -> TllExp.formula -> bool
+  val check_sat_conj  : int -> bool -> TllExp.conjunctive_formula -> Sat.t
+  val check_sat_dnf   : int -> bool -> TllExp.formula -> Sat.t
   
-  val is_valid_dnf : int -> bool -> TllExp.formula -> bool
-  val is_valid_dnf_pus_info : int -> bool -> TllExp.formula -> (bool * int)
+  val check_valid_dnf : int -> bool -> TllExp.formula -> Valid.t
+  val check_valid_dnf_pus_info : int -> bool -> TllExp.formula -> (Valid.t * int)
     
-  val is_sat       : int ->
+  val check_sat       : int ->
                      Smp.cutoff_strategy_t ->
                      bool ->
-                     TllExp.formula -> bool
-  val is_valid     : int ->
+                     TllExp.formula -> Sat.t
+  val check_valid     : int ->
                      Smp.cutoff_strategy_t ->
                      bool ->
-                     TllExp.formula -> bool
+                     TllExp.formula -> Valid.t
   
-  val is_valid_plus_info 
+  val check_valid_plus_info 
                    : int ->
                      Smp.cutoff_strategy_t ->
                      bool ->
-                     TllExp.formula -> (bool * int)
+                     TllExp.formula -> (Valid.t * int)
 
   val compute_model: bool -> unit
   val model_to_str : unit -> string

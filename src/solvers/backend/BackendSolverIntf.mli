@@ -22,11 +22,13 @@ sig
   (** [calls_force_incr ()] forces to increment by one the number of calls
       performed to the Solver. *)
   
-  val sat   : t -> bool
-  (** Tests whether the formula is satisfiable or not. *)
-  
-  val unsat : t -> bool
+  val check_sat : t -> Sat.t
+  (** Tests whether the formula is satisfiable. *)
+
+(* 
+  val unsat : t -> Sat.t
   (** [unsat formula] returns [not(sat formula)]. *)
+*)
   
   val compute_model : bool -> unit
   (** [compute_model b] sets whether a counter model for non valid

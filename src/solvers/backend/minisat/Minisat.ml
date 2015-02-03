@@ -58,7 +58,7 @@ struct
     
   (* RUNING MINISAT *)
 
-  let parse_minisat_output (from_minisat:Pervasives.in_channel) : bool =
+  let parse_minisat_output (from_minisat:Pervasives.in_channel) : Sat.t =
     let last_line = ref "" in
     let answer_str = try
                        while true do
@@ -69,18 +69,18 @@ struct
       match answer_str with
         "UNSATISFIABLE" -> let _ = Debug.print_smt "unsat\n"
                            in
-                             (true, false)
+                             (true, Sat.Unsat)
       | "SATISFIABLE"   -> let _ = Debug.print_smt "sat\n"
                            in
-                             (true, true)
-      | _               -> (false, false)
+                             (true, Sat.Sat)
+      | _               -> (false, Sat.Unknown)
     in
       outcome
 
 
   (** [sat formula] returns [true] whenever the [formula] is satisfiable, 
       [false] otherwise. *)
-  let sat (query:string) : bool =
+  let check_sat (query:string) : Sat.t =
     (* 1. write query to temp file *)
     let temp      = Filename.temp_file "leap_" ".sat" in
     let _         = Debug.print_file_name "SAT Formula" temp in
@@ -94,17 +94,18 @@ struct
       let (from_minisat,to_minisat,stderr) = Unix.open_process_full
                                                minisat_cmd env in
       let response = parse_minisat_output from_minisat in
-      let _ = Debug.print_smt_result response in
+      let _ = Debug.print_smt_result (Sat.is_sat response) in
       let _ = Unix.close_process_full (from_minisat,to_minisat,stderr)
       in
         response
     in
       run_minisat ()
 
-
+(*
   (** [unsat formula] returns [not(sat formula)]. *)
-  let unsat (query:string) : bool =
-    not (sat query)
+  let unsat (query:string) : Sat.t =
+    Sat.alternate (sat query)
+*)
 
 
   module Translate =

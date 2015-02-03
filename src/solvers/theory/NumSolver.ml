@@ -5,18 +5,18 @@ module type CUSTOM_NUMSOLVER = sig
   module NumExp  : ExpressionTypes.NUMEXP
   
   (* Basic invocations *)
-  val is_sat              : NumExp.formula -> bool
-  val is_valid            : NumExp.formula -> bool
+  val check_sat              : NumExp.formula -> Sat.t
+  val check_valid            : NumExp.formula -> Valid.t
   
   
   (* Invocations with extra information *)
-  val is_valid_plus_info  : NumExp.formula -> (bool * int)
+  val check_valid_plus_info  : NumExp.formula -> (Valid.t * int)
   
-  val is_sat_with_lines   : int -> NumExp.formula -> bool
-  val is_valid_with_lines : int -> NumExp.formula -> bool
+  val check_sat_with_lines   : int -> NumExp.formula -> Sat.t
+  val check_valid_with_lines : int -> NumExp.formula -> Valid.t
   
-  val is_valid_with_lines_plus_info 
-                          : int -> NumExp.formula -> (bool * int)
+  val check_valid_with_lines_plus_info 
+                          : int -> NumExp.formula -> (Valid.t * int)
 
 
   (* Queries over numeric formulas *)
@@ -65,47 +65,47 @@ struct
   let comp_model : bool ref = ref false
 
   (* INVOCATIONS *)
-  let is_sat (phi : NumExp.formula) : bool =
+  let check_sat (phi : NumExp.formula) : Sat.t =
     let module Q = (val QueryManager.get_num_query Solver.identifier) in
     let module Trans = Solver.Translate.Num.Query(Q) in
-    Solver.sat (Trans.int_formula phi)
+    Solver.check_sat (Trans.int_formula phi)
   
   
-  let is_valid (phi : NumExp.formula) : bool =
-    not (is_sat (Formula.Not phi))
+  let check_valid (phi : NumExp.formula) : Valid.t =
+    Response.sat_to_valid (check_sat (Formula.Not phi))
   
   
-  let is_valid_plus_info (phi : NumExp.formula) : (bool * int) =
+  let check_valid_plus_info (phi : NumExp.formula) : (Valid.t * int) =
     let _ = Solver.reset_calls () in
-    let res = is_valid phi in 
+    let res = check_valid phi in 
     (res, Solver.calls_count ())
   
   
-  let is_sat_with_lines (prog_lines : int) (phi : NumExp.formula) : bool =
+  let check_sat_with_lines (prog_lines : int) (phi : NumExp.formula) : Sat.t =
     let module Q = (val QueryManager.get_num_query Solver.identifier) in
     let module Trans = Solver.Translate.Num.Query(Q) in
     let _ = Trans.set_prog_lines prog_lines in
     let f = Trans.int_formula_with_lines phi in
-    Solver.sat f
+    Solver.check_sat f
   
   
-  let is_valid_with_lines (prog_lines : int) (phi : NumExp.formula) : bool =
-    not (is_sat_with_lines prog_lines (Formula.Not phi))
+  let check_valid_with_lines (prog_lines : int) (phi : NumExp.formula) : Valid.t =
+    Response.sat_to_valid (check_sat_with_lines prog_lines (Formula.Not phi))
   
   
-  let is_valid_with_lines_plus_info (prog_lines : int) (phi : NumExp.formula) 
-    : (bool * int) =
+  let check_valid_with_lines_plus_info (prog_lines : int) (phi : NumExp.formula) 
+    : (Valid.t * int) =
     Solver.reset_calls ();
-    let res = is_valid_with_lines prog_lines phi
+    let res = check_valid_with_lines prog_lines phi
     in (res, Solver.calls_count ())
 
   
   let int_implies (ante : NumExp.formula) (conse : NumExp.formula) : bool =
-      is_valid (Formula.Implies(ante, conse))
+    Valid.is_valid (check_valid (Formula.Implies(ante, conse)))
   
   
   let int_equivalent (f1 : NumExp.formula) (f2 : NumExp.formula) : bool =
-      is_valid (Formula.Iff(f1, f2))
+    Valid.is_valid (check_valid (Formula.Iff(f1, f2)))
   
   
   let compare_int_formulas (pre:NumExp.formula) (post:NumExp.formula) : bool =
@@ -161,7 +161,8 @@ struct
       (NumExp.V.VarSet.union (NumExp.all_vars_set x) (NumExp.all_vars_set y)) in
     let module Q = (val QueryManager.get_num_query Solver.identifier) in
     let module Trans = Solver.Translate.Num.Query(Q) in
-    let is_preserved c = Solver.unsat (Trans.std_widening vars_set y c)
+    let is_preserved c = Sat.is_unsat
+                          (Solver.check_sat (Trans.std_widening vars_set y c))
     in Formula.conj_literals (List.filter is_preserved x_conj)
   
   let standard_widening_conj (x : NumExp.literal list) 
@@ -173,7 +174,8 @@ struct
     let y' = Formula.conj_literals y in
     let module Q = (val QueryManager.get_num_query Solver.identifier) in
     let module Trans = Solver.Translate.Num.Query(Q) in
-    let is_preserved c = Solver.unsat (Trans.std_widening vars_set y' c)
+    let is_preserved c = Sat.is_unsat
+                           (Solver.check_sat (Trans.std_widening vars_set y' c))
     in List.filter is_preserved x
 
 

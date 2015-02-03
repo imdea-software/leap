@@ -3,30 +3,31 @@ val choose : string -> unit
 (** [choose s] selects [s] as the DP implementation to be used *)
 
 
-val is_sat       : int ->
+val check_sat    : int ->
                    Smp.cutoff_strategy_t ->
                    bool ->
-                   TSLExpression.formula -> bool
-(** [is_sat lines co useq phi] checks the satisfiability of formula [phi],
+                   TSLExpression.formula -> Sat.t
+(** [check_sat lines co useq phi] checks the satisfiability of formula [phi],
     assuming the program contains [lines] lines, using tactics [stac] and
-    cutoff strategy [co]. It returns true if the formula is satisfiable,
-    otherwise false. *)
+    cutoff strategy [co]. It returns [Sat] if the formula is satisfiable,
+    otherwise [Unsat]. *)
 
 
-val is_valid     : int ->
+val check_valid  : int ->
                    Smp.cutoff_strategy_t ->
                    bool ->
-                   TSLExpression.formula -> bool
-(** [is_valid lines co useq phi] checks the validity of formula [phi], assuming
+                   TSLExpression.formula -> Valid.t
+(** [check_valid lines co useq phi] checks the validity of formula [phi], assuming
     the program contains [lines] lines, using tactics [stac] and cutoff
-    strategy [co]. It returns true if the formula is valid, otherwise false. *)
+    strategy [co]. It returns [Valid] if the formula is valid, otherwise
+    [Invalid]. *)
 
   
-val is_sat_plus_info : int ->
-                       Smp.cutoff_strategy_t ->
-                       bool ->
-                       TSLExpression.formula -> (bool * int * DP.call_tbl_t)
-(** [is_sat_plus_info lines co useq phi] checks the satisfiability of formula
+val check_sat_plus_info : int ->
+                          Smp.cutoff_strategy_t ->
+                          bool ->
+                          TSLExpression.formula -> (Sat.t * int * DP.call_tbl_t)
+(** [check_sat_plus_info lines co useq phi] checks the satisfiability of formula
     [phi], assuming the program contains [lines] lines, using tactics [stac]
     and cutoff strategy [co]. It returns three values. The first value
     indicates whether the formula is satisfiable. The second value is the
@@ -34,11 +35,11 @@ val is_sat_plus_info : int ->
     is the number of calls made to a TSLK DP, which aids the TSL DP. *)
 
 
-val is_valid_plus_info : int ->
-                         Smp.cutoff_strategy_t ->
-                         bool ->
-                         TSLExpression.formula -> (bool * int * DP.call_tbl_t)
-(** [is_valid lines co useq phi] checks the validity of formula [phi], assuming
+val check_valid_plus_info : int ->
+                            Smp.cutoff_strategy_t ->
+                            bool ->
+                            TSLExpression.formula -> (Valid.t * int * DP.call_tbl_t)
+(** [check_valid lines co useq phi] checks the validity of formula [phi], assuming
     the program contains [lines] lines, using tactics [stac] and cutoff
     strategy [co]. It returns three values. The first value indicates whether the
     formula is satisfiable. The second value is the number of calls made to

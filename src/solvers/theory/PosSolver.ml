@@ -2,8 +2,8 @@
 module type CUSTOM_POSSOLVER = sig
   module PosExp : ExpressionTypes.POSEXP
   
-  val is_sat   : int -> PosExp.expression -> bool
-  val is_valid : int -> PosExp.expression -> bool
+  val check_sat   : int -> PosExp.expression -> Sat.t
+  val check_valid : int -> PosExp.expression -> Valid.t
 end
 
 module type S = CUSTOM_POSSOLVER
@@ -15,15 +15,15 @@ struct
   module PosExp = Solver.Translate.Pos.Exp
   
   (* INVOCATIONS *)
-  let is_sat (lines : int) (expr : PosExp.expression) : bool =
+  let check_sat (lines : int) (expr : PosExp.expression) : Sat.t =
     let use_smt () =
       (Solver.Translate.Pos.set_prog_lines lines;
-       Solver.sat (Solver.Translate.Pos.expression expr)) in
+       Solver.check_sat (Solver.Translate.Pos.expression expr)) in
     let use_sat () =
       let m = try Hashtbl.find BackendSolvers.posTbl Minisat.Minisat.identifier
               with Not_found -> BackendSolvers.defaultPos () in
       let module SATSolver = (val m : BackendSolverIntf.BACKEND_POS) in
-      SATSolver.sat (SATSolver.Translate.Pos.expression expr) in
+      SATSolver.check_sat (SATSolver.Translate.Pos.expression expr) in
 
     if PosExp.has_pc expr then
       use_smt()
@@ -35,9 +35,9 @@ struct
     end
 
 
-  let is_valid (lines : int) (expr : PosExp.expression) : bool =
-(*    LOG "Entering is_valid..." LEVEL TRACE; *)
-    not (is_sat lines (PosExpression.Not(expr)))
+  let check_valid (lines : int) (expr : PosExp.expression) : Valid.t =
+(*    LOG "Entering check_valid..." LEVEL TRACE; *)
+    Response.sat_to_valid (check_sat lines (PosExpression.Not(expr)))
 end
 
 

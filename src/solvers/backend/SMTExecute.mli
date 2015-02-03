@@ -39,6 +39,7 @@ val compute_model : configuration_t -> bool -> unit
 val get_model : unit -> GenericModel.t
 
 (** [run cfg query] executes the SMT solver whose information is stored in
-    [cfg] over the [query], returning [true] if satisfiable and [false] if
-    unsatisfiable. Raises [SMT_Syntax_Error] if the query is malformed. *)
-val run : configuration_t -> string -> bool
+    [cfg] over the [query], returning [Sat.t] depending on whether
+    the query is satisfiable or not. Raises [SMT_Syntax_Error] if the
+    query is malformed. *)
+val run : configuration_t -> string -> Sat.t

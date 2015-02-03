@@ -3,18 +3,18 @@ module type CUSTOM_NUMSOLVER = sig
   module NumExp : ExpressionTypes.NUMEXP
   
   (* Basic invocations *)
-  val is_sat              : NumExp.formula -> bool
-  val is_valid            : NumExp.formula -> bool
+  val check_sat              : NumExp.formula -> Sat.t
+  val check_valid            : NumExp.formula -> Valid.t
   
   
   (* Invocations with extra information *)
-  val is_valid_plus_info  : NumExp.formula -> (bool * int)
+  val check_valid_plus_info  : NumExp.formula -> (Valid.t * int)
   
-  val is_sat_with_lines   : int -> NumExp.formula -> bool
-  val is_valid_with_lines : int -> NumExp.formula -> bool
+  val check_sat_with_lines   : int -> NumExp.formula -> Sat.t
+  val check_valid_with_lines : int -> NumExp.formula -> Valid.t
   
-  val is_valid_with_lines_plus_info 
-                          : int -> NumExp.formula -> (bool * int)
+  val check_valid_with_lines_plus_info 
+                          : int -> NumExp.formula -> (Valid.t * int)
 
  
   (* Queries over numeric formulas *)

@@ -45,13 +45,14 @@ struct
   (* RUNING YICES *)
   (** [sat formula] returns [true] whenever the [formula] is satisfiable, 
       [false] otherwise. *)
-  let sat (query:t) : bool =
+  let check_sat (query:t) : Sat.t =
     SMTExecute.run config query
 
-  
+(*
   (** [unsat formula] returns [not(sat formula)]. *)
-  let unsat (query:t) : bool =
-    not (sat query)
+  let unsat (query:t) : Sat.t =
+    Sat.alternate (sat query)
+*)
 
   
   module Translate = 

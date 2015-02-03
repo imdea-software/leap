@@ -135,20 +135,21 @@ let get_model () : GenericModel.t =
 
 
 (* Running the SMT solver *)
-let parse_output (ch:Pervasives.in_channel) : (bool * bool) =
+let parse_output (ch:Pervasives.in_channel) : (bool * Sat.t) =
   let answer_str = Pervasives.input_line ch in
   verbl _LONG_INFO "**** SMTExecute answer: %s\n" answer_str;
   let (terminated, outcome) =
     match answer_str with
-      "unsat"   -> (Debug.print_smt "unsat\n"; (true, false))
-    | "sat"     -> (Debug.print_smt "sat\n"; (true, true))
-    | "timeout" -> (Debug.print_smt "timeout\n"; (false,true))
-    | _         -> (false, false)
+    | "unsat"   -> (Debug.print_smt "unsat\n"; (true, Sat.Unsat))
+    | "sat"     -> (Debug.print_smt "sat\n"; (true, Sat.Sat))
+    | "unknown" -> (Debug.print_smt "unknown\n"; (true, Sat.Unknown))
+    | "timeout" -> (Debug.print_smt "timeout\n"; (false,Sat.Unknown))
+    | _         -> (false, Sat.Unknown)
   in
     (terminated, outcome)
 
 
-let run (cfg:configuration_t) (query:string) : bool =
+let run (cfg:configuration_t) (query:string) : Sat.t =
   (* 1. write query to temp file *)
 (*  LOG "Entering run..." LEVEL TRACE; *)
   
@@ -178,7 +179,7 @@ let run (cfg:configuration_t) (query:string) : bool =
   let (terminated,response) = parse_output stdout in
   verbl _LONG_INFO "**** SMTExecute, response read.\n";
   if (not terminated) then begin
-    if response then begin
+    if Sat.is_unknown response then begin
       Interface.Err.msg "Timeout query" $
         Printf.sprintf "File %s contains a query that timeout after %i seconds." tmpfile cfg.timeout;
       raise(SMT_Timeout(tmpfile,cfg.timeout))
@@ -189,7 +190,7 @@ let run (cfg:configuration_t) (query:string) : bool =
     end
   end;
   if cfg.comp_model then begin
-    if response then begin
+    if Sat.is_sat response then begin
       verbl _LONG_INFO "**** SMTExecute, response with model obtained.\n";
       let buf = Buffer.create 1024 in
       let _ = try
@@ -211,5 +212,8 @@ let run (cfg:configuration_t) (query:string) : bool =
   let _ = Unix.close_process_full (stdout,stdin,stderr) in
   cfg.calls # incr;
   verbl _LONG_INFO "**** SMTExecute, will print results.\n";
-  Debug.print_smt_result response;
-    terminated && response
+  Debug.print_smt_result (Sat.is_sat response);
+  if terminated then
+    response
+  else
+    Sat.Unknown

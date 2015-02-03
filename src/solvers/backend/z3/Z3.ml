@@ -1,9 +1,10 @@
-open Z3BackendType
+open BackendSolverIntf
 open Z3TslkQuery
+open NumQuery
 open TllQuery
 open TslkQuery
 
-module Z3 : BACKEND_POS_TLL_TSLK =
+module Z3 : BACKEND_SOLVER =
 struct
   type t = string
   
@@ -46,13 +47,14 @@ struct
   
 
   (** [sat formula] returns [true] whenever the [formula] is satisfiable, [false] otherwise. *)
-  let sat (query:t) : bool =
+  let check_sat (query:t) : Sat.t =
     SMTExecute.run config query
 
-
+(*
   (** [unsat formula] returns [not(sat formula)]. *)
-  let unsat (query:string) : bool =
-    not (sat query)
+  let unsat (query:string) : Sat.t =
+    Sat.alternate (sat query)
+*)
   
   module Translate = 
   struct
@@ -89,6 +91,22 @@ struct
       let formula        = Z3Query.formula_to_str
       let conjformula    = Z3Query.conjformula_to_str
       let sort_map       = Z3Query.get_sort_map
+    end
+
+    module Num =
+    struct
+      module Exp = NumExpression
+      module Query = functor (Q : NUM_QUERY) ->
+      struct
+        let set_prog_lines         = Q.set_prog_lines
+        let int_varlist            = Q.int_varlist_to_str
+        let formula                = Q.string_of_formula
+        let literal                = Q.string_of_literal
+        let int_formula            = Q.int_formula_to_str
+        let int_formula_with_lines = Q.int_formula_with_lines_to_str
+        let std_widening           = Q.standard_widening
+        let sort_map               = Q.get_sort_map
+      end
     end
 
   end

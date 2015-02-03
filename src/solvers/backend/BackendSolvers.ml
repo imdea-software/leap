@@ -36,4 +36,5 @@ let defaultTslk () = (module Z3 : BACKEND_TSLK)
 (* Backends that support Numeric reasoning *)
 let numTbl : (string, (module BACKEND_NUM)) Hashtbl.t = Hashtbl.create 1
 let _ = Hashtbl.add numTbl Yices.identifier (module Yices : BACKEND_NUM)
+let _ = Hashtbl.add numTbl Z3.identifier    (module Z3    : BACKEND_NUM)
 let defaultNum () = (module Yices : BACKEND_NUM)

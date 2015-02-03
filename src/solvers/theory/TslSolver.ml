@@ -471,7 +471,7 @@ module TranslateTsl (SLK : TSLKExpression.S) =
 
 
 
-let try_sat_with_presburger_arithmetic (phi:SL.formula) : bool =
+let try_sat_with_presburger_arithmetic (phi:SL.formula) : Sat.t =
 (*
   print_endline ("Trying to convert formula:\n" ^SL.formula_to_str phi^ "\n");
   let phi_expr = SLInterf.formula_to_expr_formula phi in
@@ -485,7 +485,7 @@ let try_sat_with_presburger_arithmetic (phi:SL.formula) : bool =
   let phi_num = NumInterface.formula_to_int_formula
                   (SLInterf.formula_to_expr_formula phi)
   in
-    NumSol.is_sat phi_num
+    NumSol.check_sat phi_num
 
 
 let split_into_pa_nc (cf:SL.conjunctive_formula)
@@ -839,37 +839,37 @@ let update_arrangement (alpha:SL.integer list list) (rel_set:SL.integer GenSet.t
   ) alpha
 
 
-let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) : bool =
+let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) : Sat.t =
   Log.print_ocaml "entering TSLSolver dnf_sat";
   Log.print "TSLSolver dnf_sat conjunctive formula" (SL.conjunctive_formula_to_str cf);
-  let arrg_sat_table : (SL.integer list list, bool) Hashtbl.t = Hashtbl.create 10 in
+  let arrg_sat_table : (SL.integer list list, Sat.t) Hashtbl.t = Hashtbl.create 10 in
 
-  let check_pa (cf:SL.conjunctive_formula) : bool =
+  let check_pa (cf:SL.conjunctive_formula) : Sat.t =
     match cf with
-    | F.TrueConj  -> (verbl _LONG_INFO "**** check_pa: true\n"; true)
-    | F.FalseConj -> (verbl _LONG_INFO "**** check_pa: false\n"; false)
+    | F.TrueConj  -> (verbl _LONG_INFO "**** check_pa: true\n"; Sat.Sat)
+    | F.FalseConj -> (verbl _LONG_INFO "**** check_pa: false\n"; Sat.Unsat)
     | F.Conj ls   -> (try_sat_with_presburger_arithmetic
                         (F.conjunctive_to_formula cf)) in
 
 
   let check_tslk (k:int)
                  (cf:SL.conjunctive_formula)
-                 (alpha_r:SL.integer list list option) : bool =
+                 (alpha_r:SL.integer list list option) : Sat.t =
     match cf with
-    | F.TrueConj -> true
-    | F.FalseConj -> false
+    | F.TrueConj -> Sat.Sat
+    | F.FalseConj -> Sat.Unsat
     | F.Conj ls -> begin
                       let module TslkSol = (val TslkSolver.choose !solver_impl k
                                      : TslkSolver.S) in
                       TslkSol.compute_model (!comp_model);
                       let module Trans = TranslateTsl (TslkSol.TslkExp) in
                       let phi_tslk = Trans.to_tslk ls in
-                      let res = TslkSol.is_sat lines co !use_quantifier phi_tslk in
+                      let res = TslkSol.check_sat lines co !use_quantifier phi_tslk in
                       DP.add_dp_calls this_call_tbl (DP.Tslk k) 1;
                       tslk_sort_map := TslkSol.get_sort_map ();
                       tslk_model := TslkSol.get_model ();
                       if LeapVerbose.is_verbose_level_enabled(LeapVerbose._SHORT_INFO) then
-                        if res then print_string "S" else print_string "X";
+                        if Sat.is_sat res then print_string "S" else print_string "X";
                       let _ = match alpha_r with
                               | None -> ()
                               | Some a -> Hashtbl.add arrg_sat_table a res in
@@ -881,7 +881,7 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) :
   let check (pa:SL.conjunctive_formula)
             (panc:SL.conjunctive_formula)
             (nc:SL.conjunctive_formula)
-            (alpha:SL.integer list list) : bool =
+            (alpha:SL.integer list list) : Sat.t =
     Log.print_ocaml "entering TSLSolver check";
     Log.print "PA formula" (SL.conjunctive_formula_to_str pa);
     Log.print "PANC formula" (SL.conjunctive_formula_to_str panc);
@@ -896,7 +896,7 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) :
              equivalence class of l1
     assert pa_sat;
     *)
-    if pa_sat then begin
+    if Sat.is_sat pa_sat then begin
       (* We have an arrangement candidate *)
       pumping nc;
       let rel_set = relevant_levels nc in
@@ -962,21 +962,21 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) :
       try
         let res = Hashtbl.find arrg_sat_table alpha_r in
         if (LeapVerbose.is_verbose_level_enabled(LeapVerbose._SHORT_INFO)) then
-          print_string (if res then "$" else "#");
+          print_string (if Sat.is_sat res then "$" else "#");
         res
       with Not_found -> begin
         let alpha_r_formula = alpha_to_conjunctive_formula alpha_r in
         let final_formula = List.fold_left F.combine_conjunctive alpha_r_formula [panc_r;nc_r] in
         match final_formula with
-        | F.TrueConj  -> (Hashtbl.add arrg_sat_table alpha_r true; true)
-        | F.FalseConj -> (Hashtbl.add arrg_sat_table alpha_r false; false)
+        | F.TrueConj  -> (Hashtbl.add arrg_sat_table alpha_r Sat.Sat; Sat.Sat)
+        | F.FalseConj -> (Hashtbl.add arrg_sat_table alpha_r Sat.Unsat; Sat.Unsat)
         | F.Conj ls   -> check_tslk (List.length alpha_r) final_formula (Some alpha_r)
       end
     end else begin
       (* For this arrangement is UNSAT. Return UNSAT. *)
       if LeapVerbose.is_verbose_level_enabled(LeapVerbose._SHORT_INFO) then
         print_string ".";
-      false
+      Sat.Unsat
     end in
 
 
@@ -996,7 +996,10 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) :
       (* Verify if some arrangement makes the formula satisfiable *)
       match arrgs_opt with
       | None -> check_tslk 1 nc None
-      | Some arrgs -> GenSet.exists (fun alpha -> check pa panc nc alpha) arrgs
+      | Some arrgs -> if GenSet.exists (fun alpha -> Sat.is_sat (check pa panc nc alpha)) arrgs then
+                        Sat.Sat
+                      else
+                        Sat.Unsat
     end in
   answer
 
@@ -1007,20 +1010,20 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) :
 
 
 
-let is_sat_plus_info (lines : int)
+let check_sat_plus_info (lines : int)
            (co : Smp.cutoff_strategy_t)
            (use_q:bool)
-           (phi : SL.formula) : (bool * int * DP.call_tbl_t) =
-    Log.print_ocaml "entering tslsolver is_sat";
+           (phi : SL.formula) : (Sat.t * int * DP.call_tbl_t) =
+    Log.print_ocaml "entering tslsolver check_sat";
     DP.clear_call_tbl this_call_tbl;
     use_quantifier := use_q;
     Log.print "TSL Solver formula to check satisfiability" (SL.formula_to_str phi);
 
     match phi with
-    | F.Not(F.Implies(_,F.True)) -> (false, 1, this_call_tbl)
-    | F.Not (F.Implies(F.False, _)) -> (false, 1, this_call_tbl)
-    | F.Implies(F.False, _) -> (true, 1, this_call_tbl)
-    | F.Implies(_, F.True) -> (true, 1, this_call_tbl)
+    | F.Not(F.Implies(_,F.True)) -> (Sat.Unsat, 1, this_call_tbl)
+    | F.Not (F.Implies(F.False, _)) -> (Sat.Unsat, 1, this_call_tbl)
+    | F.Implies(F.False, _) -> (Sat.Sat, 1, this_call_tbl)
+    | F.Implies(_, F.True) -> (Sat.Sat, 1, this_call_tbl)
     | _ -> let answer =
              try
                 try_sat_with_presburger_arithmetic phi
@@ -1034,35 +1037,36 @@ let is_sat_plus_info (lines : int)
                (* STEP 2: DNF of the normalized formula *)
                let phi_dnf = F.dnf phi_norm in
                (* If any of the conjunctions in DNF is SAT, then phi is sat *)
-               let answer = List.exists (fun psi -> dnf_sat lines co psi) phi_dnf
-               in
-               answer
+               if List.exists (fun psi -> Sat.is_sat (dnf_sat lines co psi)) phi_dnf then
+                 Sat.Sat
+               else
+                 Sat.Unsat
             end in
             (answer, 1, this_call_tbl)
 
 
-let is_sat (lines : int)
+let check_sat (lines : int)
            (co : Smp.cutoff_strategy_t)
            (use_q:bool)
-           (phi : SL.formula) : bool =
+           (phi : SL.formula) : Sat.t =
   (* Here goes the code for satisfiability from the paper *)
-  let (s,_,_) = is_sat_plus_info lines co use_q phi in s
+  let (s,_,_) = check_sat_plus_info lines co use_q phi in s
 
 
-let is_valid_plus_info (prog_lines:int)
-                       (co:Smp.cutoff_strategy_t)
-                       (use_q:bool)
-                       (phi:SL.formula) : (bool * int * DP.call_tbl_t) =
-  let (s,tsl_count,tslk_count) = is_sat_plus_info prog_lines co use_q
+let check_valid_plus_info (prog_lines:int)
+                          (co:Smp.cutoff_strategy_t)
+                          (use_q:bool)
+                          (phi:SL.formula) : (Valid.t * int * DP.call_tbl_t) =
+  let (s,tsl_count,tslk_count) = check_sat_plus_info prog_lines co use_q
                                     (F.Not phi) in
-  (not s, tsl_count, tslk_count)
+  (Response.sat_to_valid s, tsl_count, tslk_count)
 
 
-let is_valid (prog_lines:int)
-             (co:Smp.cutoff_strategy_t)
-             (use_q:bool)
-             (phi:SL.formula) : bool =
-  not (is_sat prog_lines co use_q (F.Not phi))
+let check_valid (prog_lines:int)
+                (co:Smp.cutoff_strategy_t)
+                (use_q:bool)
+                (phi:SL.formula) : Valid.t =
+  Response.sat_to_valid (check_sat prog_lines co use_q (F.Not phi))
 
 
 let compute_model (b:bool) : unit =
@@ -1070,7 +1074,7 @@ let compute_model (b:bool) : unit =
     (* Should I enable which solver? *)
     (* Solver.compute_model b *)
     (* Perhaps I should only set the flag and set activate the compute_model
-       on the Solver when it is about to be called in is_sat *)
+       on the Solver when it is about to be called in check_sat *)
 
 
 let model_to_str () : string =

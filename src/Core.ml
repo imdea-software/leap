@@ -308,8 +308,8 @@ module Make (Opt:module type of GenOptions) : S =
     (*  AUXILIARY FUNCTIONS  *)
     (*************************)
 
-    let set_status (res:bool) : Result.status_t =
-      if res then Result.Valid Opt.dp else Result.Invalid
+    let set_status (res:Valid.t) : Result.status_t =
+      if Valid.is_valid res then Result.Valid Opt.dp else Result.Invalid
 
     
     let add_calls (n:int) : unit =
@@ -403,28 +403,29 @@ module Make (Opt:module type of GenOptions) : S =
                   let fol_phi = phi_obligation in
                   phi_timer#start;
                   let status =
-                    if Pos.is_valid prog_lines (fst (PE.keep_locations fol_phi)) then begin
+                    if Valid.is_valid (Pos.check_valid prog_lines
+                          (fst (PE.keep_locations fol_phi))) then begin
                       DP.add_dp_calls this_calls_counter DP.Loc 1 ~vc_id:orig_id;
                       Result.Valid DP.Loc
                     end else begin
-                      let (valid, calls) =
+                      let (validity, calls) =
                         match Opt.dp with
-                        | DP.NoDP   -> (false, 0)
-                        | DP.Loc    -> (false, 0)
+                        | DP.NoDP   -> (Valid.Invalid, 0)
+                        | DP.Loc    -> (Valid.Invalid, 0)
                         | DP.Num    -> let num_phi = NumInterface.formula_to_int_formula fol_phi in
-                                        Num.is_valid_with_lines_plus_info prog_lines num_phi
+                                         Num.check_valid_with_lines_plus_info prog_lines num_phi
                         | DP.Tll    -> let tll_phi = TllInterface.formula_to_tll_formula fol_phi in
-                                       Tll.is_valid_plus_info prog_lines cutoff
+                                         Tll.check_valid_plus_info prog_lines cutoff
                                             Opt.use_quantifiers tll_phi
                         | DP.Tsl    -> let tsl_phi = TSLInterface.formula_to_tsl_formula fol_phi in
                                        let (res,tsl_calls,tslk_calls) =
-                                          TslSolver.is_valid_plus_info prog_lines cutoff
+                                          TslSolver.check_valid_plus_info prog_lines cutoff
                                             Opt.use_quantifiers tsl_phi in
                                        DP.combine_call_table tslk_calls this_calls_counter;
                                        (res, tsl_calls)
                         | DP.Tslk k -> let module TSLKIntf = TSLKInterface.Make(Tslk.TslkExp) in
                                        let tslk_phi = TSLKIntf.formula_to_tslk_formula fol_phi in
-                                       Tslk.is_valid_plus_info prog_lines cutoff
+                                         Tslk.check_valid_plus_info prog_lines cutoff
                                             Opt.use_quantifiers tslk_phi
                       in
                       let _ = match Opt.dp with
@@ -435,8 +436,8 @@ module Make (Opt:module type of GenOptions) : S =
                               | DP.Tsl    -> TslSolver.print_model()
                               | DP.Tslk _ -> Tslk.print_model() in
                       DP.add_dp_calls this_calls_counter Opt.dp calls ~vc_id:orig_id;
-                      if Opt.stop_on_invalid && (not valid) then assert false;
-                      set_status valid
+                      if Opt.stop_on_invalid && (not (Valid.is_valid validity)) then assert false;
+                      set_status validity
                      end in
                   (* Analyze the formula *)
                   phi_timer#stop;
