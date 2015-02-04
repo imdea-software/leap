@@ -20,8 +20,8 @@ let _ =
       
 
     let tsl_phi = TSLInterface.formula_to_tsl_formula phi in
-    let sat = TslSolver.is_sat 1 (!TslArgs.coType) false tsl_phi in                                     
-    if sat then
+    let sat = TslSolver.check_sat 1 (!TslArgs.coType) false tsl_phi in                                     
+    if Sat.is_sat sat then
       print_endline "SAT"
     else
       print_endline "UNSAT";
