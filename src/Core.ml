@@ -417,6 +417,7 @@ module Make (Opt:module type of GenOptions) : S =
                                        if Valid.is_unknown res then begin
                                          let z3NumSolver : (module NumSolver.S) = NumSolver.choose BackendSolvers.Z3.identifier in
                                          let module Z3Num = (val z3NumSolver) in
+                                           Z3Num.compute_model(Opt.compute_model);
                                            Z3Num.check_valid_with_lines_plus_info prog_lines num_phi
                                        end else
                                          (res, calls)

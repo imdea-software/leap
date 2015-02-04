@@ -255,7 +255,7 @@ struct
 end
 
 let choose (solverIdent : string) : (module S) =
-  let m = try (print_endline ("Will try: " ^ solverIdent); Hashtbl.find BackendSolvers.numTbl solverIdent)
-  with Not_found -> (print_endline "Not found"; BackendSolvers.defaultNum ()) in
+  let m = try Hashtbl.find BackendSolvers.numTbl solverIdent
+    with Not_found -> BackendSolvers.defaultNum () in
   let module Sol = (val m : BackendSolverIntf.BACKEND_NUM) in
   (module Make(Sol) : S)
