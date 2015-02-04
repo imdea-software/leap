@@ -19,7 +19,7 @@ struct
 
 
   (* Configuration *)
-  let pc_prime_name : string = Conf.pc_name ^ "'"
+  let pc_prime_name : string = Conf.pc_name ^ "_prime"
   let aux_int       : string = "ai_"
   let undefInt      : string = "undefined_int"
 
@@ -29,11 +29,11 @@ struct
 
 
   (* Sort names *)
-  let int_s : string = "int"
-  let thid_s : string = "thid"
-  let set_s : string = "set"
-  let bool_s : string = "bool"
-  let loc_s : string = "loc"
+  let int_s : string = "Int"
+  let tid_s : string = "Tid"
+  let set_s : string = "Set"
+  let bool_s : string = "Bool"
+  let loc_s : string = "Loc"
 
 
   (* Information storage *)
@@ -49,17 +49,17 @@ struct
   let int_varid_to_str (v:E.V.id) : string =
     let _ = GM.sm_decl_const sort_map v GM.int_s
     in
-      Printf.sprintf "(define %s::%s)\n" v int_s
+      Printf.sprintf "(declare-const %s %s)\n" v int_s
 
 
   let int_local_varid_to_str (v:E.V.id) : string =
     let _ = GM.sm_decl_fun sort_map v [GM.tid_s] [GM.int_s]
     in
-      Printf.sprintf "(define %s::(-> %s %s))\n" v thid_s int_s
+      Printf.sprintf "(declare-const %s (Array %s %s))\n" v tid_s int_s
 
 
   let int_var_to_str (v:NE.V.t) : string =
-    let pr_str = if (NE.V.is_primed v) then "'" else ""
+    let pr_str = if (NE.V.is_primed v) then "_prime" else ""
     in
       match NE.V.scope v with
       | NE.V.GlobalScope -> int_varid_to_str ((NE.V.id v) ^ pr_str)
@@ -76,12 +76,12 @@ struct
                            NE.V.VarSet.add (NE.V.unparam v) vs)
                         ) (NE.ThreadSet.empty, NE.V.VarSet.empty) vl in
     let th_str = if NE.ThreadSet.cardinal t_set <> 0 then
-                   "(define-type " ^thid_s^ ")\n" ^
+                   "(declare-sort " ^tid_s^ ")\n" ^
                       NE.ThreadSet.fold (fun t str ->
                         let t_str = tid_to_str t in
                         let _ = GM.sm_decl_const sort_map t_str GM.tid_s
                         in
-                          str ^ (Printf.sprintf "(define %s::%s)\n" t_str thid_s)
+                          str ^ (Printf.sprintf "(declare-const %s %s)\n" t_str tid_s)
                    ) t_set ""
                  else
                    ""
@@ -99,7 +99,7 @@ struct
 
 
   and variable_to_str (v:NE.V.t) : string =
-    let pr_str = if (NE.V.is_primed v) then "'" else "" in
+    let pr_str = if (NE.V.is_primed v) then "_prime" else "" in
     let th_str = match (NE.V.parameter v) with
                  | NE.V.Shared  -> ""
                  | NE.V.Local t -> "_" ^ (NE.V.to_str t) in
@@ -112,14 +112,14 @@ struct
     match (NE.V.sort v) with
     | NE.Int  -> int_s
     | NE.Set  -> set_s
-    | NE.Tid -> thid_s
+    | NE.Tid -> tid_s
 
 
   and var_sort_to_gmsort_str (v:NE.V.t) : string =
     match (NE.V.sort v) with
       NE.Int  -> GM.int_s
     | NE.Set  -> GM.set_s
-    | NE.Tid -> GM.tid_s
+    | NE.Tid  -> GM.tid_s
 
 
   and var_to_str (v:NE.V.t) : string =
@@ -128,7 +128,7 @@ struct
     let gm_sort_str = var_sort_to_gmsort_str v in
     let _ = GM.sm_decl_const sort_map v_str gm_sort_str
     in
-      Printf.sprintf "(define %s::%s)\n" v_str sort_str
+      Printf.sprintf "(declare-const %s %s)\n" v_str sort_str
 
 
   and tid_to_str (t:NE.tid) : string =
@@ -147,7 +147,7 @@ struct
     let t_str = tid_to_str th in
     let _ = GM.sm_decl_const sort_map t_str GM.tid_s
     in
-      Printf.sprintf "(define %s::%s)\n" t_str thid_s
+      Printf.sprintf "(declare-const %s %s)\n" t_str tid_s
 
 
   let local_var_to_str (v:NE.V.t) : string =
@@ -156,7 +156,7 @@ struct
     let gm_v_sort = var_sort_to_gmsort_str v in
     let _ = GM.sm_decl_fun sort_map v_str [GM.tid_s] [gm_v_sort]
     in
-      Printf.sprintf "(define %s::(-> %s %s))\n" v_str thid_s v_sort
+      Printf.sprintf "(declare-const %s (Array %s %s))\n" v_str tid_s v_sort
 
 
   let z3_string_of_pos (pc:(int * NE.V.shared_or_local * bool)) : string =
@@ -179,14 +179,14 @@ struct
   let z3_string_of_posupd (pc:(int * NE.tid)) : string =
     let (i, th) = pc
     in
-      Printf.sprintf "(= %s (update %s (%s) %i))" pc_prime_name Conf.pc_name
+      Printf.sprintf "(= %s (store %s %s %i))" pc_prime_name Conf.pc_name
                                            (tid_to_str th) i
 
 
   let variable_invocation_to_str (v:NE.V.t) : string =
     let th_str = shared_or_local_to_str (NE.V.parameter v) in
     let p_str  = procedure_name_to_append (NE.V.scope v) in
-    let pr_str = if (NE.V.is_primed v) then "'" else ""
+    let pr_str = if (NE.V.is_primed v) then "_prime" else ""
     in
       match (NE.V.parameter v) with
       | NE.V.Shared  -> Printf.sprintf " %s%s%s%s" p_str (NE.V.id v) th_str pr_str
@@ -209,28 +209,25 @@ struct
 
   (************************** Support for sets **************************)
 
-  let z3_type_decl (prog_lines:int) (buf:Buffer.t) : unit =
-    B.add_string buf ("(define-type " ^thid_s^ ")\n");
-    B.add_string buf (Printf.sprintf "(define-type %s (-> %s %s))\n"
-                        set_s int_s bool_s);
-    B.add_string buf (Printf.sprintf "(define-type %s (subrange 1 %i))\n"
-                        loc_s prog_lines)
+  let z3_type_decl (buf:Buffer.t) : unit =
+    B.add_string buf ("(declare-sort " ^tid_s^ ")\n");
+    B.add_string buf ("(define-sort " ^set_s^ " () (Array " ^int_s^ " " ^bool_s^ "))\n");
+    B.add_string buf ("(define-sort " ^loc_s^ " () " ^int_s^ ")\n")
 
 
   let z3_undefined_decl (buf:Buffer.t) : unit =
     let _ = GM.sm_decl_const sort_map undefInt GM.int_s in
-      B.add_string buf ("(define " ^ undefInt ^ "::" ^ int_s ^ ")\n");
-      B.add_string buf ("(define is_legal::(-> " ^int_s^ " " ^bool_s^ ")\n" ^
-                        "  (lambda (e::" ^int_s^ ") (/= e " ^
-                            undefInt ^ ")))\n")
+      B.add_string buf ("(declare-const " ^ undefInt ^ " " ^ int_s ^ ")\n");
+      B.add_string buf ("(define-fun is_legal ((i " ^int_s^ ")) " ^bool_s^ "\n" ^
+                        "  (not (= i " ^undefInt^ ")))\n")
 
 
   (* (define emp::set)               *)
   (*   (lambda (a::address) (false)) *)
   let z3_emp_def (buf:Buffer.t) : unit =
     B.add_string buf
-      ("(define emp::" ^set_s^ "\n" ^
-       "  (lambda (a::" ^int_s ^ ") false))\n")
+      ("(declare-const emp " ^set_s^ ")\n" ^
+       "(assert (= emp ((as const " ^set_s^ " ) false)))\n")
 
   (* (define singleton::(-> int set)       *)
   (*     (lambda (a::int)                  *)
@@ -238,10 +235,8 @@ struct
   (*             (= a b))))                *)
   let z3_singleton_def (buf:Buffer.t) : unit =
     B.add_string buf
-      ( "(define singleton::(-> " ^int_s^ " " ^set_s^ ")\n" ^
-        "    (lambda (a::" ^int_s^ ")\n" ^
-        "        (lambda (b::" ^int_s^ ")\n" ^
-        "            (= a b))))\n" )
+      ( "(define-fun singleton ((i " ^int_s^ ")) " ^set_s^ "\n" ^
+        "  (store emp i true))\n")
 
   (* (define union::(-> set set set)        *)
   (*     (lambda (s::set r::set)            *)
@@ -249,10 +244,8 @@ struct
   (*             (or (s a) (r a)))))        *)
   let z3_union_def (buf:Buffer.t) : unit =
     B.add_string buf
-      ( "(define union::(-> " ^set_s^ " " ^set_s^ " " ^set_s^ ")\n" ^
-        "    (lambda (s::" ^set_s^ " r::" ^set_s^ ")\n" ^
-        "        (lambda (a::" ^int_s^ ")\n" ^
-        "            (or (s a) (r a)))))\n" )
+      ( "(define-fun unionset ((s1 " ^set_s^ ") (s2 " ^set_s^ ")) " ^set_s^ "\n" ^
+        "  ((_ map or) s1 s2))\n")
 
   (* (define setdiff::(-> set set set)      *)
   (*     (lambda (s::set r::set)            *)
@@ -260,10 +253,8 @@ struct
   (*             (and (s a) (not (r a)))))) *)
   let z3_setdiff_def (buf:Buffer.t) : unit =
     B.add_string buf
-      ( "(define setdiff::(-> " ^set_s^ " " ^set_s^ " " ^set_s^ ")\n" ^
-        "    (lambda (s::" ^set_s^ " r::" ^set_s^ ")\n" ^
-        "        (lambda (a::" ^int_s^ ")\n" ^
-        "            (and (s a) (not (r a))))))\n" )
+      ( "(define-fun setdiff ((s1 " ^set_s^ ") (s2 " ^set_s^ ")) " ^set_s^ "\n" ^
+        "  ((_ map and) s1 ((_ map not) s2)))\n")
 
   (* (define intersection::(-> set set set) *)
   (*     (lambda (s::set r::set) *)
@@ -271,10 +262,8 @@ struct
   (*             (and (s a) (r a))))) *)
   let z3_intersection_def (buf:Buffer.t) : unit =
     B.add_string buf
-    ("(define intersection::(-> " ^set_s^ " " ^set_s^ " " ^set_s^ ")\n" ^
-     "   (lambda (s::" ^set_s^ " r::" ^set_s^ ")\n" ^
-     "       (lambda (a::" ^int_s^ ")\n" ^
-     "           (and (s a) (r a)))))\n")
+    ("(define-fun intersection ((s1 " ^set_s^ ") (s2 " ^set_s^ ")) " ^set_s^ "\n" ^
+     "  ((_ map and) s1 s2))\n")
 
 
   (* (define subseteq::(-> set set bool)  *)
@@ -286,97 +275,70 @@ struct
   (*          (if (s1 a4) (s2 a4))        *)
   (*          (if (s1 a5) (s2 a5)))))     *)
   let z3_subseteq_def (vars_rep:string list) (buf:Buffer.t) : unit =
-(*
     B.add_string buf
-        ("(define subseteq::(-> " ^set_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
-         "  (lambda (s1::" ^set_s^ " s2::" ^set_s^ ")\n" ^
-         "    (= emp (setdiff s1 s2))))\n")
-*)
-    B.add_string buf
-        ("(define subseteq::(-> " ^set_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
-         "  (lambda (s1::" ^set_s^ " s2::" ^set_s^ ")\n" ^
-         "    (and") ;
-    List.iter (fun v ->
-      B.add_string buf
-        ("\n         (if (s1 " ^ v ^ ") (s2 " ^ v ^ ") true)")
-    ) vars_rep;
-    B.add_string buf ")))\n"
-
-
-
+        ("(define-fun subseteq ((s1 " ^set_s^ ") (s2 " ^set_s^ ")) " ^bool_s^ "\n" ^
+         "  (= (intersection s1 s2) s1))\n")
+       
   let z3_is_min_def (vars_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
-        ("(define is_min::(-> " ^int_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
-         "  (lambda (int_v::" ^int_s^ " set_v::" ^set_s^ ")\n" ^
-         "    (and") ;
+        ("(define-fun is_min ((int_v " ^int_s^ ") (set_v " ^set_s^ ")) " ^bool_s^ "\n" ^
+         "  (and");
     List.iter (fun v ->
       B.add_string buf
-        (Printf.sprintf "\n         (if (set_v %s) (<= int_v %s) true)" v v)
+        (Printf.sprintf "\n    (if (select set_v %s) (<= int_v %s) true)" v v)
     ) vars_rep;
-    B.add_string buf ")))\n"
+    B.add_string buf "))\n"
 
 
   let z3_is_max_def (vars_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
-        ("(define is_max::(-> " ^int_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
-         "  (lambda (int_v::" ^int_s^ " set_v::" ^set_s^ ")\n" ^
-         "    (and") ;
+        ("(define-fun is_max ((int_v " ^int_s^ ") (set_v " ^set_s^ ")) " ^bool_s^ "\n" ^
+         "  (and") ;
     List.iter (fun v ->
       B.add_string buf
-        (Printf.sprintf "\n         (if (set_v %s) (>= int_v %s) true)" v v)
+        (Printf.sprintf "\n    (if (select set_v %s) (>= int_v %s) true)" v v)
     ) vars_rep;
-    B.add_string buf ")))\n"
-
-
-  let z3_is_in_def (buf:Buffer.t) : unit =
-    B.add_string buf
-    ("(define is_in::(-> " ^int_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
-     "   (lambda (int_v::" ^int_s^ " set_v::" ^set_s^ ")\n" ^
-     "       (set_v int_v)))\n")
+    B.add_string buf "))\n"
 
 
   let z3_min_def (vars_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
-    ("(define setmin::(-> " ^set_s^ " " ^int_s^ ")\n" ^
-     "   (lambda (set_v::" ^set_s^ ")\n" ^
+    ("(define-fun setmin ((set_v " ^set_s^ ")) " ^int_s^ "\n" ^
       List.fold_left (fun str v ->
-        Printf.sprintf ("\n        (if (and (is_in %s set_v) \
-                                            (is_min %s set_v)) %s %s)")
+        Printf.sprintf ("\n  (if (and (select set_v %s) (is_min %s set_v)) %s %s)")
           v v v str
       ) undefInt vars_rep ^
-     "))\n")
+     ")\n")
 
 
   let z3_max_def (vars_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
-    ("(define setmax::(-> " ^set_s^ " " ^int_s^ ")\n" ^
-     "   (lambda (set_v::" ^set_s^ ")\n" ^
+    ("(define-fun setmax ((set_v " ^set_s^ ")) " ^int_s^ "\n" ^
       List.fold_left (fun str v ->
-        Printf.sprintf ("\n        (if (and (is_in %s set_v) \
-                                            (is_max %s set_v)) %s %s)")
+        Printf.sprintf ("\n  (if (and (select set_v %s) (is_max %s set_v)) %s %s)")
           v v v str
       ) undefInt vars_rep ^
-     "))\n")
+     ")\n")
 
 
   let z3_filter_set_def (vars_rep:string list) (buf:Buffer.t) : unit =
-    let or_cond =
-      match vars_rep with
-      | [] -> "true"
-      | _ -> "(or" ^ (List.fold_left (fun str v -> str ^ " (= a " ^v^ ")") "" vars_rep) ^ ")" in
+    let univ = List.fold_left (fun str v ->
+                 "\n  (store " ^str^ " " ^v^ " true)"
+               ) "emp" vars_rep in
     B.add_string buf
-    ( "(define filter_set::(-> " ^set_s^ " " ^set_s^ ")\n" ^
-      "  (lambda (s::" ^set_s^ ")\n" ^
-      "    (lambda (a::" ^int_s^ ")\n" ^
-      "      (and (s a) " ^or_cond^ "))))\n")
+      ("(declare-const var_universe " ^set_s^ ")\n" ^
+       "(assert (= var_universe\n " ^univ^ "))" ^
+       "(define-fun filter_set ((s1 " ^set_s^ ")) " ^set_s^ "\n" ^
+       "  (intersection s1 var_universe))\n")
 
 
-  let z3_lower_def (buf:Buffer.t) : unit =
+  let z3_lower_def (vars_rep:string list) (buf:Buffer.t) : unit =
+    let low_set = List.fold_left (fun str v ->
+                    "\n  (store " ^str^ " " ^v^ " (and (select set_v " ^v^ ") (<= " ^v^ " int_v)))"
+                  ) "emp" vars_rep in
     B.add_string buf
-    ("(define lower::(-> " ^set_s^ " " ^int_s^ " " ^set_s^ ")\n" ^
-     "  (lambda (s::" ^set_s^ " i::" ^int_s^ ")\n" ^
-     "    (lambda (a::" ^int_s^ ")\n" ^
-     "      (and (s a) (<= a i)))))\n")
+    ("(define-fun lower ((set_v " ^set_s^ ") (int_v " ^int_s^ ")) " ^set_s^ "\n" ^
+     "  " ^low_set^ ")\n")
 
 
   (************************** Support for sets **************************)
@@ -384,14 +346,16 @@ struct
 
   (************************ Preamble definitions ************************)
 
-  let z3_pc_def (buf:Buffer.t) : unit =
-    let _ = GM.sm_decl_fun sort_map Conf.pc_name [GM.tid_s] [GM.loc_s] in
-    let _ = GM.sm_decl_fun sort_map pc_prime_name [GM.tid_s] [GM.loc_s]
-    in
-      B.add_string buf ("(define " ^Conf.pc_name^
-                          "::(-> " ^thid_s^ " " ^loc_s^ "))\n");
-      B.add_string buf ("(define " ^pc_prime_name^
-                          "::(-> " ^thid_s^ " " ^loc_s^ "))\n")
+  let z3_pc_def (voc:NE.tid list) (buf:Buffer.t) : unit =
+    GM.sm_decl_fun sort_map Conf.pc_name [GM.tid_s] [GM.loc_s];
+    GM.sm_decl_fun sort_map pc_prime_name [GM.tid_s] [GM.loc_s];
+    B.add_string buf ("(declare-const " ^Conf.pc_name^ "(Array " ^tid_s^ " " ^loc_s^ "))\n");
+    B.add_string buf ("(declare-const " ^pc_prime_name^ "(Array " ^tid_s^ " " ^loc_s^ "))\n");
+    List.iter (fun v ->
+      let v_str = tid_to_str v in
+      B.add_string buf ("(assert (and (<= 0 (select " ^Conf.pc_name^ " " ^v_str^ ")) (<= (select " ^Conf.pc_name^ " " ^v_str^ ") " ^(string_of_int !prog_lines)^ ") ))\n");
+      B.add_string buf ("(assert (and (<= 0 (select " ^pc_prime_name^ " " ^v_str^ ")) (<= (select " ^pc_prime_name^ " " ^v_str^ ") " ^(string_of_int !prog_lines)^ ") ))\n")
+    ) voc
 
 
   let z3_aux_int_def (cutoff:int) (buf:Buffer.t) : unit =
@@ -460,12 +424,11 @@ struct
       z3_subseteq_def all_vars_str   buf;
       z3_is_min_def all_vars_str     buf;
       z3_is_max_def all_vars_str     buf;
-      z3_is_in_def                   buf;
       z3_min_def all_vars_str        buf;
       z3_max_def all_vars_str        buf;
       z3_filter_set_def all_vars_str buf;
-      z3_lower_def                   buf;
-      z3_pc_def                      buf
+      z3_lower_def all_vars_str      buf;
+      z3_pc_def voc                  buf
 
 
   (************************ Preamble definitions ************************)
@@ -486,7 +449,7 @@ struct
         let th_str = tid_to_str th in
         let i_str = z3_string_of_term i
         in
-          Printf.sprintf "(update %s (%s) %s)" f_str th_str i_str
+          Printf.sprintf "(store %s %s %s)" f_str th_str i_str
 
 
   and z3_string_of_integer (t:NE.integer) : string =
@@ -514,7 +477,7 @@ struct
       NE.VarSet (v)   -> variable_invocation_to_str v
     | NE.EmptySet     -> " emp"
     | NE.Singl i      -> Printf.sprintf "(singleton %s)" (z3_int i)
-    | NE.Union(s1,s2) -> Printf.sprintf "(union %s %s)" (z3_set s1) (z3_set s2)
+    | NE.Union(s1,s2) -> Printf.sprintf "(unionset %s %s)" (z3_set s1) (z3_set s2)
     | NE.Intr(s1,s2)  -> Printf.sprintf "(intersection %s %s)" (z3_set s1) (z3_set s2)
     | NE.Diff(s1,s2)  -> Printf.sprintf "(setdiff %s %s)" (z3_set s1) (z3_set s2)
     | NE.Lower(s,i)   -> Printf.sprintf "(lower %s %s)" (z3_set s) (z3_int i)
@@ -537,17 +500,17 @@ struct
       | NE.GreaterEq(x,y) -> " (>= " ^ (int_tostr x) ^ (int_tostr y) ^ ")"
       | NE.LessTid(x,y)   -> " (tid order support for z3 not added yet )"
       | NE.Eq(x,y)        -> " (= "  ^ (term_tostr x) ^ (term_tostr y) ^ ")"
-      | NE.InEq(x,y)      -> " (/= " ^ (term_tostr x) ^ (term_tostr y) ^ ")"
+      | NE.InEq(x,y)      -> " (not (=" ^ (term_tostr x) ^ (term_tostr y) ^ "))"
       | NE.In(i,s)        -> " (" ^ set_tostr s ^ " " ^ int_tostr i ^ ")"
       | NE.Subset(s1,s2)  -> " (subseteq " ^ set_tostr s1 ^ " " ^ set_tostr s2 ^ ")"
       | NE.TidEq(x,y)     -> " (= "  ^ (tid_to_str x) ^ " " ^
                                             (tid_to_str y) ^ ")"
-      | NE.TidInEq(x,y)   -> " (/= " ^ (tid_to_str x) ^ " " ^
-                                            (tid_to_str y) ^ ")"
+      | NE.TidInEq(x,y)   -> " (not (= " ^ (tid_to_str x) ^ " " ^
+                                           (tid_to_str y) ^ "))"
       | NE.FunEq(x,y)     -> " (= "  ^ (fun_to_str x) ^ " " ^
                                             (fun_to_str y) ^ ")"
-      | NE.FunInEq(x,y)   -> " (/= " ^ (fun_to_str x) ^ " " ^
-                                            (fun_to_str y) ^ ")"
+      | NE.FunInEq(x,y)   -> " (not (= " ^ (fun_to_str x) ^ " " ^
+                                           (fun_to_str y) ^ "))"
       | NE.PC (i,th,pr)   -> " " ^ z3_string_of_pos (i,th,pr) ^ " "
       | NE.PCUpdate(i,th) -> " " ^ z3_string_of_posupd (i,th) ^ " "
       | NE.PCRange (i,j,th,pr) -> " " ^ z3_string_of_posrange (i,j,th,pr) ^ " "
@@ -576,8 +539,7 @@ struct
                     | NE.VarTh v -> (NE.V.id v)
                     | NE.NoTid  -> "NoThread"
                   ) voc in
-    Printf.sprintf "(define-type %s (scalar %s))\n" thid_s
-                    (String.concat " " id_list)
+    "(declare-datatypes () (( " ^tid_s^ " " ^(String.concat " " id_list)^ ")))\n"
 
 
   let int_locVarlist_to_str (vars:NE.V.VarSet.t) : string =
@@ -589,7 +551,7 @@ struct
     (*  if direct then *)
     let vars        = NE.all_vars phi in
     let var_str     = int_varlist_to_str vars in
-    let formula_str = "(assert " ^ (string_of_formula phi) ^ ")\n(check)\n" in
+    let formula_str = "(assert " ^ (string_of_formula phi) ^ ")\n(check-sat)\n" in
       var_str ^ formula_str
 
 
@@ -605,7 +567,7 @@ struct
     let glb_int_vars   = filter_ints global_vars in
     let lcl_int_vars   = filter_ints local_vars in
     let buf            = B.create 1024 in
-    let _              = z3_type_decl !prog_lines buf in
+    let _              = z3_type_decl buf in
     let _              = List.iter (fun v ->
                            B.add_string buf (tid_variable_to_str v)
                          ) voc in
@@ -619,7 +581,7 @@ struct
                             glb_int_vars lcl_int_vars in
     let _              = z3_legal_values global_vars local_vars voc buf in
     let _              = B.add_string buf ("(assert " ^ (string_of_formula phi) ^
-                                            ")\n(check)\n")
+                                            ")\n(check-sat)\n")
     in
       B.contents buf
    
@@ -628,7 +590,7 @@ struct
     let vars' = int_varlist_to_str vars in
     let f'    = int_formula_to_str f in
     let l'    = string_of_literal l
-    in Printf.sprintf "HOLAMUNDO%s\n(assert (not (=> %s %s)))\n(check)\n" vars' f' l'
+    in Printf.sprintf "%s\n(assert (not (=> %s %s)))\n(check-sat)\n" vars' f' l'
 
 
   let get_sort_map () : GM.sort_map_t =

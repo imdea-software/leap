@@ -207,7 +207,7 @@ module Make (Opt:module type of GenOptions) : S =
 
     let posSolver  : (module PosSolver.S) = PosSolver.choose Opt.pSolver
 
-    let numSolver  : (module NumSolver.S) = NumSolver.choose Opt.tSolver
+    let numSolver  : (module NumSolver.S) = NumSolver.choose Opt.pSolver
 
     let tllSolver  : (module TllSolver.S) = TllSolver.choose Opt.tSolver
 
@@ -413,7 +413,13 @@ module Make (Opt:module type of GenOptions) : S =
                         | DP.NoDP   -> (Valid.Invalid, 0)
                         | DP.Loc    -> (Valid.Invalid, 0)
                         | DP.Num    -> let num_phi = NumInterface.formula_to_int_formula fol_phi in
-                                         Num.check_valid_with_lines_plus_info prog_lines num_phi
+                                       let (res, calls) = Num.check_valid_with_lines_plus_info prog_lines num_phi in
+                                       if Valid.is_unknown res then begin
+                                         let z3NumSolver : (module NumSolver.S) = NumSolver.choose BackendSolvers.Z3.identifier in
+                                         let module Z3Num = (val z3NumSolver) in
+                                           Z3Num.check_valid_with_lines_plus_info prog_lines num_phi
+                                       end else
+                                         (res, calls)
                         | DP.Tll    -> let tll_phi = TllInterface.formula_to_tll_formula fol_phi in
                                          Tll.check_valid_plus_info prog_lines cutoff
                                             Opt.use_quantifiers tll_phi
