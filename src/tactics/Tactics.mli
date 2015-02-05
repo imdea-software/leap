@@ -57,7 +57,8 @@ val vc_info_to_plain_str : vc_info -> string
 val vc_info_to_str_simple : vc_info -> string
 val vc_info_list_to_folder : string -> vc_info list -> unit
 
-val create_vc_info  : support_t ->
+val create_vc_info  : ?prime_goal:bool ->
+                      support_t ->
                       Expression.formula ->
                       Expression.formula ->
                       Expression.formula ->
@@ -68,15 +69,16 @@ val create_vc_info  : support_t ->
 
 val to_plain_vc_info : Expression.fol_mode_t -> vc_info -> vc_info
 
-val create_vc  : support_t ->
-               Expression.formula ->
-               Expression.formula ->
-               Expression.formula ->
-               Expression.ThreadSet.t ->
-               Expression.tid ->
-               Expression.pc_t ->
-               support_t ->
-               verification_condition 
+val create_vc  : ?prime_goal:bool ->
+                 support_t ->
+                 Expression.formula ->
+                 Expression.formula ->
+                 Expression.formula ->
+                 Expression.ThreadSet.t ->
+                 Expression.tid ->
+                 Expression.pc_t ->
+                 support_t ->
+                 verification_condition 
 
 val dup_vc_info_with_goal : vc_info ->  Expression.formula ->   vc_info 
 

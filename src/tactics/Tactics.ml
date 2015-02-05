@@ -9,7 +9,8 @@ type polarity = Pos | Neg | Both
 
 type vc_extra_info_t =
   {
-    orig_vc_id : int
+    orig_vc_id : int;
+    prime_goal : bool;
   }
 
 type support_t = E.formula list
@@ -127,13 +128,17 @@ let vc_info_to_implication (info:vc_info) (sup:support_t): implication =
     ) (E.voc_to_vars tids)
   ) var_updates;
   (* This code adds equalities that were implicit when we used arrays to represent local vars *)
+  let new_goal = if info.extra_info.prime_goal then
+                   E.prime_modified info.rho info.goal
+                 else
+                   info.goal in
   let the_antecedent =
     E.to_plain_formula E.PCVars (F.And (F.conj_list sup, F.And (info.tid_constraint, info.rho))) in
 
   let the_consequent =
       E.subst_vars pc_pres
         (E.to_plain_formula E.PCVars
-        (E.subst_vars var_pres (E.prime_modified info.rho info.goal))) in
+        (E.subst_vars var_pres new_goal)) in
   { ante = the_antecedent; conseq = the_consequent; }
 
 
@@ -230,7 +235,8 @@ let vc_info_list_to_folder (output_file:string) (vcs:vc_info list) : unit =
   ) vcs
 
 
-let create_vc_info (supp       : support_t)
+let create_vc_info ?(prime_goal=true)
+                   (supp       : support_t)
                    (tid_constr : E.formula)
                    (rho        : E.formula)
                    (goal       : E.formula)
@@ -244,15 +250,16 @@ let create_vc_info (supp       : support_t)
       tid_constraint     = tid_constr ;
       rho                = rho ;
       original_goal      = goal ;
-      goal               = E.prime_modified rho goal ;
+      goal               = if prime_goal then E.prime_modified rho goal else goal;
       transition_tid     = trans_tid ;
       line               = line ;
       vocabulary         = vocab ; (* fix: can be computed *)
-      extra_info         = {orig_vc_id = id;} ;
+      extra_info         = {orig_vc_id = id; prime_goal = prime_goal; } ;
     }
 
 
-let create_vc (orig_supp       : support_t)
+let create_vc ?(prime_goal=true)
+              (orig_supp  : support_t)
               (tid_constr : E.formula)
               (rho        : E.formula)
               (goal       : E.formula)
@@ -261,7 +268,7 @@ let create_vc (orig_supp       : support_t)
               (line       : E.pc_t) 
         (support    : support_t)
         : verification_condition =
-  vc_info_to_vc (create_vc_info orig_supp tid_constr rho goal vocab trans_tid line) support
+  vc_info_to_vc (create_vc_info orig_supp tid_constr rho goal vocab trans_tid line ~prime_goal:prime_goal) support
 
 
 let dup_vc_info_with_support (info:vc_info) (new_support:support_t) : vc_info =

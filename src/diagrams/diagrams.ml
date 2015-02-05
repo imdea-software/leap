@@ -81,8 +81,12 @@ module Make (C:Core.S) : S =
             E.ThreadSet.fold (fun t ys ->
               let self_rho = C.rho System.Concurrent full_voc line t in
               (List.map (fun rho ->
-                Tactics.create_vc_info [] F.True (F.And (full_mu_n, rho)) goal
-                                      full_voc t line) self_rho) @ ys
+                let aa =
+                Tactics.create_vc_info [] F.True (F.And (full_mu_n, rho))
+                  goal full_voc t line in
+                print_endline
+                                      ("VCINFO GENERATED:\n" ^
+                                      (Tactics.vc_info_to_str aa)); aa) self_rho) @ ys
             ) n_voc [] in
           (* Others-consecution *)
           let fresh_k = E.gen_fresh_tid full_voc in
@@ -92,7 +96,8 @@ module Make (C:Core.S) : S =
                                                 ) full_voc []) in
           let others_vcs = List.map (fun rho ->
                              Tactics.create_vc_info [] tid_diff_conj (F.And (full_mu_n, rho))
-                                        goal full_voc fresh_k line) other_rho in
+                               goal full_voc fresh_k line
+                           ) other_rho in
           n_vcs := self_vcs @ others_vcs @ !n_vcs
         done;
         !n_vcs @ vcs
@@ -144,7 +149,8 @@ module Make (C:Core.S) : S =
                           (List.map (fun rho ->
                             let antecedent = F.conj_list [mu_n; rho; mu_m; beta] in
                             let consequent = PVD.ranking_function antecedent accept (n,m,kind) in
-                            Tactics.create_vc_info [] F.True antecedent consequent voc t line
+                            Tactics.create_vc_info [] F.True antecedent
+                              consequent voc t line ~prime_goal:false
                           ) self_rho) @ ys
                         end else ys
                         ) n_voc [] in
@@ -159,7 +165,7 @@ module Make (C:Core.S) : S =
                                        let consequent = PVD.ranking_function antecedent
                                                               accept (n,m,kind) in
                                        Tactics.create_vc_info [] tid_diff_conj antecedent
-                                                  consequent voc fresh_k line
+                                         consequent voc fresh_k line ~prime_goal:false
                                      ) other_rho in
                     n_vcs := self_vcs @ others_vcs @ !n_vcs
                   done;
@@ -175,7 +181,10 @@ module Make (C:Core.S) : S =
                       print_endline "THERE IS A RHO...";
                       let antecedent = F.conj_list [mu_n; rho; mu_m; beta] in
                       let consequent = PVD.ranking_function antecedent accept (n,m,kind) in
-                      Tactics.create_vc_info [] F.True antecedent consequent voc t line
+                      let aa = Tactics.create_vc_info [] F.True antecedent
+                      consequent voc t line ~prime_goal:false in
+                      print_endline ("HERE VC CREATED:\n" ^
+                      (Tactics.vc_info_to_str aa)); aa
                     ) rho_list) @ ys
                   ) [] ts ) @ xs
                 end
@@ -234,9 +243,9 @@ module Make (C:Core.S) : S =
       Printf.printf "ACCEPTANCE VCS: %i\n" (List.length (gen_acceptance pvd));
       {
         initiation = gen_initiation pvd;
-        consecution = gen_consecution pvd;
+        consecution = []; (*gen_consecution pvd;*)
         acceptance = gen_acceptance pvd;
-        fairness = gen_fairness pvd;
+        fairness = []; (*gen_fairness pvd; *)
       }
 
 
@@ -261,13 +270,17 @@ module Make (C:Core.S) : S =
         | Some supp ->
             begin
               let supp_tags = PVD.supp_fact supp line in
+              print_endline ("TAGS: " ^ (LeapLib.concat_map " , " Tag.tag_id supp_tags));
               let supp_formulas = C.read_tags_and_group_by_file supp_tags in
+              print_endline ("SUPP_FORMULAS:\n" ^ (String.concat "\n" (List.map Expression.formula_to_str supp_formulas)));
                 (Tactics.vc_info_add_support orig_vc supp_formulas,
                  PVD.supp_plan supp line)
             end in
+      print_endline ("VC INFO:\n " ^ (Tactics.vc_info_to_str vc));
       let obligations = Tactics.apply_tactics_from_proof_plan [vc] plan in
       let proof_info = C.new_proof_info (Tactics.get_cutoff plan) in
       let proof_obligation = C.new_proof_obligation vc obligations proof_info in
+        print_endline ("GENERATED OBLIGATIONS:\n" ^ (LeapLib.concat_map "\n" Expression.formula_to_str (C.obligations proof_obligation)));
         proof_obligation
 
 
@@ -278,9 +291,9 @@ module Make (C:Core.S) : S =
               | Some s -> check_well_defined_supp s in
       let pvd_vcs = gen_vcs pvd in
       let vc_list = (*pvd_vcs.initiation ::
-                    pvd_vcs.consecution in @ *)
-                    pvd_vcs.acceptance in (*in
-                    pvd_vcs.fairness in *)
+                    pvd_vcs.consecution  @ *)
+                    pvd_vcs.acceptance (*in
+                    pvd_vcs.fairness in *) in
       let vc_count = ref 1 in
       let show_progress = not (LeapVerbose.is_verbose_enabled()) in
       Progress.init (List.length vc_list);

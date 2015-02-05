@@ -144,6 +144,10 @@ let choose_range (xs:'a list) (n:int) (m:int) : 'a list list =
   List.flatten $ List.map (choose xs) (rangeList n m)
 
 
+let concat_map (sep:string) (f:'a -> string) (xs:'a list) : string =
+  String.concat sep (List.map f xs)
+
+
 let print_list (print_f:'a -> string) (xs:'a list) : string =
   match xs with
     []    -> ""

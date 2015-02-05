@@ -443,7 +443,10 @@ module Make (Opt:module type of GenOptions) : S =
                               | DP.Tsl    -> TslSolver.print_model()
                               | DP.Tslk _ -> Tslk.print_model() in
                       DP.add_dp_calls this_calls_counter Opt.dp calls ~vc_id:orig_id;
-                      if Opt.stop_on_invalid && (not (Valid.is_valid validity)) then assert false;
+                      if Opt.stop_on_invalid && (not (Valid.is_valid validity)) then begin
+                        print_endline "!!! Process stopped because an invalid VC was found !!!";
+                        exit (-1)
+                      end;
                       set_status validity
                      end in
                   (* Analyze the formula *)

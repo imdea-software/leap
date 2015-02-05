@@ -7,4 +7,4 @@ Tactics :
 Facts :
   3:setLower;
   4:notSame;
-//  6:notSame,minTicket;
+  6:notSame, test;

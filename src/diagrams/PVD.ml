@@ -62,9 +62,16 @@ type tau_table_t = (node_id_t * int * E.V.t, NodeIdSet.t) Hashtbl.t
 
 type supp_line_t = All | Trans of int
 
-type tactic_table_t = (Tactics.proof_plan option *
-                       (int, Tactics.proof_plan) Hashtbl.t)
-type fact_table_t = (Tag.f_tag list * (int, Tag.f_tag list) Hashtbl.t)
+type tactic_table_t =
+  {
+    global_tactics : Tactics.proof_plan option;
+    local_tactics  : (int, Tactics.proof_plan) Hashtbl.t;
+  }
+type fact_table_t =
+  {
+    global_facts : Tag.f_tag list;
+    local_facts  : (int, Tag.f_tag list) Hashtbl.t;
+  }
 type support_t =
   {
     tactics : tactic_table_t;
@@ -614,26 +621,26 @@ let new_support (ts:(supp_line_t * Tactics.proof_plan) list)
                    Hashtbl.add facts i tags
   ) fs;
   {
-    tactics = (!gral_plan, plans);
-    facts = (!gral_fact, facts);
+    tactics = {global_tactics = !gral_plan; local_tactics = plans};
+    facts = {global_facts = !gral_fact; local_facts = facts};
   }
 
 
 let supp_tags (supp:support_t) : Tag.f_tag list =
-  (fst supp.facts) @ (Hashtbl.fold (fun _ tags xs ->
-                        tags @ xs
-                      ) (snd supp.facts) [])
+  (supp.facts.global_facts) @ (Hashtbl.fold (fun _ tags xs ->
+                              tags @ xs
+                            ) (supp.facts.local_facts) [])
 
 
 let supp_fact (supp:support_t) (line:int) : Tag.f_tag list =
   try
-    Hashtbl.find (snd supp.facts) line
-  with Not_found -> fst supp.facts
+    Hashtbl.find (supp.facts.local_facts) line
+  with Not_found -> supp.facts.global_facts
 
 
 let supp_plan (supp:support_t) (line:int) : Tactics.proof_plan =
   try
-    Hashtbl.find (snd supp.tactics) line
-  with Not_found -> match fst supp.tactics with
+    Hashtbl.find (supp.tactics.local_tactics) line
+  with Not_found -> match supp.tactics.global_tactics with
                     | None -> Tactics.empty_proof_plan
                     | Some plan -> plan

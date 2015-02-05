@@ -501,7 +501,7 @@ struct
       | NE.LessTid(x,y)   -> " (tid order support for z3 not added yet )"
       | NE.Eq(x,y)        -> " (= "  ^ (term_tostr x) ^ (term_tostr y) ^ ")"
       | NE.InEq(x,y)      -> " (not (=" ^ (term_tostr x) ^ (term_tostr y) ^ "))"
-      | NE.In(i,s)        -> " (" ^ set_tostr s ^ " " ^ int_tostr i ^ ")"
+      | NE.In(i,s)        -> " (select " ^ set_tostr s ^ " " ^ int_tostr i ^ ")"
       | NE.Subset(s1,s2)  -> " (subseteq " ^ set_tostr s1 ^ " " ^ set_tostr s2 ^ ")"
       | NE.TidEq(x,y)     -> " (= "  ^ (tid_to_str x) ^ " " ^
                                             (tid_to_str y) ^ ")"
