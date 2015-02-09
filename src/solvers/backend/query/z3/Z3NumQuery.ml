@@ -303,7 +303,7 @@ struct
 
   let z3_min_def (vars_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
-    ("(define-fun setmin ((set_v " ^set_s^ ")) " ^int_s^ "\n" ^
+    ("(define-fun setmin ((set_v " ^set_s^ ")) " ^int_s ^
       List.fold_left (fun str v ->
         Printf.sprintf ("\n  (if (and (select set_v %s) (is_min %s set_v)) %s %s)")
           v v v str
@@ -313,7 +313,7 @@ struct
 
   let z3_max_def (vars_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
-    ("(define-fun setmax ((set_v " ^set_s^ ")) " ^int_s^ "\n" ^
+    ("(define-fun setmax ((set_v " ^set_s^ ")) " ^int_s^
       List.fold_left (fun str v ->
         Printf.sprintf ("\n  (if (and (select set_v %s) (is_max %s set_v)) %s %s)")
           v v v str
@@ -326,7 +326,7 @@ struct
                  "\n  (store " ^str^ " " ^v^ " true)"
                ) "emp" vars_rep in
     B.add_string buf
-      ("(declare-const var_universe " ^set_s^ ")\n" ^
+      ("(declare-const var_universe " ^set_s^ ")" ^
        "(assert (= var_universe\n " ^univ^ "))" ^
        "(define-fun filter_set ((s1 " ^set_s^ ")) " ^set_s^ "\n" ^
        "  (intersection s1 var_universe))\n")
@@ -337,7 +337,7 @@ struct
                     "\n  (store " ^str^ " " ^v^ " (and (select set_v " ^v^ ") (<= " ^v^ " int_v)))"
                   ) "emp" vars_rep in
     B.add_string buf
-    ("(define-fun lower ((set_v " ^set_s^ ") (int_v " ^int_s^ ")) " ^set_s^ "\n" ^
+    ("(define-fun lower ((set_v " ^set_s^ ") (int_v " ^int_s^ ")) " ^set_s^
      "  " ^low_set^ ")\n")
 
 
@@ -346,16 +346,13 @@ struct
 
   (************************ Preamble definitions ************************)
 
-  let z3_pc_def (voc:NE.tid list) (buf:Buffer.t) : unit =
+  let z3_pc_def (pc_vars:string list) (buf:Buffer.t) : unit =
     GM.sm_decl_fun sort_map Conf.pc_name [GM.tid_s] [GM.loc_s];
     GM.sm_decl_fun sort_map pc_prime_name [GM.tid_s] [GM.loc_s];
-    B.add_string buf ("(declare-const " ^Conf.pc_name^ "(Array " ^tid_s^ " " ^loc_s^ "))\n");
-    B.add_string buf ("(declare-const " ^pc_prime_name^ "(Array " ^tid_s^ " " ^loc_s^ "))\n");
-    List.iter (fun v ->
-      let v_str = tid_to_str v in
-      B.add_string buf ("(assert (and (<= 0 (select " ^Conf.pc_name^ " " ^v_str^ ")) (<= (select " ^Conf.pc_name^ " " ^v_str^ ") " ^(string_of_int !prog_lines)^ ") ))\n");
-      B.add_string buf ("(assert (and (<= 0 (select " ^pc_prime_name^ " " ^v_str^ ")) (<= (select " ^pc_prime_name^ " " ^v_str^ ") " ^(string_of_int !prog_lines)^ ") ))\n")
-    ) voc
+    List.iter (fun pc ->
+      B.add_string buf
+        ("(assert (and (<= 0 " ^pc^ ") (<= " ^pc^ " " ^(string_of_int !prog_lines)^ ") ))\n");
+    ) pc_vars
 
 
   let z3_aux_int_def (cutoff:int) (buf:Buffer.t) : unit =
@@ -397,6 +394,7 @@ struct
   let z3_preamble (buf:Buffer.t)
                      (voc:NE.tid list)
                      (cutoff:int)
+                     (pc_vars:NE.V.t list)
                      (gbl_int_vars:NE.V.t list)
                      (lcl_int_vars:NE.V.t list) : unit =
     let loc_vars_str = List.flatten $ List.map (fun t ->
@@ -405,6 +403,7 @@ struct
                          ) lcl_int_vars
                        ) voc in
     let glb_vars_str = List.map variable_invocation_to_str gbl_int_vars in
+    let pc_vars_str = List.map variable_invocation_to_str pc_vars in
     let aux_vars_str = List.map (fun i ->
                          let i_name = aux_int ^ string_of_int i in
                          let i_var = NE.build_var i_name NE.Int
@@ -428,7 +427,7 @@ struct
       z3_max_def all_vars_str        buf;
       z3_filter_set_def all_vars_str buf;
       z3_lower_def all_vars_str      buf;
-      z3_pc_def voc                  buf
+      z3_pc_def pc_vars_str          buf
 
 
   (************************ Preamble definitions ************************)
@@ -560,11 +559,19 @@ struct
     let filter_ints xs = List.filter (fun v ->
                            (NE.V.sort v) = NE.Int
                          ) xs in
+    let filter_global_ints xs = List.fold_left (fun (ps,gs) v ->
+                                  if NE.treat_as_pc v then
+                                    (v::ps, gs)
+                                  else if (NE.V.sort v = NE.Int) then
+                                    (ps, v::gs)
+                                  else
+                                    (ps, gs)
+                                ) ([],[]) xs in
     let voc            = NE.voc phi in
     let cutoff         = SmpNum.cut_off phi in
     let global_vars    = NE.all_global_vars phi in
     let local_vars     = NE.all_local_vars_without_param phi in
-    let glb_int_vars   = filter_ints global_vars in
+    let (pc_vars, glb_int_vars) = filter_global_ints global_vars in
     let lcl_int_vars   = filter_ints local_vars in
     let buf            = B.create 1024 in
     let _              = z3_type_decl buf in
@@ -578,7 +585,7 @@ struct
                           B.add_string buf (local_var_to_str v)
                          ) local_vars in
     let _              = z3_preamble buf voc cutoff
-                            glb_int_vars lcl_int_vars in
+                            pc_vars glb_int_vars lcl_int_vars in
     let _              = z3_legal_values global_vars local_vars voc buf in
     let _              = B.add_string buf ("(assert " ^ (string_of_formula phi) ^
                                             ")\n(check-sat)\n")

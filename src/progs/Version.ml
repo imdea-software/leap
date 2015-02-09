@@ -11,6 +11,7 @@ let show () : unit =
     let major_str = string_of_int version_major in
     let minor_str = string_of_int version_minor in
     let revision_str = string_of_int revision in
-    print_endline ("LEAP version " ^major_str^ "." ^minor_str^ "." ^revision_str)
+    print_endline ("LEAP version " ^major_str^ "." ^minor_str^ "." ^revision_str ^
+                   " - Compiled on " ^ Revision.date ^ " at " ^ Revision.time)
   else
     ()

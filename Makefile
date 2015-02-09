@@ -31,6 +31,8 @@ TOOLS=tools
 SYS=`uname -s`
 
 REVISION=`svn info | grep Revision | cut -d ' ' -f 2`
+DATE=`svn info | grep Date | cut -d ' ' -f 7-10 | cut -c 2-17`
+TIME=`svn info | grep Date | cut -d ' ' -f 5-6`
 #REVISION=0
 
 
@@ -82,19 +84,21 @@ $(TOOLS) :
 	$(call check_tool,lingeling);
 	$(call check_tool,cvc4)
 
+write-revision:
+	@echo "let value = "${REVISION} > $(PROGS)/Revision.ml
+	@echo "let date = \"${DATE}\"" >> $(PROGS)/Revision.ml
+	@echo "let time = \"${TIME}\"" >> $(PROGS)/Revision.ml
 
-profile:
-	@echo "let value = "$(REVISION) > $(PROGS)/Revision.ml
+
+profile: write-revision
 	$(OCAMLBUILD) $(PROFILE_FLAGS) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $(LEAP).p.native
 	$(call copy,./_build/$(PROGS)/leap/$(LEAP).p.native,$(BIN),$(LEAP).p.native)
 
-$(LEAP).byte:
-	@echo "let value = "$(REVISION) > $(PROGS)/Revision.ml
+$(LEAP).byte: write-revision
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@
 	$(call copy,./_build/$(PROGS)/leap/$@.byte,$(BIN),$@.byte)
 
-$(LEAP):
-	@echo "let value = "$(REVISION) > $(PROGS)/Revision.ml
+$(LEAP): write-revision
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
 	$(call copy,./_build/$(PROGS)/leap/$@.native,$(BIN),$@)
 

@@ -373,8 +373,8 @@ val prime_term   : term -> term
 val unprime_term : term -> term
 
 val primed_vars : formula -> V.t list
-val prime_modified : formula -> formula -> formula
-val prime_modified_term : formula -> term -> term
+val prime_modified : formula list -> formula -> formula
+val prime_modified_term : formula list -> term -> term
 
 val get_vars : formula -> (V.t -> V.VarSet.t) -> V.t list
 
@@ -450,6 +450,7 @@ val voc_from_list : formula list -> ThreadSet.t
 val unprimed_voc  : formula -> ThreadSet.t
 val voc_to_var    : tid -> V.t
 val voc_to_vars   : ThreadSet.t -> V.VarSet.t
+val tidset_to_str : ThreadSet.t -> string
 
 (* GHOST TERMS *)
 val var_kind : var_nature -> expr_t -> term list

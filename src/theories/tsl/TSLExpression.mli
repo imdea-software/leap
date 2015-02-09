@@ -15,9 +15,11 @@ type sort =
   | Bool
   | Unknown
 
+type var_info_t
+
 module V : Variable.S
   with type sort = sort
-  with type info = unit
+  with type info = var_info_t
 
 type term =
     VarT              of V.t
@@ -177,6 +179,7 @@ module AtomSet : Set.S with type elt = atom
 module ThreadSet : Set.S with type elt = tid
 
 val build_var : ?fresh:bool ->
+                ?treat_as_pc:bool ->
                 V.id ->
                 sort ->
                 bool ->

@@ -13,10 +13,11 @@ type sort =
   | Bool
   | Unknown
 
+type var_info_t
 
 module V : Variable.S
   with type sort = sort
-  with type info = unit
+  with type info = var_info_t
 
 
 type term =
@@ -148,6 +149,7 @@ module ThreadSet : Set.S with type elt = tid
 
 (* variable manipulation *)
 val build_var : ?fresh:bool ->
+                ?treat_as_pc:bool ->
                 V.id ->
                 sort ->
                 bool ->
@@ -155,6 +157,7 @@ val build_var : ?fresh:bool ->
                 V.procedure_name ->
                 V.t
 
+val treat_as_pc : V.t -> bool
 
 (* returns all variables form a formula *)
 val get_varlist_from_conj : conjunctive_formula -> V.t list

@@ -28,6 +28,7 @@ type var_nature =
 type var_info_t =
   {
     nature : var_nature;
+    treat_as_pc : bool;
   }
 
 
@@ -298,19 +299,23 @@ exception Not_implemented of string
 exception Not_tid_var of tid
 
 
-
+let build_var_info ?(treat_as_pc=false) (nature:var_nature) : var_info_t =
+  {
+    nature = nature;
+    treat_as_pc = treat_as_pc
+  }
 
 
 (* Configuration *)
 let defCountVar : integer =
   VarInt (V.build Conf.defCountAbs_name Int false V.Shared V.GlobalScope
-          {nature = RealVar})
+          (build_var_info RealVar))
 
 
 (* The heap *)
 let heap : mem =
   VarMem (V.build Conf.heap_name Mem false V.Shared V.GlobalScope
-          {nature = RealVar})
+          (build_var_info RealVar))
 
 (*
 (* Fresh auxiliary variables *)
@@ -333,7 +338,7 @@ let build_var ?(fresh=false)
               (th:V.shared_or_local)
               (p:V.procedure_name)
                  : V.t =
-  V.build id s pr th p {nature=nature;} ~fresh:fresh
+  V.build id s pr th p (build_var_info nature) ~fresh:fresh
 
 
 let var_nature (v:V.t) : var_nature =
@@ -341,9 +346,12 @@ let var_nature (v:V.t) : var_nature =
 
 (* TUKA *)
 let is_pc_var (v:V.t) : bool =
-  try
-    String.sub (V.id v) 0 3 = (Conf.pc_name ^ "_")
-  with _ -> (V.id v) = Conf.pc_name
+  if (V.info v).treat_as_pc then
+    true
+  else 
+    try
+      String.sub (V.id v) 0 3 = (Conf.pc_name ^ "_")
+    with _ -> (V.id v) = Conf.pc_name
 
 
 let build_global_var (id:V.id) (s:sort) : V.t =
@@ -1340,6 +1348,11 @@ let voc_to_vars (ts:ThreadSet.t) : V.VarSet.t =
 *)
 
 
+let tidset_to_str (ts:ThreadSet.t) : string =
+  String.concat "," (ThreadSet.fold (fun t xs ->
+                      (tid_to_str t) :: xs
+                     ) ts [])
+
 (* Equality constructor functions for formulas *)
 let eq_set (s1:set) (s2:set) : formula =
   Formula.atom_to_formula (Eq (SetT s1, SetT s2))
@@ -2169,7 +2182,7 @@ let all_global_vars (f:formula) : V.t list =
 
 
 (* Primes in phi the variables modified in ante *)
-let prime_modified (rho:formula) (phi:formula) : formula =
+let prime_modified (rho_list:formula list) (phi:formula) : formula =
 (*  LOG "Entering prime_modified" LEVEL TRACE; *)
   let base_f = fun v -> if V.is_primed v then
                           V.VarSet.singleton v
@@ -2184,22 +2197,6 @@ let prime_modified (rho:formula) (phi:formula) : formula =
   and analyze_formula (phi:formula) : (V.VarSet.t * V.VarSet.t) =
     Formula.formula_fold (analyze_fs()) () phi
 
-(*
-  let rec analyze_formula (phi:formula) : V.VarSet.t =
-    match phi with
-    | Literal l -> analyze_literal l
-    | True -> V.VarSet.empty
-    | False -> V.VarSet.empty
-    | And (phi1,phi2) -> V.VarSet.union (analyze_formula phi1) (analyze_formula phi2)
-    | Or (phi1,phi2) -> V.VarSet.union (analyze_formula phi1) (analyze_formula phi2)
-    | Not phi1 -> analyze_formula phi1
-    | Implies (phi1,phi2) -> V.VarSet.union (analyze_formula phi1) (analyze_formula phi2)
-    | Iff (phi1,phi2) -> V.VarSet.union (analyze_formula phi1) (analyze_formula phi2)
-  and analyze_literal (lit:literal) : V.VarSet.t =
-    match lit with
-    | Atom a -> analyze_atom a
-    | NegAtom a -> analyze_atom a
-*)
   and analyze_atom (a:atom) : (V.VarSet.t * V.VarSet.t) =
     match a with
     | Eq (ArrayT (VarArray v), ArrayT (ArrayUp (aa,t,e)))
@@ -2213,12 +2210,23 @@ let prime_modified (rho:formula) (phi:formula) : formula =
   let unprime_set vSet = V.VarSet.fold (fun v set ->
                            V.VarSet.add (V.unprime v) set
                          ) vSet V.VarSet.empty in
+  let (pSet,pPC) = List.fold_left (fun (s1,s2) rho ->
+                     let (r1,r2) = analyze_formula rho in
+                     (V.VarSet.union s1 r1, V.VarSet.union s2 r2)
+                   ) (V.VarSet.empty, V.VarSet.empty) rho_list in
+(*
   let (pSet,pPC) = analyze_formula rho in
+*)
     prime_only (unprime_set pSet) (unprime_set pPC) phi
 
 
-let prime_modified_term (ante:formula) (t:term) : term =
+let prime_modified_term (ante:formula list) (t:term) : term =
+  let p_vars = List.fold_left (fun xs phi ->
+                 xs @ (primed_vars phi)
+               ) [] ante in
+(*
   let p_vars = primed_vars ante in
+*)
   let p_set  = V.varset_from_list p_vars
   in
     prime_term_only p_set t
@@ -2234,7 +2242,7 @@ let rec array_var_from_term (t:term) (prime:bool) : arrays =
     VarT v                       -> VarArray (modif_var v)
   | SetT(VarSet v)               -> VarArray (modif_var v)
   | ElemT(VarElem v)             -> VarArray (modif_var v)
-  | TidT(VarTh v)               -> VarArray (modif_var v)
+  | TidT(VarTh v)                -> VarArray (modif_var v)
   | AddrT(VarAddr v)             -> VarArray (modif_var v)
   | CellT(VarCell v)             -> VarArray (modif_var v)
   | SetThT(VarSetTh v)           -> VarArray (modif_var v)
@@ -4868,7 +4876,8 @@ and build_pc_var (pr:bool) (th:V.shared_or_local) : V.t =
                | V.Shared-> ""
                | V.Local t -> "_" ^ (V.to_simple_str t)
   in
-    build_global_var ("pc" ^ pr_str ^ th_str) Int
+    V.build ("pc" ^ pr_str ^ th_str) Int false V.Shared V.GlobalScope
+    {nature=RealVar; treat_as_pc = true;}
 
 
 and build_pc_var_from_tid (pr:bool) (t:tid) : V.t =
@@ -5609,6 +5618,6 @@ and identical_pc_t (p1:pc_t) (p2:pc_t) : bool =
 
 
 let gen_fresh_var (gen:V.fresh_var_gen_t) (s:sort) : V.t =
-  V.gen_fresh_var sort_to_str {nature = RealVar;} gen s
+  V.gen_fresh_var sort_to_str (build_var_info RealVar) gen s
 
 

@@ -31,6 +31,7 @@ let rec variable_to_int_variable (v:E.V.t) : NE.V.t =
                (E.V.is_primed v)
                (shared_to_int_shared (E.V.parameter v))
                (scope_to_int_scope (E.V.scope v))
+               ~treat_as_pc:(E.is_pc_var v)
 
 
 and shared_to_int_shared (th:E.V.shared_or_local) : NE.V.shared_or_local =

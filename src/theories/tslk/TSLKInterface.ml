@@ -477,6 +477,7 @@ module Make (SLK : TSLKExpression.S) =
                     (E.V.is_primed v)
                     (shared_to_tslk_shared (E.V.parameter v))
                     (scope_to_tslk_scope (E.V.scope v))
+                    ~treat_as_pc:(E.is_pc_var v)
 
 
     and shared_to_tslk_shared (th:E.V.shared_or_local) : SLK.V.shared_or_local =

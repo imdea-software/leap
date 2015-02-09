@@ -5,6 +5,8 @@ Tactics :
          | simplify-pc } ;
 
 Facts :
-  3:setLower;
+  3:setLower, test;
   4:notSame;
-  6:notSame, test;
+  6:notSame, test, minTicket;
+
+// minTicket in 6 is the last thing I am trying

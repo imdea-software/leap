@@ -46,7 +46,7 @@ and build_term_var (v:E.V.t) : SL.term =
   match (E.V.sort v) with
     E.Set       -> SL.SetT       (SL.VarSet        tsl_v)
   | E.Elem      -> SL.ElemT      (SL.VarElem       tsl_v)
-  | E.Tid      -> SL.TidT      (SL.VarTh         tsl_v)
+  | E.Tid       -> SL.TidT       (SL.VarTh         tsl_v)
   | E.Addr      -> SL.AddrT      (SL.VarAddr       tsl_v)
   | E.Cell      -> SL.CellT      (SL.VarCell       tsl_v)
   | E.SetTh     -> SL.SetThT     (SL.VarSetTh      tsl_v)
@@ -55,7 +55,7 @@ and build_term_var (v:E.V.t) : SL.term =
   | E.Int       -> SL.IntT       (SL.VarInt        tsl_v)
   | E.AddrArray -> SL.AddrArrayT (SL.VarAddrArray  tsl_v)
   | E.TidArray  -> SL.TidArrayT  (SL.VarTidArray   tsl_v)
-  | _              -> SL.VarT       (tsl_v)
+  | _           -> SL.VarT       (tsl_v)
 
 
 
@@ -67,6 +67,7 @@ and var_to_tsl_var (v:E.V.t) : SL.V.t =
                (E.V.is_primed v)
                (shared_to_tsl_shared (E.V.parameter v))
                (scope_to_tsl_scope (E.V.scope v))
+               ~treat_as_pc:(E.is_pc_var v)
 
 
 and shared_to_tsl_shared (th:E.V.shared_or_local) : SL.V.shared_or_local =

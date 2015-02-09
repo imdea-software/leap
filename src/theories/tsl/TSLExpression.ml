@@ -20,10 +20,15 @@ type sort =
   | Bool
   | Unknown
 
+type var_info_t =
+  {
+    treat_as_pc : bool;
+  }
+
 module V = Variable.Make (
   struct
     type sort_t = sort
-    type info_t = unit
+    type info_t = var_info_t
   end )
 
 
@@ -190,13 +195,14 @@ exception Not_tid_var of tid
 (*************************)
 
 let build_var ?(fresh=false)
+              ?(treat_as_pc=false)
               (id:V.id)
               (s:sort)
               (pr:bool)
               (th:V.shared_or_local)
               (p:V.procedure_name)
                  : V.t =
-  V.build id s pr th p () ~fresh:fresh
+                   V.build id s pr th p {treat_as_pc = treat_as_pc;} ~fresh:fresh
 
 
 let is_primed_tid (th:tid) : bool =
@@ -2240,7 +2246,7 @@ let new_norm_info_from_geninfo (fg:V.fresh_var_gen_t) : norm_info_t =
 
 
 let gen_fresh_var (gen:V.fresh_var_gen_t) (s:sort) : V.t =
-  V.gen_fresh_var sort_to_str () gen s
+  V.gen_fresh_var sort_to_str {treat_as_pc=false;} gen s
 
 
 let gen_fresh_set_var (info:norm_info_t) : set =

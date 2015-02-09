@@ -5,10 +5,15 @@ module F = Formula
 
 type sort = Int | Set | Tid
 
+type var_info_t =
+  {
+    treat_as_pc : bool;
+  }
+
 module V = Variable.Make (
   struct
     type sort_t = sort
-    type info_t = unit
+    type info_t = var_info_t
   end )
 
 type tid =
@@ -121,13 +126,18 @@ module VarSet = Set.Make(
 
 (* Variable constructor *)
 let build_var ?(fresh=false)
+              ?(treat_as_pc=false)
               (id:V.id)
               (s:sort)
               (pr:bool)
               (th:V.shared_or_local)
               (p:V.procedure_name)
                  : V.t =
-  V.build id s pr th p () ~fresh:fresh
+  V.build id s pr th p {treat_as_pc = treat_as_pc; } ~fresh:fresh
+
+
+let treat_as_pc (v:V.t) : bool =
+  (V.info v).treat_as_pc
 
 
 (* CONVERTERS TO STRING *)

@@ -74,6 +74,7 @@ and variable_to_tll_var (v:E.V.t) : TLL.V.t =
                 (E.V.is_primed v)
                 (shared_to_tll_shared (E.V.parameter v))
                 (scope_to_tll_scope (E.V.scope v))
+                 ~treat_as_pc:(E.is_pc_var v)
 
 
 and shared_to_tll_shared (th:E.V.shared_or_local) : TLL.V.shared_or_local =

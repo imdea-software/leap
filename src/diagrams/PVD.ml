@@ -287,7 +287,6 @@ let check_and_define_nodes (nodes:node_t list)
   let nTbl = Hashtbl.create 40 in
   let bTbl = Hashtbl.create 40 in
 
-  print_endline "1";
   (* Preliminary table of nodes *)
   List.iter (fun (n_id,n_formula) ->
     if Hashtbl.mem nTbl n_id then
@@ -300,7 +299,6 @@ let check_and_define_nodes (nodes:node_t list)
     else
       Hashtbl.add nTbl n_id {mu=n_formula; box=None;}
   ) nodes;
-  print_endline "2";
 
   (* Table of boxes *)
   List.iter (fun (box_id, ns, param) ->
@@ -334,7 +332,6 @@ let check_and_define_nodes (nodes:node_t list)
     Hashtbl.add bTbl box_id (nSet, param)
   ) boxes;
 
-  print_endline "3";
 
   (* Compute the free vocabulary of nodes *)
   Hashtbl.iter (fun n_id n_info ->
@@ -345,7 +342,6 @@ let check_and_define_nodes (nodes:node_t list)
     free_voc := E.ThreadSet.union !free_voc free_mu_voc;
   ) nTbl;
 
-  print_endline "4";
 
   (nTbl, bTbl, !free_voc)
 
@@ -567,11 +563,11 @@ let ranking_function (ante:E.formula)
                                 end in
   if AcceptanceSet.mem e accept.bad then
     let pre = fst accept.delta in
-    let post = E.prime_modified_term ante (fst accept.delta) in
+    let post = E.prime_modified_term [ante] (fst accept.delta) in
     cons pre post Decrement
   else if (not (AcceptanceSet.mem e (AcceptanceSet.union accept.good accept.bad))) then
     let pre = fst accept.delta in
-    let post = E.prime_modified_term ante (fst accept.delta) in
+    let post = E.prime_modified_term [ante] (fst accept.delta) in
     cons pre post Preserve
   else
     F.True

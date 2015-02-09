@@ -1,9 +1,11 @@
 
 type sort = Int | Set | Tid
 
+type var_info_t
+
 module V : Variable.S
   with type sort = sort
-  with type info = unit
+  with type info = var_info_t
 
 
 type tid =
@@ -65,12 +67,15 @@ exception NotConjunctiveExpr of formula
 module ThreadSet : Set.S with type elt = tid
 
 val build_var : ?fresh:bool ->
+                ?treat_as_pc:bool ->
                 V.id ->
                 sort ->
                 bool ->
                 V.shared_or_local ->
                 V.procedure_name ->
                 V.t
+
+val treat_as_pc    : V.t -> bool
 
 val is_int_formula : Expression.formula   -> bool
 
@@ -104,6 +109,5 @@ val has_variable      : integer -> bool
 
 val formula_is_linear : formula -> bool
 val term_is_linear    : integer -> bool
-
 
 val voc_to_var : tid -> V.t

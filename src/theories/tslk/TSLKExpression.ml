@@ -176,6 +176,7 @@ module type S =
 
     (* Variable construction *)
     val build_var : ?fresh:bool ->
+                    ?treat_as_pc:bool ->
                     V.id ->
                     sort ->
                     bool ->
@@ -313,6 +314,7 @@ module Make (K : Level.S) : S =
         mutable smp_interesting : bool;
         (* CHANGES: Remove the fresh field from here *)
         mutable fresh : bool;
+        treat_as_pc : bool;
       }
 
 
@@ -472,13 +474,15 @@ module Make (K : Level.S) : S =
 
 
     let build_var ?(fresh=false)
+                  ?(treat_as_pc=false)
                   (id:V.id)
                   (s:sort)
                   (pr:bool)
                   (th:V.shared_or_local)
                   (p:V.procedure_name)
                      : V.t =
-      V.build id s pr th p {smp_interesting = false; fresh = false; } ~fresh:fresh
+      V.build id s pr th p
+        {smp_interesting = false; fresh = false; treat_as_pc = treat_as_pc; } ~fresh:fresh
 
 
     let variable_clean_info (v:V.t) : unit =
@@ -569,6 +573,7 @@ module Make (K : Level.S) : S =
       {
         fresh = (info1.fresh || info2.fresh);
         smp_interesting = (info1.smp_interesting || info2.smp_interesting);
+        treat_as_pc = (info1.treat_as_pc || info2.treat_as_pc);
       }
 
 
@@ -1221,7 +1226,8 @@ module Make (K : Level.S) : S =
 
     let info_to_str (info:var_info_t) : string =
       "SMP Interesting: " ^if info.smp_interesting then "true" else "false"^ "\n" ^
-      "Fresh:           " ^if info.fresh then "true" else "false"^ "\n"
+      "Fresh:           " ^if info.fresh then "true" else "false"^ "\n" ^
+      "Treat as PC:     " ^if info.treat_as_pc then "true" else "false"^ "\n"
 
 
     let rec variable_to_full_str = V.to_full_str sort_to_str info_to_str

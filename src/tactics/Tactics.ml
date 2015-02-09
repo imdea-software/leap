@@ -16,9 +16,9 @@ type vc_extra_info_t =
 type support_t = E.formula list
 type vc_info = { 
   original_support : support_t ; (* BOXED formulas, tids must be renamed *)
-  tid_constraint   : E.formula      ;
+  tid_constraint   : E.formula ;
   
-  rho             : E.formula ;   (* TRANSITION RELATION *)
+  rho             : E.formula  ;   (* TRANSITION RELATION *)
 
   original_goal   : E.formula  ;
   goal            : E.formula  ;
@@ -129,7 +129,7 @@ let vc_info_to_implication (info:vc_info) (sup:support_t): implication =
   ) var_updates;
   (* This code adds equalities that were implicit when we used arrays to represent local vars *)
   let new_goal = if info.extra_info.prime_goal then
-                   E.prime_modified info.rho info.goal
+                   E.prime_modified [info.rho] info.goal
                  else
                    info.goal in
   let the_antecedent =
@@ -250,7 +250,7 @@ let create_vc_info ?(prime_goal=true)
       tid_constraint     = tid_constr ;
       rho                = rho ;
       original_goal      = goal ;
-      goal               = if prime_goal then E.prime_modified rho goal else goal;
+      goal               = if prime_goal then E.prime_modified [rho] goal else goal;
       transition_tid     = trans_tid ;
       line               = line ;
       vocabulary         = vocab ; (* fix: can be computed *)
@@ -688,16 +688,22 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
       let used_tids = ref (E.ThreadSet.union (E.voc info.tid_constraint)
                            (E.ThreadSet.union (E.voc info.rho) goal_voc)) in
 
+      print_endline ("GOAL VOC: " ^ (E.tidset_to_str goal_voc));
+      print_endline ("USED_TIDS: " ^ (E.tidset_to_str (!used_tids)));
+
 
       let (unparam_support, param_support) =
         List.fold_left (fun (u_set,p_set) supp ->
           let supp_voc = filter_fixed_voc (E.voc supp) in
+
+
           let fresh_tids = E.gen_fresh_tid_set !used_tids (E.ThreadSet.cardinal supp_voc) in
           let fresh_subst = E.new_tid_subst
                               (List.combine (E.ThreadSet.elements supp_voc)
                                             (E.ThreadSet.elements fresh_tids)) in
           used_tids := E.ThreadSet.union fresh_tids !used_tids;
           let fresh_supp = E.subst_tid fresh_subst supp in
+
           let split_supp = F.to_conj_list fresh_supp in
           List.fold_left (fun (us,ps) phi ->
             if E.ThreadSet.is_empty (filter_fixed_voc (E.voc phi)) then
@@ -718,8 +724,15 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
       let processed_support =
         E.FormulaSet.fold (fun phi set ->
           let supp_voc = filter_fixed_voc (E.voc phi) in
+          let voc_to_consider = List.fold_left E.ThreadSet.union
+                                  (E.ThreadSet.singleton info.transition_tid)
+                                  [supp_voc; E.voc info.rho; goal_voc] in
+                                  (*
           let voc_to_consider = E.ThreadSet.add info.transition_tid
                                   (E.ThreadSet.union supp_voc goal_voc) in
+          *)
+
+
           let subst = List.filter f
                         (E.new_comb_subst
                           (E.ThreadSet.elements supp_voc)
@@ -733,54 +746,6 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
       E.FormulaSet.elements processed_support
 
 
-(*
-
-      let fresh_original_support = List.map (fun supp ->
-                                     let supp_voc = filter_fixed_voc (E.voc supp) in
-                                     let fresh_tids = E.gen_fresh_tid_set !used_tids (E.ThreadSet.cardinal supp_voc) in
-                                     let fresh_subst = E.new_tid_subst
-                                                        (List.combine (E.ThreadSet.elements supp_voc)
-                                                                      (E.ThreadSet.elements fresh_tids)) in
-                                     used_tids := E.ThreadSet.union fresh_tids !used_tids;
-                                       E.subst_tid fresh_subst supp
-                                   ) info.original_support in
-      let split_support = List.fold_left (fun xs phi ->
-                            F.to_conj_list phi @ xs
-                          ) [] fresh_original_support in
-      let (param_support, unparam_support) = List.partition (fun phi ->
-                                              not (E.ThreadSet.is_empty (filter_fixed_voc (E.voc phi)))
-                                            ) split_support in
-    
-      Log.print "gen_support unparametrized support"
-                (String.concat " ; " (List.map E.formula_to_str unparam_support));
-      Log.print "gen_support parametrized support"
-                (String.concat " ; " (List.map E.formula_to_str param_support));
-
-
-      List.fold_left (fun xs supp_phi ->
-        let supp_voc = filter_fixed_voc (E.voc supp_phi) in
-        let voc_to_consider = E.ThreadSet.add info.transition_tid
-                                (E.ThreadSet.union supp_voc goal_voc) in
-(*
-        let voc_to_consider = GenSet.to_list
-                                (GenSet.from_list (info.transition_tid :: supp_voc @ goal_voc)) in
-*)
-        
-
-        let subst = List.filter f
-                      (E.new_comb_subst
-                        (E.ThreadSet.elements supp_voc)
-                        (E.ThreadSet.elements voc_to_consider)) in
-        Log.print "Thread id substitution" (String.concat " -- " (List.map E.subst_to_str subst));
-        xs @ List.map (fun s ->
-               E.subst_tid s supp_phi
-             ) subst
-      ) unparam_support param_support
-*)
-
-
-
-
 let full_support (info:vc_info) : support_t =
   gen_support (RestrictSubst (fun _ -> true)) info
 
@@ -792,6 +757,7 @@ let reduce_support (info:vc_info) : support_t =
 
 let reduce2_support (info:vc_info) : support_t =
   let voc_to_analyze = E.ThreadSet.union (E.voc info.rho) (E.voc info.goal) in
+  print_endline ("VOC_TO_ANALIZE: " ^ (E.ThreadSet.fold (fun t str -> str ^ ", " ^ (E.tid_to_str t)) voc_to_analyze ""));
 (*
   let voc_to_analyze = GenSet.to_list (GenSet.from_list (E.ThreadSet.elements (E.voc info.rho) @ E.ThreadSet.elements (E.voc info.goal))) in
 *)

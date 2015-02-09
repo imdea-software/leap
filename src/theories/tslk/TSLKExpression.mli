@@ -174,6 +174,7 @@ module type S =
 
     (* Variable construction *)
     val build_var : ?fresh:bool ->
+                    ?treat_as_pc:bool ->
                     V.id ->
                     sort ->
                     bool ->
