@@ -78,6 +78,10 @@ def print_and_log(str):
 	print(str)
 	log.write(str + '\n')
 
+def just_log(str):
+	log.write(str + '\n')
+
+
 def test_call(status):
 	if status == 0:
 		print_and_log ('[OK]')
@@ -125,7 +129,7 @@ def error(msg):
 
 
 def change(msg):
-	print_and_log ('[ CHANGE	] ***  {}  ***'.format(msg))
+	just_log ('[ CHANGE	] ***  {}  ***'.format(msg))
 
 
 def warning(msg):
@@ -337,16 +341,21 @@ def lookup_results(results, name):
 def report_change(** args):
 	if args['cond'] == 'equal':
 		change('In example {}, key {} should be preserved, but historically was {} and now is {}'.format(args['name'], key_to_str(args['key']), args['hist_val'], args['curr_val']))
+		print_info('[ XX ] {} was {} and now is {}.'.format(key_to_str(args['key'], args['hist_val'], args['curr_val'])))
 	if args['cond'] == 'zero':
 		change('In example {}, key {} should be 0, but it is {}'.format(args['name'], key_to_str(args['key']), args['curr_val']))
+		print_info('[ XX ] {} should be 0 but now is {}.'.format(key_to_str(args['key'], args['curr_val'])))
 	if args['cond'] == 'equal_curr':
 		change('In example {}, key {} (with value {}) should be equal to key {} (with value {})'.format(args['name'], key_to_str(args['key1']), args['val1'], args['key2'], args['val2']))
+		print_info('[ XX ] {} with value {} should be equal to {} with value {}.'.format(key_to_str(args['key1'], args['val1'], args['key2'], args['val2'])))
 	if args['cond'] == 'range_inc':
 		change('In example {}, key {} used to be {} but now has increased to {}'.format(
 							args['name'], key_to_str(args['key']), args['hist_val'], args['curr_val']))
+		print_info('[ XX ] Retrogression of {} in {0:.2f}%.'.format((key_to_str(args['curr_val']) * 100) / key_to_str(args['hist_val']), key_to_str(args['key'])))
 	if args['cond'] == 'range_dec':
 		change('In example {}, key {} used to be {} but now has decreased to {}'.format(
 							args['name'], key_to_str(args['key']), args['hist_val'], args['curr_val']))
+		print_info('[ OK ] Improvement of {} in {0:.2f}%.'.format((key_to_str(args['curr_val']) * 100) / key_to_str(args['hist_val']), key_to_str(args['key'])))
 
 
 
