@@ -366,7 +366,7 @@ module Make (K : Level.S) : TSLK_QUERY =
         let msg = String.concat "," $ List.map Expr.tid_to_str tt in
           raise(Array_larger_than_parameter(msg,K.level))
       else
-        let str = "((as const (Array " ^level_s^ " " ^tid_s^ ")) null)" in
+        let str = "((as const (Array " ^level_s^ " " ^tid_s^ ")) NoThread)" in
         let i = ref (-1) in
         List.fold_left (fun s t ->
           incr i; "(store " ^s^ " " ^(ll !i)^ " " ^(tidterm_to_str t)^ ")"
