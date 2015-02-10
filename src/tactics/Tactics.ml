@@ -724,14 +724,15 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
       let processed_support =
         E.FormulaSet.fold (fun phi set ->
           let supp_voc = filter_fixed_voc (E.voc phi) in
+
+          (*
           let voc_to_consider = List.fold_left E.ThreadSet.union
                                   (E.ThreadSet.singleton info.transition_tid)
                                   [supp_voc; E.voc info.rho; goal_voc] in
-                                  (*
+                                  
+          *)
           let voc_to_consider = E.ThreadSet.add info.transition_tid
                                   (E.ThreadSet.union supp_voc goal_voc) in
-          *)
-
 
           let subst = List.filter f
                         (E.new_comb_subst
