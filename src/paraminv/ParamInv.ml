@@ -75,7 +75,6 @@ module Make (C:Core.S) : S =
                                                 ) voc []) in
  *)
 (*                              Formula.conj_list (List.map (E.ineq_tid trans_tid) voc) in *)
-      let tid_constraints = Tactics.new_tid_constraint [] tid_ineqs in
       List.fold_left (fun rs phi ->
         Log.print "Create with support" (String.concat "\n" (List.map E.formula_to_str supp));
         let new_vc = Tactics.create_vc_info supp tid_constraint

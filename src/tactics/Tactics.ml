@@ -139,8 +139,8 @@ let vc_info_to_implication (info:vc_info) (sup:support_t): implication =
                 | (_     , F.True) -> F.And(tid_eq, info.rho)
                 | (_     , _     ) -> F.conj_list [tid_eq; tid_ineq; info.rho] in
   let eq_subst = E.new_tid_subst (info.tid_constraint.eq @ [(me,t);(me',t')]) in
-  let rho = new_rho in
-  let goal = info.goal in
+  let rho = E.subst_tid eq_subst new_rho in
+  let goal = E.subst_tid eq_subst info.goal in
   
 
   (* This code adds equalities that were implicit when we used arrays to represent local vars *)
