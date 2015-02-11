@@ -31,6 +31,16 @@ keys = ['R_NAME', 'R_TOTAL_VC', 'R_TOTAL_OBLIG', 'R_FASTEST', 'R_SLOWEST', 'R_AV
 				'R_TOTAL_DP', 'R_UNVERIFIED_VC', 'R_VALID_VC', 'R_INVALID_VC', 'R_ORIG_DP_VC',
 				'R_DP_VC', 'R_DP_CALLS', 'R_LEAP_TIME', 'R_TOTAL_ANALYSIS']
 
+class bcolors:
+	HEADER = '\033[95m'
+	OKBLUE = '\033[94m'
+	OKGREEN = '\033[92m'
+	WARNING = '\033[93m'
+	FAIL = '\033[91m'
+	ENDC = '\033[0m'
+	BOLD = '\033[1m'
+	UNDERLINE = '\033[4m'
+
 
 def key_to_str(key):
 	if key == 'R_NAME'						: return ('"Name"')
@@ -137,11 +147,15 @@ def warning(msg):
 
 
 def head_msg(msg):
-	print_and_log ('\n===[	' + msg + '  ]' + ('=' * (71 - len(msg))))
+	full_msg = '\n===[	' + msg + '  ]' + ('=' * (71 - len(msg)))
+	print (bcolors.HEADER + full_msg + bcolors.ENDC)
+	just_log (full_msg)
 
 
 def middle_msg(msg):
-	print_and_log ('\n---[	' + msg + '  ]' + ('-' * (71 - len(msg))))
+	full_msg = '\n---[	' + msg + '  ]' + ('-' * (71 - len(msg)))
+	print (bcolors.HEADER + full_msg + bcolors.ENDC)
+	just_log (full_msg)
 
 
 def short_msg(msg):
@@ -257,9 +271,11 @@ def run_script(script,k,ex,case_name):
 				dp_calls = True
 	
 	if run.wait() == 0:
-		print_and_log ('[ OK ]')
+		print (bcolors.OKGREEN + '[ OK ]' + bcolors.ENDC)
+		just_log ('[ OK ]')
 	else:
-		print_and_log ('[ XX ]')
+		print (bcolors.FAIL + '[ XX ]' + bcolors.ENDC)
+		just_log ('[ XX ]')
 	# Values obtained from previously computed results
 	results.append(('R_LEAP_TIME', float(dict(results)['R_TOTAL_ANALYSIS']) -
 																 float(dict(results)['R_TOTAL_DP'])))
@@ -341,22 +357,19 @@ def lookup_results(results, name):
 def report_change(** args):
 	if args['cond'] == 'equal':
 		change('In example {}, key {} should be preserved, but historically was {} and now is {}'.format(args['name'], key_to_str(args['key']), args['hist_val'], args['curr_val']))
-                print_info('\n[ XX ] {} was {} and now is {}.'.format(key_to_str(args['key'], args['hist_val'], args['curr_val'])))
-        if args['cond'] == 'zero':
+		print_info(bcolors.FAIL + ('*** {} was {} and now is {}. ***\n'.format(key_to_str(args['key'], args['hist_val'], args['curr_val']))) + bcolors.ENDC)
+	if args['cond'] == 'zero':
 		change('In example {}, key {} should be 0, but it is {}'.format(args['name'], key_to_str(args['key']), args['curr_val']))
-                print_info('\n[ XX ] {} should be 0 but now is {}.'.format(key_to_str(args['key'], args['curr_val'])))
-        if args['cond'] == 'equal_curr':
+		print_info(bcolors.FAIL + ('*** {} should be 0 but now is {}. ***\n'.format(key_to_str(args['key'], args['curr_val']))) + bcolors.ENDC)
+	if args['cond'] == 'equal_curr':
 		change('In example {}, key {} (with value {}) should be equal to key {} (with value {})'.format(args['name'], key_to_str(args['key1']), args['val1'], args['key2'], args['val2']))
-                print_info('\n[ XX ] {} with value {} should be equal to {} with value {}.'.format(key_to_str(args['key1'], args['val1'], args['key2'], args['val2'])))
-        if args['cond'] == 'range_inc':
-		change('In example {}, key {} used to be {} but now has increased to {}'.format(
-							args['name'], key_to_str(args['key']), args['hist_val'], args['curr_val']))
-                print_info('\n[ XX ] Retrogression of {} in {0:.2f}%.'.format((key_to_str(args['curr_val']) * 100) / key_to_str(args['hist_val']), key_to_str(args['key'])))
-        if args['cond'] == 'range_dec':
-		change('In example {}, key {} used to be {} but now has decreased to {}'.format(
-                                                        args['name'], key_to_str(args['key']), args['hist_val'], args['curr_val']))
-                print_info('\n[ OK ] Improvement of {} in {0:.2f}%.'.format((key_to_str(args['curr_val']) * 100) / key_to_str(args['hist_val']), key_to_str(args['key'])))
-
+		print_info(bcolors.FAIL + ('*** {} with value {} should be equal to {} with value {}. ***\n'.format(key_to_str(args['key1'], args['val1'], args['key2'], args['val2']))) + bcolors.ENDC)
+	if args['cond'] == 'range_inc':
+		change('In example {}, key {} used to be {} but now has increased to {}'.format(args['name'], key_to_str(args['key']), args['hist_val'], args['curr_val']))
+		print_info(bcolors.FAIL + ('*** {} increased to {:.2f}% ({} -> {}). ***\n'.format(key_to_str(args['key']), (args['curr_val'] * 100) / args['hist_val'], args['hist_val'], args['curr_val'])) + bcolors.ENDC)
+	if args['cond'] == 'range_dec':
+		change('In example {}, key {} used to be {} but now has decreased to {}'.format(args['name'], key_to_str(args['key']), args['hist_val'], args['curr_val']))
+		print_info(bcolors.OKGREEN + ('*** {} reduced to {:.2f}% ({} -> {}). ***\n'.format(key_to_str(args['key']), (args['curr_val'] * 100) / args['hist_val'], args['hist_val'], args['curr_val'])) + bcolors.ENDC)
 
 
 def compare_val(name, key, cond, history_vals, results, changes):
@@ -400,10 +413,12 @@ def compare_range(name, key, history_vals, results, big_percent, small_percent, 
 		else:
 			delta = big_delta
 		if curr_val > hist_val + delta:
-			report_change (name=name, key=key, cond='range_inc', hist_val=hist_val, curr_val=curr_val)
+			cond = 'range_inc'
+			report_change (name=name, key=key, cond=cond, hist_val=hist_val, curr_val=curr_val)
 			changes.append({'type':'comp_range', 'name':name, 'key':key, 'cond':cond, 'hist_val':hist_val, 'curr_val':curr_val})
 		if curr_val < hist_val - delta:
-			report_change (name=name, key=key, cond='range_dec', hist_val=hist_val, curr_val=curr_val)
+			cond = 'range_dec'
+			report_change (name=name, key=key, cond=cond, hist_val=hist_val, curr_val=curr_val)
 			changes.append({'type':'comp_range', 'name':name, 'key':key, 'cond':cond, 'hist_val':hist_val, 'curr_val':curr_val})
 	except:
 		error('Problem comparing values with keys {}'.format(key_to_str(key)))
