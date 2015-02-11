@@ -32,7 +32,7 @@ and term =
     VarT          of V.t
   | SetT          of set
   | ElemT         of elem
-  | TidT         of tid
+  | TidT          of tid
   | AddrT         of addr
   | CellT         of cell
   | SetThT        of setth
@@ -446,6 +446,7 @@ val construct_pres_term        : term -> V.shared_or_local -> formula
 (* VOCABULARY FUNCTIONS *)
 val voc           : formula -> ThreadSet.t
 val voc_term      : term -> ThreadSet.t
+val voc_tid       : tid -> ThreadSet.t
 val voc_from_list : formula list -> ThreadSet.t
 val unprimed_voc  : formula -> ThreadSet.t
 val voc_to_var    : tid -> V.t
@@ -488,6 +489,7 @@ val subst_vars : V.subst_t -> formula -> formula
 val to_trs : formula -> formula
 
 val to_plain_formula : fol_mode_t -> formula -> formula
+val to_plain_tid : fol_mode_t -> tid -> tid
 
 
 

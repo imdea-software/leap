@@ -308,12 +308,6 @@ let rec to_disj_list (phi:'atom formula) : 'atom formula list =
   | _          -> [phi]
 
 
-let rec split_conj (phi:'atom formula) : 'atom formula list =
-  match phi with
-  | And (phi1, phi2) -> (split_conj phi1) @ (split_conj phi2)
-  | _                -> [phi]
-
-
 let rec nnf (phi:'atom formula) : 'atom formula =
   match phi with
   | False -> False

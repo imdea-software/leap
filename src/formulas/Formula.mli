@@ -143,8 +143,6 @@ val to_disj_literals : 'atom formula -> 'atom literal list
 val to_conj_list : 'atom formula -> 'atom formula list
 val to_disj_list : 'atom formula -> 'atom formula list
 
-val split_conj : 'atom formula -> 'atom formula list
-
 val nnf : 'atom formula -> 'atom formula
 val dnf : 'atom formula -> 'atom conjunctive_formula list
 val cnf : 'atom formula -> 'atom disjunctive_formula list

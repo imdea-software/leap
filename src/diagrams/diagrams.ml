@@ -33,7 +33,7 @@ module Make (C:Core.S) : S =
                                   (PVD.node_mu pvd n) :: xs
                                 ) (PVD.initial pvd) []) in
       let (theta, voc) = C.theta (E.voc init_mu) in
-      Tactics.create_vc_info [] F.True theta init_mu voc E.NoTid 0
+      Tactics.create_vc_info [] Tactics.no_tid_constraint theta init_mu voc E.NoTid 0
 
 
     let gen_consecution (pvd:PVD.t) : Tactics.vc_info list =
@@ -88,7 +88,7 @@ module Make (C:Core.S) : S =
               let self_rho = C.rho System.Concurrent full_voc line t in
               (List.map (fun rho ->
                 let aa =
-                Tactics.create_vc_info [] F.True (F.And (full_mu_n, rho))
+                Tactics.create_vc_info [] Tactics.no_tid_constraint (F.And (full_mu_n, rho))
                   goal full_voc t line in
                 print_endline
                                       ("VCINFO GENERATED:\n" ^
@@ -97,11 +97,12 @@ module Make (C:Core.S) : S =
           (* Others-consecution *)
           let fresh_k = E.gen_fresh_tid full_voc in
           let other_rho = C.rho System.Concurrent full_voc line fresh_k in
-          let tid_diff_conj = Formula.conj_list (E.ThreadSet.fold (fun t xs ->
-                                                  (E.ineq_tid fresh_k t) :: xs
-                                                ) full_voc []) in
+          let tid_ineqs = E.ThreadSet.fold (fun t xs ->
+                            (fresh_k,t) :: xs
+                          ) full_voc [] in
+          let tid_constraints = Tactics.new_tid_constraint [] tid_ineqs in
           let others_vcs = List.map (fun rho ->
-                             Tactics.create_vc_info [] tid_diff_conj (F.And (full_mu_n, rho))
+                             Tactics.create_vc_info [] tid_constraints (F.And (full_mu_n, rho))
                                goal full_voc fresh_k line
                            ) other_rho in
           n_vcs := self_vcs @ others_vcs @ !n_vcs
@@ -154,7 +155,7 @@ module Make (C:Core.S) : S =
                             let processed_mu_m = E.prime_modified [rho; beta] unprimed_mu_m in
                             let antecedent = F.conj_list [mu_n; rho; processed_mu_m; beta] in
                             let consequent = PVD.ranking_function antecedent accept (n,m,kind) in
-                            Tactics.create_vc_info [] F.True antecedent
+                            Tactics.create_vc_info [] Tactics.no_tid_constraint antecedent
                               consequent voc t line ~prime_goal:false
                           ) self_rho) @ ys
                         end else ys
@@ -162,16 +163,17 @@ module Make (C:Core.S) : S =
                     (* Others-acceptance *)
                     let fresh_k = E.gen_fresh_tid voc in
                     let other_rho = C.rho System.Concurrent voc line fresh_k in
-                    let tid_diff_conj = Formula.conj_list (E.ThreadSet.fold (fun t ys ->
-                                                            (E.ineq_tid fresh_k t) :: ys
-                                                          ) voc []) in
+                    let tid_ineqs = E.ThreadSet.fold (fun t ys ->
+                                      (fresh_k,t) :: ys
+                                    ) voc [] in
+                    let tid_constraints = Tactics.new_tid_constraint [] tid_ineqs in
                     let others_vcs = List.map (fun rho ->
                                        let processed_mu_m =
                                          E.prime_modified [rho; beta] unprimed_mu_m in
                                        let antecedent = F.conj_list [mu_n; rho; processed_mu_m; beta] in
                                        let consequent = PVD.ranking_function antecedent
                                                               accept (n,m,kind) in
-                                       Tactics.create_vc_info [] tid_diff_conj antecedent
+                                       Tactics.create_vc_info [] tid_constraints antecedent
                                          consequent voc fresh_k line ~prime_goal:false
                                      ) other_rho in
                     n_vcs := self_vcs @ others_vcs @ !n_vcs
@@ -187,7 +189,7 @@ module Make (C:Core.S) : S =
                       let processed_mu_m = E.prime_modified [rho; beta] unprimed_mu_m in
                       let antecedent = F.conj_list [mu_n; rho; processed_mu_m; beta] in
                       let consequent = PVD.ranking_function antecedent accept (n,m,kind) in
-                      Tactics.create_vc_info [] F.True antecedent
+                      Tactics.create_vc_info [] Tactics.no_tid_constraint antecedent
                         consequent voc t line ~prime_goal:false
                     ) rho_list) @ ys
                   ) [] ts ) @ xs
@@ -226,13 +228,13 @@ module Make (C:Core.S) : S =
                  let conds =
                    F.disj_list (Statement.enabling_condition (E.V.Local v) stm) in
                   (* Enabled *)
-                  let enable_vc = Tactics.create_vc_info [] F.True mu_n1
-                                    conds voc th line in
+                  let enable_vc = Tactics.create_vc_info [] Tactics.no_tid_constraint
+                                    mu_n1 conds voc th line in
                   (* Successor *)
                   let successor_vcs =
                     List.map (fun rho ->
-                      Tactics.create_vc_info [] F.True (F.And (mu_n1,rho)) next_mu
-                          voc th line
+                      Tactics.create_vc_info [] Tactics.no_tid_constraint
+                          (F.And (mu_n1,rho)) next_mu voc th line
                     ) rho_list in
                   enable_vc :: successor_vcs @ gen_vcs
               ) [] trans_list) @ xs

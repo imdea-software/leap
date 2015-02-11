@@ -1,8 +1,6 @@
 open Printf
-open Core
 
 open LeapLib
-open Global
 
 module Expr = Expression
 module Eparser = ExprParser
@@ -92,7 +90,6 @@ let _ =
                                              BackendSolvers.Yices.identifier
                                            else
                                              tSolver
-                             let use_smt = !LeapArgs.use_smt
                              let compute_model = !LeapArgs.show_models
                              let group_vars = !LeapArgs.group_vars
                              let forget_primed_mem = (not !LeapArgs.keep_primed_mem)

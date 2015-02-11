@@ -14,9 +14,16 @@ type vc_extra_info_t =
   }
 
 type support_t = E.formula list
+
+type tid_constraints_t =
+  {
+    eq : (E.tid * E.tid) list;
+    ineq : (E.tid * E.tid) list;
+  }
+
 type vc_info = { 
   original_support : support_t ; (* BOXED formulas, tids must be renamed *)
-  tid_constraint   : E.formula ;
+  tid_constraint   : tid_constraints_t ;
   
   rho             : E.formula  ;   (* TRANSITION RELATION *)
 
@@ -83,6 +90,14 @@ let unique_vc_id = ref 1
 (* CONSTRUCTORS        *)
 (***********************)
 
+let new_tid_constraint (eqs:(E.tid * E.tid) list)
+                       (ineqs:(E.tid * E.tid) list) : tid_constraints_t =
+  {
+    eq = eqs;
+    ineq = ineqs;
+  }
+
+
 let new_proof_plan (smp:Smp.cutoff_strategy_t option)
                    (supp_split_tacs:support_split_tactic_t list)
                    (supp_tacs:support_tactic_t list)
@@ -95,12 +110,42 @@ let new_proof_plan (smp:Smp.cutoff_strategy_t option)
     formula_split_tactics = formula_split_tacs;
     formula_tactics = formula_tacs;
   }
+
+let tid_constraint_to_formula (tc:tid_constraints_t) : E.formula =
+  let eqs = List.map (fun (t,r) -> E.eq_tid t r) tc.eq in
+  let ineqs = List.map (fun (t,r) -> E.ineq_tid t r) tc.ineq
+  in
+    F.conj_list (eqs @ ineqs)
  
 let vc_info_to_implication (info:vc_info) (sup:support_t): implication =
 
+  (* Propagate equalities between threads so we just keep the minimum
+   * amount of required threads *)
+  let me = System.me_tid_th in
+  let me' = E.prime_tid me in
+  let t = info.transition_tid in
+  let t' = E.prime_tid info.transition_tid in
+
+  let tid_eq = F.conj_list (List.fold_left (fun xs (t,r) ->
+                 if t <> me && r <> me && t <> me' && r <> me' then
+                   (E.eq_tid t r) :: xs
+                 else
+                   xs
+               ) [] info.tid_constraint.eq) in
+  let tid_ineq = F.conj_list (List.map (fun (t,r) -> E.ineq_tid t r) info.tid_constraint.ineq) in
+  let new_rho = match (tid_eq, tid_ineq) with
+                | (F.True, F.True) -> info.rho
+                | (F.True, _     ) -> F.And(tid_ineq, info.rho)
+                | (_     , F.True) -> F.And(tid_eq, info.rho)
+                | (_     , _     ) -> F.conj_list [tid_eq; tid_ineq; info.rho] in
+  let eq_subst = E.new_tid_subst (info.tid_constraint.eq @ [(me,t);(me',t')]) in
+  let rho = new_rho in
+  let goal = info.goal in
+  
+
   (* This code adds equalities that were implicit when we used arrays to represent local vars *)
   let build_pc pr i = E.build_pc_var pr (E.V.Local (E.voc_to_var i)) in
-  let goal_voc = E.voc info.goal in
+  let goal_voc = E.voc goal in
   let pc_updates : (E.V.t, E.V.t) Hashtbl.t = Hashtbl.create 4 in
   let var_updates : (E.V.t, E.ThreadSet.t) Hashtbl.t = Hashtbl.create 4 in
 
@@ -117,7 +162,7 @@ let vc_info_to_implication (info:vc_info) (sup:support_t): implication =
           with _ -> Hashtbl.add var_updates v (E.ThreadSet.remove i goal_voc)
         end
     | _ -> ()
-  ) (F.to_conj_list info.rho);
+  ) (F.to_conj_list rho);
   let pc_pres = E.V.new_subst () in
   Hashtbl.iter (fun v v' -> E.V.add_subst pc_pres v' v) pc_updates;
   let var_pres = E.V.new_subst () in
@@ -129,11 +174,11 @@ let vc_info_to_implication (info:vc_info) (sup:support_t): implication =
   ) var_updates;
   (* This code adds equalities that were implicit when we used arrays to represent local vars *)
   let new_goal = if info.extra_info.prime_goal then
-                   E.prime_modified [info.rho] info.goal
+                   E.prime_modified [rho] goal
                  else
-                   info.goal in
+                   goal in
   let the_antecedent =
-    E.to_plain_formula E.PCVars (F.And (F.conj_list sup, F.And (info.tid_constraint, info.rho))) in
+    E.to_plain_formula E.PCVars (F.And (F.conj_list sup, rho)) in
 
   let the_consequent =
       E.subst_vars pc_pres
@@ -163,9 +208,12 @@ let default_cutoff_algorithm = Smp.Dnf
 
 let to_plain_vc_info (fol_mode:E.fol_mode_t) (info:vc_info) : vc_info =
   let f = E.to_plain_formula fol_mode in
+  let tf = E.to_plain_tid fol_mode in
+  let tf_map = List.map (fun (t,r) -> (tf t, tf r)) in
   {
     original_support = List.map f info.original_support;
-    tid_constraint = f info.tid_constraint;
+    tid_constraint = {eq = tf_map info.tid_constraint.eq;
+                      ineq = tf_map info.tid_constraint.ineq;};
     rho = f info.rho;
     original_goal = f info.original_goal;
     goal = f info.goal;
@@ -177,7 +225,8 @@ let to_plain_vc_info (fol_mode:E.fol_mode_t) (info:vc_info) : vc_info =
 
 
 let vc_info_to_str (vc:vc_info) : string =
-  let vars_to_declare = E.all_vars (F.conj_list (vc.tid_constraint  ::
+  let tid_constraint = tid_constraint_to_formula vc.tid_constraint in
+  let vars_to_declare = E.all_vars (F.conj_list (tid_constraint     ::
                                                  vc.rho             ::
                                                  vc.goal            ::
                                                  vc.original_support)) in
@@ -187,7 +236,11 @@ let vc_info_to_str (vc:vc_info) : string =
                      (E.V.to_str v)
                    ) vars_to_declare)) in
   let supp_str = String.concat "\n" (List.map E.formula_to_str vc.original_support) in
-  let tidconst_str = E.formula_to_str vc.tid_constraint in
+  let tid_eqs = List.map (fun (t,r) -> E.formula_to_str (E.eq_tid t r)) vc.tid_constraint.eq in
+  let tid_ineqs = List.map (fun (t,r) -> E.formula_to_str (E.ineq_tid t r)) vc.tid_constraint.ineq in
+
+  let tidconst_str = String.concat " , " (tid_eqs @ tid_ineqs) in
+  
   let rho_str = E.formula_to_str vc.rho in
   let goal_str = E.formula_to_str vc.goal in
   let tid_str = E.tid_to_str vc.transition_tid in
@@ -208,7 +261,7 @@ let vc_info_to_plain_str (vc:vc_info) : string =
 
 let vc_info_to_str_simple (vc:vc_info) : string =
   let supp_str = String.concat "\n" (List.map E.formula_to_str vc.original_support) in
-  let tidconst_str = E.formula_to_str vc.tid_constraint in
+  let tidconst_str = E.formula_to_str (tid_constraint_to_formula vc.tid_constraint) in
   let rho_str = E.formula_to_str vc.rho in
   let goal_str = E.formula_to_str vc.goal
   in
@@ -237,7 +290,7 @@ let vc_info_list_to_folder (output_file:string) (vcs:vc_info list) : unit =
 
 let create_vc_info ?(prime_goal=true)
                    (supp       : support_t)
-                   (tid_constr : E.formula)
+                   (tid_constr : tid_constraints_t)
                    (rho        : E.formula)
                    (goal       : E.formula)
                    (vocab      : E.ThreadSet.t)
@@ -260,7 +313,7 @@ let create_vc_info ?(prime_goal=true)
 
 let create_vc ?(prime_goal=true)
               (orig_supp  : support_t)
-              (tid_constr : E.formula)
+              (tid_constr : tid_constraints_t)
               (rho        : E.formula)
               (goal       : E.formula)
               (vocab      : E.ThreadSet.t)
@@ -301,7 +354,7 @@ let dup_vc_info_with_goal (info:vc_info) (new_goal:E.formula) : vc_info =
 
 let dup_vc_info_with_supp_constr_rho_and_goal (info:vc_info)
                                               (new_support:support_t)
-                                              (new_constr:E.formula)
+                                              (new_constr:tid_constraints_t)
                                               (new_rho:E.formula)
                                               (new_goal:E.formula) : vc_info =
   {
@@ -369,7 +422,7 @@ and empty_proof_plan : proof_plan =
 
 let get_unprocessed_support_from_info (info:vc_info) : support_t =
   info.original_support
-and get_tid_constraint_from_info (info:vc_info) : E.formula = info.tid_constraint
+and get_tid_constraint_from_info (info:vc_info) : tid_constraints_t = info.tid_constraint
 and get_vocabulary_from_info (info:vc_info) : E.ThreadSet.t    =  info.vocabulary
 and get_rho_from_info (info:vc_info) : E.formula =  info.rho
 and get_goal_from_info (info:vc_info) : E.formula =  info.goal
@@ -386,7 +439,7 @@ and get_support (vc:verification_condition) : support_t =
   vc.support
 and get_unprocessed_support (vc:verification_condition) : support_t =
   get_unprocessed_support_from_info vc.info
-and get_tid_constraint (vc:verification_condition) : E.formula =
+and get_tid_constraint (vc:verification_condition) : tid_constraints_t =
   get_tid_constraint_from_info vc.info
 and get_rho (vc:verification_condition) : E.formula =
   get_rho_from_info vc.info
@@ -399,6 +452,13 @@ and get_line (vc:verification_condition) : E.pc_t =
 and get_vocabulary (vc:verification_condition) : E.ThreadSet.t =
   get_vocabulary_from_info vc.info
 
+
+let no_tid_constraint : tid_constraints_t =
+  { eq = []; ineq = []; }
+
+
+let has_tid_constraint (tc:tid_constraints_t) : bool =
+  tc.eq == [] && tc.ineq == []
 
 
 
@@ -685,7 +745,12 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
   | KeepOriginal -> info.original_support
   | RestrictSubst f ->
       let goal_voc = E.voc info.goal in
-      let used_tids = ref (E.ThreadSet.union (E.voc info.tid_constraint)
+      let tid_eqs = info.tid_constraint.eq in
+      let tid_ineqs = info.tid_constraint.ineq in
+      let tid_constraint_voc = List.fold_left (fun set (t,r) ->
+                                 E.ThreadSet.add t (E.ThreadSet.add r set)
+                               ) E.ThreadSet.empty (tid_eqs @ tid_ineqs) in
+      let used_tids = ref (E.ThreadSet.union tid_constraint_voc
                            (E.ThreadSet.union (E.voc info.rho) goal_voc)) in
 
       print_endline ("GOAL VOC: " ^ (E.tidset_to_str goal_voc));
@@ -725,14 +790,20 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
         E.FormulaSet.fold (fun phi set ->
           let supp_voc = filter_fixed_voc (E.voc phi) in
 
+          let me = System.me_tid_th in
+          let me' = E.prime_tid me in
+          let rho_voc = E.ThreadSet.remove me (E.ThreadSet.remove me' (E.voc info.rho)) in 
           let voc_to_consider = List.fold_left E.ThreadSet.union
                                   (E.ThreadSet.singleton info.transition_tid)
-                                  [supp_voc; goal_voc] in
-          (*                        
+                                  [supp_voc; rho_voc; goal_voc] in
+          assert (not (E.ThreadSet.mem System.me_tid_th voc_to_consider));
+                                  
+          (*
           let voc_to_consider = E.ThreadSet.add info.transition_tid
                                   (E.ThreadSet.union supp_voc goal_voc) in
-
           *)
+
+
           let subst = List.filter f
                         (E.new_comb_subst
                           (E.ThreadSet.elements supp_voc)
@@ -977,7 +1048,7 @@ let tactic_simplify_pc_plus (imp:implication) : implication =
                                 F.Literal(F.Atom(E.LessEq(E.VarInt v2,E.IntVal m)))),_) ->
                   if v1 = v2 && v1 = w && (m < i || j < n) then xs else phi::xs
               | _ -> phi::xs
-            ) [] (F.split_conj imp.ante)) in
+            ) [] (F.to_conj_list imp.ante)) in
         { ante = new_ante; conseq = imp.conseq; }
       end
 
@@ -1113,14 +1184,17 @@ let apply_support_split_tactics (vcs:vc_info list)
 let apply_support_tactic (vcs:vc_info list)
                          (tac:support_tactic_t option)
                             : implication list =
-  let rec build_ineqs (parts:E.tid list list) : E.formula list =
+  let rec build_ineqs (parts:E.tid list list) : (E.tid * E.tid) list =
     match parts with
     | [] -> []
     | _::[] -> []
     | eqc::xs -> begin
                    let i = List.hd eqc in
-                   (List.map (fun ys -> E.ineq_tid i (List.hd ys)) xs) @ (build_ineqs xs)
+                   (List.map (fun ys -> (i, List.hd ys)) xs) @ (build_ineqs xs)
                  end in
+
+
+
   let process_supp (this_vc:vc_info) : support_t =
     match tac with
     | None -> get_unprocessed_support_from_info this_vc
@@ -1148,11 +1222,11 @@ let apply_support_tactic (vcs:vc_info list)
                                ) [] eq_classes in
             let subst = E.new_tid_subst eq_pairs in
             let subst_goal = E.subst_tid subst vc.goal in
-            let tid_eqs = List.map (fun (i,j) -> E.eq_tid i j) eq_pairs in
             let tid_ineqs = build_ineqs eq_classes in
             let new_support = List.map (E.subst_tid subst) (process_supp vc) in
             let new_rho = E.subst_tid subst vc.rho in
-            let new_constr = F.And (vc.tid_constraint, F.And(F.conj_list tid_eqs, F.conj_list tid_ineqs)) in
+            let new_constr = { eq   = vc.tid_constraint.eq @ eq_pairs;
+                               ineq = vc.tid_constraint.ineq @ tid_ineqs;} in
             (dup_vc_info_with_supp_constr_rho_and_goal
                 vc new_support new_constr new_rho subst_goal, new_support)
           ) parts

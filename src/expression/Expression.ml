@@ -4892,7 +4892,7 @@ and to_plain_term (ops:fol_ops_t) (expr:term) : term =
   | SetT(set)         -> SetT       (to_plain_set ops set)
   | AddrT(addr)       -> AddrT      (to_plain_addr ops addr)
   | ElemT(elem)       -> ElemT      (to_plain_elem ops elem)
-  | TidT(th)         -> TidT      (to_plain_tid ops th)
+  | TidT(th)         -> TidT      (to_plain_tid_aux ops th)
   | CellT(cell)       -> CellT      (to_plain_cell ops cell)
   | SetThT(setth)     -> SetThT     (to_plain_setth ops setth)
   | SetIntT(setint)   -> SetIntT    (to_plain_setint ops setint)
@@ -4902,7 +4902,7 @@ and to_plain_term (ops:fol_ops_t) (expr:term) : term =
   | IntT(i)           -> IntT       (to_plain_int ops i)
   | ArrayT(arr)       -> ArrayT     (to_plain_arrays ops arr)
   | AddrArrayT(arr)   -> AddrArrayT (to_plain_addrarr ops arr)
-  | TidArrayT(arr)    -> TidArrayT  (to_plain_tidarr ops arr)
+  | TidArrayT(arr)    -> TidArrayT  (to_plain_tid_auxarr ops arr)
 
 
 and to_plain_expr(ops:fol_ops_t) (expr:expr_t): expr_t =
@@ -4922,7 +4922,7 @@ and to_plain_arrays (ops:fol_ops_t) (arr:arrays) : arrays =
   | ArrayUp(aa,t,e) -> (print_endline (arrays_to_str arr); assert false)
 (*
                         ArrayUp(to_plain_arrays ops aa,
-                                to_plain_tid ops t,
+                                to_plain_tid_aux ops t,
                                 to_plain_expr ops e)
 *)
 
@@ -4937,13 +4937,13 @@ and to_plain_addrarr (ops:fol_ops_t) (arr:addrarr) : addrarr =
   | CellArr c            -> CellArr (to_plain_cell ops c)
 
 
-and to_plain_tidarr (ops:fol_ops_t) (arr:tidarr) : tidarr =
+and to_plain_tid_auxarr (ops:fol_ops_t) (arr:tidarr) : tidarr =
   match arr with
     VarTidArray v       -> VarTidArray (ops.fol_var v)
       (*TODO: Fix open array case for array variables *)
-  | TidArrayUp(arr,i,t) -> TidArrayUp(to_plain_tidarr ops arr,
+  | TidArrayUp(arr,i,t) -> TidArrayUp(to_plain_tid_auxarr ops arr,
                                       to_plain_int ops i,
-                                      to_plain_tid ops t)
+                                      to_plain_tid_aux ops t)
   | CellTids c            -> CellTids (to_plain_cell ops c)
 
 
@@ -4965,7 +4965,7 @@ and to_plain_set (ops:fol_ops_t) (e:set) : set =
                                         to_plain_addr ops a,
                                         to_plain_int ops l)
   | SetArrayRd(arr,t)    -> SetArrayRd(to_plain_arrays ops arr,
-                                       to_plain_tid ops t)
+                                       to_plain_tid_aux ops t)
 
 
 and to_plain_addr (ops:fol_ops_t) (a:addr) : addr =
@@ -4983,7 +4983,7 @@ and to_plain_addr (ops:fol_ops_t) (a:addr) : addr =
                                                to_plain_path ops path,
                                                to_plain_int ops l)
   | AddrArrayRd(arr,t)        -> AddrArrayRd(to_plain_arrays ops arr,
-                                             to_plain_tid ops t)
+                                             to_plain_tid_aux ops t)
   | AddrArrRd(arr,l)          -> AddrArrRd(to_plain_addrarr ops arr,
                                            to_plain_int ops l)
 
@@ -4993,14 +4993,14 @@ and to_plain_elem (ops:fol_ops_t) (e:elem) : elem =
     VarElem v            -> VarElem (ops.fol_var v)
   | CellData(cell)       -> CellData(to_plain_cell ops cell)
   | ElemArrayRd(arr,t)   -> ElemArrayRd(to_plain_arrays ops arr,
-                                        to_plain_tid ops t)
+                                        to_plain_tid_aux ops t)
   | HavocListElem        -> HavocListElem
   | HavocSkiplistElem    -> HavocSkiplistElem
   | LowestElem           -> LowestElem
   | HighestElem          -> HighestElem
 
 
-and to_plain_tid (ops:fol_ops_t) (th:tid) : tid =
+and to_plain_tid_aux (ops:fol_ops_t) (th:tid) : tid =
   match th with
     VarTh v              -> VarTh (ops.fol_var v)
   | NoTid                -> NoTid
@@ -5008,8 +5008,8 @@ and to_plain_tid (ops:fol_ops_t) (th:tid) : tid =
   | CellLockIdAt(cell,l) -> CellLockIdAt(to_plain_cell ops cell,
                                          to_plain_int ops l)
   | TidArrayRd(arr,t)   -> TidArrayRd(to_plain_arrays ops arr,
-                                        to_plain_tid ops t)
-  | TidArrRd(arr,l)     -> TidArrRd(to_plain_tidarr ops arr,
+                                        to_plain_tid_aux ops t)
+  | TidArrRd(arr,l)     -> TidArrRd(to_plain_tid_auxarr ops arr,
                                       to_plain_int ops l)
 
 
@@ -5019,26 +5019,26 @@ and to_plain_cell (ops:fol_ops_t) (c:cell) : cell =
   | Error                  -> Error
   | MkCell(data,addr,th)   -> MkCell(to_plain_elem ops data,
                                    to_plain_addr ops addr,
-                                   to_plain_tid ops th)
+                                   to_plain_tid_aux ops th)
   | MkSLKCell(data,aa,tt)  -> MkSLKCell(to_plain_elem ops data,
                                         List.map (to_plain_addr ops) aa,
-                                        List.map (to_plain_tid ops) tt)
+                                        List.map (to_plain_tid_aux ops) tt)
   | MkSLCell(data,aa,ta,l) -> MkSLCell(to_plain_elem ops data,
                                        to_plain_addrarr ops aa,
-                                       to_plain_tidarr ops ta,
+                                       to_plain_tid_auxarr ops ta,
                                        to_plain_int ops l)
   | CellLock(cell,t)       -> CellLock(to_plain_cell ops cell,
-                                       to_plain_tid ops t)
+                                       to_plain_tid_aux ops t)
   | CellLockAt(cell,l, t)  -> CellLockAt(to_plain_cell ops cell,
                                          to_plain_int ops l,
-                                         to_plain_tid ops t)
+                                         to_plain_tid_aux ops t)
   | CellUnlock(cell)       -> CellUnlock(to_plain_cell ops cell)
   | CellUnlockAt(cell,l)   -> CellUnlockAt(to_plain_cell ops cell,
                                            to_plain_int ops l)
   | CellAt(mem,addr)       -> CellAt(to_plain_mem ops mem,
                                      to_plain_addr ops addr)
   | CellArrayRd(arr,t)     -> CellArrayRd(to_plain_arrays ops arr,
-                                          to_plain_tid ops t)
+                                          to_plain_tid_aux ops t)
   | UpdCellAddr(c,i,a)     -> UpdCellAddr(to_plain_cell ops c,
                                           to_plain_int ops i,
                                           to_plain_addr ops a)
@@ -5048,7 +5048,7 @@ and to_plain_setth (ops:fol_ops_t) (s:setth) : setth =
   match s with
     VarSetTh v            -> VarSetTh (ops.fol_var v)
   | EmptySetTh            -> EmptySetTh
-  | SinglTh(th)           -> SinglTh(to_plain_tid ops th)
+  | SinglTh(th)           -> SinglTh(to_plain_tid_aux ops th)
   | UnionTh(s1,s2)        -> UnionTh(to_plain_setth ops s1,
                                      to_plain_setth ops s2)
   | IntrTh(s1,s2)         -> IntrTh(to_plain_setth ops s1,
@@ -5056,7 +5056,7 @@ and to_plain_setth (ops:fol_ops_t) (s:setth) : setth =
   | SetdiffTh(s1,s2)      -> SetdiffTh(to_plain_setth ops s1,
                                        to_plain_setth ops s2)
   | SetThArrayRd(arr,t)   -> SetThArrayRd(to_plain_arrays ops arr,
-                                          to_plain_tid ops t)
+                                          to_plain_tid_aux ops t)
 
 
 and to_plain_setint (ops:fol_ops_t) (s:setint) : setint =
@@ -5073,7 +5073,7 @@ and to_plain_setint (ops:fol_ops_t) (s:setint) : setint =
   | SetLower(s,i)          -> SetLower(to_plain_setint ops s,
                                        to_plain_int ops i)
   | SetIntArrayRd(arr,t)   -> SetIntArrayRd(to_plain_arrays ops arr,
-                                            to_plain_tid ops t)
+                                            to_plain_tid_aux ops t)
 
 
 and to_plain_setelem (ops:fol_ops_t) (s:setelem) : setelem =
@@ -5089,7 +5089,7 @@ and to_plain_setelem (ops:fol_ops_t) (s:setelem) : setelem =
                                            to_plain_setelem ops s2)
   | SetToElems(s,m)         -> SetToElems(to_plain_set ops s, to_plain_mem ops m)
   | SetElemArrayRd(arr,t)   -> SetElemArrayRd(to_plain_arrays ops arr,
-                                              to_plain_tid ops t)
+                                              to_plain_tid_aux ops t)
 
 
 and to_plain_path (ops:fol_ops_t) (path:path) : path =
@@ -5105,7 +5105,7 @@ and to_plain_path (ops:fol_ops_t) (path:path) : path =
                                                   to_plain_addr ops add_to,
                                                   to_plain_int ops l)
   | PathArrayRd(arr,t)           -> PathArrayRd(to_plain_arrays ops arr,
-                                                to_plain_tid ops t)
+                                                to_plain_tid_aux ops t)
 
 
 and to_plain_mem (ops:fol_ops_t) (m:mem) : mem =
@@ -5115,7 +5115,7 @@ and to_plain_mem (ops:fol_ops_t) (m:mem) : mem =
                                    to_plain_addr ops add,
                                    to_plain_cell ops cell)
   | MemArrayRd(arr,t)    -> MemArrayRd(to_plain_arrays ops arr,
-                                       to_plain_tid ops t)
+                                       to_plain_tid_aux ops t)
 
 
 and to_plain_int (ops:fol_ops_t) (i:integer) : integer =
@@ -5132,7 +5132,7 @@ and to_plain_int (ops:fol_ops_t) (i:integer) : integer =
   | IntDiv(i1,i2)       -> IntDiv(to_plain_int ops i1,
                                   to_plain_int ops i2)
   | IntArrayRd(arr,t)   -> IntArrayRd(to_plain_arrays ops arr,
-                                      to_plain_tid ops t)
+                                      to_plain_tid_aux ops t)
   | IntSetMin(s)        -> IntSetMin(to_plain_setint ops s)
   | IntSetMax(s)        -> IntSetMax(to_plain_setint ops s)
   | CellMax(c)          -> CellMax(to_plain_cell ops c)
@@ -5166,7 +5166,7 @@ and to_plain_atom (ops:fol_ops_t) (a:atom) : atom =
                                              to_plain_set ops s)
   | SubsetEq(s_in,s_out)               -> SubsetEq(to_plain_set ops s_in,
                                                    to_plain_set ops s_out)
-  | InTh(th,s)                         -> InTh(to_plain_tid ops th,
+  | InTh(th,s)                         -> InTh(to_plain_tid_aux ops th,
                                                to_plain_setth ops s)
   | SubsetEqTh(s_in,s_out)             -> SubsetEqTh(to_plain_setth ops s_in,
                                                      to_plain_setth ops s_out)
@@ -5186,8 +5186,8 @@ and to_plain_atom (ops:fol_ops_t) (a:atom) : atom =
                                                  to_plain_int ops i2)
   | GreaterEq(i1,i2)                   -> GreaterEq(to_plain_int ops i1,
                                                     to_plain_int ops i2)
-  | LessTid(t1,t2)                     -> LessTid(to_plain_tid ops t1,
-                                                  to_plain_tid ops t2)
+  | LessTid(t1,t2)                     -> LessTid(to_plain_tid_aux ops t1,
+                                                  to_plain_tid_aux ops t2)
   | LessElem(e1,e2)                    -> LessElem(to_plain_elem ops e1,
                                                    to_plain_elem ops e2)
   | GreaterElem(e1,e2)                 -> GreaterElem(to_plain_elem ops e1,
@@ -5196,17 +5196,17 @@ and to_plain_atom (ops:fol_ops_t) (a:atom) : atom =
   | InEq(exp)                          -> InEq(to_plain_ineq ops exp)
   | BoolVar v                          -> BoolVar (ops.fol_var v)
   | BoolArrayRd(arr,t)                 -> BoolArrayRd(to_plain_arrays ops arr,
-                                                      to_plain_tid ops t)
+                                                      to_plain_tid_aux ops t)
   | PC (pc,th,p)                       -> if ops.fol_pc then
                                             let pc_var = build_pc_var p (to_plain_shared_or_local ops th) in
                                               Eq(IntT(VarInt pc_var),IntT(IntVal pc))
                                           else
                                             PC (pc,to_plain_shared_or_local ops th,p)
   | PCUpdate (pc,t)                    -> if ops.fol_pc then
-                                            let pc_prime_var = build_pc_var true (V.Local (voc_to_var (to_plain_tid ops t))) in
+                                            let pc_prime_var = build_pc_var true (V.Local (voc_to_var (to_plain_tid_aux ops t))) in
                                               Eq (IntT (VarInt pc_prime_var), IntT (IntVal pc))
                                           else
-                                            PCUpdate (pc, to_plain_tid ops t)
+                                            PCUpdate (pc, to_plain_tid_aux ops t)
   | PCRange (pc1,pc2,th,p)             -> if ops.fol_pc then
                                             (assert false)
                                           else
@@ -5278,10 +5278,21 @@ and to_plain_formula_aux (ops:fol_ops_t) (phi:formula) : formula =
 
 
 and to_plain_formula (fol_mode:fol_mode_t) (phi:formula) : formula =
+  to_plain_formula_aux (fol_mode_to_ops fol_mode) phi
+
+
+and to_plain_tid (fol_mode:fol_mode_t) (t:tid) : tid =
+  to_plain_tid_aux (fol_mode_to_ops fol_mode) t
+
+
+and fol_mode_to_ops (fol_mode:fol_mode_t) : fol_ops_t =
   match fol_mode with
-  | PCOnly   -> to_plain_formula_aux {fol_pc=true;  fol_var=id;        } phi
-  | VarsOnly -> to_plain_formula_aux {fol_pc=false; fol_var=to_plain_var;} phi
-  | PCVars   -> to_plain_formula_aux {fol_pc=true;  fol_var=to_plain_var;} phi
+  | PCOnly   -> {fol_pc=true;  fol_var=id;          }
+  | VarsOnly -> {fol_pc=false; fol_var=to_plain_var;}
+  | PCVars   -> {fol_pc=true;  fol_var=to_plain_var;}
+
+
+  
 
 
 

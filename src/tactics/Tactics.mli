@@ -1,5 +1,6 @@
 type polarity = Pos | Neg | Both
 type support_t = Expression.formula list
+type tid_constraints_t
 type vc_info
 type verification_condition
 type implication = {
@@ -38,6 +39,9 @@ val vc_info_to_implication : vc_info -> support_t -> implication
 (* CONSTRUCTORS        *)
 (***********************)
 
+val new_tid_constraint : (Expression.tid * Expression.tid) list ->
+                         (Expression.tid * Expression.tid) list -> tid_constraints_t
+
 val new_proof_plan : Smp.cutoff_strategy_t option ->
                      support_split_tactic_t list ->
                      support_tactic_t list ->
@@ -59,7 +63,7 @@ val vc_info_list_to_folder : string -> vc_info list -> unit
 
 val create_vc_info  : ?prime_goal:bool ->
                       support_t ->
-                      Expression.formula ->
+                      tid_constraints_t ->
                       Expression.formula ->
                       Expression.formula ->
                       Expression.ThreadSet.t ->
@@ -71,7 +75,7 @@ val to_plain_vc_info : Expression.fol_mode_t -> vc_info -> vc_info
 
 val create_vc  : ?prime_goal:bool ->
                  support_t ->
-                 Expression.formula ->
+                 tid_constraints_t ->
                  Expression.formula ->
                  Expression.formula ->
                  Expression.ThreadSet.t ->
@@ -94,7 +98,7 @@ val get_formula_tactics : proof_plan ->   formula_tactic_t list
 val empty_proof_plan : proof_plan
 val is_empty_proof_plan : proof_plan -> bool
 val get_unprocessed_support_from_info : vc_info ->   support_t
-val get_tid_constraint_from_info : vc_info ->   Expression.formula
+val get_tid_constraint_from_info : vc_info -> tid_constraints_t
 val get_vocabulary_from_info : vc_info ->   Expression.ThreadSet.t
 val get_rho_from_info : vc_info ->   Expression.formula
 val get_goal_from_info : vc_info ->   Expression.formula
@@ -105,12 +109,15 @@ val get_antecedent : verification_condition ->   Expression.formula
 val get_consequent : verification_condition ->   Expression.formula
 val get_support : verification_condition ->   support_t
 val get_unprocessed_support : verification_condition ->   support_t
-val get_tid_constraint : verification_condition ->   Expression.formula
+val get_tid_constraint : verification_condition -> tid_constraints_t
 val get_rho : verification_condition ->   Expression.formula
 val get_goal : verification_condition ->   Expression.formula
 val get_transition_tid : verification_condition ->   Expression.tid
 val get_line : verification_condition ->   Expression.pc_t
 val get_vocabulary : verification_condition ->   Expression.ThreadSet.t
+
+val no_tid_constraint : tid_constraints_t
+val has_tid_constraint : tid_constraints_t -> bool
 
 
 (***************)

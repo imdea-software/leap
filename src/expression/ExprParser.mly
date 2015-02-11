@@ -1816,7 +1816,7 @@ tidarr :
 vc_info :
   | param COLON inv_var_declarations
     SUPPORT COLON formula_list
-    TID_CONSTRAINT COLON formula
+    TID_CONSTRAINT COLON tid_constraint_list
     RHO COLON formula
     GOAL COLON formula
     TRANSITION_TID COLON term
@@ -1824,13 +1824,27 @@ vc_info :
       {
         let _ = System.clear_table invVars in
         let supp_list = $6 in
-        let tid_phi = $9 in
+        let tid_const = $9 in
         let rho_phi = $12 in
         let goal_phi = $15 in
         let trans_tid = parser_check_type check_type_thid $18 E.Tid (fun _ -> (E.term_to_str $18)) in
+        let (tid_eqs, tid_ineqs, voc_const) =
+          List.fold_left (fun (eqs,ineqs,voc) a ->
+                            match a with
+                            | E.Eq (E.TidT t1, E.TidT t2) ->
+                                let t_voc = E.ThreadSet.union (E.voc_tid t1) (E.voc_tid t2) in
+                                ((t1,t2)::eqs, ineqs, E.ThreadSet.union t_voc voc)
+                            | E.InEq (E.TidT t1, E.TidT t2) ->
+                                let t_voc = E.ThreadSet.union (E.voc_tid t1) (E.voc_tid t2) in
+                                (eqs,(t1,t2)::ineqs, E.ThreadSet.union t_voc voc)
+                            | _ -> (eqs, ineqs, voc)
+                         ) ([],[], E.ThreadSet.empty) tid_const in
+        let tid_constraint = Tactics.new_tid_constraint tid_eqs tid_ineqs in
+
         let line = $21 in
-        let vocab = E.voc (Formula.conj_list [tid_phi;rho_phi;goal_phi]) in
-        Tactics.create_vc_info supp_list tid_phi rho_phi goal_phi vocab trans_tid line
+        let vocab = E.ThreadSet.union (E.voc (Formula.conj_list [rho_phi;goal_phi]))
+                                      voc_const in
+        Tactics.create_vc_info supp_list tid_constraint rho_phi goal_phi vocab trans_tid line
       }
 
 formula_list :
@@ -1838,6 +1852,36 @@ formula_list :
     { [] }
   | formula formula_list
     { $1 :: $2 }
+
+
+tid_constraint_list :
+  |
+    { [] }
+  | tid_constraint COMMA tid_constraint_list
+    { $1 :: $3 }
+
+
+tid_constraint :
+  | equals
+    {
+      let (t1,t2) = $1 in
+      let get_str_expr () = sprintf "%s = %s" (E.term_to_str t1)
+                                              (E.term_to_str t2) in
+      let t1' = parser_check_type check_type_thid t1 E.Tid get_str_expr in
+      let t2' = parser_check_type check_type_thid t2 E.Tid get_str_expr
+      in
+        E.Eq (E.TidT t1', E.TidT t2')
+    }
+  | disequals
+    {
+      let (t1,t2) = $1 in
+      let get_str_expr () = sprintf "%s != %s" (E.term_to_str t1)
+                                               (E.term_to_str t2) in
+      let t1' = parser_check_type check_type_thid t1 E.Tid get_str_expr in
+      let t2' = parser_check_type check_type_thid t2 E.Tid get_str_expr
+      in
+        E.InEq (E.TidT t1', E.TidT t2')
+    }
 
 
 /************************   STRAIGHT FORMULAS   **********************/

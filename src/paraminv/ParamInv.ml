@@ -38,7 +38,7 @@ module Make (C:Core.S) : S =
         else
           (inv_voc, inv) in
       let (initial_cond, voc) = C.theta new_voc in
-      Tactics.create_vc_info [] Formula.True initial_cond new_inv voc E.NoTid 0
+      Tactics.create_vc_info [] Tactics.no_tid_constraint initial_cond new_inv voc E.NoTid 0
 
 
 
@@ -55,16 +55,26 @@ module Make (C:Core.S) : S =
                   : Tactics.vc_info list =
       let voc = E.voc (Formula.conj_list (inv::supp)) in
       let rho = C.rho System.Concurrent voc line trans_tid in
-      let tid_diff_conj = match premise with
+      let tid_ineqs = match premise with
+                      | Premise.SelfConseq -> []
+                      | Premise.OthersConseq ->
+                          E.ThreadSet.fold (fun t xs ->
+                            (trans_tid, t)::xs
+                          ) voc [] in
+        
+(*        
+        let tid_diff_conj = match premise with
                           | Premise.SelfConseq -> Formula.True
                           | Premise.OthersConseq ->
                               Formula.conj_list (E.ThreadSet.fold (fun t xs ->
                                                   (E.ineq_tid trans_tid t) :: xs
                                                 ) voc []) in
+    *)
 (*                              Formula.conj_list (List.map (E.ineq_tid trans_tid) voc) in *)
+      let tid_constraints = Tactics.new_tid_constraint [] tid_ineqs in
       List.fold_left (fun rs phi ->
         Log.print "Create with support" (String.concat "\n" (List.map E.formula_to_str supp));
-        let new_vc = Tactics.create_vc_info supp tid_diff_conj
+        let new_vc = Tactics.create_vc_info supp tid_constraints
                         phi inv voc trans_tid line
         in
           new_vc :: rs
@@ -142,7 +152,7 @@ module Make (C:Core.S) : S =
                 else
                   inv in
       List.fold_left (fun rs phi ->
-        let new_vc = Tactics.create_vc_info supp Formula.True
+        let new_vc = Tactics.create_vc_info supp Tactics.no_tid_constraint
                                             phi inv voc trans_tid line in
           new_vc :: rs
       ) [] rho
@@ -227,9 +237,10 @@ module Make (C:Core.S) : S =
       List.fold_left (fun res vc ->
       (* FOR LISTS *)
 (*        let vc = Tactics.to_plain_vc_info E.PCVars vc in*)
-        let prem = match Tactics.get_tid_constraint_from_info vc with
-                   | Formula.True -> Premise.SelfConseq
-                   | _ -> Premise.OthersConseq in
+        let prem = if Tactics.has_tid_constraint (Tactics.get_tid_constraint_from_info vc) then
+                     Premise.OthersConseq
+                   else
+                     Premise.SelfConseq in
         let line = Tactics.get_line_from_info vc in
         let (obligations,cutoff) =
           match IGraph.lookup_case cases line prem with
