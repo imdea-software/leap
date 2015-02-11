@@ -117,7 +117,7 @@ val get_line : verification_condition ->   Expression.pc_t
 val get_vocabulary : verification_condition ->   Expression.ThreadSet.t
 
 val no_tid_constraint : tid_constraints_t
-val has_tid_constraint : tid_constraints_t -> bool
+val is_empty_tid_constraint : tid_constraints_t -> bool
 
 
 (***************)

@@ -55,26 +55,30 @@ module Make (C:Core.S) : S =
                   : Tactics.vc_info list =
       let voc = E.voc (Formula.conj_list (inv::supp)) in
       let rho = C.rho System.Concurrent voc line trans_tid in
-      let tid_ineqs = match premise with
-                      | Premise.SelfConseq -> []
-                      | Premise.OthersConseq ->
-                          E.ThreadSet.fold (fun t xs ->
-                            (trans_tid, t)::xs
-                          ) voc [] in
-        
-(*        
-        let tid_diff_conj = match premise with
+
+
+      let tid_constraint = match premise with
+                           | Premise.SelfConseq -> Tactics.no_tid_constraint
+                           | Premise.OthersConseq ->
+                               begin
+                                 let ineqs = E.ThreadSet.fold (fun t xs ->
+                                               (trans_tid,t)::xs
+                                             ) voc [] in
+                                 Tactics.new_tid_constraint [] ineqs
+                               end in
+(*
+      let tid_diff_conj = match premise with
                           | Premise.SelfConseq -> Formula.True
                           | Premise.OthersConseq ->
                               Formula.conj_list (E.ThreadSet.fold (fun t xs ->
                                                   (E.ineq_tid trans_tid t) :: xs
                                                 ) voc []) in
-    *)
+ *)
 (*                              Formula.conj_list (List.map (E.ineq_tid trans_tid) voc) in *)
       let tid_constraints = Tactics.new_tid_constraint [] tid_ineqs in
       List.fold_left (fun rs phi ->
         Log.print "Create with support" (String.concat "\n" (List.map E.formula_to_str supp));
-        let new_vc = Tactics.create_vc_info supp tid_constraints
+        let new_vc = Tactics.create_vc_info supp tid_constraint
                         phi inv voc trans_tid line
         in
           new_vc :: rs
@@ -237,10 +241,16 @@ module Make (C:Core.S) : S =
       List.fold_left (fun res vc ->
       (* FOR LISTS *)
 (*        let vc = Tactics.to_plain_vc_info E.PCVars vc in*)
-        let prem = if Tactics.has_tid_constraint (Tactics.get_tid_constraint_from_info vc) then
-                     Premise.OthersConseq
+        let prem = if Tactics.is_empty_tid_constraint (Tactics.get_tid_constraint_from_info vc) then
+                     Premise.SelfConseq
                    else
-                     Premise.SelfConseq in
+                     Premise.OthersConseq in
+
+(*
+        let prem = match Tactics.get_tid_constraint_from_info vc with
+                   | Formula.True -> Premise.SelfConseq
+                   | _ -> Premise.OthersConseq in
+    *)
         let line = Tactics.get_line_from_info vc in
         let (obligations,cutoff) =
           match IGraph.lookup_case cases line prem with

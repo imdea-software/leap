@@ -457,7 +457,7 @@ let no_tid_constraint : tid_constraints_t =
   { eq = []; ineq = []; }
 
 
-let has_tid_constraint (tc:tid_constraints_t) : bool =
+let is_empty_tid_constraint (tc:tid_constraints_t) : bool =
   tc.eq == [] && tc.ineq == []
 
 
