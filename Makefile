@@ -46,7 +46,7 @@ check_tool = @if [[ `command -v $(1)` ]] ; then \
 copy = @mkdir -p $(2); cp $(1) $(2)/$(3)
 
 
-.PHONY: profile clean all expand unexpand leap prog2fts prginfo pinv sinv pvd tll solve applytac tmptsl tsl numinv spec_check doc tools tests
+.PHONY: profile debug clean all expand unexpand leap prog2fts prginfo pinv sinv pvd tll solve applytac tmptsl tsl numinv spec_check doc tools tests
 
 # Flags
 
@@ -59,6 +59,7 @@ OCAML_FLAGS=
 #	-cflags -w,Z \
 
 PROFILE_FLAGS=-ocamlc ocamlcp -ocamlopt ocamloptp
+DEBUG_FLAGS=
 
 LIBS = unix,str
 
@@ -95,9 +96,13 @@ profile: write-revision
 	$(OCAMLBUILD) $(PROFILE_FLAGS) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $(LEAP).p.native
 	$(call copy,./_build/$(PROGS)/leap/$(LEAP).p.native,$(BIN),$(LEAP).p.native)
 
+debug: write-revision
+	$(OCAMLBUILD) $(DEBUG_FLAGS) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $(LEAP).d.byte
+	$(call copy,./_build/$(PROGS)/leap/$(LEAP).d.byte,$(BIN),$(LEAP).d.byte)
+
 $(LEAP).byte: write-revision
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@
-	$(call copy,./_build/$(PROGS)/leap/$@.byte,$(BIN),$@.byte)
+	$(call copy,./_build/$(PROGS)/leap/$@,$(BIN),$@)
 
 $(LEAP): write-revision
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native

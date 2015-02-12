@@ -77,6 +77,9 @@ type gen_supp_op_t =
       (* Restricts assignments to the ones satisfies by the given function *)
 
 
+exception Invalid_tactic of string
+
+
 (*********************)
 (**  Configuration  **)
 (*********************)
@@ -201,7 +204,6 @@ let vc_info_to_vc (info:vc_info) (sup:support_t): verification_condition =
     consequent = implication.conseq  ; 
   }
 
-exception Invalid_tactic of string
 
 let default_cutoff_algorithm = Smp.Dnf
 
@@ -753,10 +755,6 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
       let used_tids = ref (E.ThreadSet.union tid_constraint_voc
                            (E.ThreadSet.union (E.voc info.rho) goal_voc)) in
 
-      print_endline ("GOAL VOC: " ^ (E.tidset_to_str goal_voc));
-      print_endline ("USED_TIDS: " ^ (E.tidset_to_str (!used_tids)));
-
-
       let (unparam_support, param_support) =
         List.fold_left (fun (u_set,p_set) supp ->
           let supp_voc = filter_fixed_voc (E.voc supp) in
@@ -778,6 +776,7 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
           ) (u_set,p_set) split_supp
         ) (E.FormulaSet.empty,E.FormulaSet.empty) info.original_support in
 
+
 (*
       Log.print "gen_support unparametrized support"
         (E.FormulaSet.fold (fun phi str -> str ^ (E.formula_to_str phi) ^ ";" ) unparam_support "");
@@ -796,7 +795,8 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
           let voc_to_consider = List.fold_left E.ThreadSet.union
                                   (E.ThreadSet.singleton info.transition_tid)
                                   [supp_voc; rho_voc; goal_voc] in
-          assert (not (E.ThreadSet.mem System.me_tid_th voc_to_consider));
+
+          (*assert (not (E.ThreadSet.mem System.me_tid_th voc_to_consider));*)
                                   
           (*
           let voc_to_consider = E.ThreadSet.add info.transition_tid
@@ -1266,10 +1266,15 @@ let apply_tactics (vcs:vc_info list)
     print_endline "AFTER UNIFY";
     print_endline (vc_info_to_str vc);
 *)
+    print_endline "A1";
     let split_vc_info_list = apply_support_split_tactics [vc] supp_split_tacs in
+    print_endline "A2";
     let original_implications = apply_support_tactic split_vc_info_list supp_tac in
+    print_endline "A3";
     let split_implications = apply_formula_split_tactics original_implications formula_split_tacs in
+    print_endline "A4";
     let final_implications = apply_formula_tactics split_implications formula_tacs in
+    print_endline "A5";
 
 
     Log.print "* From this vc_info" (vc_info_to_str vc);

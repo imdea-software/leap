@@ -297,7 +297,7 @@ module Make (C:Core.S) : S =
       let pvd_vcs = gen_vcs pvd in
       let vc_list = (*pvd_vcs.initiation :: *)
                     pvd_vcs.consecution (*@
-                    pvd_vcs.acceptance *)(*in
+                    pvd_vcs.acceptance in
                     pvd_vcs.fairness in *) in
       let vc_count = ref 1 in
       let show_progress = not (LeapVerbose.is_verbose_enabled()) in

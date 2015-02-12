@@ -362,6 +362,9 @@ let build_num_tid_var (i:int) : V.t =
   build_global_var ("k" ^ string_of_int i) Tid
 
 
+let no_tid_var () : V.t =
+  build_global_var "noTid" Tid
+
 
 (* PRIMING FUNCTIONS *)
 
@@ -1336,6 +1339,7 @@ let term_sort (t:term) : sort =
 let voc_to_var (t:tid) : V.t =
   match t with
   | VarTh v -> v
+  | NoTid -> no_tid_var()
   | _ -> raise(Not_tid_var t)
 
 
