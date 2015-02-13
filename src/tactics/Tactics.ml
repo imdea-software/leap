@@ -73,7 +73,7 @@ type proof_plan =
 type gen_supp_op_t =
   | KeepOriginal
       (* When generating support keeps the original support unmodified     *)
-  | RestrictSubst of (E.tid_subst_t -> bool)
+  | RestrictSubst of (int -> E.tid_subst_t -> bool)
       (* Restricts assignments to the ones satisfies by the given function *)
 
 
@@ -787,14 +787,27 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
 
       let processed_support =
         E.FormulaSet.fold (fun phi set ->
+
+
           let supp_voc = filter_fixed_voc (E.voc phi) in
 
           let me = System.me_tid_th in
           let me' = E.prime_tid me in
-          let rho_voc = E.ThreadSet.remove me (E.ThreadSet.remove me' (E.voc info.rho)) in 
+
+          let rho_voc = filter_fixed_voc (E.voc info.rho) in
+(*          let rho_voc = E.ThreadSet.remove me (E.ThreadSet.remove me' (E.voc info.rho)) in *)
+
+
           let voc_to_consider = List.fold_left E.ThreadSet.union
                                   (E.ThreadSet.singleton info.transition_tid)
-                                  [supp_voc; rho_voc; goal_voc] in
+                                  [rho_voc; goal_voc] in (*TUKA*)
+
+          print_endline ("PROCESSING SUPPORT: " ^ (E.formula_to_str phi));
+          print_endline ("RHO IS: " ^ (E.formula_to_str info.rho));
+          print_endline ("THE GOAL IS: " ^ (E.formula_to_str info.goal));
+
+          print_endline ("SUPP_VOC: " ^ (E.tidset_to_str supp_voc));
+          print_endline ("VOC_TO_CONSIDER: " ^ (E.tidset_to_str voc_to_consider));
 
           (*assert (not (E.ThreadSet.mem System.me_tid_th voc_to_consider));*)
                                   
@@ -804,13 +817,27 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
           *)
 
 
-          let subst = List.filter f
+
+          (********************************************************************)
+          let aa = E.new_comb_subst
+                          (E.ThreadSet.elements supp_voc)
+                          (E.ThreadSet.elements voc_to_consider) in
+          print_endline ("ORIGINAL SUBSTITUTIONS\n");
+          List.iter (fun s -> print_endline (E.subst_to_str s)) aa;
+          let bb = List.filter (f (E.ThreadSet.cardinal supp_voc)) aa in
+          print_endline ("PROCESSED SUBSTITUTIONS\n");
+          List.iter (fun s -> print_endline (E.subst_to_str s)) bb;
+
+          (********************************************************************)
+
+          let subst = List.filter (f (E.ThreadSet.cardinal supp_voc))
                         (E.new_comb_subst
                           (E.ThreadSet.elements supp_voc)
                           (E.ThreadSet.elements voc_to_consider)) in
 
           Log.print "Thread id substitution" (String.concat " -- " (List.map E.subst_to_str subst));
           List.fold_left (fun set s ->
+            print_endline ("GENERATED SUPPORT: " ^ (E.formula_to_str (E.subst_tid s phi)));
             E.FormulaSet.add (E.subst_tid s phi) set
           ) set subst
         ) param_support unparam_support in
@@ -818,22 +845,28 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
 
 
 let full_support (info:vc_info) : support_t =
-  gen_support (RestrictSubst (fun _ -> true)) info
+  gen_support (RestrictSubst (fun _ _ -> true)) info
 
 
 let reduce_support (info:vc_info) : support_t =
   let voc_to_analyze = E.ThreadSet.union (E.voc info.rho) (E.voc info.goal) in
-    gen_support (RestrictSubst (E.subst_codomain_in voc_to_analyze)) info
+    gen_support (RestrictSubst
+      (fun i subst ->
+        E.subst_codomain_in voc_to_analyze subst && E.subst_domain_size subst == i)) info
 
 
 let reduce2_support (info:vc_info) : support_t =
   let voc_to_analyze = E.ThreadSet.union (E.voc info.rho) (E.voc info.goal) in
-  print_endline ("VOC_TO_ANALIZE: " ^ (E.ThreadSet.fold (fun t str -> str ^ ", " ^ (E.tid_to_str t)) voc_to_analyze ""));
+  print_endline ("REDUCE2 RHO: " ^ (E.formula_to_str info.rho));
+  print_endline ("REDUCE2 GOAL: " ^ (E.formula_to_str info.goal));
+  print_endline ("REDUCE2 VOC TO ANALYZE: " ^ (E.tidset_to_str voc_to_analyze));
 (*
   let voc_to_analyze = GenSet.to_list (GenSet.from_list (E.ThreadSet.elements (E.voc info.rho) @ E.ThreadSet.elements (E.voc info.goal))) in
 *)
   F.cleanup_dups
-    (gen_support (RestrictSubst (E.subst_codomain_in voc_to_analyze)) info)
+    (gen_support (RestrictSubst
+      (fun i subst ->
+        E.subst_codomain_in voc_to_analyze subst && E.subst_domain_size subst == i)) info)
 
 
 let id_support (info:vc_info) : support_t =

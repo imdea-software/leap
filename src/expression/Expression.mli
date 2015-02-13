@@ -344,6 +344,7 @@ val is_tid_var : tid -> bool
 val gen_tid_list : int -> int -> tid list
 val gen_tid_list_except : int -> int -> tid -> tid list
 val gen_fresh_tid : ThreadSet.t -> tid
+val gen_fresh_tid_not_in : ThreadSet.t -> formula list -> tid
 val gen_fresh_tid_as_var : ThreadSet.t -> V.t
 val gen_fresh_tid_set : ThreadSet.t -> int -> ThreadSet.t
 val gen_fresh_var : V.fresh_var_gen_t-> sort -> V.t
@@ -477,6 +478,7 @@ val subst_domain : tid_subst_t -> ThreadSet.t
 val subst_codomain : tid_subst_t -> ThreadSet.t
 val subst_domain_in : ThreadSet.t -> tid_subst_t -> bool
 val subst_codomain_in : ThreadSet.t -> tid_subst_t -> bool
+val subst_domain_size : tid_subst_t -> int
 val subst_full_domain_assign : tid list -> tid_subst_t -> bool
 val subst_full_codomain_assign : tid list -> tid_subst_t -> bool
 val is_id_subst : tid_subst_t -> bool

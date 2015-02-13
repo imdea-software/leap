@@ -43,7 +43,7 @@ module Make (C:Core.S) : S =
 
 
         (* n1, n4 *)
-        if n = "n1" then begin
+(*        if n = "n4" then begin *)
 
 
         let n_voc = match PVD.node_box pvd n with
@@ -52,15 +52,24 @@ module Make (C:Core.S) : S =
         let mu_n = PVD.node_mu pvd n in
         let boxed_next = PVD.cond_next pvd PVD.Pres n in
         let other_next = PVD.cond_next pvd PVD.Any n in
-        let boxed_next_disj = F.disj_list (PVD.NodeIdSet.fold (fun n' xs ->
-                                            (PVD.node_mu pvd n') :: xs
-                                          ) boxed_next []) in
-        let other_next_disj = F.disj_list (PVD.NodeIdSet.fold (fun n' xs ->
-                                            (PVD.node_mu pvd n') :: xs
-                                          ) other_next []) in
-        let full_voc = List.fold_left (fun vSet phi ->
-                         E.ThreadSet.union vSet (E.voc phi)
-                       ) n_voc [mu_n; boxed_next_disj; other_next_disj] in
+
+        let boxed_next_disj =
+          F.disj_list (PVD.NodeIdSet.fold (fun m xs ->
+                        (PVD.node_mu pvd m) :: xs
+                      ) boxed_next []) in
+
+        let other_next_disj =
+          F.disj_list (PVD.NodeIdSet.fold (fun m xs ->
+                        (PVD.node_mu pvd m) :: xs
+                      ) other_next []) in
+
+
+        print_endline ("BOXED_NEXT_DISJ: " ^ (E.formula_to_str boxed_next_disj));
+        print_endline ("OTHER_NEXT_DISJ: " ^ (E.formula_to_str other_next_disj));
+
+        (* Generate a fresh thread identifier *)
+        let full_voc = E.ThreadSet.union n_voc
+                         (E.voc_from_list [mu_n; boxed_next_disj; other_next_disj]) in
         let fresh_t = E.gen_fresh_tid full_voc in
 
         let (full_mu_n, goal) =
@@ -73,12 +82,15 @@ module Make (C:Core.S) : S =
           | Some b ->
               begin
                 let t = PVD.box_param pvd b in
-                let t_cond = F.atom_to_formula (E.Eq(E.TidT (E.prime_tid t),
-                                                     E.TidT t)) in
+(*                let t' = E.prime_tid t in *)
+(*                let t_cond = E.eq_tid t' t in *)
                 let t_subst = E.new_tid_subst [(t,fresh_t)] in
+(*                let box_param_subst = E.new_tid_subst [(t,t')] in *)
                 let fresh_other_next_disj = E.subst_tid t_subst other_next_disj in
-                (F.And (mu_n, t_cond), F.Or (boxed_next_disj, fresh_other_next_disj))
+(*                (F.And (mu_n, t_cond), F.Or (boxed_next_disj, fresh_other_next_disj)) *)
+                (mu_n, F.Or (boxed_next_disj, fresh_other_next_disj))
               end in
+
         let full_voc = E.ThreadSet.add fresh_t full_voc in
         let n_vcs = ref [] in
         for line = 1 to (System.lines C.system) do
@@ -108,8 +120,17 @@ module Make (C:Core.S) : S =
           n_vcs := self_vcs @ others_vcs @ !n_vcs
         done;
         !n_vcs @ vcs
-        end else vcs
+(*        end else vcs *)
       ) nodes []
+
+
+
+
+
+
+
+
+
 
 
     let gen_acceptance (pvd:PVD.t) : Tactics.vc_info list =
@@ -245,7 +266,6 @@ module Make (C:Core.S) : S =
 
 
     let gen_vcs (pvd:PVD.t) : pvd_vc_t =
-      Printf.printf "ACCEPTANCE VCS: %i\n" (List.length (gen_acceptance pvd));
       {
         initiation = gen_initiation pvd;
         consecution = gen_consecution pvd;
@@ -295,10 +315,10 @@ module Make (C:Core.S) : S =
               | None -> ()
               | Some s -> check_well_defined_supp s in
       let pvd_vcs = gen_vcs pvd in
-      let vc_list = (*pvd_vcs.initiation :: *)
-                    pvd_vcs.consecution (*@
-                    pvd_vcs.acceptance in
-                    pvd_vcs.fairness in *) in
+      let vc_list = pvd_vcs.initiation ::
+                    pvd_vcs.consecution @
+                    pvd_vcs.acceptance @
+                    pvd_vcs.fairness in
       let vc_count = ref 1 in
       let show_progress = not (LeapVerbose.is_verbose_enabled()) in
       Progress.init (List.length vc_list);

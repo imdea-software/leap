@@ -3463,6 +3463,10 @@ let subst_codomain_in (tid_set:ThreadSet.t) (subst:tid_subst_t) : bool =
   List.for_all (fun (_,r) -> ThreadSet.mem r tid_set) subst
 
 
+let subst_domain_size (subs:tid_subst_t) : int =
+  ThreadSet.cardinal (subst_domain subs)
+
+
 let rec subst_shared_or_local (subst: tid_subst_t) (th:V.shared_or_local) : 
   V.shared_or_local =
   match th with
@@ -5634,5 +5638,11 @@ and identical_pc_t (p1:pc_t) (p2:pc_t) : bool =
 
 let gen_fresh_var (gen:V.fresh_var_gen_t) (s:sort) : V.t =
   V.gen_fresh_var sort_to_str (build_var_info RealVar) gen s
+
+let gen_fresh_tid_not_in (tSet:ThreadSet.t) (xs:formula list) : tid =
+  let phi_voc = List.fold_left (fun set phi ->
+                  ThreadSet.union set (voc phi)
+                ) tSet xs in
+  gen_fresh_tid phi_voc
 
 
