@@ -1,9 +1,12 @@
 
 open NumQuery
+open PairsQuery
 open TllQuery
 open TslkQuery
 open YicesNumQuery
 open Z3NumQuery
+open YicesPairsQuery
+open Z3PairsQuery
 open YicesTllQuery
 open Z3TllQuery
 open SMTTllQuery
@@ -20,6 +23,13 @@ let get_num_query (id:string) : (module NUM_QUERY) =
   | ("Yices", _) -> (module YicesNumQuery)
   | ("Z3",    _) -> (module Z3NumQuery)
   | _            -> (module YicesNumQuery)
+
+
+let get_pairs_query (id:string) : (module PAIRS_QUERY) =
+  match (id,!use_smtlib) with
+  | ("Yices", _) -> (module YicesPairsQuery)
+  | ("Z3",    _) -> (module Z3PairsQuery)
+  | _            -> (module YicesPairsQuery)
 
 
 let get_tll_query (id:string) : (module TLL_QUERY) =

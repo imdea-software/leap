@@ -1,5 +1,6 @@
 
 open NumQuery
+open PairsQuery
 open TllQuery
 open TslkQuery
 
@@ -12,6 +13,12 @@ val set_smt_usage : bool -> unit
     backend solver identified by [id] depending on the status previously set
     through a call to [set_smt_usage] *)
 val get_num_query : string -> (module NUM_QUERY)
+
+
+(** [get_pairs_query id] returns an appropriate query module over pairs for the
+    backend solver identified by [id] depending on the status previously set
+    through a call to [set_smt_usage] *)
+val get_pairs_query : string -> (module PAIRS_QUERY)
 
 
 (** [get_tll_query id] returns an appropriate TLL query module for the

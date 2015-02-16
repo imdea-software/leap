@@ -209,6 +209,8 @@ module Make (Opt:module type of GenOptions) : S =
 
     let numSolver  : (module NumSolver.S) = NumSolver.choose Opt.pSolver
 
+    let pairsSolver: (module PairsSolver.S) = PairsSolver.choose Opt.pSolver
+
     let tllSolver  : (module TllSolver.S) = TllSolver.choose Opt.tSolver
 
     let tslkSolver : (module TslkSolver.S) = TslkSolver.choose Opt.tSolver
@@ -218,8 +220,9 @@ module Make (Opt:module type of GenOptions) : S =
 
 
     let prog_type : Bridge.prog_type = match Opt.dp with
-                                       | DP.Num -> Bridge.Num
-                                       | _      -> Bridge.Heap
+                                       | DP.Num   -> Bridge.Num
+                                       | DP.Pairs -> Bridge.Num
+                                       | _        -> Bridge.Heap
 
     let _ = Tactics.set_fixed_voc
               (List.fold_left (fun set v ->
@@ -360,12 +363,14 @@ module Make (Opt:module type of GenOptions) : S =
 
     let solve_proof_obligations (to_analyze:proof_obligation_t list)
                                     : solved_proof_obligation_t list =
-      let module Pos  = (val posSolver) in
-      let module Num  = (val numSolver) in
-      let module Tll  = (val tllSolver) in
-      let module Tslk = (val tslkSolver) in
+      let module Pos   = (val posSolver) in
+      let module Num   = (val numSolver) in
+      let module Pairs = (val pairsSolver) in
+      let module Tll   = (val tllSolver) in
+      let module Tslk  = (val tslkSolver) in
 
       Num.compute_model(Opt.compute_model);
+      Pairs.compute_model(Opt.compute_model);
       Tll.compute_model(Opt.compute_model);
       Tslk.compute_model(Opt.compute_model);
       TslSolver.compute_model(Opt.compute_model);
@@ -421,6 +426,15 @@ module Make (Opt:module type of GenOptions) : S =
                                            Z3Num.check_valid_with_lines_plus_info prog_lines num_phi
                                        end else
                                          (res, calls)
+                        | DP.Pairs  -> let pairs_phi = PairsInterface.formula_to_pairs_formula fol_phi in
+                                       let (res, calls) = Pairs.check_valid_with_lines_plus_info prog_lines pairs_phi in
+                                       if Valid.is_unknown res then begin
+                                         let z3PairsSolver : (module PairsSolver.S) = PairsSolver.choose BackendSolvers.Z3.identifier in
+                                         let module Z3Pairs = (val z3PairsSolver) in
+                                           Z3Pairs.compute_model(Opt.compute_model);
+                                           Z3Pairs.check_valid_with_lines_plus_info prog_lines pairs_phi
+                                       end else
+                                         (res, calls)
                         | DP.Tll    -> let tll_phi = TllInterface.formula_to_tll_formula fol_phi in
                                          Tll.check_valid_plus_info prog_lines cutoff
                                             Opt.use_quantifiers tll_phi
@@ -439,6 +453,7 @@ module Make (Opt:module type of GenOptions) : S =
                               | DP.NoDP   -> ()
                               | DP.Loc    -> ()
                               | DP.Num    -> Num.print_model()
+                              | DP.Pairs  -> Pairs.print_model()
                               | DP.Tll    -> Tll.print_model()
                               | DP.Tsl    -> TslSolver.print_model()
                               | DP.Tslk _ -> Tslk.print_model() in

@@ -1,5 +1,6 @@
 open BackendSolverIntf
 open NumQuery
+open PairsQuery
 open TllQuery
 
 module Yices : BACKEND_SOLVER =
@@ -104,6 +105,18 @@ struct
         let int_formula_with_lines = Q.int_formula_with_lines_to_str
         let std_widening           = Q.standard_widening
         let sort_map               = Q.get_sort_map
+      end
+    end
+
+    module Pairs =
+    struct
+      module Exp = PairsExpression
+      module Query = functor (Q : PAIRS_QUERY) ->
+      struct
+        let set_prog_lines           = Q.set_prog_lines
+        let pairs_formula            = Q.pairs_formula_to_str
+        let pairs_formula_with_lines = Q.pairs_formula_with_lines_to_str
+        let sort_map                 = Q.get_sort_map
       end
     end
   end

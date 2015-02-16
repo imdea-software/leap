@@ -6,6 +6,7 @@ type t =
   | NoDP
   | Loc
   | Num
+  | Pairs
   | Tll
   | Tsl
   | Tslk of int

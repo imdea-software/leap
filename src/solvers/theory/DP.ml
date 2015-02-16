@@ -7,6 +7,7 @@ type t =
   | NoDP
   | Loc
   | Num
+  | Pairs
   | Tll
   | Tsl
   | Tslk of int
@@ -27,6 +28,7 @@ let to_str (dp:t) : string =
   | NoDP   -> ""
   | Loc    -> "loc"
   | Num    -> "num"
+  | Pairs  -> "pairs"
   | Tll    -> "tll"
   | Tsl    -> "tsl"
   | Tslk k -> let arg = if k > 0 then string_of_int k else "_" in
@@ -35,17 +37,18 @@ let to_str (dp:t) : string =
 
 let from_str (str:string) : t =
   match str with
-  | ""    -> NoDP
-  | "loc" -> Loc
-  | "num" -> Num
-  | "tll" -> Tll
-  | "tsl" -> Tsl
-  | s     -> let regexp = Str.regexp "tslk\\[[0-9]+\\]" in
-             if Str.string_match regexp s 0 then
-               let k = String.sub s 5 (String.length s - 6) in
-               Tslk (int_of_string k)
-             else
-               raise(Unknown_dp_str s)
+  | ""      -> NoDP
+  | "loc"   -> Loc
+  | "num"   -> Num
+  | "pairs" -> Pairs
+  | "tll"   -> Tll
+  | "tsl"   -> Tsl
+  | s       -> let regexp = Str.regexp "tslk\\[[0-9]+\\]" in
+               if Str.string_match regexp s 0 then
+                 let k = String.sub s 5 (String.length s - 6) in
+                 Tslk (int_of_string k)
+               else
+                 raise(Unknown_dp_str s)
 
 
 let get_tslk_param (dp:t) : int =
@@ -60,9 +63,10 @@ let stronger (dp1:t) (dp2:t) : t =
   | (Tslk i, Tslk j) -> if i>j then dp1 else dp2
   | (Tslk _, _) -> dp1
   | (_, Tslk _) -> dp2
-  | (Tll, _) | (_, Tll) -> Tll
-  | (Num, _) | (_, Num) -> Num
-  | (Loc, _) | (_, Loc) -> Loc
+  | (Tll, _)   | (_, Tll) -> Tll
+  | (Pairs, _) | (_, Pairs) -> Num
+  | (Num, _)   | (_, Num) -> Num
+  | (Loc, _)   | (_, Loc) -> Loc
   | _ -> NoDP
   
 

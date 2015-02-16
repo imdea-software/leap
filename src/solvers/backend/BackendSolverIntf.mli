@@ -1,5 +1,6 @@
 open ExpressionTypes
 open NumQuery
+open PairsQuery
 open TllQuery
 open TslkQuery
 
@@ -68,8 +69,6 @@ sig
         corresponding data structure in the Solver program. *)
   end
 end
-
-
 
 
 module type TllBackend =
@@ -203,6 +202,38 @@ sig
 end
 
 
+module type PairsBackend =
+(** Signatures of the functions the Solver needs to implement in order
+    to fully support Pairs Reasoning. *)
+sig
+  type t
+  
+  module Pairs :
+  (** Translation of pairs expressions. *)
+  sig
+    module Exp : PAIRSEXP
+
+    module Query (Q : PAIRS_QUERY) :
+    sig
+      include GeneralBackend with type t := t
+
+      val pairs_formula  : Exp.formula -> t
+      (** [pairs_formula f] translates the formula [f] in the theory of
+       *  pairs into a representation according to a solver. *)
+      
+      val pairs_formula_with_lines : Exp.formula -> t
+      (** [pairs_formula_with_lines f] translate the formula [f] in the
+       *  theory of pairs into a representation according to a solver,
+       *  bearing in mind the number of lines previously passed through
+       *  [set_prog_lines]. *)
+      
+      val sort_map : unit -> GenericModel.sort_map_t
+      (** [sort_map ()] returns the sort mapping obtained from the last
+          call to a formula translation *)
+    end
+  end
+end
+
 
 
 module type CUSTOM_BACKEND_SOLVER = 
@@ -214,17 +245,19 @@ sig
   (** Translation of expressions into internal data structures that 
       the Solver understands. *)
         
-    include PosBackend  with type t := t
-    include TllBackend  with type t := t
-    include NumBackend  with type t := t
-    include TslkBackend with type t := t
+    include PosBackend    with type t := t
+    include TllBackend    with type t := t
+    include NumBackend    with type t := t
+    include PairsBackend  with type t := t
+    include TslkBackend   with type t := t
   end
 end
 
 module type BACKEND_SOLVER = CUSTOM_BACKEND_SOLVER
-  with module Translate.Pos.Exp  = PosExpression
-  and  module Translate.Tll.Exp  = TllExpression
-  and  module Translate.Num.Exp  = NumExpression
+  with module Translate.Pos.Exp    = PosExpression
+  and  module Translate.Tll.Exp    = TllExpression
+  and  module Translate.Num.Exp    = NumExpression
+  and  module Translate.Pairs.Exp  = PairsExpression
 
 
 
@@ -302,3 +335,20 @@ end
 
 module type BACKEND_NUM = CUSTOM_BACKEND_NUM
   with module Translate.Num.Exp = NumExpression
+
+
+module type CUSTOM_BACKEND_PAIRS =
+(** Signature of solver that supports reasoning over pairs *)
+sig
+  include BackendCommon
+  
+  module Translate : sig
+  (** Translation of expressions into internal data structures that 
+      the Solver understands. *)
+  
+    include PairsBackend with type t := t  
+  end
+end
+
+module type BACKEND_PAIRS = CUSTOM_BACKEND_PAIRS
+  with module Translate.Pairs.Exp = PairsExpression

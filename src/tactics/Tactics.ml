@@ -791,9 +791,6 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
 
           let supp_voc = filter_fixed_voc (E.voc phi) in
 
-          let me = System.me_tid_th in
-          let me' = E.prime_tid me in
-
           let rho_voc = filter_fixed_voc (E.voc info.rho) in
 (*          let rho_voc = E.ThreadSet.remove me (E.ThreadSet.remove me' (E.voc info.rho)) in *)
 

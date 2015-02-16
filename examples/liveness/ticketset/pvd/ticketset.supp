@@ -5,8 +5,11 @@ Tactics :
          | simplify-pc } ;
 
 Facts :
-  3:setLower, test;
+  3:minIsActive, setLower, activeLow;
   4:notSame;
-  6:notSame, test, minTicket;
+  6:notSame, mutex, test, minTicket;
 
-// minTicket in 6 is the last thing I am trying
+//Facts :
+//  3:minIsActive, ticketInBag;
+//  4:notSame;
+//  6:notSame, ticketInBag;

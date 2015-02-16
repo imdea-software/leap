@@ -1,7 +1,7 @@
 #Configure path to Leap
 LEAP=leap
 
-OPTIONS="--focus $1 -v 1 -sm -dp num -co pruning"
+OPTIONS="-v 1 -sm -dp num -co pruning -sf -si"
 
 PRG=prgs/ticketset.prg
 INV_FOLDER=invs
