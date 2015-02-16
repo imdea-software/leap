@@ -373,7 +373,7 @@ struct
 
   let yices_lower_def (buf:Buffer.t) : unit =
     B.add_string buf
-    ("(define lower::(-> " ^set_s^ " " ^int_s^ " " ^set_s^ ")\n" ^
+    ("(define subsetLowerThan::(-> " ^set_s^ " " ^int_s^ " " ^set_s^ ")\n" ^
      "  (lambda (s::" ^set_s^ " i::" ^int_s^ ")\n" ^
      "    (lambda (a::" ^int_s^ ")\n" ^
      "      (and (s a) (<= a i)))))\n")
@@ -517,7 +517,7 @@ struct
     | NE.Union(s1,s2) -> Printf.sprintf "(union %s %s)" (yices_set s1) (yices_set s2)
     | NE.Intr(s1,s2)  -> Printf.sprintf "(intersection %s %s)" (yices_set s1) (yices_set s2)
     | NE.Diff(s1,s2)  -> Printf.sprintf "(setdiff %s %s)" (yices_set s1) (yices_set s2)
-    | NE.Lower(s,i)   -> Printf.sprintf "(lower %s %s)" (yices_set s) (yices_int i)
+    | NE.Lower(s,i)   -> Printf.sprintf "(subsetLowerThan %s %s)" (yices_set s) (yices_int i)
 
 
   and yices_string_of_term (t:NE.term) : string =

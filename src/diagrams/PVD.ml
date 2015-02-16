@@ -561,15 +561,23 @@ let ranking_function (ante:E.formula)
                                   | (E.IntT i1, E.IntT i2) -> form(E.Less (i2, i1))
                                   | _ -> assert false
                                 end in
-  if AcceptanceSet.mem e accept.bad then
+  if AcceptanceSet.mem e accept.bad then begin
+    let (n,m,t) = e in
+    let _ = print_endline ("IS BAD: " ^ (node_id_to_str n) ^ " -> " ^
+    (node_id_to_str m)) in
+    let _ = match t with | Any -> print_endline "ANY" | Pres -> print_endline "PRES" in
     let pre = fst accept.delta in
     let post = E.prime_modified_term [ante] (fst accept.delta) in
     cons pre post Decrement
-  else if (not (AcceptanceSet.mem e (AcceptanceSet.union accept.good accept.bad))) then
+  end else if (not (AcceptanceSet.mem e (AcceptanceSet.union accept.good accept.bad))) then begin
+    let (n,m,t) = e in
+    let _ = print_endline ("IS NOT CARE: " ^ (node_id_to_str n) ^ " -> " ^
+    (node_id_to_str m)) in
+    let _ = match t with | Any -> print_endline "ANY" | Pres -> print_endline "PRES" in
     let pre = fst accept.delta in
     let post = E.prime_modified_term [ante] (fst accept.delta) in
     cons pre post Preserve
-  else
+  end else
     F.True
 
 

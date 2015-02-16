@@ -337,7 +337,7 @@ struct
                     "\n  (store " ^str^ " " ^v^ " (and (select set_v " ^v^ ") (<= " ^v^ " int_v)))"
                   ) "emp" vars_rep in
     B.add_string buf
-    ("(define-fun lower ((set_v " ^set_s^ ") (int_v " ^int_s^ ")) " ^set_s^
+    ("(define-fun subsetLowerThan ((set_v " ^set_s^ ") (int_v " ^int_s^ ")) " ^set_s^
      "  " ^low_set^ ")\n")
 
 
@@ -430,6 +430,7 @@ struct
       z3_pc_def pc_vars_str          buf
 
 
+
   (************************ Preamble definitions ************************)
 
 
@@ -479,7 +480,7 @@ struct
     | NE.Union(s1,s2) -> Printf.sprintf "(unionset %s %s)" (z3_set s1) (z3_set s2)
     | NE.Intr(s1,s2)  -> Printf.sprintf "(intersection %s %s)" (z3_set s1) (z3_set s2)
     | NE.Diff(s1,s2)  -> Printf.sprintf "(setdiff %s %s)" (z3_set s1) (z3_set s2)
-    | NE.Lower(s,i)   -> Printf.sprintf "(lower %s %s)" (z3_set s) (z3_int i)
+    | NE.Lower(s,i)   -> Printf.sprintf "(subsetLowerThan %s %s)" (z3_set s) (z3_int i)
 
 
   and z3_string_of_term (t:NE.term) : string =
