@@ -1,0 +1,189 @@
+
+HOW TO ADD A NEW THEORY TO LEAP
+===============================
+
+
+1) First, you need to define the new theory. This is done by adding a new 
+module with the theory definition in the "theories" folder. For example, 
+in the case of adding a new theory of pairs, you will need to define the 
+following files containing the syntax and elements of the new theory:
+
+  src/theories/pairs/PairsExpression.ml
+  src/theories/pairs/PairsExpression.mli
+
+There exists a general "Expression" module which manipulates expressions 
+and formulas belonging to all the theories that Leap can deal with. Hence, 
+you may need to add the functions and predicates of the new theory into 
+the general "Expression" module as well. This module can be found at:
+
+  src/expression/Expression.ml
+  src/expression/Expression.mli
+
+Alternatively, you will also need to modify the parser of expressions, so 
+you can input formulas containing functions and predicates belonging to 
+the new theory. The parser can be edited through the following files:
+
+  src/expression/ExprLexer.mll
+  src/expression/ExprParser.mly
+
+Finally, as formulas need to be translated from the general Expression 
+module into expressions belonging to the new theory, you will need to 
+define a translation module, which maps general expressions to the new 
+theory and the other way round. In the case of a theory of pairs, we would 
+add the following mapping modules:
+
+  src/theories/pairs/PairsInterface.ml
+  src/theories/pairs/PairsInterface.mli
+
+To sum up, the PairsExpression module contains the definition of the 
+theory and the PairsInterface states how elements from Expression are 
+converted into PairsExprssion and the other way round.
+
+
+
+2) Second, you need to export the signature of the module that defines the 
+expression in the new theory. This must be done updating the 
+ExpressionTypes file located at:
+
+  src/expression/ExpressionTypes.mli
+
+Basically, by doing this, you are just cleanly publishing the interface of 
+the new theory.
+
+
+
+3) Third, you need to add the new theory to the list of available decision 
+procedures. Available decision procedures are listed into the DP files 
+located at:
+
+  src/solvers/theory/DP.ml
+  src/solvers/theory/DP.mli
+
+By adding the new theory on these files, you are letting Leap to know that 
+there is a new theory that can be used in the analysis of verification 
+conditions.
+
+
+
+4) Forth, you will need to define the generic interface that will need to 
+implement a solver in order to generate a translation of a formula in the 
+new theory into a query of a given SMT solver. Your new interface will 
+need to extend form the common interface COMMON_QUERY.
+
+Specific solvers like Yices or Z3, will then need to implement the 
+interface described in this module. The interface will usually contain 
+functions mapping from formulas belonging to the new theory into a string 
+representation of such formula using the notation of an specific SMT 
+solver.
+
+In the case of the theory of pairs, we need will need to declare a 
+PAIRS_QUERY module template in the following file:
+
+  src/solvers/backend/query/templates/PairsQuery.mli
+
+Basically, you are stating which are the interface functions that a solver 
+of the new theory will require to implement.
+
+
+
+5) Fifth, you will need to define a backend interface for the new theory.  
+This interface declares the functions that need to be implemented by a 
+solver in order to be able to solve the satisfiability and validity of 
+formulas in the new theory. This is done in the following file:
+
+  src/solvers/backend/BackendSolverIntf.mli
+
+
+Basically, you are creating a new backend (solver communication) interface 
+which may include only the new theory you are declaring or, for instance, 
+a custom backend capable of dealing with many theories at once.
+
+
+
+6) Sixth, you will need to add an entry to the tables in BackendSolvers:
+
+  src/solvers/backend/BackendSolvers.ml
+
+The tables stored in this file contains the information on which SMT 
+solver should be used for each specific theory. Basically, by updating 
+these tables, you are telling Leap which are the available SMT solvers 
+capable of dealing with an specific theory.
+
+
+
+7) Seventh, you will need to add the new theory as a solver, by defining 
+the modules in the src/solvers/theory folder. Here you are implementing a 
+solver that was declared in the fifth step of this tutorial. For instance, 
+for the new theory of pairs you will need to add:
+
+  src/solvers/theory/PairsSolver.ml
+  src/solvers/theory/PairsSolver.mli
+
+What you are doing here is declaring the behavior of the functions that 
+will implement the check of satisfiability and validity of formulas in the 
+new theory.
+
+
+
+8) Eighth, you will optionally need to update the interface of an existing 
+SMT solver (or declare a new one if a suitable SMT solver does not exist).  
+For Yices and Z3 this is done through the files:
+
+  src/solvers/backend/yices/Yices.ml
+  src/solvers/backend/yices/Yices.mli
+  src/solvers/backend/z3/Z3.ml
+  src/solvers/backend/z3/Z3.mli
+
+The modifications that you require to make depends mainly on whether the 
+new theory is included as part of the backend the solver implements.
+
+
+
+9) Ninth, for each SMT solver that will be capable of solving formulas in 
+the new theory, you will need to create a module which describes how a 
+formulas in the new theory is translated into a query following the syntax 
+of the SMT solver. The files describing such modules should be added to an 
+appropriate folder, depending on the SMT solver. The main folder where 
+query modules are added is:
+
+  usr/solvers/backend/query
+
+For example, if Yices and Z3 will support the new theory of pairs, then 
+you need to create the modules:
+
+  usr/solvers/backend/query/yices/YicesPairsQuery.ml
+  usr/solvers/backend/query/yices/YicesPairsQuery.mli
+  usr/solvers/backend/query/z3/Z3PairsQuery.ml
+  usr/solvers/backend/query/z3/Z3PairsQuery.mli
+
+
+
+10) Tenth, you will need to add a function to the QueryManager module, so 
+that the appropriate query module for the new theory can be found by Leap.  
+This must be done in the file located at:
+
+  src/solvers/backend/QueryManager.ml
+  src/solvers/backend/QueryManager.mli
+
+
+
+11) Eleventh, you need to tell Leap how to compute the cutoff for a 
+formula in the new theory according to all the available possible cutoff 
+strategies. This is done in the folder:
+
+  src/smp
+
+For example, in the case of the theory of pairs, you need to add the 
+following files:
+
+  src/smp/SmpPairs.mli
+  src/smp/SmpPairs.ml
+
+
+
+12) Finally, if you want Leap to access the new theory and its decision 
+procedure, you may require to modify the "solve_proof_obligations" 
+functions located in the Core module:
+
+  src/Core.ml
+  src/Core.mli
