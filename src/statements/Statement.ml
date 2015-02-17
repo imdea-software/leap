@@ -51,9 +51,11 @@ type term =
   | SetThT        of setth
   | SetIntT       of setint
   | SetElemT      of setelem
+  | SetPairT      of setpair
   | PathT         of path
   | MemT          of mem
   | IntT          of integer
+  | PairT         of pair
   | ArrayT        of arrays
   | AddrArrayT    of addrarr
   | TidArrayT     of tidarr
@@ -86,6 +88,14 @@ and integer =
   | IntSetMin     of setint
   | IntSetMax     of setint
   | HavocLevel
+  | PairInt       of pair
+
+and pair =
+    VarPair       of variable
+  | IntTidPair    of integer * tid
+  | SetPairMin    of setpair
+  | SetPairMax    of setpair
+  | PairArrayRd   of arrays * tid
 
 and set =
     VarSet        of variable
@@ -104,10 +114,11 @@ and tid =
   | NoTid
   | CellLockId      of cell
   | CellLockIdAt    of cell * integer
-  | TidArrayRd     of arrays * tid
+  | TidArrayRd      of arrays * tid
   | PointerLockid   of addr
   | PointerLockidAt of addr * integer
-  | TidArrRd       of tidarr * integer
+  | TidArrRd        of tidarr * integer
+  | PairTid         of pair
 
 and elem =
     VarElem           of variable
@@ -176,6 +187,15 @@ and setelem =
   | SetToElems     of set * mem
   | SetElemArrayRd of arrays * tid
 
+and setpair =
+    VarSetPair     of variable
+  | EmptySetPair
+  | SinglPair      of pair
+  | UnionPair      of setpair * setpair
+  | IntrPair       of setpair * setpair
+  | SetdiffPair    of setpair * setpair
+  | SetPairArrayRd of arrays * tid
+
 and path =
     VarPath       of variable
   | Epsilon
@@ -201,6 +221,8 @@ and atom =
   | SubsetEqInt   of setint * setint
   | InElem        of elem * setelem
   | SubsetEqElem  of setelem * setelem
+  | InPair        of pair * setpair
+  | SubsetEqPair  of setpair * setpair
   | Less          of integer * integer
   | Greater       of integer * integer
   | LessEq        of integer * integer
@@ -215,16 +237,6 @@ and atom =
 
 and boolean =
   atom F.formula
-(*
-    Literal       of literal
-  | True
-  | False
-  | And           of boolean * boolean
-  | Or            of boolean * boolean
-  | Not           of boolean
-  | Implies       of boolean * boolean
-  | Iff           of boolean * boolean
-*)
 
 
 and expr_t =
@@ -418,6 +430,12 @@ and atom_to_str (loc:bool) (expr:atom) : string =
   | SubsetEqElem(s_in,s_out)         -> sprintf "%s subseteqElem %s"
                                                   (setelem_to_str loc s_in)
                                                   (setelem_to_str loc s_out)
+  | InPair(p,s)                      -> sprintf "%s inPair %s"
+                                                  (pair_to_str loc p)
+                                                  (setpair_to_str loc s)
+  | SubsetEqPair(s_in,s_out)         -> sprintf "%s subseteqPair %s"
+                                                  (setpair_to_str loc s_in)
+                                                  (setpair_to_str loc s_out)
   | Less(i1,i2)                      -> sprintf "%s < %s"
                                                   (integer_to_str loc i1)
                                                   (integer_to_str loc i2)
@@ -485,6 +503,18 @@ and integer_to_str (loc:bool) (expr:integer) : string =
   | IntSetMin(s)          -> sprintf "setIntMin(%s)" (setint_to_str loc s)
   | IntSetMax(s)          -> sprintf "setIntMax(%s)" (setint_to_str loc s)
   | HavocLevel            -> sprintf "havocLevel()"
+  | PairInt p             -> sprintf "int_of(%s)" (pair_to_str loc p)
+
+
+and pair_to_str (loc:bool) (expr:pair) : string =
+  match expr with
+    VarPair v              -> variable_to_str loc v
+  | IntTidPair (i,t)       -> sprintf "(%s,%s)" (integer_to_str loc i)
+                                                (tid_to_str loc t)
+  | SetPairMin ps          -> sprintf "psmin(%s)" (setpair_to_str loc ps)
+  | SetPairMax ps          -> sprintf "psmax(%s)" (setpair_to_str loc ps)
+  | PairArrayRd(arr,t)     -> sprintf "%s%s" (arrays_to_str loc arr)
+                                             (tid_to_str loc t)
 
 
 and mem_to_str (loc:bool) (expr:mem) : string =
@@ -581,6 +611,22 @@ and setelem_to_str (loc:bool) (expr:setelem) : string =
                                                (tid_to_str loc t)
 
 
+and setpair_to_str (loc:bool) (expr:setpair) : string =
+  match expr with
+    VarSetPair v             -> variable_to_str loc v
+  | EmptySetPair             -> "EmptySetPair"
+  | SinglPair(p)             -> sprintf "SinglPair(%s)" (pair_to_str loc p)
+  | UnionPair(s_1,s_2)       -> sprintf "%s UnionPair %s" (setpair_to_str loc s_1)
+                                                           (setpair_to_str loc s_2)
+  | IntrPair(s_1,s_2)        -> sprintf "%s IntrPair %s" (setpair_to_str loc s_1)
+                                                          (setpair_to_str loc s_2)
+  | SetdiffPair(s_1,s_2)     -> sprintf "%s SetDiffPair %s"
+                                                  (setpair_to_str loc s_1)
+                                                  (setpair_to_str loc s_2)
+  | SetPairArrayRd(arr,t)    -> sprintf "%s%s" (arrays_to_str loc arr)
+                                                (tid_to_str loc t)
+
+
 and cell_to_str (loc:bool) (expr:cell) : string =
   let apply_str f xs = String.concat "," (List.map f xs) in
   match expr with
@@ -655,6 +701,8 @@ and tid_to_str (loc:bool) (th:tid) : string =
                                                      (integer_to_str loc l)
   | TidArrRd (arr,i)    -> sprintf "%s[%s]" (tidarr_to_str loc arr)
                                              (integer_to_str loc i)
+  | PairTid p           -> sprintf "tid_of(%s)" (pair_to_str loc p)
+
 
 and eq_to_str (loc:bool) ((e1,e2):eq) : string =
       sprintf "%s = %s" (term_to_str_aux loc e1) (term_to_str_aux loc e2)
@@ -684,14 +732,16 @@ and term_to_str_aux (loc:bool) (expr:term) : string =
   | SetT(set)           -> (set_to_str loc set)
   | AddrT(addr)         -> (addr_to_str loc addr)
   | ElemT(elem)         -> (elem_to_str loc elem)
-  | TidT(th)           -> (tid_to_str loc th)
+  | TidT(th)            -> (tid_to_str loc th)
   | CellT(cell)         -> (cell_to_str loc cell)
   | SetThT(setth)       -> (setth_to_str loc setth)
   | SetIntT(setint)     -> (setint_to_str loc setint)
   | SetElemT(setelem)   -> (setelem_to_str loc setelem)
+  | SetPairT(setpair)   -> (setpair_to_str loc setpair)
   | PathT(path)         -> (path_to_str loc path)
   | MemT(mem)           -> (mem_to_str loc mem)
   | IntT(i)             -> (integer_to_str loc i)
+  | PairT(p)            -> (pair_to_str loc p)
   | ArrayT(arr)         -> (arrays_to_str loc arr)
   | AddrArrayT(arr)     -> (addrarr_to_str loc arr)
   | TidArrayT(arr)      -> (tidarr_to_str loc arr)
@@ -792,15 +842,17 @@ let rec term_to_expr_term (t:term) : E.term =
     VarT v       -> E.VarT       (variable_to_expr_var v)
   | SetT s       -> E.SetT       (set_to_expr_set s)
   | ElemT e      -> E.ElemT      (elem_to_expr_elem e)
-  | TidT t      -> E.TidT      (tid_to_expr_tid t)
+  | TidT t       -> E.TidT       (tid_to_expr_tid t)
   | AddrT a      -> E.AddrT      (addr_to_expr_addr a)
   | CellT c      -> E.CellT      (cell_to_expr_cell c)
   | SetThT s     -> E.SetThT     (setth_to_expr_setth s)
   | SetIntT s    -> E.SetIntT    (setint_to_expr_setint s)
   | SetElemT s   -> E.SetElemT   (setelem_to_expr_setelem s)
+  | SetPairT s   -> E.SetPairT   (setpair_to_expr_setpair s)
   | PathT p      -> E.PathT      (path_to_expr_path p)
   | MemT m       -> E.MemT       (mem_to_expr_mem m)
   | IntT i       -> E.IntT       (integer_to_expr_integer i)
+  | PairT i      -> E.PairT      (pair_to_expr_pair i)
   | ArrayT a     -> E.ArrayT     (array_to_expr_array a)
   | AddrArrayT a -> E.AddrArrayT (addrarray_to_expr_array a)
   | TidArrayT a  -> E.TidArrayT  (tidarray_to_expr_array a)
@@ -850,6 +902,20 @@ and integer_to_expr_integer (i:integer) : E.integer =
   | IntSetMin s      -> E.IntSetMin (setint_to_expr_setint s)
   | IntSetMax s      -> E.IntSetMax (setint_to_expr_setint s)
   | HavocLevel       -> E.HavocLevel
+  | PairInt p        -> E.PairInt (pair_to_expr_pair p)
+
+
+and pair_to_expr_pair (p:pair) : E.pair =
+  let to_int = integer_to_expr_integer in
+  let to_tid = tid_to_expr_tid in
+  let to_setpair = setpair_to_expr_setpair in
+  match p with
+    VarPair v         -> E.VarPair (variable_to_expr_var v)
+  | IntTidPair (i,t)  -> E.IntTidPair (to_int i, to_tid t)
+  | SetPairMin ps     -> E.SetPairMin(to_setpair ps)
+  | SetPairMax ps     -> E.SetPairMax(to_setpair ps)
+  | PairArrayRd (a,t) -> E.PairArrayRd (array_to_expr_array a,
+                                        tid_to_expr_th t)
 
 
 and set_to_expr_set (s:set) : E.set =
@@ -872,17 +938,18 @@ and set_to_expr_set (s:set) : E.set =
 and tid_to_expr_tid (t:tid) : E.tid =
   match t with
     VarTh v              -> E.VarTh (variable_to_expr_var v)
-  | NoTid               -> E.NoTid
+  | NoTid                -> E.NoTid
   | CellLockId c         -> E.CellLockId (cell_to_expr_cell c)
   | CellLockIdAt(c,l)    -> E.CellLockIdAt (cell_to_expr_cell c,
                                             integer_to_expr_integer l)
-  | TidArrayRd (a,t)    -> E.TidArrayRd (array_to_expr_array a,
-                                           tid_to_expr_th t)
-  | TidArrRd (a,l)      -> E.TidArrRd (tidarray_to_expr_array a,
-                                         integer_to_expr_integer l)
+  | TidArrayRd (a,t)     -> E.TidArrayRd (array_to_expr_array a,
+                                          tid_to_expr_th t)
+  | TidArrRd (a,l)       -> E.TidArrRd (tidarray_to_expr_array a,
+                                        integer_to_expr_integer l)
   | PointerLockid a      -> E.CellLockId(E.CellAt(E.heap,addr_to_expr_addr a))
   | PointerLockidAt(a,l) -> E.CellLockIdAt(E.CellAt(E.heap,addr_to_expr_addr a),
                                            integer_to_expr_integer l)
+  | PairTid p            -> E.PairTid(pair_to_expr_pair p)
 
 
 and tid_to_expr_th (t:tid) : E.tid =
@@ -900,6 +967,7 @@ and tid_to_expr_th (t:tid) : E.tid =
   | TidArrRd (a,l)    -> raise(Not_supported_conversion(tid_to_str true t))
   | PointerLockid _    -> raise(Not_supported_conversion(tid_to_str true t))
   | PointerLockidAt _  -> raise(Not_supported_conversion(tid_to_str true t))
+  | PairTid _          -> raise(Not_supported_conversion(tid_to_str true t))
 
 
 and elem_to_expr_elem (e:elem) : E.elem =
@@ -1015,6 +1083,20 @@ and setelem_to_expr_setelem (s:setelem) : E.setelem =
                                             tid_to_expr_th t)
 
 
+
+and setpair_to_expr_setpair (s:setpair) : E.setpair =
+  let to_setpair = setpair_to_expr_setpair in
+  match s with
+    VarSetPair v         -> E.VarSetPair(variable_to_expr_var v)
+  | EmptySetPair         -> E.EmptySetPair
+  | SinglPair p          -> E.SinglPair (pair_to_expr_pair p)
+  | UnionPair (s1,s2)    -> E.UnionPair (to_setpair s1, to_setpair s2)
+  | IntrPair (s1,s2)     -> E.IntrPair (to_setpair s1, to_setpair s2)
+  | SetdiffPair (s1,s2)  -> E.SetdiffPair (to_setpair s1, to_setpair s2)
+  | SetPairArrayRd (a,t) -> E.SetPairArrayRd (array_to_expr_array a,
+                                              tid_to_expr_th t)
+
+
 and path_to_expr_path (p:path) : E.path =
   match p with
     VarPath v         -> E.VarPath (variable_to_expr_var v)
@@ -1069,6 +1151,10 @@ and atom_to_expr_atom (a:atom) : E.atom =
                                            setelem_to_expr_setelem s)
   | SubsetEqElem (s1,s2)      -> E.SubsetEqElem (setelem_to_expr_setelem s1,
                                                  setelem_to_expr_setelem s2)
+  | InPair (p,s)              -> E.InPair (pair_to_expr_pair p,
+                                           setpair_to_expr_setpair s)
+  | SubsetEqPair (s1,s2)      -> E.SubsetEqPair (setpair_to_expr_setpair s1,
+                                                 setpair_to_expr_setpair s2)
   | Less (i1,i2)              -> E.Less      (to_int i1, to_int i2)
   | Greater (i1,i2)           -> E.Greater   (to_int i1, to_int i2)
   | LessEq (i1,i2)            -> E.LessEq    (to_int i1, to_int i2)
@@ -1122,10 +1208,12 @@ let construct_var_from_sort (id:varId)
   | E.SetTh      -> SetThT      (VarSetTh      v)
   | E.SetInt     -> SetIntT     (VarSetInt     v)
   | E.SetElem    -> SetElemT    (VarSetElem    v)
+  | E.SetPair    -> SetPairT    (VarSetPair    v)
   | E.Path       -> PathT       (VarPath       v)
   | E.Mem        -> MemT        (VarMem        v)
   | E.Bool       -> VarT        v
   | E.Int        -> IntT        (VarInt        v)
+  | E.Pair       -> PairT       (VarPair       v)
   | E.Array      -> ArrayT      (VarArray      v)
   | E.AddrArray  -> AddrArrayT  (VarAddrArray  v)
   | E.TidArray   -> TidArrayT   (VarTidArray   v)
@@ -1155,14 +1243,16 @@ let rec var_kind_term (kind:E.var_nature) (expr:term) : term list =
     | SetT(set)         -> var_kind_set kind set
     | AddrT(addr)       -> var_kind_addr kind addr
     | ElemT(elem)       -> var_kind_elem kind elem
-    | TidT(th)         -> var_kind_th kind th
+    | TidT(th)          -> var_kind_th kind th
     | CellT(cell)       -> var_kind_cell kind cell
     | SetThT(setth)     -> var_kind_setth kind setth
     | SetIntT(setint)   -> var_kind_setint kind setint
     | SetElemT(setelem) -> var_kind_setelem kind setelem
+    | SetPairT(setpair) -> var_kind_setpair kind setpair
     | PathT(path)       -> var_kind_path kind path
     | MemT(mem)         -> var_kind_mem kind mem
     | IntT(i)           -> var_kind_int kind i
+    | PairT(p)          -> var_kind_pair kind p
     | ArrayT(arr)       -> var_kind_array kind arr
     | AddrArrayT(arr)   -> var_kind_addrarr kind arr
     | TidArrayT(arr)    -> var_kind_tidarr kind arr
@@ -1254,16 +1344,17 @@ and var_kind_elem (kind:E.var_nature) (e:elem) : term list =
 and var_kind_th (kind:E.var_nature) (th:tid) : term list =
   match th with
     VarTh v               -> if v.nature = kind then [TidT th] else []
-  | NoTid                -> []
+  | NoTid                 -> []
   | CellLockId(cell)      -> (var_kind_cell kind cell)
   | CellLockIdAt(cell,l)  -> (var_kind_cell kind cell) @
                              (var_kind_int kind l)
-  | TidArrayRd(arr,t)    -> (var_kind_array kind arr)
-  | TidArrRd(arr,i)      -> (var_kind_tidarr kind arr) @
+  | TidArrayRd(arr,t)     -> (var_kind_array kind arr)
+  | TidArrRd(arr,i)       -> (var_kind_tidarr kind arr) @
                              (var_kind_int kind i)
   | PointerLockid a       -> (var_kind_addr kind a)
   | PointerLockidAt (a,l) -> (var_kind_addr kind a) @
                              (var_kind_int kind l)
+  | PairTid p             -> (var_kind_pair kind p)
 
 
 and var_kind_cell (kind:E.var_nature) (c:cell) : term list =
@@ -1332,6 +1423,20 @@ and var_kind_setelem (kind:E.var_nature) (s:setelem) : term list =
   | SetElemArrayRd(arr,t) -> (var_kind_array kind arr)
 
 
+and var_kind_setpair (kind:E.var_nature) (s:setpair) : term list =
+  match s with
+    VarSetPair v          -> if v.nature = kind then [SetPairT s] else []
+  | EmptySetPair          -> []
+  | SinglPair(p)          -> (var_kind_pair kind p)
+  | UnionPair(s1,s2)      -> (var_kind_setpair kind s1) @
+                             (var_kind_setpair kind s2)
+  | IntrPair(s1,s2)       -> (var_kind_setpair kind s1) @
+                             (var_kind_setpair kind s2)
+  | SetdiffPair(s1,s2)    -> (var_kind_setpair kind s1) @
+                             (var_kind_setpair kind s2)
+  | SetPairArrayRd(arr,t) -> (var_kind_array kind arr)
+
+
 and var_kind_path (kind:E.var_nature) (p:path) : term list =
   match p with
     VarPath v                    -> if v.nature = kind then [PathT p] else []
@@ -1365,6 +1470,16 @@ and var_kind_int (kind:E.var_nature) (i:integer) : term list =
   | IntSetMin(s)      -> (var_kind_setint kind s)
   | IntSetMax(s)      -> (var_kind_setint kind s)
   | HavocLevel        -> []
+  | PairInt p         -> (var_kind_pair kind p)
+
+
+and var_kind_pair (kind:E.var_nature) (p:pair) : term list =
+  match p with
+    VarPair v          -> if v.nature = kind then [PairT p] else []
+  | IntTidPair (i,t)   -> (var_kind_int kind i) @ (var_kind_th kind t)
+  | SetPairMin ps      -> (var_kind_setpair kind ps)
+  | SetPairMax ps      -> (var_kind_setpair kind ps)
+  | PairArrayRd(arr,t) -> (var_kind_array kind arr)
 
 
 and var_kind_atom (kind:E.var_nature) (a:atom) : term list =
@@ -1401,6 +1516,10 @@ and var_kind_atom (kind:E.var_nature) (a:atom) : term list =
                                     (var_kind_setelem kind s)
   | SubsetEqElem(s_in,s_out)     -> (var_kind_setelem kind s_in) @
                                     (var_kind_setelem kind s_out)
+  | InPair(p,s)                  -> (var_kind_pair kind p) @
+                                    (var_kind_setpair kind s)
+  | SubsetEqPair(s_in,s_out)     -> (var_kind_setpair kind s_in) @
+                                    (var_kind_setpair kind s_out)
   | Less(i1,i2)                  -> (var_kind_int kind i1) @
                                     (var_kind_int kind i2)
   | Greater(i1,i2)               -> (var_kind_int kind i1) @

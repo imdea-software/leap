@@ -132,6 +132,7 @@ and conv_th (th:E.tid) : tid =
   | E.CellLockIdAt _    -> VarTh (build_fresh_lockid_var th)
   | E.TidArrayRd _      -> VarTh (build_fresh_tid_array_var th)
   | E.TidArrRd _        -> VarTh (build_fresh_tid_array_var th)
+  | E.PairTid _         -> VarTh (build_fresh_tid_array_var th)
 
 
 let rec tid_to_str (expr:tid) : string =

@@ -336,6 +336,8 @@ let rec is_int_atom ato =
   | E.SubsetEqInt(_,_)                 -> false
   | E.InElem(_,_)                      -> false
   | E.SubsetEqElem(_,_)                -> false
+  | E.InPair(_,_)                      -> false
+  | E.SubsetEqPair(_,_)                -> false
   | E.Less(_,_)                        -> true
   | E.Greater(_,_)                     -> true
   | E.LessEq(_,_)                      -> true
@@ -357,15 +359,17 @@ and is_int_integer t =
     E.VarT(_)       -> false
   | E.SetT(_)       -> false
   | E.ElemT(_)      -> false
-  | E.TidT(_)      -> false
+  | E.TidT(_)       -> false
   | E.AddrT(_)      -> false
   | E.CellT(_)      -> false
   | E.SetThT(_)     -> false
   | E.SetIntT(_)    -> false
   | E.SetElemT(_)   -> false
+  | E.SetPairT(_)   -> false
   | E.PathT(_)      -> false
   | E.MemT(_)       -> false
   | E.IntT(_)       -> true
+  | E.PairT(_)      -> true
   | E.ArrayT(_)     -> false
   | E.AddrArrayT(_) -> false
   | E.TidArrayT(_)  -> false

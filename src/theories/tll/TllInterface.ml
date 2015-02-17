@@ -26,6 +26,7 @@ let rec sort_to_tll_sort (s:E.sort) : TLL.sort =
   | E.SetTh     -> TLL.SetTh
   | E.SetInt    -> raise(UnsupportedSort(E.sort_to_str s))
   | E.SetElem   -> TLL.SetElem
+  | E.SetPair   -> raise(UnsupportedSort(E.sort_to_str s))
   | E.Path      -> TLL.Path
   | E.Mem       -> TLL.Mem
   | E.Bool      -> TLL.Bool
@@ -40,7 +41,7 @@ and sort_to_expr_sort (s:TLL.sort) : E.sort =
   match s with
   | TLL.Set     -> E.Set
   | TLL.Elem    -> E.Elem
-  | TLL.Tid    -> E.Tid
+  | TLL.Tid     -> E.Tid
   | TLL.Addr    -> E.Addr
   | TLL.Cell    -> E.Cell
   | TLL.SetTh   -> E.SetTh

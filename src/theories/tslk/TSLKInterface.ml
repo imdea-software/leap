@@ -35,9 +35,11 @@ module Make (SLK : TSLKExpression.S) =
       | E.SetThT _     -> E.SetThT     (E.VarSetTh v)
       | E.SetIntT _    -> E.SetIntT    (E.VarSetInt v)
       | E.SetElemT _   -> E.SetElemT   (E.VarSetElem v)
+      | E.SetPairT _   -> E.SetPairT   (E.VarSetPair v)
       | E.PathT _      -> E.PathT      (E.VarPath v)
       | E.MemT _       -> E.MemT       (E.VarMem v)
       | E.IntT _       -> E.IntT       (E.VarInt v)
+      | E.PairT _      -> E.PairT      (E.VarPair v)
       | E.ArrayT _     -> E.ArrayT     (E.VarArray v)
       | E.AddrArrayT _ -> E.AddrArrayT (E.VarAddrArray v)
       | E.TidArrayT _  -> E.TidArrayT  (E.VarTidArray v)
@@ -130,6 +132,7 @@ module Make (SLK : TSLKExpression.S) =
         | E.CellLockIdAt (c,i) -> E.CellLockIdAt (norm_cell c, norm_int i)
         | E.TidArrayRd _       -> raise(UnsupportedTSLKExpr(E.tid_to_str t))
         | E.TidArrRd _         -> raise(UnsupportedTSLKExpr(E.tid_to_str t))
+        | E.PairTid _          -> raise(UnsupportedTSLKExpr(E.tid_to_str t))
 
       and norm_elem (e:E.elem) : E.elem =
         match e with
@@ -207,6 +210,18 @@ module Make (SLK : TSLKExpression.S) =
         | E.SetElemArrayRd (E.VarArray v,t) -> E.SetElemArrayRd(E.VarArray v, norm_tid t)
         | E.SetElemArrayRd _      -> raise(UnsupportedTSLKExpr(E.setelem_to_str s))
 
+      and norm_setpair (s:E.setpair) : E.setpair =
+        match s with
+        | E.VarSetPair v         -> raise(UnsupportedTSLKExpr(E.setpair_to_str s))
+        | E.EmptySetPair         -> raise(UnsupportedTSLKExpr(E.setpair_to_str s))
+        | E.SinglPair i          -> raise(UnsupportedTSLKExpr(E.setpair_to_str s))
+        | E.UnionPair (s1,s2)    -> raise(UnsupportedTSLKExpr(E.setpair_to_str s))
+        | E.IntrPair (s1,s2)     -> raise(UnsupportedTSLKExpr(E.setpair_to_str s))
+        | E.SetdiffPair (s1,s2)  -> raise(UnsupportedTSLKExpr(E.setpair_to_str s))
+        | E.LowerPair _          -> raise(UnsupportedTSLKExpr(E.setpair_to_str s))
+        | E.SetPairArrayRd (E.VarArray v,t) ->raise(UnsupportedTSLKExpr(E.setpair_to_str s))
+        | E.SetPairArrayRd _     -> raise(UnsupportedTSLKExpr(E.setpair_to_str s))
+
       and norm_path (p:E.path) : E.path =
         match p with
         | E.VarPath v             -> E.VarPath v
@@ -238,6 +253,15 @@ module Make (SLK : TSLKExpression.S) =
         | E.IntSetMin _    -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
         | E.IntSetMax _    -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
         | E.HavocLevel     -> E.HavocLevel
+        | E.PairInt _      -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
+
+      and norm_pair (p:E.pair) : E.pair =
+        match p with
+        | E.VarPair _      -> raise(UnsupportedTSLKExpr(E.pair_to_str p))
+        | E.IntTidPair _   -> raise(UnsupportedTSLKExpr(E.pair_to_str p))
+        | E.SetPairMin _   -> raise(UnsupportedTSLKExpr(E.pair_to_str p))
+        | E.SetPairMax _   -> raise(UnsupportedTSLKExpr(E.pair_to_str p))
+        | E.PairArrayRd _  -> raise(UnsupportedTSLKExpr(E.pair_to_str p))
 
       and norm_arrays (arr:E.arrays) : E.arrays =
         match arr with
@@ -267,9 +291,11 @@ module Make (SLK : TSLKExpression.S) =
         | E.SetThT s           -> E.SetThT (norm_setth s)
         | E.SetIntT s          -> E.SetIntT (norm_setint s)
         | E.SetElemT s         -> E.SetElemT (norm_setelem s)
+        | E.SetPairT s         -> E.SetPairT (norm_setpair s)
         | E.PathT p            -> E.PathT (norm_path p)
         | E.MemT m             -> E.MemT (norm_mem m)
         | E.IntT i             -> E.IntT (norm_int i)
+        | E.PairT p            -> E.PairT (norm_pair p)
         | E.ArrayT arr         -> E.ArrayT (norm_arrays arr)
         | E.AddrArrayT aa      -> E.AddrArrayT (norm_addrarr aa)
         | E.TidArrayT tt       -> E.TidArrayT (norm_tidarr tt)
@@ -296,6 +322,8 @@ module Make (SLK : TSLKExpression.S) =
         | E.SubsetEqInt _         -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
         | E.InElem (e,s)          -> E.InElem (norm_elem e, norm_setelem s)
         | E.SubsetEqElem (s1,s2)  -> E.SubsetEqElem (norm_setelem s1, norm_setelem s2)
+        | E.InPair (p,s)          -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
+        | E.SubsetEqPair (s1,s2)  -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
         | E.Less (i1,i2)          -> E.Less (norm_int i1, norm_int i2)
         | E.Greater (i1,i2)       -> E.Greater (norm_int i1, norm_int i2)
         | E.LessEq (i1,i2)        -> E.LessEq (norm_int i1, norm_int i2)
@@ -445,10 +473,12 @@ module Make (SLK : TSLKExpression.S) =
       | E.SetTh     -> SLK.SetTh
       | E.SetInt    -> raise(UnsupportedSort(E.sort_to_str s))
       | E.SetElem   -> SLK.SetElem
+      | E.SetPair   -> raise(UnsupportedSort(E.sort_to_str s))
       | E.Path      -> SLK.Path
       | E.Mem       -> SLK.Mem
       | E.Bool      -> SLK.Bool
       | E.Int       -> SLK.Level
+      | E.Pair      -> raise(UnsupportedSort(E.sort_to_str s))
       | E.Array     -> raise(UnsupportedSort(E.sort_to_str s))
       | E.AddrArray -> raise(UnsupportedSort(E.sort_to_str s))
       | E.TidArray  -> raise(UnsupportedSort(E.sort_to_str s))
@@ -460,14 +490,14 @@ module Make (SLK : TSLKExpression.S) =
       match (E.V.sort v) with
         E.Set       -> SLK.SetT       (SLK.VarSet        tslk_v)
       | E.Elem      -> SLK.ElemT      (SLK.VarElem       tslk_v)
-      | E.Tid      -> SLK.TidT      (SLK.VarTh         tslk_v)
+      | E.Tid       -> SLK.TidT       (SLK.VarTh         tslk_v)
       | E.Addr      -> SLK.AddrT      (SLK.VarAddr       tslk_v)
       | E.Cell      -> SLK.CellT      (SLK.VarCell       tslk_v)
       | E.SetTh     -> SLK.SetThT     (SLK.VarSetTh      tslk_v)
       | E.Path      -> SLK.PathT      (SLK.VarPath       tslk_v)
       | E.Mem       -> SLK.MemT       (SLK.VarMem        tslk_v)
       | E.Int       -> SLK.LevelT     (SLK.VarLevel      tslk_v)
-      | _              -> SLK.VarT       (tslk_v)
+      | _           -> SLK.VarT       (tslk_v)
 
 
 
@@ -501,6 +531,7 @@ module Make (SLK : TSLKExpression.S) =
                                                      int_to_tslk_level l)
       | E.TidArrayRd _       -> raise(UnsupportedTSLKExpr(E.tid_to_str th))
       | E.TidArrRd (tt,i)    -> raise(UnsupportedTSLKExpr(E.tid_to_str th))
+      | E.PairTid _          -> raise(UnsupportedTSLKExpr(E.tid_to_str th))
 
     and term_to_tslk_term (t:E.term) : SLK.term =
       match t with
@@ -513,9 +544,11 @@ module Make (SLK : TSLKExpression.S) =
       | E.SetThT st     -> SLK.SetThT (setth_to_tslk_setth st)
       | E.SetIntT _     -> raise(UnsupportedTSLKExpr(E.term_to_str t))
       | E.SetElemT st   -> SLK.SetElemT (setelem_to_tslk_setelem st)
+      | E.SetPairT _    -> raise(UnsupportedTSLKExpr(E.term_to_str t))
       | E.PathT p       -> SLK.PathT (path_to_tslk_path p)
       | E.MemT m        -> SLK.MemT (mem_to_tslk_mem m)
       | E.IntT i        -> SLK.LevelT (int_to_tslk_level i)
+      | E.PairT _       -> raise(UnsupportedTSLKExpr(E.term_to_str t))
       | E.AddrArrayT aa -> raise(UnsupportedTSLKExpr(E.term_to_str t))
       | E.TidArrayT tt  -> raise(UnsupportedTSLKExpr(E.term_to_str t))
       | E.ArrayT a      -> arrays_to_tslk_term a
@@ -718,6 +751,7 @@ module Make (SLK : TSLKExpression.S) =
       | E.IntSetMin _    -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
       | E.IntSetMax _    -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
       | E.HavocLevel     -> SLK.HavocLevel
+      | E.PairInt _      -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
 
 
     and atom_to_tslk_atom (a:E.atom) : SLK.atom =
@@ -745,6 +779,8 @@ module Make (SLK : TSLKExpression.S) =
       | E.SubsetEqInt _        -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
       | E.InElem (e,s)         -> SLK.InElem (elem_to_tslk_elem e, setelem s)
       | E.SubsetEqElem (s1,s2) -> SLK.SubsetEqElem (setelem s1, setelem s2)
+      | E.InPair _              -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
+      | E.SubsetEqPair _        -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
       | E.Less (i1,i2)         -> SLK.Less (integ i1, integ i2)
       | E.Greater (i1,i2)      -> SLK.Greater (integ i1, integ i2)
       | E.LessEq (i1,i2)       -> SLK.LessEq (integ i1, integ i2)

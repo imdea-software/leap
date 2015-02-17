@@ -1,5 +1,5 @@
 
-type sort = Int | Set | Tid
+type sort = Int | Set | Tid | Pair | SetPair
 
 type var_info_t
 
@@ -9,8 +9,9 @@ module V : Variable.S
 
 
 type tid =
-  | VarTh of V.t
+    VarTh         of V.t
   | NoTid
+  | PairTid       of pair
 and integer =
     Val           of int
   | Var           of V.t
@@ -22,6 +23,12 @@ and integer =
   | ArrayRd       of Expression.arrays * tid
   | SetMin        of set
   | SetMax        of set
+  | PairInt       of pair
+and pair =
+    VarPair       of V.t
+  | IntTidPair    of integer * tid
+  | SetPairMin    of setpair
+  | SetPairMax    of setpair
 and set =
     VarSet        of V.t
   | EmptySet
@@ -30,11 +37,21 @@ and set =
   | Intr          of set * set
   | Diff          of set * set
   | Lower         of set * integer
+and setpair =
+    VarSetPair    of V.t
+  | EmptySetPair
+  | SinglPair     of pair
+  | UnionPair  of setpair * setpair
+  | IntrPair   of setpair * setpair
+  | SetdiffPair   of setpair * setpair
+  | LowerPair  of setpair * integer
 and term =
-  | IntV          of integer
+    IntV          of integer
+  | PairV         of pair
   | SetV          of set
+  | SetPairV      of setpair
 and fun_term =
-  | FunVar        of V.t
+    FunVar        of V.t
   | FunUpd        of fun_term * tid * term
 and eq =          term * term
 and diseq =       term * term
@@ -46,6 +63,8 @@ and atom =
   | LessTid       of tid * tid
   | In            of integer * set
   | Subset        of set * set
+  | InSetPair     of pair * setpair
+  | SubsetSetPair of setpair * setpair
   | Eq            of eq
   | InEq          of diseq
   | TidEq         of tid * tid
@@ -77,7 +96,7 @@ val build_var : ?fresh:bool ->
 
 val treat_as_pc    : V.t -> bool
 
-val is_int_formula : Expression.formula   -> bool
+val is_pair_formula : Expression.formula   -> bool
 
 val integer_to_str  : integer  -> string
 val formula_to_str  : formula -> string

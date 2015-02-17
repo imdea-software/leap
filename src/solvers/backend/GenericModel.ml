@@ -65,11 +65,13 @@ let cell_s    : string = "Cell"
 let setth_s   : string = "Setth"
 let setint_s  : string = "Setint"
 let setelem_s : string = "SetElem"
+let setpair_s : string = "SetPair"
 let path_s    : string = "Path"
 let level_s   : string = "Level"
 let heap_s    : string = "Heap"
 let bool_s    : string = "Bool"
 let int_s     : string = "Int"
+let pair_s    : string = "Pair"
 let array_s   : string = "Array"
 let addrarr_s : string = "AddrArr"
 let tidarr_s  : string = "TidArr"
@@ -374,10 +376,12 @@ let conv_sort (s:Expression.sort) : sort =
   | Expr.SetTh     -> setth_s
   | Expr.SetInt    -> setint_s
   | Expr.SetElem   -> setelem_s
+  | Expr.SetPair   -> setpair_s
   | Expr.Path      -> path_s
   | Expr.Mem       -> heap_s
   | Expr.Bool      -> bool_s
   | Expr.Int       -> int_s
+  | Expr.Pair      -> pair_s
   | Expr.Array     -> array_s
   | Expr.AddrArray -> addrarr_s
   | Expr.TidArray  -> tidarr_s

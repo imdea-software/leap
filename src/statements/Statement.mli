@@ -45,9 +45,11 @@ type term =
   | SetThT        of setth
   | SetIntT       of setint
   | SetElemT      of setelem
+  | SetPairT      of setpair
   | PathT         of path
   | MemT          of mem
   | IntT          of integer
+  | PairT         of pair
   | ArrayT        of arrays
   | AddrArrayT    of addrarr
   | TidArrayT     of tidarr
@@ -80,6 +82,14 @@ and integer =
   | IntSetMin     of setint
   | IntSetMax     of setint
   | HavocLevel
+  | PairInt       of pair
+
+and pair =
+    VarPair       of variable
+  | IntTidPair    of integer * tid
+  | SetPairMin    of setpair
+  | SetPairMax    of setpair
+  | PairArrayRd   of arrays * tid
 
 and set =
     VarSet        of variable
@@ -98,10 +108,11 @@ and tid =
   | NoTid
   | CellLockId      of cell
   | CellLockIdAt    of cell * integer
-  | TidArrayRd     of arrays * tid
+  | TidArrayRd      of arrays * tid
   | PointerLockid   of addr
   | PointerLockidAt of addr * integer
-  | TidArrRd       of tidarr * integer
+  | TidArrRd        of tidarr * integer
+  | PairTid         of pair
 
 and elem =
     VarElem           of variable
@@ -170,6 +181,15 @@ and setelem =
   | SetToElems     of set * mem
   | SetElemArrayRd of arrays * tid
 
+and setpair =
+    VarSetPair     of variable
+  | EmptySetPair
+  | SinglPair      of pair
+  | UnionPair      of setpair * setpair
+  | IntrPair       of setpair * setpair
+  | SetdiffPair    of setpair * setpair
+  | SetPairArrayRd of arrays * tid
+
 and path =
     VarPath       of variable
   | Epsilon
@@ -195,6 +215,8 @@ and atom =
   | SubsetEqInt   of setint * setint
   | InElem        of elem * setelem
   | SubsetEqElem  of setelem * setelem
+  | InPair        of pair * setpair
+  | SubsetEqPair  of setpair * setpair
   | Less          of integer * integer
   | Greater       of integer * integer
   | LessEq        of integer * integer
@@ -209,16 +231,6 @@ and atom =
 
 and boolean =
   atom Formula.formula
-(*
-    Literal       of literal
-  | True
-  | False
-  | And           of boolean * boolean
-  | Or            of boolean * boolean
-  | Not           of boolean
-  | Implies       of boolean * boolean
-  | Iff           of boolean * boolean
-*)
 
 
 and expr_t =

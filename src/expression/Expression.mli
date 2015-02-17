@@ -9,10 +9,12 @@ type sort =
   | SetTh
   | SetInt
   | SetElem
+  | SetPair
   | Path
   | Mem
   | Bool
   | Int
+  | Pair
   | Array
   | AddrArray
   | TidArray
@@ -38,9 +40,11 @@ and term =
   | SetThT        of setth
   | SetIntT       of setint
   | SetElemT      of setelem
+  | SetPairT      of setpair
   | PathT         of path
   | MemT          of mem
   | IntT          of integer
+  | PairT         of pair
   | ArrayT        of arrays
   | AddrArrayT    of addrarr
   | TidArrayT     of tidarr
@@ -76,6 +80,14 @@ and integer =
   | IntSetMax     of setint
   | CellMax       of cell
   | HavocLevel
+  | PairInt       of pair
+
+and pair =
+    VarPair       of V.t
+  | IntTidPair    of integer * tid
+  | SetPairMin    of setpair
+  | SetPairMax    of setpair
+  | PairArrayRd   of arrays * tid
 
 and set =
     VarSet        of V.t
@@ -88,13 +100,15 @@ and set =
   | AddrToSet     of mem * addr
   | AddrToSetAt   of mem * addr * integer
   | SetArrayRd    of arrays * tid
+  
 and tid =
     VarTh         of V.t
   | NoTid
   | CellLockId    of cell
   | CellLockIdAt  of cell * integer
-  | TidArrayRd   of arrays * tid
-  | TidArrRd     of tidarr * integer
+  | TidArrayRd    of arrays * tid
+  | TidArrRd      of tidarr * integer
+  | PairTid       of pair
 
 and elem =
     VarElem           of V.t
@@ -159,6 +173,16 @@ and setelem =
   | SetToElems     of set * mem
   | SetElemArrayRd of arrays * tid
 
+and setpair =
+    VarSetPair     of V.t
+  | EmptySetPair
+  | SinglPair      of pair
+  | UnionPair      of setpair * setpair
+  | IntrPair       of setpair * setpair
+  | SetdiffPair    of setpair * setpair
+  | LowerPair      of setpair * integer
+  | SetPairArrayRd of arrays * tid
+
 and path =
     VarPath       of V.t
   | Epsilon
@@ -186,6 +210,8 @@ and atom =
   | SubsetEqInt   of setint * setint
   | InElem        of elem * setelem
   | SubsetEqElem  of setelem * setelem
+  | InPair        of pair * setpair
+  | SubsetEqPair  of setpair * setpair
   | Less          of integer * integer
   | Greater       of integer * integer
   | LessEq        of integer * integer
@@ -408,11 +434,13 @@ val elem_to_str       : elem        -> string
 val tid_to_str        : tid         -> string
 val arrays_to_str     : arrays      -> string
 val integer_to_str    : integer     -> string
+val pair_to_str       : pair        -> string
 val mem_to_str        : mem         -> string
 val path_to_str       : path        -> string
 val set_to_str        : set         -> string
 val setth_to_str      : setth       -> string
 val setelem_to_str    : setelem     -> string
+val setpair_to_str    : setpair     -> string
 val setint_to_str     : setint      -> string
 val addrarr_to_str    : addrarr     -> string
 val tidarr_to_str     : tidarr      -> string

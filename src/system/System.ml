@@ -576,15 +576,17 @@ let get_sort_from_term (gVars:var_table_t)
   | E.VarT v            -> get_sort_from_variable gVars iVars lVars auxVars (E.V.id v)
                             (* TODO: Or maybe just s? *)
   | E.ElemT(_)          -> E.Elem
-  | E.TidT(_)          -> E.Tid
+  | E.TidT(_)           -> E.Tid
   | E.AddrT(_)          -> E.Addr
   | E.CellT(_)          -> E.Cell
   | E.SetThT(_)         -> E.SetTh
   | E.SetIntT(_)        -> E.SetInt
   | E.SetElemT(_)       -> E.SetElem
+  | E.SetPairT(_)       -> E.SetPair
   | E.PathT(_)          -> E.Path
   | E.MemT(_)           -> E.Mem
   | E.IntT(_)           -> E.Int
+  | E.PairT(_)          -> E.Pair
   | E.ArrayT(_)         -> E.Array
   | E.AddrArrayT(_)     -> E.AddrArray
   | E.TidArrayT(_)      -> E.TidArray

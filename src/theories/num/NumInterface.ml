@@ -99,6 +99,7 @@ and integer_to_int_integer (t:E.integer) : NE.integer =
     | E.IntSetMax(s)    -> NE.SetMax (toset s)
     | E.CellMax(c)      -> raise(NotAnIntExpression(E.integer_to_str t))
     | E.HavocLevel      -> raise(NotAnIntExpression(E.integer_to_str t))
+    | E.PairInt _       -> raise(NotAnIntExpression(E.integer_to_str t))
 
 
 and atom_to_int_atom (a:E.atom) : NE.atom =
@@ -119,6 +120,8 @@ and atom_to_int_atom (a:E.atom) : NE.atom =
     | E.SubsetEqInt (s1,s2) -> NE.Subset(toset s1, toset s2)
     | E.InElem _      -> raise(NotAnIntExpression(E.atom_to_str a))
     | E.SubsetEqElem _-> raise(NotAnIntExpression(E.atom_to_str a))
+    | E.InPair _      -> raise(NotAnIntExpression(E.atom_to_str a))
+    | E.SubsetEqPair _-> raise(NotAnIntExpression(E.atom_to_str a))
     | E.Less(x,y)     -> NE.Less(toint x,toint y)
     | E.Greater(x,y)  -> NE.Greater(toint x,toint y)
     | E.LessEq(x,y)   -> NE.LessEq(toint x,toint y)
@@ -151,24 +154,6 @@ and atom_to_int_atom (a:E.atom) : NE.atom =
 and formula_to_int_formula (phi:E.formula) : NE.formula =
   Formula.formula_conv atom_to_int_atom phi
 
-(*
-and literal_to_int_literal (lit:E.literal) : NE.literal =
-  match lit with
-    F.Atom a    -> F.Atom (atom_to_int_atom a)
-  | F.NegAtom a -> F.NegAtom (atom_to_int_atom a)
-
-and formula_to_int_formula (phi:E.formula) : NE.formula =
-  let toint = formula_to_int_formula in
-    match phi with
-        F.Literal(l)   -> F.Literal(literal_to_int_literal l)
-      | F.True         -> F.True
-      | F.False        -> F.False
-      | F.And(x,y)     -> F.And(toint x,toint y)
-      | F.Or(x,y)      -> F.Or(toint x,toint y)
-      | F.Not(x)       -> F.Not(toint x)
-      | F.Implies(x,y) -> F.Implies(toint x,toint y)
-      | F.Iff(x,y)     -> F.Iff(toint x,toint y)
-*)
 
 
 (* SUPERTYPE CONVERTER: *)
