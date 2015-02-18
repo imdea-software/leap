@@ -41,10 +41,10 @@ and setpair =
     VarSetPair    of V.t
   | EmptySetPair
   | SinglPair     of pair
-  | UnionPair  of setpair * setpair
-  | IntrPair   of setpair * setpair
+  | UnionPair     of setpair * setpair
+  | IntrPair      of setpair * setpair
   | SetdiffPair   of setpair * setpair
-  | LowerPair  of setpair * integer
+  | LowerPair     of setpair * integer
 and term =
     IntV          of integer
   | PairV         of pair
@@ -63,8 +63,8 @@ and atom =
   | LessTid       of tid * tid
   | In            of integer * set
   | Subset        of set * set
-  | InSetPair     of pair * setpair
-  | SubsetSetPair of setpair * setpair
+  | InPair        of pair * setpair
+  | SubsetEqPair  of setpair * setpair
   | Eq            of eq
   | InEq          of diseq
   | TidEq         of tid * tid

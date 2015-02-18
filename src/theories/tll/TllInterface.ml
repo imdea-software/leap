@@ -31,6 +31,7 @@ let rec sort_to_tll_sort (s:E.sort) : TLL.sort =
   | E.Mem       -> TLL.Mem
   | E.Bool      -> TLL.Bool
   | E.Int       -> TLL.Int
+  | E.Pair      -> raise(UnsupportedSort(E.sort_to_str s))
   | E.Array     -> raise(UnsupportedSort(E.sort_to_str s))
   | E.AddrArray -> raise(UnsupportedSort(E.sort_to_str s))
   | E.TidArray  -> raise(UnsupportedSort(E.sort_to_str s))
@@ -93,11 +94,12 @@ and scope_to_tll_scope (p:E.V.procedure_name) : TLL.V.procedure_name =
 and tid_to_tll_tid (th:E.tid) : TLL.tid =
   match th with
     E.VarTh v        -> TLL.VarTh (variable_to_tll_var v)
-  | E.NoTid         -> TLL.NoTid
+  | E.NoTid          -> TLL.NoTid
   | E.CellLockId c   -> TLL.CellLockId (cell_to_tll_cell c)
   | E.CellLockIdAt _ -> raise(UnsupportedTllExpr(E.tid_to_str th))
-  | E.TidArrayRd _  -> raise(UnsupportedTllExpr(E.tid_to_str th))
-  | E.TidArrRd _    -> raise(UnsupportedTllExpr(E.tid_to_str th))
+  | E.TidArrayRd _   -> raise(UnsupportedTllExpr(E.tid_to_str th))
+  | E.TidArrRd _     -> raise(UnsupportedTllExpr(E.tid_to_str th))
+  | E.PairTid _      -> raise(UnsupportedTllExpr(E.tid_to_str th))
 
 
 and term_to_tll_term (t:E.term) : TLL.term =
@@ -111,9 +113,11 @@ and term_to_tll_term (t:E.term) : TLL.term =
   | E.SetThT st    -> TLL.SetThT (setth_to_tll_setth st)
   | E.SetIntT _    -> raise(UnsupportedTllExpr(E.term_to_str t))
   | E.SetElemT st  -> TLL.SetElemT (setelem_to_tll_setelem st)
+  | E.SetPairT _   -> raise(UnsupportedTllExpr(E.term_to_str t))
   | E.PathT p      -> TLL.PathT (path_to_tll_path p)
   | E.MemT m       -> TLL.MemT (mem_to_tll_mem m)
   | E.IntT i       -> TLL.IntT (int_to_tll_int i)
+  | E.PairT _      -> raise(UnsupportedTllExpr(E.term_to_str t))
   | E.AddrArrayT a -> raise(UnsupportedTllExpr(E.term_to_str t))
   | E.TidArrayT a  -> raise(UnsupportedTllExpr(E.term_to_str t))
   | E.ArrayT a     -> arrays_to_tll_term a
@@ -275,6 +279,7 @@ and int_to_tll_int (i:E.integer) : TLL.integer =
   | E.IntSetMax _    -> raise(UnsupportedTllExpr(E.integer_to_str i))
   | E.CellMax _      -> raise(UnsupportedTllExpr(E.integer_to_str i))
   | E.HavocLevel     -> raise(UnsupportedTllExpr(E.integer_to_str i))
+  | E.PairInt _      -> raise(UnsupportedTllExpr(E.integer_to_str i))
 
 
 and atom_to_tll_atom (a:E.atom) : TLL.atom =
@@ -301,6 +306,8 @@ and atom_to_tll_atom (a:E.atom) : TLL.atom =
   | E.SubsetEqInt _        -> raise(UnsupportedTllExpr(E.atom_to_str a))
   | E.InElem (e,s)         -> TLL.InElem (elem_to_tll_elem e, setelem s)
   | E.SubsetEqElem (s1,s2) -> TLL.SubsetEqElem (setelem s1, setelem s2)
+  | E.InPair _              -> raise(UnsupportedTllExpr(E.atom_to_str a))
+  | E.SubsetEqPair _        -> raise(UnsupportedTllExpr(E.atom_to_str a))
   | E.Less (i1,i2)         -> TLL.Less (int_to_tll_int i1, int_to_tll_int i2)
   | E.LessEq (i1,i2)       -> TLL.LessEq (int_to_tll_int i1, int_to_tll_int i2)
   | E.Greater (i1,i2)      -> TLL.Greater (int_to_tll_int i1, int_to_tll_int i2)
@@ -312,28 +319,9 @@ and atom_to_tll_atom (a:E.atom) : TLL.atom =
   | E.InEq (t1,t2)         -> TLL.InEq (term t1, term t2)
   | E.BoolVar v            -> TLL.BoolVar (variable_to_tll_var v)
   | E.BoolArrayRd _        -> raise(UnsupportedTllExpr(E.atom_to_str a))
-  | E.PC (pc,t,pr)         -> TLL.PC (pc, shared_to_tll_shared t, pr)  | 
-  E.PCUpdate (pc,t)      -> TLL.PCUpdate (pc, tid_to_tll_tid t)
+  | E.PC (pc,t,pr)         -> TLL.PC (pc, shared_to_tll_shared t, pr)
+  | E.PCUpdate (pc,t)      -> TLL.PCUpdate (pc, tid_to_tll_tid t)
   | E.PCRange (pc1,pc2,t,pr) -> TLL.PCRange (pc1, pc2, shared_to_tll_shared t, pr)
 
 and formula_to_tll_formula (phi:E.formula) : TLL.formula =
   Formula.formula_conv atom_to_tll_atom phi
-(*
-and literal_to_tll_literal (l:E.literal) : TLL.literal =
-  match l with
-    E.Atom a    -> TLL.Atom (atom_to_tll_atom a)
-  | E.NegAtom a -> TLL.NegAtom (atom_to_tll_atom a)
-
-
-and formula_to_tll_formula (f:E.formula) : TLL.formula =
-  let to_formula = formula_to_tll_formula in
-  match f with
-    E.Literal l       -> TLL.Literal (literal_to_tll_literal l)
-  | E.True            -> TLL.True
-  | E.False           -> TLL.False
-  | E.And (f1,f2)     -> TLL.And (to_formula f1, to_formula f2)
-  | E.Or (f1,f2)      -> TLL.Or (to_formula f1, to_formula f2)
-  | E.Not f1          -> TLL.Not (to_formula f1)
-  | E.Implies (f1,f2) -> TLL.Implies (to_formula f1, to_formula f2)
-  | E.Iff (f1,f2)     -> TLL.Iff (to_formula f1, to_formula f2)
-*)

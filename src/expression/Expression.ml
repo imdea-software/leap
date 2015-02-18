@@ -1206,15 +1206,15 @@ and setelem_to_str (expr:setelem) : string =
 and setpair_to_str (expr:setpair) : string =
   match expr with
     VarSetPair v          -> V.to_str v
-  | EmptySetPair          -> "EmptySetPair"
-  | SinglPair(e)          -> sprintf "SinglPair(%s)" (pair_to_str e)
-  | UnionPair(s_1,s_2)    -> sprintf "UnionPair(%s,%s)" (setpair_to_str s_1)
-                                                        (setpair_to_str s_2)
-  | IntrPair(s_1,s_2)     -> sprintf "IntrPair(%s,%s)" (setpair_to_str s_1)
-                                                       (setpair_to_str s_2)
-  | SetdiffPair(s_1,s_2)  -> sprintf "SetDiffPair(%s,%s)" (setpair_to_str s_1)
-                                                         (setpair_to_str s_2)
-  | LowerPair(s,i)        -> sprintf "pslower(%s,%s)" (setpair_to_str s)
+  | EmptySetPair          -> "spempty"
+  | SinglPair(e)          -> sprintf "spsingle(%s)" (pair_to_str e)
+  | UnionPair(s_1,s_2)    -> sprintf "spunion(%s,%s)" (setpair_to_str s_1)
+                                                      (setpair_to_str s_2)
+  | IntrPair(s_1,s_2)     -> sprintf "spintr(%s,%s)" (setpair_to_str s_1)
+                                                     (setpair_to_str s_2)
+  | SetdiffPair(s_1,s_2)  -> sprintf "spdiff(%s,%s)" (setpair_to_str s_1)
+                                                     (setpair_to_str s_2)
+  | LowerPair(s,i)        -> sprintf "splower(%s,%s)" (setpair_to_str s)
                                                       (integer_to_str i)
   | SetPairArrayRd(arr,t) -> sprintf "%s%s" (arrays_to_str arr)
                                             (param_tid_to_str t)

@@ -10,17 +10,21 @@ exception MalformedExpression of string
 (* Sort conversion *)
 let sort_to_pairs_sort (s:E.sort) : PE.sort =
   match s with
-    E.Int    -> PE.Int
-  | E.SetInt -> PE.Set
-  | E.Tid   -> PE.Tid
-  | _           -> raise(NotPairsSort(E.sort_to_str s))
+    E.Int     -> PE.Int
+  | E.SetInt  -> PE.Set
+  | E.Tid     -> PE.Tid
+  | E.SetPair -> PE.SetPair
+  | E.Pair    -> PE.Pair
+  | _         -> raise(NotPairsSort(E.sort_to_str s))
 
 
 let sort_to_expr_sort (s:PE.sort) : E.sort =
   match s with
-    PE.Int  -> E.Int
-  | PE.Set  -> E.SetInt
-  | PE.Tid -> E.Tid
+    PE.Int     -> E.Int
+  | PE.Pair    -> E.Pair
+  | PE.Set     -> E.SetInt
+  | PE.SetPair -> E.SetPair
+  | PE.Tid     -> E.Tid
 
 
 (* SUBTYPE CONVERTER: *)
@@ -82,8 +86,24 @@ and set_to_pairs_set (s:E.setint) : PE.set =
   | _ -> raise(NotAPairsExpression(E.setint_to_str s))
 
 
+and setpair_to_pairs_setpair (s:E.setpair) : PE.setpair =
+  let toint = integer_to_pairs_integer in
+  let tosetpair = setpair_to_pairs_setpair in
+  let topair = pair_to_pairs_pair in
+  match s with
+    E.VarSetPair v       -> PE.VarSetPair (variable_to_pairs_variable v)
+  | E.EmptySetPair       -> PE.EmptySetPair
+  | E.SinglPair p        -> PE.SinglPair (topair p)
+  | E.UnionPair(s1,s2)   -> PE.UnionPair (tosetpair s1, tosetpair s2)
+  | E.IntrPair(s1,s2)    -> PE.IntrPair (tosetpair s1, tosetpair s2)
+  | E.SetdiffPair(s1,s2) -> PE.SetdiffPair (tosetpair s1, tosetpair s2)
+  | E.LowerPair(s,i)     -> PE.LowerPair (tosetpair s, toint i)
+  | _ -> raise(NotAPairsExpression(E.setpair_to_str s))
+
+
 and integer_to_pairs_integer (t:E.integer) : PE.integer =
   let totid = tid_to_pairs_tid in
+  let topair = pair_to_pairs_pair in
   let toint = integer_to_pairs_integer in
   let toset = set_to_pairs_set in
     match t with
@@ -99,12 +119,27 @@ and integer_to_pairs_integer (t:E.integer) : PE.integer =
     | E.IntSetMax(s)    -> PE.SetMax (toset s)
     | E.CellMax(c)      -> raise(NotAPairsExpression(E.integer_to_str t))
     | E.HavocLevel      -> raise(NotAPairsExpression(E.integer_to_str t))
+    | E.PairInt p       -> PE.PairInt(topair p)
+
+
+and pair_to_pairs_pair (p:E.pair) : PE.pair =
+  let totid = tid_to_pairs_tid in
+  let toint = integer_to_pairs_integer in
+  let tosetpair = setpair_to_pairs_setpair in
+    match p with
+      E.VarPair v        -> PE.VarPair(variable_to_pairs_variable v)
+    | E.IntTidPair (i,t) -> PE.IntTidPair(toint i, totid t)
+    | E.SetPairMin ps    -> PE.SetPairMin(tosetpair ps)
+    | E.SetPairMax ps    -> PE.SetPairMax(tosetpair ps)
+    | E.PairArrayRd(a,i) -> raise(NotAPairsExpression(E.pair_to_str p))
 
 
 and atom_to_pairs_atom (a:E.atom) : PE.atom =
   let totid = tid_to_pairs_tid in
   let toint = integer_to_pairs_integer in
+  let topair = pair_to_pairs_pair in
   let toset = set_to_pairs_set in
+  let tosetpair = setpair_to_pairs_setpair in
     match a with
       E.Append _      -> raise(NotAPairsExpression(E.atom_to_str a))
     | E.Reach _       -> raise(NotAPairsExpression(E.atom_to_str a))
@@ -119,6 +154,8 @@ and atom_to_pairs_atom (a:E.atom) : PE.atom =
     | E.SubsetEqInt (s1,s2) -> PE.Subset(toset s1, toset s2)
     | E.InElem _      -> raise(NotAPairsExpression(E.atom_to_str a))
     | E.SubsetEqElem _-> raise(NotAPairsExpression(E.atom_to_str a))
+    | E.InPair (p,s)   -> PE.InPair (topair p, tosetpair s)
+    | E.SubsetEqPair (s1,s2) -> PE.SubsetEqPair(tosetpair s1, tosetpair s2)
     | E.Less(x,y)     -> PE.Less(toint x,toint y)
     | E.Greater(x,y)  -> PE.Greater(toint x,toint y)
     | E.LessEq(x,y)   -> PE.LessEq(toint x,toint y)
@@ -151,24 +188,6 @@ and atom_to_pairs_atom (a:E.atom) : PE.atom =
 and formula_to_pairs_formula (phi:E.formula) : PE.formula =
   Formula.formula_conv atom_to_pairs_atom phi
 
-(*
-and literal_to_pairs_literal (lit:E.literal) : PE.literal =
-  match lit with
-    F.Atom a    -> F.Atom (atom_to_pairs_atom a)
-  | F.NegAtom a -> F.NegAtom (atom_to_pairs_atom a)
-
-and formula_to_pairs_formula (phi:E.formula) : PE.formula =
-  let toint = formula_to_pairs_formula in
-    match phi with
-        F.Literal(l)   -> F.Literal(literal_to_pairs_literal l)
-      | F.True         -> F.True
-      | F.False        -> F.False
-      | F.And(x,y)     -> F.And(toint x,toint y)
-      | F.Or(x,y)      -> F.Or(toint x,toint y)
-      | F.Not(x)       -> F.Not(toint x)
-      | F.Implies(x,y) -> F.Implies(toint x,toint y)
-      | F.Iff(x,y)     -> F.Iff(toint x,toint y)
-*)
 
 
 (* SUPERTYPE CONVERTER: *)
@@ -193,30 +212,14 @@ and scope_to_expr_scope (p:PE.V.procedure_name) : E.V.procedure_name =
 
 and formula_to_expr_formula (phi:PE.formula) : E.formula =
   Formula.formula_conv atom_to_expr_atom phi
-(*
-and formula_to_expr_formula (phi:PE.formula) : E.formula =
-  let to_formula = formula_to_expr_formula in
-  match phi with
-      F.Literal(l)     -> F.Literal(literal_to_expr_literal l)
-    | F.True           -> F.True
-    | F.False          -> F.False
-    | F.And(x,y)       -> F.And    (to_formula x, to_formula y)
-    | F.Or(x,y)        -> F.Or     (to_formula x, to_formula y)
-    | F.Not(x)         -> F.Not    (to_formula x)
-    | F.Implies(x,y)   -> F.Implies(to_formula x, to_formula y)
-    | F.Iff(x,y)       -> F.Iff    (to_formula x, to_formula y)
-
-and literal_to_expr_literal (l:PE.literal) : E.literal =
-  match l with
-    PE.Atom a    -> E.Atom (atom_to_expr_atom a)
-  | PE.NegAtom a -> E.NegAtom (atom_to_expr_atom a)
-*)
 
 
 and atom_to_expr_atom (a:PE.atom) : E.atom =
   let from_tid = tid_to_expr_tid in
   let from_int = integer_to_expr_integer in
+  let from_pair = pair_to_expr_pair in
   let from_set = set_to_expr_set in
+  let from_setpair = setpair_to_expr_setpair in
   match a with
       PE.Less(x,y)           -> E.Less        (from_int x,  from_int y)
     | PE.Greater(x,y)        -> E.Greater     (from_int x, from_int y)
@@ -233,6 +236,8 @@ and atom_to_expr_atom (a:PE.atom) : E.atom =
                                                E.SetIntT(from_set y))
     | PE.In(i,s)             -> E.InInt       (from_int i, from_set s)
     | PE.Subset(x,y)         -> E.SubsetEqInt (from_set x, from_set y)
+    | PE.InPair(i,s)         -> E.InPair      (from_pair i, from_setpair s)
+    | PE.SubsetEqPair(x,y)   -> E.SubsetEqPair(from_setpair x, from_setpair y)
     | PE.TidEq(x,y)          -> E.Eq          (E.TidT (from_tid x), E.TidT (from_tid y))
     | PE.TidInEq(x,y)        -> E.InEq        (E.TidT (from_tid x), E.TidT (from_tid y))
     | PE.FunEq(x,y)          -> E.Eq          (E.ArrayT (funterm_to_array x),
@@ -247,21 +252,29 @@ and atom_to_expr_atom (a:PE.atom) : E.atom =
 
 
 and tid_to_expr_tid (th:PE.tid) : E.tid =
+  let from_pair = pair_to_expr_pair in
   match th with
   | PE.VarTh t -> E.VarTh (variable_to_expr_variable t)
   | PE.NoTid -> E.NoTid
+  | PE.PairTid p -> E.PairTid (from_pair p)
 
 
 and funterm_to_array (x:PE.fun_term) : E.arrays =
   let from_tid  = tid_to_expr_tid in
   let from_int  = integer_to_expr_integer in
+  let from_pair = pair_to_expr_pair in
   let from_set  = set_to_expr_set in
+  let from_setpair = setpair_to_expr_setpair in
   match x with
     PE.FunVar v                -> E.VarArray (variable_to_expr_variable v)
   | PE.FunUpd (f,th,PE.IntV i) -> E.ArrayUp (funterm_to_array f, from_tid th,
                                               E.Term (E.IntT (from_int i)))
   | PE.FunUpd (f,th,PE.SetV s) -> E.ArrayUp (funterm_to_array f, from_tid th,
                                               E.Term (E.SetIntT (from_set s)))
+  | PE.FunUpd (f,th,PE.PairV p) -> E.ArrayUp (funterm_to_array f, from_tid th,
+                                              E.Term (E.PairT (from_pair p)))
+  | PE.FunUpd (f,th,PE.SetPairV s) -> E.ArrayUp (funterm_to_array f, from_tid th,
+                                              E.Term (E.SetPairT (from_setpair s)))
 
 
 and set_to_expr_set (s:PE.set) : E.setint =
@@ -275,12 +288,27 @@ and set_to_expr_set (s:PE.set) : E.setint =
   | PE.Intr(s1,s2)  -> E.IntrInt (from_set s1, from_set s2)
   | PE.Diff(s1,s2)  -> E.SetdiffInt (from_set s1, from_set s2)
   | PE.Lower(s,i)   -> E.SetLower (from_set s, from_int i)
-    
+
+
+and setpair_to_expr_setpair (s:PE.setpair) : E.setpair =
+  let from_int = integer_to_expr_integer in
+  let from_pair = pair_to_expr_pair in
+  let from_setpair = setpair_to_expr_setpair in
+  match s with
+    PE.VarSetPair v       -> E.VarSetPair (variable_to_expr_variable v)
+  | PE.EmptySetPair       -> E.EmptySetPair
+  | PE.SinglPair p        -> E.SinglPair (from_pair p)
+  | PE.UnionPair(s1,s2)   -> E.UnionPair (from_setpair s1, from_setpair s2)
+  | PE.IntrPair(s1,s2)    -> E.IntrPair (from_setpair s1, from_setpair s2)
+  | PE.SetdiffPair(s1,s2) -> E.SetdiffPair (from_setpair s1, from_setpair s2)
+  | PE.LowerPair(s,i)     -> E.LowerPair (from_setpair s, from_int i)
+
 
 and integer_to_expr_integer (t:PE.integer) : E.integer =
   let from_tid = tid_to_expr_tid in
   let from_int = integer_to_expr_integer in
   let from_set = set_to_expr_set in
+  let from_pair = pair_to_expr_pair in
   match t with
       PE.Val(n)       -> E.IntVal(n)
     | PE.Var v        -> E.VarInt (variable_to_expr_variable v)
@@ -292,3 +320,15 @@ and integer_to_expr_integer (t:PE.integer) : E.integer =
     | PE.ArrayRd(a,i) -> E.IntArrayRd(a,from_tid i)
     | PE.SetMin(s)    -> E.IntSetMin(from_set s)
     | PE.SetMax(s)    -> E.IntSetMax(from_set s)
+    | PE.PairInt p    -> E.PairInt(from_pair p)
+
+
+and pair_to_expr_pair (p:PE.pair) : E.pair =
+  let from_tid = tid_to_expr_tid in
+  let from_int = integer_to_expr_integer in
+  let from_setpair = setpair_to_expr_setpair in
+  match p with
+      PE.VarPair v        -> E.VarPair (variable_to_expr_variable v)
+    | PE.IntTidPair (i,t) -> E.IntTidPair (from_int i, from_tid t)
+    | PE.SetPairMin ps    -> E.SetPairMin (from_setpair ps)
+    | PE.SetPairMax ps    -> E.SetPairMax (from_setpair ps)

@@ -23,6 +23,8 @@ type cond_op_t =
   | SubsetEqInt
   | InElem
   | SubsetEqElem
+  | InPair
+  | SubsetEqPair
 
 
 exception WrongType of Stm.term
@@ -330,6 +332,13 @@ let check_type_int t =
     | _           -> raise(WrongType t)
 
 
+let check_type_pair t =
+  match t with
+      Stm.PairT(i) -> i
+    | Stm.VarT v   -> check_sort_var v.Stm.id v.Stm.scope E.Pair v.Stm.nature; Stm.VarPair v
+    | _            -> raise(WrongType t)
+
+
 let check_type_set t =
   match t with
       Stm.SetT(s) -> s
@@ -383,6 +392,13 @@ let check_type_setelem t =
   match t with
       Stm.SetElemT(se) -> se
     | Stm.VarT v       -> check_sort_var v.Stm.id v.Stm.scope E.SetElem v.Stm.nature; Stm.VarSetElem v
+    | _                -> raise(WrongType t)
+
+
+let check_type_setpair t =
+  match t with
+      Stm.SetPairT(sp) -> sp
+    | Stm.VarT v       -> check_sort_var v.Stm.id v.Stm.scope E.SetPair v.Stm.nature; Stm.VarSetPair v
     | _                -> raise(WrongType t)
 
 
@@ -482,10 +498,12 @@ let check_and_get_sort (id:string) : E.sort =
             | E.SetTh     -> Stm.SetThT     (Stm.VarSetTh     modif_v)
             | E.SetInt    -> Stm.SetIntT    (Stm.VarSetInt    modif_v)
             | E.SetElem   -> Stm.SetElemT   (Stm.VarSetElem   modif_v)
+            | E.SetPair   -> Stm.SetPairT   (Stm.VarSetPair   modif_v)
             | E.Path      -> Stm.PathT      (Stm.VarPath      modif_v)
             | E.Mem       -> Stm.MemT       (Stm.VarMem       modif_v)
             | E.Bool      -> Stm.VarT       modif_v
             | E.Int       -> Stm.IntT       (Stm.VarInt       modif_v)
+            | E.Pair      -> Stm.PairT      (Stm.VarPair      modif_v)
             | E.Array     -> Stm.ArrayT     (Stm.VarArray     modif_v)
             | E.AddrArray -> Stm.AddrArrayT (Stm.VarAddrArray modif_v)
             | E.TidArray  -> Stm.TidArrayT  (Stm.VarTidArray  modif_v)
@@ -742,7 +760,14 @@ let global_decl_cond (k:E.var_nature)
     | InElem      -> ("inElem",      Stm.InElem      (Stm.VarElem var,
                                                       Stm.term_to_setelem t))
     | SubsetEqElem-> ("subseteqElem",Stm.SubsetEqElem(Stm.VarSetElem var,
-                                                      Stm.term_to_setelem t)) in
+                                                      Stm.term_to_setelem t))
+    | InPair      -> ("spin",        Stm.InPair      (Stm.VarPair var,
+                                                      Stm.term_to_setpair t))
+    | SubsetEqPair-> ("spsubseteq",  Stm.SubsetEqPair(Stm.VarSetPair var,
+                                                      Stm.term_to_setpair t)) in
+
+
+
   let cond = Stm.boolean_to_expr_formula (Formula.atom_to_formula expr_cond) in 
   let get_str_expr () = sprintf "%s %s %s %s" (E.sort_to_str s)
                                               (v_name)
@@ -833,6 +858,9 @@ let fix_conditional_jumps () : unit =
 %token ININT SUBSETEQINT
 %token INELEM SUBSETEQELEM
 %token SETINTMIN SETINTMAX
+%token INTOF TIDOF SETPAIRMIN SETPAIRMAX
+%token SETPAIREMPTY SETPAIRSINGLE SETPAIRUNION SETPAIRINTR SETPAIRDIFF
+%token SETPAIRIN SETPAIRSUBSETEQ
 %token THREAD
 %token OPEN_BRACKET CLOSE_BRACKET
 %token OPEN_SET CLOSE_SET
@@ -954,7 +982,9 @@ let fix_conditional_jumps () : unit =
 %type <Stm.setth> setth
 %type <Stm.setint> setint
 %type <Stm.setelem> setelem
+%type <Stm.setpair> setpair
 %type <Stm.integer> integer
+%type <Stm.pair> pair
 %type <Stm.atom> atom
 %type <Stm.eq> equals
 %type <Stm.diseq> disequals
@@ -1168,6 +1198,14 @@ global_decl :
   | kind IDENT IDENT SUBSETEQELEM term
     {
       global_decl_cond $1 (get_name $2) (get_name $3) SubsetEqElem $5
+    }
+  | kind IDENT SETPAIRIN OPEN_PAREN IDENT COMMA term CLOSE_PAREN
+    {
+      global_decl_cond $1 (get_name $2) (get_name $5) InPair $7
+    }
+  | kind IDENT SETPAIRSUBSETEQ OPEN_PAREN IDENT COMMA term CLOSE_PAREN
+    {
+      global_decl_cond $1 (get_name $2) (get_name $5) SubsetEqPair $7
     }
 
 
@@ -2473,6 +2511,22 @@ atom :
       let s = parser_check_type check_type_setelem $3 E.SetElem get_str_expr in
         Stm.SubsetEqElem(r,s)
     }
+  | SETPAIRIN OPEN_PAREN term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "spin(%s,%s)" (Stm.term_to_str $3)
+                                                  (Stm.term_to_str $5) in
+      let p = parser_check_type check_type_pair $3 E.Pair get_str_expr in
+      let s = parser_check_type check_type_setpair $5 E.SetPair get_str_expr in
+        Stm.InPair (p,s)
+    }
+  | SETPAIRSUBSETEQ OPEN_PAREN term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "spsubseteq(%s,%s)" (Stm.term_to_str $3)
+                                                        (Stm.term_to_str $5) in
+      let r = parser_check_type check_type_setpair $3 E.SetPair get_str_expr in
+      let s = parser_check_type check_type_setpair $5 E.SetPair get_str_expr in
+        Stm.SubsetEqPair(r,s)
+    }
   | term MATH_LESS term
     {
       let get_str_expr () = sprintf "%s < %s" (Stm.term_to_str $1)
@@ -2573,12 +2627,16 @@ term :
     { Stm.SetIntT($1) }
   | setelem
     { Stm.SetElemT($1) }
+  | setpair
+    { Stm.SetPairT($1) }
   | path
     { Stm.PathT($1) }
   | mem
     { Stm.MemT($1) }
   | integer
     { Stm.IntT($1) }
+  | pair
+    { Stm.PairT($1) }
   | arraylookup
     { $1 }
   | OPEN_PAREN term CLOSE_PAREN
@@ -2727,6 +2785,12 @@ thid :
   | ME
     {
       Stm.VarTh (Stm.build_var Sys.me_tid E.Tid Stm.GlobalScope)
+    }
+  | TIDOF OPEN_PAREN term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "tid_of(%s)" (Stm.term_to_str $3) in
+      let p = parser_check_type check_type_pair $3 E.Pair get_str_expr in
+        Stm.PairTid(p)
     }
 
 
@@ -3018,6 +3082,42 @@ setelem :
     }
 
 
+/* SETPAIR terms*/
+setpair :
+  | SETPAIREMPTY
+     { Stm.EmptySetPair }
+  | SETPAIRSINGLE OPEN_PAREN term CLOSE_PAREN
+    {
+      let get_str_expr() = sprintf "spsingle(%s)" (Stm.term_to_str $3) in
+      let p = parser_check_type check_type_pair $3 E.Pair get_str_expr in
+        Stm.SinglPair(p)
+    }
+  | SETPAIRUNION OPEN_PAREN term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr() = sprintf "spunion(%s,%s)" (Stm.term_to_str $3)
+                                                    (Stm.term_to_str $5) in
+      let s1 = parser_check_type check_type_setpair  $3 E.SetPair get_str_expr in
+      let s2 = parser_check_type check_type_setpair  $5 E.SetPair get_str_expr in
+        Stm.UnionPair(s1,s2)
+    }
+  | SETPAIRINTR OPEN_PAREN term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr() = sprintf "spintr(%s,%s)" (Stm.term_to_str $3)
+                                                   (Stm.term_to_str $5) in
+      let s1 = parser_check_type check_type_setpair  $3 E.SetPair get_str_expr in
+      let s2 = parser_check_type check_type_setpair  $5 E.SetPair get_str_expr in
+        Stm.IntrPair(s1,s2)
+    }
+  | SETPAIRDIFF OPEN_PAREN term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr() = sprintf "spdiff(%s,%s)" (Stm.term_to_str $3)
+                                                   (Stm.term_to_str $5) in
+      let s1 = parser_check_type check_type_setpair $3 E.SetPair get_str_expr in
+      let s2 = parser_check_type check_type_setpair $5 E.SetPair get_str_expr in
+        Stm.SetdiffPair(s1,s2)
+    }
+
+
 
 /* PATH terms */
 
@@ -3120,6 +3220,39 @@ integer :
     {
       Stm.HavocLevel
     }
+  | INTOF OPEN_PAREN term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "int_of(%s)" (Stm.term_to_str $3) in
+      let p  = parser_check_type check_type_pair $3 E.Pair get_str_expr
+      in
+        Stm.PairInt(p)
+    }
+
+
+/* PAIR terms*/
+
+pair :
+  | OPEN_PAREN term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "(%s,%s)" (Stm.term_to_str $2)
+                                              (Stm.term_to_str $4) in
+      let i  = parser_check_type check_type_int $2 E.Int get_str_expr in
+      let t  = parser_check_type check_type_thid $4 E.Tid get_str_expr in
+        Stm.IntTidPair(i,t)
+    }
+  | SETPAIRMIN OPEN_PAREN term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "psmin(%s)" (Stm.term_to_str $3) in
+      let s  = parser_check_type check_type_setpair $3 E.SetPair get_str_expr in
+        Stm.SetPairMin(s)
+    }
+  | SETPAIRMAX OPEN_PAREN term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "psmax(%s)" (Stm.term_to_str $3) in
+      let s  = parser_check_type check_type_setpair $3 E.SetPair get_str_expr in
+        Stm.SetPairMax(s)
+    }
+
 
 
 /* ARRAYLOOKUP terms */

@@ -28,10 +28,12 @@ let rec sort_to_tsl_sort (s:E.sort) : SL.sort =
   | E.SetTh     -> SL.SetTh
   | E.SetInt    -> raise(UnsupportedSort(E.sort_to_str s))
   | E.SetElem   -> SL.SetElem
+  | E.SetPair   -> raise(UnsupportedSort(E.sort_to_str s))
   | E.Path      -> SL.Path
   | E.Mem       -> SL.Mem
   | E.Bool      -> SL.Bool
   | E.Int       -> SL.Int
+  | E.Pair      -> raise(UnsupportedSort(E.sort_to_str s))
   | E.Array     -> raise(UnsupportedSort(E.sort_to_str s))
   | E.AddrArray -> SL.AddrArray
   | E.TidArray  -> SL.TidArray
@@ -94,6 +96,7 @@ and tid_to_tsl_tid (th:E.tid) : SL.tid =
   | E.TidArrayRd _      -> raise(UnsupportedTslExpr(E.tid_to_str th))
   | E.TidArrRd (tt,i)   -> SL.TidArrRd (tidarr_to_tsl_tidarr tt,
                                               int_to_tsl_int i)
+  | E.PairTid _         -> raise(UnsupportedTslExpr(E.tid_to_str th))
 
 and term_to_tsl_term (t:E.term) : SL.term =
 (*  LOG "Entering term_to_tsl_term..." LEVEL TRACE; *)
@@ -108,9 +111,11 @@ and term_to_tsl_term (t:E.term) : SL.term =
   | E.SetThT st     -> SL.SetThT (setth_to_tsl_setth st)
   | E.SetIntT _     -> raise(UnsupportedTslExpr(E.term_to_str t))
   | E.SetElemT st   -> SL.SetElemT (setelem_to_tsl_setelem st)
+  | E.SetPairT _    -> raise(UnsupportedTslExpr(E.term_to_str t))
   | E.PathT p       -> SL.PathT (path_to_tsl_path p)
   | E.MemT m        -> SL.MemT (mem_to_tsl_mem m)
   | E.IntT i        -> SL.IntT (int_to_tsl_int i)
+  | E.PairT _       -> raise(UnsupportedTslExpr(E.term_to_str t))
   | E.AddrArrayT aa -> SL.AddrArrayT (addrarr_to_tsl_addrarr aa)
   | E.TidArrayT tt  -> SL.TidArrayT (tidarr_to_tsl_tidarr tt)
   | E.ArrayT a      -> arrays_to_tsl_term a
@@ -305,6 +310,7 @@ and int_to_tsl_int (i:E.integer) : SL.integer =
   | E.IntSetMin _    -> raise(UnsupportedTslExpr(E.integer_to_str i))
   | E.IntSetMax _    -> raise(UnsupportedTslExpr(E.integer_to_str i))
   | E.HavocLevel     -> SL.HavocLevel
+  | E.PairInt _      -> raise(UnsupportedTslExpr(E.integer_to_str i))
 
 
 and addrarr_to_tsl_addrarr (arr:E.addrarr) : SL.addrarr =
@@ -359,6 +365,8 @@ and atom_to_tsl_atom (a:E.atom) : SL.atom =
   | E.SubsetEqInt _            -> raise(UnsupportedTslExpr(E.atom_to_str a))
   | E.InElem (e,s)             -> SL.InElem (elem_to_tsl_elem e, setelem s)
   | E.SubsetEqElem (s1,s2)     -> SL.SubsetEqElem (setelem s1, setelem s2)
+  | E.InPair _                 -> raise(UnsupportedTslExpr(E.atom_to_str a))
+  | E.SubsetEqPair _           -> raise(UnsupportedTslExpr(E.atom_to_str a))
   | E.Less (i1,i2)             -> SL.Less (integ i1, integ i2)
   | E.Greater (i1,i2)          -> SL.Greater (integ i1, integ i2)
   | E.LessEq (i1,i2)           -> SL.LessEq (integ i1, integ i2)
@@ -377,31 +385,6 @@ and atom_to_tsl_atom (a:E.atom) : SL.atom =
 and formula_to_tsl_formula (phi:E.formula) : SL.formula =
   Formula.formula_conv atom_to_tsl_atom phi
 
-(*
-and literal_to_tsl_literal (l:E.literal) : SL.literal =
-(*  LOG "Entering literal_to_tsl_literal..." LEVEL TRACE; *)
-(*  LOG "literal_to_tsl_literal(%s)" (E.literal_to_str l) LEVEL DEBUG; *)
-  match l with
-    E.Atom a    -> SL.Atom (atom_to_tsl_atom a)
-  | E.NegAtom a -> SL.NegAtom (atom_to_tsl_atom a)
-
-
-and formula_to_tsl_formula (f:E.formula) : SL.formula =
-(*  LOG "Entering formula_to_tsl_formula..." LEVEL TRACE; *)
-(*  LOG "formula_to_tsl_formula(%s)" (E.formula_to_str f) LEVEL DEBUG; *)
-  let to_formula = formula_to_tsl_formula in
-  match f with
-    E.Literal l       -> SL.Literal (literal_to_tsl_literal l)
-  | E.True            -> SL.True
-  | E.False           -> SL.False
-  | E.And (f1,f2)     -> SL.And (to_formula f1, to_formula f2)
-  | E.Or (f1,f2)      -> SL.Or (to_formula f1, to_formula f2)
-  | E.Not f1          -> SL.Not (to_formula f1)
-  | E.Implies (f1,f2) -> SL.Implies (to_formula f1, to_formula f2)
-  | E.Iff (f1,f2)     -> SL.Iff (to_formula f1, to_formula f2)
-*)
-
-
 
 
 (* TslExpression to Expression conversion *)
@@ -411,7 +394,7 @@ let rec tsl_sort_to_sort (s:SL.sort) : E.sort =
   match s with
   | SL.Set       -> E.Set
   | SL.Elem      -> E.Elem
-  | SL.Tid      -> E.Tid
+  | SL.Tid       -> E.Tid
   | SL.Addr      -> E.Addr
   | SL.Cell      -> E.Cell
   | SL.SetTh     -> E.SetTh

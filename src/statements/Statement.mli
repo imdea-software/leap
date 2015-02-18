@@ -341,6 +341,7 @@ val term_to_set     : term -> set
 val term_to_setth   : term -> setth
 val term_to_setint  : term -> setint
 val term_to_setelem : term -> setelem
+val term_to_setpair : term -> setpair
 
 val elem_to_expr_elem : elem -> Expression.elem
 val addr_to_expr_addr : addr -> Expression.addr

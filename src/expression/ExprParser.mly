@@ -23,6 +23,8 @@ type cond_op_t =
   | SubsetEqInt
   | InElem
   | SubsetEqElem
+  | InPair
+  | SubsetEqPair
 
 
 exception WrongType of E.term
@@ -130,6 +132,10 @@ let parser_check_compatibility_with_op_cond t1 t2 get_expr_str op =
                      parser_types_incompatible t1 t2 get_expr_str
   | SubsetEqElem-> if (s1 != E.SetElem || s2 != E.SetElem) then
                      parser_types_incompatible t1 t2 get_expr_str
+  | InPair      -> if (s1 != E.Pair || s2 != E.SetPair) then
+                     parser_types_incompatible t1 t2 get_expr_str
+  | SubsetEqPair-> if (s1 != E.SetPair || s2 != E.SetPair) then
+                     parser_types_incompatible t1 t2 get_expr_str
   | _           -> if (s1 != s2) then
                      parser_types_incompatible t1 t2 get_expr_str
 
@@ -186,6 +192,15 @@ let check_type_int t =
     | E.VarT v -> let var = E.V.set_sort v E.Int in
                        check_sort_var var;
                        E.VarInt var
+    | _           -> raise(WrongType t)
+
+
+let check_type_pair t =
+  match t with
+      E.PairT p -> p
+    | E.VarT v -> let var = E.V.set_sort v E.Pair in
+                       check_sort_var var;
+                       E.VarPair var
     | _           -> raise(WrongType t)
 
 
@@ -258,6 +273,15 @@ let check_type_setelem t =
     | E.VarT v      -> let var = E.V.set_sort v E.SetElem in
                             check_sort_var var;
                             E.VarSetElem var
+    | _                -> raise(WrongType t)
+
+
+let check_type_setpair t =
+  match t with
+      E.SetPairT sp -> sp
+    | E.VarT v      -> let var = E.V.set_sort v E.SetPair in
+                            check_sort_var var;
+                            E.VarSetPair var
     | _                -> raise(WrongType t)
 
 
@@ -340,16 +364,18 @@ let inject_sort (exp:E.term) : E.term =
                        match s with
                          E.Set       -> E.SetT       (E.VarSet       var)
                        | E.Elem      -> E.ElemT      (E.VarElem      var)
-                       | E.Tid      -> E.TidT      (E.VarTh        var)
+                       | E.Tid       -> E.TidT       (E.VarTh        var)
                        | E.Addr      -> E.AddrT      (E.VarAddr      var)
                        | E.Cell      -> E.CellT      (E.VarCell      var)
                        | E.SetTh     -> E.SetThT     (E.VarSetTh     var)
                        | E.SetInt    -> E.SetIntT    (E.VarSetInt    var)
                        | E.SetElem   -> E.SetElemT   (E.VarSetElem   var)
+                       | E.SetPair   -> E.SetPairT   (E.VarSetPair   var)
                        | E.Path      -> E.PathT      (E.VarPath      var)
                        | E.Mem       -> E.MemT       (E.VarMem       var)
                        | E.Bool      -> E.VarT       (var)
                        | E.Int       -> E.IntT       (E.VarInt       var)
+                       | E.Pair      -> E.PairT      (E.VarPair      var)
                        | E.Array     -> E.ArrayT     (E.VarArray     var)
                        | E.AddrArray -> E.AddrArrayT (E.VarAddrArray var)
                        | E.TidArray  -> E.TidArrayT  (E.VarTidArray  var)
@@ -491,6 +517,9 @@ let define_ident (proc_name:E.V.procedure_name)
 %token ININT SUBSETEQINT
 %token INELEM SUBSETEQELEM
 %token SETINTMIN SETINTMAX
+%token INTOF TIDOF SETPAIRMIN SETPAIRMAX
+%token SETPAIREMPTY SETPAIRSINGLE SETPAIRUNION SETPAIRINTR SETPAIRDIFF SETPAIRLOWER
+%token SETPAIRIN SETPAIRSUBSETEQ
 %token THREAD
 %token OPEN_BRACKET CLOSE_BRACKET
 %token OPEN_SET CLOSE_SET
@@ -587,7 +616,9 @@ let define_ident (proc_name:E.V.procedure_name)
 %type <E.setth> setth
 %type <E.setint> setint
 %type <E.setelem> setelem
+%type <E.setpair> setpair
 %type <E.integer> integer
+%type <E.pair> pair
 %type <E.literal> literal
 %type <E.eq> equals
 %type <E.diseq> disequals
@@ -1053,6 +1084,25 @@ literal :
       let s = parser_check_type check_type_setelem $3 E.SetElem get_str_expr in
         Formula.Atom (E.SubsetEqElem(r,s))
     }
+
+
+
+  | SETPAIRIN OPEN_PAREN term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "spin(%s,%s)" (E.term_to_str $3)
+                                                  (E.term_to_str $5) in
+      let p = parser_check_type check_type_pair $3 E.Pair get_str_expr in
+      let s = parser_check_type check_type_setpair $5 E.SetPair get_str_expr in
+        Formula.Atom (E.InPair (p,s))
+    }
+  | SETPAIRSUBSETEQ OPEN_PAREN term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "spsubseteq(%s,%s)" (E.term_to_str $3)
+                                                        (E.term_to_str $5) in
+      let r = parser_check_type check_type_setpair $3 E.SetPair get_str_expr in
+      let s = parser_check_type check_type_setpair $5 E.SetPair get_str_expr in
+        Formula.Atom (E.SubsetEqPair(r,s))
+    }
   | term MATH_LESS term
     {
       let get_str_expr () = sprintf "%s < %s" (E.term_to_str $1)
@@ -1178,12 +1228,16 @@ term :
     { E.SetIntT($1) }
   | setelem
     { E.SetElemT($1) }
+  | setpair
+    { E.SetPairT($1) }
   | path
     { E.PathT($1) }
   | mem
     { E.MemT($1) }
   | integer
     { E.IntT($1) }
+  | pair
+    { E.PairT($1) }
   | arrays
     { $1 }
   | addrarr
@@ -1359,6 +1413,13 @@ thid :
     }
   | SHARP
     { E.NoTid }
+  | TIDOF OPEN_PAREN term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "tid_of(%s)" (E.term_to_str $3) in
+      let p = parser_check_type check_type_pair $3 E.Pair get_str_expr in
+        E.PairTid(p)
+    }
+
 
 
 /* ADDR terms */
@@ -1587,6 +1648,50 @@ setint :
     }
 
 
+/* SETPAIR terms*/
+setpair :
+  | SETPAIREMPTY
+     { E.EmptySetPair }
+  | SETPAIRSINGLE OPEN_PAREN term CLOSE_PAREN
+    {
+      let get_str_expr() = sprintf "spsingle(%s)" (E.term_to_str $3) in
+      let p = parser_check_type check_type_pair $3 E.Pair get_str_expr in
+        E.SinglPair(p)
+    }
+  | SETPAIRUNION OPEN_PAREN term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr() = sprintf "spunion(%s,%s)" (E.term_to_str $3)
+                                                    (E.term_to_str $5) in
+      let s1 = parser_check_type check_type_setpair  $3 E.SetPair get_str_expr in
+      let s2 = parser_check_type check_type_setpair  $5 E.SetPair get_str_expr in
+        E.UnionPair(s1,s2)
+    }
+  | SETPAIRINTR OPEN_PAREN term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr() = sprintf "spintr(%s,%s)" (E.term_to_str $3)
+                                                   (E.term_to_str $5) in
+      let s1 = parser_check_type check_type_setpair  $3 E.SetPair get_str_expr in
+      let s2 = parser_check_type check_type_setpair  $5 E.SetPair get_str_expr in
+        E.IntrPair(s1,s2)
+    }
+  | SETPAIRDIFF OPEN_PAREN term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr() = sprintf "spdiff(%s,%s)" (E.term_to_str $3)
+                                                   (E.term_to_str $5) in
+      let s1 = parser_check_type check_type_setpair $3 E.SetPair get_str_expr in
+      let s2 = parser_check_type check_type_setpair $5 E.SetPair get_str_expr in
+        E.SetdiffPair(s1,s2)
+    }
+  | SETPAIRLOWER OPEN_PAREN term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr() = sprintf "splower(%s,%s)" (E.term_to_str $3)
+                                                    (E.term_to_str $5) in
+      let s = parser_check_type check_type_setpair $3 E.SetPair get_str_expr in
+      let i = parser_check_type check_type_int $5 E.Int get_str_expr in
+        E.LowerPair(s,i)
+    }
+
+
 /* SETELEM terms*/
 setelem :
   | EMPTYSETELEM
@@ -1747,7 +1852,38 @@ integer :
       in
         E.CellMax (c)
     }
+  | INTOF OPEN_PAREN term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "int_of(%s)" (E.term_to_str $3) in
+      let p  = parser_check_type check_type_pair $3 E.Pair get_str_expr
+      in
+        E.PairInt (p)
+    }
 
+
+/* PAIR terms*/
+
+pair :
+  | OPEN_PAREN term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "(%s,%s)" (E.term_to_str $2)
+                                              (E.term_to_str $4) in
+      let i  = parser_check_type check_type_int $2 E.Int get_str_expr in
+      let t  = parser_check_type check_type_thid $4 E.Tid get_str_expr in
+        E.IntTidPair(i,t)
+    }
+  | SETPAIRMIN OPEN_PAREN term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "psmin(%s)" (E.term_to_str $3) in
+      let s  = parser_check_type check_type_setpair $3 E.SetPair get_str_expr in
+        E.SetPairMin(s)
+    }
+  | SETPAIRMAX OPEN_PAREN term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "psmax(%s)" (E.term_to_str $3) in
+      let s  = parser_check_type check_type_setpair $3 E.SetPair get_str_expr in
+        E.SetPairMax(s)
+    }
 
 
 /* ARRAY terms */

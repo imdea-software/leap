@@ -71,8 +71,8 @@ and atom =
   | LessTid       of tid * tid
   | In            of integer * set
   | Subset        of set * set
-  | InSetPair     of pair * setpair
-  | SubsetSetPair of setpair * setpair
+  | InPair     of pair * setpair
+  | SubsetEqPair of setpair * setpair
   | Eq            of eq
   | InEq          of diseq
   | TidEq         of tid * tid
@@ -181,12 +181,12 @@ and generic_pair_setpair_to_str (srf:string -> string) (ps:setpair): string =
   let setpair_str_f = generic_pair_setpair_to_str srf in
   match ps with
     VarSetPair v         -> V.to_str v
-  | EmptySetPair         -> srf "emptysetpair"
-  | SinglPair i       -> srf ("{" ^ pair_str_f i ^ "}")
-  | UnionPair (s1,s2) -> srf ("psunion(" ^ setpair_str_f s1 ^ "," ^ setpair_str_f s2 ^ ")")
-  | IntrPair (s1,s2)  -> srf ("psintr(" ^ setpair_str_f s1 ^ ","  ^ setpair_str_f s2 ^ ")")
-  | SetdiffPair (s1,s2)  -> srf ("psdiff(" ^ setpair_str_f s1 ^ ","  ^ setpair_str_f s2 ^ ")")
-  | LowerPair (s,i)   -> srf ("pslower (" ^ setpair_str_f s ^ "," ^ int_str_f i ^ ")")
+  | EmptySetPair         -> srf "spempty"
+  | SinglPair i       -> srf ("spsingle(" ^ pair_str_f i ^ ")")
+  | UnionPair (s1,s2) -> srf ("spunion(" ^ setpair_str_f s1 ^ "," ^ setpair_str_f s2 ^ ")")
+  | IntrPair (s1,s2)  -> srf ("spintr(" ^ setpair_str_f s1 ^ ","  ^ setpair_str_f s2 ^ ")")
+  | SetdiffPair (s1,s2)  -> srf ("spdiff(" ^ setpair_str_f s1 ^ ","  ^ setpair_str_f s2 ^ ")")
+  | LowerPair (s,i)   -> srf ("splower (" ^ setpair_str_f s ^ "," ^ int_str_f i ^ ")")
 
 
 let generic_pair_term_to_str (srf:string -> string) (t:term) : string =
@@ -224,8 +224,8 @@ let rec generic_atom_to_str (srf:string -> string) (a:atom) : string =
   | InEq (t1,t2)            -> srf (term_str_f t1 ^ " != " ^ term_str_f t2)
   | In (i,s)                -> srf (int_str_f i   ^ " in " ^ set_str_f s)
   | Subset (s1,s2)          -> srf (set_str_f s1  ^ " subset " ^ set_str_f s2)
-  | InSetPair (p,ps)        -> srf ("psin(" ^ pair_str_f p ^ "," ^ setpair_str_f ps ^ ")")
-  | SubsetSetPair (ps1,ps2) -> srf ("pssubset(" ^ setpair_str_f ps1  ^ "," ^ setpair_str_f ps2 ^ ")")
+  | InPair (p,ps)        -> srf ("psin(" ^ pair_str_f p ^ "," ^ setpair_str_f ps ^ ")")
+  | SubsetEqPair (ps1,ps2) -> srf ("pssubset(" ^ setpair_str_f ps1  ^ "," ^ setpair_str_f ps2 ^ ")")
   | TidEq (th1,th2)         -> srf (tid_str_f th1   ^ " = "  ^
                                     tid_str_f th2)
   | TidInEq (th1,th2)       -> srf (tid_str_f th1   ^ " != " ^
@@ -397,8 +397,8 @@ and atom_is_linear a =
   | InEq(_,_)            -> false
   | In (_,_)             -> false
   | Subset (_,_)         -> false
-  | InSetPair (_,_)      -> false
-  | SubsetSetPair (_,_)  -> false
+  | InPair (_,_)      -> false
+  | SubsetEqPair (_,_)  -> false
   | TidEq(x,y)           -> false
   | TidInEq(x,y)         -> false
   | FunEq(x,y)           -> false
@@ -533,8 +533,8 @@ let generic_set_from_pair_atom (base:V.t -> 'a)
   | InEq (t1,t2)             -> union (term_f t1) (term_f t2)
   | In (i,s)                 -> union (int_f i) (set_f s)
   | Subset (s1,s2)           -> union (set_f s1) (set_f s2)
-  | InSetPair (p,ps)         -> union (pair_f p) (setpair_f ps)
-  | SubsetSetPair (ps1,ps2)  -> union (setpair_f ps1) (setpair_f ps2)
+  | InPair (p,ps)         -> union (pair_f p) (setpair_f ps)
+  | SubsetEqPair (ps1,ps2)  -> union (setpair_f ps1) (setpair_f ps2)
   | TidEq (th1,th2)          -> empty
   | TidInEq (th1,th2)        -> empty
   | FunEq (f1,f2)            -> union (fun_f f1) (fun_f f2)
@@ -811,8 +811,8 @@ let voc_from_pair_atom (a:atom) : ThreadSet.t =
   | InEq (t1,t2)            -> union (voc_term t1) (voc_term t2)
   | In (i,s)                -> union (voc_int i) (voc_set s)
   | Subset (s1,s2)          -> union (voc_set s1) (voc_set s2)
-  | InSetPair (p,ps)        -> union (voc_pair p) (voc_setpair ps)
-  | SubsetSetPair (ps1,ps2) -> union (voc_setpair ps1) (voc_setpair ps2)
+  | InPair (p,ps)           -> union (voc_pair p) (voc_setpair ps)
+  | SubsetEqPair (ps1,ps2)  -> union (voc_setpair ps1) (voc_setpair ps2)
   | TidEq (th1,th2)         -> thset_from [th1;th2]
   | TidInEq (th1,th2)       -> thset_from [th1;th2]
   | FunEq (f1,f2)           -> ThreadSet.empty

@@ -829,6 +829,16 @@ let term_to_setelem (t:term) : setelem =
                   raise(Invalid_argument)
 
 
+let term_to_setpair (t:term) : setpair =
+  match t with
+    SetPairT s -> s
+  | _          -> Interface.Err.msg "Not a set of pairs term" $
+                    sprintf "Impossible to convert to set of pairs \
+                             a non set of pairs term. A set of \
+                             pairs term was expected, but \"%s\" \
+                             was received." (term_to_str_aux true t);
+                  raise(Invalid_argument)
+
 
 let variable_to_expr_var (v:variable) :E.V.t =
   let new_scope = match v.scope with
