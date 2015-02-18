@@ -156,6 +156,23 @@ let print_list (print_f:'a -> string) (xs:'a list) : string =
                str ^ ", " ^ (print_f elem)
              ) (print_f y) ys
 
+let used_mem () : int =
+  let stat = Gc.stat() in
+  let words = stat.Gc.minor_words +.
+              stat.Gc.major_words -.
+              stat.Gc.promoted_words in
+  (int_of_float words) * Sys.word_size
+
+
+let report_mem () : string =
+  let size = used_mem () in
+  if size < 1024 then
+    (string_of_int size) ^ " B"
+  else if 1024 <= size && size < 1048576 then
+    (string_of_int (size/1024)) ^ " KB"
+  else
+    (string_of_int (size/1048576)) ^ " MB"
+
 
 let _debug_ = ref false
 

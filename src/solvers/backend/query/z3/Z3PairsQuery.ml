@@ -29,11 +29,13 @@ struct
 
 
   (* Sort names *)
-  let int_s : string = "Int"
-  let tid_s : string = "Tid"
-  let set_s : string = "Set"
-  let bool_s : string = "Bool"
-  let loc_s : string = "Loc"
+  let int_s     : string = "Int"
+  let pair_s    : string = "Pair"
+  let tid_s     : string = "Tid"
+  let set_s     : string = "Set"
+  let setpair_s : string = "SetPair"
+  let bool_s    : string = "Bool"
+  let loc_s     : string = "Loc"
 
 
   (* Information storage *)
@@ -110,16 +112,20 @@ struct
 
   and var_sort_to_str (v:PE.V.t) : string =
     match (PE.V.sort v) with
-    | PE.Int  -> int_s
-    | PE.Set  -> set_s
-    | PE.Tid -> tid_s
+    | PE.Int     -> int_s
+    | PE.Pair    -> pair_s
+    | PE.Set     -> set_s
+    | PE.SetPair -> setpair_s
+    | PE.Tid     -> tid_s
 
 
   and var_sort_to_gmsort_str (v:PE.V.t) : string =
     match (PE.V.sort v) with
-      PE.Int  -> GM.int_s
-    | PE.Set  -> GM.set_s
-    | PE.Tid  -> GM.tid_s
+      PE.Int     -> GM.int_s
+    | PE.Pair    -> GM.pair_s
+    | PE.Set     -> GM.set_s
+    | PE.SetPair -> GM.setpair_s
+    | PE.Tid     -> GM.tid_s
 
 
   and var_to_str (v:PE.V.t) : string =
@@ -132,8 +138,10 @@ struct
 
 
   and tid_to_str (t:PE.tid) : string =
+    let pair_str = z3_string_of_pair in
     match t with
     | PE.VarTh v       -> variable_to_str v
+    | PE.PairTid p     -> "(tid_of " ^pair_str p^ ")"
     | PE.NoTid         -> "NoTid"
 
 
@@ -143,14 +151,150 @@ struct
     | PE.V.Local t -> PE.V.to_str t
 
 
-  let tid_variable_to_str (th:PE.tid) : string =
+  and fun_to_str (f:PE.fun_term) : string =
+    match f with
+      PE.FunVar v ->
+        if (PE.V.parameter v) = PE.V.Shared then
+          variable_to_str v
+        else
+          let v_str  = variable_to_str (PE.V.unparam v) in
+          let th_str = shared_or_local_to_str (PE.V.parameter v)
+          in
+            Printf.sprintf "(%s %s)" v_str th_str
+    | PE.FunUpd (f,th,i) ->
+        let f_str = fun_to_str f in
+        let th_str = tid_to_str th in
+        let i_str = z3_string_of_term i
+        in
+          Printf.sprintf "(store %s %s %s)" f_str th_str i_str
+
+
+  and z3_string_of_integer (t:PE.integer) : string =
+    let constanttostr t =
+      match t with
+          PE.Val(n) -> string_of_int n
+        | _ -> raise(NotSupportedInZ3(PE.integer_to_str t)) in
+    let tostr = z3_string_of_integer in
+      match t with
+        PE.Val(n)       -> " " ^ string_of_int n
+      | PE.Var(v)       -> variable_invocation_to_str v
+      | PE.Neg(x)       -> " -" ^  (constanttostr x)
+      | PE.Add(x,y)     -> " (+ " ^ (tostr x) ^ (tostr y) ^ ")"
+      | PE.Sub(x,y)     -> " (- " ^ (tostr x) ^ (tostr y) ^ ")"
+      | PE.Mul(x,y)     -> " (* " ^ (tostr x) ^ (tostr y) ^ ")"
+      | PE.Div(x,y)     -> " (/ " ^ (tostr x) ^ (tostr y) ^ ")"
+      | PE.ArrayRd(_,_) -> raise(NotSupportedInZ3(PE.integer_to_str t))
+      | PE.SetMin(s)    -> " (setmin " ^ z3_string_of_set s ^ ")"
+      | PE.SetMax(s)    -> " (setmax " ^ z3_string_of_set s ^ ")"
+      | PE.PairInt(p)   -> " (int_of " ^ z3_string_of_pair p ^ ")"
+
+
+  and z3_string_of_pair (p:PE.pair) : string =
+    let z3_int = z3_string_of_integer in
+    let z3_setpair = z3_string_of_setpair in
+    match p with
+      PE.VarPair (v)      -> variable_invocation_to_str v
+    | PE.IntTidPair (i,t) -> "(pair " ^ z3_int i^ " " ^ tid_to_str t^ ")"
+    | PE.SetPairMin (ps)  -> "(spmin " ^ z3_setpair ps ^ ")"
+    | PE.SetPairMax (ps)  -> "(spmax " ^ z3_setpair ps ^ ")"
+
+
+  and z3_string_of_set (s:PE.set) : string =
+    let z3_int = z3_string_of_integer in
+    let z3_set = z3_string_of_set in
+    match s with
+      PE.VarSet (v)   -> variable_invocation_to_str v
+    | PE.EmptySet     -> " emp"
+    | PE.Singl i      -> Printf.sprintf "(singleton %s)" (z3_int i)
+    | PE.Union(s1,s2) -> Printf.sprintf "(unionset %s %s)" (z3_set s1) (z3_set s2)
+    | PE.Intr(s1,s2)  -> Printf.sprintf "(intersection %s %s)" (z3_set s1) (z3_set s2)
+    | PE.Diff(s1,s2)  -> Printf.sprintf "(setdiff %s %s)" (z3_set s1) (z3_set s2)
+    | PE.Lower(s,i)   -> Printf.sprintf "(subsetLowerThan %s %s)" (z3_set s) (z3_int i)
+
+
+  and z3_string_of_setpair (s:PE.setpair) : string =
+    let z3_int = z3_string_of_integer in
+    let z3_pair = z3_string_of_pair in
+    let z3_setpair = z3_string_of_setpair in
+    match s with
+      PE.VarSetPair (v)     -> variable_invocation_to_str v
+    | PE.EmptySetPair       -> " spempty"
+    | PE.SinglPair p        -> Printf.sprintf "(spsingle %s)" (z3_pair p)
+    | PE.UnionPair(s1,s2)   -> Printf.sprintf "(spunion %s %s)" (z3_setpair s1)
+                                                                (z3_setpair s2)
+    | PE.IntrPair(s1,s2)    -> Printf.sprintf "(spintr %s %s)" (z3_setpair s1)
+                                                               (z3_setpair s2)
+    | PE.SetdiffPair(s1,s2) -> Printf.sprintf "(spdiff %s %s)" (z3_setpair s1)
+                                                               (z3_setpair s2)
+    | PE.LowerPair(s,i)     -> Printf.sprintf "(splower %s %s)" (z3_setpair s)
+                                                                (z3_int i)
+
+
+  and z3_string_of_term (t:PE.term) : string =
+    match t with
+      PE.IntV i -> z3_string_of_integer i
+    | PE.PairV p -> z3_string_of_pair p
+    | PE.SetV s -> z3_string_of_set s
+    | PE.SetPairV s -> z3_string_of_setpair s
+
+
+  and z3_string_of_atom a =
+    let int_tostr = z3_string_of_integer in
+    let pair_tostr = z3_string_of_pair in
+    let set_tostr = z3_string_of_set in
+    let setpair_tostr = z3_string_of_setpair in
+    let term_tostr = z3_string_of_term in
+      match a with
+        PE.Less(x,y)      -> " (< "  ^ (int_tostr x) ^ (int_tostr y) ^ ")"
+      | PE.Greater(x,y)   -> " (> "  ^ (int_tostr x) ^ (int_tostr y) ^ ")"
+      | PE.LessEq(x,y)    -> " (<= " ^ (int_tostr x) ^ (int_tostr y) ^ ")"
+      | PE.GreaterEq(x,y) -> " (>= " ^ (int_tostr x) ^ (int_tostr y) ^ ")"
+      | PE.LessTid(x,y)   -> " (tid order support for z3 not added yet )"
+      | PE.Eq(x,y)        -> " (= "  ^ (term_tostr x) ^ (term_tostr y) ^ ")"
+      | PE.InEq(x,y)      -> " (not (=" ^ (term_tostr x) ^ (term_tostr y) ^ "))"
+      | PE.In(i,s)        -> " (select " ^ set_tostr s ^ " " ^ int_tostr i ^ ")"
+      | PE.Subset(s1,s2)  -> " (subseteq " ^ set_tostr s1 ^ " " ^ set_tostr s2 ^ ")"
+      | PE.InPair(i,s)        -> " (" ^ setpair_tostr s ^ " " ^ pair_tostr i ^ ")"
+      | PE.SubsetEqPair(s1,s2)  -> " (spsubseteq " ^ setpair_tostr s1 ^ " " ^ setpair_tostr s2 ^ ")"
+      | PE.TidEq(x,y)     -> " (= "  ^ (tid_to_str x) ^ " " ^
+                                            (tid_to_str y) ^ ")"
+      | PE.TidInEq(x,y)   -> " (not (= " ^ (tid_to_str x) ^ " " ^
+                                           (tid_to_str y) ^ "))"
+      | PE.FunEq(x,y)     -> " (= "  ^ (fun_to_str x) ^ " " ^
+                                            (fun_to_str y) ^ ")"
+      | PE.FunInEq(x,y)   -> " (not (= " ^ (fun_to_str x) ^ " " ^
+                                           (fun_to_str y) ^ "))"
+      | PE.PC (i,th,pr)   -> " " ^ z3_string_of_pos (i,th,pr) ^ " "
+      | PE.PCUpdate(i,th) -> " " ^ z3_string_of_posupd (i,th) ^ " "
+      | PE.PCRange (i,j,th,pr) -> " " ^ z3_string_of_posrange (i,j,th,pr) ^ " "
+
+  and string_of_literal l =
+    match l with
+      F.Atom a    -> z3_string_of_atom a
+    | F.NegAtom a -> "(not "^ z3_string_of_atom a ^")"
+
+  and string_of_formula  phi =
+    let tostr = string_of_formula in
+      match phi with
+        F.Literal(l)   -> string_of_literal l
+      | F.True         -> " true "
+      | F.False        -> " false "
+      | F.And(a,b)     -> " (and " ^ (tostr a) ^ (tostr b) ^ ")"
+      | F.Or(a,b)      -> " (or "  ^ (tostr a) ^ (tostr b) ^ ")"
+      | F.Not(a)       -> " (not " ^ (tostr a) ^ ")"
+      | F.Implies(a,b) -> " (=> "  ^ (tostr a) ^ (tostr b) ^ ")"
+      | F.Iff(a,b)     -> " (= "   ^ (tostr a) ^ (tostr b) ^ ")"
+
+
+
+  and tid_variable_to_str (th:PE.tid) : string =
     let t_str = tid_to_str th in
     let _ = GM.sm_decl_const sort_map t_str GM.tid_s
     in
       Printf.sprintf "(declare-const %s %s)\n" t_str tid_s
 
 
-  let local_var_to_str (v:PE.V.t) : string =
+  and local_var_to_str (v:PE.V.t) : string =
     let v_str = variable_to_str v in
     let v_sort = var_sort_to_str v in
     let gm_v_sort = var_sort_to_gmsort_str v in
@@ -159,7 +303,7 @@ struct
       Printf.sprintf "(declare-const %s (Array %s %s))\n" v_str tid_s v_sort
 
 
-  let z3_string_of_pos (pc:(int * PE.V.shared_or_local * bool)) : string =
+  and z3_string_of_pos (pc:(int * PE.V.shared_or_local * bool)) : string =
     let (i, th, pr) = pc in
     let pc_str = if pr then pc_prime_name else Conf.pc_name in
     let th_str = shared_or_local_to_str th
@@ -167,7 +311,7 @@ struct
       Printf.sprintf "(= (%s %s) %i)" pc_str th_str i
 
 
-  let z3_string_of_posrange (pc:(int * int * PE.V.shared_or_local * bool)) : string =
+  and z3_string_of_posrange (pc:(int * int * PE.V.shared_or_local * bool)) : string =
     let (i, j, th, pr) = pc in
     let pc_str = if pr then pc_prime_name else Conf.pc_name in
     let th_str = shared_or_local_to_str th
@@ -176,14 +320,14 @@ struct
           i pc_str th_str pc_str th_str j
 
 
-  let z3_string_of_posupd (pc:(int * PE.tid)) : string =
+  and z3_string_of_posupd (pc:(int * PE.tid)) : string =
     let (i, th) = pc
     in
       Printf.sprintf "(= %s (store %s %s %i))" pc_prime_name Conf.pc_name
                                            (tid_to_str th) i
 
 
-  let variable_invocation_to_str (v:PE.V.t) : string =
+  and variable_invocation_to_str (v:PE.V.t) : string =
     let th_str = shared_or_local_to_str (PE.V.parameter v) in
     let p_str  = procedure_name_to_append (PE.V.scope v) in
     let pr_str = if (PE.V.is_primed v) then "_prime" else ""
@@ -196,15 +340,6 @@ struct
   (*    | PE.V.Local _ -> Printf.sprintf " %s%s%s_%s" p_str (PE.V.id v) pr_str th_str *)
 
 
-
-  (***** Not sure =S ******
-      match th with
-        None -> Printf.sprintf " %s%s%s%s" p_str id th_str pr_str
-      | Some t -> if E.is_tid_val t then
-                    Printf.sprintf " %s%s%s_%s" p_str id pr_str th_str
-                  else
-                    Printf.sprintf " (%s%s%s %s)" p_str id pr_str th_str
-   ************************)
 
 
   (************************** Support for sets **************************)
@@ -434,110 +569,12 @@ struct
   (************************ Preamble definitions ************************)
 
 
-  let rec fun_to_str (f:PE.fun_term) : string =
-    match f with
-      PE.FunVar v ->
-        if (PE.V.parameter v) = PE.V.Shared then
-          variable_to_str v
-        else
-          let v_str  = variable_to_str (PE.V.unparam v) in
-          let th_str = shared_or_local_to_str (PE.V.parameter v)
-          in
-            Printf.sprintf "(%s %s)" v_str th_str
-    | PE.FunUpd (f,th,i) ->
-        let f_str = fun_to_str f in
-        let th_str = tid_to_str th in
-        let i_str = z3_string_of_term i
-        in
-          Printf.sprintf "(store %s %s %s)" f_str th_str i_str
-
-
-  and z3_string_of_integer (t:PE.integer) : string =
-    let constanttostr t =
-      match t with
-          PE.Val(n) -> string_of_int n
-        | _ -> raise(NotSupportedInZ3(PE.integer_to_str t)) in
-    let tostr = z3_string_of_integer in
-      match t with
-        PE.Val(n)       -> " " ^ string_of_int n
-      | PE.Var(v)       -> variable_invocation_to_str v
-      | PE.Neg(x)       -> " -" ^  (constanttostr x)
-      | PE.Add(x,y)     -> " (+ " ^ (tostr x) ^ (tostr y) ^ ")"
-      | PE.Sub(x,y)     -> " (- " ^ (tostr x) ^ (tostr y) ^ ")"
-      | PE.Mul(x,y)     -> " (* " ^ (tostr x) ^ (tostr y) ^ ")"
-      | PE.Div(x,y)     -> " (/ " ^ (tostr x) ^ (tostr y) ^ ")"
-      | PE.ArrayRd(_,_) -> raise(NotSupportedInZ3(PE.integer_to_str t))
-      | PE.SetMin(s)    -> " (setmin " ^ z3_string_of_set s ^ ")"
-      | PE.SetMax(s)    -> " (setmax " ^ z3_string_of_set s ^ ")"
-
-  and z3_string_of_set (s:PE.set) : string =
-    let z3_int = z3_string_of_integer in
-    let z3_set = z3_string_of_set in
-    match s with
-      PE.VarSet (v)   -> variable_invocation_to_str v
-    | PE.EmptySet     -> " emp"
-    | PE.Singl i      -> Printf.sprintf "(singleton %s)" (z3_int i)
-    | PE.Union(s1,s2) -> Printf.sprintf "(unionset %s %s)" (z3_set s1) (z3_set s2)
-    | PE.Intr(s1,s2)  -> Printf.sprintf "(intersection %s %s)" (z3_set s1) (z3_set s2)
-    | PE.Diff(s1,s2)  -> Printf.sprintf "(setdiff %s %s)" (z3_set s1) (z3_set s2)
-    | PE.Lower(s,i)   -> Printf.sprintf "(subsetLowerThan %s %s)" (z3_set s) (z3_int i)
-
-
-  and z3_string_of_term (t:PE.term) : string =
-    match t with
-      PE.IntV i -> z3_string_of_integer i
-    | PE.SetV s -> z3_string_of_set s
-
-
-  and z3_string_of_atom a =
-    let pairs_tostr = z3_string_of_integer in
-    let set_tostr = z3_string_of_set in
-    let term_tostr = z3_string_of_term in
-      match a with
-        PE.Less(x,y)      -> " (< "  ^ (pairs_tostr x) ^ (pairs_tostr y) ^ ")"
-      | PE.Greater(x,y)   -> " (> "  ^ (pairs_tostr x) ^ (pairs_tostr y) ^ ")"
-      | PE.LessEq(x,y)    -> " (<= " ^ (pairs_tostr x) ^ (pairs_tostr y) ^ ")"
-      | PE.GreaterEq(x,y) -> " (>= " ^ (pairs_tostr x) ^ (pairs_tostr y) ^ ")"
-      | PE.LessTid(x,y)   -> " (tid order support for z3 not added yet )"
-      | PE.Eq(x,y)        -> " (= "  ^ (term_tostr x) ^ (term_tostr y) ^ ")"
-      | PE.InEq(x,y)      -> " (not (=" ^ (term_tostr x) ^ (term_tostr y) ^ "))"
-      | PE.In(i,s)        -> " (select " ^ set_tostr s ^ " " ^ pairs_tostr i ^ ")"
-      | PE.Subset(s1,s2)  -> " (subseteq " ^ set_tostr s1 ^ " " ^ set_tostr s2 ^ ")"
-      | PE.TidEq(x,y)     -> " (= "  ^ (tid_to_str x) ^ " " ^
-                                            (tid_to_str y) ^ ")"
-      | PE.TidInEq(x,y)   -> " (not (= " ^ (tid_to_str x) ^ " " ^
-                                           (tid_to_str y) ^ "))"
-      | PE.FunEq(x,y)     -> " (= "  ^ (fun_to_str x) ^ " " ^
-                                            (fun_to_str y) ^ ")"
-      | PE.FunInEq(x,y)   -> " (not (= " ^ (fun_to_str x) ^ " " ^
-                                           (fun_to_str y) ^ "))"
-      | PE.PC (i,th,pr)   -> " " ^ z3_string_of_pos (i,th,pr) ^ " "
-      | PE.PCUpdate(i,th) -> " " ^ z3_string_of_posupd (i,th) ^ " "
-      | PE.PCRange (i,j,th,pr) -> " " ^ z3_string_of_posrange (i,j,th,pr) ^ " "
-
-  and string_of_literal l =
-    match l with
-      F.Atom a    -> z3_string_of_atom a
-    | F.NegAtom a -> "(not "^ z3_string_of_atom a ^")"
-
-  and string_of_formula  phi =
-    let tostr = string_of_formula in
-      match phi with
-        F.Literal(l)   -> string_of_literal l
-      | F.True         -> " true "
-      | F.False        -> " false "
-      | F.And(a,b)     -> " (and " ^ (tostr a) ^ (tostr b) ^ ")"
-      | F.Or(a,b)      -> " (or "  ^ (tostr a) ^ (tostr b) ^ ")"
-      | F.Not(a)       -> " (not " ^ (tostr a) ^ ")"
-      | F.Implies(a,b) -> " (=> "  ^ (tostr a) ^ (tostr b) ^ ")"
-      | F.Iff(a,b)     -> " (= "   ^ (tostr a) ^ (tostr b) ^ ")"
-
-
   let tid_decl_to_str (voc:PE.tid list) : string =
     let id_list = List.map (fun t ->
                     match t with
                     | PE.VarTh v -> (PE.V.id v)
                     | PE.NoTid  -> "NoThread"
+                    | PE.PairTid p -> "(tid_of " ^ z3_string_of_pair p ^ ")"
                   ) voc in
     "(declare-datatypes () (( " ^tid_s^ " " ^(String.concat " " id_list)^ ")))\n"
 

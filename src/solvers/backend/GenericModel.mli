@@ -21,6 +21,7 @@ type t
 (* sort names *)
 val bool_s    : string
 val int_s     : string
+val pair_s    : string
 val addr_s    : string
 val set_s     : string
 val elem_s    : string
@@ -28,6 +29,7 @@ val tid_s     : string
 val cell_s    : string
 val setth_s   : string
 val setelem_s : string
+val setpair_s : string
 val path_s    : string
 val level_s   : string
 val heap_s    : string

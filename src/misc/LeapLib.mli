@@ -63,6 +63,10 @@ val concat_map     : string -> ('a -> string) -> 'a list -> string
 (** [print_list f l] prints the list [l] after applying [f] to each argument. *)
 val print_list     : ('a -> string) -> 'a list -> string
 
+(* Returns the used memory expressed in bytes *)
+val used_mem       : unit -> int
+val report_mem     : unit -> string
+
 val _debug_ : bool ref
 
 module Option :

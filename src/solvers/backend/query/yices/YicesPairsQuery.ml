@@ -30,8 +30,10 @@ struct
 
   (* Sort names *)
   let int_s : string = "int"
+  let pair_s : string = "pair"
   let thid_s : string = "thid"
   let set_s : string = "set"
+  let setpair_s : string = "setpair"
   let bool_s : string = "bool"
   let loc_s : string = "loc"
 
@@ -110,16 +112,20 @@ struct
 
   and var_sort_to_str (v:PE.V.t) : string =
     match (PE.V.sort v) with
-    | PE.Int  -> int_s
-    | PE.Set  -> set_s
-    | PE.Tid -> thid_s
+    | PE.Int     -> int_s
+    | PE.Pair    -> pair_s
+    | PE.Set     -> set_s
+    | PE.SetPair -> setpair_s
+    | PE.Tid     -> thid_s
 
 
   and var_sort_to_gmsort_str (v:PE.V.t) : string =
     match (PE.V.sort v) with
-      PE.Int  -> GM.int_s
-    | PE.Set  -> GM.set_s
-    | PE.Tid -> GM.tid_s
+      PE.Int     -> GM.int_s
+    | PE.Pair    -> GM.pair_s
+    | PE.Set     -> GM.set_s
+    | PE.SetPair -> GM.setpair_s
+    | PE.Tid     -> GM.tid_s
 
 
   and var_to_str (v:PE.V.t) : string =
@@ -132,9 +138,11 @@ struct
 
 
   and tid_to_str (t:PE.tid) : string =
+    let pair_str = yices_string_of_pair in
     match t with
     | PE.VarTh v       -> variable_to_str v
     | PE.NoTid         -> "NoTid"
+    | PE.PairTid p     -> "(tid_of " ^pair_str p^ ")"
 
 
   and shared_or_local_to_str (th:PE.V.shared_or_local) : string =
@@ -143,14 +151,149 @@ struct
     | PE.V.Local t -> PE.V.to_str t
 
 
-  let tid_variable_to_str (th:PE.tid) : string =
+  and fun_to_str (f:PE.fun_term) : string =
+    match f with
+      PE.FunVar v ->
+        if (PE.V.parameter v) = PE.V.Shared then
+          variable_to_str v
+        else
+          let v_str  = variable_to_str (PE.V.unparam v) in
+          let th_str = shared_or_local_to_str (PE.V.parameter v)
+          in
+            Printf.sprintf "(%s %s)" v_str th_str
+    | PE.FunUpd (f,th,i) ->
+        let f_str = fun_to_str f in
+        let th_str = tid_to_str th in
+        let i_str = yices_string_of_term i
+        in
+          Printf.sprintf "(update %s (%s) %s)" f_str th_str i_str
+
+
+  and yices_string_of_integer (t:PE.integer) : string =
+    let constanttostr t =
+      match t with
+          PE.Val(n) -> string_of_int n
+        | _ -> raise(NotSupportedInYices(PE.integer_to_str t)) in
+    let tostr = yices_string_of_integer in
+      match t with
+        PE.Val(n)       -> " " ^ string_of_int n
+      | PE.Var(v)       -> variable_invocation_to_str v
+      | PE.Neg(x)       -> " -" ^  (constanttostr x)
+      | PE.Add(x,y)     -> " (+ " ^ (tostr x) ^ (tostr y) ^ ")"
+      | PE.Sub(x,y)     -> " (- " ^ (tostr x) ^ (tostr y) ^ ")"
+      | PE.Mul(x,y)     -> " (* " ^ (tostr x) ^ (tostr y) ^ ")"
+      | PE.Div(x,y)     -> " (/ " ^ (tostr x) ^ (tostr y) ^ ")"
+      | PE.ArrayRd(_,_) -> raise(NotSupportedInYices(PE.integer_to_str t))
+      | PE.SetMin(s)    -> " (setmin " ^ yices_string_of_set s ^ ")"
+      | PE.SetMax(s)    -> " (setmax " ^ yices_string_of_set s ^ ")"
+      | PE.PairInt(p)   -> " (int_of " ^ yices_string_of_pair p ^ ")"
+
+
+  and yices_string_of_pair (p:PE.pair) : string =
+    let yices_int = yices_string_of_integer in
+    let yices_setpair = yices_string_of_setpair in
+    match p with
+      PE.VarPair (v)      -> variable_invocation_to_str v
+    | PE.IntTidPair (i,t) -> "(pair " ^ yices_int i^ " " ^ tid_to_str t^ ")"
+    | PE.SetPairMin (ps)  -> "(spmin " ^ yices_setpair ps ^ ")"
+    | PE.SetPairMax (ps)  -> "(spmax " ^ yices_setpair ps ^ ")"
+
+
+  and yices_string_of_set (s:PE.set) : string =
+    let yices_int = yices_string_of_integer in
+    let yices_set = yices_string_of_set in
+    match s with
+      PE.VarSet (v)   -> variable_invocation_to_str v
+    | PE.EmptySet     -> " emp"
+    | PE.Singl i      -> Printf.sprintf "(singleton %s)" (yices_int i)
+    | PE.Union(s1,s2) -> Printf.sprintf "(union %s %s)" (yices_set s1) (yices_set s2)
+    | PE.Intr(s1,s2)  -> Printf.sprintf "(intersection %s %s)" (yices_set s1) (yices_set s2)
+    | PE.Diff(s1,s2)  -> Printf.sprintf "(setdiff %s %s)" (yices_set s1) (yices_set s2)
+    | PE.Lower(s,i)   -> Printf.sprintf "(subsetLowerThan %s %s)" (yices_set s) (yices_int i)
+
+
+  and yices_string_of_setpair (s:PE.setpair) : string =
+    let yices_int = yices_string_of_integer in
+    let yices_pair = yices_string_of_pair in
+    let yices_setpair = yices_string_of_setpair in
+    match s with
+      PE.VarSetPair (v)     -> variable_invocation_to_str v
+    | PE.EmptySetPair       -> " spempty"
+    | PE.SinglPair p        -> Printf.sprintf "(spsingle %s)" (yices_pair p)
+    | PE.UnionPair(s1,s2)   -> Printf.sprintf "(spunion %s %s)" (yices_setpair s1)
+                                                                (yices_setpair s2)
+    | PE.IntrPair(s1,s2)    -> Printf.sprintf "(spintr %s %s)" (yices_setpair s1)
+                                                               (yices_setpair s2)
+    | PE.SetdiffPair(s1,s2) -> Printf.sprintf "(spdiff %s %s)" (yices_setpair s1)
+                                                               (yices_setpair s2)
+    | PE.LowerPair(s,i)     -> Printf.sprintf "(splower %s %s)" (yices_setpair s)
+                                                                (yices_int i)
+
+
+  and yices_string_of_term (t:PE.term) : string =
+    match t with
+      PE.IntV i -> yices_string_of_integer i
+    | PE.PairV p -> yices_string_of_pair p
+    | PE.SetV s -> yices_string_of_set s
+    | PE.SetPairV s -> yices_string_of_setpair s
+
+
+  and yices_string_of_atom a =
+    let int_tostr = yices_string_of_integer in
+    let pair_tostr = yices_string_of_pair in
+    let set_tostr = yices_string_of_set in
+    let setpair_tostr = yices_string_of_setpair in
+    let term_tostr = yices_string_of_term in
+      match a with
+        PE.Less(x,y)      -> " (< "  ^ (int_tostr x) ^ (int_tostr y) ^ ")"
+      | PE.Greater(x,y)   -> " (> "  ^ (int_tostr x) ^ (int_tostr y) ^ ")"
+      | PE.LessEq(x,y)    -> " (<= " ^ (int_tostr x) ^ (int_tostr y) ^ ")"
+      | PE.GreaterEq(x,y) -> " (>= " ^ (int_tostr x) ^ (int_tostr y) ^ ")"
+      | PE.LessTid(x,y)   -> " (tid order support for yices not added yet )"
+      | PE.Eq(x,y)        -> " (= "  ^ (term_tostr x) ^ (term_tostr y) ^ ")"
+      | PE.InEq(x,y)      -> " (/= " ^ (term_tostr x) ^ (term_tostr y) ^ ")"
+      | PE.In(i,s)        -> " (" ^ set_tostr s ^ " " ^ int_tostr i ^ ")"
+      | PE.Subset(s1,s2)  -> " (subseteq " ^ set_tostr s1 ^ " " ^ set_tostr s2 ^ ")"
+      | PE.InPair(i,s)        -> " (" ^ setpair_tostr s ^ " " ^ pair_tostr i ^ ")"
+      | PE.SubsetEqPair(s1,s2)  -> " (spsubseteq " ^ setpair_tostr s1 ^ " " ^ setpair_tostr s2 ^ ")"
+      | PE.TidEq(x,y)     -> " (= "  ^ (tid_to_str x) ^ " " ^
+                                            (tid_to_str y) ^ ")"
+      | PE.TidInEq(x,y)   -> " (/= " ^ (tid_to_str x) ^ " " ^
+                                            (tid_to_str y) ^ ")"
+      | PE.FunEq(x,y)     -> " (= "  ^ (fun_to_str x) ^ " " ^
+                                            (fun_to_str y) ^ ")"
+      | PE.FunInEq(x,y)   -> " (/= " ^ (fun_to_str x) ^ " " ^
+                                            (fun_to_str y) ^ ")"
+      | PE.PC (i,th,pr)   -> " " ^ yices_string_of_pos (i,th,pr) ^ " "
+      | PE.PCUpdate(i,th) -> " " ^ yices_string_of_posupd (i,th) ^ " "
+      | PE.PCRange (i,j,th,pr) -> " " ^ yices_string_of_posrange (i,j,th,pr) ^ " "
+
+  and string_of_literal l =
+    match l with
+      F.Atom a    -> yices_string_of_atom a
+    | F.NegAtom a -> "(not "^ yices_string_of_atom a ^")"
+
+  and string_of_formula  phi =
+    let tostr = string_of_formula in
+      match phi with
+        F.Literal(l)   -> string_of_literal l
+      | F.True         -> " true "
+      | F.False        -> " false "
+      | F.And(a,b)     -> " (and " ^ (tostr a) ^ (tostr b) ^ ")"
+      | F.Or(a,b)      -> " (or "  ^ (tostr a) ^ (tostr b) ^ ")"
+      | F.Not(a)       -> " (not " ^ (tostr a) ^ ")"
+      | F.Implies(a,b) -> " (=> "  ^ (tostr a) ^ (tostr b) ^ ")"
+      | F.Iff(a,b)     -> " (= "   ^ (tostr a) ^ (tostr b) ^ ")"
+
+
+  and tid_variable_to_str (th:PE.tid) : string =
     let t_str = tid_to_str th in
     let _ = GM.sm_decl_const sort_map t_str GM.tid_s
     in
       Printf.sprintf "(define %s::%s)\n" t_str thid_s
 
 
-  let local_var_to_str (v:PE.V.t) : string =
+  and local_var_to_str (v:PE.V.t) : string =
     let v_str = variable_to_str v in
     let v_sort = var_sort_to_str v in
     let gm_v_sort = var_sort_to_gmsort_str v in
@@ -159,7 +302,7 @@ struct
       Printf.sprintf "(define %s::(-> %s %s))\n" v_str thid_s v_sort
 
 
-  let yices_string_of_pos (pc:(int * PE.V.shared_or_local * bool)) : string =
+  and yices_string_of_pos (pc:(int * PE.V.shared_or_local * bool)) : string =
     let (i, th, pr) = pc in
     let pc_str = if pr then pc_prime_name else Conf.pc_name in
     let th_str = shared_or_local_to_str th
@@ -167,7 +310,7 @@ struct
       Printf.sprintf "(= (%s %s) %i)" pc_str th_str i
 
 
-  let yices_string_of_posrange (pc:(int * int * PE.V.shared_or_local * bool)) : string =
+  and yices_string_of_posrange (pc:(int * int * PE.V.shared_or_local * bool)) : string =
     let (i, j, th, pr) = pc in
     let pc_str = if pr then pc_prime_name else Conf.pc_name in
     let th_str = shared_or_local_to_str th
@@ -176,14 +319,14 @@ struct
           i pc_str th_str pc_str th_str j
 
 
-  let yices_string_of_posupd (pc:(int * PE.tid)) : string =
+  and yices_string_of_posupd (pc:(int * PE.tid)) : string =
     let (i, th) = pc
     in
       Printf.sprintf "(= %s (update %s (%s) %i))" pc_prime_name Conf.pc_name
                                            (tid_to_str th) i
 
 
-  let variable_invocation_to_str (v:PE.V.t) : string =
+  and variable_invocation_to_str (v:PE.V.t) : string =
     let th_str = shared_or_local_to_str (PE.V.parameter v) in
     let p_str  = procedure_name_to_append (PE.V.scope v) in
     let pr_str = if (PE.V.is_primed v) then "'" else ""
@@ -197,14 +340,6 @@ struct
 
 
 
-  (***** Not sure =S ******
-      match th with
-        None -> Printf.sprintf " %s%s%s%s" p_str id th_str pr_str
-      | Some t -> if E.is_tid_val t then
-                    Printf.sprintf " %s%s%s_%s" p_str id pr_str th_str
-                  else
-                    Printf.sprintf " (%s%s%s %s)" p_str id pr_str th_str
-   ************************)
 
 
   (************************** Support for sets **************************)
@@ -471,110 +606,12 @@ struct
   (************************ Preamble definitions ************************)
 
 
-  let rec fun_to_str (f:PE.fun_term) : string =
-    match f with
-      PE.FunVar v ->
-        if (PE.V.parameter v) = PE.V.Shared then
-          variable_to_str v
-        else
-          let v_str  = variable_to_str (PE.V.unparam v) in
-          let th_str = shared_or_local_to_str (PE.V.parameter v)
-          in
-            Printf.sprintf "(%s %s)" v_str th_str
-    | PE.FunUpd (f,th,i) ->
-        let f_str = fun_to_str f in
-        let th_str = tid_to_str th in
-        let i_str = yices_string_of_term i
-        in
-          Printf.sprintf "(update %s (%s) %s)" f_str th_str i_str
-
-
-  and yices_string_of_integer (t:PE.integer) : string =
-    let constanttostr t =
-      match t with
-          PE.Val(n) -> string_of_int n
-        | _ -> raise(NotSupportedInYices(PE.integer_to_str t)) in
-    let tostr = yices_string_of_integer in
-      match t with
-        PE.Val(n)       -> " " ^ string_of_int n
-      | PE.Var(v)       -> variable_invocation_to_str v
-      | PE.Neg(x)       -> " -" ^  (constanttostr x)
-      | PE.Add(x,y)     -> " (+ " ^ (tostr x) ^ (tostr y) ^ ")"
-      | PE.Sub(x,y)     -> " (- " ^ (tostr x) ^ (tostr y) ^ ")"
-      | PE.Mul(x,y)     -> " (* " ^ (tostr x) ^ (tostr y) ^ ")"
-      | PE.Div(x,y)     -> " (/ " ^ (tostr x) ^ (tostr y) ^ ")"
-      | PE.ArrayRd(_,_) -> raise(NotSupportedInYices(PE.integer_to_str t))
-      | PE.SetMin(s)    -> " (setmin " ^ yices_string_of_set s ^ ")"
-      | PE.SetMax(s)    -> " (setmax " ^ yices_string_of_set s ^ ")"
-
-  and yices_string_of_set (s:PE.set) : string =
-    let yices_int = yices_string_of_integer in
-    let yices_set = yices_string_of_set in
-    match s with
-      PE.VarSet (v)   -> variable_invocation_to_str v
-    | PE.EmptySet     -> " emp"
-    | PE.Singl i      -> Printf.sprintf "(singleton %s)" (yices_int i)
-    | PE.Union(s1,s2) -> Printf.sprintf "(union %s %s)" (yices_set s1) (yices_set s2)
-    | PE.Intr(s1,s2)  -> Printf.sprintf "(intersection %s %s)" (yices_set s1) (yices_set s2)
-    | PE.Diff(s1,s2)  -> Printf.sprintf "(setdiff %s %s)" (yices_set s1) (yices_set s2)
-    | PE.Lower(s,i)   -> Printf.sprintf "(subsetLowerThan %s %s)" (yices_set s) (yices_int i)
-
-
-  and yices_string_of_term (t:PE.term) : string =
-    match t with
-      PE.IntV i -> yices_string_of_integer i
-    | PE.SetV s -> yices_string_of_set s
-
-
-  and yices_string_of_atom a =
-    let pairs_tostr = yices_string_of_integer in
-    let set_tostr = yices_string_of_set in
-    let term_tostr = yices_string_of_term in
-      match a with
-        PE.Less(x,y)      -> " (< "  ^ (pairs_tostr x) ^ (pairs_tostr y) ^ ")"
-      | PE.Greater(x,y)   -> " (> "  ^ (pairs_tostr x) ^ (pairs_tostr y) ^ ")"
-      | PE.LessEq(x,y)    -> " (<= " ^ (pairs_tostr x) ^ (pairs_tostr y) ^ ")"
-      | PE.GreaterEq(x,y) -> " (>= " ^ (pairs_tostr x) ^ (pairs_tostr y) ^ ")"
-      | PE.LessTid(x,y)   -> " (tid order support for yices not added yet )"
-      | PE.Eq(x,y)        -> " (= "  ^ (term_tostr x) ^ (term_tostr y) ^ ")"
-      | PE.InEq(x,y)      -> " (/= " ^ (term_tostr x) ^ (term_tostr y) ^ ")"
-      | PE.In(i,s)        -> " (" ^ set_tostr s ^ " " ^ pairs_tostr i ^ ")"
-      | PE.Subset(s1,s2)  -> " (subseteq " ^ set_tostr s1 ^ " " ^ set_tostr s2 ^ ")"
-      | PE.TidEq(x,y)     -> " (= "  ^ (tid_to_str x) ^ " " ^
-                                            (tid_to_str y) ^ ")"
-      | PE.TidInEq(x,y)   -> " (/= " ^ (tid_to_str x) ^ " " ^
-                                            (tid_to_str y) ^ ")"
-      | PE.FunEq(x,y)     -> " (= "  ^ (fun_to_str x) ^ " " ^
-                                            (fun_to_str y) ^ ")"
-      | PE.FunInEq(x,y)   -> " (/= " ^ (fun_to_str x) ^ " " ^
-                                            (fun_to_str y) ^ ")"
-      | PE.PC (i,th,pr)   -> " " ^ yices_string_of_pos (i,th,pr) ^ " "
-      | PE.PCUpdate(i,th) -> " " ^ yices_string_of_posupd (i,th) ^ " "
-      | PE.PCRange (i,j,th,pr) -> " " ^ yices_string_of_posrange (i,j,th,pr) ^ " "
-
-  and string_of_literal l =
-    match l with
-      F.Atom a    -> yices_string_of_atom a
-    | F.NegAtom a -> "(not "^ yices_string_of_atom a ^")"
-
-  and string_of_formula  phi =
-    let tostr = string_of_formula in
-      match phi with
-        F.Literal(l)   -> string_of_literal l
-      | F.True         -> " true "
-      | F.False        -> " false "
-      | F.And(a,b)     -> " (and " ^ (tostr a) ^ (tostr b) ^ ")"
-      | F.Or(a,b)      -> " (or "  ^ (tostr a) ^ (tostr b) ^ ")"
-      | F.Not(a)       -> " (not " ^ (tostr a) ^ ")"
-      | F.Implies(a,b) -> " (=> "  ^ (tostr a) ^ (tostr b) ^ ")"
-      | F.Iff(a,b)     -> " (= "   ^ (tostr a) ^ (tostr b) ^ ")"
-
-
   let tid_decl_to_str (voc:PE.tid list) : string =
     let id_list = List.map (fun t ->
                     match t with
                     | PE.VarTh v -> (PE.V.id v)
                     | PE.NoTid  -> "NoThread"
+                    | PE.PairTid p -> "(tid_of " ^ yices_string_of_pair p ^ ")"
                   ) voc in
     Printf.sprintf "(define-type %s (scalar %s))\n" thid_s
                     (String.concat " " id_list)

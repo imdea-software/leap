@@ -490,7 +490,8 @@ let _ =
   *)
       timer#stop;
       Log.close();
-      printf "Total Analysis time: %.3f\n" timer#elapsed_time
+      printf "Total Analysis time: %.3f\n" timer#elapsed_time;
+      printf "Memory consumption: %s" (LeapLib.report_mem())
     with
       | Global.ParserError msg -> Interface.Err.msg "Parsing error" msg
       | Parsing.Parse_error -> Interface.Err.msg "Parsing error" $
