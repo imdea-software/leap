@@ -347,7 +347,9 @@ struct
   let z3_type_decl (buf:Buffer.t) : unit =
     B.add_string buf ("(declare-sort " ^tid_s^ ")\n");
     B.add_string buf ("(define-sort " ^set_s^ " () (Array " ^int_s^ " " ^bool_s^ "))\n");
-    B.add_string buf ("(define-sort " ^loc_s^ " () " ^int_s^ ")\n")
+    B.add_string buf ("(define-sort " ^setpair_s^ " () (Array " ^pair_s^ " " ^bool_s^ "))\n");
+    B.add_string buf ("(define-sort " ^loc_s^ " () " ^int_s^ ")\n");
+    B.add_string buf ("(declare-datatypes () ((" ^pair_s^ " (mk-pair (first " ^int_s^ ") (second " ^tid_s^ ")))))\n")
 
 
   let z3_undefined_decl (buf:Buffer.t) : unit =
@@ -357,81 +359,98 @@ struct
                         "  (not (= i " ^undefInt^ ")))\n")
 
 
-  (* (define emp::set)               *)
-  (*   (lambda (a::address) (false)) *)
   let z3_emp_def (buf:Buffer.t) : unit =
     B.add_string buf
       ("(declare-const emp " ^set_s^ ")\n" ^
        "(assert (= emp ((as const " ^set_s^ " ) false)))\n")
 
-  (* (define singleton::(-> int set)       *)
-  (*     (lambda (a::int)                  *)
-  (*         (lambda (b::int)              *)
-  (*             (= a b))))                *)
+
   let z3_singleton_def (buf:Buffer.t) : unit =
     B.add_string buf
       ( "(define-fun singleton ((i " ^int_s^ ")) " ^set_s^ "\n" ^
         "  (store emp i true))\n")
 
-  (* (define union::(-> set set set)        *)
-  (*     (lambda (s::set r::set)            *)
-  (*         (lambda (a::int)               *)
-  (*             (or (s a) (r a)))))        *)
+
   let z3_union_def (buf:Buffer.t) : unit =
     B.add_string buf
       ( "(define-fun unionset ((s1 " ^set_s^ ") (s2 " ^set_s^ ")) " ^set_s^ "\n" ^
         "  ((_ map or) s1 s2))\n")
 
-  (* (define setdiff::(-> set set set)      *)
-  (*     (lambda (s::set r::set)            *)
-  (*         (lambda (a::int)               *)
-  (*             (and (s a) (not (r a)))))) *)
+
   let z3_setdiff_def (buf:Buffer.t) : unit =
     B.add_string buf
       ( "(define-fun setdiff ((s1 " ^set_s^ ") (s2 " ^set_s^ ")) " ^set_s^ "\n" ^
         "  ((_ map and) s1 ((_ map not) s2)))\n")
 
-  (* (define intersection::(-> set set set) *)
-  (*     (lambda (s::set r::set) *)
-  (*         (lambda (a::address) *)
-  (*             (and (s a) (r a))))) *)
+
   let z3_intersection_def (buf:Buffer.t) : unit =
     B.add_string buf
     ("(define-fun intersection ((s1 " ^set_s^ ") (s2 " ^set_s^ ")) " ^set_s^ "\n" ^
      "  ((_ map and) s1 s2))\n")
 
 
-  (* (define subseteq::(-> set set bool)  *)
-  (*   (lambda (s1::set s2::set)        *)
-  (*     (and (if (s1 null) (s2 null))    *)
-  (*          (if (s1 a1) (s2 a1))        *)
-  (*          (if (s1 a1) (s2 a2))        *)
-  (*          (if (s1 a3) (s2 a3))        *)
-  (*          (if (s1 a4) (s2 a4))        *)
-  (*          (if (s1 a5) (s2 a5)))))     *)
   let z3_subseteq_def (vars_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
         ("(define-fun subseteq ((s1 " ^set_s^ ") (s2 " ^set_s^ ")) " ^bool_s^ "\n" ^
          "  (= (intersection s1 s2) s1))\n")
+
+
+
+
+  let z3_spemp_def (buf:Buffer.t) : unit =
+    B.add_string buf
+      ("(declare-const spempty " ^setpair_s^ ")\n" ^
+       "(assert (= spempty ((as const " ^setpair_s^ " ) false)))\n")
+
+
+  let z3_spsingleton_def (buf:Buffer.t) : unit =
+    B.add_string buf
+      ( "(define-fun spsingle ((p " ^pair_s^ ")) " ^setpair_s^ "\n" ^
+        "  (store spempty p true))\n")
+
+
+  let z3_spunion_def (buf:Buffer.t) : unit =
+    B.add_string buf
+      ( "(define-fun spunion ((s1 " ^setpair_s^ ") (s2 " ^setpair_s^ ")) " ^setpair_s^ "\n" ^
+        "  ((_ map or) s1 s2))\n")
+
+
+  let z3_spsetdiff_def (buf:Buffer.t) : unit =
+    B.add_string buf
+      ( "(define-fun spdiff ((s1 " ^setpair_s^ ") (s2 " ^setpair_s^ ")) " ^setpair_s^ "\n" ^
+        "  ((_ map and) s1 ((_ map not) s2)))\n")
+
+
+  let z3_spintersection_def (buf:Buffer.t) : unit =
+    B.add_string buf
+    ("(define-fun spintr ((s1 " ^setpair_s^ ") (s2 " ^setpair_s^ ")) " ^setpair_s^ "\n" ^
+     "  ((_ map and) s1 s2))\n")
+
+
+  let z3_spsubseteq_def (vars_rep:string list) (buf:Buffer.t) : unit =
+    B.add_string buf
+        ("(define-fun spsubseteq ((s1 " ^setpair_s^ ") (s2 " ^setpair_s^ ")) " ^bool_s^ "\n" ^
+         "  (= (spintr s1 s2) s1))\n")
+
        
   let z3_is_min_def (vars_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
-        ("(define-fun is_min ((pairs_v " ^int_s^ ") (set_v " ^set_s^ ")) " ^bool_s^ "\n" ^
+        ("(define-fun is_min ((int_v " ^int_s^ ") (set_v " ^set_s^ ")) " ^bool_s^ "\n" ^
          "  (and");
     List.iter (fun v ->
       B.add_string buf
-        (Printf.sprintf "\n    (if (select set_v %s) (<= pairs_v %s) true)" v v)
+        (Printf.sprintf "\n    (if (select set_v %s) (<= int_v %s) true)" v v)
     ) vars_rep;
     B.add_string buf "))\n"
 
 
   let z3_is_max_def (vars_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
-        ("(define-fun is_max ((pairs_v " ^int_s^ ") (set_v " ^set_s^ ")) " ^bool_s^ "\n" ^
+        ("(define-fun is_max ((int_v " ^int_s^ ") (set_v " ^set_s^ ")) " ^bool_s^ "\n" ^
          "  (and") ;
     List.iter (fun v ->
       B.add_string buf
-        (Printf.sprintf "\n    (if (select set_v %s) (>= pairs_v %s) true)" v v)
+        (Printf.sprintf "\n    (if (select set_v %s) (>= int_v %s) true)" v v)
     ) vars_rep;
     B.add_string buf "))\n"
 
@@ -456,6 +475,69 @@ struct
      ")\n")
 
 
+  let z3_is_spmin_def (vars_rep:string list) (voc_rep:string list) (buf:Buffer.t) : unit =
+    B.add_string buf
+        ("(define-fun is_spmin ((pair_v " ^pair_s^ ") (setpair_v " ^setpair_s^ ")) " ^bool_s^ "\n" ^
+         "  (and");
+    List.iter (fun v ->
+      List.iter (fun t ->
+        B.add_string buf
+          (Printf.sprintf "\n    (if (select setpair_v (mk-pair %s %s)) (<= (first pair_v) %s) true)" v t v)
+      ) voc_rep
+    ) vars_rep;
+    B.add_string buf "))\n"
+
+
+  let z3_is_spmax_def (vars_rep:string list) (voc_rep:string list) (buf:Buffer.t) : unit =
+    B.add_string buf
+        ("(define-fun is_spmax ((pair_v " ^pair_s^ ") (setpair_v " ^setpair_s^ ")) " ^bool_s^ "\n" ^
+         "  (and") ;
+    List.iter (fun v ->
+      List.iter (fun t ->
+        B.add_string buf
+          (Printf.sprintf "\n    (if (select setpair_v (mk-pair %s %s)) (>= (first pair_v) %s) true)" v t v)
+      ) voc_rep
+    ) vars_rep;
+    B.add_string buf "))\n"
+
+
+  let z3_spmin_def (vars_rep:string list) (voc_rep:string list) (buf:Buffer.t) : unit =
+    B.add_string buf
+    ("(define-fun spmin ((setpair_v " ^setpair_s^ ")) " ^pair_s ^
+      List.fold_left (fun str v ->
+        List.fold_left (fun str t ->
+          let pair_rep = "(mk-pair " ^v^ " " ^t^ ")" in
+          Printf.sprintf ("\n  (if (and (select setpair_v %s) (is_spmin %s setpair_v)) %s %s)")
+            pair_rep pair_rep pair_rep str
+        ) str voc_rep
+      ) undefInt vars_rep ^
+     ")\n")
+
+
+  let z3_spmax_def (vars_rep:string list) (voc_rep:string list) (buf:Buffer.t) : unit =
+    B.add_string buf
+    ("(define-fun spmax ((setpair_v " ^setpair_s^ ")) " ^pair_s^
+      List.fold_left (fun str v ->
+        List.fold_left (fun str t ->
+          let pair_rep = "(mk-pair " ^v^ " " ^t^ ")" in
+          Printf.sprintf ("\n  (if (and (select setpair_v %s) (is_spmax %s setpair_v)) %s %s)")
+            pair_rep pair_rep pair_rep str
+        ) str voc_rep
+      ) undefInt vars_rep ^
+     ")\n")
+
+
+  let z3_intof_def (buf:Buffer.t) : unit =
+    B.add_string buf
+      ("(define-fun int_of ((pair_v " ^pair_s^ ")) " ^int_s^ "\n" ^
+       "  (first pair_v))\n")
+
+  let z3_tidof_def (buf:Buffer.t) : unit =
+    B.add_string buf
+      ("(define-fun tid_of ((pair_v " ^pair_s^ ")) " ^tid_s^ "\n" ^
+       "  (second pair_v))\n")
+
+
   let z3_filter_set_def (vars_rep:string list) (buf:Buffer.t) : unit =
     let univ = List.fold_left (fun str v ->
                  "\n  (store " ^str^ " " ^v^ " true)"
@@ -473,6 +555,17 @@ struct
                   ) "emp" vars_rep in
     B.add_string buf
     ("(define-fun subsetLowerThan ((set_v " ^set_s^ ") (pairs_v " ^int_s^ ")) " ^set_s^
+     "  " ^low_set^ ")\n")
+
+
+  let z3_splower_def (vars_rep:string list) (voc_rep:string list) (buf:Buffer.t) : unit =
+    let low_set = List.fold_left (fun str v ->
+                    List.fold_left (fun str t ->
+                      "\n  (store " ^str^ " (mk-pair " ^v^ " " ^t^ ") (and (select setpair_v (mk-pair " ^v^ " " ^t^ " )) (<= " ^v^ " int_v)))"
+                    ) str voc_rep
+                  ) "emp" vars_rep in
+    B.add_string buf
+    ("(define-fun splower ((setpair_v " ^setpair_s^ ") (int_v " ^int_s^ ")) " ^setpair_s^
      "  " ^low_set^ ")\n")
 
 
@@ -546,23 +639,37 @@ struct
                          in
                            variable_invocation_to_str i_var
                        ) (LeapLib.rangeList 1 cutoff) in
-    let all_vars_str = glb_vars_str @ loc_vars_str @ aux_vars_str
+    let all_vars_str = glb_vars_str @ loc_vars_str @ aux_vars_str in
+    let voc_str = List.map tid_to_str voc
     in
-      z3_undefined_decl              buf;
-      z3_aux_pairs_def cutoff          buf;
-      z3_emp_def                     buf;
-      z3_singleton_def               buf;
-      z3_union_def                   buf;
-      z3_setdiff_def                 buf;
-      z3_intersection_def            buf;
-      z3_subseteq_def all_vars_str   buf;
-      z3_is_min_def all_vars_str     buf;
-      z3_is_max_def all_vars_str     buf;
-      z3_min_def all_vars_str        buf;
-      z3_max_def all_vars_str        buf;
-      z3_filter_set_def all_vars_str buf;
-      z3_lower_def all_vars_str      buf;
-      z3_pc_def pc_vars_str          buf
+      z3_undefined_decl                     buf;
+      z3_aux_pairs_def cutoff               buf;
+      z3_emp_def                            buf;
+      z3_singleton_def                      buf;
+      z3_union_def                          buf;
+      z3_setdiff_def                        buf;
+      z3_intersection_def                   buf;
+      z3_subseteq_def all_vars_str          buf;
+      z3_spemp_def                          buf;
+      z3_spsingleton_def                    buf;
+      z3_spunion_def                        buf;
+      z3_spsetdiff_def                      buf;
+      z3_spintersection_def                 buf;
+      z3_spsubseteq_def all_vars_str        buf;
+      z3_is_min_def all_vars_str            buf;
+      z3_is_max_def all_vars_str            buf;
+      z3_min_def all_vars_str               buf;
+      z3_max_def all_vars_str               buf;
+      z3_is_spmin_def all_vars_str voc_str  buf;
+      z3_is_spmax_def all_vars_str voc_str  buf;
+      z3_spmin_def all_vars_str voc_str     buf;
+      z3_spmax_def all_vars_str voc_str     buf;
+      z3_intof_def                          buf;
+      z3_tidof_def                          buf;
+      z3_filter_set_def all_vars_str        buf;
+      z3_lower_def all_vars_str             buf;
+      z3_splower_def all_vars_str voc_str   buf;
+      z3_pc_def pc_vars_str                 buf
 
 
 

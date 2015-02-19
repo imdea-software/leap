@@ -345,11 +345,12 @@ struct
   (************************** Support for sets **************************)
 
   let yices_type_decl (prog_lines:int) (buf:Buffer.t) : unit =
-    B.add_string buf ("(define-type " ^thid_s^ ")\n");
-    B.add_string buf (Printf.sprintf "(define-type %s (-> %s %s))\n"
-                        set_s int_s bool_s);
-    B.add_string buf (Printf.sprintf "(define-type %s (subrange 1 %i))\n"
-                        loc_s prog_lines)
+    B.add_string buf
+      ("(define-type " ^thid_s^ ")\n" ^
+       "(define-type " ^set_s^ " (-> " ^int_s^ " " ^bool_s^ "))\n" ^
+       "(define-type " ^setpair_s^ " (-> " ^pair_s^ " " ^bool_s^ "))\n" ^
+       "(define-type " ^loc_s^ " (subrange 1 " ^(string_of_int prog_lines)^ "))\n" ^
+       "(define-type " ^pair_s^ " (tuple " ^int_s^ " " ^thid_s^ "))\n")  
 
 
   let yices_undefined_decl (buf:Buffer.t) : unit =
@@ -360,17 +361,12 @@ struct
                             undefInt ^ ")))\n")
 
 
-  (* (define emp::set)               *)
-  (*   (lambda (a::address) (false)) *)
   let yices_emp_def (buf:Buffer.t) : unit =
     B.add_string buf
       ("(define emp::" ^set_s^ "\n" ^
        "  (lambda (a::" ^int_s ^ ") false))\n")
 
-  (* (define singleton::(-> int set)       *)
-  (*     (lambda (a::int)                  *)
-  (*         (lambda (b::int)              *)
-  (*             (= a b))))                *)
+
   let yices_singleton_def (buf:Buffer.t) : unit =
     B.add_string buf
       ( "(define singleton::(-> " ^int_s^ " " ^set_s^ ")\n" ^
@@ -378,10 +374,7 @@ struct
         "        (lambda (b::" ^int_s^ ")\n" ^
         "            (= a b))))\n" )
 
-  (* (define union::(-> set set set)        *)
-  (*     (lambda (s::set r::set)            *)
-  (*         (lambda (a::int)               *)
-  (*             (or (s a) (r a)))))        *)
+
   let yices_union_def (buf:Buffer.t) : unit =
     B.add_string buf
       ( "(define union::(-> " ^set_s^ " " ^set_s^ " " ^set_s^ ")\n" ^
@@ -389,10 +382,7 @@ struct
         "        (lambda (a::" ^int_s^ ")\n" ^
         "            (or (s a) (r a)))))\n" )
 
-  (* (define setdiff::(-> set set set)      *)
-  (*     (lambda (s::set r::set)            *)
-  (*         (lambda (a::int)               *)
-  (*             (and (s a) (not (r a)))))) *)
+
   let yices_setdiff_def (buf:Buffer.t) : unit =
     B.add_string buf
       ( "(define setdiff::(-> " ^set_s^ " " ^set_s^ " " ^set_s^ ")\n" ^
@@ -400,10 +390,7 @@ struct
         "        (lambda (a::" ^int_s^ ")\n" ^
         "            (and (s a) (not (r a))))))\n" )
 
-  (* (define intersection::(-> set set set) *)
-  (*     (lambda (s::set r::set) *)
-  (*         (lambda (a::address) *)
-  (*             (and (s a) (r a))))) *)
+
   let yices_intersection_def (buf:Buffer.t) : unit =
     B.add_string buf
     ("(define intersection::(-> " ^set_s^ " " ^set_s^ " " ^set_s^ ")\n" ^
@@ -412,21 +399,13 @@ struct
      "           (and (s a) (r a)))))\n")
 
 
-  (* (define subseteq::(-> set set bool)  *)
-  (*   (lambda (s1::set s2::set)        *)
-  (*     (and (if (s1 null) (s2 null))    *)
-  (*          (if (s1 a1) (s2 a1))        *)
-  (*          (if (s1 a1) (s2 a2))        *)
-  (*          (if (s1 a3) (s2 a3))        *)
-  (*          (if (s1 a4) (s2 a4))        *)
-  (*          (if (s1 a5) (s2 a5)))))     *)
   let yices_subseteq_def (vars_rep:string list) (buf:Buffer.t) : unit =
-(*
+(* THIS WAS COMMENTED *)
     B.add_string buf
         ("(define subseteq::(-> " ^set_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
          "  (lambda (s1::" ^set_s^ " s2::" ^set_s^ ")\n" ^
          "    (= emp (setdiff s1 s2))))\n")
-*)
+(*
     B.add_string buf
         ("(define subseteq::(-> " ^set_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
          "  (lambda (s1::" ^set_s^ " s2::" ^set_s^ ")\n" ^
@@ -436,6 +415,69 @@ struct
         ("\n         (if (s1 " ^ v ^ ") (s2 " ^ v ^ ") true)")
     ) vars_rep;
     B.add_string buf ")))\n"
+    *)
+
+
+
+  let yices_spemp_def (buf:Buffer.t) : unit =
+    B.add_string buf
+      ("(define spempty::" ^setpair_s^ "\n" ^
+       "  (lambda (p::" ^pair_s ^ ") false))\n")
+
+
+  let yices_spsingleton_def (buf:Buffer.t) : unit =
+    B.add_string buf
+      ( "(define spsingle::(-> " ^pair_s^ " " ^setpair_s^ ")\n" ^
+        "    (lambda (p::" ^pair_s^ ")\n" ^
+        "        (lambda (q::" ^pair_s^ ")\n" ^
+        "            (= p q))))\n" )
+
+
+  let yices_spunion_def (buf:Buffer.t) : unit =
+    B.add_string buf
+      ( "(define spunion::(-> " ^setpair_s^ " " ^setpair_s^ " " ^setpair_s^ ")\n" ^
+        "    (lambda (s::" ^setpair_s^ " r::" ^setpair_s^ ")\n" ^
+        "        (lambda (p::" ^pair_s^ ")\n" ^
+        "            (or (s p) (r p)))))\n" )
+
+
+  let yices_spsetdiff_def (buf:Buffer.t) : unit =
+    B.add_string buf
+      ( "(define spdiff::(-> " ^setpair_s^ " " ^setpair_s^ " " ^setpair_s^ ")\n" ^
+        "    (lambda (s::" ^setpair_s^ " r::" ^setpair_s^ ")\n" ^
+        "        (lambda (p::" ^pair_s^ ")\n" ^
+        "            (and (s p) (not (r p))))))\n" )
+
+
+  let yices_spintersection_def (buf:Buffer.t) : unit =
+    B.add_string buf
+    ("(define spintr::(-> " ^setpair_s^ " " ^setpair_s^ " " ^setpair_s^ ")\n" ^
+     "   (lambda (s::" ^setpair_s^ " r::" ^setpair_s^ ")\n" ^
+     "       (lambda (p::" ^pair_s^ ")\n" ^
+     "           (and (s p) (r p)))))\n")
+
+
+  let yices_spsubseteq_def (vars_rep:string list) (buf:Buffer.t) : unit =
+(* THIS WAS COMMENTED *)
+    B.add_string buf
+        ("(define spsubseteq::(-> " ^setpair_s^ " " ^setpair_s^ " " ^bool_s^ ")\n" ^
+         "  (lambda (s1::" ^setpair_s^ " s2::" ^setpair_s^ ")\n" ^
+         "    (= spempty (spdiff s1 s2))))\n")
+(*
+    B.add_string buf
+        ("(define subseteq::(-> " ^set_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
+         "  (lambda (s1::" ^set_s^ " s2::" ^set_s^ ")\n" ^
+         "    (and") ;
+    List.iter (fun v ->
+      B.add_string buf
+        ("\n         (if (s1 " ^ v ^ ") (s2 " ^ v ^ ") true)")
+    ) vars_rep;
+    B.add_string buf ")))\n"
+    *)
+
+
+
+
 
 
 
@@ -459,6 +501,34 @@ struct
     List.iter (fun v ->
       B.add_string buf
         (Printf.sprintf "\n         (if (set_v %s) (>= pairs_v %s) true)" v v)
+    ) vars_rep;
+    B.add_string buf ")))\n"
+
+
+  let yices_is_spmin_def (vars_rep:string list) (voc_rep:string list) (buf:Buffer.t) : unit =
+    B.add_string buf
+        ("(define is_spmin::(-> " ^pair_s^ " " ^setpair_s^ " " ^bool_s^ ")\n" ^
+         "  (lambda (pairs_v::" ^pair_s^ " setpair_v::" ^setpair_s^ ")\n" ^
+         "    (and") ;
+    List.iter (fun v ->
+      List.iter (fun t -> 
+        B.add_string buf
+         (Printf.sprintf "\n         (if (setpair_v (mk-tuple %s %s)) (<= (select pairs_v 1) %s) true)" v t v)
+      ) voc_rep
+    ) vars_rep;
+    B.add_string buf ")))\n"
+
+
+  let yices_is_spmax_def (vars_rep:string list) (voc_rep:string list) (buf:Buffer.t) : unit =
+    B.add_string buf
+        ("(define is_spmax::(-> " ^pair_s^ " " ^setpair_s^ " " ^bool_s^ ")\n" ^
+         "  (lambda (pairs_v::" ^pair_s^ " setpair_v::" ^setpair_s^ ")\n" ^
+         "    (and") ;
+    List.iter (fun v ->
+      List.iter (fun t ->
+        B.add_string buf
+          (Printf.sprintf "\n         (if (set_v (mk-tuple %s %s)) (>= (select pairs_v 1) %s) true)" v t v)
+      ) voc_rep
     ) vars_rep;
     B.add_string buf ")))\n"
 
@@ -494,6 +564,50 @@ struct
      "))\n")
 
 
+  let yices_spmin_def (vars_rep:string list) (voc_rep:string list) (buf:Buffer.t) : unit =
+    B.add_string buf
+    ("(define spmin::(-> " ^setpair_s^ " " ^pair_s^ ")\n" ^
+     "  (lambda (setpair_v::" ^setpair_s^ ")\n" ^
+      List.fold_left (fun str v ->
+        List.fold_left (fun str t ->
+          let pair_rep = "(mk-tuple " ^v^ " " ^t^ ")" in
+          Printf.sprintf ("\n        (if (and (setpair_v %s) \
+                                              (is_spmin %s setpair_v)) %s %s)")
+            pair_rep pair_rep pair_rep str
+        ) str voc_rep
+      ) undefInt vars_rep ^
+     "))\n")
+
+
+  let yices_spmax_def (vars_rep:string list) (voc_rep:string list) (buf:Buffer.t) : unit =
+    B.add_string buf
+    ("(define spmax::(-> " ^setpair_s^ " " ^pair_s^ ")\n" ^
+     "   (lambda (setpair_v::" ^setpair_s^ ")\n" ^
+      List.fold_left (fun str v ->
+        List.fold_left (fun str t ->
+          let pair_rep = "(mk-tuple " ^v^ " " ^t^ ")" in
+          Printf.sprintf ("\n        (if (and (setpair_v %s) \
+                                              (is_spmax %s setpair_v)) %s %s)")
+            pair_rep pair_rep pair_rep str
+        ) str voc_rep
+      ) undefInt vars_rep ^
+     "))\n")
+
+
+  let yices_intof_def (buf:Buffer.t) : unit =
+    B.add_string buf
+      ("(define int_of::(-> " ^pair_s^ " " ^int_s^ ")\n" ^
+       "  (lambda (pair_v::" ^pair_s^ ")\n" ^
+       "    (select pair_v 1)))\n")
+
+
+  let yices_tidof_def (buf:Buffer.t) : unit =
+    B.add_string buf
+      ("(define tid_of::(-> " ^pair_s^ " " ^thid_s^ ")\n" ^
+       "  (lambda (pair_v::" ^pair_s^ ")\n" ^
+       "    (select pair_v 2)))\n")
+
+
   let yices_filter_set_def (vars_rep:string list) (buf:Buffer.t) : unit =
     let or_cond =
       match vars_rep with
@@ -512,6 +626,14 @@ struct
      "  (lambda (s::" ^set_s^ " i::" ^int_s^ ")\n" ^
      "    (lambda (a::" ^int_s^ ")\n" ^
      "      (and (s a) (<= a i)))))\n")
+
+
+  let yices_splower_def (buf:Buffer.t) : unit =
+    B.add_string buf
+    ("(define splower::(-> " ^setpair_s^ " " ^int_s^ " " ^setpair_s^ ")\n" ^
+     "  (lambda (s::" ^setpair_s^ " i::" ^int_s^ ")\n" ^
+     "    (lambda (p::" ^pair_s^ ")\n" ^
+     "      (and (s p) (<= (select p 1) i)))))\n")
 
 
   (************************** Support for sets **************************)
@@ -568,14 +690,14 @@ struct
   let yices_preamble (buf:Buffer.t)
                      (voc:PE.tid list)
                      (cutoff:int)
-                     (gbl_pairs_vars:PE.V.t list)
-                     (lcl_pairs_vars:PE.V.t list) : unit =
+                     (gbl_int_vars:PE.V.t list)
+                     (lcl_int_vars:PE.V.t list) : unit =
     let loc_vars_str = List.flatten $ List.map (fun t ->
                          List.map (fun v ->
                            variable_invocation_to_str(PE.V.set_param v (PE.V.Local (PE.voc_to_var t)))
-                         ) lcl_pairs_vars
+                         ) lcl_int_vars
                        ) voc in
-    let glb_vars_str = List.map variable_invocation_to_str gbl_pairs_vars in
+    let glb_vars_str = List.map variable_invocation_to_str gbl_int_vars in
     let aux_vars_str = List.map (fun i ->
                          let i_name = aux_int ^ string_of_int i in
                          let i_var = PE.build_var i_name PE.Int
@@ -583,24 +705,38 @@ struct
                          in
                            variable_invocation_to_str i_var
                        ) (LeapLib.rangeList 1 cutoff) in
-    let all_vars_str = glb_vars_str @ loc_vars_str @ aux_vars_str
+    let all_vars_str = glb_vars_str @ loc_vars_str @ aux_vars_str in
+    let voc_str = List.map tid_to_str voc
     in
-      yices_undefined_decl              buf;
-      yices_aux_pairs_def cutoff          buf;
-      yices_emp_def                     buf;
-      yices_singleton_def               buf;
-      yices_union_def                   buf;
-      yices_setdiff_def                 buf;
-      yices_intersection_def            buf;
-      yices_subseteq_def all_vars_str   buf;
-      yices_is_min_def all_vars_str     buf;
-      yices_is_max_def all_vars_str     buf;
-      yices_is_in_def                   buf;
-      yices_min_def all_vars_str        buf;
-      yices_max_def all_vars_str        buf;
-      yices_filter_set_def all_vars_str buf;
-      yices_lower_def                   buf;
-      yices_pc_def                      buf
+      yices_undefined_decl                      buf;
+      yices_aux_pairs_def cutoff                buf;
+      yices_emp_def                             buf;
+      yices_singleton_def                       buf;
+      yices_union_def                           buf;
+      yices_setdiff_def                         buf;
+      yices_intersection_def                    buf;
+      yices_subseteq_def all_vars_str           buf;
+      yices_spemp_def                           buf;
+      yices_spsingleton_def                     buf;
+      yices_spunion_def                         buf;
+      yices_spsetdiff_def                       buf;
+      yices_spintersection_def                  buf;
+      yices_spsubseteq_def all_vars_str         buf;
+      yices_is_min_def all_vars_str             buf;
+      yices_is_max_def all_vars_str             buf;
+      yices_is_spmin_def all_vars_str voc_str   buf;
+      yices_is_spmax_def all_vars_str voc_str   buf;
+      yices_is_in_def                           buf;
+      yices_min_def all_vars_str                buf;
+      yices_max_def all_vars_str                buf;
+      yices_spmin_def all_vars_str voc_str      buf;
+      yices_spmax_def all_vars_str voc_str      buf;
+      yices_intof_def                           buf;
+      yices_tidof_def                           buf;
+      yices_filter_set_def all_vars_str         buf;
+      yices_lower_def                           buf;
+      yices_splower_def                         buf;
+      yices_pc_def                              buf
 
 
   (************************ Preamble definitions ************************)
@@ -639,8 +775,8 @@ struct
     let cutoff         = SmpPairs.cut_off phi in
     let global_vars    = PE.all_global_vars phi in
     let local_vars     = PE.all_local_vars_without_param phi in
-    let glb_pairs_vars   = filter_ints global_vars in
-    let lcl_pairs_vars   = filter_ints local_vars in
+    let glb_int_vars   = filter_ints global_vars in
+    let lcl_int_vars   = filter_ints local_vars in
     let buf            = B.create 1024 in
     let _              = yices_type_decl !prog_lines buf in
     let _              = List.iter (fun v ->
@@ -653,7 +789,7 @@ struct
                           B.add_string buf (local_var_to_str v)
                          ) local_vars in
     let _              = yices_preamble buf voc cutoff
-                            glb_pairs_vars lcl_pairs_vars in
+                            glb_int_vars lcl_int_vars in
     let _              = yices_legal_values global_vars local_vars voc buf in
     let _              = B.add_string buf ("(assert " ^ (string_of_formula phi) ^
                                             ")\n(check)\n")
