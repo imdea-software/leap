@@ -44,10 +44,11 @@ type fun_t = ((id option) list, value) Hashtbl.t
 (** A generic model *)
 type t =
   {
-    id_counter : int ref                     ;
-    const_map  : (id, value_id) LeapIdMap.t  ;
-    fun_map    : (id, fun_table_t) Hashtbl.t  ;
-    values     : (value_id, value) Hashtbl.t ;
+    id_counter   : int ref                     ;
+    const_map    : (id, value_id) LeapIdMap.t  ;
+    fun_map      : (id, fun_table_t) Hashtbl.t  ;
+    values       : (value_id, value) Hashtbl.t ;
+    aux_sort_map : sort_map_t ;
   }
 
 
@@ -122,6 +123,10 @@ let sm_dom_of_type (sm:sort_map_t) (t:typeDecl) : id list =
   with _ -> []
 
 
+let sm_union (sm1:sort_map_t) (sm2:sort_map_t) : sort_map_t =
+  LeapIdMap.union sm1 sm2
+
+
 (* Generic model functions *)
 
 let gen_fresh_id (m:t) : value_id =
@@ -132,10 +137,11 @@ let gen_fresh_id (m:t) : value_id =
 
 let new_model () : t =
   {
-    id_counter  = ref 0;
-    const_map   = LeapIdMap.create 10;
-    fun_map     = Hashtbl.create 10;
-    values      = Hashtbl.create 10;
+    id_counter   = ref 0;
+    const_map    = LeapIdMap.create 10;
+    fun_map      = Hashtbl.create 10;
+    values       = Hashtbl.create 10;
+    aux_sort_map = new_sort_map();
   }
 
 
@@ -143,24 +149,26 @@ let is_empty_model (m:t) : bool =
   !(m.id_counter) = 0 &&
   LeapIdMap.is_empty m.const_map &&
   Hashtbl.length m.fun_map = 0 &&
-  Hashtbl.length m.values = 0
+  Hashtbl.length m.values = 0 &&
+  LeapIdMap.is_empty m.aux_sort_map
+  
 
 
 let clear_model (m:t) : unit =
-  let _ = m.id_counter := 0 in
-  let _ = LeapIdMap.clear m.const_map in
-  let _ = Hashtbl.clear m.fun_map in
-  let _ = Hashtbl.clear m.values
-  in
-    ()
+  m.id_counter := 0;
+  LeapIdMap.clear m.const_map;
+  Hashtbl.clear m.fun_map;
+  Hashtbl.clear m.values;
+  LeapIdMap.clear m.aux_sort_map
 
 
 let copy_model (m:t) : t =
   {
-    id_counter = m.id_counter               ;
-    const_map  = LeapIdMap.copy m.const_map ;
-    fun_map    = Hashtbl.copy m.fun_map     ;
-    values     = Hashtbl.copy m.values      ;
+    id_counter = m.id_counter                    ;
+    const_map  = LeapIdMap.copy m.const_map      ;
+    fun_map    = Hashtbl.copy m.fun_map          ;
+    values     = Hashtbl.copy m.values           ;
+    aux_sort_map = LeapIdMap.copy m.aux_sort_map ;
   }
 
 
@@ -240,6 +248,10 @@ let get_fun_def (m:t) (i:id) : value option =
   try
     Some (Hashtbl.find m.values (LeapIdMap.find_id m.const_map i))
   with _ -> None
+
+
+let get_aux_sort_map (m:t) : sort_map_t =
+  m.aux_sort_map
 
 
 let get_fun (m:t) (i:id) : fun_t =

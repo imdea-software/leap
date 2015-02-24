@@ -170,13 +170,21 @@ and atom_to_pairs_atom (a:E.atom) : PE.atom =
     | E.InEq(E.ArrayT x, E.ArrayT y) -> PE.FunInEq (array_to_funterm x,
                                                           array_to_funterm y)
     | E.Eq(E.IntT x, E.IntT y)       -> PE.Eq(PE.IntV (toint x),
-                                                    PE.IntV (toint y))
+                                              PE.IntV (toint y))
+    | E.Eq(E.PairT x, E.PairT y)     -> PE.Eq(PE.PairV (topair x),
+                                              PE.PairV (topair y))
     | E.Eq(E.SetIntT x, E.SetIntT y) -> PE.Eq(PE.SetV (toset x),
-                                                    PE.SetV (toset y))
+                                              PE.SetV (toset y))
+    | E.Eq(E.SetPairT x, E.SetPairT y) -> PE.Eq(PE.SetPairV (tosetpair x),
+                                                PE.SetPairV (tosetpair y))
     | E.InEq(E.IntT x, E.IntT y)     -> PE.InEq(PE.IntV(toint x),
-                                                      PE.IntV(toint y))
+                                                PE.IntV(toint y))
+    | E.InEq(E.PairT x, E.PairT y)   -> PE.InEq(PE.PairV(topair x),
+                                                PE.PairV(topair y))
     | E.InEq(E.SetIntT x, E.SetIntT y) -> PE.InEq(PE.SetV(toset x),
                                                       PE.SetV(toset y))
+    | E.InEq(E.SetPairT x, E.SetPairT y) -> PE.InEq(PE.SetPairV(tosetpair x),
+                                                    PE.SetPairV(tosetpair y))
     | E.Eq (_,_)   -> raise(NotAPairsExpression(E.atom_to_str a))
     | E.InEq (_,_) -> raise(NotAPairsExpression(E.atom_to_str a))
     | E.BoolVar _      -> raise(NotAPairsExpression(E.atom_to_str a))

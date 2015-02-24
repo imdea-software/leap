@@ -142,7 +142,7 @@ struct
     match t with
     | PE.VarTh v       -> variable_to_str v
     | PE.NoTid         -> "NoTid"
-    | PE.PairTid p     -> "(tid_of " ^pair_str p^ ")"
+    | PE.PairTid p     -> "(select " ^pair_str p^ " tid_of)"
 
 
   and shared_or_local_to_str (th:PE.V.shared_or_local) : string =
@@ -186,7 +186,7 @@ struct
       | PE.ArrayRd(_,_) -> raise(NotSupportedInYices(PE.integer_to_str t))
       | PE.SetMin(s)    -> " (setmin " ^ yices_string_of_set s ^ ")"
       | PE.SetMax(s)    -> " (setmax " ^ yices_string_of_set s ^ ")"
-      | PE.PairInt(p)   -> " (int_of " ^ yices_string_of_pair p ^ ")"
+      | PE.PairInt(p)   -> " (select " ^ yices_string_of_pair p ^ " int_of)"
 
 
   and yices_string_of_pair (p:PE.pair) : string =
@@ -194,7 +194,7 @@ struct
     let yices_setpair = yices_string_of_setpair in
     match p with
       PE.VarPair (v)      -> variable_invocation_to_str v
-    | PE.IntTidPair (i,t) -> "(pair " ^ yices_int i^ " " ^ tid_to_str t^ ")"
+    | PE.IntTidPair (i,t) -> "(mk-record int_of::" ^ yices_int i^ " tid_of::" ^ tid_to_str t^ ")"
     | PE.SetPairMin (ps)  -> "(spmin " ^ yices_setpair ps ^ ")"
     | PE.SetPairMax (ps)  -> "(spmax " ^ yices_setpair ps ^ ")"
 
@@ -348,9 +348,9 @@ struct
     B.add_string buf
       ("(define-type " ^thid_s^ ")\n" ^
        "(define-type " ^set_s^ " (-> " ^int_s^ " " ^bool_s^ "))\n" ^
+       "(define-type " ^pair_s^ " (record int_of::" ^int_s^ " tid_of::" ^thid_s^ "))\n" ^
        "(define-type " ^setpair_s^ " (-> " ^pair_s^ " " ^bool_s^ "))\n" ^
-       "(define-type " ^loc_s^ " (subrange 1 " ^(string_of_int prog_lines)^ "))\n" ^
-       "(define-type " ^pair_s^ " (tuple " ^int_s^ " " ^thid_s^ "))\n")  
+       "(define-type " ^loc_s^ " (subrange 1 " ^(string_of_int prog_lines)^ "))\n")
 
 
   let yices_undefined_decl (buf:Buffer.t) : unit =
@@ -513,7 +513,7 @@ struct
     List.iter (fun v ->
       List.iter (fun t -> 
         B.add_string buf
-         (Printf.sprintf "\n         (if (setpair_v (mk-tuple %s %s)) (<= (select pairs_v 1) %s) true)" v t v)
+         (Printf.sprintf "\n         (if (setpair_v (mk-record int_of::%s tid_of::%s)) (<= (select pairs_v 1) %s) true)" v t v)
       ) voc_rep
     ) vars_rep;
     B.add_string buf ")))\n"
@@ -527,7 +527,7 @@ struct
     List.iter (fun v ->
       List.iter (fun t ->
         B.add_string buf
-          (Printf.sprintf "\n         (if (set_v (mk-tuple %s %s)) (>= (select pairs_v 1) %s) true)" v t v)
+          (Printf.sprintf "\n         (if (setpair_v (mk-record int_of::%s tid_of::%s)) (>= (select pairs_v 1) %s) true)" v t v)
       ) voc_rep
     ) vars_rep;
     B.add_string buf ")))\n"
@@ -570,7 +570,7 @@ struct
      "  (lambda (setpair_v::" ^setpair_s^ ")\n" ^
       List.fold_left (fun str v ->
         List.fold_left (fun str t ->
-          let pair_rep = "(mk-tuple " ^v^ " " ^t^ ")" in
+          let pair_rep = "(mk-record int_of::" ^v^ " tid_of::" ^t^ ")" in
           Printf.sprintf ("\n        (if (and (setpair_v %s) \
                                               (is_spmin %s setpair_v)) %s %s)")
             pair_rep pair_rep pair_rep str
@@ -585,7 +585,7 @@ struct
      "   (lambda (setpair_v::" ^setpair_s^ ")\n" ^
       List.fold_left (fun str v ->
         List.fold_left (fun str t ->
-          let pair_rep = "(mk-tuple " ^v^ " " ^t^ ")" in
+          let pair_rep = "(mk-record int_of::" ^v^ " tid_of::" ^t^ ")" in
           Printf.sprintf ("\n        (if (and (setpair_v %s) \
                                               (is_spmax %s setpair_v)) %s %s)")
             pair_rep pair_rep pair_rep str
@@ -594,6 +594,7 @@ struct
      "))\n")
 
 
+(*
   let yices_intof_def (buf:Buffer.t) : unit =
     B.add_string buf
       ("(define int_of::(-> " ^pair_s^ " " ^int_s^ ")\n" ^
@@ -606,6 +607,7 @@ struct
       ("(define tid_of::(-> " ^pair_s^ " " ^thid_s^ ")\n" ^
        "  (lambda (pair_v::" ^pair_s^ ")\n" ^
        "    (select pair_v 2)))\n")
+*)
 
 
   let yices_filter_set_def (vars_rep:string list) (buf:Buffer.t) : unit =
@@ -731,8 +733,10 @@ struct
       yices_max_def all_vars_str                buf;
       yices_spmin_def all_vars_str voc_str      buf;
       yices_spmax_def all_vars_str voc_str      buf;
+      (*
       yices_intof_def                           buf;
       yices_tidof_def                           buf;
+      *)
       yices_filter_set_def all_vars_str         buf;
       yices_lower_def                           buf;
       yices_splower_def                         buf;
@@ -747,7 +751,7 @@ struct
                     match t with
                     | PE.VarTh v -> (PE.V.id v)
                     | PE.NoTid  -> "NoThread"
-                    | PE.PairTid p -> "(tid_of " ^ yices_string_of_pair p ^ ")"
+                    | PE.PairTid p -> "(select " ^ yices_string_of_pair p ^ " tid_of)"
                   ) voc in
     Printf.sprintf "(define-type %s (scalar %s))\n" thid_s
                     (String.concat " " id_list)

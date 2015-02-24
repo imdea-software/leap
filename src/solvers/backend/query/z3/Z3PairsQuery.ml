@@ -194,7 +194,7 @@ struct
     let z3_setpair = z3_string_of_setpair in
     match p with
       PE.VarPair (v)      -> variable_invocation_to_str v
-    | PE.IntTidPair (i,t) -> "(pair " ^ z3_int i^ " " ^ tid_to_str t^ ")"
+    | PE.IntTidPair (i,t) -> "(mk-pair " ^ z3_int i^ " " ^ tid_to_str t^ ")"
     | PE.SetPairMin (ps)  -> "(spmin " ^ z3_setpair ps ^ ")"
     | PE.SetPairMax (ps)  -> "(spmax " ^ z3_setpair ps ^ ")"
 
@@ -347,9 +347,9 @@ struct
   let z3_type_decl (buf:Buffer.t) : unit =
     B.add_string buf ("(declare-sort " ^tid_s^ ")\n");
     B.add_string buf ("(define-sort " ^set_s^ " () (Array " ^int_s^ " " ^bool_s^ "))\n");
+    B.add_string buf ("(declare-datatypes () ((" ^pair_s^ " (mk-pair (first " ^int_s^ ") (second " ^tid_s^ ")))))\n");
     B.add_string buf ("(define-sort " ^setpair_s^ " () (Array " ^pair_s^ " " ^bool_s^ "))\n");
-    B.add_string buf ("(define-sort " ^loc_s^ " () " ^int_s^ ")\n");
-    B.add_string buf ("(declare-datatypes () ((" ^pair_s^ " (mk-pair (first " ^int_s^ ") (second " ^tid_s^ ")))))\n")
+    B.add_string buf ("(define-sort " ^loc_s^ " () " ^int_s^ ")\n")
 
 
   let z3_undefined_decl (buf:Buffer.t) : unit =

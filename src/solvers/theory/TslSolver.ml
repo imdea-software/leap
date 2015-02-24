@@ -1079,7 +1079,7 @@ let compute_model (b:bool) : unit =
 
 let model_to_str () : string =
   let model = !tslk_model in
-  let sort_map = !tslk_sort_map in
+  let sort_map = GM.sm_union !tslk_sort_map (GM.get_aux_sort_map model) in
   let thid_str = GM.search_type_to_str model sort_map GM.tid_s in
   let pc_str   = GM.search_type_to_str model sort_map GM.loc_s in
   let addr_str = GM.search_type_to_str model sort_map GM.addr_s in

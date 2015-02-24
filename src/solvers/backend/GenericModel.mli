@@ -65,6 +65,10 @@ val sm_dom_of_type : sort_map_t -> typeDecl -> id list
 (** [sm_dom_of_type sm t] returns the list of identifiers with type [t]
     in [sm] *)
 
+val sm_union : sort_map_t -> sort_map_t -> sort_map_t
+(** [sm_union sm1 sm2] returns a sort map which corresponds to the union of
+ *  [sm1] and [sm2] *)
+
 (* Generic model functions *)
 
 val new_model : unit -> t
@@ -107,6 +111,9 @@ val get_fun : t -> id -> fun_t
 (** [get_fun m f] returns the information related to function [f]
     in model [m] *)
 
+val get_aux_sort_map : t -> sort_map_t
+(** [get_aux_sort_map m] returns the auxiliary sort map associated
+ *  with model [m] *)
 
 val model_to_str : t -> string
 (** [model_to_str m] generates a string representation of model [m] *)

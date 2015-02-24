@@ -97,3 +97,10 @@ let iter (f:('a -> 'b -> unit)) (idmap:('a,'b)t) : unit =
 
 let fold (f:('a -> 'b -> 'c -> 'c)) (idmap:('a,'b)t) (init:'c) : 'c =
   H.fold f idmap.map init
+
+
+let union (idmap1:('a,'b)t) (idmap2:('a,'b)t) : ('a,'b) t =
+  let res_idmap = copy idmap1 in
+  iter (add res_idmap) idmap2;
+  res_idmap
+

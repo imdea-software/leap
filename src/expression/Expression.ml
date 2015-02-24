@@ -4464,6 +4464,114 @@ let construct_term_eq (v:term)
 
   match (v,e) with
     (* Variables *)
+  | (VarT var, Formula t) ->
+      (* Possibly I have to inject the Bool sort to the variable *)
+      let modif     = [VarT (var_base_info var)] in
+      let new_th    = pres_th_param v th_p in
+      let left_atom = prime_atom (BoolVar (V.set_param var new_th)) in
+      let param_t   = param th_p t
+      in
+        (modif, F.Iff (F.Literal (F.Atom left_atom), param_t))
+
+  | (VarT var, Term t) ->
+      let modif     = [VarT (var_base_info var)] in
+      let new_th    = pres_th_param v th_p in
+      let left_term = prime_term $ param_term new_th v in
+      let param_t   = param_term th_p t
+      in
+        (modif, eq_term left_term param_t)
+
+  (* Cells *)
+  (* TODO: Not sure if this case is ok *)
+  | (CellT (VarCell var as c), Term CellT (CellLock (VarCell _, _))) ->
+      let new_th    = pres_th_param v th_p in
+      let modif     = [TidT(CellLockId(VarCell(var_base_info var)))] in
+      let new_tid   = (match th_p with
+                       | V.Shared -> NoTid
+                       | V.Local t -> (VarTh t)) in
+      let left_term = prime_term (CellT (VarCell
+                        (V.set_param (V.unprime var) new_th))) in
+      (modif, eq_term left_term (CellT(MkCell(CellData c, Next c, new_tid))))
+
+  (* All other cases *)
+  | _ -> begin
+           let (modif, t) =
+             match (v,e) with
+             (* Sets of addresses *)
+             | (SetT (VarSet var), Term t) -> ([SetT(VarSet(var_base_info var))], t)
+             (* Sets of integers *)
+             | (SetIntT (VarSetInt var), Term t) -> ([SetIntT(VarSetInt(var_base_info var))], t)
+             (* Sets of elements *)
+             | (SetElemT (VarSetElem var), Term t) -> ([SetElemT(VarSetElem(var_base_info var))], t)
+             (* Sets of pairs *)
+             | (SetPairT (VarSetPair var), Term t) ->([SetPairT(VarSetPair(var_base_info var))], t)
+             (* Sets of threads *)
+             | (SetThT (VarSetTh var), Term t) -> ([SetThT(VarSetTh(var_base_info var))], t)
+             (* Elements *)
+             | (ElemT (VarElem var), Term t) -> ([ElemT(VarElem(var_base_info var))], t)
+             | (ElemT (CellData (VarCell var)), Term t) -> ([ElemT(CellData(VarCell(var_base_info var)))], t)
+             (* Threads *)
+             | (TidT (VarTh var), Term t) -> ([TidT(VarTh(var_base_info var))], t)
+             | (TidT (CellLockId (VarCell var)), Term t) -> ([TidT (CellLockId(VarCell(var_base_info var)))], t)
+             | (TidT (CellLockIdAt (VarCell var, i)), Term t) -> ([TidT (CellLockIdAt(VarCell(var_base_info var),i))], t)
+             | (TidT (TidArrRd (CellTids (VarCell var), i)), Term t) -> ([TidT (TidArrRd (CellTids(VarCell(var_base_info var)),i))], t)
+             | (TidT (TidArrRd (VarTidArray var,i)), Term t) -> ([TidT(TidArrRd(VarTidArray (var_base_info var),i))], t)
+
+             (* Addresses *)
+             | (AddrT (VarAddr var), Term t) -> ([AddrT(VarAddr(var_base_info var))], t)
+             | (AddrT (Next (VarCell var)), Term t) -> ([AddrT(Next(VarCell(var_base_info var)))], t)
+             | (AddrT (ArrAt (VarCell var, i)), Term t) -> ([AddrT(ArrAt(VarCell(var_base_info var),i))], t)
+             | (AddrT (AddrArrRd (CellArr (VarCell var), i)), Term t) -> ([AddrT(AddrArrRd(CellArr(VarCell(var_base_info var)),i))], t)
+             | (AddrT (AddrArrRd (VarAddrArray var,i)), Term t) -> ([AddrT(AddrArrRd(VarAddrArray (var_base_info var),i))], t)
+             (* Cells *)
+             | (CellT (VarCell var), Term t) -> ([CellT(VarCell(var_base_info var))], t)
+             (* Paths *)
+             | (PathT (VarPath var), Term t) -> ([PathT(VarPath(var_base_info var))], t)
+             (* Memories *)
+             | (MemT (VarMem var), Term t) -> ([MemT(VarMem(var_base_info var))], t)
+             (* Integers *)
+             | (IntT (VarInt var), Term t) -> ([IntT(VarInt(var_base_info var))], t)
+             (* Pairs *)
+             | (PairT (VarPair var), Term t) -> ([PairT(VarPair(var_base_info var))], t)
+             (* Arrays with domain of thread identifiers *)
+             | (ArrayT (VarArray var), Term t) -> ([ArrayT(VarArray(var_base_info var))], t)
+             (* Pointer support *)
+             (* Missing for this cases *)
+             | (_, Term t)                 ->
+                 Interface.Err.msg "Unexpected assignment" $
+                          sprintf "When constructing transition relation for \
+                                   assignment between term \"%s\" and \
+                                   expression \"%s\"." (term_to_str v)
+                                                     (term_to_str t);
+                  raise(Incompatible_assignment(v,e))
+             | (_, Formula t)                ->
+                 Interface.Err.msg "Unexpected assignment" $
+                          sprintf "When construction transition relation for \
+                                   assignment between term \"%s\" and formula \
+                                   expression \"%s\"." (term_to_str v)
+                                                       (formula_to_str t);
+                  raise(Incompatible_assignment(v,e))
+           in
+             let left_term = prime_term $ param_term th_p v in
+             let param_t   = param_term th_p t
+             in
+               (modif, eq_term left_term param_t)
+         end
+
+
+(*
+
+
+
+
+
+let construct_term_eq (v:term)
+                      (th_p:V.shared_or_local)
+                      (e:expr_t) : (term list * formula) =
+(*  let new_th = pres_th_param v th_p in *)
+
+  match (v,e) with
+    (* Variables *)
     (VarT var, Formula t) ->
       (* Possibly I have to inject the Bool sort to the variable *)
       let modif     = [VarT (var_base_info var)] in
@@ -4500,6 +4608,14 @@ let construct_term_eq (v:term)
   (* Sets of elements *)
   | (SetElemT (VarSetElem var), Term t) ->
       let modif     = [SetElemT(VarSetElem(var_base_info var))] in
+      let left_term = prime_term $ param_term th_p v in
+      let param_t   = param_term th_p t
+      in
+        (modif, eq_term left_term param_t)
+
+  (* Sets of pairs *)
+  | (SetPairT (VarSetPair var), Term t) ->
+      let modif     = [SetPairT(VarSetPair(var_base_info var))] in
       let left_term = prime_term $ param_term th_p v in
       let param_t   = param_term th_p t
       in
@@ -4646,6 +4762,14 @@ let construct_term_eq (v:term)
       in
         (modif, eq_term left_term param_t)
 
+  (* Pairs *)
+  | (PairT (VarPair var), Term t) ->
+      let modif = [PairT(VarPair(var_base_info var))] in
+      let left_term = prime_term $ param_term th_p v in
+      let param_t   = param_term th_p t
+      in
+        (modif, eq_term left_term param_t)
+
   (* Arrays with domain of thread identifiers *)
   | (ArrayT (VarArray var), Term t) ->
       let modif     = [ArrayT(VarArray(var_base_info var))] in
@@ -4672,6 +4796,7 @@ let construct_term_eq (v:term)
                                            (formula_to_str t);
       raise(Incompatible_assignment(v,e))
 
+*)
 
 let construct_pres_term (t:term) (th_p:V.shared_or_local) : formula =
   match t with

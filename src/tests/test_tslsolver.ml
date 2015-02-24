@@ -8,7 +8,7 @@ let _ =
   else begin
     let cfg = SMTExecute.new_configuration SMTExecute.Z3 in
     SMTExecute.compute_model cfg true;
-    let sat = SMTExecute.run cfg (LeapFile.read !filename) in
-    let model = SMTExecute.get_model() in
-    print_endline ("ANSWER: " ^ (if sat then "SAT" else "UNSAT"))
+    let result = SMTExecute.run cfg (LeapFile.read !filename) in
+(*    let model = SMTExecute.get_model() in *)
+    print_endline ("ANSWER: " ^ (if Sat.is_sat result then "SAT" else "UNSAT"))
   end

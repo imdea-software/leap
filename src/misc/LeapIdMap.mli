@@ -18,3 +18,4 @@ val unify_id : ('a,'b) t -> 'b -> 'b -> unit
 
 val iter : ('a -> 'b -> unit) -> ('a,'b) t -> unit
 val fold : ('a -> 'b -> 'c -> 'c) -> ('a,'b) t -> 'c -> 'c
+val union : ('a,'b) t -> ('a, 'b) t -> ('a, 'b) t

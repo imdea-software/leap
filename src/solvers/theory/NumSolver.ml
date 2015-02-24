@@ -233,8 +233,9 @@ struct
   let model_to_str () : string =
     let module Q = (val QueryManager.get_num_query Solver.identifier) in
     let module Trans = Solver.Translate.Num.Query(Q) in
-    let sort_map = Trans.sort_map () in
+    let query_sort_map = Trans.sort_map () in
     let model = Solver.get_model () in
+    let sort_map = GM.sm_union query_sort_map (GM.get_aux_sort_map model) in
     let thid_str = search_type_to_str model sort_map GM.tid_s in
     let pc_str   = search_type_to_str model sort_map GM.loc_s in
     let int_str  = search_type_to_str model sort_map GM.int_s in

@@ -24,12 +24,52 @@ let model = GM.new_model ()
 let id_count : int ref = ref 0
 
 
+(* Record counter *)
+let record_count : int ref = ref 0
+
 
 (* Updates and propagates a cell id update *)
 let gen_fresh_id (unit) : int =
   let _ = incr id_count
   in
     !id_count
+
+let gen_fresh_record_id (unit) : string =
+  incr record_count;
+  "record" ^ (string_of_int !record_count)
+
+
+let gen_record_id (i:int) : string =
+  "rec" ^ (string_of_int i)
+
+
+(* Temporary record storage *)
+let record_tbl : ((GM.id * GM.vals) list, string) Hashtbl.t = Hashtbl.create 5
+let record_synonyms : (int, string) Hashtbl.t = Hashtbl.create 5
+
+
+let record_lookup (fields:(GM.id * GM.vals) list) : string =
+  try
+    Hashtbl.find record_tbl fields
+  with
+    Not_found ->
+      begin
+        let fresh_id = gen_fresh_record_id () in
+        Hashtbl.add record_tbl fields fresh_id;
+        GM.sm_decl_const (GM.get_aux_sort_map model) fresh_id GM.pair_s;
+        fresh_id
+      end
+
+
+let record_add (fields:(GM.id * GM.vals) list) (i:int) : string =
+  print_endline ("Declaring the record number: " ^ (string_of_int i));
+  let id = gen_record_id i in
+  Hashtbl.add record_tbl fields id;
+  GM.sm_decl_const (GM.get_aux_sort_map model) id GM.pair_s;
+  print_endline "Should be here";
+  id
+
+
 
 
 %}
@@ -74,7 +114,11 @@ generic_model :
   |
     { GM.new_model() }
   | assertion_list
-    { let m = GM.copy_model model in
+    {
+      Hashtbl.iter (fun fields id ->
+        GM.decl_const model id (GM.Record("mk-record", fields))
+      ) record_tbl;
+      let m = GM.copy_model model in
       let _ = GM.clear_model model
       in
         m
@@ -89,6 +133,12 @@ assertion_list :
 
 
 assertion :
+  | OPEN_PAREN EQUAL record NUMBER CLOSE_PAREN
+    {
+      let fields = snd $3 in
+      let _ = record_add fields $4 in
+      ()
+    }
   | OPEN_PAREN EQUAL var var CLOSE_PAREN
     {
       GM.unify model $3 $4
@@ -105,8 +155,16 @@ assertion :
       | GM.Var v               -> GM.decl_const model v $3
       | GM.Function (f,params) -> GM.decl_fun model f params $3
     }
+  | OPEN_PAREN EQUAL OPEN_PAREN SELECT NUMBER IDENT CLOSE_PAREN value CLOSE_PAREN
+    { () }
+  | OPEN_PAREN EQUAL OPEN_PAREN SELECT NUMBER NUMBER CLOSE_PAREN value CLOSE_PAREN
+    { () }
   | OPEN_PAREN EQUAL OPEN_PAREN SELECT sel IDENT CLOSE_PAREN value CLOSE_PAREN
     { () }
+  | OPEN_PAREN EQUAL OPEN_PAREN SELECT sel NUMBER CLOSE_PAREN value CLOSE_PAREN
+    { () }
+
+
 
 
 sel :
@@ -123,6 +181,11 @@ var :
     { GM.Var (get_name $1) }
   | OPEN_PAREN fun_name param_list CLOSE_PAREN
     { GM.Function ($2, $3) }
+  | OPEN_PAREN fun_name record CLOSE_PAREN
+    {
+      let record_id = record_lookup (snd $3) in
+      GM.Function ($2, [Some record_id])
+    } 
 
 
 fun_name :
@@ -172,7 +235,10 @@ number :
 
 record :
   | OPEN_PAREN MK_RECORD field_list CLOSE_PAREN
-    { ("mk-record", $3) }
+    {
+      ignore (record_lookup $3);
+      ("mk-record", $3)
+    }
 
 
 field_list :

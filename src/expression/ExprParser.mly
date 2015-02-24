@@ -1874,13 +1874,13 @@ pair :
     }
   | SETPAIRMIN OPEN_PAREN term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "psmin(%s)" (E.term_to_str $3) in
+      let get_str_expr () = sprintf "spmin(%s)" (E.term_to_str $3) in
       let s  = parser_check_type check_type_setpair $3 E.SetPair get_str_expr in
         E.SetPairMin(s)
     }
   | SETPAIRMAX OPEN_PAREN term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "psmax(%s)" (E.term_to_str $3) in
+      let get_str_expr () = sprintf "spmax(%s)" (E.term_to_str $3) in
       let s  = parser_check_type check_type_setpair $3 E.SetPair get_str_expr in
         E.SetPairMax(s)
     }

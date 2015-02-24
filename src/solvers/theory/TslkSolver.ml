@@ -281,8 +281,9 @@ struct
 
 
   let model_to_str () : string =
-    let sort_map = TslkSol.sort_map () in
+    let query_sort_map = TslkSol.sort_map () in
     let model = Solver.get_model () in
+    let sort_map = GM.sm_union query_sort_map (GM.get_aux_sort_map model) in
     let thid_str = GM.search_type_to_str model sort_map GM.tid_s in
     let pc_str   = GM.search_type_to_str model sort_map GM.loc_s in
     let addr_str = GM.search_type_to_str model sort_map GM.addr_s in

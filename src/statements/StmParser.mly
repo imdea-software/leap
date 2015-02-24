@@ -443,7 +443,9 @@ let check_and_get_sort (id:string) : E.sort =
   | "tidSet"  -> E.SetTh
   | "intSet"  -> E.SetInt
   | "elemSet" -> E.SetElem
+  | "pairSet" -> E.SetPair
   | "int"     -> E.Int
+  | "pair"    -> E.Pair
   | "addrarr" -> E.AddrArray
   | "tidarr"  -> E.TidArray
   | _ -> begin
@@ -3242,13 +3244,13 @@ pair :
     }
   | SETPAIRMIN OPEN_PAREN term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "psmin(%s)" (Stm.term_to_str $3) in
+      let get_str_expr () = sprintf "spmin(%s)" (Stm.term_to_str $3) in
       let s  = parser_check_type check_type_setpair $3 E.SetPair get_str_expr in
         Stm.SetPairMin(s)
     }
   | SETPAIRMAX OPEN_PAREN term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "psmax(%s)" (Stm.term_to_str $3) in
+      let get_str_expr () = sprintf "spmax(%s)" (Stm.term_to_str $3) in
       let s  = parser_check_type check_type_setpair $3 E.SetPair get_str_expr in
         Stm.SetPairMax(s)
     }

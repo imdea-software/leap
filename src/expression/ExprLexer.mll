@@ -81,10 +81,10 @@ let _ = List.iter (fun (kwd, tok) -> Hashtbl.add keyword_table kwd tok)
             ("subseteqElem" , SUBSETEQELEM);
             ("setIntMin"    , SETINTMIN);
             ("setIntMax"    , SETINTMAX);
-            ("psmin"        , SETPAIRMIN);
-            ("psmax"        , SETPAIRMAX);
-            ("tid_of"       , INTOF);
-            ("int_of"       , TIDOF);
+            ("spmin"        , SETPAIRMIN);
+            ("spmax"        , SETPAIRMAX);
+            ("int_of"       , INTOF);
+            ("tid_of"       , TIDOF);
             ("spempty"      , SETPAIREMPTY);
             ("spsingle"     , SETPAIRSINGLE);
             ("spunion"      , SETPAIRUNION);
