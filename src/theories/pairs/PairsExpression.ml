@@ -723,7 +723,14 @@ let thset_from (ths:tid list) : ThreadSet.t =
   List.fold_left (fun s t -> ThreadSet.add t s) ThreadSet.empty ths
 
 
-let rec voc_from_pair_integer (t:integer) : ThreadSet.t =
+let rec voc_from_pair_tid (t:tid) : ThreadSet.t =
+  match t with
+  | VarTh v -> ThreadSet.singleton t
+  | NoTid -> ThreadSet.singleton t
+  | PairTid p -> voc_from_pair_pair p
+
+
+and voc_from_pair_integer (t:integer) : ThreadSet.t =
   match t with
     Val i                  -> ThreadSet.empty
   | Var v                  -> opt_th (V.parameter v)
@@ -796,6 +803,7 @@ and voc_from_pair_term (t:term) : ThreadSet.t =
 
 let voc_from_pair_atom (a:atom) : ThreadSet.t =
   let union = ThreadSet.union in
+  let voc_tid     = voc_from_pair_tid in
   let voc_int     = voc_from_pair_integer in
   let voc_pair    = voc_from_pair_pair in
   let voc_term    = voc_from_pair_term in
@@ -813,8 +821,8 @@ let voc_from_pair_atom (a:atom) : ThreadSet.t =
   | Subset (s1,s2)          -> union (voc_set s1) (voc_set s2)
   | InPair (p,ps)           -> union (voc_pair p) (voc_setpair ps)
   | SubsetEqPair (ps1,ps2)  -> union (voc_setpair ps1) (voc_setpair ps2)
-  | TidEq (th1,th2)         -> thset_from [th1;th2]
-  | TidInEq (th1,th2)       -> thset_from [th1;th2]
+  | TidEq (th1,th2)         -> union (voc_tid th1) (voc_tid th2)
+  | TidInEq (th1,th2)       -> union (voc_tid th1) (voc_tid th2)
   | FunEq (f1,f2)           -> ThreadSet.empty
   | FunInEq (f1,f2)         -> ThreadSet.empty
   | PC (pc,th,pr)           -> opt_th th

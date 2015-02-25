@@ -55,6 +55,7 @@ let rec tid_to_pairs_tid (th:E.tid) : PE.tid =
   match th with
   | E.VarTh t -> PE.VarTh (variable_to_pairs_variable t)
   | E.NoTid -> PE.NoTid
+  | E.PairTid p -> PE.PairTid (pair_to_pairs_pair p)
   | _ -> raise(NotAPairsExpression(E.tid_to_str th))
 
 

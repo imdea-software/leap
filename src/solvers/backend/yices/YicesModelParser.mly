@@ -62,11 +62,9 @@ let record_lookup (fields:(GM.id * GM.vals) list) : string =
 
 
 let record_add (fields:(GM.id * GM.vals) list) (i:int) : string =
-  print_endline ("Declaring the record number: " ^ (string_of_int i));
   let id = gen_record_id i in
   Hashtbl.add record_tbl fields id;
   GM.sm_decl_const (GM.get_aux_sort_map model) id GM.pair_s;
-  print_endline "Should be here";
   id
 
 

@@ -22,6 +22,7 @@ struct
   let pc_prime_name : string = Conf.pc_name ^ "'"
   let aux_int       : string = "ai_"
   let undefInt      : string = "undefined_int"
+  let someTid       : string = "someTid"
 
 
   (* Program lines *)
@@ -31,7 +32,7 @@ struct
   (* Sort names *)
   let int_s : string = "int"
   let pair_s : string = "pair"
-  let thid_s : string = "thid"
+  let tid_s : string = "tid"
   let set_s : string = "set"
   let setpair_s : string = "setpair"
   let bool_s : string = "bool"
@@ -57,7 +58,7 @@ struct
   let pairs_local_varid_to_str (v:E.V.id) : string =
     let _ = GM.sm_decl_fun sort_map v [GM.tid_s] [GM.int_s]
     in
-      Printf.sprintf "(define %s::(-> %s %s))\n" v thid_s int_s
+      Printf.sprintf "(define %s::(-> %s %s))\n" v tid_s int_s
 
 
   let pairs_var_to_str (v:PE.V.t) : string =
@@ -78,12 +79,12 @@ struct
                            PE.V.VarSet.add (PE.V.unparam v) vs)
                         ) (PE.ThreadSet.empty, PE.V.VarSet.empty) vl in
     let th_str = if PE.ThreadSet.cardinal t_set <> 0 then
-                   "(define-type " ^thid_s^ ")\n" ^
+                   "(define-type " ^tid_s^ ")\n" ^
                       PE.ThreadSet.fold (fun t str ->
                         let t_str = tid_to_str t in
                         let _ = GM.sm_decl_const sort_map t_str GM.tid_s
                         in
-                          str ^ (Printf.sprintf "(define %s::%s)\n" t_str thid_s)
+                          str ^ (Printf.sprintf "(define %s::%s)\n" t_str tid_s)
                    ) t_set ""
                  else
                    ""
@@ -116,7 +117,7 @@ struct
     | PE.Pair    -> pair_s
     | PE.Set     -> set_s
     | PE.SetPair -> setpair_s
-    | PE.Tid     -> thid_s
+    | PE.Tid     -> tid_s
 
 
   and var_sort_to_gmsort_str (v:PE.V.t) : string =
@@ -290,7 +291,7 @@ struct
     let t_str = tid_to_str th in
     let _ = GM.sm_decl_const sort_map t_str GM.tid_s
     in
-      Printf.sprintf "(define %s::%s)\n" t_str thid_s
+      Printf.sprintf "(define %s::%s)\n" t_str tid_s
 
 
   and local_var_to_str (v:PE.V.t) : string =
@@ -299,7 +300,7 @@ struct
     let gm_v_sort = var_sort_to_gmsort_str v in
     let _ = GM.sm_decl_fun sort_map v_str [GM.tid_s] [gm_v_sort]
     in
-      Printf.sprintf "(define %s::(-> %s %s))\n" v_str thid_s v_sort
+      Printf.sprintf "(define %s::(-> %s %s))\n" v_str tid_s v_sort
 
 
   and yices_string_of_pos (pc:(int * PE.V.shared_or_local * bool)) : string =
@@ -346,9 +347,10 @@ struct
 
   let yices_type_decl (prog_lines:int) (buf:Buffer.t) : unit =
     B.add_string buf
-      ("(define-type " ^thid_s^ ")\n" ^
+      ("(define-type " ^tid_s^ ")\n" ^
+       "(define " ^someTid^ "::" ^tid_s^ ")\n" ^
        "(define-type " ^set_s^ " (-> " ^int_s^ " " ^bool_s^ "))\n" ^
-       "(define-type " ^pair_s^ " (record int_of::" ^int_s^ " tid_of::" ^thid_s^ "))\n" ^
+       "(define-type " ^pair_s^ " (record int_of::" ^int_s^ " tid_of::" ^tid_s^ "))\n" ^
        "(define-type " ^setpair_s^ " (-> " ^pair_s^ " " ^bool_s^ "))\n" ^
        "(define-type " ^loc_s^ " (subrange 1 " ^(string_of_int prog_lines)^ "))\n")
 
@@ -513,7 +515,7 @@ struct
     List.iter (fun v ->
       List.iter (fun t -> 
         B.add_string buf
-         (Printf.sprintf "\n         (if (setpair_v (mk-record int_of::%s tid_of::%s)) (<= (select pairs_v 1) %s) true)" v t v)
+         (Printf.sprintf "\n         (if (setpair_v (mk-record int_of::%s tid_of::%s)) (<= (select pairs_v int_of) %s) true)" v t v)
       ) voc_rep
     ) vars_rep;
     B.add_string buf ")))\n"
@@ -527,7 +529,7 @@ struct
     List.iter (fun v ->
       List.iter (fun t ->
         B.add_string buf
-          (Printf.sprintf "\n         (if (setpair_v (mk-record int_of::%s tid_of::%s)) (>= (select pairs_v 1) %s) true)" v t v)
+          (Printf.sprintf "\n         (if (setpair_v (mk-record int_of::%s tid_of::%s)) (>= (select pairs_v int_of) %s) true)" v t v)
       ) voc_rep
     ) vars_rep;
     B.add_string buf ")))\n"
@@ -575,7 +577,7 @@ struct
                                               (is_spmin %s setpair_v)) %s %s)")
             pair_rep pair_rep pair_rep str
         ) str voc_rep
-      ) undefInt vars_rep ^
+      ) ("(mk-record int_of::" ^undefInt^ " tid_of::" ^someTid^ ")") vars_rep ^
      "))\n")
 
 
@@ -590,7 +592,7 @@ struct
                                               (is_spmax %s setpair_v)) %s %s)")
             pair_rep pair_rep pair_rep str
         ) str voc_rep
-      ) undefInt vars_rep ^
+      ) ("(mk-record int_of::" ^undefInt^ " tid_of::" ^someTid^ ")") vars_rep ^
      "))\n")
 
 
@@ -604,7 +606,7 @@ struct
 
   let yices_tidof_def (buf:Buffer.t) : unit =
     B.add_string buf
-      ("(define tid_of::(-> " ^pair_s^ " " ^thid_s^ ")\n" ^
+      ("(define tid_of::(-> " ^pair_s^ " " ^tid_s^ ")\n" ^
        "  (lambda (pair_v::" ^pair_s^ ")\n" ^
        "    (select pair_v 2)))\n")
 *)
@@ -635,7 +637,7 @@ struct
     ("(define splower::(-> " ^setpair_s^ " " ^int_s^ " " ^setpair_s^ ")\n" ^
      "  (lambda (s::" ^setpair_s^ " i::" ^int_s^ ")\n" ^
      "    (lambda (p::" ^pair_s^ ")\n" ^
-     "      (and (s p) (<= (select p 1) i)))))\n")
+     "      (and (s p) (<= (select p int_of) i)))))\n")
 
 
   (************************** Support for sets **************************)
@@ -648,9 +650,9 @@ struct
     let _ = GM.sm_decl_fun sort_map pc_prime_name [GM.tid_s] [GM.loc_s]
     in
       B.add_string buf ("(define " ^Conf.pc_name^
-                          "::(-> " ^thid_s^ " " ^loc_s^ "))\n");
+                          "::(-> " ^tid_s^ " " ^loc_s^ "))\n");
       B.add_string buf ("(define " ^pc_prime_name^
-                          "::(-> " ^thid_s^ " " ^loc_s^ "))\n")
+                          "::(-> " ^tid_s^ " " ^loc_s^ "))\n")
 
 
   let yices_aux_pairs_def (cutoff:int) (buf:Buffer.t) : unit =
@@ -753,7 +755,7 @@ struct
                     | PE.NoTid  -> "NoThread"
                     | PE.PairTid p -> "(select " ^ yices_string_of_pair p ^ " tid_of)"
                   ) voc in
-    Printf.sprintf "(define-type %s (scalar %s))\n" thid_s
+    Printf.sprintf "(define-type %s (scalar %s))\n" tid_s
                     (String.concat " " id_list)
 
 

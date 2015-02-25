@@ -22,6 +22,7 @@ struct
   let pc_prime_name : string = Conf.pc_name ^ "_prime"
   let aux_int       : string = "ai_"
   let undefInt      : string = "undefined_int"
+  let someTid       : string = "someTid"
 
 
   (* Program lines *)
@@ -346,6 +347,7 @@ struct
 
   let z3_type_decl (buf:Buffer.t) : unit =
     B.add_string buf ("(declare-sort " ^tid_s^ ")\n");
+    B.add_string buf ("(declare-const " ^someTid^ " " ^tid_s^ ")\n");
     B.add_string buf ("(define-sort " ^set_s^ " () (Array " ^int_s^ " " ^bool_s^ "))\n");
     B.add_string buf ("(declare-datatypes () ((" ^pair_s^ " (mk-pair (first " ^int_s^ ") (second " ^tid_s^ ")))))\n");
     B.add_string buf ("(define-sort " ^setpair_s^ " () (Array " ^pair_s^ " " ^bool_s^ "))\n");
@@ -510,7 +512,7 @@ struct
           Printf.sprintf ("\n  (if (and (select setpair_v %s) (is_spmin %s setpair_v)) %s %s)")
             pair_rep pair_rep pair_rep str
         ) str voc_rep
-      ) undefInt vars_rep ^
+      ) ("(mk-pair " ^undefInt^ " " ^someTid^ ")") vars_rep ^
      ")\n")
 
 
@@ -523,7 +525,7 @@ struct
           Printf.sprintf ("\n  (if (and (select setpair_v %s) (is_spmax %s setpair_v)) %s %s)")
             pair_rep pair_rep pair_rep str
         ) str voc_rep
-      ) undefInt vars_rep ^
+      ) ("(mk-pair " ^undefInt^ " " ^someTid^ ")") vars_rep ^
      ")\n")
 
 
