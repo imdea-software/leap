@@ -520,6 +520,7 @@ let define_ident (proc_name:E.V.procedure_name)
 %token INTOF TIDOF SETPAIRMIN SETPAIRMAX
 %token SETPAIREMPTY SETPAIRSINGLE SETPAIRUNION SETPAIRINTR SETPAIRDIFF SETPAIRLOWER
 %token SETPAIRIN SETPAIRSUBSETEQ
+%token SETPAIRININTPAIR SETPAIRINTIDPAIR SETPAIRUNIQUETID SETPAIRUNIQUEINT
 %token THREAD
 %token OPEN_BRACKET CLOSE_BRACKET
 %token OPEN_SET CLOSE_SET
@@ -533,7 +534,7 @@ let define_ident (proc_name:E.V.procedure_name)
 %token LOGICAL_TRUE LOGICAL_FALSE
 %token DOT
 %token ARR_UPDATE
-%token WF_INTSUBSET WF_INTLESS
+%token WF_INTSUBSET WF_PAIRSUBSET WF_INTLESS
 
 %token INVARIANT FORMULA VARS
 %token AT UNDERSCORE SHARP
@@ -806,6 +807,8 @@ acceptance :
 wf_op :
   | WF_INTSUBSET
     { PVD.WFIntSubset }
+  | WF_PAIRSUBSET
+    { PVD.WFPairSubset }
   | WF_INTLESS
     { PVD.WFIntLess }
 
@@ -1084,9 +1087,6 @@ literal :
       let s = parser_check_type check_type_setelem $3 E.SetElem get_str_expr in
         Formula.Atom (E.SubsetEqElem(r,s))
     }
-
-
-
   | SETPAIRIN OPEN_PAREN term COMMA term CLOSE_PAREN
     {
       let get_str_expr () = sprintf "spin(%s,%s)" (E.term_to_str $3)
@@ -1102,6 +1102,36 @@ literal :
       let r = parser_check_type check_type_setpair $3 E.SetPair get_str_expr in
       let s = parser_check_type check_type_setpair $5 E.SetPair get_str_expr in
         Formula.Atom (E.SubsetEqPair(r,s))
+    }
+
+
+  | SETPAIRINTIDPAIR OPEN_PAREN term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "inintpair(%s,%s)" (E.term_to_str $3)
+                                                       (E.term_to_str $5) in
+      let t = parser_check_type check_type_thid $3 E.Tid get_str_expr in
+      let s = parser_check_type check_type_setpair $5 E.SetPair get_str_expr in
+        Formula.Atom (E.InTidPair(t,s))
+    }
+  | SETPAIRININTPAIR OPEN_PAREN term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "inintpair(%s,%s)" (E.term_to_str $3)
+                                                       (E.term_to_str $5) in
+      let i = parser_check_type check_type_int $3 E.Int get_str_expr in
+      let s = parser_check_type check_type_setpair $5 E.SetPair get_str_expr in
+        Formula.Atom (E.InIntPair(i,s))
+    }
+  | SETPAIRUNIQUETID OPEN_PAREN term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "uniquetid(%s)" (E.term_to_str $3) in
+      let s = parser_check_type check_type_setpair $3 E.SetPair get_str_expr in
+        Formula.Atom (E.UniqueTid(s))
+    }
+  | SETPAIRUNIQUEINT OPEN_PAREN term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "uniqueint(%s)" (E.term_to_str $3) in
+      let s = parser_check_type check_type_setpair $3 E.SetPair get_str_expr in
+        Formula.Atom (E.UniqueInt(s))
     }
   | term MATH_LESS term
     {

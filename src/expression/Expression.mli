@@ -212,6 +212,8 @@ and atom =
   | SubsetEqElem  of setelem * setelem
   | InPair        of pair * setpair
   | SubsetEqPair  of setpair * setpair
+  | InTidPair     of tid * setpair
+  | InIntPair     of integer * setpair
   | Less          of integer * integer
   | Greater       of integer * integer
   | LessEq        of integer * integer
@@ -221,6 +223,8 @@ and atom =
   | GreaterElem   of elem * elem
   | Eq            of eq
   | InEq          of diseq
+  | UniqueInt     of setpair
+  | UniqueTid     of setpair
   | BoolVar       of V.t
   | BoolArrayRd   of arrays * tid
   | PC            of pc_t * V.shared_or_local * bool

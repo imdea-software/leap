@@ -257,6 +257,8 @@ struct
       | PE.Subset(s1,s2)  -> " (subseteq " ^ set_tostr s1 ^ " " ^ set_tostr s2 ^ ")"
       | PE.InPair(i,s)        -> " (" ^ setpair_tostr s ^ " " ^ pair_tostr i ^ ")"
       | PE.SubsetEqPair(s1,s2)  -> " (spsubseteq " ^ setpair_tostr s1 ^ " " ^ setpair_tostr s2 ^ ")"
+      | PE.InTidPair(t,s) -> " (intidpair " ^ tid_to_str t ^ " " ^ setpair_tostr s ^ ")"
+      | PE.InIntPair(i,s) -> " (inintpair " ^ int_tostr i ^ " " ^ setpair_tostr s ^ ")"
       | PE.TidEq(x,y)     -> " (= "  ^ (tid_to_str x) ^ " " ^
                                             (tid_to_str y) ^ ")"
       | PE.TidInEq(x,y)   -> " (/= " ^ (tid_to_str x) ^ " " ^
@@ -265,6 +267,8 @@ struct
                                             (fun_to_str y) ^ ")"
       | PE.FunInEq(x,y)   -> " (/= " ^ (fun_to_str x) ^ " " ^
                                             (fun_to_str y) ^ ")"
+      | PE.UniqueInt(s)   -> " (uniqueint" ^ setpair_tostr s ^ ")"
+      | PE.UniqueTid(s)   -> " (uniquetid" ^ setpair_tostr s ^ ")"
       | PE.PC (i,th,pr)   -> " " ^ yices_string_of_pos (i,th,pr) ^ " "
       | PE.PCUpdate(i,th) -> " " ^ yices_string_of_posupd (i,th) ^ " "
       | PE.PCRange (i,j,th,pr) -> " " ^ yices_string_of_posrange (i,j,th,pr) ^ " "
@@ -624,6 +628,25 @@ struct
       "      (and (s a) " ^or_cond^ "))))\n")
 
 
+  let yices_filter_pairs_def (vars_rep:string list) (voc_rep:string list) (buf:Buffer.t) : unit =
+    let or_cond =
+      match (vars_rep, voc_rep) with
+      | ([],_)
+      | (_,[]) -> "true"
+      | _ -> "(or" ^
+                (List.fold_left (fun str v ->
+                  List.fold_left (fun str t ->
+                    let pair_rep = "(mk-record int_of::" ^v^ " tid_of::" ^t^ ")" in
+                    (str ^ "(= pair_v " ^pair_rep^ ")")
+                  ) str voc_rep
+                ) "" vars_rep) ^ ")" in
+    B.add_string buf
+    ( "(define filter_pairs::(-> " ^setpair_s^ " " ^setpair_s^ ")\n" ^
+      "  (lambda (setpair_v::" ^setpair_s^ ")\n" ^
+      "    (lambda (pair_v::" ^pair_s^ ")\n" ^
+      "      (and (setpair_v pair_v) " ^or_cond^ "))))\n")
+
+
   let yices_lower_def (buf:Buffer.t) : unit =
     B.add_string buf
     ("(define subsetLowerThan::(-> " ^set_s^ " " ^int_s^ " " ^set_s^ ")\n" ^
@@ -638,6 +661,31 @@ struct
      "  (lambda (s::" ^setpair_s^ " i::" ^int_s^ ")\n" ^
      "    (lambda (p::" ^pair_s^ ")\n" ^
      "      (and (s p) (<= (select p int_of) i)))))\n")
+
+
+
+  let yices_unique_def (buf:Buffer.t) : unit =
+    B.add_string buf
+      ("(define uniqueint::(-> " ^setpair_s^ " " ^bool_s^ ")\n" ^
+       "  (lambda (s::" ^setpair_s^ ")\n" ^
+       "    (forall (n1::" ^int_s^ " n2::" ^int_s^ " t::" ^tid_s^ ") (=> (and (s (mk-record int_of::n1 tid_of::t)) (s (mk-record int_of::n2 tid_of::t))) (= n1 n2)))))\n" ^
+       "(define uniquetid::(-> " ^setpair_s^ " " ^bool_s^ ")\n" ^
+       "  (lambda (s::" ^setpair_s^ ")\n" ^
+       "    (forall (t1::" ^tid_s^ " t2::" ^tid_s^ " n::" ^int_s^ ") (=> (and (s (mk-record int_of::n tid_of::t1)) (s (mk-record int_of::n tid_of::t2))) (= t1 t2)))))\n")
+
+
+  let yices_intidpair_def (buf:Buffer.t) : unit =
+    B.add_string buf
+      ("(define intidpair::(-> " ^tid_s^ " " ^setpair_s^ " " ^bool_s^ ")\n" ^
+       "  (lambda (&t::" ^tid_s^ " &s::" ^setpair_s^ ")\n" ^
+       "    (exists (&n::" ^int_s^ ") (&s (mk-record int_of::&n tid_of::&t)))))\n")
+
+
+  let yices_inintpair_def (buf:Buffer.t) : unit =
+    B.add_string buf
+      ("(define inintpair::(-> " ^int_s^ " " ^setpair_s^ " " ^bool_s^ ")\n" ^
+       "  (lambda (&n::" ^int_s^ " &s::" ^setpair_s^ ")\n" ^
+       "    (exists (&t::" ^tid_s^ ") (&s (mk-record int_of::&n tid_of::&t)))))\n")
 
 
   (************************** Support for sets **************************)
@@ -674,6 +722,8 @@ struct
                     B.add_string buf ("(assert (is_legal " ^ v_str ^ "))\n")
       | PE.Set -> let v_str = variable_invocation_to_str v in
                     B.add_string buf ("(assert (= " ^v_str^ " (filter_set " ^v_str^ ")))\n")
+      | PE.SetPair -> let v_str = variable_invocation_to_str v in
+                        B.add_string buf ("(assert (= " ^v_str^ " (filter_pairs " ^v_str^ ")))\n")
       | _ -> ()
     ) global_vars;
     List.iter (fun v ->
@@ -685,6 +735,9 @@ struct
         | PE.Set -> let v_str = variable_invocation_to_str
                           (PE.V.set_param v (PE.V.Local (PE.voc_to_var t))) in
                       B.add_string buf ("(assert (= " ^v_str^ " (filter_set " ^v_str^ ")))\n")
+        | PE.SetPair -> let v_str = variable_invocation_to_str
+                          (PE.V.set_param v (PE.V.Local (PE.voc_to_var t))) in
+                        B.add_string buf ("(assert (= " ^v_str^ " (filter_pairs " ^v_str^ ")))\n")
         | _ -> ()
       ) voc
     ) local_vars
@@ -693,7 +746,8 @@ struct
   (* TODO: Verify, if no set is defined, then do not include the preamble for sets *)
   let yices_preamble (buf:Buffer.t)
                      (voc:PE.tid list)
-                     (cutoff:int)
+                     (int_cutoff:int)
+                     (tid_cutoff:int)
                      (gbl_int_vars:PE.V.t list)
                      (lcl_int_vars:PE.V.t list) : unit =
     let loc_vars_str = List.flatten $ List.map (fun t ->
@@ -708,41 +762,41 @@ struct
                                         false PE.V.Shared PE.V.GlobalScope
                          in
                            variable_invocation_to_str i_var
-                       ) (LeapLib.rangeList 1 cutoff) in
+                       ) (LeapLib.rangeList 1 int_cutoff) in
     let all_vars_str = glb_vars_str @ loc_vars_str @ aux_vars_str in
     let voc_str = List.map tid_to_str voc
     in
-      yices_undefined_decl                      buf;
-      yices_aux_pairs_def cutoff                buf;
-      yices_emp_def                             buf;
-      yices_singleton_def                       buf;
-      yices_union_def                           buf;
-      yices_setdiff_def                         buf;
-      yices_intersection_def                    buf;
-      yices_subseteq_def all_vars_str           buf;
-      yices_spemp_def                           buf;
-      yices_spsingleton_def                     buf;
-      yices_spunion_def                         buf;
-      yices_spsetdiff_def                       buf;
-      yices_spintersection_def                  buf;
-      yices_spsubseteq_def all_vars_str         buf;
-      yices_is_min_def all_vars_str             buf;
-      yices_is_max_def all_vars_str             buf;
-      yices_is_spmin_def all_vars_str voc_str   buf;
-      yices_is_spmax_def all_vars_str voc_str   buf;
-      yices_is_in_def                           buf;
-      yices_min_def all_vars_str                buf;
-      yices_max_def all_vars_str                buf;
-      yices_spmin_def all_vars_str voc_str      buf;
-      yices_spmax_def all_vars_str voc_str      buf;
-      (*
-      yices_intof_def                           buf;
-      yices_tidof_def                           buf;
-      *)
-      yices_filter_set_def all_vars_str         buf;
-      yices_lower_def                           buf;
-      yices_splower_def                         buf;
-      yices_pc_def                              buf
+      yices_undefined_decl                          buf;
+      yices_aux_pairs_def int_cutoff                buf;
+      yices_emp_def                                 buf;
+      yices_singleton_def                           buf;
+      yices_union_def                               buf;
+      yices_setdiff_def                             buf;
+      yices_intersection_def                        buf;
+      yices_subseteq_def all_vars_str               buf;
+      yices_spemp_def                               buf;
+      yices_spsingleton_def                         buf;
+      yices_spunion_def                             buf;
+      yices_spsetdiff_def                           buf;
+      yices_spintersection_def                      buf;
+      yices_spsubseteq_def all_vars_str             buf;
+      yices_is_min_def all_vars_str                 buf;
+      yices_is_max_def all_vars_str                 buf;
+      yices_is_spmin_def all_vars_str voc_str       buf;
+      yices_is_spmax_def all_vars_str voc_str       buf;
+      yices_is_in_def                               buf;
+      yices_min_def all_vars_str                    buf;
+      yices_max_def all_vars_str                    buf;
+      yices_spmin_def all_vars_str voc_str          buf;
+      yices_spmax_def all_vars_str voc_str          buf;
+      yices_filter_set_def all_vars_str             buf;
+      yices_filter_pairs_def all_vars_str voc_str   buf;
+      yices_lower_def                               buf;
+      yices_splower_def                             buf;
+      yices_unique_def                              buf;
+      yices_intidpair_def                           buf;
+      yices_inintpair_def                           buf;
+      yices_pc_def                                  buf
 
 
   (************************ Preamble definitions ************************)
@@ -778,7 +832,7 @@ struct
                            (PE.V.sort v) = PE.Int
                          ) xs in
     let voc            = PE.voc phi in
-    let cutoff         = SmpPairs.cut_off phi in
+    let (int_cutoff, tid_cutoff) = SmpPairs.cut_off phi in
     let global_vars    = PE.all_global_vars phi in
     let local_vars     = PE.all_local_vars_without_param phi in
     let glb_int_vars   = filter_ints global_vars in
@@ -794,7 +848,7 @@ struct
     let _              = List.iter (fun v ->
                           B.add_string buf (local_var_to_str v)
                          ) local_vars in
-    let _              = yices_preamble buf voc cutoff
+    let _              = yices_preamble buf voc int_cutoff tid_cutoff
                             glb_int_vars lcl_int_vars in
     let _              = yices_legal_values global_vars local_vars voc buf in
     let _              = B.add_string buf ("(assert " ^ (string_of_formula phi) ^

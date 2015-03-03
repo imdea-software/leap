@@ -43,7 +43,7 @@ module Make (C:Core.S) : S =
 
 
         (* n1, n4 *)
-        if n = "n6" then begin
+(*        if n = "n6" then begin *)
 
 
         let n_voc = match PVD.node_box pvd n with
@@ -120,7 +120,7 @@ module Make (C:Core.S) : S =
           n_vcs := self_vcs @ others_vcs @ !n_vcs
         done;
         !n_vcs @ vcs
-        end else vcs
+(*        end else vcs *)
       ) nodes []
 
 
@@ -260,6 +260,8 @@ module Make (C:Core.S) : S =
                           (F.And (mu_n1,rho)) next_mu voc th line
                     ) rho_list in
                   enable_vc :: successor_vcs @ gen_vcs
+
+
               ) [] trans_list) @ xs
         ) info []) @ vcs
       ) [] edges
@@ -317,10 +319,10 @@ module Make (C:Core.S) : S =
               | None -> ()
               | Some s -> check_well_defined_supp s in
       let pvd_vcs = gen_vcs pvd in
-      let vc_list = (*pvd_vcs.initiation :: *)
-                    pvd_vcs.consecution (* @
+      let vc_list = pvd_vcs.initiation ::
+                    pvd_vcs.consecution @
                     pvd_vcs.acceptance @
-                    pvd_vcs.fairness*) in
+                    pvd_vcs.fairness in
       let vc_count = ref 1 in
       let show_progress = not (LeapVerbose.is_verbose_enabled()) in
       Progress.init (List.length vc_list);

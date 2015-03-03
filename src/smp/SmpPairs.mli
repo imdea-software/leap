@@ -1,1 +1,1 @@
-val cut_off : PairsExpression.formula -> int
+val cut_off : PairsExpression.formula -> (int * int)

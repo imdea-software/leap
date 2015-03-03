@@ -255,8 +255,10 @@ struct
       | PE.InEq(x,y)      -> " (not (=" ^ (term_tostr x) ^ (term_tostr y) ^ "))"
       | PE.In(i,s)        -> " (select " ^ set_tostr s ^ " " ^ int_tostr i ^ ")"
       | PE.Subset(s1,s2)  -> " (subseteq " ^ set_tostr s1 ^ " " ^ set_tostr s2 ^ ")"
-      | PE.InPair(i,s)        -> " (" ^ setpair_tostr s ^ " " ^ pair_tostr i ^ ")"
+      | PE.InPair(i,s)        -> " (select " ^ setpair_tostr s ^ " " ^ pair_tostr i ^ ")"
       | PE.SubsetEqPair(s1,s2)  -> " (spsubseteq " ^ setpair_tostr s1 ^ " " ^ setpair_tostr s2 ^ ")"
+      | PE.InTidPair(t,s) -> " (intidpair " ^ tid_to_str t ^ " " ^ setpair_tostr s ^ ")"
+      | PE.InIntPair(i,s) -> " (inintpair " ^ int_tostr i ^ " " ^ setpair_tostr s ^ ")"
       | PE.TidEq(x,y)     -> " (= "  ^ (tid_to_str x) ^ " " ^
                                             (tid_to_str y) ^ ")"
       | PE.TidInEq(x,y)   -> " (not (= " ^ (tid_to_str x) ^ " " ^
@@ -265,6 +267,8 @@ struct
                                             (fun_to_str y) ^ ")"
       | PE.FunInEq(x,y)   -> " (not (= " ^ (fun_to_str x) ^ " " ^
                                            (fun_to_str y) ^ "))"
+      | PE.UniqueInt(s)   -> " (uniqueint" ^ setpair_tostr s ^ ")"
+      | PE.UniqueTid(s)   -> " (uniquetid" ^ setpair_tostr s ^ ")"
       | PE.PC (i,th,pr)   -> " " ^ z3_string_of_pos (i,th,pr) ^ " "
       | PE.PCUpdate(i,th) -> " " ^ z3_string_of_posupd (i,th) ^ " "
       | PE.PCRange (i,j,th,pr) -> " " ^ z3_string_of_posrange (i,j,th,pr) ^ " "
@@ -369,34 +373,32 @@ struct
 
   let z3_singleton_def (buf:Buffer.t) : unit =
     B.add_string buf
-      ( "(define-fun singleton ((i " ^int_s^ ")) " ^set_s^ "\n" ^
-        "  (store emp i true))\n")
+      ( "(define-fun singleton ((&i " ^int_s^ ")) " ^set_s^ "\n" ^
+        "  (store emp &i true))\n")
 
 
   let z3_union_def (buf:Buffer.t) : unit =
     B.add_string buf
-      ( "(define-fun unionset ((s1 " ^set_s^ ") (s2 " ^set_s^ ")) " ^set_s^ "\n" ^
-        "  ((_ map or) s1 s2))\n")
+      ( "(define-fun unionset ((&s1 " ^set_s^ ") (&s2 " ^set_s^ ")) " ^set_s^ "\n" ^
+        "  ((_ map or) &s1 &s2))\n")
 
 
   let z3_setdiff_def (buf:Buffer.t) : unit =
     B.add_string buf
-      ( "(define-fun setdiff ((s1 " ^set_s^ ") (s2 " ^set_s^ ")) " ^set_s^ "\n" ^
-        "  ((_ map and) s1 ((_ map not) s2)))\n")
+      ( "(define-fun setdiff ((&s1 " ^set_s^ ") (&s2 " ^set_s^ ")) " ^set_s^ "\n" ^
+        "  ((_ map and) &s1 ((_ map not) &s2)))\n")
 
 
   let z3_intersection_def (buf:Buffer.t) : unit =
     B.add_string buf
-    ("(define-fun intersection ((s1 " ^set_s^ ") (s2 " ^set_s^ ")) " ^set_s^ "\n" ^
-     "  ((_ map and) s1 s2))\n")
+    ("(define-fun intersection ((&s1 " ^set_s^ ") (&s2 " ^set_s^ ")) " ^set_s^ "\n" ^
+     "  ((_ map and) &s1 &s2))\n")
 
 
   let z3_subseteq_def (vars_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
-        ("(define-fun subseteq ((s1 " ^set_s^ ") (s2 " ^set_s^ ")) " ^bool_s^ "\n" ^
-         "  (= (intersection s1 s2) s1))\n")
-
-
+        ("(define-fun subseteq ((&s1 " ^set_s^ ") (&s2 " ^set_s^ ")) " ^bool_s^ "\n" ^
+         "  (= (intersection &s1 &s2) &s1))\n")
 
 
   let z3_spemp_def (buf:Buffer.t) : unit =
@@ -407,61 +409,61 @@ struct
 
   let z3_spsingleton_def (buf:Buffer.t) : unit =
     B.add_string buf
-      ( "(define-fun spsingle ((p " ^pair_s^ ")) " ^setpair_s^ "\n" ^
-        "  (store spempty p true))\n")
+      ( "(define-fun spsingle ((&p " ^pair_s^ ")) " ^setpair_s^ "\n" ^
+        "  (store spempty &p true))\n")
 
 
   let z3_spunion_def (buf:Buffer.t) : unit =
     B.add_string buf
-      ( "(define-fun spunion ((s1 " ^setpair_s^ ") (s2 " ^setpair_s^ ")) " ^setpair_s^ "\n" ^
-        "  ((_ map or) s1 s2))\n")
+      ( "(define-fun spunion ((&s1 " ^setpair_s^ ") (&s2 " ^setpair_s^ ")) " ^setpair_s^ "\n" ^
+        "  ((_ map or) &s1 &s2))\n")
 
 
   let z3_spsetdiff_def (buf:Buffer.t) : unit =
     B.add_string buf
-      ( "(define-fun spdiff ((s1 " ^setpair_s^ ") (s2 " ^setpair_s^ ")) " ^setpair_s^ "\n" ^
-        "  ((_ map and) s1 ((_ map not) s2)))\n")
+      ( "(define-fun spdiff ((&s1 " ^setpair_s^ ") (&s2 " ^setpair_s^ ")) " ^setpair_s^ "\n" ^
+        "  ((_ map and) &s1 ((_ map not) &s2)))\n")
 
 
   let z3_spintersection_def (buf:Buffer.t) : unit =
     B.add_string buf
-    ("(define-fun spintr ((s1 " ^setpair_s^ ") (s2 " ^setpair_s^ ")) " ^setpair_s^ "\n" ^
-     "  ((_ map and) s1 s2))\n")
+    ("(define-fun spintr ((&s1 " ^setpair_s^ ") (&s2 " ^setpair_s^ ")) " ^setpair_s^ "\n" ^
+     "  ((_ map and) &s1 &s2))\n")
 
 
   let z3_spsubseteq_def (vars_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
-        ("(define-fun spsubseteq ((s1 " ^setpair_s^ ") (s2 " ^setpair_s^ ")) " ^bool_s^ "\n" ^
-         "  (= (spintr s1 s2) s1))\n")
+        ("(define-fun spsubseteq ((&s1 " ^setpair_s^ ") (&s2 " ^setpair_s^ ")) " ^bool_s^ "\n" ^
+         "  (= (spintr &s1 &s2) &s1))\n")
 
        
   let z3_is_min_def (vars_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
-        ("(define-fun is_min ((int_v " ^int_s^ ") (set_v " ^set_s^ ")) " ^bool_s^ "\n" ^
+        ("(define-fun is_min ((&int_v " ^int_s^ ") (&set_v " ^set_s^ ")) " ^bool_s^ "\n" ^
          "  (and");
     List.iter (fun v ->
       B.add_string buf
-        (Printf.sprintf "\n    (if (select set_v %s) (<= int_v %s) true)" v v)
+        (Printf.sprintf "\n    (if (select &set_v %s) (<= &int_v %s) true)" v v)
     ) vars_rep;
     B.add_string buf "))\n"
 
 
   let z3_is_max_def (vars_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
-        ("(define-fun is_max ((int_v " ^int_s^ ") (set_v " ^set_s^ ")) " ^bool_s^ "\n" ^
+        ("(define-fun is_max ((&int_v " ^int_s^ ") (&set_v " ^set_s^ ")) " ^bool_s^ "\n" ^
          "  (and") ;
     List.iter (fun v ->
       B.add_string buf
-        (Printf.sprintf "\n    (if (select set_v %s) (>= int_v %s) true)" v v)
+        (Printf.sprintf "\n    (if (select &set_v %s) (>= &int_v %s) true)" v v)
     ) vars_rep;
     B.add_string buf "))\n"
 
 
   let z3_min_def (vars_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
-    ("(define-fun setmin ((set_v " ^set_s^ ")) " ^int_s ^
+    ("(define-fun setmin ((&set_v " ^set_s^ ")) " ^int_s ^
       List.fold_left (fun str v ->
-        Printf.sprintf ("\n  (if (and (select set_v %s) (is_min %s set_v)) %s %s)")
+        Printf.sprintf ("\n  (if (and (select &set_v %s) (is_min %s &set_v)) %s %s)")
           v v v str
       ) undefInt vars_rep ^
      ")\n")
@@ -469,9 +471,9 @@ struct
 
   let z3_max_def (vars_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
-    ("(define-fun setmax ((set_v " ^set_s^ ")) " ^int_s^
+    ("(define-fun setmax ((&set_v " ^set_s^ ")) " ^int_s^
       List.fold_left (fun str v ->
-        Printf.sprintf ("\n  (if (and (select set_v %s) (is_max %s set_v)) %s %s)")
+        Printf.sprintf ("\n  (if (and (select &set_v %s) (is_max %s &set_v)) %s %s)")
           v v v str
       ) undefInt vars_rep ^
      ")\n")
@@ -479,12 +481,12 @@ struct
 
   let z3_is_spmin_def (vars_rep:string list) (voc_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
-        ("(define-fun is_spmin ((pair_v " ^pair_s^ ") (setpair_v " ^setpair_s^ ")) " ^bool_s^ "\n" ^
+        ("(define-fun is_spmin ((&pair_v " ^pair_s^ ") (&setpair_v " ^setpair_s^ ")) " ^bool_s^ "\n" ^
          "  (and");
     List.iter (fun v ->
       List.iter (fun t ->
         B.add_string buf
-          (Printf.sprintf "\n    (if (select setpair_v (mk-pair %s %s)) (<= (first pair_v) %s) true)" v t v)
+          (Printf.sprintf "\n    (if (select &setpair_v (mk-pair %s %s)) (=> (not (= &pair_v (mk-pair %s %s))) (< (first &pair_v) %s)) true)" v t v t v)
       ) voc_rep
     ) vars_rep;
     B.add_string buf "))\n"
@@ -492,12 +494,12 @@ struct
 
   let z3_is_spmax_def (vars_rep:string list) (voc_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
-        ("(define-fun is_spmax ((pair_v " ^pair_s^ ") (setpair_v " ^setpair_s^ ")) " ^bool_s^ "\n" ^
+        ("(define-fun is_spmax ((&pair_v " ^pair_s^ ") (&setpair_v " ^setpair_s^ ")) " ^bool_s^ "\n" ^
          "  (and") ;
     List.iter (fun v ->
       List.iter (fun t ->
         B.add_string buf
-          (Printf.sprintf "\n    (if (select setpair_v (mk-pair %s %s)) (>= (first pair_v) %s) true)" v t v)
+          (Printf.sprintf "\n    (if (select &setpair_v (mk-pair %s %s)) (>= (first &pair_v) %s) true)" v t v)
       ) voc_rep
     ) vars_rep;
     B.add_string buf "))\n"
@@ -505,11 +507,11 @@ struct
 
   let z3_spmin_def (vars_rep:string list) (voc_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
-    ("(define-fun spmin ((setpair_v " ^setpair_s^ ")) " ^pair_s ^
+    ("(define-fun spmin ((&setpair_v " ^setpair_s^ ")) " ^pair_s ^
       List.fold_left (fun str v ->
         List.fold_left (fun str t ->
           let pair_rep = "(mk-pair " ^v^ " " ^t^ ")" in
-          Printf.sprintf ("\n  (if (and (select setpair_v %s) (is_spmin %s setpair_v)) %s %s)")
+          Printf.sprintf ("\n  (if (and (select &setpair_v %s) (is_spmin %s &setpair_v)) %s %s)")
             pair_rep pair_rep pair_rep str
         ) str voc_rep
       ) ("(mk-pair " ^undefInt^ " " ^someTid^ ")") vars_rep ^
@@ -518,11 +520,11 @@ struct
 
   let z3_spmax_def (vars_rep:string list) (voc_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
-    ("(define-fun spmax ((setpair_v " ^setpair_s^ ")) " ^pair_s^
+    ("(define-fun spmax ((&setpair_v " ^setpair_s^ ")) " ^pair_s^
       List.fold_left (fun str v ->
         List.fold_left (fun str t ->
           let pair_rep = "(mk-pair " ^v^ " " ^t^ ")" in
-          Printf.sprintf ("\n  (if (and (select setpair_v %s) (is_spmax %s setpair_v)) %s %s)")
+          Printf.sprintf ("\n  (if (and (select &setpair_v %s) (is_spmax %s &setpair_v)) %s %s)")
             pair_rep pair_rep pair_rep str
         ) str voc_rep
       ) ("(mk-pair " ^undefInt^ " " ^someTid^ ")") vars_rep ^
@@ -531,13 +533,13 @@ struct
 
   let z3_intof_def (buf:Buffer.t) : unit =
     B.add_string buf
-      ("(define-fun int_of ((pair_v " ^pair_s^ ")) " ^int_s^ "\n" ^
-       "  (first pair_v))\n")
+      ("(define-fun int_of ((&pair_v " ^pair_s^ ")) " ^int_s^ "\n" ^
+       "  (first &pair_v))\n")
 
   let z3_tidof_def (buf:Buffer.t) : unit =
     B.add_string buf
-      ("(define-fun tid_of ((pair_v " ^pair_s^ ")) " ^tid_s^ "\n" ^
-       "  (second pair_v))\n")
+      ("(define-fun tid_of ((&pair_v " ^pair_s^ ")) " ^tid_s^ "\n" ^
+       "  (second &pair_v))\n")
 
 
   let z3_filter_set_def (vars_rep:string list) (buf:Buffer.t) : unit =
@@ -545,30 +547,65 @@ struct
                  "\n  (store " ^str^ " " ^v^ " true)"
                ) "emp" vars_rep in
     B.add_string buf
-      ("(declare-const var_universe " ^set_s^ ")" ^
-       "(assert (= var_universe\n " ^univ^ "))" ^
-       "(define-fun filter_set ((s1 " ^set_s^ ")) " ^set_s^ "\n" ^
-       "  (intersection s1 var_universe))\n")
+      ("(declare-const var_universe " ^set_s^ ")\n" ^
+       "(assert (= var_universe\n " ^univ^ "))\n" ^
+       "(define-fun filter_set ((&s1 " ^set_s^ ")) " ^set_s^ "\n" ^
+       "  (intersection &s1 var_universe))\n")
+
+
+  let z3_filter_pairs_def (vars_rep:string list) (voc_rep:string list) (buf:Buffer.t) : unit =
+    let univ = List.fold_left (fun str v ->
+                  List.fold_left (fun str t ->
+                    let pair_rep = "(mk-pair " ^v^ " " ^t^ ")" in
+                      "(store " ^str^ " " ^pair_rep^ " true)"
+                  ) str voc_rep
+                ) "spempty" vars_rep in
+    B.add_string buf
+      ("(declare-const pair_universe " ^setpair_s^ ")\n" ^
+       "(assert (= pair_universe\n " ^univ^ "))\n" ^
+       "(define-fun filter_pairs ((&s1 " ^setpair_s^ ")) " ^setpair_s^ "\n" ^
+       "  (spintr &s1 pair_universe))\n")
 
 
   let z3_lower_def (vars_rep:string list) (buf:Buffer.t) : unit =
     let low_set = List.fold_left (fun str v ->
-                    "\n  (store " ^str^ " " ^v^ " (and (select set_v " ^v^ ") (<= " ^v^ " pairs_v)))"
+                    "\n  (store " ^str^ " " ^v^ " (and (select &set_v " ^v^ ") (<= " ^v^ " &pairs_v)))"
                   ) "emp" vars_rep in
     B.add_string buf
-    ("(define-fun subsetLowerThan ((set_v " ^set_s^ ") (pairs_v " ^int_s^ ")) " ^set_s^
+    ("(define-fun subsetLowerThan ((&set_v " ^set_s^ ") (&pairs_v " ^int_s^ ")) " ^set_s^
      "  " ^low_set^ ")\n")
 
 
   let z3_splower_def (vars_rep:string list) (voc_rep:string list) (buf:Buffer.t) : unit =
     let low_set = List.fold_left (fun str v ->
                     List.fold_left (fun str t ->
-                      "\n  (store " ^str^ " (mk-pair " ^v^ " " ^t^ ") (and (select setpair_v (mk-pair " ^v^ " " ^t^ " )) (<= " ^v^ " int_v)))"
+                      "\n  (store " ^str^ " (mk-pair " ^v^ " " ^t^ ") (and (select &setpair_v (mk-pair " ^v^ " " ^t^ " )) (<= " ^v^ " &int_v)))"
                     ) str voc_rep
-                  ) "emp" vars_rep in
+                  ) "spempty" vars_rep in
     B.add_string buf
-    ("(define-fun splower ((setpair_v " ^setpair_s^ ") (int_v " ^int_s^ ")) " ^setpair_s^
+    ("(define-fun splower ((&setpair_v " ^setpair_s^ ") (&int_v " ^int_s^ ")) " ^setpair_s^
      "  " ^low_set^ ")\n")
+
+
+  let z3_unique_def (buf:Buffer.t) : unit =
+    B.add_string buf
+      ("(define-fun uniqueint ((&s " ^setpair_s^ ")) " ^bool_s^ "\n" ^
+       "  (forall ((&n1 " ^int_s^ ") (&n2 " ^int_s^ ") (&t " ^tid_s^ ")) (=> (and (select &s (mk-pair &n1 &t)) (select &s (mk-pair &n2 &t))) (= &n1 &n2))))\n" ^
+       "(define-fun uniquetid ((&s " ^setpair_s^ ")) " ^bool_s^ "\n" ^
+       "  (forall ((&n " ^int_s^ ") (&t1 " ^tid_s^ ") (&t2 " ^tid_s^ ")) (=> (and (select &s (mk-pair &n &t1)) (select &s (mk-pair &n &t2))) (= &t1 &t2))))\n")
+
+
+  let z3_intidpair_def (buf:Buffer.t) : unit =
+    B.add_string buf
+      ("(define-fun intidpair ((&t " ^tid_s^ ") (&s " ^setpair_s^ ")) " ^bool_s^ "\n" ^
+       "  (exists ((&n " ^int_s^ ")) (select &s (mk-pair &n &t))))\n")
+
+  let z3_inintpair_def (buf:Buffer.t) : unit =
+    B.add_string buf
+      ("(define-fun inintpair ((&n " ^int_s^ ") (&s " ^setpair_s^ ")) " ^bool_s^ "\n" ^
+       "  (exists ((&t " ^tid_s^ ")) (select &s (mk-pair &n &t))))\n")
+
+
 
 
   (************************** Support for sets **************************)
@@ -604,6 +641,8 @@ struct
                     B.add_string buf ("(assert (is_legal " ^ v_str ^ "))\n")
       | PE.Set -> let v_str = variable_invocation_to_str v in
                     B.add_string buf ("(assert (= " ^v_str^ " (filter_set " ^v_str^ ")))\n")
+      | PE.SetPair -> let v_str = variable_invocation_to_str v in
+                        B.add_string buf ("(assert (= " ^v_str^ " (filter_pairs " ^v_str^ ")))\n")
       | _ -> ()
     ) global_vars;
     List.iter (fun v ->
@@ -615,6 +654,9 @@ struct
         | PE.Set -> let v_str = variable_invocation_to_str
                           (PE.V.set_param v (PE.V.Local (PE.voc_to_var t))) in
                       B.add_string buf ("(assert (= " ^v_str^ " (filter_set " ^v_str^ ")))\n")
+        | PE.SetPair -> let v_str = variable_invocation_to_str
+                          (PE.V.set_param v (PE.V.Local (PE.voc_to_var t))) in
+                          B.add_string buf ("(assert (= " ^v_str^ " (filter_pairs " ^v_str^ ")))\n")
         | _ -> ()
       ) voc
     ) local_vars
@@ -623,7 +665,8 @@ struct
   (* TODO: Verify, if no set is defined, then do not include the preamble for sets *)
   let z3_preamble (buf:Buffer.t)
                      (voc:PE.tid list)
-                     (cutoff:int)
+                     (int_cutoff:int)
+                     (tid_cutoff:int)
                      (pc_vars:PE.V.t list)
                      (gbl_pairs_vars:PE.V.t list)
                      (lcl_pairs_vars:PE.V.t list) : unit =
@@ -640,39 +683,42 @@ struct
                                         false PE.V.Shared PE.V.GlobalScope
                          in
                            variable_invocation_to_str i_var
-                       ) (LeapLib.rangeList 1 cutoff) in
+                       ) (LeapLib.rangeList 1 int_cutoff) in
     let all_vars_str = glb_vars_str @ loc_vars_str @ aux_vars_str in
     let voc_str = List.map tid_to_str voc
     in
-      z3_undefined_decl                     buf;
-      z3_aux_pairs_def cutoff               buf;
-      z3_emp_def                            buf;
-      z3_singleton_def                      buf;
-      z3_union_def                          buf;
-      z3_setdiff_def                        buf;
-      z3_intersection_def                   buf;
-      z3_subseteq_def all_vars_str          buf;
-      z3_spemp_def                          buf;
-      z3_spsingleton_def                    buf;
-      z3_spunion_def                        buf;
-      z3_spsetdiff_def                      buf;
-      z3_spintersection_def                 buf;
-      z3_spsubseteq_def all_vars_str        buf;
-      z3_is_min_def all_vars_str            buf;
-      z3_is_max_def all_vars_str            buf;
-      z3_min_def all_vars_str               buf;
-      z3_max_def all_vars_str               buf;
-      z3_is_spmin_def all_vars_str voc_str  buf;
-      z3_is_spmax_def all_vars_str voc_str  buf;
-      z3_spmin_def all_vars_str voc_str     buf;
-      z3_spmax_def all_vars_str voc_str     buf;
-      z3_intof_def                          buf;
-      z3_tidof_def                          buf;
-      z3_filter_set_def all_vars_str        buf;
-      z3_lower_def all_vars_str             buf;
-      z3_splower_def all_vars_str voc_str   buf;
-      z3_pc_def pc_vars_str                 buf
-
+      z3_undefined_decl                         buf;
+      z3_aux_pairs_def int_cutoff               buf;
+      z3_emp_def                                buf;
+      z3_singleton_def                          buf;
+      z3_union_def                              buf;
+      z3_setdiff_def                            buf;
+      z3_intersection_def                       buf;
+      z3_subseteq_def all_vars_str              buf;
+      z3_spemp_def                              buf;
+      z3_spsingleton_def                        buf;
+      z3_spunion_def                            buf;
+      z3_spsetdiff_def                          buf;
+      z3_spintersection_def                     buf;
+      z3_spsubseteq_def all_vars_str            buf;
+      z3_is_min_def all_vars_str                buf;
+      z3_is_max_def all_vars_str                buf;
+      z3_min_def all_vars_str                   buf;
+      z3_max_def all_vars_str                   buf;
+      z3_is_spmin_def all_vars_str voc_str      buf;
+      z3_is_spmax_def all_vars_str voc_str      buf;
+      z3_spmin_def all_vars_str voc_str         buf;
+      z3_spmax_def all_vars_str voc_str         buf;
+      z3_intof_def                              buf;
+      z3_tidof_def                              buf;
+      z3_filter_set_def all_vars_str            buf;
+      z3_filter_pairs_def all_vars_str voc_str  buf;
+      z3_lower_def all_vars_str                 buf;
+      z3_splower_def all_vars_str voc_str       buf;
+      z3_pc_def pc_vars_str                     buf;
+      z3_unique_def                             buf;
+      z3_intidpair_def                          buf;
+      z3_inintpair_def                          buf
 
 
   (************************ Preamble definitions ************************)
@@ -715,7 +761,7 @@ struct
                                     (ps, gs)
                                 ) ([],[]) xs in
     let voc            = PE.voc phi in
-    let cutoff         = SmpPairs.cut_off phi in
+    let (int_cutoff,tid_cutoff) = SmpPairs.cut_off phi in
     let global_vars    = PE.all_global_vars phi in
     let local_vars     = PE.all_local_vars_without_param phi in
     let (pc_vars, glb_pairs_vars) = filter_global_ints global_vars in
@@ -731,7 +777,7 @@ struct
     let _              = List.iter (fun v ->
                           B.add_string buf (local_var_to_str v)
                          ) local_vars in
-    let _              = z3_preamble buf voc cutoff
+    let _              = z3_preamble buf voc int_cutoff tid_cutoff
                             pc_vars glb_pairs_vars lcl_pairs_vars in
     let _              = z3_legal_values global_vars local_vars voc buf in
     let _              = B.add_string buf ("(assert " ^ (string_of_formula phi) ^

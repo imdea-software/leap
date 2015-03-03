@@ -10,6 +10,7 @@ module AcceptanceSet : Set.S with type elt = accept_triple_t
 
 type wf_op_t =
   | WFIntSubset
+  | WFPairSubset
   | WFIntLess
 
 type acceptance_t = {good : AcceptanceSet.t;

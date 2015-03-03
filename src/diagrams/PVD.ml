@@ -47,6 +47,7 @@ module AcceptanceSet = Set.Make(
 
 type wf_op_t =
   | WFIntSubset
+  | WFPairSubset
   | WFIntLess
 
 type delta_op_t =
@@ -132,6 +133,7 @@ let kind_to_str (k:edge_type_t) : string =
 let wf_op_to_str (op:wf_op_t) : string =
   match op with
   | WFIntSubset -> "subset_op"
+  | WFPairSubset -> "pairsubset_op"
   | WFIntLess   -> "less_op"
 
 
@@ -407,6 +409,7 @@ let check_acceptance (nTbl:node_table_t)
   let validate_delta (t:E.term) (op:wf_op_t) : unit =
     match (E.term_sort t, op) with
     | (E.SetInt, WFIntSubset)
+    | (E.SetPair, WFPairSubset)
     | (E.Int, WFIntLess) -> ()
     | _ -> begin
              Interface.Err.msg "Unsupported ranking function" $
@@ -549,18 +552,25 @@ let ranking_function (ante:E.formula)
   let cons (t1:E.term) (t2:E.term) (eq:delta_op_t) : E.formula =
     match (snd accept.delta, eq) with
     | (_, Preserve) -> form (E.Eq (t2, t1))
-    | (WFIntSubset, Decrement) -> begin
+    | (WFIntSubset, Decrement)  -> begin
+                                     match (t1, t2) with
+                                     | (E.SetIntT s1, E.SetIntT s2) ->
+                                         F.And(form (E.InEq (t2, t1)),
+                                               form (E.SubsetEqInt (s2, s1)))
+                                     | _ -> assert false
+                                   end
+    | (WFPairSubset, Decrement) -> begin
                                     match (t1, t2) with
-                                    | (E.SetIntT s1, E.SetIntT s2) ->
+                                    | (E.SetPairT s1, E.SetPairT s2) ->
                                         F.And(form (E.InEq (t2, t1)),
-                                              form (E.SubsetEqInt (s2, s1)))
+                                              form (E.SubsetEqPair (s2, s1)))
                                     | _ -> assert false
-                                  end
-    | (WFIntLess, Decrement) -> begin
-                                  match (t1, t2) with
-                                  | (E.IntT i1, E.IntT i2) -> form(E.Less (i2, i1))
-                                  | _ -> assert false
-                                end in
+                                   end
+    | (WFIntLess, Decrement)    -> begin
+                                    match (t1, t2) with
+                                    | (E.IntT i1, E.IntT i2) -> form(E.Less (i2, i1))
+                                    | _ -> assert false
+                                   end in
   if AcceptanceSet.mem e accept.bad then begin
     let (n,m,t) = e in
     let _ = print_endline ("IS BAD: " ^ (node_id_to_str n) ^ " -> " ^

@@ -338,6 +338,8 @@ let rec is_int_atom ato =
   | E.SubsetEqElem(_,_)                -> false
   | E.InPair(_,_)                      -> false
   | E.SubsetEqPair(_,_)                -> false
+  | E.InTidPair(_,_)                   -> false
+  | E.InIntPair(_,_)                   -> false
   | E.Less(_,_)                        -> true
   | E.Greater(_,_)                     -> true
   | E.LessEq(_,_)                      -> true
@@ -349,6 +351,8 @@ let rec is_int_atom ato =
   | E.InEq(E.TidT _, E.TidT _) -> true
   | E.Eq(x,y)                          -> (is_int_integer x) && (is_int_integer y)
   | E.InEq(x,y)                        -> (is_int_integer x) && (is_int_integer y)
+  | E.UniqueInt(_)                     -> false
+  | E.UniqueTid(_)                     -> false
   | E.BoolVar _                        -> false
   | E.BoolArrayRd (_,_)                -> false
   | E.PC(_)                            -> true

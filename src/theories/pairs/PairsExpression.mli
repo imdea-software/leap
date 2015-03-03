@@ -63,6 +63,8 @@ and atom =
   | LessTid       of tid * tid
   | In            of integer * set
   | Subset        of set * set
+  | InTidPair     of tid * setpair
+  | InIntPair     of integer * setpair
   | InPair        of pair * setpair
   | SubsetEqPair  of setpair * setpair
   | Eq            of eq
@@ -71,6 +73,8 @@ and atom =
   | TidInEq       of tid * tid
   | FunEq         of fun_term * fun_term
   | FunInEq       of fun_term * fun_term
+  | UniqueInt     of setpair
+  | UniqueTid     of setpair
   | PC            of int * V.shared_or_local * bool
   | PCUpdate      of int * tid
   | PCRange       of int * int * V.shared_or_local * bool

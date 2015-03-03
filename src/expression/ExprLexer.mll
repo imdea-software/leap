@@ -93,6 +93,10 @@ let _ = List.iter (fun (kwd, tok) -> Hashtbl.add keyword_table kwd tok)
             ("splower"      , SETPAIRLOWER);
             ("spin"         , SETPAIRIN);
             ("spsubseteq"   , SETPAIRSUBSETEQ);
+            ("intidpair"    , SETPAIRINTIDPAIR);
+            ("inintpair"    , SETPAIRININTPAIR);
+            ("uniquetid"    , SETPAIRUNIQUETID);
+            ("uniqueint"    , SETPAIRUNIQUEINT);
             ("Th"           , THREAD);
             ("and"          , LOGICAL_AND);
             ("or"           , LOGICAL_OR);
@@ -102,6 +106,7 @@ let _ = List.iter (fun (kwd, tok) -> Hashtbl.add keyword_table kwd tok)
             ("Bad"          , BAD);
             ("arrUpd"       , ARR_UPDATE);
             ("subset_op"    , WF_INTSUBSET);
+            ("pairsubset_op", WF_PAIRSUBSET);
             ("less_op"      , WF_INTLESS)]
 }
 

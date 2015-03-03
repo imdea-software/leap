@@ -62,7 +62,7 @@ let andSym = "/\\"
 let orSym = "\\/"
 let notSym = "~"
 let implSym = "->"
-let iffSym = "<>"
+let iffSym = "<->"
 
 
 (*******************************)

@@ -71,7 +71,9 @@ and atom =
   | LessTid       of tid * tid
   | In            of integer * set
   | Subset        of set * set
-  | InPair     of pair * setpair
+  | InTidPair     of tid * setpair
+  | InIntPair     of integer * setpair
+  | InPair        of pair * setpair
   | SubsetEqPair of setpair * setpair
   | Eq            of eq
   | InEq          of diseq
@@ -79,6 +81,8 @@ and atom =
   | TidInEq       of tid * tid
   | FunEq         of fun_term * fun_term
   | FunInEq       of fun_term * fun_term
+  | UniqueInt     of setpair
+  | UniqueTid     of setpair
   | PC            of int * V.shared_or_local * bool
   | PCUpdate      of int * tid
   | PCRange       of int * int * V.shared_or_local * bool
@@ -224,14 +228,18 @@ let rec generic_atom_to_str (srf:string -> string) (a:atom) : string =
   | InEq (t1,t2)            -> srf (term_str_f t1 ^ " != " ^ term_str_f t2)
   | In (i,s)                -> srf (int_str_f i   ^ " in " ^ set_str_f s)
   | Subset (s1,s2)          -> srf (set_str_f s1  ^ " subset " ^ set_str_f s2)
-  | InPair (p,ps)        -> srf ("psin(" ^ pair_str_f p ^ "," ^ setpair_str_f ps ^ ")")
-  | SubsetEqPair (ps1,ps2) -> srf ("pssubset(" ^ setpair_str_f ps1  ^ "," ^ setpair_str_f ps2 ^ ")")
+  | InTidPair (t,ps)        -> srf ("pstidin(" ^ tid_str_f t ^ "," ^ setpair_str_f ps ^ ")")
+  | InIntPair (i,ps)        -> srf ("psintin(" ^ int_str_f i ^ "," ^ setpair_str_f ps ^ ")")
+  | InPair (p,ps)           -> srf ("psin(" ^ pair_str_f p ^ "," ^ setpair_str_f ps ^ ")")
+  | SubsetEqPair (ps1,ps2)  -> srf ("pssubset(" ^ setpair_str_f ps1  ^ "," ^ setpair_str_f ps2 ^ ")")
   | TidEq (th1,th2)         -> srf (tid_str_f th1   ^ " = "  ^
                                     tid_str_f th2)
   | TidInEq (th1,th2)       -> srf (tid_str_f th1   ^ " != " ^
                                     tid_str_f th2)
   | FunEq (f1,f2)           -> srf (fun_str_f f1  ^ " = "  ^ fun_str_f f2)
   | FunInEq (f1,f2)         -> srf (fun_str_f f1  ^ " != " ^ fun_str_f f2)
+  | UniqueInt (ps)          -> srf ("uniqueint(" ^ setpair_str_f ps ^ ")")
+  | UniqueTid (ps)          -> srf ("uniquetid(" ^ setpair_str_f ps ^ ")")
   | PC (pc,th,pr)           -> let i_str = if pr then "pc'" else "pc" in
                                let th_str = V.shared_or_local_to_str th in
                                  Printf.sprintf "%s(%s) = %i" i_str th_str pc
@@ -298,8 +306,10 @@ let rec is_pair_atom ato =
   | E.SubsetEqInt(_,_)                 -> false
   | E.InElem(_,_)                      -> false
   | E.SubsetEqElem(_,_)                -> false
-  | E.InPair(_,_)                      -> false
-  | E.SubsetEqPair(_,_)                -> false
+  | E.InPair(_,_)                      -> true
+  | E.SubsetEqPair(_,_)                -> true
+  | E.InTidPair(_,_)                   -> true
+  | E.InIntPair(_,_)                   -> true
   | E.Less(_,_)                        -> true
   | E.Greater(_,_)                     -> true
   | E.LessEq(_,_)                      -> true
@@ -307,12 +317,14 @@ let rec is_pair_atom ato =
   | E.LessTid(_,_)                     -> true
   | E.LessElem(_,_)                    -> true
   | E.GreaterElem(_,_)                 -> true
-  | E.Eq(E.TidT _, E.TidT _)   -> true
-  | E.InEq(E.TidT _, E.TidT _) -> true
+  | E.Eq(E.TidT _, E.TidT _)           -> true
+  | E.InEq(E.TidT _, E.TidT _)         -> true
   | E.Eq(x,y)                          -> (is_pair_integer x) && (is_pair_integer y)
   | E.InEq(x,y)                        -> (is_pair_integer x) && (is_pair_integer y)
   | E.BoolVar _                        -> false
   | E.BoolArrayRd (_,_)                -> false
+  | E.UniqueInt(_)                     -> true
+  | E.UniqueTid(_)                     -> true
   | E.PC(_)                            -> true
   | E.PCUpdate(_)                      -> true
   | E.PCRange(_)                       -> true
@@ -397,12 +409,16 @@ and atom_is_linear a =
   | InEq(_,_)            -> false
   | In (_,_)             -> false
   | Subset (_,_)         -> false
-  | InPair (_,_)      -> false
-  | SubsetEqPair (_,_)  -> false
+  | InTidPair _          -> false
+  | InIntPair _          -> false
+  | InPair (_,_)         -> false
+  | SubsetEqPair (_,_)   -> false
   | TidEq(x,y)           -> false
   | TidInEq(x,y)         -> false
   | FunEq(x,y)           -> false
   | FunInEq(x,y)         -> false
+  | UniqueInt _          -> false
+  | UniqueTid _          -> false
   | PC _                 -> false
   | PCUpdate _           -> false
   | PCRange _            -> false
@@ -533,12 +549,16 @@ let generic_set_from_pair_atom (base:V.t -> 'a)
   | InEq (t1,t2)             -> union (term_f t1) (term_f t2)
   | In (i,s)                 -> union (int_f i) (set_f s)
   | Subset (s1,s2)           -> union (set_f s1) (set_f s2)
+  | InTidPair (t,ps)         -> (setpair_f ps)
+  | InIntPair (i,ps)         -> union (int_f i) (setpair_f ps)
   | InPair (p,ps)         -> union (pair_f p) (setpair_f ps)
   | SubsetEqPair (ps1,ps2)  -> union (setpair_f ps1) (setpair_f ps2)
   | TidEq (th1,th2)          -> empty
   | TidInEq (th1,th2)        -> empty
   | FunEq (f1,f2)            -> union (fun_f f1) (fun_f f2)
   | FunInEq (f1,f2)          -> union (fun_f f1) (fun_f f2)
+  | UniqueInt ps             -> (setpair_f ps)
+  | UniqueTid ps             -> (setpair_f ps)
   | PC (pc,th,pr)            -> empty
   | PCUpdate (pc,th)         -> empty
   | PCRange (_,_,_,_)        -> empty
@@ -819,12 +839,16 @@ let voc_from_pair_atom (a:atom) : ThreadSet.t =
   | InEq (t1,t2)            -> union (voc_term t1) (voc_term t2)
   | In (i,s)                -> union (voc_int i) (voc_set s)
   | Subset (s1,s2)          -> union (voc_set s1) (voc_set s2)
+  | InTidPair (t,ps)        -> union (voc_tid t) (voc_setpair ps)
+  | InIntPair (i,ps)        -> union (voc_int i) (voc_setpair ps)
   | InPair (p,ps)           -> union (voc_pair p) (voc_setpair ps)
   | SubsetEqPair (ps1,ps2)  -> union (voc_setpair ps1) (voc_setpair ps2)
   | TidEq (th1,th2)         -> union (voc_tid th1) (voc_tid th2)
   | TidInEq (th1,th2)       -> union (voc_tid th1) (voc_tid th2)
   | FunEq (f1,f2)           -> ThreadSet.empty
   | FunInEq (f1,f2)         -> ThreadSet.empty
+  | UniqueInt ps            -> (voc_setpair ps)
+  | UniqueTid ps            -> (voc_setpair ps)
   | PC (pc,th,pr)           -> opt_th th
   | PCUpdate (pc,th)        -> ThreadSet.singleton th
   | PCRange (_,_,th,_)      -> opt_th th

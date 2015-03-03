@@ -144,7 +144,7 @@ let parse_output (ch:Pervasives.in_channel) : (bool * Sat.t) =
     | "sat"     -> (Debug.print_smt "sat\n"; (true, Sat.Sat))
     | "unknown" -> (Debug.print_smt "unknown\n"; (true, Sat.Unknown))
     | "timeout" -> (Debug.print_smt "timeout\n"; (false,Sat.Unknown))
-    | _         -> (false, Sat.Unknown)
+    | _         -> (false, Sat.Unsat)
   in
     (terminated, outcome)
 
@@ -199,11 +199,18 @@ let run (cfg:configuration_t) (query:string) : Sat.t =
                   let exp = Str.regexp (";;[^\n]*") in
                   let conv = Str.global_replace exp "" line
                   in
-                    Buffer.add_string buf conv
+                    Buffer.add_string buf (conv ^ "\n")
                 done
               with _ -> () in
 (*      if cfg.smt <> Yices then Debug.force_print_file_name "VC" tmpfile; *)
-      model := cfg.model_parser (Lexing.from_string (Buffer.contents buf));
+      try
+        model := cfg.model_parser (Lexing.from_string (Buffer.contents buf));
+      with Parsing.Parse_error ->
+        begin
+          Interface.Err.msg "Model parsing error" $
+            ("Could not parse the following model:\n" ^
+              (Buffer.contents buf))
+        end
     end else begin
       verbl _LONG_INFO "**** SMTExecute, no response with model obtained.\n";
       GenericModel.clear_model !model

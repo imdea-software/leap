@@ -236,6 +236,8 @@ and atom =
   | SubsetEqElem  of setelem * setelem
   | InPair        of pair * setpair
   | SubsetEqPair  of setpair * setpair
+  | InTidPair     of tid * setpair
+  | InIntPair     of integer * setpair
   | Less          of integer * integer
   | Greater       of integer * integer
   | LessEq        of integer * integer
@@ -245,6 +247,8 @@ and atom =
   | GreaterElem   of elem * elem
   | Eq            of eq
   | InEq          of diseq
+  | UniqueInt     of setpair
+  | UniqueTid     of setpair
   | BoolVar       of V.t
   | BoolArrayRd   of arrays * tid
   | PC            of pc_t * V.shared_or_local * bool
@@ -768,6 +772,10 @@ and priming_atom (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (
                                                 priming_setpair pr prime_set s)
   | SubsetEqPair(s_in,s_out)          -> SubsetEqPair(priming_setpair pr prime_set s_in,
                                                       priming_setpair pr prime_set s_out)
+  | InTidPair(t,s)                    -> InTidPair(priming_tid pr prime_set t,
+                                                   priming_setpair pr prime_set s)
+  | InIntPair(i,s)                    -> InIntPair(priming_int pr prime_set i,
+                                                   priming_setpair pr prime_set s)
   | Less(i1,i2)                       -> Less(priming_int pr prime_set i1,
                                               priming_int pr prime_set i2)
   | Greater(i1,i2)                    -> Greater(priming_int pr prime_set i1,
@@ -784,6 +792,8 @@ and priming_atom (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (
                                                    priming_int pr prime_set i2)
   | Eq(exp)                           -> Eq(priming_eq pr prime_set exp)
   | InEq(exp)                         -> InEq(priming_ineq pr prime_set exp)
+  | UniqueInt(s)                      -> UniqueInt(priming_setpair pr prime_set s)
+  | UniqueTid(s)                      -> UniqueTid(priming_setpair pr prime_set s)
   | BoolVar v                         -> BoolVar (priming_variable pr prime_set v)
   | BoolArrayRd (a,t)                 -> BoolArrayRd (priming_array pr prime_set a,
                                                       priming_tid pr prime_set t)
@@ -989,6 +999,12 @@ and atom_to_str (expr:atom) : string =
   | SubsetEqPair(s_in,s_out)          -> sprintf "%s subseteqPair %s"
                                                     (setpair_to_str s_in)
                                                     (setpair_to_str s_out)
+  | InTidPair(t,s)                    -> sprintf "%s inTidPair %s"
+                                                    (tid_to_str t)
+                                                    (setpair_to_str s)
+  | InIntPair(i,s)                    -> sprintf "%s inIntPair %s"
+                                                    (integer_to_str i)
+                                                    (setpair_to_str s)
   | Less(i1,i2)                       -> sprintf "%s < %s"
                                                     (integer_to_str i1)
                                                     (integer_to_str i2)
@@ -1012,6 +1028,8 @@ and atom_to_str (expr:atom) : string =
                                                     (elem_to_str e2)
   | Eq(exp)                           -> eq_to_str (exp)
   | InEq(exp)                         -> diseq_to_str (exp)
+  | UniqueInt(s)                      -> sprintf "uniqueint (%s)" (setpair_to_str s)
+  | UniqueTid(s)                      -> sprintf "uniquetid (%s)" (setpair_to_str s)
   | BoolVar v                         -> V.to_str v
   | BoolArrayRd(arr,t)                -> sprintf "%s%s" (arrays_to_str arr)
                                                          (param_tid_to_str t)
@@ -2172,6 +2190,10 @@ and get_vars_atom (a:atom) (base:V.t -> V.VarSet.t) : V.VarSet.t =
                                           (get_vars_setpair s base)
   | SubsetEqPair(s_in,s_out)           -> (get_vars_setpair s_in base) @@
                                           (get_vars_setpair s_out base)
+  | InTidPair(t,s)                     -> (get_vars_tid t base) @@
+                                          (get_vars_setpair s base)
+  | InIntPair(i,s)                     -> (get_vars_int i base) @@
+                                          (get_vars_setpair s base)
   | Less(i1,i2)                        -> (get_vars_int i1 base) @@ (get_vars_int i2 base)
   | Greater(i1,i2)                     -> (get_vars_int i1 base) @@ (get_vars_int i2 base)
   | LessEq(i1,i2)                      -> (get_vars_int i1 base) @@ (get_vars_int i2 base)
@@ -2181,6 +2203,8 @@ and get_vars_atom (a:atom) (base:V.t -> V.VarSet.t) : V.VarSet.t =
   | GreaterElem(e1,e2)                 -> (get_vars_elem e1 base) @@ (get_vars_elem e2 base)
   | Eq(exp)                            -> (get_vars_eq exp base)
   | InEq(exp)                          -> (get_vars_ineq exp base)
+  | UniqueInt(s)                       -> (get_vars_setpair s base)
+  | UniqueTid(s)                       -> (get_vars_setpair s base)
   | BoolVar v                          -> (base v) @@
                                             (match V.parameter v with
                                              | V.Shared -> V.VarSet.empty
@@ -2706,6 +2730,8 @@ and voc_atom (a:atom) : ThreadSet.t =
   | SubsetEqElem(s_in,s_out)           -> (voc_setelem s_in) @@ (voc_setelem s_out)
   | InPair(p,s)                        -> (voc_pair p) @@ (voc_setpair s)
   | SubsetEqPair(s_in,s_out)           -> (voc_setpair s_in) @@ (voc_setpair s_out)
+  | InTidPair(t,s)                     -> (voc_tid t) @@ (voc_setpair s)
+  | InIntPair(i,s)                     -> (voc_int i) @@ (voc_setpair s)
   | Less(i1,i2)                        -> (voc_int i1) @@ (voc_int i2)
   | Greater(i1,i2)                     -> (voc_int i1) @@ (voc_int i2)
   | LessEq(i1,i2)                      -> (voc_int i1) @@ (voc_int i2)
@@ -2715,6 +2741,8 @@ and voc_atom (a:atom) : ThreadSet.t =
   | GreaterElem(e1,e2)                 -> (voc_elem e1) @@ (voc_elem e2)
   | Eq(exp)                            -> (voc_eq exp)
   | InEq(exp)                          -> (voc_ineq exp)
+  | UniqueInt(s)                       -> (voc_setpair s)
+  | UniqueTid(s)                       -> (voc_setpair s)
   | BoolVar v                          -> get_tid_in v
   | BoolArrayRd(arr,t)                 -> (voc_array arr)
   | PC (pc,t,_)                        -> (match t with
@@ -3086,6 +3114,10 @@ and var_kind_atom (kind:var_nature) (a:atom) : term list =
                                           (var_kind_setpair kind s)
   | SubsetEqPair(s_in,s_out)           -> (var_kind_setpair kind s_in) @
                                           (var_kind_setpair kind s_out)
+  | InTidPair(t,s)                     -> (var_kind_tid kind t) @
+                                          (var_kind_setpair kind s)
+  | InIntPair(i,s)                     -> (var_kind_int kind i) @
+                                          (var_kind_setpair kind s)
   | Less(i1,i2)                        -> (var_kind_int kind i1) @
                                           (var_kind_int kind i2)
   | Greater(i1,i2)                     -> (var_kind_int kind i1) @
@@ -3102,6 +3134,8 @@ and var_kind_atom (kind:var_nature) (a:atom) : term list =
                                           (var_kind_elem kind e2)
   | Eq(exp)                            -> (var_kind_eq kind exp)
   | InEq(exp)                          -> (var_kind_ineq kind exp)
+  | UniqueInt(s)                       -> (var_kind_setpair kind s)
+  | UniqueTid(s)                       -> (var_kind_setpair kind s)
   | BoolVar v                          -> if var_nature v = kind then
                                             [VarT v]
                                           else
@@ -3481,6 +3515,10 @@ and param_atom (pfun:V.t option -> V.shared_or_local) (a:atom) : atom =
                                                  param_setpair pfun s)
   | SubsetEqPair(s_in,s_out)           -> SubsetEqPair(param_setpair pfun s_in,
                                                        param_setpair pfun s_out)
+  | InTidPair(t,s)                     -> InTidPair(param_tid_aux pfun t,
+                                                    param_setpair pfun s)
+  | InIntPair(i,s)                     -> InIntPair(param_int_aux pfun i,
+                                                    param_setpair pfun s)
   | Less(i1,i2)                        -> Less(param_int_aux pfun i1,
                                                param_int_aux pfun i2)
   | Greater(i1,i2)                     -> Greater(param_int_aux pfun i1,
@@ -3497,6 +3535,8 @@ and param_atom (pfun:V.t option -> V.shared_or_local) (a:atom) : atom =
                                                       param_elem_aux pfun e2)
   | Eq(exp)                            -> Eq(param_eq pfun exp)
   | InEq(exp)                          -> InEq(param_ineq pfun exp)
+  | UniqueInt(s)                       -> UniqueInt(param_setpair pfun s)
+  | UniqueTid(s)                       -> UniqueTid(param_setpair pfun s)
   | BoolVar v                          -> BoolVar (V.set_param v (pfun (Some v)))
   | BoolArrayRd(arr,t)                 -> BoolArrayRd(param_arrays pfun arr, t)
       (* TODO: Fix, not sure if         for open arrays is correct *)
@@ -3933,6 +3973,10 @@ and subst_tid_atom (subs:tid_subst_t) (a:atom) : atom =
                                                  subst_tid_setpair subs s)
   | SubsetEqPair(s_in,s_out)           -> SubsetEqPair(subst_tid_setpair subs s_in,
                                                        subst_tid_setpair subs s_out)
+  | InTidPair(t,s)                     -> InTidPair(subst_tid_th subs t,
+                                                    subst_tid_setpair subs s)
+  | InIntPair(i,s)                     -> InIntPair(subst_tid_int subs i,
+                                                    subst_tid_setpair subs s)
   | Less(i1,i2)                        -> Less(subst_tid_int subs i1,
                                                subst_tid_int subs i2)
   | Greater(i1,i2)                     -> Greater(subst_tid_int subs i1,
@@ -3949,6 +3993,8 @@ and subst_tid_atom (subs:tid_subst_t) (a:atom) : atom =
                                                       subst_tid_elem subs e2)
   | Eq(exp)                            -> Eq(subst_tid_eq subs exp)
   | InEq(exp)                          -> InEq(subst_tid_ineq subs exp)
+  | UniqueInt(s)                       -> UniqueInt(subst_tid_setpair subs s)
+  | UniqueTid(s)                       -> UniqueInt(subst_tid_setpair subs s)
   | BoolVar v                          -> BoolVar(V.set_param v (subst_shared_or_local subs (V.parameter v)))
   | BoolArrayRd(arr,t)                 -> BoolArrayRd(subst_tid_array subs arr, t)
   | PC (pc,t,primed)                   -> PC (pc, subst_shared_or_local subs t,primed)
@@ -4316,6 +4362,10 @@ and subst_vars_atom (subs:V.subst_t) (a:atom) : atom =
                                                  subst_vars_setpair subs s)
   | SubsetEqPair(s_in,s_out)           -> SubsetEqPair(subst_vars_setpair subs s_in,
                                                        subst_vars_setpair subs s_out)
+  | InTidPair(t,s)                     -> InTidPair(subst_vars_th subs t,
+                                                    subst_vars_setpair subs s)
+  | InIntPair(i,s)                     -> InIntPair(subst_vars_int subs i,
+                                                    subst_vars_setpair subs s)
   | Less(i1,i2)                        -> Less(subst_vars_int subs i1,
                                                subst_vars_int subs i2)
   | Greater(i1,i2)                     -> Greater(subst_vars_int subs i1,
@@ -4332,6 +4382,8 @@ and subst_vars_atom (subs:V.subst_t) (a:atom) : atom =
                                                       subst_vars_elem subs e2)
   | Eq(exp)                            -> Eq(subst_vars_eq subs exp)
   | InEq(exp)                          -> InEq(subst_vars_ineq subs exp)
+  | UniqueInt(s)                       -> UniqueInt(subst_vars_setpair subs s)
+  | UniqueTid(s)                       -> UniqueTid(subst_vars_setpair subs s)
   | BoolVar v                          -> BoolVar(V.set_param v (V.subst_shared_or_local subs (V.parameter v)))
   | BoolArrayRd(arr,t)                 -> BoolArrayRd(subst_vars_array subs arr, t)
   | PC (pc,t,primed)                   -> PC (pc, V.subst_shared_or_local subs t, primed)
@@ -4991,6 +5043,8 @@ let required_sorts (phi:formula) : sort list =
     | SubsetEqElem (se1,se2)-> append Bool [req_se se1;req_se se2]
     | InPair(p,sp)          -> append Bool [req_pr p;req_sp sp]
     | SubsetEqPair (sp1,sp2)-> append Bool [req_sp sp1;req_sp sp2]
+    | InTidPair(t,sp)       -> append Bool [req_t t;req_sp sp]
+    | InIntPair(i,sp)       -> append Bool [req_i i;req_sp sp]
     | Less (i1,i2)          -> append Bool [req_i i1;req_i i2]
     | Greater (i1,i2)       -> append Bool [req_i i1;req_i i2]
     | LessEq (i1,i2)        -> append Bool [req_i i1;req_i i2]
@@ -5000,6 +5054,8 @@ let required_sorts (phi:formula) : sort list =
     | GreaterElem (e1,e2)   -> append Bool [req_e e1;req_e e2]
     | Eq (t1,t2)            -> union (req_term t1) (req_term t2)
     | InEq (t1,t2)          -> union (req_term t1) (req_term t2)
+    | UniqueInt(sp)         -> append Bool [req_sp sp]
+    | UniqueTid(sp)         -> append Bool [req_sp sp]
     | BoolVar _             -> single Bool
     | BoolArrayRd (a,t)     -> append Bool [req_arr a; req_t t]
     | PC _
@@ -5611,6 +5667,10 @@ and to_plain_atom (ops:fol_ops_t) (a:atom) : atom =
                                                  to_plain_setpair ops s)
   | SubsetEqPair(s_in,s_out)           -> SubsetEqPair(to_plain_setpair ops s_in,
                                                        to_plain_setpair ops s_out)
+  | InTidPair(t,s)                     -> InTidPair(to_plain_tid_aux ops t,
+                                                    to_plain_setpair ops s)
+  | InIntPair(i,s)                     -> InIntPair(to_plain_int ops i,
+                                                    to_plain_setpair ops s)
   | Less(i1,i2)                        -> Less(to_plain_int ops i1,
                                                to_plain_int ops i2)
   | Greater(i1,i2)                     -> Greater(to_plain_int ops i1,
@@ -5627,6 +5687,8 @@ and to_plain_atom (ops:fol_ops_t) (a:atom) : atom =
                                                       to_plain_elem ops e2)
   | Eq(exp)                            -> Eq(to_plain_eq ops exp)
   | InEq(exp)                          -> InEq(to_plain_ineq ops exp)
+  | UniqueInt(s)                       -> UniqueInt(to_plain_setpair ops s)
+  | UniqueTid(s)                       -> UniqueTid(to_plain_setpair ops s)
   | BoolVar v                          -> BoolVar (ops.fol_var v)
   | BoolArrayRd(arr,t)                 -> BoolArrayRd(to_plain_arrays ops arr,
                                                       to_plain_tid_aux ops t)
