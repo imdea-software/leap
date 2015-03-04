@@ -627,4 +627,36 @@ let formula_to_str (atom_to_str:'atom -> string)
   formula_to_str_aux atom_to_str NoneOp phi
 
 
+(* Pruning functions *)
 
+let prune_literal (prune_atom_f:'atom -> 'atom option)
+                  (lit:'atom literal) : 'atom literal option =
+  match lit with
+  | Atom a    -> LeapLib.Option.lift (fun a' -> Atom a') (prune_atom_f a)
+  | NegAtom a -> LeapLib.Option.lift (fun a' -> NegAtom a') (prune_atom_f a)
+
+
+let rec prune_formula (prune_atom_f:'atom -> 'atom option)
+                      (phi:'atom formula) : 'atom formula option =
+  let prune_f = prune_formula prune_atom_f in
+  match phi with
+  | Literal lit     -> LeapLib.Option.lift (fun l -> Literal l) (prune_literal prune_atom_f lit)
+  | True            -> None
+  | False           -> None
+  | And (f1,f2)     -> begin
+                         match (prune_f f1, prune_f f2) with
+                           (Some f1', Some f2') -> Some (And (f1',f2'))
+                         | (Some f1', None    ) -> Some f1'
+                         | (None    , Some f2') -> Some f2'
+                         | (None    , None    ) -> None
+                       end
+  | Or (f1,f2)      -> begin
+                         match (prune_f f1, prune_f f2) with
+                           (Some f1', Some f2') -> Some (Or (f1',f2'))
+                         | (Some f1', None    ) -> Some f1'
+                         | (None    , Some f2') -> Some f2'
+                         | (None    , None    ) -> None
+                       end
+  | Not (f)         -> LeapLib.Option.lift (fun f'-> Not f') (prune_f f)
+  | Implies (f1,f2) -> prune_f (Or (Not f1, f2))
+  | Iff (f1,f2)     -> prune_f (And (Implies (f1,f2), Implies (f2,f1)))

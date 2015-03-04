@@ -180,3 +180,11 @@ val literal_to_str : ('atom -> string) -> 'atom literal -> string
 val conjunctive_formula_to_str : ('atom -> string) -> 'atom conjunctive_formula -> string
 val disjunctive_formula_to_str : ('atom -> string) -> 'atom disjunctive_formula -> string
 val formula_to_str : ('atom -> string) -> 'atom formula -> string
+
+
+(***********************)
+(**  Pruning formula  **)
+(***********************)
+val prune_formula : ('atom -> 'atom option) -> 'atom formula -> 'atom formula option
+(** [prune_formula f phi] returns [phi] where the atoms of the formula
+ *  have been pruned according to function [f] *)

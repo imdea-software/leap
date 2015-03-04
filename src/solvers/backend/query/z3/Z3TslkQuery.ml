@@ -2224,9 +2224,9 @@ module Make (K : Level.S) : TSLK_QUERY =
       let _ = GM.clear_sort_map sort_map in
       let expr = F.Conj ls in
       let c = Smp4Tslk.cut_off_normalized expr in
-      let num_addr = c.SmpTslk.num_addrs in
-      let num_tid = c.SmpTslk.num_tids in
-      let num_elem = c.SmpTslk.num_elems in
+      let num_addr = ModelSize.get c ModelSize.Addr in
+      let num_tid = ModelSize.get c ModelSize.Tid in
+      let num_elem = ModelSize.get c ModelSize.Elem in
       let (req_sorts, req_ops) =
         List.fold_left (fun (ss,os) lit ->
           let phi = F.Literal lit
@@ -2264,54 +2264,14 @@ module Make (K : Level.S) : TSLK_QUERY =
                        (copt:Smp.cutoff_options_t)
                        (use_q:bool)
                        (phi:Expr.formula) : string =
-(*      LOG "Entering formula_to_str..." LEVEL TRACE; *)
-(*
-      let extra_info_str =
-        match stac with
-        | None -> ""
-        | Some Tactics.Cases ->
-            let (ante,(eq,ineq)) =
-              match phi with
-              | Expr.Not (Expr.Implies (ante,cons)) -> (ante, Expr.get_addrs_eqs ante)
-              | _ -> (phi, ([],[])) in
-
-            let temp_dom = Expr.TermSet.elements
-                            (Expr.termset_of_sort
-                              (Expr.get_termset_from_formula ante) Expr.Addr) in
-
-            (* We also filter primed variables *)
-            let term_dom = List.filter (fun t ->
-                             match t with
-                             | Expr.AddrT (Expr.VarAddr v) -> (Expr.var_parameter v) <> Expr.Shared ||
-                                                            (Expr.var_scope v) = Expr.GlobalScope
-                             | _ -> true
-                           ) temp_dom in
-
-            let assumps = List.map (fun (x,y) -> Partition.Eq (Expr.AddrT x, Expr.AddrT y)) eq @
-                          List.map (fun (x,y) -> Partition.Ineq (Expr.AddrT x, Expr.AddrT y)) ineq in
-            verbl _LONG_INFO "**** Domain: %i\n{%s}\n" (List.length term_dom) (String.concat ";" (List.map Expr.term_to_str term_dom));
-            verbl _LONG_INFO "**** Assumptions: %i\n%s\n" (List.length assumps) (Partition.assumptions_to_str Expr.term_to_str assumps);
-
-            print_endline "Going to compute partitions...";
-
-            let parts = Partition.gen_partitions term_dom assumps in
-            let _ = if LeapDebug.is_debug_enabled() then
-                      List.iter (fun p ->
-                        LeapDebug.debug "Partitions:\n%s\n"
-                          (Partition.to_str Expr.term_to_str p)
-                      ) parts in
-            verbl _LONG_INFO "**** Number of cases: %i\n" (List.length parts);
-            verbl _LONG_INFO "**** Computation done!!!\n";
-            z3_partition_assumptions parts in
-*)
       clean_lists();
       set_configuration use_q;
       let _ = GM.clear_sort_map sort_map in
       verbl _LONG_INFO "**** Z3TslkQuery will compute the cutoff...\n";
       let max_cut_off = Smp4Tslk.cut_off co copt phi in
-      let num_addr    = max_cut_off.SmpTslk.num_addrs in
-      let num_tid     = max_cut_off.SmpTslk.num_tids in
-      let num_elem    = max_cut_off.SmpTslk.num_elems in
+      let num_addr    = ModelSize.get max_cut_off ModelSize.Addr in
+      let num_tid     = ModelSize.get max_cut_off ModelSize.Tid in
+      let num_elem    = ModelSize.get max_cut_off ModelSize.Elem in
       let req_sorts   = Expr.required_sorts phi in
       let req_ops     = Expr.special_ops phi in
       let phi_var_tbl = if !use_quantifiers then
@@ -2333,7 +2293,6 @@ module Make (K : Level.S) : TSLK_QUERY =
         variables_from_formula_to_z3 buf num_tid phi ;
         (* We add extra information if needed *)
         verbl _LONG_INFO "**** Z3TslkQuery, about to compute extra information...\n";
-(*        B.add_string buf extra_info_str ; *)
         post_process buf num_addr num_elem num_tid;
 
         (* Use symmetry over addresses *)

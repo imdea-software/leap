@@ -360,24 +360,6 @@ let varset_fs = Formula.make_fold
                   (fun info -> V.VarSet.empty)
                   V.VarSet.union
 
-(*
-and varset_fs =
-  {
-    Formula.literal_f = (fun _ l -> get_varset_literal l);
-    Formula.atom_f = (fun _ a -> get_varset_atom a);
-    Formula.base = V.VarSet.empty;
-    Formula.concat = V.VarSet.union;
-  }
-*)
-(*
-and get_varset_literal (l:literal) : V.VarSet.t =
-  Formula.literal_op () varset_fs l
-*)
-(*
-  match l with
-      Atom a    -> get_varset_atom a
-    | NegAtom a -> get_varset_atom a
-*)
 
 let get_varset_from_literal (l:literal) : V.VarSet.t =
   Formula.literal_fold varset_fs () l
@@ -385,42 +367,10 @@ let get_varset_from_literal (l:literal) : V.VarSet.t =
 
 let get_varset_from_conj (cf:conjunctive_formula) : V.VarSet.t =
   Formula.conjunctive_formula_fold varset_fs () cf
-(*
-  let another_lit vars alit = vars @@ (get_varset_literal alit) in
-  match phi with
-      TrueConj   -> V.VarSet.empty
-    | FalseConj  -> V.VarSet.empty
-    | Conj l     -> List.fold_left (another_lit) V.VarSet.empty l
-*)
 
+  
 let get_varset_from_formula (phi:formula) : V.VarSet.t =
   Formula.formula_fold varset_fs () phi
-(*
-  match phi with
-    Literal l       -> get_varset_literal l
-  | True            -> V.VarSet.empty
-  | False           -> V.VarSet.empty
-  | And (f1,f2)     -> (get_varset_from_formula f1) @@
-                       (get_varset_from_formula f2)
-  | Or (f1,f2)      -> (get_varset_from_formula f1) @@
-                       (get_varset_from_formula f2)
-  | Not f           -> (get_varset_from_formula f)
-  | Implies (f1,f2) -> (get_varset_from_formula f1) @@
-                       (get_varset_from_formula f2)
-  | Iff (f1,f2)     -> (get_varset_from_formula f1) @@
-                       (get_varset_from_formula f2)
-*)
-
-
-(*
-let varset_of_sort all s =
-  let filt v res =
-    if (V.sort v) = s then
-      V.VarSet.add (V.set_param v V.Shared) res
-    else
-      res in
-    V.VarSet.fold filt all V.VarSet.empty
-*)
 
 
 let get_varset_of_sort_from_conj phi s =

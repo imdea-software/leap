@@ -87,6 +87,7 @@ and formula = atom Formula.formula
 
 exception NotConjunctiveExpr of formula
 
+module AtomSet : Set.S with type elt = atom
 module ThreadSet : Set.S with type elt = tid
 
 val build_var : ?fresh:bool ->
@@ -134,3 +135,6 @@ val formula_is_linear : formula -> bool
 val term_is_linear    : integer -> bool
 
 val voc_to_var : tid -> V.t
+
+val get_varset_from_conj : conjunctive_formula -> V.VarSet.t
+val get_varset_from_formula : formula -> V.VarSet.t

@@ -13,6 +13,7 @@ struct
   module B        = Buffer
   module GM       = GenericModel
   module F        = Formula
+  module MS       = ModelSize
 
   exception UnexpectedCellTerm of string
   exception UnexpectedSetTerm of string
@@ -1933,9 +1934,9 @@ struct
     let _ = GM.clear_sort_map sort_map in
     let expr = F.Conj ls in
     let c = SmpTll.cut_off_normalized expr in
-    let num_addr = c.SmpTll.num_addrs in
-    let num_tid = c.SmpTll.num_tids in
-    let num_elem = c.SmpTll.num_elems in
+    let num_addr = MS.get c MS.Addr in
+    let num_tid = MS.get c MS.Tid in
+    let num_elem = MS.get c MS.Elem in
     let (req_sorts, req_ops) =
       List.fold_left (fun (ss,os) lit ->
         let phi = F.Literal lit
@@ -1964,53 +1965,13 @@ struct
                      (copt:Smp.cutoff_options_t)
                      (use_q:bool)
                      (phi:Expr.formula) : string =
-
-(*    LOG "Entering formula_to_str..." LEVEL TRACE; *)
-(*
-    let extra_info_str =
-      match stac with
-      | None -> ""
-      | Some Tactics.Cases ->
-          let (ante,(eq,ineq)) =
-            match phi with
-            | Expr.Not (Expr.Implies (ante,cons)) -> (ante, Expr.get_addrs_eqs ante)
-            | _ -> (phi, ([],[])) in
-
-          let temp_dom = Expr.TermSet.elements
-                          (Expr.termset_of_sort
-                            (Expr.get_termset_from_formula ante) Expr.Addr) in
-
-          (* We also filter primed variables *)
-          let term_dom = List.filter (fun t ->
-                           match t with
-                           | Expr.AddrT (Expr.VarAddr v) -> Expr.V.parameter v <> Expr.V.Shared ||
-                                                            Expr.V.scope v = Expr.V.GlobalScope
-                           | _ -> true
-                         ) temp_dom in
-
-          let assumps = List.map (fun (x,y) -> Partition.Eq (Expr.AddrT x, Expr.AddrT y)) eq @
-                        List.map (fun (x,y) -> Partition.Ineq (Expr.AddrT x, Expr.AddrT y)) ineq in
-          verbl _LONG_INFO "**** SMTTllQuery. Domain: %i\n" (List.length term_dom);
-          verbl _LONG_INFO "**** SMTTllQuery. Assumptions: %i\n" (List.length assumps);
-
-          let parts = Partition.gen_partitions term_dom assumps in
-          let _ = if LeapDebug.is_debug_enabled() then
-                    List.iter (fun p ->
-                      verbl _LONG_INFO "**** SMTTllQuery. Partitions:\n%s\n"
-                           (Partition.to_str Expr.term_to_str p);
-                    ) parts in
-          verbl _LONG_INFO "**** SMTTllQuery. Number of cases: %i\n" (List.length parts);
-          verbl _LONG_INFO "**** SMTTllQuery. Computation done!!!\n";
-            smt_partition_assumptions parts in
-*)
-
     clean_lists();
     let _ = GM.clear_sort_map sort_map in
     verbl _LONG_INFO "**** SMTTllQuery. Will compute the cutoff...\n";
     let max_cut_off = SmpTll.cut_off co copt phi in
-    let num_addr    = max_cut_off.SmpTll.num_addrs in
-    let num_tid     = max_cut_off.SmpTll.num_tids in
-    let num_elem    = max_cut_off.SmpTll.num_elems in
+    let num_addr    = MS.get max_cut_off MS.Addr in
+    let num_tid     = MS.get max_cut_off MS.Tid in
+    let num_elem    = MS.get max_cut_off MS.Elem in
     let req_sorts   = Expr.required_sorts phi in
     let req_ops     = Expr.special_ops phi in
     let formula_str = formula_to_str phi in
@@ -2022,7 +1983,6 @@ struct
       smt_defs     buf num_addr num_tid num_elem req_sorts req_ops;
       variables_from_formula_to_smt buf num_tid phi ;
       (* We add extra information if needed *)
-(*      B.add_string buf extra_info_str ; *)
       post_process buf num_addr num_elem num_tid;
       B.add_string buf "(assert\n";
       B.add_string buf formula_str ;

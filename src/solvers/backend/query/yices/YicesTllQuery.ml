@@ -13,6 +13,7 @@ struct
   module B        = Buffer
   module GM       = GenericModel
   module F        = Formula
+  module MS       = ModelSize
 
   let prog_lines = ref 0
 
@@ -1635,9 +1636,9 @@ struct
     let _ = GM.clear_sort_map sort_map in
     let expr = F.Conj ls in
     let c = SmpTll.cut_off_normalized expr in
-    let num_addr = c.SmpTll.num_addrs in
-    let num_tid = c.SmpTll.num_tids in
-    let num_elem = c.SmpTll.num_elems in
+    let num_addr = MS.get c MS.Addr in
+    let num_tid = MS.get c MS.Tid in
+    let num_elem = MS.get c MS.Elem in
     let (req_sorts, req_ops) =
       List.fold_left (fun (ss,os) lit ->
         let phi = F.Literal lit
@@ -1666,9 +1667,9 @@ struct
                      (phi:Expr.formula) : string =
     let _ = GM.clear_sort_map sort_map in
     let max_cut_off = SmpTll.cut_off co copt phi in
-    let num_addr    = max_cut_off.SmpTll.num_addrs in
-    let num_tid     = max_cut_off.SmpTll.num_tids in
-    let num_elem    = max_cut_off.SmpTll.num_elems in
+    let num_addr    = MS.get max_cut_off MS.Addr in
+    let num_tid     = MS.get max_cut_off MS.Tid in
+    let num_elem    = MS.get max_cut_off MS.Elem in
     let req_sorts   = Expr.required_sorts phi in
     let req_ops     = Expr.special_ops phi in
     let formula_str = formula_to_str phi in

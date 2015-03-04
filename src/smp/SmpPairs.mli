@@ -1,1 +1,2 @@
-val cut_off : PairsExpression.formula -> (int * int)
+
+val cut_off : PairsExpression.formula -> ModelSize.t

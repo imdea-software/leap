@@ -96,6 +96,14 @@ and formula = atom Formula.formula
 exception NotConjunctiveExpr of formula
 exception Not_tid_var of tid
 
+
+module AtomSet = Set.Make (
+  struct
+    let compare = Pervasives.compare
+    type t = atom
+  end
+)
+
 module ThreadSet = Set.Make(
   struct
     let compare = Pervasives.compare
@@ -872,3 +880,121 @@ let voc_to_var (t:tid) : V.t =
   match t with
   | VarTh v -> v
   | _ -> raise(Not_tid_var t)
+
+
+(* Set of variables from a formula *)
+
+let (@@) s1 s2 =
+  V.VarSet.union s1 s2
+
+let rec get_varset_from_param (v:V.t) : V.VarSet.t =
+  match V.parameter v with
+  | V.Local t -> V.VarSet.singleton t
+  | _ -> V.VarSet.empty
+
+and get_varset_tid th =
+  match th with
+  | VarTh v   -> V.VarSet.singleton v @@ get_varset_from_param v
+  | NoTid     -> V.VarSet.empty
+  | PairTid p -> (get_varset_pair p)
+
+and get_varset_int i =
+  match i with
+  | Val _         -> V.VarSet.empty
+  | Var v         -> V.VarSet.singleton v @@ get_varset_from_param v
+  | Neg j         -> (get_varset_int j)
+  | Add (i1,i2)   -> (get_varset_int i1) @@ (get_varset_int i2)
+  | Sub (i1,i2)   -> (get_varset_int i1) @@ (get_varset_int i2)
+  | Mul (i1,i2)   -> (get_varset_int i1) @@ (get_varset_int i2)
+  | Div (i1,i2)   -> (get_varset_int i1) @@ (get_varset_int i2)
+  | ArrayRd (_,t) -> (get_varset_tid t)
+  | SetMin s      -> (get_varset_set s)
+  | SetMax s      -> (get_varset_set s)
+  | PairInt p     -> (get_varset_pair p)
+
+and get_varset_pair p =
+  match p with
+  | VarPair v        -> V.VarSet.singleton v @@ get_varset_from_param v
+  | IntTidPair (i,t) -> (get_varset_int i) @@ (get_varset_tid t)
+  | SetPairMin sp    -> (get_varset_setpair sp)
+  | SetPairMax sp    -> (get_varset_setpair sp)
+
+and get_varset_set s =
+  match s with
+  | VarSet v     -> V.VarSet.singleton v @@ get_varset_from_param v
+  | EmptySet     -> V.VarSet.empty
+  | Singl(i)     -> (get_varset_int i)
+  | Union(s1,s2) -> (get_varset_set s1) @@ (get_varset_set s2)
+  | Intr(s1,s2)  -> (get_varset_set s1) @@ (get_varset_set s2)
+  | Diff(s1,s2)  -> (get_varset_set s1) @@ (get_varset_set s2)
+  | Lower(s,i)   -> (get_varset_set s) @@ (get_varset_int i)
+
+and get_varset_setpair s =
+  match s with
+  | VarSetPair v     -> V.VarSet.singleton v @@ get_varset_from_param v
+  | EmptySetPair     -> V.VarSet.empty
+  | SinglPair(p)     -> (get_varset_pair p)
+  | UnionPair(s1,s2) -> (get_varset_setpair s1) @@ (get_varset_setpair s2)
+  | IntrPair(s1,s2)  -> (get_varset_setpair s1) @@ (get_varset_setpair s2)
+  | SetdiffPair(s1,s2)  -> (get_varset_setpair s1) @@ (get_varset_setpair s2)
+  | LowerPair(s,i)   -> (get_varset_setpair s) @@ (get_varset_int i)
+
+and get_varset_term t =
+  match t with
+  | IntV i      -> get_varset_int i
+  | PairV p     -> get_varset_pair p
+  | SetV s      -> get_varset_set s
+  | SetPairV sp -> get_varset_setpair sp
+
+and get_varset_fun f =
+  match f with
+  | FunVar v -> V.VarSet.singleton v @@ get_varset_from_param v
+  | FunUpd (g,t,x) -> (get_varset_fun g) @@ (get_varset_tid t) @@ (get_varset_term x)
+  
+and get_varset_atom a =
+  match a with
+    Less (i1,i2)           -> (get_varset_int i1) @@ (get_varset_int i2)
+  | Greater (i1,i2)        -> (get_varset_int i1) @@ (get_varset_int i2)
+  | LessEq (i1,i2)         -> (get_varset_int i1) @@ (get_varset_int i2)
+  | GreaterEq (i1,i2)      -> (get_varset_int i1) @@ (get_varset_int i2)
+  | LessTid (t1,t2)        -> (get_varset_tid t1) @@ (get_varset_tid t2)
+  | In (i,s)               -> (get_varset_int i) @@ (get_varset_set s)
+  | Subset (s1,s2)         -> (get_varset_set s1) @@ (get_varset_set s2)
+  | InTidPair (t,sp)       -> (get_varset_tid t) @@ (get_varset_setpair sp)
+  | InIntPair (i,sp)       -> (get_varset_int i) @@ (get_varset_setpair sp)
+  | InPair (p,sp)          -> (get_varset_pair p) @@ (get_varset_setpair sp)
+  | SubsetEqPair (sp1,sp2) -> (get_varset_setpair sp1) @@ (get_varset_setpair sp2)
+  | Eq (x1,x2)             -> (get_varset_term x1) @@ (get_varset_term x2)
+  | InEq (x1,x2)           -> (get_varset_term x1) @@ (get_varset_term x2)
+  | TidEq (t1,t2)          -> (get_varset_tid t1) @@ (get_varset_tid t2)
+  | TidInEq (t1,t2)        -> (get_varset_tid t1) @@ (get_varset_tid t2)
+  | FunEq (f1,f2)          -> (get_varset_fun f1) @@ (get_varset_fun f2)
+  | FunInEq (f1,f2)        -> (get_varset_fun f1) @@ (get_varset_fun f2)
+  | UniqueInt sp           -> get_varset_setpair sp
+  | UniqueTid sp           -> get_varset_setpair sp
+  | PC(pc,th,pr)           -> (match th with
+                               | V.Shared -> V.VarSet.empty
+                               | V.Local t -> V.VarSet.singleton t)
+  | PCUpdate (pc,th)       -> (get_varset_tid th)
+  | PCRange(pc1,pc2,th,pr) -> (match th with
+                               | V.Shared -> V.VarSet.empty
+                               | V.Local t -> V.VarSet.singleton t)
+
+
+let varset_fs = Formula.make_fold
+                  Formula.GenericLiteralFold
+                  (fun info a -> get_varset_atom a)
+                  (fun info -> V.VarSet.empty)
+                  V.VarSet.union
+
+
+let get_varset_from_literal (l:literal) : V.VarSet.t =
+  Formula.literal_fold varset_fs () l
+
+
+let get_varset_from_conj (cf:conjunctive_formula) : V.VarSet.t =
+  Formula.conjunctive_formula_fold varset_fs () cf
+
+  
+let get_varset_from_formula (phi:formula) : V.VarSet.t =
+  Formula.formula_fold varset_fs () phi

@@ -11,6 +11,7 @@ struct
   module B = Buffer
   module GM = GenericModel
   module F = Formula
+  module MS = ModelSize
 
 
   exception NotSupportedInYices of string
@@ -832,7 +833,9 @@ struct
                            (PE.V.sort v) = PE.Int
                          ) xs in
     let voc            = PE.voc phi in
-    let (int_cutoff, tid_cutoff) = SmpPairs.cut_off phi in
+    let cutoff         = SmpPairs.cut_off phi in
+    let int_cutoff     = MS.get cutoff MS.Int in
+    let tid_cutoff     = MS.get cutoff MS.Tid in
     let global_vars    = PE.all_global_vars phi in
     let local_vars     = PE.all_local_vars_without_param phi in
     let glb_int_vars   = filter_ints global_vars in
