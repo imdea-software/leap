@@ -174,6 +174,19 @@ let report_mem () : string =
     (string_of_int (size/1048576)) ^ " MB"
 
 
+let human_readable_byte_count () : string =
+  let bytes = Gc.allocated_bytes () in
+  let unit = 1024. in
+  if bytes < unit then Format.sprintf "%.0fB" bytes
+  else
+    let exp = int_of_float (log bytes /. log unit) in
+    Format.sprintf "%.2f%sB" (bytes /. (unit ** (float_of_int exp)))
+      (match exp with
+      | 0 -> "K" | 1 -> "M" | 2 -> "G"
+      | 3 -> "T" | 4 -> "P" | 5 -> "E"
+      | _ -> "Ouch! This number is too big!")
+
+
 let _debug_ = ref false
 
 

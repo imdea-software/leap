@@ -31,7 +31,7 @@ struct
 
 
   (* Sort names *)
-  let int_s : string = "int"
+  let int_s : string = "myint"
   let pair_s : string = "pair"
   let tid_s : string = "tid"
   let set_s : string = "set"
@@ -350,9 +350,10 @@ struct
 
   (************************** Support for sets **************************)
 
-  let yices_type_decl (prog_lines:int) (buf:Buffer.t) : unit =
+  let yices_type_decl (max_ints:int) (max_tids:int) (prog_lines:int) (buf:Buffer.t) : unit =
+    B.add_string buf ("(define-type " ^int_s^ " (subrange 1 " ^(string_of_int max_ints)^ "))\n");
     B.add_string buf
-      ("(define-type " ^tid_s^ ")\n" ^
+      ("(define-type " ^tid_s^ " (subrange 1 " ^(string_of_int max_tids)^ "))\n" ^
        "(define " ^someTid^ "::" ^tid_s^ ")\n" ^
        "(define-type " ^set_s^ " (-> " ^int_s^ " " ^bool_s^ "))\n" ^
        "(define-type " ^pair_s^ " (record int_of::" ^int_s^ " tid_of::" ^tid_s^ "))\n" ^
@@ -360,12 +361,17 @@ struct
        "(define-type " ^loc_s^ " (subrange 1 " ^(string_of_int prog_lines)^ "))\n")
 
 
-  let yices_undefined_decl (buf:Buffer.t) : unit =
+  let yices_undefined_decl (maxint:int) (buf:Buffer.t) : unit =
     let _ = GM.sm_decl_const sort_map undefInt GM.int_s in
-      B.add_string buf ("(define " ^ undefInt ^ "::" ^ int_s ^ ")\n");
-      B.add_string buf ("(define is_legal::(-> " ^int_s^ " " ^bool_s^ ")\n" ^
-                        "  (lambda (e::" ^int_s^ ") (/= e " ^
-                            undefInt ^ ")))\n")
+      B.add_string buf
+        ("(define " ^ undefInt ^ "::" ^ int_s ^ ")\n");
+      B.add_string buf
+        ("(define is_legal::(-> " ^int_s^ " " ^bool_s^ ")\n" ^
+         "  (lambda (&e::" ^int_s^ ")\n" ^
+         "    (and\n" ^
+         "      (/= &e " ^undefInt ^ ")\n" ^
+         "      (<= 0 &e)\n" ^
+         "      (<= &e " ^(string_of_int maxint)^ "))))\n")
 
 
   let yices_emp_def (buf:Buffer.t) : unit =
@@ -487,7 +493,24 @@ struct
 
 
 
-
+(*
+  let yices_is_min_def (max_ints:int) (buf:Buffer.t) : unit =
+    B.add_string buf
+        ("(define is_min::(-> " ^int_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
+         "  (lambda (&p::" ^int_s^ " &s::" ^set_s^ ")\n" ^
+         "    (forall (&n::" ^int_s^ ") (=> (&s &n) (<= &p &n)))))\n")
+*)
+  let yices_is_min_def (max_ints:int) (buf:Buffer.t) : unit =
+    let str = ref "" in
+    for i = 0 to max_ints do
+      let i_str = string_of_int i in
+      str := "\n    (=> (&s " ^i_str^ ") (<= &n " ^i_str^ "))" ^ (!str)
+    done;
+    B.add_string buf
+        ("(define is_min::(-> " ^int_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
+         "  (lambda (&n::" ^int_s^ " &s::" ^set_s^ ")\n" ^
+         "    (and " ^ (!str) ^ ")))\n")
+(*
   let yices_is_min_def (vars_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
         ("(define is_min::(-> " ^int_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
@@ -498,8 +521,27 @@ struct
         (Printf.sprintf "\n         (if (set_v %s) (<= pairs_v %s) true)" v v)
     ) vars_rep;
     B.add_string buf ")))\n"
+*)
 
 
+(*
+  let yices_is_max_def (max_ints:int) (buf:Buffer.t) : unit =
+    B.add_string buf
+        ("(define is_max::(-> " ^int_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
+         "  (lambda (&p::" ^int_s^ " &s::" ^set_s^ ")\n" ^
+         "    (forall (&n::int) (=> (&s &n) (>= &p &n)))))\n")
+*)
+  let yices_is_max_def (max_ints:int) (buf:Buffer.t) : unit =
+    let str = ref "" in
+    for i = 0 to max_ints do
+      let i_str = string_of_int i in
+      str := "\n    (=> (&s " ^i_str^ ") (>= &n " ^i_str^ "))" ^ (!str)
+    done;
+    B.add_string buf
+        ("(define is_max::(-> " ^int_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
+         "  (lambda (&n::" ^int_s^ " &s::" ^set_s^ ")\n" ^
+         "    (and " ^ (!str) ^ ")))\n")
+(*
   let yices_is_max_def (vars_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
         ("(define is_max::(-> " ^int_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
@@ -510,8 +552,31 @@ struct
         (Printf.sprintf "\n         (if (set_v %s) (>= pairs_v %s) true)" v v)
     ) vars_rep;
     B.add_string buf ")))\n"
+*)
 
 
+(*
+  let yices_is_spmin_def (max_ints:int) (max_tids:int) (buf:Buffer.t) : unit =
+    B.add_string buf
+        ("(define is_spmin::(-> " ^pair_s^ " " ^setpair_s^ " " ^bool_s^ ")\n" ^
+         "  (lambda (&p::" ^pair_s^ " &s::" ^setpair_s^ ")\n" ^
+         "    (forall (&n::" ^int_s^ " &t::" ^tid_s^ ")\n" ^
+         "      (=> (&s (mk-record int_of::&n tid_of::&t)) (<= (select &p int_of) &n)))))\n")
+*)
+  let yices_is_spmin_def (max_ints:int) (max_tids:int) (buf:Buffer.t) : unit =
+    let str = ref "" in
+    for i = 0 to max_ints do
+      let i_str = string_of_int i in
+      for j = 0 to max_tids do
+        let j_str = string_of_int j in
+        str := "\n    (=> (&s (mk-record int_of::" ^i_str^ " tid_of::" ^j_str^ ")) (<= (select &p int_of) " ^i_str^ "))" ^ (!str)
+      done
+    done;
+    B.add_string buf
+        ("(define is_spmin::(-> " ^pair_s^ " " ^setpair_s^ " " ^bool_s^ ")\n" ^
+         "  (lambda (&p::" ^pair_s^ " &s::" ^setpair_s^ ")\n" ^
+         "    (and (&s &p)\n" ^ (!str) ^ ")))\n")
+(*
   let yices_is_spmin_def (vars_rep:string list) (voc_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
         ("(define is_spmin::(-> " ^pair_s^ " " ^setpair_s^ " " ^bool_s^ ")\n" ^
@@ -524,8 +589,32 @@ struct
       ) voc_rep
     ) vars_rep;
     B.add_string buf ")))\n"
+*)
 
 
+
+(*
+  let yices_is_spmax_def (max_ints:int) (max_tids:int) (buf:Buffer.t) : unit =
+    B.add_string buf
+        ("(define is_spmax::(-> " ^pair_s^ " " ^setpair_s^ " " ^bool_s^ ")\n" ^
+         "  (lambda (&p::" ^pair_s^ " &s::" ^setpair_s^ ")\n" ^
+         "    (forall (&n::" ^int_s^ " &t::" ^tid_s^ ")\n" ^
+         "      (=> (&s (mk-record int_of::&n tid_of::&t)) (>= (select &p int_of) &n)))))\n")
+*)
+  let yices_is_spmax_def (max_ints:int) (max_tids:int) (buf:Buffer.t) : unit =
+    let str = ref "" in
+    for i = 0 to max_ints do
+      let i_str = string_of_int i in
+      for j = 0 to max_tids do
+        let j_str = string_of_int j in
+        str := "\n    (=> (&s (mk-record int_of::" ^i_str^ " tid_of::" ^j_str^ ")) (>= (select &p int_of) " ^i_str^ "))" ^ (!str)
+      done
+    done;
+    B.add_string buf
+        ("(define is_spmax::(-> " ^pair_s^ " " ^setpair_s^ " " ^bool_s^ ")\n" ^
+         "  (lambda (&p::" ^pair_s^ " &s::" ^setpair_s^ ")\n" ^
+         "    (and (&s &p)\n" ^ (!str) ^ ")))\n")
+(*
   let yices_is_spmax_def (vars_rep:string list) (voc_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
         ("(define is_spmax::(-> " ^pair_s^ " " ^setpair_s^ " " ^bool_s^ ")\n" ^
@@ -538,6 +627,7 @@ struct
       ) voc_rep
     ) vars_rep;
     B.add_string buf ")))\n"
+*)
 
 
   let yices_is_in_def (buf:Buffer.t) : unit =
@@ -547,6 +637,16 @@ struct
      "       (set_v pairs_v)))\n")
 
 
+  let yices_min_def (max_ints:int) (buf:Buffer.t) : unit =
+    let str = ref undefInt in
+    for i = 0 to max_ints do
+      let i_str = string_of_int i in
+      str := "\n    (if (and (is_in " ^i_str^ " &s) (is_min " ^i_str^ " &s)) " ^i_str^ " " ^(!str)^ ")"
+    done;
+    B.add_string buf
+    ("(define setmin::(-> " ^set_s^ " " ^int_s^ ")\n" ^
+     "  (lambda (&s::" ^set_s^ ")\n" ^ !str ^ "))\n")
+(*
   let yices_min_def (vars_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
     ("(define setmin::(-> " ^set_s^ " " ^int_s^ ")\n" ^
@@ -557,8 +657,19 @@ struct
           v v v str
       ) undefInt vars_rep ^
      "))\n")
+*)
 
 
+  let yices_max_def (max_ints:int) (buf:Buffer.t) : unit =
+    let str = ref undefInt in
+    for i = 0 to max_ints do
+      let i_str = string_of_int i in
+      str := "\n    (if (and (is_in " ^i_str^ " &s) (is_max " ^i_str^ " &s)) " ^i_str^ " " ^(!str)^ ")"
+    done;
+    B.add_string buf
+    ("(define setmax::(-> " ^set_s^ " " ^int_s^ ")\n" ^
+     "  (lambda (&s::" ^set_s^ ")\n" ^ !str ^ "))\n")
+(*
   let yices_max_def (vars_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
     ("(define setmax::(-> " ^set_s^ " " ^int_s^ ")\n" ^
@@ -569,8 +680,35 @@ struct
           v v v str
       ) undefInt vars_rep ^
      "))\n")
+*)
 
 
+
+
+(*
+  let yices_spmin_def (max_ints:int) (max_tids:int) (buf:Buffer.t) : unit =
+    let pair_rep = "(mk-record int_of::&n tid_of::&t)" in
+    let query_str = ref ("(mk-record int_of::" ^undefInt^ " tid_of::" ^someTid^ ")") in
+    B.add_string buf
+      ("(define spmin::(-> " ^setpair_s^ " " ^pair_s^ ")\n" ^
+       "  (lambda (&s::" ^setpair_s^ ")\n" ^
+       "    (forall (&n::" ^int_s^ " &t::" ^tid_s^ ")\n" ^
+       "      (if (and (&s " ^pair_rep^ ") (is_spmin " ^pair_rep^ " &s)) " ^pair_rep^ " " ^(!query_str)^ "))))\n")
+*)
+  let yices_spmin_def (max_ints:int) (max_tids:int) (buf:Buffer.t) : unit =
+    let str = ref ("(mk-record int_of::" ^undefInt^ " tid_of::" ^someTid^ ")") in
+    for i = 0 to max_ints do
+      let i_str = string_of_int i in
+      for j = 0 to max_tids do
+        let j_str = string_of_int j in
+        let pair_rep = "(mk-record int_of::" ^i_str^ " tid_of::" ^j_str^ ")" in
+        str := "\n    (if (and (&s " ^pair_rep^ ") (is_spmin " ^pair_rep^ " &s)) " ^pair_rep^ " " ^(!str)^ ")"
+      done
+    done;
+    B.add_string buf
+        ("(define spmin::(-> " ^setpair_s^ " " ^pair_s^ ")\n" ^
+         "  (lambda (&s::" ^setpair_s^ ")\n" ^(!str)^ "))\n")
+(*
   let yices_spmin_def (vars_rep:string list) (voc_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
     ("(define spmin::(-> " ^setpair_s^ " " ^pair_s^ ")\n" ^
@@ -584,8 +722,33 @@ struct
         ) str voc_rep
       ) ("(mk-record int_of::" ^undefInt^ " tid_of::" ^someTid^ ")") vars_rep ^
      "))\n")
+*)
 
 
+(*
+  let yices_spmax_def (max_ints:int) (max_tids:int) (buf:Buffer.t) : unit =
+    let pair_rep = "(mk-record int_of::&n tid_of::&t)" in
+    let query_str = ref ("(mk-record int_of::" ^undefInt^ " tid_of::" ^someTid^ ")") in
+    B.add_string buf
+      ("(define spmax::(-> " ^setpair_s^ " " ^pair_s^ ")\n" ^
+       "  (lambda (&s::" ^setpair_s^ ")\n" ^
+       "    (forall (&n::" ^int_s^ " &t::" ^tid_s^ ")\n" ^
+       "      (if (and (&s " ^pair_rep^ ") (is_spmax " ^pair_rep^ " &s)) " ^pair_rep^ " " ^(!query_str)^ "))))\n")
+*)
+  let yices_spmax_def (max_ints:int) (max_tids:int) (buf:Buffer.t) : unit =
+    let str = ref ("(mk-record int_of::" ^undefInt^ " tid_of::" ^someTid^ ")") in
+    for i = 0 to max_ints do
+      let i_str = string_of_int i in
+      for j = 0 to max_tids do
+        let j_str = string_of_int j in
+        let pair_rep = "(mk-record int_of::" ^i_str^ " tid_of::" ^j_str^ ")" in
+        str := "\n    (if (and (&s " ^pair_rep^ ") (is_spmax " ^pair_rep^ " &s)) " ^pair_rep^ " " ^(!str)^ ")"
+      done
+    done;
+    B.add_string buf
+        ("(define spmax::(-> " ^setpair_s^ " " ^pair_s^ ")\n" ^
+         "  (lambda (&s::" ^setpair_s^ ")\n" ^(!str)^ "))\n")
+(*
   let yices_spmax_def (vars_rep:string list) (voc_rep:string list) (buf:Buffer.t) : unit =
     B.add_string buf
     ("(define spmax::(-> " ^setpair_s^ " " ^pair_s^ ")\n" ^
@@ -599,6 +762,7 @@ struct
         ) str voc_rep
       ) ("(mk-record int_of::" ^undefInt^ " tid_of::" ^someTid^ ")") vars_rep ^
      "))\n")
+*)
 
 
 (*
@@ -617,6 +781,23 @@ struct
 *)
 
 
+  let yices_filter_legal_set_def (max_ints:int) (buf:Buffer.t) : unit =
+    B.add_string buf
+    ( "(define filter_legal_set::(-> " ^set_s^ " " ^set_s^ ")\n" ^
+      "  (lambda (&s::" ^set_s^ ")\n" ^
+      "    (lambda (&a::" ^int_s^ ")\n" ^
+      "      (and (<= 0 &a) (<= &a " ^(string_of_int max_ints)^ ")))))\n")
+
+
+  let yices_filter_legal_setpair_def (max_ints:int) (buf:Buffer.t) : unit =
+    B.add_string buf
+    ( "(define filter_legal_setpair::(-> " ^setpair_s^ " " ^setpair_s^ ")\n" ^
+      "  (lambda (&s::" ^setpair_s^ ")\n" ^
+      "    (lambda (&p::" ^pair_s^ ")\n" ^
+      "      (and (&s &p) (<= 0 (select &p int_of)) (<= (select &p int_of) " ^(string_of_int max_ints)^ ")))))\n")
+
+
+(*
   let yices_filter_set_def (vars_rep:string list) (buf:Buffer.t) : unit =
     let or_cond =
       match vars_rep with
@@ -646,6 +827,7 @@ struct
       "  (lambda (setpair_v::" ^setpair_s^ ")\n" ^
       "    (lambda (pair_v::" ^pair_s^ ")\n" ^
       "      (and (setpair_v pair_v) " ^or_cond^ "))))\n")
+*)
 
 
   let yices_lower_def (buf:Buffer.t) : unit =
@@ -665,28 +847,55 @@ struct
 
 
 
-  let yices_unique_def (buf:Buffer.t) : unit =
+  let yices_unique_def (max_ints:int) (max_tids:int) (buf:Buffer.t) : unit =
+    let max_ints_str = string_of_int max_ints in
+    let max_tids_str = string_of_int max_tids in
     B.add_string buf
       ("(define uniqueint::(-> " ^setpair_s^ " " ^bool_s^ ")\n" ^
-       "  (lambda (s::" ^setpair_s^ ")\n" ^
-       "    (forall (n1::" ^int_s^ " n2::" ^int_s^ " t::" ^tid_s^ ") (=> (and (s (mk-record int_of::n1 tid_of::t)) (s (mk-record int_of::n2 tid_of::t))) (= n1 n2)))))\n" ^
+       "  (lambda (&s::" ^setpair_s^ ")\n" ^
+       "    (forall (&n1::" ^int_s^ " &n2::" ^int_s^ " &t::" ^tid_s^ ") (=> (and (&s (mk-record int_of::&n1 tid_of::&t)) (&s (mk-record int_of::&n2 tid_of::&t))) (= &n1 &n2)))))\n" ^
        "(define uniquetid::(-> " ^setpair_s^ " " ^bool_s^ ")\n" ^
-       "  (lambda (s::" ^setpair_s^ ")\n" ^
-       "    (forall (t1::" ^tid_s^ " t2::" ^tid_s^ " n::" ^int_s^ ") (=> (and (s (mk-record int_of::n tid_of::t1)) (s (mk-record int_of::n tid_of::t2))) (= t1 t2)))))\n")
+       "  (lambda (&s::" ^setpair_s^ ")\n" ^
+       "    (forall (&t1::" ^tid_s^ " &t2::" ^tid_s^ " &n::" ^int_s^ ") (=> (and (<= 0 &t1) (<= &t1 " ^max_tids_str^ ") (<= 0 &t2) (<= &t2 " ^max_tids_str^ ") (<= 0 &n) (<= &n " ^max_ints_str^ ") (&s (mk-record int_of::&n tid_of::&t1)) (&s (mk-record int_of::&n tid_of::&t2))) (= &t1 &t2)))))\n")
 
 
+(*
   let yices_intidpair_def (buf:Buffer.t) : unit =
     B.add_string buf
       ("(define intidpair::(-> " ^tid_s^ " " ^setpair_s^ " " ^bool_s^ ")\n" ^
        "  (lambda (&t::" ^tid_s^ " &s::" ^setpair_s^ ")\n" ^
        "    (exists (&n::" ^int_s^ ") (&s (mk-record int_of::&n tid_of::&t)))))\n")
+ *)
+  let yices_intidpair_def (max_ints:int) (buf:Buffer.t) : unit =
+    let str = ref "" in
+    for i = 0 to max_ints do
+      let i_str = string_of_int i in
+      str := "\n    (&s (mk-record int_of::" ^i_str^ " tid_of::&t))"
+    done;
+    B.add_string buf
+      ("(define intidpair::(-> " ^tid_s^ " " ^setpair_s^ " " ^bool_s^ ")\n" ^
+       "  (lambda (&t::" ^tid_s^ " &s::" ^setpair_s^ ")\n" ^
+       "    (or " ^ (!str)^ ")))\n")
 
 
+
+(*
   let yices_inintpair_def (buf:Buffer.t) : unit =
     B.add_string buf
       ("(define inintpair::(-> " ^int_s^ " " ^setpair_s^ " " ^bool_s^ ")\n" ^
        "  (lambda (&n::" ^int_s^ " &s::" ^setpair_s^ ")\n" ^
        "    (exists (&t::" ^tid_s^ ") (&s (mk-record int_of::&n tid_of::&t)))))\n")
+*)
+  let yices_inintpair_def (max_tids:int) (buf:Buffer.t) : unit =
+    let str = ref "" in
+    for i = 0 to max_tids do
+      let i_str = string_of_int i in
+      str := "\n    (&s (mk-record int_of::&n tid_of::" ^i_str^ "))"
+    done;
+    B.add_string buf
+      ("(define inintpair::(-> " ^int_s^ " " ^setpair_s^ " " ^bool_s^ ")\n" ^
+       "  (lambda (&n::" ^int_s^ " &s::" ^setpair_s^ ")\n" ^
+       "    (or " ^ (!str)^ ")))\n")
 
 
   (************************** Support for sets **************************)
@@ -722,9 +931,9 @@ struct
       | PE.Int -> let v_str = variable_invocation_to_str v in
                     B.add_string buf ("(assert (is_legal " ^ v_str ^ "))\n")
       | PE.Set -> let v_str = variable_invocation_to_str v in
-                    B.add_string buf ("(assert (= " ^v_str^ " (filter_set " ^v_str^ ")))\n")
+                    B.add_string buf ("(assert (= " ^v_str^ " (filter_legal_set " ^v_str^ ")))\n")
       | PE.SetPair -> let v_str = variable_invocation_to_str v in
-                        B.add_string buf ("(assert (= " ^v_str^ " (filter_pairs " ^v_str^ ")))\n")
+                        B.add_string buf ("(assert (= " ^v_str^ " (filter_legal_setpair " ^v_str^ ")))\n")
       | _ -> ()
     ) global_vars;
     List.iter (fun v ->
@@ -735,10 +944,10 @@ struct
                       B.add_string buf ("(assert (is_legal " ^ v_str ^ "))\n")
         | PE.Set -> let v_str = variable_invocation_to_str
                           (PE.V.set_param v (PE.V.Local (PE.voc_to_var t))) in
-                      B.add_string buf ("(assert (= " ^v_str^ " (filter_set " ^v_str^ ")))\n")
+                          B.add_string buf ("(assert (= " ^v_str^ " (filter_legal_set " ^v_str^ ")))\n")
         | PE.SetPair -> let v_str = variable_invocation_to_str
                           (PE.V.set_param v (PE.V.Local (PE.voc_to_var t))) in
-                        B.add_string buf ("(assert (= " ^v_str^ " (filter_pairs " ^v_str^ ")))\n")
+                          B.add_string buf ("(assert (= " ^v_str^ " (filter_legal_setpair " ^v_str^ ")))\n")
         | _ -> ()
       ) voc
     ) local_vars
@@ -765,9 +974,13 @@ struct
                            variable_invocation_to_str i_var
                        ) (LeapLib.rangeList 1 int_cutoff) in
     let all_vars_str = glb_vars_str @ loc_vars_str @ aux_vars_str in
-    let voc_str = List.map tid_to_str voc
+    (*
+    let voc_str = List.map tid_to_str voc in
+    *)
+    let max_ints = 4 (*List.length all_vars_str*) in
+    let max_tids = List.length voc
     in
-      yices_undefined_decl                          buf;
+      yices_undefined_decl max_ints                 buf;
       yices_aux_pairs_def int_cutoff                buf;
       yices_emp_def                                 buf;
       yices_singleton_def                           buf;
@@ -781,22 +994,22 @@ struct
       yices_spsetdiff_def                           buf;
       yices_spintersection_def                      buf;
       yices_spsubseteq_def all_vars_str             buf;
-      yices_is_min_def all_vars_str                 buf;
-      yices_is_max_def all_vars_str                 buf;
-      yices_is_spmin_def all_vars_str voc_str       buf;
-      yices_is_spmax_def all_vars_str voc_str       buf;
+      yices_is_min_def max_ints                     buf;
+      yices_is_max_def max_ints                     buf;
+      yices_is_spmin_def max_ints max_tids          buf;
+      yices_is_spmax_def max_ints max_tids          buf;
       yices_is_in_def                               buf;
-      yices_min_def all_vars_str                    buf;
-      yices_max_def all_vars_str                    buf;
-      yices_spmin_def all_vars_str voc_str          buf;
-      yices_spmax_def all_vars_str voc_str          buf;
-      yices_filter_set_def all_vars_str             buf;
-      yices_filter_pairs_def all_vars_str voc_str   buf;
+      yices_min_def max_ints                        buf;
+      yices_max_def max_ints                        buf;
+      yices_spmin_def max_ints max_tids             buf;
+      yices_spmax_def max_ints max_tids             buf;
+      yices_filter_legal_set_def max_ints           buf;
+      yices_filter_legal_setpair_def max_ints       buf;
       yices_lower_def                               buf;
       yices_splower_def                             buf;
-      yices_unique_def                              buf;
-      yices_intidpair_def                           buf;
-      yices_inintpair_def                           buf;
+      yices_unique_def max_ints max_tids            buf;
+      yices_intidpair_def max_ints                  buf;
+      yices_inintpair_def max_tids                  buf;
       yices_pc_def                                  buf
 
 
@@ -841,7 +1054,7 @@ struct
     let glb_int_vars   = filter_ints global_vars in
     let lcl_int_vars   = filter_ints local_vars in
     let buf            = B.create 1024 in
-    let _              = yices_type_decl !prog_lines buf in
+    let _              = yices_type_decl int_cutoff tid_cutoff !prog_lines buf in
     let _              = List.iter (fun v ->
                            B.add_string buf (tid_variable_to_str v)
                          ) voc in

@@ -291,6 +291,9 @@ let funterm_to_par_string (t:fun_term) : string =
 let literal_to_par_string (l:literal) : string =
   Formula.literal_to_str (generic_atom_to_str no_parenthesis) l
 
+let conjunctive_formula_to_str (cf:conjunctive_formula) : string =
+  Formula.conjunctive_formula_to_str (generic_atom_to_str no_parenthesis) cf
+
 let formula_to_par_string (phi:formula) : string =
   Formula.formula_to_str (generic_atom_to_str no_parenthesis) phi
 (*  generic_pair_formula_to_str add_parenthesis f*)

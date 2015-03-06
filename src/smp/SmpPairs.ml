@@ -190,66 +190,94 @@ module MS = ModelSize
 
 
 
-type union_info = (ASet.t * ASet.t)
-
-
-let new_union_count = (ASet.empty, ASet.empty)
-
-
 (* Normal cutoff strategy *)
-let compute_max_cut_off (conj_list:PE.conjunctive_formula list) : MS.t =
-  MS.create ()
 
+(* calculates the cut_off *)
+let cut_off_normalized (expr:PE.conjunctive_formula) : MS.t =
+  let vars = PE.get_varset_from_conj expr in
+  let vars_tid = VarSet.cardinal (V.varset_of_sort vars PE.Tid) in
+  let vars_int = VarSet.cardinal (V.varset_of_sort vars PE.Int) in
 
-(* Union SMP *)
-
-let union_model_size (u:union_info) : MS.t =
-  let ms = MS.create () in
-  let (i_set, t_set) = u in
-  MS.add ms MS.Int (ASet.cardinal i_set);
-  MS.add ms MS.Tid (ASet.cardinal t_set);
-  ms
-
-
-let rec union_formula_cutoff_pol (pol:Polarity.t) (info:union_info) (phi:PE.formula) : union_info =
-  (ASet.empty, ASet.empty)
   (*
-  let apply_cut = union_formula_cutoff_pol in
-  match phi with
-  | F.Literal l       -> union_literal_cutoff_pol pol info l
-  | F.True            -> info
-  | F.False           -> info
-  | F.And (f1,f2)     -> apply_cut pol (apply_cut pol info f1) f2
-  | F.Or (f1,f2)      -> apply_cut pol (apply_cut pol info f1) f2
-  | F.Not f           -> apply_cut (Polarity.invert pol) info f
-  | F.Implies (f1,f2) -> apply_cut pol (apply_cut (Polarity.invert pol) info f1) f2
-  | F.Iff (f1,f2)     -> apply_cut Polarity.Both (apply_cut Polarity.Both info f2) f2
+  let vars_setpair = VarSet.cardinal (V.varset_of_sort vars PE.SetPair) in
+*)
+
+(*
+  print_endline ("INTEGER VARS:\n" ^ (String.concat ";" (VarSet.fold (fun v xs -> (V.to_str v)::xs) (V.varset_of_sort vars PE.Int) [])));
+  print_endline ("INTEGER VARS SIZE: " ^ (string_of_int (VarSet.cardinal (V.varset_of_sort vars PE.Int))));
+  print_endline ("TID VARS:\n" ^ (String.concat ";" (VarSet.fold (fun v xs -> (V.to_str v)::xs) (V.varset_of_sort vars PE.Tid) [])));
+  print_endline ("TID VARS SIZE: " ^ (string_of_int (VarSet.cardinal (V.varset_of_sort vars PE.Tid))));
+  print_endline ("PAIR VARS:\n" ^ (String.concat ";" (VarSet.fold (fun v xs -> (V.to_str v)::xs) (V.varset_of_sort vars PE.SetPair) [])));
+  print_endline ("PAIR VARS SIZE: " ^ (string_of_int (VarSet.cardinal (V.varset_of_sort vars PE.SetPair))));
   *)
 
 
 
-let union_formula_cutoff (info:union_info) (phi:PE.formula) : union_info =
-  union_formula_cutoff_pol Polarity.Pos info phi
+  let numint = ref (vars_int) in
+  let numtid = ref (vars_tid) in
 
-
-let compute_max_cut_off_with_union (phi:PE.formula) : MS.t =
-  let vars = PE.get_varset_from_formula phi in
-  let vartid_num  = VarSet.cardinal (V.varset_of_sort vars PE.Tid) in
-  let varint_num = VarSet.cardinal (V.varset_of_sort vars PE.Int) in
-  let varsetpair_num = VarSet.cardinal (V.varset_of_sort vars PE.SetPair) in
-  let info = union_model_size (union_formula_cutoff new_union_count phi) in
-  let num_ints = varint_num +                   (* Address variables      *)
-                 varsetpair_num * vartid_num +  (* Set of pairs variables *)
-                 (MS.get info MS.Int)           (* Special literals       *) in
-  let num_tids = 1 +                            (* No thread              *)
-                 vartid_num +                   (* Tid variables          *)
-                 varsetpair_num  * varint_num + (* Set of pairs variables *)
-                 (MS.get info MS.Tid)           (* Cell locks             *)
+  let process_ineq (x,y) =
+    match x with
+    | PE.IntV _     -> ()                      (* nothing, y must be a VarT as well *)
+    | PE.PairV _    -> (numint := !numint + 2; numtid := !numtid + 2) (* witness of pair inequality *) 
+    | PE.SetV _     -> (incr numint)              (* the witness of s1 != s2 *)
+    | PE.SetPairV _ -> (incr numint; incr numtid) (* the witness of s1 != s2 *)
   in
-    MS.create_with [(MS.Int, num_ints); (MS.Tid, num_tids)]
+  let process (lit:PE.literal) =
+    match lit with
+    | F.Atom(PE.InEq(x,y)) -> process_ineq(x,y)
+    | F.Atom a ->
+        begin
+          match a with
+          | PE.InTidPair _ -> (incr numint)
+          | PE.InIntPair _ -> (incr numtid)
+          | _           -> ()
+        end
+    | F.NegAtom a ->
+        begin
+          match a with
+          | PE.Less _         -> ()
+          | PE.LessEq _       -> ()
+          | PE.Greater _      -> ()
+          | PE.GreaterEq _    -> ()
+          | PE.LessTid _      -> ()
+          | PE.In _           -> ()
+          | PE.Subset _       -> (incr numint) (* witness of s1 \not\sub s2 *)
+          | PE.InIntPair _    -> ()
+          | PE.InTidPair _    -> ()
+          | PE.InPair _       -> ()
+          | PE.SubsetEqPair _ -> (incr numint; incr numtid) (* witness pair of s1 \not\sub s2 *)
+          | PE.Eq(x,y)        -> process_ineq (x,y)
+          | PE.InEq _         -> ()
+          | PE.TidEq _        -> ()
+          | PE.TidInEq _      -> ()
+          | PE.FunEq _        -> ()
+          | PE.FunInEq _      -> ()
+          | PE.UniqueInt _    -> (incr numtid; numint := !numint + 2) (* witness of non uniqueness of integers in a pair *)
+          | PE.UniqueTid _    -> (incr numint; numtid := !numtid + 2) (* witness of non uniqueness of tids in a pair *)
+          | PE.PC _           -> ()
+          | PE.PCUpdate _     -> ()
+          | PE.PCRange _      -> ()
+        end
+  in
+    match expr with
+    | F.TrueConj  -> MS.create_with [(MS.Int, 1); (MS.Tid, 1)]
+    | F.FalseConj -> MS.create_with [(MS.Int, 1); (MS.Tid, 1)]
+    | F.Conj l    -> (List.iter process l;
+                      MS.create_with [(MS.Int, !numint); (MS.Tid, !numtid)])
 
 
-    
+let compute_max_cut_off (conj_list:PE.conjunctive_formula list) : MS.t =
+  let ms = MS.create () in
+  List.iter (fun e ->
+    let e_cut_off = cut_off_normalized e in
+    MS.max_of ms e_cut_off
+  ) conj_list;
+  ms
+
+
+
+
 (* Pruning SMP *)
 
 let prune_atom (a:PE.atom) : PE.atom option =
@@ -279,7 +307,9 @@ let prune_atom (a:PE.atom) : PE.atom option =
 
 
 let compute_max_cut_off_with_pruning (phi:PE.formula) : MS.t =
+  print_endline ("ORIGINAL FORMULA:\n" ^ (PE.formula_to_str phi) ^ "\n");
   let pruned_phi = LeapLib.Option.default F.True (F.prune_formula prune_atom (F.nnf phi)) in
+  print_endline ("PRUNED FORMULA:\n" ^ (PE.formula_to_str pruned_phi) ^ "\n");
   let new_dnf = List.map F.cleanup_conj (F.dnf pruned_phi) in
     compute_max_cut_off (new_dnf)
 

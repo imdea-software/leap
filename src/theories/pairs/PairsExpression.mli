@@ -103,10 +103,11 @@ val treat_as_pc    : V.t -> bool
 
 val is_pair_formula : Expression.formula   -> bool
 
-val integer_to_str  : integer  -> string
-val formula_to_str  : formula -> string
-val literal_to_str  : literal -> string
-val atom_to_str     : atom -> string
+val integer_to_str             : integer  -> string
+val atom_to_str                : atom -> string
+val literal_to_str             : literal -> string
+val conjunctive_formula_to_str : conjunctive_formula -> string
+val formula_to_str             : formula -> string
 
 val all_varid             : formula -> V.id list
 val all_global_varid      : formula -> V.id list

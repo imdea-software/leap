@@ -765,8 +765,9 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
                               (List.combine (E.ThreadSet.elements supp_voc)
                                             (E.ThreadSet.elements fresh_tids)) in
           used_tids := E.ThreadSet.union fresh_tids !used_tids;
-          let fresh_supp = E.subst_tid fresh_subst supp in
 
+
+          let fresh_supp = E.subst_tid fresh_subst supp in
           let split_supp = F.to_conj_list fresh_supp in
           List.fold_left (fun (us,ps) phi ->
             if E.ThreadSet.is_empty (filter_fixed_voc (E.voc phi)) then
