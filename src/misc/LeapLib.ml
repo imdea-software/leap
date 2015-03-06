@@ -181,7 +181,7 @@ let human_readable_byte_count () : string =
   else
     let exp = int_of_float (log bytes /. log unit) in
     Format.sprintf "%.2f%sB" (bytes /. (unit ** (float_of_int exp)))
-      (match exp with
+      (match (exp-1) with
       | 0 -> "K" | 1 -> "M" | 2 -> "G"
       | 3 -> "T" | 4 -> "P" | 5 -> "E"
       | _ -> "Ouch! This number is too big!")

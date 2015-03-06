@@ -846,7 +846,7 @@ struct
      "      (and (s p) (<= (select p int_of) i)))))\n")
 
 
-
+(*
   let yices_unique_def (max_ints:int) (max_tids:int) (buf:Buffer.t) : unit =
     let max_ints_str = string_of_int max_ints in
     let max_tids_str = string_of_int max_tids in
@@ -857,7 +857,41 @@ struct
        "(define uniquetid::(-> " ^setpair_s^ " " ^bool_s^ ")\n" ^
        "  (lambda (&s::" ^setpair_s^ ")\n" ^
        "    (forall (&t1::" ^tid_s^ " &t2::" ^tid_s^ " &n::" ^int_s^ ") (=> (and (<= 0 &t1) (<= &t1 " ^max_tids_str^ ") (<= 0 &t2) (<= &t2 " ^max_tids_str^ ") (<= 0 &n) (<= &n " ^max_ints_str^ ") (&s (mk-record int_of::&n tid_of::&t1)) (&s (mk-record int_of::&n tid_of::&t2))) (= &t1 &t2)))))\n")
+*)
 
+  let yices_unique_def (max_ints:int) (max_tids:int) (buf:Buffer.t) : unit =
+    let str1 = ref "" in
+    let str2 = ref "" in
+
+    for n1 = 0 to max_ints do
+      let n1_str = string_of_int n1 in
+      for n2 = 0 to max_ints do
+        let n2_str = string_of_int n2 in
+        for t = 0 to max_tids do
+          let t_str = string_of_int t in
+          str1 := "\n      (=> (and (&s (mk-record int_of::" ^n1_str^ " tid_of::" ^t_str^ ")) (&s (mk-record int_of::" ^n2_str^ " tid_of::" ^t_str^ "))) (= " ^n1_str^ " " ^n2_str^ "))" ^ (!str1)
+        done
+      done
+    done;
+
+    for t1 = 0 to max_tids do
+      let t1_str = string_of_int t1 in
+      for t2 = 0 to max_tids do
+        let t2_str = string_of_int t2 in
+        for n = 0 to max_ints do
+          let n_str = string_of_int n in
+          str2 := "\n      (=> (and (&s (mk-record int_of::" ^n_str^ " tid_of::" ^t1_str^ ")) (&s (mk-record int_of::" ^n_str^ " tid_of::" ^t2_str^ "))) (= " ^t1_str^ " " ^t2_str^ "))" ^ (!str2)
+        done
+      done
+    done;
+
+    B.add_string buf
+      ("(define uniqueint::(-> " ^setpair_s^ " " ^bool_s^ ")\n" ^
+       "  (lambda (&s::" ^setpair_s^ ")\n" ^
+       "    (and\n" ^ (!str1) ^ ")))\n" ^
+       "(define uniquetid::(-> " ^setpair_s^ " " ^bool_s^ ")\n" ^
+       "  (lambda (&s::" ^setpair_s^ ")\n" ^
+       "    (and\n" ^ (!str2) ^ ")))\n")
 
 (*
   let yices_intidpair_def (buf:Buffer.t) : unit =

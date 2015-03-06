@@ -215,7 +215,7 @@ let _ =
 
       timer#stop;
       printf "Total Analysis time: %.3f\n" timer#elapsed_time;
-      printf "Memory consumption: %s\n" (LeapLib.report_mem())
+      printf "Memory consumption: %s\n" (LeapLib.human_readable_byte_count())
     end
 
   with
