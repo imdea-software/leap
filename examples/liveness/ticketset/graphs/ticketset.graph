@@ -1,20 +1,14 @@
-// => activeLow {pruning:|reduce2||simplify-pc}
+ => activeLow {pruning:|reduce2||simplify-pc}
 
-// => notSame [3:S:activeLow] {pruning:|reduce2||simplify-pc}
+ => notSame [3:S:activeLow] {pruning:|reduce2||simplify-pc}
 
-// => minTicket [3:activeLow; 6:O:activeLow, notSame] {pruning:|reduce2||simplify-pc}
+ => minTicket [3:activeLow; 6:O:activeLow, notSame] {pruning:|reduce2||simplify-pc}
 
-// => mutex [4:S:notSame, minTicket] {pruning:|reduce2||simplify-pc}
+ => mutex [4:S:notSame, minTicket] {pruning:|reduce2||simplify-pc}
 
-// => unique [3:S:setLower] {pruning:|reduce2||simplify-pc}
+ => minTicketActive {pruning:|reduce2||simplify-pc}
 
+ => bagIsActive [6:S:minTicket, unique] {pruning:|reduce2||simplify-pc}
 
-
-
-
-//////////////////////////
-
-//=> minIsActive [6:minTicket] {pruning:|reduce2||simplify-pc}
-
-//=> setLower {pruning:|reduce2||simplify-pc}
+ => unique [3:O:minTicketActive] {pruning:|reduce2||simplify-pc}
 
