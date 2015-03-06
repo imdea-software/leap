@@ -1,0 +1,8 @@
+vars:
+
+int n
+tid i
+
+invariant [bagIsActive] :
+
+intidpair(i, bag) = @active(i).

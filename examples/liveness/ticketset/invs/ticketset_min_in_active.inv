@@ -4,4 +4,4 @@ tid i
 
 invariant [minIsActive] :
 
-(setIntMin(bag) = main::ticket(i)) -> (@active(i).)
+int_of(spmin(bag)) = main::ticket(i) -> @active(i).

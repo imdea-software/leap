@@ -1,0 +1,5 @@
+vars:
+
+invariant [unique] :
+
+uniqueint(bag) /\ uniquetid(bag)

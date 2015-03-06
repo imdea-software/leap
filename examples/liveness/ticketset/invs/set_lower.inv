@@ -4,5 +4,5 @@ int n
 
 invariant [setLower] :
 
-bag = EmptySetInt \/ setIntMax(bag) < avail
+bag = spempty \/ int_of(spmax(bag)) < avail
 

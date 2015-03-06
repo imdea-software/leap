@@ -4,4 +4,4 @@ tid i
 
 invariant [ticketInBag] :
 
-bag = EmptySetInt \/ setIntMin(bag) = main::ticket(i)
+bag = spempty \/ int_of(spmin(bag)) = main::ticket(i)

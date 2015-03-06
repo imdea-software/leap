@@ -5,11 +5,6 @@ Tactics :
          | simplify-pc } ;
 
 Facts :
-  3:minIsActive, setLower, activeLow;
+	3:activeLow, minTicketTid, unique;
   4:notSame;
-  6:notSame, mutex, test, minTicket;
-
-//Facts :
-//  3:minIsActive, ticketInBag;
-//  4:notSame;
-//  6:notSame, ticketInBag;
+	6:bagIsActive, unique;

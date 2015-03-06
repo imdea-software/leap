@@ -1,7 +1,6 @@
 global
   int avail := 0
-  intSet bag := EmptySetInt
-  ghost intSet lower := EmptySetInt
+  pairSet bag := spempty
 
 procedure main ()
   int ticket := 0
@@ -13,15 +12,15 @@ begin
         {
           ticket := avail;
           avail := avail + 1;
-          bag := UnionInt (bag, SingleInt(avail));
+          bag := spunion (bag, spsingle((avail,me)));
         }
 
 :active[
 
-        await (setIntMin(bag) = ticket);
+        await (int_of (spmin(bag)) = ticket);
 :crit[
         critical;
-        bag := SetDiffInt (bag, SingleInt(ticket));
+        bag := spdiff (bag, spsingle((ticket, me)));
 :crit]
 :active]
 
