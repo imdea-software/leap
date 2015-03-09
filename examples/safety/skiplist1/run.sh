@@ -3,7 +3,7 @@
 #Configure path to Leap
 LEAP=leap
 
-OPTIONS="-v 1 -co union -sm -yices+z3 -dp tslk[1]"
+OPTIONS="-co union -sm -yices+z3 -dp tslk[1]"
 
 PRG=prgs/skiplist1.prg
 INV_FOLDER=invs
