@@ -166,6 +166,7 @@ doc:
 clean:
 	$(OCAMLBUILD) -clean
 	@rm -rf $(BIN)/*
+	@rm *.odocl
 
 
 dist:   clean

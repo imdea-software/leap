@@ -22,7 +22,7 @@ val widening_steps : int ref
 val new_loc : int list -> loc_t
 val new_num_problem : string ->
                       bool ->
-                      System.system_t ->
+                      System.t ->
                       Expression.tid list ->
                       bool ->
                       tactic_t option ->
@@ -39,7 +39,7 @@ val num_problem_to_str : num_problem_t -> string
 val inv_table_to_str : inv_table_t -> string
 val invs_for_spec : inv_table_t -> string
 
-val stat_info_str : System.system_t -> num_problem_t -> string
+val stat_info_str : System.t -> num_problem_t -> string
 
 val num_integer_paren_to_str : Expression.integer -> string
 

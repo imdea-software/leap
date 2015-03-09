@@ -648,7 +648,7 @@ let invs_for_spec (inv_tbl:inv_table_t) : string =
     spec_str
 
 
-let stat_info_str (sys:Sys.system_t) (prob:num_problem_t) : string =
+let stat_info_str (sys:Sys.t) (prob:num_problem_t) : string =
   let pos_num = 1 + Sys.get_trans_num sys in
   let var_num = List.length prob.vars in
   let loc_num = List.length prob.locs in
@@ -670,27 +670,27 @@ let stat_info_str (sys:Sys.system_t) (prob:num_problem_t) : string =
 
 (* NUMERIC PROGRAM MANIPULATION FUNCTIONS *)
 
-let gen_all_position_vars (sys:Sys.system_t) : Expr.varId list =
+let gen_all_position_vars (sys:Sys.t) : Expr.varId list =
   let prog_lines = Sys.get_trans_num sys
   in
     List.map (Expr.new_num_pos_var_id Conf.defCountAbs_name) $
       LeapLib.rangeList 1 (prog_lines+1)
 
 
-let gen_all_position_vars_from_labels (sys:Sys.system_t) : Expr.varId list =
+let gen_all_position_vars_from_labels (sys:Sys.t) : Expr.varId list =
   let label_list = Sys.get_labels_list (Sys.get_labels sys)
   in
     List.map (Expr.new_label_pos_var_id Conf.defCountAbs_name) label_list
 
 
-let get_all_num_vars_from_sys (sys:Sys.system_t) : Expr.varId list =
+let get_all_num_vars_from_sys (sys:Sys.t) : Expr.varId list =
   let var_ids    = Sys.get_all_vars_id sys in
   let pos_vars   = gen_all_position_vars sys
   in
     var_ids @ [Conf.defCountAbs_name] @ pos_vars
 
 
-let get_all_numlabel_vars_from_sys (sys:Sys.system_t) : Expr.varId list =
+let get_all_numlabel_vars_from_sys (sys:Sys.t) : Expr.varId list =
   let var_ids = Sys.get_all_vars_id sys in
   let labels_vars = gen_all_position_vars_from_labels sys
   in
@@ -708,13 +708,13 @@ let new_numprog_pos_from_label (l:string) (t:Expr.tid option) : numprog_pos_t =
   (l, t)
 
 
-let gen_position_vars (sys:Sys.system_t) : numprog_pos_t list =
+let gen_position_vars (sys:Sys.t) : numprog_pos_t list =
   let prog_lines = LeapLib.rangeList 1( (Sys.get_trans_num sys) + 1)
   in
     List.map (fun l -> (string_of_int l, None)) prog_lines
 
 
-let gen_position_vars_from_labels (sys:Sys.system_t) : numprog_pos_t list =
+let gen_position_vars_from_labels (sys:Sys.t) : numprog_pos_t list =
   let label_list = Sys.get_labels_list (Sys.get_labels sys)
   in
     List.map (fun l -> (l, None)) label_list
@@ -747,7 +747,7 @@ let param_num_var_id (t:Expr.tid) (id:Expr.varId) : Expr.varId =
   | Expr.TidArrRd _    -> raise(No_numerical_expression(Expr.tid_to_str t))
 
 
-let build_trans_info (sys:Sys.system_t)
+let build_trans_info (sys:Sys.t)
                      (use_labels:bool) : num_trans_info_table_t =
   let variant_count = ref 0 in
   let label_tbl  = Sys.get_labels sys in
@@ -790,7 +790,7 @@ let build_trans_info (sys:Sys.system_t)
     tbl
 
 
-let build_global_init_cond (sys:Sys.system_t) (conc_ths:int) : Expr.formula =
+let build_global_init_cond (sys:Sys.t) (conc_ths:int) : Expr.formula =
   let global_theta = VCG.gen_global_init_cond sys in
   let cond_n = Expr.greatereq_form Expr.defCountVar (Expr.IntVal conc_ths)
   in
@@ -798,7 +798,7 @@ let build_global_init_cond (sys:Sys.system_t) (conc_ths:int) : Expr.formula =
 
 
 
-let build_loc_init_cond (sys:Sys.system_t)
+let build_loc_init_cond (sys:Sys.t)
                         (ths:Expr.tid list)
                         (use_labels:bool) : Expr.formula =
 
@@ -852,7 +852,7 @@ let build_loc_init_cond (sys:Sys.system_t)
     Expr.conj_list (local_theta_list @ [init_cond])
 
 
-let gen_all_num_vars (sys:Sys.system_t)
+let gen_all_num_vars (sys:Sys.t)
                      (ths:Expr.tid list)
                      (use_labels:bool) : Expr.V.t list =
   let (gTbl, l_list) = Sys.get_sys_var_tables sys in
@@ -883,7 +883,7 @@ let gen_all_num_vars (sys:Sys.system_t)
 
 
 
-let gen_locations (sys:Sys.system_t)
+let gen_locations (sys:Sys.t)
                   (ths:Expr.tid list)
                   (use_labels:bool) : (num_location_t list * loc_t) =
 
@@ -926,7 +926,7 @@ let gen_locations (sys:Sys.system_t)
 (* NEW FUNCTIONS *)
 
 let gen_transitions (trans_tbl:num_trans_info_table_t)
-                    (sys:Sys.system_t)
+                    (sys:Sys.t)
                     (ths:Expr.tid list)
                         : (num_trans_t list * num_trans_t list) =
 
@@ -1030,7 +1030,7 @@ let build_prj_table (transTbl:num_trans_info_table_t)
 
 
 let gen_visit_order (trans:num_trans_t list)
-                    (sys:Sys.system_t)
+                    (sys:Sys.t)
                     (ths:Expr.tid list)
                     (loc_num:int) : loc_t list =
 
@@ -1060,7 +1060,7 @@ let gen_visit_order (trans:num_trans_t list)
 
 let new_num_problem (name:string)
                     (sloops:bool)
-                    (sys:Sys.system_t)
+                    (sys:Sys.t)
                     (ths:Expr.tid list)
                     (use_labels:bool)
                     (tactic:tactic_t option)

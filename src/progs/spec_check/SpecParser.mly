@@ -46,12 +46,12 @@ let get_line id = snd id
 
 %type <(string * NumExpression.formula)> one_spec
 %type <(string * NumExpression.formula) list> specification
-%type <(string * (NumExpression.conjunction_literals)) list> invariant_list
-%type <(string * NumExpression.conjunction_literals)> one_invariant
+%type <(string * (NumExpression.conjunctive_formula)) list> invariant_list
+%type <(string * NumExpression.conjunctive_formula)> one_invariant
 
 %type <NumExpression.formula> formula
 %type <NumExpression.literal> literal
-%type <NumExpression.conjunction_literals> conjunction_of_literals
+%type <NumExpression.conjunctive_formula> conjunction_of_literals
 %type <NumExpression.literal list> literal_list
 %type <NumExpression.integer> integer
 %type <NumExpression.term> term
