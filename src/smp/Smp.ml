@@ -1,4 +1,6 @@
 
+exception Unknown_strategy_str of string
+
 type cutoff_strategy_t =
   | Dnf       (* Computes dnf over the formula and then counts literals *)
   | Union     (* Computes an upper bound using union over literals *)
@@ -12,11 +14,23 @@ type cutoff_options_t =
   }
 
 
+let def_strategy_list : cutoff_strategy_t list = [ Dnf; Union; Pruning]
+
+
 let strategy_to_str (s:cutoff_strategy_t) : string =
   match s with
-  | Dnf     -> "DNF"
-  | Union   -> "Union"
-  | Pruning -> "Pruning"
+  | Dnf     -> "dnf"
+  | Union   -> "union"
+  | Pruning -> "pruning"
+
+
+let str_to_strategy (str:string) : cutoff_strategy_t =
+  match str with
+  | "dnf"     -> Dnf
+  | "union"   -> Union
+  | "pruning" -> Pruning
+  | s         -> raise(Unknown_strategy_str s)
+
 
 
 (* Cutoff options functions *)

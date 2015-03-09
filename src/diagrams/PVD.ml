@@ -573,17 +573,17 @@ let ranking_function (ante:E.formula)
                                    end in
   if AcceptanceSet.mem e accept.bad then begin
     let (n,m,t) = e in
-    let _ = print_endline ("IS BAD: " ^ (node_id_to_str n) ^ " -> " ^
-    (node_id_to_str m)) in
-    let _ = match t with | Any -> print_endline "ANY" | Pres -> print_endline "PRES" in
+    Debug.infoMsg ("IS BAD: " ^ (node_id_to_str n) ^ " -> " ^
+      (node_id_to_str m));
+    let _ = match t with | Any -> Debug.infoMsg "ANY" | Pres -> Debug.infoMsg "PRES" in
     let pre = fst accept.delta in
     let post = E.prime_modified_term [ante] (fst accept.delta) in
     cons pre post Decrement
   end else if (not (AcceptanceSet.mem e (AcceptanceSet.union accept.good accept.bad))) then begin
     let (n,m,t) = e in
-    let _ = print_endline ("IS NOT CARE: " ^ (node_id_to_str n) ^ " -> " ^
-    (node_id_to_str m)) in
-    let _ = match t with | Any -> print_endline "ANY" | Pres -> print_endline "PRES" in
+    Debug.infoMsg ("IS NOT CARE: " ^ (node_id_to_str n) ^ " -> " ^
+    (node_id_to_str m));
+    let _ = match t with | Any -> Debug.infoMsg "ANY" | Pres -> Debug.infoMsg "PRES" in
     let pre = fst accept.delta in
     let post = E.prime_modified_term [ante] (fst accept.delta) in
     cons pre post Preserve

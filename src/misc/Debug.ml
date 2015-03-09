@@ -7,12 +7,17 @@ let _debug_show_widening_formula_ : bool ref = ref false
 let _debug_show_smt_ : bool ref = ref false
 
 
+let infoLevel = 100
 
 let msg (s:string) (level:int) : unit =
-  if !_debug_ && !_debug_level_ > level then
+  if !_debug_ && !_debug_level_ >= level then
     let out_str = Printf.sprintf "%s" s
     in
       print_endline out_str
+
+
+let infoMsg (s:string) : unit =
+  msg s infoLevel
 
 
 let print_file_name (label:string) (file_name:string) : unit =

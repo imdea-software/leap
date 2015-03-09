@@ -32,7 +32,6 @@ let check_installed (smts:smt_t list) : unit =
     let env = Array.of_list [] in
     let check_method = " -?" in
     let (stdout,stdin,stderr) = Unix.open_process_full (cmd ^ check_method) env in
-    print_endline (cmd ^ check_method);
     try
       ignore (Pervasives.input_line stderr);
       raise(SMT_Not_Found cmd)
@@ -163,12 +162,6 @@ let run (cfg:configuration_t) (query:string) : Sat.t =
   output_string output_ch full_query;
   close_out output_ch;
   (* 2. run SMT and parse output *)
-(*
-  let cmd = cfg.exec ^ (gen_timeout_str cfg)   ^
-                       (gen_debugsupp_str cfg) ^
-                       (tmpfile)               ^
-                       (" CASE_SPLIT=4 ") in
-*)
   let cmd = cfg.exec ^ (gen_timeout_str cfg)   ^
                        (gen_debugsupp_str cfg) ^
                        (tmpfile) in

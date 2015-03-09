@@ -264,7 +264,9 @@ module Make (C:Core.S) : S =
 
         let proof_info = C.new_proof_info cutoff in
         let proof_obligation = C.new_proof_obligation vc obligations proof_info in
+        (*
         if show_progress then (Progress.current !vc_count; incr vc_count);
+        *)
           proof_obligation :: res
       ) [] vcs
 

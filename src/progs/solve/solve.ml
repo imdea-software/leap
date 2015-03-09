@@ -21,38 +21,43 @@ let _ =
     (* Choose decision procedure *)
     Printf.printf "Parsed formula is:\n%s\n\n" (Expr.formula_to_str phi);
 
-    let valid =
+    let sol =
       match !SolveArgs.dpType with
-      | DP.NoDP -> (print_endline "NO DP PROVIDED"; false)
-      | DP.Loc -> false
+      | DP.NoDP -> (print_endline "NO DP PROVIDED"; Valid.Invalid)
+      | DP.Loc -> Valid.Invalid
       | DP.Num -> let module Num = (val (NumSolver.choose BackendSolvers.Yices.identifier)) in
                   Num.compute_model true;
-                  let valid = Num.is_valid (NumInterface.formula_to_int_formula phi) in
-                  if not valid then Num.print_model();
-                  valid
+                  let sol = Num.check_valid (NumInterface.formula_to_int_formula phi) in
+                  if not (Valid.is_valid sol) then Num.print_model();
+                  sol
+      | DP.Pairs -> let module Pairs = (val (PairsSolver.choose BackendSolvers.Yices.identifier)) in
+                    Pairs.compute_model true;
+                    let sol = Pairs.check_valid (PairsInterface.formula_to_pairs_formula phi) in
+                    if not (Valid.is_valid sol) then Pairs.print_model();
+                    sol
       | DP.Tll -> let module Tll = (val (TllSolver.choose BackendSolvers.Z3.identifier)) in
                   Tll.compute_model true;
                   let tll_phi = TllInterface.formula_to_tll_formula phi in
-                  let valid = Tll.is_valid 1 !SolveArgs.coType
+                  let sol = Tll.check_valid 1 !SolveArgs.coType
                                 !SolveArgs.use_quantifiers tll_phi in
-                  if not valid then Tll.print_model();
-                  valid
+                  if not (Valid.is_valid sol) then Tll.print_model();
+                  sol
       | DP.Tslk k -> let module Tslk = (val (TslkSolver.choose BackendSolvers.Z3.identifier k)) in
                      let module TSLKIntf = TSLKInterface.Make(Tslk.TslkExp) in
                      Tslk.compute_model true;
                      let tslk_phi = TSLKIntf.formula_to_tslk_formula phi in
-                     let valid = Tslk.is_valid 1 !SolveArgs.coType
+                     let sol = Tslk.check_valid 1 !SolveArgs.coType
                                    !SolveArgs.use_quantifiers tslk_phi in
-                     if not valid then Tslk.print_model();
-                     valid
+                     if not (Valid.is_valid sol) then Tslk.print_model();
+                     sol
       | DP.Tsl -> let tsl_phi = TSLInterface.formula_to_tsl_formula phi in
                   TslSolver.compute_model true;
-                  let valid = TslSolver.is_valid 1 !SolveArgs.coType
+                  let sol = TslSolver.check_valid 1 !SolveArgs.coType
                                 !SolveArgs.use_quantifiers tsl_phi in
-                  if not valid then TslSolver.print_model();
-                  valid
+                  if not (Valid.is_valid sol) then TslSolver.print_model();
+                  sol
     in
-      if valid then
+      if Valid.is_valid sol then
         print_endline "VALID"
       else
         print_endline "NOT VALID"

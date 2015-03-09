@@ -16,3 +16,5 @@ val print_invTables : string -> string -> unit
 val print_widening_formulas : int list -> string -> string -> string -> unit
 val print_smt : string -> unit
 val print_smt_query : string -> unit
+
+val infoMsg : string -> unit

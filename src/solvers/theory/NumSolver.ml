@@ -249,7 +249,7 @@ struct
 
 
   let print_model () : unit =
-    if !comp_model then
+    if !comp_model && (not (GM.is_empty_model (Solver.get_model()))) then
       print_endline (model_to_str())
     else
       ()

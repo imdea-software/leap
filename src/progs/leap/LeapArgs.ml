@@ -111,13 +111,17 @@ let set_dp dp =
     end
 
 
-let co_opt_list = ["dnf"; "union"; "pruning"]
-let set_co co =
-  match co with
-  | "dnf" -> coType := Smp.Dnf
-  | "union" -> coType := Smp.Union
-  | "pruning" -> coType := Smp.Pruning
-  | _ -> ()
+let co_opt_list = List.map Smp.strategy_to_str Smp.def_strategy_list
+let set_co co = try
+                  coType := Smp.str_to_strategy co
+                with (Smp.Unknown_strategy_str s) as e ->
+                  begin
+                    Interface.Err.msg "Unknown cutoff strategy" $
+                      Format.sprintf "The strategy \"%s\" is not valid. Valid\
+                                      strategies are: %s"
+                                      s (String.concat "," co_opt_list);
+                     raise(e)
+                  end
 
 let assigninputfile  (s:string) : unit = assignopt input_file is_input_file s
 let supportInvariant (s:string) : unit = assignopt supInvariant spinvSys s
@@ -137,27 +141,92 @@ let ignorePos (s:string) : unit =
   parse_int_list s ignorePC "ignore"
 
 
-let opts =
-  [ ("-v",
-        Arg.Int (fun i -> LeapVerbose.enable_verbose_up_to i),
-        "verbosity level");
-    ("-l",
-        Arg.String (fun str -> logFile := str),
-        "output log file");
+let opts = [
+  ("-g",
+     Arg.String inputInvGraphFile,
+     "[file]  Input file with a proof graph for safety verification.");
+  ("-d",
+     Arg.String inputInvFolder,
+     "[folder]  Input folder containing invariant candidates.");
+  ("-pvd",
+     Arg.String inputPvd,
+     "[file]  Input file with a PVD, for liveness verification.");
+  ("-ps",
+     Arg.String inputPvdSupport,
+    "[file]  Input file with support for PVD.");
+
+  ("-focus",
+     Arg.String focusPos,
+     "[n1,n2..]  Verifies only the given program locations.");
+  ("-ignore",
+     Arg.String ignorePos,
+     "[n1,n2..]  Ignores the given program locations. It overrides \"-focus\".");
+
+  ("-dp",
+     Arg.String set_dp,
+     "[dp]  Indicates the DP to use. Options are: " ^
+     String.concat "," (List.map DP.to_str DP.def_dp_list));
+  ("-co",
+     Arg.Symbol (co_opt_list,set_co),
+     " Indicates the cut-off method for computing domain bounds.");
+
+  ("-z3",
+    Arg.Set use_z3,
+    " Enables the use of Z3 as SMT solver.");
+  ("-yices+z3",
+    Arg.Set use_yices_plus_z3,
+    " Enables Yices for position reasoning and Z3 for non position reasoning.");
+  ("-smt",
+     Arg.Set use_smt,
+     " Enables the use of SMT-LIB translation if possible.");
+
+  ("-q",
+     Arg.Set use_quantifiers,
+     " Enables quantifiers over finite domains when constructing SMT queries.");
+
+  ("-si",
+     Arg.Set stop_on_invalid,
+     " Stops execution as soon as an invalid VC is found.");
+  ("-sm",
+     Arg.Set show_models,
+     " Shows counter models for non valid VCs.");
+  ("-show",
+     Arg.Set showFlag,
+     " Shows the parsed program");
+  ("-sl",
+     Arg.Set show_label_info,
+     " Shows the information regarding parsed program labels.");
+
+  ("-v",
+     Arg.Int (fun i -> LeapVerbose.enable_verbose_up_to i),
+     "[n]  Indicates the verbosity level.");
+  ("-sf",
+     Arg.Set Debug._debug_show_tmpfile_info_,
+     " Outputs the paths to the temporary files where the SMT queries are written.");
+  ("-ovc",
+     Arg.Set output_vcs,
+     " Enables the output of the generated VCs to a folder. See \"-o\".");
+  ("-o",
+     Arg.Set_string outFile,
+     "[folder]  Indicates the folder where the generated VCs are output if \"-ovc\" is enabled.");
+
+  ("-l",
+     Arg.String (fun str -> logFile := str),
+     "[file]  Indicates the output log file.");
+  ("-debug",
+     Arg.Unit setdebug,
+     " Enables the output of debug information.");
+
+  ("-version",
+     Arg.Set Version._enable_,
+     " Prints the current version of leap.");
+
+
 (*
     THIS WAS REMOVED TO SIMPLIFIED LEAP
     ("-i",
         Arg.String inputInvariant,
         "invariant candidate");
-*)
-    ("-d",
-        Arg.String inputInvFolder,
-        "invariant folder");
-    ("-g",
-        Arg.String inputInvGraphFile,
-        "invariant graph file");
-(*
-    THIS WAS REMOVED TO SIMPLIFIED LEAP
     ("-pinv",
         Arg.Set pinvSys,
         "generate vc for an open system with arrays");
@@ -171,102 +240,27 @@ let opts =
     ("-binv",
         Arg.String inputClosedSys,
         "#th generate vc for a closed system for #th threads");
-*)
-    ("-focus",
-        Arg.String focusPos,
-        "pc1, pc2,... verifies transitions starting only at the given \
-         program positions");
-    ("-ignore",
-        Arg.String ignorePos,
-        "pc1, pc2,... ignores the given program transitions. It overrides \
-         information loaded with \"focus\".");
-(*
-    THIS WAS REMOVED TO SIMPLIFIED LEAP
     ("-f",
         Arg.String inputFormula,
         "formula to verify using diagrams");
     ("-vd",
         Arg.String inputVd,
         "analyzes a verification diagram");
-*)
-    ("-pvd",
-        Arg.String inputPvd,
-        "analyzes a parametrized verification diagram");
-    ("-ps",
-        Arg.String inputPvdSupport,
-        "adds support for parametrized verification diagrams");
-    ("-dp",
-        Arg.String set_dp,
-        "indicates the DP to use. Options are: " ^
-          String.concat "," (List.map DP.to_str DP.def_dp_list));
-    ("-z3",
-        Arg.Set use_z3,
-        "uses z3 as smt solver");
-    ("-yices+z3",
-        Arg.Set use_yices_plus_z3,
-        "uses yices for position reasoning and z3 for non position reasoning");
-(*
-    THIS WAS REMOVED TO SIMPLIFIED LEAP
     ("-sat",
         Arg.Set use_sat,
         "uses SAT when possible");
-*)
-    ("-co",
-        Arg.Symbol (co_opt_list,set_co),
-        "indicates the method used for computing the cut-off");
-(*
-    THIS WAS REMOVED TO SIMPLIFIED LEAP
     ("-ep",
         Arg.Set expand_pres,
         "expands preservation relation in generated VCs");
     ("-ca",
         Arg.Set count_abs,
         "enables counting abstraction");
-*)
-    ("-si",
-        Arg.Set stop_on_invalid,
-        "stops execution as soon as an invalid VC is found");
-    ("-sm",
-        Arg.Set show_models,
-        "shows counter models for non valid VCs");
-    ("-sl",
-        Arg.Set show_label_info,
-        "shows the information regarding parsed labels");
-    ("-q",
-        Arg.Set use_quantifiers,
-        "use quantifiers over finite domains when constructing SMT queries");
-    ("-ovc",
-        Arg.Set output_vcs,
-        "output VC information to a vcs folder");
-(*
-    THIS WAS REMOVED TO SIMPLIFIED LEAP
     ("-kpm",
         Arg.Set keep_primed_mem,
         "does consider primed memory variables when computing SMP cutoff");
     ("-gv",
         Arg.Set group_vars,
         "pre-group variables in equivalence classes when computing SMP cutoff");
-*)
-    ("-smt",
-        Arg.Set use_smt,
-        "enables the use of SMT-LIB translation if available");
-    ("-debug",
-        Arg.Unit setdebug,
-        "debug output information");
-    ("-show",
-        Arg.Set showFlag,
-        "show parsed program");
-    ("-sf",
-        Arg.Set Debug._debug_show_tmpfile_info_,
-        "shows path of temporary files");
-    ("-o",
-        Arg.Set_string outFile,
-        "\"file\" outputs verification conditions to \"file\"");
-    ("-version",
-        Arg.Set Version._enable_,
-        "show the current version");
-(*
-    THIS WAS REMOVED TO SIMPLIFIED LEAP
     ("-do",
         Arg.Set_string detailedOutFile,
         "\"folder\" outputs verification conditions to \"folder\"");
@@ -277,8 +271,12 @@ let anon_fun str =
   if !is_input_file then raise(MoreThanOneInputFile)
   else assigninputfile str
 
-let usagemsg = "Parses a program and generates its FTS."
-let error msg = Arg.usage opts msg ; exit 0
+let usagemsg =
+  ("\n\nLEAP: A verification tool for temporal properties in concurrent parametrized systems.\n\n" ^
+   "Usage:\n" ^
+   "  leap [options] [prg file]\n\n" ^
+   "Available options are:\n")
+let error msg = Arg.usage (Arg.align opts) msg ; exit 0
 let simple_error msg = Printf.printf "%s\n" msg ; exit 0
 let postcheck () =
   begin

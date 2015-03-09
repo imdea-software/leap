@@ -800,12 +800,12 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
                                   (E.ThreadSet.singleton info.transition_tid)
                                   [rho_voc; goal_voc] in (*TUKA*)
 
-          print_endline ("PROCESSING SUPPORT: " ^ (E.formula_to_str phi));
-          print_endline ("RHO IS: " ^ (E.formula_to_str info.rho));
-          print_endline ("THE GOAL IS: " ^ (E.formula_to_str info.goal));
+          Debug.infoMsg ("PROCESSING SUPPORT: " ^ (E.formula_to_str phi));
+          Debug.infoMsg ("RHO IS: " ^ (E.formula_to_str info.rho));
+          Debug.infoMsg ("THE GOAL IS: " ^ (E.formula_to_str info.goal));
 
-          print_endline ("SUPP_VOC: " ^ (E.tidset_to_str supp_voc));
-          print_endline ("VOC_TO_CONSIDER: " ^ (E.tidset_to_str voc_to_consider));
+          Debug.infoMsg ("SUPP_VOC: " ^ (E.tidset_to_str supp_voc));
+          Debug.infoMsg ("VOC_TO_CONSIDER: " ^ (E.tidset_to_str voc_to_consider));
 
           (*assert (not (E.ThreadSet.mem System.me_tid_th voc_to_consider));*)
                                   
@@ -820,11 +820,11 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
           let aa = E.new_comb_subst
                           (E.ThreadSet.elements supp_voc)
                           (E.ThreadSet.elements voc_to_consider) in
-          print_endline ("ORIGINAL SUBSTITUTIONS\n");
-          List.iter (fun s -> print_endline (E.subst_to_str s)) aa;
+          Debug.infoMsg ("ORIGINAL SUBSTITUTIONS\n");
+          List.iter (fun s -> Debug.infoMsg (E.subst_to_str s)) aa;
           let bb = List.filter (f (E.ThreadSet.cardinal supp_voc)) aa in
-          print_endline ("PROCESSED SUBSTITUTIONS\n");
-          List.iter (fun s -> print_endline (E.subst_to_str s)) bb;
+          Debug.infoMsg ("PROCESSED SUBSTITUTIONS\n");
+          List.iter (fun s -> Debug.infoMsg (E.subst_to_str s)) bb;
 
           (********************************************************************)
 
@@ -835,7 +835,7 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
 
           Log.print "Thread id substitution" (String.concat " -- " (List.map E.subst_to_str subst));
           List.fold_left (fun set s ->
-            print_endline ("GENERATED SUPPORT: " ^ (E.formula_to_str (E.subst_tid s phi)));
+            Debug.infoMsg ("GENERATED SUPPORT: " ^ (E.formula_to_str (E.subst_tid s phi)));
             E.FormulaSet.add (E.subst_tid s phi) set
           ) set subst
         ) param_support unparam_support in
@@ -855,9 +855,9 @@ let reduce_support (info:vc_info) : support_t =
 
 let reduce2_support (info:vc_info) : support_t =
   let voc_to_analyze = E.ThreadSet.union (E.voc info.rho) (E.voc info.goal) in
-  print_endline ("REDUCE2 RHO: " ^ (E.formula_to_str info.rho));
-  print_endline ("REDUCE2 GOAL: " ^ (E.formula_to_str info.goal));
-  print_endline ("REDUCE2 VOC TO ANALYZE: " ^ (E.tidset_to_str voc_to_analyze));
+  Debug.infoMsg ("REDUCE2 RHO: " ^ (E.formula_to_str info.rho));
+  Debug.infoMsg ("REDUCE2 GOAL: " ^ (E.formula_to_str info.goal));
+  Debug.infoMsg ("REDUCE2 VOC TO ANALYZE: " ^ (E.tidset_to_str voc_to_analyze));
 (*
   let voc_to_analyze = GenSet.to_list (GenSet.from_list (E.ThreadSet.elements (E.voc info.rho) @ E.ThreadSet.elements (E.voc info.goal))) in
 *)
@@ -1291,21 +1291,10 @@ let apply_tactics (vcs:vc_info list)
                     : E.formula list =
   Log.print_ocaml "entering apply_tactics()";
   List.fold_left (fun phi_list vc ->
-(*
-    print_endline "ABOUT TO UNIFY";
-    let vc = unify_support vc in
-    print_endline "AFTER UNIFY";
-    print_endline (vc_info_to_str vc);
-*)
-    print_endline "A1";
     let split_vc_info_list = apply_support_split_tactics [vc] supp_split_tacs in
-    print_endline "A2";
     let original_implications = apply_support_tactic split_vc_info_list supp_tac in
-    print_endline "A3";
     let split_implications = apply_formula_split_tactics original_implications formula_split_tacs in
-    print_endline "A4";
     let final_implications = apply_formula_tactics split_implications formula_tacs in
-    print_endline "A5";
 
 
     Log.print "* From this vc_info" (vc_info_to_str vc);

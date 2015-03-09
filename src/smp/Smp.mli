@@ -1,4 +1,5 @@
 
+exception Unknown_strategy_str of string
 
 type cutoff_strategy_t =
   | Dnf       (* Computes dnf over the formula and then counts literals *)
@@ -8,8 +9,11 @@ type cutoff_strategy_t =
 
 type cutoff_options_t
 
+val def_strategy_list : cutoff_strategy_t list
 
 val strategy_to_str : cutoff_strategy_t -> string
+
+val str_to_strategy : string -> cutoff_strategy_t
 
 
 val opt_empty : unit -> cutoff_options_t

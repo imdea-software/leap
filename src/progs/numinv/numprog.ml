@@ -1002,12 +1002,11 @@ let call_polyProject (phi:Expr.formula) (ths:Expr.tid list) : Expr.formula =
     let pProjectRes = Interface.File.readChannel in_ch in
     let prjForm = TrsParser.exists_projector norm
                       (Lexing.from_string pProjectRes) in
-    let _ = Debug.msg (sprintf "Given formula:\n%s\n"
-                                (Expr.formula_to_str phi)) 4 in
-    let _ = Debug.msg (sprintf "Projected formula:\n%s\n"
-                                (Expr.formula_to_str prjForm)) 4
-    in
-      prjForm
+    Debug.infoMsg (sprintf "Given formula:\n%s\n"
+                    (Expr.formula_to_str phi));
+    Debug.msg (sprintf "Projected formula:\n%s\n"
+                    (Expr.formula_to_str prjForm));
+    prjForm
 
 
 
@@ -1409,8 +1408,8 @@ let make_round_split (prob:num_problem_t) (dType:domain_t) : num_problem_t =
 let make_round (prob:num_problem_t) (dType:domain_t) : num_problem_t =
   let _       = incr iterations in
   let inv_tbl = call_trs prob dType in
-  let _       = Debug.msg (sprintf "First invariant table: \n%s\n"
-                                (inv_table_to_str inv_tbl)) 8 in
+  let _       = Debug.infoMsg (sprintf "First invariant table: \n%s\n"
+                                (inv_table_to_str inv_tbl)) in
   let _       = print_endline "Invariants generated..." in
   (* call project_local over all the found *)
   let prjProblem  = update_selfloops prob inv_tbl in
@@ -1460,17 +1459,17 @@ let stop (invs:inv_table_t option) (invs':inv_table_t) : bool =
 
 
 let iterate (prob:num_problem_t) (dType:domain_t) : inv_table_t option =
-  let debug_original p = Debug.msg (sprintf "BEGIN ORIGINAL==================\n\
-                                             %s\n\
-                                             END ORIGINAL ===================\n"
-                                            (num_problem_to_str p)) 8 in
-  let debug_prob p i = Debug.msg ( sprintf "=================================\n\
-                                            %s\n\
-                                            ---------------------------------\n\
+  let debug_original p = Debug.infoMsg (sprintf "BEGIN ORIGINAL==================\n\
+                                           %s\n\
+                                           END ORIGINAL ===================\n"
+                                            (num_problem_to_str p)) in
+  let debug_prob p i = Debug.infoMsg ( sprintf "=================================\n\
+                                               %s\n\
+                                               ---------------------------------\n\
                                             %s\n\
                                             =================================\n"
                                             (num_problem_to_str p)
-                                            (inv_table_to_str i)) 8 in
+                                            (inv_table_to_str i)) in
   let rec find_invs inv prob =
     let prob' = match prob.info.tactic with
                   Some Split -> make_round_split prob dType

@@ -164,18 +164,12 @@ let used_mem () : int =
   (int_of_float words) * Sys.word_size
 
 
-let report_mem () : string =
-  let size = used_mem () in
-  if size < 1024 then
-    (string_of_int size) ^ " B"
-  else if 1024 <= size && size < 1048576 then
-    (string_of_int (size/1024)) ^ " KB"
-  else
-    (string_of_int (size/1048576)) ^ " MB"
+let used_heap () : int =
+  let stat = Gc.stat() in
+  stat.Gc.top_heap_words * Sys.word_size
 
-
-let human_readable_byte_count () : string =
-  let bytes = Gc.allocated_bytes () in
+  
+let report_bytes (bytes:float) : string =
   let unit = 1024. in
   if bytes < unit then Format.sprintf "%.0fB" bytes
   else
@@ -185,6 +179,18 @@ let human_readable_byte_count () : string =
       | 0 -> "K" | 1 -> "M" | 2 -> "G"
       | 3 -> "T" | 4 -> "P" | 5 -> "E"
       | _ -> "Ouch! This number is too big!")
+
+
+let report_mem () : string =
+  report_bytes (float_of_int (used_mem()))
+
+
+let report_heap () : string =
+  report_bytes (float_of_int (used_heap()))
+
+
+let human_readable_byte_count () : string =
+  report_bytes (Gc.allocated_bytes ())
 
 
 let _debug_ = ref false

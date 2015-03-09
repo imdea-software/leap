@@ -19,7 +19,7 @@ let init (m:int) : unit =
   let s = m/bar_width in
   str := empty_str;
   curr_pos := 1;
-  max := m;
+  max := m-1;
   step := s;
   ()
 

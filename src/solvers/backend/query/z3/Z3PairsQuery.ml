@@ -359,11 +359,14 @@ struct
     B.add_string buf ("(define-sort " ^loc_s^ " () " ^int_s^ ")\n")
 
 
-  let z3_undefined_decl (buf:Buffer.t) : unit =
+  let z3_undefined_decl (max_ints:int) (buf:Buffer.t) : unit =
     let _ = GM.sm_decl_const sort_map undefInt GM.int_s in
       B.add_string buf ("(declare-const " ^ undefInt ^ " " ^ int_s ^ ")\n");
-      B.add_string buf ("(define-fun is_legal ((i " ^int_s^ ")) " ^bool_s^ "\n" ^
-                        "  (not (= i " ^undefInt^ ")))\n")
+      B.add_string buf ("(define-fun is_legal ((&i " ^int_s^ ")) " ^bool_s^ "\n" ^
+                        "  (and\n" ^
+                        "    (not (= &i " ^undefInt^ "))\n" ^
+                        "    (<= 0 &i)\n" ^
+                        "    (<= &i " ^(string_of_int max_ints)^ ")))\n")
 
 
   let z3_emp_def (buf:Buffer.t) : unit =
@@ -588,13 +591,40 @@ struct
      "  " ^low_set^ ")\n")
 
 
+(*
   let z3_unique_def (buf:Buffer.t) : unit =
     B.add_string buf
       ("(define-fun uniqueint ((&s " ^setpair_s^ ")) " ^bool_s^ "\n" ^
        "  (forall ((&n1 " ^int_s^ ") (&n2 " ^int_s^ ") (&t " ^tid_s^ ")) (=> (and (select &s (mk-pair &n1 &t)) (select &s (mk-pair &n2 &t))) (= &n1 &n2))))\n" ^
        "(define-fun uniquetid ((&s " ^setpair_s^ ")) " ^bool_s^ "\n" ^
        "  (forall ((&n " ^int_s^ ") (&t1 " ^tid_s^ ") (&t2 " ^tid_s^ ")) (=> (and (select &s (mk-pair &n &t1)) (select &s (mk-pair &n &t2))) (= &t1 &t2))))\n")
+*)
+  let z3_unique_def (max_ints:int) (voc_rep:string list) (buf:Buffer.t) : unit =
+    let str1 = ref "" in
+    let str2 = ref "" in
 
+    for n1 = 0 to max_ints do
+      let n1_str = string_of_int n1 in
+      for n2 = 0 to max_ints do
+        let n2_str = string_of_int n2 in
+        List.iter (fun v ->
+          str1 := "\n      (=> (and (select &s (mk-pair " ^n1_str^ " " ^v^ ")) (select &s (mk-pair " ^n2_str^ " " ^v^ "))) (= " ^n1_str^ " " ^n2_str^ "))" ^ (!str1)
+        ) voc_rep
+      done
+    done;
+    List.iter (fun t1 ->
+      List.iter (fun t2 ->
+        for n = 0 to max_ints do
+          let n_str = string_of_int n in
+          str2 := "\n      (=> (and (select &s (mk-pair " ^n_str^ " " ^t1^ ")) (select &s (mk-pair " ^n_str^ " " ^t2^ "))) (= " ^t1^ " " ^t2^ "))" ^ (!str2)
+        done
+      ) voc_rep
+    ) voc_rep;
+    B.add_string buf
+      ("(define-fun uniqueint ((&s " ^setpair_s^ ")) " ^bool_s^ "\n" ^
+       "  (and\n" ^ (!str1) ^ "))\n" ^
+       "(define-fun uniquetid ((&s " ^setpair_s^ ")) " ^bool_s^ "\n" ^
+       "  (and\n" ^ (!str2) ^ "))\n")
 
   let z3_intidpair_def (buf:Buffer.t) : unit =
     B.add_string buf
@@ -633,9 +663,9 @@ struct
 
 
   let z3_legal_values (global_vars:PE.V.t list)
-                         (local_vars:PE.V.t list)
-                         (voc:PE.tid list)
-                         (buf:Buffer.t) : unit =
+                      (local_vars:PE.V.t list)
+                      (voc:PE.tid list)
+                      (buf:Buffer.t) : unit =
     List.iter (fun v ->
       match PE.V.sort v with
       | PE.Int -> let v_str = variable_invocation_to_str v in
@@ -686,9 +716,10 @@ struct
                            variable_invocation_to_str i_var
                        ) (LeapLib.rangeList 1 int_cutoff) in
     let all_vars_str = glb_vars_str @ loc_vars_str @ aux_vars_str in
-    let voc_str = List.map tid_to_str voc
+    let voc_str = List.map tid_to_str voc in
+    let max_ints = List.length all_vars_str
     in
-      z3_undefined_decl                         buf;
+      z3_undefined_decl max_ints                buf;
       z3_aux_pairs_def int_cutoff               buf;
       z3_emp_def                                buf;
       z3_singleton_def                          buf;
@@ -717,7 +748,7 @@ struct
       z3_lower_def all_vars_str                 buf;
       z3_splower_def all_vars_str voc_str       buf;
       z3_pc_def pc_vars_str                     buf;
-      z3_unique_def                             buf;
+      z3_unique_def max_ints voc_str            buf;
       z3_intidpair_def                          buf;
       z3_inintpair_def                          buf
 

@@ -3931,7 +3931,6 @@ and subst_tid_th (subs:tid_subst_t) (t:tid) : tid =
               | PairTid p -> PairTid (subst_tid_pair subs p)
   end
 and subst_tid_atom (subs:tid_subst_t) (a:atom) : atom =
-  print_endline "--- SUBST_TID_ATOM";
   match a with
     Append(p1,p2,pres)                 -> Append(subst_tid_path subs p1,
                                                  subst_tid_path subs p2,
@@ -4321,7 +4320,6 @@ and subst_vars_th (subs:V.subst_t) (t:tid) : tid =
 
 
 and subst_vars_atom (subs:V.subst_t) (a:atom) : atom =
-  print_endline ("GOING TO SUBSTITE AN ATOM");
   match a with
     Append(p1,p2,pres)                 -> Append(subst_vars_path subs p1,
                                                  subst_vars_path subs p2,
@@ -4364,10 +4362,10 @@ and subst_vars_atom (subs:V.subst_t) (a:atom) : atom =
                                                  subst_vars_setpair subs s)
   | SubsetEqPair(s_in,s_out)           -> SubsetEqPair(subst_vars_setpair subs s_in,
                                                        subst_vars_setpair subs s_out)
-  | InTidPair(t,s)                     -> (print_endline "TUKA1"; InTidPair(subst_vars_th subs t,
-                                                    subst_vars_setpair subs s))
-  | InIntPair(i,s)                     -> (print_endline "TUKA2"; InIntPair(subst_vars_int subs i,
-                                                    subst_vars_setpair subs s))
+  | InTidPair(t,s)                     -> InTidPair(subst_vars_th subs t,
+                                                    subst_vars_setpair subs s)
+  | InIntPair(i,s)                     -> InIntPair(subst_vars_int subs i,
+                                                    subst_vars_setpair subs s)
   | Less(i1,i2)                        -> Less(subst_vars_int subs i1,
                                                subst_vars_int subs i2)
   | Greater(i1,i2)                     -> Greater(subst_vars_int subs i1,

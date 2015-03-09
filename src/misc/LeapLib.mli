@@ -65,7 +65,9 @@ val print_list     : ('a -> string) -> 'a list -> string
 
 (* Returns the used memory expressed in bytes *)
 val used_mem       : unit -> int
+val used_heap      : unit -> int
 val report_mem     : unit -> string
+val report_heap    : unit -> string
 val human_readable_byte_count : unit -> string
 
 val _debug_ : bool ref
