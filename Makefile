@@ -166,7 +166,7 @@ doc:
 clean:
 	$(OCAMLBUILD) -clean
 	@rm -rf $(BIN)/*
-	@rm *.odocl
+	@rm -f leap.odocl
 
 
 dist:   clean
