@@ -234,8 +234,10 @@ module Make (C:Core.S) : S =
     let generate_obligations (vcs:Tactics.vc_info list)
                              (gral_plan:Tactics.proof_plan)
                              (cases:IGraph.case_tbl_t) : Core.proof_obligation_t list =
+(*    
       let vc_count = ref 1 in
       let show_progress = not (LeapVerbose.is_verbose_enabled()) in
+*)
       Progress.init (List.length vcs);
       List.fold_left (fun res vc ->
       (* FOR LISTS *)
@@ -264,9 +266,9 @@ module Make (C:Core.S) : S =
 
         let proof_info = C.new_proof_info cutoff in
         let proof_obligation = C.new_proof_obligation vc obligations proof_info in
-        (*
+(*
         if show_progress then (Progress.current !vc_count; incr vc_count);
-        *)
+*)
           proof_obligation :: res
       ) [] vcs
 

@@ -323,8 +323,10 @@ module Make (C:Core.S) : S =
                     pvd_vcs.consecution @
                     pvd_vcs.acceptance @
                     pvd_vcs.fairness in
+(*
       let vc_count = ref 1 in
       let show_progress = not (LeapVerbose.is_verbose_enabled()) in
+*)
       Progress.init (List.length vc_list);
       List.fold_left (fun os vc ->
         let new_obligation = generate_obligations vc supp in
