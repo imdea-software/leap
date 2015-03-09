@@ -1,7 +1,0 @@
-vars:
-
-tid i
-
-invariant [minIsActive] :
-
-int_of(spmin(bag)) = main::ticket(i) -> @active(i).

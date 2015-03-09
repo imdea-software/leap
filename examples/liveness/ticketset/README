@@ -4,8 +4,15 @@ tickets implemented with set of integers.
 
 
 
-In this folder you will find a "run.sh" script to run the example. Inside 
-the script you can configure the options you want Leap to use.
+In this folder you will find a "run_safety.sh" and "run_liveness.sh" 
+script. The scripts run the example. Script "run_safety.sh" executes Leap 
+in order to prove that the specifications used as support are in fact 
+invariants of the system. Script "run_liveness.sh" executes Leap to verify 
+the liveness property that, if a thread decides to enter the critical 
+section then eventually it is granted the permission to access the 
+critical section.
+
+Inside each script you can configure the options you want Leap to use.
 
 IMPORTANT: You must configure the path to Leap inside the script before you
            can run it.
@@ -19,6 +26,9 @@ The other folders within this folder are:
   + invs: contains the invariant candidates.
 
   + prgs: contains the program under verification.
+
+  + pvd: contains the description of the parametrized verification diagram 
+         and a description of the invariants required as support.
 
   + vcs: here are output the generated VCs during the verification process, 
          just to provide extra information.

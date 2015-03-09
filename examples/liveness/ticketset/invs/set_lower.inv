@@ -1,8 +1,0 @@
-vars:
-
-int n
-
-invariant [setLower] :
-
-bag = spempty \/ int_of(spmax(bag)) < avail
-

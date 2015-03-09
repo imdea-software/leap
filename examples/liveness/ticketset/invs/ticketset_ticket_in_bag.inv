@@ -1,7 +1,0 @@
-vars:
-
-tid i
-
-invariant [ticketInBag] :
-
-bag = spempty \/ int_of(spmin(bag)) = main::ticket(i)
