@@ -59,7 +59,9 @@ assume
 :sch_prev_is_head[
                                 prev->lock;
 :sch_owns_prev[
-                                curr := prev->next;
+:sch_got_lock[
+:sch_working[
+																curr := prev->next;
 :sch_curr_def[
 :sch_follows[
                                 curr->lock;
@@ -73,12 +75,12 @@ assume
                                   prev := curr;
 :sch_equals[
 :sch_aux_before_prev
-                                  aux->unlock;
-                                  curr := curr->next;
+																	aux->unlock;
+																	curr := curr->next;
 :sch_while_begins]
 :sch_equals]
 :sch_owns_curr_one]
-                                  curr->lock;
+																	curr->lock;
 :sch_owns_curr_two[
                                 endwhile
 :sch_after_lookup
@@ -90,10 +92,14 @@ assume
 :sch_owns_prev]
 :sch_follows]
 :sch_prev_def]
+:sch_releases_last_lock
                                 curr->unlock;
 :sch_owns_curr_two]
 :sch_diff]
 :sch_curr_def]
+:sch_got_lock]
+:sch_working]
+:sch_return
                                 return (result);
 :sch_result_set]
 :search_body]
@@ -115,10 +121,11 @@ assume
 :ins_prev_def[
 :ins_prev_is_head[
                                 prev->lock;
+:ins_working[
 :ins_owns_prev[
-                                curr := prev->next;
+:ins_prev_advance[
+																curr := prev->next;
 :ins_head_next_diff]
-:ins_curr_def[
 :ins_follows[
                                 curr->lock;
 :ins_prev_is_head]
@@ -134,15 +141,18 @@ assume
 :ins_equals[
 :ins_aux_before_prev
                                   aux->unlock;
-                                  curr := curr->next;
+																	curr := curr->next;
+:ins_prev_advance]
 :ins_while_begins]
 :ins_equals]
 :ins_while]
 :ins_owns_curr_one]
+:ins_lock_curr
                                   curr->lock;
 :ins_owns_curr_two[
                                 endwhile
 :ins_lookup_loop]
+:ins_insertion_process[
 :ins_final_conditional
                                 if (curr != null /\ curr->data > e) then
 :ins_insert[
@@ -162,14 +172,17 @@ assume
 :ins_prev_lower]
                                 endif
 :ins_elem_inserted[
-                                prev->unlock;
+																prev->unlock;
 :ins_owns_prev]
 :ins_prev_def]
+:ins_releases_last_lock
                                 curr->unlock;
 :ins_owns_curr_two]
-:ins_curr_def]
 :ins_diff]
-                                return();
+:ins_insertion_process]
+:ins_return
+																return();
+:ins_working]
 :ins_elem_inserted]
 :insert_body]
                               end
@@ -190,13 +203,15 @@ assume
 :rem_prev_is_head[
                                 prev->lock;
 :rem_owns_prev[
-                                curr := prev->next;
+:rem_got_lock[
+																curr := prev->next;
 :rem_curr_def[
 :rem_follows[
                                 curr->lock;
 :rem_prev_is_head]
 :rem_owns_curr_one[
 :rem_lookup_loop[
+:rem_working[
                                 while (curr->data < e) do
 :rem_while_begins[
 :rem_while[
@@ -205,13 +220,13 @@ assume
                                   prev := curr;
 :rem_equals[
 :rem_aux_before_prev
-                                  aux->unlock;
-                                  curr := curr->next;
+																	aux->unlock;
+																	curr := curr->next;
 :rem_while_begins]
 :rem_equals]
 :rem_while]
 :rem_owns_curr_one]
-                                  curr->lock;
+																	curr->lock;
 :rem_owns_curr_two[
                                 endwhile
 :rem_lookup_loop]
@@ -236,10 +251,14 @@ assume
                                 prev->unlock;
 :rem_owns_prev]
 :rem_prev_def]
+:rem_releases_last_lock
                                 curr->unlock;
 :rem_diff]
 :rem_owns_curr_two]
-                                return();
+:rem_got_lock]
+:rem_working]
+:rem_return
+																return();
 :rem_elem_removed]
 :remove_body]
                               end
