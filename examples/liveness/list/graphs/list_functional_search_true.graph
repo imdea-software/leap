@@ -1,0 +1,34 @@
+=> list_functional_search_true [
+      12:fullPreserve,
+         fullLock,
+         fullRegion::search_prev_in_region,
+         fullNext::search_prev_next_curr,
+         fullOrder::search_prev_lower,
+         fullOrder::search_curr_bounded {pruning : | reduce2 | | simplify-pc};
+
+
+      35:fullPreserve,
+         fullRegion::search_prev_in_region,
+         fullRegion::insert_prev_in_region,
+         fullNext::search_prev_next_curr,
+         fullNext::insert_prev_next_curr,
+         fullOrder::search_curr_bounded,
+         fullOrder::search_prev_lower,
+         fullOrder::insert_prev_lower,
+         fullOrder::insert_curr_higher,
+         fullLock::search_owns_prev,
+         fullLock::insert_owns_prev;
+
+
+      51:fullPreserve,
+         fullLock::search_owns_curr,
+         fullLock::remove_owns_curr,
+         fullRegion::search_curr_in_region,
+         fullRegion::remove_curr_in_region,
+         fullOrder::remove_curr_is_e
+
+   ] {union :
+            | reduce2
+            |
+            | simplify-pc
+     }

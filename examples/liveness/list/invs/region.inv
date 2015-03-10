@@ -1,0 +1,54 @@
+vars:
+
+tid i
+
+invariant [fullRegion] :
+
+
+   head in region
+/\ tail in region
+/\ null in region
+
+
+
+///////  Search   /////////////////////////
+
+
+#search_prev_in_region:
+   @sch_prev_def(i). -> search::prev(i) in region
+
+#search_curr_in_region:
+   @sch_curr_def(i). -> search::curr(i) in region
+
+   @sch_aux_before_prev(i). -> search::aux(i) in region
+
+
+
+///////  Insert   /////////////////////////
+
+
+#insert_prev_in_region:
+   (@ins_prev_def(i). -> insert::prev(i) in region)
+
+#insert_curr_in_region:
+   (@ins_curr_def(i). -> insert::curr(i) in region)
+
+#insert_aux_not_in_region:
+   (@after_malloc(i). -> ~ (insert::aux(i) in region))
+
+   (@ins_aux_before_prev(i). -> insert::aux(i) in region)
+
+
+///////  Remove   /////////////////////////
+
+
+#remove_prev_not_null:
+   @rem_prev_def(i). -> remove::prev(i) != null
+
+#remove_prev_in_region:
+   @rem_prev_def(i). -> remove::prev(i) in region
+
+#remove_curr_in_region:
+   @rem_curr_def(i). -> remove::curr(i) in region
+
+   (@rem_aux_before_prev(i). -> remove::aux(i) in region)

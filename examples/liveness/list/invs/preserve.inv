@@ -1,0 +1,30 @@
+vars:
+
+
+invariant [fullPreserve] :
+
+   null in region
+
+#region:
+   region = addr2set(heap, head)
+
+
+   rd(heap, tail).next = null
+/\ tail != null
+
+#head_not_null:
+   head != null
+
+#head_not_tail:
+   head != tail
+
+#elements:
+   elements = set2elem(heap, SetDiff(region, {null}))
+
+   rd(heap, head).data = lowestElem
+/\ rd(heap, tail).data = highestElem
+
+#ordered:
+   orderlist (heap, head, tail)
+
+   tail in region
