@@ -853,7 +853,7 @@ let fix_conditional_jumps () : unit =
 %token EMPTYSETTH UNIONTH INTRTH SETDIFFTH SINGLETH
 %token EMPTYSETINT UNIONINT INTRINT SETDIFFINT SINGLEINT
 %token EMPTYSETELEM UNIONELEM INTRELEM SETDIFFELEM SINGLEELEM SET2ELEM
-%token PATH2SET ADDR2SET GETP FIRSTLOCKED ORDERLIST
+%token PATH2SET ADDR2SET GETP FIRSTLOCKED LASTLOCKED ORDERLIST
 %token APPEND REACH
 %token IN SUBSETEQ
 %token INTH SUBSETEQTH
@@ -2830,6 +2830,14 @@ addr :
       let h = parser_check_type check_type_mem  $3 E.Mem get_str_expr in
       let p = parser_check_type check_type_path $5 E.Path get_str_expr in
         Stm.FirstLocked(h,p)
+    }
+  | LASTLOCKED OPEN_PAREN term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "lastlocked(%s,%s)" (Stm.term_to_str $3)
+                                                        (Stm.term_to_str $5) in
+      let h = parser_check_type check_type_mem  $3 E.Mem get_str_expr in
+      let p = parser_check_type check_type_path $5 E.Path get_str_expr in
+        Stm.LastLocked(h,p)
     }
   | MALLOC OPEN_PAREN term COMMA term COMMA term CLOSE_PAREN
     {

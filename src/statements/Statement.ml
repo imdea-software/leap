@@ -137,6 +137,7 @@ and addr =
   | NextAt        of cell * integer
   | ArrAt         of cell * integer
   | FirstLocked   of mem * path
+  | LastLocked    of mem * path
   | AddrArrayRd   of arrays * tid
   | Malloc        of elem * addr * tid
   | MallocSL      of elem * integer
@@ -669,6 +670,10 @@ and addr_to_str (loc:bool) (expr:addr) :string =
   | FirstLocked(mem,path) -> sprintf "firstlocked(%s,%s)"
                                             (mem_to_str loc mem)
                                             (path_to_str loc path)
+
+  | LastLocked(mem,path)  -> sprintf "lastlocked(%s,%s)"
+                                            (mem_to_str loc mem)
+                                            (path_to_str loc path)
   | AddrArrayRd(arr,t)    -> sprintf "%s%s" (arrays_to_str loc arr)
                                               (tid_to_str loc t)
   | Malloc(e,a,t)         -> sprintf "malloc(%s,%s,%s)" (elem_to_str loc e)
@@ -1008,6 +1013,8 @@ and addr_to_expr_addr (a:addr) : E.addr =
 *)
   | FirstLocked (m,p)   -> E.FirstLocked (mem_to_expr_mem m,
                                           path_to_expr_path p)
+  | LastLocked (m,p)    -> E.LastLocked (mem_to_expr_mem m,
+                                         path_to_expr_path p)
   | AddrArrayRd (a,t)   -> E.AddrArrayRd (array_to_expr_array a,
                                         tid_to_expr_th t)
   | AddrArrRd (a,i)     -> E.AddrArrRd (addrarray_to_expr_array a,
@@ -1321,6 +1328,8 @@ and var_kind_addr (kind:E.var_nature) (a:addr) : term list =
   | ArrAt(cell,l)             -> (var_kind_cell kind cell) @
                                  (var_kind_int kind l)
   | FirstLocked(mem,path)     -> (var_kind_mem kind mem) @
+                                 (var_kind_path kind path)
+  | LastLocked(mem,path)      -> (var_kind_mem kind mem) @
                                  (var_kind_path kind path)
   | AddrArrayRd(arr,t)        -> (var_kind_array kind arr)
   | AddrArrRd(arr,i)          -> (var_kind_addrarr kind arr) @

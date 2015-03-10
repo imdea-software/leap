@@ -66,15 +66,6 @@ module Make (C:Core.S) : S =
                                              ) voc [] in
                                  Tactics.new_tid_constraint [] ineqs
                                end in
-(*
-      let tid_diff_conj = match premise with
-                          | Premise.SelfConseq -> Formula.True
-                          | Premise.OthersConseq ->
-                              Formula.conj_list (E.ThreadSet.fold (fun t xs ->
-                                                  (E.ineq_tid trans_tid t) :: xs
-                                                ) voc []) in
- *)
-(*                              Formula.conj_list (List.map (E.ineq_tid trans_tid) voc) in *)
       List.fold_left (fun rs phi ->
         Log.print "Create with support" (String.concat "\n" (List.map E.formula_to_str supp));
         let new_vc = Tactics.create_vc_info supp tid_constraint
@@ -125,15 +116,6 @@ module Make (C:Core.S) : S =
               (inv:E.formula) : Tactics.vc_info list =
       spinv_with_cases supp inv (IGraph.empty_case_tbl())
 
-
-    (*
-    let tag_spinv (supInv_list : Tag.f_tag list)
-                  (inv : Tag.f_tag) : Tactics.vc_info list =
-      let supInv_list_as_formula =
-        List.map (Tag.tag_table_get_formula tags) supInv_list in
-      let inv_as_formula = Tag.tag_table_get_formula tags inv in
-      spinv supInv_list_as_formula inv_as_formula
-    *)
 
 
     (**********************)
@@ -203,16 +185,6 @@ module Make (C:Core.S) : S =
       seq_spinv_with_cases supp inv (IGraph.empty_case_tbl())
 
 
-    (*
-    let tag_seq_spinv (sys : System.t)
-                      (supInv_list : Tag.f_tag list)
-                      (inv : Tag.f_tag) : Tactics.vc_info list =
-      let supInv_list_as_formula =
-        List.map (Tag.tag_table_get_formula tags) supInv_list in
-      let inv_as_formula = Tag.tag_table_get_formula tags inv in
-      seq_spinv sys supInv_list_as_formula inv_as_formula
-    *)
-
 
 
     (***************************************************)
@@ -234,24 +206,19 @@ module Make (C:Core.S) : S =
     let generate_obligations (vcs:Tactics.vc_info list)
                              (gral_plan:Tactics.proof_plan)
                              (cases:IGraph.case_tbl_t) : Core.proof_obligation_t list =
-(*    
+      (*    
       let vc_count = ref 1 in
       let show_progress = not (LeapVerbose.is_verbose_enabled()) in
-*)
+      *)
       Progress.init (List.length vcs);
       List.fold_left (fun res vc ->
       (* FOR LISTS *)
-(*        let vc = Tactics.to_plain_vc_info E.PCVars vc in*)
+      (*let vc = Tactics.to_plain_vc_info E.PCVars vc in*)
         let prem = if Tactics.is_empty_tid_constraint (Tactics.get_tid_constraint_from_info vc) then
                      Premise.SelfConseq
                    else
                      Premise.OthersConseq in
 
-(*
-        let prem = match Tactics.get_tid_constraint_from_info vc with
-                   | Formula.True -> Premise.SelfConseq
-                   | _ -> Premise.OthersConseq in
-    *)
         let line = Tactics.get_line_from_info vc in
         let (obligations,cutoff) =
           match IGraph.lookup_case cases line prem with

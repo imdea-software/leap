@@ -510,7 +510,7 @@ let define_ident (proc_name:E.V.procedure_name)
 %token EMPTYSETTH UNIONTH INTRTH SETDIFFTH SINGLETH
 %token EMPTYSETINT UNIONINT INTRINT SETDIFFINT SINGLEINT SETLOWER
 %token EMPTYSETELEM UNIONELEM INTRELEM SETDIFFELEM SINGLEELEM SET2ELEM
-%token PATH2SET ADDR2SET GETP FIRSTLOCKED ORDERLIST SKIPLIST
+%token PATH2SET ADDR2SET GETP FIRSTLOCKED LASTLOCKED ORDERLIST SKIPLIST
 %token APPEND REACH
 %token IN SUBSETEQ
 %token INTH SUBSETEQTH
@@ -1491,6 +1491,16 @@ addr :
       let l = parser_check_type check_type_int $7 E.Int get_str_expr in
         E.FirstLockedAt(h,p,l)
     }
+  | LASTLOCKED OPEN_PAREN term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "lastlocked(%s,%s)" (E.term_to_str $3)
+                                                        (E.term_to_str $5) in
+      let h = parser_check_type check_type_mem  $3 E.Mem get_str_expr in
+      let p = parser_check_type check_type_path $5 E.Path get_str_expr in
+        E.LastLocked(h,p)
+    }
+
+
 
 /* CELL terms */
 

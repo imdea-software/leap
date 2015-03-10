@@ -131,6 +131,7 @@ and addr =
   | NextAt        of cell * integer
   | ArrAt         of cell * integer
   | FirstLocked   of mem * path
+  | LastLocked    of mem * path
   | AddrArrayRd   of arrays * tid
   | Malloc        of elem * addr * tid
   | MallocSL      of elem * integer
