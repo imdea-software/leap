@@ -154,6 +154,7 @@ module Make (SLK : TSLKExpression.S) =
         | E.ArrAt (c,l)            -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
         | E.FirstLocked (m,p)      -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
         | E.FirstLockedAt (m,p,l)  -> E.FirstLockedAt (norm_mem m, norm_path p, norm_int l)
+        | E.LastLocked (m,p)       -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
         | E.AddrArrayRd (E.VarArray v,t) -> E.AddrArrayRd (E.VarArray v, norm_tid t)
         | E.AddrArrayRd _          -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
         | E.AddrArrRd (aa,i)       -> let a_var = gen_if_not_var (E.AddrT a) E.Addr in
@@ -616,6 +617,7 @@ module Make (SLK : TSLKExpression.S) =
       | E.FirstLockedAt (m,p,l)  -> SLK.FirstLockedAt (mem_to_tslk_mem m,
                                                           path_to_tslk_path p,
                                                           int_to_tslk_level l)
+      | E.LastLocked (m,p)       -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
       | E.AddrArrayRd (E.VarArray v,t) ->
           SLK.VarAddr (var_to_tslk_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
       | E.AddrArrayRd _          -> raise(UnsupportedTSLKExpr(E.addr_to_str a))

@@ -183,6 +183,8 @@ and addr_to_tll_addr (a:E.addr) : TLL.addr =
   | E.FirstLocked (m,p)      -> TLL.FirstLocked (mem_to_tll_mem m,
                                                     path_to_tll_path p)
   | E.FirstLockedAt _        -> raise(UnsupportedTllExpr(E.addr_to_str a))
+  | E.LastLocked (m,p)       -> TLL.LastLocked (mem_to_tll_mem m,
+                                                path_to_tll_path p)
   | E.AddrArrayRd (E.VarArray v,t) ->
       TLL.VarAddr (variable_to_tll_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
   | E.AddrArrayRd _          -> raise(UnsupportedTllExpr(E.addr_to_str a))

@@ -151,6 +151,7 @@ and addr =
   | ArrAt         of cell * integer
   | FirstLocked   of mem * path
   | FirstLockedAt of mem * path * integer
+  | LastLocked    of mem * path
   | AddrArrayRd   of arrays * tid
   | AddrArrRd     of addrarr * integer
 
@@ -541,6 +542,8 @@ and priming_addr (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (
   | FirstLockedAt(mem,path,l) -> FirstLockedAt(priming_mem pr prime_set mem,
                                                priming_path pr prime_set path,
                                                priming_int pr prime_set l)
+  | LastLocked(mem,path)      -> LastLocked(priming_mem pr prime_set mem,
+                                            priming_path pr prime_set path)
   | AddrArrayRd(arr,t)        -> AddrArrayRd(priming_array pr prime_set arr,
                                              priming_tid pr prime_set t)
   | AddrArrRd(arr,l)          -> AddrArrRd(priming_addrarray pr prime_set arr,
@@ -1289,6 +1292,9 @@ and addr_to_str (expr:addr) :string =
                                             (mem_to_str mem)
                                             (path_to_str path)
                                             (integer_to_str l)
+  | LastLocked(mem,path)      -> sprintf "lastlocked(%s,%s)"
+                                            (mem_to_str mem)
+                                            (path_to_str path)
   | AddrArrayRd(arr,t)        -> sprintf "%s[%s]" (arrays_to_str arr)
                                                   (param_tid_to_str t)
   | AddrArrRd(arr,l)          -> sprintf "%s[%s]" (addrarr_to_str arr)
@@ -1952,6 +1958,7 @@ and get_vars_addr (a:addr) (base:V.t -> V.VarSet.t) : V.VarSet.t =
   | FirstLocked(mem,path)     -> (get_vars_mem mem base) @@ (get_vars_path path base)
   | FirstLockedAt(mem,path,l) -> (get_vars_mem mem base) @@ (get_vars_path path base) @@
                                  (get_vars_int l base)
+  | LastLocked(mem,path)      -> (get_vars_mem mem base) @@ (get_vars_path path base)
   | AddrArrayRd(arr,t)        -> (get_vars_array arr base)
   | AddrArrRd(arr,i)          -> (get_vars_addrarr arr base) @@ (get_vars_int i base)
 
@@ -2552,6 +2559,7 @@ and voc_addr (a:addr) : ThreadSet.t =
   | ArrAt(cell,l)             -> (voc_cell cell) @@ (voc_int l)
   | FirstLocked(mem,path)     -> (voc_mem mem) @@ (voc_path path)
   | FirstLockedAt(mem,path,l) -> (voc_mem mem) @@ (voc_path path) @@ (voc_int l)
+  | LastLocked(mem,path)      -> (voc_mem mem) @@ (voc_path path)
   | AddrArrayRd(arr,t)        -> (voc_array arr)
   | AddrArrRd(arr,l)          -> (voc_addrarr arr) @@ (voc_int l)
 
@@ -2907,6 +2915,8 @@ and var_kind_addr (kind:var_nature) (a:addr) : term list =
   | FirstLockedAt(mem,path,l) -> (var_kind_mem kind mem)   @
                                  (var_kind_path kind path) @
                                  (var_kind_int kind l)
+  | LastLocked(mem,path)      -> (var_kind_mem kind mem) @
+                                 (var_kind_path kind path)
   | AddrArrayRd(arr,t)        -> (var_kind_array kind arr)
   | AddrArrRd(arr,l)          -> (var_kind_addrarr kind arr) @ (var_kind_int kind l)
 
@@ -3298,6 +3308,8 @@ and param_addr_aux (pfun:V.t option -> V.shared_or_local) (a:addr) : addr =
   | FirstLockedAt(mem,path,l) -> FirstLockedAt(param_mem pfun mem,
                                                param_path pfun path,
                                                param_int_aux pfun l)
+  | LastLocked(mem,path)      -> LastLocked(param_mem pfun mem,
+                                            param_path pfun path)
   | AddrArrayRd(arr,t)        -> AddrArrayRd(param_arrays pfun arr, t)
   | AddrArrRd(arr,l)          -> AddrArrRd(param_addrarr_aux pfun arr,
                                            param_int_aux pfun l)
@@ -3775,6 +3787,8 @@ and subst_tid_addr (subs:tid_subst_t) (a:addr) : addr =
   | FirstLockedAt(mem,path,l) -> FirstLockedAt(subst_tid_mem subs mem,
                                                subst_tid_path subs path,
                                                subst_tid_int subs l)
+  | LastLocked(mem,path)      -> LastLocked(subst_tid_mem subs mem,
+                                            subst_tid_path subs path)
   | AddrArrayRd(arr,t)        -> AddrArrayRd(subst_tid_array subs arr, t)
   | AddrArrRd(arr,i)          -> AddrArrRd(subst_tid_addrarr subs arr,
                                            subst_tid_int subs i)
@@ -4147,6 +4161,8 @@ and subst_vars_addr (subs:V.subst_t) (a:addr) : addr =
   | FirstLockedAt(mem,path,l) -> FirstLockedAt(subst_vars_mem subs mem,
                                                subst_vars_path subs path,
                                                subst_vars_int subs l)
+  | LastLocked(mem,path)      -> LastLocked(subst_vars_mem subs mem,
+                                            subst_vars_path subs path)
   | AddrArrayRd(arr,t)        -> AddrArrayRd(subst_vars_array subs arr, t)
   | AddrArrRd(arr,i)          -> AddrArrRd(subst_vars_addrarr subs arr,
                                            subst_vars_int subs i)
@@ -5148,6 +5164,7 @@ let required_sorts (phi:formula) : sort list =
     | ArrAt (c,l)           -> append Addr [req_c c;req_i l]
     | FirstLocked (m,p)     -> append Addr [req_m m;req_p p]
     | FirstLockedAt (m,p,l) -> append Addr [req_m m;req_p p;req_i l]
+    | LastLocked (m,p)      -> append Addr [req_m m;req_p p]
     | AddrArrayRd (a,t)     -> append Addr [req_arr a; req_t t]
     | AddrArrRd (a,i)       -> append Addr [req_addrarr a; req_i i]
 
@@ -5437,6 +5454,8 @@ and to_plain_addr (ops:fol_ops_t) (a:addr) : addr =
   | FirstLockedAt(mem,path,l) -> FirstLockedAt(to_plain_mem ops mem,
                                                to_plain_path ops path,
                                                to_plain_int ops l)
+  | LastLocked(mem,path)      -> LastLocked(to_plain_mem ops mem,
+                                            to_plain_path ops path)
   | AddrArrayRd(arr,t)        -> AddrArrayRd(to_plain_arrays ops arr,
                                              to_plain_tid_aux ops t)
   | AddrArrRd(arr,l)          -> AddrArrRd(to_plain_addrarr ops arr,
@@ -5917,6 +5936,8 @@ and identical_addr (ad1:addr) (ad2:addr) : bool =
     identical_mem m1 m2 && identical_path p1 p2
   | FirstLockedAt(m1,p1,i1),FirstLockedAt(m2,p2,i2) ->
     identical_mem m1 m2 && identical_path p1 p2 && identical_integer i1 i2 
+  | LastLocked(m1,p1),LastLocked(m2,p2) -> 
+    identical_mem m1 m2 && identical_path p1 p2
   | AddrArrayRd(a1,t1) ,AddrArrayRd(a2,t2)  ->
     identical_arrays a1 a2 && identical_tid t1 t2
   | AddrArrRd(aa1,i1), AddrArrRd(aa2,i2)  ->

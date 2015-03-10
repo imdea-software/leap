@@ -52,10 +52,7 @@ struct
 
   (************************* Declarations **************************)
 
-  (* (define-type address (scalar null aa_1 aa_2 aa_3 aa_4 aa_5))   *)
-  (* (define max_address::int 5)                                    *)
-  (* (define-type range_address (subrange 0 max_address))           *)
-  let yices_addr_preamble buf num_addr =
+  let yices_addr_preamble (buf:B.t) (num_addr:int) : unit =
     B.add_string buf ("(define-type " ^addr_s^ " (scalar null") ;
 
     for i = 1 to num_addr do
@@ -67,10 +64,7 @@ struct
         "(define max_address::" ^int_s^ " " ^ (string_of_int num_addr) ^ ")\n" ^
         "(define-type range_address (subrange 0 max_address))\n")
 
-  (* (define-type tid (scalar NoThread t1 t2 t3)) *)
-  (* (define max_tid::int 3)                      *)
-  (* (define-type range_tid (subrange 0 max_tid)) *)
-  let yices_tid_preamble buf num_tids =
+  let yices_tid_preamble (buf:B.t) (num_tids:int) : unit =
     B.add_string buf ("(define-type " ^tid_s^ " (scalar NoThread") ;
     for i = 1 to num_tids do
       B.add_string buf (" " ^ tid_prefix ^ (string_of_int i))
@@ -82,7 +76,7 @@ struct
         "(define-type range_tid (subrange 0 max_tid))\n")
 
   (* (define-type element) *)
-  let yices_element_preamble buf num_elems =
+  let yices_element_preamble (buf:B.t) (num_elems:int) : unit =
     B.add_string buf ("(define-type " ^elem_s^ " (scalar lowestElem highestElem ") ;
     for i = 1 to num_elems do
       B.add_string buf (" " ^ elem_prefix ^ (string_of_int i))
@@ -93,11 +87,8 @@ struct
       ("(define-type " ^elem_s^ "(subrange 1 " ^(string_of_int num_elems)^ "))\n")
   *)
 
-  (* (define-type cell (record data::element next::address lock::tid))   *)
-  (* (define next::(-> cell address) (lambda (c::cell) (select c next))) *)
-  (* (define data::(-> cell element) (lambda (c::cell) (select c data))) *)
-  (* (define lock::(-> cell tid)     (lambda (c::cell) (select c lock))) *)
-  let yices_cell_preamble buf =
+
+  let yices_cell_preamble (buf:B.t) : unit =
     B.add_string buf (
        "(define-type " ^cell_s^ " (record data::" ^elem_s^ " " ^
        "                          next::" ^addr_s^ " " ^
@@ -109,43 +100,28 @@ struct
        "(define lock::(-> " ^cell_s^ " " ^tid_s^ ")     " ^
        "  (lambda (c::" ^cell_s^ ") (select c lock)))\n" )
 
-  (* (define-type heap    (-> address cell)) *)
-  let yices_heap_preamble buf =
+
+  let yices_heap_preamble (buf:B.t) : unit =
     B.add_string buf
       ("(define-type " ^heap_s^ "    (-> " ^addr_s^ " " ^cell_s^ "))\n")
 
-  (* (define-type set     (-> address bool)) *)
-  let yices_set_preamble buf =
+
+  let yices_set_preamble (buf:B.t) : unit =
     B.add_string buf
       ("(define-type " ^set_s^ "     (-> " ^addr_s^ " " ^bool_s^ "))\n")
 
-  (* (define-type setth   (-> tid bool))     *)
-  let yices_setth_preamble buf =
+
+  let yices_setth_preamble (buf:B.t) : unit =
     B.add_string buf
       ("(define-type " ^setth_s^ "   (-> " ^tid_s^ " " ^bool_s^ "))\n")
 
-  (* (define-type setelem   (-> elem bool))     *)
-  let yices_setelem_preamble buf =
+
+  let yices_setelem_preamble (buf:B.t) : unit =
     B.add_string buf
       ("(define-type " ^setelem_s^ "   (-> " ^elem_s^ " " ^bool_s^ "))\n")
 
-  (* (define pathat::(-> range_address address))                     *)
-  (* (define pathwhere::(-> address range_address))                  *)
-  (* (define-type path                                               *)
-  (*   (record length::range_address  at::pathat where::pathwhere))  *)
-  (* (define eqpath_pos::(-> path path path_length bool) *)
-  (*     (lambda (p::path r::path_length i::range_address) *)
-  (*         (=> (and (< i (select p length)) *)
-  (*                  (< i (select r length))) *)
-  (*             (= ((select p at) i) ((select r at) i))))) *)
-  (* (define eqpath::(-> path path bool) *)
-  (*     (lambda (p::path r::path) *)
-  (*         (and (= (select p length) (select r length)) *)
-  (*              (eqpath_pos p r 0) *)
-  (*              (eqpath_pos p r 1) *)
-  (*              (eqpath_pos p r 2) *)
-  (*              (eqpath_pos p r 3)))) *)
-  let yices_path_preamble buf num_addr =
+
+  let yices_path_preamble (buf:B.t) (num_addr:int) : unit =
     B.add_string buf
       ( "(define-type path_length (subrange 0 (+ 1 max_address)))\n");
     B.add_string buf
@@ -170,12 +146,12 @@ struct
     B.add_string buf ")))\n"
 
 
-  let yices_unknown_preamble buf =
+  let yices_unknown_preamble (buf:B.t) : unit =
     B.add_string buf
       ("(define-type " ^unk_s^ ")\n")
 
 
-  let yices_pos_preamble buf =
+  let yices_pos_preamble (buf:B.t) : unit =
     B.add_string buf
       (Printf.sprintf "(define-type %s (subrange 1 %i))\n" loc_s !prog_lines);
     GM.sm_decl_fun sort_map Conf.pc_name [tid_s] [loc_s] ;
@@ -185,15 +161,7 @@ struct
                           "::(-> " ^tid_s^ " " ^loc_s^ "))\n")
 
 
-  (* (define subseteq::(-> set set bool)  *)
-  (*   (lambda (s1::set s2::set)        *)
-  (*     (and (if (s1 null) (s2 null))    *)
-  (*          (if (s1 a1) (s2 a1))        *)
-  (*          (if (s1 a1) (s2 a2))        *)
-  (*          (if (s1 a3) (s2 a3))        *)
-  (*          (if (s1 a4) (s2 a4))        *)
-  (*          (if (s1 a5) (s2 a5)))))     *)
-  let yices_subseteq_def buf num_addr =
+  let yices_subseteq_def (buf:B.t) (num_addr:int) : unit =
     B.add_string buf
       ("(define subseteq::(-> " ^set_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
        "  (lambda (s1::" ^set_s^ " s2::" ^set_s^ ")\n" ^
@@ -206,15 +174,7 @@ struct
       B.add_string buf ")))\n"
 
 
-  (* (define seteq::(-> set set bool)                    *)
-  (*   (lambda (s1::set s2::set)                         *)
-  (*     (and (ite (s1 null) (s2 null) (not (s2 null)))  *)
-  (*          (ite (s1 a1) (s2 a1) (not (s2 a1)))        *)
-  (*          (ite (s1 a1) (s2 a2) (not (s2 a2)))        *)
-  (*          (ite (s1 a3) (s2 a3) (not (s2 a3)))        *)
-  (*          (ite (s1 a4) (s2 a4) (not (s2 a4)))        *)
-  (*          (ite (s1 a5) (s2 a5) (not (s2 a5)))))      *)
-  let yices_seteq_def buf num_addr =
+  let yices_seteq_def (buf:B.t) (num_addr:int) : unit =
     B.add_string buf
       ("(define seteq::(-> " ^set_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
        "  (lambda (s1::" ^set_s^ " s2::" ^set_s^ ")\n" ^
@@ -228,34 +188,23 @@ struct
       B.add_string buf ")))\n"
 
 
-
-  (* (define singletonth::(-> tid setth)   *)
-  (*     (lambda (t::tid)                  *)
-  (*         (lambda (r::tid)              *)
-  (*             (= t r))))                *)
-  let yices_singletonth_def buf =
+  let yices_singletonth_def (buf:B.t) : unit =
     B.add_string buf
       ("(define singletonth::(-> " ^tid_s^ " " ^setth_s^ ")\n" ^
        "    (lambda (t::" ^tid_s^ ")\n" ^
        "        (lambda (r::" ^tid_s^ ")\n" ^
        "            (= t r))))\n")
 
-  (* (define unionth::(-> setth setth setth) *)
-  (*     (lambda (s::setth r::setth)         *)
-  (*         (lambda (t::tid)                *)
-  (*             (or (s t) (r t)))))         *)
-  let yices_unionth_def buf =
+
+  let yices_unionth_def (buf:B.t) : unit =
     B.add_string buf
       ("(define unionth::(-> " ^setth_s^ " " ^setth_s^ " " ^setth_s^ ")\n" ^
        "    (lambda (s::" ^setth_s^ " r::" ^setth_s^ ")\n" ^
        "        (lambda (t::" ^tid_s^ ")\n" ^
        "            (or (s t) (r t)))))\n")
 
-  (* (define intersectionth::(-> setth setth setth) *)
-  (*     (lambda (s::setth r::setth)                *)
-  (*         (lambda (t::tid)                       *)
-  (*             (and (s t) (r t)))))               *)
-  let yices_intersectionth_def buf =
+
+  let yices_intersectionth_def (buf:B.t) : unit =
     B.add_string buf
       ("(define intersectionth::(-> " ^setth_s^ " " ^setth_s^ " " ^setth_s^ ")\n" ^
        "    (lambda (s::" ^setth_s^ " r::" ^setth_s^ ")\n" ^
@@ -263,24 +212,15 @@ struct
        "            (and (s t) (r t)))))\n")
 
 
-  (* (define setdiffth::(-> setth setth setth)    *)
-  (*     (lambda (s::setth r::setth)              *)
-  (*         (lambda (t::tid)                     *)
-  (*             (and (s t) (not (r t))))))       *)
-  let yices_setdiffth_def buf =
+  let yices_setdiffth_def (buf:B.t) : unit =
     B.add_string buf
       ("(define setdiffth::(-> " ^setth_s^ " " ^setth_s^ " " ^setth_s^ ")\n" ^
        "    (lambda (s::" ^setth_s^ " r::" ^setth_s^ ")\n" ^
        "        (lambda (t::" ^tid_s^ ")\n" ^
        "            (and (s t) (not (r t))))))\n")
 
-  (* (define subseteqth::(-> setth setth bool) *)
-  (*   (lambda (r::setth) (s::setth)           *)
-  (*     (and (if (r NoThread) (s NoThread))   *)
-  (*          (if (r t1)       (s t1))         *)
-  (*          (if (r t2)       (s t2))         *)
-  (*          (if (r t3)       (s t3)))))      *)
-  let yices_subseteqth_def buf num_tids =
+
+  let yices_subseteqth_def (buf:B.t) (num_tids:int) : unit =
     B.add_string buf
       ("(define subseteqth::(-> " ^setth_s^ " " ^setth_s^ " " ^bool_s^ ")\n" ^
        "  (lambda (r::" ^setth_s^ " s::" ^setth_s^ ")\n" ^
@@ -293,15 +233,7 @@ struct
     B.add_string buf ")))\n"
 
 
-  (* (define seteqth::(-> setth setth bool)                          *)
-  (*   (lambda (s1::setth s2::setth)                                 *)
-  (*     (and (ite (s1 NoThread) (s2 NoThread) (not (s2 NoThread)))  *)
-  (*          (ite (s1 t1) (s2 t1) (not (s2 t1)))        *)
-  (*          (ite (s1 t1) (s2 t2) (not (s2 t2)))        *)
-  (*          (ite (s1 t3) (s2 t3) (not (s2 t3)))        *)
-  (*          (ite (s1 t4) (s2 t4) (not (s2 t4)))        *)
-  (*          (ite (s1 t5) (s2 t5) (not (s2 t5)))))      *)
-  let yices_seteqth_def buf num_tids =
+  let yices_seteqth_def (buf:B.t) (num_tids:int) : unit =
     B.add_string buf
       ("(define seteqth::(-> " ^setth_s^ " " ^setth_s^ " " ^bool_s^ ")\n" ^
        "  (lambda (s1::" ^setth_s^ " s2::" ^setth_s^ ")\n" ^
@@ -315,11 +247,7 @@ struct
       B.add_string buf ")))\n"
 
 
-  (* (define singletonelem::(-> elem setelem)   *)
-  (*     (lambda (e::elem)                      *)
-  (*         (lambda (r::elem)                  *)
-  (*             (= e r))))                     *)
-  let yices_singletonelem_def buf =
+  let yices_singletonelem_def (buf:B.t) : unit =
     B.add_string buf
       ("(define singletonelem::(-> " ^elem_s^ " " ^setelem_s^ ")\n" ^
        "    (lambda (e::" ^elem_s^ ")\n" ^
@@ -327,11 +255,7 @@ struct
        "            (= e r))))\n")
 
 
-  (* (define unionelem::(-> setelem setelem setelem) *)
-  (*     (lambda (s::setelem r::setelem)             *)
-  (*         (lambda (e::elem)                       *)
-  (*             (or (s e) (r e)))))                 *)
-  let yices_unionelem_def buf =
+  let yices_unionelem_def (buf:B.t) : unit =
     B.add_string buf
       ("(define unionelem::(-> " ^setelem_s^ " " ^setelem_s^ " " ^setelem_s^ ")\n" ^
        "    (lambda (s::" ^setelem_s^ " r::" ^setelem_s^ ")\n" ^
@@ -339,11 +263,7 @@ struct
        "            (or (s e) (r e)))))\n")
 
 
-  (* (define intersectionelem::(-> setelem setelem setelem) *)
-  (*     (lambda (s::setelem r::setelem)                    *)
-  (*         (lambda (e::elem)                              *)
-  (*             (and (s e) (r e)))))                       *)
-  let yices_intersectionelem_def buf =
+  let yices_intersectionelem_def (buf:B.t) : unit =
     B.add_string buf
       ("(define intersectionelem::(-> " ^setelem_s^ " " ^setelem_s^
               " " ^setelem_s^ ")\n" ^
@@ -352,11 +272,7 @@ struct
        "            (and (s e) (r e)))))\n")
 
 
-  (* (define setdiffelem::(-> setelem setelem setelem)    *)
-  (*     (lambda (s::setelem r::setelem)                  *)
-  (*         (lambda (e::elem)                            *)
-  (*             (and (s e) (not (r e))))))               *)
-  let yices_setdiffelem_def buf =
+  let yices_setdiffelem_def (buf:B.t) : unit =
     B.add_string buf
       ("(define setdiffelem::(-> " ^setelem_s^ " " ^setelem_s^
               " " ^setelem_s^ ")\n" ^
@@ -365,12 +281,7 @@ struct
        "            (and (s e) (not (r e))))))\n")
 
 
-  (* (define subseteqelem::(-> setelem setelem bool) *)
-  (*   (lambda (r::setelem) (s::setelem)             *)
-  (*     (and (if (r e1) (s e1))                     *)
-  (*          (if (r e2) (s e2))                     *)
-  (*          (if (r e3) (s e3)))))                  *)
-  let yices_subseteqelem_def buf num_elems =
+  let yices_subseteqelem_def (buf:B.t) (num_elems:int) : unit =
     B.add_string buf
       ("(define subseteqth::(-> " ^setelem_s^ " " ^setelem_s^ " " ^bool_s^ ")\n" ^
        "  (lambda (r::" ^setelem_s^ " s::" ^setelem_s^ ")\n" ^
@@ -383,14 +294,7 @@ struct
     B.add_string buf ")))\n"
 
 
-  (* (define seteqelem::(-> setelem setelem bool)        *)
-  (*   (lambda (s1::setelem s2::setelem)                 *)
-  (*     (and (ite (s1 e1) (s2 e1) (not (s2 e1)))        *)
-  (*          (ite (s1 e1) (s2 e2) (not (s2 e2)))        *)
-  (*          (ite (s1 e3) (s2 e3) (not (s2 e3)))        *)
-  (*          (ite (s1 e4) (s2 e4) (not (s2 e4)))        *)
-  (*          (ite (s1 e5) (s2 e5) (not (s2 e5)))))      *)
-  let yices_seteqelem_def buf num_elems =
+  let yices_seteqelem_def (buf:B.t) (num_elems:int) : unit =
     B.add_string buf
       ("(define seteqelem::(-> " ^setelem_s^ " " ^setelem_s^ " " ^bool_s^ ")\n" ^
        "  (lambda (s1::" ^setelem_s^ " s2::" ^setelem_s^ ")\n" ^
@@ -404,43 +308,28 @@ struct
       B.add_string buf ")))\n"
 
 
-
-  (* (define empty::set)             *)
-  (*   (lambda (a::address) (false)) *)
-
-  let yices_emp_def buf =
+  let yices_emp_def (buf:B.t) : unit =
     GM.sm_decl_const sort_map "empty" set_s ;
     B.add_string buf
       ("(define empty::" ^set_s^ "\n" ^
        "  (lambda (a::" ^addr_s^ ") false))\n")
 
 
-  (* (define emptyth::setth)         *)
-  (*   (lambda (a::address) (false)) *)
-
-  let yices_empth_def buf =
+  let yices_empth_def (buf:B.t) : unit =
     GM.sm_decl_const sort_map "emptyth" setth_s ;
     B.add_string buf
       ("(define emptyth::" ^setth_s^ "\n" ^
        "  (lambda (t::" ^tid_s^ ") false))\n")
 
 
-  (* (define emptyth::setth)         *)
-  (*   (lambda (a::address) (false)) *)
-
-  let yices_empelem_def buf =
+  let yices_empelem_def (buf:B.t) : unit =
     GM.sm_decl_const sort_map "emptyelem" setelem_s ;
     B.add_string buf
       ("(define emptyelem::" ^setelem_s^ "\n" ^
        "  (lambda (e::" ^elem_s^ ") false))\n")
    
 
-  (* (define intersection::(-> set set set) *)
-  (*     (lambda (s::set r::set) *)
-  (*         (lambda (a::address) *)
-  (*             (and (s a) (r a))))) *)
-
-  let yices_intersection_def buf =
+  let yices_intersection_def (buf:B.t) : unit =
     B.add_string buf
     ("(define intersection::(-> " ^set_s^ " " ^set_s^ " " ^set_s^ ")\n" ^
      "   (lambda (s::" ^set_s^ " r::" ^set_s^ ")\n" ^
@@ -448,14 +337,7 @@ struct
      "           (and (s a) (r a)))))\n")
 
 
-  (* (define set2elem::(-> set mem setelem)             *)
-  (*  (lambda (s::set m::mem)                           *)
-  (*    (lambda (e::elem)                               *)
-  (*      (or (and (= e (data (m null))) (s null))      *)
-  (*          (and (= e (data (m aa_1))) (s aa_1))      *)
-  (*          (and (= e (data (m aa_2))) (s aa_2))      *)
-  (*          (and (= e (data (m aa_3))) (s aa_3))))))  *)
-  let yices_settoelems_def buf num_addr =
+  let yices_settoelems_def (buf:B.t) (num_addr:int) : unit =
     B.add_string buf
     ("(define set2elem::(-> " ^set_s^ " " ^heap_s^ " " ^setelem_s^ ")\n" ^
      "  (lambda (s::" ^set_s^ " m::" ^heap_s^ ")\n" ^
@@ -469,33 +351,8 @@ struct
     B.add_string buf "))))\n"
 
 
-  (* (define getlockat::(-> heap path range_address tid)                *)
-  (*   (lambda (h::heap p::path i::range_address))                      *)
-  (*     (lock (h ((select p at) i))))                                  *)
-  (* (define islockedpos::(-> heap path range_address bool)             *)
-  (*     (lambda (h::heap p::path i::range_address))                    *)
-  (*         (and (< i (select p length)) (/= NoThread (getlockat h p i)))) *)
-  (* (define firstlockfrom5::(-> heap path address)                     *)
-  (*    (lambda (h::heap p::path)) *)
-  (*      (if (islockedpos h p 5) (getlockat h p 5) null)) *)
-  (* (define firstlockfrom4::(-> heap path address) *)
-  (*    (lambda (h::heap p::path)) *)
-  (*      (if (islockedpos h p 4) (getlockat h p 4) (firstlockfrom5 h p))) *)
-  (* (define firstlockfrom3::(-> heap path address) *)
-  (*    (lambda (h::heap p::path)) *)
-  (*      (if (islockedpos h p 3) (getlockat h p 3) (firstlockfrom4 h p))) *)
-  (* (define firstlockfrom2::(-> heap path address) *)
-  (*    (lambda (h::heap p::path)) *)
-  (*      (if (islockedpos h p 2) (getlockat h p 2) (firstlockfrom3 h p))) *)
-  (* (define firstlockfrom1::(-> heap path address) *)
-  (*    (lambda (h::heap p::path)) *)
-  (*      (if (islockedpos h p 1) (getlockat h p 1) (firstlockfrom2 h p))) *)
-  (* (define firstlock::(-> heap path address) *)
-  (*    (lambda (h::heap p::path)) *)
-  (*      (if (islockedpos h p 0) (getlockat h p 0) (firstlockfrom1 h p))) *)
 
-  let yices_firstlock_def buf num_addr =
-    let strlast = (string_of_int num_addr) in
+  let yices_getlocked_def (buf:B.t) (num_addr:int) : unit =
     B.add_string buf
       ("(define getlockat::(-> " ^heap_s^ " " ^path_s^ " range_address " ^tid_s^ ")\n" ^
        "  (lambda (h::" ^heap_s^ " p::" ^path_s^ " i::range_address)\n" ^
@@ -505,7 +362,11 @@ struct
        "    ((select p at) i)))\n" ^
        "(define islockedpos::(-> " ^heap_s^ " " ^path_s^ " range_address " ^bool_s^ ")\n" ^
        "    (lambda (h::" ^heap_s^ " p::" ^path_s^ " i::range_address)\n" ^
-       "        (and (< i (select p length)) (/= NoThread (getlockat h p i)))))\n" );
+       "        (and (< i (select p length)) (/= NoThread (getlockat h p i)))))\n" )
+
+
+  let yices_firstlock_def (buf:B.t) (num_addr:int) : unit =
+    let strlast = (string_of_int num_addr) in
     B.add_string buf
       ("(define firstlockfrom" ^ strlast ^
          "::(-> " ^heap_s^ " " ^path_s^ " " ^addr_s^ ")\n" ^
@@ -527,33 +388,45 @@ struct
 
 
 
-  (* (define cell_lock::(-> cell tid cell) *)
-  (*   (lambda (c::cell t::tid)) *)
-  (*     (mkcell (next c) (data c) t)) *)
-  let yices_cell_lock buf =
+  let yices_lastlock_def (buf:B.t) (num_addr:int) : unit =
+    let strlast = (string_of_int num_addr) in
+    let strprelast = (string_of_int (num_addr - 1)) in
+    B.add_string buf
+      ("(define lastlockfrom" ^ strlast ^
+         "::(-> " ^heap_s^ " " ^path_s^ " " ^addr_s^ ")\n" ^
+         "   (lambda (h::" ^heap_s^ " p::" ^path_s^ ")\n" ^
+         "     (if (islockedpos h p 0) (getaddrat p 0) null)))\n" );
+    for i=(num_addr-1) downto 1 do
+      let stri    = (string_of_int i) in
+      let strprev = (string_of_int (i - 1)) in
+          B.add_string buf
+      ("(define lastlockfrom" ^ stri ^ "::(-> " ^heap_s^ " " ^path_s^ " " ^addr_s^ ")\n" ^
+       "   (lambda (h::" ^heap_s^ " p::" ^path_s^ ")\n" ^
+       "     (if (islockedpos h p "^ stri ^
+              ") (getaddrat p " ^ stri ^ ") (lastlockfrom" ^ strprev ^" h p))))\n")
+    done ;
+    B.add_string buf
+      ("(define lastlock::(-> " ^heap_s^ " " ^path_s^ " " ^addr_s^ ")\n" ^
+       "   (lambda (h::" ^heap_s^ " p::" ^path_s^ ")\n" ^
+       "     (if (islockedpos h p " ^strlast^ ") (getaddrat p " ^strlast^ ") (lastlockfrom" ^strprelast^ " h p))))\n")
+
+
+
+  let yices_cell_lock (buf:B.t) : unit =
     B.add_string buf
       ("(define cell_lock::(-> " ^cell_s^ " " ^tid_s^ " " ^cell_s^ ")\n" ^
        "  (lambda (c::" ^cell_s^ " t::" ^tid_s^ ")\n" ^
        "    (mkcell (data c) (next c) t)))\n")
 
-  (* (define cell_unlock::(-> cell cell) *)
-  (*   (lambda (c::cell)) *)
-  (*     (mkcell (next c) (data c) NoThread)) *)
-  let yices_cell_unlock_def buf =
+
+  let yices_cell_unlock_def (buf:B.t) : unit =
     B.add_string buf
       ("(define cell_unlock::(-> " ^cell_s^ " " ^cell_s^ ")\n" ^
        "  (lambda (c::" ^cell_s^ ")\n" ^
        "    (mkcell (data c) (next c) NoThread)))\n")
 
 
-  (* (define epsilonat::(-> range_address address) *)
-  (*   (lambda r::range_address) null) *)
-  (* (define epsilonwhere::(-> address range_address) *)
-  (*   (lambda a::address) 0) *)
-  (* (define epsilon::path *)
-  (*    (mk-record length::0 at::epsilonat where::epsilonwhere)) *)
-
-  let yices_epsilon_def buf =
+  let yices_epsilon_def (buf:B.t) : unit =
     GM.sm_decl_const sort_map "epsilon" path_s ;
     B.add_string buf
       ("(define epsilonat::pathat\n" ^
@@ -564,19 +437,7 @@ struct
        "   (mk-record length::0 at::epsilonat where::epsilonwhere))\n")
 
 
-  (* (define singletonat::(-> address range_address address) *)
-  (*   (lambda (a::address) *)
-  (*     (lambda (r::range_address) *)
-  (*       (if (= r 0) a null)))) *)
-  (* (define singletonwhere::(-> address address range_address) *)
-  (*   (lambda (a::address) *)
-  (*     (lambda (b::address) *)
-  (*       (if (= a b) 0 1)))) *)
-  (* (define singlepath::(-> address path) *)
-  (*    (lambda (a::address) *)
-  (*      (mk-record length::1 at::(singletonat a) where::(singletonwhere a)))) *)
-
-  let yices_singletonpath_def buf =
+  let yices_singletonpath_def (buf:B.t) : unit =
     B.add_string buf
       ("(define singletonat::(-> " ^addr_s^ " pathat)\n" ^
        "  (lambda (a::" ^addr_s^ ")\n" ^
@@ -592,20 +453,7 @@ struct
        "        where::(singletonwhere a))))\n")
 
 
-
-
-  (* (define check_position::(-> path range_address bool)                          *)
-  (*   (lambda (p::path i::range_address)                                          *)
-  (*     (=> (< i (select p length)) (= i ((select p where) ((select p at) i)))))) *)
-  (* (define ispath::(-> path bool)      *)
-  (*   (lambda (p::path)                 *)
-  (*      (and (check_position p 0)      *)
-  (*           (check_position p 1)      *)
-  (*           (check_position p 2)      *)
-  (*           (check_position p 3)      *)
-  (*           (check_position p 4)      *)
-  (*           (check_position p 5))))   *)
-  let yices_ispath_def buf num_addr =
+  let yices_ispath_def (buf:B.t) (num_addr:int) : unit =
     B.add_string buf
       ("(define check_position::(-> " ^path_s^ " range_address " ^bool_s^ ")\n" ^
        "  (lambda (p::" ^path_s^ " i::range_address)\n" ^
@@ -620,20 +468,8 @@ struct
     done ;
     B.add_string buf ")))\n"
 
-   (* (define rev_position::(-> path path range_address bool)   *)
-   (*      (lambda (p::path p_rev::path i::range_address)       *)
-   (*          (=> (< (i (select p length)))                    *)
-   (*              (= ((select p at) i) ((select p_rev at) (- (select p length) i)))))) *)
-   (* (define rev::(-> path path bool)                          *)
-   (*     (lambda (p::path p_rev::path)                         *)
-   (*     (and (= (select p length) (select p_rev length))      *)
-   (*          (rev_position p p_rev 0)                         *)
-   (*          (rev_position p p_rev 1)                         *)
-   (*          (rev_position p p_rev 2)                         *)
-   (*          (rev_position p p_rev 3)                         *)
-   (*          (rev_position p p_rev 4)                         *)
-   (*          (rev_position p p_rev 5))))                      *)
-  let yices_rev_def buf num_addr =
+
+  let yices_rev_def (buf:B.t) (num_addr:int) : unit =
     B.add_string buf
       ( "(define rev_position::(-> "
               ^path_s^ " " ^path_s^ " range_address " ^bool_s^ ")\n" ^
@@ -650,28 +486,23 @@ struct
        done ;
        B.add_string buf ")))\n"
 
-  (* (define path2set::(-> path set)                        *)
-  (*     (lambda (p::path)                                  *)
-  (*         (lambda (a::address)                           *)
-  (*      (< ((select p where) a) (select p length))))) *)
-  let yices_path2set_def buf =
+
+  let yices_path2set_def (buf:B.t) : unit =
     B.add_string buf
       ("(define path2set::(-> " ^path_s^ " " ^set_s^ ")\n" ^
        "    (lambda (p::" ^path_s^ ")\n" ^
        "        (lambda (a::" ^addr_s^ ")\n" ^
        "            (< ((select p where) a) (select p length)))))\n")
 
-  (* (define deref::(-> heap address cell)    *)
-  (*     (lambda (h::heap a::address)         *)
-  (*         (h a)))                          *)
-  let yices_dref_def buf =
+
+  let yices_dref_def (buf:B.t) : unit =
     B.add_string buf
       ("(define deref::(-> " ^heap_s^ " " ^addr_s^ " " ^cell_s^ ")\n" ^
        "    (lambda (h::" ^heap_s^ " a::" ^addr_s^ ")\n" ^
        "        (h a)))\n" )
 
 
-  let yices_elemorder_def buf num_elem =
+  let yices_elemorder_def (buf:B.t) (num_elem:int) : unit =
     B.add_string buf ("(define lesselem::(-> " ^elem_s^ " " ^elem_s^ " " ^bool_s^ "))\n") ;
     B.add_string buf ("(define greaterelem::(-> " ^elem_s^ " " ^elem_s^ " " ^bool_s^ ")\n" ^
                       "  (lambda (x::" ^elem_s^ " y::" ^elem_s^ ")\n" ^
@@ -708,7 +539,7 @@ struct
 
 
   (* Ordered list predicate definition *)
-  let yices_orderlist_def buf num_addr =
+  let yices_orderlist_def (buf:B.t) (num_addr:int) : unit =
     let idlast = string_of_int num_addr in
     B.add_string buf
       ("(define orderlist" ^idlast^ "::(-> " ^heap_s^ " " ^addr_s^ " " ^addr_s^ " " ^bool_s^ ")\n" ^
@@ -734,44 +565,28 @@ struct
        "             (orderlist1 h a b)))))\n")
 
 
-  (* (define error::cell) *)
-  let yices_error_def buf=
+  let yices_error_def (buf:B.t) : unit =
     GM.sm_decl_const sort_map "error" cell_s ;
     B.add_string buf ("(define error::" ^cell_s^ ")\n" ^
        "(assert (= (lock error) NoThread))\n" ^
        "(assert (= (next error) null))\n")
 
-  (* (define mkcell::(-> element address tid cell)        *)
-  (*     (lambda (h::heap  e::element  a::address k::tid) *)
-  (*        (mk-record data::e next::a lock::k)))         *)
-  let yices_mkcell_def buf =
+
+  let yices_mkcell_def (buf:B.t) : unit =
     B.add_string buf
       ( "(define mkcell::(-> " ^elem_s^ " " ^addr_s^ " " ^tid_s^ " " ^cell_s^ ")\n" ^
         "   (lambda (e::" ^elem_s^ "  a::" ^addr_s^ " k::" ^tid_s^ ")\n" ^
         "       (mk-record data::e next::a lock::k)))\n" )
 
-  (* (define isheap::(-> heap bool)     *)
-  (*     (lambda (h::heap)              *)
-  (*         (= (deref h null) error))) *)
-  let yices_isheap_def buf =
+
+  let yices_isheap_def (buf:B.t) : unit =
     B.add_string buf 
       ( "(define isheap::(-> " ^heap_s^ " " ^bool_s^ ")\n" ^
         "    (lambda (h::" ^heap_s^ ")\n" ^
         "        (= (h null) error)))\n")
 
-  (* (define next1::(-> heap address address) (lambda (h::heap a::address) (next h a))) *)
-  (* (define next2::(-> address address) (lambda (a::address) (next h (next1 h a)))) *)
-  (* (define next3::(-> address address) (lambda (a::address) (next h (next2 h a)))) *)
-  (* (define next4::(-> address address) (lambda (a::address) (next h (next3 h a)))) *)
-  (* (define next5::(-> address address) (lambda (a::address) (next h (next4 h a)))) *)
-  (* (define isreachable::(-> heap address address bool)                         *)
-  (*     (lambda (h::heap from::address to::address)                             *)
-  (*                  (or (=        from  to)                                    *)
-  (*                      (= (next  from) to)                                    *)
-  (*                      (= (next2 from) to)                                    *)
-  (*                      (= (next3 from) to)                                    *)
-  (*                      (= (next4 from) to))))                                 *)
-  let yices_nextiter_def buf num_addr =
+
+  let yices_nextiter_def (buf:B.t) (num_addr:int) : unit =
     (*if (num_addr >= 2) then*)
       B.add_string  buf
         ("(define next0::(-> " ^heap_s^ " " ^addr_s^ " " ^addr_s^ ")\n" ^
@@ -788,7 +603,7 @@ struct
     done
 
 
-  let yices_reachable_def buf num_addr =
+  let yices_reachable_def (buf:B.t) (num_addr:int) : unit =
     B.add_string buf
       ( "(define isreachable::(-> " ^heap_s^ " " ^addr_s^ " " ^addr_s^ " " ^bool_s^ ")\n" ^
         "    (lambda (h::" ^heap_s^ " from::" ^addr_s^ " to::" ^addr_s^ ")\n" ^
@@ -799,56 +614,40 @@ struct
         ( "\n             (= (next" ^ (string_of_int i)  ^ " h from) to)" ) ; done ;
     B.add_string buf ")))\n"
 
-  (* (define address2set::(-> address set) *)
-  (*     (lambda (from::address)           *)
-  (*          (lambda (to::address)        *)
-  (*              (isreachable from to)))) *)
-  let yices_address2set_def buf =
+
+  let yices_address2set_def (buf:B.t) : unit =
     B.add_string buf
       ( "(define address2set::(-> " ^heap_s^ " " ^addr_s^ " " ^set_s^ ")\n" ^
         "  (lambda (h::" ^heap_s^ " from::" ^addr_s^ ")\n" ^
         "         (lambda (to::" ^addr_s^ ")\n" ^
         "             (isreachable h from to))))\n" )
 
-  (* (define singleton::(-> address set)   *)
-  (*     (lambda (a::address)              *)
-  (*         (lambda (b::address)          *)
-  (*             (= a b))))                *)
-  let yices_singleton_def buf =
+
+  let yices_singleton_def (buf:B.t) : unit =
     B.add_string buf (
         "(define singleton::(-> " ^addr_s^ " " ^set_s^ ")\n" ^
         "    (lambda (a::" ^addr_s^ ")\n" ^
         "        (lambda (b::" ^addr_s^ ")\n" ^
         "            (= a b))))\n" )
 
-  (* (define union::(-> set set set)        *)
-  (*     (lambda (s::set r::set)            *)
-  (*         (lambda (a::address)           *)
-  (*             (or (s a) (r a)))))        *)
-  let yices_union_def buf =
+
+  let yices_union_def (buf:B.t) : unit =
     B.add_string buf 
       ( "(define union::(-> " ^set_s^ " " ^set_s^ " " ^set_s^ ")\n" ^
         "    (lambda (s::" ^set_s^ " r::" ^set_s^ ")\n" ^
         "        (lambda (a::" ^addr_s^ ")\n" ^
         "            (or (s a) (r a)))))\n" )
 
-  (* (define setdiff::(-> set set set)      *)
-  (*     (lambda (s::set r::set)            *)
-  (*         (lambda (a::address)           *) 
-  (*             (and (s a) (not (r a)))))) *)
-  let yices_setdiff_def buf =
+
+  let yices_setdiff_def (buf:B.t) : unit =
     B.add_string buf 
       ( "(define setdiff::(-> " ^set_s^ " " ^set_s^ " " ^set_s^ ")\n" ^
         "    (lambda (s::" ^set_s^ " r::" ^set_s^ ")\n" ^
         "        (lambda (a::" ^addr_s^ ")\n" ^
         "            (and (s a) (not (r a))))))\n" )
 
-  (* (define is_singlepath::(-> address path bool) *)
-  (*     (lambda (a::address p::path)              *)
-  (*         (and (ispath p)                       *)
-  (*              (= ((select p length) 1)         *)
-  (*              (= ((select p at) 0) a)))))      *)
-  let yices_is_singlepath buf =
+
+  let yices_is_singlepath (buf:B.t) : unit =
     B.add_string buf (
         "(define is_singlepath::(-> " ^addr_s^ " " ^path_s^ " " ^bool_s^ ")\n" ^
         "    (lambda (a::" ^addr_s^ " p::" ^path_s^ ")\n" ^
@@ -856,66 +655,15 @@ struct
         "             (= ((select p length) 1)\n" ^
         "             (= ((select p at) 0) a)))))\n" )
 
-  (* (define update_heap::(-> heap address cell heap) *)
-  (*     (lambda (h::heap a::address c::cell)         *)
-  (*        (update h a c)))                          *)
-  let yices_update_heap_def buf =
+
+  let yices_update_heap_def (buf:B.t) : unit =
     B.add_string buf (
         "(define update_heap::(-> " ^heap_s^ " " ^addr_s^ " " ^cell_s^ " " ^heap_s^ ")\n" ^
         "    (lambda (h::" ^heap_s^ " a::" ^addr_s^ " c::" ^cell_s^ ")\n" ^
         "       (update h (a) c)))\n" )
 
 
-  (* (define update_pathat::(-> pathat range_address address pathat) *)
-  (*     (lambda (f::pathat i::range_address a::address) *)
-  (*         (lambda (j::range_address) *)
-  (*             (if (= i j) a (f j))))) *)
-  (* (define update_pathwhere::(-> pathwhere address range_address pathwhere) *)
-  (*     (lambda (g::pathwhere a::address i::range_address) *)
-  (*         (lambda (b::address) *)
-  (*             (if (= b a) i (g b))))) *)
-  (* (define add_to_path::(-> path address path) *)
-  (*     (lambda (p::path a::address) *)
-  (*         (mk-record length::(+ 1 (select p length )) *)
-  (*                    at::(update_pathat (select p at) (select p length) a) *)
-  (*                    where::(update_pathwhere (select p where) a (select p length))))) *)
-  (* (define path1::(-> heap address path) *)
-  (*     (lambda (h::heap a::address) *)
-  (*         (singlepath a))) *)
-  (* (define path2::(-> heap address path) *)
-  (*     (lambda (h::heap a::address) *)
-  (*         (add_to_path (path1 h a) (next h a)))) *)
-  (* (define path3::(-> heap address path) *)
-  (*     (lambda (h::heap a::address) *)
-  (*         (add_to_path (path2 h a) (next2 h a)))) *)
-  (* (define path4::(-> heap address path) *)
-  (*     (lambda (h::heap a::address) *)
-  (*         (add_to_path (path3 h a) (next3 h a)))) *)
-  (* (define getp4::(-> heap address address path) *)
-  (*     (lambda (h::heap from::address to::address) *)
-  (*         (if (= (next3 h from) to)  *)
-  (*             (path4 h from) *)
-  (*             epsilon))) *)
-  (* (define getp3::(-> heap address address path) *)
-  (*     (lambda (h::heap from::address to::address) *)
-  (*         (if (= (next2 h from) to)  *)
-  (*             (path3 h from) *)
-  (*             (getp4 h from to)))) *)
-  (* (define getp2::(-> heap address address path) *)
-  (*     (lambda (h::heap from::address to::address) *)
-  (*         (if (= (next h from) to)  *)
-  (*             (path2 h from) *)
-  (*             (getp3 h from to)))) *)
-  (* (define getp1::(-> heap address address path) *)
-  (*     (lambda (h::heap from::address to::address) *)
-  (*         (if (= from to)  *)
-  (*             (path1 h from) *)
-  (*             (getp2 h from to)))) *)
-  (* (define getp::(-> heap address address path) *)
-  (*     (lambda (h::heap from::address to::address) *)
-  (*        (getp1 h from to))) *)
-      
-  let yices_getp_def buf num_addr =
+  let yices_getp_def (buf:B.t) (num_addr:int) : unit =
     B.add_string buf (
       "(define update_pathat::(-> pathat range_address " ^addr_s^ " pathat)\n" ^
       "    (lambda (f::pathat i::range_address a::" ^addr_s^ ")\n" ^
@@ -973,7 +721,7 @@ struct
        "      (eqpath p (getp h from to))))\n")
 
 
-  let yices_reach_def buf =
+  let yices_reach_def (buf:B.t) : unit =
     B.add_string buf
       ( "(define reach::(-> " ^heap_s^ " " ^addr_s^ " " ^addr_s^ " " ^path_s^ " " ^bool_s^ ")\n" ^
         "    (lambda (h::" ^heap_s^ " from::" ^addr_s^ " to::" ^addr_s^ " p::" ^path_s^ ")\n" ^
@@ -981,32 +729,21 @@ struct
       )
 
 
-
-  (* (define path_length::(-> path range_address) *)
-  (*     (lambda (p1::path)                       *)
-  (*         (select p1 length)))                 *)
-  let yices_path_length_def buf =
+  let yices_path_length_def (buf:B.t) : unit =
     B.add_string buf 
       ( "(define path_length::(-> " ^path_s^ " range_address)\n" ^
         "    (lambda (p1::" ^path_s^ ")\n" ^
         "        (select p1 length)))\n" )
 
-  (* (define at_path::(-> path range_address address) *)
-  (*     (lambda (p1::path i::range_address)          *)
-  (*         ((select p1 at) i)))                     *)
-  let yices_at_path_def buf =
+
+  let yices_at_path_def (buf:B.t) : unit =
     B.add_string buf 
       ( "(define at_path::(-> " ^path_s^ " range_address " ^addr_s^ ")\n" ^
         "    (lambda (p1::" ^path_s^ " i::range_address)\n" ^
         "        ((select p1 at) i)))\n" )
 
 
-  (* (define equal_paths_at::(-> path range_address path range_address bool) *)
-  (*     (lambda (p1::path i::range_address p2::path j::range_address)       *)
-  (*         (ite (< i (path_length p1))                                     *)
-  (*       (= (at_path p1 i) (at_path p2 j))                             *)
-  (*              true)))                                                    *)
-  let yices_equal_paths_at_def buf =
+  let yices_equal_paths_at_def (buf:B.t) : unit =
     B.add_string buf (
         "(define equal_paths_at::(-> "
               ^path_s^ " range_address " ^path_s^ " range_address " ^bool_s^ ")\n" ^
@@ -1017,22 +754,7 @@ struct
         "             true)))\n" )
 
 
-  (* (define is_append::(-> path path path bool)                              *)
-  (*    (lambda (p1::path p2::path p_res::path)                               *)
-  (*       (and (= (+ (path_length p1) (path_length p2)) (path_length p_res)) *)
-  (*            (equal_paths_at p1 0 p_res 0)                                 *)
-  (*            (equal_paths_at p1 1 p_res 1)                                 *)
-  (*            (equal_paths_at p1 2 p_res 2)                                 *)
-  (*            (equal_paths_at p1 3 p_res 3)                                 *)
-  (*            (equal_paths_at p1 4 p_res 4)                                 *)
-  (*            (equal_paths_at p1 5 p_res 5)                                 *)
-  (*            (equal_paths_at p2 0 p_res (+ (path_length p1) 0))            *)
-  (*            (equal_paths_at p2 1 p_res (+ (path_length p1) 1))            *)
-  (*            (equal_paths_at p2 2 p_res (+ (path_length p1) 2))            *)
-  (*            (equal_paths_at p2 3 p_res (+ (path_length p1) 3))            *)
-  (*            (equal_paths_at p2 4 p_res (+ (path_length p1) 4))            *)
-  (*            (equal_paths_at p2 5 p_res (+ (path_length p1) 5)))))         *)
-  let yices_is_append_def buf num_addr =
+  let yices_is_append_def (buf:B.t) (num_addr:int) : unit =
     B.add_string buf 
       ( "(define is_append::(-> "
           ^path_s^ " " ^path_s^ " " ^path_s^ " " ^bool_s^ ")\n" ^
@@ -1163,8 +885,13 @@ struct
       end;
     (* Set2Elem *)
     if List.mem Expr.Set2Elem req_ops then yices_settoelems_def buf num_addr ;
+    (* Firstlock of Lastlock *)
+    if List.mem Expr.FstLocked req_ops || List.mem Expr.LstLocked req_ops then
+        yices_getlocked_def buf num_addr ;
     (* Firstlock *)
     if List.mem Expr.FstLocked req_ops then yices_firstlock_def buf num_addr ;
+    (* Lastlock *)
+    if List.mem Expr.LstLocked req_ops then yices_lastlock_def buf num_addr ;
     (* Path *)
     if List.mem Expr.Path req_sorts then
       begin
@@ -1344,6 +1071,9 @@ struct
       | Expr.Next c           -> Printf.sprintf "(next %s)"
                                     (cellterm_to_str c)
       | Expr.FirstLocked(m,p) -> Printf.sprintf "(firstlock %s %s)"
+                                    (memterm_to_str m)
+                                    (pathterm_to_str p)
+      | Expr.LastLocked(m,p) -> Printf.sprintf "(lastlock %s %s)"
                                     (memterm_to_str m)
                                     (pathterm_to_str p)
 

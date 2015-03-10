@@ -171,6 +171,9 @@ struct
       | Expr.FirstLocked(m,p) -> Printf.sprintf "(firstlock %s %s)"
                                     (memterm_to_str m)
                                     (pathterm_to_str p)
+      | Expr.LastLocked(m,p) -> Printf.sprintf "(lastlock %s %s)"
+                                    (memterm_to_str m)
+                                    (pathterm_to_str p)
 
 
   and cellterm_to_str (c:Expr.cell) : string =
@@ -293,17 +296,7 @@ struct
   (********************** Preamble Declarations ***********************)
 
 
-  (* (define-type address (scalar null aa_1 aa_2 aa_3 aa_4 aa_5))   *)
-  (* (define max_address::int 5)                                    *)
-  (* (define-type range_address (subrange 0 max_address))           *)
-  let z3_addr_preamble buf num_addr =
-  (*
-    let range_addr_list = String.concat " " $
-                            List.map range_addr_to_str (LeapLib.rangeList 0 num_addr) in
-    let path_len_list = String.concat " " $
-                          List.map path_len_to_str (LeapLib.rangeList 0 (num_addr+1)) in
-  *)
-
+  let z3_addr_preamble (buf:B.t) (num_addr:int) : unit =
     B.add_string buf
         ( "(declare-const max_address " ^int_s^ ")\n" ^
           "(assert (= max_address " ^ (string_of_int num_addr) ^ "))\n");
@@ -360,14 +353,7 @@ struct
     end
 
 
-  (* (define-type tid (scalar NoThread t1 t2 t3)) *)
-  (* (define max_tid::int 3)                      *)
-  (* (define-type range_tid (subrange 0 max_tid)) *)
-  let z3_tid_preamble buf num_tids =
-  (*
-    let tid_list = String.concat " " $
-                     List.map range_tid_to_str (LeapLib.rangeList 0 num_tids) in
-  *)
+  let z3_tid_preamble (buf:B.t) (num_tids:int) : unit =
     B.add_string buf ("(declare-datatypes () ((" ^tid_s^ " NoThread") ;
     for i = 1 to num_tids do
       B.add_string buf (" " ^ (tt i))
@@ -384,7 +370,7 @@ struct
 
 
   (* (define-type element) *)
-  let z3_element_preamble buf num_elems =
+  let z3_element_preamble (buf:B.t) (num_elems:int) : unit =
     B.add_string buf ("(define-sort " ^elem_s^ " () " ^int_s^ ")\n");
     B.add_string buf ("(define-fun lowestElem () " ^elem_s^ " 0)\n");
     B.add_string buf ("(define-fun highestElem () " ^elem_s^ " " ^(string_of_int (num_elems+1))^ ")\n");
@@ -396,81 +382,33 @@ struct
     B.add_string buf ("(define-fun iselem ((x " ^elem_s^ ")) " ^bool_s^ " (and (<= lowestElem x) (<= x highestElem)))\n")
 
 
-(*
-    B.add_string buf ("(declare-datatypes () ((" ^ elem_s^ " LowestElem HighestElem") ;
-    for i = 1 to num_elems do
-      B.add_string buf (" " ^ (ee i))
-    done ;
-    B.add_string buf ")))\n"
-*)
-  (*  B.add_string buf ("(declare-sort " ^elem_s^ ")\n") *)
-
-
-  (* (define-type cell (record data::element next::address lock::tid))   *)
-  (* (define next::(-> cell address) (lambda (c::cell) (select c next))) *)
-  (* (define data::(-> cell element) (lambda (c::cell) (select c data))) *)
-  (* (define lock::(-> cell tid)     (lambda (c::cell) (select c lock))) *)
-  let z3_cell_preamble buf =
+  let z3_cell_preamble (buf:B.t) : unit =
     B.add_string buf
       ( "(declare-datatypes () ((" ^cell_s^ " (mkcell (data " ^elem_s^
         ") (next " ^addr_s^ ") (lock " ^tid_s^ ")))))\n")
-  (*
-      ("(define-type cell (record data::element next::address lock::tid))\n"   ^
-       "(define next::(-> cell address) (lambda (c::cell) (select c next)))\n" ^
-       "(define data::(-> cell element) (lambda (c::cell) (select c data)))\n" ^
-       "(define lock::(-> cell tid)     (lambda (c::cell) (select c lock)))\n" )
-  *)
 
 
-  (* (define-type heap    (-> address cell)) *)
-  let z3_heap_preamble buf =
+  let z3_heap_preamble (buf:B.t) : unit =
     B.add_string buf
       ("(define-sort " ^heap_s^ " () (Array " ^addr_s^ " " ^cell_s^ "))\n")
-  (*
-      "(define-type heap    (-> address cell))\n"
-  *)
 
 
-  (* (define-type set     (-> address bool)) *)
-  let z3_set_preamble buf =
+  let z3_set_preamble (buf:B.t) : unit =
     B.add_string buf
       ("(define-sort " ^set_s^ " () (Array " ^addr_s^ " " ^bool_s^ "))\n")
-  (*
-      "(define-type set     (-> address bool))\n"
-  *)
 
 
-  (* (define-type setth   (-> tid bool))     *)
-  let z3_setth_preamble buf =
+  let z3_setth_preamble (buf:B.t) : unit =
     B.add_string buf
       ("(define-sort " ^setth_s^ " () (Array " ^tid_s^ " " ^bool_s^ "))\n")
-  (*
-      "(define-type setth   (-> tid bool))\n"
-  *)
 
 
-  let z3_setelem_preamble buf =
+  let z3_setelem_preamble (buf:B.t) : unit =
     B.add_string buf
       ("(define-sort " ^setelem_s^ " () (Array " ^elem_s^ " " ^bool_s^ "))\n")
 
 
-  (* (define pathat::(-> range_address address))                     *)
-  (* (define pathwhere::(-> address range_address))                  *)
-  (* (define-type path                                               *)
-  (*   (record length::range_address  at::pathat where::pathwhere))  *)
-  (* (define eqpath_pos::(-> path path path_length bool) *)
-  (*     (lambda (p::path r::path_length i::range_address) *)
-  (*         (=> (and (< i (select p length)) *)
-  (*                  (< i (select r length))) *)
-  (*             (= ((select p at) i) ((select r at) i))))) *)
-  (* (define eqpath::(-> path path bool) *)
-  (*     (lambda (p::path r::path) *)
-  (*         (and (= (select p length) (select r length)) *)
-  (*              (eqpath_pos p r 0) *)
-  (*              (eqpath_pos p r 1) *)
-  (*              (eqpath_pos p r 2) *)
-  (*              (eqpath_pos p r 3)))) *)
-  let z3_path_preamble buf num_addr =
+  let z3_path_preamble (buf:B.t) (num_addr:int) : unit =
     B.add_string buf
       ( "(define-sort PathLength () " ^int_s^ ")\n" ^
         "(define-fun is_valid_path_length ((i PathLength)) " ^bool_s^
@@ -509,16 +447,16 @@ struct
 
 
 
-  let z3_unknown_preamble buf =
+  let z3_unknown_preamble (buf:B.t) : unit =
     B.add_string buf
       ("(declare-sort " ^unk_s^ ")\n")
 
 
-  let z3_pos_preamble buf =
-(* No need to define the program counter as now is just a integer variable *)
+  let z3_pos_preamble (buf:B.t) : unit =
+    (* No need to define the program counter as now is just a integer variable *)
     B.add_string buf ("(define-sort " ^loc_s^ " () " ^int_s^ ")\n")
-(* Since variables and PC are flat into variables, there's no need of pc and pc_prime as arrays *)
-(*
+    (* Since variables and PC are flat into variables, there's no need of pc and pc_prime as arrays *)
+    (*
     GM.sm_decl_fun sort_map Conf.pc_name [tid_s] [loc_s] ;
     GM.sm_decl_fun sort_map pc_prime_name [tid_s] [loc_s] ;
     B.add_string buf ("(declare-const " ^Conf.pc_name^ " (Array " ^tid_s^ " " ^loc_s^ "))\n");
@@ -530,30 +468,11 @@ struct
                                (<= 1 (select pc_prime t))\n\
                                (<= (select pc_prime t) %i))\n\
                        )\n" tid_s bool_s !prog_lines !prog_lines)
-*)
-(* Since variables and PC are flat into variables, there's no need of pc and pc_prime as arrays *)
+    *)
+    (* Since variables and PC are flat into variables, there's no need of pc and pc_prime as arrays *)
 
 
-  (* (define subseteq::(-> set set bool)  *)
-  (*   (lambda (s1::set s2::set)        *)
-  (*     (and (if (s1 null) (s2 null))    *)
-  (*          (if (s1 a1) (s2 a1))        *)
-  (*          (if (s1 a1) (s2 a2))        *)
-  (*          (if (s1 a3) (s2 a3))        *)
-  (*          (if (s1 a4) (s2 a4))        *)
-  (*          (if (s1 a5) (s2 a5)))))     *)
-  let z3_subseteq_def buf num_addr =
-  (*
-    B.add_string buf
-      ("(define-fun subseteq ((s1 " ^set_s^ ") (s2 " ^set_s^ ")) " ^bool_s^ "\n" ^
-       "  (and (=> (select s1 null) (select s2 null))");
-      for i=1 to num_addr do
-        let aa_i = addr_prefix ^ (string_of_int i) in
-        B.add_string buf
-          ("\n       (=> (select s1 " ^ aa_i ^ ") (select s2 " ^ aa_i ^ "))")
-      done ;
-      B.add_string buf "))\n"
-  *)
+  let z3_subseteq_def (buf:B.t) (num_addr:int) : unit =
     B.add_string buf
       ("(define-fun subseteq ((s1 " ^set_s^ ") (s2 " ^set_s^ ")) " ^bool_s^ "\n\
           (= (intersection s1 s2) s1))\n")
@@ -576,128 +495,72 @@ struct
 
 
 
-  (* (define singletonth::(-> tid setth)   *)
-  (*     (lambda (t::tid)                  *)
-  (*         (lambda (r::tid)              *)
-  (*             (= t r))))                *)
-  let z3_singletonth_def buf =
+  let z3_singletonth_def (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun singletonth ((t " ^tid_s^ ")) " ^setth_s^ "\n" ^
        "  (store ((as const " ^setth_s^ ") false) t true))\n")
 
 
-  (* (define unionth::(-> setth setth setth) *)
-  (*     (lambda (s::setth r::setth)         *)
-  (*         (lambda (t::tid)                *)
-  (*             (or (s t) (r t)))))         *)
-  let z3_unionth_def buf =
+  let z3_unionth_def (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun unionth ((s " ^setth_s^ ") (r " ^setth_s^ ")) " ^setth_s^ "\n" ^
        "  ((_ map or) r s))\n")
 
 
-  (* (define intersectionth::(-> setth setth setth) *)
-  (*     (lambda (s::setth r::setth)                *)
-  (*         (lambda (t::tid)                       *)
-  (*             (and (s t) (r t)))))               *)
-  let z3_intersectionth_def buf =
+  let z3_intersectionth_def (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun intersectionth ((s " ^setth_s^ ") (r " ^setth_s^ ")) " ^setth_s^ "\n" ^
        "  ((_ map and) r s))\n")
 
 
-  (* (define setdiffth::(-> set set set)    *)
-  (*     (lambda (s::setth r::setth)        *)
-  (*         (lambda (t::tid)               *)
-  (*             (and (s t) (not (r t)))))) *)
-  let z3_setdiffth_def buf =
+  let z3_setdiffth_def (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun setdiffth ((r " ^setth_s^ ") (s " ^setth_s^ ")) " ^setth_s^ "\n" ^
        "  ((_ map and) r ((_ map not) s)))\n")
 
 
-  (* (define subseteqth::(-> setth setth bool) *)
-  (*   (lambda (r::setth) (s::setth)           *)
-  (*     (and (if (r NoThread) (s NoThread))   *)
-  (*          (if (r t1)       (s t1))         *)
-  (*          (if (r t2)       (s t2))         *)
-  (*          (if (r t3)       (s t3)))))      *)
-  let z3_subseteqth_def buf num_tids =
-  (*
-    B.add_string buf
-      ("(define-fun subseteqth ((r " ^setth_s^ ") (s " ^setth_s^ ")) " ^bool_s^ "\n" ^
-       "  (and (=> (select r NoThread) (select s NoThread))\n");
-      for i=1 to num_tids do
-        let tt_i = tid_prefix ^ (string_of_int i) in
-          B.add_string buf
-            ("\n       (=> (select r " ^ tt_i ^ ") (select s " ^ tt_i ^ "))")
-      done ;
-    B.add_string buf "))\n"
-  *)
+  let z3_subseteqth_def (buf:B.t) (num_tids:int) : unit =
     B.add_string buf
       ("(define-fun subseteqth ((s1 " ^setth_s^ ") (s2 " ^setth_s^ ")) "
           ^bool_s^ "\n\
           (= (intersectionth s1 s2) s1))\n")
 
 
-  (* (define singletonelem::(-> elem setelem)   *)
-  (*     (lambda (e::elem)                      *)
-  (*         (lambda (r::elem)                  *)
-  (*             (= t r))))                     *)
-  let z3_singletonelem_def buf =
+  let z3_singletonelem_def (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun singletonelem ((e " ^elem_s^ ")) " ^setelem_s^ "\n" ^
        "  (store ((as const " ^setelem_s^ ") false) e true))\n")
 
 
-  (* (define unionelem::(-> setelem setelem setelem) *)
-  (*     (lambda (s::setelem r::setelem)             *)
-  (*         (lambda (e::elem)                       *)
-  (*             (or (s e) (r e)))))                 *)
-  let z3_unionelem_def buf =
+  let z3_unionelem_def (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun unionelem ((s " ^setelem_s^ ") (r " ^setelem_s^ ")) "
          ^setelem_s^ "\n" ^
        "  ((_ map or) r s))\n")
 
 
-  (* (define intersectionelem::(-> setelem setelem setelem) *)
-  (*     (lambda (s::setelem r::setelem)                    *)
-  (*         (lambda (e::elem)                              *)
-  (*             (and (s e) (r e)))))                       *)
-  let z3_intersectionelem_def buf =
+  let z3_intersectionelem_def (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun intersectionelem ((s " ^setelem_s^ ") (r " ^setelem_s^ ")) " 
        ^setelem_s^ "\n" ^
        "  ((_ map and) r s))\n")
 
 
-  (* (define setdiffelem::(-> setelem setelem setelem)    *)
-  (*     (lambda (s::setelem r::setelem)                  *)
-  (*         (lambda (e::elem)                            *)
-  (*             (and (s e) (not (r e))))))               *)
-  let z3_setdiffelem_def buf =
+  let z3_setdiffelem_def (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun setdiffelem ((r " ^setelem_s^ ") (s " ^setelem_s^ ")) "
           ^setelem_s^ "\n" ^
        "  ((_ map and) r ((_ map not) s)))\n")
 
 
-  (* (define subseteqelem::(-> setelem setelem bool) *)
-  (*   (lambda (r::setelem) (s::setelem)             *)
-  (*     (and (=> (r e1) (s e1))                     *)
-  (*          (=> (r e2) (s e2))                     *)
-  (*          (=> (r e3) (s e3)))))                  *)
-  let z3_subseteqelem_def buf num_elem =
+  let z3_subseteqelem_def (buf:B.t) (num_elem:int) : unit =
     B.add_string buf
       ("(define-fun subseteqelem ((s1 " ^setelem_s^ ") (s2 " ^setelem_s^ ")) "
           ^bool_s^ "\n\
           (= (intersectionelem s1 s2) s1))\n")
 
 
-  (* (define empty::set)             *)
-  (*   (lambda (a::address) (false)) *)
-  let z3_emp_def buf =
+  let z3_emp_def (buf:B.t) : unit =
     let _ = GM.sm_decl_const sort_map "empty" set_s
     in
       B.add_string buf
@@ -705,9 +568,7 @@ struct
          "(assert (= empty ((as const " ^set_s^ ") false)))\n")
 
 
-  (* (define emptyth::setth)     *)
-  (*   (lambda (t::tid) (false)) *)
-  let z3_empth_def buf =
+  let z3_empth_def (buf:B.t) : unit =
     let _ = GM.sm_decl_const sort_map "emptyth" setth_s
     in
       B.add_string buf
@@ -715,9 +576,7 @@ struct
          "(assert (= emptyth ((as const " ^setth_s^ ") false)))\n")
 
 
-  (* (define emptyelem::setelem)  *)
-  (*   (lambda (e::elem) (false)) *)
-  let z3_empelem_def buf =
+  let z3_empelem_def (buf:B.t) : unit =
     let _ = GM.sm_decl_const sort_map "emptyelem" setelem_s
     in
       B.add_string buf
@@ -725,24 +584,13 @@ struct
          "(assert (= emptyelem ((as const " ^setelem_s^ ") false)))\n")
 
    
-  (* (define intersection::(-> set set set) *)
-  (*     (lambda (s::set r::set) *)
-  (*         (lambda (a::address) *)
-  (*             (and (s a) (r a))))) *)
-  let z3_intersection_def buf =
+  let z3_intersection_def (buf:B.t) : unit =
     B.add_string buf
     ("(define-fun intersection ((s " ^set_s^ ") (r " ^set_s^ ")) " ^set_s^ "\n" ^
      "  ((_ map and) r s))\n")
 
 
-  (* (define set2elem::(-> set mem bool)                *)
-  (*  (lambda (s::set m::mem)                           *)
-  (*    (lambda (e::elem)                               *)
-  (*      (or (and (= e (data (m null))) (s null))      *)
-  (*          (and (= e (data (m aa_1))) (s aa_1))      *)
-  (*          (and (= e (data (m aa_2))) (s aa_2))      *)
-  (*          (and (= e (data (m aa_3))) (s aa_3))))))  *)
-  let z3_settoelems_def buf num_addr =
+  let z3_settoelems_def (buf:B.t) (num_addr:int) : unit =
 (*
     if !use_quantifiers then begin
       B.add_string buf
@@ -764,33 +612,7 @@ struct
 
 
 
-
-  (* (define getlockat::(-> heap path range_address tid)                *)
-  (*   (lambda (h::heap p::path i::range_address))                      *)
-  (*     (lock (h ((select p at) i))))                                  *)
-  (* (define islockedpos::(-> heap path range_address bool)             *)
-  (*     (lambda (h::heap p::path i::range_address))                    *)
-  (*         (and (< i (select p length)) (/= NoThread (getlockat h p i)))) *)
-  (* (define firstlockfrom5::(-> heap path address)                     *)
-  (*    (lambda (h::heap p::path)) *)
-  (*      (if (islockedpos h p 5) (getlockat h p 5) null)) *)
-  (* (define firstlockfrom4::(-> heap path address) *)
-  (*    (lambda (h::heap p::path)) *)
-  (*      (if (islockedpos h p 4) (getlockat h p 4) (firstlockfrom5 h p))) *)
-  (* (define firstlockfrom3::(-> heap path address) *)
-  (*    (lambda (h::heap p::path)) *)
-  (*      (if (islockedpos h p 3) (getlockat h p 3) (firstlockfrom4 h p))) *)
-  (* (define firstlockfrom2::(-> heap path address) *)
-  (*    (lambda (h::heap p::path)) *)
-  (*      (if (islockedpos h p 2) (getlockat h p 2) (firstlockfrom3 h p))) *)
-  (* (define firstlockfrom1::(-> heap path address) *)
-  (*    (lambda (h::heap p::path)) *)
-  (*      (if (islockedpos h p 1) (getlockat h p 1) (firstlockfrom2 h p))) *)
-  (* (define firstlock::(-> heap path address) *)
-  (*    (lambda (h::heap p::path)) *)
-  (*      (if (islockedpos h p 0) (getlockat h p 0) (firstlockfrom1 h p))) *)
-  let z3_firstlock_def buf num_addr =
-    let strlast = (string_of_int num_addr) in
+  let z3_getlocked_def (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun getlockat ((h " ^heap_s^ ") (p " ^path_s^
             ") (i RangeAddress)) " ^tid_s^ "\n" ^
@@ -799,8 +621,11 @@ struct
        "  (if (is_valid_range_address i) (select (at p) i) null))\n" ^
        "(define-fun islockedpos ((h " ^heap_s^ ") (p " ^path_s^
             ") (i RangeAddress)) " ^bool_s^ "\n" ^
-       "  (if (is_valid_range_address i) (and (< i (length p)) (not (= NoThread (getlockat h p i)))) false))\n");
+       "  (if (is_valid_range_address i) (and (< i (length p)) (not (= NoThread (getlockat h p i)))) false))\n")
 
+
+  let z3_firstlock_def (buf:B.t) (num_addr:int) : unit =
+    let strlast = (string_of_int num_addr) in
     B.add_string buf
       ("(define-fun firstlockfrom" ^ strlast ^ " ((h " ^heap_s^ ") (p " ^path_s^ ")) " ^addr_s^ "\n" ^
        "  (if (islockedpos h p " ^ strlast ^ ") (getaddrat p " ^ strlast ^ ") null))\n");
@@ -816,32 +641,37 @@ struct
        "  (if (islockedpos h p 0) (getaddrat p 0) (firstlockfrom1 h p)))\n")
 
 
-  (* (define cell_lock::(-> cell tid cell) *)
-  (*   (lambda (c::cell t::tid)) *)
-  (*     (mkcell (next c) (data c) t)) *)
-  let z3_cell_lock buf =
+  let z3_lastlock_def (buf:B.t) (num_addr:int) : unit =
+    let strlast = (string_of_int num_addr) in
+    let strprelast = (string_of_int (num_addr - 1)) in
+    B.add_string buf
+      ("(define-fun lastlockfrom0 ((h " ^heap_s^ ") (p " ^path_s^ ")) " ^addr_s^ "\n" ^
+       "  (if (islockedpos h p 0) (getaddrat p 0) null))\n");
+    for i=(num_addr-1) downto 1 do
+      let stri    = (string_of_int i) in
+      let strprev = (string_of_int (i-1)) in
+      B.add_string buf
+        ("(define-fun lastlockfrom"^ stri ^" ((h " ^heap_s^ ") (p " ^path_s^ ")) " ^addr_s^ "\n" ^
+         "  (if (islockedpos h p "^ stri ^") (getaddrat p "^ stri ^") (lastlockfrom"^ strprev ^" h p)))\n");
+    done ;
+    B.add_string buf
+      ("(define-fun lastlock ((h " ^heap_s^ ") (p " ^path_s^ ") ) " ^addr_s^ "\n" ^
+       "  (if (islockedpos h p " ^strlast^ ") (getaddrat p " ^strlast^ ") (firstlockfrom" ^strprelast^ " h p)))\n")
+
+
+  let z3_cell_lock (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun cell_lock ((c " ^cell_s^ ") (t " ^tid_s^ ")) " ^cell_s^ "\n" ^
        "  (mkcell (data c) (next c) t))\n")
 
 
-  (* (define cell_unlock::(-> cell cell) *)
-  (*   (lambda (c::cell)) *)
-  (*     (mkcell (next c) (data c) NoThread)) *)
-  let z3_cell_unlock_def buf =
+  let z3_cell_unlock_def (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun cell_unlock ((c " ^cell_s^ ")) " ^cell_s^ "\n" ^
        "  (mkcell (data c) (next c) NoThread))\n")
 
 
-  (* (define epsilonat::(-> range_address address) *)
-  (*   (lambda r::range_address) null) *)
-  (* (define epsilonwhere::(-> address range_address) *)
-  (*   (lambda a::address) 0) *)
-  (* (define epsilon::path *)
-  (*    (mk-record length::0 at::epsilonat where::epsilonwhere)) *)
-
-  let z3_epsilon_def buf =
+  let z3_epsilon_def (buf:B.t) : unit =
     let _ = GM.sm_decl_const sort_map "epsilon" path_s
     in
       B.add_string buf
@@ -859,18 +689,7 @@ struct
            "(assert (= epsilon (mkpath 0 epsilonat epsilonwhere empty)))\n")
 
 
-  (* (define singletonat::(-> address range_address address) *)
-  (*   (lambda (a::address) *)
-  (*     (lambda (r::range_address) *)
-  (*       (if (= r 0) a null)))) *)
-  (* (define singletonwhere::(-> address address range_address) *)
-  (*   (lambda (a::address) *)
-  (*     (lambda (b::address) *)
-  (*       (if (= a b) 0 1)))) *)
-  (* (define singlepath::(-> address path) *)
-  (*    (lambda (a::address) *)
-  (*      (mk-record length::1 at::(singletonat a) where::(singletonwhere a)))) *)
-  let z3_singletonpath_def buf =
+  let z3_singletonpath_def (buf:B.t) : unit =
     if !use_quantifiers then begin
       B.add_string buf
         ("(define-fun singletonat ((a " ^addr_s^ ")) PathAt\n" ^
@@ -889,18 +708,7 @@ struct
        "  (mkpath 1 (singletonat a) (singletonwhere a) (singleton a)))\n")
 
 
-  (* (define check_position::(-> path range_address bool)                          *)
-  (*   (lambda (p::path i::range_address)                                          *)
-  (*     (=> (< i (select p length)) (= i ((select p where) ((select p at) i)))))) *)
-  (* (define ispath::(-> path bool)      *)
-  (*   (lambda (p::path)                 *)
-  (*      (and (check_position p 0)      *)
-  (*           (check_position p 1)      *)
-  (*           (check_position p 2)      *)
-  (*           (check_position p 3)      *)
-  (*           (check_position p 4)      *)
-  (*           (check_position p 5))))   *)
-  let z3_ispath_def buf num_addr =
+  let z3_ispath_def (buf:B.t) (num_addr:int) : unit =
     if !use_quantifiers then begin
       B.add_string buf
         ("(define-fun addr_in_path ((p " ^path_s^ ") (i RangeAddress)) " ^set_s^ "\n" ^
@@ -949,20 +757,7 @@ struct
     end
 
 
-   (* (define rev_position::(-> path path range_address bool)   *)
-   (*      (lambda (p::path p_rev::path i::range_address)       *)
-   (*          (=> (< (i (select p length)))                    *)
-   (*              (= ((select p at) i) ((select p_rev at) (- (select p length) i)))))) *)
-   (* (define rev::(-> path path bool)                          *)
-   (*     (lambda (p::path p_rev::path)                         *)
-   (*     (and (= (select p length) (select p_rev length))      *)
-   (*          (rev_position p p_rev 0)                         *)
-   (*          (rev_position p p_rev 1)                         *)
-   (*          (rev_position p p_rev 2)                         *)
-   (*          (rev_position p p_rev 3)                         *)
-   (*          (rev_position p p_rev 4)                         *)
-   (*          (rev_position p p_rev 5))))                      *)
-  let z3_rev_def buf num_addr =
+  let z3_rev_def (buf:B.t) (num_addr:int) : unit =
     if !use_quantifiers then begin
       B.add_string buf
         ("(define-fun rev_position ((p " ^path_s^ ") (p_rev " ^path_s^ ") (n RangeAddress)) " ^bool_s^ "\n" ^
@@ -989,68 +784,23 @@ struct
       end
 
 
-  (* (define path2set::(-> path set)                        *)
-  (*     (lambda (p::path)                                  *)
-  (*         (lambda (a::address)                           *)
-  (*      (< ((select p where) a) (select p length))))) *)
-  let z3_path2set_def buf =
+  let z3_path2set_def (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun path2set ((p " ^path_s^ ")) " ^set_s^ " (addrs p))\n")
 
 
-  (* (define deref::(-> heap address cell)    *)
-  (*     (lambda (h::heap a::address)         *)
-  (*         (h a)))                          *)
-  let z3_dref_def buf =
+  let z3_dref_def (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun deref ((h " ^heap_s^ ") (a " ^addr_s^ ")) " ^cell_s^ "\n" ^
        "  (select h a))\n")
 
 
-  let z3_elemorder_def buf num_elem =
+  let z3_elemorder_def (buf:B.t) (num_elem:int) : unit =
     ()
-(*
-    B.add_string buf ("(declare-fun lesselem (" ^elem_s^ " " ^elem_s^ ") " ^bool_s^ ")\n") ;
-    B.add_string buf ("(define-fun greaterelem ((x " ^elem_s^ ") (y " ^elem_s^ ")) " ^bool_s^ "\n" ^
-                      "  (lesselem y x))\n") ;
-    (* Totality and no-reflexibility *)
-    B.add_string buf ("(assert (not (lesselem LowestElem LowestElem)))\n");
-    B.add_string buf ("(assert (not (lesselem HighestElem HighestElem)))\n");
-    B.add_string buf ("(assert (lesselem LowestElem HighestElem))\n");
-    for i = 1 to num_elem do
-      let x = ee i  in
-      B.add_string buf ("(assert (not (lesselem " ^x^ " " ^x^ ")))\n") ;
-      B.add_string buf ("(assert (lesselem LowestElem " ^x^ "))\n");
-      B.add_string buf ("(assert (lesselem " ^x^ " HighestElem))\n");
-      for j = i+1 to num_elem do
-        let y = ee j in
-          B.add_string buf ("(assert (or (lesselem " ^x^ " " ^y^ ") (lesselem " ^y^ " " ^x^ ")))\n")
-      done
-    done ;
-    (* TOFIX: Replace buffer in order to prevent segmentation fault due to
-              buffer overflow when too many elements are required. *)
-    (* Transitivity *)
-    let name_elem (i:int) = if (i = 0) then "LowestElem"
-                            else if (i = num_elem + 1) then "HighestElem"
-                            else ee i in
-    for i = 0 to (num_elem + 1) do
-      for j = 0 to (num_elem + 1) do
-        for k = 0 to (num_elem + 1) do
-          if (i<>j && j<>k (*&& i<>k*)) then
-            let x = name_elem i in
-            let y = name_elem j in
-            let z = name_elem k in
-            B.add_string buf ("(assert (=> (and (lesselem " ^x^ " " ^y^ ") \
-                                                (lesselem " ^y^ " " ^z^ ")) \
-                                                (lesselem " ^x^ " " ^z^ ")))\n")
-        done
-      done
-    done
-*)
 
 
   (* Ordered list predicate definition *)
-  let z3_orderlist_def buf num_addr =
+  let z3_orderlist_def (buf:B.t) (num_addr:int) : unit =
 (*
     if !use_quantifiers then begin
       B.add_string buf
@@ -1092,8 +842,7 @@ struct
 *)
 
 
-  (* (define error::cell) *)
-  let z3_error_def buf=
+  let z3_error_def (buf:B.t) : unit =
     let _ = GM.sm_decl_const sort_map "error" cell_s
     in
       B.add_string buf
@@ -1102,36 +851,18 @@ struct
          "(assert (= (next error) null))\n")
 
 
-  (* (define mkcell::(-> element address tid cell)        *)
-  (*     (lambda (h::heap  e::element  a::address k::tid) *)
-  (*        (mk-record data::e next::a lock::k)))         *)
-  let z3_mkcell_def buf =
+  let z3_mkcell_def (buf:B.t) : unit =
     B.add_string buf
       ("") (* Unneeded *)
 
 
-  (* (define isheap::(-> heap bool)     *)
-  (*     (lambda (h::heap)              *)
-  (*         (= (deref h null) error))) *)
-  let z3_isheap_def buf =
+  let z3_isheap_def (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun isheap ((h " ^heap_s^ ")) " ^bool_s^ "\n" ^
        "  (= (select h null) error))\n")
 
 
-  (* (define next1::(-> heap address address) (lambda (h::heap a::address) (next h a))) *)
-  (* (define next2::(-> address address) (lambda (a::address) (next h (next1 h a)))) *)
-  (* (define next3::(-> address address) (lambda (a::address) (next h (next2 h a)))) *)
-  (* (define next4::(-> address address) (lambda (a::address) (next h (next3 h a)))) *)
-  (* (define next5::(-> address address) (lambda (a::address) (next h (next4 h a)))) *)
-  (* (define isreachable::(-> heap address address bool)                         *)
-  (*     (lambda (h::heap from::address to::address)                             *)
-  (*                  (or (=        from  to)                                    *)
-  (*                      (= (next  from) to)                                    *)
-  (*                      (= (next2 from) to)                                    *)
-  (*                      (= (next3 from) to)                                    *)
-  (*                      (= (next4 from) to))))                                 *)
-  let z3_nextiter_def buf num_addr =
+  let z3_nextiter_def (buf:B.t) (num_addr:int) : unit =
     B.add_string  buf
       ("(define-fun next0 ((h " ^heap_s^ ") (a " ^addr_s^ ")) " ^addr_s^ " a)\n");
     B.add_string  buf
@@ -1144,7 +875,7 @@ struct
     done
 
 
-  let z3_reachable_def buf num_addr =
+  let z3_reachable_def (buf:B.t) (num_addr:int) : unit =
     if !use_quantifiers then begin
       B.add_string buf
         ("(define-fun isreachable ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ")) " ^bool_s^ "\n" ^
@@ -1163,12 +894,7 @@ struct
 
 
 
-
-  (* (define address2set::(-> address set) *)
-  (*     (lambda (from::address)           *)
-  (*          (lambda (to::address)        *)
-  (*              (isreachable from to)))) *)
-  let z3_address2set_def buf num_addr =
+  let z3_address2set_def (buf:B.t) (num_addr:int) : unit =
     let join_sets s1 s2 = "\n  (setunion "^ s1 ^" "^ s2 ^")" in
     B.add_string buf
       ("(define-fun address2set ((h " ^heap_s^ ") (from " ^addr_s^ ")) " ^set_s^ "");
@@ -1187,42 +913,25 @@ struct
       end
 
 
-  (* (define singleton::(-> address set)   *)
-  (*     (lambda (a::address)              *)
-  (*         (lambda (b::address)          *)
-  (*             (= a b))))                *)
-  let z3_singleton_def buf =
+  let z3_singleton_def (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun singleton ((a " ^addr_s^ ")) " ^set_s^ "\n" ^
        "  (store ((as const " ^set_s^ ") false) a true))\n")
 
 
-  (* (define setunion::(-> set set set)       *)
-  (*     (lambda (s::set r::set)            *)
-  (*         (lambda (a::address)           *)
-  (*             (or (s a) (r a)))))        *)
-  let z3_union_def buf =
+  let z3_union_def (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun setunion ((s " ^set_s^ ") (r " ^set_s^ ")) " ^set_s^ "\n" ^
        "  ((_ map or) r s))\n")
 
 
-  (* (define setdiff::(-> set set set)      *)
-  (*     (lambda (s::set r::set)            *)
-  (*         (lambda (a::address)           *) 
-  (*             (and (s a) (not (r a)))))) *)
-  let z3_setdiff_def buf =
+  let z3_setdiff_def (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun setdiff ((r " ^set_s^ ") (s " ^set_s^ ")) " ^set_s^ "\n" ^
        "  ((_ map and) r ((_ map not) s)))\n")
 
 
-  (* (define is_singlepath::(-> address path bool) *)
-  (*     (lambda (a::address p::path)              *)
-  (*         (and (ispath p)                       *)
-  (*              (= ((select p length) 1)         *)
-  (*              (= ((select p at) 0) a)))))      *)
-  let z3_is_singlepath buf =
+  let z3_is_singlepath (buf:B.t) : unit =
     if !use_quantifiers then begin
       B.add_string buf
         ("(define-fun is_singlepath ((a " ^addr_s^ ") (p " ^path_s^ ")) " ^bool_s^ "\n" ^
@@ -1238,65 +947,13 @@ struct
     end
    
 
-  (* (define update_heap::(-> heap address cell heap) *)
-  (*     (lambda (h::heap a::address c::cell)         *)
-  (*        (update h a c)))                          *)
-  let z3_update_heap_def buf =
+  let z3_update_heap_def (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun update_heap ((h " ^heap_s^ ") (a " ^addr_s^ ") (c " ^cell_s^ ")) " ^heap_s^ "\n" ^
        "  (store h a c))\n")
 
 
-  (* (define update_pathat::(-> pathat range_address address pathat) *)
-  (*     (lambda (f::pathat i::range_address a::address) *)
-  (*         (lambda (j::range_address) *)
-  (*             (if (= i j) a (f j))))) *)
-  (* (define update_pathwhere::(-> pathwhere address range_address pathwhere) *)
-  (*     (lambda (g::pathwhere a::address i::range_address) *)
-  (*         (lambda (b::address) *)
-  (*             (if (= b a) i (g b))))) *)
-  (* (define add_to_path::(-> path address path) *)
-  (*     (lambda (p::path a::address) *)
-  (*         (mk-record length::(+ 1 (select p length )) *)
-  (*                    at::(update_pathat (select p at) (select p length) a) *)
-  (*                    where::(update_pathwhere (select p where) a (select p length))))) *)
-  (* (define path1::(-> heap address path) *)
-  (*     (lambda (h::heap a::address) *)
-  (*         (singlepath a))) *)
-  (* (define path2::(-> heap address path) *)
-  (*     (lambda (h::heap a::address) *)
-  (*         (add_to_path (path1 h a) (next h a)))) *)
-  (* (define path3::(-> heap address path) *)
-  (*     (lambda (h::heap a::address) *)
-  (*         (add_to_path (path2 h a) (next2 h a)))) *)
-  (* (define path4::(-> heap address path) *)
-  (*     (lambda (h::heap a::address) *)
-  (*         (add_to_path (path3 h a) (next3 h a)))) *)
-  (* (define getp4::(-> heap address address path) *)
-  (*     (lambda (h::heap from::address to::address) *)
-  (*         (if (= (next3 h from) to)  *)
-  (*             (path4 h from) *)
-  (*             epsilon))) *)
-  (* (define getp3::(-> heap address address path) *)
-  (*     (lambda (h::heap from::address to::address) *)
-  (*         (if (= (next2 h from) to)  *)
-  (*             (path3 h from) *)
-  (*             (getp4 h from to)))) *)
-  (* (define getp2::(-> heap address address path) *)
-  (*     (lambda (h::heap from::address to::address) *)
-  (*         (if (= (next h from) to)  *)
-  (*             (path2 h from) *)
-  (*             (getp3 h from to)))) *)
-  (* (define getp1::(-> heap address address path) *)
-  (*     (lambda (h::heap from::address to::address) *)
-  (*         (if (= from to)  *)
-  (*             (path1 h from) *)
-  (*             (getp2 h from to)))) *)
-  (* (define getp::(-> heap address address path) *)
-  (*     (lambda (h::heap from::address to::address) *)
-  (*        (getp1 h from to))) *)
-      
-  let z3_getp_def buf num_addr =
+  let z3_getp_def (buf:B.t) (num_addr:int) : unit =
     if !use_quantifiers then begin
       B.add_string buf
         ("(define-fun update_pathat ((f PathAt) (i RangeAddress) (a " ^addr_s^ ")) PathAt\n" ^
@@ -1353,7 +1010,7 @@ struct
        "  (eqpath p (getp h from to)))\n")
 
 
-  let z3_reach_def buf =
+  let z3_reach_def (buf:B.t) : unit =
     B.add_string buf
       ( "(define-fun reach ((h " ^heap_s^ ") (from " ^addr_s^ ") " ^
         "(to " ^addr_s^ ") (p " ^path_s^ ")) " ^bool_s^ "\n" ^
@@ -1361,18 +1018,12 @@ struct
       )
 
 
-  (* (define path_length::(-> path range_address) *)
-  (*     (lambda (p1::path)                       *)
-  (*         (select p1 length)))                 *)
-  let z3_path_length_def buf =
+  let z3_path_length_def (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun path_length ((p " ^path_s^ ")) PathLength (length p))\n")
 
 
-  (* (define at_path::(-> path range_address address) *)
-  (*     (lambda (p1::path i::range_address)          *)
-  (*         ((select p1 at) i)))                     *)
-  let z3_at_path_def buf =
+  let z3_at_path_def (buf:B.t) : unit =
     if !use_quantifiers then begin
       B.add_string buf
         ("(define-fun at_path ((p " ^path_s^ ") (i RangeAddress)) " ^addr_s^ "\n" ^
@@ -1384,12 +1035,7 @@ struct
     end
 
 
-  (* (define equal_paths_at::(-> path range_address path range_address bool) *)
-  (*     (lambda (p1::path i::range_address p2::path j::range_address)       *)
-  (*         (ite (< i (path_length p1))                                     *)
-  (*       (= (at_path p1 i) (at_path p2 j))                             *)
-  (*              true)))                                                    *)
-  let z3_equal_paths_at_def buf =
+  let z3_equal_paths_at_def (buf:B.t) : unit =
     if !use_quantifiers then begin
       B.add_string buf
         ("(define-fun equal_paths_at ((p1 " ^path_s^ ") (i RangeAddress) (p2 " ^path_s^ ") (j RangeAddress)) " ^bool_s^ "\n" ^
@@ -1405,22 +1051,7 @@ struct
     end
 
 
-  (* (define is_append::(-> path path path bool)                              *)
-  (*    (lambda (p1::path p2::path p_res::path)                               *)
-  (*       (and (= (+ (path_length p1) (path_length p2)) (path_length p_res)) *)
-  (*            (equal_paths_at p1 0 p_res 0)                                 *)
-  (*            (equal_paths_at p1 1 p_res 1)                                 *)
-  (*            (equal_paths_at p1 2 p_res 2)                                 *)
-  (*            (equal_paths_at p1 3 p_res 3)                                 *)
-  (*            (equal_paths_at p1 4 p_res 4)                                 *)
-  (*            (equal_paths_at p1 5 p_res 5)                                 *)
-  (*            (equal_paths_at p2 0 p_res (+ (path_length p1) 0))            *)
-  (*            (equal_paths_at p2 1 p_res (+ (path_length p1) 1))            *)
-  (*            (equal_paths_at p2 2 p_res (+ (path_length p1) 2))            *)
-  (*            (equal_paths_at p2 3 p_res (+ (path_length p1) 3))            *)
-  (*            (equal_paths_at p2 4 p_res (+ (path_length p1) 4))            *)
-  (*            (equal_paths_at p2 5 p_res (+ (path_length p1) 5)))))         *)
-  let z3_is_append_def buf num_addr =
+  let z3_is_append_def (buf:B.t) (num_addr:int) : unit =
     if !use_quantifiers then begin
       B.add_string buf
         ("(define-fun is_append ((p1 " ^path_s^ ") (p2 " ^path_s^ ") (p_res " ^path_s^ ")) " ^bool_s^ "\n" ^
@@ -1470,7 +1101,8 @@ struct
   (!res_req_sorts, !res_req_ops)
 
 
-  let z3_preamble buf num_addr num_tid num_elem req_sorts =
+  let z3_preamble (buf:B.t) (num_addr:int) (num_tid:int) (num_elem:int)
+                  (req_sorts:Expr.sort list) : unit =
     B.add_string buf ";; TLL Z3 Translation\n";
     if (List.exists (fun s ->
           s=Expr.Addr || s=Expr.Cell || s=Expr.Path || s=Expr.Set || s=Expr.Mem
@@ -1499,7 +1131,7 @@ struct
 
   (********************* Variable Definitions **********************)
 
-  let rec z3_define_var (buf:Buffer.t)
+  let rec z3_define_var (buf:B.t)
                         (tid_set:VarSet.t)
                         (num_tids:int)
                         (v:Expr.V.t) : unit =
@@ -1567,7 +1199,7 @@ struct
         end
 
 
-  and define_variables (buf:Buffer.t) (num_tids:int) (vars:VarSet.t) : unit =
+  and define_variables (buf:B.t) (num_tids:int) (vars:VarSet.t) : unit =
     let varset     = V.varset_of_sort vars Expr.Set  in
     let varelem    = V.varset_of_sort vars Expr.Elem in
     let varaddr    = V.varset_of_sort vars Expr.Addr in
@@ -1595,7 +1227,7 @@ struct
       VarSet.iter (z3_define_var buf vartid num_tids) varunk
 
 
-  and variables_to_z3 (buf:Buffer.t)
+  and variables_to_z3 (buf:B.t)
                       (num_tids:int)
                       (expr:Expr.conjunctive_formula) : unit =
     let vars = Expr.get_varset_from_conj expr
@@ -1603,7 +1235,7 @@ struct
       define_variables buf num_tids vars
 
 
-  and variables_from_formula_to_z3 (buf:Buffer.t)
+  and variables_from_formula_to_z3 (buf:B.t)
                                    (num_tids:int)
                                    (phi:Expr.formula) : unit =
     let vars = Expr.get_varset_from_formula phi
@@ -1613,7 +1245,9 @@ struct
 
   (********************* Preamble Definitions **********************)
 
-  let z3_defs buf num_addr num_tid num_elem req_sorts req_ops heaps =
+  let z3_defs (buf:B.t) (num_addr:int) (num_tid:int) (num_elem:int)
+              (req_sorts:Expr.sort list) (req_ops:Expr.special_op_t list)
+              (heaps:VarSet.t) : unit =
     (* Elements *)
     if List.mem Expr.ElemOrder req_ops || List.mem Expr.OrderedList req_ops then
       z3_elemorder_def buf num_elem ;
@@ -1687,8 +1321,13 @@ struct
       end;
     (* Set2Elem *)
     if List.mem Expr.Set2Elem req_ops then z3_settoelems_def buf num_addr ;
+    (* Firstlock or Lastlock common definitions *)
+    if List.mem Expr.FstLocked req_ops || List.mem Expr.LstLocked req_ops then
+        z3_getlocked_def buf ;
     (* Firstlock *)
     if List.mem Expr.FstLocked req_ops then z3_firstlock_def buf num_addr ;
+    (* Lastlock *)
+    if List.mem Expr.LstLocked req_ops then z3_lastlock_def buf num_addr ;
     (* Path *)
     if List.mem Expr.Path req_sorts then
       begin
@@ -1909,7 +1548,7 @@ struct
                                                          (to_z3 f2)
 
 
-  let literal_to_z3 (buf:Buffer.t) (lit:Expr.literal) : unit =
+  let literal_to_z3 (buf:B.t) (lit:Expr.literal) : unit =
     B.add_string buf (literal_to_str lit)
 
 
@@ -1950,7 +1589,7 @@ struct
         z3_defs    buf num_addr num_tid num_elem req_sorts req_ops heaps;
         variables_to_z3 buf num_tid expr ;
         let add_and_literal l str =
-    "\n         " ^ (literal_to_str l) ^ str
+          "\n         " ^ (literal_to_str l) ^ str
         in
         let formula_str = List.fold_right add_and_literal ls ""
         in

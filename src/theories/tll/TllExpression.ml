@@ -76,6 +76,7 @@ and addr =
   | Null
   | Next of cell
   | FirstLocked of mem * path
+  | LastLocked of mem * path
 (*  | Malloc of elem * addr * tid *)
 and cell =
     VarCell of V.t
@@ -142,6 +143,7 @@ type special_op_t =
   | Addr2Set
   | Path2Set
   | FstLocked
+  | LstLocked
   | Getp
   | Set2Elem
   | ElemOrder
@@ -272,6 +274,7 @@ and get_varset_addr a =
     | Null             -> V.VarSet.empty
     | Next c           -> get_varset_cell c
     | FirstLocked(m,p) -> (get_varset_mem m) @@ (get_varset_path p)
+    | LastLocked(m,p)  -> (get_varset_mem m) @@ (get_varset_path p)
 (*    | Malloc(e,a,th)   -> (get_varset_elem e) @@ (get_varset_addr a) @@  (get_varset_tid th) *)
 and get_varset_cell c = match c with
       VarCell v      -> V.VarSet.singleton v @@ get_varset_from_param v
@@ -619,6 +622,7 @@ and is_addr_flat t =
     | Null             -> true
     | Next(c)          -> is_cell_var c
     | FirstLocked(m,p) -> (is_mem_var m) && (is_path_var p)
+    | LastLocked(m,p)  -> (is_mem_var m) && (is_path_var p)
 (*    | Malloc(m,a,k)    -> (is_mem_var m) && (is_addr_var a) && (is_thread_var k) *)
 and is_cell_flat t =
   match t with
@@ -900,10 +904,12 @@ and cell_to_str e =
 and addr_to_str expr =
   match expr with
       VarAddr(v) -> V.to_str v
-    | Null    -> "null"
-    | Next(cell)           -> Printf.sprintf "%s.next" (cell_to_str cell)
+    | Null                  -> "null"
+    | Next(cell)            -> Printf.sprintf "%s.next" (cell_to_str cell)
     | FirstLocked(mem,path) -> Printf.sprintf "firstlocked(%s,%s)"
-  (mem_to_str mem) (path_to_str path)
+                                (mem_to_str mem) (path_to_str path)
+    | LastLocked(mem,path)  -> Printf.sprintf "lastlocked(%s,%s)"
+                                (mem_to_str mem) (path_to_str path)
 (*    | Malloc(e,a,t)     -> Printf.sprintf "malloc(%s,%s,%s)" (elem_to_str e) (addr_to_str a) (tid_to_str t) *)
 and tid_to_str th =
   match th with
@@ -1096,6 +1102,7 @@ and voc_addr (a:addr) : ThreadSet.t =
   | Null                  -> ThreadSet.empty
   | Next(cell)            -> (voc_cell cell)
   | FirstLocked(mem,path) -> (voc_mem mem) @@ (voc_path path)
+  | LastLocked(mem,path)  -> (voc_mem mem) @@ (voc_path path)
 
 
 and voc_elem (e:elem) : ThreadSet.t =
@@ -1388,6 +1395,7 @@ let required_sorts (phi:formula) : sort list =
     | Null              -> single Addr
     | Next c            -> append Addr [req_c c]
     | FirstLocked (m,p) -> append Addr [req_m m;req_p p]
+    | LastLocked (m,p)  -> append Addr [req_m m;req_p p]
 
   and req_e (e:elem) : SortSet.t =
     match e with
@@ -1550,6 +1558,7 @@ let special_ops (phi:formula) : special_op_t list =
     | Null              -> empty
     | Next c            -> list_union [ops_c c]
     | FirstLocked (m,p) -> append FstLocked [ops_m m;ops_p p]
+    | LastLocked (m,p)  -> append LstLocked [ops_m m;ops_p p]
 
   and ops_e (e:elem) : OpsSet.t =
     match e with

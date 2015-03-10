@@ -67,6 +67,7 @@ and addr =
   | Null
   | Next of cell
   | FirstLocked of mem * path
+  | LastLocked of mem * path
 (*  | Malloc of elem * addr * tid *)
 and cell =
     VarCell of V.t
@@ -134,6 +135,7 @@ type special_op_t =
   | Addr2Set
   | Path2Set
   | FstLocked
+  | LstLocked
   | Getp
   | Set2Elem
   | ElemOrder

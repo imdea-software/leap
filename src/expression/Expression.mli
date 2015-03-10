@@ -127,6 +127,7 @@ and addr =
   | ArrAt         of cell * integer
   | FirstLocked   of mem * path
   | FirstLockedAt of mem * path * integer
+  | LastLocked    of mem * path
   | AddrArrayRd   of arrays * tid
   | AddrArrRd     of addrarr * integer
 
