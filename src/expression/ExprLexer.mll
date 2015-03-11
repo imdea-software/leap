@@ -108,6 +108,9 @@ let _ = List.iter (fun (kwd, tok) -> Hashtbl.add keyword_table kwd tok)
             ("arrUpd"       , ARR_UPDATE);
             ("subset_op"    , WF_INTSUBSET);
             ("pairsubset_op", WF_PAIRSUBSET);
+            ("addrsubset_op", WF_ADDRSUBSET);
+            ("elemsubset_op", WF_ELEMSUBSET);
+            ("tidsubset_op" , WF_TIDSUBSET);
             ("less_op"      , WF_INTLESS)]
 }
 

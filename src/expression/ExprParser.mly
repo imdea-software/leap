@@ -534,7 +534,7 @@ let define_ident (proc_name:E.V.procedure_name)
 %token LOGICAL_TRUE LOGICAL_FALSE
 %token DOT
 %token ARR_UPDATE
-%token WF_INTSUBSET WF_PAIRSUBSET WF_INTLESS
+%token WF_INTSUBSET WF_PAIRSUBSET WF_INTLESS WF_ADDRSUBSET WF_ELEMSUBSET WF_TIDSUBSET
 
 %token INVARIANT FORMULA VARS
 %token AT UNDERSCORE SHARP
@@ -823,6 +823,12 @@ wf_op :
     { PVD.WFIntSubset }
   | WF_PAIRSUBSET
     { PVD.WFPairSubset }
+  | WF_ADDRSUBSET
+    { PVD.WFAddrSubset }
+  | WF_ELEMSUBSET
+    { PVD.WFElemSubset }
+  | WF_TIDSUBSET
+    { PVD.WFTidSubset }
   | WF_INTLESS
     { PVD.WFIntLess }
 

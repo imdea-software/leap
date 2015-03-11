@@ -4,6 +4,9 @@ global
   addr tail
   ghost addrSet region
   ghost elemSet elements
+  ghost tidSet aheadSet
+  ghost tidSet insideSet
+  ghost bool kisin
 
 assume
   region = {head} Union {tail} Union {null} /\
@@ -61,7 +64,7 @@ assume
 :sch_owns_prev[
 :sch_got_lock[
 :sch_working[
-																curr := prev->next;
+                                curr := prev->next;
 :sch_curr_def[
 :sch_follows[
                                 curr->lock;
@@ -75,12 +78,12 @@ assume
                                   prev := curr;
 :sch_equals[
 :sch_aux_before_prev
-																	aux->unlock;
-																	curr := curr->next;
+                                  aux->unlock;
+                                  curr := curr->next;
 :sch_while_begins]
 :sch_equals]
 :sch_owns_curr_one]
-																	curr->lock;
+                                  curr->lock;
 :sch_owns_curr_two[
                                 endwhile
 :sch_after_lookup
@@ -124,7 +127,7 @@ assume
 :ins_working[
 :ins_owns_prev[
 :ins_prev_advance[
-																curr := prev->next;
+                                curr := prev->next;
 :ins_head_next_diff]
 :ins_follows[
                                 curr->lock;
@@ -141,7 +144,7 @@ assume
 :ins_equals[
 :ins_aux_before_prev
                                   aux->unlock;
-																	curr := curr->next;
+                                  curr := curr->next;
 :ins_prev_advance]
 :ins_while_begins]
 :ins_equals]
@@ -172,7 +175,7 @@ assume
 :ins_prev_lower]
                                 endif
 :ins_elem_inserted[
-																prev->unlock;
+                                prev->unlock;
 :ins_owns_prev]
 :ins_prev_def]
 :ins_releases_last_lock
@@ -181,7 +184,7 @@ assume
 :ins_diff]
 :ins_insertion_process]
 :ins_return
-																return();
+                                return();
 :ins_working]
 :ins_elem_inserted]
 :insert_body]
@@ -204,7 +207,7 @@ assume
                                 prev->lock;
 :rem_owns_prev[
 :rem_got_lock[
-																curr := prev->next;
+                                curr := prev->next;
 :rem_curr_def[
 :rem_follows[
                                 curr->lock;
@@ -220,13 +223,13 @@ assume
                                   prev := curr;
 :rem_equals[
 :rem_aux_before_prev
-																	aux->unlock;
-																	curr := curr->next;
+                                  aux->unlock;
+                                  curr := curr->next;
 :rem_while_begins]
 :rem_equals]
 :rem_while]
 :rem_owns_curr_one]
-																	curr->lock;
+                                  curr->lock;
 :rem_owns_curr_two[
                                 endwhile
 :rem_lookup_loop]
@@ -258,7 +261,7 @@ assume
 :rem_got_lock]
 :rem_working]
 :rem_return
-																return();
+                                return();
 :rem_elem_removed]
 :remove_body]
                               end

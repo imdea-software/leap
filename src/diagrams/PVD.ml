@@ -51,6 +51,9 @@ module AcceptanceSet = Set.Make(
 type wf_op_t =
   | WFIntSubset
   | WFPairSubset
+  | WFAddrSubset
+  | WFElemSubset
+  | WFTidSubset
   | WFIntLess
 
 type delta_op_t =
@@ -136,9 +139,12 @@ let kind_to_str (k:edge_type_t) : string =
 
 let wf_op_to_str (op:wf_op_t) : string =
   match op with
-  | WFIntSubset -> "subset_op"
+  | WFIntSubset  -> "subset_op"
   | WFPairSubset -> "pairsubset_op"
-  | WFIntLess   -> "less_op"
+  | WFAddrSubset -> "addrsubset_op"
+  | WFElemSubset -> "elemsubset_op"
+  | WFTidSubset  -> "tidsubset_op"
+  | WFIntLess    -> "less_op"
 
 
 let node_id_to_str (id:node_id_t) : string =
@@ -433,6 +439,9 @@ let check_acceptance (nTbl:node_table_t)
     match (E.term_sort t, op) with
     | (E.SetInt, WFIntSubset)
     | (E.SetPair, WFPairSubset)
+    | (E.Set, WFAddrSubset)
+    | (E.SetElem, WFElemSubset)
+    | (E.SetTh, WFTidSubset)
     | (E.Int, WFIntLess) -> ()
     | _ -> begin
              Interface.Err.msg "Unsupported ranking function" $
@@ -578,28 +587,34 @@ let ranking_function (ante:E.formula)
                      (accept:acceptance_t)
                      (e:(node_id_t * node_id_t * edge_type_t)) : E.formula =
   let form = F.atom_to_formula in
+
+  let build_dec (op:wf_op_t) (t1:E.term) (t2:E.term) : E.formula =
+    match (op,t1,t2) with
+    | (WFIntSubset, E.SetIntT s1, E.SetIntT s2) -> F.And(form (E.InEq (t2,t1)),
+                                                         form (E.SubsetEqInt (s2,s1)))
+    | (WFPairSubset, E.SetPairT s1, E.SetPairT s2) -> F.And(form (E.InEq (t2,t1)),
+                                                            form (E.SubsetEqPair (s2,s1)))
+
+    | (WFAddrSubset, E.SetT s1, E.SetT s2) -> F.And(form (E.InEq (t2,t1)),
+                                                    form (E.SubsetEq (s2,s1)))
+    | (WFElemSubset, E.SetElemT s1, E.SetElemT s2) -> F.And(form (E.InEq (t2,t1)),
+                                                            form (E.SubsetEqElem (s2,s1)))
+    | (WFTidSubset, E.SetThT s1, E.SetThT s2) -> F.And(form (E.InEq (t2,t1)),
+                                                       form (E.SubsetEqTh (s2,s1)))
+    | _ -> assert false in
   let cons (eq:delta_op_t) (op:wf_op_t) (t1:E.term) (t2:E.term) : E.formula =
     match (op, eq) with
     | (_, Preserve) -> form (E.Eq (t2, t1))
-    | (WFIntSubset, Decrement)  -> begin
-                                     match (t1, t2) with
-                                     | (E.SetIntT s1, E.SetIntT s2) ->
-                                         F.And(form (E.InEq (t2, t1)),
-                                               form (E.SubsetEqInt (s2, s1)))
-                                     | _ -> assert false
-                                   end
-    | (WFPairSubset, Decrement) -> begin
-                                    match (t1, t2) with
-                                    | (E.SetPairT s1, E.SetPairT s2) ->
-                                        F.And(form (E.InEq (t2, t1)),
-                                              form (E.SubsetEqPair (s2, s1)))
-                                    | _ -> assert false
-                                   end
     | (WFIntLess, Decrement)    -> begin
                                     match (t1, t2) with
                                     | (E.IntT i1, E.IntT i2) -> form(E.Less (i2, i1))
                                     | _ -> assert false
-                                   end in
+                                   end
+    | (WFIntSubset, Decrement)
+    | (WFPairSubset, Decrement)
+    | (WFAddrSubset, Decrement)
+    | (WFElemSubset, Decrement)
+    | (WFTidSubset, Decrement) -> build_dec op t1 t2 in
   if AcceptanceSet.mem e accept.bad then begin
     let (n,m,t) = e in
     Debug.infoMsg ("IS BAD: " ^ (node_id_to_str n) ^ " -> " ^
