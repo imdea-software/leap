@@ -20,7 +20,7 @@ let defaultPos () = (module Yices : BACKEND_POS)
 
 (* Backends that support TLL reasoning *)
 let tllTbl : (string, (module BACKEND_TLL)) Hashtbl.t = Hashtbl.create 2
-let _ = Hashtbl.add tllTbl Yices.identifier (module Yices : BACKEND_TLL)
+(*let _ = Hashtbl.add tllTbl Yices.identifier (module Yices : BACKEND_TLL)*)
 let _ = Hashtbl.add tllTbl Z3.identifier    (module Z3    : BACKEND_TLL)
 let defaultTll () = (module Z3 : BACKEND_TLL)
 

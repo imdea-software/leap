@@ -546,7 +546,7 @@ struct
     B.add_string buf
       ("(define-fun lastlockfrom0 ((h " ^heap_s^ ") (p " ^path_s^ ")) " ^addr_s^ "\n" ^
        "  (if (islockedpos h p 0) (getaddrat p 0) null))\n");
-    for i=(num_addr-1) downto 1 do
+    for i = 1 to (num_addr-1) do
       let stri    = (string_of_int i) in
       let strprev = (string_of_int (i - 1)) in
           B.add_string buf
@@ -945,10 +945,7 @@ struct
     if List.mem Expr.Set     req_sorts then smt_set_preamble buf ;
     if List.mem Expr.SetTh   req_sorts then smt_setth_preamble buf ;
     if List.mem Expr.SetElem req_sorts then smt_setelem_preamble buf ;
-    if List.mem Expr.Path    req_sorts then begin
-                                              smt_path_preamble buf num_addr ;
-                                              smt_ispath_def buf num_addr
-                                            end;
+    if List.mem Expr.Path    req_sorts then smt_path_preamble buf num_addr ;
     if List.mem Expr.Unknown req_sorts then smt_unknown_preamble buf ;
     smt_pos_preamble buf
     
@@ -1034,6 +1031,7 @@ struct
     (* Path *)
     if List.mem Expr.Path req_sorts then
       begin
+        smt_ispath_def buf num_addr;
         smt_rev_def buf num_addr ;
         smt_epsilon_def buf num_addr ;
         smt_singletonpath_def buf num_addr ;

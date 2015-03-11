@@ -647,7 +647,7 @@ struct
     B.add_string buf
       ("(define-fun lastlockfrom0 ((h " ^heap_s^ ") (p " ^path_s^ ")) " ^addr_s^ "\n" ^
        "  (if (islockedpos h p 0) (getaddrat p 0) null))\n");
-    for i=(num_addr-1) downto 1 do
+    for i = 1 to (num_addr-1) do
       let stri    = (string_of_int i) in
       let strprev = (string_of_int (i-1)) in
       B.add_string buf
@@ -656,7 +656,7 @@ struct
     done ;
     B.add_string buf
       ("(define-fun lastlock ((h " ^heap_s^ ") (p " ^path_s^ ") ) " ^addr_s^ "\n" ^
-       "  (if (islockedpos h p " ^strlast^ ") (getaddrat p " ^strlast^ ") (firstlockfrom" ^strprelast^ " h p)))\n")
+       "  (if (islockedpos h p " ^strlast^ ") (getaddrat p " ^strlast^ ") (lastlockfrom" ^strprelast^ " h p)))\n")
 
 
   let z3_cell_lock (buf:B.t) : unit =
@@ -1120,10 +1120,7 @@ struct
     if List.mem Expr.Set     req_sorts then z3_set_preamble buf ;
     if List.mem Expr.SetTh   req_sorts then z3_setth_preamble buf ;
     if List.mem Expr.SetElem req_sorts then z3_setelem_preamble buf ;
-    if List.mem Expr.Path    req_sorts then begin
-                                              z3_path_preamble buf num_addr ;
-                                              z3_ispath_def buf num_addr
-                                            end;
+    if List.mem Expr.Path    req_sorts then z3_path_preamble buf num_addr ;
     if List.mem Expr.Unknown req_sorts then z3_unknown_preamble buf ;
     z3_pos_preamble buf
 
@@ -1331,6 +1328,7 @@ struct
     (* Path *)
     if List.mem Expr.Path req_sorts then
       begin
+        z3_ispath_def buf num_addr;
         z3_rev_def buf num_addr ;
         z3_epsilon_def buf ;
         z3_singletonpath_def buf ;

@@ -129,6 +129,7 @@ assume
 :ins_prev_advance[
                                 curr := prev->next;
 :ins_head_next_diff]
+:ins_curr_def[
 :ins_follows[
                                 curr->lock;
 :ins_prev_is_head]
@@ -181,6 +182,7 @@ assume
 :ins_releases_last_lock
                                 curr->unlock;
 :ins_owns_curr_two]
+:ins_curr_def]
 :ins_diff]
 :ins_insertion_process]
 :ins_return
