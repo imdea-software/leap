@@ -183,7 +183,10 @@ module Make (C:Core.S) : S =
               (PVD.EdgeInfoSet.fold (fun (kind,trans) xs ->
                 let beta = PVD.beta pvd (n,m,kind) in
                 
-                let voc = E.ThreadSet.union (E.voc_term (fst accept.PVD.delta))
+                let delta_voc = List.fold_left (fun set (t,_) ->
+                                  E.ThreadSet.union set (E.voc_term t)
+                                ) E.ThreadSet.empty accept.PVD.delta in
+                let voc = E.ThreadSet.union delta_voc
                                             (E.voc_from_list [mu_n;unprimed_mu_m;beta]) in
                 match trans with
                 | PVD.NoLabel ->

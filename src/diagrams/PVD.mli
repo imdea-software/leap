@@ -16,7 +16,7 @@ type wf_op_t =
 
 type acceptance_t = {good : AcceptanceSet.t;
                      bad  : AcceptanceSet.t;
-                     delta: (Expression.term * wf_op_t); }
+                     delta: (Expression.term * wf_op_t) list; }
 
 module NodeIdSet : Set.S with type elt = node_id_t
 module EdgeInfoSet : Set.S with type elt = edge_info_t
@@ -31,7 +31,7 @@ val new_pvd : string ->
               (box_id_t * node_id_t list * Expression.ThreadSet.elt) list ->
               (node_id_t list) ->
               (node_id_t * node_id_t * (edge_type_t * trans_t)) list ->
-              (accept_triple_t list * accept_triple_t list * (Expression.term * wf_op_t)) list ->
+              (accept_triple_t list * accept_triple_t list * (Expression.term * wf_op_t) list) list ->
               t
 
 val def_cond_list : conditions_t list

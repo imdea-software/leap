@@ -59,7 +59,7 @@ type delta_op_t =
 
 type acceptance_t = {good : AcceptanceSet.t;
                      bad  : AcceptanceSet.t;
-                     delta: (E.term * wf_op_t); }
+                     delta: (E.term * wf_op_t) list; }
 
 type next_table_t = (node_id_t, NodeIdSet.t) Hashtbl.t
 type tau_table_t = (node_id_t * int * E.V.t, NodeIdSet.t) Hashtbl.t
@@ -196,10 +196,13 @@ let to_str (pvd:t) : string =
                                      ) s [] in
                          let good_list_str = String.concat "," (map acc.good) in
                          let bad_list_str = String.concat "," (map acc.bad) in
+                         let delta_list_str = String.concat ";"
+                                (List.map (fun (t,op) ->
+                                  "(" ^(E.term_to_str t)^ "," ^(wf_op_to_str op)^ ")"
+                                ) acc.delta) in
                          "\n  << Bad : {" ^bad_list_str^ "};\n" ^
                            "     Good: {" ^good_list_str^ "};\n" ^
-                           "     (" ^(E.term_to_str (fst acc.delta))^ "," ^
-                                      (wf_op_to_str (snd acc.delta))^ " >>" ^ str
+                           "     [" ^delta_list_str^ "] >>" ^ str
                        ) "" pvd.acceptance in
   ("Diagram[" ^pvd.name^ "]\n\n" ^
    "Nodes: " ^nodes_str^ "\n\n" ^
@@ -421,12 +424,12 @@ let check_and_define_edges (nTbl:node_table_t)
 
 let check_acceptance (nTbl:node_table_t)
                      (eTbl:edge_table_t)
-                     (acs:(accept_triple_t list * accept_triple_t list * (E.term * wf_op_t)) list)
+                     (acs:(accept_triple_t list * accept_triple_t list * (E.term * wf_op_t) list) list)
         : acceptance_t list =
   let fill_set xs = List.fold_left (fun set info ->
                       AcceptanceSet.add info set
                     ) AcceptanceSet.empty xs in
-  let validate_delta (t:E.term) (op:wf_op_t) : unit =
+  let validate_delta ((t,op):E.term * wf_op_t) : unit =
     match (E.term_sort t, op) with
     | (E.SetInt, WFIntSubset)
     | (E.SetPair, WFPairSubset)
@@ -438,8 +441,10 @@ let check_acceptance (nTbl:node_table_t)
                   (E.term_to_str t) (wf_op_to_str op);
              raise(Incorrect_ranking_function(E.term_to_str t))
            end in
-  List.map (fun (bads, goods, (delta,op)) ->
-    validate_delta delta op;
+  List.map (fun (bads, goods, ds) ->
+    List.iter validate_delta ds;
+
+
     List.iter (fun (n1,n2,kind) ->
       is_defined nTbl n1;
       is_defined nTbl n2;
@@ -451,7 +456,7 @@ let check_acceptance (nTbl:node_table_t)
     {
       good = goodSet;
       bad = badSet;
-      delta = (delta, op);
+      delta = ds;
     }
   ) acs
 
@@ -463,7 +468,7 @@ let new_pvd (name:string)
             (bs:box_t list)
             (is:node_id_t list)
             (es:edge_t list)
-            (acs:(accept_triple_t list * accept_triple_t list * (E.term * wf_op_t)) list) : t =
+            (acs:(accept_triple_t list * accept_triple_t list * (E.term * wf_op_t) list) list) : t =
   let (nTbl,bTbl,free_voc_nodes) = check_and_define_nodes ns bs in
   let iSet = build_initial nTbl is in
   (* We implicitly add self-loops *)
@@ -573,8 +578,8 @@ let ranking_function (ante:E.formula)
                      (accept:acceptance_t)
                      (e:(node_id_t * node_id_t * edge_type_t)) : E.formula =
   let form = F.atom_to_formula in
-  let cons (t1:E.term) (t2:E.term) (eq:delta_op_t) : E.formula =
-    match (snd accept.delta, eq) with
+  let cons (eq:delta_op_t) (op:wf_op_t) (t1:E.term) (t2:E.term) : E.formula =
+    match (op, eq) with
     | (_, Preserve) -> form (E.Eq (t2, t1))
     | (WFIntSubset, Decrement)  -> begin
                                      match (t1, t2) with
@@ -600,17 +605,37 @@ let ranking_function (ante:E.formula)
     Debug.infoMsg ("IS BAD: " ^ (node_id_to_str n) ^ " -> " ^
       (node_id_to_str m));
     let _ = match t with | Any -> Debug.infoMsg "ANY" | Pres -> Debug.infoMsg "PRES" in
+    let (disjs, _) =
+      List.fold_left (fun (ds,eq_phi) (pre,op) ->
+        let post = E.prime_modified_term [ante] pre in
+        let dec = cons Decrement op pre post in
+        let pres = cons Preserve op pre post in
+        match ds with
+        | [] -> ([dec],pres)
+        | _  -> ((F.And (dec, eq_phi))::ds, F.And(pres, eq_phi))
+      ) ([],F.True) accept.delta in
+    F.disj_list disjs
+(*
     let pre = fst accept.delta in
     let post = E.prime_modified_term [ante] (fst accept.delta) in
     cons pre post Decrement
+    *)
   end else if (not (AcceptanceSet.mem e (AcceptanceSet.union accept.good accept.bad))) then begin
     let (n,m,t) = e in
     Debug.infoMsg ("IS NOT CARE: " ^ (node_id_to_str n) ^ " -> " ^
     (node_id_to_str m));
     let _ = match t with | Any -> Debug.infoMsg "ANY" | Pres -> Debug.infoMsg "PRES" in
+    F.conj_list (
+      List.map (fun (pre,op) ->
+        let post = E.prime_modified_term [ante] pre in
+        cons Preserve op pre post
+      ) accept.delta)
+(*
     let pre = fst accept.delta in
     let post = E.prime_modified_term [ante] (fst accept.delta) in
+    (* All functions in delta should be preserved *)
     cons pre post Preserve
+*)
   end else
     F.True
 

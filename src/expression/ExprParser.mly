@@ -640,8 +640,10 @@ let define_ident (proc_name:E.V.procedure_name)
 %type <(PVD.accept_triple_t) list> accept_edge_list
 %type <(PVD.accept_triple_t)> accept_edge
 %type <PVD.wf_op_t> wf_op
-%type <(PVD.accept_triple_t list * PVD.accept_triple_t list * (E.term * PVD.wf_op_t)) list> acceptance_list
-%type <(PVD.accept_triple_t list * PVD.accept_triple_t list * (E.term * PVD.wf_op_t))> acceptance
+%type <(PVD.accept_triple_t list * PVD.accept_triple_t list * (E.term * PVD.wf_op_t) list) list> acceptance_list
+%type <(PVD.accept_triple_t list * PVD.accept_triple_t list * (E.term * PVD.wf_op_t) list)> acceptance
+%type <(E.term * PVD.wf_op_t) list> delta_list
+%type <(E.term * PVD.wf_op_t)> delta
 
 
 
@@ -795,13 +797,25 @@ accept_edge :
 acceptance :
   | OPEN_ANGLE BAD COLON OPEN_SET accept_edge_list CLOSE_SET SEMICOLON
                GOOD COLON OPEN_SET accept_edge_list CLOSE_SET SEMICOLON
-               OPEN_PAREN term COMMA wf_op CLOSE_PAREN CLOSE_ANGLE
+               OPEN_BRACKET delta_list CLOSE_BRACKET CLOSE_ANGLE
     {
       let bad = $5 in
       let good = $11 in
-      let delta = ($15, $17) in
+      let delta = $15 in
       (bad, good, delta)
     }
+
+
+delta_list :
+  | delta
+    { [$1] }
+  | delta SEMICOLON delta_list
+    { $1 :: $3}
+    
+    
+delta :
+  | OPEN_PAREN term COMMA wf_op CLOSE_PAREN
+    { ($2, $4) }
 
 
 wf_op :
