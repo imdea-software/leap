@@ -207,9 +207,13 @@ let _ =
                                       (Gparser.pvd_support Glexer.norm)) in
         let module PVDSolver = Diagrams.Make(LeapCore) in
   (*      let module DSolver = Diagrams.Make(LeapCore) in *)
-        print_endline "PVD";
+        print_endline "PVD Analysis";
         print_endline (PVD.to_str pvd);
-        ignore (PVDSolver.solve_from_pvd pvd pvd_support)
+        let pvdOpt =
+          match (!LeapArgs.pvdConds, !LeapArgs.pvdNodes) with
+          | ([],[]) -> None
+          | (cs,ns) -> Some (Diagrams.new_options cs ns) in
+        ignore (PVDSolver.solve_from_pvd pvd pvd_support ~opt:pvdOpt)
       end;
 
 

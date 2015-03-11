@@ -42,6 +42,8 @@ val invFolder : string ref
 val iGraphFile : string ref
 val focusPC : int list ref
 val ignorePC : int list ref
+val pvdConds : PVD.conditions_t list ref
+val pvdNodes : PVD.node_id_t list ref
 val vdFile : string ref
 val pvdFile : string ref
 val pvdSupport : string ref

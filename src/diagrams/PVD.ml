@@ -39,6 +39,9 @@ type edge_table_t = ((node_id_t * node_id_t), EdgeInfoSet.t) Hashtbl.t
 (* Types for acceptance conditions *)
 type accept_triple_t = (node_id_t * node_id_t * edge_type_t)
 
+(* The conditions to be analyzed for a PVD *)
+type conditions_t = Initiation | Consecution | Acceptance | Fairness
+
 module AcceptanceSet = Set.Make(
   struct
     let compare = Pervasives.compare
@@ -87,6 +90,7 @@ exception BadBox of box_id_t
 exception No_initial
 exception Incorrect_ranking_function of string
 exception Malformed_PVD_support
+exception Unknown_condition_str of string
 
 
 (* Type for Parametrized Verification Diagrams *)
@@ -203,7 +207,23 @@ let to_str (pvd:t) : string =
    "Initial: " ^initial_str^ "\n\n" ^
    "Edges: " ^edges_str^ "\n\n" ^
    "Acceptance: " ^acceptance_str^ "\n")
-   
+  
+
+let cond_to_str (c:conditions_t) : string =
+ match c with
+ | Initiation -> "initiation"
+ | Consecution -> "consecution"
+ | Acceptance -> "acceptance"
+ | Fairness -> "fairness" 
+
+
+let str_to_cond (str:string) : conditions_t =
+  match str with
+  | "initiation" -> Initiation
+  | "consecution" -> Consecution
+  | "acceptance" -> Acceptance
+  | "fairness" -> Fairness
+  | s -> raise(Unknown_condition_str s)
 
 
 (**  Auxiliary constructor functions  **)
@@ -465,6 +485,10 @@ let new_pvd (name:string)
     acceptance = accept_list;
     free_voc = E.ThreadSet.union free_voc_nodes free_voc_edges;
   }
+
+
+let def_cond_list : conditions_t list =
+  [Initiation; Consecution; Acceptance; Fairness]
 
 
 let initial (pvd:t) : NodeIdSet.t =

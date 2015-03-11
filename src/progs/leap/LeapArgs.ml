@@ -45,6 +45,8 @@ let invFolder         = ref ""
 let iGraphFile        = ref ""
 let focusPC           = ref []
 let ignorePC          = ref []
+let pvdConds          = ref []
+let pvdNodes          = ref []
 let vdFile            = ref ""
 let pvdFile           = ref ""
 let pvdSupport        = ref ""
@@ -131,14 +133,32 @@ let parse_int_list (s:string) (field:int list ref) (fieldName:string) : unit =
   let split = Str.split regexp s in
   try field := List.map int_of_string split
   with e -> Interface.Err.msg"Bad argument" $
-      "--" ^ fieldName^ " option expects a list of integers as argument.";
+      "-" ^ fieldName^ " option expects a list of integers as argument.";
       raise(e)
+
 
 let focusPos (s:string) : unit =
   parse_int_list s focusPC "focus"
 
 let ignorePos (s:string) : unit =
   parse_int_list s ignorePC "ignore"
+
+let pvdConds_f (s:string) : unit =
+  try
+    pvdConds := List.map PVD.str_to_cond (Str.split (Str.regexp ",") s)
+  with
+    (PVD.Unknown_condition_str s) as e ->
+    begin
+      Interface.Err.msg"Bad argument" $
+      "-pvdConds option received " ^s^ " as argument, but it expects a list " ^
+      "of PVD conditions. Available options are " ^
+      (String.concat "," (List.map PVD.cond_to_str PVD.def_cond_list));
+      raise(e)
+    end
+
+
+let pvdNodes_f (s:string) : unit =
+    pvdNodes := Str.split (Str.regexp ",") s
 
 
 let opts = [
@@ -161,6 +181,13 @@ let opts = [
   ("-ignore",
      Arg.String ignorePos,
      "[n1,n2..]  Ignores the given program locations. It overrides \"-focus\".");
+  ("-pvdconds",
+     Arg.String pvdConds_f,
+     "[c1,c2..]  Consider only these conditions for PVD analysis. Options are: " ^
+      String.concat "," (List.map PVD.cond_to_str PVD.def_cond_list));
+  ("-pvdnodes",
+     Arg.String pvdNodes_f,
+     "[n1,n2..]  Consider only these nodes for PVD analysis.");
 
   ("-dp",
      Arg.String set_dp,
