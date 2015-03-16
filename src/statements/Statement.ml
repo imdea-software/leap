@@ -343,19 +343,6 @@ let build_var ?(nature=E.RealVar)
     nature = nature;
   }
 
-(*
-let var_id (v:variable) : varId =
-  let (id,_,_,_) = v in id
-
-let var_sort (v:variable) : E.sort =
-  let (_,s,_,_) = v in s
-
-let var_proc (v:variable) : string option =
-  let (_,_,p,_) = v in p
-
-let var_k (v:variable) : E.var_nature =
-  let (_,_,_,k) = v in k
-*)
 
 let var_replace_sort (v:variable) (s:E.sort) : variable =
   build_var v.id s v.scope ~nature:v.nature
@@ -761,21 +748,6 @@ and expr_to_str_aux (loc:bool) (expr:expr_t) : string =
 
 and boolean_to_str_aux (loc:bool) (expr:boolean) : string =
   F.formula_to_str (atom_to_str loc) expr
-(*
-  match expr with
-    Literal(lit)          -> (atom_to_str loc lit)
-  | True                  -> sprintf "true"
-  | False                 -> sprintf "false"
-  | And(f1, f2)           -> sprintf "%s /\\ %s" (boolean_to_str_aux loc f1)
-                                                 (boolean_to_str_aux loc f2)
-  | Or(f1,f2)             -> sprintf "%s \\/ %s" (boolean_to_str_aux loc f1)
-                                                 (boolean_to_str_aux loc f2)
-  | Not(f)                -> sprintf "~ %s" (boolean_to_str_aux loc f)
-  | Implies(f1,f2)        -> sprintf "%s -> %s" (boolean_to_str_aux loc f1)
-                                                (boolean_to_str_aux loc f2)
-  | Iff (f1,f2)           -> sprintf "%s <-> %s" (boolean_to_str_aux loc f1)
-                                                 (boolean_to_str_aux loc f2)
-*)
 
 
 (* Type conversion functions *)
@@ -978,8 +950,8 @@ and tid_to_expr_th (t:tid) : E.tid =
   | CellLockIdAt (c,l) -> E.CellLockIdAt (cell_to_expr_cell c,
                                           integer_to_expr_integer l)
 *)
-  | TidArrayRd (a,t)  -> raise(Not_supported_conversion(tid_to_str true t))
-  | TidArrRd (a,l)    -> raise(Not_supported_conversion(tid_to_str true t))
+  | TidArrayRd _       -> raise(Not_supported_conversion(tid_to_str true t))
+  | TidArrRd _         -> raise(Not_supported_conversion(tid_to_str true t))
   | PointerLockid _    -> raise(Not_supported_conversion(tid_to_str true t))
   | PointerLockidAt _  -> raise(Not_supported_conversion(tid_to_str true t))
   | PairTid _          -> raise(Not_supported_conversion(tid_to_str true t))
@@ -1190,18 +1162,6 @@ and atom_to_expr_atom (a:atom) : E.atom =
 
 and boolean_to_expr_formula (b:boolean) : E.formula =
   F.formula_conv atom_to_expr_atom b
-(*
-  let to_formula = boolean_to_expr_formula in
-  match b with
-    Literal l         -> E.Literal (literal_to_expr_literal l)
-  | True              -> E.True
-  | False             -> E.False
-  | And (b1,b2)       -> E.And     (to_formula b1, to_formula b2)
-  | Or (b1,b2)        -> E.Or      (to_formula b1, to_formula b2)
-  | Not b             -> E.Not     (to_formula b)
-  | Implies (b1,b2)   -> E.Implies (to_formula b1, to_formula b2)
-  | Iff (b1,b2)       -> E.Iff     (to_formula b1, to_formula b2)
-*)
 
 
 and expr_to_expr_expr (e:expr_t) : E.expr_t =
@@ -1284,7 +1244,7 @@ and var_kind_expr (kind:E.var_nature) (e:expr_t) : term list =
 and var_kind_array (kind:E.var_nature) (a:arrays) : term list =
   match a with
     VarArray v        -> if v.nature = kind then [ArrayT a] else []
-  | ArrayUp(arr,t,e)  -> (var_kind_array kind arr) @ (var_kind_expr kind e)
+  | ArrayUp(arr,_,e)  -> (var_kind_array kind arr) @ (var_kind_expr kind e)
 
 
 and var_kind_addrarr (kind:E.var_nature) (a:addrarr) : term list =
@@ -1315,7 +1275,7 @@ and var_kind_set (kind:E.var_nature) (e:set) : term list =
   | AddrToSet(mem,addr) -> (var_kind_mem kind mem) @ (var_kind_addr kind addr)
   | AddrToSetAt(m,a,l)  -> (var_kind_mem kind m) @ (var_kind_addr kind a) @
                            (var_kind_int kind l)
-  | SetArrayRd(arr,t)   -> (var_kind_array kind arr)
+  | SetArrayRd(arr,_)   -> (var_kind_array kind arr)
 
 
 and var_kind_addr (kind:E.var_nature) (a:addr) : term list =
@@ -1331,7 +1291,7 @@ and var_kind_addr (kind:E.var_nature) (a:addr) : term list =
                                  (var_kind_path kind path)
   | LastLocked(mem,path)      -> (var_kind_mem kind mem) @
                                  (var_kind_path kind path)
-  | AddrArrayRd(arr,t)        -> (var_kind_array kind arr)
+  | AddrArrayRd(arr,_)        -> (var_kind_array kind arr)
   | AddrArrRd(arr,i)          -> (var_kind_addrarr kind arr) @
                                  (var_kind_int kind i)
   | Malloc(data,addr,th)      -> (var_kind_elem kind data) @
@@ -1352,7 +1312,7 @@ and var_kind_elem (kind:E.var_nature) (e:elem) : term list =
   match e with
     VarElem v           -> if v.nature = kind then [ElemT e] else []
   | CellData(cell)      -> (var_kind_cell kind cell)
-  | ElemArrayRd(arr,t)  -> (var_kind_array kind arr)
+  | ElemArrayRd(arr,_)  -> (var_kind_array kind arr)
   | PointerData a       -> (var_kind_addr kind a)
   | HavocListElem       -> []
   | HavocSkiplistElem   -> []
@@ -1367,7 +1327,7 @@ and var_kind_th (kind:E.var_nature) (th:tid) : term list =
   | CellLockId(cell)      -> (var_kind_cell kind cell)
   | CellLockIdAt(cell,l)  -> (var_kind_cell kind cell) @
                              (var_kind_int kind l)
-  | TidArrayRd(arr,t)     -> (var_kind_array kind arr)
+  | TidArrayRd(arr,_)     -> (var_kind_array kind arr)
   | TidArrRd(arr,i)       -> (var_kind_tidarr kind arr) @
                              (var_kind_int kind i)
   | PointerLockid a       -> (var_kind_addr kind a)
@@ -1399,7 +1359,7 @@ and var_kind_cell (kind:E.var_nature) (c:cell) : term list =
                               (var_kind_int kind l)
   | CellAt(mem,addr)       -> (var_kind_mem kind mem) @
                               (var_kind_addr kind addr)
-  | CellArrayRd(arr,t)     -> (var_kind_array kind arr)
+  | CellArrayRd(arr,_)     -> (var_kind_array kind arr)
 
 
 and var_kind_setth (kind:E.var_nature) (s:setth) : term list =
@@ -1410,7 +1370,7 @@ and var_kind_setth (kind:E.var_nature) (s:setth) : term list =
   | UnionTh(s1,s2)      -> (var_kind_setth kind s1) @ (var_kind_setth kind s2)
   | IntrTh(s1,s2)       -> (var_kind_setth kind s1) @ (var_kind_setth kind s2)
   | SetdiffTh(s1,s2)    -> (var_kind_setth kind s1) @ (var_kind_setth kind s2)
-  | SetThArrayRd(arr,t) -> (var_kind_array kind arr)
+  | SetThArrayRd(arr,_) -> (var_kind_array kind arr)
 
 
 and var_kind_setint (kind:E.var_nature) (s:setint) : term list =
@@ -1424,7 +1384,7 @@ and var_kind_setint (kind:E.var_nature) (s:setint) : term list =
                             (var_kind_setint kind s2)
   | SetdiffInt(s1,s2)    -> (var_kind_setint kind s1) @
                             (var_kind_setint kind s2)
-  | SetIntArrayRd(arr,t) -> (var_kind_array kind arr)
+  | SetIntArrayRd(arr,_) -> (var_kind_array kind arr)
 
 
 and var_kind_setelem (kind:E.var_nature) (s:setelem) : term list =
@@ -1439,7 +1399,7 @@ and var_kind_setelem (kind:E.var_nature) (s:setelem) : term list =
   | SetdiffElem(s1,s2)    -> (var_kind_setelem kind s1) @
                              (var_kind_setelem kind s2)
   | SetToElems(s,m)       -> (var_kind_set kind s) @ (var_kind_mem kind m)
-  | SetElemArrayRd(arr,t) -> (var_kind_array kind arr)
+  | SetElemArrayRd(arr,_) -> (var_kind_array kind arr)
 
 
 and var_kind_setpair (kind:E.var_nature) (s:setpair) : term list =
@@ -1453,7 +1413,7 @@ and var_kind_setpair (kind:E.var_nature) (s:setpair) : term list =
                              (var_kind_setpair kind s2)
   | SetdiffPair(s1,s2)    -> (var_kind_setpair kind s1) @
                              (var_kind_setpair kind s2)
-  | SetPairArrayRd(arr,t) -> (var_kind_array kind arr)
+  | SetPairArrayRd(arr,_) -> (var_kind_array kind arr)
 
 
 and var_kind_path (kind:E.var_nature) (p:path) : term list =
@@ -1464,7 +1424,7 @@ and var_kind_path (kind:E.var_nature) (p:path) : term list =
   | GetPath(mem,add_from,add_to) -> (var_kind_mem kind mem) @
                                     (var_kind_addr kind add_from) @
                                     (var_kind_addr kind add_to)
-  | PathArrayRd(arr,t)           -> (var_kind_array kind arr)
+  | PathArrayRd(arr,_)           -> (var_kind_array kind arr)
 
 
 and var_kind_mem (kind:E.var_nature) (m:mem) : term list =
@@ -1473,19 +1433,19 @@ and var_kind_mem (kind:E.var_nature) (m:mem) : term list =
   | Update(mem,add,cell) -> (var_kind_mem kind mem) @
                             (var_kind_addr kind add) @
                             (var_kind_cell kind cell)
-  | MemArrayRd(arr,t)    -> (var_kind_array kind arr)
+  | MemArrayRd(arr,_)    -> (var_kind_array kind arr)
 
 
 and var_kind_int (kind:E.var_nature) (i:integer) : term list =
   match i with
-    IntVal(i)         -> []
+    IntVal _          -> []
   | VarInt v          -> if v.nature = kind then [IntT i] else []
   | IntNeg(i)         -> (var_kind_int kind i)
   | IntAdd(i1,i2)     -> (var_kind_int kind i1) @ (var_kind_int kind i2)
   | IntSub(i1,i2)     -> (var_kind_int kind i1) @ (var_kind_int kind i2)
   | IntMul(i1,i2)     -> (var_kind_int kind i1) @ (var_kind_int kind i2)
   | IntDiv(i1,i2)     -> (var_kind_int kind i1) @ (var_kind_int kind i2)
-  | IntArrayRd(arr,t) -> (var_kind_array kind arr)
+  | IntArrayRd(arr,_) -> (var_kind_array kind arr)
   | IntSetMin(s)      -> (var_kind_setint kind s)
   | IntSetMax(s)      -> (var_kind_setint kind s)
   | HavocLevel        -> []
@@ -1498,7 +1458,7 @@ and var_kind_pair (kind:E.var_nature) (p:pair) : term list =
   | IntTidPair (i,t)   -> (var_kind_int kind i) @ (var_kind_th kind t)
   | SetPairMin ps      -> (var_kind_setpair kind ps)
   | SetPairMax ps      -> (var_kind_setpair kind ps)
-  | PairArrayRd(arr,t) -> (var_kind_array kind arr)
+  | PairArrayRd(arr,_) -> (var_kind_array kind arr)
 
 
 and var_kind_atom (kind:E.var_nature) (a:atom) : term list =
@@ -1556,13 +1516,13 @@ and var_kind_atom (kind:E.var_nature) (a:atom) : term list =
   | Eq(exp)                      -> (var_kind_eq kind exp)
   | InEq(exp)                    -> (var_kind_ineq kind exp)
   | BoolVar v                    -> if v.nature = kind then [VarT v] else []
-  | BoolArrayRd(arr,t)           -> (var_kind_array kind arr)
+  | BoolArrayRd(arr,_)           -> (var_kind_array kind arr)
 
 
 and var_kind_fs () = F.make_fold
                        F.GenericLiteralFold
                        (fun info a -> var_kind_atom info a)
-                       (fun info -> [])
+                       (fun _ -> [])
                        (@)
 
 
@@ -1576,21 +1536,6 @@ and var_kind_ineq (kind:E.var_nature) ((t1,t2):diseq) : term list =
 
 and var_kind_boolean (kind:E.var_nature) (b:boolean) : term list =
   F.formula_fold (var_kind_fs()) kind b
-(*
-    match b with
-      Literal(lit)           -> (var_kind_literal kind lit)
-    | True               -> []
-    | False              -> []
-    | And(f1,f2)         -> (var_kind_boolean kind f1) @
-                            (var_kind_boolean kind f2)
-    | Or(f1,f2)          -> (var_kind_boolean kind f1) @
-                            (var_kind_boolean kind f2)
-    | Not(f)             -> (var_kind_boolean kind f)
-    | Implies(f1,f2)     -> (var_kind_boolean kind f1) @
-                            (var_kind_boolean kind f2)
-    | Iff (f1,f2)        -> (var_kind_boolean kind f1) @
-                            (var_kind_boolean kind f2)
-*)
 
 
 let var_kind (kind:E.var_nature) (e:expr_t) : term list =
@@ -1657,7 +1602,7 @@ let rec statement_to_str (n:int) (s:statement_t) =
       pos opt ^ pad n ("while ("^ (boolean_to_simp_str b) ^")")
         (Option.map_default (statement_to_str n) "" g)  ^
                             (statement_to_str (n+1) st) ^ pad n "end while" ""
-  | StSelect (st,g,opt) ->
+  | StSelect (st,_,opt) ->
       pos opt ^ pad n "choose" "" ^ (String.concat (pad n "or" "")
         (List.map (statement_to_str (n+1)) st)) ^ pad n "end choose" ""
   | StAssign (v,e,g,opt) ->
@@ -1675,7 +1620,7 @@ let rec statement_to_str (n:int) (s:statement_t) =
       String.concat "" (List.map (statement_to_str n) xs)
   | StCall (t_opt,proc,params,g,opt) ->
       pos opt ^ pad n ((match t_opt with
-                        | Some t -> "t := "
+                        | Some _ -> "t := "
                         | None    -> "") ^
       "call " ^ proc ^ "(" ^
       (String.concat "," $ List.map (term_to_str_aux false) params) ^ ")")
@@ -1687,12 +1632,6 @@ let rec statement_to_str (n:int) (s:statement_t) =
 
 
 (* Statement formula manipulation *)
-(*
-let conj_list (bs:boolean list) : boolean =
-  match bs with
-    [] -> True
-  | x::xs -> List.fold_left (fun a b -> And(a,b)) x xs
-*)
 
 
 (* STATEMENT INFORMATION *)
@@ -1800,14 +1739,6 @@ let rec get_last_st_pos (st:statement_t) : E.pc_t =
            info.pos
 
 
-(*
-let rec get_last_st_pos (st:statement_t) : pc_t =
-  match st with
-    StSeq [] -> raise(Empty_sequence)
-  | StSeq xs -> get_last_st_pos (lastElem xs)
-  | s        -> get_st_pos s
-*)
-
 
 let rec get_fst_st_pos (st:statement_t) : E.pc_t =
   match st with
@@ -1819,14 +1750,16 @@ let rec get_fst_st_pos (st:statement_t) : E.pc_t =
 let rec enabling_condition_aux (is_ghost:bool)
                                (th:E.V.shared_or_local)
                                (st:statement_t) : E.formula list list =
-  let e_cond       = enabling_condition_aux in
-  let to_expr      = boolean_to_expr_formula>>(E.param th) in
-  let to_addr      = addr_to_expr_addr in
-  let to_cell      = cell_to_expr_cell in
-  let read_at a    = E.CellLockId(E.CellAt(E.heap, to_addr a)) in
-  let ghost gc     = Option.map_default (fun stm ->
-                       List.flatten $ e_cond true th stm
-                     ) [] gc in
+  let e_cond          = enabling_condition_aux in
+  let to_expr         = boolean_to_expr_formula>>(E.param th) in
+  let to_addr         = addr_to_expr_addr in
+  let to_cell         = cell_to_expr_cell in
+  let read_at a       = E.CellLockId(E.CellAt(E.heap, to_addr a)) in
+  let read_at_lvl a l = E.CellLockIdAt(E.CellAt(E.heap, to_addr a),
+                                       integer_to_expr_integer l) in
+  let ghost gc        = Option.map_default (fun stm ->
+                          List.flatten $ e_cond true th stm
+                        ) [] gc in
   let pos info = match info with
                    None   -> []
                  | Some i -> if is_ghost then
@@ -1845,7 +1778,7 @@ let rec enabling_condition_aux (is_ghost:bool)
   | StWhile   (c,_,  g,info) -> [(to_expr c) :: pos info @ ghost g;
                                  (to_expr (F.Not c)) :: pos info @ ghost g]
   | StSelect  (_,    g,info) -> [pos info @ ghost g]
-  | StAssign  (t,e,  g,info) ->
+  | StAssign  (_,e,  g,info) ->
       let cond =
         begin
           match e with
@@ -1872,22 +1805,22 @@ let rec enabling_condition_aux (is_ghost:bool)
                 | E.V.Local t -> [E.eq_tid   (read_at a) (E.VarTh t)]
                 | E.V.Shared  -> [E.ineq_tid (read_at a) E.NoTid]
               end
-          | UnitLockAt (a,l)   -> [E.eq_tid (read_at a) E.NoTid]
+          | UnitLockAt (a,l)   -> [E.eq_tid (read_at_lvl a l) E.NoTid]
           | UnitUnlockAt (a,l) ->
               begin
                 match th with
-                | E.V.Local t -> [E.eq_tid   (read_at a) (E.VarTh t)]
-                | E.V.Shared  -> [E.ineq_tid (read_at a) E.NoTid]
+                | E.V.Local t -> [E.eq_tid   (read_at_lvl a l) (E.VarTh t)]
+                | E.V.Shared  -> [E.ineq_tid (read_at_lvl a l) E.NoTid]
               end
         end
       in
         [cond @ pos info @ ghost g]
-  | StAtomic  (stms, g,info) -> [pos info @ ghost g]
+  | StAtomic  (_, g,info) -> [pos info @ ghost g]
                                 (* FIX: Complete the implementation of the
                                         case above *)
   | StSeq _                  -> assert(false)
-  | StCall (t,proc,params,g,info) -> [pos info @ ghost g]
-  | StReturn (t,g,info)      -> [pos info @ ghost g]
+  | StCall (_,_,_,g,info)    -> [pos info @ ghost g]
+  | StReturn (_,g,info)      -> [pos info @ ghost g]
 
 
 
@@ -1895,39 +1828,6 @@ let rec enabling_condition_aux (is_ghost:bool)
 
 let enabling_condition (th:E.V.shared_or_local) (st:statement_t) : E.formula list =
   List.map F.conj_list (enabling_condition_aux false th st)
-
-
-(*
-let get_atomic_effects (st:statement_t)
-                        : (E.formula list * E.formula list * bool) list =
-  match st with
-    StSkip _ -> []
-  | StAwait (c,_,_) -> [([c],[],true); ([E.Not c],[],false)]
-  | StAssign (t,e,_,_) -> [([],E.)]
-  | StIf (c,s1,s2,_,_) -> *)
-
-
-(*
-let rec get_st_atomic_effect (st:statement_t option)
-                              : (E.formula list *
-                                 E.formula list *
-                                 bool) list =
-  match st with
-    None -> []
-  | Some (StSkip _)           -> []
-  | Some (StAwait (c,_,_))    -> [([c],[],true); ([E.Not c],[],false)]
-  | Some (StAssign (t,e,_,_)) -> [([],
-                                   [snd $ E.construct_term_eq t None e],
-                                   true)]
-  | Some (StIf (b,s1,s2,_,_)) ->
-      let xs = get_st_atomic_effect (Some s1) in
-      let ys = get_st_atomic_effect s2 in
-      let xs' = List.map (fun (c,e,j) -> (b::c,e,j)) xs in
-      let ys' = List.map (fun (c,e,j) -> (E.Not b::c,e,j)) ys
-      in
-        xs' @ ys'
-  | _ -> []
-*)
 
 
 let addr_used_in_unit_op (op:unit_operation) : E.addr =

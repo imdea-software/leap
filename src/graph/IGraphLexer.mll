@@ -1,5 +1,4 @@
 {
-open Global
 open IGraphParser
 
 exception LexerError

@@ -2986,28 +2986,28 @@ setth :
       let th = parser_check_type check_type_thid  $3 E.Tid get_str_expr in
         Stm.SinglTh(th)
     }
-  | term UNIONTH term
+  | UNIONTH OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "%s UnionTh %s" (Stm.term_to_str $1)
-                                                   (Stm.term_to_str $3) in
-      let s1 = parser_check_type check_type_setth  $1 E.SetTh get_str_expr in
-      let s2 = parser_check_type check_type_setth  $3 E.SetTh get_str_expr in
+      let get_str_expr() = sprintf "UnionTh(%s,%s)" (Stm.term_to_str $3)
+                                                    (Stm.term_to_str $5) in
+      let s1 = parser_check_type check_type_setth  $3 E.SetTh get_str_expr in
+      let s2 = parser_check_type check_type_setth  $5 E.SetTh get_str_expr in
         Stm.UnionTh(s1,s2)
     }
-  | term INTRTH term
+  | INTRTH OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "%s IntrTh %s" (Stm.term_to_str $1)
-                                                  (Stm.term_to_str $3) in
-      let s1 = parser_check_type check_type_setth  $1 E.SetTh get_str_expr in
-      let s2 = parser_check_type check_type_setth  $3 E.SetTh get_str_expr in
+      let get_str_expr() = sprintf "IntrTh(%s,%s)" (Stm.term_to_str $3)
+                                                   (Stm.term_to_str $5) in
+      let s1 = parser_check_type check_type_setth  $3 E.SetTh get_str_expr in
+      let s2 = parser_check_type check_type_setth  $5 E.SetTh get_str_expr in
         Stm.IntrTh(s1,s2)
     }
-  | term SETDIFFTH term
+  | SETDIFFTH OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "%s SetDiffTh %s" (Stm.term_to_str $1)
-                                                     (Stm.term_to_str $3) in
-      let s1 = parser_check_type check_type_setth  $1 E.SetTh get_str_expr in
-      let s2 = parser_check_type check_type_setth  $3 E.SetTh get_str_expr in
+      let get_str_expr() = sprintf "SetDiffTh(%s,%s)" (Stm.term_to_str $3)
+                                                      (Stm.term_to_str $5) in
+      let s1 = parser_check_type check_type_setth  $3 E.SetTh get_str_expr in
+      let s2 = parser_check_type check_type_setth  $5 E.SetTh get_str_expr in
         Stm.SetdiffTh(s1,s2)
     }
 

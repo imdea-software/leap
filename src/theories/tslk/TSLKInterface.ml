@@ -104,12 +104,6 @@ module Make (SLK : TSLKExpression.S) =
                          let v = E.gen_fresh_var info.fresh_gen_info s in
                          append_if_diff t v; v
                        end in
-(*
-      let rec norm_literal (l:E.literal) : E.literal =
-        match l with
-        | E.Atom a -> E.Atom (norm_atom a)
-        | E.NegAtom a -> E.NegAtom (norm_atom a)
-*)
 
       let rec norm_set (s:E.set) : E.set =
         match s with
@@ -151,13 +145,13 @@ module Make (SLK : TSLKExpression.S) =
         | E.Null                   -> E.Null
         | E.Next _                 -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
         | E.NextAt (c,l)           -> E.NextAt (norm_cell c, norm_int l)
-        | E.ArrAt (c,l)            -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
-        | E.FirstLocked (m,p)      -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
+        | E.ArrAt _                -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
+        | E.FirstLocked _          -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
         | E.FirstLockedAt (m,p,l)  -> E.FirstLockedAt (norm_mem m, norm_path p, norm_int l)
-        | E.LastLocked (m,p)       -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
+        | E.LastLocked _           -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
         | E.AddrArrayRd (E.VarArray v,t) -> E.AddrArrayRd (E.VarArray v, norm_tid t)
         | E.AddrArrayRd _          -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
-        | E.AddrArrRd (aa,i)       -> let a_var = gen_if_not_var (E.AddrT a) E.Addr in
+        | E.AddrArrRd _            -> let a_var = gen_if_not_var (E.AddrT a) E.Addr in
                                         E.VarAddr a_var
 
       and norm_cell (c:E.cell) : E.cell =
@@ -166,7 +160,7 @@ module Make (SLK : TSLKExpression.S) =
         | E.Error                -> E.Error
         | E.MkCell _             -> raise(UnsupportedTSLKExpr(E.cell_to_str c))
         | E.MkSLKCell (e,aa,tt)  -> E.MkSLKCell(norm_elem e, List.map norm_addr aa, List.map norm_tid tt)
-        | E.MkSLCell (e,aa,tt,l) -> raise(UnsupportedTSLKExpr(E.cell_to_str c))
+        | E.MkSLCell _           -> raise(UnsupportedTSLKExpr(E.cell_to_str c))
         | E.CellLock _           -> raise(UnsupportedTSLKExpr(E.cell_to_str c))
         | E.CellLockAt (c,i,t)   -> E.CellLockAt (norm_cell c, norm_int i, norm_tid t)
         | E.CellUnlock _         -> raise(UnsupportedTSLKExpr(E.cell_to_str c))
@@ -209,18 +203,17 @@ module Make (SLK : TSLKExpression.S) =
         | E.SetdiffElem (s1,s2) -> E.SetdiffElem (norm_setelem s1, norm_setelem s2)
         | E.SetToElems (s,m)    -> E.SetToElems (norm_set s, norm_mem m)
         | E.SetElemArrayRd (E.VarArray v,t) -> E.SetElemArrayRd(E.VarArray v, norm_tid t)
-        | E.SetElemArrayRd _      -> raise(UnsupportedTSLKExpr(E.setelem_to_str s))
+        | E.SetElemArrayRd _    -> raise(UnsupportedTSLKExpr(E.setelem_to_str s))
 
       and norm_setpair (s:E.setpair) : E.setpair =
         match s with
-        | E.VarSetPair v         -> raise(UnsupportedTSLKExpr(E.setpair_to_str s))
+        | E.VarSetPair _         -> raise(UnsupportedTSLKExpr(E.setpair_to_str s))
         | E.EmptySetPair         -> raise(UnsupportedTSLKExpr(E.setpair_to_str s))
-        | E.SinglPair i          -> raise(UnsupportedTSLKExpr(E.setpair_to_str s))
-        | E.UnionPair (s1,s2)    -> raise(UnsupportedTSLKExpr(E.setpair_to_str s))
-        | E.IntrPair (s1,s2)     -> raise(UnsupportedTSLKExpr(E.setpair_to_str s))
-        | E.SetdiffPair (s1,s2)  -> raise(UnsupportedTSLKExpr(E.setpair_to_str s))
+        | E.SinglPair _          -> raise(UnsupportedTSLKExpr(E.setpair_to_str s))
+        | E.UnionPair _          -> raise(UnsupportedTSLKExpr(E.setpair_to_str s))
+        | E.IntrPair _           -> raise(UnsupportedTSLKExpr(E.setpair_to_str s))
+        | E.SetdiffPair _        -> raise(UnsupportedTSLKExpr(E.setpair_to_str s))
         | E.LowerPair _          -> raise(UnsupportedTSLKExpr(E.setpair_to_str s))
-        | E.SetPairArrayRd (E.VarArray v,t) ->raise(UnsupportedTSLKExpr(E.setpair_to_str s))
         | E.SetPairArrayRd _     -> raise(UnsupportedTSLKExpr(E.setpair_to_str s))
 
       and norm_path (p:E.path) : E.path =
@@ -273,13 +266,13 @@ module Make (SLK : TSLKExpression.S) =
         match aa with
         | E.VarAddrArray v       -> E.VarAddrArray v
         | E.AddrArrayUp (bb,i,a) -> E.AddrArrayUp (norm_addrarr bb, norm_int i, norm_addr a)
-        | E.CellArr c            -> raise(UnsupportedTSLKExpr(E.addrarr_to_str aa))
+        | E.CellArr _            -> raise(UnsupportedTSLKExpr(E.addrarr_to_str aa))
 
       and norm_tidarr (tt:E.tidarr) : E.tidarr =
         match tt with
         | E.VarTidArray v       -> E.VarTidArray v
         | E.TidArrayUp (yy,i,t) -> E.TidArrayUp (norm_tidarr yy, norm_int i, norm_tid t)
-        | E.CellTids c          -> raise(UnsupportedTSLKExpr(E.tidarr_to_str tt))
+        | E.CellTids _          -> raise(UnsupportedTSLKExpr(E.tidarr_to_str tt))
 
       and norm_term (t:E.term) : E.term =
         match t with
@@ -323,10 +316,10 @@ module Make (SLK : TSLKExpression.S) =
         | E.SubsetEqInt _         -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
         | E.InElem (e,s)          -> E.InElem (norm_elem e, norm_setelem s)
         | E.SubsetEqElem (s1,s2)  -> E.SubsetEqElem (norm_setelem s1, norm_setelem s2)
-        | E.InPair (p,s)          -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
-        | E.SubsetEqPair (s1,s2)  -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
-        | E.InTidPair (t,s)       -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
-        | E.InIntPair (t,s)       -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
+        | E.InPair _              -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
+        | E.SubsetEqPair _        -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
+        | E.InTidPair _           -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
+        | E.InIntPair _           -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
         | E.Less (i1,i2)          -> E.Less (norm_int i1, norm_int i2)
         | E.Greater (i1,i2)       -> E.Greater (norm_int i1, norm_int i2)
         | E.LessEq (i1,i2)        -> E.LessEq (norm_int i1, norm_int i2)
@@ -336,8 +329,8 @@ module Make (SLK : TSLKExpression.S) =
         | E.GreaterElem (e1,e2)   -> E.GreaterElem (norm_elem e1, norm_elem e2)
         | E.Eq (t1,t2)            -> E.Eq (norm_term t1, norm_term t2)
         | E.InEq (t1,t2)          -> E.InEq (norm_term t1, norm_term t2)
-        | E.UniqueInt (s)         -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
-        | E.UniqueTid (s)         -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
+        | E.UniqueInt _           -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
+        | E.UniqueTid _           -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
         | E.BoolVar v             -> E.BoolVar v
         | E.BoolArrayRd _         -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
         | E.PC (i,topt,pr)        -> let norm_topt =
@@ -358,30 +351,12 @@ module Make (SLK : TSLKExpression.S) =
 
       let norm_fs = Formula.make_trans
                       Formula.GenericLiteralTrans
-                      (fun info a -> norm_atom a) in
+                      (fun _ a -> norm_atom a) in
 
       let norm_formula (phi:E.formula) : E.formula =
         Formula.formula_trans norm_fs () phi
     in
       norm_formula phi
-(*
-      match phi with
-      | E.Literal l                     -> E.Literal (norm_literal l)
-      | E.True                          -> E.True
-      | E.False                         -> E.False
-      | E.And (psi1,psi2)               -> E.And (norm_formula info psi1,
-                                                  norm_formula info psi2)
-      | E.Or (psi1,psi2)                -> E.Or (norm_formula info psi1,
-                                                 norm_formula info psi2)
-      | E.Not (E.Literal (E.Atom a))    -> E.Literal (norm_literal (E.NegAtom a))
-      | E.Not (E.Literal (E.NegAtom a)) -> norm_formula info (E.Literal (E.Atom a))
-      | E.Not psi                       -> E.Not (norm_formula info psi)
-      | E.Implies (psi1,psi2)           -> E.Implies (norm_formula info psi1,
-                                                      norm_formula info psi2)
-      | E.Iff (psi1,psi2)               -> E.Iff (norm_formula info psi1,
-                                                  norm_formula info psi2)
-*)
-
 
 
 
@@ -419,8 +394,6 @@ module Make (SLK : TSLKExpression.S) =
 
 
 
-
-
     (* Machinery for array conversion *)
     let addrarr_tbl : (E.addrarr, SLK.addr list) Hashtbl.t = Hashtbl.create 10
 
@@ -448,7 +421,7 @@ module Make (SLK : TSLKExpression.S) =
         let v = match aa with
                 | E.VarAddrArray v ->
                     SLK.VarAddr (expand_array_to_var v SLK.Addr n)
-                | E.CellArr c -> raise(UnsupportedTSLKExpr(E.addrarr_to_str aa))
+                | E.CellArr _ -> raise(UnsupportedTSLKExpr(E.addrarr_to_str aa))
                 | _ -> SLK.Null in
         xs := v::(!xs)
       done;
@@ -535,7 +508,7 @@ module Make (SLK : TSLKExpression.S) =
       | E.CellLockIdAt (c,l) -> SLK.CellLockIdAt (cell_to_tslk_cell c,
                                                      int_to_tslk_level l)
       | E.TidArrayRd _       -> raise(UnsupportedTSLKExpr(E.tid_to_str th))
-      | E.TidArrRd (tt,i)    -> raise(UnsupportedTSLKExpr(E.tid_to_str th))
+      | E.TidArrRd _         -> raise(UnsupportedTSLKExpr(E.tid_to_str th))
       | E.PairTid _          -> raise(UnsupportedTSLKExpr(E.tid_to_str th))
 
     and term_to_tslk_term (t:E.term) : SLK.term =
@@ -554,8 +527,8 @@ module Make (SLK : TSLKExpression.S) =
       | E.MemT m        -> SLK.MemT (mem_to_tslk_mem m)
       | E.IntT i        -> SLK.LevelT (int_to_tslk_level i)
       | E.PairT _       -> raise(UnsupportedTSLKExpr(E.term_to_str t))
-      | E.AddrArrayT aa -> raise(UnsupportedTSLKExpr(E.term_to_str t))
-      | E.TidArrayT tt  -> raise(UnsupportedTSLKExpr(E.term_to_str t))
+      | E.AddrArrayT _  -> raise(UnsupportedTSLKExpr(E.term_to_str t))
+      | E.TidArrayT _   -> raise(UnsupportedTSLKExpr(E.term_to_str t))
       | E.ArrayT a      -> arrays_to_tslk_term a
 
 
@@ -612,16 +585,16 @@ module Make (SLK : TSLKExpression.S) =
       | E.Next _                 -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
 
       | E.NextAt (c,l)           -> SLK.NextAt (cell_to_tslk_cell c, int_to_tslk_level l)
-      | E.ArrAt (c,l)            -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
-      | E.FirstLocked (m,p)      -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
+      | E.ArrAt _                -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
+      | E.FirstLocked _          -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
       | E.FirstLockedAt (m,p,l)  -> SLK.FirstLockedAt (mem_to_tslk_mem m,
                                                           path_to_tslk_path p,
                                                           int_to_tslk_level l)
-      | E.LastLocked (m,p)       -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
+      | E.LastLocked _           -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
       | E.AddrArrayRd (E.VarArray v,t) ->
           SLK.VarAddr (var_to_tslk_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
       | E.AddrArrayRd _          -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
-      | E.AddrArrRd (aa,i)       -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
+      | E.AddrArrRd _            -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
 
 
     and cell_to_tslk_cell (c:E.cell) : SLK.cell =
@@ -645,7 +618,7 @@ module Make (SLK : TSLKExpression.S) =
             SLK.MkCell (elem_to_tslk_elem e,
                          (List.map addr_to_tslk_addr aa) @ aa_pad,
                          (List.map tid_to_tslk_tid tt) @ tt_pad)
-      | E.MkSLCell (e,aa,tt,l) -> raise(UnsupportedTSLKExpr(E.cell_to_str c))
+      | E.MkSLCell _           -> raise(UnsupportedTSLKExpr(E.cell_to_str c))
       (* TSLK receives two arguments, while current epxression receives only one *)
       (* However, for the list examples, I think we will not need it *)
       | E.CellLock _           -> raise(UnsupportedTSLKExpr(E.cell_to_str c))
@@ -659,7 +632,7 @@ module Make (SLK : TSLKExpression.S) =
       | E.CellArrayRd (E.VarArray v,t) ->
           SLK.VarCell (var_to_tslk_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
       | E.CellArrayRd _        -> raise(UnsupportedTSLKExpr(E.cell_to_str c))
-      | E.UpdCellAddr (c,i,a)  -> raise(UnsupportedTSLKExpr(E.cell_to_str c))
+      | E.UpdCellAddr _        -> raise(UnsupportedTSLKExpr(E.cell_to_str c))
 
 
     and setth_to_tslk_setth (st:E.setth) : SLK.setth =
@@ -740,19 +713,19 @@ module Make (SLK : TSLKExpression.S) =
       | E.IntAdd (i1,i2) -> begin
                                  match (i1,i2) with
                                  | (E.IntVal j1, E.IntVal j2) -> SLK.LevelVal (j1+j2)
-                                 | (E.VarInt v , E.IntVal j ) -> apply j succ (tolevel i1)
-                                 | (E.IntVal j , E.VarInt v ) -> apply j succ (tolevel i2)
+                                 | (E.VarInt _ , E.IntVal j ) -> apply j succ (tolevel i1)
+                                 | (E.IntVal j , E.VarInt _ ) -> apply j succ (tolevel i2)
                                  | _ -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
                                end
       | E.IntSub (i1,i2) -> begin
                                  match (i1,i2) with
                                  | (E.IntVal j1, E.IntVal j2) -> SLK.LevelVal (j1-j2)
-                                 | (E.VarInt v , E.IntVal j ) -> apply j pred (tolevel i1)
+                                 | (E.VarInt _ , E.IntVal j ) -> apply j pred (tolevel i1)
                                  | _ -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
                                end
-      | E.IntMul (i1,i2) -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
-      | E.IntDiv (i1,i2) -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
-      | E.CellMax (c)    -> SLK.LevelVal SLK.k
+      | E.IntMul _       -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
+      | E.IntDiv _       -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
+      | E.CellMax _      -> SLK.LevelVal SLK.k
       | E.IntArrayRd _   -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
       | E.IntSetMin _    -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
       | E.IntSetMax _    -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
@@ -1123,24 +1096,5 @@ module Make (SLK : TSLKExpression.S) =
 
     and formula_to_expr_formula (phi:SLK.formula) : E.formula =
       Formula.formula_conv atom_to_expr_atom phi
-(*
-    and literal_to_expr_literal (l:SLK.literal) : E.literal =
-      match l with
-        F.Atom a    -> F.Atom (atom_to_expr_atom a)
-      | F.NegAtom a -> F.NegAtom (atom_to_expr_atom a)
-
-
-    and formula_to_expr_formula (f:SLK.formula) : E.formula =
-      let to_formula = formula_to_expr_formula in
-      match f with
-        F.Literal l       -> F.Literal (literal_to_expr_literal l)
-      | F.True            -> F.True
-      | F.False           -> F.False
-      | F.And (f1,f2)     -> F.And (to_formula f1, to_formula f2)
-      | F.Or (f1,f2)      -> F.Or (to_formula f1, to_formula f2)
-      | F.Not f1          -> F.Not (to_formula f1)
-      | F.Implies (f1,f2) -> F.Implies (to_formula f1, to_formula f2)
-      | F.Iff (f1,f2)     -> F.Iff (to_formula f1, to_formula f2)
-*)
 
   end

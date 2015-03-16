@@ -11,8 +11,8 @@ type ('a,'b) t =
 
 let create (n:int) : ('a, 'b) t =
   {
-    map = H.create 10;
-    rev = H.create 10;
+    map = H.create n;
+    rev = H.create n;
   }
 
 

@@ -21,7 +21,6 @@ type prog_type = Num | Heap
 
 
 val construct_stm_term_eq : malloc_info ->
-                            prog_type ->
                             Statement.term ->
                             Expression.V.shared_or_local ->
                             Statement.expr_t ->
@@ -30,7 +29,6 @@ val construct_stm_term_eq : malloc_info ->
 
 
 val construct_stm_term_eq_as_array : malloc_info ->
-                                     prog_type ->
                                      Statement.term ->
                                      Expression.V.shared_or_local ->
                                      Statement.expr_t ->

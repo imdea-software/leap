@@ -13,14 +13,17 @@ type pvd_vc_t = {
 
 type gen_t =
   {
+    lines : E.PosSet.t;
     conditions : PVD.conditions_t list;
     nodes : PVD.node_id_t list;
   }
 
 
-let new_options (cs:PVD.conditions_t list)
+let new_options (lines:Expression.PosSet.t)
+                (cs:PVD.conditions_t list)
                 (ns:PVD.node_id_t list) : gen_t =
   {
+    lines = lines ;
     conditions = cs;
     nodes = ns;
   }
@@ -39,6 +42,24 @@ let consider_condition (opt:gen_t option)
   | None -> true
   | Some info -> info.conditions = [] || List.mem cond info.conditions
 
+
+let lines_cache : E.PosSet.t option ref = ref None
+
+
+let consider_lines (opt:gen_t option) (sys:System.t) : E.PosSet.t =
+  match !lines_cache with
+  | None -> begin
+              match opt with
+              | None -> begin
+                          let set = ref E.PosSet.empty in
+                          for i = 1 to System.lines sys do
+                            ignore (E.PosSet.add i !set)
+                          done;
+                          lines_cache := Some !set; !set
+                        end
+              | Some o -> (lines_cache := Some o.lines; o.lines)
+            end
+  | Some set -> set
 
 
 module type S =
@@ -125,8 +146,7 @@ module Make (C:Core.S) : S =
                   end in
 
             let full_voc = E.ThreadSet.add fresh_t full_voc in
-            let n_vcs = ref [] in
-            for line = 1 to (System.lines C.system) do
+            E.PosSet.fold (fun line vcs ->
               (* Self-consecution *)
               let self_vcs =
                 E.ThreadSet.fold (fun t ys ->
@@ -150,9 +170,8 @@ module Make (C:Core.S) : S =
                                  Tactics.create_vc_info [] tid_constraints (F.And (full_mu_n, rho))
                                    goal full_voc fresh_k line
                                ) other_rho in
-              n_vcs := self_vcs @ others_vcs @ !n_vcs
-            done;
-            !n_vcs @ vcs
+              self_vcs @ others_vcs @ vcs
+            ) (consider_lines opt C.system) vcs
           end else vcs
         ) nodes []
       end else []
@@ -188,11 +207,11 @@ module Make (C:Core.S) : S =
                                 ) E.ThreadSet.empty accept.PVD.delta in
                 let voc = E.ThreadSet.union delta_voc
                                             (E.voc_from_list [mu_n;unprimed_mu_m;beta]) in
+                let lines_to_consider = consider_lines opt C.system in
                 match trans with
                 | PVD.NoLabel ->
                     begin
-                      let n_vcs = ref [] in
-                      for line = 1 to (System.lines C.system) do
+                      E.PosSet.fold (fun line vcs ->
                         (* Self-acceptance *)
                         let self_vcs =
                           E.ThreadSet.fold (fun t ys ->
@@ -226,22 +245,23 @@ module Make (C:Core.S) : S =
                                            Tactics.create_vc_info [] tid_constraints antecedent
                                              consequent voc fresh_k line ~prime_goal:false
                                          ) other_rho in
-                        n_vcs := self_vcs @ others_vcs @ !n_vcs
-                      done;
-                      !n_vcs @ xs
+                        self_vcs @ others_vcs @ vcs
+                      ) (consider_lines opt C.system) xs
                     end
                 | PVD.Label ts ->
                     begin
                       (List.fold_left (fun ys (line,v) ->
-                        let t = E.VarTh v in
-                        let rho_list = C.rho System.Concurrent voc line t in
-                        (List.map (fun rho ->
-                          let processed_mu_m = E.prime_modified [rho; beta] unprimed_mu_m in
-                          let antecedent = F.conj_list [mu_n; rho; processed_mu_m; beta] in
-                          let consequent = PVD.ranking_function antecedent accept (n,m,kind) in
-                          Tactics.create_vc_info [] Tactics.no_tid_constraint antecedent
-                            consequent voc t line ~prime_goal:false
-                        ) rho_list) @ ys
+                        if E.PosSet.mem line lines_to_consider then begin
+                          let t = E.VarTh v in
+                          let rho_list = C.rho System.Concurrent voc line t in
+                          (List.map (fun rho ->
+                            let processed_mu_m = E.prime_modified [rho; beta] unprimed_mu_m in
+                            let antecedent = F.conj_list [mu_n; rho; processed_mu_m; beta] in
+                            let consequent = PVD.ranking_function antecedent accept (n,m,kind) in
+                            Tactics.create_vc_info [] Tactics.no_tid_constraint antecedent
+                              consequent voc t line ~prime_goal:false
+                          ) rho_list) @ ys
+                        end else ys
                       ) [] ts ) @ xs
                     end
               ) e_info_set []) @ edge_vcs
@@ -255,37 +275,38 @@ module Make (C:Core.S) : S =
     let gen_fairness ?(opt=None) (pvd:PVD.t) : Tactics.vc_info list =
       if consider_condition opt PVD.Fairness then begin
         let edges = PVD.edge_list pvd in
-        List.fold_left (fun vcs (n1,n2,info) ->
+        List.fold_left (fun vcs (n1,_,info) ->
           if consider_node opt n1 then begin
             let mu_n1 = PVD.node_mu pvd n1 in
             (PVD.EdgeInfoSet.fold (fun (_,trans) xs ->
               match trans with
               | PVD.NoLabel -> xs
               | PVD.Label trans_list ->
+                  let lines_to_consider = consider_lines opt C.system in
                   (List.fold_left (fun gen_vcs (line,v) ->
-                     let voc = E.voc mu_n1 in
-                     let th = E.VarTh v in
-                     let (_,stm) = System.get_statement_at C.system line in
-                     let rho_list = C.rho System.Concurrent voc line th in
-                     let next_mu =
-                        F.disj_list $
-                          PVD.NodeIdSet.fold (fun n xs ->
-                            (PVD.node_mu pvd n) :: xs
-                          ) (PVD.succesor pvd n1 line v) [] in
-                     let conds =
-                       F.disj_list (Statement.enabling_condition (E.V.Local v) stm) in
-                      (* Enabled *)
-                      let enable_vc = Tactics.create_vc_info [] Tactics.no_tid_constraint
-                                        mu_n1 conds voc th line in
-                      (* Successor *)
-                      let successor_vcs =
-                        List.map (fun rho ->
-                          Tactics.create_vc_info [] Tactics.no_tid_constraint
-                              (F.And (mu_n1,rho)) next_mu voc th line
-                        ) rho_list in
-                      enable_vc :: successor_vcs @ gen_vcs
-
-
+                     if E.PosSet.mem line lines_to_consider then begin
+                       let voc = E.voc mu_n1 in
+                       let th = E.VarTh v in
+                       let (_,stm) = System.get_statement_at C.system line in
+                       let rho_list = C.rho System.Concurrent voc line th in
+                       let next_mu =
+                          F.disj_list $
+                            PVD.NodeIdSet.fold (fun n xs ->
+                              (PVD.node_mu pvd n) :: xs
+                            ) (PVD.succesor pvd n1 line v) [] in
+                       let conds =
+                         F.disj_list (Statement.enabling_condition (E.V.Local v) stm) in
+                        (* Enabled *)
+                        let enable_vc = Tactics.create_vc_info [] Tactics.no_tid_constraint
+                                          mu_n1 conds voc th line in
+                        (* Successor *)
+                        let successor_vcs =
+                          List.map (fun rho ->
+                            Tactics.create_vc_info [] Tactics.no_tid_constraint
+                                (F.And (mu_n1,rho)) next_mu voc th line
+                          ) rho_list in
+                        enable_vc :: successor_vcs @ gen_vcs
+                     end else gen_vcs
                   ) [] trans_list) @ xs
             ) info []) @ vcs
           end else vcs

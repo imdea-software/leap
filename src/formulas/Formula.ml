@@ -36,8 +36,8 @@ type ('info, 'atom, 'a) literal_op_t =
 
 type ('atom, 'info) trans_functions_t =
   {
-    mutable literal_f : 'info -> 'atom literal -> 'atom literal;
-    atom_f : 'info -> 'atom -> 'atom;
+    mutable trans_literal_f : 'info -> 'atom literal -> 'atom literal;
+    trans_atom_f : 'info -> 'atom -> 'atom;
   }
 
 type ('info, 'atom) trans_literal_op_t =
@@ -73,7 +73,7 @@ let rec formula_trans (fs:('atom, 'info) trans_functions_t)
                       (info:'info)
                       (phi:'atom formula) : 'atom formula =
   match phi with
-  | Literal l -> Literal (fs.literal_f info l)
+  | Literal l -> Literal (fs.trans_literal_f info l)
   | True -> True
   | False -> False
   | And (phi1,phi2) -> And (formula_trans fs info phi1,
@@ -93,7 +93,7 @@ let conjunctive_formula_trans (fs:('atom, 'info) trans_functions_t)
   match cf with
   | FalseConj -> FalseConj
   | TrueConj -> TrueConj
-  | Conj ls -> Conj (List.map (fs.literal_f info) ls)
+  | Conj ls -> Conj (List.map (fs.trans_literal_f info) ls)
 
 
 let disjunctive_formula_trans (fs:('atom, 'info) trans_functions_t)
@@ -102,15 +102,15 @@ let disjunctive_formula_trans (fs:('atom, 'info) trans_functions_t)
   match df with
   | FalseDisj -> FalseDisj
   | TrueDisj -> TrueDisj
-  | Disj ls -> Disj (List.map (fs.literal_f info) ls)
+  | Disj ls -> Disj (List.map (fs.trans_literal_f info) ls)
 
 
 let literal_trans (fs:('atom, 'info) trans_functions_t)
                   (info:'info)
                   (l:'atom literal) : 'atom literal =
   match l with
-  | Atom a -> Atom (fs.atom_f info a)
-  | NegAtom a -> NegAtom (fs.atom_f info a)
+  | Atom a -> Atom (fs.trans_atom_f info a)
+  | NegAtom a -> NegAtom (fs.trans_atom_f info a)
 
 
 let make_trans (literal_fun:('info, 'atom) trans_literal_op_t)
@@ -118,15 +118,16 @@ let make_trans (literal_fun:('info, 'atom) trans_literal_op_t)
     : ('atom, 'info) trans_functions_t =
   let trans_ops =
     {
-      literal_f = (fun info l -> l);
-      atom_f = atom_fun;
+      trans_literal_f = (fun _ l -> l);
+      trans_atom_f = atom_fun;
     }
   in
-    trans_ops.literal_f <- begin
-                             match literal_fun with
-                             | GenericLiteralTrans -> literal_trans trans_ops
-                             | ThisLiteralTrans f -> f
-                          end;
+    trans_ops.trans_literal_f <-
+      begin
+        match literal_fun with
+        | GenericLiteralTrans -> literal_trans trans_ops
+        | ThisLiteralTrans f -> f
+      end;
     trans_ops
 
 
@@ -185,7 +186,7 @@ let make_fold (literal_fun:('info, 'atom, 'a) literal_op_t)
     : ('atom, 'info, 'a) functions_t =
   let fold_ops =
     {
-      literal_f = (fun info l -> base_elem info);
+      literal_f = (fun info _ -> base_elem info);
       atom_f = atom_fun;
       base = base_elem;
       concat = concat_fun;
@@ -328,7 +329,7 @@ let rec nnf (phi:'atom formula) : 'atom formula =
   | Literal(a) -> Literal(a)
 
 
-let rec cnf (phi:'atom formula) : 'atom disjunctive_formula list =
+let cnf (phi:'atom formula) : 'atom disjunctive_formula list =
   let rec cnf_nnf (nnfphi:'atom formula) : 'atom disjunctive_formula list =
     match nnfphi with
     | And(e1,e2)  ->
@@ -371,7 +372,7 @@ let rec cnf (phi:'atom formula) : 'atom disjunctive_formula list =
     cnf_nnf (nnf phi)
 
 
-let rec dnf (phi:'atom formula) : 'atom conjunctive_formula list =
+let dnf (phi:'atom formula) : 'atom conjunctive_formula list =
   let rec dnf_nnf (nnfphi:'atom formula) : 'atom conjunctive_formula list =
     match nnfphi with
     | Or(e1,e2)  ->

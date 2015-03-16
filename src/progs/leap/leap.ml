@@ -209,10 +209,13 @@ let _ =
   (*      let module DSolver = Diagrams.Make(LeapCore) in *)
         print_endline "PVD Analysis";
         print_endline (PVD.to_str pvd);
+        let lines_to_consider =
+          Expr.PosSet.of_list (snd (Expr.gen_focus_list (System.get_trans_num sys)
+           !LeapArgs.focusPC !LeapArgs.ignorePC)) in
         let pvdOpt =
           match (!LeapArgs.pvdConds, !LeapArgs.pvdNodes) with
           | ([],[]) -> None
-          | (cs,ns) -> Some (Diagrams.new_options cs ns) in
+          | (cs,ns) -> Some (Diagrams.new_options lines_to_consider cs ns) in
         ignore (PVDSolver.solve_from_pvd pvd pvd_support ~opt:pvdOpt)
       end;
 

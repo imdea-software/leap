@@ -2,7 +2,8 @@ type pvd_vc_t
 
 type gen_t
 
-val new_options : PVD.conditions_t list ->
+val new_options : Expression.PosSet.t ->
+                  PVD.conditions_t list ->
                   PVD.node_id_t list ->
                   gen_t
 

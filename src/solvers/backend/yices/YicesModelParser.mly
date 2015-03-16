@@ -29,12 +29,12 @@ let record_count : int ref = ref 0
 
 
 (* Updates and propagates a cell id update *)
-let gen_fresh_id (unit) : int =
+let gen_fresh_id () : int =
   let _ = incr id_count
   in
     !id_count
 
-let gen_fresh_record_id (unit) : string =
+let gen_fresh_record_id () : string =
   incr record_count;
   "record" ^ (string_of_int !record_count)
 

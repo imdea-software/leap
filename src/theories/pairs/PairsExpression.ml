@@ -277,7 +277,6 @@ and literal_to_str (l:literal) : string =
 
 and formula_to_str (phi:formula) : string =
   Formula.formula_to_str (generic_atom_to_str no_parenthesis) phi
-(*  generic_pair_formula_to_str no_parenthesis f*)
 
 
 
@@ -296,7 +295,6 @@ let conjunctive_formula_to_str (cf:conjunctive_formula) : string =
 
 let formula_to_par_string (phi:formula) : string =
   Formula.formula_to_str (generic_atom_to_str no_parenthesis) phi
-(*  generic_pair_formula_to_str add_parenthesis f*)
 
 
 
@@ -365,8 +363,8 @@ and is_pair_expression e =
 
 and is_pair_fs () = Formula.make_fold
                      Formula.GenericLiteralFold
-                     (fun info a -> is_pair_atom a)
-                     (fun info -> true)
+                     (fun _ a -> is_pair_atom a)
+                     (fun _ -> true)
                      (&&)
 
 and is_pair_formula (phi:E.formula) : bool =
@@ -377,17 +375,17 @@ and is_pair_formula (phi:E.formula) : bool =
 
 let rec has_variable (t:integer) : bool =
   match t with
-      Val(n)       -> false
+      Val _        -> false
     | Var _        -> true
     | Neg(x)       -> has_variable x
     | Add(x,y)     -> has_variable x || has_variable y
     | Sub(x,y)     -> has_variable x || has_variable y
     | Mul(x,y)     -> has_variable x || has_variable y
     | Div(x,y)     -> has_variable x || has_variable y
-    | ArrayRd(a,i) -> false
-    | SetMin(s)    -> false
-    | SetMax(s)    -> false
-    | PairInt(ps)  -> false
+    | ArrayRd _    -> false
+    | SetMin _     -> false
+    | SetMax _     -> false
+    | PairInt _    -> false
 
 
 let rec term_is_linear t =
@@ -400,11 +398,11 @@ let rec term_is_linear t =
     | Sub(x,y)       -> (is_linear x) && (is_linear y)
     | Mul(x,y)       -> (is_linear x) && (is_linear y) &&
                         ( not ((has_variable x) && (has_variable y)))
-    | Div(x,y)       -> false
-    | ArrayRd(a,i)   -> true
-    | SetMin(s)      -> true
-    | SetMax(s)      -> true
-    | PairInt(ps)    -> true
+    | Div _          -> false
+    | ArrayRd _      -> true
+    | SetMin _       -> true
+    | SetMax _       -> true
+    | PairInt _      -> true
 
 and atom_is_linear a =
   let is_linear = term_is_linear in
@@ -413,7 +411,7 @@ and atom_is_linear a =
   | Greater(x,y)         -> (is_linear x) && (is_linear y)
   | LessEq(x,y)          -> (is_linear x) && (is_linear y)
   | GreaterEq(x,y)       -> (is_linear x) && (is_linear y)
-  | LessTid(x,y)         -> false
+  | LessTid _            -> false
   | Eq(IntV x,IntV y)    -> (is_linear x) && (is_linear y)
   | InEq(IntV x, IntV y) -> (is_linear x) && (is_linear y)
   | Eq(_,_)              -> false
@@ -424,10 +422,10 @@ and atom_is_linear a =
   | InIntPair _          -> false
   | InPair (_,_)         -> false
   | SubsetEqPair (_,_)   -> false
-  | TidEq(x,y)           -> false
-  | TidInEq(x,y)         -> false
-  | FunEq(x,y)           -> false
-  | FunInEq(x,y)         -> false
+  | TidEq _              -> false
+  | TidInEq _            -> false
+  | FunEq _              -> false
+  | FunInEq _            -> false
   | UniqueInt _          -> false
   | UniqueTid _          -> false
   | PC _                 -> false
@@ -436,8 +434,8 @@ and atom_is_linear a =
 
 and is_linear_fs () = Formula.make_fold
                         Formula.GenericLiteralFold
-                        (fun info a -> atom_is_linear a)
-                        (fun info -> true)
+                        (fun _ a -> atom_is_linear a)
+                        (fun _ -> true)
                         (&&)
 
 and formula_is_linear (phi:formula) : bool =
@@ -451,7 +449,7 @@ let rec generic_set_from_pair_integer (base:V.t -> 'a)
                                       (union:'a -> 'a -> 'a)
                                       (t:integer) : 'a =
   match t with
-    Val i          -> empty
+    Val _          -> empty
   | Var v          -> base v
   | Neg t          -> generic_set_from_pair_integer base empty union t
   | Add (t1,t2)    -> union (generic_set_from_pair_integer
@@ -470,7 +468,7 @@ let rec generic_set_from_pair_integer (base:V.t -> 'a)
                                 base empty union t1)
                             (generic_set_from_pair_integer
                                 base empty union t2)
-  | ArrayRd (a,th) -> empty
+  | ArrayRd _      -> empty
   | SetMin s       -> generic_set_from_pair_set base empty union s
   | SetMax s       -> generic_set_from_pair_set base empty union s
   | PairInt p      -> generic_set_from_pair_pair base empty union p
@@ -482,7 +480,7 @@ and generic_set_from_pair_pair (base:V.t -> 'a)
                                (p:pair) : 'a =
   match p with
     VarPair v        -> base v
-  | IntTidPair (i,t) -> generic_set_from_pair_integer base empty union i
+  | IntTidPair (i,_) -> generic_set_from_pair_integer base empty union i
   | SetPairMin ps    -> generic_set_from_pair_setpair base empty union ps
   | SetPairMax ps    -> generic_set_from_pair_setpair base empty union ps
 
@@ -493,7 +491,7 @@ and generic_set_from_funterm (base:V.t -> 'a)
                              (t:fun_term) : 'a =
   match t with
     FunVar (v)      -> base v
-  | FunUpd (f,th,v) -> generic_set_from_funterm base empty union f
+  | FunUpd (f,_,_)  -> generic_set_from_funterm base empty union f
 
 
 and generic_set_from_pair_set (base:V.t -> 'a)
@@ -555,30 +553,30 @@ let generic_set_from_pair_atom (base:V.t -> 'a)
   | Greater (t1,t2)          -> union (int_f t1) (int_f t2)
   | LessEq (t1,t2)           -> union (int_f t1) (int_f t2)
   | GreaterEq (t1,t2)        -> union (int_f t1) (int_f t2)
-  | LessTid (th1,th2)        -> empty
+  | LessTid _                -> empty
   | Eq (t1,t2)               -> union (term_f t1) (term_f t2)
   | InEq (t1,t2)             -> union (term_f t1) (term_f t2)
   | In (i,s)                 -> union (int_f i) (set_f s)
   | Subset (s1,s2)           -> union (set_f s1) (set_f s2)
-  | InTidPair (t,ps)         -> (setpair_f ps)
+  | InTidPair (_,ps)         -> (setpair_f ps)
   | InIntPair (i,ps)         -> union (int_f i) (setpair_f ps)
-  | InPair (p,ps)         -> union (pair_f p) (setpair_f ps)
-  | SubsetEqPair (ps1,ps2)  -> union (setpair_f ps1) (setpair_f ps2)
-  | TidEq (th1,th2)          -> empty
-  | TidInEq (th1,th2)        -> empty
+  | InPair (p,ps)            -> union (pair_f p) (setpair_f ps)
+  | SubsetEqPair (ps1,ps2)   -> union (setpair_f ps1) (setpair_f ps2)
+  | TidEq _                  -> empty
+  | TidInEq _                -> empty
   | FunEq (f1,f2)            -> union (fun_f f1) (fun_f f2)
   | FunInEq (f1,f2)          -> union (fun_f f1) (fun_f f2)
   | UniqueInt ps             -> (setpair_f ps)
   | UniqueTid ps             -> (setpair_f ps)
-  | PC (pc,th,pr)            -> empty
-  | PCUpdate (pc,th)         -> empty
+  | PC _                     -> empty
+  | PCUpdate _               -> empty
   | PCRange (_,_,_,_)        -> empty
 
 
 let varset_fs = Formula.make_fold
                   Formula.GenericLiteralFold
                   (fun info a -> generic_set_from_pair_atom info V.VarSet.empty V.VarSet.union a)
-                  (fun info -> V.VarSet.empty)
+                  (fun _ -> V.VarSet.empty)
                   V.VarSet.union
 
 
@@ -590,7 +588,7 @@ let varset_from_pair_formula (base:V.t -> 'a)
 let varidset_fs = Formula.make_fold
                     Formula.GenericLiteralFold
                     (fun info a -> generic_set_from_pair_atom info V.VarIdSet.empty V.VarIdSet.union a)
-                    (fun info -> V.VarIdSet.empty)
+                    (fun _ -> V.VarIdSet.empty)
                     V.VarIdSet.union
 
 
@@ -692,13 +690,11 @@ let var_local_set_from_pair_formula (phi:formula) : V.VarSet.t =
 
 
 let all_vars_set         = var_set_from_pair_formula
-(*let all_vars_set_literal = var_set_from_pair_literal*)
 let all_global_vars_set  = var_global_set_from_pair_formula
 let all_local_vars_set   = var_local_set_from_pair_formula
 
 
 let all_vars phi        = V.VarSet.elements (all_vars_set phi)
-(*let all_vars_literal l  = V.VarSet.elements (all_vars_set_literal l)*)
 let all_global_vars phi = V.VarSet.elements (all_global_vars_set phi)
 let all_local_vars phi  = V.VarSet.elements (all_local_vars_set phi)
 
@@ -756,14 +752,14 @@ let thset_from (ths:tid list) : ThreadSet.t =
 
 let rec voc_from_pair_tid (t:tid) : ThreadSet.t =
   match t with
-  | VarTh v -> ThreadSet.singleton t
+  | VarTh _ -> ThreadSet.singleton t
   | NoTid -> ThreadSet.singleton t
   | PairTid p -> voc_from_pair_pair p
 
 
 and voc_from_pair_integer (t:integer) : ThreadSet.t =
   match t with
-    Val i                  -> ThreadSet.empty
+    Val _                  -> ThreadSet.empty
   | Var v                  -> opt_th (V.parameter v)
   | Neg t                  -> voc_from_pair_integer t
   | Add (t1,t2)            -> ThreadSet.union (voc_from_pair_integer t1)
@@ -774,9 +770,9 @@ and voc_from_pair_integer (t:integer) : ThreadSet.t =
                                               (voc_from_pair_integer t2)
   | Div (t1,t2)            -> ThreadSet.union (voc_from_pair_integer t1)
                                               (voc_from_pair_integer t2)
-  | ArrayRd (a,th)         -> ThreadSet.empty
-  | SetMin s               -> ThreadSet.empty
-  | SetMax s               -> ThreadSet.empty
+  | ArrayRd _              -> ThreadSet.empty
+  | SetMin _               -> ThreadSet.empty
+  | SetMax _               -> ThreadSet.empty
   | PairInt p              -> voc_from_pair_pair p
 
 
@@ -791,7 +787,7 @@ and voc_from_pair_pair (p:pair) : ThreadSet.t =
 and voc_from_funterm (t:fun_term) : ThreadSet.t =
   match t with
     FunVar v        -> opt_th (V.parameter v)
-  | FunUpd (f,th,v) -> ThreadSet.singleton th
+  | FunUpd (_,th,_) -> ThreadSet.singleton th
 
 
 and voc_from_pair_set (s:set) : ThreadSet.t =
@@ -856,18 +852,18 @@ let voc_from_pair_atom (a:atom) : ThreadSet.t =
   | SubsetEqPair (ps1,ps2)  -> union (voc_setpair ps1) (voc_setpair ps2)
   | TidEq (th1,th2)         -> union (voc_tid th1) (voc_tid th2)
   | TidInEq (th1,th2)       -> union (voc_tid th1) (voc_tid th2)
-  | FunEq (f1,f2)           -> ThreadSet.empty
-  | FunInEq (f1,f2)         -> ThreadSet.empty
+  | FunEq _                 -> ThreadSet.empty
+  | FunInEq _               -> ThreadSet.empty
   | UniqueInt ps            -> (voc_setpair ps)
   | UniqueTid ps            -> (voc_setpair ps)
-  | PC (pc,th,pr)           -> opt_th th
-  | PCUpdate (pc,th)        -> ThreadSet.singleton th
+  | PC (_,th,_)             -> opt_th th
+  | PCUpdate (_,th)         -> ThreadSet.singleton th
   | PCRange (_,_,th,_)      -> opt_th th
 
 let voc_fs = Formula.make_fold
                Formula.GenericLiteralFold
-               (fun info a -> voc_from_pair_atom a)
-               (fun info -> ThreadSet.empty)
+               (fun _ a -> voc_from_pair_atom a)
+               (fun _ -> ThreadSet.empty)
                ThreadSet.union
 
 let voc_from_pair_formula (phi:formula) : ThreadSet.t =
@@ -975,19 +971,19 @@ and get_varset_atom a =
   | FunInEq (f1,f2)        -> (get_varset_fun f1) @@ (get_varset_fun f2)
   | UniqueInt sp           -> get_varset_setpair sp
   | UniqueTid sp           -> get_varset_setpair sp
-  | PC(pc,th,pr)           -> (match th with
+  | PC(_,th,_)             -> (match th with
                                | V.Shared -> V.VarSet.empty
                                | V.Local t -> V.VarSet.singleton t)
-  | PCUpdate (pc,th)       -> (get_varset_tid th)
-  | PCRange(pc1,pc2,th,pr) -> (match th with
+  | PCUpdate (_,th)        -> (get_varset_tid th)
+  | PCRange(_,_,th,_)      -> (match th with
                                | V.Shared -> V.VarSet.empty
                                | V.Local t -> V.VarSet.singleton t)
 
 
 let varset_fs = Formula.make_fold
                   Formula.GenericLiteralFold
-                  (fun info a -> get_varset_atom a)
-                  (fun info -> V.VarSet.empty)
+                  (fun _ a -> get_varset_atom a)
+                  (fun _ -> V.VarSet.empty)
                   V.VarSet.union
 
 

@@ -151,17 +151,17 @@ and param_tid_to_str (expr:tid) : string =
                    _ -> sprintf "(%s)" (V.to_str v)
                end
   | NoTid -> sprintf "(#)"
-  | CellLockId v -> sprintf "(%s)" (tid_to_str expr)
+  | CellLockId _ -> sprintf "(%s)" (tid_to_str expr)
 
 
-and priming_tid (pr:bool) (t:tid) : tid =
+and priming_tid (t:tid) : tid =
   match t with
     VarTh v -> VarTh (V.prime v)
   | NoTid -> NoTid
   | CellLockId v -> CellLockId (V.prime v)
 
 
-and priming_option_tid (pr:bool) (expr:V.shared_or_local) : V.shared_or_local =
+and priming_option_tid (expr:V.shared_or_local) : V.shared_or_local =
   match expr with
   | V.Shared -> V.Shared
   | V.Local t -> V.Local (V.prime t)
@@ -178,7 +178,7 @@ let rec expr_to_str (expr:expression) : string =
   | PCUpdate (pc,t)       -> sprintf "%s' = %s{%s<-%i}"
                                 Conf.pc_name Conf.pc_name (tid_to_str t) pc
   | PCRange (pc1,pc2,t,p) -> let t_str = if p then
-                                           V.shared_or_local_to_str (priming_option_tid p t)
+                                           V.shared_or_local_to_str (priming_option_tid t)
                                          else
                                            V.shared_or_local_to_str t in
                              let v_name = if p then
@@ -235,13 +235,13 @@ let rec voc (expr:expression) : tid list =
     match exp with
     Eq (t1,t2)      -> [t1;t2]
   | InEq (t1,t2)    -> [t1;t2]
-  | PC (i,th,p)     -> begin
+  | PC (_,th,_)     -> begin
                          match th with
                          | V.Shared -> []
                          | V.Local t -> [VarTh t]
                        end
-  | PCUpdate (i,th) -> [th]
-  | PCRange (i,j,th,p) -> begin
+  | PCUpdate (_,th) -> [th]
+  | PCRange (_,_,th,_) -> begin
                             match th with
                             | V.Shared -> []
                             | V.Local t -> [VarTh t]

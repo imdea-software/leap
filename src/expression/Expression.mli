@@ -334,7 +334,6 @@ val eq_int       : integer -> integer -> formula
 val eq_mem       : mem     -> mem     -> formula
 val eq_array     : arrays  -> arrays  -> formula
 val eq_term      : term    -> term    -> formula
-val eq_tid       : tid     -> tid     -> formula
 val ineq_addr    : addr    -> addr    -> formula
 val ineq_elem    : elem    -> elem    -> formula
 val ineq_tid     : tid     -> tid     -> formula

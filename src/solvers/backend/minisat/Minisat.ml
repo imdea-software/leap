@@ -65,7 +65,7 @@ struct
                          last_line := Pervasives.input_line from_minisat
                        done; ""
                      with End_of_file -> !last_line in
-    let (terminated, outcome) =
+    let (_, outcome) =
       match answer_str with
         "UNSATISFIABLE" -> let _ = Debug.print_smt "unsat\n"
                            in

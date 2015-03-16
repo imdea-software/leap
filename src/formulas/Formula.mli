@@ -52,8 +52,8 @@ type ('info, 'atom, 'a) literal_op_t =
 
 type ('atom, 'info) trans_functions_t =
   {
-    mutable literal_f : 'info -> 'atom literal -> 'atom literal;
-    atom_f : 'info -> 'atom -> 'atom;
+    mutable trans_literal_f : 'info -> 'atom literal -> 'atom literal;
+    trans_atom_f : 'info -> 'atom -> 'atom;
   }
 
 

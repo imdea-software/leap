@@ -681,7 +681,7 @@ let gen_global_vars_as_terms (sys:t) : E.TermSet.t =
   let gTbl = get_global sys in
   let gVars = ref E.TermSet.empty in
   let _ = Hashtbl.iter (fun id info ->
-            let (s,init,th,nat) = info in
+            let (s,_,th,nat) = info in
             let v = E.build_var id s false th E.V.GlobalScope ~nature:nat in
             gVars := E.TermSet.add (E.var_to_term v) !gVars
           ) gTbl
@@ -700,7 +700,7 @@ let gen_local_vars_as_terms (sys:t) : (string * E.TermSet.t) list =
   let resVars = ref [] in
   let _ = List.iter (fun (p,_,l) ->
             Hashtbl.iter (fun id info ->
-              let (s,init,th,nat) = info in
+              let (s,_,_,nat) = info in
               let v = E.build_var id s false E.V.Shared (E.V.Scope p) ~nature:nat in
               lVars := E.TermSet.add (E.var_to_term v) !lVars
             )l;
@@ -935,14 +935,13 @@ let gen_local_init_cond (sys : t)
   let _, lVars = get_accvars_by_name sys p_name in
   let conds = Hashtbl.fold
     (fun id info xs ->
-      let (s,init,th,nat) = info in
+      let (s,init,_,nat) = info in
       let v = E.build_var id s false E.V.Shared (E.V.Scope p_name) ~nature:nat in
       (E.assign_var v init) @ xs
     ) lVars [] in
   conds
 
-let gen_init_cond (sys : t) (p_name : string)
-    (th_list : E.tid list) (loc : bool) : E.formula =
+let gen_init_cond (sys : t) (p_name : string) (th_list : E.tid list) : E.formula =
   let gConds = gen_global_init_cond sys in
   let lConds = gen_local_init_cond sys p_name in
   let full_lConds = match th_list with
@@ -964,7 +963,7 @@ let gen_theta_classic (mode : sysMode)
   let init_line = Pervasives.max 1 main_fLine in
   let init_pc_list = List.map (fun i->build_curr_pc i init_line) param_list in
   let init_pc_cond = Formula.conj_list init_pc_list in
-  let prog_cond = gen_init_cond sys main_proc param_list true in
+  let prog_cond = gen_init_cond sys main_proc param_list in
   let init_sys_cond = match get_assume sys with
     | None   -> prog_cond
     | Some c -> Formula.And(Stm.boolean_to_expr_formula c, prog_cond) in
@@ -1107,7 +1106,7 @@ let rec aux_rho_for_st
   | Stm.StCrit _, true -> (gSet, lSet, thSet, []) (* ????? *)
   
   (************************ If @topLevel *********************************)
-  | Stm.StIf (c, t, e, g, Some i), false ->
+  | Stm.StIf (c, _, _, g, Some i), false ->
       let c' = conv_bool c in
       let predT = make_pos_change i.Stm.pos [i.Stm.next_pos] @
                   [E.param th_p c'] in
@@ -1116,10 +1115,10 @@ let rec aux_rho_for_st
       append_to_ghost g gSet lSet thSet [predT; predF]
   
   (************************ If @ghostLevel *******************************)
-  | Stm.StIf (c, t, e, _, _), true -> (gSet, lSet, thSet, []) (* ????? *)
+  | Stm.StIf (_, _, _, _, _), true -> (gSet, lSet, thSet, []) (* ????? *)
   
   (************************ While @topLevel ******************************)
-  | Stm.StWhile (c, l, g, Some i), false ->
+  | Stm.StWhile (c, _, g, Some i), false ->
       let c' = conv_bool c in
       let predT = 
         make_pos_change i.Stm.pos [i.Stm.next_pos] @ [E.param th_p c'] in
@@ -1131,7 +1130,7 @@ let rec aux_rho_for_st
   | Stm.StWhile _, true -> (gSet, lSet, thSet, []) (* ????? *)
     
   (************************ Choice @topLevel *****************************)
-  | Stm.StSelect (xs, g, Some i),  false ->
+  | Stm.StSelect (_, g, Some i),  false ->
       let pred = make_pos_change i.Stm.pos i.Stm.opt_pos in
       append_to_ghost g gSet lSet thSet [pred]
   
@@ -1144,13 +1143,13 @@ let rec aux_rho_for_st
       begin
         match mode with
         | SClosed _ ->
-            let modif, equiv = Bridge.construct_stm_term_eq mInfo pt v th_p e in
+            let modif, equiv = Bridge.construct_stm_term_eq mInfo v th_p e in
             let still_gSet = E.filter_term_set modif gSet in
             let still_lSet = E.filter_term_set modif lSet in
             let still_thSet = E.filter_term_set modif thSet in
             (still_gSet, still_lSet, still_thSet, equiv)
         | SOpenArray _ ->
-            let (modif, equiv) = Bridge.construct_stm_term_eq_as_array mInfo pt v th_p e in
+            let (modif, equiv) = Bridge.construct_stm_term_eq_as_array mInfo v th_p e in
             let still_gSet = E.filter_term_set modif gSet in
             let still_lSet = E.filter_term_set modif lSet in
             let still_thSet = E.filter_term_set modif thSet in
@@ -1212,7 +1211,7 @@ let rec aux_rho_for_st
       List.fold_left f (gSet, lSet, thSet, []) xs
       
   (************************ Ill-formed statements ************************)
-  | Stm.StAtomic (xs, g, Some i), false ->
+  | Stm.StAtomic (_, _, Some _), false ->
       let eff_list = Bridge.gen_st_cond_effect_as_array pt st false th_p in
       let f (cond, eff, c, n) = 
         let pos_change = make_pos_change c [n] in
@@ -1220,7 +1219,7 @@ let rec aux_rho_for_st
       let rho_list = List.map f eff_list in
       (E.TermSet.empty, E.TermSet.empty, E.TermSet.empty, rho_list)
   (************************ Call @topLevel *******************************)
-  | Stm.StCall (t,proc_name,ps,gc,Some i), false ->
+  | Stm.StCall (_,proc_name,ps,gc,Some i), false ->
       (* We make the argument assignment *)
       let (modif_list, equiv_list) =
         let gen_f = match mode with
@@ -1241,7 +1240,7 @@ let rec aux_rho_for_st
         in
           List.fold_left (fun (ms,es) ((arg,arg_sort),value) ->
             let v = Stm.VarT (Stm.build_var arg arg_sort (Stm.Scope proc_name)) in
-            let (m,e) = gen_f mInfo pt v th_p (Stm.Term value)
+            let (m,e) = gen_f mInfo v th_p (Stm.Term value)
             in
               (m@ms, e::es)
           ) (initialized_vars,init_assign) assignments in
@@ -1280,10 +1279,10 @@ let rec aux_rho_for_st
                         match mode with
                         | SClosed _   ->
                             (th, Bridge.construct_stm_term_eq
-                                  mInfo pt ret_t th_p (Stm.Term t))
+                                  mInfo ret_t th_p (Stm.Term t))
                         | SOpenArray _ ->
                             (th, Bridge.construct_stm_term_eq_as_array
-                                  mInfo pt ret_t th_p (Stm.Term t)) in
+                                  mInfo ret_t th_p (Stm.Term t)) in
                       let pos_assignment =
                         Formula.Implies (build_next_pc mode k [info.Stm.next_pos], e) in
                       (m@ms, pos_assignment::es)

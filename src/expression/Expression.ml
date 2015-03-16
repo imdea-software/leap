@@ -408,13 +408,13 @@ let rec is_primed_addrarray (a:addrarr) : bool =
   match a with
     VarAddrArray v       -> V.is_primed v
   | AddrArrayUp (a',_,_) -> is_primed_addrarray a'
-  | CellArr c            -> false
+  | CellArr _            -> false
 
 let rec is_primed_tidarray (a:tidarr) : bool =
   match a with
     VarTidArray v       -> V.is_primed v
   | TidArrayUp (a',_,_) -> is_primed_tidarray a'
-  | CellTids c            -> false
+  | CellTids _            -> false
 
 let is_primed_tid (th:tid) : bool =
   match th with
@@ -424,7 +424,7 @@ let is_primed_tid (th:tid) : bool =
   | CellLockIdAt _   -> false
   | TidArrayRd (a,_) -> is_primed_array a
   | TidArrRd (a,_)   -> is_primed_tidarray a
-  | PairTid p        -> false
+  | PairTid _        -> false
   (* FIX: Propagate the query inside cell??? *)
 
 
@@ -432,12 +432,13 @@ let var_base_info = V.unparam>>V.unprime
 
 (* Priming functions used for thread identifiers *)
 
-let rec priming_option_tid (pr:bool)
-                           (prime_set:(V.VarSet.t option * V.VarSet.t option))
-                           (expr:V.shared_or_local) : V.shared_or_local =
-  (* This statement primes the thread parameter of expressions *)
-  (* Option.lift (priming_th_t pr) expr *)
-  (* This statement leaves the thread parameter unprimed *)
+let rec priming_option_tid (expr:V.shared_or_local) : V.shared_or_local =
+  (* This statement used to prime the thread parameter of expressions *)
+  (* let rec priming_option_tid (pr:bool)
+                                (prime_set:(V.VarSet.t option * V.VarSet.t option))
+                                (expr:V.shared_or_local) : V.shared_or_local =
+     Option.lift (priming_th_t pr) expr *)
+  (* Now, this statement leaves the thread parameter unprimed *)
   expr
 
 
@@ -900,9 +901,11 @@ let prime_term_only (prime_set:V.VarSet.t) (t:term) : term =
 let unprime_term_only (prime_set:V.VarSet.t) (t:term) : term =
   priming_term false (Some prime_set, None) t
 let prime_option_tid (th:V.shared_or_local) : V.shared_or_local =
-  priming_option_tid true (None, None) th
+  priming_option_tid th
+(*  priming_option_tid true (None, None) th *)
 let unprime_option_tid (th:V.shared_or_local) : V.shared_or_local =
-  priming_option_tid false (None, None) th
+  priming_option_tid th
+(*  priming_option_tid false (None, None) th *)
 let prime_tid (th:tid) : tid =  priming_tid true (None, None) th
 let unprime_tid (th:tid) : tid = priming_tid false (None, None) th
 
@@ -1583,7 +1586,7 @@ let construct_term_set (xs:term list) : TermSet.t =
 
 let filter_term_set (t_list:term list) (t_set:TermSet.t) : TermSet.t =
   let aux s t = match t with
-                  AddrT(Next(VarCell var as c)) ->
+                  AddrT(Next(VarCell _ as c)) ->
                     if TermSet.mem t s then
                       TermSet.remove t s
                     else if TermSet.mem (CellT c) s then
@@ -1942,7 +1945,7 @@ and get_vars_set (e:set) (base:V.t -> V.VarSet.t) : V.VarSet.t =
   | AddrToSetAt(mem,a,l)-> (get_vars_mem mem base) @@
                            (get_vars_addr a base)  @@
                            (get_vars_int l base)
-  | SetArrayRd(arr,t)   -> (get_vars_array arr base)
+  | SetArrayRd(arr,_)   -> (get_vars_array arr base)
 
 
 and get_vars_addr (a:addr) (base:V.t -> V.VarSet.t) : V.VarSet.t =
@@ -1959,7 +1962,7 @@ and get_vars_addr (a:addr) (base:V.t -> V.VarSet.t) : V.VarSet.t =
   | FirstLockedAt(mem,path,l) -> (get_vars_mem mem base) @@ (get_vars_path path base) @@
                                  (get_vars_int l base)
   | LastLocked(mem,path)      -> (get_vars_mem mem base) @@ (get_vars_path path base)
-  | AddrArrayRd(arr,t)        -> (get_vars_array arr base)
+  | AddrArrayRd(arr,_)        -> (get_vars_array arr base)
   | AddrArrRd(arr,i)          -> (get_vars_addrarr arr base) @@ (get_vars_int i base)
 
 
@@ -1970,7 +1973,7 @@ and get_vars_elem (e:elem) (base:V.t -> V.VarSet.t) : V.VarSet.t =
                                | V.Shared -> V.VarSet.empty
                                | V.Local t -> base t)
   | CellData(cell)     -> (get_vars_cell cell base)
-  | ElemArrayRd(arr,t) -> (get_vars_array arr base)
+  | ElemArrayRd(arr,_) -> (get_vars_array arr base)
   | HavocListElem      -> V.VarSet.empty
   | HavocSkiplistElem  -> V.VarSet.empty
   | LowestElem         -> V.VarSet.empty
@@ -1986,7 +1989,7 @@ and get_vars_tid (th:tid) (base:V.t -> V.VarSet.t) : V.VarSet.t =
   | NoTid                -> V.VarSet.empty
   | CellLockId(cell)     -> (get_vars_cell cell base)
   | CellLockIdAt(cell,l) -> (get_vars_cell cell base) @@ (get_vars_int l base)
-  | TidArrayRd(arr,t)    -> (get_vars_array arr base)
+  | TidArrayRd(arr,_)    -> (get_vars_array arr base)
   | TidArrRd(arr,l)      -> (get_vars_tidarr arr base) @@ (get_vars_int l base)
   | PairTid p            -> (get_vars_pair p base)
 
@@ -2018,7 +2021,7 @@ and get_vars_cell (c:cell) (base:V.t -> V.VarSet.t) : V.VarSet.t =
                               (get_vars_int l base)
   | CellAt(mem,addr)       -> (get_vars_mem mem base) @@
                               (get_vars_addr addr base)
-  | CellArrayRd(arr,t)     -> (get_vars_array arr base)
+  | CellArrayRd(arr,_)     -> (get_vars_array arr base)
   | UpdCellAddr(c,i,a)     -> (get_vars_cell c base) @@
                               (get_vars_int i base)  @@
                               (get_vars_addr a base)
@@ -2035,7 +2038,7 @@ and get_vars_setth (s:setth) (base:V.t -> V.VarSet.t) : V.VarSet.t =
   | UnionTh(s1,s2)      -> (get_vars_setth s1 base)@@(get_vars_setth s2 base)
   | IntrTh(s1,s2)       -> (get_vars_setth s1 base)@@(get_vars_setth s2 base)
   | SetdiffTh(s1,s2)    -> (get_vars_setth s1 base)@@(get_vars_setth s2 base)
-  | SetThArrayRd(arr,t) -> (get_vars_array arr base)
+  | SetThArrayRd(arr,_) -> (get_vars_array arr base)
 
 
 and get_vars_setint (s:setint) (base:V.t -> V.VarSet.t) : V.VarSet.t =
@@ -2054,7 +2057,7 @@ and get_vars_setint (s:setint) (base:V.t -> V.VarSet.t) : V.VarSet.t =
                             (get_vars_setint s2 base)
   | SetLower(s,i)        -> (get_vars_setint s base) @@
                             (get_vars_int i base)
-  | SetIntArrayRd(arr,t) -> (get_vars_array arr base)
+  | SetIntArrayRd(arr,_) -> (get_vars_array arr base)
 
 
 and get_vars_setelem (s:setelem) (base:V.t -> V.VarSet.t) : V.VarSet.t =
@@ -2072,7 +2075,7 @@ and get_vars_setelem (s:setelem) (base:V.t -> V.VarSet.t) : V.VarSet.t =
   | SetdiffElem(s1,s2)    -> (get_vars_setelem s1 base) @@
                              (get_vars_setelem s2 base)
   | SetToElems(s,m)       -> (get_vars_set s base) @@ (get_vars_mem m base)
-  | SetElemArrayRd(arr,t) -> (get_vars_array arr base)
+  | SetElemArrayRd(arr,_) -> (get_vars_array arr base)
 
 
 and get_vars_setpair (s:setpair) (base:V.t -> V.VarSet.t) : V.VarSet.t =
@@ -2091,7 +2094,7 @@ and get_vars_setpair (s:setpair) (base:V.t -> V.VarSet.t) : V.VarSet.t =
                              (get_vars_setpair s2 base)
   | LowerPair(s,i)        -> (get_vars_setpair s base) @@
                              (get_vars_int i base)
-  | SetPairArrayRd(arr,t) -> (get_vars_array arr base)
+  | SetPairArrayRd(arr,_) -> (get_vars_array arr base)
 
 
 and get_vars_path (p:path) (base:V.t -> V.VarSet.t) : V.VarSet.t =
@@ -2109,7 +2112,7 @@ and get_vars_path (p:path) (base:V.t -> V.VarSet.t) : V.VarSet.t =
                                         (get_vars_addr add_from base) @@
                                         (get_vars_addr add_to base) @@
                                         (get_vars_int l base)
-  | PathArrayRd(arr,t)               -> (get_vars_array arr base)
+  | PathArrayRd(arr,_)               -> (get_vars_array arr base)
 
 
 and get_vars_mem (m:mem) (base:V.t -> V.VarSet.t) : V.VarSet.t =
@@ -2121,12 +2124,12 @@ and get_vars_mem (m:mem) (base:V.t -> V.VarSet.t) : V.VarSet.t =
   | Update(mem,add,cell) -> (get_vars_mem mem base) @@
                             (get_vars_addr add base) @@
                             (get_vars_cell cell base)
-  | MemArrayRd(arr,t)    -> (get_vars_array arr base)
+  | MemArrayRd(arr,_)    -> (get_vars_array arr base)
 
 
 and get_vars_int (i:integer) (base:V.t -> V.VarSet.t) : V.VarSet.t =
   match i with
-    IntVal(i)         -> V.VarSet.empty
+    IntVal _          -> V.VarSet.empty
   | VarInt v          -> (base v) @@
                             (match V.parameter v with
                              | V.Shared -> V.VarSet.empty
@@ -2136,7 +2139,7 @@ and get_vars_int (i:integer) (base:V.t -> V.VarSet.t) : V.VarSet.t =
   | IntSub(i1,i2)     -> (get_vars_int i1 base) @@ (get_vars_int i2 base)
   | IntMul(i1,i2)     -> (get_vars_int i1 base) @@ (get_vars_int i2 base)
   | IntDiv(i1,i2)     -> (get_vars_int i1 base) @@ (get_vars_int i2 base)
-  | IntArrayRd(arr,t) -> (get_vars_array arr base)
+  | IntArrayRd(arr,_) -> (get_vars_array arr base)
   | IntSetMin(s)      -> (get_vars_setint s base)
   | IntSetMax(s)      -> (get_vars_setint s base)
   | CellMax(c)        -> (get_vars_cell c base)
@@ -2153,7 +2156,7 @@ and get_vars_pair (p:pair) (base:V.t -> V.VarSet.t) : V.VarSet.t =
   | IntTidPair (i,t)   -> (get_vars_int i base) @@ (get_vars_tid t base)
   | SetPairMin ps      -> (get_vars_setpair ps base)
   | SetPairMax ps      -> (get_vars_setpair ps base)
-  | PairArrayRd(arr,t) -> (get_vars_array arr base)
+  | PairArrayRd(arr,_) -> (get_vars_array arr base)
  
 
 and get_vars_atom (a:atom) (base:V.t -> V.VarSet.t) : V.VarSet.t =
@@ -2216,12 +2219,12 @@ and get_vars_atom (a:atom) (base:V.t -> V.VarSet.t) : V.VarSet.t =
                                             (match V.parameter v with
                                              | V.Shared -> V.VarSet.empty
                                              | V.Local t -> base t)
-  | BoolArrayRd(arr,t)                 -> (get_vars_array arr base)
-  | PC (pc,t,_)                        -> (match t with
+  | BoolArrayRd(arr,_)                 -> (get_vars_array arr base)
+  | PC (_,t,_)                         -> (match t with
                                            | V.Shared -> V.VarSet.empty
                                            | V.Local ti -> base ti)
-  | PCUpdate (pc,t)                    -> get_vars_tid t base
-  | PCRange (pc1,pc2,t,_)              -> (match t with
+  | PCUpdate (_,t)                     -> get_vars_tid t base
+  | PCRange (_,_,t,_)                  -> (match t with
                                            | V.Shared -> V.VarSet.empty
                                            | V.Local ti -> base ti)
 
@@ -2238,7 +2241,7 @@ and get_vars_ineq ((t1,t2):diseq)
 and get_vars_fs () = Formula.make_fold
                        Formula.GenericLiteralFold
                        (fun base a -> get_vars_atom a base)
-                       (fun info -> V.VarSet.empty)
+                       (fun _ -> V.VarSet.empty)
                        (V.VarSet.union)
 
 and get_vars_formula (phi:formula) (base:V.t -> V.VarSet.t) : V.VarSet.t =
@@ -2322,8 +2325,8 @@ let prime_modified (rho_list:formula list) (phi:formula) : formula =
                         else V.VarSet.empty in
   let rec analyze_fs () = Formula.make_fold
                             Formula.GenericLiteralFold
-                            (fun info a -> analyze_atom a)
-                            (fun info -> (V.VarSet.empty, V.VarSet.empty))
+                            (fun _ a -> analyze_atom a)
+                            (fun _ -> (V.VarSet.empty, V.VarSet.empty))
                             (fun (s1,t1) (s2,t2) -> (V.VarSet.union s1 s2,
                                                      V.VarSet.union t1 t2))
 
@@ -2332,8 +2335,8 @@ let prime_modified (rho_list:formula list) (phi:formula) : formula =
 
   and analyze_atom (a:atom) : (V.VarSet.t * V.VarSet.t) =
     match a with
-    | Eq (ArrayT (VarArray v), ArrayT (ArrayUp (aa,t,e)))
-    | Eq (ArrayT (ArrayUp (aa,t,e)), ArrayT (VarArray v)) ->
+    | Eq (ArrayT (VarArray v), ArrayT (ArrayUp (_,t,_)))
+    | Eq (ArrayT (ArrayUp (_,t,_)), ArrayT (VarArray v)) ->
         (V.VarSet.singleton (V.set_param (V.unprime v) (V.Local (voc_to_var t))),
          V.VarSet.empty)
     | PC (_,V.Local v, true)
@@ -2519,7 +2522,7 @@ and voc_expr (e:expr_t) : ThreadSet.t =
 and voc_array (a:arrays) : ThreadSet.t =
   match a with
     VarArray v       -> get_tid_in v
-  | ArrayUp(arr,t,e) -> (voc_array arr) @@ (voc_expr e)
+  | ArrayUp(arr,_,e) -> (voc_array arr) @@ (voc_expr e)
 
 
 and voc_addrarr (a:addrarr) : ThreadSet.t =
@@ -2547,7 +2550,7 @@ and voc_set (e:set) : ThreadSet.t =
   | PathToSet(path)      -> (voc_path path)
   | AddrToSet(mem,addr)  -> (voc_mem mem) @@ (voc_addr addr)
   | AddrToSetAt(mem,a,l) -> (voc_mem mem) @@ (voc_addr a) @@ (voc_int l)
-  | SetArrayRd(arr,t)    -> (voc_array arr)
+  | SetArrayRd(arr,_)    -> (voc_array arr)
 
 
 and voc_addr (a:addr) : ThreadSet.t =
@@ -2560,7 +2563,7 @@ and voc_addr (a:addr) : ThreadSet.t =
   | FirstLocked(mem,path)     -> (voc_mem mem) @@ (voc_path path)
   | FirstLockedAt(mem,path,l) -> (voc_mem mem) @@ (voc_path path) @@ (voc_int l)
   | LastLocked(mem,path)      -> (voc_mem mem) @@ (voc_path path)
-  | AddrArrayRd(arr,t)        -> (voc_array arr)
+  | AddrArrayRd(arr,_)        -> (voc_array arr)
   | AddrArrRd(arr,l)          -> (voc_addrarr arr) @@ (voc_int l)
 
 
@@ -2568,7 +2571,7 @@ and voc_elem (e:elem) : ThreadSet.t =
   match e with
     VarElem v          -> get_tid_in v
   | CellData(cell)     -> (voc_cell cell)
-  | ElemArrayRd(arr,t) -> (voc_array arr)
+  | ElemArrayRd(arr,_) -> (voc_array arr)
   | HavocListElem      -> ThreadSet.empty
   | HavocSkiplistElem  -> ThreadSet.empty
   | LowestElem         -> ThreadSet.empty
@@ -2581,7 +2584,7 @@ and voc_tid (th:tid) : ThreadSet.t =
   | NoTid                -> ThreadSet.empty
   | CellLockId(cell)     -> (voc_cell cell)
   | CellLockIdAt(cell,l) -> (voc_cell cell) @@ (voc_int l)
-  | TidArrayRd(arr,t)    -> (voc_array arr)
+  | TidArrayRd(arr,_)    -> (voc_array arr)
   | TidArrRd(arr,l)      -> (voc_tidarr arr) @@ (voc_int l)
   | PairTid p            -> (voc_pair p)
 
@@ -2606,7 +2609,7 @@ and voc_cell (c:cell) : ThreadSet.t =
   | CellUnlock(cell)       -> (voc_cell cell)
   | CellUnlockAt(cell,l)   -> (voc_cell cell) @@ (voc_int l)
   | CellAt(mem,addr)       -> (voc_mem mem) @@ (voc_addr addr)
-  | CellArrayRd(arr,t)     -> (voc_array arr)
+  | CellArrayRd(arr,_)     -> (voc_array arr)
   | UpdCellAddr(c,i,a)     -> (voc_cell c) @@ (voc_int i) @@ (voc_addr a)
 
 
@@ -2618,7 +2621,7 @@ and voc_setth (s:setth) : ThreadSet.t =
   | UnionTh(s1,s2)      -> (voc_setth s1) @@ (voc_setth s2)
   | IntrTh(s1,s2)       -> (voc_setth s1) @@ (voc_setth s2)
   | SetdiffTh(s1,s2)    -> (voc_setth s1) @@ (voc_setth s2)
-  | SetThArrayRd(arr,t) -> (voc_array arr)
+  | SetThArrayRd(arr,_) -> (voc_array arr)
 
 
 and voc_setint (s:setint) : ThreadSet.t =
@@ -2630,7 +2633,7 @@ and voc_setint (s:setint) : ThreadSet.t =
   | IntrInt(s1,s2)       -> (voc_setint s1) @@ (voc_setint s2)
   | SetdiffInt(s1,s2)    -> (voc_setint s1) @@ (voc_setint s2)
   | SetLower(s,i)        -> (voc_setint  s) @@ (voc_int i)
-  | SetIntArrayRd(arr,t) -> (voc_array arr)
+  | SetIntArrayRd(arr,_) -> (voc_array arr)
 
 
 and voc_setelem (s:setelem) : ThreadSet.t =
@@ -2642,7 +2645,7 @@ and voc_setelem (s:setelem) : ThreadSet.t =
   | IntrElem(s1,s2)       -> (voc_setelem s1) @@ (voc_setelem s2)
   | SetdiffElem(s1,s2)    -> (voc_setelem s1) @@ (voc_setelem s2)
   | SetToElems(s,m)       -> (voc_set s) @@ (voc_mem m)
-  | SetElemArrayRd(arr,t) -> (voc_array arr)
+  | SetElemArrayRd(arr,_) -> (voc_array arr)
 
 
 and voc_setpair (s:setpair) : ThreadSet.t =
@@ -2654,7 +2657,7 @@ and voc_setpair (s:setpair) : ThreadSet.t =
   | IntrPair(s1,s2)       -> (voc_setpair s1) @@ (voc_setpair s2)
   | SetdiffPair(s1,s2)    -> (voc_setpair s1) @@ (voc_setpair s2)
   | LowerPair(s,i)        -> (voc_setpair  s) @@ (voc_int i)
-  | SetPairArrayRd(arr,t) -> (voc_array arr)
+  | SetPairArrayRd(arr,_) -> (voc_array arr)
 
 
 and voc_path (p:path) : ThreadSet.t =
@@ -2669,26 +2672,26 @@ and voc_path (p:path) : ThreadSet.t =
                                     (voc_addr a_from) @@
                                     (voc_addr a_to) @@
                                     (voc_int l)
-  | PathArrayRd(arr,t)           -> (voc_array arr)
+  | PathArrayRd(arr,_)           -> (voc_array arr)
 
 
 and voc_mem (m:mem) : ThreadSet.t =
   match m with
     VarMem v             -> get_tid_in v
   | Update(mem,add,cell) -> (voc_mem mem) @@ (voc_addr add) @@ (voc_cell cell)
-  | MemArrayRd(arr,t)    -> (voc_array arr)
+  | MemArrayRd(arr,_)    -> (voc_array arr)
 
 
 and voc_int (i:integer) : ThreadSet.t =
   match i with
-    IntVal(i)         -> ThreadSet.empty
+    IntVal _          -> ThreadSet.empty
   | VarInt v          -> get_tid_in v
   | IntNeg(i)         -> (voc_int i)
   | IntAdd(i1,i2)     -> (voc_int i1) @@ (voc_int i2)
   | IntSub(i1,i2)     -> (voc_int i1) @@ (voc_int i2)
   | IntMul(i1,i2)     -> (voc_int i1) @@ (voc_int i2)
   | IntDiv(i1,i2)     -> (voc_int i1) @@ (voc_int i2)
-  | IntArrayRd(arr,t) -> (voc_array arr)
+  | IntArrayRd(arr,_) -> (voc_array arr)
   | IntSetMin(s)      -> (voc_setint s)
   | IntSetMax(s)      -> (voc_setint s)
   | CellMax(c)        -> (voc_cell c)
@@ -2702,7 +2705,7 @@ and voc_pair (p:pair) : ThreadSet.t =
   | IntTidPair (i,t)   -> (voc_int i) @@ (voc_tid t)
   | SetPairMin ps      -> (voc_setpair ps)
   | SetPairMax ps      -> (voc_setpair ps)
-  | PairArrayRd(arr,t) -> (voc_array arr)
+  | PairArrayRd(arr,_) -> (voc_array arr)
 
 
 and voc_atom (a:atom) : ThreadSet.t =
@@ -2752,12 +2755,12 @@ and voc_atom (a:atom) : ThreadSet.t =
   | UniqueInt(s)                       -> (voc_setpair s)
   | UniqueTid(s)                       -> (voc_setpair s)
   | BoolVar v                          -> get_tid_in v
-  | BoolArrayRd(arr,t)                 -> (voc_array arr)
-  | PC (pc,t,_)                        -> (match t with
+  | BoolArrayRd(arr,_)                 -> (voc_array arr)
+  | PC (_,t,_)                         -> (match t with
                                            | V.Shared -> ThreadSet.empty
                                            | V.Local ti -> ThreadSet.singleton (VarTh ti))
-  | PCUpdate (pc,t)                    -> ThreadSet.singleton t
-  | PCRange (pc1,pc2,t,_)              -> (match t with
+  | PCUpdate (_,t)                     -> ThreadSet.singleton t
+  | PCRange (_,_,t,_)                  -> (match t with
                                            | V.Shared -> ThreadSet.empty
                                            | V.Local ti -> ThreadSet.singleton (VarTh ti))
 
@@ -2769,8 +2772,8 @@ and voc_ineq ((t1,t2):diseq) : ThreadSet.t = (voc_term t1) @@ (voc_term t2)
 
 and voc_fs () = Formula.make_fold
                   Formula.GenericLiteralFold
-                  (fun info a -> voc_atom a)
-                  (fun info -> ThreadSet.empty)
+                  (fun _ a -> voc_atom a)
+                  (fun _ -> ThreadSet.empty)
                   (@@)
 
 
@@ -2866,7 +2869,7 @@ and var_kind_expr (kind:var_nature) (e:expr_t) : term list =
 and var_kind_array (kind:var_nature) (a:arrays) : term list =
   match a with
     VarArray v       -> if var_nature v = kind then [ArrayT a] else []
-  | ArrayUp(arr,t,e) -> (var_kind_array kind arr) @ (var_kind_expr kind e)
+  | ArrayUp(arr,_,e) -> (var_kind_array kind arr) @ (var_kind_expr kind e)
 
 
 and var_kind_addrarr (kind:var_nature) (a:addrarr) : term list =
@@ -2900,7 +2903,7 @@ and var_kind_set (kind:var_nature) (e:set) : term list =
   | AddrToSetAt(mem,a,l)-> (var_kind_mem kind mem) @
                            (var_kind_addr kind a)  @
                            (var_kind_int kind l)
-  | SetArrayRd(arr,t)   -> (var_kind_array kind arr)
+  | SetArrayRd(arr,_)   -> (var_kind_array kind arr)
 
 
 and var_kind_addr (kind:var_nature) (a:addr) : term list =
@@ -2917,7 +2920,7 @@ and var_kind_addr (kind:var_nature) (a:addr) : term list =
                                  (var_kind_int kind l)
   | LastLocked(mem,path)      -> (var_kind_mem kind mem) @
                                  (var_kind_path kind path)
-  | AddrArrayRd(arr,t)        -> (var_kind_array kind arr)
+  | AddrArrayRd(arr,_)        -> (var_kind_array kind arr)
   | AddrArrRd(arr,l)          -> (var_kind_addrarr kind arr) @ (var_kind_int kind l)
 
 
@@ -2925,7 +2928,7 @@ and var_kind_elem (kind:var_nature) (e:elem) : term list =
   match e with
     VarElem v          -> if var_nature v = kind then [ElemT e] else []
   | CellData(cell)     -> (var_kind_cell kind cell)
-  | ElemArrayRd(arr,t) -> (var_kind_array kind arr)
+  | ElemArrayRd(arr,_) -> (var_kind_array kind arr)
   | HavocListElem      -> []
   | HavocSkiplistElem  -> []
   | LowestElem         -> []
@@ -2938,7 +2941,7 @@ and var_kind_tid (kind:var_nature) (th:tid) : term list =
   | NoTid               -> []
   | CellLockId(cell)     -> (var_kind_cell kind cell)
   | CellLockIdAt(cell,l) -> (var_kind_cell kind cell) @ (var_kind_int kind l)
-  | TidArrayRd(arr,t)   -> (var_kind_array kind arr)
+  | TidArrayRd(arr,_)   -> (var_kind_array kind arr)
   | TidArrRd(arr,l)     -> (var_kind_tidarr kind arr) @ (var_kind_int kind l)
   | PairTid p           -> (var_kind_pair kind p)
 
@@ -2968,7 +2971,7 @@ and var_kind_cell (kind:var_nature) (c:cell) : term list =
                               (var_kind_int kind l)
   | CellAt(mem,addr)       -> (var_kind_mem kind mem) @
                               (var_kind_addr kind addr)
-  | CellArrayRd(arr,t)     -> (var_kind_array kind arr)
+  | CellArrayRd(arr,_)     -> (var_kind_array kind arr)
   | UpdCellAddr(c,i,a)     -> (var_kind_cell kind c) @
                               (var_kind_int kind i)  @
                               (var_kind_addr kind a)
@@ -2982,7 +2985,7 @@ and var_kind_setth (kind:var_nature) (s:setth) : term list =
   | UnionTh(s1,s2)      -> (var_kind_setth kind s1) @ (var_kind_setth kind s2)
   | IntrTh(s1,s2)       -> (var_kind_setth kind s1) @ (var_kind_setth kind s2)
   | SetdiffTh(s1,s2)    -> (var_kind_setth kind s1) @ (var_kind_setth kind s2)
-  | SetThArrayRd(arr,t) -> (var_kind_array kind arr)
+  | SetThArrayRd(arr,_) -> (var_kind_array kind arr)
 
 
 and var_kind_setint (kind:var_nature) (s:setint) : term list =
@@ -2998,7 +3001,7 @@ and var_kind_setint (kind:var_nature) (s:setint) : term list =
                             (var_kind_setint kind s2)
   | SetLower(s,i)        -> (var_kind_setint kind s) @
                             (var_kind_int kind i)
-  | SetIntArrayRd(arr,t) -> (var_kind_array kind arr)
+  | SetIntArrayRd(arr,_) -> (var_kind_array kind arr)
 
 
 and var_kind_setelem (kind:var_nature) (s:setelem) : term list =
@@ -3013,7 +3016,7 @@ and var_kind_setelem (kind:var_nature) (s:setelem) : term list =
   | SetdiffElem(s1,s2)    -> (var_kind_setelem kind s1) @
                              (var_kind_setelem kind s2)
   | SetToElems(s,m)       -> (var_kind_set kind s) @ (var_kind_mem kind m)
-  | SetElemArrayRd(arr,t) -> (var_kind_array kind arr)
+  | SetElemArrayRd(arr,_) -> (var_kind_array kind arr)
 
 
 and var_kind_setpair (kind:var_nature) (s:setpair) : term list =
@@ -3029,7 +3032,7 @@ and var_kind_setpair (kind:var_nature) (s:setpair) : term list =
                              (var_kind_setpair kind s2)
   | LowerPair(s,i)        -> (var_kind_setpair kind s) @
                              (var_kind_int kind i)
-  | SetPairArrayRd(arr,t) -> (var_kind_array kind arr)
+  | SetPairArrayRd(arr,_) -> (var_kind_array kind arr)
 
 
 and var_kind_path (kind:var_nature) (p:path) : term list =
@@ -3044,7 +3047,7 @@ and var_kind_path (kind:var_nature) (p:path) : term list =
                                         (var_kind_addr kind add_from) @
                                         (var_kind_addr kind add_to) @
                                         (var_kind_int kind l)
-  | PathArrayRd(arr,t)               -> (var_kind_array kind arr)
+  | PathArrayRd(arr,_)               -> (var_kind_array kind arr)
 
 
 and var_kind_mem (kind:var_nature) (m:mem) : term list =
@@ -3053,19 +3056,19 @@ and var_kind_mem (kind:var_nature) (m:mem) : term list =
   | Update(mem,add,cell) -> (var_kind_mem kind mem) @
                             (var_kind_addr kind add) @
                             (var_kind_cell kind cell)
-  | MemArrayRd(arr,t)    -> (var_kind_array kind arr)
+  | MemArrayRd(arr,_)    -> (var_kind_array kind arr)
 
 
 and var_kind_int (kind:var_nature) (i:integer) : term list =
   match i with
-    IntVal(i)         -> []
+    IntVal _          -> []
   | VarInt v          -> if var_nature v = kind then [IntT i] else []
   | IntNeg(i)         -> (var_kind_int kind i)
   | IntAdd(i1,i2)     -> (var_kind_int kind i1) @ (var_kind_int kind i2)
   | IntSub(i1,i2)     -> (var_kind_int kind i1) @ (var_kind_int kind i2)
   | IntMul(i1,i2)     -> (var_kind_int kind i1) @ (var_kind_int kind i2)
   | IntDiv(i1,i2)     -> (var_kind_int kind i1) @ (var_kind_int kind i2)
-  | IntArrayRd(arr,t) -> (var_kind_array kind arr)
+  | IntArrayRd(arr,_) -> (var_kind_array kind arr)
   | IntSetMin(s)      -> (var_kind_setint kind s)
   | IntSetMax(s)      -> (var_kind_setint kind s)
   | CellMax(c)        -> (var_kind_cell kind c)
@@ -3079,7 +3082,7 @@ and var_kind_pair (kind:var_nature) (p:pair) : term list =
   | IntTidPair (i,t)   -> (var_kind_int kind i) @ (var_kind_tid kind t)
   | SetPairMin ps      -> (var_kind_setpair kind ps)
   | SetPairMax ps      -> (var_kind_setpair kind ps)
-  | PairArrayRd(arr,t) -> (var_kind_array kind arr)
+  | PairArrayRd(arr,_) -> (var_kind_array kind arr)
 
 
 and var_kind_atom (kind:var_nature) (a:atom) : term list =
@@ -3150,10 +3153,10 @@ and var_kind_atom (kind:var_nature) (a:atom) : term list =
                                             [VarT v]
                                           else
                                             []
-  | BoolArrayRd(arr,t)                 -> (var_kind_array kind arr)
-  | PC (pc,t,_)                        -> []
+  | BoolArrayRd(arr,_)                 -> (var_kind_array kind arr)
+  | PC (_,_,_)                         -> []
   | PCUpdate (_,_)                     -> []
-  | PCRange (pc1,pc2,t,_)              -> []
+  | PCRange (_,_,_,_)                  -> []
 
 
 and var_kind_eq (kind:var_nature) ((t1,t2):eq) : term list =
@@ -3167,7 +3170,7 @@ and var_kind_ineq (kind:var_nature) ((t1,t2):diseq) : term list =
 and var_kind_fs () = Formula.make_fold
                        Formula.GenericLiteralFold
                        (fun info a -> var_kind_atom info a)
-                       (fun info -> [])
+                       (fun _ -> [])
                        (@)
 
 
@@ -4885,11 +4888,11 @@ let construct_term_eq_as_array (v:term)
         let new_expr   =
           let cell_arr = CellArrayRd(arr,VarTh th) in
           match (v,e) with
-          | (ElemT(CellData(c)), Term (ElemT e)) ->
+          | (ElemT(CellData(_)), Term (ElemT e)) ->
               Term(CellT(MkCell(param_elem th_p e,
                                 Next cell_arr,
                                 CellLockId cell_arr)))
-          | (AddrT(Next(c)), Term (AddrT a)) ->
+          | (AddrT(Next(_)), Term (AddrT a)) ->
               Term(CellT(MkCell(CellData cell_arr,
                                 param_addr th_p a,
                                 CellLockId cell_arr)))
@@ -4901,7 +4904,7 @@ let construct_term_eq_as_array (v:term)
                              Term(CellT(MkCell(CellData new_d,
                                                Next new_d,
                                                my_tid)))
-          | (TidT(CellLockId(c)), Term (TidT tid)) ->
+          | (TidT(CellLockId(_)), Term (TidT tid)) ->
               Term(CellT(MkCell(CellData cell_arr,
                                 Next cell_arr,
                                 param_th th_p tid)))
@@ -5034,8 +5037,8 @@ let required_sorts (phi:formula) : sort list =
 
   let rec req_fs () = Formula.make_fold
                         Formula.GenericLiteralFold
-                        (fun info a -> req_atom a)
-                        (fun info -> empty)
+                        (fun _ a -> req_atom a)
+                        (fun _5054G -> empty)
                         (union)
 
   and req_f (phi:formula) : SortSet.t =
@@ -5048,7 +5051,7 @@ let required_sorts (phi:formula) : sort list =
     | Reach (m,a1,a2,p)     -> append Bool [req_m m;req_a a1;req_a a2;req_p p]
     | ReachAt (m,a1,a2,l,p) -> append Bool [req_m m;req_a a1;req_a a2;req_i l;req_p p]
     | OrderList (m,a1,a2)   -> append Bool [req_m m;req_a a1;req_a a2]
-    | Skiplist(m,s,l,a1,a2,se) -> append Bool [req_m m;req_s s;req_a a1;req_a a2;req_se se]
+    | Skiplist(m,s,l,a1,a2,se) -> append Bool [req_m m;req_s s;req_i l;req_a a1;req_a a2;req_se se]
     | In (a,s)              -> append Bool [req_a a;req_s s]
     | SubsetEq (s1,s2)      -> append Bool [req_s s1;req_s s2]
     | InTh (t,s)            -> append Bool [req_t t;req_st s]
@@ -5391,7 +5394,7 @@ and to_plain_arrays (ops:fol_ops_t) (arr:arrays) : arrays =
               That is, v' = v{t <- a} is translated into v_prime = a.
               This translation is done at literal level, hence this case
               should not appear at that is why I am asserting false. *)
-  | ArrayUp(aa,t,e) -> (print_endline (arrays_to_str arr); assert false)
+  | ArrayUp _ -> (print_endline (arrays_to_str arr); assert false)
 (*
                         ArrayUp(to_plain_arrays ops aa,
                                 to_plain_tid_aux ops t,
@@ -5756,10 +5759,10 @@ and to_plain_formula_aux (ops:fol_ops_t) (phi:formula) : formula =
                             begin
                               match lit with
                                 (* Update of a local variable of a parametrized system *)
-                              | F.Atom(Eq(v',ArrayT(ArrayUp(arr,t,e))))
-                              | F.Atom(Eq(ArrayT(ArrayUp(arr,t,e)),v'))
-                              | F.NegAtom(InEq(v',ArrayT(ArrayUp(arr,t,e))))
-                              | F.NegAtom(InEq(ArrayT(ArrayUp(arr,t,e)),v')) ->
+                              | F.Atom(Eq(v',ArrayT(ArrayUp(_,t,e))))
+                              | F.Atom(Eq(ArrayT(ArrayUp(_,t,e)),v'))
+                              | F.NegAtom(InEq(v',ArrayT(ArrayUp(_,t,e))))
+                              | F.NegAtom(InEq(ArrayT(ArrayUp(_,t,e)),v')) ->
                                   let new_v' = V.prime (V.set_param (term_to_var v') (V.Local (voc_to_var t))) in
                                   let as_var = to_plain_var (V.set_sort new_v' Bool) in
                                   begin
@@ -5845,7 +5848,7 @@ and identical_arrays (a1:arrays) (a2:arrays) : bool =
   match (a1,a2) with
   | VarArray(v1), VarArray(v2) -> identical_variable v1 v2
   | ArrayUp(b1,t1,e1),ArrayUp(b2,t2,e2) -> 
-    identical_arrays b1 b2 && identical_tid t1 t2 && identical_expr_t e2 e2
+    identical_arrays b1 b2 && identical_tid t1 t2 && identical_expr_t e1 e2
   | _,_ -> false
 and identical_addrarr (a1:addrarr) (a2:addrarr) : bool =
   match (a1,a2) with

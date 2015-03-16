@@ -176,7 +176,7 @@ module Make (VS : VarSpec.S) =
     let var_compare (x:t) (y:t) : int =
       let same_var (x:t) (y:t) : bool =
         let is_global (v:t) : bool =
-          x.scope = GlobalScope || x.scope = Scope "" in
+          v.scope = GlobalScope || v.scope = Scope "" in
         is_global x && is_global y &&
         x.id = y.id && x.sort = y.sort && x.parameter = y.parameter &&
         x.is_primed && y.is_primed && x.info = y.info

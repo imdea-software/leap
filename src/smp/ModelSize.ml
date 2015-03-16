@@ -9,7 +9,7 @@ type dom_t =
 type t = (dom_t, int) Hashtbl.t
 
 
-let create (unit) : t =
+let create () : t =
   Hashtbl.create 5
 
 let get (ms:t) (d:dom_t) : int =

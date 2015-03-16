@@ -127,28 +127,6 @@ module type S =
     and conjunctive_formula = atom Formula.conjunctive_formula
     and disjunctive_formula = atom Formula.disjunctive_formula
     and formula = atom Formula.formula
-(*
-    and literal =
-        Atom              of atom
-      | NegAtom           of atom
-    and conjunctive_formula =
-        FalseConj
-      | TrueConj
-      | Conj              of literal list
-    and disjunctive_formula =
-      | FalseDisj
-      | TrueDisj
-      | Disj              of literal list
-    and formula =
-        Literal           of literal
-      | True
-      | False
-      | And               of formula * formula
-      | Or                of formula * formula
-      | Not               of formula
-      | Implies           of formula * formula
-      | Iff               of formula * formula
-*)
 
 
     type special_op_t =
@@ -429,28 +407,6 @@ module Make (K : Level.S) : S =
     and conjunctive_formula = atom Formula.conjunctive_formula
     and disjunctive_formula = atom Formula.disjunctive_formula
     and formula = atom Formula.formula
-(*
-    and literal =
-        Atom              of atom
-      | NegAtom           of atom
-    and conjunctive_formula =
-        FalseConj
-      | TrueConj
-      | Conj              of literal list
-    and disjunctive_formula =
-      | FalseDisj
-      | TrueDisj
-      | Disj              of literal list
-    and formula =
-        Literal           of literal
-      | True
-      | False
-      | And               of formula * formula
-      | Or                of formula * formula
-      | Not               of formula
-      | Implies           of formula * formula
-      | Iff               of formula * formula
-*)
 
     type special_op_t =
       | Reachable
@@ -588,7 +544,7 @@ module Make (K : Level.S) : S =
         else
           Hashtbl.add tbl base (V.info v)
       ) s;
-      Hashtbl.fold (fun (id,s,pr,th,p) info set ->
+      Hashtbl.fold (fun (id,s,pr,th,p) _ set ->
         let new_var = build_var id s pr th p
         in
           V.VarSet.add new_var set
@@ -734,11 +690,11 @@ module Make (K : Level.S) : S =
         | Eq((x,y))              -> (get_varset_term x) @@ (get_varset_term y)
         | InEq((x,y))            -> (get_varset_term x) @@ (get_varset_term y)
         | BoolVar v              -> V.VarSet.singleton v
-        | PC(pc,th,pr)           -> (match th with
+        | PC(_,th,_)             -> (match th with
                                      | V.Shared -> V.VarSet.empty
                                      | V.Local t -> V.VarSet.singleton t)
-        | PCUpdate (pc,th)       -> (get_varset_tid th)
-        | PCRange(pc1,pc2,th,pr) -> (match th with
+        | PCUpdate (_,th)       -> (get_varset_tid th)
+        | PCRange(_,_,th,_)     -> (match th with
                                      | V.Shared -> V.VarSet.empty
                                      | V.Local t -> V.VarSet.singleton t)
     and get_varset_term t = match t with
@@ -753,53 +709,13 @@ module Make (K : Level.S) : S =
         | PathT  p            -> get_varset_path p
         | MemT   m            -> get_varset_mem m
         | LevelT l            -> get_varset_level l
-        | VarUpdate(v,pc,t)   -> (V.VarSet.singleton v) @@ (get_varset_term t) @@
+        | VarUpdate(v,_,t)    -> (V.VarSet.singleton v) @@ (get_varset_term t) @@
                                  (get_varset_from_param v)
-(*
-    and get_varset_literal l =
-      match l with
-          Atom a    -> get_varset_atom a
-        | NegAtom a -> get_varset_atom a
-
-    and get_varset_from_conj_aux phi =
-      let another_lit vars alit = vars @@ (get_varset_literal alit) in
-      match phi with
-          TrueConj   -> V.VarSet.empty
-        | FalseConj  -> V.VarSet.empty
-        | Conj l     -> List.fold_left (another_lit) V.VarSet.empty l
-
-    and get_varset_from_conj phi =
-      unify_varset (get_varset_from_conj_aux phi)
-
-    and get_unparam_varset_from_conj phi =
-      unify_varset (unparam_varset (get_varset_from_conj_aux phi))
-
-    and get_varset_from_formula_aux phi =
-      match phi with
-        Literal l       -> get_varset_literal l
-      | True            -> V.VarSet.empty
-      | False           -> V.VarSet.empty
-      | And (f1,f2)     -> (get_varset_from_formula f1) @@
-                           (get_varset_from_formula f2)
-      | Or (f1,f2)      -> (get_varset_from_formula f1) @@
-                           (get_varset_from_formula f2)
-      | Not f           -> (get_varset_from_formula f)
-      | Implies (f1,f2) -> (get_varset_from_formula f1) @@
-                           (get_varset_from_formula f2)
-      | Iff (f1,f2)     -> (get_varset_from_formula f1) @@
-                           (get_varset_from_formula f2)
-
-    and get_varset_from_formula phi =
-      unify_varset (get_varset_from_formula_aux phi)
-
-    and get_unparam_varset_from_formula phi =
-      unify_varset (unparam_varset (get_varset_from_formula_aux phi))
-*)
 
     let varset_fs = Formula.make_fold
                       Formula.GenericLiteralFold
-                      (fun info a -> get_varset_atom a)
-                      (fun info -> V.VarSet.empty)
+                      (fun _ a -> get_varset_atom a)
+                      (fun _ -> V.VarSet.empty)
                       (@@)
 
     let get_varset_from_literal (l:literal) : V.VarSet.t =
@@ -856,53 +772,22 @@ module Make (K : Level.S) : S =
       | Eq((x,y))              -> add_list [x;y]
       | InEq((x,y))            -> add_list [x;y]
       | BoolVar v              -> add_list [VarT v]
-      | PC(pc,th,pr)           -> (match th with
+      | PC(_,th,_)             -> (match th with
                                    | V.Shared  -> TermSet.empty
                                    | V.Local t -> add_list [TidT (VarTh t)])
-      | PCUpdate (pc,th)       -> add_list [TidT th]
-      | PCRange(pc1,pc2,th,pr) -> (match th with
+      | PCUpdate (_,th)        -> add_list [TidT th]
+      | PCRange(_,_,th,_)      -> (match th with
                                    | V.Shared  -> TermSet.empty
                                    | V.Local t -> add_list [TidT (VarTh t)])
 
     let termset_fs = Formula.make_fold
                        Formula.GenericLiteralFold
-                       (fun info a -> get_termset_atom a)
-                       (fun info -> TermSet.empty)
+                       (fun _ a -> get_termset_atom a)
+                       (fun _ -> TermSet.empty)
                        TermSet.union
 
     let get_termset_from_formula (phi:formula) : TermSet.t =
       Formula.formula_fold termset_fs () phi
-
-
-(*
-    and get_termset_literal (l:literal) : TermSet.t =
-      match l with
-      | Atom a    -> get_termset_atom a
-      | NegAtom a -> get_termset_atom a
-
-    and get_termset_from_conjformula (cf:conjunctive_formula) : TermSet.t =
-      match cf with
-      | TrueConj  -> TermSet.empty
-      | FalseConj -> TermSet.empty
-      | Conj ls   -> List.fold_left (fun set l ->
-                       TermSet.union set (get_termset_literal l)
-                     ) TermSet.empty ls
-
-    and get_termset_from_formula (phi:formula) : TermSet.t =
-      match phi with
-      | Literal l       -> get_termset_literal l
-      | True            -> TermSet.empty
-      | False           -> TermSet.empty
-      | And (f1,f2)     -> TermSet.union (get_termset_from_formula f1)
-                                         (get_termset_from_formula f2)
-      | Or (f1,f2)      -> TermSet.union (get_termset_from_formula f1)
-                                         (get_termset_from_formula f2)
-      | Not f           -> (get_termset_from_formula f)
-      | Implies (f1,f2) -> TermSet.union (get_termset_from_formula f1)
-                                         (get_termset_from_formula f2)
-      | Iff (f1,f2)     -> TermSet.union (get_termset_from_formula f1)
-                                         (get_termset_from_formula f2)
-*)
 
 
     let termset_of_sort (all:TermSet.t) (s:sort) : TermSet.t =
@@ -1121,84 +1006,19 @@ module Make (K : Level.S) : S =
                                    (is_term_var t1) && (is_term_flat t2)  ||
                                    (is_term_flat t1) && (is_term_var t2))
       | InEq(x,y)              -> (is_term_var x) && (is_term_var y)
-      | BoolVar v              -> true
-      | PC (pc,t,pr)           -> true
-      | PCUpdate (pc,t)        -> true
-      | PCRange (pc1,pc2,t,pr) -> true
+      | BoolVar _              -> true
+      | PC _                   -> true
+      | PCUpdate _             -> true
+      | PCRange _              -> true
 
     let is_flat_fs = Formula.make_fold
                        Formula.GenericLiteralFold
-                       (fun info a -> is_atom_flat a)
-                       (fun info -> true)
+                       (fun _ a -> is_atom_flat a)
+                       (fun _ -> true)
                        (&&)
 
     let is_literal_flat (l:literal) : bool =
       Formula.literal_fold is_flat_fs () l
-
-(*
-    let is_literal_flat lit =
-      match lit with
-          Atom a ->
-      begin match a with
-        | Append(p1,p2,p3)       -> (is_path_var p1) && (is_path_var p2) &&
-                                    (is_path_var p3)
-        | Reach(m,a1,a2,l,p)     -> (is_mem_var m) && (is_addr_var a1) &&
-                                    (is_addr_var a2) && (is_int_var l) &&
-                                    (is_path_var p)
-        | OrderList(m,a1,a2)     -> (is_mem_var m) && (is_addr_var a1) &&
-                                    (is_addr_var a2)
-        | In(a,s)                -> (is_addr_var a) && (is_set_var s)
-        | SubsetEq(s1,s2)        -> (is_set_var s1) && (is_set_var s2)
-        | InTh(k,st)             -> (is_tid_var k) && (is_setth_var st)
-        | SubsetEqTh(st1,st2)    -> (is_setth_var st1) && (is_setth_var st2)
-        | InElem(e,se)           -> (is_elem_var e) && (is_setelem_var se)
-        | SubsetEqElem(se1,se2)  -> (is_setelem_var se1) && (is_setelem_var se2)
-        | Less (i1,i2)           -> (is_int_var i1) && (is_int_var i2)
-        | Greater (i1,i2)        -> (is_int_var i1) && (is_int_var i2)
-        | LessEq (i1,i2)         -> (is_int_var i1) && (is_int_var i2)
-        | GreaterEq (i1,i2)      -> (is_int_var i1) && (is_int_var i2)
-        | LessElem(e1,e2)        -> (is_elem_var e1) && (is_elem_var e2)
-        | GreaterElem(e1,e2)     -> (is_elem_var e1) && (is_elem_var e2)
-        | Eq(t1,t2)              -> ((is_term_var t1) && (is_term_var t2)  ||
-                                     (is_term_var t1) && (is_term_flat t2)  ||
-                                     (is_term_flat t1) && (is_term_var t2))
-        | InEq(x,y)              -> (is_term_var x) && (is_term_var y)
-        | BoolVar v              -> true
-        | PC (pc,t,pr)           -> true
-        | PCUpdate (pc,t)        -> true
-        | PCRange (pc1,pc2,t,pr) -> true
-      end
-        | NegAtom a ->
-      begin match a with
-        | Append(p1,p2,p3)      -> (is_path_var p1) && (is_path_var p2) &&
-                                   (is_path_var p3)
-        | Reach(m,a1,a2,l,p)    -> (is_mem_var m) && (is_addr_var a1) &&
-                                   (is_addr_var a2) && (is_int_var l) &&
-                                   (is_path_var p)
-        | OrderList(m,a1,a2)    -> (is_mem_var m) && (is_addr_var a1) &&
-                                   (is_addr_var a2)
-        | In(a,s)               -> (is_addr_var a) && (is_set_var s)
-        | SubsetEq(s1,s2)       -> (is_set_var s1) && (is_set_var s2)
-        | InTh(k,st)            -> (is_tid_var k) && (is_setth_var st)
-        | SubsetEqTh(st1,st2)   -> (is_setth_var st1) && (is_setth_var st2)
-        | InElem(e,se)          -> (is_elem_var e) && (is_setelem_var se)
-        | SubsetEqElem(se1,se2) -> (is_setelem_var se1) && (is_setelem_var se2)
-        | Less (i1,i2)          -> (is_int_var i1) && (is_int_var i2)
-        | Greater (i1,i2)       -> (is_int_var i1) && (is_int_var i2)
-        | LessEq (i1,i2)        -> (is_int_var i1) && (is_int_var i2)
-        | GreaterEq (i1,i2)     -> (is_int_var i1) && (is_int_var i2)
-        | LessElem(e1,e2)       -> (is_elem_var e1) && (is_elem_var e2)
-        | GreaterElem(e1,e2)    -> (is_elem_var e1) && (is_elem_var e2)
-        | Eq(x,y)               ->  (is_term_var x) && (is_term_var y)
-        | InEq(t1,t2)           -> ((is_term_var  t1) && (is_term_var  t2) ||
-                                    (is_term_var  t1) && (is_term_flat t2) ||
-                                    (is_term_flat t1) && (is_term_var  t2) )
-        | BoolVar v             -> true
-        | PC _                  -> true
-        | PCUpdate _            -> true
-        | PCRange _             -> true
-      end
-*)
 
 
     (*******************)
@@ -1280,12 +1100,6 @@ module Make (K : Level.S) : S =
                                       let th_str = (V.shared_or_local_to_str t) in
                                       Printf.sprintf "%i <= %s(%s) <= %i"
                                                       pc1 pc_str th_str pc2
-(*
-    and literal_to_str e =
-      match e with
-          Atom(a)    -> atom_to_str a 
-        | NegAtom(a) -> Printf.sprintf "(~ %s)" (atom_to_str a)
-*)
     and mem_to_str expr =
       match expr with
           VarMem(v) -> V.to_str v
@@ -1423,71 +1237,6 @@ module Make (K : Level.S) : S =
     and formula_to_str (phi:formula) : string =
       Formula.formula_to_str atom_to_str phi
 
-(*
-    and conjunctive_formula_to_str form =
-      let rec c_to_str f str =
-        match f with
-      [] -> str
-          | lit::sub ->
-        c_to_str sub (Printf.sprintf "%s /\\ %s" str (literal_to_str lit))
-      in
-        match form with
-          | TrueConj  -> Printf.sprintf "true"
-          | FalseConj -> Printf.sprintf "false"
-          | Conj([]) -> ""
-          | Conj(lit :: subform) -> c_to_str subform (literal_to_str lit)
-    and disjunctive_formula_to_str form =
-      let rec c_to_str f str =
-        match f with
-          | [] -> str
-          | lit::sub ->
-              c_to_str sub (Printf.sprintf "%s \\/ %s" str (literal_to_str lit))
-      in
-        match form with
-          | TrueDisj  -> Printf.sprintf "true"
-          | FalseDisj -> Printf.sprintf "false"
-          | Disj([]) -> ""
-          | Disj(lit :: subform) -> c_to_str subform (literal_to_str lit)
-    and formula_to_str_aux (op:logic_op_t) (phi:formula) : string =
-      match phi with
-      | Literal l -> literal_to_str l
-      | True -> "true"
-      | False -> "false"
-      | And(a,b)     -> let a_str = formula_to_str_aux AndOp a in
-                        let b_str = formula_to_str_aux AndOp b in
-                        if op = AndOp then
-                          a_str ^ " /\\ " ^ b_str
-                        else
-                          "(" ^ a_str ^ " /\\ " ^ b_str ^ ")"
-      | Or(a,b)      -> let a_str = formula_to_str_aux OrOp a in
-                        let b_str = formula_to_str_aux OrOp b in
-                        if op = OrOp then
-                          a_str ^ " \\/ " ^ b_str
-                        else
-                          "(" ^ a_str ^ " \\/ " ^ b_str ^ ")"
-      | Not a        -> let a_str = formula_to_str_aux NotOp a in
-                        if op = NotOp then
-                          "~ " ^ a_str
-                        else
-                          "(~ " ^ a_str ^ ")"
-      | Implies(a,b) -> let a_str = formula_to_str_aux ImpliesOp a in
-                        let b_str = formula_to_str_aux ImpliesOp b in
-                        if op = ImpliesOp then
-                          a_str ^ " -> " ^ b_str
-                        else
-                          "(" ^ a_str ^ " -> " ^ b_str ^ ")"
-      | Iff(a,b)     -> let a_str = formula_to_str_aux IffOp a in
-                        let b_str = formula_to_str_aux IffOp b in
-                        if op = IffOp then
-                          a_str ^ " <-> " ^ b_str
-                        else
-                          "(" ^ a_str ^ " <-> " ^ b_str ^ ")"
-
-
-    and formula_to_str (expr:formula) : string =
-      formula_to_str_aux NoneOp expr
-*)
-
     let print_atom a =
       Printer.generic atom_to_str a
 
@@ -1523,14 +1272,6 @@ module Make (K : Level.S) : S =
 
     let print_setth sth =
       Printer.generic setth_to_str sth
-
-
-
-    (* let print_eq    e = *)
-    (*   Printer.generic eq_to_str e *)
-
-    (* let print_diseq e = *)
-    (*   Printer.generic eq_to_str e *)
 
 
     (* VOCABULARY FUNCTIONS *)
@@ -1685,11 +1426,11 @@ module Make (K : Level.S) : S =
       | Eq(exp)                    -> (voc_eq exp)
       | InEq(exp)                  -> (voc_ineq exp)
       | BoolVar v                  -> get_tid_in v
-      | PC (pc,t,_)                -> (match t with
+      | PC (_,t,_)                 -> (match t with
                                        | V.Shared -> ThreadSet.empty
                                        | V.Local x -> ThreadSet.singleton (VarTh x))
-      | PCUpdate (pc,t)            -> ThreadSet.singleton t
-      | PCRange (pc1,pc2,t,_)      -> (match t with
+      | PCUpdate (_,t)             -> ThreadSet.singleton t
+      | PCRange (_,_,t,_)          -> (match t with
                                        | V.Shared -> ThreadSet.empty
                                        | V.Local x -> ThreadSet.singleton (VarTh x))
 
@@ -1702,8 +1443,8 @@ module Make (K : Level.S) : S =
 
     let voc_fs = Formula.make_fold
                    Formula.GenericLiteralFold
-                   (fun info a -> voc_atom a)
-                   (fun info -> ThreadSet.empty)
+                   (fun _ a -> voc_atom a)
+                   (fun _ -> ThreadSet.empty)
                    (@@)
 
     let voc_literal (l:literal) : ThreadSet.t =
@@ -1716,81 +1457,18 @@ module Make (K : Level.S) : S =
     let voc_formula (phi:formula) : ThreadSet.t =
       Formula.formula_fold voc_fs () phi
 
-(*
-    and voc_literal (l:literal) : tid list =
-      match l with
-        Atom a    -> voc_atom a
-      | NegAtom a -> voc_atom a
-
-
-    and voc_conjunctive_formula (cf:conjunctive_formula) : tid list =
-      match cf with
-        FalseConj -> []
-      | TrueConj  -> []
-      | Conj ls   -> List.fold_left (fun xs l -> (voc_literal l)@xs) [] ls
-
-
-    and voc_formula (phi:formula) : tid list =
-        match phi with
-          Literal(lit)          -> (voc_literal lit)
-        | True                  -> []
-        | False                 -> []
-        | And(f1,f2)            -> (voc_formula f1) @ (voc_formula f2)
-        | Or(f1,f2)             -> (voc_formula f1) @ (voc_formula f2)
-        | Not(f)                -> (voc_formula f)
-        | Implies(f1,f2)        -> (voc_formula f1) @ (voc_formula f2)
-        | Iff (f1,f2)           -> (voc_formula f1) @ (voc_formula f2)
-*)
-
-(*
-    let all_voc (phi:formula) : ThreadSet.t =
-      let th_list = voc_formula phi in
-      let th_set  = List.fold_left (fun set e -> ThreadSet.add e set)
-                                   (ThreadSet.empty)
-                                   (th_list)
-      in
-        th_set
-*)
-
 
     let voc (phi:formula) : ThreadSet.t =
       voc_formula phi
-(*
-      ThreadSet.elements (all_voc phi)
-*)
 
 
     let conjformula_voc (cf:conjunctive_formula) : ThreadSet.t =
       voc_conjunctive_formula cf
 
-(*
-      let th_list = voc_conjunctive_formula cf in
-      let th_set = List.fold_left (fun set e -> ThreadSet.add e set)
-                                  (ThreadSet.empty)
-                                  (th_list)
-      in
-        ThreadSet.elements th_set
-*)
-
 
     let unprimed_voc (phi:formula) : ThreadSet.t =
       ThreadSet.filter (is_primed_tid>>not) (voc phi)
-(*
-      let voc_set = ThreadSet.filter (is_primed_tid>>not) (all_voc phi)
-      in
-        ThreadSet.elements voc_set
-*)
 
-
-    (******************************)
-    (* DNF                        *)
-    (******************************)
-(*
-    let rec split_conj (phi:formula) : formula list =
-      match phi with
-        And (phi1, phi2) -> (split_conj phi1) @ (split_conj phi2)
-      | _                -> [phi]
-*)
 
 
     let required_sorts (phi:formula) : sort list =
@@ -1800,23 +1478,8 @@ module Make (K : Level.S) : S =
       let single = SortSet.singleton in
       let list_union xs = List.fold_left union empty xs in
       let append s sets = add s (List.fold_left union empty sets) in
-(*
-      let rec req_f (phi:formula) : SortSet.t =
-        match phi with
-        | Literal l       -> req_l l
-        | True            -> empty
-        | False           -> empty
-        | And (f1,f2)     -> union (req_f f1) (req_f f2)
-        | Or (f1,f2)      -> union (req_f f1) (req_f f2)
-        | Not f           -> req_f f
-        | Implies (f1,f2) -> union (req_f f1) (req_f f2)
-        | Iff (f1,f2)     -> union (req_f f1) (req_f f2)
 
-      and req_l (l:literal) : SortSet.t =
-        match l with
-        | Atom a    -> req_atom a
-        | NegAtom a -> req_atom a
-*)
+
       let rec req_atom (a:atom) : SortSet.t =
         match a with
         | Append (p1,p2,p3)   -> list_union [req_p p1;req_p p1;req_p p2;req_p p3]
@@ -1836,7 +1499,7 @@ module Make (K : Level.S) : S =
         | GreaterElem (e1,e2) -> list_union [req_e e1; req_e e2]
         | Eq (t1,t2)          -> union (req_term t1) (req_term t2)
         | InEq (t1,t2)        -> union (req_term t1) (req_term t2)
-        | BoolVar v           -> single Bool
+        | BoolVar _           -> single Bool
         | PC _                -> single Tid
         | PCUpdate _          -> single Tid
         | PCRange _           -> empty
@@ -1941,8 +1604,8 @@ module Make (K : Level.S) : S =
 
       let req_fs = Formula.make_fold
                      Formula.GenericLiteralFold
-                     (fun info a -> req_atom a)
-                     (fun info -> empty)
+                     (fun _ a -> req_atom a)
+                     (fun _ -> empty)
                      union in
 
       let req_f (phi:formula) : SortSet.t =
@@ -1959,23 +1622,6 @@ module Make (K : Level.S) : S =
       let add = OpsSet.add in
       let list_union xs = List.fold_left union empty xs in
       let append s sets = add s (List.fold_left union empty sets) in
-(*
-      let rec ops_f (phi:formula) : OpsSet.t =
-        match phi with
-        | Literal l       -> ops_l l
-        | True            -> empty
-        | False           -> empty
-        | And (f1,f2)     -> union (ops_f f1) (ops_f f2)
-        | Or (f1,f2)      -> union (ops_f f1) (ops_f f2)
-        | Not f           -> ops_f f
-        | Implies (f1,f2) -> union (ops_f f1) (ops_f f2)
-        | Iff (f1,f2)     -> union (ops_f f1) (ops_f f2)
-
-      and ops_l (l:literal) : OpsSet.t =
-        match l with
-        | Atom a    -> ops_atom a
-        | NegAtom a -> ops_atom a
-*)
 
       let rec ops_atom (a:atom) : OpsSet.t =
         match a with
@@ -1996,7 +1642,7 @@ module Make (K : Level.S) : S =
         | GreaterElem (e1,e2) -> append ElemOrder [ops_e e1; ops_e e2]
         | Eq (t1,t2)          -> list_union [ops_term t1;ops_term t2]
         | InEq (t1,t2)        -> list_union [ops_term t1;ops_term t2]
-        | BoolVar v           -> empty
+        | BoolVar _           -> empty
         | PC _                -> empty
         | PCUpdate _          -> empty
         | PCRange _           -> empty
@@ -2101,8 +1747,8 @@ module Make (K : Level.S) : S =
 
       let ops_fs = Formula.make_fold
                      Formula.GenericLiteralFold
-                     (fun info a -> ops_atom a)
-                     (fun info -> empty)
+                     (fun _ a -> ops_atom a)
+                     (fun _ -> empty)
                      union in
 
       let ops_f (phi:formula) : OpsSet.t =
@@ -2110,24 +1756,6 @@ module Make (K : Level.S) : S =
       in
         OpsSet.elements (ops_f phi)
 
-
-(*
-    let cleanup_dup (cf:conjunctive_formula) : conjunctive_formula =
-      let clean_lits (ls:literal list) : literal list =
-        let (_, xs) = List.fold_left (fun (s,xs) l ->
-                        if LiteralSet.mem l s then
-                          (s,xs)
-                        else
-                          (LiteralSet.add l s, l::xs)
-                      ) (LiteralSet.empty, []) ls
-        in
-          List.rev xs
-      in
-        match cf with
-        | TrueConj -> TrueConj
-        | FalseConj -> FalseConj
-        | Conj ls -> Conj (clean_lits ls)
-*)
 
 
     (* NOTE: I am not considering the possibility of having a1=a2 \/ a1=a3 in the formula *)
@@ -2159,30 +1787,6 @@ module Make (K : Level.S) : S =
       | Eq (AddrT a1, AddrT a2)   -> ([(a1,a2)],[])
       | InEq (AddrT a1, AddrT a2) -> ([],[(a1,a2)])
       | _ -> ([],[])
-
-(*
-    let conj_list (bs:formula list) : formula =
-      match bs with
-      | [] -> True
-      | x::xs -> List.fold_left (fun a b -> And(a,b)) x xs
-
-
-    let disj_list (bs:formula list) : formula =
-      match bs with
-      | [] -> False
-      | x::xs -> List.fold_left (fun a b -> Or(a,b)) x xs
-
-
-    let rec to_conj_list (phi:formula) : formula list =
-      match phi with
-      | And (f1,f2) -> (to_conj_list f1) @ (to_conj_list f2)
-      | _           -> [phi]
-
-    let rec to_disj_list (phi:formula) : formula list =
-      match phi with
-      | Or (f1,f2) -> (to_disj_list f1) @ (to_disj_list f2)
-      | _          -> [phi]
-*)
 
 
     (* Equality constructor functions for formulas *)

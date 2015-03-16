@@ -151,12 +151,12 @@ let cut_off_normalized (expr:conjunctive_formula) : MS.t =
   let numtid = ref (2+(VarSet.cardinal vartid) * tid_num) in
   let numelem = ref (2+(VarSet.cardinal varelem) * tid_num) in
 *)
-  let process_ineq (x,y) =
+  let process_ineq (x,_) =
     match x with
     | VarT _     -> ()                      (* nothing, y must be a VarT as well *)
     | SetT _     -> numaddr := !numaddr + 1 (* the witness of s1 != s2 *)
     | ElemT _    -> ()
-    | TidT _    -> ()
+    | TidT _     -> ()
     | AddrT _    -> ()                      (* no need to look for firstlock, every  firstlock has a var *)
     | CellT _    -> ()
     | SetThT _   -> numtid := !numtid + 1   (* the witness of st1 != st2 *)
@@ -164,7 +164,7 @@ let cut_off_normalized (expr:conjunctive_formula) : MS.t =
     | PathT _    -> numaddr := !numaddr + 2 (* the witnesses of p1 != p2 *)
     | MemT _     -> ()
     | IntT _     -> ()
-    | VarUpdate _-> () in                (* ALE: Not sure if OK *)
+    | VarUpdate _-> () in                   (* ALE: Not sure if OK *)
   let process (lit:literal) =
     match lit with
     | F.Atom(InEq(x,y)) -> process_ineq(x,y)
@@ -288,7 +288,7 @@ let rec union_formula_cutoff_pol (pol:Polarity.t) (info:union_info) (phi:Expr.fo
   | F.Or (f1,f2)      -> apply_cut pol (apply_cut pol info f1) f2
   | F.Not f           -> apply_cut (Polarity.invert pol) info f
   | F.Implies (f1,f2) -> apply_cut pol (apply_cut (Polarity.invert pol) info f1) f2
-  | F.Iff (f1,f2)     -> apply_cut Polarity.Both (apply_cut Polarity.Both info f2) f2
+  | F.Iff (f1,f2)     -> apply_cut Polarity.Both (apply_cut Polarity.Both info f1) f2
 
 
 let union_formula_cutoff (info:union_info) (phi:Expr.formula) : union_info =

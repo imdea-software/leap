@@ -88,7 +88,7 @@ let rec first_n n lst =
   else
     match (n,lst) with
     | (0,_) -> []
-    | (n,[]) -> []
+    | (_,[]) -> []
     | (n,x::xs) -> x :: first_n (n-1) xs
 
 
@@ -136,7 +136,7 @@ let mid_comb (xs:'a list) (size:int) (elem:'a) (pos:int) : 'a list list =
 let rec choose (xs:'a list) (n:int) : 'a list list =
   match (xs,n) with
     (_,0) -> [[]]
-  | ([],k) -> []
+  | ([],_) -> []
   | (y::ys,k) -> List.map (fun zs -> y::zs) (choose ys (k-1)) @ choose ys k
 
 

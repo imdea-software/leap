@@ -75,9 +75,9 @@ let rec build_fun (tbl:((GM.id option) list, abs_value_t) Hashtbl.t)
                   (prevs:(GM.id option) list)
                   (av:abs_value_t) : unit =
   match av with
-  | Concrete (Constant c)      -> Hashtbl.add tbl prevs av
-  | Concrete (Record (lbl,fs)) -> Hashtbl.add tbl prevs av
-  | Concrete (Store (av,i,v))  -> Hashtbl.add tbl prevs av
+  | Concrete (Constant _)      -> Hashtbl.add tbl prevs av
+  | Concrete (Record (_,_))    -> Hashtbl.add tbl prevs av
+  | Concrete (Store (av,_,_))  -> Hashtbl.add tbl prevs av
   | Concrete (FunMap fMap)     -> Hashtbl.iter (fun ids av ->
                                     build_fun tbl (prevs@ids) av
                                   ) fMap
@@ -94,8 +94,8 @@ let build_fun_from (i:int) : ((GM.id option) list, abs_value_t) Hashtbl.t =
 (* Defines a new value in the model *)
 let rec define (id:GM.id) (v:value_t) : unit =
   match v with
-  | Constant c        -> GM.decl_const model id (convert v)
-  | Record (name, vs) -> GM.decl_const model id (convert v)
+  | Constant _        -> GM.decl_const model id (convert v)
+  | Record (_, _)     -> GM.decl_const model id (convert v)
   | FunMap fMap       -> Hashtbl.iter (fun ps v ->
                            GM.decl_fun model id ps ((abs_to_value>>convert) v)
                          ) fMap

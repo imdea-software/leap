@@ -285,20 +285,20 @@ let gen_init_partitions (dom:'a list) (assumptions:'a eqs list) : 'a t  =
   (* Split the list of equalities and inequalities *)
   let e_set = GenSet.empty () in
   let ineqTbl = Hashtbl.create 100 in
-  let (eq,ineq) = List.fold_left (fun (es,is) e ->
-                    match e with
-                    | Eq (a,b)   -> let _ = check_in_dom domSet a in
-                                    let _ = check_in_dom domSet b in
-                                    let _ = GenSet.add e_set a in
-                                    let _ = GenSet.add e_set b in
-                                      ((a,b)::es,is)
-                    | Ineq (a,b) -> let _ = check_in_dom domSet a in
-                                    let _ = check_in_dom domSet b in
-                                    let _ = check_inconsistent a b in
-                                    let _ = load_ineq_info ineqTbl a b in
-                                    let _ = load_ineq_info ineqTbl b a in
-                                      (es,(a,b)::is)
-                  ) ([],[]) assumptions in
+  let eq = List.fold_left (fun es e ->
+             match e with
+             | Eq (a,b)   -> let _ = check_in_dom domSet a in
+                             let _ = check_in_dom domSet b in
+                             let _ = GenSet.add e_set a in
+                             let _ = GenSet.add e_set b in
+                               (a,b)::es
+             | Ineq (a,b) -> let _ = check_in_dom domSet a in
+                             let _ = check_in_dom domSet b in
+                             let _ = check_inconsistent a b in
+                             let _ = load_ineq_info ineqTbl a b in
+                             let _ = load_ineq_info ineqTbl b a in
+                               es
+           ) [] assumptions in
   (* We create the initial partition with all equalities *)
   let part = empty () in
   let _ = List.iter (fun (a,b) -> add_eq part a b) eq in

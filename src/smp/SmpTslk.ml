@@ -114,12 +114,12 @@ module Make (TSLK : TSLKExpression.S) =
       let vars_elem = VarSet.cardinal (V.varset_of_sort vars Expr.Elem) in
       let numelem = ref (vars_elem + vars_mem * vars_addr) in
 
-      let process_ineq (x,y) =
+      let process_ineq (x,_) =
         match x with
         | Expr.VarT _      -> ()        (* nothing, y must be a VarT as well *)
         | Expr.SetT _      -> numaddr := !numaddr + 1 (* the witness of s1 != s2 *)
         | Expr.ElemT _     -> ()
-        | Expr.TidT _     -> ()
+        | Expr.TidT _      -> ()
         | Expr.AddrT _     -> ()                      (* no need to look for firstlock, every  firstlock has a var *)
         | Expr.CellT _     -> ()
         | Expr.SetThT _    -> numtid := !numtid + 1   (* the witness of st1 != st2 *)
@@ -241,7 +241,7 @@ module Make (TSLK : TSLKExpression.S) =
       | F.Or (f1,f2)      -> apply_cut pol (apply_cut pol info f1) f2
       | F.Not f           -> apply_cut (Polarity.invert pol) info f
       | F.Implies (f1,f2) -> apply_cut pol (apply_cut (Polarity.invert pol) info f1) f2
-      | F.Iff (f1,f2)     -> apply_cut Polarity.Both (apply_cut Polarity.Both info f2) f2
+      | F.Iff (f1,f2)     -> apply_cut Polarity.Both (apply_cut Polarity.Both info f1) f2
 
 
     let union_formula_cutoff (info:union_info) (phi:Expr.formula) : union_info =

@@ -69,25 +69,6 @@ and conjunctive_formula = atom Formula.conjunctive_formula
 
 and formula = atom Formula.formula
 
-(*
-and literal =
-    Atom            of atom
-  | NegAtom         of atom
-and conjunctive_formula =
-    ConjTrue
-  | ConjFalse    
-  | Conjuncts     of literal list
-and formula =
-    Literal       of literal
-  | True
-  | False
-  | And           of formula * formula
-  | Or            of formula * formula
-  | Not           of formula
-  | Implies       of formula * formula
-  | Iff           of formula * formula
-*)
-
 
 exception NotConjunctiveExpr of formula
 exception Not_tid_var of tid
@@ -97,31 +78,6 @@ module ThreadSet = Set.Make(
     let compare = Pervasives.compare
     type t = tid
   end )
-
-
-(*
-let var_compare (x:V.t) (y:V.t) : int =
-  let cmp_scope p1 p2 = (p1 = GlobalScope && (p2 = GlobalScope || p2 = Scope "")) ||
-                        (p2 = GlobalScope && (p1 = GlobalScope || p1 = Scope "")) in
-  (* I am not comparing whether ghost/normal kind matches *)
-  let cmp = Pervasives.compare (x.id,x.is_primed,x.parameter)
-                               (y.id,y.is_primed,y.parameter)
-  in
-    if cmp = 0 then
-      if cmp_scope x.scope y.scope then
-        0
-      else
-        Pervasives.compare x.scope y.scope
-    else
-      cmp
-*)
-      
-(*
-module VarSet = Set.Make(
-  struct
-    let compare = var_compare
-    type t = variable
-  end )*)
 
 
 (* Variable constructor *)
@@ -148,13 +104,13 @@ let sort_to_str (s:sort) : string =
   | Set  -> "set"
   | Tid -> "tid"
 
-let generic_int_tid_to_str (srf:string -> string) (t:tid) : string =
+let generic_int_tid_to_str (t:tid) : string =
   match t with
   | VarTh t -> V.to_str t
   | NoTid -> "#"
 
 let rec generic_int_integer_to_str (srf:string -> string) (t:integer) : string =
-  let tid_str_f = generic_int_tid_to_str srf in
+  let tid_str_f = generic_int_tid_to_str in
   let int_str_f = generic_int_integer_to_str srf in
   let set_str_f = generic_int_set_to_str srf in
   match t with
@@ -195,12 +151,12 @@ let rec generic_funterm_to_str (srf:string -> string) (t:fun_term) : string =
     FunVar v        -> V.to_str v
   | FunUpd (f,th,v) -> srf (Printf.sprintf "%s{%s<-%s}"
                             (generic_funterm_to_str srf f)
-                            (generic_int_tid_to_str srf th)
+                            (generic_int_tid_to_str th)
                             (generic_int_term_to_str srf v))
 
 
 let rec generic_atom_to_str (srf:string -> string) (a:atom) : string =
-  let tid_str_f  = generic_int_tid_to_str srf in
+  let tid_str_f  = generic_int_tid_to_str in
   let int_str_f  = generic_int_integer_to_str srf in
   let set_str_f  = generic_int_set_to_str srf in
   let term_str_f = generic_int_term_to_str srf in
@@ -231,40 +187,6 @@ let rec generic_atom_to_str (srf:string -> string) (a:atom) : string =
                                  Printf.sprintf "%i <= %s(%s) <= %i" pc1 i_str th_str pc2
 
 
-(*
-let generic_literal_to_str (srf:string -> string) (l:literal) : string =
-  match l with
-    F.Atom a -> generic_atom_to_str srf a
-  | F.NegAtom a -> srf ("~" ^ generic_atom_to_str srf a)
-
-
-let rec generic_int_formula_to_str (srf:string -> string)
-                                      (f:formula) : string =
-  match f with
-    Literal l        -> generic_literal_to_str srf l
-  | True             -> "true"
-  | False            -> "false"
-  | And (f1,f2)      -> srf (generic_int_formula_to_str srf f1 ^ " /\\ " ^
-                             generic_int_formula_to_str srf f2)
-  | Or (f1,f2)       -> srf (generic_int_formula_to_str srf f1 ^ " \\/ " ^
-                             generic_int_formula_to_str srf f2)
-  | Not f1           -> srf ("~" ^ generic_int_formula_to_str srf f1)
-  | Implies (f1,f2)  -> srf (generic_int_formula_to_str srf f1 ^ " -> "  ^
-                             generic_int_formula_to_str srf f2)
-  | Iff (f1,f2)      -> srf (generic_int_formula_to_str srf f1 ^ " <->"  ^
-                             generic_int_formula_to_str srf f2)
-
-
-let conjlit_to_str (srf:string -> string) (cl:conjunctive_formula) :string =
-  match cl with
-    ConjTrue     -> "true"
-  | ConjFalse    -> "false"
-  | Conjuncts ls -> String.concat " /\\ " $ List.map (generic_literal_to_str srf) ls
-*)
-
-
-
-
 and no_parenthesis (str:string) : string = str
 and add_parenthesis (str:string) : string = "(" ^ str ^ ")"
 
@@ -283,8 +205,6 @@ and literal_to_str (l:literal) : string =
 
 and formula_to_str (phi:formula) : string =
   Formula.formula_to_str (generic_atom_to_str no_parenthesis) phi
-(*  generic_int_formula_to_str no_parenthesis f*)
-
 
 
 (* Parenthesis printing functions *)
@@ -299,28 +219,11 @@ let literal_to_par_string (l:literal) : string =
 
 let formula_to_par_string (phi:formula) : string =
   Formula.formula_to_str (generic_atom_to_str no_parenthesis) phi
-(*  generic_int_formula_to_str add_parenthesis f*)
 
 
 
 
 (* CHECKERS *)
-(*
-let rec is_int_formula (phi:E.formula) : bool =
-  match phi with
-    E.Literal(l)         -> (is_int_literal l)
-  | E.True               -> true
-  | E.False              -> true
-  | E.And(x,y)           -> (is_int_formula x) && (is_int_formula y)
-  | E.Or(x,y)            -> (is_int_formula x) && (is_int_formula y)
-  | E.Not(x)             -> (is_int_formula x)
-  | E.Implies(x,y)       -> (is_int_formula x) && (is_int_formula y)
-  | E.Iff(x,y)           -> (is_int_formula x) && (is_int_formula y)
-and is_int_literal lit =
-  match lit with
-    E.Atom a   -> is_int_atom a
-  | E.NegAtom a -> is_int_atom a
-*)
 let rec is_int_atom ato =
   match ato with
     E.Append(_,_,_)                    -> false
@@ -384,81 +287,27 @@ and is_int_expression e =
 
 and is_int_fs () = Formula.make_fold
                      Formula.GenericLiteralFold
-                     (fun info a -> is_int_atom a)
-                     (fun info -> true)
+                     (fun _ a -> is_int_atom a)
+                     (fun _ -> true)
                      (&&)
 
 and is_int_formula (phi:E.formula) : bool =
   Formula.formula_fold (is_int_fs()) () phi
 
 
-(* CONJUNCTIONS OF LITERAL *)
-
-(*
-let formula_to_conj_literals (phi:formula) : literal list =
-  let rec try_to_build_conjunction x =
-    match x with
-     Literal l -> [l]
-    | And(a,b)  -> (try_to_build_conjunction a) @ (try_to_build_conjunction b)
-    | True      -> []
-    |   _       -> Printf.printf "Error: %s\n" (formula_to_str phi);
-                   raise(NotConjunctiveExpr phi)
-  in
-    try_to_build_conjunction phi
-*)
-
-(*
-let list_literals_to_formula (lits:literal list) : formula =
-  match lits with
-   [] -> True
-  | l::ls -> let folder phi l = And(phi,Literal(l)) in
-               (List.fold_left folder (Literal l) ls)
-  *)
-
-(*
-let conj_literals_to_formula (conj:coVnjunctive_formula) : formula =
-  match conj with
-    ConjTrue   -> True
-  | ConjFalse -> False
-  | Conjuncts cs -> list_literals_to_formula cs
-*)
-
-
-(* has_variable : integer -> bool *)
-
 let rec has_variable (t:integer) : bool =
   match t with
-      Val(n)       -> false
+      Val _        -> false
     | Var _        -> true
     | Neg(x)       -> has_variable x
     | Add(x,y)     -> has_variable x || has_variable y
     | Sub(x,y)     -> has_variable x || has_variable y
     | Mul(x,y)     -> has_variable x || has_variable y
     | Div(x,y)     -> has_variable x || has_variable y
-    | ArrayRd(a,i) -> false
-    | SetMin(s)    -> false
-    | SetMax(s)    -> false
+    | ArrayRd _    -> false
+    | SetMin _     -> false
+    | SetMax _     -> false
 
-
-(* formula_is_linear : formula -> bool *)
-(* term_is_linear    : term    -> bool *)
-(* literal_is_linear : literal -> bool *)
-(* expr_is_linear    : expr    -> bool *)
-
-
-(*
-let rec formula_is_linear (phi:formula) : bool =
-  let is_linear = formula_is_linear in
-    match phi with
-      Literal(l)   -> literal_is_linear l
-    | True         -> true
-    | False        -> true
-    | And(x,y)     -> (is_linear x) && (is_linear y)
-    | Or(x,y)      -> (is_linear x) && (is_linear y)
-    | Not(x)       -> (is_linear x)
-    | Implies(x,y) -> (is_linear x) && (is_linear y)
-    | Iff(x,y)     -> (is_linear x) && (is_linear y)
-*)
 
 let rec term_is_linear t =
   let is_linear = term_is_linear in
@@ -470,16 +319,10 @@ let rec term_is_linear t =
     | Sub(x,y)       -> (is_linear x) && (is_linear y)
     | Mul(x,y)       -> (is_linear x) && (is_linear y) &&
                         ( not ((has_variable x) && (has_variable y)))
-    | Div(x,y)       -> false
-    | ArrayRd(a,i)   -> true
-    | SetMin(s)      -> true
-    | SetMax(s)      -> true
-(*
-and literal_is_linear l =
-  match l with
-    Atom a    -> (atom_is_linear a)
-  | NegAtom a -> (atom_is_linear a)
-*)
+    | Div _          -> false
+    | ArrayRd _      -> true
+    | SetMin _       -> true
+    | SetMax _       -> true
 
 and atom_is_linear a =
   let is_linear = term_is_linear in
@@ -488,25 +331,25 @@ and atom_is_linear a =
   | Greater(x,y)         -> (is_linear x) && (is_linear y)
   | LessEq(x,y)          -> (is_linear x) && (is_linear y)
   | GreaterEq(x,y)       -> (is_linear x) && (is_linear y)
-  | LessTid(x,y)         -> false
+  | LessTid _            -> false
   | Eq(IntV x,IntV y)    -> (is_linear x) && (is_linear y)
   | InEq(IntV x, IntV y) -> (is_linear x) && (is_linear y)
   | Eq(_,_)              -> false
   | InEq(_,_)            -> false
   | In (_,_)             -> false
   | Subset (_,_)         -> false
-  | TidEq(x,y)           -> false
-  | TidInEq(x,y)         -> false
-  | FunEq(x,y)           -> false
-  | FunInEq(x,y)         -> false
+  | TidEq _              -> false
+  | TidInEq _            -> false
+  | FunEq _              -> false
+  | FunInEq _            -> false
   | PC _                 -> false
   | PCUpdate _           -> false
   | PCRange _            -> false
 
 and is_linear_fs () = Formula.make_fold
                         Formula.GenericLiteralFold
-                        (fun info a -> atom_is_linear a)
-                        (fun info -> true)
+                        (fun _ a -> atom_is_linear a)
+                        (fun _ -> true)
                         (&&)
 
 and formula_is_linear (phi:formula) : bool =
@@ -520,7 +363,7 @@ let rec generic_set_from_int_integer (base:V.t -> 'a)
                                      (union:'a -> 'a -> 'a)
                                      (t:integer) : 'a =
   match t with
-    Val i          -> empty
+    Val _          -> empty
   | Var v          -> base v
   | Neg t          -> generic_set_from_int_integer base empty union t
   | Add (t1,t2)    -> union (generic_set_from_int_integer
@@ -539,7 +382,7 @@ let rec generic_set_from_int_integer (base:V.t -> 'a)
                                 base empty union t1)
                             (generic_set_from_int_integer
                                 base empty union t2)
-  | ArrayRd (a,th) -> empty
+  | ArrayRd _      -> empty
   | SetMin s       -> generic_set_from_int_set base empty union s
   | SetMax s       -> generic_set_from_int_set base empty union s
 
@@ -550,7 +393,7 @@ and generic_set_from_funterm (base:V.t -> 'a)
                              (t:fun_term) : 'a =
   match t with
     FunVar (v)      -> base v
-  | FunUpd (f,th,v) -> generic_set_from_funterm base empty union f
+  | FunUpd (f,_,_) -> generic_set_from_funterm base empty union f
 
 
 and generic_set_from_int_set (base:V.t -> 'a)
@@ -591,24 +434,24 @@ let generic_set_from_int_atom (base:V.t -> 'a)
   | Greater (t1,t2)   -> union (int_f t1) (int_f t2)
   | LessEq (t1,t2)    -> union (int_f t1) (int_f t2)
   | GreaterEq (t1,t2) -> union (int_f t1) (int_f t2)
-  | LessTid (th1,th2) -> empty
+  | LessTid _         -> empty
   | Eq (t1,t2)        -> union (term_f t1) (term_f t2)
   | InEq (t1,t2)      -> union (term_f t1) (term_f t2)
   | In (i,s)          -> union (int_f i) (set_f s)
   | Subset (s1,s2)    -> union (set_f s1) (set_f s2)
-  | TidEq (th1,th2)   -> empty
-  | TidInEq (th1,th2) -> empty
+  | TidEq _           -> empty
+  | TidInEq _         -> empty
   | FunEq (f1,f2)     -> union (fun_f f1) (fun_f f2)
   | FunInEq (f1,f2)   -> union (fun_f f1) (fun_f f2)
-  | PC (pc,th,pr)     -> empty
-  | PCUpdate (pc,th)  -> empty
-  | PCRange (_,_,_,_) -> empty
+  | PC _              -> empty
+  | PCUpdate _        -> empty
+  | PCRange _         -> empty
 
 
 let varset_fs = Formula.make_fold
                   Formula.GenericLiteralFold
                   (fun info a -> generic_set_from_int_atom info V.VarSet.empty V.VarSet.union a)
-                  (fun info -> V.VarSet.empty)
+                  (fun _ -> V.VarSet.empty)
                   V.VarSet.union
 
 
@@ -620,7 +463,7 @@ let varset_from_int_formula (base:V.t -> 'a)
 let varidset_fs = Formula.make_fold
                     Formula.GenericLiteralFold
                     (fun info a -> generic_set_from_int_atom info V.VarIdSet.empty V.VarIdSet.union a)
-                    (fun info -> V.VarIdSet.empty)
+                    (fun _ -> V.VarIdSet.empty)
                     V.VarIdSet.union
 
 
@@ -629,48 +472,6 @@ let varidset_from_int_formula (base:V.t -> 'a)
   Formula.formula_fold varidset_fs base phi
                                  
 
-
-(*
-let generic_set_from_int_literal (base:V.t -> 'a)
-                                 (empty:'a)
-                                 (union:'a -> 'a -> 'a)
-                                 (l:literal) : 'a =
-  match l with
-    Atom a    -> generic_set_from_int_atom base empty union a
-  | NegAtom a -> generic_set_from_int_atom base empty union a
-  
-
-let rec generic_set_from_int_formula (base:V.t -> 'a)
-                                     (empty:'a)
-                                     (union:'a -> 'a -> 'a)
-                                     (f:formula) : 'a =
-  match f with
-    Literal l        -> generic_set_from_int_literal base empty union l
-  | True             -> empty
-  | False            -> empty
-  | And (f1,f2)      -> union (generic_set_from_int_formula base empty union f1)
-                              (generic_set_from_int_formula base empty union f2)
-  | Or (f1,f2)       -> union (generic_set_from_int_formula base empty union f1)
-                              (generic_set_from_int_formula base empty union f2)
-  | Not f            -> generic_set_from_int_formula base empty union f
-  | Implies (f1,f2)  -> union (generic_set_from_int_formula base empty union f1)
-                              (generic_set_from_int_formula base empty union f2)
-  | Iff (f1,f2)      -> union (generic_set_from_int_formula base empty union f1)
-                              (generic_set_from_int_formula base empty union f2)
-*)
-
-(*
-let conjlit_to_str (base:V.t -> 'a)
-                      (empty:'a)
-                      (union:'a -> 'a -> 'a)
-                      (cl:conjunctive_formula) : 'a =
-  match cl with
-    ConjTrue     -> empty
-  | ConjFalse    -> empty
-  | Conjuncts ls -> List.fold_left (fun s l ->
-                      union s (generic_set_from_int_literal base empty union l)
-                    ) ls empty
-*)
 
 (* Base functions for variables id *)
 
@@ -711,12 +512,10 @@ let local_vset_from_int_formula (phi:formula) : V.VarIdSet.t =
 
 
 let all_varid_set         = vset_from_int_formula
-(*let all_varid_set_literal = vset_from_int_literal *)
 let all_global_varid_set  = global_vset_from_int_formula
 let all_local_varid_set   = local_vset_from_int_formula
 
 let all_varid phi         = V.VarIdSet.elements (all_varid_set phi)
-(*let all_varid_literal l   = V.VarIdSet.elements (all_varid_set_literal l) *)
 let all_local_varid phi   = V.VarIdSet.elements (all_local_varid_set phi)
 let all_global_varid phi  = V.VarIdSet.elements (all_global_varid_set phi)
 
@@ -764,13 +563,11 @@ let var_local_set_from_int_formula (phi:formula) : V.VarSet.t =
 
 
 let all_vars_set         = var_set_from_int_formula
-(*let all_vars_set_literal = var_set_from_int_literal*)
 let all_global_vars_set  = var_global_set_from_int_formula
 let all_local_vars_set   = var_local_set_from_int_formula
 
 
 let all_vars phi        = V.VarSet.elements (all_vars_set phi)
-(*let all_vars_literal l  = V.VarSet.elements (all_vars_set_literal l)*)
 let all_global_vars phi = V.VarSet.elements (all_global_vars_set phi)
 let all_local_vars phi  = V.VarSet.elements (all_local_vars_set phi)
 
@@ -828,7 +625,7 @@ let thset_from (ths:tid list) : ThreadSet.t =
 
 let rec voc_from_int_integer (t:integer) : ThreadSet.t =
   match t with
-    Val i                  -> ThreadSet.empty
+    Val _                  -> ThreadSet.empty
   | Var v                  -> opt_th (V.parameter v)
   | Neg t                  -> voc_from_int_integer t
   | Add (t1,t2)            -> ThreadSet.union (voc_from_int_integer t1)
@@ -839,15 +636,15 @@ let rec voc_from_int_integer (t:integer) : ThreadSet.t =
                                                 (voc_from_int_integer t2)
   | Div (t1,t2)            -> ThreadSet.union (voc_from_int_integer t1)
                                                 (voc_from_int_integer t2)
-  | ArrayRd (a,th)         -> ThreadSet.empty
-  | SetMin s               -> ThreadSet.empty
-  | SetMax s               -> ThreadSet.empty
+  | ArrayRd _              -> ThreadSet.empty
+  | SetMin _               -> ThreadSet.empty
+  | SetMax _               -> ThreadSet.empty
 
 
 let voc_from_funterm (t:fun_term) : ThreadSet.t =
   match t with
     FunVar v        -> opt_th (V.parameter v)
-  | FunUpd (f,th,v) -> ThreadSet.singleton th
+  | FunUpd (_,th,_) -> ThreadSet.singleton th
 
 
 let rec voc_from_int_set (s:set) : ThreadSet.t =
@@ -888,54 +685,20 @@ let voc_from_int_atom (a:atom) : ThreadSet.t =
   | Subset (s1,s2)    -> union (voc_set s1) (voc_set s2)
   | TidEq (th1,th2)   -> thset_from [th1;th2]
   | TidInEq (th1,th2) -> thset_from [th1;th2]
-  | FunEq (f1,f2)     -> ThreadSet.empty
-  | FunInEq (f1,f2)   -> ThreadSet.empty
-  | PC (pc,th,pr)     -> opt_th th
-  | PCUpdate (pc,th)  -> ThreadSet.singleton th
+  | FunEq _           -> ThreadSet.empty
+  | FunInEq _         -> ThreadSet.empty
+  | PC (_,th,_)       -> opt_th th
+  | PCUpdate (_,th)   -> ThreadSet.singleton th
   | PCRange (_,_,th,_)-> opt_th th
 
 let voc_fs = Formula.make_fold
                Formula.GenericLiteralFold
-               (fun info a -> voc_from_int_atom a)
-               (fun info -> ThreadSet.empty)
+               (fun _ a -> voc_from_int_atom a)
+               (fun _ -> ThreadSet.empty)
                ThreadSet.union
 
 let voc_from_int_formula (phi:formula) : ThreadSet.t =
   Formula.formula_fold voc_fs () phi
-
-
-(*
-let voc_from_int_literal (l:literal) : ThreadSet.t =
-  match l with
-    Atom a    -> voc_from_int_atom a
-  | NegAtom a -> voc_from_int_atom a
-
-
-let rec voc_from_int_formula (f:formula) : ThreadSet.t =
-  let union = ThreadSet.union in
-  let empty = ThreadSet.empty in
-  let voc_formula = voc_from_int_formula in
-  match f with
-    Literal l        -> voc_from_int_literal l
-  | True             -> empty
-  | False            -> empty
-  | And (f1,f2)      -> union (voc_formula f1) (voc_formula f2)
-  | Or (f1,f2)       -> union (voc_formula f1) (voc_formula f2)
-  | Not f            -> voc_formula f
-  | Implies (f1,f2)  -> union (voc_formula f1) (voc_formula f2)
-  | Iff (f1,f2)      -> union (voc_formula f1) (voc_formula f2)
-
-
-
-let voc_from_conjlit (cl:conjunctive_formula) : ThreadSet.t =
-  match cl with
-    ConjTrue     -> ThreadSet.empty
-  | ConjFalse    -> ThreadSet.empty
-  | Conjuncts ls -> List.fold_left (fun s l ->
-                      ThreadSet.union s (voc_from_int_literal l)
-                    ) ThreadSet.empty ls
-*)
-
 
 
 let voc (phi:formula) : tid list =

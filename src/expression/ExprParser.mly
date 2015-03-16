@@ -698,10 +698,10 @@ node_id_list :
 
 
 box_list :
-  | box
-    { [$1] }
-  | box COMMA box_list
-    { $1 :: $3 }
+  |
+    { [] }
+  | box box_list
+    { $1 :: $2 }
       
 
 box :

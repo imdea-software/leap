@@ -1,5 +1,4 @@
 {
-open Global
 open StmParser
 
 exception LexerError
@@ -39,6 +38,7 @@ let _ = List.iter (fun (kwd, tok) -> Hashtbl.add keyword_table kwd tok)
             ("nextat"       , NEXTAT);
             ("arr"          , ARR);
             ("firstlocked"  , FIRSTLOCKED);
+            ("lastlocked"   , LASTLOCKED);
             ("lockid"       , LOCKID);
             ("lock"         , LOCK);
             ("unlock"       , UNLOCK);

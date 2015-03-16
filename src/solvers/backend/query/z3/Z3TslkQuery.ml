@@ -533,9 +533,6 @@ module Make (K : Level.S) : TSLK_QUERY =
         B.add_buffer buf tmpbuf
 
 
-    (* (define-type address (scalar null aa_1 aa_2 aa_3 aa_4 aa_5))   *)
-    (* (define max_address::int 5)                                    *)
-    (* (define-type range_address (subrange 0 max_address))           *)
     let z3_addr_preamble (buf:B.t) (num_addr:int) : unit =
       try
         find_in_cache (PreambleAddr (num_addr,!use_quantifiers)) buf
@@ -595,9 +592,6 @@ module Make (K : Level.S) : TSLK_QUERY =
         B.add_buffer buf tmpbuf
 
 
-    (* (define-type tid (scalar NoThread t1 t2 t3)) *)
-    (* (define max_tid::int 3)                      *)
-    (* (define-type range_tid (subrange 0 max_tid)) *)
     let z3_tid_preamble (buf:B.t) (num_tids:int) : unit =
       try
         find_in_cache (PreambleTid num_tids) buf
@@ -647,10 +641,6 @@ module Make (K : Level.S) : TSLK_QUERY =
 
 
 
-    (* (define-type cell (record data::element next::address lock::tid))   *)
-    (* (define next::(-> cell address) (lambda (c::cell) (select c next))) *)
-    (* (define data::(-> cell element) (lambda (c::cell) (select c data))) *)
-    (* (define lock::(-> cell tid)     (lambda (c::cell) (select c lock))) *)
     let z3_cell_preamble (buf:B.t) : unit =
       B.add_string buf global_cell_preamble_str
 
@@ -675,22 +665,6 @@ module Make (K : Level.S) : TSLK_QUERY =
       B.add_string buf global_setelem_preamble_str
 
 
-    (* (define pathat::(-> range_address address))                     *)
-    (* (define pathwhere::(-> address range_address))                  *)
-    (* (define-type path                                               *)
-    (*   (record length::range_address  at::pathat where::pathwhere))  *)
-    (* (define eqpath_pos::(-> path path path_length bool) *)
-    (*     (lambda (p::path r::path_length i::range_address) *)
-    (*         (=> (and (< i (select p length)) *)
-    (*                  (< i (select r length))) *)
-    (*             (= ((select p at) i) ((select r at) i))))) *)
-    (* (define eqpath::(-> path path bool) *)
-    (*     (lambda (p::path r::path) *)
-    (*         (and (= (select p length) (select r length)) *)
-    (*              (eqpath_pos p r 0) *)
-    (*              (eqpath_pos p r 1) *)
-    (*              (eqpath_pos p r 2) *)
-    (*              (eqpath_pos p r 3)))) *)
     let z3_path_preamble (buf:B.t) (num_addr:int) =
       try
         find_in_cache (PreamblePath (num_addr, !use_quantifiers)) buf
@@ -746,14 +720,6 @@ module Make (K : Level.S) : TSLK_QUERY =
 
 
 
-    (* (define subseteq::(-> set set bool)  *)
-    (*   (lambda (s1::set s2::set)        *)
-    (*     (and (if (s1 null) (s2 null))    *)
-    (*          (if (s1 a1) (s2 a1))        *)
-    (*          (if (s1 a1) (s2 a2))        *)
-    (*          (if (s1 a3) (s2 a3))        *)
-    (*          (if (s1 a4) (s2 a4))        *)
-    (*          (if (s1 a5) (s2 a5)))))     *)
     let z3_subseteq_def (buf:B.t) : unit =
       B.add_string buf global_subseteq_def_str
 
@@ -774,48 +740,22 @@ module Make (K : Level.S) : TSLK_QUERY =
       ) heaps
 
 
-    (* (define singletonth::(-> tid setth)   *)
-    (*     (lambda (t::tid)                  *)
-    (*         (lambda (r::tid)              *)
-    (*             (= t r))))                *)
     let z3_singletonth_def (buf:B.t) : unit =
       B.add_string buf global_singletonth_def_str
 
 
-
-    (* (define unionth::(-> setth setth setth) *)
-    (*     (lambda (s::setth r::setth)         *)
-    (*         (lambda (t::tid)                *)
-    (*             (or (s t) (r t)))))         *)
     let z3_unionth_def (buf:B.t) : unit =
       B.add_string buf global_unionth_def_str
 
 
-
-    (* (define intersectionth::(-> setth setth setth) *)
-    (*     (lambda (s::setth r::setth)                *)
-    (*         (lambda (t::tid)                       *)
-    (*             (and (s t) (r t)))))               *)
     let z3_intersectionth_def (buf:B.t) : unit =
       B.add_string buf global_intersectionth_def_str
 
 
-
-    (* (define setdiffth::(-> set set set)    *)
-    (*     (lambda (s::setth r::setth)        *)
-    (*         (lambda (t::tid)               *)
-    (*             (and (s t) (not (r t)))))) *)
     let z3_setdiffth_def (buf:B.t) : unit =
       B.add_string buf global_setdiffth_def_str
 
 
-
-    (* (define subseteqth::(-> setth setth bool) *)
-    (*   (lambda (r::setth) (s::setth)           *)
-    (*     (and (if (r NoThread) (s NoThread))   *)
-    (*          (if (r t1)       (s t1))         *)
-    (*          (if (r t2)       (s t2))         *)
-    (*          (if (r t3)       (s t3)))))      *)
     let z3_subseteqth_def (buf:B.t) (num_tids:int) : unit =
       try
         find_in_cache (DefSubsetedth num_tids) buf
@@ -829,48 +769,22 @@ module Make (K : Level.S) : TSLK_QUERY =
         B.add_buffer buf tmpbuf
 
 
-
-    (* (define singletonelem::(-> elem setelem)   *)
-    (*     (lambda (e::elem)                      *)
-    (*         (lambda (r::elem)                  *)
-    (*             (= t r))))                     *)
     let z3_singletonelem_def (buf:B.t) : unit =
       B.add_string buf global_singletonelem_def_str
 
 
-
-    (* (define unionelem::(-> setelem setelem setelem) *)
-    (*     (lambda (s::setelem r::setelem)             *)
-    (*         (lambda (e::elem)                       *)
-    (*             (or (s e) (r e)))))                 *)
     let z3_unionelem_def (buf:B.t) : unit =
       B.add_string buf global_unionelem_def_str
 
 
-
-    (* (define intersectionelem::(-> setelem setelem setelem) *)
-    (*     (lambda (s::setelem r::setelem)                    *)
-    (*         (lambda (e::elem)                              *)
-    (*             (and (s e) (r e)))))                       *)
     let z3_intersectionelem_def (buf:B.t) : unit =
       B.add_string buf global_intersectionelem_def_str
 
 
-
-    (* (define setdiffelem::(-> setelem setelem setelem)    *)
-    (*     (lambda (s::setelem r::setelem)                  *)
-    (*         (lambda (e::elem)                            *)
-    (*             (and (s e) (not (r e))))))               *)
     let z3_setdiffelem_def (buf:B.t) : unit =
       B.add_string buf global_setdiffelem_def_str
 
 
-
-    (* (define subseteqelem::(-> setelem setelem bool) *)
-    (*   (lambda (r::setelem) (s::setelem)             *)
-    (*     (and (=> (r e1) (s e1))                     *)
-    (*          (=> (r e2) (s e2))                     *)
-    (*          (=> (r e3) (s e3)))))                  *)
     let z3_subseteqelem_def (buf:B.t) (num_elem:int) : unit =
       try
         find_in_cache (DefSubseteqelem num_elem) buf
@@ -884,47 +798,25 @@ module Make (K : Level.S) : TSLK_QUERY =
         B.add_buffer buf tmpbuf
 
 
-
-    (* (define empty::set)             *)
-    (*   (lambda (a::address) (false)) *)
     let z3_emp_def (buf:B.t) : unit =
       GM.sm_decl_const sort_map "empty" set_s;
       B.add_string buf global_emp_def_str
 
 
-
-    (* (define emptyth::setth)     *)
-    (*   (lambda (t::tid) (false)) *)
     let z3_empth_def (buf:B.t) : unit =
       GM.sm_decl_const sort_map "emptyth" setth_s;
       B.add_string buf global_empth_def_str
 
 
-
-    (* (define emptyelem::setelem)  *)
-    (*   (lambda (e::elem) (false)) *)
     let z3_empelem_def (buf:B.t) : unit =
       GM.sm_decl_const sort_map "emptyelem" setelem_s;
       B.add_string buf global_empelem_def_str
 
 
-     
-    (* (define intersection::(-> set set set) *)
-    (*     (lambda (s::set r::set) *)
-    (*         (lambda (a::address) *)
-    (*             (and (s a) (r a))))) *)
     let z3_intersection_def (buf:B.t) : unit =
       B.add_string buf global_intersection_def_str
 
 
-
-    (* (define set2elem::(-> set mem bool)                *)
-    (*  (lambda (s::set m::mem)                           *)
-    (*    (lambda (e::elem)                               *)
-    (*      (or (and (= e (data (m null))) (s null))      *)
-    (*          (and (= e (data (m aa_1))) (s aa_1))      *)
-    (*          (and (= e (data (m aa_2))) (s aa_2))      *)
-    (*          (and (= e (data (m aa_3))) (s aa_3))))))  *)
     let z3_settoelems_def (buf:B.t) (num_addr:int) : unit =
       try
         find_in_cache (DefSettoelems (num_addr, !use_quantifiers)) buf
@@ -949,16 +841,6 @@ module Make (K : Level.S) : TSLK_QUERY =
         B.add_buffer buf tmpbuf
 
 
-
-    (* (define getlockat::(-> heap path level range_address tid)                   *)
-    (*   (lambda (h::heap p::path l::level i::range_address))                      *)
-    (*     (select (lock (h ((select p at) i))) l)                                 *)
-    (* (define islockedpos::(-> heap path level range_address bool)                *)
-    (*     (lambda (h::heap p::path l::level i::range_address))                    *)
-    (*         (and (< i (select p length)) (/= NoThread (getlockat h p l i))))    *)
-    (* (define firstlock::(-> heap path level address)                             *)
-    (*    (lambda (h::heap p::path l::level))                                      *)
-    (*      (if (islockedpos h p l 0) (getlockat h p l 0) (firstlockfrom1 h p l))) *)
     let z3_firstlock_def (buf:B.t) (num_addr:int) : unit =
       try
         find_in_cache (DefFirstlock num_addr) buf
@@ -992,42 +874,19 @@ module Make (K : Level.S) : TSLK_QUERY =
         B.add_buffer buf tmpbuf
 
 
-
-    (* (define cell_lock_at::(-> cell level tid cell) *)
     let z3_cell_lock_def (buf:B.t) : unit =
       B.add_string buf global_cell_lock_def_str
 
 
-
-    (* (define cell_unlock_at::(-> cell level cell) *)
     let z3_cell_unlock_def (buf:B.t) : unit =
       B.add_string buf global_cell_unlock_def_str
 
 
-
-    (* (define epsilonat::(-> range_address address) *)
-    (*   (lambda r::range_address) null) *)
-    (* (define epsilonwhere::(-> address range_address) *)
-    (*   (lambda a::address) 0) *)
-    (* (define epsilon::path *)
-    (*    (mk-record length::0 at::epsilonat where::epsilonwhere)) *)
     let z3_epsilon_def (buf:B.t) : unit =
       GM.sm_decl_const sort_map "epsilon" path_s;
       B.add_string buf global_epsilon_def_str
 
 
-
-    (* (define singletonat::(-> address range_address address) *)
-    (*   (lambda (a::address) *)
-    (*     (lambda (r::range_address) *)
-    (*       (if (= r 0) a null)))) *)
-    (* (define singletonwhere::(-> address address range_address) *)
-    (*   (lambda (a::address) *)
-    (*     (lambda (b::address) *)
-    (*       (if (= a b) 0 1)))) *)
-    (* (define singlepath::(-> address path) *)
-    (*    (lambda (a::address) *)
-    (*      (mk-record length::1 at::(singletonat a) where::(singletonwhere a)))) *)
     let z3_singletonpath_def (buf:B.t) : unit =
       try
         find_in_cache (DefSingletonpath !use_quantifiers) buf
@@ -1053,17 +912,6 @@ module Make (K : Level.S) : TSLK_QUERY =
         B.add_buffer buf tmpbuf
 
 
-    (* (define check_position::(-> path range_address bool)                          *)
-    (*   (lambda (p::path i::range_address)                                          *)
-    (*     (=> (< i (select p length)) (= i ((select p where) ((select p at) i)))))) *)
-    (* (define ispath::(-> path bool)      *)
-    (*   (lambda (p::path)                 *)
-    (*      (and (check_position p 0)      *)
-    (*           (check_position p 1)      *)
-    (*           (check_position p 2)      *)
-    (*           (check_position p 3)      *)
-    (*           (check_position p 4)      *)
-    (*           (check_position p 5))))   *)
     let z3_ispath_def (buf:B.t) (num_addr:int) : unit =
       try
         find_in_cache (DefIspath (num_addr, !use_quantifiers)) buf
@@ -1118,21 +966,6 @@ module Make (K : Level.S) : TSLK_QUERY =
         B.add_buffer buf tmpbuf
 
 
-
-
-     (* (define rev_position::(-> path path range_address bool)   *)
-     (*      (lambda (p::path p_rev::path i::range_address)       *)
-     (*          (=> (< (i (select p length)))                    *)
-     (*              (= ((select p at) i) ((select p_rev at) (- (select p length) i)))))) *)
-     (* (define rev::(-> path path bool)                          *)
-     (*     (lambda (p::path p_rev::path)                         *)
-     (*     (and (= (select p length) (select p_rev length))      *)
-     (*          (rev_position p p_rev 0)                         *)
-     (*          (rev_position p p_rev 1)                         *)
-     (*          (rev_position p p_rev 2)                         *)
-     (*          (rev_position p p_rev 3)                         *)
-     (*          (rev_position p p_rev 4)                         *)
-     (*          (rev_position p p_rev 5))))                      *)
     let z3_rev_def (buf:B.t) (num_addr:int) : unit =
       try
         find_in_cache (DefRev (num_addr, !use_quantifiers)) buf
@@ -1166,61 +999,13 @@ module Make (K : Level.S) : TSLK_QUERY =
         B.add_buffer buf tmpbuf
 
 
-
-    (* (define path2set::(-> path set)                        *)
-    (*     (lambda (p::path)                                  *)
-    (*         (lambda (a::address)                           *)
-    (*      (< ((select p where) a) (select p length))))) *)
     let z3_path2set_def (buf:B.t) : unit =
       B.add_string buf global_path2set_def_str
 
 
-
-    (* (define deref::(-> heap address cell)    *)
-    (*     (lambda (h::heap a::address)         *)
-    (*         (h a)))                          *)
     let z3_dref_def (buf:B.t) : unit =
       B.add_string buf global_dref_def_str
 
-
-
-    let z3_elemorder_def (buf:B.t) (num_elem:int) : unit =
-      ()
-(*
-      B.add_string buf ("(declare-fun lesselem (" ^elem_s^ " " ^elem_s^ ") " ^bool_s^ ")\n") ;
-      B.add_string buf ("(define-fun greaterelem ((x " ^elem_s^ ") (y " ^elem_s^ ")) " ^bool_s^ "\n" ^
-                        "  (lesselem y x))\n") ;
-      (* Totality and no-reflexibility *)
-      B.add_string buf ("(assert (not (lesselem lowestElem lowestElem)))\n");
-      B.add_string buf ("(assert (not (lesselem highestElem highestElem)))\n");
-      B.add_string buf ("(assert (lesselem lowestElem highestElem))\n");
-      for i = 1 to num_elem do
-        let x = ee i in
-        B.add_string buf ("(assert (not (lesselem " ^x^ " " ^x^ ")))\n") ;
-        B.add_string buf ("(assert (lesselem lowestElem " ^x^ "))\n");
-        B.add_string buf ("(assert (lesselem " ^x^ " highestElem))\n");
-        for j = i+1 to num_elem do
-          let y = ee j in
-            B.add_string buf ("(assert (or (lesselem " ^x^ " " ^y^ ") (lesselem " ^y^ " " ^x^ ")))\n")
-        done
-      done ;
-      (* TOFIX: Replace buffer in order to prevent segmentation fault due to
-                buffer overflow when too many elements are required. *)
-      (* Transitivity *)
-      for i = 1 to num_elem do
-        for j = 1 to num_elem do
-          for k = 1 to num_elem do
-            if (i<>j && j<>k (*&& i<>k*)) then
-              let x = ee i in
-              let y = ee j in
-              let z = ee k in
-              B.add_string buf ("(assert (=> (and (lesselem " ^x^ " " ^y^ ") \
-                                                  (lesselem " ^y^ " " ^z^ ")) \
-                                                  (lesselem " ^x^ " " ^z^ ")))\n")
-          done
-        done
-      done
-*)
 
 
     (* Ordered list predicate definition *)
@@ -1344,36 +1129,15 @@ module Make (K : Level.S) : TSLK_QUERY =
         B.add_buffer buf tmpbuf
 
 
-
-    (* (define mkcell::(-> element address tid cell)        *)
-    (*     (lambda (h::heap  e::element  a::address k::tid) *)
-    (*        (mk-record data::e next::a lock::k)))         *)
     let z3_mkcell_def (buf:B.t) : unit =
       B.add_string buf
         ("") (* Unneeded *)
 
 
-
-    (* (define isheap::(-> heap bool)     *)
-    (*     (lambda (h::heap)              *)
-    (*         (= (deref h null) error))) *)
     let z3_isheap_def (buf:B.t) : unit =
       B.add_string buf global_isheap_def_str
 
 
-
-    (* (define next1::(-> heap address address) (lambda (h::heap a::address) (next h a))) *)
-    (* (define next2::(-> address address) (lambda (a::address) (next h (next1 h a)))) *)
-    (* (define next3::(-> address address) (lambda (a::address) (next h (next2 h a)))) *)
-    (* (define next4::(-> address address) (lambda (a::address) (next h (next3 h a)))) *)
-    (* (define next5::(-> address address) (lambda (a::address) (next h (next4 h a)))) *)
-    (* (define isreachable::(-> heap address address bool)                         *)
-    (*     (lambda (h::heap from::address to::address)                             *)
-    (*                  (or (=        from  to)                                    *)
-    (*                      (= (next  from) to)                                    *)
-    (*                      (= (next2 from) to)                                    *)
-    (*                      (= (next3 from) to)                                    *)
-    (*                      (= (next4 from) to))))                                 *)
     let z3_nextiter_def (buf:B.t) (num_addr:int) : unit =
       try
         find_in_cache (DefNextiter num_addr) buf
@@ -1418,11 +1182,6 @@ module Make (K : Level.S) : TSLK_QUERY =
         B.add_buffer buf tmpbuf
 
 
-
-    (* (define address2set::(-> address level set) *)
-    (*     (lambda (from::address l::level)        *)
-    (*          (lambda (to::address)              *)
-    (*              (isreachable from to l))))     *)
     let z3_address2set_def (buf:B.t) (num_addr:int) : unit =
       try
         find_in_cache (DefAddresstoset num_addr) buf
@@ -1448,39 +1207,18 @@ module Make (K : Level.S) : TSLK_QUERY =
         B.add_buffer buf tmpbuf
 
 
-
-    (* (define singleton::(-> address set)   *)
-    (*     (lambda (a::address)              *)
-    (*         (lambda (b::address)          *)
-    (*             (= a b))))                *)
     let z3_singleton_def (buf:B.t) : unit =
       B.add_string buf global_singleton_def_str
 
 
-
-    (* (define setunion::(-> set set set)     *)
-    (*     (lambda (s::set r::set)            *)
-    (*         (lambda (a::address)           *)
-    (*             (or (s a) (r a)))))        *)
     let z3_union_def (buf:B.t) : unit =
       B.add_string buf global_union_def_str
 
 
-
-    (* (define setdiff::(-> set set set)      *)
-    (*     (lambda (s::set r::set)            *)
-    (*         (lambda (a::address)           *) 
-    (*             (and (s a) (not (r a)))))) *)
     let z3_setdiff_def (buf:B.t) : unit =
       B.add_string buf global_setdiff_def_str
 
 
-
-    (* (define is_singlepath::(-> address path bool) *)
-    (*     (lambda (a::address p::path)              *)
-    (*         (and (ispath p)                       *)
-    (*              (= ((select p length) 1)         *)
-    (*              (= ((select p at) 0) a)))))      *)
     let z3_is_singlepath_def (buf:B.t) : unit =
       try
         find_in_cache (DefIsSinglepath !use_quantifiers) buf
@@ -1503,65 +1241,10 @@ module Make (K : Level.S) : TSLK_QUERY =
         B.add_buffer buf tmpbuf
 
 
-
-
-
-
-    (* (define update_heap::(-> heap address cell heap) *)
-    (*     (lambda (h::heap a::address c::cell)         *)
-    (*        (update h a c)))                          *)
     let z3_update_heap_def (buf:B.t) : unit =
       B.add_string buf global_update_heap_def_str
 
 
-    (* (define update_pathat::(-> pathat range_address address pathat) *)
-    (*     (lambda (f::pathat i::range_address a::address) *)
-    (*         (lambda (j::range_address) *)
-    (*             (if (= i j) a (f j))))) *)
-    (* (define update_pathwhere::(-> pathwhere address range_address pathwhere) *)
-    (*     (lambda (g::pathwhere a::address i::range_address) *)
-    (*         (lambda (b::address) *)
-    (*             (if (= b a) i (g b))))) *)
-    (* (define add_to_path::(-> path address path) *)
-    (*     (lambda (p::path a::address) *)
-    (*         (mk-record length::(+ 1 (select p length )) *)
-    (*                    at::(update_pathat (select p at) (select p length) a) *)
-    (*                    where::(update_pathwhere (select p where) a (select p length))))) *)
-    (* (define path1::(-> heap address path) *)
-    (*     (lambda (h::heap a::address) *)
-    (*         (singlepath a))) *)
-    (* (define path2::(-> heap address path) *)
-    (*     (lambda (h::heap a::address) *)
-    (*         (add_to_path (path1 h a) (next h a)))) *)
-    (* (define path3::(-> heap address path) *)
-    (*     (lambda (h::heap a::address) *)
-    (*         (add_to_path (path2 h a) (next2 h a)))) *)
-    (* (define path4::(-> heap address path) *)
-    (*     (lambda (h::heap a::address) *)
-    (*         (add_to_path (path3 h a) (next3 h a)))) *)
-    (* (define getp4::(-> heap address address path) *)
-    (*     (lambda (h::heap from::address to::address) *)
-    (*         (if (= (next3 h from) to)  *)
-    (*             (path4 h from) *)
-    (*             epsilon))) *)
-    (* (define getp3::(-> heap address address path) *)
-    (*     (lambda (h::heap from::address to::address) *)
-    (*         (if (= (next2 h from) to)  *)
-    (*             (path3 h from) *)
-    (*             (getp4 h from to)))) *)
-    (* (define getp2::(-> heap address address path) *)
-    (*     (lambda (h::heap from::address to::address) *)
-    (*         (if (= (next h from) to)  *)
-    (*             (path2 h from) *)
-    (*             (getp3 h from to)))) *)
-    (* (define getp1::(-> heap address address path) *)
-    (*     (lambda (h::heap from::address to::address) *)
-    (*         (if (= from to)  *)
-    (*             (path1 h from) *)
-    (*             (getp2 h from to)))) *)
-    (* (define getp::(-> heap address address path) *)
-    (*     (lambda (h::heap from::address to::address) *)
-    (*        (getp1 h from to))) *)
     let z3_getp_def (buf:B.t) (num_addr:int) : unit =
       try
         find_in_cache (DefGetp (num_addr, !use_quantifiers)) buf
@@ -1629,18 +1312,10 @@ module Make (K : Level.S) : TSLK_QUERY =
       B.add_string buf global_reach_def_str
 
 
-
-    (* (define path_length::(-> path range_address) *)
-    (*     (lambda (p1::path)                       *)
-    (*         (select p1 length)))                 *)
     let z3_path_length_def (buf:B.t) : unit =
       B.add_string buf global_path_length_def_str
 
 
-
-    (* (define at_path::(-> path range_address address) *)
-    (*     (lambda (p1::path i::range_address)          *)
-    (*         ((select p1 at) i)))                     *)
     let z3_at_path_def (buf:B.t) : unit =
       try
         find_in_cache (DefAtPath !use_quantifiers) buf
@@ -1659,12 +1334,6 @@ module Make (K : Level.S) : TSLK_QUERY =
         B.add_buffer buf tmpbuf
 
 
-
-    (* (define equal_paths_at::(-> path range_address path range_address bool) *)
-    (*     (lambda (p1::path i::range_address p2::path j::range_address)       *)
-    (*         (ite (< i (path_length p1))                                     *)
-    (*       (= (at_path p1 i) (at_path p2 j))                             *)
-    (*              true)))                                                    *)
     let z3_equal_paths_at_def (buf:B.t) : unit =
       try
         find_in_cache (DefEqualPaths !use_quantifiers) buf
@@ -1687,22 +1356,6 @@ module Make (K : Level.S) : TSLK_QUERY =
         B.add_buffer buf tmpbuf
 
 
-
-    (* (define is_append::(-> path path path bool)                              *)
-    (*    (lambda (p1::path p2::path p_res::path)                               *)
-    (*       (and (= (+ (path_length p1) (path_length p2)) (path_length p_res)) *)
-    (*            (equal_paths_at p1 0 p_res 0)                                 *)
-    (*            (equal_paths_at p1 1 p_res 1)                                 *)
-    (*            (equal_paths_at p1 2 p_res 2)                                 *)
-    (*            (equal_paths_at p1 3 p_res 3)                                 *)
-    (*            (equal_paths_at p1 4 p_res 4)                                 *)
-    (*            (equal_paths_at p1 5 p_res 5)                                 *)
-    (*            (equal_paths_at p2 0 p_res (+ (path_length p1) 0))            *)
-    (*            (equal_paths_at p2 1 p_res (+ (path_length p1) 1))            *)
-    (*            (equal_paths_at p2 2 p_res (+ (path_length p1) 2))            *)
-    (*            (equal_paths_at p2 3 p_res (+ (path_length p1) 3))            *)
-    (*            (equal_paths_at p2 4 p_res (+ (path_length p1) 4))            *)
-    (*            (equal_paths_at p2 5 p_res (+ (path_length p1) 5)))))         *)
     let z3_is_append_def (buf:B.t) (num_addr:int) : unit =
       try
         find_in_cache (DefIsAppend (num_addr, !use_quantifiers)) buf
@@ -1763,8 +1416,7 @@ module Make (K : Level.S) : TSLK_QUERY =
                     (num_addr:int)
                     (num_tid:int)
                     (num_elem:int)
-                    (req_sorts:Expr.sort list)
-                    (req_ops:Expr.special_op_t list) =
+                    (req_sorts:Expr.sort list) : unit =
       B.add_string buf
         ( "; Translation for TExpr[" ^(string_of_int K.level)^ "]\n\n" );
       z3_level_preamble buf;
@@ -1929,9 +1581,6 @@ module Make (K : Level.S) : TSLK_QUERY =
       (* Levels *)
       if List.mem Expr.LevelOrder req_ops then
         z3_levelorder_def buf ;
-      (* Elements *)
-      if List.mem Expr.ElemOrder req_ops || List.mem Expr.OrderedList req_ops then
-        z3_elemorder_def buf num_elem ;
       (* Cell *)
       if List.mem Expr.Cell req_sorts || List.mem Expr.Mem req_sorts then
         begin
@@ -2179,7 +1828,7 @@ module Make (K : Level.S) : TSLK_QUERY =
         | Expr.GreaterElem(e1,e2)    -> greaterelem_to_str e1 e2
         (* Do not need LevelHavoc, as all possible values are in the
            domain of Level. ie, ll_0 to ll_(K-1) *)
-        | Expr.Eq(x,Expr.LevelT (Expr.HavocLevel)) -> ""
+        | Expr.Eq(_,Expr.LevelT (Expr.HavocLevel)) -> ""
         | Expr.Eq(x,y)               -> eq_to_str x y
         | Expr.InEq(x,y)             -> ineq_to_str x y
         | Expr.BoolVar v             -> variable_invocation_to_str v
@@ -2214,7 +1863,7 @@ module Make (K : Level.S) : TSLK_QUERY =
       ("(assert (iselem (data " ^e_expr^ ")))\n")
 
 
-    let post_process (buf:B.t) (num_addrs:int) (num_elems:int) (num_tids:int) : unit =
+    let post_process (buf:B.t) : unit =
       Hashtbl.iter (fun e _ -> B.add_string buf (process_elem e)) elem_tbl
 
 
@@ -2244,7 +1893,7 @@ module Make (K : Level.S) : TSLK_QUERY =
       let heaps       = V.find_in_table_sort phi_var_tbl Expr.Mem in
       let (req_sorts, req_ops) = update_requirements req_sorts req_ops in
       let buf = B.create 1024 in
-          z3_preamble buf num_addr num_tid num_elem req_sorts req_ops;
+          z3_preamble buf num_addr num_tid num_elem req_sorts;
           z3_defs    buf num_addr num_tid num_elem req_sorts req_ops heaps;
           variables_to_z3 buf num_tid expr ;
           let add_and_literal l str =
@@ -2252,7 +1901,7 @@ module Make (K : Level.S) : TSLK_QUERY =
           in
           let formula_str = List.fold_right add_and_literal ls ""
           in
-      post_process buf num_addr num_elem num_tid;
+      post_process buf;
       B.add_string buf ("(push)\n");
       B.add_string buf "(assert\n   (and";
       B.add_string buf formula_str ;
@@ -2288,12 +1937,12 @@ module Make (K : Level.S) : TSLK_QUERY =
       in
 
         B.add_string buf ("; Formula\n; " ^(Expr.formula_to_str phi)^ "\n\n");
-        z3_preamble buf num_addr num_tid num_elem req_sorts req_ops;
+        z3_preamble buf num_addr num_tid num_elem req_sorts;
         z3_defs     buf num_addr num_tid num_elem req_sorts req_ops heaps;
         variables_from_formula_to_z3 buf num_tid phi ;
         (* We add extra information if needed *)
         verbl _LONG_INFO "**** Z3TslkQuery, about to compute extra information...\n";
-        post_process buf num_addr num_elem num_tid;
+        post_process buf;
 
         (* Use symmetry over addresses *)
         if !use_quantifiers then begin
