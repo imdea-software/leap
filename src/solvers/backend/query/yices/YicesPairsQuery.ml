@@ -251,7 +251,7 @@ struct
       | PE.Greater(x,y)   -> " (> "  ^ (int_tostr x) ^ (int_tostr y) ^ ")"
       | PE.LessEq(x,y)    -> " (<= " ^ (int_tostr x) ^ (int_tostr y) ^ ")"
       | PE.GreaterEq(x,y) -> " (>= " ^ (int_tostr x) ^ (int_tostr y) ^ ")"
-      | PE.LessTid(x,y)   -> " (tid order support for yices not added yet )"
+      | PE.LessTid _      -> " (tid order support for yices not added yet )"
       | PE.Eq(x,y)        -> " (= "  ^ (term_tostr x) ^ (term_tostr y) ^ ")"
       | PE.InEq(x,y)      -> " (/= " ^ (term_tostr x) ^ (term_tostr y) ^ ")"
       | PE.In(i,s)        -> " (" ^ set_tostr s ^ " " ^ int_tostr i ^ ")"
@@ -412,13 +412,12 @@ struct
      "           (and (s a) (r a)))))\n")
 
 
-  let yices_subseteq_def (vars_rep:string list) (buf:Buffer.t) : unit =
-(* THIS WAS COMMENTED *)
+  let yices_subseteq_def (buf:Buffer.t) : unit =
     B.add_string buf
         ("(define subseteq::(-> " ^set_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
          "  (lambda (s1::" ^set_s^ " s2::" ^set_s^ ")\n" ^
          "    (= emp (setdiff s1 s2))))\n")
-(*
+    (*
     B.add_string buf
         ("(define subseteq::(-> " ^set_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
          "  (lambda (s1::" ^set_s^ " s2::" ^set_s^ ")\n" ^
@@ -470,13 +469,12 @@ struct
      "           (and (s p) (r p)))))\n")
 
 
-  let yices_spsubseteq_def (vars_rep:string list) (buf:Buffer.t) : unit =
-(* THIS WAS COMMENTED *)
+  let yices_spsubseteq_def (buf:Buffer.t) : unit =
     B.add_string buf
         ("(define spsubseteq::(-> " ^setpair_s^ " " ^setpair_s^ " " ^bool_s^ ")\n" ^
          "  (lambda (s1::" ^setpair_s^ " s2::" ^setpair_s^ ")\n" ^
          "    (= spempty (spdiff s1 s2))))\n")
-(*
+    (*
     B.add_string buf
         ("(define subseteq::(-> " ^set_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
          "  (lambda (s1::" ^set_s^ " s2::" ^set_s^ ")\n" ^
@@ -991,7 +989,6 @@ struct
   let yices_preamble (buf:Buffer.t)
                      (voc:PE.tid list)
                      (int_cutoff:int)
-                     (tid_cutoff:int)
                      (gbl_int_vars:PE.V.t list)
                      (lcl_int_vars:PE.V.t list) : unit =
     let loc_vars_str = List.flatten $ List.map (fun t ->
@@ -1011,7 +1008,7 @@ struct
     (*
     let voc_str = List.map tid_to_str voc in
     *)
-    let max_ints = 4 (*List.length all_vars_str*) in
+    let max_ints = List.length all_vars_str in
     let max_tids = List.length voc
     in
       yices_undefined_decl max_ints                 buf;
@@ -1021,13 +1018,13 @@ struct
       yices_union_def                               buf;
       yices_setdiff_def                             buf;
       yices_intersection_def                        buf;
-      yices_subseteq_def all_vars_str               buf;
+      yices_subseteq_def                            buf;
       yices_spemp_def                               buf;
       yices_spsingleton_def                         buf;
       yices_spunion_def                             buf;
       yices_spsetdiff_def                           buf;
       yices_spintersection_def                      buf;
-      yices_spsubseteq_def all_vars_str             buf;
+      yices_spsubseteq_def                          buf;
       yices_is_min_def max_ints                     buf;
       yices_is_max_def max_ints                     buf;
       yices_is_spmin_def max_ints max_tids          buf;
@@ -1098,7 +1095,7 @@ struct
     let _              = List.iter (fun v ->
                           B.add_string buf (local_var_to_str v)
                          ) local_vars in
-    let _              = yices_preamble buf voc int_cutoff tid_cutoff
+    let _              = yices_preamble buf voc int_cutoff
                             glb_int_vars lcl_int_vars in
     let _              = yices_legal_values global_vars local_vars voc buf in
     let _              = B.add_string buf ("(assert " ^ (string_of_formula phi) ^

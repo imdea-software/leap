@@ -18,7 +18,7 @@ type t = rule_t list
             
 exception Duplicated_special_case
 
-let empty_igraph (unit) : t =
+let empty_igraph () : t =
   []
 
 

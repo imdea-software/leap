@@ -522,7 +522,7 @@ let generic_simplifier (phi:E.formula) (simp_lit:E.literal-> polarity->E.formula
     simplify_f phi Pos
 
 let simplify (phi:E.formula) : E.formula =
-  let id l pol = F.Literal l in
+  let id l _ = F.Literal l in
     generic_simplifier phi id
 
 
@@ -1192,10 +1192,10 @@ let unify_support (vc:vc_info) : vc_info =
     with Not_found ->
       Hashtbl.add unify_tbl this_voc_size [(this_voc, phi)]
   ) vc.original_support;
-  let new_supp = Hashtbl.fold (fun index phi_list xs ->
+  let new_supp = Hashtbl.fold (fun _ phi_list xs ->
                    match phi_list with
                    | [] -> assert false
-                   | [(voc,phi)] -> phi :: xs
+                   | [(_,phi)] -> phi :: xs
                    | (voc,phi)::ys -> F.conj_list (phi ::
                                       (List.map (fun (v,f) ->
                                          let subs = E.new_tid_subst (List.combine v voc) in
@@ -1246,10 +1246,10 @@ let apply_support_tactic (vcs:vc_info list)
             let eq_classes = Partition.to_list part in
             let eq_pairs = List.fold_left (fun xs eq_class ->
                              if List.mem vc.transition_tid eq_class then
-                               (List.map (fun j -> (j,vc.transition_tid)) eq_class)
+                               (List.map (fun j -> (j,vc.transition_tid)) eq_class) @ xs
                              else
                                let i = List.hd eq_class in
-                               (List.map (fun j -> (j, i)) (List.tl eq_class))
+                               (List.map (fun j -> (j, i)) (List.tl eq_class)) @ xs
                                ) [] eq_classes in
             let subst = E.new_tid_subst eq_pairs in
             let subst_goal = E.subst_tid subst vc.goal in

@@ -74,7 +74,7 @@ let report_to_str (sys:System.t) : string =
 
 let report_sup_inv_to_str (invs:inv_t list) : string =
   let num = string_of_int (List.length invs) in
-  let inv_str = List.fold_left (fun str (s_vars, s_tag, s_inv) ->
+  let inv_str = List.fold_left (fun str (s_vars, _, s_inv) ->
                   let phi_str = E.formula_to_str s_inv in
                   let voc_list = System.get_var_id_list s_vars in
                   let voc_str = String.concat ", " voc_list
@@ -127,7 +127,7 @@ let report_results_to_str (res:results_t) : string =
   "+---------------------------------------------------------------------\n"
 
 
-let report_vc_run_header_to_str (unit) : string =
+let report_vc_run_header_to_str () : string =
   table_divider_str ^
   "|  ID | Loc |  Time(s)  | Num |  Time(s)  | TL3 |  Time(s)  | TSK |  Time(s)  | TSL |  Time(s)  |\n" ^
   table_divider_str
@@ -138,7 +138,7 @@ let report_vc_run_to_str (id:int) (pos_status:vc_status)  (pos_time:float)
                                   (tll_status:vc_status)  (tll_time:float)
                                   (tslk_status:vc_status) (tslk_time:float)
                                   (tsl_status:vc_status)  (tsl_time:float)
-                                  (desc:string) (filename:string) : string =
+                                  (desc:string) : string =
   let status_to_str st = match st with
                          | NotVerified -> "  ?  "
                          | NotValid    -> "  X  "
@@ -224,7 +224,6 @@ let extract_result_info (info_list:Result.info_t list) : result_info_t =
 
 
 let report_vc_tail_to_str (vc_id:int)
-                          (vc_res:Result.info_t)
                           (oblig_res_list:Result.info_t list)
                           (calls_tbl:DP.call_tbl_t) : string =
   let total_oblig = List.length oblig_res_list in
@@ -331,7 +330,7 @@ let report_results (res:results_t) : unit =
   print_newline(); print_string (report_results_to_str res)
 
 
-let report_vc_run_header (unit) : unit =
+let report_vc_run_header () : unit =
   print_newline(); print_string (report_vc_run_header_to_str())
 
 
@@ -340,13 +339,13 @@ let report_vc_run (id:int) (pos_status:vc_status)  (pos_time:float)
                            (tll_status:vc_status)  (tll_time:float)
                            (tslk_status:vc_status) (tslk_time:float)
                            (tsl_status:vc_status)  (tsl_time:float)
-                           (desc:string) (filename:string) : unit =
+                           (desc:string) : unit =
   print_string (report_vc_run_to_str id pos_status pos_time
                                         num_status num_time
                                         tll_status tll_time
                                         tslk_status tslk_time
                                         tsl_status tsl_time
-                                        desc filename);
+                                        desc);
   flush stdout
 
 
@@ -392,10 +391,9 @@ let report_vc_header (vc_id:int) (vc:Tactics.vc_info) (num_oblig:int) : unit =
 
   
 let report_vc_tail (vc_id:int)
-                   (vc_res:Result.info_t)
                    (oblig_res_list:Result.info_t list)
                    (calls_tbl:DP.call_tbl_t) : unit =
-  print_newline(); print_string (report_vc_tail_to_str vc_id vc_res oblig_res_list calls_tbl)
+  print_newline(); print_string (report_vc_tail_to_str vc_id oblig_res_list calls_tbl)
 
 
 let report_obligation_header (ob_id:int) (oblig:E.formula) : unit =

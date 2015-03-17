@@ -118,8 +118,8 @@ and term_to_tll_term (t:E.term) : TLL.term =
   | E.MemT m       -> TLL.MemT (mem_to_tll_mem m)
   | E.IntT i       -> TLL.IntT (int_to_tll_int i)
   | E.PairT _      -> raise(UnsupportedTllExpr(E.term_to_str t))
-  | E.AddrArrayT a -> raise(UnsupportedTllExpr(E.term_to_str t))
-  | E.TidArrayT a  -> raise(UnsupportedTllExpr(E.term_to_str t))
+  | E.AddrArrayT _ -> raise(UnsupportedTllExpr(E.term_to_str t))
+  | E.TidArrayT _  -> raise(UnsupportedTllExpr(E.term_to_str t))
   | E.ArrayT a     -> arrays_to_tll_term a
 
 

@@ -183,10 +183,10 @@ module TranslateTsl (SLK : TSLKExpression.S) =
             (SL.literal_to_str l);
       match l with
       (* c = mkcell(e,k,A,l) *)
-      | F.Atom(SL.Eq(SL.CellT (SL.VarCell c),SL.CellT(SL.MkCell(e,aa,tt,i))))
-      | F.Atom(SL.Eq(SL.CellT(SL.MkCell(e,aa,tt,i)),SL.CellT (SL.VarCell c)))
-      | F.NegAtom(SL.InEq(SL.CellT (SL.VarCell c),SL.CellT(SL.MkCell(e,aa,tt,i))))
-      | F.NegAtom(SL.InEq(SL.CellT(SL.MkCell(e,aa,tt,i)),SL.CellT (SL.VarCell c))) ->
+      | F.Atom(SL.Eq(SL.CellT (SL.VarCell c),SL.CellT(SL.MkCell(e,aa,tt,_))))
+      | F.Atom(SL.Eq(SL.CellT(SL.MkCell(e,aa,tt,_)),SL.CellT (SL.VarCell c)))
+      | F.NegAtom(SL.InEq(SL.CellT (SL.VarCell c),SL.CellT(SL.MkCell(e,aa,tt,_))))
+      | F.NegAtom(SL.InEq(SL.CellT(SL.MkCell(e,aa,tt,_)),SL.CellT (SL.VarCell c))) ->
           let c' = cell_tsl_to_tslk (SL.VarCell c) in
           let e' = elem_tsl_to_tslk e in
           let aa' = get_addr_list aa in
@@ -472,13 +472,6 @@ module TranslateTsl (SLK : TSLKExpression.S) =
 
 
 let try_sat_with_presburger_arithmetic (phi:SL.formula) : Sat.t =
-(*
-  print_endline ("Trying to convert formula:\n" ^SL.formula_to_str phi^ "\n");
-  let phi_expr = SLInterf.formula_to_expr_formula phi in
-  print_endline ("Translation to Expr formula:\n" ^Expression.formula_to_str phi_expr^ "\n");
-  let phi_num = NumInterface.formula_to_int_formula phi_expr in
-  print_endline ("Translation to Num formula:\n" ^NumExpression.formula_to_str phi_num^ "\n");
-*)
   DP.add_dp_calls this_call_tbl DP.Num 1;
   let numSolv_id = BackendSolvers.Yices.identifier in
   let module NumSol = (val NumSolver.choose numSolv_id : NumSolver.S) in
@@ -697,10 +690,10 @@ let pumping (cf:SL.conjunctive_formula) : unit =
                       List.iter (fun l ->
                         match l with
                         (* A = B{l <- a} *)
-                        | F.Atom(SL.Eq(_,SL.AddrArrayT(SL.AddrArrayUp(_,i,_))))
-                        | F.Atom(SL.Eq(SL.AddrArrayT (SL.AddrArrayUp(_,i,_)),_))
-                        | F.NegAtom(SL.InEq(_,SL.AddrArrayT(SL.AddrArrayUp(_,i,_))))
-                        | F.NegAtom(SL.InEq(SL.AddrArrayT(SL.AddrArrayUp(_,i,_)),_)) ->
+                        | F.Atom(SL.Eq(_,SL.AddrArrayT(SL.AddrArrayUp(_,_,_))))
+                        | F.Atom(SL.Eq(SL.AddrArrayT (SL.AddrArrayUp(_,_,_)),_))
+                        | F.NegAtom(SL.InEq(_,SL.AddrArrayT(SL.AddrArrayUp(_,_,_))))
+                        | F.NegAtom(SL.InEq(SL.AddrArrayT(SL.AddrArrayUp(_,_,_)),_)) ->
                             assert (!no_arr_updates); no_arr_updates := false
                         | _ -> ()
                       ) ls
@@ -834,7 +827,7 @@ let update_arrangement (alpha:SL.integer list list) (rel_set:SL.integer GenSet.t
   List.map (fun eqclass ->
     let r = match List.filter (GenSet.mem rel_set) eqclass with
             | [] -> None
-            | x::xs -> Some x in
+            | x::_ -> Some x in
     (eqclass,r)
   ) alpha
 
@@ -848,7 +841,7 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) :
     match cf with
     | F.TrueConj  -> (verbl _LONG_INFO "**** check_pa: true\n"; Sat.Sat)
     | F.FalseConj -> (verbl _LONG_INFO "**** check_pa: false\n"; Sat.Unsat)
-    | F.Conj ls   -> (try_sat_with_presburger_arithmetic
+    | F.Conj _    -> (try_sat_with_presburger_arithmetic
                         (F.conjunctive_to_formula cf)) in
 
 
@@ -915,7 +908,7 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) :
       Log.print "PANC_R" (SL.conjunctive_formula_to_str panc_r);
       Log.print "NC_R" (SL.conjunctive_formula_to_str nc_r);
 
-      let alpha_r = List.rev (List.fold_left (fun xs (eqclass,r) ->
+      let alpha_r = List.rev (List.fold_left (fun xs (_,r) ->
                                 match r with
                                 | None -> xs
                                 | Some relev -> [relev] :: xs
@@ -970,7 +963,7 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) :
         match final_formula with
         | F.TrueConj  -> (Hashtbl.add arrg_sat_table alpha_r Sat.Sat; Sat.Sat)
         | F.FalseConj -> (Hashtbl.add arrg_sat_table alpha_r Sat.Unsat; Sat.Unsat)
-        | F.Conj ls   -> check_tslk (List.length alpha_r) final_formula (Some alpha_r)
+        | F.Conj _    -> check_tslk (List.length alpha_r) final_formula (Some alpha_r)
       end
     end else begin
       (* For this arrangement is UNSAT. Return UNSAT. *)

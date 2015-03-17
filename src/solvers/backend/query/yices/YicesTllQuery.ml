@@ -352,7 +352,7 @@ struct
 
 
 
-  let yices_getlocked_def (buf:B.t) (num_addr:int) : unit =
+  let yices_getlocked_def (buf:B.t) : unit =
     B.add_string buf
       ("(define getlockat::(-> " ^heap_s^ " " ^path_s^ " range_address " ^tid_s^ ")\n" ^
        "  (lambda (h::" ^heap_s^ " p::" ^path_s^ " i::range_address)\n" ^
@@ -887,7 +887,7 @@ struct
     if List.mem Expr.Set2Elem req_ops then yices_settoelems_def buf num_addr ;
     (* Firstlock of Lastlock *)
     if List.mem Expr.FstLocked req_ops || List.mem Expr.LstLocked req_ops then
-        yices_getlocked_def buf num_addr ;
+        yices_getlocked_def buf ;
     (* Firstlock *)
     if List.mem Expr.FstLocked req_ops then yices_firstlock_def buf num_addr ;
     (* Lastlock *)
@@ -1363,6 +1363,9 @@ struct
 
 
   let literal_list_to_str (use_q:bool) (ls:Expr.literal list) : string =
+    (* The use of quantifiers in Yices remains to be implemented *)
+    if use_q then ();
+    (* The use of quantifiers in Yices remains to be implemented *)
     let _ = GM.clear_sort_map sort_map in
     let expr = F.Conj ls in
     let c = SmpTll.cut_off_normalized expr in
@@ -1395,6 +1398,9 @@ struct
                      (copt:Smp.cutoff_options_t)
                      (use_q:bool)
                      (phi:Expr.formula) : string =
+    (* The use of quantifiers in Yices remains to be implemented *)
+    if use_q then ();
+    (* The use of quantifiers in Yices remains to be implemented *)
     let _ = GM.clear_sort_map sort_map in
     let max_cut_off = SmpTll.cut_off co copt phi in
     let num_addr    = MS.get max_cut_off MS.Addr in

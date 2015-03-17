@@ -401,78 +401,96 @@ module Make (Opt:module type of GenOptions) : S =
           case_timer#start;
           let obligation_counter = ref 1 in
           let res_list =
-                List.map (fun phi_obligation ->
-                  (* TODO: Choose the right to_plain function *)
-                  if LeapVerbose.is_verbose_level_enabled(LeapVerbose._SHORT_INFO) then
-                    Report.report_obligation_header !obligation_counter phi_obligation;
-                  let fol_phi = phi_obligation in
-                  phi_timer#start;
-                  let status =
-                    if Valid.is_valid (Pos.check_valid prog_lines
-                          (fst (PE.keep_locations fol_phi))) then begin
-                      DP.add_dp_calls this_calls_counter DP.Loc 1 ~vc_id:orig_id;
-                      Result.Valid DP.Loc
-                    end else begin
-                      let (validity, calls) =
-                        match Opt.dp with
-                        | DP.NoDP   -> (Valid.Invalid, 0)
-                        | DP.Loc    -> (Valid.Invalid, 0)
-                        | DP.Num    -> let num_phi = NumInterface.formula_to_int_formula fol_phi in
-                                       let (res, calls) = Num.check_valid_with_lines_plus_info prog_lines num_phi in
-                                       if Valid.is_unknown res then begin
-                                         let z3NumSolver : (module NumSolver.S) = NumSolver.choose BackendSolvers.Z3.identifier in
-                                         let module Z3Num = (val z3NumSolver) in
-                                           Z3Num.compute_model(Opt.compute_model);
-                                           Z3Num.check_valid_with_lines_plus_info prog_lines num_phi
-                                       end else
-                                         (res, calls)
-                        | DP.Pairs  -> let pairs_phi = PairsInterface.formula_to_pairs_formula fol_phi in
-                                       let (res, calls) = Pairs.check_valid_with_lines_plus_info prog_lines pairs_phi in
-                                       if Valid.is_unknown res then begin
-                                         let z3PairsSolver : (module PairsSolver.S) = PairsSolver.choose BackendSolvers.Z3.identifier in
-                                         let module Z3Pairs = (val z3PairsSolver) in
-                                           Z3Pairs.compute_model(Opt.compute_model);
-                                           Z3Pairs.check_valid_with_lines_plus_info prog_lines pairs_phi
-                                       end else
-                                         (res, calls)
-                        | DP.Tll    -> let tll_phi = TllInterface.formula_to_tll_formula fol_phi in
-                                         Tll.check_valid_plus_info prog_lines cutoff
-                                            Opt.use_quantifiers tll_phi
-                        | DP.Tsl    -> let tsl_phi = TSLInterface.formula_to_tsl_formula fol_phi in
-                                       let (res,tsl_calls,tslk_calls) =
-                                          TslSolver.check_valid_plus_info prog_lines cutoff
-                                            Opt.use_quantifiers tsl_phi in
-                                       DP.combine_call_table tslk_calls this_calls_counter;
-                                       (res, tsl_calls)
-                        | DP.Tslk k -> let module TSLKIntf = TSLKInterface.Make(Tslk.TslkExp) in
-                                       let tslk_phi = TSLKIntf.formula_to_tslk_formula fol_phi in
-                                         Tslk.check_valid_plus_info prog_lines cutoff
-                                            Opt.use_quantifiers tslk_phi
-                      in
-                      let _ = match Opt.dp with
-                              | DP.NoDP   -> ()
-                              | DP.Loc    -> ()
-                              | DP.Num    -> Num.print_model()
-                              | DP.Pairs  -> Pairs.print_model()
-                              | DP.Tll    -> Tll.print_model()
-                              | DP.Tsl    -> TslSolver.print_model()
-                              | DP.Tslk _ -> Tslk.print_model() in
-                      DP.add_dp_calls this_calls_counter Opt.dp calls ~vc_id:orig_id;
-                      if Opt.stop_on_invalid && (not (Valid.is_valid validity)) then begin
-                        print_endline "!!! Process stopped because an invalid VC was found !!!";
-                        exit (-1)
-                      end;
-                      set_status validity
-                     end in
-                  (* Analyze the formula *)
-                  phi_timer#stop;
-                  let time = phi_timer#elapsed_time in
-                  if LeapVerbose.is_verbose_level_enabled(LeapVerbose._SHORT_INFO) then
-                    Report.report_obligation_tail status time;
-                  incr obligation_counter;
-                  let phi_result = Result.new_info status time in
-                  (phi_obligation, phi_result)
-                ) case.obligations in
+            List.map (fun phi_obligation ->
+              (* TODO: Choose the right to_plain function *)
+              if LeapVerbose.is_verbose_level_enabled(LeapVerbose._SHORT_INFO) then
+                Report.report_obligation_header !obligation_counter phi_obligation;
+              let fol_phi = phi_obligation in
+              phi_timer#start;
+              let status =
+                if Valid.is_valid (Pos.check_valid prog_lines
+                      (fst (PE.keep_locations fol_phi))) then begin
+                  DP.add_dp_calls this_calls_counter DP.Loc 1 ~vc_id:orig_id;
+                  Result.Valid DP.Loc
+                end else begin
+                  let (validity, calls) =
+                    match Opt.dp with
+                    | DP.NoDP   ->
+                        (Valid.Invalid, 0)
+                    | DP.Loc    ->
+                        (Valid.Invalid, 0)
+                    | DP.Num    ->
+                        let num_phi = NumInterface.formula_to_int_formula fol_phi in
+                        let (res, calls) = Num.check_valid_with_lines_plus_info
+                                            prog_lines num_phi in
+                        if Valid.is_unknown res then begin
+                          let z3NumSolver : (module NumSolver.S) =
+                            NumSolver.choose BackendSolvers.Z3.identifier in
+                          let module Z3Num = (val z3NumSolver) in
+                            Z3Num.compute_model(Opt.compute_model);
+                            Z3Num.check_valid_with_lines_plus_info prog_lines num_phi
+                        end else
+                          (res, calls)
+                    | DP.Pairs  ->
+                        let pairs_phi = PairsInterface.formula_to_pairs_formula fol_phi in
+                        let (res, calls) = Pairs.check_valid_with_lines_plus_info
+                                            prog_lines pairs_phi in
+                        if Valid.is_unknown res then begin
+                          let z3PairsSolver : (module PairsSolver.S) =
+                            PairsSolver.choose BackendSolvers.Z3.identifier in
+                          let module Z3Pairs = (val z3PairsSolver) in
+                            Z3Pairs.compute_model(Opt.compute_model);
+                            Z3Pairs.check_valid_with_lines_plus_info prog_lines pairs_phi
+                        end else
+                          (res, calls)
+                    | DP.Tll    ->
+                        let tll_phi = TllInterface.formula_to_tll_formula fol_phi in
+                          Tll.check_valid_plus_info prog_lines cutoff
+                             Opt.use_quantifiers tll_phi
+                    | DP.Tsl    ->
+                        let tsl_phi = TSLInterface.formula_to_tsl_formula fol_phi in
+                        let (res,tsl_calls,tslk_calls) =
+                           TslSolver.check_valid_plus_info prog_lines cutoff
+                             Opt.use_quantifiers tsl_phi in
+                        DP.combine_call_table tslk_calls this_calls_counter;
+                        (res, tsl_calls)
+                    | DP.Tslk k ->
+                        (* Check that the "k" DP parameter is enough for all
+                         * levels in the formula *)
+                        if k < Tslk.TslkExp.k then
+                          Interface.Err.msg "Decision procedure not powerful enough" $
+                            sprintf "A formula in TSLK[%i] cannot be analyzed with a \
+                                     TSLK[%i] decision procedure. Will proceed with \
+                                     TSLK[%i]." Tslk.TslkExp.k k Tslk.TslkExp.k;
+                        let module TSLKIntf = TSLKInterface.Make(Tslk.TslkExp) in
+                                   let tslk_phi = TSLKIntf.formula_to_tslk_formula fol_phi in
+                                     Tslk.check_valid_plus_info prog_lines cutoff
+                                        Opt.use_quantifiers tslk_phi
+                  in
+                  let _ = match Opt.dp with
+                          | DP.NoDP   -> ()
+                          | DP.Loc    -> ()
+                          | DP.Num    -> Num.print_model()
+                          | DP.Pairs  -> Pairs.print_model()
+                          | DP.Tll    -> Tll.print_model()
+                          | DP.Tsl    -> TslSolver.print_model()
+                          | DP.Tslk _ -> Tslk.print_model() in
+                  DP.add_dp_calls this_calls_counter Opt.dp calls ~vc_id:orig_id;
+                  if Opt.stop_on_invalid && (not (Valid.is_valid validity)) then begin
+                    print_endline "!!! Process stopped because an invalid VC was found !!!";
+                    exit (-1)
+                  end;
+                  set_status validity
+                 end in
+              (* Analyze the formula *)
+              phi_timer#stop;
+              let time = phi_timer#elapsed_time in
+              if LeapVerbose.is_verbose_level_enabled(LeapVerbose._SHORT_INFO) then
+                Report.report_obligation_tail status time;
+              incr obligation_counter;
+              let phi_result = Result.new_info status time in
+              (phi_obligation, phi_result)
+            ) case.obligations in
 
           case_timer#stop;
           oblig_counter := !oblig_counter + (List.length case.obligations);
@@ -490,7 +508,7 @@ module Make (Opt:module type of GenOptions) : S =
           if show_progress then
             Progress.current (!vc_counter);
           if LeapVerbose.is_verbose_level_enabled(LeapVerbose._SHORT_INFO) then
-            Report.report_vc_tail !vc_counter case_result (List.map snd res_list) this_calls_counter;
+            Report.report_vc_tail !vc_counter (List.map snd res_list) this_calls_counter;
           incr vc_counter;
           res
         ) to_analyze in

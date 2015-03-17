@@ -196,17 +196,6 @@ struct
   (*    | NE.V.Local _ -> Printf.sprintf " %s%s%s_%s" p_str (NE.V.id v) pr_str th_str *)
 
 
-
-  (***** Not sure =S ******
-      match th with
-        None -> Printf.sprintf " %s%s%s%s" p_str id th_str pr_str
-      | Some t -> if E.is_tid_val t then
-                    Printf.sprintf " %s%s%s_%s" p_str id pr_str th_str
-                  else
-                    Printf.sprintf " (%s%s%s %s)" p_str id pr_str th_str
-   ************************)
-
-
   (************************** Support for sets **************************)
 
   let yices_type_decl (prog_lines:int) (buf:Buffer.t) : unit =
@@ -225,17 +214,12 @@ struct
                             undefInt ^ ")))\n")
 
 
-  (* (define emp::set)               *)
-  (*   (lambda (a::address) (false)) *)
   let yices_emp_def (buf:Buffer.t) : unit =
     B.add_string buf
       ("(define emp::" ^set_s^ "\n" ^
        "  (lambda (a::" ^int_s ^ ") false))\n")
 
-  (* (define singleton::(-> int set)       *)
-  (*     (lambda (a::int)                  *)
-  (*         (lambda (b::int)              *)
-  (*             (= a b))))                *)
+
   let yices_singleton_def (buf:Buffer.t) : unit =
     B.add_string buf
       ( "(define singleton::(-> " ^int_s^ " " ^set_s^ ")\n" ^
@@ -243,10 +227,7 @@ struct
         "        (lambda (b::" ^int_s^ ")\n" ^
         "            (= a b))))\n" )
 
-  (* (define union::(-> set set set)        *)
-  (*     (lambda (s::set r::set)            *)
-  (*         (lambda (a::int)               *)
-  (*             (or (s a) (r a)))))        *)
+
   let yices_union_def (buf:Buffer.t) : unit =
     B.add_string buf
       ( "(define union::(-> " ^set_s^ " " ^set_s^ " " ^set_s^ ")\n" ^
@@ -254,10 +235,7 @@ struct
         "        (lambda (a::" ^int_s^ ")\n" ^
         "            (or (s a) (r a)))))\n" )
 
-  (* (define setdiff::(-> set set set)      *)
-  (*     (lambda (s::set r::set)            *)
-  (*         (lambda (a::int)               *)
-  (*             (and (s a) (not (r a)))))) *)
+
   let yices_setdiff_def (buf:Buffer.t) : unit =
     B.add_string buf
       ( "(define setdiff::(-> " ^set_s^ " " ^set_s^ " " ^set_s^ ")\n" ^
@@ -265,10 +243,7 @@ struct
         "        (lambda (a::" ^int_s^ ")\n" ^
         "            (and (s a) (not (r a))))))\n" )
 
-  (* (define intersection::(-> set set set) *)
-  (*     (lambda (s::set r::set) *)
-  (*         (lambda (a::address) *)
-  (*             (and (s a) (r a))))) *)
+
   let yices_intersection_def (buf:Buffer.t) : unit =
     B.add_string buf
     ("(define intersection::(-> " ^set_s^ " " ^set_s^ " " ^set_s^ ")\n" ^
@@ -277,21 +252,7 @@ struct
      "           (and (s a) (r a)))))\n")
 
 
-  (* (define subseteq::(-> set set bool)  *)
-  (*   (lambda (s1::set s2::set)        *)
-  (*     (and (if (s1 null) (s2 null))    *)
-  (*          (if (s1 a1) (s2 a1))        *)
-  (*          (if (s1 a1) (s2 a2))        *)
-  (*          (if (s1 a3) (s2 a3))        *)
-  (*          (if (s1 a4) (s2 a4))        *)
-  (*          (if (s1 a5) (s2 a5)))))     *)
   let yices_subseteq_def (vars_rep:string list) (buf:Buffer.t) : unit =
-(*
-    B.add_string buf
-        ("(define subseteq::(-> " ^set_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
-         "  (lambda (s1::" ^set_s^ " s2::" ^set_s^ ")\n" ^
-         "    (= emp (setdiff s1 s2))))\n")
-*)
     B.add_string buf
         ("(define subseteq::(-> " ^set_s^ " " ^set_s^ " " ^bool_s^ ")\n" ^
          "  (lambda (s1::" ^set_s^ " s2::" ^set_s^ ")\n" ^
@@ -535,7 +496,7 @@ struct
       | NE.Greater(x,y)   -> " (> "  ^ (int_tostr x) ^ (int_tostr y) ^ ")"
       | NE.LessEq(x,y)    -> " (<= " ^ (int_tostr x) ^ (int_tostr y) ^ ")"
       | NE.GreaterEq(x,y) -> " (>= " ^ (int_tostr x) ^ (int_tostr y) ^ ")"
-      | NE.LessTid(x,y)   -> " (tid order support for yices not added yet )"
+      | NE.LessTid _      -> " (tid order support for yices not added yet )"
       | NE.Eq(x,y)        -> " (= "  ^ (term_tostr x) ^ (term_tostr y) ^ ")"
       | NE.InEq(x,y)      -> " (/= " ^ (term_tostr x) ^ (term_tostr y) ^ ")"
       | NE.In(i,s)        -> " (" ^ set_tostr s ^ " " ^ int_tostr i ^ ")"

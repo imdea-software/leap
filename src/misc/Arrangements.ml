@@ -248,7 +248,7 @@ let rec build_cand_tree (graph:eqclass_order_t)
     ) [] (build_aux initial_elems all_elems)
 
 
-let gen_arrtrees (f_str : 'a -> string) (arr:'a t) : 'a arrtree list =
+let gen_arrtrees (arr:'a t) : 'a arrtree list =
   let process_arr (arr:'a t) : 'a arrtree list =
     let append_eq ((a,b):'a * 'a) (xs:'a Partition.eqs list) =
       Partition.Eq (a,b)::xs in
@@ -307,7 +307,7 @@ let gen_arrs (arr:'a t) : ('a list list) GenSet.t =
   List.fold_left (fun s t ->
     let ts = arrtree_to_set t in
     GenSet.union s ts
-  ) (GenSet.empty ()) (gen_arrtrees (fun _ -> "") arr)
+  ) (GenSet.empty ()) (gen_arrtrees arr)
 
 
 let arrtree_set_to_str (f:'a -> string) (s:('a list list) GenSet.t) : string =

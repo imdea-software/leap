@@ -472,7 +472,7 @@ struct
     (* Since variables and PC are flat into variables, there's no need of pc and pc_prime as arrays *)
 
 
-  let z3_subseteq_def (buf:B.t) (num_addr:int) : unit =
+  let z3_subseteq_def (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun subseteq ((s1 " ^set_s^ ") (s2 " ^set_s^ ")) " ^bool_s^ "\n\
           (= (intersection s1 s2) s1))\n")
@@ -519,7 +519,7 @@ struct
        "  ((_ map and) r ((_ map not) s)))\n")
 
 
-  let z3_subseteqth_def (buf:B.t) (num_tids:int) : unit =
+  let z3_subseteqth_def (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun subseteqth ((s1 " ^setth_s^ ") (s2 " ^setth_s^ ")) "
           ^bool_s^ "\n\
@@ -553,7 +553,7 @@ struct
        "  ((_ map and) r ((_ map not) s)))\n")
 
 
-  let z3_subseteqelem_def (buf:B.t) (num_elem:int) : unit =
+  let z3_subseteqelem_def (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun subseteqelem ((s1 " ^setelem_s^ ") (s2 " ^setelem_s^ ")) "
           ^bool_s^ "\n\
@@ -795,9 +795,6 @@ struct
        "  (select h a))\n")
 
 
-  let z3_elemorder_def (buf:B.t) (num_elem:int) : unit =
-    ()
-
 
   (* Ordered list predicate definition *)
   let z3_orderlist_def (buf:B.t) (num_addr:int) : unit =
@@ -849,11 +846,6 @@ struct
         ("(declare-const error " ^cell_s^ ")\n" ^
          "(assert (= (lock error) NoThread))\n" ^
          "(assert (= (next error) null))\n")
-
-
-  let z3_mkcell_def (buf:B.t) : unit =
-    B.add_string buf
-      ("") (* Unneeded *)
 
 
   let z3_isheap_def (buf:B.t) : unit =
@@ -1242,19 +1234,15 @@ struct
 
   (********************* Preamble Definitions **********************)
 
-  let z3_defs (buf:B.t) (num_addr:int) (num_tid:int) (num_elem:int)
+  let z3_defs (buf:B.t) (num_addr:int) (num_tid:int)
               (req_sorts:Expr.sort list) (req_ops:Expr.special_op_t list)
               (heaps:VarSet.t) : unit =
-    (* Elements *)
-    if List.mem Expr.ElemOrder req_ops || List.mem Expr.OrderedList req_ops then
-      z3_elemorder_def buf num_elem ;
     (* Cells and Heap *)
     if List.mem Expr.Cell req_sorts || List.mem Expr.Mem req_sorts then
       z3_error_def buf ;
     (* Cell *)
     if List.mem Expr.Cell req_sorts then
       begin
-        z3_mkcell_def buf ;
         z3_cell_lock buf ;
         z3_cell_unlock_def buf
       end;
@@ -1273,7 +1261,7 @@ struct
         z3_union_def buf ;
         z3_intersection_def buf ;
         z3_setdiff_def buf ;
-        z3_subseteq_def buf num_addr
+        z3_subseteq_def buf
       end;
     (* If quantification is used, then we need to declare the heaps at this point *)
     if (List.mem Expr.Cell req_sorts || List.mem Expr.Mem req_sorts) &&
@@ -1304,7 +1292,7 @@ struct
         z3_unionth_def buf ;
         z3_intersectionth_def buf ;
         z3_setdiffth_def buf ;
-        z3_subseteqth_def buf num_tid
+        z3_subseteqth_def buf
       end;
     (* Sets of Elements *)
     if List.mem Expr.SetElem req_sorts then
@@ -1314,7 +1302,7 @@ struct
         z3_unionelem_def buf ;
         z3_intersectionelem_def buf ;
         z3_setdiffelem_def buf ;
-        z3_subseteqelem_def buf num_elem
+        z3_subseteqelem_def buf
       end;
     (* Set2Elem *)
     if List.mem Expr.Set2Elem req_ops then z3_settoelems_def buf num_addr ;
@@ -1554,7 +1542,7 @@ struct
     ("(assert (iselem (data " ^e_expr^ ")))\n")
 
 
-  let post_process (buf:B.t) (num_addrs:int) (num_elems:int) (num_tids:int) : unit =
+  let post_process (buf:B.t) : unit =
     Hashtbl.iter (fun e _ -> B.add_string buf (process_elem e)) elem_tbl
 
 
@@ -1584,14 +1572,14 @@ struct
     let (req_sorts, req_ops) = update_requirements req_sorts req_ops in
     let buf = B.create 1024 in
         z3_preamble buf num_addr num_tid num_elem req_sorts;
-        z3_defs    buf num_addr num_tid num_elem req_sorts req_ops heaps;
+        z3_defs    buf num_addr num_tid req_sorts req_ops heaps;
         variables_to_z3 buf num_tid expr ;
         let add_and_literal l str =
           "\n         " ^ (literal_to_str l) ^ str
         in
         let formula_str = List.fold_right add_and_literal ls ""
         in
-    post_process buf num_addr num_elem num_tid;
+    post_process buf;
     B.add_string buf ("(push)\n");
     B.add_string buf "(assert\n   (and";
     B.add_string buf formula_str ;
@@ -1625,11 +1613,11 @@ struct
     in
       B.add_string buf (";; Translation for " ^ (Expr.formula_to_str phi) ^ "\n");
       z3_preamble buf num_addr num_tid num_elem req_sorts;
-      z3_defs     buf num_addr num_tid num_elem req_sorts req_ops heaps;
+      z3_defs     buf num_addr num_tid req_sorts req_ops heaps;
       variables_from_formula_to_z3 buf num_tid phi ;
       (* We add extra information if needed *)
 (*      B.add_string buf extra_info_str ; *)
-      post_process buf num_addr num_elem num_tid;
+      post_process buf;
 
       (* Use symmetry over addresses *)
       if !use_quantifiers then begin

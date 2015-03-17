@@ -89,8 +89,6 @@ let pos_st : (E.pc_t, string * Statement.statement_t) Hashtbl.t =
 
 
 (* Variable declaration functions *)
-let get_ghost_list_from_expr (e:E.expr_t) = []
-
 
 let decl_global_var (v:E.V.id)
                     (s:E.sort)
@@ -800,7 +798,7 @@ let fix_conditional_jumps () : unit =
             match last_xs with
             | Stm.StWhile _
             | Stm.StReturn _ -> ()
-            | Stm.StIf (_,Stm.StSeq xs,None,_,_) ->
+            | Stm.StIf (_,Stm.StSeq _,None,_,_) ->
                 begin
                   (Stm.get_st_info last_xs).Stm.else_pos <- jump_pos
                 end
@@ -1499,7 +1497,7 @@ atomic_statement:
   | while_keyword formula ST_DO atomic_statement_list ST_ENDWHILE
     {
       let cond = Stm.boolean_to_expr_formula $2 in
-      let (assign_list, body_code) = $4 in
+      let (_, body_code) = $4 in
       let body = Stm.StSeq body_code in
       let get_str_expr () = sprintf "while (%s) do \n%s\n endwhile"
                                     (E.formula_to_str cond)
@@ -1512,7 +1510,7 @@ atomic_statement:
     }
   | choice_keyword atomic_statements_choice ST_ENDCHOICE
     {
-      let (assign_lists, choice_list) = List.split $2 in
+      let (_, choice_list) = List.split $2 in
 (*    TODO: Also eliminate duplicated variables
       let assign_list = List.flatten assign_lists in
 *)
@@ -1712,7 +1710,7 @@ ghost_statement:
   | while_keyword formula ST_DO ghost_statement_list ST_ENDWHILE
     {
       let cond = Stm.boolean_to_expr_formula $2 in
-      let (assign_list, body_code) = $4 in
+      let (_, body_code) = $4 in
       let body = Stm.StSeq body_code in
       let get_str_expr () = sprintf "while (%s) do \n%s\n endwhile"
                                     (E.formula_to_str cond)
@@ -1725,7 +1723,7 @@ ghost_statement:
     }
   | choice_keyword ghost_statements_choice ST_ENDCHOICE
     {
-      let (assign_lists, choice_list) = List.split $2 in
+      let (_, choice_list) = List.split $2 in
 (*    TODO: Also eliminate duplicated variables
       let assign_list = List.flatten assign_lists in
 *)
@@ -2187,8 +2185,8 @@ statement:
                 [] -> ()
               | xs -> let lst = lastElem xs in
                       let zs = match lst with
-                               | Stm.StSelect (ys,g,info) -> ys
-                               | Stm.StIf (b,t,e,g,info) ->
+                               | Stm.StSelect (ys,_,_) -> ys
+                               | Stm.StIf (_,t,e,_,info) ->
                                   begin
                                     match e with
                                     | Some s -> [t;s]

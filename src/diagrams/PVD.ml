@@ -405,7 +405,7 @@ let check_and_define_edges (nTbl:node_table_t)
   let check_transition_param (n:node_id_t) (trans:trans_t) : E.ThreadSet.t =
     let trans_voc = match trans with
                     | NoLabel -> E.ThreadSet.empty
-                    | Label ts -> List.fold_left (fun set (id,t) ->
+                    | Label ts -> List.fold_left (fun set (_,t) ->
                                     E.ThreadSet.add (E.VarTh t) set
                                   ) E.ThreadSet.empty ts in
     match box_param nTbl bTbl n with
@@ -513,7 +513,7 @@ let nodes (pvd:t) : NodeIdSet.t =
   match !cached_nodes with
   | Some n -> n
   | None -> begin
-              let nSet = Hashtbl.fold (fun n info set ->
+              let nSet = Hashtbl.fold (fun n _ set ->
                            NodeIdSet.add n set
                          ) pvd.nodes NodeIdSet.empty in
               cached_nodes := Some nSet;

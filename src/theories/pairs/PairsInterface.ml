@@ -118,7 +118,7 @@ and integer_to_pairs_integer (t:E.integer) : PE.integer =
     | E.IntArrayRd(a,i) -> PE.ArrayRd(a,totid i)
     | E.IntSetMin(s)    -> PE.SetMin (toset s)
     | E.IntSetMax(s)    -> PE.SetMax (toset s)
-    | E.CellMax(c)      -> raise(NotAPairsExpression(E.integer_to_str t))
+    | E.CellMax _       -> raise(NotAPairsExpression(E.integer_to_str t))
     | E.HavocLevel      -> raise(NotAPairsExpression(E.integer_to_str t))
     | E.PairInt p       -> PE.PairInt(topair p)
 
@@ -132,7 +132,7 @@ and pair_to_pairs_pair (p:E.pair) : PE.pair =
     | E.IntTidPair (i,t) -> PE.IntTidPair(toint i, totid t)
     | E.SetPairMin ps    -> PE.SetPairMin(tosetpair ps)
     | E.SetPairMax ps    -> PE.SetPairMax(tosetpair ps)
-    | E.PairArrayRd(a,i) -> raise(NotAPairsExpression(E.pair_to_str p))
+    | E.PairArrayRd _    -> raise(NotAPairsExpression(E.pair_to_str p))
 
 
 and atom_to_pairs_atom (a:E.atom) : PE.atom =

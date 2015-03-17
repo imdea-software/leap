@@ -510,7 +510,7 @@ struct
       "\n" ^ !str ^ ")\n")
 
 
-  let smt_getlocked_def (buf:B.t) (num_addr:int) : unit =
+  let smt_getlocked_def (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun getlockat ((h " ^heap_s^ ") (p " ^path_s^
             ") (i RangeAddress)) " ^tid_s^ "\n" ^
@@ -1023,7 +1023,7 @@ struct
     if List.mem Expr.Set2Elem req_ops then smt_settoelems_def buf num_addr ;
     (* Firstlock or Lastlock *)
     if List.mem Expr.FstLocked req_ops || List.mem Expr.LstLocked req_ops then
-        smt_getlocked_def buf num_addr ;
+        smt_getlocked_def buf ;
     (* Firstlock *)
     if List.mem Expr.FstLocked req_ops then smt_firstlock_def buf num_addr ;
     (* Lastlock *)
@@ -1597,7 +1597,7 @@ struct
     | _ -> raise(UnexpectedCellTerm(Expr.cell_to_str c))
 
 
-  let process_getp (max_addrs:int) ((m,a1,a2):string * string * string) : string =
+  let process_getp (max_addrs:int) ((m,a1,_):string * string * string) : string =
     let tmpbuf = B.create 1024 in
     B.add_string tmpbuf ("(assert (ispath (path1 " ^m^ " " ^a1^ ")))\n");
     for i = 2 to (max_addrs + 1) do
@@ -1620,7 +1620,7 @@ struct
     B.contents tmpbuf
 
 
-  let post_process (buf:B.t) (num_addrs:int) (num_elems:int) (num_tids:int) : unit =
+  let post_process (buf:B.t) (num_addrs:int) : unit =
     Hashtbl.iter (fun a _ -> B.add_string buf (process_addr a)) addr_tbl;
     Hashtbl.iter (fun e _ -> B.add_string buf (process_elem e)) elem_tbl;
     Hashtbl.iter (fun t _ -> B.add_string buf (process_tid t)) tid_tbl;
@@ -1630,6 +1630,9 @@ struct
 
 
   let literal_list_to_str (use_q:bool) (ls:Expr.literal list) : string =
+    (* The use of quantifiers in SMTLIB remains to be implemented *)
+    if use_q then ();
+    (* The use of quantifiers in SMTLIB remains to be implemented *)
     clean_lists();
     let _ = GM.clear_sort_map sort_map in
     let expr = F.Conj ls in
@@ -1653,7 +1656,7 @@ struct
         in
         let formula_str = List.fold_right add_and_literal ls ""
         in
-    post_process buf num_addr num_elem num_tid;
+    post_process buf num_addr;
     B.add_string buf "(assert\n   (and";
     B.add_string buf formula_str ;
     B.add_string buf "))\n";
@@ -1665,6 +1668,9 @@ struct
                      (copt:Smp.cutoff_options_t)
                      (use_q:bool)
                      (phi:Expr.formula) : string =
+    (* The use of quantifiers in SMTLIB remains to be implemented *)
+    if use_q then ();
+    (* The use of quantifiers in SMTLIB remains to be implemented *)
     clean_lists();
     let _ = GM.clear_sort_map sort_map in
     verbl _LONG_INFO "**** SMTTllQuery. Will compute the cutoff...\n";
@@ -1683,7 +1689,7 @@ struct
       smt_defs     buf num_addr num_tid num_elem req_sorts req_ops;
       variables_from_formula_to_smt buf num_tid phi ;
       (* We add extra information if needed *)
-      post_process buf num_addr num_elem num_tid;
+      post_process buf num_addr;
       B.add_string buf "(assert\n";
       B.add_string buf formula_str ;
       B.add_string buf ")\n";

@@ -19,7 +19,7 @@ val report_vc_run : int -> vc_status -> float ->
                            vc_status -> float ->
                            vc_status -> float ->
                            vc_status -> float ->
-                           vc_status -> float -> string -> string -> unit
+                           vc_status -> float -> string -> unit
 val report_analysis_time : float -> unit
 val report_labels : System.label_table_t -> unit
 
@@ -30,7 +30,7 @@ val report_details_to_file : string -> string -> string ->
 
 
 val report_vc_header : int -> Tactics.vc_info -> int -> unit
-val report_vc_tail : int -> Result.info_t -> Result.info_t list -> DP.call_tbl_t -> unit
+val report_vc_tail : int -> Result.info_t list -> DP.call_tbl_t -> unit
 val report_obligation_header : int -> Expression.formula -> unit
 val report_obligation_tail : Result.status_t -> float -> unit
 val report_summary : int -> Result.info_t list -> DP.call_tbl_t -> unit

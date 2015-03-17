@@ -125,7 +125,6 @@ module Make (C:Core.S) : S =
     let seq_gen_vcs (supp:E.formula list)
                     (inv:E.formula)
                     (line:int)
-                    (premise:Premise.t)
                     (trans_tid:E.tid)
                       : Tactics.vc_info list =
       let trans_var = E.voc_to_var trans_tid in
@@ -160,7 +159,7 @@ module Make (C:Core.S) : S =
         let specific_supp = match IGraph.lookup_case cases line Premise.SelfConseq with
                             | None -> supp
                             | Some (supp_tags, _) -> C.read_tags_and_group_by_file supp_tags in
-        vcs @ seq_gen_vcs (inv::specific_supp) inv line Premise.SelfConseq trans_tid
+        vcs @ seq_gen_vcs (inv::specific_supp) inv line trans_tid
       ) [] C.lines_to_consider
 
 

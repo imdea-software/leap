@@ -53,7 +53,7 @@ let consider_lines (opt:gen_t option) (sys:System.t) : E.PosSet.t =
               | None -> begin
                           let set = ref E.PosSet.empty in
                           for i = 1 to System.lines sys do
-                            ignore (E.PosSet.add i !set)
+                            set := E.PosSet.add i !set
                           done;
                           lines_cache := Some !set; !set
                         end

@@ -17,7 +17,7 @@ let cut_off_normalized (expr:PE.conjunctive_formula) : MS.t =
   let numint = ref (vars_int) in
   let numtid = ref (vars_tid) in
 
-  let process_ineq (x,y) =
+  let process_ineq (x,_) =
     match x with
     | PE.IntV _     -> ()                      (* nothing, y must be a VarT as well *)
     | PE.PairV _    -> (numint := !numint + 2; numtid := !numtid + 2) (* witness of pair inequality *) 

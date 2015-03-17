@@ -251,7 +251,7 @@ struct
       | PE.Greater(x,y)   -> " (> "  ^ (int_tostr x) ^ (int_tostr y) ^ ")"
       | PE.LessEq(x,y)    -> " (<= " ^ (int_tostr x) ^ (int_tostr y) ^ ")"
       | PE.GreaterEq(x,y) -> " (>= " ^ (int_tostr x) ^ (int_tostr y) ^ ")"
-      | PE.LessTid(x,y)   -> " (tid order support for z3 not added yet )"
+      | PE.LessTid _      -> " (tid order support for z3 not added yet )"
       | PE.Eq(x,y)        -> " (= "  ^ (term_tostr x) ^ (term_tostr y) ^ ")"
       | PE.InEq(x,y)      -> " (not (=" ^ (term_tostr x) ^ (term_tostr y) ^ "))"
       | PE.In(i,s)        -> " (select " ^ set_tostr s ^ " " ^ int_tostr i ^ ")"
@@ -399,7 +399,7 @@ struct
      "  ((_ map and) &s1 &s2))\n")
 
 
-  let z3_subseteq_def (vars_rep:string list) (buf:Buffer.t) : unit =
+  let z3_subseteq_def (buf:Buffer.t) : unit =
     B.add_string buf
         ("(define-fun subseteq ((&s1 " ^set_s^ ") (&s2 " ^set_s^ ")) " ^bool_s^ "\n" ^
          "  (= (intersection &s1 &s2) &s1))\n")
@@ -435,7 +435,7 @@ struct
      "  ((_ map and) &s1 &s2))\n")
 
 
-  let z3_spsubseteq_def (vars_rep:string list) (buf:Buffer.t) : unit =
+  let z3_spsubseteq_def (buf:Buffer.t) : unit =
     B.add_string buf
         ("(define-fun spsubseteq ((&s1 " ^setpair_s^ ") (&s2 " ^setpair_s^ ")) " ^bool_s^ "\n" ^
          "  (= (spintr &s1 &s2) &s1))\n")
@@ -697,7 +697,6 @@ struct
   let z3_preamble (buf:Buffer.t)
                      (voc:PE.tid list)
                      (int_cutoff:int)
-                     (tid_cutoff:int)
                      (pc_vars:PE.V.t list)
                      (gbl_pairs_vars:PE.V.t list)
                      (lcl_pairs_vars:PE.V.t list) : unit =
@@ -726,13 +725,13 @@ struct
       z3_union_def                              buf;
       z3_setdiff_def                            buf;
       z3_intersection_def                       buf;
-      z3_subseteq_def all_vars_str              buf;
+      z3_subseteq_def                           buf;
       z3_spemp_def                              buf;
       z3_spsingleton_def                        buf;
       z3_spunion_def                            buf;
       z3_spsetdiff_def                          buf;
       z3_spintersection_def                     buf;
-      z3_spsubseteq_def all_vars_str            buf;
+      z3_spsubseteq_def                         buf;
       z3_is_min_def all_vars_str                buf;
       z3_is_max_def all_vars_str                buf;
       z3_min_def all_vars_str                   buf;
@@ -795,7 +794,6 @@ struct
     let voc            = PE.voc phi in
     let cutoff         = SmpPairs.cut_off phi in
     let int_cutoff     = MS.get cutoff MS.Int in
-    let tid_cutoff     = MS.get cutoff MS.Tid in
     let global_vars    = PE.all_global_vars phi in
     let local_vars     = PE.all_local_vars_without_param phi in
     let (pc_vars, glb_pairs_vars) = filter_global_ints global_vars in
@@ -811,7 +809,7 @@ struct
     let _              = List.iter (fun v ->
                           B.add_string buf (local_var_to_str v)
                          ) local_vars in
-    let _              = z3_preamble buf voc int_cutoff tid_cutoff
+    let _              = z3_preamble buf voc int_cutoff
                             pc_vars glb_pairs_vars lcl_pairs_vars in
     let _              = z3_legal_values global_vars local_vars voc buf in
     let _              = B.add_string buf ("(assert " ^ (string_of_formula phi) ^

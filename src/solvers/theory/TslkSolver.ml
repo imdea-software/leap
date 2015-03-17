@@ -111,8 +111,8 @@ struct
   and is_constant_setelem = function
         TslkExp.EmptySetElem -> true
       | _                   -> false
-  and is_constant_elem e = false
-  and is_constant_thid th = false
+  and is_constant_elem _ = false
+  and is_constant_thid _ = false
   and is_constant_addr =  function
         TslkExp.Null -> true
       | _         -> false
@@ -197,10 +197,10 @@ struct
       | TslkExp.GreaterElem(e1,e2)    -> is_var_elem e1 && is_var_elem e2
       | TslkExp.Eq((t1,t2))           -> is_var_term t1 && is_var_term t2
       | TslkExp.InEq((t1,t2))         -> is_var_term t1 && is_var_term t2
-      | TslkExp.BoolVar v             -> true
-      | TslkExp.PC(pc,t,pr)           -> true
-      | TslkExp.PCUpdate (pc,t)       -> true
-      | TslkExp.PCRange(pc1,pc2,t,pr) -> true
+      | TslkExp.BoolVar _             -> true
+      | TslkExp.PC _                  -> true
+      | TslkExp.PCUpdate _            -> true
+      | TslkExp.PCRange _             -> true
   
   let is_flat expr =
     List.for_all is_flat_literal expr

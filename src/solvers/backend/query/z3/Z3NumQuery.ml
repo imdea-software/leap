@@ -196,17 +196,6 @@ struct
   (*    | NE.V.Local _ -> Printf.sprintf " %s%s%s_%s" p_str (NE.V.id v) pr_str th_str *)
 
 
-
-  (***** Not sure =S ******
-      match th with
-        None -> Printf.sprintf " %s%s%s%s" p_str id th_str pr_str
-      | Some t -> if E.is_tid_val t then
-                    Printf.sprintf " %s%s%s_%s" p_str id pr_str th_str
-                  else
-                    Printf.sprintf " (%s%s%s %s)" p_str id pr_str th_str
-   ************************)
-
-
   (************************** Support for sets **************************)
 
   let z3_type_decl (buf:Buffer.t) : unit =
@@ -222,59 +211,37 @@ struct
                         "  (not (= i " ^undefInt^ ")))\n")
 
 
-  (* (define emp::set)               *)
-  (*   (lambda (a::address) (false)) *)
   let z3_emp_def (buf:Buffer.t) : unit =
     B.add_string buf
       ("(declare-const emp " ^set_s^ ")\n" ^
        "(assert (= emp ((as const " ^set_s^ " ) false)))\n")
 
-  (* (define singleton::(-> int set)       *)
-  (*     (lambda (a::int)                  *)
-  (*         (lambda (b::int)              *)
-  (*             (= a b))))                *)
+
   let z3_singleton_def (buf:Buffer.t) : unit =
     B.add_string buf
       ( "(define-fun singleton ((i " ^int_s^ ")) " ^set_s^ "\n" ^
         "  (store emp i true))\n")
 
-  (* (define union::(-> set set set)        *)
-  (*     (lambda (s::set r::set)            *)
-  (*         (lambda (a::int)               *)
-  (*             (or (s a) (r a)))))        *)
+
   let z3_union_def (buf:Buffer.t) : unit =
     B.add_string buf
       ( "(define-fun unionset ((s1 " ^set_s^ ") (s2 " ^set_s^ ")) " ^set_s^ "\n" ^
         "  ((_ map or) s1 s2))\n")
 
-  (* (define setdiff::(-> set set set)      *)
-  (*     (lambda (s::set r::set)            *)
-  (*         (lambda (a::int)               *)
-  (*             (and (s a) (not (r a)))))) *)
+
   let z3_setdiff_def (buf:Buffer.t) : unit =
     B.add_string buf
       ( "(define-fun setdiff ((s1 " ^set_s^ ") (s2 " ^set_s^ ")) " ^set_s^ "\n" ^
         "  ((_ map and) s1 ((_ map not) s2)))\n")
 
-  (* (define intersection::(-> set set set) *)
-  (*     (lambda (s::set r::set) *)
-  (*         (lambda (a::address) *)
-  (*             (and (s a) (r a))))) *)
+
   let z3_intersection_def (buf:Buffer.t) : unit =
     B.add_string buf
     ("(define-fun intersection ((s1 " ^set_s^ ") (s2 " ^set_s^ ")) " ^set_s^ "\n" ^
      "  ((_ map and) s1 s2))\n")
 
 
-  (* (define subseteq::(-> set set bool)  *)
-  (*   (lambda (s1::set s2::set)        *)
-  (*     (and (if (s1 null) (s2 null))    *)
-  (*          (if (s1 a1) (s2 a1))        *)
-  (*          (if (s1 a1) (s2 a2))        *)
-  (*          (if (s1 a3) (s2 a3))        *)
-  (*          (if (s1 a4) (s2 a4))        *)
-  (*          (if (s1 a5) (s2 a5)))))     *)
-  let z3_subseteq_def (vars_rep:string list) (buf:Buffer.t) : unit =
+  let z3_subseteq_def (buf:Buffer.t) : unit =
     B.add_string buf
         ("(define-fun subseteq ((s1 " ^set_s^ ") (s2 " ^set_s^ ")) " ^bool_s^ "\n" ^
          "  (= (intersection s1 s2) s1))\n")
@@ -420,7 +387,7 @@ struct
       z3_union_def                   buf;
       z3_setdiff_def                 buf;
       z3_intersection_def            buf;
-      z3_subseteq_def all_vars_str   buf;
+      z3_subseteq_def                buf;
       z3_is_min_def all_vars_str     buf;
       z3_is_max_def all_vars_str     buf;
       z3_min_def all_vars_str        buf;
@@ -498,7 +465,7 @@ struct
       | NE.Greater(x,y)   -> " (> "  ^ (int_tostr x) ^ (int_tostr y) ^ ")"
       | NE.LessEq(x,y)    -> " (<= " ^ (int_tostr x) ^ (int_tostr y) ^ ")"
       | NE.GreaterEq(x,y) -> " (>= " ^ (int_tostr x) ^ (int_tostr y) ^ ")"
-      | NE.LessTid(x,y)   -> " (tid order support for z3 not added yet )"
+      | NE.LessTid _      -> " (tid order support for z3 not added yet )"
       | NE.Eq(x,y)        -> " (= "  ^ (term_tostr x) ^ (term_tostr y) ^ ")"
       | NE.InEq(x,y)      -> " (not (=" ^ (term_tostr x) ^ (term_tostr y) ^ "))"
       | NE.In(i,s)        -> " (select " ^ set_tostr s ^ " " ^ int_tostr i ^ ")"

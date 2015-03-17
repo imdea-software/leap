@@ -97,7 +97,7 @@ and integer_to_int_integer (t:E.integer) : NE.integer =
     | E.IntArrayRd(a,i) -> NE.ArrayRd(a,totid i)
     | E.IntSetMin(s)    -> NE.SetMin (toset s)
     | E.IntSetMax(s)    -> NE.SetMax (toset s)
-    | E.CellMax(c)      -> raise(NotAnIntExpression(E.integer_to_str t))
+    | E.CellMax _       -> raise(NotAnIntExpression(E.integer_to_str t))
     | E.HavocLevel      -> raise(NotAnIntExpression(E.integer_to_str t))
     | E.PairInt _       -> raise(NotAnIntExpression(E.integer_to_str t))
 
@@ -182,24 +182,6 @@ and scope_to_expr_scope (p:NE.V.procedure_name) : E.V.procedure_name =
 
 and formula_to_expr_formula (phi:NE.formula) : E.formula =
   Formula.formula_conv atom_to_expr_atom phi
-(*
-and formula_to_expr_formula (phi:NE.formula) : E.formula =
-  let to_formula = formula_to_expr_formula in
-  match phi with
-      F.Literal(l)     -> F.Literal(literal_to_expr_literal l)
-    | F.True           -> F.True
-    | F.False          -> F.False
-    | F.And(x,y)       -> F.And    (to_formula x, to_formula y)
-    | F.Or(x,y)        -> F.Or     (to_formula x, to_formula y)
-    | F.Not(x)         -> F.Not    (to_formula x)
-    | F.Implies(x,y)   -> F.Implies(to_formula x, to_formula y)
-    | F.Iff(x,y)       -> F.Iff    (to_formula x, to_formula y)
-
-and literal_to_expr_literal (l:NE.literal) : E.literal =
-  match l with
-    NE.Atom a    -> E.Atom (atom_to_expr_atom a)
-  | NE.NegAtom a -> E.NegAtom (atom_to_expr_atom a)
-*)
 
 
 and atom_to_expr_atom (a:NE.atom) : E.atom =
