@@ -1,12 +1,6 @@
 %{
-open Printf
-
-open LeapLib
-open Global
 
 (* Type rename *)
-
-type graph_t = IGraph.t
 
 type case_t = Expression.pc_t         *
               Premise.t list          *

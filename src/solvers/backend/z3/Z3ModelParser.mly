@@ -1,8 +1,5 @@
 %{
-open Printf
 open LeapLib
-
-open Global
 
 (* Type rename *)
 
@@ -92,7 +89,7 @@ let build_fun_from (i:int) : ((GM.id option) list, abs_value_t) Hashtbl.t =
 
 
 (* Defines a new value in the model *)
-let rec define (id:GM.id) (v:value_t) : unit =
+let define (id:GM.id) (v:value_t) : unit =
   match v with
   | Constant _        -> GM.decl_const model id (convert v)
   | Record (_, _)     -> GM.decl_const model id (convert v)

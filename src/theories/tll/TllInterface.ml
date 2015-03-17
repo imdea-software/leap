@@ -1,12 +1,6 @@
-open LeapLib
 
 module E   = Expression
 module TLL = TllExpression
-
-
-type varId = E.V.id
-type sort  = E.sort
-type tid   = E.tid
 
 exception UnsupportedSort of string
 exception UnsupportedTllExpr of string

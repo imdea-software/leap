@@ -14,8 +14,6 @@ struct
 
 
   exception NotSupportedInZ3 of string
-  exception UntypedVariable of string
-  exception Not_implemented of string
 
 
   (* Configuration *)

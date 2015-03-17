@@ -148,7 +148,7 @@ let set_minimum (arr:'a t) (a:'a) : unit =
   arr.minimum <- Some a
 
 
-let rec inject_leq_info (arr:'a t) : ('a t) list =
+let inject_leq_info (arr:'a t) : ('a t) list =
   let leq_order = arr.leq_order in
   let arr = copy arr in
   arr.leq_order <- [];
@@ -220,7 +220,7 @@ let prune_incomplete_tree (t:'a aux_arrtree) : 'a arrtree option =
   | (_    , false) -> None
 
 
-let rec build_cand_tree (graph:eqclass_order_t)
+let build_cand_tree (graph:eqclass_order_t)
                         (follows:(int, int) Hashtbl.t)
                         (initial_elems:int GenSet.t)
                         (all_elems:int GenSet.t)

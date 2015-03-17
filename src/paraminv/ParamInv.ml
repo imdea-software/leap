@@ -1,5 +1,4 @@
 open LeapLib
-open Printf
 
 
 module E = Expression

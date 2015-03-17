@@ -1,6 +1,3 @@
-open Printf
-open LeapLib
-
 
 module V : Variable.S
   with type sort = unit

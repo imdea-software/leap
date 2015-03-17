@@ -1,5 +1,4 @@
 {
-open Global
 open YicesModelParser
 
 exception LexerError

@@ -14,8 +14,6 @@ struct
 
 
   exception NotSupportedInYices of string
-  exception UntypedVariable of string
-  exception Not_implemented of string
 
 
   (* Configuration *)

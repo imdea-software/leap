@@ -1,15 +1,8 @@
 %{
-open Printf
-
-open Global
-open LeapLib
 
 (* Type rename *)
 
 module GM = GenericModel
-
-
-exception Not_implemented of string
 
 (* slow way to project: traverse one time per entry *)
 let get_name id = fst id

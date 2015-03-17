@@ -1,5 +1,4 @@
 open LeapLib
-open Printf
 
 module Stm = Statement
 module E   = Expression
@@ -30,7 +29,6 @@ type malloc_info =
 type prog_type = Num | Heap
 
 
-exception Invalid_argument
 exception Not_implemented of string
 
 (* Configuration *)
@@ -270,17 +268,17 @@ let generic_stm_term_eq (mode:eqGenMode)
             F.And (E.ineq_elem (E.prime_elem (E.param_elem th_p e)) E.LowestElem,
                    E.ineq_elem (E.prime_elem (E.param_elem th_p e)) E.HighestElem))
     (* HavocLevel *)
-    | (E.IntT (E.VarInt v) as i, E.Term (E.IntT (E.HavocLevel))) ->
+    | (E.IntT (E.VarInt _) as i, E.Term (E.IntT (E.HavocLevel))) ->
         let e = E.IntT (E.VarInt(E.build_global_var fresh_int_name E.Int)) in
           eq_generator i th_p (E.Term e)
     (* Locked *)
-    | (E.CellT (E.VarCell v), E.Term (E.CellT (E.CellLock (d, _)))) ->
+    | (E.CellT (E.VarCell _), E.Term (E.CellT (E.CellLock (d, _)))) ->
         let (m,e) = eq_generator v' th_p new_e in
         let cons =
             F.atom_to_formula (E.Eq (E.TidT (E.CellLockId d), E.TidT E.NoTid)) in
         (m, F.And (cons,e))
     (* Unlocked *)
-    | (E.CellT (E.VarCell v), E.Term (E.CellT (E.CellUnlock d))) ->
+    | (E.CellT (E.VarCell _), E.Term (E.CellT (E.CellUnlock d))) ->
         let (m,e) = eq_generator v' th_p new_e in
         let cons =
             match th_p with
@@ -290,13 +288,13 @@ let generic_stm_term_eq (mode:eqGenMode)
                                                       E.TidT (E.VarTh v))) in
         (m, F.And (cons,e))
     (* LockedAt *)
-    | (E.CellT (E.VarCell v), E.Term (E.CellT (E.CellLockAt (d,i,_)))) ->
+    | (E.CellT (E.VarCell _), E.Term (E.CellT (E.CellLockAt (d,i,_)))) ->
         let (m,e) = eq_generator v' th_p new_e in
         let cons =
             F.atom_to_formula (E.Eq (E.TidT (E.CellLockIdAt (d,i)), E.TidT E.NoTid)) in
         (m, F.And (cons,e))
     (* UnlockedAt *)
-    | (E.CellT (E.VarCell v), E.Term (E.CellT (E.CellUnlockAt (d,i)))) ->
+    | (E.CellT (E.VarCell _), E.Term (E.CellT (E.CellUnlockAt (d,i)))) ->
         let (m,e) = eq_generator v' th_p new_e in
         let cons =
             match th_p with
@@ -389,18 +387,18 @@ let rec gen_st_cond_effect_aux (is_ghost:bool)
   let def_assign          = [(me_term, Stm.Term me_term)]
   in
   match st with
-    Stm.StSkip (gc,info)       ->
+    Stm.StSkip (gc,_)       ->
       add_gc [([],def_assign,curr_p,next_p,true)] gc
-  | Stm.StAssert (c,gc,info)   ->
+  | Stm.StAssert (c,gc,_)   ->
       add_gc [([to_expr c],def_assign,curr_p,next_p,true)] gc
-  | Stm.StAwait (c,gc,info)    ->
+  | Stm.StAwait (c,gc,_)    ->
       add_gc [([to_expr c],         def_assign,curr_p,next_p,true);
               ([to_expr(F.Not c)],def_assign,curr_p,curr_p,false)] gc
-  | Stm.StNonCrit (gc,info)    ->
+  | Stm.StNonCrit (gc,_)    ->
       add_gc [([],def_assign,curr_p,next_p,true)] gc
-  | Stm.StCrit (gc,info)       ->
+  | Stm.StCrit (gc,_)       ->
       add_gc [([],def_assign,curr_p,next_p,true)] gc
-  | Stm.StIf (c,t,e,gc,info)   ->
+  | Stm.StIf (c,t,e,_,_)   ->
       let append cond xs = List.map (fun (cs,ef,c,n,e) -> (cond::cs,ef,c,n,e)) xs in
       if is_ghost then
         let true_res = append (to_expr c) (gen_st_cond_effect_aux true t) in
@@ -412,10 +410,10 @@ let rec gen_st_cond_effect_aux (is_ghost:bool)
       else
          [([to_expr c],         def_assign,curr_p,next_p,true);
           ([to_expr(F.Not c)],def_assign,curr_p,else_p,true)]
-  | Stm.StWhile (c,l,gc,info)  ->
+  | Stm.StWhile (c,_,gc,_)  ->
       add_gc [([to_expr c],         def_assign,curr_p,next_p,true);
               ([to_expr(F.Not c)],def_assign,curr_p,else_p,true)] gc
-  | Stm.StSelect (xs,gc,info)  ->
+  | Stm.StSelect (_,gc,info)  ->
       let conds = match info with
                   | None     -> [([],def_assign,curr_p,next_p,true)]
                   | Some ops -> List.map (fun i ->
@@ -423,13 +421,13 @@ let rec gen_st_cond_effect_aux (is_ghost:bool)
                                 ) ops.Stm.opt_pos
       in
         add_gc conds gc
-  | Stm.StAssign (t,e,gc,info) ->
+  | Stm.StAssign (t,e,gc,_) ->
       add_gc [([],(t,e)::def_assign,curr_p,next_p,true)] gc
   (* FIX: To be implemented *)
-  | Stm.StUnit (op,gc,info)    ->
+  | Stm.StUnit _ ->
       let msg = "StUnit case in function gen_st_cond_effect" in
         raise(Not_implemented msg)
-  | Stm.StAtomic (xs,gc,info)  ->
+  | Stm.StAtomic (xs,gc,_)  ->
       add_gc (gen_atomic_st_cond_effect [([],def_assign,curr_p,next_p,true)]
         (Stm.StSeq xs)) gc
   | Stm.StSeq xs               ->
@@ -446,10 +444,10 @@ let rec gen_st_cond_effect_aux (is_ghost:bool)
         | cs1::cs2::css -> List.fold_left merge (merge cs1 cs2) css
       else
         List.flatten conds
-  | Stm.StCall (t,proc,params,gc,info) ->
+  | Stm.StCall (_,_,_,gc,_) ->
       add_gc [([],def_assign,curr_p,next_p,true)] gc
   (* FIX: I am not assigning the returned value *)
-  | Stm.StReturn (t,gc,info)   ->
+  | Stm.StReturn (_,gc,_)   ->
       add_gc [([],def_assign,curr_p,next_p,true)] gc
 
 

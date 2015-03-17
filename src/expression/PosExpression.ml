@@ -32,9 +32,6 @@ type expression =
   | Iff           of expression * expression
 
 
-type pred_table_t = (E.formula, string) Hashtbl.t
-
-exception NotSupportedInPosEession of string
 exception Not_tid_var of tid
 
 module ThreadSet = Set.Make(
@@ -230,7 +227,7 @@ let rec all_preds (expr:expression) : string list =
     PredSet.elements pred_set
 
 
-let rec voc (expr:expression) : tid list =
+let voc (expr:expression) : tid list =
   let rec voc_aux exp =
     match exp with
     Eq (t1,t2)      -> [t1;t2]
@@ -262,7 +259,7 @@ let rec voc (expr:expression) : tid list =
     ThreadSet.elements voc_set
 
 
-let rec pos (expr:expression) : int list =
+let pos (expr:expression) : int list =
   let rec pos_aux exp =
     match exp with
     | PC (i,_,_)        -> [i]

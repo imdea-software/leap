@@ -52,11 +52,7 @@ copy = @mkdir -p $(2); cp $(1) $(2)/$(3)
 
 OCAMLBUILD_FLAGS= -j 0 -build-dir _build
 
-OCAML_FLAGS=
-#-cflags -w,+A-4
-#-cflags -w,K
-#	-cflags -warn-error,A \
-#	-cflags -w,Z \
+OCAML_FLAGS=-cflags -w,-4-32
 
 PROFILE_FLAGS=-ocamlc ocamlcp -ocamlopt ocamloptp
 DEBUG_FLAGS=

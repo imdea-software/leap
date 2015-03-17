@@ -1,5 +1,4 @@
 open TllQuery
-open LeapLib
 
 
 module YicesTllQuery : TLL_QUERY =

@@ -2,7 +2,6 @@
 open NumQuery
 open PairsQuery
 open TllQuery
-open TslkQuery
 open YicesNumQuery
 open Z3NumQuery
 open YicesPairsQuery

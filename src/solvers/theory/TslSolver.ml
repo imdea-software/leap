@@ -1,4 +1,3 @@
-open LeapLib
 open LeapVerbose
 
 module Arr      = Arrangements
@@ -10,8 +9,6 @@ module F = Formula
 (*module type SLK = TSLKExpression.S *)
 
 type alpha_pair_t = (SL.integer list * SL.integer option)
-
-exception UnexpectedLiteral of string
 
 
 let solver_impl = ref ""

@@ -2,7 +2,6 @@ open ExpressionTypes
 open NumQuery
 open PairsQuery
 open TllQuery
-open TslkQuery
 
 module type BackendCommon =
 (** Minimum signature for a Backend Solver. *)

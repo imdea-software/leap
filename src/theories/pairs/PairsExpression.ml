@@ -1,4 +1,3 @@
-open LeapLib
 
 module E = Expression
 module F = Formula

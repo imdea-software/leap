@@ -1,5 +1,4 @@
 open TllQuery
-open LeapLib
 
 
 module Z3TllQuery : TLL_QUERY =

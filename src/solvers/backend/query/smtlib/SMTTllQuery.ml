@@ -1,5 +1,4 @@
 open TllQuery
-open LeapLib
 open LeapVerbose
 
 
@@ -16,9 +15,6 @@ struct
   module MS       = ModelSize
 
   exception UnexpectedCellTerm of string
-  exception UnexpectedSetTerm of string
-  exception UnexpectedSetthTerm of string
-  exception UnexpectedSetelemTerm of string
 
   let prog_lines = ref 0
 

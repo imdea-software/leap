@@ -44,9 +44,7 @@ exception Ghost_var_in_local_decl
               of E.V.id * E.sort * E.initVal_t option * E.var_nature
 exception Ghost_vars_in_assignment of Stm.term list
 exception Normal_vars_in_ghost_assignment of Stm.term list
-exception No_kind_for_var of E.V.id
 exception Procedure_args_mismatch of string
-exception Impossible_find_sort of E.V.id
 exception Incompatible_call_sort of Stm.term * string
 exception Incompatible_return_sort of string
 exception Different_argument_length of string * string

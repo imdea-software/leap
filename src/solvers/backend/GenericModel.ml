@@ -31,11 +31,6 @@ type value = Single of string | Record of (id * (id * vals) list)
 (** Type to store functions information *)
 type fun_table_t = ((id option) list, value_id) LeapIdMap.t
 
-type fun_info_t =
-  {
-            table   : (id list, value_id) LeapIdMap.t ;
-    mutable default : value_id option
-  }
 
 (** A representation of a function *)
 type fun_t = ((id option) list, value) Hashtbl.t

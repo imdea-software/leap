@@ -1,9 +1,7 @@
 open BackendSolverIntf
-open Z3TslkQuery
 open NumQuery
 open PairsQuery
 open TllQuery
-open TslkQuery
 
 module Z3 : BACKEND_SOLVER =
 struct

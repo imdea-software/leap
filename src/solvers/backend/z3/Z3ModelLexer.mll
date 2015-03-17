@@ -1,5 +1,4 @@
 {
-open Global
 open Z3ModelParser
 
 exception LexerError

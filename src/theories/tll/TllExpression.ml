@@ -27,8 +27,6 @@ module V = Variable.Make (
     type info_t = var_info_t
   end )
 
-type logic_op_t = AndOp | OrOp | ImpliesOp | IffOp | NotOp | NoneOp
-
 type term =
     VarT     of V.t
   | SetT     of set
@@ -385,7 +383,7 @@ let get_varlist_of_sort_from_conj phi s =
   varlist_of_sort (get_varlist_from_conj phi) s
 
 
-let rec get_termset_atom (a:atom) : TermSet.t =
+let get_termset_atom (a:atom) : TermSet.t =
   let add_list = List.fold_left (fun s e -> TermSet.add e s) TermSet.empty in
   match a with
   | Append(p1,p2,p3)       -> add_list [PathT p1; PathT p2; PathT p3]

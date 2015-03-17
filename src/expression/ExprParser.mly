@@ -10,42 +10,14 @@ module Symtbl = ExprSymTable
 (* This code should be changed in the future *)
 (* This code should be changed in the future *)
 
-type cond_op_t =
-  | Less
-  | Greater
-  | LessEq
-  | GreaterEq
-  | In
-  | SubsetEq
-  | InTh
-  | SubsetEqTh
-  | InInt
-  | SubsetEqInt
-  | InElem
-  | SubsetEqElem
-  | InPair
-  | SubsetEqPair
-
 
 exception WrongType of E.term
 exception Sort_mismatch of E.V.id * E.sort * E.sort
 exception Boolean_var_expected of E.term
 exception Not_sort_name of string
-exception Duplicated_local_var of E.V.id * E.sort
-exception No_main
 exception Unknown_procedure of string
 exception Variable_not_in_procedure of E.V.id * string
-exception Wrong_assignment of E.term
-exception Atomic_double_assignment of E.expr_t
 exception Unexpected_statement of string
-exception Ghost_var_in_global_decl
-              of E.V.id * E.sort * E.initVal_t option * E.var_nature
-exception Ghost_var_in_local_decl
-              of E.V.id * E.sort * E.initVal_t option * E.var_nature
-exception Ghost_vars_in_assignment of E.term list
-exception Normal_vars_in_ghost_assignment of E.term list
-exception No_kind_for_var of E.V.id
-exception Ranking_function_unmatched_sort of E.sort * E.term * E.sort
 exception Different_argument_length of string * string
 exception Wrong_edge_acceptance_argument of string
 
@@ -73,13 +45,15 @@ let get_sort (t:E.term) : E.sort =
 
 
 (* Parsing error message funtion *)
-let parser_error msg =
+let parser_error (msg:string) =
   let msg = sprintf "Error at line %i:\n%s" (Global.get_linenum ()) msg in
     raise(ParserError msg)
 
 
 
-let parser_typing_error term a_sort get_expr =
+let parser_typing_error (term:E.term)
+                        (a_sort:E.sort)
+                        (get_expr:unit -> string) =
   let term_str = (E.term_to_str term) in
   let term_sort_str = (E.sort_to_str (get_sort term)) in
   let sort_str = (E.sort_to_str a_sort) in
@@ -91,7 +65,9 @@ let parser_typing_error term a_sort get_expr =
 
 
 
-let parser_types_incompatible t1 t2 get_expr_str =
+let parser_types_incompatible (t1:E.term)
+                              (t2:E.term)
+                              (get_expr_str:unit -> string) =
   let t1_str = (E.term_to_str t1) in
   let s1_str = (E.sort_to_str (get_sort t1)) in
   let t2_str = (E.term_to_str t2) in
@@ -105,39 +81,14 @@ let parser_types_incompatible t1 t2 get_expr_str =
 
 
 
-let parser_check_compatibility t1 t2 get_expr_str =
+let parser_check_compatibility (t1:E.term)
+                               (t2:E.term)
+                               (get_expr_str:unit -> string) =
   let s1 = get_sort t1 in
   let s2 = get_sort t2 in
     if (s1 != s2) then
       parser_types_incompatible t1 t2 get_expr_str
 
-
-let parser_check_compatibility_with_op_cond t1 t2 get_expr_str op =
-  let s1 = get_sort t1 in
-  let s2 = get_sort t2 in
-  match op with
-    In          -> if (s1 != E.Addr || s2 != E.Set) then
-                     parser_types_incompatible t1 t2 get_expr_str
-  | SubsetEq    -> if (s1 != E.Set || s2 != E.Set) then
-                     parser_types_incompatible t1 t2 get_expr_str
-  | InTh        -> if (s1 != E.Tid || s2 != E.SetTh) then
-                     parser_types_incompatible t1 t2 get_expr_str
-  | SubsetEqTh  -> if (s1 != E.SetTh || s2 != E.SetTh) then
-                     parser_types_incompatible t1 t2 get_expr_str
-  | InInt       -> if (s1 != E.Int || s2 != E.SetInt) then
-                     parser_types_incompatible t1 t2 get_expr_str
-  | SubsetEqInt -> if (s1 != E.SetInt || s2 != E.SetInt) then
-                     parser_types_incompatible t1 t2 get_expr_str
-  | InElem      -> if (s1 != E.Elem || s2 != E.SetElem) then
-                     parser_types_incompatible t1 t2 get_expr_str
-  | SubsetEqElem-> if (s1 != E.SetElem || s2 != E.SetElem) then
-                     parser_types_incompatible t1 t2 get_expr_str
-  | InPair      -> if (s1 != E.Pair || s2 != E.SetPair) then
-                     parser_types_incompatible t1 t2 get_expr_str
-  | SubsetEqPair-> if (s1 != E.SetPair || s2 != E.SetPair) then
-                     parser_types_incompatible t1 t2 get_expr_str
-  | _           -> if (s1 != s2) then
-                     parser_types_incompatible t1 t2 get_expr_str
 
 
 let parser_check_type checker a_term a_sort get_expr_str =
@@ -157,7 +108,7 @@ let get_name id = fst id
 let get_line id = snd id
 
 
-let check_sort_var (v:E.V.t) : unit =
+let check_sort_var (v:E.V.t) =
   let generic_var = E.VarT (E.build_var (E.V.id v) E.Unknown false E.V.Shared
                                         (E.V.scope v) ~nature:(E.var_nature v)) in
   let knownSort = get_sort generic_var in
@@ -171,14 +122,15 @@ let check_sort_var (v:E.V.t) : unit =
       end
 
 
-let wrong_sort_msg_for (t:E.term) (s:E.sort) : unit =
+let wrong_sort_msg_for (t:E.term) (s:E.sort) =
   Interface.Err.msg "Wrong type" $
   sprintf "A term of sort %s was expected, but term \"%s\" has sort %s."
               (E.sort_to_str s) (E.term_to_str t)
               (E.sort_to_str (get_sort t))
 
 
-let parser_check_boolean_type a_term get_expr_str =
+let parser_check_boolean_type (a_term:E.term)
+                              (get_expr_str:unit -> string) : E.formula =
   match a_term with
     | E.VarT v -> let var = E.V.set_sort v E.Bool in
                        check_sort_var var;

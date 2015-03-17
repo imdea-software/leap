@@ -1,4 +1,3 @@
-open LeapLib
 open Printf
 
 module E = Expression
@@ -433,25 +432,25 @@ and get_line_from_info (info:vc_info) : E.pc_t = info.line
 and get_original_vc_id (info:vc_info) : int = info.extra_info.orig_vc_id
 
 
-let rec get_antecedent (vc:verification_condition) : E.formula=
+let get_antecedent (vc:verification_condition) : E.formula=
   vc.antecedent
-and get_consequent (vc:verification_condition) : E.formula=
+let get_consequent (vc:verification_condition) : E.formula=
   vc.consequent
-and get_support (vc:verification_condition) : support_t =
+let get_support (vc:verification_condition) : support_t =
   vc.support
-and get_unprocessed_support (vc:verification_condition) : support_t =
+let get_unprocessed_support (vc:verification_condition) : support_t =
   get_unprocessed_support_from_info vc.info
-and get_tid_constraint (vc:verification_condition) : tid_constraints_t =
+let get_tid_constraint (vc:verification_condition) : tid_constraints_t =
   get_tid_constraint_from_info vc.info
-and get_rho (vc:verification_condition) : E.formula =
+let get_rho (vc:verification_condition) : E.formula =
   get_rho_from_info vc.info
-and get_goal (vc:verification_condition) : E.formula =
+let get_goal (vc:verification_condition) : E.formula =
   get_goal_from_info vc.info
-and get_transition_tid (vc:verification_condition) : E.tid =
+let get_transition_tid (vc:verification_condition) : E.tid =
   get_transition_tid_from_info vc.info
-and get_line (vc:verification_condition) : E.pc_t =
+let get_line (vc:verification_condition) : E.pc_t =
   get_line_from_info vc.info
-and get_vocabulary (vc:verification_condition) : E.ThreadSet.t =
+let get_vocabulary (vc:verification_condition) : E.ThreadSet.t =
   get_vocabulary_from_info vc.info
 
 
@@ -526,34 +525,6 @@ let simplify (phi:E.formula) : E.formula =
     generic_simplifier phi id
 
 
-(* let simplify_with_pc (phi:E.formula) (i:E.tid) (lines:int list) (primed:bool) : E.formula = *)
-(*   let is_same_tid (j:E.tid) : bool = *)
-(*     match (i,j) with *)
-(*       E.VarTh(v),E.VarTh(w) -> E.V.same_var v w *)
-(*     | _                     -> false in *)
-(*   let matches_tid (a:E.atom) : bool = *)
-(*     match a with *)
-(*       E.PC(line,E.V.Local j,pr)       -> is_same_tid j *)
-(*     | E.PCRange(l1,l2,E.V.Local j,pr) -> is_same_tid j *)
-(*     | _                             -> false in *)
-(*   let matches_line (a:E.atom) : bool = *)
-(*     match a with *)
-(*       E.PC(l,E.V.Local j,pr)       -> List.mem l lines *)
-(*     | E.PCRange(l1,l2,E.V.Local j,pr) -> List.exists (fun l -> l1<= l && l <= l2) lines *)
-(*     | _                              -> false in *)
-(*   let simplify_pc (lit:E.literal) (pol:polarity) : E.formula = *)
-(*     match lit with *)
-(*       F.Atom(a)    -> if (matches_tid a) then *)
-(*                         (if (matches_line a) then F.True else F.False) *)
-(*                       else *)
-(*                           F.Literal lit *)
-(*     | F.NegAtom(a) -> if (matches_tid a) then *)
-(*                         (if (matches_line a) then F.False else F.True) *)
-(*                         else *)
-(*                           F.Literal lit *)
-(*   in *)
-(*   generic_simplifier phi simplify_pc *)
-
 
 (* simplify_with_vocabulary: simply removes the whole formula if the vocabulary
  *                           is irrelevant *)
@@ -602,10 +573,6 @@ let split_antecedent_pc (imp:implication) : implication list =
       if List.length cand_disj > 1 &&
          List.for_all (fun x ->
             match x with
-(*
-            | F.Literal (F.Atom (E.PC (_,_,false))) -> true
-            | F.Literal (F.Atom (E.PCRange (_,_,_,false))) -> true
-*)
             | F.Literal (F.Atom (E.Eq (E.IntT (E.VarInt v), E.IntT (E.IntVal _))))
             | F.Literal (F.Atom (E.Eq (E.IntT (E.IntVal _), E.IntT (E.VarInt v)))) -> E.is_pc_var v
             | _ -> false
@@ -777,15 +744,6 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
           ) (u_set,p_set) split_supp
         ) (E.FormulaSet.empty,E.FormulaSet.empty) info.original_support in
 
-
-(*
-      Log.print "gen_support unparametrized support"
-        (E.FormulaSet.fold (fun phi str -> str ^ (E.formula_to_str phi) ^ ";" ) unparam_support "");
-      Log.print "gen_support parametrized support"
-        (E.FormulaSet.fold (fun phi str -> str ^ (E.formula_to_str phi) ^ ";" ) param_support "");
-*)
-
-
       let processed_support =
         E.FormulaSet.fold (fun phi set ->
 
@@ -793,8 +751,6 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
           let supp_voc = filter_fixed_voc (E.voc phi) in
 
           let rho_voc = filter_fixed_voc (E.voc info.rho) in
-(*          let rho_voc = E.ThreadSet.remove me (E.ThreadSet.remove me' (E.voc info.rho)) in *)
-
 
           let voc_to_consider = List.fold_left E.ThreadSet.union
                                   (E.ThreadSet.singleton info.transition_tid)

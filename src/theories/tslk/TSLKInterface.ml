@@ -8,10 +8,6 @@ module Make (SLK : TSLKExpression.S) =
     module E = Expression
     module F = Formula
 
-    type sort  = E.sort
-    type tid   = E.tid
-
-
     exception UnsupportedSort of string
     exception UnsupportedTSLKExpr of string
     exception UnsupportedExpr of string

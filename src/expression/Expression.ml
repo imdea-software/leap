@@ -1,6 +1,5 @@
 open Printf
 open LeapLib
-open LeapVerbose
 
 
 type sort =
@@ -43,8 +42,6 @@ module V = Variable.Make (
 
 module F = Formula
 
-
-type logic_op_t = AndOp | OrOp | ImpliesOp | IffOp | NotOp | NoneOp
 
 type pc_t = int
 
@@ -323,7 +320,6 @@ module PosSet = Set.Make(
 (* Exceptions *)
 exception Invalid_argument
 exception No_variable_term of string
-exception Impossible_to_convert of tid
 exception Incompatible_assignment of term * expr_t
 exception Not_implemented of string
 exception Not_tid_var of tid
@@ -432,7 +428,7 @@ let var_base_info = V.unparam>>V.unprime
 
 (* Priming functions used for thread identifiers *)
 
-let rec priming_option_tid (expr:V.shared_or_local) : V.shared_or_local =
+let priming_option_tid (expr:V.shared_or_local) : V.shared_or_local =
   (* This statement used to prime the thread parameter of expressions *)
   (* let rec priming_option_tid (pr:bool)
                                 (prime_set:(V.VarSet.t option * V.VarSet.t option))
@@ -2372,7 +2368,7 @@ let prime_modified_term (ante:formula list) (t:term) : term =
 
 (* CONVERSION FUNCTIONS *)
 
-let rec array_var_from_term (t:term) (prime:bool) : arrays =
+let array_var_from_term (t:term) (prime:bool) : arrays =
   let modif_var v = if prime then (V.prime v) else v in
   match t with
     VarT v                       -> VarArray (modif_var v)
@@ -4462,7 +4458,7 @@ and subst_vars (subs:V.subst_t) (phi:formula) : formula =
 
 
 (* Converts an expression to a format understandable by Sriram's tool "trs" *)
-let rec to_trs (expr:formula) : formula =
+let to_trs (expr:formula) : formula =
   let add_one i = IntAdd (i, IntVal 1) in
   let tid_to_int t = match t with
                        VarTh v -> VarInt v

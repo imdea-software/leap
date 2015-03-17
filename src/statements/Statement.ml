@@ -1654,7 +1654,7 @@ let rec get_st_info_aux (st:statement_t) : st_info_t =
   | _                          -> raise(Statement_info_unavailable)
 
 
-let rec get_st_info (st:statement_t) : st_info_t =
+let get_st_info (st:statement_t) : st_info_t =
   try
     get_st_info_aux st
   with

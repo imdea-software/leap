@@ -1,4 +1,3 @@
-open LeapLib
 
 module type CUSTOM_TSLKSOLVER = sig
   module TslkExp : ExpressionTypes.TSLKEXP
