@@ -315,7 +315,7 @@ struct
     if !use_quantifiers then begin
       B.add_string buf
         ("(declare-datatypes () ((RangeAddress");
-      for i = 0 to num_addr do
+      for i = 0 to (max 1 num_addr) do
         B.add_string buf (" " ^ (rr i))
       done;
       B.add_string buf (")))\n");
@@ -1005,7 +1005,7 @@ struct
     B.add_string buf
       ( "(define-fun reach ((h " ^heap_s^ ") (from " ^addr_s^ ") " ^
         "(to " ^addr_s^ ") (p " ^path_s^ ")) " ^bool_s^ "\n" ^
-        "  (and (= (getp h from to) p) (not (= p epsilon))))\n"
+        "  (and (eqpath (getp h from to) p) (not (eqpath p epsilon))))\n"
       )
 
 

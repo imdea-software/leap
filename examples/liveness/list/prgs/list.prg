@@ -6,7 +6,8 @@ global
   ghost elemSet elements
   ghost tidSet aheadSet
   ghost tidSet insideSet
-  ghost bool kisin
+  ghost bool kisinm
+  ghost tid lastTid
 
 assume
   region = {head} Union {tail} Union {null} /\
@@ -19,7 +20,9 @@ assume
   head != null /\
   tail != null /\
   head->next = tail /\
-  tail->next = null
+  tail->next = null /\
+  ~ (kisinm) /\
+  lastTid = #
 
 
 // ----- PROGRAM BEGINS --------------------------------------
@@ -60,7 +63,11 @@ assume
 :sch_prev_lower[
 :sch_prev_def[
 :sch_prev_is_head[
-                                prev->lock;
+                                prev->lock
+                                  $
+                                    insideSet := UnionTh (insideSet, SingleTh(me));
+                                    if (lastTid = #) then lastTid := me; endif
+                                  $
 :sch_owns_prev[
 :sch_got_lock[
 :sch_working[
@@ -96,7 +103,12 @@ assume
 :sch_follows]
 :sch_prev_def]
 :sch_releases_last_lock
-                                curr->unlock;
+                                curr->unlock
+                                  $
+                                    insideSet := SetDiffTh (insideSet, SingleTh(me));
+                                    aheadSet := SetDiffTh (aheadSet, SingleTh(me));
+                                    lastTid := rd(heap, lastlocked (heap, getp(heap, head, null))).lockid;
+                                  $
 :sch_owns_curr_two]
 :sch_diff]
 :sch_curr_def]
@@ -123,7 +135,14 @@ assume
 :ins_prev_lower[
 :ins_prev_def[
 :ins_prev_is_head[
-                                prev->lock;
+                                prev->lock
+                                  $
+                                    insideSet := UnionTh (insideSet, SingleTh(me));
+                                    if (lastTid = #) then lastTid := me; endif
+                                    if (me = k) then
+                                      aheadSet := insideSet;
+                                    endif
+                                  $
 :ins_working[
 :ins_owns_prev[
 :ins_prev_advance[
@@ -131,7 +150,10 @@ assume
 :ins_head_next_diff]
 :ins_curr_def[
 :ins_follows[
-                                curr->lock;
+                                curr->lock
+                                  $
+                                    if (me = k) then kisinm := true; endif
+                                  $
 :ins_prev_is_head]
 :ins_owns_curr_one[
 :ins_lookup_loop[
@@ -180,7 +202,15 @@ assume
 :ins_owns_prev]
 :ins_prev_def]
 :ins_releases_last_lock
-                                curr->unlock;
+                                curr->unlock
+                                  $
+                                    insideSet := SetDiffTh (insideSet, SingleTh(me));
+                                    aheadSet := SetDiffTh (aheadSet, SingleTh(me));
+                                    lastTid := rd(heap, lastlocked (heap, getp(heap, head, null))).lockid;
+                                    if (me = k) then
+                                      kisinm := false;
+                                    endif
+                                  $
 :ins_owns_curr_two]
 :ins_curr_def]
 :ins_diff]
@@ -206,7 +236,11 @@ assume
 :rem_prev_lower[
 :rem_prev_def[
 :rem_prev_is_head[
-                                prev->lock;
+                                prev->lock
+                                  $
+                                    insideSet := UnionTh (insideSet, SingleTh(me));
+                                    if (lastTid = #) then lastTid := me; endif
+                                  $
 :rem_owns_prev[
 :rem_got_lock[
                                 curr := prev->next;
@@ -245,6 +279,7 @@ assume
                                     $
                                       elements := SetDiffElem (elements, SingleElem(e));
                                       region := region SetDiff {curr};
+                                      lastTid := rd(heap, lastlocked (heap, getp(heap, head, null))).lockid;
                                     $
 :rem_follows]
 :rem_curr_def]
@@ -257,7 +292,12 @@ assume
 :rem_owns_prev]
 :rem_prev_def]
 :rem_releases_last_lock
-                                curr->unlock;
+                                curr->unlock
+                                  $
+                                    insideSet := SetDiffTh (insideSet, SingleTh(me));
+                                    aheadSet := SetDiffTh (aheadSet, SingleTh(me));
+                                    lastTid := rd(heap,lastlocked(heap,getp(heap,head,null))).lockid;
+                                  $
 :rem_diff]
 :rem_owns_curr_two]
 :rem_got_lock]

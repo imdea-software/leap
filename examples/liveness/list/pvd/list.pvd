@@ -1,19 +1,20 @@
 Diagram[list]
 
 Nodes: n0 { ~ @ins_working(k). },
-       n1 { rd(heap,lastlocked(heap,getp(heap,head,null))).lockid = t /\
-            (@ins_working(t). \/ @rem_working(t). \/ @sch_working(t).)  },
-       n2 { rd(heap,lastlocked(heap,getp(heap,head,null))).lockid = k /\
+       n1 { t = lastTid /\
+            t != k /\
+            @ins_working(k). /\
+            (@ins_working(t). \/
+             @rem_working(t). \/
+             @sch_working(t).)  },
+       n2 { lastTid = k /\
             @ins_prev_advance(k). },
-       n3 {rd(heap,lastlocked(heap,getp(heap,head,null))).lockid = k /\ 
-            @ins_lock_curr(k). },
-       n4 { rd(heap,lastlocked(heap,getp(heap,head,null))).lockid = k /\
-            @ins_insertion_process(k). },
-       n5 { rd(heap,lastlocked(heap,getp(heap,head,null))).lockid = k /\
-            @ins_return(k). }
+       n3 { lastTid = k /\ @ins_lock_curr(k). },
+       n4 { lastTid = k /\ @ins_insertion_process(k). },
+       n5 { lastTid = k /\ @ins_return(k). }
 
 
-Boxes: {b1[t]:n1,n2}
+Boxes: {b1[t]:n1}
 
 Initial: n0
 

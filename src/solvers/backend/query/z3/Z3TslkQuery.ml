@@ -211,7 +211,7 @@ let global_update_heap_def_str : string =
 let global_reach_def_str : string =
   ( "(define-fun reach ((h " ^heap_s^ ") (from " ^addr_s^ ") " ^
     "(to " ^addr_s^ ") (l " ^level_s^ ") (p " ^path_s^ ")) " ^bool_s^ "\n" ^
-    "  (and (= (getp_at h from to l) p) (not (= p epsilon))))\n")
+    "  (and (eqpath (getp_at h from to l) p) (not (= p epsilon))))\n")
 
 
 let global_path_length_def_str : string =
@@ -557,7 +557,7 @@ module Make (K : Level.S) : TSLK_QUERY =
         if !use_quantifiers then begin
           B.add_string tmpbuf
             ("(declare-datatypes () ((RangeAddress");
-          for i = 0 to num_addr do
+          for i = 0 to (max 1 num_addr) do
             B.add_string tmpbuf (" " ^ (rr i))
           done;
           B.add_string tmpbuf (")))\n");

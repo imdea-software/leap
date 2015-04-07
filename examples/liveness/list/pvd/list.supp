@@ -5,6 +5,7 @@ Tactics :
          | simplify-pc } ;
 
 Facts :
+  23:fullPreserve, fullLast, lastTidLines;
 //  3:activeLow, minTicketActive, unique;
 //  4:notSame;
 //  6:bagIsActive, unique;
