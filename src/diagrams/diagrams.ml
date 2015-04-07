@@ -118,8 +118,8 @@ module Make (C:Core.S) : S =
                           ) other_next []) in
 
 
-            Debug.infoMsg ("BOXED_NEXT_DISJ: " ^ (E.formula_to_str boxed_next_disj));
-            Debug.infoMsg ("OTHER_NEXT_DISJ: " ^ (E.formula_to_str other_next_disj));
+            Debug.infoMsg (fun _ -> "BOXED_NEXT_DISJ: " ^ (E.formula_to_str boxed_next_disj));
+            Debug.infoMsg (fun _ -> "OTHER_NEXT_DISJ: " ^ (E.formula_to_str other_next_disj));
 
             (* Generate a fresh thread identifier *)
             let full_voc = E.ThreadSet.union n_voc
@@ -152,12 +152,10 @@ module Make (C:Core.S) : S =
                 E.ThreadSet.fold (fun t ys ->
                   let self_rho = C.rho System.Concurrent full_voc line t in
                   (List.map (fun rho ->
-                    let aa =
-                    Tactics.create_vc_info [] Tactics.no_tid_constraint (F.And (full_mu_n, rho))
-                      goal full_voc t line in
-                    Debug.infoMsg
-                                          ("VCINFO GENERATED:\n" ^
-                                          (Tactics.vc_info_to_str aa)); aa) self_rho) @ ys
+                              Tactics.create_vc_info [] Tactics.no_tid_constraint
+                                                     (F.And (full_mu_n, rho))
+                                                     goal full_voc t line
+                             ) self_rho) @ ys
                 ) n_voc [] in
               (* Others-consecution *)
               let fresh_k = E.gen_fresh_tid full_voc in
@@ -345,14 +343,18 @@ module Make (C:Core.S) : S =
         | Some supp ->
             begin
               let supp_tags = PVD.supp_fact supp line in
-              Debug.infoMsg ("TAGS: " ^ (LeapLib.concat_map " , " Tag.tag_id supp_tags));
+              Debug.infoMsg (fun _ ->
+                              "TAGS: " ^ (LeapLib.concat_map " , " Tag.tag_id supp_tags));
               let supp_formulas = C.read_tags_and_group_by_file supp_tags in
-              Debug.infoMsg ("SUPP_FORMULAS:\n" ^ (String.concat "\n" (List.map Expression.formula_to_str supp_formulas)));
-              Debug.infoMsg ("ORIG_VC: " ^ (Tactics.vc_info_to_str orig_vc));
+              Debug.infoMsg (fun _ ->
+                              "SUPP_FORMULAS:\n" ^
+                              (String.concat "\n"
+                                (List.map Expression.formula_to_str supp_formulas)));
+              Debug.infoMsg (fun _ -> "ORIG_VC: " ^ (Tactics.vc_info_to_str orig_vc));
                 (Tactics.vc_info_add_support orig_vc supp_formulas,
                  PVD.supp_plan supp line)
             end in
-      Debug.infoMsg ("VC INFO:\n " ^ (Tactics.vc_info_to_str vc));
+      Debug.infoMsg (fun _ -> "VC INFO:\n " ^ (Tactics.vc_info_to_str vc));
       let obligations = Tactics.apply_tactics_from_proof_plan [vc] plan in
       let proof_info = C.new_proof_info (Tactics.get_cutoff plan) in
       let proof_obligation = C.new_proof_obligation vc obligations proof_info in

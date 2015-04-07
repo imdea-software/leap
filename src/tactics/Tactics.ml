@@ -299,6 +299,7 @@ let create_vc_info ?(prime_goal=true)
                    (line       : E.pc_t) : vc_info =
   let id = !unique_vc_id in
   incr unique_vc_id;
+  print_endline ("Creating...");
     {
       original_support   = supp ;
       tid_constraint     = tid_constr ;
@@ -747,7 +748,6 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
       let processed_support =
         E.FormulaSet.fold (fun phi set ->
 
-
           let supp_voc = filter_fixed_voc (E.voc phi) in
 
           let rho_voc = filter_fixed_voc (E.voc info.rho) in
@@ -755,13 +755,12 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
           let voc_to_consider = List.fold_left E.ThreadSet.union
                                   (E.ThreadSet.singleton info.transition_tid)
                                   [rho_voc; goal_voc] in (*TUKA*)
+          Debug.infoMsg (fun _ -> "PROCESSING SUPPORT: " ^ (E.formula_to_str phi));
+          Debug.infoMsg (fun _ -> "RHO IS: " ^ (E.formula_to_str info.rho));
+          Debug.infoMsg (fun _ -> "THE GOAL IS: " ^ (E.formula_to_str info.goal));
 
-          Debug.infoMsg ("PROCESSING SUPPORT: " ^ (E.formula_to_str phi));
-          Debug.infoMsg ("RHO IS: " ^ (E.formula_to_str info.rho));
-          Debug.infoMsg ("THE GOAL IS: " ^ (E.formula_to_str info.goal));
-
-          Debug.infoMsg ("SUPP_VOC: " ^ (E.tidset_to_str supp_voc));
-          Debug.infoMsg ("VOC_TO_CONSIDER: " ^ (E.tidset_to_str voc_to_consider));
+          Debug.infoMsg (fun _ -> "SUPP_VOC: " ^ (E.tidset_to_str supp_voc));
+          Debug.infoMsg (fun _ -> "VOC_TO_CONSIDER: " ^ (E.tidset_to_str voc_to_consider));
 
           (*assert (not (E.ThreadSet.mem System.me_tid_th voc_to_consider));*)
                                   
@@ -770,20 +769,6 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
                                   (E.ThreadSet.union supp_voc goal_voc) in
           *)
 
-
-
-          (********************************************************************)
-          let aa = E.new_comb_subst
-                          (E.ThreadSet.elements supp_voc)
-                          (E.ThreadSet.elements voc_to_consider) in
-          Debug.infoMsg ("ORIGINAL SUBSTITUTIONS\n");
-          List.iter (fun s -> Debug.infoMsg (E.subst_to_str s)) aa;
-          let bb = List.filter (f (E.ThreadSet.cardinal supp_voc)) aa in
-          Debug.infoMsg ("PROCESSED SUBSTITUTIONS\n");
-          List.iter (fun s -> Debug.infoMsg (E.subst_to_str s)) bb;
-
-          (********************************************************************)
-
           let subst = List.filter (f (E.ThreadSet.cardinal supp_voc))
                         (E.new_comb_subst
                           (E.ThreadSet.elements supp_voc)
@@ -791,7 +776,7 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
 
           Log.print "Thread id substitution" (String.concat " -- " (List.map E.subst_to_str subst));
           List.fold_left (fun set s ->
-            Debug.infoMsg ("GENERATED SUPPORT: " ^ (E.formula_to_str (E.subst_tid s phi)));
+            Debug.infoMsg (fun _ -> "GENERATED SUPPORT: " ^ (E.formula_to_str (E.subst_tid s phi)));
             E.FormulaSet.add (E.subst_tid s phi) set
           ) set subst
         ) param_support unparam_support in
@@ -811,9 +796,9 @@ let reduce_support (info:vc_info) : support_t =
 
 let reduce2_support (info:vc_info) : support_t =
   let voc_to_analyze = E.ThreadSet.union (E.voc info.rho) (E.voc info.goal) in
-  Debug.infoMsg ("REDUCE2 RHO: " ^ (E.formula_to_str info.rho));
-  Debug.infoMsg ("REDUCE2 GOAL: " ^ (E.formula_to_str info.goal));
-  Debug.infoMsg ("REDUCE2 VOC TO ANALYZE: " ^ (E.tidset_to_str voc_to_analyze));
+  Debug.infoMsg (fun _ -> "REDUCE2 RHO: " ^ (E.formula_to_str info.rho));
+  Debug.infoMsg (fun _ -> "REDUCE2 GOAL: " ^ (E.formula_to_str info.goal));
+  Debug.infoMsg (fun _ -> "REDUCE2 VOC TO ANALYZE: " ^ (E.tidset_to_str voc_to_analyze));
 (*
   let voc_to_analyze = GenSet.to_list (GenSet.from_list (E.ThreadSet.elements (E.voc info.rho) @ E.ThreadSet.elements (E.voc info.goal))) in
 *)

@@ -9,15 +9,13 @@ let _debug_show_smt_ : bool ref = ref false
 
 let infoLevel = 100
 
-let msg (s:string) (level:int) : unit =
+let msg (f:unit -> string) (level:int) : unit =
   if !_debug_ && !_debug_level_ >= level then
-    let out_str = Printf.sprintf "%s" s
-    in
-      print_endline out_str
+    print_endline (f ())
 
 
-let infoMsg (s:string) : unit =
-  msg s infoLevel
+let infoMsg (f:unit -> string) : unit =
+  msg f infoLevel
 
 
 let print_file_name (label:string) (file_name:string) : unit =

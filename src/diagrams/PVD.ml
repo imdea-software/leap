@@ -617,9 +617,11 @@ let ranking_function (ante:E.formula)
     | (WFTidSubset, Decrement) -> build_dec op t1 t2 in
   if AcceptanceSet.mem e accept.bad then begin
     let (n,m,t) = e in
-    Debug.infoMsg ("IS BAD: " ^ (node_id_to_str n) ^ " -> " ^
-      (node_id_to_str m));
-    let _ = match t with | Any -> Debug.infoMsg "ANY" | Pres -> Debug.infoMsg "PRES" in
+    Debug.infoMsg (fun _ -> "IS BAD: " ^ (node_id_to_str n) ^ " -> " ^
+                                         (node_id_to_str m));
+    let _ = match t with
+            | Any -> Debug.infoMsg (fun _ -> "ANY")
+            | Pres -> Debug.infoMsg (fun _ -> "PRES") in
     let (disjs, _) =
       List.fold_left (fun (ds,eq_phi) (pre,op) ->
         let post = E.prime_modified_term [ante] pre in
@@ -637,9 +639,12 @@ let ranking_function (ante:E.formula)
     *)
   end else if (not (AcceptanceSet.mem e (AcceptanceSet.union accept.good accept.bad))) then begin
     let (n,m,t) = e in
-    Debug.infoMsg ("IS NOT CARE: " ^ (node_id_to_str n) ^ " -> " ^
-    (node_id_to_str m));
-    let _ = match t with | Any -> Debug.infoMsg "ANY" | Pres -> Debug.infoMsg "PRES" in
+    Debug.infoMsg (fun _ ->
+                     "IS NOT CARE: " ^ (node_id_to_str n) ^ " -> " ^
+                                       (node_id_to_str m));
+    let _ = match t with
+            | Any -> Debug.infoMsg (fun _ -> "ANY")
+            | Pres -> Debug.infoMsg (fun _ -> "PRES") in
     F.conj_list (
       List.map (fun (pre,op) ->
         let post = E.prime_modified_term [ante] pre in
