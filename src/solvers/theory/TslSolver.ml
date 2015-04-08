@@ -1071,7 +1071,7 @@ let model_to_str () : string =
   let model = !tslk_model in
   let sort_map = GM.sm_union !tslk_sort_map (GM.get_aux_sort_map model) in
   let thid_str = GM.search_type_to_str model sort_map GM.tid_s in
-  let pc_str   = GM.search_type_to_str model sort_map GM.loc_s in
+  let int_str  = GM.search_type_to_str model sort_map GM.int_s in
   let addr_str = GM.search_type_to_str model sort_map GM.addr_s in
   let elem_str = GM.search_type_to_str model sort_map GM.elem_s in
   let cell_str = GM.search_type_to_str model sort_map GM.cell_s in
@@ -1085,7 +1085,7 @@ let model_to_str () : string =
   let heap_str = GM.search_type_to_str model sort_map GM.heap_s
   in
     "\nThreads:\n" ^ thid_str ^
-    "\nProgram counters:\n" ^ pc_str ^
+    "\nIntegers:\n" ^ int_str ^
     "\nAddresses:\n" ^ addr_str ^
     "\nElements:\n" ^ elem_str ^
     "\nCells:\n" ^ cell_str ^

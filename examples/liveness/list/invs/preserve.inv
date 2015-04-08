@@ -3,12 +3,13 @@ vars:
 
 invariant [fullPreserve] :
 
+#null_in_region:
    null in region
 
 #region:
    region = addr2set(heap, head)
 
-
+#tail_at_end:
    rd(heap, tail).next = null
 /\ tail != null
 

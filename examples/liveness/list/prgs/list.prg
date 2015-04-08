@@ -7,7 +7,6 @@ global
   ghost tidSet aheadSet
   ghost tidSet insideSet
   ghost bool kisinm
-  ghost tid lastTid
 
 assume
   region = {head} Union {tail} Union {null} /\
@@ -21,8 +20,7 @@ assume
   tail != null /\
   head->next = tail /\
   tail->next = null /\
-  ~ (kisinm) /\
-  lastTid = #
+  ~ (kisinm)
 
 
 // ----- PROGRAM BEGINS --------------------------------------
@@ -66,7 +64,6 @@ assume
                                 prev->lock
                                   $
                                     insideSet := UnionTh (insideSet, SingleTh(me));
-                                    if (lastTid = #) then lastTid := me; endif
                                   $
 :sch_owns_prev[
 :sch_got_lock[
@@ -107,7 +104,6 @@ assume
                                   $
                                     insideSet := SetDiffTh (insideSet, SingleTh(me));
                                     aheadSet := SetDiffTh (aheadSet, SingleTh(me));
-                                    lastTid := rd(heap, lastlocked (heap, getp(heap, head, null))).lockid;
                                   $
 :sch_owns_curr_two]
 :sch_diff]
@@ -138,7 +134,6 @@ assume
                                 prev->lock
                                   $
                                     insideSet := UnionTh (insideSet, SingleTh(me));
-                                    if (lastTid = #) then lastTid := me; endif
                                     if (me = k) then
                                       aheadSet := insideSet;
                                     endif
@@ -206,7 +201,6 @@ assume
                                   $
                                     insideSet := SetDiffTh (insideSet, SingleTh(me));
                                     aheadSet := SetDiffTh (aheadSet, SingleTh(me));
-                                    lastTid := rd(heap, lastlocked (heap, getp(heap, head, null))).lockid;
                                     if (me = k) then
                                       kisinm := false;
                                     endif
@@ -239,7 +233,6 @@ assume
                                 prev->lock
                                   $
                                     insideSet := UnionTh (insideSet, SingleTh(me));
-                                    if (lastTid = #) then lastTid := me; endif
                                   $
 :rem_owns_prev[
 :rem_got_lock[
@@ -279,7 +272,6 @@ assume
                                     $
                                       elements := SetDiffElem (elements, SingleElem(e));
                                       region := region SetDiff {curr};
-                                      lastTid := rd(heap, lastlocked (heap, getp(heap, head, null))).lockid;
                                     $
 :rem_follows]
 :rem_curr_def]
@@ -296,7 +288,6 @@ assume
                                   $
                                     insideSet := SetDiffTh (insideSet, SingleTh(me));
                                     aheadSet := SetDiffTh (aheadSet, SingleTh(me));
-                                    lastTid := rd(heap,lastlocked(heap,getp(heap,head,null))).lockid;
                                   $
 :rem_diff]
 :rem_owns_curr_two]

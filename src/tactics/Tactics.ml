@@ -299,7 +299,6 @@ let create_vc_info ?(prime_goal=true)
                    (line       : E.pc_t) : vc_info =
   let id = !unique_vc_id in
   incr unique_vc_id;
-  print_endline ("Creating...");
     {
       original_support   = supp ;
       tid_constraint     = tid_constr ;

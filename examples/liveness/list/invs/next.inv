@@ -4,7 +4,7 @@ tid j
 
 invariant [fullNext] :
 
-
+#general:
     rd(heap, head).next != head
 /\  head != tail // Same as in remove_region
 /\  tail != null // Same as in remove_region
@@ -15,25 +15,34 @@ invariant [fullNext] :
 ///////  Search   /////////////////////////
 
 
-/\ @sch_prev_def(j). -> search::prev(j) != null
-/\ @sch_prev_is_head(j). -> (search::prev(j) = head /\ rd(heap, head).next != null)
-/\ @sch_aux_eq_prev(j). -> search::aux(j) = search::prev(j)
-/\ @sch_equals(j). -> search::prev(j) = search::curr(j)
-/\ @sch_aux_before_prev(j). -> (search::aux(j) != search::prev(j) /\ rd(heap, search::aux(j)).next = search::prev(j))
+   @sch_prev_def(j). -> search::prev(j) != null
+
+#search_prev_is_head:
+   @sch_prev_is_head(j). -> (search::prev(j) = head /\ rd(heap, head).next != null)
+
+#search_aux_eq_prev:
+   @sch_aux_eq_prev(j). -> search::aux(j) = search::prev(j)
+
+   @sch_equals(j). -> search::prev(j) = search::curr(j)
+
+#search_aux_before_prev:
+   @sch_aux_before_prev(j). -> (search::aux(j) != search::prev(j) /\ rd(heap, search::aux(j)).next = search::prev(j))
 
 #search_prev_next_curr:
    ((@sch_follows(j). /\ ~ @sch_equals(j).) -> (search::prev(j) != search::curr(j) /\
                                      rd(heap,search::prev(j)).next = search::curr(j)))
 
    @sch_follows(j). -> search::curr(j) != null
-/\ @sch_diff(j). -> search::prev(j) != search::curr(j)
+
+#search_diff:
+   @sch_diff(j). -> search::prev(j) != search::curr(j)
 
 
 
 ///////  Insert   /////////////////////////
 
 
-/\  @ins_head_next_diff(j). -> rd(heap, head).next != head
+    @ins_head_next_diff(j). -> rd(heap, head).next != head
 /\  @ins_prev_is_head(j). -> insert::prev(j) = head
 /\  @ins_diff(j). -> insert::prev(j) != insert::curr(j)
 /\  (@ins_aux_eq_prev(j). -> insert::aux(j) = insert::prev(j))
