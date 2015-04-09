@@ -2,6 +2,7 @@ open LeapLib
 
 module Eparser = ExprParser
 module Elexer  = ExprLexer
+module F = Formula
 
 
 (****************)
@@ -32,9 +33,9 @@ let _ =
         (* We construct the phi implication *)
   let rec faux f = 
       match f with
-  Expression.Implies (a,b) -> "IMPLIES(" ^  (faux a) ^ "," ^ (faux b) ^ ")"
-      | Expression.And(a,b)      -> "AND(" ^ (faux a) ^ "," ^ (faux b) ^ ")"
-      | Expression.Or(a,b)      ->  "OR(" ^ (faux a) ^ "," ^ (faux b) ^ ")"
+        F.Implies (a,b) -> "IMPLIES(" ^  (faux a) ^ "," ^ (faux b) ^ ")"
+      | F.And(a,b)      -> "AND(" ^ (faux a) ^ "," ^ (faux b) ^ ")"
+      | F.Or(a,b)       ->  "OR(" ^ (faux a) ^ "," ^ (faux b) ^ ")"
       | _ ->  "OTHER" 
   in
   let _ = 
@@ -42,8 +43,8 @@ let _ =
       print_endline (faux phi) 
   in
   let (ante, conse) = match phi with
-    | Expression.Implies (a,b) -> (a,b)
-    | _ -> (Expression.True, phi) in
+    | F.Implies (a,b) -> (a,b)
+    | _ -> (F.True, phi) in
   let phi_implication = { Tactics.ante = ante; Tactics.conseq = conse; }
   in
   [phi_implication]
@@ -58,7 +59,7 @@ let _ =
 
     (* Convert implications to formulas *)
     let final_formulas = List.map (fun imp ->
-                           Expression.Implies (imp.Tactics.ante, imp.Tactics.conseq)
+                           F.Implies (imp.Tactics.ante, imp.Tactics.conseq)
                          ) final_implications in
 
     (* Output *)
@@ -82,6 +83,7 @@ let _ =
 
     (* Apply decision procedures if activated *)
     if !ApplyTacArgs.tslEnable then
+      (*
       begin
         print_endline "Calling the TSL solver...";
         List.iter (fun phi ->
@@ -91,7 +93,7 @@ let _ =
           if result then print_endline "VALID" else print_endline "NOT VALID"
         ) final_formulas
       end;
-
+*)
     ()
   with
     | Global.ParserError msg -> Interface.Err.msg "Parsing error" msg

@@ -6,22 +6,31 @@ Tactics :
 
 Facts :
    9:fullNext::search_prev_is_head;
-  11:fullNext::search_prev_is_head,
-     fullNext::search_prev_next_curr,
-     fullNext::search_diff,
+  11:fullNext::{search_prev_is_head,search_prev_next_curr,search_diff},    
      fullLock::search_owns_prev;
-  15:fullPreserve::null_in_region,
-     fullPreserve::region,
-     fullPreserve::tail_at_end,
-     fullNext::general,
-     fullNext::search_aux_eq_prev,
-     fullNext::search_aux_before_prev,
+  15:fullPreserve::{null_in_region,region,tail_at_end},
+     fullNext::{general,search_aux_eq_prev,search_aux_before_prev},
      fullLock::search_owns_prev;
+//  17:fullPreserve, fullNext, fullLock;
+  19:fullPreserve::{null_in_region,region,tail_at_end,head_not_null},
+     fullNext::{general,search_prev_def,search_prev_is_head,
+                search_aux_eq_prev,search_prev_next_curr,
+                search_follows,search_diff},
+     fullLock::{search_owns_prev,search_owns_curr,search_aux_before_prev};
+  20:fullPreserve, fullNext, fullRegion, fullLock, test;
+  25:fullNext::{general, insert_prev_is_head, insert_prev_next_curr},
+     fullLock::insert_owns_prev;
+  29:fullPreserve::{null_in_region,region,tail_at_end},
+      fullNext::{general,insert_prev_is_head,insert_diff,insert_aux_next_prev,
+                 insert_prev_next_curr,insert_equal,insert_while_begins},
+     fullLock::insert_owns_prev;
+
+//  31:
+//  33:
+//  34:fullPreserve,fullNext,fullLock;
+//  35:fullPreserve,fullNext,fullLock,fullLast;
 
 
-
-  23:fullPreserve, fullLast, lastTidLines;
-  20:fullPreserve, fullLast;
 //  3:activeLow, minTicketActive, unique;
 //  4:notSame;
 //  6:bagIsActive, unique;

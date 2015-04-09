@@ -14,7 +14,7 @@ invariant [fullNext] :
 
 ///////  Search   /////////////////////////
 
-
+#search_prev_def:
    @sch_prev_def(j). -> search::prev(j) != null
 
 #search_prev_is_head:
@@ -32,7 +32,9 @@ invariant [fullNext] :
    ((@sch_follows(j). /\ ~ @sch_equals(j).) -> (search::prev(j) != search::curr(j) /\
                                      rd(heap,search::prev(j)).next = search::curr(j)))
 
+#search_follows:
    @sch_follows(j). -> search::curr(j) != null
+
 
 #search_diff:
    @sch_diff(j). -> search::prev(j) != search::curr(j)
@@ -41,10 +43,13 @@ invariant [fullNext] :
 
 ///////  Insert   /////////////////////////
 
-
     @ins_head_next_diff(j). -> rd(heap, head).next != head
-/\  @ins_prev_is_head(j). -> insert::prev(j) = head
-/\  @ins_diff(j). -> insert::prev(j) != insert::curr(j)
+
+#insert_prev_is_head:
+    @ins_prev_is_head(j). -> insert::prev(j) = head
+
+#insert_diff:
+    @ins_diff(j). -> insert::prev(j) != insert::curr(j)
 /\  (@ins_aux_eq_prev(j). -> insert::aux(j) = insert::prev(j))
 
 #insert_aux_next_prev:
@@ -57,12 +62,14 @@ invariant [fullNext] :
     (@ins_follows(j). /\ ~ @ins_equals(j).) -> (insert::prev(j) != insert::curr(j) /\
                                          rd(heap,insert::prev(j)).next = insert::curr(j))
 
+#insert_equal:
     @ins_equals(j). -> insert::prev(j) = insert::curr(j)
 /\ (@ins_prev_is_head(j). \/ @ins_lookup_loop(j).) -> insert::prev(j) != null
 
 #insert_curr_not_null:
    @ins_follows(j). -> insert::curr(j) != null
 
+#insert_while_begins:
    @ins_while_begins(j). -> rd(heap, insert::curr(j)).next != null
 
 

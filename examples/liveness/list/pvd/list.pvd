@@ -13,8 +13,7 @@ Nodes: n0 { ~ @ins_working(k). },
             @ins_lock_curr(k). },
        n4 { k = rd(heap,lastlocked(heap,getp(heap,head,tail))).lockid /\ 
             @ins_insertion_process(k). },
-       n5 { k = rd(heap,lastlocked(heap,getp(heap,head,tail))).lockid /\ 
-            @ins_return(k). }
+       n5 { @ins_return(k). }
 
 
 Boxes: {b1[t]:n1}

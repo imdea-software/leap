@@ -41,6 +41,8 @@ let get_line id = snd id
 %type <Tag.f_tag list> maybe_empty_inv_list
 %type <Tag.f_tag list> inv_list
 %type <Tag.f_tag> inv
+%type <Tag.f_tag list> inv_group
+%type <string list> ident_list
 %type <case_t list> cases
 %type <case_t list> seq_cases
 %type <case_t list> case_list
@@ -153,8 +155,12 @@ maybe_empty_inv_list :
 
 
 inv_list :
+  | inv_group
+    { $1 }
   | inv
     { [$1] }
+  | inv_group COMMA inv_list
+    { $1 @ $3 }
   | inv COMMA inv_list
     {
       let i = $1 in
@@ -162,6 +168,19 @@ inv_list :
       in
         i :: is
     }
+
+
+inv_group :
+  | IDENT DOUBLECOLON OPEN_BRACE ident_list CLOSE_BRACE
+    { List.map (fun st -> Tag.new_tag (get_name $1) st) $4 }
+
+
+ident_list :
+  | IDENT
+    { [(get_name $1)] }
+  | IDENT COMMA ident_list
+    { (get_name $1) :: $3 }
+
 
 inv :
   | IDENT

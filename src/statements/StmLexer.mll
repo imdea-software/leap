@@ -102,8 +102,6 @@ let _ = List.iter (fun (kwd, tok) -> Hashtbl.add keyword_table kwd tok)
             ("spsubseteq"   , SETPAIRSUBSETEQ);
             ("Th"           , THREAD);
             ("me"           , ME);
-            ("and"          , LOGICAL_AND);
-            ("or"           , LOGICAL_OR );
             ("true"         , LOGICAL_TRUE);
             ("false"        , LOGICAL_FALSE)]
 }
