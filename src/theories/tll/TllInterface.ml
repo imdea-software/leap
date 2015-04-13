@@ -219,6 +219,8 @@ and setth_to_tll_setth (st:E.setth) : TLL.setth =
   | E.SetThArrayRd (E.VarArray v,t) ->
       TLL.VarSetTh (variable_to_tll_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
   | E.SetThArrayRd _    -> raise(UnsupportedTllExpr(E.setth_to_str st))
+  | E.LockSet (m,p)     -> TLL.LockSet (mem_to_tll_mem m,
+                                        path_to_tll_path p)
 
 
 and setelem_to_tll_setelem (st:E.setelem) : TLL.setelem =

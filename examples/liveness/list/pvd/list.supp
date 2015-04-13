@@ -17,7 +17,10 @@ Facts :
                 search_aux_eq_prev,search_prev_next_curr,
                 search_follows,search_diff},
      fullLock::{search_owns_prev,search_owns_curr,search_aux_before_prev};
-  20:fullPreserve, fullNext, fullRegion, fullLock, test;
+  20:fullPreserve::{region,tail_at_end},
+     fullNext::search_follows,
+     fullRegion::search_curr_in_region,
+     lockedRegion;
   25:fullNext::{general, insert_prev_is_head, insert_prev_next_curr},
      fullLock::insert_owns_prev;
   29:fullPreserve::{null_in_region,region,tail_at_end},

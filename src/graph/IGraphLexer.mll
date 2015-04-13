@@ -18,7 +18,6 @@ rule norm = parse
   | 'O'                         { Global.last "O"                 ; OTHERS_PREMISE }
   | "->"                        { Global.last "->"                ; SEQ_ARROW }
   | "=>"                        { Global.last "=>"                ; CONC_ARROW }
-  | "[]"                        { Global.last "[]"                ; BOX }
   | ','                         { Global.last ","                 ; COMMA }
   | ':'                         { Global.last ":"                 ; COLON }
   | "::"                        { Global.last "::"                ; DOUBLECOLON }

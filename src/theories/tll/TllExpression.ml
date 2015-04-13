@@ -90,6 +90,7 @@ and setth =
   | UnionTh   of setth * setth
   | IntrTh    of setth * setth
   | SetdiffTh of setth * setth
+  | LockSet   of mem * path
 and setelem =
     VarSetElem   of V.t
   | EmptySetElem
@@ -146,6 +147,7 @@ type special_op_t =
   | Set2Elem
   | ElemOrder
   | OrderedList
+  | Lockset
 
 exception WrongType of term
 exception Not_tid_var of tid
@@ -282,6 +284,7 @@ and get_varset_setth sth =
     | UnionTh(st1,st2)   -> (get_varset_setth st1) @@ (get_varset_setth st2)
     | IntrTh(st1,st2)    -> (get_varset_setth st1) @@ (get_varset_setth st2)
     | SetdiffTh(st1,st2) -> (get_varset_setth st1) @@ (get_varset_setth st2)
+    | LockSet(m,p)       -> (get_varset_mem m) @@ (get_varset_path p)
 and get_varset_setelem se =
   match se with
       VarSetElem v         -> V.VarSet.singleton v @@ get_varset_from_param v
@@ -589,6 +592,7 @@ and is_setth_flat t =
     | UnionTh(st1,st2)   -> (is_setth_var st1) && (is_setth_var st2)
     | IntrTh(st1,st2)    -> (is_setth_var st1) && (is_setth_var st2)
     | SetdiffTh(st1,st2) -> (is_setth_var st1) && (is_setth_var st2)
+    | LockSet(m,p)       -> (is_mem_var m) && (is_path_var p)
 and is_setelem_flat t =
   match t with
       VarSetElem _ -> true
@@ -765,6 +769,8 @@ and setth_to_str e =
                             (setth_to_str s_1) (setth_to_str s_2)
     | SetdiffTh(s_1,s_2) -> Printf.sprintf "%s SetDiffTh %s"
                             (setth_to_str s_1) (setth_to_str s_2)
+    | LockSet(m,p) -> Printf.sprintf "lockset(%s,%s)"
+                            (mem_to_str m) (path_to_str p)
 and setelem_to_str e =
   match e with
       VarSetElem(v)  -> V.to_str v
@@ -1015,6 +1021,7 @@ and voc_setth (s:setth) : ThreadSet.t =
   | UnionTh(s1,s2)      -> (voc_setth s1) @@ (voc_setth s2)
   | IntrTh(s1,s2)       -> (voc_setth s1) @@ (voc_setth s2)
   | SetdiffTh(s1,s2)    -> (voc_setth s1) @@ (voc_setth s2)
+  | LockSet(m,p)        -> (voc_mem m) @@ (voc_path p)
 
 
 and voc_setelem (s:setelem) : ThreadSet.t =
@@ -1193,6 +1200,7 @@ let required_sorts (phi:formula) : sort list =
     | UnionTh (s1,s2)    -> append SetTh [req_st s1;req_st s2]
     | IntrTh (s1,s2)     -> append SetTh [req_st s1;req_st s2]
     | SetdiffTh (s1,s2)  -> append SetTh [req_st s1;req_st s2]
+    | LockSet(m,p)       -> append SetTh [req_m m;req_p p]
 
   and req_se (s:setelem) : SortSet.t =
     match s with
@@ -1337,6 +1345,7 @@ let special_ops (phi:formula) : special_op_t list =
     | UnionTh (s1,s2)    -> list_union [ops_st s1;ops_st s2]
     | IntrTh (s1,s2)     -> list_union [ops_st s1;ops_st s2]
     | SetdiffTh (s1,s2)  -> list_union [ops_st s1;ops_st s2]
+    | LockSet (m,p)      -> append Lockset [ops_m m;ops_p p]
 
   and ops_se (s:setelem) : OpsSet.t =
     match s with

@@ -153,6 +153,7 @@ and setth =
   | IntrTh        of setth * setth
   | SetdiffTh     of setth * setth
   | SetThArrayRd  of arrays * tid
+  | LockSet       of mem * path
 
 and setint =
     VarSetInt     of V.t

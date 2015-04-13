@@ -83,6 +83,7 @@ and setth =
   | UnionTh   of setth * setth
   | IntrTh    of setth * setth
   | SetdiffTh of setth * setth
+  | LockSet   of mem * path
 and setelem =
     VarSetElem   of V.t
   | EmptySetElem
@@ -140,6 +141,7 @@ type special_op_t =
   | Set2Elem
   | ElemOrder
   | OrderedList
+  | Lockset
 
 
 exception WrongType of term

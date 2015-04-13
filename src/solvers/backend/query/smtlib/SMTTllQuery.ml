@@ -554,6 +554,24 @@ struct
        "  (if (islockedpos h p " ^strlast^ ") (getaddrat p " ^strlast^ ") (lastlockfrom" ^strprelast^ " h p)))\n")
 
 
+
+  let smt_lockset_def (buf:B.t) (num_addr:int) : unit =
+    let strlast = (string_of_int num_addr) in
+    B.add_string buf
+      ("(define-fun lockset" ^ strlast ^ " ((h " ^heap_s^ ") (p " ^path_s^ ")) " ^setth_s^ "\n" ^
+       "  (if (islockedpos h p " ^ strlast ^ ") (singletonth (getlockat h p " ^ strlast ^ ")) emptyth))\n");
+    for i=(num_addr-1) downto 1 do
+      let stri    = (string_of_int i) in
+      let strnext = (string_of_int (i+1)) in
+          B.add_string buf
+      ("(define-fun lockset"^ stri ^" ((h " ^heap_s^ ") (p " ^path_s^ ")) " ^setth_s^ "\n" ^
+       "  (if (islockedpos h p "^ stri ^") (unionth (singletonth (getlockat h p "^ stri ^")) (lockset"^ strnext ^" h p)) (lockset" ^strnext^ " h p)))\n");
+    done ;
+    B.add_string buf
+      ("(define-fun lockset ((h " ^heap_s^ ") (p " ^path_s^ ") ) " ^setth_s^ "\n" ^
+       "  (if (islockedpos h p 0) (unionth (singletonth (getlockat h p 0)) (lockset1 h p)) (lockset1 h p)))\n")
+
+
   let smt_cell_lock (buf:B.t) : unit =
     B.add_string buf
       ("(declare-fun cell_lock (" ^cell_s^ " " ^tid_s^ ") " ^cell_s^ ")\n")
@@ -1018,12 +1036,16 @@ struct
     (* Set2Elem *)
     if List.mem Expr.Set2Elem req_ops then smt_settoelems_def buf num_addr ;
     (* Firstlock or Lastlock *)
-    if List.mem Expr.FstLocked req_ops || List.mem Expr.LstLocked req_ops then
+    if List.mem Expr.FstLocked req_ops ||
+       List.mem Expr.LstLocked req_ops ||
+       List.mem Expr.Lockset req_ops then
         smt_getlocked_def buf ;
     (* Firstlock *)
     if List.mem Expr.FstLocked req_ops then smt_firstlock_def buf num_addr ;
     (* Lastlock *)
     if List.mem Expr.LstLocked req_ops then smt_lastlock_def buf num_addr ;
+    (* Lockset *)
+    if List.mem Expr.Lockset req_ops then smt_lockset_def buf num_addr ;
     (* Path *)
     if List.mem Expr.Path req_sorts then
       begin
@@ -1278,6 +1300,9 @@ struct
       | Expr.SetdiffTh(rt,st) -> Printf.sprintf "(setdiffth %s %s)"
                                       (setthterm_to_str rt)
                                       (setthterm_to_str st)
+      | Expr.LockSet(m,p)     -> Printf.sprintf "(lockset %s %s)"
+                                      (memterm_to_str m)
+                                      (pathterm_to_str p)
 
 
   and setelemterm_to_str (se:Expr.setelem) : string =

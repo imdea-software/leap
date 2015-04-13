@@ -241,6 +241,7 @@ and setth_to_tsl_setth (st:E.setth) : SL.setth =
   | E.SetThArrayRd (E.VarArray v,t) ->
       SL.VarSetTh (var_to_tsl_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
   | E.SetThArrayRd _    -> raise(UnsupportedTslExpr(E.setth_to_str st))
+  | E.LockSet _         -> raise(UnsupportedTslExpr(E.setth_to_str st))
 
 
 and setelem_to_tsl_setelem (se:E.setelem) : SL.setelem =

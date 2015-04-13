@@ -32,6 +32,7 @@ let _ = List.iter (fun (kwd, tok) -> Hashtbl.add keyword_table kwd tok)
             ("max"          , MAX);
             ("firstlocked"  , FIRSTLOCKED);
             ("lastlocked"   , LASTLOCKED);
+            ("lockset"      , LOCKSET);
             ("lockid"       , LOCKID);
             ("lock"         , LOCK);
             ("lockat"       , LOCKAT);

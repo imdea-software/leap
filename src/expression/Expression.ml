@@ -174,6 +174,7 @@ and setth =
   | IntrTh        of setth * setth
   | SetdiffTh     of setth * setth
   | SetThArrayRd  of arrays * tid
+  | LockSet       of mem * path
 
 and setint =
     VarSetInt     of V.t
@@ -617,6 +618,8 @@ and priming_setth (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) 
                                      priming_setth pr prime_set s2)
   | SetThArrayRd(arr,t) -> SetThArrayRd(priming_array pr prime_set arr,
                                         priming_tid pr prime_set t)
+  | LockSet(m,p)        -> LockSet(priming_mem pr prime_set m,
+                                   priming_path pr prime_set p)
 
 
 and priming_setint (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (s:setint) : setint =
@@ -1187,6 +1190,8 @@ and setth_to_str (expr:setth) : string =
                                                       (setth_to_str s_2)
   | SetThArrayRd(arr,t) -> sprintf "%s%s" (arrays_to_str arr)
                                           (param_tid_to_str t)
+  | LockSet (m,p)       -> sprintf "lockset(%s,%s)" (mem_to_str m)
+                                                    (path_to_str p)
 
 
 and setint_to_str (expr:setint) : string =
@@ -2035,6 +2040,7 @@ and get_vars_setth (s:setth) (base:V.t -> V.VarSet.t) : V.VarSet.t =
   | IntrTh(s1,s2)       -> (get_vars_setth s1 base)@@(get_vars_setth s2 base)
   | SetdiffTh(s1,s2)    -> (get_vars_setth s1 base)@@(get_vars_setth s2 base)
   | SetThArrayRd(arr,_) -> (get_vars_array arr base)
+  | LockSet(m,p)        -> (get_vars_mem m base)@@(get_vars_path p base)
 
 
 and get_vars_setint (s:setint) (base:V.t -> V.VarSet.t) : V.VarSet.t =
@@ -2618,6 +2624,7 @@ and voc_setth (s:setth) : ThreadSet.t =
   | IntrTh(s1,s2)       -> (voc_setth s1) @@ (voc_setth s2)
   | SetdiffTh(s1,s2)    -> (voc_setth s1) @@ (voc_setth s2)
   | SetThArrayRd(arr,_) -> (voc_array arr)
+  | LockSet(m,p)        -> (voc_mem m) @@ (voc_path p)
 
 
 and voc_setint (s:setint) : ThreadSet.t =
@@ -2982,6 +2989,7 @@ and var_kind_setth (kind:var_nature) (s:setth) : term list =
   | IntrTh(s1,s2)       -> (var_kind_setth kind s1) @ (var_kind_setth kind s2)
   | SetdiffTh(s1,s2)    -> (var_kind_setth kind s1) @ (var_kind_setth kind s2)
   | SetThArrayRd(arr,_) -> (var_kind_array kind arr)
+  | LockSet(m,p)        -> (var_kind_mem kind m) @ (var_kind_path kind p)
 
 
 and var_kind_setint (kind:var_nature) (s:setint) : term list =
@@ -3380,6 +3388,7 @@ and param_setth (pfun:V.t option -> V.shared_or_local) (s:setth) : setth =
   | SetdiffTh(s1,s2)      -> SetdiffTh(param_setth pfun s1,
                                        param_setth pfun s2)
   | SetThArrayRd(arr,t)   -> SetThArrayRd(param_arrays pfun arr, t)
+  | LockSet(m,p)          -> LockSet(param_mem pfun m, param_path pfun p)
 
 
 and param_setint (pfun:V.t option -> V.shared_or_local) (s:setint) : setint =
@@ -3840,6 +3849,8 @@ and subst_tid_setth (subs:tid_subst_t) (s:setth) : setth =
   | SetdiffTh(s1,s2)       -> SetdiffTh(subst_tid_setth subs s1,
                                         subst_tid_setth subs s2)
   | SetThArrayRd(arr,t)    -> SetThArrayRd(subst_tid_array subs arr, t)
+  | LockSet(m,p)           -> LockSet(subst_tid_mem subs m,
+                                      subst_tid_path subs p)
 and subst_tid_setint (subs:tid_subst_t) (s:setint) : setint =
   match s with
     VarSetInt v             -> VarSetInt(V.set_param v (subst_shared_or_local subs (V.parameter v)))
@@ -4220,6 +4231,8 @@ and subst_vars_setth (subs:V.subst_t) (s:setth) : setth =
   | SetdiffTh(s1,s2)       -> SetdiffTh(subst_vars_setth subs s1,
                                         subst_vars_setth subs s2)
   | SetThArrayRd(arr,t)    -> SetThArrayRd(subst_vars_array subs arr, t)
+  | LockSet(m,p)           -> LockSet(subst_vars_mem subs m,
+                                      subst_vars_path subs p)
 
 
 and subst_vars_setint (subs:V.subst_t) (s:setint) : setint =
@@ -5134,6 +5147,7 @@ let required_sorts (phi:formula) : sort list =
     | IntrTh (s1,s2)     -> append SetTh [req_st s1;req_st s2]
     | SetdiffTh (s1,s2)  -> append SetTh [req_st s1;req_st s2]
     | SetThArrayRd (a,t) -> append SetTh [req_arr a;req_t t]
+    | LockSet (m,p)      -> append SetTh [req_m m; req_p p]
 
   and req_c (c:cell) : SortSet.t =
     match c with
@@ -5531,6 +5545,8 @@ and to_plain_setth (ops:fol_ops_t) (s:setth) : setth =
                                        to_plain_setth ops s2)
   | SetThArrayRd(arr,t)   -> SetThArrayRd(to_plain_arrays ops arr,
                                           to_plain_tid_aux ops t)
+  | LockSet(m,p)          -> LockSet(to_plain_mem ops m,
+                                     to_plain_path ops p)
 
 
 and to_plain_setint (ops:fol_ops_t) (s:setint) : setint =

@@ -176,6 +176,7 @@ module Make (SLK : TSLKExpression.S) =
         | E.SetdiffTh (s1,s2) -> E.SetdiffTh (norm_setth s1, norm_setth s2)
         | E.SetThArrayRd (E.VarArray v,t) -> E.SetThArrayRd (E.VarArray v, norm_tid t)
         | E.SetThArrayRd _    -> raise(UnsupportedTSLKExpr(E.setth_to_str s))
+        | E.LockSet _         -> raise(UnsupportedTSLKExpr(E.setth_to_str s))
 
       and norm_setint (s:E.setint) : E.setint =
         match s with
@@ -643,6 +644,7 @@ module Make (SLK : TSLKExpression.S) =
       | E.SetThArrayRd (E.VarArray v,t) ->
           SLK.VarSetTh (var_to_tslk_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
       | E.SetThArrayRd _    -> raise(UnsupportedTSLKExpr(E.setth_to_str st))
+      | E.LockSet _         -> raise(UnsupportedTSLKExpr(E.setth_to_str st))
 
 
     and setelem_to_tslk_setelem (st:E.setelem) : SLK.setelem =

@@ -462,7 +462,7 @@ let define_ident (proc_name:E.V.procedure_name)
 %token EMPTYSETTH UNIONTH INTRTH SETDIFFTH SINGLETH
 %token EMPTYSETINT UNIONINT INTRINT SETDIFFINT SINGLEINT SETLOWER
 %token EMPTYSETELEM UNIONELEM INTRELEM SETDIFFELEM SINGLEELEM SET2ELEM
-%token PATH2SET ADDR2SET GETP FIRSTLOCKED LASTLOCKED ORDERLIST SKIPLIST
+%token PATH2SET ADDR2SET GETP FIRSTLOCKED LASTLOCKED LOCKSET ORDERLIST SKIPLIST
 %token APPEND REACH
 %token IN SUBSETEQ
 %token INTH SUBSETEQTH
@@ -1613,6 +1613,14 @@ setth :
       let s1 = parser_check_type check_type_setth  $3 E.SetTh get_str_expr in
       let s2 = parser_check_type check_type_setth  $5 E.SetTh get_str_expr in
         E.SetdiffTh(s1,s2)
+    }
+  | LOCKSET OPEN_PAREN term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr() = sprintf "lockset(%s,%s)" (E.term_to_str $3)
+                                                    (E.term_to_str $5) in
+      let m = parser_check_type check_type_mem  $3 E.Mem get_str_expr in
+      let p = parser_check_type check_type_path $5 E.Path get_str_expr in
+        E.LockSet(m,p)
     }
 
 
