@@ -20,12 +20,9 @@ invariant [fullPreserve] :
    head != tail
 
 #elements:
-   elements = set2elem(heap, SetDiff(region, {null}))
-
-   rd(heap, head).data = lowestElem
-/\ rd(heap, tail).data = highestElem
+true
 
 #ordered:
-   orderlist (heap, head, tail)
+true
 
    tail in region

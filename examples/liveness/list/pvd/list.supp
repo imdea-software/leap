@@ -11,29 +11,53 @@ Facts :
   15:fullPreserve::{null_in_region,region,tail_at_end},
      fullNext::{general,search_aux_eq_prev,search_aux_before_prev},
      fullLock::search_owns_prev;
-//  17:fullPreserve, fullNext, fullLock;
-  19:fullPreserve::{null_in_region,region,tail_at_end,head_not_null},
-     fullNext::{general,search_prev_def,search_prev_is_head,
-                search_aux_eq_prev,search_prev_next_curr,
-                search_follows,search_diff},
-     fullLock::{search_owns_prev,search_owns_curr,search_aux_before_prev};
+//  17:fullPreserve, fullRegion, fullNext,
+//      fullLock, lockedRegion::search_prev_locked;
+  19:fullPreserve::tail_at_end,
+     fullNext::{general,search_prev_next_curr,search_follows,search_diff},
+     fullLock::search_owns_curr,
+     lockedRegion::search_prev_curr_locked;
   20:fullPreserve::{region,tail_at_end},
      fullNext::search_follows,
      fullRegion::search_curr_in_region,
-     lockedRegion;
+     lockedRegion::search_curr_locked;
+  23:fullNext::insert_prev_is_head;
   25:fullNext::{general, insert_prev_is_head, insert_prev_next_curr},
      fullLock::insert_owns_prev;
   29:fullPreserve::{null_in_region,region,tail_at_end},
       fullNext::{general,insert_prev_is_head,insert_diff,insert_aux_next_prev,
                  insert_prev_next_curr,insert_equal,insert_while_begins},
      fullLock::insert_owns_prev;
-
 //  31:
-//  33:
-//  34:fullPreserve,fullNext,fullLock;
-//  35:fullPreserve,fullNext,fullLock,fullLast;
+//  33:fullPreserve, fullNext, fullLock, fullRegion, 
+//    lockedRegion::insert_prev_curr_locked; Too many address variables.
+//  34:fullPreserve,fullNext,fullLock,lockedRegion::insert_prev_curr_locked;
+//  35:fullPreserve,fullNext,fullLock,lockedRegion::insert_prev_curr_locked;
+  36:fullPreserve::tail_at_end,
+     fullNext::{general,insert_prev_next_curr,insert_curr_not_null,insert_diff},
+     fullLock::insert_owns_curr,
+     lockedRegion::insert_prev_curr_locked;
+  37:fullPreserve::{region,tail_at_end},
+     fullNext::insert_curr_not_null,
+     fullRegion::insert_curr_in_region,
+     lockedRegion::insert_curr_locked;
+// 38
+  40:fullNext::remove_prev_is_head;
+  42:fullNext::{general, remove_prev_is_head, remove_prev_next_curr},
+     fullLock::remove_owns_prev;
+  46:fullPreserve::{null_in_region,region,tail_at_end},
+      fullNext::{general,remove_prev_is_head,remove_aux_next_prev,
+                 remove_prev_next_curr,remove_equal,remove_while_begins},
+     fullLock::remove_owns_prev;
+// 48
+// 51: Easy
+//  52:fullPreserve::tail_at_end,
+//     fullNext::{general,remove_prev_next_curr,remove_curr_not_null,remove_diff},
+//     fullLock::remove_owns_curr,
+//     lockedRegion::remove_prev_curr_locked;
+//  53:fullPreserve,
+//     fullLock::{insert_owns_prev, insert_owns_curr},
+//     fullNext::remove_curr_not_null,
+//     fullRegion::{remove_curr_in_region,insert_curr_in_region},
+//     lockedRegion::remove_curr_locked;
 
-
-//  3:activeLow, minTicketActive, unique;
-//  4:notSame;
-//  6:bagIsActive, unique;

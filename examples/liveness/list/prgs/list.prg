@@ -57,6 +57,7 @@ assume
 
                               begin
 :search_body[
+:sch_init_no_lock[
                                 prev := head;
 :sch_prev_lower[
 :sch_prev_def[
@@ -65,28 +66,34 @@ assume
                                   $
                                     insideSet := UnionTh (insideSet, SingleTh(me));
                                   $
+:sch_init_no_lock]
 :sch_owns_prev[
 :sch_got_lock[
 :sch_working[
+:sch_init_prev_locked[
                                 curr := prev->next;
 :sch_curr_def[
 :sch_follows[
                                 curr->lock;
+:sch_init_prev_locked]
 :sch_prev_is_head]
 :sch_owns_curr_one[
-
+:sch_prev_curr_locked[
                                 while (curr->data < e) do
 :sch_while_begins[
                                   aux := prev;
 :sch_aux_eq_prev
                                   prev := curr;
+:sch_prev_curr_locked]
 :sch_equals[
 :sch_aux_before_prev
                                   aux->unlock;
+:sch_only_curr_locked
                                   curr := curr->next;
 :sch_while_begins]
 :sch_equals]
 :sch_owns_curr_one]
+:sch_only_prev_locked
                                   curr->lock;
 :sch_owns_curr_two[
                                 endwhile
@@ -95,6 +102,7 @@ assume
 :sch_prev_lower]
 :sch_result_set[
 :sch_diff[
+:sch_last_prev_unlock
                                 prev->unlock;
 :sch_owns_prev]
 :sch_follows]
@@ -127,6 +135,7 @@ assume
                               begin
 :insert_body[
 :ins_head_next_diff[
+:ins_init_no_lock[
                                 prev := head;
 :ins_prev_lower[
 :ins_prev_def[
@@ -138,9 +147,11 @@ assume
                                       aheadSet := insideSet;
                                     endif
                                   $
+:ins_init_no_lock]
 :ins_working[
 :ins_owns_prev[
 :ins_prev_advance[
+:ins_init_prev_locked[
                                 curr := prev->next;
 :ins_head_next_diff]
 :ins_curr_def[
@@ -149,19 +160,23 @@ assume
                                   $
                                     if (me = k) then kisinm := true; endif
                                   $
+:ins_init_prev_locked]
 :ins_prev_is_head]
 :ins_owns_curr_one[
 :ins_lookup_loop[
 :ins_lookup_condition
+:ins_prev_curr_locked[
                                 while (curr->data < e) do
 :ins_while_begins[
 :ins_while[
                                   aux := prev;
 :ins_aux_eq_prev
                                   prev := curr;
+:ins_prev_curr_locked]
 :ins_equals[
 :ins_aux_before_prev
                                   aux->unlock;
+:ins_only_curr_locked
                                   curr := curr->next;
 :ins_prev_advance]
 :ins_while_begins]
@@ -193,6 +208,7 @@ assume
 :ins_prev_lower]
                                 endif
 :ins_elem_inserted[
+:ins_last_prev_unlock
                                 prev->unlock;
 :ins_owns_prev]
 :ins_prev_def]
@@ -226,6 +242,7 @@ assume
 
                               begin
 :remove_body[
+:rem_init_no_lock[
                                 prev := head;
 :rem_prev_lower[
 :rem_prev_def[
@@ -234,30 +251,37 @@ assume
                                   $
                                     insideSet := UnionTh (insideSet, SingleTh(me));
                                   $
+:rem_init_no_lock]
 :rem_owns_prev[
 :rem_got_lock[
+:rem_init_prev_locked[
                                 curr := prev->next;
 :rem_curr_def[
 :rem_follows[
                                 curr->lock;
+:rem_init_prev_locked]
 :rem_prev_is_head]
 :rem_owns_curr_one[
 :rem_lookup_loop[
 :rem_working[
+:rem_prev_curr_locked[
                                 while (curr->data < e) do
 :rem_while_begins[
 :rem_while[
                                   aux := prev;
 :rem_aux_eq_prev
                                   prev := curr;
+:rem_prev_curr_locked]
 :rem_equals[
 :rem_aux_before_prev
                                   aux->unlock;
+:rem_only_curr_locked
                                   curr := curr->next;
 :rem_while_begins]
 :rem_equals]
 :rem_while]
 :rem_owns_curr_one]
+:rem_lock_curr
                                   curr->lock;
 :rem_owns_curr_two[
                                 endwhile
@@ -280,6 +304,7 @@ assume
                                 endif
 :rem_elem_removed[
 :rem_diff[
+:rem_last_prev_unlock
                                 prev->unlock;
 :rem_owns_prev]
 :rem_prev_def]

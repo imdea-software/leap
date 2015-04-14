@@ -76,26 +76,33 @@ invariant [fullNext] :
 
 ///////  Remove   /////////////////////////
 
+#remove_prev_is_head:
+   @rem_prev_is_head(j). -> (remove::prev(j) = head /\ rd(heap, head).next != null)
 
-/\ @rem_prev_is_head(j). -> (remove::prev(j) = head /\ rd(heap, head).next != null)
-/\ (@rem_aux_eq_prev(j). -> remove::aux(j) = remove::prev(j))
-/\ (@rem_equals(j). -> remove::prev(j) = remove::curr(j))
-/\ (@rem_aux_before_prev(j). -> (remove::aux(j) != remove::prev(j) /\ rd(heap, remove::aux(j)).next = remove::prev(j)))
+
+#remove_equal:
+   (@rem_equals(j). -> remove::prev(j) = remove::curr(j))
+/\ (@rem_prev_is_head(j). \/ @rem_lookup_loop(j).) -> remove::prev(j) != null
+
+#remove_aux_next_prev:
+   (@rem_aux_before_prev(j). -> (remove::aux(j) != remove::prev(j) /\ rd(heap, remove::aux(j)).next = remove::prev(j)))
 
 #remove_prev_next_curr:
    ((@rem_follows(j). /\ ~ @rem_equals(j).) -> (remove::prev(j) != remove::curr(j) /\
                                      rd(heap,remove::prev(j)).next = remove::curr(j)))
 
+#remove_diff:
    @rem_diff(j). -> remove::prev(j) != remove::curr(j)
+/\ (@rem_aux_eq_prev(j). -> remove::aux(j) = remove::prev(j))
+
 
 #remove_curr_next_aux:
    @rem_if_two(j). -> (   rd(heap, remove::curr(j)).next = remove::aux(j)
                           /\ remove::prev(j) != remove::aux(j)
                           /\ remove::curr(j) != remove::aux(j))
 
-   (@rem_prev_is_head(j). \/ @rem_lookup_loop(j).) -> remove::prev(j) != null
-
 #remove_curr_not_null:
    @rem_follows(j). -> remove::curr(j) != null
 
+#remove_while_begins:
    @rem_while_begins(j). -> rd(heap, remove::curr(j)).next != null
