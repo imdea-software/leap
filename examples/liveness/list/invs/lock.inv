@@ -19,6 +19,7 @@ invariant [fullLock] :
 #insert_owns_curr:
    ((@ins_owns_curr_one(i). \/ @ins_owns_curr_two(i).) -> rd(heap, insert::curr(i)).lockid = i)
 
+#insert_owns_aux:
    (@ins_aux_before_prev(i). -> rd(heap, insert::aux(i)).lockid = i)
 
 #remove_owns_prev:
@@ -27,4 +28,5 @@ invariant [fullLock] :
 #remove_owns_curr:
    ((@rem_owns_curr_one(i). \/ @rem_owns_curr_two(i).) -> rd(heap, remove::curr(i)).lockid = i)
 
+#remove_owns_aux:
    (@rem_aux_before_prev(i). -> rd(heap, remove::aux(i)).lockid = i)

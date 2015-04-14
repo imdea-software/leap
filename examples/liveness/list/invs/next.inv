@@ -92,7 +92,7 @@ invariant [fullNext] :
                                      rd(heap,remove::prev(j)).next = remove::curr(j)))
 
 #remove_diff:
-   @rem_diff(j). -> remove::prev(j) != remove::curr(j)
+    @rem_diff(j). -> remove::prev(j) != remove::curr(j)
 /\ (@rem_aux_eq_prev(j). -> remove::aux(j) = remove::prev(j))
 
 

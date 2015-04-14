@@ -317,9 +317,9 @@ assume
 :rem_diff]
 :rem_owns_curr_two]
 :rem_got_lock]
-:rem_working]
 :rem_return
                                 return();
+:rem_working]
 :rem_elem_removed]
 :remove_body]
                               end
