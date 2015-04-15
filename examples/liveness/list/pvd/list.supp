@@ -5,7 +5,7 @@ Tactics :
          | simplify-pc } ;
 
 Facts :
-   9:fullNext::search_prev_is_head;
+   9:fullPreserve,fullNext::search_prev_is_head;
   11:fullNext::{search_prev_is_head,search_prev_next_curr,search_diff},    
      fullLock::search_owns_prev;
   15:fullPreserve::{null_in_region,region,tail_at_end},
@@ -24,7 +24,7 @@ Facts :
      fullNext::search_follows,
      fullRegion::search_curr_in_region,
      lockedRegion::search_curr_locked;
-  23:fullNext::insert_prev_is_head;
+  23:fullPreserve,fullNext::insert_prev_is_head;
   25:fullNext::{general, insert_prev_is_head, insert_prev_next_curr},
      fullLock::insert_owns_prev;
   29:fullPreserve::{null_in_region,region,tail_at_end},
@@ -36,7 +36,8 @@ Facts :
      fullLock::{insert_owns_prev},
      fullNext::{insert_prev_next_curr},
      lockedRegion::insert_prev_locked;
-//  33:fullPreserve, fullNext, fullLock, fullRegion, lockedRegion::insert_prev_curr_locked; Too many address variables.
+//  33:fullPreserve::{region,tail_in_region},
+//     fullDisjoint;
   34:fullPreserve,fullRegion::insert_aux_not_in_region;
   35:fullPreserve::{null_in_region,region,tail_at_end,head_not_null,head_not_tail,tail_in_region},
      fullLock::{insert_owns_prev,insert_owns_aux},
@@ -68,12 +69,7 @@ Facts :
      fullLock::{remove_owns_prev,remove_owns_curr,remove_owns_aux},
      lockedRegion::remove_prev_curr_locked,
      fullRegion::remove_prev_in_region;
-  52:fullPreserve::tail_at_end,
-     fullNext::{general,remove_prev_next_curr},
-     fullLock::remove_owns_curr,
-     lockedRegion::remove_prev_curr_locked;
-  53:fullPreserve::{region,tail_at_end},
-     fullNext::remove_curr_not_null,
-     fullRegion::remove_curr_in_region,
-     lockedRegion::remove_curr_locked;
+  52:fullPreserve::{region,tail_at_end},
+     fullRegion::{remove_prev_in_region},
+     lockedRegion::{remove_prev_locked};
   54:fullPreserve, lockedRegion::remove_no_locks;

@@ -216,7 +216,7 @@ module Make (C:Core.S) : S =
                             let v_t = match t with
                                       | E.VarTh v -> v
                                       | _ -> assert false in
-                            if PVD.NodeIdSet.is_empty (PVD.succesor pvd n line v_t) then begin
+                            if PVD.NodeIdSet.is_empty (PVD.successor pvd n line v_t) then begin
                               let self_rho = C.rho System.Concurrent voc line t in
                               (List.map (fun rho ->
                                 let processed_mu_m = E.prime_modified [rho; beta] unprimed_mu_m in
@@ -291,7 +291,7 @@ module Make (C:Core.S) : S =
                           F.disj_list $
                             PVD.NodeIdSet.fold (fun n xs ->
                               (PVD.node_mu pvd n) :: xs
-                            ) (PVD.succesor pvd n1 line v) [] in
+                            ) (PVD.successor pvd n1 line v) [] in
                        let conds =
                          F.disj_list (Statement.enabling_condition (E.V.Local v) stm) in
                         (* Enabled *)
@@ -303,7 +303,8 @@ module Make (C:Core.S) : S =
                             Tactics.create_vc_info [] Tactics.no_tid_constraint
                                 (F.And (mu_n1,rho)) next_mu voc th line
                           ) rho_list in
-                        enable_vc :: successor_vcs @ gen_vcs
+                        successor_vcs @ gen_vcs
+(*                        enable_vc :: successor_vcs @ gen_vcs *)
                      end else gen_vcs
                   ) [] trans_list) @ xs
             ) info []) @ vcs

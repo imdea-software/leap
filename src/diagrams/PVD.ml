@@ -418,10 +418,10 @@ let check_and_define_edges (nTbl:node_table_t)
     is_defined nTbl n2;
     well_defined_boxed_edge nTbl e;
     free_voc := E.ThreadSet.union (check_transition_param n1 trans) !free_voc;
-    try
-      let old_e_info = Hashtbl.find eTbl (n1,n2) in
-      Hashtbl.replace eTbl (n1,n2) (EdgeInfoSet.add (kind,trans) old_e_info)
-    with Not_found -> Hashtbl.add eTbl (n1,n2) (EdgeInfoSet.singleton (kind,trans));
+    let _ = try
+              let old_e_info = Hashtbl.find eTbl (n1,n2) in
+              Hashtbl.replace eTbl (n1,n2) (EdgeInfoSet.add (kind,trans) old_e_info)
+            with Not_found -> (print_endline "3"; Hashtbl.add eTbl (n1,n2) (EdgeInfoSet.singleton (kind,trans))) in
     add_next_node n1 n2;
     add_tau n1 n2 trans;
   ) es;
@@ -549,7 +549,7 @@ let edge_list (pvd:t) : (node_id_t * node_id_t * EdgeInfoSet.t) list =
   ) pvd.edges []
 
 
-let succesor (pvd:t) (n:node_id_t) (line:int) (t:E.V.t) : NodeIdSet.t =
+let successor (pvd:t) (n:node_id_t) (line:int) (t:E.V.t) : NodeIdSet.t =
   try
     Hashtbl.find pvd.tau (n,line,t)
   with Not_found -> NodeIdSet.empty

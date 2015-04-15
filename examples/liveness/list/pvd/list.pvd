@@ -1,18 +1,16 @@
 Diagram[list]
 
 Nodes: n0 { ~ @ins_working(k). },
-       n1 { t = rd(heap,lastlocked(heap,getp(heap,head,tail))).lockid /\
+       n1 { t = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\
             t != k /\
             @ins_working(k). /\
             (@ins_working(t). \/
              @rem_working(t). \/
              @sch_working(t).)  },
-       n2 { k = rd(heap,lastlocked(heap,getp(heap,head,tail))).lockid /\
-            @ins_prev_advance(k). },
-       n3 { k = rd(heap,lastlocked(heap,getp(heap,head,tail))).lockid /\ 
-            @ins_lock_curr(k). },
-       n4 { k = rd(heap,lastlocked(heap,getp(heap,head,tail))).lockid /\ 
-            @ins_insertion_process(k). },
+       n2 { k = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\
+            (@ins_prev_advance(k). \/ @ins_insertion_process(k).) },
+       n3 { k = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\ @ins_lock_curr(k). },
+//       n4 { k = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\ @ins_insertion_process(k). },
        n5 { @ins_return(k). }
 
 
@@ -22,28 +20,29 @@ Initial: n0
 
 Edges:  n0 -{23(k)}-> n1;
         n0 -{23(k)}-> n2;
-        n1 -{20(t), 37(t), 53(t)}-> n1;
-        n1 -{20(t), 37(t), 53(t)}-> n2;
-        n1 -{20(t), 37(t), 53(t)}-> n3;
-        n1 -{20(t), 37(t), 53(t)}-> n4;
-        n1 -{20(t), 37(t), 53(t)}-> n5;
+        n1 -{20(t), 37(t), 52(t)}-> n1;
+        n1 -{20(t), 37(t), 52(t)}-> n2;
+        n1 -{20(t), 37(t), 52(t)}-> n3;
+//        n1 -{20(t), 37(t), 52(t)}-> n4;
+        n1 -{20(t), 37(t), 52(t)}-> n5;
         n1 -{38(k)}-> n0;
+        n2 -{24(k)}-> n2;
         n2 -{30(k)}-> n3;
         n3 -{31(k)}-> n2;
-        n2 -{26(k)}-> n4;
-        n4 -{37(k)}-> n5;
+        n2 -{37(k)}-> n5;
+//        n4 -{37(k)}-> n5;
         n5 -{38(k)}-> n0;
   // Self-loops
         n0 --> n0;
        [n1 --> n1];
         n2 --> n2;
         n3 --> n3;
-        n4 --> n4;
+//        n4 --> n4;
         n5 --> n5;
 
 Acceptance:
-  <<Bad :{(n1,n1,any),(n1,n2,any),(n1,n3,any),(n1,n4,any),(n1,n5,any),(n2,n3,any)};
-    Good:{(n0,n1,any),(n0,n2,any),(n5,n0,any),(n0,n0,any),(n1,n0,any)};
+  <<Bad :{(n1,n1,any),(n1,n2,any),(n1,n3,any),(n1,n5,any),(n2,n3,any)};
+    Good:{(n0,n1,any),(n0,n2,any),(n5,n0,any),(n0,n0,any),(n1,n0,any),(n2,n2,any)};
     [(aheadSet, tidsubset_op);
      (addr2set(heap, insert::curr(k)), addrsubset_op)] >>
 

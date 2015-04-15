@@ -1818,7 +1818,7 @@ let rec enabling_condition_aux (is_ghost:bool)
   | StAtomic  (_, g,info) -> [pos info @ ghost g]
                                 (* FIX: Complete the implementation of the
                                         case above *)
-  | StSeq _                  -> assert(false)
+  | StSeq _                  -> [[F.True]]
   | StCall (_,_,_,g,info)    -> [pos info @ ghost g]
   | StReturn (_,g,info)      -> [pos info @ ghost g]
 

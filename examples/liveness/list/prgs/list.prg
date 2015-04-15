@@ -225,9 +225,9 @@ assume
 :ins_curr_def]
 :ins_diff]
 :ins_insertion_process]
+:ins_working]
 :ins_return
                                 return();
-:ins_working]
 :ins_elem_inserted]
 :insert_body]
                               end
@@ -306,6 +306,7 @@ assume
 :rem_diff[
 :rem_last_prev_unlock
                                 prev->unlock;
+:rem_working]
 :rem_owns_prev]
 :rem_prev_def]
 :rem_releases_last_lock
@@ -319,7 +320,6 @@ assume
 :rem_got_lock]
 :rem_return
                                 return();
-:rem_working]
 :rem_elem_removed]
 :remove_body]
                               end

@@ -48,7 +48,7 @@ val cond_next : t -> edge_type_t -> node_id_t -> NodeIdSet.t
 val box_param : t -> box_id_t -> Expression.ThreadSet.elt
 val edges : t -> node_id_t -> node_id_t -> EdgeInfoSet.t
 val edge_list : t -> (node_id_t * node_id_t * EdgeInfoSet.t) list
-val succesor : t -> node_id_t -> int -> Expression.V.t -> NodeIdSet.t
+val successor : t -> node_id_t -> int -> Expression.V.t -> NodeIdSet.t
 val acceptance_list : t -> acceptance_t list
 val beta : t -> (node_id_t * node_id_t * edge_type_t) -> Expression.formula
 val ranking_function : Expression.formula ->
