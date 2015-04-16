@@ -510,29 +510,29 @@ struct
     B.add_string buf
       ("(define-fun getlockat ((h " ^heap_s^ ") (p " ^path_s^
             ") (i RangeAddress)) " ^tid_s^ "\n" ^
-       "  (if (is_valid_range_address i) (lock (select h (select (at p) i))) notid))\n" ^
+       "  (ite (is_valid_range_address i) (lock (select h (select (at p) i))) notid))\n" ^
        "(define-fun getaddrat ((p " ^path_s^ ") (i RangeAddress)) " ^addr_s^ "\n" ^
-       "  (if (is_valid_range_address i) (select (at p) i) null))\n" ^
+       "  (ite (is_valid_range_address i) (select (at p) i) null))\n" ^
        "(define-fun islockedpos ((h " ^heap_s^ ") (p " ^path_s^
             ") (i RangeAddress)) " ^bool_s^ "\n" ^
-       "  (if (is_valid_range_address i) (and (< i (length p)) (not (= notid (getlockat h p i)))) false))\n")
+       "  (ite (is_valid_range_address i) (and (< i (length p)) (not (= notid (getlockat h p i)))) false))\n")
 
 
   let smt_firstlock_def (buf:B.t) (num_addr:int) : unit =
     let strlast = (string_of_int num_addr) in
     B.add_string buf
       ("(define-fun firstlockfrom" ^ strlast ^ " ((h " ^heap_s^ ") (p " ^path_s^ ")) " ^addr_s^ "\n" ^
-       "  (if (islockedpos h p " ^ strlast ^ ") (getaddrat p " ^ strlast ^ ") null))\n");
+       "  (ite (islockedpos h p " ^ strlast ^ ") (getaddrat p " ^ strlast ^ ") null))\n");
     for i=(num_addr-1) downto 1 do
       let stri    = (string_of_int i) in
       let strnext = (string_of_int (i+1)) in
           B.add_string buf
       ("(define-fun firstlockfrom"^ stri ^" ((h " ^heap_s^ ") (p " ^path_s^ ")) " ^addr_s^ "\n" ^
-       "  (if (islockedpos h p "^ stri ^") (getaddrat p "^ stri ^") (firstlockfrom"^ strnext ^" h p)))\n");
+       "  (ite (islockedpos h p "^ stri ^") (getaddrat p "^ stri ^") (firstlockfrom"^ strnext ^" h p)))\n");
     done ;
     B.add_string buf
       ("(define-fun firstlock ((h " ^heap_s^ ") (p " ^path_s^ ") ) " ^addr_s^ "\n" ^
-       "  (if (islockedpos h p 0) (getaddrat p 0) (firstlockfrom1 h p)))\n")
+       "  (ite (islockedpos h p 0) (getaddrat p 0) (firstlockfrom1 h p)))\n")
 
 
 
@@ -541,17 +541,17 @@ struct
     let strprelast = (string_of_int (num_addr - 1)) in
     B.add_string buf
       ("(define-fun lastlockfrom0 ((h " ^heap_s^ ") (p " ^path_s^ ")) " ^addr_s^ "\n" ^
-       "  (if (islockedpos h p 0) (getaddrat p 0) null))\n");
+       "  (ite (islockedpos h p 0) (getaddrat p 0) null))\n");
     for i = 1 to (num_addr-1) do
       let stri    = (string_of_int i) in
       let strprev = (string_of_int (i - 1)) in
           B.add_string buf
       ("(define-fun lastlockfrom"^ stri ^" ((h " ^heap_s^ ") (p " ^path_s^ ")) " ^addr_s^ "\n" ^
-       "  (if (islockedpos h p "^ stri ^") (getaddrat p "^ stri ^") (lastlockfrom"^ strprev ^" h p)))\n");
+       "  (ite (islockedpos h p "^ stri ^") (getaddrat p "^ stri ^") (lastlockfrom"^ strprev ^" h p)))\n");
     done ;
     B.add_string buf
       ("(define-fun lastlock ((h " ^heap_s^ ") (p " ^path_s^ ") ) " ^addr_s^ "\n" ^
-       "  (if (islockedpos h p " ^strlast^ ") (getaddrat p " ^strlast^ ") (lastlockfrom" ^strprelast^ " h p)))\n")
+       "  (ite (islockedpos h p " ^strlast^ ") (getaddrat p " ^strlast^ ") (lastlockfrom" ^strprelast^ " h p)))\n")
 
 
 
@@ -559,17 +559,17 @@ struct
     let strlast = (string_of_int num_addr) in
     B.add_string buf
       ("(define-fun lockset" ^ strlast ^ " ((h " ^heap_s^ ") (p " ^path_s^ ")) " ^setth_s^ "\n" ^
-       "  (if (islockedpos h p " ^ strlast ^ ") (singletonth (getlockat h p " ^ strlast ^ ")) emptyth))\n");
+       "  (ite (islockedpos h p " ^ strlast ^ ") (singletonth (getlockat h p " ^ strlast ^ ")) emptyth))\n");
     for i=(num_addr-1) downto 1 do
       let stri    = (string_of_int i) in
       let strnext = (string_of_int (i+1)) in
           B.add_string buf
       ("(define-fun lockset"^ stri ^" ((h " ^heap_s^ ") (p " ^path_s^ ")) " ^setth_s^ "\n" ^
-       "  (if (islockedpos h p "^ stri ^") (unionth (singletonth (getlockat h p "^ stri ^")) (lockset"^ strnext ^" h p)) (lockset" ^strnext^ " h p)))\n");
+       "  (ite (islockedpos h p "^ stri ^") (unionth (singletonth (getlockat h p "^ stri ^")) (lockset"^ strnext ^" h p)) (lockset" ^strnext^ " h p)))\n");
     done ;
     B.add_string buf
       ("(define-fun lockset ((h " ^heap_s^ ") (p " ^path_s^ ") ) " ^setth_s^ "\n" ^
-       "  (if (islockedpos h p 0) (unionth (singletonth (getlockat h p 0)) (lockset1 h p)) (lockset1 h p)))\n")
+       "  (ite (islockedpos h p 0) (unionth (singletonth (getlockat h p 0)) (lockset1 h p)) (lockset1 h p)))\n")
 
 
   let smt_cell_lock (buf:B.t) : unit =
@@ -623,12 +623,14 @@ struct
       ("(define-fun singletonwhere ((a " ^addr_s^ ")) PathWhere\n" ^
        "  (store singlewhere a 0))\n" ^
        "(define-fun singlepath ((a " ^addr_s^ ")) " ^path_s^ "\n" ^
-       "  (" ^mkpath_str^ "))\n");
+       "  (" ^mkpath_str^ "))\n")
+       (*
       B.add_string buf
         ("(assert (and (= (length (" ^mkpath_str^ ")) 1)\n\
                        (= (at (" ^mkpath_str^ ")) (singletonat a))\n\
                        (= (where (" ^mkpath_str^ ")) (singletonwhere a))\n\
                        (= (addrs (" ^mkpath_str^ ")) (singleton a))))\n")
+*)
 
 
   let smt_ispath_def (buf:B.t) (num_addr:int) : unit =
@@ -639,10 +641,9 @@ struct
     done;
     B.add_string buf
       ("(define-fun addr_in_path ((p " ^path_s^ ") (i RangeAddress)) " ^set_s^ "\n" ^
-       "  (and (=> (and (<= 0 i) (< i (length p)))\n" ^
-       "           (singleton (select (at p) i)))\n" ^
-       "       (=> (not (and (<= 0 i) (<= i (length p))))\n" ^
-       "           empty)))\n");
+         "  (ite (and (<= 0 i) (< i (length p)))\n" ^
+         "       (singleton (select (at p) i))\n" ^
+         "       empty))\n");
     B.add_string buf
       ("(define-fun check_position ((p " ^path_s^ ") (i RangeAddress)) " ^bool_s^ "\n" ^
        "  (and (=> (and (is_valid_range_address i)\n" ^
@@ -823,9 +824,21 @@ struct
   let smt_getp_def (buf:B.t) (num_addr:int) : unit =
     B.add_string buf
       ("(define-fun update_pathat ((f PathAt) (i RangeAddress) (a " ^addr_s^ ")) PathAt\n" ^
-       "  (if (is_valid_range_address i) (store f i a) f))\n" ^
+       "  (ite (is_valid_range_address i) (store f i a) f))\n" ^
        "(define-fun update_pathwhere ((g PathWhere) (a " ^addr_s^ ") (i RangeAddress)) PathWhere\n" ^
-       "  (if (is_valid_range_address i) (store g a i) g))\n");
+       "  (ite (is_valid_range_address i) (store g a i) g))\n" ^
+       "(define-fun add_to_path ((p " ^path_s^ ") (a " ^addr_s^ ")) " ^path_s^ "\n" ^
+       "  (mkpath (+ 1 (length p))\n" ^
+       "          (update_pathat (at p) (length p) a)\n" ^
+       "          (update_pathwhere (where p) a (length p))\n" ^
+       "          (setunion (addrs p) (singleton a))))\n");
+(*
+    B.add_string buf
+      ("(define-fun update_pathat ((f PathAt) (i RangeAddress) (a " ^addr_s^ ")) PathAt\n" ^
+       "  (ite (is_valid_range_address i) (store f i a) f))\n" ^
+       "(define-fun update_pathwhere ((g PathWhere) (a " ^addr_s^ ") (i RangeAddress)) PathWhere\n" ^
+       "  (ite (is_valid_range_address i) (store g a i) g))\n");
+       *)
   (*     "(define-fun add_to_path ((p " ^path_s^ ") (a " ^addr_s^ ")) " ^path_s^ "\n" ^
        "  (mkpath (+ 1 (length p))\n" ^
        "          (update_pathat (at p) (length p) a)\n" ^
@@ -835,9 +848,16 @@ struct
     B.add_string buf
       ("(define-fun path1 ((h " ^heap_s^ ") (a " ^addr_s^ ")) " ^path_s^ "\n" ^
        "  (singlepath a))\n");
+    for i=2 to (num_addr +1) do
+      let stri= string_of_int i in
+      let strpre = string_of_int (i-1) in
+      B.add_string buf
+      ("(define-fun path"^ stri ^" ((h " ^heap_s^ ") (a " ^addr_s^ ")) " ^path_s^ "\n" ^
+       "  (add_to_path (path"^ strpre ^" h a) (next"^ strpre ^" h a)))\n")
+    done ;     
     B.add_string buf
       ("(define-fun getp"^ (string_of_int (num_addr + 1)) ^" ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ")) " ^path_s^ "\n" ^
-       "  (if (= (next"^ (string_of_int num_addr) ^" h from) to)\n" ^
+       "  (ite (= (next"^ (string_of_int num_addr) ^" h from) to)\n" ^
        "      (path"^ (string_of_int num_addr) ^" h from)\n" ^
        "      epsilon))\n");
     for i=num_addr downto 1 do
@@ -846,33 +866,9 @@ struct
       let strnext = string_of_int (i+1) in
       B.add_string buf
         ("(define-fun getp"^ stri ^" ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ")) " ^path_s^ "\n" ^
-         "  (if (= (next"^ strpre ^" h from) to)\n" ^
+         "  (ite (= (next"^ strpre ^" h from) to)\n" ^
          "      (path"^ stri ^" h from)\n" ^
          "       (getp"^ strnext ^" h from to)))\n")
-    done ;
-    B.add_string buf
-      ("(define-fun getp ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ")) " ^path_s^ "\n" ^
-       "  (getp1 h from to))\n");
-    B.add_string buf
-      ("(define-fun isgetp ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ") (p " ^path_s^ ")) " ^bool_s^ "\n" ^
-       "  (eqpath p (getp h from to)))\n")
-
-
-  let smt_getp_def (buf:B.t) (num_addr:int) : unit =
-    B.add_string buf
-      ("(define-fun getp"^ (string_of_int (num_addr + 1)) ^" ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ")) " ^path_s^ "\n" ^
-       "  (if (= (next"^ (string_of_int num_addr) ^" h from) to)\n" ^
-       "      (path"^ (string_of_int num_addr) ^" h from)\n" ^
-       "      epsilon))\n");
-    for i=num_addr downto 1 do
-      let stri = string_of_int i in
-      let strpred = string_of_int (i-1) in
-      let strsucc = string_of_int (i+1) in
-      B.add_string buf
-        ("(define-fun getp"^ stri ^" ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ")) " ^path_s^ "\n" ^
-         "  (if (= (next"^ strpred ^" h from) to)\n" ^
-         "      (path"^ stri ^" h from)\n" ^
-         "      (getp"^ strsucc ^" h from to)))\n")
     done ;
     B.add_string buf
       ("(define-fun getp ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ")) " ^path_s^ "\n" ^
@@ -897,13 +893,13 @@ struct
   let smt_at_path_def (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun at_path ((p " ^path_s^ ") (i RangeAddress)) " ^addr_s^ "\n" ^
-       "  (if (is_valid_range_address i) (select (at p) i) null))\n")
+       "  (ite (is_valid_range_address i) (select (at p) i) null))\n")
 
 
   let smt_equal_paths_at_def (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun equal_paths_at ((p1 " ^path_s^ ") (i RangeAddress) (p2 " ^path_s^ ") (j RangeAddress)) " ^bool_s^ "\n" ^
-       "  (if (< i (path_length p1))\n" ^
+       "  (ite (< i (path_length p1))\n" ^
        "      (= (at_path p1 i) (at_path p2 j))\n" ^
        "      true))\n")
 

@@ -5,7 +5,9 @@ global
   ghost addrSet region
   ghost elemSet elements
   ghost tidSet aheadSet
+  ghost tidSet aheadInsert
   ghost tidSet insideSet
+  ghost tidSet insideInsert
   ghost bool kisinm
 
 assume
@@ -143,14 +145,16 @@ assume
                                 prev->lock
                                   $
                                     insideSet := UnionTh (insideSet, SingleTh(me));
+                                    insideInsert := UnionTh (insideInsert, SingleTh(me));
                                     if (me = k) then
                                       aheadSet := insideSet;
+                                      aheadInsert := insideInsert;
                                     endif
                                   $
 :ins_init_no_lock]
 :ins_working[
 :ins_owns_prev[
-:ins_prev_advance[
+:ins_prev_locked_one[
 :ins_init_prev_locked[
                                 curr := prev->next;
 :ins_head_next_diff]
@@ -170,15 +174,16 @@ assume
 :ins_while_begins[
 :ins_while[
                                   aux := prev;
+:ins_prev_locked_one]
 :ins_aux_eq_prev
                                   prev := curr;
+:ins_prev_locked_two[
 :ins_prev_curr_locked]
 :ins_equals[
 :ins_aux_before_prev
                                   aux->unlock;
 :ins_only_curr_locked
                                   curr := curr->next;
-:ins_prev_advance]
 :ins_while_begins]
 :ins_equals]
 :ins_while]
@@ -187,6 +192,7 @@ assume
                                   curr->lock;
 :ins_owns_curr_two[
                                 endwhile
+:ins_prev_locked_two]
 :ins_lookup_loop]
 :ins_insertion_process[
 :ins_final_conditional
@@ -201,6 +207,8 @@ assume
                                     $
                                       elements := UnionElem (elements, SingleElem(e));
                                       region := region Union {aux};
+                                      insideInsert := SetDiffTh (insideInsert, SingleTh(me));
+                                      aheadInsert := SetDiffTh (aheadInsert, SingleTh(me));
                                     $
 :ins_follows]
 :after_malloc]
@@ -212,6 +220,7 @@ assume
                                 prev->unlock;
 :ins_owns_prev]
 :ins_prev_def]
+:ins_insertion_process]
 :ins_releases_last_lock
                                 curr->unlock
                                   $
@@ -224,7 +233,6 @@ assume
 :ins_owns_curr_two]
 :ins_curr_def]
 :ins_diff]
-:ins_insertion_process]
 :ins_working]
 :ins_return
                                 return();
@@ -305,16 +313,16 @@ assume
 :rem_elem_removed[
 :rem_diff[
 :rem_last_prev_unlock
-                                prev->unlock;
-:rem_working]
-:rem_owns_prev]
-:rem_prev_def]
-:rem_releases_last_lock
-                                curr->unlock
+                                prev->unlock
                                   $
                                     insideSet := SetDiffTh (insideSet, SingleTh(me));
                                     aheadSet := SetDiffTh (aheadSet, SingleTh(me));
                                   $
+:rem_working]
+:rem_owns_prev]
+:rem_prev_def]
+:rem_releases_last_lock
+                                curr->unlock;
 :rem_diff]
 :rem_owns_curr_two]
 :rem_got_lock]

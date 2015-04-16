@@ -511,26 +511,26 @@ module Make (K : Level.S) : TSLK_QUERY =
       B.add_string buf
         ("(define-fun getlockat ((h " ^heap_s^ ") (p " ^path_s^
               ") (l " ^level_s^ ") (i RangeAddress)) " ^tid_s^ "\n" ^
-         "  (if (is_valid_range_address i) " ^
+         "  (ite (is_valid_range_address i) " ^
              "(select (lock (select h (select (at p) i))) l) NoThread))\n" ^
          "(define-fun getaddrat ((p " ^path_s^ ") (i RangeAddress)) " ^addr_s^ "\n" ^
-         "  (if (is_valid_range_address i) (select (at p) i) null))\n" ^
+         "  (ite (is_valid_range_address i) (select (at p) i) null))\n" ^
          "(define-fun islockedpos ((h " ^heap_s^ ") (p " ^path_s^
               ") (l " ^level_s^ ") (i RangeAddress)) " ^bool_s^ "\n" ^
-         "  (if (is_valid_range_address i) (and (< i (length p)) (not (= NoThread (getlockat h p l i)))) false))\n");
+         "  (ite (is_valid_range_address i) (and (< i (length p)) (not (= NoThread (getlockat h p l i)))) false))\n");
       B.add_string buf
         ("(define-fun firstlockfrom" ^ strlast ^ " ((h " ^heap_s^ ") (p " ^path_s^ ") (l " ^level_s^ ")) " ^addr_s^ "\n" ^
-         "  (if (islockedpos h p l " ^ strlast ^ ") (getaddrat p " ^ strlast ^ ") null))\n");
+         "  (ite (islockedpos h p l " ^ strlast ^ ") (getaddrat p " ^ strlast ^ ") null))\n");
       for i=(num_addr-1) downto 1 do
         let stri    = (string_of_int i) in
         let strnext = (string_of_int (i+1)) in
             B.add_string buf
         ("(define-fun firstlockfrom"^ stri ^" ((h " ^heap_s^ ") (p " ^path_s^ ") (l " ^level_s^ ")) " ^addr_s^ "\n" ^
-         "  (if (islockedpos h p l "^ stri ^") (getaddrat p "^ stri ^") (firstlockfrom"^ strnext ^" h p l)))\n");
+         "  (ite (islockedpos h p l "^ stri ^") (getaddrat p "^ stri ^") (firstlockfrom"^ strnext ^" h p l)))\n");
       done ;
       B.add_string buf
         ("(define-fun firstlock ((h " ^heap_s^ ") (p " ^path_s^ ") (l " ^level_s^ ")) " ^addr_s^ "\n" ^
-         "  (if (islockedpos h p l 0) (getaddrat p 0) (firstlockfrom1 h p l)))\n")
+         "  (ite (islockedpos h p l 0) (getaddrat p 0) (firstlockfrom1 h p l)))\n")
 
 
 
@@ -947,9 +947,9 @@ module Make (K : Level.S) : TSLK_QUERY =
     let z3_getp_def (buf:B.t) (num_addr:int) : unit =
       B.add_string buf
         ("(define-fun update_pathat ((f PathAt) (i RangeAddress) (a " ^addr_s^ ")) PathAt\n" ^
-         "  (if (is_valid_range_address i) (store f i a) f))\n" ^
+         "  (ite (is_valid_range_address i) (store f i a) f))\n" ^
          "(define-fun update_pathwhere ((g PathWhere) (a " ^addr_s^ ") (i RangeAddress)) PathWhere\n" ^
-         "  (if (is_valid_range_address i) (store g a i) g))\n" ^
+         "  (ite (is_valid_range_address i) (store g a i) g))\n" ^
          "(define-fun add_to_path ((p " ^path_s^ ") (a " ^addr_s^ ")) " ^path_s^ "\n" ^
          "  (mkpath (+ 1 (length p))\n" ^
          "          (update_pathat (at p) (length p) a)\n" ^
@@ -967,7 +967,7 @@ module Make (K : Level.S) : TSLK_QUERY =
       done ;
       B.add_string buf
         ("(define-fun getp"^ (string_of_int (num_addr + 1)) ^" ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ") (l " ^level_s^ ")) " ^path_s^ "\n" ^
-         "  (if (= (next"^ (string_of_int num_addr) ^" h from l) to)\n" ^
+         "  (ite (= (next"^ (string_of_int num_addr) ^" h from l) to)\n" ^
          "      (path"^ (string_of_int num_addr) ^" h from l)\n" ^
          "      epsilon))\n");
       for i=num_addr downto 1 do
@@ -976,7 +976,7 @@ module Make (K : Level.S) : TSLK_QUERY =
         let strnext = string_of_int (i+1) in
         B.add_string buf
           ("(define-fun getp"^ stri ^" ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ") (l " ^level_s^ ")) " ^path_s^ "\n" ^
-           "  (if (= (next"^ strpre ^" h from l) to)\n" ^
+           "  (ite (= (next"^ strpre ^" h from l) to)\n" ^
            "      (path"^ stri ^" h from l)\n" ^
            "       (getp"^ strnext ^" h from to l)))\n")
       done ;
@@ -1012,7 +1012,7 @@ module Make (K : Level.S) : TSLK_QUERY =
     let z3_at_path_def (buf:B.t) : unit =
       B.add_string buf
         ("(define-fun at_path ((p " ^path_s^ ") (i RangeAddress)) " ^addr_s^ "\n" ^
-         "  (if (is_valid_range_address i) (select (at p) i) null))\n")
+         "  (ite (is_valid_range_address i) (select (at p) i) null))\n")
 
 
 
@@ -1024,7 +1024,7 @@ module Make (K : Level.S) : TSLK_QUERY =
     let z3_equal_paths_at_def (buf:B.t) : unit =
       B.add_string buf
         ("(define-fun equal_paths_at ((p1 " ^path_s^ ") (i RangeAddress) (p2 " ^path_s^ ") (j RangeAddress)) " ^bool_s^ "\n" ^
-         "  (if (< i (path_length p1))\n" ^
+         "  (ite (< i (path_length p1))\n" ^
          "      (= (at_path p1 i) (at_path p2 j))\n" ^
          "      true))\n")
 

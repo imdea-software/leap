@@ -25,12 +25,20 @@ Facts :
      fullRegion::search_curr_in_region,
      lockedRegion::search_curr_locked;
   23:fullPreserve,fullNext::insert_prev_is_head;
+  24:fullPreserve::{region,tail_at_end,head_not_null,tail_in_region,head_not_tail},
+     fullNext::{insert_prev_is_head};
   25:fullNext::{general, insert_prev_is_head, insert_prev_next_curr},
      fullLock::insert_owns_prev;
+  28:fullPreserve::{region},
+     fullNext::{insert_prev_next_curr,insert_equal},
+     fullRegion::{insert_prev_in_region};
   29:fullPreserve::{null_in_region,region,tail_at_end},
      fullNext::{general,insert_prev_is_head,insert_diff,insert_aux_next_prev,
                 insert_prev_next_curr,insert_equal,insert_while_begins},
      fullLock::insert_owns_prev;
+  30:fullPreserve::{region,tail_at_end},
+     fullNext::{insert_curr_not_null},
+     fullRegion::{insert_curr_in_region};
   31:fullPreserve::{null_in_region,region,tail_at_end,head_not_tail},
      fullRegion::{insert_prev_in_region,insert_curr_in_region},
      fullLock::{insert_owns_prev},
@@ -38,7 +46,9 @@ Facts :
      lockedRegion::insert_prev_locked;
 //  33:fullPreserve::{region,tail_in_region},
 //     fullDisjoint;
-  34:fullPreserve,fullRegion::insert_aux_not_in_region;
+  34:fullPreserve,
+     fullLock::{insert_owns_prev},
+     fullRegion::{insert_aux_not_in_region,insert_prev_in_region};
   35:fullPreserve::{null_in_region,region,tail_at_end,head_not_null,head_not_tail,tail_in_region},
      fullLock::{insert_owns_prev,insert_owns_aux},
      fullRegion::{insert_prev_in_region,insert_aux_not_in_region},
