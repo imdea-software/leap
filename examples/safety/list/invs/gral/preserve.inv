@@ -1,7 +1,7 @@
 vars:
 
 
-invariant [fullPreserve] :
+invariant [preserve] :
 
    null in region
 

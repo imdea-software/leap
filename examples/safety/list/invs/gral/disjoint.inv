@@ -3,6 +3,6 @@ vars:
 tid i
 tid j
 
-invariant [fullDisjoint] :
+invariant [disjoint] :
 
 (i != j /\ @after_malloc(i). /\ @after_malloc(j).) -> insert::aux(i) != insert::aux(j)

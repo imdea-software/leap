@@ -17,6 +17,8 @@ assume
   // or orderlist (heap, head, null)
   rd(heap, head).data = lowestElem /\
   rd(heap, tail).data = highestElem /\
+  rd(heap, head).lockid = # /\
+  rd(heap, tail).lockid = # /\
   head != tail /\
   head != null /\
   tail != null /\

@@ -15,7 +15,7 @@ invariant [lockedRegion] :
 
 
 #search_prev_locked:
-  (@sch_init_prev_locked(i). /\
+  (@sch_init_prev_locked(i). \/
    @sch_only_prev_locked(i).) ->
     (~ (i inTh lockset(heap, getp(heap, head, search::prev(i)))) /\
      ~ (i inTh lockset(heap, getp(heap, rd(heap, search::prev(i)).next, null))))

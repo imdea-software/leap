@@ -2,7 +2,7 @@ vars:
 
 tid i
 
-invariant [fullLock] :
+invariant [locks] :
 
 #search_owns_prev:
    (@sch_owns_prev(i). -> rd(heap, search::prev(i)).lockid = i)

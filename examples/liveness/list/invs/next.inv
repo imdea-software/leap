@@ -2,7 +2,7 @@ vars:
 
 tid j
 
-invariant [fullNext] :
+invariant [nexts] :
 
 #general:
     rd(heap, head).next != head

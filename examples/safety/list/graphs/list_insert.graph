@@ -1,8 +1,8 @@
 => list_insert [
-      39 : S : fullPreserve,
-               fullRegion::insert_curr_in_region,
-               fullNext::insert_curr_not_null,
-               fullOrder::insert_curr_bounded
+      39 : S : preserve,
+               region::insert_curr_in_region,
+               nexts::insert_curr_not_null,
+               order::insert_curr_bounded
    ] { union :
              | reduce2
              |

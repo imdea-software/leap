@@ -2,7 +2,7 @@ vars:
 
 tid i
 
-invariant [fullRegion] :
+invariant [region] :
 
 
    head in region

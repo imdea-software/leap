@@ -2,7 +2,7 @@ vars:
 
 tid i
 
-invariant [fullOrder] :
+invariant [order] :
 
    rd(heap, head).data = lowestElem
 /\ rd(heap, tail).data = highestElem
