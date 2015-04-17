@@ -169,7 +169,7 @@ let global_epsilon_def_str : string =
   ("(declare-const epsilonat PathAt)\n" ^
    "(assert (= epsilonat ((as const PathAt) null)))\n" ^
    "(declare-const epsilonwhere PathWhere)\n" ^
-   "(assert (= epsilonwhere ((as const PathWhere) 0)))\n" ^
+   "(assert (= epsilonwhere ((as const PathWhere) rr_0)))\n" ^
    "(declare-const epsilon " ^path_s^ ")\n" ^
    "(assert (= epsilon (mkpath 0 epsilonat epsilonwhere empty)))\n")
 
@@ -856,7 +856,7 @@ module Make (K : Level.S) : TSLK_QUERY =
            "  (if (is_valid_range_address i) (select (at p) i) null))\n" ^
            "(define-fun islockedpos ((h " ^heap_s^ ") (p " ^path_s^
                 ") (l " ^level_s^ ") (i RangeAddress)) " ^bool_s^ "\n" ^
-           "  (if (is_valid_range_address i) (and (< i (length p)) (not (= NoThread (getlockat h p l i)))) false))\n");
+           "  (if (and (not (eqpath epsilon p)) (is_valid_range_address i)) (and (< i (length p)) (not (= NoThread (getlockat h p l i)))) false))\n");
         B.add_string tmpbuf
           ("(define-fun firstlockfrom" ^ strlast ^ " ((h " ^heap_s^ ") (p " ^path_s^ ") (l " ^level_s^ ")) " ^addr_s^ "\n" ^
            "  (if (islockedpos h p l " ^ strlast ^ ") (getaddrat p " ^ strlast ^ ") null))\n");
@@ -1292,10 +1292,11 @@ module Make (K : Level.S) : TSLK_QUERY =
           let stri = string_of_int i in
           let strpre = string_of_int (i-1) in
           let strnext = string_of_int (i+1) in
+          let path_str = if i = 1 then "epsilon\n" else "(path"^ strpre ^" h from l)\n" in
           B.add_string tmpbuf
             ("(define-fun getp"^ stri ^" ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ") (l " ^level_s^ ")) " ^path_s^ "\n" ^
              "  (if (= (next"^ strpre ^" h from l) to)\n" ^
-             "      (path"^ stri ^" h from l)\n" ^
+             "      " ^ path_str ^
              "       (getp"^ strnext ^" h from to l)))\n")
         done ;
         B.add_string tmpbuf

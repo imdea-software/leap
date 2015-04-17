@@ -623,7 +623,7 @@ struct
        "  (if (is_valid_range_address i) (select (at p) i) null))\n" ^
        "(define-fun islockedpos ((h " ^heap_s^ ") (p " ^path_s^
             ") (i RangeAddress)) " ^bool_s^ "\n" ^
-       "  (if (is_valid_range_address i) (and (< i (length p)) (not (= NoThread (getlockat h p i)))) false))\n")
+       "  (if (and (not (eqpath epsilon p)) (is_valid_range_address i)) (and (< i (length p)) (not (= NoThread (getlockat h p i)))) false))\n")
 
 
   let z3_firstlock_def (buf:B.t) (num_addr:int) : unit =
@@ -1007,10 +1007,11 @@ struct
       let stri = string_of_int i in
       let strpre = string_of_int (i-1) in
       let strnext = string_of_int (i+1) in
+      let path_str = if i = 1 then "epsilon\n" else "(path"^ strpre ^" h from)\n" in
       B.add_string buf
         ("(define-fun getp"^ stri ^" ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ")) " ^path_s^ "\n" ^
          "  (if (= (next"^ strpre ^" h from) to)\n" ^
-         "      (path"^ stri ^" h from)\n" ^
+         "      " ^ path_str ^
          "       (getp"^ strnext ^" h from to)))\n")
     done ;
     B.add_string buf
@@ -1325,18 +1326,6 @@ struct
       end;
     (* Set2Elem *)
     if List.mem Expr.Set2Elem req_ops then z3_settoelems_def buf num_addr ;
-    (* Firstlock or Lastlock common definitions *)
-    if List.mem Expr.FstLocked req_ops ||
-       List.mem Expr.LstLocked req_ops ||
-       List.mem Expr.Lockset req_ops
-    then
-        z3_getlocked_def buf ;
-    (* Firstlock *)
-    if List.mem Expr.FstLocked req_ops then z3_firstlock_def buf num_addr ;
-    (* Lastlock *)
-    if List.mem Expr.LstLocked req_ops then z3_lastlock_def buf num_addr ;
-    (* Lockset *)
-    if List.mem Expr.Lockset req_ops then z3_lockset_def buf num_addr ;
     (* Path *)
     if List.mem Expr.Path req_sorts then
       begin
@@ -1350,6 +1339,18 @@ struct
         z3_equal_paths_at_def buf ;
         z3_is_append_def buf num_addr
       end;
+    (* Firstlock or Lastlock common definitions *)
+    if List.mem Expr.FstLocked req_ops ||
+       List.mem Expr.LstLocked req_ops ||
+       List.mem Expr.Lockset req_ops
+    then
+        z3_getlocked_def buf ;
+    (* Firstlock *)
+    if List.mem Expr.FstLocked req_ops then z3_firstlock_def buf num_addr ;
+    (* Lastlock *)
+    if List.mem Expr.LstLocked req_ops then z3_lastlock_def buf num_addr ;
+    (* Lockset *)
+    if List.mem Expr.Lockset req_ops then z3_lockset_def buf num_addr ;
     (* Getp *)
     if List.mem Expr.Getp req_ops ||
        List.mem Expr.Reachable req_ops then z3_getp_def buf num_addr ;
