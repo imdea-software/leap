@@ -2,6 +2,9 @@ open LeapLib
 
 module E = Expression
 module F = Formula
+module GSet = LeapGenericSet
+
+type node_vc_tbl_t = (int, PVD.node_id_t) Hashtbl.t
 
 
 type pvd_vc_t = {
@@ -9,6 +12,7 @@ type pvd_vc_t = {
   consecution : Tactics.vc_info list;
   acceptance : Tactics.vc_info list;
   fairness : Tactics.vc_info list;
+  node_vcs : node_vc_tbl_t;
 }
 
 type gen_t =
@@ -62,6 +66,14 @@ let consider_lines (opt:gen_t option) (sys:System.t) : E.PosSet.t =
   | Some set -> set
 
 
+let add_node_vc_tbl (tbl:node_vc_tbl_t)
+                    (n:PVD.node_id_t)
+                    (vcs:Tactics.vc_info list) : unit =
+  List.iter (fun vc ->
+    Hashtbl.add tbl (Tactics.get_original_vc_id vc) n
+  ) vcs
+  
+
 module type S =
   sig
     val gen_vcs : ?opt:gen_t option ->
@@ -82,7 +94,8 @@ module Make (C:Core.S) : S =
   struct
 
 
-    let gen_initiation ?(opt=None) (pvd:PVD.t) : Tactics.vc_info list =
+    let gen_initiation ?(opt=None)
+                       (pvd:PVD.t) : Tactics.vc_info list =
       if consider_condition opt PVD.Initiation then begin      
         let init_mu = F.disj_list (PVD.NodeIdSet.fold (fun n xs ->
                                     (PVD.node_mu pvd n) :: xs
@@ -92,7 +105,9 @@ module Make (C:Core.S) : S =
       end else []
 
 
-    let gen_consecution ?(opt=None) (pvd:PVD.t) : Tactics.vc_info list =
+    let gen_consecution ?(opt=None)
+                        (pvd:PVD.t)
+                        (node_vc_tbl:node_vc_tbl_t) : Tactics.vc_info list =
       if consider_condition opt PVD.Consecution then begin
         let free_voc = PVD.free_voc pvd in
         let nodes = PVD.nodes pvd in
@@ -168,6 +183,7 @@ module Make (C:Core.S) : S =
                                  Tactics.create_vc_info [] tid_constraints (F.And (full_mu_n, rho))
                                    goal full_voc fresh_k line
                                ) other_rho in
+              add_node_vc_tbl node_vc_tbl n (self_vcs @ others_vcs);
               self_vcs @ others_vcs @ vcs
             ) (consider_lines opt C.system) vcs
           end else vcs
@@ -176,7 +192,9 @@ module Make (C:Core.S) : S =
 
 
 
-    let gen_acceptance ?(opt=None) (pvd:PVD.t) : Tactics.vc_info list =
+    let gen_acceptance ?(opt=None)
+                        (pvd:PVD.t)
+                        (node_vc_tbl:node_vc_tbl_t) : Tactics.vc_info list =
       if consider_condition opt PVD.Acceptance then begin
         let free_voc = PVD.free_voc pvd in
         let acceptance_list = PVD.acceptance_list pvd in
@@ -243,6 +261,7 @@ module Make (C:Core.S) : S =
                                            Tactics.create_vc_info [] tid_constraints antecedent
                                              consequent voc fresh_k line ~prime_goal:false
                                          ) other_rho in
+                        add_node_vc_tbl node_vc_tbl n (self_vcs @ others_vcs);
                         self_vcs @ others_vcs @ vcs
                       ) (consider_lines opt C.system) xs
                     end
@@ -256,8 +275,10 @@ module Make (C:Core.S) : S =
                             let processed_mu_m = E.prime_modified [rho; beta] unprimed_mu_m in
                             let antecedent = F.conj_list [mu_n; rho; processed_mu_m; beta] in
                             let consequent = PVD.ranking_function antecedent accept (n,m,kind) in
-                            Tactics.create_vc_info [] Tactics.no_tid_constraint antecedent
-                              consequent voc t line ~prime_goal:false
+                            let vc = Tactics.create_vc_info [] Tactics.no_tid_constraint
+                                      antecedent consequent voc t line ~prime_goal:false in
+                            add_node_vc_tbl node_vc_tbl n [vc];
+                            vc
                           ) rho_list) @ ys
                         end else ys
                       ) [] ts ) @ xs
@@ -270,7 +291,9 @@ module Make (C:Core.S) : S =
 
 
 
-    let gen_fairness ?(opt=None) (pvd:PVD.t) : Tactics.vc_info list =
+    let gen_fairness ?(opt=None)
+                      (pvd:PVD.t)
+                      (node_vc_tbl:node_vc_tbl_t) : Tactics.vc_info list =
       if consider_condition opt PVD.Fairness then begin
         let edges = PVD.edge_list pvd in
         List.fold_left (fun vcs (n1,_,info) ->
@@ -303,6 +326,7 @@ module Make (C:Core.S) : S =
                             Tactics.create_vc_info [] Tactics.no_tid_constraint
                                 (F.And (mu_n1,rho)) next_mu voc th line
                           ) rho_list in
+                        add_node_vc_tbl node_vc_tbl n1 (enable_vc :: successor_vcs);
                         successor_vcs @ gen_vcs
 (*                        enable_vc :: successor_vcs @ gen_vcs *)
                      end else gen_vcs
@@ -315,11 +339,13 @@ module Make (C:Core.S) : S =
 
 
     let gen_vcs ?(opt=None) (pvd:PVD.t) : pvd_vc_t =
+      let node_vc_tbl = Hashtbl.create 8 in
       {
         initiation = gen_initiation pvd ~opt:opt;
-        consecution = gen_consecution pvd ~opt:opt;
-        acceptance = gen_acceptance pvd ~opt:opt;
-        fairness = gen_fairness pvd ~opt:opt;
+        consecution = gen_consecution pvd node_vc_tbl ~opt:opt;
+        acceptance = gen_acceptance pvd node_vc_tbl ~opt:opt;
+        fairness = gen_fairness pvd node_vc_tbl ~opt:opt;
+        node_vcs = node_vc_tbl;
       }
 
 
@@ -336,6 +362,8 @@ module Make (C:Core.S) : S =
 
     let generate_obligations (orig_vc:Tactics.vc_info)
                              (supp_opt:PVD.support_t option)
+                             (n:PVD.node_id_t option)
+                             (c:PVD.conditions_t)
         : Core.proof_obligation_t =
       let line = Tactics.get_line_from_info orig_vc in
       let (vc, plan) =
@@ -343,7 +371,7 @@ module Make (C:Core.S) : S =
         | None -> (orig_vc, Tactics.empty_proof_plan)
         | Some supp ->
             begin
-              let supp_tags = PVD.supp_fact supp line in
+              let supp_tags = PVD.supp_fact supp line n c in
               Debug.infoMsg (fun _ ->
                               "TAGS: " ^ (LeapLib.concat_map " , " Tag.tag_id supp_tags));
               let supp_formulas = C.read_tags_and_group_by_file supp_tags in
@@ -353,7 +381,7 @@ module Make (C:Core.S) : S =
                                 (List.map Expression.formula_to_str supp_formulas)));
               Debug.infoMsg (fun _ -> "ORIG_VC: " ^ (Tactics.vc_info_to_str orig_vc));
                 (Tactics.vc_info_add_support orig_vc supp_formulas,
-                 PVD.supp_plan supp line)
+                 PVD.supp_plan supp line n c)
             end in
       Debug.infoMsg (fun _ -> "VC INFO:\n " ^ (Tactics.vc_info_to_str vc));
       let obligations = Tactics.apply_tactics_from_proof_plan [vc] plan in
@@ -368,20 +396,27 @@ module Make (C:Core.S) : S =
               | None -> ()
               | Some s -> check_well_defined_supp s in
       let pvd_vcs = gen_vcs pvd ~opt:opt in
-      let vc_list = pvd_vcs.initiation @
-                    pvd_vcs.consecution @
-                    pvd_vcs.acceptance @
-                    pvd_vcs.fairness in
 (*
       let vc_count = ref 1 in
       let show_progress = not (LeapVerbose.is_verbose_enabled()) in
 *)
-      Progress.init (List.length vc_list);
-      List.fold_left (fun os vc ->
-        let new_obligation = generate_obligations vc supp in
-(*        if show_progress then (Progress.current !vc_count; incr vc_count); *)
-        new_obligation :: os
-      ) [] vc_list
+      Progress.init ((List.length pvd_vcs.initiation) +
+                     (List.length pvd_vcs.consecution) +
+                     (List.length pvd_vcs.acceptance) +
+                     (List.length pvd_vcs.fairness));
+      List.fold_left (fun os (c,xs) ->
+        List.fold_left (fun os vc ->
+          let n = try
+                    Some (Hashtbl.find pvd_vcs.node_vcs (Tactics.get_original_vc_id vc))
+                  with Not_found -> None in
+          let new_obligation = generate_obligations vc supp n c in
+(*          if show_progress then (Progress.current !vc_count; incr vc_count); *)
+          new_obligation :: os
+        ) os xs
+      ) [] [(PVD.Initiation, pvd_vcs.initiation);
+            (PVD.Consecution, pvd_vcs.consecution);
+            (PVD.Acceptance, pvd_vcs.acceptance);
+            (PVD.Fairness, pvd_vcs.fairness)]
 
 
     let solve_from_pvd ?(opt=None)

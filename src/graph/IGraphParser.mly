@@ -21,6 +21,7 @@ let get_line id = snd id
 %token OPEN_BRACK CLOSE_BRACK OPEN_BRACE CLOSE_BRACE OPEN_PAREN CLOSE_PAREN
 %token BAR
 %token SELF_PREMISE OTHERS_PREMISE
+%token COND_INITIATION COND_CONSECUTION COND_ACCEPTANCE COND_FAIRNESS
 %token SMP_UNION SMP_PRUNING SMP_DNF
 %token TACTICS FACTS
 %token EOF
@@ -50,6 +51,8 @@ let get_line id = snd id
 %type <case_t> case
 %type <case_t> seq_case
 %type <Premise.t list> premise
+%type <PVD.conditions_t> condition
+%type <PVD.conditions_t list> condition_list
 %type <Tactics.proof_plan> tactics
 %type <(Smp.cutoff_strategy_t option)> smp_strategy
 %type <(Tactics.support_split_tactic_t)> support_split_tactic
@@ -89,6 +92,12 @@ tactic_case :
     { (PVD.All, $1) }
   | NUMBER COLON tactics SEMICOLON
     { (PVD.Trans $1, $3) }
+  | NUMBER COLON condition COLON tactics SEMICOLON
+    { (PVD.TransSpec ($1,$3), $5) }
+  | NUMBER COLON OPEN_BRACK ident_list BAR condition_list CLOSE_BRACK
+      COLON tactics SEMICOLON
+    { (PVD.TransNodeSpec ($1,$4,$6), $9) }
+
 
 
 fact_list :
@@ -103,6 +112,8 @@ fact :
     { (PVD.All, $1) }
   | NUMBER COLON inv_list SEMICOLON
     { (PVD.Trans $1, $3) }
+  | NUMBER COLON condition COLON inv_list SEMICOLON
+    { (PVD.TransSpec ($1,$3), $5) }
 
 
 /* GRAPH PARSER */
@@ -249,6 +260,24 @@ premise :
     { [Premise.SelfConseq] }
   | OTHERS_PREMISE COLON
     { [Premise.OthersConseq] }
+
+    
+condition :
+  | COND_INITIATION
+    { PVD.Initiation }
+  | COND_CONSECUTION
+    { PVD.Consecution }
+  | COND_ACCEPTANCE
+    { PVD.Acceptance }
+  | COND_FAIRNESS
+    { PVD.Fairness }
+
+
+condition_list :
+  | condition
+    { [$1] }
+  | condition COMMA condition_list
+    { $1 :: $3 }
 
 
 tactics :

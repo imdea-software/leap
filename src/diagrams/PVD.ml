@@ -67,17 +67,25 @@ type acceptance_t = {good : AcceptanceSet.t;
 type next_table_t = (node_id_t, NodeIdSet.t) Hashtbl.t
 type tau_table_t = (node_id_t * int * E.V.t, NodeIdSet.t) Hashtbl.t
 
-type supp_line_t = All | Trans of int
+type supp_line_t =
+  | All
+  | Trans of int
+  | TransSpec of int * conditions_t
+  | TransNodeSpec of int * node_id_t list * conditions_t list
 
 type tactic_table_t =
   {
     global_tactics : Tactics.proof_plan option;
-    local_tactics  : (int, Tactics.proof_plan) Hashtbl.t;
+    local_gral_tactics : (int, Tactics.proof_plan) Hashtbl.t;
+    local_spec_tactics : (int * conditions_t, Tactics.proof_plan) Hashtbl.t;
+    local_node_tactics : (int * node_id_t * conditions_t, Tactics.proof_plan) Hashtbl.t;
   }
 type fact_table_t =
   {
     global_facts : Tag.f_tag list;
-    local_facts  : (int, Tag.f_tag list) Hashtbl.t;
+    local_gral_facts : (int, Tag.f_tag list) Hashtbl.t;
+    local_spec_facts : (int * conditions_t, Tag.f_tag list) Hashtbl.t;
+    local_node_facts : (int * node_id_t * conditions_t, Tag.f_tag list) Hashtbl.t;
   }
 type support_t =
   {
@@ -666,9 +674,13 @@ let free_voc (pvd:t) : E.ThreadSet.t =
 
 let new_support (ts:(supp_line_t * Tactics.proof_plan) list)
                 (fs:(supp_line_t * Tag.f_tag list) list) : support_t =
-  let plans = Hashtbl.create 10 in
+  let plans = Hashtbl.create 8 in
+  let spec_plans = Hashtbl.create 8 in
+  let node_plans = Hashtbl.create 8 in
   let gral_plan = ref None in
-  let facts = Hashtbl.create 10 in
+  let facts = Hashtbl.create 8 in
+  let spec_facts = Hashtbl.create 8 in
+  let node_facts = Hashtbl.create 8 in
   let gral_fact = ref [] in
 
   List.iter (fun (scope,plan) ->
@@ -686,6 +698,25 @@ let new_support (ts:(supp_line_t * Tactics.proof_plan) list)
                    raise(Malformed_PVD_support)
                  end else
                    Hashtbl.add plans i plan
+    | TransSpec (i,c) -> if Hashtbl.mem spec_plans (i,c) then begin
+                           Interface.Err.msg "Plans for transition already defined" $
+                             Printf.sprintf "Plans for transition %i and condition %s has \
+                                             already been defined before." i (cond_to_str c);
+                           raise(Malformed_PVD_support)
+                         end else
+                           Hashtbl.add spec_plans (i,c) plan
+    | TransNodeSpec (i,ns,cs) ->
+        List.iter (fun n ->
+          List.iter (fun c ->
+            if Hashtbl.mem node_plans (i,n,c) then begin
+              Interface.Err.msg "Plans for transition already defined" $
+              Printf.sprintf "Plans for transition %i, node %s and condition %s \
+                              has already been defined before." i n (cond_to_str c);
+              raise(Malformed_PVD_support)
+            end else
+              Hashtbl.add node_plans (i,n,c) plan
+          ) cs
+        ) ns
   ) ts;
   List.iter (fun (scope,tags) ->
     match scope with
@@ -702,28 +733,92 @@ let new_support (ts:(supp_line_t * Tactics.proof_plan) list)
                    raise(Malformed_PVD_support)
                  end else
                    Hashtbl.add facts i tags
+    | TransSpec (i,c) -> if Hashtbl.mem spec_facts (i,c) then begin
+                           Interface.Err.msg "Facts for transition already defined" $
+                             Printf.sprintf "Facts for transition %i and condition %s \
+                                             has already been defined before."
+                                              i (cond_to_str c);
+                           raise(Malformed_PVD_support)
+                         end else
+                           Hashtbl.add spec_facts (i,c) tags
+    | TransNodeSpec (i,ns,cs) ->
+        List.iter (fun n ->
+          List.iter (fun c ->
+            if Hashtbl.mem node_facts (i,n,c) then begin
+              Interface.Err.msg "Facts for transition already defined" $
+              Printf.sprintf "Facts for transition %i, node %s and condition %s \
+                              has already been defined before."
+                                i n (cond_to_str c);
+              raise(Malformed_PVD_support)
+            end else
+              Hashtbl.add node_facts (i,n,c) tags
+          ) cs
+        )ns
   ) fs;
   {
-    tactics = {global_tactics = !gral_plan; local_tactics = plans};
-    facts = {global_facts = !gral_fact; local_facts = facts};
+    tactics = {global_tactics = !gral_plan;
+               local_gral_tactics = plans;
+               local_spec_tactics = spec_plans;
+               local_node_tactics = node_plans};
+    facts = {global_facts = !gral_fact;
+             local_gral_facts = facts;
+             local_spec_facts = spec_facts;
+             local_node_facts = node_facts;};
   }
 
 
 let supp_tags (supp:support_t) : Tag.f_tag list =
-  (supp.facts.global_facts) @ (Hashtbl.fold (fun _ tags xs ->
-                              tags @ xs
-                            ) (supp.facts.local_facts) [])
+  (supp.facts.global_facts) @
+  (Hashtbl.fold (fun _ tags xs ->
+    tags @ xs
+  ) (supp.facts.local_gral_facts) []) @
+  (Hashtbl.fold (fun _ tags xs ->
+    tags @ xs
+  ) (supp.facts.local_spec_facts) [])
 
 
-let supp_fact (supp:support_t) (line:int) : Tag.f_tag list =
-  try
-    Hashtbl.find (supp.facts.local_facts) line
-  with Not_found -> supp.facts.global_facts
+let supp_fact (supp:support_t)
+              (line:int)
+              (n_opt:node_id_t option)
+              (c:conditions_t) : Tag.f_tag list =
+  let subsearch () =
+    try
+      Hashtbl.find (supp.facts.local_spec_facts) (line,c)
+    with Not_found ->
+      begin
+        try
+          Hashtbl.find (supp.facts.local_gral_facts) line
+        with Not_found -> supp.facts.global_facts
+      end in
+  match n_opt with
+  | Some n -> begin
+                try
+                  Hashtbl.find (supp.facts.local_node_facts) (line,n,c)
+                with Not_found -> subsearch()
+              end
+  | None -> subsearch()
 
 
-let supp_plan (supp:support_t) (line:int) : Tactics.proof_plan =
-  try
-    Hashtbl.find (supp.tactics.local_tactics) line
-  with Not_found -> match supp.tactics.global_tactics with
-                    | None -> Tactics.empty_proof_plan
-                    | Some plan -> plan
+
+let supp_plan (supp:support_t)
+              (line:int)
+              (n_opt:node_id_t option)
+              (c:conditions_t) : Tactics.proof_plan =
+  let subsearch () =
+    try
+      Hashtbl.find (supp.tactics.local_spec_tactics) (line,c)
+    with Not_found ->
+      begin
+        try
+          Hashtbl.find (supp.tactics.local_gral_tactics) line
+        with Not_found -> match supp.tactics.global_tactics with
+                          | None -> Tactics.empty_proof_plan
+                          | Some plan -> plan
+      end in
+  match n_opt with
+    | Some n -> begin
+                  try
+                    Hashtbl.find (supp.tactics.local_node_tactics) (line,n,c)
+                  with Not_found -> subsearch()
+                end
+    | None -> subsearch()

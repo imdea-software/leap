@@ -16,6 +16,10 @@ let almostany =['A'-'Z' 'a'-'z' '0'-'9' '_' ' ' '.' '/' '-' '(' ')' '\'' ',']
 rule norm = parse
   | 'S'                         { Global.last "S"                 ; SELF_PREMISE }
   | 'O'                         { Global.last "O"                 ; OTHERS_PREMISE }
+  | 'I'                         { Global.last "I"                 ; COND_INITIATION }
+  | 'C'                         { Global.last "C"                 ; COND_CONSECUTION }
+  | 'A'                         { Global.last "A"                 ; COND_ACCEPTANCE }
+  | 'F'                         { Global.last "F"                 ; COND_FAIRNESS }
   | "->"                        { Global.last "->"                ; SEQ_ARROW }
   | "=>"                        { Global.last "=>"                ; CONC_ARROW }
   | ','                         { Global.last ","                 ; COMMA }

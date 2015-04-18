@@ -2,6 +2,10 @@ Tactics :
   {union : split-goal
          | reduce2
          |
+         | simplify-pc } ;
+  33 : [n1,n2|C] : {union :
+         | reduce2
+         |
          | simplify-pc filter-strict } ;
 
 Facts :

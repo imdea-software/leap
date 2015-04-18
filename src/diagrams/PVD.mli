@@ -1,11 +1,15 @@
 type node_id_t = string
 type box_id_t = string
-type supp_line_t = All | Trans of int
 type edge_type_t = Any | Pres
 type trans_t = NoLabel | Label of (int * Expression.V.t) list
 type edge_info_t = (edge_type_t * trans_t)
 type accept_triple_t = (node_id_t * node_id_t * edge_type_t)
 type conditions_t = Initiation | Consecution | Acceptance | Fairness
+type supp_line_t =
+  | All
+  | Trans of int
+  | TransSpec of int * conditions_t
+  | TransNodeSpec of int * node_id_t list * conditions_t list
 
 module AcceptanceSet : Set.S with type elt = accept_triple_t
 
@@ -63,8 +67,8 @@ val new_support : (supp_line_t * Tactics.proof_plan) list ->
                   support_t
 
 val supp_tags : support_t -> Tag.f_tag list
-val supp_fact : support_t -> int -> Tag.f_tag list
-val supp_plan : support_t -> int -> Tactics.proof_plan
+val supp_fact : support_t -> int -> node_id_t option -> conditions_t -> Tag.f_tag list
+val supp_plan : support_t -> int -> node_id_t option -> conditions_t -> Tactics.proof_plan
 
 val to_str : t -> string
 val cond_to_str : conditions_t -> string

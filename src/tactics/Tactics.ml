@@ -4,11 +4,13 @@ module E = Expression
 module GenSet = LeapGenericSet
 module F = Formula
 
+type vc_id = int
+
 type polarity = Pos | Neg | Both
 
 type vc_extra_info_t =
   {
-    orig_vc_id : int;
+    orig_vc_id : vc_id;
     prime_goal : bool;
   }
 
@@ -20,7 +22,7 @@ type tid_constraints_t =
     ineq : (E.tid * E.tid) list;
   }
 
-type vc_info = { 
+type vc_info = {
   original_support : support_t ; (* BOXED formulas, tids must be renamed *)
   tid_constraint   : tid_constraints_t ;
   
