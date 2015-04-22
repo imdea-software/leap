@@ -57,11 +57,11 @@ assume
                               begin
 :search_body[
                                 prev := head;
+:search_prev_in_region[
 :search_prev_is_head[
                                 curr := prev->arr[maxLevel];
 :search_curr_in_region[
                                 i := maxLevel;
-:search_prev_in_region[
 :search_prev_is_head]
 :search_prev_next_region[
 :search_lookup_loop[
@@ -168,10 +168,10 @@ assume
                                   valueWasIn := (curr->data = e); // skip;
                                 endwhile
 :insert_lookup_loop_plus_init]
-:insert_lookup_loop]
 :insert_update_all_set[
 :insert_final_if_condition
                                 if (~ (valueWasIn)) then
+:insert_lookup_loop]
 :insert_update_all_order[
                                   newCell := mallocSL(e,lvl);
 :insert_newCell_created[

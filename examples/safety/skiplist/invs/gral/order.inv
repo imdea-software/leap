@@ -30,7 +30,7 @@ invariant [skiplist_order] :
 
    @search_test_lookup_loop. ->
       (search::i >= 0 \/
-       (rd(heap, search::curr).data > search::e \/
+      (rd(heap, search::curr).data > search::e \/
         rd(heap, search::curr).data = search::e))
 
 

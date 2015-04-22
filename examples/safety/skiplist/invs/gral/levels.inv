@@ -3,7 +3,7 @@ vars:
 invariant [skiplist_levels] :
 
 
-///////////  Insert  /////////////
+///////////  Search  /////////////
 
    @search_lookup_loop. ->
       (search::i <= maxLevel)
