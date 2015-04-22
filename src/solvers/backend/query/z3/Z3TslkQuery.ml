@@ -165,13 +165,17 @@ let global_cell_unlock_def_str : string =
    "  (mkcell (data c) (next c) (store (lock c) l NoThread)))\n")
 
 
-let global_epsilon_def_str : string =
+let global_epsilon_def_str (use_q:bool) : string =
   ("(declare-const epsilonat PathAt)\n" ^
    "(assert (= epsilonat ((as const PathAt) null)))\n" ^
-   "(declare-const epsilonwhere PathWhere)\n" ^
-   "(assert (= epsilonwhere ((as const PathWhere) rr_0)))\n" ^
+   "(declare-const epsilonwhere PathWhere)\n") ^
+   (if use_q then
+      "(assert (= epsilonwhere ((as const PathWhere) rr_0)))\n"
+    else
+      "(assert (= epsilonwhere ((as const PathWhere) 0)))\n"
+   ) ^
    "(declare-const epsilon " ^path_s^ ")\n" ^
-   "(assert (= epsilon (mkpath 0 epsilonat epsilonwhere empty)))\n")
+   "(assert (= epsilon (mkpath 0 epsilonat epsilonwhere empty)))\n"
 
 
 let global_path2set_def_str : string =
@@ -211,7 +215,7 @@ let global_update_heap_def_str : string =
 let global_reach_def_str : string =
   ( "(define-fun reach ((h " ^heap_s^ ") (from " ^addr_s^ ") " ^
     "(to " ^addr_s^ ") (l " ^level_s^ ") (p " ^path_s^ ")) " ^bool_s^ "\n" ^
-    "  (and (eqpath (getp_at h from to l) p) (not (= p epsilon))))\n")
+    "  (and (= (getp_at h from to l) p) (not (= p epsilon))))\n")
 
 
 let global_path_length_def_str : string =
@@ -884,7 +888,7 @@ module Make (K : Level.S) : TSLK_QUERY =
 
     let z3_epsilon_def (buf:B.t) : unit =
       GM.sm_decl_const sort_map "epsilon" path_s;
-      B.add_string buf global_epsilon_def_str
+      B.add_string buf (global_epsilon_def_str !use_quantifiers)
 
 
     let z3_singletonpath_def (buf:B.t) : unit =
@@ -1749,7 +1753,7 @@ module Make (K : Level.S) : TSLK_QUERY =
       let str_t1 = (term_to_str t1) in
       let str_t2 = (term_to_str t2) in
       match (t1,t2) with
-        | (Expr.PathT _, _) -> "(eqpath " ^str_t1^ " " ^str_t2^ ")"
+(*        | (Expr.PathT _, _) -> "(eqpath " ^str_t1^ " " ^str_t2^ ")" *)
         | (Expr.SetElemT se, Expr.SetElemT (Expr.SetToElems(s,m)))
         | (Expr.SetElemT (Expr.SetToElems(s,m)), Expr.SetElemT se) ->
             if !use_quantifiers then

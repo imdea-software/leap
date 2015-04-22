@@ -2211,6 +2211,7 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
       let es_var = gen_if_not_var (SetElemT es) SetElem in
       let p = gen_fresh_path_var info in
       let q = gen_fresh_path_var info in
+      let x = gen_fresh_set_var info in
       let r = gen_fresh_set_var info in
       let u = gen_fresh_set_var info in
       let zero = gen_if_not_var (IntT (IntVal 0)) Int in
@@ -2223,36 +2224,40 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
       let l1 = gen_fresh_int_var info in
       let l2 = gen_fresh_int_var info in
       let phi_unordered = norm_literal info (F.NegAtom(OrderList
-                            (VarMem m_var,VarAddr a1_var,VarAddr a2_var))) in
+                            (VarMem m_var,VarAddr a1_var,VarAddr null))) in
       let phi_diff = norm_literal info (F.Atom(InEq(SetT (VarSet s_var), SetT r))) in
 (*      let phi_a_in_s = norm_literal info (Atom(In(a,VarSet s_var))) in *)
       let phi_not_elems = norm_literal info (F.Atom(InEq(SetElemT (VarSetElem es_var),
                                                          SetElemT(SetToElems(VarSet s_var,VarMem m_var))))) in
-      let phi_not_subset = norm_literal info (F.NegAtom(SubsetEq(r,u))) in
+      let phi_not_subset = norm_literal info (F.NegAtom(SubsetEq(u,r))) in
         F.disj_list
           [phi_unordered;
            phi_not_elems;
-           F.conj_list [eq_path p (GetPath(VarMem m_var,VarAddr a1_var,VarAddr a2_var,VarInt zero));
+           F.conj_list [eq_path p (GetPath(VarMem m_var,VarAddr a1_var,VarAddr null,VarInt zero));
                         eq_set r (PathToSet(p));
                         phi_diff];
-           F.Literal(F.Atom(Less(VarInt i_var, VarInt  zero)));
+           F.Literal(F.Atom(Less(VarInt i_var, VarInt zero)));
            F.conj_list [ineq_int (VarInt i_var) (VarInt zero);
                         F.Literal(F.Atom(LessEq(VarInt zero,l2)));
                         F.Literal(F.Atom(LessEq(l2,l1)));
+                        F.Literal(F.Atom(LessEq(l1, (VarInt i_var))));
                         eq_cell c (CellAt(VarMem m_var,VarAddr a2_var));
                         eq_cell c (MkCell(e,aa,tt,l1));
-                        F.Literal(F.Atom(LessEq(l1, (VarInt i_var))));
                         eq_addr a (AddrArrRd(aa,l2));
                         ineq_addr a (VarAddr null)];
            F.conj_list [ineq_int (VarInt i_var) (VarInt zero);
                         F.Literal(F.Atom(LessEq(VarInt zero,l1)));
                         F.Literal(F.Atom(Less(l1,VarInt i_var)));
                         eq_int (l2) (IntAdd(l1,IntVal 1));
-                        eq_path (p) (GetPath(VarMem m_var,VarAddr a1_var,VarAddr a2_var,l1));
-                        eq_path (q) (GetPath(VarMem m_var,VarAddr a1_var,VarAddr a2_var,l2));
+                        eq_path (p) (GetPath(VarMem m_var,VarAddr a1_var,VarAddr null,l1));
+                        eq_path (q) (GetPath(VarMem m_var,VarAddr a1_var,VarAddr null,l2));
                         eq_set (r) (PathToSet p);
                         eq_set (u) (PathToSet q);
-                        phi_not_subset]
+                        phi_not_subset];
+           F.conj_list [eq_set (x) (AddrToSet(VarMem m_var,VarAddr a1_var,l1));
+                        F.atom_to_formula (LessEq(VarInt zero,l1));
+                        F.atom_to_formula (LessEq(l1,VarInt i_var));
+                        F.Literal (F.NegAtom (In (VarAddr a2_var, x)))]
           ]
   | F.NegAtom a -> F.Literal(F.NegAtom (norm_atom a))
 

@@ -52,7 +52,7 @@ let opts =
     ("-hp",
         Arg.Set hide_pres,
         "hides preservation relation in generated VCs");
-    ("--show_file_info",
+    ("-sf",
         Arg.Set Debug._debug_show_tmpfile_info_,
         "shows path of temporary files");
     ("--debug",

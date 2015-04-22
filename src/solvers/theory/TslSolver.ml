@@ -33,7 +33,9 @@ let tslk_sort_map = ref (GM.new_sort_map())
 let tslk_model = ref (GM.new_model())
 
 
-let arr_table = Hashtbl.create 10
+let arr_table = Hashtbl.create 8
+(* Table containing arrangement satisfiability *)
+let alpha_sat_table : (SL.conjunctive_formula, Sat.t) Hashtbl.t = Hashtbl.create 8
 
 
 let this_call_tbl : DP.call_tbl_t = DP.new_call_tbl()
@@ -60,10 +62,9 @@ module TranslateTsl (SLK : TSLKExpression.S) =
     (* The tables containing addresses and thread identifiers variables
        representing arrays *)
     let addrarr_tbl : (SL.addrarr, SLK.addr list) Hashtbl.t =
-      Hashtbl.create 10
+      Hashtbl.create 8
     let tidarr_tbl : (SL.tidarr, SLK.tid list) Hashtbl.t =
-      Hashtbl.create 10
-
+      Hashtbl.create 8
 
     let tid_tsl_to_tslk (t:SL.tid) : SLK.tid =
       SLKInterf.tid_to_tslk_tid(SLInterf.tid_to_expr_tid t)
@@ -355,12 +356,12 @@ module TranslateTsl (SLK : TSLKExpression.S) =
           let es' = setelem_tsl_to_tslk es in
           let xs = ref
                     [F.atom_to_formula(
-                      SLK.OrderList(m',a1',a2'));
+                      SLK.OrderList(m',a1',SLK.Null));
                      SLK.eq_setelem es' (SLK.SetToElems(s',m'));
                      SLK.eq_set
                       (s')
 (*                      (SLK.AddrToSet(m',a1',SLK.LevelVal 0))] in *)
-                      (SLK.PathToSet(SLK.GetPathAt(m',a1',a2',SLK.LevelVal 0)))] in
+                      (SLK.PathToSet(SLK.GetPathAt(m',a1',SLK.Null,SLK.LevelVal 0)))] in
 (*
                         (SLK.Setdiff (SLK.AddrToSet(m',a1',SLK.LevelVal 0),
                                           SLK.AddrToSet(m',a2',SLK.LevelVal 0)))] in
@@ -383,8 +384,8 @@ module TranslateTsl (SLK : TSLKExpression.S) =
                        (SLK.AddrToSet(m',a1',SLK.LevelSucc n'))
                        (SLK.AddrToSet(m',a1',n'))) :: (!xs)
 *)
-                       (SLK.PathToSet(SLK.GetPathAt(m',a1',a2',SLK.LevelSucc n')))
-                       (SLK.PathToSet(SLK.GetPathAt(m',a1',a2',n')))) :: (!xs)
+                       (SLK.PathToSet(SLK.GetPathAt(m',a1',SLK.Null,SLK.LevelSucc n')))
+                       (SLK.PathToSet(SLK.GetPathAt(m',a1',SLK.Null,n')))) :: (!xs)
 (*
                        (SLK.Setdiff (SLK.AddrToSet(m',a1',SLK.LevelSucc n'), SLK.AddrToSet(m',a2',SLK.LevelSucc n')))
                        (SLK.Setdiff (SLK.AddrToSet(m',a1',n'), SLK.AddrToSet(m',a2',n')))) :: (!xs)
@@ -406,12 +407,12 @@ module TranslateTsl (SLK : TSLKExpression.S) =
 
           let xs = ref
                     [F.negatom_to_formula(
-                      SLK.OrderList(m',a1',a2'));
+                      SLK.OrderList(m',a1',SLK.Null));
                      SLK.ineq_setelem es' (SLK.SetToElems(s',m'));
                      SLK.ineq_set
                       (s')
 (*                      (SLK.AddrToSet(m',a1',SLK.LevelVal 0))] in *)
-                      (SLK.PathToSet(SLK.GetPathAt(m',a1',a2',SLK.LevelVal 0)))] in
+                      (SLK.PathToSet(SLK.GetPathAt(m',a1',SLK.Null,SLK.LevelVal 0)))] in
 (*                      (SLK.Setdiff (SLK.AddrToSet(m',a1',SLK.LevelVal 0), SLK.AddrToSet(m',a2',SLK.LevelVal 0)))] in *)
           for n = 0 to (SLK.k - 1) do
             let n' = SLK.LevelVal n in
@@ -432,8 +433,8 @@ module TranslateTsl (SLK : TSLKExpression.S) =
                         (SLK.AddrToSet(m',a1',n')))) :: (!xs)
 *)
 
-                        (SLK.PathToSet(SLK.GetPathAt(m',a1',a2',SLK.LevelSucc n')))
-                        (SLK.PathToSet(SLK.GetPathAt(m',a1',a2',n'))))) :: (!xs)
+                        (SLK.PathToSet(SLK.GetPathAt(m',a1',SLK.Null,SLK.LevelSucc n')))
+                        (SLK.PathToSet(SLK.GetPathAt(m',a1',SLK.Null,n'))))) :: (!xs)
 
 (*
                         (SLK.Setdiff (SLK.AddrToSet(m',a1',SLK.LevelSucc n'), SLK.AddrToSet(m',a2',SLK.LevelSucc n')))
@@ -832,14 +833,32 @@ let update_arrangement (alpha:SL.integer list list) (rel_set:SL.integer GenSet.t
 let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) : Sat.t =
   Log.print_ocaml "entering TSLSolver dnf_sat";
   Log.print "TSLSolver dnf_sat conjunctive formula" (SL.conjunctive_formula_to_str cf);
-  let arrg_sat_table : (SL.integer list list, Sat.t) Hashtbl.t = Hashtbl.create 10 in
+  let arrg_sat_table : (SL.integer list list, Sat.t) Hashtbl.t = Hashtbl.create 8 in
 
   let check_pa (cf:SL.conjunctive_formula) : Sat.t =
-    match cf with
-    | F.TrueConj  -> (verbl _LONG_INFO "**** check_pa: true\n"; Sat.Sat)
-    | F.FalseConj -> (verbl _LONG_INFO "**** check_pa: false\n"; Sat.Unsat)
-    | F.Conj _    -> (try_sat_with_presburger_arithmetic
-                        (F.conjunctive_to_formula cf)) in
+(*    print_endline ("PA: " ^ (SL.conjunctive_formula_to_str cf)); *)
+    try
+      Hashtbl.find alpha_sat_table cf
+    with Not_found ->
+      begin
+        match cf with
+        | F.TrueConj  -> begin
+                           verbl _LONG_INFO "**** check_pa: true\n";
+                           Hashtbl.add alpha_sat_table cf Sat.Sat;
+                           Sat.Sat
+                         end
+        | F.FalseConj -> begin
+                           verbl _LONG_INFO "**** check_pa: false\n";
+                           Hashtbl.add alpha_sat_table cf Sat.Unsat;
+                           Sat.Unsat
+                         end
+        | F.Conj _    -> begin
+                           let res = try_sat_with_presburger_arithmetic
+                                      (F.conjunctive_to_formula cf) in
+                           Hashtbl.add alpha_sat_table cf res;
+                           res
+                         end
+      end in
 
 
   let check_tslk (k:int)
@@ -880,6 +899,11 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) :
 
     Pervasives.flush (Pervasives.stdout);
     let alpha_phi = alpha_to_conjunctive_formula alpha in
+    (*
+    print_endline ("== PA   : " ^ (SL.conjunctive_formula_to_str pa));
+    print_endline ("== PANC : " ^ (SL.conjunctive_formula_to_str panc));
+    print_endline ("== ALPHA: " ^ (SL.conjunctive_formula_to_str alpha_phi));
+    *)
     let pa_sat = check_pa (F.combine_conjunctive (F.combine_conjunctive pa panc) alpha_phi) in
     (* TODO: Some arrangements are invalid, as I am not considering literals of the
              form "l2 = l1 + 1" to enforce that l2 should be in the immediately consecutive
@@ -894,6 +918,7 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) :
       
       let alpha_pairs = update_arrangement alpha rel_set in
       let (panc_r, nc_r, alpha_pairs_r) = propagate_levels alpha_pairs panc nc in
+
 
       let alpha_pairs_str =
         String.concat ";" (List.map (fun (xs,mi) ->
@@ -951,6 +976,7 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) :
 
       try
         let res = Hashtbl.find arrg_sat_table alpha_r in
+(*        print_endline ("RA: " ^ (SL.conjunctive_formula_to_str (alpha_to_conjunctive_formula alpha_r))); *)
         if (LeapVerbose.is_verbose_level_enabled(LeapVerbose._SHORT_INFO)) then
           print_string (if Sat.is_sat res then "$" else "#");
         res
@@ -1098,6 +1124,9 @@ let model_to_str () : string =
 
 
 let print_model () : unit =
+  if !comp_model && (not (GM.is_empty_model !tslk_model)) then
+    print_endline (model_to_str())
+  else
     ()
 
 

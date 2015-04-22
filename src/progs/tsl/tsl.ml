@@ -18,12 +18,14 @@ let _ =
     let phi = Parser.open_and_parse !TslArgs.phiFile
         (Eparser.single_formula Elexer.norm) in
       
-
+    TslSolver.compute_model(true);
     let tsl_phi = TSLInterface.formula_to_tsl_formula phi in
-    let sat = TslSolver.check_sat 1 (!TslArgs.coType) false tsl_phi in                                     
-    if Sat.is_sat sat then
+    let sat = TslSolver.check_sat 1 (!TslArgs.coType) false tsl_phi in
+
+    if Sat.is_sat sat then begin
+      TslSolver.print_model();
       print_endline "SAT"
-    else
+    end else
       print_endline "UNSAT";
     ()
   with
