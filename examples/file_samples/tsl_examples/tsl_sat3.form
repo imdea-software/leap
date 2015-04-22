@@ -1,0 +1,11 @@
+vars:
+
+addr head
+addr tail
+mem heap
+addrSet r
+elemSet elems
+
+formula:
+
+~ skiplist(heap, r, 2, head, tail, elems)
