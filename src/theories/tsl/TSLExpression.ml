@@ -2233,8 +2233,12 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
         F.disj_list
           [phi_unordered;
            phi_not_elems;
+(*
            F.conj_list [eq_path p (GetPath(VarMem m_var,VarAddr a1_var,VarAddr null,VarInt zero));
                         eq_set r (PathToSet(p));
+                        phi_diff];
+*)
+           F.conj_list [eq_set r (AddrToSet(VarMem m_var, VarAddr a1_var, VarInt zero));
                         phi_diff];
            F.Literal(F.Atom(Less(VarInt i_var, VarInt zero)));
            F.conj_list [ineq_int (VarInt i_var) (VarInt zero);

@@ -6135,6 +6135,10 @@ and opposite_literal (l1:literal) (l2:literal) : bool =
   match l1, l2 with
     F.Atom(a1), F.NegAtom(a2) -> identical_atom a1 a2
   | F.NegAtom(a1), F.Atom(a2) -> identical_atom a1 a2
+  | F.Atom(Eq(x)), F.Atom(InEq(y))
+  | F.Atom(InEq(x)), F.Atom(Eq(y))
+  | F.NegAtom(Eq(x)), F.NegAtom(InEq(y))
+  | F.NegAtom(InEq(x)), F.NegAtom(Eq(y)) -> identical_eq x y
   | _,_ -> false
 and identical_literal (l1:literal) (l2: literal) : bool =
   match l1, l2 with
