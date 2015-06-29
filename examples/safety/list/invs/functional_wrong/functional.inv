@@ -7,24 +7,21 @@ invariant [list_functional] :
 
 
    @sch_after_lookup(j). ->
-      (rd(heap, search::curr(j)).data = search::e(j) -> search::e(j) inElem elements)
+			(rd(heap, search::curr(j)).data = search::e(j) -> ein (search::e(j), elements))
 
 /\ @sch_after_lookup(j). ->
-      (rd(heap, search::curr(j)).data != search::e(j) -> (~ search::e(j) inElem elements))
+			(rd(heap, search::curr(j)).data != search::e(j) -> (~ ein (search::e(j), elements)))
 
 
 /\ ((@sch_result_set(j).) /\ .search::result(j).) ->
-      search::e(j) inElem historyIns
+			ein (search::e(j), historyIns)
 
 /\ (@sch_result_set(j). /\ (~.search::result(j).)) ->
-      ((~ search::e(j) inElem historyIns) \/ search::e(j) inElem historyRem)
+			((~ ein (search::e(j), historyIns)) \/ ein (search::e(j), historyRem))
 
 
-/\ elements subseteqElem historyIns
+/\ esubseteq (elements, historyIns)
 
-/\ historyIns subseteqElem (UnionElem (elements, historyRem))
+/\ esubseteq (historyIns, (eunion (elements, historyRem)))
 
-
-
-/////////////////////////////////////
 

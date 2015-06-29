@@ -8,9 +8,9 @@ global
   ghost elemSet historyRem
 
 assume
-  region = {head} Union {tail} Union {null} /\
-  elements = UnionElem (SingleElem (rd(heap,head).data),
-                        SingleElem (rd(heap,tail).data)) /\
+	region = union (union ({head}, {tail}), {null}) /\
+	elements = eunion (esingle (rd(heap,head).data),
+										 esingle (rd(heap,tail).data)) /\
   // or orderlist (heap, head, null)
   rd(heap, head).data = lowestElem /\
   rd(heap, tail).data = highestElem /\
@@ -20,7 +20,7 @@ assume
   head->next = tail /\
   tail->next = null /\
   historyIns = elements /\
-  historyRem = EmptySetElem
+	historyRem = eempty
 
 
 // ----- PROGRAM BEGINS --------------------------------------
@@ -164,9 +164,9 @@ assume
 :ins_diff[
                                   prev->next := aux
                                     $
-                                      elements := UnionElem (elements, SingleElem(e));
-                                      region := region Union {aux};
-                                      historyIns := UnionElem (historyIns, SingleElem(e));
+																			elements := eunion (elements, esingle(e));
+																			region := union (region, {aux});
+																			historyIns := eunion (historyIns, esingle (e));
                                     $
 :ins_follows]
 :after_malloc]
@@ -236,9 +236,9 @@ assume
 :rem_if_two
                                   prev->next := aux
                                     $
-                                      elements := SetDiffElem (elements, SingleElem(e));
-                                      region := region SetDiff {curr};
-                                      historyRem := UnionElem (historyRem, SingleElem(e));
+																			elements := ediff (elements, esingle(e));
+																			region := diff (region, {curr});
+																			historyRem := eunion (historyRem, esingle(e));
                                     $
 :rem_follows]
 :rem_curr_def]

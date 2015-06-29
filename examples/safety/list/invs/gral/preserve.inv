@@ -3,7 +3,7 @@ vars:
 
 invariant [preserve] :
 
-   null in region
+	 in (null, region)
 
 #region:
    region = addr2set(heap, head)
@@ -19,7 +19,7 @@ invariant [preserve] :
    head != tail
 
 #elements:
-   elements = set2elem(heap, SetDiff(region, {null}))
+	 elements = set2elem(heap, diff(region, {null}))
 
    rd(heap, head).data = lowestElem
 /\ rd(heap, tail).data = highestElem
@@ -27,4 +27,4 @@ invariant [preserve] :
 #ordered:
    orderlist (heap, head, tail)
 
-   tail in region
+	 in (tail, region)
