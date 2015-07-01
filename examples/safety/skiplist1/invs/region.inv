@@ -3,94 +3,88 @@ vars:
 invariant [skiplist_region] :
 
    @insert_i_set_zero. ->
-        (~ insert::newCell in region)
-
+        (~ in (insert::newCell, region))
 
 /\ @insert_prev_in_region. ->
-        (insert::prev in region)
+        in (insert::prev, region)
 
 /\ @insert_curr_in_region.->
-        (insert::curr in region)
+        in (insert::curr, region)
 
 /\ (@insert_prev_next_region_one. \/
     @insert_prev_next_region_two. \/
     @insert_prev_next_region_three.) ->
-        (rd(heap, insert::prev).nextat[insert::i] in region)
-
-
+        in (rd(heap, insert::prev).nextat[insert::i], region)
 
 /\ @insert_newCell_disconnected. ->
-       ((insert::i <= 0 /\ ~.insert::all_processed.) -> (~ (insert::newCell in addr2set(heap, head, 0))))
+       ((insert::i <= 0 /\ ~.insert::all_processed.) -> (~ in (insert::newCell, addr2set(heap, head, 0))))
 
 
 /\ (@insert_newCell_connected. \/ @insert_increase_i.) ->
-        ((insert::i < 0 /\ ~.insert::all_processed.) -> (~ (insert::newCell in addr2set(heap, head, 0))))
+        ((insert::i < 0 /\ ~.insert::all_processed.) -> (~ in (insert::newCell, addr2set(heap, head, 0))))
 
 
 /\ @insert_newCell_connected. ->
-      (insert::newCell in addr2set(heap, head, insert::i))
+      in (insert::newCell, addr2set(heap, head, insert::i))
 
 
 /\ @insert_update_all_set. ->
-      (insert::update[0] in addr2set(heap, head, 0))
+      in (insert::update[0], addr2set(heap, head, 0))
 
 
 /\ @insert_update_all_set. ->
-      (insert::update[0] in region)
+      in (insert::update[0], region)
 
 
 /\ @insert_update_all_set. ->
-      (rd(heap,insert::update[0]).nextat[0] in addr2set(heap,head,0))
+      in (rd(heap,insert::update[0]).nextat[0], addr2set(heap,head,0))
 
 
 
 /\ @insert_final_loop. ->
-      (0 < insert::i -> (insert::newCell in addr2set(heap, head, 0)))
+      (0 < insert::i -> in (insert::newCell, addr2set(heap, head, 0)))
 
 
 /\ @insert_lookup_loop. ->
-       (insert::i < 0 -> insert::update[0] in region)
+       (insert::i < 0 -> in (insert::update[0], region))
 
 
 /\ @insert_update_set. ->
       insert::update[insert::i] = insert::prev
 
 
-
-
 ///////////////////
 
 
 /\ @remove_section. ->
-      (remove::update[0] in addr2set(heap, head, 0))
+      in (remove::update[0], addr2set(heap, head, 0))
 
 /\ @remove_final_while_begins. ->
-      ((remove::i >= 0 /\ ~.remove::all_processed.) -> remove::curr in region)
+      ((remove::i >= 0 /\ ~.remove::all_processed.) -> in (remove::curr, region))
 
 
 /\ (@remove_prev_next_region_one. \/
     @remove_prev_eq_curr. \/
     @remove_lookup_i_decreases.) ->
-      (rd(heap, remove::prev).nextat[remove::i] in region)
+      in (rd(heap, remove::prev).nextat[remove::i], region)
 
 
 /\ @remove_prev_in_region. ->
-      remove::prev in region
+      in (remove::prev, region)
 
 
 /\ @remove_curr_in_region. ->
-      remove::curr in region
+      in (remove::curr, region)
 
 
 
 /\ (@remove_set_valueWasIn. \/ @remove_final_conditional.) ->
-       (0 <= remove::removeFrom -> remove::update[0] in addr2set(heap, head, 0))
+       (0 <= remove::removeFrom -> in (remove::update[0], addr2set(heap, head, 0)))
 
 /\ @remove_final_while_begins. ->
-      ((remove::i >= 0 /\ ~.remove::all_processed.) -> remove::curr in region)
+      ((remove::i >= 0 /\ ~.remove::all_processed.) -> in (remove::curr, region))
 
 /\ @remove_newCell_connected. ->
-      ((remove::i > 0 /\ ~.remove::all_processed.)-> remove::curr in region)
+      ((remove::i > 0 /\ ~.remove::all_processed.)-> in (remove::curr, region))
 
 
-//////////////////////////

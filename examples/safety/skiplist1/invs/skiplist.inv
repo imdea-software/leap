@@ -13,11 +13,5 @@ invariant [skiplist_prop] :
 /\ rd(heap, head).data = lowestElem
 /\ rd(heap, tail).data = highestElem
 
-
-/\ tail in addr2set(heap, head, 0)
-
-
-
-/////////////////////////////////////////////////
-
+/\ in (tail, addr2set(heap, head, 0))
 

@@ -6,7 +6,7 @@ global
 //  ghost elemSet elements
 
 assume
-  region = {head} Union {tail} Union {null} /\
+  region = union (union ({head}, {tail}), {null}) /\
 //  skiplist(heap, region, 0, head, tail) /\
   orderlist (heap, head, tail) /\
   region = addr2set (heap, head, 0) /\
@@ -15,10 +15,10 @@ assume
   tail->nextat[2] = null /\
   tail->nextat[3] = null /\
   tail->nextat[4] = null /\
-  (addr2set(heap, head, 4)) subseteq (addr2set(heap, head, 3)) /\
-  (addr2set(heap, head, 3)) subseteq (addr2set(heap, head, 2)) /\
-  (addr2set(heap, head, 2)) subseteq (addr2set(heap, head, 1)) /\
-  (addr2set(heap, head, 1)) subseteq (addr2set(heap, head, 0)) /\
+  subseteq (addr2set(heap, head, 4), addr2set(heap, head, 3)) /\
+  subseteq (addr2set(heap, head, 3), addr2set(heap, head, 2)) /\
+  subseteq (addr2set(heap, head, 2), addr2set(heap, head, 1)) /\
+  subseteq (addr2set(heap, head, 1), addr2set(heap, head, 0)) /\
 
   head->nextat[0] = tail /\
   head->nextat[1] = tail /\
@@ -158,7 +158,7 @@ assume
 :insert_newCell_next_connected
                                     update[i]->nextat[i] := newCell
                                       $ if (i=0) then
-                                          region := region Union {newCell};
+                                          region := union(region, {newCell});
                                         endif
                                       $
 :insert_newCell_disconnected]
@@ -248,7 +248,7 @@ assume
 :remove_not_all_processed[
                                     update[i]->nextat[i] := curr->nextat[i]
                                     $ if (i=0) then
-                                        region := region SetDiff {curr};
+                                        region := diff (region, {curr});
                                       endif
                                     $
 :remove_final_while_begins]
