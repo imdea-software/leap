@@ -4,11 +4,9 @@ tid j
 
 invariant [queuePreserve] :
 
-// in (null, region)
    in (tail, region)
 /\ tail != null
 /\ head != null
 /\ region = addr2set(heap, head)
-/\ @next_follows_first(j). -> in (tail, addr2set(heap, head))
+/\ in (tail, addr2set(heap, head))
 /\ in (null, region)
-

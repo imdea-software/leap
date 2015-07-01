@@ -12,8 +12,10 @@ invariant [queueReach] :
 #dequeue_tail_reach_by_last:
    @dequeue_last_was_tail(j). -> in (tail, addr2set(heap, dequeue::last(j)))
 
+#dequeue_head_reach_by_first:
    @dequeue_first_was_head(j). -> in (head, addr2set(heap, dequeue::first(j)))
-/\ @dequeue_last_was_tail(j). -> in (dequeue::last(j), addr2set(heap, dequeue::first(j)))
+
+   @dequeue_last_was_tail(j). -> in (dequeue::last(j), addr2set(heap, dequeue::first(j)))
 
 #dequeue_last_reach_by_first:
    @value_assigned(j). -> in (dequeue::last(j), addr2set(heap, dequeue::first(j)))
