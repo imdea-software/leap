@@ -6,8 +6,8 @@ tid j
 invariant [queueRegion] :
 
 
-   (@n_disconnected(j). \/ @enqueue_next_not_null(j).) -> ~(enqueue::n(j) in region)
-/\ (@comparison_done(j). /\ ~ .enqueue::comparison(j).) -> ~enqueue::n(j) in region
+   (@n_disconnected(j). \/ @enqueue_next_not_null(j).) -> ~ in (enqueue::n(j), region)
+/\ (@comparison_done(j). /\ ~ .enqueue::comparison(j).) -> ~ in (enqueue::n(j), region)
 
 
 

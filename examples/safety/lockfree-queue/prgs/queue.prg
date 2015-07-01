@@ -8,12 +8,12 @@ global
   ghost elemSet dequeueSet
 
 assume
-  region = {head} Union {null} /\
+  region = union ({head}, {null}) /\
   head = tail /\
   head != null /\
   head->next = null /\
-  enqueuSet = EmptySetElem /\
-  dequeueSet = EmptySetElem
+  enqueuSet = eempty /\
+  dequeueSet = eempty
 
 
 // ----- PROGRAM BEGINS --------------------------------------
@@ -69,8 +69,8 @@ assume
                                         endif
                                       }
                                       $ if (last->next = nextptr) then
-                                          region := region Union {n};
-                                          enqueuSet := UnionElem (enqueuSet, SingleElem(e));
+                                          region := union (region, {n});
+                                          enqueuSet := eunion (enqueuSet, esingle (e));
                                         endif$
 :not_compared]
 :n_disconnected]
@@ -144,8 +144,8 @@ assume
                                         endif
                                       }
                                       $ if (head = first) then
-                                          region := region SetDiff {first};
-                                          dequeueSet := UnionElem (dequeueSet, SingleElem(value));
+                                          region := diff (region, {first});
+                                          dequeueSet := eunion (dequeueSet, esingle(value));
                                         endif$
 :first_not_last]
                                       if (comparison) then

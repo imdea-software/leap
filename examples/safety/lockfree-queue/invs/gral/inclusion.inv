@@ -2,5 +2,5 @@ vars:
 
 invariant [queueInclusion] :
 
-enqueuSet = UnionElem(set2elem(heap, SetDiff(region, Union ({head},{null}))),dequeueSet)
+enqueuSet = eunion (set2elem(heap, diff(region, union ({head},{null}))), dequeueSet)
 
