@@ -995,68 +995,68 @@ literal :
       let elems  = parser_check_type check_type_setelem $13 E.SetElem get_str_expr in
         Formula.Atom (E.Skiplist (h,s,l,a_from,a_to,elems))
     }
-  | term IN term
+  | IN OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "%s in %s" (E.term_to_str $1)
-                                               (E.term_to_str $3) in
-      let a = parser_check_type check_type_addr $1 E.Addr get_str_expr in
-      let r = parser_check_type check_type_set  $3 E.Set get_str_expr in
+      let get_str_expr () = sprintf "in(%s,%s)" (E.term_to_str $3)
+                                                (E.term_to_str $5) in
+      let a = parser_check_type check_type_addr $3 E.Addr get_str_expr in
+      let r = parser_check_type check_type_set  $5 E.Set get_str_expr in
         Formula.Atom (E.In (a,r))
     }
-  | term SUBSETEQ term
+  | SUBSETEQ OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "%s subseteq %s)" (E.term_to_str $1)
-                                                      (E.term_to_str $3) in
-      let s = parser_check_type check_type_set  $1 E.Set get_str_expr in
-      let r = parser_check_type check_type_set  $3 E.Set get_str_expr in
+      let get_str_expr () = sprintf "subseteq(%s,%s)" (E.term_to_str $3)
+                                                      (E.term_to_str $5) in
+      let s = parser_check_type check_type_set  $3 E.Set get_str_expr in
+      let r = parser_check_type check_type_set  $5 E.Set get_str_expr in
         Formula.Atom (E.SubsetEq(s,r))
     }
-  | term INTH term
+  | INTH OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "%s inTh %s" (E.term_to_str $1)
-                                                 (E.term_to_str $3) in
-      let th = parser_check_type check_type_thid  $1 E.Tid get_str_expr in
-      let s  = parser_check_type check_type_setth $3 E.SetTh get_str_expr in
+      let get_str_expr () = sprintf "tin(%s,%s)" (E.term_to_str $3)
+                                                 (E.term_to_str $5) in
+      let th = parser_check_type check_type_thid  $3 E.Tid get_str_expr in
+      let s  = parser_check_type check_type_setth $5 E.SetTh get_str_expr in
         Formula.Atom (E.InTh (th,s))
     }
-  | term SUBSETEQTH term
+  | SUBSETEQTH OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "%s subseteqTh %s" (E.term_to_str $1)
-                                                       (E.term_to_str $3) in
-      let r = parser_check_type check_type_setth $1 E.SetTh get_str_expr in
-      let s = parser_check_type check_type_setth $3 E.SetTh get_str_expr in
+      let get_str_expr () = sprintf "tsubseteq(%s,%s)" (E.term_to_str $3)
+                                                       (E.term_to_str $5) in
+      let r = parser_check_type check_type_setth $3 E.SetTh get_str_expr in
+      let s = parser_check_type check_type_setth $5 E.SetTh get_str_expr in
         Formula.Atom (E.SubsetEqTh(r,s))
     }
-  | term ININT term
+  | ININT OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "%s inInt %s" (E.term_to_str $1)
-                                                  (E.term_to_str $3) in
-      let i = parser_check_type check_type_int $1 E.Int get_str_expr in
-      let s = parser_check_type check_type_setint $3 E.SetInt get_str_expr in
+      let get_str_expr () = sprintf "iin(%s,%s)" (E.term_to_str $3)
+                                                 (E.term_to_str $5) in
+      let i = parser_check_type check_type_int $3 E.Int get_str_expr in
+      let s = parser_check_type check_type_setint $5 E.SetInt get_str_expr in
         Formula.Atom (E.InInt (i,s))
     }
-  | term SUBSETEQINT term
+  | SUBSETEQINT OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "%s subseteqInt %s" (E.term_to_str $1)
-                                                        (E.term_to_str $3) in
-      let r = parser_check_type check_type_setint $1 E.SetInt get_str_expr in
-      let s = parser_check_type check_type_setint $3 E.SetInt get_str_expr in
+      let get_str_expr () = sprintf "isubseteq(%s,%s)" (E.term_to_str $3)
+                                                       (E.term_to_str $5) in
+      let r = parser_check_type check_type_setint $3 E.SetInt get_str_expr in
+      let s = parser_check_type check_type_setint $5 E.SetInt get_str_expr in
         Formula.Atom (E.SubsetEqInt(r,s))
     }
-  | term INELEM term
+  | INELEM OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "%s inElem %s" (E.term_to_str $1)
-                                                   (E.term_to_str $3) in
-      let e = parser_check_type check_type_elem $1 E.Elem get_str_expr in
-      let s = parser_check_type check_type_setelem $3 E.SetElem get_str_expr in
+      let get_str_expr () = sprintf "ein(%s,%s)" (E.term_to_str $3)
+                                                 (E.term_to_str $5) in
+      let e = parser_check_type check_type_elem $3 E.Elem get_str_expr in
+      let s = parser_check_type check_type_setelem $5 E.SetElem get_str_expr in
         Formula.Atom (E.InElem (e,s))
     }
-  | term SUBSETEQELEM term
+  | SUBSETEQELEM OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "%s subseteqElem %s" (E.term_to_str $1)
-                                                         (E.term_to_str $3) in
-      let r = parser_check_type check_type_setelem $1 E.SetElem get_str_expr in
-      let s = parser_check_type check_type_setelem $3 E.SetElem get_str_expr in
+      let get_str_expr () = sprintf "esubseteq(%s,%s)" (E.term_to_str $3)
+                                                       (E.term_to_str $5) in
+      let r = parser_check_type check_type_setelem $3 E.SetElem get_str_expr in
+      let s = parser_check_type check_type_setelem $5 E.SetElem get_str_expr in
         Formula.Atom (E.SubsetEqElem(r,s))
     }
   | SETPAIRIN OPEN_PAREN term COMMA term CLOSE_PAREN
