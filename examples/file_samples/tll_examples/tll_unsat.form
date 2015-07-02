@@ -6,7 +6,7 @@ mem heap
 
 formula:
 
-null in addr2set(heap, head) /\
-a in addr2set(heap, head) /\
+in (null, addr2set(heap, head)) /\
+in (a, addr2set(heap, head)) /\
 a != null /\
-(~ null in addr2set (heap, a))
+(~ in (null, addr2set (heap, a)))

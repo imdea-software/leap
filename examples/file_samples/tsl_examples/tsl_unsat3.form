@@ -22,7 +22,7 @@ formula:
  a != null /\
  l = 3 /\
  i < l /\
- a in addr2set(heap, head, i) /\
+ in (a, addr2set(heap, head, i)) /\
  c.arr = arrUpd(rd(heap,a).arr, i, null) /\
  new_heap = upd(heap, a, c) /\
  skiplist(new_heap,reg,l,head, tail, elems)

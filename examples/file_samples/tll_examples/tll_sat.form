@@ -6,6 +6,6 @@ mem heap
 
 formula:
 
-(  a in path2set(getp(heap, head, null)) \/
- ~ a in path2set(getp(heap, head, null)))
+(  in (a, path2set(getp(heap, head, null))) \/
+ ~ in (a, path2set(getp(heap, head, null))))
 
