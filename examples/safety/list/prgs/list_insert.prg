@@ -8,9 +8,9 @@ global
   elem chosen_e
 
 assume
-	region = union( union({head}, {tail}), {null}) /\
-	elements = eunion (esingle (rd(heap,head).data),
-										 esingle (rd(heap,tail).data)) /\
+  region = union( union({head}, {tail}), {null}) /\
+  elements = eunion (esingle (rd(heap,head).data),
+                     esingle (rd(heap,tail).data)) /\
   // or orderlist (heap, head, null)
   rd(heap, head).data = lowestElem /\
   rd(heap, tail).data = highestElem /\
@@ -177,9 +177,9 @@ assume
 :ins_diff[
                                   prev->next := aux
                                     $
-																			elements := eunion (elements, esingle(e));
-																			region := union (region, {aux});
-																		$
+                                      elements := eunion (elements, esingle(e));
+                                      region := union (region, {aux});
+                                    $
 :ins_follows]
 :after_malloc]
 :ins_insert]
@@ -248,9 +248,9 @@ assume
 :rem_if_two
                                   prev->next := aux
                                     $
-																			elements := ediff (elements, esingle(e));
-																			region := diff (region, {curr});
-																		$
+                                      elements := ediff (elements, esingle(e));
+                                      region := diff (region, {curr});
+                                    $
 :rem_follows]
 :rem_curr_def]
 :rem_remove]

@@ -6,14 +6,14 @@ invariant [list_functional_search_true] :
 
 
    @sch_after_lookup(j). ->
-			(rd(heap, search::curr(j)).data = search::e(j) -> ein (search::e(j), elements))
+      (rd(heap, search::curr(j)).data = search::e(j) -> ein (search::e(j), elements))
 
 /\ @sch_after_lookup(j). ->
-			(rd(heap, search::curr(j)).data != search::e(j) -> (~ ein(search::e(j), elements)))
+      (rd(heap, search::curr(j)).data != search::e(j) -> (~ ein(search::e(j), elements)))
 
 
 /\ ((@sch_result_set(j).) /\ .search::result(j).) ->
-			ein (search::e(j), historyIns)
+      ein (search::e(j), historyIns)
 
 
 /\ esubseteq (elements, historyIns)

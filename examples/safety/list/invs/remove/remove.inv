@@ -4,7 +4,7 @@ tid j
 
 invariant [list_remove] :
 
-	 @check_remove(chosen). -> ~(ein (chosen_e, elements))
+   @check_remove(chosen). -> ~(ein (chosen_e, elements))
 
 /\ @rem_elem_removed(j). -> ~(ein (remove::e(j), elements))
 

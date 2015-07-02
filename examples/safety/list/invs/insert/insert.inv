@@ -4,7 +4,7 @@ tid j
 
 invariant [list_insert] :
 
-	 @check_insert(chosen). -> ein (chosen_e, elements)
+   @check_insert(chosen). -> ein (chosen_e, elements)
 
 /\ @ins_elem_inserted(j). -> ein (insert::e(j), elements)
 
