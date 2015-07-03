@@ -13,8 +13,8 @@ assume
 //  head = tail /\
 //  head != null /\
 //  head->next = null /\
-  pushSet = EmptySetElem /\
-  popSet = EmptySetElem
+  pushSet = eempty /\
+  popSet = eempty
 
 
 // ----- PROGRAM BEGINS --------------------------------------
@@ -65,8 +65,8 @@ assume
                                   }
                                   $
                                     if (top = oldTop) then
-                                      region := region Union {n};
-                                      pushSet := UnionElem (pushSet, SingleElem(e));
+                                      region := union (region, {n});
+                                      pushSet := eunion (pushSet, esingle(e));
                                     endif
                                   $
 :n_disconnected]
@@ -110,8 +110,8 @@ assume
                                   }
                                   $
                                     if (top = oldTop) then
-                                      region := region SetDiff {oldTop};
-                                      popSet := UnionElem (popSet, SingleElem(value));
+                                      region := diff (region, {oldTop});
+                                      popSet := eunion (popSet, esingle (value));
                                     endif
                                   $
 :newTop_follows_oldTop]

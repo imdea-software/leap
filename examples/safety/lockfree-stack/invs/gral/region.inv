@@ -5,6 +5,6 @@ tid j
 
 invariant [stackRegion] :
 
-   @n_disconnected(j). -> ~(push::n(j) in region)
-/\ @push_compare(j). -> (~ .push::comparison(j). -> ~ (push::n(j) in region))
+   @n_disconnected(j). -> ~ in (push::n(j), region)
+/\ @push_compare(j). -> (~ .push::comparison(j). -> ~ in (push::n(j), region))
 

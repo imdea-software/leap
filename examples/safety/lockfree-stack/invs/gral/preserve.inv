@@ -2,8 +2,8 @@ vars:
 
 invariant [stackPreserve] :
 
-   null in region
-/\ top in region
+   in (null, region)
+/\ in (top, region)
 /\ region = addr2set(heap, top)
 
 
