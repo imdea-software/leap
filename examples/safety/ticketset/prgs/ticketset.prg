@@ -1,7 +1,7 @@
 global
   int avail := 0
-  intSet bag := EmptySetInt
-  ghost intSet lower := EmptySetInt
+  intSet bag := iempty
+  ghost intSet lower := iempty
 
 procedure main ()
   int ticket := 0
@@ -13,7 +13,7 @@ begin
         {
           ticket := avail;
           avail := avail + 1;
-          bag := UnionInt (bag, SingleInt(avail));
+          bag := iunion (bag, isingle(avail));
         }
 
 :active[
@@ -21,7 +21,7 @@ begin
         await (setIntMin(bag) = ticket);
 :crit[
         critical;
-        bag := SetDiffInt (bag, SingleInt(ticket));
+        bag := idiff (bag, isingle(ticket));
 :crit]
 :active]
 

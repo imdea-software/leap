@@ -9,13 +9,13 @@ global
   ghost elemSet dequeueSet
 
 assume
-  region = {head} Union {null} /\
+  region = union ({head}, {null}) /\
   head = tail /\
   head != null /\
   head->next = null /\
   queueLock.lockid = # /\
-  enqueuSet = EmptySetElem /\
-  dequeueSet = EmptySetElem
+  enqueuSet = eempty /\
+  dequeueSet = eempty
 
 
 // ----- PROGRAM BEGINS --------------------------------------
@@ -55,8 +55,8 @@ assume
 :n_not_null[
                                 tail->next := n
                                 $
-                                  region := region Union {n};
-                                  enqueuSet := UnionElem (enqueuSet, SingleElem(e));
+                                  region := union (region, {n});
+                                  enqueuSet := eunion (enqueuSet, esingle(e));
                                 $
 :tail_next_n
                                 tail := n;
@@ -86,8 +86,8 @@ assume
 :dequeue_point
                                   head := head->next
                                     $
-                                      region := region SetDiff {head};
-                                      dequeueSet := UnionElem (dequeueSet, SingleElem(result));
+                                      region := diff(region, {head});
+                                      dequeueSet := eunion (dequeueSet, esingle(result));
                                     $
 :head_next_not_null]
                                 endif

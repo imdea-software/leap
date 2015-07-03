@@ -9,9 +9,9 @@ global
     bool result
 
 assume
-  region = {head} Union {tail} Union {null} /\
-  elements = UnionElem (SingleElem (lowestElem),
-                        SingleElem (highestElem)) /\
+  region = union (union ({head}, {tail}), {null}) /\
+  elements = eunion (esingle (lowestElem),
+                     esingle (highestElem)) /\
 //  elements = UnionElem (
 //              UnionElem (SingleElem (rd(heap,head).data),
 //                         SingleElem (rd(heap,tail).data)),
@@ -184,8 +184,8 @@ assume
 :insert_newCell_next_connected
                                     update[i]->arr[i] := newCell
                                       $ if (i=0) then
-                                          region := region Union {newCell};
-                                          elements := UnionElem (elements, SingleElem(e));
+                                          region := union (region, {newCell});
+                                          elements := eunion (elements, esingle(e));
                                         endif
                                       $
 :insert_newCell_unconnected]
@@ -270,8 +270,8 @@ assume
 :remove_final_loop_inside[
                                     update[i]->arr[i] := curr->arr[i]
                                     $ if (i=0) then
-                                        region := region SetDiff {curr};
-                                        elements := SetDiffElem (elements, SingleElem(e));
+                                        region := diff (region, {curr});
+                                        elements := ediff (elements, esingle(e));
                                       endif
                                     $
 :remove_final_loop_begins]

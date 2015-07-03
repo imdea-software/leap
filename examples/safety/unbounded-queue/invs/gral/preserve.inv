@@ -4,13 +4,11 @@ tid j
 
 invariant [queuePreserve] :
 
-   null in region
-/\ tail in region
+   in (null, region)
+/\ in (tail, region)
 /\ tail != null
 /\ region = addr2set(heap, head)
 
 
 #head_not_null:
    head != null
-
-

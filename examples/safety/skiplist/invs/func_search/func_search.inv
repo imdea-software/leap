@@ -4,8 +4,8 @@ invariant [skiplist_func_search] :
 
 
    @search_check. ->
-      (.result. -> main::e inElem elements     /\
-       ~ .result. -> ~ main::e inElem elements /\
+      (.result. -> ein (main::e, elements)     /\
+       ~ .result. -> ~ ein (main::e, elements) /\
        elements_before = elements)
 
 
