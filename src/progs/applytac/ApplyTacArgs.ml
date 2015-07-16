@@ -23,7 +23,7 @@ let supp_tac               = ref None
 let supp_split_tac_list    = ref []
 let formula_tac_list       = ref []
 let formula_split_tac_list = ref []
-let tslEnable              = ref false
+let tllEnable              = ref false
 let outfile                = ref ""
 
 let assignopt (valref : 'a ref) (valbool : bool ref) (aval : 'a) : unit =
@@ -94,9 +94,9 @@ let opts =
     ("-o",
         Arg.String (fun s -> outfile := s),
         "output file");
-    ("-tsl",
-        Arg.Set tslEnable,
-        "enables the use of tsl solver");
+    ("-tll",
+        Arg.Set tllEnable,
+        "enables the use of tll solver");
     ("--show_file_info",
         Arg.Set Debug._debug_show_tmpfile_info_,
         "shows path of temporary files");
@@ -137,4 +137,4 @@ let close_input _ =
   if !is_input_file then Unix.close !input_file_fd
 
 let is_vc_file () : bool =
-  Filename.check_suffix !input_file ".vcfile"
+  Filename.check_suffix !input_file ".vc"

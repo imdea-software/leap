@@ -82,18 +82,19 @@ let _ =
 
 
     (* Apply decision procedures if activated *)
-    if !ApplyTacArgs.tslEnable then
-      (*
+    if !ApplyTacArgs.tllEnable then
       begin
-        print_endline "Calling the TSL solver...";
+        let tllSolver : (module TllSolver.S) = TllSolver.choose "Z3" in
+        let module Tll = (val tllSolver) in
+        Tll.compute_model true;
+        print_endline "Calling the TLL solver...";
         List.iter (fun phi ->
           print_endline (Expression.formula_to_str phi);
-          let tsl_phi = TSLInterface.formula_to_tsl_formula phi in
-          let result = TslSolver.is_valid 5 !ApplyTacArgs.coType tsl_phi in
+          let tll_phi = TllInterface.formula_to_tll_formula phi in
+          let result = Valid.is_valid (Tll.check_valid 50 !ApplyTacArgs.coType false tll_phi) in
           if result then print_endline "VALID" else print_endline "NOT VALID"
         ) final_formulas
       end;
-*)
     ()
   with
     | Global.ParserError msg -> Interface.Err.msg "Parsing error" msg

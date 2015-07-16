@@ -2013,7 +2013,7 @@ formula_list :
 tid_constraint_list :
   |
     { [] }
-  | tid_constraint COMMA tid_constraint_list
+  | tid_constraint SEMICOLON tid_constraint_list
     { $1 :: $3 }
 
 

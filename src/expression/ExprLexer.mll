@@ -63,7 +63,7 @@ let _ = List.iter (fun (kwd, tok) -> Hashtbl.add keyword_table kwd tok)
             ("esingle"      , SINGLEELEM);
             ("eunion"       , UNIONELEM);
             ("eintr"        , INTRELEM);
-            ("setDiffElem"  , SETDIFFELEM);
+            ("ediff"        , SETDIFFELEM);
             ("set2elem"     , SET2ELEM);
             ("path2set"     , PATH2SET);
             ("addr2set"     , ADDR2SET);

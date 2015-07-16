@@ -19,7 +19,7 @@ val supp_tac               : Tactics.support_tactic_t option ref
 val supp_split_tac_list    : Tactics.support_split_tactic_t list ref
 val formula_tac_list       : Tactics.formula_tactic_t list ref
 val formula_split_tac_list : Tactics.formula_split_tactic_t list ref
-val tslEnable : bool ref
+val tllEnable : bool ref
 val outfile : string ref
 (*val postTactics : (Tactics.post_tac_t list) ref *)
 val assignopt : 'a ref -> bool ref -> 'a -> unit
