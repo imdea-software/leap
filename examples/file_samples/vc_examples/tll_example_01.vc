@@ -4,18 +4,18 @@ addr a
 addr b
 
 Support:
-	(@3(i). \/ @4(i). \/ @5(i).) -> a = null
+  (@3(i). \/ @4(i). \/ @5(i).) -> a = null
 
 TidConstraint :
 
 Rho :
-	@3(i). /\ b = null
+	b = null
 
 Goal :
-	(@3(i). \/ @4(i). \/ @5(i).) -> a = null
+  (@3(i). \/ @4(i). \/ @5(i).) -> a = null
 
 Tid : i
 
 Line:
-	3
+  3
 
