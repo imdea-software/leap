@@ -1,0 +1,23 @@
+vars:
+
+addr ai
+addr aj
+addr b
+
+Support:
+	(@3(i). \/ @4(i). \/ @5(i).) -> ai = null
+	(@3(j). \/ @4(j). \/ @5(j).) -> aj = null
+
+TidConstraint :
+
+Rho :
+	@3(j). /\ b = null
+
+Goal :
+	(@3(i). \/ @4(i). \/ @5(i).) -> ai = null
+
+Tid : j
+
+Line:
+	3
+
