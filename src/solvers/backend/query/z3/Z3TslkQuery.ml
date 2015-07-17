@@ -1441,7 +1441,7 @@ module Make (K : Level.S) : TSLK_QUERY =
             s=Expr.Cell || s=Expr.Mem
           ) req_sorts) then z3_cell_preamble buf ;
       if List.mem Expr.Mem     req_sorts then z3_heap_preamble buf ;
-      if List.mem Expr.Set     req_sorts then z3_set_preamble buf ;
+      if (List.mem Expr.Set req_sorts || List.mem Expr.Path req_sorts) then z3_set_preamble buf ;
       if List.mem Expr.SetTh   req_sorts then z3_setth_preamble buf ;
       if List.mem Expr.SetElem req_sorts then z3_setelem_preamble buf ;
       if List.mem Expr.Path    req_sorts then z3_path_preamble buf num_addr;
@@ -1602,7 +1602,7 @@ module Make (K : Level.S) : TSLK_QUERY =
           z3_update_heap_def buf
         end;
       (* Sets *)
-      if List.mem Expr.Set req_sorts then
+      if List.mem Expr.Set req_sorts || List.mem Expr.Path req_sorts then
         begin
           z3_emp_def buf ;
           z3_singleton_def buf ;

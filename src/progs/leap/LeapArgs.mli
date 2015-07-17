@@ -7,6 +7,7 @@ exception MoreThanOneInputFile
 exception No_file
 exception No_inv_folder
 exception Unknown_tag of string
+exception InvalidRange of string
 
 val input_file : string ref
 val is_input_file : bool ref

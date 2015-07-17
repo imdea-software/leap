@@ -1129,10 +1129,10 @@ struct
       z3_cell_preamble buf ;
     if List.mem Expr.Cell req_sorts || List.mem Expr.Mem req_sorts then
       z3_heap_preamble buf ;
-    if List.mem Expr.Set     req_sorts then z3_set_preamble buf ;
+    if (List.mem Expr.Set req_sorts || List.mem Expr.Path req_sorts) then z3_set_preamble buf ;
     if List.mem Expr.SetTh   req_sorts then z3_setth_preamble buf ;
     if List.mem Expr.SetElem req_sorts then z3_setelem_preamble buf ;
-    if List.mem Expr.Path    req_sorts then z3_path_preamble buf num_addr ;
+    if List.mem Expr.Path    req_sorts then z3_path_preamble buf num_addr;
     if List.mem Expr.Unknown req_sorts then z3_unknown_preamble buf ;
     z3_pos_preamble buf
 
@@ -1274,7 +1274,7 @@ struct
         z3_update_heap_def buf
       end;
     (* Sets *)
-    if List.mem Expr.Set req_sorts then
+    if List.mem Expr.Set req_sorts || List.mem Expr.Set req_sorts then
       begin
         z3_emp_def buf ;
         z3_singleton_def buf ;

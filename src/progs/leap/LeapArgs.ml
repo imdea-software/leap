@@ -8,6 +8,7 @@ exception MoreThanOneInputFile
 exception No_file
 exception No_inv_folder
 exception Unknown_tag of string
+exception InvalidRange of string
 
 let input_file    = ref ""
 let is_input_file = ref false
@@ -129,9 +130,24 @@ let assigninputfile  (s:string) : unit = assignopt input_file is_input_file s
 let supportInvariant (s:string) : unit = assignopt supInvariant spinvSys s
 
 let parse_int_list (s:string) (field:int list ref) (fieldName:string) : unit =
+  let parse_range (str:string) : int list =
+    print_endline ("str = " ^ str);
+    if Str.string_match (Str.regexp "[0-9]+-[0-9]+") str 0 then begin
+      print_endline "A";
+      let div_pos = String.index str '-' in
+      print_endline ("div_pos = " ^ (string_of_int div_pos));
+      let min = String.sub str 0 div_pos in
+      print_endline ("min = " ^ min);
+      let max = String.sub str (div_pos+1) (String.length str - div_pos - 1) in
+      print_endline ("max = " ^ max);
+      LeapLib.rangeList (int_of_string min) (int_of_string max)
+    end else begin
+      print_endline "B";
+      [int_of_string str]
+    end in
   let regexp = Str.regexp "," in
   let split = Str.split regexp s in
-  try field := List.map int_of_string split
+  try field := List.fold_left (fun ps r -> ps @ (parse_range r)) [] split
   with e -> Interface.Err.msg"Bad argument" $
       "-" ^ fieldName^ " option expects a list of integers as argument.";
       raise(e)
