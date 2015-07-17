@@ -9,39 +9,39 @@ invariant [skiplist_region] :
 /////////////////   Insert   ///////////////////
 
 
-@insert_i_set_zero. -> (~ (insert::element in region))
+@insert_i_set_zero. -> (~ in (insert::element, region))
 
 
-@insert_element_in_region. -> insert::element in region
+@insert_element_in_region. -> in (insert::element, region)
 
 
-@insert_nextElement_in_region. -> insert::nextElement in region
+@insert_nextElement_in_region. -> in (insert::nextElement, region)
 
 
 #insert_element_next_i_in_region:
   (@insert_element_next_region_one. \/
    @insert_element_is_nextElement.) ->
-    rd(heap, insert::element).arr[insert::i] in region
+    in (rd(heap, insert::element).arr[insert::i], region)
 
 
 @insert_newCell_unconnected. ->
-  ((insert::i <= j /\ j <= maxLevel) -> (~ insert::element in addr2set(heap, head, j)))
+  ((insert::i <= j /\ j <= maxLevel) -> (~ in (insert::element, addr2set(heap, head, j))))
 
 
 @insert_i_increases. ->
-  ((insert::i < j /\ j <= maxLevel) -> (~ insert::element in addr2set(heap, head, j)))
+  ((insert::i < j /\ j <= maxLevel) -> (~ in (insert::element, addr2set(heap, head, j))))
 
 
 @insert_i_increases. ->
-  insert::element in addr2set(heap, head, insert::i)
+  in (insert::element, addr2set(heap, head, insert::i))
 
 
 @insert_newCell_low_connected. ->
-      ((0 <= j /\ j < insert::i) -> insert::element in addr2set(heap, head, j))
+      ((0 <= j /\ j < insert::i) -> in (insert::element, addr2set(heap, head, j)))
 
 
 (@insert_lookup_loop. /\ insert::i < j /\ j <= maxLevel) ->
-      insert::update[j] in region
+      in (insert::update[j], region)
 
 
 @insert_update_set. -> insert::update[insert::i] = insert::element
@@ -49,11 +49,8 @@ invariant [skiplist_region] :
 
 #insert_update_j_in_addr2set:
    (@insert_update_all_set. /\ 0 <= j /\ j <= maxLevel) ->
-      (insert::update[j] in region /\
-       insert::update[j] in addr2set(heap, head, j) /\
-       rd(heap,insert::update[j]).arr[j] in addr2set(heap, head, j))
+      (in (insert::update[j], region) /\
+       in (insert::update[j], addr2set(heap, head, j)) /\
+       in (rd(heap,insert::update[j]).arr[j], addr2set(heap, head, j)))
 
 
-/////////////////   Remove   ///////////////////
-
-//@58. -> remove::element in region

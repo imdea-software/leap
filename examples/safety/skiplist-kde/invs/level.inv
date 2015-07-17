@@ -18,3 +18,7 @@ invariant [skiplist_levels] :
 
 #insert_i_higher_than_maxLevel:
   (@insert_increasing_level. -> maxLevel < insert::i)
+
+#insert_newLevel_greater:
+  @insert_newLevel_greater. -> insert::newLevel > maxLevel
+

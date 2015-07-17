@@ -1,0 +1,14 @@
+
+vars:
+
+invariant [skiplist_aux] :
+
+
+(@insert_increasing_level. /\ ~@insert_new_levels_filled.) ->
+  skiplist(heap, region, insert::i - 1, head, null, elements)
+
+@insert_new_levels_filled. -> skiplist(heap, region, insert::newLevel, head, null, elements)
+
+#insert_connecting_i:
+  (@insert_newCell_unconnected. \/ @insert_i_increases.) ->
+      skiplist(heap, region, insert::i-1, head, null, elements)

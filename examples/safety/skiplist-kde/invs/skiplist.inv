@@ -18,4 +18,3 @@ invariant [skiplist_prop] :
 #maxLevel_is_positive:
    maxLevel >= 0
 
-

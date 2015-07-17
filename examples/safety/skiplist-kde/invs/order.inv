@@ -59,9 +59,10 @@ invariant [skiplist_order] :
    rd(heap,rd(heap,insert::update[j]).arr[j]).data > insert::value)
 
 
-@insert_element_next_connected. ->
-  (rd(heap, insert::update[insert::i]).data < rd(heap, insert::element).data /\
-   rd(heap, rd(heap, insert::element).arr[insert::i]).data > rd(heap, insert::element).data)
+#insert_element_next_connected:
+  @insert_element_next_connected. ->
+    (rd(heap, insert::update[insert::i]).data < rd(heap, insert::element).data /\
+     rd(heap, rd(heap, insert::element).arr[insert::i]).data > rd(heap, insert::element).data)
 
 
 @insert_update_set. ->

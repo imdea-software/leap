@@ -5,8 +5,8 @@ global
   ghost elemSet elements
 
 assume
-  region = {head} Union {null} /\
-  elements = SingleElem (lowestElem) /\
+  region = union ({head}, {null}) /\
+  elements = esingle (lowestElem) /\
   skiplist(heap, region, 0, head, null, elements) /\
   rd(heap, head).data = lowestElem /\
   head != null /\
@@ -124,6 +124,7 @@ assume
                                   newLevel := havocLevel();
                                   if (newLevel > maxLevel) then
                                     // adjust header level
+:insert_newLevel_greater[
                                     i := maxLevel + 1;
 :insert_increasing_level[
                                     while (i <= newLevel) do
@@ -132,10 +133,11 @@ assume
                                       update[i]->arr[i] := null;
 :insert_increment_i
                                       i := i + 1;
-:insert_increasing_level]
                                     endwhile
 :insert_new_levels_filled
                                     maxLevel := newLevel;
+:insert_newLevel_greater]
+:insert_increasing_level]
                                   endif
 
                                   // make new element [NEW *******]
@@ -153,8 +155,8 @@ assume
 :insert_element_next_connected
                                     update[i]->arr[i] := element
                                       $ if (i=0) then
-                                          region := region Union {element};
-                                          elements := UnionElem (elements, SingleElem(value));
+                                          region := union (region, {element});
+                                          elements := eunion (elements, esingle(value));
                                         endif
                                       $
 :insert_not_all_processed]

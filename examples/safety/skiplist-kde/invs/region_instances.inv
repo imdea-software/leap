@@ -6,16 +6,16 @@ invariant [skiplist_region_inst] :
 #insert_update_i_addr2set:
   @insert_update_all_set. ->
     ((0 <= insert::i /\ insert::i <= maxLevel) ->
-         insert::update[insert::i] in addr2set(heap, head, insert::i))
+         in (insert::update[insert::i], addr2set(heap, head, insert::i)))
 
 
 #insert_update_zero_in_region:
    @insert_update_all_set. ->
-    ((0 <= maxLevel) -> insert::update[0] in region)
+    ((0 <= maxLevel) -> in (insert::update[0], region))
 
 
 #newCell_unconnected_at_i:
    @insert_not_all_processed. ->
-      (insert::i <= maxLevel -> (~ insert::element in addr2set(heap, head, insert::i)))
+      (insert::i <= maxLevel -> (~ in (insert::element, addr2set(heap, head, insert::i))))
 
 

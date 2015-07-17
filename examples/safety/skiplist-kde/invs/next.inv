@@ -17,7 +17,7 @@ invariant [skiplist_next] :
 
 #insert_element_in_addr2set:
    @insert_lookup_loop. ->
-      insert::element in addr2set(heap, head, insert::i)
+      in (insert::element, addr2set(heap, head, insert::i))
 
 
 #insert_nextElement_not_null:
@@ -52,11 +52,11 @@ invariant [skiplist_next] :
 
 (@insert_test_update_zero. -> insert::update[0] = insert::element)
 
+#insert_update_is_head:
+  (@insert_update_i_head. \/ @insert_increment_i.) -> insert::update[insert::i] = head
 
-(@insert_update_i_head. \/ @insert_increment_i.) -> insert::update[insert::i] = head
-
-
-@insert_increment_i. -> rd(heap, insert::update[insert::i]).arr[insert::i] = null
+#insert_update_next_null:
+  @insert_increment_i. -> rd(heap, insert::update[insert::i]).arr[insert::i] = null
 
 
 (@insert_increasing_level. /\ maxLevel < j /\ j < insert::i) ->
@@ -99,8 +99,4 @@ invariant [skiplist_next] :
 
 #insert_element_is_update_next:
   @insert_final_if_condition. -> insert::element = rd(heap, insert::update[0]).arr[0]
-
-
-
-
 
