@@ -656,13 +656,14 @@ struct
        "           (not (select (addrs p) (select (at p) i))))))\n");
     B.add_string buf
       ("(define-fun ispath ((p " ^path_s^ ")) " ^bool_s^ "\n" ^
-       "  (and");
+       "  (or (eqpath p epsilon)\n" ^
+       "    (and (<= (length p) (+ max_address + 1))\n");
     for i=0 to num_addr do
       B.add_string buf
         ("\n          (and (check_position p " ^ (string_of_int i) ^ ")\n" ^
          "               (= (addrs p) " ^ !str ^ "))\n")
     done ;
-    B.add_string buf "))\n"
+    B.add_string buf "))))\n"
 
 
   let smt_rev_def (buf:B.t) (num_addr:int) : unit =
@@ -1045,9 +1046,9 @@ struct
     (* Path *)
     if List.mem Expr.Path req_sorts then
       begin
-        smt_ispath_def buf num_addr;
         smt_rev_def buf num_addr ;
         smt_epsilon_def buf num_addr ;
+        smt_ispath_def buf num_addr;
         smt_singletonpath_def buf num_addr ;
         smt_is_singlepath buf ;
         smt_path_length_def buf ;

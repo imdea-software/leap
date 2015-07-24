@@ -935,10 +935,12 @@ module Make (K : Level.S) : TSLK_QUERY =
              "       (not (select (addrs p) (select (at p) i)))))\n");
           B.add_string tmpbuf
             ("(define-fun ispath ((p " ^path_s^ ")) " ^bool_s^ "\n" ^
-             "  (and (forall ((n RangeAddress)) (check_position p n))\n" ^
-             "       (forall ((a Address)) (= (select (addrs p) a)\n" ^
-             "                                (and (<= 0 (range_to_int (select (where p) a)))\n" ^
-             "                                     (<= (range_to_int (select (where p) a)) (length p)))))))\n")
+             "  (or (eqpath p epsilon)\n" ^
+             "      (and (<= (length p) (+ max_address 1))\n" ^
+             "           (forall ((n RangeAddress)) (check_position p n))\n" ^
+             "           (forall ((a Address)) (= (select (addrs p) a)\n" ^
+             "                                    (and (<= 0 (range_to_int (select (where p) a)))\n" ^
+             "                                         (<= (range_to_int (select (where p) a)) (length p))))))))\n")
         end else begin
           let str = ref "empty" in
           for i=0 to num_addr do
@@ -959,12 +961,13 @@ module Make (K : Level.S) : TSLK_QUERY =
              "       (not (select (addrs p) (select (at p) i)))))\n");
           B.add_string tmpbuf
             ("(define-fun ispath ((p " ^path_s^ ")) " ^bool_s^ "\n" ^
-             "  (and");
+             "  (or (eqpath p epsilon)\n" ^
+             "    (and (<= (length p) (+ max_address + 1))\n");
           for i=0 to num_addr do
             B.add_string tmpbuf
               ("  (check_position p " ^ (string_of_int i) ^ ")\n")
           done;
-            B.add_string tmpbuf ("  (= (addrs p) " ^ !str ^ ")))\n")
+            B.add_string tmpbuf ("  (= (addrs p) " ^ !str ^ "))))\n")
         end;
         Hashtbl.add cache_tbl (DefIspath (num_addr, !use_quantifiers)) tmpbuf;
         B.add_buffer buf tmpbuf
@@ -1631,7 +1634,6 @@ module Make (K : Level.S) : TSLK_QUERY =
           z3_address2set_def buf num_addr
         end;
       (* Path2set and is_path *)
-      if List.mem Expr.Path req_sorts then z3_ispath_def buf num_addr ;
       if List.mem Expr.Path2Set req_ops then z3_path2set_def buf ;
       (* Sets of Threads *)
       if List.mem Expr.SetTh req_sorts then
@@ -1662,6 +1664,7 @@ module Make (K : Level.S) : TSLK_QUERY =
         begin
           z3_rev_def buf num_addr ;
           z3_epsilon_def buf ;
+          z3_ispath_def buf num_addr ;
           z3_singletonpath_def buf ;
           z3_is_singlepath_def buf ;
           z3_path_length_def buf ;

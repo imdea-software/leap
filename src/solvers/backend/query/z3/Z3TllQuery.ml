@@ -742,10 +742,12 @@ struct
          "       (not (select (addrs p) (select (at p) i)))))\n");
       B.add_string buf
         ("(define-fun ispath ((p " ^path_s^ ")) " ^bool_s^ "\n" ^
-         "  (and (forall ((n RangeAddress)) (check_position p n))\n" ^
-         "       (forall ((a Address)) (= (select (addrs p) a)\n" ^
-         "                                (and (<= 0 (range_to_int (select (where p) a)))\n" ^
-         "                                     (<= (range_to_int (select (where p) a)) (length p)))))))\n")
+         "  (or (eqpath p epsilon)\n" ^
+         "      (and (<= (length p) (+ max_address 1))\n" ^
+         "           (forall ((n RangeAddress)) (check_position p n))\n" ^
+         "           (forall ((a Address)) (= (select (addrs p) a)\n" ^
+         "                                    (and (<= 0 (range_to_int (select (where p) a)))\n" ^
+         "                                         (<= (range_to_int (select (where p) a)) (length p))))))))\n")
     end else begin
       let str = ref "empty" in
       for i=0 to num_addr do
@@ -1329,9 +1331,9 @@ struct
     (* Path *)
     if List.mem Expr.Path req_sorts then
       begin
-        z3_ispath_def buf num_addr;
         z3_rev_def buf num_addr ;
         z3_epsilon_def buf ;
+        z3_ispath_def buf num_addr;
         z3_singletonpath_def buf ;
         z3_is_singlepath buf ;
         z3_path_length_def buf ;

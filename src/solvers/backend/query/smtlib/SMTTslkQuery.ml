@@ -610,12 +610,13 @@ module Make (K : Level.S) : TSLK_QUERY =
          "      (= i (select (where p) (select (at p) i)))))\n");
       B.add_string buf
         ("(define-fun ispath ((p " ^path_s^ ")) " ^bool_s^ "\n" ^
-         "  (and");
+         "  (or (eqpath p epsilon)\n" ^
+         "    (and (<= (length p) (+ max_address + 1))\n");
       for i=0 to num_addr do
         B.add_string buf
           ("\n          (check_position p " ^ (string_of_int i) ^ ")")
       done ;
-      B.add_string buf "))\n"
+      B.add_string buf "))))\n"
 
 
 
@@ -1111,8 +1112,7 @@ module Make (K : Level.S) : TSLK_QUERY =
       if List.mem Expr.SetTh   req_sorts then z3_setth_preamble buf ;
       if List.mem Expr.SetElem req_sorts then z3_setelem_preamble buf ;
       if List.mem Expr.Path    req_sorts then begin
-                                                z3_path_preamble buf num_addr ;
-                                                z3_ispath_def buf num_addr
+                                                z3_path_preamble buf num_addr
                                               end;
       if List.mem Expr.Unknown req_sorts then z3_unknown_preamble buf ;
       z3_pos_preamble buf
@@ -1201,6 +1201,7 @@ module Make (K : Level.S) : TSLK_QUERY =
         begin
           z3_rev_def buf num_addr ;
           z3_epsilon_def buf ;
+          z3_ispath_def buf num_addr ;
           z3_singletonpath_def buf ;
           z3_is_singlepath buf ;
           z3_path_length_def buf ;
