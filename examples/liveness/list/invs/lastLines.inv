@@ -1,0 +1,10 @@
+vars:
+
+tid i
+
+invariant [lastTidLines] :
+
+lastTid != # ->
+  (@sch_working(lastTid). \/
+   @ins_working(lastTid). \/
+   @rem_working(lastTid).)

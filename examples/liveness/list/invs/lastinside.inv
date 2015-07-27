@@ -1,0 +1,7 @@
+vars:
+
+tid i
+
+invariant [lastTidInside] :
+
+tin(lastTid, insideSet)

@@ -1,0 +1,7 @@
+vars:
+
+tid i
+
+invariant [test] :
+~ (@37(k). \/ @38(k). )
+
