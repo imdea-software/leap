@@ -11,9 +11,9 @@ global
   ghost bool kisinm
 
 assume
-  region = {head} Union {tail} Union {null} /\
-  elements = UnionElem (SingleElem (rd(heap,head).data),
-                        SingleElem (rd(heap,tail).data)) /\
+	region = union (union ({head}, {tail}), {null}) /\
+	elements = eunion (esingle (rd(heap,head).data),
+										 esingle (rd(heap,tail).data)) /\
   // or orderlist (heap, head, null)
   rd(heap, head).data = lowestElem /\
   rd(heap, tail).data = highestElem /\
@@ -68,7 +68,7 @@ assume
 :sch_prev_is_head[
                                 prev->lock
                                   $
-                                    insideSet := UnionTh (insideSet, SingleTh(me));
+																		insideSet := tunion (insideSet, tsingle(me));
                                   $
 :sch_init_no_lock]
 :sch_owns_prev[
@@ -114,9 +114,9 @@ assume
 :sch_releases_last_lock
                                 curr->unlock
                                   $
-                                    insideSet := SetDiffTh (insideSet, SingleTh(me));
-                                    aheadSet := SetDiffTh (aheadSet, SingleTh(me));
-                                  $
+																		insideSet := tdiff (insideSet, tsingle(me));
+																		aheadSet := tdiff (aheadSet, tsingle(me));
+																	$
 :sch_owns_curr_two]
 :sch_diff]
 :sch_curr_def]
@@ -146,9 +146,9 @@ assume
 :ins_prev_is_head[
                                 prev->lock
                                   $
-                                    insideSet := UnionTh (insideSet, SingleTh(me));
-                                    insideInsert := UnionTh (insideInsert, SingleTh(me));
-                                    if (me = k) then
+																		insideSet := tunion (insideSet, tsingle(me));
+																		insideInsert := tunion (insideInsert, tsingle(me));
+																		if (me = k) then
                                       aheadSet := insideSet;
                                       aheadInsert := insideInsert;
                                     endif
@@ -207,11 +207,11 @@ assume
 :ins_diff[
                                   prev->next := aux
                                     $
-                                      elements := UnionElem (elements, SingleElem(e));
-                                      region := region Union {aux};
-                                      insideInsert := SetDiffTh (insideInsert, SingleTh(me));
-                                      aheadInsert := SetDiffTh (aheadInsert, SingleTh(me));
-                                    $
+																			elements := eunion (elements, esingle(e));
+																			region := union (region, {aux});
+																			insideInsert := tdiff (insideInsert, tsingle(me));
+																			aheadInsert := tdiff (aheadInsert, tsingle(me));
+																		$
 :ins_follows]
 :after_malloc]
 :ins_insert]
@@ -226,9 +226,9 @@ assume
 :ins_releases_last_lock
                                 curr->unlock
                                   $
-                                    insideSet := SetDiffTh (insideSet, SingleTh(me));
-                                    aheadSet := SetDiffTh (aheadSet, SingleTh(me));
-                                    if (me = k) then
+																		insideSet := tdiff (insideSet, tsingle(me));
+																		aheadSet := tdiff (aheadSet, tsingle(me));
+																		if (me = k) then
                                       kisinm := false;
                                     endif
                                   $
@@ -259,8 +259,8 @@ assume
 :rem_prev_is_head[
                                 prev->lock
                                   $
-                                    insideSet := UnionTh (insideSet, SingleTh(me));
-                                  $
+																		insideSet := tunion (insideSet, tsingle(me));
+																	$
 :rem_init_no_lock]
 :rem_owns_prev[
 :rem_got_lock[
@@ -304,8 +304,8 @@ assume
 :rem_if_two
                                   prev->next := aux
                                     $
-                                      elements := SetDiffElem (elements, SingleElem(e));
-                                      region := region SetDiff {curr};
+																			elements := ediff (elements, esingle(e));
+																			region := diff (region, {curr});
                                     $
 :rem_follows]
 :rem_curr_def]
@@ -317,9 +317,9 @@ assume
 :rem_last_prev_unlock
                                 prev->unlock
                                   $
-                                    insideSet := SetDiffTh (insideSet, SingleTh(me));
-                                    aheadSet := SetDiffTh (aheadSet, SingleTh(me));
-                                  $
+																		insideSet := tdiff (insideSet, tsingle(me));
+																		aheadSet := tdiff (aheadSet, tsingle(me));
+																	$
 :rem_working]
 :rem_owns_prev]
 :rem_prev_def]

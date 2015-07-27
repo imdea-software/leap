@@ -1,39 +1,18 @@
-=> lockedRegion [
-    9:preserve,nexts::{general,search_prev_is_head},locks; //missing
-   11:preserve::{region,null_in_region,tail_at_end,head_not_null,head_not_tail,tail_in_region},
-      region::{search_prev_in_region,search_curr_in_region},
-      locks::search_owns_prev,
-      nexts::search_prev_next_curr
-// 14
-// 15
-// 17
-// 19
-// 20
-// 23
-// 25
-// 28
-// 29
-// 31
-// 33
-// 34
-// 35
-// 36
-// 37
-// 40
-// 42
-// 45
-// 46
-// 47
-// 48
-// 49
-// 51
-// 52
-// 53
+=> preserve [
+			34:O:region;
+			35:O:region::insert_prev_in_region,
+					 nexts,
+					 locks,
+					 order;
+			51:O:nexts::remove_curr_not_null,
+					 nexts::remove_curr_next_aux,
+					 nexts::remove_prev_next_curr,
+					 region,
+					 order
+	 ] { pruning : split-goal
+							 | reduce2
+							 |
+							 | simplify-pc
+		 }
 
 
-
-   ] { union : split-goal
-             | reduce2
-             |
-             | simplify-pc filter-strict
-     }
