@@ -532,14 +532,14 @@ and path_to_str (loc:bool) (expr:path) : string =
 and set_to_str (loc:bool) (expr:set) : string =
   match expr with
     VarSet v            -> variable_to_str loc v
-  | EmptySet            -> "EmptySet"
+  | EmptySet            -> "empty"
   | Singl(addr)         -> sprintf "{ %s }" (addr_to_str loc addr)
-  | Union(s1,s2)        -> sprintf "%s Union %s" (set_to_str loc s1)
+  | Union(s1,s2)        -> sprintf "union(%s,%s)" (set_to_str loc s1)
+                                                  (set_to_str loc s2)
+  | Intr(s1,s2)         -> sprintf "intr(%s,%s)" (set_to_str loc s1)
                                                  (set_to_str loc s2)
-  | Intr(s1,s2)         -> sprintf "%s Intr %s" (set_to_str loc s1)
-                                                (set_to_str loc s2)
-  | Setdiff(s1,s2)      -> sprintf "%s SetDiff %s" (set_to_str loc s1)
-                                                   (set_to_str loc s2)
+  | Setdiff(s1,s2)      -> sprintf "diff(%s,%s)" (set_to_str loc s1)
+                                                 (set_to_str loc s2)
   | PathToSet(path)     -> sprintf "path2set(%s)" (path_to_str loc path)
   | AddrToSet(mem,addr) -> sprintf "addr2set(%s,%s)" (mem_to_str loc mem)
                                                      (addr_to_str loc addr)
@@ -553,14 +553,14 @@ and set_to_str (loc:bool) (expr:set) : string =
 and setth_to_str (loc:bool) (expr:setth) : string =
   match expr with
     VarSetTh v             -> variable_to_str loc v
-  | EmptySetTh             -> "EmptySetTh"
-  | SinglTh(th)            -> sprintf "SinglTh(%s)" (tid_to_str loc th)
-  | UnionTh(s_1,s_2)       -> sprintf "%s UnionTh %s" (setth_to_str loc s_1)
+  | EmptySetTh             -> "tempty"
+  | SinglTh(th)            -> sprintf "tsingle(%s)" (tid_to_str loc th)
+  | UnionTh(s_1,s_2)       -> sprintf "tunion(%s,%s)" (setth_to_str loc s_1)
                                                       (setth_to_str loc s_2)
-  | IntrTh(s_1,s_2)        -> sprintf "%s IntrTh %s" (setth_to_str loc s_1)
+  | IntrTh(s_1,s_2)        -> sprintf "tintr(%s,%s)" (setth_to_str loc s_1)
                                                      (setth_to_str loc s_2)
-  | SetdiffTh(s_1,s_2)     -> sprintf "%s SetDiffTh %s" (setth_to_str loc s_1)
-                                                        (setth_to_str loc s_2)
+  | SetdiffTh(s_1,s_2)     -> sprintf "tdiff(%s,%s)" (setth_to_str loc s_1)
+                                                     (setth_to_str loc s_2)
   | SetThArrayRd(arr,t)    -> sprintf "%s%s" (arrays_to_str loc arr)
                                              (tid_to_str loc t)
 
@@ -568,13 +568,13 @@ and setth_to_str (loc:bool) (expr:setth) : string =
 and setint_to_str (loc:bool) (expr:setint) : string =
   match expr with
     VarSetInt v             -> variable_to_str loc v
-  | EmptySetInt             -> "EmptySetInt"
-  | SinglInt(th)            -> sprintf "SinglInt(%s)" (integer_to_str loc th)
-  | UnionInt(s_1,s_2)       -> sprintf "%s UnionInt %s" (setint_to_str loc s_1)
-                                                        (setint_to_str loc s_2)
-  | IntrInt(s_1,s_2)        -> sprintf "%s IntrInt %s" (setint_to_str loc s_1)
+  | EmptySetInt             -> "iempty"
+  | SinglInt(th)            -> sprintf "isingle(%s)" (integer_to_str loc th)
+  | UnionInt(s_1,s_2)       -> sprintf "iunion(%s,%s)" (setint_to_str loc s_1)
                                                        (setint_to_str loc s_2)
-  | SetdiffInt(s_1,s_2)     -> sprintf "%s SetDiffInt %s"
+  | IntrInt(s_1,s_2)        -> sprintf "iintr(%s,%s)" (setint_to_str loc s_1)
+                                                      (setint_to_str loc s_2)
+  | SetdiffInt(s_1,s_2)     -> sprintf "idiff(%s,%s)"
                                                   (setint_to_str loc s_1)
                                                   (setint_to_str loc s_2)
   | SetIntArrayRd(arr,t)    -> sprintf "%s%s" (arrays_to_str loc arr)
@@ -584,13 +584,13 @@ and setint_to_str (loc:bool) (expr:setint) : string =
 and setelem_to_str (loc:bool) (expr:setelem) : string =
   match expr with
     VarSetElem v             -> variable_to_str loc v
-  | EmptySetElem             -> "EmptySetElem"
-  | SinglElem(th)            -> sprintf "SinglElem(%s)" (elem_to_str loc th)
-  | UnionElem(s_1,s_2)       -> sprintf "%s UnionElem %s" (setelem_to_str loc s_1)
-                                                          (setelem_to_str loc s_2)
-  | IntrElem(s_1,s_2)        -> sprintf "%s IntrElem %s" (setelem_to_str loc s_1)
-                                                         (setelem_to_str loc s_2)
-  | SetdiffElem(s_1,s_2)     -> sprintf "%s SetDiffElem %s"
+  | EmptySetElem             -> "eempty"
+  | SinglElem(th)            -> sprintf "esingle(%s)" (elem_to_str loc th)
+  | UnionElem(s_1,s_2)       -> sprintf "eunion(%s,%s)" (setelem_to_str loc s_1)
+                                                        (setelem_to_str loc s_2)
+  | IntrElem(s_1,s_2)        -> sprintf "eintr(%s,%s)" (setelem_to_str loc s_1)
+                                                       (setelem_to_str loc s_2)
+  | SetdiffElem(s_1,s_2)     -> sprintf "ediff(%s,%s)"
                                                   (setelem_to_str loc s_1)
                                                   (setelem_to_str loc s_2)
   | SetToElems(s,m)          -> sprintf "SetToElems(%s,%s)" (set_to_str loc s)
@@ -602,13 +602,13 @@ and setelem_to_str (loc:bool) (expr:setelem) : string =
 and setpair_to_str (loc:bool) (expr:setpair) : string =
   match expr with
     VarSetPair v             -> variable_to_str loc v
-  | EmptySetPair             -> "EmptySetPair"
-  | SinglPair(p)             -> sprintf "SinglPair(%s)" (pair_to_str loc p)
-  | UnionPair(s_1,s_2)       -> sprintf "%s UnionPair %s" (setpair_to_str loc s_1)
-                                                           (setpair_to_str loc s_2)
-  | IntrPair(s_1,s_2)        -> sprintf "%s IntrPair %s" (setpair_to_str loc s_1)
-                                                          (setpair_to_str loc s_2)
-  | SetdiffPair(s_1,s_2)     -> sprintf "%s SetDiffPair %s"
+  | EmptySetPair             -> "spempty"
+  | SinglPair(p)             -> sprintf "spsingle(%s)" (pair_to_str loc p)
+  | UnionPair(s_1,s_2)       -> sprintf "spunion(%s,%s)" (setpair_to_str loc s_1)
+                                                         (setpair_to_str loc s_2)
+  | IntrPair(s_1,s_2)        -> sprintf "spintr(%s,%s)" (setpair_to_str loc s_1)
+                                                        (setpair_to_str loc s_2)
+  | SetdiffPair(s_1,s_2)     -> sprintf "spdiff(%s,%s)"
                                                   (setpair_to_str loc s_1)
                                                   (setpair_to_str loc s_2)
   | SetPairArrayRd(arr,t)    -> sprintf "%s%s" (arrays_to_str loc arr)

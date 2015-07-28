@@ -1159,13 +1159,13 @@ and path_to_str (expr:path) : string =
 and set_to_str (expr:set) : string =
   match expr with
     VarSet v            -> V.to_str v
-  | EmptySet            -> "EmptySet"
+  | EmptySet            -> "empty"
   | Singl(addr)         -> sprintf "{ %s }" (addr_to_str addr)
-  | Union(s1,s2)        -> sprintf "Union(%s,%s)" (set_to_str s1)
+  | Union(s1,s2)        -> sprintf "union(%s,%s)" (set_to_str s1)
                                                   (set_to_str s2)
-  | Intr(s1,s2)         -> sprintf "Intr(%s,%s)" (set_to_str s1)
+  | Intr(s1,s2)         -> sprintf "intr(%s,%s)" (set_to_str s1)
                                                  (set_to_str s2)
-  | Setdiff(s1,s2)      -> sprintf "SetDiff(%s,%s)" (set_to_str s1)
+  | Setdiff(s1,s2)      -> sprintf "diff(%s,%s)" (set_to_str s1)
                                                     (set_to_str s2)
   | PathToSet(path)     -> sprintf "path2set(%s)" (path_to_str path)
   | AddrToSet(mem,addr) -> sprintf "addr2set(%s,%s)" (mem_to_str mem)
@@ -1180,13 +1180,13 @@ and set_to_str (expr:set) : string =
 and setth_to_str (expr:setth) : string =
   match expr with
     VarSetTh v          -> V.to_str v
-  | EmptySetTh          -> "EmptySetTh"
-  | SinglTh(th)         -> sprintf "SinglTh(%s)" (tid_to_str th)
-  | UnionTh(s_1,s_2)    -> sprintf "UnionTh(%s,%s)" (setth_to_str s_1)
+  | EmptySetTh          -> "tempty"
+  | SinglTh(th)         -> sprintf "tsingle(%s)" (tid_to_str th)
+  | UnionTh(s_1,s_2)    -> sprintf "tunion(%s,%s)" (setth_to_str s_1)
                                                     (setth_to_str s_2)
-  | IntrTh(s_1,s_2)     -> sprintf "IntrTh(%s,%s)" (setth_to_str s_1)
+  | IntrTh(s_1,s_2)     -> sprintf "tintr(%s,%s)" (setth_to_str s_1)
                                                    (setth_to_str s_2)
-  | SetdiffTh(s_1,s_2)  -> sprintf "SetDiffTh(%s,%s)" (setth_to_str s_1)
+  | SetdiffTh(s_1,s_2)  -> sprintf "tdiff(%s,%s)" (setth_to_str s_1)
                                                       (setth_to_str s_2)
   | SetThArrayRd(arr,t) -> sprintf "%s%s" (arrays_to_str arr)
                                           (param_tid_to_str t)
@@ -1197,15 +1197,15 @@ and setth_to_str (expr:setth) : string =
 and setint_to_str (expr:setint) : string =
   match expr with
     VarSetInt v          -> V.to_str v
-  | EmptySetInt          -> "EmptySetInt"
-  | SinglInt(th)         -> sprintf "SinglInt(%s)" (integer_to_str th)
-  | UnionInt(s_1,s_2)    -> sprintf "UnionInt(%s,%s)" (setint_to_str s_1)
-                                                      (setint_to_str s_2)
-  | IntrInt(s_1,s_2)     -> sprintf "IntrInt(%s,%s)" (setint_to_str s_1)
-                                                     (setint_to_str s_2)
-  | SetdiffInt(s_1,s_2)  -> sprintf "SetDiffInt(%s,%s)" (setint_to_str s_1)
-                                                        (setint_to_str s_2)
-  | SetLower(s,i)        -> sprintf "SetLower(%s,%s)" (setint_to_str s)
+  | EmptySetInt          -> "iempty"
+  | SinglInt(th)         -> sprintf "isingle(%s)" (integer_to_str th)
+  | UnionInt(s_1,s_2)    -> sprintf "iunion(%s,%s)" (setint_to_str s_1)
+                                                    (setint_to_str s_2)
+  | IntrInt(s_1,s_2)     -> sprintf "iintr(%s,%s)" (setint_to_str s_1)
+                                                   (setint_to_str s_2)
+  | SetdiffInt(s_1,s_2)  -> sprintf "idiff(%s,%s)" (setint_to_str s_1)
+                                                   (setint_to_str s_2)
+  | SetLower(s,i)        -> sprintf "setLower(%s,%s)" (setint_to_str s)
                                                       (integer_to_str i)
   | SetIntArrayRd(arr,t) -> sprintf "%s%s" (arrays_to_str arr)
                                            (param_tid_to_str t)
@@ -1214,14 +1214,14 @@ and setint_to_str (expr:setint) : string =
 and setelem_to_str (expr:setelem) : string =
   match expr with
     VarSetElem v          -> V.to_str v
-  | EmptySetElem          -> "EmptySetElem"
-  | SinglElem(e)          -> sprintf "SinglElem(%s)" (elem_to_str e)
-  | UnionElem(s_1,s_2)    -> sprintf "UnionElem(%s,%s)" (setelem_to_str s_1)
-                                                        (setelem_to_str s_2)
-  | IntrElem(s_1,s_2)     -> sprintf "IntrElem(%s,%s)" (setelem_to_str s_1)
-                                                       (setelem_to_str s_2)
-  | SetdiffElem(s_1,s_2)  -> sprintf "SetDiffElem(%s,%s)" (setelem_to_str s_1)
-                                                         (setelem_to_str s_2)
+  | EmptySetElem          -> "eempty"
+  | SinglElem(e)          -> sprintf "esingle(%s)" (elem_to_str e)
+  | UnionElem(s_1,s_2)    -> sprintf "eunion(%s,%s)" (setelem_to_str s_1)
+                                                     (setelem_to_str s_2)
+  | IntrElem(s_1,s_2)     -> sprintf "eintr(%s,%s)" (setelem_to_str s_1)
+                                                    (setelem_to_str s_2)
+  | SetdiffElem(s_1,s_2)  -> sprintf "ediff(%s,%s)" (setelem_to_str s_1)
+                                                    (setelem_to_str s_2)
   | SetToElems(s,m)       -> sprintf "set2elem(%s,%s)" (set_to_str s)
                                                        (mem_to_str m)
   | SetElemArrayRd(arr,t) -> sprintf "%s%s" (arrays_to_str arr)

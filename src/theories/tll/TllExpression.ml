@@ -746,13 +746,13 @@ and path_to_str expr =
 and set_to_str e =
   match e with
       VarSet(v)  -> V.to_str v
-    | EmptySet  -> "EmptySet"
+    | EmptySet  -> "empty"
     | Singl(addr) -> Printf.sprintf "{ %s }" (addr_to_str addr)
-    | Union(s1,s2) -> Printf.sprintf "%s Union %s"
+    | Union(s1,s2) -> Printf.sprintf "union(%s,%s)"
   (set_to_str s1) (set_to_str s2)
-    | Intr(s1,s2) -> Printf.sprintf "%s Intr %s"
+    | Intr(s1,s2) -> Printf.sprintf "intr(%s,%s)"
   (set_to_str s1) (set_to_str s2)
-    | Setdiff(s1,s2) -> Printf.sprintf "%s SetDiff %s"
+    | Setdiff(s1,s2) -> Printf.sprintf "diff(%s,%s)"
   (set_to_str s1) (set_to_str s2)
     | PathToSet(path) -> Printf.sprintf "path2set(%s)"
   (path_to_str path)
@@ -761,28 +761,28 @@ and set_to_str e =
 and setth_to_str e =
   match e with
       VarSetTh(v)  -> V.to_str v
-    | EmptySetTh  -> "EmptySetTh"
+    | EmptySetTh  -> "tempty"
     | SinglTh(th) -> Printf.sprintf "[ %s ]" (tid_to_str th)
-    | UnionTh(s_1,s_2) -> Printf.sprintf "%s UnionTh %s"
+    | UnionTh(s_1,s_2) -> Printf.sprintf "tunion(%s,%s)"
                             (setth_to_str s_1) (setth_to_str s_2)
-    | IntrTh(s_1,s_2) -> Printf.sprintf "%s IntrTh %s"
+    | IntrTh(s_1,s_2) -> Printf.sprintf "tintr(%s,%s)"
                             (setth_to_str s_1) (setth_to_str s_2)
-    | SetdiffTh(s_1,s_2) -> Printf.sprintf "%s SetDiffTh %s"
+    | SetdiffTh(s_1,s_2) -> Printf.sprintf "tdiff(%s,%s)"
                             (setth_to_str s_1) (setth_to_str s_2)
     | LockSet(m,p) -> Printf.sprintf "lockset(%s,%s)"
                             (mem_to_str m) (path_to_str p)
 and setelem_to_str e =
   match e with
       VarSetElem(v)  -> V.to_str v
-    | EmptySetElem  -> "EmptySetElem"
+    | EmptySetElem  -> "eempty"
     | SinglElem(e) -> Printf.sprintf "[ %s ]" (elem_to_str e)
-    | UnionElem(s_1,s_2) -> Printf.sprintf "%s UnionElem %s"
+    | UnionElem(s_1,s_2) -> Printf.sprintf "eunion(%s,%s)"
                             (setelem_to_str s_1) (setelem_to_str s_2)
-    | IntrElem(s_1,s_2) -> Printf.sprintf "%s IntrElem %s"
+    | IntrElem(s_1,s_2) -> Printf.sprintf "eintr(%s,%s)"
                             (setelem_to_str s_1) (setelem_to_str s_2)
     | SetToElems(s,m) -> Printf.sprintf "SetToElems(%s,%s)"
                             (set_to_str s) (mem_to_str m)
-    | SetdiffElem(s_1,s_2) -> Printf.sprintf "%s SetDiffElem %s"
+    | SetdiffElem(s_1,s_2) -> Printf.sprintf "ediff(%s,%s)"
                             (setelem_to_str s_1) (setelem_to_str s_2)
 and cell_to_str e =
   match e with

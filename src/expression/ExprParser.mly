@@ -1337,7 +1337,7 @@ set :
     }
   | UNION OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "Union(%s,%s)" (E.term_to_str $3)
+      let get_str_expr() = sprintf "union(%s,%s)" (E.term_to_str $3)
                                                   (E.term_to_str $5) in
       let s1 = parser_check_type check_type_set  $3 E.Set get_str_expr in
       let s2 = parser_check_type check_type_set  $5 E.Set get_str_expr in
@@ -1345,7 +1345,7 @@ set :
     }
   | INTR OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "Intr(%s,%s)" (E.term_to_str $3)
+      let get_str_expr() = sprintf "intr(%s,%s)" (E.term_to_str $3)
                                                  (E.term_to_str $5) in
       let s1 = parser_check_type check_type_set  $3 E.Set get_str_expr in
       let s2 = parser_check_type check_type_set  $5 E.Set get_str_expr in
@@ -1353,7 +1353,7 @@ set :
     }
   | SETDIFF OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "SetDiff(%s,%s)" (E.term_to_str $3)
+      let get_str_expr() = sprintf "diff(%s,%s)" (E.term_to_str $3)
                                                     (E.term_to_str $5) in
       let s1 = parser_check_type check_type_set  $3 E.Set get_str_expr in
       let s2 = parser_check_type check_type_set  $5 E.Set get_str_expr in
@@ -1586,13 +1586,13 @@ setth :
   { E.EmptySetTh }
   | SINGLETH OPEN_PAREN term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "SingleTh(%s)" (E.term_to_str $3) in
+      let get_str_expr() = sprintf "tsingle(%s)" (E.term_to_str $3) in
       let th = parser_check_type check_type_thid  $3 E.Tid get_str_expr in
         E.SinglTh(th)
     }
   | UNIONTH OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "UnionTh(%s,%s)" (E.term_to_str $3)
+      let get_str_expr() = sprintf "tunion(%s,%s)" (E.term_to_str $3)
                                                     (E.term_to_str $5) in
       let s1 = parser_check_type check_type_setth  $3 E.SetTh get_str_expr in
       let s2 = parser_check_type check_type_setth  $5 E.SetTh get_str_expr in
@@ -1600,7 +1600,7 @@ setth :
     }
   | INTRTH OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "IntrTh(%s,%s)" (E.term_to_str $3)
+      let get_str_expr() = sprintf "tintr(%s,%s)" (E.term_to_str $3)
                                                    (E.term_to_str $5) in
       let s1 = parser_check_type check_type_setth  $3 E.SetTh get_str_expr in
       let s2 = parser_check_type check_type_setth  $5 E.SetTh get_str_expr in
@@ -1608,7 +1608,7 @@ setth :
     }
   | SETDIFFTH OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "SetDiffTh(%s,%s)" (E.term_to_str $3)
+      let get_str_expr() = sprintf "tdiff(%s,%s)" (E.term_to_str $3)
                                                       (E.term_to_str $5) in
       let s1 = parser_check_type check_type_setth  $3 E.SetTh get_str_expr in
       let s2 = parser_check_type check_type_setth  $5 E.SetTh get_str_expr in
@@ -1630,13 +1630,13 @@ setint :
      { E.EmptySetInt }
   | SINGLEINT OPEN_PAREN term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "SingleInt(%s)" (E.term_to_str $3) in
+      let get_str_expr() = sprintf "isingle(%s)" (E.term_to_str $3) in
       let th = parser_check_type check_type_int $3 E.Int get_str_expr in
         E.SinglInt(th)
     }
   | UNIONINT OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "UnionInt(%s,%s)" (E.term_to_str $3)
+      let get_str_expr() = sprintf "iunion(%s,%s)" (E.term_to_str $3)
                                                      (E.term_to_str $5) in
       let s1 = parser_check_type check_type_setint  $3 E.SetInt get_str_expr in
       let s2 = parser_check_type check_type_setint  $5 E.SetInt get_str_expr in
@@ -1644,7 +1644,7 @@ setint :
     }
   | INTRINT OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "IntrInt(%s,%s)" (E.term_to_str $3)
+      let get_str_expr() = sprintf "iintr(%s,%s)" (E.term_to_str $3)
                                                     (E.term_to_str $5) in
       let s1 = parser_check_type check_type_setint  $3 E.SetInt get_str_expr in
       let s2 = parser_check_type check_type_setint  $5 E.SetInt get_str_expr in
@@ -1652,7 +1652,7 @@ setint :
     }
   | SETDIFFINT OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "SetDiffInt(%s,%s)" (E.term_to_str $3)
+      let get_str_expr() = sprintf "idiff(%s,%s)" (E.term_to_str $3)
                                                        (E.term_to_str $5) in
       let s1 = parser_check_type check_type_setint $3 E.SetInt get_str_expr in
       let s2 = parser_check_type check_type_setint $5 E.SetInt get_str_expr in
@@ -1660,7 +1660,7 @@ setint :
     }
   | SETLOWER OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "SetLower(%s,%s)" (E.term_to_str $3)
+      let get_str_expr() = sprintf "setLower(%s,%s)" (E.term_to_str $3)
                                                      (E.term_to_str $5) in
       let s = parser_check_type check_type_setint $3 E.SetInt get_str_expr in
       let i = parser_check_type check_type_int $5 E.Int get_str_expr in
@@ -1718,13 +1718,13 @@ setelem :
      { E.EmptySetElem }
   | SINGLEELEM OPEN_PAREN term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "SingleElem(%s)" (E.term_to_str $3) in
+      let get_str_expr() = sprintf "esingle(%s)" (E.term_to_str $3) in
       let e = parser_check_type check_type_elem $3 E.Elem get_str_expr in
         E.SinglElem(e)
     }
   | UNIONELEM OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "UnionElem(%s,%s)" (E.term_to_str $3)
+      let get_str_expr() = sprintf "eunion(%s,%s)" (E.term_to_str $3)
                                                       (E.term_to_str $5) in
       let s1 = parser_check_type check_type_setelem $3 E.SetElem get_str_expr in
       let s2 = parser_check_type check_type_setelem $5 E.SetElem get_str_expr in
@@ -1732,7 +1732,7 @@ setelem :
     }
   | INTRELEM OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "IntrElem(%s,%s)" (E.term_to_str $3)
+      let get_str_expr() = sprintf "eintr(%s,%s)" (E.term_to_str $3)
                                                      (E.term_to_str $5) in
       let s1 = parser_check_type check_type_setelem $3 E.SetElem get_str_expr in
       let s2 = parser_check_type check_type_setelem $5 E.SetElem get_str_expr in
@@ -1740,7 +1740,7 @@ setelem :
     }
   | SETDIFFELEM OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr() = sprintf "SetDiffElem(%s,%s)" (E.term_to_str $3)
+      let get_str_expr() = sprintf "ediff(%s,%s)" (E.term_to_str $3)
                                                         (E.term_to_str $5) in
       let s1 = parser_check_type check_type_setelem $3 E.SetElem get_str_expr in
       let s2 = parser_check_type check_type_setelem $5 E.SetElem get_str_expr in

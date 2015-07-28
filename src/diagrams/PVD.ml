@@ -429,7 +429,7 @@ let check_and_define_edges (nTbl:node_table_t)
     let _ = try
               let old_e_info = Hashtbl.find eTbl (n1,n2) in
               Hashtbl.replace eTbl (n1,n2) (EdgeInfoSet.add (kind,trans) old_e_info)
-            with Not_found -> (print_endline "3"; Hashtbl.add eTbl (n1,n2) (EdgeInfoSet.singleton (kind,trans))) in
+            with Not_found -> Hashtbl.add eTbl (n1,n2) (EdgeInfoSet.singleton (kind,trans)) in
     add_next_node n1 n2;
     add_tau n1 n2 trans;
   ) es;
