@@ -1,18 +1,18 @@
 => preserve [
-			34:O:region;
-			35:O:region::insert_prev_in_region,
-					 nexts,
-					 locks,
-					 order;
-			51:O:nexts::remove_curr_not_null,
-					 nexts::remove_curr_next_aux,
-					 nexts::remove_prev_next_curr,
-					 region,
-					 order
-	 ] { pruning : split-goal
-							 | reduce2
-							 |
-							 | simplify-pc
-		 }
+      34:O:region;
+      35:O:region::insert_prev_in_region,
+           nexts,
+           locks,
+           order;
+      51:O:nexts::remove_curr_not_null,
+           nexts::remove_curr_next_aux,
+           nexts::remove_prev_next_curr,
+           region,
+           order
+   ] { pruning : split-goal
+               | reduce2
+               |
+               | simplify-pc
+     }
 
 

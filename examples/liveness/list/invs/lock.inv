@@ -22,6 +22,9 @@ invariant [locks] :
 #insert_owns_aux:
    (@ins_aux_before_prev(i). -> rd(heap, insert::aux(i)).lockid = i)
 
+#insert_nobody_owns_aux:
+   (@after_malloc(i). -> rd(heap, insert::aux(i)).lockid = #)
+
 #remove_owns_prev:
    (@rem_owns_prev(i). -> rd(heap, remove::prev(i)).lockid = i)
 
