@@ -48,7 +48,7 @@ let _ = List.iter (fun (kwd, tok) -> Hashtbl.add keyword_table kwd tok)
             ("union"        , UNION);
             ("intr"         , INTR);
             ("diff"         , SETDIFF );
-            ("tmepty"       , EMPTYSETTH);
+            ("tempty"       , EMPTYSETTH);
             ("tsingle"      , SINGLETH);
             ("tunion"       , UNIONTH);
             ("tintr"        , INTRTH);

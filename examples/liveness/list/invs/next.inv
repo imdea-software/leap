@@ -106,3 +106,4 @@ invariant [nexts] :
 
 #remove_while_begins:
    @rem_while_begins(j). -> rd(heap, remove::curr(j)).next != null
+

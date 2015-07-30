@@ -1,0 +1,23 @@
+
+vars:
+
+tid j
+
+invariant [lockSets] :
+
+#search_thread_ahead:
+  (@sch_working(j). /\
+   (@ins_working(k). /\ ~ @ins_releases_last_lock(k).)) -> tin (j, aheadSet)
+
+#insert_thread_ahead:
+  (@ins_working(j). /\
+   (@ins_working(k). /\ ~ @ins_releases_last_lock(k).)) -> tin (j, aheadSet)
+
+#remove_thread_ahead:
+  (@rem_working(j). /\
+   (@ins_working(k). /\ ~ @ins_releases_last_lock(k).)) -> tin (j, aheadSet)
+
+#insert_thread_inserting_ahead:
+  (@ins_working(j). /\
+   (@ins_working(k). /\ ~ @ins_releases_last_lock(k).)) -> tin (j, aheadInsert)
+

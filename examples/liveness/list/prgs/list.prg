@@ -8,7 +8,7 @@ global
   ghost tidSet aheadInsert
   ghost tidSet insideSet
   ghost tidSet insideInsert
-  ghost bool kisinm
+//  ghost bool kisinm
 
 assume
   region = union (union ({head}, {tail}), {null}) /\
@@ -23,8 +23,8 @@ assume
   head != null /\
   tail != null /\
   head->next = tail /\
-  tail->next = null /\
-  ~ (kisinm)
+  tail->next = null
+//  ~ (kisinm)
 
 
 // ----- PROGRAM BEGINS --------------------------------------
@@ -163,10 +163,10 @@ assume
 :ins_head_next_diff]
 :ins_curr_def[
 :ins_follows[
-                                curr->lock
-                                  $
-                                    if (me = k) then kisinm := true; endif
-                                  $
+                                curr->lock;
+//                                  $
+//                                    if (me = k) then kisinm := true; endif
+//                                  $
 :ins_init_prev_locked]
 :ins_prev_is_head]
 :ins_owns_curr_one[
@@ -228,9 +228,9 @@ assume
                                   $
                                     insideSet := tdiff (insideSet, tsingle(me));
                                     aheadSet := tdiff (aheadSet, tsingle(me));
-                                    if (me = k) then
-                                      kisinm := false;
-                                    endif
+//                                    if (me = k) then
+//                                      kisinm := false;
+//                                    endif
                                   $
 :ins_follows]
 :ins_owns_curr_two]

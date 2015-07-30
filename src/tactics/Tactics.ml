@@ -1028,11 +1028,16 @@ let tactic_simplify_pc_plus (imp:implication) : implication =
 
 (* eliminate from the antecedent all literals without variables in common
    with the goal *)
-let tactic_filter_vars_nonrec (imp:implication) : implication =
+let tactic_filter_vars_nonrec (except_heap:bool) (imp:implication) : implication =
   let vs_conseq = E.all_vars_as_set imp.conseq in
+  let filtered_vs_conseq =
+    if except_heap then
+      E.V.VarSet.filter (fun v -> E.V.id v <> Conf.heap_name) vs_conseq
+    else
+      vs_conseq in
   let conjs = F.to_conj_list imp.ante in
   let share_vars (vl: E.V.t list) : bool =
-    List.exists (fun v -> E.V.VarSet.mem v vs_conseq) vl
+    List.exists (fun v -> E.V.VarSet.mem v filtered_vs_conseq) vl
   in
   let new_conjs = List.filter (fun f -> share_vars (E.all_vars f)) conjs in
   { ante = F.conj_list new_conjs ; conseq = imp.conseq }
@@ -1291,11 +1296,12 @@ let formula_split_tactic_from_string (s:string): formula_split_tactic_t =
 
 let formula_tactic_from_string (s:string) : formula_tactic_t =
   match s with
-  | "simplify-pc"             -> tactic_simplify_pc
-  | "simplify-pc-plus"        -> tactic_simplify_pc_plus
-  | "propositional-propagate" -> tactic_propositional_propagate
-  | "filter-strict"           -> tactic_filter_vars_nonrec
-  | "filter-theory"           -> tactic_filter_theory
+  | "simplify-pc"               -> tactic_simplify_pc
+  | "simplify-pc-plus"          -> tactic_simplify_pc_plus
+  | "propositional-propagate"   -> tactic_propositional_propagate
+  | "filter-strict"             -> tactic_filter_vars_nonrec false
+  | "filter-strict-except-heap" -> tactic_filter_vars_nonrec true
+  | "filter-theory"             -> tactic_filter_theory
   | "propagate-disj-conseq-fst" -> tactic_conseq_propagate_first_disjunct
   | "propagate-disj-conseq-snd" -> tactic_conseq_propagate_second_disjunct
   | _ -> raise(Invalid_tactic (s ^ " is not a formula_tactic"))

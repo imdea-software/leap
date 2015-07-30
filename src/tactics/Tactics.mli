@@ -134,7 +134,7 @@ val split_goal :vc_info -> vc_info list
 
 val tactic_simplify_pc : implication -> implication
 val tactic_propositional_propagate : implication -> implication 
-val tactic_filter_vars_nonrec : implication -> implication
+val tactic_filter_vars_nonrec : bool -> implication -> implication
 val tactic_conseq_propagate_second_disjunct : implication -> implication
 val tactic_conseq_propagate_first_disjunct : implication -> implication
 
