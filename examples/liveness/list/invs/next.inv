@@ -59,8 +59,11 @@ invariant [nexts] :
    @ins_aux_before_curr(j). -> (rd(heap,insert::aux(j)).next = insert::curr(j))
 
 #insert_prev_next_curr:
-    (@ins_follows(j). /\ ~ @ins_equals(j).) -> (insert::prev(j) != insert::curr(j) /\
-                                         rd(heap,insert::prev(j)).next = insert::curr(j))
+    (  @ins_follows(j). /\
+     ~ @ins_equals(j). /\
+     ~ @ins_elem_inserted(j). ) ->
+      (insert::prev(j) != insert::curr(j) /\
+       rd(heap,insert::prev(j)).next = insert::curr(j))
 
 #insert_equal:
     @ins_equals(j). -> insert::prev(j) = insert::curr(j)

@@ -223,6 +223,7 @@ assume
 :ins_owns_prev]
 :ins_prev_def]
 :ins_insertion_process]
+:ins_diff]
 :ins_releases_last_lock
                                 curr->unlock
                                   $
@@ -235,7 +236,6 @@ assume
 :ins_follows]
 :ins_owns_curr_two]
 :ins_curr_def]
-:ins_diff]
 :ins_working]
 :ins_return
                                 return();
@@ -316,19 +316,19 @@ assume
 :rem_elem_removed[
 :rem_diff[
 :rem_last_prev_unlock
-                                prev->unlock
+                                prev->unlock;
+:rem_owns_prev]
+:rem_prev_def]
+:rem_releases_last_lock
+                                curr->unlock
                                   $
                                     insideSet := tdiff (insideSet, tsingle(me));
                                     aheadSet := tdiff (aheadSet, tsingle(me));
                                   $
-:rem_working]
-:rem_owns_prev]
-:rem_prev_def]
-:rem_releases_last_lock
-                                curr->unlock;
 :rem_diff]
 :rem_owns_curr_two]
 :rem_got_lock]
+:rem_working]
 :rem_return
                                 return();
 :rem_elem_removed]

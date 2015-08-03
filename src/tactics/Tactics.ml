@@ -1240,8 +1240,19 @@ let apply_tactics (vcs:vc_info list)
   List.fold_left (fun phi_list vc ->
     let split_vc_info_list = apply_support_split_tactics [vc] supp_split_tacs in
     let original_implications = apply_support_tactic split_vc_info_list supp_tac in
+
+
+    print_endline ("IMPLICATIONS:");
+    List.iter (fun impl -> print_endline (E.formula_to_str impl.ante ^
+    "-->" ^ (E.formula_to_str impl.conseq))) original_implications;
+
+
     let split_implications = apply_formula_split_tactics original_implications formula_split_tacs in
     let final_implications = apply_formula_tactics split_implications formula_tacs in
+
+    print_endline ("FINAL IMPLICATIONS:");
+    List.iter (fun impl -> print_endline (E.formula_to_str impl.ante ^
+    "-->" ^ (E.formula_to_str impl.conseq))) final_implications;
 
 
     Log.print "* From this vc_info" (vc_info_to_str vc);

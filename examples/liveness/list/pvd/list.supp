@@ -28,21 +28,23 @@ Facts :
      nexts::search_follows,
      region::search_curr_in_region,
 ////////// Testing /////////
-     lockSets::{search_thread_ahead},
-
+     lockSets::{search_thread_ahead,test},
+     hasLock,
+     lockedRegion::{search_curr_locked};
 ////////// Testing /////////
 
+// this was uncommented
+//     lockedRegion::search_curr_locked;
 
-     lockedRegion::search_curr_locked;
 
 
-
-  23:preserve,nexts::insert_prev_is_head;
+  23:preserve,nexts::insert_prev_is_head,
+     hasLock;
   24:preserve::{region,tail_at_end,head_not_null,tail_in_region,head_not_tail},
      nexts::{insert_prev_is_head};
   25:nexts::{general, insert_prev_is_head, insert_prev_next_curr},
      locks::insert_owns_prev;
-  28:preserve::{region},
+  28:preserve::{region,null_in_region},
      nexts::{insert_prev_next_curr,insert_equal},
      region::{insert_prev_in_region};
   29:preserve::{null_in_region,region,tail_at_end},
@@ -74,22 +76,24 @@ Facts :
 //     lockedRegion::insert_prev_curr_locked;
   36:preserve::tail_at_end,
      nexts::{general,insert_prev_next_curr,insert_curr_not_null,insert_diff},
-     locks::{insert_owns_curr,insert_owns_prev};
-//     lockedRegion::insert_prev_curr_locked;
+     locks::{insert_owns_curr,insert_owns_prev},
+     hasLock,
+     lockedRegion::insert_prev_curr_locked;
   37:preserve::{region,tail_at_end},
      nexts::insert_curr_not_null,
      region::insert_curr_in_region,
 
 
 ////////// Testing /////////
-     lockSets::{insert_thread_ahead};
+     lockSets::{insert_thread_ahead},
 
 ////////// Testing /////////
 
-
-//     lockedRegion::insert_curr_locked;
+     hasLock,
+     lockedRegion::insert_curr_locked;
   38:preserve; //, lockedRegion::insert_no_locks;
-  40:nexts::remove_prev_is_head;
+  40:nexts::remove_prev_is_head,
+     hasLock;
   42:nexts::{general, remove_prev_is_head, remove_prev_next_curr},
      locks::remove_owns_prev;
   46:preserve::{null_in_region,region,tail_at_end},
@@ -109,7 +113,11 @@ Facts :
   52:preserve::{region,tail_at_end},
      region::{remove_prev_in_region},
 /////////  Testing  /////////
+     hasLock,
       lockSets::{remove_thread_ahead};
 /////////  Testing  /////////
-//     lockedRegion::{remove_prev_locked};
+     lockedRegion::{remove_prev_locked};
+/////////  Testing  /////////
+  53:hasLock;
+/////////  Testing  /////////
   54:preserve; //, lockedRegion::remove_no_locks;

@@ -1,12 +1,12 @@
 Diagram[list]
 
 Nodes: n0 { ~ @ins_working(k). },
-       n1 { t = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\
-            t != k /\
-            (@ins_working(k). /\ ~(@ins_releases_last_lock(k).)) /\
-            (@ins_working(t). \/
-             @rem_working(t). \/
-             @sch_working(t).)  },
+       n1 { (@ins_working(k). /\ ~(@ins_releases_last_lock(k).)) /\
+             t = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid ->
+              (t != k /\
+               (@ins_working(t). \/
+                @rem_working(t). \/
+                @sch_working(t).))  },
        n2 { k = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\
             (@ins_prev_locked_one(k). \/ @ins_prev_locked_two(k). \/ @ins_insertion_process(k).) },
        n3 { k = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\ @ins_aux_eq_prev(k). },
@@ -21,11 +21,11 @@ Initial: n0
 
 Edges:  n0 -{23(k)}-> n1;
         n0 -{23(k)}-> n2;
-        n1 -{20(t), 35(t), 37(t), 52(t)}-> n1;
-        n1 -{20(t), 35(t), 37(t), 52(t)}-> n2;
-        n1 -{20(t), 35(t), 37(t), 52(t)}-> n3;
-//        n1 -{20(t), 35(t), 37(t), 52(t)}-> n4;
-        n1 -{20(t), 35(t), 37(t), 52(t)}-> n5;
+        n1 -{20(t), 35(t), 37(t), 53(t)}-> n1;
+        n1 -{20(t), 35(t), 37(t), 53(t)}-> n2;
+        n1 -{20(t), 35(t), 37(t), 53(t)}-> n3;
+//        n1 -{20(t), 35(t), 37(t), 53(t)}-> n4;
+        n1 -{20(t), 35(t), 37(t), 53(t)}-> n5;
         n1 -{28(k)}-> n1;
         n1 -{37(k)}-> n0;
         n1 -{36(k)}-> n4;
