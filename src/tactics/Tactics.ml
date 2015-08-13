@@ -1297,7 +1297,6 @@ let apply_tactics_from_proof_plan (vcs:vc_info list)
 
 
 
-
 (***************************************************************)
 (*            CONVERTERS FORM STRING TO TACTICS                *)
 (***************************************************************)
