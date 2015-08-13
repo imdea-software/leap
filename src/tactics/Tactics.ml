@@ -8,10 +8,13 @@ type vc_id = int
 
 type polarity = Pos | Neg | Both
 
+type assumption_t = ModelFunc of E.tid * E.tid
+
 type vc_extra_info_t =
   {
     orig_vc_id : vc_id;
     prime_goal : bool;
+    assume: assumption_t list;
   }
 
 type support_t = E.formula list
@@ -182,7 +185,21 @@ let vc_info_to_implication (info:vc_info) (sup:support_t): implication =
                  else
                    goal in
   let the_antecedent =
-    E.to_plain_formula E.PCVars (F.And (F.conj_list sup, rho)) in
+    let ante = E.to_plain_formula E.PCVars (F.And (F.conj_list sup, rho)) in
+    List.fold_left (fun phi a ->
+      let assumption =
+        match a with
+        | ModelFunc (t, psi) ->
+            begin
+              let other_tids = E.ThreadSet.remove t goal_voc in
+              let cond = F.conj_list (E.ThreadSet.fold (fun r conj ->
+                                       E.ineq_tid r psi :: conj
+                                      ) other_tids []) in
+              E.prime_modified [rho] (F.Implies (cond, E.eq_tid t psi))
+            end in
+      (print_endline ("TACTIC ASSUMPTION: " ^ (E.formula_to_str assumption));
+      F.And (assumption, phi))
+    ) ante info.extra_info.assume in
 
   let the_consequent =
       E.subst_vars pc_pres
@@ -310,7 +327,9 @@ let create_vc_info ?(prime_goal=true)
       transition_tid     = trans_tid ;
       line               = line ;
       vocabulary         = vocab ; (* fix: can be computed *)
-      extra_info         = {orig_vc_id = id; prime_goal = prime_goal; } ;
+      extra_info         = {orig_vc_id = id;
+                            prime_goal = prime_goal;
+                            assume = [] } ;
     }
 
 
@@ -373,7 +392,20 @@ let dup_vc_info_with_supp_constr_rho_and_goal (info:vc_info)
   }
 
 
-
+let add_modelfunc_assumption (info:vc_info) (a:assumption_t) : vc_info =
+  {
+    original_support = info.original_support ;
+    tid_constraint   = info.tid_constraint;
+    rho              = info.rho ;
+    original_goal    = info.original_goal ;
+    goal             = info.goal ;
+    transition_tid   = info.transition_tid ;
+    line             = info.line ;
+    vocabulary       = info.vocabulary ; (* FIX need recompute *)
+    extra_info       = {orig_vc_id = info.extra_info.orig_vc_id;
+                        prime_goal = info.extra_info.prime_goal;
+                        assume = a :: info.extra_info.assume} ;
+  }
 
 
 let set_fixed_voc (ts:E.ThreadSet.t) : unit =
@@ -1240,21 +1272,8 @@ let apply_tactics (vcs:vc_info list)
   List.fold_left (fun phi_list vc ->
     let split_vc_info_list = apply_support_split_tactics [vc] supp_split_tacs in
     let original_implications = apply_support_tactic split_vc_info_list supp_tac in
-
-
-    print_endline ("IMPLICATIONS:");
-    List.iter (fun impl -> print_endline (E.formula_to_str impl.ante ^
-    "-->" ^ (E.formula_to_str impl.conseq))) original_implications;
-
-
     let split_implications = apply_formula_split_tactics original_implications formula_split_tacs in
     let final_implications = apply_formula_tactics split_implications formula_tacs in
-
-    print_endline ("FINAL IMPLICATIONS:");
-    List.iter (fun impl -> print_endline (E.formula_to_str impl.ante ^
-    "-->" ^ (E.formula_to_str impl.conseq))) final_implications;
-
-
     Log.print "* From this vc_info" (vc_info_to_str vc);
     Log.print "* Leap generated the following formulas" "";
     let final_formulas = List.map (fun imp ->

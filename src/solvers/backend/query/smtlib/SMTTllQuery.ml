@@ -657,13 +657,13 @@ struct
     B.add_string buf
       ("(define-fun ispath ((p " ^path_s^ ")) " ^bool_s^ "\n" ^
        "  (or (eqpath p epsilon)\n" ^
-       "    (and (<= (length p) (+ max_address + 1))\n");
+       "    (and (<= (length p) (+ max_address 1))\n");
     for i=0 to num_addr do
       B.add_string buf
         ("\n          (and (check_position p " ^ (string_of_int i) ^ ")\n" ^
          "               (= (addrs p) " ^ !str ^ "))\n")
     done ;
-    B.add_string buf "))))\n"
+    B.add_string buf ")))\n"
 
 
   let smt_rev_def (buf:B.t) (num_addr:int) : unit =
@@ -996,6 +996,7 @@ struct
     (* Iterations over next *)
     if List.mem Expr.Addr2Set req_ops
        || List.mem Expr.Reachable req_ops
+       || List.mem Expr.Getp req_ops
        || List.mem Expr.OrderedList req_ops then
       smt_nextiter_def buf num_addr ;
     (* Address2set *)

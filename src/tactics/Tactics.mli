@@ -1,4 +1,5 @@
 type polarity = Pos | Neg | Both
+type assumption_t = ModelFunc of Expression.tid * Expression.tid
 type support_t = Expression.formula list
 type tid_constraints_t
 type vc_info
@@ -86,6 +87,7 @@ val create_vc  : ?prime_goal:bool ->
 
 val dup_vc_info_with_goal : vc_info ->  Expression.formula ->   vc_info 
 
+val add_modelfunc_assumption : vc_info -> assumption_t -> vc_info
 val set_fixed_voc : Expression.ThreadSet.t -> unit
 val vc_info_add_support : vc_info -> support_t -> vc_info
 

@@ -127,11 +127,35 @@ module Make (C:Core.S) : S =
                             (PVD.node_mu pvd m) :: xs
                           ) boxed_next []) in
 
-            let other_next_disj =
-              F.disj_list (PVD.NodeIdSet.fold (fun m xs ->
-                            (PVD.node_mu pvd m) :: xs
-                          ) other_next []) in
-
+            let (other_next_disj, pre_assumptions) =
+              let (onds, assumps) =
+                PVD.NodeIdSet.fold (fun m (xs,ys) ->
+                  let mu = PVD.node_mu pvd m in
+                  print_endline ("NEXT MU: " ^ (E.formula_to_str mu));
+                  (* Search for model functions in boxes *)
+                  let assumptions =
+                    List.fold_left (fun zs phi ->
+                      match phi with
+                      | F.Literal (F.Atom (E.Eq (E.TidT t, (E.TidT (E.CellLockId (E.CellAt (_,E.LastLocked _)) as tid_phi)))))
+                      | F.Literal (F.Atom (E.Eq (E.TidT (E.CellLockId (E.CellAt (_,E.LastLocked _)) as tid_phi), E.TidT t ))) -> begin
+                              match PVD.node_box pvd m with
+                              | Some b ->
+                                  (print_endline "SOME BOX";
+                                   print_endline ("BOX PARAM: " ^ (E.tid_to_str (PVD.box_param pvd b)));
+                                   print_endline ("BOX FUNC PARAM: " ^ (E.tid_to_str t));
+                                  if PVD.box_param pvd b = t then
+                                    (print_endline ("ADD MODEL FUNCTION FOR " ^ (E.tid_to_str t) ^ " WITH FORMULA " ^ (E.tid_to_str tid_phi));
+                                    Tactics.ModelFunc(t,tid_phi)::zs)
+                                  else
+                                    (print_endline "FALSE"; zs))
+                              | None -> zs
+                             end
+                      | _ -> zs
+                    ) ys (F.to_conj_list mu) in
+                  (* Search for model functions in boxes *)
+                  (mu :: xs, assumptions)
+                ) other_next ([],[]) in
+              (F.disj_list onds, assumps) in
 
             Debug.infoMsg (fun _ -> "BOXED_NEXT_DISJ: " ^ (E.formula_to_str boxed_next_disj));
             Debug.infoMsg (fun _ -> "OTHER_NEXT_DISJ: " ^ (E.formula_to_str other_next_disj));
@@ -141,12 +165,12 @@ module Make (C:Core.S) : S =
                              (E.voc_from_list [mu_n; boxed_next_disj; other_next_disj]) in
             let fresh_t = E.gen_fresh_tid full_voc in
 
-            let (full_mu_n, goal) =
+            let (full_mu_n, goal, assumptions) =
               match PVD.node_box pvd n with
               | None ->
                   begin
                     assert (PVD.NodeIdSet.is_empty boxed_next);
-                    (mu_n, other_next_disj)
+                    (mu_n, other_next_disj, pre_assumptions)
                   end
               | Some b ->
                   begin
@@ -157,7 +181,14 @@ module Make (C:Core.S) : S =
     (*                let box_param_subst = E.new_tid_subst [(t,t')] in *)
                     let fresh_other_next_disj = E.subst_tid t_subst other_next_disj in
     (*                (F.And (mu_n, t_cond), F.Or (boxed_next_disj, fresh_other_next_disj)) *)
-                    (mu_n, F.Or (boxed_next_disj, fresh_other_next_disj))
+                    (mu_n,
+                     F.Or (boxed_next_disj, fresh_other_next_disj),
+                     List.map (fun a -> 
+                       match a with
+                       | Tactics.ModelFunc(t,tid_phi) ->
+                           Tactics.ModelFunc (E.subst_tid_th t_subst t,
+                                              E.subst_tid_th t_subst tid_phi)
+                     ) pre_assumptions)
                   end in
 
             let full_voc = E.ThreadSet.add fresh_t full_voc in
@@ -167,9 +198,19 @@ module Make (C:Core.S) : S =
                 E.ThreadSet.fold (fun t ys ->
                   let self_rho = C.rho System.Concurrent full_voc line t in
                   (List.map (fun rho ->
-                              Tactics.create_vc_info [] Tactics.no_tid_constraint
-                                                     (F.And (full_mu_n, rho))
-                                                     goal full_voc t line
+                              print_endline ("GOAL: " ^ E.formula_to_str goal);
+                              print_endline ("ASSUMPTIONS:");
+                              List.iter (fun a ->
+                                match a with
+                                | Tactics.ModelFunc(t,phi) ->
+                                    print_endline ("ASSUMPTION: " ^ (E.tid_to_str t) ^ " --> " ^ (E.tid_to_str phi))
+                              ) assumptions;
+
+                              let init_vc = Tactics.create_vc_info []
+                                             Tactics.no_tid_constraint
+                                              (F.And (full_mu_n, rho))
+                                              goal full_voc t line in
+                              List.fold_left Tactics.add_modelfunc_assumption init_vc assumptions
                              ) self_rho) @ ys
                 ) n_voc [] in
               (* Others-consecution *)

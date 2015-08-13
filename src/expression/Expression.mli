@@ -506,6 +506,7 @@ val new_tid_subst : (tid * tid) list -> tid_subst_t
 val new_multiple_tid_subst : tid list -> tid list list -> tid_subst_t list
 val new_comb_subst : tid list -> tid list -> tid_subst_t list
 val subst_tid : tid_subst_t -> formula -> formula
+val subst_tid_th : tid_subst_t -> tid -> tid
 val subst_to_str : tid_subst_t -> string
 val subst_domain : tid_subst_t -> ThreadSet.t
 val subst_codomain : tid_subst_t -> ThreadSet.t
