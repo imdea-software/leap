@@ -13,5 +13,5 @@ safety:
   lockfree-stack
   unbounded-queue
 
-//liveness:
-//  ticketset
+liveness:
+  ticketset

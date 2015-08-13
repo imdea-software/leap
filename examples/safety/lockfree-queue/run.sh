@@ -3,7 +3,7 @@
 #Configure path to Leap
 LEAP=leap
 
-OPTIONS="-q -sm -yices+z3 -dp tll -co pruning -si"
+OPTIONS="-q -sm -yices+z3 -dp tll -co pruning"
 
 PRG=prgs/queue.prg
 INV_FOLDER=invs/gral
