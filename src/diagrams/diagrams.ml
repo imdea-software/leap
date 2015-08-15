@@ -131,7 +131,6 @@ module Make (C:Core.S) : S =
               let (onds, assumps) =
                 PVD.NodeIdSet.fold (fun m (xs,ys) ->
                   let mu = PVD.node_mu pvd m in
-                  print_endline ("NEXT MU: " ^ (E.formula_to_str mu));
                   (* Search for model functions in boxes *)
                   let assumptions =
                     List.fold_left (fun zs phi ->
@@ -140,14 +139,12 @@ module Make (C:Core.S) : S =
                       | F.Literal (F.Atom (E.Eq (E.TidT (E.CellLockId (E.CellAt (_,E.LastLocked _)) as tid_phi), E.TidT t ))) -> begin
                               match PVD.node_box pvd m with
                               | Some b ->
-                                  (print_endline "SOME BOX";
-                                   print_endline ("BOX PARAM: " ^ (E.tid_to_str (PVD.box_param pvd b)));
-                                   print_endline ("BOX FUNC PARAM: " ^ (E.tid_to_str t));
-                                  if PVD.box_param pvd b = t then
-                                    (print_endline ("ADD MODEL FUNCTION FOR " ^ (E.tid_to_str t) ^ " WITH FORMULA " ^ (E.tid_to_str tid_phi));
-                                    Tactics.ModelFunc(t,tid_phi)::zs)
-                                  else
-                                    (print_endline "FALSE"; zs))
+                                  begin
+                                    if PVD.box_param pvd b = t then
+                                      Tactics.ModelFunc(t,tid_phi)::zs
+                                    else
+                                      zs
+                                  end
                               | None -> zs
                              end
                       | _ -> zs
@@ -198,14 +195,6 @@ module Make (C:Core.S) : S =
                 E.ThreadSet.fold (fun t ys ->
                   let self_rho = C.rho System.Concurrent full_voc line t in
                   (List.map (fun rho ->
-                              print_endline ("GOAL: " ^ E.formula_to_str goal);
-                              print_endline ("ASSUMPTIONS:");
-                              List.iter (fun a ->
-                                match a with
-                                | Tactics.ModelFunc(t,phi) ->
-                                    print_endline ("ASSUMPTION: " ^ (E.tid_to_str t) ^ " --> " ^ (E.tid_to_str phi))
-                              ) assumptions;
-
                               let init_vc = Tactics.create_vc_info []
                                              Tactics.no_tid_constraint
                                               (F.And (full_mu_n, rho))

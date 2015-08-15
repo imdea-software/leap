@@ -113,7 +113,7 @@ struct
     let p_str  = match (Expr.V.scope v) with
                  | Expr.V.GlobalScope -> ""
                  | Expr.V.Scope proc -> proc ^ "_" in
-    let pr_str = if (Expr.V.is_primed v) then "_prime" else "" in
+    let pr_str = if (Expr.V.is_primed v) then "" else "" in
     match Expr.V.parameter v with
     | Expr.V.Shared  -> Printf.sprintf " %s%s%s%s" p_str id th_str pr_str
     | Expr.V.Local _ -> Printf.sprintf " (select %s%s%s %s)" p_str id pr_str th_str
@@ -1164,7 +1164,7 @@ struct
     let p_id = match Expr.V.scope v with
                | Expr.V.GlobalScope -> Expr.V.id v
                | Expr.V.Scope proc -> proc ^ "_" ^ (Expr.V.id v) in
-    let name = if Expr.V.is_primed v then p_id ^ "_prime" else p_id
+    let name = if Expr.V.is_primed v then p_id ^ "" else p_id
     in
       if Expr.V.is_global v then
         begin

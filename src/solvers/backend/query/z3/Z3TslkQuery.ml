@@ -339,7 +339,7 @@ module Make (K : Level.S) : TSLK_QUERY =
       let p_str  = match (Expr.V.scope v) with
                    | Expr.V.GlobalScope -> ""
                    | Expr.V.Scope proc -> proc ^ "_" in
-      let pr_str = if (Expr.V.is_primed v) then "_prime" else "" in
+      let pr_str = "" in (*if (Expr.V.is_primed v) then "_prime" else "" in*)
       match Expr.V.parameter v with
       | Expr.V.Shared  -> p_str ^ id ^ th_str ^ pr_str
       | Expr.V.Local _ -> " (select " ^ p_str ^ id ^ pr_str ^ " " ^th_str^ ")"
@@ -962,7 +962,7 @@ module Make (K : Level.S) : TSLK_QUERY =
           B.add_string tmpbuf
             ("(define-fun ispath ((p " ^path_s^ ")) " ^bool_s^ "\n" ^
              "  (or (eqpath p epsilon)\n" ^
-             "    (and (<= (length p) (+ max_address + 1))\n");
+             "    (and (<= (length p) (+ max_address 1))\n");
           for i=0 to num_addr do
             B.add_string tmpbuf
               ("  (check_position p " ^ (string_of_int i) ^ ")\n")
@@ -1480,7 +1480,7 @@ module Make (K : Level.S) : TSLK_QUERY =
       let p_id = match Expr.V.scope v with
                  | Expr.V.GlobalScope -> Expr.V.id v
                  | Expr.V.Scope proc -> proc ^ "_" ^ (Expr.V.id v) in
-      let name = if Expr.V.is_primed v then p_id ^ "_prime" else p_id
+      let name = p_id (*if Expr.V.is_primed v then p_id ^ "_prime" else p_id *)
       in
         if Expr.V.is_global v then
           begin

@@ -334,7 +334,7 @@ struct
   and variable_invocation_to_str (v:PE.V.t) : string =
     let th_str = shared_or_local_to_str (PE.V.parameter v) in
     let p_str  = procedure_name_to_append (PE.V.scope v) in
-    let pr_str = if (PE.V.is_primed v) then "_prime" else ""
+    let pr_str = "" (*if (PE.V.is_primed v) then "_prime" else ""*)
     in
       match (PE.V.parameter v) with
       | PE.V.Shared  -> Printf.sprintf " %s%s%s%s" p_str (PE.V.id v) th_str pr_str

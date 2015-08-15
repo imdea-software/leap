@@ -5328,7 +5328,7 @@ let formula_to_human_str (phi:formula) : string =
 
 (* CONVERSION TO FOL FORMULA *)
 (* Converts var'(k) into var_prime_k and PC into integer variables *)
-(* Notice you are loosing preservation of others PC as they are not any longer arrays *)
+(* Notice you are loosing preservation of others PC as they are not arrays any longer *)
 
 let rec to_plain_var (v:V.t) : V.t =
   let plain_th = to_plain_shared_or_local

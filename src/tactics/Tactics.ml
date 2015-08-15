@@ -140,13 +140,13 @@ let vc_info_to_implication (info:vc_info) (sup:support_t): implication =
                    xs
                ) [] info.tid_constraint.eq) in
   let tid_ineq = F.conj_list (List.map (fun (t,r) -> E.ineq_tid t r) info.tid_constraint.ineq) in
-  let new_rho = match (tid_eq, tid_ineq) with
-                | (F.True, F.True) -> info.rho
-                | (F.True, _     ) -> F.And(tid_ineq, info.rho)
-                | (_     , F.True) -> F.And(tid_eq, info.rho)
-                | (_     , _     ) -> F.conj_list [tid_eq; tid_ineq; info.rho] in
   let eq_subst = E.new_tid_subst (info.tid_constraint.eq @ [(me,t);(me',t')]) in
-  let rho = E.subst_tid eq_subst new_rho in
+  let substed_rho = E.subst_tid eq_subst info.rho in
+  let rho = match (tid_eq, tid_ineq) with
+            | (F.True, F.True) -> substed_rho
+            | (F.True, _     ) -> F.And(tid_ineq, substed_rho)
+            | (_     , F.True) -> F.And(tid_eq, substed_rho)
+            | (_     , _     ) -> F.conj_list [tid_eq; tid_ineq; substed_rho] in
   let goal = E.subst_tid eq_subst info.goal in
   
 
@@ -184,22 +184,26 @@ let vc_info_to_implication (info:vc_info) (sup:support_t): implication =
                    E.prime_modified [rho] goal
                  else
                    goal in
+  let pre_antecedent = F.And (F.conj_list sup, rho) in
+
+(*
+  let the_antecedent = E.to_plain_formula E.PCVars pre_antecedent in
+*)
   let the_antecedent =
-    let ante = E.to_plain_formula E.PCVars (F.And (F.conj_list sup, rho)) in
-    List.fold_left (fun phi a ->
-      let assumption =
-        match a with
-        | ModelFunc (t, psi) ->
-            begin
-              let other_tids = E.ThreadSet.remove t goal_voc in
-              let cond = F.conj_list (E.ThreadSet.fold (fun r conj ->
-                                       E.ineq_tid r psi :: conj
-                                      ) other_tids []) in
-              E.prime_modified [rho] (F.Implies (cond, E.eq_tid t psi))
-            end in
-      (print_endline ("TACTIC ASSUMPTION: " ^ (E.formula_to_str assumption));
-      F.And (assumption, phi))
-    ) ante info.extra_info.assume in
+    E.to_plain_formula E.PCVars (
+      List.fold_left (fun phi a ->
+        let assumption =
+          match a with
+          | ModelFunc (t, psi) ->
+              begin
+                let other_tids = E.ThreadSet.remove t goal_voc in
+                let cond = F.conj_list (E.ThreadSet.fold (fun r conj ->
+                                         E.ineq_tid r psi :: conj
+                                        ) other_tids []) in
+                E.prime_modified [rho] (F.Implies (cond, E.eq_tid t psi))
+              end in
+        F.And (assumption, phi)
+      ) pre_antecedent info.extra_info.assume) in
 
   let the_consequent =
       E.subst_vars pc_pres

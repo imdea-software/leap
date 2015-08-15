@@ -1341,7 +1341,7 @@ module Make (K : Level.S) : TSLK_QUERY =
       let (id,s,pr,th,p) = v in
       let th_str = Option.map_default tidterm_to_str "" th in
       let p_str  = Option.map_default (fun n -> Printf.sprintf "%s_" n) "" p in
-      let pr_str = if pr then "_prime" else ""
+      let pr_str = "" (* if pr then "_prime" else "" *)
       in
         if th = None then
           Printf.sprintf " %s%s%s%s" p_str id th_str pr_str

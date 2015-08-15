@@ -1344,7 +1344,7 @@ struct
                          | Expr.Unknown -> unk_s in
     let s_str = sort_str s in
     let p_id = Option.map_default (fun str -> str ^ "_" ^ id) id p in
-    let name = if pr then p_id ^ "_prime" else p_id
+    let name = p_id (* if pr then p_id ^ "_prime" else p_id *)
     in
       if Expr.V.is_global v then
         begin
@@ -1444,7 +1444,7 @@ struct
     let (id,s,pr,th,p) = v in
     let th_str = Option.map_default tidterm_to_str "" th in
     let p_str  = Option.map_default (fun n -> Printf.sprintf "%s_" n) "" p in
-    let pr_str = if pr then "_prime" else ""
+    let pr_str = "" (* if pr then "_prime" else "" *)
     in
       if th = None then
         Printf.sprintf " %s%s%s%s" p_str id th_str pr_str
