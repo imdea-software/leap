@@ -115,6 +115,6 @@ invariant [lockedRegion] :
 
 
 #remove_curr_locked:
-  (@rem_only_curr_locked(i). ) ->
+	(@rem_only_curr_locked(i). \/ @rem_releases_last_lock(i). ) ->
     (~ tin(i, lockset(heap, getp(heap, head, remove::curr(i)))) /\
      ~ tin(i, lockset(heap, getp(heap, rd(heap, remove::curr(i)).next, null))))

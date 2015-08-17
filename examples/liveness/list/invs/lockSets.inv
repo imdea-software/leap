@@ -20,7 +20,3 @@ invariant [lockSets] :
 #insert_thread_inserting_ahead:
   (@ins_working(j). /\
    (@ins_working(k). /\ ~ @ins_releases_last_lock(k).)) -> tin (j, aheadInsert)
-
-
-#test:
-  (@ins_working(k). /\ ~ @ins_releases_last_lock(k).) -> rd(heap, head).lockid = k

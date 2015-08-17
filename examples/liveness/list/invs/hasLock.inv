@@ -5,10 +5,9 @@ tid j
 
 invariant [hasLock] :
 
+#owns_a_lock:
    (@sch_working(j). \/ @ins_working(j). \/ @rem_working(j).) =
       tin (j, lockset(heap, getp(heap, head, null)))
-      
-
 
 #search_thread_ahead:
   (@sch_working(j). /\

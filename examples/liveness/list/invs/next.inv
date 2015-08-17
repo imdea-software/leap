@@ -69,8 +69,14 @@ invariant [nexts] :
     @ins_equals(j). -> insert::prev(j) = insert::curr(j)
 /\ (@ins_prev_is_head(j). \/ @ins_lookup_loop(j).) -> insert::prev(j) != null
 
+#insert_not_null:
+	 @ins_prev_def(j). -> insert::prev(j) != null
+
 #insert_curr_not_null:
    @ins_follows(j). -> insert::curr(j) != null
+
+#after_malloc_aux_not_null:
+	 @after_malloc(j). -> insert::aux(j) != null
 
 #insert_while_begins:
    @ins_while_begins(j). -> rd(heap, insert::curr(j)).next != null

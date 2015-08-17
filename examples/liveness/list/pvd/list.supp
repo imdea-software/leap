@@ -2,11 +2,20 @@ Tactics :
   {union : split-goal
          | reduce2
          |
-         | simplify-pc } ;
-  33 : [n1,n2|C,A] : {union :
+				 | simplify-pc } ;
+
+	33 : [n1,n2|C,A] : {union :
          | reduce2
          |
          | simplify-pc filter-strict-except-heap } ;
+
+
+	35 : [n1,n2,n3|C] : {union :
+				 | self
+				 |
+				 | simplify-pc } ;
+
+
 
 Facts :
    9:preserve,nexts::search_prev_is_head;
@@ -19,27 +28,32 @@ Facts :
      region::{search_prev_in_region,search_curr_in_region},
      locks::{search_owns_prev},
      nexts::{search_prev_next_curr};
-//     lockedRegion::search_prev_locked;
   19:preserve::tail_at_end,
      nexts::{general,search_prev_next_curr,search_follows,search_diff},
      locks::search_owns_curr;
-//     lockedRegion::search_prev_curr_locked;
   20:preserve::{region,tail_at_end},
      nexts::search_follows,
-     region::search_curr_in_region,
-////////// Testing /////////
-     lockSets::{search_thread_ahead,test},
-     hasLock,
+		 region::{search_curr_in_region,insert_prev_in_region},
+		 locks::{insert_owns_prev},
+
+
+//		 hasLock::{owns_a_lock,search_thread_ahead},
+		 test::{owns_a_lock, test},
+
+
+//     locks::{search_owns_curr},
+//     test::{owns_a_lock,test},
      lockedRegion::{search_curr_locked};
-////////// Testing /////////
-
-// this was uncommented
-//     lockedRegion::search_curr_locked;
-
-
-
   23:preserve,nexts::insert_prev_is_head,
-     hasLock;
+
+/////////// Testing //////////
+//       test::hola,
+
+/////////// Testing //////////
+
+//     hasLock;
+		test::{owns_a_lock};
+
   24:preserve::{region,tail_at_end,head_not_null,tail_in_region,head_not_tail},
      nexts::{insert_prev_is_head};
   25:nexts::{general, insert_prev_is_head, insert_prev_next_curr},
@@ -58,42 +72,54 @@ Facts :
      region::{insert_prev_in_region,insert_curr_in_region},
      locks::{insert_owns_prev},
      nexts::{insert_prev_next_curr};
-//     lockedRegion::insert_prev_locked;
-//  33:preserve::{region,tail_in_region},
-//     disjoint;
   34:preserve,
      locks::{insert_owns_prev},
-     region::{insert_aux_not_in_region,insert_prev_in_region};
-  35:preserve::{null_in_region,region,tail_at_end,head_not_null,head_not_tail,tail_in_region},
-     locks::{insert_owns_prev,insert_nobody_owns_aux},
-     //insert_owns_aux},
-/////// Testing
-     nexts::{insert_aux_next_curr,insert_prev_next_curr},
-     region::{insert_curr_in_region},
-     lockSets::{insert_thread_inserting_ahead},
-/////// Testing
-     region::{insert_prev_in_region,insert_aux_not_in_region};
-//     lockedRegion::insert_prev_curr_locked;
+		 region::{insert_aux_not_in_region,insert_prev_in_region};
+
+	35:preserve,
+		 test::{owns_a_lock,test,newtest},
+		 nexts::{insert_prev_next_curr,insert_aux_next_curr},
+		 locks::{insert_nobody_owns_aux,insert_owns_prev,insert_owns_curr},
+		 region::{insert_prev_in_region,insert_aux_not_in_region};
+
+//		 locks::{insert_owns_prev,insert_owns_curr},
+//		 nexts::{insert_aux_next_curr,insert_prev_next_curr},
+//		 region::{insert_prev_in_region,insert_curr_in_region,insert_aux_not_in_region},
+//
+//
+////		 hasLock::{insert_thread_inserting_ahead};
+//		 test::{owns_a_lock,test};
+//
+//
+////		 region::{insert_prev_in_region,insert_aux_not_in_region};
+
+//	35:preserve;
+//		 locks::{insert_owns_prev,insert_owns_curr},
+//		 nexts::{insert_aux_next_curr,insert_prev_next_curr},
+//		 region::{insert_prev_in_region,insert_curr_in_region,insert_aux_not_in_region},
+//
+//
+////		 hasLock::{insert_thread_inserting_ahead};
+//		 test::{owns_a_lock,test};
+//
+//
+////		 region::{insert_prev_in_region,insert_aux_not_in_region};
   36:preserve::tail_at_end,
      nexts::{general,insert_prev_next_curr,insert_curr_not_null,insert_diff},
      locks::{insert_owns_curr,insert_owns_prev},
-     hasLock,
+//     hasLock,
+		 test::{owns_a_lock},
      lockedRegion::insert_prev_curr_locked;
-  37:preserve::{region,tail_at_end},
-     nexts::insert_curr_not_null,
-     region::insert_curr_in_region,
-
-
-////////// Testing /////////
-     lockSets::{insert_thread_ahead},
-
-////////// Testing /////////
-
-     hasLock,
-     lockedRegion::insert_curr_locked;
+	37:preserve,
+//		 nexts::{insert_not_null},
+		 region::{insert_prev_in_region,insert_curr_in_region},
+//     hasLock::{owns_a_lock,insert_thread_ahead},
+		 test::{owns_a_lock,test},
+		 locks::{insert_owns_prev},
+		 lockedRegion::{insert_curr_locked};
   38:preserve; //, lockedRegion::insert_no_locks;
-  40:nexts::remove_prev_is_head,
-     hasLock;
+	40:nexts::remove_prev_is_head;
+//     hasLock;
   42:nexts::{general, remove_prev_is_head, remove_prev_next_curr},
      locks::remove_owns_prev;
   46:preserve::{null_in_region,region,tail_at_end},
@@ -104,20 +130,18 @@ Facts :
      region::{remove_prev_in_region,remove_curr_in_region},
      locks::{remove_owns_prev},
      nexts::{remove_prev_next_curr};
-//     lockedRegion::remove_prev_locked;
   51:preserve::{null_in_region,region,tail_at_end,head_not_null},
      nexts::{general,remove_prev_next_curr,remove_curr_next_aux},
      locks::{remove_owns_prev,remove_owns_curr,remove_owns_aux},
-//     lockedRegion::remove_prev_curr_locked,
      region::remove_prev_in_region;
   52:preserve::{region,tail_at_end},
      region::{remove_prev_in_region},
-/////////  Testing  /////////
-     hasLock,
-      lockSets::{remove_thread_ahead};
-/////////  Testing  /////////
-     lockedRegion::{remove_prev_locked};
-/////////  Testing  /////////
-  53:hasLock;
-/////////  Testing  /////////
-  54:preserve; //, lockedRegion::remove_no_locks;
+//     hasLock::{owns_a_lock,remove_thread_ahead};
+		 test::{owns_a_lock},
+		 lockedRegion::{remove_prev_locked};
+	53:preserve,
+		 locks::{insert_owns_prev},
+		 region::{insert_prev_in_region,remove_curr_in_region},
+		 lockedRegion::{remove_curr_locked},
+		 test::{owns_a_lock,test,newtest,newtesttwo};
+  54:preserve;

@@ -1,7 +1,53 @@
 vars:
 
 tid i
+tid j
 
 invariant [test] :
-~ (@37(k). \/ @38(k). )
+
+#owns_a_lock:
+  (@sch_working(j). \/ @ins_working(j). \/ @rem_working(j).) =
+		tin (j, lockset(heap, getp(heap, head, null)))
+
+#test:
+	@ins_working(k). -> aheadSet = lockset(heap, getp(heap, insert::prev(k), null))
+
+#newtest:
+	(@ins_working(k). /\
+	 @ins_working(j). /\
+	 ~@ins_elem_inserted(j). /\
+	 tin(j, lockset(heap, getp(heap, insert::prev(k), null)))) ->
+		tin(j, aheadInsert)
+
+#newtesttwo:
+	(@ins_working(k). /\
+	 @rem_working(j). /\
+	 tin(j, lockset(heap, getp(heap, insert::prev(k), null)))) ->
+		tin(j, aheadSet)
+
+#newtestthree:
+	(@ins_working(k). /\
+	 @ins_working(j). /\
+	 tin(j, lockset(heap, getp(heap, insert::prev(k), null)))) ->
+		tin(j, aheadSet)
+
+
+//#test:
+//	(   @ins_working(k). /\
+//		~ @ins_releases_last_lock(k). /\
+//			(@sch_working(i). \/ @ins_working(i). \/ @rem_working(i).) /\
+//			i = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid ) ->
+////      tin(i, lockset(heap, getp(heap, insert::prev(k), null)))) ->
+//			tin(i, aheadSet)
+
+
+//#hola:
+//	(i = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\
+//	 j = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid) -> i = j /\
+
+//  rd(heap,lastlocked(heap,getp(heap,head,null))).lockid != # /\
+
+//  i = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid ->
+//		(@sch_working(i). \/ @ins_working(i). \/ @rem_working(i).)
+
 
