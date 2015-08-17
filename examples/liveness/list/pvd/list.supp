@@ -134,14 +134,24 @@ Facts :
      nexts::{general,remove_prev_next_curr,remove_curr_next_aux},
      locks::{remove_owns_prev,remove_owns_curr,remove_owns_aux},
      region::remove_prev_in_region;
-  52:preserve::{region,tail_at_end},
-     region::{remove_prev_in_region},
-//     hasLock::{owns_a_lock,remove_thread_ahead};
-		 test::{owns_a_lock},
-		 lockedRegion::{remove_prev_locked};
-	53:preserve,
+	52:preserve,
+		 region::{remove_prev_in_region},
 		 locks::{insert_owns_prev},
-		 region::{insert_prev_in_region,remove_curr_in_region},
-		 lockedRegion::{remove_curr_locked},
-		 test::{owns_a_lock,test,newtest,newtesttwo};
-  54:preserve;
+		 region::{insert_prev_in_region},
+		 lockedRegion::{remove_prev_locked},
+		 test::{owns_a_lock,test};
+		 
+
+
+////     hasLock::{owns_a_lock,remove_thread_ahead};
+//		 test::{owns_a_lock,test,newtest,newtesttwo},
+//		 lockedRegion::{remove_prev_locked};
+	53:preserve,
+		 region::{remove_curr_not_in_region};
+
+
+//		 locks::{insert_owns_prev},
+//		 region::{insert_prev_in_region,remove_curr_in_region},
+//		 lockedRegion::{remove_curr_locked},
+//		 test::{owns_a_lock,test,newtest,newtesttwo};
+	54:preserve;

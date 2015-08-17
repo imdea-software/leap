@@ -316,19 +316,19 @@ assume
 :rem_elem_removed[
 :rem_diff[
 :rem_last_prev_unlock
-                                prev->unlock;
-:rem_owns_prev]
-:rem_prev_def]
-:rem_releases_last_lock
-                                curr->unlock
-                                  $
+																prev->unlock
+																	$
                                     insideSet := tdiff (insideSet, tsingle(me));
                                     aheadSet := tdiff (aheadSet, tsingle(me));
                                   $
+:rem_owns_prev]
+:rem_prev_def]
+:rem_working]
+:rem_releases_last_lock
+																curr->unlock;
 :rem_diff]
 :rem_owns_curr_two]
 :rem_got_lock]
-:rem_working]
 :rem_return
                                 return();
 :rem_elem_removed]
