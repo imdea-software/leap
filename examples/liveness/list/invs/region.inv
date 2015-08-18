@@ -20,6 +20,7 @@ invariant [region] :
 #search_curr_in_region:
    @sch_curr_def(i). -> in (search::curr(i), region)
 
+#search_aux_in_region:
    @sch_aux_before_prev(i). -> in (search::aux(i), region)
 
 

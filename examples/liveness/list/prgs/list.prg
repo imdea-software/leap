@@ -150,9 +150,9 @@ assume
                                     insideSet := tunion (insideSet, tsingle(me));
                                     insideInsert := tunion (insideInsert, tsingle(me));
                                     if (me = k) then
-                                      aheadSet := insideSet;
-                                      aheadInsert := insideInsert;
-                                    endif
+																			aheadSet := insideSet;
+																			aheadInsert := insideInsert;
+																		endif
                                   $
 :ins_init_no_lock]
 :ins_working[
@@ -263,6 +263,7 @@ assume
                                     insideSet := tunion (insideSet, tsingle(me));
                                   $
 :rem_init_no_lock]
+:rem_working[
 :rem_owns_prev[
 :rem_got_lock[
 :rem_init_prev_locked[
@@ -274,7 +275,6 @@ assume
 :rem_prev_is_head]
 :rem_owns_curr_one[
 :rem_lookup_loop[
-:rem_working[
 :rem_prev_curr_locked[
                                 while (curr->data < e) do
 :rem_while_begins[

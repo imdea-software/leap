@@ -10,44 +10,63 @@ invariant [test] :
 		tin (j, lockset(heap, getp(heap, head, null)))
 
 #test:
-	@ins_working(k). -> aheadSet = lockset(heap, getp(heap, insert::prev(k), null))
-
-#newtest:
 	(@ins_working(k). /\
-	 @ins_working(j). /\
-	 ~@ins_elem_inserted(j). /\
-	 tin(j, lockset(heap, getp(heap, insert::prev(k), null)))) ->
-		tin(j, aheadInsert)
-
-#newtesttwo:
-	(@ins_working(k). /\
-	 @rem_working(j). /\
-	 tin(j, lockset(heap, getp(heap, insert::prev(k), null)))) ->
-		tin(j, aheadSet)
-
-#newtestthree:
-	(@ins_working(k). /\
-	 @ins_working(j). /\
-	 tin(j, lockset(heap, getp(heap, insert::prev(k), null)))) ->
-		tin(j, aheadSet)
+	 ~@ins_releases_last_lock(k).) ->
+			aheadSet = tdiff (lockset(heap, getp(heap, rd(heap, insert::prev(k)).next, null)), tsingle(k))
 
 
 //#test:
-//	(   @ins_working(k). /\
-//		~ @ins_releases_last_lock(k). /\
-//			(@sch_working(i). \/ @ins_working(i). \/ @rem_working(i).) /\
-//			i = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid ) ->
-////      tin(i, lockset(heap, getp(heap, insert::prev(k), null)))) ->
-//			tin(i, aheadSet)
+//	((@ins_init_prev_locked(k). \/
+//		@ins_lock_curr(k).) ->
+//			aheadSet = lockset(heap, getp(heap, rd(heap, insert::prev(k)).next, null))) /\
+//
+//	((@ins_prev_curr_locked(k). \/
+//		@ins_aux_before_prev(k). \/
+//		@ins_only_curr_locked(k). \/
+//		@ins_insertion_process(k). \/
+//		@ins_releases_last_lock(k). ) ->
+//			aheadSet = lockset(heap, getp(heap, rd(heap, insert::curr(k)).next, null)))
 
 
-//#hola:
-//	(i = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\
-//	 j = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid) -> i = j /\
 
-//  rd(heap,lastlocked(heap,getp(heap,head,null))).lockid != # /\
+// THIS WAS UNCOMMENTED
+//	(~@ins_working(k). \/
+//	 @ins_releases_last_lock(k).) ->
+			insideSet = lockset(heap, getp(heap, head, null))
 
-//  i = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid ->
-//		(@sch_working(i). \/ @ins_working(i). \/ @rem_working(i).)
+	 (@ins_working(j). /\
+		~@ins_elem_inserted(j). /\
+		tin(j, lockset(heap, getp(heap, head, null)))) ->
+		tin(j, insideInsert)
+
+// THIS WAS UNCOMMENTED
+//	((~@ins_working(k). \/
+//		@ins_releases_last_lock(k).) /\
+//		@ins_working(j). /\
+//		~@ins_elem_inserted(j). /\
+//		tin(j, lockset(heap, getp(heap, head, null)))) ->
+//		tin(j, insideInsert)
+
+
+//	(~@ins_working(k). \/
+//	 @ins_releases_last_lock(k).) ->
+//			insideSet = lockset(heap, getp(heap, head, null))
+
+#newtest:
+	(@ins_working(k). /\
+	 ~@ins_releases_last_lock(k). /\
+	 @ins_working(j). /\
+	 ~@ins_elem_inserted(j). /\
+	 j != k /\
+	 tin(j, lockset(heap, getp(heap, rd(heap, insert::prev(k)).next, null)))) ->
+		tin(j, aheadInsert)
+
+
+
+//#newtesttwo:
+//	(@ins_working(k). /\
+//	 @rem_working(j). /\
+//	 tin(j, lockset(heap, getp(heap, insert::prev(k), null)))) ->
+//		tin(j, aheadSet)
 
 
