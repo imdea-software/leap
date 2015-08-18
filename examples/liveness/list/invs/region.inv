@@ -52,7 +52,4 @@ invariant [region] :
 #remove_curr_in_region:
    @rem_curr_def(i). -> in (remove::curr(i), region)
 
-#remove_curr_not_in_region:
-	 @rem_elem_removed(i). -> ~ in (remove::curr(i), region)
-
-   @rem_aux_before_prev(i). -> in (remove::aux(i), region)
+	 @rem_aux_before_prev(i). -> in (remove::aux(i), region)
