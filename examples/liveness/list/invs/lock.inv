@@ -10,7 +10,7 @@ invariant [locks] :
 #search_owns_curr:
    ((@sch_owns_curr_one(i). \/ @sch_owns_curr_two(i).) -> rd(heap, search::curr(i)).lockid = i)
 
-#search_aux_before_prev:
+#search_owns_aux:
    (@sch_aux_before_prev(i). -> rd(heap, search::aux(i)).lockid = i)
 
 #insert_owns_prev:

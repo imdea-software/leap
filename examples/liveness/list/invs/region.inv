@@ -37,6 +37,7 @@ invariant [region] :
 #insert_aux_not_in_region:
    @after_malloc(i). -> ~ in (insert::aux(i), region)
 
+#insert_aux_in_region:
    @ins_aux_before_prev(i). -> in (insert::aux(i), region)
 
 
@@ -52,4 +53,5 @@ invariant [region] :
 #remove_curr_in_region:
    @rem_curr_def(i). -> in (remove::curr(i), region)
 
+#remove_aux_in_region:
 	 @rem_aux_before_prev(i). -> in (remove::aux(i), region)

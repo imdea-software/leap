@@ -23,6 +23,7 @@ invariant [nexts] :
 #search_aux_eq_prev:
    @sch_aux_eq_prev(j). -> search::aux(j) = search::prev(j)
 
+#search_prev_eq_curr:
    @sch_equals(j). -> search::prev(j) = search::curr(j)
 
 #search_aux_before_prev:

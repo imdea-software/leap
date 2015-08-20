@@ -1,6 +1,5 @@
 vars:
 
-tid i
 tid j
 
 invariant [test] :
@@ -69,4 +68,10 @@ invariant [test] :
 //	 tin(j, lockset(heap, getp(heap, insert::prev(k), null)))) ->
 //		tin(j, aheadSet)
 
+#aa:
+	@ins_last_prev_unlock(j). ->
+		(rd(heap, insert::prev(j)).next = insert::curr(j) \/
+		 (rd(heap, insert::prev(j)).next = insert::aux(j) /\
+			rd(heap, insert::aux(j)).next = insert::curr(j) /\
+			rd(heap, insert::aux(j)).lockid = #))
 
