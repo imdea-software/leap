@@ -1,7 +1,0 @@
-vars:
-
-tid i
-
-invariant [fullLast] :
-
-rd(heap,lastlocked(heap,getp(heap,head,tail))).lockid = lastTid

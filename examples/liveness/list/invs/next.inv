@@ -98,7 +98,8 @@ invariant [nexts] :
    (@rem_aux_before_prev(j). -> (remove::aux(j) != remove::prev(j) /\ rd(heap, remove::aux(j)).next = remove::prev(j)))
 
 #remove_prev_next_curr:
-   ((@rem_follows(j). /\ ~ @rem_equals(j).) -> (remove::prev(j) != remove::curr(j) /\
+	 (((@rem_follows(j). /\ ~ @rem_equals(j).) \/
+		@rem_releases_curr_two(j).) -> (remove::prev(j) != remove::curr(j) /\
                                      rd(heap,remove::prev(j)).next = remove::curr(j)))
 
 #remove_diff:
@@ -107,9 +108,11 @@ invariant [nexts] :
 
 
 #remove_curr_next_aux:
-   @rem_if_two(j). -> (   rd(heap, remove::curr(j)).next = remove::aux(j)
-                          /\ remove::prev(j) != remove::aux(j)
-                          /\ remove::curr(j) != remove::aux(j))
+	 (@rem_if_two(j). \/ @rem_releases_curr_one(j).) ->
+			( rd(heap, remove::curr(j)).next = remove::aux(j) /\
+				remove::prev(j) != remove::aux(j) /\
+				remove::curr(j) != remove::aux(j))
+
 
 #remove_curr_not_null:
    @rem_follows(j). -> remove::curr(j) != null

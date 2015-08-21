@@ -44,7 +44,8 @@
 			45:S:nexts;
 			46:S:nexts;
 			48:O:region;
-			52:S:nexts
+			52:S:region;
+			53:S:nexts,region
 	 ] { pruning :
 							 | reduce2
 							 |
@@ -65,7 +66,7 @@
 						 {pruning : | reduce2 | | simplify-pc};
 			30:S:preserve,region;
 			34:S:region,disjoint;
-			34:O:region,disjoint;
+			34:O:region,locks,disjoint;
 			35:S:preserve,region;
 			35:O:locks,region;
 			41:S:preserve,region;
@@ -82,7 +83,8 @@
 					 locks,
 					 region,
 					 order::remove_bounded_e,
-					 order::remove_curr_is_e {pruning : | reduce2 | | simplify-pc}
+					 order::remove_curr_is_e {pruning : | reduce2 | | simplify-pc};
+			52:S:region
 	 ] { union :
 						 | reduce2
 						 |
@@ -97,7 +99,7 @@
 			24:S:preserve;
 			28:S:nexts;
 			30:S:preserve;
-			35:O:disjoint;
+			35:O:locks,disjoint;
 			39:S:preserve::head_not_null;
 			41:S:preserve;
 			45:S:nexts;
@@ -123,5 +125,5 @@
 							| reduce2
 							|
 							| simplify-pc
-			}
+	}
 

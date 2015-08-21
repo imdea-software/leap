@@ -13,13 +13,10 @@ invariant [special] :
 			rd(heap, insert::aux(j)).next = insert::curr(j) /\
 			rd(heap, insert::aux(j)).lockid = #))
 
-#aa:
-	@rem_last_prev_unlock(j). ->
-		(rd(heap, remove::prev(j)).lockid = j /\
-		 rd(heap, remove::curr(j)).lockid = j /\
-		 ((rd(heap, remove::prev(j)).next = remove::curr(j)) \/
-			(rd(heap, remove::prev(j)).next = remove::aux(j) /\
-			 rd(heap, remove::curr(j)).next = remove::aux(j) /\
-			 rd(heap, remove::aux(j)).lockid != j)))
+
+//#bb:
+//	@rem_releases_last_lock(j). ->
+//		((~ in(remove::curr(j), region)) ->
+//			~ tin(i, lockset(heap, getp(heap, head, null))))
 
 

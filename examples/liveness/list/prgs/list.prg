@@ -312,23 +312,28 @@ assume
 :rem_curr_def]
 :rem_remove]
 :rem_prev_lower]
+:rem_releases_curr_one
+																	curr->unlock;
+:rem_owns_curr_two]
+																else
+:rem_releases_curr_two
+																	curr->unlock;
                                 endif
 :rem_elem_removed[
 :rem_diff[
 :rem_last_prev_unlock
 																prev->unlock
 																	$
-                                    insideSet := tdiff (insideSet, tsingle(me));
+																		insideSet := tdiff (insideSet, tsingle(me));
                                     aheadSet := tdiff (aheadSet, tsingle(me));
-                                  $
+																	$
 :rem_owns_prev]
 :rem_prev_def]
-:rem_working]
-:rem_releases_last_lock
-																curr->unlock;
+//:rem_releases_last_lock
+//																curr->unlock;
 :rem_diff]
-:rem_owns_curr_two]
 :rem_got_lock]
+:rem_working]
 :rem_return
                                 return();
 :rem_elem_removed]
