@@ -4,7 +4,7 @@ Tactics :
          |
 				 | simplify-pc } ;
 
-	33 : [n1,n2|C,A] : {union :
+	33 : [n1|C,A] : {union :
          | reduce2
          |
          | simplify-pc filter-strict-except-heap } ;
@@ -43,7 +43,7 @@ Facts :
      nexts::{insert_prev_is_head};
   25:nexts::{general, insert_prev_is_head, insert_prev_next_curr},
      locks::insert_owns_prev;
-  28:preserve::{region,null_in_region},
+	28:preserve::{region,null_in_region},
      nexts::{insert_prev_next_curr,insert_equal},
      region::{insert_prev_in_region};
   29:preserve::{null_in_region,region,tail_at_end},
@@ -57,7 +57,7 @@ Facts :
      region::{insert_prev_in_region,insert_curr_in_region},
      locks::{insert_owns_prev},
      nexts::{insert_prev_next_curr};
-  34:preserve,
+	34:preserve,
      locks::{insert_owns_prev},
 		 region::{insert_aux_not_in_region,insert_prev_in_region};
 	35:preserve,
@@ -73,7 +73,7 @@ Facts :
 	37:preserve,
 		 region::{insert_prev_in_region,insert_curr_in_region},
 		 locksets::{owns_a_lock,aheadset},
-		 locks::{insert_owns_prev},
+		 locks::{insert_owns_prev,insert_owns_curr},
 		 lockedRegion::{insert_curr_locked};
 	38:preserve;
 	40:nexts::remove_prev_is_head;
