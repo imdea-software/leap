@@ -95,7 +95,7 @@ type support_t =
 
 exception Duplicated_node of node_id_t
 exception Undefined_node of node_id_t
-exception Undefined_edge of edge_t
+exception Undefined_edge of string
 exception BadBoxedEdge of edge_t
 exception BadBox of box_id_t
 exception No_initial
@@ -258,7 +258,11 @@ let well_defined_acceptance_edge (eTbl:edge_table_t) (e:edge_t) : unit =
                                    conditions, but it was not defined as a \
                                    diagram edge."
                      (node_id_to_str n1) (node_id_to_str n2) (kind_to_str kind);
-                   raise(Undefined_edge e)
+                   let (n1,n2,(k,_)) = e in
+                   let edge_str = "(" ^ (node_id_to_str n1) ^ "," ^
+                                        (node_id_to_str n2) ^ "," ^
+                                        (kind_to_str k) ^ ")" in
+                   raise(Undefined_edge edge_str)
                  end in
   try
     let infoSet = Hashtbl.find eTbl (n1,n2) in

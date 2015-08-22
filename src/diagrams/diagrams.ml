@@ -366,7 +366,8 @@ module Make (C:Core.S) : S =
                          ) (PVD.successor pvd n1 line v) ([],[]) in
                        let next_mu = F.disj_list pre_next_mu in
 
-(*
+(*                    VERSION PRE-ASSUMPTIONS
+ *
                        let next_mu =
                           F.disj_list $
                             PVD.NodeIdSet.fold (fun n xs ->
@@ -374,19 +375,20 @@ module Make (C:Core.S) : S =
                             ) (PVD.successor pvd n1 line v) [] in
     *)
 
-
                        let conds =
                          F.disj_list (Statement.enabling_condition (E.V.Local v) stm) in
+(*
                         (* Enabled *)
                         let disj = F.disj_list (F.to_conj_list mu_n1) in
                         let enable_vc = List.fold_left Tactics.add_modelfunc_assumption
                                           (Tactics.create_vc_info [] Tactics.no_tid_constraint
                                             conds disj voc th line) assumptions in
-                       (*
+*)
+
+                        (* Enabled *)
                         let enable_vc = List.fold_left Tactics.add_modelfunc_assumption
                                           (Tactics.create_vc_info [] Tactics.no_tid_constraint
                                             mu_n1 conds voc th line) assumptions in
-    *)
                         (* Successor *)
                         let successor_vcs =
                           List.map (fun rho ->
