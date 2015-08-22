@@ -122,24 +122,6 @@ val no_tid_constraint : tid_constraints_t
 val is_empty_tid_constraint : tid_constraints_t -> bool
 
 
-(***************)
-(* SIMPLIFIERS *)
-(***************)
-val generic_simplifier : Expression.formula ->  
-      (Expression.literal-> polarity->Expression.formula) ->   Expression.formula 
-
-val simplify : Expression.formula -> Expression.formula
-val simplify_with_vocabulary : Expression.formula ->  Expression.V.t list -> Expression.formula
-val generate_support : vc_info -> Expression.formula list
-val split_implication : implication ->   implication list
-val split_goal :vc_info -> vc_info list
-
-val tactic_simplify_pc : implication -> implication
-val tactic_propositional_propagate : implication -> implication 
-val tactic_filter_vars_nonrec : bool -> implication -> implication
-val tactic_conseq_propagate_second_disjunct : implication -> implication
-val tactic_conseq_propagate_first_disjunct : implication -> implication
-
 
 (**************************************************************************)
 (* APPLICATION OF TACTICS                                                 *)

@@ -556,7 +556,7 @@ struct
 
 
   let smt_lockset_def (buf:B.t) (num_addr:int) : unit =
-    let strlast = (string_of_int num_addr) in
+    let strlast = (string_of_int (max num_addr 1)) in
     B.add_string buf
       ("(define-fun lockset" ^ strlast ^ " ((h " ^heap_s^ ") (p " ^path_s^ ")) " ^setth_s^ "\n" ^
        "  (ite (islockedpos h p " ^ strlast ^ ") (singletonth (getlockat h p " ^ strlast ^ ")) emptyth))\n");
@@ -755,7 +755,6 @@ struct
 
 
   let smt_nextiter_def (buf:B.t) (num_addr:int) : unit =
-    if (num_addr >= 2) then
       B.add_string  buf
         ("(define-fun next0 ((h " ^heap_s^ ") (a " ^addr_s^ ")) " ^addr_s^ " a)\n");
       B.add_string  buf
@@ -846,6 +845,9 @@ struct
        "          (update_pathwhere (where p) a (length p))\n" ^
        "          (setunion (addrs p) (singleton a))))\n");
   *)
+    B.add_string buf
+      ("(define-fun path0 ((h " ^heap_s^ ") (a " ^addr_s^ ")) " ^path_s^ "\n" ^
+       "  epsilon)\n");
     B.add_string buf
       ("(define-fun path1 ((h " ^heap_s^ ") (a " ^addr_s^ ")) " ^path_s^ "\n" ^
        "  (singlepath a))\n");

@@ -1752,7 +1752,7 @@ let rec enabling_condition_aux (is_ghost:bool)
                                (st:statement_t) : E.formula list list =
   let e_cond          = enabling_condition_aux in
   let to_expr         = boolean_to_expr_formula>>(E.param th) in
-  let to_addr         = addr_to_expr_addr in
+  let to_addr a       = E.param_addr th (addr_to_expr_addr a) in
   let to_cell         = cell_to_expr_cell in
   let read_at a       = E.CellLockId(E.CellAt(E.heap, to_addr a)) in
   let read_at_lvl a l = E.CellLockIdAt(E.CellAt(E.heap, to_addr a),

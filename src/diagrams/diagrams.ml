@@ -340,25 +340,63 @@ module Make (C:Core.S) : S =
                        let th = E.VarTh v in
                        let (_,stm) = System.get_statement_at C.system line in
                        let rho_list = C.rho System.Concurrent voc line th in
+
+
+                       let (pre_next_mu, assumptions) =
+                         PVD.NodeIdSet.fold (fun n (xs,ys) ->
+                           let mu = PVD.node_mu pvd n in
+                             let assumpt =
+                               List.fold_left (fun zs phi ->
+                                 match phi with
+                                 | F.Literal (F.Atom (E.Eq (E.TidT t, (E.TidT (E.CellLockId (E.CellAt (_,E.LastLocked _)) as tid_phi)))))
+                                 | F.Literal (F.Atom (E.Eq (E.TidT (E.CellLockId (E.CellAt (_,E.LastLocked _)) as tid_phi), E.TidT t ))) -> begin
+                                          match PVD.node_box pvd n with
+                                          | Some b ->
+                                              begin
+                                                if PVD.box_param pvd b = t then
+                                                  Tactics.ModelFunc(t,tid_phi)::zs
+                                                else
+                                                  zs
+                                              end
+                                          | None -> zs
+                                        end
+                                 | _ -> zs
+                               ) ys (F.to_conj_list mu) in
+                           (mu :: xs, assumpt)
+                         ) (PVD.successor pvd n1 line v) ([],[]) in
+                       let next_mu = F.disj_list pre_next_mu in
+
+(*
                        let next_mu =
                           F.disj_list $
                             PVD.NodeIdSet.fold (fun n xs ->
                               (PVD.node_mu pvd n) :: xs
                             ) (PVD.successor pvd n1 line v) [] in
+    *)
+
+
                        let conds =
                          F.disj_list (Statement.enabling_condition (E.V.Local v) stm) in
                         (* Enabled *)
-                        let enable_vc = Tactics.create_vc_info [] Tactics.no_tid_constraint
-                                          mu_n1 conds voc th line in
+                        let disj = F.disj_list (F.to_conj_list mu_n1) in
+                        let enable_vc = List.fold_left Tactics.add_modelfunc_assumption
+                                          (Tactics.create_vc_info [] Tactics.no_tid_constraint
+                                            conds disj voc th line) assumptions in
+                       (*
+                        let enable_vc = List.fold_left Tactics.add_modelfunc_assumption
+                                          (Tactics.create_vc_info [] Tactics.no_tid_constraint
+                                            mu_n1 conds voc th line) assumptions in
+    *)
                         (* Successor *)
                         let successor_vcs =
                           List.map (fun rho ->
-                            Tactics.create_vc_info [] Tactics.no_tid_constraint
-                                (F.And (mu_n1,rho)) next_mu voc th line
+                            let vc = Tactics.create_vc_info [] Tactics.no_tid_constraint
+                                      (F.And (mu_n1,rho)) next_mu voc th line in
+                            List.fold_left Tactics.add_modelfunc_assumption vc assumptions
                           ) rho_list in
                         add_node_vc_tbl node_vc_tbl n1 (enable_vc :: successor_vcs);
-                        successor_vcs @ gen_vcs
-(*                        enable_vc :: successor_vcs @ gen_vcs *)
+(*                        successor_vcs @ gen_vcs *)
+                        enable_vc :: successor_vcs @ gen_vcs
                      end else gen_vcs
                   ) [] trans_list) @ xs
             ) info []) @ vcs

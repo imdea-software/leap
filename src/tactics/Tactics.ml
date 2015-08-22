@@ -81,6 +81,11 @@ type gen_supp_op_t =
       (* Restricts assignments to the ones satisfies by the given function *)
 
 
+type filter_criteria_t =
+  | NoCriteria
+  | AllExceptHeap
+  | LocalOnly
+
 exception Invalid_tactic of string
 
 
@@ -849,6 +854,13 @@ let id_support (info:vc_info) : support_t =
   F.cleanup_dups (gen_support KeepOriginal info)
 
 
+let self_support (info:vc_info) : support_t =
+  F.cleanup_dups
+    (gen_support (RestrictSubst
+      (fun i subst ->
+        E.subst_codomain_in (E.ThreadSet.singleton info.transition_tid) subst)) info)
+
+
 (*********************)
 (*  FORMULA TACTICS  *)
 (*********************)
@@ -1064,16 +1076,22 @@ let tactic_simplify_pc_plus (imp:implication) : implication =
 
 (* eliminate from the antecedent all literals without variables in common
    with the goal *)
-let tactic_filter_vars_nonrec (except_heap:bool) (imp:implication) : implication =
+let tactic_filter_vars_nonrec (criteria:filter_criteria_t) (imp:implication) : implication =
   let vs_conseq = E.all_vars_as_set imp.conseq in
   let filtered_vs_conseq =
-    if except_heap then
-      E.V.VarSet.filter (fun v -> E.V.id v <> Conf.heap_name) vs_conseq
-    else
-      vs_conseq in
+    match criteria with
+    | NoCriteria -> vs_conseq
+    | AllExceptHeap
+    | LocalOnly -> E.V.VarSet.filter (fun v -> E.V.id v <> Conf.heap_name) vs_conseq in
   let conjs = F.to_conj_list imp.ante in
   let share_vars (vl: E.V.t list) : bool =
-    List.exists (fun v -> E.V.VarSet.mem v filtered_vs_conseq) vl
+    match criteria with
+    | LocalOnly -> List.exists (fun v ->
+                     E.V.parameter v = E.V.Shared ||
+                     E.V.VarSet.mem v filtered_vs_conseq
+                   ) vl
+    | NoCriteria
+    | AllExceptHeap -> List.exists (fun v -> E.V.VarSet.mem v filtered_vs_conseq) vl
   in
   let new_conjs = List.filter (fun f -> share_vars (E.all_vars f)) conjs in
   { ante = F.conj_list new_conjs ; conseq = imp.conseq }
@@ -1317,6 +1335,7 @@ let support_tactic_from_string (s:string) : support_tactic_t =
   | "reduce"   -> reduce_support
   | "reduce2"  -> reduce2_support
   | "identity" -> id_support
+  | "self"     -> self_support
   | _ -> raise(Invalid_tactic (s ^ " is not a support_tactic"))
 
 
@@ -1332,8 +1351,9 @@ let formula_tactic_from_string (s:string) : formula_tactic_t =
   | "simplify-pc"               -> tactic_simplify_pc
   | "simplify-pc-plus"          -> tactic_simplify_pc_plus
   | "propositional-propagate"   -> tactic_propositional_propagate
-  | "filter-strict"             -> tactic_filter_vars_nonrec false
-  | "filter-strict-except-heap" -> tactic_filter_vars_nonrec true
+  | "filter-strict"             -> tactic_filter_vars_nonrec NoCriteria
+  | "filter-strict-local"       -> tactic_filter_vars_nonrec LocalOnly
+  | "filter-strict-except-heap" -> tactic_filter_vars_nonrec AllExceptHeap
   | "filter-theory"             -> tactic_filter_theory
   | "propagate-disj-conseq-fst" -> tactic_conseq_propagate_first_disjunct
   | "propagate-disj-conseq-snd" -> tactic_conseq_propagate_second_disjunct

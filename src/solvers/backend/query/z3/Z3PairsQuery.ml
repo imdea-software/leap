@@ -61,7 +61,7 @@ struct
 
 
   let pairs_var_to_str (v:PE.V.t) : string =
-    let pr_str = if (PE.V.is_primed v) then "_prime" else ""
+    let pr_str = "" (*if (PE.V.is_primed v) then "_prime" else ""*)
     in
       match PE.V.scope v with
       | PE.V.GlobalScope -> pairs_varid_to_str ((PE.V.id v) ^ pr_str)
@@ -101,7 +101,7 @@ struct
 
 
   and variable_to_str (v:PE.V.t) : string =
-    let pr_str = if (PE.V.is_primed v) then "_prime" else "" in
+    let pr_str = "" in (*if (PE.V.is_primed v) then "_prime" else "" in*)
     let th_str = match (PE.V.parameter v) with
                  | PE.V.Shared  -> ""
                  | PE.V.Local t -> "_" ^ (PE.V.to_str t) in

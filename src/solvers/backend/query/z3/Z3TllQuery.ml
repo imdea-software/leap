@@ -662,7 +662,7 @@ struct
 
 
   let z3_lockset_def (buf:B.t) (num_addr:int) : unit =
-    let strlast = (string_of_int num_addr) in
+    let strlast = (string_of_int (max num_addr 1)) in
     B.add_string buf
       ("(define-fun lockset" ^ strlast ^ " ((h " ^heap_s^ ") (p " ^path_s^ ")) " ^setth_s^ "\n" ^
        "  (if (islockedpos h p " ^ strlast ^ ") (singletonth (getlockat h p " ^ strlast ^ ")) emptyth))\n");
@@ -990,6 +990,9 @@ struct
          "          (update_pathwhere (where p) a (length p))\n" ^
          "          (setunion (addrs p) (singleton a))))\n")
     end;
+    B.add_string buf
+      ("(define-fun path0 ((h " ^heap_s^ ") (a " ^addr_s^ ")) " ^path_s^ "\n" ^
+       "  epsilon)\n");
     B.add_string buf
       ("(define-fun path1 ((h " ^heap_s^ ") (a " ^addr_s^ ")) " ^path_s^ "\n" ^
        "  (singlepath a))\n");
