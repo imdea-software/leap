@@ -4,9 +4,9 @@ Nodes: n0 { ~ @ins_working(k). },
        n1 { (@ins_working(k). /\ ~(@ins_releases_last_lock(k).)) /\
              t = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\
               t != k /\
-               (@ins_working(t). \/
-                @rem_working(t). \/
-                @sch_working(t).)  },
+							 (@ins_working(t). \/
+								@rem_working(t). \/
+								@sch_working(t).)  },
        n2 { k = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\
 						(@ins_prev_locked_one(k). \/
 						 @ins_prev_locked_two(k). \/

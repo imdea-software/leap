@@ -31,8 +31,8 @@ Facts :
   19:preserve::tail_at_end,
      nexts::{general,search_prev_next_curr,search_follows,search_diff},
      locks::search_owns_curr;
-  20:preserve::{region,tail_at_end},
-     nexts::search_follows,
+	20:preserve::{region,tail_at_end},
+		 nexts::search_follows,
 		 region::{search_curr_in_region,insert_prev_in_region},
 		 locks::{insert_owns_prev},
 		 locksets::{owns_a_lock, aheadset},
