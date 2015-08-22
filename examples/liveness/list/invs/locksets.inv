@@ -6,38 +6,38 @@ invariant [locksets] :
 
 #owns_a_lock:
   (@sch_working(j). \/ @ins_working(j). \/ @rem_working(j).) =
-		tin (j, lockset(heap, getp(heap, head, null)))
+    tin (j, lockset(heap, getp(heap, head, null)))
 
 #aheadset:
-	(@ins_working(k). /\
-	 ~@ins_releases_last_lock(k).) ->
-			aheadSet = tdiff (lockset(heap, getp(heap, rd(heap, insert::prev(k)).next, null)), tsingle(k))
+  (@ins_working(k). /\
+   ~@ins_releases_last_lock(k).) ->
+      aheadSet = tdiff (lockset(heap, getp(heap, rd(heap, insert::prev(k)).next, null)), tsingle(k))
 
 
-	 (@ins_working(j). /\
-		~@ins_elem_inserted(j). /\
-		tin(j, lockset(heap, getp(heap, head, null)))) ->
-		tin(j, insideInsert)
+   (@ins_working(j). /\
+    ~@ins_elem_inserted(j). /\
+    tin(j, lockset(heap, getp(heap, head, null)))) ->
+    tin(j, insideInsert)
 
 
-	((~@ins_working(k). \/
-		@ins_releases_last_lock(k).) /\
-		@ins_working(j). /\
-		~@ins_elem_inserted(j). /\
-		tin(j, lockset(heap, getp(heap, head, null)))) ->
-		tin(j, insideInsert)
+  ((~@ins_working(k). \/
+    @ins_releases_last_lock(k).) /\
+    @ins_working(j). /\
+    ~@ins_elem_inserted(j). /\
+    tin(j, lockset(heap, getp(heap, head, null)))) ->
+    tin(j, insideInsert)
 
 
-		insideSet = lockset(heap, getp(heap, head, null))
+    insideSet = lockset(heap, getp(heap, head, null))
 
 
 #lockset_impl_aheadset:
-	(@ins_working(k). /\
-	 ~@ins_releases_last_lock(k). /\
-	 @ins_working(j). /\
-	 ~@ins_elem_inserted(j). /\
-	 j != k /\
-	 tin(j, lockset(heap, getp(heap, rd(heap, insert::prev(k)).next, null)))) ->
-		tin(j, aheadInsert)
+  (@ins_working(k). /\
+   ~@ins_releases_last_lock(k). /\
+   @ins_working(j). /\
+   ~@ins_elem_inserted(j). /\
+   j != k /\
+   tin(j, lockset(heap, getp(heap, rd(heap, insert::prev(k)).next, null)))) ->
+    tin(j, aheadInsert)
 
 

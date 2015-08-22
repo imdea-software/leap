@@ -71,13 +71,13 @@ invariant [nexts] :
 /\ (@ins_prev_is_head(j). \/ @ins_lookup_loop(j).) -> insert::prev(j) != null
 
 #insert_not_null:
-	 @ins_prev_def(j). -> insert::prev(j) != null
+   @ins_prev_def(j). -> insert::prev(j) != null
 
 #insert_curr_not_null:
    @ins_follows(j). -> insert::curr(j) != null
 
 #after_malloc_aux_not_null:
-	 @after_malloc(j). -> insert::aux(j) != null
+   @after_malloc(j). -> insert::aux(j) != null
 
 #insert_while_begins:
    @ins_while_begins(j). -> rd(heap, insert::curr(j)).next != null
@@ -98,8 +98,8 @@ invariant [nexts] :
    (@rem_aux_before_prev(j). -> (remove::aux(j) != remove::prev(j) /\ rd(heap, remove::aux(j)).next = remove::prev(j)))
 
 #remove_prev_next_curr:
-	 (((@rem_follows(j). /\ ~ @rem_equals(j).) \/
-		@rem_releases_curr_two(j).) -> (remove::prev(j) != remove::curr(j) /\
+   (((@rem_follows(j). /\ ~ @rem_equals(j).) \/
+    @rem_releases_curr_two(j).) -> (remove::prev(j) != remove::curr(j) /\
                                      rd(heap,remove::prev(j)).next = remove::curr(j)))
 
 #remove_diff:
@@ -108,10 +108,10 @@ invariant [nexts] :
 
 
 #remove_curr_next_aux:
-	 (@rem_if_two(j). \/ @rem_releases_curr_one(j).) ->
-			( rd(heap, remove::curr(j)).next = remove::aux(j) /\
-				remove::prev(j) != remove::aux(j) /\
-				remove::curr(j) != remove::aux(j))
+   (@rem_if_two(j). \/ @rem_releases_curr_one(j).) ->
+      ( rd(heap, remove::curr(j)).next = remove::aux(j) /\
+        remove::prev(j) != remove::aux(j) /\
+        remove::curr(j) != remove::aux(j))
 
 
 #remove_curr_not_null:

@@ -150,9 +150,9 @@ assume
                                     insideSet := tunion (insideSet, tsingle(me));
                                     insideInsert := tunion (insideInsert, tsingle(me));
                                     if (me = k) then
-																			aheadSet := insideSet;
-																			aheadInsert := insideInsert;
-																		endif
+                                      aheadSet := insideSet;
+                                      aheadInsert := insideInsert;
+                                    endif
                                   $
 :ins_init_no_lock]
 :ins_working[
@@ -313,24 +313,24 @@ assume
 :rem_remove]
 :rem_prev_lower]
 :rem_releases_curr_one
-																	curr->unlock;
+                                  curr->unlock;
 :rem_owns_curr_two]
-																else
+                                else
 :rem_releases_curr_two
-																	curr->unlock;
+                                  curr->unlock;
                                 endif
 :rem_elem_removed[
 :rem_diff[
 :rem_last_prev_unlock
-																prev->unlock
-																	$
-																		insideSet := tdiff (insideSet, tsingle(me));
+                                prev->unlock
+                                  $
+                                    insideSet := tdiff (insideSet, tsingle(me));
                                     aheadSet := tdiff (aheadSet, tsingle(me));
-																	$
+                                  $
 :rem_owns_prev]
 :rem_prev_def]
 //:rem_releases_last_lock
-//																curr->unlock;
+//                                curr->unlock;
 :rem_diff]
 :rem_got_lock]
 :rem_working]

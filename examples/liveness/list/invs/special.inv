@@ -7,16 +7,16 @@ invariant [special] :
 
 
 #insert_aux_between:
-	@ins_last_prev_unlock(j). ->
-		(rd(heap, insert::prev(j)).next = insert::curr(j) \/
-		 (rd(heap, insert::prev(j)).next = insert::aux(j) /\
-			rd(heap, insert::aux(j)).next = insert::curr(j) /\
-			rd(heap, insert::aux(j)).lockid = #))
+  @ins_last_prev_unlock(j). ->
+    (rd(heap, insert::prev(j)).next = insert::curr(j) \/
+     (rd(heap, insert::prev(j)).next = insert::aux(j) /\
+      rd(heap, insert::aux(j)).next = insert::curr(j) /\
+      rd(heap, insert::aux(j)).lockid = #))
 
 
 //#bb:
-//	@rem_releases_last_lock(j). ->
-//		((~ in(remove::curr(j), region)) ->
-//			~ tin(i, lockset(heap, getp(heap, head, null))))
+//  @rem_releases_last_lock(j). ->
+//    ((~ in(remove::curr(j), region)) ->
+//      ~ tin(i, lockset(heap, getp(heap, head, null))))
 
 

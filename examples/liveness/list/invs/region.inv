@@ -51,10 +51,10 @@ invariant [region] :
    @rem_prev_def(i). -> in (remove::prev(i), region)
 
 #remove_curr_in_region:
-	 (@rem_curr_def(i). \/ @rem_releases_curr_two(i).) -> in (remove::curr(i), region)
+   (@rem_curr_def(i). \/ @rem_releases_curr_two(i).) -> in (remove::curr(i), region)
 
 #remove_curr_not_in_region:
-	 @rem_releases_curr_one(i). -> ~ in (remove::curr(i), region)
+   @rem_releases_curr_one(i). -> ~ in (remove::curr(i), region)
 
 #remove_aux_in_region:
-	 @rem_aux_before_prev(i). -> in (remove::aux(i), region)
+   @rem_aux_before_prev(i). -> in (remove::aux(i), region)

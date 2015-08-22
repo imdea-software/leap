@@ -4,13 +4,13 @@ Tactics :
          |
 				 | simplify-pc } ;
 
-	33 : [n1|C,A] : {union :
-         | reduce2
-         |
-         | simplify-pc filter-strict-except-heap } ;
+//	33 : [m1|C,A] : {union :   // Before m2,m3,m4,m5 were here
+//				 | reduce2
+//				 |
+//				 | simplify-pc filter-strict-except-heap } ;
 
 
-	35 : [n1,n2,n3|C] : {union :
+	35 : [m1,m2,m3,m4,m5,n2,n3|C] : {union :
 				 | self
 				 |
 				 | simplify-pc } ;
@@ -31,7 +31,7 @@ Facts :
   19:preserve::tail_at_end,
      nexts::{general,search_prev_next_curr,search_follows,search_diff},
      locks::search_owns_curr;
-	20:preserve::{region,tail_at_end},
+	20:preserve,
 		 nexts::search_follows,
 		 region::{search_curr_in_region,insert_prev_in_region},
 		 locks::{insert_owns_prev},
@@ -65,11 +65,15 @@ Facts :
 		 nexts::{insert_prev_next_curr,insert_aux_next_curr},
 		 locks::{insert_nobody_owns_aux,insert_owns_prev,insert_owns_curr},
 		 region::{insert_prev_in_region,insert_aux_not_in_region};
-	36:preserve::tail_at_end,
+	36:preserve,
      nexts::{general,insert_prev_next_curr,insert_curr_not_null,insert_diff},
      locks::{insert_owns_curr,insert_owns_prev},
 		 locksets::{owns_a_lock},
+		 region::{insert_prev_in_region,insert_curr_in_region},
      lockedRegion::insert_prev_curr_locked;
+
+
+
 	37:preserve,
 		 region::{insert_prev_in_region,insert_curr_in_region},
 		 locksets::{owns_a_lock,aheadset},
