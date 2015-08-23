@@ -1628,9 +1628,6 @@ struct
     let _ = LeapDebug.debug "Z3TllQuery will compute the cutoff...\n" in
     let max_cut_off = SmpTll.cut_off co copt phi in
     let num_addr    = MS.get max_cut_off MS.Addr in
-
-    let num_addr = 5 in
-
     let num_tid     = MS.get max_cut_off MS.Tid in
     let num_elem    = MS.get max_cut_off MS.Elem in
     let req_sorts   = Expr.required_sorts phi in
