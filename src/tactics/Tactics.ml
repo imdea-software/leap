@@ -1078,6 +1078,10 @@ let tactic_simplify_pc_plus (imp:implication) : implication =
    with the goal *)
 let tactic_filter_vars_nonrec (criteria:filter_criteria_t) (imp:implication) : implication =
   let vs_conseq = E.all_vars_as_set imp.conseq in
+
+    print_endline ("CONJ VARS: ");
+    E.V.VarSet.iter (fun v -> print_endline (E.V.to_str v)) vs_conseq;
+
   let filtered_vs_conseq =
     match criteria with
     | NoCriteria -> vs_conseq

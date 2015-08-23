@@ -627,6 +627,19 @@ let ranking_function (ante:E.formula)
     | (WFAddrSubset, Decrement)
     | (WFElemSubset, Decrement)
     | (WFTidSubset, Decrement) -> build_dec op t1 t2 in
+
+  let build_lexic_decrement () : E.formula =
+    let (disjs, _) =
+      List.fold_left (fun (ds,eq_phi) (pre,op) ->
+        let post = E.prime_modified_term [ante] pre in
+        let dec = cons Decrement op pre post in
+        let pres = cons Preserve op pre post in
+        match ds with
+        | [] -> ([dec],pres)
+        | _  -> ((F.And (dec, eq_phi))::ds, F.And(pres, eq_phi))
+      ) ([],F.True) accept.delta in
+    F.disj_list disjs in
+
   if AcceptanceSet.mem e accept.bad then begin
     let (n,m,t) = e in
     Debug.infoMsg (fun _ -> "IS BAD: " ^ (node_id_to_str n) ^ " -> " ^
@@ -634,6 +647,8 @@ let ranking_function (ante:E.formula)
     let _ = match t with
             | Any -> Debug.infoMsg (fun _ -> "ANY")
             | Pres -> Debug.infoMsg (fun _ -> "PRES") in
+    build_lexic_decrement ();
+(*
     let (disjs, _) =
       List.fold_left (fun (ds,eq_phi) (pre,op) ->
         let post = E.prime_modified_term [ante] pre in
@@ -644,6 +659,7 @@ let ranking_function (ante:E.formula)
         | _  -> ((F.And (dec, eq_phi))::ds, F.And(pres, eq_phi))
       ) ([],F.True) accept.delta in
     F.disj_list disjs
+*)
 (*
     let pre = fst accept.delta in
     let post = E.prime_modified_term [ante] (fst accept.delta) in
@@ -657,11 +673,23 @@ let ranking_function (ante:E.formula)
     let _ = match t with
             | Any -> Debug.infoMsg (fun _ -> "ANY")
             | Pres -> Debug.infoMsg (fun _ -> "PRES") in
-    F.conj_list (
-      List.map (fun (pre,op) ->
+
+    let pres = F.conj_list (
+                List.map (fun (pre,op) ->
+                  let post = E.prime_modified_term [ante] pre in
+                  cons Preserve op pre post
+                ) accept.delta) in
+    let dec = build_lexic_decrement () in
+    F.Or (pres, dec)
+(*
         let post = E.prime_modified_term [ante] pre in
+        let dec = cons Decrement op pre post in
+        let pres = cons Preserve op pre post in
+        F.Or (dec, pres)
+*)
+(*
         cons Preserve op pre post
-      ) accept.delta)
+*)
 (*
     let pre = fst accept.delta in
     let post = E.prime_modified_term [ante] (fst accept.delta) in

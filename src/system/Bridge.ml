@@ -61,6 +61,8 @@ let unfold_expression (mInfo:malloc_info)
                       (expr:Stm.expr_t) : (E.expr_t      *
                                            E.term list   *
                                            E.formula list) =
+
+
   let apply_local (vs:E.V.t list) (f:E.tid -> E.V.t -> E.formula) : E.formula list =
     List.fold_left (fun xs t ->
       xs @ List.map (fun v ->

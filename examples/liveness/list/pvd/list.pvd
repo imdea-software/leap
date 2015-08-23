@@ -3,57 +3,66 @@ Diagram[list]
 Nodes: n0 { ~ @ins_working(k). },
 
 
-			 m1 { (@ins_working(k). /\ ~(@ins_releases_last_lock(k).)) /\
-						 t = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\
+       m1 { (@ins_working(k). /\
+             ~@ins_last_prev_unlock(k). /\
+             ~@ins_releases_last_lock(k). ) /\
+             t = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\
               t != k /\
-							 (@ins_working(t). \/
-								@rem_working(t). \/
-								@sch_working(t).) /\
-								(~ @sch_releases_last_lock(t). /\
-								 ~ @ins_aux_before_curr(t). /\
-								 ~ @ins_releases_last_lock(t). /\
-								 ~ @rem_last_prev_unlock(t). ) },
+               (@ins_working(t). \/
+                @rem_working(t). \/
+                @sch_working(t).) /\
+                (~ @sch_releases_last_lock(t). /\
+                 ~ @ins_aux_before_curr(t). /\
+                 ~ @ins_releases_last_lock(t). /\
+                 ~ @rem_last_prev_unlock(t). ) },
 
-			 m2 { (@ins_working(k). /\ ~(@ins_releases_last_lock(k).)) /\
-						 t = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\
+       m2 { (@ins_working(k). /\
+             ~@ins_last_prev_unlock(k). /\
+             ~@ins_releases_last_lock(k). ) /\
+             t = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\
               t != k /\
-							 (@ins_working(t). \/
-								@rem_working(t). \/
-								@sch_working(t).) /\
-								@sch_releases_last_lock(t). },
+               (@ins_working(t). \/
+                @rem_working(t). \/
+                @sch_working(t).) /\
+                @sch_releases_last_lock(t). },
 
-			 m3 { (@ins_working(k). /\ ~(@ins_releases_last_lock(k).)) /\
-						 t = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\
+       m3 { (@ins_working(k). /\
+             ~@ins_last_prev_unlock(k). /\
+             ~@ins_releases_last_lock(k). ) /\
+             t = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\
               t != k /\
-							 (@ins_working(t). \/
-								@rem_working(t). \/
-								@sch_working(t).) /\
-								@ins_aux_before_curr(t). },
+               (@ins_working(t). \/
+                @rem_working(t). \/
+                @sch_working(t).) /\
+                @ins_aux_before_curr(t). },
 
-			 m4 { (@ins_working(k). /\ ~(@ins_releases_last_lock(k).)) /\
-						 t = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\
+       m4 { (@ins_working(k). /\
+             ~@ins_last_prev_unlock(k). /\
+             ~@ins_releases_last_lock(k). ) /\
+             t = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\
               t != k /\
-							 (@ins_working(t). \/
-								@rem_working(t). \/
-								@sch_working(t).) /\
-								@ins_releases_last_lock(t). },
+               (@ins_working(t). \/
+                @rem_working(t). \/
+                @sch_working(t).) /\
+                @ins_releases_last_lock(t). },
 
-			 m5 { (@ins_working(k). /\ ~(@ins_releases_last_lock(k).)) /\
-						 t = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\
+       m5 { (@ins_working(k). /\
+             ~@ins_last_prev_unlock(k). /\
+             ~@ins_releases_last_lock(k). ) /\
+             t = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\
               t != k /\
-							 (@ins_working(t). \/
-								@rem_working(t). \/
-								@sch_working(t).) /\
-								@rem_last_prev_unlock(t). },
-
+               (@ins_working(t). \/
+                @rem_working(t). \/
+                @sch_working(t).) /\
+                @rem_last_prev_unlock(t). },
 
        n2 { k = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\
-						(@ins_prev_locked_one(k). \/
-						 @ins_prev_locked_two(k). \/
-						 @ins_insertion_process(k).) },
+            (@ins_prev_locked_one(k). \/
+             @ins_prev_locked_two(k). \/
+             @ins_insertion_process(k).) },
 
-			 n3 { k = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\ @ins_aux_eq_prev(k). },
-       n4 { @ins_releases_last_lock(k). },
+       n3 { k = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\ @ins_aux_eq_prev(k). },
+       n4 { @ins_last_prev_unlock(k). \/ @ins_releases_last_lock(k). },
 //       n4 { k = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\ @ins_insertion_process(k). },
        n5 { @ins_return(k). }
 
@@ -63,165 +72,176 @@ Boxes: {b1[t]:m1,m2,m3,m4,m5}
 Initial: n0
 
 Edges:  n0 --> m1;
-				n0 --> m2;
-				n0 --> m3;
-				n0 --> m4;
-				n0 --> m5;
+        n0 --> m2;
+        n0 --> m3;
+        n0 --> m4;
+        n0 --> m5;
 
-				n0 --> n2;
+        n0 --> n2;
 
-				[m1 --> m2];
-				[m1 --> m3];
-				[m1 --> m4];
-				[m1 --> m5];
-
-
-//				n1 -{20(t), 35(t), 37(t), 54(t)}-> n1;
-
-				m2 -{20(t)}-> m1;
-//				m3 -{35(t)}-> m1;
-				m4 -{37(t)}-> m1;
-				m5 -{54(t)}-> m1;
-
-				m2 -{20(t)}-> m2;
-//				m3 -{35(t)}-> m2;
-				m4 -{37(t)}-> m2;
-				m5 -{54(t)}-> m2;
-
-				m2 -{20(t)}-> m3;
-//				m3 -{35(t)}-> m3;
-				m4 -{37(t)}-> m3;
-				m5 -{54(t)}-> m3;
-
-				m2 -{20(t)}-> m4;
-//				m3 -{35(t)}-> m4;
-				m4 -{37(t)}-> m4;
-				m5 -{54(t)}-> m4;
-
-				m2 -{20(t)}-> m5;
-//				m3 -{35(t)}-> m5;
-				m4 -{37(t)}-> m5;
-				m5 -{54(t)}-> m5;
-
-				[m3 -{35(t)}-> m1];
+        [m1 --> m2];
+        [m1 --> m3];
+        [m1 --> m4];
+        [m1 --> m5];
 
 
-//				n1 -{20(t), 37(t), 54(t)}-> n2;
+//        n1 -{20(t), 35(t), 37(t), 54(t)}-> n1;
 
-				m2 -{20(t)}-> n2;
-				m4 -{37(t)}-> n2;
-				m5 -{54(t)}-> n2;
+        m2 -{20(t)}-> m1;
+//        m3 -{35(t)}-> m1;
+        m4 -{37(t)}-> m1;
+        m5 -{54(t)}-> m1;
+
+        m2 -{20(t)}-> m2;
+//        m3 -{35(t)}-> m2;
+        m4 -{37(t)}-> m2;
+        m5 -{54(t)}-> m2;
+
+        m2 -{20(t)}-> m3;
+//        m3 -{35(t)}-> m3;
+        m4 -{37(t)}-> m3;
+        m5 -{54(t)}-> m3;
+
+        m2 -{20(t)}-> m4;
+//        m3 -{35(t)}-> m4;
+        m4 -{37(t)}-> m4;
+        m5 -{54(t)}-> m4;
+
+        m2 -{20(t)}-> m5;
+//        m3 -{35(t)}-> m5;
+        m4 -{37(t)}-> m5;
+        m5 -{54(t)}-> m5;
+
+        [m3 -{35(t)}-> m1];
 
 
-//				n1 -{20(t), 37(t), 54(t)}-> n3;
+//        n1 -{20(t), 37(t), 54(t)}-> n2;
 
-				m2 -{20(t)}-> n3;
-				m4 -{37(t)}-> n3;
-				m5 -{54(t)}-> n3;
+        m2 -{20(t)}-> n2;
+        m4 -{37(t)}-> n2;
+        m5 -{54(t)}-> n2;
 
 
-//				n1 -{20(t), 37(t), 54(t)}-> n4; // This was commented
+//        n1 -{20(t), 37(t), 54(t)}-> n3;
 
-				m1 --> n4; // Exits by transition 36(k)
-				m2 -{20(t)}-> n4;
-				m3 --> n4;
-				m4 -{37(t)}-> n4;
-				m5 -{54(t)}-> n4;
+        m2 -{20(t)}-> n3;
+        m4 -{37(t)}-> n3;
+        m5 -{54(t)}-> n3;
+
+
+//        n1 -{20(t), 37(t), 54(t)}-> n4; // This was commented
+
+        m1 --> n4; // Exits by transition 36(k)
+        m2 --> n4;
+        m3 --> n4;
+        m4 --> n4;
+        m5 --> n4;
+
+// This was uncommented
+//        m2 -{20(t)}-> n4;
+//        m3 --> n4;
+//        m4 -{37(t)}-> n4;
+//        m5 -{54(t)}-> n4;
 
 
 //////        n1 -{20(t), 35(t), 37(t), 54(t)}-> n4;
 
-//				n1 -{20(t), 54(t)}-> n5;
+//        n1 -{20(t), 54(t)}-> n5;
 
-				m2 -{20(t)}-> n5;
-				m4 -{37(t)}-> n5;
-				m5 -{54(t)}-> n5;
+        m2 -{20(t)}-> n5;
+        m4 -{37(t)}-> n5;
+        m5 -{54(t)}-> n5;
 
 
-//////				n1 -{28(k)}-> n1;
+//////        n1 -{28(k)}-> n1;
 
-//				n1 --> n0;
-				m1 --> n0;
-				m2 --> n0;
-				m3 --> n0;
-				m4 --> n0;
-				m5 --> n0;
+//        n1 --> n0;
+        m1 --> n0;
+        m2 --> n0;
+        m3 --> n0;
+        m4 --> n0;
+        m5 --> n0;
 
 
 //////        n1 -{36(k)}-> n4; This was uncommented
 
-				n2 --> n2;
-				n2 --> n3;
-				n2 --> n4;
-				n3 -{28(k)}-> n2;
+        n2 --> n2;
+        n2 --> n3;
+        n2 --> n4;
+        n3 -{28(k)}-> n2;
 //////        n2 -{37(k)}-> n5;
-				n4 -{37(k)}-> n5;
+        n4 --> n5;
         n5 -{38(k)}-> n0;
 
 
-	// Self-loops
-				n0 --> n0;
+  // Self-loops
+        n0 --> n0;
 //       [n1 --> n1];
-			 [m1 --> m1];
-			 [m2 --> m2];
-			 [m3 --> m3];
-			 [m4 --> m4];
-			 [m5 --> m5];
+       [m1 --> m1];
+       [m2 --> m2];
+       [m3 --> m3];
+       [m4 --> m4];
+       [m5 --> m5];
 
-				n2 --> n2;
-				n3 --> n3;
-				n4 --> n4;
-				n5 --> n5;
+        n2 --> n2;
+        n3 --> n3;
+        n4 --> n4;
+        n5 --> n5;
 
 Acceptance:
-	<<Bad :{
-					// (n1,n1,any)
-					(m2,m1,any),(m2,m2,any),(m2,m3,any),(m2,m4,any),(m2,m5,any),
-//					(m3,m1,any),(m3,m2,any),(m3,m3,any),(m3,m4,any),(m3,m5,any),
-					(m4,m1,any),(m4,m2,any),(m4,m3,any),(m4,m4,any),(m4,m5,any),
-					(m5,m1,any),(m5,m2,any),(m5,m3,any),(m5,m4,any),(m5,m5,any),
+  <<Bad :{
+          // (n1,n1,any)
+          (m2,m1,any),(m2,m2,any),(m2,m3,any),(m2,m4,any),(m2,m5,any),
+//          (m3,m1,any),(m3,m2,any),(m3,m3,any),(m3,m4,any),(m3,m5,any),
+          (m4,m1,any),(m4,m2,any),(m4,m3,any),(m4,m4,any),(m4,m5,any),
+          (m5,m1,any),(m5,m2,any),(m5,m3,any),(m5,m4,any),(m5,m5,any),
 
-					// (n1,n2,any)
-					(m2,n2,any), (m4,n2,any), (m5,n2,any),
+          // (n1,n2,any)
+          (m2,n2,any), (m4,n2,any), (m5,n2,any),
 
-					// (n1,n3,any)
-					(m2,n3,any), (m4,n3,any), (m5,n3,any),
+          // (n1,n3,any)
+          (m2,n3,any), (m4,n3,any), (m5,n3,any),
 
-					// (n1,n4,any)
-					(m2,n4,any), (m4,n4,any), (m5,n4,any),
+          // (n1,n4,any)
+//          (m2,n4,any), (m4,n4,any), (m5,n4,any),
 
-					// (n1,n5,any)
-					(m2,n5,any), (m4,n5,any), (m5,n5,any),
+          // (n1,n5,any)
+          (m2,n5,any), (m4,n5,any), (m5,n5,any),
 
-					(n3,n2,any),
+          (n3,n2,any),
 
-					(m3,m1,pres)
-				};
-		Good:{
-					// (n0,n1,any)
-					(n0,m1,any), (n0,m2,any), (n0,m3,any), (n0,m4,any), (n0,m5,any),
+          (m3,m1,pres)
+        };
+    Good:{
+          // (n0,n1,any)
+          (n0,m1,any), (n0,m2,any), (n0,m3,any), (n0,m4,any), (n0,m5,any),
 
-					(n0,n2,any),
+          (n0,n2,any),
 
-					(n5,n0,any), (n0,n0,any), (n3,n3,any),
+          (n5,n0,any), (n0,n0,any), (n3,n3,any),
 
-					// (n1,n1,pres) // Evitar
-					(m1,m1,pres), (m2,m2,pres), (m3,m3,pres), (m4,m4,pres), (m5,m5,pres),
+          // (n1,n1,pres) // Evitar
+//          (m1,m1,pres), (m2,m2,pres), (m3,m3,pres), (m4,m4,pres), (m5,m5,pres),
 
-					// Evitar
-					(m1,m2,pres), (m1,m3,pres), (m1,m4,pres), (m1,m5,pres),
+          // Evitar
+//          (m1,m2,pres), (m1,m3,pres), (m1,m4,pres), (m1,m5,pres),
 
-					// (n1,n0,any)
-					(m1,n0,any), (m2,n0,any), (m3,n0,any), (m4,n0,any), (m5,n0,any),
+          // (n1,n0,any)
+          (m1,n0,any), (m2,n0,any), (m3,n0,any), (m4,n0,any), (m5,n0,any),
 
-					(n2,n2,any), (n4,n4,any), (n4,n5,any), (n5,n5,any)
+          // NEW
+          (m1,n4,any), (m2,n4,any), (m3,n4,any), (m4,n4,any), (m5,n4,any),
 
-				};
+          (n2,n2,any), (n4,n4,any), (n4,n5,any), (n5,n5,any),
+
+          (n2,n4,any)
+
+        };
 
 
-//	<<Bad :{(n1,n1,any),(n1,n2,any),(n1,n3,any),(n1,n5,any),(n3,n2,any)};
-//		Good:{(n0,n1,any),(n0,n2,any),(n5,n0,any),(n0,n0,any),(n3,n3,any),
-//					(n1,n1,pres),(n1,n0,any),(n2,n2,any),(n4,n4,any),(n4,n5,any),(n5,n5,any)};
+//  <<Bad :{(n1,n1,any),(n1,n2,any),(n1,n3,any),(n1,n5,any),(n3,n2,any)};
+//    Good:{(n0,n1,any),(n0,n2,any),(n5,n0,any),(n0,n0,any),(n3,n3,any),
+//          (n1,n1,pres),(n1,n0,any),(n2,n2,any),(n4,n4,any),(n4,n5,any),(n5,n5,any)};
     [(aheadSet, tidsubset_op);
      (aheadInsert, tidsubset_op);
      (addr2set(heap, insert::prev(k)), addrsubset_op)] >>
