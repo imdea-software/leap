@@ -18,6 +18,7 @@ type malloc_info =
 
 type prog_type = Num | Heap
 
+val fresh_addr : Expression.V.t
 
 
 val construct_stm_term_eq : malloc_info ->

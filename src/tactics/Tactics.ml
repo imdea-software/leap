@@ -85,6 +85,7 @@ type filter_criteria_t =
   | NoCriteria
   | AllExceptHeap
   | LocalOnly
+  | MallocCrit
 
 exception Invalid_tactic of string
 
@@ -1083,7 +1084,8 @@ let tactic_filter_vars_nonrec (criteria:filter_criteria_t) (imp:implication) : i
     match criteria with
     | NoCriteria -> vs_conseq
     | AllExceptHeap
-    | LocalOnly -> E.V.VarSet.filter (fun v -> E.V.id v <> Conf.heap_name) vs_conseq in
+    | LocalOnly
+    | MallocCrit -> E.V.VarSet.filter (fun v -> E.V.id v <> Conf.heap_name) vs_conseq in
   let conjs = F.to_conj_list imp.ante in
   let share_vars (vl: E.V.t list) : bool =
     match criteria with
@@ -1092,7 +1094,11 @@ let tactic_filter_vars_nonrec (criteria:filter_criteria_t) (imp:implication) : i
                      E.V.VarSet.mem v filtered_vs_conseq
                    ) vl
     | NoCriteria
-    | AllExceptHeap -> List.exists (fun v -> E.V.VarSet.mem v filtered_vs_conseq) vl
+    | AllExceptHeap ->
+        List.exists (fun v -> E.V.VarSet.mem v filtered_vs_conseq) vl
+    | MallocCrit ->
+        (not (List.mem Bridge.fresh_addr vl)) ||
+         List.exists (fun v -> E.V.VarSet.mem v filtered_vs_conseq) vl
   in
   let new_conjs = List.filter (fun f -> share_vars (E.all_vars f)) conjs in
   { ante = F.conj_list new_conjs ; conseq = imp.conseq }
@@ -1355,6 +1361,7 @@ let formula_tactic_from_string (s:string) : formula_tactic_t =
   | "filter-strict"             -> tactic_filter_vars_nonrec NoCriteria
   | "filter-strict-local"       -> tactic_filter_vars_nonrec LocalOnly
   | "filter-strict-except-heap" -> tactic_filter_vars_nonrec AllExceptHeap
+  | "filter-malloc"             -> tactic_filter_vars_nonrec MallocCrit
   | "filter-theory"             -> tactic_filter_theory
   | "propagate-disj-conseq-fst" -> tactic_conseq_propagate_first_disjunct
   | "propagate-disj-conseq-snd" -> tactic_conseq_propagate_second_disjunct

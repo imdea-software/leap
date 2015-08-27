@@ -38,6 +38,7 @@ let fresh_addr_name : string = "freshaddr"
 let fresh_addrarr_name : string = "freshaddrarr"
 let fresh_tidarr_name : string = "freshtidarr"
 let fresh_int_name : string = "freshaddrarr"
+let fresh_addr : E.V.t = E.build_global_var fresh_addr_name E.Addr
 
 (* Pretty printers *)
 
@@ -75,7 +76,7 @@ let unfold_expression (mInfo:malloc_info)
                  (E.expr_t * E.term list * E.formula list) =
 (*    LOG "unfold_expression::gen_malloc()" LEVEL TRACE; *)
     let c_fresh = E.VarCell(E.build_global_var fresh_cell_name E.Cell) in
-    let a_fresh = E.VarAddr(E.build_global_var fresh_addr_name E.Addr) in
+    let a_fresh = E.VarAddr fresh_addr in
     let diff_fresh a = E.ineq_addr a_fresh (E.VarAddr a) in
     let not_in_set s = F.Not (E.in_form a_fresh (E.VarSet s)) in
     let not_reach a = F.Not (E.in_form a_fresh (E.AddrToSet(E.heap, (E.VarAddr a)))) in
