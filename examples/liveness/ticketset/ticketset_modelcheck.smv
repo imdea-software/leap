@@ -1,0 +1,31 @@
+MODULE main
+VAR
+  state : 1..6;
+  k : 1..6;
+  t : 1..6;
+
+INIT state = 1;
+
+TRANS
+  case
+    state = 1 : next(state) in {2};
+    state = 2 : next(state) in {3,5};
+    state = 3 : next(state) in {4};
+    state = 4 : next(state) in {3,4,5};
+    state = 5 : next(state) in {6};
+    state = 6 : next(state) in {6};
+  esac;
+  
+TRANS
+  case
+    state = 1 : (k != 3) & (k != 5) & (k != 6);
+    state = 2 : k = 3;
+    state = 3 : TRUE;
+    state = 4 : TRUE;
+    state = 5 : TRUE;
+    state = 6 : (k = 5) | (k = 6);
+  esac;
+
+FAIRNESS (state = 6);
+
+LTLSPEC ! (G (k=3 -> F(k=5 | k=6)));

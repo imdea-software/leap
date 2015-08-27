@@ -4,17 +4,38 @@ Tactics :
          |
          | simplify-pc } ;
 
-  33 : [m1|C] : {union :   // Before m2,m3,m4,m5 were here
-         | reduce2
-         |
-         | simplify-pc filter-strict-except-heap } ;
+  33 : [m1|C] :
+    {union :   // Before m2,m3,m4,m5 were here
+           | reduce2
+           |
+           | simplify-pc filter-strict-except-heap } ;
+
+  33 : [n2,n3,m2,m3,m4,m5|C] :
+    {union :
+           | reduce2
+           |
+           | simplify-pc filter-malloc } ;
+
+  33 : [m1,m2,m3,m4,m5|A] :
+    {union :
+           | reduce2
+           |
+           | simplify-pc filter-malloc } ;
 
 
-  35 : [m2,m3,m4,m5,n2,n3|C] : {union :
-         | self
-         |
-         | simplify-pc } ;
+  35 : [m1,m2,m3,m4,m5,n2,n3|C] :
+    {union :
+           | self
+           |
+           | simplify-pc } ;
 
+
+// Esto es de prueba
+	35 : [m1,m2,m3,m4,m5,n2,n3|A] :
+		{union : split-goal
+           | self
+           |
+					 | simplify-pc-plus filter-strict-local } ;
 
 
 Facts :
@@ -61,11 +82,23 @@ Facts :
   34:preserve,
      locks::{insert_owns_prev},
      region::{insert_aux_not_in_region,insert_prev_in_region};
-  35:preserve,
-     locksets::{owns_a_lock,aheadset,lockset_impl_aheadset},
-     nexts::{insert_prev_next_curr,insert_aux_next_curr},
-     locks::{insert_nobody_owns_aux,insert_owns_prev,insert_owns_curr},
-     region::{insert_prev_in_region,insert_aux_not_in_region};
+
+
+
+//  35:preserve,
+//		 locksets::{lockset_impl_aheadset},
+//		 nexts::{insert_prev_next_curr},
+//		 locks::{insert_owns_curr},
+//		 region::{insert_prev_in_region};
+
+
+// Original
+	35:preserve,
+		 locksets::{owns_a_lock,aheadset,lockset_impl_aheadset},
+		 nexts::{insert_prev_next_curr,insert_aux_next_curr},
+		 locks::{insert_nobody_owns_aux,insert_owns_prev,insert_owns_curr},
+		 region::{insert_prev_in_region,insert_aux_not_in_region};
+
   36:preserve,
      nexts::{general,insert_prev_next_curr,insert_curr_not_null,insert_diff},
      locks::{insert_owns_curr,insert_owns_prev},
