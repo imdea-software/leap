@@ -1,31 +1,90 @@
 MODULE main
 VAR
-  state : 1..6;
-  k : 1..6;
-  t : 1..6;
+	state : {q1,q2,q3,q4,q5,q6,g1,g2,g3,g4,g5,g6,b1,b2,b3,b4,b5,b6};
 
-INIT state = 1;
+	k : 1..6;
+
+--	wants : boolean;
+--	critical : boolean;
+
+
+INIT state = q1;
+
+-- GOOD : 2 -> 2; 2 -> 3; 2 -> 4; 2 -> 5; 6 -> 1;
+-- BAD : 4 -> 3; 4 -> 4; 4 -> 5; 
+
 
 TRANS
-  case
-    state = 1 : next(state) in {2};
-    state = 2 : next(state) in {3,5};
-    state = 3 : next(state) in {4};
-    state = 4 : next(state) in {3,4,5};
-    state = 5 : next(state) in {6};
-    state = 6 : next(state) in {6};
-  esac;
+	case
+		
+		state = q2 : next(state) in {g3,g4,g5};
+		state = q6 : next(state) in {g1};
+		state = g2 : next(state) in {g3,g4,g5};
+		state = g6 : next(state) in {g1};
+
+		state = q1 : next(state) in {q1,q2};
+		state = q3 : next(state) in {q3,q4};
+--		state = q2 : next(state) in {q2};
+		state = q4 : next(state) in {q3,q4,q5};
+		state = q5 : next(state) in {q5,q6};
+		state = q6 : next(state) in {q6};
+
+		state = g1 : next(state) in {q1,q2};
+		state = g2 : next(state) in {q2};
+		state = g3 : next(state) in {q3,q4};
+		state = g4 : next(state) in {q3,q4,q5};
+		state = g5 : next(state) in {q5,q6};
+		state = g6 : next(state) in {g1,q6};
+
+		state = b1 : next(state) in {b1,b2};
+		state = b2 : next(state) in {b2,b3,b4,b5};
+		state = b3 : next(state) in {b3,b4};
+		state = b4 : FALSE;
+		state = b5 : next(state) in {b5,b6};
+		state = b6 : next(state) in {b1,b6};
+
+
+		state = q1 : next(state) in {b1,b2};
+		state = q2 : next(state) in {b3,b4,b5};
+		state = q3 : next(state) in {b3,b4};
+		state = q4 : next(state) in {b3,b4,b5};
+		state = q5 : next(state) in {b5,b6};
+		state = q6 : next(state) in {b1,b6};
+
+	esac;
   
 TRANS
   case
-    state = 1 : (k != 3) & (k != 5) & (k != 6);
-    state = 2 : k = 3;
-    state = 3 : TRUE;
-    state = 4 : TRUE;
-    state = 5 : TRUE;
-    state = 6 : (k = 5) | (k = 6);
+
+
+		state in {q1,g1,b1} : (k != 3) & (k != 5) & (k != 6);
+		state in {q2,g2,b2} : k = 3;
+		state in {q3,g3,b3} : TRUE;
+		state in {q4,g4,b4} : TRUE;
+		state in {q5,g5,b5} : k = 5;
+		state in {q6,g6,b6} : k = 6;
+
+
+--		state in {q1,g1,b1} : !wants & !critical;
+--		state in {q2,g2,b2} : wants & !critical;
+--		state in {q3,g3,b3} : !wants & !critical;
+--		state in {q4,g4,b4} : !wants & !critical;
+--		state in {q5,g5,b5} : !wants & !critical;
+--		state in {q6,g6,b6} : !wants & critical;
+
+
+--  ORIGINAL ONE
+--		state = 1 : (k != 3) & (k != 5) & (k != 6);
+--		state = 2 : k = 3;
+--		state = 3 : TRUE;
+--		state = 4 : TRUE;
+--		state = 5 : TRUE;
+--		state = 6 : (k = 5) | (k = 6);
+
+
   esac;
 
-FAIRNESS (state = 6);
+	FAIRNESS (state in {g1,g2,g3,g4,g5,g6,b1,b2,b3,b4,b5,b6});
 
-LTLSPEC ! (G (k=3 -> F(k=5 | k=6)));
+--	LTLSPEC G (wants -> F critical)
+	LTLSPEC G (k = 3 -> F (k = 5 | k = 6))
