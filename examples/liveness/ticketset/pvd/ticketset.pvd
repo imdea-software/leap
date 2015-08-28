@@ -36,7 +36,7 @@ Edges:  n0 --> n1;
 
 Acceptance:
   <<Bad :{(n4,n2,any),(n4,n3,any),(n4,n4,any),(n4,n5,any)};
-    Good:{(n6,n0,any),(n1,n1,any),(n1,n2,any),(n1,n3,any),(n1,n4,any),(n1,n5,any),
-          (n0,n0,any)};
+    Good:{(n6,n0,any)
+          };
     [(splower(bag,main::ticket(k)), pairsubset_op)] >>
 
