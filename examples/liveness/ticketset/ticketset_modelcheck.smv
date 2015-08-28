@@ -4,12 +4,7 @@ VAR
 
 	k : 1..6;
 
-
 INIT state = q0;
-
--- GOOD : 2 -> 2; 2 -> 3; 2 -> 4; 2 -> 5; 6 -> 1;
--- BAD : 4 -> 3; 4 -> 4; 4 -> 5; 
-
 
 TRANS
 	case
@@ -64,26 +59,8 @@ TRANS
 		state in {q6,g6,b6} : k = 5 | k = 6;
 
 
---		state in {q1,g1,b1} : !wants & !critical;
---		state in {q2,g2,b2} : wants & !critical;
---		state in {q3,g3,b3} : !wants & !critical;
---		state in {q4,g4,b4} : !wants & !critical;
---		state in {q5,g5,b5} : !wants & !critical;
---		state in {q6,g6,b6} : !wants & critical;
+	esac;
 
+	FAIRNESS (state in {g0,g1,g2,g3,g4,g5,g6,b0,b1,b2,b3,b4,b5,b6});
 
---  ORIGINAL ONE
---		state = 1 : (k != 3) & (k != 5) & (k != 6);
---		state = 2 : k = 3;
---		state = 3 : TRUE;
---		state = 4 : TRUE;
---		state = 5 : TRUE;
---		state = 6 : (k = 5) | (k = 6);
-
-
-  esac;
-
-	FAIRNESS (state in {g1,g2,g3,g4,g5,g6,b1,b2,b3,b4,b5,b6});
-
---	LTLSPEC G (wants -> F critical)
 	LTLSPEC G (k = 3 -> F (k = 5 | k = 6))
