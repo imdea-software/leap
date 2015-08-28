@@ -1,14 +1,11 @@
 MODULE main
 VAR
-	state : {q1,q2,q3,q4,q5,q6,g1,g2,g3,g4,g5,g6,b1,b2,b3,b4,b5,b6};
+	state : {q0,q1,q2,q3,q4,q5,q6,g0,g1,g2,g3,g4,g5,g6,b0,b1,b2,b3,b4,b5,b6};
 
 	k : 1..6;
 
---	wants : boolean;
---	critical : boolean;
 
-
-INIT state = q1;
+INIT state = q0;
 
 -- GOOD : 2 -> 2; 2 -> 3; 2 -> 4; 2 -> 5; 6 -> 1;
 -- BAD : 4 -> 3; 4 -> 4; 4 -> 5; 
@@ -17,39 +14,40 @@ INIT state = q1;
 TRANS
 	case
 		
-		state = q2 : next(state) in {g3,g4,g5};
-		state = q6 : next(state) in {g1};
-		state = g2 : next(state) in {g3,g4,g5};
-		state = g6 : next(state) in {g1};
+		state = q6 : next(state) in {g0};
+		state = g6 : next(state) in {g0};
 
-		state = q1 : next(state) in {q1,q2};
+		state = q0 : next(state) in {q0,q1};
+		state = q1 : next(state) in {q1,q2,q3,q4,q5};
+		state = q2 : next(state) in {q2,q3};
 		state = q3 : next(state) in {q3,q4};
---		state = q2 : next(state) in {q2};
-		state = q4 : next(state) in {q3,q4,q5};
+		state = q4 : next(state) in {q2,q3,q4,q5};
 		state = q5 : next(state) in {q5,q6};
 		state = q6 : next(state) in {q6};
 
-		state = g1 : next(state) in {q1,q2};
-		state = g2 : next(state) in {q2};
+		state = g0 : next(state) in {q0,q1};
+		state = g1 : next(state) in {q1,q2,q3,q4,q5};
+		state = g2 : next(state) in {q2,q3};
 		state = g3 : next(state) in {q3,q4};
-		state = g4 : next(state) in {q3,q4,q5};
+		state = g4 : next(state) in {q2,q3,q4,q5};
 		state = g5 : next(state) in {q5,q6};
-		state = g6 : next(state) in {g1,q6};
+		state = g6 : next(state) in {q6};
 
-		state = b1 : next(state) in {b1,b2};
-		state = b2 : next(state) in {b2,b3,b4,b5};
+		state = b0 : next(state) in {b0,b1};
+		state = b1 : next(state) in {b1,b2,b3,b4,b5};
+		state = b2 : next(state) in {b2,b3};
 		state = b3 : next(state) in {b3,b4};
 		state = b4 : FALSE;
 		state = b5 : next(state) in {b5,b6};
-		state = b6 : next(state) in {b1,b6};
+		state = b6 : next(state) in {b0,b6};
 
-
-		state = q1 : next(state) in {b1,b2};
-		state = q2 : next(state) in {b3,b4,b5};
+		state = q0 : next(state) in {b0,b1};
+		state = q1 : next(state) in {b1,b2,b3,b4,b5};
+		state = q2 : next(state) in {b2,b3};
 		state = q3 : next(state) in {b3,b4};
-		state = q4 : next(state) in {b3,b4,b5};
+		state = q4 : next(state) in {b2,b3,b4,b5};
 		state = q5 : next(state) in {b5,b6};
-		state = q6 : next(state) in {b1,b6};
+		state = q6 : next(state) in {b0,b6};
 
 	esac;
   
@@ -57,12 +55,13 @@ TRANS
   case
 
 
-		state in {q1,g1,b1} : (k != 3) & (k != 5) & (k != 6);
-		state in {q2,g2,b2} : k = 3;
-		state in {q3,g3,b3} : TRUE;
-		state in {q4,g4,b4} : TRUE;
-		state in {q5,g5,b5} : k = 5;
-		state in {q6,g6,b6} : k = 6;
+		state in {q0,g0,b0} : k != 3 & k != 5 & k != 6;
+		state in {q1,g1,b1} : k = 3;
+		state in {q2,g2,b2} : k = 4;
+		state in {q3,g3,b3} : k = 4;
+		state in {q4,g4,b4} : k = 4;
+		state in {q5,g5,b5} : k = 4;
+		state in {q6,g6,b6} : k = 5 | k = 6;
 
 
 --		state in {q1,g1,b1} : !wants & !critical;
