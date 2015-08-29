@@ -1,6 +1,6 @@
 MODULE main
 VAR
-	state : {qn0,qn2,qn3,qn4,qn5,qm1,qm2,qm3,qm4,qm5,
+  state : {qn0,qn2,qn3,qn4,qn5,qm1,qm2,qm3,qm4,qm5,
            gn0,gn2,gn3,gn4,gn5,gm1,gm2,gm3,gm4,gm5,
            bn0,bn2,bn3,bn4,bn5,bm1,bm2,bm3,bm4,bm5};
 
