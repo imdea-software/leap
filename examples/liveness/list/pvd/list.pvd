@@ -3,6 +3,7 @@ Diagram[list]
 Nodes: n0 { ~ @ins_working(k). },
 
        m1 { (@ins_working(k). /\
+             ~@ins_aux_before_curr(k). /\
              ~@ins_last_prev_unlock(k). /\
              ~@ins_releases_last_lock(k). ) /\
              t = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\
@@ -16,6 +17,7 @@ Nodes: n0 { ~ @ins_working(k). },
                  ~ @rem_last_prev_unlock(t). ) },
 
        m2 { (@ins_working(k). /\
+             ~@ins_aux_before_curr(k). /\
              ~@ins_last_prev_unlock(k). /\
              ~@ins_releases_last_lock(k). ) /\
              t = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\
@@ -26,6 +28,7 @@ Nodes: n0 { ~ @ins_working(k). },
                 @sch_releases_last_lock(t). },
 
        m3 { (@ins_working(k). /\
+             ~@ins_aux_before_curr(k). /\
              ~@ins_last_prev_unlock(k). /\
              ~@ins_releases_last_lock(k). ) /\
              t = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\
@@ -36,6 +39,7 @@ Nodes: n0 { ~ @ins_working(k). },
                 @ins_aux_before_curr(t). },
 
        m4 { (@ins_working(k). /\
+             ~@ins_aux_before_curr(k). /\
              ~@ins_last_prev_unlock(k). /\
              ~@ins_releases_last_lock(k). ) /\
              t = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\
@@ -46,6 +50,7 @@ Nodes: n0 { ~ @ins_working(k). },
                 @ins_releases_last_lock(t). },
 
        m5 { (@ins_working(k). /\
+             ~@ins_aux_before_curr(k). /\
              ~@ins_last_prev_unlock(k). /\
              ~@ins_releases_last_lock(k). ) /\
              t = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\
@@ -58,11 +63,15 @@ Nodes: n0 { ~ @ins_working(k). },
        n2 { k = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\
             (@ins_prev_locked_one(k). \/
              @ins_prev_locked_two(k). \/
-             @ins_insertion_process(k).) },
+             @ins_insertion_process(k).) /\
+             ~ @ins_aux_before_curr(k). /\
+             ~ @ins_last_prev_unlock(k). },
 
        n3 { k = rd(heap,lastlocked(heap,getp(heap,head,null))).lockid /\ @ins_aux_eq_prev(k). },
-       n4 { @ins_last_prev_unlock(k). \/ @ins_releases_last_lock(k). },
-       n5 { @ins_return(k). }
+       n4 { @ins_aux_before_curr(k). },
+       n5 { @ins_last_prev_unlock(k). \/
+            @ins_releases_last_lock(k). \/
+            @ins_return(k). }
 
 
 Boxes: {b1[t]:m1,m2,m3,m4,m5}
@@ -112,28 +121,24 @@ Edges:  n0 --> m1;
         m4 -{37(t)}-> n3;
         m5 -{54(t)}-> n3;
 
-
-        m1 --> n4; // Exits by transition 36(k)
+        m1 --> n4;
         m2 --> n4;
         m3 --> n4;
         m4 --> n4;
         m5 --> n4;
 
-        m2 -{20(t)}-> n5;
-        m4 -{37(t)}-> n5;
-        m5 -{54(t)}-> n5;
-
-        m1 --> n0;
-        m2 --> n0;
-        m3 --> n0;
-        m4 --> n0;
-        m5 --> n0;
+        m1 --> n5;
+        m2 --> n5;
+        m3 --> n5;
+        m4 --> n5;
+        m5 --> n5;
 
         n2 --> n3;
         n2 --> n4;
+        n2 --> n5;
         n3 -{28(k)}-> n2;
-        n4 --> n5;
-        n5 -{38(k)}-> n0;
+        n4 -{35(k)}-> n5;
+        n5 --> n0;
 
 
   // Self-loops
@@ -154,20 +159,18 @@ Acceptance:
           (m2,m1,any),(m2,m2,any),(m2,m3,any),(m2,m4,any),(m2,m5,any),
           (m4,m1,any),(m4,m2,any),(m4,m3,any),(m4,m4,any),(m4,m5,any),
           (m5,m1,any),(m5,m2,any),(m5,m3,any),(m5,m4,any),(m5,m5,any),
-          (m2,n2,any), (m4,n2,any), (m5,n2,any),
-          (m2,n3,any), (m4,n3,any), (m5,n3,any),
-          (m2,n5,any), (m4,n5,any), (m5,n5,any),
           (n3,n2,any),
           (m3,m1,pres)
         };
     Good:{
           (n0,m1,any), (n0,m2,any), (n0,m3,any), (n0,m4,any), (n0,m5,any),
           (n0,n2,any),
-          (n5,n0,any), (n0,n0,any), (n3,n3,any),
-          (m1,n0,any), (m2,n0,any), (m3,n0,any), (m4,n0,any), (m5,n0,any),
+          (n5,n0,any), (n0,n0,any),
           (m1,n4,any), (m2,n4,any), (m3,n4,any), (m4,n4,any), (m5,n4,any),
-          (n2,n2,any), (n4,n4,any), (n4,n5,any), (n5,n5,any),
-          (n2,n4,any)
+          (m1,n5,any), (m2,n5,any), (m3,n5,any), (m4,n5,any), (m5,n5,any),
+          (n2,n4,any), (n2,n5,any),
+          (n4,n5,any),
+          (n5,n5,any)
         };
     [(aheadSet, tidsubset_op);
      (aheadInsert, tidsubset_op);

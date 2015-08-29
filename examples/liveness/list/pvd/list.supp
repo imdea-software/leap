@@ -31,11 +31,11 @@ Tactics :
 
 
 // Esto es de prueba
-	35 : [m1,m2,m3,m4,m5,n2,n3|A] :
-		{union : split-goal
-           | self
-           |
-					 | simplify-pc-plus filter-strict-local } ;
+//  35 : [m1,m2,m3,m4,m5,n2,n3|A] :
+//    {union : split-goal
+//           | self
+//           |
+//           | simplify-pc-plus filter-strict-local } ;
 
 
 Facts :
@@ -86,18 +86,18 @@ Facts :
 
 
 //  35:preserve,
-//		 locksets::{lockset_impl_aheadset},
-//		 nexts::{insert_prev_next_curr},
-//		 locks::{insert_owns_curr},
-//		 region::{insert_prev_in_region};
+//     locksets::{lockset_impl_aheadset},
+//     nexts::{insert_prev_next_curr},
+//     locks::{insert_owns_curr},
+//     region::{insert_prev_in_region};
 
 
 // Original
-	35:preserve,
-		 locksets::{owns_a_lock,aheadset,lockset_impl_aheadset},
-		 nexts::{insert_prev_next_curr,insert_aux_next_curr},
-		 locks::{insert_nobody_owns_aux,insert_owns_prev,insert_owns_curr},
-		 region::{insert_prev_in_region,insert_aux_not_in_region};
+  35:preserve,
+     locksets::{owns_a_lock,aheadset,lockset_impl_aheadset},
+     nexts::{insert_prev_next_curr,insert_aux_next_curr},
+     locks::{insert_nobody_owns_aux,insert_owns_prev,insert_owns_curr},
+     region::{insert_prev_in_region,insert_aux_not_in_region};
 
   36:preserve,
      nexts::{general,insert_prev_next_curr,insert_curr_not_null,insert_diff},

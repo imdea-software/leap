@@ -1,0 +1,102 @@
+MODULE main
+VAR
+	state : {qn0,qn2,qn3,qn4,qn5,qm1,qm2,qm3,qm4,qm5,
+           gn0,gn2,gn3,gn4,gn5,gm1,gm2,gm3,gm4,gm5,
+           bn0,bn2,bn3,bn4,bn5,bm1,bm2,bm3,bm4,bm5};
+
+  k_begins_insert : boolean;
+  k_finishes_insert : boolean;
+
+INIT state = qn0;
+
+TRANS
+  case
+
+    state = qn0 : next(state) in {gm1,gm2,gm3,gm4,gm5,gn0,gn2};
+    state = qm1 : next(state) in {gn4,gn5};
+    state = qm2 : next(state) in {gn4,gn5};
+    state = qm3 : next(state) in {gn4,gn5};
+    state = qm4 : next(state) in {gn4,gn5};
+    state = qm5 : next(state) in {gn4,gn5};
+    state = qn2 : next(state) in {gn4,gn5};
+    state = qn3 : FALSE;
+    state = qn4 : next(state) in {gn5};
+    state = qn5 : next(state) in {gn0,gn5};
+
+    state = gn0 : next(state) in {gm1,gm2,gm3,gm4,gm5,gn0,gn2};
+    state = gm1 : next(state) in {gn4,gn5};
+    state = gm2 : next(state) in {gn4,gn5};
+    state = gm3 : next(state) in {gn4,gn5};
+    state = gm4 : next(state) in {gn4,gn5};
+    state = gm5 : next(state) in {gn4,gn5};
+    state = gn2 : next(state) in {gn4,gn5};
+    state = gn3 : FALSE;
+    state = gn4 : next(state) in {gn5};
+    state = gn5 : next(state) in {gn0,gn5};
+
+    state = qn0 : FALSE;
+    state = qm1 : next(state) in {qm1,qm2,qm3,qm4,qm5};
+    state = qm2 : next(state) in {qm1,qm2,qm3,qm4,qm5,qn2,qn3};
+    state = qm3 : next(state) in {qm1,qm3};
+    state = qm4 : next(state) in {qm1,qm2,qm3,qm4,qm5,qn2,qn3};
+    state = qm5 : next(state) in {qm1,qm2,qm3,qm4,qm5,qn2,qn3};
+    state = qn2 : next(state) in {qn2,qn3};
+    state = qn3 : next(state) in {qn2,qn3};
+    state = qn4 : next(state) in {qn4};
+    state = qn5 : FALSE;
+
+    state = gn0 : FALSE;
+    state = gm1 : next(state) in {qm1,qm2,qm3,qm4,qm5};
+    state = gm2 : next(state) in {qm1,qm2,qm3,qm4,qm5,qn2,qn3};
+    state = gm3 : next(state) in {qm1,qm3};
+    state = gm4 : next(state) in {qm1,qm2,qm3,qm4,qm5,qn2,qn3};
+    state = gm5 : next(state) in {qm1,qm2,qm3,qm4,qm5,qn2,qn3};
+    state = gn2 : next(state) in {qn2,qn3};
+    state = gn3 : next(state) in {qn2,qn3};
+    state = gn4 : next(state) in {qn4};
+    state = gn5 : FALSE;
+
+    state = bn0 : next(state) in {bn0,bm1,bm2,bm3,bm4,bm5,bn2};
+    state = bm1 : next(state) in {bm1,bm2,bm3,bm4,bm5,bn4,bn5};
+    state = bm2 : next(state) in {bm2,bn2,bn3,bn4,bn5};
+    state = bm3 : next(state) in {bm3,bn4,bn5};
+    state = bm4 : next(state) in {bm4,bn2,bn3,bn4,bn5};
+    state = bm5 : next(state) in {bm5,bn2,bn3,bn4,bn5};
+    state = bn2 : next(state) in {bn2,bn3,bn4,bn5};
+    state = bn3 : next(state) in {bn3};
+    state = bn4 : next(state) in {bn4,bn5};
+    state = bn5 : next(state) in {bn5,bn0};
+
+    state = qn0 : next(state) in {bn0,bm1,bm2,bm3,bm4,bm5,bn2};
+    state = qm1 : next(state) in {bm1,bm2,bm3,bm4,bm5,bn4,bn5};
+    state = qm2 : next(state) in {bm1,bm2,bm3,bm4,bm5,bn2,bn3,bn4,bn5};
+    state = qm3 : next(state) in {bm1,bm3,bn4,bn5};
+    state = qm4 : next(state) in {bm1,bm2,bm3,bm4,bm5,bn2,bn3,bn4,bn5};
+    state = qm5 : next(state) in {bm1,bm2,bm3,bm4,bm5,bn2,bn3,bn4,bn5};
+    state = qn2 : next(state) in {bn2,bn3,bn4,bn5};
+    state = qn3 : next(state) in {bn2,bn3};
+    state = qn4 : next(state) in {bn4,bn5};
+    state = qn5 : next(state) in {bn5,bn0};
+
+  esac;
+  
+TRANS
+  case
+
+    state in {qn0,gn0,bn0} : !k_begins_insert & !k_finishes_insert;
+    state in {qm1,gm1,bm1} : k_begins_insert & !k_finishes_insert;
+    state in {qm2,gm2,bm2} : k_begins_insert & !k_finishes_insert;
+    state in {qm3,gm3,bm3} : k_begins_insert & !k_finishes_insert;
+    state in {qm4,gm4,bm4} : k_begins_insert & !k_finishes_insert;
+    state in {qm5,gm5,bm5} : k_begins_insert & !k_finishes_insert;
+    state in {qn2,gn2,bn2} : k_begins_insert & !k_finishes_insert;
+    state in {qn3,gn3,bn3} : !k_begins_insert & !k_finishes_insert;
+    state in {qn4,gn4,bn4} : !k_begins_insert & !k_finishes_insert;
+    state in {qn5,gn5,bn5} : !k_begins_insert & k_finishes_insert;
+
+  esac;
+
+  FAIRNESS (state in {gn0,gm1,gm2,gm3,gm4,gm5,gn2,gn3,gn4,gn5,
+                      bn0,bm1,bm2,bm3,bm4,bm5,bn2,bn3,bn4,bn5});
+
+  LTLSPEC G (k_begins_insert -> F k_finishes_insert)
