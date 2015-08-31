@@ -6,7 +6,7 @@ invariant [list_insert] :
 
    @check_insert(chosen). -> ein (chosen_e, elements)
 
-/\ @ins_elem_inserted(j). -> ein (insert::e(j), elements)
+/\ (@ins_elem_inserted(j). /\ insert::e(j) = chosen_e) -> ein (insert::e(j), elements)
 
 /\ @insert_body(chosen). -> insert::e(chosen) = chosen_e
 

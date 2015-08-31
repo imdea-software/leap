@@ -52,9 +52,9 @@ assume
                                         call insert(e);
                                       _or_
                                         call remove(e);
+:main_e_not_chosen]
                                       endchoice
 :main_other_threads]
-:main_e_not_chosen]
                                       skip;
                                     endif
                                     skip;
