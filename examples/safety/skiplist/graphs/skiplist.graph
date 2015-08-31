@@ -43,12 +43,12 @@
          skiplist_next::insert_prev_is_head;
       28:skiplist_prop::{is_skiplist,head_not_tail,tail_not_null},
          skiplist_next::insert_prev_is_head;
-      32:skiplist_prop::{is_skiplist,tail_not_null},
-         skiplist_next::insert_prev_next_i_is_curr,
+			32:skiplist_prop,
+				 skiplist_next::insert_prev_next_i_is_curr,
          skiplist_order::insert_value_e_is_bounded,
          skiplist_order::insert_prev_value_lower_than_e,
          skiplist_order::insert_curr_value_lower_than_e;
-      35:skiplist_prop::{is_skiplist,tail_not_null},
+			35:skiplist_prop,
          skiplist_next::insert_prev_next_i_is_curr,
          skiplist_next::insert_prev_in_addr2set,
          skiplist_levels::insert_i_lower_maxLevel_one;
