@@ -6,7 +6,7 @@ invariant [list_remove] :
 
    @check_remove(chosen). -> ~(ein (chosen_e, elements))
 
-/\ @rem_elem_removed(j). -> ~(ein (remove::e(j), elements))
+/\ (@rem_elem_removed(j). /\ remove::e(j) = chosen_e) -> ~(ein (remove::e(j), elements))
 
 /\ @remove_body(chosen). -> remove::e(chosen) = chosen_e
 
