@@ -7,9 +7,6 @@ invariant [list_search] :
    @check_search(chosen). -> (ein (chosen_e, elements) -> .main::result(chosen). /\
                                .main::result(chosen). -> ein (chosen_e, elements))
 
-/\ @sch_result_set(j). -> (ein (search::e(j), elements) -> .search::result(j). /\
-                           .search::result(j). -> ein (search::e(j), elements))
-
 /\ @sch_result_set(chosen). -> (ein (search::e(chosen), elements) -> .search::result(chosen). /\
                            .search::result(chosen). -> ein (search::e(chosen), elements))
 
