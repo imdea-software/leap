@@ -15,9 +15,12 @@ type support_tactic = Full | Reduce | Reduce2
 type formula_tactic = SimplifyPC | PropositionalPropagate | FilterStrict
 type formula_split_tactic = SplitConsequent
 *)
+type support_option_t =
+  | DefaultSupport 
+  | FilterSupport
 
 type support_split_tactic_t = vc_info -> vc_info list
-type support_tactic_t = vc_info -> support_t
+type support_tactic_t = (vc_info -> support_t) * support_option_t
 type formula_split_tactic_t = implication -> implication list
 type formula_tactic_t = implication -> implication
 

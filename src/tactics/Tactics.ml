@@ -58,9 +58,12 @@ type implication = {
   conseq : E.formula ;
 }
 
+type support_option_t =
+  | DefaultSupport 
+  | FilterSupport
 
 type support_split_tactic_t = vc_info -> vc_info list
-type support_tactic_t = vc_info -> support_t
+type support_tactic_t = (vc_info -> support_t) * support_option_t
 type formula_split_tactic_t = implication -> implication list
 type formula_tactic_t = implication -> implication
 
@@ -1237,7 +1240,7 @@ let apply_support_tactic (vcs:vc_info list)
   let process_supp (this_vc:vc_info) : support_t =
     match tac with
     | None -> get_unprocessed_support_from_info this_vc
-    | Some f -> f this_vc in
+    | Some (f,_) -> f this_vc in
 
   List.fold_left (fun imps vc ->
     let goal_voc = E.voc vc.original_goal in
@@ -1270,7 +1273,36 @@ let apply_support_tactic (vcs:vc_info list)
                 vc new_support new_constr new_rho subst_goal, new_support)
           ) parts
         end else begin
-          [(vc, process_supp vc)]
+
+          match tac with
+          | None
+          | Some (_, DefaultSupport) -> [(vc, process_supp vc)]
+          | Some (_, FilterSupport) ->
+              begin
+
+                let vs = E.V.VarSet.union (E.all_vars_as_set vc.rho)
+                                          (E.all_vars_as_set vc.goal) in 
+                let filtered_vs = E.V.VarSet.filter (fun v ->
+                                     E.V.sort v <> E.Tid
+                                  ) vs in
+
+                let supp_conjs = List.fold_left (fun xs phi ->
+                                   (F.to_conj_list phi) @ xs
+                                 ) [] (process_supp vc) in
+            
+                let share_vars (vl: E.V.t list) : bool =
+                  List.for_all (fun v ->
+                    (E.V.VarSet.mem v filtered_vs) ||
+                    (E.V.parameter v = E.V.Shared)
+                  ) vl in
+
+                let new_supp = List.filter (fun f ->
+                                 share_vars (E.all_vars f)
+                               ) supp_conjs in
+
+                let new_vc = dup_vc_info_with_support vc new_supp in
+                [(new_vc, new_supp)]
+              end
         end
       end in
     (List.map (fun (vc_case, supp) ->
@@ -1338,11 +1370,12 @@ let support_split_tactic_from_string (s:string) : support_split_tactic_t =
 
 let support_tactic_from_string (s:string) : support_tactic_t =
   match s with
-  | "full"     -> full_support
-  | "reduce"   -> reduce_support
-  | "reduce2"  -> reduce2_support
-  | "identity" -> id_support
-  | "self"     -> self_support
+  | "full"               -> (full_support, DefaultSupport)
+  | "reduce"             -> (reduce_support, DefaultSupport)
+  | "reduce2"            -> (reduce2_support, DefaultSupport)
+  | "reduce2-and-filter" -> (reduce2_support, FilterSupport)
+  | "identity"           -> (id_support, DefaultSupport)
+  | "self"               -> (self_support, DefaultSupport)
   | _ -> raise(Invalid_tactic (s ^ " is not a support_tactic"))
 
 
