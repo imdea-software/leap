@@ -4,13 +4,18 @@ lists.
 
 
 
-In this folder you will find a "run_safety.sh" and "run_liveness.sh" 
-script. The scripts run the example. Script "run_safety.sh" executes Leap 
-in order to prove that the specifications used as support are in fact 
-invariants of the system. Script "run_liveness.sh" executes Leap to verify 
-the liveness property that...
+In this folder you will find three scripts named "run_safety.sh", 
+"run_safety_extra.sh" and "run_liveness.sh". The scripts run the example.  
+Scripts "run_safety.sh" and "run_safety_extra.sh" execute Leap in order to 
+prove that the specifications used as support are in fact invariants of 
+the system. Script "run_liveness.sh" executes Leap to verify the liveness 
+property that whenever an arbitrary thread attempts to insert an element 
+in the list, then this thread eventually succeeds.
 
 Inside each script you can configure the options you want Leap to use.
+
+Additionally, file "lists_modelcheck.smv" contains the NuSMV specification 
+that proves that condition ModelCheck for this example holds.
 
 IMPORTANT: You must configure the path to Leap inside the script before you
            can run it.

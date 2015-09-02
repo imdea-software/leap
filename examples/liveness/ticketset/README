@@ -14,6 +14,11 @@ critical section.
 
 Inside each script you can configure the options you want Leap to use.
 
+Additionally, file "ticketset_modelcheck.smv" contains the NuSMV 
+specification that proves that condition ModelCheck for this example 
+holds.
+
+
 IMPORTANT: You must configure the path to Leap inside the script before you
            can run it.
 

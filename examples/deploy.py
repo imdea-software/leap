@@ -640,17 +640,17 @@ def generate_latex(filename):
 def main(argv):
 	parser = argparse.ArgumentParser(description='Script to deliver and test examples')
 	parser.add_argument('-examples', metavar='ex_file', type=str,
-												 help='the file containing the list of examples to be delivered')
+	    help='the file containing the list of examples to be delivered')
 	parser.add_argument('-latex', metavar='table_file', type=str,
-												help='translates a table of results to latex format')
+	    help='translates a table of results to latex format')
 	parser.add_argument('-clean', action='store_true', default=False,
-												help='deletes all temporary vcs, swap files, testing and deployment folders')
+	    help='deletes all temporary vcs, swap files, testing and deployment folders')
 	parser.add_argument('-test', action='store_true', default=False,
-												help='compares the current state with the historic results')
+	    help='compares the current state with the historic results')
 	parser.add_argument('-deploy', action='store_true', default=False,
-												help='deploys the examples so they can be published later')
+	    help='deploys the examples so they can be published later')
 	parser.add_argument('-verbose', action='store_true', default=False,
-												help='runs the examples in verbose mode, outputting all details')
+	    help='runs the examples in verbose mode, outputting all details')
 
 	args = parser.parse_args()
 
@@ -680,7 +680,7 @@ def main(argv):
 		if args.deploy:
 			deploy(examples)
 
-		if args.test or args.deploy:
+                if args.test:
 			test_deployment(args.verbose)
 
 		environ['PATH'] = old_env_path
