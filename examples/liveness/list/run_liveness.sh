@@ -1,8 +1,7 @@
 #Configure path to Leap
 LEAP=leap
 
-OPTIONS="-sm -dp tll -co pruning -si -pvdconds $1 -pvdnodes $2 -focus $3 
--v 1"
+OPTIONS="-sm -dp tll -co pruning"
 
 PRG=prgs/list.prg
 INV_FOLDER=invs

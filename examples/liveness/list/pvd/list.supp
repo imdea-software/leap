@@ -29,13 +29,17 @@ Tactics :
            |
            | simplify-pc } ;
 
+  35 : [m1,m3,n2|A] :
+    {union :
+           | reduce2-and-filter
+           |
+           | simplify-pc } ;
 
-// Esto es de prueba
-//  35 : [m1,m2,m3,m4,m5,n2,n3|A] :
-//    {union : split-goal
-//           | self
-//           |
-//           | simplify-pc-plus filter-strict-local } ;
+  51 : [m1,m2,m3,m4,m5,n2,n3|A] :
+    {union :
+           | reduce2-and-filter
+           |
+           | simplify-pc } ;
 
 
 Facts :
@@ -80,34 +84,22 @@ Facts :
      nexts::{insert_prev_next_curr};
   33:preserve;
   34:preserve,
-     locks::{insert_owns_prev},
-     region::{insert_aux_not_in_region,insert_prev_in_region};
-
-
-
-//  35:preserve,
-//     locksets::{lockset_impl_aheadset},
-//     nexts::{insert_prev_next_curr},
-//     locks::{insert_owns_curr},
-//     region::{insert_prev_in_region};
-
-
-// Original
+     locks::{insert_owns_prev,insert_owns_curr},
+     nexts::{insert_prev_next_curr,insert_aux_next_curr},
+     region::{insert_aux_not_in_region,
+              insert_prev_in_region,
+              insert_curr_in_region};
   35:preserve,
      locksets::{owns_a_lock,aheadset,lockset_impl_aheadset},
      nexts::{insert_prev_next_curr,insert_aux_next_curr},
      locks::{insert_nobody_owns_aux,insert_owns_prev,insert_owns_curr},
      region::{insert_prev_in_region,insert_aux_not_in_region};
-
   36:preserve,
      nexts::{general,insert_prev_next_curr,insert_curr_not_null,insert_diff},
      locks::{insert_owns_curr,insert_owns_prev},
      locksets::{owns_a_lock},
      region::{insert_prev_in_region,insert_curr_in_region},
      lockedRegion::insert_prev_curr_locked;
-
-
-
   37:preserve,
      region::{insert_prev_in_region,insert_curr_in_region},
      locksets::{owns_a_lock,aheadset},
@@ -129,6 +121,7 @@ Facts :
      nexts::{general,remove_prev_next_curr,remove_curr_next_aux},
      locks::{remove_owns_prev,remove_owns_curr,remove_owns_aux},
      region::remove_prev_in_region;
+  51:A:preserve,nexts,locks,region;
   52:preserve,
      nexts::{remove_curr_next_aux},
      locks::{remove_owns_prev},
