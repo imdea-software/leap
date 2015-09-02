@@ -1370,12 +1370,16 @@ let support_split_tactic_from_string (s:string) : support_split_tactic_t =
 
 let support_tactic_from_string (s:string) : support_tactic_t =
   match s with
-  | "full"               -> (full_support, DefaultSupport)
-  | "reduce"             -> (reduce_support, DefaultSupport)
-  | "reduce2"            -> (reduce2_support, DefaultSupport)
-  | "reduce2-and-filter" -> (reduce2_support, FilterSupport)
-  | "identity"           -> (id_support, DefaultSupport)
-  | "self"               -> (self_support, DefaultSupport)
+  | "full"                -> (full_support, DefaultSupport)
+  | "full-and-filter"     -> (full_support, FilterSupport)
+  | "reduce"              -> (reduce_support, DefaultSupport)
+  | "reduce-and-filter"   -> (reduce_support, FilterSupport)
+  | "reduce2"             -> (reduce2_support, DefaultSupport)
+  | "reduce2-and-filter"  -> (reduce2_support, FilterSupport)
+  | "identity"            -> (id_support, DefaultSupport)
+  | "identity-and-filter" -> (id_support, FilterSupport)
+  | "self"                -> (self_support, DefaultSupport)
+  | "self-and-filter"     -> (self_support, FilterSupport)
   | _ -> raise(Invalid_tactic (s ^ " is not a support_tactic"))
 
 
