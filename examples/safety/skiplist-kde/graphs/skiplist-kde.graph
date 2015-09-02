@@ -7,10 +7,10 @@
       41:skiplist_next::newCell_connected_at_i,
          skiplist_order::insert_element_next_connected,
          skiplist_aux::insert_connecting_i
-  ] { union : split-goal
-             | reduce2
-             | split-consequent
-             | simplify-pc propositional-propagate
+   ] { union :
+            | reduce2
+            | split-consequent
+            | simplify-pc propositional-propagate
      }
 
 
