@@ -5,17 +5,18 @@
       24:skiplist_next,skiplist_levels;
       41:skiplist_region_inst::newCell_unconnected_at_i,
          skiplist_levels
-            { union : split-goal | reduce2 | split-consequent | simplify-pc propositional-propagate };
+            { union : split-goal | reduce2-and-filter | split-consequent | simplify-pc propositional-propagate };
       42:skiplist_next::{newCell_connected_at_i},
          skiplist_order_inst::{insert_update_i_data_bounded},
          skiplist_order::{newCell_has_value_e},
          skiplist_levels
-            { union : split-goal | reduce2 | split-consequent | simplify-pc propositional-propagate };
+            { union : split-goal | reduce2-and-filter | split-consequent | simplify-pc propositional-propagate };
       61:skiplist_order::remove_value_e_is_bounded,
          skiplist_order_inst::remove_update_i_lower,
          skiplist_region::remove_curr_in_region,
          skiplist_levels,
          skiplist_value
+            { union : | reduce2-and-filter | split-consequent | simplify-pc propositional-propagate }
    ] { union :
              | reduce2
              | split-consequent
@@ -55,7 +56,8 @@
       39:skiplist_prop::is_skiplist,
          skiplist_next::newCell_not_null;
       42:skiplist_levels,
-         skiplist_region_inst::insert_update_i_addr2set;
+         skiplist_region_inst::insert_update_i_addr2set
+            { union : | reduce2-and-filter | split-consequent | simplify-pc propositional-propagate };
       45:skiplist_prop::{is_skiplist,head_not_null};
       46:skiplist_prop::tail_not_null,
          skiplist_prop::head_not_tail,
