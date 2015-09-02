@@ -3,7 +3,7 @@
           {union : split-goal | reduce2 | | simplify-pc};
     15:queueNext::{enqueue_n_not_null,n_follows_last}, queueComparison;
     17:queueNext::{next_follows_last,enqueue_nextptr_not_null}
-          {union : split-goal | reduce2-and-filter | | simplify-pc};
+          {union : split-goal | reduce2 | | simplify-pc};
     27:queueNext::{dequeue_next_not_null,
                    reachable_dequeue_nextptr,
                    first_is_last,
@@ -67,7 +67,7 @@
           {union : split-goal | reduce2 | | simplify-pc-plus};
     17:queuePreserve,
        queueNext::next_follows_last
-          {union : split-goal | reduce2 | | simplify-pc-plus propositional-propagate};
+          {union : split-goal | reduce2-and-filter | | simplify-pc-plus propositional-propagate};
     21:queuePreserve;
     27:queueNext
           {union : split-goal | reduce2 | | simplify-pc-plus};
