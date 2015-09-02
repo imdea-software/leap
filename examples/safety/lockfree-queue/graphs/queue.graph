@@ -3,14 +3,13 @@
           {union : split-goal | reduce2 | | simplify-pc};
     15:queueNext::{enqueue_n_not_null,n_follows_last}, queueComparison;
     17:queueNext::{next_follows_last,enqueue_nextptr_not_null}
-          {union : split-goal | reduce2 | | simplify-pc};
+          {union : split-goal | reduce2-and-filter | | simplify-pc};
     27:queueNext::{dequeue_next_not_null,
                    reachable_dequeue_nextptr,
                    first_is_last,
                    dequeue_nextptr_null_or_follows_first};
     29:queueNext::{dequeue_first_not_last,dequeue_nextptr_follows_first},
-
-   queueReach::{dequeue_last_reach_by_first,dequeue_tail_reach_by_last}
+       queueReach::{dequeue_last_reach_by_first,dequeue_tail_reach_by_last}
    ] { union :
              | reduce2
              |
