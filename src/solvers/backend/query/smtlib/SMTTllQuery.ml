@@ -71,7 +71,8 @@ struct
   (* Information storage *)
   let sort_map : GM.sort_map_t = GM.new_sort_map()
 
-
+  let memupd_list : Expr.mem list ref = ref []
+  
 
   let linenum_to_str (i:int) : string =
     string_of_int i
@@ -1341,10 +1342,11 @@ struct
     match m with
         Expr.VarMem v      -> variable_invocation_to_str v
       | Expr.Emp           -> "emp"
-      | Expr.Update(m,a,c) -> Printf.sprintf "(update_heap %s %s %s)"
-                                            (memterm_to_str m)
-                                            (addrterm_to_str a)
-                                            (cellterm_to_str c)
+      | Expr.Update(h,a,c) -> (memupd_list := m :: (!memupd_list);
+                               Printf.sprintf "(update_heap %s %s %s)"
+                                               (memterm_to_str h)
+                                               (addrterm_to_str a)
+                                               (cellterm_to_str c))
 
 
   and intterm_to_str (i:Expr.integer) : string =
@@ -1647,7 +1649,15 @@ struct
     Hashtbl.iter (fun t _ -> B.add_string buf (process_tid t)) tid_tbl;
     Hashtbl.iter (fun c _ -> B.add_string buf (process_cell c)) cell_tbl;
     Hashtbl.iter (fun g _ -> B.add_string buf (process_getp num_addrs g)) getp_tbl;
-    Hashtbl.iter (fun f _ -> B.add_string buf (process_locked num_addrs f)) locked_tbl
+    Hashtbl.iter (fun f _ -> B.add_string buf (process_locked num_addrs f)) locked_tbl;
+    (* Force null to point to error on heap updates *)
+    B.add_string buf (List.fold_left (fun str m ->
+      str ^ "(assert (isheap " ^ (memterm_to_str m) ^ "))\n"
+    ) "" !memupd_list);
+    memupd_list := []
+    
+
+
 
 
   let literal_list_to_str (use_q:bool) (ls:Expr.literal list) : string =

@@ -62,6 +62,8 @@ module Make (K : Level.S) : TSLK_QUERY =
     (* Information storage *)
     let sort_map : GM.sort_map_t = GM.new_sort_map()
 
+    let memupd_list : Expr.mem list ref = ref []
+
 
     let linenum_to_str (i:int) : string =
       string_of_int i
@@ -1504,10 +1506,11 @@ module Make (K : Level.S) : TSLK_QUERY =
       match m with
           Expr.VarMem v      -> variable_invocation_to_str v
         | Expr.Emp           -> "emp"
-        | Expr.Update(m,a,c) -> Printf.sprintf "(update_heap %s %s %s)"
-                                              (memterm_to_str m)
-                                              (addrterm_to_str a)
-                                              (cellterm_to_str c)
+        | Expr.Update(h,a,c) -> (memupd_list := m :: (!memupd_list);
+                                 Printf.sprintf "(update_heap %s %s %s)"
+                                                 (memterm_to_str h)
+                                                 (addrterm_to_str a)
+                                                 (cellterm_to_str c))
 
 
     and levelterm_to_str (l:Expr.level) : string =
@@ -1752,6 +1755,11 @@ module Make (K : Level.S) : TSLK_QUERY =
 
     let post_process (buf:B.t) (num_addrs:int) (num_elems:int) (num_tids:int) : unit =
       Hashtbl.iter (fun e _ -> B.add_string buf (process_elem e)) elem_tbl
+      (* Force null to point to error on heap updates *)
+      B.add_string buf (List.fold_left (fun str m ->
+        str ^ "(assert (isheap " ^ (memterm_to_str m) ^ "))\n"
+      ) "" !memupd_list);
+      memupd_list := []
 
 
     let literal_list_to_str (ls:Expr.literal list) : string =
