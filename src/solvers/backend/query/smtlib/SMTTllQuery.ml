@@ -71,8 +71,6 @@ struct
   (* Information storage *)
   let sort_map : GM.sort_map_t = GM.new_sort_map()
 
-  let memupd_list : Expr.mem list ref = ref []
-  
 
   let linenum_to_str (i:int) : string =
     string_of_int i
@@ -752,7 +750,11 @@ struct
   let smt_isheap_def (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun isheap ((h " ^heap_s^ ")) " ^bool_s^ "\n" ^
-       "  (= (select h null) error))\n")
+       "  (= (select h null) error))\n");
+    B.add_string buf
+      ("(define-fun eqmem ((m1 " ^heap_s^ ") (m2 " ^heap_s^ ")) " ^bool_s^ "\n" ^
+       "  (and (forall ((a " ^addr_s^ ")) (=> (not (= a null)) (= (select m1 a) (select m2 a))))\n" ^
+       "       (= (select m1 null) error)))\n")
 
 
   let smt_nextiter_def (buf:B.t) (num_addr:int) : unit =
@@ -1342,11 +1344,10 @@ struct
     match m with
         Expr.VarMem v      -> variable_invocation_to_str v
       | Expr.Emp           -> "emp"
-      | Expr.Update(h,a,c) -> (memupd_list := m :: (!memupd_list);
-                               Printf.sprintf "(update_heap %s %s %s)"
+      | Expr.Update(h,a,c) -> Printf.sprintf "(update_heap %s %s %s)"
                                                (memterm_to_str h)
                                                (addrterm_to_str a)
-                                               (cellterm_to_str c))
+                                               (cellterm_to_str c)
 
 
   and intterm_to_str (i:Expr.integer) : string =
@@ -1468,12 +1469,15 @@ struct
   let eq_to_str (t1:Expr.term) (t2:Expr.term) : string =
     let str_t1 = (term_to_str t1) in
     let str_t2 = (term_to_str t2) in
-    match t1 with
-      | Expr.PathT _    -> Printf.sprintf "(eqpath %s %s)"    str_t1 str_t2
-      | Expr.SetT _     -> Printf.sprintf "(eqset %s %s)"     str_t1 str_t2
-      | Expr.SetThT _   -> Printf.sprintf "(eqsetth %s %s)"   str_t1 str_t2
-      | Expr.SetElemT _ -> Printf.sprintf "(eqsetelem %s %s)" str_t1 str_t2
-      | _               -> Printf.sprintf "(= %s %s)"         str_t1 str_t2
+    match (t1,t2) with
+      | (Expr.PathT _, _)    -> Printf.sprintf "(eqpath %s %s)"    str_t1 str_t2
+      | (Expr.SetT _, _)     -> Printf.sprintf "(eqset %s %s)"     str_t1 str_t2
+      | (Expr.SetThT _, _)   -> Printf.sprintf "(eqsetth %s %s)"   str_t1 str_t2
+      | (Expr.SetElemT _, _) -> Printf.sprintf "(eqsetelem %s %s)" str_t1 str_t2
+      | (Expr.MemT (Expr.VarMem _ as m1), Expr.MemT (Expr.Update(m2,Expr.Null,_)))
+      | (Expr.MemT (Expr.Update(m2,Expr.Null,_)), Expr.MemT (Expr.VarMem _ as m1)) ->
+          "(eqmem " ^(memterm_to_str m1)^ " " ^(memterm_to_str m2)^ ")"
+      | _                    -> Printf.sprintf "(= %s %s)"         str_t1 str_t2
 
 
   let ineq_to_str (t1:Expr.term) (t2:Expr.term) : string =
@@ -1649,12 +1653,7 @@ struct
     Hashtbl.iter (fun t _ -> B.add_string buf (process_tid t)) tid_tbl;
     Hashtbl.iter (fun c _ -> B.add_string buf (process_cell c)) cell_tbl;
     Hashtbl.iter (fun g _ -> B.add_string buf (process_getp num_addrs g)) getp_tbl;
-    Hashtbl.iter (fun f _ -> B.add_string buf (process_locked num_addrs f)) locked_tbl;
-    (* Force null to point to error on heap updates *)
-    B.add_string buf (List.fold_left (fun str m ->
-      str ^ "(assert (isheap " ^ (memterm_to_str m) ^ "))\n"
-    ) "" !memupd_list);
-    memupd_list := []
+    Hashtbl.iter (fun f _ -> B.add_string buf (process_locked num_addrs f)) locked_tbl
     
 
 

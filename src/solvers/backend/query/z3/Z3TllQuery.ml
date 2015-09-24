@@ -64,8 +64,6 @@ struct
   (* Information storage *)
   let sort_map : GM.sort_map_t = GM.new_sort_map()
 
-  let memupd_list : Expr.mem list ref = ref []
-
 
   let linenum_to_str (i:int) : string =
     string_of_int i
@@ -249,11 +247,10 @@ struct
     match m with
         Expr.VarMem v      -> variable_invocation_to_str v
       | Expr.Emp           -> "emp"
-      | Expr.Update(h,a,c) -> (memupd_list := m :: (!memupd_list);
-                               Printf.sprintf "(update_heap %s %s %s)"
+      | Expr.Update(h,a,c) -> Printf.sprintf "(update_heap %s %s %s)"
                                                (memterm_to_str h)
                                                (addrterm_to_str a)
-                                               (cellterm_to_str c))
+                                               (cellterm_to_str c)
 
 
   and intterm_to_str (i:Expr.integer) : string =
@@ -874,7 +871,11 @@ struct
   let z3_isheap_def (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun isheap ((h " ^heap_s^ ")) " ^bool_s^ "\n" ^
-       "  (= (select h null) error))\n")
+       "  (= (select h null) error))\n");
+    B.add_string buf
+      ("(define-fun eqmem ((m1 " ^heap_s^ ") (m2 " ^heap_s^ ")) " ^bool_s^ "\n" ^
+       "  (and (forall ((a " ^addr_s^ ")) (=> (not (= a null)) (= (select m1 a) (select m2 a))))\n" ^
+       "       (= (select m1 null) error)))\n")
 
 
   let z3_nextiter_def (buf:B.t) (num_addr:int) : unit =
@@ -1449,6 +1450,9 @@ struct
     let str_t2 = (term_to_str t2) in
     match (t1,t2) with
       | (Expr.PathT _, _) -> "(eqpath " ^str_t1^ " " ^str_t2^ ")"
+      | (Expr.MemT (Expr.VarMem _ as m1), Expr.MemT (Expr.Update(m2,Expr.Null,_)))
+      | (Expr.MemT (Expr.Update(m2,Expr.Null,_)), Expr.MemT (Expr.VarMem _ as m1)) ->
+          "(eqmem " ^(memterm_to_str m1)^ " " ^(memterm_to_str m2)^ ")"
 (*
       | (Expr.SetElemT se, Expr.SetElemT (Expr.SetToElems(s,m)))
       | (Expr.SetElemT (Expr.SetToElems(s,m)), Expr.SetElemT se) ->
@@ -1575,12 +1579,7 @@ struct
 
 
   let post_process (buf:B.t) : unit =
-    Hashtbl.iter (fun e _ -> B.add_string buf (process_elem e)) elem_tbl;
-    (* Force null to point to error on heap updates *)
-    B.add_string buf (List.fold_left (fun str m ->
-      str ^ "(assert (isheap " ^ (memterm_to_str m) ^ "))\n"
-    ) "" !memupd_list);
-    memupd_list := []
+    Hashtbl.iter (fun e _ -> B.add_string buf (process_elem e)) elem_tbl
 
 
   let literal_list_to_str (use_q:bool) (ls:Expr.literal list) : string =

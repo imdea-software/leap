@@ -189,7 +189,10 @@ let global_dref_def_str : string =
 
 let global_isheap_def_str : string =
   ("(define-fun isheap ((h " ^heap_s^ ")) " ^bool_s^ "\n" ^
-   "  (= (select h null) error))\n")
+   "  (= (select h null) error))\n") ^
+  ("(define-fun eqmem ((m1 " ^heap_s^ ") (m2 " ^heap_s^ ")) " ^bool_s^ "\n" ^
+   "  (and (forall ((a " ^addr_s^ ")) (=> (not (= a null)) (= (select m1 a) (select m2 a))))\n" ^
+       "       (= (select m1 null) error)))\n")
 
 
 let global_singleton_def_str : string =
@@ -277,8 +280,6 @@ module Make (K : Level.S) : TSLK_QUERY =
 
     (* Information storage *)
     let sort_map : GM.sort_map_t = GM.new_sort_map()
-
-    let memupd_list : Expr.mem list ref = ref []
 
 
     let linenum_to_str (i:int) : string =
@@ -460,10 +461,9 @@ module Make (K : Level.S) : TSLK_QUERY =
       match m with
           Expr.VarMem v      -> variable_invocation_to_str v
         | Expr.Emp           -> "emp"
-        | Expr.Update(h,a,c) -> (memupd_list := m :: (!memupd_list);
-                                "(update_heap " ^ (memterm_to_str h) ^
+        | Expr.Update(h,a,c) -> "(update_heap " ^ (memterm_to_str h) ^
                                             " " ^ (addrterm_to_str a)^
-                                            " " ^(cellterm_to_str c)^ ")")
+                                            " " ^(cellterm_to_str c)^ ")"
 
 
     and levelterm_to_str (l:Expr.level) : string =
@@ -1770,6 +1770,9 @@ module Make (K : Level.S) : TSLK_QUERY =
                             (setelemterm_to_str se)^ ")"
             else
               "(= " ^str_t1^ " " ^str_t2^ ")"
+        | (Expr.MemT (Expr.VarMem _ as m1), Expr.MemT (Expr.Update(m2,Expr.Null,_)))
+        | (Expr.MemT (Expr.Update(m2,Expr.Null,_)), Expr.MemT (Expr.VarMem _ as m1)) ->
+            "(eqmem " ^(memterm_to_str m1)^ " " ^(memterm_to_str m2)^ ")"
         | _ -> "(= " ^str_t1^ " " ^str_t2^ ")"
 
 
@@ -1877,12 +1880,7 @@ module Make (K : Level.S) : TSLK_QUERY =
 
 
     let post_process (buf:B.t) : unit =
-      Hashtbl.iter (fun e _ -> B.add_string buf (process_elem e)) elem_tbl;
-      (* Force null to point to error on heap updates *)
-      B.add_string buf (List.fold_left (fun str m ->
-        str ^ "(assert (isheap " ^ (memterm_to_str m) ^ "))\n"
-      ) "" !memupd_list);
-      memupd_list := []
+      Hashtbl.iter (fun e _ -> B.add_string buf (process_elem e)) elem_tbl
 
 
     let literal_list_to_str (use_q:bool) (ls:Expr.literal list) : string =
