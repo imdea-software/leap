@@ -997,9 +997,12 @@ module Make (K : Level.S) : TSLK_QUERY =
       B.add_string buf
         ( "(define-fun reach ((h " ^heap_s^ ") (from " ^addr_s^ ") " ^
           "(to " ^addr_s^ ") (l " ^level_s^ ") (p " ^path_s^ ")) " ^bool_s^ "\n" ^
-          "  (and (= (getp_at h from to l) p) (not (= p epsilon))))\n"
+          "  (or (and (= from to)\n" ^
+          "           (eqpath p epsilon))\n" ^
+          "      (and (not (= from to))\n" ^
+          "           (eqpath (getp h from to) p)\n" ^
+          "           (not (eqpath p epsilon)))))\n"
         )
-
 
 
     (* (define path_length::(-> path range_address) *)

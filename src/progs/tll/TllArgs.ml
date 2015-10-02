@@ -13,6 +13,7 @@ let input_file_fd : Unix.file_descr ref = ref Unix.stdin
 (* Program arguments *)
 let debugFlag     = ref false
 let use_z3        = ref false
+let use_q         = ref false
 let coType        = ref Smp.Pruning (*Smp.Dnf*)
 let hide_pres     = ref true
 let phiFile       = ref ""
@@ -46,6 +47,9 @@ let opts =
         Arg.Set use_z3,
         "uses z3 as smt solver");
 *)
+    ("-q",
+        Arg.Set use_q,
+        "activates the use of quantifier over finite domains");
     ("-co",
         Arg.Symbol (co_opt_list,set_co),
         "indicates the method used for computing the cut-off");

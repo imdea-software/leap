@@ -742,7 +742,7 @@ struct
       B.add_string buf
         ("(define-fun ispath ((p " ^path_s^ ")) " ^bool_s^ "\n" ^
          "  (or (eqpath p epsilon)\n" ^
-         "      (and (<= (length p) (+ max_address 1))\n" ^
+         "      (and (<= 0 (length p)) (<= (length p) (+ max_address 1))\n" ^
          "           (forall ((n RangeAddress)) (check_position p n))\n" ^
          "           (forall ((a Address)) (= (select (addrs p) a)\n" ^
          "                                    (and (<= 0 (range_to_int (select (where p) a)))\n" ^
@@ -1034,7 +1034,11 @@ struct
     B.add_string buf
       ( "(define-fun reach ((h " ^heap_s^ ") (from " ^addr_s^ ") " ^
         "(to " ^addr_s^ ") (p " ^path_s^ ")) " ^bool_s^ "\n" ^
-        "  (and (eqpath (getp h from to) p) (not (eqpath p epsilon))))\n"
+        "  (or (and (= from to)\n" ^
+        "           (eqpath p epsilon))\n" ^
+        "      (and (not (= from to))\n" ^
+        "           (eqpath (getp h from to) p)\n" ^
+        "           (not (eqpath p epsilon)))))\n"
       )
 
 

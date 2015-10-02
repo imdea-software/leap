@@ -26,7 +26,7 @@ let _ =
     let module TllSat = (val tllSolver) in
     TllSat.compute_model(true);
 
-    let sat = TllSat.check_sat 1 (!TllArgs.coType) true tll_phi in
+    let sat = TllSat.check_sat 1 (!TllArgs.coType) (!TllArgs.use_q) tll_phi in
     if Sat.is_sat sat then begin
         TllSat.print_model();
         print_endline "SAT"

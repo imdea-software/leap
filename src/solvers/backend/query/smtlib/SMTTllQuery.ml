@@ -887,9 +887,14 @@ struct
   let smt_reach_def (buf:B.t) : unit =
     B.add_string buf
       ( "(define-fun reach ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ") (p " ^path_s^ ")) " ^bool_s^ "\n" ^
-        "  (and (ispath p) (eqpath (getp h from to) p) (not (eqpath p epsilon))))\n"
+        "  (and (ispath p)\n" ^
+        "    (or (and (= from to)\n" ^
+        "             (eqpath p epsilon))\n" ^
+        "        (and (not (= from to))\n" ^
+        "             (eqpath (getp h from to) p)\n" ^
+        "             (not (eqpath p epsilon))))))\n"
       )
-
+      
 
   let smt_path_length_def (buf:B.t) : unit =
     B.add_string buf

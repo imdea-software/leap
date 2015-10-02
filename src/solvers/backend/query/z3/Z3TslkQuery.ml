@@ -218,7 +218,12 @@ let global_update_heap_def_str : string =
 let global_reach_def_str : string =
   ( "(define-fun reach ((h " ^heap_s^ ") (from " ^addr_s^ ") " ^
     "(to " ^addr_s^ ") (l " ^level_s^ ") (p " ^path_s^ ")) " ^bool_s^ "\n" ^
-    "  (and (= (getp_at h from to l) p) (not (= p epsilon))))\n")
+    "  (or (and (= from to)\n" ^
+    "           (eqpath p epsilon))\n" ^
+    "      (and (not (= from to))\n" ^
+    "           (eqpath (getp h from to) p)\n" ^
+    "           (not (eqpath p epsilon)))))\n"
+  )
 
 
 let global_path_length_def_str : string =
