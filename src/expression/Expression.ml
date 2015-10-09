@@ -156,6 +156,7 @@ and cell =
     VarCell       of V.t
   | Error
   | MkCell        of elem * addr * tid
+  | MkCellMark    of elem * addr * tid * mark
   | MkSLKCell     of elem * addr list * tid list
   | MkSLCell      of elem * addrarr * tidarr * integer
   | CellLock      of cell * tid
@@ -164,7 +165,13 @@ and cell =
   | CellUnlockAt  of cell * integer
   | CellAt        of mem * addr
   | CellArrayRd   of arrays * tid
+  | CellMark      of cell * mark
   | UpdCellAddr   of cell * integer * addr
+
+and mark =
+    MarkTrue
+  | MarkFalse
+  | MarkOfCell    of cell
 
 and setth =
     VarSetTh      of V.t
@@ -392,6 +399,431 @@ let build_num_tid_var (i:int) : V.t =
 let no_tid_var () : V.t =
   build_global_var "noTid" Tid
 
+(*
+(******************************)
+(**  Expression conversions  **)
+(******************************)
+
+let id_f (x:'a) : 'a = x
+
+type 'info trans_functions_t =
+  {
+    v_f : 'info -> V.t -> V.t;
+    set_f : 'info -> set -> set;
+    elem_f : 'info -> elem -> elem;
+    tid_f : 'info -> tid -> tid;
+    addr_f : 'info -> addr -> addr;
+    cell_f : 'info -> cell -> cell;
+    setth_f : 'info -> setth -> setth;
+    setint_f : 'info -> setint -> setint;
+    setelem_f : 'info -> setelem -> setelem;
+    setpair_f : 'info -> setpair -> setpair;
+    path_f : 'info -> path -> path;
+    mem_f : 'info -> mem -> mem;
+    integer_f : 'info -> integer -> integer;
+    pair_f : 'info -> pair -> pair;
+    arrays_f : 'info -> arrays -> arrays;
+    addrarr_f : 'info -> addrarr -> addrarr;
+    tidarr_f : 'info -> tidarr -> tidarr;
+    expr_f : 'info -> expr_t -> expr_t;
+    term_f : 'info -> term -> term;
+    formula_f : 'info -> formula -> formula;
+  }
+
+
+
+let rec term_trans (fs:'info trans_functions_t)
+                   (info:'info)
+                   (t:term) : term =
+  match t with
+    VarT(v)           -> VarT       (fs.v_f       info v      )
+  | SetT(set)         -> SetT       (fs.set_f     info set    )
+  | AddrT(addr)       -> AddrT      (fs.addr_f    info addr   )
+  | ElemT(elem)       -> ElemT      (fs.elem_f    info elem   )
+  | TidT(th)          -> TidT       (fs.tid_f     info th     )
+  | CellT(cell)       -> CellT      (fs.cell_f    info cell   )
+  | SetThT(setth)     -> SetThT     (fs.setth_f   info setth  )
+  | SetIntT(setint)   -> SetIntT    (fs.setint_f  info setint )
+  | SetElemT(setelem) -> SetElemT   (fs.setelem_f info setelem)
+  | SetPairT(setpair) -> SetPairT   (fs.setpair_f info setpair)
+  | PathT(path)       -> PathT      (fs.path_f    info path   )
+  | MemT(mem)         -> MemT       (fs.mem_f     info mem    )
+  | IntT(i)           -> IntT       (fs.integer_f info i      )
+  | PairT(p)          -> PairT      (fs.pair_f    info p      )
+  | ArrayT(arr)       -> ArrayT     (fs.arrays_f  info arr    )
+  | AddrArrayT(arr)   -> AddrArrayT (fs.addrarr_f info arr    )
+  | TidArrayT(arr)    -> TidArrayT  (fs.tidarr_f  info arr    )
+
+
+and expr_trans (fs:'info trans_functions_t)
+               (info:'info)
+               (e:expr_t) : expr_t =
+  match e with
+    Term t      -> Term (fs.term_f info t)
+  | Formula phi -> Formula (fs.formula_f info phi)
+
+
+and array_trans (fs:'info trans_functions_t)
+                (info:'info)
+                (arr:arrays) : arrays =
+  match arr with
+    VarArray v       -> VarArray (fs.v_f info v)
+  | ArrayUp(arr,t,e) -> ArrayUp (fs.arrays_f info arr,
+                                 t,
+                                 fs.expr_f info e)
+
+
+and addrarr_trans (fs:'info trans_functions_t)
+                  (info:'info)
+                  (arr:addrarr) : addrarr =
+  match arr with
+    VarAddrArray v       -> VarAddrArray (fs.v_f info v)
+  | AddrArrayUp(arr,i,a) -> AddrArrayUp(fs.addrarr_f info arr,
+                                        fs.integer_f info i,
+                                        fs.addr_f info a)
+  | CellArr c            -> CellArr (fs.cell_f info c)
+
+
+and tidarr_trans (fs:'info trans_functions_t)
+                 (info:'info)
+                 (arr:tidarr) : tidarr =
+  match arr with
+    VarTidArray v       -> VarTidArray (fs.v_f info v)
+  | TidArrayUp(arr,i,t) -> TidArrayUp(fs.tidarr_f info arr,
+                                      fs.integer_f info i,
+                                      fs.tid_f info t)
+  | CellTids c            -> CellTids (fs.cell_f info c)
+
+
+and set_trans (fs:'info trans_functions_t)
+              (info:'info)
+              (s:set) : set =
+  match s with
+    VarSet v             -> VarSet (fs.v_f info v)
+  | EmptySet             -> EmptySet
+  | Singl(addr)          -> Singl(fs.addr_f info addr)
+  | Union(s1,s2)         -> Union(fs.set_f info s1,
+                                  fs.set_f info s2)
+  | Intr(s1,s2)          -> Intr(fs.set_f info s1,
+                                 fs.set_f info s2)
+  | Setdiff(s1,s2)       -> Setdiff(fs.set_f info s1,
+                                    fs.set_f info s2)
+  | PathToSet(path)      -> PathToSet(fs.path_f info path)
+  | AddrToSet(mem,addr)  -> AddrToSet(fs.mem_f info mem,
+                                      fs.addr_f info addr)
+  | AddrToSetAt(mem,a,l) -> AddrToSetAt(fs.mem_f info mem,
+                                        fs.addr_f info a,
+                                        fs.integer_f info l)
+  | SetArrayRd(arr,t)    -> SetArrayRd(fs.arrays_f info arr, t)
+
+
+
+and addr_trans (fs:'info trans_functions_t)
+               (info:'info)
+               (a:addr) : addr =
+  match a with
+    VarAddr v                 -> VarAddr (fs.v_f info v)
+  | Null                      -> Null
+  | Next(cell)                -> Next(fs.cell_f info cell)
+  | NextAt(cell,l)            -> NextAt(fs.cell_f info cell,
+                                        fs.integer_f info l)
+  | ArrAt(cell,l)             -> ArrAt(fs.cell_f info cell,
+                                       fs.integer_f info l)
+  | FirstLocked(mem,path)     -> FirstLocked(fs.mem_f info mem,
+                                             fs.path_f info path)
+  | FirstLockedAt(mem,path,l) -> FirstLockedAt(fs.mem_f info mem,
+                                               fs.path_f info path,
+                                               fs.integer_f info l)
+  | LastLocked(mem,path)      -> LastLocked(fs.mem_f info mem,
+                                            fs.path_f info path)
+  | AddrArrayRd(arr,t)        -> AddrArrayRd(fs.arrays_f info arr, t)
+  | AddrArrRd(arr,l)          -> AddrArrRd(fs.addrarr_f info arr,
+                                           fs.integer_f info l)
+
+
+and elem_trans (fs:'info trans_functions_t)
+               (info:'info)
+               (e:elem) : elem =
+  match e with
+    VarElem v            -> VarElem (fs.v_f info v)
+  | CellData(cell)       -> CellData(fs.cell_f info cell)
+  | ElemArrayRd(arr,t)   -> ElemArrayRd(fs.arrays_f info arr, t)
+  | HavocListElem        -> HavocListElem
+  | HavocSkiplistElem    -> HavocSkiplistElem
+  | LowestElem           -> LowestElem
+  | HighestElem          -> HighestElem
+
+
+and tid_trans (fs:'info trans_functions_t)
+              (info:'info)
+              (t:tid) : tid =
+  match t with
+    VarTh v              -> VarTh (fs.v_f info v)
+  | NoTid                -> NoTid
+  | CellLockId(cell)     -> CellLockId(fs.cell_f info cell)
+  | CellLockIdAt(cell,l) -> CellLockIdAt(fs.cell_f info cell,
+                                         fs.integer_f info l)
+  | TidArrayRd(arr,t)    -> TidArrayRd(fs.arrays_f info arr, t)
+  | TidArrRd(arr,l)      -> TidArrRd(fs.tidarr_f info arr,
+                                     fs.integer_f info l)
+  | PairTid p            -> PairTid(fs.pair_f info p)
+
+
+and cell_trans (fs:'info trans_functions_t)
+               (info:'info)
+               (c:cell) : cell =
+  match c with
+    VarCell v              -> VarCell (fs.v_f info v)
+  | Error                  -> Error
+  | MkCell(data,addr,th)   -> MkCell(fs.elem_f info data,
+                                     fs.addr_f info addr,
+                                     fs.tid_f info th)
+  | MkSLKCell(data,aa,tt)  -> MkSLKCell(fs.elem_f info data,
+                                        List.map (fs.addr_f info) aa,
+                                        List.map (fs.tid_f info) tt)
+  | MkSLCell(data,aa,ta,l) -> MkSLCell(fs.elem_f info data,
+                                       fs.addrarr_f info aa,
+                                       fs.tidarr_f info ta,
+                                       fs.integer_f info l)
+  | CellLock(cell,t)       -> CellLock(fs.cell_f info cell,
+                                       fs.tid_f info t)
+  | CellLockAt(cell,l, t)  -> CellLockAt(fs.cell_f info cell,
+                                         fs.integer_f info l,
+                                         fs.tid_f info t)
+  | CellUnlock(cell)       -> CellUnlock(fs.cell_f info cell)
+  | CellUnlockAt(cell,l)   -> CellUnlockAt(fs.cell_f info cell,
+                                           fs.integer_f info l)
+  | CellAt(mem,addr)       -> CellAt(fs.mem_f info mem,
+                                     fs.addr_f info addr)
+  | CellArrayRd(arr,t)     -> CellArrayRd(fs.arrays_f info arr, t)
+  | UpdCellAddr(c,i,a)     -> UpdCellAddr(fs.cell_f info c,
+                                          fs.integer_f info i,
+                                          fs.addr_f info a)
+
+
+and setth_trans (fs:'info trans_functions_t)
+                (info:'info)
+                (s:setth) : setth =
+  match s with
+    VarSetTh v            -> VarSetTh (fs.v_f info v)
+  | EmptySetTh            -> EmptySetTh
+  | SinglTh(th)           -> SinglTh(fs.tid_f info th)
+  | UnionTh(s1,s2)        -> UnionTh(fs.setth_f info s1,
+                                     fs.setth_f info s2)
+  | IntrTh(s1,s2)         -> IntrTh(fs.setth_f info s1,
+                                    fs.setth_f info s2)
+  | SetdiffTh(s1,s2)      -> SetdiffTh(fs.setth_f info s1,
+                                       fs.setth_f info s2)
+  | SetThArrayRd(arr,t)   -> SetThArrayRd(fs.arrays_f info arr, t)
+  | LockSet(m,p)          -> LockSet(fs.mem_f info m, fs.path_f info p)
+
+
+and setint_trans (fs:'info trans_functions_t)
+                 (info:'info)
+                 (s:setint) : setint =
+  match s with
+    VarSetInt v            -> VarSetInt (fs.v_f info v)
+  | EmptySetInt            -> EmptySetInt
+  | SinglInt(i)            -> SinglInt(fs.integer_f info i)
+  | UnionInt(s1,s2)        -> UnionInt(fs.setint_f info s1,
+                                       fs.setint_f info s2)
+  | IntrInt(s1,s2)         -> IntrInt(fs.setint_f info s1,
+                                    fs.setint_f info s2)
+  | SetdiffInt(s1,s2)      -> SetdiffInt(fs.setint_f info s1,
+                                       fs.setint_f info s2)
+  | SetLower(s,i)          -> SetLower(fs.setint_f info s,
+                                       fs.integer_f info i)
+  | SetIntArrayRd(arr,t)   -> SetIntArrayRd(fs.arrays_f info arr, t)
+
+
+and setelem_trans (fs:'info trans_functions_t)
+                  (info:'info)
+                  (s:setelem) : setelem =
+  match s with
+    VarSetElem v            -> VarSetElem (fs.v_f info v)
+  | EmptySetElem            -> EmptySetElem
+  | SinglElem(e)            -> SinglElem(fs.elem_f info e)
+  | UnionElem(s1,s2)        -> UnionElem(fs.setelem_f info s1,
+                                         fs.setelem_f info s2)
+  | IntrElem(s1,s2)         -> IntrElem(fs.setelem_f info s1,
+                                        fs.setelem_f info s2)
+  | SetdiffElem(s1,s2)      -> SetdiffElem(fs.setelem_f info s1,
+                                           fs.setelem_f info s2)
+  | SetToElems(s,m)         -> SetToElems(fs.set_f info s, fs.mem_f info m)
+  | SetElemArrayRd(arr,t)   -> SetElemArrayRd(fs.arrays_f info arr, t)
+
+
+and setpair_trans (fs:'info trans_functions_t)
+                  (info:'info)
+                  (s:setpair) : setpair =
+  match s with
+    VarSetPair v            -> VarSetPair (fs.v_f info v)
+  | EmptySetPair            -> EmptySetPair
+  | SinglPair(p)            -> SinglPair(fs.pair_f info p)
+  | UnionPair(s1,s2)        -> UnionPair(fs.setpair_f info s1,
+                                        fs.setpair_f info s2)
+  | IntrPair(s1,s2)         -> IntrPair(fs.setpair_f info s1,
+                                        fs.setpair_f info s2)
+  | SetdiffPair(s1,s2)      -> SetdiffPair(fs.setpair_f info s1,
+                                           fs.setpair_f info s2)
+  | LowerPair(s,i)          -> LowerPair(fs.setpair_f info s,
+                                         fs.integer_f info i)
+  | SetPairArrayRd(arr,t)   -> SetPairArrayRd(fs.arrays_f info arr, t)
+
+
+and path_trans (fs:'info trans_functions_t)
+               (info:'info)
+               (p:path) : path =
+  match p with
+    VarPath v                        -> VarPath (fs.v_f info v)
+  | Epsilon                          -> Epsilon
+  | SimplePath(addr)                 -> SimplePath(fs.addr_f info addr)
+  | GetPath(mem,add_from,add_to)     -> GetPath(fs.mem_f info mem,
+                                                fs.addr_f info add_from,
+                                                fs.addr_f info add_to)
+  | GetPathAt(mem,add_from,add_to,l) -> GetPathAt(fs.mem_f info mem,
+                                                  fs.addr_f info add_from,
+                                                  fs.addr_f info add_to,
+                                                  fs.integer_f info l)
+  | PathArrayRd(arr,t)           -> PathArrayRd(fs.arrays_f info arr, t)
+
+
+and mem_trans (fs:'info trans_functions_t)
+              (info:'info)
+              (m:mem) : mem =
+  match m with
+    VarMem v             -> VarMem (fs.v_f info v)
+  | Update(mem,add,cell) -> Update(fs.mem_f info mem,
+                                   fs.addr_f info add,
+                                   fs.cell_f info cell)
+  | MemArrayRd(arr,t)    -> MemArrayRd(fs.arrays_f info arr, t)
+
+
+and integer_trans (fs:'info trans_functions_t)
+                  (info:'info)
+                  (i:integer) : integer =
+  match i with
+    IntVal(i)           -> IntVal(i)
+  | VarInt v            -> VarInt (fs.v_f info v)
+  | IntNeg(i)           -> IntNeg(fs.integer_f info i)
+  | IntAdd(i1,i2)       -> IntAdd(fs.integer_f info i1,
+                                  fs.integer_f info i2)
+  | IntSub(i1,i2)       -> IntSub(fs.integer_f info i1,
+                                  fs.integer_f info i2)
+  | IntMul(i1,i2)       -> IntMul(fs.integer_f info i1,
+                                  fs.integer_f info i2)
+  | IntDiv(i1,i2)       -> IntDiv(fs.integer_f info i1,
+                                  fs.integer_f info i2)
+  | IntArrayRd(arr,t)   -> IntArrayRd(fs.arrays_f info arr, t)
+  | IntSetMin(s)        -> IntSetMin(fs.setint_f info s)
+  | IntSetMax(s)        -> IntSetMax(fs.setint_f info s)
+  | CellMax(c)          -> CellMax(fs.cell_f info c)
+  | HavocLevel          -> HavocLevel
+  | PairInt p           -> PairInt (fs.pair_f info p)
+
+
+and pair_trans (fs:'info trans_functions_t)
+               (info:'info)
+               (p:pair) : pair =
+  match p with
+    VarPair v           -> VarPair (fs.v_f info v)
+  | IntTidPair (i,t)    -> IntTidPair (fs.integer_f info i, fs.tid_f info t)
+  | SetPairMin ps       -> SetPairMin (fs.setpair_f info ps)
+  | SetPairMax ps       -> SetPairMax (fs.setpair_f info ps)
+  | PairArrayRd(arr,t)  -> PairArrayRd(fs.arrays_f info arr, t)
+
+
+and atom_trans (fs:'info trans_functions_t)
+               (info:'info)
+               (a:atom) : atom =
+  match a with
+    Append(p1,p2,pres)                 -> Append(fs.path_f info p1,
+                                                 fs.path_f info p2,
+                                                 fs.path_f info pres)
+  | Reach(h,add_from,add_to,p)         -> Reach(fs.mem_f info h,
+                                                fs.addr_f info add_from,
+                                                fs.addr_f info add_to,
+                                                fs.path_f info p)
+  | ReachAt(h,a_from,a_to,l,p)         -> ReachAt(fs.mem_f info h,
+                                                  fs.addr_f info a_from,
+                                                  fs.addr_f info a_to,
+                                                  fs.integer_f info l,
+                                                  fs.path_f info p)
+  | OrderList(h,a_from,a_to)           -> OrderList(fs.mem_f info h,
+                                                    fs.addr_f info a_from,
+                                                    fs.addr_f info a_to)
+  | Skiplist(h,s,l,a_from,a_to,elems)  -> Skiplist(fs.mem_f info h,
+                                                   fs.set_f info s,
+                                                   fs.integer_f info l,
+                                                   fs.addr_f info a_from,
+                                                   fs.addr_f info a_to,
+                                                   fs.setelem_f info elems)
+  | In(a,s)                            -> In(fs.addr_f info a,
+                                             fs.set_f info s)
+  | SubsetEq(s_in,s_out)               -> SubsetEq(fs.set_f info s_in,
+                                                   fs.set_f info s_out)
+  | InTh(th,s)                         -> InTh(fs.tid_f info th,
+                                               fs.setth_f info s)
+  | SubsetEqTh(s_in,s_out)             -> SubsetEqTh(fs.setth_f info s_in,
+                                                     fs.setth_f info s_out)
+  | InInt(i,s)                         -> InInt(fs.integer_f info i,
+                                                fs.setint_f info s)
+  | SubsetEqInt(s_in,s_out)            -> SubsetEqInt(fs.setint_f info s_in,
+                                                      fs.setint_f info s_out)
+  | InElem(e,s)                        -> InElem(fs.elem_f info e,
+                                                 fs.setelem_f info s)
+  | SubsetEqElem(s_in,s_out)           -> SubsetEqElem(fs.setelem_f info s_in,
+                                                       fs.setelem_f info s_out)
+  | InPair(p,s)                        -> InPair(fs.pair_f info p,
+                                                 fs.setpair_f info s)
+  | SubsetEqPair(s_in,s_out)           -> SubsetEqPair(fs.setpair_f info s_in,
+                                                       fs.setpair_f info s_out)
+  | InTidPair(t,s)                     -> InTidPair(fs.tid_f info t,
+                                                    fs.setpair_f info s)
+  | InIntPair(i,s)                     -> InIntPair(fs.integer_f info i,
+                                                    fs.setpair_f info s)
+  | Less(i1,i2)                        -> Less(fs.integer_f info i1,
+                                               fs.integer_f info i2)
+  | Greater(i1,i2)                     -> Greater(fs.integer_f info i1,
+                                                  fs.integer_f info i2)
+  | LessEq(i1,i2)                      -> LessEq(fs.integer_f info i1,
+                                                 fs.integer_f info i2)
+  | GreaterEq(i1,i2)                   -> GreaterEq(fs.integer_f info i1,
+                                                    fs.integer_f info i2)
+  | LessTid(t1,t2)                     -> LessTid(fs.tid_f info t1,
+                                                  fs.tid_f info t2)
+  | LessElem(e1,e2)                    -> LessElem(fs.elem_f info e1,
+                                                   fs.elem_f info e2)
+  | GreaterElem(e1,e2)                 -> GreaterElem(fs.elem_f info e1,
+                                                      fs.elem_f info e2)
+  | Eq(t1,t2)                          -> Eq(fs.term_f info t1, fs.term_f info t2)
+  | InEq(t1,t2)                        -> InEq(fs.term_f info t1, fs.term_f info t2)
+  | UniqueInt(s)                       -> UniqueInt(fs.setpair_f info s)
+  | UniqueTid(s)                       -> UniqueTid(fs.setpair_f info s)
+  | BoolVar v                          -> BoolVar (fs.v_f info v )
+  | BoolArrayRd(arr,t)                 -> BoolArrayRd(fs.arrays_f info arr, t)
+      (* TODO: Fix, not sure if         for open arrays is correct *)
+  | PC (pc,t,p)                        -> (let t_new = match t with
+                                                       | V.Shared -> V.Shared
+                                                       | V.Local t -> V.Local (fs.v_f info t) in
+                                            PC(pc, t_new, p)
+                                          ) 
+  | PCUpdate (pc,t)                    -> PCUpdate (pc,t)
+  | PCRange (pc1,pc2,t,p)              -> PCRange (pc1, pc2, (match t with
+                                                              | V.Shared -> V.Shared
+                                                              | V.Local t -> V.Local (fs.v_f info t)), p)
+
+
+and param_fs fs = Formula.make_trans
+                    Formula.GenericLiteralTrans
+                    (fun info a -> atom_trans fs info a)
+
+and formula_trans (fs:'info trans_functions_t)
+                  (info:'info)
+                  (phi:formula) : formula =
+  Formula.formula_trans (param_fs fs) info phi
+*)
+
 
 (* PRIMING FUNCTIONS *)
 
@@ -576,33 +1008,46 @@ and priming_tid (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (t
 
 and priming_cell (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (c:cell) : cell =
   match c with
-    VarCell v              -> VarCell (priming_variable pr prime_set v)
-  | Error                  -> Error
-  | MkCell(data,addr,th)   -> MkCell(priming_elem pr prime_set data,
-                                     priming_addr pr prime_set addr,
-                                     priming_tid pr prime_set th)
-  | MkSLKCell(data,aa,tt)  -> MkSLKCell(priming_elem pr prime_set data,
-                                        List.map (priming_addr pr prime_set) aa,
-                                        List.map (priming_tid pr prime_set) tt)
-  | MkSLCell(data,aa,ta,l) -> MkSLCell(priming_elem pr prime_set data,
-                                       priming_addrarray pr prime_set aa,
-                                       priming_tidarray pr prime_set ta,
-                                       priming_int pr prime_set l)
-  | CellLock(cell, t)      -> CellLock(priming_cell pr prime_set cell,
-                                       priming_tid pr prime_set t)
-  | CellLockAt(cell,l, t)  -> CellLockAt(priming_cell pr prime_set cell,
-                                         priming_int pr prime_set l,
-                                         priming_tid pr prime_set t)
-  | CellUnlock(cell)       -> CellUnlock(priming_cell pr prime_set cell)
-  | CellUnlockAt(cell,l)   -> CellUnlockAt(priming_cell pr prime_set cell,
+    VarCell v                  -> VarCell (priming_variable pr prime_set v)
+  | Error                      -> Error
+  | MkCell(data,addr,th)       -> MkCell(priming_elem pr prime_set data,
+                                         priming_addr pr prime_set addr,
+                                         priming_tid pr prime_set th)
+  | MkCellMark(data,addr,th,m) -> MkCellMark(priming_elem pr prime_set data,
+                                             priming_addr pr prime_set addr,
+                                             priming_tid pr prime_set th,
+                                             priming_mark pr prime_set m)
+  | MkSLKCell(data,aa,tt)      -> MkSLKCell(priming_elem pr prime_set data,
+                                            List.map (priming_addr pr prime_set) aa,
+                                            List.map (priming_tid pr prime_set) tt)
+  | MkSLCell(data,aa,ta,l)     -> MkSLCell(priming_elem pr prime_set data,
+                                           priming_addrarray pr prime_set aa,
+                                           priming_tidarray pr prime_set ta,
                                            priming_int pr prime_set l)
-  | CellAt(mem,addr)       -> CellAt(priming_mem pr prime_set mem,
-                                     priming_addr pr prime_set addr)
-  | CellArrayRd(arr,t)     -> CellArrayRd(priming_array pr prime_set arr,
-                                          priming_tid pr prime_set t)
-  | UpdCellAddr(c,i,a)     -> UpdCellAddr(priming_cell pr prime_set c,
-                                          priming_int pr prime_set i,
-                                          priming_addr pr prime_set a)
+  | CellLock(cell, t)          -> CellLock(priming_cell pr prime_set cell,
+                                           priming_tid pr prime_set t)
+  | CellLockAt(cell,l, t)      -> CellLockAt(priming_cell pr prime_set cell,
+                                             priming_int pr prime_set l,
+                                             priming_tid pr prime_set t)
+  | CellUnlock(cell)           -> CellUnlock(priming_cell pr prime_set cell)
+  | CellUnlockAt(cell,l)       -> CellUnlockAt(priming_cell pr prime_set cell,
+                                               priming_int pr prime_set l)
+  | CellAt(mem,addr)           -> CellAt(priming_mem pr prime_set mem,
+                                         priming_addr pr prime_set addr)
+  | CellArrayRd(arr,t)         -> CellArrayRd(priming_array pr prime_set arr,
+                                              priming_tid pr prime_set t)
+  | CellMark(c,m)              -> CellMark(priming_cell pr prime_set c,
+                                           priming_mark pr prime_set m)
+  | UpdCellAddr(c,i,a)         -> UpdCellAddr(priming_cell pr prime_set c,
+                                              priming_int pr prime_set i,
+                                              priming_addr pr prime_set a)
+
+
+and priming_mark (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (m:mark) : mark =
+  match m with
+    MarkTrue -> MarkTrue
+  | MarkFalse -> MarkFalse
+  | MarkOfCell c -> MarkOfCell(priming_cell pr prime_set c)
 
 
 and priming_setth (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (s:setth) : setth =
@@ -1248,36 +1693,50 @@ and setpair_to_str (expr:setpair) : string =
 and cell_to_str (expr:cell) : string =
   let list_str f xs = String.concat "," (List.map f xs) in
   match expr with
-    VarCell v              -> V.to_str v
-  | Error                  -> "error"
-  | MkCell(data,addr,th)   -> sprintf "mkcell(%s,%s,%s)"
-                                           (elem_to_str data)
-                                           (addr_to_str addr)
-                                           (tid_to_str th)
-  | MkSLKCell(data,aa,tt)  -> sprintf "mkcell(%s,[%s],[%s])"
-                                           (elem_to_str data)
-                                           (list_str addr_to_str aa)
-                                           (list_str tid_to_str tt)
-  | MkSLCell(data,aa,ta,l) -> sprintf "mkcell(%s,%s,%s,%s)"
-                                           (elem_to_str data)
-                                           (addrarr_to_str aa)
-                                           (tidarr_to_str ta)
-                                           (integer_to_str l)
-  | CellLock(cell,t)        -> sprintf "%s.lock[%s]" (cell_to_str cell)
-                                                     (tid_to_str t)
-  | CellLockAt(cell,l,t)    -> sprintf "%s.lock[%s,%s]" (cell_to_str cell)
-                                                        (integer_to_str l)
-                                                        (tid_to_str t)
-  | CellUnlock(cell)      -> sprintf "%s.unlock" (cell_to_str cell)
-  | CellUnlockAt(cell,l)  -> sprintf "%s.unlockat(%s)" (cell_to_str cell)
-                                                     (integer_to_str l)
-  | CellAt(mem,addr)      -> sprintf "rd(%s,%s)" (mem_to_str mem)
-                                                 (addr_to_str addr)
-  | CellArrayRd(arr,t)    -> sprintf "%s%s" (arrays_to_str arr)
-                                            (param_tid_to_str t)
-  | UpdCellAddr(c,i,a)    -> sprintf "updCellAddr(%s,%s,%s)" (cell_to_str c)
-                                                             (integer_to_str i)
-                                                             (addr_to_str a)
+    VarCell v                  -> V.to_str v
+  | Error                      -> "error"
+  | MkCell(data,addr,th)       -> sprintf "mkcell(%s,%s,%s)"
+                                               (elem_to_str data)
+                                               (addr_to_str addr)
+                                               (tid_to_str th)
+  | MkCellMark(data,addr,th,m) -> sprintf "mkcell(%s,%s,%s,%s)"
+                                               (elem_to_str data)
+                                               (addr_to_str addr)
+                                               (tid_to_str th)
+                                               (mark_to_str m)
+  | MkSLKCell(data,aa,tt)      -> sprintf "mkcell(%s,[%s],[%s])"
+                                               (elem_to_str data)
+                                               (list_str addr_to_str aa)
+                                               (list_str tid_to_str tt)
+  | MkSLCell(data,aa,ta,l)     -> sprintf "mkcell(%s,%s,%s,%s)"
+                                               (elem_to_str data)
+                                               (addrarr_to_str aa)
+                                               (tidarr_to_str ta)
+                                               (integer_to_str l)
+  | CellLock(cell,t)           -> sprintf "%s.lock[%s]" (cell_to_str cell)
+                                                         (tid_to_str t)
+  | CellLockAt(cell,l,t)       -> sprintf "%s.lock[%s,%s]" (cell_to_str cell)
+                                                            (integer_to_str l)
+                                                            (tid_to_str t)
+  | CellUnlock(cell)           -> sprintf "%s.unlock" (cell_to_str cell)
+  | CellUnlockAt(cell,l)       -> sprintf "%s.unlockat(%s)" (cell_to_str cell)
+                                                          (integer_to_str l)
+  | CellAt(mem,addr)           -> sprintf "rd(%s,%s)" (mem_to_str mem)
+                                                      (addr_to_str addr)
+  | CellArrayRd(arr,t)         -> sprintf "%s%s" (arrays_to_str arr)
+                                                 (param_tid_to_str t)
+  | CellMark(cell,m)           -> sprintf "%s.setmark(%s)" (cell_to_str cell)
+                                                           (mark_to_str m)
+  | UpdCellAddr(c,i,a)         -> sprintf "updCellAddr(%s,%s,%s)" (cell_to_str c)
+                                                                 (integer_to_str i)
+                                                                 (addr_to_str a)
+
+
+and mark_to_str (m:mark) :string =
+  match m with
+    MarkTrue -> "T"
+  | MarkFalse -> "F"
+  | MarkOfCell c -> sprintf "%s.mark" (cell_to_str c)
 
 
 and addr_to_str (expr:addr) :string =
@@ -1998,34 +2457,45 @@ and get_vars_tid (th:tid) (base:V.t -> V.VarSet.t) : V.VarSet.t =
 and get_vars_cell (c:cell) (base:V.t -> V.VarSet.t) : V.VarSet.t =
   let fold f xs = List.fold_left (fun ys x -> (f x base) @@ ys) V.VarSet.empty xs in
   match c with
-    VarCell v              -> V.VarSet.union (base v)
-                                (match V.parameter v with
-                                 | V.Shared -> V.VarSet.empty
-                                 | V.Local t -> base t)
-  | Error                  -> V.VarSet.empty
-  | MkCell(data,addr,th)   -> (get_vars_elem data base) @@
-                              (get_vars_addr addr base) @@
-                              (get_vars_tid th base)
-  | MkSLKCell(data,aa,tt)  -> (get_vars_elem data base) @@
-                              (fold get_vars_addr aa)   @@
-                              (fold get_vars_tid tt)
-  | MkSLCell(data,aa,ta,l) -> (get_vars_elem data base) @@
-                              (get_vars_addrarr aa base) @@
-                              (get_vars_tidarr ta base) @@
-                              (get_vars_int l base)
-  | CellLock(cell,t)       -> (get_vars_cell cell base) @@ (get_vars_tid t base)
-  | CellLockAt(cell,l,t)   -> (get_vars_cell cell base) @@
-                              (get_vars_int l base)     @@
-                              (get_vars_tid t base)
-  | CellUnlock(cell)       -> (get_vars_cell cell base)
-  | CellUnlockAt(cell,l)   -> (get_vars_cell cell base) @@
-                              (get_vars_int l base)
-  | CellAt(mem,addr)       -> (get_vars_mem mem base) @@
-                              (get_vars_addr addr base)
-  | CellArrayRd(arr,_)     -> (get_vars_array arr base)
-  | UpdCellAddr(c,i,a)     -> (get_vars_cell c base) @@
-                              (get_vars_int i base)  @@
-                              (get_vars_addr a base)
+    VarCell v                  -> V.VarSet.union (base v)
+                                    (match V.parameter v with
+                                     | V.Shared -> V.VarSet.empty
+                                     | V.Local t -> base t)
+  | Error                      -> V.VarSet.empty
+  | MkCell(data,addr,th)       -> (get_vars_elem data base) @@
+                                  (get_vars_addr addr base) @@
+                                  (get_vars_tid th base)
+  | MkCellMark(data,addr,th,m) -> (get_vars_elem data base) @@
+                                  (get_vars_addr addr base) @@
+                                  (get_vars_tid th base) @@
+                                  (get_vars_mark m base)
+  | MkSLKCell(data,aa,tt)      -> (get_vars_elem data base) @@
+                                  (fold get_vars_addr aa)   @@
+                                  (fold get_vars_tid tt)
+  | MkSLCell(data,aa,ta,l)     -> (get_vars_elem data base) @@
+                                  (get_vars_addrarr aa base) @@
+                                  (get_vars_tidarr ta base) @@
+                                  (get_vars_int l base)
+  | CellLock(cell,t)           -> (get_vars_cell cell base) @@ (get_vars_tid t base)
+  | CellLockAt(cell,l,t)       -> (get_vars_cell cell base) @@
+                                  (get_vars_int l base)     @@
+                                  (get_vars_tid t base)
+  | CellUnlock(cell)           -> (get_vars_cell cell base)
+  | CellUnlockAt(cell,l)       -> (get_vars_cell cell base) @@
+                                  (get_vars_int l base)
+  | CellAt(mem,addr)           -> (get_vars_mem mem base) @@
+                                  (get_vars_addr addr base)
+  | CellArrayRd(arr,_)         -> (get_vars_array arr base)
+  | CellMark(cell,m)           -> (get_vars_cell cell base) @@ (get_vars_mark m base)
+  | UpdCellAddr(c,i,a)         -> (get_vars_cell c base) @@
+                                  (get_vars_int i base)  @@
+                                  (get_vars_addr a base)
+
+and get_vars_mark (m:mark) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+  match m with
+    MarkTrue -> V.VarSet.empty
+  | MarkFalse -> V.VarSet.empty
+  | MarkOfCell c -> get_vars_cell c base
 
 
 and get_vars_setth (s:setth) (base:V.t -> V.VarSet.t) : V.VarSet.t =
@@ -2599,6 +3069,10 @@ and voc_cell (c:cell) : ThreadSet.t =
   | MkCell(data,addr,th)   -> (voc_elem data) @@
                               (voc_addr addr) @@
                               (voc_tid th)
+  | MkCellMark(data,addr,th,m) -> (voc_elem data) @@
+                                  (voc_addr addr) @@
+                                  (voc_tid th) @@
+                                  (voc_mark m)
   | MkSLKCell(data,aa,tt)  -> (voc_elem data)    @@
                               (fold voc_addr aa) @@
                               (fold voc_tid tt)
@@ -2612,7 +3086,15 @@ and voc_cell (c:cell) : ThreadSet.t =
   | CellUnlockAt(cell,l)   -> (voc_cell cell) @@ (voc_int l)
   | CellAt(mem,addr)       -> (voc_mem mem) @@ (voc_addr addr)
   | CellArrayRd(arr,_)     -> (voc_array arr)
+  | CellMark(cell,m)       -> (voc_cell cell) @@ (voc_mark m)
   | UpdCellAddr(c,i,a)     -> (voc_cell c) @@ (voc_int i) @@ (voc_addr a)
+
+
+and voc_mark (m:mark) : ThreadSet.t =
+  match m with
+    MarkTrue -> ThreadSet.empty
+  | MarkFalse -> ThreadSet.empty
+  | MarkOfCell c -> voc_cell c
 
 
 and voc_setth (s:setth) : ThreadSet.t =
@@ -2952,32 +3434,45 @@ and var_kind_tid (kind:var_nature) (th:tid) : term list =
 and var_kind_cell (kind:var_nature) (c:cell) : term list =
   let fold f xs = List.fold_left (fun ys x -> (f kind x) @ ys) [] xs in
   match c with
-    VarCell v              -> if var_nature v = kind then [CellT c] else []
-  | Error                  -> []
-  | MkCell(data,addr,th)   -> (var_kind_elem kind data) @
-                              (var_kind_addr kind addr) @
-                              (var_kind_tid kind th)
-  | MkSLKCell(data,aa,tt)  -> (var_kind_elem kind data)  @
-                              (fold var_kind_addr aa)    @
-                              (fold var_kind_tid tt)
-  | MkSLCell(data,aa,ta,l) -> (var_kind_elem kind data)  @
-                              (var_kind_addrarr kind aa) @
-                              (var_kind_tidarr kind ta)  @
-                              (var_kind_int kind l)
-  | CellLock(cell,t)       -> (var_kind_cell kind cell) @
-                              (var_kind_tid kind t)
-  | CellLockAt(cell,l,t)   -> (var_kind_cell kind cell) @
-                              (var_kind_int kind l)     @
-                              (var_kind_tid kind t)
-  | CellUnlock(cell)       -> (var_kind_cell kind cell)
-  | CellUnlockAt(cell,l)   -> (var_kind_cell kind cell) @
-                              (var_kind_int kind l)
-  | CellAt(mem,addr)       -> (var_kind_mem kind mem) @
-                              (var_kind_addr kind addr)
-  | CellArrayRd(arr,_)     -> (var_kind_array kind arr)
-  | UpdCellAddr(c,i,a)     -> (var_kind_cell kind c) @
-                              (var_kind_int kind i)  @
-                              (var_kind_addr kind a)
+    VarCell v                  -> if var_nature v = kind then [CellT c] else []
+  | Error                      -> []
+  | MkCell(data,addr,th)       -> (var_kind_elem kind data) @
+                                  (var_kind_addr kind addr) @
+                                  (var_kind_tid kind th)
+  | MkCellMark(data,addr,th,m) -> (var_kind_elem kind data) @
+                                  (var_kind_addr kind addr) @
+                                  (var_kind_tid kind th) @
+                                  (var_kind_mark kind m)
+  | MkSLKCell(data,aa,tt)      -> (var_kind_elem kind data)  @
+                                  (fold var_kind_addr aa)    @
+                                  (fold var_kind_tid tt)
+  | MkSLCell(data,aa,ta,l)     -> (var_kind_elem kind data)  @
+                                  (var_kind_addrarr kind aa) @
+                                  (var_kind_tidarr kind ta)  @
+                                  (var_kind_int kind l)
+  | CellLock(cell,t)           -> (var_kind_cell kind cell) @
+                                  (var_kind_tid kind t)
+  | CellLockAt(cell,l,t)       -> (var_kind_cell kind cell) @
+                                  (var_kind_int kind l)     @
+                                  (var_kind_tid kind t)
+  | CellUnlock(cell)           -> (var_kind_cell kind cell)
+  | CellUnlockAt(cell,l)       -> (var_kind_cell kind cell) @
+                                  (var_kind_int kind l)
+  | CellAt(mem,addr)           -> (var_kind_mem kind mem) @
+                                  (var_kind_addr kind addr)
+  | CellArrayRd(arr,_)         -> (var_kind_array kind arr)
+  | CellMark(cell,m)           -> (var_kind_cell kind cell) @
+                                  (var_kind_mark kind m)
+  | UpdCellAddr(c,i,a)         -> (var_kind_cell kind c) @
+                                  (var_kind_int kind i)  @
+                                  (var_kind_addr kind a)
+
+
+and var_kind_mark (kind:var_nature) (m:mark) : term list =
+  match m with
+    MarkTrue -> []
+  | MarkFalse -> []
+  | MarkOfCell c -> (var_kind_cell kind c)
 
 
 and var_kind_setth (kind:var_nature) (s:setth) : term list =
@@ -3348,32 +3843,45 @@ and param_tid_aux (pfun:V.t option -> V.shared_or_local) (th:tid) : tid =
 
 and param_cell_aux (pfun:V.t option -> V.shared_or_local) (c:cell) : cell =
   match c with
-    VarCell v              -> VarCell (V.set_param v (pfun (Some v)))
-  | Error                  -> Error
-  | MkCell(data,addr,th)   -> MkCell(param_elem_aux pfun data,
-                                   param_addr_aux pfun addr,
-                                   param_tid_aux pfun th)
-  | MkSLKCell(data,aa,tt)  -> MkSLKCell(param_elem_aux pfun data,
-                                        List.map (param_addr_aux pfun) aa,
-                                        List.map (param_tid_aux pfun) tt)
-  | MkSLCell(data,aa,ta,l) -> MkSLCell(param_elem_aux pfun data,
-                                       param_addrarr_aux pfun aa,
-                                       param_tidarr_aux pfun ta,
-                                       param_int_aux pfun l)
-  | CellLock(cell,t)       -> CellLock(param_cell_aux pfun cell,
-                                       param_tid_aux pfun t)
-  | CellLockAt(cell,l, t)  -> CellLockAt(param_cell_aux pfun cell,
-                                         param_int_aux pfun l,
-                                         param_tid_aux pfun t)
-  | CellUnlock(cell)       -> CellUnlock(param_cell_aux pfun cell)
-  | CellUnlockAt(cell,l)   -> CellUnlockAt(param_cell_aux pfun cell,
+    VarCell v                  -> VarCell (V.set_param v (pfun (Some v)))
+  | Error                      -> Error
+  | MkCell(data,addr,th)       -> MkCell(param_elem_aux pfun data,
+                                       param_addr_aux pfun addr,
+                                       param_tid_aux pfun th)
+  | MkCellMark(data,addr,th,m) -> MkCellMark(param_elem_aux pfun data,
+                                             param_addr_aux pfun addr,
+                                             param_tid_aux pfun th,
+                                             param_mark pfun m)
+  | MkSLKCell(data,aa,tt)      -> MkSLKCell(param_elem_aux pfun data,
+                                            List.map (param_addr_aux pfun) aa,
+                                            List.map (param_tid_aux pfun) tt)
+  | MkSLCell(data,aa,ta,l)     -> MkSLCell(param_elem_aux pfun data,
+                                           param_addrarr_aux pfun aa,
+                                           param_tidarr_aux pfun ta,
                                            param_int_aux pfun l)
-  | CellAt(mem,addr)       -> CellAt(param_mem pfun mem,
-                                     param_addr_aux pfun addr)
-  | CellArrayRd(arr,t)     -> CellArrayRd(param_arrays pfun arr, t)
-  | UpdCellAddr(c,i,a)     -> UpdCellAddr(param_cell_aux pfun c,
-                                          param_int_aux pfun i,
-                                          param_addr_aux pfun a)
+  | CellLock(cell,t)           -> CellLock(param_cell_aux pfun cell,
+                                           param_tid_aux pfun t)
+  | CellLockAt(cell,l, t)      -> CellLockAt(param_cell_aux pfun cell,
+                                             param_int_aux pfun l,
+                                             param_tid_aux pfun t)
+  | CellUnlock(cell)           -> CellUnlock(param_cell_aux pfun cell)
+  | CellUnlockAt(cell,l)       -> CellUnlockAt(param_cell_aux pfun cell,
+                                               param_int_aux pfun l)
+  | CellAt(mem,addr)           -> CellAt(param_mem pfun mem,
+                                         param_addr_aux pfun addr)
+  | CellArrayRd(arr,t)         -> CellArrayRd(param_arrays pfun arr, t)
+  | CellMark(cell,m)           -> CellMark(param_cell_aux pfun cell,
+                                           param_mark pfun m)
+  | UpdCellAddr(c,i,a)         -> UpdCellAddr(param_cell_aux pfun c,
+                                              param_int_aux pfun i,
+                                              param_addr_aux pfun a)
+
+
+and param_mark (pfun:V.t option -> V.shared_or_local) (m:mark) : mark =
+  match m with
+    MarkTrue -> MarkTrue
+  | MarkFalse -> MarkFalse
+  | MarkOfCell c -> MarkOfCell (param_cell pfun c)
 
 
 and param_setth (pfun:V.t option -> V.shared_or_local) (s:setth) : setth =
@@ -3811,32 +4319,36 @@ and subst_tid_elem (subs:tid_subst_t) (e:elem) : elem =
   | HighestElem           -> HighestElem
 and subst_tid_cell (subs:tid_subst_t) (c:cell) : cell =
   match c with
-    VarCell v              -> VarCell (V.set_param v (subst_shared_or_local subs (V.parameter v)))
-  | Error                  -> Error
-  | MkCell(data,addr,th)   -> MkCell(subst_tid_elem subs data,
-                                     subst_tid_addr subs addr,
-                                     subst_tid_th subs th)
-  | MkSLKCell(data,aa,tt)  -> MkSLKCell(subst_tid_elem subs data,
-                                        List.map (subst_tid_addr subs) aa,
-                                        List.map (subst_tid_th subs) tt)
-  | MkSLCell(data,aa,ta,l) -> MkSLCell(subst_tid_elem subs data,
-                                       subst_tid_addrarr subs aa,
-                                       subst_tid_tidarr subs ta,
-                                       subst_tid_int subs l)
-  | CellLock(cell,t)       -> CellLock(subst_tid_cell subs cell,
-                                       subst_tid_th subs t)
-  | CellLockAt(cell,l,t)   -> CellLockAt(subst_tid_cell subs cell,
-                                         subst_tid_int subs l,
-                                         subst_tid_th subs t)
-  | CellUnlock(cell)       -> CellUnlock(subst_tid_cell subs cell)
-  | CellUnlockAt(cell,l)   -> CellUnlockAt(subst_tid_cell subs cell,
+    VarCell v                  -> VarCell (V.set_param v (subst_shared_or_local subs (V.parameter v)))
+  | Error                      -> Error
+  | MkCell(data,addr,th)       -> MkCell(subst_tid_elem subs data,
+                                         subst_tid_addr subs addr,
+                                         subst_tid_th subs th)
+  | MkCellMark(data,addr,th,m) -> MkCellMark(subst_tid_elem subs data,
+                                         subst_tid_addr subs addr,
+                                         subst_tid_th subs th,
+                                         subst_tid_mark subs m)
+  | MkSLKCell(data,aa,tt)      -> MkSLKCell(subst_tid_elem subs data,
+                                            List.map (subst_tid_addr subs) aa,
+                                            List.map (subst_tid_th subs) tt)
+  | MkSLCell(data,aa,ta,l)     -> MkSLCell(subst_tid_elem subs data,
+                                           subst_tid_addrarr subs aa,
+                                           subst_tid_tidarr subs ta,
                                            subst_tid_int subs l)
-  | CellAt(mem,addr)       -> CellAt(subst_tid_mem subs mem,
-                                     subst_tid_addr subs addr)
-  | CellArrayRd(arr,t)     -> CellArrayRd(subst_tid_array subs arr, t)
-  | UpdCellAddr(c,i,a)     -> UpdCellAddr(subst_tid_cell subs c,
-                                          subst_tid_int subs i,
-                                          subst_tid_addr subs a)
+  | CellLock(cell,t)           -> CellLock(subst_tid_cell subs cell,
+                                           subst_tid_th subs t)
+  | CellLockAt(cell,l,t)       -> CellLockAt(subst_tid_cell subs cell,
+                                             subst_tid_int subs l,
+                                             subst_tid_th subs t)
+  | CellUnlock(cell)           -> CellUnlock(subst_tid_cell subs cell)
+  | CellUnlockAt(cell,l)       -> CellUnlockAt(subst_tid_cell subs cell,
+                                               subst_tid_int subs l)
+  | CellAt(mem,addr)           -> CellAt(subst_tid_mem subs mem,
+                                         subst_tid_addr subs addr)
+  | CellArrayRd(arr,t)         -> CellArrayRd(subst_tid_array subs arr, t)
+  | UpdCellAddr(c,i,a)         -> UpdCellAddr(subst_tid_cell subs c,
+                                              subst_tid_int subs i,
+                                              subst_tid_addr subs a)
 and subst_tid_setth (subs:tid_subst_t) (s:setth) : setth =
   match s with
     VarSetTh v             -> VarSetTh(V.set_param v (subst_shared_or_local subs (V.parameter v)))

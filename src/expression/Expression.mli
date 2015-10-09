@@ -135,6 +135,7 @@ and cell =
     VarCell       of V.t
   | Error
   | MkCell        of elem * addr * tid
+  | MkCellMark    of elem * addr * tid * mark
   | MkSLKCell     of elem * addr list * tid list
   | MkSLCell      of elem * addrarr * tidarr * integer
   | CellLock      of cell * tid
@@ -143,7 +144,13 @@ and cell =
   | CellUnlockAt  of cell * integer
   | CellAt        of mem * addr
   | CellArrayRd   of arrays * tid
+  | CellMark      of cell * mark
   | UpdCellAddr   of cell * integer * addr
+
+and mark =
+    MarkTrue
+  | MarkFalse
+  | MarkOfCell    of cell
 
 and setth =
     VarSetTh      of V.t
