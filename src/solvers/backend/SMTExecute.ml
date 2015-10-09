@@ -29,7 +29,7 @@ let get_exec_cmd (smt:smt_t) : string =
 let check_installed (smts:smt_t list) : unit =
   let check_smt (smt:smt_t) : unit =
     let cmd = get_exec_cmd smt in
-    let env = Array.of_list [] in
+    let env = Unix.environment() in
     let check_method = " -?" in
     let (stdout,stdin,stderr) = Unix.open_process_full (cmd ^ check_method) env in
     try
@@ -166,7 +166,7 @@ let run (cfg:configuration_t) (query:string) : Sat.t =
                        (gen_debugsupp_str cfg) ^
                        (tmpfile) in
 
-  let env = Array.of_list [] in
+  let env = Unix.environment() in
   let (stdout,stdin,stderr) = Unix.open_process_full cmd env in
   verbl _LONG_INFO "**** STMExecute will parse output.\n";
   let (terminated,response) = parse_output stdout in
