@@ -164,6 +164,7 @@ let cut_off_normalized (expr:conjunctive_formula) : MS.t =
     | PathT _    -> numaddr := !numaddr + 2 (* the witnesses of p1 != p2 *)
     | MemT _     -> ()
     | IntT _     -> ()
+    | MarkT _    -> ()
     | VarUpdate _-> () in                   (* ALE: Not sure if OK *)
   let process (lit:literal) =
     match lit with
@@ -219,7 +220,7 @@ let union_eq_cutoff (info:union_info) ((x,y):(Expr.term * Expr.term)) : union_in
     VarT _      -> info (* nothing, y must be a VarT as well *)
   | SetT _      -> union_count_addr info (Expr.Eq(x,y)) (* the witness of s1 != s2 *)
   | ElemT _     -> info
-  | TidT _     -> info
+  | TidT _      -> info
   | AddrT _     -> info (* no need to look for firstlock, every firstlock has a var *)
   | CellT _     -> info
   | SetThT _    -> union_count_tid info (Expr.Eq(x,y)) (* the witness of st1 != st2 *)
@@ -227,6 +228,7 @@ let union_eq_cutoff (info:union_info) ((x,y):(Expr.term * Expr.term)) : union_in
   | PathT _     -> union_count_addr info (Expr.Eq(x,y)) (* the witnesses of p1 != p2 *)
   | MemT _      -> info
   | IntT _      -> info
+  | MarkT _     -> info
   | VarUpdate _ -> info (* ALE: Not sure if OK *)
 
 
@@ -235,7 +237,7 @@ let union_ineq_cutoff (info:union_info) ((x,y):(Expr.term * Expr.term)) : union_
     VarT _      -> info (* nothing, y must be a VarT as well *)
   | SetT _      -> union_count_addr info (Expr.InEq(x,y)) (* the witness of s1 != s2 *)
   | ElemT _     -> info
-  | TidT _     -> info
+  | TidT _      -> info
   | AddrT _     -> info (* no need to look for firstlock, every firstlock has a var *)
   | CellT _     -> info
   | SetThT _    -> union_count_tid info (Expr.InEq(x,y)) (* the witness of st1 != st2 *)
@@ -243,6 +245,7 @@ let union_ineq_cutoff (info:union_info) ((x,y):(Expr.term * Expr.term)) : union_
   | PathT _     -> union_count_addr info (Expr.InEq(x,y)) (* the witnesses of p1 != p2 *)
   | MemT _      -> info
   | IntT _      -> info
+  | MarkT _     -> info
   | VarUpdate _ -> info (* ALE: Not sure if OK *)
 
 
@@ -331,6 +334,7 @@ let prune_eq (x:term) (y:term) : (term * term) option =
     | PathT _     -> Some (x,y) (* the witnesses of p1 != p2 *)
     | MemT _      -> Some (x,y)
     | IntT _      -> None
+    | MarkT _     -> None
     | VarUpdate _ -> assert(false) (* ALE: Not sure if OK *)
 
 

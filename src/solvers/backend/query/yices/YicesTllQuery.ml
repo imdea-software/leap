@@ -25,6 +25,7 @@ struct
 
   (* Sort names *)
   let bool_s    : string = "bool"
+  let mark_s    : string = "mark"
   let int_s     : string = "int"
   let addr_s    : string = "address"
   let set_s     : string = "set"
@@ -943,7 +944,7 @@ struct
                            Expr.Set     -> set_s
                          | Expr.Elem    -> elem_s
                          | Expr.Addr    -> addr_s
-                         | Expr.Tid    -> tid_s
+                         | Expr.Tid     -> tid_s
                          | Expr.Cell    -> cell_s
                          | Expr.SetTh   -> setth_s
                          | Expr.SetElem -> setelem_s
@@ -951,6 +952,7 @@ struct
                          | Expr.Mem     -> heap_s
                          | Expr.Int     -> int_s
                          | Expr.Bool    -> bool_s
+                         | Expr.Mark    -> mark_s
                          | Expr.Unknown -> unk_s in
     let s_str = sort_str s in
     let p_id = match Expr.V.scope v with
@@ -1108,6 +1110,11 @@ struct
                                         (elemterm_to_str e)
                                         (addrterm_to_str a)
                                         (tidterm_to_str th)
+      | Expr.MkCellMark(e,a,th,m) -> Printf.sprintf "(mkcellm %s %s %s %s)"
+                                              (elemterm_to_str e)
+                                              (addrterm_to_str a)
+                                              (tidterm_to_str th)
+                                              (mark_to_str m)
       | Expr.CellLock(c,th) -> Printf.sprintf "(cell_lock %s %s)"
                                         (cellterm_to_str c)
                                         (tidterm_to_str th)
@@ -1116,7 +1123,9 @@ struct
       | Expr.CellAt(m,a)     -> Printf.sprintf "(%s %s)"
                                         (memterm_to_str m)
                                         (addrterm_to_str a)
-
+      | Expr.CellMark(c,m) -> Printf.sprintf "(cell_mark %s %s)"
+                                      (cell_to_str c)
+                                      (mark_to_str m)
 
   and setthterm_to_str (sth:Expr.setth) : string =
     match sth with

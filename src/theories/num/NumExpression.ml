@@ -279,6 +279,7 @@ and is_int_integer t =
   | E.ArrayT(_)     -> false
   | E.AddrArrayT(_) -> false
   | E.TidArrayT(_)  -> false
+  | E.MarkT(_)      -> false
 and is_int_expression e = 
   match e with
     E.Term(t)      -> is_int_integer t

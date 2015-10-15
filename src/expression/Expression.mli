@@ -18,6 +18,7 @@ type sort =
   | Array
   | AddrArray
   | TidArray
+  | Mark
   | Unknown
 
 
@@ -48,6 +49,7 @@ and term =
   | ArrayT        of arrays
   | AddrArrayT    of addrarr
   | TidArrayT     of tidarr
+  | MarkT         of mark
 
 and eq =          term * term
 
@@ -148,7 +150,8 @@ and cell =
   | UpdCellAddr   of cell * integer * addr
 
 and mark =
-    MarkTrue
+    VarMark       of V.t
+  | MarkTrue
   | MarkFalse
   | MarkOfCell    of cell
 
@@ -442,6 +445,7 @@ val atom_to_str       : atom        -> string
 val term_to_str       : term        -> string
 val addr_to_str       : addr        -> string
 val cell_to_str       : cell        -> string
+val mark_to_str       : mark        -> string
 val elem_to_str       : elem        -> string
 val tid_to_str        : tid         -> string
 val arrays_to_str     : arrays      -> string

@@ -590,6 +590,7 @@ let get_sort_from_term (gVars:var_table_t)
   | E.ArrayT(_)         -> E.Array
   | E.AddrArrayT(_)     -> E.AddrArray
   | E.TidArrayT(_)      -> E.TidArray
+  | E.MarkT(_)          -> E.Mark
 
 
 

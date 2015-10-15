@@ -331,6 +331,7 @@ let inject_sort (exp:E.term) : E.term =
                        | E.Array     -> E.ArrayT     (E.VarArray     var)
                        | E.AddrArray -> E.AddrArrayT (E.VarAddrArray var)
                        | E.TidArray  -> E.TidArrayT  (E.VarTidArray  var)
+                       | E.Mark      -> E.MarkT      (E.VarMark      var)
                        | E.Unknown   -> E.VarT       (var)
                      end
   | _           -> exp

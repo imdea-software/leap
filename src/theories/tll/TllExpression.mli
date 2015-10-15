@@ -11,6 +11,7 @@ type sort =
   | Mem
   | Int
   | Bool
+  | Mark
   | Unknown
 
 type var_info_t
@@ -24,7 +25,7 @@ type term =
     VarT     of V.t
   | SetT     of set
   | ElemT    of elem
-  | TidT    of tid
+  | TidT     of tid
   | AddrT    of addr
   | CellT    of cell
   | SetThT   of setth
@@ -32,6 +33,7 @@ type term =
   | PathT    of path
   | MemT     of mem
   | IntT     of integer
+  | MarkT    of mark
   | VarUpdate  of V.t * tid * term
 and eq = term * term
 and diseq = term * term
@@ -73,9 +75,16 @@ and cell =
     VarCell of V.t
   | Error
   | MkCell of elem * addr * tid
+  | MkCellMark of elem * addr * tid * mark
   | CellLock of cell * tid
   | CellUnlock of cell
   | CellAt of mem * addr
+  | CellMark of cell * mark
+and mark =
+    VarMark of V.t
+  | MarkTrue
+  | MarkFalse
+  | MarkOfCell of cell
 and setth =
     VarSetTh of V.t
   | EmptySetTh

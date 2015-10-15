@@ -14,6 +14,7 @@ type sort =
   | Mem
   | Int
   | Bool
+  | Mark
   | Unknown
 
 type var_info_t =
@@ -39,6 +40,7 @@ type term =
   | PathT    of path
   | MemT     of mem
   | IntT     of integer
+  | MarkT    of mark
   | VarUpdate  of V.t * tid * term
 and eq = term * term
 and diseq = term * term
@@ -80,9 +82,16 @@ and cell =
     VarCell of V.t
   | Error
   | MkCell of elem * addr * tid
+  | MkCellMark of elem * addr * tid * mark
   | CellLock of cell * tid
   | CellUnlock of cell
   | CellAt of mem * addr
+  | CellMark of cell * mark
+and mark =
+    VarMark of V.t
+  | MarkTrue
+  | MarkFalse
+  | MarkOfCell of cell
 and setth =
     VarSetTh of V.t
   | EmptySetTh
@@ -273,9 +282,18 @@ and get_varset_cell c = match c with
       VarCell v      -> V.VarSet.singleton v @@ get_varset_from_param v
     | Error          -> V.VarSet.empty
     | MkCell(e,a,th) -> (get_varset_elem e) @@ (get_varset_addr a) @@ (get_varset_tid th)
-    | CellLock(c,th)    ->  (get_varset_cell c) @@ (get_varset_tid th)
+    | MkCellMark(e,a,th,m) -> (get_varset_elem e) @@ (get_varset_addr a) @@
+                              (get_varset_tid th) @@ (get_varset_mark m)
+    | CellLock(c,th) ->  (get_varset_cell c) @@ (get_varset_tid th)
     | CellUnlock(c)  ->  get_varset_cell c
     | CellAt(m,a)    ->  (get_varset_mem  m) @@ (get_varset_addr a)
+    | CellMark(c,m)  ->  (get_varset_cell c) @@ (get_varset_mark m)
+and get_varset_mark m =
+  match m with
+      VarMark v    -> V.VarSet.singleton v @@ get_varset_from_param v
+    | MarkTrue     -> V.VarSet.empty
+    | MarkFalse    -> V.VarSet.empty
+    | MarkOfCell c -> (get_varset_cell c)
 and get_varset_setth sth =
   match sth with
       VarSetTh v         -> V.VarSet.singleton v @@ get_varset_from_param v
@@ -348,6 +366,7 @@ and get_varset_term t = match t with
     | PathT  p            -> get_varset_path p
     | MemT   m            -> get_varset_mem m
     | IntT   i            -> get_varset_int i
+    | MarkT  m            -> get_varset_mark m
     | VarUpdate(v,_,t)    -> (V.VarSet.singleton v) @@ (get_varset_term t) @@
                              (get_varset_from_param v)
 
@@ -435,7 +454,7 @@ let termset_of_sort (all:TermSet.t) (s:sort) : TermSet.t =
     match s with
     | Set     -> (match t with | SetT _     -> true | _ -> false)
     | Elem    -> (match t with | ElemT _    -> true | _ -> false)
-    | Tid    -> (match t with | TidT _    -> true | _ -> false)
+    | Tid     -> (match t with | TidT _     -> true | _ -> false)
     | Addr    -> (match t with | AddrT _    -> true | _ -> false)
     | Cell    -> (match t with | CellT _    -> true | _ -> false)
     | SetTh   -> (match t with | SetThT _   -> true | _ -> false)
@@ -443,6 +462,7 @@ let termset_of_sort (all:TermSet.t) (s:sort) : TermSet.t =
     | Path    -> (match t with | PathT _    -> true | _ -> false)
     | Mem     -> (match t with | MemT _     -> true | _ -> false)
     | Int     -> (match t with | IntT _     -> true | _ -> false)
+    | Mark    -> (match t with | MarkT _    -> true | _ -> false)
     | Bool    -> (match t with
                   | VarT v -> (V.sort v) = Bool
                   | _      -> false)
@@ -490,6 +510,9 @@ and is_addr_var s =
 and is_cell_var s =
   match s with
       VarCell _ -> true | _ -> false
+and is_mark_var s =
+  match s with
+      VarMark _ -> true | _ -> false
 and is_setth_var s =
   match s with
       VarSetTh _ -> true | _ -> false
@@ -511,7 +534,7 @@ let get_sort_from_term t =
       VarT _           -> Unknown
     | SetT _           -> Set
     | ElemT _          -> Elem
-    | TidT _          -> Tid
+    | TidT _           -> Tid
     | AddrT _          -> Addr
     | CellT _          -> Cell
     | SetThT _         -> SetTh
@@ -519,6 +542,7 @@ let get_sort_from_term t =
     | PathT _          -> Path
     | MemT _           -> Mem
     | IntT _           -> Int
+    | MarkT _          -> Mark
     | VarUpdate(v,_,_) -> (V.sort v)
   
 let terms_same_type a b =
@@ -536,7 +560,7 @@ let rec is_term_flat t =
       VarT(_)     -> true
     | SetT s      -> is_set_flat s
     | ElemT e     -> is_elem_flat   e
-    | TidT k     -> is_tid_flat k
+    | TidT k      -> is_tid_flat k
     | AddrT a     -> is_addr_flat a
     | CellT c     -> is_cell_flat c
     | SetThT st   -> is_setth_flat st
@@ -544,6 +568,7 @@ let rec is_term_flat t =
     | PathT p     -> is_path_flat p
     | MemT  m     -> is_mem_flat m
     | IntT i      -> is_int_flat i
+    | MarkT m     -> is_mark_flat m
     | VarUpdate _ -> true
 
 and is_set_flat t =
@@ -581,9 +606,18 @@ and is_cell_flat t =
       VarCell _  -> true
     | Error      -> true
     | MkCell(e,a,k) -> (is_elem_var e) && (is_addr_var a) && (is_tid_var k)
+    | MkCellMark(e,a,k,m) -> (is_elem_var e) && (is_addr_var a) &&
+                             (is_tid_var k) && (is_mark_var m)
     | CellLock(c,th)   -> (is_cell_var c) && (is_tid_var th)
     | CellUnlock(c) -> is_cell_var c
     | CellAt(m,a)   -> (is_mem_var m) && (is_addr_var a)
+    | CellMark(c,m) -> (is_cell_var c) && (is_mark_var m)
+and is_mark_flat m =
+  match m with
+      VarMark _    -> true
+    | MarkTrue     -> true
+    | MarkFalse    -> true
+    | MarkOfCell c -> (is_cell_var c)
 and is_setth_flat t =
   match t with
       VarSetTh _ -> true
@@ -789,12 +823,23 @@ and cell_to_str e =
       VarCell(v) -> V.to_str v
     | Error -> "Error"
     | MkCell(data,addr,th) -> Printf.sprintf "mkcell(%s,%s,%s)"
-  (elem_to_str data) (addr_to_str addr) (tid_to_str th)
+                                (elem_to_str data) (addr_to_str addr) (tid_to_str th)
+    | MkCellMark(data,addr,th,m) -> Printf.sprintf "mkcell(%s,%s,%s,%s)"
+                                      (elem_to_str data) (addr_to_str addr)
+                                      (tid_to_str th) (mark_to_str m)
     | CellLock(cell,th)   -> Printf.sprintf "%s.lock(%s)"
-  (cell_to_str cell) (tid_to_str th)
+                              (cell_to_str cell) (tid_to_str th)
     | CellUnlock(cell) -> Printf.sprintf "%s.unlock"
-  (cell_to_str cell)
+                            (cell_to_str cell)
     | CellAt(mem,addr) -> Printf.sprintf "%s [ %s ]" (mem_to_str mem) (addr_to_str addr)
+    | CellMark(cell,m) -> Printf.sprintf "%s.setmark(%s)"
+                            (cell_to_str cell) (mark_to_str m)
+and mark_to_str expr =
+  match expr with
+      VarMark(v) -> V.to_str v
+    | MarkTrue -> "T"
+    | MarkFalse -> "F"
+    | MarkOfCell c -> Printf.sprintf "%s.mark" (cell_to_str c)
 and addr_to_str expr =
   match expr with
       VarAddr(v) -> V.to_str v
@@ -829,13 +874,14 @@ and term_to_str expr =
     | SetT(set)          -> (set_to_str set)
     | AddrT(addr)        -> (addr_to_str addr)
     | ElemT(elem)        -> (elem_to_str elem)
-    | TidT(th)          -> (tid_to_str th)
+    | TidT(th)           -> (tid_to_str th)
     | CellT(cell)        -> (cell_to_str cell)
     | SetThT(setth)      -> (setth_to_str setth)
     | SetElemT(setelem)  -> (setelem_to_str setelem)
     | PathT(path)        -> (path_to_str path)
     | MemT(mem)          -> (mem_to_str mem)
     | IntT(i)            -> (integer_to_str i)
+    | MarkT(m)           -> (mark_to_str m)
     | VarUpdate (v,th,t) -> let v_str = V.to_str v in
                             let th_str = tid_to_str th in
                             let t_str = term_to_str t in
@@ -864,6 +910,7 @@ let sort_to_str s =
     | Mem     -> "Mem"
     | Int     -> "Int"
     | Bool    -> "Bool"
+    | Mark    -> "Mark"
     | Unknown -> "Unknown"
 
 let generic_printer aprinter x =
@@ -960,6 +1007,7 @@ and voc_term (expr:term) : ThreadSet.t =
     | PathT(path)        -> voc_path path
     | MemT(mem)          -> voc_mem mem
     | IntT(i)            -> voc_int i
+    | MarkT(m)           -> voc_mark m
     | VarUpdate (v,th,t) -> (get_tid_in v) @@ (voc_tid th) @@ (voc_term t)
 
 
@@ -1003,14 +1051,27 @@ and voc_tid (th:tid) : ThreadSet.t =
 
 and voc_cell (c:cell) : ThreadSet.t =
   match c with
-    VarCell v            -> get_tid_in v
-  | Error                -> ThreadSet.empty
-  | MkCell(data,addr,th) -> (voc_elem data) @@
-                            (voc_addr addr) @@
-                            (voc_tid th)
-  | CellLock(cell,th)    -> (voc_cell cell) @@ (voc_tid th)
-  | CellUnlock(cell)     -> (voc_cell cell)
-  | CellAt(mem,addr)     -> (voc_mem mem) @@ (voc_addr addr)
+    VarCell v                  -> get_tid_in v
+  | Error                      -> ThreadSet.empty
+  | MkCell(data,addr,th)       -> (voc_elem data) @@
+                                  (voc_addr addr) @@
+                                  (voc_tid th)
+  | MkCellMark(data,addr,th,m) -> (voc_elem data) @@
+                                  (voc_addr addr) @@
+                                  (voc_tid th)    @@
+                                  (voc_mark m)
+  | CellLock(cell,th)          -> (voc_cell cell) @@ (voc_tid th)
+  | CellUnlock(cell)           -> (voc_cell cell)
+  | CellAt(mem,addr)           -> (voc_mem mem) @@ (voc_addr addr)
+  | CellMark(cell,m)           -> (voc_cell cell) @@ (voc_mark m)
+
+
+and voc_mark (m:mark) : ThreadSet.t =
+  match m with
+    VarMark v    -> get_tid_in v
+  | MarkTrue     -> ThreadSet.empty
+  | MarkFalse    -> ThreadSet.empty
+  | MarkOfCell c -> (voc_cell c)
 
 
 and voc_setth (s:setth) : ThreadSet.t =
@@ -1214,12 +1275,21 @@ let required_sorts (phi:formula) : sort list =
 
   and req_c (c:cell) : SortSet.t =
     match c with
-    | VarCell _         -> single Cell
-    | Error             -> single Cell
-    | MkCell (e,a,t)    -> append Cell [req_e e;req_a a; req_t t]
-    | CellLock (c,t)    -> append Cell [req_c c;req_t t]
-    | CellUnlock c      -> append Cell [req_c c]
-    | CellAt (m,a)      -> append Cell [req_m m;req_a a]
+    | VarCell _            -> single Cell
+    | Error                -> single Cell
+    | MkCell (e,a,t)       -> append Cell [req_e e;req_a a; req_t t]
+    | MkCellMark (e,a,t,m) -> append Cell [req_e e;req_a a; req_t t; req_mk m]
+    | CellLock (c,t)       -> append Cell [req_c c;req_t t]
+    | CellUnlock c         -> append Cell [req_c c]
+    | CellAt (m,a)         -> append Cell [req_m m;req_a a]
+    | CellMark (c,m)       -> append Cell [req_c c;req_mk m]
+
+  and req_mk (m:mark) : SortSet.t =
+    match m with
+    | VarMark _    -> single Mark
+    | MarkTrue     -> single Mark
+    | MarkFalse    -> single Mark
+    | MarkOfCell c -> append Mark [req_c c]
 
   and req_a (a:addr) : SortSet.t =
     match a with
@@ -1267,6 +1337,7 @@ let required_sorts (phi:formula) : sort list =
     | PathT p            -> req_p p
     | MemT m             -> req_m m
     | IntT i             -> req_i i
+    | MarkT m            -> req_mk m
     | VarUpdate (v,t,tr) -> append (V.sort v) [req_t t;req_term tr] in
 
   let req_fs = Formula.make_fold
@@ -1359,12 +1430,21 @@ let special_ops (phi:formula) : special_op_t list =
 
   and ops_c (c:cell) : OpsSet.t =
     match c with
-    | VarCell _         -> empty
-    | Error             -> empty
-    | MkCell (e,a,t)    -> list_union [ops_e e;ops_a a; ops_t t]
-    | CellLock (c,t)    -> list_union [ops_c c;ops_t t]
-    | CellUnlock c      -> list_union [ops_c c]
-    | CellAt (m,a)      -> list_union [ops_m m;ops_a a]
+    | VarCell _            -> empty
+    | Error                -> empty
+    | MkCell (e,a,t)       -> list_union [ops_e e;ops_a a; ops_t t]
+    | MkCellMark (e,a,t,m) -> list_union [ops_e e;ops_a a; ops_t t; ops_mk m]
+    | CellLock (c,t)       -> list_union [ops_c c;ops_t t]
+    | CellUnlock c         -> list_union [ops_c c]
+    | CellAt (m,a)         -> list_union [ops_m m;ops_a a]
+    | CellMark (c,m)       -> list_union [ops_c c;ops_mk m]
+
+  and ops_mk (m:mark) : OpsSet.t =
+    match m with
+    | VarMark _    -> empty
+    | MarkTrue     -> empty
+    | MarkFalse    -> empty
+    | MarkOfCell c -> ops_c c
 
   and ops_a (a:addr) : OpsSet.t =
     match a with
@@ -1404,7 +1484,7 @@ let special_ops (phi:formula) : special_op_t list =
     | VarT _             -> empty
     | SetT s             -> ops_s s
     | ElemT e            -> ops_e e
-    | TidT t            -> ops_t t
+    | TidT t             -> ops_t t
     | AddrT a            -> ops_a a
     | CellT c            -> ops_c c
     | SetThT s           -> ops_st s
@@ -1412,6 +1492,7 @@ let special_ops (phi:formula) : special_op_t list =
     | PathT p            -> ops_p p
     | MemT m             -> ops_m m
     | IntT i             -> ops_i i
+    | MarkT m            -> ops_mk m
     | VarUpdate (_,t,tr) -> list_union [ops_t t;ops_term tr] in
 
 

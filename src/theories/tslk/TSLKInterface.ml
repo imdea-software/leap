@@ -39,6 +39,7 @@ module Make (SLK : TSLKExpression.S) =
       | E.ArrayT _     -> E.ArrayT     (E.VarArray v)
       | E.AddrArrayT _ -> E.AddrArrayT (E.VarAddrArray v)
       | E.TidArrayT _  -> E.TidArrayT  (E.VarTidArray v)
+      | E.MarkT _      -> E.MarkT      (E.VarMark v)
 
 
     (* Normalization *)
@@ -155,6 +156,7 @@ module Make (SLK : TSLKExpression.S) =
         | E.VarCell v            -> E.VarCell v
         | E.Error                -> E.Error
         | E.MkCell _             -> raise(UnsupportedTSLKExpr(E.cell_to_str c))
+        | E.MkCellMark _         -> raise(UnsupportedTSLKExpr(E.cell_to_str c))
         | E.MkSLKCell (e,aa,tt)  -> E.MkSLKCell(norm_elem e, List.map norm_addr aa, List.map norm_tid tt)
         | E.MkSLCell _           -> raise(UnsupportedTSLKExpr(E.cell_to_str c))
         | E.CellLock _           -> raise(UnsupportedTSLKExpr(E.cell_to_str c))
@@ -164,7 +166,15 @@ module Make (SLK : TSLKExpression.S) =
         | E.CellAt (m,a)         -> E.CellAt (norm_mem m, norm_addr a)
         | E.CellArrayRd (E.VarArray v,t) -> E.CellArrayRd (E.VarArray v, norm_tid t)
         | E.CellArrayRd _        -> raise(UnsupportedTSLKExpr(E.cell_to_str c))
+        | E.CellMark _           -> raise(UnsupportedTSLKExpr(E.cell_to_str c))
         | E.UpdCellAddr (c,i,a)  -> E.UpdCellAddr (norm_cell c, norm_int i, norm_addr a)
+
+      and norm_mark (m:E.mark) : E.mark =
+        match m with
+        | E.VarMark _    -> raise(UnsupportedTSLKExpr(E.mark_to_str m))
+        | E.MarkTrue     -> raise(UnsupportedTSLKExpr(E.mark_to_str m))
+        | E.MarkFalse    -> raise(UnsupportedTSLKExpr(E.mark_to_str m))
+        | E.MarkOfCell _ -> raise(UnsupportedTSLKExpr(E.mark_to_str m))
 
       and norm_setth (s:E.setth) : E.setth =
         match s with
@@ -290,6 +300,7 @@ module Make (SLK : TSLKExpression.S) =
         | E.ArrayT arr         -> E.ArrayT (norm_arrays arr)
         | E.AddrArrayT aa      -> E.AddrArrayT (norm_addrarr aa)
         | E.TidArrayT tt       -> E.TidArrayT (norm_tidarr tt)
+        | E.MarkT m            -> E.MarkT (norm_mark m)
 
       and norm_expr (expr:E.expr_t) : E.expr_t =
         match expr with
@@ -457,6 +468,7 @@ module Make (SLK : TSLKExpression.S) =
       | E.Array     -> raise(UnsupportedSort(E.sort_to_str s))
       | E.AddrArray -> raise(UnsupportedSort(E.sort_to_str s))
       | E.TidArray  -> raise(UnsupportedSort(E.sort_to_str s))
+      | E.Mark      -> raise(UnsupportedSort(E.sort_to_str s))
       | E.Unknown   -> SLK.Unknown
 
 
@@ -526,6 +538,7 @@ module Make (SLK : TSLKExpression.S) =
       | E.PairT _       -> raise(UnsupportedTSLKExpr(E.term_to_str t))
       | E.AddrArrayT _  -> raise(UnsupportedTSLKExpr(E.term_to_str t))
       | E.TidArrayT _   -> raise(UnsupportedTSLKExpr(E.term_to_str t))
+      | E.MarkT _       -> raise(UnsupportedTSLKExpr(E.term_to_str t))
       | E.ArrayT a      -> arrays_to_tslk_term a
 
 
@@ -599,6 +612,7 @@ module Make (SLK : TSLKExpression.S) =
         E.VarCell v            -> SLK.VarCell (var_to_tslk_var v)
       | E.Error                -> SLK.Error
       | E.MkCell _             -> raise(UnsupportedTSLKExpr(E.cell_to_str c))
+      | E.MkCellMark _         -> raise(UnsupportedTSLKExpr(E.cell_to_str c))
       | E.MkSLKCell (e,aa,tt)  ->
           if List.length aa > SLK.k || List.length tt > SLK.k then
             begin
@@ -629,6 +643,7 @@ module Make (SLK : TSLKExpression.S) =
       | E.CellArrayRd (E.VarArray v,t) ->
           SLK.VarCell (var_to_tslk_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
       | E.CellArrayRd _        -> raise(UnsupportedTSLKExpr(E.cell_to_str c))
+      | E.CellMark _           -> raise(UnsupportedTSLKExpr(E.cell_to_str c))
       | E.UpdCellAddr _        -> raise(UnsupportedTSLKExpr(E.cell_to_str c))
 
 

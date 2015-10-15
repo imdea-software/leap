@@ -29,6 +29,7 @@ let rec sort_to_tll_sort (s:E.sort) : TLL.sort =
   | E.Array     -> raise(UnsupportedSort(E.sort_to_str s))
   | E.AddrArray -> raise(UnsupportedSort(E.sort_to_str s))
   | E.TidArray  -> raise(UnsupportedSort(E.sort_to_str s))
+  | E.Mark      -> TLL.Mark
   | E.Unknown   -> TLL.Unknown
 
 
@@ -45,6 +46,7 @@ and sort_to_expr_sort (s:TLL.sort) : E.sort =
   | TLL.Mem     -> E.Mem
   | TLL.Int     -> E.Int
   | TLL.Bool    -> E.Bool
+  | TLL.Mark    -> E.Mark
   | TLL.Unknown -> E.Unknown
 
 
@@ -101,7 +103,7 @@ and term_to_tll_term (t:E.term) : TLL.term =
     E.VarT v       -> TLL.VarT (variable_to_tll_var v)
   | E.SetT s       -> TLL.SetT (set_to_tll_set s)
   | E.ElemT e      -> TLL.ElemT (elem_to_tll_elem e)
-  | E.TidT t      -> TLL.TidT (tid_to_tll_tid t)
+  | E.TidT t       -> TLL.TidT (tid_to_tll_tid t)
   | E.AddrT a      -> TLL.AddrT (addr_to_tll_addr a)
   | E.CellT c      -> TLL.CellT (cell_to_tll_cell c)
   | E.SetThT st    -> TLL.SetThT (setth_to_tll_setth st)
@@ -114,6 +116,7 @@ and term_to_tll_term (t:E.term) : TLL.term =
   | E.PairT _      -> raise(UnsupportedTllExpr(E.term_to_str t))
   | E.AddrArrayT _ -> raise(UnsupportedTllExpr(E.term_to_str t))
   | E.TidArrayT _  -> raise(UnsupportedTllExpr(E.term_to_str t))
+  | E.MarkT m      -> TLL.MarkT (mark_to_tll_mark m)
   | E.ArrayT a     -> arrays_to_tll_term a
 
 
@@ -187,24 +190,37 @@ and addr_to_tll_addr (a:E.addr) : TLL.addr =
 
 and cell_to_tll_cell (c:E.cell) : TLL.cell =
   match c with
-    E.VarCell v      -> TLL.VarCell (variable_to_tll_var v)
-  | E.Error          -> TLL.Error
-  | E.MkCell (e,a,t) -> TLL.MkCell (elem_to_tll_elem e,
-                                       addr_to_tll_addr a,
-                                       tid_to_tll_tid t)
-  | E.MkSLKCell _    -> raise(UnsupportedTllExpr(E.cell_to_str c))
-  | E.MkSLCell _     -> raise(UnsupportedTllExpr(E.cell_to_str c))
+    E.VarCell v            -> TLL.VarCell (variable_to_tll_var v)
+  | E.Error                -> TLL.Error
+  | E.MkCell (e,a,t)       -> TLL.MkCell (elem_to_tll_elem e,
+                                          addr_to_tll_addr a,
+                                          tid_to_tll_tid t)
+  | E.MkCellMark (e,a,t,m) -> TLL.MkCellMark (elem_to_tll_elem e,
+                                              addr_to_tll_addr a,
+                                              tid_to_tll_tid t,
+                                              mark_to_tll_mark m)
+  | E.MkSLKCell _          -> raise(UnsupportedTllExpr(E.cell_to_str c))
+  | E.MkSLCell _           -> raise(UnsupportedTllExpr(E.cell_to_str c))
   (* Tll receives two arguments, while current epxression receives only one *)
   (* However, for the list examples, I think we will not need it *)
-  | E.CellLock (c,t) -> TLL.CellLock (cell_to_tll_cell c, tid_to_tll_tid t)
-  | E.CellLockAt _   -> raise(UnsupportedTllExpr(E.cell_to_str c))
-  | E.CellUnlock c   -> TLL.CellUnlock (cell_to_tll_cell c)
-  | E.CellUnlockAt _ -> raise(UnsupportedTllExpr(E.cell_to_str c))
-  | E.CellAt (m,a)   -> TLL.CellAt (mem_to_tll_mem m, addr_to_tll_addr a)
+  | E.CellLock (c,t)       -> TLL.CellLock (cell_to_tll_cell c, tid_to_tll_tid t)
+  | E.CellLockAt _         -> raise(UnsupportedTllExpr(E.cell_to_str c))
+  | E.CellUnlock c         -> TLL.CellUnlock (cell_to_tll_cell c)
+  | E.CellUnlockAt _       -> raise(UnsupportedTllExpr(E.cell_to_str c))
+  | E.CellAt (m,a)         -> TLL.CellAt (mem_to_tll_mem m, addr_to_tll_addr a)
   | E.CellArrayRd (E.VarArray v,t) ->
       TLL.VarCell (variable_to_tll_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
-  | E.CellArrayRd _  -> raise(UnsupportedTllExpr(E.cell_to_str c))
-  | E.UpdCellAddr _  -> raise(UnsupportedTllExpr(E.cell_to_str c))
+  | E.CellArrayRd _        -> raise(UnsupportedTllExpr(E.cell_to_str c))
+  | E.CellMark (c,m)       -> TLL.CellMark (cell_to_tll_cell c, mark_to_tll_mark m)
+  | E.UpdCellAddr _        -> raise(UnsupportedTllExpr(E.cell_to_str c))
+
+
+and mark_to_tll_mark (m:E.mark) : TLL.mark =
+  match m with
+    E.VarMark v    -> TLL.VarMark (variable_to_tll_var v)
+  | E.MarkTrue     -> TLL.MarkTrue
+  | E.MarkFalse    -> TLL.MarkFalse
+  | E.MarkOfCell c -> TLL.MarkOfCell (cell_to_tll_cell c)
 
 
 and setth_to_tll_setth (st:E.setth) : TLL.setth =

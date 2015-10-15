@@ -71,6 +71,7 @@ let pair_s    : string = "Pair"
 let array_s   : string = "Array"
 let addrarr_s : string = "AddrArr"
 let tidarr_s  : string = "TidArr"
+let mark_s    : string = "Mark"
 let unk_s     : string = "Unknown"
 let loc_s     : string = "Loc"
 
@@ -392,6 +393,7 @@ let conv_sort (s:Expression.sort) : sort =
   | Expr.Array     -> array_s
   | Expr.AddrArray -> addrarr_s
   | Expr.TidArray  -> tidarr_s
+  | Expr.Mark      -> mark_s
   | Expr.Unknown   -> unk_s
 
 

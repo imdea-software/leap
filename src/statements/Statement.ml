@@ -45,7 +45,7 @@ type term =
     VarT          of variable
   | SetT          of set
   | ElemT         of elem
-  | TidT         of tid
+  | TidT          of tid
   | AddrT         of addr
   | CellT         of cell
   | SetThT        of setth
@@ -59,6 +59,7 @@ type term =
   | ArrayT        of arrays
   | AddrArrayT    of addrarr
   | TidArrayT     of tidarr
+  | MarkT         of mark
 
 and eq =          term * term
 
@@ -151,6 +152,7 @@ and cell =
     VarCell       of variable
   | Error
   | MkCell        of elem * addr * tid
+  | MkCellMark    of elem * addr * tid * mark
   | MkSLKCell     of elem * addr list * tid list
   | MkSLCell      of elem * addrarr * tidarr * integer
   | CellLock      of cell
@@ -158,7 +160,14 @@ and cell =
   | CellLockAt    of cell * integer
   | CellUnlockAt  of cell * integer
   | CellAt        of mem * addr
+  | CellMark      of cell * mark
   | CellArrayRd   of arrays * tid
+
+and mark =
+    VarMark       of variable
+  | MarkTrue
+  | MarkFalse
+  | MarkOfCell    of cell
 
 and setth =
     VarSetTh      of variable
@@ -618,34 +627,49 @@ and setpair_to_str (loc:bool) (expr:setpair) : string =
 and cell_to_str (loc:bool) (expr:cell) : string =
   let apply_str f xs = String.concat "," (List.map f xs) in
   match expr with
-    VarCell v             -> variable_to_str loc v
+    VarCell v                  -> variable_to_str loc v
   | Error -> "Error"
-  | MkCell(data,addr,th)  -> sprintf "mkcell(%s,%s,%s)"
+  | MkCell(data,addr,th)       -> sprintf "mkcell(%s,%s,%s)"
+                                               (elem_to_str loc data)
+                                               (addr_to_str loc addr)
+                                               (tid_to_str loc th)
+  | MkCellMark(data,addr,th,m) -> sprintf "mkcell(%s,%s,%s,%s)"
                                            (elem_to_str loc data)
                                            (addr_to_str loc addr)
                                            (tid_to_str loc th)
-  | MkSLKCell(data,aa,tt) -> sprintf "mkcell(%s,[%s],[%s])"
-                                           (elem_to_str loc data)
-                                           (apply_str (addr_to_str loc) aa)
-                                           (apply_str (tid_to_str loc) tt)
-  | MkSLCell(data,aa,ta,l)-> sprintf "mkcell(%s,%s,%s,%s)"
-                                           (elem_to_str loc data)
-                                           (addrarr_to_str loc aa)
-                                           (tidarr_to_str loc ta)
-                                           (integer_to_str loc l)
-  | CellLock(cell)        -> sprintf "%s.lock" (cell_to_str loc cell)
-  | CellUnlock(cell)      -> sprintf "%s.unlock" (cell_to_str loc cell)
-  | CellLockAt(cell,l)    -> sprintf "%s.lock[%s]" (cell_to_str loc cell)
-                                                   (integer_to_str loc l)
-  | CellUnlockAt(cell,l)  -> sprintf "%s.unlock[%s]" (cell_to_str loc cell)
-                                                     (integer_to_str loc l)
-  | CellAt(mem,addr)      -> sprintf "rd(%s,%s)" (mem_to_str loc mem)
-                                                 (addr_to_str loc addr)
-  | CellArrayRd(arr,t)    -> sprintf "%s%s" (arrays_to_str loc arr)
-                                            (tid_to_str loc t)
+                                           (mark_to_str loc m)
+  | MkSLKCell(data,aa,tt)      -> sprintf "mkcell(%s,[%s],[%s])"
+                                             (elem_to_str loc data)
+                                             (apply_str (addr_to_str loc) aa)
+                                             (apply_str (tid_to_str loc) tt)
+  | MkSLCell(data,aa,ta,l)     -> sprintf "mkcell(%s,%s,%s,%s)"
+                                             (elem_to_str loc data)
+                                             (addrarr_to_str loc aa)
+                                             (tidarr_to_str loc ta)
+                                             (integer_to_str loc l)
+  | CellLock(cell)             -> sprintf "%s.lock" (cell_to_str loc cell)
+  | CellUnlock(cell)           -> sprintf "%s.unlock" (cell_to_str loc cell)
+  | CellLockAt(cell,l)         -> sprintf "%s.lock[%s]" (cell_to_str loc cell)
+                                                        (integer_to_str loc l)
+  | CellUnlockAt(cell,l)       -> sprintf "%s.unlock[%s]" (cell_to_str loc cell)
+                                                          (integer_to_str loc l)
+  | CellAt(mem,addr)           -> sprintf "rd(%s,%s)" (mem_to_str loc mem)
+                                                      (addr_to_str loc addr)
+  | CellMark(cell,m)           -> sprintf "%s.setmark(%s)" (cell_to_str loc cell)
+                                                           (mark_to_str loc m)
+  | CellArrayRd(arr,t)         -> sprintf "%s%s" (arrays_to_str loc arr)
+                                                 (tid_to_str loc t)
 
 
-and addr_to_str (loc:bool) (expr:addr) :string =
+and mark_to_str (loc:bool) (expr:mark) : string =
+  match expr with
+    VarMark v    -> variable_to_str loc v
+  | MarkTrue     -> "T"
+  | MarkFalse    -> "F"
+  | MarkOfCell c -> sprintf "%s.mark" (cell_to_str loc c)
+
+
+and addr_to_str (loc:bool) (expr:addr) : string =
   match expr with
     VarAddr v             -> variable_to_str loc v
   | Null                  -> "null"
@@ -737,6 +761,7 @@ and term_to_str_aux (loc:bool) (expr:term) : string =
   | ArrayT(arr)         -> (arrays_to_str loc arr)
   | AddrArrayT(arr)     -> (addrarr_to_str loc arr)
   | TidArrayT(arr)      -> (tidarr_to_str loc arr)
+  | MarkT(m)            -> (mark_to_str loc m)
 
 
 
@@ -843,6 +868,7 @@ let rec term_to_expr_term (t:term) : E.term =
   | ArrayT a     -> E.ArrayT     (array_to_expr_array a)
   | AddrArrayT a -> E.AddrArrayT (addrarray_to_expr_array a)
   | TidArrayT a  -> E.TidArrayT  (tidarray_to_expr_array a)
+  | MarkT m      -> E.MarkT      (mark_to_expr_mark m)
 
 
 and eq_to_expr_eq ((t1,t2):eq) : E.eq =
@@ -1012,6 +1038,10 @@ and cell_to_expr_cell (c:cell) : E.cell =
   | MkCell (e,a,t)       -> E.MkCell (elem_to_expr_elem e,
                                       addr_to_expr_addr a,
                                       tid_to_expr_tid t)
+  | MkCellMark (e,a,t,m) -> E.MkCellMark (elem_to_expr_elem e,
+                                          addr_to_expr_addr a,
+                                          tid_to_expr_tid t,
+                                          mark_to_expr_mark m)
   | MkSLKCell (e,aa,tt)  -> E.MkSLKCell (elem_to_expr_elem e,
                                           List.map addr_to_expr_addr aa,
                                           List.map tid_to_expr_tid tt)
@@ -1028,8 +1058,17 @@ and cell_to_expr_cell (c:cell) : E.cell =
   | CellUnlockAt (c,l)   -> E.CellUnlockAt (cell_to_expr_cell c,
                                             integer_to_expr_integer l)
   | CellAt (m,a)         -> E.CellAt (mem_to_expr_mem m, addr_to_expr_addr a)
+  | CellMark (c,m)       -> E.CellMark (cell_to_expr_cell c, mark_to_expr_mark m)
   | CellArrayRd (a,t)    -> E.CellArrayRd (array_to_expr_array a,
                                            tid_to_expr_th t) 
+
+
+and mark_to_expr_mark (m:mark) : E.mark =
+  match m with
+    VarMark v    -> E.VarMark (variable_to_expr_var v)
+  | MarkTrue     -> E.MarkTrue
+  | MarkFalse    -> E.MarkFalse
+  | MarkOfCell c -> E.MarkOfCell (cell_to_expr_cell c)
 
 
 and setth_to_expr_setth (s:setth) : E.setth =
@@ -1194,6 +1233,7 @@ let construct_var_from_sort (id:varId)
   | E.Array      -> ArrayT      (VarArray      v)
   | E.AddrArray  -> AddrArrayT  (VarAddrArray  v)
   | E.TidArray   -> TidArrayT   (VarTidArray   v)
+  | E.Mark       -> MarkT       (VarMark       v)
   | E.Unknown    -> VarT        v
 
 
@@ -1233,6 +1273,7 @@ let rec var_kind_term (kind:E.var_nature) (expr:term) : term list =
     | ArrayT(arr)       -> var_kind_array kind arr
     | AddrArrayT(arr)   -> var_kind_addrarr kind arr
     | TidArrayT(arr)    -> var_kind_tidarr kind arr
+    | MarkT(m)          -> var_kind_mark kind m
 
 
 and var_kind_expr (kind:E.var_nature) (e:expr_t) : term list =
@@ -1339,27 +1380,41 @@ and var_kind_th (kind:E.var_nature) (th:tid) : term list =
 and var_kind_cell (kind:E.var_nature) (c:cell) : term list =
   let fold f xs = List.fold_left (fun ys x -> (f kind x) @ ys) [] xs in
   match c with
-    VarCell v              -> if v.nature = kind then [CellT c] else []
-  | Error                  -> []
-  | MkCell(data,addr,th)   -> (var_kind_elem kind data) @
-                              (var_kind_addr kind addr) @
-                              (var_kind_th kind th)
-  | MkSLKCell(data,aa,tt)  -> (var_kind_elem kind data) @
-                              (fold var_kind_addr aa)   @
-                              (fold var_kind_th tt)
-  | MkSLCell(data,aa,ta,l) -> (var_kind_elem kind data)  @
-                              (var_kind_addrarr kind aa) @
-                              (var_kind_tidarr kind ta)  @
-                              (var_kind_int kind l)
-  | CellLock(cell)         -> (var_kind_cell kind cell)
-  | CellLockAt(cell,l)     -> (var_kind_cell kind cell) @
-                              (var_kind_int kind l)
-  | CellUnlock(cell)       -> (var_kind_cell kind cell)
-  | CellUnlockAt(cell,l)   -> (var_kind_cell kind cell) @
-                              (var_kind_int kind l)
-  | CellAt(mem,addr)       -> (var_kind_mem kind mem) @
-                              (var_kind_addr kind addr)
-  | CellArrayRd(arr,_)     -> (var_kind_array kind arr)
+    VarCell v                  -> if v.nature = kind then [CellT c] else []
+  | Error                      -> []
+  | MkCell(data,addr,th)       -> (var_kind_elem kind data) @
+                                  (var_kind_addr kind addr) @
+                                  (var_kind_th kind th)
+  | MkCellMark(data,addr,th,m) -> (var_kind_elem kind data) @
+                                  (var_kind_addr kind addr) @
+                                  (var_kind_th kind th)     @
+                                  (var_kind_mark kind m)
+  | MkSLKCell(data,aa,tt)      -> (var_kind_elem kind data) @
+                                  (fold var_kind_addr aa)   @
+                                  (fold var_kind_th tt)
+  | MkSLCell(data,aa,ta,l)     -> (var_kind_elem kind data)  @
+                                  (var_kind_addrarr kind aa) @
+                                  (var_kind_tidarr kind ta)  @
+                                  (var_kind_int kind l)
+  | CellLock(cell)             -> (var_kind_cell kind cell)
+  | CellLockAt(cell,l)         -> (var_kind_cell kind cell) @
+                                  (var_kind_int kind l)
+  | CellUnlock(cell)           -> (var_kind_cell kind cell)
+  | CellUnlockAt(cell,l)       -> (var_kind_cell kind cell) @
+                                  (var_kind_int kind l)
+  | CellAt(mem,addr)           -> (var_kind_mem kind mem) @
+                                  (var_kind_addr kind addr)
+  | CellMark(cell,m)           -> (var_kind_cell kind cell) @
+                                  (var_kind_mark kind m)
+  | CellArrayRd(arr,_)         -> (var_kind_array kind arr)
+
+
+and var_kind_mark (kind:E.var_nature) (m:mark) : term list =
+  match m with
+    VarMark v    -> if v.nature = kind then [MarkT m] else []
+  | MarkTrue     -> []
+  | MarkFalse    -> []
+  | MarkOfCell c -> (var_kind_cell kind c)
 
 
 and var_kind_setth (kind:E.var_nature) (s:setth) : term list =

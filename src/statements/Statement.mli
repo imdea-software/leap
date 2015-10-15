@@ -39,7 +39,7 @@ type term =
     VarT          of variable
   | SetT          of set
   | ElemT         of elem
-  | TidT         of tid
+  | TidT          of tid
   | AddrT         of addr
   | CellT         of cell
   | SetThT        of setth
@@ -53,6 +53,7 @@ type term =
   | ArrayT        of arrays
   | AddrArrayT    of addrarr
   | TidArrayT     of tidarr
+  | MarkT         of mark
 
 and eq =          term * term
 
@@ -145,6 +146,7 @@ and cell =
     VarCell       of variable
   | Error
   | MkCell        of elem * addr * tid
+  | MkCellMark    of elem * addr * tid * mark
   | MkSLKCell     of elem * addr list * tid list
   | MkSLCell      of elem * addrarr * tidarr * integer
   | CellLock      of cell
@@ -152,7 +154,14 @@ and cell =
   | CellLockAt    of cell * integer
   | CellUnlockAt  of cell * integer
   | CellAt        of mem * addr
+  | CellMark      of cell * mark
   | CellArrayRd   of arrays * tid
+
+and mark =
+    VarMark       of variable
+  | MarkTrue
+  | MarkFalse
+  | MarkOfCell    of cell
 
 and setth =
     VarSetTh      of variable

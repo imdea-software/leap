@@ -17,7 +17,7 @@ let rec sort_to_tsl_sort (s:E.sort) : SL.sort =
   match s with
     E.Set       -> SL.Set
   | E.Elem      -> SL.Elem
-  | E.Tid      -> SL.Tid
+  | E.Tid       -> SL.Tid
   | E.Addr      -> SL.Addr
   | E.Cell      -> SL.Cell
   | E.SetTh     -> SL.SetTh
@@ -32,6 +32,7 @@ let rec sort_to_tsl_sort (s:E.sort) : SL.sort =
   | E.Array     -> raise(UnsupportedSort(E.sort_to_str s))
   | E.AddrArray -> SL.AddrArray
   | E.TidArray  -> SL.TidArray
+  | E.Mark      -> raise(UnsupportedSort(E.sort_to_str s))
   | E.Unknown   -> SL.Unknown
 
 
@@ -100,7 +101,7 @@ and term_to_tsl_term (t:E.term) : SL.term =
     E.VarT v        -> SL.VarT (var_to_tsl_var v)
   | E.SetT s        -> SL.SetT (set_to_tsl_set s)
   | E.ElemT e       -> SL.ElemT (elem_to_tsl_elem e)
-  | E.TidT t       -> SL.TidT (tid_to_tsl_tid t)
+  | E.TidT t        -> SL.TidT (tid_to_tsl_tid t)
   | E.AddrT a       -> SL.AddrT (addr_to_tsl_addr a)
   | E.CellT c       -> SL.CellT (cell_to_tsl_cell c)
   | E.SetThT st     -> SL.SetThT (setth_to_tsl_setth st)
@@ -113,6 +114,7 @@ and term_to_tsl_term (t:E.term) : SL.term =
   | E.PairT _       -> raise(UnsupportedTslExpr(E.term_to_str t))
   | E.AddrArrayT aa -> SL.AddrArrayT (addrarr_to_tsl_addrarr aa)
   | E.TidArrayT tt  -> SL.TidArrayT (tidarr_to_tsl_tidarr tt)
+  | E.MarkT _       -> raise(UnsupportedTslExpr(E.term_to_str t))
   | E.ArrayT a      -> arrays_to_tsl_term a
 
 
@@ -206,6 +208,7 @@ and cell_to_tsl_cell (c:E.cell) : SL.cell =
     E.VarCell v            -> SL.VarCell (var_to_tsl_var v)
   | E.Error                -> SL.Error
   | E.MkCell _             -> raise(UnsupportedTslExpr(E.cell_to_str c))
+  | E.MkCellMark _         -> raise(UnsupportedTslExpr(E.cell_to_str c))
   | E.MkSLKCell _          -> raise(UnsupportedTslExpr(E.cell_to_str c))
   | E.MkSLCell (e,aa,tt,l) -> SL.MkCell (elem_to_tsl_elem e,
                                              addrarr_to_tsl_addrarr aa,
@@ -224,6 +227,7 @@ and cell_to_tsl_cell (c:E.cell) : SL.cell =
   | E.CellArrayRd (E.VarArray v,t) ->
       SL.VarCell (var_to_tsl_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
   | E.CellArrayRd _        -> raise(UnsupportedTslExpr(E.cell_to_str c))
+  | E.CellMark _           -> raise(UnsupportedTslExpr(E.cell_to_str c))
   | E.UpdCellAddr _        -> raise(UnsupportedTslExpr(E.cell_to_str c))
 
 
