@@ -62,7 +62,9 @@ struct
   and is_var_int = function
       TllExp.VarInt(_) -> true
     | _              -> false
-
+  and is_var_mark = function
+      TllExp.VarMark(_) -> true
+    | _                 -> false
   and is_var_cell = function
       TllExp.VarCell(_) -> true
     | _               -> false
@@ -86,7 +88,7 @@ struct
       TllExp.VarT(_)     -> true
     | TllExp.SetT(s)     -> is_var_set s
     | TllExp.ElemT(e)    -> is_var_elem e
-    | TllExp.TidT(t)    -> is_var_thid t
+    | TllExp.TidT(t)     -> is_var_thid t
     | TllExp.AddrT(a)    -> is_var_addr a
     | TllExp.CellT(c)    -> is_var_cell c
     | TllExp.SetThT(st)  -> is_var_setth st
@@ -94,6 +96,7 @@ struct
     | TllExp.PathT(p)    -> is_var_path p
     | TllExp.MemT(m)     -> is_var_mem m
     | TllExp.IntT(i)     -> is_var_int i
+    | TllExp.MarkT(m)    -> is_var_mark m
     | TllExp.VarUpdate _ -> false (* ALE: Not sure if OK *)
   
   (* 
@@ -130,12 +133,16 @@ struct
   and is_constant_int  = function
         TllExp.IntVal _ -> true
       | _        -> false
+  and is_constant_mark  = function
+        TllExp.MarkTrue -> true
+      | TllExp.MarkFalse -> true
+      | _        -> false
   
   let is_constant_term = function
         TllExp.VarT(_)     -> false
       | TllExp.SetT(s)     -> is_constant_set s
       | TllExp.ElemT(e)    -> is_constant_elem e
-      | TllExp.TidT(th)   -> is_constant_thid th
+      | TllExp.TidT(th)    -> is_constant_thid th
       | TllExp.AddrT(a)    -> is_constant_addr a
       | TllExp.CellT(c)    -> is_constant_cell c
       | TllExp.SetThT(st)  -> is_constant_setth st
@@ -143,6 +150,7 @@ struct
       | TllExp.PathT(p)    -> is_constant_path p
       | TllExp.MemT(m)     -> is_constant_mem m
       | TllExp.IntT(i)     -> is_constant_int i
+      | TllExp.MarkT(m)    -> is_constant_mark m
       | TllExp.VarUpdate _ -> false
   
   (* 
@@ -158,6 +166,7 @@ struct
   and is_flat_cell    c  = is_var_cell    c  || is_constant_cell    c
   and is_flat_mem     m  = is_var_mem     m  || is_constant_mem     m
   and is_flat_int     i  = is_var_int     i  || is_constant_int     i
+  and is_flat_mark    m  = is_var_mark    m  || is_constant_mark    m
   and is_flat_path    p  = is_var_path    p  || is_constant_path    p
   
   let is_flat_term t =
@@ -173,6 +182,7 @@ struct
       | TllExp.PathT  p    -> is_flat_path p
       | TllExp.MemT   m    -> is_flat_mem m
       | TllExp.IntT   i    -> is_flat_int i
+      | TllExp.MarkT  m    -> is_flat_mark m
       | TllExp.VarUpdate _ -> false
   
   

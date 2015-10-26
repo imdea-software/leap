@@ -55,6 +55,7 @@ struct
   let int_s     : string = "Int"
   let unk_s     : string = "Unknown"
   let loc_s     : string = "Loc"
+  let mark_s    : string = "Mark"
 
 
   (* Configuration *)
@@ -178,10 +179,15 @@ struct
     match c with
         Expr.VarCell v      -> variable_invocation_to_str v
       | Expr.Error          -> "error"
-      | Expr.MkCell(e,a,th) -> Printf.sprintf "(mkcell %s %s %s)"
+      | Expr.MkCell(e,a,th) -> Printf.sprintf "(mkcell %s %s %s markFalse)"
                                         (elemterm_to_str e)
                                         (addrterm_to_str a)
                                         (tidterm_to_str th)
+      | Expr.MkCellMark(e,a,th,m) -> Printf.sprintf "(mkcell %s %s %s %s)"
+                                        (elemterm_to_str e)
+                                        (addrterm_to_str a)
+                                        (tidterm_to_str th)
+                                        (markterm_to_str m)
       | Expr.CellLock(c,th) -> Printf.sprintf "(cell_lock %s %s)"
                                         (cellterm_to_str c)
                                         (tidterm_to_str th)
@@ -190,6 +196,18 @@ struct
       | Expr.CellAt(m,a)     -> Printf.sprintf "(select %s %s)"
                                         (memterm_to_str m)
                                         (addrterm_to_str a)
+      | Expr.CellMark(c,m) -> Printf.sprintf "(cell_mark %s %s)"
+                                      (cellterm_to_str c)
+                                      (markterm_to_str m)
+
+
+  and markterm_to_str (m:Expr.mark) : string =
+    match m with
+        Expr.VarMark v        -> variable_invocation_to_str v
+      | Expr.MarkTrue         -> "markTrue"
+      | Expr.MarkFalse        -> "markFalse"
+      | Expr.MarkOfCell c     -> Printf.sprintf "(marked %s)"
+                                    (cellterm_to_str c)
 
 
   and setthterm_to_str (sth:Expr.setth) : string =
@@ -280,21 +298,26 @@ struct
 
   and term_to_str (t:Expr.term) : string =
     match t with
-      Expr.VarT  v           -> variable_invocation_to_str v
-    | Expr.SetT  s           -> setterm_to_str s
-    | Expr.ElemT   e         -> elemterm_to_str e
-    | Expr.TidT   th        -> tidterm_to_str th
-    | Expr.AddrT   a         -> addrterm_to_str a
-    | Expr.CellT   c         -> cellterm_to_str c
-    | Expr.SetThT sth        -> setthterm_to_str sth
-    | Expr.SetElemT se       -> setelemterm_to_str se
-    | Expr.PathT   p         -> pathterm_to_str p
-    | Expr.MemT  m           -> memterm_to_str m
-    | Expr.IntT  i           -> intterm_to_str i
+      Expr.VarT v          -> variable_invocation_to_str v
+    | Expr.SetT s          -> setterm_to_str s
+    | Expr.ElemT e         -> elemterm_to_str e
+    | Expr.TidT th         -> tidterm_to_str th
+    | Expr.AddrT a         -> addrterm_to_str a
+    | Expr.CellT c         -> cellterm_to_str c
+    | Expr.SetThT sth      -> setthterm_to_str sth
+    | Expr.SetElemT se     -> setelemterm_to_str se
+    | Expr.PathT p         -> pathterm_to_str p
+    | Expr.MemT m          -> memterm_to_str m
+    | Expr.IntT i          -> intterm_to_str i
+    | Expr.MarkT m         -> markterm_to_str m
     | Expr.VarUpdate(v,th,t) -> varupdate_to_str v th t
 
 
   (********************** Preamble Declarations ***********************)
+
+  let z3_mark_preamble (buf:B.t) : unit =
+    B.add_string buf
+      ("(declare-datatypes () ((" ^mark_s^ " markTrue markFalse)))\n")
 
 
   let z3_addr_preamble (buf:B.t) (num_addr:int) : unit =
@@ -386,7 +409,7 @@ struct
   let z3_cell_preamble (buf:B.t) : unit =
     B.add_string buf
       ( "(declare-datatypes () ((" ^cell_s^ " (mkcell (data " ^elem_s^
-        ") (next " ^addr_s^ ") (lock " ^tid_s^ ")))))\n")
+        ") (next " ^addr_s^ ") (lock " ^tid_s^ ") (marked " ^mark_s^ ")))))\n")
 
 
   let z3_heap_preamble (buf:B.t) : unit =
@@ -677,16 +700,22 @@ struct
        "  (if (islockedpos h p 0) (unionth (singletonth (getlockat h p 0)) (lockset1 h p)) (lockset1 h p)))\n")
 
 
-  let z3_cell_lock (buf:B.t) : unit =
+  let z3_cell_lock_def (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun cell_lock ((c " ^cell_s^ ") (t " ^tid_s^ ")) " ^cell_s^ "\n" ^
-       "  (mkcell (data c) (next c) t))\n")
+       "  (mkcell (data c) (next c) t (marked c)))\n")
 
 
   let z3_cell_unlock_def (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun cell_unlock ((c " ^cell_s^ ")) " ^cell_s^ "\n" ^
-       "  (mkcell (data c) (next c) NoThread))\n")
+       "  (mkcell (data c) (next c) NoThread (marked c)))\n")
+
+
+  let z3_cell_mark_def (buf:B.t) : unit =
+    B.add_string buf
+      ("(define-fun cell_mark ((c " ^cell_s^ ") (m " ^mark_s^ ")) " ^cell_s^ "\n" ^
+       "  (mkcell (data c) (next c) (lock t) m))\n")
 
 
   let z3_epsilon_def (buf:B.t) : unit =
@@ -1129,6 +1158,9 @@ struct
                   (req_sorts:Expr.sort list) : unit =
     B.add_string buf ";; TLL Z3 Translation\n";
     if (List.exists (fun s ->
+          s=Expr.Cell || s=Expr.Mem
+        ) req_sorts) then z3_mark_preamble buf ;
+    if (List.exists (fun s ->
           s=Expr.Addr || s=Expr.Cell || s=Expr.Path || s=Expr.Set || s=Expr.Mem
         ) req_sorts) then z3_addr_preamble buf num_addr ;
     if (List.exists (fun s ->
@@ -1161,7 +1193,7 @@ struct
                            Expr.Set     -> set_s
                          | Expr.Elem    -> elem_s
                          | Expr.Addr    -> addr_s
-                         | Expr.Tid    -> tid_s
+                         | Expr.Tid     -> tid_s
                          | Expr.Cell    -> cell_s
                          | Expr.SetTh   -> setth_s
                          | Expr.SetElem -> setelem_s
@@ -1169,6 +1201,7 @@ struct
                          | Expr.Mem     -> heap_s
                          | Expr.Int     -> int_s
                          | Expr.Bool    -> bool_s
+                         | Expr.Mark    -> mark_s
                          | Expr.Unknown -> unk_s in
     let s_str = sort_str s in
     let p_id = match Expr.V.scope v with
@@ -1275,8 +1308,9 @@ struct
     (* Cell *)
     if List.mem Expr.Cell req_sorts then
       begin
-        z3_cell_lock buf ;
-        z3_cell_unlock_def buf
+        z3_cell_lock_def buf ;
+        z3_cell_unlock_def buf;
+        z3_cell_mark_def buf
       end;
     (* Heap *)
     if List.mem Expr.Mem req_sorts then

@@ -52,6 +52,9 @@ struct
 
   (************************* Declarations **************************)
 
+  let yices_mark_preamble (buf:B.t) : unit =
+    B.add_string buf ("(define-type " ^mark_s^ " (scalar markTrue markFalse")
+
   let yices_addr_preamble (buf:B.t) (num_addr:int) : unit =
     B.add_string buf ("(define-type " ^addr_s^ " (scalar null") ;
 
@@ -92,13 +95,16 @@ struct
     B.add_string buf (
        "(define-type " ^cell_s^ " (record data::" ^elem_s^ " " ^
        "                          next::" ^addr_s^ " " ^
-       "                          lock::" ^tid_s^ "))\n"   ^
+       "                          lock::" ^tid_s^ " " ^
+       "                          marked::" ^mark_s^ "))\n"   ^
        "(define next::(-> " ^cell_s^ " " ^addr_s^ ") " ^
        "  (lambda (c::" ^cell_s^ ") (select c next)))\n" ^
        "(define data::(-> " ^cell_s^ " " ^elem_s^ ") " ^
        "  (lambda (c::" ^cell_s^ ") (select c data)))\n" ^
        "(define lock::(-> " ^cell_s^ " " ^tid_s^ ")     " ^
-       "  (lambda (c::" ^cell_s^ ") (select c lock)))\n" )
+       "  (lambda (c::" ^cell_s^ ") (select c lock)))\n" ^
+       "(define marked::(-> " ^cell_s^ " " ^mark_s^ ")     " ^
+       "  (lambda (c::" ^cell_s^ ") (select c marked)))\n" )
 
 
   let yices_heap_preamble (buf:B.t) : unit =
@@ -186,6 +192,15 @@ struct
             ^ aa_i ^ ")))")
       done ;
       B.add_string buf ")))\n"
+
+
+  let yices_markofcell_def (buf:B.t) : unit =
+    B.add_string buf
+      ("(define markofcell::(-> " ^cell_s^ " " ^mark_s^ ")\n" ^
+       "    (lambda (c::" ^tid_s^ ")\n" ^
+       "        (lambda (r::" ^tid_s^ ")\n" ^
+       "            (= t r))))\n")
+
 
 
   let yices_singletonth_def (buf:B.t) : unit =
@@ -433,18 +448,25 @@ struct
 
 
 
-  let yices_cell_lock (buf:B.t) : unit =
+  let yices_cell_lock_def (buf:B.t) : unit =
     B.add_string buf
       ("(define cell_lock::(-> " ^cell_s^ " " ^tid_s^ " " ^cell_s^ ")\n" ^
        "  (lambda (c::" ^cell_s^ " t::" ^tid_s^ ")\n" ^
-       "    (mkcell (data c) (next c) t)))\n")
+       "    (mkcellm (data c) (next c) t (marked c))))\n")
 
 
   let yices_cell_unlock_def (buf:B.t) : unit =
     B.add_string buf
       ("(define cell_unlock::(-> " ^cell_s^ " " ^cell_s^ ")\n" ^
        "  (lambda (c::" ^cell_s^ ")\n" ^
-       "    (mkcell (data c) (next c) NoThread)))\n")
+       "    (mkcellm (data c) (next c) NoThread (marked c))))\n")
+
+
+  let yices_cell_mark_def (buf:B.t) : unit =
+    B.add_string buf
+      ("(define cell_mark::(-> " ^cell_s^ " " ^mark_s^ " " ^cell_s^ ")\n" ^
+       "  (lambda (c::" ^cell_s^ " m::" ^mark_s^ ")\n" ^
+       "    (mkcellm (data c) (next c) (lock t) m)))\n")
 
 
   let yices_epsilon_def (buf:B.t) : unit =
@@ -597,7 +619,10 @@ struct
     B.add_string buf
       ( "(define mkcell::(-> " ^elem_s^ " " ^addr_s^ " " ^tid_s^ " " ^cell_s^ ")\n" ^
         "   (lambda (e::" ^elem_s^ "  a::" ^addr_s^ " k::" ^tid_s^ ")\n" ^
-        "       (mk-record data::e next::a lock::k)))\n" )
+        "       (mk-record data::e next::a lock::k marked::markFalse)))\n" ^
+        "(define mkcellm::(-> " ^elem_s^ " " ^addr_s^ " " ^tid_s^ " " ^mark_s^ " " ^cell_s^ ")\n" ^
+        "   (lambda (e::" ^elem_s^ "  a::" ^addr_s^ " k::" ^tid_s^ " m::" ^mark_s^ ")\n" ^
+        "       (mk-record data::e next::a lock::k marked::m)))\n")
 
 
   let yices_isheap_def (buf:B.t) : unit =
@@ -815,6 +840,9 @@ struct
   let yices_preamble buf num_addr num_tid num_elem req_sorts =
     B.add_string buf ";; TLL Yices Translation";
     if (List.exists (fun s ->
+          s=Expr.Cell || s=Expr.Mem
+        ) req_sorts) then yices_mark_preamble buf ;
+    if (List.exists (fun s ->
           s=Expr.Addr || s=Expr.Cell || s=Expr.Path || s=Expr.Set || s=Expr.Mem
         ) req_sorts) then yices_addr_preamble buf num_addr ;
     if (List.exists (fun s ->
@@ -848,8 +876,9 @@ struct
     if List.mem Expr.Cell req_sorts then
       begin
         yices_mkcell_def buf ;
-        yices_cell_lock buf ;
-        yices_cell_unlock_def buf
+        yices_cell_lock_def buf ;
+        yices_cell_unlock_def buf;
+        yices_cell_mark_def buf
       end;
     (* Heap *)
     if List.mem Expr.Mem req_sorts then
@@ -1114,7 +1143,7 @@ struct
                                               (elemterm_to_str e)
                                               (addrterm_to_str a)
                                               (tidterm_to_str th)
-                                              (mark_to_str m)
+                                              (markterm_to_str m)
       | Expr.CellLock(c,th) -> Printf.sprintf "(cell_lock %s %s)"
                                         (cellterm_to_str c)
                                         (tidterm_to_str th)
@@ -1124,8 +1153,16 @@ struct
                                         (memterm_to_str m)
                                         (addrterm_to_str a)
       | Expr.CellMark(c,m) -> Printf.sprintf "(cell_mark %s %s)"
-                                      (cell_to_str c)
-                                      (mark_to_str m)
+                                      (cellterm_to_str c)
+                                      (markterm_to_str m)
+
+  and markterm_to_str (m:Expr.mark) : string =
+    match m with
+        Expr.VarMark v        -> variable_invocation_to_str v
+      | Expr.MarkTrue         -> "markTrue"
+      | Expr.MarkFalse        -> "markFalse"
+      | Expr.MarkOfCell c     -> Printf.sprintf "(marked %s)"
+                                    (cellterm_to_str c)
 
   and setthterm_to_str (sth:Expr.setth) : string =
     match sth with
@@ -1227,6 +1264,7 @@ struct
     | Expr.PathT   p         -> pathterm_to_str p
     | Expr.MemT  m           -> memterm_to_str m
     | Expr.IntT  i           -> intterm_to_str i
+    | Expr.MarkT m           -> markterm_to_str m
     | Expr.VarUpdate(v,th,t) -> varupdate_to_str v th t
 
 

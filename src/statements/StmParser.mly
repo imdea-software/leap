@@ -505,6 +505,7 @@ let check_and_get_sort (id:string) : E.sort =
             | E.Array     -> Stm.ArrayT     (Stm.VarArray     modif_v)
             | E.AddrArray -> Stm.AddrArrayT (Stm.VarAddrArray modif_v)
             | E.TidArray  -> Stm.TidArrayT  (Stm.VarTidArray  modif_v)
+            | E.Mark      -> Stm.MarkT      (Stm.VarMark      modif_v)
             | E.Unknown   -> Stm.VarT       modif_v
           end
     | _                   -> exp

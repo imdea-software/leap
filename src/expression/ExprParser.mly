@@ -906,7 +906,7 @@ formula :
       }
 
 
-/* THREAD VARSS */
+/* THREAD VARS */
 
 
 opt_th_param:

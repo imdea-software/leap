@@ -45,6 +45,7 @@ struct
   let heap_s    : string = "Heap"
   let int_s     : string = "Int"
   let unk_s     : string = "Unknown"
+  let mark_s    : string = "Mark"
   let loc_s     : string = "Loc"
 
 
@@ -55,6 +56,7 @@ struct
   let addr_tbl = Hashtbl.create 10
   let elem_tbl = Hashtbl.create 10
   let tid_tbl = Hashtbl.create 10
+  let mark_tbl = Hashtbl.create 10
   let getp_tbl = Hashtbl.create 10
   let locked_tbl = Hashtbl.create 10
 
@@ -64,6 +66,7 @@ struct
     Hashtbl.clear addr_tbl;
     Hashtbl.clear elem_tbl;
     Hashtbl.clear tid_tbl;
+    Hashtbl.clear mark_tbl;
     Hashtbl.clear getp_tbl;
     Hashtbl.clear locked_tbl
 
@@ -112,8 +115,21 @@ struct
     ("(lock " ^expr^ ")")
 
 
+  let marked(expr:string) : string =
+    Hashtbl.add mark_tbl expr ();
+    ("(marked " ^expr^ ")")
+
+
+  let smt_mark_preamble (buf:B.t) : unit =
+    B.add_string buf ("(define-sort " ^mark_s^ " () " ^int_s^ ")\n");
+    B.add_string buf
+      ("(define-fun markFalse () " ^mark_s^ " 0)\n");
+    B.add_string buf
+      ("(define-fun markTrue () " ^mark_s^ " 1)\n");
+    B.add_string buf ("(define-fun ismark ((x " ^mark_s^ ")) " ^bool_s^ " (or (= x 0) (= x 1)))\n")
+
+
   let smt_addr_preamble (buf:B.t) (num_addr:int) : unit =
-    B.add_string buf ("(set-logic QF_AUFLIA)\n");
     B.add_string buf ("(define-sort " ^addr_s^ " () " ^int_s^ ")\n");
     GM.sm_decl_const sort_map "max_address" int_s ;
     B.add_string buf
@@ -168,9 +184,11 @@ struct
     B.add_string buf
       ("(declare-sort " ^cell_s^ " 0)\n\
         (declare-fun mkcell (" ^elem_s^ " " ^addr_s^ " " ^tid_s^ ") " ^cell_s^ ")\n\
+        (declare-fun mkcellm (" ^elem_s^ " " ^addr_s^ " " ^tid_s^ " " ^mark_s^ ") " ^cell_s^ ")\n\
         (declare-fun data (" ^cell_s^ ") " ^elem_s^ ")\n\
         (declare-fun next (" ^cell_s^ ") " ^addr_s^ ")\n\
-        (declare-fun lock (" ^cell_s^ ") " ^tid_s^ ")\n")
+        (declare-fun lock (" ^cell_s^ ") " ^tid_s^ ")\n\
+        (declare-fun marked (" ^cell_s^ ") " ^mark_s^ ")\n")
 
 
   let smt_heap_preamble (buf:B.t) : unit =
@@ -571,7 +589,7 @@ struct
        "  (ite (islockedpos h p 0) (unionth (singletonth (getlockat h p 0)) (lockset1 h p)) (lockset1 h p)))\n")
 
 
-  let smt_cell_lock (buf:B.t) : unit =
+  let smt_cell_lock_def (buf:B.t) : unit =
     B.add_string buf
       ("(declare-fun cell_lock (" ^cell_s^ " " ^tid_s^ ") " ^cell_s^ ")\n")
 
@@ -579,6 +597,11 @@ struct
   let smt_cell_unlock_def (buf:B.t) : unit =
     B.add_string buf
       ("(declare-fun cell_unlock (" ^cell_s^ ") " ^cell_s^ ")\n")
+
+
+  let smt_cell_mark_def (buf:B.t) : unit =
+    B.add_string buf
+      ("(declare-fun cell_mark (" ^cell_s^ " " ^mark_s^ ") " ^cell_s^ ")\n")
 
 
   let smt_epsilon_def (buf:B.t) (num_addr:int) : unit =
@@ -950,7 +973,11 @@ struct
 
 
   let smt_preamble buf num_addr num_tid num_elem req_sorts =
+    B.add_string buf ("(set-logic QF_AUFLIA)\n");
     B.add_string buf ";; TLL SMTLib Translation\n";
+    if (List.exists (fun s ->
+          s=Expr.Cell || s=Expr.Mem
+        ) req_sorts) then smt_mark_preamble buf ;
     if (List.exists (fun s ->
           s=Expr.Addr || s=Expr.Cell || s=Expr.Path || s=Expr.Set || s=Expr.Mem
         ) req_sorts) then smt_addr_preamble buf num_addr ;
@@ -982,8 +1009,9 @@ struct
     if List.mem Expr.Cell req_sorts then
       begin
         smt_mkcell_def buf ;
-        smt_cell_lock buf ;
-        smt_cell_unlock_def buf
+        smt_cell_lock_def buf ;
+        smt_cell_unlock_def buf;
+        smt_cell_mark_def buf
       end;
     (* Heap *)
     if List.mem Expr.Mem req_sorts then
@@ -1085,7 +1113,7 @@ struct
                            Expr.Set     -> set_s
                          | Expr.Elem    -> elem_s
                          | Expr.Addr    -> addr_s
-                         | Expr.Tid    -> tid_s
+                         | Expr.Tid     -> tid_s
                          | Expr.Cell    -> cell_s
                          | Expr.SetTh   -> setth_s
                          | Expr.SetElem -> setelem_s
@@ -1093,6 +1121,7 @@ struct
                          | Expr.Mem     -> heap_s
                          | Expr.Int     -> int_s
                          | Expr.Bool    -> bool_s
+                         | Expr.Mark    -> mark_s
                          | Expr.Unknown -> unk_s in
     let s_str = sort_str s in
     let p_id = match Expr.V.scope v with
@@ -1281,6 +1310,11 @@ struct
                                         (elemterm_to_str e)
                                         (addrterm_to_str a)
                                         (tidterm_to_str th)
+      | Expr.MkCellMark(e,a,th,m) -> Printf.sprintf "(mkcell %s %s %s %s)"
+                                        (elemterm_to_str e)
+                                        (addrterm_to_str a)
+                                        (tidterm_to_str th)
+                                        (markterm_to_str m)
       | Expr.CellLock(c,th) -> Hashtbl.add cell_tbl c ();
                                Printf.sprintf "(cell_lock %s %s)"
                                         (cellterm_to_str c)
@@ -1291,6 +1325,18 @@ struct
       | Expr.CellAt(m,a)    -> Printf.sprintf "(select %s %s)"
                                         (memterm_to_str m)
                                         (addrterm_to_str a)
+      | Expr.CellMark(c,m) -> Printf.sprintf "(cell_mark %s %s)"
+                                      (cellterm_to_str c)
+                                      (markterm_to_str m)
+
+
+  and markterm_to_str (m:Expr.mark) : string =
+    match m with
+        Expr.VarMark v        -> variable_invocation_to_str v
+      | Expr.MarkTrue         -> "markTrue"
+      | Expr.MarkFalse        -> "markFalse"
+      | Expr.MarkOfCell c     -> Printf.sprintf "(marked %s)"
+                                    (cellterm_to_str c)
 
 
   and setthterm_to_str (sth:Expr.setth) : string =
@@ -1382,17 +1428,18 @@ struct
 
   and term_to_str (t:Expr.term) : string =
     match t with
-      Expr.VarT  v           -> variable_invocation_to_str v
-    | Expr.SetT  s           -> setterm_to_str s
-    | Expr.ElemT   e         -> elemterm_to_str e
-    | Expr.TidT   th        -> tidterm_to_str th
-    | Expr.AddrT   a         -> addrterm_to_str a
-    | Expr.CellT   c         -> cellterm_to_str c
-    | Expr.SetThT sth        -> setthterm_to_str sth
-    | Expr.SetElemT se       -> setelemterm_to_str se
-    | Expr.PathT   p         -> pathterm_to_str p
-    | Expr.MemT  m           -> memterm_to_str m
-    | Expr.IntT  i           -> intterm_to_str i
+      Expr.VarT v          -> variable_invocation_to_str v
+    | Expr.SetT s          -> setterm_to_str s
+    | Expr.ElemT e         -> elemterm_to_str e
+    | Expr.TidT th         -> tidterm_to_str th
+    | Expr.AddrT a         -> addrterm_to_str a
+    | Expr.CellT c         -> cellterm_to_str c
+    | Expr.SetThT sth      -> setthterm_to_str sth
+    | Expr.SetElemT se     -> setelemterm_to_str se
+    | Expr.PathT p         -> pathterm_to_str p
+    | Expr.MemT m          -> memterm_to_str m
+    | Expr.IntT i          -> intterm_to_str i
+    | Expr.MarkT m         -> markterm_to_str m
     | Expr.VarUpdate(v,th,t) -> varupdate_to_str v th t
 
 
@@ -1600,6 +1647,10 @@ struct
     ("(assert (istid (lock " ^t_expr^ ")))\n")
 
 
+  let process_mark (t_expr:string) : string =
+    ("(assert (ismark (marked " ^t_expr^ ")))\n")
+
+
   let process_elem (e_expr:string) : string =
     ("(assert (iselem (data " ^e_expr^ ")))\n")
 
@@ -1618,6 +1669,13 @@ struct
           ("(assert (and (= " ^data ("(cell_unlock " ^c_str^ ")")^ " " ^data c_str^ ")\n" ^
            "             (= " ^next ("(cell_unlock " ^c_str^ ")")^ " " ^next c_str^ ")\n" ^
            "             (= " ^lock ("(cell_unlock " ^c_str^ ")")^ " " ^notid_str^ ")))\n")
+    | Expr.CellMark (c,m) ->
+        let c_str = cellterm_to_str c in
+        let m_str = markterm_to_str m in
+          ("(assert (and (= " ^data ("(cell_mark " ^c_str^ " " ^m_str^ ")")^ " " ^data c_str^ ")\n" ^
+           "             (= " ^next ("(cell_mark " ^c_str^ " " ^m_str^ ")")^ " " ^next c_str^ ")\n" ^
+           "             (= " ^lock ("(cell_mark " ^c_str^ " " ^m_str^ ")")^ " " ^lock c_str^ ")\n" ^
+           "             (= " ^marked ("(cell_mark " ^c_str^ " " ^m_str^ ")")^ " " ^m_str^ ")))\n")
     | Expr.MkCell (e,a,t) ->
         let e_str = elemterm_to_str e in
         let a_str = addrterm_to_str a in
@@ -1626,6 +1684,16 @@ struct
           ("(assert (and (= " ^data ("(" ^mkcell_str^ ")")^ " " ^e_str^ ")\n" ^
            "             (= " ^next ("(" ^mkcell_str^ ")")^ " " ^a_str^ ")\n" ^
            "             (= " ^lock ("(" ^mkcell_str^ ")")^ " " ^t_str^ ")))\n")
+    | Expr.MkCellMark (e,a,t,m) ->
+        let e_str = elemterm_to_str e in
+        let a_str = addrterm_to_str a in
+        let t_str = tidterm_to_str t in
+        let m_str = markterm_to_str m in
+        let mkcell_str = "mkcellm " ^e_str^ " " ^a_str^ " " ^t_str^ " " ^m_str  in
+          ("(assert (and (= " ^data ("(" ^mkcell_str^ ")")^ " " ^e_str^ ")\n" ^
+           "             (= " ^next ("(" ^mkcell_str^ ")")^ " " ^a_str^ ")\n" ^
+           "             (= " ^lock ("(" ^mkcell_str^ ")")^ " " ^t_str^ ")\n" ^
+           "             (= " ^marked ("(" ^mkcell_str^ ")")^ " " ^m_str^ ")))\n")
     | _ -> raise(UnexpectedCellTerm(Expr.cell_to_str c))
 
 
@@ -1656,6 +1724,7 @@ struct
     Hashtbl.iter (fun a _ -> B.add_string buf (process_addr a)) addr_tbl;
     Hashtbl.iter (fun e _ -> B.add_string buf (process_elem e)) elem_tbl;
     Hashtbl.iter (fun t _ -> B.add_string buf (process_tid t)) tid_tbl;
+    Hashtbl.iter (fun m _ -> B.add_string buf (process_mark m)) mark_tbl;
     Hashtbl.iter (fun c _ -> B.add_string buf (process_cell c)) cell_tbl;
     Hashtbl.iter (fun g _ -> B.add_string buf (process_getp num_addrs g)) getp_tbl;
     Hashtbl.iter (fun f _ -> B.add_string buf (process_locked num_addrs f)) locked_tbl
