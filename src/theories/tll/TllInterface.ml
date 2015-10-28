@@ -55,7 +55,7 @@ and build_term_var (v:E.V.t) : TLL.term =
   match (E.V.sort v) with
     E.Set   -> TLL.SetT   (TLL.VarSet   tll_v)
   | E.Elem  -> TLL.ElemT  (TLL.VarElem  tll_v)
-  | E.Tid  -> TLL.TidT  (TLL.VarTh    tll_v)
+  | E.Tid   -> TLL.TidT   (TLL.VarTh    tll_v)
   | E.Addr  -> TLL.AddrT  (TLL.VarAddr  tll_v)
   | E.Cell  -> TLL.CellT  (TLL.VarCell  tll_v)
   | E.SetTh -> TLL.SetThT (TLL.VarSetTh tll_v)
@@ -211,16 +211,15 @@ and cell_to_tll_cell (c:E.cell) : TLL.cell =
   | E.CellArrayRd (E.VarArray v,t) ->
       TLL.VarCell (variable_to_tll_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
   | E.CellArrayRd _        -> raise(UnsupportedTllExpr(E.cell_to_str c))
-  | E.CellMark (c,m)       -> TLL.CellMark (cell_to_tll_cell c, mark_to_tll_mark m)
   | E.UpdCellAddr _        -> raise(UnsupportedTllExpr(E.cell_to_str c))
 
 
 and mark_to_tll_mark (m:E.mark) : TLL.mark =
   match m with
-    E.VarMark v    -> TLL.VarMark (variable_to_tll_var v)
-  | E.MarkTrue     -> TLL.MarkTrue
-  | E.MarkFalse    -> TLL.MarkFalse
-  | E.MarkOfCell c -> TLL.MarkOfCell (cell_to_tll_cell c)
+    E.VarMark v -> TLL.VarMark (variable_to_tll_var v)
+  | E.MarkTrue  -> TLL.MarkTrue
+  | E.MarkFalse -> TLL.MarkFalse
+  | E.Marked c  -> TLL.Marked (cell_to_tll_cell c)
 
 
 and setth_to_tll_setth (st:E.setth) : TLL.setth =

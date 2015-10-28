@@ -160,14 +160,14 @@ and cell =
   | CellLockAt    of cell * integer
   | CellUnlockAt  of cell * integer
   | CellAt        of mem * addr
-  | CellMark      of cell * mark
   | CellArrayRd   of arrays * tid
 
 and mark =
     VarMark       of variable
   | MarkTrue
   | MarkFalse
-  | MarkOfCell    of cell
+  | Marked        of cell
+  | PointerMarked of addr
 
 and setth =
     VarSetTh      of variable
@@ -655,18 +655,17 @@ and cell_to_str (loc:bool) (expr:cell) : string =
                                                           (integer_to_str loc l)
   | CellAt(mem,addr)           -> sprintf "rd(%s,%s)" (mem_to_str loc mem)
                                                       (addr_to_str loc addr)
-  | CellMark(cell,m)           -> sprintf "%s.setmark(%s)" (cell_to_str loc cell)
-                                                           (mark_to_str loc m)
   | CellArrayRd(arr,t)         -> sprintf "%s%s" (arrays_to_str loc arr)
                                                  (tid_to_str loc t)
 
 
 and mark_to_str (loc:bool) (expr:mark) : string =
   match expr with
-    VarMark v    -> variable_to_str loc v
-  | MarkTrue     -> "T"
-  | MarkFalse    -> "F"
-  | MarkOfCell c -> sprintf "%s.mark" (cell_to_str loc c)
+    VarMark v       -> variable_to_str loc v
+  | MarkTrue        -> "T"
+  | MarkFalse       -> "F"
+  | Marked c        -> sprintf "%s.marked" (cell_to_str loc c)
+  | PointerMarked a -> sprintf "%s->marked" (addr_to_str loc a)
 
 
 and addr_to_str (loc:bool) (expr:addr) : string =
@@ -1058,17 +1057,17 @@ and cell_to_expr_cell (c:cell) : E.cell =
   | CellUnlockAt (c,l)   -> E.CellUnlockAt (cell_to_expr_cell c,
                                             integer_to_expr_integer l)
   | CellAt (m,a)         -> E.CellAt (mem_to_expr_mem m, addr_to_expr_addr a)
-  | CellMark (c,m)       -> E.CellMark (cell_to_expr_cell c, mark_to_expr_mark m)
   | CellArrayRd (a,t)    -> E.CellArrayRd (array_to_expr_array a,
                                            tid_to_expr_th t) 
 
 
 and mark_to_expr_mark (m:mark) : E.mark =
   match m with
-    VarMark v    -> E.VarMark (variable_to_expr_var v)
-  | MarkTrue     -> E.MarkTrue
-  | MarkFalse    -> E.MarkFalse
-  | MarkOfCell c -> E.MarkOfCell (cell_to_expr_cell c)
+    VarMark v       -> E.VarMark (variable_to_expr_var v)
+  | MarkTrue        -> E.MarkTrue
+  | MarkFalse       -> E.MarkFalse
+  | Marked c        -> E.Marked (cell_to_expr_cell c)
+  | PointerMarked a -> E.Marked(E.CellAt(E.heap,addr_to_expr_addr a))
 
 
 and setth_to_expr_setth (s:setth) : E.setth =
@@ -1404,17 +1403,16 @@ and var_kind_cell (kind:E.var_nature) (c:cell) : term list =
                                   (var_kind_int kind l)
   | CellAt(mem,addr)           -> (var_kind_mem kind mem) @
                                   (var_kind_addr kind addr)
-  | CellMark(cell,m)           -> (var_kind_cell kind cell) @
-                                  (var_kind_mark kind m)
   | CellArrayRd(arr,_)         -> (var_kind_array kind arr)
 
 
 and var_kind_mark (kind:E.var_nature) (m:mark) : term list =
   match m with
-    VarMark v    -> if v.nature = kind then [MarkT m] else []
-  | MarkTrue     -> []
-  | MarkFalse    -> []
-  | MarkOfCell c -> (var_kind_cell kind c)
+    VarMark v       -> if v.nature = kind then [MarkT m] else []
+  | MarkTrue        -> []
+  | MarkFalse       -> []
+  | Marked c        -> (var_kind_cell kind c)
+  | PointerMarked a -> (var_kind_addr kind a)
 
 
 and var_kind_setth (kind:E.var_nature) (s:setth) : term list =

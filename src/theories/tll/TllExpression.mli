@@ -79,12 +79,11 @@ and cell =
   | CellLock of cell * tid
   | CellUnlock of cell
   | CellAt of mem * addr
-  | CellMark of cell * mark
 and mark =
     VarMark of V.t
   | MarkTrue
   | MarkFalse
-  | MarkOfCell of cell
+  | Marked of cell
 and setth =
     VarSetTh of V.t
   | EmptySetTh

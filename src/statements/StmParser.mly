@@ -444,6 +444,7 @@ let check_and_get_sort (id:string) : E.sort =
   | "pair"    -> E.Pair
   | "addrarr" -> E.AddrArray
   | "tidarr"  -> E.TidArray
+  | "mark"    -> E.Mark
   | _ -> begin
            Interface.Err.msg "Unrecognized sort" $
              sprintf "A sort was expected, but \"%s\" was found" id;
@@ -521,6 +522,7 @@ let check_and_get_sort (id:string) : E.sort =
     | Stm.AddrT(Stm.VarAddr _)                 -> ()
     | Stm.AddrT(Stm.Next(Stm.VarCell _))       -> ()
     | Stm.AddrT(Stm.NextAt(Stm.VarCell _,_))   -> ()
+    | Stm.MarkT(Stm.Marked(Stm.VarCell _))     -> ()
     | Stm.CellT(Stm.VarCell _)                 -> ()
     | Stm.SetThT(Stm.VarSetTh _ )              -> ()
     | Stm.PathT(Stm.VarPath _ )                -> ()
@@ -533,6 +535,7 @@ let check_and_get_sort (id:string) : E.sort =
     | Stm.AddrT(Stm.AddrArrRd _)               -> ()
     | Stm.TidT(Stm.PointerLockid _)            -> ()
     | Stm.TidT(Stm.PointerLockidAt _)          -> ()
+    | Stm.MarkT(Stm.PointerMarked _)           -> ()
     | Stm.TidT(Stm.TidArrRd _)                 -> ()
     | _ -> begin
              Interface.Err.msg "Invalid assignment" $
@@ -839,6 +842,7 @@ let fix_conditional_jumps () : unit =
 %token ME
 
 %token ERROR MKCELL DATA NEXT NEXTAT LOCKID LOCK UNLOCK ARR
+%token MARKED MARK_T MARK_F
 %token HAVOCLISTELEM HAVOCSKIPLISTELEM LOWEST_ELEM HIGHEST_ELEM
 %token SKIPLIST
 %token HAVOCLEVEL
@@ -989,6 +993,7 @@ let fix_conditional_jumps () : unit =
 %type <Stm.diseq> disequals
 %type <Stm.term> arraylookup
 %type <Stm.integer option> lock_pos
+%type <Stm.mark> mark
 
 
 
@@ -2636,6 +2641,8 @@ term :
     { Stm.IntT($1) }
   | pair
     { Stm.PairT($1) }
+  | mark
+    { Stm.MarkT($1) }
   | arraylookup
     { $1 }
   | OPEN_PAREN term CLOSE_PAREN
@@ -2970,6 +2977,28 @@ cell :
       let a = parser_check_type check_type_addr $5 E.Addr get_str_expr in
         Stm.CellAt(h,a)
     }
+
+
+/* MARK terms*/
+
+mark :
+  | MARK_T
+    { Stm.MarkTrue }
+  | MARK_F
+    { Stm.MarkFalse }
+  | term DOT MARKED
+    {
+      let get_str_expr () = sprintf "%s.marked" (Stm.term_to_str $1) in
+      let c = parser_check_type check_type_cell  $1 E.Cell get_str_expr in
+        Stm.Marked(c)
+    }
+  | term POINTER MARKED
+    {
+      let get_str_expr () = sprintf "%s->marked" (Stm.term_to_str $1) in
+      let a = parser_check_type check_type_addr $1 E.Addr get_str_expr in
+        Stm.PointerMarked a
+    }
+
 
 
 /* SETTH terms*/

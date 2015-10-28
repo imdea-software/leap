@@ -86,12 +86,11 @@ and cell =
   | CellLock of cell * tid
   | CellUnlock of cell
   | CellAt of mem * addr
-  | CellMark of cell * mark
 and mark =
     VarMark of V.t
   | MarkTrue
   | MarkFalse
-  | MarkOfCell of cell
+  | Marked of cell
 and setth =
     VarSetTh of V.t
   | EmptySetTh
@@ -287,13 +286,12 @@ and get_varset_cell c = match c with
     | CellLock(c,th) ->  (get_varset_cell c) @@ (get_varset_tid th)
     | CellUnlock(c)  ->  get_varset_cell c
     | CellAt(m,a)    ->  (get_varset_mem  m) @@ (get_varset_addr a)
-    | CellMark(c,m)  ->  (get_varset_cell c) @@ (get_varset_mark m)
 and get_varset_mark m =
   match m with
-      VarMark v    -> V.VarSet.singleton v @@ get_varset_from_param v
-    | MarkTrue     -> V.VarSet.empty
-    | MarkFalse    -> V.VarSet.empty
-    | MarkOfCell c -> (get_varset_cell c)
+      VarMark v   -> V.VarSet.singleton v @@ get_varset_from_param v
+    | MarkTrue    -> V.VarSet.empty
+    | MarkFalse   -> V.VarSet.empty
+    | Marked    c -> (get_varset_cell c)
 and get_varset_setth sth =
   match sth with
       VarSetTh v         -> V.VarSet.singleton v @@ get_varset_from_param v
@@ -611,13 +609,12 @@ and is_cell_flat t =
     | CellLock(c,th)   -> (is_cell_var c) && (is_tid_var th)
     | CellUnlock(c) -> is_cell_var c
     | CellAt(m,a)   -> (is_mem_var m) && (is_addr_var a)
-    | CellMark(c,m) -> (is_cell_var c) && (is_mark_var m)
 and is_mark_flat m =
   match m with
-      VarMark _    -> true
-    | MarkTrue     -> true
-    | MarkFalse    -> true
-    | MarkOfCell c -> (is_cell_var c)
+      VarMark _  -> true
+    | MarkTrue   -> true
+    | MarkFalse  -> true
+    | Marked c   -> (is_cell_var c)
 and is_setth_flat t =
   match t with
       VarSetTh _ -> true
@@ -832,14 +829,12 @@ and cell_to_str e =
     | CellUnlock(cell) -> Printf.sprintf "%s.unlock"
                             (cell_to_str cell)
     | CellAt(mem,addr) -> Printf.sprintf "%s [ %s ]" (mem_to_str mem) (addr_to_str addr)
-    | CellMark(cell,m) -> Printf.sprintf "%s.setmark(%s)"
-                            (cell_to_str cell) (mark_to_str m)
 and mark_to_str expr =
   match expr with
       VarMark(v) -> V.to_str v
-    | MarkTrue -> "T"
+    | MarkTrue  -> "T"
     | MarkFalse -> "F"
-    | MarkOfCell c -> Printf.sprintf "%s.mark" (cell_to_str c)
+    | Marked c  -> Printf.sprintf "%s.marked" (cell_to_str c)
 and addr_to_str expr =
   match expr with
       VarAddr(v) -> V.to_str v
@@ -1063,15 +1058,14 @@ and voc_cell (c:cell) : ThreadSet.t =
   | CellLock(cell,th)          -> (voc_cell cell) @@ (voc_tid th)
   | CellUnlock(cell)           -> (voc_cell cell)
   | CellAt(mem,addr)           -> (voc_mem mem) @@ (voc_addr addr)
-  | CellMark(cell,m)           -> (voc_cell cell) @@ (voc_mark m)
 
 
 and voc_mark (m:mark) : ThreadSet.t =
   match m with
-    VarMark v    -> get_tid_in v
-  | MarkTrue     -> ThreadSet.empty
-  | MarkFalse    -> ThreadSet.empty
-  | MarkOfCell c -> (voc_cell c)
+    VarMark v -> get_tid_in v
+  | MarkTrue  -> ThreadSet.empty
+  | MarkFalse -> ThreadSet.empty
+  | Marked c  -> (voc_cell c)
 
 
 and voc_setth (s:setth) : ThreadSet.t =
@@ -1282,14 +1276,13 @@ let required_sorts (phi:formula) : sort list =
     | CellLock (c,t)       -> append Cell [req_c c;req_t t]
     | CellUnlock c         -> append Cell [req_c c]
     | CellAt (m,a)         -> append Cell [req_m m;req_a a]
-    | CellMark (c,m)       -> append Cell [req_c c;req_mk m]
 
   and req_mk (m:mark) : SortSet.t =
     match m with
-    | VarMark _    -> single Mark
-    | MarkTrue     -> single Mark
-    | MarkFalse    -> single Mark
-    | MarkOfCell c -> append Mark [req_c c]
+    | VarMark _ -> single Mark
+    | MarkTrue  -> single Mark
+    | MarkFalse -> single Mark
+    | Marked c  -> append Mark [req_c c]
 
   and req_a (a:addr) : SortSet.t =
     match a with
@@ -1437,14 +1430,13 @@ let special_ops (phi:formula) : special_op_t list =
     | CellLock (c,t)       -> list_union [ops_c c;ops_t t]
     | CellUnlock c         -> list_union [ops_c c]
     | CellAt (m,a)         -> list_union [ops_m m;ops_a a]
-    | CellMark (c,m)       -> list_union [ops_c c;ops_mk m]
 
   and ops_mk (m:mark) : OpsSet.t =
     match m with
-    | VarMark _    -> empty
-    | MarkTrue     -> empty
-    | MarkFalse    -> empty
-    | MarkOfCell c -> ops_c c
+    | VarMark _ -> empty
+    | MarkTrue  -> empty
+    | MarkFalse -> empty
+    | Marked c  -> ops_c c
 
   and ops_a (a:addr) : OpsSet.t =
     match a with

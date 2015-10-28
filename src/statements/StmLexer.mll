@@ -41,6 +41,7 @@ let _ = List.iter (fun (kwd, tok) -> Hashtbl.add keyword_table kwd tok)
             ("lastlocked"   , LASTLOCKED);
             ("lockid"       , LOCKID);
             ("lock"         , LOCK);
+            ("marked"       , MARKED);
             ("unlock"       , UNLOCK);
             ("rd"           , MEMORY_READ);
             ("null"         , NULL);
@@ -51,6 +52,8 @@ let _ = List.iter (fun (kwd, tok) -> Hashtbl.add keyword_table kwd tok)
             ("havocLevel"   , HAVOCLEVEL);
             ("skiplist"     , SKIPLIST);
             ("upd"          , UPDATE);
+            ("T"            , MARK_T);
+            ("F"            , MARK_F);
             ("epsilon"      , EPSILON);
             ("singlePath"   , SINGLE_PATH);
             ("empty"        , EMPTYSET);

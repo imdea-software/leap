@@ -154,14 +154,14 @@ and cell =
   | CellLockAt    of cell * integer
   | CellUnlockAt  of cell * integer
   | CellAt        of mem * addr
-  | CellMark      of cell * mark
   | CellArrayRd   of arrays * tid
 
 and mark =
     VarMark       of variable
   | MarkTrue
   | MarkFalse
-  | MarkOfCell    of cell
+  | Marked        of cell
+  | PointerMarked of addr
 
 and setth =
     VarSetTh      of variable

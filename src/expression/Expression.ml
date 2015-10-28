@@ -167,14 +167,13 @@ and cell =
   | CellUnlockAt  of cell * integer
   | CellAt        of mem * addr
   | CellArrayRd   of arrays * tid
-  | CellMark      of cell * mark
   | UpdCellAddr   of cell * integer * addr
 
 and mark =
     VarMark       of V.t
   | MarkTrue
   | MarkFalse
-  | MarkOfCell    of cell
+  | Marked        of cell
 
 and setth =
     VarSetTh      of V.t
@@ -1040,8 +1039,6 @@ and priming_cell (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (
                                          priming_addr pr prime_set addr)
   | CellArrayRd(arr,t)         -> CellArrayRd(priming_array pr prime_set arr,
                                               priming_tid pr prime_set t)
-  | CellMark(c,m)              -> CellMark(priming_cell pr prime_set c,
-                                           priming_mark pr prime_set m)
   | UpdCellAddr(c,i,a)         -> UpdCellAddr(priming_cell pr prime_set c,
                                               priming_int pr prime_set i,
                                               priming_addr pr prime_set a)
@@ -1049,10 +1046,10 @@ and priming_cell (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (
 
 and priming_mark (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (m:mark) : mark =
   match m with
-    VarMark v    -> VarMark (priming_variable pr prime_set v)
-  | MarkTrue     -> MarkTrue
-  | MarkFalse    -> MarkFalse
-  | MarkOfCell c -> MarkOfCell(priming_cell pr prime_set c)
+    VarMark v -> VarMark (priming_variable pr prime_set v)
+  | MarkTrue  -> MarkTrue
+  | MarkFalse -> MarkFalse
+  | Marked c  -> Marked(priming_cell pr prime_set c)
 
 
 and priming_setth (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (s:setth) : setth =
@@ -1730,8 +1727,6 @@ and cell_to_str (expr:cell) : string =
                                                       (addr_to_str addr)
   | CellArrayRd(arr,t)         -> sprintf "%s%s" (arrays_to_str arr)
                                                  (param_tid_to_str t)
-  | CellMark(cell,m)           -> sprintf "%s.setmark(%s)" (cell_to_str cell)
-                                                           (mark_to_str m)
   | UpdCellAddr(c,i,a)         -> sprintf "updCellAddr(%s,%s,%s)" (cell_to_str c)
                                                                  (integer_to_str i)
                                                                  (addr_to_str a)
@@ -1739,10 +1734,10 @@ and cell_to_str (expr:cell) : string =
 
 and mark_to_str (m:mark) :string =
   match m with
-    VarMark v    -> V.to_str v
-  | MarkTrue     -> "T"
-  | MarkFalse    -> "F"
-  | MarkOfCell c -> sprintf "%s.mark" (cell_to_str c)
+    VarMark v -> V.to_str v
+  | MarkTrue  -> "T"
+  | MarkFalse -> "F"
+  | Marked c  -> sprintf "%s.marked" (cell_to_str c)
 
 
 and addr_to_str (expr:addr) :string =
@@ -2497,20 +2492,19 @@ and get_vars_cell (c:cell) (base:V.t -> V.VarSet.t) : V.VarSet.t =
   | CellAt(mem,addr)           -> (get_vars_mem mem base) @@
                                   (get_vars_addr addr base)
   | CellArrayRd(arr,_)         -> (get_vars_array arr base)
-  | CellMark(cell,m)           -> (get_vars_cell cell base) @@ (get_vars_mark m base)
   | UpdCellAddr(c,i,a)         -> (get_vars_cell c base) @@
                                   (get_vars_int i base)  @@
                                   (get_vars_addr a base)
 
 and get_vars_mark (m:mark) (base:V.t -> V.VarSet.t) : V.VarSet.t =
   match m with
-    VarMark v    -> (base v) @@
-                     (match V.parameter v with
-                      | V.Shared -> V.VarSet.empty
-                      | V.Local t -> base t)
-  | MarkTrue     -> V.VarSet.empty
-  | MarkFalse    -> V.VarSet.empty
-  | MarkOfCell c -> get_vars_cell c base
+    VarMark v  -> (base v) @@
+                   (match V.parameter v with
+                    | V.Shared -> V.VarSet.empty
+                    | V.Local t -> base t)
+  | MarkTrue   -> V.VarSet.empty
+  | MarkFalse  -> V.VarSet.empty
+  | Marked c   -> get_vars_cell c base
 
 
 and get_vars_setth (s:setth) (base:V.t -> V.VarSet.t) : V.VarSet.t =
@@ -3102,16 +3096,15 @@ and voc_cell (c:cell) : ThreadSet.t =
   | CellUnlockAt(cell,l)   -> (voc_cell cell) @@ (voc_int l)
   | CellAt(mem,addr)       -> (voc_mem mem) @@ (voc_addr addr)
   | CellArrayRd(arr,_)     -> (voc_array arr)
-  | CellMark(cell,m)       -> (voc_cell cell) @@ (voc_mark m)
   | UpdCellAddr(c,i,a)     -> (voc_cell c) @@ (voc_int i) @@ (voc_addr a)
 
 
 and voc_mark (m:mark) : ThreadSet.t =
   match m with
-    VarMark v    -> get_tid_in v
-  | MarkTrue     -> ThreadSet.empty
-  | MarkFalse    -> ThreadSet.empty
-  | MarkOfCell c -> voc_cell c
+    VarMark v -> get_tid_in v
+  | MarkTrue  -> ThreadSet.empty
+  | MarkFalse -> ThreadSet.empty
+  | Marked c  -> voc_cell c
 
 
 and voc_setth (s:setth) : ThreadSet.t =
@@ -3479,8 +3472,6 @@ and var_kind_cell (kind:var_nature) (c:cell) : term list =
   | CellAt(mem,addr)           -> (var_kind_mem kind mem) @
                                   (var_kind_addr kind addr)
   | CellArrayRd(arr,_)         -> (var_kind_array kind arr)
-  | CellMark(cell,m)           -> (var_kind_cell kind cell) @
-                                  (var_kind_mark kind m)
   | UpdCellAddr(c,i,a)         -> (var_kind_cell kind c) @
                                   (var_kind_int kind i)  @
                                   (var_kind_addr kind a)
@@ -3488,10 +3479,10 @@ and var_kind_cell (kind:var_nature) (c:cell) : term list =
 
 and var_kind_mark (kind:var_nature) (m:mark) : term list =
   match m with
-    VarMark v    -> if var_nature v = kind then [MarkT m] else []
-  | MarkTrue     -> []
-  | MarkFalse    -> []
-  | MarkOfCell c -> (var_kind_cell kind c)
+    VarMark v  -> if var_nature v = kind then [MarkT m] else []
+  | MarkTrue   -> []
+  | MarkFalse  -> []
+  | Marked c   -> (var_kind_cell kind c)
 
 
 and var_kind_setth (kind:var_nature) (s:setth) : term list =
@@ -3890,8 +3881,6 @@ and param_cell_aux (pfun:V.t option -> V.shared_or_local) (c:cell) : cell =
   | CellAt(mem,addr)           -> CellAt(param_mem pfun mem,
                                          param_addr_aux pfun addr)
   | CellArrayRd(arr,t)         -> CellArrayRd(param_arrays pfun arr, t)
-  | CellMark(cell,m)           -> CellMark(param_cell_aux pfun cell,
-                                           param_mark pfun m)
   | UpdCellAddr(c,i,a)         -> UpdCellAddr(param_cell_aux pfun c,
                                               param_int_aux pfun i,
                                               param_addr_aux pfun a)
@@ -3899,10 +3888,10 @@ and param_cell_aux (pfun:V.t option -> V.shared_or_local) (c:cell) : cell =
 
 and param_mark (pfun:V.t option -> V.shared_or_local) (m:mark) : mark =
   match m with
-    VarMark v    -> VarMark (V.set_param v (pfun (Some v)))
-  | MarkTrue     -> MarkTrue
-  | MarkFalse    -> MarkFalse
-  | MarkOfCell c -> MarkOfCell (param_cell_aux pfun c)
+    VarMark v -> VarMark (V.set_param v (pfun (Some v)))
+  | MarkTrue  -> MarkTrue
+  | MarkFalse -> MarkFalse
+  | Marked c  -> Marked (param_cell_aux pfun c)
 
 
 and param_setth (pfun:V.t option -> V.shared_or_local) (s:setth) : setth =
@@ -4368,17 +4357,15 @@ and subst_tid_cell (subs:tid_subst_t) (c:cell) : cell =
   | CellAt(mem,addr)           -> CellAt(subst_tid_mem subs mem,
                                          subst_tid_addr subs addr)
   | CellArrayRd(arr,t)         -> CellArrayRd(subst_tid_array subs arr, t)
-  | CellMark(cell,m)           -> CellMark(subst_tid_cell subs cell,
-                                           subst_tid_mark subs m)
   | UpdCellAddr(c,i,a)         -> UpdCellAddr(subst_tid_cell subs c,
                                               subst_tid_int subs i,
                                               subst_tid_addr subs a)
 and subst_tid_mark (subs:tid_subst_t) (m:mark) : mark =
   match m with
-    VarMark v    -> VarMark(V.set_param v (subst_shared_or_local subs (V.parameter v)))
-  | MarkTrue     -> MarkTrue
-  | MarkFalse    -> MarkFalse
-  | MarkOfCell c -> MarkOfCell (subst_tid_cell subs c)
+    VarMark v -> VarMark(V.set_param v (subst_shared_or_local subs (V.parameter v)))
+  | MarkTrue  -> MarkTrue
+  | MarkFalse -> MarkFalse
+  | Marked c  -> Marked (subst_tid_cell subs c)
 and subst_tid_setth (subs:tid_subst_t) (s:setth) : setth =
   match s with
     VarSetTh v             -> VarSetTh(V.set_param v (subst_shared_or_local subs (V.parameter v)))
@@ -4761,8 +4748,6 @@ and subst_vars_cell (subs:V.subst_t) (c:cell) : cell =
   | CellAt(mem,addr)           -> CellAt(subst_vars_mem subs mem,
                                          subst_vars_addr subs addr)
   | CellArrayRd(arr,t)         -> CellArrayRd(subst_vars_array subs arr, t)
-  | CellMark(cell,m)           -> CellMark(subst_vars_cell subs cell,
-                                           subst_vars_mark subs m)
   | UpdCellAddr(c,i,a)         -> UpdCellAddr(subst_vars_cell subs c,
                                               subst_vars_int subs i,
                                               subst_vars_addr subs a)
@@ -4770,10 +4755,10 @@ and subst_vars_cell (subs:V.subst_t) (c:cell) : cell =
 
 and subst_vars_mark (subs:V.subst_t) (m:mark) : mark =
   match m with
-    VarMark v    -> VarMark(V.subst subs v)
-  | MarkTrue     -> MarkTrue
-  | MarkFalse    -> MarkFalse
-  | MarkOfCell c -> MarkOfCell (subst_vars_cell subs c)
+    VarMark v -> VarMark(V.subst subs v)
+  | MarkTrue  -> MarkTrue
+  | MarkFalse -> MarkFalse
+  | Marked c  -> Marked (subst_vars_cell subs c)
 
 
 and subst_vars_setth (subs:V.subst_t) (s:setth) : setth =
@@ -5724,15 +5709,14 @@ let required_sorts (phi:formula) : sort list =
     | CellUnlockAt (c,l)   -> append Cell [req_c c; req_i l]
     | CellAt (m,a)         -> append Cell [req_m m; req_a a]
     | CellArrayRd (a,t)    -> append Cell [req_arr a;req_t t]
-    | CellMark (c,m)       -> append Cell [req_c c; req_mk m]
     | UpdCellAddr (c,i,a)  -> append Cell [req_c c; req_i i; req_a a]
 
   and req_mk (m:mark) : SortSet.t =
     match m with
-    | VarMark _    -> single Mark
-    | MarkTrue     -> single Mark
-    | MarkFalse    -> single Mark
-    | MarkOfCell c -> append Mark [req_c c]
+    | VarMark _ -> single Mark
+    | MarkTrue  -> single Mark
+    | MarkFalse -> single Mark
+    | Marked c  -> append Mark [req_c c]
 
   and req_a (a:addr) : SortSet.t =
     match a with
@@ -6099,8 +6083,6 @@ and to_plain_cell (ops:fol_ops_t) (c:cell) : cell =
                                          to_plain_addr ops addr)
   | CellArrayRd(arr,t)         -> CellArrayRd(to_plain_arrays ops arr,
                                               to_plain_tid_aux ops t)
-  | CellMark(cell,m)           -> CellMark(to_plain_cell ops cell,
-                                           to_plain_mark ops m)
   | UpdCellAddr(c,i,a)         -> UpdCellAddr(to_plain_cell ops c,
                                               to_plain_int ops i,
                                               to_plain_addr ops a)
@@ -6108,10 +6090,10 @@ and to_plain_cell (ops:fol_ops_t) (c:cell) : cell =
 
 and to_plain_mark (ops:fol_ops_t) (m:mark) : mark =
   match m with
-    VarMark v    -> VarMark (ops.fol_var v)
-  | MarkTrue     -> MarkTrue
-  | MarkFalse    -> MarkFalse
-  | MarkOfCell c -> MarkOfCell (to_plain_cell ops c)
+    VarMark v -> VarMark (ops.fol_var v)
+  | MarkTrue  -> MarkTrue
+  | MarkFalse -> MarkFalse
+  | Marked c  -> Marked (to_plain_cell ops c)
 
 
 and to_plain_setth (ops:fol_ops_t) (s:setth) : setth =

@@ -146,14 +146,13 @@ and cell =
   | CellUnlockAt  of cell * integer
   | CellAt        of mem * addr
   | CellArrayRd   of arrays * tid
-  | CellMark      of cell * mark
   | UpdCellAddr   of cell * integer * addr
 
 and mark =
     VarMark       of V.t
   | MarkTrue
   | MarkFalse
-  | MarkOfCell    of cell
+  | Marked        of cell
 
 and setth =
     VarSetTh      of V.t

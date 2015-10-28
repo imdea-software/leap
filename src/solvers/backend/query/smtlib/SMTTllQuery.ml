@@ -1325,18 +1325,15 @@ struct
       | Expr.CellAt(m,a)    -> Printf.sprintf "(select %s %s)"
                                         (memterm_to_str m)
                                         (addrterm_to_str a)
-      | Expr.CellMark(c,m) -> Printf.sprintf "(cell_mark %s %s)"
-                                      (cellterm_to_str c)
-                                      (markterm_to_str m)
 
 
   and markterm_to_str (m:Expr.mark) : string =
     match m with
-        Expr.VarMark v        -> variable_invocation_to_str v
-      | Expr.MarkTrue         -> "markTrue"
-      | Expr.MarkFalse        -> "markFalse"
-      | Expr.MarkOfCell c     -> Printf.sprintf "(marked %s)"
-                                    (cellterm_to_str c)
+        Expr.VarMark v -> variable_invocation_to_str v
+      | Expr.MarkTrue  -> "markTrue"
+      | Expr.MarkFalse -> "markFalse"
+      | Expr.Marked c  -> Printf.sprintf "(marked %s)"
+                            (cellterm_to_str c)
 
 
   and setthterm_to_str (sth:Expr.setth) : string =
@@ -1669,13 +1666,6 @@ struct
           ("(assert (and (= " ^data ("(cell_unlock " ^c_str^ ")")^ " " ^data c_str^ ")\n" ^
            "             (= " ^next ("(cell_unlock " ^c_str^ ")")^ " " ^next c_str^ ")\n" ^
            "             (= " ^lock ("(cell_unlock " ^c_str^ ")")^ " " ^notid_str^ ")))\n")
-    | Expr.CellMark (c,m) ->
-        let c_str = cellterm_to_str c in
-        let m_str = markterm_to_str m in
-          ("(assert (and (= " ^data ("(cell_mark " ^c_str^ " " ^m_str^ ")")^ " " ^data c_str^ ")\n" ^
-           "             (= " ^next ("(cell_mark " ^c_str^ " " ^m_str^ ")")^ " " ^next c_str^ ")\n" ^
-           "             (= " ^lock ("(cell_mark " ^c_str^ " " ^m_str^ ")")^ " " ^lock c_str^ ")\n" ^
-           "             (= " ^marked ("(cell_mark " ^c_str^ " " ^m_str^ ")")^ " " ^m_str^ ")))\n")
     | Expr.MkCell (e,a,t) ->
         let e_str = elemterm_to_str e in
         let a_str = addrterm_to_str a in

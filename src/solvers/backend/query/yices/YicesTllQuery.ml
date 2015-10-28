@@ -1152,17 +1152,14 @@ struct
       | Expr.CellAt(m,a)     -> Printf.sprintf "(%s %s)"
                                         (memterm_to_str m)
                                         (addrterm_to_str a)
-      | Expr.CellMark(c,m) -> Printf.sprintf "(cell_mark %s %s)"
-                                      (cellterm_to_str c)
-                                      (markterm_to_str m)
 
   and markterm_to_str (m:Expr.mark) : string =
     match m with
-        Expr.VarMark v        -> variable_invocation_to_str v
-      | Expr.MarkTrue         -> "markTrue"
-      | Expr.MarkFalse        -> "markFalse"
-      | Expr.MarkOfCell c     -> Printf.sprintf "(marked %s)"
-                                    (cellterm_to_str c)
+        Expr.VarMark v -> variable_invocation_to_str v
+      | Expr.MarkTrue  -> "markTrue"
+      | Expr.MarkFalse -> "markFalse"
+      | Expr.Marked c  -> Printf.sprintf "(marked %s)"
+                               (cellterm_to_str c)
 
   and setthterm_to_str (sth:Expr.setth) : string =
     match sth with

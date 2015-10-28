@@ -227,7 +227,6 @@ and cell_to_tsl_cell (c:E.cell) : SL.cell =
   | E.CellArrayRd (E.VarArray v,t) ->
       SL.VarCell (var_to_tsl_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
   | E.CellArrayRd _        -> raise(UnsupportedTslExpr(E.cell_to_str c))
-  | E.CellMark _           -> raise(UnsupportedTslExpr(E.cell_to_str c))
   | E.UpdCellAddr _        -> raise(UnsupportedTslExpr(E.cell_to_str c))
 
 
