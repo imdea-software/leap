@@ -489,25 +489,27 @@ let check_and_get_sort (id:string) : E.sort =
         let modif_v = Stm.var_replace_sort v s in
           begin
             match s with
-              E.Set       -> Stm.SetT       (Stm.VarSet       modif_v)
-            | E.Elem      -> Stm.ElemT      (Stm.VarElem      modif_v)
-            | E.Tid      -> Stm.TidT      (Stm.VarTh        modif_v)
-            | E.Addr      -> Stm.AddrT      (Stm.VarAddr      modif_v)
-            | E.Cell      -> Stm.CellT      (Stm.VarCell      modif_v)
-            | E.SetTh     -> Stm.SetThT     (Stm.VarSetTh     modif_v)
-            | E.SetInt    -> Stm.SetIntT    (Stm.VarSetInt    modif_v)
-            | E.SetElem   -> Stm.SetElemT   (Stm.VarSetElem   modif_v)
-            | E.SetPair   -> Stm.SetPairT   (Stm.VarSetPair   modif_v)
-            | E.Path      -> Stm.PathT      (Stm.VarPath      modif_v)
-            | E.Mem       -> Stm.MemT       (Stm.VarMem       modif_v)
-            | E.Bool      -> Stm.VarT       modif_v
-            | E.Int       -> Stm.IntT       (Stm.VarInt       modif_v)
-            | E.Pair      -> Stm.PairT      (Stm.VarPair      modif_v)
-            | E.Array     -> Stm.ArrayT     (Stm.VarArray     modif_v)
-            | E.AddrArray -> Stm.AddrArrayT (Stm.VarAddrArray modif_v)
-            | E.TidArray  -> Stm.TidArrayT  (Stm.VarTidArray  modif_v)
-            | E.Mark      -> Stm.MarkT      (Stm.VarMark      modif_v)
-            | E.Unknown   -> Stm.VarT       modif_v
+              E.Set          -> Stm.SetT         (Stm.VarSet          modif_v)
+            | E.Elem         -> Stm.ElemT        (Stm.VarElem         modif_v)
+            | E.Tid          -> Stm.TidT         (Stm.VarTh           modif_v)
+            | E.Addr         -> Stm.AddrT        (Stm.VarAddr         modif_v)
+            | E.Cell         -> Stm.CellT        (Stm.VarCell         modif_v)
+            | E.SetTh        -> Stm.SetThT       (Stm.VarSetTh        modif_v)
+            | E.SetInt       -> Stm.SetIntT      (Stm.VarSetInt       modif_v)
+            | E.SetElem      -> Stm.SetElemT     (Stm.VarSetElem      modif_v)
+            | E.SetPair      -> Stm.SetPairT     (Stm.VarSetPair      modif_v)
+            | E.Path         -> Stm.PathT        (Stm.VarPath         modif_v)
+            | E.Mem          -> Stm.MemT         (Stm.VarMem          modif_v)
+            | E.Bool         -> Stm.VarT         modif_v
+            | E.Int          -> Stm.IntT         (Stm.VarInt          modif_v)
+            | E.Pair         -> Stm.PairT        (Stm.VarPair         modif_v)
+            | E.Array        -> Stm.ArrayT       (Stm.VarArray        modif_v)
+            | E.AddrArray    -> Stm.AddrArrayT   (Stm.VarAddrArray    modif_v)
+            | E.TidArray     -> Stm.TidArrayT    (Stm.VarTidArray     modif_v)
+            | E.BucketArray  -> Stm.BucketArrayT  (Stm.VarBucketArray modif_v)
+            | E.Mark         -> Stm.MarkT        (Stm.VarMark         modif_v)
+            | E.Bucket       -> Stm.BucketT      (Stm.VarBucket       modif_v)
+            | E.Unknown      -> Stm.VarT         modif_v
           end
     | _                   -> exp
 

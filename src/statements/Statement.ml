@@ -59,7 +59,9 @@ type term =
   | ArrayT        of arrays
   | AddrArrayT    of addrarr
   | TidArrayT     of tidarr
+  | BucketArrayT  of bucketarr
   | MarkT         of mark
+  | BucketT       of bucket
 
 and eq =          term * term
 
@@ -76,6 +78,10 @@ and addrarr =
 and tidarr =
   | VarTidArray   of variable
   | TidArrayUp    of tidarr * integer * tid
+
+and bucketarr =
+    | VarBucketArray of variable
+    | BucketArrayUp  of bucketarr * integer * bucket
 
 and integer =
     IntVal        of int
@@ -109,6 +115,7 @@ and set =
   | AddrToSet     of mem * addr
   | AddrToSetAt   of mem * addr * integer
   | SetArrayRd    of arrays * tid
+  | BucketRegion  of bucket
 
 and tid =
   | VarTh           of variable
@@ -120,6 +127,7 @@ and tid =
   | PointerLockidAt of addr * integer
   | TidArrRd        of tidarr * integer
   | PairTid         of pair
+  | BucketTid       of bucket
 
 and elem =
     VarElem           of variable
@@ -147,6 +155,8 @@ and addr =
   | PointerNextAt of addr * integer
   | PointerArrAt  of addr * integer
   | AddrArrRd     of addrarr * integer
+  | BucketInit    of bucket
+  | BucketEnd     of bucket
 
 and cell =
     VarCell       of variable
@@ -168,6 +178,10 @@ and mark =
   | MarkFalse
   | Marked        of cell
   | PointerMarked of addr
+
+and bucket =
+    VarBucket     of variable
+  | MkBucket      of addr * addr * set * tid
 
 and setth =
     VarSetTh      of variable
@@ -223,6 +237,7 @@ and atom =
   | Reach         of mem * addr * addr * path
   | OrderList     of mem * addr * addr
   | Skiplist      of mem * set * integer * addr * addr * setelem
+  | Hashmap       of mem * set * setelem * bucketarr * integer
   | In            of addr * set
   | SubsetEq      of set * set
   | InTh          of tid * setth
@@ -403,6 +418,12 @@ and atom_to_str (loc:bool) (expr:atom) : string =
                                             (addr_to_str loc a_from)
                                             (addr_to_str loc a_to)
                                             (setelem_to_str loc elems)
+  | Hashmap (h,s,se,bb,i)            -> sprintf "hashmap(%s,%s,%s,%s,%s)"
+                                            (mem_to_str loc h)
+                                            (set_to_str loc s)
+                                            (setelem_to_str loc se)
+                                            (bucketarr_to_str loc bb)
+                                            (integer_to_str loc i)
   | In(a,s)                          -> sprintf "%s in %s "
                                                   (addr_to_str loc a)
                                                   (set_to_str loc s)
@@ -482,6 +503,15 @@ and tidarr_to_str (loc:bool) (expr:tidarr) : string =
                                                       (integer_to_str loc i)
                                                       (tid_to_str loc t)
 
+
+and bucketarr_to_str (loc:bool) (expr:bucketarr) : string =
+  match expr with
+    VarBucketArray v       -> variable_to_str loc v
+  | BucketArrayUp(arr,i,b) -> sprintf "%s{%s<-%s}" (bucketarr_to_str loc arr)
+                                                   (integer_to_str loc i)
+                                                   (bucket_to_str loc b)
+
+
 and integer_to_str (loc:bool) (expr:integer) : string =
   match expr with
     IntVal (i)            -> string_of_int i
@@ -557,6 +587,7 @@ and set_to_str (loc:bool) (expr:set) : string =
                                                         (integer_to_str loc l)
   | SetArrayRd(arr,t)   -> sprintf "%s%s" (arrays_to_str loc arr)
                                           (tid_to_str loc t)
+  | BucketRegion(b)     -> sprintf "%s.breg" (bucket_to_str loc b)
 
 
 and setth_to_str (loc:bool) (expr:setth) : string =
@@ -668,6 +699,15 @@ and mark_to_str (loc:bool) (expr:mark) : string =
   | PointerMarked a -> sprintf "%s->marked" (addr_to_str loc a)
 
 
+and bucket_to_str (loc:bool) (b:bucket) :string =
+  match b with
+    VarBucket v -> variable_to_str loc v
+  | MkBucket (i,e,s,t) -> sprintf "mkbucket(%s,%s,%s,%s)" (addr_to_str loc i)
+                                                          (addr_to_str loc e)
+                                                          (set_to_str loc s)
+                                                          (tid_to_str loc t)
+
+
 and addr_to_str (loc:bool) (expr:addr) : string =
   match expr with
     VarAddr v             -> variable_to_str loc v
@@ -700,6 +740,8 @@ and addr_to_str (loc:bool) (expr:addr) : string =
                                                    (integer_to_str loc l)
   | AddrArrRd (arr,i)     -> sprintf "%s[%s]" (addrarr_to_str loc arr)
                                               (integer_to_str loc i)
+  | BucketInit(b)         -> sprintf "%s.binit" (bucket_to_str loc b)
+  | BucketEnd(b)          -> sprintf "%s.bend" (bucket_to_str loc b)
 
 
 and tid_to_str (loc:bool) (th:tid) : string =
@@ -717,6 +759,7 @@ and tid_to_str (loc:bool) (th:tid) : string =
   | TidArrRd (arr,i)    -> sprintf "%s[%s]" (tidarr_to_str loc arr)
                                              (integer_to_str loc i)
   | PairTid p           -> sprintf "tid_of(%s)" (pair_to_str loc p)
+  | BucketTid b         -> sprintf "%s.btid" (bucket_to_str loc b)
 
 
 and eq_to_str (loc:bool) ((e1,e2):eq) : string =
@@ -760,7 +803,9 @@ and term_to_str_aux (loc:bool) (expr:term) : string =
   | ArrayT(arr)         -> (arrays_to_str loc arr)
   | AddrArrayT(arr)     -> (addrarr_to_str loc arr)
   | TidArrayT(arr)      -> (tidarr_to_str loc arr)
+  | BucketArrayT(arr)   -> (bucketarr_to_str loc arr)
   | MarkT(m)            -> (mark_to_str loc m)
+  | BucketT(b)          -> (bucket_to_str loc b)
 
 
 
@@ -850,24 +895,26 @@ let variable_to_expr_var (v:variable) :E.V.t =
 
 let rec term_to_expr_term (t:term) : E.term =
   match t with
-    VarT v       -> E.VarT       (variable_to_expr_var v)
-  | SetT s       -> E.SetT       (set_to_expr_set s)
-  | ElemT e      -> E.ElemT      (elem_to_expr_elem e)
-  | TidT t       -> E.TidT       (tid_to_expr_tid t)
-  | AddrT a      -> E.AddrT      (addr_to_expr_addr a)
-  | CellT c      -> E.CellT      (cell_to_expr_cell c)
-  | SetThT s     -> E.SetThT     (setth_to_expr_setth s)
-  | SetIntT s    -> E.SetIntT    (setint_to_expr_setint s)
-  | SetElemT s   -> E.SetElemT   (setelem_to_expr_setelem s)
-  | SetPairT s   -> E.SetPairT   (setpair_to_expr_setpair s)
-  | PathT p      -> E.PathT      (path_to_expr_path p)
-  | MemT m       -> E.MemT       (mem_to_expr_mem m)
-  | IntT i       -> E.IntT       (integer_to_expr_integer i)
-  | PairT i      -> E.PairT      (pair_to_expr_pair i)
-  | ArrayT a     -> E.ArrayT     (array_to_expr_array a)
-  | AddrArrayT a -> E.AddrArrayT (addrarray_to_expr_array a)
-  | TidArrayT a  -> E.TidArrayT  (tidarray_to_expr_array a)
-  | MarkT m      -> E.MarkT      (mark_to_expr_mark m)
+    VarT v         -> E.VarT         (variable_to_expr_var v)
+  | SetT s         -> E.SetT         (set_to_expr_set s)
+  | ElemT e        -> E.ElemT        (elem_to_expr_elem e)
+  | TidT t         -> E.TidT         (tid_to_expr_tid t)
+  | AddrT a        -> E.AddrT        (addr_to_expr_addr a)
+  | CellT c        -> E.CellT        (cell_to_expr_cell c)
+  | SetThT s       -> E.SetThT       (setth_to_expr_setth s)
+  | SetIntT s      -> E.SetIntT      (setint_to_expr_setint s)
+  | SetElemT s     -> E.SetElemT     (setelem_to_expr_setelem s)
+  | SetPairT s     -> E.SetPairT     (setpair_to_expr_setpair s)
+  | PathT p        -> E.PathT        (path_to_expr_path p)
+  | MemT m         -> E.MemT         (mem_to_expr_mem m)
+  | IntT i         -> E.IntT         (integer_to_expr_integer i)
+  | PairT i        -> E.PairT        (pair_to_expr_pair i)
+  | ArrayT a       -> E.ArrayT       (array_to_expr_array a)
+  | AddrArrayT a   -> E.AddrArrayT   (addrarray_to_expr_array a)
+  | TidArrayT a    -> E.TidArrayT    (tidarray_to_expr_array a)
+  | BucketArrayT a -> E.BucketArrayT (bucketarray_to_expr_array a)
+  | MarkT m        -> E.MarkT        (mark_to_expr_mark m)
+  | BucketT b      -> E.BucketT      (bucket_to_expr_bucket b)
 
 
 and eq_to_expr_eq ((t1,t2):eq) : E.eq =
@@ -898,6 +945,15 @@ and tidarray_to_expr_array (a:tidarr) : E.tidarr =
   | TidArrayUp (arr,i,t) -> E.TidArrayUp (tidarray_to_expr_array arr,
                                           integer_to_expr_integer i,
                                           tid_to_expr_tid t)
+
+
+and bucketarray_to_expr_array (a:bucketarr) : E.bucketarr =
+  match a with
+    VarBucketArray v        -> E.VarBucketArray (variable_to_expr_var v)
+  | BucketArrayUp (arr,i,b) -> E.BucketArrayUp (bucketarray_to_expr_array arr,
+                                                integer_to_expr_integer i,
+                                                bucket_to_expr_bucket b)
+
 
 and integer_to_expr_integer (i:integer) : E.integer =
   let to_int = integer_to_expr_integer in
@@ -945,6 +1001,7 @@ and set_to_expr_set (s:set) : E.set =
                                           integer_to_expr_integer l)
   | SetArrayRd (a,t)    -> E.SetArrayRd (array_to_expr_array a,
                                       tid_to_expr_th t)
+  | BucketRegion b      -> E.BucketRegion (bucket_to_expr_bucket b)
 
 
 and tid_to_expr_tid (t:tid) : E.tid =
@@ -962,12 +1019,13 @@ and tid_to_expr_tid (t:tid) : E.tid =
   | PointerLockidAt(a,l) -> E.CellLockIdAt(E.CellAt(E.heap,addr_to_expr_addr a),
                                            integer_to_expr_integer l)
   | PairTid p            -> E.PairTid(pair_to_expr_pair p)
+  | BucketTid b          -> E.BucketTid (bucket_to_expr_bucket b)
 
 
 and tid_to_expr_th (t:tid) : E.tid =
   match t with
     VarTh v            -> E.VarTh (variable_to_expr_var v)
-  | NoTid             -> E.NoTid
+  | NoTid              -> E.NoTid
   | CellLockId c       -> E.CellLockId (cell_to_expr_cell c)
   | CellLockIdAt (c,l) -> E.TidArrRd (E.CellTids (cell_to_expr_cell c),
                                        integer_to_expr_integer l)
@@ -980,6 +1038,7 @@ and tid_to_expr_th (t:tid) : E.tid =
   | PointerLockid _    -> raise(Not_supported_conversion(tid_to_str true t))
   | PointerLockidAt _  -> raise(Not_supported_conversion(tid_to_str true t))
   | PairTid _          -> raise(Not_supported_conversion(tid_to_str true t))
+  | BucketTid _        -> raise(Not_supported_conversion(tid_to_str true t))
 
 
 and elem_to_expr_elem (e:elem) : E.elem =
@@ -1028,6 +1087,9 @@ and addr_to_expr_addr (a:addr) : E.addr =
   | PointerArrAt (a,l) -> E.ArrAt(E.CellAt(E.heap,addr_to_expr_addr a),
                                              integer_to_expr_integer l)
 *)
+  | BucketInit b        -> E.BucketInit(bucket_to_expr_bucket b)
+  | BucketEnd b         -> E.BucketEnd(bucket_to_expr_bucket b)
+
 
 
 and cell_to_expr_cell (c:cell) : E.cell =
@@ -1068,6 +1130,15 @@ and mark_to_expr_mark (m:mark) : E.mark =
   | MarkFalse       -> E.MarkFalse
   | Marked c        -> E.Marked (cell_to_expr_cell c)
   | PointerMarked a -> E.Marked(E.CellAt(E.heap,addr_to_expr_addr a))
+
+
+and bucket_to_expr_bucket (b:bucket) : E.bucket =
+  match b with
+    VarBucket v       -> E.VarBucket (variable_to_expr_var v)
+  | MkBucket(i,e,s,t) -> E.MkBucket (addr_to_expr_addr i,
+                                     addr_to_expr_addr e,
+                                     set_to_expr_set s,
+                                     tid_to_expr_tid t)
 
 
 and setth_to_expr_setth (s:setth) : E.setth =
@@ -1165,6 +1236,11 @@ and atom_to_expr_atom (a:atom) : E.atom =
                                              addr_to_expr_addr a1,
                                              addr_to_expr_addr a2,
                                              setelem_to_expr_setelem es)
+  | Hashmap (m,s,se,bb,i)     -> E.Hashmap (mem_to_expr_mem m,
+                                            set_to_expr_set s,
+                                            setelem_to_expr_setelem se,
+                                            bucketarray_to_expr_array bb,
+                                            integer_to_expr_integer i)
   | In (a,s)                  -> E.In (addr_to_expr_addr a, set_to_expr_set s)
   | SubsetEq (s1,s2)          -> E.SubsetEq (set_to_expr_set s1, set_to_expr_set s2)
   | InTh (t,s)                -> E.InTh (tid_to_expr_tid t, setth_to_expr_setth s)
@@ -1215,25 +1291,27 @@ let construct_var_from_sort (id:varId)
                             (k:E.var_nature) : term =
   let v = build_var id s p_name ~nature:k in
   match s with
-    E.Set        -> SetT        (VarSet        v)
-  | E.Elem       -> ElemT       (VarElem       v)
-  | E.Tid        -> TidT        (VarTh         v)
-  | E.Addr       -> AddrT       (VarAddr       v)
-  | E.Cell       -> CellT       (VarCell       v)
-  | E.SetTh      -> SetThT      (VarSetTh      v)
-  | E.SetInt     -> SetIntT     (VarSetInt     v)
-  | E.SetElem    -> SetElemT    (VarSetElem    v)
-  | E.SetPair    -> SetPairT    (VarSetPair    v)
-  | E.Path       -> PathT       (VarPath       v)
-  | E.Mem        -> MemT        (VarMem        v)
-  | E.Bool       -> VarT        v
-  | E.Int        -> IntT        (VarInt        v)
-  | E.Pair       -> PairT       (VarPair       v)
-  | E.Array      -> ArrayT      (VarArray      v)
-  | E.AddrArray  -> AddrArrayT  (VarAddrArray  v)
-  | E.TidArray   -> TidArrayT   (VarTidArray   v)
-  | E.Mark       -> MarkT       (VarMark       v)
-  | E.Unknown    -> VarT        v
+    E.Set         -> SetT          (VarSet           v)
+  | E.Elem        -> ElemT         (VarElem          v)
+  | E.Tid         -> TidT          (VarTh            v)
+  | E.Addr        -> AddrT         (VarAddr          v)
+  | E.Cell        -> CellT         (VarCell          v)
+  | E.SetTh       -> SetThT        (VarSetTh         v)
+  | E.SetInt      -> SetIntT       (VarSetInt        v)
+  | E.SetElem     -> SetElemT      (VarSetElem       v)
+  | E.SetPair     -> SetPairT      (VarSetPair       v)
+  | E.Path        -> PathT         (VarPath          v)
+  | E.Mem         -> MemT          (VarMem           v)
+  | E.Bool        -> VarT          v
+  | E.Int         -> IntT          (VarInt           v)
+  | E.Pair        -> PairT         (VarPair          v)
+  | E.Array       -> ArrayT        (VarArray         v)
+  | E.AddrArray   -> AddrArrayT    (VarAddrArray     v)
+  | E.TidArray    -> TidArrayT     (VarTidArray      v)
+  | E.BucketArray -> BucketArrayT  (VarBucketArray   v)
+  | E.Mark        -> MarkT         (VarMark          v)
+  | E.Bucket      -> BucketT       (VarBucket        v)
+  | E.Unknown     -> VarT          v
 
 
 let term_to_str (t:term) : string =
@@ -1272,7 +1350,9 @@ let rec var_kind_term (kind:E.var_nature) (expr:term) : term list =
     | ArrayT(arr)       -> var_kind_array kind arr
     | AddrArrayT(arr)   -> var_kind_addrarr kind arr
     | TidArrayT(arr)    -> var_kind_tidarr kind arr
+    | BucketArrayT(arr) -> var_kind_bucketarr kind arr
     | MarkT(m)          -> var_kind_mark kind m
+    | BucketT(b)        -> var_kind_bucket kind b
 
 
 and var_kind_expr (kind:E.var_nature) (e:expr_t) : term list =
@@ -1303,6 +1383,14 @@ and var_kind_tidarr (kind:E.var_nature) (a:tidarr) : term list =
                             (var_kind_th kind t)
 
 
+and var_kind_bucketarr (kind:E.var_nature) (a:bucketarr) : term list =
+  match a with
+    VarBucketArray v        -> if v.nature = kind then [BucketArrayT a] else []
+  | BucketArrayUp(arr,i,b)  -> (var_kind_bucketarr kind arr) @
+                               (var_kind_int kind i)      @
+                               (var_kind_bucket kind b)
+
+
 and var_kind_set (kind:E.var_nature) (e:set) : term list =
   match e with
     VarSet v            -> if v.nature = kind then [SetT e] else []
@@ -1316,6 +1404,7 @@ and var_kind_set (kind:E.var_nature) (e:set) : term list =
   | AddrToSetAt(m,a,l)  -> (var_kind_mem kind m) @ (var_kind_addr kind a) @
                            (var_kind_int kind l)
   | SetArrayRd(arr,_)   -> (var_kind_array kind arr)
+  | BucketRegion b      -> (var_kind_bucket kind b)
 
 
 and var_kind_addr (kind:E.var_nature) (a:addr) : term list =
@@ -1346,6 +1435,8 @@ and var_kind_addr (kind:E.var_nature) (a:addr) : term list =
                                  (var_kind_int kind l)
   | PointerArrAt (a,l)        -> (var_kind_addr kind a) @
                                  (var_kind_int kind l)
+  | BucketInit b              -> (var_kind_bucket kind b)
+  | BucketEnd b               -> (var_kind_bucket kind b)
 
 
 and var_kind_elem (kind:E.var_nature) (e:elem) : term list =
@@ -1374,6 +1465,7 @@ and var_kind_th (kind:E.var_nature) (th:tid) : term list =
   | PointerLockidAt (a,l) -> (var_kind_addr kind a) @
                              (var_kind_int kind l)
   | PairTid p             -> (var_kind_pair kind p)
+  | BucketTid b           -> (var_kind_bucket kind b)
 
 
 and var_kind_cell (kind:E.var_nature) (c:cell) : term list =
@@ -1413,6 +1505,15 @@ and var_kind_mark (kind:E.var_nature) (m:mark) : term list =
   | MarkFalse       -> []
   | Marked c        -> (var_kind_cell kind c)
   | PointerMarked a -> (var_kind_addr kind a)
+
+
+and var_kind_bucket (kind:E.var_nature) (b:bucket) : term list =
+  match b with
+    VarBucket v  -> if v.nature = kind then [BucketT b] else []
+  | MkBucket(i,e,s,t) -> (var_kind_addr kind i) @
+                         (var_kind_addr kind e) @
+                         (var_kind_set kind s) @
+                         (var_kind_th kind t)
 
 
 and var_kind_setth (kind:E.var_nature) (s:setth) : term list =
@@ -1532,6 +1633,11 @@ and var_kind_atom (kind:E.var_nature) (a:atom) : term list =
                                     (var_kind_addr kind a1) @
                                     (var_kind_addr kind a2) @
                                     (var_kind_setelem kind es)
+  | Hashmap(h,s,se,bb,i)         -> (var_kind_mem kind h) @
+                                    (var_kind_set kind s) @
+                                    (var_kind_setelem kind se) @
+                                    (var_kind_bucketarr kind bb) @
+                                    (var_kind_int kind i)
   | In(a,s)                      -> (var_kind_addr kind a) @
                                     (var_kind_set kind s)
   | SubsetEq(s_in,s_out)         -> (var_kind_set kind s_in) @

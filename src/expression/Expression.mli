@@ -19,6 +19,8 @@ type sort =
   | AddrArray
   | TidArray
   | Mark
+  | Bucket
+  | BucketArray
   | Unknown
 
 
@@ -49,7 +51,9 @@ and term =
   | ArrayT        of arrays
   | AddrArrayT    of addrarr
   | TidArrayT     of tidarr
+  | BucketArrayT  of bucketarr
   | MarkT         of mark
+  | BucketT       of bucket
 
 and eq =          term * term
 
@@ -68,6 +72,10 @@ and tidarr =
   | VarTidArray   of V.t
   | TidArrayUp    of tidarr * integer * tid
   | CellTids      of cell
+
+and bucketarr =
+  | VarBucketArray of V.t
+  | BucketArrayUp  of bucketarr * integer * bucket
 
 and integer =
     IntVal        of int
@@ -102,6 +110,7 @@ and set =
   | AddrToSet     of mem * addr
   | AddrToSetAt   of mem * addr * integer
   | SetArrayRd    of arrays * tid
+  | BucketRegion  of bucket
   
 and tid =
     VarTh         of V.t
@@ -111,6 +120,7 @@ and tid =
   | TidArrayRd    of arrays * tid
   | TidArrRd      of tidarr * integer
   | PairTid       of pair
+  | BucketTid     of bucket
 
 and elem =
     VarElem           of V.t
@@ -132,6 +142,8 @@ and addr =
   | LastLocked    of mem * path
   | AddrArrayRd   of arrays * tid
   | AddrArrRd     of addrarr * integer
+  | BucketInit    of bucket
+  | BucketEnd     of bucket
 
 and cell =
     VarCell       of V.t
@@ -153,6 +165,11 @@ and mark =
   | MarkTrue
   | MarkFalse
   | Marked        of cell
+
+
+and bucket =
+    VarBucket     of V.t
+  | MkBucket      of addr * addr * set * tid
 
 and setth =
     VarSetTh      of V.t
@@ -213,6 +230,7 @@ and atom =
   | ReachAt       of mem * addr * addr * integer * path
   | OrderList     of mem * addr * addr
   | Skiplist      of mem * set * integer * addr * addr * setelem
+  | Hashmap       of mem * set * setelem * bucketarr * integer
   | In            of addr * set
   | SubsetEq      of set * set
   | InTh          of tid * setth
@@ -445,6 +463,7 @@ val term_to_str       : term        -> string
 val addr_to_str       : addr        -> string
 val cell_to_str       : cell        -> string
 val mark_to_str       : mark        -> string
+val bucket_to_str     : bucket      -> string
 val elem_to_str       : elem        -> string
 val tid_to_str        : tid         -> string
 val arrays_to_str     : arrays      -> string
@@ -459,6 +478,7 @@ val setpair_to_str    : setpair     -> string
 val setint_to_str     : setint      -> string
 val addrarr_to_str    : addrarr     -> string
 val tidarr_to_str     : tidarr      -> string
+val bucketarr_to_str  : bucketarr   -> string
 val eq_to_str         : eq          -> string
 val diseq_to_str      : diseq       -> string
 val expr_to_str       : expr_t      -> string

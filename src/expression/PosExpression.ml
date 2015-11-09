@@ -68,6 +68,7 @@ let term_pool = TermPool.empty
 (* Configuration *)
 let abs_cell_id = "abs_cell_lock_"
 let abs_array_id = "abs_tid_array_"
+let abs_bucket_id = "abs_bucket_"
 let defPredTableSize = 200
 
 
@@ -83,19 +84,9 @@ let build_var ?(fresh=false)
   V.build id () pr th p () ~fresh:fresh
 
 
-let build_fresh_lockid_var (t:E.tid) : V.t =
-  let lockid_term = E.TidT t in
-  let cell_tag = TermPool.tag term_pool lockid_term in
-  let id = (abs_cell_id ^ string_of_int cell_tag) in
-  let var = build_var id false V.Shared V.GlobalScope ~fresh:true
-  in
-    var
-
-
-let build_fresh_tid_array_var (t:E.tid) : V.t =
-  let tid_array_term = E.TidT t in
-  let tid_tag = TermPool.tag term_pool tid_array_term in
-  let id = (abs_array_id ^ string_of_int tid_tag) in
+let build_fresh (t:E.tid) (abs_id:V.id) : V.t =
+  let new_tag = TermPool.tag term_pool (E.TidT t) in
+  let id = (abs_id ^ string_of_int new_tag) in
   let var = build_var id false V.Shared V.GlobalScope ~fresh:true
   in
     var
@@ -125,11 +116,12 @@ and conv_th (th:E.tid) : tid =
   match th with
     E.VarTh v           -> VarTh (conv_variable v)
   | E.NoTid             -> NoTid
-  | E.CellLockId _      -> VarTh (build_fresh_lockid_var th)
-  | E.CellLockIdAt _    -> VarTh (build_fresh_lockid_var th)
-  | E.TidArrayRd _      -> VarTh (build_fresh_tid_array_var th)
-  | E.TidArrRd _        -> VarTh (build_fresh_tid_array_var th)
-  | E.PairTid _         -> VarTh (build_fresh_tid_array_var th)
+  | E.CellLockId _      -> VarTh (build_fresh th abs_cell_id)
+  | E.CellLockIdAt _    -> VarTh (build_fresh th abs_cell_id)
+  | E.TidArrayRd _      -> VarTh (build_fresh th abs_array_id)
+  | E.TidArrRd _        -> VarTh (build_fresh th abs_array_id)
+  | E.PairTid _         -> VarTh (build_fresh th abs_array_id)
+  | E.BucketTid _       -> VarTh (build_fresh th abs_bucket_id)
 
 
 let rec tid_to_str (expr:tid) : string =

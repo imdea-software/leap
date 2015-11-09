@@ -12,25 +12,27 @@ exception UnsupportedTllExpr of string
 
 let rec sort_to_tll_sort (s:E.sort) : TLL.sort =
   match s with
-  | E.Set       -> TLL.Set
-  | E.Elem      -> TLL.Elem
-  | E.Tid      -> TLL.Tid
-  | E.Addr      -> TLL.Addr
-  | E.Cell      -> TLL.Cell
-  | E.SetTh     -> TLL.SetTh
-  | E.SetInt    -> raise(UnsupportedSort(E.sort_to_str s))
-  | E.SetElem   -> TLL.SetElem
-  | E.SetPair   -> raise(UnsupportedSort(E.sort_to_str s))
-  | E.Path      -> TLL.Path
-  | E.Mem       -> TLL.Mem
-  | E.Bool      -> TLL.Bool
-  | E.Int       -> TLL.Int
-  | E.Pair      -> raise(UnsupportedSort(E.sort_to_str s))
-  | E.Array     -> raise(UnsupportedSort(E.sort_to_str s))
-  | E.AddrArray -> raise(UnsupportedSort(E.sort_to_str s))
-  | E.TidArray  -> raise(UnsupportedSort(E.sort_to_str s))
-  | E.Mark      -> TLL.Mark
-  | E.Unknown   -> TLL.Unknown
+  | E.Set         -> TLL.Set
+  | E.Elem        -> TLL.Elem
+  | E.Tid         -> TLL.Tid
+  | E.Addr        -> TLL.Addr
+  | E.Cell        -> TLL.Cell
+  | E.SetTh       -> TLL.SetTh
+  | E.SetInt      -> raise(UnsupportedSort(E.sort_to_str s))
+  | E.SetElem     -> TLL.SetElem
+  | E.SetPair     -> raise(UnsupportedSort(E.sort_to_str s))
+  | E.Path        -> TLL.Path
+  | E.Mem         -> TLL.Mem
+  | E.Bool        -> TLL.Bool
+  | E.Int         -> TLL.Int
+  | E.Pair        -> raise(UnsupportedSort(E.sort_to_str s))
+  | E.Array       -> raise(UnsupportedSort(E.sort_to_str s))
+  | E.AddrArray   -> raise(UnsupportedSort(E.sort_to_str s))
+  | E.TidArray    -> raise(UnsupportedSort(E.sort_to_str s))
+  | E.BucketArray -> raise(UnsupportedSort(E.sort_to_str s))
+  | E.Mark        -> TLL.Mark
+  | E.Bucket      -> raise(UnsupportedSort(E.sort_to_str s))
+  | E.Unknown     -> TLL.Unknown
 
 
 and sort_to_expr_sort (s:TLL.sort) : E.sort =
@@ -96,28 +98,31 @@ and tid_to_tll_tid (th:E.tid) : TLL.tid =
   | E.TidArrayRd _   -> raise(UnsupportedTllExpr(E.tid_to_str th))
   | E.TidArrRd _     -> raise(UnsupportedTllExpr(E.tid_to_str th))
   | E.PairTid _      -> raise(UnsupportedTllExpr(E.tid_to_str th))
+  | E.BucketTid _    -> raise(UnsupportedTllExpr(E.tid_to_str th))
 
 
 and term_to_tll_term (t:E.term) : TLL.term =
   match t with
-    E.VarT v       -> TLL.VarT (variable_to_tll_var v)
-  | E.SetT s       -> TLL.SetT (set_to_tll_set s)
-  | E.ElemT e      -> TLL.ElemT (elem_to_tll_elem e)
-  | E.TidT t       -> TLL.TidT (tid_to_tll_tid t)
-  | E.AddrT a      -> TLL.AddrT (addr_to_tll_addr a)
-  | E.CellT c      -> TLL.CellT (cell_to_tll_cell c)
-  | E.SetThT st    -> TLL.SetThT (setth_to_tll_setth st)
-  | E.SetIntT _    -> raise(UnsupportedTllExpr(E.term_to_str t))
-  | E.SetElemT st  -> TLL.SetElemT (setelem_to_tll_setelem st)
-  | E.SetPairT _   -> raise(UnsupportedTllExpr(E.term_to_str t))
-  | E.PathT p      -> TLL.PathT (path_to_tll_path p)
-  | E.MemT m       -> TLL.MemT (mem_to_tll_mem m)
-  | E.IntT i       -> TLL.IntT (int_to_tll_int i)
-  | E.PairT _      -> raise(UnsupportedTllExpr(E.term_to_str t))
-  | E.AddrArrayT _ -> raise(UnsupportedTllExpr(E.term_to_str t))
-  | E.TidArrayT _  -> raise(UnsupportedTllExpr(E.term_to_str t))
-  | E.MarkT m      -> TLL.MarkT (mark_to_tll_mark m)
-  | E.ArrayT a     -> arrays_to_tll_term a
+    E.VarT v          -> TLL.VarT (variable_to_tll_var v)
+  | E.SetT s          -> TLL.SetT (set_to_tll_set s)
+  | E.ElemT e         -> TLL.ElemT (elem_to_tll_elem e)
+  | E.TidT t          -> TLL.TidT (tid_to_tll_tid t)
+  | E.AddrT a         -> TLL.AddrT (addr_to_tll_addr a)
+  | E.CellT c         -> TLL.CellT (cell_to_tll_cell c)
+  | E.SetThT st       -> TLL.SetThT (setth_to_tll_setth st)
+  | E.SetIntT _       -> raise(UnsupportedTllExpr(E.term_to_str t))
+  | E.SetElemT st     -> TLL.SetElemT (setelem_to_tll_setelem st)
+  | E.SetPairT _      -> raise(UnsupportedTllExpr(E.term_to_str t))
+  | E.PathT p         -> TLL.PathT (path_to_tll_path p)
+  | E.MemT m          -> TLL.MemT (mem_to_tll_mem m)
+  | E.IntT i          -> TLL.IntT (int_to_tll_int i)
+  | E.PairT _         -> raise(UnsupportedTllExpr(E.term_to_str t))
+  | E.AddrArrayT _    -> raise(UnsupportedTllExpr(E.term_to_str t))
+  | E.TidArrayT _     -> raise(UnsupportedTllExpr(E.term_to_str t))
+  | E.BucketArrayT _  -> raise(UnsupportedTllExpr(E.term_to_str t))
+  | E.MarkT m         -> TLL.MarkT (mark_to_tll_mark m)
+  | E.BucketT _       -> raise(UnsupportedTllExpr(E.term_to_str t))
+  | E.ArrayT a        -> arrays_to_tll_term a
 
 
 and arrays_to_tll_term (a:E.arrays) : TLL.term =
@@ -154,7 +159,8 @@ and set_to_tll_set (s:E.set) : TLL.set =
   | E.AddrToSetAt _   -> raise(UnsupportedTllExpr(E.set_to_str s))
   | E.SetArrayRd (E.VarArray v,t) ->
       TLL.VarSet (variable_to_tll_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
-  | E.SetArrayRd _          -> raise(UnsupportedTllExpr(E.set_to_str s))
+  | E.SetArrayRd _    -> raise(UnsupportedTllExpr(E.set_to_str s))
+  | E.BucketRegion _  -> raise(UnsupportedTllExpr(E.set_to_str s))
 
 
 and elem_to_tll_elem (e:E.elem) : TLL.elem =
@@ -186,6 +192,8 @@ and addr_to_tll_addr (a:E.addr) : TLL.addr =
       TLL.VarAddr (variable_to_tll_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
   | E.AddrArrayRd _          -> raise(UnsupportedTllExpr(E.addr_to_str a))
   | E.AddrArrRd _            -> raise(UnsupportedTllExpr(E.addr_to_str a))
+  | E.BucketInit _           -> raise(UnsupportedTllExpr(E.addr_to_str a))
+  | E.BucketEnd _            -> raise(UnsupportedTllExpr(E.addr_to_str a))
 
 
 and cell_to_tll_cell (c:E.cell) : TLL.cell =
@@ -311,6 +319,7 @@ and atom_to_tll_atom (a:E.atom) : TLL.atom =
   | E.ReachAt _            -> raise(UnsupportedTllExpr(E.atom_to_str a))
   | E.OrderList(m,a1,a2)   -> TLL.OrderList (mem m, addr a1, addr a2)
   | E.Skiplist _           -> raise(UnsupportedTllExpr(E.atom_to_str a))
+  | E.Hashmap _            -> raise(UnsupportedTllExpr(E.atom_to_str a))
   | E.In (a,s)             -> TLL.In (addr a, set s)
   | E.SubsetEq (s1,s2)     -> TLL.SubsetEq (set s1, set s2)
   | E.InTh (t,s)           -> TLL.InTh (tid t, setth s)

@@ -51,29 +51,31 @@ exception Undefined of id
 
 
 (* Sort names *)
-let bool_s    : string = "Bool"
-let int_s     : string = "Int"
-let addr_s    : string = "Address"
-let set_s     : string = "Set"
-let elem_s    : string = "Elem"
-let tid_s     : string = "Tid"
-let cell_s    : string = "Cell"
-let setth_s   : string = "Setth"
-let setint_s  : string = "Setint"
-let setelem_s : string = "SetElem"
-let setpair_s : string = "SetPair"
-let path_s    : string = "Path"
-let level_s   : string = "Level"
-let heap_s    : string = "Heap"
-let bool_s    : string = "Bool"
-let int_s     : string = "Int"
-let pair_s    : string = "Pair"
-let array_s   : string = "Array"
-let addrarr_s : string = "AddrArr"
-let tidarr_s  : string = "TidArr"
-let mark_s    : string = "Mark"
-let unk_s     : string = "Unknown"
-let loc_s     : string = "Loc"
+let bool_s      : string = "Bool"
+let int_s       : string = "Int"
+let addr_s      : string = "Address"
+let set_s       : string = "Set"
+let elem_s      : string = "Elem"
+let tid_s       : string = "Tid"
+let cell_s      : string = "Cell"
+let setth_s     : string = "Setth"
+let setint_s    : string = "Setint"
+let setelem_s   : string = "SetElem"
+let setpair_s   : string = "SetPair"
+let path_s      : string = "Path"
+let level_s     : string = "Level"
+let heap_s      : string = "Heap"
+let bool_s      : string = "Bool"
+let int_s       : string = "Int"
+let pair_s      : string = "Pair"
+let array_s     : string = "Array"
+let addrarr_s   : string = "AddrArr"
+let tidarr_s    : string = "TidArr"
+let bucketarr_s : string = "BucketArr"
+let mark_s      : string = "Mark"
+let bucket_s    : string = "Bucket"
+let unk_s       : string = "Unknown"
+let loc_s       : string = "Loc"
 
 
 (* Sort map functions *)
@@ -376,25 +378,27 @@ let id_list_to_str (m:t) (ids:id list) : string =
 
 let conv_sort (s:Expression.sort) : sort =
   match s with
-  | Expr.Set       -> set_s
-  | Expr.Elem      -> elem_s
-  | Expr.Tid      -> tid_s
-  | Expr.Addr      -> addr_s
-  | Expr.Cell      -> cell_s
-  | Expr.SetTh     -> setth_s
-  | Expr.SetInt    -> setint_s
-  | Expr.SetElem   -> setelem_s
-  | Expr.SetPair   -> setpair_s
-  | Expr.Path      -> path_s
-  | Expr.Mem       -> heap_s
-  | Expr.Bool      -> bool_s
-  | Expr.Int       -> int_s
-  | Expr.Pair      -> pair_s
-  | Expr.Array     -> array_s
-  | Expr.AddrArray -> addrarr_s
-  | Expr.TidArray  -> tidarr_s
-  | Expr.Mark      -> mark_s
-  | Expr.Unknown   -> unk_s
+  | Expr.Set           -> set_s
+  | Expr.Elem          -> elem_s
+  | Expr.Tid           -> tid_s
+  | Expr.Addr          -> addr_s
+  | Expr.Cell          -> cell_s
+  | Expr.SetTh         -> setth_s
+  | Expr.SetInt        -> setint_s
+  | Expr.SetElem       -> setelem_s
+  | Expr.SetPair       -> setpair_s
+  | Expr.Path          -> path_s
+  | Expr.Mem           -> heap_s
+  | Expr.Bool          -> bool_s
+  | Expr.Int           -> int_s
+  | Expr.Pair          -> pair_s
+  | Expr.Array         -> array_s
+  | Expr.AddrArray     -> addrarr_s
+  | Expr.TidArray      -> tidarr_s
+  | Expr.BucketArray   -> bucketarr_s
+  | Expr.Mark          -> mark_s
+  | Expr.Bucket        -> bucket_s
+  | Expr.Unknown       -> unk_s
 
 
 let search_type_to_str (model:t) (sm:sort_map_t) (s:sort) : string =

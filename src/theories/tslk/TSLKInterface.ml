@@ -22,24 +22,26 @@ module Make (SLK : TSLKExpression.S) =
 
     let make_compatible_term_from_var (t:E.term) (v:E.V.t) : E.term =
       match t with
-      | E.VarT _       -> E.VarT v
-      | E.SetT _       -> E.SetT       (E.VarSet v)
-      | E.ElemT _      -> E.ElemT      (E.VarElem v)
-      | E.TidT _       -> E.TidT       (E.VarTh v)
-      | E.AddrT _      -> E.AddrT      (E.VarAddr v)
-      | E.CellT _      -> E.CellT      (E.VarCell v)
-      | E.SetThT _     -> E.SetThT     (E.VarSetTh v)
-      | E.SetIntT _    -> E.SetIntT    (E.VarSetInt v)
-      | E.SetElemT _   -> E.SetElemT   (E.VarSetElem v)
-      | E.SetPairT _   -> E.SetPairT   (E.VarSetPair v)
-      | E.PathT _      -> E.PathT      (E.VarPath v)
-      | E.MemT _       -> E.MemT       (E.VarMem v)
-      | E.IntT _       -> E.IntT       (E.VarInt v)
-      | E.PairT _      -> E.PairT      (E.VarPair v)
-      | E.ArrayT _     -> E.ArrayT     (E.VarArray v)
-      | E.AddrArrayT _ -> E.AddrArrayT (E.VarAddrArray v)
-      | E.TidArrayT _  -> E.TidArrayT  (E.VarTidArray v)
-      | E.MarkT _      -> E.MarkT      (E.VarMark v)
+      | E.VarT _          -> E.VarT v
+      | E.SetT _          -> E.SetT          (E.VarSet v)
+      | E.ElemT _         -> E.ElemT         (E.VarElem v)
+      | E.TidT _          -> E.TidT          (E.VarTh v)
+      | E.AddrT _         -> E.AddrT         (E.VarAddr v)
+      | E.CellT _         -> E.CellT         (E.VarCell v)
+      | E.SetThT _        -> E.SetThT        (E.VarSetTh v)
+      | E.SetIntT _       -> E.SetIntT       (E.VarSetInt v)
+      | E.SetElemT _      -> E.SetElemT      (E.VarSetElem v)
+      | E.SetPairT _      -> E.SetPairT      (E.VarSetPair v)
+      | E.PathT _         -> E.PathT         (E.VarPath v)
+      | E.MemT _          -> E.MemT          (E.VarMem v)
+      | E.IntT _          -> E.IntT          (E.VarInt v)
+      | E.PairT _         -> E.PairT         (E.VarPair v)
+      | E.ArrayT _        -> E.ArrayT        (E.VarArray v)
+      | E.AddrArrayT _    -> E.AddrArrayT    (E.VarAddrArray v)
+      | E.TidArrayT _     -> E.TidArrayT     (E.VarTidArray v)
+      | E.BucketArrayT _  -> E.BucketArrayT  (E.VarBucketArray v)
+      | E.MarkT _         -> E.MarkT         (E.VarMark v)
+      | E.BucketT _       -> E.BucketT       (E.VarBucket v)
 
 
     (* Normalization *)
@@ -114,6 +116,7 @@ module Make (SLK : TSLKExpression.S) =
         | E.AddrToSet (m,a)     -> E.AddrToSetAt (norm_mem m, norm_addr a, E.IntVal 0)
         | E.AddrToSetAt (m,a,i) -> E.AddrToSetAt (norm_mem m, norm_addr a, norm_int i)
         | E.SetArrayRd _        -> raise(UnsupportedTSLKExpr(E.set_to_str s))
+        | E.BucketRegion _      -> raise(UnsupportedTSLKExpr(E.set_to_str s))
 
       and norm_tid (t:E.tid) : E.tid =
         match t with
@@ -124,6 +127,7 @@ module Make (SLK : TSLKExpression.S) =
         | E.TidArrayRd _       -> raise(UnsupportedTSLKExpr(E.tid_to_str t))
         | E.TidArrRd _         -> raise(UnsupportedTSLKExpr(E.tid_to_str t))
         | E.PairTid _          -> raise(UnsupportedTSLKExpr(E.tid_to_str t))
+        | E.BucketTid _        -> raise(UnsupportedTSLKExpr(E.tid_to_str t))
 
       and norm_elem (e:E.elem) : E.elem =
         match e with
@@ -150,6 +154,8 @@ module Make (SLK : TSLKExpression.S) =
         | E.AddrArrayRd _          -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
         | E.AddrArrRd _            -> let a_var = gen_if_not_var (E.AddrT a) E.Addr in
                                         E.VarAddr a_var
+        | E.BucketInit _           -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
+        | E.BucketEnd _            -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
 
       and norm_cell (c:E.cell) : E.cell =
         match c with
@@ -173,7 +179,12 @@ module Make (SLK : TSLKExpression.S) =
         | E.VarMark _    -> raise(UnsupportedTSLKExpr(E.mark_to_str m))
         | E.MarkTrue     -> raise(UnsupportedTSLKExpr(E.mark_to_str m))
         | E.MarkFalse    -> raise(UnsupportedTSLKExpr(E.mark_to_str m))
-        | E.Marked     _ -> raise(UnsupportedTSLKExpr(E.mark_to_str m))
+        | E.Marked _     -> raise(UnsupportedTSLKExpr(E.mark_to_str m))
+
+      and norm_bucket (b:E.bucket) : E.bucket =
+        match b with
+        | E.VarBucket _    -> raise(UnsupportedTSLKExpr(E.bucket_to_str b))
+        | E.MkBucket _     -> raise(UnsupportedTSLKExpr(E.bucket_to_str b))
 
       and norm_setth (s:E.setth) : E.setth =
         match s with
@@ -280,6 +291,13 @@ module Make (SLK : TSLKExpression.S) =
         | E.TidArrayUp (yy,i,t) -> E.TidArrayUp (norm_tidarr yy, norm_int i, norm_tid t)
         | E.CellTids _          -> raise(UnsupportedTSLKExpr(E.tidarr_to_str tt))
 
+      and norm_bucketarr (bb:E.bucketarr) : E.bucketarr =
+        match bb with
+        | E.VarBucketArray v       -> E.VarBucketArray v
+        | E.BucketArrayUp (cc,i,b) -> E.BucketArrayUp (norm_bucketarr cc,
+                                                       norm_int i,
+                                                       norm_bucket b)
+
       and norm_term (t:E.term) : E.term =
         match t with
         | E.VarT v             -> E.VarT v
@@ -299,7 +317,9 @@ module Make (SLK : TSLKExpression.S) =
         | E.ArrayT arr         -> E.ArrayT (norm_arrays arr)
         | E.AddrArrayT aa      -> E.AddrArrayT (norm_addrarr aa)
         | E.TidArrayT tt       -> E.TidArrayT (norm_tidarr tt)
+        | E.BucketArrayT bb    -> E.BucketArrayT (norm_bucketarr bb)
         | E.MarkT m            -> E.MarkT (norm_mark m)
+        | E.BucketT b          -> E.BucketT (norm_bucket b)
 
       and norm_expr (expr:E.expr_t) : E.expr_t =
         match expr with
@@ -315,6 +335,7 @@ module Make (SLK : TSLKExpression.S) =
                                           norm_int i, norm_path p)
         | E.OrderList (m,a1,a2)   -> E.OrderList (norm_mem m, norm_addr a1, norm_addr a2)
         | E.Skiplist _            -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
+        | E.Hashmap _             -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
         | E.In (a,s)              -> E.In (norm_addr a, norm_set s)
         | E.SubsetEq (s1,s2)      -> E.SubsetEq (norm_set s1, norm_set s2)
         | E.InTh (t,s)            -> E.InTh (norm_tid t, norm_setth s)
@@ -450,25 +471,27 @@ module Make (SLK : TSLKExpression.S) =
     (* Expression to TSLKExpression conversion *)
     and sort_to_tslk_sort (s:E.sort) : SLK.sort =
       match s with
-        E.Set       -> SLK.Set
-      | E.Elem      -> SLK.Elem
-      | E.Tid      -> SLK.Tid
-      | E.Addr      -> SLK.Addr
-      | E.Cell      -> SLK.Cell
-      | E.SetTh     -> SLK.SetTh
-      | E.SetInt    -> raise(UnsupportedSort(E.sort_to_str s))
-      | E.SetElem   -> SLK.SetElem
-      | E.SetPair   -> raise(UnsupportedSort(E.sort_to_str s))
-      | E.Path      -> SLK.Path
-      | E.Mem       -> SLK.Mem
-      | E.Bool      -> SLK.Bool
-      | E.Int       -> SLK.Level
-      | E.Pair      -> raise(UnsupportedSort(E.sort_to_str s))
-      | E.Array     -> raise(UnsupportedSort(E.sort_to_str s))
-      | E.AddrArray -> raise(UnsupportedSort(E.sort_to_str s))
-      | E.TidArray  -> raise(UnsupportedSort(E.sort_to_str s))
-      | E.Mark      -> raise(UnsupportedSort(E.sort_to_str s))
-      | E.Unknown   -> SLK.Unknown
+        E.Set         -> SLK.Set
+      | E.Elem        -> SLK.Elem
+      | E.Tid         -> SLK.Tid
+      | E.Addr        -> SLK.Addr
+      | E.Cell        -> SLK.Cell
+      | E.SetTh       -> SLK.SetTh
+      | E.SetInt      -> raise(UnsupportedSort(E.sort_to_str s))
+      | E.SetElem     -> SLK.SetElem
+      | E.SetPair     -> raise(UnsupportedSort(E.sort_to_str s))
+      | E.Path        -> SLK.Path
+      | E.Mem         -> SLK.Mem
+      | E.Bool        -> SLK.Bool
+      | E.Int         -> SLK.Level
+      | E.Pair        -> raise(UnsupportedSort(E.sort_to_str s))
+      | E.Array       -> raise(UnsupportedSort(E.sort_to_str s))
+      | E.AddrArray   -> raise(UnsupportedSort(E.sort_to_str s))
+      | E.TidArray    -> raise(UnsupportedSort(E.sort_to_str s))
+      | E.BucketArray -> raise(UnsupportedSort(E.sort_to_str s))
+      | E.Mark        -> raise(UnsupportedSort(E.sort_to_str s))
+      | E.Bucket      -> raise(UnsupportedSort(E.sort_to_str s))
+      | E.Unknown     -> SLK.Unknown
 
 
     and build_term_var (v:E.V.t) : SLK.term =
@@ -518,27 +541,30 @@ module Make (SLK : TSLKExpression.S) =
       | E.TidArrayRd _       -> raise(UnsupportedTSLKExpr(E.tid_to_str th))
       | E.TidArrRd _         -> raise(UnsupportedTSLKExpr(E.tid_to_str th))
       | E.PairTid _          -> raise(UnsupportedTSLKExpr(E.tid_to_str th))
+      | E.BucketTid _        -> raise(UnsupportedTSLKExpr(E.tid_to_str th))
 
     and term_to_tslk_term (t:E.term) : SLK.term =
       match t with
-        E.VarT v        -> SLK.VarT (var_to_tslk_var v)
-      | E.SetT s        -> SLK.SetT (set_to_tslk_set s)
-      | E.ElemT e       -> SLK.ElemT (elem_to_tslk_elem e)
-      | E.TidT t        -> SLK.TidT (tid_to_tslk_tid t)
-      | E.AddrT a       -> SLK.AddrT (addr_to_tslk_addr a)
-      | E.CellT c       -> SLK.CellT (cell_to_tslk_cell c)
-      | E.SetThT st     -> SLK.SetThT (setth_to_tslk_setth st)
-      | E.SetIntT _     -> raise(UnsupportedTSLKExpr(E.term_to_str t))
-      | E.SetElemT st   -> SLK.SetElemT (setelem_to_tslk_setelem st)
-      | E.SetPairT _    -> raise(UnsupportedTSLKExpr(E.term_to_str t))
-      | E.PathT p       -> SLK.PathT (path_to_tslk_path p)
-      | E.MemT m        -> SLK.MemT (mem_to_tslk_mem m)
-      | E.IntT i        -> SLK.LevelT (int_to_tslk_level i)
-      | E.PairT _       -> raise(UnsupportedTSLKExpr(E.term_to_str t))
-      | E.AddrArrayT _  -> raise(UnsupportedTSLKExpr(E.term_to_str t))
-      | E.TidArrayT _   -> raise(UnsupportedTSLKExpr(E.term_to_str t))
-      | E.MarkT _       -> raise(UnsupportedTSLKExpr(E.term_to_str t))
-      | E.ArrayT a      -> arrays_to_tslk_term a
+        E.VarT v          -> SLK.VarT (var_to_tslk_var v)
+      | E.SetT s          -> SLK.SetT (set_to_tslk_set s)
+      | E.ElemT e         -> SLK.ElemT (elem_to_tslk_elem e)
+      | E.TidT t          -> SLK.TidT (tid_to_tslk_tid t)
+      | E.AddrT a         -> SLK.AddrT (addr_to_tslk_addr a)
+      | E.CellT c         -> SLK.CellT (cell_to_tslk_cell c)
+      | E.SetThT st       -> SLK.SetThT (setth_to_tslk_setth st)
+      | E.SetIntT _       -> raise(UnsupportedTSLKExpr(E.term_to_str t))
+      | E.SetElemT st     -> SLK.SetElemT (setelem_to_tslk_setelem st)
+      | E.SetPairT _      -> raise(UnsupportedTSLKExpr(E.term_to_str t))
+      | E.PathT p         -> SLK.PathT (path_to_tslk_path p)
+      | E.MemT m          -> SLK.MemT (mem_to_tslk_mem m)
+      | E.IntT i          -> SLK.LevelT (int_to_tslk_level i)
+      | E.PairT _         -> raise(UnsupportedTSLKExpr(E.term_to_str t))
+      | E.AddrArrayT _    -> raise(UnsupportedTSLKExpr(E.term_to_str t))
+      | E.TidArrayT _     -> raise(UnsupportedTSLKExpr(E.term_to_str t))
+      | E.BucketArrayT _  -> raise(UnsupportedTSLKExpr(E.term_to_str t))
+      | E.MarkT _         -> raise(UnsupportedTSLKExpr(E.term_to_str t))
+      | E.BucketT _       -> raise(UnsupportedTSLKExpr(E.term_to_str t))
+      | E.ArrayT a        -> arrays_to_tslk_term a
 
 
     and arrays_to_tslk_term (a:E.arrays) : SLK.term =
@@ -572,6 +598,7 @@ module Make (SLK : TSLKExpression.S) =
       | E.SetArrayRd (E.VarArray v,t) ->
           SLK.VarSet (var_to_tslk_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
       | E.SetArrayRd _        -> raise(UnsupportedTSLKExpr(E.set_to_str s))
+      | E.BucketRegion _      -> raise(UnsupportedTSLKExpr(E.set_to_str s))
 
 
     and elem_to_tslk_elem (e:E.elem) : SLK.elem =
@@ -604,6 +631,8 @@ module Make (SLK : TSLKExpression.S) =
           SLK.VarAddr (var_to_tslk_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
       | E.AddrArrayRd _          -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
       | E.AddrArrRd _            -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
+      | E.BucketInit _           -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
+      | E.BucketEnd _            -> raise(UnsupportedTSLKExpr(E.addr_to_str a))
 
 
     and cell_to_tslk_cell (c:E.cell) : SLK.cell =
@@ -756,38 +785,39 @@ module Make (SLK : TSLKExpression.S) =
       let integ   = int_to_tslk_level       in
       let term    = term_to_tslk_term       in
       match a with
-        E.Append (p1,p2,p3)    -> SLK.Append (path p1,path p2,path p3)
-      | E.Reach (m,a1,a2,p)    -> SLK.Reach (mem m, addr a1, addr a2, SLK.LevelVal 0, path p)
-      | E.ReachAt (m,a1,a2,l,p)-> SLK.Reach (mem m, addr a1, addr a2, integ l, path p)
-      | E.OrderList(m,a1,a2)   -> SLK.OrderList (mem m, addr a1, addr a2)
-      | E.Skiplist _           -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
-      | E.In (a,s)             -> SLK.In (addr a, set s)
-      | E.SubsetEq (s1,s2)     -> SLK.SubsetEq (set s1, set s2)
-      | E.InTh (t,s)           -> SLK.InTh (tid t, setth s)
-      | E.SubsetEqTh (s1,s2)   -> SLK.SubsetEqTh (setth s1, setth s2)
-      | E.InInt _              -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
-      | E.SubsetEqInt _        -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
-      | E.InElem (e,s)         -> SLK.InElem (elem_to_tslk_elem e, setelem s)
-      | E.SubsetEqElem (s1,s2) -> SLK.SubsetEqElem (setelem s1, setelem s2)
-      | E.InPair _              -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
-      | E.SubsetEqPair _        -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
-      | E.InIntPair _           -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
-      | E.InTidPair _           -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
-      | E.Less (i1,i2)         -> SLK.Less (integ i1, integ i2)
-      | E.Greater (i1,i2)      -> SLK.Greater (integ i1, integ i2)
-      | E.LessEq (i1,i2)       -> SLK.LessEq (integ i1, integ i2)
-      | E.GreaterEq (i1,i2)    -> SLK.GreaterEq (integ i1, integ i2)
-      | E.LessTid _            -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
-      | E.LessElem (e1,e2)     -> SLK.LessElem (elem e1, elem e2)
-      | E.GreaterElem (e1,e2)  -> SLK.GreaterElem (elem e1, elem e2)
-      | E.Eq (t1,t2)           -> SLK.Eq (term t1, term t2)
-      | E.InEq (t1,t2)         -> SLK.InEq (term t1, term t2)
-      | E.UniqueInt _           -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
-      | E.UniqueTid _           -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
-      | E.BoolVar v            -> SLK.BoolVar (var_to_tslk_var v)
-      | E.BoolArrayRd _        -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
-      | E.PC (pc,t,pr)         -> SLK.PC (pc, shared_to_tslk_shared t,pr)
-      | E.PCUpdate (pc,t)      -> SLK.PCUpdate (pc, tid_to_tslk_tid t)
+        E.Append (p1,p2,p3)      -> SLK.Append (path p1,path p2,path p3)
+      | E.Reach (m,a1,a2,p)      -> SLK.Reach (mem m, addr a1, addr a2, SLK.LevelVal 0, path p)
+      | E.ReachAt (m,a1,a2,l,p)  -> SLK.Reach (mem m, addr a1, addr a2, integ l, path p)
+      | E.OrderList(m,a1,a2)     -> SLK.OrderList (mem m, addr a1, addr a2)
+      | E.Skiplist _             -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
+      | E.Hashmap _              -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
+      | E.In (a,s)               -> SLK.In (addr a, set s)
+      | E.SubsetEq (s1,s2)       -> SLK.SubsetEq (set s1, set s2)
+      | E.InTh (t,s)             -> SLK.InTh (tid t, setth s)
+      | E.SubsetEqTh (s1,s2)     -> SLK.SubsetEqTh (setth s1, setth s2)
+      | E.InInt _                -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
+      | E.SubsetEqInt _          -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
+      | E.InElem (e,s)           -> SLK.InElem (elem_to_tslk_elem e, setelem s)
+      | E.SubsetEqElem (s1,s2)   -> SLK.SubsetEqElem (setelem s1, setelem s2)
+      | E.InPair _               -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
+      | E.SubsetEqPair _         -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
+      | E.InIntPair _            -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
+      | E.InTidPair _            -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
+      | E.Less (i1,i2)           -> SLK.Less (integ i1, integ i2)
+      | E.Greater (i1,i2)        -> SLK.Greater (integ i1, integ i2)
+      | E.LessEq (i1,i2)         -> SLK.LessEq (integ i1, integ i2)
+      | E.GreaterEq (i1,i2)      -> SLK.GreaterEq (integ i1, integ i2)
+      | E.LessTid _              -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
+      | E.LessElem (e1,e2)       -> SLK.LessElem (elem e1, elem e2)
+      | E.GreaterElem (e1,e2)    -> SLK.GreaterElem (elem e1, elem e2)
+      | E.Eq (t1,t2)             -> SLK.Eq (term t1, term t2)
+      | E.InEq (t1,t2)           -> SLK.InEq (term t1, term t2)
+      | E.UniqueInt _            -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
+      | E.UniqueTid _            -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
+      | E.BoolVar v              -> SLK.BoolVar (var_to_tslk_var v)
+      | E.BoolArrayRd _          -> raise(UnsupportedTSLKExpr(E.atom_to_str a))
+      | E.PC (pc,t,pr)           -> SLK.PC (pc, shared_to_tslk_shared t,pr)
+      | E.PCUpdate (pc,t)        -> SLK.PCUpdate (pc, tid_to_tslk_tid t)
       | E.PCRange (pc1,pc2,t,pr) -> SLK.PCRange (pc1, pc2, shared_to_tslk_shared t, pr)
 
 

@@ -147,6 +147,7 @@ and atom_to_pairs_atom (a:E.atom) : PE.atom =
     | E.ReachAt _     -> raise(NotAPairsExpression(E.atom_to_str a))
     | E.OrderList _   -> raise(NotAPairsExpression(E.atom_to_str a))
     | E.Skiplist _    -> raise(NotAPairsExpression(E.atom_to_str a))
+    | E.Hashmap _     -> raise(NotAPairsExpression(E.atom_to_str a))
     | E.In _          -> raise(NotAPairsExpression(E.atom_to_str a))
     | E.SubsetEq _    -> raise(NotAPairsExpression(E.atom_to_str a))
     | E.InTh _        -> raise(NotAPairsExpression(E.atom_to_str a))

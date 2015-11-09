@@ -15,25 +15,27 @@ let rec sort_to_tsl_sort (s:E.sort) : SL.sort =
 (*  LOG "Entering sort_to_tsl_sort..." LEVEL TRACE; *)
 (*  LOG "sort_to_tsl_sort(%s)" (E.sort_to_str s) LEVEL DEBUG; *)
   match s with
-    E.Set       -> SL.Set
-  | E.Elem      -> SL.Elem
-  | E.Tid       -> SL.Tid
-  | E.Addr      -> SL.Addr
-  | E.Cell      -> SL.Cell
-  | E.SetTh     -> SL.SetTh
-  | E.SetInt    -> raise(UnsupportedSort(E.sort_to_str s))
-  | E.SetElem   -> SL.SetElem
-  | E.SetPair   -> raise(UnsupportedSort(E.sort_to_str s))
-  | E.Path      -> SL.Path
-  | E.Mem       -> SL.Mem
-  | E.Bool      -> SL.Bool
-  | E.Int       -> SL.Int
-  | E.Pair      -> raise(UnsupportedSort(E.sort_to_str s))
-  | E.Array     -> raise(UnsupportedSort(E.sort_to_str s))
-  | E.AddrArray -> SL.AddrArray
-  | E.TidArray  -> SL.TidArray
-  | E.Mark      -> raise(UnsupportedSort(E.sort_to_str s))
-  | E.Unknown   -> SL.Unknown
+    E.Set         -> SL.Set
+  | E.Elem        -> SL.Elem
+  | E.Tid         -> SL.Tid
+  | E.Addr        -> SL.Addr
+  | E.Cell        -> SL.Cell
+  | E.SetTh       -> SL.SetTh
+  | E.SetInt      -> raise(UnsupportedSort(E.sort_to_str s))
+  | E.SetElem     -> SL.SetElem
+  | E.SetPair     -> raise(UnsupportedSort(E.sort_to_str s))
+  | E.Path        -> SL.Path
+  | E.Mem         -> SL.Mem
+  | E.Bool        -> SL.Bool
+  | E.Int         -> SL.Int
+  | E.Pair        -> raise(UnsupportedSort(E.sort_to_str s))
+  | E.Array       -> raise(UnsupportedSort(E.sort_to_str s))
+  | E.AddrArray   -> SL.AddrArray
+  | E.TidArray    -> SL.TidArray
+  | E.BucketArray -> raise(UnsupportedSort(E.sort_to_str s))
+  | E.Mark        -> raise(UnsupportedSort(E.sort_to_str s))
+  | E.Bucket      -> raise(UnsupportedSort(E.sort_to_str s))
+  | E.Unknown     -> SL.Unknown
 
 
 
@@ -93,29 +95,32 @@ and tid_to_tsl_tid (th:E.tid) : SL.tid =
   | E.TidArrRd (tt,i)   -> SL.TidArrRd (tidarr_to_tsl_tidarr tt,
                                               int_to_tsl_int i)
   | E.PairTid _         -> raise(UnsupportedTslExpr(E.tid_to_str th))
+  | E.BucketTid _       -> raise(UnsupportedTslExpr(E.tid_to_str th))
 
 and term_to_tsl_term (t:E.term) : SL.term =
 (*  LOG "Entering term_to_tsl_term..." LEVEL TRACE; *)
 (*  LOG "term_to_tsl_term(%s)" (E.term_to_str t) LEVEL DEBUG; *)
   match t with
-    E.VarT v        -> SL.VarT (var_to_tsl_var v)
-  | E.SetT s        -> SL.SetT (set_to_tsl_set s)
-  | E.ElemT e       -> SL.ElemT (elem_to_tsl_elem e)
-  | E.TidT t        -> SL.TidT (tid_to_tsl_tid t)
-  | E.AddrT a       -> SL.AddrT (addr_to_tsl_addr a)
-  | E.CellT c       -> SL.CellT (cell_to_tsl_cell c)
-  | E.SetThT st     -> SL.SetThT (setth_to_tsl_setth st)
-  | E.SetIntT _     -> raise(UnsupportedTslExpr(E.term_to_str t))
-  | E.SetElemT st   -> SL.SetElemT (setelem_to_tsl_setelem st)
-  | E.SetPairT _    -> raise(UnsupportedTslExpr(E.term_to_str t))
-  | E.PathT p       -> SL.PathT (path_to_tsl_path p)
-  | E.MemT m        -> SL.MemT (mem_to_tsl_mem m)
-  | E.IntT i        -> SL.IntT (int_to_tsl_int i)
-  | E.PairT _       -> raise(UnsupportedTslExpr(E.term_to_str t))
-  | E.AddrArrayT aa -> SL.AddrArrayT (addrarr_to_tsl_addrarr aa)
-  | E.TidArrayT tt  -> SL.TidArrayT (tidarr_to_tsl_tidarr tt)
-  | E.MarkT _       -> raise(UnsupportedTslExpr(E.term_to_str t))
-  | E.ArrayT a      -> arrays_to_tsl_term a
+    E.VarT v         -> SL.VarT (var_to_tsl_var v)
+  | E.SetT s         -> SL.SetT (set_to_tsl_set s)
+  | E.ElemT e        -> SL.ElemT (elem_to_tsl_elem e)
+  | E.TidT t         -> SL.TidT (tid_to_tsl_tid t)
+  | E.AddrT a        -> SL.AddrT (addr_to_tsl_addr a)
+  | E.CellT c        -> SL.CellT (cell_to_tsl_cell c)
+  | E.SetThT st      -> SL.SetThT (setth_to_tsl_setth st)
+  | E.SetIntT _      -> raise(UnsupportedTslExpr(E.term_to_str t))
+  | E.SetElemT st    -> SL.SetElemT (setelem_to_tsl_setelem st)
+  | E.SetPairT _     -> raise(UnsupportedTslExpr(E.term_to_str t))
+  | E.PathT p        -> SL.PathT (path_to_tsl_path p)
+  | E.MemT m         -> SL.MemT (mem_to_tsl_mem m)
+  | E.IntT i         -> SL.IntT (int_to_tsl_int i)
+  | E.PairT _        -> raise(UnsupportedTslExpr(E.term_to_str t))
+  | E.AddrArrayT aa  -> SL.AddrArrayT (addrarr_to_tsl_addrarr aa)
+  | E.TidArrayT tt   -> SL.TidArrayT (tidarr_to_tsl_tidarr tt)
+  | E.BucketArrayT _ -> raise(UnsupportedTslExpr(E.term_to_str t))
+  | E.MarkT _        -> raise(UnsupportedTslExpr(E.term_to_str t))
+  | E.BucketT _      -> raise(UnsupportedTslExpr(E.term_to_str t))
+  | E.ArrayT a       -> arrays_to_tsl_term a
 
 
 and arrays_to_tsl_term (a:E.arrays) : SL.term =
@@ -165,6 +170,7 @@ and set_to_tsl_set (s:E.set) : SL.set =
   | E.SetArrayRd (E.VarArray v,t) ->
       SL.VarSet (var_to_tsl_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
   | E.SetArrayRd _        -> raise(UnsupportedTslExpr(E.set_to_str s))
+  | E.BucketRegion _      -> raise(UnsupportedTslExpr(E.set_to_str s))
 
 
 and elem_to_tsl_elem (e:E.elem) : SL.elem =
@@ -199,6 +205,8 @@ and addr_to_tsl_addr (a:E.addr) : SL.addr =
   | E.AddrArrayRd _          -> raise(UnsupportedTslExpr(E.addr_to_str a))
   | E.AddrArrRd (aa,i)       -> SL.AddrArrRd (addrarr_to_tsl_addrarr aa,
                                                   int_to_tsl_int i)
+  | E.BucketInit _           -> raise(UnsupportedTslExpr(E.addr_to_str a))
+  | E.BucketEnd _            -> raise(UnsupportedTslExpr(E.addr_to_str a))
 
 
 and cell_to_tsl_cell (c:E.cell) : SL.cell =
@@ -357,6 +365,7 @@ and atom_to_tsl_atom (a:E.atom) : SL.atom =
   | E.OrderList(m,a1,a2)       -> SL.OrderList (mem m, addr a1, addr a2)
   | E.Skiplist(m,s,l,a1,a2,es) -> SL.Skiplist (mem m, set s, integ l,
                                                    addr a1, addr a2, setelem es)
+  | E.Hashmap _                -> raise(UnsupportedTslExpr(E.atom_to_str a))
   | E.In (a,s)                 -> SL.In (addr a, set s)
   | E.SubsetEq (s1,s2)         -> SL.SubsetEq (set s1, set s2)
   | E.InTh (t,s)               -> SL.InTh (tid t, setth s)

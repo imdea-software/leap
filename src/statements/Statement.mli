@@ -53,7 +53,9 @@ type term =
   | ArrayT        of arrays
   | AddrArrayT    of addrarr
   | TidArrayT     of tidarr
+  | BucketArrayT  of bucketarr
   | MarkT         of mark
+  | BucketT       of bucket
 
 and eq =          term * term
 
@@ -70,6 +72,10 @@ and addrarr =
 and tidarr =
   | VarTidArray   of variable
   | TidArrayUp    of tidarr * integer * tid
+
+and bucketarr =
+    | VarBucketArray of variable
+    | BucketArrayUp  of bucketarr * integer * bucket
 
 and integer =
     IntVal        of int
@@ -103,6 +109,7 @@ and set =
   | AddrToSet     of mem * addr
   | AddrToSetAt   of mem * addr * integer
   | SetArrayRd    of arrays * tid
+  | BucketRegion  of bucket
 
 and tid =
   | VarTh           of variable
@@ -114,6 +121,7 @@ and tid =
   | PointerLockidAt of addr * integer
   | TidArrRd        of tidarr * integer
   | PairTid         of pair
+  | BucketTid       of bucket
 
 and elem =
     VarElem           of variable
@@ -141,6 +149,8 @@ and addr =
   | PointerNextAt of addr * integer
   | PointerArrAt  of addr * integer
   | AddrArrRd     of addrarr * integer
+  | BucketInit    of bucket
+  | BucketEnd     of bucket
 
 and cell =
     VarCell       of variable
@@ -162,6 +172,10 @@ and mark =
   | MarkFalse
   | Marked        of cell
   | PointerMarked of addr
+
+and bucket =
+    VarBucket     of variable
+  | MkBucket      of addr * addr * set * tid
 
 and setth =
     VarSetTh      of variable
@@ -217,6 +231,7 @@ and atom =
   | Reach         of mem * addr * addr * path
   | OrderList     of mem * addr * addr
   | Skiplist      of mem * set * integer * addr * addr * setelem
+  | Hashmap       of mem * set * setelem * bucketarr * integer
   | In            of addr * set
   | SubsetEq      of set * set
   | InTh          of tid * setth

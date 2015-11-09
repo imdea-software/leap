@@ -126,10 +126,10 @@ and atom =
   | SubsetEqTh   of setth * setth
   | InElem       of elem * setelem
   | SubsetEqElem of setelem * setelem
-  | Less          of integer * integer
-  | Greater       of integer * integer
-  | LessEq        of integer * integer
-  | GreaterEq     of integer * integer
+  | Less         of integer * integer
+  | Greater      of integer * integer
+  | LessEq       of integer * integer
+  | GreaterEq    of integer * integer
   | LessElem     of elem * elem
   | GreaterElem  of elem * elem
   | Eq           of eq

@@ -112,6 +112,7 @@ and atom_to_int_atom (a:E.atom) : NE.atom =
     | E.ReachAt _     -> raise(NotAnIntExpression(E.atom_to_str a))
     | E.OrderList _   -> raise(NotAnIntExpression(E.atom_to_str a))
     | E.Skiplist _    -> raise(NotAnIntExpression(E.atom_to_str a))
+    | E.Hashmap _     -> raise(NotAnIntExpression(E.atom_to_str a))
     | E.In _          -> raise(NotAnIntExpression(E.atom_to_str a))
     | E.SubsetEq _    -> raise(NotAnIntExpression(E.atom_to_str a))
     | E.InTh _        -> raise(NotAnIntExpression(E.atom_to_str a))

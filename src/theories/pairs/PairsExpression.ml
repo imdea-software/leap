@@ -306,6 +306,7 @@ let rec is_pair_atom ato =
   | E.ReachAt(_,_,_,_,_)               -> false
   | E.OrderList(_,_,_)                 -> false
   | E.Skiplist(_,_,_,_,_,_)            -> false
+  | E.Hashmap(_,_,_,_,_)               -> false
   | E.In(_,_)                          -> false
   | E.SubsetEq(_,_)                    -> false
   | E.InTh(_,_)                        -> false
@@ -338,24 +339,26 @@ let rec is_pair_atom ato =
   | E.PCRange(_)                       -> true
 and is_pair_integer t =
   match t with
-    E.VarT(_)       -> false
-  | E.SetT(_)       -> false
-  | E.ElemT(_)      -> false
-  | E.TidT(_)       -> false
-  | E.AddrT(_)      -> false
-  | E.CellT(_)      -> false
-  | E.SetThT(_)     -> false
-  | E.SetIntT(_)    -> false
-  | E.SetElemT(_)   -> false
-  | E.SetPairT(_)   -> false
-  | E.PathT(_)      -> false
-  | E.MemT(_)       -> false
-  | E.IntT(_)       -> true
-  | E.PairT(_)      -> true
-  | E.ArrayT(_)     -> false
-  | E.AddrArrayT(_) -> false
-  | E.TidArrayT(_)  -> false
-  | E.MarkT(_)      -> false
+    E.VarT(_)           -> false
+  | E.SetT(_)           -> false
+  | E.ElemT(_)          -> false
+  | E.TidT(_)           -> false
+  | E.AddrT(_)          -> false
+  | E.CellT(_)          -> false
+  | E.SetThT(_)         -> false
+  | E.SetIntT(_)        -> false
+  | E.SetElemT(_)       -> false
+  | E.SetPairT(_)       -> false
+  | E.PathT(_)          -> false
+  | E.MemT(_)           -> false
+  | E.IntT(_)           -> true
+  | E.PairT(_)          -> true
+  | E.ArrayT(_)         -> false
+  | E.AddrArrayT(_)     -> false
+  | E.TidArrayT(_)      -> false
+  | E.BucketArrayT(_)   -> false
+  | E.MarkT(_)          -> false
+  | E.BucketT(_)        -> false
 and is_pair_expression e = 
   match e with
     E.Term(t)      -> is_pair_integer t

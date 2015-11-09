@@ -21,6 +21,8 @@ type sort =
   | AddrArray
   | TidArray
   | Mark
+  | Bucket
+  | BucketArray
   | Unknown
 
 type var_nature =
@@ -70,7 +72,9 @@ and term =
   | ArrayT        of arrays
   | AddrArrayT    of addrarr
   | TidArrayT     of tidarr
+  | BucketArrayT  of bucketarr
   | MarkT         of mark
+  | BucketT       of bucket
 
 and eq =          term * term
 
@@ -89,6 +93,10 @@ and tidarr =
   | VarTidArray   of V.t
   | TidArrayUp    of tidarr * integer * tid
   | CellTids      of cell
+
+and bucketarr =
+  | VarBucketArray of V.t
+  | BucketArrayUp  of bucketarr * integer * bucket
 
 and integer =
     IntVal        of int
@@ -123,6 +131,7 @@ and set =
   | AddrToSet     of mem * addr
   | AddrToSetAt   of mem * addr * integer
   | SetArrayRd    of arrays * tid
+  | BucketRegion  of bucket
   
 and tid =
     VarTh         of V.t
@@ -132,6 +141,7 @@ and tid =
   | TidArrayRd    of arrays * tid
   | TidArrRd      of tidarr * integer
   | PairTid       of pair
+  | BucketTid     of bucket
 
 and elem =
     VarElem           of V.t
@@ -153,6 +163,8 @@ and addr =
   | LastLocked    of mem * path
   | AddrArrayRd   of arrays * tid
   | AddrArrRd     of addrarr * integer
+  | BucketInit    of bucket
+  | BucketEnd     of bucket
 
 and cell =
     VarCell       of V.t
@@ -174,6 +186,11 @@ and mark =
   | MarkTrue
   | MarkFalse
   | Marked        of cell
+
+
+and bucket =
+    VarBucket     of V.t
+  | MkBucket      of addr * addr * set * tid
 
 and setth =
     VarSetTh      of V.t
@@ -234,6 +251,7 @@ and atom =
   | ReachAt       of mem * addr * addr * integer * path
   | OrderList     of mem * addr * addr
   | Skiplist      of mem * set * integer * addr * addr * setelem
+  | Hashmap       of mem * set * setelem * bucketarr * integer
   | In            of addr * set
   | SubsetEq      of set * set
   | InTh          of tid * setth
@@ -857,6 +875,7 @@ let is_primed_tid (th:tid) : bool =
   | TidArrRd (a,_)   -> is_primed_tidarray a
   | PairTid _        -> false
   (* FIX: Propagate the query inside cell??? *)
+  | BucketTid (b)    -> false
 
 
 let var_base_info = V.unparam>>V.unprime
@@ -889,41 +908,49 @@ let rec priming_term (pr:bool)
                      (prime_set:(V.VarSet.t option * V.VarSet.t option))
                      (expr:term) : term =
   match expr with
-    VarT v            -> VarT       (priming_variable   pr prime_set v)
-  | SetT(set)         -> SetT       (priming_set        pr prime_set set)
-  | AddrT(addr)       -> AddrT      (priming_addr       pr prime_set addr)
-  | ElemT(elem)       -> ElemT      (priming_elem       pr prime_set elem)
-  | TidT(th)          -> TidT       (priming_tid        pr prime_set th)
-  | CellT(cell)       -> CellT      (priming_cell       pr prime_set cell)
-  | SetThT(setth)     -> SetThT     (priming_setth      pr prime_set setth)
-  | SetIntT(setint)   -> SetIntT    (priming_setint     pr prime_set setint)
-  | SetElemT(setelem) -> SetElemT   (priming_setelem    pr prime_set setelem)
-  | SetPairT(setpair) -> SetPairT   (priming_setpair    pr prime_set setpair)
-  | PathT(path)       -> PathT      (priming_path       pr prime_set path)
-  | MemT(mem)         -> MemT       (priming_mem        pr prime_set mem)
-  | IntT(i)           -> IntT       (priming_int        pr prime_set i)
-  | PairT(p)          -> PairT      (priming_pair       pr prime_set p)
-  | ArrayT(arr)       -> ArrayT     (priming_array      pr prime_set arr)
-  | AddrArrayT(arr)   -> AddrArrayT (priming_addrarray  pr prime_set arr)
-  | TidArrayT(arr)    -> TidArrayT  (priming_tidarray   pr prime_set arr)
-  | MarkT(m)          -> MarkT      (priming_mark       pr prime_set m)
+    VarT v            -> VarT           (priming_variable     pr prime_set v)
+  | SetT(set)         -> SetT           (priming_set          pr prime_set set)
+  | AddrT(addr)       -> AddrT          (priming_addr         pr prime_set addr)
+  | ElemT(elem)       -> ElemT          (priming_elem         pr prime_set elem)
+  | TidT(th)          -> TidT           (priming_tid          pr prime_set th)
+  | CellT(cell)       -> CellT          (priming_cell         pr prime_set cell)
+  | SetThT(setth)     -> SetThT         (priming_setth        pr prime_set setth)
+  | SetIntT(setint)   -> SetIntT        (priming_setint       pr prime_set setint)
+  | SetElemT(setelem) -> SetElemT       (priming_setelem      pr prime_set setelem)
+  | SetPairT(setpair) -> SetPairT       (priming_setpair      pr prime_set setpair)
+  | PathT(path)       -> PathT          (priming_path         pr prime_set path)
+  | MemT(mem)         -> MemT           (priming_mem          pr prime_set mem)
+  | IntT(i)           -> IntT           (priming_int          pr prime_set i)
+  | PairT(p)          -> PairT          (priming_pair         pr prime_set p)
+  | ArrayT(arr)       -> ArrayT         (priming_array        pr prime_set arr)
+  | AddrArrayT(arr)   -> AddrArrayT     (priming_addrarray    pr prime_set arr)
+  | TidArrayT(arr)    -> TidArrayT      (priming_tidarray     pr prime_set arr)
+  | BucketArrayT(arr) -> BucketArrayT   (priming_bucketarray  pr prime_set arr)
+  | MarkT(m)          -> MarkT          (priming_mark         pr prime_set m)
+  | BucketT(b)        -> BucketT        (priming_bucket       pr prime_set b)
 
 
-and priming_expr (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (expr:expr_t) : expr_t =
+and priming_expr (pr:bool)
+                 (prime_set:(V.VarSet.t option * V.VarSet.t option))
+                 (expr:expr_t) : expr_t =
   match expr with
     Term t    -> Term (priming_term pr prime_set t)
   | Formula b -> Formula (priming_formula pr prime_set b)
 
 
-and priming_array (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (expr:arrays) : arrays =
+and priming_array (pr:bool)
+                  (prime_set:(V.VarSet.t option * V.VarSet.t option))
+                  (expr:arrays) : arrays =
   match expr with
     VarArray v       -> VarArray (priming_variable pr prime_set v)
   | ArrayUp(arr,t,e) -> ArrayUp  (priming_array pr prime_set arr,
                                   priming_tid   pr prime_set t,
                                   priming_expr  pr prime_set e)
 
-and priming_addrarray (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (expr:addrarr)
-      : addrarr =
+
+and priming_addrarray (pr:bool)
+                      (prime_set:(V.VarSet.t option * V.VarSet.t option))
+                      (expr:addrarr) : addrarr =
   match expr with
     VarAddrArray v       -> VarAddrArray (priming_variable pr prime_set v)
   | AddrArrayUp(arr,i,a) -> AddrArrayUp  (priming_addrarray pr prime_set arr,
@@ -931,8 +958,10 @@ and priming_addrarray (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t optio
                                           priming_addr  pr prime_set a)
   | CellArr c            -> CellArr (priming_cell pr prime_set c)
 
-and priming_tidarray (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (expr:tidarr)
-      : tidarr =
+
+and priming_tidarray (pr:bool)
+                     (prime_set:(V.VarSet.t option * V.VarSet.t option))
+                     (expr:tidarr) : tidarr =
   match expr with
     VarTidArray v       -> VarTidArray (priming_variable pr prime_set v)
   | TidArrayUp(arr,i,t) -> TidArrayUp  (priming_tidarray pr prime_set arr,
@@ -940,7 +969,20 @@ and priming_tidarray (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option
                                           priming_tid  pr prime_set t)
   | CellTids c            -> CellTids (priming_cell pr prime_set c)
 
-and priming_set (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (e:set) : set =
+
+and priming_bucketarray (pr:bool)
+                        (prime_set:(V.VarSet.t option * V.VarSet.t option))
+                        (expr:bucketarr) : bucketarr =
+  match expr with
+    VarBucketArray v       -> VarBucketArray (priming_variable pr prime_set v)
+  | BucketArrayUp(arr,i,b) -> BucketArrayUp  (priming_bucketarray pr prime_set arr,
+                                              priming_int  pr prime_set i,
+                                              priming_bucket pr prime_set b)
+
+
+and priming_set (pr:bool)
+                (prime_set:(V.VarSet.t option * V.VarSet.t option))
+                (e:set) : set =
   match e with
     VarSet v            -> VarSet (priming_variable pr prime_set v)
   | EmptySet            -> EmptySet
@@ -959,9 +1001,12 @@ and priming_set (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (e
                                        priming_int pr prime_set l)
   | SetArrayRd(arr,t)   -> SetArrayRd(priming_array pr prime_set arr,
                                       priming_tid pr prime_set t)
+  | BucketRegion (b)    -> BucketRegion(priming_bucket pr prime_set b)
 
 
-and priming_addr (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (a:addr) : addr =
+and priming_addr (pr:bool)
+                 (prime_set:(V.VarSet.t option * V.VarSet.t option))
+                 (a:addr) : addr =
   match a with
     VarAddr v                 -> VarAddr (priming_variable pr prime_set v)
   | Null                      -> Null
@@ -981,8 +1026,13 @@ and priming_addr (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (
                                              priming_tid pr prime_set t)
   | AddrArrRd(arr,l)          -> AddrArrRd(priming_addrarray pr prime_set arr,
                                            priming_int pr prime_set l)
+  | BucketInit(b)             -> BucketInit(priming_bucket pr prime_set b)
+  | BucketEnd(b)              -> BucketEnd(priming_bucket pr prime_set b)
 
-and priming_elem (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (e:elem) : elem =
+
+and priming_elem (pr:bool)
+                 (prime_set:(V.VarSet.t option * V.VarSet.t option))
+                 (e:elem) : elem =
   match e with
     VarElem v          -> VarElem (priming_variable pr prime_set v)
   | CellData(cell)     -> CellData(priming_cell pr prime_set cell)
@@ -995,7 +1045,9 @@ and priming_elem (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (
   | HighestElem        -> HighestElem
 
 
-and priming_tid (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (th:tid) : tid =
+and priming_tid (pr:bool)
+                (prime_set:(V.VarSet.t option * V.VarSet.t option))
+                (th:tid) : tid =
   match th with
     VarTh v              -> VarTh (priming_variable pr prime_set v)
   | NoTid               -> NoTid
@@ -1007,9 +1059,12 @@ and priming_tid (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (t
   | TidArrRd(arr,l)     -> TidArrRd(priming_tidarray pr prime_set arr,
                                       priming_int pr prime_set l)
   | PairTid p           -> PairTid(priming_pair pr prime_set p)
+  | BucketTid b         -> BucketTid(priming_bucket pr prime_set b)
 
 
-and priming_cell (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (c:cell) : cell =
+and priming_cell (pr:bool)
+                 (prime_set:(V.VarSet.t option * V.VarSet.t option))
+                 (c:cell) : cell =
   match c with
     VarCell v                  -> VarCell (priming_variable pr prime_set v)
   | Error                      -> Error
@@ -1044,7 +1099,9 @@ and priming_cell (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (
                                               priming_addr pr prime_set a)
 
 
-and priming_mark (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (m:mark) : mark =
+and priming_mark (pr:bool)
+                 (prime_set:(V.VarSet.t option * V.VarSet.t option))
+                 (m:mark) : mark =
   match m with
     VarMark v -> VarMark (priming_variable pr prime_set v)
   | MarkTrue  -> MarkTrue
@@ -1052,7 +1109,20 @@ and priming_mark (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (
   | Marked c  -> Marked(priming_cell pr prime_set c)
 
 
-and priming_setth (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (s:setth) : setth =
+and priming_bucket (pr:bool)
+                   (prime_set:(V.VarSet.t option * V.VarSet.t option))
+                   (b:bucket) : bucket =
+  match b with
+    VarBucket v        -> VarBucket (priming_variable pr prime_set v)
+  | MkBucket (i,e,s,t) -> MkBucket (priming_addr pr prime_set i,
+                                    priming_addr pr prime_set e,
+                                    priming_set pr prime_set s,
+                                    priming_tid pr prime_set t)
+
+
+and priming_setth (pr:bool)
+                  (prime_set:(V.VarSet.t option * V.VarSet.t option))
+                  (s:setth) : setth =
   match s with
     VarSetTh v          -> VarSetTh (priming_variable pr prime_set v)
   | EmptySetTh          -> EmptySetTh
@@ -1069,7 +1139,9 @@ and priming_setth (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) 
                                    priming_path pr prime_set p)
 
 
-and priming_setint (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (s:setint) : setint =
+and priming_setint (pr:bool)
+                   (prime_set:(V.VarSet.t option * V.VarSet.t option))
+                   (s:setint) : setint =
   match s with
     VarSetInt v          -> VarSetInt (priming_variable pr prime_set v)
   | EmptySetInt          -> EmptySetInt
@@ -1086,7 +1158,9 @@ and priming_setint (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option))
                                           priming_tid pr prime_set t)
 
 
-and priming_setelem (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (s:setelem) : setelem =
+and priming_setelem (pr:bool)
+                    (prime_set:(V.VarSet.t option * V.VarSet.t option))
+                    (s:setelem) : setelem =
   match s with
     VarSetElem v          -> VarSetElem (priming_variable pr prime_set v)
   | EmptySetElem          -> EmptySetElem
@@ -1103,7 +1177,9 @@ and priming_setelem (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)
                                             priming_tid pr prime_set t)
 
 
-and priming_setpair (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (s:setpair) : setpair =
+and priming_setpair (pr:bool)
+                    (prime_set:(V.VarSet.t option * V.VarSet.t option))
+                    (s:setpair) : setpair =
   match s with
     VarSetPair v          -> VarSetPair (priming_variable pr prime_set v)
   | EmptySetPair          -> EmptySetPair
@@ -1121,7 +1197,9 @@ and priming_setpair (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)
 
 
 
-and priming_path (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (p:path) : path =
+and priming_path (pr:bool)
+                 (prime_set:(V.VarSet.t option * V.VarSet.t option))
+                 (p:path) : path =
   match p with
     VarPath v                        -> VarPath (priming_variable pr prime_set v)
   | Epsilon                          -> Epsilon
@@ -1137,7 +1215,9 @@ and priming_path (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (
                                                     priming_tid pr prime_set t)
 
 
-and priming_mem (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (m:mem) : mem =
+and priming_mem (pr:bool)
+                (prime_set:(V.VarSet.t option * V.VarSet.t option))
+                (m:mem) : mem =
   match m with
     VarMem v             -> VarMem(priming_variable pr prime_set v)
   | Update(mem,add,cell) -> Update(priming_mem pr prime_set mem,
@@ -1147,7 +1227,9 @@ and priming_mem (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (m
                                        priming_tid pr prime_set t)
 
 
-and priming_int (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (i:integer) : integer =
+and priming_int (pr:bool)
+                (prime_set:(V.VarSet.t option * V.VarSet.t option))
+                (i:integer) : integer =
   match i with
     IntVal(i)         -> IntVal(i)
   | VarInt v          -> VarInt(priming_variable pr prime_set v)
@@ -1169,7 +1251,9 @@ and priming_int (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (i
   | PairInt p         -> PairInt (priming_pair pr prime_set p)
 
 
-and priming_pair (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (p:pair) : pair =
+and priming_pair (pr:bool)
+                 (prime_set:(V.VarSet.t option * V.VarSet.t option))
+                 (p:pair) : pair =
   match p with
     VarPair v          -> VarPair(priming_variable pr prime_set v)
   | IntTidPair (i,t)   -> IntTidPair (priming_int pr prime_set i, priming_tid pr prime_set t)
@@ -1179,7 +1263,9 @@ and priming_pair (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (
                                       priming_tid pr prime_set t)
 
 
-and priming_atom (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (a:atom) : atom =
+and priming_atom (pr:bool)
+                 (prime_set:(V.VarSet.t option * V.VarSet.t option))
+                 (a:atom) : atom =
   match a with
     Append(p1,p2,pres)                -> Append(priming_path pr prime_set p1,
                                                 priming_path pr prime_set p2,
@@ -1202,6 +1288,11 @@ and priming_atom (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (
                                                   priming_addr pr prime_set a_from,
                                                   priming_addr pr prime_set a_to,
                                                   priming_setelem pr prime_set elems)
+  | Hashmap(h,s,se,bb,i)              -> Hashmap(priming_mem pr prime_set h,
+                                                 priming_set pr prime_set s,
+                                                 priming_setelem pr prime_set se,
+                                                 priming_bucketarray pr prime_set bb,
+                                                 priming_int pr prime_set i)
   | In(a,s)                           -> In(priming_addr pr prime_set a,
                                             priming_set pr prime_set s)
   | SubsetEq(s_in,s_out)              -> SubsetEq(priming_set pr prime_set s_in,
@@ -1266,11 +1357,15 @@ and priming_atom (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (
                                          end
 
 
-and priming_eq (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) ((t1,t2):eq) : eq =
+and priming_eq (pr:bool)
+               (prime_set:(V.VarSet.t option * V.VarSet.t option))
+               ((t1,t2):eq) : eq =
   (priming_term pr prime_set t1, priming_term pr prime_set t2)
 
 
-and priming_ineq (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) ((t1,t2):diseq) : diseq =
+and priming_ineq (pr:bool)
+                 (prime_set:(V.VarSet.t option * V.VarSet.t option))
+                 ((t1,t2):diseq) : diseq =
   (priming_term pr prime_set t1, priming_term pr prime_set t2)
 
 
@@ -1278,43 +1373,11 @@ and priming_fs () = Formula.make_trans
                       Formula.GenericLiteralTrans
                       (fun (pr,prime_set) a -> priming_atom pr prime_set a)
 
-and priming_formula (pr:bool) (prime_set:(V.VarSet.t option * V.VarSet.t option)) (phi:formula) =
+and priming_formula (pr:bool)
+                    (prime_set:(V.VarSet.t option * V.VarSet.t option))
+                    (phi:formula) =
   Formula.formula_trans (priming_fs()) (pr,prime_set) phi
 
-(*
-and priming_literal (pr:bool) (prime_set:V.VarSet.t option) (l:literal) : 
-  literal=
-  match l with
-    Atom a    -> Atom (priming_atom pr prime_set a)
-  | NegAtom a -> NegAtom (priming_atom pr prime_set a)
-
-
-and priming_conjunctive_formula (pr:bool)
-                                (prime_set:V.VarSet.t option)
-                                (cf:conjunctive_formula) : conjunctive_formula =
-  match cf with
-    FalseConj -> FalseConj
-  | TrueConj  -> TrueConj
-  | Conj ls   -> Conj (List.map (priming_literal pr prime_set) ls)
-
-
-and priming_formula (pr:bool) (prime_set:V.VarSet.t option) (phi:formula) : 
-  formula =
-  match phi with
-    Literal(lit)         -> Literal(priming_literal pr prime_set lit)
-  | True                 -> True
-  | False                -> False
-  | And(f1,f2)           -> And(priming_formula pr prime_set f1,
-                                priming_formula pr prime_set f2)
-  | Or(f1,f2)            -> Or(priming_formula pr prime_set f1,
-                               priming_formula pr prime_set f2)
-  | Not(f)               -> Not(priming_formula pr prime_set f)
-  | Implies(f1,f2)       -> Implies(priming_formula pr prime_set f1,
-                                    priming_formula pr prime_set f2)
-  | Iff (f1,f2)          -> Iff(priming_formula pr prime_set f1,
-                                priming_formula pr prime_set f2)
-
-*)
 
 (* exported priming functions *)
 
@@ -1372,6 +1435,7 @@ let rec tid_to_str (th:tid) : string =
   | TidArrRd(arr,l)     -> sprintf "%s[%s]" (tidarr_to_str arr)
                                              (integer_to_str l)
   | PairTid p           -> sprintf "tid_of(%s)" (pair_to_str p)
+  | BucketTid b         -> sprintf "%s.btid" (bucket_to_str b)
 
 
 and param_tid_to_str (expr:tid) : string =
@@ -1382,12 +1446,13 @@ and param_tid_to_str (expr:tid) : string =
                        with
                          _ -> sprintf "(%s)" (V.to_str v)
                      end
-  | NoTid        -> sprintf "(#)"
-  | CellLockId _  -> sprintf "(%s)" (tid_to_str expr)
-  | CellLockIdAt _-> sprintf "(%s)" (tid_to_str expr)
-  | TidArrayRd _ -> sprintf "(%s)" (tid_to_str expr)
-  | TidArrRd _   -> sprintf "(%s)" (tid_to_str expr)
-  | PairTid _    -> sprintf "(%s)" (tid_to_str expr)
+  | NoTid          -> sprintf "(#)"
+  | CellLockId _   -> sprintf "(%s)" (tid_to_str expr)
+  | CellLockIdAt _ -> sprintf "(%s)" (tid_to_str expr)
+  | TidArrayRd _   -> sprintf "(%s)" (tid_to_str expr)
+  | TidArrRd _     -> sprintf "(%s)" (tid_to_str expr)
+  | PairTid _      -> sprintf "(%s)" (tid_to_str expr)
+  | BucketTid _    -> sprintf "(%s)" (tid_to_str expr)
 
 
 and tid_option_to_str (expr:tid option) : string =
@@ -1422,6 +1487,12 @@ and atom_to_str (expr:atom) : string =
                                                   (addr_to_str a_from)
                                                   (addr_to_str a_to)
                                                   (setelem_to_str elems)
+  | Hashmap(h,s,se,bb,i)              -> sprintf "hashmap(%s,%s,%s,%s,%s)"
+                                                  (mem_to_str h)
+                                                  (set_to_str s)
+                                                  (setelem_to_str se)
+                                                  (bucketarr_to_str bb)
+                                                  (integer_to_str i)
   | In(a,s)                           -> sprintf "%s in %s "
                                                     (addr_to_str a) (set_to_str s)
   | SubsetEq(s_in,s_out)              -> sprintf "%s subseteq %s"
@@ -1543,6 +1614,15 @@ and tidarr_to_str (expr:tidarr) : string =
   | CellTids c            -> sprintf "%s.tids" (cell_to_str c)
 
 
+and bucketarr_to_str (expr:bucketarr) : string =
+  match expr with
+    VarBucketArray v       -> V.to_str v
+  | BucketArrayUp(arr,i,b) -> sprintf "bucketArrUpd(%s,%s,%s)"
+                                  (bucketarr_to_str arr)
+                                  (integer_to_str i)
+                                  (bucket_to_str b)
+
+
 and integer_to_str (expr:integer) : string =
   match expr with
     IntVal (i)        -> string_of_int i
@@ -1622,6 +1702,7 @@ and set_to_str (expr:set) : string =
                                                         (integer_to_str l)
   | SetArrayRd(arr,t)   -> sprintf "%s%s" (arrays_to_str arr)
                                           (param_tid_to_str t)
+  | BucketRegion(b)     -> sprintf "%s.breg" (bucket_to_str b)
 
 
 and setth_to_str (expr:setth) : string =
@@ -1740,6 +1821,15 @@ and mark_to_str (m:mark) :string =
   | Marked c  -> sprintf "%s.marked" (cell_to_str c)
 
 
+and bucket_to_str (b:bucket) :string =
+  match b with
+    VarBucket v -> V.to_str v
+  | MkBucket (i,e,s,t) -> sprintf "mkbucket(%s,%s,%s,%s)" (addr_to_str i)
+                                                          (addr_to_str e)
+                                                          (set_to_str s)
+                                                          (tid_to_str t)
+
+
 and addr_to_str (expr:addr) :string =
   match expr with
     VarAddr v                 -> V.to_str v
@@ -1763,6 +1853,8 @@ and addr_to_str (expr:addr) :string =
                                                   (param_tid_to_str t)
   | AddrArrRd(arr,l)          -> sprintf "%s[%s]" (addrarr_to_str arr)
                                                   (integer_to_str l)
+  | BucketInit(b)             -> sprintf "%s.binit" (bucket_to_str b)
+  | BucketEnd(b)              -> sprintf "%s.bend" (bucket_to_str b)
 
 
 and eq_to_str ((e1,e2):eq) : string =
@@ -1805,7 +1897,9 @@ and term_to_str (expr:term) : string =
   | ArrayT(arr)       -> (arrays_to_str arr)
   | AddrArrayT(arr)   -> (addrarr_to_str arr)
   | TidArrayT(arr)    -> (tidarr_to_str arr)
+  | BucketArrayT(arr) -> (bucketarr_to_str arr)
   | MarkT(m)          -> (mark_to_str m)
+  | BucketT(b)        -> (bucket_to_str b)
 
 
 and expr_to_str (expr:expr_t) : string =
@@ -1823,25 +1917,27 @@ and formula_to_str (phi:formula) : string =
 
 let var_to_term (v:V.t) : term =
   match V.sort v with
-    Unknown   -> VarT       v
-  | Set       -> SetT       (VarSet        v)
-  | Elem      -> ElemT      (VarElem       v)
-  | Tid       -> TidT       (VarTh         v)
-  | Addr      -> AddrT      (VarAddr       v)
-  | Cell      -> CellT      (VarCell       v)
-  | SetTh     -> SetThT     (VarSetTh      v)
-  | SetInt    -> SetIntT    (VarSetInt     v)
-  | SetElem   -> SetElemT   (VarSetElem    v)
-  | SetPair   -> SetPairT   (VarSetPair    v)
-  | Path      -> PathT      (VarPath       v)
-  | Mem       -> MemT       (VarMem        v)
-  | Int       -> IntT       (VarInt        v)
-  | Pair      -> PairT      (VarPair       v)
-  | Array     -> ArrayT     (VarArray      v)
-  | AddrArray -> AddrArrayT (VarAddrArray  v)
-  | TidArray  -> TidArrayT  (VarTidArray   v)
-  | Mark      -> MarkT      (VarMark       v)
-  | Bool      -> VarT    v
+    Unknown     -> VarT           v
+  | Set         -> SetT          (VarSet         v)
+  | Elem        -> ElemT         (VarElem        v)
+  | Tid         -> TidT          (VarTh          v)
+  | Addr        -> AddrT         (VarAddr        v)
+  | Cell        -> CellT         (VarCell        v)
+  | SetTh       -> SetThT        (VarSetTh       v)
+  | SetInt      -> SetIntT       (VarSetInt      v)
+  | SetElem     -> SetElemT      (VarSetElem     v)
+  | SetPair     -> SetPairT      (VarSetPair     v)
+  | Path        -> PathT         (VarPath        v)
+  | Mem         -> MemT          (VarMem         v)
+  | Int         -> IntT          (VarInt         v)
+  | Pair        -> PairT         (VarPair        v)
+  | Array       -> ArrayT        (VarArray       v)
+  | AddrArray   -> AddrArrayT    (VarAddrArray   v)
+  | TidArray    -> TidArrayT     (VarTidArray    v)
+  | BucketArray -> BucketArrayT  (VarBucketArray v)
+  | Mark        -> MarkT         (VarMark        v)
+  | Bucket      -> BucketT       (VarBucket      v)
+  | Bool        -> VarT           v
 
 
 let term_to_var (t:term) : V.t =
@@ -1863,24 +1959,26 @@ let term_to_var (t:term) : V.t =
 
 let term_sort (t:term) : sort =
   match t with
-    VarT v       -> V.sort v
-  | SetT _       -> Set
-  | ElemT _      -> Elem
-  | TidT _       -> Tid
-  | AddrT _      -> Addr
-  | CellT _      -> Cell
-  | SetThT _     -> SetTh
-  | SetIntT _    -> SetInt
-  | SetElemT _   -> SetElem
-  | SetPairT _   -> SetPair
-  | PathT _      -> Path
-  | MemT _       -> Mem
-  | IntT _       -> Int
-  | PairT _      -> Pair
-  | ArrayT _     -> Array
-  | AddrArrayT _ -> AddrArray
-  | TidArrayT _  -> TidArray
-  | MarkT _      -> Mark
+    VarT v          -> V.sort v
+  | SetT _          -> Set
+  | ElemT _         -> Elem
+  | TidT _          -> Tid
+  | AddrT _         -> Addr
+  | CellT _         -> Cell
+  | SetThT _        -> SetTh
+  | SetIntT _       -> SetInt
+  | SetElemT _      -> SetElem
+  | SetPairT _      -> SetPair
+  | PathT _         -> Path
+  | MemT _          -> Mem
+  | IntT _          -> Int
+  | PairT _         -> Pair
+  | ArrayT _        -> Array
+  | AddrArrayT _    -> AddrArray
+  | TidArrayT _     -> TidArray
+  | BucketArrayT _  -> BucketArray
+  | MarkT _         -> Mark
+  | BucketT _       -> Bucket
 
 
 (* Vocabulary to variable conversion *)
@@ -2231,25 +2329,27 @@ let pc_to_str (p:pc_t) : string =
 
 let sort_to_str (s:sort) : string =
   match s with
-      Set       -> "addrSet"
-    | Elem      -> "elem"
-    | Tid      -> "tid"
-    | Addr      -> "addr"
-    | Cell      -> "cell"
-    | SetTh     -> "tidSet"
-    | SetInt    -> "intSet"
-    | SetElem   -> "elemSet"
-    | SetPair   -> "pairSet"
-    | Path      -> "path"
-    | Mem       -> "mem"
-    | Bool      -> "bool"
-    | Int       -> "int"
-    | Pair      -> "pair"
-    | Array     -> "array"
-    | AddrArray -> "addrarr"
-    | TidArray  -> "tidarr"
-    | Mark      -> "mark"
-    | Unknown   -> "unknown"
+      Set         -> "addrSet"
+    | Elem        -> "elem"
+    | Tid         -> "tid"
+    | Addr        -> "addr"
+    | Cell        -> "cell"
+    | SetTh       -> "tidSet"
+    | SetInt      -> "intSet"
+    | SetElem     -> "elemSet"
+    | SetPair     -> "pairSet"
+    | Path        -> "path"
+    | Mem         -> "mem"
+    | Bool        -> "bool"
+    | Int         -> "int"
+    | Pair        -> "pair"
+    | Array       -> "array"
+    | AddrArray   -> "addrarr"
+    | TidArray    -> "tidarr"
+    | BucketArray -> "bucketarr"
+    | Mark        -> "mark"
+    | Bucket      -> "bucket"
+    | Unknown     -> "unknown"
 
  
 
@@ -2351,7 +2451,9 @@ let rec get_vars_term (expr:term) (base:V.t -> V.VarSet.t) : V.VarSet.t =
   | ArrayT(arr)       -> get_vars_array arr base
   | AddrArrayT(arr)   -> get_vars_addrarr arr base
   | TidArrayT(arr)    -> get_vars_tidarr arr base
+  | BucketArrayT(arr) -> get_vars_bucketarr arr base
   | MarkT(m)          -> get_vars_mark m base
+  | BucketT(b)        -> get_vars_bucket b base
 
 
 and get_vars_expr (e:expr_t) (base:V.t -> V.VarSet.t) : V.VarSet.t =
@@ -2395,6 +2497,17 @@ and get_vars_tidarr (a:tidarr) (base:V.t -> V.VarSet.t) : V.VarSet.t =
   | CellTids c            -> (get_vars_cell c base)
 
 
+and get_vars_bucketarr (a:bucketarr) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+  match a with
+    VarBucketArray v    -> V.VarSet.union (base v)
+                              (match V.parameter v with
+                               | V.Shared -> V.VarSet.empty
+                               | V.Local t -> base t)
+  | BucketArrayUp(arr,i,b) -> (get_vars_bucketarr arr base) @@
+                              (get_vars_int i base)         @@
+                              (get_vars_bucket b base)
+
+
 and get_vars_set (e:set) (base:V.t -> V.VarSet.t) : V.VarSet.t =
   match e with
     VarSet v            -> V.VarSet.union (base v)
@@ -2412,6 +2525,7 @@ and get_vars_set (e:set) (base:V.t -> V.VarSet.t) : V.VarSet.t =
                            (get_vars_addr a base)  @@
                            (get_vars_int l base)
   | SetArrayRd(arr,_)   -> (get_vars_array arr base)
+  | BucketRegion(b)     -> (get_vars_bucket b base)
 
 
 and get_vars_addr (a:addr) (base:V.t -> V.VarSet.t) : V.VarSet.t =
@@ -2430,6 +2544,8 @@ and get_vars_addr (a:addr) (base:V.t -> V.VarSet.t) : V.VarSet.t =
   | LastLocked(mem,path)      -> (get_vars_mem mem base) @@ (get_vars_path path base)
   | AddrArrayRd(arr,_)        -> (get_vars_array arr base)
   | AddrArrRd(arr,i)          -> (get_vars_addrarr arr base) @@ (get_vars_int i base)
+  | BucketInit(b)             -> (get_vars_bucket b base)
+  | BucketEnd(b)              -> (get_vars_bucket b base)
 
 
 and get_vars_elem (e:elem) (base:V.t -> V.VarSet.t) : V.VarSet.t =
@@ -2458,6 +2574,7 @@ and get_vars_tid (th:tid) (base:V.t -> V.VarSet.t) : V.VarSet.t =
   | TidArrayRd(arr,_)    -> (get_vars_array arr base)
   | TidArrRd(arr,l)      -> (get_vars_tidarr arr base) @@ (get_vars_int l base)
   | PairTid p            -> (get_vars_pair p base)
+  | BucketTid b          -> (get_vars_bucket b base)
 
 
 and get_vars_cell (c:cell) (base:V.t -> V.VarSet.t) : V.VarSet.t =
@@ -2505,6 +2622,18 @@ and get_vars_mark (m:mark) (base:V.t -> V.VarSet.t) : V.VarSet.t =
   | MarkTrue   -> V.VarSet.empty
   | MarkFalse  -> V.VarSet.empty
   | Marked c   -> get_vars_cell c base
+
+
+and get_vars_bucket (b:bucket) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+  match b with
+    VarBucket v        -> (base v) @@
+                           (match V.parameter v with
+                            | V.Shared -> V.VarSet.empty
+                            | V.Local t -> base t)
+  | MkBucket (i,e,s,t) -> (get_vars_addr i base) @@
+                          (get_vars_addr e base) @@
+                          (get_vars_set s base) @@
+                          (get_vars_tid t base)
 
 
 and get_vars_setth (s:setth) (base:V.t -> V.VarSet.t) : V.VarSet.t =
@@ -2663,6 +2792,11 @@ and get_vars_atom (a:atom) (base:V.t -> V.VarSet.t) : V.VarSet.t =
                                           (get_vars_addr a_from base) @@
                                           (get_vars_addr a_to base) @@
                                           (get_vars_setelem elems base)
+  | Hashmap(h,s,se,bb,i)               -> (get_vars_mem h base) @@
+                                          (get_vars_set s base) @@
+                                          (get_vars_setelem se base) @@
+                                          (get_vars_bucketarr bb base) @@
+                                          (get_vars_int i base)
   | In(a,s)                            -> (get_vars_addr a base) @@ (get_vars_set s base)
   | SubsetEq(s_in,s_out)               -> (get_vars_set s_in base) @@
                                           (get_vars_set s_out base)
@@ -2992,7 +3126,9 @@ let rec voc_term (expr:term) : ThreadSet.t =
     | ArrayT(arr)       -> voc_array arr
     | AddrArrayT(arr)   -> voc_addrarr arr
     | TidArrayT(arr)    -> voc_tidarr arr
+    | BucketArrayT(arr) -> voc_bucketarr arr
     | MarkT(m)          -> voc_mark m
+    | BucketT(b)        -> voc_bucket b
 
 
 and voc_expr (e:expr_t) : ThreadSet.t =
@@ -3021,6 +3157,12 @@ and voc_tidarr (a:tidarr) : ThreadSet.t =
   | CellTids c            -> (voc_cell c)
 
 
+and voc_bucketarr (a:bucketarr) : ThreadSet.t =
+  match a with
+    VarBucketArray v       -> get_tid_in v
+  | BucketArrayUp(arr,i,b) -> (voc_bucketarr arr) @@ (voc_int i) @@ (voc_bucket b)
+
+
 and voc_set (e:set) : ThreadSet.t =
   match e with
     VarSet v             -> get_tid_in v
@@ -3033,6 +3175,7 @@ and voc_set (e:set) : ThreadSet.t =
   | AddrToSet(mem,addr)  -> (voc_mem mem) @@ (voc_addr addr)
   | AddrToSetAt(mem,a,l) -> (voc_mem mem) @@ (voc_addr a) @@ (voc_int l)
   | SetArrayRd(arr,_)    -> (voc_array arr)
+  | BucketRegion(b)      -> (voc_bucket b)
 
 
 and voc_addr (a:addr) : ThreadSet.t =
@@ -3047,6 +3190,8 @@ and voc_addr (a:addr) : ThreadSet.t =
   | LastLocked(mem,path)      -> (voc_mem mem) @@ (voc_path path)
   | AddrArrayRd(arr,_)        -> (voc_array arr)
   | AddrArrRd(arr,l)          -> (voc_addrarr arr) @@ (voc_int l)
+  | BucketInit(b)             -> (voc_bucket b)
+  | BucketEnd(b)              -> (voc_bucket b)
 
 
 and voc_elem (e:elem) : ThreadSet.t =
@@ -3069,6 +3214,7 @@ and voc_tid (th:tid) : ThreadSet.t =
   | TidArrayRd(arr,_)    -> (voc_array arr)
   | TidArrRd(arr,l)      -> (voc_tidarr arr) @@ (voc_int l)
   | PairTid p            -> (voc_pair p)
+  | BucketTid b          -> (voc_bucket b)
 
 
 and voc_cell (c:cell) : ThreadSet.t =
@@ -3105,6 +3251,13 @@ and voc_mark (m:mark) : ThreadSet.t =
   | MarkTrue  -> ThreadSet.empty
   | MarkFalse -> ThreadSet.empty
   | Marked c  -> voc_cell c
+
+
+and voc_bucket (b:bucket) : ThreadSet.t =
+  match b with
+    VarBucket v -> get_tid_in v
+  | MkBucket(i,e,s,t) -> (voc_addr i) @@ (voc_addr e) @@
+                         (voc_set s) @@ (voc_tid t)
 
 
 and voc_setth (s:setth) : ThreadSet.t =
@@ -3226,6 +3379,11 @@ and voc_atom (a:atom) : ThreadSet.t =
                                           (voc_addr a_from) @@
                                           (voc_addr a_to) @@
                                           (voc_setelem elems)
+  | Hashmap(h,s,se,bb,i)               -> (voc_mem h) @@
+                                          (voc_set s) @@
+                                          (voc_setelem se) @@
+                                          (voc_bucketarr bb) @@
+                                          (voc_int i)
   | In(a,s)                            -> (voc_addr a) @@ (voc_set s)
   | SubsetEq(s_in,s_out)               -> (voc_set s_in) @@ (voc_set s_out)
   | InTh(th,s)                         -> (voc_tid th) @@ (voc_setth s)
@@ -3353,7 +3511,9 @@ let rec var_kind_term (kind:var_nature) (expr:term) : term list =
     | ArrayT(arr)       -> var_kind_array kind arr
     | AddrArrayT(arr)   -> var_kind_addrarr kind arr
     | TidArrayT(arr)    -> var_kind_tidarr kind arr
+    | BucketArrayT(arr) -> var_kind_bucketarr kind arr
     | MarkT(m)          -> var_kind_mark kind m
+    | BucketT(b)        -> var_kind_bucket kind b
 
 
 and var_kind_expr (kind:var_nature) (e:expr_t) : term list =
@@ -3386,6 +3546,14 @@ and var_kind_tidarr (kind:var_nature) (a:tidarr) : term list =
   | CellTids c            -> (var_kind_cell kind c)
 
 
+and var_kind_bucketarr (kind:var_nature) (a:bucketarr) : term list =
+  match a with
+    VarBucketArray v       -> if var_nature v = kind then [BucketArrayT a] else []
+  | BucketArrayUp(arr,i,b) -> (var_kind_bucketarr kind arr) @
+                              (var_kind_int kind i)      @
+                              (var_kind_bucket kind b)
+
+
 and var_kind_set (kind:var_nature) (e:set) : term list =
   match e with
     VarSet v            -> if var_nature v = kind then [SetT e] else []
@@ -3400,6 +3568,7 @@ and var_kind_set (kind:var_nature) (e:set) : term list =
                            (var_kind_addr kind a)  @
                            (var_kind_int kind l)
   | SetArrayRd(arr,_)   -> (var_kind_array kind arr)
+  | BucketRegion(b)     -> (var_kind_bucket kind b)
 
 
 and var_kind_addr (kind:var_nature) (a:addr) : term list =
@@ -3418,6 +3587,8 @@ and var_kind_addr (kind:var_nature) (a:addr) : term list =
                                  (var_kind_path kind path)
   | AddrArrayRd(arr,_)        -> (var_kind_array kind arr)
   | AddrArrRd(arr,l)          -> (var_kind_addrarr kind arr) @ (var_kind_int kind l)
+  | BucketInit(b)             -> (var_kind_bucket kind b)
+  | BucketEnd(b)              -> (var_kind_bucket kind b)
 
 
 and var_kind_elem (kind:var_nature) (e:elem) : term list =
@@ -3434,12 +3605,13 @@ and var_kind_elem (kind:var_nature) (e:elem) : term list =
 and var_kind_tid (kind:var_nature) (th:tid) : term list =
   match th with
     VarTh v              -> if var_nature v = kind then [TidT th] else []
-  | NoTid               -> []
+  | NoTid                -> []
   | CellLockId(cell)     -> (var_kind_cell kind cell)
   | CellLockIdAt(cell,l) -> (var_kind_cell kind cell) @ (var_kind_int kind l)
-  | TidArrayRd(arr,_)   -> (var_kind_array kind arr)
-  | TidArrRd(arr,l)     -> (var_kind_tidarr kind arr) @ (var_kind_int kind l)
-  | PairTid p           -> (var_kind_pair kind p)
+  | TidArrayRd(arr,_)    -> (var_kind_array kind arr)
+  | TidArrRd(arr,l)      -> (var_kind_tidarr kind arr) @ (var_kind_int kind l)
+  | PairTid p            -> (var_kind_pair kind p)
+  | BucketTid b          -> (var_kind_bucket kind b)
 
 
 and var_kind_cell (kind:var_nature) (c:cell) : term list =
@@ -3485,6 +3657,15 @@ and var_kind_mark (kind:var_nature) (m:mark) : term list =
   | Marked c   -> (var_kind_cell kind c)
 
 
+and var_kind_bucket (kind:var_nature) (b:bucket) : term list =
+  match b with
+    VarBucket v  -> if var_nature v = kind then [BucketT b] else []
+  | MkBucket(i,e,s,t) -> (var_kind_addr kind i) @
+                         (var_kind_addr kind e) @
+                         (var_kind_set kind s) @
+                         (var_kind_tid kind t)
+
+                       
 and var_kind_setth (kind:var_nature) (s:setth) : term list =
   match s with
     VarSetTh v          -> if var_nature v = kind then [SetThT s] else []
@@ -3617,6 +3798,11 @@ and var_kind_atom (kind:var_nature) (a:atom) : term list =
                                           (var_kind_addr kind a_from) @
                                           (var_kind_addr kind a_to) @
                                           (var_kind_setelem kind elems)
+  | Hashmap(h,s,se,bb,i)               -> (var_kind_mem kind h) @
+                                          (var_kind_set kind s) @
+                                          (var_kind_setelem kind se) @
+                                          (var_kind_bucketarr kind bb) @
+                                          (var_kind_int kind i)
   | In(a,s)                            -> (var_kind_addr kind a) @ (var_kind_set kind s)
   | SubsetEq(s_in,s_out)               -> (var_kind_set kind s_in) @
                                           (var_kind_set kind s_out)
@@ -3733,24 +3919,26 @@ let var_kind (kind:var_nature) (e:expr_t) : term list =
 
 let rec param_a_term (pfun:V.t option -> V.shared_or_local) (expr:term) : term =
   match expr with
-    VarT(v)           -> VarT       (V.set_param v (pfun (Some v)))
-  | SetT(set)         -> SetT       (param_set      pfun set    )
-  | AddrT(addr)       -> AddrT      (param_addr_aux pfun addr   )
-  | ElemT(elem)       -> ElemT      (param_elem_aux pfun elem   )
-  | TidT(th)          -> TidT       (param_tid_aux  pfun th     )
-  | CellT(cell)       -> CellT      (param_cell_aux pfun cell   )
-  | SetThT(setth)     -> SetThT     (param_setth    pfun setth  )
-  | SetIntT(setint)   -> SetIntT    (param_setint   pfun setint )
-  | SetElemT(setelem) -> SetElemT   (param_setelem  pfun setelem)
-  | SetPairT(setpair) -> SetPairT   (param_setpair  pfun setpair)
-  | PathT(path)       -> PathT      (param_path     pfun path   )
-  | MemT(mem)         -> MemT       (param_mem      pfun mem    )
-  | IntT(i)           -> IntT       (param_int_aux  pfun i      )
-  | PairT(p)          -> PairT      (param_pair     pfun p      )
-  | ArrayT(arr)       -> ArrayT     (param_arrays   pfun arr    )
-  | AddrArrayT(arr)   -> AddrArrayT (param_addrarr_aux  pfun arr    )
-  | TidArrayT(arr)    -> TidArrayT  (param_tidarr_aux   pfun arr    )
-  | MarkT(m)          -> MarkT      (param_mark     pfun m      )
+    VarT(v)           -> VarT         (V.set_param v (pfun (Some v)))
+  | SetT(set)         -> SetT         (param_set          pfun set    )
+  | AddrT(addr)       -> AddrT        (param_addr_aux     pfun addr   )
+  | ElemT(elem)       -> ElemT        (param_elem_aux     pfun elem   )
+  | TidT(th)          -> TidT         (param_tid_aux      pfun th     )
+  | CellT(cell)       -> CellT        (param_cell_aux     pfun cell   )
+  | SetThT(setth)     -> SetThT       (param_setth        pfun setth  )
+  | SetIntT(setint)   -> SetIntT      (param_setint       pfun setint )
+  | SetElemT(setelem) -> SetElemT     (param_setelem      pfun setelem)
+  | SetPairT(setpair) -> SetPairT     (param_setpair      pfun setpair)
+  | PathT(path)       -> PathT        (param_path         pfun path   )
+  | MemT(mem)         -> MemT         (param_mem          pfun mem    )
+  | IntT(i)           -> IntT         (param_int_aux      pfun i      )
+  | PairT(p)          -> PairT        (param_pair         pfun p      )
+  | ArrayT(arr)       -> ArrayT       (param_arrays       pfun arr    )
+  | AddrArrayT(arr)   -> AddrArrayT   (param_addrarr_aux  pfun arr    )
+  | TidArrayT(arr)    -> TidArrayT    (param_tidarr_aux   pfun arr    )
+  | BucketArrayT(arr) -> BucketArrayT (param_bucketarr    pfun arr    )
+  | MarkT(m)          -> MarkT        (param_mark         pfun m      )
+  | BucketT(b)        -> BucketT      (param_bucket       pfun b      )
 
 
 and param_expr_aux (pfun:V.t option -> V.shared_or_local) (expr:expr_t): expr_t =
@@ -3787,6 +3975,15 @@ and param_tidarr_aux (pfun:V.t option -> V.shared_or_local) (arr:tidarr) : tidar
   | CellTids c            -> CellTids (param_cell_aux pfun c)
 
 
+and param_bucketarr (pfun:V.t option -> V.shared_or_local) (arr:bucketarr) : bucketarr =
+  match arr with
+    VarBucketArray v       -> VarBucketArray (V.set_param v (pfun (Some v)))
+      (*TODO: Fix open array case for array variables *)
+  | BucketArrayUp(arr,i,b) -> BucketArrayUp(param_bucketarr pfun arr,
+                                            param_int_aux pfun i,
+                                            param_bucket pfun b)
+
+
 and param_set (pfun:V.t option -> V.shared_or_local) (e:set) : set =
   match e with
     VarSet v             -> VarSet (V.set_param v (pfun (Some v)))
@@ -3805,6 +4002,7 @@ and param_set (pfun:V.t option -> V.shared_or_local) (e:set) : set =
                                         param_addr_aux pfun a,
                                         param_int_aux pfun l)
   | SetArrayRd(arr,t)    -> SetArrayRd(param_arrays pfun arr, t)
+  | BucketRegion(b)      -> BucketRegion(param_bucket pfun b)
 
 
 and param_addr_aux (pfun:V.t option -> V.shared_or_local) (a:addr) : addr =
@@ -3826,6 +4024,8 @@ and param_addr_aux (pfun:V.t option -> V.shared_or_local) (a:addr) : addr =
   | AddrArrayRd(arr,t)        -> AddrArrayRd(param_arrays pfun arr, t)
   | AddrArrRd(arr,l)          -> AddrArrRd(param_addrarr_aux pfun arr,
                                            param_int_aux pfun l)
+  | BucketInit(b)             -> BucketInit(param_bucket pfun b)
+  | BucketEnd(b)              -> BucketEnd(param_bucket pfun b)
 
 
 and param_elem_aux (pfun:V.t option -> V.shared_or_local) (e:elem) : elem =
@@ -3842,14 +4042,15 @@ and param_elem_aux (pfun:V.t option -> V.shared_or_local) (e:elem) : elem =
 and param_tid_aux (pfun:V.t option -> V.shared_or_local) (th:tid) : tid =
   match th with
     VarTh v              -> VarTh (V.set_param v (pfun (Some v)))
-  | NoTid               -> NoTid
+  | NoTid                -> NoTid
   | CellLockId(cell)     -> CellLockId(param_cell_aux pfun cell)
   | CellLockIdAt(cell,l) -> CellLockIdAt(param_cell_aux pfun cell,
                                          param_int_aux pfun l)
-  | TidArrayRd(arr,t)   -> TidArrayRd(param_arrays pfun arr, t)
-  | TidArrRd(arr,l)     -> TidArrRd(param_tidarr_aux pfun arr,
-                                      param_int_aux pfun l)
-  | PairTid p           -> PairTid(param_pair pfun p)
+  | TidArrayRd(arr,t)    -> TidArrayRd(param_arrays pfun arr, t)
+  | TidArrRd(arr,l)      -> TidArrRd(param_tidarr_aux pfun arr,
+                                     param_int_aux pfun l)
+  | PairTid p            -> PairTid(param_pair pfun p)
+  | BucketTid b          -> BucketTid(param_bucket pfun b)
 
 
 and param_cell_aux (pfun:V.t option -> V.shared_or_local) (c:cell) : cell =
@@ -3892,6 +4093,15 @@ and param_mark (pfun:V.t option -> V.shared_or_local) (m:mark) : mark =
   | MarkTrue  -> MarkTrue
   | MarkFalse -> MarkFalse
   | Marked c  -> Marked (param_cell_aux pfun c)
+
+
+and param_bucket (pfun:V.t option -> V.shared_or_local) (b:bucket) : bucket =
+  match b with
+    VarBucket v -> VarBucket (V.set_param v (pfun (Some v)))
+  | MkBucket(i,e,s,t) -> MkBucket(param_addr_aux pfun i,
+                                  param_addr_aux pfun e,
+                                  param_set pfun s,
+                                  param_tid_aux pfun t)
 
 
 and param_setth (pfun:V.t option -> V.shared_or_local) (s:setth) : setth =
@@ -4033,6 +4243,11 @@ and param_atom (pfun:V.t option -> V.shared_or_local) (a:atom) : atom =
                                                    param_addr_aux pfun a_from,
                                                    param_addr_aux pfun a_to,
                                                    param_setelem pfun elems)
+  | Hashmap(h,s,se,bb,i)               -> Hashmap(param_mem pfun h,
+                                                  param_set pfun s,
+                                                  param_setelem pfun se,
+                                                  param_bucketarr pfun bb,
+                                                  param_int_aux pfun i)
   | In(a,s)                            -> In(param_addr_aux pfun a,
                                              param_set pfun s)
   | SubsetEq(s_in,s_out)               -> SubsetEq(param_set pfun s_in,
@@ -4260,7 +4475,9 @@ and subst_tid_term (subs:tid_subst_t) (expr:term) : term =
   | ArrayT(arr)         -> ArrayT(subst_tid_array subs arr)
   | AddrArrayT(arr)     -> AddrArrayT(subst_tid_addrarr subs arr)
   | TidArrayT(arr)      -> TidArrayT(subst_tid_tidarr subs arr)
+  | BucketArrayT(arr)   -> BucketArrayT(subst_tid_bucketarr subs arr)
   | MarkT(m)            -> MarkT(subst_tid_mark subs m)
+  | BucketT(b)          -> BucketT(subst_tid_bucket subs b)
 and subst_tid_expr (subs:tid_subst_t) (expr:expr_t) : expr_t =
   match expr with
     Term t    -> Term (subst_tid_term subs t)
@@ -4284,6 +4501,16 @@ and subst_tid_tidarr (subs:tid_subst_t) (expr:tidarr) : tidarr =
                                       subst_tid_int subs i,
                                       subst_tid_th subs t)
   | CellTids c            -> CellTids (subst_tid_cell subs c)
+
+
+and subst_tid_bucketarr (subs:tid_subst_t) (expr:bucketarr) : bucketarr =
+  match expr with
+    VarBucketArray v       -> VarBucketArray (V.set_param v (subst_shared_or_local subs (V.parameter v)))
+  | BucketArrayUp(arr,i,b) -> BucketArrayUp(subst_tid_bucketarr subs arr,
+                                            subst_tid_int subs i,
+                                            subst_tid_bucket subs b)
+
+
 and subst_tid_set (subs:tid_subst_t) (e:set) : set =
   match e with
     VarSet v            -> VarSet (V.set_param v (subst_shared_or_local subs (V.parameter v)))
@@ -4300,6 +4527,7 @@ and subst_tid_set (subs:tid_subst_t) (e:set) : set =
                                        subst_tid_addr subs a,
                                        subst_tid_int subs l)
   | SetArrayRd(arr,t)   -> SetArrayRd(subst_tid_array subs arr, t)
+  | BucketRegion(b)     -> BucketRegion(subst_tid_bucket subs b)
 and subst_tid_addr (subs:tid_subst_t) (a:addr) : addr =
   match a with
     VarAddr v                 -> VarAddr(V.set_param v (subst_shared_or_local subs (V.parameter v)))
@@ -4319,6 +4547,8 @@ and subst_tid_addr (subs:tid_subst_t) (a:addr) : addr =
   | AddrArrayRd(arr,t)        -> AddrArrayRd(subst_tid_array subs arr, t)
   | AddrArrRd(arr,i)          -> AddrArrRd(subst_tid_addrarr subs arr,
                                            subst_tid_int subs i)
+  | BucketInit(b)             -> BucketInit(subst_tid_bucket subs b)
+  | BucketEnd(b)              -> BucketEnd(subst_tid_bucket subs b)
 and subst_tid_elem (subs:tid_subst_t) (e:elem) : elem =
   match e with
     VarElem v             -> VarElem(V.set_param v (subst_shared_or_local subs (V.parameter v)))
@@ -4366,6 +4596,13 @@ and subst_tid_mark (subs:tid_subst_t) (m:mark) : mark =
   | MarkTrue  -> MarkTrue
   | MarkFalse -> MarkFalse
   | Marked c  -> Marked (subst_tid_cell subs c)
+and subst_tid_bucket (subs:tid_subst_t) (b:bucket) : bucket =
+  match b with
+    VarBucket v -> VarBucket(V.set_param v (subst_shared_or_local subs (V.parameter v)))
+  | MkBucket(i,e,s,t) -> MkBucket(subst_tid_addr subs i,
+                                  subst_tid_addr subs e,
+                                  subst_tid_set subs s,
+                                  subst_tid_th subs t)
 and subst_tid_setth (subs:tid_subst_t) (s:setth) : setth =
   match s with
     VarSetTh v             -> VarSetTh(V.set_param v (subst_shared_or_local subs (V.parameter v)))
@@ -4482,6 +4719,7 @@ and subst_tid_th (subs:tid_subst_t) (t:tid) : tid =
               | TidArrRd (a,i) -> TidArrRd (subst_tid_tidarr subs a,
                                               subst_tid_int subs i)
               | PairTid p -> PairTid (subst_tid_pair subs p)
+              | BucketTid b -> BucketTid (subst_tid_bucket subs b)
   end
 and subst_tid_atom (subs:tid_subst_t) (a:atom) : atom =
   match a with
@@ -4506,6 +4744,11 @@ and subst_tid_atom (subs:tid_subst_t) (a:atom) : atom =
                                                    subst_tid_addr subs a_from,
                                                    subst_tid_addr subs a_to,
                                                    subst_tid_setelem subs elems)
+  | Hashmap(h,s,se,bb,i)               -> Hashmap(subst_tid_mem subs h,
+                                                   subst_tid_set subs s,
+                                                   subst_tid_setelem subs se,
+                                                   subst_tid_bucketarr subs bb,
+                                                   subst_tid_int subs i)
   | In(a,s)                            -> In(subst_tid_addr subs a,
                                              subst_tid_set subs s)
   | SubsetEq(s_in,s_out)               -> SubsetEq(subst_tid_set subs s_in,
@@ -4554,12 +4797,6 @@ and subst_tid_atom (subs:tid_subst_t) (a:atom) : atom =
   | PCUpdate (pc,t)                    -> PCUpdate (pc, subst_tid_th subs t)
   | PCRange (pc1,pc2,t,primed)         -> PCRange (pc1, pc2, subst_shared_or_local subs t, primed)
 
-(*
-and subst_tid_literal (subs:tid_subst_t) (l:literal) : literal =
-  match l with
-    Atom a    -> Atom (subst_tid_atom subs a)
-  | NegAtom a -> NegAtom (subst_tid_atom subs a)
-*)
 and subst_tid_eq (subs:tid_subst_t) ((t1,t2):eq) : eq =
   (subst_tid_term subs t1, subst_tid_term subs t2)
 
@@ -4572,25 +4809,6 @@ and subst_tid_fs () = Formula.make_trans
 
 and subst_tid (subs:tid_subst_t) (phi:formula) : formula =
   Formula.formula_trans (subst_tid_fs()) subs phi
-(*
-and subst_tid_conjunctive_formula (subs:tid_subst_t)
-                                  (cf:conjunctive_formula)
-                                    : conjunctive_formula =
-  match cf with
-    FalseConj -> FalseConj
-  | TrueConj  -> TrueConj
-  | Conj ls   -> Conj (List.map (subst_tid_literal subs) ls)
-and subst_tid (subs:tid_subst_t) (phi:formula) : formula =
-  match phi with
-    Literal(lit)   -> Literal(subst_tid_literal subs lit)
-  | True           -> True
-  | False          -> False
-  | And(f1,f2)     -> And(subst_tid subs f1, subst_tid subs f2)
-  | Or(f1,f2)      -> Or(subst_tid subs f1, subst_tid subs f2)
-  | Not(f)         -> Not(subst_tid subs f)
-  | Implies(f1,f2) -> Implies(subst_tid subs f1, subst_tid subs f2)
-  | Iff (f1,f2)    -> Iff(subst_tid subs f1, subst_tid subs f2)
-*)
 
 let subst_to_str (sub:tid_subst_t) : string =
   "{" ^ (String.concat ", " $
@@ -4635,7 +4853,9 @@ let rec subst_vars_term (subs:V.subst_t) (expr:term) : term =
   | ArrayT(arr)         -> ArrayT(subst_vars_array subs arr)
   | AddrArrayT(arr)     -> AddrArrayT(subst_vars_addrarr subs arr)
   | TidArrayT(arr)      -> TidArrayT(subst_vars_tidarr subs arr)
+  | BucketArrayT(arr)   -> BucketArrayT(subst_vars_bucketarr subs arr)
   | MarkT(m)            -> MarkT(subst_vars_mark subs m)
+  | BucketT(b)          -> BucketT(subst_vars_bucket subs b)
 
 
 and subst_vars_expr (subs:V.subst_t) (expr:expr_t) : expr_t =
@@ -4669,6 +4889,14 @@ and subst_vars_tidarr (subs:V.subst_t) (expr:tidarr) : tidarr =
   | CellTids c            -> CellTids (subst_vars_cell subs c)
 
 
+and subst_vars_bucketarr (subs:V.subst_t) (expr:bucketarr) : bucketarr =
+  match expr with
+    VarBucketArray v       -> VarBucketArray (V.subst subs v)
+  | BucketArrayUp(arr,i,b) -> BucketArrayUp(subst_vars_bucketarr subs arr,
+                                            subst_vars_int subs i,
+                                            subst_vars_bucket subs b)
+
+
 and subst_vars_set (subs:V.subst_t) (e:set) : set =
   match e with
     VarSet v            -> VarSet (V.subst subs v)
@@ -4685,6 +4913,7 @@ and subst_vars_set (subs:V.subst_t) (e:set) : set =
                                        subst_vars_addr subs a,
                                        subst_vars_int subs l)
   | SetArrayRd(arr,t)   -> SetArrayRd(subst_vars_array subs arr, t)
+  | BucketRegion(b)     -> BucketRegion(subst_vars_bucket subs b)
 
 
 and subst_vars_addr (subs:V.subst_t) (a:addr) : addr =
@@ -4706,6 +4935,8 @@ and subst_vars_addr (subs:V.subst_t) (a:addr) : addr =
   | AddrArrayRd(arr,t)        -> AddrArrayRd(subst_vars_array subs arr, t)
   | AddrArrRd(arr,i)          -> AddrArrRd(subst_vars_addrarr subs arr,
                                            subst_vars_int subs i)
+  | BucketInit(b)             -> BucketInit(subst_vars_bucket subs b)
+  | BucketEnd(b)              -> BucketEnd(subst_vars_bucket subs b)
 
 
 and subst_vars_elem (subs:V.subst_t) (e:elem) : elem =
@@ -4759,6 +4990,15 @@ and subst_vars_mark (subs:V.subst_t) (m:mark) : mark =
   | MarkTrue  -> MarkTrue
   | MarkFalse -> MarkFalse
   | Marked c  -> Marked (subst_vars_cell subs c)
+
+
+and subst_vars_bucket (subs:V.subst_t) (b:bucket) : bucket =
+  match b with
+    VarBucket v -> VarBucket(V.subst subs v)
+  | MkBucket(i,e,s,t) -> MkBucket(subst_vars_addr subs i,
+                                  subst_vars_addr subs e,
+                                  subst_vars_set subs s,
+                                  subst_vars_th subs t)
 
 
 and subst_vars_setth (subs:V.subst_t) (s:setth) : setth =
@@ -4887,6 +5127,7 @@ and subst_vars_th (subs:V.subst_t) (t:tid) : tid =
   | TidArrRd (a,i) -> TidArrRd (subst_vars_tidarr subs a,
                                   subst_vars_int subs i)
   | PairTid p -> PairTid(subst_vars_pair subs p)
+  | BucketTid b -> BucketTid(subst_vars_bucket subs b)
 
 
 and subst_vars_atom (subs:V.subst_t) (a:atom) : atom =
@@ -4912,6 +5153,11 @@ and subst_vars_atom (subs:V.subst_t) (a:atom) : atom =
                                                    subst_vars_addr subs a_from,
                                                    subst_vars_addr subs a_to,
                                                    subst_vars_setelem subs elems)
+  | Hashmap(h,s,se,bb,i)               -> Hashmap(subst_vars_mem subs h,
+                                                  subst_vars_set subs s,
+                                                  subst_vars_setelem subs se,
+                                                  subst_vars_bucketarr subs bb,
+                                                  subst_vars_int subs i)
   | In(a,s)                            -> In(subst_vars_addr subs a,
                                              subst_vars_set subs s)
   | SubsetEq(s_in,s_out)               -> SubsetEq(subst_vars_set subs s_in,
@@ -5603,6 +5849,7 @@ let required_sorts (phi:formula) : sort list =
     | ReachAt (m,a1,a2,l,p) -> append Bool [req_m m;req_a a1;req_a a2;req_i l;req_p p]
     | OrderList (m,a1,a2)   -> append Bool [req_m m;req_a a1;req_a a2]
     | Skiplist(m,s,l,a1,a2,se) -> append Bool [req_m m;req_s s;req_i l;req_a a1;req_a a2;req_se se]
+    | Hashmap(m,s,se,bb,i)  -> append Bool [req_m m;req_s s;req_se se;req_bucketarr bb;req_i i]
     | In (a,s)              -> append Bool [req_a a;req_s s]
     | SubsetEq (s1,s2)      -> append Bool [req_s s1;req_s s2]
     | InTh (t,s)            -> append Bool [req_t t;req_st s]
@@ -5718,6 +5965,11 @@ let required_sorts (phi:formula) : sort list =
     | MarkFalse -> single Mark
     | Marked c  -> append Mark [req_c c]
 
+  and req_b (b:bucket) : SortSet.t =
+    match b with
+    | VarBucket _ -> single Bucket
+    | MkBucket(i,e,s,t) -> append Bucket [req_a i; req_a e; req_s s; req_t t]
+
   and req_a (a:addr) : SortSet.t =
     match a with
     | VarAddr _             -> single Addr
@@ -5730,6 +5982,8 @@ let required_sorts (phi:formula) : sort list =
     | LastLocked (m,p)      -> append Addr [req_m m;req_p p]
     | AddrArrayRd (a,t)     -> append Addr [req_arr a; req_t t]
     | AddrArrRd (a,i)       -> append Addr [req_addrarr a; req_i i]
+    | BucketInit (b)        -> append Addr [req_b b]
+    | BucketEnd (b)         -> append Addr [req_b b]
 
   and req_e (e:elem) : SortSet.t =
     match e with
@@ -5750,6 +6004,7 @@ let required_sorts (phi:formula) : sort list =
     | TidArrayRd (a,t)   -> append Tid [req_arr a;req_t t]
     | TidArrRd (a,l)     -> append Tid [req_tidarr a;req_i l]
     | PairTid p          -> append Tid [req_pr p]
+    | BucketTid b        -> append Tid [req_b b]
 
   and req_s (s:set) : SortSet.t =
     match s with
@@ -5763,6 +6018,7 @@ let required_sorts (phi:formula) : sort list =
     | AddrToSet (m,a)     -> append Set [req_m m;req_a a]
     | AddrToSetAt (m,a,l) -> append Set [req_m m;req_a a;req_i l]
     | SetArrayRd (a,t)    -> append Set [req_arr a;req_t t]
+    | BucketRegion (b)    -> append Set [req_b b]
 
   and req_i (i:integer) : SortSet.t =
     match i with
@@ -5807,6 +6063,10 @@ let required_sorts (phi:formula) : sort list =
                                                req_i i;req_t t]
     | CellTids c             -> append TidArray [req_c c]
 
+  and req_bucketarr (a:bucketarr) : SortSet.t =
+    match a with
+    | VarBucketArray _        -> single BucketArray
+    | BucketArrayUp (arr,i,b) -> append BucketArray [req_bucketarr arr; req_i i; req_b b]
   and req_term (t:term) : SortSet.t =
     match t with
     | VarT v             -> single (V.sort v)
@@ -5826,7 +6086,9 @@ let required_sorts (phi:formula) : sort list =
     | ArrayT a           -> req_arr a
     | AddrArrayT a       -> req_addrarr a
     | TidArrayT a        -> req_tidarr a
+    | BucketArrayT a     -> req_bucketarr a
     | MarkT m            -> req_mk m
+    | BucketT b          -> req_b b
 
   and req_expr (e:expr_t) : SortSet.t =
     match e with
@@ -5922,24 +6184,26 @@ and build_pc_var_from_tid (pr:bool) (t:tid) : V.t =
 
 and to_plain_term (ops:fol_ops_t) (expr:term) : term =
   match expr with
-    VarT(v)           -> VarT       (ops.fol_var v)
-  | SetT(set)         -> SetT       (to_plain_set ops set)
-  | AddrT(addr)       -> AddrT      (to_plain_addr ops addr)
-  | ElemT(elem)       -> ElemT      (to_plain_elem ops elem)
-  | TidT(th)          -> TidT       (to_plain_tid_aux ops th)
-  | CellT(cell)       -> CellT      (to_plain_cell ops cell)
-  | SetThT(setth)     -> SetThT     (to_plain_setth ops setth)
-  | SetIntT(setint)   -> SetIntT    (to_plain_setint ops setint)
-  | SetElemT(setelem) -> SetElemT   (to_plain_setelem ops setelem)
-  | SetPairT(setpair) -> SetPairT   (to_plain_setpair ops setpair)
-  | PathT(path)       -> PathT      (to_plain_path ops path)
-  | MemT(mem)         -> MemT       (to_plain_mem ops mem)
-  | IntT(i)           -> IntT       (to_plain_int ops i)
-  | PairT(p)          -> PairT      (to_plain_pair ops p)
-  | ArrayT(arr)       -> ArrayT     (to_plain_arrays ops arr)
-  | AddrArrayT(arr)   -> AddrArrayT (to_plain_addrarr ops arr)
-  | TidArrayT(arr)    -> TidArrayT  (to_plain_tid_auxarr ops arr)
-  | MarkT (m)         -> MarkT      (to_plain_mark ops m)
+    VarT(v)           -> VarT         (ops.fol_var v)
+  | SetT(set)         -> SetT         (to_plain_set ops set)
+  | AddrT(addr)       -> AddrT        (to_plain_addr ops addr)
+  | ElemT(elem)       -> ElemT        (to_plain_elem ops elem)
+  | TidT(th)          -> TidT         (to_plain_tid_aux ops th)
+  | CellT(cell)       -> CellT        (to_plain_cell ops cell)
+  | SetThT(setth)     -> SetThT       (to_plain_setth ops setth)
+  | SetIntT(setint)   -> SetIntT      (to_plain_setint ops setint)
+  | SetElemT(setelem) -> SetElemT     (to_plain_setelem ops setelem)
+  | SetPairT(setpair) -> SetPairT     (to_plain_setpair ops setpair)
+  | PathT(path)       -> PathT        (to_plain_path ops path)
+  | MemT(mem)         -> MemT         (to_plain_mem ops mem)
+  | IntT(i)           -> IntT         (to_plain_int ops i)
+  | PairT(p)          -> PairT        (to_plain_pair ops p)
+  | ArrayT(arr)       -> ArrayT       (to_plain_arrays ops arr)
+  | AddrArrayT(arr)   -> AddrArrayT   (to_plain_addrarr ops arr)
+  | TidArrayT(arr)    -> TidArrayT    (to_plain_tid_auxarr ops arr)
+  | BucketArrayT(arr) -> BucketArrayT (to_plain_bucketarr ops arr)
+  | MarkT (m)         -> MarkT        (to_plain_mark ops m)
+  | BucketT (b)       -> BucketT      (to_plain_bucket ops b)
 
 
 and to_plain_expr(ops:fol_ops_t) (expr:expr_t): expr_t =
@@ -5984,6 +6248,15 @@ and to_plain_tid_auxarr (ops:fol_ops_t) (arr:tidarr) : tidarr =
   | CellTids c            -> CellTids (to_plain_cell ops c)
 
 
+and to_plain_bucketarr (ops:fol_ops_t) (arr:bucketarr) : bucketarr =
+  match arr with
+    VarBucketArray v       -> VarBucketArray (ops.fol_var v)
+      (*TODO: Fix open array case for array variables *)
+  | BucketArrayUp(arr,i,b) -> BucketArrayUp(to_plain_bucketarr ops arr,
+                                            to_plain_int ops i,
+                                            to_plain_bucket ops b)
+
+
 and to_plain_set (ops:fol_ops_t) (e:set) : set =
   match e with
     VarSet v             -> VarSet (ops.fol_var v)
@@ -6003,6 +6276,7 @@ and to_plain_set (ops:fol_ops_t) (e:set) : set =
                                         to_plain_int ops l)
   | SetArrayRd(arr,t)    -> SetArrayRd(to_plain_arrays ops arr,
                                        to_plain_tid_aux ops t)
+  | BucketRegion(b)      -> BucketRegion(to_plain_bucket ops b)
 
 
 and to_plain_addr (ops:fol_ops_t) (a:addr) : addr =
@@ -6025,6 +6299,8 @@ and to_plain_addr (ops:fol_ops_t) (a:addr) : addr =
                                              to_plain_tid_aux ops t)
   | AddrArrRd(arr,l)          -> AddrArrRd(to_plain_addrarr ops arr,
                                            to_plain_int ops l)
+  | BucketInit(b)             -> BucketInit(to_plain_bucket ops b)
+  | BucketEnd(b)              -> BucketEnd(to_plain_bucket ops b)
 
 
 and to_plain_elem (ops:fol_ops_t) (e:elem) : elem =
@@ -6051,6 +6327,7 @@ and to_plain_tid_aux (ops:fol_ops_t) (th:tid) : tid =
   | TidArrRd(arr,l)     -> TidArrRd(to_plain_tid_auxarr ops arr,
                                       to_plain_int ops l)
   | PairTid p           -> PairTid(to_plain_pair ops p)
+  | BucketTid(b)        -> BucketTid(to_plain_bucket ops b)
 
 
 and to_plain_cell (ops:fol_ops_t) (c:cell) : cell =
@@ -6094,6 +6371,15 @@ and to_plain_mark (ops:fol_ops_t) (m:mark) : mark =
   | MarkTrue  -> MarkTrue
   | MarkFalse -> MarkFalse
   | Marked c  -> Marked (to_plain_cell ops c)
+
+
+and to_plain_bucket (ops:fol_ops_t) (b:bucket) : bucket =
+  match b with
+    VarBucket v -> VarBucket (ops.fol_var v)
+  | MkBucket(i,e,s,t) -> MkBucket(to_plain_addr ops i,
+                                  to_plain_addr ops e,
+                                  to_plain_set ops s,
+                                  to_plain_tid_aux ops t)
 
 
 and to_plain_setth (ops:fol_ops_t) (s:setth) : setth =
@@ -6245,6 +6531,11 @@ and to_plain_atom (ops:fol_ops_t) (a:atom) : atom =
                                                    to_plain_addr ops a_from,
                                                    to_plain_addr ops a_to,
                                                    to_plain_setelem ops elems)
+  | Hashmap(h,s,se,bb,i)               -> Hashmap(to_plain_mem ops h,
+                                                  to_plain_set ops s,
+                                                  to_plain_setelem ops se,
+                                                  to_plain_bucketarr ops bb,
+                                                  to_plain_int ops i)
   | In(a,s)                            -> In(to_plain_addr ops a,
                                              to_plain_set ops s)
   | SubsetEq(s_in,s_out)               -> SubsetEq(to_plain_set ops s_in,
