@@ -712,7 +712,7 @@ struct
   let z3_cell_mark_def (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun cell_mark ((c " ^cell_s^ ") (m " ^mark_s^ ")) " ^cell_s^ "\n" ^
-       "  (mkcell (data c) (next c) (lock t) m))\n")
+       "  (mkcell (data c) (next c) (lock c) m))\n")
 
 
   let z3_epsilon_def (buf:B.t) : unit =

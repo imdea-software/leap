@@ -474,6 +474,19 @@ module Make (C:Core.S) : S =
                      (List.length pvd_vcs.consecution) +
                      (List.length pvd_vcs.acceptance) +
                      (List.length pvd_vcs.fairness));
+
+
+      if LeapVerbose.is_verbose_enabled() then begin
+        LeapVerbose.verbstr ("PVD analysis for initiation requires " ^
+                              (string_of_int (List.length pvd_vcs.initiation)) ^ " VCs\n");
+        LeapVerbose.verbstr ("PVD analysis for consecution requires " ^
+                              (string_of_int (List.length pvd_vcs.consecution)) ^ " VCs\n");
+        LeapVerbose.verbstr ("PVD analysis for acceptance requires " ^
+                              (string_of_int (List.length pvd_vcs.acceptance)) ^ " VCs\n");
+        LeapVerbose.verbstr ("PVD analysis for fairness requires " ^
+                              (string_of_int (List.length pvd_vcs.fairness)) ^ " VCs\n")
+      end;
+
       List.fold_left (fun os (c,xs) ->
         List.fold_left (fun os vc ->
           let n = try
