@@ -573,21 +573,21 @@ and is_set_flat t =
   match t with
       VarSet _ -> true
     | EmptySet -> true
-    | Singl(a) -> is_addr_var  a
-    | Union(s1,s2) -> (is_set_var s1) && (is_set_var s2)
-    | Intr(s1,s2)  -> (is_set_var s1) && (is_set_var s2)
-    | Setdiff(s1,s2) -> (is_set_var s1) && (is_set_var s2)
-    | PathToSet(p)   -> (is_path_var p)
-    | AddrToSet(m,a) -> (is_mem_var m) && (is_addr_var a)
+    | Singl(a) -> is_addr_flat  a
+    | Union(s1,s2) -> (is_set_flat s1) && (is_set_flat s2)
+    | Intr(s1,s2)  -> (is_set_flat s1) && (is_set_flat s2)
+    | Setdiff(s1,s2) -> (is_set_flat s1) && (is_set_flat s2)
+    | PathToSet(p)   -> (is_path_flat p)
+    | AddrToSet(m,a) -> (is_mem_flat m) && (is_addr_flat a)
 and is_tid_flat t =
   match t with
       VarTh _       -> true
     | NoTid        -> true     
-    | CellLockId(c) -> is_cell_var c
+    | CellLockId(c) -> is_cell_flat c
 and is_elem_flat t =
   match t with
       VarElem _     -> true
-    | CellData(c)   -> is_cell_var c
+    | CellData(c)   -> is_cell_flat c
     | HavocListElem -> true
     | LowestElem    -> true
     | HighestElem   -> true
@@ -595,89 +595,89 @@ and is_addr_flat t =
   match t with
       VarAddr _        -> true
     | Null             -> true
-    | Next(c)          -> is_cell_var c
-    | FirstLocked(m,p) -> (is_mem_var m) && (is_path_var p)
-    | LastLocked(m,p)  -> (is_mem_var m) && (is_path_var p)
-(*    | Malloc(m,a,k)    -> (is_mem_var m) && (is_addr_var a) && (is_thread_var k) *)
+    | Next(c)          -> is_cell_flat c
+    | FirstLocked(m,p) -> (is_mem_flat m) && (is_path_flat p)
+    | LastLocked(m,p)  -> (is_mem_flat m) && (is_path_flat p)
+(*    | Malloc(m,a,k)    -> (is_mem_flat m) && (is_addr_flat a) && (is_thread_flat k) *)
 and is_cell_flat t =
   match t with
       VarCell _  -> true
     | Error      -> true
-    | MkCell(e,a,k) -> (is_elem_var e) && (is_addr_var a) && (is_tid_var k)
-    | MkCellMark(e,a,k,m) -> (is_elem_var e) && (is_addr_var a) &&
-                             (is_tid_var k) && (is_mark_var m)
-    | CellLock(c,th)   -> (is_cell_var c) && (is_tid_var th)
-    | CellUnlock(c) -> is_cell_var c
-    | CellAt(m,a)   -> (is_mem_var m) && (is_addr_var a)
+    | MkCell(e,a,k) -> (is_elem_flat e) && (is_addr_flat a) && (is_tid_flat k)
+    | MkCellMark(e,a,k,m) -> (is_elem_flat e) && (is_addr_flat a) &&
+                             (is_tid_flat k) && (is_mark_flat m)
+    | CellLock(c,th)   -> (is_cell_flat c) && (is_tid_flat th)
+    | CellUnlock(c) -> is_cell_flat c
+    | CellAt(m,a)   -> (is_mem_flat m) && (is_addr_flat a)
 and is_mark_flat m =
   match m with
       VarMark _  -> true
     | MarkTrue   -> true
     | MarkFalse  -> true
-    | Marked c   -> (is_cell_var c)
+    | Marked c   -> (is_cell_flat c)
 and is_setth_flat t =
   match t with
       VarSetTh _ -> true
     | EmptySetTh -> true
-    | SinglTh(k)         -> (is_tid_var k)
-    | UnionTh(st1,st2)   -> (is_setth_var st1) && (is_setth_var st2)
-    | IntrTh(st1,st2)    -> (is_setth_var st1) && (is_setth_var st2)
-    | SetdiffTh(st1,st2) -> (is_setth_var st1) && (is_setth_var st2)
-    | LockSet(m,p)       -> (is_mem_var m) && (is_path_var p)
+    | SinglTh(k)         -> (is_tid_flat k)
+    | UnionTh(st1,st2)   -> (is_setth_flat st1) && (is_setth_flat st2)
+    | IntrTh(st1,st2)    -> (is_setth_flat st1) && (is_setth_flat st2)
+    | SetdiffTh(st1,st2) -> (is_setth_flat st1) && (is_setth_flat st2)
+    | LockSet(m,p)       -> (is_mem_flat m) && (is_path_flat p)
 and is_setelem_flat t =
   match t with
       VarSetElem _ -> true
     | EmptySetElem -> true
-    | SinglElem(k)         -> (is_elem_var k)
-    | UnionElem(st1,st2)   -> (is_setelem_var st1) && (is_setelem_var st2)
-    | IntrElem(st1,st2)    -> (is_setelem_var st1) && (is_setelem_var st2)
-    | SetToElems(s,m)      -> (is_set_var s) && (is_mem_var m)
-    | SetdiffElem(st1,st2) -> (is_setelem_var st1) && (is_setelem_var st2)
+    | SinglElem(k)         -> (is_elem_flat k)
+    | UnionElem(st1,st2)   -> (is_setelem_flat st1) && (is_setelem_flat st2)
+    | IntrElem(st1,st2)    -> (is_setelem_flat st1) && (is_setelem_flat st2)
+    | SetToElems(s,m)      -> (is_set_flat s) && (is_mem_flat m)
+    | SetdiffElem(st1,st2) -> (is_setelem_flat st1) && (is_setelem_flat st2)
 and is_path_flat t =
   match t with
       VarPath _ -> true
     | Epsilon   -> true
-    | SimplePath(a)    -> is_addr_var a
-    | GetPath(m,a1,a2) -> (is_mem_var m) && (is_addr_var a1) && (is_addr_var a2)
+    | SimplePath(a)    -> is_addr_flat a
+    | GetPath(m,a1,a2) -> (is_mem_flat m) && (is_addr_flat a1) && (is_addr_flat a2)
 and is_mem_flat t =
   match t with
       VarMem _ -> true
     | Emp      -> true
-    | Update(m,a,c) -> (is_mem_var m) && (is_addr_var a) && (is_cell_var c)
+    | Update(m,a,c) -> (is_mem_flat m) && (is_addr_flat a) && (is_cell_flat c)
 and is_int_flat i =
   match i with
       IntVal _ -> true
     | VarInt _ -> true
-    | IntNeg j -> is_int_var j
-    | IntAdd (j1,j2) -> (is_int_var j1) && (is_int_var j2)
-    | IntSub (j1,j2) -> (is_int_var j1) && (is_int_var j2)
-    | IntMul (j1,j2) -> (is_int_var j1) && (is_int_var j2)
-    | IntDiv (j1,j2) -> (is_int_var j1) && (is_int_var j2)
+    | IntNeg j -> is_int_flat j
+    | IntAdd (j1,j2) -> (is_int_flat j1) && (is_int_flat j2)
+    | IntSub (j1,j2) -> (is_int_flat j1) && (is_int_flat j2)
+    | IntMul (j1,j2) -> (is_int_flat j1) && (is_int_flat j2)
+    | IntDiv (j1,j2) -> (is_int_flat j1) && (is_int_flat j2)
 
 and is_atom_flat a =
   match a with
-    | Append(p1,p2,p3)       -> (is_path_var p1) && (is_path_var p2) &&
-                                (is_path_var p3)
-    | Reach(m,a1,a2,p)       -> (is_mem_var m) && (is_addr_var a1) &&
-                                (is_addr_var a2) && (is_path_var p)
-    | OrderList(m,a1,a2)     -> (is_mem_var m) && (is_addr_var a1) &&
-                                (is_addr_var a2)
-    | In(a,s)                -> (is_addr_var a) && (is_set_var s)
-    | SubsetEq(s1,s2)        -> (is_set_var s1) && (is_set_var s2)
-    | InTh(k,st)             -> (is_tid_var k) && (is_setth_var st)
-    | SubsetEqTh(st1,st2)    -> (is_setth_var st1) && (is_setth_var st2)
-    | InElem(e,se)           -> (is_elem_var e) && (is_setelem_var se)
-    | SubsetEqElem(se1,se2)  -> (is_setelem_var se1) && (is_setelem_var se2)
-    | Less(i1,i2)            -> (is_int_var i1) && (is_int_var i2)
-    | LessEq(i1,i2)          -> (is_int_var i1) && (is_int_var i2)
-    | Greater(i1,i2)         -> (is_int_var i1) && (is_int_var i2)
-    | GreaterEq(i1,i2)       -> (is_int_var i1) && (is_int_var i2)
-    | LessElem(e1,e2)        -> (is_elem_var e1) && (is_elem_var e2)
-    | GreaterElem(e1,e2)     -> (is_elem_var e1) && (is_elem_var e2)
-    | Eq(t1,t2)              -> ((is_term_var t1) && (is_term_var t2)  ||
-                                 (is_term_var t1) && (is_term_flat t2)  ||
-                                 (is_term_flat t1) && (is_term_var t2))
-    | InEq(x,y)              -> (is_term_var x) && (is_term_var y)
+    | Append(p1,p2,p3)       -> (is_path_flat p1) && (is_path_flat p2) &&
+                                (is_path_flat p3)
+    | Reach(m,a1,a2,p)       -> (is_mem_flat m) && (is_addr_flat a1) &&
+                                (is_addr_flat a2) && (is_path_flat p)
+    | OrderList(m,a1,a2)     -> (is_mem_flat m) && (is_addr_flat a1) &&
+                                (is_addr_flat a2)
+    | In(a,s)                -> (is_addr_flat a) && (is_set_flat s)
+    | SubsetEq(s1,s2)        -> (is_set_flat s1) && (is_set_flat s2)
+    | InTh(k,st)             -> (is_tid_flat k) && (is_setth_flat st)
+    | SubsetEqTh(st1,st2)    -> (is_setth_flat st1) && (is_setth_flat st2)
+    | InElem(e,se)           -> (is_elem_flat e) && (is_setelem_flat se)
+    | SubsetEqElem(se1,se2)  -> (is_setelem_flat se1) && (is_setelem_flat se2)
+    | Less(i1,i2)            -> (is_int_flat i1) && (is_int_flat i2)
+    | LessEq(i1,i2)          -> (is_int_flat i1) && (is_int_flat i2)
+    | Greater(i1,i2)         -> (is_int_flat i1) && (is_int_flat i2)
+    | GreaterEq(i1,i2)       -> (is_int_flat i1) && (is_int_flat i2)
+    | LessElem(e1,e2)        -> (is_elem_flat e1) && (is_elem_flat e2)
+    | GreaterElem(e1,e2)     -> (is_elem_flat e1) && (is_elem_flat e2)
+    | Eq(t1,t2)              -> ((is_term_flat t1) && (is_term_flat t2)  ||
+                                 (is_term_flat t1) && (is_term_flat t2)  ||
+                                 (is_term_flat t1) && (is_term_flat t2))
+    | InEq(x,y)              -> (is_term_flat x) && (is_term_flat y)
     | BoolVar _              -> true
     | PC _                   -> true
     | PCUpdate _             -> true

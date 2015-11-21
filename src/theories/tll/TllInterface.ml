@@ -55,16 +55,18 @@ and sort_to_expr_sort (s:TLL.sort) : E.sort =
 and build_term_var (v:E.V.t) : TLL.term =
   let tll_v = variable_to_tll_var v in
   match (E.V.sort v) with
-    E.Set   -> TLL.SetT   (TLL.VarSet   tll_v)
-  | E.Elem  -> TLL.ElemT  (TLL.VarElem  tll_v)
-  | E.Tid   -> TLL.TidT   (TLL.VarTh    tll_v)
-  | E.Addr  -> TLL.AddrT  (TLL.VarAddr  tll_v)
-  | E.Cell  -> TLL.CellT  (TLL.VarCell  tll_v)
-  | E.SetTh -> TLL.SetThT (TLL.VarSetTh tll_v)
-  | E.Path  -> TLL.PathT  (TLL.VarPath  tll_v)
-  | E.Int   -> TLL.IntT   (TLL.VarInt   tll_v)
-  | E.Mem   -> TLL.MemT   (TLL.VarMem   tll_v)
-  | _          -> TLL.VarT   (tll_v)
+    E.Set     -> TLL.SetT     (TLL.VarSet     tll_v)
+  | E.Elem    -> TLL.ElemT    (TLL.VarElem    tll_v)
+  | E.Tid     -> TLL.TidT     (TLL.VarTh      tll_v)
+  | E.Addr    -> TLL.AddrT    (TLL.VarAddr    tll_v)
+  | E.Cell    -> TLL.CellT    (TLL.VarCell    tll_v)
+  | E.SetTh   -> TLL.SetThT   (TLL.VarSetTh   tll_v)
+  | E.SetElem -> TLL.SetElemT (TLL.VarSetElem tll_v)
+  | E.Path    -> TLL.PathT    (TLL.VarPath    tll_v)
+  | E.Int     -> TLL.IntT     (TLL.VarInt     tll_v)
+  | E.Mem     -> TLL.MemT     (TLL.VarMem     tll_v)
+  | E.Mark    -> TLL.MarkT    (TLL.VarMark    tll_v)
+  | _         -> TLL.VarT     (tll_v)
 
 
 

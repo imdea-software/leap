@@ -10,6 +10,7 @@ type t =
   | Tll
   | Tsl
   | Tslk of int
+  | Thm
 
 type call_tbl_t
 

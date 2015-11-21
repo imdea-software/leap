@@ -2,6 +2,7 @@
 open NumQuery
 open PairsQuery
 open TllQuery
+open ThmQuery
 open YicesNumQuery
 open Z3NumQuery
 open YicesPairsQuery
@@ -9,6 +10,8 @@ open Z3PairsQuery
 open YicesTllQuery
 open Z3TllQuery
 open SMTTllQuery
+open YicesThmQuery
+open Z3ThmQuery
 
 let use_smtlib = ref false
 
@@ -46,4 +49,10 @@ let get_tslk_query (id:string) =
   | ("Z3", false) -> (module Z3TslkQuery.Make)
   | _             -> (module Z3TslkQuery.Make)
 *)
+
+let get_thm_query (id:string) : (module THM_QUERY) =
+  match (id,!use_smtlib) with
+  | ("Z3",    false) -> (module Z3ThmQuery)
+  | ("Yices", false) -> (module YicesThmQuery)
+  | _                -> (module Z3ThmQuery)
 

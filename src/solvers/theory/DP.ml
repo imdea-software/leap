@@ -11,6 +11,7 @@ type t =
   | Tll
   | Tsl
   | Tslk of int
+  | Thm
 
 
 type call_tbl_t =
@@ -33,6 +34,7 @@ let to_str (dp:t) : string =
   | Tsl    -> "tsl"
   | Tslk k -> let arg = if k > 0 then string_of_int k else "_" in
                 "tslk[" ^ arg ^ "]"
+  | Thm    -> "thm"
 
 
 let from_str (str:string) : t =
@@ -43,6 +45,7 @@ let from_str (str:string) : t =
   | "pairs" -> Pairs
   | "tll"   -> Tll
   | "tsl"   -> Tsl
+  | "thm"   -> Thm
   | s       -> let regexp = Str.regexp "tslk\\[[0-9]+\\]" in
                if Str.string_match regexp s 0 then
                  let k = String.sub s 5 (String.length s - 6) in
@@ -64,6 +67,7 @@ let stronger (dp1:t) (dp2:t) : t =
   | (Tslk _, _) -> dp1
   | (_, Tslk _) -> dp2
   | (Tll, _)   | (_, Tll) -> Tll
+  | (Thm, _)   | (_, Thm) -> Thm
   | (Pairs, _) | (_, Pairs) -> Num
   | (Num, _)   | (_, Num) -> Num
   | (Loc, _)   | (_, Loc) -> Loc

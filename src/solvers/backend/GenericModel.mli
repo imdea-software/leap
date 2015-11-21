@@ -19,22 +19,25 @@ type fun_t = ((id option) list, value) Hashtbl.t
 type t
 
 (* sort names *)
-val bool_s    : string
-val int_s     : string
-val pair_s    : string
-val addr_s    : string
-val set_s     : string
-val elem_s    : string
-val tid_s     : string
-val cell_s    : string
-val setth_s   : string
-val setelem_s : string
-val setpair_s : string
-val path_s    : string
-val level_s   : string
-val heap_s    : string
-val unk_s     : string
-val loc_s     : string
+val bool_s      : string
+val int_s       : string
+val pair_s      : string
+val addr_s      : string
+val set_s       : string
+val elem_s      : string
+val tid_s       : string
+val cell_s      : string
+val setth_s     : string
+val setelem_s   : string
+val setpair_s   : string
+val path_s      : string
+val level_s     : string
+val heap_s      : string
+val mark_s      : string
+val bucket_s    : string
+val bucketarr_s : string
+val unk_s       : string
+val loc_s       : string
 
 (* sort_map functions *)
 val new_sort_map : unit -> sort_map_t
