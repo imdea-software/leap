@@ -185,6 +185,7 @@ module Make (SLK : TSLKExpression.S) =
         match b with
         | E.VarBucket _    -> raise(UnsupportedTSLKExpr(E.bucket_to_str b))
         | E.MkBucket _     -> raise(UnsupportedTSLKExpr(E.bucket_to_str b))
+        | E.BucketAt _     -> raise(UnsupportedTSLKExpr(E.bucket_to_str b))
 
       and norm_setth (s:E.setth) : E.setth =
         match s with

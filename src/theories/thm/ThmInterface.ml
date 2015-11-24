@@ -241,6 +241,8 @@ and bucket_to_thm_bucket (bb:E.bucket) : THM.bucket =
                                          addr_to_thm_addr e,
                                          set_to_thm_set s,
                                          tid_to_thm_tid t)
+  | E.BucketAt (bb,i)    -> THM.BucketAt (bucketarr_to_thm_bucketarr bb,
+                                          int_to_thm_int i)
 
 
 and setth_to_thm_setth (st:E.setth) : THM.setth =

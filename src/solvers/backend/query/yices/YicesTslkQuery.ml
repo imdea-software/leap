@@ -1423,7 +1423,7 @@ module Make (TSLK : TSLKExpression.S) =
         Expr.VarT  v           -> variable_invocation_to_str v
       | Expr.SetT  s           -> setterm_to_str s
       | Expr.ElemT   e         -> elemterm_to_str e
-      | Expr.TidT   th        -> tidterm_to_str th
+      | Expr.TidT   th         -> tidterm_to_str th
       | Expr.AddrT   a         -> addrterm_to_str a
       | Expr.CellT   c         -> cellterm_to_str c
       | Expr.SetThT sth        -> setthterm_to_str sth

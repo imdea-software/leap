@@ -191,6 +191,7 @@ and mark =
 and bucket =
     VarBucket     of V.t
   | MkBucket      of addr * addr * set * tid
+  | BucketAt      of bucketarr * integer
 
 and setth =
     VarSetTh      of V.t
@@ -1118,6 +1119,8 @@ and priming_bucket (pr:bool)
                                     priming_addr pr prime_set e,
                                     priming_set pr prime_set s,
                                     priming_tid pr prime_set t)
+  | BucketAt(bb,i)     -> BucketAt(priming_bucketarray pr prime_set bb,
+                                   priming_int pr prime_set i)
 
 
 and priming_setth (pr:bool)
@@ -1828,6 +1831,8 @@ and bucket_to_str (b:bucket) :string =
                                                           (addr_to_str e)
                                                           (set_to_str s)
                                                           (tid_to_str t)
+  | BucketAt(bb,i)     -> sprintf "bucketat(%s,%s)" (bucketarr_to_str bb)
+                                                    (integer_to_str i)
 
 
 and addr_to_str (expr:addr) :string =
@@ -2634,6 +2639,8 @@ and get_vars_bucket (b:bucket) (base:V.t -> V.VarSet.t) : V.VarSet.t =
                           (get_vars_addr e base) @@
                           (get_vars_set s base) @@
                           (get_vars_tid t base)
+  | BucketAt(bb,i)     -> (get_vars_bucketarr bb base) @@
+                          (get_vars_int i base)
 
 
 and get_vars_setth (s:setth) (base:V.t -> V.VarSet.t) : V.VarSet.t =
@@ -3258,6 +3265,7 @@ and voc_bucket (b:bucket) : ThreadSet.t =
     VarBucket v -> get_tid_in v
   | MkBucket(i,e,s,t) -> (voc_addr i) @@ (voc_addr e) @@
                          (voc_set s) @@ (voc_tid t)
+  | BucketAt(bb,i)    -> (voc_bucketarr bb) @@ (voc_int i)
 
 
 and voc_setth (s:setth) : ThreadSet.t =
@@ -3664,6 +3672,8 @@ and var_kind_bucket (kind:var_nature) (b:bucket) : term list =
                          (var_kind_addr kind e) @
                          (var_kind_set kind s) @
                          (var_kind_tid kind t)
+  | BucketAt(bb,i)    -> (var_kind_bucketarr kind bb) @
+                         (var_kind_int kind i)
 
                        
 and var_kind_setth (kind:var_nature) (s:setth) : term list =
@@ -4102,6 +4112,8 @@ and param_bucket (pfun:V.t option -> V.shared_or_local) (b:bucket) : bucket =
                                   param_addr_aux pfun e,
                                   param_set pfun s,
                                   param_tid_aux pfun t)
+  | BucketAt(bb,i)    -> BucketAt(param_bucketarr pfun bb,
+                                  param_int_aux pfun i)
 
 
 and param_setth (pfun:V.t option -> V.shared_or_local) (s:setth) : setth =
@@ -4603,6 +4615,8 @@ and subst_tid_bucket (subs:tid_subst_t) (b:bucket) : bucket =
                                   subst_tid_addr subs e,
                                   subst_tid_set subs s,
                                   subst_tid_th subs t)
+  | BucketAt(bb,i)    -> BucketAt(subst_tid_bucketarr subs bb,
+                                  subst_tid_int subs i) 
 and subst_tid_setth (subs:tid_subst_t) (s:setth) : setth =
   match s with
     VarSetTh v             -> VarSetTh(V.set_param v (subst_shared_or_local subs (V.parameter v)))
@@ -4999,6 +5013,8 @@ and subst_vars_bucket (subs:V.subst_t) (b:bucket) : bucket =
                                   subst_vars_addr subs e,
                                   subst_vars_set subs s,
                                   subst_vars_th subs t)
+  | BucketAt(bb,i)    -> BucketAt(subst_vars_bucketarr subs bb,
+                                  subst_vars_int subs i)
 
 
 and subst_vars_setth (subs:V.subst_t) (s:setth) : setth =
@@ -5969,6 +5985,7 @@ let required_sorts (phi:formula) : sort list =
     match b with
     | VarBucket _ -> single Bucket
     | MkBucket(i,e,s,t) -> append Bucket [req_a i; req_a e; req_s s; req_t t]
+    | BucketAt (bb,i)   -> append Bucket [req_bucketarr bb; req_i i] 
 
   and req_a (a:addr) : SortSet.t =
     match a with
@@ -6380,6 +6397,8 @@ and to_plain_bucket (ops:fol_ops_t) (b:bucket) : bucket =
                                   to_plain_addr ops e,
                                   to_plain_set ops s,
                                   to_plain_tid_aux ops t)
+  | BucketAt(bb,i)    -> BucketAt (to_plain_bucketarr ops bb,
+                                   to_plain_int ops i)
 
 
 and to_plain_setth (ops:fol_ops_t) (s:setth) : setth =

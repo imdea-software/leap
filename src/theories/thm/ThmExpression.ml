@@ -105,6 +105,7 @@ and mark =
 and bucket =
     VarBucket of V.t
   | MkBucket of addr * addr * set * tid
+  | BucketAt of bucketarr * integer
 and setth =
     VarSetTh of V.t
   | EmptySetTh
@@ -323,6 +324,8 @@ and get_varset_bucket b =
       VarBucket v   -> V.VarSet.singleton v @@ get_varset_from_param v
     | MkBucket (a,e,s,t) -> (get_varset_addr a) @@ (get_varset_addr e) @@
                             (get_varset_set s) @@ (get_varset_tid t)
+    | BucketAt(bb,i)     -> (get_varset_bucketarr bb) @@
+                            (get_varset_int i)
 and get_varset_setth sth =
   match sth with
       VarSetTh v         -> V.VarSet.singleton v @@ get_varset_from_param v
@@ -667,6 +670,7 @@ and is_bucket_flat b =
       VarBucket _  -> true
     | MkBucket (a,e,s,t) -> (is_addr_flat a) && (is_addr_flat e) &&
                             (is_set_flat s) && (is_tid_flat t)
+    | BucketAt(bb,i)     -> (is_bucketarr_flat bb) && (is_int_flat i)                           
 and is_setth_flat t =
   match t with
       VarSetTh _ -> true
@@ -915,6 +919,8 @@ and bucket_to_str expr :string =
                                                                  (addr_to_str e)
                                                                  (set_to_str s)
                                                                  (tid_to_str t)
+  | BucketAt(bb,i) -> Printf.sprintf "%s [ %s ]" (bucketarr_to_str bb)
+                                                 (integer_to_str i)   
 and addr_to_str expr =
   match expr with
       VarAddr(v) -> V.to_str v
@@ -1166,6 +1172,7 @@ and voc_bucket (b:bucket) : ThreadSet.t =
     VarBucket v -> get_tid_in v
   | MkBucket (a,e,s,t) -> (voc_addr a) @@ (voc_addr e) @@
                           (voc_set s) @@ (voc_tid t)
+  | BucketAt(bb,i)     -> (voc_bucketarr bb) @@ (voc_int i)
 
 
 and voc_setth (s:setth) : ThreadSet.t =
@@ -1407,6 +1414,7 @@ let required_sorts (phi:formula) : sort list =
     match b with
     | VarBucket _        -> single Bucket
     | MkBucket (i,e,s,t) -> append Bucket [req_a i; req_a e; req_s s; req_t t]
+    | BucketAt (bb,i)    -> append Bucket [req_bb bb; req_i i]
 
   and req_a (a:addr) : SortSet.t =
     match a with
@@ -1579,6 +1587,7 @@ let special_ops (phi:formula) : special_op_t list =
     match b with
     | VarBucket _       -> empty
     | MkBucket(i,e,s,t) -> list_union [ops_a i; ops_a e; ops_s s; ops_t t]
+    | BucketAt (bb,i)   -> list_union [ops_bb bb; ops_i i]
 
   and ops_a (a:addr) : OpsSet.t =
     match a with

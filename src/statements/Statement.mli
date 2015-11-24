@@ -176,6 +176,7 @@ and mark =
 and bucket =
     VarBucket     of variable
   | MkBucket      of addr * addr * set * tid
+  | BucketAt      of bucketarr * integer
 
 and setth =
     VarSetTh      of variable

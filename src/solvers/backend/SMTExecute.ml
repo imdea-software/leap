@@ -12,9 +12,9 @@ exception SMT_Not_Found of string
 let get_exec_cmd (smt:smt_t) : string =
   begin
     match smt with
-    | Yices -> "/opt/local/bin/yices"
-    | Z3 -> "/opt/local/bin/z3"
-    | CVC4 -> "/opt/local/bin/cvc4"
+    | Yices -> "yices"
+    | Z3 -> "z3"
+    | CVC4 -> "cvc4"
   end
 (*
   Config.get_exec_path() ^
