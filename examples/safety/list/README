@@ -21,7 +21,7 @@ run_remove.sh:
   from all other threads. It verifies that the element is no longer in
   the list after removal.
 
-run_seacrh.sh:
+run_search.sh:
   executes the example for functional correctness of search procedure
   considering the case in which one thread handles an element different
   from all other threads. It verifies that the element is found if and

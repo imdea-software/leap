@@ -7,8 +7,13 @@ exception SMT_Syntax_Error of string
 exception SMT_Timeout of string * int
 exception SMT_Not_Found of string
 
-(* SMT Solver dependent information *)
+let update_env () : string array =
+  Unix.putenv "PATH" (String.concat ":" [Unix.getenv "PATH"; MyPath.mypath; "."]);
+  Unix.environment()
 
+let myenv = update_env()
+
+(* SMT Solver dependent information *)
 let get_exec_cmd (smt:smt_t) : string =
   begin
     match smt with
@@ -29,7 +34,7 @@ let get_exec_cmd (smt:smt_t) : string =
 let check_installed (smts:smt_t list) : unit =
   let check_smt (smt:smt_t) : unit =
     let cmd = get_exec_cmd smt in
-    let env = Unix.environment() in
+    let env = myenv in
     let check_method = " -?" in
     let (stdout,stdin,stderr) = Unix.open_process_full (cmd ^ check_method) env in
     try
@@ -166,7 +171,8 @@ let run (cfg:configuration_t) (query:string) : Sat.t =
                        (gen_debugsupp_str cfg) ^
                        (tmpfile) in
 
-  let env = Unix.environment() in
+  let env = myenv in
+  Array.iter print_endline env;
   let (stdout,stdin,stderr) = Unix.open_process_full cmd env in
   verbl _LONG_INFO "**** STMExecute will parse output.\n";
   let (terminated,response) = parse_output stdout in
