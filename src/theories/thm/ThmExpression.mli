@@ -10,6 +10,7 @@ type sort =
   | Path
   | Mem
   | Int
+  | TidArray
   | BucketArray
   | Bool
   | Mark
@@ -35,6 +36,7 @@ type term =
   | PathT        of path
   | MemT         of mem
   | IntT         of integer
+  | TidArrayT    of tidarr
   | BucketArrayT of bucketarr
   | MarkT        of mark
   | BucketT      of bucket
@@ -52,6 +54,10 @@ and integer =
   | IntSub        of integer * integer
   | IntMul        of integer * integer
   | IntDiv        of integer * integer
+  | IntMod        of integer * integer
+and tidarr =
+  | VarTidArray   of V.t
+  | TidArrayUp    of tidarr * integer * tid
 and set =
     VarSet of V.t
   | EmptySet
@@ -67,6 +73,7 @@ and tid =
   | NoTid
   | CellLockId of cell
   | BucketTid  of bucket
+  | TidArrRd   of tidarr * integer
 and elem =
     VarElem of V.t
   | CellData of cell
@@ -98,7 +105,7 @@ and mark =
 and bucket =
     VarBucket of V.t
   | MkBucket of addr * addr * set * tid
-  | BucketAt of bucketarr * integer
+  | BucketArrRd of bucketarr * integer
 and setth =
     VarSetTh of V.t
   | EmptySetTh

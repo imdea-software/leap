@@ -106,6 +106,7 @@ and integer =
   | IntSub        of integer * integer
   | IntMul        of integer * integer
   | IntDiv        of integer * integer
+  | IntMod        of integer * integer
   | IntArrayRd    of arrays * tid
   | IntSetMin     of setint
   | IntSetMax     of setint
@@ -191,7 +192,7 @@ and mark =
 and bucket =
     VarBucket     of V.t
   | MkBucket      of addr * addr * set * tid
-  | BucketAt      of bucketarr * integer
+  | BucketArrRd   of bucketarr * integer
 
 and setth =
     VarSetTh      of V.t
@@ -1119,8 +1120,8 @@ and priming_bucket (pr:bool)
                                     priming_addr pr prime_set e,
                                     priming_set pr prime_set s,
                                     priming_tid pr prime_set t)
-  | BucketAt(bb,i)     -> BucketAt(priming_bucketarray pr prime_set bb,
-                                   priming_int pr prime_set i)
+  | BucketArrRd(bb,i)  -> BucketArrRd(priming_bucketarray pr prime_set bb,
+                                      priming_int pr prime_set i)
 
 
 and priming_setth (pr:bool)
@@ -1244,6 +1245,8 @@ and priming_int (pr:bool)
   | IntMul(i1,i2)     -> IntMul(priming_int pr prime_set i1,
                                 priming_int pr prime_set i2)
   | IntDiv(i1,i2)     -> IntDiv(priming_int pr prime_set i1,
+                                priming_int pr prime_set i2)
+  | IntMod(i1,i2)     -> IntMod(priming_int pr prime_set i1,
                                 priming_int pr prime_set i2)
   | IntArrayRd(arr,t) -> IntArrayRd(priming_array pr prime_set arr,
                                     priming_tid pr prime_set t)
@@ -1639,6 +1642,8 @@ and integer_to_str (expr:integer) : string =
                                            (integer_to_str i2)
   | IntDiv (i1,i2)    -> sprintf "%s / %s" (integer_to_str i1)
                                            (integer_to_str i2)
+  | IntMod (i1,i2)    -> sprintf "mod(%s,%s)" (integer_to_str i1)
+                                              (integer_to_str i2)
   | IntArrayRd(arr,t) -> sprintf "%s%s" (arrays_to_str arr)
                                         (param_tid_to_str t)
   | IntSetMin(s)      -> sprintf "setIntMin(%s)" (setint_to_str s)
@@ -1831,8 +1836,8 @@ and bucket_to_str (b:bucket) :string =
                                                           (addr_to_str e)
                                                           (set_to_str s)
                                                           (tid_to_str t)
-  | BucketAt(bb,i)     -> sprintf "bucketat(%s,%s)" (bucketarr_to_str bb)
-                                                    (integer_to_str i)
+  | BucketArrRd(bb,i)  -> sprintf "%s[%s]" (bucketarr_to_str bb)
+                                           (integer_to_str i)
 
 
 and addr_to_str (expr:addr) :string =
@@ -1889,7 +1894,7 @@ and term_to_str (expr:term) : string =
   | SetT(set)         -> (set_to_str set)
   | AddrT(addr)       -> (addr_to_str addr)
   | ElemT(elem)       -> (elem_to_str elem)
-  | TidT(th)         -> (tid_to_str th)
+  | TidT(th)          -> (tid_to_str th)
   | CellT(cell)       -> (cell_to_str cell)
   | SetThT(setth)     -> (setth_to_str setth)
   | SetIntT(setint)   -> (setint_to_str setint)
@@ -2639,7 +2644,7 @@ and get_vars_bucket (b:bucket) (base:V.t -> V.VarSet.t) : V.VarSet.t =
                           (get_vars_addr e base) @@
                           (get_vars_set s base) @@
                           (get_vars_tid t base)
-  | BucketAt(bb,i)     -> (get_vars_bucketarr bb base) @@
+  | BucketArrRd(bb,i)  -> (get_vars_bucketarr bb base) @@
                           (get_vars_int i base)
 
 
@@ -2756,6 +2761,7 @@ and get_vars_int (i:integer) (base:V.t -> V.VarSet.t) : V.VarSet.t =
   | IntSub(i1,i2)     -> (get_vars_int i1 base) @@ (get_vars_int i2 base)
   | IntMul(i1,i2)     -> (get_vars_int i1 base) @@ (get_vars_int i2 base)
   | IntDiv(i1,i2)     -> (get_vars_int i1 base) @@ (get_vars_int i2 base)
+  | IntMod(i1,i2)     -> (get_vars_int i1 base) @@ (get_vars_int i2 base)
   | IntArrayRd(arr,_) -> (get_vars_array arr base)
   | IntSetMin(s)      -> (get_vars_setint s base)
   | IntSetMax(s)      -> (get_vars_setint s base)
@@ -3265,7 +3271,7 @@ and voc_bucket (b:bucket) : ThreadSet.t =
     VarBucket v -> get_tid_in v
   | MkBucket(i,e,s,t) -> (voc_addr i) @@ (voc_addr e) @@
                          (voc_set s) @@ (voc_tid t)
-  | BucketAt(bb,i)    -> (voc_bucketarr bb) @@ (voc_int i)
+  | BucketArrRd(bb,i) -> (voc_bucketarr bb) @@ (voc_int i)
 
 
 and voc_setth (s:setth) : ThreadSet.t =
@@ -3347,6 +3353,7 @@ and voc_int (i:integer) : ThreadSet.t =
   | IntSub(i1,i2)     -> (voc_int i1) @@ (voc_int i2)
   | IntMul(i1,i2)     -> (voc_int i1) @@ (voc_int i2)
   | IntDiv(i1,i2)     -> (voc_int i1) @@ (voc_int i2)
+  | IntMod(i1,i2)     -> (voc_int i1) @@ (voc_int i2)
   | IntArrayRd(arr,_) -> (voc_array arr)
   | IntSetMin(s)      -> (voc_setint s)
   | IntSetMax(s)      -> (voc_setint s)
@@ -3672,7 +3679,7 @@ and var_kind_bucket (kind:var_nature) (b:bucket) : term list =
                          (var_kind_addr kind e) @
                          (var_kind_set kind s) @
                          (var_kind_tid kind t)
-  | BucketAt(bb,i)    -> (var_kind_bucketarr kind bb) @
+  | BucketArrRd(bb,i) -> (var_kind_bucketarr kind bb) @
                          (var_kind_int kind i)
 
                        
@@ -3768,6 +3775,7 @@ and var_kind_int (kind:var_nature) (i:integer) : term list =
   | IntSub(i1,i2)     -> (var_kind_int kind i1) @ (var_kind_int kind i2)
   | IntMul(i1,i2)     -> (var_kind_int kind i1) @ (var_kind_int kind i2)
   | IntDiv(i1,i2)     -> (var_kind_int kind i1) @ (var_kind_int kind i2)
+  | IntMod(i1,i2)     -> (var_kind_int kind i1) @ (var_kind_int kind i2)
   | IntArrayRd(arr,_) -> (var_kind_array kind arr)
   | IntSetMin(s)      -> (var_kind_setint kind s)
   | IntSetMax(s)      -> (var_kind_setint kind s)
@@ -4112,8 +4120,8 @@ and param_bucket (pfun:V.t option -> V.shared_or_local) (b:bucket) : bucket =
                                   param_addr_aux pfun e,
                                   param_set pfun s,
                                   param_tid_aux pfun t)
-  | BucketAt(bb,i)    -> BucketAt(param_bucketarr pfun bb,
-                                  param_int_aux pfun i)
+  | BucketArrRd(bb,i) -> BucketArrRd(param_bucketarr pfun bb,
+                                     param_int_aux pfun i)
 
 
 and param_setth (pfun:V.t option -> V.shared_or_local) (s:setth) : setth =
@@ -4214,6 +4222,8 @@ and param_int_aux (pfun:V.t option -> V.shared_or_local) (i:integer) : integer =
   | IntMul(i1,i2)       -> IntMul(param_int_aux pfun i1,
                                   param_int_aux pfun i2)
   | IntDiv(i1,i2)       -> IntDiv(param_int_aux pfun i1,
+                                  param_int_aux pfun i2)
+  | IntMod(i1,i2)       -> IntMod(param_int_aux pfun i1,
                                   param_int_aux pfun i2)
   | IntArrayRd(arr,t)   -> IntArrayRd(param_arrays pfun arr, t)
   | IntSetMin(s)        -> IntSetMin(param_setint pfun s)
@@ -4615,8 +4625,8 @@ and subst_tid_bucket (subs:tid_subst_t) (b:bucket) : bucket =
                                   subst_tid_addr subs e,
                                   subst_tid_set subs s,
                                   subst_tid_th subs t)
-  | BucketAt(bb,i)    -> BucketAt(subst_tid_bucketarr subs bb,
-                                  subst_tid_int subs i) 
+  | BucketArrRd(bb,i) -> BucketArrRd(subst_tid_bucketarr subs bb,
+                                     subst_tid_int subs i) 
 and subst_tid_setth (subs:tid_subst_t) (s:setth) : setth =
   match s with
     VarSetTh v             -> VarSetTh(V.set_param v (subst_shared_or_local subs (V.parameter v)))
@@ -4702,6 +4712,7 @@ and subst_tid_int (subs:tid_subst_t) (i:integer) : integer =
   | IntSub(i1,i2)     -> IntSub(subst_tid_int subs i1, subst_tid_int subs i2)
   | IntMul(i1,i2)     -> IntMul(subst_tid_int subs i1, subst_tid_int subs i2)
   | IntDiv(i1,i2)     -> IntDiv(subst_tid_int subs i1, subst_tid_int subs i2)
+  | IntMod(i1,i2)     -> IntMod(subst_tid_int subs i1, subst_tid_int subs i2)
   | IntArrayRd(arr,t) -> IntArrayRd(subst_tid_array subs arr, t)
   | IntSetMin(s)      -> IntSetMin(subst_tid_setint subs s)
   | IntSetMax(s)      -> IntSetMax(subst_tid_setint subs s)
@@ -5013,8 +5024,8 @@ and subst_vars_bucket (subs:V.subst_t) (b:bucket) : bucket =
                                   subst_vars_addr subs e,
                                   subst_vars_set subs s,
                                   subst_vars_th subs t)
-  | BucketAt(bb,i)    -> BucketAt(subst_vars_bucketarr subs bb,
-                                  subst_vars_int subs i)
+  | BucketArrRd(bb,i) -> BucketArrRd(subst_vars_bucketarr subs bb,
+                                     subst_vars_int subs i)
 
 
 and subst_vars_setth (subs:V.subst_t) (s:setth) : setth =
@@ -5114,6 +5125,7 @@ and subst_vars_int (subs:V.subst_t) (i:integer) : integer =
   | IntSub(i1,i2)     -> IntSub(subst_vars_int subs i1, subst_vars_int subs i2)
   | IntMul(i1,i2)     -> IntMul(subst_vars_int subs i1, subst_vars_int subs i2)
   | IntDiv(i1,i2)     -> IntDiv(subst_vars_int subs i1, subst_vars_int subs i2)
+  | IntMod(i1,i2)     -> IntMod(subst_vars_int subs i1, subst_vars_int subs i2)
   | IntArrayRd(arr,t) -> IntArrayRd(subst_vars_array subs arr, t)
   | IntSetMin(s)      -> IntSetMin(subst_vars_setint subs s)
   | IntSetMax(s)      -> IntSetMax(subst_vars_setint subs s)
@@ -5984,8 +5996,8 @@ let required_sorts (phi:formula) : sort list =
   and req_b (b:bucket) : SortSet.t =
     match b with
     | VarBucket _ -> single Bucket
-    | MkBucket(i,e,s,t) -> append Bucket [req_a i; req_a e; req_s s; req_t t]
-    | BucketAt (bb,i)   -> append Bucket [req_bucketarr bb; req_i i] 
+    | MkBucket(i,e,s,t)  -> append Bucket [req_a i; req_a e; req_s s; req_t t]
+    | BucketArrRd (bb,i) -> append Bucket [req_bucketarr bb; req_i i] 
 
   and req_a (a:addr) : SortSet.t =
     match a with
@@ -6046,6 +6058,7 @@ let required_sorts (phi:formula) : sort list =
     | IntSub (i1,i2)   -> append Int [req_i i1;req_i i2]
     | IntMul (i1,i2)   -> append Int [req_i i1;req_i i2]
     | IntDiv (i1,i2)   -> append Int [req_i i1;req_i i2]
+    | IntMod (i1,i2)   -> append Int [req_i i1;req_i i2]
     | IntArrayRd (a,t) -> append Int [req_arr a;req_t t]
     | IntSetMin s      -> append Int [req_si s]
     | IntSetMax s      -> append Int [req_si s]
@@ -6397,8 +6410,8 @@ and to_plain_bucket (ops:fol_ops_t) (b:bucket) : bucket =
                                   to_plain_addr ops e,
                                   to_plain_set ops s,
                                   to_plain_tid_aux ops t)
-  | BucketAt(bb,i)    -> BucketAt (to_plain_bucketarr ops bb,
-                                   to_plain_int ops i)
+  | BucketArrRd(bb,i) -> BucketArrRd (to_plain_bucketarr ops bb,
+                                      to_plain_int ops i)
 
 
 and to_plain_setth (ops:fol_ops_t) (s:setth) : setth =
@@ -6506,6 +6519,8 @@ and to_plain_int (ops:fol_ops_t) (i:integer) : integer =
   | IntMul(i1,i2)       -> IntMul(to_plain_int ops i1,
                                   to_plain_int ops i2)
   | IntDiv(i1,i2)       -> IntDiv(to_plain_int ops i1,
+                                  to_plain_int ops i2)
+  | IntMod(i1,i2)       -> IntMod(to_plain_int ops i1,
                                   to_plain_int ops i2)
   | IntArrayRd(arr,t)   -> IntArrayRd(to_plain_arrays ops arr,
                                       to_plain_tid_aux ops t)

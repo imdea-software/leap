@@ -85,6 +85,7 @@ and integer =
   | IntSub        of integer * integer
   | IntMul        of integer * integer
   | IntDiv        of integer * integer
+  | IntMod        of integer * integer
   | IntArrayRd    of arrays * tid
   | IntSetMin     of setint
   | IntSetMax     of setint
@@ -170,7 +171,7 @@ and mark =
 and bucket =
     VarBucket     of V.t
   | MkBucket      of addr * addr * set * tid
-  | BucketAt      of bucketarr * integer
+  | BucketArrRd   of bucketarr * integer
 
 and setth =
     VarSetTh      of V.t

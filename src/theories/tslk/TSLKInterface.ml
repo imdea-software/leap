@@ -185,7 +185,7 @@ module Make (SLK : TSLKExpression.S) =
         match b with
         | E.VarBucket _    -> raise(UnsupportedTSLKExpr(E.bucket_to_str b))
         | E.MkBucket _     -> raise(UnsupportedTSLKExpr(E.bucket_to_str b))
-        | E.BucketAt _     -> raise(UnsupportedTSLKExpr(E.bucket_to_str b))
+        | E.BucketArrRd _  -> raise(UnsupportedTSLKExpr(E.bucket_to_str b))
 
       and norm_setth (s:E.setth) : E.setth =
         match s with
@@ -260,6 +260,7 @@ module Make (SLK : TSLKExpression.S) =
         | E.IntSub (j1,j2) -> E.IntSub (j1,j2)
         | E.IntMul (j1,j2) -> E.IntMul (j1,j2)
         | E.IntDiv (j1,j2) -> E.IntDiv (j1,j2)
+        | E.IntMod (j1,j2) -> E.IntMod (j1,j2)
         | E.CellMax (c)    -> E.CellMax (norm_cell c)
         | E.IntArrayRd _   -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
         | E.IntSetMin _    -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
@@ -766,6 +767,7 @@ module Make (SLK : TSLKExpression.S) =
                                end
       | E.IntMul _       -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
       | E.IntDiv _       -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
+      | E.IntMod _       -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
       | E.CellMax _      -> SLK.LevelVal SLK.k
       | E.IntArrayRd _   -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
       | E.IntSetMin _    -> raise(UnsupportedTSLKExpr(E.integer_to_str i))

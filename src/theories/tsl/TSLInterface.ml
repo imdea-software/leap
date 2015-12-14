@@ -313,6 +313,7 @@ and int_to_tsl_int (i:E.integer) : SL.integer =
   | E.IntSub (i1,i2) -> SL.IntSub (int_to_tsl_int i1, int_to_tsl_int i2)
   | E.IntMul (i1,i2) -> SL.IntMul (int_to_tsl_int i1, int_to_tsl_int i2)
   | E.IntDiv (i1,i2) -> SL.IntDiv (int_to_tsl_int i1, int_to_tsl_int i2)
+  | E.IntMod (i1,i2) -> raise(UnsupportedTslExpr(E.integer_to_str i))
   | E.CellMax (c)    -> SL.CellMax (cell_to_tsl_cell c)
   | E.IntArrayRd _   -> raise(UnsupportedTslExpr(E.integer_to_str i))
   | E.IntSetMin _    -> raise(UnsupportedTslExpr(E.integer_to_str i))
@@ -511,7 +512,7 @@ and addr_to_expr_addr (a:SL.addr) : E.addr =
   match a with
   | SL.VarAddr v              -> E.VarAddr (var_to_expr_var v)
   | SL.Null                   -> E.Null
-  | SL.ArrAt (c,l)           -> E.ArrAt (cell_to_expr_cell c, int_to_expr_int l)
+  | SL.ArrAt (c,l)            -> E.ArrAt (cell_to_expr_cell c, int_to_expr_int l)
   | SL.AddrArrRd (aa,i)       -> E.AddrArrRd (addrarr_to_expr_addrarr aa,
                                                   int_to_expr_int i)
 

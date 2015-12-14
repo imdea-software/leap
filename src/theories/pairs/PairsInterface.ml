@@ -115,6 +115,7 @@ and integer_to_pairs_integer (t:E.integer) : PE.integer =
     | E.IntSub(x,y)     -> PE.Sub(toint x,toint y)
     | E.IntMul(x,y)     -> PE.Mul(toint x,toint y)
     | E.IntDiv(x,y)     -> PE.Div(toint x,toint y)
+    | E.IntMod(x,y)     -> raise(NotAPairsExpression(E.integer_to_str t))
     | E.IntArrayRd(a,i) -> PE.ArrayRd(a,totid i)
     | E.IntSetMin(s)    -> PE.SetMin (toset s)
     | E.IntSetMax(s)    -> PE.SetMax (toset s)

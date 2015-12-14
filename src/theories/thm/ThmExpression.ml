@@ -13,6 +13,7 @@ type sort =
   | Path
   | Mem
   | Int
+  | TidArray
   | BucketArray
   | Bool
   | Mark
@@ -42,6 +43,7 @@ type term =
   | PathT        of path
   | MemT         of mem
   | IntT         of integer
+  | TidArrayT    of tidarr
   | BucketArrayT of bucketarr
   | MarkT        of mark
   | BucketT      of bucket
@@ -59,6 +61,10 @@ and integer =
   | IntSub        of integer * integer
   | IntMul        of integer * integer
   | IntDiv        of integer * integer
+  | IntMod        of integer * integer
+and tidarr =
+  | VarTidArray   of V.t
+  | TidArrayUp    of tidarr * integer * tid
 and set =
     VarSet of V.t
   | EmptySet
@@ -74,6 +80,7 @@ and tid =
   | NoTid
   | CellLockId of cell
   | BucketTid  of bucket
+  | TidArrRd   of tidarr * integer
 and elem =
     VarElem of V.t
   | CellData of cell
@@ -105,7 +112,7 @@ and mark =
 and bucket =
     VarBucket of V.t
   | MkBucket of addr * addr * set * tid
-  | BucketAt of bucketarr * integer
+  | BucketArrRd of bucketarr * integer
 and setth =
     VarSetTh of V.t
   | EmptySetTh
@@ -204,6 +211,7 @@ let is_primed_tid (th:tid) : bool =
   | NoTid             -> false
   | CellLockId _      -> false
   | BucketTid _       -> false
+  | TidArrRd _        -> false
   (* FIX: Propagate the query inside cell??? *)
 
 
@@ -267,6 +275,11 @@ let rec get_varset_set s =
     | PathToSet(p)   -> get_varset_path p
     | AddrToSet(m,a) -> (get_varset_mem m) @@ (get_varset_addr a)
     | BucketRegion b -> (get_varset_bucket b)
+and get_varset_tidarr tt =
+  match tt with
+      VarTidArray v -> V.VarSet.singleton v @@ get_varset_from_param v
+    | TidArrayUp (tt,i,t) -> (get_varset_tidarr tt) @@ (get_varset_int i) @@
+                             (get_varset_tid t)
 and get_varset_bucketarr bb =
   match bb with
       VarBucketArray v -> V.VarSet.singleton v @@ get_varset_from_param v
@@ -281,12 +294,14 @@ and get_varset_int i =
     | IntSub (j1,j2) -> (get_varset_int j1) @@ (get_varset_int j2)
     | IntMul (j1,j2) -> (get_varset_int j1) @@ (get_varset_int j2)
     | IntDiv (j1,j2) -> (get_varset_int j1) @@ (get_varset_int j2)
+    | IntMod (j1,j2) -> (get_varset_int j1) @@ (get_varset_int j2)
 and get_varset_tid th =
   match th with
-      VarTh v      -> V.VarSet.singleton v @@ get_varset_from_param v
-    | NoTid        -> V.VarSet.empty
-    | CellLockId c -> (get_varset_cell c)
-    | BucketTid b  -> (get_varset_bucket b)
+      VarTh v         -> V.VarSet.singleton v @@ get_varset_from_param v
+    | NoTid           -> V.VarSet.empty
+    | CellLockId c    -> (get_varset_cell c)
+    | BucketTid b     -> (get_varset_bucket b)
+    | TidArrRd (tt,i) -> (get_varset_tidarr tt) @@ (get_varset_int i)
 and get_varset_elem e =
   match e with
       VarElem v     -> V.VarSet.singleton v @@ get_varset_from_param v
@@ -324,7 +339,7 @@ and get_varset_bucket b =
       VarBucket v   -> V.VarSet.singleton v @@ get_varset_from_param v
     | MkBucket (a,e,s,t) -> (get_varset_addr a) @@ (get_varset_addr e) @@
                             (get_varset_set s) @@ (get_varset_tid t)
-    | BucketAt(bb,i)     -> (get_varset_bucketarr bb) @@
+    | BucketArrRd(bb,i)  -> (get_varset_bucketarr bb) @@
                             (get_varset_int i)
 and get_varset_setth sth =
   match sth with
@@ -401,6 +416,7 @@ and get_varset_term t = match t with
     | PathT    p            -> get_varset_path p
     | MemT     m            -> get_varset_mem m
     | IntT     i            -> get_varset_int i
+    | TidArrayT tt          -> get_varset_tidarr tt
     | BucketArrayT bb       -> get_varset_bucketarr bb
     | MarkT    m            -> get_varset_mark m
     | BucketT  b            -> get_varset_bucket b
@@ -500,6 +516,7 @@ let termset_of_sort (all:TermSet.t) (s:sort) : TermSet.t =
     | Path        -> (match t with | PathT _          -> true | _ -> false)
     | Mem         -> (match t with | MemT _           -> true | _ -> false)
     | Int         -> (match t with | IntT _           -> true | _ -> false)
+    | TidArray    -> (match t with | TidArrayT _      -> true | _ -> false)
     | BucketArray -> (match t with | BucketArrayT _   -> true | _ -> false)
     | Mark        -> (match t with | MarkT _          -> true | _ -> false)
     | Bucket      -> (match t with | BucketT _        -> true | _ -> false)
@@ -582,6 +599,7 @@ let get_sort_from_term t =
     | PathT _          -> Path
     | MemT _           -> Mem
     | IntT _           -> Int
+    | TidArrayT _      -> TidArray
     | BucketArrayT _   -> BucketArray
     | MarkT _          -> Mark
     | BucketT _        -> Bucket
@@ -610,6 +628,7 @@ let rec is_term_flat t =
     | PathT p         -> is_path_flat p
     | MemT  m         -> is_mem_flat m
     | IntT i          -> is_int_flat i
+    | TidArrayT tt    -> is_tidarr_flat tt
     | BucketArrayT bb -> is_bucketarr_flat bb
     | MarkT m         -> is_mark_flat m
     | BucketT b       -> is_bucket_flat b
@@ -628,10 +647,11 @@ and is_set_flat t =
     | BucketRegion b -> (is_bucket_flat b)
 and is_tid_flat t =
   match t with
-      VarTh _       -> true
-    | NoTid         -> true     
-    | CellLockId(c) -> is_cell_flat c
-    | BucketTid b   -> is_bucket_flat b
+      VarTh _         -> true
+    | NoTid           -> true     
+    | CellLockId(c)   -> is_cell_flat c
+    | BucketTid b     -> is_bucket_flat b
+    | TidArrRd (tt,i) -> (is_tidarr_flat tt) && (is_int_flat i)
 and is_elem_flat t =
   match t with
       VarElem _     -> true
@@ -670,7 +690,7 @@ and is_bucket_flat b =
       VarBucket _  -> true
     | MkBucket (a,e,s,t) -> (is_addr_flat a) && (is_addr_flat e) &&
                             (is_set_flat s) && (is_tid_flat t)
-    | BucketAt(bb,i)     -> (is_bucketarr_flat bb) && (is_int_flat i)                           
+    | BucketArrRd(bb,i)  -> (is_bucketarr_flat bb) && (is_int_flat i)                           
 and is_setth_flat t =
   match t with
       VarSetTh _ -> true
@@ -709,6 +729,12 @@ and is_int_flat i =
     | IntSub (j1,j2) -> (is_int_flat j1) && (is_int_flat j2)
     | IntMul (j1,j2) -> (is_int_flat j1) && (is_int_flat j2)
     | IntDiv (j1,j2) -> (is_int_flat j1) && (is_int_flat j2)
+    | IntMod (j1,j2) -> (is_int_flat j1) && (is_int_flat j2)
+and is_tidarr_flat tt =
+  match tt with
+      VarTidArray _ -> true
+    | TidArrayUp (tt,i,t) -> (is_tidarr_flat tt) &&
+                             (is_int_flat i) && (is_tid_flat t)
 and is_bucketarr_flat bb =
   match bb with
       VarBucketArray _ -> true
@@ -836,6 +862,15 @@ and integer_to_str expr =
                                            (integer_to_str i2)
   | IntDiv (i1,i2)    -> sprintf "%s / %s" (integer_to_str i1)
                                            (integer_to_str i2)
+  | IntMod (i1,i2)    -> sprintf "mod(%s,%s)" (integer_to_str i1)
+                                              (integer_to_str i2)
+and tidarr_to_str expr : string =
+  match expr with
+    VarTidArray v       -> V.to_str v
+  | TidArrayUp(arr,i,b) -> Printf.sprintf "tidArrUpd(%s,%s,%s)"
+                                        (tidarr_to_str arr)
+                                        (integer_to_str i)
+                                        (tid_to_str b)
 and bucketarr_to_str expr : string =
   match expr with
     VarBucketArray v       -> V.to_str v
@@ -919,8 +954,8 @@ and bucket_to_str expr :string =
                                                                  (addr_to_str e)
                                                                  (set_to_str s)
                                                                  (tid_to_str t)
-  | BucketAt(bb,i) -> Printf.sprintf "%s [ %s ]" (bucketarr_to_str bb)
-                                                 (integer_to_str i)   
+  | BucketArrRd(bb,i)  -> Printf.sprintf "%s[%s]" (bucketarr_to_str bb)
+                                                  (integer_to_str i)   
 and addr_to_str expr =
   match expr with
       VarAddr(v) -> V.to_str v
@@ -939,6 +974,8 @@ and tid_to_str th =
     | NoTid            -> Printf.sprintf "NoTid"
     | CellLockId(cell) -> Printf.sprintf "%s.lockid" (cell_to_str cell)
     | BucketTid b      -> Printf.sprintf "%s.btid" (bucket_to_str b)
+    | TidArrRd(arr,l)  -> Printf.sprintf "%s[%s]" (tidarr_to_str arr)
+                                                  (integer_to_str l)
 and eq_to_str expr =
   let (e1,e2) = expr in
     Printf.sprintf "%s = %s" (term_to_str e1) (term_to_str e2)
@@ -965,6 +1002,7 @@ and term_to_str expr =
     | PathT(path)        -> (path_to_str path)
     | MemT(mem)          -> (mem_to_str mem)
     | IntT(i)            -> (integer_to_str i)
+    | TidArrayT(tt)      -> (tidarr_to_str tt)
     | BucketArrayT(bb)   -> (bucketarr_to_str bb)
     | MarkT(m)           -> (mark_to_str m)
     | BucketT(b)         -> (bucket_to_str b)
@@ -995,6 +1033,7 @@ let sort_to_str s =
     | Path        -> "Path"
     | Mem         -> "Mem"
     | Int         -> "Int"
+    | TidArray    -> "TidArr"
     | BucketArray -> "BucketArr"
     | Bool        -> "Bool"
     | Mark        -> "Mark"
@@ -1095,6 +1134,7 @@ and voc_term (expr:term) : ThreadSet.t =
     | PathT(path)        -> voc_path path
     | MemT(mem)          -> voc_mem mem
     | IntT(i)            -> voc_int i
+    | TidArrayT(tt)      -> voc_tidarr tt
     | BucketArrayT(bb)   -> voc_bucketarr bb
     | MarkT(m)           -> voc_mark m
     | BucketT(b)         -> voc_bucket b
@@ -1141,6 +1181,7 @@ and voc_tid (th:tid) : ThreadSet.t =
   | NoTid              -> ThreadSet.empty
   | CellLockId(cell)   -> (voc_cell cell)
   | BucketTid b        -> (voc_bucket b)
+  | TidArrRd (tt,i)    -> (voc_tidarr tt) @@ (voc_int i)
 
 
 and voc_cell (c:cell) : ThreadSet.t =
@@ -1172,7 +1213,7 @@ and voc_bucket (b:bucket) : ThreadSet.t =
     VarBucket v -> get_tid_in v
   | MkBucket (a,e,s,t) -> (voc_addr a) @@ (voc_addr e) @@
                           (voc_set s) @@ (voc_tid t)
-  | BucketAt(bb,i)     -> (voc_bucketarr bb) @@ (voc_int i)
+  | BucketArrRd(bb,i)  -> (voc_bucketarr bb) @@ (voc_int i)
 
 
 and voc_setth (s:setth) : ThreadSet.t =
@@ -1223,6 +1264,14 @@ and voc_int (i:integer) : ThreadSet.t =
   | IntSub(i1,i2)     -> (voc_int i1) @@ (voc_int i2)
   | IntMul(i1,i2)     -> (voc_int i1) @@ (voc_int i2)
   | IntDiv(i1,i2)     -> (voc_int i1) @@ (voc_int i2)
+  | IntMod(i1,i2)     -> (voc_int i1) @@ (voc_int i2)
+
+
+and voc_tidarr (tt:tidarr) : ThreadSet.t =
+  match tt with
+    VarTidArray v   -> get_tid_in v
+  | TidArrayUp (tt,i,t) -> (voc_tidarr tt) @@ (voc_int i) @@
+                           (voc_tid t)
 
 
 and voc_bucketarr (bb:bucketarr) : ThreadSet.t =
@@ -1360,6 +1409,7 @@ let required_sorts (phi:formula) : sort list =
     | IntSub (i1,i2)   -> append Int [req_i i1;req_i i2]
     | IntMul (i1,i2)   -> append Int [req_i i1;req_i i2]
     | IntDiv (i1,i2)   -> append Int [req_i i1;req_i i2]
+    | IntMod (i1,i2)   -> append Int [req_i i1;req_i i2]
 
   and req_bb (bb:bucketarr) : SortSet.t =
     match bb with
@@ -1414,7 +1464,7 @@ let required_sorts (phi:formula) : sort list =
     match b with
     | VarBucket _        -> single Bucket
     | MkBucket (i,e,s,t) -> append Bucket [req_a i; req_a e; req_s s; req_t t]
-    | BucketAt (bb,i)    -> append Bucket [req_bb bb; req_i i]
+    | BucketArrRd (bb,i) -> append Bucket [req_bb bb; req_i i]
 
   and req_a (a:addr) : SortSet.t =
     match a with
@@ -1440,12 +1490,18 @@ let required_sorts (phi:formula) : sort list =
     | NoTid             -> single Tid
     | CellLockId c      -> append Tid [req_c c]
     | BucketTid b       -> append Tid [req_b b]
+    | TidArrRd (tt,i)   -> append Tid [req_tt tt;req_i i]
+
+  and req_tt (tt:tidarr) : SortSet.t =
+    match tt with
+    | VarTidArray _       -> single TidArray
+    | TidArrayUp (tt,i,t) -> append TidArray [req_tt tt; req_i i; req_t t]
 
   and req_s (s:set) : SortSet.t =
     match s with
     | VarSet _         -> single Set
     | EmptySet         -> single Set
-    | Singl a          -> append Set  [req_a a]
+    | Singl a          -> append Set [req_a a]
     | Union (s1,s2)    -> append Set [req_s s1;req_s s2]
     | Intr (s1,s2)     -> append Set [req_s s1;req_s s2]
     | Setdiff (s1,s2)  -> append Set [req_s s1;req_s s2]
@@ -1466,6 +1522,7 @@ let required_sorts (phi:formula) : sort list =
     | PathT p            -> req_p p
     | MemT m             -> req_m m
     | IntT i             -> req_i i
+    | TidArrayT tt       -> req_tt tt
     | BucketArrayT bb    -> req_bb bb
     | MarkT m            -> req_mk m
     | BucketT b          -> req_b b
@@ -1533,6 +1590,12 @@ let special_ops (phi:formula) : special_op_t list =
     | IntSub (j1,j2) -> list_union [ops_i j1; ops_i j2]
     | IntMul (j1,j2) -> list_union [ops_i j1; ops_i j2]
     | IntDiv (j1,j2) -> list_union [ops_i j1; ops_i j2]
+    | IntMod (j1,j2) -> list_union [ops_i j1; ops_i j2]
+
+  and ops_tt (tt:tidarr) : OpsSet.t =
+    match tt with
+    | VarTidArray _ -> empty
+    | TidArrayUp (tt,i,t) -> list_union [ops_tt tt; ops_i i; ops_t t]
 
   and ops_bb (bb:bucketarr) : OpsSet.t =
     match bb with
@@ -1585,9 +1648,9 @@ let special_ops (phi:formula) : special_op_t list =
 
   and ops_b (b:bucket) : OpsSet.t =
     match b with
-    | VarBucket _       -> empty
-    | MkBucket(i,e,s,t) -> list_union [ops_a i; ops_a e; ops_s s; ops_t t]
-    | BucketAt (bb,i)   -> list_union [ops_bb bb; ops_i i]
+    | VarBucket _        -> empty
+    | MkBucket(i,e,s,t)  -> list_union [ops_a i; ops_a e; ops_s s; ops_t t]
+    | BucketArrRd (bb,i) -> list_union [ops_bb bb; ops_i i]
 
   and ops_a (a:addr) : OpsSet.t =
     match a with
@@ -1609,10 +1672,11 @@ let special_ops (phi:formula) : special_op_t list =
 
   and ops_t (t:tid) : OpsSet.t =
     match t with
-    | VarTh _           -> empty
-    | NoTid             -> empty
-    | CellLockId c      -> ops_c c
-    | BucketTid b       -> ops_b b
+    | VarTh _         -> empty
+    | NoTid           -> empty
+    | CellLockId c    -> ops_c c
+    | BucketTid b     -> ops_b b
+    | TidArrRd (tt,i) -> list_union [ops_tt tt; ops_i i]
 
   and ops_s (s:set) : OpsSet.t =
     match s with
@@ -1638,6 +1702,7 @@ let special_ops (phi:formula) : special_op_t list =
     | SetElemT s         -> ops_se s
     | PathT p            -> ops_p p
     | MemT m             -> ops_m m
+    | TidArrayT tt       -> ops_tt tt
     | BucketArrayT bb    -> ops_bb bb
     | IntT i             -> ops_i i
     | MarkT m            -> ops_mk m

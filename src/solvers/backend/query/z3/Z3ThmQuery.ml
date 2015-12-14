@@ -41,21 +41,24 @@ struct
 
 
   (* Sort names *)
-  let bool_s    : string = "Bool"
-  let int_s     : string = "Int"
-  let addr_s    : string = "Address"
-  let set_s     : string = "Set"
-  let elem_s    : string = "Elem"
-  let tid_s     : string = "Tid"
-  let cell_s    : string = "Cell"
-  let setth_s   : string = "Setth"
-  let setelem_s : string = "SetElem"
-  let path_s    : string = "Path"
-  let heap_s    : string = "Heap"
-  let int_s     : string = "Int"
-  let unk_s     : string = "Unknown"
-  let loc_s     : string = "Loc"
-  let mark_s    : string = "Mark"
+  let bool_s        : string = "Bool"
+  let int_s         : string = "Int"
+  let addr_s        : string = "Address"
+  let set_s         : string = "Set"
+  let elem_s        : string = "Elem"
+  let tid_s         : string = "Tid"
+  let cell_s        : string = "Cell"
+  let setth_s       : string = "Setth"
+  let setelem_s     : string = "SetElem"
+  let path_s        : string = "Path"
+  let heap_s        : string = "Heap"
+  let int_s         : string = "Int"
+  let unk_s         : string = "Unknown"
+  let loc_s         : string = "Loc"
+  let mark_s        : string = "Mark"
+  let bucket_s      : string = "Bucket"
+  let bucketarray_s : string = "BucketArray"
+  let tidarray_s    : string = "TidArray"
 
 
   (* Configuration *)
@@ -143,6 +146,8 @@ struct
       | Expr.AddrToSet(m,a) -> Printf.sprintf "(address2set %s %s)"
                                                         (memterm_to_str m)
                                                         (addrterm_to_str a)
+      | Expr.BucketRegion b -> Printf.sprintf "(breg %s)"
+                                                        (bucketterm_to_str b)
 
 
   and elemterm_to_str (e:Expr.elem) : string =
@@ -156,9 +161,12 @@ struct
 
   and tidterm_to_str (th:Expr.tid) : string =
     match th with
-      Expr.VarTh v      -> variable_invocation_to_str v
-    | Expr.NoTid       -> "NoThread"
-    | Expr.CellLockId c -> Printf.sprintf "(lock %s)" (cellterm_to_str c)
+      Expr.VarTh v         -> variable_invocation_to_str v
+    | Expr.NoTid           -> "NoThread"
+    | Expr.CellLockId c    -> Printf.sprintf "(lock %s)" (cellterm_to_str c)
+    | Expr.BucketTid b     -> Printf.sprintf "(btid %s)" (bucketterm_to_str b)
+    | Expr.TidArrRd (tt,i) -> Printf.sprintf "(select %s %s)"
+                                    (tidarrterm_to_str tt) (intterm_to_str i)
 
 
   and addrterm_to_str (a:Expr.addr) : string =
@@ -173,6 +181,10 @@ struct
       | Expr.LastLocked(m,p) -> Printf.sprintf "(lastlock %s %s)"
                                     (memterm_to_str m)
                                     (pathterm_to_str p)
+      | Expr.BucketInit b    -> Printf.sprintf "(binit %s)"
+                                    (bucketterm_to_str b)
+      | Expr.BucketEnd b     -> Printf.sprintf "(bend %s)"
+                                    (bucketterm_to_str b)
 
 
   and cellterm_to_str (c:Expr.cell) : string =
@@ -205,6 +217,19 @@ struct
       | Expr.MarkFalse -> "markFalse"
       | Expr.Marked c  -> Printf.sprintf "(marked %s)"
                              (cellterm_to_str c)
+
+
+  and bucketterm_to_str (b:Expr.bucket) : string =
+    match b with
+        Expr.VarBucket v -> variable_invocation_to_str v
+      | Expr.MkBucket (i,e,s,t) -> Printf.sprintf "(mkbucket %s %s %s %s)"
+                                      (addrterm_to_str i)
+                                      (addrterm_to_str e)
+                                      (setterm_to_str s)
+                                      (tidterm_to_str t)
+      | Expr.BucketArrRd(bb,i) -> Printf.sprintf "(%s %s)"
+                                        (bucketarrterm_to_str bb)
+                                        (intterm_to_str i)
 
 
   and setthterm_to_str (sth:Expr.setth) : string =
@@ -281,6 +306,26 @@ struct
                                 (intterm_to_str j1) (intterm_to_str j2)
     | Expr.IntDiv (j1,j2) -> Printf.sprintf "(/ %s %s)"
                                 (intterm_to_str j1) (intterm_to_str j2)
+    | Expr.IntMod (j1,j2) -> Printf.sprintf "(mod %s %s)"
+                                (intterm_to_str j1) (intterm_to_str j2)
+
+
+  and bucketarrterm_to_str (bb:Expr.bucketarr) : string =
+    match bb with
+      Expr.VarBucketArray v      -> variable_invocation_to_str v
+    | Expr.BucketArrayUp(bb,i,b) -> Printf.sprintf "(bucketupd %s %s %s)"
+                                            (bucketarrterm_to_str bb)
+                                            (intterm_to_str i)
+                                            (bucketterm_to_str b)
+
+
+  and tidarrterm_to_str (tt:Expr.tidarr) : string =
+    match tt with
+      Expr.VarTidArray v      -> variable_invocation_to_str v
+    | Expr.TidArrayUp(tt,i,t) -> Printf.sprintf "(store %s %s %s)"
+                                            (tidarrterm_to_str tt)
+                                            (intterm_to_str i)
+                                            (tidterm_to_str t)
 
 
   let rec varupdate_to_str (v:Expr.V.t)
@@ -307,6 +352,9 @@ struct
     | Expr.MemT m          -> memterm_to_str m
     | Expr.IntT i          -> intterm_to_str i
     | Expr.MarkT m         -> markterm_to_str m
+    | Expr.BucketT b       -> bucketterm_to_str b
+    | Expr.BucketArrayT bb -> bucketarrterm_to_str bb
+    | Expr.TidArrayT tt    -> tidarrterm_to_str tt
     | Expr.VarUpdate(v,th,t) -> varupdate_to_str v th t
 
 
@@ -407,6 +455,12 @@ struct
     B.add_string buf
       ( "(declare-datatypes () ((" ^cell_s^ " (mkcell (data " ^elem_s^
         ") (next " ^addr_s^ ") (lock " ^tid_s^ ") (marked " ^mark_s^ ")))))\n")
+
+
+  let z3_bucket_preamble (buf:B.t) : unit =
+    B.add_string buf
+      ( "(declare-datatypes () ((" ^bucket_s^ " (mkbucket (binit " ^addr_s^
+        ") (bend " ^addr_s^ ") (bregion " ^set_s^ ") (btid " ^tid_s^ ")))))\n")
 
 
   let z3_heap_preamble (buf:B.t) : unit =
@@ -1187,19 +1241,22 @@ struct
                         (v:Expr.V.t) : unit =
     let s = Expr.V.sort v in
     let sort_str asort = match asort with
-                           Expr.Set     -> set_s
-                         | Expr.Elem    -> elem_s
-                         | Expr.Addr    -> addr_s
-                         | Expr.Tid     -> tid_s
-                         | Expr.Cell    -> cell_s
-                         | Expr.SetTh   -> setth_s
-                         | Expr.SetElem -> setelem_s
-                         | Expr.Path    -> path_s
-                         | Expr.Mem     -> heap_s
-                         | Expr.Int     -> int_s
-                         | Expr.Bool    -> bool_s
-                         | Expr.Mark    -> mark_s
-                         | Expr.Unknown -> unk_s in
+                           Expr.Set         -> set_s
+                         | Expr.Elem        -> elem_s
+                         | Expr.Addr        -> addr_s
+                         | Expr.Tid         -> tid_s
+                         | Expr.Cell        -> cell_s
+                         | Expr.SetTh       -> setth_s
+                         | Expr.SetElem     -> setelem_s
+                         | Expr.Path        -> path_s
+                         | Expr.Mem         -> heap_s
+                         | Expr.Int         -> int_s
+                         | Expr.Bool        -> bool_s
+                         | Expr.Mark        -> mark_s
+                         | Expr.Bucket      -> bucket_s
+                         | Expr.TidArray    -> tidarray_s
+                         | Expr.BucketArray -> bucketarray_s
+                         | Expr.Unknown     -> unk_s in
     let s_str = sort_str s in
     let p_id = match Expr.V.scope v with
                | Expr.V.GlobalScope -> Expr.V.id v
@@ -1427,6 +1484,16 @@ struct
       (addrterm_to_str a2)
 
 
+  let hashmap_to_str (m:Expr.mem) (s:Expr.set) (se:Expr.setelem)
+                     (bb:Expr.bucketarr) (i:Expr.integer) : string =
+    Printf.sprintf ("(hashmap %s %s %s %s %s)")
+      (memterm_to_str m)
+      (setterm_to_str s)
+      (setelemterm_to_str se)
+      (bucketarrterm_to_str bb)
+      (intterm_to_str i)
+
+
   let in_to_str (a:Expr.addr) (s:Expr.set) : string =
     Printf.sprintf "(select %s %s)" (setterm_to_str s) (addrterm_to_str a)
 
@@ -1563,6 +1630,7 @@ struct
         Expr.Append(p1,p2,p3)      -> append_to_str p1 p2 p3
       | Expr.Reach(m,a1,a2,p)      -> reach_to_str m a1 a2 p
       | Expr.OrderList(m,a1,a2)    -> orderlist_to_str m a1 a2
+      | Expr.Hashmap(m,s,se,bb,i)  -> hashmap_to_str m s se bb i
       | Expr.In(a,s)               -> in_to_str a s
       | Expr.SubsetEq(r,s)         -> subseteq_to_str r s
       | Expr.InTh(t,st)            -> inth_to_str t st

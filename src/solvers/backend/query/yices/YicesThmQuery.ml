@@ -109,10 +109,30 @@ struct
        "  (lambda (c::" ^cell_s^ ") (select c marked)))\n" )
 
 
+  let yices_bucket_preamble (buf:B.t) : unit =
+    B.add_string buf (
+       "(define-type " ^bucket_s^ " (record binit::" ^addr_s^ " " ^
+       "                            bend::" ^addr_s^ " " ^
+       "                            breg::" ^set_s^ " " ^
+       "                            btid::" ^tid_s^ "))\n"   ^
+       "(define binit::(-> " ^bucket_s^ " " ^addr_s^ ") " ^
+       "  (lambda (b::" ^bucket_s^ ") (select b binit)))\n" ^
+       "(define bend::(-> " ^bucket_s^ " " ^addr_s^ ") " ^
+       "  (lambda (b::" ^bucket_s^ ") (select b bend)))\n" ^
+       "(define breg::(-> " ^bucket_s^ " " ^set_s^ ")     " ^
+       "  (lambda (b::" ^bucket_s^ ") (select b breg)))\n" ^
+       "(define gtid::(-> " ^bucket_s^ " " ^tid_s^ ")     " ^
+       "  (lambda (b::" ^bucket_s^ ") (select b btid)))\n" )
+
+
   let yices_heap_preamble (buf:B.t) : unit =
     B.add_string buf
       ("(define-type " ^heap_s^ "    (-> " ^addr_s^ " " ^cell_s^ "))\n")
 
+
+  let yices_bucketarr_preamble (buf:B.t) : unit =
+    B.add_string buf
+      ("(define-type " ^bucketarray_s^ "    (-> " ^int_s^ " " ^bucket_s^ "))\n")
 
   let yices_set_preamble (buf:B.t) : unit =
     B.add_string buf
@@ -634,6 +654,13 @@ struct
         "        (= (h null) error)))\n")
 
 
+  let yices_mkbucket_def (buf:B.t) : unit =
+    B.add_string buf
+      ( "(define mkbucket::(-> " ^addr_s^ " " ^addr_s^ " " ^set_s^ " " ^tid_s^ " " ^cell_s^ ")\n" ^
+        "   (lambda (i::" ^addr_s^ "  e::" ^addr_s^ " r::" ^set_s^ " t::" ^tid_s^ ")\n" ^
+        "       (mk-record binit::i bend::e bregion::r btid::t)))\n")
+
+
   let yices_nextiter_def (buf:B.t) (num_addr:int) : unit =
     (*if (num_addr >= 2) then*)
       B.add_string  buf
@@ -709,6 +736,13 @@ struct
         "(define update_heap::(-> " ^heap_s^ " " ^addr_s^ " " ^cell_s^ " " ^heap_s^ ")\n" ^
         "    (lambda (h::" ^heap_s^ " a::" ^addr_s^ " c::" ^cell_s^ ")\n" ^
         "       (update h (a) c)))\n" )
+
+
+  let yices_update_bucket_def (buf:B.t) : unit =
+    B.add_string buf (
+        "(define bucketupd::(-> " ^bucketarray_s^ " " ^int_s^ " " ^bucket_s^ " " ^bucketarray_s^ ")\n" ^
+        "    (lambda (bb::" ^bucketarray_s^ " i::" ^int_s^ " b::" ^bucket_s^ ")\n" ^
+        "       (update bb (i) b)))\n" )
 
 
   let yices_getp_def (buf:B.t) (num_addr:int) : unit =
@@ -855,14 +889,16 @@ struct
         ) req_sorts) then yices_element_preamble buf num_elem ;
     if List.mem Expr.Cell req_sorts || List.mem Expr.Mem req_sorts then
       yices_cell_preamble buf ;
-    if List.mem Expr.Mem     req_sorts then yices_heap_preamble buf ;
-    if List.mem Expr.Set     req_sorts then yices_set_preamble buf ;
-    if List.mem Expr.SetTh   req_sorts then yices_setth_preamble buf ;
-    if List.mem Expr.SetElem req_sorts then yices_setelem_preamble buf ;
-    if List.mem Expr.Path    req_sorts then begin
-                                              yices_path_preamble buf num_addr ;
-                                              yices_ispath_def buf num_addr
-                                            end;
+    if List.mem Expr.Bucket      req_sorts then yices_bucket_preamble buf;
+    if List.mem Expr.Mem         req_sorts then yices_heap_preamble buf ;
+    if List.mem Expr.BucketArray req_sorts then yices_bucketarr_preamble buf ;
+    if List.mem Expr.Set         req_sorts then yices_set_preamble buf ;
+    if List.mem Expr.SetTh       req_sorts then yices_setth_preamble buf ;
+    if List.mem Expr.SetElem     req_sorts then yices_setelem_preamble buf ;
+    if List.mem Expr.Path        req_sorts then begin
+                                                  yices_path_preamble buf num_addr ;
+                                                  yices_ispath_def buf num_addr
+                                                end;
     if List.mem Expr.Unknown req_sorts then yices_unknown_preamble buf ;
     yices_pos_preamble buf
 
@@ -881,6 +917,17 @@ struct
         yices_cell_lock_def buf ;
         yices_cell_unlock_def buf;
         yices_cell_mark_def buf
+      end;
+    (* Bucket *)
+    if List.mem Expr.Bucket req_sorts then
+      begin
+        yices_mkbucket_def buf
+      end;
+    (* Bucket Array *)
+    if List.mem Expr.BucketArray req_sorts then
+      begin
+        yices_bucketarr_preamble buf;
+        yices_update_bucket_def buf
       end;
     (* Heap *)
     if List.mem Expr.Mem req_sorts then
@@ -1180,7 +1227,7 @@ struct
                                       (addrterm_to_str e)
                                       (setterm_to_str s)
                                       (tidterm_to_str t)
-      | Expr.BucketAt(bb,i) -> Printf.sprintf "(%s %s)"
+      | Expr.BucketArrRd(bb,i) -> Printf.sprintf "(%s %s)"
                                         (bucketarrterm_to_str bb)
                                         (intterm_to_str i)
 

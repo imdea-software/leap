@@ -48,6 +48,7 @@ and sort_to_expr_sort (s:THM.sort) : E.sort =
   | THM.Mem         -> E.Mem
   | THM.Int         -> E.Int
   | THM.Bool        -> E.Bool
+  | THM.TidArray    -> E.TidArray
   | THM.BucketArray -> E.BucketArray
   | THM.Mark        -> E.Mark
   | THM.Bucket      -> E.Bucket
@@ -57,18 +58,21 @@ and sort_to_expr_sort (s:THM.sort) : E.sort =
 and build_term_var (v:E.V.t) : THM.term =
   let thm_v = variable_to_thm_var v in
   match (E.V.sort v) with
-    E.Set     -> THM.SetT     (THM.VarSet     thm_v)
-  | E.Elem    -> THM.ElemT    (THM.VarElem    thm_v)
-  | E.Tid     -> THM.TidT     (THM.VarTh      thm_v)
-  | E.Addr    -> THM.AddrT    (THM.VarAddr    thm_v)
-  | E.Cell    -> THM.CellT    (THM.VarCell    thm_v)
-  | E.SetTh   -> THM.SetThT   (THM.VarSetTh   thm_v)
-  | E.SetElem -> THM.SetElemT (THM.VarSetElem thm_v)
-  | E.Path    -> THM.PathT    (THM.VarPath    thm_v)
-  | E.Int     -> THM.IntT     (THM.VarInt     thm_v)
-  | E.Mem     -> THM.MemT     (THM.VarMem     thm_v)
-  | E.Mark    -> THM.MarkT    (THM.VarMark    thm_v)
-  | _         -> THM.VarT     (thm_v)
+    E.Set         -> THM.SetT         (THM.VarSet         thm_v)
+  | E.Elem        -> THM.ElemT        (THM.VarElem        thm_v)
+  | E.Tid         -> THM.TidT         (THM.VarTh          thm_v)
+  | E.Addr        -> THM.AddrT        (THM.VarAddr        thm_v)
+  | E.Cell        -> THM.CellT        (THM.VarCell        thm_v)
+  | E.SetTh       -> THM.SetThT       (THM.VarSetTh       thm_v)
+  | E.SetElem     -> THM.SetElemT     (THM.VarSetElem     thm_v)
+  | E.Path        -> THM.PathT        (THM.VarPath        thm_v)
+  | E.Int         -> THM.IntT         (THM.VarInt         thm_v)
+  | E.Mem         -> THM.MemT         (THM.VarMem         thm_v)
+  | E.Mark        -> THM.MarkT        (THM.VarMark        thm_v)
+  | E.TidArray    -> THM.TidArrayT    (THM.VarTidArray    thm_v)
+  | E.BucketArray -> THM.BucketArrayT (THM.VarBucketArray thm_v)
+  | E.Bucket      -> THM.BucketT      (THM.VarBucket      thm_v)
+  | _             -> THM.VarT         (thm_v)
 
 
 
@@ -95,14 +99,15 @@ and scope_to_thm_scope (p:E.V.procedure_name) : THM.V.procedure_name =
 
 and tid_to_thm_tid (th:E.tid) : THM.tid =
   match th with
-    E.VarTh v        -> THM.VarTh (variable_to_thm_var v)
-  | E.NoTid          -> THM.NoTid
-  | E.CellLockId c   -> THM.CellLockId (cell_to_thm_cell c)
-  | E.CellLockIdAt _ -> raise(UnsupportedThmExpr(E.tid_to_str th))
-  | E.TidArrayRd _   -> raise(UnsupportedThmExpr(E.tid_to_str th))
-  | E.TidArrRd _     -> raise(UnsupportedThmExpr(E.tid_to_str th))
-  | E.PairTid _      -> raise(UnsupportedThmExpr(E.tid_to_str th))
-  | E.BucketTid b    -> THM.BucketTid(bucket_to_thm_bucket b)
+    E.VarTh v           -> THM.VarTh (variable_to_thm_var v)
+  | E.NoTid             -> THM.NoTid
+  | E.CellLockId c      -> THM.CellLockId (cell_to_thm_cell c)
+  | E.CellLockIdAt _    -> raise(UnsupportedThmExpr(E.tid_to_str th))
+  | E.TidArrayRd _      -> raise(UnsupportedThmExpr(E.tid_to_str th))
+  | E.PairTid _         -> raise(UnsupportedThmExpr(E.tid_to_str th))
+  | E.BucketTid b       -> THM.BucketTid(bucket_to_thm_bucket b)
+  | E.TidArrRd (tt,i)   -> THM.TidArrRd(tidarr_to_thm_tidarr tt,
+                                        int_to_thm_int i)
 
 
 and term_to_thm_term (t:E.term) : THM.term =
@@ -122,7 +127,7 @@ and term_to_thm_term (t:E.term) : THM.term =
   | E.IntT i          -> THM.IntT (int_to_thm_int i)
   | E.PairT _         -> raise(UnsupportedThmExpr(E.term_to_str t))
   | E.AddrArrayT _    -> raise(UnsupportedThmExpr(E.term_to_str t))
-  | E.TidArrayT _     -> raise(UnsupportedThmExpr(E.term_to_str t))
+  | E.TidArrayT tt    -> THM.TidArrayT (tidarr_to_thm_tidarr tt)
   | E.BucketArrayT bb -> THM.BucketArrayT(bucketarr_to_thm_bucketarr bb)
   | E.MarkT m         -> THM.MarkT (mark_to_thm_mark m)
   | E.BucketT b       -> THM.BucketT (bucket_to_thm_bucket b)
@@ -241,8 +246,8 @@ and bucket_to_thm_bucket (bb:E.bucket) : THM.bucket =
                                          addr_to_thm_addr e,
                                          set_to_thm_set s,
                                          tid_to_thm_tid t)
-  | E.BucketAt (bb,i)    -> THM.BucketAt (bucketarr_to_thm_bucketarr bb,
-                                          int_to_thm_int i)
+  | E.BucketArrRd (bb,i) -> THM.BucketArrRd (bucketarr_to_thm_bucketarr bb,
+                                             int_to_thm_int i)
 
 
 and setth_to_thm_setth (st:E.setth) : THM.setth =
@@ -310,12 +315,22 @@ and int_to_thm_int (i:E.integer) : THM.integer =
   | E.IntSub (j1,j2) -> THM.IntSub (int_to_thm_int j1, int_to_thm_int j2)
   | E.IntMul (j1,j2) -> THM.IntMul (int_to_thm_int j1, int_to_thm_int j2)
   | E.IntDiv (j1,j2) -> THM.IntDiv (int_to_thm_int j1, int_to_thm_int j2)
+  | E.IntMod (j1,j2) -> THM.IntMod (int_to_thm_int j1, int_to_thm_int j2)
   | E.IntArrayRd _   -> raise(UnsupportedThmExpr(E.integer_to_str i))
   | E.IntSetMin _    -> raise(UnsupportedThmExpr(E.integer_to_str i))
   | E.IntSetMax _    -> raise(UnsupportedThmExpr(E.integer_to_str i))
   | E.CellMax _      -> raise(UnsupportedThmExpr(E.integer_to_str i))
   | E.HavocLevel     -> raise(UnsupportedThmExpr(E.integer_to_str i))
   | E.PairInt _      -> raise(UnsupportedThmExpr(E.integer_to_str i))
+
+
+and tidarr_to_thm_tidarr (tt:E.tidarr) : THM.tidarr =
+  match tt with
+    E.VarTidArray v -> THM.VarTidArray (variable_to_thm_var v)
+  | E.TidArrayUp (tt,i,t) -> THM.TidArrayUp (tidarr_to_thm_tidarr tt,
+                                             int_to_thm_int i,
+                                             tid_to_thm_tid t)
+  | E.CellTids c          -> raise(UnsupportedThmExpr(E.tidarr_to_str tt))
 
 
 and bucketarr_to_thm_bucketarr (bb:E.bucketarr) : THM.bucketarr =

@@ -297,6 +297,7 @@ and int_to_tll_int (i:E.integer) : TLL.integer =
   | E.IntSub (j1,j2) -> TLL.IntSub (int_to_tll_int j1, int_to_tll_int j2)
   | E.IntMul (j1,j2) -> TLL.IntMul (int_to_tll_int j1, int_to_tll_int j2)
   | E.IntDiv (j1,j2) -> TLL.IntDiv (int_to_tll_int j1, int_to_tll_int j2)
+  | E.IntMod (j1,j2) -> raise(UnsupportedTllExpr(E.integer_to_str i))
   | E.IntArrayRd _   -> raise(UnsupportedTllExpr(E.integer_to_str i))
   | E.IntSetMin _    -> raise(UnsupportedTllExpr(E.integer_to_str i))
   | E.IntSetMax _    -> raise(UnsupportedTllExpr(E.integer_to_str i))

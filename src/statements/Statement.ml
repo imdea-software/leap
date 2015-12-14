@@ -182,7 +182,7 @@ and mark =
 and bucket =
     VarBucket     of variable
   | MkBucket      of addr * addr * set * tid
-  | BucketAt      of bucketarr * integer
+  | BucketArrRd   of bucketarr * integer
 
 and setth =
     VarSetTh      of variable
@@ -707,8 +707,8 @@ and bucket_to_str (loc:bool) (b:bucket) :string =
                                                           (addr_to_str loc e)
                                                           (set_to_str loc s)
                                                           (tid_to_str loc t)
-  | BucketAt(bb,i)     -> sprintf "bucketat(%s,%s)" (bucketarr_to_str loc bb)
-                                                    (integer_to_str loc i)
+  | BucketArrRd(bb,i)  -> sprintf "%s[%s]" (bucketarr_to_str loc bb)
+                                           (integer_to_str loc i)
 
 
 and addr_to_str (loc:bool) (expr:addr) : string =
@@ -1137,12 +1137,13 @@ and mark_to_expr_mark (m:mark) : E.mark =
 
 and bucket_to_expr_bucket (b:bucket) : E.bucket =
   match b with
-    VarBucket v       -> E.VarBucket (variable_to_expr_var v)
-  | MkBucket(i,e,s,t) -> E.MkBucket (addr_to_expr_addr i,
-                                     addr_to_expr_addr e,
-                                     set_to_expr_set s,
-                                     tid_to_expr_tid t)
-  | BucketAt (bb,i)   -> E.BucketAt (bucketarray_to_expr_array bb, integer_to_expr_integer i)
+    VarBucket v        -> E.VarBucket (variable_to_expr_var v)
+  | MkBucket(i,e,s,t)  -> E.MkBucket (addr_to_expr_addr i,
+                                      addr_to_expr_addr e,
+                                      set_to_expr_set s,
+                                      tid_to_expr_tid t)
+  | BucketArrRd (bb,i) -> E.BucketArrRd (bucketarray_to_expr_array bb,
+                                         integer_to_expr_integer i)
 
 
 and setth_to_expr_setth (s:setth) : E.setth =
@@ -1518,7 +1519,7 @@ and var_kind_bucket (kind:E.var_nature) (b:bucket) : term list =
                          (var_kind_addr kind e) @
                          (var_kind_set kind s) @
                          (var_kind_th kind t)
-  | BucketAt(bb,i)    -> (var_kind_bucketarr kind bb) @
+  | BucketArrRd(bb,i) -> (var_kind_bucketarr kind bb) @
                          (var_kind_int kind i)
 
 

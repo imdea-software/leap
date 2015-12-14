@@ -26,6 +26,7 @@ and integer =
   | Sub           of integer * integer
   | Mul           of integer * integer
   | Div           of integer * integer
+  | Mod           of integer * integer
   | ArrayRd       of E.arrays * tid
   | SetMin        of set
   | SetMax        of set
@@ -120,6 +121,7 @@ let rec generic_int_integer_to_str (srf:string -> string) (t:integer) : string =
   | Sub (t1,t2)    -> srf (int_str_f t1 ^ " - " ^ int_str_f t2)
   | Mul (t1,t2)    -> srf (int_str_f t1 ^ " * " ^ int_str_f t2)
   | Div (t1,t2)    -> srf (int_str_f t1 ^ " / " ^ int_str_f t2)
+  | Mod (t1,t2)    -> srf ("mod(" ^ int_str_f t1 ^ "," ^ int_str_f t2 ^ ")")
   | ArrayRd (a,th) -> srf (E.arrays_to_str a ^ "[" ^
                            tid_str_f th ^ "]")
   | SetMin s       -> srf ("setIntMin(" ^ set_str_f s ^ ")")
@@ -307,6 +309,7 @@ let rec has_variable (t:integer) : bool =
     | Sub(x,y)     -> has_variable x || has_variable y
     | Mul(x,y)     -> has_variable x || has_variable y
     | Div(x,y)     -> has_variable x || has_variable y
+    | Mod(x,y)     -> has_variable x || has_variable y
     | ArrayRd _    -> false
     | SetMin _     -> false
     | SetMax _     -> false
@@ -323,6 +326,7 @@ let rec term_is_linear t =
     | Mul(x,y)       -> (is_linear x) && (is_linear y) &&
                         ( not ((has_variable x) && (has_variable y)))
     | Div _          -> false
+    | Mod _          -> false
     | ArrayRd _      -> true
     | SetMin _       -> true
     | SetMax _       -> true
@@ -382,6 +386,10 @@ let rec generic_set_from_int_integer (base:V.t -> 'a)
                             (generic_set_from_int_integer
                                 base empty union t2)
   | Div (t1,t2)    -> union (generic_set_from_int_integer
+                                base empty union t1)
+                            (generic_set_from_int_integer
+                                base empty union t2)
+  | Mod (t1,t2)    -> union (generic_set_from_int_integer
                                 base empty union t1)
                             (generic_set_from_int_integer
                                 base empty union t2)
@@ -638,6 +646,8 @@ let rec voc_from_int_integer (t:integer) : ThreadSet.t =
   | Mul (t1,t2)            -> ThreadSet.union (voc_from_int_integer t1)
                                                 (voc_from_int_integer t2)
   | Div (t1,t2)            -> ThreadSet.union (voc_from_int_integer t1)
+                                                (voc_from_int_integer t2)
+  | Mod (t1,t2)            -> ThreadSet.union (voc_from_int_integer t1)
                                                 (voc_from_int_integer t2)
   | ArrayRd _              -> ThreadSet.empty
   | SetMin _               -> ThreadSet.empty

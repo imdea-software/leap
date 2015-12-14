@@ -349,7 +349,7 @@ let check_type_elem t =
     | _            -> raise(WrongType t)
 
 
-let check_type_thid t =
+let check_type_tid t =
   match t with
       Stm.TidT(th) -> th
     | Stm.VarT v    -> check_sort_var v.Stm.id v.Stm.scope E.Tid v.Stm.nature; Stm.VarTh v
@@ -426,25 +426,48 @@ let check_type_tidarr t =
     | _                  -> raise(WrongType t)
 
 
+let check_type_mark t =
+  match t with
+      Stm.MarkT m -> m
+    | Stm.VarT v  -> check_sort_var v.Stm.id v.Stm.scope E.Mark v.Stm.nature; Stm.VarMark v
+    | _           -> raise(WrongType t)
+
+
+let check_type_bucket t =
+  match t with
+      Stm.BucketT b -> b
+    | Stm.VarT v  -> check_sort_var v.Stm.id v.Stm.scope E.Bucket v.Stm.nature; Stm.VarBucket v
+    | _           -> raise(WrongType t)
+
+
+let check_type_bucketarr t =
+  match t with
+      Stm.BucketArrayT arr -> arr
+    | Stm.VarT v  -> check_sort_var v.Stm.id v.Stm.scope E.BucketArray v.Stm.nature; Stm.VarBucketArray v
+    | _           -> raise(WrongType t)
+
+
 let check_and_get_sort (id:string) : E.sort =
   match id with
-    "tid"     -> E.Tid
-  | "elem"    -> E.Elem
-  | "addr"    -> E.Addr
-  | "cell"    -> E.Cell
-  | "mem"     -> E.Mem
-  | "path"    -> E.Path
-  | "bool"    -> E.Bool
-  | "addrSet" -> E.Set
-  | "tidSet"  -> E.SetTh
-  | "intSet"  -> E.SetInt
-  | "elemSet" -> E.SetElem
-  | "pairSet" -> E.SetPair
-  | "int"     -> E.Int
-  | "pair"    -> E.Pair
-  | "addrarr" -> E.AddrArray
-  | "tidarr"  -> E.TidArray
-  | "mark"    -> E.Mark
+    "tid"       -> E.Tid
+  | "elem"      -> E.Elem
+  | "addr"      -> E.Addr
+  | "cell"      -> E.Cell
+  | "mem"       -> E.Mem
+  | "path"      -> E.Path
+  | "bool"      -> E.Bool
+  | "addrSet"   -> E.Set
+  | "tidSet"    -> E.SetTh
+  | "intSet"    -> E.SetInt
+  | "elemSet"   -> E.SetElem
+  | "pairSet"   -> E.SetPair
+  | "int"       -> E.Int
+  | "pair"      -> E.Pair
+  | "addrarr"   -> E.AddrArray
+  | "tidarr"    -> E.TidArray
+  | "mark"      -> E.Mark
+  | "bucket"    -> E.Bucket
+  | "bucketarr" -> E.BucketArray
   | _ -> begin
            Interface.Err.msg "Unrecognized sort" $
              sprintf "A sort was expected, but \"%s\" was found" id;
@@ -867,6 +890,9 @@ let fix_conditional_jumps () : unit =
 %token SETPAIREMPTY SETPAIRSINGLE SETPAIRUNION SETPAIRINTR SETPAIRDIFF
 %token SETPAIRIN SETPAIRSUBSETEQ
 %token THREAD
+%token MARK_T MARK_F MARKED
+%token MKBUCKET BINIT BEND BREGION BTID BARRAYUPD
+%token HASHMAP
 %token OPEN_BRACKET CLOSE_BRACKET
 %token OPEN_SET CLOSE_SET
 %token OPEN_PAREN CLOSE_PAREN
@@ -978,7 +1004,7 @@ let fix_conditional_jumps () : unit =
 %type <Statement.boolean> formula
 %type <Stm.term> term
 %type <Stm.cell> cell
-%type <Stm.tid> thid
+%type <Stm.tid> tid
 %type <Stm.elem> elem
 %type <Stm.addr> addr
 %type <Stm.mem> mem
@@ -996,6 +1022,8 @@ let fix_conditional_jumps () : unit =
 %type <Stm.term> arraylookup
 %type <Stm.integer option> lock_pos
 %type <Stm.mark> mark
+%type <Stm.bucket> bucket
+%type <Stm.bucketarr> bucketarr
 
 
 
@@ -2473,7 +2501,7 @@ atom :
     {
       let get_str_expr () = sprintf "tin(%s, %s" (Stm.term_to_str $3)
                                                  (Stm.term_to_str $5) in
-      let th = parser_check_type check_type_thid  $3 E.Tid get_str_expr in
+      let th = parser_check_type check_type_tid  $3 E.Tid get_str_expr in
       let s  = parser_check_type check_type_setth $5 E.SetTh get_str_expr in
         Stm.InTh (th,s)
     }
@@ -2621,7 +2649,7 @@ term :
     { Stm.SetT($1) }
   | elem
     { Stm.ElemT($1) }
-  | thid
+  | tid
     { Stm.TidT($1) }
   | addr
     { Stm.AddrT($1) }
@@ -2647,6 +2675,10 @@ term :
     { Stm.MarkT($1) }
   | arraylookup
     { $1 }
+  | bucket
+    { Stm.BucketT($1) }
+  | bucketarr
+    { Stm.BucketArrayT($1) }
   | OPEN_PAREN term CLOSE_PAREN
     { $2 }
 
@@ -2734,6 +2766,12 @@ set :
       let l = parser_check_type check_type_int  $7 E.Int get_str_expr in
         Stm.AddrToSetAt(h,a,l)
     }
+  | term DOT BREGION
+    {
+      let get_str_expr () = sprintf "%s.bregion" (Stm.term_to_str $1) in
+      let b = parser_check_type check_type_bucket $1 E.Bucket get_str_expr in
+        Stm.BucketRegion(b)
+    }
 
 
 /* ELEM terms */
@@ -2772,7 +2810,7 @@ elem :
 
 /* THID terms */
 
-thid :
+tid :
   | term DOT LOCKID
     {
 
@@ -2799,6 +2837,12 @@ thid :
       let get_str_expr () = sprintf "tid_of(%s)" (Stm.term_to_str $3) in
       let p = parser_check_type check_type_pair $3 E.Pair get_str_expr in
         Stm.PairTid(p)
+    }
+  | term DOT BTID
+    {
+      let get_str_expr () = sprintf "%s.btid" (Stm.term_to_str $1) in
+      let b = parser_check_type check_type_bucket $1 E.Bucket get_str_expr in
+        Stm.BucketTid(b)
     }
 
 
@@ -2853,7 +2897,7 @@ addr :
       in
       let e = parser_check_type check_type_elem $3 E.Elem get_str_expr in
       let a = parser_check_type check_type_addr $5 E.Addr get_str_expr in
-      let t = parser_check_type check_type_thid $7 E.Tid get_str_expr in
+      let t = parser_check_type check_type_tid $7 E.Tid get_str_expr in
 
         Stm.Malloc(e,a,t)
     }
@@ -2897,6 +2941,18 @@ addr :
       let l = parser_check_type check_type_int $5 E.Int get_str_expr in
         Stm.PointerArrAt (a,l)
     }
+  | term DOT BINIT
+    {
+      let get_str_expr () = sprintf "%s.binit" (Stm.term_to_str $1) in
+      let b = parser_check_type check_type_bucket $1 E.Bucket get_str_expr in
+        Stm.BucketInit(b)
+    }
+  | term DOT BEND
+    {
+      let get_str_expr () = sprintf "%s.bend" (Stm.term_to_str $1) in
+      let b = parser_check_type check_type_bucket $1 E.Bucket get_str_expr in
+        Stm.BucketEnd(b)
+    }
 
 
 
@@ -2913,7 +2969,7 @@ cell :
                                            (Stm.term_to_str $7) in
       let d  = parser_check_type check_type_elem $3 E.Elem get_str_expr in
       let a  = parser_check_type check_type_addr $5 E.Addr get_str_expr in
-      let th = parser_check_type check_type_thid $7 E.Tid get_str_expr in
+      let th = parser_check_type check_type_tid $7 E.Tid get_str_expr in
         Stm.MkCell(d,a,th)
     }
 
@@ -2933,7 +2989,7 @@ cell :
                     parser_check_type check_type_addr a E.Addr get_str_expr
                   ) $6 in
       let tids = List.map (fun t ->
-                   parser_check_type check_type_thid t E.Tid get_str_expr
+                   parser_check_type check_type_tid t E.Tid get_str_expr
                  ) $10 in
       if List.length addrs <> List.length tids then
         begin
@@ -3011,7 +3067,7 @@ setth :
   | SINGLETH OPEN_PAREN term CLOSE_PAREN
     {
       let get_str_expr() = sprintf "tsingle(%s)" (Stm.term_to_str $3) in
-      let th = parser_check_type check_type_thid  $3 E.Tid get_str_expr in
+      let th = parser_check_type check_type_tid  $3 E.Tid get_str_expr in
         Stm.SinglTh(th)
     }
   | UNIONTH OPEN_PAREN term COMMA term CLOSE_PAREN
@@ -3275,7 +3331,7 @@ pair :
       let get_str_expr () = sprintf "(%s,%s)" (Stm.term_to_str $2)
                                               (Stm.term_to_str $4) in
       let i  = parser_check_type check_type_int $2 E.Int get_str_expr in
-      let t  = parser_check_type check_type_thid $4 E.Tid get_str_expr in
+      let t  = parser_check_type check_type_tid $4 E.Tid get_str_expr in
         Stm.IntTidPair(i,t)
     }
   | SETPAIRMIN OPEN_PAREN term CLOSE_PAREN
@@ -3316,3 +3372,35 @@ arraylookup :
       
     }
 
+
+
+/* BUCKET term */
+bucket :
+  | MKBUCKET OPEN_PAREN term COMMA term COMMA term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "mkbucket(%s,%s,%s,%s)"
+                                           (Stm.term_to_str $3)
+                                           (Stm.term_to_str $5)
+                                           (Stm.term_to_str $7)
+                                           (Stm.term_to_str $9) in
+      let i = parser_check_type check_type_addr $3 E.Addr get_str_expr in
+      let e = parser_check_type check_type_addr $5 E.Addr get_str_expr in
+      let s = parser_check_type check_type_set $7 E.Set get_str_expr in
+      let t = parser_check_type check_type_tid $9 E.Tid get_str_expr in
+        Stm.MkBucket(i,e,s,t)
+    }
+
+
+/* BUCKETARRAY term */
+bucketarr :
+  | BARRAYUPD OPEN_PAREN term COMMA term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "bucketArrUpd(%s,%s,%s)"
+                                           (Stm.term_to_str $3)
+                                           (Stm.term_to_str $5)
+                                           (Stm.term_to_str $7) in
+      let bb = parser_check_type check_type_bucketarr $3 E.BucketArray get_str_expr in
+      let i = parser_check_type check_type_int $5 E.Int get_str_expr in
+      let b = parser_check_type check_type_bucket $7 E.Bucket get_str_expr in
+        Stm.BucketArrayUp(bb,i,b)
+    }

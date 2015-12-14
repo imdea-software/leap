@@ -62,6 +62,9 @@ struct
   and is_var_int = function
       ThmExp.VarInt(_) -> true
     | _              -> false
+  and is_var_tidarr = function
+      ThmExp.VarTidArray(_) -> true
+    | _                     -> false
   and is_var_bucketarr = function
       ThmExp.VarBucketArray(_) -> true
     | _                        -> false
@@ -102,6 +105,7 @@ struct
     | ThmExp.PathT(p)         -> is_var_path p
     | ThmExp.MemT(m)          -> is_var_mem m
     | ThmExp.IntT(i)          -> is_var_int i
+    | ThmExp.TidArrayT(tt)    -> is_var_tidarr tt
     | ThmExp.BucketArrayT(bb) -> is_var_bucketarr bb
     | ThmExp.MarkT(m)         -> is_var_mark m
     | ThmExp.BucketT(b)       -> is_var_bucket b
@@ -143,6 +147,8 @@ struct
       | _        -> false
   and is_constant_bucketarr = function
         _ -> false
+  and is_constant_tidarr = function
+        _ -> false
   and is_constant_mark = function
         ThmExp.MarkTrue -> true
       | ThmExp.MarkFalse -> true
@@ -161,6 +167,7 @@ struct
       | ThmExp.PathT(p)         -> is_constant_path p
       | ThmExp.MemT(m)          -> is_constant_mem m
       | ThmExp.IntT(i)          -> is_constant_int i
+      | ThmExp.TidArrayT(tt)    -> is_constant_tidarr tt
       | ThmExp.BucketArrayT(bb) -> is_constant_bucketarr bb
       | ThmExp.MarkT(m)         -> is_constant_mark m
       | ThmExp.BucketT(b)       -> is_constant_bucket b
@@ -179,6 +186,7 @@ struct
   and is_flat_cell      c   = is_var_cell       c   || is_constant_cell       c
   and is_flat_mem       m   = is_var_mem        m   || is_constant_mem        m
   and is_flat_int       i   = is_var_int        i   || is_constant_int        i
+  and is_flat_tidarr    tt  = is_var_tidarr     tt  || is_constant_tidarr     tt
   and is_flat_bucketarr bb  = is_var_bucketarr  bb  || is_constant_bucketarr  bb
   and is_flat_mark      m   = is_var_mark       m   || is_constant_mark       m
   and is_flat_bucket    b   = is_var_bucket     b   || is_constant_bucket     b
@@ -197,6 +205,7 @@ struct
       | ThmExp.PathT  p          -> is_flat_path p
       | ThmExp.MemT   m          -> is_flat_mem m
       | ThmExp.IntT   i          -> is_flat_int i
+      | ThmExp.TidArrayT tt      -> is_flat_tidarr tt
       | ThmExp.BucketArrayT bb   -> is_flat_bucketarr bb
       | ThmExp.MarkT  m          -> is_flat_mark m
       | ThmExp.BucketT b         -> is_flat_bucket b

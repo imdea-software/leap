@@ -431,6 +431,7 @@ struct
       | NE.Sub(x,y)     -> " (- " ^ (tostr x) ^ (tostr y) ^ ")"
       | NE.Mul(x,y)     -> " (* " ^ (tostr x) ^ (tostr y) ^ ")"
       | NE.Div(x,y)     -> " (/ " ^ (tostr x) ^ (tostr y) ^ ")"
+      | NE.Mod(x,y)     -> " (mod " ^ (tostr x) ^ (tostr y) ^ ")"
       | NE.ArrayRd(_,_) -> raise(NotSupportedInZ3(NE.integer_to_str t))
       | NE.SetMin(s)    -> " (setmin " ^ z3_string_of_set s ^ ")"
       | NE.SetMax(s)    -> " (setmax " ^ z3_string_of_set s ^ ")"

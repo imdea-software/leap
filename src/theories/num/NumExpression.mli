@@ -19,6 +19,7 @@ and integer =
   | Sub           of integer * integer
   | Mul           of integer * integer
   | Div           of integer * integer
+  | Mod           of integer * integer
   | ArrayRd       of Expression.arrays * tid
   | SetMin        of set
   | SetMax        of set

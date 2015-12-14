@@ -164,6 +164,7 @@ let cut_off_normalized (expr:conjunctive_formula) : MS.t =
     | PathT _        -> numaddr := !numaddr + 2 (* the witnesses of p1 != p2 *)
     | MemT _         -> ()
     | IntT _         -> ()
+    | TidArrayT _    -> numtid := !numtid + 1 (* the witness of T1 != T2 *)
     | BucketArrayT _ -> ()
     | MarkT _        -> ()
     | BucketT _      -> ()
@@ -231,6 +232,7 @@ let union_eq_cutoff (info:union_info) ((x,y):(Expr.term * Expr.term)) : union_in
   | PathT _        -> union_count_addr info (Expr.Eq(x,y)) (* the witnesses of p1 != p2 *)
   | MemT _         -> info
   | IntT _         -> info
+  | TidArrayT _    -> union_count_tid info (Expr.Eq(x,y)) (* the witness of T1 != T2 *)
   | BucketArrayT _ -> info
   | MarkT _        -> info
   | BucketT _      -> info
@@ -250,6 +252,7 @@ let union_ineq_cutoff (info:union_info) ((x,y):(Expr.term * Expr.term)) : union_
   | PathT _        -> union_count_addr info (Expr.InEq(x,y)) (* the witnesses of p1 != p2 *)
   | MemT _         -> info
   | IntT _         -> info
+  | TidArrayT _    -> union_count_tid info (Expr.InEq(x,y)) (* the witness of T1 != T2 *)
   | BucketArrayT _ -> info
   | MarkT _        -> info
   | BucketT _      -> info
@@ -343,6 +346,7 @@ let prune_eq (x:term) (y:term) : (term * term) option =
     | MemT _         -> Some (x,y)
     | IntT _         -> None
     | BucketArrayT _ -> None
+    | TidArrayT _    -> Some (x,y) (* the witness of T1 != T2 *)
     | MarkT _        -> None
     | BucketT _      -> None
     | VarUpdate _    -> assert(false) (* ALE: Not sure if OK *)

@@ -174,7 +174,7 @@ let check_type_elem t =
     | _            -> raise(WrongType t)
 
 
-let check_type_thid t =
+let check_type_tid t =
   match t with
       E.TidT th -> th
     | E.VarT v   -> let var = E.V.set_sort v E.Tid in
@@ -273,24 +273,53 @@ let check_type_tidarr t =
     | _                  -> raise(WrongType t)
 
 
+let check_type_mark t =
+  match t with
+      E.MarkT m -> m
+    | E.VarT v  -> let var = E.V.set_sort v E.Mark in
+                     check_sort_var var;
+                     E.VarMark var
+    | _         -> raise(WrongType t)
+
+
+let check_type_bucket t =
+  match t with
+      E.BucketT b -> b
+    | E.VarT v  -> let var = E.V.set_sort v E.Bucket in
+                     check_sort_var var;
+                     E.VarBucket var
+    | _         -> raise(WrongType t)
+
+
+let check_type_bucketarr t =
+  match t with
+      E.BucketArrayT arr -> arr
+    | E.VarT v  -> let var = E.V.set_sort v E.BucketArray in
+                     check_sort_var var;
+                     E.VarBucketArray var
+    | _         -> raise(WrongType t)
+
 
 let check_and_get_sort (id:string) : E.sort =
   match id with
-    "tid"     -> E.Tid
-  | "elem"    -> E.Elem
-  | "addr"    -> E.Addr
-  | "cell"    -> E.Cell
-  | "mem"     -> E.Mem
-  | "path"    -> E.Path
-  | "bool"    -> E.Bool
-  | "addrSet" -> E.Set
-  | "tidSet"  -> E.SetTh
-  | "intSet"  -> E.SetInt
-  | "elemSet" -> E.SetElem
-  | "int"     -> E.Int
-  | "array"   -> E.Array
-  | "addrarr" -> E.AddrArray
-  | "tidarr"  -> E.TidArray
+    "tid"       -> E.Tid
+  | "elem"      -> E.Elem
+  | "addr"      -> E.Addr
+  | "cell"      -> E.Cell
+  | "mem"       -> E.Mem
+  | "path"      -> E.Path
+  | "bool"      -> E.Bool
+  | "addrSet"   -> E.Set
+  | "tidSet"    -> E.SetTh
+  | "intSet"    -> E.SetInt
+  | "elemSet"   -> E.SetElem
+  | "int"       -> E.Int
+  | "array"     -> E.Array
+  | "addrarr"   -> E.AddrArray
+  | "tidarr"    -> E.TidArray
+  | "mark"      -> E.Mark
+  | "bucket"    -> E.Bucket
+  | "bucketarr" -> E.BucketArray
   | _ -> begin
            Interface.Err.msg "Unrecognized sort" $
              sprintf "A sort was expected, but \"%s\" was found" id;
@@ -477,6 +506,9 @@ let define_ident (proc_name:E.V.procedure_name)
 %token SETPAIRIN SETPAIRSUBSETEQ
 %token SETPAIRININTPAIR SETPAIRINTIDPAIR SETPAIRUNIQUETID SETPAIRUNIQUEINT
 %token THREAD
+%token MARK_T MARK_F MARKED
+%token MKBUCKET BINIT BEND BREGION BTID BARRAYUPD
+%token HASHMAP
 %token OPEN_BRACKET CLOSE_BRACKET
 %token OPEN_SET CLOSE_SET
 %token OPEN_PAREN CLOSE_PAREN
@@ -563,7 +595,7 @@ let define_ident (proc_name:E.V.procedure_name)
 %type <E.literal> literal
 %type <E.term> term
 %type <E.cell> cell
-%type <E.tid> thid
+%type <E.tid> tid
 %type <E.elem> elem
 %type <E.addr> addr
 %type <E.mem> mem
@@ -581,6 +613,9 @@ let define_ident (proc_name:E.V.procedure_name)
 %type <E.term> arrays
 %type <E.addrarr> addrarr
 %type <E.tidarr> tidarr
+%type <E.mark> mark
+%type <E.bucket> bucket
+%type <E.bucketarr> bucketarr
 
 %type <PVD.t> pvd
 %type <(PVD.node_id_t * E.formula) list> node_list
@@ -998,6 +1033,21 @@ literal :
       let elems  = parser_check_type check_type_setelem $13 E.SetElem get_str_expr in
         Formula.Atom (E.Skiplist (h,s,l,a_from,a_to,elems))
     }
+  | HASHMAP OPEN_PAREN term COMMA term COMMA term COMMA term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "hashmap(%s,%s,%s,%s,%s)"
+                                        (E.term_to_str $3)
+                                        (E.term_to_str $5)
+                                        (E.term_to_str $7)
+                                        (E.term_to_str $9)
+                                        (E.term_to_str $11) in
+      let h  = parser_check_type check_type_mem        $3 E.Mem get_str_expr in
+      let s  = parser_check_type check_type_set        $5 E.Set get_str_expr in
+      let se = parser_check_type check_type_setelem    $7 E.SetElem get_str_expr in
+      let bb = parser_check_type check_type_bucketarr  $9 E.BucketArray get_str_expr in
+      let i  = parser_check_type check_type_int       $11 E.Int get_str_expr in
+        Formula.Atom (E.Hashmap (h,s,se,bb,i))
+    }
   | IN OPEN_PAREN term COMMA term CLOSE_PAREN
     {
       let get_str_expr () = sprintf "in(%s,%s)" (E.term_to_str $3)
@@ -1018,7 +1068,7 @@ literal :
     {
       let get_str_expr () = sprintf "tin(%s,%s)" (E.term_to_str $3)
                                                  (E.term_to_str $5) in
-      let th = parser_check_type check_type_thid  $3 E.Tid get_str_expr in
+      let th = parser_check_type check_type_tid  $3 E.Tid get_str_expr in
       let s  = parser_check_type check_type_setth $5 E.SetTh get_str_expr in
         Formula.Atom (E.InTh (th,s))
     }
@@ -1084,7 +1134,7 @@ literal :
     {
       let get_str_expr () = sprintf "inintpair(%s,%s)" (E.term_to_str $3)
                                                        (E.term_to_str $5) in
-      let t = parser_check_type check_type_thid $3 E.Tid get_str_expr in
+      let t = parser_check_type check_type_tid $3 E.Tid get_str_expr in
       let s = parser_check_type check_type_setpair $5 E.SetPair get_str_expr in
         Formula.Atom (E.InTidPair(t,s))
     }
@@ -1221,7 +1271,7 @@ term :
     { E.SetT($1) }
   | elem
     { E.ElemT($1) }
-  | thid
+  | tid
     { E.TidT($1) }
   | addr
     { E.AddrT($1) }
@@ -1249,6 +1299,12 @@ term :
     { E.AddrArrayT($1) }
   | tidarr
     { E.TidArrayT($1) }
+  | mark
+    { E.MarkT($1) }
+  | bucket
+    { E.BucketT($1) }
+  | bucketarr
+    { E.BucketArrayT($1) } 
   | OPEN_PAREN term CLOSE_PAREN
     { $2 }
 
@@ -1386,6 +1442,13 @@ set :
       let l = parser_check_type check_type_int $7 E.Int get_str_expr in
         E.AddrToSetAt(h,a,l)
     }
+  | term DOT BREGION
+    {
+      let get_str_expr () = sprintf "%s.bregion" (E.term_to_str $1) in
+      let b = parser_check_type check_type_bucket $1 E.Bucket get_str_expr in
+        E.BucketRegion(b)
+    }
+
 
 
 /* ELEM terms */
@@ -1409,7 +1472,7 @@ elem :
 
 /* THID terms */
 
-thid :
+tid :
   | term DOT LOCKID
     {
       let get_str_expr () = sprintf "%s.lockid" (E.term_to_str $1) in
@@ -1423,6 +1486,12 @@ thid :
       let get_str_expr () = sprintf "tid_of(%s)" (E.term_to_str $3) in
       let p = parser_check_type check_type_pair $3 E.Pair get_str_expr in
         E.PairTid(p)
+    }
+  | term DOT BTID
+    {
+      let get_str_expr () = sprintf "%s.btid" (E.term_to_str $1) in
+      let b = parser_check_type check_type_bucket $1 E.Bucket get_str_expr in
+        E.BucketTid(b)
     }
 
 
@@ -1474,7 +1543,18 @@ addr :
       let p = parser_check_type check_type_path $5 E.Path get_str_expr in
         E.LastLocked(h,p)
     }
-
+  | term DOT BINIT
+    {
+      let get_str_expr () = sprintf "%s.binit" (E.term_to_str $1) in
+      let b = parser_check_type check_type_bucket $1 E.Bucket get_str_expr in
+        E.BucketInit(b)
+    }
+  | term DOT BEND
+    {
+      let get_str_expr () = sprintf "%s.bend" (E.term_to_str $1) in
+      let b = parser_check_type check_type_bucket $1 E.Bucket get_str_expr in
+        E.BucketEnd(b)
+    }
 
 
 /* CELL terms */
@@ -1490,7 +1570,7 @@ cell :
                                            (E.term_to_str $7) in
       let d  = parser_check_type check_type_elem $3 E.Elem get_str_expr in
       let a  = parser_check_type check_type_addr $5 E.Addr get_str_expr in
-      let th = parser_check_type check_type_thid $7 E.Tid get_str_expr in
+      let th = parser_check_type check_type_tid $7 E.Tid get_str_expr in
         E.MkCell(d,a,th)
     }
   | MKCELL OPEN_PAREN term COMMA term COMMA term COMMA term CLOSE_PAREN
@@ -1522,7 +1602,7 @@ cell :
                     parser_check_type check_type_addr a E.Addr get_str_expr
                   ) $6 in
       let tids = List.map (fun t ->
-                   parser_check_type check_type_thid t E.Tid get_str_expr
+                   parser_check_type check_type_tid t E.Tid get_str_expr
                  ) $10 in
       if List.length addrs <> List.length tids then
         begin
@@ -1539,7 +1619,7 @@ cell :
       let get_str_expr () = sprintf "%s.lock(%s)" (E.term_to_str $1)
                                                   (E.term_to_str $5) in
       let c = parser_check_type check_type_cell $1 E.Cell get_str_expr in
-      let t = parser_check_type check_type_thid $5 E.Tid get_str_expr in
+      let t = parser_check_type check_type_tid $5 E.Tid get_str_expr in
         E.CellLock(c,t)
     }
   | term DOT LOCKAT OPEN_PAREN term COMMA term CLOSE_PAREN
@@ -1548,7 +1628,7 @@ cell :
                                                   (E.term_to_str $5) in
       let c = parser_check_type check_type_cell $1 E.Cell get_str_expr in
       let l = parser_check_type check_type_int  $5 E.Int get_str_expr in
-      let t = parser_check_type check_type_thid $7 E.Tid get_str_expr in
+      let t = parser_check_type check_type_tid $7 E.Tid get_str_expr in
         E.CellLockAt(c,l,t)
     }
   | term DOT UNLOCK
@@ -1590,7 +1670,7 @@ setth :
   | SINGLETH OPEN_PAREN term CLOSE_PAREN
     {
       let get_str_expr() = sprintf "tsingle(%s)" (E.term_to_str $3) in
-      let th = parser_check_type check_type_thid  $3 E.Tid get_str_expr in
+      let th = parser_check_type check_type_tid  $3 E.Tid get_str_expr in
         E.SinglTh(th)
     }
   | UNIONTH OPEN_PAREN term COMMA term CLOSE_PAREN
@@ -1892,7 +1972,7 @@ pair :
       let get_str_expr () = sprintf "(%s,%s)" (E.term_to_str $2)
                                               (E.term_to_str $4) in
       let i  = parser_check_type check_type_int $2 E.Int get_str_expr in
-      let t  = parser_check_type check_type_thid $4 E.Tid get_str_expr in
+      let t  = parser_check_type check_type_tid $4 E.Tid get_str_expr in
         E.IntTidPair(i,t)
     }
   | SETPAIRMIN OPEN_PAREN term CLOSE_PAREN
@@ -1919,19 +1999,25 @@ arrays :
       try
         let at = parser_check_type check_type_tidarr $1 E.TidArray get_str_expr in
           E.TidT (E.TidArrRd (at,i))
-      with _ -> try
-        let aa = parser_check_type check_type_addrarr $1 E.AddrArray get_str_expr in
-          E.AddrT (E.AddrArrRd (aa,i))
-      with e -> try
-        let t = parser_check_type check_type_thid $1 E.Tid get_str_expr in
-        match t with
-        | E.CellLockId c -> E.TidT (E.CellLockIdAt (c,i))
-        | _                 -> raise(e)
-      with e ->
-        let a = parser_check_type check_type_addr $1 E.Addr get_str_expr in
-        match a with
-        | E.Next c -> E.AddrT (E.ArrAt (c,i))
-        | _           -> raise(e)
+      with _ ->
+        try
+          let aa = parser_check_type check_type_addrarr $1 E.AddrArray get_str_expr in
+            E.AddrT (E.AddrArrRd (aa,i))
+        with e ->
+          try
+          let bb = parser_check_type check_type_bucketarr $1 E.BucketArray get_str_expr in
+            E.BucketT (E.BucketArrRd (bb,i))
+          with e ->
+            try
+              let t = parser_check_type check_type_tid $1 E.Tid get_str_expr in
+              match t with
+              | E.CellLockId c -> E.TidT (E.CellLockIdAt (c,i))
+              | _                 -> raise(e)
+            with e ->
+              let a = parser_check_type check_type_addr $1 E.Addr get_str_expr in
+              match a with
+              | E.Next c -> E.AddrT (E.ArrAt (c,i))
+              | _           -> raise(e)
     }
   | ARR_UPDATE OPEN_PAREN term COMMA term COMMA term CLOSE_PAREN
     {
@@ -1941,7 +2027,7 @@ arrays :
       let i = parser_check_type check_type_int $5 E.Int get_str_expr in
       try
         let at = parser_check_type check_type_tidarr $3 E.TidArray get_str_expr in
-        let t = parser_check_type check_type_thid $7 E.Tid get_str_expr in
+        let t = parser_check_type check_type_tid $7 E.Tid get_str_expr in
           E.TidArrayT (E.TidArrayUp (at,i,t))
       with _ ->
         let aa = parser_check_type check_type_addrarr $3 E.AddrArray get_str_expr in
@@ -1969,6 +2055,56 @@ tidarr :
         E.CellTids(c)
     }
 
+
+/* MARK term */
+mark :
+  | MARK_T
+    {
+      E.MarkTrue
+    }
+  | MARK_F
+    {
+      E.MarkFalse
+    }
+  | term DOT MARKED
+    {
+      let get_str_expr () = sprintf "%s.marked" (E.term_to_str $1) in
+      let c = parser_check_type check_type_cell $1 E.Cell get_str_expr in
+        E.Marked(c)
+    }
+
+
+/* BUCKET term */
+bucket :
+  | MKBUCKET OPEN_PAREN term COMMA term COMMA term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "mkbucket(%s,%s,%s,%s)"
+                                           (E.term_to_str $3)
+                                           (E.term_to_str $5)
+                                           (E.term_to_str $7)
+                                           (E.term_to_str $9) in
+      let i = parser_check_type check_type_addr $3 E.Addr get_str_expr in
+      let e = parser_check_type check_type_addr $5 E.Addr get_str_expr in
+      let s = parser_check_type check_type_set $7 E.Set get_str_expr in
+      let t = parser_check_type check_type_tid $9 E.Tid get_str_expr in
+        E.MkBucket(i,e,s,t)
+    }
+
+
+/* BUCKETARRAY term */
+bucketarr :
+  | BARRAYUPD OPEN_PAREN term COMMA term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "bucketArrUpd(%s,%s,%s)"
+                                           (E.term_to_str $3)
+                                           (E.term_to_str $5)
+                                           (E.term_to_str $7) in
+      let bb = parser_check_type check_type_bucketarr $3 E.BucketArray get_str_expr in
+      let i = parser_check_type check_type_int $5 E.Int get_str_expr in
+      let b = parser_check_type check_type_bucket $7 E.Bucket get_str_expr in
+        E.BucketArrayUp(bb,i,b)
+    }
+
 /************************   TEMPORARY VERIFICATION CONDITIONS **********************/
 
 
@@ -1986,7 +2122,7 @@ vc_info :
         let tid_const = $9 in
         let rho_phi = $12 in
         let goal_phi = $15 in
-        let trans_tid = parser_check_type check_type_thid $18 E.Tid (fun _ -> (E.term_to_str $18)) in
+        let trans_tid = parser_check_type check_type_tid $18 E.Tid (fun _ -> (E.term_to_str $18)) in
         let (tid_eqs, tid_ineqs, voc_const) =
           List.fold_left (fun (eqs,ineqs,voc) a ->
                             match a with
@@ -2026,8 +2162,8 @@ tid_constraint :
       let (t1,t2) = $1 in
       let get_str_expr () = sprintf "%s = %s" (E.term_to_str t1)
                                               (E.term_to_str t2) in
-      let t1' = parser_check_type check_type_thid t1 E.Tid get_str_expr in
-      let t2' = parser_check_type check_type_thid t2 E.Tid get_str_expr
+      let t1' = parser_check_type check_type_tid t1 E.Tid get_str_expr in
+      let t2' = parser_check_type check_type_tid t2 E.Tid get_str_expr
       in
         E.Eq (E.TidT t1', E.TidT t2')
     }
@@ -2036,8 +2172,8 @@ tid_constraint :
       let (t1,t2) = $1 in
       let get_str_expr () = sprintf "%s != %s" (E.term_to_str t1)
                                                (E.term_to_str t2) in
-      let t1' = parser_check_type check_type_thid t1 E.Tid get_str_expr in
-      let t2' = parser_check_type check_type_thid t2 E.Tid get_str_expr
+      let t1' = parser_check_type check_type_tid t1 E.Tid get_str_expr in
+      let t2' = parser_check_type check_type_tid t2 E.Tid get_str_expr
       in
         E.InEq (E.TidT t1', E.TidT t2')
     }

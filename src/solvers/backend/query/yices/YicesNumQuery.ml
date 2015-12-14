@@ -462,6 +462,7 @@ struct
       | NE.Sub(x,y)     -> " (- " ^ (tostr x) ^ (tostr y) ^ ")"
       | NE.Mul(x,y)     -> " (* " ^ (tostr x) ^ (tostr y) ^ ")"
       | NE.Div(x,y)     -> " (/ " ^ (tostr x) ^ (tostr y) ^ ")"
+      | NE.Mod(x,y)     -> " (mod " ^ (tostr x) ^ (tostr y) ^ ")"
       | NE.ArrayRd(_,_) -> raise(NotSupportedInYices(NE.integer_to_str t))
       | NE.SetMin(s)    -> " (setmin " ^ yices_string_of_set s ^ ")"
       | NE.SetMax(s)    -> " (setmax " ^ yices_string_of_set s ^ ")"

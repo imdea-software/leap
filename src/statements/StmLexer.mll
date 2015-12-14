@@ -51,6 +51,7 @@ let _ = List.iter (fun (kwd, tok) -> Hashtbl.add keyword_table kwd tok)
             ("havocSLElem"  , HAVOCSKIPLISTELEM);
             ("havocLevel"   , HAVOCLEVEL);
             ("skiplist"     , SKIPLIST);
+            ("hashmap"      , HASHMAP);
             ("upd"          , UPDATE);
             ("T"            , MARK_T);
             ("F"            , MARK_F);
@@ -82,6 +83,15 @@ let _ = List.iter (fun (kwd, tok) -> Hashtbl.add keyword_table kwd tok)
             ("getp"         , GETP);
             ("append"       , APPEND);
             ("reach"        , REACH);
+            ("T"            , MARK_T);
+            ("F"            , MARK_F);
+            ("marked"       , MARKED);
+            ("mkbucket"     , MKBUCKET);
+            ("binit"        , BINIT);
+            ("bend"         , BEND);
+            ("bregion"      , BREGION);
+            ("btid"         , BTID);
+            ("bucketArrUpd" , BARRAYUPD);
             ("in"           , IN);
             ("subseteq"     , SUBSETEQ);
             ("tin"          , INTH);
