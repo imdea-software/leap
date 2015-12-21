@@ -15,6 +15,8 @@ type sort =
   | Bool
   | Mark
   | Bucket
+  | Lock
+  | LockArray
   | Unknown
 
 type var_info_t
@@ -40,6 +42,8 @@ type term =
   | BucketArrayT of bucketarr
   | MarkT        of mark
   | BucketT      of bucket
+  | LockT        of lock
+  | LockArrayT   of lockarr
   | VarUpdate    of V.t * tid * term
 and eq = term * term
 and diseq = term * term
@@ -55,6 +59,7 @@ and integer =
   | IntMul        of integer * integer
   | IntDiv        of integer * integer
   | IntMod        of integer * integer
+  | HashCode      of elem
 and tidarr =
   | VarTidArray   of V.t
   | TidArrayUp    of tidarr * integer * tid
@@ -74,6 +79,15 @@ and tid =
   | CellLockId of cell
   | BucketTid  of bucket
   | TidArrRd   of tidarr * integer
+  | LockId       of lock
+and lock =
+    VarLock       of V.t
+  | LLock         of lock * tid
+  | LUnlock       of lock
+  | LockArrRd     of lockarr * integer
+and lockarr =
+  | VarLockArray  of V.t
+  | LockArrayUp   of lockarr * integer * lock
 and elem =
     VarElem of V.t
   | CellData of cell

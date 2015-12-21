@@ -20,6 +20,8 @@ type sort =
   | Array
   | AddrArray
   | TidArray
+  | Lock
+  | LockArray
   | Mark
   | Bucket
   | BucketArray
@@ -75,6 +77,8 @@ and term =
   | BucketArrayT  of bucketarr
   | MarkT         of mark
   | BucketT       of bucket
+  | LockT         of lock
+  | LockArrayT    of lockarr
 
 and eq =          term * term
 
@@ -112,6 +116,7 @@ and integer =
   | IntSetMax     of setint
   | CellMax       of cell
   | HavocLevel
+  | HashCode      of elem
   | PairInt       of pair
 
 and pair =
@@ -143,6 +148,17 @@ and tid =
   | TidArrRd      of tidarr * integer
   | PairTid       of pair
   | BucketTid     of bucket
+  | LockId        of lock
+
+and lock =
+    VarLock       of V.t
+  | LLock         of lock * tid
+  | LUnlock       of lock
+  | LockArrRd     of lockarr * integer
+
+and lockarr =
+  | VarLockArray  of V.t
+  | LockArrayUp   of lockarr * integer * lock
 
 and elem =
     VarElem           of V.t
@@ -741,6 +757,7 @@ and integer_trans (fs:'info trans_functions_t)
   | IntSetMax(s)        -> IntSetMax(fs.setint_f info s)
   | CellMax(c)          -> CellMax(fs.cell_f info c)
   | HavocLevel          -> HavocLevel
+  | HashCode (e)        -> HashCode(fs.elem_f info e)
   | PairInt p           -> PairInt (fs.pair_f info p)
 
 
@@ -867,6 +884,11 @@ let rec is_primed_tidarray (a:tidarr) : bool =
   | TidArrayUp (a',_,_) -> is_primed_tidarray a'
   | CellTids _            -> false
 
+let rec is_primed_lockarray (a:lockarr) : bool =
+  match a with
+    VarLockArray v       -> V.is_primed v
+  | LockArrayUp (a',_,_) -> is_primed_lockarray a'
+
 let is_primed_tid (th:tid) : bool =
   match th with
     VarTh v          -> V.is_primed v
@@ -878,6 +900,7 @@ let is_primed_tid (th:tid) : bool =
   | PairTid _        -> false
   (* FIX: Propagate the query inside cell??? *)
   | BucketTid (b)    -> false
+  | LockId (l)       -> false
 
 
 let var_base_info = V.unparam>>V.unprime
@@ -930,6 +953,8 @@ let rec priming_term (pr:bool)
   | BucketArrayT(arr) -> BucketArrayT   (priming_bucketarray  pr prime_set arr)
   | MarkT(m)          -> MarkT          (priming_mark         pr prime_set m)
   | BucketT(b)        -> BucketT        (priming_bucket       pr prime_set b)
+  | LockT(l)          -> LockT          (priming_lock         pr prime_set l)
+  | LockArrayT(arr)   -> LockArrayT     (priming_lockarray    pr prime_set arr)
 
 
 and priming_expr (pr:bool)
@@ -1062,6 +1087,29 @@ and priming_tid (pr:bool)
                                       priming_int pr prime_set l)
   | PairTid p           -> PairTid(priming_pair pr prime_set p)
   | BucketTid b         -> BucketTid(priming_bucket pr prime_set b)
+  | LockId l            -> LockId(priming_lock pr prime_set l)
+
+
+and priming_lock (pr:bool)
+                 (prime_set:(V.VarSet.t option * V.VarSet.t option))
+                 (expr:lock) : lock =
+  match expr with
+    VarLock v       -> VarLock (priming_variable pr prime_set v)
+  | LLock (l,t) -> LLock (priming_lock pr prime_set l,
+                          priming_tid  pr prime_set t)
+  | LUnlock (l) -> LUnlock (priming_lock pr prime_set l)
+  | LockArrRd (ll,i) -> LockArrRd (priming_lockarray pr prime_set ll,
+                                   priming_int pr prime_set i)
+
+
+and priming_lockarray (pr:bool)
+                      (prime_set:(V.VarSet.t option * V.VarSet.t option))
+                      (expr:lockarr) : lockarr =
+  match expr with
+    VarLockArray v       -> VarLockArray (priming_variable pr prime_set v)
+  | LockArrayUp(arr,i,l) -> LockArrayUp  (priming_lockarray pr prime_set arr,
+                                          priming_int  pr prime_set i,
+                                          priming_lock pr prime_set l)
 
 
 and priming_cell (pr:bool)
@@ -1254,6 +1302,7 @@ and priming_int (pr:bool)
   | IntSetMax(s)      -> IntSetMax(priming_setint pr prime_set s)
   | CellMax c         -> CellMax (priming_cell pr prime_set c)
   | HavocLevel        -> HavocLevel
+  | HashCode (e)      -> HashCode (priming_elem pr prime_set e)
   | PairInt p         -> PairInt (priming_pair pr prime_set p)
 
 
@@ -1442,6 +1491,7 @@ let rec tid_to_str (th:tid) : string =
                                              (integer_to_str l)
   | PairTid p           -> sprintf "tid_of(%s)" (pair_to_str p)
   | BucketTid b         -> sprintf "%s.btid" (bucket_to_str b)
+  | LockId l            -> sprintf "%s.id" (lock_to_str l)
 
 
 and param_tid_to_str (expr:tid) : string =
@@ -1459,6 +1509,23 @@ and param_tid_to_str (expr:tid) : string =
   | TidArrRd _     -> sprintf "(%s)" (tid_to_str expr)
   | PairTid _      -> sprintf "(%s)" (tid_to_str expr)
   | BucketTid _    -> sprintf "(%s)" (tid_to_str expr)
+  | LockId _       -> sprintf "(%s)" (tid_to_str expr)
+
+
+and lock_to_str (expr:lock) : string =
+  match expr with
+    VarLock v       -> V.to_str v
+  | LLock (l,t) -> sprintf "lock(%s,%s)" (lock_to_str l) (tid_to_str t)
+  | LUnlock (l) -> sprintf "unlock(%s)" (lock_to_str l)
+  | LockArrRd (ll,i) -> sprintf "%s[%s]" (lockarr_to_str ll) (integer_to_str i)
+
+
+and lockarr_to_str (expr:lockarr) : string =
+  match expr with
+    VarLockArray v       -> V.to_str v
+  | LockArrayUp(arr,i,l) -> sprintf "%s{%s<-%s}" (lockarr_to_str arr)
+                                                 (integer_to_str i)
+                                                 (lock_to_str l)
 
 
 and tid_option_to_str (expr:tid option) : string =
@@ -1642,14 +1709,15 @@ and integer_to_str (expr:integer) : string =
                                            (integer_to_str i2)
   | IntDiv (i1,i2)    -> sprintf "%s / %s" (integer_to_str i1)
                                            (integer_to_str i2)
-  | IntMod (i1,i2)    -> sprintf "mod(%s,%s)" (integer_to_str i1)
-                                              (integer_to_str i2)
+  | IntMod (i1,i2)    -> sprintf "%s %% %s" (integer_to_str i1)
+                                            (integer_to_str i2)
   | IntArrayRd(arr,t) -> sprintf "%s%s" (arrays_to_str arr)
                                         (param_tid_to_str t)
   | IntSetMin(s)      -> sprintf "setIntMin(%s)" (setint_to_str s)
   | IntSetMax(s)      -> sprintf "setIntMax(%s)" (setint_to_str s)
   | CellMax(c)        -> sprintf "%s.max" (cell_to_str c)
   | HavocLevel        -> sprintf "havocLevel()"
+  | HashCode(e)       -> sprintf "hashCode(%s)" (elem_to_str e)
   | PairInt p         -> sprintf "int_of(%s)" (pair_to_str p)
 
 
@@ -1910,6 +1978,8 @@ and term_to_str (expr:term) : string =
   | BucketArrayT(arr) -> (bucketarr_to_str arr)
   | MarkT(m)          -> (mark_to_str m)
   | BucketT(b)        -> (bucket_to_str b)
+  | LockT(l)          -> (lock_to_str l)
+  | LockArrayT(arr)   -> (lockarr_to_str arr)
 
 
 and expr_to_str (expr:expr_t) : string =
@@ -1947,6 +2017,8 @@ let var_to_term (v:V.t) : term =
   | BucketArray -> BucketArrayT  (VarBucketArray v)
   | Mark        -> MarkT         (VarMark        v)
   | Bucket      -> BucketT       (VarBucket      v)
+  | Lock        -> LockT         (VarLock        v)
+  | LockArray   -> LockArrayT    (VarLockArray   v)
   | Bool        -> VarT           v
 
 
@@ -1989,6 +2061,8 @@ let term_sort (t:term) : sort =
   | BucketArrayT _  -> BucketArray
   | MarkT _         -> Mark
   | BucketT _       -> Bucket
+  | LockT _         -> Lock
+  | LockArrayT _    -> LockArray
 
 
 (* Vocabulary to variable conversion *)
@@ -2359,6 +2433,8 @@ let sort_to_str (s:sort) : string =
     | BucketArray -> "bucketarr"
     | Mark        -> "mark"
     | Bucket      -> "bucket"
+    | Lock        -> "lock"
+    | LockArray   -> "lockarr"
     | Unknown     -> "unknown"
 
  
@@ -2464,6 +2540,8 @@ let rec get_vars_term (expr:term) (base:V.t -> V.VarSet.t) : V.VarSet.t =
   | BucketArrayT(arr) -> get_vars_bucketarr arr base
   | MarkT(m)          -> get_vars_mark m base
   | BucketT(b)        -> get_vars_bucket b base
+  | LockT(l)          -> get_vars_lock l base
+  | LockArrayT(arr)   -> get_vars_lockarr arr base
 
 
 and get_vars_expr (e:expr_t) (base:V.t -> V.VarSet.t) : V.VarSet.t =
@@ -2585,6 +2663,29 @@ and get_vars_tid (th:tid) (base:V.t -> V.VarSet.t) : V.VarSet.t =
   | TidArrRd(arr,l)      -> (get_vars_tidarr arr base) @@ (get_vars_int l base)
   | PairTid p            -> (get_vars_pair p base)
   | BucketTid b          -> (get_vars_bucket b base)
+  | LockId l             -> (get_vars_lock l base)
+
+
+and get_vars_lock (x:lock) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+  match x with
+    VarLock v       -> V.VarSet.union (base v)
+                         (match V.parameter v with
+                          | V.Shared -> V.VarSet.empty
+                          | V.Local t -> base t)
+  | LLock (l,t) -> (get_vars_lock l base) @@ (get_vars_tid t base)
+  | LUnlock (l) -> (get_vars_lock l base)
+  | LockArrRd (ll,i) -> (get_vars_lockarr ll base) @@ (get_vars_int i base)
+
+
+and get_vars_lockarr (xx:lockarr) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+  match xx with
+    VarLockArray v       -> V.VarSet.union (base v)
+                              (match V.parameter v with
+                               | V.Shared -> V.VarSet.empty
+                               | V.Local t -> base t)
+  | LockArrayUp(arr,i,l) -> (get_vars_lockarr arr base) @@
+                            (get_vars_int i base)      @@
+                            (get_vars_lock l base)
 
 
 and get_vars_cell (c:cell) (base:V.t -> V.VarSet.t) : V.VarSet.t =
@@ -2767,6 +2868,7 @@ and get_vars_int (i:integer) (base:V.t -> V.VarSet.t) : V.VarSet.t =
   | IntSetMax(s)      -> (get_vars_setint s base)
   | CellMax(c)        -> (get_vars_cell c base)
   | HavocLevel        -> V.VarSet.empty
+  | HashCode(e)       -> (get_vars_elem e base)
   | PairInt p         -> (get_vars_pair p base)
 
 
@@ -3142,6 +3244,8 @@ let rec voc_term (expr:term) : ThreadSet.t =
     | BucketArrayT(arr) -> voc_bucketarr arr
     | MarkT(m)          -> voc_mark m
     | BucketT(b)        -> voc_bucket b
+    | LockT(l)          -> voc_lock l
+    | LockArrayT(arr)   -> voc_lockarr arr
 
 
 and voc_expr (e:expr_t) : ThreadSet.t =
@@ -3228,6 +3332,21 @@ and voc_tid (th:tid) : ThreadSet.t =
   | TidArrRd(arr,l)      -> (voc_tidarr arr) @@ (voc_int l)
   | PairTid p            -> (voc_pair p)
   | BucketTid b          -> (voc_bucket b)
+  | LockId l             -> (voc_lock l)
+
+
+and voc_lock (x:lock) : ThreadSet.t =
+  match x with
+    VarLock v        -> get_tid_in v
+  | LLock (l,t)      -> (voc_lock l) @@ (voc_tid t)
+  | LUnlock (l)      -> (voc_lock l)
+  | LockArrRd (ll,i) -> (voc_lockarr ll) @@ (voc_int i)
+
+
+and voc_lockarr (xx:lockarr) : ThreadSet.t =
+  match xx with
+    VarLockArray v       -> get_tid_in v
+  | LockArrayUp(arr,i,l) -> (voc_lockarr arr) @@ (voc_int i) @@ (voc_lock l)
 
 
 and voc_cell (c:cell) : ThreadSet.t =
@@ -3359,7 +3478,8 @@ and voc_int (i:integer) : ThreadSet.t =
   | IntSetMax(s)      -> (voc_setint s)
   | CellMax(c)        -> (voc_cell c)
   | HavocLevel        -> ThreadSet.empty
-  | PairInt p         -> voc_pair p
+  | HashCode(e)       -> (voc_elem e)
+  | PairInt p         -> (voc_pair p)
 
 
 and voc_pair (p:pair) : ThreadSet.t =
@@ -3513,7 +3633,7 @@ let rec var_kind_term (kind:var_nature) (expr:term) : term list =
     | SetT(set)         -> var_kind_set kind set
     | AddrT(addr)       -> var_kind_addr kind addr
     | ElemT(elem)       -> var_kind_elem kind elem
-    | TidT(th)         -> var_kind_tid kind th
+    | TidT(th)          -> var_kind_tid kind th
     | CellT(cell)       -> var_kind_cell kind cell
     | SetThT(setth)     -> var_kind_setth kind setth
     | SetIntT(setint)   -> var_kind_setint kind setint
@@ -3529,6 +3649,8 @@ let rec var_kind_term (kind:var_nature) (expr:term) : term list =
     | BucketArrayT(arr) -> var_kind_bucketarr kind arr
     | MarkT(m)          -> var_kind_mark kind m
     | BucketT(b)        -> var_kind_bucket kind b
+    | LockT(l)          -> var_kind_lock kind l
+    | LockArrayT(arr)   -> var_kind_lockarr kind arr
 
 
 and var_kind_expr (kind:var_nature) (e:expr_t) : term list =
@@ -3627,6 +3749,23 @@ and var_kind_tid (kind:var_nature) (th:tid) : term list =
   | TidArrRd(arr,l)      -> (var_kind_tidarr kind arr) @ (var_kind_int kind l)
   | PairTid p            -> (var_kind_pair kind p)
   | BucketTid b          -> (var_kind_bucket kind b)
+  | LockId l             -> (var_kind_lock kind l)
+
+
+and var_kind_lock (kind:var_nature) (x:lock) : term list =
+  match x with
+    VarLock v        -> if var_nature v = kind then [LockT x] else []
+  | LLock (l,t)      -> (var_kind_lock kind l) @ (var_kind_tid kind t)
+  | LUnlock (l)      -> (var_kind_lock kind l)
+  | LockArrRd (ll,i) -> (var_kind_lockarr kind ll) @ (var_kind_int kind i)
+
+
+and var_kind_lockarr (kind:var_nature) (xx:lockarr) : term list =
+  match xx with
+    VarLockArray v       -> if var_nature v = kind then [LockArrayT xx] else []
+  | LockArrayUp(arr,i,l) -> (var_kind_lockarr kind arr) @
+                            (var_kind_int kind i)       @
+                            (var_kind_lock kind l)
 
 
 and var_kind_cell (kind:var_nature) (c:cell) : term list =
@@ -3781,6 +3920,7 @@ and var_kind_int (kind:var_nature) (i:integer) : term list =
   | IntSetMax(s)      -> (var_kind_setint kind s)
   | CellMax(c)        -> (var_kind_cell kind c)
   | HavocLevel        -> []
+  | HashCode(e)       -> (var_kind_elem kind e)
   | PairInt p         -> (var_kind_pair kind p)
 
 
@@ -3957,6 +4097,8 @@ let rec param_a_term (pfun:V.t option -> V.shared_or_local) (expr:term) : term =
   | BucketArrayT(arr) -> BucketArrayT (param_bucketarr    pfun arr    )
   | MarkT(m)          -> MarkT        (param_mark         pfun m      )
   | BucketT(b)        -> BucketT      (param_bucket       pfun b      )
+  | LockT(l)          -> LockT        (param_lock         pfun l      )
+  | LockArrayT(arr)   -> LockArrayT   (param_lockarr      pfun arr    )
 
 
 and param_expr_aux (pfun:V.t option -> V.shared_or_local) (expr:expr_t): expr_t =
@@ -4069,6 +4211,25 @@ and param_tid_aux (pfun:V.t option -> V.shared_or_local) (th:tid) : tid =
                                      param_int_aux pfun l)
   | PairTid p            -> PairTid(param_pair pfun p)
   | BucketTid b          -> BucketTid(param_bucket pfun b)
+  | LockId l             -> LockId(param_lock pfun l)
+
+
+and param_lock (pfun:V.t option -> V.shared_or_local) (l:lock) : lock =
+  match l with
+    VarLock v        -> VarLock (V.set_param v (pfun (Some v)))
+      (*TODO: Fix open array case for array variables *)
+  | LLock(l,t)       -> LLock(param_lock pfun l, param_tid_aux pfun t)
+  | LUnlock(l)       -> LUnlock(param_lock pfun l)
+  | LockArrRd (ll,i) -> LockArrRd(param_lockarr pfun ll, param_int_aux pfun i)
+
+
+and param_lockarr (pfun:V.t option -> V.shared_or_local) (arr:lockarr) : lockarr =
+  match arr with
+    VarLockArray v       -> VarLockArray (V.set_param v (pfun (Some v)))
+      (*TODO: Fix open array case for array variables *)
+  | LockArrayUp(arr,i,l) -> LockArrayUp(param_lockarr pfun arr,
+                                        param_int_aux pfun i,
+                                        param_lock pfun l)
 
 
 and param_cell_aux (pfun:V.t option -> V.shared_or_local) (c:cell) : cell =
@@ -4230,6 +4391,7 @@ and param_int_aux (pfun:V.t option -> V.shared_or_local) (i:integer) : integer =
   | IntSetMax(s)        -> IntSetMax(param_setint pfun s)
   | CellMax(c)          -> CellMax(param_cell_aux pfun c)
   | HavocLevel          -> HavocLevel
+  | HashCode(e)         -> HashCode(param_elem_aux pfun e)
   | PairInt p           -> PairInt (param_pair pfun p)
 
 
@@ -4500,6 +4662,8 @@ and subst_tid_term (subs:tid_subst_t) (expr:term) : term =
   | BucketArrayT(arr)   -> BucketArrayT(subst_tid_bucketarr subs arr)
   | MarkT(m)            -> MarkT(subst_tid_mark subs m)
   | BucketT(b)          -> BucketT(subst_tid_bucket subs b)
+  | LockT(l)            -> LockT(subst_tid_lock subs l)
+  | LockArrayT(arr)     -> LockArrayT(subst_tid_lockarr subs arr)
 and subst_tid_expr (subs:tid_subst_t) (expr:expr_t) : expr_t =
   match expr with
     Term t    -> Term (subst_tid_term subs t)
@@ -4718,6 +4882,7 @@ and subst_tid_int (subs:tid_subst_t) (i:integer) : integer =
   | IntSetMax(s)      -> IntSetMax(subst_tid_setint subs s)
   | CellMax(c)        -> CellMax(subst_tid_cell subs c)
   | HavocLevel        -> HavocLevel
+  | HashCode(e)       -> HashCode(subst_tid_elem subs e)
   | PairInt p         -> PairInt(subst_tid_pair subs p)
 
 
@@ -4728,6 +4893,24 @@ and subst_tid_pair (subs:tid_subst_t) (p:pair) : pair =
   | SetPairMin ps      -> SetPairMin (subst_tid_setpair subs ps)
   | SetPairMax ps      -> SetPairMax (subst_tid_setpair subs ps)
   | PairArrayRd(arr,t) -> PairArrayRd(subst_tid_array subs arr, t)
+
+
+and subst_tid_lock (subs:tid_subst_t) (expr:lock) : lock =
+  match expr with
+    VarLock v   -> VarLock (V.set_param v (subst_shared_or_local subs (V.parameter v)))
+  | LLock (l,t) -> LLock(subst_tid_lock subs l, subst_tid_th subs t)
+  | LUnlock (l) -> LUnlock(subst_tid_lock subs l)
+  | LockArrRd (ll,i) -> LockArrRd(subst_tid_lockarr subs ll,
+                                  subst_tid_int subs i)
+
+
+and subst_tid_lockarr (subs:tid_subst_t) (expr:lockarr) : lockarr =
+  match expr with
+    VarLockArray v       -> VarLockArray (V.set_param v (subst_shared_or_local subs (V.parameter v)))
+  | LockArrayUp(arr,i,l) -> LockArrayUp(subst_tid_lockarr subs arr,
+                                        subst_tid_int subs i,
+                                        subst_tid_lock subs l)
+
 
 and subst_tid_th (subs:tid_subst_t) (t:tid) : tid =
   try
@@ -4745,6 +4928,7 @@ and subst_tid_th (subs:tid_subst_t) (t:tid) : tid =
                                               subst_tid_int subs i)
               | PairTid p -> PairTid (subst_tid_pair subs p)
               | BucketTid b -> BucketTid (subst_tid_bucket subs b)
+              | LockId l -> LockId (subst_tid_lock subs l)
   end
 and subst_tid_atom (subs:tid_subst_t) (a:atom) : atom =
   match a with
@@ -4881,6 +5065,8 @@ let rec subst_vars_term (subs:V.subst_t) (expr:term) : term =
   | BucketArrayT(arr)   -> BucketArrayT(subst_vars_bucketarr subs arr)
   | MarkT(m)            -> MarkT(subst_vars_mark subs m)
   | BucketT(b)          -> BucketT(subst_vars_bucket subs b)
+  | LockT(l)            -> LockT(subst_vars_lock subs l)
+  | LockArrayT(arr)     -> LockArrayT(subst_vars_lockarr subs arr)
 
 
 and subst_vars_expr (subs:V.subst_t) (expr:expr_t) : expr_t =
@@ -5131,6 +5317,7 @@ and subst_vars_int (subs:V.subst_t) (i:integer) : integer =
   | IntSetMax(s)      -> IntSetMax(subst_vars_setint subs s)
   | CellMax(c)        -> CellMax(subst_vars_cell subs c)
   | HavocLevel        -> HavocLevel
+  | HashCode(e)       -> HashCode(subst_vars_elem subs e)
   | PairInt p         -> PairInt(subst_vars_pair subs p)
 
 
@@ -5141,6 +5328,23 @@ and subst_vars_pair (subs:V.subst_t) (p:pair) : pair =
   | SetPairMin ps      -> SetPairMin(subst_vars_setpair subs ps)
   | SetPairMax ps      -> SetPairMax(subst_vars_setpair subs ps)
   | PairArrayRd(arr,t) -> PairArrayRd(subst_vars_array subs arr, t)
+
+
+and subst_vars_lock (subs:V.subst_t) (expr:lock) : lock =
+  match expr with
+    VarLock v        -> VarLock (V.subst subs v)
+  | LLock (l,t)      -> LLock(subst_vars_lock subs l, subst_vars_th subs t)
+  | LUnlock (l)      -> LUnlock(subst_vars_lock subs l)
+  | LockArrRd (ll,i) -> LockArrRd(subst_vars_lockarr subs ll,
+                                  subst_vars_int subs i)
+
+
+and subst_vars_lockarr (subs:V.subst_t) (expr:lockarr) : lockarr =
+  match expr with
+    VarLockArray v       -> VarLockArray (V.subst subs v)
+  | LockArrayUp(arr,i,l) -> LockArrayUp(subst_vars_lockarr subs arr,
+                                        subst_vars_int subs i,
+                                        subst_vars_lock subs l)
 
 
 and subst_vars_th (subs:V.subst_t) (t:tid) : tid =
@@ -5156,6 +5360,7 @@ and subst_vars_th (subs:V.subst_t) (t:tid) : tid =
                                   subst_vars_int subs i)
   | PairTid p -> PairTid(subst_vars_pair subs p)
   | BucketTid b -> BucketTid(subst_vars_bucket subs b)
+  | LockId l -> LockId(subst_vars_lock subs l)
 
 
 and subst_vars_atom (subs:V.subst_t) (a:atom) : atom =
@@ -6034,6 +6239,20 @@ let required_sorts (phi:formula) : sort list =
     | TidArrRd (a,l)     -> append Tid [req_tidarr a;req_i l]
     | PairTid p          -> append Tid [req_pr p]
     | BucketTid b        -> append Tid [req_b b]
+    | LockId l           -> append Tid [req_l l]
+
+  and req_l (x:lock) : SortSet.t =
+    match x with
+    | VarLock _        -> single Lock
+    | LLock (l,t)      -> append Lock [req_l l; req_t t]
+    | LUnlock (l)      -> append Lock [req_l l]
+    | LockArrRd (ll,i) -> append Lock [req_lockarr ll; req_i i]
+
+  and req_lockarr (ll:lockarr) : SortSet.t =
+    match ll with
+    | VarLockArray _        -> single LockArray
+    | LockArrayUp (arr,i,l) -> append LockArray [req_lockarr arr;
+                                                 req_i i;req_l l]
 
   and req_s (s:set) : SortSet.t =
     match s with
@@ -6064,6 +6283,7 @@ let required_sorts (phi:formula) : sort list =
     | IntSetMax s      -> append Int [req_si s]
     | CellMax c        -> append Int [req_c c]
     | HavocLevel       -> single Int
+    | HashCode (e)     -> append Int [req_e e]
     | PairInt p        -> append Int [req_pr p]
 
   and req_pr (p:pair) : SortSet.t =
@@ -6119,6 +6339,8 @@ let required_sorts (phi:formula) : sort list =
     | BucketArrayT a     -> req_bucketarr a
     | MarkT m            -> req_mk m
     | BucketT b          -> req_b b
+    | LockT l            -> req_l l
+    | LockArrayT a       -> req_lockarr a
 
   and req_expr (e:expr_t) : SortSet.t =
     match e with
@@ -6234,6 +6456,8 @@ and to_plain_term (ops:fol_ops_t) (expr:term) : term =
   | BucketArrayT(arr) -> BucketArrayT (to_plain_bucketarr ops arr)
   | MarkT (m)         -> MarkT        (to_plain_mark ops m)
   | BucketT (b)       -> BucketT      (to_plain_bucket ops b)
+  | LockT (l)         -> LockT        (to_plain_lock ops l)
+  | LockArrayT (arr)  -> LockArrayT   (to_plain_lockarr ops arr)
 
 
 and to_plain_expr(ops:fol_ops_t) (expr:expr_t): expr_t =
@@ -6358,6 +6582,25 @@ and to_plain_tid_aux (ops:fol_ops_t) (th:tid) : tid =
                                       to_plain_int ops l)
   | PairTid p           -> PairTid(to_plain_pair ops p)
   | BucketTid(b)        -> BucketTid(to_plain_bucket ops b)
+  | LockId (l)          -> LockId(to_plain_lock ops l)
+
+
+and to_plain_lock (ops:fol_ops_t) (x:lock) : lock =
+  match x with
+    VarLock v        -> VarLock (ops.fol_var v)
+  | LLock (l,t)      -> LLock(to_plain_lock ops l, to_plain_tid_aux ops t)
+  | LUnlock (l)      -> LUnlock(to_plain_lock ops l)
+  | LockArrRd (ll,i) -> LockArrRd(to_plain_lockarr ops ll,
+                                    to_plain_int ops i)
+
+
+and to_plain_lockarr (ops:fol_ops_t) (xx:lockarr) : lockarr =
+  match xx with
+    VarLockArray v       -> VarLockArray (ops.fol_var v)
+      (*TODO: Fix open array case for array variables *)
+  | LockArrayUp(arr,i,l) -> LockArrayUp(to_plain_lockarr ops arr,
+                                        to_plain_int ops i,
+                                        to_plain_lock ops l)
 
 
 and to_plain_cell (ops:fol_ops_t) (c:cell) : cell =
@@ -6528,6 +6771,7 @@ and to_plain_int (ops:fol_ops_t) (i:integer) : integer =
   | IntSetMax(s)        -> IntSetMax(to_plain_setint ops s)
   | CellMax(c)          -> CellMax(to_plain_cell ops c)
   | HavocLevel          -> HavocLevel
+  | HashCode(e)         -> HashCode(to_plain_elem ops e)
   | PairInt p           -> PairInt(to_plain_pair ops p)
 
 
@@ -6786,6 +7030,7 @@ and identical_integer (i1:integer) (i2:integer) : bool =
   | IntSetMax s1,IntSetMax s2 -> identical_setint s1 s2
   | CellMax c1, CellMax c2    -> identical_cell   c1 c2
   | HavocLevel,HavocLevel     -> true
+  | HashCode e1, HashCode e2  -> identical_elem e1 e2
   | _,_ -> false
 and identical_set (s1:set) (s2:set) : bool =
   match (s1,s2) with

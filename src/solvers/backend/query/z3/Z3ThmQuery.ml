@@ -58,6 +58,8 @@ struct
   let mark_s        : string = "Mark"
   let bucket_s      : string = "Bucket"
   let bucketarray_s : string = "BucketArray"
+  let lock_s        : string = "Lock"
+  let lockarray_s   : string = "LockArray"
   let tidarray_s    : string = "TidArray"
 
 
@@ -167,6 +169,26 @@ struct
     | Expr.BucketTid b     -> Printf.sprintf "(btid %s)" (bucketterm_to_str b)
     | Expr.TidArrRd (tt,i) -> Printf.sprintf "(select %s %s)"
                                     (tidarrterm_to_str tt) (intterm_to_str i)
+    | Expr.LockId l        -> Printf.sprintf "(id %s)" (lockterm_to_str l)
+
+                                    
+  and lockterm_to_str (x:Expr.lock) : string =
+    match x with
+      Expr.VarLock v        -> variable_invocation_to_str v
+    | Expr.LLock (l,t)      -> Printf.sprintf "(llock %s %s)" (lockterm_to_str l)
+                                                              (tidterm_to_str t)
+    | Expr.LUnlock (l)      -> Printf.sprintf "(lunlock %s)" (lockterm_to_str l)
+    | Expr.LockArrRd (ll,i) -> Printf.sprintf "(select %s %s)" (lockarrterm_to_str ll)
+                                                               (intterm_to_str i)
+
+
+  and lockarrterm_to_str (ll:Expr.lockarr) : string =
+    match ll with
+      Expr.VarLockArray v      -> variable_invocation_to_str v
+    | Expr.LockArrayUp(ll,i,l) -> Printf.sprintf "(store %s %s %s)"
+                                      (lockarrterm_to_str ll)
+                                      (intterm_to_str i)
+                                      (lockterm_to_str l)
 
 
   and addrterm_to_str (a:Expr.addr) : string =
@@ -308,12 +330,13 @@ struct
                                 (intterm_to_str j1) (intterm_to_str j2)
     | Expr.IntMod (j1,j2) -> Printf.sprintf "(mod %s %s)"
                                 (intterm_to_str j1) (intterm_to_str j2)
+    | Expr.HashCode (e)   -> "" (* Do not need a representation for this *)
 
 
   and bucketarrterm_to_str (bb:Expr.bucketarr) : string =
     match bb with
       Expr.VarBucketArray v      -> variable_invocation_to_str v
-    | Expr.BucketArrayUp(bb,i,b) -> Printf.sprintf "(bucketupd %s %s %s)"
+    | Expr.BucketArrayUp(bb,i,b) -> Printf.sprintf "(store %s %s %s)"
                                             (bucketarrterm_to_str bb)
                                             (intterm_to_str i)
                                             (bucketterm_to_str b)
@@ -355,6 +378,8 @@ struct
     | Expr.BucketT b       -> bucketterm_to_str b
     | Expr.BucketArrayT bb -> bucketarrterm_to_str bb
     | Expr.TidArrayT tt    -> tidarrterm_to_str tt
+    | Expr.LockT l         -> lockterm_to_str l
+    | Expr.LockArrayT ll   -> lockarrterm_to_str ll
     | Expr.VarUpdate(v,th,t) -> varupdate_to_str v th t
 
 
@@ -456,11 +481,20 @@ struct
       ( "(declare-datatypes () ((" ^cell_s^ " (mkcell (data " ^elem_s^
         ") (next " ^addr_s^ ") (lock " ^tid_s^ ") (marked " ^mark_s^ ")))))\n")
 
+  let z3_lock_preamble (buf:B.t) : unit =
+    B.add_string buf
+      ( "(declare-datatypes () ((" ^lock_s^ " (mklock (id " ^tid_s^
+        ")))))\n")
 
   let z3_bucket_preamble (buf:B.t) : unit =
     B.add_string buf
       ( "(declare-datatypes () ((" ^bucket_s^ " (mkbucket (binit " ^addr_s^
         ") (bend " ^addr_s^ ") (bregion " ^set_s^ ") (btid " ^tid_s^ ")))))\n")
+
+
+  let z3_bucketarr_preamble (buf:B.t) : unit =
+    B.add_string buf
+      ("(define-sort " ^bucketarray_s^ " () (Array " ^int_s^ " " ^bucket_s^ "))\n")
 
 
   let z3_heap_preamble (buf:B.t) : unit =
@@ -751,6 +785,18 @@ struct
        "  (if (islockedpos h p 0) (unionth (singletonth (getlockat h p 0)) (lockset1 h p)) (lockset1 h p)))\n")
 
 
+  let z3_lock_lock_def (buf:B.t) : unit =
+    B.add_string buf
+      ("(define-fun llock ((l " ^lock_s^ ") (t " ^tid_s^ ")) " ^lock_s^ "\n" ^
+       "  (mklock t))\n")
+
+
+  let z3_lock_unlock_def (buf:B.t) : unit =
+    B.add_string buf
+      ("(define-fun lunlock ((l " ^lock_s^ ")) " ^lock_s^ "\n" ^
+       "  (mklock NoThread))\n")
+
+
   let z3_cell_lock_def (buf:B.t) : unit =
     B.add_string buf
       ("(define-fun cell_lock ((c " ^cell_s^ ") (t " ^tid_s^ ")) " ^cell_s^ "\n" ^
@@ -956,6 +1002,12 @@ struct
       ("(define-fun eqmem ((m1 " ^heap_s^ ") (m2 " ^heap_s^ ")) " ^bool_s^ "\n" ^
        "  (and (forall ((a " ^addr_s^ ")) (=> (not (= a null)) (= (select m1 a) (select m2 a))))\n" ^
        "       (= (select m1 null) error)))\n")
+
+
+  let z3_mkbucket_def (buf:B.t) : unit =
+    B.add_string buf
+      ( "(declare-datatypes () ((" ^bucket_s^ " (mkbucket (binit " ^addr_s^
+        ") (bend " ^addr_s^ ") (bregion " ^set_s^ ") (btid " ^lock_s^ ")))))\n")
 
 
   let z3_nextiter_def (buf:B.t) (num_addr:int) : unit =
@@ -1224,6 +1276,10 @@ struct
       z3_cell_preamble buf ;
     if List.mem Expr.Cell req_sorts || List.mem Expr.Mem req_sorts then
       z3_heap_preamble buf ;
+    if List.mem Expr.Lock req_sorts ||
+       List.mem Expr.LockArray req_sorts   then z3_lock_preamble buf;
+    if List.mem Expr.Bucket      req_sorts then z3_bucket_preamble buf;
+    if List.mem Expr.BucketArray req_sorts then z3_bucketarr_preamble buf ;     
     if (List.mem Expr.Set req_sorts || List.mem Expr.Path req_sorts) then z3_set_preamble buf ;
     if List.mem Expr.SetTh   req_sorts then z3_setth_preamble buf ;
     if List.mem Expr.SetElem req_sorts then z3_setelem_preamble buf ;
@@ -1256,6 +1312,8 @@ struct
                          | Expr.Bucket      -> bucket_s
                          | Expr.TidArray    -> tidarray_s
                          | Expr.BucketArray -> bucketarray_s
+                         | Expr.Lock        -> lock_s
+                         | Expr.LockArray   -> lockarray_s
                          | Expr.Unknown     -> unk_s in
     let s_str = sort_str s in
     let p_id = match Expr.V.scope v with
@@ -1365,6 +1423,16 @@ struct
         z3_cell_lock_def buf ;
         z3_cell_unlock_def buf;
         z3_cell_mark_def buf
+      end;
+    (* Bucket *)
+    if List.mem Expr.Bucket req_sorts then
+      begin
+        z3_mkbucket_def buf
+      end;
+    (* Bucket Array *)
+    if List.mem Expr.BucketArray req_sorts then
+      begin
+        z3_bucketarr_preamble buf;
       end;
     (* Heap *)
     if List.mem Expr.Mem req_sorts then

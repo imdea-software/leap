@@ -42,6 +42,8 @@ module Make (SLK : TSLKExpression.S) =
       | E.BucketArrayT _  -> E.BucketArrayT  (E.VarBucketArray v)
       | E.MarkT _         -> E.MarkT         (E.VarMark v)
       | E.BucketT _       -> E.BucketT       (E.VarBucket v)
+      | E.LockT _         -> E.LockT         (E.VarLock v)
+      | E.LockArrayT _    -> E.LockArrayT    (E.VarLockArray v)
 
 
     (* Normalization *)
@@ -128,6 +130,7 @@ module Make (SLK : TSLKExpression.S) =
         | E.TidArrRd _         -> raise(UnsupportedTSLKExpr(E.tid_to_str t))
         | E.PairTid _          -> raise(UnsupportedTSLKExpr(E.tid_to_str t))
         | E.BucketTid _        -> raise(UnsupportedTSLKExpr(E.tid_to_str t))
+        | E.LockId _           -> raise(UnsupportedTSLKExpr(E.tid_to_str t))
 
       and norm_elem (e:E.elem) : E.elem =
         match e with
@@ -186,6 +189,18 @@ module Make (SLK : TSLKExpression.S) =
         | E.VarBucket _    -> raise(UnsupportedTSLKExpr(E.bucket_to_str b))
         | E.MkBucket _     -> raise(UnsupportedTSLKExpr(E.bucket_to_str b))
         | E.BucketArrRd _  -> raise(UnsupportedTSLKExpr(E.bucket_to_str b))
+
+      and norm_lock (l:E.lock) : E.lock =
+        match l with
+        | E.VarLock _   -> raise(UnsupportedTSLKExpr(E.lock_to_str l))
+        | E.LLock _     -> raise(UnsupportedTSLKExpr(E.lock_to_str l))
+        | E.LUnlock _   -> raise(UnsupportedTSLKExpr(E.lock_to_str l))
+        | E.LockArrRd _ -> raise(UnsupportedTSLKExpr(E.lock_to_str l))
+
+      and norm_lockarr (ll:E.lockarr) : E.lockarr =
+        match ll with
+        | E.VarLockArray _ -> raise(UnsupportedTSLKExpr(E.lockarr_to_str ll))
+        | E.LockArrayUp _  -> raise(UnsupportedTSLKExpr(E.lockarr_to_str ll))
 
       and norm_setth (s:E.setth) : E.setth =
         match s with
@@ -266,6 +281,7 @@ module Make (SLK : TSLKExpression.S) =
         | E.IntSetMin _    -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
         | E.IntSetMax _    -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
         | E.HavocLevel     -> E.HavocLevel
+        | E.HashCode _     -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
         | E.PairInt _      -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
 
       and norm_pair (p:E.pair) : E.pair =
@@ -322,6 +338,8 @@ module Make (SLK : TSLKExpression.S) =
         | E.BucketArrayT bb    -> E.BucketArrayT (norm_bucketarr bb)
         | E.MarkT m            -> E.MarkT (norm_mark m)
         | E.BucketT b          -> E.BucketT (norm_bucket b)
+        | E.LockT l            -> E.LockT (norm_lock l)
+        | E.LockArrayT ll      -> E.LockArrayT (norm_lockarr ll)
 
       and norm_expr (expr:E.expr_t) : E.expr_t =
         match expr with
@@ -493,6 +511,8 @@ module Make (SLK : TSLKExpression.S) =
       | E.BucketArray -> raise(UnsupportedSort(E.sort_to_str s))
       | E.Mark        -> raise(UnsupportedSort(E.sort_to_str s))
       | E.Bucket      -> raise(UnsupportedSort(E.sort_to_str s))
+      | E.Lock        -> raise(UnsupportedSort(E.sort_to_str s))
+      | E.LockArray   -> raise(UnsupportedSort(E.sort_to_str s))
       | E.Unknown     -> SLK.Unknown
 
 
@@ -544,6 +564,7 @@ module Make (SLK : TSLKExpression.S) =
       | E.TidArrRd _         -> raise(UnsupportedTSLKExpr(E.tid_to_str th))
       | E.PairTid _          -> raise(UnsupportedTSLKExpr(E.tid_to_str th))
       | E.BucketTid _        -> raise(UnsupportedTSLKExpr(E.tid_to_str th))
+      | E.LockId _           -> raise(UnsupportedTSLKExpr(E.tid_to_str th))
 
     and term_to_tslk_term (t:E.term) : SLK.term =
       match t with
@@ -566,6 +587,8 @@ module Make (SLK : TSLKExpression.S) =
       | E.BucketArrayT _  -> raise(UnsupportedTSLKExpr(E.term_to_str t))
       | E.MarkT _         -> raise(UnsupportedTSLKExpr(E.term_to_str t))
       | E.BucketT _       -> raise(UnsupportedTSLKExpr(E.term_to_str t))
+      | E.LockT _         -> raise(UnsupportedTSLKExpr(E.term_to_str t))
+      | E.LockArrayT _    -> raise(UnsupportedTSLKExpr(E.term_to_str t))
       | E.ArrayT a        -> arrays_to_tslk_term a
 
 
@@ -768,6 +791,7 @@ module Make (SLK : TSLKExpression.S) =
       | E.IntMul _       -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
       | E.IntDiv _       -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
       | E.IntMod _       -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
+      | E.HashCode _     -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
       | E.CellMax _      -> SLK.LevelVal SLK.k
       | E.IntArrayRd _   -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
       | E.IntSetMin _    -> raise(UnsupportedTSLKExpr(E.integer_to_str i))

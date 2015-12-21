@@ -121,6 +121,7 @@ and integer_to_pairs_integer (t:E.integer) : PE.integer =
     | E.IntSetMax(s)    -> PE.SetMax (toset s)
     | E.CellMax _       -> raise(NotAPairsExpression(E.integer_to_str t))
     | E.HavocLevel      -> raise(NotAPairsExpression(E.integer_to_str t))
+    | E.HashCode _      -> raise(NotAPairsExpression(E.integer_to_str t))
     | E.PairInt p       -> PE.PairInt(topair p)
 
 

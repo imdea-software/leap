@@ -154,6 +154,7 @@ rule norm = parse
   | '-'             { Global.last "-"             ; MATH_MINUS }
   | '*'             { Global.last "*"             ; MATH_MULT }
   | '/'             { Global.last "/"             ; MATH_DIV }
+  | '%'             { Global.last "%"             ; MATH_MOD }
   | '<'             { Global.last "<"             ; MATH_LESS }
   | '>'             { Global.last ">"             ; MATH_GREATER }
   | "<="            { Global.last "<="            ; MATH_LESS_EQ }

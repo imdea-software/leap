@@ -593,6 +593,8 @@ let get_sort_from_term (gVars:var_table_t)
   | E.BucketArrayT(_)   -> E.BucketArray
   | E.MarkT(_)          -> E.Mark
   | E.BucketT(_)        -> E.Bucket
+  | E.LockT(_)          -> E.Lock
+  | E.LockArrayT(_)     -> E.LockArray
 
 
 

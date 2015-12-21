@@ -69,6 +69,7 @@ let term_pool = TermPool.empty
 let abs_cell_id = "abs_cell_lock_"
 let abs_array_id = "abs_tid_array_"
 let abs_bucket_id = "abs_bucket_"
+let abs_lock_id = "abs_lock_"
 let defPredTableSize = 200
 
 
@@ -122,6 +123,7 @@ and conv_th (th:E.tid) : tid =
   | E.TidArrRd _        -> VarTh (build_fresh th abs_array_id)
   | E.PairTid _         -> VarTh (build_fresh th abs_array_id)
   | E.BucketTid _       -> VarTh (build_fresh th abs_bucket_id)
+  | E.LockId _          -> VarTh (build_fresh th abs_lock_id)
 
 
 let rec tid_to_str (expr:tid) : string =

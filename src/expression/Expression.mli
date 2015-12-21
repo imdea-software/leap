@@ -18,6 +18,8 @@ type sort =
   | Array
   | AddrArray
   | TidArray
+  | Lock
+  | LockArray
   | Mark
   | Bucket
   | BucketArray
@@ -54,6 +56,8 @@ and term =
   | BucketArrayT  of bucketarr
   | MarkT         of mark
   | BucketT       of bucket
+  | LockT         of lock
+  | LockArrayT    of lockarr
 
 and eq =          term * term
 
@@ -91,6 +95,7 @@ and integer =
   | IntSetMax     of setint
   | CellMax       of cell
   | HavocLevel
+  | HashCode      of elem
   | PairInt       of pair
 
 and pair =
@@ -122,6 +127,17 @@ and tid =
   | TidArrRd      of tidarr * integer
   | PairTid       of pair
   | BucketTid     of bucket
+  | LockId        of lock
+
+and lock =
+    VarLock       of V.t
+  | LLock         of lock * tid
+  | LUnlock       of lock
+  | LockArrRd     of lockarr * integer
+
+and lockarr =
+  | VarLockArray  of V.t
+  | LockArrayUp   of lockarr * integer * lock
 
 and elem =
     VarElem           of V.t
@@ -466,6 +482,8 @@ val addr_to_str       : addr        -> string
 val cell_to_str       : cell        -> string
 val mark_to_str       : mark        -> string
 val bucket_to_str     : bucket      -> string
+val lock_to_str       : lock        -> string
+val lockarr_to_str    : lockarr     -> string
 val elem_to_str       : elem        -> string
 val tid_to_str        : tid         -> string
 val arrays_to_str     : arrays      -> string

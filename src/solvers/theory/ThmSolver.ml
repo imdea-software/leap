@@ -74,6 +74,12 @@ struct
   and is_var_bucket = function
       ThmExp.VarBucket(_) -> true
     | _                   -> false
+  and is_var_lock = function
+      ThmExp.VarLock(_) -> true
+    | _                 -> false
+  and is_var_lockarr = function
+      ThmExp.VarLockArray(_) -> true
+    | _                      -> false
   and is_var_cell = function
       ThmExp.VarCell(_) -> true
     | _               -> false
@@ -155,6 +161,10 @@ struct
       | _        -> false
   and is_constant_bucket = function
         _ -> false
+  and is_constant_lock = function
+        _ -> false
+  and is_constant_lockarr = function
+        _ -> false
   let is_constant_term = function
         ThmExp.VarT(_)          -> false
       | ThmExp.SetT(s)          -> is_constant_set s
@@ -190,6 +200,8 @@ struct
   and is_flat_bucketarr bb  = is_var_bucketarr  bb  || is_constant_bucketarr  bb
   and is_flat_mark      m   = is_var_mark       m   || is_constant_mark       m
   and is_flat_bucket    b   = is_var_bucket     b   || is_constant_bucket     b
+  and is_flat_lock      l   = is_var_lock       l   || is_constant_lock       l
+  and is_flat_lockarr   ll  = is_var_lockarr    ll  || is_constant_lockarr    ll
   and is_flat_path      p   = is_var_path       p   || is_constant_path       p
   
   let is_flat_term t =
@@ -209,6 +221,8 @@ struct
       | ThmExp.BucketArrayT bb   -> is_flat_bucketarr bb
       | ThmExp.MarkT  m          -> is_flat_mark m
       | ThmExp.BucketT b         -> is_flat_bucket b
+      | ThmExp.LockT l           -> is_flat_lock l
+      | ThmExp.LockArrayT ll     -> is_flat_lockarr ll
       | ThmExp.VarUpdate _       -> false
   
   

@@ -56,6 +56,8 @@ type term =
   | BucketArrayT  of bucketarr
   | MarkT         of mark
   | BucketT       of bucket
+  | LockT         of lock
+  | LockArrayT    of lockarr
 
 and eq =          term * term
 
@@ -85,10 +87,12 @@ and integer =
   | IntSub        of integer * integer
   | IntMul        of integer * integer
   | IntDiv        of integer * integer
+  | IntMod        of integer * integer
   | IntArrayRd    of arrays * tid
   | IntSetMin     of setint
   | IntSetMax     of setint
   | HavocLevel
+  | HashCode      of elem
   | PairInt       of pair
 
 and pair =
@@ -122,6 +126,17 @@ and tid =
   | TidArrRd        of tidarr * integer
   | PairTid         of pair
   | BucketTid       of bucket
+  | LockId          of lock
+
+and lock =
+    VarLock       of variable
+  | LLock         of lock * tid
+  | LUnlock       of lock
+  | LockArrRd     of lockarr * integer
+
+and lockarr =
+  | VarLockArray  of variable
+  | LockArrayUp   of lockarr * integer * lock
 
 and elem =
     VarElem           of variable

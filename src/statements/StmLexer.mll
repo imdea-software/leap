@@ -50,6 +50,7 @@ let _ = List.iter (fun (kwd, tok) -> Hashtbl.add keyword_table kwd tok)
             ("highestElem"  , HIGHEST_ELEM);
             ("havocSLElem"  , HAVOCSKIPLISTELEM);
             ("havocLevel"   , HAVOCLEVEL);
+            ("hashCode"     , HASHCODE);
             ("skiplist"     , SKIPLIST);
             ("hashmap"      , HASHMAP);
             ("upd"          , UPDATE);
@@ -153,6 +154,7 @@ rule norm = parse
   | '-'             { Global.last "-"             ; MATH_MINUS }
   | '*'             { Global.last "*"             ; MATH_MULT }
   | '/'             { Global.last "/"             ; MATH_DIV }
+  | '%'             { Global.last "%"             ; MATH_MOD }
   | '<'             { Global.last "<"             ; MATH_LESS }
   | '>'             { Global.last ">"             ; MATH_GREATER }
   | "<="            { Global.last "<="            ; MATH_LESS_EQ }

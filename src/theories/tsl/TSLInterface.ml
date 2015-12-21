@@ -35,6 +35,8 @@ let rec sort_to_tsl_sort (s:E.sort) : SL.sort =
   | E.BucketArray -> raise(UnsupportedSort(E.sort_to_str s))
   | E.Mark        -> raise(UnsupportedSort(E.sort_to_str s))
   | E.Bucket      -> raise(UnsupportedSort(E.sort_to_str s))
+  | E.Lock        -> raise(UnsupportedSort(E.sort_to_str s))
+  | E.LockArray   -> raise(UnsupportedSort(E.sort_to_str s))
   | E.Unknown     -> SL.Unknown
 
 
@@ -96,6 +98,7 @@ and tid_to_tsl_tid (th:E.tid) : SL.tid =
                                               int_to_tsl_int i)
   | E.PairTid _         -> raise(UnsupportedTslExpr(E.tid_to_str th))
   | E.BucketTid _       -> raise(UnsupportedTslExpr(E.tid_to_str th))
+  | E.LockId _          -> raise(UnsupportedTslExpr(E.tid_to_str th))
 
 and term_to_tsl_term (t:E.term) : SL.term =
 (*  LOG "Entering term_to_tsl_term..." LEVEL TRACE; *)
@@ -120,6 +123,8 @@ and term_to_tsl_term (t:E.term) : SL.term =
   | E.BucketArrayT _ -> raise(UnsupportedTslExpr(E.term_to_str t))
   | E.MarkT _        -> raise(UnsupportedTslExpr(E.term_to_str t))
   | E.BucketT _      -> raise(UnsupportedTslExpr(E.term_to_str t))
+  | E.LockT _        -> raise(UnsupportedTslExpr(E.term_to_str t))
+  | E.LockArrayT _   -> raise(UnsupportedTslExpr(E.term_to_str t))
   | E.ArrayT a       -> arrays_to_tsl_term a
 
 
@@ -319,6 +324,7 @@ and int_to_tsl_int (i:E.integer) : SL.integer =
   | E.IntSetMin _    -> raise(UnsupportedTslExpr(E.integer_to_str i))
   | E.IntSetMax _    -> raise(UnsupportedTslExpr(E.integer_to_str i))
   | E.HavocLevel     -> SL.HavocLevel
+  | E.HashCode _     -> raise(UnsupportedTslExpr(E.integer_to_str i))
   | E.PairInt _      -> raise(UnsupportedTslExpr(E.integer_to_str i))
 
 

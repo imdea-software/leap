@@ -100,6 +100,7 @@ and integer_to_int_integer (t:E.integer) : NE.integer =
     | E.IntSetMax(s)    -> NE.SetMax (toset s)
     | E.CellMax _       -> raise(NotAnIntExpression(E.integer_to_str t))
     | E.HavocLevel      -> raise(NotAnIntExpression(E.integer_to_str t))
+    | E.HashCode _      -> raise(NotAnIntExpression(E.integer_to_str t))
     | E.PairInt _       -> raise(NotAnIntExpression(E.integer_to_str t))
 
 

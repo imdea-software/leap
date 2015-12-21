@@ -62,6 +62,8 @@ type term =
   | BucketArrayT  of bucketarr
   | MarkT         of mark
   | BucketT       of bucket
+  | LockT         of lock
+  | LockArrayT    of lockarr
 
 and eq =          term * term
 
@@ -91,10 +93,12 @@ and integer =
   | IntSub        of integer * integer
   | IntMul        of integer * integer
   | IntDiv        of integer * integer
+  | IntMod        of integer * integer
   | IntArrayRd    of arrays * tid
   | IntSetMin     of setint
   | IntSetMax     of setint
   | HavocLevel
+  | HashCode      of elem
   | PairInt       of pair
 
 and pair =
@@ -128,6 +132,17 @@ and tid =
   | TidArrRd        of tidarr * integer
   | PairTid         of pair
   | BucketTid       of bucket
+  | LockId          of lock
+
+and lock =
+    VarLock       of variable
+  | LLock         of lock * tid
+  | LUnlock       of lock
+  | LockArrRd     of lockarr * integer
+
+and lockarr =
+  | VarLockArray  of variable
+  | LockArrayUp   of lockarr * integer * lock
 
 and elem =
     VarElem           of variable
@@ -526,11 +541,14 @@ and integer_to_str (loc:bool) (expr:integer) : string =
                                                (integer_to_str loc i2)
   | IntDiv (i1,i2)        -> sprintf "%s / %s" (integer_to_str loc i1)
                                                (integer_to_str loc i2)
+  | IntMod (i1,i2)        -> sprintf "%s %% %s" (integer_to_str loc i1)
+                                                (integer_to_str loc i2)
   | IntArrayRd(arr,t)     -> sprintf "%s%s" (arrays_to_str loc arr)
                                             (tid_to_str loc t)
   | IntSetMin(s)          -> sprintf "setIntMin(%s)" (setint_to_str loc s)
   | IntSetMax(s)          -> sprintf "setIntMax(%s)" (setint_to_str loc s)
   | HavocLevel            -> sprintf "havocLevel()"
+  | HashCode(e)           -> sprintf "hashCode(%s)" (elem_to_str loc e)
   | PairInt p             -> sprintf "int_of(%s)" (pair_to_str loc p)
 
 
@@ -763,6 +781,25 @@ and tid_to_str (loc:bool) (th:tid) : string =
                                              (integer_to_str loc i)
   | PairTid p           -> sprintf "tid_of(%s)" (pair_to_str loc p)
   | BucketTid b         -> sprintf "%s.btid" (bucket_to_str loc b)
+  | LockId l            -> sprintf "%s.id" (lock_to_str loc l)
+
+
+and lock_to_str (loc:bool) (expr:lock) : string =
+  match expr with
+    VarLock v        -> variable_to_str loc v
+  | LLock (l,t)      -> sprintf "lock(%s,%s)" (lock_to_str loc l)
+                                              (tid_to_str loc t)
+  | LUnlock (l)      -> sprintf "unlock(%s)" (lock_to_str loc l)
+  | LockArrRd (ll,i) -> sprintf "%s[%s]" (lockarr_to_str loc ll)
+                                         (integer_to_str loc i)
+
+
+and lockarr_to_str (loc:bool) (expr:lockarr) : string =
+  match expr with
+    VarLockArray v       -> variable_to_str loc v
+  | LockArrayUp(arr,i,l) -> sprintf "%s{%s<-%s}" (lockarr_to_str loc arr)
+                                                 (integer_to_str loc i)
+                                                 (lock_to_str loc l)
 
 
 and eq_to_str (loc:bool) ((e1,e2):eq) : string =
@@ -809,6 +846,8 @@ and term_to_str_aux (loc:bool) (expr:term) : string =
   | BucketArrayT(arr)   -> (bucketarr_to_str loc arr)
   | MarkT(m)            -> (mark_to_str loc m)
   | BucketT(b)          -> (bucket_to_str loc b)
+  | LockT(l)            -> (lock_to_str loc l)
+  | LockArrayT(arr)     -> (lockarr_to_str loc arr)
 
 
 
@@ -918,6 +957,8 @@ let rec term_to_expr_term (t:term) : E.term =
   | BucketArrayT a -> E.BucketArrayT (bucketarray_to_expr_array a)
   | MarkT m        -> E.MarkT        (mark_to_expr_mark m)
   | BucketT b      -> E.BucketT      (bucket_to_expr_bucket b)
+  | LockT l        -> E.LockT        (lock_to_expr_lock l)
+  | LockArrayT a   -> E.LockArrayT   (lockarr_to_expr_lockarr a)
 
 
 and eq_to_expr_eq ((t1,t2):eq) : E.eq =
@@ -968,11 +1009,13 @@ and integer_to_expr_integer (i:integer) : E.integer =
   | IntSub (i1,i2)   -> E.IntSub(to_int i1, to_int i2)
   | IntMul (i1,i2)   -> E.IntMul(to_int i1, to_int i2)
   | IntDiv (i1,i2)   -> E.IntDiv(to_int i1, to_int i2)
+  | IntMod (i1,i2)   -> E.IntMod(to_int i1, to_int i2)
   | IntArrayRd (a,t) -> E.IntArrayRd (array_to_expr_array a,
                                       tid_to_expr_th t)
   | IntSetMin s      -> E.IntSetMin (setint_to_expr_setint s)
   | IntSetMax s      -> E.IntSetMax (setint_to_expr_setint s)
   | HavocLevel       -> E.HavocLevel
+  | HashCode e       -> E.HashCode (elem_to_expr_elem e)
   | PairInt p        -> E.PairInt (pair_to_expr_pair p)
 
 
@@ -1023,6 +1066,23 @@ and tid_to_expr_tid (t:tid) : E.tid =
                                            integer_to_expr_integer l)
   | PairTid p            -> E.PairTid(pair_to_expr_pair p)
   | BucketTid b          -> E.BucketTid (bucket_to_expr_bucket b)
+  | LockId l             -> E.LockId (lock_to_expr_lock l)
+
+
+and lock_to_expr_lock (x:lock) : E.lock =
+  match x with
+    VarLock v        -> E.VarLock (variable_to_expr_var v)
+  | LLock (l,t)      -> E.LLock (lock_to_expr_lock l, tid_to_expr_th t)
+  | LUnlock (l)      -> E.LUnlock (lock_to_expr_lock l)
+  | LockArrRd (ll,i) -> E.LockArrRd (lockarr_to_expr_lockarr ll,
+                                     integer_to_expr_integer i)
+
+and lockarr_to_expr_lockarr (x:lockarr) : E.lockarr =
+  match x with
+    VarLockArray v       -> E.VarLockArray (variable_to_expr_var v)
+  | LockArrayUp (ll,i,l) -> E.LockArrayUp (lockarr_to_expr_lockarr ll,
+                                           integer_to_expr_integer i,
+                                           lock_to_expr_lock l)
 
 
 and tid_to_expr_th (t:tid) : E.tid =
@@ -1042,6 +1102,7 @@ and tid_to_expr_th (t:tid) : E.tid =
   | PointerLockidAt _  -> raise(Not_supported_conversion(tid_to_str true t))
   | PairTid _          -> raise(Not_supported_conversion(tid_to_str true t))
   | BucketTid _        -> raise(Not_supported_conversion(tid_to_str true t))
+  | LockId _           -> raise(Not_supported_conversion(tid_to_str true t))
 
 
 and elem_to_expr_elem (e:elem) : E.elem =
@@ -1316,6 +1377,8 @@ let construct_var_from_sort (id:varId)
   | E.BucketArray -> BucketArrayT  (VarBucketArray   v)
   | E.Mark        -> MarkT         (VarMark          v)
   | E.Bucket      -> BucketT       (VarBucket        v)
+  | E.Lock        -> LockT         (VarLock          v)
+  | E.LockArray   -> LockArrayT    (VarLockArray     v)
   | E.Unknown     -> VarT          v
 
 
@@ -1358,6 +1421,8 @@ let rec var_kind_term (kind:E.var_nature) (expr:term) : term list =
     | BucketArrayT(arr) -> var_kind_bucketarr kind arr
     | MarkT(m)          -> var_kind_mark kind m
     | BucketT(b)        -> var_kind_bucket kind b
+    | LockT(l)          -> var_kind_lock kind l
+    | LockArrayT(arr)   -> var_kind_lockarr kind arr
 
 
 and var_kind_expr (kind:E.var_nature) (e:expr_t) : term list =
@@ -1471,6 +1536,23 @@ and var_kind_th (kind:E.var_nature) (th:tid) : term list =
                              (var_kind_int kind l)
   | PairTid p             -> (var_kind_pair kind p)
   | BucketTid b           -> (var_kind_bucket kind b)
+  | LockId l              -> (var_kind_lock kind l)
+
+  
+and var_kind_lock (kind:E.var_nature) (x:lock) : term list =
+  match x with
+    VarLock v        -> if v.nature = kind then [LockT x] else []
+  | LLock (l,t)      -> (var_kind_lock kind l) @ (var_kind_th kind t)
+  | LUnlock (l)      -> (var_kind_lock kind l)
+  | LockArrRd (ll,i) -> (var_kind_lockarr kind ll) @ (var_kind_int kind i)
+
+
+and var_kind_lockarr (kind:E.var_nature) (xx:lockarr) : term list =
+  match xx with
+    VarLockArray v       -> if v.nature = kind then [LockArrayT xx] else []
+  | LockArrayUp(arr,i,l) -> (var_kind_lockarr kind arr) @
+                            (var_kind_int kind i)       @
+                            (var_kind_lock kind l)
 
 
 and var_kind_cell (kind:E.var_nature) (c:cell) : term list =
@@ -1606,10 +1688,12 @@ and var_kind_int (kind:E.var_nature) (i:integer) : term list =
   | IntSub(i1,i2)     -> (var_kind_int kind i1) @ (var_kind_int kind i2)
   | IntMul(i1,i2)     -> (var_kind_int kind i1) @ (var_kind_int kind i2)
   | IntDiv(i1,i2)     -> (var_kind_int kind i1) @ (var_kind_int kind i2)
+  | IntMod(i1,i2)     -> (var_kind_int kind i1) @ (var_kind_int kind i2)
   | IntArrayRd(arr,_) -> (var_kind_array kind arr)
   | IntSetMin(s)      -> (var_kind_setint kind s)
   | IntSetMax(s)      -> (var_kind_setint kind s)
   | HavocLevel        -> []
+  | HashCode e        -> (var_kind_elem kind e)
   | PairInt p         -> (var_kind_pair kind p)
 
 

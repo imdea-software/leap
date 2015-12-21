@@ -32,6 +32,8 @@ let rec sort_to_tll_sort (s:E.sort) : TLL.sort =
   | E.BucketArray -> raise(UnsupportedSort(E.sort_to_str s))
   | E.Mark        -> TLL.Mark
   | E.Bucket      -> raise(UnsupportedSort(E.sort_to_str s))
+  | E.Lock        -> raise(UnsupportedSort(E.sort_to_str s))
+  | E.LockArray   -> raise(UnsupportedSort(E.sort_to_str s))
   | E.Unknown     -> TLL.Unknown
 
 
@@ -101,6 +103,7 @@ and tid_to_tll_tid (th:E.tid) : TLL.tid =
   | E.TidArrRd _     -> raise(UnsupportedTllExpr(E.tid_to_str th))
   | E.PairTid _      -> raise(UnsupportedTllExpr(E.tid_to_str th))
   | E.BucketTid _    -> raise(UnsupportedTllExpr(E.tid_to_str th))
+  | E.LockId _       -> raise(UnsupportedTllExpr(E.tid_to_str th))
 
 
 and term_to_tll_term (t:E.term) : TLL.term =
@@ -124,6 +127,8 @@ and term_to_tll_term (t:E.term) : TLL.term =
   | E.BucketArrayT _  -> raise(UnsupportedTllExpr(E.term_to_str t))
   | E.MarkT m         -> TLL.MarkT (mark_to_tll_mark m)
   | E.BucketT _       -> raise(UnsupportedTllExpr(E.term_to_str t))
+  | E.LockT _         -> raise(UnsupportedTllExpr(E.term_to_str t))
+  | E.LockArrayT _    -> raise(UnsupportedTllExpr(E.term_to_str t))
   | E.ArrayT a        -> arrays_to_tll_term a
 
 
@@ -303,6 +308,7 @@ and int_to_tll_int (i:E.integer) : TLL.integer =
   | E.IntSetMax _    -> raise(UnsupportedTllExpr(E.integer_to_str i))
   | E.CellMax _      -> raise(UnsupportedTllExpr(E.integer_to_str i))
   | E.HavocLevel     -> raise(UnsupportedTllExpr(E.integer_to_str i))
+  | E.HashCode _     -> raise(UnsupportedTllExpr(E.integer_to_str i))
   | E.PairInt _      -> raise(UnsupportedTllExpr(E.integer_to_str i))
 
 

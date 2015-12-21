@@ -172,7 +172,6 @@ let run (cfg:configuration_t) (query:string) : Sat.t =
                        (tmpfile) in
 
   let env = myenv in
-  Array.iter print_endline env;
   let (stdout,stdin,stderr) = Unix.open_process_full cmd env in
   verbl _LONG_INFO "**** STMExecute will parse output.\n";
   let (terminated,response) = parse_output stdout in

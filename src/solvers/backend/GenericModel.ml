@@ -74,6 +74,8 @@ let tidarr_s    : string = "TidArr"
 let bucketarr_s : string = "BucketArr"
 let mark_s      : string = "Mark"
 let bucket_s    : string = "Bucket"
+let lock_s      : string = "Lock"
+let lockarr_s   : string = "LockArr"
 let unk_s       : string = "Unknown"
 let loc_s       : string = "Loc"
 
@@ -398,6 +400,8 @@ let conv_sort (s:Expression.sort) : sort =
   | Expr.BucketArray   -> bucketarr_s
   | Expr.Mark          -> mark_s
   | Expr.Bucket        -> bucket_s
+  | Expr.Lock          -> lock_s
+  | Expr.LockArray     -> lockarr_s
   | Expr.Unknown       -> unk_s
 
 

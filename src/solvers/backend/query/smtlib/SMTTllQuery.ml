@@ -974,6 +974,7 @@ struct
 
   let smt_preamble buf num_addr num_tid num_elem req_sorts =
     B.add_string buf ("(set-logic QF_AUFLIA)\n");
+(*    B.add_string buf ("(set-logic AUFLIA)\n"); *)
     B.add_string buf ";; TLL SMTLib Translation\n";
     if (List.exists (fun s ->
           s=Expr.Cell || s=Expr.Mem
@@ -1710,14 +1711,159 @@ struct
     B.contents tmpbuf
 
 
-  let post_process (buf:B.t) (num_addrs:int) : unit =
+  let add_axioms (buf:Buffer.t) (num_addrs:int)
+                 (req_sorts:Expr.sort list)
+                 (req_ops:Expr.special_op_t list)
+                 (vars:Expr.V.VarSet.t) : unit =
+
+    (* All addresses in the domain *)
+(*
+    let addrs = List.fold_left (fun xs i ->
+                  (addr_prefix ^ (string_of_int i)) :: xs
+                ) ["null"] (LeapLib.rangeList 1 num_addrs) in
+*)
+
+    (* All addresses in the formula *)
+    let addrsVars = V.varset_of_sort vars Expr.Addr in
+    let addrs_vars = V.VarSet.fold (fun v xs ->
+                       let p_id = match Expr.V.scope v with
+                                  | Expr.V.GlobalScope -> Expr.V.id v
+                                  | Expr.V.Scope proc -> proc ^ "_" ^ (Expr.V.id v) in
+                       let name = p_id in
+                       name :: xs
+                     ) addrsVars [] in
+    let addrs = addrs_vars in
+
+    let sets = ["region"; "region_prime"] in
+    let mems = ["heap"; "heap_prime"] in
+
+    let addrs = List.fold_left (fun xs i ->
+                  (addr_prefix ^ (string_of_int i)) :: xs
+                ) ["null"] (LeapLib.rangeList 1 num_addrs) in
+
+    (*
+    if List.mem Expr.Path req_sorts then
+      B.add_string buf ("(assert (= (path2set epsilon) empty))\n")
+
+*)
+
+
+    (* Using quantifiers *)    
+(*
+    List.iter (fun m ->
+      List.iter (fun se ->
+        B.add_string buf
+          ("(assert (forall ((a Address) (b Address) (c Address))
+              (=> (and (select  "^se^"  a) (and (=  "^se^" (address2set  "^m^"  b)) (and (=  c (next (select "^m^" a))) (not (=  a null))))) (select  "^se^"  c))))\n")
+      ) sets
+    ) mems
+*)
+    (*
+    List.iter (fun m ->
+      List.iter (fun se ->
+        List.iter (fun a ->
+          List.iter (fun b ->
+            List.iter (fun c ->
+              B.add_string buf
+                ("(assert
+                    (=> (and (select  "^se^"  "^a^") (and (=  "^se^" (address2set  "^m^"  "^b^")) (and (=  "^c^" (next (select "^m^" "^a^"))) (not (=  "^a^" null))))) (select  "^se^"  "^c^")))\n")
+            ) addrs
+          ) addrs
+        ) addrs
+      ) sets
+    ) mems
+*)
+
+
+    List.iter (fun m ->
+      List.iter (fun a ->
+
+        (*
+       if List.mem Expr.Getp req_ops ||
+          List.mem Expr.Reachable req_ops ||
+          List.mem Expr.Path req_sorts then
+            B.add_string buf
+              ("(assert
+                  (=> (not (=  "^a^" (next (select  "^m^"  "^a^")))) (eqpath (getp  "^m^"  "^a^" (next (select  "^m^"  "^a^"))) (singlepath  "^a^"))))\n");
+          if List.mem Expr.Path req_sorts then
+            B.add_string buf
+               ("(assert (= (path2set (singlepath  "^a^")) (singleton  "^a^")))\n");
+             if List.mem Expr.Path req_sorts then
+               B.add_string buf ("(assert (reach  "^m^"  "^a^" "^a^" epsilon))\n");
+               *)
+        List.iter (fun b ->
+          (*
+          if List.mem Expr.Getp req_ops ||
+             List.mem Expr.Reachable req_ops then
+               B.add_string buf
+                 ("(assert
+                     (and (=> (select (address2set  "^m^"  "^a^")  "^b^") (reach  "^b^"  "^a^"  "^b^" (getp  "^m^"  "^a^"  "^b^"))) (=> (reach  "^m^"  "^a^"  "^b^" (getp  "^m^"  "^a^"  "^b^")) (select (address2set  "^m^"  "^a^")  "^b^"))))\n");
+                     *)
+          B.add_string buf
+
+
+            ("(assert
+                (=> (and (select (address2set  "^m^"  head)  "^a^") (and (select (address2set  "^m^"  head)  tail) (and (not (=  head null)) (and (not (=  tail null)) (and (not (=  "^a^" null)) (and (= (next (select  "^m^"  tail)) null) (and (not (=  "^b^" null)) (and (= (next (select  "^m^"  "^b^")) null) (select (address2set  "^m^"  head)  "^b^"))))))))) (=  "^b^"  tail)))\n")
+
+                (*
+              if List.mem Expr.Path req_sorts ||
+                 List.mem Expr.Getp req_ops ||
+                 List.mem Expr.Reachable req_ops then
+                   B.add_string buf
+                     ("(assert
+                        (=> (not (eqpath (getp  "^m^"  "^a^"  "^b^") epsilon)) (= (path2set (getp  "^m^"  "^a^"  "^b^")) (setunion (singleton  "^a^") (path2set (getp  "^m^" (next (select  "^m^"  "^a^"))  "^b^"))))))\n") *)
+        ) addrs
+      ) addrs
+    ) mems
+(*
+    List.iter (fun se ->
+      List.iter (fun a ->
+        B.add_string buf
+          ("(assert
+              (=> (select  "^se^"  "^a^") (not (select (setdiff  "^se^" (singleton "^a^")) "^a^"))))\n")
+      ) addrs
+    ) sets;
+
+
+    List.iter (fun a ->
+      List.iter (fun b ->
+        B.add_string buf
+          ("(assert
+              (and (=> (not (=  "^a^"  "^b^")) (not (select (singleton  "^a^")  "^b^"))) (select (singleton  "^a^")  "^a^")))\n")
+      ) addrs
+    ) addrs;
+*)
+
+(*
+    List.iter (fun se ->
+      List.iter (fun se2 ->
+        List.iter (fun a ->
+            (* Intr_def *)
+            B.add_string buf
+              ("(assert
+                  (and (=> (and (select  " ^se^ "  " ^a^ ") (select  " ^se2^ "  " ^a^ ")) (select (intersection  "^se^"  "^se2^")  "^a^")) (=> (select (intersection  "^se^"  "^se2^")  "^a^") (and (select  "^se^"  "^a^") (select  "^se2^"  "^a^")))))\n" ^
+               "(assert
+                  (and (=> (and (select  "^se^"  "^a^") (not (select  "^se2^"  "^a^"))) (select (setdiff  "^se^"  "^se2^")  "^a^")) (=> (select (setdiff  "^se^"  "^se2^")  "^a^") (and (select  "^se^"  "^a^") (not (select  "^se2^"  "^a^"))))))\n" ^
+               "(assert
+                  (and (=> (or (select  "^se^"  "^a^") (select  "^se2^"  "^a^")) (select (setunion  "^se^"  "^se2^")  "^a^")) (=> (select (setunion  "^se^"  "^se2^")  "^a^") (or (select  "^se^"  "^a^") (select  "^se2^"  "^a^")))))")
+        ) addrs
+      ) sets
+   ) sets
+ *)
+
+
+  let post_process (buf:B.t) (num_addrs:int)
+                   (req_sorts:Expr.sort list)
+                   (req_ops:Expr.special_op_t list)
+                   (vars:Expr.V.VarSet.t) : unit =
     Hashtbl.iter (fun a _ -> B.add_string buf (process_addr a)) addr_tbl;
     Hashtbl.iter (fun e _ -> B.add_string buf (process_elem e)) elem_tbl;
     Hashtbl.iter (fun t _ -> B.add_string buf (process_tid t)) tid_tbl;
     Hashtbl.iter (fun m _ -> B.add_string buf (process_mark m)) mark_tbl;
     Hashtbl.iter (fun c _ -> B.add_string buf (process_cell c)) cell_tbl;
     Hashtbl.iter (fun g _ -> B.add_string buf (process_getp num_addrs g)) getp_tbl;
-    Hashtbl.iter (fun f _ -> B.add_string buf (process_locked num_addrs f)) locked_tbl
+    Hashtbl.iter (fun f _ -> B.add_string buf (process_locked num_addrs f)) locked_tbl;
+    add_axioms buf num_addrs req_sorts req_ops vars
     
 
 
@@ -1750,7 +1896,8 @@ struct
         in
         let formula_str = List.fold_right add_and_literal ls ""
         in
-    post_process buf num_addr;
+    let vars = Expr.V.VarSet.empty in
+    post_process buf num_addr req_sorts req_ops vars;
     B.add_string buf "(assert\n   (and";
     B.add_string buf formula_str ;
     B.add_string buf "))\n";
@@ -1783,7 +1930,8 @@ struct
       smt_defs     buf num_addr num_tid num_elem req_sorts req_ops;
       variables_from_formula_to_smt buf num_tid phi ;
       (* We add extra information if needed *)
-      post_process buf num_addr;
+      let vars = Expr.get_varset_from_formula phi in
+      post_process buf num_addr req_sorts req_ops vars;
       B.add_string buf "(assert\n";
       B.add_string buf formula_str ;
       B.add_string buf ")\n";

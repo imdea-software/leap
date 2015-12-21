@@ -32,6 +32,8 @@ let rec sort_to_thm_sort (s:E.sort) : THM.sort =
   | E.BucketArray -> THM.BucketArray
   | E.Mark        -> THM.Mark
   | E.Bucket      -> THM.Bucket
+  | E.Lock        -> THM.Lock
+  | E.LockArray   -> THM.LockArray
   | E.Unknown     -> THM.Unknown
 
 
@@ -52,6 +54,8 @@ and sort_to_expr_sort (s:THM.sort) : E.sort =
   | THM.BucketArray -> E.BucketArray
   | THM.Mark        -> E.Mark
   | THM.Bucket      -> E.Bucket
+  | THM.Lock        -> E.Lock
+  | THM.LockArray   -> E.LockArray
   | THM.Unknown     -> E.Unknown
 
 
@@ -108,7 +112,22 @@ and tid_to_thm_tid (th:E.tid) : THM.tid =
   | E.BucketTid b       -> THM.BucketTid(bucket_to_thm_bucket b)
   | E.TidArrRd (tt,i)   -> THM.TidArrRd(tidarr_to_thm_tidarr tt,
                                         int_to_thm_int i)
+  | E.LockId l          -> THM.LockId(lock_to_thm_lock l)
 
+and lock_to_thm_lock (x:E.lock) : THM.lock =
+  match x with
+    E.VarLock v        -> THM.VarLock (variable_to_thm_var v)
+  | E.LLock (l,t)      -> THM.LLock (lock_to_thm_lock l, tid_to_thm_tid t)
+  | E.LUnlock (l)      -> THM.LUnlock (lock_to_thm_lock l)
+  | E.LockArrRd (ll,i) -> THM.LockArrRd (lockarr_to_thm_lockarr ll, 
+                                         int_to_thm_int i)
+
+and lockarr_to_thm_lockarr (ll:E.lockarr) : THM.lockarr =
+  match ll with
+    E.VarLockArray v       -> THM.VarLockArray (variable_to_thm_var v)
+  | E.LockArrayUp (ll,i,l) -> THM.LockArrayUp (lockarr_to_thm_lockarr ll,
+                                               int_to_thm_int i,
+                                               lock_to_thm_lock l)
 
 and term_to_thm_term (t:E.term) : THM.term =
   match t with
@@ -131,6 +150,8 @@ and term_to_thm_term (t:E.term) : THM.term =
   | E.BucketArrayT bb -> THM.BucketArrayT(bucketarr_to_thm_bucketarr bb)
   | E.MarkT m         -> THM.MarkT (mark_to_thm_mark m)
   | E.BucketT b       -> THM.BucketT (bucket_to_thm_bucket b)
+  | E.LockT l         -> THM.LockT (lock_to_thm_lock l)
+  | E.LockArrayT ll   -> THM.LockArrayT (lockarr_to_thm_lockarr ll)
   | E.ArrayT a        -> arrays_to_thm_term a
 
 
@@ -321,6 +342,7 @@ and int_to_thm_int (i:E.integer) : THM.integer =
   | E.IntSetMax _    -> raise(UnsupportedThmExpr(E.integer_to_str i))
   | E.CellMax _      -> raise(UnsupportedThmExpr(E.integer_to_str i))
   | E.HavocLevel     -> raise(UnsupportedThmExpr(E.integer_to_str i))
+  | E.HashCode e     -> THM.HashCode(elem_to_thm_elem e)
   | E.PairInt _      -> raise(UnsupportedThmExpr(E.integer_to_str i))
 
 

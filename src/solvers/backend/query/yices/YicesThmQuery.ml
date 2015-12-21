@@ -26,8 +26,11 @@ struct
   (* Sort names *)
   let bool_s        : string = "bool"
   let mark_s        : string = "mark"
+  let lock_s        : string = "lock"
+  let lockarray_s   : string = "lockarr"
   let bucket_s      : string = "bucket"
   let bucketarray_s : string = "bucketarr"
+  let tidarray_s    : string = "tidarr"
   let int_s         : string = "int"
   let addr_s        : string = "address"
   let set_s         : string = "set"
@@ -123,6 +126,17 @@ struct
        "  (lambda (b::" ^bucket_s^ ") (select b breg)))\n" ^
        "(define gtid::(-> " ^bucket_s^ " " ^tid_s^ ")     " ^
        "  (lambda (b::" ^bucket_s^ ") (select b btid)))\n" )
+
+
+  let yices_lock_preamble (buf:B.t) : unit =
+    B.add_string buf (
+       "(define-type " ^lock_s^ " (record id::" ^tid_s^ "))\n" ^
+       "(define id::(-> " ^lock_s^ " " ^tid_s^ ") " ^
+       "  (lambda (l::" ^lock_s^ ") (select l id)))\n" ^
+       "(define-type " ^lockarray_s^ " (-> " ^int_s^ " " ^lock_s^ "))\n" ^
+       "(define mklock::(-> " ^tid_s^ ")\n" ^
+        "   (lambda (t::" ^tid_s^ ")\n" ^
+        "       (mk-record id::t)))\n")
 
 
   let yices_heap_preamble (buf:B.t) : unit =
@@ -469,6 +483,19 @@ struct
        "     (if (islockedpos h p 0) (unionth (singletonth (getlockat h p 0)) (lockset1 h p)) (lockset1 h p))))\n")
 
 
+  let yices_lock_lock_def (buf:B.t) : unit =
+    B.add_string buf
+      ("(define llock::(-> " ^lock_s^ " " ^tid_s^ " " ^lock_s^ ")\n" ^
+       "  (lambda (l::" ^lock_s^ " t::" ^tid_s^ ")\n" ^
+       "    (mklock t)))\n")
+
+
+  let yices_lock_unlock_def (buf:B.t) : unit =
+    B.add_string buf
+      ("(define lunlock::(-> " ^lock_s^ " " ^lock_s^ ")\n" ^
+       "  (lambda (l::" ^lock_s^ ")\n" ^
+       "    (mklock NoThread)))\n")
+
 
   let yices_cell_lock_def (buf:B.t) : unit =
     B.add_string buf
@@ -738,13 +765,6 @@ struct
         "       (update h (a) c)))\n" )
 
 
-  let yices_update_bucket_def (buf:B.t) : unit =
-    B.add_string buf (
-        "(define bucketupd::(-> " ^bucketarray_s^ " " ^int_s^ " " ^bucket_s^ " " ^bucketarray_s^ ")\n" ^
-        "    (lambda (bb::" ^bucketarray_s^ " i::" ^int_s^ " b::" ^bucket_s^ ")\n" ^
-        "       (update bb (i) b)))\n" )
-
-
   let yices_getp_def (buf:B.t) (num_addr:int) : unit =
     B.add_string buf (
       "(define update_pathat::(-> pathat range_address " ^addr_s^ " pathat)\n" ^
@@ -889,6 +909,8 @@ struct
         ) req_sorts) then yices_element_preamble buf num_elem ;
     if List.mem Expr.Cell req_sorts || List.mem Expr.Mem req_sorts then
       yices_cell_preamble buf ;
+    if List.mem Expr.Lock req_sorts ||
+       List.mem Expr.LockArray req_sorts   then yices_lock_preamble buf;
     if List.mem Expr.Bucket      req_sorts then yices_bucket_preamble buf;
     if List.mem Expr.Mem         req_sorts then yices_heap_preamble buf ;
     if List.mem Expr.BucketArray req_sorts then yices_bucketarr_preamble buf ;
@@ -927,7 +949,6 @@ struct
     if List.mem Expr.BucketArray req_sorts then
       begin
         yices_bucketarr_preamble buf;
-        yices_update_bucket_def buf
       end;
     (* Heap *)
     if List.mem Expr.Mem req_sorts then
@@ -1032,7 +1053,10 @@ struct
                          | Expr.Bool        -> bool_s
                          | Expr.Mark        -> mark_s
                          | Expr.Bucket      -> bucket_s
+                         | Expr.TidArray    -> tidarray_s
                          | Expr.BucketArray -> bucketarray_s
+                         | Expr.Lock        -> lock_s
+                         | Expr.LockArray   -> lockarray_s
                          | Expr.Unknown     -> unk_s in
     let s_str = sort_str s in
     let p_id = match Expr.V.scope v with
@@ -1165,10 +1189,33 @@ struct
 
   and tidterm_to_str (th:Expr.tid) : string =
     match th with
-      Expr.VarTh v      -> variable_invocation_to_str v
-    | Expr.NoTid        -> "NoThread"
-    | Expr.CellLockId c -> Printf.sprintf "(lock %s)" (cellterm_to_str c)
-    | Expr.BucketTid b  -> Printf.sprintf "(btid %s)" (bucketterm_to_str b)
+      Expr.VarTh v         -> variable_invocation_to_str v
+    | Expr.NoTid           -> "NoThread"
+    | Expr.CellLockId c    -> Printf.sprintf "(lock %s)" (cellterm_to_str c)
+    | Expr.BucketTid b     -> Printf.sprintf "(btid %s)" (bucketterm_to_str b)
+    | Expr.TidArrRd (tt,i) -> Printf.sprintf "(%s %s)"
+                                        (tidarrterm_to_str tt)
+                                        (intterm_to_str i)
+    | Expr.LockId l        -> Printf.sprintf "(id %s)" (lockterm_to_str l)
+
+
+  and lockterm_to_str (x:Expr.lock) : string =
+    match x with
+      Expr.VarLock v        -> variable_invocation_to_str v
+    | Expr.LLock (l,t)      -> Printf.sprintf "(llock %s %s)" (lockterm_to_str l)
+                                                            (tidterm_to_str t)
+    | Expr.LUnlock (l)      -> Printf.sprintf "(lunlock %s)" (lockterm_to_str l)
+    | Expr.LockArrRd (ll,i) -> Printf.sprintf "(select %s %s)" (lockarrterm_to_str ll)
+                                                               (intterm_to_str i)
+
+
+  and lockarrterm_to_str (ll:Expr.lockarr) : string =
+    match ll with
+      Expr.VarLockArray v      -> variable_invocation_to_str v
+    | Expr.LockArrayUp(ll,i,l) -> Printf.sprintf "(update %s %s %s)"
+                                      (lockarrterm_to_str ll)
+                                      (intterm_to_str i)
+                                      (lockterm_to_str l)
 
 
   and addrterm_to_str (a:Expr.addr) : string =
@@ -1305,15 +1352,27 @@ struct
                                 (intterm_to_str j1) (intterm_to_str j2)
     | Expr.IntDiv (j1,j2) -> Printf.sprintf "(/ %s %s)"
                                 (intterm_to_str j1) (intterm_to_str j2)
+    | Expr.IntMod (j1,j2) -> Printf.sprintf "(mod %s %s)"
+                                (intterm_to_str j1) (intterm_to_str j2)
+    | Expr.HashCode (e)   -> ""
 
 
   and bucketarrterm_to_str (bb:Expr.bucketarr) : string =
     match bb with
         Expr.VarBucketArray v      -> variable_invocation_to_str v
-      | Expr.BucketArrayUp(bb,i,b) -> Printf.sprintf "(bucketupd %s %s %s)"
+      | Expr.BucketArrayUp(bb,i,b) -> Printf.sprintf "(update %s %s %s)"
                                             (bucketarrterm_to_str bb)
                                             (intterm_to_str i)
                                             (bucketterm_to_str b)
+
+
+  and tidarrterm_to_str (tt:Expr.tidarr) : string =
+    match tt with
+        Expr.VarTidArray v      -> variable_invocation_to_str v
+      | Expr.TidArrayUp(tt,i,t) -> Printf.sprintf "(update %s %s %s)"
+                                            (tidarrterm_to_str tt)
+                                            (intterm_to_str i)
+                                            (tidterm_to_str t)
 
 
   let rec varupdate_to_str (v:Expr.V.t)
@@ -1342,6 +1401,9 @@ struct
     | Expr.MarkT m           -> markterm_to_str m
     | Expr.BucketT b         -> bucketterm_to_str b
     | Expr.BucketArrayT bb   -> bucketarrterm_to_str bb
+    | Expr.TidArrayT tt      -> tidarrterm_to_str tt
+    | Expr.LockT l           -> lockterm_to_str l
+    | Expr.LockArrayT ll     -> lockarrterm_to_str ll
     | Expr.VarUpdate(v,th,t) -> varupdate_to_str v th t
 
 

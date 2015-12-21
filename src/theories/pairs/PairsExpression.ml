@@ -359,6 +359,8 @@ and is_pair_integer t =
   | E.BucketArrayT(_)   -> false
   | E.MarkT(_)          -> false
   | E.BucketT(_)        -> false
+  | E.LockT(_)          -> false
+  | E.LockArrayT(_)     -> false
 and is_pair_expression e = 
   match e with
     E.Term(t)      -> is_pair_integer t

@@ -363,6 +363,8 @@ let inject_sort (exp:E.term) : E.term =
                        | E.BucketArray -> E.BucketArrayT (E.VarBucketArray  var)
                        | E.Mark        -> E.MarkT        (E.VarMark      var)
                        | E.Bucket      -> E.BucketT      (E.VarBucket    var)
+                       | E.Lock        -> E.LockT        (E.VarLock      var)
+                       | E.LockArray   -> E.LockArrayT   (E.VarLockArray var)
                        | E.Unknown     -> E.VarT         (var)
                      end
   | _           -> exp
@@ -525,7 +527,7 @@ let define_ident (proc_name:E.V.procedure_name)
 
 %token INVARIANT FORMULA VARS
 %token AT UNDERSCORE SHARP
-%token MATH_PLUS MATH_MINUS MATH_MULT MATH_DIV MATH_LESS MATH_GREATER
+%token MATH_PLUS MATH_MINUS MATH_MULT MATH_DIV MATH_LESS MATH_GREATER MATH_MOD
 %token MATH_LESS_EQ MATH_GREATER_EQ
 
 
@@ -561,7 +563,7 @@ let define_ident (proc_name:E.V.procedure_name)
 
 
 %left MATH_PLUS MATH_MINUS
-%left MATH_MULT MATH_DIV
+%left MATH_MULT MATH_DIV MATH_MOD
 %right MATH_NEG
 
 %left DOT
@@ -1931,6 +1933,14 @@ integer :
       let i1  = parser_check_type check_type_int $1 E.Int get_str_expr in
       let i2  = parser_check_type check_type_int $3 E.Int get_str_expr in
         E.IntDiv (i1,i2)
+    }
+  | term MATH_MOD term
+    {
+      let get_str_expr () = sprintf "%s %% %s" (E.term_to_str $1)
+                                               (E.term_to_str $3) in
+      let i1  = parser_check_type check_type_int $1 E.Int get_str_expr in
+      let i2  = parser_check_type check_type_int $3 E.Int get_str_expr in
+        E.IntMod (i1,i2)
     }
   | SETINTMIN OPEN_PAREN term CLOSE_PAREN
     {

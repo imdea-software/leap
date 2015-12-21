@@ -274,6 +274,10 @@ let generic_stm_term_eq (mode:eqGenMode)
     | (E.IntT (E.VarInt _) as i, E.Term (E.IntT (E.HavocLevel))) ->
         let e = E.IntT (E.VarInt(E.build_global_var fresh_int_name E.Int)) in
           eq_generator i th_p (E.Term e)
+    (* HashCode *)
+    | (E.IntT (E.VarInt _) as i, E.Term (E.IntT (E.HashCode _))) ->
+        let e = E.IntT (E.VarInt(E.build_global_var fresh_int_name E.Int)) in
+          eq_generator i th_p (E.Term e)
     (* Locked *)
     | (E.CellT (E.VarCell _), E.Term (E.CellT (E.CellLock (d, _)))) ->
         let (m,e) = eq_generator v' th_p new_e in

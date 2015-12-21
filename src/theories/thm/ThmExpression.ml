@@ -18,6 +18,8 @@ type sort =
   | Bool
   | Mark
   | Bucket
+  | Lock
+  | LockArray
   | Unknown
 
 type var_info_t =
@@ -47,6 +49,8 @@ type term =
   | BucketArrayT of bucketarr
   | MarkT        of mark
   | BucketT      of bucket
+  | LockT        of lock
+  | LockArrayT   of lockarr
   | VarUpdate    of V.t * tid * term
 and eq = term * term
 and diseq = term * term
@@ -62,6 +66,7 @@ and integer =
   | IntMul        of integer * integer
   | IntDiv        of integer * integer
   | IntMod        of integer * integer
+  | HashCode      of elem
 and tidarr =
   | VarTidArray   of V.t
   | TidArrayUp    of tidarr * integer * tid
@@ -76,11 +81,20 @@ and set =
   | AddrToSet    of mem * addr
   | BucketRegion of bucket
 and tid =
-    VarTh      of V.t
+    VarTh        of V.t
   | NoTid
-  | CellLockId of cell
-  | BucketTid  of bucket
-  | TidArrRd   of tidarr * integer
+  | CellLockId   of cell
+  | BucketTid    of bucket
+  | TidArrRd     of tidarr * integer
+  | LockId       of lock
+and lock =
+    VarLock       of V.t
+  | LLock         of lock * tid
+  | LUnlock       of lock
+  | LockArrRd     of lockarr * integer
+and lockarr =
+  | VarLockArray  of V.t
+  | LockArrayUp   of lockarr * integer * lock
 and elem =
     VarElem of V.t
   | CellData of cell
@@ -212,6 +226,7 @@ let is_primed_tid (th:tid) : bool =
   | CellLockId _      -> false
   | BucketTid _       -> false
   | TidArrRd _        -> false
+  | LockId _          -> false
   (* FIX: Propagate the query inside cell??? *)
 
 
@@ -295,6 +310,7 @@ and get_varset_int i =
     | IntMul (j1,j2) -> (get_varset_int j1) @@ (get_varset_int j2)
     | IntDiv (j1,j2) -> (get_varset_int j1) @@ (get_varset_int j2)
     | IntMod (j1,j2) -> (get_varset_int j1) @@ (get_varset_int j2)
+    | HashCode (e)   -> (get_varset_elem e)
 and get_varset_tid th =
   match th with
       VarTh v         -> V.VarSet.singleton v @@ get_varset_from_param v
@@ -302,6 +318,19 @@ and get_varset_tid th =
     | CellLockId c    -> (get_varset_cell c)
     | BucketTid b     -> (get_varset_bucket b)
     | TidArrRd (tt,i) -> (get_varset_tidarr tt) @@ (get_varset_int i)
+    | LockId l        -> (get_varset_lock l)
+and get_varset_lock x =
+  match x with
+      VarLock v        -> V.VarSet.singleton v @@ get_varset_from_param v
+    | LLock (l,t)      -> (get_varset_lock l) @@ (get_varset_tid t)
+    | LUnlock (l)      -> (get_varset_lock l)
+    | LockArrRd (ll,i) -> (get_varset_lockarr ll) @@ (get_varset_int i)
+and get_varset_lockarr ll =
+  match ll with
+      VarLockArray v       -> V.VarSet.singleton v @@ get_varset_from_param v
+    | LockArrayUp (ll,i,l) -> (get_varset_lockarr ll) @@
+                              (get_varset_int i) @@
+                              (get_varset_lock l)
 and get_varset_elem e =
   match e with
       VarElem v     -> V.VarSet.singleton v @@ get_varset_from_param v
@@ -420,6 +449,8 @@ and get_varset_term t = match t with
     | BucketArrayT bb       -> get_varset_bucketarr bb
     | MarkT    m            -> get_varset_mark m
     | BucketT  b            -> get_varset_bucket b
+    | LockT  l              -> get_varset_lock l
+    | LockArrayT  ll        -> get_varset_lockarr ll
     | VarUpdate(v,_,t)    -> (V.VarSet.singleton v) @@ (get_varset_term t) @@
                              (get_varset_from_param v)
 
@@ -520,6 +551,8 @@ let termset_of_sort (all:TermSet.t) (s:sort) : TermSet.t =
     | BucketArray -> (match t with | BucketArrayT _   -> true | _ -> false)
     | Mark        -> (match t with | MarkT _          -> true | _ -> false)
     | Bucket      -> (match t with | BucketT _        -> true | _ -> false)
+    | Lock        -> (match t with | LockT _          -> true | _ -> false)
+    | LockArray   -> (match t with | LockArrayT _     -> true | _ -> false)
     | Bool        -> (match t with
                         | VarT v -> (V.sort v) = Bool
                         | _      -> false)
@@ -603,6 +636,8 @@ let get_sort_from_term t =
     | BucketArrayT _   -> BucketArray
     | MarkT _          -> Mark
     | BucketT _        -> Bucket
+    | LockT _          -> Lock
+    | LockArrayT _     -> LockArray
     | VarUpdate(v,_,_) -> (V.sort v)
   
 let terms_same_type a b =
@@ -632,6 +667,8 @@ let rec is_term_flat t =
     | BucketArrayT bb -> is_bucketarr_flat bb
     | MarkT m         -> is_mark_flat m
     | BucketT b       -> is_bucket_flat b
+    | LockT l         -> is_lock_flat l
+    | LockArrayT ll   -> is_lockarr_flat ll
     | VarUpdate _     -> true
 
 and is_set_flat t =
@@ -652,6 +689,20 @@ and is_tid_flat t =
     | CellLockId(c)   -> is_cell_flat c
     | BucketTid b     -> is_bucket_flat b
     | TidArrRd (tt,i) -> (is_tidarr_flat tt) && (is_int_flat i)
+    | LockId l        -> (is_lock_flat l)
+and is_lock_flat x =
+  match x with
+      VarLock _        -> true
+    | LLock (l,t)      -> (is_lock_flat l) && (is_tid_flat t)
+    | LUnlock (l)      -> (is_lock_flat l)
+    | LockArrRd (ll,i) -> (is_lockarr_flat ll) &&
+                          (is_int_flat i)
+and is_lockarr_flat ll =
+  match ll with
+      VarLockArray _       -> true
+    | LockArrayUp (ll,i,l) -> (is_lockarr_flat ll) &&
+                              (is_int_flat i) &&
+                              (is_lock_flat l)
 and is_elem_flat t =
   match t with
       VarElem _     -> true
@@ -730,6 +781,7 @@ and is_int_flat i =
     | IntMul (j1,j2) -> (is_int_flat j1) && (is_int_flat j2)
     | IntDiv (j1,j2) -> (is_int_flat j1) && (is_int_flat j2)
     | IntMod (j1,j2) -> (is_int_flat j1) && (is_int_flat j2)
+    | HashCode (e)   -> (is_elem_flat e)
 and is_tidarr_flat tt =
   match tt with
       VarTidArray _ -> true
@@ -862,8 +914,9 @@ and integer_to_str expr =
                                            (integer_to_str i2)
   | IntDiv (i1,i2)    -> sprintf "%s / %s" (integer_to_str i1)
                                            (integer_to_str i2)
-  | IntMod (i1,i2)    -> sprintf "mod(%s,%s)" (integer_to_str i1)
-                                              (integer_to_str i2)
+  | IntMod (i1,i2)    -> sprintf "%s %% %s" (integer_to_str i1)
+                                            (integer_to_str i2)
+  | HashCode (e)      -> sprintf "hashCode(%s)" (elem_to_str e)
 and tidarr_to_str expr : string =
   match expr with
     VarTidArray v       -> V.to_str v
@@ -976,6 +1029,19 @@ and tid_to_str th =
     | BucketTid b      -> Printf.sprintf "%s.btid" (bucket_to_str b)
     | TidArrRd(arr,l)  -> Printf.sprintf "%s[%s]" (tidarr_to_str arr)
                                                   (integer_to_str l)
+    | LockId (l)       -> Printf.sprintf "%s.id" (lock_to_str l)
+and lock_to_str (expr:lock) : string =
+  match expr with
+    VarLock v        -> V.to_str v
+  | LLock (l,t)      -> sprintf "lock(%s,%s)" (lock_to_str l) (tid_to_str t)
+  | LUnlock (l)      -> sprintf "unlock(%s)" (lock_to_str l)
+  | LockArrRd (ll,i) -> sprintf "%s[%s]" (lockarr_to_str ll) (integer_to_str i)
+and lockarr_to_str (expr:lockarr) : string =
+  match expr with
+    VarLockArray v       -> V.to_str v
+  | LockArrayUp(arr,i,l) -> sprintf "%s{%s<-%s}" (lockarr_to_str arr)
+                                                 (integer_to_str i)
+                                                 (lock_to_str l)
 and eq_to_str expr =
   let (e1,e2) = expr in
     Printf.sprintf "%s = %s" (term_to_str e1) (term_to_str e2)
@@ -1006,6 +1072,8 @@ and term_to_str expr =
     | BucketArrayT(bb)   -> (bucketarr_to_str bb)
     | MarkT(m)           -> (mark_to_str m)
     | BucketT(b)         -> (bucket_to_str b)
+    | LockT(l)           -> (lock_to_str l)
+    | LockArrayT(ll)     -> (lockarr_to_str ll)
     | VarUpdate (v,th,t) -> let v_str = V.to_str v in
                             let th_str = tid_to_str th in
                             let t_str = term_to_str t in
@@ -1038,6 +1106,8 @@ let sort_to_str s =
     | Bool        -> "Bool"
     | Mark        -> "Mark"
     | Bucket      -> "Bucket"
+    | Lock        -> "Lock"
+    | LockArray   -> "LockArray"
     | Unknown     -> "Unknown"
 
 let generic_printer aprinter x =
@@ -1138,6 +1208,8 @@ and voc_term (expr:term) : ThreadSet.t =
     | BucketArrayT(bb)   -> voc_bucketarr bb
     | MarkT(m)           -> voc_mark m
     | BucketT(b)         -> voc_bucket b
+    | LockT(l)           -> voc_lock l
+    | LockArrayT(ll)     -> voc_lockarr ll
     | VarUpdate (v,th,t) -> (get_tid_in v) @@ (voc_tid th) @@ (voc_term t)
 
 
@@ -1182,7 +1254,19 @@ and voc_tid (th:tid) : ThreadSet.t =
   | CellLockId(cell)   -> (voc_cell cell)
   | BucketTid b        -> (voc_bucket b)
   | TidArrRd (tt,i)    -> (voc_tidarr tt) @@ (voc_int i)
+  | LockId l           -> (voc_lock l)
 
+and voc_lock (x:lock) : ThreadSet.t =
+  match x with
+    VarLock v        -> get_tid_in v
+  | LLock (l,t)      -> (voc_lock l) @@ (voc_tid t)
+  | LUnlock (l)      -> (voc_lock l)
+  | LockArrRd (ll,i) -> (voc_lockarr ll) @@ (voc_int i)
+
+and voc_lockarr (ll:lockarr) : ThreadSet.t =
+  match ll with
+    VarLockArray v       -> get_tid_in v
+  | LockArrayUp (ll,i,l) -> (voc_lockarr ll) @@ (voc_int i) @@ (voc_lock l)
 
 and voc_cell (c:cell) : ThreadSet.t =
   match c with
@@ -1265,6 +1349,7 @@ and voc_int (i:integer) : ThreadSet.t =
   | IntMul(i1,i2)     -> (voc_int i1) @@ (voc_int i2)
   | IntDiv(i1,i2)     -> (voc_int i1) @@ (voc_int i2)
   | IntMod(i1,i2)     -> (voc_int i1) @@ (voc_int i2)
+  | HashCode(e)       -> (voc_elem e)
 
 
 and voc_tidarr (tt:tidarr) : ThreadSet.t =
@@ -1410,6 +1495,7 @@ let required_sorts (phi:formula) : sort list =
     | IntMul (i1,i2)   -> append Int [req_i i1;req_i i2]
     | IntDiv (i1,i2)   -> append Int [req_i i1;req_i i2]
     | IntMod (i1,i2)   -> append Int [req_i i1;req_i i2]
+    | HashCode (e)     -> append Int [req_e e]
 
   and req_bb (bb:bucketarr) : SortSet.t =
     match bb with
@@ -1491,6 +1577,19 @@ let required_sorts (phi:formula) : sort list =
     | CellLockId c      -> append Tid [req_c c]
     | BucketTid b       -> append Tid [req_b b]
     | TidArrRd (tt,i)   -> append Tid [req_tt tt;req_i i]
+    | LockId l          -> append Tid [req_l l]
+
+  and req_l (x:lock) : SortSet.t =
+    match x with
+    | VarLock _        -> single Lock
+    | LLock (l,t)      -> append Lock [req_l l; req_t t]
+    | LUnlock (l)      -> append Lock [req_l l]
+    | LockArrRd (ll,i) -> append Lock [req_ll ll; req_i i]
+
+  and req_ll (ll:lockarr) : SortSet.t =
+    match ll with
+    | VarLockArray _       -> single LockArray
+    | LockArrayUp (ll,i,l) -> append LockArray [req_ll ll; req_i i; req_l l]
 
   and req_tt (tt:tidarr) : SortSet.t =
     match tt with
@@ -1526,6 +1625,8 @@ let required_sorts (phi:formula) : sort list =
     | BucketArrayT bb    -> req_bb bb
     | MarkT m            -> req_mk m
     | BucketT b          -> req_b b
+    | LockT l            -> req_l l
+    | LockArrayT ll      -> req_ll ll
     | VarUpdate (v,t,tr) -> append (V.sort v) [req_t t;req_term tr] in
 
   let req_fs = Formula.make_fold
@@ -1591,6 +1692,7 @@ let special_ops (phi:formula) : special_op_t list =
     | IntMul (j1,j2) -> list_union [ops_i j1; ops_i j2]
     | IntDiv (j1,j2) -> list_union [ops_i j1; ops_i j2]
     | IntMod (j1,j2) -> list_union [ops_i j1; ops_i j2]
+    | HashCode (e)   -> list_union [ops_e e]
 
   and ops_tt (tt:tidarr) : OpsSet.t =
     match tt with
@@ -1677,6 +1779,19 @@ let special_ops (phi:formula) : special_op_t list =
     | CellLockId c    -> ops_c c
     | BucketTid b     -> ops_b b
     | TidArrRd (tt,i) -> list_union [ops_tt tt; ops_i i]
+    | LockId l        -> ops_l l
+
+  and ops_l (x:lock) : OpsSet.t =
+    match x with
+    | VarLock _        -> empty
+    | LLock (l,t)      -> list_union [ops_l l; ops_t t]
+    | LUnlock (l)      -> ops_l l
+    | LockArrRd (ll,i) -> list_union [ops_ll ll; ops_i i]
+    
+  and ops_ll (ll:lockarr) : OpsSet.t =
+    match ll with
+    | VarLockArray _       -> empty
+    | LockArrayUp (ll,i,l) -> list_union [ops_ll ll; ops_i i; ops_l l]
 
   and ops_s (s:set) : OpsSet.t =
     match s with
@@ -1707,6 +1822,8 @@ let special_ops (phi:formula) : special_op_t list =
     | IntT i             -> ops_i i
     | MarkT m            -> ops_mk m
     | BucketT b          -> ops_b b
+    | LockT l            -> ops_l l
+    | LockArrayT ll      -> ops_ll ll
     | VarUpdate (_,t,tr) -> list_union [ops_t t;ops_term tr] in
 
 

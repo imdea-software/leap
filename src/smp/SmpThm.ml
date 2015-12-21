@@ -168,6 +168,8 @@ let cut_off_normalized (expr:conjunctive_formula) : MS.t =
     | BucketArrayT _ -> ()
     | MarkT _        -> ()
     | BucketT _      -> ()
+    | LockT _        -> ()
+    | LockArrayT _   -> numtid := !numtid + 1 (* the witness of L1 != L2 *)
     | VarUpdate _    -> () in                   (* ALE: Not sure if OK *)
   let process (lit:literal) =
     match lit with
@@ -236,6 +238,8 @@ let union_eq_cutoff (info:union_info) ((x,y):(Expr.term * Expr.term)) : union_in
   | BucketArrayT _ -> info
   | MarkT _        -> info
   | BucketT _      -> info
+  | LockT _        -> info
+  | LockArrayT _   -> union_count_tid info (Expr.Eq(x,y)) (* the witness of L1 != L2 *)
   | VarUpdate _    -> info (* ALE: Not sure if OK *)
 
 
@@ -256,6 +260,8 @@ let union_ineq_cutoff (info:union_info) ((x,y):(Expr.term * Expr.term)) : union_
   | BucketArrayT _ -> info
   | MarkT _        -> info
   | BucketT _      -> info
+  | LockT _        -> info
+  | LockArrayT _   -> union_count_tid info (Expr.InEq(x,y)) (* the witness of L1 != L2 *)
   | VarUpdate _    -> info (* ALE: Not sure if OK *)
 
 
@@ -349,6 +355,8 @@ let prune_eq (x:term) (y:term) : (term * term) option =
     | TidArrayT _    -> Some (x,y) (* the witness of T1 != T2 *)
     | MarkT _        -> None
     | BucketT _      -> None
+    | LockT _        -> None
+    | LockArrayT _   -> Some (x,y) (* the witness of L1 != L2 *)
     | VarUpdate _    -> assert(false) (* ALE: Not sure if OK *)
 
 

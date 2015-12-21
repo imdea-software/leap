@@ -870,7 +870,7 @@ let fix_conditional_jumps () : unit =
 %token MARKED MARK_T MARK_F
 %token HAVOCLISTELEM HAVOCSKIPLISTELEM LOWEST_ELEM HIGHEST_ELEM
 %token SKIPLIST
-%token HAVOCLEVEL
+%token HAVOCLEVEL HASHCODE
 %token MEMORY_READ
 %token COMMA
 %token NULL UPDATE
@@ -906,7 +906,7 @@ let fix_conditional_jumps () : unit =
 
 %token INVARIANT PARAM
 %token AT UNDERSCORE SHARP
-%token MATH_PLUS MATH_MINUS MATH_MULT MATH_DIV MATH_LESS MATH_GREATER
+%token MATH_PLUS MATH_MINUS MATH_MULT MATH_DIV MATH_MOD MATH_LESS MATH_GREATER
 %token MATH_LESS_EQ MATH_GREATER_EQ
 
 %token EOF
@@ -938,7 +938,7 @@ let fix_conditional_jumps () : unit =
 
 
 %left MATH_PLUS MATH_MINUS
-%left MATH_MULT MATH_DIV
+%left MATH_MULT MATH_DIV MATH_MOD
 %right MATH_NEG
 
 %left DOT
@@ -3294,6 +3294,14 @@ integer :
       let i2  = parser_check_type check_type_int $3 E.Int get_str_expr in
         Stm.IntDiv (i1,i2)
     }
+  | term MATH_MOD term
+    {
+      let get_str_expr () = sprintf "%s %% %s" (Stm.term_to_str $1)
+                                               (Stm.term_to_str $3) in
+      let i1  = parser_check_type check_type_int $1 E.Int get_str_expr in
+      let i2  = parser_check_type check_type_int $3 E.Int get_str_expr in
+        Stm.IntMod (i1,i2)
+    }
   | SETINTMIN OPEN_PAREN term CLOSE_PAREN
     {
       let iSet = $3 in
@@ -3313,6 +3321,13 @@ integer :
   | HAVOCLEVEL OPEN_PAREN CLOSE_PAREN
     {
       Stm.HavocLevel
+    }
+  | HASHCODE OPEN_PAREN term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "hashCode(%s)" (Stm.term_to_str $3) in
+      let e  = parser_check_type check_type_elem $3 E.Elem get_str_expr
+      in
+        Stm.HashCode (e)
     }
   | INTOF OPEN_PAREN term CLOSE_PAREN
     {
@@ -3361,14 +3376,19 @@ arraylookup :
       try
         let arr = parser_check_type check_type_tidarr $1 E.TidArray get_str_expr in
           Stm.TidT (Stm.TidArrRd (arr,i))
-      with _ -> try
-        let arr = parser_check_type check_type_addrarr $1 E.AddrArray get_str_expr in
-               Stm.AddrT (Stm.AddrArrRd (arr,i))
-      with e ->
-        let a = parser_check_type check_type_addr $1 E.Addr get_str_expr in
-        match a with
-        | Stm.PointerNext a -> Stm.AddrT (Stm.PointerArrAt (a,i))
-        | _ -> raise(e)
+        with _ ->
+          try
+            let arr = parser_check_type check_type_addrarr $1 E.AddrArray get_str_expr in
+              Stm.AddrT (Stm.AddrArrRd (arr,i))
+          with _ ->
+            try
+              let arr = parser_check_type check_type_bucketarr $1 E.BucketArray get_str_expr in
+                Stm.BucketT (Stm.BucketArrRd (arr,i))
+            with e ->
+              let a = parser_check_type check_type_addr $1 E.Addr get_str_expr in
+                match a with
+                | Stm.PointerNext a -> Stm.AddrT (Stm.PointerArrAt (a,i))
+                | _ -> raise(e)
       
     }
 
