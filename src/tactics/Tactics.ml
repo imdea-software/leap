@@ -15,6 +15,7 @@ type vc_extra_info_t =
     orig_vc_id : vc_id;
     prime_goal : bool;
     assume: assumption_t list;
+    tag : Tag.f_tag;
   }
 
 type support_t = E.formula list
@@ -92,6 +93,7 @@ type filter_criteria_t =
 
 exception Invalid_tactic of string
 
+let empty_tag : Tag.f_tag = Tag.new_tag "" ""
 
 (*********************)
 (**  Configuration  **)
@@ -322,6 +324,7 @@ let vc_info_list_to_folder (output_file:string) (vcs:vc_info list) : unit =
 
 
 let create_vc_info ?(prime_goal=true)
+                   ?(tag=empty_tag)
                    (supp       : support_t)
                    (tid_constr : tid_constraints_t)
                    (rho        : E.formula)
@@ -342,11 +345,13 @@ let create_vc_info ?(prime_goal=true)
       vocabulary         = vocab ; (* fix: can be computed *)
       extra_info         = {orig_vc_id = id;
                             prime_goal = prime_goal;
-                            assume = [] } ;
+                            assume = [];
+                            tag = tag; } ;
     }
 
 
 let create_vc ?(prime_goal=true)
+              ?(tag=empty_tag)
               (orig_supp  : support_t)
               (tid_constr : tid_constraints_t)
               (rho        : E.formula)
@@ -354,9 +359,9 @@ let create_vc ?(prime_goal=true)
               (vocab      : E.ThreadSet.t)
               (trans_tid  : E.tid)
               (line       : E.pc_t) 
-        (support    : support_t)
-        : verification_condition =
-  vc_info_to_vc (create_vc_info orig_supp tid_constr rho goal vocab trans_tid line ~prime_goal:prime_goal) support
+              (support    : support_t)
+                : verification_condition =
+  vc_info_to_vc (create_vc_info orig_supp tid_constr rho goal vocab trans_tid line ~prime_goal:prime_goal ~tag:tag) support
 
 
 let dup_vc_info_with_support (info:vc_info) (new_support:support_t) : vc_info =
@@ -401,7 +406,7 @@ let dup_vc_info_with_supp_constr_rho_and_goal (info:vc_info)
     transition_tid = info.transition_tid ;
     line           = info.line ;
     vocabulary     = info.vocabulary ; (* FIX need recompute *)
-    extra_info       = info.extra_info ;
+    extra_info     = info.extra_info ;
   }
 
 
@@ -417,7 +422,8 @@ let add_modelfunc_assumption (info:vc_info) (a:assumption_t) : vc_info =
     vocabulary       = info.vocabulary ; (* FIX need recompute *)
     extra_info       = {orig_vc_id = info.extra_info.orig_vc_id;
                         prime_goal = info.extra_info.prime_goal;
-                        assume = a :: info.extra_info.assume} ;
+                        assume = a :: info.extra_info.assume;
+                        tag = info.extra_info.tag;} ;
   }
 
 
@@ -477,6 +483,7 @@ and get_goal_from_info (info:vc_info) : E.formula =  info.goal
 and get_transition_tid_from_info (info:vc_info) : E.tid =  info.transition_tid
 and get_line_from_info (info:vc_info) : E.pc_t = info.line
 and get_original_vc_id (info:vc_info) : int = info.extra_info.orig_vc_id
+and get_vc_tag (info:vc_info) : Tag.f_tag = info.extra_info.tag
 
 
 let get_antecedent (vc:verification_condition) : E.formula=

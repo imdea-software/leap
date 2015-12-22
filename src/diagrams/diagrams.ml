@@ -101,7 +101,8 @@ module Make (C:Core.S) : S =
                                     (PVD.node_mu pvd n) :: xs
                                   ) (PVD.initial pvd) []) in
         let (theta, voc) = C.theta (E.voc init_mu) in
-        [Tactics.create_vc_info [] Tactics.no_tid_constraint theta init_mu voc E.NoTid 0]
+        [Tactics.create_vc_info [] Tactics.no_tid_constraint theta init_mu
+          voc E.NoTid 0 ~tag:(Tag.new_tag "initiation" "")]
       end else []
 
 
@@ -198,7 +199,7 @@ module Make (C:Core.S) : S =
                               let init_vc = Tactics.create_vc_info []
                                              Tactics.no_tid_constraint
                                               (F.And (full_mu_n, rho))
-                                              goal full_voc t line in
+                                              goal full_voc t line ~tag:(Tag.new_tag "self-consecution" "") in
                               List.fold_left Tactics.add_modelfunc_assumption init_vc assumptions
                              ) self_rho) @ ys
                 ) n_voc [] in
@@ -212,6 +213,7 @@ module Make (C:Core.S) : S =
               let others_vcs = List.map (fun rho ->
                                  Tactics.create_vc_info [] tid_constraints (F.And (full_mu_n, rho))
                                    goal full_voc fresh_k line
+                                   ~tag:(Tag.new_tag "others-consecution" "")
                                ) other_rho in
               add_node_vc_tbl node_vc_tbl n (self_vcs @ others_vcs);
               self_vcs @ others_vcs @ vcs
@@ -272,6 +274,7 @@ module Make (C:Core.S) : S =
                                 let consequent = PVD.ranking_function antecedent accept (n,m,kind) in
                                 Tactics.create_vc_info [] Tactics.no_tid_constraint antecedent
                                   consequent voc t line ~prime_goal:false
+                                  ~tag:(Tag.new_tag "self-acceptance" "")
                               ) self_rho) @ ys
                             end else ys
                             ) n_voc [] in
@@ -290,6 +293,7 @@ module Make (C:Core.S) : S =
                                                                   accept (n,m,kind) in
                                            Tactics.create_vc_info [] tid_constraints antecedent
                                              consequent voc fresh_k line ~prime_goal:false
+                                             ~tag:(Tag.new_tag "others-acceptance" "")
                                          ) other_rho in
                         add_node_vc_tbl node_vc_tbl n (self_vcs @ others_vcs);
                         self_vcs @ others_vcs @ vcs
@@ -306,7 +310,8 @@ module Make (C:Core.S) : S =
                             let antecedent = F.conj_list [mu_n; rho; processed_mu_m; beta] in
                             let consequent = PVD.ranking_function antecedent accept (n,m,kind) in
                             let vc = Tactics.create_vc_info [] Tactics.no_tid_constraint
-                                      antecedent consequent voc t line ~prime_goal:false in
+                                      antecedent consequent voc t line ~prime_goal:false
+                                      ~tag:(Tag.new_tag "self-acceptance" "") in
                             add_node_vc_tbl node_vc_tbl n [vc];
                             vc
                           ) rho_list) @ ys
@@ -388,12 +393,15 @@ module Make (C:Core.S) : S =
                         (* Enabled *)
                         let enable_vc = List.fold_left Tactics.add_modelfunc_assumption
                                           (Tactics.create_vc_info [] Tactics.no_tid_constraint
-                                            mu_n1 conds voc th line) assumptions in
+                                            mu_n1 conds voc th line
+                                            ~tag:(Tag.new_tag "fairness-enabled" "")
+                                          ) assumptions in
                         (* Successor *)
                         let successor_vcs =
                           List.map (fun rho ->
                             let vc = Tactics.create_vc_info [] Tactics.no_tid_constraint
-                                      (F.And (mu_n1,rho)) next_mu voc th line in
+                                      (F.And (mu_n1,rho)) next_mu voc th line
+                                      ~tag:(Tag.new_tag "fairness-successor" "") in
                             List.fold_left Tactics.add_modelfunc_assumption vc assumptions
                           ) rho_list in
                         add_node_vc_tbl node_vc_tbl n1 (enable_vc :: successor_vcs);

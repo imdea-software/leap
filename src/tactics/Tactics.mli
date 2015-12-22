@@ -66,6 +66,7 @@ val vc_info_to_str_simple : vc_info -> string
 val vc_info_list_to_folder : string -> vc_info list -> unit
 
 val create_vc_info  : ?prime_goal:bool ->
+                      ?tag:Tag.f_tag ->
                       support_t ->
                       tid_constraints_t ->
                       Expression.formula ->
@@ -78,6 +79,7 @@ val create_vc_info  : ?prime_goal:bool ->
 val to_plain_vc_info : Expression.fol_mode_t -> vc_info -> vc_info
 
 val create_vc  : ?prime_goal:bool ->
+                 ?tag:Tag.f_tag ->
                  support_t ->
                  tid_constraints_t ->
                  Expression.formula ->
@@ -110,6 +112,7 @@ val get_goal_from_info : vc_info ->   Expression.formula
 val get_transition_tid_from_info : vc_info ->   Expression.tid
 val get_line_from_info : vc_info ->   Expression.pc_t
 val get_original_vc_id : vc_info -> int
+val get_vc_tag : vc_info -> Tag.f_tag
 val get_antecedent : verification_condition ->   Expression.formula
 val get_consequent : verification_condition ->   Expression.formula
 val get_support : verification_condition ->   support_t

@@ -456,6 +456,23 @@ module Make (Opt:module type of GenOptions) : S =
               if LeapVerbose.is_verbose_level_enabled(LeapVerbose._SHORT_INFO) then
                 Report.report_obligation_header !obligation_counter phi_obligation;
               let fol_phi = phi_obligation in
+              (* We apply axioms if possible *)
+              let phi_tag = Tactics.get_vc_tag case.vc in
+              let vc_line = Tactics.get_line_from_info case.vc in
+              let ax_tags = Axioms.lookup !axioms phi_tag vc_line in
+              let axioms_phi = List.map (fun t ->
+                                 let (ax_phi, ax_info) = Tag.tag_table_find axiom_tags t in
+                                 let ax_vars = Tag.info_params ax_info in
+                                 print_endline (E.formula_to_str ax_phi)
+                               ) ax_tags in
+
+              (*
+              let phi_name = case.vc.
+
+              let axiom_tags = Axioms.lookup axioms inv pc 
+ TUKA
+*)
+
               phi_timer#start;
               let status =
                 if Valid.is_valid (Pos.check_valid prog_lines

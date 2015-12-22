@@ -27,7 +27,7 @@ module Make (C:Core.S) : S =
 
 
     (* General Initialization premise *)
-    let premise_init (inv:E.formula) : Tactics.vc_info =
+    let premise_init ?(inv_id="") (inv:E.formula) : Tactics.vc_info =
       let inv_voc = E.voc inv in
       let (new_voc, new_inv) =
         if E.ThreadSet.is_empty inv_voc then
@@ -38,6 +38,7 @@ module Make (C:Core.S) : S =
           (inv_voc, inv) in
       let (initial_cond, voc) = C.theta new_voc in
       Tactics.create_vc_info [] Tactics.no_tid_constraint initial_cond new_inv voc E.NoTid 0
+        ~tag:(Tag.new_tag inv_id "")
 
 
 
@@ -46,7 +47,8 @@ module Make (C:Core.S) : S =
     (**********************)
 
 
-    let gen_vcs (supp:E.formula list)
+    let gen_vcs ?(inv_id="")
+                (supp:E.formula list)
                 (inv:E.formula)
                 (line:int)
                 (premise:Premise.t)
@@ -68,13 +70,14 @@ module Make (C:Core.S) : S =
       List.fold_left (fun rs phi ->
         Log.print "Create with support" (String.concat "\n" (List.map E.formula_to_str supp));
         let new_vc = Tactics.create_vc_info supp tid_constraint
-                        phi inv voc trans_tid line
+                        phi inv voc trans_tid line ~tag:(Tag.new_tag inv_id "")
         in
           new_vc :: rs
       ) [] rho
 
 
-    let spinv_transitions (supp:E.formula list)
+    let spinv_transitions ?(inv_id="")
+                          (supp:E.formula list)
                           (inv:E.formula)
                           (cases:IGraph.case_tbl_t)
                                 : Tactics.vc_info list =
@@ -89,31 +92,36 @@ module Make (C:Core.S) : S =
         let fresh_k = E.gen_fresh_tid (E.voc (Formula.conj_list (inv::supp@other_conseq_supp))) in
 
         let self_conseq_vcs = E.ThreadSet.fold (fun i vcs ->
-                                (gen_vcs (inv::self_conseq_supp) inv line Premise.SelfConseq i) @ vcs
+                                (gen_vcs (inv::self_conseq_supp) inv line Premise.SelfConseq i
+                                  ~inv_id:inv_id
+                              ) @ vcs
                               ) (System.filter_me_tid (E.voc inv)) [] in
         let other_conseq_vcs = gen_vcs (inv::other_conseq_supp) inv line Premise.OthersConseq fresh_k
+                                  ~inv_id:inv_id
         in
 
           vcs @ self_conseq_vcs @ other_conseq_vcs
       ) [] C.lines_to_consider
 
 
-    let spinv_with_cases (supp:E.formula list)
+    let spinv_with_cases ?(inv_id="")
+                         (supp:E.formula list)
                          (inv:E.formula)
                          (cases:IGraph.case_tbl_t) : Tactics.vc_info list =
       let initiation = if C.requires_theta then
-                         [premise_init inv]
+                         [premise_init inv ~inv_id:inv_id]
                        else
                          [] in
 
-      let transitions = spinv_transitions supp inv cases
+      let transitions = spinv_transitions supp inv cases ~inv_id:inv_id
       in
         initiation @ transitions
 
 
-    let spinv (supp:E.formula list)
+    let spinv ?(inv_id="")
+              (supp:E.formula list)
               (inv:E.formula) : Tactics.vc_info list =
-      spinv_with_cases supp inv (IGraph.empty_case_tbl())
+      spinv_with_cases supp inv (IGraph.empty_case_tbl()) ~inv_id:inv_id
 
 
 
@@ -121,7 +129,8 @@ module Make (C:Core.S) : S =
     (*  SEQUENTIAL SPINV  *)
     (**********************)
 
-    let seq_gen_vcs (supp:E.formula list)
+    let seq_gen_vcs ?(inv_id="")
+                    (supp:E.formula list)
                     (inv:E.formula)
                     (line:int)
                     (trans_tid:E.tid)
@@ -136,13 +145,14 @@ module Make (C:Core.S) : S =
                   inv in
       List.fold_left (fun rs phi ->
         let new_vc = Tactics.create_vc_info supp Tactics.no_tid_constraint
-                                            phi inv voc trans_tid line in
+                       phi inv voc trans_tid line ~tag:(Tag.new_tag inv_id "") in
           new_vc :: rs
       ) [] rho
 
 
 
-    let seq_spinv_transitions (supp:E.formula list)
+    let seq_spinv_transitions ?(inv_id="")
+                              (supp:E.formula list)
                               (inv:E.formula)
                               (cases:IGraph.case_tbl_t)
                                 : Tactics.vc_info list =
@@ -158,29 +168,31 @@ module Make (C:Core.S) : S =
         let specific_supp = match IGraph.lookup_case cases line Premise.SelfConseq with
                             | None -> supp
                             | Some (supp_tags, _) -> C.read_tags_and_group_by_file Core.Inv supp_tags in
-        vcs @ seq_gen_vcs (inv::specific_supp) inv line trans_tid
+        vcs @ seq_gen_vcs (inv::specific_supp) inv line trans_tid ~inv_id:inv_id
       ) [] C.lines_to_consider
 
 
 
 
-    let seq_spinv_with_cases (supp:E.formula list)
+    let seq_spinv_with_cases ?(inv_id="")
+                             (supp:E.formula list)
                              (inv:E.formula)
                              (cases:IGraph.case_tbl_t) : Tactics.vc_info list =
       let supp = inv :: supp in
       let initiation = if C.requires_theta then
-                         [premise_init inv]
+                         [premise_init inv ~inv_id:inv_id]
                        else
                          [] in
 
-      let transitions = seq_spinv_transitions supp inv cases
+      let transitions = seq_spinv_transitions supp inv cases ~inv_id:inv_id
       in
         initiation @ transitions
 
 
-    let seq_spinv (supp:E.formula list)
+    let seq_spinv ?(inv_id="")
+                  (supp:E.formula list)
                   (inv:E.formula) : Tactics.vc_info list =
-      seq_spinv_with_cases supp inv (IGraph.empty_case_tbl())
+      seq_spinv_with_cases supp inv (IGraph.empty_case_tbl()) ~inv_id:inv_id
 
 
 
@@ -258,7 +270,7 @@ module Make (C:Core.S) : S =
                                    " special cases.\n")
                               else
                                 print_endline ("Generating verification conditions for " ^ inv_id);
-                             spinv_with_cases supp inv cases
+                             spinv_with_cases supp inv cases ~inv_id:inv_id
                            | IGraph.Sequential ->
                               if LeapVerbose.is_verbose_enabled() then
                                 LeapVerbose.verbstr
@@ -268,7 +280,7 @@ module Make (C:Core.S) : S =
                                    " special cases.\n")
                               else
                                 print_endline ("Generating verification conditions for " ^ inv_id);
-                             seq_spinv_with_cases supp inv cases in
+                             seq_spinv_with_cases supp inv cases ~inv_id:inv_id in
         C.report_vcs vc_info_list;
         let new_obligations = generate_obligations vc_info_list plan cases in
         let obligations_num = List.fold_left (fun n po ->

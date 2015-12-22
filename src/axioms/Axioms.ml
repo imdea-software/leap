@@ -44,6 +44,8 @@ let new_case (pc:Expr.pc_t) (xs:Tag.f_tag list) : case_t =
   (pc,xs)
 
 
-let get_axioms (i:Tag.f_tag) (pc:Expr.pc_t) : Tag.f_tag list =
-  []
+let lookup (ax:t) (inv:Tag.f_tag) (pc:Expr.pc_t) : Tag.f_tag list =
+  try
+    Hashtbl.find (Hashtbl.find ax inv) pc
+  with _ -> []
 
