@@ -78,6 +78,8 @@ let _ =
                              let hide_pres = not !LeapArgs.expand_pres
                              let output_file = !LeapArgs.outFile
                              let inv_folder = !LeapArgs.invFolder
+                             let axiom_file = !LeapArgs.iAxiomFile
+                             let axiom_folder = !LeapArgs.axiomFolder
                              let dp = !LeapArgs.dpType
                              let tSolver = if !LeapArgs.use_z3 || !LeapArgs.use_yices_plus_z3 then
                                              BackendSolvers.Z3.identifier
@@ -121,9 +123,9 @@ let _ =
           (* Check whether undef tids are included in invVars *)
           let _ = System.undeftids_in_formula_decl undefTids invVars in
           (* Declare the tag of the global formula as the big conjunction *)
-          let _ = LeapCore.decl_tag tag inv invVars in
+          let _ = LeapCore.decl_tag Core.Inv tag inv invVars in
           (* Declare the tag of each subformula in the parsed file *)
-          let _ = List.iter (fun (tag, phi) -> LeapCore.decl_tag tag phi invVars) inv_decls in
+          let _ = List.iter (fun (tag, phi) -> LeapCore.decl_tag Core.Inv tag phi invVars) inv_decls in
           let _ = Report.report_inv_cand inv in
   (*        let sys = System.add_global_vars sys invVars in *)
 
@@ -168,7 +170,7 @@ let _ =
                               ) supInv_file_list in
             Report.report_sup_inv supInv_list;
             let sup_form_list = List.map (fun (_,tag,phi) ->
-                                  ignore(LeapCore.decl_tag tag phi); phi
+                                  ignore(LeapCore.decl_tag Core.Inv tag phi); phi
                                 ) supInv_list in
   *)
             ()

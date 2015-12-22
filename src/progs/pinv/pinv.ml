@@ -64,7 +64,7 @@ let _ =
 
     (* Check whether undef tids are included in invVars *)
     System.undeftids_in_formula_decl undefTids invVars;
-    VCG.decl_tag tag inv;
+    VCG.decl_tag Core.Inv tag inv;
     Report.report_inv_cand inv;
     let sys = System.add_global_vars sys invVars in
 

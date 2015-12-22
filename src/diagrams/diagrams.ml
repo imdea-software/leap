@@ -444,7 +444,7 @@ module Make (C:Core.S) : S =
               let supp_tags = PVD.supp_fact supp line n c in
               Debug.infoMsg (fun _ ->
                               "TAGS: " ^ (LeapLib.concat_map " , " Tag.tag_id supp_tags));
-              let supp_formulas = C.read_tags_and_group_by_file supp_tags in
+              let supp_formulas = C.read_tags_and_group_by_file Core.Inv supp_tags in
               Debug.infoMsg (fun _ ->
                               "SUPP_FORMULAS:\n" ^
                               (String.concat "\n"

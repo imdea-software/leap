@@ -1,4 +1,5 @@
 
+type file_kind_t = Inv | Axiom
 type proof_info_t
 type proof_obligation_t
 type solved_proof_obligation_t
@@ -14,6 +15,8 @@ module GenOptions :
     val hide_pres : bool
     val output_file : string
     val inv_folder : string
+    val axiom_file : string
+    val axiom_folder : string
     val dp : DP.t
     val pSolver : string
     val tSolver : string
@@ -30,6 +33,7 @@ module type S =
   sig
 
     exception No_invariant_folder
+    exception No_axiom_folder
 
     val new_proof_info : Smp.cutoff_strategy_t option -> proof_info_t
     val new_proof_obligation : Tactics.vc_info ->
@@ -43,11 +47,12 @@ module type S =
 
     val report_vcs : Tactics.vc_info list -> unit
 
-    val decl_tag : Tag.f_tag option -> Expression.formula -> System.var_table_t -> unit
+    val decl_tag : file_kind_t -> Tag.f_tag option -> Expression.formula ->
+                   System.var_table_t -> unit
     val is_def_tag : Tag.f_tag -> bool
-    val read_tag : Tag.f_tag -> Expression.formula
-    val read_tags_and_group_by_file : Tag.f_tag list -> Expression.formula list
-    val read_tag_info : Tag.f_tag -> Tag.f_info
+    val read_tag : file_kind_t -> Tag.f_tag -> Expression.formula
+    val read_tags_and_group_by_file : file_kind_t -> Tag.f_tag list -> Expression.formula list
+    val read_tag_info : file_kind_t -> Tag.f_tag -> Tag.f_info
 
     val system : System.t
 

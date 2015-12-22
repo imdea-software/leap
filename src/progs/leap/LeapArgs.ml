@@ -20,6 +20,7 @@ let debugFlag         = ref false
 let pinvSys           = ref false
 let pinvPlusSys       = ref false
 let useGraph          = ref false
+let useAxioms         = ref false
 let openExtSys        = ref false
 let binvSys           = ref false
 let spinvSys          = ref false
@@ -43,7 +44,9 @@ let invCandidate      = ref ""
 let vdFormula         = ref ""
 let supInvariant      = ref ""
 let invFolder         = ref ""
+let axiomFolder       = ref ""
 let iGraphFile        = ref ""
+let iAxiomFile        = ref ""
 let focusPC           = ref []
 let ignorePC          = ref []
 let pvdConds          = ref []
@@ -68,9 +71,16 @@ let setdebug () =
 let inputInvFolder (s:string) =
   invFolder := s
 
+let inputAxiomsFolder (s:string) =
+  axiomFolder := s
+
 let inputInvGraphFile (s:string) =
   useGraph := true;
   iGraphFile := s
+
+let inputAxiomsFile (s:string) =
+  useAxioms := true;
+  iAxiomFile := s
 
 let inputInvariant (s:string) =
   invCandidate := s
@@ -178,6 +188,12 @@ let opts = [
   ("-d",
      Arg.String inputInvFolder,
      "[folder]  Input folder containing invariant candidates.");
+  ("-a",
+     Arg.String inputAxiomsFolder,
+     "[folder]  Input folder containing theory axioms.");
+  ("-af",
+     Arg.String inputAxiomsFile,
+     "[file]  Input file containing the axiom usage.");
   ("-pvd",
      Arg.String inputPvd,
      "[file]  Input file with a PVD, for liveness verification.");

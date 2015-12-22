@@ -115,6 +115,8 @@ struct
     | ThmExp.BucketArrayT(bb) -> is_var_bucketarr bb
     | ThmExp.MarkT(m)         -> is_var_mark m
     | ThmExp.BucketT(b)       -> is_var_bucket b
+    | ThmExp.LockT(l)         -> is_var_lock l
+    | ThmExp.LockArrayT(ll)   -> is_var_lockarr ll
     | ThmExp.VarUpdate _      -> false (* ALE: Not sure if OK *)
   
   (* 
@@ -181,6 +183,8 @@ struct
       | ThmExp.BucketArrayT(bb) -> is_constant_bucketarr bb
       | ThmExp.MarkT(m)         -> is_constant_mark m
       | ThmExp.BucketT(b)       -> is_constant_bucket b
+      | ThmExp.LockT(l)         -> is_constant_lock l
+      | ThmExp.LockArrayT(arr)  -> is_constant_lockarr arr
       | ThmExp.VarUpdate _      -> false
   
   (* 

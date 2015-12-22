@@ -6,6 +6,9 @@ module E = Expression
 module PE = PosExpression
 
 
+type file_kind_t = Inv | Axiom
+
+
 type proof_info_t =
   {
     cutoff : Smp.cutoff_strategy_t;
@@ -39,6 +42,8 @@ module GenOptions :
     val hide_pres : bool
     val output_file : string
     val inv_folder : string
+    val axiom_file : string
+    val axiom_folder : string
     val dp : DP.t
     val pSolver : string
     val tSolver : string
@@ -63,6 +68,8 @@ module GenOptions :
     let hide_pres         = true
     let output_file       = ""
     let inv_folder        = ""
+    let axiom_file        = ""
+    let axiom_folder      = ""
     let dp                = DP.NoDP
     let pSolver           = BackendSolvers.Yices.identifier
     let tSolver           = BackendSolvers.Z3.identifier
@@ -81,6 +88,7 @@ module type S =
   sig
 
     exception No_invariant_folder
+    exception No_axiom_folder
 
     val new_proof_info : Smp.cutoff_strategy_t option -> proof_info_t
     val new_proof_obligation : Tactics.vc_info ->
@@ -94,11 +102,12 @@ module type S =
 
     val report_vcs : Tactics.vc_info list -> unit
 
-    val decl_tag : Tag.f_tag option -> Expression.formula -> System.var_table_t -> unit
+    val decl_tag : file_kind_t -> Tag.f_tag option -> Expression.formula ->
+                   System.var_table_t -> unit
     val is_def_tag : Tag.f_tag -> bool
-    val read_tag : Tag.f_tag -> Expression.formula
-    val read_tags_and_group_by_file : Tag.f_tag list -> Expression.formula list
-    val read_tag_info : Tag.f_tag -> Tag.f_info
+    val read_tag : file_kind_t -> Tag.f_tag -> Expression.formula
+    val read_tags_and_group_by_file : file_kind_t -> Tag.f_tag list -> Expression.formula list
+    val read_tag_info : file_kind_t -> Tag.f_tag -> Tag.f_info
 
     val system : System.t
 
@@ -121,6 +130,7 @@ module Make (Opt:module type of GenOptions) : S =
     module Elexer = ExprLexer
 
     exception No_invariant_folder
+    exception No_axiom_folder
 
 
     (************************************************)
@@ -128,45 +138,58 @@ module Make (Opt:module type of GenOptions) : S =
     (************************************************)
 
     let tags : Tag.tag_table = Tag.tag_table_new
+    let axiom_tags : Tag.tag_table = Tag.tag_table_new
 
+    let axioms : Axioms.t ref = ref (Axioms.empty_axioms ())
+
+    let choose_table (k:file_kind_t) : Tag.tag_table =
+      match k with
+      | Inv -> tags
+      | Axiom -> axiom_tags
 
     let tags_num () : int = Tag.tag_table_size tags
+    let axiom_num () : int = Tag.tag_table_size axiom_tags
 
 
-    let decl_tag (t : Tag.f_tag option)
+    let decl_tag (k : file_kind_t)
+                 (t : Tag.f_tag option)
                  (phi : E.formula)
                  (vTbl:System.var_table_t) : unit =
+      let tbl = choose_table k in
       match t with
       | None -> ()
-      | Some tag -> if Tag.tag_table_mem tags tag
+      | Some tag -> if Tag.tag_table_mem tbl tag
           then
             raise(Tag.Duplicated_tag(Tag.tag_id tag))
-          else Tag.tag_table_add tags tag phi (Tag.new_info vTbl)
+          else Tag.tag_table_add tbl tag phi (Tag.new_info vTbl)
 
 
-    let read_tag (t : Tag.f_tag) : E.formula =
-      if Tag.tag_table_mem tags t then
-        Tag.tag_table_get_formula tags t
+    let read_tag (k : file_kind_t) (t : Tag.f_tag) : E.formula =
+      let tbl = choose_table k in
+      if Tag.tag_table_mem tbl t then
+        Tag.tag_table_get_formula tbl t
       else
         raise(Tag.Undefined_tag(Tag.tag_id t))
 
 
-    let read_tags_and_group_by_file (ts : Tag.f_tag list) : E.formula list =
+    let read_tags_and_group_by_file (k : file_kind_t)
+                                    (ts : Tag.f_tag list) : E.formula list =
       let supp_tbl : (string, E.formula list) Hashtbl.t = Hashtbl.create 5 in
       List.iter (fun tag ->
         let master_id = Tag.master_id tag in
         try
-          Hashtbl.replace supp_tbl master_id ((read_tag tag)::(Hashtbl.find supp_tbl master_id))
-        with Not_found -> Hashtbl.add supp_tbl master_id [read_tag tag]
+          Hashtbl.replace supp_tbl master_id ((read_tag k tag)::(Hashtbl.find supp_tbl master_id))
+        with Not_found -> Hashtbl.add supp_tbl master_id [read_tag k tag]
       ) ts;
       Hashtbl.fold (fun _ phi_list xs ->
         (Formula.conj_list phi_list) :: xs
       ) supp_tbl []
 
 
-    let read_tag_info (t : Tag.f_tag) : Tag.f_info =
-      if Tag.tag_table_mem tags t then
-        Tag.tag_table_get_info tags t
+    let read_tag_info (k : file_kind_t) (t : Tag.f_tag) : Tag.f_info =
+      let tbl = choose_table k in
+      if Tag.tag_table_mem tbl t then
+        Tag.tag_table_get_info tbl t
       else
         raise(Tag.Undefined_tag(Tag.tag_id t))
 
@@ -183,18 +206,24 @@ module Make (Opt:module type of GenOptions) : S =
       Tag.tag_table_clear tags
 
 
-    let load_tags_from_folder (folder:string) : unit =
+    let load_tags_from_folder (k:file_kind_t) (folder:string) : unit =
       let all_files = Array.fold_left (fun xs f ->
                         (folder ^ "/" ^ f)::xs
                       ) [] (Sys.readdir folder) in
-      let inv_files = List.filter (fun s -> Filename.check_suffix s "inv") all_files in
+      let suffix = match k with
+                   | Inv -> "inv"
+                   | Axiom -> "axm" in
+      let files = List.filter (fun s -> Filename.check_suffix s suffix) all_files in
+      let rule = match k with
+                 | Inv -> Eparser.invariant
+                 | Axiom -> Eparser.axiom in
       List.iter (fun i ->
         let (phiVars, tag, phi_decls) = Parser.open_and_parse i
-                                          (Eparser.invariant Elexer.norm) in
+                                          (rule Elexer.norm) in
         let phi = Formula.conj_list (List.map snd phi_decls) in
-        List.iter (fun (subtag,subphi) -> decl_tag subtag subphi phiVars) phi_decls;
-        decl_tag tag phi phiVars
-      ) inv_files
+        List.iter (fun (subtag,subphi) -> decl_tag k subtag subphi phiVars) phi_decls;
+        decl_tag k tag phi phiVars
+      ) files
 
 
     (********************)
@@ -247,12 +276,29 @@ module Make (Opt:module type of GenOptions) : S =
     let _ =
       if Opt.inv_folder <> "" then begin
         if Sys.is_directory Opt.inv_folder then begin
-          load_tags_from_folder Opt.inv_folder
+          load_tags_from_folder Inv Opt.inv_folder
         end else begin
           Interface.Err.msg "Not a valid invariant folder" $
             sprintf "%s is not a valid folder." Opt.inv_folder;
             raise(No_invariant_folder)
         end
+      end;
+      if Opt.axiom_folder <> "" then begin
+        if Sys.is_directory Opt.axiom_folder then begin
+          load_tags_from_folder Axiom Opt.axiom_folder
+        end else begin
+          Interface.Err.msg "Not a valid axiom folder" $
+            sprintf "%s is not a valid folder." Opt.axiom_folder;
+            raise(No_axiom_folder)
+        end
+      end;
+      if Opt.axiom_file <> "" then begin
+        axioms := Parser.open_and_parse Opt.axiom_file
+                    (IGraphParser.axioms IGraphLexer.norm)
+      end else begin
+        Interface.Err.msg "Not a valid axiom file" $
+          sprintf "%s is not a valid file with axioms." Opt.axiom_file;
+          raise(No_axiom_folder)
       end
 
 

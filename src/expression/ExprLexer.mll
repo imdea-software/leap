@@ -20,6 +20,7 @@ let _ = List.iter (fun (kwd, tok) -> Hashtbl.add keyword_table kwd tok)
             ("Edges"        , EDGES);
             ("Acceptance"   , ACCEPTANCE);
             ("invariant"    , INVARIANT);
+            ("axiom"        , AXIOM);
             ("formula"      , FORMULA);
             ("vars"         , VARS);
             ("error"        , ERROR);

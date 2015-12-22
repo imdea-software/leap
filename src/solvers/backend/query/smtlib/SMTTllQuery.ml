@@ -1710,7 +1710,7 @@ struct
     done;
     B.contents tmpbuf
 
-
+(*
   let add_axioms (buf:Buffer.t) (num_addrs:int)
                  (req_sorts:Expr.sort list)
                  (req_ops:Expr.special_op_t list)
@@ -1850,7 +1850,7 @@ struct
       ) sets
    ) sets
  *)
-
+*)
 
   let post_process (buf:B.t) (num_addrs:int)
                    (req_sorts:Expr.sort list)
@@ -1862,8 +1862,8 @@ struct
     Hashtbl.iter (fun m _ -> B.add_string buf (process_mark m)) mark_tbl;
     Hashtbl.iter (fun c _ -> B.add_string buf (process_cell c)) cell_tbl;
     Hashtbl.iter (fun g _ -> B.add_string buf (process_getp num_addrs g)) getp_tbl;
-    Hashtbl.iter (fun f _ -> B.add_string buf (process_locked num_addrs f)) locked_tbl;
-    add_axioms buf num_addrs req_sorts req_ops vars
+    Hashtbl.iter (fun f _ -> B.add_string buf (process_locked num_addrs f)) locked_tbl
+    (* add_axioms buf num_addrs req_sorts req_ops vars *)
     
 
 

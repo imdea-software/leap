@@ -81,7 +81,7 @@ module Make (C:Core.S) : S =
       let load_support (line:E.pc_t) (prem:Premise.t) : E.formula list =
         match IGraph.lookup_case cases line prem with
         | None -> supp
-        | Some (supp_tags,_) -> C.read_tags_and_group_by_file supp_tags
+        | Some (supp_tags,_) -> C.read_tags_and_group_by_file Core.Inv supp_tags
       in
       List.fold_left (fun vcs line ->
         let self_conseq_supp  = load_support line Premise.SelfConseq in
@@ -157,7 +157,7 @@ module Make (C:Core.S) : S =
       List.fold_left (fun vcs line ->
         let specific_supp = match IGraph.lookup_case cases line Premise.SelfConseq with
                             | None -> supp
-                            | Some (supp_tags, _) -> C.read_tags_and_group_by_file supp_tags in
+                            | Some (supp_tags, _) -> C.read_tags_and_group_by_file Core.Inv supp_tags in
         vcs @ seq_gen_vcs (inv::specific_supp) inv line trans_tid
       ) [] C.lines_to_consider
 
@@ -246,8 +246,8 @@ module Make (C:Core.S) : S =
       List.fold_left (fun os (mode, suppTags, invTag, cases, plan) ->
         let supp_ids = String.concat "," $ List.map Tag.tag_id suppTags in
         let inv_id = Tag.tag_id invTag in
-        let supp = C.read_tags_and_group_by_file suppTags in
-        let inv = C.read_tag invTag in
+        let supp = C.read_tags_and_group_by_file Core.Inv suppTags in
+        let inv = C.read_tag Core.Inv invTag in
         let vc_info_list = match mode with
                            | IGraph.Concurrent ->
                               if LeapVerbose.is_verbose_enabled() then

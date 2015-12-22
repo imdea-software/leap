@@ -529,9 +529,11 @@ let check_and_get_sort (id:string) : E.sort =
             | E.Array        -> Stm.ArrayT       (Stm.VarArray        modif_v)
             | E.AddrArray    -> Stm.AddrArrayT   (Stm.VarAddrArray    modif_v)
             | E.TidArray     -> Stm.TidArrayT    (Stm.VarTidArray     modif_v)
-            | E.BucketArray  -> Stm.BucketArrayT  (Stm.VarBucketArray modif_v)
+            | E.BucketArray  -> Stm.BucketArrayT (Stm.VarBucketArray  modif_v)
             | E.Mark         -> Stm.MarkT        (Stm.VarMark         modif_v)
             | E.Bucket       -> Stm.BucketT      (Stm.VarBucket       modif_v)
+            | E.Lock         -> Stm.LockT        (Stm.VarLock         modif_v)
+            | E.LockArray    -> Stm.LockArrayT   (Stm.VarLockArray    modif_v)
             | E.Unknown      -> Stm.VarT         modif_v
           end
     | _                   -> exp

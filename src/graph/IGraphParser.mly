@@ -29,6 +29,7 @@ let get_line id = snd id
 
 %start graph
 %start pvd_support
+%start axioms
 
 %type <PVD.support_t> pvd_support
 %type <(PVD.supp_line_t * Tactics.proof_plan)> tactic_case
@@ -39,7 +40,13 @@ let get_line id = snd id
 %type <IGraph.t> graph
 %type <IGraph.rule_t list> rule_list
 %type <IGraph.rule_t> rule
-%type <Tag.f_tag list> maybe_empty_inv_list
+%type <Axioms.t> axioms
+%type <Axioms.rule_t list> axiom_rule_list
+%type <Axioms.rule_t> axiom_rule
+%type <Axioms.case_t list> axiom_cases
+%type <Axioms.case_t list> axiom_case_list
+%type <Axioms.case_t> axiom_case
+%type <Tag.f_tag list> maybe_empty_tag_list
 %type <Tag.f_tag list> inv_list
 %type <Tag.f_tag> inv
 %type <Tag.f_tag list> inv_group
@@ -67,6 +74,59 @@ let get_line id = snd id
 
 
 %%
+
+/* AXIOMS */
+
+axioms :
+  |
+    { Axioms.empty_axioms() }
+  | axiom_rule_list
+    { Axioms.new_axioms($1) }
+
+
+axiom_rule_list :
+  | axiom_rule
+    { [$1] }
+  | axiom_rule axiom_rule_list
+    {
+      let r = $1 in
+      let rs = $2
+      in
+        r :: rs
+    }
+
+
+axiom_rule :
+  | inv axiom_cases
+    {
+      let i = $1 in
+      let cs = $2 in
+        Axioms.new_rule i cs
+    }
+
+
+axiom_cases :
+  |
+    { [] }
+  | OPEN_BRACK axiom_case_list CLOSE_BRACK
+    { $2 }
+
+
+axiom_case_list :
+  | axiom_case
+    { [$1] }
+  | axiom_case SEMICOLON axiom_case_list
+    { $1 :: $3 }
+
+
+axiom_case :
+  | NUMBER COLON maybe_empty_tag_list
+    {
+      let pc = $1 in
+      let axiom_list = $3
+      in
+        Axioms.new_case pc axiom_list
+    }
 
 /* PVD SUPPORT */
 
@@ -138,7 +198,7 @@ rule_list :
 
 
 rule :
-  | maybe_empty_inv_list CONC_ARROW inv cases tactics
+  | maybe_empty_tag_list CONC_ARROW inv cases tactics
     {
       let sup = $1 in
       let i = $3 in
@@ -147,7 +207,7 @@ rule :
 (*        LOG "Concurrent tactics size: %i" (List.length (Tactics.post_tacs ts)) LEVEL DEBUG; *)
         IGraph.new_rule IGraph.Concurrent sup i cs ts
     }
-  | maybe_empty_inv_list SEQ_ARROW inv seq_cases tactics
+  | maybe_empty_tag_list SEQ_ARROW inv seq_cases tactics
     {
       let sup = $1 in
       let i = $3 in
@@ -158,7 +218,7 @@ rule :
     }
 
 
-maybe_empty_inv_list :
+maybe_empty_tag_list :
   |
     { [] }
   | inv_list
@@ -231,7 +291,7 @@ seq_case_list :
 
 
 case :
-  | NUMBER COLON premise maybe_empty_inv_list tactics
+  | NUMBER COLON premise maybe_empty_tag_list tactics
     {
       let pc = $1 in
       let prem = $3 in
@@ -243,7 +303,7 @@ case :
 
 
 seq_case :
-  | NUMBER COLON maybe_empty_inv_list tactics
+  | NUMBER COLON maybe_empty_tag_list tactics
     {
       let pc = $1 in
       let phi_list = $3 in

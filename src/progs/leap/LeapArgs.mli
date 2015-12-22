@@ -17,6 +17,7 @@ val debugFlag : bool ref
 val pinvSys : bool ref
 val pinvPlusSys : bool ref
 val useGraph : bool ref
+val useAxioms : bool ref
 val openExtSys : bool ref
 val binvSys : bool ref
 val spinvSys : bool ref
@@ -40,7 +41,9 @@ val invCandidate : string ref
 val vdFormula : string ref
 val supInvariant : string ref
 val invFolder : string ref
+val axiomFolder : string ref
 val iGraphFile : string ref
+val iAxiomFile : string ref
 val focusPC : int list ref
 val ignorePC : int list ref
 val pvdConds : PVD.conditions_t list ref

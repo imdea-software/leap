@@ -525,7 +525,7 @@ let define_ident (proc_name:E.V.procedure_name)
 %token ARR_UPDATE
 %token WF_INTSUBSET WF_PAIRSUBSET WF_INTLESS WF_ADDRSUBSET WF_ELEMSUBSET WF_TIDSUBSET
 
-%token INVARIANT FORMULA VARS
+%token AXIOM INVARIANT FORMULA VARS
 %token AT UNDERSCORE SHARP
 %token MATH_PLUS MATH_MINUS MATH_MULT MATH_DIV MATH_LESS MATH_GREATER MATH_MOD
 %token MATH_LESS_EQ MATH_GREATER_EQ
@@ -571,6 +571,7 @@ let define_ident (proc_name:E.V.procedure_name)
 
 
 %start invariant
+%start axiom
 %start formula
 %start vc_info
 %start single_formula
@@ -581,6 +582,7 @@ let define_ident (proc_name:E.V.procedure_name)
 %type <Expression.formula> single_formula
 
 %type <System.var_table_t * Tag.f_tag option * (Tag.f_tag option * Expression.formula) list> invariant
+%type <System.var_table_t * Tag.f_tag option * (Tag.f_tag option * Expression.formula) list> axiom
 %type <(Tag.f_tag option * Expression.formula) list> formula_decl_list
 %type <(Tag.f_tag option * Expression.formula)> formula_decl
 
@@ -823,6 +825,20 @@ wf_op :
     { PVD.WFTidSubset }
   | WF_INTLESS
     { PVD.WFIntLess }
+
+
+/*********************     AXIOMS    *************************/
+
+axiom :
+  | param COLON inv_var_declarations AXIOM formula_tag COLON formula_decl_list
+    { let declInvVars = System.copy_var_table invVars in
+      let tag         = $5 in
+      let inv_decl    = $7 in
+      let _           = System.clear_table invVars
+      in
+        (declInvVars, tag, inv_decl)
+    }
+
 
 
 /*********************     INVARIANTS    *************************/

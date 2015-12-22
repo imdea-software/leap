@@ -63,7 +63,7 @@ let _ =
 
     (* Check whether undef tids are included in invVars *)
     System.undeftids_in_formula_decl undefTids invVars;
-    VCG.decl_tag tag inv;
+    VCG.decl_tag Core.Inv tag inv;
     Report.report_inv_cand inv;
     let sys = System.add_global_vars sys invVars in
 
@@ -73,7 +73,7 @@ let _ =
       supInv_file_list in
     Report.report_sup_inv supInv_list;
     let sup_form_list = List.map 
-      (fun (_,tag,phi) -> let _ = VCG.decl_tag tag phi in phi) 
+      (fun (_,tag,phi) -> let _ = VCG.decl_tag Core.Inv tag phi in phi) 
       supInv_list in
     if VCG.some_dp_enabled () then
       ignore $ VCG.check_with_spinv sys sup_form_list inv
