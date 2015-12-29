@@ -57,7 +57,7 @@ let subtag_id (t:f_tag) : string =
 
 
 (* Manipulation of tag table *)
-let tag_table_new : tag_table =
+let tag_table_new () : tag_table =
   Hashtbl.create tag_table_initial_size
 
 let tag_table_clear (tbl:tag_table) : unit =
@@ -83,3 +83,6 @@ let tag_table_get_info (tbl:tag_table) (t:f_tag) : f_info =
 
 let tag_table_size (tbl:tag_table) : int =
   Hashtbl.length tbl
+
+let tag_table_iter (tbl:tag_table) (f:f_tag -> Expr.formula * f_info -> unit) : unit =
+  Hashtbl.iter f tbl

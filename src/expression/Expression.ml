@@ -313,6 +313,9 @@ and expr_t =
             parametrized by a theory. Maybe a fold function *)
 and tid_subst_t = (tid * tid) list
 
+type var_term_subst_t = (V.t, term) Hashtbl.t
+
+
 (* CHANGES: fol_mode maybe also another module parametrized by a theory *)
 type fol_mode_t =
   | PCOnly
@@ -369,6 +372,7 @@ exception No_variable_term of string
 exception Incompatible_assignment of term * expr_t
 exception Not_implemented of string
 exception Not_tid_var of tid
+exception Substitution_error of string
 
 
 let build_var_info ?(treat_as_pc=false) (nature:var_nature) : var_info_t =
@@ -5487,9 +5491,564 @@ and subst_vars (subs:V.subst_t) (phi:formula) : formula =
 *)
 
 
+
+(* VARIABLE FOR TERM SUBSTITUTION FUNCTIONS *)
+
+let new_var_term_subst (xs:(V.t * term) list) : var_term_subst_t =
+  let tbl = Hashtbl.create (List.length xs) in
+  List.iter (fun (v,t) ->
+    Hashtbl.add tbl v t
+  ) xs;
+  tbl
+
+
+let rec var_term_subst_shared_or_local (subs:var_term_subst_t) (th:V.shared_or_local) : 
+  V.shared_or_local =
+  match th with
+  | V.Shared -> V.Shared
+  | V.Local t -> if Hashtbl.mem subs t then
+                   raise(Substitution_error ("Impossible to substitute
+                   variable " ^ (V.to_str t) ^ " as it is parametrizing
+                   the formula."))
+                 else
+                   th
+and subst_var_term_term (subs:var_term_subst_t) (expr:term) : term =
+  match expr with
+    VarT v              -> (try
+                              Hashtbl.find subs v
+                            with _ -> expr)
+  | SetT(set)           -> SetT(subst_var_term_set subs set)
+  | AddrT(addr)         -> AddrT(subst_var_term_addr subs addr)
+  | ElemT(elem)         -> ElemT(subst_var_term_elem subs elem)
+  | TidT(th)            -> TidT(subst_var_term_th subs th)
+  | CellT(cell)         -> CellT(subst_var_term_cell subs cell)
+  | SetThT(setth)       -> SetThT(subst_var_term_setth subs setth)
+  | SetIntT(setint)     -> SetIntT(subst_var_term_setint subs setint)
+  | SetElemT(setelem)   -> SetElemT(subst_var_term_setelem subs setelem)
+  | SetPairT(setpair)   -> SetPairT(subst_var_term_setpair subs setpair)
+  | PathT(path)         -> PathT(subst_var_term_path subs path)
+  | MemT(mem)           -> MemT(subst_var_term_mem subs mem)
+  | IntT(i)             -> IntT(subst_var_term_int subs i)
+  | PairT(p)            -> PairT(subst_var_term_pair subs p)
+  | ArrayT(arr)         -> ArrayT(subst_var_term_array subs arr)
+  | AddrArrayT(arr)     -> AddrArrayT(subst_var_term_addrarr subs arr)
+  | TidArrayT(arr)      -> TidArrayT(subst_var_term_tidarr subs arr)
+  | BucketArrayT(arr)   -> BucketArrayT(subst_var_term_bucketarr subs arr)
+  | MarkT(m)            -> MarkT(subst_var_term_mark subs m)
+  | BucketT(b)          -> BucketT(subst_var_term_bucket subs b)
+  | LockT(l)            -> LockT(subst_var_term_lock subs l)
+  | LockArrayT(arr)     -> LockArrayT(subst_var_term_lockarr subs arr)
+
+
+and subst_var_term_expr (subs:var_term_subst_t) (expr:expr_t) : expr_t =
+  match expr with
+    Term t    -> Term (subst_var_term_term subs t)
+  | Formula b -> Formula (subst_var_term subs b)
+
+
+and subst_var_term_array (subs:var_term_subst_t) (expr:arrays) : arrays =
+  match expr with
+    VarArray v       -> (try
+                           match Hashtbl.find subs v with
+                           | ArrayT x -> x
+                           | _ -> expr
+                         with _ -> expr)
+  | ArrayUp(arr,t,e) -> ArrayUp(subst_var_term_array subs arr, t,
+                                subst_var_term_expr subs e)
+
+
+and subst_var_term_addrarr (subs:var_term_subst_t) (expr:addrarr) : addrarr =
+  match expr with
+    VarAddrArray v       -> (try
+                               match Hashtbl.find subs v with
+                               | AddrArrayT x -> x
+                               | _ -> expr
+                             with _ -> expr)
+  | AddrArrayUp(arr,i,a) -> AddrArrayUp(subst_var_term_addrarr subs arr,
+                                        subst_var_term_int subs i,
+                                        subst_var_term_addr subs a)
+  | CellArr c            -> CellArr(subst_var_term_cell subs c)
+
+
+and subst_var_term_tidarr (subs:var_term_subst_t) (expr:tidarr) : tidarr =
+  match expr with
+    VarTidArray v       -> (try
+                              match Hashtbl.find subs v with
+                              | TidArrayT x -> x
+                              | _ -> expr
+                            with _ -> expr)
+  | TidArrayUp(arr,i,t) -> TidArrayUp(subst_var_term_tidarr subs arr,
+                                      subst_var_term_int subs i,
+                                      subst_var_term_th subs t)
+  | CellTids c            -> CellTids (subst_var_term_cell subs c)
+
+
+and subst_var_term_bucketarr (subs:var_term_subst_t) (expr:bucketarr) : bucketarr =
+  match expr with
+    VarBucketArray v       -> (try
+                                 match Hashtbl.find subs v with
+                                 | BucketArrayT x -> x
+                                 | _ -> expr
+                               with _ -> expr)
+  | BucketArrayUp(arr,i,b) -> BucketArrayUp(subst_var_term_bucketarr subs arr,
+                                            subst_var_term_int subs i,
+                                            subst_var_term_bucket subs b)
+
+
+and subst_var_term_set (subs:var_term_subst_t) (e:set) : set =
+  match e with
+    VarSet v            -> (try
+                              match Hashtbl.find subs v with
+                              | SetT x -> x
+                              | _ -> e
+                            with _ -> e)
+  | EmptySet            -> EmptySet
+  | Singl(addr)         -> Singl(subst_var_term_addr subs addr)
+  | Union(s1,s2)        -> Union(subst_var_term_set subs s1, subst_var_term_set subs s2)
+  | Intr(s1,s2)         -> Intr(subst_var_term_set subs s1, subst_var_term_set subs s2)
+  | Setdiff(s1,s2)      -> Setdiff(subst_var_term_set subs s1,
+                                   subst_var_term_set subs s2)
+  | PathToSet(path)     -> PathToSet(subst_var_term_path subs path)
+  | AddrToSet(mem,addr) -> AddrToSet(subst_var_term_mem subs mem,
+                                     subst_var_term_addr subs addr)
+  | AddrToSetAt(mem,a,l)-> AddrToSetAt(subst_var_term_mem subs mem,
+                                       subst_var_term_addr subs a,
+                                       subst_var_term_int subs l)
+  | SetArrayRd(arr,t)   -> SetArrayRd(subst_var_term_array subs arr, t)
+  | BucketRegion(b)     -> BucketRegion(subst_var_term_bucket subs b)
+
+
+and subst_var_term_addr (subs:var_term_subst_t) (a:addr) : addr =
+  match a with
+    VarAddr v                 -> (try
+                                    match Hashtbl.find subs v with
+                                    | AddrT x -> x
+                                    | _ -> a
+                                  with _ -> a)
+  | Null                      -> Null
+  | Next(cell)                -> Next(subst_var_term_cell subs cell)
+  | NextAt(cell,l)            -> NextAt(subst_var_term_cell subs cell,
+                                        subst_var_term_int subs l)
+  | ArrAt(cell,l)             -> ArrAt(subst_var_term_cell subs cell,
+                                       subst_var_term_int subs l)
+  | FirstLocked(mem,path)     -> FirstLocked(subst_var_term_mem subs mem,
+                                             subst_var_term_path subs path)
+  | FirstLockedAt(mem,path,l) -> FirstLockedAt(subst_var_term_mem subs mem,
+                                               subst_var_term_path subs path,
+                                               subst_var_term_int subs l)
+  | LastLocked(mem,path)      -> LastLocked(subst_var_term_mem subs mem,
+                                            subst_var_term_path subs path)
+  | AddrArrayRd(arr,t)        -> AddrArrayRd(subst_var_term_array subs arr, t)
+  | AddrArrRd(arr,i)          -> AddrArrRd(subst_var_term_addrarr subs arr,
+                                           subst_var_term_int subs i)
+  | BucketInit(b)             -> BucketInit(subst_var_term_bucket subs b)
+  | BucketEnd(b)              -> BucketEnd(subst_var_term_bucket subs b)
+
+
+and subst_var_term_elem (subs:var_term_subst_t) (e:elem) : elem =
+  match e with
+    VarElem v             -> (try
+                                match Hashtbl.find subs v with
+                                | ElemT x -> x
+                                | _ -> e
+                              with _ -> e)
+  | CellData(cell)        -> CellData(subst_var_term_cell subs cell)
+  | ElemArrayRd(arr,t)    -> ElemArrayRd(subst_var_term_array subs arr, t)
+  | HavocListElem         -> HavocListElem
+  | HavocSkiplistElem     -> HavocSkiplistElem
+  | LowestElem            -> LowestElem
+  | HighestElem           -> HighestElem
+
+
+and subst_var_term_cell (subs:var_term_subst_t) (c:cell) : cell =
+  match c with
+    VarCell v                  -> (try
+                                     match Hashtbl.find subs v with
+                                     | CellT x -> x
+                                     | _ -> c
+                                   with _ -> c)
+  | Error                      -> Error
+  | MkCell(data,addr,th)       -> MkCell(subst_var_term_elem subs data,
+                                         subst_var_term_addr subs addr,
+                                         subst_var_term_th subs th)
+  | MkCellMark(data,addr,th,m) -> MkCellMark(subst_var_term_elem subs data,
+                                                 subst_var_term_addr subs addr,
+                                                 subst_var_term_th subs th,
+                                                 subst_var_term_mark subs m)
+  | MkSLKCell(data,aa,tt)      -> MkSLKCell(subst_var_term_elem subs data,
+                                            List.map (subst_var_term_addr subs) aa,
+                                            List.map (subst_var_term_th subs) tt)
+  | MkSLCell(data,aa,ta,l)     -> MkSLCell(subst_var_term_elem subs data,
+                                           subst_var_term_addrarr subs aa,
+                                           subst_var_term_tidarr subs ta,
+                                           subst_var_term_int subs l)
+  | CellLock(cell,t)           -> CellLock(subst_var_term_cell subs cell,
+                                           subst_var_term_th subs t)
+  | CellLockAt(cell,l,t)       -> CellLockAt(subst_var_term_cell subs cell,
+                                             subst_var_term_int subs l,
+                                             subst_var_term_th subs t)
+  | CellUnlock(cell)           -> CellUnlock(subst_var_term_cell subs cell)
+  | CellUnlockAt(cell,l)       -> CellUnlockAt(subst_var_term_cell subs cell,
+                                               subst_var_term_int subs l)
+  | CellAt(mem,addr)           -> CellAt(subst_var_term_mem subs mem,
+                                         subst_var_term_addr subs addr)
+  | CellArrayRd(arr,t)         -> CellArrayRd(subst_var_term_array subs arr, t)
+  | UpdCellAddr(c,i,a)         -> UpdCellAddr(subst_var_term_cell subs c,
+                                              subst_var_term_int subs i,
+                                              subst_var_term_addr subs a)
+
+
+and subst_var_term_mark (subs:var_term_subst_t) (m:mark) : mark =
+  match m with
+    VarMark v -> (try
+                    match Hashtbl.find subs v with
+                    | MarkT x -> x
+                    | _ -> m
+                  with _ -> m)
+  | MarkTrue  -> MarkTrue
+  | MarkFalse -> MarkFalse
+  | Marked c  -> Marked (subst_var_term_cell subs c)
+
+
+and subst_var_term_bucket (subs:var_term_subst_t) (b:bucket) : bucket =
+  match b with
+    VarBucket v       -> (try
+                            match Hashtbl.find subs v with
+                            | BucketT x -> x
+                            | _ -> b
+                          with _ -> b)
+  | MkBucket(i,e,s,t) -> MkBucket(subst_var_term_addr subs i,
+                                  subst_var_term_addr subs e,
+                                  subst_var_term_set subs s,
+                                  subst_var_term_th subs t)
+  | BucketArrRd(bb,i) -> BucketArrRd(subst_var_term_bucketarr subs bb,
+                                     subst_var_term_int subs i)
+
+
+and subst_var_term_setth (subs:var_term_subst_t) (s:setth) : setth =
+  match s with
+    VarSetTh v             -> (try
+                                 match Hashtbl.find subs v with
+                                 | SetThT x -> x
+                                 | _ -> s
+                               with _ -> s)
+  | EmptySetTh             -> EmptySetTh
+  | SinglTh(th)            -> SinglTh(subst_var_term_th subs th)
+  | UnionTh(s1,s2)         -> UnionTh(subst_var_term_setth subs s1,
+                                      subst_var_term_setth subs s2)
+  | IntrTh(s1,s2)          -> IntrTh(subst_var_term_setth subs s1,
+                                     subst_var_term_setth subs s2)
+  | SetdiffTh(s1,s2)       -> SetdiffTh(subst_var_term_setth subs s1,
+                                        subst_var_term_setth subs s2)
+  | SetThArrayRd(arr,t)    -> SetThArrayRd(subst_var_term_array subs arr, t)
+  | LockSet(m,p)           -> LockSet(subst_var_term_mem subs m,
+                                      subst_var_term_path subs p)
+
+
+and subst_var_term_setint (subs:var_term_subst_t) (s:setint) : setint =
+  match s with
+    VarSetInt v             -> (try
+                                 match Hashtbl.find subs v with
+                                 | SetIntT x -> x
+                                 | _ -> s
+                               with _ -> s)
+  | EmptySetInt             -> EmptySetInt
+  | SinglInt(i)             -> SinglInt(subst_var_term_int subs i)
+  | UnionInt(s1,s2)         -> UnionInt(subst_var_term_setint subs s1,
+                                        subst_var_term_setint subs s2)
+  | IntrInt(s1,s2)          -> IntrInt(subst_var_term_setint subs s1,
+                                       subst_var_term_setint subs s2)
+  | SetdiffInt(s1,s2)       -> SetdiffInt(subst_var_term_setint subs s1,
+                                          subst_var_term_setint subs s2)
+  | SetLower(s,i)           -> SetLower(subst_var_term_setint subs s,
+                                        subst_var_term_int subs i)
+  | SetIntArrayRd(arr,t)    -> SetIntArrayRd(subst_var_term_array subs arr, t)
+
+
+and subst_var_term_setelem (subs:var_term_subst_t) (s:setelem) : setelem =
+  match s with
+    VarSetElem v             -> (try
+                                   match Hashtbl.find subs v with
+                                   | SetElemT x -> x
+                                   | _ -> s
+                                 with _ -> s)
+  | EmptySetElem             -> EmptySetElem
+  | SinglElem(e)             -> SinglElem(subst_var_term_elem subs e)
+  | UnionElem(s1,s2)         -> UnionElem(subst_var_term_setelem subs s1,
+                                          subst_var_term_setelem subs s2)
+  | IntrElem(s1,s2)          -> IntrElem(subst_var_term_setelem subs s1,
+                                         subst_var_term_setelem subs s2)
+  | SetdiffElem(s1,s2)       -> SetdiffElem(subst_var_term_setelem subs s1,
+                                            subst_var_term_setelem subs s2)
+  | SetToElems(s,m)          -> SetToElems(subst_var_term_set subs s,
+                                           subst_var_term_mem subs m)
+  | SetElemArrayRd(arr,t)    -> SetElemArrayRd(subst_var_term_array subs arr, t)
+
+
+and subst_var_term_setpair (subs:var_term_subst_t) (s:setpair) : setpair =
+  match s with
+    VarSetPair v             -> (try
+                                   match Hashtbl.find subs v with
+                                   | SetPairT x -> x
+                                   | _ -> s
+                                 with _ -> s)
+  | EmptySetPair             -> EmptySetPair
+  | SinglPair(p)             -> SinglPair(subst_var_term_pair subs p)
+  | UnionPair(s1,s2)         -> UnionPair(subst_var_term_setpair subs s1,
+                                          subst_var_term_setpair subs s2)
+  | IntrPair(s1,s2)          -> IntrPair(subst_var_term_setpair subs s1,
+                                         subst_var_term_setpair subs s2)
+  | SetdiffPair(s1,s2)       -> SetdiffPair(subst_var_term_setpair subs s1,
+                                            subst_var_term_setpair subs s2)
+  | LowerPair(s,i)           -> LowerPair(subst_var_term_setpair subs s,
+                                          subst_var_term_int subs i)
+  | SetPairArrayRd(arr,t)    -> SetPairArrayRd(subst_var_term_array subs arr, t)
+
+
+and subst_var_term_path (subs:var_term_subst_t) (p:path) : path =
+  match p with
+    VarPath v                        -> (try
+                                           match Hashtbl.find subs v with
+                                           | PathT x -> x
+                                           | _ -> p
+                                         with _ -> p)
+  | Epsilon                          -> Epsilon
+  | SimplePath(addr)                 -> SimplePath(subst_var_term_addr subs addr)
+  | GetPath(mem,add_from,add_to)     -> GetPath(subst_var_term_mem subs mem,
+                                                subst_var_term_addr subs add_from,
+                                                subst_var_term_addr subs add_to)
+  | GetPathAt(mem,add_from,add_to,l) -> GetPathAt(subst_var_term_mem subs mem,
+                                                  subst_var_term_addr subs add_from,
+                                                  subst_var_term_addr subs add_to,
+                                                  subst_var_term_int subs l)
+  | PathArrayRd(arr,t)           -> PathArrayRd(subst_var_term_array subs arr, t)
+
+
+and subst_var_term_mem (subs:var_term_subst_t) (m:mem) : mem =
+  match m with
+    VarMem v             -> (try
+                               match Hashtbl.find subs v with
+                               | MemT x -> x
+                               | _ -> m
+                             with _ -> m)
+  | Update(mem,add,cell) -> Update(subst_var_term_mem subs mem,
+                                   subst_var_term_addr subs add,
+                                   subst_var_term_cell subs cell)
+  | MemArrayRd(arr,t)   -> MemArrayRd(subst_var_term_array subs arr, t)
+
+
+and subst_var_term_int (subs:var_term_subst_t) (i:integer) : integer =
+  match i with
+    IntVal(i)         -> IntVal(i)
+  | VarInt v          -> (try
+                            match Hashtbl.find subs v with
+                            | IntT x -> x
+                            | _ -> i
+                          with _ -> i)
+  | IntNeg(i)         -> IntNeg(subst_var_term_int subs i)
+  | IntAdd(i1,i2)     -> IntAdd(subst_var_term_int subs i1, subst_var_term_int subs i2)
+  | IntSub(i1,i2)     -> IntSub(subst_var_term_int subs i1, subst_var_term_int subs i2)
+  | IntMul(i1,i2)     -> IntMul(subst_var_term_int subs i1, subst_var_term_int subs i2)
+  | IntDiv(i1,i2)     -> IntDiv(subst_var_term_int subs i1, subst_var_term_int subs i2)
+  | IntMod(i1,i2)     -> IntMod(subst_var_term_int subs i1, subst_var_term_int subs i2)
+  | IntArrayRd(arr,t) -> IntArrayRd(subst_var_term_array subs arr, t)
+  | IntSetMin(s)      -> IntSetMin(subst_var_term_setint subs s)
+  | IntSetMax(s)      -> IntSetMax(subst_var_term_setint subs s)
+  | CellMax(c)        -> CellMax(subst_var_term_cell subs c)
+  | HavocLevel        -> HavocLevel
+  | HashCode(e)       -> HashCode(subst_var_term_elem subs e)
+  | PairInt p         -> PairInt(subst_var_term_pair subs p)
+
+
+and subst_var_term_pair (subs:var_term_subst_t) (p:pair) : pair =
+  match p with
+    VarPair v          -> (try
+                            match Hashtbl.find subs v with
+                            | PairT x -> x
+                            | _ -> p
+                          with _ -> p)
+  | IntTidPair (i,t)   -> IntTidPair(subst_var_term_int subs i, subst_var_term_th subs t)
+  | SetPairMin ps      -> SetPairMin(subst_var_term_setpair subs ps)
+  | SetPairMax ps      -> SetPairMax(subst_var_term_setpair subs ps)
+  | PairArrayRd(arr,t) -> PairArrayRd(subst_var_term_array subs arr, t)
+
+
+and subst_var_term_lock (subs:var_term_subst_t) (expr:lock) : lock =
+  match expr with
+    VarLock v        -> (try
+                           match Hashtbl.find subs v with
+                           | LockT x -> x
+                           | _ -> expr
+                         with _ -> expr)
+  | LLock (l,t)      -> LLock(subst_var_term_lock subs l, subst_var_term_th subs t)
+  | LUnlock (l)      -> LUnlock(subst_var_term_lock subs l)
+  | LockArrRd (ll,i) -> LockArrRd(subst_var_term_lockarr subs ll,
+                                  subst_var_term_int subs i)
+
+
+and subst_var_term_lockarr (subs:var_term_subst_t) (expr:lockarr) : lockarr =
+  match expr with
+    VarLockArray v       -> (try
+                               match Hashtbl.find subs v with
+                               | LockArrayT x -> x
+                               | _ -> expr
+                             with _ -> expr)
+  | LockArrayUp(arr,i,l) -> LockArrayUp(subst_var_term_lockarr subs arr,
+                                        subst_var_term_int subs i,
+                                        subst_var_term_lock subs l)
+
+
+and subst_var_term_th (subs:var_term_subst_t) (t:tid) : tid =
+  match t with
+    VarTh v -> (try
+                  match Hashtbl.find subs v with
+                  | TidT x -> x
+                  | _ -> t
+                with _ -> t)
+  | NoTid -> NoTid
+  | CellLockId c -> CellLockId (subst_var_term_cell subs c)
+  | CellLockIdAt (c,l) -> CellLockIdAt (subst_var_term_cell subs c,
+                                        subst_var_term_int subs l)
+  | TidArrayRd (a,p) -> TidArrayRd (subst_var_term_array subs a,
+                                      subst_var_term_th subs p)
+  | TidArrRd (a,i) -> TidArrRd (subst_var_term_tidarr subs a,
+                                  subst_var_term_int subs i)
+  | PairTid p -> PairTid(subst_var_term_pair subs p)
+  | BucketTid b -> BucketTid(subst_var_term_bucket subs b)
+  | LockId l -> LockId(subst_var_term_lock subs l)
+
+
+and subst_var_term_atom (subs:var_term_subst_t) (a:atom) : atom =
+  match a with
+    Append(p1,p2,pres)                 -> Append(subst_var_term_path subs p1,
+                                                 subst_var_term_path subs p2,
+                                                 subst_var_term_path subs pres)
+  | Reach(h,add_from,add_to,p)         -> Reach(subst_var_term_mem subs h,
+                                                subst_var_term_addr subs add_from,
+                                                subst_var_term_addr subs add_to,
+                                                subst_var_term_path subs p)
+  | ReachAt(h,a_from,a_to,l,p)         -> ReachAt(subst_var_term_mem subs h,
+                                                  subst_var_term_addr subs a_from,
+                                                  subst_var_term_addr subs a_to,
+                                                  subst_var_term_int subs l,
+                                                  subst_var_term_path subs p)
+  | OrderList(h,a_from,a_to)           -> OrderList(subst_var_term_mem subs h,
+                                                    subst_var_term_addr subs a_from,
+                                                    subst_var_term_addr subs a_to)
+  | Skiplist(h,s,l,a_from,a_to,elems)  -> Skiplist(subst_var_term_mem subs h,
+                                                   subst_var_term_set subs s,
+                                                   subst_var_term_int subs l,
+                                                   subst_var_term_addr subs a_from,
+                                                   subst_var_term_addr subs a_to,
+                                                   subst_var_term_setelem subs elems)
+  | Hashmap(h,s,se,bb,i)               -> Hashmap(subst_var_term_mem subs h,
+                                                  subst_var_term_set subs s,
+                                                  subst_var_term_setelem subs se,
+                                                  subst_var_term_bucketarr subs bb,
+                                                  subst_var_term_int subs i)
+  | In(a,s)                            -> In(subst_var_term_addr subs a,
+                                             subst_var_term_set subs s)
+  | SubsetEq(s_in,s_out)               -> SubsetEq(subst_var_term_set subs s_in,
+                                                   subst_var_term_set subs s_out)
+  | InTh(th,s)                         -> InTh(subst_var_term_th subs th,
+                                               subst_var_term_setth subs s)
+  | SubsetEqTh(s_in,s_out)             -> SubsetEqTh(subst_var_term_setth subs s_in,
+                                                     subst_var_term_setth subs s_out)
+  | InInt(i,s)                         -> InInt(subst_var_term_int subs i,
+                                                subst_var_term_setint subs s)
+  | SubsetEqInt(s_in,s_out)            -> SubsetEqInt(subst_var_term_setint subs s_in,
+                                                      subst_var_term_setint subs s_out)
+  | InElem(e,s)                        -> InElem(subst_var_term_elem subs e,
+                                                 subst_var_term_setelem subs s)
+  | SubsetEqElem(s_in,s_out)           -> SubsetEqElem(subst_var_term_setelem subs s_in,
+                                                       subst_var_term_setelem subs s_out)
+  | InPair(p,s)                        -> InPair(subst_var_term_pair subs p,
+                                                 subst_var_term_setpair subs s)
+  | SubsetEqPair(s_in,s_out)           -> SubsetEqPair(subst_var_term_setpair subs s_in,
+                                                       subst_var_term_setpair subs s_out)
+  | InTidPair(t,s)                     -> InTidPair(subst_var_term_th subs t,
+                                                    subst_var_term_setpair subs s)
+  | InIntPair(i,s)                     -> InIntPair(subst_var_term_int subs i,
+                                                    subst_var_term_setpair subs s)
+  | Less(i1,i2)                        -> Less(subst_var_term_int subs i1,
+                                               subst_var_term_int subs i2)
+  | Greater(i1,i2)                     -> Greater(subst_var_term_int subs i1,
+                                                  subst_var_term_int subs i2)
+  | LessEq(i1,i2)                      -> LessEq(subst_var_term_int subs i1,
+                                                 subst_var_term_int subs i2)
+  | GreaterEq(i1,i2)                   -> GreaterEq(subst_var_term_int subs i1,
+                                                    subst_var_term_int subs i2)
+  | LessTid(t1,t2)                     -> LessTid(subst_var_term_th subs t1,
+                                                  subst_var_term_th subs t2)
+  | LessElem(e1,e2)                    -> LessElem(subst_var_term_elem subs e1,
+                                                   subst_var_term_elem subs e2)
+  | GreaterElem(e1,e2)                 -> GreaterElem(subst_var_term_elem subs e1,
+                                                      subst_var_term_elem subs e2)
+  | Eq(exp)                            -> Eq(subst_var_term_eq subs exp)
+  | InEq(exp)                          -> InEq(subst_var_term_ineq subs exp)
+  | UniqueInt(s)                       -> UniqueInt(subst_var_term_setpair subs s)
+  | UniqueTid(s)                       -> UniqueTid(subst_var_term_setpair subs s)
+  | BoolVar v                          -> BoolVar(V.set_param v (var_term_subst_shared_or_local subs (V.parameter v)))
+  | BoolArrayRd(arr,t)                 -> BoolArrayRd(subst_var_term_array subs arr, t)
+  | PC (pc,t,primed)                   -> PC (pc, var_term_subst_shared_or_local subs t, primed)
+  | PCUpdate (pc,t)                    -> PCUpdate (pc, subst_var_term_th subs t)
+  | PCRange (pc1,pc2,t,primed)         -> PCRange (pc1, pc2, var_term_subst_shared_or_local subs t, primed)
+
+
+
+(*
+and subst_var_term_literal (subs:var_term_subst_t) (l:literal) : literal =
+  match l with
+    Atom a    -> Atom (subst_var_term_atom subs a)
+  | NegAtom a -> NegAtom (subst_var_term_atom subs a)
+*)
+
+
+and subst_var_term_eq (subs:var_term_subst_t) ((t1,t2):eq) : eq =
+  (subst_var_term_term subs t1, subst_var_term_term subs t2)
+
+
+and subst_var_term_ineq (subs:var_term_subst_t) ((t1,t2):diseq) : diseq =
+  (subst_var_term_term subs t1, subst_var_term_term subs t2)
+
+
+and subst_var_term_fs () = Formula.make_trans
+                         Formula.GenericLiteralTrans
+                         (fun info a -> subst_var_term_atom info a)
+
+
+and subst_var_term (subs:var_term_subst_t) (phi:formula) : formula =
+  Formula.formula_trans (subst_var_term_fs()) subs phi
+(*
+and subst_var_term_conjunctive_formula (subs:var_term_subst_t)
+                                   (cf:conjunctive_formula)
+                                    : conjunctive_formula =
+  match cf with
+    FalseConj -> FalseConj
+  | TrueConj  -> TrueConj
+  | Conj ls   -> Conj (List.map (subst_var_term_literal subs) ls)
+
+
+and subst_var_term (subs:var_term_subst_t) (phi:formula) : formula =
+  match phi with
+    Literal(lit)   -> Literal(subst_var_term_literal subs lit)
+  | True           -> True
+  | False          -> False
+  | And(f1,f2)     -> And(subst_var_term subs f1, subst_var_term subs f2)
+  | Or(f1,f2)      -> Or(subst_var_term subs f1, subst_var_term subs f2)
+  | Not(f)         -> Not(subst_var_term subs f)
+  | Implies(f1,f2) -> Implies(subst_var_term subs f1, subst_var_term subs f2)
+  | Iff (f1,f2)    -> Iff(subst_var_term subs f1, subst_var_term subs f2)
+*)
+
+
+
+
+
+
+
+
 (* FORMULA MANIPULATION FUNCTIONS *)
-
-
 
 (* Converts an expression to a format understandable by Sriram's tool "trs" *)
 let to_trs (expr:formula) : formula =

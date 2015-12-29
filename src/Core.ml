@@ -137,8 +137,8 @@ module Make (Opt:module type of GenOptions) : S =
     (*             TAGGING INFORMATION              *)
     (************************************************)
 
-    let tags : Tag.tag_table = Tag.tag_table_new
-    let axiom_tags : Tag.tag_table = Tag.tag_table_new
+    let tags : Tag.tag_table = Tag.tag_table_new ()
+    let axiom_tags : Tag.tag_table = Tag.tag_table_new ()
 
     let axioms : Axioms.t ref = ref (Axioms.empty_axioms ())
 
@@ -425,6 +425,11 @@ module Make (Opt:module type of GenOptions) : S =
       TslSolver.compute_model(Opt.compute_model);
       Thm.compute_model(Opt.compute_model);
 
+      print_endline ("FORMULA TAGS: " ^ (string_of_int (Tag.tag_table_size tags)));
+      print_endline ("AXIOM TAGS: " ^ (string_of_int (Tag.tag_table_size axiom_tags)));
+
+      let axiom_table = Axioms.new_axiom_table axiom_tags in
+
       print_endline "Analyzing VCs...";
 
       let case_timer = new LeapLib.timer in
@@ -460,18 +465,14 @@ module Make (Opt:module type of GenOptions) : S =
               let phi_tag = Tactics.get_vc_tag case.vc in
               let vc_line = Tactics.get_line_from_info case.vc in
               let ax_tags = Axioms.lookup !axioms phi_tag vc_line in
-              let axioms_phi = List.map (fun t ->
-                                 let (ax_phi, ax_info) = Tag.tag_table_find axiom_tags t in
-                                 let ax_vars = Tag.info_params ax_info in
-                                 print_endline (E.formula_to_str ax_phi)
-                               ) ax_tags in
-
-              (*
-              let phi_name = case.vc.
-
-              let axiom_tags = Axioms.lookup axioms inv pc 
- TUKA
-*)
+              let axioms_info = List.map (fun t ->
+                                  let (ax_phi, ax_info) = Tag.tag_table_find axiom_tags t in
+                                  let ax_vars = Tag.info_params ax_info in
+                                  (ax_phi, ax_vars)
+                                ) ax_tags in
+              
+              let _ = print_endline (Axioms.axiom_table_to_str axiom_table) in
+              let phi_with_axioms = Axioms.apply_axioms_inst axioms_info fol_phi in
 
               phi_timer#start;
               let status =
