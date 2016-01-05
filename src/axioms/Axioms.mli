@@ -15,12 +15,5 @@ val axiom_table_to_str : axiom_tbl_t -> string
 
 val lookup : t -> Tag.f_tag -> Expression.pc_t -> Tag.f_tag list
 
-val apply_axiom_inst : Expression.formula ->
-                       System.var_table_t ->
-                       Expression.formula ->
-                       Expression.formula
-val apply_axioms_inst : (Expression.formula * System.var_table_t) list ->
-                        Expression.formula ->
-                        Expression.formula
-
+val apply : axiom_tbl_t -> Expression.formula -> Tag.f_tag -> Expression.formula
 

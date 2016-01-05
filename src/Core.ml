@@ -465,15 +465,12 @@ module Make (Opt:module type of GenOptions) : S =
               let phi_tag = Tactics.get_vc_tag case.vc in
               let vc_line = Tactics.get_line_from_info case.vc in
               let ax_tags = Axioms.lookup !axioms phi_tag vc_line in
-              let axioms_info = List.map (fun t ->
-                                  let (ax_phi, ax_info) = Tag.tag_table_find axiom_tags t in
-                                  let ax_vars = Tag.info_params ax_info in
-                                  (ax_phi, ax_vars)
-                                ) ax_tags in
-              
-              let _ = print_endline (Axioms.axiom_table_to_str axiom_table) in
-              let phi_with_axioms = Axioms.apply_axioms_inst axioms_info fol_phi in
 
+              let _ = print_endline (Axioms.axiom_table_to_str axiom_table) in
+
+              let phi_with_axioms = List.fold_left (fun phi ax_tag ->
+                                      Axioms.apply axiom_table phi ax_tag
+                                    ) fol_phi ax_tags in
               phi_timer#start;
               let status =
                 if Valid.is_valid (Pos.check_valid prog_lines

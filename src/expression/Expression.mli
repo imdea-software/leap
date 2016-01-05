@@ -310,6 +310,8 @@ and expr_t =
 
 type tid_subst_t = (tid * tid) list
 
+type var_term_subst_t
+
 type var_nature =
   | RealVar
   | GhostVar
@@ -570,6 +572,10 @@ val is_id_subst : tid_subst_t -> bool
 
 (* VARIABLE SUBSTITUTION FUNCTIONS *)
 val subst_vars : V.subst_t -> formula -> formula
+
+(* VARIABLE FOR TERM SUBSTITUTION FUNCTIONS *)
+val new_var_term_subst : (V.t * term) list -> var_term_subst_t
+val subst_var_term : var_term_subst_t -> formula -> formula
 
 (* FORMULA MANIPULATION FUNCTIONS *)
 val to_trs : formula -> formula
