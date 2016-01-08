@@ -140,6 +140,8 @@ val disj_literals : 'atom literal list -> 'atom formula
 val to_conj_literals : 'atom formula -> 'atom literal list
 val to_disj_literals : 'atom formula -> 'atom literal list
 
+val extract_literal_facts : 'atom formula -> 'atom literal list
+
 val to_conj_list : 'atom formula -> 'atom formula list
 val to_disj_list : 'atom formula -> 'atom formula list
 

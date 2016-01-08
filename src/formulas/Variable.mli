@@ -87,6 +87,7 @@ module type S =
     (*****************************)
 
     val new_subst : unit -> subst_t
+    val new_subst_from_list : (t*t) list -> subst_t
     val add_subst : subst_t -> t -> t -> unit
     val subst : subst_t -> t -> t
     val subst_shared_or_local : subst_t -> shared_or_local -> shared_or_local

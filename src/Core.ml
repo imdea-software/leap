@@ -424,9 +424,10 @@ module Make (Opt:module type of GenOptions) : S =
       Tslk.compute_model(Opt.compute_model);
       TslSolver.compute_model(Opt.compute_model);
       Thm.compute_model(Opt.compute_model);
-
+(*
       print_endline ("FORMULA TAGS: " ^ (string_of_int (Tag.tag_table_size tags)));
       print_endline ("AXIOM TAGS: " ^ (string_of_int (Tag.tag_table_size axiom_tags)));
+*)
 
       let axiom_table = Axioms.new_axiom_table axiom_tags in
 
@@ -466,11 +467,18 @@ module Make (Opt:module type of GenOptions) : S =
               let vc_line = Tactics.get_line_from_info case.vc in
               let ax_tags = Axioms.lookup !axioms phi_tag vc_line in
 
-              let _ = print_endline (Axioms.axiom_table_to_str axiom_table) in
+              (*let _ = print_endline (Axioms.axiom_table_to_str axiom_table) in*)
 
-              let phi_with_axioms = List.fold_left (fun phi ax_tag ->
-                                      Axioms.apply axiom_table phi ax_tag
-                                    ) fol_phi ax_tags in
+              print_endline ("FOL_PHI:\n" ^ (E.formula_to_str fol_phi));
+              let (axioms_phi,res_phi) =
+                List.fold_left (fun (ax_phi, psi) (ax_tag,ax_kind) ->
+                  Axioms.apply axiom_table psi ax_tag ax_kind
+                ) (Formula.True, fol_phi) ax_tags in
+
+              let fol_phi = Formula.Implies (axioms_phi, res_phi) in
+              print_endline ("FOL_PHI_WITH_AXIOMS:\n" ^ (E.formula_to_str fol_phi));
+
+              (* Axiom application finishes *)
               phi_timer#start;
               let status =
                 if Valid.is_valid (Pos.check_valid prog_lines

@@ -24,6 +24,7 @@ let get_line id = snd id
 %token COND_INITIATION COND_CONSECUTION COND_ACCEPTANCE COND_FAIRNESS
 %token SMP_UNION SMP_PRUNING SMP_DNF
 %token TACTICS FACTS
+%token AXIOM_FORALL
 %token EOF
 
 
@@ -47,7 +48,9 @@ let get_line id = snd id
 %type <Axioms.case_t list> axiom_case_list
 %type <Axioms.case_t> axiom_case
 %type <Tag.f_tag list> maybe_empty_tag_list
+%type <(Tag.f_tag * Axioms.axiom_kind_t) list> maybe_empty_axiom_tag_list
 %type <Tag.f_tag list> inv_list
+%type <(Tag.f_tag * Axioms.axiom_kind_t) list> axiom_list
 %type <Tag.f_tag> inv
 %type <Tag.f_tag list> inv_group
 %type <string list> ident_list
@@ -120,13 +123,58 @@ axiom_case_list :
 
 
 axiom_case :
-  | NUMBER COLON maybe_empty_tag_list
+  | NUMBER COLON maybe_empty_axiom_tag_list
     {
       let pc = $1 in
       let axiom_list = $3
       in
         Axioms.new_case pc axiom_list
     }
+
+
+maybe_empty_axiom_tag_list :
+  |
+    { [] }
+  | axiom_list
+    { $1 }
+
+
+axiom_list :
+  | inv_group axiom_kind
+    {
+      let xs = $1 in
+      let k = $2 in
+      List.map (fun a -> (a,k)) xs
+    }
+  | inv axiom_kind
+    { [($1, $2)] }
+  | inv_group axiom_kind COMMA axiom_list
+    {
+      let axs = $1 in
+      let k = $2 in
+      let is = $4 in
+      List.fold_left (fun xs a ->
+        (a,k) :: xs
+      ) is axs
+    }
+  | inv axiom_kind COMMA axiom_list
+    {
+      let i = $1 in
+      let k = $2 in
+      let is = $4
+      in
+        (i,k) :: is
+    }
+
+
+axiom_kind :
+  | OPEN_PAREN AXIOM_FORALL CLOSE_PAREN
+    { Axioms.Forall }
+  |
+    { Axioms.Instantiate }
+
+
+
 
 /* PVD SUPPORT */
 

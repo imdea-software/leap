@@ -87,6 +87,7 @@ module type S =
     (*****************************)
 
     val new_subst : unit -> subst_t
+    val new_subst_from_list : (t*t) list -> subst_t
     val add_subst : subst_t -> t -> t -> unit
     val subst : subst_t -> t -> t
     val subst_shared_or_local : subst_t -> shared_or_local -> shared_or_local
@@ -384,6 +385,12 @@ module Make (VS : VarSpec.S) =
 
     let new_subst () : subst_t =
       Hashtbl.create 10
+
+
+    let new_subst_from_list (xs:(t*t)list) : subst_t =
+      let s = new_subst () in
+      List.iter (fun (x,y) -> Hashtbl.add s x y) xs;
+      s
 
 
     let add_subst (subs:subst_t) (v:t) (v':t) : unit =

@@ -461,6 +461,7 @@ val get_vars : formula -> (V.t -> V.VarSet.t) -> V.t list
 (* GET VARIABLES FROM EXPRESSION *)
 val all_vars : formula -> V.t list
 val all_vars_as_set : formula -> V.VarSet.t
+val all_vars_occurrences_as_set : formula -> V.VarSet.t
 val all_local_vars : formula -> V.t list
 val all_global_vars : formula -> V.t list
 

@@ -1617,7 +1617,7 @@ struct
                  (req_sorts:Expr.sort list)
                  (req_ops:Expr.special_op_t list)
                  (vars:Expr.V.VarSet.t) : unit =
-(*
+
     (* All addresses in the domain *)
 (*
     let addrs = List.fold_left (fun xs i ->
@@ -1646,8 +1646,7 @@ struct
                 ) ["null"] (LeapLib.rangeList 1 num_addrs) in
 *)
 
-    ()
-*)
+
     (*
     if List.mem Expr.Path req_sorts then
       B.add_string buf ("(assert (= (path2set epsilon) empty))\n")
@@ -1686,17 +1685,17 @@ struct
 (*
     List.iter (fun m ->
       List.iter (fun a ->
-*)
-(*
 
+
+(*
        if List.mem Expr.Getp req_ops ||
           List.mem Expr.Reachable req_ops ||
           List.mem Expr.Path req_sorts then
             B.add_string buf
               ("(assert
                   (=> (not (=  "^a^" (next (select  "^m^"  "^a^")))) (eqpath (getp  "^m^"  "^a^" (next (select  "^m^"  "^a^"))) (singlepath  "^a^"))))\n")
+*)
 
-*)              
 
 (*
           if List.mem Expr.Path req_sorts then
@@ -1706,36 +1705,44 @@ struct
                B.add_string buf ("(assert (reach  "^m^"  "^a^" "^a^" epsilon))\n")
 *)
 
-(*
+
+
         List.iter (fun b ->
-*)
-          (*
+
+
+(*          
           if List.mem Expr.Getp req_ops ||
              List.mem Expr.Reachable req_ops then
-*)
-               (*
+
+               
                B.add_string buf
                  ("(assert
                      (and (=> (select (address2set  "^m^"  "^a^")  "^b^") (reach  "^b^"  "^a^"  "^b^" (getp  "^m^"  "^a^"  "^b^"))) (=> (reach  "^m^"  "^a^"  "^b^" (getp  "^m^"  "^a^"  "^b^")) (select (address2set  "^m^"  "^a^")  "^b^"))))\n")
 *)
 
-(*               
+(*
+               
           B.add_string buf
             ("(assert
                 (=> (and (select (address2set  "^m^"  head)  "^a^") (and (select (address2set  "^m^"  head)  tail) (and (not (=  head null)) (and (not (=  tail null)) (and (not (=  "^a^" null)) (and (= (next (select  "^m^"  tail)) null) (and (not (=  "^b^" null)) (and (= (next (select  "^m^"  "^b^")) null) (select (address2set  "^m^"  head)  "^b^"))))))))) (=  "^b^"  tail)))\n")
 *)
-(*
-            
+
+
+(*            
               if List.mem Expr.Path req_sorts ||
                  List.mem Expr.Getp req_ops ||
                  List.mem Expr.Reachable req_ops then
                    B.add_string buf
                      ("(assert
                         (=> (not (eqpath (getp  "^m^"  "^a^"  "^b^") epsilon)) (= (path2set (getp  "^m^"  "^a^"  "^b^")) (setunion (singleton  "^a^") (path2set (getp  "^m^" (next (select  "^m^"  "^a^"))  "^b^"))))))\n")
+*)
+
         ) addrs
+        
       ) addrs
     ) mems
 *)
+
 
 
 (*
@@ -1747,6 +1754,8 @@ struct
       ) addrs
     ) sets
 *)
+
+
 (*
     List.iter (fun a ->
       List.iter (fun b ->
@@ -1757,7 +1766,8 @@ struct
     ) addrs
 *)
 
-(*
+
+
     List.iter (fun se ->
       List.iter (fun se2 ->
         List.iter (fun a ->
@@ -1765,23 +1775,22 @@ struct
 
 
             B.add_string buf
-(*
+
               ("(assert
-                  (and (=> (and (select  " ^se^ "  " ^a^ ") (select  " ^se2^ "  " ^a^ ")) (select (intersection  "^se^"  "^se2^")  "^a^")) (=> (select (intersection  "^se^"  "^se2^")  "^a^") (and (select  "^se^"  "^a^") (select  "^se2^"  "^a^")))))\n")
-*)
-
-(*
-               ("(assert
-                  (and (=> (and (select  "^se^"  "^a^") (not (select  "^se2^"  "^a^"))) (select (setdiff  "^se^"  "^se2^")  "^a^")) (=> (select (setdiff  "^se^"  "^se2^")  "^a^") (and (select  "^se^"  "^a^") (not (select  "^se2^"  "^a^"))))))\n")
-*)
+                  (and (=> (and (select  " ^se^ "  " ^a^ ") (select  " ^se2^ "  " ^a^ ")) (select (intersection  "^se^"  "^se2^")  "^a^")) (=> (select (intersection  "^se^"  "^se2^")  "^a^") (and (select  "^se^"  "^a^") (select  "^se2^"  "^a^")))))\n" ^
 
 
-               ("(assert
+               "(assert
+                  (and (=> (and (select  "^se^"  "^a^") (not (select  "^se2^"  "^a^"))) (select (setdiff  "^se^"  "^se2^")  "^a^")) (=> (select (setdiff  "^se^"  "^se2^")  "^a^") (and (select  "^se^"  "^a^") (not (select  "^se2^"  "^a^"))))))\n" ^
+
+
+
+               "(assert
                   (and (=> (or (select  "^se^"  "^a^") (select  "^se2^"  "^a^")) (select (setunion  "^se^"  "^se2^")  "^a^")) (=> (select (setunion  "^se^"  "^se2^")  "^a^") (or (select  "^se^"  "^a^") (select  "^se2^"  "^a^")))))")
+        
         ) addrs
       ) sets
    ) sets
-*)
 *)
 
 
@@ -1790,7 +1799,7 @@ struct
                    (req_ops:Expr.special_op_t list)
                    (vars:Expr.V.VarSet.t) : unit =
     Hashtbl.iter (fun e _ -> B.add_string buf (process_elem e)) elem_tbl
-    (* add_axioms buf num_addrs req_sorts req_ops vars *)
+(*    add_axioms buf num_addrs req_sorts req_ops vars *)
 
 
   let literal_list_to_str (use_q:bool) (ls:Expr.literal list) : string =

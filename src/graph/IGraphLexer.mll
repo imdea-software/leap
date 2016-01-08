@@ -20,6 +20,7 @@ rule norm = parse
   | 'C'                         { Global.last "C"                 ; COND_CONSECUTION }
   | 'A'                         { Global.last "A"                 ; COND_ACCEPTANCE }
   | 'F'                         { Global.last "F"                 ; COND_FAIRNESS }
+  | "forall"                    { Global.last "FORALL"            ; AXIOM_FORALL }
   | "->"                        { Global.last "->"                ; SEQ_ARROW }
   | "=>"                        { Global.last "=>"                ; CONC_ARROW }
   | ','                         { Global.last ","                 ; COMMA }

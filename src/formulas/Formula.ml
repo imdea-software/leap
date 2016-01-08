@@ -254,13 +254,22 @@ let rec formula_conv (f:('a -> 'b))
 let conj_list (xs:'atom formula list) : 'atom formula =
   match xs with
   | [] -> True
-  | x::xs -> List.fold_left (fun a b -> And(a,b)) x xs
-
+  | x::xs -> List.fold_left (fun a b ->
+               match (a,b) with
+               | (True, _) -> b
+               | (_, True) -> a
+               | _ -> And(a,b)
+              ) x xs
   
 let disj_list (xs:'atom formula list) : 'atom formula =
   match xs with
   | [] -> False
-  | x::xs -> List.fold_left (fun a b -> Or(a,b)) x xs
+  | x::xs -> List.fold_left (fun a b ->
+               match (a,b) with
+               | (False, _) -> b
+               | (_, False) -> a
+               | _ -> Or(a,b)
+             ) x xs
 
 
 let conj_literals (ls:'atom literal list) : 'atom formula =
@@ -295,6 +304,17 @@ let to_disj_literals (phi:'atom formula) : 'atom literal list =
     |   _       -> raise(NotDisjunctiveFormula)
   in
     try_to_build_disjunction phi
+
+
+let extract_literal_facts (phi:'atom formula) : 'atom literal list =
+  let rec try_to_extract x =
+    match x with
+    | Literal l -> [l]
+    | And(a,b)  -> (try_to_extract a) @ (try_to_extract b)
+    | True      -> []
+    |   _       -> []
+  in
+    try_to_extract phi
 
 
 let rec to_conj_list (phi:'atom formula) : 'atom formula list =

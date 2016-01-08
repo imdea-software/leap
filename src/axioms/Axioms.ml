@@ -5,12 +5,14 @@ module GSet = LeapGenericSet
 exception Duplicated_special_case
 exception Unsupported_axiom of string
 
-type case_tbl_t = (Expr.pc_t, Tag.f_tag list) Hashtbl.t
+type axiom_kind_t = Forall | Instantiate
+
+type case_tbl_t = (Expr.pc_t, (Tag.f_tag * axiom_kind_t) list) Hashtbl.t
 
 type rule_t = Tag.f_tag  *  (* Invariant                     *)
               case_tbl_t    (* Special cases                 *)
 
-type case_t = Expr.pc_t * Tag.f_tag list
+type case_t = Expr.pc_t * ((Tag.f_tag * axiom_kind_t) list)
 
 type t = (Tag.f_tag, case_tbl_t) Hashtbl.t
 
@@ -47,7 +49,7 @@ let split_formula (phi:Expr.formula) (var_tbl:System.var_table_t) : axiom_case_t
   ) (System.get_variable_list var_tbl);
   let ax_conj = Formula.to_conj_list phi in
   List.map (fun conj ->
-    print_endline ("CONJ: " ^ (Expr.formula_to_str conj));
+(*    print_endline ("CONJ: " ^ (Expr.formula_to_str conj));*)
     match conj with
     | Formula.Literal lit ->
         begin
@@ -57,9 +59,9 @@ let split_formula (phi:Expr.formula) (var_tbl:System.var_table_t) : axiom_case_t
         end
     | Formula.Implies (ante, conseq) ->
         begin
-          print_endline ("ANTE: " ^ (Expr.formula_to_str ante));
+(*          print_endline ("ANTE: " ^ (Expr.formula_to_str ante));*)
           let prems = Formula.to_conj_literals (Formula.nnf ante) in
-          print_endline "Done";
+(*          print_endline "Done";*)
           let prem_set = GSet.empty () in
           List.iter (fun p -> GSet.add prem_set (p,false)) prems;
           { vars = Hashtbl.copy var_subst_tbl;
@@ -68,9 +70,9 @@ let split_formula (phi:Expr.formula) (var_tbl:System.var_table_t) : axiom_case_t
         end
     | Formula.And _ ->
         begin
-          print_endline ("CONJ: " ^ (Expr.formula_to_str conj));
+(*          print_endline ("CONJ: " ^ (Expr.formula_to_str conj));*)
           let prems = Formula.to_conj_literals (Formula.nnf conj) in
-          print_endline "Done";
+(*          print_endline "Done";*)
           let prem_set = GSet.empty () in
           List.iter (fun p -> GSet.add prem_set (p,false)) prems;
           { vars = Hashtbl.copy var_subst_tbl;
@@ -82,7 +84,7 @@ let split_formula (phi:Expr.formula) (var_tbl:System.var_table_t) : axiom_case_t
 
 
 let new_axiom_table (ax_tags:Tag.tag_table) : axiom_tbl_t =
-  print_endline ("AXIOM TAG SIZE: " ^ (string_of_int (Tag.tag_table_size ax_tags)));
+(*  print_endline ("AXIOM TAG SIZE: " ^ (string_of_int (Tag.tag_table_size ax_tags)));*)
   let tbl = Hashtbl.create (Tag.tag_table_size ax_tags) in
   Tag.tag_table_iter ax_tags (fun t (t_phi,info) ->
     let cases = split_formula t_phi (Tag.info_params info) in
@@ -122,50 +124,49 @@ let reset_axiom (tbl:axiom_tbl_t) (ax_tag:Tag.f_tag) : unit =
 
 let new_rule (inv:Tag.f_tag) (cases:case_t list) : rule_t =
   let tbl = Hashtbl.create 10 in
-  let _ = List.iter (fun (pc,tags) ->
+  let _ = List.iter (fun (pc,xs) ->
             if Hashtbl.mem tbl pc then
               begin
                 Interface.Err.msg "Special case already defined" "";
                 raise(Duplicated_special_case)
               end
             else
-              Hashtbl.add tbl pc tags
+              Hashtbl.add tbl pc xs
           ) cases
   in
     (inv, tbl)
 
 
-let new_case (pc:Expr.pc_t) (xs:Tag.f_tag list) : case_t =
+let new_case (pc:Expr.pc_t) (xs:(Tag.f_tag * axiom_kind_t) list) : case_t =
   (pc,xs)
 
 
 (* Begin pretty printers *)
+let case_to_str (c:axiom_case_t) : string =
+  let v_str = Hashtbl.fold (fun v info str ->
+                str ^ (Expr.V.id v) ^ "; "
+              ) c.vars "" in
+  let prem_str = GSet.fold (fun (l,b) str ->
+                   (Expr.literal_to_str l) ^ "[" ^ (if b then "X" else " ") ^ "];"
+                 ) c.premises "" in
+  let res_str = Expr.formula_to_str c.result in
+  "Vars: " ^ v_str ^ "\n" ^
+  "Premises: " ^ prem_str ^ "\n" ^
+  "Result: " ^ res_str ^ "\n"
+
+
 let axiom_table_to_str (tbl:axiom_tbl_t) : string =
   Hashtbl.fold (fun t cases str ->
     str ^ "-----------\nAXIOM: " ^ (Tag.tag_id t) ^ "\n" ^
     "Cases:\n" ^
-    (String.concat "\n"
-      (List.map (fun c ->
-          let v_str = Hashtbl.fold (fun v info str ->
-                        str ^ (Expr.V.id v) ^ "; "
-                      ) c.vars "" in
-          let prem_str = GSet.fold (fun (l,b) str ->
-                           (Expr.literal_to_str l) ^ "[" ^ (if b then "X" else " ") ^ "];"
-                         ) c.premises "" in
-          let res_str = Expr.formula_to_str c.result in
-          "Vars: " ^ v_str ^ "\n" ^
-          "Premises: " ^ prem_str ^ "\n" ^
-          "Result: " ^ res_str ^ "\n"
-        ) cases
-      )
-    )
+    (String.concat "\n" (List.map case_to_str cases))
   )tbl ""
 
 
 (* End pretty printers *)
 
 
-let lookup (ax:t) (inv:Tag.f_tag) (pc:Expr.pc_t) : Tag.f_tag list =
+let lookup (ax:t) (inv:Tag.f_tag) (pc:Expr.pc_t) : (Tag.f_tag * axiom_kind_t) list =
   try
     Hashtbl.find (Hashtbl.find ax inv) pc
   with _ -> []
@@ -175,7 +176,10 @@ let lookup (ax:t) (inv:Tag.f_tag) (pc:Expr.pc_t) : Tag.f_tag list =
 (* Apply axiom on formula *)
 
 
-let apply (tbl:axiom_tbl_t) (phi:Expr.formula) (ax_tag:Tag.f_tag) : Expr.formula =
+let apply (tbl:axiom_tbl_t)
+          (phi:Expr.formula)
+          (ax_tag:Tag.f_tag)
+          (ax_kind:axiom_kind_t) : (Expr.formula * Expr.formula) =
   let find_matching_case (case:axiom_case_t) (l:Expr.literal) : axiom_case_t =
     let (@@) (xs,b1) (ys,b2) =
       if (b1 && b2) then
@@ -186,12 +190,19 @@ let apply (tbl:axiom_tbl_t) (phi:Expr.formula) (ax_tag:Tag.f_tag) : Expr.formula
     let rec match_var (v:Expr.V.t) (s:Expr.sort) (t:Expr.term) :
         ((Expr.V.t * Expr.term) list * bool) =
       try
+        (*
+        print_endline ("AA");
+        print_endine ("VARIABLE IS: " ^ (Expr.V.to_str v));
+        *)
         let info = Hashtbl.find case.vars v in
+        (*
+        print_endline ("BB");
+        *)
         if info.v_sort == s then
-          ([v,t], true)
+          ((*print_endline "TRUE";*) ([v,t], true))
         else
-          ([], false)
-      with _ -> ([], false)
+          ((*print_endline "FALSE";*) ([], false))
+      with _ -> ((*print_endline "EXCEPTION";*) ([], false))
 
     and match_lit (pl:Expr.literal) (l:Expr.literal) :
         ((Expr.V.t * Expr.term) list * bool) =
@@ -616,7 +627,6 @@ let apply (tbl:axiom_tbl_t) (phi:Expr.formula) (ax_tag:Tag.f_tag) : Expr.formula
           (match_array arr1 arr2) @@ (match_tid t1 t2)
       | _ -> ([], false)
 
-
     and match_setelem (ps:Expr.setelem) (s:Expr.setelem) :
         ((Expr.V.t * Expr.term) list * bool) =
       match (ps,s) with
@@ -635,7 +645,6 @@ let apply (tbl:axiom_tbl_t) (phi:Expr.formula) (ax_tag:Tag.f_tag) : Expr.formula
       | (Expr.SetElemArrayRd (arr1,t1), Expr.SetElemArrayRd (arr2,t2)) ->
           (match_array arr1 arr2) @@ (match_tid t1 t2)
       | _ -> ([], false)
-
 
     and match_setpair (ps:Expr.setpair) (s:Expr.setpair) :
         ((Expr.V.t * Expr.term) list * bool) =
@@ -687,10 +696,12 @@ let apply (tbl:axiom_tbl_t) (phi:Expr.formula) (ax_tag:Tag.f_tag) : Expr.formula
     let prems' = GSet.empty () in
     GSet.iter (fun (pl,b) ->
       if b then
-        ()
+        GSet.add prems' (pl,b)
       else
         begin
+          (*print_endline ("ANALIZANDO LITERAL: " ^ (Expr.literal_to_str l));*)
           let (assigns, res) = match_lit pl l in
+          (*print_endline ("RES: " ^ (if res then "TRUE" else "FALSE"));*)
           GSet.add prems' (pl, res);
           List.iter (fun (v,t) ->
             let v_info = Hashtbl.find case.vars v in
@@ -718,7 +729,10 @@ let apply (tbl:axiom_tbl_t) (phi:Expr.formula) (ax_tag:Tag.f_tag) : Expr.formula
                        begin
                          let subst_list =
                            Hashtbl.fold (fun v info ys ->
-                             (v, Expr.TermSet.choose info.v_term) :: ys
+                             if Expr.TermSet.is_empty info.v_term then
+                               ys
+                             else
+                               (v, Expr.TermSet.choose info.v_term) :: ys
                            ) c.vars [] in
                          let v_subst = Expr.new_var_term_subst subst_list in
                          (Expr.subst_var_term v_subst c.result) :: xs
@@ -726,7 +740,9 @@ let apply (tbl:axiom_tbl_t) (phi:Expr.formula) (ax_tag:Tag.f_tag) : Expr.formula
                      else
                        xs
                    ) [] cs in
-    Formula.conj_list phi_list in
+    let aa = Formula.conj_list phi_list in
+    (*print_endline ("RESULT: " ^ Expr.formula_to_str aa);*)
+    aa in
 
 
   (* Updates the cases, setting which rules can be applied according to
@@ -734,6 +750,10 @@ let apply (tbl:axiom_tbl_t) (phi:Expr.formula) (ax_tag:Tag.f_tag) : Expr.formula
   let apply_if_possible (cases:axiom_case_t list) (ls:Expr.literal list) : Expr.formula =
     let cases' = List.fold_left (fun cs l ->
                    List.map (fun c ->
+                     (*print_endline "UNA VUELTA";
+                     let cc = find_matching_case c l in
+                     print_endline (case_to_str cc);
+                     cc*)
                      find_matching_case c l
                    ) cs
                  ) cases ls in
@@ -742,31 +762,64 @@ let apply (tbl:axiom_tbl_t) (phi:Expr.formula) (ax_tag:Tag.f_tag) : Expr.formula
 
   try
     let ax_cases = Hashtbl.find tbl ax_tag in
-    let phi_conj = Formula.to_conj_list phi in
-    let get_lits f = Formula.to_conj_literals (Formula.nnf f) in
-    let phi' =
-          Formula.conj_list (
-            List.map (fun conj ->
-              let phi' = match conj with
-                         | Formula.Literal lit ->
-                             begin
-                               apply_if_possible ax_cases [lit]
-                             end
-                         | Formula.Implies (ante,conseq) ->
-                             begin
-                               let ante_lits = get_lits ante in
-                               let conseq_lits = get_lits conseq in
-                                 phi
-                             end
-                         | Formula.And _ ->
-                             begin
-                               let lits = get_lits conj in
-                                 phi
-                             end
-                         | _ -> phi in
-              phi'
-            ) phi_conj
-          ) in
-    reset_axiom tbl ax_tag;
-    phi'
-  with _ -> phi
+    match ax_kind with
+    | Forall ->
+        begin
+          let phi_vars = Expr.all_vars_occurrences_as_set phi in
+
+          Expr.V.VarSet.iter (fun x ->
+            print_endline ("VAR: " ^ (Expr.V.to_str x) ^ " IS PRIMED: " ^ (if Expr.V.is_primed x then "YES" else "NO"))
+          ) phi_vars;
+
+          let ax_formulas =
+            List.fold_left (fun axs case ->
+              let axioms_prem = GSet.fold (fun (p,_) xs ->
+                                  p::xs
+                                ) case.premises [] in
+              let axiom = Formula.Implies(Formula.conj_literals (axioms_prem), case.result) in
+              let substitution_list =
+                Hashtbl.fold (fun v info subst_list ->
+                  let v_set = Expr.V.varset_of_sort phi_vars (info.v_sort) in
+                  Expr.V.VarSet.fold (fun x ys ->
+                    print_endline ("VAR: " ^ (Expr.V.to_str x) ^ " IS PRIMED: " ^ (if Expr.V.is_primed x then "YES" else "NO"));
+                    (List.map (fun s -> (v,x)::s) subst_list) @ ys
+                  ) v_set []
+                ) case.vars [[]] in
+              let substitutions = List.map (Expr.V.new_subst_from_list) substitution_list in
+              (List.map (fun s -> Expr.subst_vars s axiom) substitutions) @ axs
+            ) [] ax_cases in
+          (Formula.conj_list ax_formulas, phi)
+        end
+    | Instantiate ->
+        begin
+          let phi_conj = Formula.to_conj_list phi in
+          let get_lits f = Formula.extract_literal_facts (Formula.nnf f) in
+          let (ax_res, phi_res) =
+                  List.fold_left (fun (axs, phis) conj ->
+                    match conj with
+                      | Formula.Literal lit ->
+                          begin
+                            let res = apply_if_possible ax_cases [lit] in
+                            (res::axs, conj::phis)
+                          end
+                      | Formula.Implies (ante,conseq) ->
+                          begin
+                            (*print_endline "THIS CASE!!";*)
+                            let ante_lits = get_lits ante in
+                            (*print_endline ("LITERALS IN ANTE:\n");
+                            print_endline (String.concat "; " (List.map (Expr.literal_to_str) ante_lits));*)
+                              let phi_from_ante = apply_if_possible ax_cases ante_lits in
+                              (phi_from_ante::axs, conj::phis)
+                          end
+                      | Formula.And _ ->
+                          begin
+                            let lits = get_lits conj in
+                            let phi_from_lits = apply_if_possible ax_cases lits in
+                            (phi_from_lits::axs, conj::phis)
+                          end
+                      | _ -> (axs, conj::phis)
+                  ) ([], []) phi_conj in
+          reset_axiom tbl ax_tag;
+          (Formula.conj_list ax_res, Formula.conj_list phi_res)
+        end
+  with _ -> (Formula.True, phi)

@@ -3023,6 +3023,14 @@ let get_vars_as_set (phi:formula) (base:V.t -> V.VarSet.t) : V.VarSet.t =
     var_set
 
 
+let get_vars_as_set_unmodified (phi:formula) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+  let var_set = V.VarSet.fold (fun v set ->
+                  V.VarSet.add v set
+                ) (get_vars_formula phi base) (V.VarSet.empty)
+  in
+    var_set
+
+
 let get_vars (phi:formula) (base:V.t -> V.VarSet.t) : V.t list =
   V.VarSet.elements (get_vars_as_set phi base)
 
@@ -3041,6 +3049,10 @@ let all_vars (f:formula) : V.t list =
 
 let all_vars_as_set (f:formula) : V.VarSet.t =
   get_vars_as_set f (fun v -> V.VarSet.singleton v)
+
+
+let all_vars_occurrences_as_set (f:formula) : V.VarSet.t =
+  get_vars_as_set_unmodified f (fun v -> V.VarSet.singleton v)
 
 
 let all_local_vars (f:formula) : V.t list =
