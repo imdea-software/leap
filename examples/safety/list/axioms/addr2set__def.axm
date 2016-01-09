@@ -1,0 +1,7 @@
+vars:
+  mem m
+  addr b
+  addr a
+
+axiom[addr2set__def]:
+  (in(b,addr2set(m,a)) -> reach(m,a,b,getp(m,a,b)))/\(reach(m,a,b,getp(m,a,b)) -> in(b,addr2set(m,a)))

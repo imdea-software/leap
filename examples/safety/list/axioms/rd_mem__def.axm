@@ -1,0 +1,5 @@
+vars:
+  mem m
+
+axiom[rd_mem__def]:
+  rd(m,null) = error

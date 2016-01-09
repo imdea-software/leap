@@ -1,0 +1,18 @@
+vars:
+  addr x
+  addrSet se
+
+axiom[hola]:
+  in(x,se) -> x != null
+//  (in(x,se) /\ y != x) -> in(x,diff(se,{y}))
+
+//  ((in(x,se) /\ (~ in(x,se2))) -> in(x,diff(se,se2))) /\
+//  (in(x,diff(se,se2)) -> (in(x,se) /\ (~ in(x,se2)))) /\
+
+//  (in(x,se) -> in(x,union(se,se2))) /\
+//  (in(x,se2) -> in(x,union(se,se2))) /\
+//  (in(x,union(se,se2)) -> (in(x,se) \/ in(x,se2))) /\
+
+//  ((in(x,se) /\ in(x,se2)) -> in(x,intr(se,se2))) /\
+//  (in(x,intr(se,se2)) -> (in(x,se) /\ in(x,se2)))
+

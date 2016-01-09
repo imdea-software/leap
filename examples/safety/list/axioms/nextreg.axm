@@ -1,0 +1,9 @@
+vars:
+  addr c
+  addrSet se
+  mem m
+  addr b
+  addr a
+
+axiom[nextreg]:
+  (in(a,se) /\ se = addr2set(m,b) /\ c = rd(m,a).next /\ (~ a = null)) -> in(c,se)

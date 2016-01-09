@@ -1,0 +1,9 @@
+vars:
+  cell c
+  mem m2
+  mem m
+  addr b
+  addr a
+
+axiom[upd__def__one_at_the_time]:
+  ((~ a = null) /\ (~ a = b)) -> upd(m,a,c) = m2 -> rd(m,b) = rd(m2,b)

@@ -1,0 +1,7 @@
+vars:
+  addrSet se
+  addr x
+  addrSet se2
+
+axiom[Intr_def]:
+  ((in(x,se) /\ in(x,se2)) -> in(x,intr(se,se2)))/\(in(x,intr(se,se2)) -> (in(x,se) /\ in(x,se2)))

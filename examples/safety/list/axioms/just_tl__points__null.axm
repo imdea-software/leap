@@ -1,0 +1,9 @@
+vars:
+  addr hd
+  mem hp
+  addr tl
+  addr d
+  addr a
+
+axiom[just_tl__points__null]:
+  (in(a,addr2set(hp,hd)) /\ in(tl,addr2set(hp,hd)) /\ (~ hd = null) /\ (~ tl = null) /\ (~ a = null) /\ rd(hp,tl).next = null /\ (~ d = null) /\ rd(hp,d).next = null /\ in(d,addr2set(hp,hd))) -> d = tl

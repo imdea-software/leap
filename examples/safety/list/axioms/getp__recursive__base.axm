@@ -1,0 +1,6 @@
+vars:
+  mem m
+  addr a
+
+axiom[getp__recursive__base]:
+  (~ a = rd(m,a).next) -> getp(m,a,rd(m,a).next) = [ a ]

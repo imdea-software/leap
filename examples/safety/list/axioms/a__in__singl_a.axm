@@ -1,0 +1,6 @@
+vars:
+  addr b
+  addr a
+
+axiom[a__in__singl_a]:
+  ((~ a = b) -> (~ in(b,{ a }))) /\ in(a,{ a })

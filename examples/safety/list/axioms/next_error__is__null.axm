@@ -1,0 +1,4 @@
+vars: 
+
+axiom[next_error__is__null]:
+  error.next = null

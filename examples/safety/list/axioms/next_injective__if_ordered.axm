@@ -1,0 +1,11 @@
+vars:
+  addr c
+  addr hd
+  mem hp
+  addr tl
+  addr b
+  addr d
+  addr a
+
+axiom[next_injective__if_ordered]:
+  (orderlist(hp,hd,tl) /\ in(a,addr2set(hp,hd)) /\ in(b,addr2set(hp,hd)) /\ in(c,addr2set(hp,hd)) /\ in(d,addr2set(hp,hd)) /\ (~ tl = null) /\ null = rd(hp,tl).next /\ (~ c = null) /\ (~ d = null) /\ (~ a = null) /\ (~ b = null) /\ (~ a = tl) /\ (~ b = tl) /\ rd(hp,c).next = a /\ rd(hp,d).next = b) -> a = b -> c = d

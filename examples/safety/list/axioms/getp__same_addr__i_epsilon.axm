@@ -1,0 +1,7 @@
+vars:
+  mem m
+  path p
+  addr a
+
+axiom[getp__same_addr__i_epsilon]:
+  getp(m,a,a) = epsilon
