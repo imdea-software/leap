@@ -293,12 +293,14 @@ module Make (Opt:module type of GenOptions) : S =
         end
       end;
       if Opt.axiom_file <> "" then begin
-        axioms := Parser.open_and_parse Opt.axiom_file
-                    (IGraphParser.axioms IGraphLexer.norm)
-      end else begin
-        Interface.Err.msg "Not a valid axiom file" $
-          sprintf "%s is not a valid file with axioms." Opt.axiom_file;
-          raise(No_axiom_folder)
+        try
+          axioms := Parser.open_and_parse Opt.axiom_file
+                      (IGraphParser.axioms IGraphLexer.norm)
+        with _ -> begin
+                    Interface.Err.msg "Not a valid axiom file" $
+                      sprintf "%s is not a valid file with axioms." Opt.axiom_file;
+                    raise(No_axiom_folder)
+                  end
       end
 
 
