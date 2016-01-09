@@ -469,14 +469,18 @@ module Make (Opt:module type of GenOptions) : S =
 
               (*let _ = print_endline (Axioms.axiom_table_to_str axiom_table) in*)
 
-              print_endline ("FOL_PHI:\n" ^ (E.formula_to_str fol_phi));
-              let (axioms_phi,res_phi) =
-                List.fold_left (fun (ax_phi, psi) (ax_tag,ax_kind) ->
-                  Axioms.apply axiom_table psi ax_tag ax_kind
-                ) (Formula.True, fol_phi) ax_tags in
+              (*print_endline ("FOL_PHI:\n" ^ (E.formula_to_str fol_phi));*)
+              let (axiom_list,res_phi) =
+                List.fold_left (fun (axs, psi) (ax_tag,ax_kind) ->
+                  let (ax_psi, psi') = Axioms.apply axiom_table psi ax_tag ax_kind in
+                  (ax_psi::axs, psi')
+                ) ([], fol_phi) ax_tags in
 
-              let fol_phi = Formula.Implies (axioms_phi, res_phi) in
-              print_endline ("FOL_PHI_WITH_AXIOMS:\n" ^ (E.formula_to_str fol_phi));
+              let axiom_phi = Formula.conj_list axiom_list in
+              let fol_phi = match axiom_phi with
+                            | Formula.True -> res_phi
+                            | _ -> Formula.Implies (axiom_phi, res_phi) in
+              (*print_endline ("FOL_PHI_WITH_AXIOMS:\n" ^ (E.formula_to_str fol_phi));*)
 
               (* Axiom application finishes *)
               phi_timer#start;

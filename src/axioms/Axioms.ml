@@ -695,15 +695,20 @@ let apply (tbl:axiom_tbl_t)
 
     let prems' = GSet.empty () in
     GSet.iter (fun (pl,b) ->
+      (*
       if b then
         GSet.add prems' (pl,b)
       else
+        *)
         begin
           (*print_endline ("ANALIZANDO LITERAL: " ^ (Expr.literal_to_str l));*)
           let (assigns, res) = match_lit pl l in
-          (*print_endline ("RES: " ^ (if res then "TRUE" else "FALSE"));*)
-          GSet.add prems' (pl, res);
+          (* print_endline ("RES: " ^ (if res then "TRUE" else "FALSE")); *)
+          GSet.add prems' (pl, b || res);
           List.iter (fun (v,t) ->
+            
+            let _ = print_endline ("AÑADIENDO: (" ^(Expr.V.to_str v)^ "," ^(Expr.term_to_str t)^ ")") in
+            
             let v_info = Hashtbl.find case.vars v in
             Hashtbl.replace case.vars v { v_sort = v_info.v_sort;
                                           v_term = Expr.TermSet.add t v_info.v_term; }
@@ -727,15 +732,21 @@ let apply (tbl:axiom_tbl_t)
     let phi_list = List.fold_left (fun xs c ->
                      if GSet.for_all (fun (_,b) -> b) c.premises then
                        begin
-                         let subst_list =
-                           Hashtbl.fold (fun v info ys ->
+                         let subst_lists =
+                           Hashtbl.fold (fun v info subst ->
                              if Expr.TermSet.is_empty info.v_term then
-                               ys
+                               subst
                              else
-                               (v, Expr.TermSet.choose info.v_term) :: ys
-                           ) c.vars [] in
-                         let v_subst = Expr.new_var_term_subst subst_list in
-                         (Expr.subst_var_term v_subst c.result) :: xs
+                               begin
+                                 Expr.TermSet.fold (fun t ys ->
+                                   (List.map (fun s -> (v,t)::s) subst) @ ys
+                                 ) info.v_term []
+                               end
+                           ) c.vars [[]] in
+                         List.fold_left (fun phi_list s ->
+                           let v_subst = Expr.new_var_term_subst s in
+                           (Expr.subst_var_term v_subst c.result) :: phi_list
+                         ) [] subst_lists
                        end
                      else
                        xs
@@ -767,9 +778,11 @@ let apply (tbl:axiom_tbl_t)
         begin
           let phi_vars = Expr.all_vars_occurrences_as_set phi in
 
+          (*
           Expr.V.VarSet.iter (fun x ->
             print_endline ("VAR: " ^ (Expr.V.to_str x) ^ " IS PRIMED: " ^ (if Expr.V.is_primed x then "YES" else "NO"))
           ) phi_vars;
+          *)
 
           let ax_formulas =
             List.fold_left (fun axs case ->
@@ -781,7 +794,7 @@ let apply (tbl:axiom_tbl_t)
                 Hashtbl.fold (fun v info subst_list ->
                   let v_set = Expr.V.varset_of_sort phi_vars (info.v_sort) in
                   Expr.V.VarSet.fold (fun x ys ->
-                    print_endline ("VAR: " ^ (Expr.V.to_str x) ^ " IS PRIMED: " ^ (if Expr.V.is_primed x then "YES" else "NO"));
+                    (*print_endline ("VAR: " ^ (Expr.V.to_str x) ^ " IS PRIMED: " ^ (if Expr.V.is_primed x then "YES" else "NO"));*)
                     (List.map (fun s -> (v,x)::s) subst_list) @ ys
                   ) v_set []
                 ) case.vars [[]] in
