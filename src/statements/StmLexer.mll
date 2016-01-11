@@ -54,6 +54,7 @@ let _ = List.iter (fun (kwd, tok) -> Hashtbl.add keyword_table kwd tok)
             ("skiplist"     , SKIPLIST);
             ("hashmap"      , HASHMAP);
             ("upd"          , UPDATE);
+            ("arrUpd"       , ARR_UPDATE);
             ("T"            , MARK_T);
             ("F"            , MARK_F);
             ("epsilon"      , EPSILON);

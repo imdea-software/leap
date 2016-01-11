@@ -300,6 +300,24 @@ let check_type_bucketarr t =
     | _         -> raise(WrongType t)
 
 
+let check_type_lock t =
+  match t with
+      E.LockT l -> l
+    | E.VarT v  -> let var = E.V.set_sort v E.Lock in
+                     check_sort_var var;
+                     E.VarLock var
+    | _         -> raise(WrongType t)
+
+
+let check_type_lockarr t =
+  match t with
+      E.LockArrayT arr -> arr
+    | E.VarT v  -> let var = E.V.set_sort v E.LockArray in
+                     check_sort_var var;
+                     E.VarLockArray var
+    | _         -> raise(WrongType t)
+
+
 let check_and_get_sort (id:string) : E.sort =
   match id with
     "tid"       -> E.Tid
@@ -320,6 +338,8 @@ let check_and_get_sort (id:string) : E.sort =
   | "mark"      -> E.Mark
   | "bucket"    -> E.Bucket
   | "bucketarr" -> E.BucketArray
+  | "lock"      -> E.Lock
+  | "lockarr"   -> E.LockArray
   | _ -> begin
            Interface.Err.msg "Unrecognized sort" $
              sprintf "A sort was expected, but \"%s\" was found" id;
@@ -619,7 +639,7 @@ let define_ident (proc_name:E.V.procedure_name)
 %type <E.tidarr> tidarr
 %type <E.mark> mark
 %type <E.bucket> bucket
-%type <E.bucketarr> bucketarr
+%type <E.lock> lock
 
 %type <PVD.t> pvd
 %type <(PVD.node_id_t * E.formula) list> node_list
@@ -1321,8 +1341,8 @@ term :
     { E.MarkT($1) }
   | bucket
     { E.BucketT($1) }
-  | bucketarr
-    { E.BucketArrayT($1) } 
+  | lock
+    { E.LockT($1) }
   | OPEN_PAREN term CLOSE_PAREN
     { $2 }
 
@@ -1494,8 +1514,12 @@ tid :
   | term DOT LOCKID
     {
       let get_str_expr () = sprintf "%s.lockid" (E.term_to_str $1) in
-      let c = parser_check_type check_type_cell  $1 E.Cell get_str_expr in
-        E.CellLockId(c)
+      try
+        let c = parser_check_type check_type_cell $1 E.Cell get_str_expr in
+          E.CellLockId(c)
+      with _ ->
+        let l = parser_check_type check_type_lock $1 E.Lock get_str_expr in
+          E.LockId(l)
     }
   | SHARP
     { E.NoTid }
@@ -2031,19 +2055,23 @@ arrays :
             E.AddrT (E.AddrArrRd (aa,i))
         with e ->
           try
-          let bb = parser_check_type check_type_bucketarr $1 E.BucketArray get_str_expr in
-            E.BucketT (E.BucketArrRd (bb,i))
-          with e ->
-            try
-              let t = parser_check_type check_type_tid $1 E.Tid get_str_expr in
-              match t with
-              | E.CellLockId c -> E.TidT (E.CellLockIdAt (c,i))
-              | _                 -> raise(e)
+            let bb = parser_check_type check_type_bucketarr $1 E.BucketArray get_str_expr in
+              E.BucketT (E.BucketArrRd (bb,i))
             with e ->
-              let a = parser_check_type check_type_addr $1 E.Addr get_str_expr in
-              match a with
-              | E.Next c -> E.AddrT (E.ArrAt (c,i))
-              | _           -> raise(e)
+              try
+                let ll = parser_check_type check_type_lockarr $1 E.LockArray get_str_expr in
+                  E.LockT (E.LockArrRd (ll,i))
+              with e ->
+                try
+                  let t = parser_check_type check_type_tid $1 E.Tid get_str_expr in
+                  match t with
+                  | E.CellLockId c -> E.TidT (E.CellLockIdAt (c,i))
+                  | _                 -> raise(e)
+                with e ->
+                  let a = parser_check_type check_type_addr $1 E.Addr get_str_expr in
+                  match a with
+                  | E.Next c -> E.AddrT (E.ArrAt (c,i))
+                  | _           -> raise(e)
     }
   | ARR_UPDATE OPEN_PAREN term COMMA term COMMA term CLOSE_PAREN
     {
@@ -2052,13 +2080,23 @@ arrays :
                                                         (E.term_to_str $7) in
       let i = parser_check_type check_type_int $5 E.Int get_str_expr in
       try
-        let at = parser_check_type check_type_tidarr $3 E.TidArray get_str_expr in
-        let t = parser_check_type check_type_tid $7 E.Tid get_str_expr in
-          E.TidArrayT (E.TidArrayUp (at,i,t))
+        let ll = parser_check_type check_type_lockarr $3 E.LockArray get_str_expr in
+        let l = parser_check_type check_type_lock $7 E.Lock get_str_expr in
+          E.LockArrayT (E.LockArrayUp (ll,i,l))
       with _ ->
-        let aa = parser_check_type check_type_addrarr $3 E.AddrArray get_str_expr in
-        let a = parser_check_type check_type_addr $7 E.Addr get_str_expr in
-          E.AddrArrayT (E.AddrArrayUp (aa,i,a))
+        try
+          let bb = parser_check_type check_type_bucketarr $3 E.BucketArray get_str_expr in
+          let b = parser_check_type check_type_bucket $7 E.Bucket get_str_expr in
+            E.BucketArrayT (E.BucketArrayUp (bb,i,b))
+        with _ ->
+          try
+            let aa = parser_check_type check_type_addrarr $3 E.AddrArray get_str_expr in
+            let a = parser_check_type check_type_addr $7 E.Addr get_str_expr in
+              E.AddrArrayT (E.AddrArrayUp (aa,i,a))
+          with _ ->
+            let at = parser_check_type check_type_tidarr $3 E.TidArray get_str_expr in
+            let t = parser_check_type check_type_tid $7 E.Tid get_str_expr in
+              E.TidArrayT (E.TidArrayUp (at,i,t))
     }
 
 
@@ -2117,19 +2155,25 @@ bucket :
     }
 
 
-/* BUCKETARRAY term */
-bucketarr :
-  | BARRAYUPD OPEN_PAREN term COMMA term COMMA term CLOSE_PAREN
+/* LOCK term */
+lock :
+  | LOCK OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "bucketArrUpd(%s,%s,%s)"
+      let get_str_expr () = sprintf "lock(%s,%s)"
                                            (E.term_to_str $3)
-                                           (E.term_to_str $5)
-                                           (E.term_to_str $7) in
-      let bb = parser_check_type check_type_bucketarr $3 E.BucketArray get_str_expr in
-      let i = parser_check_type check_type_int $5 E.Int get_str_expr in
-      let b = parser_check_type check_type_bucket $7 E.Bucket get_str_expr in
-        E.BucketArrayUp(bb,i,b)
+                                           (E.term_to_str $5) in
+      let l = parser_check_type check_type_lock $3 E.Lock get_str_expr in
+      let t = parser_check_type check_type_tid $5 E.Tid get_str_expr in
+        E.LLock(l,t)
     }
+  | UNLOCK OPEN_PAREN term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "unlock(%s)"
+                                           (E.term_to_str $3) in
+      let l = parser_check_type check_type_lock $3 E.Lock get_str_expr in
+        E.LUnlock(l)
+    }
+
 
 /************************   TEMPORARY VERIFICATION CONDITIONS **********************/
 

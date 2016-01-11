@@ -82,7 +82,6 @@ let _ = List.iter (fun (kwd, tok) -> Hashtbl.add keyword_table kwd tok)
             ("bend"         , BEND);
             ("bregion"      , BREGION);
             ("btid"         , BTID);
-            ("bucketArrUpd" , BARRAYUPD);
             ("in"           , IN );
             ("subseteq"     , SUBSETEQ );
             ("tin"          , INTH );

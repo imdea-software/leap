@@ -447,6 +447,19 @@ let check_type_bucketarr t =
     | _           -> raise(WrongType t)
 
 
+let check_type_lock t =
+  match t with
+      Stm.LockT l -> l
+    | Stm.VarT v  -> check_sort_var v.Stm.id v.Stm.scope E.Lock v.Stm.nature; Stm.VarLock v
+    | _           -> raise(WrongType t)
+
+
+let check_type_lockarr t =
+  match t with
+      Stm.LockArrayT arr -> arr
+    | Stm.VarT v  -> check_sort_var v.Stm.id v.Stm.scope E.LockArray v.Stm.nature; Stm.VarLockArray v
+    | _           -> raise(WrongType t)
+
 let check_and_get_sort (id:string) : E.sort =
   match id with
     "tid"       -> E.Tid
@@ -468,6 +481,8 @@ let check_and_get_sort (id:string) : E.sort =
   | "mark"      -> E.Mark
   | "bucket"    -> E.Bucket
   | "bucketarr" -> E.BucketArray
+  | "lock"      -> E.Lock
+  | "lockarr"   -> E.LockArray
   | _ -> begin
            Interface.Err.msg "Unrecognized sort" $
              sprintf "A sort was expected, but \"%s\" was found" id;
@@ -546,6 +561,11 @@ let check_and_get_sort (id:string) : E.sort =
     | Stm.ElemT(Stm.VarElem _)                 -> ()
     | Stm.ElemT(Stm.CellData(Stm.VarCell _ ))  -> ()
     | Stm.TidT(Stm.VarTh _ )                   -> ()
+    | Stm.BucketT(Stm.VarBucket _ )            -> ()
+    | Stm.BucketT(Stm.BucketArrRd _)           -> ()
+    | Stm.LockT(Stm.VarLock _ )                -> ()
+    | Stm.LockT(Stm.LockArrRd _)               -> ()
+    | Stm.MarkT(Stm.VarMark _ )                -> ()
     | Stm.AddrT(Stm.VarAddr _)                 -> ()
     | Stm.AddrT(Stm.Next(Stm.VarCell _))       -> ()
     | Stm.AddrT(Stm.NextAt(Stm.VarCell _,_))   -> ()
@@ -876,6 +896,7 @@ let fix_conditional_jumps () : unit =
 %token MEMORY_READ
 %token COMMA
 %token NULL UPDATE
+%token ARR_UPDATE
 %token EPSILON SINGLE_PATH
 %token EMPTYSET UNION INTR SETDIFF
 %token EMPTYSETTH UNIONTH INTRTH SETDIFFTH SINGLETH
@@ -1022,10 +1043,11 @@ let fix_conditional_jumps () : unit =
 %type <Stm.eq> equals
 %type <Stm.diseq> disequals
 %type <Stm.term> arraylookup
+%type <Stm.term> arrayupd
 %type <Stm.integer option> lock_pos
 %type <Stm.mark> mark
 %type <Stm.bucket> bucket
-%type <Stm.bucketarr> bucketarr
+%type <Stm.lock> lock
 
 
 
@@ -1274,7 +1296,6 @@ local_decl :
       let k      = $1 in
       let v_name = get_name $3 in
       let s      = check_and_get_sort (get_name $2) in
-
       decl_local_var v_name s None k
     }
   | kind IDENT IDENT ASSIGN term
@@ -2677,10 +2698,12 @@ term :
     { Stm.MarkT($1) }
   | arraylookup
     { $1 }
+  | arrayupd
+    { $1 }
   | bucket
     { Stm.BucketT($1) }
-  | bucketarr
-    { Stm.BucketArrayT($1) }
+  | lock
+    { Stm.LockT($1) }
   | OPEN_PAREN term CLOSE_PAREN
     { $2 }
 
@@ -2817,8 +2840,12 @@ tid :
     {
 
       let get_str_expr () = sprintf "%s.lockid" (Stm.term_to_str $1) in
-      let c = parser_check_type check_type_cell  $1 E.Cell get_str_expr in
-        Stm.CellLockId(c)
+      try
+        let c = parser_check_type check_type_cell $1 E.Cell get_str_expr in
+          Stm.CellLockId(c)
+      with _ ->
+        let l = parser_check_type check_type_lock $1 E.Lock get_str_expr in
+          Stm.LockId(l)
     }
   | SHARP
     {
@@ -3374,7 +3401,6 @@ arraylookup :
       let get_str_expr () = sprintf "%s[%s]" (Stm.term_to_str $1)
                                              (Stm.term_to_str $3) in
       let i = parser_check_type check_type_int $3 E.Int get_str_expr in
-
       try
         let arr = parser_check_type check_type_tidarr $1 E.TidArray get_str_expr in
           Stm.TidT (Stm.TidArrRd (arr,i))
@@ -3386,14 +3412,46 @@ arraylookup :
             try
               let arr = parser_check_type check_type_bucketarr $1 E.BucketArray get_str_expr in
                 Stm.BucketT (Stm.BucketArrRd (arr,i))
-            with e ->
-              let a = parser_check_type check_type_addr $1 E.Addr get_str_expr in
-                match a with
-                | Stm.PointerNext a -> Stm.AddrT (Stm.PointerArrAt (a,i))
-                | _ -> raise(e)
-      
+            with _ ->
+              try
+                let arr = parser_check_type check_type_lockarr $1 E.LockArray get_str_expr in
+                  Stm.LockT (Stm.LockArrRd (arr,i))
+              with e ->
+                let a = parser_check_type check_type_addr $1 E.Addr get_str_expr in
+                  match a with
+                  | Stm.PointerNext a -> Stm.AddrT (Stm.PointerArrAt (a,i))
+                  | _ -> raise(e) 
     }
 
+
+/* ARRAYUPDATE terms */
+
+arrayupd :
+  | ARR_UPDATE OPEN_PAREN term COMMA term COMMA term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "arrUpd (%s,%s,%s)" (Stm.term_to_str $3)
+                                                        (Stm.term_to_str $5)
+                                                        (Stm.term_to_str $7) in
+      let i = parser_check_type check_type_int $5 E.Int get_str_expr in
+      try
+        let ll = parser_check_type check_type_lockarr $3 E.LockArray get_str_expr in
+        let l = parser_check_type check_type_lock $7 E.Lock get_str_expr in
+          Stm.LockArrayT (Stm.LockArrayUp (ll,i,l))
+      with _ ->
+        try
+          let bb = parser_check_type check_type_bucketarr $3 E.BucketArray get_str_expr in
+          let b = parser_check_type check_type_bucket $7 E.Bucket get_str_expr in
+            Stm.BucketArrayT (Stm.BucketArrayUp (bb,i,b))
+        with _ ->
+          try
+            let aa = parser_check_type check_type_addrarr $3 E.AddrArray get_str_expr in
+            let a = parser_check_type check_type_addr $7 E.Addr get_str_expr in
+              Stm.AddrArrayT (Stm.AddrArrayUp (aa,i,a))
+          with _ ->
+            let at = parser_check_type check_type_tidarr $3 E.TidArray get_str_expr in
+            let t = parser_check_type check_type_tid $7 E.Tid get_str_expr in
+              Stm.TidArrayT (Stm.TidArrayUp (at,i,t))
+    }
 
 
 /* BUCKET term */
@@ -3413,16 +3471,21 @@ bucket :
     }
 
 
-/* BUCKETARRAY term */
-bucketarr :
-  | BARRAYUPD OPEN_PAREN term COMMA term COMMA term CLOSE_PAREN
+/* LOCK term */
+lock :
+  | LOCK OPEN_PAREN term COMMA term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "bucketArrUpd(%s,%s,%s)"
+      let get_str_expr () = sprintf "lock(%s,%s)"
                                            (Stm.term_to_str $3)
-                                           (Stm.term_to_str $5)
-                                           (Stm.term_to_str $7) in
-      let bb = parser_check_type check_type_bucketarr $3 E.BucketArray get_str_expr in
-      let i = parser_check_type check_type_int $5 E.Int get_str_expr in
-      let b = parser_check_type check_type_bucket $7 E.Bucket get_str_expr in
-        Stm.BucketArrayUp(bb,i,b)
+                                           (Stm.term_to_str $5) in
+      let l = parser_check_type check_type_lock $3 E.Lock get_str_expr in
+      let t = parser_check_type check_type_tid $5 E.Tid get_str_expr in
+        Stm.LLock(l,t)
+    }
+  | UNLOCK OPEN_PAREN term CLOSE_PAREN
+    {
+      let get_str_expr () = sprintf "unlock(%s)"
+                                           (Stm.term_to_str $3) in
+      let l = parser_check_type check_type_lock $3 E.Lock get_str_expr in
+        Stm.LUnlock(l)
     }
