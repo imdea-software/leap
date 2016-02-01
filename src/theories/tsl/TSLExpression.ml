@@ -1665,35 +1665,6 @@ let special_ops (phi:formula) : special_op_t list =
     OpsSet.elements (ops_f phi)
 
 
-(* NOTE: I am not considering the possibility of having a1=a2 \/ a1=a3 in the formula *)
-let rec get_addrs_eqs (phi:formula) : ((addr*addr) list * (addr*addr) list) =
-  match phi with
-  | F.Literal l   -> get_addrs_eqs_lit l
-  | F.And (f1,f2) -> let (es1,is1) = get_addrs_eqs f1 in
-                     let (es2,is2) = get_addrs_eqs f2 in
-                     (es1@es2, is1@is2)
-  | F.Not f       -> let (es,is) = get_addrs_eqs f in (is,es)
-  | _             -> ([],[])
-
-and get_addrs_eqs_conj (cf:conjunctive_formula) : ((addr*addr) list * (addr*addr) list) =
-  match cf with
-  | F.TrueConj -> ([],[])
-  | F.FalseConj -> ([],[])
-  | F.Conj xs -> List.fold_left (fun (es,is) l ->
-                   let (es',is') = get_addrs_eqs_lit l in
-                   (es@es', is@is')
-                 ) ([],[]) xs
-
-and get_addrs_eqs_lit (l:literal) : ((addr*addr) list * (addr*addr) list) =
-  match l with
-  | F.Atom a -> get_addrs_eqs_atom a
-  | F.NegAtom a -> let (es,is) = get_addrs_eqs_atom a in (is,es)
-
-and get_addrs_eqs_atom (a:atom) : ((addr*addr) list * (addr*addr) list) =
-  match a with
-  | Eq (AddrT a1, AddrT a2)   -> ([(a1,a2)],[])
-  | InEq (AddrT a1, AddrT a2) -> ([],[(a1,a2)])
-  | _ -> ([],[])
 
 (*******************************)
 (*                             *)
@@ -1782,116 +1753,6 @@ let ineq_term (t1:term) (t2:term) : formula =
   F.atom_to_formula (InEq (t1, t2))
 
 
-
-(*******************************)
-(*                             *)
-(*   Normalization functions   *)
-(*                             *)
-(*******************************)
-
-
-
-(*
-let new_fresh_gen_from_conjformula (cf:conjunctive_formula) : V.fresh_var_gen_t =
-  let vars = V.VarSet.fold (fun v s ->
-               V.VarIdSet.add (V.id v) s
-             ) (varset_from_conj cf) V.VarIdSet.empty in
-  V.new_fresh_gen vars
-
-
-let new_fresh_gen_from_formula (phi:formula) : V.fresh_var_gen_t =
-  let vars = V.VarSet.fold (fun v s ->
-               V.VarIdSet.add (V.id v) s
-             ) (varset phi) V.VarIdSet.empty in
-  V.new_fresh_gen vars
-*)
-
-
-(* Normalization *)
-
-
-(*
-type norm_info_t =
-  {
-    term_map : (term, V.t) Hashtbl.t ;
-    processed_term_map : (term, V.t) Hashtbl.t ;
-    fresh_gen_info : V.fresh_var_gen_t ;
-  }
-
-
-let new_norm_info_from_formula (phi:formula) : norm_info_t =
-  {
-    term_map = Hashtbl.create 10 ;
-    processed_term_map = Hashtbl.create 10 ;
-    fresh_gen_info = new_fresh_gen_from_formula phi ;
-  }
-
-
-let new_norm_info_from_geninfo (fg:V.fresh_var_gen_t) : norm_info_t =
-  {
-    term_map = Hashtbl.create 10 ;
-    processed_term_map = Hashtbl.create 10 ;
-    fresh_gen_info = fg ;
-  }
-
-
-
-let gen_fresh_var (gen:V.fresh_var_gen_t) (s:sort) : V.t =
-  V.gen_fresh_var sort_to_str {treat_as_pc=false;} gen s
-*)
-
-
-(*
-
-
-let gen_fresh_set_var (info:norm_info_t) : set =
-  VarSet (gen_fresh_var info.fresh_gen_info Set)
-
-
-let gen_fresh_elem_var (info:norm_info_t) : elem =
-  VarElem (gen_fresh_var info.fresh_gen_info Elem)
-
-
-let gen_fresh_tid_var (info:norm_info_t) : tid =
-  VarTh (gen_fresh_var info.fresh_gen_info Tid)
-
-
-let gen_fresh_addr_var (info:norm_info_t) : addr =
-  VarAddr (gen_fresh_var info.fresh_gen_info Addr)
-
-
-let gen_fresh_cell_var (info:norm_info_t) : cell =
-  VarCell (gen_fresh_var info.fresh_gen_info Cell)
-
-
-let gen_fresh_setth_var (info:norm_info_t) : setth =
-  VarSetTh (gen_fresh_var info.fresh_gen_info SetTh)
-
-
-let gen_fresh_setelem_var (info:norm_info_t) : setelem =
-  VarSetElem (gen_fresh_var info.fresh_gen_info SetElem)
-
-
-let gen_fresh_path_var (info:norm_info_t) : path =
-  VarPath (gen_fresh_var info.fresh_gen_info Path)
-
-
-let gen_fresh_mem_var (info:norm_info_t) : mem =
-  VarMem (gen_fresh_var info.fresh_gen_info Mem)
-
-
-let gen_fresh_int_var (info:norm_info_t) : integer =
-  VarInt (gen_fresh_var info.fresh_gen_info Int)
-
-
-let gen_fresh_addrarr_var (info:norm_info_t) : addrarr =
-  VarAddrArray (gen_fresh_var info.fresh_gen_info AddrArray)
-
-
-let gen_fresh_tidarr_var (info:norm_info_t) : tidarr =
-  VarTidArray (gen_fresh_var info.fresh_gen_info TidArray)
-
-  *)
 
 
 let make_compatible_term_from_var (t:term) (v:V.t) : term =
@@ -1984,11 +1845,9 @@ module TSLNorm = Normalization.Make(NOpt)
 let rec norm_literal (info:TSLNorm.t) (l:literal) : formula =
   let append_if_diff (t:term) (v:V.t) : unit =
     if is_var_term t then
-      (*(if (term_to_var t) <> v then Hashtbl.add info.term_map t v)*)
       (if (term_to_var t) <> v then TSLNorm.add_term_map info t v)
     else
       TSLNorm.add_term_map info t v in
-(*      Hashtbl.add info.term_map t v in *)
   let gen_if_not_var (t:term) (s:sort) : V.t =
     let _ = verbl _LONG_INFO "GEN_IF_NOT_VAR FOR TERM: %s\n" (term_to_str t) in
     if is_var_term t then (verbl _LONG_INFO "WAS A VARIABLE\n"; term_to_var t)
@@ -1998,13 +1857,10 @@ let rec norm_literal (info:TSLNorm.t) (l:literal) : formula =
              verbl _LONG_INFO "%s ----> %s\n" (term_to_str t) (V.to_str v)
            ) info;
            try
-             (*Hashtbl.find info.processed_term_map t*)
              TSLNorm.find_proc_term info t
-(*           with _ -> Hashtbl.find info.term_map t*)
            with _ -> TSLNorm.find_term_map info t
          with _ -> begin
                      let v = TSLNorm.gen_fresh_var info s in
-(*                     let v = gen_fresh_var info.fresh_gen_info s in*)
                      verbl _LONG_INFO "APPENDING A NEW VARIABLE: %s\n" (V.to_str v);
                      append_if_diff t v; v
                    end in

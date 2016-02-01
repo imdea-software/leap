@@ -2,7 +2,6 @@
 open NumQuery
 open PairsQuery
 open TllQuery
-open ThmQuery
 
 (** [set_smt_usage b] flags the usage of SMT-LIB translation if available
     to [b] *)

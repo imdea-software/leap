@@ -46,8 +46,3 @@ let _ = Hashtbl.add pairsTbl Yices.identifier (module Yices : BACKEND_PAIRS)
 let _ = Hashtbl.add pairsTbl Z3.identifier    (module Z3    : BACKEND_PAIRS)
 let defaultPairs () = (module Yices : BACKEND_PAIRS)
 
-
-(* Backends that support THM reasoning *)
-let thmTbl : (string, (module BACKEND_THM)) Hashtbl.t = Hashtbl.create 2
-let _ = Hashtbl.add thmTbl Z3.identifier    (module Z3    : BACKEND_THM)
-let defaultThm () = (module Z3 : BACKEND_THM)

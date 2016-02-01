@@ -2,7 +2,6 @@ open BackendSolverIntf
 open NumQuery
 open PairsQuery
 open TllQuery
-open ThmQuery
 
 module Yices : BACKEND_SOLVER =
 struct
@@ -120,21 +119,6 @@ struct
         let sort_map                 = Q.get_sort_map
       end
     end
-
-    module Thm =
-    struct
-      module Exp = ThmExpression
-      module Smp = SmpThm
-      module Query = functor (Q : THM_QUERY) ->
-      struct
-        let set_prog_lines = Q.set_prog_lines
-        let literal_list   = Q.literal_list_to_str
-        let formula        = Q.formula_to_str
-        let conjformula    = Q.conjformula_to_str
-        let sort_map       = Q.get_sort_map
-      end
-    end
-
 
   end
 end

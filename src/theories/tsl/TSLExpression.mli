@@ -274,9 +274,6 @@ val combine_conj_formula : conjunctive_formula -> conjunctive_formula -> conjunc
 val combine_conj_formula_list : conjunctive_formula list -> conjunctive_formula
 *)
 
-val get_addrs_eqs_conj : conjunctive_formula -> ((addr*addr) list * (addr*addr) list)
-val get_addrs_eqs : formula -> ((addr*addr) list * (addr*addr) list)
-
 
 
 val normalize : formula -> formula

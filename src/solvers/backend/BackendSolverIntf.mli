@@ -2,7 +2,6 @@ open ExpressionTypes
 open NumQuery
 open PairsQuery
 open TllQuery
-open ThmQuery
 
 module type BackendCommon =
 (** Minimum signature for a Backend Solver. *)
@@ -112,50 +111,6 @@ sig
     end
   end
 end
-
-
-module type ThmBackend =
-(** Signatures of the functions the Solver needs to implement in order
-    to fully support THM. *)
-sig
-  type t
-  
-  module Thm :
-  (** Translation of THM expressions. *)
-  sig
-    module Exp : THMEXP
-
-    module Query (Q : THM_QUERY) :
-    sig
-      include GeneralBackend with type t := t
-
-      val literal_list : bool -> Exp.literal list -> t
-      (** [literal_list useq ls] translates the list [ls] of literals into its 
-          internal representation. [useq] determines whether quantifiers should
-          be used in the generated query. *)
-     
-      val formula      : Smp.cutoff_strategy_t ->
-                         Smp.cutoff_options_t ->
-                         bool ->
-                         Exp.formula -> t
-      (** [formula stat strat useq f] translates the formula [f] following the
-          strategy [strat] to compute the SMP cutoff and tactic [stat] to
-          decide whether or not to include extra information to help the
-          future satisfiability analysis of the formula. [useq] determines 
-          whether quantifiers should be used in the generated query. *)
-
-      val conjformula  : bool -> Exp.conjunctive_formula -> t
-      (** [conjformula useq f] tranlates the conjunctive formula [f]. [useq]
-          determines whether quantifiers should be used in the generated
-          query. *)
-
-      val sort_map : unit -> GenericModel.sort_map_t
-      (** [sort_map ()] returns the sort mapping obtained from the last
-          call to a formula translation *)
-    end
-  end
-end
-
 
 
 module type TslkBackend =
@@ -293,7 +248,6 @@ sig
     include NumBackend    with type t := t
     include PairsBackend  with type t := t
     include TslkBackend   with type t := t
-    include ThmBackend    with type t := t
   end
 end
 
@@ -302,9 +256,6 @@ module type BACKEND_SOLVER = CUSTOM_BACKEND_SOLVER
   and  module Translate.Tll.Exp    = TllExpression
   and  module Translate.Num.Exp    = NumExpression
   and  module Translate.Pairs.Exp  = PairsExpression
-  and  module Translate.Thm.Exp    = ThmExpression
-
-
 
 
 module type CUSTOM_BACKEND_POS =
@@ -399,18 +350,3 @@ module type BACKEND_PAIRS = CUSTOM_BACKEND_PAIRS
   with module Translate.Pairs.Exp = PairsExpression
 
 
-module type CUSTOM_BACKEND_THM =
-(** Signature of solver that supports THM reasoning *)
-sig
-  include BackendCommon
-  
-  module Translate : sig
-  (** Translation of expressions into internal data structures that 
-      the Solver understands. *)
-  
-    include ThmBackend with type t := t  
-  end
-end
-
-module type BACKEND_THM = CUSTOM_BACKEND_THM
-  with module Translate.Thm.Exp = ThmExpression

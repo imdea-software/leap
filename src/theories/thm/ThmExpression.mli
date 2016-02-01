@@ -277,9 +277,6 @@ val generic_printer : ('a -> string) -> 'a -> unit
 val required_sorts : formula -> sort list
 val special_ops : formula -> special_op_t list
 
-val get_addrs_eqs_conj : conjunctive_formula -> ((addr*addr) list * (addr*addr) list)
-val get_addrs_eqs : formula -> ((addr*addr) list * (addr*addr) list)
-
 val normalize : formula -> formula
 (** [normalize phi] returns a new formula that is the normalization of
     [phi], adding fresh variables if required *)

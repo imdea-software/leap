@@ -1834,38 +1834,6 @@ let special_ops (phi:formula) : special_op_t list =
 
 
 
-(* NOTE: I am not considering the possibility of having a1=a2 \/ a1=a3 in the formula *)
-let rec get_addrs_eqs (phi:formula) : ((addr*addr) list * (addr*addr) list) =
-  match phi with
-  | Formula.Literal l -> get_addrs_eqs_lit l
-  | Formula.And (f1,f2) -> let (es1,is1) = get_addrs_eqs f1 in
-                           let (es2,is2) = get_addrs_eqs f2 in
-                             (es1@es2, is1@is2)
-  | Formula.Not f -> let (es,is) = get_addrs_eqs f in (is,es)
-  | _ -> ([],[])
-
-and get_addrs_eqs_conj (cf:conjunctive_formula) : ((addr*addr) list * (addr*addr) list) =
-  match cf with
-  | Formula.TrueConj -> ([],[])
-  | Formula.FalseConj -> ([],[])
-  | Formula.Conj xs -> List.fold_left (fun (es,is) l ->
-                         let (es',is') = get_addrs_eqs_lit l in
-                         (es@es', is@is')
-                       ) ([],[]) xs
-
-and get_addrs_eqs_lit (l:literal) : ((addr*addr) list * (addr*addr) list) =
-  match l with
-  | Formula.Atom a -> get_addrs_eqs_atom a
-  | Formula.NegAtom a -> let (es,is) = get_addrs_eqs_atom a in (is,es)
-
-and get_addrs_eqs_atom (a:atom) : ((addr*addr) list * (addr*addr) list) =
-  match a with
-  | Eq (AddrT a1, AddrT a2)   -> ([(a1,a2)],[])
-  | InEq (AddrT a1, AddrT a2) -> ([],[(a1,a2)])
-  | _ -> ([],[])
- 
-
-
 (* FORMULA NORMALIZATION *)
 let normalize (phi:formula) : formula =
 (*
