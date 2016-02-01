@@ -295,6 +295,3 @@ val replace_terms : (term, term) Hashtbl.t ->
                     formula
 
 
-(* Fresh variable generation *)
-val new_fresh_gen_from_conjformula : conjunctive_formula -> V.fresh_var_gen_t
-val new_fresh_gen_from_formula : formula -> V.fresh_var_gen_t

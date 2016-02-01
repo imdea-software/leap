@@ -8,8 +8,6 @@ exception UnsupportedThmExpr of string
 
 
 (* Expression to ThmExpression conversion *)
-
-
 let rec sort_to_thm_sort (s:E.sort) : THM.sort =
   match s with
   | E.Set         -> THM.Set
@@ -414,3 +412,296 @@ and atom_to_thm_atom (a:E.atom) : THM.atom =
 
 and formula_to_thm_formula (phi:E.formula) : THM.formula =
   Formula.formula_conv atom_to_thm_atom phi
+
+
+
+
+
+  
+(* ThmExpression to Expression conversion *)
+let rec build_expr_term_var (v:THM.V.t) : E.term =
+  let thm_v = var_to_expr_var v in
+  match (THM.V.sort v) with
+    THM.Set         -> E.SetT         (E.VarSet         thm_v)
+  | THM.Elem        -> E.ElemT        (E.VarElem        thm_v)
+  | THM.Tid         -> E.TidT         (E.VarTh          thm_v)
+  | THM.Addr        -> E.AddrT        (E.VarAddr        thm_v)
+  | THM.Cell        -> E.CellT        (E.VarCell        thm_v)
+  | THM.SetTh       -> E.SetThT       (E.VarSetTh       thm_v)
+  | THM.SetElem     -> E.SetElemT     (E.VarSetElem     thm_v)
+  | THM.Path        -> E.PathT        (E.VarPath        thm_v)
+  | THM.Int         -> E.IntT         (E.VarInt         thm_v)
+  | THM.Mem         -> E.MemT         (E.VarMem         thm_v)
+  | THM.Mark        -> E.MarkT        (E.VarMark        thm_v)
+  | THM.TidArray    -> E.TidArrayT    (E.VarTidArray    thm_v)
+  | THM.BucketArray -> E.BucketArrayT (E.VarBucketArray thm_v)
+  | THM.Bucket      -> E.BucketT      (E.VarBucket      thm_v)
+  | _               -> E.VarT         (thm_v)
+
+
+
+and var_to_expr_var (v:THM.V.t) : E.V.t =
+  E.build_var (THM.V.id v)
+              (sort_to_expr_sort (THM.V.sort v))
+              (THM.V.is_primed v)
+              (shared_to_expr_shared (THM.V.parameter v))
+              (scope_to_expr_scope (THM.V.scope v))
+
+
+and shared_to_expr_shared (th:THM.V.shared_or_local) : E.V.shared_or_local =
+  match th with
+  | THM.V.Shared  -> E.V.Shared
+  | THM.V.Local t -> E.V.Local (var_to_expr_var t)
+
+
+and scope_to_expr_scope (p:THM.V.procedure_name) : E.V.procedure_name =
+  match p with
+  | THM.V.GlobalScope -> E.V.GlobalScope
+  | THM.V.Scope proc  -> E.V.Scope proc
+
+
+and tid_to_expr_tid (th:THM.tid) : E.tid =
+  match th with
+    THM.VarTh v           -> E.VarTh (var_to_expr_var v)
+  | THM.NoTid             -> E.NoTid
+  | THM.CellLockId c      -> E.CellLockId (cell_to_expr_cell c)
+  | THM.BucketTid b       -> E.BucketTid(bucket_to_expr_bucket b)
+  | THM.TidArrRd (tt,i)   -> E.TidArrRd(tidarr_to_expr_tidarr tt,
+                                        int_to_expr_int i)
+  | THM.LockId l          -> E.LockId(lock_to_expr_lock l)
+
+and lock_to_expr_lock (x:THM.lock) : E.lock =
+  match x with
+    THM.VarLock v        -> E.VarLock (var_to_expr_var v)
+  | THM.LLock (l,t)      -> E.LLock (lock_to_expr_lock l, tid_to_expr_tid t)
+  | THM.LUnlock (l)      -> E.LUnlock (lock_to_expr_lock l)
+  | THM.LockArrRd (ll,i) -> E.LockArrRd (lockarr_to_expr_lockarr ll, 
+                                         int_to_expr_int i)
+
+and lockarr_to_expr_lockarr (ll:THM.lockarr) : E.lockarr =
+  match ll with
+    THM.VarLockArray v       -> E.VarLockArray (var_to_expr_var v)
+  | THM.LockArrayUp (ll,i,l) -> E.LockArrayUp (lockarr_to_expr_lockarr ll,
+                                               int_to_expr_int i,
+                                               lock_to_expr_lock l)
+
+and term_to_expr_term (t:THM.term) : E.term =
+  match t with
+    THM.VarT v          -> E.VarT (var_to_expr_var v)
+  | THM.SetT s          -> E.SetT (set_to_expr_set s)
+  | THM.ElemT e         -> E.ElemT (elem_to_expr_elem e)
+  | THM.TidT t          -> E.TidT (tid_to_expr_tid t)
+  | THM.AddrT a         -> E.AddrT (addr_to_expr_addr a)
+  | THM.CellT c         -> E.CellT (cell_to_expr_cell c)
+  | THM.SetThT st       -> E.SetThT (setth_to_expr_setth st)
+  | THM.SetElemT st     -> E.SetElemT (setelem_to_expr_setelem st)
+  | THM.PathT p         -> E.PathT (path_to_expr_path p)
+  | THM.MemT m          -> E.MemT (mem_to_expr_mem m)
+  | THM.IntT i          -> E.IntT (int_to_expr_int i)
+  | THM.TidArrayT tt    -> E.TidArrayT (tidarr_to_expr_tidarr tt)
+  | THM.BucketArrayT bb -> E.BucketArrayT(bucketarr_to_expr_bucketarr bb)
+  | THM.MarkT m         -> E.MarkT (mark_to_expr_mark m)
+  | THM.BucketT b       -> E.BucketT (bucket_to_expr_bucket b)
+  | THM.LockT l         -> E.LockT (lock_to_expr_lock l)
+  | THM.LockArrayT ll   -> E.LockArrayT (lockarr_to_expr_lockarr ll)
+  | THM.VarUpdate (v,th,t) ->
+      let expr_a  = E.VarArray (var_to_expr_var v) in
+      let expr_th = tid_to_expr_tid th in
+      let expr_t  = E.Term (term_to_expr_term t)
+      in
+        E.ArrayT (E.ArrayUp (expr_a, expr_th, expr_t))
+
+
+and eq_to_expr_eq ((t1,t2):THM.eq) : E.eq =
+  (term_to_expr_term t1, term_to_expr_term t2)
+
+
+and diseq_to_expr_eq ((t1,t2):THM.diseq) : E.diseq =
+  (term_to_expr_term t1, term_to_expr_term t2)
+
+
+and set_to_expr_set (s:THM.set) : E.set =
+  let to_set = set_to_expr_set in
+  match s with
+    THM.VarSet v        -> E.VarSet (var_to_expr_var v)
+  | THM.EmptySet        -> E.EmptySet
+  | THM.Singl a         -> E.Singl (addr_to_expr_addr a)
+  | THM.Union (s1,s2)   -> E.Union (to_set s1, to_set s2)
+  | THM.Intr (s1,s2)    -> E.Intr (to_set s1, to_set s2)
+  | THM.Setdiff (s1,s2) -> E.Setdiff (to_set s1, to_set s2)
+  | THM.PathToSet p     -> E.PathToSet (path_to_expr_path p)
+  | THM.AddrToSet (m,a) -> E.AddrToSet (mem_to_expr_mem m, addr_to_expr_addr a)
+  | THM.BucketRegion b  -> E.BucketRegion(bucket_to_expr_bucket b)
+
+
+and elem_to_expr_elem (e:THM.elem) : E.elem =
+  match e with
+    THM.VarElem v              -> E.VarElem (var_to_expr_var v)
+  | THM.CellData c             -> E.CellData (cell_to_expr_cell c)
+  | THM.HavocListElem          -> E.HavocListElem
+  | THM.LowestElem             -> E.LowestElem
+  | THM.HighestElem            -> E.HighestElem
+
+
+and addr_to_expr_addr (a:THM.addr) : E.addr =
+  match a with
+    THM.VarAddr v              -> E.VarAddr (var_to_expr_var v)
+  | THM.Null                   -> E.Null
+  | THM.Next c                 -> E.Next (cell_to_expr_cell c)
+  | THM.FirstLocked (m,p)      -> E.FirstLocked (mem_to_expr_mem m,
+                                                    path_to_expr_path p)
+  | THM.LastLocked (m,p)       -> E.LastLocked (mem_to_expr_mem m,
+                                                path_to_expr_path p)
+  | THM.BucketInit b           -> E.BucketInit(bucket_to_expr_bucket b)
+  | THM.BucketEnd b            -> E.BucketEnd(bucket_to_expr_bucket b)
+
+
+and cell_to_expr_cell (c:THM.cell) : E.cell =
+  match c with
+    THM.VarCell v            -> E.VarCell (var_to_expr_var v)
+  | THM.Error                -> E.Error
+  | THM.MkCell (e,a,t)       -> E.MkCell (elem_to_expr_elem e,
+                                          addr_to_expr_addr a,
+                                          tid_to_expr_tid t)
+  | THM.MkCellMark (e,a,t,m) -> E.MkCellMark (elem_to_expr_elem e,
+                                              addr_to_expr_addr a,
+                                              tid_to_expr_tid t,
+                                              mark_to_expr_mark m)
+  (* Thm receives two arguments, while current epxression receives only one *)
+  (* However, for the list examples, I think we will not need it *)
+  | THM.CellLock (c,t)       -> E.CellLock (cell_to_expr_cell c, tid_to_expr_tid t)
+  | THM.CellUnlock c         -> E.CellUnlock (cell_to_expr_cell c)
+  | THM.CellAt (m,a)         -> E.CellAt (mem_to_expr_mem m, addr_to_expr_addr a)
+
+
+and mark_to_expr_mark (m:THM.mark) : E.mark =
+  match m with
+    THM.VarMark v -> E.VarMark (var_to_expr_var v)
+  | THM.MarkTrue  -> E.MarkTrue
+  | THM.MarkFalse -> E.MarkFalse
+  | THM.Marked c  -> E.Marked (cell_to_expr_cell c)
+
+
+and bucket_to_expr_bucket (bb:THM.bucket) : E.bucket =
+  match bb with
+    THM.VarBucket v -> E.VarBucket (var_to_expr_var v)
+  | THM.MkBucket (i,e,s,t) -> E.MkBucket(addr_to_expr_addr i,
+                                         addr_to_expr_addr e,
+                                         set_to_expr_set s,
+                                         tid_to_expr_tid t)
+  | THM.BucketArrRd (bb,i) -> E.BucketArrRd (bucketarr_to_expr_bucketarr bb,
+                                             int_to_expr_int i)
+
+
+and setth_to_expr_setth (st:THM.setth) : E.setth =
+  let to_setth = setth_to_expr_setth in
+  match st with
+    THM.VarSetTh v        -> E.VarSetTh (var_to_expr_var v)
+  | THM.EmptySetTh        -> E.EmptySetTh
+  | THM.SinglTh t         -> E.SinglTh (tid_to_expr_tid t)
+  | THM.UnionTh (s1,s2)   -> E.UnionTh (to_setth s1, to_setth s2)
+  | THM.IntrTh (s1,s2)    -> E.IntrTh (to_setth s1, to_setth s2)
+  | THM.SetdiffTh (s1,s2) -> E.SetdiffTh (to_setth s1, to_setth s2)
+  | THM.LockSet (m,p)     -> E.LockSet (mem_to_expr_mem m,
+                                        path_to_expr_path p)
+
+
+and setelem_to_expr_setelem (st:THM.setelem) : E.setelem =
+  let to_setelem = setelem_to_expr_setelem in
+  match st with
+    THM.VarSetElem v        -> E.VarSetElem (var_to_expr_var v)
+  | THM.EmptySetElem        -> E.EmptySetElem
+  | THM.SinglElem e         -> E.SinglElem (elem_to_expr_elem e)
+  | THM.UnionElem (s1,s2)   -> E.UnionElem (to_setelem s1, to_setelem s2)
+  | THM.IntrElem (s1,s2)    -> E.IntrElem (to_setelem s1, to_setelem s2)
+  | THM.SetdiffElem (s1,s2) -> E.SetdiffElem (to_setelem s1, to_setelem s2)
+  | THM.SetToElems (s,m)    -> E.SetToElems (set_to_expr_set s,
+                                                mem_to_expr_mem m)
+
+
+and path_to_expr_path (p:THM.path) : E.path =
+  match p with
+    THM.VarPath v         -> E.VarPath (var_to_expr_var v)
+  | THM.Epsilon           -> E.Epsilon
+  | THM.SimplePath a      -> E.SimplePath (addr_to_expr_addr a)
+  | THM.GetPath (m,a1,a2) -> E.GetPath (mem_to_expr_mem m,
+                                           addr_to_expr_addr a1,
+                                           addr_to_expr_addr a2)
+
+
+and mem_to_expr_mem (m:THM.mem) : E.mem =
+  match m with
+    THM.VarMem v       -> E.VarMem (var_to_expr_var v)
+  | THM.Update (m,a,c) -> E.Update (mem_to_expr_mem m,
+                                       addr_to_expr_addr a,
+                                       cell_to_expr_cell c)
+
+
+and int_to_expr_int (i:THM.integer) : E.integer =
+  match i with
+    THM.IntVal n -> E.IntVal n
+  | THM.VarInt v -> E.VarInt (var_to_expr_var v)
+  | THM.IntNeg j -> E.IntNeg (int_to_expr_int j)
+  | THM.IntAdd (j1,j2) -> E.IntAdd (int_to_expr_int j1, int_to_expr_int j2)
+  | THM.IntSub (j1,j2) -> E.IntSub (int_to_expr_int j1, int_to_expr_int j2)
+  | THM.IntMul (j1,j2) -> E.IntMul (int_to_expr_int j1, int_to_expr_int j2)
+  | THM.IntDiv (j1,j2) -> E.IntDiv (int_to_expr_int j1, int_to_expr_int j2)
+  | THM.IntMod (j1,j2) -> E.IntMod (int_to_expr_int j1, int_to_expr_int j2)
+  | THM.HashCode e     -> E.HashCode(elem_to_expr_elem e)
+
+
+and tidarr_to_expr_tidarr (tt:THM.tidarr) : E.tidarr =
+  match tt with
+    THM.VarTidArray v -> E.VarTidArray (var_to_expr_var v)
+  | THM.TidArrayUp (tt,i,t) -> E.TidArrayUp (tidarr_to_expr_tidarr tt,
+                                             int_to_expr_int i,
+                                             tid_to_expr_tid t)
+
+
+and bucketarr_to_expr_bucketarr (bb:THM.bucketarr) : E.bucketarr =
+  match bb with
+    THM.VarBucketArray v -> E.VarBucketArray (var_to_expr_var v)
+  | THM.BucketArrayUp (bb,i,b) -> E.BucketArrayUp (bucketarr_to_expr_bucketarr bb,
+                                                   int_to_expr_int i,
+                                                   bucket_to_expr_bucket b)
+
+
+and atom_to_expr_atom (a:THM.atom) : E.atom =
+  let path      = path_to_expr_path       in
+  let mem       = mem_to_expr_mem         in
+  let addr      = addr_to_expr_addr       in
+  let elem      = elem_to_expr_elem       in
+  let set       = set_to_expr_set         in
+  let tid       = tid_to_expr_tid         in
+  let setth     = setth_to_expr_setth     in
+  let setelem   = setelem_to_expr_setelem in
+  let bucketarr = bucketarr_to_expr_bucketarr in
+  let integer   = int_to_expr_int in
+  let term      = term_to_expr_term       in
+  match a with
+    THM.Append (p1,p2,p3)    -> E.Append (path p1,path p2,path p3)
+  | THM.Reach (m,a1,a2,p)    -> E.Reach (mem m, addr a1, addr a2, path p)
+  | THM.OrderList(m,a1,a2)   -> E.OrderList (mem m, addr a1, addr a2)
+  | THM.Hashmap (m,s,se,bb,i)-> E.Hashmap(mem m, set s, setelem se,
+                                          bucketarr bb, integer i)
+  | THM.In (a,s)             -> E.In (addr a, set s)
+  | THM.SubsetEq (s1,s2)     -> E.SubsetEq (set s1, set s2)
+  | THM.InTh (t,s)           -> E.InTh (tid t, setth s)
+  | THM.SubsetEqTh (s1,s2)   -> E.SubsetEqTh (setth s1, setth s2)
+  | THM.InElem (e,s)         -> E.InElem (elem_to_expr_elem e, setelem s)
+  | THM.SubsetEqElem (s1,s2) -> E.SubsetEqElem (setelem s1, setelem s2)
+  | THM.Less (i1,i2)         -> E.Less (integer i1, integer i2)
+  | THM.LessEq (i1,i2)       -> E.LessEq (integer i1, integer i2)
+  | THM.Greater (i1,i2)      -> E.Greater (integer i1, integer i2)
+  | THM.GreaterEq (i1,i2)    -> E.GreaterEq (integer i1, integer i2)
+  | THM.LessElem (e1,e2)     -> E.LessElem (elem e1, elem e2)
+  | THM.GreaterElem (e1,e2)  -> E.GreaterElem (elem e1, elem e2)
+  | THM.Eq (t1,t2)           -> E.Eq (term t1, term t2)
+  | THM.InEq (t1,t2)         -> E.InEq (term t1, term t2)
+  | THM.BoolVar v            -> E.BoolVar (var_to_expr_var v)
+  | THM.PC (pc,t,pr)         -> E.PC (pc, shared_to_expr_shared t, pr)
+  | THM.PCUpdate (pc,t)      -> E.PCUpdate (pc, tid_to_expr_tid t)
+  | THM.PCRange (pc1,pc2,t,pr) -> E.PCRange (pc1, pc2, shared_to_expr_shared t, pr)
+
+and formula_to_expr_formula (phi:THM.formula) : E.formula =
+  Formula.formula_conv atom_to_expr_atom phi

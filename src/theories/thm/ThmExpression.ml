@@ -150,7 +150,6 @@ and path =
   | GetPath    of mem * addr * addr 
 and mem =
     VarMem of V.t
-  | Emp
   | Update of mem * addr * cell
 and atom =
     Append       of path * path * path
@@ -397,7 +396,6 @@ and get_varset_path p =
 and get_varset_mem m =
   match m with
       VarMem v           -> V.VarSet.singleton v @@ get_varset_from_param v
-    | Emp                -> V.VarSet.empty
     | Update(m,a,c)      -> (get_varset_mem m) @@ (get_varset_addr a) @@ (get_varset_cell c)
 and get_varset_atom a =
   match a with
@@ -769,7 +767,6 @@ and is_path_flat t =
 and is_mem_flat t =
   match t with
       VarMem _ -> true
-    | Emp      -> true
     | Update(m,a,c) -> (is_mem_flat m) && (is_addr_flat a) && (is_cell_flat c)
 and is_int_flat i =
   match i with
@@ -898,7 +895,6 @@ let rec atom_to_str a =
 and mem_to_str expr =
   match expr with
       VarMem(v) -> V.to_str v
-    | Emp -> Printf.sprintf "emp"
     | Update(mem,add,cell) -> Printf.sprintf "upd(%s,%s,%s)"
   (mem_to_str mem) (addr_to_str add) (cell_to_str cell)
 and integer_to_str expr =
@@ -1335,7 +1331,6 @@ and voc_path (p:path) : ThreadSet.t =
 and voc_mem (m:mem) : ThreadSet.t =
   match m with
     VarMem v             -> get_tid_in v
-  | Emp                  -> ThreadSet.empty
   | Update(mem,add,cell) -> (voc_mem mem) @@ (voc_addr add) @@ (voc_cell cell)
 
 
@@ -1482,7 +1477,6 @@ let required_sorts (phi:formula) : sort list =
   and req_m (m:mem) : SortSet.t =
     match m with
     | VarMem _         -> single Mem
-    | Emp              -> single Mem
     | Update (m,a,c)   -> append Mem [req_m m;req_a a;req_c c]
 
   and req_i (i:integer) : SortSet.t =
@@ -1679,7 +1673,6 @@ let special_ops (phi:formula) : special_op_t list =
   and ops_m (m:mem) : OpsSet.t =
     match m with
     | VarMem _         -> empty
-    | Emp              -> empty
     | Update (m,a,c)   -> list_union [ops_m m;ops_a a;ops_c c]
 
   and ops_i (i:integer) : OpsSet.t =
@@ -1870,4 +1863,20 @@ and get_addrs_eqs_atom (a:atom) : ((addr*addr) list * (addr*addr) list) =
   | Eq (AddrT a1, AddrT a2)   -> ([(a1,a2)],[])
   | InEq (AddrT a1, AddrT a2) -> ([],[(a1,a2)])
   | _ -> ([],[])
-  
+ 
+
+
+(* FORMULA NORMALIZATION *)
+let normalize (phi:formula) : formula =
+(*
+  let module NOpt = struct
+                      module VS = V
+                      type norm_atom = atom
+                      type norm_term = term
+                      type norm_formula = formula
+                      let norm_varset = get_varset_from_formula
+                    end in
+  let module THMNorm = Normalization.Make(NOpt) in
+*)
+  phi
+

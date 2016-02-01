@@ -467,7 +467,7 @@ module TranslateTsl (SLK : TSLKExpression.S) =
 (*******************************************)
 
 
-
+(*
 
 let try_sat_with_presburger_arithmetic (phi:SL.formula) : Sat.t =
   DP.add_dp_calls this_call_tbl DP.Num 1;
@@ -477,6 +477,10 @@ let try_sat_with_presburger_arithmetic (phi:SL.formula) : Sat.t =
                   (SLInterf.formula_to_expr_formula phi)
   in
     NumSol.check_sat phi_num
+    *)
+let try_sat_with_presburger_arithmetic (phi:SL.formula) : Sat.t =
+  DP.add_dp_calls this_call_tbl DP.Num 1;
+  NumSolver.try_sat (SLInterf.formula_to_expr_formula phi)
 
 
 let split_into_pa_nc (cf:SL.conjunctive_formula)
@@ -1005,8 +1009,9 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) :
   let answer =
     (* If no interesting information in NC formula, then we just check PA and PANC *)
     if nc = F.TrueConj || nc = F.FalseConj then begin
-      try_sat_with_presburger_arithmetic (F.conjunctive_to_formula
-                                          (F.combine_conjunctive pa panc))
+      try_sat_with_presburger_arithmetic
+        (F.conjunctive_to_formula
+          (F.combine_conjunctive pa panc))
     end else begin
       let arrgs_opt = guess_arrangements (F.combine_conjunctive_list [pa; panc; nc]) in
       (* Verify if some arrangement makes the formula satisfiable *)

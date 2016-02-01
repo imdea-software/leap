@@ -55,3 +55,5 @@ module type S = CUSTOM_NUMSOLVER
 module Make : functor (Solver : BackendSolverIntf.BACKEND_NUM) -> S
 
 val choose : string -> (module S)
+
+val try_sat : Expression.formula -> Sat.t

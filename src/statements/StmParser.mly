@@ -584,6 +584,10 @@ let check_and_get_sort (id:string) : E.sort =
     | Stm.TidT(Stm.PointerLockidAt _)          -> ()
     | Stm.MarkT(Stm.PointerMarked _)           -> ()
     | Stm.TidT(Stm.TidArrRd _)                 -> ()
+    | Stm.AddrT(Stm.BucketInit _)              -> ()
+    | Stm.AddrT(Stm.BucketEnd _)               -> ()
+    | Stm.SetT(Stm.BucketRegion _)             -> ()
+    | Stm.TidT(Stm.BucketTid _)                -> ()
     | _ -> begin
              Interface.Err.msg "Invalid assignment" $
                       sprintf "The assignment \"%s\" is invalid. Assignments \
@@ -915,7 +919,6 @@ let fix_conditional_jumps () : unit =
 %token THREAD
 %token MARK_T MARK_F MARKED
 %token MKBUCKET BINIT BEND BREGION BTID BARRAYUPD
-%token HASHMAP
 %token OPEN_BRACKET CLOSE_BRACKET
 %token OPEN_SET CLOSE_SET
 %token OPEN_PAREN CLOSE_PAREN

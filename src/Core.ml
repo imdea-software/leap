@@ -245,8 +245,6 @@ module Make (Opt:module type of GenOptions) : S =
     let tslkSolver : (module TslkSolver.S) = TslkSolver.choose Opt.tSolver
                                               (DP.get_tslk_param Opt.dp)
 
-    let thmSolver  : (module ThmSolver.S) = ThmSolver.choose Opt.tSolver
-
     let calls_counter : DP.call_tbl_t = DP.new_call_tbl()
 
 
@@ -418,14 +416,13 @@ module Make (Opt:module type of GenOptions) : S =
       let module Pairs = (val pairsSolver) in
       let module Tll   = (val tllSolver) in
       let module Tslk  = (val tslkSolver) in
-      let module Thm   = (val thmSolver) in
 
       Num.compute_model(Opt.compute_model);
       Pairs.compute_model(Opt.compute_model);
       Tll.compute_model(Opt.compute_model);
       Tslk.compute_model(Opt.compute_model);
       TslSolver.compute_model(Opt.compute_model);
-      Thm.compute_model(Opt.compute_model);
+      ThmSolver.compute_model(Opt.compute_model);
 (*
       print_endline ("FORMULA TAGS: " ^ (string_of_int (Tag.tag_table_size tags)));
       print_endline ("AXIOM TAGS: " ^ (string_of_int (Tag.tag_table_size axiom_tags)));
@@ -547,8 +544,11 @@ module Make (Opt:module type of GenOptions) : S =
                                         Opt.use_quantifiers tslk_phi
                     | DP.Thm    ->
                         let thm_phi = ThmInterface.formula_to_thm_formula fol_phi in
-                          Thm.check_valid_plus_info prog_lines cutoff
-                             Opt.use_quantifiers thm_phi
+                        let (res,thm_calls,tll_calls) =
+                           ThmSolver.check_valid_plus_info prog_lines cutoff
+                             Opt.use_quantifiers thm_phi in
+                        DP.combine_call_table tll_calls this_calls_counter;
+                        (res, thm_calls)
                   in
                   let _ = match Opt.dp with
                           | DP.NoDP   -> ()
@@ -558,7 +558,7 @@ module Make (Opt:module type of GenOptions) : S =
                           | DP.Tll    -> Tll.print_model()
                           | DP.Tsl    -> TslSolver.print_model()
                           | DP.Tslk _ -> Tslk.print_model()
-                          | DP.Thm    -> Thm.print_model() in
+                          | DP.Thm    -> ThmSolver.print_model() in
                   DP.add_dp_calls this_calls_counter Opt.dp calls ~vc_id:orig_id;
                   if Opt.stop_on_invalid && (not (Valid.is_valid validity)) then begin
                     print_endline "!!! Process stopped because an invalid VC was found !!!";

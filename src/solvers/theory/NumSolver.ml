@@ -260,3 +260,11 @@ let choose (solverIdent : string) : (module S) =
     with Not_found -> BackendSolvers.defaultNum () in
   let module Sol = (val m : BackendSolverIntf.BACKEND_NUM) in
   (module Make(Sol) : S)
+
+
+let try_sat (phi:Expression.formula) : Sat.t =
+  let num_phi = NumInterface.formula_to_int_formula phi in
+  let numSolv_id = BackendSolvers.Yices.identifier in
+  let module NumSol = (val choose numSolv_id : S)
+  in
+    NumSol.check_sat num_phi

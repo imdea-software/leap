@@ -1791,7 +1791,7 @@ let ineq_term (t1:term) (t2:term) : formula =
 
 
 
-
+(*
 let new_fresh_gen_from_conjformula (cf:conjunctive_formula) : V.fresh_var_gen_t =
   let vars = V.VarSet.fold (fun v s ->
                V.VarIdSet.add (V.id v) s
@@ -1804,11 +1804,13 @@ let new_fresh_gen_from_formula (phi:formula) : V.fresh_var_gen_t =
                V.VarIdSet.add (V.id v) s
              ) (varset phi) V.VarIdSet.empty in
   V.new_fresh_gen vars
-
+*)
 
 
 (* Normalization *)
 
+
+(*
 type norm_info_t =
   {
     term_map : (term, V.t) Hashtbl.t ;
@@ -1833,8 +1835,13 @@ let new_norm_info_from_geninfo (fg:V.fresh_var_gen_t) : norm_info_t =
   }
 
 
+
 let gen_fresh_var (gen:V.fresh_var_gen_t) (s:sort) : V.t =
   V.gen_fresh_var sort_to_str {treat_as_pc=false;} gen s
+*)
+
+
+(*
 
 
 let gen_fresh_set_var (info:norm_info_t) : set =
@@ -1884,13 +1891,15 @@ let gen_fresh_addrarr_var (info:norm_info_t) : addrarr =
 let gen_fresh_tidarr_var (info:norm_info_t) : tidarr =
   VarTidArray (gen_fresh_var info.fresh_gen_info TidArray)
 
+  *)
+
 
 let make_compatible_term_from_var (t:term) (v:V.t) : term =
   match t with
   | VarT _       -> VarT v
   | SetT _       -> SetT       (VarSet v)
   | ElemT _      -> ElemT      (VarElem v)
-  | TidT _      -> TidT      (VarTh v)
+  | TidT _       -> TidT       (VarTh v)
   | AddrT _      -> AddrT      (VarAddr v)
   | CellT _      -> CellT      (VarCell v)
   | SetThT _     -> SetThT     (VarSetTh v)
@@ -1957,23 +1966,45 @@ let sort_of_term (t:term) : sort =
   | VarUpdate (v,_,_) -> V.sort v
 
 
-let rec norm_literal (info:norm_info_t) (l:literal) : formula =
+
+
+module NOpt = struct
+                module VS = V
+                type norm_atom = atom
+                type norm_term = term
+                type norm_formula = formula
+                let norm_varset = varset
+                let norm_fresh_vinfo = (fun _ -> {treat_as_pc=false})
+                let norm_fresh_vname = sort_to_str
+              end
+
+module TSLNorm = Normalization.Make(NOpt)
+
+
+let rec norm_literal (info:TSLNorm.t) (l:literal) : formula =
   let append_if_diff (t:term) (v:V.t) : unit =
     if is_var_term t then
-      (if (term_to_var t) <> v then Hashtbl.add info.term_map t v)
+      (*(if (term_to_var t) <> v then Hashtbl.add info.term_map t v)*)
+      (if (term_to_var t) <> v then TSLNorm.add_term_map info t v)
     else
-      Hashtbl.add info.term_map t v in
+      TSLNorm.add_term_map info t v in
+(*      Hashtbl.add info.term_map t v in *)
   let gen_if_not_var (t:term) (s:sort) : V.t =
     let _ = verbl _LONG_INFO "GEN_IF_NOT_VAR FOR TERM: %s\n" (term_to_str t) in
     if is_var_term t then (verbl _LONG_INFO "WAS A VARIABLE\n"; term_to_var t)
     else try
            verbl _LONG_INFO "EXISTING PAIRS:\n";
-           Hashtbl.iter (fun t v -> verbl _LONG_INFO "%s ----> %s\n" (term_to_str t) (V.to_str v)) info.term_map;
+           TSLNorm.iter_term_map (fun t v ->
+             verbl _LONG_INFO "%s ----> %s\n" (term_to_str t) (V.to_str v)
+           ) info;
            try
-             Hashtbl.find info.processed_term_map t
-           with _ -> Hashtbl.find info.term_map t
+             (*Hashtbl.find info.processed_term_map t*)
+             TSLNorm.find_proc_term info t
+(*           with _ -> Hashtbl.find info.term_map t*)
+           with _ -> TSLNorm.find_term_map info t
          with _ -> begin
-                     let v = gen_fresh_var info.fresh_gen_info s in
+                     let v = TSLNorm.gen_fresh_var info s in
+(*                     let v = gen_fresh_var info.fresh_gen_info s in*)
                      verbl _LONG_INFO "APPENDING A NEW VARIABLE: %s\n" (V.to_str v);
                      append_if_diff t v; v
                    end in
@@ -2207,20 +2238,20 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
       let a1_var = gen_if_not_var (AddrT a1) Addr in
       let a2_var = gen_if_not_var (AddrT a2) Addr in
       let es_var = gen_if_not_var (SetElemT es) SetElem in
-      let p = gen_fresh_path_var info in
-      let q = gen_fresh_path_var info in
-      let x = gen_fresh_set_var info in
-      let r = gen_fresh_set_var info in
-      let u = gen_fresh_set_var info in
+      let p = VarPath (TSLNorm.gen_fresh_var info Path) in
+      let q = VarPath (TSLNorm.gen_fresh_var info Path) in
+      let x = VarSet (TSLNorm.gen_fresh_var info Set) in
+      let r = VarSet (TSLNorm.gen_fresh_var info Set) in
+      let u = VarSet (TSLNorm.gen_fresh_var info Set) in
       let zero = gen_if_not_var (IntT (IntVal 0)) Int in
       let null = gen_if_not_var (AddrT Null) Addr in
-      let a = gen_fresh_addr_var info in
-      let c = gen_fresh_cell_var info in
-      let e = gen_fresh_elem_var info in
-      let aa = gen_fresh_addrarr_var info in
-      let tt = gen_fresh_tidarr_var info in
-      let l1 = gen_fresh_int_var info in
-      let l2 = gen_fresh_int_var info in
+      let a = VarAddr (TSLNorm.gen_fresh_var info Addr) in
+      let c = VarCell (TSLNorm.gen_fresh_var info Cell) in
+      let e = VarElem (TSLNorm.gen_fresh_var info Elem) in
+      let aa = VarAddrArray (TSLNorm.gen_fresh_var info AddrArray) in
+      let tt = VarTidArray (TSLNorm.gen_fresh_var info TidArray) in
+      let l1 = VarInt (TSLNorm.gen_fresh_var info Int) in
+      let l2 = VarInt (TSLNorm.gen_fresh_var info Int) in
       let phi_unordered = norm_literal info (F.NegAtom(OrderList
                             (VarMem m_var,VarAddr a1_var,VarAddr null))) in
       let phi_diff = norm_literal info (F.Atom(InEq(SetT (VarSet s_var), SetT r))) in
@@ -2264,7 +2295,7 @@ let rec norm_literal (info:norm_info_t) (l:literal) : formula =
   | F.NegAtom a -> F.Literal(F.NegAtom (norm_atom a))
 
 
-let rec norm_formula (info:norm_info_t) (phi:formula) : formula =
+let rec norm_formula (info:TSLNorm.t) (phi:formula) : formula =
   match phi with
   | F.Literal(F.Atom(InEq(CellT c1, CellT c2))) ->
       norm_formula info (F.Or(ineq_elem (CellData c1) (CellData c2),
@@ -2290,40 +2321,45 @@ let rec norm_formula (info:norm_info_t) (phi:formula) : formula =
 let normalize (phi:formula) : formula =
   verblstr LeapVerbose._LONG_INFO
     (Interface.Msg.info "NEW FORMULA TO NORMALIZE" (formula_to_str phi));
-  (* Create a new normalization *)
-  let norm_info = new_norm_info_from_formula phi in
-  (* Process the original formula *)
-  let phi' = norm_formula norm_info (F.nnf phi) in
-  (* Normalize all remaining literals stored in the normalization table *)
-  verbl _LONG_INFO "WILL NORMALIZE REMAINING ELEMENTS";
-  let lit_list = ref [] in
-  while (Hashtbl.length norm_info.term_map > 0) do
-    Hashtbl.iter (fun t v ->
-      begin
-        match t with
-        | IntT (CellMax _) -> ()
-        | _ -> begin
-                 Hashtbl.add norm_info.processed_term_map t v;
-                 verbl _LONG_INFO "PROCESSING: %s ----> %s\n" (term_to_str t) (V.to_str v);
-                 let l = F.Atom (Eq (make_compatible_term_from_var t v, t)) in
-                 let new_l = norm_literal norm_info l in
-                 verblstr LeapVerbose._LONG_INFO
-                   (Interface.Msg.info "REMAINING TSL LITERAL TO NORMALIZE" (formula_to_str new_l));
-                 let lit_to_add = match new_l with
-                                  | F.Literal(F.Atom(Eq(t1,t2)))
-                                  | F.Literal(F.NegAtom(InEq(t1,t2))) ->
-                                      if t1 <> t2 then new_l else F.Literal l
-                                  | _ -> new_l in
-                 lit_list := lit_to_add :: !lit_list
-               end
-      end;
-      Hashtbl.remove norm_info.term_map t
-    ) norm_info.term_map;
-  done;
-  if !lit_list = [] then
-    phi'
-  else
-    F.And (F.conj_list !lit_list, phi')
+
+    (* Create a new normalization *)
+    let norm_info = TSLNorm.new_norm phi in
+    (* Process the original formula *)
+    let phi' = norm_formula norm_info (F.nnf phi) in
+    (* Normalize all remaining literals stored in the normalization table *)
+    verbl _LONG_INFO "WILL NORMALIZE REMAINING ELEMENTS";
+    let lit_list = ref [] in
+(*    while (Hashtbl.length norm_info.term_map > 0) do *)
+    while (TSLNorm.term_map_size norm_info > 0) do
+      TSLNorm.iter_term_map (fun t v ->
+(*      Hashtbl.iter (fun t v ->*)
+        begin
+          match t with
+          | IntT (CellMax _) -> ()
+          | _ -> begin
+                   TSLNorm.add_proc_term_map norm_info t v;
+                   (*Hashtbl.add norm_info.processed_term_map t v; *)
+                   verbl _LONG_INFO "PROCESSING: %s ----> %s\n" (term_to_str t) (V.to_str v);
+                   let l = F.Atom (Eq (make_compatible_term_from_var t v, t)) in
+                   let new_l = norm_literal norm_info l in
+                   verblstr LeapVerbose._LONG_INFO
+                     (Interface.Msg.info "REMAINING TSL LITERAL TO NORMALIZE" (formula_to_str new_l));
+                   let lit_to_add = match new_l with
+                                    | F.Literal(F.Atom(Eq(t1,t2)))
+                                    | F.Literal(F.NegAtom(InEq(t1,t2))) ->
+                                        if t1 <> t2 then new_l else F.Literal l
+                                    | _ -> new_l in
+                   lit_list := lit_to_add :: !lit_list
+                 end
+        end;
+        TSLNorm.remove_term_map norm_info t
+        (*Hashtbl.remove norm_info.term_map t*)
+      ) norm_info;
+    done;
+    if !lit_list = [] then
+      phi'
+    else
+      F.And (F.conj_list !lit_list, phi')
 
 
 (**************************)

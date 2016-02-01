@@ -52,7 +52,6 @@ let _ = List.iter (fun (kwd, tok) -> Hashtbl.add keyword_table kwd tok)
             ("havocLevel"   , HAVOCLEVEL);
             ("hashCode"     , HASHCODE);
             ("skiplist"     , SKIPLIST);
-            ("hashmap"      , HASHMAP);
             ("upd"          , UPDATE);
             ("arrUpd"       , ARR_UPDATE);
             ("T"            , MARK_T);

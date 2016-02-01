@@ -143,7 +143,6 @@ and path =
   | GetPath    of mem * addr * addr 
 and mem =
     VarMem of V.t
-  | Emp
   | Update of mem * addr * cell
 and atom =
     Append       of path * path * path
@@ -280,3 +279,7 @@ val special_ops : formula -> special_op_t list
 
 val get_addrs_eqs_conj : conjunctive_formula -> ((addr*addr) list * (addr*addr) list)
 val get_addrs_eqs : formula -> ((addr*addr) list * (addr*addr) list)
+
+val normalize : formula -> formula
+(** [normalize phi] returns a new formula that is the normalization of
+    [phi], adding fresh variables if required *)
