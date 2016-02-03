@@ -208,15 +208,7 @@ val build_var : ?fresh:bool ->
 
 val treat_as_pc : V.t -> bool
 
-(* returns all variables form a formula *)
-val get_varlist_from_conj : conjunctive_formula -> V.t list
-val get_varlist_of_sort_from_conj : conjunctive_formula -> sort -> V.id list
-val varlist_of_sort : V.t list -> sort -> V.id list
 
-val get_varset_from_literal      : literal -> V.VarSet.t
-val get_varset_from_conj         : conjunctive_formula -> V.VarSet.t
-val get_varset_from_formula      : formula -> V.VarSet.t
-val get_varset_of_sort_from_conj : conjunctive_formula -> sort -> V.VarSet.t
 (*val varset_of_sort               : V.VarSet.t -> sort -> V.VarSet.t *)
 val get_termset_from_formula     : formula -> TermSet.t
 val get_termset_from_conjformula : conjunctive_formula -> TermSet.t

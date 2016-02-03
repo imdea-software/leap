@@ -708,13 +708,6 @@ let is_constant_term (t:term) : bool =
   | VarUpdate _    -> false
 
 
-let is_ineq_normalized a b =
-  (is_var_term a || is_var_term b)
-
-let is_eq_normalized a b =
-  (is_var_term a || is_var_term b)
-
-
 (* TODO: propagate equalities of vars x = y *)
 let rec is_term_flat t =
   match t with
@@ -1789,43 +1782,6 @@ let term_to_var (t:term) : V.t =
   | AddrArrayT (VarAddrArray v) -> V.set_sort v AddrArray
   | TidArrayT  (VarTidArray v)  -> V.set_sort v TidArray
   | _                           -> raise(No_variable_term t)
-
-
-let var_to_term (v:V.t) : term =
-  match V.sort v with
-  | Set       -> SetT       (VarSet        v)
-  | Elem      -> ElemT      (VarElem       v)
-  | Tid      -> TidT      (VarTh         v)
-  | Addr      -> AddrT      (VarAddr       v)
-  | Cell      -> CellT      (VarCell       v)
-  | SetTh     -> SetThT     (VarSetTh      v)
-  | SetElem   -> SetElemT   (VarSetElem    v)
-  | Path      -> PathT      (VarPath       v)
-  | Mem       -> MemT       (VarMem        v)
-  | Int       -> IntT       (VarInt        v)
-  | AddrArray -> AddrArrayT (VarAddrArray  v)
-  | TidArray  -> TidArrayT  (VarTidArray   v)
-  | Bool      -> VarT v
-  | Unknown   -> VarT v
-
-
-let sort_of_term (t:term) : sort =
-  match t with
-  | SetT       _      -> Set
-  | ElemT      _      -> Elem
-  | TidT      _      -> Tid
-  | AddrT      _      -> Addr
-  | CellT      _      -> Cell
-  | SetThT     _      -> SetTh
-  | SetElemT   _      -> SetElem
-  | PathT      _      -> Path
-  | MemT       _      -> Mem
-  | IntT       _      -> Int
-  | AddrArrayT _      -> AddrArray
-  | TidArrayT  _      -> AddrArray
-  | VarT v            -> V.sort v
-  | VarUpdate (v,_,_) -> V.sort v
-
 
 
 

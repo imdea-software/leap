@@ -1,6 +1,7 @@
 open Printf
 open LeapLib
 
+module F = Formula
 
 type sort =
   | Set
@@ -196,6 +197,7 @@ type special_op_t =
 
 exception WrongType of term
 exception Not_tid_var of tid
+exception No_variable_term of term
 
 
 
@@ -397,7 +399,10 @@ and get_varset_mem m =
   match m with
       VarMem v           -> V.VarSet.singleton v @@ get_varset_from_param v
     | Update(m,a,c)      -> (get_varset_mem m) @@ (get_varset_addr a) @@ (get_varset_cell c)
-and get_varset_atom a =
+
+
+
+and get_varset_atom (instances:bool) (a:atom) : V.VarSet.t =
   match a with
       Append(p1,p2,p3)       -> (get_varset_path p1) @@ (get_varset_path p2) @@
                                 (get_varset_path p3)
@@ -421,70 +426,68 @@ and get_varset_atom a =
     | GreaterEq(i1,i2)       -> (get_varset_int i1) @@ (get_varset_int i2)
     | LessElem(e1,e2)        -> (get_varset_elem e1) @@ (get_varset_elem e2)
     | GreaterElem(e1,e2)     -> (get_varset_elem e1) @@ (get_varset_elem e2)
-    | Eq((x,y))              -> (get_varset_term x) @@ (get_varset_term y)
-    | InEq((x,y))            -> (get_varset_term x) @@ (get_varset_term y)
-    | BoolVar v              -> V.VarSet.singleton v
-    | PC(_,th,_)             -> (match th with
-                                 | V.Shared -> V.VarSet.empty
-                                 | V.Local t -> V.VarSet.singleton t)
-    | PCUpdate (_,th)        -> (get_varset_tid th)
-    | PCRange(_,_,th,_)      -> (match th with
-                                 | V.Shared -> V.VarSet.empty
-                                 | V.Local t -> V.VarSet.singleton t)
-and get_varset_term t = match t with
-      VarT     v            -> V.VarSet.singleton v @@ get_varset_from_param v
-    | SetT     s            -> get_varset_set s
-    | ElemT    e            -> get_varset_elem e
-    | TidT     th           -> get_varset_tid th
-    | AddrT    a            -> get_varset_addr a
-    | CellT    c            -> get_varset_cell c
-    | SetThT   st           -> get_varset_setth st
-    | SetElemT se           -> get_varset_setelem se
-    | PathT    p            -> get_varset_path p
-    | MemT     m            -> get_varset_mem m
-    | IntT     i            -> get_varset_int i
-    | TidArrayT tt          -> get_varset_tidarr tt
-    | BucketArrayT bb       -> get_varset_bucketarr bb
-    | MarkT    m            -> get_varset_mark m
-    | BucketT  b            -> get_varset_bucket b
-    | LockT  l              -> get_varset_lock l
-    | LockArrayT  ll        -> get_varset_lockarr ll
-    | VarUpdate(v,_,t)    -> (V.VarSet.singleton v) @@ (get_varset_term t) @@
-                             (get_varset_from_param v)
+    | Eq((x,y))                -> if instances then
+                                    match (x,y) with
+                                    | (VarUpdate _, _) -> get_varset_term instances x
+                                    | (_, VarUpdate _) -> get_varset_term instances y
+                                    | _ -> (get_varset_term instances x) @@
+                                           (get_varset_term instances y)
+                                  else
+                                    (get_varset_term instances x) @@
+                                    (get_varset_term instances y)
+    | InEq((x,y))              -> (get_varset_term instances x) @@
+                                  (get_varset_term instances y)
+    | BoolVar v                -> (V.VarSet.singleton v)
+    | PC(_,th,_)               -> (match th with
+                                   | V.Shared -> V.VarSet.empty
+                                   | V.Local t -> V.VarSet.singleton t)
+    | PCUpdate (_,th)          -> (get_varset_tid th)
+    | PCRange(_,_,th,_)        -> (match th with
+                                   | V.Shared -> V.VarSet.empty
+                                   | V.Local t -> V.VarSet.singleton t)
+    
+and get_varset_term (instances:bool) (t:term) : V.VarSet.t =
+  match t with
+    VarT     v            -> V.VarSet.singleton v @@ get_varset_from_param v
+  | SetT     s            -> get_varset_set s
+  | ElemT    e            -> get_varset_elem e
+  | TidT     th           -> get_varset_tid th
+  | AddrT    a            -> get_varset_addr a
+  | CellT    c            -> get_varset_cell c
+  | SetThT   st           -> get_varset_setth st
+  | SetElemT se           -> get_varset_setelem se
+  | PathT    p            -> get_varset_path p
+  | MemT     m            -> get_varset_mem m
+  | IntT     i            -> get_varset_int i
+  | TidArrayT tt          -> get_varset_tidarr tt
+  | BucketArrayT bb       -> get_varset_bucketarr bb
+  | MarkT    m            -> get_varset_mark m
+  | BucketT  b            -> get_varset_bucket b
+  | LockT  l              -> get_varset_lock l
+  | LockArrayT  ll        -> get_varset_lockarr ll
+  | VarUpdate(v,_,t)      -> if instances then
+                               get_varset_term instances t
+                             else
+                               (V.VarSet.singleton v) @@
+                               (get_varset_term instances t) @@
+                               (get_varset_from_param v)
+
 
 let varset_fs = Formula.make_fold
                   Formula.GenericLiteralFold
-                  (fun _ a -> get_varset_atom a)
+                  (fun info a -> get_varset_atom info a)
                   (fun _ -> V.VarSet.empty)
-                  V.VarSet.union
+                  (@@)
+
+let get_varset_from_conj (instances:bool) (cf:conjunctive_formula) : V.VarSet.t =
+  Formula.conjunctive_formula_fold varset_fs instances cf
+
+let get_varset_from_formula (instances:bool) (phi:formula) : V.VarSet.t =
+  Formula.formula_fold varset_fs instances phi
 
 
-let get_varset_from_literal (l:literal) : V.VarSet.t =
-  Formula.literal_fold varset_fs () l
-
-
-let get_varset_from_conj (cf:conjunctive_formula) : V.VarSet.t =
-  Formula.conjunctive_formula_fold varset_fs () cf
-
-  
-let get_varset_from_formula (phi:formula) : V.VarSet.t =
-  Formula.formula_fold varset_fs () phi
-
-
-let get_varset_of_sort_from_conj phi s =
-  V.varset_of_sort (get_varset_from_conj phi) s
-
-
-let get_varlist_from_conj phi =
-  V.VarSet.elements (get_varset_from_conj phi)
-
-let varlist_of_sort varlist s =
-  let is_s v = ((V.sort v) = s) in
-  List.map (fun v -> (V.localize_with_underscore (V.id v) (V.scope v)))
-           (List.filter is_s varlist)
-
-let get_varlist_of_sort_from_conj phi s =
-  varlist_of_sort (get_varlist_from_conj phi) s
+let varset (phi:formula) : V.VarSet.t =
+  get_varset_from_formula false phi
 
 
 let get_termset_atom (a:atom) : TermSet.t =
@@ -641,11 +644,6 @@ let get_sort_from_term t =
 let terms_same_type a b =
   (get_sort_from_term a) = (get_sort_from_term b)
 
-let is_ineq_normalized a b =
-  (terms_same_type a b) && (is_term_var a && is_term_var b)
-
-let is_eq_normalized a b =
-  (terms_same_type a b) && (is_term_var a || is_term_var b)
 
 (* TODO: propagate equalities of vars x = y *)
 let rec is_term_flat t =
@@ -1832,6 +1830,492 @@ let special_ops (phi:formula) : special_op_t list =
   in
     OpsSet.elements (ops_f phi)
 
+
+(*****************************)
+(**                         **)
+(** Normalization functions **)
+(**                         **)
+(*****************************)
+
+
+(* is_variable *)
+let is_var_path (p:path) : bool =
+  match p with
+  | VarPath(_) -> true
+  | _          -> false
+and is_var_addr (a:addr) : bool =
+  match a with
+  | VarAddr(_) -> true
+  | _          -> false
+and is_var_mem (m:mem) : bool =
+  match m with
+  | VarMem(_) -> true
+  | _         -> false
+and is_var_cell (c:cell) : bool =
+  match c with
+  | VarCell(_) -> true
+  | _          -> false
+and is_var_elem (e:elem) : bool =
+  match e with
+  | VarElem(_) -> true
+  | _          -> false
+and is_var_thid (t:tid) : bool =
+  match t with
+  | VarTh(_) -> true
+  | _        -> false
+and is_var_set (s:set) : bool =
+  match s with
+  | VarSet(_) -> true
+  | _         -> false
+and is_var_setth (s:setth) : bool =
+  match s with
+  | VarSetTh(_) -> true
+  | _           -> false
+and is_var_setelem (s:setelem) : bool =
+  match s with
+  | VarSetElem(_) -> true
+  | _             -> false
+and is_var_int (i:integer) : bool =
+  match i with
+  | VarInt(_) -> true
+  | _         -> false
+and is_var_bucket (b:bucket) : bool =
+  match b with
+  | VarBucket(_) -> true
+  | _            -> false
+and is_var_lock (l:lock) : bool =
+  match l with
+  | VarLock(_) -> true
+  | _          -> false
+and is_var_mark (m:mark) : bool =
+  match m with
+  | VarMark(_) -> true
+  | _          -> false
+and is_var_bucketarr (bb:bucketarr) : bool =
+  match bb with
+  | VarBucketArray(_) -> true
+  | _               -> false
+and is_var_lockarr (ll:lockarr) : bool =
+  match ll with
+  | VarLockArray(_) -> true
+  | _               -> false
+and is_var_tidarr (tt:tidarr) : bool =
+  match tt with
+  | VarTidArray(_) -> true
+  | _              -> false
+
+
+
+let is_var_term (t:term) : bool =
+  match t with
+  | VarT(_)          -> true
+  | SetT(s)          -> is_var_set s
+  | ElemT(e)         -> is_var_elem e
+  | TidT(t)          -> is_var_thid t
+  | AddrT(a)         -> is_var_addr a
+  | CellT(c)         -> is_var_cell c
+  | SetThT(st)       -> is_var_setth st
+  | SetElemT(st)     -> is_var_setelem st
+  | PathT(p)         -> is_var_path p
+  | MemT(m)          -> is_var_mem m
+  | IntT(i)          -> is_var_int i
+  | TidArrayT(tt)    -> is_var_tidarr tt
+  | LockArrayT(ll)   -> is_var_lockarr ll
+  | BucketArrayT(bb) -> is_var_bucketarr bb
+  | LockT(l)         -> is_var_lock l
+  | BucketT(b)       -> is_var_bucket b
+  | MarkT(m)         -> is_var_mark m
+  | VarUpdate _      -> false
+
+
+let make_compatible_term_from_var (t:term) (v:V.t) : term =
+  match t with
+  | VarT _         -> VarT v
+  | SetT _         -> SetT         (VarSet v)
+  | ElemT _        -> ElemT        (VarElem v)
+  | TidT _         -> TidT         (VarTh v)
+  | AddrT _        -> AddrT        (VarAddr v)
+  | CellT _        -> CellT        (VarCell v)
+  | SetThT _       -> SetThT       (VarSetTh v)
+  | SetElemT _     -> SetElemT     (VarSetElem v)
+  | PathT _        -> PathT        (VarPath v)
+  | MemT _         -> MemT         (VarMem v)
+  | IntT _         -> IntT         (VarInt v)
+  | TidArrayT _    -> TidArrayT    (VarTidArray v)
+  | BucketArrayT _ -> BucketArrayT (VarBucketArray v)
+  | MarkT _        -> MarkT        (VarMark v)
+  | BucketT _      -> BucketT      (VarBucket v)
+  | LockT _        -> LockT        (VarLock v)
+  | LockArrayT _   -> LockArrayT   (VarLockArray v)
+  | VarUpdate _  -> assert false
+
+
+let term_to_var (t:term) : V.t =
+  match t with
+  | VarT v -> v
+  | SetT         (VarSet v)         -> V.set_sort v Set
+  | ElemT        (VarElem v)        -> V.set_sort v Elem
+  | TidT         (VarTh v)          -> V.set_sort v Tid
+  | AddrT        (VarAddr v)        -> V.set_sort v Addr
+  | CellT        (VarCell v)        -> V.set_sort v Cell
+  | SetThT       (VarSetTh v)       -> V.set_sort v SetTh
+  | SetElemT     (VarSetElem v)     -> V.set_sort v SetElem
+  | PathT        (VarPath v)        -> V.set_sort v Path
+  | MemT         (VarMem v)         -> V.set_sort v Mem
+  | IntT         (VarInt v)         -> V.set_sort v Int
+  | TidArrayT    (VarTidArray v)    -> V.set_sort v TidArray
+  | BucketArrayT (VarBucketArray v) -> V.set_sort v BucketArray
+  | MarkT        (VarMark v)        -> V.set_sort v Mark
+  | BucketT      (VarBucket v)      -> V.set_sort v Bucket
+  | LockT        (VarLock v)        -> V.set_sort v Lock
+  | LockArrayT   (VarLockArray v)   -> V.set_sort v LockArray
+  | _                               -> raise(No_variable_term t)
+
+
+
+
+
+module NOpt = struct
+                module VS = V
+                type norm_atom = atom
+                type norm_term = term
+                type norm_formula = formula
+                let norm_varset = varset
+                let norm_fresh_vinfo = (fun _ -> {treat_as_pc=false})
+                let norm_fresh_vname = sort_to_str
+              end
+
+module THMNorm = Normalization.Make(NOpt)
+
+
+
+let rec norm_literal (info:THMNorm.t) (l:literal) : formula =
+  let append_if_diff (t:term) (v:V.t) : unit =
+    if is_var_term t then
+      (if (term_to_var t) <> v then THMNorm.add_term_map info t v)
+    else
+      THMNorm.add_term_map info t v in
+  let gen_if_not_var (t:term) (s:sort) : V.t =
+
+
+    if is_var_term t then
+      term_to_var t
+    else try
+           try
+             THMNorm.find_proc_term info t
+           with _ -> THMNorm.find_term_map info t
+         with _ -> begin
+                     let v = THMNorm.gen_fresh_var info s in
+                     append_if_diff t v;
+                     v
+                   end in
+
+  let rec norm_set (s:set) : set =
+    match s with
+    | VarSet v -> VarSet v
+    | EmptySet -> EmptySet
+    | Singl a -> Singl (norm_addr a)
+    | Union (s1,s2) -> Union (norm_set s1, norm_set s2)
+    | Intr (s1,s2) -> Intr (norm_set s1, norm_set s2)
+    | Setdiff (s1,s2) -> Setdiff (norm_set s1, norm_set s2)
+    | PathToSet p -> PathToSet (norm_path p)
+    | AddrToSet (m,a) -> AddrToSet (norm_mem m, norm_addr a)
+    | BucketRegion (b) -> BucketRegion (norm_bucket b)
+
+  and norm_tid (t:tid) : tid =
+    match t with
+    | VarTh v -> VarTh v
+    | NoTid -> NoTid
+    | CellLockId (c) -> CellLockId (norm_cell c)
+    | BucketTid (b) -> BucketTid(norm_bucket b)
+    | TidArrRd _ -> let t_var = gen_if_not_var (TidT t) Tid in
+                      VarTh t_var
+    | LockId (l) -> LockId (norm_lock l)
+
+  and norm_elem (e:elem) : elem =
+    match e with
+    | VarElem v -> VarElem v
+    | CellData c -> CellData (norm_cell c)
+    | HavocListElem -> HavocListElem
+    | LowestElem -> LowestElem
+    | HighestElem -> HighestElem
+
+  and norm_addr (a:addr) : addr =
+    match a with
+    | VarAddr v -> VarAddr v
+    | Null -> Null
+    | Next (c) -> Next (norm_cell c)
+    | FirstLocked (m,p) -> FirstLocked(norm_mem m, norm_path p)
+    | LastLocked (m,p) -> LastLocked(norm_mem m, norm_path p)
+    | BucketInit (b) -> BucketInit(norm_bucket b)
+    | BucketEnd (b) -> BucketEnd(norm_bucket b)
+
+  and norm_cell (c:cell) : cell =
+    match c with
+    | VarCell v -> VarCell v
+    | Error -> Error
+    | MkCell (e,a,t) -> MkCell(norm_elem e, norm_addr a, norm_tid t)
+    | MkCellMark (e,a,t,m) -> MkCellMark(norm_elem e, norm_addr a,
+                                         norm_tid t, norm_mark m)
+    | CellLock (c,t) -> CellLock (norm_cell c, norm_tid t)
+    | CellUnlock (c) -> CellUnlock (norm_cell c)
+    | CellAt (m,a) -> CellAt (norm_mem m, norm_addr a)
+
+  and norm_lock (l:lock) : lock =
+    match l with
+    | VarLock v -> VarLock v
+    | LLock (l,t) -> LLock(norm_lock l, norm_tid t)
+    | LUnlock (l) -> LUnlock(norm_lock l)
+    | LockArrRd _ -> let l_var = gen_if_not_var (LockT l) Lock in
+                       VarLock l_var
+
+  and norm_mark (m:mark) : mark =
+    match m with
+    | VarMark v -> VarMark v
+    | MarkTrue -> MarkTrue
+    | MarkFalse -> MarkFalse
+    | Marked c -> Marked (norm_cell c)
+
+  and norm_bucket (b:bucket) : bucket =
+    match b with
+    | VarBucket v -> VarBucket v
+    | MkBucket _ -> let b_var = gen_if_not_var (BucketT b) Bucket in
+                      VarBucket b_var
+    | BucketArrRd _ -> let b_var = gen_if_not_var (BucketT b) Bucket in
+                         VarBucket b_var
+
+  and norm_setth (s:setth) : setth =
+    match s with
+    | VarSetTh v -> VarSetTh v
+    | EmptySetTh -> EmptySetTh
+    | SinglTh t -> SinglTh (norm_tid t)
+    | UnionTh (s1,s2) -> UnionTh (norm_setth s1, norm_setth s2)
+    | IntrTh (s1,s2) -> IntrTh (norm_setth s1, norm_setth s2)
+    | SetdiffTh (s1,s2) -> SetdiffTh (norm_setth s1, norm_setth s2)
+    | LockSet (m,p) -> LockSet(norm_mem m, norm_path p)
+
+  and norm_setelem (s:setelem) : setelem =
+    match s with
+    | VarSetElem v -> VarSetElem v
+    | EmptySetElem -> EmptySetElem
+    | SinglElem e -> SinglElem (norm_elem e)
+    | UnionElem (s1,s2) -> UnionElem (norm_setelem s1, norm_setelem s2)
+    | IntrElem (s1,s2) -> IntrElem (norm_setelem s1, norm_setelem s2)
+    | SetToElems (s,m) -> SetToElems (norm_set s, norm_mem m)
+    | SetdiffElem (s1,s2) -> SetdiffElem (norm_setelem s1, norm_setelem s2)
+
+  and norm_path (p:path) : path =
+    match p with
+    | VarPath v -> VarPath v
+    | Epsilon -> Epsilon
+    | SimplePath a -> SimplePath (norm_addr a)
+    | GetPath (m,a1,a2) -> GetPath (norm_mem m, norm_addr a1, norm_addr a2)
+
+  and norm_mem (m:mem) : mem =
+    match m with
+    | VarMem v -> VarMem v
+    | Update (m,a,c) -> Update (norm_mem m, norm_addr a, norm_cell c)
+
+  and norm_int (i:integer) : integer =
+    match i with
+    | IntVal _ -> VarInt (gen_if_not_var (IntT i) Int)
+    | VarInt v -> VarInt v
+    | IntNeg j -> IntNeg j
+    | IntAdd (j1,j2) -> IntAdd (j1,j2)
+    | IntSub (j1,j2) -> IntSub (j1,j2)
+    | IntMul (j1,j2) -> IntMul (j1,j2)
+    | IntDiv (j1,j2) -> IntDiv (j1,j2)
+    | IntMod (j1,j2) -> IntMod (j1,j2)
+    | HashCode (e) -> HashCode (norm_elem e)
+
+  and norm_bucketarr (bb:bucketarr) : bucketarr =
+    match bb with
+    | VarBucketArray v -> VarBucketArray v
+    | BucketArrayUp (cc,i,b) -> let i_var = gen_if_not_var (IntT i) Int in
+                                  BucketArrayUp (norm_bucketarr cc, VarInt i_var,
+                                                 norm_bucket b)
+
+  and norm_tidarr (tt:tidarr) : tidarr =
+    match tt with
+    | VarTidArray v -> VarTidArray v
+    | TidArrayUp (yy,i,t) -> let i_var = gen_if_not_var (IntT i) Int in
+                                TidArrayUp (norm_tidarr yy, VarInt i_var, norm_tid t)
+
+  and norm_lockarr (ll:lockarr) : lockarr =
+    match ll with
+    | VarLockArray v -> VarLockArray v
+    | LockArrayUp (mm,i,l) -> let i_var = gen_if_not_var (IntT i) Int in
+                                LockArrayUp (norm_lockarr mm, VarInt i_var,
+                                             norm_lock l)
+
+  and norm_term (t:term) : term =
+    match t with
+    | VarT v -> VarT v
+    | SetT s -> SetT (norm_set s)
+    | ElemT e -> ElemT (norm_elem e)
+    | TidT t -> TidT (norm_tid t)
+    | AddrT a -> AddrT (norm_addr a)
+    | CellT c -> CellT (norm_cell c)
+    | SetThT s -> SetThT (norm_setth s)
+    | SetElemT s -> SetElemT (norm_setelem s)
+    | PathT p -> PathT (norm_path p)
+    | MemT m -> MemT (norm_mem m)
+    | IntT i -> IntT (norm_int i)
+    | TidArrayT tt -> TidArrayT (norm_tidarr tt)
+    | BucketArrayT bb -> BucketArrayT (norm_bucketarr bb)
+    | MarkT m -> MarkT (norm_mark m)
+    | BucketT b -> BucketT (norm_bucket b)
+    | LockT l -> LockT (norm_lock l)
+    | LockArrayT ll -> LockArrayT (norm_lockarr ll)
+    | VarUpdate (v,th,t) -> VarUpdate (v, norm_tid th, norm_term t)
+
+
+  and norm_atom (a:atom) : atom =
+    match a with
+    | Append (p1,p2,p3) -> Append (norm_path p1, norm_path p2, norm_path p3)
+    | Reach (m,a1,a2,p) -> Reach (norm_mem m, norm_addr a1, norm_addr a2,
+                                  norm_path p)
+    | OrderList (m,a1,a2) -> OrderList (norm_mem m, norm_addr a1, norm_addr a2)
+    | Hashmap(m,s,se,bb,i) -> let i_var = gen_if_not_var (IntT i) Int in
+                                Hashmap(norm_mem m, norm_set s, norm_setelem se,
+                                        norm_bucketarr bb, VarInt i_var)
+    | In (a,s) -> In (norm_addr a, norm_set s)
+    | SubsetEq (s1,s2) -> SubsetEq (norm_set s1, norm_set s2)
+    | InTh (t,s) -> InTh (norm_tid t, norm_setth s)
+    | SubsetEqTh (s1,s2) -> SubsetEqTh (norm_setth s1, norm_setth s2)
+    | InElem (e,s) -> InElem (norm_elem e, norm_setelem s)
+    | SubsetEqElem (s1,s2) -> SubsetEqElem (norm_setelem s1, norm_setelem s2)
+    | Less (i1,i2) -> let i1_var = gen_if_not_var (IntT i1) Int in
+                      let i2_var = gen_if_not_var (IntT i2) Int in
+                        Less (VarInt i1_var, VarInt i2_var)
+    | Greater (i1,i2) -> let i1_var = gen_if_not_var (IntT i1) Int in
+                         let i2_var = gen_if_not_var (IntT i2) Int in
+                           Greater (VarInt i1_var, VarInt i2_var)
+    | LessEq (i1,i2) -> let i1_var = gen_if_not_var (IntT i1) Int in
+                        let i2_var = gen_if_not_var (IntT i2) Int in
+                        LessEq (VarInt i1_var, VarInt i2_var)
+    | GreaterEq (i1,i2) -> let i1_var = gen_if_not_var (IntT i1) Int in
+                           let i2_var = gen_if_not_var (IntT i2) Int in
+                           GreaterEq (VarInt i1_var, VarInt i2_var)
+    | LessElem (e1,e2) -> LessElem (norm_elem e1, norm_elem e2)
+    | GreaterElem (e1,e2) -> GreaterElem (norm_elem e1, norm_elem e2)
+    (* Equality between bucket variable and bucket array *)
+    | Eq (BucketT (VarBucket b), BucketT (BucketArrRd(bb,i)))
+    | Eq (BucketT (BucketArrRd(bb,i)), BucketT (VarBucket b)) ->
+        let i_var = gen_if_not_var (IntT i) Int in
+          Eq (BucketT (VarBucket b),
+              BucketT (BucketArrRd(norm_bucketarr bb, VarInt i_var)))
+    (* Inequality between bucket variable and bucket array *)
+    | InEq (BucketT (VarBucket b), BucketT (BucketArrRd(bb,i)))
+    | InEq (BucketT (BucketArrRd(bb,i)), BucketT (VarBucket b)) ->
+        let i_var = gen_if_not_var (IntT i) Int in
+          InEq (BucketT (VarBucket b),
+                BucketT (BucketArrRd(norm_bucketarr bb,VarInt i_var)))
+    (* Equality between lock variable and lock array *)
+    | Eq (LockT (VarLock l), LockT (LockArrRd(ll,i)))
+    | Eq (LockT (LockArrRd(ll,i)), LockT (VarLock l)) ->
+        let i_var = gen_if_not_var (IntT i) Int in
+          Eq (LockT (VarLock l),
+              LockT (LockArrRd(norm_lockarr ll, VarInt i_var)))
+    (* Inequality between lock variable and lock array *)
+    | InEq (LockT (VarLock l), LockT (LockArrRd(ll,i)))
+    | InEq (LockT (LockArrRd(ll,i)), LockT (VarLock l)) ->
+        let i_var = gen_if_not_var (IntT i) Int in
+          InEq (LockT (VarLock l),
+                LockT (LockArrRd(norm_lockarr ll,VarInt i_var)))
+    (* Equality between tid variable  and tids array *)
+    | Eq (TidT (VarTh a), TidT (TidArrRd(tt,i)))
+    | Eq (TidT (TidArrRd(tt,i)), TidT (VarTh a)) ->
+        let i_var = gen_if_not_var (IntT i) Int in
+          Eq (TidT (VarTh a),
+              TidT (TidArrRd(norm_tidarr tt, VarInt i_var)))
+    (* Inequality between tid variable and tids array *)
+    | InEq (TidT (VarTh a), TidT (TidArrRd(tt,i)))
+    | InEq (TidT (TidArrRd(tt,i)), TidT (VarTh a)) ->
+        let i_var = gen_if_not_var (IntT i) Int in
+          InEq (TidT (VarTh a),
+                TidT (TidArrRd(norm_tidarr tt, VarInt i_var)))
+    (* General equalities and inequalities *)
+    | Eq (t1,t2) -> Eq (norm_term t1, norm_term t2)
+    | InEq (t1,t2) -> InEq (norm_term t1, norm_term t2)
+    | BoolVar v -> BoolVar v
+    | PC (i,topt,pr) -> let norm_topt = match topt with
+                                        | V.Shared -> V.Shared
+                                        | V.Local t -> V.Local t in
+                        PC (i, norm_topt, pr)
+    | PCUpdate (i,t) -> PCUpdate (i, norm_tid t)
+    | PCRange (i,j,topt,pr) -> let norm_topt = match topt with
+                                              | V.Shared -> V.Shared
+                                              | V.Local t -> V.Local t in
+                               PCRange (i, j, norm_topt, pr)
+
+  in
+  match l with
+  | F.Atom a -> F.Literal(F.Atom (norm_atom a))
+  | F.NegAtom (Hashmap(m,s,se,bb,k)) ->
+      let m_var = VarMem (gen_if_not_var (MemT m) Mem) in
+      let s_var = VarSet (gen_if_not_var (SetT s) Set) in
+      let se_var = VarSetElem (gen_if_not_var (SetElemT se) SetElem) in
+      let bb_var = VarBucketArray (gen_if_not_var (BucketArrayT bb) BucketArray) in
+      let k_var = VarInt (gen_if_not_var (IntT k) Int) in
+
+      let a = VarAddr (THMNorm.gen_fresh_var info Addr) in
+      let e = VarElem (THMNorm.gen_fresh_var info Elem) in
+      let i = VarInt (THMNorm.gen_fresh_var info Int) in
+
+
+      (* I am missing the first part of the normalization *)
+
+      let phi_setelem_differs =
+        norm_formula info
+          (F.Or(
+            F.And(
+              F.Literal(F.Atom(InElem(e,se_var))),
+              F.Literal(F.NegAtom(InElem(e,SetToElems(s_var,m_var))))),
+            F.And(
+              F.Literal(F.NegAtom(InElem(e,se_var))),
+              F.Literal(F.Atom(InElem(e,SetToElems(s_var,m_var))))))) in
+      let phi_somelevel_not_hashmap =
+        norm_formula info (F.disj_list
+          [F.Literal(F.NegAtom(In(Null,BucketRegion(BucketArrRd(bb_var,i)))));
+           F.And(F.Literal(F.Atom(In(a,BucketRegion(BucketArrRd(bb_var,i))))),
+                 F.Literal(F.NegAtom(In(a,AddrToSet(m_var,BucketInit(BucketArrRd(bb_var,i)))))));
+           F.And(F.Literal(F.NegAtom(In(a,BucketRegion(BucketArrRd(bb_var,i))))),
+                 F.Literal(F.Atom(In(a,AddrToSet(m_var,BucketInit(BucketArrRd(bb_var,i)))))));
+           F.Literal(F.NegAtom(In(BucketEnd(BucketArrRd(bb_var,i)),
+                                  BucketRegion(BucketArrRd(bb_var,i)))));
+           F.Literal(F.Atom(InEq(AddrT(Next(CellAt(m_var,BucketEnd(BucketArrRd(bb_var,i))))),AddrT(Null))))]) in
+
+      F.disj_list
+        [phi_setelem_differs;
+         phi_somelevel_not_hashmap]
+
+  | F.NegAtom a -> F.Literal(F.NegAtom (norm_atom a))
+
+
+and norm_formula (info:THMNorm.t) (phi:formula) : formula =
+  match phi with
+  | F.Literal(F.Atom(InEq(CellT c1, CellT c2))) ->
+      norm_formula info (F.Or(F.atom_to_formula (InEq(ElemT(CellData c1),
+                                                      ElemT(CellData c2))),
+                         F.Or(F.atom_to_formula (InEq(AddrT(Next c1),
+                                                      AddrT(Next c2))),
+                              F.atom_to_formula (InEq(TidT(CellLockId c1),
+                                                      TidT(CellLockId c2))))))
+  | F.Literal l                 -> norm_literal info l
+  | F.True                      -> F.True
+  | F.False                     -> F.False
+  | F.And (psi1,psi2)           -> F.And (norm_formula info psi1,
+                                      norm_formula info psi2)
+  | F.Or (psi1,psi2)            -> F.Or (norm_formula info psi1,
+                                     norm_formula info psi2)
+  | F.Not (F.Literal (F.Atom a))    -> norm_literal info (F.NegAtom a)
+  | F.Not (F.Literal (F.NegAtom a)) -> norm_formula info (F.Literal (F.Atom a))
+  | F.Not psi                   -> F.Not (norm_formula info psi)
+  | F.Implies (psi1,psi2)       -> F.Implies (norm_formula info psi1,
+                                          norm_formula info psi2)
+  | F.Iff (psi1,psi2)           -> F.Iff (norm_formula info psi1,
+                                      norm_formula info psi2)
 
 
 (* FORMULA NORMALIZATION *)
