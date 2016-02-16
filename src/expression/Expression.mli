@@ -442,6 +442,8 @@ val prime_int    : integer -> integer
 val prime_tid    : tid -> tid
 val unprime_tid  : tid -> tid
 
+val unprime_int  : integer -> integer
+
 val prime_term   : term -> term
 val unprime_term : term -> term
 val prime        : formula -> formula
@@ -455,7 +457,6 @@ val primed_vars : formula -> V.t list
 val prime_modified : formula list -> formula -> formula
 val prime_modified_term : formula list -> term -> term
 
-val get_vars : formula -> (V.t -> V.VarSet.t) -> V.t list
 
 
 (* GET VARIABLES FROM EXPRESSION *)
@@ -464,6 +465,10 @@ val all_vars_as_set : formula -> V.VarSet.t
 val all_vars_occurrences_as_set : formula -> V.VarSet.t
 val all_local_vars : formula -> V.t list
 val all_global_vars : formula -> V.t list
+
+val varset_of_sort : formula -> sort -> V.VarSet.t
+val varset_of_sort_from_literal : literal -> sort -> V.VarSet.t
+val varset_of_sort_from_conj : conjunctive_formula -> sort -> V.VarSet.t
 
 
 (* EXPRESSION CONVERSION FUNCTIONS *)
@@ -658,3 +663,10 @@ val identical_literal : literal -> literal -> bool
 val opposite_literal  : literal -> literal -> bool
 val identical_conjunctive_formula : conjunctive_formula -> conjunctive_formula -> bool
 val identical_expr_t : expr_t -> expr_t -> bool
+
+
+val termset : formula -> TermSet.t
+val termset_from_conj : conjunctive_formula -> TermSet.t
+
+val replace_terms_literal : (term, term) Hashtbl.t -> literal -> literal
+val replace_terms : (term, term) Hashtbl.t -> formula -> formula

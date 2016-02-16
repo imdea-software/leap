@@ -373,6 +373,7 @@ exception Incompatible_assignment of term * expr_t
 exception Not_implemented of string
 exception Not_tid_var of tid
 exception Substitution_error of string
+exception Incompatible_replacement of term * term
 
 
 let build_var_info ?(treat_as_pc=false) (nature:var_nature) : var_info_t =
@@ -1451,7 +1452,7 @@ let unprime_mem (m:mem) : mem    =  priming_mem  false (None, None) m
 let prime_int (i:integer) : integer = priming_int true (None, None) i
 let unprime_int (i:integer) : integer =  priming_int false (None, None) i
 let prime_addrarr (aa:addrarr) : addrarr =  priming_addrarray true (None, None) aa
-let unprime_int (aa:addrarr) : addrarr =  priming_addrarray false (None, None) aa
+let unprime_addrarr (aa:addrarr) : addrarr =  priming_addrarray false (None, None) aa
 let prime_tidarr (tt:tidarr) : tidarr =  priming_tidarray true (None, None) tt
 let unprime_tidarr (tt:tidarr) : tidarr =  priming_tidarray false (None, None) tt
 let prime_term (t:term) : term =  priming_term true (None, None) t
@@ -2519,520 +2520,523 @@ let term_to_setint (t:term) : setint =
 let (@@) = V.VarSet.union
 
 
-let rec get_vars_term (expr:term) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+type varset_info_t =
+  {
+    instances: bool;
+    base: V.t -> V.VarSet.t;
+    unprime: bool;
+  }
+
+let rec get_vars_term (expr:term) (info:varset_info_t) : V.VarSet.t =
   match expr with
-  | VarT v            -> V.VarSet.union (base v)
+  | VarT v            -> V.VarSet.union (info.base v)
                           (match V.parameter v with
                            | V.Shared -> V.VarSet.empty
-                           | V.Local t -> base t)
-  | SetT(set)         -> get_vars_set set base
-  | AddrT(addr)       -> get_vars_addr addr base
-  | ElemT(elem)       -> get_vars_elem elem base
-  | TidT(th)          -> get_vars_tid th base
-  | CellT(cell)       -> get_vars_cell cell base
-  | SetThT(setth)     -> get_vars_setth setth base
-  | SetIntT(setint)   -> get_vars_setint setint base
-  | SetElemT(setelem) -> get_vars_setelem setelem base
-  | SetPairT(setpair) -> get_vars_setpair setpair base
-  | PathT(path)       -> get_vars_path path base
-  | MemT(mem)         -> get_vars_mem mem base
-  | IntT(i)           -> get_vars_int i base
-  | PairT(p)          -> get_vars_pair p base
-  | ArrayT(arr)       -> get_vars_array arr base
-  | AddrArrayT(arr)   -> get_vars_addrarr arr base
-  | TidArrayT(arr)    -> get_vars_tidarr arr base
-  | BucketArrayT(arr) -> get_vars_bucketarr arr base
-  | MarkT(m)          -> get_vars_mark m base
-  | BucketT(b)        -> get_vars_bucket b base
-  | LockT(l)          -> get_vars_lock l base
-  | LockArrayT(arr)   -> get_vars_lockarr arr base
+                           | V.Local t -> info.base t)
+  | SetT(set)         -> get_vars_set set info
+  | AddrT(addr)       -> get_vars_addr addr info
+  | ElemT(elem)       -> get_vars_elem elem info
+  | TidT(th)          -> get_vars_tid th info
+  | CellT(cell)       -> get_vars_cell cell info
+  | SetThT(setth)     -> get_vars_setth setth info
+  | SetIntT(setint)   -> get_vars_setint setint info
+  | SetElemT(setelem) -> get_vars_setelem setelem info
+  | SetPairT(setpair) -> get_vars_setpair setpair info
+  | PathT(path)       -> get_vars_path path info
+  | MemT(mem)         -> get_vars_mem mem info
+  | IntT(i)           -> get_vars_int i info
+  | PairT(p)          -> get_vars_pair p info
+  | ArrayT(arr)       -> get_vars_array arr info
+  | AddrArrayT(arr)   -> get_vars_addrarr arr info
+  | TidArrayT(arr)    -> get_vars_tidarr arr info
+  | BucketArrayT(arr) -> get_vars_bucketarr arr info
+  | MarkT(m)          -> get_vars_mark m info
+  | BucketT(b)        -> get_vars_bucket b info
+  | LockT(l)          -> get_vars_lock l info
+  | LockArrayT(arr)   -> get_vars_lockarr arr info
 
 
-and get_vars_expr (e:expr_t) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+and get_vars_expr (e:expr_t) (info:varset_info_t) : V.VarSet.t =
   match e with
-    Term t    -> get_vars_term t base
-  | Formula b -> get_vars_formula b base
+    Term t    -> get_vars_term t info
+  | Formula b -> get_vars_formula b info
 
 
-and get_vars_array (a:arrays) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+and get_vars_array (a:arrays) (info:varset_info_t) : V.VarSet.t =
   match a with
-  | VarArray v       -> V.VarSet.union (base v)
+  | VarArray v       -> V.VarSet.union (info.base v)
                           (match V.parameter v with
                            | V.Shared -> V.VarSet.empty
-                           | V.Local t -> base t)
-  | ArrayUp(arr,t,e) -> (get_vars_array arr base) @@
-                        (get_vars_tid t base)     @@
-                        (get_vars_expr e base)
+                           | V.Local t -> info.base t)
+  | ArrayUp(arr,t,e) -> if info.instances then
+                          (get_vars_expr e info)    
+                        else
+                          (get_vars_array arr info) @@
+                          (get_vars_tid t info)     @@
+                          (get_vars_expr e info)
 
 
-and get_vars_addrarr (a:addrarr) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+and get_vars_addrarr (a:addrarr) (info:varset_info_t) : V.VarSet.t =
   match a with
-    VarAddrArray v       -> V.VarSet.union (base v)
+    VarAddrArray v       -> V.VarSet.union (info.base v)
                               (match V.parameter v with
                                | V.Shared -> V.VarSet.empty
-                               | V.Local t -> base t)
-  | AddrArrayUp(arr,i,a) -> (get_vars_addrarr arr base) @@
-                            (get_vars_int i base)       @@
-                            (get_vars_addr a base)
-  | CellArr c            -> (get_vars_cell c base)
+                               | V.Local t -> info.base t)
+  | AddrArrayUp(arr,i,a) -> (get_vars_addrarr arr info) @@
+                            (get_vars_int i info)       @@
+                            (get_vars_addr a info)
+  | CellArr c            -> (get_vars_cell c info)
 
 
-and get_vars_tidarr (a:tidarr) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+and get_vars_tidarr (a:tidarr) (info:varset_info_t) : V.VarSet.t =
   match a with
-    VarTidArray v       -> V.VarSet.union (base v)
+    VarTidArray v       -> V.VarSet.union (info.base v)
                               (match V.parameter v with
                                | V.Shared -> V.VarSet.empty
-                               | V.Local t -> base t)
-  | TidArrayUp(arr,i,t) -> (get_vars_tidarr arr base) @@
-                           (get_vars_int i base)      @@
-                           (get_vars_tid t base)
-  | CellTids c            -> (get_vars_cell c base)
+                               | V.Local t -> info.base t)
+  | TidArrayUp(arr,i,t) -> (get_vars_tidarr arr info) @@
+                           (get_vars_int i info)      @@
+                           (get_vars_tid t info)
+  | CellTids c            -> (get_vars_cell c info)
 
 
-and get_vars_bucketarr (a:bucketarr) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+and get_vars_bucketarr (a:bucketarr) (info:varset_info_t) : V.VarSet.t =
   match a with
-    VarBucketArray v    -> V.VarSet.union (base v)
+    VarBucketArray v    -> V.VarSet.union (info.base v)
                               (match V.parameter v with
                                | V.Shared -> V.VarSet.empty
-                               | V.Local t -> base t)
-  | BucketArrayUp(arr,i,b) -> (get_vars_bucketarr arr base) @@
-                              (get_vars_int i base)         @@
-                              (get_vars_bucket b base)
+                               | V.Local t -> info.base t)
+  | BucketArrayUp(arr,i,b) -> (get_vars_bucketarr arr info) @@
+                              (get_vars_int i info)         @@
+                              (get_vars_bucket b info)
 
 
-and get_vars_set (e:set) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+and get_vars_set (e:set) (info:varset_info_t) : V.VarSet.t =
   match e with
-    VarSet v            -> V.VarSet.union (base v)
+    VarSet v            -> V.VarSet.union (info.base v)
                               (match V.parameter v with
                                | V.Shared -> V.VarSet.empty
-                               | V.Local t -> base t)
+                               | V.Local t -> info.base t)
   | EmptySet            -> V.VarSet.empty
-  | Singl(addr)         -> (get_vars_addr addr base)
-  | Union(s1,s2)        -> (get_vars_set s1 base) @@ (get_vars_set s2 base)
-  | Intr(s1,s2)         -> (get_vars_set s1 base) @@ (get_vars_set s2 base)
-  | Setdiff(s1,s2)      -> (get_vars_set s1 base) @@ (get_vars_set s2 base)
-  | PathToSet(path)     -> (get_vars_path path base)
-  | AddrToSet(mem,addr) -> (get_vars_mem mem base) @@ (get_vars_addr addr base)
-  | AddrToSetAt(mem,a,l)-> (get_vars_mem mem base) @@
-                           (get_vars_addr a base)  @@
-                           (get_vars_int l base)
-  | SetArrayRd(arr,_)   -> (get_vars_array arr base)
-  | BucketRegion(b)     -> (get_vars_bucket b base)
+  | Singl(addr)         -> (get_vars_addr addr info)
+  | Union(s1,s2)        -> (get_vars_set s1 info) @@ (get_vars_set s2 info)
+  | Intr(s1,s2)         -> (get_vars_set s1 info) @@ (get_vars_set s2 info)
+  | Setdiff(s1,s2)      -> (get_vars_set s1 info) @@ (get_vars_set s2 info)
+  | PathToSet(path)     -> (get_vars_path path info)
+  | AddrToSet(mem,addr) -> (get_vars_mem mem info) @@ (get_vars_addr addr info)
+  | AddrToSetAt(mem,a,l)-> (get_vars_mem mem info) @@
+                           (get_vars_addr a info)  @@
+                           (get_vars_int l info)
+  | SetArrayRd(arr,_)   -> (get_vars_array arr info)
+  | BucketRegion(b)     -> (get_vars_bucket b info)
 
 
-and get_vars_addr (a:addr) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+and get_vars_addr (a:addr) (info:varset_info_t) : V.VarSet.t =
   match a with
-    VarAddr v                 -> V.VarSet.union (base v)
+    VarAddr v                 -> V.VarSet.union (info.base v)
                                   (match V.parameter v with
                                    | V.Shared -> V.VarSet.empty
-                                   | V.Local t -> base t)
+                                   | V.Local t -> info.base t)
   | Null                      -> V.VarSet.empty
-  | Next(cell)                -> (get_vars_cell cell base)
-  | NextAt(cell,l)            -> (get_vars_cell cell base) @@ (get_vars_int l base)
-  | ArrAt(cell,l)             -> (get_vars_cell cell base) @@ (get_vars_int l base)
-  | FirstLocked(mem,path)     -> (get_vars_mem mem base) @@ (get_vars_path path base)
-  | FirstLockedAt(mem,path,l) -> (get_vars_mem mem base) @@ (get_vars_path path base) @@
-                                 (get_vars_int l base)
-  | LastLocked(mem,path)      -> (get_vars_mem mem base) @@ (get_vars_path path base)
-  | AddrArrayRd(arr,_)        -> (get_vars_array arr base)
-  | AddrArrRd(arr,i)          -> (get_vars_addrarr arr base) @@ (get_vars_int i base)
-  | BucketInit(b)             -> (get_vars_bucket b base)
-  | BucketEnd(b)              -> (get_vars_bucket b base)
+  | Next(cell)                -> (get_vars_cell cell info)
+  | NextAt(cell,l)            -> (get_vars_cell cell info) @@ (get_vars_int l info)
+  | ArrAt(cell,l)             -> (get_vars_cell cell info) @@ (get_vars_int l info)
+  | FirstLocked(mem,path)     -> (get_vars_mem mem info) @@ (get_vars_path path info)
+  | FirstLockedAt(mem,path,l) -> (get_vars_mem mem info) @@ (get_vars_path path info) @@
+                                 (get_vars_int l info)
+  | LastLocked(mem,path)      -> (get_vars_mem mem info) @@ (get_vars_path path info)
+  | AddrArrayRd(arr,_)        -> (get_vars_array arr info)
+  | AddrArrRd(arr,i)          -> (get_vars_addrarr arr info) @@ (get_vars_int i info)
+  | BucketInit(b)             -> (get_vars_bucket b info)
+  | BucketEnd(b)              -> (get_vars_bucket b info)
 
 
-and get_vars_elem (e:elem) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+and get_vars_elem (e:elem) (info:varset_info_t) : V.VarSet.t =
   match e with
-    VarElem v          -> V.VarSet.union (base v)
+    VarElem v          -> V.VarSet.union (info.base v)
                               (match V.parameter v with
                                | V.Shared -> V.VarSet.empty
-                               | V.Local t -> base t)
-  | CellData(cell)     -> (get_vars_cell cell base)
-  | ElemArrayRd(arr,_) -> (get_vars_array arr base)
+                               | V.Local t -> info.base t)
+  | CellData(cell)     -> (get_vars_cell cell info)
+  | ElemArrayRd(arr,_) -> (get_vars_array arr info)
   | HavocListElem      -> V.VarSet.empty
   | HavocSkiplistElem  -> V.VarSet.empty
   | LowestElem         -> V.VarSet.empty
   | HighestElem        -> V.VarSet.empty
 
 
-and get_vars_tid (th:tid) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+and get_vars_tid (th:tid) (info:varset_info_t) : V.VarSet.t =
   match th with
-    VarTh v              -> V.VarSet.union (base v)
+    VarTh v              -> V.VarSet.union (info.base v)
                               (match V.parameter v with
                                | V.Shared -> V.VarSet.empty
-                               | V.Local t -> base t)
+                               | V.Local t -> info.base t)
   | NoTid                -> V.VarSet.empty
-  | CellLockId(cell)     -> (get_vars_cell cell base)
-  | CellLockIdAt(cell,l) -> (get_vars_cell cell base) @@ (get_vars_int l base)
-  | TidArrayRd(arr,_)    -> (get_vars_array arr base)
-  | TidArrRd(arr,l)      -> (get_vars_tidarr arr base) @@ (get_vars_int l base)
-  | PairTid p            -> (get_vars_pair p base)
-  | BucketTid b          -> (get_vars_bucket b base)
-  | LockId l             -> (get_vars_lock l base)
+  | CellLockId(cell)     -> (get_vars_cell cell info)
+  | CellLockIdAt(cell,l) -> (get_vars_cell cell info) @@ (get_vars_int l info)
+  | TidArrayRd(arr,_)    -> (get_vars_array arr info)
+  | TidArrRd(arr,l)      -> (get_vars_tidarr arr info) @@ (get_vars_int l info)
+  | PairTid p            -> (get_vars_pair p info)
+  | BucketTid b          -> (get_vars_bucket b info)
+  | LockId l             -> (get_vars_lock l info)
 
 
-and get_vars_lock (x:lock) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+and get_vars_lock (x:lock) (info:varset_info_t) : V.VarSet.t =
   match x with
-    VarLock v       -> V.VarSet.union (base v)
+    VarLock v       -> V.VarSet.union (info.base v)
                          (match V.parameter v with
                           | V.Shared -> V.VarSet.empty
-                          | V.Local t -> base t)
-  | LLock (l,t) -> (get_vars_lock l base) @@ (get_vars_tid t base)
-  | LUnlock (l) -> (get_vars_lock l base)
-  | LockArrRd (ll,i) -> (get_vars_lockarr ll base) @@ (get_vars_int i base)
+                          | V.Local t -> info.base t)
+  | LLock (l,t) -> (get_vars_lock l info) @@ (get_vars_tid t info)
+  | LUnlock (l) -> (get_vars_lock l info)
+  | LockArrRd (ll,i) -> (get_vars_lockarr ll info) @@ (get_vars_int i info)
 
 
-and get_vars_lockarr (xx:lockarr) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+and get_vars_lockarr (xx:lockarr) (info:varset_info_t) : V.VarSet.t =
   match xx with
-    VarLockArray v       -> V.VarSet.union (base v)
+    VarLockArray v       -> V.VarSet.union (info.base v)
                               (match V.parameter v with
                                | V.Shared -> V.VarSet.empty
-                               | V.Local t -> base t)
-  | LockArrayUp(arr,i,l) -> (get_vars_lockarr arr base) @@
-                            (get_vars_int i base)      @@
-                            (get_vars_lock l base)
+                               | V.Local t -> info.base t)
+  | LockArrayUp(arr,i,l) -> (get_vars_lockarr arr info) @@
+                            (get_vars_int i info)      @@
+                            (get_vars_lock l info)
 
 
-and get_vars_cell (c:cell) (base:V.t -> V.VarSet.t) : V.VarSet.t =
-  let fold f xs = List.fold_left (fun ys x -> (f x base) @@ ys) V.VarSet.empty xs in
+and get_vars_cell (c:cell) (info:varset_info_t) : V.VarSet.t =
+  let fold f xs = List.fold_left (fun ys x -> (f x info) @@ ys) V.VarSet.empty xs in
   match c with
-    VarCell v                  -> V.VarSet.union (base v)
+    VarCell v                  -> V.VarSet.union (info.base v)
                                     (match V.parameter v with
                                      | V.Shared -> V.VarSet.empty
-                                     | V.Local t -> base t)
+                                     | V.Local t -> info.base t)
   | Error                      -> V.VarSet.empty
-  | MkCell(data,addr,th)       -> (get_vars_elem data base) @@
-                                  (get_vars_addr addr base) @@
-                                  (get_vars_tid th base)
-  | MkCellMark(data,addr,th,m) -> (get_vars_elem data base) @@
-                                  (get_vars_addr addr base) @@
-                                  (get_vars_tid th base) @@
-                                  (get_vars_mark m base)
-  | MkSLKCell(data,aa,tt)      -> (get_vars_elem data base) @@
+  | MkCell(data,addr,th)       -> (get_vars_elem data info) @@
+                                  (get_vars_addr addr info) @@
+                                  (get_vars_tid th info)
+  | MkCellMark(data,addr,th,m) -> (get_vars_elem data info) @@
+                                  (get_vars_addr addr info) @@
+                                  (get_vars_tid th info) @@
+                                  (get_vars_mark m info)
+  | MkSLKCell(data,aa,tt)      -> (get_vars_elem data info) @@
                                   (fold get_vars_addr aa)   @@
                                   (fold get_vars_tid tt)
-  | MkSLCell(data,aa,ta,l)     -> (get_vars_elem data base) @@
-                                  (get_vars_addrarr aa base) @@
-                                  (get_vars_tidarr ta base) @@
-                                  (get_vars_int l base)
-  | CellLock(cell,t)           -> (get_vars_cell cell base) @@ (get_vars_tid t base)
-  | CellLockAt(cell,l,t)       -> (get_vars_cell cell base) @@
-                                  (get_vars_int l base)     @@
-                                  (get_vars_tid t base)
-  | CellUnlock(cell)           -> (get_vars_cell cell base)
-  | CellUnlockAt(cell,l)       -> (get_vars_cell cell base) @@
-                                  (get_vars_int l base)
-  | CellAt(mem,addr)           -> (get_vars_mem mem base) @@
-                                  (get_vars_addr addr base)
-  | CellArrayRd(arr,_)         -> (get_vars_array arr base)
-  | UpdCellAddr(c,i,a)         -> (get_vars_cell c base) @@
-                                  (get_vars_int i base)  @@
-                                  (get_vars_addr a base)
+  | MkSLCell(data,aa,ta,l)     -> (get_vars_elem data info) @@
+                                  (get_vars_addrarr aa info) @@
+                                  (get_vars_tidarr ta info) @@
+                                  (get_vars_int l info)
+  | CellLock(cell,t)           -> (get_vars_cell cell info) @@ (get_vars_tid t info)
+  | CellLockAt(cell,l,t)       -> (get_vars_cell cell info) @@
+                                  (get_vars_int l info)     @@
+                                  (get_vars_tid t info)
+  | CellUnlock(cell)           -> (get_vars_cell cell info)
+  | CellUnlockAt(cell,l)       -> (get_vars_cell cell info) @@
+                                  (get_vars_int l info)
+  | CellAt(mem,addr)           -> (get_vars_mem mem info) @@
+                                  (get_vars_addr addr info)
+  | CellArrayRd(arr,_)         -> (get_vars_array arr info)
+  | UpdCellAddr(c,i,a)         -> (get_vars_cell c info) @@
+                                  (get_vars_int i info)  @@
+                                  (get_vars_addr a info)
 
-and get_vars_mark (m:mark) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+and get_vars_mark (m:mark) (info:varset_info_t) : V.VarSet.t =
   match m with
-    VarMark v  -> (base v) @@
+    VarMark v  -> (info.base v) @@
                    (match V.parameter v with
                     | V.Shared -> V.VarSet.empty
-                    | V.Local t -> base t)
+                    | V.Local t -> info.base t)
   | MarkTrue   -> V.VarSet.empty
   | MarkFalse  -> V.VarSet.empty
-  | Marked c   -> get_vars_cell c base
+  | Marked c   -> get_vars_cell c info
 
 
-and get_vars_bucket (b:bucket) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+and get_vars_bucket (b:bucket) (info:varset_info_t) : V.VarSet.t =
   match b with
-    VarBucket v        -> (base v) @@
+    VarBucket v        -> (info.base v) @@
                            (match V.parameter v with
                             | V.Shared -> V.VarSet.empty
-                            | V.Local t -> base t)
-  | MkBucket (i,e,s,t) -> (get_vars_addr i base) @@
-                          (get_vars_addr e base) @@
-                          (get_vars_set s base) @@
-                          (get_vars_tid t base)
-  | BucketArrRd(bb,i)  -> (get_vars_bucketarr bb base) @@
-                          (get_vars_int i base)
+                            | V.Local t -> info.base t)
+  | MkBucket (i,e,s,t) -> (get_vars_addr i info) @@
+                          (get_vars_addr e info) @@
+                          (get_vars_set s info) @@
+                          (get_vars_tid t info)
+  | BucketArrRd(bb,i)  -> (get_vars_bucketarr bb info) @@
+                          (get_vars_int i info)
 
 
-and get_vars_setth (s:setth) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+and get_vars_setth (s:setth) (info:varset_info_t) : V.VarSet.t =
   match s with
-    VarSetTh v          -> (base v) @@
+    VarSetTh v          -> (info.base v) @@
                             (match V.parameter v with
                              | V.Shared -> V.VarSet.empty
-                             | V.Local t -> base t)
+                             | V.Local t -> info.base t)
   | EmptySetTh          -> V.VarSet.empty
-  | SinglTh(th)         -> get_vars_tid th base
-  | UnionTh(s1,s2)      -> (get_vars_setth s1 base)@@(get_vars_setth s2 base)
-  | IntrTh(s1,s2)       -> (get_vars_setth s1 base)@@(get_vars_setth s2 base)
-  | SetdiffTh(s1,s2)    -> (get_vars_setth s1 base)@@(get_vars_setth s2 base)
-  | SetThArrayRd(arr,_) -> (get_vars_array arr base)
-  | LockSet(m,p)        -> (get_vars_mem m base)@@(get_vars_path p base)
+  | SinglTh(th)         -> get_vars_tid th info
+  | UnionTh(s1,s2)      -> (get_vars_setth s1 info)@@(get_vars_setth s2 info)
+  | IntrTh(s1,s2)       -> (get_vars_setth s1 info)@@(get_vars_setth s2 info)
+  | SetdiffTh(s1,s2)    -> (get_vars_setth s1 info)@@(get_vars_setth s2 info)
+  | SetThArrayRd(arr,_) -> (get_vars_array arr info)
+  | LockSet(m,p)        -> (get_vars_mem m info)@@(get_vars_path p info)
 
 
-and get_vars_setint (s:setint) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+and get_vars_setint (s:setint) (info:varset_info_t) : V.VarSet.t =
   match s with
-    VarSetInt v          -> (base v) @@
+    VarSetInt v          -> (info.base v) @@
                               (match V.parameter v with
                                | V.Shared -> V.VarSet.empty
-                               | V.Local t -> base t)
+                               | V.Local t -> info.base t)
   | EmptySetInt          -> V.VarSet.empty
-  | SinglInt(i)          -> (get_vars_int i base)
-  | UnionInt(s1,s2)      -> (get_vars_setint s1 base) @@
-                            (get_vars_setint s2 base)
-  | IntrInt(s1,s2)       -> (get_vars_setint s1 base) @@
-                            (get_vars_setint s2 base)
-  | SetdiffInt(s1,s2)    -> (get_vars_setint s1 base) @@
-                            (get_vars_setint s2 base)
-  | SetLower(s,i)        -> (get_vars_setint s base) @@
-                            (get_vars_int i base)
-  | SetIntArrayRd(arr,_) -> (get_vars_array arr base)
+  | SinglInt(i)          -> (get_vars_int i info)
+  | UnionInt(s1,s2)      -> (get_vars_setint s1 info) @@
+                            (get_vars_setint s2 info)
+  | IntrInt(s1,s2)       -> (get_vars_setint s1 info) @@
+                            (get_vars_setint s2 info)
+  | SetdiffInt(s1,s2)    -> (get_vars_setint s1 info) @@
+                            (get_vars_setint s2 info)
+  | SetLower(s,i)        -> (get_vars_setint s info) @@
+                            (get_vars_int i info)
+  | SetIntArrayRd(arr,_) -> (get_vars_array arr info)
 
 
-and get_vars_setelem (s:setelem) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+and get_vars_setelem (s:setelem) (info:varset_info_t) : V.VarSet.t =
   match s with
-    VarSetElem v          -> (base v) @@
+    VarSetElem v          -> (info.base v) @@
                               (match V.parameter v with
                                | V.Shared -> V.VarSet.empty
-                               | V.Local t -> base t)
+                               | V.Local t -> info.base t)
   | EmptySetElem          -> V.VarSet.empty
-  | SinglElem(e)          -> (get_vars_elem e base)
-  | UnionElem(s1,s2)      -> (get_vars_setelem s1 base) @@
-                             (get_vars_setelem s2 base)
-  | IntrElem(s1,s2)       -> (get_vars_setelem s1 base) @@
-                             (get_vars_setelem s2 base)
-  | SetdiffElem(s1,s2)    -> (get_vars_setelem s1 base) @@
-                             (get_vars_setelem s2 base)
-  | SetToElems(s,m)       -> (get_vars_set s base) @@ (get_vars_mem m base)
-  | SetElemArrayRd(arr,_) -> (get_vars_array arr base)
+  | SinglElem(e)          -> (get_vars_elem e info)
+  | UnionElem(s1,s2)      -> (get_vars_setelem s1 info) @@
+                             (get_vars_setelem s2 info)
+  | IntrElem(s1,s2)       -> (get_vars_setelem s1 info) @@
+                             (get_vars_setelem s2 info)
+  | SetdiffElem(s1,s2)    -> (get_vars_setelem s1 info) @@
+                             (get_vars_setelem s2 info)
+  | SetToElems(s,m)       -> (get_vars_set s info) @@ (get_vars_mem m info)
+  | SetElemArrayRd(arr,_) -> (get_vars_array arr info)
 
 
-and get_vars_setpair (s:setpair) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+and get_vars_setpair (s:setpair) (info:varset_info_t) : V.VarSet.t =
   match s with
-    VarSetPair v          -> (base v) @@
+    VarSetPair v          -> (info.base v) @@
                               (match V.parameter v with
                                | V.Shared -> V.VarSet.empty
-                               | V.Local t -> base t)
+                               | V.Local t -> info.base t)
   | EmptySetPair          -> V.VarSet.empty
-  | SinglPair(p)          -> (get_vars_pair p base)
-  | UnionPair(s1,s2)      -> (get_vars_setpair s1 base) @@
-                             (get_vars_setpair s2 base)
-  | IntrPair(s1,s2)       -> (get_vars_setpair s1 base) @@
-                             (get_vars_setpair s2 base)
-  | SetdiffPair(s1,s2)    -> (get_vars_setpair s1 base) @@
-                             (get_vars_setpair s2 base)
-  | LowerPair(s,i)        -> (get_vars_setpair s base) @@
-                             (get_vars_int i base)
-  | SetPairArrayRd(arr,_) -> (get_vars_array arr base)
+  | SinglPair(p)          -> (get_vars_pair p info)
+  | UnionPair(s1,s2)      -> (get_vars_setpair s1 info) @@
+                             (get_vars_setpair s2 info)
+  | IntrPair(s1,s2)       -> (get_vars_setpair s1 info) @@
+                             (get_vars_setpair s2 info)
+  | SetdiffPair(s1,s2)    -> (get_vars_setpair s1 info) @@
+                             (get_vars_setpair s2 info)
+  | LowerPair(s,i)        -> (get_vars_setpair s info) @@
+                             (get_vars_int i info)
+  | SetPairArrayRd(arr,_) -> (get_vars_array arr info)
 
 
-and get_vars_path (p:path) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+and get_vars_path (p:path) (info:varset_info_t) : V.VarSet.t =
   match p with
-    VarPath v -> (base v) @@
+    VarPath v -> (info.base v) @@
                     (match V.parameter v with
                      | V.Shared -> V.VarSet.empty
-                     | V.Local t -> base t)
+                     | V.Local t -> info.base t)
   | Epsilon                          -> V.VarSet.empty
-  | SimplePath(addr)                 -> (get_vars_addr addr base)
-  | GetPath(mem,add_from,add_to)     -> (get_vars_mem mem base) @@
-                                        (get_vars_addr add_from base) @@
-                                        (get_vars_addr add_to base)
-  | GetPathAt(mem,add_from,add_to,l) -> (get_vars_mem mem base) @@
-                                        (get_vars_addr add_from base) @@
-                                        (get_vars_addr add_to base) @@
-                                        (get_vars_int l base)
-  | PathArrayRd(arr,_)               -> (get_vars_array arr base)
+  | SimplePath(addr)                 -> (get_vars_addr addr info)
+  | GetPath(mem,add_from,add_to)     -> (get_vars_mem mem info) @@
+                                        (get_vars_addr add_from info) @@
+                                        (get_vars_addr add_to info)
+  | GetPathAt(mem,add_from,add_to,l) -> (get_vars_mem mem info) @@
+                                        (get_vars_addr add_from info) @@
+                                        (get_vars_addr add_to info) @@
+                                        (get_vars_int l info)
+  | PathArrayRd(arr,_)               -> (get_vars_array arr info)
 
 
-and get_vars_mem (m:mem) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+and get_vars_mem (m:mem) (info:varset_info_t) : V.VarSet.t =
   match m with
-    VarMem v             -> (base v) @@
+    VarMem v             -> (info.base v) @@
                                 (match V.parameter v with
                                  | V.Shared -> V.VarSet.empty
-                                 | V.Local t -> base t)
-  | Update(mem,add,cell) -> (get_vars_mem mem base) @@
-                            (get_vars_addr add base) @@
-                            (get_vars_cell cell base)
-  | MemArrayRd(arr,_)    -> (get_vars_array arr base)
+                                 | V.Local t -> info.base t)
+  | Update(mem,add,cell) -> (get_vars_mem mem info) @@
+                            (get_vars_addr add info) @@
+                            (get_vars_cell cell info)
+  | MemArrayRd(arr,_)    -> (get_vars_array arr info)
 
 
-and get_vars_int (i:integer) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+and get_vars_int (i:integer) (info:varset_info_t) : V.VarSet.t =
   match i with
     IntVal _          -> V.VarSet.empty
-  | VarInt v          -> (base v) @@
+  | VarInt v          -> (info.base v) @@
                             (match V.parameter v with
                              | V.Shared -> V.VarSet.empty
-                             | V.Local t -> base t)
-  | IntNeg(i)         -> (get_vars_int i base)
-  | IntAdd(i1,i2)     -> (get_vars_int i1 base) @@ (get_vars_int i2 base)
-  | IntSub(i1,i2)     -> (get_vars_int i1 base) @@ (get_vars_int i2 base)
-  | IntMul(i1,i2)     -> (get_vars_int i1 base) @@ (get_vars_int i2 base)
-  | IntDiv(i1,i2)     -> (get_vars_int i1 base) @@ (get_vars_int i2 base)
-  | IntMod(i1,i2)     -> (get_vars_int i1 base) @@ (get_vars_int i2 base)
-  | IntArrayRd(arr,_) -> (get_vars_array arr base)
-  | IntSetMin(s)      -> (get_vars_setint s base)
-  | IntSetMax(s)      -> (get_vars_setint s base)
-  | CellMax(c)        -> (get_vars_cell c base)
+                             | V.Local t -> info.base t)
+  | IntNeg(i)         -> (get_vars_int i info)
+  | IntAdd(i1,i2)     -> (get_vars_int i1 info) @@ (get_vars_int i2 info)
+  | IntSub(i1,i2)     -> (get_vars_int i1 info) @@ (get_vars_int i2 info)
+  | IntMul(i1,i2)     -> (get_vars_int i1 info) @@ (get_vars_int i2 info)
+  | IntDiv(i1,i2)     -> (get_vars_int i1 info) @@ (get_vars_int i2 info)
+  | IntMod(i1,i2)     -> (get_vars_int i1 info) @@ (get_vars_int i2 info)
+  | IntArrayRd(arr,_) -> (get_vars_array arr info)
+  | IntSetMin(s)      -> (get_vars_setint s info)
+  | IntSetMax(s)      -> (get_vars_setint s info)
+  | CellMax(c)        -> (get_vars_cell c info)
   | HavocLevel        -> V.VarSet.empty
-  | HashCode(e)       -> (get_vars_elem e base)
-  | PairInt p         -> (get_vars_pair p base)
+  | HashCode(e)       -> (get_vars_elem e info)
+  | PairInt p         -> (get_vars_pair p info)
 
 
-and get_vars_pair (p:pair) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+and get_vars_pair (p:pair) (info:varset_info_t) : V.VarSet.t =
   match p with
-    VarPair v          -> (base v) @@
+    VarPair v          -> (info.base v) @@
                             (match V.parameter v with
                              | V.Shared -> V.VarSet.empty
-                             | V.Local t -> base t)
-  | IntTidPair (i,t)   -> (get_vars_int i base) @@ (get_vars_tid t base)
-  | SetPairMin ps      -> (get_vars_setpair ps base)
-  | SetPairMax ps      -> (get_vars_setpair ps base)
-  | PairArrayRd(arr,_) -> (get_vars_array arr base)
+                             | V.Local t -> info.base t)
+  | IntTidPair (i,t)   -> (get_vars_int i info) @@ (get_vars_tid t info)
+  | SetPairMin ps      -> (get_vars_setpair ps info)
+  | SetPairMax ps      -> (get_vars_setpair ps info)
+  | PairArrayRd(arr,_) -> (get_vars_array arr info)
  
 
-and get_vars_atom (a:atom) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+and get_vars_atom (a:atom) (info:varset_info_t) : V.VarSet.t =
   match a with
-    Append(p1,p2,pres)                 -> (get_vars_path p1 base) @@
-                                          (get_vars_path p2 base) @@
-                                          (get_vars_path pres base)
-  | Reach(h,add_from,add_to,p)         -> (get_vars_mem h base) @@
-                                          (get_vars_addr add_from base) @@
-                                          (get_vars_addr add_to base) @@
-                                          (get_vars_path p base)
-  | ReachAt(h,a_from,a_to,l,p)         -> (get_vars_mem h base) @@
-                                          (get_vars_addr a_from base) @@
-                                          (get_vars_addr a_to base) @@
-                                          (get_vars_int l base) @@
-                                          (get_vars_path p base)
-  | OrderList(h,a_from,a_to)           -> (get_vars_mem h base) @@
-                                          (get_vars_addr a_from base) @@
-                                          (get_vars_addr a_to base)
-  | Skiplist(h,s,l,a_from,a_to,elems)  -> (get_vars_mem h base) @@
-                                          (get_vars_set s base) @@
-                                          (get_vars_int l base) @@
-                                          (get_vars_addr a_from base) @@
-                                          (get_vars_addr a_to base) @@
-                                          (get_vars_setelem elems base)
-  | Hashmap(h,s,se,bb,i)               -> (get_vars_mem h base) @@
-                                          (get_vars_set s base) @@
-                                          (get_vars_setelem se base) @@
-                                          (get_vars_bucketarr bb base) @@
-                                          (get_vars_int i base)
-  | In(a,s)                            -> (get_vars_addr a base) @@ (get_vars_set s base)
-  | SubsetEq(s_in,s_out)               -> (get_vars_set s_in base) @@
-                                          (get_vars_set s_out base)
-  | InTh(th,s)                         -> (get_vars_tid th base)@@(get_vars_setth s base)
-  | SubsetEqTh(s_in,s_out)             -> (get_vars_setth s_in base) @@
-                                          (get_vars_setth s_out base)
-  | InInt(i,s)                         -> (get_vars_int i base) @@
-                                          (get_vars_setint s base)
-  | SubsetEqInt(s_in,s_out)            -> (get_vars_setint s_in base) @@
-                                          (get_vars_setint s_out base)
-  | InElem(e,s)                        -> (get_vars_elem e base) @@
-                                          (get_vars_setelem s base)
-  | SubsetEqElem(s_in,s_out)           -> (get_vars_setelem s_in base) @@
-                                          (get_vars_setelem s_out base)
-  | InPair(p,s)                        -> (get_vars_pair p base) @@
-                                          (get_vars_setpair s base)
-  | SubsetEqPair(s_in,s_out)           -> (get_vars_setpair s_in base) @@
-                                          (get_vars_setpair s_out base)
-  | InTidPair(t,s)                     -> (get_vars_tid t base) @@
-                                          (get_vars_setpair s base)
-  | InIntPair(i,s)                     -> (get_vars_int i base) @@
-                                          (get_vars_setpair s base)
-  | Less(i1,i2)                        -> (get_vars_int i1 base) @@ (get_vars_int i2 base)
-  | Greater(i1,i2)                     -> (get_vars_int i1 base) @@ (get_vars_int i2 base)
-  | LessEq(i1,i2)                      -> (get_vars_int i1 base) @@ (get_vars_int i2 base)
-  | GreaterEq(i1,i2)                   -> (get_vars_int i1 base) @@ (get_vars_int i2 base)
-  | LessTid(t1,t2)                     -> (get_vars_tid t1 base) @@ (get_vars_tid t2 base)
-  | LessElem(e1,e2)                    -> (get_vars_elem e1 base) @@ (get_vars_elem e2 base)
-  | GreaterElem(e1,e2)                 -> (get_vars_elem e1 base) @@ (get_vars_elem e2 base)
-  | Eq(exp)                            -> (get_vars_eq exp base)
-  | InEq(exp)                          -> (get_vars_ineq exp base)
-  | UniqueInt(s)                       -> (get_vars_setpair s base)
-  | UniqueTid(s)                       -> (get_vars_setpair s base)
-  | BoolVar v                          -> (base v) @@
+    Append(p1,p2,pres)                 -> (get_vars_path p1 info) @@
+                                          (get_vars_path p2 info) @@
+                                          (get_vars_path pres info)
+  | Reach(h,add_from,add_to,p)         -> (get_vars_mem h info) @@
+                                          (get_vars_addr add_from info) @@
+                                          (get_vars_addr add_to info) @@
+                                          (get_vars_path p info)
+  | ReachAt(h,a_from,a_to,l,p)         -> (get_vars_mem h info) @@
+                                          (get_vars_addr a_from info) @@
+                                          (get_vars_addr a_to info) @@
+                                          (get_vars_int l info) @@
+                                          (get_vars_path p info)
+  | OrderList(h,a_from,a_to)           -> (get_vars_mem h info) @@
+                                          (get_vars_addr a_from info) @@
+                                          (get_vars_addr a_to info)
+  | Skiplist(h,s,l,a_from,a_to,elems)  -> (get_vars_mem h info) @@
+                                          (get_vars_set s info) @@
+                                          (get_vars_int l info) @@
+                                          (get_vars_addr a_from info) @@
+                                          (get_vars_addr a_to info) @@
+                                          (get_vars_setelem elems info)
+  | Hashmap(h,s,se,bb,i)               -> (get_vars_mem h info) @@
+                                          (get_vars_set s info) @@
+                                          (get_vars_setelem se info) @@
+                                          (get_vars_bucketarr bb info) @@
+                                          (get_vars_int i info)
+  | In(a,s)                            -> (get_vars_addr a info) @@ (get_vars_set s info)
+  | SubsetEq(s_in,s_out)               -> (get_vars_set s_in info) @@
+                                          (get_vars_set s_out info)
+  | InTh(th,s)                         -> (get_vars_tid th info)@@(get_vars_setth s info)
+  | SubsetEqTh(s_in,s_out)             -> (get_vars_setth s_in info) @@
+                                          (get_vars_setth s_out info)
+  | InInt(i,s)                         -> (get_vars_int i info) @@
+                                          (get_vars_setint s info)
+  | SubsetEqInt(s_in,s_out)            -> (get_vars_setint s_in info) @@
+                                          (get_vars_setint s_out info)
+  | InElem(e,s)                        -> (get_vars_elem e info) @@
+                                          (get_vars_setelem s info)
+  | SubsetEqElem(s_in,s_out)           -> (get_vars_setelem s_in info) @@
+                                          (get_vars_setelem s_out info)
+  | InPair(p,s)                        -> (get_vars_pair p info) @@
+                                          (get_vars_setpair s info)
+  | SubsetEqPair(s_in,s_out)           -> (get_vars_setpair s_in info) @@
+                                          (get_vars_setpair s_out info)
+  | InTidPair(t,s)                     -> (get_vars_tid t info) @@
+                                          (get_vars_setpair s info)
+  | InIntPair(i,s)                     -> (get_vars_int i info) @@
+                                          (get_vars_setpair s info)
+  | Less(i1,i2)                        -> (get_vars_int i1 info) @@ (get_vars_int i2 info)
+  | Greater(i1,i2)                     -> (get_vars_int i1 info) @@ (get_vars_int i2 info)
+  | LessEq(i1,i2)                      -> (get_vars_int i1 info) @@ (get_vars_int i2 info)
+  | GreaterEq(i1,i2)                   -> (get_vars_int i1 info) @@ (get_vars_int i2 info)
+  | LessTid(t1,t2)                     -> (get_vars_tid t1 info) @@ (get_vars_tid t2 info)
+  | LessElem(e1,e2)                    -> (get_vars_elem e1 info) @@ (get_vars_elem e2 info)
+  | GreaterElem(e1,e2)                 -> (get_vars_elem e1 info) @@ (get_vars_elem e2 info)
+  | Eq(x,y)                            -> if info.instances then begin
+                                            match (x,y) with
+                                            | (ArrayT(ArrayUp _), _) -> get_vars_term x info
+                                            | (_, ArrayT(ArrayUp _)) -> get_vars_term y info
+                                            | _ -> get_vars_eq (x,y) info
+                                          end else
+                                            (get_vars_eq (x,y) info)
+  | InEq(exp)                          -> (get_vars_ineq exp info)
+  | UniqueInt(s)                       -> (get_vars_setpair s info)
+  | UniqueTid(s)                       -> (get_vars_setpair s info)
+  | BoolVar v                          -> (info.base v) @@
                                             (match V.parameter v with
                                              | V.Shared -> V.VarSet.empty
-                                             | V.Local t -> base t)
-  | BoolArrayRd(arr,_)                 -> (get_vars_array arr base)
+                                             | V.Local t -> info.base t)
+  | BoolArrayRd(arr,_)                 -> (get_vars_array arr info)
   | PC (_,t,_)                         -> (match t with
                                            | V.Shared -> V.VarSet.empty
-                                           | V.Local ti -> base ti)
-  | PCUpdate (_,t)                     -> get_vars_tid t base
+                                           | V.Local ti -> info.base ti)
+  | PCUpdate (_,t)                     -> get_vars_tid t info
   | PCRange (_,_,t,_)                  -> (match t with
                                            | V.Shared -> V.VarSet.empty
-                                           | V.Local ti -> base ti)
+                                           | V.Local ti -> info.base ti)
 
 
-and get_vars_eq ((t1,t2):eq) (base:V.t -> V.VarSet.t) : V.VarSet.t =
-  (get_vars_term t1 base) @@ (get_vars_term t2 base)
+and get_vars_eq ((t1,t2):eq) (info:varset_info_t) : V.VarSet.t =
+  (get_vars_term t1 info) @@ (get_vars_term t2 info)
 
 
 and get_vars_ineq ((t1,t2):diseq)
-                   (base:V.t -> V.VarSet.t) : V.VarSet.t =
-  (get_vars_term t1 base) @@ (get_vars_term t2 base)
+                   (info:varset_info_t) : V.VarSet.t =
+  (get_vars_term t1 info) @@ (get_vars_term t2 info)
 
 
 and get_vars_fs () = Formula.make_fold
                        Formula.GenericLiteralFold
-                       (fun base a -> get_vars_atom a base)
+                       (fun info a -> get_vars_atom a info)
                        (fun _ -> V.VarSet.empty)
                        (V.VarSet.union)
 
-and get_vars_formula (phi:formula) (base:V.t -> V.VarSet.t) : V.VarSet.t =
-  Formula.formula_fold (get_vars_fs()) base phi
+and get_vars_formula (phi:formula) (info:varset_info_t) : V.VarSet.t =
+  Formula.formula_fold (get_vars_fs()) info phi
 
-(*
-and get_vars_literal (l:literal)
-                     (base:V.t -> V.VarSet.t) : V.VarSet.t =
-  match l with
-    Atom a    -> get_vars_atom a base
-  | NegAtom a -> get_vars_atom a base
+and get_vars_conj_formula (cf:conjunctive_formula) (info:varset_info_t) : V.VarSet.t =
+  Formula.conjunctive_formula_fold (get_vars_fs()) info cf
 
 
-and get_vars_conjunctive_formula (phi:conjunctive_formula) (base:V.t -> V.VarSet.t) : V.VarSet.t =
-  match phi with
-    FalseConj -> V.VarSet.empty
-  | TrueConj  -> V.VarSet.empty
-  | Conj ls   -> List.fold_left (fun xs l -> (get_vars_literal l base)@@xs) V.VarSet.empty ls
 
-
-and get_vars_formula (phi:formula) (base:V.t -> V.VarSet.t) : V.VarSet.t =
-  match phi with
-    Literal(lit)          -> (get_vars_literal lit base)
-  | True                  -> V.VarSet.empty
-  | False                 -> V.VarSet.empty
-  | And(f1,f2)            -> (get_vars_formula f1 base) @@
-                             (get_vars_formula f2 base)
-  | Or(f1,f2)             -> (get_vars_formula f1 base) @@
-                             (get_vars_formula f2 base)
-  | Not(f)                -> (get_vars_formula f base)
-  | Implies(f1,f2)        -> (get_vars_formula f1 base) @@
-                             (get_vars_formula f2 base)
-  | Iff (f1,f2)           -> (get_vars_formula f1 base) @@
-                             (get_vars_formula f2 base)
-*)
 
 
 (* Exported vars functions *)
 
-let get_vars_as_set (phi:formula) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+let get_vars_as_set (phi:formula) (info:varset_info_t) : V.VarSet.t =
   let var_set = V.VarSet.fold (fun v set ->
-                  V.VarSet.add (V.unprime v) set
-                ) (get_vars_formula phi base) (V.VarSet.empty)
+                  let v' = if info.unprime then (V.unprime v) else v in
+                  V.VarSet.add v' set
+                ) (get_vars_formula phi info) (V.VarSet.empty)
   in
     var_set
 
 
-let get_vars_as_set_unmodified (phi:formula) (base:V.t -> V.VarSet.t) : V.VarSet.t =
+let get_vars_as_set_from_conj (cf:conjunctive_formula)
+                              (info:varset_info_t) : V.VarSet.t =
+  let var_set = V.VarSet.fold (fun v set ->
+                  let v' = if info.unprime then (V.unprime v) else v in
+                  V.VarSet.add v' set
+                ) (get_vars_conj_formula cf info) (V.VarSet.empty)
+  in
+    var_set
+
+
+
+let get_vars_as_set_unmodified (phi:formula) (info:varset_info_t) : V.VarSet.t =
   let var_set = V.VarSet.fold (fun v set ->
                   V.VarSet.add v set
-                ) (get_vars_formula phi base) (V.VarSet.empty)
+                ) (get_vars_formula phi info) (V.VarSet.empty)
   in
     var_set
 
 
-let get_vars (phi:formula) (base:V.t -> V.VarSet.t) : V.t list =
-  V.VarSet.elements (get_vars_as_set phi base)
+let get_vars (phi:formula) (info:varset_info_t) : V.t list =
+  V.VarSet.elements (get_vars_as_set phi info)
 
 
 let filtering_condition (f:V.t -> bool) (v:V.t) : V.VarSet.t =
@@ -3040,27 +3044,51 @@ let filtering_condition (f:V.t -> bool) (v:V.t) : V.VarSet.t =
 
 
 let primed_vars (f:formula) : V.t list =
-  get_vars f (filtering_condition V.is_primed)
+  get_vars f {instances = true; base = filtering_condition V.is_primed; unprime = true;}
 
 
 let all_vars (f:formula) : V.t list =
-  get_vars f (fun v -> V.VarSet.singleton v)
+  get_vars f {instances = true; base = (fun v -> V.VarSet.singleton v); unprime = true;}
 
 
 let all_vars_as_set (f:formula) : V.VarSet.t =
-  get_vars_as_set f (fun v -> V.VarSet.singleton v)
+  get_vars_as_set f {instances = true; base = (fun v -> V.VarSet.singleton v); unprime = true;}
+
+
+let all_vars_as_set_from_conj (cf:conjunctive_formula) : V.VarSet.t =
+  get_vars_as_set_from_conj cf {instances = true; base = (fun v -> V.VarSet.singleton v); unprime = true;}
+
+
+let all_vars_as_set_unmodified (f:formula) : V.VarSet.t =
+  get_vars_as_set f {instances = true; base = (fun v -> V.VarSet.singleton v); unprime = false;}
+
+
+let all_vars_as_set_from_conj_unmodified (cf:conjunctive_formula) : V.VarSet.t =
+  get_vars_as_set_from_conj cf {instances = true; base = (fun v -> V.VarSet.singleton v); unprime = false;}
 
 
 let all_vars_occurrences_as_set (f:formula) : V.VarSet.t =
-  get_vars_as_set_unmodified f (fun v -> V.VarSet.singleton v)
+  get_vars_as_set_unmodified f {instances = true; base = (fun v -> V.VarSet.singleton v); unprime = true;}
 
 
 let all_local_vars (f:formula) : V.t list =
-  get_vars f (filtering_condition V.is_local)
+  get_vars f {instances = true; base = (filtering_condition V.is_local); unprime = true;}
 
 
 let all_global_vars (f:formula) : V.t list =
-  get_vars f (filtering_condition V.is_global)
+  get_vars f {instances = true; base = (filtering_condition V.is_global); unprime = true;}
+
+
+let varset_of_sort (phi:formula) (s:sort) : V.VarSet.t =
+  V.varset_of_sort (all_vars_as_set phi) s
+
+
+let varset_of_sort_from_literal (l:literal) (s:sort) : V.VarSet.t =
+  V.varset_of_sort (all_vars_as_set (F.Literal l)) s
+
+
+let varset_of_sort_from_conj (cf:conjunctive_formula) (s:sort) : V.VarSet.t =
+  V.varset_of_sort (all_vars_as_set_from_conj_unmodified cf) s
 
 
 (* Primes in phi the variables modified in ante *)
@@ -3069,6 +3097,7 @@ let prime_modified (rho_list:formula list) (phi:formula) : formula =
   let base_f = fun v -> if V.is_primed v then
                           V.VarSet.singleton v
                         else V.VarSet.empty in
+  let info = {instances = true; base = base_f; unprime = true;} in
   let rec analyze_fs () = Formula.make_fold
                             Formula.GenericLiteralFold
                             (fun _ a -> analyze_atom a)
@@ -3087,8 +3116,8 @@ let prime_modified (rho_list:formula list) (phi:formula) : formula =
          V.VarSet.empty)
     | PC (_,V.Local v, true)
     | PCUpdate (_, VarTh v)
-    | PCRange (_,_,V.Local v,true) -> (get_vars_atom a base_f, V.VarSet.singleton v)
-    | _ -> (get_vars_atom a base_f, V.VarSet.empty) in
+    | PCRange (_,_,V.Local v,true) -> (get_vars_atom a info, V.VarSet.singleton v)
+    | _ -> (get_vars_atom a info, V.VarSet.empty) in
   let unprime_set vSet = V.VarSet.fold (fun v set ->
                            V.VarSet.add (V.unprime v) set
                          ) vSet V.VarSet.empty in
@@ -7876,5 +7905,654 @@ let gen_fresh_tid_not_in (tSet:ThreadSet.t) (xs:formula list) : tid =
                   ThreadSet.union set (voc phi)
                 ) tSet xs in
   gen_fresh_tid phi_voc
+
+
+let get_termset_atom (a:atom) : TermSet.t =
+  let add_list = List.fold_left (fun s e -> TermSet.add e s) TermSet.empty in
+  match a with
+  | Append(p1,p2,p3)         -> add_list [PathT p1; PathT p2; PathT p3]
+  | Reach(m,a1,a2,p)         -> add_list [MemT m;AddrT a1;AddrT a2;PathT p]
+  | ReachAt(m,a1,a2,l,p)     -> add_list [MemT m;AddrT a1;AddrT a2;IntT l;PathT p]
+  | OrderList(m,a1,a2)       -> add_list [MemT m; AddrT a1; AddrT a2]
+  | Skiplist(m,s,l,a1,a2,es) -> add_list [MemT m; SetT s; IntT l; AddrT a1; AddrT a2; SetElemT es]
+  | Hashmap(m,s,se,bb,i)     -> add_list [MemT m; SetT s; SetElemT se;
+  BucketArrayT bb; IntT i]
+  | In(a,s)                  -> add_list [AddrT a; SetT s]
+  | SubsetEq(s1,s2)          -> add_list [SetT s1; SetT s2]
+  | InTh(th,st)              -> add_list [TidT th; SetThT st]
+  | SubsetEqTh(st1,st2)      -> add_list [SetThT st1; SetThT st2]
+  | InInt(i,si)              -> add_list [IntT i; SetIntT si]
+  | SubsetEqInt(si1,si2)     -> add_list [SetIntT si1; SetIntT si2]
+  | InElem(e,se)             -> add_list [ElemT e; SetElemT se]
+  | SubsetEqElem(se1,se2)    -> add_list [SetElemT se1; SetElemT se2]
+  | InPair (p,sp)            -> add_list [PairT p; SetPairT sp]
+  | SubsetEqPair (sp1,sp2)   -> add_list [SetPairT sp1; SetPairT sp2]
+  | InTidPair (t,sp)         -> add_list [TidT t; SetPairT sp]
+  | InIntPair (i,sp)         -> add_list [IntT i; SetPairT sp]
+
+  | Less (i,j)               -> add_list [IntT i; IntT j]
+  | Greater (i,j)            -> add_list [IntT i; IntT j]
+  | LessEq (i,j)             -> add_list [IntT i; IntT j]
+  | GreaterEq (i,j)          -> add_list [IntT i; IntT j]
+  | LessTid(t1,t2)           -> add_list [TidT t1; TidT t2]
+  | LessElem(e1,e2)          -> add_list [ElemT e1; ElemT e2]
+  | GreaterElem(e1,e2)       -> add_list [ElemT e1; ElemT e2]
+  | Eq((x,y))                -> add_list [x;y]
+  | InEq((x,y))              -> add_list [x;y]
+  | UniqueInt (sp)           -> add_list [SetPairT sp]
+  | UniqueTid (sp)           -> add_list [SetPairT sp]
+  | BoolVar v                -> add_list [VarT v]
+  | BoolArrayRd (arr,t)      -> add_list [ArrayT arr; TidT t]
+  | PC(_,th,_)               -> (match th with
+                                 | V.Shared  -> TermSet.empty
+                                 | V.Local t -> add_list [TidT (VarTh t)])
+  | PCUpdate (_,th)          -> add_list [TidT th]
+  | PCRange(_,_,th,_)        -> (match th with
+                                 | V.Shared  -> TermSet.empty
+                                 | V.Local t -> add_list [TidT (VarTh t)])
+
+let termset_fs = Formula.make_fold
+                   Formula.GenericLiteralFold
+                   (fun _ a -> get_termset_atom a)
+                   (fun _ -> TermSet.empty)
+                   (TermSet.union)
+
+let get_termset_from_conjformula (cf:conjunctive_formula) : TermSet.t =
+  Formula.conjunctive_formula_fold termset_fs () cf
+
+let get_termset_from_formula (phi:formula) : TermSet.t =
+  Formula.formula_fold termset_fs () phi
+
+
+let termset (phi:formula) : TermSet.t =
+  get_termset_from_formula phi
+
+
+let termset_from_conj (cf:conjunctive_formula) : TermSet.t =
+  get_termset_from_conjformula cf
+
+
+
+(************************)
+(**                    **)
+(**  Term replacement  **)
+(**                    **)
+(************************)
+
+
+let check_well_defined_replace_table (tbl:(term, term) Hashtbl.t) : unit =
+  Hashtbl.iter (fun a b ->
+    match (a,b) with
+    | (VarT _,  VarT _)                -> ()
+    | (SetT _,  SetT _)                -> ()
+    | (ElemT _, ElemT _)               -> ()
+    | (TidT _, TidT _)                 -> ()
+    | (AddrT _, AddrT _)               -> ()
+    | (CellT _, CellT _)               -> ()
+    | (SetThT _, SetThT _)             -> ()
+    | (SetIntT _, SetIntT _)           -> ()
+    | (SetElemT _, SetElemT _)         -> ()
+    | (SetPairT _, SetPairT _)         -> ()
+    | (PathT _, PathT _)               -> ()
+    | (MemT _, MemT _)                 -> ()
+    | (IntT _, IntT _)                 -> ()
+    | (PairT _, PairT _)               -> ()
+    | (ArrayT _, ArrayT _)             -> ()
+    | (AddrArrayT _, AddrArrayT _)     -> ()
+    | (TidArrayT _, TidArrayT _)       -> ()
+    | (BucketArrayT _, BucketArrayT _) -> ()
+    | (MarkT _, MarkT _)               -> ()
+    | (BucketT _, BucketT _)           -> ()
+    | (LockT _, LockT _)               -> ()
+    | (LockArrayT _, LockArrayT _)     -> ()
+    | _ -> raise(Incompatible_replacement(a,b))
+  ) tbl
+
+
+let rec replace_terms_in_vars (tbl:(term,term) Hashtbl.t) (v:V.t) : V.t =
+  try
+    match Hashtbl.find tbl (VarT v) with
+    | VarT v -> v
+    | _ -> assert false
+  with _ -> v
+
+
+and replace_terms_term (tbl:(term,term) Hashtbl.t) (expr:term) : term =
+  match expr with
+    VarT(v)           -> VarT         (replace_terms_in_vars tbl v)
+  | SetT(set)         -> SetT         (replace_terms_set tbl set)
+  | ElemT(elem)       -> ElemT        (replace_terms_elem tbl elem)
+  | TidT(th)          -> TidT         (replace_terms_tid tbl th)
+  | AddrT(addr)       -> AddrT        (replace_terms_addr tbl addr)
+  | CellT(cell)       -> CellT        (replace_terms_cell tbl cell)
+  | SetThT(setth)     -> SetThT       (replace_terms_setth tbl setth)
+  | SetIntT(setint)   -> SetIntT      (replace_terms_setint tbl setint)
+  | SetElemT(setelem) -> SetElemT     (replace_terms_setelem tbl setelem)
+  | SetPairT(setpair) -> SetPairT     (replace_terms_setpair tbl setpair)
+  | PathT(path)       -> PathT        (replace_terms_path tbl path)
+  | MemT(mem)         -> MemT         (replace_terms_mem tbl mem)
+  | IntT(i)           -> IntT         (replace_terms_int tbl i)
+  | PairT(p)          -> PairT        (replace_terms_pair tbl p)
+  | ArrayT(arr)       -> ArrayT       (replace_terms_arrays tbl arr)
+  | AddrArrayT(arr)   -> AddrArrayT   (replace_terms_addrarr tbl arr)
+  | TidArrayT(arr)    -> TidArrayT    (replace_terms_tidarr tbl arr)
+  | BucketArrayT(arr) -> BucketArrayT (replace_terms_bucketarr tbl arr)
+  | MarkT(m)          -> MarkT        (replace_terms_mark tbl m)
+  | BucketT(b)        -> BucketT      (replace_terms_bucket tbl b)
+  | LockT(l)          -> LockT        (replace_terms_lock tbl l)
+  | LockArrayT(arr)   -> LockArrayT   (replace_terms_lockarr tbl arr)
+
+
+
+and replace_terms_addrarr (tbl:(term,term) Hashtbl.t) (arr:addrarr) : addrarr =
+  try
+    match Hashtbl.find tbl (AddrArrayT arr) with | AddrArrayT arr' -> arr' | _ -> assert false
+  with _ -> begin
+    match arr with
+      VarAddrArray v       -> VarAddrArray (replace_terms_in_vars tbl v)
+        (*TODO: Fix open array case for array variables *)
+    | AddrArrayUp(arr,i,a) -> AddrArrayUp(replace_terms_addrarr tbl arr,
+                                          replace_terms_int tbl i,
+                                          replace_terms_addr tbl a)
+    | CellArr c            -> CellArr (replace_terms_cell tbl c)
+  end
+
+
+and replace_terms_tidarr (tbl:(term,term) Hashtbl.t) (arr:tidarr) : tidarr =
+  try
+    match Hashtbl.find tbl (TidArrayT arr) with | TidArrayT arr' -> arr' | _ -> assert false
+  with _ -> begin
+    match arr with
+      VarTidArray v       -> VarTidArray (replace_terms_in_vars tbl v)
+        (*TODO: Fix open array case for array variables *)
+    | TidArrayUp(arr,i,t) -> TidArrayUp(replace_terms_tidarr tbl arr,
+                                        replace_terms_int tbl i,
+                                        replace_terms_tid tbl t)
+    | CellTids c            -> CellTids (replace_terms_cell tbl c)
+  end
+
+
+and replace_terms_set (tbl:(term,term) Hashtbl.t) (e:set) : set =
+  try
+    match Hashtbl.find tbl (SetT e) with | SetT e' -> e' | _ -> assert false
+  with _ -> begin
+    match e with
+      VarSet v             -> VarSet (replace_terms_in_vars tbl v)
+    | EmptySet             -> EmptySet
+    | Singl(addr)          -> Singl(replace_terms_addr tbl addr)
+    | Union(s1,s2)         -> Union(replace_terms_set tbl s1,
+                                    replace_terms_set tbl s2)
+    | Intr(s1,s2)          -> Intr(replace_terms_set tbl s1,
+                                   replace_terms_set tbl s2)
+    | Setdiff(s1,s2)       -> Setdiff(replace_terms_set tbl s1,
+                                      replace_terms_set tbl s2)
+    | PathToSet(path)      -> PathToSet(replace_terms_path tbl path)
+    | AddrToSet(mem,a)     -> AddrToSet(replace_terms_mem tbl mem,
+                                        replace_terms_addr tbl a)
+    | AddrToSetAt(mem,a,l) -> AddrToSetAt(replace_terms_mem tbl mem,
+                                          replace_terms_addr tbl a,
+                                          replace_terms_int tbl l)
+    | SetArrayRd (arr,t)   -> SetArrayRd (replace_terms_arrays tbl arr,
+                                          replace_terms_tid tbl t)
+    | BucketRegion (b)     -> BucketRegion (replace_terms_bucket tbl b)
+  end
+
+
+and replace_terms_addr (tbl:(term,term) Hashtbl.t) (a:addr) : addr =
+  try
+    match Hashtbl.find tbl (AddrT a) with | AddrT a' -> a' | _ -> assert false
+  with _ -> begin
+    match a with
+      VarAddr v                 -> VarAddr (replace_terms_in_vars tbl v)
+    | Null                      -> Null
+    | Next (c)                  -> Next (replace_terms_cell tbl c)
+    | NextAt (c,i)              -> NextAt (replace_terms_cell tbl c,
+                                           replace_terms_int tbl i)
+    | ArrAt(cell,l)             -> ArrAt(replace_terms_cell tbl cell,
+                                          replace_terms_int tbl l)
+    | FirstLocked (m,p)         -> FirstLocked (replace_terms_mem tbl m,
+                                                replace_terms_path tbl p)
+    | FirstLockedAt (m,p,i)     -> FirstLockedAt (replace_terms_mem tbl m,
+                                                  replace_terms_path tbl p,
+                                                  replace_terms_int tbl i)
+    | LastLocked (m,p)          -> LastLocked (replace_terms_mem tbl m,
+                                               replace_terms_path tbl p)
+    | AddrArrayRd (arr,t)       -> AddrArrayRd (replace_terms_arrays tbl arr,
+                                                replace_terms_tid tbl t)
+    | AddrArrRd (aa,i)          -> AddrArrRd (replace_terms_addrarr tbl aa,
+                                              replace_terms_int tbl i)
+    | BucketInit (b)            -> BucketInit (replace_terms_bucket tbl b)
+    | BucketEnd (b)             -> BucketEnd (replace_terms_bucket tbl b)
+  end
+
+
+and replace_terms_elem (tbl:(term,term) Hashtbl.t) (e:elem) : elem =
+  try
+    match Hashtbl.find tbl (ElemT e) with | ElemT e' -> e' | _ -> assert false
+  with _ -> begin
+    match e with
+      VarElem v            -> VarElem (replace_terms_in_vars tbl v)
+    | CellData(cell)       -> CellData(replace_terms_cell tbl cell)
+
+    | ElemArrayRd (arr,t)  -> ElemArrayRd (replace_terms_arrays tbl arr,
+                                           replace_terms_tid tbl t)
+    | HavocListElem        -> HavocListElem
+    | HavocSkiplistElem    -> HavocSkiplistElem
+    | LowestElem           -> LowestElem
+    | HighestElem          -> HighestElem
+  end
+
+
+and replace_terms_tid (tbl:(term,term) Hashtbl.t) (th:tid) : tid =
+  try
+    match Hashtbl.find tbl (TidT th) with | TidT th' -> th' | _ -> assert false
+  with _ -> begin
+    match th with
+      VarTh v              -> VarTh (replace_terms_in_vars tbl v)
+    | NoTid                -> NoTid
+    | CellLockId(cell    ) -> CellLockId(replace_terms_cell tbl cell)
+    | CellLockIdAt(cell,l) -> CellLockIdAt(replace_terms_cell tbl cell,
+                                           replace_terms_int tbl l)
+    | TidArrayRd(arr,t)    -> TidArrayRd(replace_terms_arrays tbl arr,
+                                         replace_terms_tid tbl t)
+    | TidArrRd(arr,l)      -> TidArrRd(replace_terms_tidarr tbl arr,
+                                       replace_terms_int tbl l)
+    | PairTid (p)          -> PairTid (replace_terms_pair tbl p)
+    | BucketTid (b)        -> BucketTid (replace_terms_bucket tbl b)
+    | LockId (l)           -> LockId (replace_terms_lock tbl l)
+  end
+
+
+and replace_terms_cell (tbl:(term,term) Hashtbl.t) (c:cell) : cell =
+  try
+    match Hashtbl.find tbl (CellT c) with | CellT c' -> c' | _ -> assert false
+  with _ -> begin
+    match c with
+      VarCell v                 -> VarCell (replace_terms_in_vars tbl v)
+    | Error                     -> Error
+    | MkCell(e,a,t)             -> MkCell(replace_terms_elem tbl e,
+                                          replace_terms_addr tbl a,
+                                          replace_terms_tid tbl t)
+    | MkCellMark(e,a,t,m)       -> MkCellMark(replace_terms_elem tbl e,
+                                              replace_terms_addr tbl a,
+                                              replace_terms_tid tbl t,
+                                              replace_terms_mark tbl m)
+    | MkSLKCell(e,xs,ts)        -> MkSLKCell(replace_terms_elem tbl e,
+                                             List.map (replace_terms_addr tbl) xs,
+                                             List.map (replace_terms_tid tbl) ts)
+    | MkSLCell(e,aa,ta,l)       -> MkSLCell(replace_terms_elem tbl e,
+                                            replace_terms_addrarr tbl aa,
+                                            replace_terms_tidarr tbl ta,
+                                            replace_terms_int tbl l)
+    | CellLock (c,t)            -> CellLock (replace_terms_cell tbl c,
+                                             replace_terms_tid tbl t)
+    | CellLockAt(cell,l, t)     -> CellLockAt(replace_terms_cell tbl cell,
+                                              replace_terms_int tbl l,
+                                              replace_terms_tid tbl t)
+    | CellUnlock (c)            -> CellUnlock (replace_terms_cell tbl c)
+    | CellUnlockAt(cell,l)      -> CellUnlockAt(replace_terms_cell tbl cell,
+                                                replace_terms_int tbl l)
+    | CellAt(mem,addr)          -> CellAt(replace_terms_mem tbl mem,
+                                          replace_terms_addr tbl addr)
+    | CellArrayRd (arr,t)       -> CellArrayRd (replace_terms_arrays tbl arr,
+                                                replace_terms_tid tbl t)
+    | UpdCellAddr (c,i,a)       -> UpdCellAddr (replace_terms_cell tbl c,
+                                                replace_terms_int tbl i,
+                                                replace_terms_addr tbl a)
+
+  end
+
+
+and replace_terms_setth (tbl:(term,term) Hashtbl.t) (s:setth) : setth =
+  try
+    match Hashtbl.find tbl (SetThT s) with | SetThT s' -> s' | _ -> assert false
+  with _ -> begin
+    match s with
+      VarSetTh v            -> VarSetTh (replace_terms_in_vars tbl v)
+    | EmptySetTh            -> EmptySetTh
+    | SinglTh(th)           -> SinglTh(replace_terms_tid tbl th)
+    | UnionTh(s1,s2)        -> UnionTh(replace_terms_setth tbl s1,
+                                       replace_terms_setth tbl s2)
+    | IntrTh(s1,s2)         -> IntrTh(replace_terms_setth tbl s1,
+                                      replace_terms_setth tbl s2)
+    | SetdiffTh(s1,s2)      -> SetdiffTh(replace_terms_setth tbl s1,
+                                         replace_terms_setth tbl s2)
+
+
+    | SetThArrayRd (arr,t)  -> SetThArrayRd (replace_terms_arrays tbl arr,
+                                             replace_terms_tid tbl t)
+    | LockSet (m,p)         -> LockSet (replace_terms_mem tbl m,
+                                        replace_terms_path tbl p)
+  end
+
+
+and replace_terms_setint (tbl:(term,term) Hashtbl.t) (s:setint) : setint =
+  try
+    match Hashtbl.find tbl (SetIntT s) with | SetIntT s' -> s' | _ -> assert false
+  with _ -> begin
+    match s with
+      VarSetInt v            -> VarSetInt (replace_terms_in_vars tbl v)
+    | EmptySetInt            -> EmptySetInt
+    | SinglInt(i)            -> SinglInt(replace_terms_int tbl i)
+    | UnionInt(s1,s2)        -> UnionInt(replace_terms_setint tbl s1,
+                                         replace_terms_setint tbl s2)
+    | IntrInt(s1,s2)         -> IntrInt(replace_terms_setint tbl s1,
+                                        replace_terms_setint tbl s2)
+    | SetdiffInt(s1,s2)      -> SetdiffInt(replace_terms_setint tbl s1,
+                                           replace_terms_setint tbl s2)
+    | SetLower(s,i)          -> SetLower(replace_terms_setint tbl s,
+                                         replace_terms_int tbl i)
+    | SetIntArrayRd(aa,t)    -> SetIntArrayRd(replace_terms_arrays tbl aa,
+                                              replace_terms_tid tbl t)
+  end
+
+
+
+and replace_terms_setelem (tbl:(term,term) Hashtbl.t) (s:setelem) : setelem =
+  try
+    match Hashtbl.find tbl (SetElemT s) with | SetElemT s' -> s' | _ -> assert false
+  with _ -> begin
+    match s with
+      VarSetElem v            -> VarSetElem (replace_terms_in_vars tbl v)
+    | EmptySetElem            -> EmptySetElem
+    | SinglElem(e)            -> SinglElem(replace_terms_elem tbl e)
+    | UnionElem(s1,s2)        -> UnionElem(replace_terms_setelem tbl s1,
+                                           replace_terms_setelem tbl s2)
+    | IntrElem(s1,s2)         -> IntrElem(replace_terms_setelem tbl s1,
+                                          replace_terms_setelem tbl s2)
+    | SetdiffElem(s1,s2)      -> SetdiffElem(replace_terms_setelem tbl s1,
+                                             replace_terms_setelem tbl s2)
+    | SetToElems(s,m)         -> SetToElems(replace_terms_set tbl s, replace_terms_mem tbl m)
+    | SetElemArrayRd(arr,t)   -> SetElemArrayRd(replace_terms_arrays tbl arr,
+                                                replace_terms_tid tbl t)
+  end
+
+
+and replace_terms_setpair (tbl:(term,term) Hashtbl.t) (s:setpair) : setpair =
+  try
+    match Hashtbl.find tbl (SetPairT s) with | SetPairT s' -> s' | _ -> assert false
+  with _ -> begin
+    match s with
+      VarSetPair v            -> VarSetPair (replace_terms_in_vars tbl v)
+    | EmptySetPair            -> EmptySetPair
+    | SinglPair(p)            -> SinglPair(replace_terms_pair tbl p)
+    | UnionPair(s1,s2)        -> UnionPair(replace_terms_setpair tbl s1,
+                                           replace_terms_setpair tbl s2)
+    | IntrPair(s1,s2)         -> IntrPair(replace_terms_setpair tbl s1,
+                                          replace_terms_setpair tbl s2)
+    | SetdiffPair(s1,s2)      -> SetdiffPair(replace_terms_setpair tbl s1,
+                                             replace_terms_setpair tbl s2)
+    | LowerPair(s,i)          -> LowerPair(replace_terms_setpair tbl s,
+                                           replace_terms_int tbl i)
+    | SetPairArrayRd(aa,t)    -> SetPairArrayRd(replace_terms_arrays tbl aa,
+                                                replace_terms_tid tbl t)
+  end
+
+
+and replace_terms_path (tbl:(term,term) Hashtbl.t) (path:path) : path =
+  try
+    match Hashtbl.find tbl (PathT path) with | PathT p' -> p' | _ -> assert false
+  with _ -> begin
+    match path with
+      VarPath v                        -> VarPath (replace_terms_in_vars tbl v)
+    | Epsilon                          -> Epsilon
+    | SimplePath(addr)                 -> SimplePath(replace_terms_addr tbl addr)
+    | GetPath(mem,add_from,add_to)     -> GetPath(replace_terms_mem tbl mem,
+                                                  replace_terms_addr tbl add_from,
+                                                  replace_terms_addr tbl add_to)
+    | GetPathAt(mem,add_from,add_to,l) -> GetPathAt(replace_terms_mem tbl mem,
+                                                    replace_terms_addr tbl add_from,
+                                                    replace_terms_addr tbl add_to,
+                                                    replace_terms_int tbl l)
+    | PathArrayRd(aa,t)                -> PathArrayRd(replace_terms_arrays tbl aa,
+                                                      replace_terms_tid tbl t)
+  end
+
+
+and replace_terms_mem (tbl:(term,term) Hashtbl.t) (m:mem) : mem =
+  try
+    match Hashtbl.find tbl (MemT m) with | MemT m' -> m' | _ -> assert false
+  with _ -> begin
+    match m with
+      VarMem v             -> VarMem (replace_terms_in_vars tbl v)
+    | Update(mem,add,cell) -> Update(replace_terms_mem tbl mem,
+                                     replace_terms_addr tbl add,
+                                     replace_terms_cell tbl cell)
+    | MemArrayRd(aa,t)     -> MemArrayRd(replace_terms_arrays tbl aa,
+                                         replace_terms_tid tbl t)
+  end
+
+
+and replace_terms_int (tbl:(term,term) Hashtbl.t) (i:integer) : integer =
+  try
+    match Hashtbl.find tbl (IntT i) with | IntT j -> j | _ -> assert false
+  with _ -> begin
+    match i with
+      IntVal(i)           -> IntVal(i)
+    | VarInt v            -> VarInt (replace_terms_in_vars tbl v)
+    | IntNeg(i)           -> IntNeg(replace_terms_int tbl i)
+    | IntAdd(i1,i2)       -> IntAdd(replace_terms_int tbl i1,
+                                    replace_terms_int tbl i2)
+    | IntSub(i1,i2)       -> IntSub(replace_terms_int tbl i1,
+                                    replace_terms_int tbl i2)
+    | IntMul(i1,i2)       -> IntMul(replace_terms_int tbl i1,
+                                    replace_terms_int tbl i2)
+    | IntDiv(i1,i2)       -> IntDiv(replace_terms_int tbl i1,
+                                    replace_terms_int tbl i2)
+    | IntMod(i1,i2)       -> IntMod(replace_terms_int tbl i1,
+                                    replace_terms_int tbl i2)
+    | IntArrayRd(aa,t)    -> IntArrayRd(replace_terms_arrays tbl aa,
+                                        replace_terms_tid tbl t)
+    | IntSetMin(si)       -> IntSetMin(replace_terms_setint tbl si)
+    | IntSetMax(si)       -> IntSetMax(replace_terms_setint tbl si)
+    | CellMax(c)          -> CellMax(replace_terms_cell tbl c)
+    | HavocLevel          -> HavocLevel
+    | HashCode(e)         -> HashCode(replace_terms_elem tbl e)
+    | PairInt(p)          -> PairInt(replace_terms_pair tbl p)    
+  end
+
+
+and replace_terms_pair (tbl:(term,term) Hashtbl.t) (p:pair) : pair =
+  try
+    match Hashtbl.find tbl (PairT p) with | PairT q -> q | _ -> assert false
+  with _ -> begin
+    match p with
+      VarPair v           -> VarPair (replace_terms_in_vars tbl v)
+    | IntTidPair (i,t)    -> IntTidPair (replace_terms_int tbl i,
+                                       replace_terms_tid tbl t)
+    | SetPairMin (sp)     -> SetPairMin (replace_terms_setpair tbl sp)
+    | SetPairMax (sp)     -> SetPairMax (replace_terms_setpair tbl sp)
+    | PairArrayRd (arr,t) -> PairArrayRd (replace_terms_arrays tbl arr,
+                                          replace_terms_tid tbl t)
+  end
+
+
+and replace_terms_arrays (tbl:(term,term) Hashtbl.t) (arr:arrays) : arrays =
+  try
+    match Hashtbl.find tbl (ArrayT arr) with | ArrayT arr -> arr | _ -> assert false
+  with _ -> begin
+    match arr with
+      VarArray v             -> VarArray (replace_terms_in_vars tbl v)
+    | ArrayUp (aa,t,Term te) -> ArrayUp (replace_terms_arrays tbl aa,
+                                         replace_terms_tid tbl t,
+                                         Term (replace_terms_term tbl te))
+    | ArrayUp (aa,t,Formula _)  -> arr
+  end
+
+
+and replace_terms_bucketarr (tbl:(term,term) Hashtbl.t) (arr:bucketarr) : bucketarr =
+  try
+    match Hashtbl.find tbl (BucketArrayT arr) with | BucketArrayT arr -> arr | _ -> assert false
+  with _ -> begin
+    match arr with
+      VarBucketArray v       -> VarBucketArray (replace_terms_in_vars tbl v)
+    | BucketArrayUp (bb,i,b) -> BucketArrayUp (replace_terms_bucketarr tbl bb,
+                                               replace_terms_int tbl i,
+                                               replace_terms_bucket tbl b)
+  end
+
+
+and replace_terms_mark (tbl:(term,term) Hashtbl.t) (m:mark) : mark =
+  try
+    match Hashtbl.find tbl (MarkT m) with | MarkT m -> m | _ -> assert false
+  with _ -> begin
+    match m with
+      VarMark v       -> VarMark (replace_terms_in_vars tbl v)
+    | MarkTrue        -> MarkTrue
+    | MarkFalse       -> MarkFalse
+    | Marked (c)      -> Marked (replace_terms_cell tbl c)
+  end
+
+
+and replace_terms_bucket (tbl:(term,term) Hashtbl.t) (b:bucket) : bucket =
+  try
+    match Hashtbl.find tbl (BucketT b) with | BucketT b -> b | _ -> assert false
+  with _ -> begin
+    match b with
+      VarBucket v        -> VarBucket (replace_terms_in_vars tbl v)
+    | MkBucket (a,e,s,t) -> MkBucket (replace_terms_addr tbl a,
+                                      replace_terms_addr tbl e,
+                                      replace_terms_set tbl s,
+                                      replace_terms_tid tbl t)
+    | BucketArrRd (bb,i) -> BucketArrRd (replace_terms_bucketarr tbl bb,
+                                         replace_terms_int tbl i)
+  end
+
+
+and replace_terms_lock (tbl:(term,term) Hashtbl.t) (l:lock) : lock =
+  try
+    match Hashtbl.find tbl (LockT l) with | LockT l -> l | _ -> assert false
+  with _ -> begin
+    match l with
+      VarLock v        -> VarLock (replace_terms_in_vars tbl v)
+    | LLock (l,t) -> LLock (replace_terms_lock tbl l,
+                            replace_terms_tid tbl t)
+    | LUnlock (l) -> LUnlock (replace_terms_lock tbl l)
+    | LockArrRd (ll,i) -> LockArrRd (replace_terms_lockarr tbl ll,
+                                     replace_terms_int tbl i)
+  end
+
+
+and replace_terms_lockarr (tbl:(term,term) Hashtbl.t) (arr:lockarr) : lockarr =
+  try
+    match Hashtbl.find tbl (LockArrayT arr) with | LockArrayT arr -> arr | _ -> assert false
+  with _ -> begin
+    match arr with
+      VarLockArray v       -> VarLockArray (replace_terms_in_vars tbl v)
+    | LockArrayUp (ll,i,l) -> LockArrayUp (replace_terms_lockarr tbl ll,
+                                           replace_terms_int tbl i,
+                                           replace_terms_lock tbl l)
+  end
+
+
+and replace_terms_atom (tbl:(term,term) Hashtbl.t) (a:atom) : atom =
+  match a with
+    Append(p1,p2,pres)                 -> Append(replace_terms_path tbl p1,
+                                                 replace_terms_path tbl p2,
+                                                 replace_terms_path tbl pres)
+  | Reach(h,a_from,a_to,p)             -> Reach(replace_terms_mem tbl h,
+                                                replace_terms_addr tbl a_from,
+                                                replace_terms_addr tbl a_to,
+                                                replace_terms_path tbl p)
+  | ReachAt(h,a_from,a_to,l,p)         -> ReachAt(replace_terms_mem tbl h,
+                                                  replace_terms_addr tbl a_from,
+                                                  replace_terms_addr tbl a_to,
+                                                  replace_terms_int tbl l,
+                                                  replace_terms_path tbl p)
+  | OrderList(h,a_from,a_to)           -> OrderList(replace_terms_mem tbl h,
+                                                    replace_terms_addr tbl a_from,
+                                                    replace_terms_addr tbl a_to)
+  | Skiplist(h,s,l,a_from,a_to,elems)  -> Skiplist(replace_terms_mem tbl h,
+                                                   replace_terms_set tbl s,
+                                                   replace_terms_int tbl l,
+                                                   replace_terms_addr tbl a_from,
+                                                   replace_terms_addr tbl a_to,
+                                                   replace_terms_setelem tbl elems)
+  | Hashmap(h,s,se,bb,i)               -> Hashmap(replace_terms_mem tbl h,
+                                                  replace_terms_set tbl s,
+                                                  replace_terms_setelem tbl se,
+                                                  replace_terms_bucketarr tbl bb,
+                                                  replace_terms_int tbl i)
+  | In(a,s)                            -> In(replace_terms_addr tbl a,
+                                             replace_terms_set tbl s)
+  | SubsetEq(s_in,s_out)               -> SubsetEq(replace_terms_set tbl s_in,
+                                                   replace_terms_set tbl s_out)
+  | InTh(th,s)                         -> InTh(replace_terms_tid tbl th,
+                                               replace_terms_setth tbl s)
+  | SubsetEqTh(s_in,s_out)             -> SubsetEqTh(replace_terms_setth tbl s_in,
+                                                     replace_terms_setth tbl s_out)
+  | InElem(e,s)                        -> InElem(replace_terms_elem tbl e,
+                                                 replace_terms_setelem tbl s)
+  | SubsetEqElem(s_in,s_out)           -> SubsetEqElem(replace_terms_setelem tbl s_in,
+                                                       replace_terms_setelem tbl s_out)
+
+  | InPair(p,s)                        -> InPair(replace_terms_pair tbl p,
+                                                 replace_terms_setpair tbl s)
+  | SubsetEqPair(s_in,s_out)           -> SubsetEqPair(replace_terms_setpair tbl s_in,
+                                                       replace_terms_setpair tbl s_out)
+  | InTidPair(t,sp)                    -> InTidPair(replace_terms_tid tbl t,
+                                                    replace_terms_setpair tbl sp)
+  | InIntPair(i,sp)                    -> InIntPair(replace_terms_int tbl i,
+                                                    replace_terms_setpair tbl sp)
+  | InInt(i,s)                         -> InInt(replace_terms_int tbl i,
+                                                replace_terms_setint tbl s)
+  | SubsetEqInt(s_in,s_out)            -> SubsetEqInt(replace_terms_setint tbl s_in,
+                                                      replace_terms_setint tbl s_out)
+  | LessTid(t1,t2)                     -> LessTid(replace_terms_tid tbl t1,
+                                                  replace_terms_tid tbl t2)
+  | Less(i1,i2)                        -> Less(replace_terms_int tbl i1,
+                                               replace_terms_int tbl i2)
+  | Greater(i1,i2)                     -> Greater(replace_terms_int tbl i1,
+                                                  replace_terms_int tbl i2)
+  | LessEq(i1,i2)                      -> LessEq(replace_terms_int tbl i1,
+                                                 replace_terms_int tbl i2)
+  | GreaterEq(i1,i2)                   -> GreaterEq(replace_terms_int tbl i1,
+                                                    replace_terms_int tbl i2)
+  | LessElem(e1,e2)                    -> LessElem(replace_terms_elem tbl e1,
+                                                   replace_terms_elem tbl e2)
+  | GreaterElem(e1,e2)                 -> GreaterElem(replace_terms_elem tbl e1,
+                                                      replace_terms_elem tbl e2)
+  | Eq(exp)                            -> Eq(replace_terms_eq tbl exp)
+  | InEq(exp)                          -> InEq(replace_terms_ineq tbl exp)
+  | UniqueInt (sp)                     -> UniqueInt(replace_terms_setpair tbl sp)
+  | UniqueTid (sp)                     -> UniqueTid(replace_terms_setpair tbl sp)
+  | BoolVar v                          -> BoolVar (replace_terms_in_vars tbl v)
+  | BoolArrayRd (arr,t)                -> BoolArrayRd(replace_terms_arrays tbl arr,
+                                                      replace_terms_tid tbl t)
+  | PC (pc,th,p)                       -> begin
+                                            match th with
+                                            | V.Shared  -> PC (pc,th,p)
+                                            | V.Local t -> PC (pc, V.Local (replace_terms_in_vars tbl t), p)
+                                          end
+  | PCUpdate (pc,t)                    -> PCUpdate (pc, replace_terms_tid tbl t)
+  | PCRange (pc1,pc2,th,p)             -> begin
+                                            match th with
+                                            | V.Shared  -> PCRange (pc1,pc2,th,p)
+                                            | V.Local t -> PCRange (pc1,pc2,V.Local(replace_terms_in_vars tbl t),p)
+                                          end
+
+
+and replace_terms_eq (tbl:(term,term) Hashtbl.t) ((t1,t2):eq) : eq =
+  (replace_terms_term tbl t1, replace_terms_term tbl t2)
+
+
+and replace_terms_ineq (tbl:(term,term) Hashtbl.t) ((t1,t2):diseq) : diseq =
+  (replace_terms_term tbl t1, replace_terms_term tbl t2)
+
+
+let replace_fs = Formula.make_trans
+                   Formula.GenericLiteralTrans
+                   (fun info a -> replace_terms_atom info a)
+
+let replace_terms_literal (tbl:(term,term) Hashtbl.t) (l:literal) : literal =
+  Formula.literal_trans replace_fs tbl l
+
+let replace_terms_formula_aux (tbl:(term,term) Hashtbl.t) (phi:formula) : formula =
+  Formula.formula_trans replace_fs tbl phi
+
+
+let replace_terms (tbl:(term, term) Hashtbl.t) (phi:formula) : formula =
+  check_well_defined_replace_table tbl;
+  replace_terms_formula_aux tbl phi
 
 
