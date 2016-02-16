@@ -124,6 +124,13 @@ val make_trans : ('info, 'atom) trans_literal_op_t ->
 (**  Formula conversion  **)
 (**************************)
 
+val literal_conv : ('a -> 'b) -> 'a literal -> 'b literal
+val conjunctive_formula_conv : ('a -> 'b) ->
+                               'a conjunctive_formula ->
+                               'b conjunctive_formula
+val disjunctive_formula_conv : ('a -> 'b) ->
+                               'a disjunctive_formula ->
+                               'b disjunctive_formula
 val formula_conv : ('a -> 'b) -> 'a formula -> 'b formula
 
 (**************************)

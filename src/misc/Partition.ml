@@ -59,6 +59,20 @@ let size (p:'a t) : int =
   !(p.id)
 
 
+let keys (p:'a t) : id list =
+  LeapIdMap.codom p.eq_classes
+
+
+let to_str (f_str:'a -> string) (p:'a t) : string =
+  let buf = Buffer.create 256 in
+  let p_keys = keys p in
+  let _ = List.iter (fun i ->
+    Buffer.add_string buf ("["^ (String.concat "," (List.map f_str (elems p i)) ) ^"]")
+  ) p_keys
+  in
+    Buffer.contents buf
+
+
 let elems_with (p:'a t) (a:'a) : 'a list =
   try
     let a_id = LeapIdMap.find_id p.eq_classes a in
@@ -136,10 +150,6 @@ let singleton (a:'a) : 'a t =
   let emp = empty () in
   let _ = add_new emp a in
     emp
-
-
-let keys (p:'a t) : id list =
-  LeapIdMap.codom p.eq_classes
 
 
 let get_bitsets (p:'a t) (i:id) : ('a LeapBitSet.t * 'a LeapBitSet.t) option =
@@ -331,11 +341,3 @@ let assumptions_to_str (f_str:'a -> string) (assumptions:'a eqs list) : string =
   "{" ^ (String.concat ";" (List.map (eqs_to_str f_str) assumptions)) ^ "}"
 
 
-let to_str (f_str:'a -> string) (p:'a t) : string =
-  let buf = Buffer.create 256 in
-  let p_keys = keys p in
-  let _ = List.iter (fun i ->
-    Buffer.add_string buf ("["^ (String.concat "," (List.map f_str (elems p i)) ) ^"]")
-  ) p_keys
-  in
-    Buffer.contents buf

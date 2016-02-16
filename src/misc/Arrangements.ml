@@ -17,6 +17,12 @@ type 'a t = {
 type eqclass_order_t = (int,int GenSet.t) Hashtbl.t
 
 
+let eq_class_order_to_str (tbl:eqclass_order_t) : string =
+  Hashtbl.fold (fun i set str ->
+    str ^ (string_of_int i) ^ ": " ^ (GenSet.to_str string_of_int set)
+  ) tbl ""
+
+
 (** The type of arrangements tree *)
 type 'a arrtree = Node of 'a list * 'a arrtree list
 

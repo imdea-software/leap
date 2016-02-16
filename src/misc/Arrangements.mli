@@ -68,7 +68,7 @@ val to_str : 'a t -> ('a -> string) -> string
 
 (** [gen_arrtrees arr] returns a list with all possible arrangement trees
     that can be generated from [arr] *)
-val gen_arrtrees : 'a t -> 'a arrtree list
+val gen_arrtrees : ('a -> string) -> 'a t -> 'a arrtree list
 
 (** [arrtree_to_set tree] returns a set with all possible branches in [tree] *)
 val arrtree_to_set : 'a arrtree -> ('a list list) LeapGenericSet.t
@@ -77,7 +77,7 @@ val arrtree_to_set : 'a arrtree -> ('a list list) LeapGenericSet.t
     Each list represents a decreasing ordering of equivalences classes
     according to arrangement [arr]. Each equivalence class is represented as
     a list of elements *)
-val gen_arrs : 'a t -> ('a list list) LeapGenericSet.t
+val gen_arrs : ('a -> string) -> 'a t -> ('a list list) LeapGenericSet.t
 
 (** [arrtree_set_to_str f s] generates a string representing all possible
     arrangements is set [s] using function [f] to represent each element *)

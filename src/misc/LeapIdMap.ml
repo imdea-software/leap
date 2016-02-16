@@ -82,13 +82,13 @@ let codom_size (idmap:('a,'b)t) : int =
 
 
 let unify_id (idmap:('a,'b)t) (old_b:'b) (new_b:'b) : unit =
-  if H.mem idmap.rev old_b then
-    let to_modify = H.find idmap.rev old_b in
-    let _ = List.iter (fun x -> H.replace idmap.map x new_b) to_modify
-    in
-      ()
-  else
-    ()
+  if (old_b <> new_b) then
+    if H.mem idmap.rev old_b then begin
+      let to_modify = H.find idmap.rev old_b in
+      List.iter (fun x -> H.replace idmap.map x new_b) to_modify;
+      H.replace idmap.rev new_b ((H.find idmap.rev new_b) @ to_modify);
+      H.remove idmap.rev old_b
+    end
 
 
 let iter (f:('a -> 'b -> unit)) (idmap:('a,'b)t) : unit =
