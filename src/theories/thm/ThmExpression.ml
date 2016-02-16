@@ -1,5 +1,6 @@
 open Printf
 open LeapLib
+open LeapVerbose
 
 module F = Formula
 
@@ -2320,15 +2321,31 @@ and norm_formula (info:THMNorm.t) (phi:formula) : formula =
 
 (* FORMULA NORMALIZATION *)
 let normalize (phi:formula) : formula =
-(*
-  let module NOpt = struct
-                      module VS = V
-                      type norm_atom = atom
-                      type norm_term = term
-                      type norm_formula = formula
-                      let norm_varset = get_varset_from_formula
-                    end in
-  let module THMNorm = Normalization.Make(NOpt) in
-*)
-  phi
-
+    (* Create a new normalization *)
+    let norm_info = THMNorm.new_norm phi in
+    (* Process the original formula *)
+    let phi' = norm_formula norm_info (F.nnf phi) in
+    (* Normalize all remaining literals stored in the normalization table *)
+    verbl _LONG_INFO "WILL NORMALIZE REMAINING ELEMENTS";
+    let lit_list = ref [] in
+    while (THMNorm.term_map_size norm_info > 0) do
+      THMNorm.iter_term_map (fun t v ->
+        THMNorm.add_proc_term_map norm_info t v;
+        verbl _LONG_INFO "PROCESSING: %s ----> %s\n" (term_to_str t) (V.to_str v);
+        let l = F.Atom (Eq (make_compatible_term_from_var t v, t)) in
+        let new_l = norm_literal norm_info l in
+        verblstr LeapVerbose._LONG_INFO
+        (Interface.Msg.info "REMAINING TSL LITERAL TO NORMALIZE" (formula_to_str new_l));
+        let lit_to_add = match new_l with
+                         | F.Literal(F.Atom(Eq(t1,t2)))
+                         | F.Literal(F.NegAtom(InEq(t1,t2))) ->
+                             if t1 <> t2 then new_l else F.Literal l
+                         | _ -> new_l in
+        lit_list := lit_to_add :: !lit_list;
+        THMNorm.remove_term_map norm_info t
+      ) norm_info
+    done;
+    if !lit_list = [] then
+      phi'
+    else
+      F.And (F.conj_list !lit_list, phi')

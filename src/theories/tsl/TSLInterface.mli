@@ -14,6 +14,8 @@ val mem_to_tsl_mem : Expression.mem -> TSLExpression.mem
 val int_to_tsl_int : Expression.integer -> TSLExpression.integer
 val addrarr_to_tsl_addrarr : Expression.addrarr -> TSLExpression.addrarr
 val tidarr_to_tsl_tidarr : Expression.tidarr -> TSLExpression.tidarr
+val literal_to_tsl_literal : Expression.literal -> TSLExpression.literal
+val conj_formula_to_tsl_conj_formula : Expression.conjunctive_formula -> TSLExpression.conjunctive_formula
 val formula_to_tsl_formula : Expression.formula -> TSLExpression.formula
 
 
@@ -31,4 +33,6 @@ val mem_to_expr_mem : TSLExpression.mem -> Expression.mem
 val int_to_expr_int : TSLExpression.integer -> Expression.integer
 val addrarr_to_expr_addrarr : TSLExpression.addrarr -> Expression.addrarr
 val tidarr_to_expr_tidarr : TSLExpression.tidarr -> Expression.tidarr
+val literal_to_expr_literal : TSLExpression.literal -> Expression.literal
+val conj_formula_to_expr_conj_formula : TSLExpression.conjunctive_formula -> Expression.conjunctive_formula
 val formula_to_expr_formula : TSLExpression.formula -> Expression.formula

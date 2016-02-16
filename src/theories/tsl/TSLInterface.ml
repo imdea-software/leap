@@ -402,6 +402,15 @@ and atom_to_tsl_atom (a:E.atom) : SL.atom =
   | E.PCUpdate (pc,t)          -> SL.PCUpdate (pc, tid_to_tsl_tid t)
   | E.PCRange (pc1,pc2,t,pr)   -> SL.PCRange (pc1, pc2, shared_to_tsl_shared t, pr)
 
+
+and literal_to_tsl_literal (l:E.literal) : SL.literal =
+  Formula.literal_conv atom_to_tsl_atom l
+
+
+and conj_formula_to_tsl_conj_formula (cf:E.conjunctive_formula) : SL.conjunctive_formula =
+  Formula.conjunctive_formula_conv atom_to_tsl_atom cf
+
+
 and formula_to_tsl_formula (phi:E.formula) : SL.formula =
   Formula.formula_conv atom_to_tsl_atom phi
 
@@ -649,6 +658,13 @@ and tsl_atom_to_atom (a:SL.atom) : E.atom =
   | SL.PC (pc,t,pr)             -> E.PC (pc, shared_to_expr_shared t,pr)
   | SL.PCUpdate (pc,t)          -> E.PCUpdate (pc, tid_to_expr_tid t)
   | SL.PCRange (pc1,pc2,t,pr)   -> E.PCRange (pc1, pc2,shared_to_expr_shared t,pr)
+
+
+and literal_to_expr_literal (l:SL.literal) : E.literal =
+  Formula.literal_conv tsl_atom_to_atom l
+
+and conj_formula_to_expr_conj_formula (cf:SL.conjunctive_formula) : E.conjunctive_formula =
+  Formula.conjunctive_formula_conv tsl_atom_to_atom cf
 
 and formula_to_expr_formula (phi:SL.formula) : E.formula =
   Formula.formula_conv tsl_atom_to_atom phi
