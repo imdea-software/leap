@@ -179,7 +179,7 @@ let _ =
 
 
   (** Example 9 **)
-
+(*
   Arr.clear arr;
 
   Arr.add_elem arr "D";
@@ -191,8 +191,29 @@ let _ =
   Arr.add_less arr "A" "B";
 
   Arr.add_followed_by arr "B" "C";
+*)
 
 
+  (** Example 10 **)
+
+  Arr.clear arr;
+
+
+  Arr.add_elem arr "$int2";
+  Arr.add_elem arr "$int1";
+  Arr.add_elem arr "insert::i";
+  Arr.add_elem arr "j";
+  Arr.add_elem arr "max";
+
+  Arr.set_minimum arr "$int1";
+
+  Arr.add_ineq arr "insert::i" "$int1";
+
+  Arr.add_less arr "insert::i" "j";
+  Arr.add_less arr "max" "j";
+
+  Arr.add_lesseq arr "j" "max";
+  Arr.add_lesseq arr "insert::i" "max";
 
 
   (* Arrangement representation *)
@@ -208,5 +229,7 @@ let _ =
   let gen_arrs = Arr.gen_arrs arr in
   (* Print generated arrangement lists. Hopefully, they should be the same =) *)
   print_endline (Arr.arrtree_set_to_str (fun x->x) gen_arrs);
+
+  print_endline "Final test";
 
   Arr.test arr (fun x -> x)
