@@ -5,7 +5,8 @@ module GenSet   = LeapGenericSet
 module GM       = GenericModel
 module SL       = TSLExpression
 module SLInterf = TSLInterface
-module F = Formula
+module E        = Expression
+module F        = Formula
 (*module type SLK = TSLKExpression.S *)
 
 type alpha_pair_t = (SL.integer list * SL.integer option)
@@ -557,6 +558,7 @@ let split_into_pa_nc (cf:SL.conjunctive_formula)
 
 
 let guess_arrangements (cf:SL.conjunctive_formula) : (SL.integer list list) GenSet.t option =
+  Log.print "Will guess arrangement for: " (SL.conjunctive_formula_to_str cf);
   let arr = Arr.empty true in
     match cf with
     | F.FalseConj -> Some (GenSet.empty ())
@@ -1025,6 +1027,57 @@ let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:SL.conjunctive_formula) :
   answer
 
 
+
+
+
+
+(***************************************************)
+(**                                               **)
+(**  Module instantiation for Arrangement Solver  **)
+(**                                               **)
+(***************************************************)
+
+let check_tslk (k:int)
+               (lines:int)
+               (co:Smp.cutoff_strategy_t)
+               (arrg_sat_table:(E.integer list list, Sat.t) Hashtbl.t)
+               (cf:E.conjunctive_formula)
+               (alpha_r:E.integer list list option) : Sat.t =
+  match cf with
+  | F.TrueConj -> Sat.Sat
+  | F.FalseConj -> Sat.Unsat
+  | F.Conj ls -> begin
+                    let module TslkSol = (val TslkSolver.choose !solver_impl k
+                                   : TslkSolver.S) in
+                    TslkSol.compute_model (!comp_model);
+                    let module Trans = TranslateTsl (TslkSol.TslkExp) in
+                    let phi_tslk = Trans.to_tslk
+                                    (List.map TSLInterface.literal_to_tsl_literal ls) in
+                    let res = TslkSol.check_sat lines co !use_quantifier phi_tslk in
+                    DP.add_dp_calls this_call_tbl (DP.Tslk k) 1;
+                    tslk_sort_map := TslkSol.get_sort_map ();
+                    tslk_model := TslkSol.get_model ();
+                    if LeapVerbose.is_verbose_level_enabled(LeapVerbose._SHORT_INFO) then
+                      if Sat.is_sat res then print_string "S" else print_string "X";
+                    let _ = match alpha_r with
+                            | None -> ()
+                            | Some a -> Hashtbl.add arrg_sat_table a res in
+                    res
+                  end
+
+
+(*
+module ArrangementSolverOpt =
+  struct
+    let check_sp_dp = check_tslk;
+  end
+
+module ArrSol = ArrangementSolver.Make(ArrangementSolverOpt)
+*)
+
+
+
+
 (*******************************************)
 (*  MACHINERY FOR CHECKING SATISFIABILITY  *)
 (*******************************************)
@@ -1048,6 +1101,11 @@ let check_sat_plus_info (lines : int)
     | _ -> let answer =
              try
                 try_sat_with_presburger_arithmetic phi
+(*
+                ArrSol.try_sat_with_pa
+                  (TSLInterface.formula_to_expr_formula phi)
+*)
+
              with _ -> begin
                (* STEP 1: Normalize the formula *)
                (* ERASE *)
@@ -1058,7 +1116,17 @@ let check_sat_plus_info (lines : int)
                (* STEP 2: DNF of the normalized formula *)
                let phi_dnf = F.dnf phi_norm in
                (* If any of the conjunctions in DNF is SAT, then phi is sat *)
-               if List.exists (fun psi -> Sat.is_sat (dnf_sat lines co psi)) phi_dnf then
+               if List.exists
+                    (fun psi ->
+
+                      Sat.is_sat (dnf_sat lines co psi)
+(*
+                      let psi' = TSLInterface.conj_formula_to_expr_conj_formula psi in
+                      Sat.is_sat (ArrSol.dnf_sat lines co psi')
+*)
+
+
+                    ) phi_dnf then
                  Sat.Sat
                else
                  Sat.Unsat
