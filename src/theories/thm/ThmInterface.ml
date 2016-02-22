@@ -410,10 +410,17 @@ and atom_to_thm_atom (a:E.atom) : THM.atom =
   | E.PCUpdate (pc,t)      -> THM.PCUpdate (pc, tid_to_thm_tid t)
   | E.PCRange (pc1,pc2,t,pr) -> THM.PCRange (pc1, pc2, shared_to_thm_shared t, pr)
 
+
+and literal_to_thm_literal (l:E.literal) : THM.literal =
+  Formula.literal_conv atom_to_thm_atom l
+
+
+and conj_formula_to_thm_conj_formula (cf:E.conjunctive_formula) : THM.conjunctive_formula =
+  Formula.conjunctive_formula_conv atom_to_thm_atom cf
+
+
 and formula_to_thm_formula (phi:E.formula) : THM.formula =
   Formula.formula_conv atom_to_thm_atom phi
-
-
 
 
 
@@ -702,6 +709,14 @@ and atom_to_expr_atom (a:THM.atom) : E.atom =
   | THM.PC (pc,t,pr)         -> E.PC (pc, shared_to_expr_shared t, pr)
   | THM.PCUpdate (pc,t)      -> E.PCUpdate (pc, tid_to_expr_tid t)
   | THM.PCRange (pc1,pc2,t,pr) -> E.PCRange (pc1, pc2, shared_to_expr_shared t, pr)
+
+and literal_to_expr_literal (l:THM.literal) : E.literal =
+  Formula.literal_conv atom_to_expr_atom l
+
+
+and conj_formula_to_expr_conj_formula (cf:THM.conjunctive_formula) : E.conjunctive_formula =
+  Formula.conjunctive_formula_conv atom_to_expr_atom cf
+
 
 and formula_to_expr_formula (phi:THM.formula) : E.formula =
   Formula.formula_conv atom_to_expr_atom phi

@@ -209,12 +209,8 @@ module Make (AS : ArrangementSolverSpec.S) =
                                             Hashtbl.find arr_table arr
                                           with
                                             _ -> begin
-                                                   Log.print "B" "1";
-                                                   let a = Arr.gen_arrs E.integer_to_str arr in
-                                                   Log.print "A SIZE: " (string_of_int (GenSet.size a));
-                                                   Log.print "B" "2";
+                                                   let a = Arr.gen_arrs arr in
                                                    Hashtbl.add arr_table arr a;
-                                                   Log.print "B" "3";
                                                    a
                                                  end
                               in

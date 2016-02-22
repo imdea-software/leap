@@ -11,7 +11,9 @@ let _ =
 
   let dom = [var_i; var_I2; var_I1; var_max; var_j] in
 
-  let eq_list = [
+  let eq_list = [Partition.Eq (var_I1, var_max);
+                 Partition.Eq (var_j, var_max);
+                 Partition.Eq (var_I1, var_i);
                  Partition.Eq (var_I1, var_I2);
                  Partition.Eq (var_I1, var_j);
                  Partition.Eq (var_i, var_max)] in
