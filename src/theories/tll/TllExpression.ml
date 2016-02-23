@@ -19,6 +19,7 @@ type sort =
 
 type var_info_t =
   {
+    mutable smp_interesting : bool;
     treat_as_pc : bool;
   }
 
@@ -174,11 +175,19 @@ let build_var ?(fresh=false)
               (th:V.shared_or_local)
               (p:V.procedure_name)
                  : V.t =
-  V.build id s pr th p {treat_as_pc= treat_as_pc;} ~fresh:fresh
+  V.build id s pr th p {smp_interesting=false; treat_as_pc= treat_as_pc;} ~fresh:fresh
 
 
 let treat_as_pc (v:V.t) : bool =
   (V.info v).treat_as_pc
+
+
+let variable_mark_smp_interesting (v:V.t) (b:bool) : unit =
+  (V.info v).smp_interesting <- b
+
+
+let variable_is_smp_interesting (v:V.t) : bool =
+  (V.info v).smp_interesting
 
 
 let is_primed_tid (th:tid) : bool =
@@ -188,6 +197,20 @@ let is_primed_tid (th:tid) : bool =
   | CellLockId _      -> false
   (* FIX: Propagate the query inside cell??? *)
 
+
+(*******************************)
+(*    SMP MARKING FUNCTIONS    *)
+(*******************************)
+let addr_mark_smp_interesting (a:addr) (b:bool) : unit =
+  match a with
+  | VarAddr v -> variable_mark_smp_interesting v b
+  | _         -> ()
+
+
+let tid_mark_smp_interesting (t:tid) (b:bool) : unit =
+  match t with
+  | VarTh v -> variable_mark_smp_interesting v b
+  | _       -> ()
 
 (*******************************)
 (* VARLIST/VARSET FOR FORMULAS *)
@@ -227,6 +250,31 @@ module TermSet = Set.Make(
     let compare = Pervasives.compare
     type t = term
   end )
+
+
+let unify_var_info (info1:var_info_t) (info2:var_info_t) : var_info_t =
+  {
+    smp_interesting = (info1.smp_interesting || info2.smp_interesting);
+    treat_as_pc = (info1.treat_as_pc || info2.treat_as_pc);
+  }
+
+
+let unify_varset (s:V.VarSet.t) : V.VarSet.t =
+  let tbl = Hashtbl.create (V.VarSet.cardinal s) in
+  V.VarSet.iter (fun v ->
+    let base = (V.id v, V.sort v, V.is_primed v,
+                V.parameter v, V.scope v) in
+    if Hashtbl.mem tbl base then
+      let prev_info = Hashtbl.find tbl base in
+      Hashtbl.replace tbl base (unify_var_info (V.info v) prev_info)
+    else
+      Hashtbl.add tbl base (V.info v)
+  ) s;
+  Hashtbl.fold (fun (id,s,pr,th,p) _ set ->
+    let new_var = build_var id s pr th p
+    in
+      V.VarSet.add new_var set
+  ) tbl V.VarSet.empty
 
 
 let (@@) s1 s2 =
@@ -376,15 +424,15 @@ let varset_fs = Formula.make_fold
 
 
 let get_varset_from_literal (l:literal) : V.VarSet.t =
-  Formula.literal_fold varset_fs () l
+  unify_varset (Formula.literal_fold varset_fs () l)
 
 
 let get_varset_from_conj (cf:conjunctive_formula) : V.VarSet.t =
-  Formula.conjunctive_formula_fold varset_fs () cf
+  unify_varset (Formula.conjunctive_formula_fold varset_fs () cf)
 
   
 let get_varset_from_formula (phi:formula) : V.VarSet.t =
-  Formula.formula_fold varset_fs () phi
+  unify_varset (Formula.formula_fold varset_fs () phi)
 
 
 let get_varset_of_sort_from_conj phi s =
@@ -1531,4 +1579,89 @@ and get_addrs_eqs_atom (a:atom) : ((addr*addr) list * (addr*addr) list) =
   | Eq (AddrT a1, AddrT a2)   -> ([(a1,a2)],[])
   | InEq (AddrT a1, AddrT a2) -> ([],[(a1,a2)])
   | _ -> ([],[])
-  
+
+
+(* Equality constructor functions for formulas *)
+let eq_set (s1:set) (s2:set) : formula =
+  Formula.atom_to_formula (Eq (SetT s1, SetT s2))
+
+let eq_elem (e1:elem) (e2:elem) : formula =
+  Formula.atom_to_formula (Eq (ElemT e1, ElemT e2))
+
+let eq_tid (t1:tid) (t2:tid) : formula =
+  Formula.atom_to_formula (Eq (TidT t1, TidT t2))
+
+let eq_addr (a1:addr) (a2:addr) : formula =
+  Formula.atom_to_formula (Eq (AddrT a1, AddrT a2))
+
+let eq_cell (c1:cell) (c2:cell) : formula =
+  Formula.atom_to_formula (Eq (CellT c1, CellT c2))
+
+let eq_setth (s1:setth) (s2:setth) : formula =
+  Formula.atom_to_formula (Eq (SetThT s1, SetThT s2))
+
+let eq_setelem (s1:setelem) (s2:setelem) : formula =
+  Formula.atom_to_formula (Eq (SetElemT s1, SetElemT s2))
+
+let eq_path (p1:path) (p2:path) : formula =
+  Formula.atom_to_formula (Eq (PathT p1, PathT p2))
+
+let eq_mem (m1:mem) (m2:mem) : formula =
+  Formula.atom_to_formula (Eq (MemT m1, MemT m2))
+
+let eq_int (i1:integer) (i2:integer) : formula =
+  Formula.atom_to_formula (Eq (IntT i1, IntT i2))
+
+let less_int (i1:integer) (i2:integer) : formula =
+  Formula.atom_to_formula (Less (i1, i2))
+
+let lesseq_int (i1:integer) (i2:integer) : formula =
+  Formula.atom_to_formula (LessEq (i1, i2))
+
+let greater_int (i1:integer) (i2:integer) : formula =
+  Formula.atom_to_formula (Greater (i1, i2))
+
+let greatereq_int (i1:integer) (i2:integer) : formula =
+  Formula.atom_to_formula (GreaterEq (i1, i2))
+
+let eq_term (t1:term) (t2:term) : formula =
+  Formula.atom_to_formula (Eq (t1, t2))
+
+let ineq_set (s1:set) (s2:set) : formula =
+  Formula.atom_to_formula (InEq (SetT s1, SetT s2))
+
+let ineq_elem (e1:elem) (e2:elem) : formula =
+  Formula.atom_to_formula (InEq (ElemT e1, ElemT e2))
+
+let ineq_tid (t1:tid) (t2:tid) : formula =
+  Formula.atom_to_formula (InEq (TidT t1, TidT t2))
+
+let ineq_addr (a1:addr) (a2:addr) : formula =
+  Formula.atom_to_formula (InEq (AddrT a1, AddrT a2))
+
+let ineq_cell (c1:cell) (c2:cell) : formula =
+  Formula.atom_to_formula (InEq (CellT c1, CellT c2))
+
+let ineq_setth (s1:setth) (s2:setth) : formula =
+  Formula.atom_to_formula (InEq (SetThT s1, SetThT s2))
+
+let ineq_setelem (s1:setelem) (s2:setelem) : formula =
+  Formula.atom_to_formula (InEq (SetElemT s1, SetElemT s2))
+
+let ineq_path (p1:path) (p2:path) : formula =
+  Formula.atom_to_formula (InEq (PathT p1, PathT p2))
+
+let ineq_mem (m1:mem) (m2:mem) : formula =
+  Formula.atom_to_formula (InEq (MemT m1, MemT m2))
+
+let ineq_int (i1:integer) (i2:integer) : formula =
+  Formula.atom_to_formula (InEq (IntT i1, IntT i2))
+
+let ineq_term (t1:term) (t2:term) : formula =
+  Formula.atom_to_formula (InEq (t1, t2))
+
+let subseteq (s1:set) (s2:set) : formula =
+  Formula.atom_to_formula (SubsetEq (s1,s2))
+
+let atomlit (a:atom) : formula =
+  Formula.atom_to_formula a

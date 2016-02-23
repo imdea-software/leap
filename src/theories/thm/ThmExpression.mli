@@ -224,15 +224,16 @@ val voc_to_var : tid -> V.t
 val atom_to_str     : atom    -> string
 val literal_to_str  : literal -> string
 val conjunctive_formula_to_str : conjunctive_formula -> string
-val term_to_str     : term   -> string
-val addr_to_str     : addr   -> string
-val cell_to_str     : cell   -> string
-val elem_to_str     : elem   -> string
-val tid_to_str      : tid   -> string
-val mem_to_str      : mem    -> string
-val path_to_str     : path   -> string
-val set_to_str      : set    -> string
-val setth_to_str    : setth  -> string
+val term_to_str     : term    -> string
+val addr_to_str     : addr    -> string
+val cell_to_str     : cell    -> string
+val elem_to_str     : elem    -> string
+val tid_to_str      : tid     -> string
+val tidarr_to_str   : tidarr  -> string
+val mem_to_str      : mem     -> string
+val path_to_str     : path    -> string
+val set_to_str      : set     -> string
+val setth_to_str    : setth   -> string
 val setelem_to_str  : setelem -> string
 val formula_to_str  : formula -> string
 

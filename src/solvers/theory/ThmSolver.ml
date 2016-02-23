@@ -31,14 +31,162 @@ module TllSol = (val TllSolver.choose !solver_impl : TllSolver.S)
 let _ = TllSol.compute_model (!comp_model)
 
 
+
+(* The tables containing thread identifiers, locks and buckets variables
+   representing arrays *)
+let tidarr_tbl : (HM.tidarr, TLL.tid list) Hashtbl.t =
+  Hashtbl.create 8
+
+let lockarr_tbl : (HM.lockarr, TLL.tid list) Hashtbl.t =
+  Hashtbl.create 8
+
+
+let tid_thm_to_tll (t:HM.tid) : TLL.tid =
+  TllInterface.tid_to_tll_tid(ThmInterface.tid_to_expr_tid t)
+
+let term_thm_to_term (t:HM.term) : TLL.term =
+  TllInterface.term_to_tll_term(ThmInterface.term_to_expr_term t)
+
+let set_thm_to_tll (s:HM.set) : TLL.set =
+  TllInterface.set_to_tll_set(ThmInterface.set_to_expr_set s)
+
+let elem_thm_to_tll (e:HM.elem) : TLL.elem =
+  TllInterface.elem_to_tll_elem(ThmInterface.elem_to_expr_elem e)
+
+let addr_thm_to_tll (a:HM.addr) : TLL.addr =
+  TllInterface.addr_to_tll_addr(ThmInterface.addr_to_expr_addr a)
+
+let cell_thm_to_tll (c:HM.cell) : TLL.cell =
+  TllInterface.cell_to_tll_cell(ThmInterface.cell_to_expr_cell c)
+
+let setth_thm_to_tll (s:HM.setth) : TLL.setth =
+  TllInterface.setth_to_tll_setth(ThmInterface.setth_to_expr_setth s)
+
+let setelem_thm_to_tll (s:HM.setelem) : TLL.setelem =
+  TllInterface.setelem_to_tll_setelem(ThmInterface.setelem_to_expr_setelem s)
+
+let path_thm_to_tll (p:HM.path) : TLL.path =
+  TllInterface.path_to_tll_path(ThmInterface.path_to_expr_path p)
+
+let mem_thm_to_tll (m:HM.mem) : TLL.mem =
+  TllInterface.mem_to_tll_mem(ThmInterface.mem_to_expr_mem m)
+
+let int_thm_to_tll (i:HM.integer) : TLL.integer =
+  TllInterface.int_to_tll_int(ThmInterface.int_to_expr_int i)
+
+
+let expand_array_to_var (v:HM.V.t)
+                        (s:TLL.sort)
+                        (n:int) : TLL.V.t =
+  let id_str = HM.V.id v in
+  let pr_str = if HM.V.is_primed v then "_prime" else "" in
+  let th_str = match HM.V.parameter v with
+               | HM.V.Shared -> ""
+               | HM.V.Local t -> "_" ^ (HM.V.to_str t) in
+  let p_str = match HM.V.scope v with
+              | HM.V.GlobalScope -> ""
+              | HM.V.Scope p -> p ^ "_" in
+  let new_id = p_str ^ id_str ^ th_str ^ pr_str ^ "__" ^ (string_of_int n) in
+  let v_fresh = TLL.build_var new_id s false TLL.V.Shared TLL.V.GlobalScope ~fresh:true in
+  verbl _LONG_INFO "FRESH VAR: %s\n" new_id;
+  v_fresh
+
+
+let gen_tid_list (levels:int) (tt:HM.tidarr) : TLL.tid list =
+  let xs = ref [] in
+  for n = levels downto 0 do
+    let v = match tt with
+            | HM.VarTidArray v ->
+                TLL.VarTh (expand_array_to_var v TLL.Tid n)
+            | _ -> TLL.NoTid in
+    xs := v::(!xs)
+  done;
+  verbl _LONG_INFO "**** TSL Solver, generated thread id list for %s: [%s]\n"
+          (HM.tidarr_to_str tt)
+          (String.concat ";" (List.map TLL.tid_to_str !xs));
+  !xs
+
+
+let get_tid_list (levels:int) (tt:HM.tidarr) : TLL.tid list =
+  try
+    Hashtbl.find tidarr_tbl tt
+  with _ -> begin
+    let tt' = gen_tid_list levels tt in
+    Hashtbl.add tidarr_tbl tt tt'; tt'
+  end
+
+
 (***********************************)
 (**                               **)
 (**  Translation from THM to TLL  **)
 (**                               **)
 (***********************************)
 
-let to_tll (thm_ls:HM.literal list) : TLL.formula =
-  F.True
+let rec trans_literal (levels:int) (l:HM.literal) : TLL.formula =
+  verbl _LONG_INFO "**** THM Solver. Literal to be translated: %s\n"
+    (HM.literal_to_str l);
+  match l with
+  (* A != B (thread identifiers) *)
+  | F.NegAtom(HM.Eq(HM.TidArrayT(HM.VarTidArray _ as tt),
+               HM.TidArrayT(HM.VarTidArray _ as uu)))
+  | F.Atom(HM.InEq(HM.TidArrayT(HM.VarTidArray _ as tt),
+              HM.TidArrayT(HM.VarTidArray _ as uu))) ->
+      let tt' = get_tid_list levels tt in
+      let uu' = get_tid_list levels uu in
+      let xs = ref [] in
+      for i = 0 to levels do
+        xs := (TLL.eq_tid (List.nth tt' i) (List.nth uu' i)) :: (!xs)
+      done;
+      (* I need one witness for array difference *)
+      TLL.tid_mark_smp_interesting (List.hd tt') true;
+      F.disj_list (!xs)
+  (* t = A[i] *)
+  | F.Atom(HM.Eq(HM.TidT t, HM.TidT (HM.TidArrRd (tt,i))))
+  | F.Atom(HM.Eq(HM.TidT (HM.TidArrRd (tt,i)), HM.TidT t))
+  | F.NegAtom(HM.InEq(HM.TidT t, HM.TidT (HM.TidArrRd (tt,i))))
+  | F.NegAtom(HM.InEq(HM.TidT (HM.TidArrRd (tt,i)), HM.TidT t)) ->
+      let t' = tid_thm_to_tll t in
+      let tt' = get_tid_list levels tt in
+      let i' = int_thm_to_tll i in
+      let xs = ref [] in
+      for n = 0 to levels do
+        let n' = TLL.IntVal n in
+        xs := (F.Implies
+                (TLL.eq_int i' n',
+                 TLL.eq_tid t' (List.nth tt' n))) :: (!xs)
+      done;
+      TLL.tid_mark_smp_interesting t' true;
+      F.conj_list (!xs)
+  (* t != A[i] *)
+  | F.NegAtom(HM.Eq(HM.TidT t, HM.TidT (HM.TidArrRd (tt,i))))
+  | F.NegAtom(HM.Eq(HM.TidT (HM.TidArrRd (tt,i)), HM.TidT t))
+  | F.Atom(HM.InEq(HM.TidT t, HM.TidT (HM.TidArrRd (tt,i))))
+  | F.Atom(HM.InEq(HM.TidT (HM.TidArrRd (tt,i)), HM.TidT t)) ->
+      F.Not (trans_literal levels (F.Atom(HM.Eq(HM.TidT t, HM.TidT (HM.TidArrRd (tt,i))))))
+
+
+
+
+
+
+
+
+
+  | F.Atom a -> TllInterface.formula_to_tll_formula(
+                  ThmInterface.formula_to_expr_formula (Formula.atom_to_formula a))
+  | F.NegAtom a -> TllInterface.formula_to_tll_formula(
+                     ThmInterface.formula_to_expr_formula (Formula.negatom_to_formula a))
+
+
+
+let to_tll (levels:int) (thm_ls:HM.literal list) : TLL.formula =
+  Log.print "ThmSolver. Formula to translate into TLL"
+    (String.concat "\n" (List.map HM.literal_to_str thm_ls));
+  Hashtbl.clear tidarr_tbl;
+  let tll_ps = List.map (trans_literal levels) thm_ls in
+  let tll_phi = F.conj_list tll_ps in
+  Log.print "ThmSolver. Obtained formula in TLL" (TLL.formula_to_str tll_phi);
+  tll_phi
 
 
 (*******************************************)
@@ -58,7 +206,7 @@ let try_sat_with_presburger_arithmetic (phi:HM.formula) : Sat.t =
 (**                                               **)
 (***************************************************)
 
-let check_thm (k:int)
+let check_thm (levels:int)
               (lines:int)
               (co:Smp.cutoff_strategy_t)
               (arrg_sat_table:(E.integer list list, Sat.t) Hashtbl.t)
@@ -68,7 +216,8 @@ let check_thm (k:int)
   | F.TrueConj -> Sat.Sat
   | F.FalseConj -> Sat.Unsat
   | F.Conj ls -> begin
-                    let phi_tll = to_tll (List.map ThmInterface.literal_to_thm_literal ls) in
+                    let phi_tll = to_tll levels
+                                    (List.map ThmInterface.literal_to_thm_literal ls) in
                     let res = TllSol.check_sat lines co !use_quantifier phi_tll in
                     DP.add_dp_calls this_call_tbl DP.Tll 1;
                     (*

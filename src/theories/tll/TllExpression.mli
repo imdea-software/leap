@@ -191,6 +191,15 @@ val voc_conjunctive_formula : conjunctive_formula -> ThreadSet.t
 val unprimed_voc : formula -> ThreadSet.t
 val voc_to_var : tid -> V.t
 
+
+val variable_mark_smp_interesting : V.t -> bool -> unit
+val variable_is_smp_interesting : V.t -> bool
+
+(* SMP MARKING FUNCTIONS *)
+val addr_mark_smp_interesting : addr -> bool -> unit
+val tid_mark_smp_interesting : tid -> bool -> unit
+
+
 (* PRETTY_PRINTERS *)
 val atom_to_str     : atom    -> string
 val literal_to_str  : literal -> string
@@ -242,3 +251,34 @@ val special_ops : formula -> special_op_t list
 
 val get_addrs_eqs_conj : conjunctive_formula -> ((addr*addr) list * (addr*addr) list)
 val get_addrs_eqs : formula -> ((addr*addr) list * (addr*addr) list)
+
+
+(* Equality constructor functions for formulas *)
+val eq_set : set -> set -> formula
+val eq_elem : elem -> elem -> formula
+val eq_tid : tid -> tid -> formula
+val eq_addr : addr -> addr -> formula
+val eq_cell : cell -> cell -> formula
+val eq_setth : setth -> setth -> formula
+val eq_setelem : setelem -> setelem -> formula
+val eq_path : path -> path -> formula
+val eq_mem : mem -> mem -> formula
+val eq_int : integer -> integer -> formula
+val eq_term : term -> term -> formula
+val ineq_set : set -> set -> formula
+val ineq_elem : elem -> elem -> formula
+val ineq_tid : tid -> tid -> formula
+val ineq_addr : addr -> addr -> formula
+val ineq_cell : cell -> cell -> formula
+val ineq_setth : setth -> setth -> formula
+val ineq_setelem : setelem -> setelem -> formula
+val ineq_path : path -> path -> formula
+val ineq_mem : mem -> mem -> formula
+val ineq_int : integer -> integer -> formula
+val ineq_term : term -> term -> formula
+val less_int : integer -> integer -> formula
+val lesseq_int : integer -> integer -> formula
+val greater_int : integer -> integer -> formula
+val greatereq_int : integer -> integer -> formula
+val subseteq : set -> set -> formula
+val atomlit : atom -> formula

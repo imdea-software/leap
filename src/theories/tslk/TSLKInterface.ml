@@ -1000,7 +1000,7 @@ module Make (SLK : TSLKExpression.S) =
       | SLK.VarT v             -> E.VarT (var_to_expr_var v)
       | SLK.SetT s             -> E.SetT (set_to_expr_set s)
       | SLK.ElemT e            -> E.ElemT (elem_to_expr_elem e)
-      | SLK.TidT t            -> E.TidT (tid_to_expr_tid t)
+      | SLK.TidT t             -> E.TidT (tid_to_expr_tid t)
       | SLK.AddrT a            -> E.AddrT (addr_to_expr_addr a)
       | SLK.CellT c            -> E.CellT (cell_to_expr_cell c)
       | SLK.SetThT st          -> E.SetThT (setth_to_expr_setth st)

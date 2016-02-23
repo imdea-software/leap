@@ -2253,6 +2253,7 @@ let rec norm_literal (info:THMNorm.t) (l:literal) : formula =
   in
   match l with
   | F.Atom a -> F.Literal(F.Atom (norm_atom a))
+  (*
   | F.NegAtom (Hashmap(m,s,se,bb,k)) ->
       let m_var = VarMem (gen_if_not_var (MemT m) Mem) in
       let s_var = VarSet (gen_if_not_var (SetT s) Set) in
@@ -2290,7 +2291,7 @@ let rec norm_literal (info:THMNorm.t) (l:literal) : formula =
       F.disj_list
         [phi_setelem_differs;
          phi_somelevel_not_hashmap]
-
+*)
   | F.NegAtom a -> F.Literal(F.NegAtom (norm_atom a))
 
 
