@@ -82,6 +82,7 @@ and tid =
   | LockId       of lock
 and lock =
     VarLock       of V.t
+  | MkLock        of tid
   | LLock         of lock * tid
   | LUnlock       of lock
   | LockArrRd     of lockarr * integer
@@ -230,6 +231,7 @@ val cell_to_str     : cell    -> string
 val elem_to_str     : elem    -> string
 val tid_to_str      : tid     -> string
 val tidarr_to_str   : tidarr  -> string
+val lockarr_to_str  : lockarr -> string
 val mem_to_str      : mem     -> string
 val path_to_str     : path    -> string
 val set_to_str      : set     -> string

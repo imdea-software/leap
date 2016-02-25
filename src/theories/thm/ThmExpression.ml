@@ -91,6 +91,7 @@ and tid =
   | LockId       of lock
 and lock =
     VarLock       of V.t
+  | MkLock        of tid
   | LLock         of lock * tid
   | LUnlock       of lock
   | LockArrRd     of lockarr * integer
@@ -324,6 +325,7 @@ and get_varset_tid th =
 and get_varset_lock x =
   match x with
       VarLock v        -> V.VarSet.singleton v @@ get_varset_from_param v
+    | MkLock (t)       -> (get_varset_tid t)
     | LLock (l,t)      -> (get_varset_lock l) @@ (get_varset_tid t)
     | LUnlock (l)      -> (get_varset_lock l)
     | LockArrRd (ll,i) -> (get_varset_lockarr ll) @@ (get_varset_int i)
@@ -690,6 +692,7 @@ and is_tid_flat t =
 and is_lock_flat x =
   match x with
       VarLock _        -> true
+    | MkLock (t)       -> (is_tid_flat t)
     | LLock (l,t)      -> (is_lock_flat l) && (is_tid_flat t)
     | LUnlock (l)      -> (is_lock_flat l)
     | LockArrRd (ll,i) -> (is_lockarr_flat ll) &&
@@ -1028,6 +1031,7 @@ and tid_to_str th =
 and lock_to_str (expr:lock) : string =
   match expr with
     VarLock v        -> V.to_str v
+  | MkLock (t)       -> sprintf "mklock(%s)" (tid_to_str t)
   | LLock (l,t)      -> sprintf "lock(%s,%s)" (lock_to_str l) (tid_to_str t)
   | LUnlock (l)      -> sprintf "unlock(%s)" (lock_to_str l)
   | LockArrRd (ll,i) -> sprintf "%s[%s]" (lockarr_to_str ll) (integer_to_str i)
@@ -1254,6 +1258,7 @@ and voc_tid (th:tid) : ThreadSet.t =
 and voc_lock (x:lock) : ThreadSet.t =
   match x with
     VarLock v        -> get_tid_in v
+  | MkLock (t)       -> (voc_tid t)
   | LLock (l,t)      -> (voc_lock l) @@ (voc_tid t)
   | LUnlock (l)      -> (voc_lock l)
   | LockArrRd (ll,i) -> (voc_lockarr ll) @@ (voc_int i)
@@ -1575,6 +1580,7 @@ let required_sorts (phi:formula) : sort list =
   and req_l (x:lock) : SortSet.t =
     match x with
     | VarLock _        -> single Lock
+    | MkLock (t)       -> append Lock [req_t t]
     | LLock (l,t)      -> append Lock [req_l l; req_t t]
     | LUnlock (l)      -> append Lock [req_l l]
     | LockArrRd (ll,i) -> append Lock [req_ll ll; req_i i]
@@ -1776,6 +1782,7 @@ let special_ops (phi:formula) : special_op_t list =
   and ops_l (x:lock) : OpsSet.t =
     match x with
     | VarLock _        -> empty
+    | MkLock (t)       -> ops_t t
     | LLock (l,t)      -> list_union [ops_l l; ops_t t]
     | LUnlock (l)      -> ops_l l
     | LockArrRd (ll,i) -> list_union [ops_ll ll; ops_i i]
@@ -2065,6 +2072,7 @@ let rec norm_literal (info:THMNorm.t) (l:literal) : formula =
   and norm_lock (l:lock) : lock =
     match l with
     | VarLock v -> VarLock v
+    | MkLock (t) -> MkLock(norm_tid t)
     | LLock (l,t) -> LLock(norm_lock l, norm_tid t)
     | LUnlock (l) -> LUnlock(norm_lock l)
     | LockArrRd _ -> let l_var = gen_if_not_var (LockT l) Lock in

@@ -193,6 +193,7 @@ module Make (SLK : TSLKExpression.S) =
       and norm_lock (l:E.lock) : E.lock =
         match l with
         | E.VarLock _   -> raise(UnsupportedTSLKExpr(E.lock_to_str l))
+        | E.MkLock _    -> raise(UnsupportedTSLKExpr(E.lock_to_str l))
         | E.LLock _     -> raise(UnsupportedTSLKExpr(E.lock_to_str l))
         | E.LUnlock _   -> raise(UnsupportedTSLKExpr(E.lock_to_str l))
         | E.LockArrRd _ -> raise(UnsupportedTSLKExpr(E.lock_to_str l))

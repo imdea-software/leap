@@ -152,6 +152,7 @@ and tid =
 
 and lock =
     VarLock       of V.t
+  | MkLock        of tid
   | LLock         of lock * tid
   | LUnlock       of lock
   | LockArrRd     of lockarr * integer
@@ -1100,6 +1101,7 @@ and priming_lock (pr:bool)
                  (expr:lock) : lock =
   match expr with
     VarLock v       -> VarLock (priming_variable pr prime_set v)
+  | MkLock(t) -> MkLock (priming_tid pr prime_set t)
   | LLock (l,t) -> LLock (priming_lock pr prime_set l,
                           priming_tid  pr prime_set t)
   | LUnlock (l) -> LUnlock (priming_lock pr prime_set l)
@@ -1520,6 +1522,7 @@ and param_tid_to_str (expr:tid) : string =
 and lock_to_str (expr:lock) : string =
   match expr with
     VarLock v       -> V.to_str v
+  | MkLock (t) -> sprintf "mklock(%s)" (tid_to_str t)
   | LLock (l,t) -> sprintf "lock(%s,%s)" (lock_to_str l) (tid_to_str t)
   | LUnlock (l) -> sprintf "unlock(%s)" (lock_to_str l)
   | LockArrRd (ll,i) -> sprintf "%s[%s]" (lockarr_to_str ll) (integer_to_str i)
@@ -2687,6 +2690,7 @@ and get_vars_lock (x:lock) (info:varset_info_t) : V.VarSet.t =
                          (match V.parameter v with
                           | V.Shared -> V.VarSet.empty
                           | V.Local t -> info.base t)
+  | MkLock (t) -> (get_vars_tid t info)
   | LLock (l,t) -> (get_vars_lock l info) @@ (get_vars_tid t info)
   | LUnlock (l) -> (get_vars_lock l info)
   | LockArrRd (ll,i) -> (get_vars_lockarr ll info) @@ (get_vars_int i info)
@@ -3383,6 +3387,7 @@ and voc_tid (th:tid) : ThreadSet.t =
 and voc_lock (x:lock) : ThreadSet.t =
   match x with
     VarLock v        -> get_tid_in v
+  | MkLock (t)       -> (voc_tid t)
   | LLock (l,t)      -> (voc_lock l) @@ (voc_tid t)
   | LUnlock (l)      -> (voc_lock l)
   | LockArrRd (ll,i) -> (voc_lockarr ll) @@ (voc_int i)
@@ -3800,6 +3805,7 @@ and var_kind_tid (kind:var_nature) (th:tid) : term list =
 and var_kind_lock (kind:var_nature) (x:lock) : term list =
   match x with
     VarLock v        -> if var_nature v = kind then [LockT x] else []
+  | MkLock (t)       -> (var_kind_tid kind t)
   | LLock (l,t)      -> (var_kind_lock kind l) @ (var_kind_tid kind t)
   | LUnlock (l)      -> (var_kind_lock kind l)
   | LockArrRd (ll,i) -> (var_kind_lockarr kind ll) @ (var_kind_int kind i)
@@ -4263,6 +4269,7 @@ and param_lock (pfun:V.t option -> V.shared_or_local) (l:lock) : lock =
   match l with
     VarLock v        -> VarLock (V.set_param v (pfun (Some v)))
       (*TODO: Fix open array case for array variables *)
+  | MkLock(t)        -> MkLock(param_tid_aux pfun t)
   | LLock(l,t)       -> LLock(param_lock pfun l, param_tid_aux pfun t)
   | LUnlock(l)       -> LUnlock(param_lock pfun l)
   | LockArrRd (ll,i) -> LockArrRd(param_lockarr pfun ll, param_int_aux pfun i)
@@ -4943,6 +4950,7 @@ and subst_tid_pair (subs:tid_subst_t) (p:pair) : pair =
 and subst_tid_lock (subs:tid_subst_t) (expr:lock) : lock =
   match expr with
     VarLock v   -> VarLock (V.set_param v (subst_shared_or_local subs (V.parameter v)))
+  | MkLock (t)  -> MkLock(subst_tid_th subs t)
   | LLock (l,t) -> LLock(subst_tid_lock subs l, subst_tid_th subs t)
   | LUnlock (l) -> LUnlock(subst_tid_lock subs l)
   | LockArrRd (ll,i) -> LockArrRd(subst_tid_lockarr subs ll,
@@ -5378,6 +5386,7 @@ and subst_vars_pair (subs:V.subst_t) (p:pair) : pair =
 and subst_vars_lock (subs:V.subst_t) (expr:lock) : lock =
   match expr with
     VarLock v        -> VarLock (V.subst subs v)
+  | MkLock (t)       -> MkLock(subst_vars_th subs t)
   | LLock (l,t)      -> LLock(subst_vars_lock subs l, subst_vars_th subs t)
   | LUnlock (l)      -> LUnlock(subst_vars_lock subs l)
   | LockArrRd (ll,i) -> LockArrRd(subst_vars_lockarr subs ll,
@@ -5921,6 +5930,7 @@ and subst_var_term_lock (subs:var_term_subst_t) (expr:lock) : lock =
                            | LockT x -> x
                            | _ -> expr
                          with _ -> expr)
+  | MkLock (t)       -> MkLock(subst_var_term_th subs t)
   | LLock (l,t)      -> LLock(subst_var_term_lock subs l, subst_var_term_th subs t)
   | LUnlock (l)      -> LUnlock(subst_var_term_lock subs l)
   | LockArrRd (ll,i) -> LockArrRd(subst_var_term_lockarr subs ll,
@@ -6844,6 +6854,7 @@ let required_sorts (phi:formula) : sort list =
   and req_l (x:lock) : SortSet.t =
     match x with
     | VarLock _        -> single Lock
+    | MkLock (t)       -> append Lock [req_t t]
     | LLock (l,t)      -> append Lock [req_l l; req_t t]
     | LUnlock (l)      -> append Lock [req_l l]
     | LockArrRd (ll,i) -> append Lock [req_lockarr ll; req_i i]
@@ -7188,6 +7199,7 @@ and to_plain_tid_aux (ops:fol_ops_t) (th:tid) : tid =
 and to_plain_lock (ops:fol_ops_t) (x:lock) : lock =
   match x with
     VarLock v        -> VarLock (ops.fol_var v)
+  | MkLock (t)       -> MkLock(to_plain_tid_aux ops t)
   | LLock (l,t)      -> LLock(to_plain_lock ops l, to_plain_tid_aux ops t)
   | LUnlock (l)      -> LUnlock(to_plain_lock ops l)
   | LockArrRd (ll,i) -> LockArrRd(to_plain_lockarr ops ll,
@@ -8425,6 +8437,7 @@ and replace_terms_lock (tbl:(term,term) Hashtbl.t) (l:lock) : lock =
   with _ -> begin
     match l with
       VarLock v        -> VarLock (replace_terms_in_vars tbl v)
+    | MkLock (t)  -> MkLock (replace_terms_tid tbl t)
     | LLock (l,t) -> LLock (replace_terms_lock tbl l,
                             replace_terms_tid tbl t)
     | LUnlock (l) -> LUnlock (replace_terms_lock tbl l)

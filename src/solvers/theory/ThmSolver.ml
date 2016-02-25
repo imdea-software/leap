@@ -75,9 +75,7 @@ let int_thm_to_tll (i:HM.integer) : TLL.integer =
   TllInterface.int_to_tll_int(ThmInterface.int_to_expr_int i)
 
 
-let expand_array_to_var (v:HM.V.t)
-                        (s:TLL.sort)
-                        (n:int) : TLL.V.t =
+let construct_fresh_name (v:HM.V.t) : string =
   let id_str = HM.V.id v in
   let pr_str = if HM.V.is_primed v then "_prime" else "" in
   let th_str = match HM.V.parameter v with
@@ -86,8 +84,52 @@ let expand_array_to_var (v:HM.V.t)
   let p_str = match HM.V.scope v with
               | HM.V.GlobalScope -> ""
               | HM.V.Scope p -> p ^ "_" in
-  let new_id = p_str ^ id_str ^ th_str ^ pr_str ^ "__" ^ (string_of_int n) in
-  let v_fresh = TLL.build_var new_id s false TLL.V.Shared TLL.V.GlobalScope ~fresh:true in
+  p_str ^ id_str ^ th_str ^ pr_str
+
+
+let build_conv_var (id:string) (s:TLL.sort) : TLL.V.t =
+  TLL.build_var id s false TLL.V.Shared TLL.V.GlobalScope ~fresh:true
+
+
+let fresh_lock_var (v:HM.V.t) : TLL.V.t =
+  let new_id = (construct_fresh_name v) ^ "__fresh" in
+  let v_fresh = build_conv_var new_id TLL.Tid in
+  verbl _LONG_INFO "FRESH VAR: %s\n" new_id;
+  v_fresh
+
+
+let fresh_bucket_init_var (v:HM.V.t) : TLL.V.t =
+  let new_id = (construct_fresh_name v) ^ "__binit" in
+  let v_fresh = build_conv_var new_id TLL.Addr in
+  verbl _LONG_INFO "FRESH VAR: %s\n" new_id;
+  v_fresh
+
+
+let fresh_bucket_end_var (v:HM.V.t) : TLL.V.t =
+  let new_id = (construct_fresh_name v) ^ "__bend" in
+  let v_fresh = build_conv_var new_id TLL.Addr in
+  verbl _LONG_INFO "FRESH VAR: %s\n" new_id;
+  v_fresh
+
+
+let fresh_bucket_reg_var (v:HM.V.t) : TLL.V.t =
+  let new_id = (construct_fresh_name v) ^ "__breg" in
+  let v_fresh = build_conv_var new_id TLL.Set in
+  verbl _LONG_INFO "FRESH VAR: %s\n" new_id;
+  v_fresh
+
+
+let fresh_bucket_tid_var (v:HM.V.t) : TLL.V.t =
+  let new_id = (construct_fresh_name v) ^ "__btid" in
+  let v_fresh = build_conv_var new_id TLL.Tid in
+  verbl _LONG_INFO "FRESH VAR: %s\n" new_id;
+  v_fresh
+
+let expand_array_to_var (v:HM.V.t)
+                        (s:TLL.sort)
+                        (n:int) : TLL.V.t =
+  let new_id = (construct_fresh_name v) ^ "__" ^ (string_of_int n) in
+  let v_fresh = build_conv_var new_id s in
   verbl _LONG_INFO "FRESH VAR: %s\n" new_id;
   v_fresh
 
@@ -101,8 +143,23 @@ let gen_tid_list (levels:int) (tt:HM.tidarr) : TLL.tid list =
             | _ -> TLL.NoTid in
     xs := v::(!xs)
   done;
-  verbl _LONG_INFO "**** TSL Solver, generated thread id list for %s: [%s]\n"
+  verbl _LONG_INFO "**** THM Solver, generated thread id list for %s: [%s]\n"
           (HM.tidarr_to_str tt)
+          (String.concat ";" (List.map TLL.tid_to_str !xs));
+  !xs
+
+
+let gen_lock_list (levels:int) (ll:HM.lockarr) : TLL.tid list =
+  let xs = ref [] in
+  for n = levels downto 0 do
+    let v = match ll with
+            | HM.VarLockArray v ->
+                TLL.VarTh (expand_array_to_var v TLL.Tid n)
+            | _ -> TLL.NoTid in
+    xs := v::(!xs)
+  done;
+  verbl _LONG_INFO "**** THM Solver, generated thread id list for %s: [%s]\n"
+          (HM.lockarr_to_str ll)
           (String.concat ";" (List.map TLL.tid_to_str !xs));
   !xs
 
@@ -114,6 +171,16 @@ let get_tid_list (levels:int) (tt:HM.tidarr) : TLL.tid list =
     let tt' = gen_tid_list levels tt in
     Hashtbl.add tidarr_tbl tt tt'; tt'
   end
+
+
+let get_lock_list (levels:int) (ll:HM.lockarr) : TLL.tid list =
+  try
+    Hashtbl.find lockarr_tbl ll
+  with _ -> begin
+    let ll' = gen_lock_list levels ll in
+    Hashtbl.add lockarr_tbl ll ll'; ll'
+  end
+
 
 
 (***********************************)
@@ -163,6 +230,138 @@ let rec trans_literal (levels:int) (l:HM.literal) : TLL.formula =
   | F.Atom(HM.InEq(HM.TidT t, HM.TidT (HM.TidArrRd (tt,i))))
   | F.Atom(HM.InEq(HM.TidT (HM.TidArrRd (tt,i)), HM.TidT t)) ->
       F.Not (trans_literal levels (F.Atom(HM.Eq(HM.TidT t, HM.TidT (HM.TidArrRd (tt,i))))))
+  (* U = T {l <- t} *)
+  | F.Atom(HM.Eq(HM.TidArrayT uu, HM.TidArrayT (HM.TidArrayUp(tt,i,t))))
+  | F.Atom(HM.Eq(HM.TidArrayT (HM.TidArrayUp(tt,i,t)), HM.TidArrayT uu))
+  | F.NegAtom(HM.InEq(HM.TidArrayT uu, HM.TidArrayT (HM.TidArrayUp(tt,i,t))))
+  | F.NegAtom(HM.InEq(HM.TidArrayT (HM.TidArrayUp(tt,i,t)), HM.TidArrayT uu)) ->
+      let t' = tid_thm_to_tll t in
+      let i' = int_thm_to_tll i in
+      let tt' = get_tid_list levels tt in
+      let uu' = get_tid_list levels uu in
+      let xs = ref [] in
+      for n = 0 to levels do
+        let n' = TLL.IntVal n in
+        xs := (F.Implies
+                (TLL.eq_int i' n',
+                 TLL.eq_tid t' (List.nth uu' n))) ::
+              (F.Implies
+                (TLL.ineq_int i' n',
+                 TLL.eq_tid (List.nth tt' n) (List.nth uu' n))) ::
+              (!xs)
+      done;
+      TLL.tid_mark_smp_interesting t' true;
+      F.conj_list (!xs)
+  (* U != T {l <- t} *)
+  | F.NegAtom(HM.Eq(HM.TidArrayT uu, HM.TidArrayT (HM.TidArrayUp(tt,i,t))))
+  | F.NegAtom(HM.Eq(HM.TidArrayT (HM.TidArrayUp(tt,i,t)), HM.TidArrayT uu))
+  | F.Atom(HM.InEq(HM.TidArrayT uu, HM.TidArrayT (HM.TidArrayUp(tt,i,t))))
+  | F.Atom(HM.InEq(HM.TidArrayT (HM.TidArrayUp(tt,i,t)), HM.TidArrayT uu)) ->
+      F.Not (trans_literal levels (F.Atom(HM.Eq(HM.TidArrayT uu, HM.TidArrayT (HM.TidArrayUp(tt,i,t))))))
+  (* l = mklock(t) *)
+  | F.Atom(HM.Eq(HM.LockT(HM.VarLock l), HM.LockT(HM.MkLock(t))))
+  | F.Atom(HM.Eq(HM.LockT(HM.MkLock(t)), HM.LockT(HM.VarLock l)))
+  | F.NegAtom(HM.InEq(HM.LockT(HM.VarLock l), HM.LockT(HM.MkLock(t))))
+  | F.NegAtom(HM.InEq(HM.LockT(HM.MkLock(t)), HM.LockT(HM.VarLock l))) ->
+      let t' = tid_thm_to_tll t in
+      TLL.eq_tid (TLL.VarTh (fresh_lock_var l)) t'
+  (* A != B (locks) *)
+  | F.NegAtom(HM.Eq(HM.LockArrayT(HM.VarLockArray _ as ll),
+                    HM.LockArrayT(HM.VarLockArray _ as mm)))
+  | F.Atom(HM.InEq(HM.LockArrayT(HM.VarLockArray _ as ll),
+                   HM.LockArrayT(HM.VarLockArray _ as mm))) ->
+      let ll' = get_lock_list levels ll in
+      let mm' = get_lock_list levels mm in
+      let xs = ref [] in
+      for i = 0 to levels do
+        xs := (TLL.eq_tid (List.nth ll' i) (List.nth mm' i)) :: (!xs)
+      done;
+      (* I need one witness for array difference *)
+      TLL.tid_mark_smp_interesting (List.hd ll') true;
+      F.disj_list (!xs)
+  (* t = A[i] *)
+  | F.Atom(HM.Eq(HM.LockT(HM.VarLock l), HM.LockT (HM.LockArrRd (ll,i))))
+  | F.Atom(HM.Eq(HM.LockT (HM.LockArrRd (ll,i)), HM.LockT(HM.VarLock l)))
+  | F.NegAtom(HM.InEq(HM.LockT(HM.VarLock l), HM.LockT (HM.LockArrRd (ll,i))))
+  | F.NegAtom(HM.InEq(HM.LockT (HM.LockArrRd (ll,i)), HM.LockT(HM.VarLock l))) ->
+      let l_fresh = TLL.VarTh (fresh_lock_var l) in
+      let ll' = get_lock_list levels ll in
+      let i' = int_thm_to_tll i in
+      let xs = ref [] in
+      for n = 0 to levels do
+        let n' = TLL.IntVal n in
+        xs := (F.Implies
+                (TLL.eq_int i' n',
+                 TLL.eq_tid l_fresh (List.nth ll' n))) :: (!xs)
+      done;
+      TLL.tid_mark_smp_interesting l_fresh true;
+      F.conj_list (!xs)
+  (* t != A[i] *)
+  | F.NegAtom(HM.Eq(HM.LockT l, HM.LockT (HM.LockArrRd (ll,i))))
+  | F.NegAtom(HM.Eq(HM.LockT (HM.LockArrRd (ll,i)), HM.LockT l))
+  | F.Atom(HM.InEq(HM.LockT l, HM.LockT (HM.LockArrRd (ll,i))))
+  | F.Atom(HM.InEq(HM.LockT (HM.LockArrRd (ll,i)), HM.LockT l)) ->
+      F.Not (trans_literal levels (F.Atom(HM.Eq(HM.LockT l, HM.LockT (HM.LockArrRd (ll,i))))))
+  (* U = T {l <- t} *)
+  | F.Atom(HM.Eq(HM.LockArrayT mm, HM.LockArrayT (HM.LockArrayUp(ll,i,(HM.VarLock l)))))
+  | F.Atom(HM.Eq(HM.LockArrayT (HM.LockArrayUp(ll,i,(HM.VarLock l))), HM.LockArrayT mm))
+  | F.NegAtom(HM.InEq(HM.LockArrayT mm, HM.LockArrayT (HM.LockArrayUp(ll,i,(HM.VarLock l)))))
+  | F.NegAtom(HM.InEq(HM.LockArrayT (HM.LockArrayUp(ll,i,(HM.VarLock l))), HM.LockArrayT mm)) ->
+      let l_fresh = TLL.VarTh (fresh_lock_var l) in
+      let i' = int_thm_to_tll i in
+      let ll' = get_lock_list levels ll in
+      let mm' = get_lock_list levels mm in
+      let xs = ref [] in
+      for n = 0 to levels do
+        let n' = TLL.IntVal n in
+        xs := (F.Implies
+                (TLL.eq_int i' n',
+                 TLL.eq_tid l_fresh (List.nth mm' n))) ::
+              (F.Implies
+                (TLL.ineq_int i' n',
+                 TLL.eq_tid (List.nth ll' n) (List.nth mm' n))) ::
+              (!xs)
+      done;
+      TLL.tid_mark_smp_interesting l_fresh true;
+      F.conj_list (!xs)
+  (* U != T {l <- t} *)
+  | F.NegAtom(HM.Eq(HM.LockArrayT mm, HM.LockArrayT (HM.LockArrayUp(ll,i,l))))
+  | F.NegAtom(HM.Eq(HM.LockArrayT (HM.LockArrayUp(ll,i,l)), HM.LockArrayT mm))
+  | F.Atom(HM.InEq(HM.LockArrayT mm, HM.LockArrayT (HM.LockArrayUp(ll,i,l))))
+  | F.Atom(HM.InEq(HM.LockArrayT (HM.LockArrayUp(ll,i,l)), HM.LockArrayT mm)) ->
+      F.Not (trans_literal levels (F.Atom(HM.Eq(HM.LockArrayT mm, HM.LockArrayT (HM.LockArrayUp(ll,i,l))))))
+
+
+  (* b = mkbucket(a,e,s,t) *)
+  | F.Atom(HM.Eq(HM.BucketT(HM.VarBucket b), HM.BucketT(HM.MkBucket(a,e,s,t))))
+  | F.Atom(HM.Eq(HM.BucketT(HM.MkBucket(a,e,s,t)), HM.BucketT(HM.VarBucket b)))
+  | F.NegAtom(HM.InEq(HM.BucketT(HM.VarBucket b), HM.BucketT(HM.MkBucket(a,e,s,t))))
+  | F.NegAtom(HM.InEq(HM.BucketT(HM.MkBucket(a,e,s,t)), HM.BucketT(HM.VarBucket b))) ->
+      let b_init = fresh_bucket_init_var b in
+      let b_end = fresh_bucket_end_var b in
+      let b_reg = fresh_bucket_reg_var b in
+      let b_tid = fresh_bucket_tid_var b in
+      let a' = addr_thm_to_tll a in
+      let e' = addr_thm_to_tll e in
+      let s' = set_thm_to_tll s in
+      let t' = tid_thm_to_tll t in
+      F.conj_list [TLL.eq_addr (TLL.VarAddr b_init) a';
+                   TLL.eq_addr (TLL.VarAddr b_end ) e';
+                   TLL.eq_set  (TLL.VarSet  b_reg ) s';
+                   TLL.eq_tid  (TLL.VarTh   b_tid ) t']
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

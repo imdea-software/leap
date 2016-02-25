@@ -131,6 +131,7 @@ and tid =
 
 and lock =
     VarLock       of V.t
+  | MkLock        of tid
   | LLock         of lock * tid
   | LUnlock       of lock
   | LockArrRd     of lockarr * integer

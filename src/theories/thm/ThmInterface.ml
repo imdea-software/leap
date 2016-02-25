@@ -115,6 +115,7 @@ and tid_to_thm_tid (th:E.tid) : THM.tid =
 and lock_to_thm_lock (x:E.lock) : THM.lock =
   match x with
     E.VarLock v        -> THM.VarLock (var_to_thm_var v)
+  | E.MkLock (t)       -> THM.MkLock (tid_to_thm_tid t)
   | E.LLock (l,t)      -> THM.LLock (lock_to_thm_lock l, tid_to_thm_tid t)
   | E.LUnlock (l)      -> THM.LUnlock (lock_to_thm_lock l)
   | E.LockArrRd (ll,i) -> THM.LockArrRd (lockarr_to_thm_lockarr ll, 
@@ -480,6 +481,7 @@ and tid_to_expr_tid (th:THM.tid) : E.tid =
 and lock_to_expr_lock (x:THM.lock) : E.lock =
   match x with
     THM.VarLock v        -> E.VarLock (var_to_expr_var v)
+  | THM.MkLock (t)       -> E.MkLock (tid_to_expr_tid t)
   | THM.LLock (l,t)      -> E.LLock (lock_to_expr_lock l, tid_to_expr_tid t)
   | THM.LUnlock (l)      -> E.LUnlock (lock_to_expr_lock l)
   | THM.LockArrRd (ll,i) -> E.LockArrRd (lockarr_to_expr_lockarr ll, 
