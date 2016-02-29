@@ -1594,6 +1594,9 @@ let eq_tid (t1:tid) (t2:tid) : formula =
 let eq_addr (a1:addr) (a2:addr) : formula =
   Formula.atom_to_formula (Eq (AddrT a1, AddrT a2))
 
+let in_addr (a:addr) (s:set) : formula =
+  Formula.atom_to_formula (In (a, s))
+
 let eq_cell (c1:cell) (c2:cell) : formula =
   Formula.atom_to_formula (Eq (CellT c1, CellT c2))
 

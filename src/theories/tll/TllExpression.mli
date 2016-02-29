@@ -258,6 +258,7 @@ val eq_set : set -> set -> formula
 val eq_elem : elem -> elem -> formula
 val eq_tid : tid -> tid -> formula
 val eq_addr : addr -> addr -> formula
+val in_addr : addr -> set -> formula
 val eq_cell : cell -> cell -> formula
 val eq_setth : setth -> setth -> formula
 val eq_setelem : setelem -> setelem -> formula
