@@ -338,7 +338,7 @@ let check_and_get_sort (id:string) : E.sort =
   | "mark"      -> E.Mark
   | "bucket"    -> E.Bucket
   | "bucketarr" -> E.BucketArray
-  | "lock"      -> E.Lock
+  | "tlock"     -> E.Lock
   | "lockarr"   -> E.LockArray
   | _ -> begin
            Interface.Err.msg "Unrecognized sort" $

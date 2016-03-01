@@ -28,9 +28,6 @@ let this_call_tbl : DP.call_tbl_t = DP.new_call_tbl()
 
 module TllSol = (val TllSolver.choose !solver_impl : TllSolver.S)
 
-let _ = TllSol.compute_model (!comp_model)
-
-
 
 (* The tables containing thread identifiers, locks and buckets variables
    representing arrays *)
@@ -651,6 +648,7 @@ let check_thm (levels:int)
   | F.Conj ls -> begin
                     let phi_tll = to_tll alpha_r levels
                                     (List.map ThmInterface.literal_to_thm_literal ls) in
+                    TllSol.compute_model (!comp_model);
                     let res = TllSol.check_sat lines co !use_quantifier phi_tll in
                     DP.add_dp_calls this_call_tbl DP.Tll 1;
                     (*
@@ -749,44 +747,10 @@ let compute_model (b:bool) : unit =
 
 let model_to_str () : string =
   TllSol.model_to_str()
-(*
-  let model = !tll_model in
-  let sort_map = GM.sm_union !tll_sort_map (GM.get_aux_sort_map model) in
-  let thid_str = GM.search_type_to_str model sort_map GM.tid_s in
-  let int_str  = GM.search_type_to_str model sort_map GM.int_s in
-  let addr_str = GM.search_type_to_str model sort_map GM.addr_s in
-  let elem_str = GM.search_type_to_str model sort_map GM.elem_s in
-  let cell_str = GM.search_type_to_str model sort_map GM.cell_s in
-  let path_str = GM.search_type_to_str model sort_map GM.path_s in
-  let level_str = GM.search_type_to_str model sort_map GM.level_s in
-  (* Special description for sets *)
-  let set_str = GM.search_sets_to_str model sort_map GM.set_s in
-  let setth_str = GM.search_sets_to_str model sort_map GM.setth_s in
-  let setelem_str = GM.search_sets_to_str model sort_map GM.setelem_s in
-  (* Special description for sets *)
-  let heap_str = GM.search_type_to_str model sort_map GM.heap_s
-  in
-    "\nThreads:\n" ^ thid_str ^
-    "\nIntegers:\n" ^ int_str ^
-    "\nAddresses:\n" ^ addr_str ^
-    "\nElements:\n" ^ elem_str ^
-    "\nCells:\n" ^ cell_str ^
-    "\nPaths:\n" ^ path_str ^
-    "\nLevels:\n" ^ level_str ^
-    "\nSets:\n" ^ set_str ^
-    "\nSets of tids:\n" ^ setth_str ^
-    "\nSets of elements:\n" ^ setelem_str ^
-    "\nHeap:\n" ^ heap_str
-*)
+
 
 let print_model () : unit =
   TllSol.print_model()
-(*
-  if !comp_model && (not (GM.is_empty_model !tll_model)) then
-    print_endline (model_to_str())
-  else
-    ()
-*)
 
 
 let set_forget_primed_mem (b:bool) : unit =

@@ -2441,7 +2441,7 @@ let sort_to_str (s:sort) : string =
     | BucketArray -> "bucketarr"
     | Mark        -> "mark"
     | Bucket      -> "bucket"
-    | Lock        -> "lock"
+    | Lock        -> "tlock"
     | LockArray   -> "lockarr"
     | Unknown     -> "unknown"
 
@@ -6210,6 +6210,7 @@ let construct_term_eq (v:term)
              match (v,e) with
              (* Sets of addresses *)
              | (SetT (VarSet var), Term t) -> ([SetT(VarSet(var_base_info var))], t)
+             | (SetT (BucketRegion (BucketArrRd(VarBucketArray var, i))), Term t) -> ([SetT(BucketRegion(BucketArrRd(VarBucketArray(var_base_info var),i)))], t)
              (* Sets of integers *)
              | (SetIntT (VarSetInt var), Term t) -> ([SetIntT(VarSetInt(var_base_info var))], t)
              (* Sets of elements *)
@@ -6227,12 +6228,20 @@ let construct_term_eq (v:term)
              | (TidT (CellLockIdAt (VarCell var, i)), Term t) -> ([TidT (CellLockIdAt(VarCell(var_base_info var),i))], t)
              | (TidT (TidArrRd (CellTids (VarCell var), i)), Term t) -> ([TidT (TidArrRd (CellTids(VarCell(var_base_info var)),i))], t)
              | (TidT (TidArrRd (VarTidArray var,i)), Term t) -> ([TidT(TidArrRd(VarTidArray (var_base_info var),i))], t)
-
+             | (TidT (BucketTid (BucketArrRd(VarBucketArray var, i))), Term t) -> ([TidT(BucketTid(BucketArrRd(VarBucketArray(var_base_info var),i)))], t)
+             (* Locks *)
+             | (LockT (VarLock var), Term t) -> ([LockT(VarLock(var_base_info var))], t)
+             | (LockT (LockArrRd (VarLockArray var,i)), Term t) -> ([LockT(LockArrRd(VarLockArray (var_base_info var),i))], t)
+             (* Buckets *)
+             | (BucketT (VarBucket var), Term t) -> ([BucketT(VarBucket(var_base_info var))], t)
+             | (BucketT (BucketArrRd (VarBucketArray var,i)), Term t) -> ([BucketT(BucketArrRd(VarBucketArray (var_base_info var),i))], t)
              (* Addresses *)
              | (AddrT (VarAddr var), Term t) -> ([AddrT(VarAddr(var_base_info var))], t)
              | (AddrT (Next (VarCell var)), Term t) -> ([AddrT(Next(VarCell(var_base_info var)))], t)
              | (AddrT (ArrAt (VarCell var, i)), Term t) -> ([AddrT(ArrAt(VarCell(var_base_info var),i))], t)
              | (AddrT (AddrArrRd (CellArr (VarCell var), i)), Term t) -> ([AddrT(AddrArrRd(CellArr(VarCell(var_base_info var)),i))], t)
+             | (AddrT (BucketInit (BucketArrRd(VarBucketArray var, i))), Term t) -> ([AddrT(BucketInit(BucketArrRd(VarBucketArray(var_base_info var),i)))], t)
+             | (AddrT (BucketEnd (BucketArrRd(VarBucketArray var, i))), Term t) -> ([AddrT(BucketEnd(BucketArrRd(VarBucketArray(var_base_info var),i)))], t)
              | (AddrT (AddrArrRd (VarAddrArray var,i)), Term t) -> ([AddrT(AddrArrRd(VarAddrArray (var_base_info var),i))], t)
              (* Cells *)
              | (CellT (VarCell var), Term t) -> ([CellT(VarCell(var_base_info var))], t)

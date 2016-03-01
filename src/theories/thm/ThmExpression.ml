@@ -1105,7 +1105,7 @@ let sort_to_str s =
     | Bool        -> "Bool"
     | Mark        -> "Mark"
     | Bucket      -> "Bucket"
-    | Lock        -> "Lock"
+    | Lock        -> "TLock"
     | LockArray   -> "LockArray"
     | Unknown     -> "Unknown"
 
@@ -2004,8 +2004,6 @@ let rec norm_literal (info:THMNorm.t) (l:literal) : formula =
     else
       THMNorm.add_term_map info t v in
   let gen_if_not_var (t:term) (s:sort) : V.t =
-
-
     if is_var_term t then
       term_to_var t
     else try
@@ -2028,14 +2026,16 @@ let rec norm_literal (info:THMNorm.t) (l:literal) : formula =
     | Setdiff (s1,s2) -> Setdiff (norm_set s1, norm_set s2)
     | PathToSet p -> PathToSet (norm_path p)
     | AddrToSet (m,a) -> AddrToSet (norm_mem m, norm_addr a)
-    | BucketRegion (b) -> BucketRegion (norm_bucket b)
+    | BucketRegion (b) -> let b_var = gen_if_not_var (BucketT b) Bucket in
+                            BucketRegion(norm_bucket (VarBucket b_var))
 
   and norm_tid (t:tid) : tid =
     match t with
     | VarTh v -> VarTh v
     | NoTid -> NoTid
     | CellLockId (c) -> CellLockId (norm_cell c)
-    | BucketTid (b) -> BucketTid(norm_bucket b)
+    | BucketTid (b) -> let b_var = gen_if_not_var (BucketT b) Bucket in
+                        BucketTid(norm_bucket (VarBucket b_var))
     | TidArrRd _ -> let t_var = gen_if_not_var (TidT t) Tid in
                       VarTh t_var
     | LockId (l) -> LockId (norm_lock l)
@@ -2055,8 +2055,10 @@ let rec norm_literal (info:THMNorm.t) (l:literal) : formula =
     | Next (c) -> Next (norm_cell c)
     | FirstLocked (m,p) -> FirstLocked(norm_mem m, norm_path p)
     | LastLocked (m,p) -> LastLocked(norm_mem m, norm_path p)
-    | BucketInit (b) -> BucketInit(norm_bucket b)
-    | BucketEnd (b) -> BucketEnd(norm_bucket b)
+    | BucketInit (b) -> let b_var = gen_if_not_var (BucketT b) Bucket in
+                          BucketInit(norm_bucket (VarBucket b_var))
+    | BucketEnd (b) -> let b_var = gen_if_not_var (BucketT b) Bucket in
+                          BucketEnd(norm_bucket (VarBucket b_var))
 
   and norm_cell (c:cell) : cell =
     match c with
@@ -2244,6 +2246,42 @@ let rec norm_literal (info:THMNorm.t) (l:literal) : formula =
         let i_var = gen_if_not_var (IntT i) Int in
           InEq (TidT (VarTh a),
                 TidT (TidArrRd(norm_tidarr tt, VarInt i_var)))
+    (* Equality between address and binit *)
+    | Eq (AddrT a, AddrT(BucketInit b))
+    | Eq (AddrT(BucketInit b), AddrT a) ->
+        let b' = gen_if_not_var (BucketT b) Bucket in
+        let a' = gen_if_not_var (AddrT a) Addr in
+        let e = VarAddr (THMNorm.gen_fresh_var info Addr) in
+        let s = VarSet (THMNorm.gen_fresh_var info Set) in
+        let t = VarTh (THMNorm.gen_fresh_var info Tid) in
+          Eq(BucketT(VarBucket b'), BucketT(MkBucket(VarAddr a',e,s,t)))
+    (* Equality between address and bend *)
+    | Eq (AddrT e, AddrT(BucketEnd b))
+    | Eq (AddrT(BucketEnd b), AddrT e) ->
+        let b' = gen_if_not_var (BucketT b) Bucket in
+        let e' = gen_if_not_var (AddrT e) Addr in
+        let a = VarAddr (THMNorm.gen_fresh_var info Addr) in
+        let s = VarSet (THMNorm.gen_fresh_var info Set) in
+        let t = VarTh (THMNorm.gen_fresh_var info Tid) in
+          Eq(BucketT(VarBucket b'), BucketT(MkBucket(a,VarAddr e',s,t)))
+    (* Equality between set and breg *)
+    | Eq (SetT s, SetT(BucketRegion b))
+    | Eq (SetT(BucketRegion b), SetT s) ->
+        let b' = gen_if_not_var (BucketT b) Bucket in
+        let s' = gen_if_not_var (SetT s) Set in
+        let a = VarAddr (THMNorm.gen_fresh_var info Addr) in
+        let e = VarAddr (THMNorm.gen_fresh_var info Addr) in
+        let t = VarTh (THMNorm.gen_fresh_var info Tid) in
+          Eq(BucketT(VarBucket b'), BucketT(MkBucket(a,e,VarSet s',t)))
+    (* Equality between thread identifier and btid *)
+    | Eq (TidT t, TidT(BucketTid b))
+    | Eq (TidT(BucketTid b), TidT t) ->
+        let b' = gen_if_not_var (BucketT b) Bucket in
+        let t' = gen_if_not_var (TidT t) Tid in
+        let a = VarAddr (THMNorm.gen_fresh_var info Addr) in
+        let e = VarAddr (THMNorm.gen_fresh_var info Addr) in
+        let s = VarSet (THMNorm.gen_fresh_var info Set) in
+          Eq(BucketT(VarBucket b'), BucketT(MkBucket(a,e,s,VarTh t')))
     (* General equalities and inequalities *)
     | Eq (t1,t2) -> Eq (norm_term t1, norm_term t2)
     | InEq (t1,t2) -> InEq (norm_term t1, norm_term t2)
@@ -2261,45 +2299,6 @@ let rec norm_literal (info:THMNorm.t) (l:literal) : formula =
   in
   match l with
   | F.Atom a -> F.Literal(F.Atom (norm_atom a))
-  (*
-  | F.NegAtom (Hashmap(m,s,se,bb,k)) ->
-      let m_var = VarMem (gen_if_not_var (MemT m) Mem) in
-      let s_var = VarSet (gen_if_not_var (SetT s) Set) in
-      let se_var = VarSetElem (gen_if_not_var (SetElemT se) SetElem) in
-      let bb_var = VarBucketArray (gen_if_not_var (BucketArrayT bb) BucketArray) in
-      let k_var = VarInt (gen_if_not_var (IntT k) Int) in
-
-      let a = VarAddr (THMNorm.gen_fresh_var info Addr) in
-      let e = VarElem (THMNorm.gen_fresh_var info Elem) in
-      let i = VarInt (THMNorm.gen_fresh_var info Int) in
-
-
-      (* I am missing the first part of the normalization *)
-
-      let phi_setelem_differs =
-        norm_formula info
-          (F.Or(
-            F.And(
-              F.Literal(F.Atom(InElem(e,se_var))),
-              F.Literal(F.NegAtom(InElem(e,SetToElems(s_var,m_var))))),
-            F.And(
-              F.Literal(F.NegAtom(InElem(e,se_var))),
-              F.Literal(F.Atom(InElem(e,SetToElems(s_var,m_var))))))) in
-      let phi_somelevel_not_hashmap =
-        norm_formula info (F.disj_list
-          [F.Literal(F.NegAtom(In(Null,BucketRegion(BucketArrRd(bb_var,i)))));
-           F.And(F.Literal(F.Atom(In(a,BucketRegion(BucketArrRd(bb_var,i))))),
-                 F.Literal(F.NegAtom(In(a,AddrToSet(m_var,BucketInit(BucketArrRd(bb_var,i)))))));
-           F.And(F.Literal(F.NegAtom(In(a,BucketRegion(BucketArrRd(bb_var,i))))),
-                 F.Literal(F.Atom(In(a,AddrToSet(m_var,BucketInit(BucketArrRd(bb_var,i)))))));
-           F.Literal(F.NegAtom(In(BucketEnd(BucketArrRd(bb_var,i)),
-                                  BucketRegion(BucketArrRd(bb_var,i)))));
-           F.Literal(F.Atom(InEq(AddrT(Next(CellAt(m_var,BucketEnd(BucketArrRd(bb_var,i))))),AddrT(Null))))]) in
-
-      F.disj_list
-        [phi_setelem_differs;
-         phi_somelevel_not_hashmap]
-*)
   | F.NegAtom a -> F.Literal(F.NegAtom (norm_atom a))
 
 

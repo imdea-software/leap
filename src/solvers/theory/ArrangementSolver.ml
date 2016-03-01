@@ -276,10 +276,18 @@ module Make (AS : ArrangementSolverSpec.S) =
                             | E.AddrArrayT (E.AddrArrayUp(_,i,_))
                               (* A = B{l <- t} *)
                             | E.TidArrayT (E.TidArrayUp(_,i,_))
+                              (* A = B{l <- l} *)
+                            | E.LockArrayT (E.LockArrayUp(_,i,_))
+                              (* A = B{l <- b} *)
+                            | E.BucketArrayT (E.BucketArrayUp(_,i,_))
                               (* a = A[i] *)
                             | E.AddrT (E.AddrArrRd(_,i))
                               (* t = A[i] *)
-                            | E.TidT (E.TidArrRd(_,i)) -> GenSet.add relevant_set i
+                            | E.TidT (E.TidArrRd(_,i))
+                              (* l = A[i] *)
+                            | E.LockT (E.LockArrRd(_,i))
+                              (* b = A[i] *)
+                            | E.BucketT (E.BucketArrRd(_,i)) -> GenSet.add relevant_set i
                               (* Remaining cases *)
                             | _ -> ()
                           ) (E.termset_from_conj cf);
@@ -349,6 +357,8 @@ module Make (AS : ArrangementSolverSpec.S) =
                             F.Conj (List.map (fun lit ->
                               begin
                                 match lit with
+                                | F.Atom(E.Hashmap(_,_,_,_,l))
+                                | F.NegAtom(E.Hashmap(_,_,_,_,l))
                                 | F.Atom(E.Skiplist(_,_,l,_,_,_))
                                 | F.Atom(E.Eq(_,E.CellT(E.MkSLCell(_,_,_,l))))
                                 | F.Atom(E.Eq(E.CellT(E.MkSLCell(_,_,_,l)),_))
@@ -453,11 +463,20 @@ module Make (AS : ArrangementSolverSpec.S) =
         if Sat.is_sat pa_sat then begin
           (* We have an arrangement candidate *)
           pumping nc;
+
+(*          print_endline ("NC FORMULA: " ^ (E.conjunctive_formula_to_str nc)); *)
+
           let rel_set = relevant_levels nc in
           Log.print "Relevant levels" (GenSet.to_str E.integer_to_str rel_set);
 
 (*          print_endline ("REL_SET: " ^ (GenSet.to_str E.integer_to_str rel_set)); *)
-          
+         
+
+(*
+          print_endline ("ALPHA ARRANGEMENT: " ^ (String.concat ";" (List.map (fun xs -> "[" ^ (String.concat ";" (List.map E.integer_to_str xs)) ^ "]") alpha)));
+          print_endline ("RELEVANT SET: " ^ (GenSet.to_str E.integer_to_str rel_set));
+*)
+
           let alpha_pairs = update_arrangement alpha rel_set in
           let (panc_r, nc_r, alpha_pairs_r) = propagate_levels alpha_pairs panc nc in
 
@@ -475,6 +494,12 @@ module Make (AS : ArrangementSolverSpec.S) =
           Log.print "PANC_R" (E.conjunctive_formula_to_str panc_r);
           Log.print "NC_R" (E.conjunctive_formula_to_str nc_r);
 
+(*
+          print_endline ("ALPHA_PAIRS_R: " ^ alpha_pairs_str);
+          print_endline ("PANC_R: " ^ (E.conjunctive_formula_to_str panc_r));
+          print_endline ("NC_R: " ^ (E.conjunctive_formula_to_str nc_r));
+*)
+
           let alpha_r = List.rev (List.fold_left (fun xs (_,r) ->
                                     match r with
                                     | None -> xs
@@ -483,7 +508,12 @@ module Make (AS : ArrangementSolverSpec.S) =
 
           (* Assertions only *)
           let alpha_relev = GenSet.empty () in
+(*
+          print_endline ("GOING TO PROCESS");
+          print_endline ("ALPHA_R SIZE: " ^ (string_of_int (List.length alpha_r)));
+*)
           List.iter (fun eqclass ->
+(*            print_endline ("CLASS ######################"); *)
             List.iter (fun e -> GenSet.add alpha_relev e) eqclass
           ) alpha_r;
 

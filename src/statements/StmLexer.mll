@@ -81,6 +81,7 @@ let _ = List.iter (fun (kwd, tok) -> Hashtbl.add keyword_table kwd tok)
             ("path2set"     , PATH2SET);
             ("addr2set"     , ADDR2SET);
             ("orderlist"    , ORDERLIST);
+            ("hashmap"      , HASHMAP);
             ("getp"         , GETP);
             ("append"       , APPEND);
             ("reach"        , REACH);
