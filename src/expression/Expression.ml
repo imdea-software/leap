@@ -422,7 +422,6 @@ let build_var ?(fresh=false)
 let var_nature (v:V.t) : var_nature =
   (V.info v).nature
 
-(* TUKA *)
 let is_pc_var (v:V.t) : bool =
   if (V.info v).treat_as_pc then
     true
@@ -1457,6 +1456,10 @@ let prime_addrarr (aa:addrarr) : addrarr =  priming_addrarray true (None, None) 
 let unprime_addrarr (aa:addrarr) : addrarr =  priming_addrarray false (None, None) aa
 let prime_tidarr (tt:tidarr) : tidarr =  priming_tidarray true (None, None) tt
 let unprime_tidarr (tt:tidarr) : tidarr =  priming_tidarray false (None, None) tt
+let prime_bucketarr (bb:bucketarr) : bucketarr =  priming_bucketarray true (None, None) bb
+let unprime_bucketarr (bb:bucketarr) : bucketarr =  priming_bucketarray false (None, None) bb
+let prime_lockarr (ll:lockarr) : lockarr =  priming_lockarray true (None, None) ll
+let unprime_lockarr (ll:lockarr) : lockarr =  priming_lockarray false (None, None) ll
 let prime_term (t:term) : term =  priming_term true (None, None) t
 let unprime_term (t:term) : term =  priming_term false (None, None) t
 let prime_atom (a:atom) : atom =  priming_atom true (None, None) a
@@ -2143,6 +2146,12 @@ let eq_term (t1:term) (t2:term) : formula =
 
 let eq_tid (t1:tid) (t2:tid) : formula =
   Formula.atom_to_formula (Eq (TidT t1, TidT t2))
+
+let eq_bucket (b1:bucket) (b2:bucket) : formula =
+  Formula.atom_to_formula (Eq (BucketT b1, BucketT b2))
+
+let eq_lock (l1:lock) (l2:lock) : formula =
+  Formula.atom_to_formula (Eq (LockT l1, LockT l2))
 
 let ineq_addr (a1:addr) (a2:addr) : formula =
   Formula.atom_to_formula (InEq (AddrT a1, AddrT a2))
@@ -3132,6 +3141,13 @@ let prime_modified (rho_list:formula list) (phi:formula) : formula =
 (*
   let (pSet,pPC) = analyze_formula rho in
 *)
+    print_endline "=============================================";
+    print_endline ("Original formula:\n" ^ formula_to_str phi);
+    print_endline ("Modified set:");
+    V.VarSet.iter (fun v -> print_endline (V.to_str v)) pSet;
+
+
+    print_endline "=============================================";
     prime_only (unprime_set pSet) (unprime_set pPC) phi
 
 
@@ -4145,11 +4161,11 @@ let rec param_a_term (pfun:V.t option -> V.shared_or_local) (expr:term) : term =
   | ArrayT(arr)       -> ArrayT       (param_arrays       pfun arr    )
   | AddrArrayT(arr)   -> AddrArrayT   (param_addrarr_aux  pfun arr    )
   | TidArrayT(arr)    -> TidArrayT    (param_tidarr_aux   pfun arr    )
-  | BucketArrayT(arr) -> BucketArrayT (param_bucketarr    pfun arr    )
+  | BucketArrayT(arr) -> BucketArrayT (param_bucketarr_aux    pfun arr    )
   | MarkT(m)          -> MarkT        (param_mark         pfun m      )
-  | BucketT(b)        -> BucketT      (param_bucket       pfun b      )
+  | BucketT(b)        -> BucketT      (param_bucket_aux       pfun b      )
   | LockT(l)          -> LockT        (param_lock         pfun l      )
-  | LockArrayT(arr)   -> LockArrayT   (param_lockarr      pfun arr    )
+  | LockArrayT(arr)   -> LockArrayT   (param_lockarr_aux      pfun arr    )
 
 
 and param_expr_aux (pfun:V.t option -> V.shared_or_local) (expr:expr_t): expr_t =
@@ -4186,13 +4202,13 @@ and param_tidarr_aux (pfun:V.t option -> V.shared_or_local) (arr:tidarr) : tidar
   | CellTids c            -> CellTids (param_cell_aux pfun c)
 
 
-and param_bucketarr (pfun:V.t option -> V.shared_or_local) (arr:bucketarr) : bucketarr =
+and param_bucketarr_aux (pfun:V.t option -> V.shared_or_local) (arr:bucketarr) : bucketarr =
   match arr with
     VarBucketArray v       -> VarBucketArray (V.set_param v (pfun (Some v)))
       (*TODO: Fix open array case for array variables *)
-  | BucketArrayUp(arr,i,b) -> BucketArrayUp(param_bucketarr pfun arr,
+  | BucketArrayUp(arr,i,b) -> BucketArrayUp(param_bucketarr_aux pfun arr,
                                             param_int_aux pfun i,
-                                            param_bucket pfun b)
+                                            param_bucket_aux pfun b)
 
 
 and param_set (pfun:V.t option -> V.shared_or_local) (e:set) : set =
@@ -4213,7 +4229,7 @@ and param_set (pfun:V.t option -> V.shared_or_local) (e:set) : set =
                                         param_addr_aux pfun a,
                                         param_int_aux pfun l)
   | SetArrayRd(arr,t)    -> SetArrayRd(param_arrays pfun arr, t)
-  | BucketRegion(b)      -> BucketRegion(param_bucket pfun b)
+  | BucketRegion(b)      -> BucketRegion(param_bucket_aux pfun b)
 
 
 and param_addr_aux (pfun:V.t option -> V.shared_or_local) (a:addr) : addr =
@@ -4235,8 +4251,8 @@ and param_addr_aux (pfun:V.t option -> V.shared_or_local) (a:addr) : addr =
   | AddrArrayRd(arr,t)        -> AddrArrayRd(param_arrays pfun arr, t)
   | AddrArrRd(arr,l)          -> AddrArrRd(param_addrarr_aux pfun arr,
                                            param_int_aux pfun l)
-  | BucketInit(b)             -> BucketInit(param_bucket pfun b)
-  | BucketEnd(b)              -> BucketEnd(param_bucket pfun b)
+  | BucketInit(b)             -> BucketInit(param_bucket_aux pfun b)
+  | BucketEnd(b)              -> BucketEnd(param_bucket_aux pfun b)
 
 
 and param_elem_aux (pfun:V.t option -> V.shared_or_local) (e:elem) : elem =
@@ -4261,7 +4277,7 @@ and param_tid_aux (pfun:V.t option -> V.shared_or_local) (th:tid) : tid =
   | TidArrRd(arr,l)      -> TidArrRd(param_tidarr_aux pfun arr,
                                      param_int_aux pfun l)
   | PairTid p            -> PairTid(param_pair pfun p)
-  | BucketTid b          -> BucketTid(param_bucket pfun b)
+  | BucketTid b          -> BucketTid(param_bucket_aux pfun b)
   | LockId l             -> LockId(param_lock pfun l)
 
 
@@ -4272,14 +4288,14 @@ and param_lock (pfun:V.t option -> V.shared_or_local) (l:lock) : lock =
   | MkLock(t)        -> MkLock(param_tid_aux pfun t)
   | LLock(l,t)       -> LLock(param_lock pfun l, param_tid_aux pfun t)
   | LUnlock(l)       -> LUnlock(param_lock pfun l)
-  | LockArrRd (ll,i) -> LockArrRd(param_lockarr pfun ll, param_int_aux pfun i)
+  | LockArrRd (ll,i) -> LockArrRd(param_lockarr_aux pfun ll, param_int_aux pfun i)
 
 
-and param_lockarr (pfun:V.t option -> V.shared_or_local) (arr:lockarr) : lockarr =
+and param_lockarr_aux (pfun:V.t option -> V.shared_or_local) (arr:lockarr) : lockarr =
   match arr with
     VarLockArray v       -> VarLockArray (V.set_param v (pfun (Some v)))
       (*TODO: Fix open array case for array variables *)
-  | LockArrayUp(arr,i,l) -> LockArrayUp(param_lockarr pfun arr,
+  | LockArrayUp(arr,i,l) -> LockArrayUp(param_lockarr_aux pfun arr,
                                         param_int_aux pfun i,
                                         param_lock pfun l)
 
@@ -4326,14 +4342,14 @@ and param_mark (pfun:V.t option -> V.shared_or_local) (m:mark) : mark =
   | Marked c  -> Marked (param_cell_aux pfun c)
 
 
-and param_bucket (pfun:V.t option -> V.shared_or_local) (b:bucket) : bucket =
+and param_bucket_aux (pfun:V.t option -> V.shared_or_local) (b:bucket) : bucket =
   match b with
     VarBucket v -> VarBucket (V.set_param v (pfun (Some v)))
   | MkBucket(i,e,s,t) -> MkBucket(param_addr_aux pfun i,
                                   param_addr_aux pfun e,
                                   param_set pfun s,
                                   param_tid_aux pfun t)
-  | BucketArrRd(bb,i) -> BucketArrRd(param_bucketarr pfun bb,
+  | BucketArrRd(bb,i) -> BucketArrRd(param_bucketarr_aux pfun bb,
                                      param_int_aux pfun i)
 
 
@@ -4482,7 +4498,7 @@ and param_atom (pfun:V.t option -> V.shared_or_local) (a:atom) : atom =
   | Hashmap(h,s,se,bb,i)               -> Hashmap(param_mem pfun h,
                                                   param_set pfun s,
                                                   param_setelem pfun se,
-                                                  param_bucketarr pfun bb,
+                                                  param_bucketarr_aux pfun bb,
                                                   param_int_aux pfun i)
   | In(a,s)                            -> In(param_addr_aux pfun a,
                                              param_set pfun s)
@@ -4628,6 +4644,18 @@ let param_addrarr (th_p:V.shared_or_local) (aa:addrarr) : addrarr =
 
 let param_tidarr (th_p:V.shared_or_local) (tt:tidarr) : tidarr =
   param_tidarr_aux (param_local_only th_p) tt
+
+
+let param_bucket (th_p:V.shared_or_local) (b:bucket) : bucket =
+  param_bucket_aux (param_local_only th_p) b
+
+
+let param_bucketarr (th_p:V.shared_or_local) (bb:bucketarr) : bucketarr =
+  param_bucketarr_aux (param_local_only th_p) bb
+
+
+let param_lockarr (th_p:V.shared_or_local) (ll:lockarr) : lockarr =
+  param_lockarr_aux (param_local_only th_p) ll
 
 
 let param_variable (th_p:V.shared_or_local) (v:V.t) : V.t =
@@ -6579,7 +6607,29 @@ let construct_term_eq_as_array (v:term)
                                                  param_th th_p t)) in
             let assign = eq_term (TidArrayT (param_tidarr th_p primed_arr)) modif_arr in
             ([TidArrayT arr], assign)
-        | _ -> construct_term_eq v th_p e
+        | (BucketT (BucketArrRd(arr,i)), Term (BucketT b)) ->
+            let _ = print_endline "THIS OTHER CASE!!!!" in
+            let primed_arr = prime_bucketarr arr in
+            let modif_arr = BucketArrayT(BucketArrayUp(param_bucketarr th_p arr,
+                                                       param_int th_p i,
+                                                       param_bucket th_p b)) in
+            let assign = eq_term (BucketArrayT (param_bucketarr th_p primed_arr)) modif_arr in
+            ([BucketArrayT arr], assign)
+
+        | (AddrT(BucketInit(BucketArrRd(arr,i))), Term (AddrT a)) ->
+            let _ = print_endline "THIS OTHER NEW CASE!!!!" in
+            let freshBucketVar = VarBucket (build_global_var "aaaa" Bucket) in
+            let newBucket = MkBucket(a, BucketEnd(BucketArrRd(arr,i)),
+                                        BucketRegion(BucketArrRd(arr,i)),
+                                        BucketTid(BucketArrRd(arr,i))) in
+            let bucketEq = eq_bucket freshBucketVar newBucket in
+            let primed_arr = prime_bucketarr arr in
+            let modif_arr = BucketArrayT(BucketArrayUp(param_bucketarr th_p arr,
+                                                       param_int th_p i,
+                                                       param_bucket th_p freshBucketVar)) in
+            let assign = eq_term (BucketArrayT (param_bucketarr th_p primed_arr)) modif_arr in
+            ([BucketArrayT arr], F.conj_list [bucketEq; assign])
+        | _ -> (print_endline "HERE WE ARE"; construct_term_eq v th_p e)
       end
   | _ -> Interface.Err.msg "Invalid argument" $
                  sprintf "When trying to construct a local array assignment \

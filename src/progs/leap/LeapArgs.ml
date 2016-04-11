@@ -273,6 +273,10 @@ let opts = [
   ("-version",
      Arg.Set Version._enable_,
      " Prints the current version of leap.");
+  
+  ("-testing",
+     Arg.Set LeapDebug._testing_,
+     " Prints the current version of leap.");
 
 
 (*

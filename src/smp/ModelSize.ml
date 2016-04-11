@@ -60,6 +60,8 @@ let dom_to_str (d:dom_t) : string =
 
 
 let to_str (ms:t) : string =
-  String.concat "\n" (Hashtbl.fold (fun d i xs ->
-                       ((dom_to_str d) ^ ": " ^ (string_of_int i)) :: xs
-                     ) ms [])
+  "========  Model size ========\n" ^
+  (String.concat "\n" (Hashtbl.fold (fun d i xs ->
+                        ((dom_to_str d) ^ ": " ^ (string_of_int i)) :: xs
+                      ) ms [])) ^
+  "\n=============================\n"

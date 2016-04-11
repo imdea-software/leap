@@ -554,6 +554,10 @@ module Make (AS : ArrangementSolverSpec.S) =
 
 
           (* Assertions only *)
+(*
+          print_endline "ALPHA_R";
+          List.iter (fun xs -> print_endline (String.concat "," (List.map E.integer_to_str xs))) alpha_r;
+*)
 
           try
             let res = Hashtbl.find arrg_sat_table alpha_r in

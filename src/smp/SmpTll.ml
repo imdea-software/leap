@@ -374,7 +374,12 @@ let cut_off (strat:Smp.cutoff_strategy_t)
             (f:formula) : MS.t =
 (*  LOG "Strategy: %s\n" (Smp.strategy_to_str strat) LEVEL DEBUG; *)
   options := opt;
-  match strat with
-  | Smp.Dnf     -> compute_max_cut_off (F.dnf f)
-  | Smp.Union   -> compute_max_cut_off_with_union f
-  | Smp.Pruning -> compute_max_cut_off_with_pruning f
+  let ms = if !LeapDebug._testing_ then
+             LeapDebug._testing_smp_()
+           else
+             match strat with
+             | Smp.Dnf     -> compute_max_cut_off (F.dnf f)
+             | Smp.Union   -> compute_max_cut_off_with_union f
+             | Smp.Pruning -> compute_max_cut_off_with_pruning f in
+  LeapVerbose.verbstr (MS.to_str ms);
+  ms

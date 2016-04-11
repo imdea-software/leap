@@ -313,7 +313,12 @@ let generic_stm_term_eq (mode:eqGenMode)
 
 
     (* Remaining cases *)
-    | _ -> eq_generator v' th_p new_e in
+    | _ -> begin
+             print_endline ("EQ: " ^ (E.term_to_str v') ^ "    " ^ (E.expr_to_str new_e));
+             let (ts,aa) = eq_generator v' th_p new_e in
+             print_endline ("NEW EQ: " ^ (E.formula_to_str aa));
+             (ts,aa)
+           end in
   (modif @ aux_modif, F.conj_list (formula::aux_f))
 
 
@@ -476,6 +481,8 @@ let gen_st_cond_effect_for_th (pt:prog_type)
                                | E.V.Local _ -> construct_stm_term_eq_as_array mInfo t th_p e in
                              (t_res@ts, e_res::es)
                            ) ([],[]) es in
+      let es_phi = F.conj_list (es_list) in
+(*
       let es_phi = F.conj_list (
                      match pt with
                      | Num  -> es_list
@@ -486,6 +493,7 @@ let gen_st_cond_effect_for_th (pt:prog_type)
                                  (E.eq_mem (E.prime_mem E.heap) E.heap)::es_list
                                end)
       in
+*)
         if (c = n) && not(is_ghost) then
           (cs_phi, F.True, c, n)
         else

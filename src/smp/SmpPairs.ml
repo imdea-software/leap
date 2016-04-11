@@ -110,7 +110,12 @@ let prune_atom (a:PE.atom) : PE.atom option =
 let compute_max_cut_off_with_pruning (phi:PE.formula) : MS.t =
   let pruned_phi = LeapLib.Option.default F.True (F.prune_formula prune_atom (F.nnf phi)) in
   let new_dnf = List.map F.cleanup_conj (F.dnf pruned_phi) in
-    compute_max_cut_off (new_dnf)
+  let ms = if !LeapDebug._testing_ then
+             LeapDebug._testing_smp_()
+           else
+             compute_max_cut_off (new_dnf) in
+  LeapVerbose.verbstr (MS.to_str ms);
+  ms
 
     
 let cut_off (phi:PE.formula) : MS.t =

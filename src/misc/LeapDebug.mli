@@ -11,3 +11,6 @@ val flush : unit -> unit
 val debug : ('a, Format.formatter, unit) format -> 'a
 
 val is_debug_enabled : unit -> bool
+
+val _testing_ : bool ref
+val _testing_smp_ : unit -> ModelSize.t

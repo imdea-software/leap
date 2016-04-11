@@ -365,11 +365,13 @@ module Make (TSLK : TSLKExpression.S) =
                 (f:Expr.formula) : MS.t =
 (*      LOG "Strategy: %s\n" (Smp.strategy_to_str strat) LEVEL DEBUG; *)
       options := opt;
-      let model_s = match strat with
-                    | Smp.Dnf     -> compute_max_cut_off (F.dnf f)
-                    | Smp.Union   -> compute_max_cut_off_with_union f
-                    | Smp.Pruning -> compute_max_cut_off_with_pruning f
-      in
-      verbl _LONG_INFO "SMP TSLK DOMAINS: %s" (MS.to_str model_s);
+      let model_s = if !LeapDebug._testing_ then
+                      LeapDebug._testing_smp_()
+                    else
+                      match strat with
+                      | Smp.Dnf     -> compute_max_cut_off (F.dnf f)
+                      | Smp.Union   -> compute_max_cut_off_with_union f
+                      | Smp.Pruning -> compute_max_cut_off_with_pruning f in
+      LeapVerbose.verbstr (MS.to_str model_s);
       model_s
   end

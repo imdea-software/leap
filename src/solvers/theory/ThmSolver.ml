@@ -246,20 +246,21 @@ let find_position (levels:int)
         let k_id = match k with
                    | HM.VarInt v -> HM.V.id v
                    | _ -> "" in
-        let (i,_) = List.fold_left (fun (i,b) xs ->
-                      match (i,b) with
-                      | (_,true)  -> (i,b)
-                      | (_,false) -> begin
-                                       if List.exists (fun j ->
-                                           match j with
-                                           | E.VarInt v -> (E.V.id v) == k_id
-                                           | _ -> false) xs then
-                                         (i,true)
-                                       else
-                                         (i+1,false)
-                                     end
-                    ) (0,false) alpha in
-        i
+        let (i,found) =
+          List.fold_left (fun (i,b) xs ->
+            match (i,b) with
+            | (_,true)  -> (i,b)
+            | (_,false) -> begin
+                             if List.exists (fun j ->
+                                 match j with
+                                 | E.VarInt v -> (E.V.id v) == k_id
+                                 | _ -> false) xs then
+                               (i,true)
+                             else
+                               (i+1,false)
+                           end
+          ) (0,false) alpha in
+        if found then i else 0
       end
 
 
@@ -541,6 +542,7 @@ let rec trans_literal (alpha_r:E.integer list list option)
                      TLL.in_addr e s;
                      TLL.eq_addr (TLL.Next(TLL.CellAt(m',e))) TLL.Null] in
 
+
       let list_conj = List.fold_left (fun c i ->
         let (a,e,s,t) = List.nth bb' i in
         F.And (list_conj_f a e s, c)
@@ -571,7 +573,7 @@ let rec trans_literal (alpha_r:E.integer list list option)
       let vreg_union = List.fold_left (fun u i ->
         let (a,e,s,t) = List.nth bb' i in
           TLL.Union (s,u)
-      ) s0 (LeapLib.rangeList 1 k') in
+      ) s0 (LeapLib.rangeList 0 k') in
 
       let ineq_s = TLL.ineq_set s' vreg_union in
       let ineq_setelem = TLL.ineq_setelem se' (TLL.SetToElems (s',m')) in
@@ -586,7 +588,6 @@ let rec trans_literal (alpha_r:E.integer list list option)
         let (a,e,s,t) = List.nth bb' i in
         F.Or (list_disj_f a e s, d)
       ) (list_disj_f a0 e0 s0) (LeapLib.rangeList 1 k') in
-
 
       let disjoint = ref [] in
       for i = 0 to k' do
@@ -646,22 +647,36 @@ let check_thm (levels:int)
   | F.TrueConj -> Sat.Sat
   | F.FalseConj -> Sat.Unsat
   | F.Conj ls -> begin
-                    let phi_tll = to_tll alpha_r levels
-                                    (List.map ThmInterface.literal_to_thm_literal ls) in
-                    TllSol.compute_model (!comp_model);
-                    let res = TllSol.check_sat lines co !use_quantifier phi_tll in
-                    DP.add_dp_calls this_call_tbl DP.Tll 1;
-                    (*
-                    tll_sort_map := TllSol.sort_map ();
-                    tll_model := TllSol.get_model ();
-                    *)
-                    if LeapVerbose.is_verbose_level_enabled(LeapVerbose._SHORT_INFO) then
-                      if Sat.is_sat res then print_string "S" else print_string "X";
-                    let _ = match alpha_r with
-                            | None -> ()
-                            | Some a -> Hashtbl.add arrg_sat_table a res in
-                    res
-                  end
+      (* The formula passed to this function does not
+       * contains any constant integer value, as this
+       * function is called by the arrangements solver when
+       * analyzing the NC formula. Hence, I can (and need
+       * to) bound the integer variables to the number of
+       * available levels in the small model. *)
+      let intVars = E.varset_of_sort_from_conj cf E.Int in
+      let boundFunc (v:E.V.t) = [F.Atom (E.LessEq (E.IntVal 0, E.VarInt v));
+                                 F.Atom (E.Less (E.VarInt v, E.IntVal levels))] in
+      let intBoundFormula = E.V.VarSet.fold (fun v cs ->
+                              (boundFunc v) @ cs
+                            ) intVars [] in
+      let fullConj = intBoundFormula @ ls in 
+      assert(levels > 0);
+      let phi_tll = to_tll alpha_r (levels-1)
+                      (List.map ThmInterface.literal_to_thm_literal fullConj) in
+      TllSol.compute_model (!comp_model);
+      let res = TllSol.check_sat lines co !use_quantifier phi_tll in
+      DP.add_dp_calls this_call_tbl DP.Tll 1;
+      (*
+      tll_sort_map := TllSol.sort_map ();
+      tll_model := TllSol.get_model ();
+      *)
+      if LeapVerbose.is_verbose_level_enabled(LeapVerbose._SHORT_INFO) then
+        if Sat.is_sat res then print_string "S" else print_string "X";
+      let _ = match alpha_r with
+              | None -> ()
+              | Some a -> Hashtbl.add arrg_sat_table a res in
+      res
+    end
 
 
 

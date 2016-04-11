@@ -235,6 +235,7 @@ val lockarr_to_str    : lockarr -> string
 val bucketarr_to_str  : bucketarr -> string
 val mem_to_str        : mem     -> string
 val path_to_str       : path    -> string
+val integer_to_str    : integer -> string
 val set_to_str        : set     -> string
 val setth_to_str      : setth   -> string
 val setelem_to_str    : setelem -> string
