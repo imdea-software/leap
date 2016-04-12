@@ -108,9 +108,9 @@ and term_to_tll_term (t:E.term) : TLL.term =
   | E.PairT _         -> raise(UnsupportedTllExpr(E.term_to_str t))
   | E.AddrArrayT _    -> raise(UnsupportedTllExpr(E.term_to_str t))
   | E.TidArrayT _     -> raise(UnsupportedTllExpr(E.term_to_str t))
-  | E.BucketArrayT _  -> raise(UnsupportedTllExpr(E.term_to_str t))
+  | E.BucketArrayT _  -> (print_endline "Converting array!!!"; raise(UnsupportedTllExpr(E.term_to_str t)))
   | E.MarkT m         -> TLL.MarkT (mark_to_tll_mark m)
-  | E.BucketT _       -> raise(UnsupportedTllExpr(E.term_to_str t))
+  | E.BucketT _       -> (print_endline "Converting bucket!!!"; raise(UnsupportedTllExpr(E.term_to_str t)))
   | E.LockT _         -> raise(UnsupportedTllExpr(E.term_to_str t))
   | E.LockArrayT _    -> raise(UnsupportedTllExpr(E.term_to_str t))
   | E.ArrayT a        -> arrays_to_tll_term a

@@ -329,6 +329,12 @@ type fol_ops_t =
     fol_var : V.t -> V.t;
   }
 
+type priming_info_t =
+  {
+    var_prime_set : V.VarSet.t option;
+    pc_prime_set  : V.VarSet.t option;
+    prime_indexes : bool
+  }
 
 module ThreadSet = Set.Make(
   struct
@@ -922,11 +928,10 @@ let priming_option_tid (expr:V.shared_or_local) : V.shared_or_local =
   expr
 
 
-let priming_variable (pr:bool)
-                     (prime_set:(V.VarSet.t option * V.VarSet.t option))
-                     (v:V.t) : V.t =
+
+let priming_variable (pr:bool) (info:priming_info_t) (v:V.t) : V.t =
   let v' = if pr then V.prime v else V.unprime v in
-  match (fst prime_set) with
+  match info.var_prime_set with
   | None   -> v'
 (* DO NOT ERASE: This may be needed!!!! *)
   | Some s -> if (V.VarSet.mem (V.set_param v V.Shared) s ||
@@ -934,473 +939,477 @@ let priming_variable (pr:bool)
 (*      | Some s -> if V.VarSet.mem v s then v' else v *)
 
 
-let rec priming_term (pr:bool)
-                     (prime_set:(V.VarSet.t option * V.VarSet.t option))
-                     (expr:term) : term =
+let rec priming_term (pr:bool) (info:priming_info_t) (expr:term) : term =
   match expr with
-    VarT v            -> VarT           (priming_variable     pr prime_set v)
-  | SetT(set)         -> SetT           (priming_set          pr prime_set set)
-  | AddrT(addr)       -> AddrT          (priming_addr         pr prime_set addr)
-  | ElemT(elem)       -> ElemT          (priming_elem         pr prime_set elem)
-  | TidT(th)          -> TidT           (priming_tid          pr prime_set th)
-  | CellT(cell)       -> CellT          (priming_cell         pr prime_set cell)
-  | SetThT(setth)     -> SetThT         (priming_setth        pr prime_set setth)
-  | SetIntT(setint)   -> SetIntT        (priming_setint       pr prime_set setint)
-  | SetElemT(setelem) -> SetElemT       (priming_setelem      pr prime_set setelem)
-  | SetPairT(setpair) -> SetPairT       (priming_setpair      pr prime_set setpair)
-  | PathT(path)       -> PathT          (priming_path         pr prime_set path)
-  | MemT(mem)         -> MemT           (priming_mem          pr prime_set mem)
-  | IntT(i)           -> IntT           (priming_int          pr prime_set i)
-  | PairT(p)          -> PairT          (priming_pair         pr prime_set p)
-  | ArrayT(arr)       -> ArrayT         (priming_array        pr prime_set arr)
-  | AddrArrayT(arr)   -> AddrArrayT     (priming_addrarray    pr prime_set arr)
-  | TidArrayT(arr)    -> TidArrayT      (priming_tidarray     pr prime_set arr)
-  | BucketArrayT(arr) -> BucketArrayT   (priming_bucketarray  pr prime_set arr)
-  | MarkT(m)          -> MarkT          (priming_mark         pr prime_set m)
-  | BucketT(b)        -> BucketT        (priming_bucket       pr prime_set b)
-  | LockT(l)          -> LockT          (priming_lock         pr prime_set l)
-  | LockArrayT(arr)   -> LockArrayT     (priming_lockarray    pr prime_set arr)
+    VarT v            -> VarT           (priming_variable     pr info v)
+  | SetT(set)         -> SetT           (priming_set          pr info set)
+  | AddrT(addr)       -> AddrT          (priming_addr         pr info addr)
+  | ElemT(elem)       -> ElemT          (priming_elem         pr info elem)
+  | TidT(th)          -> TidT           (priming_tid          pr info th)
+  | CellT(cell)       -> CellT          (priming_cell         pr info cell)
+  | SetThT(setth)     -> SetThT         (priming_setth        pr info setth)
+  | SetIntT(setint)   -> SetIntT        (priming_setint       pr info setint)
+  | SetElemT(setelem) -> SetElemT       (priming_setelem      pr info setelem)
+  | SetPairT(setpair) -> SetPairT       (priming_setpair      pr info setpair)
+  | PathT(path)       -> PathT          (priming_path         pr info path)
+  | MemT(mem)         -> MemT           (priming_mem          pr info mem)
+  | IntT(i)           -> IntT           (priming_int          pr info i)
+  | PairT(p)          -> PairT          (priming_pair         pr info p)
+  | ArrayT(arr)       -> ArrayT         (priming_array        pr info arr)
+  | AddrArrayT(arr)   -> AddrArrayT     (priming_addrarray    pr info arr)
+  | TidArrayT(arr)    -> TidArrayT      (priming_tidarray     pr info arr)
+  | BucketArrayT(arr) -> BucketArrayT   (priming_bucketarray  pr info arr)
+  | MarkT(m)          -> MarkT          (priming_mark         pr info m)
+  | BucketT(b)        -> BucketT        (priming_bucket       pr info b)
+  | LockT(l)          -> LockT          (priming_lock         pr info l)
+  | LockArrayT(arr)   -> LockArrayT     (priming_lockarray    pr info arr)
 
 
-and priming_expr (pr:bool)
-                 (prime_set:(V.VarSet.t option * V.VarSet.t option))
-                 (expr:expr_t) : expr_t =
+and priming_expr (pr:bool) (info:priming_info_t) (expr:expr_t) : expr_t =
   match expr with
-    Term t    -> Term (priming_term pr prime_set t)
-  | Formula b -> Formula (priming_formula pr prime_set b)
+    Term t    -> Term (priming_term pr info t)
+  | Formula b -> Formula (priming_formula pr info b)
 
 
-and priming_array (pr:bool)
-                  (prime_set:(V.VarSet.t option * V.VarSet.t option))
-                  (expr:arrays) : arrays =
+and priming_array (pr:bool) (info:priming_info_t) (expr:arrays) : arrays =
   match expr with
-    VarArray v       -> VarArray (priming_variable pr prime_set v)
-  | ArrayUp(arr,t,e) -> ArrayUp  (priming_array pr prime_set arr,
-                                  priming_tid   pr prime_set t,
-                                  priming_expr  pr prime_set e)
+    VarArray v       -> VarArray (priming_variable pr info v)
+  | ArrayUp(arr,t,e) -> ArrayUp  (priming_array pr info arr,
+                                  priming_tid   pr info t,
+                                  priming_expr  pr info e)
 
 
-and priming_addrarray (pr:bool)
-                      (prime_set:(V.VarSet.t option * V.VarSet.t option))
-                      (expr:addrarr) : addrarr =
+and priming_addrarray (pr:bool) (info:priming_info_t) (expr:addrarr) : addrarr =
   match expr with
-    VarAddrArray v       -> VarAddrArray (priming_variable pr prime_set v)
-  | AddrArrayUp(arr,i,a) -> AddrArrayUp  (priming_addrarray pr prime_set arr,
-                                          priming_int   pr prime_set i,
-                                          priming_addr  pr prime_set a)
-  | CellArr c            -> CellArr (priming_cell pr prime_set c)
+    VarAddrArray v       -> VarAddrArray (priming_variable pr info v)
+  | AddrArrayUp(arr,i,a) -> AddrArrayUp  (priming_addrarray pr info arr,
+                                          priming_int   pr info i,
+                                          priming_addr  pr info a)
+  | CellArr c            -> CellArr (priming_cell pr info c)
 
 
-and priming_tidarray (pr:bool)
-                     (prime_set:(V.VarSet.t option * V.VarSet.t option))
-                     (expr:tidarr) : tidarr =
+and priming_tidarray (pr:bool) (info:priming_info_t) (expr:tidarr) : tidarr =
   match expr with
-    VarTidArray v       -> VarTidArray (priming_variable pr prime_set v)
-  | TidArrayUp(arr,i,t) -> TidArrayUp  (priming_tidarray pr prime_set arr,
-                                          priming_int  pr prime_set i,
-                                          priming_tid  pr prime_set t)
-  | CellTids c            -> CellTids (priming_cell pr prime_set c)
+    VarTidArray v       -> VarTidArray (priming_variable pr info v)
+  | TidArrayUp(arr,i,t) -> TidArrayUp  (priming_tidarray pr info arr,
+                                          priming_int  pr info i,
+                                          priming_tid  pr info t)
+  | CellTids c            -> CellTids (priming_cell pr info c)
 
 
-and priming_bucketarray (pr:bool)
-                        (prime_set:(V.VarSet.t option * V.VarSet.t option))
-                        (expr:bucketarr) : bucketarr =
+and priming_bucketarray (pr:bool) (info:priming_info_t) (expr:bucketarr) : bucketarr =
   match expr with
-    VarBucketArray v       -> VarBucketArray (priming_variable pr prime_set v)
-  | BucketArrayUp(arr,i,b) -> BucketArrayUp  (priming_bucketarray pr prime_set arr,
-                                              priming_int  pr prime_set i,
-                                              priming_bucket pr prime_set b)
+    VarBucketArray v       -> VarBucketArray (priming_variable pr info v)
+  | BucketArrayUp(arr,i,b) -> BucketArrayUp  (priming_bucketarray pr info arr,
+                                              priming_int  pr info i,
+                                              priming_bucket pr info b)
 
 
-and priming_set (pr:bool)
-                (prime_set:(V.VarSet.t option * V.VarSet.t option))
-                (e:set) : set =
+and priming_set (pr:bool) (info:priming_info_t) (e:set) : set =
   match e with
-    VarSet v            -> VarSet (priming_variable pr prime_set v)
+    VarSet v            -> VarSet (priming_variable pr info v)
   | EmptySet            -> EmptySet
-  | Singl(addr)         -> Singl(priming_addr pr prime_set addr)
-  | Union(s1,s2)        -> Union(priming_set pr prime_set s1,
-                                 priming_set pr prime_set s2)
-  | Intr(s1,s2)         -> Intr(priming_set pr prime_set s1,
-                                priming_set pr prime_set s2)
-  | Setdiff(s1,s2)      -> Setdiff(priming_set pr prime_set s1,
-                                   priming_set pr prime_set s2)
-  | PathToSet(path)     -> PathToSet(priming_path pr prime_set path)
-  | AddrToSet(mem,addr) -> AddrToSet(priming_mem pr prime_set mem,
-                                     priming_addr pr prime_set addr)
-  | AddrToSetAt(mem,a,l)-> AddrToSetAt(priming_mem pr prime_set mem,
-                                       priming_addr pr prime_set a,
-                                       priming_int pr prime_set l)
-  | SetArrayRd(arr,t)   -> SetArrayRd(priming_array pr prime_set arr,
-                                      priming_tid pr prime_set t)
-  | BucketRegion (b)    -> BucketRegion(priming_bucket pr prime_set b)
+  | Singl(addr)         -> Singl(priming_addr pr info addr)
+  | Union(s1,s2)        -> Union(priming_set pr info s1,
+                                 priming_set pr info s2)
+  | Intr(s1,s2)         -> Intr(priming_set pr info s1,
+                                priming_set pr info s2)
+  | Setdiff(s1,s2)      -> Setdiff(priming_set pr info s1,
+                                   priming_set pr info s2)
+  | PathToSet(path)     -> PathToSet(priming_path pr info path)
+  | AddrToSet(mem,addr) -> AddrToSet(priming_mem pr info mem,
+                                     priming_addr pr info addr)
+  | AddrToSetAt(mem,a,l)-> AddrToSetAt(priming_mem pr info mem,
+                                       priming_addr pr info a,
+                                       priming_int pr info l)
+  | SetArrayRd(arr,t)   -> SetArrayRd(priming_array pr info arr,
+                                      if info.prime_indexes then
+                                        priming_tid pr info t
+                                      else
+                                        t)
+  | BucketRegion (b)    -> BucketRegion(priming_bucket pr info b)
 
 
-and priming_addr (pr:bool)
-                 (prime_set:(V.VarSet.t option * V.VarSet.t option))
-                 (a:addr) : addr =
+and priming_addr (pr:bool) (info:priming_info_t) (a:addr) : addr =
   match a with
-    VarAddr v                 -> VarAddr (priming_variable pr prime_set v)
+    VarAddr v                 -> VarAddr (priming_variable pr info v)
   | Null                      -> Null
-  | Next(cell)                -> Next(priming_cell pr prime_set cell)
-  | NextAt(cell,l)            -> NextAt(priming_cell pr prime_set cell,
-                                        priming_int pr prime_set l)
-  | ArrAt(cell,l)             -> ArrAt(priming_cell pr prime_set cell,
-                                        priming_int pr prime_set l)
-  | FirstLocked(mem,path)     -> FirstLocked(priming_mem pr prime_set mem,
-                                             priming_path pr prime_set path)
-  | FirstLockedAt(mem,path,l) -> FirstLockedAt(priming_mem pr prime_set mem,
-                                               priming_path pr prime_set path,
-                                               priming_int pr prime_set l)
-  | LastLocked(mem,path)      -> LastLocked(priming_mem pr prime_set mem,
-                                            priming_path pr prime_set path)
-  | AddrArrayRd(arr,t)        -> AddrArrayRd(priming_array pr prime_set arr,
-                                             priming_tid pr prime_set t)
-  | AddrArrRd(arr,l)          -> AddrArrRd(priming_addrarray pr prime_set arr,
-                                           priming_int pr prime_set l)
-  | BucketInit(b)             -> BucketInit(priming_bucket pr prime_set b)
-  | BucketEnd(b)              -> BucketEnd(priming_bucket pr prime_set b)
+  | Next(cell)                -> Next(priming_cell pr info cell)
+  | NextAt(cell,l)            -> NextAt(priming_cell pr info cell,
+                                        priming_int pr info l)
+  | ArrAt(cell,l)             -> ArrAt(priming_cell pr info cell,
+                                        priming_int pr info l)
+  | FirstLocked(mem,path)     -> FirstLocked(priming_mem pr info mem,
+                                             priming_path pr info path)
+  | FirstLockedAt(mem,path,l) -> FirstLockedAt(priming_mem pr info mem,
+                                               priming_path pr info path,
+                                               priming_int pr info l)
+  | LastLocked(mem,path)      -> LastLocked(priming_mem pr info mem,
+                                            priming_path pr info path)
+  | AddrArrayRd(arr,t)        -> AddrArrayRd(priming_array pr info arr,
+                                             if info.prime_indexes then
+                                               priming_tid pr info t
+                                             else
+                                               t)
+  | AddrArrRd(arr,l)          -> AddrArrRd(priming_addrarray pr info arr,
+                                           if info.prime_indexes then
+                                             priming_int pr info l
+                                           else
+                                             l)
+  | BucketInit(b)             -> BucketInit(priming_bucket pr info b)
+  | BucketEnd(b)              -> BucketEnd(priming_bucket pr info b)
 
 
-and priming_elem (pr:bool)
-                 (prime_set:(V.VarSet.t option * V.VarSet.t option))
-                 (e:elem) : elem =
+and priming_elem (pr:bool) (info:priming_info_t) (e:elem) : elem =
   match e with
-    VarElem v          -> VarElem (priming_variable pr prime_set v)
-  | CellData(cell)     -> CellData(priming_cell pr prime_set cell)
-  | ElemArrayRd(arr,t) -> ElemArrayRd(priming_array pr prime_set arr,
-                                      priming_tid pr prime_set t)
-
+    VarElem v          -> VarElem (priming_variable pr info v)
+  | CellData(cell)     -> CellData(priming_cell pr info cell)
+  | ElemArrayRd(arr,t) -> ElemArrayRd(priming_array pr info arr,
+                                      if info.prime_indexes then
+                                        priming_tid pr info t
+                                      else
+                                        t)
   | HavocListElem      -> HavocListElem
   | HavocSkiplistElem  -> HavocSkiplistElem
   | LowestElem         -> LowestElem
   | HighestElem        -> HighestElem
 
 
-and priming_tid (pr:bool)
-                (prime_set:(V.VarSet.t option * V.VarSet.t option))
-                (th:tid) : tid =
+and priming_tid (pr:bool) (info:priming_info_t) (th:tid) : tid =
   match th with
-    VarTh v              -> VarTh (priming_variable pr prime_set v)
+    VarTh v              -> VarTh (priming_variable pr info v)
   | NoTid               -> NoTid
-  | CellLockId(cell)     -> CellLockId(priming_cell pr prime_set cell)
-  | CellLockIdAt(cell,l) -> CellLockIdAt(priming_cell pr prime_set cell,
-                                         priming_int pr prime_set l)
-  | TidArrayRd(arr,t)   -> TidArrayRd(priming_array pr prime_set arr,
-                                      priming_tid pr prime_set t)
-  | TidArrRd(arr,l)     -> TidArrRd(priming_tidarray pr prime_set arr,
-                                      priming_int pr prime_set l)
-  | PairTid p           -> PairTid(priming_pair pr prime_set p)
-  | BucketTid b         -> BucketTid(priming_bucket pr prime_set b)
-  | LockId l            -> LockId(priming_lock pr prime_set l)
+  | CellLockId(cell)     -> CellLockId(priming_cell pr info cell)
+  | CellLockIdAt(cell,l) -> CellLockIdAt(priming_cell pr info cell,
+                                         priming_int pr info l)
+  | TidArrayRd(arr,t)   -> TidArrayRd(priming_array pr info arr,
+                                      if info.prime_indexes then
+                                        priming_tid pr info t
+                                      else
+                                        t)
+  | TidArrRd(arr,l)     -> TidArrRd(priming_tidarray pr info arr,
+                                    if info.prime_indexes then
+                                      priming_int pr info l
+                                    else
+                                      l)
+  | PairTid p           -> PairTid(priming_pair pr info p)
+  | BucketTid b         -> BucketTid(priming_bucket pr info b)
+  | LockId l            -> LockId(priming_lock pr info l)
 
 
-and priming_lock (pr:bool)
-                 (prime_set:(V.VarSet.t option * V.VarSet.t option))
-                 (expr:lock) : lock =
+and priming_lock (pr:bool) (info:priming_info_t) (expr:lock) : lock =
   match expr with
-    VarLock v       -> VarLock (priming_variable pr prime_set v)
-  | MkLock(t) -> MkLock (priming_tid pr prime_set t)
-  | LLock (l,t) -> LLock (priming_lock pr prime_set l,
-                          priming_tid  pr prime_set t)
-  | LUnlock (l) -> LUnlock (priming_lock pr prime_set l)
-  | LockArrRd (ll,i) -> LockArrRd (priming_lockarray pr prime_set ll,
-                                   priming_int pr prime_set i)
+    VarLock v       -> VarLock (priming_variable pr info v)
+  | MkLock(t) -> MkLock (priming_tid pr info t)
+  | LLock (l,t) -> LLock (priming_lock pr info l,
+                          priming_tid  pr info t)
+  | LUnlock (l) -> LUnlock (priming_lock pr info l)
+  | LockArrRd (ll,i) -> LockArrRd (priming_lockarray pr info ll,
+                                      if info.prime_indexes then
+                                        priming_int pr info i
+                                      else
+                                        i)
 
 
-and priming_lockarray (pr:bool)
-                      (prime_set:(V.VarSet.t option * V.VarSet.t option))
-                      (expr:lockarr) : lockarr =
+and priming_lockarray (pr:bool) (info:priming_info_t) (expr:lockarr) : lockarr =
   match expr with
-    VarLockArray v       -> VarLockArray (priming_variable pr prime_set v)
-  | LockArrayUp(arr,i,l) -> LockArrayUp  (priming_lockarray pr prime_set arr,
-                                          priming_int  pr prime_set i,
-                                          priming_lock pr prime_set l)
+    VarLockArray v       -> VarLockArray (priming_variable pr info v)
+  | LockArrayUp(arr,i,l) -> LockArrayUp  (priming_lockarray pr info arr,
+                                          priming_int  pr info i,
+                                          priming_lock pr info l)
 
 
-and priming_cell (pr:bool)
-                 (prime_set:(V.VarSet.t option * V.VarSet.t option))
-                 (c:cell) : cell =
+and priming_cell (pr:bool) (info:priming_info_t) (c:cell) : cell =
   match c with
-    VarCell v                  -> VarCell (priming_variable pr prime_set v)
+    VarCell v                  -> VarCell (priming_variable pr info v)
   | Error                      -> Error
-  | MkCell(data,addr,th)       -> MkCell(priming_elem pr prime_set data,
-                                         priming_addr pr prime_set addr,
-                                         priming_tid pr prime_set th)
-  | MkCellMark(data,addr,th,m) -> MkCellMark(priming_elem pr prime_set data,
-                                             priming_addr pr prime_set addr,
-                                             priming_tid pr prime_set th,
-                                             priming_mark pr prime_set m)
-  | MkSLKCell(data,aa,tt)      -> MkSLKCell(priming_elem pr prime_set data,
-                                            List.map (priming_addr pr prime_set) aa,
-                                            List.map (priming_tid pr prime_set) tt)
-  | MkSLCell(data,aa,ta,l)     -> MkSLCell(priming_elem pr prime_set data,
-                                           priming_addrarray pr prime_set aa,
-                                           priming_tidarray pr prime_set ta,
-                                           priming_int pr prime_set l)
-  | CellLock(cell, t)          -> CellLock(priming_cell pr prime_set cell,
-                                           priming_tid pr prime_set t)
-  | CellLockAt(cell,l, t)      -> CellLockAt(priming_cell pr prime_set cell,
-                                             priming_int pr prime_set l,
-                                             priming_tid pr prime_set t)
-  | CellUnlock(cell)           -> CellUnlock(priming_cell pr prime_set cell)
-  | CellUnlockAt(cell,l)       -> CellUnlockAt(priming_cell pr prime_set cell,
-                                               priming_int pr prime_set l)
-  | CellAt(mem,addr)           -> CellAt(priming_mem pr prime_set mem,
-                                         priming_addr pr prime_set addr)
-  | CellArrayRd(arr,t)         -> CellArrayRd(priming_array pr prime_set arr,
-                                              priming_tid pr prime_set t)
-  | UpdCellAddr(c,i,a)         -> UpdCellAddr(priming_cell pr prime_set c,
-                                              priming_int pr prime_set i,
-                                              priming_addr pr prime_set a)
+  | MkCell(data,addr,th)       -> MkCell(priming_elem pr info data,
+                                         priming_addr pr info addr,
+                                         priming_tid pr info th)
+  | MkCellMark(data,addr,th,m) -> MkCellMark(priming_elem pr info data,
+                                             priming_addr pr info addr,
+                                             priming_tid pr info th,
+                                             priming_mark pr info m)
+  | MkSLKCell(data,aa,tt)      -> MkSLKCell(priming_elem pr info data,
+                                            List.map (priming_addr pr info) aa,
+                                            List.map (priming_tid pr info) tt)
+  | MkSLCell(data,aa,ta,l)     -> MkSLCell(priming_elem pr info data,
+                                           priming_addrarray pr info aa,
+                                           priming_tidarray pr info ta,
+                                           priming_int pr info l)
+  | CellLock(cell, t)          -> CellLock(priming_cell pr info cell,
+                                           priming_tid pr info t)
+  | CellLockAt(cell,l, t)      -> CellLockAt(priming_cell pr info cell,
+                                             priming_int pr info l,
+                                             priming_tid pr info t)
+  | CellUnlock(cell)           -> CellUnlock(priming_cell pr info cell)
+  | CellUnlockAt(cell,l)       -> CellUnlockAt(priming_cell pr info cell,
+                                               priming_int pr info l)
+  | CellAt(mem,addr)           -> CellAt(priming_mem pr info mem,
+                                         priming_addr pr info addr)
+  | CellArrayRd(arr,t)         -> CellArrayRd(priming_array pr info arr,
+                                              if info.prime_indexes then
+                                                priming_tid pr info t
+                                              else
+                                                t)  
+  | UpdCellAddr(c,i,a)         -> UpdCellAddr(priming_cell pr info c,
+                                              priming_int pr info i,
+                                              priming_addr pr info a)
 
 
-and priming_mark (pr:bool)
-                 (prime_set:(V.VarSet.t option * V.VarSet.t option))
-                 (m:mark) : mark =
+and priming_mark (pr:bool) (info:priming_info_t) (m:mark) : mark =
   match m with
-    VarMark v -> VarMark (priming_variable pr prime_set v)
+    VarMark v -> VarMark (priming_variable pr info v)
   | MarkTrue  -> MarkTrue
   | MarkFalse -> MarkFalse
-  | Marked c  -> Marked(priming_cell pr prime_set c)
+  | Marked c  -> Marked(priming_cell pr info c)
 
 
-and priming_bucket (pr:bool)
-                   (prime_set:(V.VarSet.t option * V.VarSet.t option))
-                   (b:bucket) : bucket =
+and priming_bucket (pr:bool) (info:priming_info_t) (b:bucket) : bucket =
   match b with
-    VarBucket v        -> VarBucket (priming_variable pr prime_set v)
-  | MkBucket (i,e,s,t) -> MkBucket (priming_addr pr prime_set i,
-                                    priming_addr pr prime_set e,
-                                    priming_set pr prime_set s,
-                                    priming_tid pr prime_set t)
-  | BucketArrRd(bb,i)  -> BucketArrRd(priming_bucketarray pr prime_set bb,
-                                      priming_int pr prime_set i)
+    VarBucket v        -> VarBucket (priming_variable pr info v)
+  | MkBucket (i,e,s,t) -> MkBucket (priming_addr pr info i,
+                                    priming_addr pr info e,
+                                    priming_set pr info s,
+                                    priming_tid pr info t)
+  | BucketArrRd(bb,i)  -> BucketArrRd(priming_bucketarray pr info bb,
+                                      if info.prime_indexes then
+                                        priming_int pr info i
+                                      else
+                                        i)
 
 
-and priming_setth (pr:bool)
-                  (prime_set:(V.VarSet.t option * V.VarSet.t option))
-                  (s:setth) : setth =
+and priming_setth (pr:bool) (info:priming_info_t) (s:setth) : setth =
   match s with
-    VarSetTh v          -> VarSetTh (priming_variable pr prime_set v)
+    VarSetTh v          -> VarSetTh (priming_variable pr info v)
   | EmptySetTh          -> EmptySetTh
-  | SinglTh(th)         -> SinglTh(priming_tid pr prime_set th)
-  | UnionTh(s1,s2)      -> UnionTh(priming_setth pr prime_set s1,
-                                   priming_setth pr prime_set s2)
-  | IntrTh(s1,s2)       -> IntrTh(priming_setth pr prime_set s1,
-                                  priming_setth pr prime_set s2)
-  | SetdiffTh(s1,s2)    -> SetdiffTh(priming_setth pr prime_set s1,
-                                     priming_setth pr prime_set s2)
-  | SetThArrayRd(arr,t) -> SetThArrayRd(priming_array pr prime_set arr,
-                                        priming_tid pr prime_set t)
-  | LockSet(m,p)        -> LockSet(priming_mem pr prime_set m,
-                                   priming_path pr prime_set p)
+  | SinglTh(th)         -> SinglTh(priming_tid pr info th)
+  | UnionTh(s1,s2)      -> UnionTh(priming_setth pr info s1,
+                                   priming_setth pr info s2)
+  | IntrTh(s1,s2)       -> IntrTh(priming_setth pr info s1,
+                                  priming_setth pr info s2)
+  | SetdiffTh(s1,s2)    -> SetdiffTh(priming_setth pr info s1,
+                                     priming_setth pr info s2)
+  | SetThArrayRd(arr,t) -> SetThArrayRd(priming_array pr info arr,
+                                        if info.prime_indexes then
+                                          priming_tid pr info t
+                                        else
+                                          t)
+  | LockSet(m,p)        -> LockSet(priming_mem pr info m,
+                                   priming_path pr info p)
 
 
-and priming_setint (pr:bool)
-                   (prime_set:(V.VarSet.t option * V.VarSet.t option))
-                   (s:setint) : setint =
+and priming_setint (pr:bool) (info:priming_info_t) (s:setint) : setint =
   match s with
-    VarSetInt v          -> VarSetInt (priming_variable pr prime_set v)
+    VarSetInt v          -> VarSetInt (priming_variable pr info v)
   | EmptySetInt          -> EmptySetInt
-  | SinglInt(th)         -> SinglInt(priming_int pr prime_set th)
-  | UnionInt(s1,s2)      -> UnionInt(priming_setint pr prime_set s1,
-                                     priming_setint pr prime_set s2)
-  | IntrInt(s1,s2)       -> IntrInt(priming_setint pr prime_set s1,
-                                    priming_setint pr prime_set s2)
-  | SetdiffInt(s1,s2)    -> SetdiffInt(priming_setint pr prime_set s1,
-                                       priming_setint pr prime_set s2)
-  | SetLower(s,i)        -> SetLower(priming_setint pr prime_set s,
-                                     priming_int pr prime_set i)
-  | SetIntArrayRd(arr,t) -> SetIntArrayRd(priming_array pr prime_set arr,
-                                          priming_tid pr prime_set t)
+  | SinglInt(th)         -> SinglInt(priming_int pr info th)
+  | UnionInt(s1,s2)      -> UnionInt(priming_setint pr info s1,
+                                     priming_setint pr info s2)
+  | IntrInt(s1,s2)       -> IntrInt(priming_setint pr info s1,
+                                    priming_setint pr info s2)
+  | SetdiffInt(s1,s2)    -> SetdiffInt(priming_setint pr info s1,
+                                       priming_setint pr info s2)
+  | SetLower(s,i)        -> SetLower(priming_setint pr info s,
+                                     priming_int pr info i)
+  | SetIntArrayRd(arr,t) -> SetIntArrayRd(priming_array pr info arr,
+                                          if info.prime_indexes then
+                                            priming_tid pr info t
+                                          else
+                                            t)
 
 
-and priming_setelem (pr:bool)
-                    (prime_set:(V.VarSet.t option * V.VarSet.t option))
-                    (s:setelem) : setelem =
+and priming_setelem (pr:bool) (info:priming_info_t) (s:setelem) : setelem =
   match s with
-    VarSetElem v          -> VarSetElem (priming_variable pr prime_set v)
+    VarSetElem v          -> VarSetElem (priming_variable pr info v)
   | EmptySetElem          -> EmptySetElem
-  | SinglElem(e)          -> SinglElem(priming_elem pr prime_set e)
-  | UnionElem(s1,s2)      -> UnionElem(priming_setelem pr prime_set s1,
-                                       priming_setelem pr prime_set s2)
-  | IntrElem(s1,s2)       -> IntrElem(priming_setelem pr prime_set s1,
-                                      priming_setelem pr prime_set s2)
-  | SetdiffElem(s1,s2)    -> SetdiffElem(priming_setelem pr prime_set s1,
-                                         priming_setelem pr prime_set s2)
-  | SetToElems(s,m)       -> SetToElems(priming_set pr prime_set s,
-                                        priming_mem pr prime_set m)
-  | SetElemArrayRd(arr,t) -> SetElemArrayRd(priming_array pr prime_set arr,
-                                            priming_tid pr prime_set t)
+  | SinglElem(e)          -> SinglElem(priming_elem pr info e)
+  | UnionElem(s1,s2)      -> UnionElem(priming_setelem pr info s1,
+                                       priming_setelem pr info s2)
+  | IntrElem(s1,s2)       -> IntrElem(priming_setelem pr info s1,
+                                      priming_setelem pr info s2)
+  | SetdiffElem(s1,s2)    -> SetdiffElem(priming_setelem pr info s1,
+                                         priming_setelem pr info s2)
+  | SetToElems(s,m)       -> SetToElems(priming_set pr info s,
+                                        priming_mem pr info m)
+  | SetElemArrayRd(arr,t) -> SetElemArrayRd(priming_array pr info arr,
+                                            if info.prime_indexes then
+                                              priming_tid pr info t
+                                            else
+                                              t)
 
 
-and priming_setpair (pr:bool)
-                    (prime_set:(V.VarSet.t option * V.VarSet.t option))
-                    (s:setpair) : setpair =
+and priming_setpair (pr:bool) (info:priming_info_t) (s:setpair) : setpair =
   match s with
-    VarSetPair v          -> VarSetPair (priming_variable pr prime_set v)
+    VarSetPair v          -> VarSetPair (priming_variable pr info v)
   | EmptySetPair          -> EmptySetPair
-  | SinglPair(p)          -> SinglPair(priming_pair pr prime_set p)
-  | UnionPair(s1,s2)      -> UnionPair(priming_setpair pr prime_set s1,
-                                       priming_setpair pr prime_set s2)
-  | IntrPair(s1,s2)       -> IntrPair(priming_setpair pr prime_set s1,
-                                      priming_setpair pr prime_set s2)
-  | SetdiffPair(s1,s2)    -> SetdiffPair(priming_setpair pr prime_set s1,
-                                         priming_setpair pr prime_set s2)
-  | LowerPair (s,i)       -> LowerPair(priming_setpair pr prime_set s,
-                                       priming_int pr prime_set i)
-  | SetPairArrayRd(arr,t) -> SetPairArrayRd(priming_array pr prime_set arr,
-                                            priming_tid pr prime_set t)
+  | SinglPair(p)          -> SinglPair(priming_pair pr info p)
+  | UnionPair(s1,s2)      -> UnionPair(priming_setpair pr info s1,
+                                       priming_setpair pr info s2)
+  | IntrPair(s1,s2)       -> IntrPair(priming_setpair pr info s1,
+                                      priming_setpair pr info s2)
+  | SetdiffPair(s1,s2)    -> SetdiffPair(priming_setpair pr info s1,
+                                         priming_setpair pr info s2)
+  | LowerPair (s,i)       -> LowerPair(priming_setpair pr info s,
+                                       priming_int pr info i)
+  | SetPairArrayRd(arr,t) -> SetPairArrayRd(priming_array pr info arr,
+                                            if info.prime_indexes then
+                                              priming_tid pr info t
+                                            else
+                                              t)
 
 
-
-and priming_path (pr:bool)
-                 (prime_set:(V.VarSet.t option * V.VarSet.t option))
-                 (p:path) : path =
+and priming_path (pr:bool) (info:priming_info_t) (p:path) : path =
   match p with
-    VarPath v                        -> VarPath (priming_variable pr prime_set v)
+    VarPath v                        -> VarPath (priming_variable pr info v)
   | Epsilon                          -> Epsilon
-  | SimplePath(addr)                 -> SimplePath(priming_addr pr prime_set addr)
-  | GetPath(mem,add_from,add_to)     -> GetPath(priming_mem pr prime_set mem,
-                                                priming_addr pr prime_set add_from,
-                                                priming_addr pr prime_set add_to)
-  | GetPathAt(mem,add_from,add_to,l) -> GetPathAt(priming_mem pr prime_set mem,
-                                                  priming_addr pr prime_set add_from,
-                                                  priming_addr pr prime_set add_to,
-                                                  priming_int pr prime_set l)
-  | PathArrayRd(arr,t)               -> PathArrayRd(priming_array pr prime_set arr,
-                                                    priming_tid pr prime_set t)
+  | SimplePath(addr)                 -> SimplePath(priming_addr pr info addr)
+  | GetPath(mem,add_from,add_to)     -> GetPath(priming_mem pr info mem,
+                                                priming_addr pr info add_from,
+                                                priming_addr pr info add_to)
+  | GetPathAt(mem,add_from,add_to,l) -> GetPathAt(priming_mem pr info mem,
+                                                  priming_addr pr info add_from,
+                                                  priming_addr pr info add_to,
+                                                  priming_int pr info l)
+  | PathArrayRd(arr,t)               -> PathArrayRd(priming_array pr info arr,
+                                                    if info.prime_indexes then
+                                                      priming_tid pr info t
+                                                    else
+                                                      t)
 
 
-and priming_mem (pr:bool)
-                (prime_set:(V.VarSet.t option * V.VarSet.t option))
-                (m:mem) : mem =
+and priming_mem (pr:bool) (info:priming_info_t) (m:mem) : mem =
   match m with
-    VarMem v             -> VarMem(priming_variable pr prime_set v)
-  | Update(mem,add,cell) -> Update(priming_mem pr prime_set mem,
-                                   priming_addr pr prime_set add,
-                                   priming_cell pr prime_set cell)
-  | MemArrayRd(arr,t)    -> MemArrayRd(priming_array pr prime_set arr,
-                                       priming_tid pr prime_set t)
+    VarMem v             -> VarMem(priming_variable pr info v)
+  | Update(mem,add,cell) -> Update(priming_mem pr info mem,
+                                   priming_addr pr info add,
+                                   priming_cell pr info cell)
+  | MemArrayRd(arr,t)    -> MemArrayRd(priming_array pr info arr,
+                                       if info.prime_indexes then
+                                         priming_tid pr info t
+                                       else
+                                         t)
 
 
-and priming_int (pr:bool)
-                (prime_set:(V.VarSet.t option * V.VarSet.t option))
-                (i:integer) : integer =
+and priming_int (pr:bool) (info:priming_info_t) (i:integer) : integer =
   match i with
     IntVal(i)         -> IntVal(i)
-  | VarInt v          -> VarInt(priming_variable pr prime_set v)
-  | IntNeg(i)         -> IntNeg(priming_int pr prime_set i)
-  | IntAdd(i1,i2)     -> IntAdd(priming_int pr prime_set i1,
-                                priming_int pr prime_set i2)
-  | IntSub(i1,i2)     -> IntSub(priming_int pr prime_set i1,
-                                priming_int pr prime_set i2)
-  | IntMul(i1,i2)     -> IntMul(priming_int pr prime_set i1,
-                                priming_int pr prime_set i2)
-  | IntDiv(i1,i2)     -> IntDiv(priming_int pr prime_set i1,
-                                priming_int pr prime_set i2)
-  | IntMod(i1,i2)     -> IntMod(priming_int pr prime_set i1,
-                                priming_int pr prime_set i2)
-  | IntArrayRd(arr,t) -> IntArrayRd(priming_array pr prime_set arr,
-                                    priming_tid pr prime_set t)
-  | IntSetMin(s)      -> IntSetMin(priming_setint pr prime_set s)
-  | IntSetMax(s)      -> IntSetMax(priming_setint pr prime_set s)
-  | CellMax c         -> CellMax (priming_cell pr prime_set c)
+  | VarInt v          -> VarInt(priming_variable pr info v)
+  | IntNeg(i)         -> IntNeg(priming_int pr info i)
+  | IntAdd(i1,i2)     -> IntAdd(priming_int pr info i1,
+                                priming_int pr info i2)
+  | IntSub(i1,i2)     -> IntSub(priming_int pr info i1,
+                                priming_int pr info i2)
+  | IntMul(i1,i2)     -> IntMul(priming_int pr info i1,
+                                priming_int pr info i2)
+  | IntDiv(i1,i2)     -> IntDiv(priming_int pr info i1,
+                                priming_int pr info i2)
+  | IntMod(i1,i2)     -> IntMod(priming_int pr info i1,
+                                priming_int pr info i2)
+  | IntArrayRd(arr,t) -> IntArrayRd(priming_array pr info arr,
+                                    if info.prime_indexes then
+                                      priming_tid pr info t
+                                    else
+                                      t)
+  | IntSetMin(s)      -> IntSetMin(priming_setint pr info s)
+  | IntSetMax(s)      -> IntSetMax(priming_setint pr info s)
+  | CellMax c         -> CellMax (priming_cell pr info c)
   | HavocLevel        -> HavocLevel
-  | HashCode (e)      -> HashCode (priming_elem pr prime_set e)
-  | PairInt p         -> PairInt (priming_pair pr prime_set p)
+  | HashCode (e)      -> HashCode (priming_elem pr info e)
+  | PairInt p         -> PairInt (priming_pair pr info p)
 
 
-and priming_pair (pr:bool)
-                 (prime_set:(V.VarSet.t option * V.VarSet.t option))
-                 (p:pair) : pair =
+and priming_pair (pr:bool) (info:priming_info_t) (p:pair) : pair =
   match p with
-    VarPair v          -> VarPair(priming_variable pr prime_set v)
-  | IntTidPair (i,t)   -> IntTidPair (priming_int pr prime_set i, priming_tid pr prime_set t)
-  | SetPairMin ps      -> SetPairMin (priming_setpair pr prime_set ps)
-  | SetPairMax ps      -> SetPairMax (priming_setpair pr prime_set ps)
-  | PairArrayRd(arr,t) -> PairArrayRd(priming_array pr prime_set arr,
-                                      priming_tid pr prime_set t)
+    VarPair v          -> VarPair(priming_variable pr info v)
+  | IntTidPair (i,t)   -> IntTidPair (priming_int pr info i, priming_tid pr info t)
+  | SetPairMin ps      -> SetPairMin (priming_setpair pr info ps)
+  | SetPairMax ps      -> SetPairMax (priming_setpair pr info ps)
+  | PairArrayRd(arr,t) -> PairArrayRd(priming_array pr info arr,
+                                      if info.prime_indexes then
+                                        priming_tid pr info t
+                                      else
+                                        t)
 
 
-and priming_atom (pr:bool)
-                 (prime_set:(V.VarSet.t option * V.VarSet.t option))
-                 (a:atom) : atom =
+and priming_atom (pr:bool) (info:priming_info_t) (a:atom) : atom =
   match a with
-    Append(p1,p2,pres)                -> Append(priming_path pr prime_set p1,
-                                                priming_path pr prime_set p2,
-                                                priming_path pr prime_set pres)
-  | Reach(h,add_from,add_to,p)        -> Reach(priming_mem pr prime_set h,
-                                               priming_addr pr prime_set add_from,
-                                               priming_addr pr prime_set add_to,
-                                               priming_path pr prime_set p)
-  | ReachAt(h,a_from,a_to,l,p)        -> ReachAt(priming_mem pr prime_set h,
-                                                 priming_addr pr prime_set a_from,
-                                                 priming_addr pr prime_set a_to,
-                                                 priming_int pr prime_set l,
-                                                 priming_path pr prime_set p)
-  | OrderList(h,a_from,a_to)          -> OrderList(priming_mem pr prime_set h,
-                                                   priming_addr pr prime_set a_from,
-                                                   priming_addr pr prime_set a_to)
-  | Skiplist(h,s,l,a_from,a_to,elems) -> Skiplist(priming_mem pr prime_set h,
-                                                  priming_set pr prime_set s,
-                                                  priming_int pr prime_set l,
-                                                  priming_addr pr prime_set a_from,
-                                                  priming_addr pr prime_set a_to,
-                                                  priming_setelem pr prime_set elems)
-  | Hashmap(h,s,se,bb,i)              -> Hashmap(priming_mem pr prime_set h,
-                                                 priming_set pr prime_set s,
-                                                 priming_setelem pr prime_set se,
-                                                 priming_bucketarray pr prime_set bb,
-                                                 priming_int pr prime_set i)
-  | In(a,s)                           -> In(priming_addr pr prime_set a,
-                                            priming_set pr prime_set s)
-  | SubsetEq(s_in,s_out)              -> SubsetEq(priming_set pr prime_set s_in,
-                                                  priming_set pr prime_set s_out)
-  | InTh(th,s)                        -> InTh(priming_tid pr prime_set th,
-                                              priming_setth pr prime_set s)
-  | SubsetEqTh(s_in,s_out)            -> SubsetEqTh(priming_setth pr prime_set s_in,
-                                                    priming_setth pr prime_set s_out)
-  | InInt(i,s)                        -> InInt(priming_int pr prime_set i,
-                                               priming_setint pr prime_set s)
-  | SubsetEqInt(s_in,s_out)           -> SubsetEqInt(priming_setint pr prime_set s_in,
-                                                     priming_setint pr prime_set s_out)
-  | InElem(e,s)                       -> InElem(priming_elem pr prime_set e,
-                                                priming_setelem pr prime_set s)
-  | SubsetEqElem(s_in,s_out)          -> SubsetEqElem(priming_setelem pr prime_set s_in,
-                                                      priming_setelem pr prime_set s_out)
-  | InPair(p,s)                       -> InPair(priming_pair pr prime_set p,
-                                                priming_setpair pr prime_set s)
-  | SubsetEqPair(s_in,s_out)          -> SubsetEqPair(priming_setpair pr prime_set s_in,
-                                                      priming_setpair pr prime_set s_out)
-  | InTidPair(t,s)                    -> InTidPair(priming_tid pr prime_set t,
-                                                   priming_setpair pr prime_set s)
-  | InIntPair(i,s)                    -> InIntPair(priming_int pr prime_set i,
-                                                   priming_setpair pr prime_set s)
-  | Less(i1,i2)                       -> Less(priming_int pr prime_set i1,
-                                              priming_int pr prime_set i2)
-  | Greater(i1,i2)                    -> Greater(priming_int pr prime_set i1,
-                                                 priming_int pr prime_set i2)
-  | LessEq(i1,i2)                     -> LessEq(priming_int pr prime_set i1,
-                                                priming_int pr prime_set i2)
-  | LessTid(t1,t2)                    -> LessTid(priming_tid pr prime_set t1,
-                                                 priming_tid pr prime_set t2)
-  | LessElem(e1,e2)                   -> LessElem(priming_elem pr prime_set e1,
-                                                  priming_elem pr prime_set e2)
-  | GreaterElem(e1,e2)                -> GreaterElem(priming_elem pr prime_set e1,
-                                                     priming_elem pr prime_set e2)
-  | GreaterEq(i1,i2)                  -> GreaterEq(priming_int pr prime_set i1,
-                                                   priming_int pr prime_set i2)
-  | Eq(exp)                           -> Eq(priming_eq pr prime_set exp)
-  | InEq(exp)                         -> InEq(priming_ineq pr prime_set exp)
-  | UniqueInt(s)                      -> UniqueInt(priming_setpair pr prime_set s)
-  | UniqueTid(s)                      -> UniqueTid(priming_setpair pr prime_set s)
-  | BoolVar v                         -> BoolVar (priming_variable pr prime_set v)
-  | BoolArrayRd (a,t)                 -> BoolArrayRd (priming_array pr prime_set a,
-                                                      priming_tid pr prime_set t)
+    Append(p1,p2,pres)                -> Append(priming_path pr info p1,
+                                                priming_path pr info p2,
+                                                priming_path pr info pres)
+  | Reach(h,add_from,add_to,p)        -> Reach(priming_mem pr info h,
+                                               priming_addr pr info add_from,
+                                               priming_addr pr info add_to,
+                                               priming_path pr info p)
+  | ReachAt(h,a_from,a_to,l,p)        -> ReachAt(priming_mem pr info h,
+                                                 priming_addr pr info a_from,
+                                                 priming_addr pr info a_to,
+                                                 priming_int pr info l,
+                                                 priming_path pr info p)
+  | OrderList(h,a_from,a_to)          -> OrderList(priming_mem pr info h,
+                                                   priming_addr pr info a_from,
+                                                   priming_addr pr info a_to)
+  | Skiplist(h,s,l,a_from,a_to,elems) -> Skiplist(priming_mem pr info h,
+                                                  priming_set pr info s,
+                                                  priming_int pr info l,
+                                                  priming_addr pr info a_from,
+                                                  priming_addr pr info a_to,
+                                                  priming_setelem pr info elems)
+  | Hashmap(h,s,se,bb,i)              -> Hashmap(priming_mem pr info h,
+                                                 priming_set pr info s,
+                                                 priming_setelem pr info se,
+                                                 priming_bucketarray pr info bb,
+                                                 priming_int pr info i)
+  | In(a,s)                           -> In(priming_addr pr info a,
+                                            priming_set pr info s)
+  | SubsetEq(s_in,s_out)              -> SubsetEq(priming_set pr info s_in,
+                                                  priming_set pr info s_out)
+  | InTh(th,s)                        -> InTh(priming_tid pr info th,
+                                              priming_setth pr info s)
+  | SubsetEqTh(s_in,s_out)            -> SubsetEqTh(priming_setth pr info s_in,
+                                                    priming_setth pr info s_out)
+  | InInt(i,s)                        -> InInt(priming_int pr info i,
+                                               priming_setint pr info s)
+  | SubsetEqInt(s_in,s_out)           -> SubsetEqInt(priming_setint pr info s_in,
+                                                     priming_setint pr info s_out)
+  | InElem(e,s)                       -> InElem(priming_elem pr info e,
+                                                priming_setelem pr info s)
+  | SubsetEqElem(s_in,s_out)          -> SubsetEqElem(priming_setelem pr info s_in,
+                                                      priming_setelem pr info s_out)
+  | InPair(p,s)                       -> InPair(priming_pair pr info p,
+                                                priming_setpair pr info s)
+  | SubsetEqPair(s_in,s_out)          -> SubsetEqPair(priming_setpair pr info s_in,
+                                                      priming_setpair pr info s_out)
+  | InTidPair(t,s)                    -> InTidPair(priming_tid pr info t,
+                                                   priming_setpair pr info s)
+  | InIntPair(i,s)                    -> InIntPair(priming_int pr info i,
+                                                   priming_setpair pr info s)
+  | Less(i1,i2)                       -> Less(priming_int pr info i1,
+                                              priming_int pr info i2)
+  | Greater(i1,i2)                    -> Greater(priming_int pr info i1,
+                                                 priming_int pr info i2)
+  | LessEq(i1,i2)                     -> LessEq(priming_int pr info i1,
+                                                priming_int pr info i2)
+  | LessTid(t1,t2)                    -> LessTid(priming_tid pr info t1,
+                                                 priming_tid pr info t2)
+  | LessElem(e1,e2)                   -> LessElem(priming_elem pr info e1,
+                                                  priming_elem pr info e2)
+  | GreaterElem(e1,e2)                -> GreaterElem(priming_elem pr info e1,
+                                                     priming_elem pr info e2)
+  | GreaterEq(i1,i2)                  -> GreaterEq(priming_int pr info i1,
+                                                   priming_int pr info i2)
+  | Eq(exp)                           -> Eq(priming_eq pr info exp)
+  | InEq(exp)                         -> InEq(priming_ineq pr info exp)
+  | UniqueInt(s)                      -> UniqueInt(priming_setpair pr info s)
+  | UniqueTid(s)                      -> UniqueTid(priming_setpair pr info s)
+  | BoolVar v                         -> BoolVar (priming_variable pr info v)
+  | BoolArrayRd (a,t)                 -> BoolArrayRd (priming_array pr info a,
+                                                      if info.prime_indexes then
+                                                        priming_tid pr info t
+                                                      else
+                                                        t)
   | PC (pc,t,_)                       -> begin
-                                           match (snd prime_set, t) with
+                                           match (info.pc_prime_set, t) with
                                            | (Some s, V.Local v) ->
                                                 if V.VarSet.mem v s then
                                                   PC (pc, t, pr)
@@ -1409,7 +1418,7 @@ and priming_atom (pr:bool)
                                          end
   | PCUpdate (pc,t)                   -> PCUpdate (pc,t)
   | PCRange (pc1,pc2,t,_)             -> begin
-                                           match (snd prime_set, t) with
+                                           match (info.pc_prime_set, t) with
                                            | (Some s, V.Local v) ->
                                                 if V.VarSet.mem v s then
                                                   PCRange (pc1, pc2, t, pr)
@@ -1418,70 +1427,73 @@ and priming_atom (pr:bool)
                                          end
 
 
-and priming_eq (pr:bool)
-               (prime_set:(V.VarSet.t option * V.VarSet.t option))
-               ((t1,t2):eq) : eq =
-  (priming_term pr prime_set t1, priming_term pr prime_set t2)
+and priming_eq (pr:bool) (info:priming_info_t) ((t1,t2):eq) : eq =
+  (priming_term pr info t1, priming_term pr info t2)
 
 
-and priming_ineq (pr:bool)
-                 (prime_set:(V.VarSet.t option * V.VarSet.t option))
-                 ((t1,t2):diseq) : diseq =
-  (priming_term pr prime_set t1, priming_term pr prime_set t2)
+and priming_ineq (pr:bool) (info:priming_info_t) ((t1,t2):diseq) : diseq =
+  (priming_term pr info t1, priming_term pr info t2)
 
 
 and priming_fs () = Formula.make_trans
                       Formula.GenericLiteralTrans
-                      (fun (pr,prime_set) a -> priming_atom pr prime_set a)
+                      (fun (pr,info) a -> priming_atom pr info a)
 
-and priming_formula (pr:bool)
-                    (prime_set:(V.VarSet.t option * V.VarSet.t option))
-                    (phi:formula) =
-  Formula.formula_trans (priming_fs()) (pr,prime_set) phi
+and priming_formula (pr:bool) (info:priming_info_t) (phi:formula) =
+  Formula.formula_trans (priming_fs()) (pr,info) phi
 
 
 (* exported priming functions *)
+let build_prime_info (vs:V.VarSet.t option)
+                     (ps:V.VarSet.t option)
+                     (ip:bool) : priming_info_t =
+  {var_prime_set = vs; pc_prime_set = ps; prime_indexes = ip; }
 
-let prime_addr (a:addr) : addr   =  priming_addr true    (None, None) a
-let unprime_addr (a:addr) : addr =  priming_addr false (None, None) a
-let prime_elem (e:elem) : elem   =  priming_elem true    (None, None) e
-let unprime_elem (e:elem) : elem =  priming_elem false (None, None) e
-let prime_cell (c:cell) : cell   =  priming_cell true    (None, None) c
-let unprime_cell (c:cell) : cell =  priming_cell false (None, None) c
-let prime_mem (m:mem) : mem      =  priming_mem  true    (None, None) m
-let unprime_mem (m:mem) : mem    =  priming_mem  false (None, None) m
-let prime_int (i:integer) : integer = priming_int true (None, None) i
-let unprime_int (i:integer) : integer =  priming_int false (None, None) i
-let prime_addrarr (aa:addrarr) : addrarr =  priming_addrarray true (None, None) aa
-let unprime_addrarr (aa:addrarr) : addrarr =  priming_addrarray false (None, None) aa
-let prime_tidarr (tt:tidarr) : tidarr =  priming_tidarray true (None, None) tt
-let unprime_tidarr (tt:tidarr) : tidarr =  priming_tidarray false (None, None) tt
-let prime_bucketarr (bb:bucketarr) : bucketarr =  priming_bucketarray true (None, None) bb
-let unprime_bucketarr (bb:bucketarr) : bucketarr =  priming_bucketarray false (None, None) bb
-let prime_lockarr (ll:lockarr) : lockarr =  priming_lockarray true (None, None) ll
-let unprime_lockarr (ll:lockarr) : lockarr =  priming_lockarray false (None, None) ll
-let prime_term (t:term) : term =  priming_term true (None, None) t
-let unprime_term (t:term) : term =  priming_term false (None, None) t
-let prime_atom (a:atom) : atom =  priming_atom true (None, None) a
-let unprime_atom (a:atom) : atom =  priming_atom false (None, None) a
-let prime (phi:formula) : formula =  priming_formula true (None, None) phi
-let unprime (phi:formula) : formula =  priming_formula false (None, None) phi
+
+let default_prime_info = build_prime_info None None true
+let prime_info_without_indexes = build_prime_info None None false
+
+let prime_addr (a:addr) : addr   =  priming_addr true    default_prime_info a
+let unprime_addr (a:addr) : addr =  priming_addr false default_prime_info a
+let prime_elem (e:elem) : elem   =  priming_elem true    default_prime_info e
+let unprime_elem (e:elem) : elem =  priming_elem false default_prime_info e
+let prime_cell (c:cell) : cell   =  priming_cell true    default_prime_info c
+let unprime_cell (c:cell) : cell =  priming_cell false default_prime_info c
+let prime_mem (m:mem) : mem      =  priming_mem  true    default_prime_info m
+let unprime_mem (m:mem) : mem    =  priming_mem  false default_prime_info m
+let prime_int (i:integer) : integer = priming_int true default_prime_info i
+let unprime_int (i:integer) : integer =  priming_int false default_prime_info i
+let prime_addrarr (aa:addrarr) : addrarr =  priming_addrarray true default_prime_info aa
+let unprime_addrarr (aa:addrarr) : addrarr =  priming_addrarray false default_prime_info aa
+let prime_tidarr (tt:tidarr) : tidarr =  priming_tidarray true default_prime_info tt
+let unprime_tidarr (tt:tidarr) : tidarr =  priming_tidarray false default_prime_info tt
+let prime_bucketarr (bb:bucketarr) : bucketarr =  priming_bucketarray true default_prime_info bb
+let unprime_bucketarr (bb:bucketarr) : bucketarr =  priming_bucketarray false default_prime_info bb
+let prime_lockarr (ll:lockarr) : lockarr =  priming_lockarray true default_prime_info ll
+let unprime_lockarr (ll:lockarr) : lockarr =  priming_lockarray false default_prime_info ll
+let prime_term (t:term) : term =  priming_term true default_prime_info t
+let unprime_term (t:term) : term =  priming_term false default_prime_info t
+let prime_term_without_indexes (t:term) : term =  priming_term true prime_info_without_indexes t
+let prime_atom (a:atom) : atom =  priming_atom true default_prime_info a
+let unprime_atom (a:atom) : atom =  priming_atom false default_prime_info a
+let prime (phi:formula) : formula =  priming_formula true default_prime_info phi
+let unprime (phi:formula) : formula =  priming_formula false default_prime_info phi
 let prime_only (prime_set:V.VarSet.t) (pPC:V.VarSet.t) (phi:formula) : formula =
-  priming_formula true (Some prime_set, Some pPC) phi
+  priming_formula true (build_prime_info (Some prime_set) (Some pPC) true) phi
 let unprime_only (prime_set:V.VarSet.t) (pPC:V.VarSet.t) (phi:formula) : formula =
-  priming_formula false (Some prime_set, Some pPC) phi
+  priming_formula false (build_prime_info (Some prime_set) (Some pPC) true) phi
 let prime_term_only (prime_set:V.VarSet.t) (t:term) : term =
-  priming_term true (Some prime_set, None) t
+  priming_term true (build_prime_info (Some prime_set) None true) t
 let unprime_term_only (prime_set:V.VarSet.t) (t:term) : term =
-  priming_term false (Some prime_set, None) t
+  priming_term false (build_prime_info (Some prime_set) None true) t
 let prime_option_tid (th:V.shared_or_local) : V.shared_or_local =
   priming_option_tid th
 (*  priming_option_tid true (None, None) th *)
 let unprime_option_tid (th:V.shared_or_local) : V.shared_or_local =
   priming_option_tid th
 (*  priming_option_tid false (None, None) th *)
-let prime_tid (th:tid) : tid =  priming_tid true (None, None) th
-let unprime_tid (th:tid) : tid = priming_tid false (None, None) th
+let prime_tid (th:tid) : tid =  priming_tid true default_prime_info th
+let unprime_tid (th:tid) : tid = priming_tid false default_prime_info th
 
 
 
@@ -6300,7 +6312,7 @@ let construct_term_eq (v:term)
                                                        (formula_to_str t);
                   raise(Incompatible_assignment(v,e))
            in
-             let left_term = prime_term $ param_term th_p v in
+             let left_term = prime_term_without_indexes $ param_term th_p v in
              let param_t   = param_term th_p t
              in
                (modif, eq_term left_term param_t)
@@ -6615,7 +6627,7 @@ let construct_term_eq_as_array (v:term)
                                                        param_bucket th_p b)) in
             let assign = eq_term (BucketArrayT (param_bucketarr th_p primed_arr)) modif_arr in
             ([BucketArrayT arr], assign)
-
+(*
         | (AddrT(BucketInit(BucketArrRd(arr,i))), Term (AddrT a)) ->
             let _ = print_endline "THIS OTHER NEW CASE!!!!" in
             let freshBucketVar = VarBucket (build_global_var "aaaa" Bucket) in
@@ -6629,7 +6641,22 @@ let construct_term_eq_as_array (v:term)
                                                        param_bucket th_p freshBucketVar)) in
             let assign = eq_term (BucketArrayT (param_bucketarr th_p primed_arr)) modif_arr in
             ([BucketArrayT arr], F.conj_list [bucketEq; assign])
-        | _ -> (print_endline "HERE WE ARE"; construct_term_eq v th_p e)
+        | (AddrT(BucketEnd(BucketArrRd(arr,i))), Term (AddrT a)) ->
+            let _ = print_endline "THIS OTHER NEW CASE!!!!" in
+            let freshBucketVar = VarBucket (build_global_var "aaaa" Bucket) in
+            let newBucket = MkBucket(a, BucketEnd(BucketArrRd(arr,i)),
+                                        BucketRegion(BucketArrRd(arr,i)),
+                                        BucketTid(BucketArrRd(arr,i))) in
+            let bucketEq = eq_bucket freshBucketVar newBucket in
+            let primed_arr = prime_bucketarr arr in
+            let modif_arr = BucketArrayT(BucketArrayUp(param_bucketarr th_p arr,
+                                                       param_int th_p i,
+                                                       param_bucket th_p freshBucketVar)) in
+            let assign = eq_term (BucketArrayT (param_bucketarr th_p primed_arr)) modif_arr in
+            ([BucketArrayT arr], F.conj_list [bucketEq; assign])
+*)
+        | _ -> (print_endline "HERE WE ARE"; print_endline "TERM IS:"; print_endline (term_to_str v); let (a,b) = construct_term_eq v th_p e in
+                print_endline "GENERATED:"; print_endline (formula_to_str b); (a,b))
       end
   | _ -> Interface.Err.msg "Invalid argument" $
                  sprintf "When trying to construct a local array assignment \

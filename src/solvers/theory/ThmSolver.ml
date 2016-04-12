@@ -418,6 +418,7 @@ let rec trans_literal (alpha_r:E.integer list list option)
   | F.Atom(HM.Eq(HM.BucketT(HM.MkBucket(a,e,s,t)), HM.BucketT(HM.VarBucket b)))
   | F.NegAtom(HM.InEq(HM.BucketT(HM.VarBucket b), HM.BucketT(HM.MkBucket(a,e,s,t))))
   | F.NegAtom(HM.InEq(HM.BucketT(HM.MkBucket(a,e,s,t)), HM.BucketT(HM.VarBucket b))) ->
+      print_endline "TRANSLATING A MKBUCKET";
       let b_init = fresh_bucket_init_var b in
       let b_end = fresh_bucket_end_var b in
       let b_reg = fresh_bucket_reg_var b in
@@ -430,6 +431,38 @@ let rec trans_literal (alpha_r:E.integer list list option)
                    TLL.eq_addr (TLL.VarAddr b_end ) e';
                    TLL.eq_set  (TLL.VarSet  b_reg ) s';
                    TLL.eq_tid  (TLL.VarTh   b_tid ) t']
+  (* b1 = b2 *)
+  | F.Atom(HM.Eq(HM.BucketT(HM.VarBucket b1), HM.BucketT(HM.VarBucket b2)))
+  | F.NegAtom(HM.InEq(HM.BucketT(HM.VarBucket b1), HM.BucketT(HM.VarBucket b2))) ->
+      print_endline "TRANSLATING EQUALITY BETWEEN BUCKETS";
+      let b1_init = fresh_bucket_init_var b1 in
+      let b1_end = fresh_bucket_end_var b1 in
+      let b1_reg = fresh_bucket_reg_var b1 in
+      let b1_tid = fresh_bucket_tid_var b1 in
+      let b2_init = fresh_bucket_init_var b2 in
+      let b2_end = fresh_bucket_end_var b2 in
+      let b2_reg = fresh_bucket_reg_var b2 in
+      let b2_tid = fresh_bucket_tid_var b2 in
+      F.conj_list [TLL.eq_addr (TLL.VarAddr b1_init) (TLL.VarAddr b2_init);
+                   TLL.eq_addr (TLL.VarAddr b1_end ) (TLL.VarAddr b2_end);
+                   TLL.eq_set  (TLL.VarSet  b1_reg ) (TLL.VarSet b2_reg);
+                   TLL.eq_tid  (TLL.VarTh   b1_tid ) (TLL.VarTh b2_tid)]
+  (* b1 != b2 *)
+  | F.Atom(HM.InEq(HM.BucketT(HM.VarBucket b1), HM.BucketT(HM.VarBucket b2)))
+  | F.NegAtom(HM.Eq(HM.BucketT(HM.VarBucket b1), HM.BucketT(HM.VarBucket b2))) ->
+      print_endline "TRANSLATING INEQUALITY BETWEEN BUCKETS";
+      let b1_init = fresh_bucket_init_var b1 in
+      let b1_end = fresh_bucket_end_var b1 in
+      let b1_reg = fresh_bucket_reg_var b1 in
+      let b1_tid = fresh_bucket_tid_var b1 in
+      let b2_init = fresh_bucket_init_var b2 in
+      let b2_end = fresh_bucket_end_var b2 in
+      let b2_reg = fresh_bucket_reg_var b2 in
+      let b2_tid = fresh_bucket_tid_var b2 in
+      F.disj_list [TLL.ineq_addr (TLL.VarAddr b1_init) (TLL.VarAddr b2_init);
+                   TLL.ineq_addr (TLL.VarAddr b1_end ) (TLL.VarAddr b2_end);
+                   TLL.ineq_set  (TLL.VarSet  b1_reg ) (TLL.VarSet b2_reg);
+                   TLL.ineq_tid  (TLL.VarTh   b1_tid ) (TLL.VarTh b2_tid)]
   (* A != B (buckets) *)
   | F.NegAtom(HM.Eq(HM.BucketArrayT(HM.VarBucketArray _ as bb),
                     HM.BucketArrayT(HM.VarBucketArray _ as cc)))
@@ -716,7 +749,11 @@ let check_sat_plus_info (lines : int)
                (* STEP 1: Normalize the formula *)
                (* ERASE *)
                Log.print "THM Solver formula" (HM.formula_to_str phi);
+               print_endline "FORMULA TO NORMALIZE:";
+               print_endline (HM.formula_to_str phi);
                let phi_norm = HM.normalize phi in
+               print_endline "NORMALIZED FORMULA:";
+               print_endline (HM.formula_to_str phi_norm);
                (* ERASE *)
                Log.print "THM Solver normalized formula" (HM.formula_to_str phi_norm);
                (* STEP 2: DNF of the normalized formula *)

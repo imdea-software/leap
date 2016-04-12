@@ -193,6 +193,7 @@ let generic_stm_term_eq (mode:eqGenMode)
   let eq_generator = match mode with
                        NormalGenMode -> E.construct_term_eq
                      | ArrayGenMode  -> E.construct_term_eq_as_array in
+  print_endline "GENERATION OF RHO!!!!";
   let heap_eq_generator h th e = let (mods,phi) = eq_generator (E.MemT h) th e in
                                    (E.MemT h::mods, phi) in
   let v' = Stm.term_to_expr_term v in
