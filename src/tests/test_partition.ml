@@ -24,7 +24,8 @@ let _ =
                     Partition.Ineq (var_max, var_j)] in
 
   
-  let ps = Partition.gen_partitions E.V.to_str dom (eq_list @ ineq_list @ order_list) in
+(*  let ps = Partition.gen_partitions E.V.to_str dom (eq_list @ ineq_list @ order_list) in *)
+  let ps = Partition.gen_partitions dom (eq_list @ ineq_list @ order_list) in
   print_endline ("GENERATED PARTITIONS: " ^ (string_of_int (List.length ps)));
   List.iter (fun p -> print_endline (Partition.to_str E.V.to_str p)) ps;
   

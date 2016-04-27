@@ -12,6 +12,7 @@ module type S =
     val add_term_map : t -> term -> V.t -> unit
     val remove_term_map : t -> term -> unit
     val find_term_map : t -> term -> V.t
+    val gen_if_not_var : t -> (term -> bool) -> (term -> V.t) -> term -> V.sort -> V.t
     val term_map_size : t -> int
     val iter_term_map : (term -> V.t -> unit) -> t -> unit
 
@@ -19,6 +20,7 @@ module type S =
     val find_proc_term : t -> term -> V.t
 
     val gen_fresh_var : t -> V.sort -> V.t
+    val to_str : t -> (term -> string) -> (V.t -> string) -> string
 
   end
 
@@ -59,14 +61,18 @@ module Make (Opt:NormSpec.S) =
     let add_term_map (info:t) (t:term) (v:V.t) : unit =
       Hashtbl.add info.term_map t v
 
+
     let remove_term_map (info:t) (t:term) : unit =
       Hashtbl.remove info.term_map t
+
 
     let find_term_map (info:t) (t:term) : V.t =
       Hashtbl.find info.term_map t
 
+
     let term_map_size (info:t) : int =
       Hashtbl.length info.term_map
+
 
     let iter_term_map (f:term -> V.t -> unit) (info:t) : unit =
       Hashtbl.iter f info.term_map
@@ -75,6 +81,7 @@ module Make (Opt:NormSpec.S) =
     let add_proc_term_map (info:t) (t:term) (v:V.t) : unit =
       Hashtbl.add info.processed_term_map t v
 
+
     let find_proc_term (info:t) (t:term) : V.t =
       Hashtbl.find info.processed_term_map t
 
@@ -82,7 +89,43 @@ module Make (Opt:NormSpec.S) =
     let gen_fresh_var (info:t) (s:V.sort) : V.t =
       V.gen_fresh_var Opt.norm_fresh_vname (Opt.norm_fresh_vinfo()) info.fresh_gen_info s
 
-      
+
+    let gen_if_not_var (info:t)
+                       (is_var : term -> bool)
+                       (term_to_var : term -> V.t)
+                       (t:term)
+                       (s:V.sort) : V.t =
+      let append_if_diff (t:term) (v:V.t) : unit =
+        if is_var t then
+          (if (term_to_var t) <> v then add_term_map info t v)
+        else
+          add_term_map info t v in
+      if is_var t then
+        term_to_var t
+      else try
+             try
+               find_proc_term info t
+             with _ -> find_term_map info t
+           with _ -> begin
+                       let v = gen_fresh_var info s in
+                       append_if_diff t v;
+                       v
+                     end
+
+
+    let to_str (info:t) (term_to_str:term -> string) (var_to_str:V.t -> string) : string =
+      let map_str (map:(term,V.t) Hashtbl.t) =
+        Hashtbl.fold (fun t v str ->
+          str ^ (term_to_str t) ^ "  -->  " ^ (var_to_str v) ^ "\n"
+        ) map "" in
+      let term_map_str = map_str info.term_map in
+      let processed_terms_str = map_str info.processed_term_map in
+      ("=================================\n" ^
+       "TERM MAP:\n" ^
+       term_map_str ^
+       "PROCESSED TERMS:\n" ^
+       processed_terms_str ^ "\n" ^
+       "=================================\n")
 
   end
 

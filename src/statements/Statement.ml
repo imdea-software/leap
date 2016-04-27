@@ -1870,7 +1870,7 @@ let rec statement_to_str (n:int) (s:statement_t) =
       String.concat "" (List.map (statement_to_str n) xs)
   | StCall (t_opt,proc,params,g,opt) ->
       pos opt ^ pad n ((match t_opt with
-                        | Some _ -> "t := "
+                        | Some t -> (term_to_str t) ^ " := "
                         | None    -> "") ^
       "call " ^ proc ^ "(" ^
       (String.concat "," $ List.map (term_to_str_aux false) params) ^ ")")

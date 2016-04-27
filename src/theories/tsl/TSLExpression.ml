@@ -1799,27 +1799,9 @@ module TSLNorm = Normalization.Make(NOpt)
 
 
 let rec norm_literal (info:TSLNorm.t) (l:literal) : formula =
-  let append_if_diff (t:term) (v:V.t) : unit =
-    if is_var_term t then
-      (if (term_to_var t) <> v then TSLNorm.add_term_map info t v)
-    else
-      TSLNorm.add_term_map info t v in
-  let gen_if_not_var (t:term) (s:sort) : V.t =
-    let _ = verbl _LONG_INFO "GEN_IF_NOT_VAR FOR TERM: %s\n" (term_to_str t) in
-    if is_var_term t then (verbl _LONG_INFO "WAS A VARIABLE\n"; term_to_var t)
-    else try
-           verbl _LONG_INFO "EXISTING PAIRS:\n";
-           TSLNorm.iter_term_map (fun t v ->
-             verbl _LONG_INFO "%s ----> %s\n" (term_to_str t) (V.to_str v)
-           ) info;
-           try
-             TSLNorm.find_proc_term info t
-           with _ -> TSLNorm.find_term_map info t
-         with _ -> begin
-                     let v = TSLNorm.gen_fresh_var info s in
-                     verbl _LONG_INFO "APPENDING A NEW VARIABLE: %s\n" (V.to_str v);
-                     append_if_diff t v; v
-                   end in
+  let gen_if_not_var (t:term) (s:sort) =
+    TSLNorm.gen_if_not_var info is_var_term term_to_var t s in
+
   let rec norm_set (s:set) : set =
     match s with
     | VarSet v -> VarSet v

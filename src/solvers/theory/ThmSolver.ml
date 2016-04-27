@@ -31,13 +31,13 @@ module TllSol = (val TllSolver.choose !solver_impl : TllSolver.S)
 
 (* The tables containing thread identifiers, locks and buckets variables
    representing arrays *)
-let tidarr_tbl : (HM.tidarr, TLL.tid list) Hashtbl.t =
+let tidarr_tbl : (HM.tidarr * int, TLL.tid) Hashtbl.t =
   Hashtbl.create 8
 
-let lockarr_tbl : (HM.lockarr, TLL.tid list) Hashtbl.t =
+let lockarr_tbl : (HM.lockarr * int, TLL.tid) Hashtbl.t =
   Hashtbl.create 8
 
-let bucketarr_tbl : (HM.bucketarr, (TLL.addr * TLL.addr * TLL.set * TLL.tid) list) Hashtbl.t =
+let bucketarr_tbl : (HM.bucketarr * int, (TLL.addr * TLL.addr * TLL.set * TLL.tid)) Hashtbl.t =
   Hashtbl.create 8
 
 
@@ -154,85 +154,66 @@ let expand_bucketarray_to_var (v:HM.V.t)
 
 
 
-let gen_tid_list (levels:int) (tt:HM.tidarr) : TLL.tid list =
-  let xs = ref [] in
-  for n = levels downto 0 do
-    let v = match tt with
-            | HM.VarTidArray v ->
-                TLL.VarTh (expand_array_to_var v TLL.Tid n)
-            | _ -> TLL.NoTid in
-    xs := v::(!xs)
-  done;
-  verbl _LONG_INFO "**** THM Solver, generated thread id list for %s: [%s]\n"
-          (HM.tidarr_to_str tt)
-          (String.concat ";" (List.map TLL.tid_to_str !xs));
-  !xs
+let gen_tid (level:int) (tt:HM.tidarr) : TLL.tid =
+  let v = match tt with
+          | HM.VarTidArray v ->
+              TLL.VarTh (expand_array_to_var v TLL.Tid level)
+          | _ -> TLL.NoTid in
+  verbl _LONG_INFO "**** THM Solver, generated thread id for %s for level %d: [%s]\n"
+          (HM.tidarr_to_str tt) level (TLL.tid_to_str v);
+  v
 
 
-let gen_lock_list (levels:int) (ll:HM.lockarr) : TLL.tid list =
-  let xs = ref [] in
-  for n = levels downto 0 do
-    let v = match ll with
-            | HM.VarLockArray v ->
-                TLL.VarTh (expand_array_to_var v TLL.Tid n)
-            | _ -> TLL.NoTid in
-    xs := v::(!xs)
-  done;
-  verbl _LONG_INFO "**** THM Solver, generated thread id list for %s: [%s]\n"
-          (HM.lockarr_to_str ll)
-          (String.concat ";" (List.map TLL.tid_to_str !xs));
-  !xs
+let gen_lock (level:int) (ll:HM.lockarr) : TLL.tid =
+  let v = match ll with
+          | HM.VarLockArray v ->
+              TLL.VarTh (expand_array_to_var v TLL.Tid level)
+          | _ -> TLL.NoTid in
+  verbl _LONG_INFO "**** THM Solver, generated lock for %s for level %d: [%s]\n"
+          (HM.lockarr_to_str ll) level (TLL.tid_to_str v);
+  v
 
 
-let gen_bucket_list (levels:int) (bb:HM.bucketarr) :
-    (TLL.addr * TLL.addr * TLL.set * TLL.tid) list =
-  let xs = ref [] in
-  for n = levels downto 0 do
-    let vs = match bb with
-             | HM.VarBucketArray v ->
-                 begin
-                   let (a,e,s,t) = expand_bucketarray_to_var v n in
-                   (TLL.VarAddr a, TLL.VarAddr e, TLL.VarSet s, TLL.VarTh t)
-                 end
-             | _ -> (TLL.Null, TLL.Null, TLL.EmptySet, TLL.NoTid) in
-    xs := vs::(!xs)
-  done;
-  verbl _LONG_INFO "**** THM Solver, generated bucket id list for %s: [%s]\n"
-          (HM.bucketarr_to_str bb)
-          (String.concat ";" (List.map (fun (a,e,s,t) ->
-                                (TLL.addr_to_str a) ^ "," ^
-                                (TLL.addr_to_str e) ^ "," ^
-                                (TLL.set_to_str  s) ^ "," ^
-                                (TLL.tid_to_str  t)
-                              ) !xs));
-  !xs
+let gen_bucket (level:int) (bb:HM.bucketarr) :
+    (TLL.addr * TLL.addr * TLL.set * TLL.tid) =
+  let (a,e,s,t) = match bb with
+                  | HM.VarBucketArray v ->
+                     begin
+                       let (a,e,s,t) = expand_bucketarray_to_var v level in
+                         (TLL.VarAddr a, TLL.VarAddr e, TLL.VarSet s, TLL.VarTh t)
+                     end
+                  | _ -> (TLL.Null, TLL.Null, TLL.EmptySet, TLL.NoTid) in
+  verbl _LONG_INFO "**** THM Solver, generated bucket id for %s for level %d: [%s]\n"
+          (HM.bucketarr_to_str bb) level
+          ((TLL.addr_to_str a) ^ "," ^ (TLL.addr_to_str e) ^ "," ^
+           (TLL.set_to_str  s) ^ "," ^ (TLL.tid_to_str  t));
+  (a,e,s,t)
 
 
-let get_tid_list (levels:int) (tt:HM.tidarr) : TLL.tid list =
+let get_tid (level:int) (tt:HM.tidarr) : TLL.tid =
   try
-    Hashtbl.find tidarr_tbl tt
+    Hashtbl.find tidarr_tbl (tt, level)
   with _ -> begin
-    let tt' = gen_tid_list levels tt in
-    Hashtbl.add tidarr_tbl tt tt'; tt'
+    let t = gen_tid level tt in
+    Hashtbl.add tidarr_tbl (tt,level) t; t
   end
 
 
-let get_lock_list (levels:int) (ll:HM.lockarr) : TLL.tid list =
+let get_lock (level:int) (ll:HM.lockarr) : TLL.tid =
   try
-    Hashtbl.find lockarr_tbl ll
+    Hashtbl.find lockarr_tbl (ll, level)
   with _ -> begin
-    let ll' = gen_lock_list levels ll in
-    Hashtbl.add lockarr_tbl ll ll'; ll'
+    let l = gen_lock level ll in
+    Hashtbl.add lockarr_tbl (ll,level) l; l
   end
 
 
-let get_bucket_list (levels:int) (bb:HM.bucketarr) :
-    (TLL.addr * TLL.addr * TLL.set * TLL.tid) list =
+let get_bucket (level:int) (bb:HM.bucketarr) : (TLL.addr * TLL.addr * TLL.set * TLL.tid) =
   try
-    Hashtbl.find bucketarr_tbl bb
+    Hashtbl.find bucketarr_tbl (bb, level)
   with _ -> begin
-    let bb' = gen_bucket_list levels bb in
-    Hashtbl.add bucketarr_tbl bb bb'; bb'
+    let b = gen_bucket level bb in
+    Hashtbl.add bucketarr_tbl (bb, level) b; b
   end
 
 
@@ -281,14 +262,12 @@ let rec trans_literal (alpha_r:E.integer list list option)
                HM.TidArrayT(HM.VarTidArray _ as uu)))
   | F.Atom(HM.InEq(HM.TidArrayT(HM.VarTidArray _ as tt),
               HM.TidArrayT(HM.VarTidArray _ as uu))) ->
-      let tt' = get_tid_list levels tt in
-      let uu' = get_tid_list levels uu in
       let xs = ref [] in
       for i = 0 to levels do
-        xs := (TLL.ineq_tid (List.nth tt' i) (List.nth uu' i)) :: (!xs)
+        xs := (TLL.ineq_tid (get_tid i tt) (get_tid i uu)) :: (!xs)
       done;
       (* I need one witness for array difference *)
-      TLL.tid_mark_smp_interesting (List.hd tt') true;
+      TLL.tid_mark_smp_interesting (get_tid 0 tt) true;
       F.disj_list (!xs)
   (* t = A[i] *)
   | F.Atom(HM.Eq(HM.TidT t, HM.TidT (HM.TidArrRd (tt,i))))
@@ -296,14 +275,13 @@ let rec trans_literal (alpha_r:E.integer list list option)
   | F.NegAtom(HM.InEq(HM.TidT t, HM.TidT (HM.TidArrRd (tt,i))))
   | F.NegAtom(HM.InEq(HM.TidT (HM.TidArrRd (tt,i)), HM.TidT t)) ->
       let t' = tid_thm_to_tll t in
-      let tt' = get_tid_list levels tt in
       let i' = int_thm_to_tll i in
       let xs = ref [] in
       for n = 0 to levels do
         let n' = TLL.IntVal n in
         xs := (F.Implies
                 (TLL.eq_int i' n',
-                 TLL.eq_tid t' (List.nth tt' n))) :: (!xs)
+                 TLL.eq_tid t' (get_tid n tt))) :: (!xs)
       done;
       TLL.tid_mark_smp_interesting t' true;
       F.conj_list (!xs)
@@ -320,17 +298,15 @@ let rec trans_literal (alpha_r:E.integer list list option)
   | F.NegAtom(HM.InEq(HM.TidArrayT (HM.TidArrayUp(tt,i,t)), HM.TidArrayT uu)) ->
       let t' = tid_thm_to_tll t in
       let i' = int_thm_to_tll i in
-      let tt' = get_tid_list levels tt in
-      let uu' = get_tid_list levels uu in
       let xs = ref [] in
       for n = 0 to levels do
         let n' = TLL.IntVal n in
         xs := (F.Implies
                 (TLL.eq_int i' n',
-                 TLL.eq_tid t' (List.nth uu' n))) ::
+                 TLL.eq_tid t' (get_tid n uu))) ::
               (F.Implies
                 (TLL.ineq_int i' n',
-                 TLL.eq_tid (List.nth tt' n) (List.nth uu' n))) ::
+                 TLL.eq_tid (get_tid n tt) (get_tid n uu))) ::
               (!xs)
       done;
       TLL.tid_mark_smp_interesting t' true;
@@ -353,14 +329,12 @@ let rec trans_literal (alpha_r:E.integer list list option)
                     HM.LockArrayT(HM.VarLockArray _ as mm)))
   | F.Atom(HM.InEq(HM.LockArrayT(HM.VarLockArray _ as ll),
                    HM.LockArrayT(HM.VarLockArray _ as mm))) ->
-      let ll' = get_lock_list levels ll in
-      let mm' = get_lock_list levels mm in
       let xs = ref [] in
       for i = 0 to levels do
-        xs := (TLL.ineq_tid (List.nth ll' i) (List.nth mm' i)) :: (!xs)
+        xs := (TLL.ineq_tid (get_lock i ll) (get_lock i mm)) :: (!xs)
       done;
       (* I need one witness for array difference *)
-      TLL.tid_mark_smp_interesting (List.hd ll') true;
+      TLL.tid_mark_smp_interesting (get_lock 0 ll) true;
       F.disj_list (!xs)
   (* l = L[i] *)
   | F.Atom(HM.Eq(HM.LockT(HM.VarLock l), HM.LockT (HM.LockArrRd (ll,i))))
@@ -368,14 +342,13 @@ let rec trans_literal (alpha_r:E.integer list list option)
   | F.NegAtom(HM.InEq(HM.LockT(HM.VarLock l), HM.LockT (HM.LockArrRd (ll,i))))
   | F.NegAtom(HM.InEq(HM.LockT (HM.LockArrRd (ll,i)), HM.LockT(HM.VarLock l))) ->
       let l_fresh = TLL.VarTh (fresh_lock_var l) in
-      let ll' = get_lock_list levels ll in
       let i' = int_thm_to_tll i in
       let xs = ref [] in
       for n = 0 to levels do
         let n' = TLL.IntVal n in
         xs := (F.Implies
                 (TLL.eq_int i' n',
-                 TLL.eq_tid l_fresh (List.nth ll' n))) :: (!xs)
+                 TLL.eq_tid l_fresh (get_lock n ll))) :: (!xs)
       done;
       TLL.tid_mark_smp_interesting l_fresh true;
       F.conj_list (!xs)
@@ -392,17 +365,15 @@ let rec trans_literal (alpha_r:E.integer list list option)
   | F.NegAtom(HM.InEq(HM.LockArrayT (HM.LockArrayUp(ll,i,(HM.VarLock l))), HM.LockArrayT mm)) ->
       let l_fresh = TLL.VarTh (fresh_lock_var l) in
       let i' = int_thm_to_tll i in
-      let ll' = get_lock_list levels ll in
-      let mm' = get_lock_list levels mm in
       let xs = ref [] in
       for n = 0 to levels do
         let n' = TLL.IntVal n in
         xs := (F.Implies
                 (TLL.eq_int i' n',
-                 TLL.eq_tid l_fresh (List.nth mm' n))) ::
+                 TLL.eq_tid l_fresh (get_lock n mm))) ::
               (F.Implies
                 (TLL.ineq_int i' n',
-                 TLL.eq_tid (List.nth ll' n) (List.nth mm' n))) ::
+                 TLL.eq_tid (get_lock n ll) (get_lock n mm))) ::
               (!xs)
       done;
       TLL.tid_mark_smp_interesting l_fresh true;
@@ -468,17 +439,15 @@ let rec trans_literal (alpha_r:E.integer list list option)
                     HM.BucketArrayT(HM.VarBucketArray _ as cc)))
   | F.Atom(HM.InEq(HM.BucketArrayT(HM.VarBucketArray _ as bb),
                    HM.BucketArrayT(HM.VarBucketArray _ as cc))) ->
-      let bb' = get_bucket_list levels bb in
-      let cc' = get_bucket_list levels cc in
       let xs = ref [] in
       for i = 0 to levels do
-        let (a1,e1,s1,t1) = List.nth bb' i in
-        let (a2,e2,s2,t2) = List.nth cc' i in
+        let (a1,e1,s1,t1) = get_bucket i bb in
+        let (a2,e2,s2,t2) = get_bucket i cc in
         xs := [TLL.ineq_addr a1 a2; TLL.ineq_addr e1 e2;
                TLL.ineq_set  s1 s2; TLL.ineq_tid  t1 t2] @ (!xs)
       done;
       (* I need one witness for array difference *)
-      let (a,e,s,t) = List.hd bb' in
+      let (a,e,s,t) = get_bucket 0 bb in
       TLL.addr_mark_smp_interesting a true;
       TLL.addr_mark_smp_interesting e true;
       TLL.tid_mark_smp_interesting t true;
@@ -492,12 +461,11 @@ let rec trans_literal (alpha_r:E.integer list list option)
       let e_fresh = TLL.VarAddr (fresh_bucket_end_var b) in
       let s_fresh = TLL.VarSet  (fresh_bucket_reg_var b) in
       let t_fresh = TLL.VarTh   (fresh_bucket_tid_var b) in
-      let bb' = get_bucket_list levels bb in
       let i' = int_thm_to_tll i in
       let xs = ref [] in
       for n = 0 to levels do
         let n' = TLL.IntVal n in
-        let (a,e,s,t) = List.nth bb' n in
+        let (a,e,s,t) = get_bucket n bb in
         xs := (F.Implies
                 (TLL.eq_int i' n',
                  F.conj_list [TLL.eq_addr a_fresh a; TLL.eq_addr e_fresh e;
@@ -523,13 +491,11 @@ let rec trans_literal (alpha_r:E.integer list list option)
       let s_fresh = TLL.VarSet  (fresh_bucket_reg_var  b) in
       let t_fresh = TLL.VarTh   (fresh_bucket_tid_var  b) in
       let i' = int_thm_to_tll i in
-      let bb' = get_bucket_list levels bb in
-      let cc' = get_bucket_list levels cc in
       let xs = ref [] in
       for n = 0 to levels do
         let n' = TLL.IntVal n in
-        let (ab,eb,sb,tb) = List.nth bb' n in
-        let (ac,ec,sc,tc) = List.nth cc' n in
+        let (ab,eb,sb,tb) = get_bucket n bb in
+        let (ac,ec,sc,tc) = get_bucket n cc in
         xs := (F.Implies
                 (TLL.eq_int i' n',
                  F.conj_list [TLL.eq_addr a_fresh ac; TLL.eq_addr e_fresh ec;
@@ -557,13 +523,12 @@ let rec trans_literal (alpha_r:E.integer list list option)
       let m' = mem_thm_to_tll m in
       let s' = set_thm_to_tll s in
       let se' = setelem_thm_to_tll se in
-      let bb' = get_bucket_list levels bb in
       let k' = find_position levels alpha_r k in
 
-      let (a0,e0,s0,t0) = List.nth bb' 0 in
+      let (a0,e0,s0,t0) = get_bucket 0 bb in
 
       let vreg_union = List.fold_left (fun u i ->
-        let (a,e,s,t) = List.nth bb' i in
+        let (a,e,s,t) = get_bucket i bb in
           TLL.Union (s,u)
       ) s0 (LeapLib.rangeList 1 k') in
       let eq_s = TLL.eq_set s' vreg_union in
@@ -577,20 +542,18 @@ let rec trans_literal (alpha_r:E.integer list list option)
 
 
       let list_conj = List.fold_left (fun c i ->
-        let (a,e,s,t) = List.nth bb' i in
+        let (a,e,s,t) = get_bucket i bb in
         F.And (list_conj_f a e s, c)
       ) (list_conj_f a0 e0 s0) (LeapLib.rangeList 1 k') in
 
-
       let disjoint = ref [] in
       for i = 0 to k' do
-        let (_,_,si,_) = List.nth bb' i in
+        let (_,_,si,_) = get_bucket i bb in
         for j = i+1 to k' do
-          let (_,_,sj,_) = List.nth bb' j in
+          let (_,_,sj,_) = get_bucket j bb in
             disjoint := (TLL.eq_set (TLL.Intr(si,sj)) TLL.EmptySet) :: (!disjoint)
         done
       done;
-
       F.conj_list ([eq_s; eq_setelem; list_conj] @ (!disjoint))
 
   (* ~ hashmap(m,s,se,bb,k) *)
@@ -598,13 +561,12 @@ let rec trans_literal (alpha_r:E.integer list list option)
       let m' = mem_thm_to_tll m in
       let s' = set_thm_to_tll s in
       let se' = setelem_thm_to_tll se in
-      let bb' = get_bucket_list levels bb in
       let k' = find_position levels alpha_r k in
 
-      let (a0,e0,s0,t0) = List.nth bb' 0 in
+      let (a0,e0,s0,t0) = get_bucket 0 bb in
 
       let vreg_union = List.fold_left (fun u i ->
-        let (a,e,s,t) = List.nth bb' i in
+        let (a,e,s,t) = get_bucket i bb in
           TLL.Union (s,u)
       ) s0 (LeapLib.rangeList 0 k') in
 
@@ -618,19 +580,18 @@ let rec trans_literal (alpha_r:E.integer list list option)
                      TLL.ineq_addr (TLL.Next(TLL.CellAt(m',e))) TLL.Null] in
 
       let list_disj = List.fold_left (fun d i ->
-        let (a,e,s,t) = List.nth bb' i in
+        let (a,e,s,t) = get_bucket i bb in
         F.Or (list_disj_f a e s, d)
       ) (list_disj_f a0 e0 s0) (LeapLib.rangeList 1 k') in
 
       let disjoint = ref [] in
       for i = 0 to k' do
-        let (_,_,si,_) = List.nth bb' i in
+        let (_,_,si,_) = get_bucket i bb in
         for j = i+1 to k' do
-          let (_,_,sj,_) = List.nth bb' j in
+          let (_,_,sj,_) = get_bucket j bb in
             disjoint := (TLL.ineq_set (TLL.Intr(si,sj)) TLL.EmptySet) :: (!disjoint)
         done
       done;
-
       F.disj_list ([ineq_s; ineq_setelem; list_disj] @ (!disjoint))
 
 

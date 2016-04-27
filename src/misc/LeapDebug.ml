@@ -23,7 +23,7 @@ let _testing_ : bool ref = ref false
 
 let _testing_smp_ () : ModelSize.t =
   let ms = ModelSize.create () in
-  ModelSize.set ms ModelSize.Addr 10;
-  ModelSize.set ms ModelSize.Elem 5;
-  ModelSize.set ms ModelSize.Tid 5;
+  ModelSize.set ms ModelSize.Addr 6;
+  ModelSize.set ms ModelSize.Elem 3;
+  ModelSize.set ms ModelSize.Tid 3;
   ms

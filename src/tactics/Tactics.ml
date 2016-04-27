@@ -3,6 +3,7 @@ open Printf
 module E = Expression
 module GenSet = LeapGenericSet
 module F = Formula
+module UF = LeapUnionFind
 
 type vc_id = int
 
@@ -1318,6 +1319,15 @@ let apply_support_tactic (vcs:vc_info list)
   ) [] vcs
 
 
+let apply_eq_propagation (imps:implication list) : implication list =
+  let eq_prop (imp:implication) : implication =
+    let uf = UF.empty() in
+    let conjs = F.to_conj_list imp.ante in
+    imp
+  in
+    List.map eq_prop imps
+
+
 let apply_formula_split_tactics (imps:implication list)
                                 (tacs:formula_split_tactic_t list)
                                   : implication list =
@@ -1340,7 +1350,8 @@ let apply_tactics (vcs:vc_info list)
   List.fold_left (fun phi_list vc ->
     let split_vc_info_list = apply_support_split_tactics [vc] supp_split_tacs in
     let original_implications = apply_support_tactic split_vc_info_list supp_tac in
-    let split_implications = apply_formula_split_tactics original_implications formula_split_tacs in
+    let propagated_implications = apply_eq_propagation original_implications in
+    let split_implications = apply_formula_split_tactics propagated_implications formula_split_tacs in
     let final_implications = apply_formula_tactics split_implications formula_tacs in
     Log.print "* From this vc_info" (vc_info_to_str vc);
     Log.print "* Leap generated the following formulas" "";

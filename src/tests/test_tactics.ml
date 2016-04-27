@@ -10,7 +10,11 @@ let _ =
             } in
   Printf.printf "Old antecedent: %s\n" (E.formula_to_str imp.Tactics.ante);
   Printf.printf "Old consequent: %s\n" (E.formula_to_str imp.Tactics.conseq);
-  let new_imp = Tactics.tactic_simplify_pc imp in
+  (* Function Tactics.tactic_simplify_pc used to be public, now is private.
+   * In order to test this case, it should be exported first. *)
+  let new_imp = imp in
+(*  let new_imp = Tactics.tactic_simplify_pc imp in *)
+  
   Printf.printf "New antecedent: %s\n" (E.formula_to_str new_imp.Tactics.ante);
   Printf.printf "New consequent: %s\n" (E.formula_to_str new_imp.Tactics.conseq)
   

@@ -276,8 +276,7 @@ let opts = [
   
   ("-testing",
      Arg.Set LeapDebug._testing_,
-     " Prints the current version of leap.");
-
+     " Reduces the size of the generated models for accelerating testing."); 
 
 (*
     THIS WAS REMOVED TO SIMPLIFIED LEAP

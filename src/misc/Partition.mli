@@ -101,5 +101,5 @@ val assumptions_to_str : ('a -> string) -> 'a eqs list -> string
 
 
 val to_str : ('a -> string) -> 'a t -> string
-(** [partition_to_str p f] returns a string representation of partition [p],
+(** [to_str p f] returns a string representation of partition [p],
     using function [f] to represent the elements *)

@@ -11,6 +11,7 @@ module type S =
     val add_term_map : t -> term -> V.t -> unit
     val remove_term_map : t -> term -> unit
     val find_term_map : t -> term -> V.t
+    val gen_if_not_var : t -> (term -> bool) -> (term -> V.t) -> term -> V.sort -> V.t
     val term_map_size : t -> int
     val iter_term_map : (term -> V.t -> unit) -> t -> unit
 
@@ -18,6 +19,7 @@ module type S =
     val find_proc_term : t -> term -> V.t
 
     val gen_fresh_var : t -> V.sort -> V.t
+    val to_str : t -> (term -> string) -> (V.t -> string) -> string
 
   end
 
