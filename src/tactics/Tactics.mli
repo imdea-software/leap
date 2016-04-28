@@ -127,7 +127,14 @@ val get_vocabulary : verification_condition ->   Expression.ThreadSet.t
 val no_tid_constraint : tid_constraints_t
 val is_empty_tid_constraint : tid_constraints_t -> bool
 
+(**************************************************************************)
+(* VARIABLE EQUALITY PROPAGATION                                          *)
+(**************************************************************************)
 
+val gen_eq_propagation : Expression.formula ->
+                         (Expression.formula * Expression.V.subst_t)
+val gen_eq_prop_from_list : Expression.formula list ->
+                            (Expression.formula list * Expression.V.subst_t)
 
 (**************************************************************************)
 (* APPLICATION OF TACTICS                                                 *)

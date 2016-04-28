@@ -2048,19 +2048,55 @@ let var_to_term (v:V.t) : term =
 let term_to_var (t:term) : V.t =
   match t with
     VarT v -> v
-  | SetT  (VarSet v)   -> V.set_sort v Set
-  | ElemT (VarElem v)  -> V.set_sort v Elem
-  | TidT  (VarTh v)    -> V.set_sort v Tid
-  | AddrT (VarAddr v)  -> V.set_sort v Addr
-  | CellT (VarCell v)  -> V.set_sort v Cell
-  | SetThT(VarSetTh v) -> V.set_sort v SetTh
-  | PathT (VarPath v)  -> V.set_sort v Path
-  | MemT  (VarMem v)   -> V.set_sort v Mem
-  | IntT  (VarInt v)   -> V.set_sort v Int
-  | ArrayT(VarArray v) -> V.set_sort v Array
-  | _                  -> raise(No_variable_term(term_to_str t))
+  | SetT          (VarSet v        ) -> V.set_sort v Set
+  | ElemT         (VarElem v       ) -> V.set_sort v Elem
+  | TidT          (VarTh v         ) -> V.set_sort v Tid
+  | AddrT         (VarAddr   v     ) -> V.set_sort v Addr
+  | CellT         (VarCell   v     ) -> V.set_sort v Cell
+  | SetThT        (VarSetTh  v     ) -> V.set_sort v SetTh
+  | SetIntT       (VarSetInt v     ) -> V.set_sort v SetInt
+  | SetElemT      (VarSetElem v    ) -> V.set_sort v SetElem
+  | SetPairT      (VarSetPair v    ) -> V.set_sort v SetPair
+  | PathT         (VarPath v       ) -> V.set_sort v Path
+  | MemT          (VarMem v        ) -> V.set_sort v Mem
+  | IntT          (VarInt v        ) -> V.set_sort v Int
+  | PairT         (VarPair v       ) -> V.set_sort v Pair
+  | ArrayT        (VarArray v      ) -> V.set_sort v Array
+  | AddrArrayT    (VarAddrArray v  ) -> V.set_sort v AddrArray
+  | TidArrayT     (VarTidArray v   ) -> V.set_sort v TidArray
+  | BucketArrayT  (VarBucketArray v) -> V.set_sort v BucketArray
+  | MarkT         (VarMark v       ) -> V.set_sort v Mark
+  | BucketT       (VarBucket v     ) -> V.set_sort v Bucket
+  | LockT         (VarLock v       ) -> V.set_sort v Lock
+  | LockArrayT    (VarLockArray v  ) -> V.set_sort v LockArray
+  | _                        -> raise(No_variable_term(term_to_str t))
 
 
+let term_is_var (t:term) : bool =
+  match t with
+  | VarT v
+  | SetT          (VarSet v        )
+  | ElemT         (VarElem v       )
+  | TidT          (VarTh v         )
+  | AddrT         (VarAddr   v     )
+  | CellT         (VarCell   v     )
+  | SetThT        (VarSetTh  v     )
+  | SetIntT       (VarSetInt v     )
+  | SetElemT      (VarSetElem v    )
+  | SetPairT      (VarSetPair v    )
+  | PathT         (VarPath v       )
+  | MemT          (VarMem v        )
+  | IntT          (VarInt v        )
+  | PairT         (VarPair v       )
+  | ArrayT        (VarArray v      )
+  | AddrArrayT    (VarAddrArray v  )
+  | TidArrayT     (VarTidArray v   )
+  | BucketArrayT  (VarBucketArray v)
+  | MarkT         (VarMark v       )
+  | BucketT       (VarBucket v     )
+  | LockT         (VarLock v       )
+  | LockArrayT    (VarLockArray v  ) -> true
+  | _                                -> false
 
 let term_sort (t:term) : sort =
   match t with

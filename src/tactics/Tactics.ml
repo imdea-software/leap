@@ -1319,11 +1319,47 @@ let apply_support_tactic (vcs:vc_info list)
   ) [] vcs
 
 
+let gen_eq_prop_from_list (conjs:E.formula list) : (E.formula list * E.V.subst_t) =
+  let build_subst (vs:E.V.t list list) : E.V.subst_t =
+    let sub_pairs =
+      List.fold_left (fun slist xs ->
+        if (List.length xs > 1) then
+          let (fs, nfs) = List.partition E.V.is_fresh xs in
+          let concat = nfs @ fs in
+          let h = List.hd concat in
+          (List.map (fun v -> (v,h)) (List.tl concat)) @ slist
+        else
+          slist
+      ) [] vs in
+    E.V.new_subst_from_list sub_pairs in
+  let uf = UF.empty() in
+  let conjs' =
+    List.fold_left (fun xs conj->
+      print_endline ("CONSIDERING CONJUNCTION: " ^ (E.formula_to_str conj));
+      match conj with
+      | F.Literal(F.Atom (E.Eq(t1, t2))) ->
+          begin
+            if (E.term_is_var t1 && E.term_is_var t2) then begin
+              UF.union uf (E.term_to_var t1) (E.term_to_var t2);
+              xs
+            end else                         
+              conj :: xs
+          end
+      | _ -> conj :: xs
+    ) [] conjs in
+  (conjs', build_subst (UF.to_list uf))
+
+
+let gen_eq_propagation (phi:E.formula) : (E.formula * E.V.subst_t) =
+  let (conjs, subst) = gen_eq_prop_from_list (F.to_conj_list phi) in
+  (F.conj_list conjs, subst)
+
+
 let apply_eq_propagation (imps:implication list) : implication list =
   let eq_prop (imp:implication) : implication =
-    let uf = UF.empty() in
-    let conjs = F.to_conj_list imp.ante in
-    imp
+    let (ante',subst) = gen_eq_propagation imp.ante in
+    { ante = E.subst_vars subst ante';
+      conseq = E.subst_vars subst imp.conseq; }
   in
     List.map eq_prop imps
 

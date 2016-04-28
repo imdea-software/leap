@@ -608,8 +608,18 @@ let to_tll (alpha_r:E.integer list list option)
   Log.print "ThmSolver. Formula to translate into TLL"
     (String.concat "\n" (List.map HM.literal_to_str thm_ls));
   Hashtbl.clear tidarr_tbl;
+  let conjs = List.fold_left (fun xs lit ->
+                (F.to_conj_list
+                  (TllInterface.formula_to_expr_formula
+                    (trans_literal alpha_r levels lit))) @ xs
+              ) [] thm_ls in
+  let (conjs',subst) = Tactics.gen_eq_prop_from_list conjs in
+  let tll_phi = TllInterface.formula_to_tll_formula
+                  (E.subst_vars subst (F.conj_list (F.cleanup_dups conjs'))) in
+  (*
   let tll_ps = List.map (trans_literal alpha_r levels) thm_ls in
   let tll_phi = F.conj_list tll_ps in
+*)
   Log.print "ThmSolver. Obtained formula in TLL" (TLL.formula_to_str tll_phi);
   tll_phi
 

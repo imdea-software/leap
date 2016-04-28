@@ -363,6 +363,7 @@ val is_pc_var     : V.t -> bool
 
 val var_to_term : V.t -> term
 val term_to_var : term -> V.t
+val term_is_var : term -> bool
 
 
 (* TERM INFORMATION FUNCTIONS *)

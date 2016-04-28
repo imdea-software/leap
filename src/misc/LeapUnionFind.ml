@@ -137,7 +137,7 @@ let from_list (xs:'a list list) : 'a t =
   t
 
 
-let gen_sets (t:'a t) : 'a GenSet.t list=
+let gen_sets (t:'a t) : 'a GenSet.t list =
   List.fold_left (fun xs i ->
     (GenSet.from_list (LeapIdMap.find_dom t.map i)) :: xs
   ) [] (LeapIdMap.codom t.map)
