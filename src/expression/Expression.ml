@@ -3189,6 +3189,7 @@ let prime_modified (rho_list:formula list) (phi:formula) : formula =
 (*
   let (pSet,pPC) = analyze_formula rho in
 *)
+(*
     print_endline "=============================================";
     print_endline ("Original formula:\n" ^ formula_to_str phi);
     print_endline ("Modified set:");
@@ -3196,6 +3197,7 @@ let prime_modified (rho_list:formula list) (phi:formula) : formula =
 
 
     print_endline "=============================================";
+*)
     prime_only (unprime_set pSet) (unprime_set pPC) phi
 
 
@@ -6298,19 +6300,25 @@ let construct_term_eq (v:term)
              (* Elements *)
              | (ElemT (VarElem var), Term t) -> ([ElemT(VarElem(var_base_info var))], t)
              | (ElemT (CellData (VarCell var)), Term t) -> ([ElemT(CellData(VarCell(var_base_info var)))], t)
-             (* Threads *)
+             (* Thread identifiers *)
              | (TidT (VarTh var), Term t) -> ([TidT(VarTh(var_base_info var))], t)
              | (TidT (CellLockId (VarCell var)), Term t) -> ([TidT (CellLockId(VarCell(var_base_info var)))], t)
              | (TidT (CellLockIdAt (VarCell var, i)), Term t) -> ([TidT (CellLockIdAt(VarCell(var_base_info var),i))], t)
              | (TidT (TidArrRd (CellTids (VarCell var), i)), Term t) -> ([TidT (TidArrRd (CellTids(VarCell(var_base_info var)),i))], t)
              | (TidT (TidArrRd (VarTidArray var,i)), Term t) -> ([TidT(TidArrRd(VarTidArray (var_base_info var),i))], t)
              | (TidT (BucketTid (BucketArrRd(VarBucketArray var, i))), Term t) -> ([TidT(BucketTid(BucketArrRd(VarBucketArray(var_base_info var),i)))], t)
+             (* Thread identifiers Arrays *)
+             | (TidArrayT (VarTidArray var), Term t) ->
+                  ([TidArrayT(VarTidArray(var_base_info var))], t)
              (* Locks *)
              | (LockT (VarLock var), Term t) -> ([LockT(VarLock(var_base_info var))], t)
              | (LockT (LockArrRd (VarLockArray var,i)), Term t) -> ([LockT(LockArrRd(VarLockArray (var_base_info var),i))], t)
              (* Buckets *)
              | (BucketT (VarBucket var), Term t) -> ([BucketT(VarBucket(var_base_info var))], t)
              | (BucketT (BucketArrRd (VarBucketArray var,i)), Term t) -> ([BucketT(BucketArrRd(VarBucketArray (var_base_info var),i))], t)
+             (* Bucket Arrays *)
+             | (BucketArrayT (VarBucketArray var), Term t) ->
+                  ([BucketArrayT(VarBucketArray(var_base_info var))], t)
              (* Addresses *)
              | (AddrT (VarAddr var), Term t) -> ([AddrT(VarAddr(var_base_info var))], t)
              | (AddrT (Next (VarCell var)), Term t) -> ([AddrT(Next(VarCell(var_base_info var)))], t)
@@ -6319,6 +6327,9 @@ let construct_term_eq (v:term)
              | (AddrT (BucketInit (BucketArrRd(VarBucketArray var, i))), Term t) -> ([AddrT(BucketInit(BucketArrRd(VarBucketArray(var_base_info var),i)))], t)
              | (AddrT (BucketEnd (BucketArrRd(VarBucketArray var, i))), Term t) -> ([AddrT(BucketEnd(BucketArrRd(VarBucketArray(var_base_info var),i)))], t)
              | (AddrT (AddrArrRd (VarAddrArray var,i)), Term t) -> ([AddrT(AddrArrRd(VarAddrArray (var_base_info var),i))], t)
+             (* Address Arrays *)
+             | (AddrArrayT (VarAddrArray var), Term t) ->
+                  ([AddrArrayT(VarAddrArray(var_base_info var))], t)
              (* Cells *)
              | (CellT (VarCell var), Term t) -> ([CellT(VarCell(var_base_info var))], t)
              (* Paths *)

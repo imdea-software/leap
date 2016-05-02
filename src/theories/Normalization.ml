@@ -11,6 +11,7 @@ module type S =
 
     val add_term_map : t -> term -> V.t -> unit
     val remove_term_map : t -> term -> unit
+    val is_mapped : t -> term -> bool
     val find_term_map : t -> term -> V.t
     val gen_if_not_var : t -> (term -> bool) -> (term -> V.t) -> term -> V.sort -> V.t
     val term_map_size : t -> int
@@ -64,6 +65,10 @@ module Make (Opt:NormSpec.S) =
 
     let remove_term_map (info:t) (t:term) : unit =
       Hashtbl.remove info.term_map t
+
+
+    let is_mapped (info:t) (t:term) : bool =
+      Hashtbl.mem info.term_map t
 
 
     let find_term_map (info:t) (t:term) : V.t =

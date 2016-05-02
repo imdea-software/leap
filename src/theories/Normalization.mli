@@ -10,6 +10,7 @@ module type S =
 
     val add_term_map : t -> term -> V.t -> unit
     val remove_term_map : t -> term -> unit
+    val is_mapped : t -> term -> bool
     val find_term_map : t -> term -> V.t
     val gen_if_not_var : t -> (term -> bool) -> (term -> V.t) -> term -> V.sort -> V.t
     val term_map_size : t -> int

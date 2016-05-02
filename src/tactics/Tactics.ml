@@ -1335,13 +1335,19 @@ let gen_eq_prop_from_list (conjs:E.formula list) : (E.formula list * E.V.subst_t
   let uf = UF.empty() in
   let conjs' =
     List.fold_left (fun xs conj->
-      print_endline ("CONSIDERING CONJUNCTION: " ^ (E.formula_to_str conj));
+(*      print_endline ("CONSIDERING CONJUNCTION: " ^ (E.formula_to_str conj)); *)
       match conj with
       | F.Literal(F.Atom (E.Eq(t1, t2))) ->
           begin
             if (E.term_is_var t1 && E.term_is_var t2) then begin
-              UF.union uf (E.term_to_var t1) (E.term_to_var t2);
-              xs
+              let v1 = E.term_to_var t1 in
+              let v2 = E.term_to_var t2 in
+              if (E.V.is_primed v1 || E.V.is_primed v2) then
+                conj :: xs
+              else begin
+                UF.union uf (E.term_to_var t1) (E.term_to_var t2);
+                xs
+              end
             end else                         
               conj :: xs
           end

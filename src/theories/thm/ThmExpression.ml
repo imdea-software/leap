@@ -2214,33 +2214,117 @@ let rec norm_literal (info:THMNorm.t) (l:literal) : formula =
           InEq (TidT (VarTh a),
                 TidT (TidArrRd(norm_tidarr tt, norm_int_var i)))
     (* Equality between address and binit *)
+    (*
     | Eq (AddrT a, AddrT(BucketInit b))
     | Eq (AddrT(BucketInit b), AddrT a) ->
         let e = VarAddr (THMNorm.gen_fresh_var info Addr) in
         let s = VarSet (THMNorm.gen_fresh_var info Set) in
         let t = VarTh (THMNorm.gen_fresh_var info Tid) in
           Eq(BucketT(norm_bucket_var b), BucketT(MkBucket(norm_addr_var a,e,s,t)))
+    *)
+    | Eq (AddrT a, AddrT(BucketInit b))
+    | Eq (AddrT(BucketInit b), AddrT a) ->
+        let a' = VarAddr (THMNorm.gen_fresh_var info Addr) in
+        let e = VarAddr (THMNorm.gen_fresh_var info Addr) in
+        let s = VarSet (THMNorm.gen_fresh_var info Set) in
+        let t = VarTh (THMNorm.gen_fresh_var info Tid) in
+        let b' = gen_if_not_var (BucketT (norm_bucket b)) Bucket in
+        THMNorm.add_term_map info (BucketT(MkBucket(a',e,s,t))) b';
+          Eq(AddrT(norm_addr_var a), AddrT a')
+    (* Inequality between address and binit *)
+    | InEq (AddrT a, AddrT(BucketInit b))
+    | InEq (AddrT(BucketInit b), AddrT a) ->
+        let a' = VarAddr (THMNorm.gen_fresh_var info Addr) in
+        let e = VarAddr (THMNorm.gen_fresh_var info Addr) in
+        let s = VarSet (THMNorm.gen_fresh_var info Set) in
+        let t = VarTh (THMNorm.gen_fresh_var info Tid) in
+        let b' = gen_if_not_var (BucketT (norm_bucket b)) Bucket in
+        THMNorm.add_term_map info (BucketT(MkBucket(a',e,s,t))) b';
+          InEq(AddrT(norm_addr_var a), AddrT a')
     (* Equality between address and bend *)
+    (*
     | Eq (AddrT e, AddrT(BucketEnd b))
     | Eq (AddrT(BucketEnd b), AddrT e) ->
         let a = VarAddr (THMNorm.gen_fresh_var info Addr) in
         let s = VarSet (THMNorm.gen_fresh_var info Set) in
         let t = VarTh (THMNorm.gen_fresh_var info Tid) in
           Eq(BucketT(norm_bucket_var b), BucketT(MkBucket(a,norm_addr e,s,t)))
+    *)
+    | Eq (AddrT e, AddrT(BucketEnd b))
+    | Eq (AddrT(BucketEnd b), AddrT e) ->
+        let a = VarAddr (THMNorm.gen_fresh_var info Addr) in
+        let e' = VarAddr (THMNorm.gen_fresh_var info Addr) in
+        let s = VarSet (THMNorm.gen_fresh_var info Set) in
+        let t = VarTh (THMNorm.gen_fresh_var info Tid) in
+        let b' = gen_if_not_var (BucketT (norm_bucket b)) Bucket in
+        THMNorm.add_term_map info (BucketT(MkBucket(a,e',s,t))) b';
+          Eq(AddrT(norm_addr_var e), AddrT e')
+    (* Inequality between address and bend *)
+    | InEq (AddrT e, AddrT(BucketEnd b))
+    | InEq (AddrT(BucketEnd b), AddrT e) ->
+        let a = VarAddr (THMNorm.gen_fresh_var info Addr) in
+        let e' = VarAddr (THMNorm.gen_fresh_var info Addr) in
+        let s = VarSet (THMNorm.gen_fresh_var info Set) in
+        let t = VarTh (THMNorm.gen_fresh_var info Tid) in
+        let b' = gen_if_not_var (BucketT (norm_bucket b)) Bucket in
+        THMNorm.add_term_map info (BucketT(MkBucket(a,e',s,t))) b';
+          InEq(AddrT(norm_addr_var e), AddrT e')
     (* Equality between set and breg *)
+    (*
     | Eq (SetT s, SetT(BucketRegion b))
     | Eq (SetT(BucketRegion b), SetT s) ->
         let a = VarAddr (THMNorm.gen_fresh_var info Addr) in
         let e = VarAddr (THMNorm.gen_fresh_var info Addr) in
         let t = VarTh (THMNorm.gen_fresh_var info Tid) in
           Eq(BucketT(norm_bucket_var b), BucketT(MkBucket(a,e,norm_set_var s,t)))
+    *)
+    | Eq (SetT s, SetT(BucketRegion b))
+    | Eq (SetT(BucketRegion b), SetT s) ->
+        let a = VarAddr (THMNorm.gen_fresh_var info Addr) in
+        let e = VarAddr (THMNorm.gen_fresh_var info Addr) in
+        let s' = VarSet (THMNorm.gen_fresh_var info Set) in
+        let t = VarTh (THMNorm.gen_fresh_var info Tid) in
+        let b' = gen_if_not_var (BucketT (norm_bucket b)) Bucket in
+        THMNorm.add_term_map info (BucketT(MkBucket(a,e,s',t))) b';
+          Eq(SetT(norm_set_var s), SetT s')
+    (* Inequality between set and breg *)
+    | InEq (SetT s, SetT(BucketRegion b))
+    | InEq (SetT(BucketRegion b), SetT s) ->
+        let a = VarAddr (THMNorm.gen_fresh_var info Addr) in
+        let e = VarAddr (THMNorm.gen_fresh_var info Addr) in
+        let s' = VarSet (THMNorm.gen_fresh_var info Set) in
+        let t = VarTh (THMNorm.gen_fresh_var info Tid) in
+        let b' = gen_if_not_var (BucketT (norm_bucket b)) Bucket in
+        THMNorm.add_term_map info (BucketT(MkBucket(a,e,s',t))) b';
+          InEq(SetT(norm_set_var s), SetT s')
     (* Equality between thread identifier and btid *)
+    (*
     | Eq (TidT t, TidT(BucketTid b))
     | Eq (TidT(BucketTid b), TidT t) ->
         let a = VarAddr (THMNorm.gen_fresh_var info Addr) in
         let e = VarAddr (THMNorm.gen_fresh_var info Addr) in
         let s = VarSet (THMNorm.gen_fresh_var info Set) in
           Eq(BucketT(norm_bucket_var b), BucketT(MkBucket(a,e,s,norm_tid_var t)))
+    *)
+    | Eq (TidT t, TidT(BucketTid b))
+    | Eq (TidT(BucketTid b), TidT t) ->
+        let a = VarAddr (THMNorm.gen_fresh_var info Addr) in
+        let e = VarAddr (THMNorm.gen_fresh_var info Addr) in
+        let s = VarSet (THMNorm.gen_fresh_var info Set) in
+        let t' = VarTh (THMNorm.gen_fresh_var info Tid) in
+        let b' = gen_if_not_var (BucketT (norm_bucket b)) Bucket in
+        THMNorm.add_term_map info (BucketT(MkBucket(a,e,s,t'))) b';
+          Eq(TidT(norm_tid_var t), TidT t')
+    (* Inequality between identifier and btid *)
+    | InEq (TidT t, TidT(BucketTid b))
+    | InEq (TidT(BucketTid b), TidT t) ->
+        let a = VarAddr (THMNorm.gen_fresh_var info Addr) in
+        let e = VarAddr (THMNorm.gen_fresh_var info Addr) in
+        let s = VarSet (THMNorm.gen_fresh_var info Set) in
+        let t' = VarTh (THMNorm.gen_fresh_var info Tid) in
+        let b' = gen_if_not_var (BucketT (norm_bucket b)) Bucket in
+        THMNorm.add_term_map info (BucketT(MkBucket(a,e,s,t'))) b';
+          InEq(TidT(norm_tid_var t), TidT t')
     (* General equalities and inequalities *)
     | Eq (t1,t2) -> Eq (norm_term t1, norm_term t2)
     | InEq (t1,t2) -> InEq (norm_term t1, norm_term t2)

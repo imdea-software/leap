@@ -241,7 +241,10 @@ let find_position (levels:int)
                                (i+1,false)
                            end
           ) (0,false) alpha in
-        if found then i else 0
+        if found then
+          i
+        else
+           max 0 levels
       end
 
 
@@ -389,7 +392,6 @@ let rec trans_literal (alpha_r:E.integer list list option)
   | F.Atom(HM.Eq(HM.BucketT(HM.MkBucket(a,e,s,t)), HM.BucketT(HM.VarBucket b)))
   | F.NegAtom(HM.InEq(HM.BucketT(HM.VarBucket b), HM.BucketT(HM.MkBucket(a,e,s,t))))
   | F.NegAtom(HM.InEq(HM.BucketT(HM.MkBucket(a,e,s,t)), HM.BucketT(HM.VarBucket b))) ->
-      print_endline "TRANSLATING A MKBUCKET";
       let b_init = fresh_bucket_init_var b in
       let b_end = fresh_bucket_end_var b in
       let b_reg = fresh_bucket_reg_var b in
@@ -402,10 +404,26 @@ let rec trans_literal (alpha_r:E.integer list list option)
                    TLL.eq_addr (TLL.VarAddr b_end ) e';
                    TLL.eq_set  (TLL.VarSet  b_reg ) s';
                    TLL.eq_tid  (TLL.VarTh   b_tid ) t']
+  (* b != mkbucket(a,e,s,t) *)
+  | F.Atom(HM.InEq(HM.BucketT(HM.VarBucket b), HM.BucketT(HM.MkBucket(a,e,s,t))))
+  | F.Atom(HM.InEq(HM.BucketT(HM.MkBucket(a,e,s,t)), HM.BucketT(HM.VarBucket b)))
+  | F.NegAtom(HM.Eq(HM.BucketT(HM.VarBucket b), HM.BucketT(HM.MkBucket(a,e,s,t))))
+  | F.NegAtom(HM.Eq(HM.BucketT(HM.MkBucket(a,e,s,t)), HM.BucketT(HM.VarBucket b))) ->
+      let b_init = fresh_bucket_init_var b in
+      let b_end = fresh_bucket_end_var b in
+      let b_reg = fresh_bucket_reg_var b in
+      let b_tid = fresh_bucket_tid_var b in
+      let a' = addr_thm_to_tll a in
+      let e' = addr_thm_to_tll e in
+      let s' = set_thm_to_tll s in
+      let t' = tid_thm_to_tll t in
+      F.disj_list [TLL.ineq_addr (TLL.VarAddr b_init) a';
+                   TLL.ineq_addr (TLL.VarAddr b_end ) e';
+                   TLL.ineq_set  (TLL.VarSet  b_reg ) s';
+                   TLL.ineq_tid  (TLL.VarTh   b_tid ) t']
   (* b1 = b2 *)
   | F.Atom(HM.Eq(HM.BucketT(HM.VarBucket b1), HM.BucketT(HM.VarBucket b2)))
   | F.NegAtom(HM.InEq(HM.BucketT(HM.VarBucket b1), HM.BucketT(HM.VarBucket b2))) ->
-      print_endline "TRANSLATING EQUALITY BETWEEN BUCKETS";
       let b1_init = fresh_bucket_init_var b1 in
       let b1_end = fresh_bucket_end_var b1 in
       let b1_reg = fresh_bucket_reg_var b1 in
@@ -421,7 +439,6 @@ let rec trans_literal (alpha_r:E.integer list list option)
   (* b1 != b2 *)
   | F.Atom(HM.InEq(HM.BucketT(HM.VarBucket b1), HM.BucketT(HM.VarBucket b2)))
   | F.NegAtom(HM.Eq(HM.BucketT(HM.VarBucket b1), HM.BucketT(HM.VarBucket b2))) ->
-      print_endline "TRANSLATING INEQUALITY BETWEEN BUCKETS";
       let b1_init = fresh_bucket_init_var b1 in
       let b1_end = fresh_bucket_end_var b1 in
       let b1_reg = fresh_bucket_reg_var b1 in
@@ -541,6 +558,7 @@ let rec trans_literal (alpha_r:E.integer list list option)
                      TLL.eq_addr (TLL.Next(TLL.CellAt(m',e))) TLL.Null] in
 
 
+      print_endline ("K': " ^ (string_of_int k'));
       let list_conj = List.fold_left (fun c i ->
         let (a,e,s,t) = get_bucket i bb in
         F.And (list_conj_f a e s, c)
@@ -613,9 +631,14 @@ let to_tll (alpha_r:E.integer list list option)
                   (TllInterface.formula_to_expr_formula
                     (trans_literal alpha_r levels lit))) @ xs
               ) [] thm_ls in
+  
   let (conjs',subst) = Tactics.gen_eq_prop_from_list conjs in
   let tll_phi = TllInterface.formula_to_tll_formula
                   (E.subst_vars subst (F.conj_list (F.cleanup_dups conjs'))) in
+  (*
+  let tll_phi = TllInterface.formula_to_tll_formula (F.conj_list (F.cleanup_dups conjs)) in
+  *)
+
   (*
   let tll_ps = List.map (trans_literal alpha_r levels) thm_ls in
   let tll_phi = F.conj_list tll_ps in
@@ -664,7 +687,7 @@ let check_thm (levels:int)
                               (boundFunc v) @ cs
                             ) intVars [] in
       let fullConj = intBoundFormula @ ls in 
-      assert(levels > 0);
+      assert(levels >= 0);
       let phi_tll = to_tll alpha_r (levels-1)
                       (List.map ThmInterface.literal_to_thm_literal fullConj) in
       TllSol.compute_model (!comp_model);
