@@ -1,0 +1,9 @@
+vars:
+
+tid i
+
+invariant [hashmap_lock] :
+
+  true
+//  @locked_bucket(i). ->
+//    locks[myLock] = i

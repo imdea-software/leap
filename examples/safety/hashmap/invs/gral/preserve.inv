@@ -3,9 +3,9 @@ vars:
 addr a
 int i
 
-invariant [preserve] :
+invariant [hashmap_preserve] :
 
-	locksLength <= capacity
+  locksLength <= capacity
 
 #is_hashmap:
   hashmap(heap,region,elements,table,capacity)

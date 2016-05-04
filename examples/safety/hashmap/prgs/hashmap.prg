@@ -5,12 +5,14 @@ global
   int capacity
   bucketarr table
 
-	ghost addrSet region
+  ghost addrSet region
   ghost elemSet elements
 
 assume
-	region = {null} /\
-	elements = eempty
+  region = {null} /\
+  elements = eempty /\
+
+  hashmap(heap, region, elements, table, capacity)
 
 
 // ----- PROGRAM BEGINS --------------------------------------
@@ -64,16 +66,38 @@ assume
                               int hashId
                               int myBucket
                               int myLock
-                              addr newAddr
-                              bucket b
+                              addr prev
+                              addr curr
+                              addr node
                             begin
                               hashId := call hash(e);
                               myLock := hashId % locksLength;
+:myLock_set[
                               locks[myLock] := lock(locks[myLock],me);
+:locked_bucket[
                               myBucket := hashId % capacity;
-                              newAddr := call insert(table[myBucket].binit, e);
-                              table[myBucket].binit := newAddr;
+:myBucket_set[
+
+                              curr := table[myBucket].binit;
+                              while (curr->data != e /\ curr != null) do
+                                curr := curr->next;
+                              endwhile
+                              if (curr = null) then
+                                node := malloc(e, table[myBucket].binit, #);
+:adding_node
+                                table[myBucket] := mkbucket(node,
+                                                            table[myBucket].bend,
+                                                            union(table[myBucket].bregion, {node}),
+                                                            table[myBucket].btid)
+                                  $
+                                    elements := eunion (elements, esingle(e));
+                                    region := union (region, {node});
+                                  $
+                              endif
                               locks[myLock] := unlock(locks[myLock]);
+:locked_bucket]
+:myBucket_set]
+:myLock_set]
                             end
 
 
@@ -143,22 +167,4 @@ assume
                                 return (result);
                               end
 
-// ----- LIST INSERT ----------------------------------------------
-
-
-                              procedure insert (head:addr, e:elem) : addr
-                                addr curr
-                                addr node
-                              begin
-                                curr := head;
-                                while (curr->data != e /\ curr != null) do
-                                  curr := curr->next;
-                                endwhile
-                                if (curr = null) then
-                                  node := malloc(e, head, #);
-                                else
-                                  node := curr;
-                                endif
-                                return (node);
-                              end
 

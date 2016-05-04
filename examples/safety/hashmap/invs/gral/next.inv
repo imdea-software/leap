@@ -1,0 +1,10 @@
+vars:
+
+tid i
+
+invariant [hashmap_next] :
+
+  @adding_node(i). ->
+    ( rd(heap, add::node(i)).next = table[add::myBucket(i)].binit)
+//      add::node(i) != null)
+//      rd(heap, add::node(i)).next != null)
