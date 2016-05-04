@@ -1,6 +1,5 @@
 open LeapVerbose
 
-module Arr      = Arrangements
 module GenSet   = LeapGenericSet
 module GM       = GenericModel
 module HM       = ThmExpression
@@ -746,7 +745,7 @@ let check_sat_plus_info (lines : int)
                print_endline "FORMULA TO NORMALIZE:";
                print_endline (HM.formula_to_str phi);
                let phi_norm = HM.normalize phi in
-               print_endline "NORMALIZED FORMULA:";
+               print_endline "NORMALIZED FORMULA IN THMSOLVER:";
                print_endline (HM.formula_to_str phi_norm);
                (* ERASE *)
                Log.print "THM Solver normalized formula" (HM.formula_to_str phi_norm);

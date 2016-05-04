@@ -1336,6 +1336,7 @@ let gen_rho (sys : t)             (* The system                           *)
     (fun xs (_,vs) -> (List.filter (is_sort E.Addr) vs) @ xs) [] lVars in
   let lSetVars = List.fold_left 
     (fun xs (_,vs) -> (List.filter (is_sort E.Set) vs) @ xs) [] lVars in
+
   let mInfo = {
     Bridge.tids = th_list;
     Bridge.gAddrs = gAddrVars; 

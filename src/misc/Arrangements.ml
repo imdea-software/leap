@@ -6,6 +6,7 @@ module GenSet = LeapGenericSet
 type 'a t = {
               strict            : bool;
               dom               : 'a GenSet.t;
+              remove            : 'a GenSet.t;
               mutable minimum   : 'a option;
               eqs               : ('a * 'a) GenSet.t;
               ineqs             : ('a * 'a) GenSet.t;
@@ -32,6 +33,7 @@ let empty (stc:bool) : 'a t =
   {
     strict = stc;
     dom = GenSet.empty ();
+    remove = GenSet.empty ();
     minimum = None;
     eqs = GenSet.empty ();
     ineqs = GenSet.empty ();
@@ -57,6 +59,7 @@ let copy (arr:'a t) : 'a t =
   {
     strict = arr.strict;
     dom = GenSet.copy arr.dom;
+    remove = GenSet.copy arr.remove;
     minimum = arr.minimum;
     eqs = GenSet.copy arr.eqs;
     ineqs = GenSet.copy arr.ineqs;
@@ -68,6 +71,7 @@ let copy (arr:'a t) : 'a t =
 
 let clear (arr:'a t) : unit =
   GenSet.clear arr.dom;
+  GenSet.clear arr.remove;
   arr.minimum <- None;
   GenSet.clear arr.eqs;
   GenSet.clear arr.ineqs;
@@ -77,11 +81,15 @@ let clear (arr:'a t) : unit =
 
 
 let add_elem (arr:'a t) (a:'a) : unit =
-  GenSet.add arr.dom a
+  if not (GenSet.mem arr.remove a) then
+    GenSet.add arr.dom a
 
 
 let proceed (arr:'a t) (a:'a) (b:'a) : bool =
-  (not arr.strict) || (GenSet.mem arr.dom a && GenSet.mem arr.dom b)
+  if GenSet.mem arr.remove a || GenSet.mem arr.remove b then
+    false
+  else
+    (not arr.strict) || (GenSet.mem arr.dom a && GenSet.mem arr.dom b)
 
 
 let add_eq (arr:'a t) (a:'a) (b:'a) : unit =
@@ -129,7 +137,8 @@ let add_greater (arr:'a t) (a:'a) (b:'a) : unit =
 
 
 let add_lesseq (arr:'a t) (a:'a) (b:'a) : unit =
-  arr.leq_order <- (a,b) :: arr.leq_order
+  if (not (GenSet.mem arr.remove a) && not (GenSet.mem arr.remove b)) then
+    arr.leq_order <- (a,b) :: arr.leq_order
 
 
 let add_greatereq (arr:'a t) (a:'a) (b:'a) : unit =
@@ -148,6 +157,9 @@ let add_followed_by (arr:'a t) (a:'a) (b:'a) : unit =
         end
     end
 
+
+let do_not_consider (arr:'a t) (a:'a) : unit =
+  GenSet.add arr.remove a
 
 
 let set_minimum (arr:'a t) (a:'a) : unit =

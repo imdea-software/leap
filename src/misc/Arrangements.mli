@@ -58,6 +58,10 @@ val add_greatereq : 'a t -> 'a -> 'a -> unit
     element [a] should be immediately followed by element [b] *)
 val add_followed_by : 'a t -> 'a -> 'a -> unit
 
+(** [do_not_consider arr a] indicates arrangement [arr] to not consider any relation
+ *  involving element [a] *)
+val do_not_consider : 'a t -> 'a -> unit
+
 (** [set_minimum arr a] forces [a] to be the minimum element in arrangement
     [arr] *)
 val set_minimum : 'a t -> 'a -> unit

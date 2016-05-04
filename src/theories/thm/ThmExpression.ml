@@ -2177,12 +2177,59 @@ let rec norm_literal (info:THMNorm.t) (l:literal) : formula =
     | SubsetEqTh (s1,s2) -> SubsetEqTh (norm_setth s1, norm_setth s2)
     | InElem (e,s) -> InElem (norm_elem e, norm_setelem s)
     | SubsetEqElem (s1,s2) -> SubsetEqElem (norm_setelem s1, norm_setelem s2)
-    | Less (i1,i2) -> Less (norm_int_var i1, norm_int_var i2)
-    | Greater (i1,i2) -> Greater (norm_int_var i1, norm_int_var i2)
-    | LessEq (i1,i2) -> LessEq (norm_int_var i1, norm_int_var i2)
-    | GreaterEq (i1,i2) -> GreaterEq (norm_int_var i1, norm_int_var i2)
+    (* Less between integers *)
+    | Less (i1,i2) ->
+        begin
+          match (i1,i2) with
+          | (VarInt v, IntVal n)
+          | (IntVal n, VarInt v) -> if V.looks_like_pc v then
+                                      a
+                                    else
+                                      Less (norm_int_var i1, norm_int_var i2)
+          | _ -> Less (norm_int_var i1, norm_int_var i2)
+        end
+    (* Greater between integers *)
+    | Greater (i1,i2) ->
+        begin
+          match (i1,i2) with
+          | (VarInt v, IntVal n)
+          | (IntVal n, VarInt v) -> if V.looks_like_pc v then
+                                      a
+                                    else
+                                      Greater (norm_int_var i1, norm_int_var i2)
+          | _ -> Greater (norm_int_var i1, norm_int_var i2)
+        end
+    (* LessEq between integers *)
+    | LessEq (i1,i2) ->
+        begin
+          match (i1,i2) with
+          | (VarInt v, IntVal n)
+          | (IntVal n, VarInt v) -> if V.looks_like_pc v then
+                                      a
+                                    else
+                                      LessEq (norm_int_var i1, norm_int_var i2)
+          | _ -> LessEq (norm_int_var i1, norm_int_var i2)
+        end
+    (* GreaterEq between integers *)
+    | GreaterEq (i1,i2) ->
+        begin
+          match (i1,i2) with
+          | (VarInt v, IntVal n)
+          | (IntVal n, VarInt v) -> if V.looks_like_pc v then
+                                      a
+                                    else
+                                      GreaterEq (norm_int_var i1, norm_int_var i2)
+          | _ -> GreaterEq (norm_int_var i1, norm_int_var i2)
+        end
     | LessElem (e1,e2) -> LessElem (norm_elem e1, norm_elem e2)
     | GreaterElem (e1,e2) -> GreaterElem (norm_elem e1, norm_elem e2)
+    (* Equality between integers *)
+    | Eq (IntT (VarInt v), IntT (IntVal _ as num))
+    | Eq (IntT (IntVal _ as num), IntT (VarInt v)) ->
+        if (V.looks_like_pc v) then
+          a
+        else
+          Eq(IntT(VarInt v), IntT(norm_int_var num))
     (* Equality between bucket variable and bucket array *)
     | Eq (BucketT (VarBucket b), BucketT (BucketArrRd(bb,i)))
     | Eq (BucketT (BucketArrRd(bb,i)), BucketT (VarBucket b)) ->

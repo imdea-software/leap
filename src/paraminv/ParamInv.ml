@@ -54,10 +54,15 @@ module Make (C:Core.S) : S =
                 (premise:Premise.t)
                 (trans_tid:E.tid)
                   : Tactics.vc_info list =
-      let voc = E.voc (Formula.conj_list (inv::supp)) in
+      (***********************  TESTING  *************************)
+      (* This adds threads identifiers belonging to the support, *)
+      (* which I should not add until instantiating the support  *)
+      (* later as part of the tactics.                           *)
+      (***********************************************************)
+      (* let voc = E.voc (Formula.conj_list (inv::supp)) in      *)
+      (***********************  TESTING  *************************)
+      let voc = E.voc inv in
       let rho = C.rho System.Concurrent voc line trans_tid in
-
-
       let tid_constraint = match premise with
                            | Premise.SelfConseq -> Tactics.no_tid_constraint
                            | Premise.OthersConseq ->

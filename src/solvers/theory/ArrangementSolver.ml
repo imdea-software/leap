@@ -57,7 +57,12 @@ module Make (AS : ArrangementSolverSpec.S) =
               | F.Atom(E.Eq(E.IntT(E.VarInt _),E.IntT(E.IntVal _)))
               | F.Atom(E.Eq(E.IntT(E.IntVal _),E.IntT(E.VarInt _)))
               | F.NegAtom(E.InEq(E.IntT(E.VarInt _),E.IntT(E.IntVal _)))
-              | F.NegAtom(E.InEq(E.IntT(E.IntVal _),E.IntT(E.VarInt _))) -> (l::pas,pancs,ncs)
+              | F.NegAtom(E.InEq(E.IntT(E.IntVal _),E.IntT(E.VarInt _)))
+              (* l != q *)
+              | F.NegAtom(E.Eq(E.IntT(E.VarInt _),E.IntT(E.IntVal _)))
+              | F.NegAtom(E.Eq(E.IntT(E.IntVal _),E.IntT(E.VarInt _)))
+              | F.Atom(E.InEq(E.IntT(E.VarInt _),E.IntT(E.IntVal _)))
+              | F.Atom(E.InEq(E.IntT(E.IntVal _),E.IntT(E.VarInt _))) -> (l::pas,pancs,ncs)
                 (* l1 = l2 *)
               | F.Atom(E.Eq(E.IntT(E.VarInt _),E.IntT(E.VarInt _)))
               | F.NegAtom(E.InEq(E.IntT(E.VarInt _),E.IntT(E.VarInt _)))
@@ -93,15 +98,19 @@ module Make (AS : ArrangementSolverSpec.S) =
               | F.NegAtom(E.Less(E.VarInt _,E.VarInt _))
               | F.NegAtom(E.Greater(E.VarInt _,E.VarInt _)) -> (pas,l::pancs,ncs)
                 (* Cases that should not appear at this point after normalization *)
-              | F.Atom(E.Less(E.IntVal _,_))          | F.Atom(E.Less(_,E.IntVal _))
-              | F.Atom(E.Greater(E.IntVal _,_))       | F.Atom(E.Greater(_,E.IntVal _))
-              | F.NegAtom(E.LessEq(E.IntVal _,_))     | F.NegAtom(E.LessEq(_,E.IntVal _))
-              | F.NegAtom(E.GreaterEq(E.IntVal _,_))  | F.NegAtom(E.GreaterEq(_,E.IntVal _))
-              | F.Atom(E.LessEq(E.IntVal _,_))        | F.Atom(E.LessEq(_,E.IntVal _))
-              | F.Atom(E.GreaterEq(E.IntVal _,_))     | F.Atom(E.GreaterEq(_,E.IntVal _))
-              | F.NegAtom(E.Less(E.IntVal _,_))       | F.NegAtom(E.Less(_,E.IntVal _))
-              | F.NegAtom(E.Greater(E.IntVal _,_))    | F.NegAtom(E.Greater(_,E.IntVal _)) ->
-                  assert false
+              | F.Atom(E.Less(E.IntVal _,i))          | F.Atom(E.Less(i,E.IntVal _))
+              | F.Atom(E.Greater(E.IntVal _,i))       | F.Atom(E.Greater(i,E.IntVal _))
+              | F.NegAtom(E.LessEq(E.IntVal _,i))     | F.NegAtom(E.LessEq(i,E.IntVal _))
+              | F.NegAtom(E.GreaterEq(E.IntVal _,i))  | F.NegAtom(E.GreaterEq(i,E.IntVal _))
+              | F.Atom(E.LessEq(E.IntVal _,i))        | F.Atom(E.LessEq(i,E.IntVal _))
+              | F.Atom(E.GreaterEq(E.IntVal _,i))     | F.Atom(E.GreaterEq(i,E.IntVal _))
+              | F.NegAtom(E.Less(E.IntVal _,i))       | F.NegAtom(E.Less(i,E.IntVal _))
+              | F.NegAtom(E.Greater(E.IntVal _,i))    | F.NegAtom(E.Greater(i,E.IntVal _)) ->
+                  begin
+                    match i with
+                    | E.VarInt v -> if E.V.looks_like_pc v then (pas,pancs,l::ncs) else assert false
+                    | _ -> assert false
+                  end
                 (* Remaining cases *)
               | _ -> (pas,pancs,l::ncs)
             ) ([],[],[]) cf
@@ -118,14 +127,17 @@ module Make (AS : ArrangementSolverSpec.S) =
         | F.TrueConj  -> Some (GenSet.empty ())
         | F.Conj ls   -> begin
                             let level_vars = E.varset_of_sort_from_conj cf (E.Int) in
-                            if E.V.VarSet.cardinal level_vars = 0 then
+                            let (pc_vars, int_vars) =
+                              E.V.VarSet.partition E.V.looks_like_pc level_vars in
+                            E.V.VarSet.iter (fun v -> (Arr.do_not_consider arr (E.VarInt v))) pc_vars;
+                            if E.V.VarSet.cardinal int_vars = 0 then
                               None
                             else begin
                               verbl _LONG_INFO "**** TSL Solver: variables for arrangement...\n{ %s }\n"
                                       (E.V.VarSet.fold (fun v str ->
                                         str ^ E.V.to_str v ^ "; "
-                                      ) level_vars "");
-                              E.V.VarSet.iter (fun v -> Arr.add_elem arr (E.VarInt v)) level_vars;
+                                      ) int_vars "");
+                              E.V.VarSet.iter (fun v -> Arr.add_elem arr (E.VarInt v)) int_vars;
                               List.iter (fun l ->
 (*                                print_endline ("LITERAL TO ANALYZE: " ^ (E.literal_to_str l)); *)
                                 match l with
@@ -209,6 +221,7 @@ module Make (AS : ArrangementSolverSpec.S) =
                                             Hashtbl.find arr_table arr
                                           with
                                             _ -> begin
+                                                   print_endline ("ARRGS: " ^ (Arr.to_str arr E.integer_to_str));
                                                    let a = Arr.gen_arrs arr in
                                                    Hashtbl.add arr_table arr a;
                                                    a
@@ -405,6 +418,7 @@ module Make (AS : ArrangementSolverSpec.S) =
     let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:E.conjunctive_formula) : Sat.t =
       Log.print_ocaml "entering TSLSolver dnf_sat";
       Log.print "TSLSolver dnf_sat conjunctive formula" (E.conjunctive_formula_to_str cf);
+      print_endline ("TSLSolver dnf_sat conjunctive formula" ^ (E.conjunctive_formula_to_str cf));
       let arrg_sat_table : (E.integer list list, Sat.t) Hashtbl.t = Hashtbl.create 8 in
 
       let check_pa (cf:E.conjunctive_formula) : Sat.t =
@@ -521,8 +535,9 @@ module Make (AS : ArrangementSolverSpec.S) =
           GenSet.add rel_set_plus_zero (E.IntVal 0);
           assert (GenSet.subseteq alpha_relev rel_set_plus_zero);
           let panc_r_level_vars = E.varset_of_sort_from_conj panc_r E.Int in
-          let nc_r_level_vars = E.varset_of_sort_from_conj nc_r E.Int in
-
+          let nc_r_level_vars = E.V.VarSet.filter (fun v ->
+                                  not (E.V.looks_like_pc v)
+                                ) (E.varset_of_sort_from_conj nc_r E.Int) in
           Log.print "Alpha relevant" (GenSet.to_str E.integer_to_str alpha_relev);
 
           if not (E.V.VarSet.for_all (fun v -> GenSet.mem alpha_relev (E.VarInt v)) panc_r_level_vars) then begin
@@ -582,7 +597,15 @@ module Make (AS : ArrangementSolverSpec.S) =
 
 
       (* Main body *)
+      print_endline ("CF:\n" ^ (E.conjunctive_formula_to_str cf));
       let (pa,panc,nc) = split_into_pa_nc cf in
+      print_endline ("PA:\n" ^ (E.conjunctive_formula_to_str pa));
+      print_endline ("PANC:\n" ^ (E.conjunctive_formula_to_str panc));
+      print_endline ("NC:\n" ^ (E.conjunctive_formula_to_str nc));
+      (* If pa or nc are UNSAT, then there is no need of guessing arrangements *)
+
+
+
       (* We clear the table of previously guessed arrangements *)
       Hashtbl.clear arr_table;
       (* Generate arrangements *)
@@ -609,10 +632,13 @@ module Make (AS : ArrangementSolverSpec.S) =
           (* Verify if some arrangement makes the formula satisfiable *)
           match arrgs_opt with
           | None -> AS.check_sp_dp 1 lines co arrg_sat_table nc None
-          | Some arrgs -> if GenSet.exists (fun alpha -> Sat.is_sat (check pa panc nc alpha)) arrgs then
-                            Sat.Sat
-                          else
-                            Sat.Unsat
+          | Some arrgs -> begin
+                            print_endline ("ARRGS: " ^ (string_of_int(GenSet.size arrgs)));
+                            if GenSet.exists (fun alpha -> Sat.is_sat (check pa panc nc alpha)) arrgs then
+                              Sat.Sat
+                            else
+                              Sat.Unsat
+                          end
         end in
       answer
   end

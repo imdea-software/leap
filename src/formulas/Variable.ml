@@ -71,6 +71,7 @@ module type S =
     val localize_var_id : id -> string -> id
     val localize_var_id_with_procedure : id -> procedure_name -> id
     val localize_with_underscore : id -> procedure_name -> id
+    val looks_like_pc : t -> bool
 
 
     (*********************************)
@@ -346,6 +347,13 @@ module Make (VS : VarSpec.S) =
       | GlobalScope
       | Scope "" -> id
       | Scope proc  -> proc ^ "_" ^ id
+
+
+    let looks_like_pc (v:t) : bool =
+      if String.length (id v) < 3 then
+        false
+      else
+        String.compare "pc_" (String.sub (id v) 0 3) == 0
 
 
     (*********************************)
