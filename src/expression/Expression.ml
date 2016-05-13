@@ -6667,7 +6667,7 @@ let construct_term_eq_as_array (v:term)
             let assign = eq_term (TidArrayT (param_tidarr th_p primed_arr)) modif_arr in
             ([TidArrayT arr], assign)
         | (BucketT (BucketArrRd(arr,i)), Term (BucketT b)) ->
-            let _ = print_endline "THIS OTHER CASE!!!!" in
+(*            let _ = print_endline "THIS OTHER CASE!!!!" in *)
             let primed_arr = prime_bucketarr arr in
             let modif_arr = BucketArrayT(BucketArrayUp(param_bucketarr th_p arr,
                                                        param_int th_p i,
@@ -6702,8 +6702,7 @@ let construct_term_eq_as_array (v:term)
             let assign = eq_term (BucketArrayT (param_bucketarr th_p primed_arr)) modif_arr in
             ([BucketArrayT arr], F.conj_list [bucketEq; assign])
 *)
-        | _ -> (print_endline "HERE WE ARE"; print_endline "TERM IS:"; print_endline (term_to_str v); let (a,b) = construct_term_eq v th_p e in
-                print_endline "GENERATED:"; print_endline (formula_to_str b); (a,b))
+        | _ -> construct_term_eq v th_p e
       end
   | _ -> Interface.Err.msg "Invalid argument" $
                  sprintf "When trying to construct a local array assignment \

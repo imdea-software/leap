@@ -264,12 +264,16 @@ let rec trans_literal (alpha_r:E.integer list list option)
   | F.Atom(HM.Eq(HM.TidT t, HM.TidT(HM.LockId(HM.VarLock v))))
   | F.NegAtom(HM.InEq(HM.TidT(HM.LockId(HM.VarLock v)), HM.TidT t)) 
   | F.NegAtom(HM.InEq(HM.TidT t, HM.TidT(HM.LockId(HM.VarLock v)))) ->
+(*
       print_endline "CONVERSION FOUND";
       print_endline ("CONVERTING FROM: " ^ (HM.literal_to_str l));
+*)
       let l' = tid_thm_to_tll (HM.VarTh (HM.V.set_sort v HM.Tid)) in
       let t' = tid_thm_to_tll t in
       let res = TLL.eq_tid l' t' in
+(*
       print_endline ("CONVERTED TO: " ^ (TLL.formula_to_str res));
+*)
       res
   (* A != B (thread identifiers) *)
   | F.NegAtom(HM.Eq(HM.TidArrayT(HM.VarTidArray _ as tt),
@@ -568,8 +572,9 @@ let rec trans_literal (alpha_r:E.integer list list option)
                      TLL.in_addr e s;
                      TLL.eq_addr (TLL.Next(TLL.CellAt(m',e))) TLL.Null] in
 
-
+(*
       print_endline ("K': " ^ (string_of_int k'));
+*)
       let list_conj = List.fold_left (fun c i ->
         let (a,e,s,t) = get_bucket i bb in
         F.And (list_conj_f a e s, c)
@@ -642,14 +647,17 @@ let to_tll (alpha_r:E.integer list list option)
                   (TllInterface.formula_to_expr_formula
                     (trans_literal alpha_r levels lit))) @ xs
               ) [] thm_ls in
-  
+(*
   print_endline "CONJS";
   List.iter (fun phi -> print_endline (E.formula_to_str phi)) conjs;
+*)
   
   let (conjs',subst) = Tactics.gen_eq_prop_from_list conjs in
   let tll_phi = TllInterface.formula_to_tll_formula
                   (E.subst_vars subst (F.conj_list (F.cleanup_dups conjs'))) in
+(*
   print_endline ("TLL_PHI: " ^ (TLL.formula_to_str tll_phi));
+*)
   (*
   let tll_phi = TllInterface.formula_to_tll_formula (F.conj_list (F.cleanup_dups conjs)) in
   *)
@@ -758,11 +766,15 @@ let check_sat_plus_info (lines : int)
                (* STEP 1: Normalize the formula *)
                (* ERASE *)
                Log.print "THM Solver formula" (HM.formula_to_str phi);
+(*
                print_endline "FORMULA TO NORMALIZE:";
                print_endline (HM.formula_to_str phi);
+*)
                let phi_norm = HM.normalize phi in
+(*
                print_endline "NORMALIZED FORMULA IN THMSOLVER:";
                print_endline (HM.formula_to_str phi_norm);
+*)
                (* ERASE *)
                Log.print "THM Solver normalized formula" (HM.formula_to_str phi_norm);
                (* STEP 2: DNF of the normalized formula *)
@@ -770,10 +782,12 @@ let check_sat_plus_info (lines : int)
                (* If any of the conjunctions in DNF is SAT, then phi is sat *)
 
 
+(*
                print_endline "DNFS";
                List.iter (fun phi -> print_endline
                (HM.conjunctive_formula_to_str
                phi)) phi_dnf;
+*)
                if List.exists (fun psi ->
                     Sat.is_sat (ArrSol.dnf_sat lines co
                       (ThmInterface.conj_formula_to_expr_conj_formula psi))

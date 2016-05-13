@@ -2424,8 +2424,10 @@ let normalize (phi:formula) : formula =
     let norm_info = THMNorm.new_norm phi in
     (* Process the original formula *)
     let phi' = norm_formula norm_info (F.nnf phi) in
+(*
     print_endline ("NORMALIZED FORMULA: " ^ (formula_to_str phi'));
     print_endline (THMNorm.to_str norm_info term_to_str V.to_str);
+*)
     (* Normalize all remaining literals stored in the normalization table *)
     verbl _LONG_INFO "WILL NORMALIZE REMAINING ELEMENTS\n";
     let lit_list = ref [] in

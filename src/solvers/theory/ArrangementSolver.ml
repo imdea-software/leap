@@ -221,7 +221,9 @@ module Make (AS : ArrangementSolverSpec.S) =
                                             Hashtbl.find arr_table arr
                                           with
                                             _ -> begin
+(*
                                                    print_endline ("ARRGS: " ^ (Arr.to_str arr E.integer_to_str));
+*)
                                                    let a = Arr.gen_arrs arr in
                                                    Hashtbl.add arr_table arr a;
                                                    a
@@ -597,11 +599,15 @@ module Make (AS : ArrangementSolverSpec.S) =
 
 
       (* Main body *)
+(*
       print_endline ("CF:\n" ^ (E.conjunctive_formula_to_str cf));
+*)
       let (pa,panc,nc) = split_into_pa_nc cf in
+(*
       print_endline ("PA:\n" ^ (E.conjunctive_formula_to_str pa));
       print_endline ("PANC:\n" ^ (E.conjunctive_formula_to_str panc));
       print_endline ("NC:\n" ^ (E.conjunctive_formula_to_str nc));
+*)
       (* If pa or nc are UNSAT, then there is no need of guessing arrangements *)
 
 
@@ -633,7 +639,9 @@ module Make (AS : ArrangementSolverSpec.S) =
           match arrgs_opt with
           | None -> AS.check_sp_dp 1 lines co arrg_sat_table nc None
           | Some arrgs -> begin
+(*
                             print_endline ("ARRGS: " ^ (string_of_int(GenSet.size arrgs)));
+*)
                             if GenSet.exists (fun alpha -> Sat.is_sat (check pa panc nc alpha)) arrgs then
                               Sat.Sat
                             else
