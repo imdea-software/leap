@@ -1,0 +1,10 @@
+vars:
+
+tid i
+tid j
+
+invariant [hashmap_disjoint] :
+
+
+(@adding_node(i). /\ @adding_node(j).) (i != j -> add::node(i) != add::node(j))
+//(i != j /\ @adding_node(i). /\ @adding_node(j).) -> add::node(i) != add::node(j)
