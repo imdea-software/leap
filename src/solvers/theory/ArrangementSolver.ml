@@ -108,7 +108,7 @@ module Make (AS : ArrangementSolverSpec.S) =
               | F.NegAtom(E.Greater(E.IntVal _,i))    | F.NegAtom(E.Greater(i,E.IntVal _)) ->
                   begin
                     match i with
-                    | E.VarInt v -> if E.V.looks_like_pc v then (pas,pancs,l::ncs) else assert false
+                    | E.VarInt v -> if E.V.looks_like_pc v then (l::pas,pancs,ncs) else assert false
                     | _ -> assert false
                   end
                 (* Remaining cases *)
@@ -418,7 +418,7 @@ module Make (AS : ArrangementSolverSpec.S) =
     let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:E.conjunctive_formula) : Sat.t =
       Log.print_ocaml "entering TSLSolver dnf_sat";
       Log.print "TSLSolver dnf_sat conjunctive formula" (E.conjunctive_formula_to_str cf);
-      print_endline ("TSLSolver dnf_sat conjunctive formula" ^ (E.conjunctive_formula_to_str cf));
+(*      print_endline ("TSLSolver dnf_sat conjunctive formula" ^ (E.conjunctive_formula_to_str cf)); *)
       let arrg_sat_table : (E.integer list list, Sat.t) Hashtbl.t = Hashtbl.create 8 in
 
       let check_pa (cf:E.conjunctive_formula) : Sat.t =

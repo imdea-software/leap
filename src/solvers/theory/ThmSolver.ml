@@ -259,6 +259,18 @@ let rec trans_literal (alpha_r:E.integer list list option)
   verbl _LONG_INFO "**** THM Solver. Literal to be translated: %s\n"
     (HM.literal_to_str l);
   match l with
+  (* L.id = t *)
+  | F.Atom(HM.Eq(HM.TidT(HM.LockId(HM.VarLock v)), HM.TidT t)) 
+  | F.Atom(HM.Eq(HM.TidT t, HM.TidT(HM.LockId(HM.VarLock v))))
+  | F.NegAtom(HM.InEq(HM.TidT(HM.LockId(HM.VarLock v)), HM.TidT t)) 
+  | F.NegAtom(HM.InEq(HM.TidT t, HM.TidT(HM.LockId(HM.VarLock v)))) ->
+      print_endline "CONVERSION FOUND";
+      print_endline ("CONVERTING FROM: " ^ (HM.literal_to_str l));
+      let l' = tid_thm_to_tll (HM.VarTh (HM.V.set_sort v HM.Tid)) in
+      let t' = tid_thm_to_tll t in
+      let res = TLL.eq_tid l' t' in
+      print_endline ("CONVERTED TO: " ^ (TLL.formula_to_str res));
+      res
   (* A != B (thread identifiers) *)
   | F.NegAtom(HM.Eq(HM.TidArrayT(HM.VarTidArray _ as tt),
                HM.TidArrayT(HM.VarTidArray _ as uu)))
@@ -343,16 +355,16 @@ let rec trans_literal (alpha_r:E.integer list list option)
   | F.Atom(HM.Eq(HM.LockT (HM.LockArrRd (ll,i)), HM.LockT(HM.VarLock l)))
   | F.NegAtom(HM.InEq(HM.LockT(HM.VarLock l), HM.LockT (HM.LockArrRd (ll,i))))
   | F.NegAtom(HM.InEq(HM.LockT (HM.LockArrRd (ll,i)), HM.LockT(HM.VarLock l))) ->
-      let l_fresh = TLL.VarTh (fresh_lock_var l) in
+      let l' = tid_thm_to_tll (HM.VarTh (HM.V.set_sort l HM.Tid)) in
       let i' = int_thm_to_tll i in
       let xs = ref [] in
       for n = 0 to levels do
         let n' = TLL.IntVal n in
         xs := (F.Implies
                 (TLL.eq_int i' n',
-                 TLL.eq_tid l_fresh (get_lock n ll))) :: (!xs)
+                 TLL.eq_tid l' (get_lock n ll))) :: (!xs)
       done;
-      TLL.tid_mark_smp_interesting l_fresh true;
+      TLL.tid_mark_smp_interesting l' true;
       F.conj_list (!xs)
   (* l != L[i] *)
   | F.NegAtom(HM.Eq(HM.LockT l, HM.LockT (HM.LockArrRd (ll,i))))
@@ -631,9 +643,13 @@ let to_tll (alpha_r:E.integer list list option)
                     (trans_literal alpha_r levels lit))) @ xs
               ) [] thm_ls in
   
+  print_endline "CONJS";
+  List.iter (fun phi -> print_endline (E.formula_to_str phi)) conjs;
+  
   let (conjs',subst) = Tactics.gen_eq_prop_from_list conjs in
   let tll_phi = TllInterface.formula_to_tll_formula
                   (E.subst_vars subst (F.conj_list (F.cleanup_dups conjs'))) in
+  print_endline ("TLL_PHI: " ^ (TLL.formula_to_str tll_phi));
   (*
   let tll_phi = TllInterface.formula_to_tll_formula (F.conj_list (F.cleanup_dups conjs)) in
   *)
@@ -752,6 +768,12 @@ let check_sat_plus_info (lines : int)
                (* STEP 2: DNF of the normalized formula *)
                let phi_dnf = F.dnf phi_norm in
                (* If any of the conjunctions in DNF is SAT, then phi is sat *)
+
+
+               print_endline "DNFS";
+               List.iter (fun phi -> print_endline
+               (HM.conjunctive_formula_to_str
+               phi)) phi_dnf;
                if List.exists (fun psi ->
                     Sat.is_sat (ArrSol.dnf_sat lines co
                       (ThmInterface.conj_formula_to_expr_conj_formula psi))
