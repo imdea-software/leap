@@ -1,0 +1,10 @@
+vars:
+
+addr a
+int i
+
+invariant [hashtable_preserve] :
+
+#is_hashtable:
+	hashmap(heap,region,elements,table,capacity)
+

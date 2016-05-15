@@ -1,0 +1,7 @@
+=> hashtable_preserve [
+		22:hashtable_next,hashtable_elems,hashtable_locks,hashtable_hash
+	 ] { union : split-goal
+             | reduce2
+             | split-antecedent-pc
+             | simplify-pc propositional-propagate
+						}

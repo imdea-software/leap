@@ -1,0 +1,9 @@
+vars:
+
+tid i
+
+invariant [hashtable_levels] :
+
+#myBucket_set:
+  @myBucket_set(i). -> add::myBucket(i) < capacity
+  

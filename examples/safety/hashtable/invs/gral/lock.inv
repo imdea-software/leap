@@ -1,0 +1,8 @@
+vars:
+
+tid i
+
+invariant [hashtable_locks] :
+
+  @locked_bucket(i). -> locks[add::myBucket(i)].lockid = i
+
