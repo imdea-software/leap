@@ -12,6 +12,7 @@ safety:
   lockfree-queue
   lockfree-stack
   unbounded-queue
+  hashtable
 
 liveness:
   ticketset

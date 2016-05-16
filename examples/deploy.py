@@ -177,7 +177,7 @@ def update_env_path():
 
 # Zip files
 def zip(path, files, zip_file):
-	zip_proc = Popen(['zip', '-r', '-9', zip_file+'.zip', files], cwd=path, stdout=FNULL)
+	zip_proc = Popen(['zip', '-r', '-9', '--exclude=*.svn*', zip_file+'.zip', files], cwd=path, stdout=FNULL)
 	if zip_proc.wait() <> 0:
 		error ('Could not zip ' + files)
 
