@@ -530,7 +530,7 @@ let define_ident (proc_name:E.V.procedure_name)
 %token THREAD
 %token MARK_T MARK_F MARKED
 %token MKBUCKET BINIT BEND BREGION BTID BARRAYUPD
-%token HASHMAP
+%token HASHTBL
 %token OPEN_BRACKET CLOSE_BRACKET
 %token OPEN_SET CLOSE_SET
 %token OPEN_PAREN CLOSE_PAREN
@@ -1071,9 +1071,9 @@ literal :
       let elems  = parser_check_type check_type_setelem $13 E.SetElem get_str_expr in
         Formula.Atom (E.Skiplist (h,s,l,a_from,a_to,elems))
     }
-  | HASHMAP OPEN_PAREN term COMMA term COMMA term COMMA term COMMA term CLOSE_PAREN
+  | HASHTBL OPEN_PAREN term COMMA term COMMA term COMMA term COMMA term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "hashmap(%s,%s,%s,%s,%s)"
+      let get_str_expr () = sprintf "hashtbl(%s,%s,%s,%s,%s)"
                                         (E.term_to_str $3)
                                         (E.term_to_str $5)
                                         (E.term_to_str $7)
@@ -1084,7 +1084,7 @@ literal :
       let se = parser_check_type check_type_setelem    $7 E.SetElem get_str_expr in
       let bb = parser_check_type check_type_bucketarr  $9 E.BucketArray get_str_expr in
       let i  = parser_check_type check_type_int       $11 E.Int get_str_expr in
-        Formula.Atom (E.Hashmap (h,s,se,bb,i))
+        Formula.Atom (E.Hashtbl (h,s,se,bb,i))
     }
   | IN OPEN_PAREN term COMMA term CLOSE_PAREN
     {

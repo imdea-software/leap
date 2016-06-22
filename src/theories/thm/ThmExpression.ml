@@ -158,7 +158,7 @@ and atom =
     Append       of path * path * path
   | Reach        of mem * addr * addr * path
   | OrderList    of mem * addr * addr
-  | Hashmap      of mem * set * setelem * bucketarr * integer
+  | Hashtbl      of mem * set * setelem * bucketarr * integer
   | In           of addr * set
   | SubsetEq     of set  * set
   | InTh         of tid * setth
@@ -413,7 +413,7 @@ and get_varset_atom (instances:bool) (a:atom) : V.VarSet.t =
                                 (get_varset_addr a2) @@ (get_varset_path p)
     | OrderList(m,a1,a2)     -> (get_varset_mem m) @@ (get_varset_addr a1) @@
                                 (get_varset_addr a2)
-    | Hashmap (m,s,se,bb,i)  -> (get_varset_mem m) @@ (get_varset_set s) @@
+    | Hashtbl (m,s,se,bb,i)  -> (get_varset_mem m) @@ (get_varset_set s) @@
                                 (get_varset_setelem se) @@ (get_varset_bucketarr bb) @@
                                 (get_varset_int i)
     | In(a,s)                -> (get_varset_addr a) @@ (get_varset_set s)
@@ -499,7 +499,7 @@ let get_termset_atom (a:atom) : TermSet.t =
   | Append(p1,p2,p3)       -> add_list [PathT p1; PathT p2; PathT p3]
   | Reach(m,a1,a2,p)       -> add_list [MemT m; AddrT a1; AddrT a2; PathT p]
   | OrderList(m,a1,a2)     -> add_list [MemT m; AddrT a1; AddrT a2]
-  | Hashmap(m,s,se,bb,i)   -> add_list [MemT m; SetT s; SetElemT se; BucketArrayT bb; IntT i]
+  | Hashtbl(m,s,se,bb,i)   -> add_list [MemT m; SetT s; SetElemT se; BucketArrayT bb; IntT i]
   | In(a,s)                -> add_list [AddrT a; SetT s]
   | SubsetEq(s1,s2)        -> add_list [SetT s1; SetT s2]
   | InTh(th,st)            -> add_list [TidT th; SetThT st]
@@ -799,7 +799,7 @@ and is_atom_flat a =
                                 (is_addr_flat a2) && (is_path_flat p)
     | OrderList(m,a1,a2)     -> (is_mem_flat m) && (is_addr_flat a1) &&
                                 (is_addr_flat a2)
-    | Hashmap(m,s,se,bb,i)   -> (is_mem_flat m) && (is_set_flat s) &&
+    | Hashtbl(m,s,se,bb,i)   -> (is_mem_flat m) && (is_set_flat s) &&
                                 (is_setelem_flat se) && (is_bucketarr_flat bb) &&
                                 (is_int_flat i)
     | In(a,s)                -> (is_addr_flat a) && (is_set_flat s)
@@ -851,7 +851,7 @@ let rec atom_to_str a =
   | OrderList(h,a_from,a_to)   -> Printf.sprintf "orderlist(%s,%s,%s)"
                                     (mem_to_str h) (addr_to_str a_from)
                                     (addr_to_str a_to)
-  | Hashmap(h,s,se,bb,i)       -> Printf.sprintf "hashmap(%s,%s,%s,%s,%s)"
+  | Hashtbl(h,s,se,bb,i)       -> Printf.sprintf "hashtbl(%s,%s,%s,%s,%s)"
                                                   (mem_to_str h)
                                                   (set_to_str s)
                                                   (setelem_to_str se)
@@ -1377,7 +1377,7 @@ and voc_atom (a:atom) : ThreadSet.t =
   | OrderList(h,a_from,a_to)   -> (voc_mem h) @@
                                   (voc_addr a_from) @@
                                   (voc_addr a_to)
-  | Hashmap(h,s,se,bb,i)       -> (voc_mem h) @@
+  | Hashtbl(h,s,se,bb,i)       -> (voc_mem h) @@
                                   (voc_set s) @@
                                   (voc_setelem se) @@
                                   (voc_bucketarr bb) @@
@@ -1457,7 +1457,7 @@ let required_sorts (phi:formula) : sort list =
     | Append (p1,p2,p3)     -> list_union [req_p p1;req_p p1;req_p p2;req_p p3]
     | Reach (m,a1,a2,p)     -> list_union [req_m m;req_a a1;req_a a2;req_p p]
     | OrderList (m,a1,a2)   -> list_union [req_m m;req_a a1;req_a a2]
-    | Hashmap (m,s,se,bb,i) -> list_union [req_m m;req_s s;req_se se;
+    | Hashtbl (m,s,se,bb,i) -> list_union [req_m m;req_s s;req_se se;
                                            req_bb bb; req_i i]
     | In (a,s)              -> list_union [req_a a;req_s s]
     | SubsetEq (s1,s2)      -> list_union [req_s s1;req_s s2]
@@ -1654,7 +1654,7 @@ let special_ops (phi:formula) : special_op_t list =
     | Append (p1,p2,p3)     -> list_union [ops_p p1;ops_p p1;ops_p p2;ops_p p3]
     | Reach (m,a1,a2,p)     -> append Reachable[ops_m m;ops_a a1;ops_a a2;ops_p p]
     | OrderList (m,a1,a2)   -> append OrderedList[ops_m m;ops_a a1;ops_a a2]
-    | Hashmap (m,s,se,bb,i) -> append HashMap[ops_m m; ops_s s; ops_se se;
+    | Hashtbl (m,s,se,bb,i) -> append HashMap[ops_m m; ops_s s; ops_se se;
                                               ops_bb bb; ops_i i]
     | In (a,s)              -> list_union [ops_a a;ops_s s]
     | SubsetEq (s1,s2)      -> list_union [ops_s s1;ops_s s2]
@@ -2169,7 +2169,7 @@ let rec norm_literal (info:THMNorm.t) (l:literal) : formula =
     | Reach (m,a1,a2,p) -> Reach (norm_mem m, norm_addr_var a1, norm_addr_var a2,
                                   norm_path p)
     | OrderList (m,a1,a2) -> OrderList (norm_mem m, norm_addr_var a1, norm_addr_var a2)
-    | Hashmap(m,s,se,bb,i) -> Hashmap(norm_mem m, norm_set_var s, norm_setelem se,
+    | Hashtbl(m,s,se,bb,i) -> Hashtbl(norm_mem m, norm_set_var s, norm_setelem se,
                                         norm_bucketarr_var bb, norm_int_var i)
     | In (a,s) -> In (norm_addr_var a, norm_set_var s)
     | SubsetEq (s1,s2) -> SubsetEq (norm_set_var s1, norm_set_var s2)

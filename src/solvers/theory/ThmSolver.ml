@@ -484,6 +484,26 @@ let rec trans_literal (alpha_r:E.integer list list option)
       TLL.addr_mark_smp_interesting e true;
       TLL.tid_mark_smp_interesting t true;
       F.disj_list (!xs)
+
+
+  (* A == B (buckets) *)
+  | F.Atom(HM.Eq(HM.BucketArrayT(HM.VarBucketArray _ as bb),
+                 HM.BucketArrayT(HM.VarBucketArray _ as cc)))
+  | F.NegAtom(HM.InEq(HM.BucketArrayT(HM.VarBucketArray _ as bb),
+                      HM.BucketArrayT(HM.VarBucketArray _ as cc))) ->
+      let xs = ref [] in
+      for i = 0 to levels do
+        let (a1,e1,s1,t1) = get_bucket i bb in
+        let (a2,e2,s2,t2) = get_bucket i cc in
+        xs := [TLL.eq_addr a1 a2; TLL.eq_addr e1 e2;
+               TLL.eq_set  s1 s2; TLL.eq_tid  t1 t2] @ (!xs)
+      done;
+      (* I need one witness for array difference *)
+      let (a,e,s,t) = get_bucket 0 bb in
+      TLL.addr_mark_smp_interesting a true;
+      TLL.addr_mark_smp_interesting e true;
+      TLL.tid_mark_smp_interesting t true;
+      F.conj_list (!xs)
   (* b = A[i] *)
   | F.Atom(HM.Eq(HM.BucketT(HM.VarBucket b), HM.BucketT (HM.BucketArrRd (bb,i))))
   | F.Atom(HM.Eq(HM.BucketT (HM.BucketArrRd (bb,i)), HM.BucketT(HM.VarBucket b)))
@@ -550,8 +570,8 @@ let rec trans_literal (alpha_r:E.integer list list option)
       F.Not (trans_literal alpha_r levels (F.Atom(HM.Eq(HM.BucketArrayT cc, HM.BucketArrayT (HM.BucketArrayUp(bb,i,b))))))
 
 
-  (* hashmap(m,s,se,B,k) *)
-  | F.Atom(HM.Hashmap(m,s,se,bb,k)) ->
+  (* hashtbl(m,s,se,B,k) *)
+  | F.Atom(HM.Hashtbl(m,s,se,bb,k)) ->
       let m' = mem_thm_to_tll m in
       let s' = set_thm_to_tll s in
       let se' = setelem_thm_to_tll se in
@@ -590,8 +610,8 @@ let rec trans_literal (alpha_r:E.integer list list option)
       done;
       F.conj_list ([eq_s; eq_setelem; list_conj] @ (!disjoint))
 
-  (* ~ hashmap(m,s,se,bb,k) *)
-  | F.NegAtom(HM.Hashmap(m,s,se,bb,k)) ->
+  (* ~ hashtbl(m,s,se,bb,k) *)
+  | F.NegAtom(HM.Hashtbl(m,s,se,bb,k)) ->
       let m' = mem_thm_to_tll m in
       let s' = set_thm_to_tll s in
       let se' = setelem_thm_to_tll se in

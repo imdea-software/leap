@@ -253,7 +253,7 @@ and atom =
   | Reach         of mem * addr * addr * path
   | OrderList     of mem * addr * addr
   | Skiplist      of mem * set * integer * addr * addr * setelem
-  | Hashmap       of mem * set * setelem * bucketarr * integer
+  | Hashtbl       of mem * set * setelem * bucketarr * integer
   | In            of addr * set
   | SubsetEq      of set * set
   | InTh          of tid * setth
@@ -434,7 +434,7 @@ and atom_to_str (loc:bool) (expr:atom) : string =
                                             (addr_to_str loc a_from)
                                             (addr_to_str loc a_to)
                                             (setelem_to_str loc elems)
-  | Hashmap (h,s,se,bb,i)            -> sprintf "hashmap(%s,%s,%s,%s,%s)"
+  | Hashtbl (h,s,se,bb,i)            -> sprintf "hashtbl(%s,%s,%s,%s,%s)"
                                             (mem_to_str loc h)
                                             (set_to_str loc s)
                                             (setelem_to_str loc se)
@@ -1302,7 +1302,7 @@ and atom_to_expr_atom (a:atom) : E.atom =
                                              addr_to_expr_addr a1,
                                              addr_to_expr_addr a2,
                                              setelem_to_expr_setelem es)
-  | Hashmap (m,s,se,bb,i)     -> E.Hashmap (mem_to_expr_mem m,
+  | Hashtbl (m,s,se,bb,i)     -> E.Hashtbl (mem_to_expr_mem m,
                                             set_to_expr_set s,
                                             setelem_to_expr_setelem se,
                                             bucketarray_to_expr_array bb,
@@ -1724,7 +1724,7 @@ and var_kind_atom (kind:E.var_nature) (a:atom) : term list =
                                     (var_kind_addr kind a1) @
                                     (var_kind_addr kind a2) @
                                     (var_kind_setelem kind es)
-  | Hashmap(h,s,se,bb,i)         -> (var_kind_mem kind h) @
+  | Hashtbl(h,s,se,bb,i)         -> (var_kind_mem kind h) @
                                     (var_kind_set kind s) @
                                     (var_kind_setelem kind se) @
                                     (var_kind_bucketarr kind bb) @

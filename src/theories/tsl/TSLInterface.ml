@@ -372,7 +372,7 @@ and atom_to_tsl_atom (a:E.atom) : SL.atom =
   | E.OrderList(m,a1,a2)       -> SL.OrderList (mem m, addr a1, addr a2)
   | E.Skiplist(m,s,l,a1,a2,es) -> SL.Skiplist (mem m, set s, integ l,
                                                    addr a1, addr a2, setelem es)
-  | E.Hashmap _                -> raise(UnsupportedTslExpr(E.atom_to_str a))
+  | E.Hashtbl _                -> raise(UnsupportedTslExpr(E.atom_to_str a))
   | E.In (a,s)                 -> SL.In (addr a, set s)
   | E.SubsetEq (s1,s2)         -> SL.SubsetEq (set s1, set s2)
   | E.InTh (t,s)               -> SL.InTh (tid t, setth s)

@@ -270,7 +270,7 @@ and atom =
   | ReachAt       of mem * addr * addr * integer * path
   | OrderList     of mem * addr * addr
   | Skiplist      of mem * set * integer * addr * addr * setelem
-  | Hashmap       of mem * set * setelem * bucketarr * integer
+  | Hashtbl       of mem * set * setelem * bucketarr * integer
   | In            of addr * set
   | SubsetEq      of set * set
   | InTh          of tid * setth
@@ -1355,7 +1355,7 @@ and priming_atom (pr:bool) (info:priming_info_t) (a:atom) : atom =
                                                   priming_addr pr info a_from,
                                                   priming_addr pr info a_to,
                                                   priming_setelem pr info elems)
-  | Hashmap(h,s,se,bb,i)              -> Hashmap(priming_mem pr info h,
+  | Hashtbl(h,s,se,bb,i)              -> Hashtbl(priming_mem pr info h,
                                                  priming_set pr info s,
                                                  priming_setelem pr info se,
                                                  priming_bucketarray pr info bb,
@@ -1583,7 +1583,7 @@ and atom_to_str (expr:atom) : string =
                                                   (addr_to_str a_from)
                                                   (addr_to_str a_to)
                                                   (setelem_to_str elems)
-  | Hashmap(h,s,se,bb,i)              -> sprintf "hashmap(%s,%s,%s,%s,%s)"
+  | Hashtbl(h,s,se,bb,i)              -> sprintf "hashtbl(%s,%s,%s,%s,%s)"
                                                   (mem_to_str h)
                                                   (set_to_str s)
                                                   (setelem_to_str se)
@@ -2983,7 +2983,7 @@ and get_vars_atom (a:atom) (info:varset_info_t) : V.VarSet.t =
                                           (get_vars_addr a_from info) @@
                                           (get_vars_addr a_to info) @@
                                           (get_vars_setelem elems info)
-  | Hashmap(h,s,se,bb,i)               -> (get_vars_mem h info) @@
+  | Hashtbl(h,s,se,bb,i)               -> (get_vars_mem h info) @@
                                           (get_vars_set s info) @@
                                           (get_vars_setelem se info) @@
                                           (get_vars_bucketarr bb info) @@
@@ -3630,7 +3630,7 @@ and voc_atom (a:atom) : ThreadSet.t =
                                           (voc_addr a_from) @@
                                           (voc_addr a_to) @@
                                           (voc_setelem elems)
-  | Hashmap(h,s,se,bb,i)               -> (voc_mem h) @@
+  | Hashtbl(h,s,se,bb,i)               -> (voc_mem h) @@
                                           (voc_set s) @@
                                           (voc_setelem se) @@
                                           (voc_bucketarr bb) @@
@@ -4073,7 +4073,7 @@ and var_kind_atom (kind:var_nature) (a:atom) : term list =
                                           (var_kind_addr kind a_from) @
                                           (var_kind_addr kind a_to) @
                                           (var_kind_setelem kind elems)
-  | Hashmap(h,s,se,bb,i)               -> (var_kind_mem kind h) @
+  | Hashtbl(h,s,se,bb,i)               -> (var_kind_mem kind h) @
                                           (var_kind_set kind s) @
                                           (var_kind_setelem kind se) @
                                           (var_kind_bucketarr kind bb) @
@@ -4545,7 +4545,7 @@ and param_atom (pfun:V.t option -> V.shared_or_local) (a:atom) : atom =
                                                    param_addr_aux pfun a_from,
                                                    param_addr_aux pfun a_to,
                                                    param_setelem pfun elems)
-  | Hashmap(h,s,se,bb,i)               -> Hashmap(param_mem pfun h,
+  | Hashtbl(h,s,se,bb,i)               -> Hashtbl(param_mem pfun h,
                                                   param_set pfun s,
                                                   param_setelem pfun se,
                                                   param_bucketarr_aux pfun bb,
@@ -5084,7 +5084,7 @@ and subst_tid_atom (subs:tid_subst_t) (a:atom) : atom =
                                                    subst_tid_addr subs a_from,
                                                    subst_tid_addr subs a_to,
                                                    subst_tid_setelem subs elems)
-  | Hashmap(h,s,se,bb,i)               -> Hashmap(subst_tid_mem subs h,
+  | Hashtbl(h,s,se,bb,i)               -> Hashtbl(subst_tid_mem subs h,
                                                    subst_tid_set subs s,
                                                    subst_tid_setelem subs se,
                                                    subst_tid_bucketarr subs bb,
@@ -5518,7 +5518,7 @@ and subst_vars_atom (subs:V.subst_t) (a:atom) : atom =
                                                    subst_vars_addr subs a_from,
                                                    subst_vars_addr subs a_to,
                                                    subst_vars_setelem subs elems)
-  | Hashmap(h,s,se,bb,i)               -> Hashmap(subst_vars_mem subs h,
+  | Hashtbl(h,s,se,bb,i)               -> Hashtbl(subst_vars_mem subs h,
                                                   subst_vars_set subs s,
                                                   subst_vars_setelem subs se,
                                                   subst_vars_bucketarr subs bb,
@@ -6070,7 +6070,7 @@ and subst_var_term_atom (subs:var_term_subst_t) (a:atom) : atom =
                                                    subst_var_term_addr subs a_from,
                                                    subst_var_term_addr subs a_to,
                                                    subst_var_term_setelem subs elems)
-  | Hashmap(h,s,se,bb,i)               -> Hashmap(subst_var_term_mem subs h,
+  | Hashtbl(h,s,se,bb,i)               -> Hashtbl(subst_var_term_mem subs h,
                                                   subst_var_term_set subs s,
                                                   subst_var_term_setelem subs se,
                                                   subst_var_term_bucketarr subs bb,
@@ -6824,7 +6824,7 @@ let required_sorts (phi:formula) : sort list =
     | ReachAt (m,a1,a2,l,p) -> append Bool [req_m m;req_a a1;req_a a2;req_i l;req_p p]
     | OrderList (m,a1,a2)   -> append Bool [req_m m;req_a a1;req_a a2]
     | Skiplist(m,s,l,a1,a2,se) -> append Bool [req_m m;req_s s;req_i l;req_a a1;req_a a2;req_se se]
-    | Hashmap(m,s,se,bb,i)  -> append Bool [req_m m;req_s s;req_se se;req_bucketarr bb;req_i i]
+    | Hashtbl(m,s,se,bb,i)  -> append Bool [req_m m;req_s s;req_se se;req_bucketarr bb;req_i i]
     | In (a,s)              -> append Bool [req_a a;req_s s]
     | SubsetEq (s1,s2)      -> append Bool [req_s s1;req_s s2]
     | InTh (t,s)            -> append Bool [req_t t;req_st s]
@@ -7553,7 +7553,7 @@ and to_plain_atom (ops:fol_ops_t) (a:atom) : atom =
                                                    to_plain_addr ops a_from,
                                                    to_plain_addr ops a_to,
                                                    to_plain_setelem ops elems)
-  | Hashmap(h,s,se,bb,i)               -> Hashmap(to_plain_mem ops h,
+  | Hashtbl(h,s,se,bb,i)               -> Hashtbl(to_plain_mem ops h,
                                                   to_plain_set ops s,
                                                   to_plain_setelem ops se,
                                                   to_plain_bucketarr ops bb,
@@ -8059,7 +8059,7 @@ let get_termset_atom (a:atom) : TermSet.t =
   | ReachAt(m,a1,a2,l,p)     -> add_list [MemT m;AddrT a1;AddrT a2;IntT l;PathT p]
   | OrderList(m,a1,a2)       -> add_list [MemT m; AddrT a1; AddrT a2]
   | Skiplist(m,s,l,a1,a2,es) -> add_list [MemT m; SetT s; IntT l; AddrT a1; AddrT a2; SetElemT es]
-  | Hashmap(m,s,se,bb,i)     -> add_list [MemT m; SetT s; SetElemT se;
+  | Hashtbl(m,s,se,bb,i)     -> add_list [MemT m; SetT s; SetElemT se;
   BucketArrayT bb; IntT i]
   | In(a,s)                  -> add_list [AddrT a; SetT s]
   | SubsetEq(s1,s2)          -> add_list [SetT s1; SetT s2]
@@ -8613,7 +8613,7 @@ and replace_terms_atom (tbl:(term,term) Hashtbl.t) (a:atom) : atom =
                                                    replace_terms_addr tbl a_from,
                                                    replace_terms_addr tbl a_to,
                                                    replace_terms_setelem tbl elems)
-  | Hashmap(h,s,se,bb,i)               -> Hashmap(replace_terms_mem tbl h,
+  | Hashtbl(h,s,se,bb,i)               -> Hashtbl(replace_terms_mem tbl h,
                                                   replace_terms_set tbl s,
                                                   replace_terms_setelem tbl se,
                                                   replace_terms_bucketarr tbl bb,

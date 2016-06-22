@@ -70,7 +70,7 @@ let _ = List.iter (fun (kwd, tok) -> Hashtbl.add keyword_table kwd tok)
             ("addr2set"     , ADDR2SET);
             ("orderlist"    , ORDERLIST);
             ("skiplist"     , SKIPLIST);
-            ("hashmap"      , HASHMAP);
+            ("hashtbl"      , HASHTBL);
             ("getp"         , GETP);
             ("append"       , APPEND );
             ("reach"        , REACH );

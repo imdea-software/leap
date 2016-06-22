@@ -149,7 +149,7 @@ and atom =
     Append       of path * path * path
   | Reach        of mem * addr * addr * path
   | OrderList    of mem * addr * addr
-  | Hashmap      of mem * set * setelem * bucketarr * integer
+  | Hashtbl      of mem * set * setelem * bucketarr * integer
   | In           of addr * set
   | SubsetEq     of set  * set
   | InTh         of tid * setth

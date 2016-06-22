@@ -372,8 +372,8 @@ module Make (AS : ArrangementSolverSpec.S) =
                             F.Conj (List.map (fun lit ->
                               begin
                                 match lit with
-                                | F.Atom(E.Hashmap(_,_,_,_,l))
-                                | F.NegAtom(E.Hashmap(_,_,_,_,l))
+                                | F.Atom(E.Hashtbl(_,_,_,_,l))
+                                | F.NegAtom(E.Hashtbl(_,_,_,_,l))
                                 | F.Atom(E.Skiplist(_,_,l,_,_,_))
                                 | F.Atom(E.Eq(_,E.CellT(E.MkSLCell(_,_,_,l))))
                                 | F.Atom(E.Eq(E.CellT(E.MkSLCell(_,_,_,l)),_))

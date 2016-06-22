@@ -919,7 +919,7 @@ let fix_conditional_jumps () : unit =
 %token THREAD
 %token MARK_T MARK_F MARKED
 %token MKBUCKET BINIT BEND BREGION BTID BARRAYUPD
-%token HASHMAP
+%token HASHTBL
 %token OPEN_BRACKET CLOSE_BRACKET
 %token OPEN_SET CLOSE_SET
 %token OPEN_PAREN CLOSE_PAREN
@@ -2588,9 +2588,9 @@ atom :
       let s = parser_check_type check_type_setpair $5 E.SetPair get_str_expr in
         Stm.SubsetEqPair(r,s)
     }
-  | HASHMAP OPEN_PAREN term COMMA term COMMA term COMMA term COMMA term CLOSE_PAREN
+  | HASHTBL OPEN_PAREN term COMMA term COMMA term COMMA term COMMA term CLOSE_PAREN
     {
-      let get_str_expr () = sprintf "hashmap(%s,%s,%s,%s,%s)"
+      let get_str_expr () = sprintf "hashtbl(%s,%s,%s,%s,%s)"
                                         (Stm.term_to_str $3)
                                         (Stm.term_to_str $5)
                                         (Stm.term_to_str $7)
@@ -2601,7 +2601,7 @@ atom :
       let se = parser_check_type check_type_setelem    $7 E.SetElem get_str_expr in
       let bb = parser_check_type check_type_bucketarr  $9 E.BucketArray get_str_expr in
       let i  = parser_check_type check_type_int       $11 E.Int get_str_expr in
-        Stm.Hashmap (h,s,se,bb,i)
+        Stm.Hashtbl (h,s,se,bb,i)
     }
   | term MATH_LESS term
     {

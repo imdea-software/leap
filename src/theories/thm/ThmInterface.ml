@@ -380,7 +380,7 @@ and atom_to_thm_atom (a:E.atom) : THM.atom =
   | E.ReachAt _            -> raise(UnsupportedThmExpr(E.atom_to_str a))
   | E.OrderList(m,a1,a2)   -> THM.OrderList (mem m, addr a1, addr a2)
   | E.Skiplist _           -> raise(UnsupportedThmExpr(E.atom_to_str a))
-  | E.Hashmap (m,s,se,bb,i)-> THM.Hashmap(mem m, set s, setelem se,
+  | E.Hashtbl (m,s,se,bb,i)-> THM.Hashtbl(mem m, set s, setelem se,
                                           bucketarr bb, integer i)
   | E.In (a,s)             -> THM.In (addr a, set s)
   | E.SubsetEq (s1,s2)     -> THM.SubsetEq (set s1, set s2)
@@ -691,7 +691,7 @@ and atom_to_expr_atom (a:THM.atom) : E.atom =
     THM.Append (p1,p2,p3)    -> E.Append (path p1,path p2,path p3)
   | THM.Reach (m,a1,a2,p)    -> E.Reach (mem m, addr a1, addr a2, path p)
   | THM.OrderList(m,a1,a2)   -> E.OrderList (mem m, addr a1, addr a2)
-  | THM.Hashmap (m,s,se,bb,i)-> E.Hashmap(mem m, set s, setelem se,
+  | THM.Hashtbl (m,s,se,bb,i)-> E.Hashtbl(mem m, set s, setelem se,
                                           bucketarr bb, integer i)
   | THM.In (a,s)             -> E.In (addr a, set s)
   | THM.SubsetEq (s1,s2)     -> E.SubsetEq (set s1, set s2)

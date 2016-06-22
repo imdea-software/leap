@@ -306,7 +306,7 @@ let rec is_pair_atom ato =
   | E.ReachAt(_,_,_,_,_)               -> false
   | E.OrderList(_,_,_)                 -> false
   | E.Skiplist(_,_,_,_,_,_)            -> false
-  | E.Hashmap(_,_,_,_,_)               -> false
+  | E.Hashtbl(_,_,_,_,_)               -> false
   | E.In(_,_)                          -> false
   | E.SubsetEq(_,_)                    -> false
   | E.InTh(_,_)                        -> false

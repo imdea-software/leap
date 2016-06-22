@@ -312,7 +312,7 @@ and atom_to_tll_atom (a:E.atom) : TLL.atom =
   | E.ReachAt _            -> raise(UnsupportedTllExpr(E.atom_to_str a))
   | E.OrderList(m,a1,a2)   -> TLL.OrderList (mem m, addr a1, addr a2)
   | E.Skiplist _           -> raise(UnsupportedTllExpr(E.atom_to_str a))
-  | E.Hashmap _            -> raise(UnsupportedTllExpr(E.atom_to_str a))
+  | E.Hashtbl _            -> raise(UnsupportedTllExpr(E.atom_to_str a))
   | E.In (a,s)             -> TLL.In (addr a, set s)
   | E.SubsetEq (s1,s2)     -> TLL.SubsetEq (set s1, set s2)
   | E.InTh (t,s)           -> TLL.InTh (tid t, setth s)
