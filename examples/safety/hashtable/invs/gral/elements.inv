@@ -4,4 +4,6 @@ tid i
 
 invariant [hashtable_elems] :
 
-  @adding_node(i). -> rd(heap, add::node(i)).data = add::e(i)
+  true
+
+//  @adding_node(i). -> rd(heap, add::node(i)).data = add::e(i)

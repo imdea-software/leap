@@ -3,7 +3,7 @@
 #Configure path to Leap
 LEAP=leap
 
-OPTIONS="-focus 22 -si -v 0 -yices+z3 -dp thm -co pruning -q"
+OPTIONS="-focus $1 -sm -si -v 1 -yices+z3 -dp thm -co pruning -q -testing"
 
 PRG=prgs/hashtable.prg
 INV_FOLDER=invs/gral

@@ -4,6 +4,8 @@ tid i
 
 invariant [hashtable_levels] :
 
-#myBucket_set:
-  @myBucket_set(i). -> add::myBucket(i) < capacity
+  @add_lock_computed(i). -> (0 <= add::myLock(i) /\ add::myLock(i) < locksLen)
+
+//#myBucket_set:
+//  @myBucket_set(i). -> add::myBucket(i) < capacity
   

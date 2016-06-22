@@ -6,8 +6,8 @@ This folder contains the example of concurrent hash tables.
 In this folder you will find some scripts to run the examples:
 
 run.sh:
-	executes the example for verifying that the transition which connects a 
-	new node to the table preserves the hash table property.
+  executes the example for verifying that the transition which connects a 
+  new node to the table preserves the hash table property.
 
 
 IMPORTANT: You must configure the path to Leap inside the script before you

@@ -5,5 +5,6 @@ tid j
 
 invariant [hashtable_disjoint] :
 
+  true
 
-(@adding_node(i). /\ @adding_node(j).) (i != j -> add::node(i) != add::node(j))
+// (@adding_node(i). /\ @adding_node(j).) (i != j -> add::node(i) != add::node(j))

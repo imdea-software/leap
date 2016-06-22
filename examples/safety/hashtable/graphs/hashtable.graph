@@ -1,7 +1,12 @@
-=> hashtable_preserve [
-		22:hashtable_next,hashtable_elems,hashtable_locks
-	 ] { union : split-goal
+=> hashtable_preserve
+    [
+      22 : hashtable_levels, hashtable_locks
+    ]
+// [
+//    22:hashtable_next,hashtable_elems,hashtable_locks
+//   ]
+   { union : split-goal
              | reduce2
              | split-antecedent-pc
              | simplify-pc propositional-propagate
-						}
+            }
