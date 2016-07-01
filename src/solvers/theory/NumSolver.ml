@@ -47,6 +47,8 @@ module type CUSTOM_NUMSOLVER = sig
   val compute_model : bool -> unit
   val model_to_str  : unit -> string
   val print_model   : unit -> unit
+  val get_sort_map  : unit -> GenericModel.sort_map_t
+  val get_model     : unit -> GenericModel.t
  
   
 end
@@ -60,14 +62,15 @@ struct
   module Exp    = Expression
   module NumExp = Solver.Translate.Num.Exp
   module GM     = GenericModel
+    
+  module Q = (val QueryManager.get_num_query Solver.identifier)
+  module Trans = Solver.Translate.Num.Query(Q)
 
   (* Compute counter model for not valid formulas? *)
   let comp_model : bool ref = ref false
 
   (* INVOCATIONS *)
   let check_sat (phi : NumExp.formula) : Sat.t =
-    let module Q = (val QueryManager.get_num_query Solver.identifier) in
-    let module Trans = Solver.Translate.Num.Query(Q) in
     Solver.check_sat (Trans.int_formula phi)
   
   
@@ -82,8 +85,6 @@ struct
   
   
   let check_sat_with_lines (prog_lines : int) (phi : NumExp.formula) : Sat.t =
-    let module Q = (val QueryManager.get_num_query Solver.identifier) in
-    let module Trans = Solver.Translate.Num.Query(Q) in
     let _ = Trans.set_prog_lines prog_lines in
     let f = Trans.int_formula_with_lines phi in
     Solver.check_sat f
@@ -159,8 +160,6 @@ struct
     let x_conj = Formula.to_conj_literals x in
     let vars_set = NumExp.V.VarSet.elements
       (NumExp.V.VarSet.union (NumExp.all_vars_set x) (NumExp.all_vars_set y)) in
-    let module Q = (val QueryManager.get_num_query Solver.identifier) in
-    let module Trans = Solver.Translate.Num.Query(Q) in
     let is_preserved c = Sat.is_unsat
                           (Solver.check_sat (Trans.std_widening vars_set y c))
     in Formula.conj_literals (List.filter is_preserved x_conj)
@@ -172,8 +171,6 @@ struct
           NumExp.V.VarSet.union s (NumExp.all_vars_set (Formula.Literal lit))
         ) NumExp.V.VarSet.empty (x @ y)) in
     let y' = Formula.conj_literals y in
-    let module Q = (val QueryManager.get_num_query Solver.identifier) in
-    let module Trans = Solver.Translate.Num.Query(Q) in
     let is_preserved c = Sat.is_unsat
                            (Solver.check_sat (Trans.std_widening vars_set y' c))
     in List.filter is_preserved x
@@ -231,8 +228,6 @@ struct
 
 
   let model_to_str () : string =
-    let module Q = (val QueryManager.get_num_query Solver.identifier) in
-    let module Trans = Solver.Translate.Num.Query(Q) in
     let query_sort_map = Trans.sort_map () in
     let model = Solver.get_model () in
     let sort_map = GM.sm_union query_sort_map (GM.get_aux_sort_map model) in
@@ -253,6 +248,13 @@ struct
       print_endline (model_to_str())
     else
       ()
+
+  let get_sort_map () : GM.sort_map_t =
+    Trans.sort_map ()
+
+  let get_model () : GM.t =
+    Solver.get_model()
+
 end
 
 let choose (solverIdent : string) : (module S) =

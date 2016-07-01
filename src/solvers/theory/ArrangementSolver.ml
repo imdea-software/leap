@@ -221,9 +221,7 @@ module Make (AS : ArrangementSolverSpec.S) =
                                             Hashtbl.find arr_table arr
                                           with
                                             _ -> begin
-(*
                                                    print_endline ("ARRGS: " ^ (Arr.to_str arr E.integer_to_str));
-*)
                                                    let a = Arr.gen_arrs arr in
                                                    Hashtbl.add arr_table arr a;
                                                    a
@@ -231,6 +229,7 @@ module Make (AS : ArrangementSolverSpec.S) =
                               in
                               verbl _LONG_INFO "**** TSL Solver: generated %i arrangements\n" (GenSet.size arrgs);
                               Log.print "Arrgs size: " (string_of_int (GenSet.size arrgs));
+                              print_endline ("Arrgs size: " ^ (string_of_int (GenSet.size arrgs)));
                               Some arrgs
                             end
                           end

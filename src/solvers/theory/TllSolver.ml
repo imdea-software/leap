@@ -29,6 +29,8 @@ module type CUSTOM_TLLSOLVER = sig
   val compute_model: bool -> unit
   val model_to_str : unit -> string
   val print_model  : unit -> unit
+  val get_sort_map : unit -> GenericModel.sort_map_t
+  val get_model    : unit -> GenericModel.t
 
   val set_forget_primed_mem : bool -> unit
   val set_group_vars : bool -> unit
@@ -42,6 +44,9 @@ struct
   module TllExp   = Solver.Translate.Tll.Exp
   module VarIdSet = TllExp.V.VarIdSet
   module GM       = GenericModel
+
+  module Q = (val QueryManager.get_tll_query Solver.identifier)
+  module Trans = Solver.Translate.Tll.Query(Q)
 
   let comp_model : bool ref = ref false
 
@@ -226,8 +231,6 @@ struct
       | Formula.FalseConj  -> Sat.Unsat
       | Formula.Conj conjs ->
         begin
-          let module Q = (val QueryManager.get_tll_query Solver.identifier) in
-          let module Trans = Solver.Translate.Tll.Query(Q) in
           Trans.set_prog_lines lines;
           Solver.check_sat (Trans.literal_list use_q conjs)
         end
@@ -281,8 +284,6 @@ struct
         (Solver.calls_force_incr(); Sat.Sat)
     | _ -> begin
              verbl _LONG_INFO "**** TLL Solver, about to translate TLL...\n";
-             let module Q = (val QueryManager.get_tll_query Solver.identifier) in
-             let module Trans = Solver.Translate.Tll.Query(Q) in
              Trans.set_prog_lines lines;
              Solver.check_sat (Trans.formula co cutoff_opt use_q phi)
            end
@@ -354,8 +355,6 @@ let search_sets_to_str (model:GM.t) (sm:GM.sort_map_t) (s:GM.sort) : string =
 
 
   let model_to_str () : string =
-    let module Q = (val QueryManager.get_tll_query Solver.identifier) in
-    let module Trans = Solver.Translate.Tll.Query(Q) in
     let query_sort_map = Trans.sort_map () in
     let model = Solver.get_model () in
     let sort_map = GM.sm_union query_sort_map (GM.get_aux_sort_map model) in
@@ -388,6 +387,13 @@ let search_sets_to_str (model:GM.t) (sm:GM.sort_map_t) (s:GM.sort) : string =
       print_endline (model_to_str())
     else
       ()
+
+  let get_sort_map () : GM.sort_map_t =
+    Trans.sort_map ()
+
+
+  let get_model () : GM.t =
+    Solver.get_model()
 
 
   let set_forget_primed_mem (b:bool) : unit =

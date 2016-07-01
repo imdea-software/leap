@@ -633,6 +633,14 @@ let print_model () : unit =
     ()
 
 
+let get_sort_map () : GM.sort_map_t =
+  !tslk_sort_map
+
+
+let get_model () : GM.t =
+  !tslk_model
+
+
 let set_forget_primed_mem (b:bool) : unit =
   Smp.set_forget_primed_mem cutoff_opt b
 

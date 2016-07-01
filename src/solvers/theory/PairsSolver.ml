@@ -21,6 +21,8 @@ module type CUSTOM_PAIRSSOLVER = sig
   val compute_model: bool -> unit
   val model_to_str : unit -> string
   val print_model  : unit -> unit
+  val sort_map     : unit -> GenericModel.sort_map_t
+  val get_model    : unit -> GenericModel.t
 end
 
 module type S = CUSTOM_PAIRSSOLVER
@@ -150,6 +152,14 @@ struct
       print_endline (model_to_str())
     else
       ()
+
+
+  let get_sort_map () : GM.sort_map_t =
+    Solver.get_sort_map ()
+
+
+  let get_model () : GM.t =
+    Solver.get_model ()
 end
 
 let choose (solverIdent : string) : (module S) =

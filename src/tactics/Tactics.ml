@@ -296,10 +296,13 @@ let vc_info_to_plain_str (vc:vc_info) : string =
 
 
 let vc_info_to_str_simple (vc:vc_info) : string =
-  let supp_str = String.concat "\n" (List.map E.formula_to_str vc.original_support) in
+  let conj_to_str (phi:E.formula) : string =
+    String.concat "\n" (List.map E.formula_to_str (F.to_conj_list phi)) in
+
+  let supp_str = String.concat "\n------\n" (List.map conj_to_str vc.original_support) in
   let tidconst_str = E.formula_to_str (tid_constraint_to_formula vc.tid_constraint) in
-  let rho_str = E.formula_to_str vc.rho in
-  let goal_str = E.formula_to_str vc.goal
+  let rho_str = conj_to_str vc.rho in
+  let goal_str = conj_to_str vc.goal
   in
     "SUPPORT:\n" ^ supp_str ^ "\n" ^
     "CONSTRAINT:\n" ^ tidconst_str ^ "\n" ^

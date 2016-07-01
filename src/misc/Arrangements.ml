@@ -42,6 +42,35 @@ let empty (stc:bool) : 'a t =
     leq_order = [];
   }
 
+
+let get_domain (arr:'a t) : 'a GenSet.t =
+  GenSet.copy arr.dom
+
+
+let get_eqs (arr:'a t) : ('a * 'a) GenSet.t =
+  GenSet.copy arr.eqs
+
+
+let get_ineqs (arr:'a t) : ('a * 'a) GenSet.t =
+  GenSet.copy arr.ineqs
+
+
+let get_order (arr:'a t) : ('a, 'a) Hashtbl.t =
+  Hashtbl.copy arr.order
+
+
+let get_succ (arr:'a t) : ('a, 'a) Hashtbl.t =
+  Hashtbl.copy arr.succ
+
+
+let get_leq (arr:'a t) : ('a * 'a) list =
+  arr.leq_order
+
+
+let get_minimum (arr:'a t) : 'a option =
+  arr.minimum
+
+
 (* Test equality between arrangements *)
 let equal (arr1:'a t) (arr2:'a t) : bool =
   arr1.strict = arr2.strict &&
@@ -239,10 +268,10 @@ let prune_incomplete_tree (t:'a aux_arrtree) : 'a arrtree option =
 
 
 let build_cand_tree (graph:eqclass_order_t)
-                        (follows:(int, int) Hashtbl.t)
-                        (initial_elems:int GenSet.t)
-                        (all_elems:int GenSet.t)
-                        (p:'a Partition.t) : 'a arrtree list =
+                    (follows:(int, int) Hashtbl.t)
+                    (initial_elems:int GenSet.t)
+                    (all_elems:int GenSet.t)
+                    (p:'a Partition.t) : 'a arrtree list =
   let rec build_aux (avail:int GenSet.t) (all_avail:int GenSet.t) : 'a aux_arrtree list =
     GenSet.fold (fun id xs ->
       let codom = try Hashtbl.find graph id with _ -> GenSet.empty () in

@@ -20,6 +20,7 @@ PRGINFO=prginfo
 #NUMINV=numinv
 #SPEC_CHECK=spec_check
 TLL=tll
+THM=thm
 SOLVE=solve
 TSLK=tslk
 TSL=tsl
@@ -71,6 +72,7 @@ all: $(PRGINFO) \
 		 $(NUMINV) \
 		 $(SPEC_CHECK) \
 		 $(TLL) \
+		 $(THM) \
 		 $(TSLK) \
 		 $(TSL) \
 		 $(SOLVE) \
@@ -136,6 +138,10 @@ $(SPEC_CHECK): write-revision set-my-path
 $(TLL): write-revision set-my-path
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
 	$(call copy,./_build/$(PROGS)/tll/$@.native,$(BIN),$@)
+
+$(THM): write-revision set-my-path
+	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
+	$(call copy,./_build/$(PROGS)/thm/$@.native,$(BIN),$@)
 
 $(TSL): write-revision set-my-path
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native

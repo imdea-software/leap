@@ -1,9 +1,11 @@
 
+
 (** The type of an arrangement *)
 type 'a t
 
 (** The type of arrangements tree *)
 type 'a arrtree = Node of 'a list * 'a arrtree list
+
 
 (** [empty stc] returns an empty arrangement. [stc] sets strict mode. If strict
     mode is enabled, then elements of the domain must be declared before
@@ -11,6 +13,37 @@ type 'a arrtree = Node of 'a list * 'a arrtree list
     relations can add elements to the domain if they have not been previously
     added. *)
 val empty : bool -> 'a t
+
+(** [get_domain arr] returns the domain of elements of the arrangement *)
+val get_domain : 'a t -> 'a LeapGenericSet.t
+
+(** [get_eqs arr] returns set of equalities declared inside the
+    arrangement. *)
+val get_eqs : 'a t -> ('a * 'a) LeapGenericSet.t
+
+(** [get_ineqs arr] returns set of inequalities declared inside the
+    arrangement. *)
+val get_ineqs : 'a t -> ('a * 'a) LeapGenericSet.t
+
+(** [get_order arr] returns a hash table containing the order relation
+    between elements inside the arrangement. An entry ([a],[b]) in the hash
+    table states that element [a] is strictly lower than element [b]. *)
+val get_order : 'a t -> ('a, 'a) Hashtbl.t
+
+(** [get_succ arr] returns a hash table describing the relation "successor
+    of" between elements contained in the arrangement. An entry ([a],[b]) in
+    the hash table states that element [b] is the immediate successor of
+    element [a] in arrangement [arr]. *)
+val get_succ : 'a t -> ('a, 'a) Hashtbl.t
+
+(** [get_leq arr] returns the list of pairs of elements related by the
+    "lower or equal" relation. A pair ([a],[b]) in the returned list states
+    that "element [a] is lower than or equal to element [b]". *)
+val get_leq : 'a t -> ('a * 'a) list
+
+(** [get_minimum arr] returns the element from arrangement [arr] which
+    is marked as the minimum element in [arr]. *)
+val get_minimum : 'a t -> 'a option
 
 (** [equal arr1 arr2] returns [true] if arrangements [arr1] and [arr2]
     contains the same information *)
@@ -65,6 +98,8 @@ val do_not_consider : 'a t -> 'a -> unit
 (** [set_minimum arr a] forces [a] to be the minimum element in arrangement
     [arr] *)
 val set_minimum : 'a t -> 'a -> unit
+
+
 
 (** [to_str arr] returns a string with the equalities, inequalities and order
     relation within the arrangement *)

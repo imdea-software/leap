@@ -26,6 +26,8 @@ module type CUSTOM_TLLSOLVER = sig
   val compute_model: bool -> unit
   val model_to_str : unit -> string
   val print_model  : unit -> unit
+  val get_sort_map : unit -> GenericModel.sort_map_t
+  val get_model    : unit -> GenericModel.t
 
   val set_forget_primed_mem : bool -> unit
   val set_group_vars : bool -> unit
