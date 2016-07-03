@@ -25,11 +25,6 @@ sig
   val check_sat : t -> Sat.t
   (** Tests whether the formula is satisfiable. *)
 
-(* 
-  val unsat : t -> Sat.t
-  (** [unsat formula] returns [not(sat formula)]. *)
-*)
-  
   val compute_model : bool -> unit
   (** [compute_model b] sets whether a counter model for non valid
       VCs should be computed *)

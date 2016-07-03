@@ -37,6 +37,7 @@ let show_label_info   = ref false
 let keep_primed_mem   = ref false (*false*)
 let group_vars        = ref false
 let use_smt           = ref false
+let arrangement_gen   = ref false
 let dpType            = ref (DP.NoDP)
 let coType            = ref Smp.Pruning (*Smp.Dnf*)
 let logFile           = ref ""
@@ -232,6 +233,9 @@ let opts = [
   ("-smt",
      Arg.Set use_smt,
      " Enables the use of SMT-LIB translation if possible.");
+  ("-ag",
+     Arg.Set arrangement_gen,
+     " Enables the generation of satisfiable arrangements using SMT solvers.");
 
   ("-q",
      Arg.Set use_quantifiers,

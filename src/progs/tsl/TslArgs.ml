@@ -11,11 +11,12 @@ let is_input_file = ref false
 let input_file_fd : Unix.file_descr ref = ref Unix.stdin
 
 (* Program arguments *)
-let debugFlag     = ref false
-let use_z3        = ref false
-let coType        = ref Smp.Pruning (*Smp.Dnf*)
-let hide_pres     = ref true
-let phiFile       = ref ""
+let debugFlag       = ref false
+let use_z3          = ref false
+let coType          = ref Smp.Pruning (*Smp.Dnf*)
+let hide_pres       = ref true
+let phiFile         = ref ""
+let arrangement_gen = ref false
 
 let assignopt (valref : 'a ref) (valbool : bool ref) (aval : 'a) : unit =
   valref := aval ; valbool := true
@@ -42,10 +43,9 @@ let opts =
     ("-f",
         Arg.String inputFormula,
         "TSL formula");
-(*    ("-z3",
-        Arg.Set use_z3,
-        "uses z3 as smt solver");
-*)
+    ("-ag",
+       Arg.Set arrangement_gen,
+       " Enables the generation of satisfiable arrangements using SMT solvers.");
     ("-co",
         Arg.Symbol (co_opt_list,set_co),
         "indicates the method used for computing the cut-off");
@@ -67,13 +67,7 @@ let anon_fun str =
 let usagemsg = "Parses a program and generates its FTS."
 let error msg = Arg.usage opts msg ; exit 0
 let simple_error msg = Printf.eprintf "%s\n" msg ; exit 0
-let postcheck () = () (*
-  if !phiFile = "" then begin
-    Interface.Err.msg "Missing file"
-      "No file with TSL formula using the -f flag has been provided.";
-    raise(No_file)
-  end
-*)
+let postcheck () = ()
 let parse_args _ = 
   Arg.parse opts anon_fun usagemsg;
   postcheck ()

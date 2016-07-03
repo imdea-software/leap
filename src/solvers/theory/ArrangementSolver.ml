@@ -1,17 +1,18 @@
 open LeapVerbose
 
 module Arr    = Arrangements
+module ArrGen = NumArrangementGenerator
 module E      = Expression
 module F      = Formula
 module GenSet = LeapGenericSet
+module SolOpt = SolverOptions
 
 module type S =
   sig
 
     val try_sat_with_pa : Expression.formula -> Sat.t
 
-    val dnf_sat : int ->
-                  Smp.cutoff_strategy_t ->
+    val dnf_sat : SolverOptions.t ->
                   Expression.conjunctive_formula ->
                   Sat.t
 
@@ -118,121 +119,130 @@ module Make (AS : ArrangementSolverSpec.S) =
             (conj pa, conj panc, conj nc)
 
 
+    let fill_new_arrangement (cf:E.conjunctive_formula) : E.integer Arr.t =
+      Log.print "Will guess arrangement for: " (E.conjunctive_formula_to_str cf);
+      let arr = Arr.empty true in
+      match cf with
+      | F.TrueConj -> arr
+      | F.FalseConj -> (Arr.add_ineq arr (E.IntVal 0) (E.IntVal 0); arr)
+      | F.Conj ls ->
+          begin
+            let level_vars = E.varset_of_sort_from_conj cf (E.Int) in
+            let (pc_vars, int_vars) =
+              E.V.VarSet.partition E.V.looks_like_pc level_vars in
+            E.V.VarSet.iter (fun v -> (Arr.do_not_consider arr (E.VarInt v))) pc_vars;
+            if E.V.VarSet.cardinal int_vars <> 0 then begin
+              verbl _LONG_INFO "**** TSL Solver: variables for arrangement...\n{ %s }\n"
+                      (E.V.VarSet.fold (fun v str ->
+                        str ^ E.V.to_str v ^ "; "
+                      ) int_vars "");
+              E.V.VarSet.iter (fun v -> Arr.add_elem arr (E.VarInt v)) int_vars;
+              List.iter (fun l ->
+      (*                                print_endline ("LITERAL TO ANALYZE: " ^ (E.literal_to_str l)); *)
+                match l with
+                | F.Atom(E.Less(i1,i2)) -> Arr.add_less arr i1 i2
+                | F.Atom(E.Greater(i1,i2)) -> Arr.add_greater arr i1 i2
+                | F.Atom(E.LessEq(i1,i2)) -> Arr.add_lesseq arr i1 i2
+                | F.Atom(E.GreaterEq(i1,i2)) -> Arr.add_greatereq arr i1 i2
+                | F.Atom(E.Eq(E.IntT (E.VarInt v1),E.IntT (E.IntAdd(E.VarInt v2,E.IntVal i))))
+                | F.Atom(E.Eq(E.IntT (E.VarInt v1),E.IntT (E.IntAdd(E.IntVal i,E.VarInt v2))))
+                | F.Atom(E.Eq(E.IntT (E.IntAdd(E.VarInt v2,E.IntVal i)),E.IntT (E.VarInt v1)))
+                | F.Atom(E.Eq(E.IntT (E.IntAdd(E.IntVal i,E.VarInt v2)),E.IntT (E.VarInt v1))) ->
+                    if i = 1 then Arr.add_followed_by arr (E.VarInt v2) (E.VarInt v1)
+                    else if i = -1 then Arr.add_followed_by arr (E.VarInt v1) (E.VarInt v2)
+                    else if i > 0 then Arr.add_greater arr (E.VarInt v1) (E.VarInt v2)
+                    else if i < 0 then Arr.add_less arr (E.VarInt v1) (E.VarInt v2)
+                    else Arr.add_eq arr (E.VarInt v1) (E.VarInt v2)
+                | F.Atom(E.Eq(E.IntT (E.VarInt v1),E.IntT (E.IntSub(E.VarInt v2,E.IntVal i))))
+                | F.Atom(E.Eq(E.IntT (E.VarInt v1),E.IntT (E.IntSub(E.IntVal i,E.VarInt v2))))
+                | F.Atom(E.Eq(E.IntT (E.IntSub(E.VarInt v2,E.IntVal i)),E.IntT (E.VarInt v1)))
+                | F.Atom(E.Eq(E.IntT (E.IntSub(E.IntVal i,E.VarInt v2)),E.IntT (E.VarInt v1))) ->
+                    if i = 1 then Arr.add_followed_by arr (E.VarInt v1) (E.VarInt v2)
+                    else if i = -1 then Arr.add_followed_by arr (E.VarInt v2) (E.VarInt v1)
+                    else if i > 0 then Arr.add_less arr (E.VarInt v1) (E.VarInt v2)
+                    else if i < 0 then Arr.add_greater arr (E.VarInt v1) (E.VarInt v2)
+                    else Arr.add_eq arr (E.VarInt v1) (E.VarInt v2)
+                | F.Atom(E.Eq(E.IntT (E.VarInt varr),E.ArrayT(E.ArrayUp(_,th,E.Term(E.IntT(E.IntAdd(E.VarInt v2,E.IntVal i)))))))
+                | F.Atom(E.Eq(E.IntT (E.VarInt varr),E.ArrayT(E.ArrayUp(_,th,E.Term(E.IntT(E.IntAdd(E.IntVal i,E.VarInt v2)))))))
+                | F.Atom(E.Eq(E.ArrayT(E.ArrayUp(_,th,E.Term(E.IntT(E.IntAdd(E.VarInt v2,E.IntVal i))))),E.IntT (E.VarInt varr)))
+                | F.Atom(E.Eq(E.ArrayT(E.ArrayUp(_,th,E.Term(E.IntT(E.IntAdd(E.IntVal i,E.VarInt v2))))),E.IntT (E.VarInt varr))) ->
+                    let v1 = E.V.set_param varr (E.V.Local (E.voc_to_var th)) in
+                    if i = 1 then Arr.add_followed_by arr (E.VarInt v2) (E.VarInt v1)
+                    else if i = -1 then Arr.add_followed_by arr (E.VarInt v1) (E.VarInt v2)
+                    else if i > 0 then Arr.add_greater arr (E.VarInt v1) (E.VarInt v2)
+                    else if i < 0 then Arr.add_less arr (E.VarInt v1) (E.VarInt v2)
+                    else Arr.add_eq arr (E.VarInt v1) (E.VarInt v2)
+                | F.Atom(E.Eq(E.IntT (E.VarInt varr),E.ArrayT(E.ArrayUp(_,th,E.Term(E.IntT(E.IntSub(E.VarInt v2,E.IntVal i)))))))
+                | F.Atom(E.Eq(E.IntT (E.VarInt varr),E.ArrayT(E.ArrayUp(_,th,E.Term(E.IntT(E.IntSub(E.IntVal i,E.VarInt v2)))))))
+                | F.Atom(E.Eq(E.ArrayT(E.ArrayUp(_,th,E.Term(E.IntT(E.IntSub(E.VarInt v2,E.IntVal i))))),E.IntT (E.VarInt varr)))
+                | F.Atom(E.Eq(E.ArrayT(E.ArrayUp(_,th,E.Term(E.IntT(E.IntSub(E.IntVal i,E.VarInt v2))))),E.IntT (E.VarInt varr))) ->
+                    let v1 = E.V.set_param varr (E.V.Local (E.voc_to_var th)) in
+                    if i = 1 then Arr.add_followed_by arr (E.VarInt v1) (E.VarInt v2)
+                    else if i = -1 then Arr.add_followed_by arr (E.VarInt v2) (E.VarInt v1)
+                    else if i > 0 then Arr.add_less arr (E.VarInt v1) (E.VarInt v2)
+                    else if i < 0 then Arr.add_greater arr (E.VarInt v1) (E.VarInt v2)
+                    else Arr.add_eq arr (E.VarInt v1) (E.VarInt v2)
+                | F.Atom(E.Eq(E.IntT(E.VarInt v),E.IntT(E.IntVal 0)))
+                | F.Atom(E.Eq(E.IntT(E.IntVal 0),E.IntT(E.VarInt v))) ->
+                    Arr.set_minimum arr (E.VarInt v)
+                | F.Atom(E.Eq(E.IntT i1,E.IntT i2)) -> ((*print_endline "THIS MATCH";*) Arr.add_eq arr i1 i2(*; print_endline ("NOW THE ARR CONTAINS: " ^ (Arr.to_str arr E.integer_to_str))*))
+                | F.Atom(E.InEq(E.IntT i1,E.IntT i2)) -> Arr.add_ineq arr i1 i2
+                | F.NegAtom(E.Less(i1,i2)) -> Arr.add_greatereq arr i1 i2
+                | F.NegAtom(E.Greater(i1,i2)) -> Arr.add_lesseq arr i1 i2
+                | F.NegAtom(E.LessEq(i1,i2)) -> Arr.add_greater arr i1 i2
+                | F.NegAtom(E.GreaterEq(i1,i2)) -> Arr.add_less arr i1 i2
+                | F.NegAtom(E.Eq(E.IntT i1,E.IntT i2)) -> Arr.add_ineq arr i1 i2
+                | F.NegAtom(E.InEq(E.IntT (E.VarInt v1),E.IntT (E.IntAdd(E.VarInt v2,E.IntVal i))))
+                | F.NegAtom(E.InEq(E.IntT (E.VarInt v1),E.IntT (E.IntAdd(E.IntVal i,E.VarInt v2))))
+                | F.NegAtom(E.InEq(E.IntT (E.IntAdd(E.VarInt v2,E.IntVal i)),E.IntT (E.VarInt v1)))
+                | F.NegAtom(E.InEq(E.IntT (E.IntAdd(E.IntVal i,E.VarInt v2)),E.IntT (E.VarInt v1))) ->
+                    if i > 0 then Arr.add_greater arr (E.VarInt v1) (E.VarInt v2)
+                    else if i < 0 then Arr.add_less arr (E.VarInt v1) (E.VarInt v2)
+                    else Arr.add_eq arr (E.VarInt v1) (E.VarInt v2)
+                | F.NegAtom(E.InEq(E.IntT (E.VarInt varr),E.ArrayT(E.ArrayUp(_,th,E.Term(E.IntT(E.IntAdd(E.VarInt v2,E.IntVal i)))))))
+                | F.NegAtom(E.InEq(E.IntT (E.VarInt varr),E.ArrayT(E.ArrayUp(_,th,E.Term(E.IntT(E.IntAdd(E.IntVal i,E.VarInt v2)))))))
+                | F.NegAtom(E.InEq(E.ArrayT(E.ArrayUp(_,th,E.Term(E.IntT(E.IntAdd(E.VarInt v2,E.IntVal i))))),E.IntT (E.VarInt varr)))
+                | F.NegAtom(E.InEq(E.ArrayT(E.ArrayUp(_,th,E.Term(E.IntT(E.IntAdd(E.IntVal i,E.VarInt v2))))),E.IntT (E.VarInt varr))) ->
+                    let v1 = E.V.set_param varr (E.V.Local (E.voc_to_var th)) in
+                    if i > 0 then Arr.add_greater arr (E.VarInt v1) (E.VarInt v2)
+                    else if i < 0 then Arr.add_less arr (E.VarInt v1) (E.VarInt v2)
+                    else Arr.add_eq arr (E.VarInt v1) (E.VarInt v2)
+                | F.NegAtom(E.InEq(E.IntT(E.VarInt v),E.IntT(E.IntVal 0)))
+                | F.NegAtom(E.InEq(E.IntT(E.IntVal 0),E.IntT(E.VarInt v))) ->
+                    Arr.set_minimum arr (E.VarInt v)
+                | F.NegAtom(E.InEq(E.IntT i1,E.IntT i2)) -> Arr.add_eq arr i1 i2
+                | _ -> ()
+              ) ls
+            end;
+            arr
+          end
+
 
     let guess_arrangements (cf:E.conjunctive_formula) : (E.integer list list) GenSet.t option =
       Log.print "Will guess arrangement for: " (E.conjunctive_formula_to_str cf);
-      let arr = Arr.empty true in
-        match cf with
-        | F.FalseConj -> Some (GenSet.empty ())
-        | F.TrueConj  -> Some (GenSet.empty ())
-        | F.Conj ls   -> begin
-                            let level_vars = E.varset_of_sort_from_conj cf (E.Int) in
-                            let (pc_vars, int_vars) =
-                              E.V.VarSet.partition E.V.looks_like_pc level_vars in
-                            E.V.VarSet.iter (fun v -> (Arr.do_not_consider arr (E.VarInt v))) pc_vars;
-                            if E.V.VarSet.cardinal int_vars = 0 then
-                              None
-                            else begin
-                              verbl _LONG_INFO "**** TSL Solver: variables for arrangement...\n{ %s }\n"
-                                      (E.V.VarSet.fold (fun v str ->
-                                        str ^ E.V.to_str v ^ "; "
-                                      ) int_vars "");
-                              E.V.VarSet.iter (fun v -> Arr.add_elem arr (E.VarInt v)) int_vars;
-                              List.iter (fun l ->
-(*                                print_endline ("LITERAL TO ANALYZE: " ^ (E.literal_to_str l)); *)
-                                match l with
-                                | F.Atom(E.Less(i1,i2)) -> Arr.add_less arr i1 i2
-                                | F.Atom(E.Greater(i1,i2)) -> Arr.add_greater arr i1 i2
-                                | F.Atom(E.LessEq(i1,i2)) -> Arr.add_lesseq arr i1 i2
-                                | F.Atom(E.GreaterEq(i1,i2)) -> Arr.add_greatereq arr i1 i2
-                                | F.Atom(E.Eq(E.IntT (E.VarInt v1),E.IntT (E.IntAdd(E.VarInt v2,E.IntVal i))))
-                                | F.Atom(E.Eq(E.IntT (E.VarInt v1),E.IntT (E.IntAdd(E.IntVal i,E.VarInt v2))))
-                                | F.Atom(E.Eq(E.IntT (E.IntAdd(E.VarInt v2,E.IntVal i)),E.IntT (E.VarInt v1)))
-                                | F.Atom(E.Eq(E.IntT (E.IntAdd(E.IntVal i,E.VarInt v2)),E.IntT (E.VarInt v1))) ->
-                                    if i = 1 then Arr.add_followed_by arr (E.VarInt v2) (E.VarInt v1)
-                                    else if i = -1 then Arr.add_followed_by arr (E.VarInt v1) (E.VarInt v2)
-                                    else if i > 0 then Arr.add_greater arr (E.VarInt v1) (E.VarInt v2)
-                                    else if i < 0 then Arr.add_less arr (E.VarInt v1) (E.VarInt v2)
-                                    else Arr.add_eq arr (E.VarInt v1) (E.VarInt v2)
-                                | F.Atom(E.Eq(E.IntT (E.VarInt v1),E.IntT (E.IntSub(E.VarInt v2,E.IntVal i))))
-                                | F.Atom(E.Eq(E.IntT (E.VarInt v1),E.IntT (E.IntSub(E.IntVal i,E.VarInt v2))))
-                                | F.Atom(E.Eq(E.IntT (E.IntSub(E.VarInt v2,E.IntVal i)),E.IntT (E.VarInt v1)))
-                                | F.Atom(E.Eq(E.IntT (E.IntSub(E.IntVal i,E.VarInt v2)),E.IntT (E.VarInt v1))) ->
-                                    if i = 1 then Arr.add_followed_by arr (E.VarInt v1) (E.VarInt v2)
-                                    else if i = -1 then Arr.add_followed_by arr (E.VarInt v2) (E.VarInt v1)
-                                    else if i > 0 then Arr.add_less arr (E.VarInt v1) (E.VarInt v2)
-                                    else if i < 0 then Arr.add_greater arr (E.VarInt v1) (E.VarInt v2)
-                                    else Arr.add_eq arr (E.VarInt v1) (E.VarInt v2)
-                                | F.Atom(E.Eq(E.IntT (E.VarInt varr),E.ArrayT(E.ArrayUp(_,th,E.Term(E.IntT(E.IntAdd(E.VarInt v2,E.IntVal i)))))))
-                                | F.Atom(E.Eq(E.IntT (E.VarInt varr),E.ArrayT(E.ArrayUp(_,th,E.Term(E.IntT(E.IntAdd(E.IntVal i,E.VarInt v2)))))))
-                                | F.Atom(E.Eq(E.ArrayT(E.ArrayUp(_,th,E.Term(E.IntT(E.IntAdd(E.VarInt v2,E.IntVal i))))),E.IntT (E.VarInt varr)))
-                                | F.Atom(E.Eq(E.ArrayT(E.ArrayUp(_,th,E.Term(E.IntT(E.IntAdd(E.IntVal i,E.VarInt v2))))),E.IntT (E.VarInt varr))) ->
-                                    let v1 = E.V.set_param varr (E.V.Local (E.voc_to_var th)) in
-                                    if i = 1 then Arr.add_followed_by arr (E.VarInt v2) (E.VarInt v1)
-                                    else if i = -1 then Arr.add_followed_by arr (E.VarInt v1) (E.VarInt v2)
-                                    else if i > 0 then Arr.add_greater arr (E.VarInt v1) (E.VarInt v2)
-                                    else if i < 0 then Arr.add_less arr (E.VarInt v1) (E.VarInt v2)
-                                    else Arr.add_eq arr (E.VarInt v1) (E.VarInt v2)
-                                | F.Atom(E.Eq(E.IntT (E.VarInt varr),E.ArrayT(E.ArrayUp(_,th,E.Term(E.IntT(E.IntSub(E.VarInt v2,E.IntVal i)))))))
-                                | F.Atom(E.Eq(E.IntT (E.VarInt varr),E.ArrayT(E.ArrayUp(_,th,E.Term(E.IntT(E.IntSub(E.IntVal i,E.VarInt v2)))))))
-                                | F.Atom(E.Eq(E.ArrayT(E.ArrayUp(_,th,E.Term(E.IntT(E.IntSub(E.VarInt v2,E.IntVal i))))),E.IntT (E.VarInt varr)))
-                                | F.Atom(E.Eq(E.ArrayT(E.ArrayUp(_,th,E.Term(E.IntT(E.IntSub(E.IntVal i,E.VarInt v2))))),E.IntT (E.VarInt varr))) ->
-                                    let v1 = E.V.set_param varr (E.V.Local (E.voc_to_var th)) in
-                                    if i = 1 then Arr.add_followed_by arr (E.VarInt v1) (E.VarInt v2)
-                                    else if i = -1 then Arr.add_followed_by arr (E.VarInt v2) (E.VarInt v1)
-                                    else if i > 0 then Arr.add_less arr (E.VarInt v1) (E.VarInt v2)
-                                    else if i < 0 then Arr.add_greater arr (E.VarInt v1) (E.VarInt v2)
-                                    else Arr.add_eq arr (E.VarInt v1) (E.VarInt v2)
-                                | F.Atom(E.Eq(E.IntT(E.VarInt v),E.IntT(E.IntVal 0)))
-                                | F.Atom(E.Eq(E.IntT(E.IntVal 0),E.IntT(E.VarInt v))) ->
-                                    Arr.set_minimum arr (E.VarInt v)
-                                | F.Atom(E.Eq(E.IntT i1,E.IntT i2)) -> ((*print_endline "THIS MATCH";*) Arr.add_eq arr i1 i2(*; print_endline ("NOW THE ARR CONTAINS: " ^ (Arr.to_str arr E.integer_to_str))*))
-                                | F.Atom(E.InEq(E.IntT i1,E.IntT i2)) -> Arr.add_ineq arr i1 i2
-                                | F.NegAtom(E.Less(i1,i2)) -> Arr.add_greatereq arr i1 i2
-                                | F.NegAtom(E.Greater(i1,i2)) -> Arr.add_lesseq arr i1 i2
-                                | F.NegAtom(E.LessEq(i1,i2)) -> Arr.add_greater arr i1 i2
-                                | F.NegAtom(E.GreaterEq(i1,i2)) -> Arr.add_less arr i1 i2
-                                | F.NegAtom(E.Eq(E.IntT i1,E.IntT i2)) -> Arr.add_ineq arr i1 i2
-                                | F.NegAtom(E.InEq(E.IntT (E.VarInt v1),E.IntT (E.IntAdd(E.VarInt v2,E.IntVal i))))
-                                | F.NegAtom(E.InEq(E.IntT (E.VarInt v1),E.IntT (E.IntAdd(E.IntVal i,E.VarInt v2))))
-                                | F.NegAtom(E.InEq(E.IntT (E.IntAdd(E.VarInt v2,E.IntVal i)),E.IntT (E.VarInt v1)))
-                                | F.NegAtom(E.InEq(E.IntT (E.IntAdd(E.IntVal i,E.VarInt v2)),E.IntT (E.VarInt v1))) ->
-                                    if i > 0 then Arr.add_greater arr (E.VarInt v1) (E.VarInt v2)
-                                    else if i < 0 then Arr.add_less arr (E.VarInt v1) (E.VarInt v2)
-                                    else Arr.add_eq arr (E.VarInt v1) (E.VarInt v2)
-                                | F.NegAtom(E.InEq(E.IntT (E.VarInt varr),E.ArrayT(E.ArrayUp(_,th,E.Term(E.IntT(E.IntAdd(E.VarInt v2,E.IntVal i)))))))
-                                | F.NegAtom(E.InEq(E.IntT (E.VarInt varr),E.ArrayT(E.ArrayUp(_,th,E.Term(E.IntT(E.IntAdd(E.IntVal i,E.VarInt v2)))))))
-                                | F.NegAtom(E.InEq(E.ArrayT(E.ArrayUp(_,th,E.Term(E.IntT(E.IntAdd(E.VarInt v2,E.IntVal i))))),E.IntT (E.VarInt varr)))
-                                | F.NegAtom(E.InEq(E.ArrayT(E.ArrayUp(_,th,E.Term(E.IntT(E.IntAdd(E.IntVal i,E.VarInt v2))))),E.IntT (E.VarInt varr))) ->
-                                    let v1 = E.V.set_param varr (E.V.Local (E.voc_to_var th)) in
-                                    if i > 0 then Arr.add_greater arr (E.VarInt v1) (E.VarInt v2)
-                                    else if i < 0 then Arr.add_less arr (E.VarInt v1) (E.VarInt v2)
-                                    else Arr.add_eq arr (E.VarInt v1) (E.VarInt v2)
-                                | F.NegAtom(E.InEq(E.IntT(E.VarInt v),E.IntT(E.IntVal 0)))
-                                | F.NegAtom(E.InEq(E.IntT(E.IntVal 0),E.IntT(E.VarInt v))) ->
-                                    Arr.set_minimum arr (E.VarInt v)
-                                | F.NegAtom(E.InEq(E.IntT i1,E.IntT i2)) -> Arr.add_eq arr i1 i2
-                                | _ -> ()
-                              ) ls;
-                              Log.print "TSL Solver known information for arrangements"
-                                    (Arr.to_str arr E.integer_to_str);
-                              let arrgs = try
-                                            Log.print "A" "1";
-                                            Hashtbl.find arr_table arr
-                                          with
-                                            _ -> begin
-                                                   print_endline ("ARRGS: " ^ (Arr.to_str arr E.integer_to_str));
-                                                   let a = Arr.gen_arrs arr in
-                                                   Hashtbl.add arr_table arr a;
-                                                   a
-                                                 end
-                              in
-                              verbl _LONG_INFO "**** TSL Solver: generated %i arrangements\n" (GenSet.size arrgs);
-                              Log.print "Arrgs size: " (string_of_int (GenSet.size arrgs));
-                              print_endline ("Arrgs size: " ^ (string_of_int (GenSet.size arrgs)));
-                              Some arrgs
-                            end
-                          end
+      match cf with
+      | F.FalseConj -> Some (GenSet.empty ())
+      | F.TrueConj  -> Some (GenSet.empty ())
+      | F.Conj _   ->
+          begin
+            let arr = fill_new_arrangement cf in
+            Log.print "TSL Solver known information for arrangements"
+                      (Arr.to_str arr E.integer_to_str);
+            let arrgs = try
+                          Log.print "A" "1";
+                          Hashtbl.find arr_table arr
+                        with
+                          _ -> begin
+                                 print_endline ("ARRGS: " ^ (Arr.to_str arr E.integer_to_str));
+                                 let a = Arr.gen_arrs arr in
+                                 Hashtbl.add arr_table arr a;
+                                 a
+                               end in
+            verbl _LONG_INFO "**** TSL Solver: generated %i arrangements\n" (GenSet.size arrgs);
+            Log.print "Arrgs size: " (string_of_int (GenSet.size arrgs));
+            print_endline ("Arrgs size: " ^ (string_of_int (GenSet.size arrgs)));
+            Some arrgs
+          end
 
 
     let alpha_to_conjunctive_formula (alpha:E.integer list list)
@@ -416,12 +426,11 @@ module Make (AS : ArrangementSolverSpec.S) =
       ) alpha
 
 
-    let dnf_sat (lines:int) (co:Smp.cutoff_strategy_t) (cf:E.conjunctive_formula) : Sat.t =
+    let dnf_sat (opt:SolOpt.t) (cf:E.conjunctive_formula) : Sat.t =
       Log.print_ocaml "entering TSLSolver dnf_sat";
       Log.print "TSLSolver dnf_sat conjunctive formula" (E.conjunctive_formula_to_str cf);
 (*      print_endline ("TSLSolver dnf_sat conjunctive formula" ^ (E.conjunctive_formula_to_str cf)); *)
       let arrg_sat_table : (E.integer list list, Sat.t) Hashtbl.t = Hashtbl.create 8 in
-
       let check_pa (cf:E.conjunctive_formula) : Sat.t =
     (*    print_endline ("PA: " ^ (E.conjunctive_formula_to_str cf)); *)
         try
@@ -587,7 +596,7 @@ module Make (AS : ArrangementSolverSpec.S) =
             match final_formula with
             | F.TrueConj  -> (Hashtbl.add arrg_sat_table alpha_r Sat.Sat; Sat.Sat)
             | F.FalseConj -> (Hashtbl.add arrg_sat_table alpha_r Sat.Unsat; Sat.Unsat)
-            | F.Conj _    -> AS.check_sp_dp (List.length alpha_r) lines co arrg_sat_table final_formula (Some alpha_r)
+            | F.Conj _    -> AS.check_sp_dp opt (List.length alpha_r) arrg_sat_table final_formula (Some alpha_r)
           end
         end else begin
           (* For this arrangement is UNSAT. Return UNSAT. *)
@@ -622,30 +631,42 @@ module Make (AS : ArrangementSolverSpec.S) =
             (F.conjunctive_to_formula
               (F.combine_conjunctive pa panc))
         end else begin
-          let arrgs_opt = guess_arrangements (F.combine_conjunctive_list [pa; panc; nc]) in
-
-          Log.print "Guessed arrangement:"
-            (match arrgs_opt with
-             | None -> "None"
-             | Some arr -> 
-
-                GenSet.to_str (fun zs -> (String.concat ";" (List.map (fun xs -> "[" ^ (String.concat ";" (List.map E.integer_to_str xs)) ^ "]") zs))) arr);
-
-
-
-
-          (* Verify if some arrangement makes the formula satisfiable *)
-          match arrgs_opt with
-          | None -> AS.check_sp_dp 1 lines co arrg_sat_table nc None
-          | Some arrgs -> begin
+          (* This section enables the guess of arrangements.
+           * It has been replaced by an iterative process in which
+           * new valid arrangements are computed using an SMT solver. *)
+           
+            let arrgs_opt = guess_arrangements (F.combine_conjunctive_list [pa; panc; nc]) in
+            Log.print "Guessed arrangement:"
+              (match arrgs_opt with
+               | None -> "None"
+               | Some arr -> GenSet.to_str (fun zs ->
+                               (String.concat ";" (List.map (fun xs ->
+                                   "[" ^ (String.concat ";" (List.map E.integer_to_str xs)) ^ "]") zs))) arr);
+           
+            (* Verify if some arrangement makes the formula satisfiable *)
+            match arrgs_opt with
+            | None -> AS.check_sp_dp opt 1 arrg_sat_table nc None
+            | Some arrgs ->
+                begin
+                  if GenSet.exists (fun alpha -> Sat.is_sat (check pa panc nc alpha)) arrgs then
+                    Sat.Sat
+                  else
+                    Sat.Unsat
+                end
+           
 (*
-                            print_endline ("ARRGS: " ^ (string_of_int(GenSet.size arrgs)));
-*)
-                            if GenSet.exists (fun alpha -> Sat.is_sat (check pa panc nc alpha)) arrgs then
-                              Sat.Sat
-                            else
-                              Sat.Unsat
-                          end
+          let arr = fill_new_arrangement (F.combine_conjunctive_list [pa; panc; nc]) in
+          let num_arr = Arr.convert NumInterface.integer_to_int_integer arr in
+          let arr_gen = ArrGen.new_arr_gen num_arr in
+          let guessed_num_arr = ref (ArrGen.next_arr arr_gen) in
+          let sat_found = ref false in
+          while (not (!sat_found) && (!guessed_num_arr <> [])) do
+            let guessed_arr = List.map (List.map NumInterface.integer_to_expr_integer) !guessed_num_arr in
+            sat_found := Sat.is_sat (check pa panc nc guessed_arr);
+            guessed_num_arr := ArrGen.next_arr arr_gen
+          done;
+          if !sat_found then Sat.Sat else Sat.Unsat
+          *)
         end in
       answer
   end

@@ -4,46 +4,33 @@ val choose : string -> unit
     used. *)
 
 
-val check_sat    : int ->
-                   Smp.cutoff_strategy_t ->
-                   bool ->
-                   TSLExpression.formula -> Sat.t
-(** [check_sat lines co useq phi] checks the satisfiability of formula
-    [phi], assuming the program contains [lines] lines, using tactics
-    [stac] and cutoff strategy [co]. It returns [Sat] if the formula is
-    satisfiable, otherwise [Unsat]. *)
+val check_sat    : SolverOptions.t -> TSLExpression.formula -> Sat.t
+(** [check_sat opt phi] checks the satisfiability of formula
+    [phi], assuming the options states in [opt]. It returns [Sat] if the
+    formula is satisfiable, otherwise [Unsat]. *)
 
 
-val check_valid  : int ->
-                   Smp.cutoff_strategy_t ->
-                   bool ->
-                   TSLExpression.formula -> Valid.t
-(** [check_valid lines co useq phi] checks the validity of formula [phi],
-    assuming the program contains [lines] lines, using tactics [stac] and
-    cutoff strategy [co]. It returns [Valid] if the formula is valid,
-    otherwise [Invalid]. *)
+val check_valid  : SolverOptions.t -> TSLExpression.formula -> Valid.t
+(** [check_valid opt phi] checks the validity of formula [phi],
+    assuming the options described in [opt]. It returns [Valid] if the
+    formula is valid, otherwise [Invalid]. *)
 
   
-val check_sat_plus_info : int ->
-                          Smp.cutoff_strategy_t ->
-                          bool ->
+val check_sat_plus_info : SolverOptions.t ->
                           TSLExpression.formula -> (Sat.t * int * DP.call_tbl_t)
-(** [check_sat_plus_info lines co useq phi] checks the satisfiability of
-    formula [phi], assuming the program contains [lines] lines, using
-    tactics [stac] and cutoff strategy [co]. It returns three values. The
-    first value indicates whether the formula is satisfiable. The second
-    value is the number of calls made to the TSL decision procedure
-    (generally 1) and the third argument is the number of calls made to a
-    TSLK decision procedure, which aids the TSL decision procedure. *)
+(** [check_sat_plus_info opt phi] checks the satisfiability of
+    formula [phi], assuming the options described in [opt]. It returns
+    three values. The first value indicates whether the formula is
+    satisfiable. The second value is the number of calls made to the TSL
+    decision procedure (generally 1) and the third argument is the number
+    of calls made to a TSLK decision procedure, which aids the TSL
+    decision procedure. *)
 
 
-val check_valid_plus_info : int ->
-                            Smp.cutoff_strategy_t ->
-                            bool ->
+val check_valid_plus_info : SolverOptions.t ->
                             TSLExpression.formula -> (Valid.t * int * DP.call_tbl_t)
-(** [check_valid lines co useq phi] checks the validity of formula [phi],
-    assuming the program contains [lines] lines, using tactics [stac] and
-    cutoff strategy [co]. It returns three values. The first value
+(** [check_valid opt phi] checks the validity of formula [phi], assuming
+    the options described in [opt]. It returns three values. The first value
     indicates whether the formula is satisfiable. The second value is the
     number of calls made to the TSL decision procedure (generally 1) and
     the third argument is the number of calls made to a TSLK decision

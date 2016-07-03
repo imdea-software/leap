@@ -4,6 +4,7 @@ open Printf
 
 module E = Expression
 module PE = PosExpression
+module SolOpt = SolverOptions
 
 
 type file_kind_t = Inv | Axiom
@@ -54,6 +55,7 @@ module GenOptions :
     val use_quantifiers : bool
     val output_vcs : bool
     val stop_on_invalid : bool
+    val arrangement_gen : bool
 
   end
 
@@ -80,6 +82,7 @@ module GenOptions :
     let use_quantifiers   = false
     let output_vcs        = false
     let stop_on_invalid   = false
+    let arrangement_gen   = false
 
   end
 
@@ -481,6 +484,14 @@ module Make (Opt:module type of GenOptions) : S =
                             | _ -> Formula.Implies (axiom_phi, res_phi) in
               (*print_endline ("FOL_PHI_WITH_AXIOMS:\n" ^ (E.formula_to_str fol_phi));*)
 
+
+              (* Solver options *)
+              let opt = SolOpt.new_opt () in
+              SolOpt.set_lines opt prog_lines;
+              SolOpt.set_cutoff_strategy opt cutoff;
+              SolOpt.set_use_quantifiers opt Opt.use_quantifiers;
+              SolOpt.set_use_arrangement_generator opt Opt.arrangement_gen;
+
               (* Axiom application finishes *)
               phi_timer#start;
               let status =
@@ -521,13 +532,11 @@ module Make (Opt:module type of GenOptions) : S =
                           (res, calls)
                     | DP.Tll    ->
                         let tll_phi = TllInterface.formula_to_tll_formula fol_phi in
-                          Tll.check_valid_plus_info prog_lines cutoff
-                             Opt.use_quantifiers tll_phi
+                          Tll.check_valid_plus_info opt tll_phi
                     | DP.Tsl    ->
                         let tsl_phi = TSLInterface.formula_to_tsl_formula fol_phi in
                         let (res,tsl_calls,tslk_calls) =
-                           TslSolver.check_valid_plus_info prog_lines cutoff
-                             Opt.use_quantifiers tsl_phi in
+                           TslSolver.check_valid_plus_info opt tsl_phi in
                         DP.combine_call_table tslk_calls this_calls_counter;
                         (res, tsl_calls)
                     | DP.Tslk k ->
@@ -540,13 +549,11 @@ module Make (Opt:module type of GenOptions) : S =
                                      TSLK[%i]." Tslk.TslkExp.k k Tslk.TslkExp.k;
                         let module TSLKIntf = TSLKInterface.Make(Tslk.TslkExp) in
                                    let tslk_phi = TSLKIntf.formula_to_tslk_formula fol_phi in
-                                     Tslk.check_valid_plus_info prog_lines cutoff
-                                        Opt.use_quantifiers tslk_phi
+                                     Tslk.check_valid_plus_info opt tslk_phi
                     | DP.Thm    ->
                         let thm_phi = ThmInterface.formula_to_thm_formula fol_phi in
                         let (res,thm_calls,tll_calls) =
-                           ThmSolver.check_valid_plus_info prog_lines cutoff
-                             Opt.use_quantifiers thm_phi in
+                           ThmSolver.check_valid_plus_info opt thm_phi in
                         DP.combine_call_table tll_calls this_calls_counter;
                         (res, thm_calls)
                   in

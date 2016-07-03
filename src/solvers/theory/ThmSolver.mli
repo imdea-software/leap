@@ -4,49 +4,36 @@ val choose : string -> unit
     be used. *)
 
 
-val check_sat    : int ->
-                   Smp.cutoff_strategy_t ->
-                   bool ->
-                   ThmExpression.formula -> Sat.t
-(** [check_sat lines co useq phi] checks the satisfiability of formula [phi],
-    assuming the program contains [lines] lines, using tactics [stac] and
-    cutoff strategy [co]. It returns [Sat] if the formula is satisfiable,
-    otherwise [Unsat]. *)
+val check_sat    : SolverOptions.t -> ThmExpression.formula -> Sat.t
+(** [check_sat opt phi] checks the satisfiability of formula [phi],
+    assuming the options specified in [opt]. It returns [Sat] if the
+    formula is satisfiable, otherwise [Unsat]. *)
 
 
-val check_valid  : int ->
-                   Smp.cutoff_strategy_t ->
-                   bool ->
-                   ThmExpression.formula -> Valid.t
-(** [check_valid lines co useq phi] checks the validity of formula [phi], assuming
-    the program contains [lines] lines, using tactics [stac] and cutoff
-    strategy [co]. It returns [Valid] if the formula is valid, otherwise
-    [Invalid]. *)
+val check_valid  : SolverOptions.t -> ThmExpression.formula -> Valid.t
+(** [check_valid opt phi] checks the validity of formula [phi], assuming
+    the options specified in [opt]. It returns [Valid] if the formula is
+    valid, otherwise [Invalid]. *)
 
   
-val check_sat_plus_info : int ->
-                          Smp.cutoff_strategy_t ->
-                          bool ->
+val check_sat_plus_info : SolverOptions.t ->
                           ThmExpression.formula -> (Sat.t * int * DP.call_tbl_t)
-(** [check_sat_plus_info lines co useq phi] checks the satisfiability of formula
-    [phi], assuming the program contains [lines] lines, using tactics [stac]
-    and cutoff strategy [co]. It returns three values. The first value
-    indicates whether the formula is satisfiable. The second value is the
-    number of calls made to the THM DP (generally 1) and the third argument
-    is the number of calls made to a TLL DP, which aids the THM DP. *)
+(** [check_sat_plus_info opt phi] checks the satisfiability of formula
+    [phi], assuming the options specified in [opt]. It returns three
+    values. The first value indicates whether the formula is satisfiable.
+    The second value is the number of calls made to the THM DP (generally
+    1) and the third argument is the number of calls made to a TLL DP,
+    which aids the THM DP. *)
 
 
-val check_valid_plus_info : int ->
-                            Smp.cutoff_strategy_t ->
-                            bool ->
+val check_valid_plus_info : SolverOptions.t ->
                             ThmExpression.formula -> (Valid.t * int * DP.call_tbl_t)
 (** [check_valid lines co useq phi] checks the validity of formula [phi],
-    assuming the program contains [lines] lines, using tactics [stac] and
-    cutoff strategy [co]. It returns three values. The first value indicates
-    whether the formula is satisfiable. The second value is the number of
-    calls made to the THM decision procedure (generally 1) and the third
-    argument is the number of calls made to a TLL decision procedure, which
-    aids the THM decision procedure. *)
+    assuming the options specified by [opt]. It returns three values. The
+    first value indicates whether the formula is satisfiable. The second
+    value is the number of calls made to the THM decision procedure
+    (generally 1) and the third argument is the number of calls made to a
+    TLL decision procedure, which aids the THM decision procedure. *)
 
 
 val compute_model: bool -> unit

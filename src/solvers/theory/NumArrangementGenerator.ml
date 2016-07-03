@@ -48,9 +48,15 @@ let gen_orig_constraints (arr:NE.integer Arr.t) : NE.formula =
   F.conj_literals min_xs
 
 
-let new_arr_gen (arr:'a Arr.t) : t =
+let new_arr_gen (arr:NE.integer Arr.t) : t =
   let orig_const = gen_orig_constraints arr in
   NumSolver.compute_model true;
+  (*
+  print_endline "NEW ARRANGEMENT";
+  print_endline "==============================================";
+  GenSet.iter (fun i -> print_endline (match i with NE.Var v -> (NE.V.to_full_str (fun _ -> "") (fun _ -> "") v) | _ -> "")) (Arr.get_domain arr);
+  print_endline "==============================================";
+  *)
   {
     domain = Arr.get_domain arr;
     original_constraint = orig_const;
@@ -59,6 +65,20 @@ let new_arr_gen (arr:'a Arr.t) : t =
 
 
 let find_arrg (ag:t) : NE.integer list list =
+
+  (*
+  print_endline "FIND_ARRG";
+  print_endline "==============================================";
+  GenSet.iter (fun i -> print_endline (match i with NE.Var v -> (NE.V.to_full_str (fun _ -> "") (fun _ -> "") v) | _ -> "")) (ag.domain);
+  print_endline "==============================================";
+  *)
+
+
+  (*
+   print_endline ("Calling find_arrg");
+   print_endline (GenSet.to_str NE.integer_to_str ag.domain);
+  *)
+  
   (* Auxiliary function for creating order inequalities *)
   let rec ineq_f (is:NE.integer list list) : NE.literal list =
     match is with
@@ -66,6 +86,9 @@ let find_arrg (ag:t) : NE.integer list list =
     | _ -> [] in
   (* 1. Create the formula for the query *)
   let phi = F.conj_list (ag.original_constraint :: ag.learnt_constraints) in
+  (*
+  print_endline ("Going to check formula: " ^ (NE.formula_to_str phi));
+  *)
   (* 2. Check whether there exists a model of such formula *)
   if Sat.is_sat (NumSolver.check_sat phi) then begin
     (* 3. There exists a model that satisfies the arrangement conditions *)
@@ -74,8 +97,13 @@ let find_arrg (ag:t) : NE.integer list list =
     let elems = GM.sm_dom_of_type map (GM.Const GM.int_s) in
     let intMap = Hashtbl.create 16 in
     let set = List.fold_left (fun s e ->
-                let v = NE.Var (NE.build_var e NE.Int false
-                                NE.V.Shared NE.V.GlobalScope) in
+                let len = (String.length e) - 1 in
+                let v = if e.[len] == '\'' then
+                          NE.Var (NE.build_var (String.sub e 0 len) NE.Int true
+                                  NE.V.Shared NE.V.GlobalScope)
+                        else
+                          NE.Var (NE.build_var e NE.Int false
+                                  NE.V.Shared NE.V.GlobalScope) in
                 let value = try
                               match GM.get_const model e with
                               | GM.Single x -> int_of_string x
@@ -97,9 +125,33 @@ let find_arrg (ag:t) : NE.integer list list =
                                end in
                       (cs', eqset::xs)
                     ) set ([],[]) in
+
     let conjs = eqs @ (ineq_f res) in
     ag.learnt_constraints <- F.Not (F.conj_literals conjs) :: ag.learnt_constraints;
-(*    NumSolver.print_model (); *)
+    (* DEBUG *)
+
+    (*
+    print_endline "RES";
+    print_endline "==============================================";
+    let str = "[" ^ String.concat ";"
+                (List.map (fun xs ->
+                  "[" ^ (String.concat "," (List.map (fun i -> (match i with NE.Var v -> (NE.V.to_full_str (fun _ -> "") (fun _ -> "") v) | _ -> "")) xs)) ^ "]"
+                 ) res) ^ "]" in
+    print_endline str;
+
+
+    print_endline "==============================================";
+    *)
+
+
+  (*
+    let str = "[" ^ String.concat ";"
+                (List.map (fun xs ->
+                  "[" ^ (String.concat "," (List.map NE.integer_to_str xs)) ^ "]"
+                 ) res) ^ "]" in
+    print_endline str;
+    *)
+    (* DEBUG *)
     res
   end else
     (* No model of the restrictions, then nothing to be done. *)
@@ -107,4 +159,4 @@ let find_arrg (ag:t) : NE.integer list list =
 
 
 let next_arr (ag:t) : NE.integer list list =
-  find_arrg ag
+  List.rev (find_arrg ag)

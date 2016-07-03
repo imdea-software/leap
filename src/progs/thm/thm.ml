@@ -6,6 +6,7 @@ module Eparser = ExprParser
 module Elexer  = ExprLexer
 module Expr    = Expression
 module Symtbl  = ExprSymTable
+module SolOpt  = SolverOptions
 
 (****************)
 (* main         *)
@@ -20,7 +21,14 @@ let _ =
 
     ThmSolver.compute_model(true);
     let thm_phi = ThmInterface.formula_to_thm_formula phi in
-    let sat = ThmSolver.check_sat 1 (!ThmArgs.coType) (!ThmArgs.use_q) thm_phi in
+
+    (* Solver options *)
+    let opt = SolOpt.new_opt () in
+    SolOpt.set_cutoff_strategy opt !ThmArgs.coType;
+    SolOpt.set_use_quantifiers opt !ThmArgs.use_q;
+    SolOpt.set_use_arrangement_generator opt !ThmArgs.arrangement_gen;
+
+    let sat = ThmSolver.check_sat opt thm_phi in
     if Sat.is_sat sat then begin
         ThmSolver.print_model();
         print_endline "SAT"

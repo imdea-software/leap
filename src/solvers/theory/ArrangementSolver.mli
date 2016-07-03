@@ -3,8 +3,7 @@ module type S =
 
     val try_sat_with_pa : Expression.formula -> Sat.t
 
-    val dnf_sat : int ->
-                  Smp.cutoff_strategy_t ->
+    val dnf_sat : SolverOptions.t ->
                   Expression.conjunctive_formula ->
                   Sat.t
     

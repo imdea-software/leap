@@ -6,6 +6,7 @@ module Eparser = ExprParser
 module Elexer  = ExprLexer
 module Expr    = Expression
 module Symtbl  = ExprSymTable
+module SolOpt  = SolverOptions
 
 (****************)
 (* main         *)
@@ -26,7 +27,12 @@ let _ =
     let module TllSat = (val tllSolver) in
     TllSat.compute_model(true);
 
-    let sat = TllSat.check_sat 1 (!TllArgs.coType) (!TllArgs.use_q) tll_phi in
+    (* Solver options *)
+    let opt = SolOpt.new_opt () in
+    SolOpt.set_cutoff_strategy opt !TllArgs.coType;
+    SolOpt.set_use_quantifiers opt !TllArgs.use_q;
+
+    let sat = TllSat.check_sat opt tll_phi in
     if Sat.is_sat sat then begin
         TllSat.print_model();
         print_endline "SAT"

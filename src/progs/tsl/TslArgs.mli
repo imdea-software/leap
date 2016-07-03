@@ -29,3 +29,4 @@ val postcheck : unit -> unit
 val parse_args : 'a -> unit
 val open_input : 'a -> in_channel
 val close_input : 'a -> unit
+val arrangement_gen : bool ref

@@ -34,6 +34,7 @@ val show_label_info : bool ref
 val keep_primed_mem : bool ref
 val group_vars : bool ref
 val use_smt : bool ref
+val arrangement_gen : bool ref
 val dpType : DP.t ref
 val coType : Smp.cutoff_strategy_t ref
 val logFile : string ref

@@ -19,7 +19,7 @@ module type CUSTOM_PAIRSSOLVER = sig
   val compute_model: bool -> unit
   val model_to_str : unit -> string
   val print_model  : unit -> unit
-  val sort_map     : unit -> GenericModel.sort_map_t
+  val get_sort_map : unit -> GenericModel.sort_map_t
   val get_model    : unit -> GenericModel.t
 end
 

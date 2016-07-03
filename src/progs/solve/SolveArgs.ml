@@ -20,6 +20,7 @@ let hide_pres       = ref false
 let phiFile         = ref ""
 let dpType          = ref (DP.NoDP)
 let use_quantifiers = ref false
+let arrangement_gen = ref false
 
 let assignopt (valref : 'a ref) (valbool : bool ref) (aval : 'a) : unit =
   valref := aval ; valbool := true
@@ -60,6 +61,9 @@ let opts =
         Arg.String set_dp,
         "indicates the DP to use. Options are: " ^
           String.concat "," (List.map DP.to_str DP.def_dp_list));
+    ("-ag",
+       Arg.Set arrangement_gen,
+       " Enables the generation of satisfiable arrangements using SMT solvers.");
     ("-co",
         Arg.Symbol (co_opt_list,set_co),
         "indicates the method used for computing the cut-off");

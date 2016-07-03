@@ -6,6 +6,7 @@ module HM       = ThmExpression
 module TLL      = TllExpression
 module E        = Expression
 module F        = Formula
+module SolOpt   = SolverOptions
 
 let solver_impl = ref ""
 
@@ -707,9 +708,8 @@ let try_sat_with_presburger_arithmetic (phi:HM.formula) : Sat.t =
 (**                                               **)
 (***************************************************)
 
-let check_thm (levels:int)
-              (lines:int)
-              (co:Smp.cutoff_strategy_t)
+let check_thm (opt:SolOpt.t)
+              (levels:int)
               (arrg_sat_table:(E.integer list list, Sat.t) Hashtbl.t)
               (cf:E.conjunctive_formula)
               (alpha_r:E.integer list list option) : Sat.t =
@@ -734,7 +734,8 @@ let check_thm (levels:int)
       let phi_tll = to_tll alpha_r (levels-1)
                       (List.map ThmInterface.literal_to_thm_literal fullConj) in
       TllSol.compute_model (!comp_model);
-      let res = TllSol.check_sat lines co !use_quantifier phi_tll in
+      SolOpt.set_use_quantifiers opt !use_quantifier;
+      let res = TllSol.check_sat opt phi_tll in
       DP.add_dp_calls this_call_tbl DP.Tll 1;
       (*
       tll_sort_map := TllSol.sort_map ();
@@ -764,13 +765,11 @@ module ArrSol = ArrangementSolver.Make(ArrangementSolverOpt)
 
 
 
-let check_sat_plus_info (lines : int)
-                        (co : Smp.cutoff_strategy_t)
-                        (use_q:bool)
+let check_sat_plus_info (opt:SolOpt.t)
                         (phi : HM.formula) : (Sat.t * int * DP.call_tbl_t) =
     Log.print_ocaml "entering thmsolver check_sat";
     DP.clear_call_tbl this_call_tbl;
-    use_quantifier := use_q;
+    use_quantifier := SolOpt.use_quantifiers opt;
     Log.print "THM Solver formula to check satisfiability" (HM.formula_to_str phi);
 
     match phi with
@@ -809,7 +808,7 @@ let check_sat_plus_info (lines : int)
                phi)) phi_dnf;
 *)
                if List.exists (fun psi ->
-                    Sat.is_sat (ArrSol.dnf_sat lines co
+                    Sat.is_sat (ArrSol.dnf_sat opt
                       (ThmInterface.conj_formula_to_expr_conj_formula psi))
                   ) phi_dnf then
                  Sat.Sat
@@ -819,27 +818,18 @@ let check_sat_plus_info (lines : int)
             (answer, 1, this_call_tbl)
 
 
-let check_sat (lines : int)
-              (co : Smp.cutoff_strategy_t)
-              (use_q:bool)
-              (phi : HM.formula) : Sat.t =
-  let (s,_,_) = check_sat_plus_info lines co use_q phi in s
+let check_sat (opt:SolOpt.t) (phi : HM.formula) : Sat.t =
+  let (s,_,_) = check_sat_plus_info opt phi in s
 
 
-let check_valid_plus_info (prog_lines:int)
-                          (co:Smp.cutoff_strategy_t)
-                          (use_q:bool)
+let check_valid_plus_info (opt:SolOpt.t)
                           (phi:HM.formula) : (Valid.t * int * DP.call_tbl_t) =
-  let (s,thm_count,tll_count) = check_sat_plus_info prog_lines co use_q
-                                    (F.Not phi) in
+  let (s,thm_count,tll_count) = check_sat_plus_info opt (F.Not phi) in
   (Response.sat_to_valid s, thm_count, tll_count)
 
 
-let check_valid (prog_lines:int)
-                (co:Smp.cutoff_strategy_t)
-                (use_q:bool)
-                (phi:HM.formula) : Valid.t =
-  Response.sat_to_valid (check_sat prog_lines co use_q (F.Not phi))
+let check_valid (opt:SolOpt.t) (phi:HM.formula) : Valid.t =
+  Response.sat_to_valid (check_sat opt (F.Not phi))
 
 
 let compute_model (b:bool) : unit =
@@ -852,6 +842,14 @@ let model_to_str () : string =
 
 let print_model () : unit =
   TllSol.print_model()
+
+
+let get_model () : GM.t =
+  TllSol.get_model ()
+
+
+let get_sort_map () : GM.sort_map_t =
+  TllSol.get_sort_map ()
 
 
 let set_forget_primed_mem (b:bool) : unit =

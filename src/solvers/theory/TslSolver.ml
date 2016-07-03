@@ -1,12 +1,13 @@
 open LeapVerbose
 
-module Arr      = Arrangements
 module GenSet   = LeapGenericSet
 module GM       = GenericModel
 module SL       = TSLExpression
 module SLInterf = TSLInterface
 module E        = Expression
 module F        = Formula
+module SolOpt   = SolverOptions
+
 (*module type SLK = TSLKExpression.S *)
 
 type alpha_pair_t = (SL.integer list * SL.integer option)
@@ -480,9 +481,8 @@ let try_sat_with_presburger_arithmetic (phi:SL.formula) : Sat.t =
 (**                                               **)
 (***************************************************)
 
-let check_tslk (k:int)
-               (lines:int)
-               (co:Smp.cutoff_strategy_t)
+let check_tslk (opt:SolOpt.t)
+               (k:int)
                (arrg_sat_table:(E.integer list list, Sat.t) Hashtbl.t)
                (cf:E.conjunctive_formula)
                (alpha_r:E.integer list list option) : Sat.t =
@@ -496,7 +496,7 @@ let check_tslk (k:int)
                     let module Trans = TranslateTsl (TslkSol.TslkExp) in
                     let phi_tslk = Trans.to_tslk
                                     (List.map TSLInterface.literal_to_tsl_literal ls) in
-                    let res = TslkSol.check_sat lines co !use_quantifier phi_tslk in
+                    let res = TslkSol.check_sat opt phi_tslk in
                     DP.add_dp_calls this_call_tbl (DP.Tslk k) 1;
                     tslk_sort_map := TslkSol.get_sort_map ();
                     tslk_model := TslkSol.get_model ();
@@ -524,13 +524,11 @@ module ArrangementSolverOpt =
 module ArrSol = ArrangementSolver.Make(ArrangementSolverOpt)
 
 
-let check_sat_plus_info (lines : int)
-           (co : Smp.cutoff_strategy_t)
-           (use_q:bool)
-           (phi : SL.formula) : (Sat.t * int * DP.call_tbl_t) =
+let check_sat_plus_info (opt:SolOpt.t)
+                        (phi : SL.formula) : (Sat.t * int * DP.call_tbl_t) =
     Log.print_ocaml "entering tslsolver check_sat";
     DP.clear_call_tbl this_call_tbl;
-    use_quantifier := use_q;
+    use_quantifier := (SolOpt.use_quantifiers opt);
     Log.print "TSL Solver formula to check satisfiability" (SL.formula_to_str phi);
 
     match phi with
@@ -554,7 +552,7 @@ let check_sat_plus_info (lines : int)
                (* If any of the conjunctions in DNF is SAT, then phi is sat *)
                if List.exists
                     (fun psi ->
-                      Sat.is_sat (ArrSol.dnf_sat lines co
+                      Sat.is_sat (ArrSol.dnf_sat opt
                                    (TSLInterface.conj_formula_to_expr_conj_formula psi))
                     ) phi_dnf then
                  Sat.Sat
@@ -564,28 +562,19 @@ let check_sat_plus_info (lines : int)
             (answer, 1, this_call_tbl)
 
 
-let check_sat (lines : int)
-           (co : Smp.cutoff_strategy_t)
-           (use_q:bool)
-           (phi : SL.formula) : Sat.t =
+let check_sat (opt:SolOpt.t) (phi : SL.formula) : Sat.t =
   (* Here goes the code for satisfiability from the paper *)
-  let (s,_,_) = check_sat_plus_info lines co use_q phi in s
+  let (s,_,_) = check_sat_plus_info opt phi in s
 
 
-let check_valid_plus_info (prog_lines:int)
-                          (co:Smp.cutoff_strategy_t)
-                          (use_q:bool)
+let check_valid_plus_info (opt:SolOpt.t)
                           (phi:SL.formula) : (Valid.t * int * DP.call_tbl_t) =
-  let (s,tsl_count,tslk_count) = check_sat_plus_info prog_lines co use_q
-                                    (F.Not phi) in
+  let (s,tsl_count,tslk_count) = check_sat_plus_info opt (F.Not phi) in
   (Response.sat_to_valid s, tsl_count, tslk_count)
 
 
-let check_valid (prog_lines:int)
-                (co:Smp.cutoff_strategy_t)
-                (use_q:bool)
-                (phi:SL.formula) : Valid.t =
-  Response.sat_to_valid (check_sat prog_lines co use_q (F.Not phi))
+let check_valid (opt:SolOpt.t) (phi:SL.formula) : Valid.t =
+  Response.sat_to_valid (check_sat opt (F.Not phi))
 
 
 let compute_model (b:bool) : unit =

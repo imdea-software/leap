@@ -27,6 +27,7 @@ module GenOptions :
     val use_quantifiers : bool
     val output_vcs : bool
     val stop_on_invalid : bool
+    val arrangement_gen : bool
   end
 
 module type S =

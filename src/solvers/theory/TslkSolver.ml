@@ -3,26 +3,16 @@ module type CUSTOM_TSLKSOLVER = sig
   module TslkExp : ExpressionTypes.TSLKEXP
  
   
-  val check_sat_conj  : int -> bool -> TslkExp.conjunctive_formula -> Sat.t
-  val check_sat_dnf   : int -> bool -> TslkExp.formula -> Sat.t
+  val check_sat_conj  : SolverOptions.t -> TslkExp.conjunctive_formula -> Sat.t
+  val check_sat_dnf   : SolverOptions.t -> TslkExp.formula -> Sat.t
   
-  val check_valid_dnf : int -> bool -> TslkExp.formula -> Valid.t
-  val check_valid_dnf_pus_info : int -> bool -> TslkExp.formula -> (Valid.t * int)
+  val check_valid_dnf : SolverOptions.t -> TslkExp.formula -> Valid.t
+  val check_valid_dnf_pus_info : SolverOptions.t -> TslkExp.formula -> (Valid.t * int)
     
-  val check_sat    : int ->
-                     Smp.cutoff_strategy_t ->
-                     bool ->
-                     TslkExp.formula -> Sat.t
-  val check_valid  : int ->
-                     Smp.cutoff_strategy_t ->
-                     bool ->
-                     TslkExp.formula -> Valid.t
+  val check_sat : SolverOptions.t -> TslkExp.formula -> Sat.t
+  val check_valid : SolverOptions.t -> TslkExp.formula -> Valid.t
   
-  val check_valid_plus_info 
-                   : int ->
-                     Smp.cutoff_strategy_t ->
-                     bool ->
-                     TslkExp.formula -> (Valid.t * int)
+  val check_valid_plus_info : SolverOptions.t -> TslkExp.formula -> (Valid.t * int)
 
   val compute_model: bool -> unit
   val model_to_str : unit -> string
@@ -45,6 +35,7 @@ struct
   module VarIdSet = TslkExp.V.VarIdSet
   module GM       = GenericModel
   module F        = Formula
+  module SolOpt   = SolverOptions
 
   let comp_model : bool ref = ref false
 
@@ -206,70 +197,59 @@ struct
       
   
   (* INVOCATIONS TRANSFORMING TO DNF FIRST *)
-  let check_sat_conj (lines : int)
-                  (use_q:bool)
-                  (phi : TslkExp.conjunctive_formula) : Sat.t =
+  let check_sat_conj (opt:SolOpt.t) (phi : TslkExp.conjunctive_formula) : Sat.t =
     match phi with
         F.TrueConj   -> Sat.Sat
       | F.FalseConj  -> Sat.Unsat
       | F.Conj conjs -> begin
-          TslkSol.set_prog_lines lines;
-          Solver.check_sat (TslkSol.literal_list use_q conjs)
+          TslkSol.set_prog_lines (SolOpt.lines opt);
+          Solver.check_sat (TslkSol.literal_list (SolOpt.use_quantifiers opt) conjs)
         end
   
-  let check_sat_dnf (prog_lines:int) (use_q:bool) (phi:TslkExp.formula) : Sat.t =
+  let check_sat_dnf (opt:SolOpt.t) (phi:TslkExp.formula) : Sat.t =
     let dnf_phi = F.dnf phi in
-    let check phi = Sat.is_sat (check_sat_conj prog_lines use_q phi) in
+    let check phi = Sat.is_sat (check_sat_conj opt phi) in
     if List.exists check dnf_phi then
       Sat.Sat
     else
       Sat.Unsat
   
   
-  let check_valid_dnf (prog_lines:int) (use_q:bool) (phi:TslkExp.formula) : Valid.t =
+  let check_valid_dnf (opt:SolOpt.t) (phi:TslkExp.formula) : Valid.t =
     let dnf_phi       = F.dnf (F.Not phi) in
-    let is_unsat conj = Sat.is_unsat (check_sat_conj prog_lines use_q conj) in
+    let is_unsat conj = Sat.is_unsat (check_sat_conj opt conj) in
     if List.for_all is_unsat dnf_phi then
       Valid.Valid
     else
       Valid.Invalid
   
   
-  let check_valid_dnf_pus_info (prog_lines:int)
-                            (use_q:bool)
-                            (phi:TslkExp.formula) : (Valid.t * int) =
+  let check_valid_dnf_pus_info (opt:SolOpt.t) (phi:TslkExp.formula) : (Valid.t * int) =
     Solver.reset_calls ();
-    let res = check_valid_dnf prog_lines use_q phi in
+    let res = check_valid_dnf opt phi in
     (res, Solver.calls_count ())
   
   
   (* INVOCATIONS WITHOUT CONVERTING TO DNF *)
-  let check_sat (lines : int)
-             (co : Smp.cutoff_strategy_t)
-             (use_q:bool)
-             (phi : TslkExp.formula) : Sat.t =
+  let check_sat (opt:SolOpt.t) (phi : TslkExp.formula) : Sat.t =
     match phi with
     | F.Not(F.Implies(_,F.True)) -> (Solver.calls_force_incr(); Sat.Unsat)
     | F.Not (F.Implies(F.False, _)) -> (Solver.calls_force_incr(); Sat.Unsat)
     | F.Implies(F.False, _) -> (Solver.calls_force_incr(); Sat.Sat)
     | F.Implies(_, F.True) -> (Solver.calls_force_incr(); Sat.Sat)
     | _ -> begin
-             TslkSol.set_prog_lines lines;
-             Solver.check_sat (TslkSol.formula co cutoff_opt use_q phi)
+             TslkSol.set_prog_lines (SolOpt.lines opt);
+             Solver.check_sat (TslkSol.formula (SolOpt.cutoff_strategy opt)
+                                               cutoff_opt
+                                               (SolOpt.use_quantifiers opt) phi)
            end
   
-  let check_valid (prog_lines:int)
-               (co:Smp.cutoff_strategy_t)
-               (use_q:bool)
-               (phi:TslkExp.formula) : Valid.t =
-    Response.sat_to_valid (check_sat prog_lines co use_q (F.Not phi))
+  let check_valid (opt:SolOpt.t) (phi:TslkExp.formula) : Valid.t =
+    Response.sat_to_valid (check_sat opt (F.Not phi))
   
-  let check_valid_plus_info (prog_lines:int)
-                         (co:Smp.cutoff_strategy_t)
-                         (use_q:bool)
-                         (phi:TslkExp.formula) : (Valid.t * int) =
+  let check_valid_plus_info (opt:SolOpt.t) (phi:TslkExp.formula) : (Valid.t * int) =
     Solver.reset_calls ();
-    let res = check_valid prog_lines co use_q phi in
+    let res = check_valid opt phi in
     (res, Solver.calls_count())
 
 

@@ -85,6 +85,9 @@ struct
                    ""
     in
       List.fold_left (fun str v ->
+        (*
+        print_endline ("Analyzing variable:\n" ^ (NE.V.to_full_str (fun s -> match s with NE.Int -> "int" | NE.Set -> "set" | NE.Tid -> "tid") (fun _ -> "") v));
+        *)
         str ^ (int_var_to_str v)
       ) th_str (NE.V.VarSet.elements v_set)
 
@@ -545,6 +548,9 @@ struct
 
 
   let int_formula_to_str (phi:NE.formula) : string =
+    (*
+    print_endline ("INT FORMULA: " ^ (NE.formula_to_str phi));
+    *)
     let _ = GM.clear_sort_map sort_map in
     (*  if direct then *)
     let vars        = NE.all_vars phi in
@@ -554,6 +560,9 @@ struct
 
 
   let int_formula_with_lines_to_str (phi:NE.formula) : string =
+    (*
+    print_endline ("INT FORMULA WITH LINES: " ^ (NE.formula_to_str phi));
+    *)
     let _ = GM.clear_sort_map sort_map in
     let filter_ints xs = List.filter (fun v ->
                            (NE.V.sort v) = NE.Int

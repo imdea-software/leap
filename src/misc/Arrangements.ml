@@ -98,6 +98,34 @@ let copy (arr:'a t) : 'a t =
   }
 
 
+let convert (f:'a -> 'b) (arr:'a t) : 'b t =
+  let conv_set (s1:'a GenSet.t) : 'b GenSet.t =
+    let s2 = GenSet.empty () in
+    GenSet.iter (fun x -> GenSet.add s2 (f x)) s1;
+    s2 in
+  let conv_set_pair (s1:('a * 'a) GenSet.t) : ('b * 'b) GenSet.t =
+    let s2 = GenSet.empty () in
+    GenSet.iter (fun (x,y) -> GenSet.add s2 (f x, f y)) s1;
+    s2 in
+  let conv_hashtbl (t1:('a,'a) Hashtbl.t) : ('b,'b) Hashtbl.t =
+    let t2 = Hashtbl.create (Hashtbl.length t1) in
+    Hashtbl.iter (fun x y -> Hashtbl.add t2 (f x) (f y)) t1;
+    t2 in
+  let conv_list (xs:('a * 'a) list) : ('b * 'b) list =
+    List.map (fun (x,y) -> (f x, f y)) xs in
+  {
+    strict = arr.strict;
+    dom = conv_set arr.dom;
+    remove = conv_set arr.remove;
+    minimum = LeapLib.Option.lift f arr.minimum;
+    eqs = conv_set_pair arr.eqs;
+    ineqs = conv_set_pair arr.ineqs;
+    order = conv_hashtbl arr.order;
+    succ = conv_hashtbl arr.succ;
+    leq_order = conv_list arr.leq_order;
+  }
+
+
 let clear (arr:'a t) : unit =
   GenSet.clear arr.dom;
   GenSet.clear arr.remove;

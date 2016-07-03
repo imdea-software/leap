@@ -52,6 +52,10 @@ val equal : 'a t -> 'a t -> bool
 (** [copy arr] returns a duplicate of arrangement [arr] *)
 val copy : 'a t -> 'a t
 
+(** [convert f arr] converts the elements in arrangement [arr] into a new
+    arrangement using function [f] to perform the conversion. *)
+val convert : ('a -> 'b) -> 'a t -> 'b t
+
 (** [clear arr] clears all information contained into [arr] *)
 val clear : 'a t -> unit
 
@@ -98,8 +102,6 @@ val do_not_consider : 'a t -> 'a -> unit
 (** [set_minimum arr a] forces [a] to be the minimum element in arrangement
     [arr] *)
 val set_minimum : 'a t -> 'a -> unit
-
-
 
 (** [to_str arr] returns a string with the equalities, inequalities and order
     relation within the arrangement *)

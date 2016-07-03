@@ -21,7 +21,7 @@ module type CUSTOM_PAIRSSOLVER = sig
   val compute_model: bool -> unit
   val model_to_str : unit -> string
   val print_model  : unit -> unit
-  val sort_map     : unit -> GenericModel.sort_map_t
+  val get_sort_map : unit -> GenericModel.sort_map_t
   val get_model    : unit -> GenericModel.t
 end
 
@@ -32,14 +32,15 @@ module Make(Solver : BackendSolverIntf.BACKEND_PAIRS) : S =
 struct
   module PairsExp = Solver.Translate.Pairs.Exp
   module GM       = GenericModel
+  
+  module Q = (val QueryManager.get_pairs_query Solver.identifier)
+  module Trans = Solver.Translate.Pairs.Query(Q)
 
   (* Compute counter model for not valid formulas? *)
   let comp_model : bool ref = ref false
 
   (* INVOCATIONS *)
   let check_sat (phi : PairsExp.formula) : Sat.t =
-    let module Q = (val QueryManager.get_pairs_query Solver.identifier) in
-    let module Trans = Solver.Translate.Pairs.Query(Q) in
     Solver.check_sat (Trans.pairs_formula phi)
   
   
@@ -54,9 +55,7 @@ struct
   
   
   let check_sat_with_lines (prog_lines : int) (phi : PairsExp.formula) : Sat.t =
-    let module Q = (val QueryManager.get_pairs_query Solver.identifier) in
-    let module Trans = Solver.Translate.Pairs.Query(Q) in
-    let _ = Trans.set_prog_lines prog_lines in
+    Trans.set_prog_lines prog_lines;
     let f = Trans.pairs_formula_with_lines phi in
     Solver.check_sat f
   
@@ -124,8 +123,6 @@ struct
 
 
   let model_to_str () : string =
-    let module Q = (val QueryManager.get_pairs_query Solver.identifier) in
-    let module Trans = Solver.Translate.Pairs.Query(Q) in
     let query_sort_map = Trans.sort_map () in
     let model = Solver.get_model () in
     let sort_map = GM.sm_union query_sort_map (GM.get_aux_sort_map model) in
@@ -155,7 +152,7 @@ struct
 
 
   let get_sort_map () : GM.sort_map_t =
-    Solver.get_sort_map ()
+    Trans.sort_map ()
 
 
   let get_model () : GM.t =

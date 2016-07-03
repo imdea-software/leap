@@ -6,6 +6,7 @@ module Eparser = ExprParser
 module Elexer  = ExprLexer
 module Expr    = Expression
 module Symtbl  = ExprSymTable
+module SolOpt  = SolverOptions
 
 (****************)
 (* main         *)
@@ -19,15 +20,17 @@ let _ =
 
     let phi = Parser.open_and_parse !TslkArgs.phiFile
         (Eparser.single_formula Elexer.norm) in
-
-    
-
       
     let module TslkSat = (val tslkSolver) in
     let module TSLKIntf = TSLKInterface.Make(TslkSat.TslkExp) in
     let tslk_phi = TSLKIntf.formula_to_tslk_formula phi in
     TslkSat.compute_model(true);
-    let sat = TslkSat.check_sat 1 (!TslkArgs.coType) false tslk_phi in
+
+    (* Solver options *)
+    let opt = SolOpt.new_opt () in
+    SolOpt.set_cutoff_strategy opt !TslkArgs.coType;
+
+    let sat = TslkSat.check_sat opt tslk_phi in
 
     if Sat.is_sat sat then begin
       TslkSat.print_model();

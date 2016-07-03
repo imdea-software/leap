@@ -99,6 +99,7 @@ let _ =
                              let use_quantifiers = !LeapArgs.use_quantifiers
                              let output_vcs = !LeapArgs.output_vcs
                              let stop_on_invalid = !LeapArgs.stop_on_invalid
+                             let arrangement_gen = !LeapArgs.arrangement_gen
                            end in
 
       (* Instantiate the core *)

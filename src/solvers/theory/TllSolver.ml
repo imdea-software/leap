@@ -4,27 +4,16 @@ open LeapVerbose
 module type CUSTOM_TLLSOLVER = sig
   module TllExp : ExpressionTypes.TLLEXP
   
+  val check_sat_conj  : SolverOptions.t -> TllExp.conjunctive_formula -> Sat.t
+  val check_sat_dnf   : SolverOptions.t -> TllExp.formula -> Sat.t
   
-  val check_sat_conj  : int -> bool -> TllExp.conjunctive_formula -> Sat.t
-  val check_sat_dnf   : int -> bool -> TllExp.formula -> Sat.t
-  
-  val check_valid_dnf : int -> bool -> TllExp.formula -> Valid.t
-  val check_valid_dnf_pus_info : int -> bool -> TllExp.formula -> (Valid.t * int)
+  val check_valid_dnf : SolverOptions.t -> TllExp.formula -> Valid.t
+  val check_valid_dnf_pus_info : SolverOptions.t -> TllExp.formula -> (Valid.t * int)
     
-  val check_sat       : int ->
-                     Smp.cutoff_strategy_t ->
-                     bool ->
-                     TllExp.formula -> Sat.t
-  val check_valid     : int ->
-                     Smp.cutoff_strategy_t ->
-                     bool ->
-                     TllExp.formula -> Valid.t
+  val check_sat : SolverOptions.t -> TllExp.formula -> Sat.t
+  val check_valid : SolverOptions.t -> TllExp.formula -> Valid.t
   
-  val check_valid_plus_info 
-                   : int ->
-                     Smp.cutoff_strategy_t ->
-                     bool ->
-                     TllExp.formula -> (Valid.t * int)
+  val check_valid_plus_info : SolverOptions.t -> TllExp.formula -> (Valid.t * int)
 
   val compute_model: bool -> unit
   val model_to_str : unit -> string
@@ -44,6 +33,7 @@ struct
   module TllExp   = Solver.Translate.Tll.Exp
   module VarIdSet = TllExp.V.VarIdSet
   module GM       = GenericModel
+  module SolOpt   = SolverOptions
 
   module Q = (val QueryManager.get_tll_query Solver.identifier)
   module Trans = Solver.Translate.Tll.Query(Q)
@@ -223,56 +213,42 @@ struct
       
   
   (* INVOCATIONS TRANSFORMING TO DNF FIRST *)
-  let check_sat_conj (lines : int)
-                  (use_q : bool)
-                  (phi : TllExp.conjunctive_formula) : Sat.t =
+  let check_sat_conj (opt:SolOpt.t) (phi : TllExp.conjunctive_formula) : Sat.t =
     match phi with
       | Formula.TrueConj   -> Sat.Sat
       | Formula.FalseConj  -> Sat.Unsat
       | Formula.Conj conjs ->
         begin
-          Trans.set_prog_lines lines;
-          Solver.check_sat (Trans.literal_list use_q conjs)
+          Trans.set_prog_lines (SolOpt.lines opt);
+          Solver.check_sat(Trans.literal_list (SolOpt.use_quantifiers opt) conjs)
         end
   
-  let check_sat_dnf (prog_lines : int)
-                 (use_q : bool)
-                 (phi : TllExp.formula) : Sat.t =
+  let check_sat_dnf (opt:SolOpt.t) (phi : TllExp.formula) : Sat.t =
     let dnf_phi = Formula.dnf phi in
-    let check phi = Sat.is_sat (check_sat_conj prog_lines use_q phi) in
+    let check phi = Sat.is_sat (check_sat_conj opt phi) in
     if List.exists check dnf_phi then
       Sat.Sat
     else
       Sat.Unsat
   
   
-  let check_valid_dnf (prog_lines : int)
-                   (use_q : bool)
-                   (phi : TllExp.formula) : Valid.t =
+  let check_valid_dnf (opt:SolOpt.t) (phi : TllExp.formula) : Valid.t =
     let dnf_phi       = Formula.dnf (Formula.Not phi) in
-    let is_unsat conj = Sat.is_unsat
-                          (check_sat_conj prog_lines use_q conj) in
+    let is_unsat conj = Sat.is_unsat (check_sat_conj opt conj) in
     if (List.for_all is_unsat dnf_phi) then
       Valid.Valid
     else
       Valid.Invalid
 
-  
-  
-  let check_valid_dnf_pus_info (prog_lines:int)
-                            (use_q : bool)
-                            (phi:TllExp.formula) : (Valid.t * int) =
+   
+  let check_valid_dnf_pus_info (opt:SolOpt.t) (phi:TllExp.formula) : (Valid.t * int) =
     Solver.reset_calls ();
-    let res = check_valid_dnf prog_lines use_q phi in
+    let res = check_valid_dnf opt phi in
     (res, Solver.calls_count ())
-  
-  
+
+
   (* INVOCATIONS WITHOUT CONVERTING TO DNF *)
-  let check_sat (lines : int)
-             (co : Smp.cutoff_strategy_t)
-             (use_q : bool)
-             (phi : TllExp.formula) : Sat.t =
-(*    LOG "Entering check_sat..." LEVEL TRACE; *)
+  let check_sat (opt:SolOpt.t) (phi : TllExp.formula) : Sat.t =
     match phi with
     | Formula.Not(Formula.Implies(_,Formula.True)) ->
         (Solver.calls_force_incr(); Sat.Unsat)
@@ -284,22 +260,19 @@ struct
         (Solver.calls_force_incr(); Sat.Sat)
     | _ -> begin
              verbl _LONG_INFO "**** TLL Solver, about to translate TLL...\n";
-             Trans.set_prog_lines lines;
-             Solver.check_sat (Trans.formula co cutoff_opt use_q phi)
+             Trans.set_prog_lines (SolOpt.lines opt);
+             Solver.check_sat (Trans.formula (SolOpt.cutoff_strategy opt)
+                                             cutoff_opt
+                                             (SolOpt.use_quantifiers opt)
+                                             phi)
            end
   
-  let check_valid (prog_lines:int)
-               (co:Smp.cutoff_strategy_t)
-               (use_q : bool)
-               (phi:TllExp.formula) : Valid.t =
-    Response.sat_to_valid (check_sat prog_lines co use_q (Formula.Not phi))
+  let check_valid (opt:SolOpt.t) (phi:TllExp.formula) : Valid.t =
+    Response.sat_to_valid (check_sat opt (Formula.Not phi))
   
-  let check_valid_plus_info (prog_lines:int)
-                         (co:Smp.cutoff_strategy_t)
-                         (use_q : bool)
-                         (phi:TllExp.formula) : (Valid.t * int) =
+  let check_valid_plus_info (opt:SolOpt.t) (phi:TllExp.formula) : (Valid.t * int) =
     Solver.reset_calls ();
-    let res = check_valid prog_lines co use_q phi in
+    let res = check_valid opt phi in
     (res, Solver.calls_count())
 
 
