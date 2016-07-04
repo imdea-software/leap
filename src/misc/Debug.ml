@@ -5,6 +5,7 @@ let _debug_show_problems_ : bool ref = ref false
 let _debug_show_invTables_ : bool ref = ref false
 let _debug_show_widening_formula_ : bool ref = ref false
 let _debug_show_smt_ : bool ref = ref false
+let _debug_force_assertions_ : bool ref = ref false
 
 
 let infoLevel = 100

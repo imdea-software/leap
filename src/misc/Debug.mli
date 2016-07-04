@@ -5,6 +5,7 @@ val _debug_show_problems_ : bool ref
 val _debug_show_invTables_ : bool ref
 val _debug_show_widening_formula_ : bool ref
 val _debug_show_smt_ : bool ref
+val _debug_force_assertions_ : bool ref
 
 
 val msg : (unit -> string) -> int -> unit

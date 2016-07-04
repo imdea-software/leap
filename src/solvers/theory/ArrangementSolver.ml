@@ -229,18 +229,18 @@ module Make (AS : ArrangementSolverSpec.S) =
             Log.print "TSL Solver known information for arrangements"
                       (Arr.to_str arr E.integer_to_str);
             let arrgs = try
-                          Log.print "A" "1";
                           Hashtbl.find arr_table arr
                         with
                           _ -> begin
+                            (*
                                  print_endline ("ARRGS: " ^ (Arr.to_str arr E.integer_to_str));
+                                 *)
                                  let a = Arr.gen_arrs arr in
                                  Hashtbl.add arr_table arr a;
                                  a
                                end in
             verbl _LONG_INFO "**** TSL Solver: generated %i arrangements\n" (GenSet.size arrgs);
             Log.print "Arrgs size: " (string_of_int (GenSet.size arrgs));
-            print_endline ("Arrgs size: " ^ (string_of_int (GenSet.size arrgs)));
             Some arrgs
           end
 
@@ -530,59 +530,62 @@ module Make (AS : ArrangementSolverSpec.S) =
                                     | Some relev -> [relev] :: xs
                                   ) [] alpha_pairs_r) in
 
-          (* Assertions only *)
-          let alpha_relev = GenSet.empty () in
-(*
-          print_endline ("GOING TO PROCESS");
-          print_endline ("ALPHA_R SIZE: " ^ (string_of_int (List.length alpha_r)));
-*)
-          List.iter (fun eqclass ->
-(*            print_endline ("CLASS ######################"); *)
-            List.iter (fun e -> GenSet.add alpha_relev e) eqclass
-          ) alpha_r;
+          if !Debug._debug_force_assertions_ then begin
+            (* Assertions only *)
+            let alpha_relev = GenSet.empty () in
+  (*
+            print_endline ("GOING TO PROCESS");
+            print_endline ("ALPHA_R SIZE: " ^ (string_of_int (List.length alpha_r)));
+  *)
+            List.iter (fun eqclass ->
+  (*            print_endline ("CLASS ######################"); *)
+              List.iter (fun e -> GenSet.add alpha_relev e) eqclass
+            ) alpha_r;
 
-          let rel_set_plus_zero = GenSet.copy rel_set in
-          GenSet.add rel_set_plus_zero (E.IntVal 0);
-          assert (GenSet.subseteq alpha_relev rel_set_plus_zero);
-          let panc_r_level_vars = E.varset_of_sort_from_conj panc_r E.Int in
-          let nc_r_level_vars = E.V.VarSet.filter (fun v ->
-                                  not (E.V.looks_like_pc v)
-                                ) (E.varset_of_sort_from_conj nc_r E.Int) in
-          Log.print "Alpha relevant" (GenSet.to_str E.integer_to_str alpha_relev);
+            let rel_set_plus_zero = GenSet.copy rel_set in
+            GenSet.add rel_set_plus_zero (E.IntVal 0);
+            assert (GenSet.subseteq alpha_relev rel_set_plus_zero);
+            let panc_r_level_vars = E.varset_of_sort_from_conj panc_r E.Int in
+            let nc_r_level_vars = E.V.VarSet.filter (fun v ->
+                                    not (E.V.looks_like_pc v)
+                                  ) (E.varset_of_sort_from_conj nc_r E.Int) in
+            Log.print "Alpha relevant" (GenSet.to_str E.integer_to_str alpha_relev);
 
-          if not (E.V.VarSet.for_all (fun v -> GenSet.mem alpha_relev (E.VarInt v)) panc_r_level_vars) then begin
-            print_endline ("PANC_R_LEVEL_VARS: " ^ (String.concat ";" (List.map E.V.to_str (E.V.VarSet.elements panc_r_level_vars))));
-            print_endline ("ALPHA_RELEV: " ^ (GenSet.to_str E.integer_to_str alpha_relev));
-            print_endline ("PANC_R: " ^ (E.conjunctive_formula_to_str panc_r));
-            print_endline ("ALPHA: " ^ (String.concat ";" (List.map (fun xs -> "[" ^ (String.concat ";" (List.map E.integer_to_str xs)) ^ "]") alpha)));
-            print_endline ("PA: " ^ (E.conjunctive_formula_to_str pa));
-            print_endline ("PANC: " ^ (E.conjunctive_formula_to_str panc));
-            print_endline ("NC: " ^ (E.conjunctive_formula_to_str nc))
+            if not (E.V.VarSet.for_all (fun v -> GenSet.mem alpha_relev (E.VarInt v)) panc_r_level_vars) then begin
+              print_endline ("PANC_R_LEVEL_VARS: " ^ (String.concat ";" (List.map E.V.to_str (E.V.VarSet.elements panc_r_level_vars))));
+              print_endline ("ALPHA_RELEV: " ^ (GenSet.to_str E.integer_to_str alpha_relev));
+              print_endline ("PANC_R: " ^ (E.conjunctive_formula_to_str panc_r));
+              print_endline ("ALPHA: " ^ (String.concat ";" (List.map (fun xs -> "[" ^ (String.concat ";" (List.map E.integer_to_str xs)) ^ "]") alpha)));
+              print_endline ("PA: " ^ (E.conjunctive_formula_to_str pa));
+              print_endline ("PANC: " ^ (E.conjunctive_formula_to_str panc));
+              print_endline ("NC: " ^ (E.conjunctive_formula_to_str nc))
+            end;
+
+            assert (E.V.VarSet.for_all (fun v -> GenSet.mem alpha_relev (E.VarInt v)) panc_r_level_vars);
+            if not (E.V.VarSet.for_all (fun v -> GenSet.mem alpha_relev (E.VarInt v)) nc_r_level_vars) then begin
+              print_endline ("NC_R_LEVEL_VARS: " ^ (String.concat ";" (List.map E.V.to_str (E.V.VarSet.elements nc_r_level_vars))));
+              print_endline ("ALPHA_RELEV: " ^ (GenSet.to_str E.integer_to_str alpha_relev));
+              print_endline ("NC_R: " ^ (E.conjunctive_formula_to_str nc_r));
+              print_endline ("ALPHA: " ^ (String.concat ";" (List.map (fun xs -> "[" ^ (String.concat ";" (List.map E.integer_to_str xs)) ^ "]") alpha)));
+              print_endline ("PA: " ^ (E.conjunctive_formula_to_str pa));
+              print_endline ("PANC: " ^ (E.conjunctive_formula_to_str panc));
+              print_endline ("NC: " ^ (E.conjunctive_formula_to_str nc))
+            end;
+  (*
+            E.V.VarSet.iter (fun v -> print_endline ("NC_R_LEVEL: " ^ E.V.to_str v)) nc_r_level_vars;
+            GenSet.iter (fun i -> print_endline ("ALPHA_RELEV: " ^ E.integer_to_str i)) alpha_relev;
+  *)
+  (*          assert (E.V.VarSet.for_all (fun v -> GenSet.mem alpha_relev
+   *          (E.VarInt v)) nc_r_level_vars);*)
+
+
+
+            (* Assertions only *)
+  (*
+            print_endline "ALPHA_R";
+            List.iter (fun xs -> print_endline (String.concat "," (List.map E.integer_to_str xs))) alpha_r;
+            *)
           end;
-
-          assert (E.V.VarSet.for_all (fun v -> GenSet.mem alpha_relev (E.VarInt v)) panc_r_level_vars);
-          if not (E.V.VarSet.for_all (fun v -> GenSet.mem alpha_relev (E.VarInt v)) nc_r_level_vars) then begin
-            print_endline ("NC_R_LEVEL_VARS: " ^ (String.concat ";" (List.map E.V.to_str (E.V.VarSet.elements nc_r_level_vars))));
-            print_endline ("ALPHA_RELEV: " ^ (GenSet.to_str E.integer_to_str alpha_relev));
-            print_endline ("NC_R: " ^ (E.conjunctive_formula_to_str nc_r));
-            print_endline ("ALPHA: " ^ (String.concat ";" (List.map (fun xs -> "[" ^ (String.concat ";" (List.map E.integer_to_str xs)) ^ "]") alpha)));
-            print_endline ("PA: " ^ (E.conjunctive_formula_to_str pa));
-            print_endline ("PANC: " ^ (E.conjunctive_formula_to_str panc));
-            print_endline ("NC: " ^ (E.conjunctive_formula_to_str nc))
-          end;
-(*
-          E.V.VarSet.iter (fun v -> print_endline ("NC_R_LEVEL: " ^ E.V.to_str v)) nc_r_level_vars;
-          GenSet.iter (fun i -> print_endline ("ALPHA_RELEV: " ^ E.integer_to_str i)) alpha_relev;
-*)
-          assert (E.V.VarSet.for_all (fun v -> GenSet.mem alpha_relev (E.VarInt v)) nc_r_level_vars);
-
-
-
-          (* Assertions only *)
-(*
-          print_endline "ALPHA_R";
-          List.iter (fun xs -> print_endline (String.concat "," (List.map E.integer_to_str xs))) alpha_r;
-*)
 
           try
             let res = Hashtbl.find arrg_sat_table alpha_r in
@@ -631,10 +634,21 @@ module Make (AS : ArrangementSolverSpec.S) =
             (F.conjunctive_to_formula
               (F.combine_conjunctive pa panc))
         end else begin
-          (* This section enables the guess of arrangements.
-           * It has been replaced by an iterative process in which
-           * new valid arrangements are computed using an SMT solver. *)
-           
+          (* Decides between generating all possible arrangements or
+           * construct one by one using calls to SMT solvers. *)
+          if SolOpt.use_arrangement_generator opt then begin
+            let arr = fill_new_arrangement (F.combine_conjunctive_list [pa; panc; nc]) in
+            let num_arr = Arr.convert NumInterface.integer_to_int_integer arr in
+            let arr_gen = ArrGen.new_arr_gen num_arr in
+            let guessed_num_arr = ref (ArrGen.next_arr arr_gen) in
+            let sat_found = ref false in
+            while (not (!sat_found) && (!guessed_num_arr <> [])) do
+              let guessed_arr = List.map (List.map NumInterface.integer_to_expr_integer) !guessed_num_arr in
+              sat_found := Sat.is_sat (check pa panc nc guessed_arr);
+              guessed_num_arr := ArrGen.next_arr arr_gen
+            done;
+            if !sat_found then Sat.Sat else Sat.Unsat
+          end else begin
             let arrgs_opt = guess_arrangements (F.combine_conjunctive_list [pa; panc; nc]) in
             Log.print "Guessed arrangement:"
               (match arrgs_opt with
@@ -653,20 +667,7 @@ module Make (AS : ArrangementSolverSpec.S) =
                   else
                     Sat.Unsat
                 end
-           
-(*
-          let arr = fill_new_arrangement (F.combine_conjunctive_list [pa; panc; nc]) in
-          let num_arr = Arr.convert NumInterface.integer_to_int_integer arr in
-          let arr_gen = ArrGen.new_arr_gen num_arr in
-          let guessed_num_arr = ref (ArrGen.next_arr arr_gen) in
-          let sat_found = ref false in
-          while (not (!sat_found) && (!guessed_num_arr <> [])) do
-            let guessed_arr = List.map (List.map NumInterface.integer_to_expr_integer) !guessed_num_arr in
-            sat_found := Sat.is_sat (check pa panc nc guessed_arr);
-            guessed_num_arr := ArrGen.next_arr arr_gen
-          done;
-          if !sat_found then Sat.Sat else Sat.Unsat
-          *)
+          end
         end in
       answer
   end

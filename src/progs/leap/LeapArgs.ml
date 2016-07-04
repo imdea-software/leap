@@ -67,6 +67,7 @@ let assignopt (valref : 'a ref) (valbool : bool ref) (aval : 'a) : unit =
 
 let setdebug () =
   LeapDebug.enable_debug();
+  Debug._debug_force_assertions_ := true;
   debugFlag := true
 
 let inputInvFolder (s:string) =
