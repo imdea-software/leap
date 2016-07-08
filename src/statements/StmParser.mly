@@ -680,41 +680,6 @@ let check_and_get_sort (id:string) : E.sort =
       find l1 l2 l2
 
 
-(*
-  let check_single_variable_assignment (st_list:Statement.statement_t list)
-                                       (st_str:string) =
-    let assign_list : E.term list ref = ref [] in
-    let rec append_assignment (s:Statement.statement_t) =
-      match s with
-        Stm.StAssign (t,_,_,_) -> if List.mem t !assign_list then
-                                    begin
-                                      Interface.Err.msg "Double assignment in \
-                                                         atomic statement" $
-                                      sprintf "Term \"%s\" is assigned twice \
-                                               within the atomic \
-                                               statement:\n%s\n\
-                                               By now, only single assignments \
-                                               inside atomics statements are \
-                                               allowed. "
-                                               (E.term_to_str t)
-                                               st_str;
-                                      raise(Atomic_double_assignment t)
-                                    end
-                                  else
-                                    assign_list := t :: !assign_list
-      
-      | Stm.StIf (_,x,y,_,_)   -> append_assignment x;
-                                  Option.map_default append_assignment () y
-      | Stm.StWhile (_,x,y,_)  -> append_assignment x;
-                                  Option.map_default append_assignment () y
-      | Stm.StSelect (xs,_,_)  -> List.iter append_assignment xs
-      | Stm.StSeq xs           -> List.iter append_assignment xs
-      | _                      -> ()
-    in
-      List.iter append_assignment st_list
-*)
-    
-                          
 let unexpected_statement get_str_expr =
   let str_expr = (get_str_expr()) in
     Interface.Err.msg "Unexpected statement" $
@@ -1089,7 +1054,7 @@ let fix_conditional_jumps () : unit =
 system :
   GLOBAL global_declarations initial_assumption procedure_list
     {
-      (* Fix conditional jump positions *)
+      (* ALE: Check if conditional jump positions is correct. *)
       fix_conditional_jumps();
 
       let proc_tbl    = System.new_proc_table_from_list !procedures in
@@ -1229,11 +1194,6 @@ global_decl :
       let get_str_expr () = sprintf "%s %s := %s" (E.sort_to_str s)
                                                   (v_name)
                                                   (E.formula_to_str b) in
-(*
-      let bool_var = E.Literal (E.Atom (E.BoolVar
-                       (E.build_var v_name E.Bool false E.V.Shared Stm.GlobalScope k))) in
-      let cond = E.Iff(bool_var, b) in
-*)
       let cond = b in
       let _ = decl_global_var v_name s (Some (E.Condition cond)) k
       in
@@ -1352,11 +1312,6 @@ local_decl :
       let get_str_expr () = sprintf "%s %s := %s" (E.sort_to_str s)
                                                   (v_name)
                                                   (E.formula_to_str b) in
-(*
-      let bool_var = E.Literal (E.Atom (E.BoolVar
-                        (E.build_var v_name E.Bool false E.V.Shared Stm.GlobalScope k))) in
-      let cond = E.Iff(bool_var, b) in
-*)
       let cond = b in
       let _ = decl_local_var v_name s (Some (E.Condition cond)) k
       in
@@ -1482,34 +1437,23 @@ atomic_statement:
     {
       let cond = $2 in
       let get_str_expr () = sprintf "assert %s" (Stm.boolean_to_str cond) in
-
       unexpected_statement get_str_expr
-(*    ([], Stm.StAssert (cond, None, None)) *)
     }
   | ST_AWAIT formula SEMICOLON
     {
       let cond = $2 in
-(*
-      let get_str_expr () = sprintf "await %s" (E.formula_to_str cond) in
-      unexpected_statement get_str_expr
-*)
-    ([], Stm.StAwait (cond, None, None))
+      ([], Stm.StAwait (cond, None, None))
     }
   | ST_NONCRITICAL SEMICOLON
     {
 
       let get_str_expr () = sprintf "noncritical" in
-
       unexpected_statement get_str_expr
-(*    ([], Stm.StNonCrit (None, None))  *)
     }
   | ST_CRITICAL SEMICOLON
     {
       let get_str_expr () = sprintf "critical" in
-
       unexpected_statement get_str_expr
-
-(*    ([], Stm.StCrit (None, None)) *)
     }
   | term ASSIGN term SEMICOLON
     {
@@ -1572,8 +1516,6 @@ atomic_statement:
       let (then_assign, then_st) = $4 in
       let (else_assign, else_st) = $5 in
       let st = Stm.StIf (cond, Stm.StSeq then_st, else_st, None, None) in
-      (* let st_str = Stm.statement_to_str 1 st in *)
-
       (* Check no repetition between then_assign and else_assign *)
       let all_assign =
         (* check_no_double_assignment then_assign else_assign st_str *)
@@ -1592,24 +1534,17 @@ atomic_statement:
       in
 
       unexpected_statement get_str_expr
-
-(*    (assign_list, Stm.StWhile (cond, body, None, None)) *)
     }
   | choice_keyword atomic_statements_choice ST_ENDCHOICE
     {
       let (_, choice_list) = List.split $2 in
-(*    TODO: Also eliminate duplicated variables
-      let assign_list = List.flatten assign_lists in
-*)
-
+      (* ALE: Eliminate also duplicated variables
+         let assign_list = List.flatten assign_lists in *)
       let get_str_expr () = sprintf "choice \n%s\n endchoice"
                               (String.concat " _or_ " $
                                 List.map (Stm.statement_to_str 1) choice_list)
       in
-
       unexpected_statement get_str_expr
-
-(*    (assign_list, Stm.StSelect (choice_list, None, None)) *)
     }
 
 
@@ -1690,33 +1625,23 @@ ghost_statement:
     {
       let cond = Stm.boolean_to_expr_formula $2 in
       let get_str_expr () = sprintf "assert %s" (E.formula_to_str cond) in
-
       unexpected_statement get_str_expr
-(*    ([], Stm.StAwait ($2, None, None))  *)
     }
   | ST_AWAIT formula SEMICOLON
     {
       let cond = Stm.boolean_to_expr_formula $2 in
       let get_str_expr () = sprintf "await %s" (E.formula_to_str cond) in
-
       unexpected_statement get_str_expr
-(*    ([], Stm.StAwait ($2, None, None))  *)
     }
   | ST_NONCRITICAL SEMICOLON
     {
-
       let get_str_expr () = sprintf "noncritical" in
-
       unexpected_statement get_str_expr
-(*    ([], Stm.StNonCrit (None, None))  *)
     }
   | ST_CRITICAL SEMICOLON
     {
       let get_str_expr () = sprintf "critical" in
-
       unexpected_statement get_str_expr
-
-(*    ([], Stm.StCrit (None, None)) *)
     }
   | term ASSIGN term SEMICOLON
     {
@@ -1782,10 +1707,6 @@ ghost_statement:
       let (then_assign, then_st) = $4 in
       let (else_assign, else_st) = $5 in
       let st = Stm.StIf (cond, Stm.StSeq then_st, else_st, None, None) in
-      (* let st_str = Stm.statement_to_str 1 st in *)
-
-      (* Check no repetition between then_assign and else_assign *)
-
       (* No need to search for repeated assignments between both branches
          of an IF statement *)
       let all_assign =
@@ -1803,26 +1724,18 @@ ghost_statement:
                                     (E.formula_to_str cond)
                                     (Stm.statement_to_str 1 body)
       in
-
       unexpected_statement get_str_expr
-
-(*    (assign_list, Stm.StWhile (cond, body, None, None)) *)
     }
   | choice_keyword ghost_statements_choice ST_ENDCHOICE
     {
       let (_, choice_list) = List.split $2 in
-(*    TODO: Also eliminate duplicated variables
-      let assign_list = List.flatten assign_lists in
-*)
-
+      (* ALE: Eliminates duplicated variables.
+         let assign_list = List.flatten assign_lists in *)
       let get_str_expr () = sprintf "choice \n%s\n endchoice"
                               (String.concat " _or_ " $
                                 List.map (Stm.statement_to_str 1) choice_list)
       in
-
       unexpected_statement get_str_expr
-
-(*    (assign_list, Stm.StSelect (choice_list, None, None)) *)
     }
 
 
@@ -2158,7 +2071,7 @@ statement:
                       Stm.opt_pos         = [];
                       Stm.called_from_pos = [];
                       Stm.return_pos      = []; } in
-      (* I'm not verifying whether I am working with a non ghost address *)
+      (* ALE: I'm not verifying whether I am working with a non ghost address *)
       let g_code = $6 in
       let st = Stm.StUnit ((match $5 with
                            | None   -> Stm.UnitLock a
@@ -2179,7 +2092,7 @@ statement:
                       Stm.opt_pos         = [];
                       Stm.called_from_pos = [];
                       Stm.return_pos      = []; } in
-      (* I'm not verifying whether I am working with a non ghost address *)
+      (* ALE: I'm not verifying whether I am working with a non ghost address *)
       let g_code = $6 in
       let st = Stm.StUnit ((match $5 with
                             | None   -> Stm.UnitUnlock a
@@ -2205,12 +2118,6 @@ statement:
         | (xs, None) -> begin
                           let last_xs = lastElem xs in
                           cond_stm_list := n :: (!cond_stm_list);
-(*
-                          (match last_xs with
-                           | Stm.StIf (_,_,Some _,_,_) -> ()
-                           | _ -> (Stm.get_st_info last_xs).Stm.else_pos <-
-                                    (Stm.get_last_st_info last_xs).Stm.else_pos);
-*)
                           (n+1, (Stm.get_last_st_info last_xs).Stm.else_pos);
                         end
         | (xs, Some ys) -> begin
@@ -2230,28 +2137,6 @@ statement:
                       Stm.opt_pos         = [];
                       Stm.called_from_pos = [];
                       Stm.return_pos      = []; } in
-      (*
-
-
-      let (next_p, else_p) =
-        (match (then_st, else_st) with
-           ([], None)    -> (n+1, n+1)
-         | ([], Some ys) -> ((Stm.get_last_st_pos ys)+1, n+1)
-         | (xs, _)       -> let lst = lastElem xs in
-                            let e_pos = Stm.get_st_else_pos lst in
-                              (Stm.get_st_info lst).Stm.next_pos <-
-                                ( match else_st with
-                                    Some ys -> Stm.get_last_st_pos ys + 1
-                                  |  _ -> Stm.get_st_pos lst + 1
-                                ); (n+1, e_pos)) in
-      let st_info = { Stm.pos             = n;
-                      Stm.next_pos        = next_p;
-                      Stm.else_pos        = else_p;
-                      Stm.call_pos        = None;
-                      Stm.opt_pos         = [];
-                      Stm.called_from_pos = [];
-                      Stm.return_pos      = []; } in
-*)
 
       let st = Stm.StIf (cond, Stm.StSeq then_st, else_st, g_code, Some st_info) in
 
@@ -2326,10 +2211,6 @@ statement:
     {
       let (_, st_list) = $3 in
       let g_code       = $5 in
-(*
-      let get_st_str = String.concat ""
-                         (List.map (Stm.statement_to_str 0) st_list) in
-*)
       let st_info      = { Stm.pos              = !pos;
                            Stm.next_pos         = !pos+1;
                            Stm.else_pos         = !pos+1;
@@ -2338,8 +2219,6 @@ statement:
                            Stm.called_from_pos  = [];
                            Stm.return_pos       = []; } in
       let st           = Stm.StAtomic (st_list, g_code, Some st_info) in
-
-(*      check_single_variable_assignment st_list get_st_str; *)
       Hashtbl.replace pos_st !pos (!current_proc, st);
       pos := !pos + 1;
       st

@@ -45,10 +45,6 @@ let comp_model : bool ref = ref false
 
 let cutoff_opt : Smp.cutoff_options_t = Smp.opt_empty()
 
-(*
-let tll_sort_map = ref (GM.new_sort_map())
-let tll_model = ref (GM.new_model())
-*)
 
 let this_call_tbl : DP.call_tbl_t = DP.new_call_tbl()
 
@@ -291,16 +287,12 @@ let rec trans_literal (alpha_r:E.integer list list option)
   | F.Atom(HM.Eq(HM.TidT t, HM.TidT(HM.LockId(HM.VarLock v))))
   | F.NegAtom(HM.InEq(HM.TidT(HM.LockId(HM.VarLock v)), HM.TidT t)) 
   | F.NegAtom(HM.InEq(HM.TidT t, HM.TidT(HM.LockId(HM.VarLock v)))) ->
-(*
-      print_endline "CONVERSION FOUND";
-      print_endline ("CONVERTING FROM: " ^ (HM.literal_to_str l));
-*)
+      (* print_endline "CONVERSION FOUND";
+         print_endline ("CONVERTING FROM: " ^ (HM.literal_to_str l)); *)
       let l' = tid_thm_to_tll (HM.VarTh (HM.V.set_sort v HM.Tid)) in
       let t' = tid_thm_to_tll t in
       let res = TLL.eq_tid l' t' in
-(*
-      print_endline ("CONVERTED TO: " ^ (TLL.formula_to_str res));
-*)
+      (* print_endline ("CONVERTED TO: " ^ (TLL.formula_to_str res)); *)
       res
   (* A != B (thread identifiers) *)
   | F.NegAtom(HM.Eq(HM.TidArrayT(HM.VarTidArray _ as tt),
@@ -595,8 +587,6 @@ let rec trans_literal (alpha_r:E.integer list list option)
   | F.Atom(HM.InEq(HM.BucketArrayT cc, HM.BucketArrayT (HM.BucketArrayUp(bb,i,b))))
   | F.Atom(HM.InEq(HM.BucketArrayT (HM.BucketArrayUp(bb,i,b)), HM.BucketArrayT cc)) ->
       F.Not (trans_literal alpha_r levels (F.Atom(HM.Eq(HM.BucketArrayT cc, HM.BucketArrayT (HM.BucketArrayUp(bb,i,b))))))
-
-
   (* hashtbl(m,s,se,B,k) *)
   | F.Atom(HM.Hashtbl(m,s,se,bb,k)) ->
       let m' = mem_thm_to_tll m in
@@ -619,9 +609,7 @@ let rec trans_literal (alpha_r:E.integer list list option)
                      TLL.in_addr e s;
                      TLL.eq_addr (TLL.Next(TLL.CellAt(m',e))) TLL.Null] in
 
-(*
-      print_endline ("K': " ^ (string_of_int k'));
-*)
+        (* print_endline ("K': " ^ (string_of_int k')); *)
       let list_conj = List.fold_left (fun c i ->
         let (a,e,s,t) = get_bucket i bb in
         F.And (list_conj_f a e s, c)
@@ -674,8 +662,7 @@ let rec trans_literal (alpha_r:E.integer list list option)
         done
       done;
       F.disj_list ([ineq_s; ineq_setelem; list_disj] @ (!disjoint))
-
-
+  (* Remaining cases *)
   | F.Atom a -> TllInterface.formula_to_tll_formula(
                   ThmInterface.formula_to_expr_formula (Formula.atom_to_formula a))
   | F.NegAtom a -> TllInterface.formula_to_tll_formula(
@@ -694,25 +681,12 @@ let to_tll (alpha_r:E.integer list list option)
                   (TllInterface.formula_to_expr_formula
                     (trans_literal alpha_r levels lit))) @ xs
               ) [] thm_ls in
-(*
-  print_endline "CONJS";
-  List.iter (fun phi -> print_endline (E.formula_to_str phi)) conjs;
-*)
-  
+  (* print_endline "CONJS";
+     List.iter (fun phi -> print_endline (E.formula_to_str phi)) conjs; *)
   let (conjs',subst) = Tactics.gen_eq_prop_from_list conjs in
   let tll_phi = TllInterface.formula_to_tll_formula
                   (E.subst_vars subst (F.conj_list (F.cleanup_dups conjs'))) in
-(*
-  print_endline ("TLL_PHI: " ^ (TLL.formula_to_str tll_phi));
-*)
-  (*
-  let tll_phi = TllInterface.formula_to_tll_formula (F.conj_list (F.cleanup_dups conjs)) in
-  *)
-
-  (*
-  let tll_ps = List.map (trans_literal alpha_r levels) thm_ls in
-  let tll_phi = F.conj_list tll_ps in
-*)
+  (* print_endline ("TLL_PHI: " ^ (TLL.formula_to_str tll_phi)); *)
   Log.print "ThmSolver. Obtained formula in TLL" (TLL.formula_to_str tll_phi);
   tll_phi
 
@@ -763,10 +737,6 @@ let check_thm (opt:SolOpt.t)
       SolOpt.set_use_quantifiers opt !use_quantifier;
       let res = TllSol.check_sat opt phi_tll in
       DP.add_dp_calls this_call_tbl DP.Tll 1;
-      (*
-      tll_sort_map := TllSol.sort_map ();
-      tll_model := TllSol.get_model ();
-      *)
       if LeapVerbose.is_verbose_level_enabled(LeapVerbose._SHORT_INFO) then
         if Sat.is_sat res then print_string "S" else print_string "X";
       let _ = match alpha_r with
@@ -809,30 +779,20 @@ let check_sat_plus_info (opt:SolOpt.t)
                  (ThmInterface.formula_to_expr_formula phi)
              with _ -> begin
                (* STEP 1: Normalize the formula *)
-               (* ERASE *)
                Log.print "THM Solver formula" (HM.formula_to_str phi);
-(*
-               print_endline "FORMULA TO NORMALIZE:";
-               print_endline (HM.formula_to_str phi);
-*)
+               (* print_endline "FORMULA TO NORMALIZE:";
+                  print_endline (HM.formula_to_str phi); *)
                let phi_norm = HM.normalize phi in
-(*
-               print_endline "NORMALIZED FORMULA IN THMSOLVER:";
-               print_endline (HM.formula_to_str phi_norm);
-*)
-               (* ERASE *)
+               (* print_endline "NORMALIZED FORMULA IN THMSOLVER:";
+                  print_endline (HM.formula_to_str phi_norm); *)
                Log.print "THM Solver normalized formula" (HM.formula_to_str phi_norm);
                (* STEP 2: DNF of the normalized formula *)
                let phi_dnf = F.dnf phi_norm in
                (* If any of the conjunctions in DNF is SAT, then phi is sat *)
-
-
-(*
-               print_endline "DNFS";
-               List.iter (fun phi -> print_endline
-               (HM.conjunctive_formula_to_str
-               phi)) phi_dnf;
-*)
+               (* print_endline "DNFS";
+                  List.iter (fun phi -> print_endline
+                    (HM.conjunctive_formula_to_str phi)
+                  ) phi_dnf; *)
                if List.exists (fun psi ->
                     Sat.is_sat (ArrSol.dnf_sat opt
                       (ThmInterface.conj_formula_to_expr_conj_formula psi))

@@ -411,16 +411,16 @@ module Make (SLK : TSLKExpression.S) =
         | E.PC (i,topt,pr)        -> let norm_topt =
                                        match topt with
                                        | E.V.Shared -> E.V.Shared
-                                          (* CHANGES: This was before *)
-(*                                       | E.V.Local t -> E.V.Local (norm_tid t) in*)
+                                          (* Old implementation
+                                             | E.V.Local t -> E.V.Local (norm_tid t) in *)
                                        | E.V.Local t -> E.V.Local t in
                                      E.PC (i, norm_topt, pr)
         | E.PCUpdate (i,t)        -> E.PCUpdate (i, norm_tid t)
         | E.PCRange (i,j,topt,pr) -> let norm_topt =
                                        match topt with
                                        | E.V.Shared -> E.V.Shared
-                                        (* CHANGES: Before *)
-(*                                       | E.V.Local t -> E.V.Local (norm_tid t) in*)
+                                          (* Old implementation
+                                             | E.V.Local t -> E.V.Local (norm_tid t) in *)
                                        | E.V.Local t -> E.V.Local t in
                                      E.PCRange (i, j, norm_topt, pr) in
 
@@ -436,7 +436,7 @@ module Make (SLK : TSLKExpression.S) =
 
 
     let norm_to_tslk (phi:E.formula) : E.formula =
-      (* REVIEW THIS WHOLE FORMULA *)
+      (* ALE: Review this formula *)
       (* Create a new normalization *)
       let norm_info = new_norm_info_from_formula phi in
       (* Process the original formula *)
@@ -710,8 +710,8 @@ module Make (SLK : TSLKExpression.S) =
                          (List.map addr_to_tslk_addr aa) @ aa_pad,
                          (List.map tid_to_tslk_tid tt) @ tt_pad)
       | E.MkSLCell _           -> raise(UnsupportedTSLKExpr(E.cell_to_str c))
-      (* TSLK receives two arguments, while current epxression receives only one *)
-      (* However, for the list examples, I think we will not need it *)
+      (* ALE: TSLK receives two arguments, while current expression receives only one.
+         However, for list examples, w don't need it. *)
       | E.CellLock _           -> raise(UnsupportedTSLKExpr(E.cell_to_str c))
       | E.CellLockAt (c,l,t)   -> SLK.CellLockAt (cell_to_tslk_cell c,
                                                      int_to_tslk_level l,
@@ -778,7 +778,7 @@ module Make (SLK : TSLKExpression.S) =
       | E.Update (m,a,c) -> SLK.Update (mem_to_tslk_mem m,
                                            addr_to_tslk_addr a,
                                            cell_to_tslk_cell c)
-      (* Missing the case for "emp" *)
+      (* ALE: Check if we need the case for "emp". *)
       | E.MemArrayRd (E.VarArray v,t) ->
           SLK.VarMem (var_to_tslk_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
       | E.MemArrayRd _        -> raise(UnsupportedTSLKExpr(E.mem_to_str m))
@@ -790,16 +790,7 @@ module Make (SLK : TSLKExpression.S) =
       let pred = (fun x -> SLK.LevelPred x) in
       let tolevel = int_to_tslk_level in
       match i with
-        E.IntVal l       -> (*if l < 0 || SLK.k <= l then
-                                 begin
-                                   Interface.Err.msg "Level out of bounds" $
-                                   Printf.sprintf "Level %i is out of the bounds of TSLK[%i], \
-                                                   which goes from 0 to %i."
-                                      l SLK.k (SLK.k-1);
-                                   raise(UnsupportedTSLKExpr(E.integer_to_str i))
-                                 end
-                               else *)
-                                 SLK.LevelVal l
+        E.IntVal l       -> SLK.LevelVal l
       | E.VarInt v       -> SLK.VarLevel (var_to_tslk_var v)
       | E.IntNeg i       -> raise(UnsupportedTSLKExpr(E.integer_to_str i))
       | E.IntAdd (i1,i2) -> begin
@@ -882,7 +873,7 @@ module Make (SLK : TSLKExpression.S) =
 
 
     and formula_to_tslk_formula_aux (f:E.formula) : SLK.formula =
-(*      LOG "Entering formula_to_tslk_formula_aux..." LEVEL TRACE; *)
+      (* LOG "Entering formula_to_tslk_formula_aux..." LEVEL TRACE; *)
       let to_formula = formula_to_tslk_formula_aux in
       match f with
       (* Translation of literals of the form B = A {l <- a} *)

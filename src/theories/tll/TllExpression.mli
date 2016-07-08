@@ -96,7 +96,6 @@ and addr =
   | Next of cell
   | FirstLocked of mem * path
   | LastLocked of mem * path
-(*  | Malloc of elem * addr * tid *)
 and cell =
     VarCell of V.t
   | Error
@@ -206,7 +205,6 @@ val get_varset_from_literal      : literal -> V.VarSet.t
 val get_varset_from_conj         : conjunctive_formula -> V.VarSet.t
 val get_varset_from_formula      : formula -> V.VarSet.t
 val get_varset_of_sort_from_conj : conjunctive_formula -> sort -> V.VarSet.t
-(*val varset_of_sort               : V.VarSet.t -> sort -> V.VarSet.t *)
 val get_termset_from_formula     : formula -> TermSet.t
 val get_termset_from_conjformula : conjunctive_formula -> TermSet.t
 val termset_of_sort              : TermSet.t -> sort -> TermSet.t
@@ -241,9 +239,6 @@ val set_to_str      : set    -> string
 val setth_to_str    : setth  -> string
 val setelem_to_str  : setelem -> string
 val formula_to_str  : formula -> string
-
-(* val eq_to_str      : eq     -> string *)
-(* val diseq_to_str   : diseq  -> string *)
 
 val sort_to_str : sort -> string
 val variable_list_to_str : V.id list -> string

@@ -34,8 +34,6 @@ module E        = Expression
 module F        = Formula
 module SolOpt   = SolverOptions
 
-(*module type SLK = TSLKExpression.S *)
-
 type alpha_pair_t = (SL.integer list * SL.integer option)
 
 
@@ -48,11 +46,11 @@ let choose (s:string) : unit =
   solver_impl := s
 
 
-let comp_model : bool ref = ref false
 (* Should we compute a model in case of courter example? *)
+let comp_model : bool ref = ref false
 
-let cutoff_opt : Smp.cutoff_options_t = Smp.opt_empty()
 (* The structure where we store the options for cutoff *)
+let cutoff_opt : Smp.cutoff_options_t = Smp.opt_empty()
 
 
 (* Intermediate model information between TSL solver interface and
@@ -126,10 +124,6 @@ module TranslateTsl (SLK : TSLKExpression.S) =
 
     let int_tsl_to_tslk (i:SL.integer) : SLK.level =
       SLKInterf.int_to_tslk_level(SLInterf.int_to_expr_int i)
-(*
-    let literal_tsl_to_tslk (l:SL.literal) : SLK.literal =
-      SLKInterf.literal_to_tslk_literal(SLInterf.literal_to_expr_literal l)
-*)
 
 
     let expand_array_to_var (v:SL.V.t)
@@ -389,11 +383,10 @@ module TranslateTsl (SLK : TSLKExpression.S) =
                      SLK.eq_set
                       (s')
                       (SLK.AddrToSet(m',a1',SLK.LevelVal 0))] in
-(*                      (SLK.PathToSet(SLK.GetPathAt(m',a1',SLK.Null,SLK.LevelVal 0)))] in *)
-(*
+                      (* Old implementation
+                        (SLK.PathToSet(SLK.GetPathAt(m',a1',SLK.Null,SLK.LevelVal 0)))] in
                         (SLK.Setdiff (SLK.AddrToSet(m',a1',SLK.LevelVal 0),
-                                          SLK.AddrToSet(m',a2',SLK.LevelVal 0)))] in
-*)
+                                          SLK.AddrToSet(m',a2',SLK.LevelVal 0)))] in *)
           for n = 0 to (SLK.k - 1) do
             let n' = SLK.LevelVal n in
             xs := F.Implies
@@ -408,17 +401,14 @@ module TranslateTsl (SLK : TSLKExpression.S) =
             xs := F.Implies
                     (SLK.less_level n' l',
                      SLK.subseteq
-(*
-                       (SLK.AddrToSet(m',a1',SLK.LevelSucc n'))
-                       (SLK.AddrToSet(m',a1',n'))) :: (!xs)
-*)
+                       (* Old implementation
+                         (SLK.AddrToSet(m',a1',SLK.LevelSucc n'))
+                         (SLK.AddrToSet(m',a1',n'))) :: (!xs) *)
                        (SLK.PathToSet(SLK.GetPathAt(m',a1',SLK.Null,SLK.LevelSucc n')))
                        (SLK.PathToSet(SLK.GetPathAt(m',a1',SLK.Null,n')))) :: (!xs)
-(*
-                       (SLK.Setdiff (SLK.AddrToSet(m',a1',SLK.LevelSucc n'), SLK.AddrToSet(m',a2',SLK.LevelSucc n')))
-                       (SLK.Setdiff (SLK.AddrToSet(m',a1',n'), SLK.AddrToSet(m',a2',n')))) :: (!xs)
-*)
-
+                       (* Old implementation
+                         (SLK.Setdiff (SLK.AddrToSet(m',a1',SLK.LevelSucc n'), SLK.AddrToSet(m',a2',SLK.LevelSucc n')))
+                         (SLK.Setdiff (SLK.AddrToSet(m',a1',n'), SLK.AddrToSet(m',a2',n')))) :: (!xs) *)
           done;
           SLK.addr_mark_smp_interesting a1' true;
           SLK.addr_mark_smp_interesting a2' true;
@@ -440,8 +430,9 @@ module TranslateTsl (SLK : TSLKExpression.S) =
                      SLK.ineq_set
                       (s')
                       (SLK.AddrToSet(m',a1',SLK.LevelVal 0))] in
-(*                      (SLK.PathToSet(SLK.GetPathAt(m',a1',SLK.Null,SLK.LevelVal 0)))] in *)
-(*                      (SLK.Setdiff (SLK.AddrToSet(m',a1',SLK.LevelVal 0), SLK.AddrToSet(m',a2',SLK.LevelVal 0)))] in *)
+                      (* Old implementation
+                        (SLK.PathToSet(SLK.GetPathAt(m',a1',SLK.Null,SLK.LevelVal 0)))] in
+                        (SLK.Setdiff (SLK.AddrToSet(m',a1',SLK.LevelVal 0), SLK.AddrToSet(m',a2',SLK.LevelVal 0)))] in *)
           for n = 0 to (SLK.k - 1) do
             let n' = SLK.LevelVal n in
             xs := F.And
@@ -456,18 +447,14 @@ module TranslateTsl (SLK : TSLKExpression.S) =
                     (SLK.less_level n' l',
                      F.Not
                       (SLK.subseteq
-(*
-                        (SLK.AddrToSet(m',a1',SLK.LevelSucc n'))
-                        (SLK.AddrToSet(m',a1',n')))) :: (!xs)
-*)
-
+                        (* Old implementation
+                          (SLK.AddrToSet(m',a1',SLK.LevelSucc n'))
+                          (SLK.AddrToSet(m',a1',n')))) :: (!xs) *)
                         (SLK.PathToSet(SLK.GetPathAt(m',a1',SLK.Null,SLK.LevelSucc n')))
                         (SLK.PathToSet(SLK.GetPathAt(m',a1',SLK.Null,n'))))) :: (!xs)
-
-(*
-                        (SLK.Setdiff (SLK.AddrToSet(m',a1',SLK.LevelSucc n'), SLK.AddrToSet(m',a2',SLK.LevelSucc n')))
-                        (SLK.Setdiff (SLK.AddrToSet(m',a1',n'), SLK.AddrToSet(m',a2',n'))))) :: (!xs)
-*)
+                        (* Old implementation
+                          (SLK.Setdiff (SLK.AddrToSet(m',a1',SLK.LevelSucc n'), SLK.AddrToSet(m',a2',SLK.LevelSucc n')))
+                          (SLK.Setdiff (SLK.AddrToSet(m',a1',n'), SLK.AddrToSet(m',a2',n'))))) :: (!xs) *)
           done;
           SLK.addr_mark_smp_interesting a1' true;
           SLK.addr_mark_smp_interesting a2' true;
@@ -568,10 +555,8 @@ let check_sat_plus_info (opt:SolOpt.t)
                   (TSLInterface.formula_to_expr_formula phi)
              with _ -> begin
                (* STEP 1: Normalize the formula *)
-               (* ERASE *)
                Log.print "TSL Solver formula" (SL.formula_to_str phi);
                let phi_norm = SL.normalize phi in
-               (* ERASE *)
                Log.print "TSL Solver normalized formula" (SL.formula_to_str phi_norm);
                (* STEP 2: DNF of the normalized formula *)
                let phi_dnf = F.dnf phi_norm in
@@ -607,7 +592,7 @@ let compute_model (b:bool) : unit =
   comp_model := b
     (* Should I enable which solver? *)
     (* Solver.compute_model b *)
-    (* Perhaps I should only set the flag and set activate the compute_model
+    (* ALE: Perhaps I should only set the flag and set activate the compute_model
        on the Solver when it is about to be called in check_sat *)
 
 

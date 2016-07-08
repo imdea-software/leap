@@ -59,7 +59,6 @@ val get_tslk_param : t -> int
     it returns 1. *)
 
 
-
 val new_call_tbl : unit -> call_tbl_t
 (** [new_call_tbl ()] returns a new table to count calls to each decision
     procedure *)

@@ -87,7 +87,6 @@ module type S =
       | Null
       | NextAt            of cell * level
       | FirstLockedAt     of mem * path * level
-    (*  | Malloc of elem * addr * tid *)
     and cell =
         VarCell           of V.t
       | Error
@@ -151,28 +150,6 @@ module type S =
     and conjunctive_formula = atom Formula.conjunctive_formula
     and disjunctive_formula = atom Formula.disjunctive_formula
     and formula = atom Formula.formula
-(*
-    and literal =
-        Atom              of atom
-      | NegAtom           of atom
-    and conjunctive_formula =
-        FalseConj
-      | TrueConj
-      | Conj              of literal list
-    and disjunctive_formula =
-      | FalseDisj
-      | TrueDisj
-      | Disj              of literal list
-    and formula =
-        Literal           of literal
-      | True
-      | False
-      | And               of formula * formula
-      | Or                of formula * formula
-      | Not               of formula
-      | Implies           of formula * formula
-      | Iff               of formula * formula
-*)
 
 
     type special_op_t =
@@ -254,10 +231,6 @@ module type S =
     val set_to_str      : set    -> string
     val setth_to_str    : setth  -> string
     val formula_to_str  : formula -> string
-
-    (* val eq_to_str      : eq     -> string *)
-    (* val diseq_to_str   : diseq  -> string *)
-
     val sort_to_str : sort -> string
     val info_to_str : var_info_t -> string
 

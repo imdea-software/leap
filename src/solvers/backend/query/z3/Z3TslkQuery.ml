@@ -373,7 +373,7 @@ module Make (K : Level.S) : TSLK_QUERY =
       let p_str  = match (Expr.V.scope v) with
                    | Expr.V.GlobalScope -> ""
                    | Expr.V.Scope proc -> proc ^ "_" in
-      let pr_str = "" in (*if (Expr.V.is_primed v) then "_prime" else "" in*)
+      let pr_str = "" in (* if (Expr.V.is_primed v) then "_prime" else "" in *)
       match Expr.V.parameter v with
       | Expr.V.Shared  -> p_str ^ id ^ th_str ^ pr_str
       | Expr.V.Local _ -> " (select " ^ p_str ^ id ^ pr_str ^ " " ^th_str^ ")"
@@ -428,7 +428,7 @@ module Make (K : Level.S) : TSLK_QUERY =
         Expr.VarElem v         -> variable_invocation_to_str v
       | Expr.CellData c        -> let c_str = cellterm_to_str c in
                                     data c_str
-      | Expr.HavocSkiplistElem -> "" (* Don't need a representation for this *)
+      | Expr.HavocSkiplistElem -> "" (* ALE: No need of a representation for this. *)
       | Expr.LowestElem        -> "lowestElem"
       | Expr.HighestElem       -> "highestElem"
 
@@ -503,7 +503,7 @@ module Make (K : Level.S) : TSLK_QUERY =
       | Expr.VarLevel v  -> variable_invocation_to_str v
       | Expr.LevelSucc l -> "(lsucc " ^(levelterm_to_str l)^ ")"
       | Expr.LevelPred l -> "(lpred " ^(levelterm_to_str l)^ ")"
-      | Expr.HavocLevel  -> "" (* Don't need representation for this statement *)
+      | Expr.HavocLevel  -> "" (* ALE: No need of a representation for this statement. *)
 
 
 
@@ -583,13 +583,10 @@ module Make (K : Level.S) : TSLK_QUERY =
           B.add_string tmpbuf (" " ^ (aa i))
         done ;
         B.add_string tmpbuf ")))\n" ;
-        (****** NOTE: In case we use integers to represent addresses ******)
-      (*
-        B.add_string tmpbuf ("(define-sort Address () Int)\n") ;
-        B.add_string tmpbuf ("(declare-const null Address)\n") ;
-        B.add_string tmpbuf ("(assert (= null 0))\n") ;
-      *)
-        (****** NOTE: In case we use integers to represent addresses ******)
+        (* ALE: In case we use integers to represent addresses
+          B.add_string tmpbuf ("(define-sort Address () Int)\n") ;
+          B.add_string tmpbuf ("(declare-const null Address)\n") ;
+          B.add_string tmpbuf ("(assert (= null 0))\n") ; *)
         GM.sm_decl_const sort_map "max_address" int_s ;
         B.add_string tmpbuf
           ( "(declare-const max_address " ^int_s^ ")\n" ^
@@ -649,7 +646,7 @@ module Make (K : Level.S) : TSLK_QUERY =
         B.add_string tmpbuf
           ( "(declare-const max_tid " ^int_s^ ")\n" ^
             "(assert (= max_tid " ^ (string_of_int num_tids) ^ "))\n");
-      (*      "(declare-datatypes () ((RangeTid " ^ tid_list ^ ")))\n") *)
+         (* "(declare-datatypes () ((RangeTid " ^ tid_list ^ ")))\n") *)
         Hashtbl.add cache_tbl (PreambleTid num_tids) tmpbuf;
         B.add_buffer buf tmpbuf
 
@@ -669,13 +666,11 @@ module Make (K : Level.S) : TSLK_QUERY =
         B.add_string tmpbuf ("(define-fun " ^e_str^ " () " ^elem_s^ " " ^i_str^ ")\n")
       done;
       B.add_string tmpbuf ("(define-fun iselem ((x " ^elem_s^ ")) " ^bool_s^ " (and (<= lowestElem x) (<= x highestElem)))\n");
-  (*
-        B.add_string tmpbuf ("(declare-datatypes () ((" ^ elem_s^ " lowestElem highestElem") ;
-        for i = 1 to num_elems do
-          B.add_string tmpbuf (" " ^ (ee i))
-        done ;
-        B.add_string tmpbuf ")))\n"
-  *)
+      (* B.add_string tmpbuf ("(declare-datatypes () ((" ^ elem_s^ " lowestElem highestElem") ;
+         for i = 1 to num_elems do
+           B.add_string tmpbuf (" " ^ (ee i))
+         done ;
+         B.add_string tmpbuf ")))\n" *)
       Hashtbl.add cache_tbl (PreambleElem num_elems) tmpbuf;
       B.add_buffer buf tmpbuf
 
@@ -685,22 +680,18 @@ module Make (K : Level.S) : TSLK_QUERY =
       B.add_string buf global_cell_preamble_str
 
 
-    (* (define-type heap    (-> address cell)) *)
     let z3_heap_preamble (buf:B.t) : unit =
       B.add_string buf global_heap_preamble_str
 
 
-    (* (define-type set     (-> address bool)) *)
     let z3_set_preamble (buf:B.t) : unit =
       B.add_string buf global_set_preamble_str
 
 
-    (* (define-type setth   (-> tid bool))     *)
     let z3_setth_preamble (buf:B.t) : unit =
       B.add_string buf global_setth_preamble_str
 
 
-    (* (define-type setelem   (-> elem bool))     *)
     let z3_setelem_preamble buf =
       B.add_string buf global_setelem_preamble_str
 
@@ -1115,13 +1106,11 @@ module Make (K : Level.S) : TSLK_QUERY =
         for i = 0 to (K.level-1) do
           let l = ll i in
           B.add_string tmpbuf ("(assert (not (less_l " ^l^ " " ^l^ ")))\n")
-  (*
           (* Symmetry *)
-          for j = i+1 to (K.level-1) do
-            let l2 = ll j in
-              B.add_string tmpbuf ("(assert (or (less_l " ^l^ " " ^l2^ ") (less_l " ^l2^ " " ^l^ ")))\n")
-          done
-  *)
+          (* for j = i+1 to (K.level-1) do
+               let l2 = ll j in
+                 B.add_string tmpbuf ("(assert (or (less_l " ^l^ " " ^l2^ ") (less_l " ^l2^ " " ^l^ ")))\n")
+             done *)
         done ;
         (* Ordering *)
         for j = 0 to (K.level-2) do
@@ -1130,8 +1119,8 @@ module Make (K : Level.S) : TSLK_QUERY =
           B.add_string tmpbuf ("(assert (less_l " ^l1^ " " ^l2^ "))\n")
         done;
 
-        (* TOFIX: Replace tmpbuffer in order to prevent segmentation fault due to
-                  tmpbuffer overflow when too many elements are required. *)
+        (* ALE: May need to replace tmpbuf in order to prevent segmentation
+                fault due to overflow when too many elements are required. *)
         (* Transitivity *)
         for i = 0 to (K.level-1) do
           for j = 0 to (K.level-1) do
@@ -1154,7 +1143,6 @@ module Make (K : Level.S) : TSLK_QUERY =
         B.add_buffer buf tmpbuf
 
 
-    (* (define error::cell) *)
     let z3_error_def (buf:B.t) : unit =
       try
         find_in_cache (DefError K.level) buf
@@ -1442,9 +1430,9 @@ module Make (K : Level.S) : TSLK_QUERY =
                             (req_ops:Expr.special_op_t list)
           : (Expr.sort list * Expr.special_op_t list) =
     let (res_req_sorts, res_req_ops) = (ref req_sorts, ref req_ops) in
-    (* If "path" is a required sort, then we need to add "set" as required sort
-       since "set" is part of the definition of sort "path" (required by "addrs"
-       field) *)
+    (* ALE: If "path" is a required sort, then we need to add "set" as required
+       sort since "set" is part of the definition of sort "path" (required by
+       "addrs" field) *)
     if (List.mem Expr.Path req_sorts) then
       res_req_sorts := Expr.Set :: !res_req_sorts ;
     if !use_quantifiers then begin
@@ -1467,11 +1455,9 @@ module Make (K : Level.S) : TSLK_QUERY =
       if (List.exists (fun s ->
             s=Expr.Addr || s=Expr.Cell || s=Expr.Path || s=Expr.Set || s=Expr.Mem
           ) req_sorts) then z3_addr_preamble buf num_addr ;
-(*
-      if (List.exists (fun s ->
-            s=Expr.Tid || s=Expr.Cell || s=Expr.SetTh
-          ) req_sorts) then z3_tid_preamble buf num_tid ;
-*)
+      (* if (List.exists (fun s ->
+           s=Expr.Tid || s=Expr.Cell || s=Expr.SetTh
+         ) req_sorts) then z3_tid_preamble buf num_tid ; *)
       z3_tid_preamble buf num_tid;
       if (List.exists (fun s ->
             s=Expr.Elem || s=Expr.Cell || s=Expr.Mem
@@ -1496,7 +1482,7 @@ module Make (K : Level.S) : TSLK_QUERY =
                           (tid_set:VarSet.t)
                           (num_tids:int)
                           (v:Expr.V.t) : unit =
-(*      verbl _LONG_INFO "**** Z3TslkQuery, defining variable: %s\n" (Expr.variable_to_str v); *)
+      (* verbl _LONG_INFO "**** Z3TslkQuery, defining variable: %s\n" (Expr.variable_to_str v); *)
       verbl _LONG_INFO "%s\n" (Expr.variable_to_full_str v);
       let s = Expr.V.sort v in
       let sort_str asort = match asort with
@@ -1516,7 +1502,7 @@ module Make (K : Level.S) : TSLK_QUERY =
       let p_id = match Expr.V.scope v with
                  | Expr.V.GlobalScope -> Expr.V.id v
                  | Expr.V.Scope proc -> proc ^ "_" ^ (Expr.V.id v) in
-      let name = p_id (*if Expr.V.is_primed v then p_id ^ "_prime" else p_id *)
+      let name = p_id (* if Expr.V.is_primed v then p_id ^ "_prime" else p_id *)
       in
         if Expr.V.is_global v then
           begin
@@ -1527,11 +1513,8 @@ module Make (K : Level.S) : TSLK_QUERY =
             | Expr.Mem  -> B.add_string buf ( "(assert (isheap " ^ name ^ "))\n" )
             | Expr.Elem -> B.add_string buf ( "(assert (iselem " ^ name ^ "))\n" )
             | Expr.Tid -> let _ = B.add_string buf ( "(assert (not (= " ^ name ^ " NoThread)))\n" ) in
-(*
-                           let _ = B.add_string buf ( "(assert (in_pos_range " ^ name ^ "))\n")
-                           in
-*)
-                             ()
+                          (* let _ = B.add_string buf ( "(assert (in_pos_range " ^ name ^ "))\n") in *)
+                            ()
             | _    -> ()
           end
         else
@@ -1560,7 +1543,7 @@ module Make (K : Level.S) : TSLK_QUERY =
                           B.add_string buf ( "(assert (not (= " ^ v_str ^ " NoThread)))\n" )
                       ) tid_set
             | _    -> ()
-            (* FIX: Add iterations for ispath and isheap on local variables *)
+            (* ALE: May need to add iterations for ispath and isheap on local variables. *)
           end
 
 
@@ -1792,7 +1775,7 @@ module Make (K : Level.S) : TSLK_QUERY =
       let str_t1 = (term_to_str t1) in
       let str_t2 = (term_to_str t2) in
       match (t1,t2) with
-(*        | (Expr.PathT _, _) -> "(eqpath " ^str_t1^ " " ^str_t2^ ")" *)
+        (* | (Expr.PathT _, _) -> "(eqpath " ^str_t1^ " " ^str_t2^ ")" *)
         | (Expr.SetElemT se, Expr.SetElemT (Expr.SetToElems(s,m)))
         | (Expr.SetElemT (Expr.SetToElems(s,m)), Expr.SetElemT se) ->
             if !use_quantifiers then
@@ -1854,7 +1837,6 @@ module Make (K : Level.S) : TSLK_QUERY =
         in
           ("(assert (or " ^ parts_str ^ "))\n")
 
-(* TUKA*)
 
     let atom_to_str (at:Expr.atom) : string =
       match at with
@@ -1873,7 +1855,7 @@ module Make (K : Level.S) : TSLK_QUERY =
         | Expr.GreaterEq (l1,l2)     -> greatereqlevel_to_str l1 l2
         | Expr.LessElem(e1,e2)       -> lesselem_to_str e1 e2
         | Expr.GreaterElem(e1,e2)    -> greaterelem_to_str e1 e2
-        (* Do not need LevelHavoc, as all possible values are in the
+        (* ALE: We do not need LevelHavoc, as all possible values are in the
            domain of Level. ie, ll_0 to ll_(K-1) *)
         | Expr.Eq(_,Expr.LevelT (Expr.HavocLevel)) -> ""
         | Expr.Eq(x,y)               -> eq_to_str x y

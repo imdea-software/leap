@@ -35,6 +35,6 @@ let _ =
     let cfg = SMTExecute.new_configuration SMTExecute.Z3 in
     SMTExecute.compute_model cfg true;
     let result = SMTExecute.run cfg (LeapFile.read !filename) in
-(*    let model = SMTExecute.get_model() in *)
+    (* let model = SMTExecute.get_model() in *)
     print_endline ("ANSWER: " ^ (if Sat.is_sat result then "SAT" else "UNSAT"))
   end

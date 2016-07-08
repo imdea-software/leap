@@ -136,7 +136,6 @@ and addr =
   | Next of cell
   | FirstLocked of mem * path
   | LastLocked of mem * path
-(*  | Malloc of elem * addr * tid *)
   | BucketInit of bucket
   | BucketEnd of bucket
 and cell =
@@ -256,7 +255,7 @@ let is_primed_tid (th:tid) : bool =
   | BucketTid _       -> false
   | TidArrRd _        -> false
   | LockId _          -> false
-  (* FIX: Propagate the query inside cell??? *)
+  (* ALE: Check if we may need to propagate the query inside cell *)
 
 
 (*******************************)
@@ -375,7 +374,6 @@ and get_varset_addr a =
     | Next c           -> get_varset_cell c
     | FirstLocked(m,p) -> (get_varset_mem m) @@ (get_varset_path p)
     | LastLocked(m,p)  -> (get_varset_mem m) @@ (get_varset_path p)
-(*    | Malloc(e,a,th)   -> (get_varset_elem e) @@ (get_varset_addr a) @@  (get_varset_tid th) *)
     | BucketInit b     -> (get_varset_bucket b)
     | BucketEnd b      -> (get_varset_bucket b)
 and get_varset_cell c = match c with
@@ -674,7 +672,7 @@ let terms_same_type a b =
   (get_sort_from_term a) = (get_sort_from_term b)
 
 
-(* TODO: propagate equalities of vars x = y *)
+(* ALE: propagate equalities of vars x = y *)
 let rec is_term_flat t =
   match t with
       VarT(_)         -> true
@@ -745,7 +743,6 @@ and is_addr_flat t =
     | LastLocked(m,p)  -> (is_mem_flat m) && (is_path_flat p)
     | BucketInit b     -> (is_bucket_flat b)
     | BucketEnd b      -> (is_bucket_flat b)
-(*    | Malloc(m,a,k)    -> (is_mem_flat m) && (is_addr_flat a) && (is_thread_flat k) *)
 and is_cell_flat t =
   match t with
       VarCell _  -> true
@@ -1042,7 +1039,6 @@ and addr_to_str expr =
                                 (mem_to_str mem) (path_to_str path)
     | LastLocked(mem,path)  -> Printf.sprintf "lastlocked(%s,%s)"
                                 (mem_to_str mem) (path_to_str path)
-(*    | Malloc(e,a,t)     -> Printf.sprintf "malloc(%s,%s,%s)" (elem_to_str e) (addr_to_str a) (tid_to_str t) *)
     | BucketInit(b)         -> Printf.sprintf "%s.binit" (bucket_to_str b)
     | BucketEnd(b)          -> Printf.sprintf "%s.bend" (bucket_to_str b)
 and tid_to_str th =
@@ -2287,14 +2283,6 @@ let rec norm_literal (info:THMNorm.t) (l:literal) : formula =
           InEq (TidT (VarTh a),
                 TidT (TidArrRd(norm_tidarr tt, norm_int_var i)))
     (* Equality between address and binit *)
-    (*
-    | Eq (AddrT a, AddrT(BucketInit b))
-    | Eq (AddrT(BucketInit b), AddrT a) ->
-        let e = VarAddr (THMNorm.gen_fresh_var info Addr) in
-        let s = VarSet (THMNorm.gen_fresh_var info Set) in
-        let t = VarTh (THMNorm.gen_fresh_var info Tid) in
-          Eq(BucketT(norm_bucket_var b), BucketT(MkBucket(norm_addr_var a,e,s,t)))
-    *)
     | Eq (AddrT a, AddrT(BucketInit b))
     | Eq (AddrT(BucketInit b), AddrT a) ->
         let a' = VarAddr (THMNorm.gen_fresh_var info Addr) in
@@ -2315,14 +2303,6 @@ let rec norm_literal (info:THMNorm.t) (l:literal) : formula =
         THMNorm.add_term_map info (BucketT(MkBucket(a',e,s,t))) b';
           InEq(AddrT(norm_addr_var a), AddrT a')
     (* Equality between address and bend *)
-    (*
-    | Eq (AddrT e, AddrT(BucketEnd b))
-    | Eq (AddrT(BucketEnd b), AddrT e) ->
-        let a = VarAddr (THMNorm.gen_fresh_var info Addr) in
-        let s = VarSet (THMNorm.gen_fresh_var info Set) in
-        let t = VarTh (THMNorm.gen_fresh_var info Tid) in
-          Eq(BucketT(norm_bucket_var b), BucketT(MkBucket(a,norm_addr e,s,t)))
-    *)
     | Eq (AddrT e, AddrT(BucketEnd b))
     | Eq (AddrT(BucketEnd b), AddrT e) ->
         let a = VarAddr (THMNorm.gen_fresh_var info Addr) in
@@ -2343,14 +2323,6 @@ let rec norm_literal (info:THMNorm.t) (l:literal) : formula =
         THMNorm.add_term_map info (BucketT(MkBucket(a,e',s,t))) b';
           InEq(AddrT(norm_addr_var e), AddrT e')
     (* Equality between set and breg *)
-    (*
-    | Eq (SetT s, SetT(BucketRegion b))
-    | Eq (SetT(BucketRegion b), SetT s) ->
-        let a = VarAddr (THMNorm.gen_fresh_var info Addr) in
-        let e = VarAddr (THMNorm.gen_fresh_var info Addr) in
-        let t = VarTh (THMNorm.gen_fresh_var info Tid) in
-          Eq(BucketT(norm_bucket_var b), BucketT(MkBucket(a,e,norm_set_var s,t)))
-    *)
     | Eq (SetT s, SetT(BucketRegion b))
     | Eq (SetT(BucketRegion b), SetT s) ->
         let a = VarAddr (THMNorm.gen_fresh_var info Addr) in
@@ -2371,14 +2343,6 @@ let rec norm_literal (info:THMNorm.t) (l:literal) : formula =
         THMNorm.add_term_map info (BucketT(MkBucket(a,e,s',t))) b';
           InEq(SetT(norm_set_var s), SetT s')
     (* Equality between thread identifier and btid *)
-    (*
-    | Eq (TidT t, TidT(BucketTid b))
-    | Eq (TidT(BucketTid b), TidT t) ->
-        let a = VarAddr (THMNorm.gen_fresh_var info Addr) in
-        let e = VarAddr (THMNorm.gen_fresh_var info Addr) in
-        let s = VarSet (THMNorm.gen_fresh_var info Set) in
-          Eq(BucketT(norm_bucket_var b), BucketT(MkBucket(a,e,s,norm_tid_var t)))
-    *)
     | Eq (TidT t, TidT(BucketTid b))
     | Eq (TidT(BucketTid b), TidT t) ->
         let a = VarAddr (THMNorm.gen_fresh_var info Addr) in
@@ -2450,10 +2414,8 @@ let normalize (phi:formula) : formula =
     let norm_info = THMNorm.new_norm phi in
     (* Process the original formula *)
     let phi' = norm_formula norm_info (F.nnf phi) in
-(*
-    print_endline ("NORMALIZED FORMULA: " ^ (formula_to_str phi'));
-    print_endline (THMNorm.to_str norm_info term_to_str V.to_str);
-*)
+    (* print_endline ("NORMALIZED FORMULA: " ^ (formula_to_str phi'));
+       print_endline (THMNorm.to_str norm_info term_to_str V.to_str); *)
     (* Normalize all remaining literals stored in the normalization table *)
     verbl _LONG_INFO "WILL NORMALIZE REMAINING ELEMENTS\n";
     let lit_list = ref [] in

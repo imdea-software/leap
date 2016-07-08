@@ -1118,10 +1118,6 @@ and tid_to_expr_th (t:tid) : E.tid =
   | CellLockId c       -> E.CellLockId (cell_to_expr_cell c)
   | CellLockIdAt (c,l) -> E.TidArrRd (E.CellTids (cell_to_expr_cell c),
                                        integer_to_expr_integer l)
-(*
-  | CellLockIdAt (c,l) -> E.CellLockIdAt (cell_to_expr_cell c,
-                                          integer_to_expr_integer l)
-*)
   | TidArrayRd _       -> raise(Not_supported_conversion(tid_to_str true t))
   | TidArrRd _         -> raise(Not_supported_conversion(tid_to_str true t))
   | PointerLockid _    -> raise(Not_supported_conversion(tid_to_str true t))
@@ -1153,10 +1149,6 @@ and addr_to_expr_addr (a:addr) : E.addr =
                                      integer_to_expr_integer l)
   | ArrAt (c,l)         -> E.AddrArrRd (E.CellArr (cell_to_expr_cell c),
                                         integer_to_expr_integer l)
-(*
-  | ArrAt (c,l)        -> E.ArrAt (cell_to_expr_cell c,
-                                     integer_to_expr_integer l)
-*)
   | FirstLocked (m,p)   -> E.FirstLocked (mem_to_expr_mem m,
                                           path_to_expr_path p)
   | LastLocked (m,p)    -> E.LastLocked (mem_to_expr_mem m,
@@ -1173,10 +1165,6 @@ and addr_to_expr_addr (a:addr) : E.addr =
                                     integer_to_expr_integer l)
   | PointerArrAt (a,l)  -> E.AddrArrRd (E.CellArr(E.CellAt(E.heap,addr_to_expr_addr a)),
                                         integer_to_expr_integer l)
-(*
-  | PointerArrAt (a,l) -> E.ArrAt(E.CellAt(E.heap,addr_to_expr_addr a),
-                                             integer_to_expr_integer l)
-*)
   | BucketInit b        -> E.BucketInit(bucket_to_expr_bucket b)
   | BucketEnd b         -> E.BucketEnd(bucket_to_expr_bucket b)
 
@@ -1200,7 +1188,7 @@ and cell_to_expr_cell (c:cell) : E.cell =
                                         addrarray_to_expr_array aa,
                                         tidarray_to_expr_array ta,
                                         integer_to_expr_integer l)
-  (* TOFIX: This should not be here nor have a NoTid as an option *)
+  (* ALE: Check whether this case should be here or have a NoTid as an option. *)
   | CellLock c           -> E.CellLock (cell_to_expr_cell c, E.NoTid)
   | CellLockAt (c,l)     -> E.CellLockAt (cell_to_expr_cell c,
                                           integer_to_expr_integer l,
@@ -2092,8 +2080,7 @@ let rec enabling_condition_aux (is_ghost:bool)
       in
         [cond @ pos info @ ghost g]
   | StAtomic  (_, g,info) -> [pos info @ ghost g]
-                                (* FIX: Complete the implementation of the
-                                        case above *)
+  (* ALE: Complete the implementation of the case above. *)
   | StSeq _                  -> [[F.True]]
   | StCall (_,_,_,g,info)    -> [pos info @ ghost g]
   | StReturn (_,g,info)      -> [pos info @ ghost g]
@@ -2119,7 +2106,6 @@ let level_used_in_unit_op (op:unit_operation) : E.integer =
   | UnitUnlock _       -> E.IntVal 0
   | UnitLockAt (_,l)   -> integer_to_expr_integer l
   | UnitUnlockAt (_,l) -> integer_to_expr_integer l
-
 
 
 let get_unit_op (op:unit_operation) : unit_op =

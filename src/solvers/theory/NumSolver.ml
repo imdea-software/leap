@@ -166,21 +166,6 @@ struct
   
   
   (* Standard widening *)
-  (*  
-  let standard_widening (x : NumExp.formula) (y : NumExp.formula) 
-    : NumExp.formula =
-    let x_conj = NumExp.formula_to_conj_literals x in
-    let vars_set = NumExp.V.VarSet.elements
-      (NumExp.V.VarSet.union (NumExp.all_vars_set x) (NumExp.all_vars_set y)) in
-    let var_str = Solver.int_varlist vars_set in
-    let y_str    = Solver.formula y in
-    let is_preserved c = let c_str = Solver.literal c in
-      let query = Printf.sprintf "%s\n(assert+ (not (=> %s %s)))\n(check)\n" 
-            var_str y_str c_str in
-        Solver.unsat query
-    in
-      NumExp.list_literals_to_formula (List.filter is_preserved x_conj)
-    *)
   let standard_widening 
         (x : NumExp.formula) (y : NumExp.formula) : NumExp.formula =
     let x_conj = Formula.to_conj_literals x in

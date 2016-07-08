@@ -88,7 +88,6 @@ module type S =
       | Null
       | NextAt            of cell * level
       | FirstLockedAt     of mem * path * level
-    (*  | Malloc of elem * addr * tid *)
     and cell =
         VarCell           of V.t
       | Error
@@ -234,9 +233,6 @@ module type S =
     val setth_to_str    : setth  -> string
     val formula_to_str  : formula -> string
 
-    (* val eq_to_str      : eq     -> string *)
-    (* val diseq_to_str   : diseq  -> string *)
-
     val sort_to_str : sort -> string
     val info_to_str : var_info_t -> string
 
@@ -315,7 +311,7 @@ module Make (K : Level.S) : S =
     type var_info_t =
       {
         mutable smp_interesting : bool;
-        (* CHANGES: Remove the fresh field from here *)
+        (* ALE: May need to remove the fresh field from here. *)
         mutable fresh : bool;
         treat_as_pc : bool;
       }
@@ -366,7 +362,6 @@ module Make (K : Level.S) : S =
       | Null
       | NextAt            of cell * level
       | FirstLockedAt     of mem * path * level
-    (*  | Malloc of elem * addr * tid *)
     and cell =
         VarCell           of V.t
       | Error
@@ -482,7 +477,7 @@ module Make (K : Level.S) : S =
       | VarTh v          -> V.is_primed v
       | NoTid            -> false
       | CellLockIdAt _   -> false
-      (* FIX: Propagate the query inside cell??? *)
+      (* ALE: Check if we need to propagate the query inside cells *)
 
 
     (*******************************)
@@ -639,7 +634,6 @@ module Make (K : Level.S) : S =
         | NextAt (c,l)         -> (get_varset_cell c) @@ (get_varset_level l)
         | FirstLockedAt(m,p,l) -> (get_varset_mem m) @@ (get_varset_path p) @@
                                   (get_varset_level l)
-    (*    | Malloc(e,a,th)   -> (get_varset_elem e) @@ (get_varset_addr a) @@  (get_varset_tid th) *)
     and get_varset_cell c =
       let fold f xs = List.fold_left (fun set x -> (f x) @@ set) V.VarSet.empty xs in
       match c with
@@ -772,8 +766,8 @@ module Make (K : Level.S) : S =
       varlist_of_sort (get_varlist_from_conj phi) s
 
 
-    (* TOFIX: terms may be considered different if they differ just in the
-              variable information stored in the var_info_t *)
+    (* ALE: terms may be considered different if they differ just in the
+            variable information stored in the var_info_t. *)
     let get_termset_atom (a:atom) : TermSet.t =
       let add_list = List.fold_left (fun s e -> TermSet.add e s) TermSet.empty in
       match a with
@@ -912,7 +906,7 @@ module Make (K : Level.S) : S =
     let is_eq_normalized a b =
       (terms_same_type a b) && (is_term_var a || is_term_var b)
 
-    (* TODO: propagate equalities of vars x = y *)
+    (* ALE: propagate equalities of vars x = y *)
     let rec is_term_flat t =
       match t with
           VarT(_)        -> true
@@ -957,7 +951,6 @@ module Make (K : Level.S) : S =
         | Null                 -> true
         | NextAt(c,l)          -> (is_cell_flat c) && (is_level_flat l)
         | FirstLockedAt(m,p,l) -> (is_mem_flat m) && (is_path_flat p) && (is_level_flat l)
-    (*    | Malloc(m,a,k)    -> (is_mem_flat m) && (is_addr_flat a) && (is_thread_flat k) *)
     and is_cell_flat t =
       match t with
           VarCell _           -> true
@@ -1210,7 +1203,6 @@ module Make (K : Level.S) : S =
                                          (mem_to_str mem)
                                          (path_to_str path)
                                          (level_to_str l)
-    (*    | Malloc(e,a,t)     -> Printf.sprintf "malloc(%s,%s,%s)" (elem_to_str e) (addr_to_str a) (tid_to_str t) *)
     and tid_to_str th =
       match th with
           VarTh(v)             -> V.to_str v
@@ -1781,7 +1773,8 @@ module Make (K : Level.S) : S =
 
 
 
-    (* NOTE: I am not considering the possibility of having a1=a2 \/ a1=a3 in the formula *)
+    (* ALE: I am not considering the possibility of having a1=a2 \/ a1=a3 in
+       the formula. *)
     let rec get_addrs_eqs (phi:formula) : ((addr*addr) list * (addr*addr) list) =
       match phi with
       | F.Literal l   -> get_addrs_eqs_lit l

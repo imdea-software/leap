@@ -62,7 +62,7 @@ struct
 
 
   let check_valid (lines : int) (expr : PosExp.expression) : Valid.t =
-(*    LOG "Entering check_valid..." LEVEL TRACE; *)
+    (* LOG "Entering check_valid..." LEVEL TRACE; *)
     Response.sat_to_valid (check_sat lines (PosExpression.Not(expr)))
 end
 

@@ -213,8 +213,8 @@ let is_primed_tid (th:tid) : bool =
   | VarTh v           -> V.is_primed v
   | NoTid             -> false
   | CellLockIdAt _    -> false
-  | TidArrRd _       -> false
-  (* FIX: Propagate the query inside cell??? *)
+  | TidArrRd _        -> false
+  (* ALE: Check if we may need to propagate the query inside cells. *)
 
 
 
@@ -734,7 +734,7 @@ let is_constant_term (t:term) : bool =
   | VarUpdate _    -> false
 
 
-(* TODO: propagate equalities of vars x = y *)
+(* ALE: propagate equalities of vars x = y *)
 let rec is_term_flat t =
   match t with
       VarT(_)        -> true
@@ -880,7 +880,6 @@ let is_atom_flat (a:atom) : bool =
 (* PRETTY PRINTERS *)
 (* WIHOUT FOLD     *)
 (*******************)
-
 
 let rec atom_to_str a =
   match a with
@@ -1847,7 +1846,6 @@ let rec norm_literal (info:TSLNorm.t) (l:literal) : formula =
     | CellLockIdAt (c,i) -> CellLockIdAt (norm_cell c, norm_int i)
     | TidArrRd _ -> let t_var = gen_if_not_var (TidT t) Tid in
                       VarTh t_var
-(*                          TidArrRd (norm_tidarr tt, VarInt i_var) *)
 
   and norm_elem (e:elem) : elem =
     match e with
@@ -2038,13 +2036,11 @@ let rec norm_literal (info:TSLNorm.t) (l:literal) : formula =
     | BoolVar v -> BoolVar v
     | PC (i,topt,pr) -> let norm_topt = match topt with
                                         | V.Shared -> V.Shared
-(*                                        | V.Local t -> V.Local (norm_tid t) in *)
                                         | V.Local t -> V.Local t in
                         PC (i, norm_topt, pr)
     | PCUpdate (i,t) -> PCUpdate (i, norm_tid t)
     | PCRange (i,j,topt,pr) -> let norm_topt = match topt with
                                               | V.Shared -> V.Shared
-(*                                              | V.Local t -> V.Local (norm_tid t) in*)
                                               | V.Local t -> V.Local t in
                                PCRange (i, j, norm_topt, pr)
 
@@ -2075,18 +2071,12 @@ let rec norm_literal (info:TSLNorm.t) (l:literal) : formula =
       let phi_unordered = norm_literal info (F.NegAtom(OrderList
                             (VarMem m_var,VarAddr a1_var,VarAddr null))) in
       let phi_diff = norm_literal info (F.Atom(InEq(SetT (VarSet s_var), SetT r))) in
-(*      let phi_a_in_s = norm_literal info (Atom(In(a,VarSet s_var))) in *)
       let phi_not_elems = norm_literal info (F.Atom(InEq(SetElemT (VarSetElem es_var),
                                                          SetElemT(SetToElems(VarSet s_var,VarMem m_var))))) in
       let phi_not_subset = norm_literal info (F.NegAtom(SubsetEq(u,r))) in
         F.disj_list
           [phi_unordered;
            phi_not_elems;
-(*
-           F.conj_list [eq_path p (GetPath(VarMem m_var,VarAddr a1_var,VarAddr null,VarInt zero));
-                        eq_set r (PathToSet(p));
-                        phi_diff];
-*)
            F.conj_list [eq_set r (AddrToSet(VarMem m_var, VarAddr a1_var, VarInt zero));
                         phi_diff];
            F.Literal(F.Atom(Less(VarInt i_var, VarInt zero)));
@@ -2149,16 +2139,13 @@ let normalize (phi:formula) : formula =
     (* Normalize all remaining literals stored in the normalization table *)
     verbl _LONG_INFO "WILL NORMALIZE REMAINING ELEMENTS";
     let lit_list = ref [] in
-(*    while (Hashtbl.length norm_info.term_map > 0) do *)
     while (TSLNorm.term_map_size norm_info > 0) do
       TSLNorm.iter_term_map (fun t v ->
-(*      Hashtbl.iter (fun t v ->*)
         begin
           match t with
           | IntT (CellMax _) -> ()
           | _ -> begin
                    TSLNorm.add_proc_term_map norm_info t v;
-                   (*Hashtbl.add norm_info.processed_term_map t v; *)
                    verbl _LONG_INFO "PROCESSING: %s ----> %s\n" (term_to_str t) (V.to_str v);
                    let l = F.Atom (Eq (make_compatible_term_from_var t v, t)) in
                    let new_l = norm_literal norm_info l in
@@ -2173,7 +2160,6 @@ let normalize (phi:formula) : formula =
                  end
         end;
         TSLNorm.remove_term_map norm_info t
-        (*Hashtbl.remove norm_info.term_map t*)
       ) norm_info;
     done;
     if !lit_list = [] then
@@ -2242,7 +2228,7 @@ and replace_terms_addrarr (tbl:(term,term) Hashtbl.t) (arr:addrarr) : addrarr =
   with _ -> begin
     match arr with
       VarAddrArray v       -> VarAddrArray (replace_terms_in_vars tbl v)
-        (*TODO: Fix open array case for array variables *)
+        (* ALE: May need to change the open array case for array variables. *)
     | AddrArrayUp(arr,i,a) -> AddrArrayUp(replace_terms_addrarr tbl arr,
                                           replace_terms_int tbl i,
                                           replace_terms_addr tbl a)
@@ -2256,7 +2242,7 @@ and replace_terms_tidarr (tbl:(term,term) Hashtbl.t) (arr:tidarr) : tidarr =
   with _ -> begin
     match arr with
       VarTidArray v       -> VarTidArray (replace_terms_in_vars tbl v)
-        (*TODO: Fix open array case for array variables *)
+        (* ALE: May need to change the open array case for array variables. *)
     | TidArrayUp(arr,i,t) -> TidArrayUp(replace_terms_tidarr tbl arr,
                                         replace_terms_int tbl i,
                                         replace_terms_tid tbl t)

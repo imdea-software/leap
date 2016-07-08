@@ -75,12 +75,6 @@ struct
   let check_sat (query:t) : Sat.t =
     SMTExecute.run config query
 
-(*
-  (** [unsat formula] returns [not(sat formula)]. *)
-  let unsat (query:t) : Sat.t =
-    Sat.alternate (sat query)
-*)
-
   
   module Translate = 
   struct

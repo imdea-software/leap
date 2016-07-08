@@ -35,12 +35,6 @@ type implication = {
   conseq : Expression.formula ;
 }
 
-(*
-type support_split_tactic = SplitGoal
-type support_tactic = Full | Reduce | Reduce2
-type formula_tactic = SimplifyPC | PropositionalPropagate | FilterStrict
-type formula_split_tactic = SplitConsequent
-*)
 type support_option_t =
   | DefaultSupport 
   | FilterSupport

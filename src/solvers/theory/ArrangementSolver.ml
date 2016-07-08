@@ -164,7 +164,7 @@ module Make (AS : ArrangementSolverSpec.S) =
                       ) int_vars "");
               E.V.VarSet.iter (fun v -> Arr.add_elem arr (E.VarInt v)) int_vars;
               List.iter (fun l ->
-      (*                                print_endline ("LITERAL TO ANALYZE: " ^ (E.literal_to_str l)); *)
+              (* print_endline ("LITERAL TO ANALYZE: " ^ (E.literal_to_str l)); *)
                 match l with
                 | F.Atom(E.Less(i1,i2)) -> Arr.add_less arr i1 i2
                 | F.Atom(E.Greater(i1,i2)) -> Arr.add_greater arr i1 i2
@@ -211,7 +211,11 @@ module Make (AS : ArrangementSolverSpec.S) =
                 | F.Atom(E.Eq(E.IntT(E.VarInt v),E.IntT(E.IntVal 0)))
                 | F.Atom(E.Eq(E.IntT(E.IntVal 0),E.IntT(E.VarInt v))) ->
                     Arr.set_minimum arr (E.VarInt v)
-                | F.Atom(E.Eq(E.IntT i1,E.IntT i2)) -> ((*print_endline "THIS MATCH";*) Arr.add_eq arr i1 i2(*; print_endline ("NOW THE ARR CONTAINS: " ^ (Arr.to_str arr E.integer_to_str))*))
+                | F.Atom(E.Eq(E.IntT i1,E.IntT i2)) -> (
+                    (* print_endline "THIS MATCH"; *)
+                    Arr.add_eq arr i1 i2
+                    (*; print_endline ("NOW THE ARR CONTAINS: " ^ (Arr.to_str arr E.integer_to_str)) *)
+                  )
                 | F.Atom(E.InEq(E.IntT i1,E.IntT i2)) -> Arr.add_ineq arr i1 i2
                 | F.NegAtom(E.Less(i1,i2)) -> Arr.add_greatereq arr i1 i2
                 | F.NegAtom(E.Greater(i1,i2)) -> Arr.add_lesseq arr i1 i2
@@ -258,9 +262,7 @@ module Make (AS : ArrangementSolverSpec.S) =
                           Hashtbl.find arr_table arr
                         with
                           _ -> begin
-                            (*
-                                 print_endline ("ARRGS: " ^ (Arr.to_str arr E.integer_to_str));
-                                 *)
+                                 (* print_endline ("ARRGS: " ^ (Arr.to_str arr E.integer_to_str)); *)
                                  let a = Arr.gen_arrs arr in
                                  Hashtbl.add arr_table arr a;
                                  a
@@ -358,7 +360,7 @@ module Make (AS : ArrangementSolverSpec.S) =
                          (nc:E.conjunctive_formula)
           : (E.conjunctive_formula * (* Updated panc         *)
              E.conjunctive_formula * (* Updated nc           *)
-             alpha_pair_t list) =     (* Updated alpha_pairs    *)
+             alpha_pair_t list) =    (* Updated alpha_pairs  *)
       (* A couple of auxiliary functions *)
       (* Given an integer and a alpha_pair_t list, returns the alpha_pair_t list
          section from the eqclass where i was found in decreasing order *)
@@ -455,10 +457,10 @@ module Make (AS : ArrangementSolverSpec.S) =
     let dnf_sat (opt:SolOpt.t) (cf:E.conjunctive_formula) : Sat.t =
       Log.print_ocaml "entering TSLSolver dnf_sat";
       Log.print "TSLSolver dnf_sat conjunctive formula" (E.conjunctive_formula_to_str cf);
-(*      print_endline ("TSLSolver dnf_sat conjunctive formula" ^ (E.conjunctive_formula_to_str cf)); *)
+      (* print_endline ("TSLSolver dnf_sat conjunctive formula" ^ (E.conjunctive_formula_to_str cf)); *)
       let arrg_sat_table : (E.integer list list, Sat.t) Hashtbl.t = Hashtbl.create 8 in
       let check_pa (cf:E.conjunctive_formula) : Sat.t =
-    (*    print_endline ("PA: " ^ (E.conjunctive_formula_to_str cf)); *)
+      (* print_endline ("PA: " ^ (E.conjunctive_formula_to_str cf)); *)
         try
           Hashtbl.find alpha_sat_table cf
         with Not_found ->
@@ -489,7 +491,7 @@ module Make (AS : ArrangementSolverSpec.S) =
                 (nc:E.conjunctive_formula)
                 (alpha:E.integer list list) : Sat.t =
 
-(*        print_endline ("NC: " ^ (E.conjunctive_formula_to_str nc)); *)
+        (* print_endline ("NC: " ^ (E.conjunctive_formula_to_str nc)); *)
 
         Log.print_ocaml "entering TSLSolver check";
         Log.print "PA formula" (E.conjunctive_formula_to_str pa);
@@ -499,37 +501,25 @@ module Make (AS : ArrangementSolverSpec.S) =
 
         Pervasives.flush (Pervasives.stdout);
         let alpha_phi = alpha_to_conjunctive_formula alpha in
-        (*
-        print_endline ("== PA   : " ^ (E.conjunctive_formula_to_str pa));
-        print_endline ("== PANC : " ^ (E.conjunctive_formula_to_str panc));
-        print_endline ("== ALPHA: " ^ (E.conjunctive_formula_to_str alpha_phi));
-        *)
+        (* print_endline ("== PA   : " ^ (E.conjunctive_formula_to_str pa));
+           print_endline ("== PANC : " ^ (E.conjunctive_formula_to_str panc));
+           print_endline ("== ALPHA: " ^ (E.conjunctive_formula_to_str alpha_phi)); *)
         let pa_sat = check_pa (F.combine_conjunctive (F.combine_conjunctive pa panc) alpha_phi) in
-        (* TODO: Some arrangements are invalid, as I am not considering literals of the
-                 form "l2 = l1 + 1" to enforce that l2 should be in the immediately consecutive
-                 equivalence class of l1
-        assert pa_sat;
-        *)
+        (* ALE: TODO: Some arrangements are invalid, as I am not considering
+                literals of the form "l2 = l1 + 1" to enforce that l2 should
+                be in the immediately consecutive equivalence class of l1
+            assert pa_sat; *)
         if Sat.is_sat pa_sat then begin
           (* We have an arrangement candidate *)
           pumping nc;
-
-(*          print_endline ("NC FORMULA: " ^ (E.conjunctive_formula_to_str nc)); *)
-
+          (* print_endline ("NC FORMULA: " ^ (E.conjunctive_formula_to_str nc)); *)
           let rel_set = relevant_levels nc in
           Log.print "Relevant levels" (GenSet.to_str E.integer_to_str rel_set);
-
-(*          print_endline ("REL_SET: " ^ (GenSet.to_str E.integer_to_str rel_set)); *)
-         
-
-(*
-          print_endline ("ALPHA ARRANGEMENT: " ^ (String.concat ";" (List.map (fun xs -> "[" ^ (String.concat ";" (List.map E.integer_to_str xs)) ^ "]") alpha)));
-          print_endline ("RELEVANT SET: " ^ (GenSet.to_str E.integer_to_str rel_set));
-*)
-
+          (* print_endline ("REL_SET: " ^ (GenSet.to_str E.integer_to_str rel_set)); *)
+          (* print_endline ("ALPHA ARRANGEMENT: " ^ (String.concat ";" (List.map (fun xs -> "[" ^ (String.concat ";" (List.map E.integer_to_str xs)) ^ "]") alpha)));
+             print_endline ("RELEVANT SET: " ^ (GenSet.to_str E.integer_to_str rel_set)); *)
           let alpha_pairs = update_arrangement alpha rel_set in
           let (panc_r, nc_r, alpha_pairs_r) = propagate_levels alpha_pairs panc nc in
-
 
           let alpha_pairs_str =
             String.concat ";" (List.map (fun (xs,mi) ->
@@ -537,19 +527,13 @@ module Make (AS : ArrangementSolverSpec.S) =
                                                                      | Some i -> E.integer_to_str i
                                                                      | None -> "None")
             ) alpha_pairs_r) in
-
-(*          print_endline ("ALPHA_PAIRS: " ^ alpha_pairs_str); *)
-
+          (* print_endline ("ALPHA_PAIRS: " ^ alpha_pairs_str); *)
           Log.print "ALPHA_PAIRS_R" alpha_pairs_str;
           Log.print "PANC_R" (E.conjunctive_formula_to_str panc_r);
           Log.print "NC_R" (E.conjunctive_formula_to_str nc_r);
-
-(*
-          print_endline ("ALPHA_PAIRS_R: " ^ alpha_pairs_str);
-          print_endline ("PANC_R: " ^ (E.conjunctive_formula_to_str panc_r));
-          print_endline ("NC_R: " ^ (E.conjunctive_formula_to_str nc_r));
-*)
-
+          (* print_endline ("ALPHA_PAIRS_R: " ^ alpha_pairs_str);
+             print_endline ("PANC_R: " ^ (E.conjunctive_formula_to_str panc_r));
+             print_endline ("NC_R: " ^ (E.conjunctive_formula_to_str nc_r)); *)
           let alpha_r = List.rev (List.fold_left (fun xs (_,r) ->
                                     match r with
                                     | None -> xs
@@ -559,12 +543,10 @@ module Make (AS : ArrangementSolverSpec.S) =
           if !Debug._debug_force_assertions_ then begin
             (* Assertions only *)
             let alpha_relev = GenSet.empty () in
-  (*
-            print_endline ("GOING TO PROCESS");
-            print_endline ("ALPHA_R SIZE: " ^ (string_of_int (List.length alpha_r)));
-  *)
+            (* print_endline ("GOING TO PROCESS");
+               print_endline ("ALPHA_R SIZE: " ^ (string_of_int (List.length alpha_r))); *)
             List.iter (fun eqclass ->
-  (*            print_endline ("CLASS ######################"); *)
+              (* print_endline ("CLASS ######################"); *)
               List.iter (fun e -> GenSet.add alpha_relev e) eqclass
             ) alpha_r;
 
@@ -597,25 +579,18 @@ module Make (AS : ArrangementSolverSpec.S) =
               print_endline ("PANC: " ^ (E.conjunctive_formula_to_str panc));
               print_endline ("NC: " ^ (E.conjunctive_formula_to_str nc))
             end;
-  (*
-            E.V.VarSet.iter (fun v -> print_endline ("NC_R_LEVEL: " ^ E.V.to_str v)) nc_r_level_vars;
-            GenSet.iter (fun i -> print_endline ("ALPHA_RELEV: " ^ E.integer_to_str i)) alpha_relev;
-  *)
-  (*          assert (E.V.VarSet.for_all (fun v -> GenSet.mem alpha_relev
-   *          (E.VarInt v)) nc_r_level_vars);*)
-
-
-
+            (* E.V.VarSet.iter (fun v -> print_endline ("NC_R_LEVEL: " ^ E.V.to_str v)) nc_r_level_vars;
+               GenSet.iter (fun i -> print_endline ("ALPHA_RELEV: " ^ E.integer_to_str i)) alpha_relev;
+               assert (E.V.VarSet.for_all (fun v -> GenSet.mem alpha_relev
+               (E.VarInt v)) nc_r_level_vars); *)
             (* Assertions only *)
-  (*
-            print_endline "ALPHA_R";
-            List.iter (fun xs -> print_endline (String.concat "," (List.map E.integer_to_str xs))) alpha_r;
-            *)
+            (* print_endline "ALPHA_R";
+               List.iter (fun xs -> print_endline (String.concat "," (List.map E.integer_to_str xs))) alpha_r; *)
           end;
 
           try
             let res = Hashtbl.find arrg_sat_table alpha_r in
-    (*        print_endline ("RA: " ^ (E.conjunctive_formula_to_str (alpha_to_conjunctive_formula alpha_r))); *)
+            (* print_endline ("RA: " ^ (E.conjunctive_formula_to_str (alpha_to_conjunctive_formula alpha_r))); *)
             if (LeapVerbose.is_verbose_level_enabled(LeapVerbose._SHORT_INFO)) then
               print_string (if Sat.is_sat res then "$" else "#");
             res
@@ -636,19 +611,13 @@ module Make (AS : ArrangementSolverSpec.S) =
 
 
       (* Main body *)
-(*
-      print_endline ("CF:\n" ^ (E.conjunctive_formula_to_str cf));
-*)
+      (* print_endline ("CF:\n" ^ (E.conjunctive_formula_to_str cf)); *)
       let (pa,panc,nc) = split_into_pa_nc cf in
-(*
-      print_endline ("PA:\n" ^ (E.conjunctive_formula_to_str pa));
-      print_endline ("PANC:\n" ^ (E.conjunctive_formula_to_str panc));
-      print_endline ("NC:\n" ^ (E.conjunctive_formula_to_str nc));
-*)
+      (* print_endline ("PA:\n" ^ (E.conjunctive_formula_to_str pa));
+         print_endline ("PANC:\n" ^ (E.conjunctive_formula_to_str panc));
+         print_endline ("NC:\n" ^ (E.conjunctive_formula_to_str nc)); *)
+
       (* If pa or nc are UNSAT, then there is no need of guessing arrangements *)
-
-
-
       (* We clear the table of previously guessed arrangements *)
       Hashtbl.clear arr_table;
       (* Generate arrangements *)

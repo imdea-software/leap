@@ -104,7 +104,6 @@ and addr =
   | Next of cell
   | FirstLocked of mem * path
   | LastLocked of mem * path
-(*  | Malloc of elem * addr * tid *)
 and cell =
     VarCell of V.t
   | Error
@@ -221,7 +220,7 @@ let is_primed_tid (th:tid) : bool =
   | VarTh v           -> V.is_primed v
   | NoTid             -> false
   | CellLockId _      -> false
-  (* FIX: Propagate the query inside cell??? *)
+  (* ALE: Check if we need to propagate the query inside cells *)
 
 
 (*******************************)
@@ -350,7 +349,6 @@ and get_varset_addr a =
     | Next c           -> get_varset_cell c
     | FirstLocked(m,p) -> (get_varset_mem m) @@ (get_varset_path p)
     | LastLocked(m,p)  -> (get_varset_mem m) @@ (get_varset_path p)
-(*    | Malloc(e,a,th)   -> (get_varset_elem e) @@ (get_varset_addr a) @@  (get_varset_tid th) *)
 and get_varset_cell c = match c with
       VarCell v      -> V.VarSet.singleton v @@ get_varset_from_param v
     | Error          -> V.VarSet.empty
@@ -626,7 +624,7 @@ let is_ineq_normalized a b =
 let is_eq_normalized a b =
   (terms_same_type a b) && (is_term_var a || is_term_var b)
 
-(* TODO: propagate equalities of vars x = y *)
+(* ALE: propagate equalities of vars x = y *)
 let rec is_term_flat t =
   match t with
       VarT(_)     -> true
@@ -672,7 +670,6 @@ and is_addr_flat t =
     | Next(c)          -> is_cell_flat c
     | FirstLocked(m,p) -> (is_mem_flat m) && (is_path_flat p)
     | LastLocked(m,p)  -> (is_mem_flat m) && (is_path_flat p)
-(*    | Malloc(m,a,k)    -> (is_mem_flat m) && (is_addr_flat a) && (is_thread_flat k) *)
 and is_cell_flat t =
   match t with
       VarCell _  -> true
@@ -918,7 +915,6 @@ and addr_to_str expr =
                                 (mem_to_str mem) (path_to_str path)
     | LastLocked(mem,path)  -> Printf.sprintf "lastlocked(%s,%s)"
                                 (mem_to_str mem) (path_to_str path)
-(*    | Malloc(e,a,t)     -> Printf.sprintf "malloc(%s,%s,%s)" (elem_to_str e) (addr_to_str a) (tid_to_str t) *)
 and tid_to_str th =
   match th with
       VarTh(v)         -> V.to_str v
@@ -1576,7 +1572,8 @@ let special_ops (phi:formula) : special_op_t list =
 
 
 
-(* NOTE: I am not considering the possibility of having a1=a2 \/ a1=a3 in the formula *)
+(* ALE: I am not considering the possibility of having a1=a2 \/ a1=a3 in
+        the formula. *)
 let rec get_addrs_eqs (phi:formula) : ((addr*addr) list * (addr*addr) list) =
   match phi with
   | Formula.Literal l -> get_addrs_eqs_lit l

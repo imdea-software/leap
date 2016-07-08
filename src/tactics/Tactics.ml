@@ -54,29 +54,26 @@ type tid_constraints_t =
   }
 
 type vc_info = {
-  original_support : support_t ; (* BOXED formulas, tids must be renamed *)
+  original_support : support_t ; (* Boxed formulas, tids must be renamed *)
   tid_constraint   : tid_constraints_t ;
   
-  rho             : E.formula  ;   (* TRANSITION RELATION *)
+  rho             : E.formula  ;   (* transition relation *)
 
   original_goal   : E.formula  ;
   goal            : E.formula  ;
   transition_tid  : E.tid      ;
   line            : E.pc_t     ;
-  vocabulary      : E.ThreadSet.t ; (* MAY GO *)
+  vocabulary      : E.ThreadSet.t ; (* May not be needed *)
   extra_info      : vc_extra_info_t;
 }
 
 
 type verification_condition = {
   antecedent : E.formula ;
-
   consequent : E.formula ;
-
   support         : support_t ; 
-                                (* this is the support computed
-           using some tactic, including 
-                                   exhaustive brute force *)
+  (* this is the support computed using some tactic, including 
+     exhaustive brute force *)
   info            : vc_info   ;
 }
 
@@ -163,7 +160,6 @@ let tid_constraint_to_formula (tc:tid_constraints_t) : E.formula =
     F.conj_list (eqs @ ineqs)
  
 let vc_info_to_implication (info:vc_info) (sup:support_t): implication =
-
   (* Propagate equalities between threads so we just keep the minimum
    * amount of required threads *)
   let me = System.me_tid_th in
@@ -223,10 +219,7 @@ let vc_info_to_implication (info:vc_info) (sup:support_t): implication =
                  else
                    goal in
   let pre_antecedent = F.And (F.conj_list sup, rho) in
-
-(*
-  let the_antecedent = E.to_plain_formula E.PCVars pre_antecedent in
-*)
+  (* let the_antecedent = E.to_plain_formula E.PCVars pre_antecedent in *)
   let the_antecedent =
     E.to_plain_formula E.PCVars (
       List.fold_left (fun phi a ->
@@ -372,7 +365,7 @@ let create_vc_info ?(prime_goal=true)
       goal               = if prime_goal then E.prime_modified [rho] goal else goal;
       transition_tid     = trans_tid ;
       line               = line ;
-      vocabulary         = vocab ; (* fix: can be computed *)
+      vocabulary         = vocab ; (* ALE: We may not need it here, as it can be computed. *)
       extra_info         = {orig_vc_id = id;
                             prime_goal = prime_goal;
                             assume = [];
@@ -403,7 +396,7 @@ let dup_vc_info_with_support (info:vc_info) (new_support:support_t) : vc_info =
     goal             = info.goal ;
     transition_tid   = info.transition_tid ;
     line             = info.line ;
-    vocabulary       = info.vocabulary ; (* FIX need recompute *)
+    vocabulary       = info.vocabulary ; (* ALE: May need to be recomputed. *)
     extra_info       = info.extra_info ;
   }
 
@@ -417,8 +410,8 @@ let dup_vc_info_with_goal (info:vc_info) (new_goal:E.formula) : vc_info =
     goal           = new_goal ;
     transition_tid = info.transition_tid ;
     line           = info.line ;
-    vocabulary     = info.vocabulary ; (* FIX need recompute *)
-    extra_info       = info.extra_info ;
+    vocabulary     = info.vocabulary ; (* ALE: May need to be recomputed. *)
+    extra_info     = info.extra_info ;
   }
 
 
@@ -435,7 +428,7 @@ let dup_vc_info_with_supp_constr_rho_and_goal (info:vc_info)
     goal           = new_goal ;
     transition_tid = info.transition_tid ;
     line           = info.line ;
-    vocabulary     = info.vocabulary ; (* FIX need recompute *)
+    vocabulary     = info.vocabulary ; (* ALE: May need to be recomputed. *)
     extra_info     = info.extra_info ;
   }
 
@@ -449,7 +442,7 @@ let add_modelfunc_assumption (info:vc_info) (a:assumption_t) : vc_info =
     goal             = info.goal ;
     transition_tid   = info.transition_tid ;
     line             = info.line ;
-    vocabulary       = info.vocabulary ; (* FIX need recompute *)
+    vocabulary       = info.vocabulary ; (* ALE: May need to be recomputed. *)
     extra_info       = {orig_vc_id = info.extra_info.orig_vc_id;
                         prime_goal = info.extra_info.prime_goal;
                         assume = a :: info.extra_info.assume;
@@ -470,7 +463,7 @@ let vc_info_add_support (info:vc_info) (supp:support_t) : vc_info =
     goal             = info.goal ;
     transition_tid   = info.transition_tid ;
     line             = info.line ;
-    vocabulary       = info.vocabulary ; (* FIX need recompute *)
+    vocabulary       = info.vocabulary ; (* ALE: May need to be recomputed. *)
     extra_info       = info.extra_info ;
   }
   
@@ -625,10 +618,11 @@ let simplify_with_vocabulary (phi:E.formula) (vocabulary:E.V.t list): E.formula 
 (* SUPPORT TACTICS, that generate support (E.formula list) from vc_info   *)
 (**************************************************************************)
 let generate_support (info:vc_info) : E.formula list =
-  (* FIX THIS *)
+  (* ALE: May need to review this part. *)
   let (no_param,param) =
     List.partition (fun phi -> E.ThreadSet.is_empty (E.voc phi)) info.original_support in
-  let target_voc = E.ThreadSet.elements (E.voc (F.And (info.goal, info.rho))) in (* FIX THIS *)
+  let target_voc = E.ThreadSet.elements (E.voc (F.And (info.goal, info.rho))) in
+  (* ALE: Review this *)
   let instantiate_one_support phi =
     let subst = E.new_comb_subst (E.ThreadSet.elements (E.voc phi)) target_voc in
     List.map (fun s -> E.subst_tid s phi) subst 
@@ -669,13 +663,12 @@ let split_antecedent_pc (imp:implication) : implication list =
   let cases = candidates imp.ante in
   match cases with
   | [] -> [imp]
-  | _  -> (*let others_case = E.conj_list (List.map (fun x -> F.Not x) cases) in *)
-          List.map (fun a ->
+  | _  -> List.map (fun a ->
             {
               ante = F.And (a,imp.ante);
               conseq = imp.conseq;
             }
-          ) ((*others_case::*)cases)
+          ) cases
 
 
 (***************************)
@@ -837,21 +830,16 @@ let gen_support (op:gen_supp_op_t) (info:vc_info) : support_t =
 
           let voc_to_consider = List.fold_left E.ThreadSet.union
                                   (E.ThreadSet.singleton info.transition_tid)
-                                  [rho_voc; goal_voc] in (*TUKA*)
+                                  [rho_voc; goal_voc] in
           Debug.infoMsg (fun _ -> "PROCESSING SUPPORT: " ^ (E.formula_to_str phi));
           Debug.infoMsg (fun _ -> "RHO IS: " ^ (E.formula_to_str info.rho));
           Debug.infoMsg (fun _ -> "THE GOAL IS: " ^ (E.formula_to_str info.goal));
 
           Debug.infoMsg (fun _ -> "SUPP_VOC: " ^ (E.tidset_to_str supp_voc));
           Debug.infoMsg (fun _ -> "VOC_TO_CONSIDER: " ^ (E.tidset_to_str voc_to_consider));
-
-          (*assert (not (E.ThreadSet.mem System.me_tid_th voc_to_consider));*)
-                                  
-          (*
-          let voc_to_consider = E.ThreadSet.add info.transition_tid
-                                  (E.ThreadSet.union supp_voc goal_voc) in
-          *)
-
+          (* assert (not (E.ThreadSet.mem System.me_tid_th voc_to_consider)); *)
+          (* let voc_to_consider = E.ThreadSet.add info.transition_tid
+                                  (E.ThreadSet.union supp_voc goal_voc) in *)
           let subst = List.filter (f (E.ThreadSet.cardinal supp_voc))
                         (E.new_comb_subst
                           (E.ThreadSet.elements supp_voc)
@@ -882,9 +870,6 @@ let reduce2_support (info:vc_info) : support_t =
   Debug.infoMsg (fun _ -> "REDUCE2 RHO: " ^ (E.formula_to_str info.rho));
   Debug.infoMsg (fun _ -> "REDUCE2 GOAL: " ^ (E.formula_to_str info.goal));
   Debug.infoMsg (fun _ -> "REDUCE2 VOC TO ANALYZE: " ^ (E.tidset_to_str voc_to_analyze));
-(*
-  let voc_to_analyze = GenSet.to_list (GenSet.from_list (E.ThreadSet.elements (E.voc info.rho) @ E.ThreadSet.elements (E.voc info.goal))) in
-*)
   F.cleanup_dups
     (gen_support (RestrictSubst
       (fun i subst ->
@@ -984,7 +969,7 @@ let integer_implies ((v,k):E.V.t * int) (l:E.literal) : bool =
   | _ -> false
 
 let integer_implies_neg ((v,k):E.V.t * int) (l:E.literal) : bool =
-(*  let same (v1,k1) (v2,k2) = (E.V.same_var v1 v2) && (k1=k2) in *)
+  (* let same (v1,k1) (v2,k2) = (E.V.same_var v1 v2) && (k1=k2) in *)
   match l with
     (* v=k -> v2=k2 *)
     F.Atom(E.Eq(E.VarT(v2),E.IntT(E.IntVal k2)))            ->
@@ -1019,8 +1004,8 @@ let integer_implies_neg ((v,k):E.V.t * int) (l:E.literal) : bool =
 
 (* tactic_simplify_pc: *)
 (*    discovers all facts of the form v=k and propagates them *)
-(* TODO : Apply recursively until no more facts are discovered. *)
-(* TODO:  perhaps optionally append back facts to the antecedent. *)
+(* ALE: Idea, apply recursively until no more facts are discovered. *)
+(* ALE: perhaps optionally append back facts to the antecedent. *)
 let tactic_simplify_pc (imp:implication) : implication =
   (* 1. Search for facts of the form "pc = k" or "k = pc" *)
   Log.print_ocaml "entering tactic_simplify_pc";
@@ -1147,41 +1132,6 @@ let tactic_filter_vars_nonrec (criteria:filter_criteria_t) (imp:implication) : i
 (*************************************)
 (* TACTIC FILTER_THEORY : UNFINISHED *)
 (*************************************)
-(* tactic_filter_theory: eliminates from the antecedent all those formulas
-      that are not in some theory in the consequent *)
-(* type theory = Level | Int | Ord | Array | Cell | Mem | Reach | Set | SetTh | Bridge | Other  *)
-
-(* let get_term_theory (t:E.term) : theory = *)
-(*   match t with *)
-(*     SetT _ -> Set *)
-(*   | ElemT  -> Other *)
-(*   | TidT  -> Other *)
-(*   | AddrT  -> Mem *)
-(*   |  *)
-
-(* let get_atom_theory (a:E.atom) : theory = *)
-(*   match a with *)
-(*     E.Append  _      -> Reach *)
-(*   | E.Reach   _      -> Reach *)
-(*   | E.ReachAt _      -> Reach *)
-(*   | F.OrdList _      -> Bridge *)
-(*   | E.SkipList _     -> Bridge *)
-(*   | E.In _           -> Set *)
-(*   | E.SubsetEq _     -> Set *)
-(*   | E.InTh _         -> SetTh *)
-(*   | E.SubsetEqTh _   -> SetTh *)
-(*   | E.InInt _        -> Other (\* SetInt? *\) *)
-(*   | E.SubseqEqInt _  -> Other *)
-(*   | E.InElem _       -> Elem *)
-(*   | E.SubsetEqElem _ -> Elem *)
-(*   | E.Less _         -> Int (\* or Level *\) *)
-(*   | E.Greater _      -> Int *)
-(*   | E.LessEq _       -> Int *)
-(*   | E.GreaterEq _    -> Int *)
-(*   | E.LessTid _      -> Other *)
-(*   | E.LessElem _     -> Other *)
-(*   | E.GreaterElem _  -> Other *)
-(*   | E.Eq             ->  *)
 let tactic_filter_theory (imp:implication) : implication =
   imp
 
@@ -1282,7 +1232,6 @@ let apply_support_tactic (vcs:vc_info list)
   List.fold_left (fun imps vc ->
     let goal_voc = E.voc vc.original_goal in
     let requires_tid_propagation = (E.ThreadSet.cardinal goal_voc) > 1 in
-
     (* If necessary, from a vc_info we create multiple vc_info following equalities of
         thread ids parametrizing the goal *)
 
@@ -1364,7 +1313,7 @@ let gen_eq_prop_from_list (conjs:E.formula list) : (E.formula list * E.V.subst_t
   let uf = UF.empty() in
   let conjs' =
     List.fold_left (fun xs conj->
-(*      print_endline ("CONSIDERING CONJUNCTION: " ^ (E.formula_to_str conj)); *)
+      (* print_endline ("CONSIDERING CONJUNCTION: " ^ (E.formula_to_str conj)); *)
       match conj with
       | F.Literal(F.Atom (E.Eq(t1, t2))) ->
           begin
@@ -1428,7 +1377,7 @@ let apply_tactics (vcs:vc_info list)
     Log.print "* Leap generated the following formulas" "";
     let final_formulas = List.map (fun imp ->
                            let phi = F.Implies (imp.ante, imp.conseq) in phi
-(*                           Log.print "" (E.formula_to_str phi); phi *)
+                           (* Log.print "" (E.formula_to_str phi); phi *)
                          ) final_implications in
 
     phi_list @ final_formulas

@@ -47,15 +47,6 @@ let get_exec_cmd (smt:smt_t) : string =
     | Z3 -> "z3"
     | CVC4 -> "cvc4"
   end
-(*
-  Config.get_exec_path() ^
-  begin
-    match smt with
-    | Yices -> "/tools/yices"
-    | Z3    -> "/tools/z3"
-    | CVC4  -> "/tools/cvc4"
-  end
-*)
 
 let check_installed (smts:smt_t list) : unit =
   let check_smt (smt:smt_t) : unit =
@@ -181,7 +172,7 @@ let parse_output (ch:Pervasives.in_channel) : (bool * Sat.t) =
 
 let run (cfg:configuration_t) (query:string) : Sat.t =
   (* 1. write query to temp file *)
-(*  LOG "Entering run..." LEVEL TRACE; *)
+  (*  LOG "Entering run..." LEVEL TRACE; *)
   
   let tmpfile = Filename.temp_file "leap_" cfg.extension in
   Debug.print_file_name "VC" tmpfile;
@@ -226,7 +217,7 @@ let run (cfg:configuration_t) (query:string) : Sat.t =
                     Buffer.add_string buf (conv ^ "\n")
                 done
               with _ -> () in
-(*      if cfg.smt <> Yices then Debug.force_print_file_name "VC" tmpfile; *)
+      (* if cfg.smt <> Yices then Debug.force_print_file_name "VC" tmpfile; *)
       try
         model := cfg.model_parser (Lexing.from_string (Buffer.contents buf));
       with Parsing.Parse_error ->

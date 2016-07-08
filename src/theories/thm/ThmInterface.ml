@@ -264,8 +264,8 @@ and cell_to_thm_cell (c:E.cell) : THM.cell =
                                               mark_to_thm_mark m)
   | E.MkSLKCell _          -> raise(UnsupportedThmExpr(E.cell_to_str c))
   | E.MkSLCell _           -> raise(UnsupportedThmExpr(E.cell_to_str c))
-  (* Thm receives two arguments, while current epxression receives only one *)
-  (* However, for the list examples, I think we will not need it *)
+  (* ALE: THM receives two arguments, while current expression receives only one.
+          However, for list examples, w don't need it. *)
   | E.CellLock (c,t)       -> THM.CellLock (cell_to_thm_cell c, tid_to_thm_tid t)
   | E.CellLockAt _         -> raise(UnsupportedThmExpr(E.cell_to_str c))
   | E.CellUnlock c         -> THM.CellUnlock (cell_to_thm_cell c)
@@ -346,7 +346,7 @@ and mem_to_thm_mem (m:E.mem) : THM.mem =
   | E.Update (m,a,c) -> THM.Update (mem_to_thm_mem m,
                                        addr_to_thm_addr a,
                                        cell_to_thm_cell c)
-  (* Missing the case for "emp" *)
+  (* ALE: There maybe missing the case for "emp" *)
   | E.MemArrayRd (E.VarArray v,t) ->
       THM.VarMem (var_to_thm_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
   | E.MemArrayRd _        -> raise(UnsupportedThmExpr(E.mem_to_str m))
@@ -602,8 +602,8 @@ and cell_to_expr_cell (c:THM.cell) : E.cell =
                                               addr_to_expr_addr a,
                                               tid_to_expr_tid t,
                                               mark_to_expr_mark m)
-  (* Thm receives two arguments, while current epxression receives only one *)
-  (* However, for the list examples, I think we will not need it *)
+  (* ALE: THM receives two arguments, while current expression receives only one.
+          However, for list examples, w don't need it. *)
   | THM.CellLock (c,t)       -> E.CellLock (cell_to_expr_cell c, tid_to_expr_tid t)
   | THM.CellUnlock c         -> E.CellUnlock (cell_to_expr_cell c)
   | THM.CellAt (m,a)         -> E.CellAt (mem_to_expr_mem m, addr_to_expr_addr a)

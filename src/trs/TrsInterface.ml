@@ -49,7 +49,7 @@ and variable =
   bool          * (* is primed? *)
   int option    * (* Thread id parameterizing the variable *)
   string option   (* None   -> global var;
-                                  Some p -> local var belonging to p *)
+                     Some p -> local var belonging to p *)
 type loc = int list (* codification for location. [1;2] = loc_1_2 *)
 
 
@@ -70,9 +70,7 @@ type transition =
          As we are working with conjunction of literals, a transition with
          enabling condition p \/ q, for instance, is split into two transitions,
          one with enabling condition p and variant 1, and the other with
-         enabling condition q and labeled as variant 2.
-*)
-
+         enabling condition q and labeled as variant 2. *)
 
 type transition_system =
   string          * (* The problem name *)

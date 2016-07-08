@@ -89,7 +89,6 @@ and addr =
   | Null
   | ArrAt            of cell * integer
   | AddrArrRd         of addrarr * integer
-(*  | Malloc of elem * addr * tid *)
 and cell =
     VarCell           of V.t
   | Error
@@ -165,24 +164,6 @@ and literal = atom Formula.literal
 and conjunctive_formula = atom Formula.conjunctive_formula
 and disjunctive_formula = atom Formula.disjunctive_formula
 and formula = atom Formula.formula
-(*
-and literal =
-    Atom              of atom
-  | NegAtom           of atom
-and conjunctive_formula =
-    FalseConj
-  | TrueConj
-  | Conj              of literal list
-and formula =
-    Literal           of literal
-  | True
-  | False
-  | And               of formula * formula
-  | Or                of formula * formula
-  | Not               of formula
-  | Implies           of formula * formula
-  | Iff               of formula * formula
-*)
 
 
 type special_op_t =
@@ -220,10 +201,8 @@ val varlist                     : formula -> V.t list
 val varidlist_of_sort_from_conj : conjunctive_formula -> sort -> V.id list
 val varidlist_of_sort           : formula -> sort -> V.id list
 
-(*val varset_from_literal           : literal -> V.VarSet.t *)
 val varset_from_conj              : conjunctive_formula -> V.VarSet.t
 val varset                        : formula -> V.VarSet.t
-(*val varset_instances_from_literal : literal -> V.VarSet.t *)
 val varset_instances_from_conj    : conjunctive_formula -> V.VarSet.t
 val varset_instances              : formula -> V.VarSet.t
 val varset_of_sort_from_literal   : literal -> sort -> V.VarSet.t
@@ -243,11 +222,6 @@ val unprimed_voc : formula -> ThreadSet.t
 
 val voc_to_var : tid -> V.t
 
-(*
-val nnf : formula -> formula
-val dnf : formula -> conjunctive_formula list
-*)
-
 
 (* PRETTY_PRINTERS *)
 val atom_to_str     : atom    -> string
@@ -266,10 +240,6 @@ val setth_to_str    : setth  -> string
 val addrarr_to_str  : addrarr -> string
 val tidarr_to_str   : tidarr  -> string
 val formula_to_str  : formula -> string
-
-(* val eq_to_str      : eq     -> string *)
-(* val diseq_to_str   : diseq  -> string *)
-
 val sort_to_str : sort -> string
 
 
@@ -286,32 +256,14 @@ val print_path  : path  -> unit
 val print_set   : set   -> unit
 val print_setth : setth -> unit
   
-(*
-val split_conj : formula -> formula list
-val from_conjformula_to_formula : conjunctive_formula -> formula
-*)
-
 val required_sorts : formula -> sort list
 val special_ops : formula -> special_op_t list
-
-(*
-val cleanup_dup : conjunctive_formula -> conjunctive_formula
-val combine_conj_formula : conjunctive_formula -> conjunctive_formula -> conjunctive_formula
-val combine_conj_formula_list : conjunctive_formula list -> conjunctive_formula
-*)
-
-
 
 val normalize : formula -> formula
 (** [normalize phi] returns a new formula that is the normalization of
     [phi], adding fresh variables if required *)
 
 val replace_terms_literal : (term, term) Hashtbl.t -> literal -> literal
-(*
-val replace_terms_conjunctive_formula : (term, term) Hashtbl.t ->
-                                        conjunctive_formula ->
-                                        conjunctive_formula
-*)
 
 val replace_terms : (term, term) Hashtbl.t ->
                     formula ->

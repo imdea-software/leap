@@ -26,10 +26,10 @@
 
 
 
-type cond_effect_t = Expression.formula * (* Condition list *)
+type cond_effect_t = Expression.formula * (* Condition list               *)
                      Expression.formula * (* Term - Expression assignment *)
-                     Expression.pc_t    * (* Current program counter *)
-                     Expression.pc_t      (* Next program counter *)
+                     Expression.pc_t    * (* Current program counter      *)
+                     Expression.pc_t      (* Next program counter         *)
 
 
 type malloc_info =

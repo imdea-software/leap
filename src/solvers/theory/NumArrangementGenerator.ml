@@ -77,12 +77,10 @@ let gen_orig_constraints (arr:NE.integer Arr.t) : NE.formula =
 let new_arr_gen (arr:NE.integer Arr.t) : t =
   let orig_const = gen_orig_constraints arr in
   NumSolver.compute_model true;
-  (*
-  print_endline "NEW ARRANGEMENT";
-  print_endline "==============================================";
-  GenSet.iter (fun i -> print_endline (match i with NE.Var v -> (NE.V.to_full_str (fun _ -> "") (fun _ -> "") v) | _ -> "")) (Arr.get_domain arr);
-  print_endline "==============================================";
-  *)
+  (* print_endline "NEW ARRANGEMENT";
+     print_endline "==============================================";
+     GenSet.iter (fun i -> print_endline (match i with NE.Var v -> (NE.V.to_full_str (fun _ -> "") (fun _ -> "") v) | _ -> "")) (Arr.get_domain arr);
+     print_endline "=============================================="; *)
   {
     domain = Arr.get_domain arr;
     original_constraint = orig_const;
@@ -91,19 +89,12 @@ let new_arr_gen (arr:NE.integer Arr.t) : t =
 
 
 let find_arrg (ag:t) : NE.integer list list =
-
-  (*
-  print_endline "FIND_ARRG";
-  print_endline "==============================================";
-  GenSet.iter (fun i -> print_endline (match i with NE.Var v -> (NE.V.to_full_str (fun _ -> "") (fun _ -> "") v) | _ -> "")) (ag.domain);
-  print_endline "==============================================";
-  *)
-
-
-  (*
-   print_endline ("Calling find_arrg");
-   print_endline (GenSet.to_str NE.integer_to_str ag.domain);
-  *)
+  (* print_endline "FIND_ARRG";
+     print_endline "==============================================";
+     GenSet.iter (fun i -> print_endline (match i with NE.Var v -> (NE.V.to_full_str (fun _ -> "") (fun _ -> "") v) | _ -> "")) (ag.domain);
+     print_endline "==============================================";
+     print_endline ("Calling find_arrg");
+     print_endline (GenSet.to_str NE.integer_to_str ag.domain); *)
   
   (* Auxiliary function for creating order inequalities *)
   let rec ineq_f (is:NE.integer list list) : NE.literal list =
@@ -112,9 +103,7 @@ let find_arrg (ag:t) : NE.integer list list =
     | _ -> [] in
   (* 1. Create the formula for the query *)
   let phi = F.conj_list (ag.original_constraint :: ag.learnt_constraints) in
-  (*
-  print_endline ("Going to check formula: " ^ (NE.formula_to_str phi));
-  *)
+  (* print_endline ("Going to check formula: " ^ (NE.formula_to_str phi)); *)
   (* 2. Check whether there exists a model of such formula *)
   if Sat.is_sat (NumSolver.check_sat phi) then begin
     (* 3. There exists a model that satisfies the arrangement conditions *)
@@ -156,28 +145,19 @@ let find_arrg (ag:t) : NE.integer list list =
     ag.learnt_constraints <- F.Not (F.conj_literals conjs) :: ag.learnt_constraints;
 
     (* DEBUG *)
-
-    (*
-    print_endline "RES";
-    print_endline "==============================================";
-    let str = "[" ^ String.concat ";"
-                (List.map (fun xs ->
-                  "[" ^ (String.concat "," (List.map (fun i -> (match i with NE.Var v -> (NE.V.to_full_str (fun _ -> "") (fun _ -> "") v) | _ -> "")) xs)) ^ "]"
-                 ) res) ^ "]" in
-    print_endline str;
-
-
-    print_endline "==============================================";
-    *)
-
-
-  (*
-    let str = "[" ^ String.concat ";"
-                (List.map (fun xs ->
-                  "[" ^ (String.concat "," (List.map NE.integer_to_str xs)) ^ "]"
-                 ) res) ^ "]" in
-    print_endline str;
-    *)
+    (* print_endline "RES";
+       print_endline "==============================================";
+       let str = "[" ^ String.concat ";"
+                   (List.map (fun xs ->
+                      "[" ^ (String.concat "," (List.map (fun i -> (match i with NE.Var v -> (NE.V.to_full_str (fun _ -> "") (fun _ -> "") v) | _ -> "")) xs)) ^ "]"
+                   ) res) ^ "]" in
+       print_endline str;
+       print_endline "==============================================";
+       let str = "[" ^ String.concat ";"
+                   (List.map (fun xs ->
+                     "[" ^ (String.concat "," (List.map NE.integer_to_str xs)) ^ "]"
+                    ) res) ^ "]" in
+       print_endline str; *)
     (* DEBUG *)
     res
   end else

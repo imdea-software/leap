@@ -55,7 +55,6 @@ module type S = CUSTOM_TSLKSOLVER
 
 module Make(K : Level.S) (Solver : BackendSolverIntf.BACKEND_TSLK) : S =
 struct
-(*  module Q = (val QueryManager.get_tslk_query Solver.indentifier) *)
   module TslkSol  = Solver.Translate.Tslk(K)
   module TslkExp  = TslkSol.Exp
   module VarIdSet = TslkExp.V.VarIdSet
@@ -113,7 +112,7 @@ struct
     | TslkExp.PathT(p)    -> is_var_path p
     | TslkExp.MemT(m)     -> is_var_mem m
     | TslkExp.LevelT(l)   -> is_var_level l
-    | TslkExp.VarUpdate _ -> false (* ALE: Not sure if OK *)
+    | TslkExp.VarUpdate _ -> false (* Check if fine *)
   
   (* 
    * is_constant 

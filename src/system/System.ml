@@ -47,7 +47,7 @@ type proc_info_t = {sort : E.sort option;
                     inputVars : var_table_t;
                     localVars : var_table_t;
                     args : (string * E.sort) list;
-                    fLine : E.pc_t; (* TODO: Is set somewhere? *)
+                    fLine : E.pc_t; (* ALE: Check if it is set somewhere? *)
                     lLine : E.pc_t;
                     prog : Stm.statement_t option
                    }
@@ -55,7 +55,7 @@ type proc_info_t = {sort : E.sort option;
 and proc_table_t = (string, proc_info_t) Hashtbl.t
 
 
-(*TODO: Used somewhere? *)
+(* ALE: Check if this is absolutely required. *)
 type tran_table_t = (int, E.formula list) Hashtbl.t 
 
 
@@ -67,14 +67,13 @@ type label_table_t = (string, E.pc_t * E.pc_t) Hashtbl.t
 
 type t =
   {
-    globalVars : var_table_t ;         (* global variables *)
+    globalVars : var_table_t ;         (* global variables       *)
     assumptions : Stm.boolean option ; (* the initial assumption *)
-    procedures : proc_table_t ;        (* procedures *)
-    transitions : tran_table_t ;       (* transition relations *)
-    fair : E.pc_t list ;               (* fair transitions *)
-(*                 int                  *   (* number of threads *) *)
-    statements : st_table_t ;          (* system statements *)
-    labels : label_table_t ;           (* program line labels *)
+    procedures : proc_table_t ;        (* procedures             *)
+    transitions : tran_table_t ;       (* transition relations   *)
+    fair : E.pc_t list ;               (* fair transitions       *)
+    statements : st_table_t ;          (* system statements      *)
+    labels : label_table_t ;           (* program line labels    *)
   }
 
 
@@ -506,12 +505,6 @@ let get_accvars (sys:t) : (string * var_table_t * var_table_t) list =
                                 (p, fst accVars, snd accVars)) proc_names
   in
     proc_vars
-(*
-  let proc_vars  = List.map (fun p->(p,get_allvars_by_name sys p)) proc_names in
-  let res        = List.map (fun (n, (gV, lV)) -> (n, gV, lV)) proc_vars
-  in
-    res
-*)
 
 
 let get_all_vars_id (sys:t) : E.V.id list =
@@ -581,15 +574,7 @@ let get_sort_from_variable (gVars:var_table_t)
     find_var_type auxVars v
   else
     E.Tid
-    (* FIX: We are just assuming that undefined variables are used to identify threads *)
-(*
-    begin
-      Interface.Err.msg "Undefined variable" $
-        sprintf "Variable %s could not be found nor as global variable nor \
-                 in the given variable tables." v;
-      raise(Undefined_variable v)
-    end
-*)
+    (* ALE: We are just assuming that undefined variables are used to identify threads *)
 
 
 let get_sort_from_term (gVars:var_table_t)
@@ -600,7 +585,7 @@ let get_sort_from_term (gVars:var_table_t)
   match t with
     E.SetT(_)           -> E.Set
   | E.VarT v            -> get_sort_from_variable gVars iVars lVars auxVars (E.V.id v)
-                            (* TODO: Or maybe just s? *)
+                            (* ALE: Should it be just s? *)
   | E.ElemT(_)          -> E.Elem
   | E.TidT(_)           -> E.Tid
   | E.AddrT(_)          -> E.Addr
@@ -706,8 +691,7 @@ let proc_table_vars_to_str (pt:proc_table_t) : string =
 (** Generates the list of global variables for a system, but described as terms 
     instead of variable identifiers.
     @param sys the system where variables are extracted from
-    @return the list of global variables in sys represented as terms
-  *)
+    @return the list of global variables in sys represented as terms *)
 let gen_global_vars_as_terms (sys:t) : E.TermSet.t =
   let gTbl = get_global sys in
   let gVars = ref E.TermSet.empty in
@@ -723,8 +707,7 @@ let gen_global_vars_as_terms (sys:t) : E.TermSet.t =
 (** Generates the list of local variables for a system, but described as
     terms instead of variable identifiers.
     @param sys the system where variables are extracted from
-    @return a list of pairs made by the process name and its local variables
-  *)
+    @return a list of pairs made by the process name and its local variables *)
 let gen_local_vars_as_terms (sys:t) : (string * E.TermSet.t) list =
   let vInfo   = get_accvars sys in
   let lVars   = ref E.TermSet.empty in
@@ -796,7 +779,7 @@ let check_is_numeric (sys:t) : unit =
     let s = var_info_sort info in
     match s with
     | E.Int  -> ()
-    (* We allows tid, provided we interpret them as integer later *)
+    (* ALE: We allow tid, provided we interpret them as integer later. *)
     | E.Tid -> ()
     | _   -> Interface.Err.msg "Non-numeric variable" $
                sprintf "Variables are expected to be numeric, but variable \
@@ -838,11 +821,6 @@ let var_table_to_str (tbl:var_table_t) : string =
       | Some (E.Condition c) -> sprintf "\t%s%s %s" k_str s_str
                                                        (E.formula_to_str c)
       | None                    -> sprintf "\t%s%s %s" k_str s_str v
-(*
-    Obsolete code
-    sprintf "\t%s%s %s %s" k_str (E.sort_to_str s) v
-        (Option.map_default (fun t -> " := " ^ (E.expr_to_str t)) "" e)
-*)
   in
   let tbl_str = String.concat "\n" $ Hashtbl.fold (fun v info xs ->
                                       (decl_to_str v info)::xs) tbl [] in
@@ -1008,7 +986,6 @@ let gen_theta_with_count_abs (mode:sysMode)
   let main_fLine = get_fLine_by_name sys (defMainProcedure) in
   let full_cond = List.fold_left 
     (fun phi i -> if i = main_fLine then
-        (* Formula.And (E.someone_at main_fLine, phi) *)
         Formula.And (E.eq_int (E.VarInt (E.countAbs_var i)) E.defCountVar, phi)
       else
         Formula.And (E.eq_int (E.VarInt (E.countAbs_var i)) (E.IntVal 0), phi)) 
@@ -1084,7 +1061,7 @@ let rec aux_rho_for_st
                            (E.param th_p cond :: eff :: normal_code)
                           ) ps) @ xs
                        ) [] eff_list in
-          (* URGENT FIX: Preservation when no -hp is used *)
+          (* ALE: Check if preservation works when no -hp is used. *)
         (E.TermSet.empty, E.TermSet.empty, E.TermSet.empty, rho_list)
     | None -> (gS, lS, tS, ps) in
   let make_pos_change (c:int) (ns:int list) : E.formula list =
@@ -1335,14 +1312,14 @@ let rec aux_rho_for_st
 
 let gen_rho (sys : t)             (* The system                           *)
             (mode : sysMode)      (* For closed or open system?           *)
-            (soc:seq_or_conc_t)    (* Sequential or concurrent system      *)
+            (soc:seq_or_conc_t)   (* Sequential or concurrent system      *)
             (pt:Bridge.prog_type) (* Program type. Heap based or numeric  *)
             (p : E.pc_t)          (* Program line                         *)
             (abs : abstraction)   (* Counting abstraction or not?         *)
             (hide_pres : bool)    (* Hide variable preservation?          *)
             (th:E.tid)            (* Thread taking the transition         *)
               : E.formula list =
-(*    LOG "Entering gen_rho..." LEVEL TRACE; *)
+  (* LOG "Entering gen_rho..." LEVEL TRACE; *)
   let gSet = gen_global_vars_as_terms sys in
   let (proc,st) = get_statement_at sys p in
   (* let remLocList = List.remove_assoc proc allLocList in *)

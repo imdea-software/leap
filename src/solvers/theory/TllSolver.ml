@@ -118,7 +118,7 @@ struct
     | TllExp.MemT(m)     -> is_var_mem m
     | TllExp.IntT(i)     -> is_var_int i
     | TllExp.MarkT(m)    -> is_var_mark m
-    | TllExp.VarUpdate _ -> false (* ALE: Not sure if OK *)
+    | TllExp.VarUpdate _ -> false (* Check this case. *)
   
   (* 
    * is_constant 

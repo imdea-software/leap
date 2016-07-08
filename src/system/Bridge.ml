@@ -82,7 +82,8 @@ let cond_effect_aux_to_str (cond:cond_effect_aux_t) : string =
     (c) (n) (if e then "true" else "false")
 
 
-(* FIX: This support is not extended to closed systems *)
+(* ALE: May need to fix this, as this support is not extended to closed
+        systems. *)
 let unfold_expression (mInfo:malloc_info)
                       (th_p:E.V.shared_or_local)
                       (expr:Stm.expr_t) : (E.expr_t      *
@@ -95,10 +96,10 @@ let unfold_expression (mInfo:malloc_info)
       ) vs
     ) [] mInfo.tids in
 
-(*  LOG "Entering unfold_expression..." LEVEL TRACE; *)
+  (* LOG "Entering unfold_expression..." LEVEL TRACE; *)
   let gen_malloc (mkcell:E.cell) :
                  (E.expr_t * E.term list * E.formula list) =
-(*    LOG "unfold_expression::gen_malloc()" LEVEL TRACE; *)
+    (* LOG "unfold_expression::gen_malloc()" LEVEL TRACE; *)
     let c_fresh = E.VarCell(E.build_global_var fresh_cell_name E.Cell) in
     let a_fresh = E.VarAddr fresh_addr in
     let diff_fresh a = E.ineq_addr a_fresh (E.VarAddr a) in
@@ -123,20 +124,20 @@ let unfold_expression (mInfo:malloc_info)
   in
   match expr with
   | Stm.Term (Stm.AddrT (Stm.Malloc(e,a,t))) ->
-(*      LOG "Malloc translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
+      (* LOG "Malloc translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
       let e_expr  = Stm.elem_to_expr_elem e in
       let a_expr  = Stm.addr_to_expr_addr a in
       let t_expr  = Stm.tid_to_expr_tid t in
       let mkcell  = E.param_cell th_p (E.MkCell(e_expr, a_expr, t_expr)) in
         gen_malloc mkcell
   | Stm.Term (Stm.AddrT (Stm.MallocSLK(e,_))) ->
-(*      LOG "MallocSLK translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
+      (* LOG "MallocSLK translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
       let e_expr  = Stm.elem_to_expr_elem e in
-      (* FIX: In fact, I am not using the parameter l *)
+      (* ALE: May need to fix this, as I am not using the parameter l. *)
       let mkcell  = E.param_cell th_p (E.MkSLKCell(e_expr, [], [])) in
         gen_malloc mkcell
   | Stm.Term (Stm.AddrT (Stm.MallocSL(e,l))) ->
-(*      LOG "MallocSL translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
+      (* LOG "MallocSL translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
       let e_expr   = Stm.elem_to_expr_elem e in
       let l_expr   = Stm.integer_to_expr_integer l in
       let aa_fresh = E.VarAddrArray(E.build_global_var fresh_addrarr_name E.AddrArray) in
@@ -155,60 +156,39 @@ let unfold_expression (mInfo:malloc_info)
                                                     (E.NoTid))), f)) fs in
         (t,ms,fs')
   | Stm.Term (Stm.ElemT (Stm.PointerData a)) ->
-(*      LOG "PointerData translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
+      (* LOG "PointerData translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
       let a_expr = Stm.addr_to_expr_addr a in
       (E.Term (E.ElemT (E.CellData (E.CellAt (E.heap,a_expr)))), [], [])
   | Stm.Term (Stm.AddrT (Stm.PointerNext a)) ->
-(*      LOG "PointerNext translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
+      (* LOG "PointerNext translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
       let a_expr = Stm.addr_to_expr_addr a in
       (E.Term (E.AddrT (E.Next (E.CellAt (E.heap,a_expr)))), [], [])
   | Stm.Term (Stm.AddrT (Stm.PointerNextAt (a,l))) ->
-(*      LOG "PointerNextAt translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
+      (* LOG "PointerNextAt translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
       let a_expr = Stm.addr_to_expr_addr a in
       let l_expr = Stm.integer_to_expr_integer l in
       (E.Term (E.AddrT (E.NextAt (E.CellAt (E.heap,a_expr),l_expr))), [], [])
   | Stm.Term (Stm.AddrT (Stm.PointerArrAt (a,l))) ->
-(*      LOG "PointerArrAt translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
+      (* LOG "PointerArrAt translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
       let a_expr = Stm.addr_to_expr_addr a in
       let l_expr = Stm.integer_to_expr_integer l in
       (E.Term (E.AddrT (E.AddrArrRd (E.CellArr (E.CellAt (E.heap,a_expr)), l_expr))), [], [])
-(*
-      (E.Term (E.AddrT (E.ArrAt (E.CellAt (E.heap,a_expr), l_expr))), None, [], [])
-*)
   | Stm.Term (Stm.TidT (Stm.PointerLockid a)) ->
-(*      LOG "PointerLockid translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
+      (* LOG "PointerLockid translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
       let a_expr = Stm.addr_to_expr_addr a in
       (E.Term (E.TidT (E.CellLockId (E.CellAt (E.heap,a_expr)))), [], [])
   | Stm.Term (Stm.TidT (Stm.PointerLockidAt (a,l))) ->
-(*      LOG "PointerLockidAt translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
+      (* LOG "PointerLockidAt translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
       let a_expr = Stm.addr_to_expr_addr a in
       let l_expr = Stm.integer_to_expr_integer l in
       (E.Term (E.TidT (E.TidArrRd (E.CellTids (E.CellAt (E.heap,a_expr)), l_expr))), [], [])
-(*
-      (E.Term (E.TidT (E.CellLockIdAt (E.CellAt (E.heap,a_expr), l_expr))), None, [], [])
-*)
   | _ ->
-(*      LOG "Else translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
+      (* LOG "Else translation of: %s" (Stm.expr_to_str expr) LEVEL DEBUG; *)
       (Stm.expr_to_expr_expr expr, [], [])
 
 
 
 (* EXPRESSION PRESERVATION FUNCTIONS *)
-
-
-(*
-let construct_stm_term_eq (v:Stm.term)
-                          (th_p:E.th_t option)
-                          (e:Stm.expr_t) : (E.term list * E.formula) =
-
-  let v' = Stm.term_to_expr_term v in
-  let (new_e, aux_modif, aux_f) = unfold_expression e in
-  let (modif,formula) = E.construct_term_eq v' th_p new_e
-  in
-    (modif @ aux_modif, E.conj_list (formula::aux_f))
-*)
-
-
 let generic_stm_term_eq (mode:eqGenMode)
                         (mInfo:malloc_info)
                         (v:Stm.term)
@@ -217,12 +197,11 @@ let generic_stm_term_eq (mode:eqGenMode)
   let eq_generator = match mode with
                        NormalGenMode -> E.construct_term_eq
                      | ArrayGenMode  -> E.construct_term_eq_as_array in
-(*  print_endline "GENERATION OF RHO!!!!"; *)
+  (*  print_endline "GENERATION OF RHO"; *)
   let heap_eq_generator h th e = let (mods,phi) = eq_generator (E.MemT h) th e in
                                    (E.MemT h::mods, phi) in
   let v' = Stm.term_to_expr_term v in
   let (new_e, aux_modif, aux_f) = unfold_expression mInfo th_p e in
-(*  let aux_mem = Option.default E.heap mod_heap in *)
   let (modif,formula) =
     match (v', new_e) with
     (* CellData *)
@@ -339,9 +318,9 @@ let generic_stm_term_eq (mode:eqGenMode)
 
     (* Remaining cases *)
     | _ -> begin
-(*             print_endline ("EQ: " ^ (E.term_to_str v') ^ "    " ^ (E.expr_to_str new_e)); *)
+             (* print_endline ("EQ: " ^ (E.term_to_str v') ^ "    " ^ (E.expr_to_str new_e)); *)
              let (ts,aa) = eq_generator v' th_p new_e in
-(*             print_endline ("NEW EQ: " ^ (E.formula_to_str aa)); *)
+             (* print_endline ("NEW EQ: " ^ (E.formula_to_str aa)); *)
              (ts,aa)
            end in
   (modif @ aux_modif, F.conj_list (formula::aux_f))
@@ -406,11 +385,10 @@ let rec gen_atomic_st_cond_effect (conds:cond_effect_aux_t list)
 
 
 (* Auxiliary transition effect construction functions *)
-(* Generates the list of conditions and effects for a statment.
+(* Generates the list of conditions and effects for a statement.
    Return a list of tuples [(c, [(t,e)], l, n)] meaning that when in line
    "l", if all conditions in "[c]" hold, effect represented by assignations of the list
-   [(t,e)] is carried out, jumping finally to line "n"
-*)
+   [(t,e)] is carried out, jumping finally to line "n" *)
 let rec gen_st_cond_effect_aux (is_ghost:bool)
                                (st:Stm.statement_t) : cond_effect_aux_t list =
   let to_expr             = Stm.boolean_to_expr_formula in
@@ -460,7 +438,7 @@ let rec gen_st_cond_effect_aux (is_ghost:bool)
         add_gc conds gc
   | Stm.StAssign (t,e,gc,_) ->
       add_gc [([],(t,e)::def_assign,curr_p,next_p,true)] gc
-  (* FIX: To be implemented *)
+  (* ALE: To be implemented *)
   | Stm.StUnit _ ->
       let msg = "StUnit case in function gen_st_cond_effect" in
         raise(Not_implemented msg)
@@ -483,7 +461,7 @@ let rec gen_st_cond_effect_aux (is_ghost:bool)
         List.flatten conds
   | Stm.StCall (_,_,_,gc,_) ->
       add_gc [([],def_assign,curr_p,next_p,true)] gc
-  (* FIX: I am not assigning the returned value *)
+  (* ALE: I am not assigning the returned value *)
   | Stm.StReturn (_,gc,_)   ->
       add_gc [([],def_assign,curr_p,next_p,true)] gc
 
@@ -494,7 +472,7 @@ let gen_st_cond_effect_for_th (pt:prog_type)
                               (th_p:E.V.shared_or_local) : cond_effect_t list =
   let aux_conds = gen_st_cond_effect_aux is_ghost st in
 
-  (* FIX: Fill the information in mInfo if necessary *)
+  (* ALE: Fill the information in mInfo if necessary *)
   let mInfo = {tids=[]; gAddrs=[]; gSets=[]; lAddrs=[]; lSets=[]}
   in
     List.map (fun (cs,es,c,n,_) ->
@@ -507,18 +485,6 @@ let gen_st_cond_effect_for_th (pt:prog_type)
                              (t_res@ts, e_res::es)
                            ) ([],[]) es in
       let es_phi = F.conj_list (es_list) in
-(*
-      let es_phi = F.conj_list (
-                     match pt with
-                     | Num  -> es_list
-                     | Heap -> begin
-                               if (List.mem (E.MemT E.heap) mods || is_ghost) then
-                                 es_list
-                               else
-                                 (E.eq_mem (E.prime_mem E.heap) E.heap)::es_list
-                               end)
-      in
-*)
         if (c = n) && not(is_ghost) then
           (cs_phi, F.True, c, n)
         else

@@ -127,7 +127,6 @@ and addr =
   | Next of cell
   | FirstLocked of mem * path
   | LastLocked of mem * path
-(*  | Malloc of elem * addr * tid *)
   | BucketInit of bucket
   | BucketEnd of bucket
 and cell =
@@ -266,9 +265,6 @@ val set_to_str        : set     -> string
 val setth_to_str      : setth   -> string
 val setelem_to_str    : setelem -> string
 val formula_to_str    : formula -> string
-
-(* val eq_to_str      : eq     -> string *)
-(* val diseq_to_str   : diseq  -> string *)
 
 val sort_to_str : sort -> string
 val variable_list_to_str : V.id list -> string

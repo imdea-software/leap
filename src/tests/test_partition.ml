@@ -50,29 +50,7 @@ let _ =
                     Partition.Ineq (var_max, var_j)] in
 
   
-(*  let ps = Partition.gen_partitions E.V.to_str dom (eq_list @ ineq_list @ order_list) in *)
+  (* let ps = Partition.gen_partitions E.V.to_str dom (eq_list @ ineq_list @ order_list) in *)
   let ps = Partition.gen_partitions dom (eq_list @ ineq_list @ order_list) in
   print_endline ("GENERATED PARTITIONS: " ^ (string_of_int (List.length ps)));
   List.iter (fun p -> print_endline (Partition.to_str E.V.to_str p)) ps;
-  
-
-
-(*
-
-**PARTITION DOMAIN: insert_i_k_0; $Int_2; $Int_1; maxLevel; j; 
-**EQ_LIST: 
-**EQ: $Int_1 maxLevel
-**EQ: j maxLevel
-**EQ: $Int_1 insert_i_k_0
-**EQ: $Int_1 $Int_2
-**EQ: $Int_1 j
-**EQ: insert_i_k_0 maxLevel
-**INEQ_LIST: 
-**INEQ: insert_i_k_0 $Int_1
-**ORDER_LIST: 
-**INEQ: insert_i_k_0 j
-**INEQ: maxLevel j
-*)
-
-
-  print_endline "Hola mundo"

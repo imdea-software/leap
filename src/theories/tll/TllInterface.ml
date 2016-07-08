@@ -226,8 +226,8 @@ and cell_to_tll_cell (c:E.cell) : TLL.cell =
                                               mark_to_tll_mark m)
   | E.MkSLKCell _          -> raise(UnsupportedTllExpr(E.cell_to_str c))
   | E.MkSLCell _           -> raise(UnsupportedTllExpr(E.cell_to_str c))
-  (* Tll receives two arguments, while current epxression receives only one *)
-  (* However, for the list examples, I think we will not need it *)
+  (* ALE: TLL receives two arguments, while current expression receives only one.
+          However, for list examples, w don't need it. *)
   | E.CellLock (c,t)       -> TLL.CellLock (cell_to_tll_cell c, tid_to_tll_tid t)
   | E.CellLockAt _         -> raise(UnsupportedTllExpr(E.cell_to_str c))
   | E.CellUnlock c         -> TLL.CellUnlock (cell_to_tll_cell c)
@@ -297,7 +297,7 @@ and mem_to_tll_mem (m:E.mem) : TLL.mem =
   | E.Update (m,a,c) -> TLL.Update (mem_to_tll_mem m,
                                        addr_to_tll_addr a,
                                        cell_to_tll_cell c)
-  (* Missing the case for "emp" *)
+  (* ALE: Check if we need the case for "emp". *)
   | E.MemArrayRd (E.VarArray v,t) ->
       TLL.VarMem (var_to_tll_var (E.V.set_param v (E.V.Local (E.voc_to_var t))))
   | E.MemArrayRd _        -> raise(UnsupportedTllExpr(E.mem_to_str m))
@@ -370,8 +370,6 @@ and atom_to_tll_atom (a:E.atom) : TLL.atom =
 
 and formula_to_tll_formula (phi:E.formula) : TLL.formula =
   Formula.formula_conv atom_to_tll_atom phi
-
-
 
 
 
@@ -494,8 +492,8 @@ and cell_to_expr_cell (c:TLL.cell) : E.cell =
                                               addr_to_expr_addr a,
                                               tid_to_expr_tid t,
                                               mark_to_expr_mark m)
-  (* Tll receives two arguments, while current epxression receives only one *)
-  (* However, for the list examples, I think we will not need it *)
+  (* ALE: TLL receives two arguments, while current expression receives only one.
+          However, for list examples, w don't need it. *)
   | TLL.CellLock (c,t)       -> E.CellLock (cell_to_expr_cell c, tid_to_expr_tid t)
   | TLL.CellUnlock c         -> E.CellUnlock (cell_to_expr_cell c)
   | TLL.CellAt (m,a)         -> E.CellAt (mem_to_expr_mem m, addr_to_expr_addr a)
@@ -552,7 +550,7 @@ and mem_to_expr_mem (m:TLL.mem) : E.mem =
                                        addr_to_expr_addr a,
                                        cell_to_expr_cell c)
   | TLL.Emp            -> raise(UnsupportedExpr(TLL.mem_to_str m))
-  (* Missing the case for "emp" *)
+  (* ALE: Check if we need to add the case for "emp" *)
 
 
 and int_to_expr_int (i:TLL.integer) : E.integer =

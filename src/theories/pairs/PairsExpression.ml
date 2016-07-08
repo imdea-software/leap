@@ -668,12 +668,10 @@ let local_vset_from_pair_formula (phi:formula) : V.VarIdSet.t =
 
 
 let all_varid_set         = vset_from_pair_formula
-(*let all_varid_set_literal = vset_from_pair_literal *)
 let all_global_varid_set  = global_vset_from_pair_formula
 let all_local_varid_set   = local_vset_from_pair_formula
 
 let all_varid phi         = V.VarIdSet.elements (all_varid_set phi)
-(*let all_varid_literal l   = V.VarIdSet.elements (all_varid_set_literal l) *)
 let all_local_varid phi   = V.VarIdSet.elements (all_local_varid_set phi)
 let all_global_varid phi  = V.VarIdSet.elements (all_global_varid_set phi)
 
