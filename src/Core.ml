@@ -557,7 +557,7 @@ module Make (Opt:module type of GenOptions) : S =
                         end else
                           (res, calls)
                     | DP.Tll    ->
-                        let tll_phi = TllInterface.formula_to_tll_formula fol_phi in
+                        let tll_phi = TLLInterface.formula_to_tll_formula fol_phi in
                           Tll.check_valid_plus_info opt tll_phi
                     | DP.Tsl    ->
                         let tsl_phi = TSLInterface.formula_to_tsl_formula fol_phi in
@@ -577,7 +577,7 @@ module Make (Opt:module type of GenOptions) : S =
                                    let tslk_phi = TSLKIntf.formula_to_tslk_formula fol_phi in
                                      Tslk.check_valid_plus_info opt tslk_phi
                     | DP.Thm    ->
-                        let thm_phi = ThmInterface.formula_to_thm_formula fol_phi in
+                        let thm_phi = THMInterface.formula_to_thm_formula fol_phi in
                         let (res,thm_calls,tll_calls) =
                            ThmSolver.check_valid_plus_info opt thm_phi in
                         DP.combine_call_table tll_calls this_calls_counter;

@@ -26,7 +26,7 @@
 
 
 module E   = Expression
-module TLL = TllExpression
+module TLL = TLLExpression
 
 exception UnsupportedSort of string
 exception UnsupportedTllExpr of string
@@ -34,7 +34,7 @@ exception UnsupportedExpr of string
 
 
 
-(* Expression to TllExpression conversion *)
+(* Expression to TLLExpression conversion *)
 
 
 let rec sort_to_tll_sort (s:E.sort) : TLL.sort =

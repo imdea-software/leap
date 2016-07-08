@@ -70,7 +70,7 @@ let _ =
                     sol
       | DP.Tll -> let module Tll = (val (TllSolver.choose BackendSolvers.Z3.identifier)) in
                   Tll.compute_model true;
-                  let tll_phi = TllInterface.formula_to_tll_formula phi in
+                  let tll_phi = TLLInterface.formula_to_tll_formula phi in
                   let sol = Tll.check_valid opt tll_phi in
                   if not (Valid.is_valid sol) then Tll.print_model();
                   sol
@@ -86,7 +86,7 @@ let _ =
                   let sol = TslSolver.check_valid opt tsl_phi in
                   if not (Valid.is_valid sol) then TslSolver.print_model();
                   sol
-      | DP.Thm -> let thm_phi = ThmInterface.formula_to_thm_formula phi in
+      | DP.Thm -> let thm_phi = THMInterface.formula_to_thm_formula phi in
                   ThmSolver.compute_model true;
                   let sol = ThmSolver.check_valid opt thm_phi in
                   if not (Valid.is_valid sol) then TslSolver.print_model();

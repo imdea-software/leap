@@ -49,7 +49,7 @@ let _ =
         (Eparser.single_formula Elexer.norm) in
       
 
-    let tll_phi = TllInterface.formula_to_tll_formula phi in
+    let tll_phi = TLLInterface.formula_to_tll_formula phi in
     let module TllSat = (val tllSolver) in
     TllSat.compute_model(true);
 

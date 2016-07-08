@@ -46,7 +46,7 @@ let _ =
         (Eparser.single_formula Elexer.norm) in
 
     ThmSolver.compute_model(true);
-    let thm_phi = ThmInterface.formula_to_thm_formula phi in
+    let thm_phi = THMInterface.formula_to_thm_formula phi in
 
     (* Solver options *)
     let opt = SolOpt.new_opt () in

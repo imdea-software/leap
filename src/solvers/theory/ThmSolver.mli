@@ -30,20 +30,20 @@ val choose : string -> unit
     be used. *)
 
 
-val check_sat    : SolverOptions.t -> ThmExpression.formula -> Sat.t
+val check_sat    : SolverOptions.t -> THMExpression.formula -> Sat.t
 (** [check_sat opt phi] checks the satisfiability of formula [phi],
     assuming the options specified in [opt]. It returns [Sat] if the
     formula is satisfiable, otherwise [Unsat]. *)
 
 
-val check_valid  : SolverOptions.t -> ThmExpression.formula -> Valid.t
+val check_valid  : SolverOptions.t -> THMExpression.formula -> Valid.t
 (** [check_valid opt phi] checks the validity of formula [phi], assuming
     the options specified in [opt]. It returns [Valid] if the formula is
     valid, otherwise [Invalid]. *)
 
   
 val check_sat_plus_info : SolverOptions.t ->
-                          ThmExpression.formula -> (Sat.t * int * DP.call_tbl_t)
+                          THMExpression.formula -> (Sat.t * int * DP.call_tbl_t)
 (** [check_sat_plus_info opt phi] checks the satisfiability of formula
     [phi], assuming the options specified in [opt]. It returns three
     values. The first value indicates whether the formula is satisfiable.
@@ -53,7 +53,7 @@ val check_sat_plus_info : SolverOptions.t ->
 
 
 val check_valid_plus_info : SolverOptions.t ->
-                            ThmExpression.formula -> (Valid.t * int * DP.call_tbl_t)
+                            THMExpression.formula -> (Valid.t * int * DP.call_tbl_t)
 (** [check_valid lines co useq phi] checks the validity of formula [phi],
     assuming the options specified by [opt]. It returns three values. The
     first value indicates whether the formula is satisfiable. The second

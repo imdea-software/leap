@@ -31,8 +31,8 @@ module YicesTllQuery : TLL_QUERY =
 
 struct
 
-  module Expr     = TllExpression
-  module V        = TllExpression.V
+  module Expr     = TLLExpression
+  module V        = TLLExpression.V
   module VarIdSet = V.VarIdSet
   module VarSet   = V.VarSet
   module B        = Buffer
@@ -1016,7 +1016,7 @@ struct
       if Expr.V.is_global v then
         begin
           GM.sm_decl_const sort_map name
-            (GM.conv_sort (TllInterface.sort_to_expr_sort s));
+            (GM.conv_sort (TLLInterface.sort_to_expr_sort s));
           B.add_string buf ( "(define " ^ name ^ "::" ^ s_str ^ ")\n" );
           match s with
             Expr.Path -> B.add_string buf ( "(assert (ispath " ^ name ^ "))\n" )

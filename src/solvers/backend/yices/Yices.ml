@@ -87,7 +87,7 @@ struct
     
     module Tll =
     struct
-      module Exp = TllExpression
+      module Exp = TLLExpression
       module Smp = SmpTll
       module Query = functor (Q : TLL_QUERY) ->
       struct

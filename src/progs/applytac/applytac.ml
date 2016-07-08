@@ -117,7 +117,7 @@ let _ =
         print_endline "Calling the TLL solver...";
         List.iter (fun phi ->
           print_endline (Expression.formula_to_str phi);
-          let tll_phi = TllInterface.formula_to_tll_formula phi in
+          let tll_phi = TLLInterface.formula_to_tll_formula phi in
           let opt = SolOpt.new_opt () in
           SolOpt.set_cutoff_strategy opt (!ApplyTacArgs.coType);
           let result = Valid.is_valid (Tll.check_valid opt tll_phi) in

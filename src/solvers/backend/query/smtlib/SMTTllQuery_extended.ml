@@ -32,8 +32,8 @@ open LeapVerbose
 module SMTTllQuery : TLL_QUERY =
 struct
 
-  module Expr     = TllExpression
-  module VarIdSet = TllExpression.V.VarIdSet
+  module Expr     = TLLExpression
+  module VarIdSet = TLLExpression.V.VarIdSet
   module B        = Buffer
   module GM       = GenericModel
 
@@ -1320,7 +1320,7 @@ struct
       if Expr.V.is_global v then
         begin
           GM.sm_decl_const sort_map name
-            (GM.conv_sort (TllInterface.sort_to_expr_sort s)) ;
+            (GM.conv_sort (TLLInterface.sort_to_expr_sort s)) ;
           B.add_string buf ( "(declare-fun " ^ name ^ " () " ^ s_str ^ ")\n" );
           match s with
           | Expr.Addr -> B.add_string buf ( "(assert (isaddr " ^name^ "))\n" )

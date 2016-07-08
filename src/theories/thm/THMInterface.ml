@@ -26,14 +26,14 @@
 
 
 module E   = Expression
-module THM = ThmExpression
+module THM = THMExpression
 
 exception UnsupportedSort of string
 exception UnsupportedThmExpr of string
 
 
 
-(* Expression to ThmExpression conversion *)
+(* Expression to THMExpression conversion *)
 let rec sort_to_thm_sort (s:E.sort) : THM.sort =
   match s with
   | E.Set         -> THM.Set
@@ -452,7 +452,7 @@ and formula_to_thm_formula (phi:E.formula) : THM.formula =
 
 
   
-(* ThmExpression to Expression conversion *)
+(* THMExpression to Expression conversion *)
 let rec build_expr_term_var (v:THM.V.t) : E.term =
   let thm_v = var_to_expr_var v in
   match (THM.V.sort v) with

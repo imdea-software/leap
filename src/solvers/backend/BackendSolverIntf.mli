@@ -274,7 +274,7 @@ end
 
 module type BACKEND_SOLVER = CUSTOM_BACKEND_SOLVER
   with module Translate.Pos.Exp    = PosExpression
-  and  module Translate.Tll.Exp    = TllExpression
+  and  module Translate.Tll.Exp    = TLLExpression
   and  module Translate.Num.Exp    = NumExpression
   and  module Translate.Pairs.Exp  = PairsExpression
 
@@ -312,7 +312,7 @@ sig
 end
 
 module type BACKEND_TLL = CUSTOM_BACKEND_TLL
-  with module Translate.Tll.Exp = TllExpression
+  with module Translate.Tll.Exp = TLLExpression
 
 
 

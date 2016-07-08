@@ -49,7 +49,7 @@ module type CUSTOM_TLLSOLVER = sig
 end
 
 module type S = CUSTOM_TLLSOLVER
-  with module TllExp = TllExpression
+  with module TllExp = TLLExpression
   
 module Make : functor (Solver : BackendSolverIntf.BACKEND_TLL) -> S
 

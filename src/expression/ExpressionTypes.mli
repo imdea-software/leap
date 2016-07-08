@@ -26,8 +26,8 @@
 
 module type EXPRESSION = module type of Expression
 module type POSEXP     = module type of PosExpression
-module type TLLEXP     = module type of TllExpression
+module type TLLEXP     = module type of TLLExpression
 module type TSLKEXP    = TSLKExpression.S
 module type NUMEXP     = module type of NumExpression
 module type PAIRSEXP   = module type of PairsExpression
-module type THMEXP     = module type of ThmExpression
+module type THMEXP     = module type of THMExpression

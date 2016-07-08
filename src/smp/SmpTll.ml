@@ -25,13 +25,13 @@
 
 
 open LeapLib
-open TllExpression
+open TLLExpression
 
-module Expr     = TllExpression
-module V        = TllExpression.V
+module Expr     = TLLExpression
+module V        = TLLExpression.V
 module VarSet   = V.VarSet
 module VarIdSet = V.VarIdSet
-module ASet     = TllExpression.AtomSet
+module ASet     = TLLExpression.AtomSet
 
 module F        = Formula
 module MS       = ModelSize

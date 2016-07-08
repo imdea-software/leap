@@ -28,8 +28,8 @@ open LeapVerbose
 
 module GenSet   = LeapGenericSet
 module GM       = GenericModel
-module HM       = ThmExpression
-module TLL      = TllExpression
+module HM       = THMExpression
+module TLL      = TLLExpression
 module E        = Expression
 module F        = Formula
 module SolOpt   = SolverOptions
@@ -64,37 +64,37 @@ let bucketarr_tbl : (HM.bucketarr * int, (TLL.addr * TLL.addr * TLL.set * TLL.ti
 
 
 let tid_thm_to_tll (t:HM.tid) : TLL.tid =
-  TllInterface.tid_to_tll_tid(ThmInterface.tid_to_expr_tid t)
+  TLLInterface.tid_to_tll_tid(THMInterface.tid_to_expr_tid t)
 
 let term_thm_to_term (t:HM.term) : TLL.term =
-  TllInterface.term_to_tll_term(ThmInterface.term_to_expr_term t)
+  TLLInterface.term_to_tll_term(THMInterface.term_to_expr_term t)
 
 let set_thm_to_tll (s:HM.set) : TLL.set =
-  TllInterface.set_to_tll_set(ThmInterface.set_to_expr_set s)
+  TLLInterface.set_to_tll_set(THMInterface.set_to_expr_set s)
 
 let elem_thm_to_tll (e:HM.elem) : TLL.elem =
-  TllInterface.elem_to_tll_elem(ThmInterface.elem_to_expr_elem e)
+  TLLInterface.elem_to_tll_elem(THMInterface.elem_to_expr_elem e)
 
 let addr_thm_to_tll (a:HM.addr) : TLL.addr =
-  TllInterface.addr_to_tll_addr(ThmInterface.addr_to_expr_addr a)
+  TLLInterface.addr_to_tll_addr(THMInterface.addr_to_expr_addr a)
 
 let cell_thm_to_tll (c:HM.cell) : TLL.cell =
-  TllInterface.cell_to_tll_cell(ThmInterface.cell_to_expr_cell c)
+  TLLInterface.cell_to_tll_cell(THMInterface.cell_to_expr_cell c)
 
 let setth_thm_to_tll (s:HM.setth) : TLL.setth =
-  TllInterface.setth_to_tll_setth(ThmInterface.setth_to_expr_setth s)
+  TLLInterface.setth_to_tll_setth(THMInterface.setth_to_expr_setth s)
 
 let setelem_thm_to_tll (s:HM.setelem) : TLL.setelem =
-  TllInterface.setelem_to_tll_setelem(ThmInterface.setelem_to_expr_setelem s)
+  TLLInterface.setelem_to_tll_setelem(THMInterface.setelem_to_expr_setelem s)
 
 let path_thm_to_tll (p:HM.path) : TLL.path =
-  TllInterface.path_to_tll_path(ThmInterface.path_to_expr_path p)
+  TLLInterface.path_to_tll_path(THMInterface.path_to_expr_path p)
 
 let mem_thm_to_tll (m:HM.mem) : TLL.mem =
-  TllInterface.mem_to_tll_mem(ThmInterface.mem_to_expr_mem m)
+  TLLInterface.mem_to_tll_mem(THMInterface.mem_to_expr_mem m)
 
 let int_thm_to_tll (i:HM.integer) : TLL.integer =
-  TllInterface.int_to_tll_int(ThmInterface.int_to_expr_int i)
+  TLLInterface.int_to_tll_int(THMInterface.int_to_expr_int i)
 
 
 let construct_fresh_name (v:HM.V.t) : string =
@@ -663,10 +663,10 @@ let rec trans_literal (alpha_r:E.integer list list option)
       done;
       F.disj_list ([ineq_s; ineq_setelem; list_disj] @ (!disjoint))
   (* Remaining cases *)
-  | F.Atom a -> TllInterface.formula_to_tll_formula(
-                  ThmInterface.formula_to_expr_formula (Formula.atom_to_formula a))
-  | F.NegAtom a -> TllInterface.formula_to_tll_formula(
-                     ThmInterface.formula_to_expr_formula (Formula.negatom_to_formula a))
+  | F.Atom a -> TLLInterface.formula_to_tll_formula(
+                  THMInterface.formula_to_expr_formula (Formula.atom_to_formula a))
+  | F.NegAtom a -> TLLInterface.formula_to_tll_formula(
+                     THMInterface.formula_to_expr_formula (Formula.negatom_to_formula a))
 
 
 
@@ -678,13 +678,13 @@ let to_tll (alpha_r:E.integer list list option)
   Hashtbl.clear tidarr_tbl;
   let conjs = List.fold_left (fun xs lit ->
                 (F.to_conj_list
-                  (TllInterface.formula_to_expr_formula
+                  (TLLInterface.formula_to_expr_formula
                     (trans_literal alpha_r levels lit))) @ xs
               ) [] thm_ls in
   (* print_endline "CONJS";
      List.iter (fun phi -> print_endline (E.formula_to_str phi)) conjs; *)
   let (conjs',subst) = Tactics.gen_eq_prop_from_list conjs in
-  let tll_phi = TllInterface.formula_to_tll_formula
+  let tll_phi = TLLInterface.formula_to_tll_formula
                   (E.subst_vars subst (F.conj_list (F.cleanup_dups conjs'))) in
   (* print_endline ("TLL_PHI: " ^ (TLL.formula_to_str tll_phi)); *)
   Log.print "ThmSolver. Obtained formula in TLL" (TLL.formula_to_str tll_phi);
@@ -698,7 +698,7 @@ let to_tll (alpha_r:E.integer list list option)
 
 let try_sat_with_presburger_arithmetic (phi:HM.formula) : Sat.t =
   DP.add_dp_calls this_call_tbl DP.Num 1;
-  NumSolver.try_sat (ThmInterface.formula_to_expr_formula phi)
+  NumSolver.try_sat (THMInterface.formula_to_expr_formula phi)
 
 
 
@@ -732,7 +732,7 @@ let check_thm (opt:SolOpt.t)
       let fullConj = intBoundFormula @ ls in 
       assert(levels >= 0);
       let phi_tll = to_tll alpha_r (levels-1)
-                      (List.map ThmInterface.literal_to_thm_literal fullConj) in
+                      (List.map THMInterface.literal_to_thm_literal fullConj) in
       TllSol.compute_model (!comp_model);
       SolOpt.set_use_quantifiers opt !use_quantifier;
       let res = TllSol.check_sat opt phi_tll in
@@ -776,7 +776,7 @@ let check_sat_plus_info (opt:SolOpt.t)
     | _ -> let answer =
              try
                ArrSol.try_sat_with_pa
-                 (ThmInterface.formula_to_expr_formula phi)
+                 (THMInterface.formula_to_expr_formula phi)
              with _ -> begin
                (* STEP 1: Normalize the formula *)
                Log.print "THM Solver formula" (HM.formula_to_str phi);
@@ -795,7 +795,7 @@ let check_sat_plus_info (opt:SolOpt.t)
                   ) phi_dnf; *)
                if List.exists (fun psi ->
                     Sat.is_sat (ArrSol.dnf_sat opt
-                      (ThmInterface.conj_formula_to_expr_conj_formula psi))
+                      (THMInterface.conj_formula_to_expr_conj_formula psi))
                   ) phi_dnf then
                  Sat.Sat
                else
