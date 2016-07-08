@@ -1,13 +1,31 @@
+*.swp
+*.swo
+*.annot
+*.cmo
+*.cma
+*.cmi
+*.a
+*.o
+*.cmx
+*.cmxs
+*.cmxa
 
-# /
+# ocamlbuild working directory
+_build/
+
+# folder containing compiled binaries
+bin/
+
+# ocamlbuild targets
+*.byte
+*.native
+
+# oasis generated files
+setup.data
+setup.log
+
+# mypath
 /src/progs/MyPath.ml
 
-# /examples/OLD-EXAMPLES/inv_lists/
-/examples/OLD-EXAMPLES/inv_lists/yices
-/examples/OLD-EXAMPLES/inv_lists/z3
-
-# /src/misc/
-/src/misc/mytools
-
-# /src/progs/
+# revision file
 /src/progs/Revision.ml
