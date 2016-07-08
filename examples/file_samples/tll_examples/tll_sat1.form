@@ -1,0 +1,8 @@
+vars:
+
+addr a
+addrSet region
+
+formula:
+
+in(a,region) \/ (~ in(a,region))
