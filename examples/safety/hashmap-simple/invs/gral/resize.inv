@@ -4,5 +4,5 @@ tid i
 
 invariant [hashmap_resize] :
 
-	true
+  true
 

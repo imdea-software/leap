@@ -1,7 +1,0 @@
-param:
-
-tid i
-
-invariant [ticket_set_minticket] :
-
-@crit(i). -> (setIntMin(bag) = main::ticket(i))

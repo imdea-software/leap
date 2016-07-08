@@ -1,7 +1,0 @@
-param:
-
-tid i
-
-invariant [activeLow] :
-
-( @active(i). ) -> (main::ticket(i) < tick)

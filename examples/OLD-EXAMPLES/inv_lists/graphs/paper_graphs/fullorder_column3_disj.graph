@@ -1,1 +1,0 @@
-fullOrder, fullNext, fullLock, fullPreserve, fullRegion => fullDisjoint {pruning:reduce2|simpl}

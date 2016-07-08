@@ -1,7 +1,0 @@
--> activeLow {pruning:reduce2|simpl}
-
--> notSame [3:activeLow] {pruning:reduce2|simpl}
-
--> minTicket [6:E:notSame] {pruning:reduce2|simpl}
-
--> mutex [4:N:notSame,minTicket] {pruning:reduce2|simpl}

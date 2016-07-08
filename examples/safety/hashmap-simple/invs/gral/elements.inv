@@ -4,4 +4,4 @@ tid i
 
 invariant [hashmap_elems] :
 
-	@adding_node(i). -> rd(heap, add::node(i)).data = add::e(i)
+  @adding_node(i). -> rd(heap, add::node(i)).data = add::e(i)

@@ -1,30 +1,30 @@
 => hashmap_preserve [
-		22:hashmap_next,hashmap_elems
-	 ] { union : split-goal
-						 | reduce2
-						 | split-antecedent-pc
-						 | simplify-pc propositional-propagate
-						}
+    22:hashmap_next,hashmap_elems
+   ] { union : split-goal
+             | reduce2
+             | split-antecedent-pc
+             | simplify-pc propositional-propagate
+            }
 
 //=> hashmap_elems
-//		 { union :
-//						 | reduce2
-//						 | split-antecedent-pc
-//						 | simplify-pc}
+//     { union :
+//             | reduce2
+//             | split-antecedent-pc
+//             | simplify-pc}
 
 
 //=> hashmap_next [
-//		22:O:hashmap_preserve,hashmap_locks,hashmap_disjoint
-//	 ] { union :
-//						 | reduce2
-//						 |
-//						 | simplify-pc}
+//    22:O:hashmap_preserve,hashmap_locks,hashmap_disjoint
+//   ] { union :
+//             | reduce2
+//             |
+//             | simplify-pc}
 
 
 //=> hashmap_disjoint [
-//		22:hashmap_preserve,hashmap_locks
-//	 ] { union :
-//						 | reduce2
-//						 |
-//						 | simplify-pc}
+//    22:hashmap_preserve,hashmap_locks
+//   ] { union :
+//             | reduce2
+//             |
+//             | simplify-pc}
 

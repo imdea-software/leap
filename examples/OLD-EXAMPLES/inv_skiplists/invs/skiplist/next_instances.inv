@@ -1,5 +1,0 @@
-vars:
-
-invariant [skiplist_next_inst] :
-
-true

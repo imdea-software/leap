@@ -4,7 +4,7 @@ tid i
 
 invariant [hashmap_locks] :
 
-	@locked_bucket(i). -> locks[add::myBucket(i)].lockid = i
+  @locked_bucket(i). -> locks[add::myBucket(i)].lockid = i
 
 //  true
 //  @locked_bucket(i). ->

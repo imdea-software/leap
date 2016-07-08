@@ -1,8 +1,8 @@
 
 global
   lockarr locks
-	bucketarr table
-	int capacity
+  bucketarr table
+  int capacity
 
   ghost addrSet region
   ghost elemSet elements
@@ -28,11 +28,11 @@ assume
                                     call contains(e);
                                   _or_
                                     call add(e);
-																	_or_
-																		call resize();
+                                  _or_
+                                    call resize();
                                   endchoice
                                 endwhile
-																return ();
+                                return ();
 :main_e]
 :main_body]
                               end
@@ -52,7 +52,7 @@ assume
                             procedure contains (e:elem) : bool
                               int hashId
                               int myBucket
-															bool result
+                              bool result
                             begin
                               hashId := call hash(e);
                               myBucket := hashId % capacity;
@@ -65,16 +65,16 @@ assume
                             procedure add (e:elem)
                               int hashId
                               int myBucket
-															addr prev
+                              addr prev
                               addr curr
                               addr node
                             begin
-															hashId := call hash(e);
-															myBucket := hashId % capacity;
+                              hashId := call hash(e);
+                              myBucket := hashId % capacity;
 :myBucket_set[
-															locks[myBucket] := lock(locks[myBucket],me);
+                              locks[myBucket] := lock(locks[myBucket],me);
 :locked_bucket[
-															curr := table[myBucket].binit;
+                              curr := table[myBucket].binit;
                               while (curr->data != e /\ curr != null) do
                                 curr := curr->next;
                               endwhile
@@ -89,11 +89,11 @@ assume
                                     elements := eunion (elements, esingle(e));
                                     region := union (region, {node});
                                   $
-															endif
-															locks[myBucket] := unlock(locks[myBucket]);
+                              endif
+                              locks[myBucket] := unlock(locks[myBucket]);
 :locked_bucket]
 :myBucket_set]
-														end
+                            end
 
 
 // ----- HASHMAP RESIZE --------------------------------------
@@ -108,18 +108,18 @@ assume
                               addr itr
                               bucketarr oldTable
                             begin
-															i := 0;
-															while (i < capacity) do
-																locks[i] := lock(locks[i], me);
-																i := i + 1;
+                              i := 0;
+                              while (i < capacity) do
+                                locks[i] := lock(locks[i], me);
+                                i := i + 1;
                               endwhile
                               oldCapacity := capacity;
                               if (oldCapacity != capacity) then
                                 i := 0;
-																while (i < capacity) do
-																	locks[i] := unlock(locks[i]);
-																	i := i - 1;
-																endwhile
+                                while (i < capacity) do
+                                  locks[i] := unlock(locks[i]);
+                                  i := i - 1;
+                                endwhile
                                 return ();
                               endif
                               newCapacity := 2 * oldCapacity;
@@ -127,8 +127,8 @@ assume
                               i := 0;
                               while (i < newCapacity) do
                                 table[i] := mkbucket (null, null, empty, #);
-																i := i + 1;
-															endwhile
+                                i := i + 1;
+                              endwhile
                               capacity := newCapacity;
                               i := 0;
                               while (i < oldCapacity) do
@@ -142,9 +142,9 @@ assume
                                 i := i + 1;
                               endwhile
                               i := 0;
-															while (i < capacity) do
-																locks[i] := unlock(locks[i]);
-																i := i + 1;
+                              while (i < capacity) do
+                                locks[i] := unlock(locks[i]);
+                                i := i + 1;
                               endwhile
                               return ();
                             end

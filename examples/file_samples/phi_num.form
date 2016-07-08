@@ -1,8 +1,0 @@
-vars :
-
-int a
-int b
-
-formula :
-
-(a = 2 /\ b = a+1) -> b = 3
