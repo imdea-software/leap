@@ -1,3 +1,29 @@
+
+(***********************************************************************)
+(*                                                                     *)
+(*                                 LEAP                                *)
+(*                                                                     *)
+(*               Alejandro Sanchez, IMDEA Software Institute           *)
+(*                                                                     *)
+(*                                                                     *)
+(*      Copyright 2011 IMDEA Software Institute                        *)
+(*                                                                     *)
+(*  Licensed under the Apache License, Version 2.0 (the "License");    *)
+(*  you may not use this file except in compliance with the License.   *)
+(*  You may obtain a copy of the License at                            *)
+(*                                                                     *)
+(*      http://www.apache.org/licenses/LICENSE-2.0                     *)
+(*                                                                     *)
+(*  Unless required by applicable law or agreed to in writing,         *)
+(*  software distributed under the License is distributed on an        *)
+(*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,       *)
+(*  either express or implied.                                         *)
+(*  See the License for the specific language governing permissions    *)
+(*  and limitations under the License.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+
+
 (******************************************************************************)
 (* @file LeapArgs.ml                                                          *)
 (* Command Line Arguments for Leap                                            *)
@@ -112,7 +138,6 @@ let inputPvd (s:string) =
 let inputPvdSupport (s:string) =
   pvdSupport := s
 
-(* let dp_opt_list = List.map DP.to_str DP.def_dp_list *)
 let set_dp dp =
   try
     dpType := (DP.from_str dp)
@@ -283,8 +308,7 @@ let opts = [
      Arg.Set LeapDebug._testing_,
      " Reduces the size of the generated models for accelerating testing."); 
 
-(*
-    THIS WAS REMOVED TO SIMPLIFIED LEAP
+(* ALE: This options were removed in order to simplify LEAP.
     ("-i",
         Arg.String inputInvariant,
         "invariant candidate");

@@ -1,3 +1,29 @@
+
+(***********************************************************************)
+(*                                                                     *)
+(*                                 LEAP                                *)
+(*                                                                     *)
+(*               Alejandro Sanchez, IMDEA Software Institute           *)
+(*                                                                     *)
+(*                                                                     *)
+(*      Copyright 2011 IMDEA Software Institute                        *)
+(*                                                                     *)
+(*  Licensed under the Apache License, Version 2.0 (the "License");    *)
+(*  you may not use this file except in compliance with the License.   *)
+(*  You may obtain a copy of the License at                            *)
+(*                                                                     *)
+(*      http://www.apache.org/licenses/LICENSE-2.0                     *)
+(*                                                                     *)
+(*  Unless required by applicable law or agreed to in writing,         *)
+(*  software distributed under the License is distributed on an        *)
+(*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,       *)
+(*  either express or implied.                                         *)
+(*  See the License for the specific language governing permissions    *)
+(*  and limitations under the License.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+
+
 open TllQuery
 
 
@@ -85,10 +111,8 @@ struct
       B.add_string buf (" " ^ elem_prefix ^ (string_of_int i))
     done ;
     B.add_string buf ("))\n")
-  (*
-    B.add_string buf
-      ("(define-type " ^elem_s^ "(subrange 1 " ^(string_of_int num_elems)^ "))\n")
-  *)
+  (* B.add_string buf
+       ("(define-type " ^elem_s^ "(subrange 1 " ^(string_of_int num_elems)^ "))\n") *)
 
 
   let yices_cell_preamble (buf:B.t) : unit =
@@ -550,7 +574,7 @@ struct
     B.add_string buf ("(define greaterelem::(-> " ^elem_s^ " " ^elem_s^ " " ^bool_s^ ")\n" ^
                       "  (lambda (x::" ^elem_s^ " y::" ^elem_s^ ")\n" ^
                       "    (lesselem y x)))\n") ;
-    (* Totality and no-reflexibility *)
+    (* ALE: Totality and no-reflexibility *)
     B.add_string buf ("(assert (not (lesselem lowestElem lowestElem)))\n");
     B.add_string buf ("(assert (not (lesselem highestElem highestElem)))\n");
     B.add_string buf ("(assert (lesselem lowestElem highestElem))\n");
@@ -829,9 +853,9 @@ struct
                           (req_ops:Expr.special_op_t list)
         : (Expr.sort list * Expr.special_op_t list) =
   let (res_req_sorts, res_req_ops) = (ref req_sorts, ref req_ops) in
-  (* If "path" is a required sort, then we need to add "set" as required sort
-     since "set" is part of the definition of sort "path" (required by "addrs"
-     field) *)
+  (* ALE: If "path" is a required sort, then we need to add "set" as required
+     sort since "set" is part of the definition of sort "path" (required by
+     "addrs" field) *)
   if (List.mem Expr.Path req_sorts) then
     res_req_sorts := Expr.Set :: !res_req_sorts ;
   (!res_req_sorts, !res_req_ops)
@@ -1021,7 +1045,7 @@ struct
                         B.add_string buf ( "(assert (/= " ^ v_str ^ " NoThread))\n" )
                     ) tid_set
           | _    -> ()
-          (* FIX: Add iterations for ispath and isheap on local variables *)
+          (* ALE: May need to add iterations for ispath and isheap on local variables *)
         end
 
 
@@ -1105,7 +1129,7 @@ struct
     match e with
       Expr.VarElem v     -> variable_invocation_to_str v
     | Expr.CellData c    -> Printf.sprintf "(data %s)" (cellterm_to_str c)
-    | Expr.HavocListElem -> "" (* Don't need representation for this statement *)
+    | Expr.HavocListElem -> "" (* ALE: No need of representation for this statement *)
     | Expr.LowestElem    -> "lowestElem"
     | Expr.HighestElem   -> "highestElem"
 
@@ -1432,9 +1456,8 @@ struct
 
 
   let literal_list_to_str (use_q:bool) (ls:Expr.literal list) : string =
-    (* The use of quantifiers in Yices remains to be implemented *)
+    (* ALE: The use of quantifiers in Yices remains to be implemented. *)
     if use_q then ();
-    (* The use of quantifiers in Yices remains to be implemented *)
     let _ = GM.clear_sort_map sort_map in
     let expr = F.Conj ls in
     let c = SmpTll.cut_off_normalized expr in
@@ -1467,9 +1490,8 @@ struct
                      (copt:Smp.cutoff_options_t)
                      (use_q:bool)
                      (phi:Expr.formula) : string =
-    (* The use of quantifiers in Yices remains to be implemented *)
+    (* ALE: The use of quantifiers in Yices remains to be implemented. *)
     if use_q then ();
-    (* The use of quantifiers in Yices remains to be implemented *)
     let _ = GM.clear_sort_map sort_map in
     let max_cut_off = SmpTll.cut_off co copt phi in
     let num_addr    = MS.get max_cut_off MS.Addr in

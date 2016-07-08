@@ -1,3 +1,29 @@
+
+(***********************************************************************)
+(*                                                                     *)
+(*                                 LEAP                                *)
+(*                                                                     *)
+(*               Alejandro Sanchez, IMDEA Software Institute           *)
+(*                                                                     *)
+(*                                                                     *)
+(*      Copyright 2011 IMDEA Software Institute                        *)
+(*                                                                     *)
+(*  Licensed under the Apache License, Version 2.0 (the "License");    *)
+(*  you may not use this file except in compliance with the License.   *)
+(*  You may obtain a copy of the License at                            *)
+(*                                                                     *)
+(*      http://www.apache.org/licenses/LICENSE-2.0                     *)
+(*                                                                     *)
+(*  Unless required by applicable law or agreed to in writing,         *)
+(*  software distributed under the License is distributed on an        *)
+(*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,       *)
+(*  either express or implied.                                         *)
+(*  See the License for the specific language governing permissions    *)
+(*  and limitations under the License.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+
+
 open LeapLib
 
 module GenSet = LeapGenericSet
@@ -265,7 +291,7 @@ let to_id_order (arr:'a t) (p:'a Partition.t) : eqclass_order_t =
                         GenSet.add s (Partition.id p x)
                       ) (Hashtbl.find_all arr.order e);
                       s
-(*                      GenSet.add s (Partition.id p (Hashtbl.find arr.order e));s *)
+                      (* GenSet.add s (Partition.id p (Hashtbl.find arr.order e));s *)
                     with _ -> s
                   ) (GenSet.empty()) ec in
     Hashtbl.add eqclass_order ec_id ord_set
@@ -343,12 +369,10 @@ let gen_arrtrees (arr:'a t) : 'a arrtree list =
                     (p,id_order) :: xs
                   else xs
                 ) [] ps in
-  (*
-    List.iter (fun (p,_) ->
-        Printf.printf "Well defined: %b\n%s\n\n" (well_defined_order arr p)
-                                                 (Partition.to_str f p)
-    ) cands;
-  *)
+    (* List.iter (fun (p,_) ->
+         Printf.printf "Well defined: %b\n%s\n\n" (well_defined_order arr p)
+                                                  (Partition.to_str f p)
+       ) cands; *)
     List.fold_left (fun xs (p,id_graph) ->
       let all_avail = (GenSet.from_list (Partition.keys p)) in
       let prev_ids = Hashtbl.create (Hashtbl.length arr.succ) in

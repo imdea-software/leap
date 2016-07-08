@@ -1,3 +1,29 @@
+
+(***********************************************************************)
+(*                                                                     *)
+(*                                 LEAP                                *)
+(*                                                                     *)
+(*               Alejandro Sanchez, IMDEA Software Institute           *)
+(*                                                                     *)
+(*                                                                     *)
+(*      Copyright 2011 IMDEA Software Institute                        *)
+(*                                                                     *)
+(*  Licensed under the Apache License, Version 2.0 (the "License");    *)
+(*  you may not use this file except in compliance with the License.   *)
+(*  You may obtain a copy of the License at                            *)
+(*                                                                     *)
+(*      http://www.apache.org/licenses/LICENSE-2.0                     *)
+(*                                                                     *)
+(*  Unless required by applicable law or agreed to in writing,         *)
+(*  software distributed under the License is distributed on an        *)
+(*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,       *)
+(*  either express or implied.                                         *)
+(*  See the License for the specific language governing permissions    *)
+(*  and limitations under the License.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+
+
 open LeapLib
 open LeapVerbose
 
@@ -18,7 +44,6 @@ module Make (TSLK : TSLKExpression.S) =
     let options : Smp.cutoff_options_t ref = ref (Smp.opt_empty())
 
     (* union_info functions *)
-
     let new_union_count = (ASet.empty, ASet.empty, ASet.empty, ASet.empty)
 
 
@@ -99,24 +124,21 @@ module Make (TSLK : TSLKExpression.S) =
       (* ALE: No need to add null and NoThread in the counter,
               as they are added separately as an special address
               and tid respectively when creating the query to SMT *)
-
       let numlevel = ref (Expr.k) in
-      (* TOFIX: Not sure if I should consider all next pointers, or if they
-                are already expressed through a variable *)
+      (* ALE: Check if I should consider all next pointers, or if they
+              are already expressed through a variable. *)
       let numtid = ref (vars_tid + vars_mem * vars_addr * !numlevel) in
-(*      let numaddr = ref (vars_addr + vars_mem * vars_addr * !numlevel) in *)
-(*
-      Printf.printf "VARS ARRDS: %i\n" vars_addr;
-      Printf.printf "VARS CELLS: %i\n" vars_cell;
-      Printf.printf "NUMLEVEL: %i\n" !numlevel;
-*)
+      (* let numaddr = ref (vars_addr + vars_mem * vars_addr * !numlevel) in *)
+      (* Printf.printf "VARS ARRDS: %i\n" vars_addr;
+         Printf.printf "VARS CELLS: %i\n" vars_cell;
+         Printf.printf "NUMLEVEL: %i\n" !numlevel; *)
       let numaddr = ref (vars_addr + vars_cell * !numlevel) in
       let vars_elem = VarSet.cardinal (V.varset_of_sort vars Expr.Elem) in
       let numelem = ref (vars_elem + vars_mem * vars_addr) in
 
       let process_ineq (x,_) =
         match x with
-        | Expr.VarT _      -> ()        (* nothing, y must be a VarT as well *)
+        | Expr.VarT _      -> ()                      (* nothing, y must be a VarT as well *)
         | Expr.SetT _      -> numaddr := !numaddr + 1 (* the witness of s1 != s2 *)
         | Expr.ElemT _     -> ()
         | Expr.TidT _      -> ()
@@ -127,7 +149,7 @@ module Make (TSLK : TSLKExpression.S) =
         | Expr.PathT _     -> numaddr := !numaddr + 2 (* the witnesses of p1 != p2 *)
         | Expr.MemT _      -> ()
         | Expr.LevelT _    -> ()
-        | Expr.VarUpdate _ -> () in                (* ALE: Not sure if OK *)
+        | Expr.VarUpdate _ -> () in                   (* ALE: Check this case *)
       let process (lit:Expr.literal) =
         match lit with
         | F.Atom(Expr.InEq(x,y)) -> process_ineq(x,y)
@@ -148,8 +170,8 @@ module Make (TSLK : TSLKExpression.S) =
               | Expr.Greater _      -> ()
               | Expr.LessEq _       -> ()
               | Expr.GreaterEq _    -> ()
-              | Expr.LessElem _     -> () (* Not sure *)
-              | Expr.GreaterElem _  -> () (* Not sure *)
+              | Expr.LessElem _     -> () (* ALE: Check this case *)
+              | Expr.GreaterElem _  -> () (* ALE: Check this case *)
               | Expr.Eq(x,y)        -> process_ineq (x,y)
               | Expr.InEq _         -> ()
               | Expr.BoolVar _      -> ()
@@ -179,9 +201,7 @@ module Make (TSLK : TSLKExpression.S) =
       ms
 
 
-    (* I must also count the equalities!!! *)
-
-
+    (* ALE: I must also consider the equalities. *)
     let union_ineq_cutoff_pol (info:union_info) ((x,y):(Expr.term * Expr.term)) : union_info =
       match x with
         Expr.VarT _      -> info (* nothing, y must be a VarT as well *)
@@ -191,13 +211,13 @@ module Make (TSLK : TSLKExpression.S) =
       | Expr.AddrT _     -> info (* no need to look for firstlock, every firstlock has a var *)
       | Expr.CellT _     -> (* ALE: I added this *)
                               union_count_elem (union_count_tid info (Expr.InEq(x,y))) (Expr.InEq(x,y));
-                              (* an element and a tid identifier witness of c1 != c2 *)
+                            (* an element and a tid identifier witness of c1 != c2 *)
       | Expr.SetThT _    -> union_count_tid info (Expr.InEq(x,y)) (* the witness of st1 != st2 *)
       | Expr.SetElemT _  -> union_count_elem info (Expr.InEq(x,y)) (* the witness of se1 != se2 *)
       | Expr.PathT _     -> union_count_addr info (Expr.InEq(x,y)) (* the witnesses of p1 != p2 *)
       | Expr.MemT _      -> info
       | Expr.LevelT _    -> info
-      | Expr.VarUpdate _ -> info (* ALE: Not sure if OK *)
+      | Expr.VarUpdate _ -> info (* ALE: Check this case *)
 
 
     let union_atom_cutoff_pol (pol:Polarity.t) (info:union_info) (a:Expr.atom) : union_info =
@@ -295,18 +315,17 @@ module Make (TSLK : TSLKExpression.S) =
       let num_levels = Expr.k in
       let num_addrs = (* 1 + *)                               (* null (is already unique) *)
                       varaddr_num +                           (* Address variables  *)
-(*                      varcell_num * num_levels              + (* Cell next pointers *) *)
-(*                      varaddr_num * varmem_num * num_levels + (* Cell next pointers *) *)
-                      (MS.get info MS.Addr)                     (* Special literals   *) in
+                   (* varcell_num * num_levels              + (* Cell next pointers *) *)
+                   (* varaddr_num * varmem_num * num_levels + (* Cell next pointers *) *)
+                      (MS.get info MS.Addr)                   (* Special literals   *) in
       let num_tids = 1 + vartid_num + (MS.get info MS.Tid) in
-(*                    1 +                                      (* No thread          *)
-                       vartid_num +                             (* Tid variables     *)
-                       varcell_num * num_levels                 (* Cell locks         *) in
-(*                     varmem_num * num_addrs * num_levels      (* Cell locks         *) in *)
-*)
+                  (* 1 +                                      (* No thread         *)
+                     vartid_num +                             (* Tid variables     *)
+                     varcell_num * num_levels                 (* Cell locks        *)
+                     varmem_num * num_addrs * num_levels      (* Cell locks        *) in *)
       let num_elems = max 1 (varelem_num + (MS.get info MS.Elem))
-(*                    varelem_num                             (* Elem variables     *) *)
-(*                    varmem_num * num_addrs                  (* Cell data          *) *)
+                   (* varelem_num                             (* Elem variables     *)
+                      varmem_num * num_addrs                  (* Cell data          *) *)
       in
         MS.create_with [(MS.Level, num_levels); (MS.Addr, num_addrs);
                         (MS.Tid, num_tids); (MS.Elem, num_elems)]
@@ -326,7 +345,7 @@ module Make (TSLK : TSLKExpression.S) =
         | Expr.PathT _     -> Some (x,y) (* the witnesses of p1 != p2 *)
         | Expr.MemT _      -> Some (x,y)
         | Expr.LevelT _    -> Some (x,y)
-        | Expr.VarUpdate _ -> assert(false) (* ALE: Not sure if OK *)
+        | Expr.VarUpdate _ -> assert(false) (* ALE: Check this case *)
 
 
     let prune_atom (a:Expr.atom) : Expr.atom option =
@@ -363,7 +382,7 @@ module Make (TSLK : TSLKExpression.S) =
     let cut_off (strat:Smp.cutoff_strategy_t)
                 (opt:Smp.cutoff_options_t)
                 (f:Expr.formula) : MS.t =
-(*      LOG "Strategy: %s\n" (Smp.strategy_to_str strat) LEVEL DEBUG; *)
+      (* LOG "Strategy: %s\n" (Smp.strategy_to_str strat) LEVEL DEBUG; *)
       options := opt;
       let model_s = if !LeapDebug._testing_ then
                       LeapDebug._testing_smp_()

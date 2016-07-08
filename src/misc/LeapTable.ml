@@ -1,12 +1,38 @@
-(******************************************************************************)
-(* @file RoundedTypes                                                         *)
-(* Type definitons                                                            *)
-(*                                                                            *)
-(* @authors Julian Samborski-Forlese                                          *)
-(* @version 0.1.0                                                             *)
-(* @since 2011/08/15                                                          *)
-(*                                                                            *)
-(******************************************************************************)
+
+(***********************************************************************)
+(*                                                                     *)
+(*                                 LEAP                                *)
+(*                                                                     *)
+(*               Alejandro Sanchez, IMDEA Software Institute           *)
+(*                                                                     *)
+(*                                                                     *)
+(*      Copyright 2011 IMDEA Software Institute                        *)
+(*                                                                     *)
+(*  Licensed under the Apache License, Version 2.0 (the "License");    *)
+(*  you may not use this file except in compliance with the License.   *)
+(*  You may obtain a copy of the License at                            *)
+(*                                                                     *)
+(*      http://www.apache.org/licenses/LICENSE-2.0                     *)
+(*                                                                     *)
+(*  Unless required by applicable law or agreed to in writing,         *)
+(*  software distributed under the License is distributed on an        *)
+(*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,       *)
+(*  either express or implied.                                         *)
+(*  See the License for the specific language governing permissions    *)
+(*  and limitations under the License.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+
+
+(***********************************************************************)
+(*                                                                     *)
+(* Type definitions                                                    *)
+(*                                                                     *)
+(* @authors Julian Samborski-Forlese                                   *)
+(* @version 0.1.0                                                      *)
+(* @since 2011/08/15                                                   *)
+(*                                                                     *)
+(***********************************************************************)
 module H = Hashtbl
 
 type ('a, 'b) table = ('a, 'b) H.t
@@ -14,8 +40,6 @@ type ('a, 'b) table = ('a, 'b) H.t
 let create () = H.create 100
 
 let copy t = H.copy t
-  (*let t' = create () in
-  H.iter (fun x -> H.add t' x) t; t'*)
   
 let insert t (x,y) = 
   try let y' = H.find t x in Some y' 

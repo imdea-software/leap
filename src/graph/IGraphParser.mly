@@ -1,4 +1,30 @@
+
 %{
+
+(***********************************************************************)
+(*                                                                     *)
+(*                                 LEAP                                *)
+(*                                                                     *)
+(*               Alejandro Sanchez, IMDEA Software Institute           *)
+(*                                                                     *)
+(*                                                                     *)
+(*      Copyright 2011 IMDEA Software Institute                        *)
+(*                                                                     *)
+(*  Licensed under the Apache License, Version 2.0 (the "License");    *)
+(*  you may not use this file except in compliance with the License.   *)
+(*  You may obtain a copy of the License at                            *)
+(*                                                                     *)
+(*      http://www.apache.org/licenses/LICENSE-2.0                     *)
+(*                                                                     *)
+(*  Unless required by applicable law or agreed to in writing,         *)
+(*  software distributed under the License is distributed on an        *)
+(*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,       *)
+(*  either express or implied.                                         *)
+(*  See the License for the specific language governing permissions    *)
+(*  and limitations under the License.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+
 
 (* Type rename *)
 
@@ -252,7 +278,7 @@ rule :
       let i = $3 in
       let cs = $4 in
       let ts = $5 in
-(*        LOG "Concurrent tactics size: %i" (List.length (Tactics.post_tacs ts)) LEVEL DEBUG; *)
+      (* LOG "Concurrent tactics size: %i" (List.length (Tactics.post_tacs ts)) LEVEL DEBUG; *)
         IGraph.new_rule IGraph.Concurrent sup i cs ts
     }
   | maybe_empty_tag_list SEQ_ARROW inv seq_cases tactics
@@ -261,7 +287,7 @@ rule :
       let i = $3 in
       let cs = $4 in
       let ts = $5 in
-(*        LOG "Sequential tactics size: %i" (List.length (Tactics.post_tacs ts)) LEVEL DEBUG; *)
+      (* LOG "Sequential tactics size: %i" (List.length (Tactics.post_tacs ts)) LEVEL DEBUG; *)
         IGraph.new_rule IGraph.Sequential sup i cs ts
     }
 

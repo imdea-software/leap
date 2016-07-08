@@ -1,3 +1,29 @@
+
+(***********************************************************************)
+(*                                                                     *)
+(*                                 LEAP                                *)
+(*                                                                     *)
+(*               Alejandro Sanchez, IMDEA Software Institute           *)
+(*                                                                     *)
+(*                                                                     *)
+(*      Copyright 2011 IMDEA Software Institute                        *)
+(*                                                                     *)
+(*  Licensed under the Apache License, Version 2.0 (the "License");    *)
+(*  you may not use this file except in compliance with the License.   *)
+(*  You may obtain a copy of the License at                            *)
+(*                                                                     *)
+(*      http://www.apache.org/licenses/LICENSE-2.0                     *)
+(*                                                                     *)
+(*  Unless required by applicable law or agreed to in writing,         *)
+(*  software distributed under the License is distributed on an        *)
+(*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,       *)
+(*  either express or implied.                                         *)
+(*  See the License for the specific language governing permissions    *)
+(*  and limitations under the License.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+
+
 module PE = PairsExpression
 module ASet = PE.AtomSet
 module V = PE.V
@@ -19,7 +45,7 @@ let cut_off_normalized (expr:PE.conjunctive_formula) : MS.t =
 
   let process_ineq (x,_) =
     match x with
-    | PE.IntV _     -> ()                      (* nothing, y must be a VarT as well *)
+    | PE.IntV _     -> ()                         (* nothing, y must be a VarT as well *)
     | PE.PairV _    -> (numint := !numint + 2; numtid := !numtid + 2) (* witness of pair inequality *) 
     | PE.SetV _     -> (incr numint)              (* the witness of s1 != s2 *)
     | PE.SetPairV _ -> (incr numint; incr numtid) (* the witness of s1 != s2 *)
@@ -119,5 +145,5 @@ let compute_max_cut_off_with_pruning (phi:PE.formula) : MS.t =
 
     
 let cut_off (phi:PE.formula) : MS.t =
-(*  LOG "Strategy: %s\n" (Smp.strategy_to_str strat) LEVEL DEBUG; *)
+  (* LOG "Strategy: %s\n" (Smp.strategy_to_str strat) LEVEL DEBUG; *)
   compute_max_cut_off_with_pruning phi

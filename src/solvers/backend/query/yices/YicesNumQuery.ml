@@ -1,3 +1,29 @@
+
+(***********************************************************************)
+(*                                                                     *)
+(*                                 LEAP                                *)
+(*                                                                     *)
+(*               Alejandro Sanchez, IMDEA Software Institute           *)
+(*                                                                     *)
+(*                                                                     *)
+(*      Copyright 2011 IMDEA Software Institute                        *)
+(*                                                                     *)
+(*  Licensed under the Apache License, Version 2.0 (the "License");    *)
+(*  you may not use this file except in compliance with the License.   *)
+(*  You may obtain a copy of the License at                            *)
+(*                                                                     *)
+(*      http://www.apache.org/licenses/LICENSE-2.0                     *)
+(*                                                                     *)
+(*  Unless required by applicable law or agreed to in writing,         *)
+(*  software distributed under the License is distributed on an        *)
+(*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,       *)
+(*  either express or implied.                                         *)
+(*  See the License for the specific language governing permissions    *)
+(*  and limitations under the License.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+
+
 open NumQuery
 open LeapLib
 
@@ -85,9 +111,7 @@ struct
                    ""
     in
       List.fold_left (fun str v ->
-        (*
-        print_endline ("Analyzing variable:\n" ^ (NE.V.to_full_str (fun s -> match s with NE.Int -> "int" | NE.Set -> "set" | NE.Tid -> "tid") (fun _ -> "") v));
-        *)
+        (* print_endline ("Analyzing variable:\n" ^ (NE.V.to_full_str (fun s -> match s with NE.Int -> "int" | NE.Set -> "set" | NE.Tid -> "tid") (fun _ -> "") v)); *)
         str ^ (int_var_to_str v)
       ) th_str (NE.V.VarSet.elements v_set)
 
@@ -191,10 +215,10 @@ struct
     in
       match (NE.V.parameter v) with
       | NE.V.Shared  -> Printf.sprintf " %s%s%s%s" p_str (NE.V.id v) th_str pr_str
-  (* For LEAP *)
+      (* For LEAP *)
       | NE.V.Local _ -> Printf.sprintf " (%s%s%s %s)" p_str (NE.V.id v) pr_str th_str
-  (* For numinv *)
-  (*    | NE.V.Local _ -> Printf.sprintf " %s%s%s_%s" p_str (NE.V.id v) pr_str th_str *)
+      (* For numinv *)
+      (* | NE.V.Local _ -> Printf.sprintf " %s%s%s_%s" p_str (NE.V.id v) pr_str th_str *)
 
 
   (************************** Support for sets **************************)
@@ -391,7 +415,7 @@ struct
     ) local_vars
 
 
-  (* TODO: Verify, if no set is defined, then do not include the preamble for sets *)
+  (* ALE: Verify, if no set is defined, then do not include the preamble for sets *)
   let yices_preamble (buf:Buffer.t)
                      (voc:NE.tid list)
                      (cutoff:int)
@@ -548,9 +572,7 @@ struct
 
 
   let int_formula_to_str (phi:NE.formula) : string =
-    (*
-    print_endline ("INT FORMULA: " ^ (NE.formula_to_str phi));
-    *)
+    (* print_endline ("INT FORMULA: " ^ (NE.formula_to_str phi)); *)
     let _ = GM.clear_sort_map sort_map in
     (*  if direct then *)
     let vars        = NE.all_vars phi in
@@ -560,9 +582,7 @@ struct
 
 
   let int_formula_with_lines_to_str (phi:NE.formula) : string =
-    (*
-    print_endline ("INT FORMULA WITH LINES: " ^ (NE.formula_to_str phi));
-    *)
+    (* print_endline ("INT FORMULA WITH LINES: " ^ (NE.formula_to_str phi)); *)
     let _ = GM.clear_sort_map sort_map in
     let filter_ints xs = List.filter (fun v ->
                            (NE.V.sort v) = NE.Int

@@ -1,3 +1,29 @@
+
+(***********************************************************************)
+(*                                                                     *)
+(*                                 LEAP                                *)
+(*                                                                     *)
+(*               Alejandro Sanchez, IMDEA Software Institute           *)
+(*                                                                     *)
+(*                                                                     *)
+(*      Copyright 2011 IMDEA Software Institute                        *)
+(*                                                                     *)
+(*  Licensed under the Apache License, Version 2.0 (the "License");    *)
+(*  you may not use this file except in compliance with the License.   *)
+(*  You may obtain a copy of the License at                            *)
+(*                                                                     *)
+(*      http://www.apache.org/licenses/LICENSE-2.0                     *)
+(*                                                                     *)
+(*  Unless required by applicable law or agreed to in writing,         *)
+(*  software distributed under the License is distributed on an        *)
+(*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,       *)
+(*  either express or implied.                                         *)
+(*  See the License for the specific language governing permissions    *)
+(*  and limitations under the License.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+
+
 open TllQuery
 open LeapLib
 open LeapVerbose
@@ -7,7 +33,7 @@ module SMTTllQuery : TLL_QUERY =
 struct
 
   module Expr     = TllExpression
-  module VarIdSet = TllExpression.VarIdSet
+  module VarIdSet = TllExpression.V.VarIdSet
   module B        = Buffer
   module GM       = GenericModel
 
@@ -1270,21 +1296,26 @@ struct
                         (tid_set:Expr.V.VarSet.t)
                         (num_tids:int)
                         (v:Expr.V.t) : unit =
-    let (id,s,pr,th,p) = v in
+    let s = Expr.V.sort v in
     let sort_str asort = match asort with
                            Expr.Set     -> set_s
                          | Expr.Elem    -> elem_s
                          | Expr.Addr    -> addr_s
-                         | Expr.Tid    -> tid_s
+                         | Expr.Tid     -> tid_s
                          | Expr.Cell    -> cell_s
                          | Expr.SetTh   -> setth_s
                          | Expr.SetElem -> setelem_s
                          | Expr.Path    -> path_s
                          | Expr.Mem     -> heap_s
-                         | Expr.Unknown -> unk_s in
+                         | Expr.Unknown -> unk_s
+                         | _ -> assert false in
+                                (* Missing support for new sorts such as:
+                                 * Int, Bool and Mark *)
     let s_str = sort_str s in
-    let p_id = Option.map_default (fun str -> str ^ "_" ^ id) id p in
-    let name = p_id (* if pr then p_id ^ "_prime" else p_id *)
+    let p_id = match Expr.V.scope v with
+               | Expr.V.GlobalScope -> Expr.V.id v
+               | Expr.V.Scope proc -> proc ^ "_" ^ (Expr.V.id v) in
+    let name = p_id (*if Expr.V.is_primed v then p_id ^ "_prime" else p_id*)
     in
       if Expr.V.is_global v then
         begin
@@ -1318,17 +1349,17 @@ struct
                          done
           | Expr.Path -> Expr.V.VarSet.iter (fun t ->
                            let v_str = variable_invocation_to_str
-                                         (Expr.V.set_param v (Expr.VarTh t)) in
+                                         (Expr.V.set_param v (Expr.V.Local t)) in
                            B.add_string buf ( "(assert (ispath " ^ v_str ^ "))\n" )
                          ) tid_set
           | Expr.Mem -> Expr.V.VarSet.iter (fun t ->
                           let v_str = variable_invocation_to_str
-                                        (Expr.V.set_param v (Expr.VarTh t)) in
+                                        (Expr.V.set_param v (Expr.V.Local t)) in
                           B.add_string buf ( "(assert (isheap " ^ v_str ^ "))\n" )
                         ) tid_set
           | Expr.Tid -> Expr.V.VarSet.iter (fun t ->
                            let v_str = variable_invocation_to_str
-                                         (Expr.V.set_param v (Expr.VarTh t)) in
+                                         (Expr.V.set_param v (Expr.V.Local t)) in
                            B.add_string buf ( "(assert (not (= " ^ v_str ^ " notid)))\n" )
                          ) tid_set;
                          B.add_string buf ("(assert (istid (select " ^name^ " notid)))\n");
@@ -1342,16 +1373,16 @@ struct
 
 
   and define_variables (buf:Buffer.t) (num_tids:int) (vars:Expr.V.VarSet.t) : unit =
-    let varset     = Expr.varset_of_sort vars Expr.Set  in
-    let varelem    = Expr.varset_of_sort vars Expr.Elem in
-    let varaddr    = Expr.varset_of_sort vars Expr.Addr in
-    let vartid     = Expr.varset_of_sort vars Expr.Tid in
-    let varcell    = Expr.varset_of_sort vars Expr.Cell in
-    let varsetth   = Expr.varset_of_sort vars Expr.SetTh in
-    let varsetelem = Expr.varset_of_sort vars Expr.SetElem in
-    let varpath    = Expr.varset_of_sort vars Expr.Path in
-    let varmem     = Expr.varset_of_sort vars Expr.Mem  in
-    let varunk     = Expr.varset_of_sort vars Expr.Unknown  in
+    let varset     = Expr.V.varset_of_sort vars Expr.Set  in
+    let varelem    = Expr.V.varset_of_sort vars Expr.Elem in
+    let varaddr    = Expr.V.varset_of_sort vars Expr.Addr in
+    let vartid     = Expr.V.varset_of_sort vars Expr.Tid in
+    let varcell    = Expr.V.varset_of_sort vars Expr.Cell in
+    let varsetth   = Expr.V.varset_of_sort vars Expr.SetTh in
+    let varsetelem = Expr.V.varset_of_sort vars Expr.SetElem in
+    let varpath    = Expr.V.varset_of_sort vars Expr.Path in
+    let varmem     = Expr.V.varset_of_sort vars Expr.Mem  in
+    let varunk     = Expr.V.varset_of_sort vars Expr.Unknown  in
       Expr.V.VarSet.iter (smt_define_var buf vartid num_tids) varset;
       Expr.V.VarSet.iter (smt_define_var buf vartid num_tids) varelem;
       Expr.V.VarSet.iter (smt_define_var buf vartid num_tids) vartid;
@@ -1381,11 +1412,12 @@ struct
 
 
   and variable_invocation_to_str (v:Expr.V.t) : string =
-    let (id,s,pr,th,p) = v in
-    let th_str = Option.map_default tidterm_to_str "" th in
-    let p_str  = Option.map_default (fun n -> Printf.sprintf "%s_" n) "" p in
-    let pr_str = "" (* if pr then "_prime" else "" *)
-    in
+    let id = Expr.V.id v in
+    let th_str = shared_or_local_to_str (Expr.V.parameter v) in
+    let p_str  = match (Expr.V.scope v) with
+                 | Expr.V.GlobalScope -> ""
+                 | Expr.V.Scope proc -> proc ^ "_" in
+    let pr_str = "" in (*if (Expr.V.is_primed v) then "_prime" else "" in *)
       if th = None then
         Printf.sprintf " %s%s%s%s" p_str id th_str pr_str
       else

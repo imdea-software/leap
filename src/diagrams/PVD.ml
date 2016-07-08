@@ -1,3 +1,29 @@
+
+(***********************************************************************)
+(*                                                                     *)
+(*                                 LEAP                                *)
+(*                                                                     *)
+(*               Alejandro Sanchez, IMDEA Software Institute           *)
+(*                                                                     *)
+(*                                                                     *)
+(*      Copyright 2011 IMDEA Software Institute                        *)
+(*                                                                     *)
+(*  Licensed under the Apache License, Version 2.0 (the "License");    *)
+(*  you may not use this file except in compliance with the License.   *)
+(*  You may obtain a copy of the License at                            *)
+(*                                                                     *)
+(*      http://www.apache.org/licenses/LICENSE-2.0                     *)
+(*                                                                     *)
+(*  Unless required by applicable law or agreed to in writing,         *)
+(*  software distributed under the License is distributed on an        *)
+(*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,       *)
+(*  either express or implied.                                         *)
+(*  See the License for the specific language governing permissions    *)
+(*  and limitations under the License.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+
+
 open LeapLib
 
 module E = Expression
@@ -648,7 +674,7 @@ let ranking_function (ante:E.formula)
             | Any -> Debug.infoMsg (fun _ -> "ANY")
             | Pres -> Debug.infoMsg (fun _ -> "PRES") in
     build_lexic_decrement ();
-(*
+    (*
     let (disjs, _) =
       List.fold_left (fun (ds,eq_phi) (pre,op) ->
         let post = E.prime_modified_term [ante] pre in
@@ -659,8 +685,8 @@ let ranking_function (ante:E.formula)
         | _  -> ((F.And (dec, eq_phi))::ds, F.And(pres, eq_phi))
       ) ([],F.True) accept.delta in
     F.disj_list disjs
-*)
-(*
+    *)
+    (*
     let pre = fst accept.delta in
     let post = E.prime_modified_term [ante] (fst accept.delta) in
     cons pre post Decrement
@@ -681,21 +707,21 @@ let ranking_function (ante:E.formula)
                 ) accept.delta) in
     let dec = build_lexic_decrement () in
     F.Or (pres, dec)
-(*
+    (*
         let post = E.prime_modified_term [ante] pre in
         let dec = cons Decrement op pre post in
         let pres = cons Preserve op pre post in
         F.Or (dec, pres)
-*)
-(*
+    *)
+    (*
         cons Preserve op pre post
-*)
-(*
+    *)
+    (*
     let pre = fst accept.delta in
     let post = E.prime_modified_term [ante] (fst accept.delta) in
     (* All functions in delta should be preserved *)
     cons pre post Preserve
-*)
+    *)
   end else
     F.True
 

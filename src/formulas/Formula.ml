@@ -1,3 +1,29 @@
+
+(***********************************************************************)
+(*                                                                     *)
+(*                                 LEAP                                *)
+(*                                                                     *)
+(*               Alejandro Sanchez, IMDEA Software Institute           *)
+(*                                                                     *)
+(*                                                                     *)
+(*      Copyright 2011 IMDEA Software Institute                        *)
+(*                                                                     *)
+(*  Licensed under the Apache License, Version 2.0 (the "License");    *)
+(*  you may not use this file except in compliance with the License.   *)
+(*  You may obtain a copy of the License at                            *)
+(*                                                                     *)
+(*      http://www.apache.org/licenses/LICENSE-2.0                     *)
+(*                                                                     *)
+(*  Unless required by applicable law or agreed to in writing,         *)
+(*  software distributed under the License is distributed on an        *)
+(*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,       *)
+(*  either express or implied.                                         *)
+(*  See the License for the specific language governing permissions    *)
+(*  and limitations under the License.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+
+
 type 'atom literal =
   | Atom              of 'atom
   | NegAtom           of 'atom
@@ -374,8 +400,8 @@ let cnf (phi:'atom formula) : 'atom disjunctive_formula list =
                   | Disj l -> l
                   | _ -> raise(ErrorInNNF)
                 in
-                (* here lx and ly  are lists of Disj none of which is 
-                 * True or False *)
+                (* ALE: Here lx and ly  are lists of Disj none of which is 
+                   True or False *)
                 let add_to_all_in_e2 final_list x1 =
                   let lx1 = get_disjuncts x1 in
                   let add_x1 l2 x2 = Disj(lx1 @ (get_disjuncts x2))::l2 in
@@ -418,8 +444,8 @@ let dnf (phi:'atom formula) : 'atom conjunctive_formula list =
                   | _ -> (*let msg = "Formula "^(FormulaStr.formula_to_str nnfphi)^" is not in NNF.\n" in*)
                            raise(ErrorInNNF)
                 in
-                (* here lx and ly  are lists of Conj none of which is 
-                 * True or False *)
+                (* ALE: Here lx and ly  are lists of Conj none of which is 
+                   True or False *)
                 let add_to_all_in_e2 final_list x1 =
                   let lx1 = get_conjuncts x1 in
                   let add_x1 l2 x2 = Conj(lx1 @ (get_conjuncts x2))::l2 in

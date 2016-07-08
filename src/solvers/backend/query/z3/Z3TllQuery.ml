@@ -1,3 +1,29 @@
+
+(***********************************************************************)
+(*                                                                     *)
+(*                                 LEAP                                *)
+(*                                                                     *)
+(*               Alejandro Sanchez, IMDEA Software Institute           *)
+(*                                                                     *)
+(*                                                                     *)
+(*      Copyright 2011 IMDEA Software Institute                        *)
+(*                                                                     *)
+(*  Licensed under the Apache License, Version 2.0 (the "License");    *)
+(*  you may not use this file except in compliance with the License.   *)
+(*  You may obtain a copy of the License at                            *)
+(*                                                                     *)
+(*      http://www.apache.org/licenses/LICENSE-2.0                     *)
+(*                                                                     *)
+(*  Unless required by applicable law or agreed to in writing,         *)
+(*  software distributed under the License is distributed on an        *)
+(*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,       *)
+(*  either express or implied.                                         *)
+(*  See the License for the specific language governing permissions    *)
+(*  and limitations under the License.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+
+
 open TllQuery
 
 
@@ -149,7 +175,7 @@ struct
     match e with
       Expr.VarElem v     -> variable_invocation_to_str v
     | Expr.CellData c    -> Printf.sprintf "(data %s)" (cellterm_to_str c)
-    | Expr.HavocListElem -> "" (* Don't need a representation for this *)
+    | Expr.HavocListElem -> "" (* ALE: No need of a representation for this. *)
     | Expr.LowestElem    -> "lowestElem"
     | Expr.HighestElem   -> "highestElem"
 
@@ -326,13 +352,10 @@ struct
       B.add_string buf (" " ^ (aa i))
     done ;
     B.add_string buf ")))\n" ;
-    (****** NOTE: In case we use integers to represent addresses ******)
-  (*
-    B.add_string buf ("(define-sort Address () Int)\n") ;
-    B.add_string buf ("(declare-const null Address)\n") ;
-    B.add_string buf ("(assert (= null 0))\n") ;
-  *)
-    (****** NOTE: In case we use integers to represent addresses ******)
+    (* ALE: In case we use integers to represent addresses
+      B.add_string buf ("(define-sort Address () Int)\n") ;
+      B.add_string buf ("(declare-const null Address)\n") ;
+      B.add_string buf ("(assert (= null 0))\n") ; *)
     GM.sm_decl_const sort_map "max_address" int_s ;
     if !use_quantifiers then begin
       B.add_string buf
@@ -367,10 +390,8 @@ struct
          ("(define-sort RangeAddress () " ^int_s^ ")\n" ^
           "(define-fun is_valid_range_address ((i RangeAddress)) " ^bool_s^
               " (and (<= 0 i) (<= i max_address)))\n")
-    (*
-          "(declare-datatypes () ((RangeAddress " ^ range_addr_list ^ ")))\n" ^
-          "(declare-datatypes () ((PathLength " ^ path_len_list ^ ")))\n")
-    *)
+    (*    "(declare-datatypes () ((RangeAddress " ^ range_addr_list ^ ")))\n" ^
+          "(declare-datatypes () ((PathLength " ^ path_len_list ^ ")))\n") *)
     end
 
 
@@ -387,7 +408,6 @@ struct
     B.add_string buf
       ( "(declare-const max_tid " ^int_s^ ")\n" ^
         "(assert (= max_tid " ^ (string_of_int num_tids) ^ "))\n")
-  (*      "(declare-datatypes () ((RangeTid " ^ tid_list ^ ")))\n") *)
 
 
   (* (define-type element) *)
@@ -474,23 +494,22 @@ struct
 
 
   let z3_pos_preamble (buf:B.t) : unit =
-    (* No need to define the program counter as now is just a integer variable *)
+    (* ALE: No need to define the program counter as now is just an
+       integer variable. *)
     B.add_string buf ("(define-sort " ^loc_s^ " () " ^int_s^ ")\n")
-    (* Since variables and PC are flat into variables, there's no need of pc and pc_prime as arrays *)
-    (*
-    GM.sm_decl_fun sort_map Conf.pc_name [tid_s] [loc_s] ;
-    GM.sm_decl_fun sort_map pc_prime_name [tid_s] [loc_s] ;
-    B.add_string buf ("(declare-const " ^Conf.pc_name^ " (Array " ^tid_s^ " " ^loc_s^ "))\n");
-    B.add_string buf ("(declare-const " ^pc_prime_name^ " (Array " ^tid_s^ " " ^loc_s^ "))\n");
-    B.add_string buf
-      (Printf.sprintf "(define-fun in_pos_range ((t %s)) %s\n\
-                          (and (<= 1 (select pc t))\n\
-                               (<= (select pc t) %i)\n\
-                               (<= 1 (select pc_prime t))\n\
-                               (<= (select pc_prime t) %i))\n\
-                       )\n" tid_s bool_s !prog_lines !prog_lines)
-    *)
-    (* Since variables and PC are flat into variables, there's no need of pc and pc_prime as arrays *)
+    (* ALE: Since variables and PC are flat into variables, there's
+       no need of pc and pc_prime as arrays. *)
+    (*  GM.sm_decl_fun sort_map Conf.pc_name [tid_s] [loc_s] ;
+        GM.sm_decl_fun sort_map pc_prime_name [tid_s] [loc_s] ;
+        B.add_string buf ("(declare-const " ^Conf.pc_name^ " (Array " ^tid_s^ " " ^loc_s^ "))\n");
+        B.add_string buf ("(declare-const " ^pc_prime_name^ " (Array " ^tid_s^ " " ^loc_s^ "))\n");
+        B.add_string buf
+          (Printf.sprintf "(define-fun in_pos_range ((t %s)) %s\n\
+                              (and (<= 1 (select pc t))\n\
+                                   (<= (select pc t) %i)\n\
+                                   (<= 1 (select pc_prime t))\n\
+                                   (<= (select pc_prime t) %i))\n\
+                           )\n" tid_s bool_s !prog_lines !prog_lines) *)
 
 
   let z3_subseteq_def (buf:B.t) : unit =
@@ -612,13 +631,12 @@ struct
 
 
   let z3_settoelems_def (buf:B.t) (num_addr:int) : unit =
-(*
-    if !use_quantifiers then begin
-      B.add_string buf
-        ("(define-fun set2elem ((s " ^set_s^ ") (h " ^heap_s^ ") (se " ^setelem_s^ ")) " ^bool_s^ "\n" ^
-         "  (forall ((a " ^addr_s^ ")) (= (select s a) (select se (data (select h a))))))\n")
-    end else begin
-*)
+  (* ALE: For future use of quantifiers
+      if !use_quantifiers then begin
+        B.add_string buf
+          ("(define-fun set2elem ((s " ^set_s^ ") (h " ^heap_s^ ") (se " ^setelem_s^ ")) " ^bool_s^ "\n" ^
+           "  (forall ((a " ^addr_s^ ")) (= (select s a) (select se (data (select h a))))))\n")
+      end else begin *)
       let str = ref "    (store emptyelem (data (select m null)) (select s null))\n" in
       for i=1 to num_addr do
         str := "  (unionelem\n" ^ !str ^
@@ -627,9 +645,7 @@ struct
       B.add_string buf
       ("(define-fun set2elem ((s " ^set_s^ ") (m " ^heap_s^ ")) " ^setelem_s^
         "\n" ^ !str ^ ")\n")
-(*
-    end
-*)
+  (* end *)
 
 
 
@@ -844,19 +860,18 @@ struct
 
   (* Ordered list predicate definition *)
   let z3_orderlist_def (buf:B.t) (num_addr:int) : unit =
-(*
-    if !use_quantifiers then begin
-      B.add_string buf
-        ("(define-fun ordered ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ") (p " ^path_s^ ")) " ^bool_s^ "\n" ^
-         "  (forall ((n RangeAddress))\n" ^
-         "    (=> (<= (range_to_int n) (length p))\n" ^
-         "        (=> (< (range_to_int n) (length p))\n" ^
-         "            (< (data (select h (select (at p) n)))\n" ^
-         "               (data (select h (select (at p) (next_range n)))))))))\n" ^
-         "(define-fun orderlist ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ")) " ^bool_s^ "\n" ^
-         "  (ordered h from to (getp h from to)))\n")
-    end else begin
-*)
+  (* ALE: For future use of quantifiers
+      if !use_quantifiers then begin
+        B.add_string buf
+          ("(define-fun ordered ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ") (p " ^path_s^ ")) " ^bool_s^ "\n" ^
+           "  (forall ((n RangeAddress))\n" ^
+           "    (=> (<= (range_to_int n) (length p))\n" ^
+           "        (=> (< (range_to_int n) (length p))\n" ^
+           "            (< (data (select h (select (at p) n)))\n" ^
+           "               (data (select h (select (at p) (next_range n)))))))))\n" ^
+           "(define-fun orderlist ((h " ^heap_s^ ") (from " ^addr_s^ ") (to " ^addr_s^ ")) " ^bool_s^ "\n" ^
+           "  (ordered h from to (getp h from to)))\n")
+      end else begin *)
       let idlast = string_of_int num_addr in
       B.add_string buf
         ("(define-fun orderlist" ^idlast^ " ((h " ^heap_s^ ") " ^
@@ -880,9 +895,7 @@ struct
            "      (and (< (data (select h a))\n" ^
            "              (data (select h (next1 h a))))\n" ^
            "           (orderlist1 h a b))))\n")
-(*
-    end
-*)
+  (* end *)
 
 
   let z3_error_def (buf:B.t) : unit =
@@ -1137,9 +1150,9 @@ struct
                           (req_ops:Expr.special_op_t list)
         : (Expr.sort list * Expr.special_op_t list) =
   let (res_req_sorts, res_req_ops) = (ref req_sorts, ref req_ops) in
-  (* If "path" is a required sort, then we need to add "set" as required sort
-     since "set" is part of the definition of sort "path" (required by "addrs"       
-    field) *)
+  (* ALE: If "path" is a required sort, then we need to add "set" as required
+     sort since "set" is part of the definition of sort "path" (required by
+     "addrs" field). *)
   if (List.mem Expr.Path req_sorts) then
     res_req_sorts := Expr.Set :: !res_req_sorts ;
   if !use_quantifiers then begin
@@ -1216,8 +1229,9 @@ struct
           | Expr.Mem  -> B.add_string buf ( "(assert (isheap " ^ name ^ "))\n" )
           | Expr.Elem -> B.add_string buf ( "(assert (iselem " ^ name ^ "))\n" )
           | Expr.Tid -> B.add_string buf ( "(assert (not (= " ^ name ^ " NoThread)))\n" )
-(* Since variables and PC are flat into variables, there's no need of pc and pc_prime as arrays *)
-(*                         B.add_string buf ( "(assert (in_pos_range " ^ name ^ "))\n") *)
+          (* ALE: Since variables and PC are flat into variables,
+                  there's no need of pc and pc_prime as arrays. *)
+          (* B.add_string buf ( "(assert (in_pos_range " ^ name ^ "))\n") *)
           | _    -> ()
         end
       else
@@ -1246,7 +1260,7 @@ struct
                         B.add_string buf ( "(assert (not (= " ^ v_str ^ " NoThread)))\n" )
                     ) tid_set
           | _    -> ()
-          (* FIX: Add iterations for ispath and isheap on local variables *)
+          (* ALE: May need to add iterations for ispath and isheap on local variables. *)
         end
 
 
@@ -1488,7 +1502,7 @@ struct
       | (Expr.MemT (Expr.VarMem _ as m1), Expr.MemT (Expr.Update(m2,Expr.Null,_)))
       | (Expr.MemT (Expr.Update(m2,Expr.Null,_)), Expr.MemT (Expr.VarMem _ as m1)) ->
           "(eqmem " ^(memterm_to_str m1)^ " " ^(memterm_to_str m2)^ ")"
-(*
+      (* ALE: For future use of quantifiers
       | (Expr.SetElemT se, Expr.SetElemT (Expr.SetToElems(s,m)))
       | (Expr.SetElemT (Expr.SetToElems(s,m)), Expr.SetElemT se) ->
           if !use_quantifiers then
@@ -1497,8 +1511,7 @@ struct
                           (setelemterm_to_str se)^ ")"
           else
 
-            "(= " ^str_t1^ " " ^str_t2^ ")"
-*)
+            "(= " ^str_t1^ " " ^str_t2^ ")" *)
       | _ -> "(= " ^str_t1^ " " ^str_t2^ ")"
 
 
@@ -1612,18 +1625,16 @@ struct
   let process_elem (e_expr:string) : string =
     ("(assert (iselem (data " ^e_expr^ ")))\n")
 
-(*
+  (* ALE: For future implementation which may include axioms support
   let add_axioms (buf:Buffer.t) (num_addrs:int)
                  (req_sorts:Expr.sort list)
                  (req_ops:Expr.special_op_t list)
                  (vars:Expr.V.VarSet.t) : unit =
 
     (* All addresses in the domain *)
-(*
-    let addrs = List.fold_left (fun xs i ->
+(*  let addrs = List.fold_left (fun xs i ->
                   (addr_prefix ^ (string_of_int i)) :: xs
-                ) ["null"] (LeapLib.rangeList 1 num_addrs) in
-*)
+                ) ["null"] (LeapLib.rangeList 1 num_addrs) in *)
 
     (* All addresses in the formula *)
     let addrsVars = V.varset_of_sort vars Expr.Addr in
@@ -1640,18 +1651,14 @@ struct
     let mems = ["heap"; "heap_prime"] in
 
 
-(*
-    let addrs = List.fold_left (fun xs i ->
+(*  let addrs = List.fold_left (fun xs i ->
                   (addr_prefix ^ (string_of_int i)) :: xs
-                ) ["null"] (LeapLib.rangeList 1 num_addrs) in
-*)
-
+                ) ["null"] (LeapLib.rangeList 1 num_addrs) in *)
 
     (*
     if List.mem Expr.Path req_sorts then
       B.add_string buf ("(assert (= (path2set epsilon) empty))\n")
-
-*)
+    *)
 
 
     (* Using quantifiers *)    
@@ -1799,7 +1806,8 @@ struct
                    (req_ops:Expr.special_op_t list)
                    (vars:Expr.V.VarSet.t) : unit =
     Hashtbl.iter (fun e _ -> B.add_string buf (process_elem e)) elem_tbl
-(*    add_axioms buf num_addrs req_sorts req_ops vars *)
+    (* ALE: For future implementation that may use axioms
+      add_axioms buf num_addrs req_sorts req_ops vars *)
 
 
   let literal_list_to_str (use_q:bool) (ls:Expr.literal list) : string =
@@ -1873,7 +1881,7 @@ struct
       z3_defs     buf num_addr num_tid req_sorts req_ops heaps;
       variables_from_formula_to_z3 buf num_tid phi ;
       (* We add extra information if needed *)
-(*      B.add_string buf extra_info_str ; *)
+      (* B.add_string buf extra_info_str ; *)
       let vars = Expr.get_varset_from_formula phi in
       post_process buf num_addr req_sorts req_ops vars;
 

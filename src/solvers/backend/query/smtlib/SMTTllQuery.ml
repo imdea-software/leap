@@ -1,3 +1,29 @@
+
+(***********************************************************************)
+(*                                                                     *)
+(*                                 LEAP                                *)
+(*                                                                     *)
+(*               Alejandro Sanchez, IMDEA Software Institute           *)
+(*                                                                     *)
+(*                                                                     *)
+(*      Copyright 2011 IMDEA Software Institute                        *)
+(*                                                                     *)
+(*  Licensed under the Apache License, Version 2.0 (the "License");    *)
+(*  you may not use this file except in compliance with the License.   *)
+(*  You may obtain a copy of the License at                            *)
+(*                                                                     *)
+(*      http://www.apache.org/licenses/LICENSE-2.0                     *)
+(*                                                                     *)
+(*  Unless required by applicable law or agreed to in writing,         *)
+(*  software distributed under the License is distributed on an        *)
+(*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,       *)
+(*  either express or implied.                                         *)
+(*  See the License for the specific language governing permissions    *)
+(*  and limitations under the License.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+
+
 open TllQuery
 open LeapVerbose
 
@@ -249,9 +275,10 @@ struct
 
 
   let smt_pos_preamble (buf:B.t) : unit =
-    (* No need to define the program counter as now is just a integer variable *)
+    (* ALE: No need to define the program counter as now is just a integer variable. *)
     B.add_string buf ("(define-sort " ^loc_s^ " () " ^int_s^ ")\n")
-    (* Since variables and PC are flat into variables, there's no need of pc and pc_prime as arrays *)
+    (* ALE: Since variables and PC are flat into variables,
+       there's no need of pc and pc_prime as arrays *)
     (*
     GM.sm_decl_fun sort_map Conf.pc_name [tid_s] [loc_s] ;
     GM.sm_decl_fun sort_map pc_prime_name [tid_s] [loc_s] ;
@@ -263,7 +290,6 @@ struct
                       "        (<= 1 (select pc_prime t))\n" ^
                       "        (<= (select pc_prime t) " ^ string_of_int !prog_lines^ ")))\n")
     *)
-    (* Since variables and PC are flat into variables, there's no need of pc and pc_prime as arrays *)
 
 
   let smt_empth_def (buf:B.t) (num_tids:int) : unit =
@@ -646,13 +672,11 @@ struct
        "  (store singlewhere a 0))\n" ^
        "(define-fun singlepath ((a " ^addr_s^ ")) " ^path_s^ "\n" ^
        "  (" ^mkpath_str^ "))\n")
-       (*
-      B.add_string buf
-        ("(assert (and (= (length (" ^mkpath_str^ ")) 1)\n\
-                       (= (at (" ^mkpath_str^ ")) (singletonat a))\n\
-                       (= (where (" ^mkpath_str^ ")) (singletonwhere a))\n\
-                       (= (addrs (" ^mkpath_str^ ")) (singleton a))))\n")
-*)
+       (* B.add_string buf
+            ("(assert (and (= (length (" ^mkpath_str^ ")) 1)\n\
+                           (= (at (" ^mkpath_str^ ")) (singletonat a))\n\
+                           (= (where (" ^mkpath_str^ ")) (singletonwhere a))\n\
+                           (= (addrs (" ^mkpath_str^ ")) (singleton a))))\n") *)
 
 
   let smt_ispath_def (buf:B.t) (num_addr:int) : unit =
@@ -858,19 +882,16 @@ struct
        "          (update_pathat (at p) (length p) a)\n" ^
        "          (update_pathwhere (where p) a (length p))\n" ^
        "          (setunion (addrs p) (singleton a))))\n");
-(*
-    B.add_string buf
-      ("(define-fun update_pathat ((f PathAt) (i RangeAddress) (a " ^addr_s^ ")) PathAt\n" ^
-       "  (ite (is_valid_range_address i) (store f i a) f))\n" ^
-       "(define-fun update_pathwhere ((g PathWhere) (a " ^addr_s^ ") (i RangeAddress)) PathWhere\n" ^
-       "  (ite (is_valid_range_address i) (store g a i) g))\n");
-       *)
-  (*     "(define-fun add_to_path ((p " ^path_s^ ") (a " ^addr_s^ ")) " ^path_s^ "\n" ^
-       "  (mkpath (+ 1 (length p))\n" ^
-       "          (update_pathat (at p) (length p) a)\n" ^
-       "          (update_pathwhere (where p) a (length p))\n" ^
-       "          (setunion (addrs p) (singleton a))))\n");
-  *)
+    (* B.add_string buf
+          ("(define-fun update_pathat ((f PathAt) (i RangeAddress) (a " ^addr_s^ ")) PathAt\n" ^
+           "  (ite (is_valid_range_address i) (store f i a) f))\n" ^
+           "(define-fun update_pathwhere ((g PathWhere) (a " ^addr_s^ ") (i RangeAddress)) PathWhere\n" ^
+           "  (ite (is_valid_range_address i) (store g a i) g))\n");
+           "(define-fun add_to_path ((p " ^path_s^ ") (a " ^addr_s^ ")) " ^path_s^ "\n" ^
+           "  (mkpath (+ 1 (length p))\n" ^
+           "          (update_pathat (at p) (length p) a)\n" ^
+           "          (update_pathwhere (where p) a (length p))\n" ^
+           "          (setunion (addrs p) (singleton a))))\n"); *)
     B.add_string buf
       ("(define-fun path0 ((h " ^heap_s^ ") (a " ^addr_s^ ")) " ^path_s^ "\n" ^
        "  epsilon)\n");
@@ -964,7 +985,7 @@ struct
                           (req_ops:Expr.special_op_t list)
         : (Expr.sort list * Expr.special_op_t list) =
     let (res_req_sorts, res_req_ops) = (ref req_sorts, ref req_ops) in
-  (* If "path" is a required sort, then we need to add "set" as required sort
+  (* ALE: If "path" is a required sort, then we need to add "set" as required sort
      since "set" is part of the definition of sort "path" (required by "addrs"
      field) *)
   if (List.mem Expr.Path req_sorts) then
@@ -974,7 +995,7 @@ struct
 
   let smt_preamble buf num_addr num_tid num_elem req_sorts =
     B.add_string buf ("(set-logic QF_AUFLIA)\n");
-(*    B.add_string buf ("(set-logic AUFLIA)\n"); *)
+    (* B.add_string buf ("(set-logic AUFLIA)\n"); *)
     B.add_string buf ";; TLL SMTLib Translation\n";
     if (List.exists (fun s ->
           s=Expr.Cell || s=Expr.Mem
@@ -1128,7 +1149,7 @@ struct
     let p_id = match Expr.V.scope v with
                | Expr.V.GlobalScope -> Expr.V.id v
                | Expr.V.Scope proc -> proc ^ "_" ^ (Expr.V.id v) in
-    let name = p_id (*if Expr.V.is_primed v then p_id ^ "_prime" else p_id*)
+    let name = p_id (* if Expr.V.is_primed v then p_id ^ "_prime" else p_id *)
     in
       if Expr.V.is_global v then
         begin
@@ -1142,8 +1163,9 @@ struct
           | Expr.Mem  -> B.add_string buf ( "(assert (isheap " ^name^ "))\n" )
           | Expr.Tid -> B.add_string buf ( "(assert (not (= " ^ name ^ " notid)))\n" );
                          B.add_string buf ( "(assert (istid " ^name^ "))\n" )
-(* Since variables and PC are flat into variables, there's no need of pc and pc_prime as arrays *)
-(*                         B.add_string buf ( "(assert (in_pos_range " ^ name ^ "))\n" ) *)
+          (* ALE: Since variables and PC are flat into variables,
+                  there's no need of pc and pc_prime as arrays *)
+          (* B.add_string buf ( "(assert (in_pos_range " ^ name ^ "))\n" ) *)
           | _    -> ()
         end
       else
@@ -1182,7 +1204,7 @@ struct
                            B.add_string buf ("(assert (istid (select " ^name^ " " ^tid_prefix ^ (string_of_int i)^ ")))\n")
                          done
           | _    -> ()
-          (* FIX: Add iterations for ispath and isheap on local variables *)
+          (* ALE: May need to add iterations for ispath and isheap on local variables *)
         end
 
 
@@ -1235,7 +1257,7 @@ struct
     let p_str  = match (Expr.V.scope v) with
                  | Expr.V.GlobalScope -> ""
                  | Expr.V.Scope proc -> proc ^ "_" in
-    let pr_str = "" in (*if (Expr.V.is_primed v) then "_prime" else "" in *)
+    let pr_str = "" in (* if (Expr.V.is_primed v) then "_prime" else "" in *)
     match Expr.V.parameter v with
     | Expr.V.Shared  -> Printf.sprintf " %s%s%s%s" p_str id th_str pr_str
     | Expr.V.Local _ -> Printf.sprintf " (select %s%s%s %s)" p_str id pr_str th_str
@@ -1273,7 +1295,7 @@ struct
       Expr.VarElem v     -> variable_invocation_to_str v
     | Expr.CellData c    -> let c_str = cellterm_to_str c in
                               data c_str
-    | Expr.HavocListElem -> "" (* Don't need a representation for this *)
+    | Expr.HavocListElem -> "" (* ALE: Don't need a representation for this *)
     | Expr.LowestElem    -> "lowestElem"
     | Expr.HighestElem   -> "highestElem"
 
@@ -1710,19 +1732,17 @@ struct
     done;
     B.contents tmpbuf
 
-(*
-  let add_axioms (buf:Buffer.t) (num_addrs:int)
-                 (req_sorts:Expr.sort list)
-                 (req_ops:Expr.special_op_t list)
-                 (vars:Expr.V.VarSet.t) : unit =
-
+  (* ALE: Support for future implementation including axioms
+      let add_axioms (buf:Buffer.t) (num_addrs:int)
+                     (req_sorts:Expr.sort list)
+                     (req_ops:Expr.special_op_t list)
+                     (vars:Expr.V.VarSet.t) : unit =
     (* All addresses in the domain *)
-(*
-    let addrs = List.fold_left (fun xs i ->
-                  (addr_prefix ^ (string_of_int i)) :: xs
-                ) ["null"] (LeapLib.rangeList 1 num_addrs) in
-*)
-
+    (*
+      let addrs = List.fold_left (fun xs i ->
+                    (addr_prefix ^ (string_of_int i)) :: xs
+                  ) ["null"] (LeapLib.rangeList 1 num_addrs) in
+    *)
     (* All addresses in the formula *)
     let addrsVars = V.varset_of_sort vars Expr.Addr in
     let addrs_vars = V.VarSet.fold (fun v xs ->
@@ -1741,11 +1761,9 @@ struct
                   (addr_prefix ^ (string_of_int i)) :: xs
                 ) ["null"] (LeapLib.rangeList 1 num_addrs) in
 
-    (*
-    if List.mem Expr.Path req_sorts then
-      B.add_string buf ("(assert (= (path2set epsilon) empty))\n")
-
-*)
+    (* if List.mem Expr.Path req_sorts then
+          B.add_string buf ("(assert (= (path2set epsilon) empty))\n")
+    *)
 
 
     (* Using quantifiers *)    
@@ -1773,7 +1791,6 @@ struct
       ) sets
     ) mems
 *)
-
 
     List.iter (fun m ->
       List.iter (fun a ->
@@ -1865,9 +1882,7 @@ struct
     Hashtbl.iter (fun f _ -> B.add_string buf (process_locked num_addrs f)) locked_tbl
     (* add_axioms buf num_addrs req_sorts req_ops vars *)
     
-
-
-
+  
 
   let literal_list_to_str (use_q:bool) (ls:Expr.literal list) : string =
     (* The use of quantifiers in SMTLIB remains to be implemented *)
@@ -1909,9 +1924,8 @@ struct
                      (copt:Smp.cutoff_options_t)
                      (use_q:bool)
                      (phi:Expr.formula) : string =
-    (* The use of quantifiers in SMTLIB remains to be implemented *)
+    (* ALE: The use of quantifiers in SMTLIB remains to be implemented *)
     if use_q then ();
-    (* The use of quantifiers in SMTLIB remains to be implemented *)
     clean_lists();
     let _ = GM.clear_sort_map sort_map in
     verbl _LONG_INFO "**** SMTTllQuery. Will compute the cutoff...\n";

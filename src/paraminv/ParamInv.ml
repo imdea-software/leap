@@ -1,3 +1,29 @@
+
+(***********************************************************************)
+(*                                                                     *)
+(*                                 LEAP                                *)
+(*                                                                     *)
+(*               Alejandro Sanchez, IMDEA Software Institute           *)
+(*                                                                     *)
+(*                                                                     *)
+(*      Copyright 2011 IMDEA Software Institute                        *)
+(*                                                                     *)
+(*  Licensed under the Apache License, Version 2.0 (the "License");    *)
+(*  you may not use this file except in compliance with the License.   *)
+(*  You may obtain a copy of the License at                            *)
+(*                                                                     *)
+(*      http://www.apache.org/licenses/LICENSE-2.0                     *)
+(*                                                                     *)
+(*  Unless required by applicable law or agreed to in writing,         *)
+(*  software distributed under the License is distributed on an        *)
+(*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,       *)
+(*  either express or implied.                                         *)
+(*  See the License for the specific language governing permissions    *)
+(*  and limitations under the License.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+
+
 open LeapLib
 
 
@@ -168,7 +194,7 @@ module Make (C:Core.S) : S =
                         try
                           E.ThreadSet.choose inv_voc
                         with Not_found -> assert false in
-                        (* More than one thread parameterizing the invariant *)
+                        (* ALE: More than one thread parametrizing the invariant *)
       List.fold_left (fun vcs line ->
         let specific_supp = match IGraph.lookup_case cases line Premise.SelfConseq with
                             | None -> supp
@@ -221,14 +247,12 @@ module Make (C:Core.S) : S =
     let generate_obligations (vcs:Tactics.vc_info list)
                              (gral_plan:Tactics.proof_plan)
                              (cases:IGraph.case_tbl_t) : Core.proof_obligation_t list =
-      (*    
-      let vc_count = ref 1 in
-      let show_progress = not (LeapVerbose.is_verbose_enabled()) in
-      *)
+      (* let vc_count = ref 1 in
+         let show_progress = not (LeapVerbose.is_verbose_enabled()) in *)
       Progress.init (List.length vcs);
       List.fold_left (fun res vc ->
-      (* FOR LISTS *)
-      (*let vc = Tactics.to_plain_vc_info E.PCVars vc in*)
+      (* Ale: for lists
+        let vc = Tactics.to_plain_vc_info E.PCVars vc in *)
         let prem = if Tactics.is_empty_tid_constraint (Tactics.get_tid_constraint_from_info vc) then
                      Premise.SelfConseq
                    else
@@ -248,9 +272,7 @@ module Make (C:Core.S) : S =
 
         let proof_info = C.new_proof_info cutoff in
         let proof_obligation = C.new_proof_obligation vc obligations proof_info in
-(*
-        if show_progress then (Progress.current !vc_count; incr vc_count);
-*)
+        (* if show_progress then (Progress.current !vc_count; incr vc_count); *)
           proof_obligation :: res
       ) [] vcs
 
@@ -303,7 +325,7 @@ module Make (C:Core.S) : S =
 
 
     let solve_from_graph (graph:IGraph.t) : Core.solved_proof_obligation_t list =
-(*        gen_from_graph graph; [] *)
+      (* gen_from_graph graph; [] *)
       C.solve_proof_obligations (gen_from_graph graph)
       
 

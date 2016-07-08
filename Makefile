@@ -14,30 +14,25 @@ PROGS=$(SRC)/progs
 # Programs
 LEAP=leap
 PRGINFO=prginfo
-#PINV=pinv
-#SINV=sinv
-#PVD=pvd
-#NUMINV=numinv
-#SPEC_CHECK=spec_check
+PINV=pinv
+SINV=sinv
+PVD=pvd
+SPEC_CHECK=spec_check
 TLL=tll
 THM=thm
 SOLVE=solve
 TSLK=tslk
 TSL=tsl
-#TMPTSL=tmptsl
 APPLYTAC=applytac
 TOOLS=tools
-
 
 # Configuration
 SYS=`uname -s`
 
-REVISION=`svn info | grep Revision | cut -d ' ' -f 2`
+REVISION=`git rev-list --count master`
 MYPATH=`echo $(PATH)`
-DATE=`svn info | grep Date | cut -d ' ' -f 7-10 | cut -c 2-17`
-TIME=`svn info | grep Date | cut -d ' ' -f 5-6`
-#REVISION=0
-
+DATE=`date +"%A %B %d %Y"`
+TIME=`date +"%X %z"`
 
 
 check_tool = @if [[ `command -v $(1)` ]] ; then \
@@ -49,7 +44,7 @@ check_tool = @if [[ `command -v $(1)` ]] ; then \
 copy = @mkdir -p $(2); cp $(1) $(2)/$(3)
 
 
-.PHONY: profile debug clean all expand unexpand leap prog2fts prginfo pinv sinv pvd tll solve applytac tmptsl tsl numinv spec_check doc tools tests
+.PHONY: profile debug clean all expand unexpand leap prog2fts prginfo tll solve applytac tsl spec_check doc tools tests revision
 
 # Flags
 
@@ -66,9 +61,6 @@ LIBS = unix,str
 # Compilation rules
 
 all: $(PRGINFO) \
-		 $(PINV) \
-		 $(SINV) \
-		 $(PVD) \
 		 $(NUMINV) \
 		 $(SPEC_CHECK) \
 		 $(TLL) \
@@ -76,6 +68,7 @@ all: $(PRGINFO) \
 		 $(TSLK) \
 		 $(TSL) \
 		 $(SOLVE) \
+		 $(APPLYTAC) \
 		 $(LEAP) \
 		 $(TOOLS)
 
@@ -87,7 +80,7 @@ $(TOOLS) :
 	$(call check_tool,lingeling);
 	$(call check_tool,cvc4)
 
-write-revision:
+revision:
 	@echo "let value = "${REVISION} > $(PROGS)/Revision.ml
 	@echo "let date = \"${DATE}\"" >> $(PROGS)/Revision.ml
 	@echo "let time = \"${TIME}\"" >> $(PROGS)/Revision.ml
@@ -95,71 +88,51 @@ write-revision:
 set-my-path:
 	@echo "let mypath = \"${MYPATH}\"" > $(PROGS)/MyPath.ml
 
-profile: write-revision set-my-path
+profile: set-my-path
 	$(OCAMLBUILD) $(PROFILE_FLAGS) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $(LEAP).p.native
 	$(call copy,./_build/$(PROGS)/leap/$(LEAP).p.native,$(BIN),$(LEAP).p.native)
 
-debug: write-revision set-my-path
+debug: set-my-path
 	$(OCAMLBUILD) $(DEBUG_FLAGS) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $(LEAP).d.byte
 	$(call copy,./_build/$(PROGS)/leap/$(LEAP).d.byte,$(BIN),$(LEAP).d.byte)
 
-$(LEAP).byte: write-revision set-my-path
+$(LEAP).byte: set-my-path
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@
 	$(call copy,./_build/$(PROGS)/leap/$@,$(BIN),$@)
 
-$(LEAP): write-revision set-my-path
+$(LEAP): set-my-path
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
 	$(call copy,./_build/$(PROGS)/leap/$@.native,$(BIN),$@)
 
-$(PRGINFO): write-revision set-my-path
+$(PRGINFO): set-my-path
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
 	$(call copy,./_build/$(PROGS)/prginfo/$@.native,$(BIN),$@)
 
-$(PINV): write-revision set-my-path
-	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
-	$(call copy,./_build/$(PROGS)/pinv/$@.native,$(BIN),$@)
-
-$(SINV): write-revision set-my-path
-	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
-	$(call copy,./_build/$(PROGS)/sinv/$@.native,$(BIN),$@)
-
-$(PVD): write-revision set-my-path
-	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
-	$(call copy,./_build/$(PROGS)/pvd/$@.native,$(BIN),$@)
-
-$(NUMINV): write-revision set-my-path
-	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
-	$(call copy,./_build/$(PROGS)/numinv/$@.native,$(BIN),$@)
-
-$(SPEC_CHECK): write-revision set-my-path
+$(SPEC_CHECK): set-my-path
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
 	$(call copy,./_build/$(PROGS)/spec_check/$@.native,$(BIN),$@)
 
-$(TLL): write-revision set-my-path
+$(TLL): set-my-path
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
 	$(call copy,./_build/$(PROGS)/tll/$@.native,$(BIN),$@)
 
-$(THM): write-revision set-my-path
+$(THM): set-my-path
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
 	$(call copy,./_build/$(PROGS)/thm/$@.native,$(BIN),$@)
 
-$(TSL): write-revision set-my-path
+$(TSL): set-my-path
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
 	$(call copy,./_build/$(PROGS)/tsl/$@.native,$(BIN),$@)
 
-$(TSLK): write-revision set-my-path
+$(TSLK): set-my-path
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
 	$(call copy,./_build/$(PROGS)/tslk/$@.native,$(BIN),$@)
 
-$(SOLVE): write-revision set-my-path
+$(SOLVE): set-my-path
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
 	$(call copy,./_build/$(PROGS)/solve/$@.native,$(BIN),$@)
 
-$(TMPTSL): write-revision set-my-path
-	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
-	$(call copy,./_build/$(PROGS)/tmptsl/$@.native,$(BIN),$@)
-
-$(APPLYTAC): write-revision set-my-path
+$(APPLYTAC): set-my-path
 	$(OCAMLBUILD) $(OCAMLBUILD_FLAGS) $(OCAML_FLAGS) -libs $(LIBS) $@.native
 	$(call copy,./_build/$(PROGS)/applytac/$@.native,$(BIN),$@)
 

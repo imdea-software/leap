@@ -1,3 +1,29 @@
+
+(***********************************************************************)
+(*                                                                     *)
+(*                                 LEAP                                *)
+(*                                                                     *)
+(*               Alejandro Sanchez, IMDEA Software Institute           *)
+(*                                                                     *)
+(*                                                                     *)
+(*      Copyright 2011 IMDEA Software Institute                        *)
+(*                                                                     *)
+(*  Licensed under the Apache License, Version 2.0 (the "License");    *)
+(*  you may not use this file except in compliance with the License.   *)
+(*  You may obtain a copy of the License at                            *)
+(*                                                                     *)
+(*      http://www.apache.org/licenses/LICENSE-2.0                     *)
+(*                                                                     *)
+(*  Unless required by applicable law or agreed to in writing,         *)
+(*  software distributed under the License is distributed on an        *)
+(*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,       *)
+(*  either express or implied.                                         *)
+(*  See the License for the specific language governing permissions    *)
+(*  and limitations under the License.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+
+
 (******************************************************************************)
 (* @file ApplyTacArgs.mli                                                     *)
 (* Command Line Arguments for ApplyTac                                        *)
@@ -21,7 +47,6 @@ val formula_tac_list       : Tactics.formula_tactic_t list ref
 val formula_split_tac_list : Tactics.formula_split_tactic_t list ref
 val tllEnable : bool ref
 val outfile : string ref
-(*val postTactics : (Tactics.post_tac_t list) ref *)
 val assignopt : 'a ref -> bool ref -> 'a -> unit
 val setdebug : unit -> unit
 val inputFormula : string -> unit

@@ -1,4 +1,30 @@
 
+(***********************************************************************)
+(*                                                                     *)
+(*                                 LEAP                                *)
+(*                                                                     *)
+(*               Alejandro Sanchez, IMDEA Software Institute           *)
+(*                                                                     *)
+(*                                                                     *)
+(*      Copyright 2011 IMDEA Software Institute                        *)
+(*                                                                     *)
+(*  Licensed under the Apache License, Version 2.0 (the "License");    *)
+(*  you may not use this file except in compliance with the License.   *)
+(*  You may obtain a copy of the License at                            *)
+(*                                                                     *)
+(*      http://www.apache.org/licenses/LICENSE-2.0                     *)
+(*                                                                     *)
+(*  Unless required by applicable law or agreed to in writing,         *)
+(*  software distributed under the License is distributed on an        *)
+(*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,       *)
+(*  either express or implied.                                         *)
+(*  See the License for the specific language governing permissions    *)
+(*  and limitations under the License.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+
+
+
 module GenSet = LeapGenericSet
 
 type 'a graph_info_t =
@@ -44,8 +70,8 @@ let tarjan (g:('a,'a graph_info_t) Hashtbl.t) : 'a list list =
 
 
 let scc (graph:('a,'a GenSet.t) Hashtbl.t) : 'a list list =
-  (* Load all necessary information in graph g, which will be the one
-     used for the computations*)
+  (* ALE: Load all necessary information in graph g, which will be the one
+     used for the computations. *)
   let graph_dom = Hashtbl.fold (fun e s d_set ->
                     GenSet.add d_set e; GenSet.union s d_set
                   ) graph (GenSet.empty ()) in

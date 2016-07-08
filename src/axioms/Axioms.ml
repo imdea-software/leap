@@ -1,4 +1,30 @@
 
+(***********************************************************************)
+(*                                                                     *)
+(*                                 LEAP                                *)
+(*                                                                     *)
+(*               Alejandro Sanchez, IMDEA Software Institute           *)
+(*                                                                     *)
+(*                                                                     *)
+(*      Copyright 2011 IMDEA Software Institute                        *)
+(*                                                                     *)
+(*  Licensed under the Apache License, Version 2.0 (the "License");    *)
+(*  you may not use this file except in compliance with the License.   *)
+(*  You may obtain a copy of the License at                            *)
+(*                                                                     *)
+(*      http://www.apache.org/licenses/LICENSE-2.0                     *)
+(*                                                                     *)
+(*  Unless required by applicable law or agreed to in writing,         *)
+(*  software distributed under the License is distributed on an        *)
+(*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,       *)
+(*  either express or implied.                                         *)
+(*  See the License for the specific language governing permissions    *)
+(*  and limitations under the License.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+
+
+
 module Expr = Expression
 module GSet = LeapGenericSet
 
@@ -190,14 +216,8 @@ let apply (tbl:axiom_tbl_t)
     let rec match_var (v:Expr.V.t) (s:Expr.sort) (t:Expr.term) :
         ((Expr.V.t * Expr.term) list * bool) =
       try
-        (*
-        print_endline ("AA");
-        print_endine ("VARIABLE IS: " ^ (Expr.V.to_str v));
-        *)
+        (* print_endine ("VARIABLE IS: " ^ (Expr.V.to_str v)); *)
         let info = Hashtbl.find case.vars v in
-        (*
-        print_endline ("BB");
-        *)
         if info.v_sort == s then
           ((*print_endline "TRUE";*) ([v,t], true))
         else
@@ -695,20 +715,13 @@ let apply (tbl:axiom_tbl_t)
 
     let prems' = GSet.empty () in
     GSet.iter (fun (pl,b) ->
-      (*
-      if b then
-        GSet.add prems' (pl,b)
-      else
-        *)
         begin
-          (*print_endline ("ANALIZANDO LITERAL: " ^ (Expr.literal_to_str l));*)
+          (*print_endline ("ANALYZING LITERAL: " ^ (Expr.literal_to_str l));*)
           let (assigns, res) = match_lit pl l in
           (* print_endline ("RES: " ^ (if res then "TRUE" else "FALSE")); *)
           GSet.add prems' (pl, b || res);
           List.iter (fun (v,t) ->
-            
-            let _ = print_endline ("AÑADIENDO: (" ^(Expr.V.to_str v)^ "," ^(Expr.term_to_str t)^ ")") in
-            
+            (* print_endline ("ADDING: (" ^(Expr.V.to_str v)^ "," * ^(Expr.term_to_str t)^ ")"); *)
             let v_info = Hashtbl.find case.vars v in
             Hashtbl.replace case.vars v { v_sort = v_info.v_sort;
                                           v_term = Expr.TermSet.add t v_info.v_term; }
@@ -761,10 +774,9 @@ let apply (tbl:axiom_tbl_t)
   let apply_if_possible (cases:axiom_case_t list) (ls:Expr.literal list) : Expr.formula =
     let cases' = List.fold_left (fun cs l ->
                    List.map (fun c ->
-                     (*print_endline "UNA VUELTA";
-                     let cc = find_matching_case c l in
-                     print_endline (case_to_str cc);
-                     cc*)
+                     (* let cc = find_matching_case c l in
+                        print_endline (case_to_str cc);
+                        cc *)
                      find_matching_case c l
                    ) cs
                  ) cases ls in
@@ -777,13 +789,11 @@ let apply (tbl:axiom_tbl_t)
     | Forall ->
         begin
           let phi_vars = Expr.all_vars_occurrences_as_set phi in
-
           (*
           Expr.V.VarSet.iter (fun x ->
             print_endline ("VAR: " ^ (Expr.V.to_str x) ^ " IS PRIMED: " ^ (if Expr.V.is_primed x then "YES" else "NO"))
           ) phi_vars;
           *)
-
           let ax_formulas =
             List.fold_left (fun axs case ->
               let axioms_prem = GSet.fold (fun (p,_) xs ->

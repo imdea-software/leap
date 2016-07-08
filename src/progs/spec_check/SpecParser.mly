@@ -1,4 +1,30 @@
+
 %{
+
+(***********************************************************************)
+(*                                                                     *)
+(*                                 LEAP                                *)
+(*                                                                     *)
+(*               Alejandro Sanchez, IMDEA Software Institute           *)
+(*                                                                     *)
+(*                                                                     *)
+(*      Copyright 2011 IMDEA Software Institute                        *)
+(*                                                                     *)
+(*  Licensed under the Apache License, Version 2.0 (the "License");    *)
+(*  you may not use this file except in compliance with the License.   *)
+(*  You may obtain a copy of the License at                            *)
+(*                                                                     *)
+(*      http://www.apache.org/licenses/LICENSE-2.0                     *)
+(*                                                                     *)
+(*  Unless required by applicable law or agreed to in writing,         *)
+(*  software distributed under the License is distributed on an        *)
+(*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,       *)
+(*  either express or implied.                                         *)
+(*  See the License for the specific language governing permissions    *)
+(*  and limitations under the License.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+
 open Printf
 
 open LeapLib
@@ -7,6 +33,7 @@ open Hashtbl
 
 module Expr = Expression
 module NumExpr = NumExpression
+module F = Formula
 
 let get_name id = fst id
 let get_line id = snd id
@@ -82,30 +109,30 @@ formula :
   | OPEN_PAREN formula CLOSE_PAREN
       { $2 }
   | literal
-      { NumExpr.Literal $1 }
+      { F.Literal $1 }
   | LOGICAL_TRUE
-      { NumExpr.True }
+      { F.True }
   | LOGICAL_FALSE
-      { NumExpr.False }
+      { F.False }
   | LOGICAL_NOT formula
-      { NumExpr.Not $2 }
+      { F.Not $2 }
   | formula LOGICAL_AND formula
-      { NumExpr.And ($1, $3) }
+      { F.And ($1, $3) }
   | formula LOGICAL_OR formula
-      { NumExpr.Or ($1, $3) }
+      { F.Or ($1, $3) }
   | formula LOGICAL_THEN formula
-      { NumExpr.Implies ($1, $3) }
+      { F.Implies ($1, $3) }
   | formula LOGICAL_IFF formula
-      { NumExpr.Iff ($1, $3) }
+      { F.Iff ($1, $3) }
 
 
 conjunction_of_literals : 
   | LOGICAL_FALSE
-      { NumExpr.ConjFalse }
+      { F.FalseConj }
   | LOGICAL_TRUE
-      { NumExpr.ConjTrue }
+      { F.TrueConj }
   |  literal_list
-      { NumExpr.Conjuncts $1 }
+      { F.Conj $1 }
 
 literal_list :
   | literal
@@ -116,27 +143,27 @@ literal_list :
 literal :
    integer MATH_LESS integer
     {
-      NumExpr.Atom (NumExpr.Less ($1, $3))
+      F.Atom (NumExpr.Less ($1, $3))
     }
   | integer MATH_GREATER integer
     {
-      NumExpr.Atom (NumExpr.Greater ($1, $3))
+      F.Atom (NumExpr.Greater ($1, $3))
     }
   | integer MATH_LESS_EQ integer
     {
-      NumExpr.Atom (NumExpr.LessEq ($1, $3))
+      F.Atom (NumExpr.LessEq ($1, $3))
     }
   | integer MATH_GREATER_EQ integer
     {
-      NumExpr.Atom (NumExpr.GreaterEq ($1, $3))
+      F.Atom (NumExpr.GreaterEq ($1, $3))
     }
   | term EQUALS term
     {
-      NumExpr.Atom (NumExpr.Eq($1,$3))
+      F.Atom (NumExpr.Eq($1,$3))
     }
   | term NOT_EQUALS term
     {
-      NumExpr.Atom (NumExpr.InEq($1,$3))
+      F.Atom (NumExpr.InEq($1,$3))
     }
 
 
@@ -149,7 +176,8 @@ term :
 integer :
   | IDENT
       {
-        let v = NumExpr.build_var (get_name $1) NumExpr.Int false None None
+        let v = NumExpr.build_var (get_name $1) NumExpr.Int false
+                                  NumExpr.V.Shared NumExpr.V.GlobalScope
         in
           NumExpr.Var v
       }

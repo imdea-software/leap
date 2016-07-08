@@ -1,3 +1,29 @@
+
+(***********************************************************************)
+(*                                                                     *)
+(*                                 LEAP                                *)
+(*                                                                     *)
+(*               Alejandro Sanchez, IMDEA Software Institute           *)
+(*                                                                     *)
+(*                                                                     *)
+(*      Copyright 2011 IMDEA Software Institute                        *)
+(*                                                                     *)
+(*  Licensed under the Apache License, Version 2.0 (the "License");    *)
+(*  you may not use this file except in compliance with the License.   *)
+(*  You may obtain a copy of the License at                            *)
+(*                                                                     *)
+(*      http://www.apache.org/licenses/LICENSE-2.0                     *)
+(*                                                                     *)
+(*  Unless required by applicable law or agreed to in writing,         *)
+(*  software distributed under the License is distributed on an        *)
+(*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,       *)
+(*  either express or implied.                                         *)
+(*  See the License for the specific language governing permissions    *)
+(*  and limitations under the License.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+
+
 type pc_t = int
 
 type sort =
@@ -285,26 +311,6 @@ and conjunctive_formula = atom Formula.conjunctive_formula
 
 and formula = atom Formula.formula
 
-(*
-    Atom          of atom
-  | NegAtom       of atom
-
-and conjunctive_formula =
-    FalseConj
-  | TrueConj
-  | Conj          of literal list
-
-and formula =
-    Literal       of literal
-  | True
-  | False
-  | And           of formula * formula
-  | Or            of formula * formula
-  | Not           of formula
-  | Implies       of formula * formula
-  | Iff           of formula * formula
-*)
-
 and expr_t =
     Term          of term
   | Formula       of formula
@@ -332,7 +338,6 @@ module PosSet : Set.S with type elt = pc_t
 
 
 
-
 (* Configuration *)
 val defCountVar        : integer
 
@@ -355,9 +360,9 @@ val build_pc_var  : bool -> V.shared_or_local -> V.t
 
 val var_nature : V.t -> var_nature
 
-(** [var_base_info v] returns [v], removing information about priming and
-    thread id *)
 val var_base_info : V.t -> V.t
+(** [var_base_info v] returns [v], removing information about priming and
+    thread id. *)
 
 val is_pc_var     : V.t -> bool
 
@@ -622,13 +627,9 @@ val build_assign : integer -> integer -> formula
 val build_pos_change : int -> int -> formula
 val build_label_change : string list -> string list -> formula
 
-(*
-val keep_locations : formula -> (formula * (tid * tid) list * (tid * tid) list)
-*)
-
 
 val required_sorts : formula -> sort list
-(** [required_sorts phi] returns the list of sorts the formula reasons about *)
+(** [required_sorts phi] returns the list of sorts the formula reasons about. *)
 
 val gen_focus_list : pc_t -> pc_t list -> pc_t list -> (bool * pc_t list)
 (** [gen_focus_list mp fs is] generates the list of program positions to
@@ -636,7 +637,7 @@ val gen_focus_list : pc_t -> pc_t list -> pc_t list -> (bool * pc_t list)
     of positions where to focus and [is] the positions to ignore. Returns
     a boolean indicating whether the initial position should be considered
     and a list with the positions to be considered (without considering
-    position 0 as a member of the list) *)
+    position 0 as a member of the list). *)
 
 
 (* COMPARISON FUNCTIONS. SYNTACTICALLY (almost) IDENTICAL *)

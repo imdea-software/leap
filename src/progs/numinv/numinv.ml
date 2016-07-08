@@ -1,3 +1,29 @@
+
+(***********************************************************************)
+(*                                                                     *)
+(*                                 LEAP                                *)
+(*                                                                     *)
+(*               Alejandro Sanchez, IMDEA Software Institute           *)
+(*                                                                     *)
+(*                                                                     *)
+(*      Copyright 2011 IMDEA Software Institute                        *)
+(*                                                                     *)
+(*  Licensed under the Apache License, Version 2.0 (the "License");    *)
+(*  you may not use this file except in compliance with the License.   *)
+(*  You may obtain a copy of the License at                            *)
+(*                                                                     *)
+(*      http://www.apache.org/licenses/LICENSE-2.0                     *)
+(*                                                                     *)
+(*  Unless required by applicable law or agreed to in writing,         *)
+(*  software distributed under the License is distributed on an        *)
+(*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,       *)
+(*  either express or implied.                                         *)
+(*  See the License for the specific language governing permissions    *)
+(*  and limitations under the License.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+
+
 (****************)
 (* ARGS         *)
 (****************)
@@ -208,7 +234,7 @@ let _ =
     let sys      = Sys.del_global_var tSys Conf.heap_name in
 
     let _        = Sys.check_is_numeric sys in
-(*    let orig_widening_steps = !Numprog.wait_for_widening in *)
+    (* let orig_widening_steps = !Numprog.wait_for_widening in *)
 
 
     (* Shows the parsed system *)
@@ -217,10 +243,8 @@ let _ =
     let prob_name = List.hd $
                       Str.split (Str.regexp "\\.")
                                 (Filename.basename !input_file) in
-(*
-    let prob_vars = Numprog.get_num_vars_from_sys sys in
-    let prob_locs = Numprog.get_locs_from_sys sys in
-*)
+    (* let prob_vars = Numprog.get_num_vars_from_sys sys in
+       let prob_locs = Numprog.get_locs_from_sys sys in *)
     let num_p =
         Numprog.new_num_problem (prob_name)
                                 (not !noSelfLoopFlag)

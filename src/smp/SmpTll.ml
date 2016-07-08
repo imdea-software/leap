@@ -1,3 +1,29 @@
+
+(***********************************************************************)
+(*                                                                     *)
+(*                                 LEAP                                *)
+(*                                                                     *)
+(*               Alejandro Sanchez, IMDEA Software Institute           *)
+(*                                                                     *)
+(*                                                                     *)
+(*      Copyright 2011 IMDEA Software Institute                        *)
+(*                                                                     *)
+(*  Licensed under the Apache License, Version 2.0 (the "License");    *)
+(*  you may not use this file except in compliance with the License.   *)
+(*  You may obtain a copy of the License at                            *)
+(*                                                                     *)
+(*      http://www.apache.org/licenses/LICENSE-2.0                     *)
+(*                                                                     *)
+(*  Unless required by applicable law or agreed to in writing,         *)
+(*  software distributed under the License is distributed on an        *)
+(*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,       *)
+(*  either express or implied.                                         *)
+(*  See the License for the specific language governing permissions    *)
+(*  and limitations under the License.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+
+
 open LeapLib
 open TllExpression
 
@@ -72,11 +98,9 @@ let cut_off_normalized (expr:conjunctive_formula) : MS.t =
   Log.print "SmpTll. Mem vars" (string_of_int vars_mem);
 
   VarSet.iter (fun v -> Log.print "Smp address variable" (Expr.V.to_str v)) vars_addr_set;
-
   (* ALE: I need the "2" for next0, firstlocked0.... *)
   (* ALE: No need to add null and NoThread in the counter, as they are added
           separately as an special address and tid respectively *)
-
   let numaddr = if Smp.group_vars !options then
                   let _ = LeapDebug.debug "cut_off_normalized, \
                                            group_vars is enabled.\n" in
@@ -146,11 +170,9 @@ let cut_off_normalized (expr:conjunctive_formula) : MS.t =
 
   let numtid = ref (vars_tid) in
   let numelem = ref (vars_elem + vars_mem * vars_addr) in
-(*
-  let numaddr = ref (2+(VarSet.cardinal varaddr) * tid_num) in
-  let numtid = ref (2+(VarSet.cardinal vartid) * tid_num) in
-  let numelem = ref (2+(VarSet.cardinal varelem) * tid_num) in
-*)
+  (* let numaddr = ref (2+(VarSet.cardinal varaddr) * tid_num) in
+     let numtid = ref (2+(VarSet.cardinal vartid) * tid_num) in
+     let numelem = ref (2+(VarSet.cardinal varelem) * tid_num) in *)
   let process_ineq (x,_) =
     match x with
     | VarT _     -> ()                      (* nothing, y must be a VarT as well *)
@@ -165,7 +187,7 @@ let cut_off_normalized (expr:conjunctive_formula) : MS.t =
     | MemT _     -> ()
     | IntT _     -> ()
     | MarkT _    -> ()
-    | VarUpdate _-> () in                   (* ALE: Not sure if OK *)
+    | VarUpdate _-> () in                   (* ALE: Check this case *)
   let process (lit:literal) =
     match lit with
     | F.Atom(InEq(x,y)) -> process_ineq(x,y)
@@ -179,15 +201,15 @@ let cut_off_normalized (expr:conjunctive_formula) : MS.t =
           | In _           -> ()
           | SubsetEq _     -> numaddr := !numaddr + 1 (* witness of s1 \not\sub s2 *)
           | InTh _         -> ()
-          | SubsetEqTh _   -> numtid := !numtid + 1 (* witness of st1 \not\sub st2 *)
+          | SubsetEqTh _   -> numtid := !numtid + 1   (* witness of st1 \not\sub st2 *)
           | InElem _       -> ()
           | SubsetEqElem _ -> numelem := !numelem + 1 (* witness of se1 \not\sub se2 *)
           | Less _         -> ()
           | LessEq _       -> ()
           | Greater _      -> ()
           | GreaterEq _    -> ()
-          | LessElem _     -> () (* Not sure *)
-          | GreaterElem _  -> () (* Not sure *)
+          | LessElem _     -> () (* ALE: Check this case *)
+          | GreaterElem _  -> () (* ALE: Check this case *)
           | Eq(x,y)        -> process_ineq (x,y)
           | InEq _         -> ()
           | BoolVar _      -> ()
@@ -213,8 +235,7 @@ let compute_max_cut_off (conj_list:conjunctive_formula list) : MS.t =
   ms
 
 
-(* I must also count the equalities!!! *)
-
+(* ALE: I must also count the equalities. *)
 let union_eq_cutoff (info:union_info) ((x,y):(Expr.term * Expr.term)) : union_info =
   match x with
     VarT _      -> info (* nothing, y must be a VarT as well *)
@@ -309,10 +330,10 @@ let compute_max_cut_off_with_union (phi:formula) : MS.t =
   let info = union_model_size (union_formula_cutoff new_union_count phi) in
   let num_addrs = (* 1 + *)                   (* null (null is already unique) *)
                   varaddr_num +               (* Address variables  *)
-(*                  varaddr_num * varmem_num +  (* Cell next pointers *) *)
+               (* varaddr_num * varmem_num +  (* Cell next pointers *) *)
                   (MS.get info MS.Addr)       (* Special literals   *) in
   let num_tids = 1 +                          (* No thread          *)
-                 vartid_num +                 (* Tid variables     *)
+                 vartid_num +                 (* Tid variables      *)
                  varmem_num * num_addrs       (* Cell locks         *) in
   let num_elems = varelem_num +               (* Elem variables     *)
                   varmem_num * num_addrs      (* Cell data          *)
@@ -372,7 +393,7 @@ let compute_max_cut_off_with_pruning (phi:formula) : MS.t =
 let cut_off (strat:Smp.cutoff_strategy_t)
             (opt:Smp.cutoff_options_t)
             (f:formula) : MS.t =
-(*  LOG "Strategy: %s\n" (Smp.strategy_to_str strat) LEVEL DEBUG; *)
+  (* LOG "Strategy: %s\n" (Smp.strategy_to_str strat) LEVEL DEBUG; *)
   options := opt;
   let ms = if !LeapDebug._testing_ then
              LeapDebug._testing_smp_()

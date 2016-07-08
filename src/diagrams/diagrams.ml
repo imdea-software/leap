@@ -1,3 +1,29 @@
+
+(***********************************************************************)
+(*                                                                     *)
+(*                                 LEAP                                *)
+(*                                                                     *)
+(*               Alejandro Sanchez, IMDEA Software Institute           *)
+(*                                                                     *)
+(*                                                                     *)
+(*      Copyright 2011 IMDEA Software Institute                        *)
+(*                                                                     *)
+(*  Licensed under the Apache License, Version 2.0 (the "License");    *)
+(*  you may not use this file except in compliance with the License.   *)
+(*  You may obtain a copy of the License at                            *)
+(*                                                                     *)
+(*      http://www.apache.org/licenses/LICENSE-2.0                     *)
+(*                                                                     *)
+(*  Unless required by applicable law or agreed to in writing,         *)
+(*  software distributed under the License is distributed on an        *)
+(*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,       *)
+(*  either express or implied.                                         *)
+(*  See the License for the specific language governing permissions    *)
+(*  and limitations under the License.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+
+
 open LeapLib
 
 module E = Expression
@@ -371,25 +397,23 @@ module Make (C:Core.S) : S =
                          ) (PVD.successor pvd n1 line v) ([],[]) in
                        let next_mu = F.disj_list pre_next_mu in
 
-(*                    VERSION PRE-ASSUMPTIONS
- *
+                      (* VERSION PRE-ASSUMPTIONS
                        let next_mu =
                           F.disj_list $
                             PVD.NodeIdSet.fold (fun n xs ->
                               (PVD.node_mu pvd n) :: xs
                             ) (PVD.successor pvd n1 line v) [] in
-    *)
+                       *)
 
                        let conds =
                          F.disj_list (Statement.enabling_condition (E.V.Local v) stm) in
-(*
+                        (*
                         (* Enabled *)
                         let disj = F.disj_list (F.to_conj_list mu_n1) in
                         let enable_vc = List.fold_left Tactics.add_modelfunc_assumption
                                           (Tactics.create_vc_info [] Tactics.no_tid_constraint
                                             conds disj voc th line) assumptions in
-*)
-
+                        *)
                         (* Enabled *)
                         let enable_vc = List.fold_left Tactics.add_modelfunc_assumption
                                           (Tactics.create_vc_info [] Tactics.no_tid_constraint
@@ -405,7 +429,7 @@ module Make (C:Core.S) : S =
                             List.fold_left Tactics.add_modelfunc_assumption vc assumptions
                           ) rho_list in
                         add_node_vc_tbl node_vc_tbl n1 (enable_vc :: successor_vcs);
-(*                        successor_vcs @ gen_vcs *)
+                        (* successor_vcs @ gen_vcs *)
                         enable_vc :: successor_vcs @ gen_vcs
                      end else gen_vcs
                   ) [] trans_list) @ xs
@@ -474,10 +498,10 @@ module Make (C:Core.S) : S =
               | None -> ()
               | Some s -> check_well_defined_supp s in
       let pvd_vcs = gen_vcs pvd ~opt:opt in
-(*
+      (*
       let vc_count = ref 1 in
       let show_progress = not (LeapVerbose.is_verbose_enabled()) in
-*)
+      *)
       Progress.init ((List.length pvd_vcs.initiation) +
                      (List.length pvd_vcs.consecution) +
                      (List.length pvd_vcs.acceptance) +
@@ -501,7 +525,7 @@ module Make (C:Core.S) : S =
                     Some (Hashtbl.find pvd_vcs.node_vcs (Tactics.get_original_vc_id vc))
                   with Not_found -> None in
           let new_obligation = generate_obligations vc supp n c in
-(*          if show_progress then (Progress.current !vc_count; incr vc_count); *)
+          (* if show_progress then (Progress.current !vc_count; incr vc_count); *)
           new_obligation :: os
         ) os xs
       ) [] [(PVD.Initiation, pvd_vcs.initiation);

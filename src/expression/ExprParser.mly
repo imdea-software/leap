@@ -1,4 +1,30 @@
+
 %{
+
+(***********************************************************************)
+(*                                                                     *)
+(*                                 LEAP                                *)
+(*                                                                     *)
+(*               Alejandro Sanchez, IMDEA Software Institute           *)
+(*                                                                     *)
+(*                                                                     *)
+(*      Copyright 2011 IMDEA Software Institute                        *)
+(*                                                                     *)
+(*  Licensed under the Apache License, Version 2.0 (the "License");    *)
+(*  you may not use this file except in compliance with the License.   *)
+(*  You may obtain a copy of the License at                            *)
+(*                                                                     *)
+(*      http://www.apache.org/licenses/LICENSE-2.0                     *)
+(*                                                                     *)
+(*  Unless required by applicable law or agreed to in writing,         *)
+(*  software distributed under the License is distributed on an        *)
+(*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,       *)
+(*  either express or implied.                                         *)
+(*  See the License for the specific language governing permissions    *)
+(*  and limitations under the License.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+
 open Printf
 
 open LeapLib
@@ -7,9 +33,7 @@ open Global
 module E      = Expression
 module Symtbl = ExprSymTable
 
-(* This code should be changed in the future *)
-(* This code should be changed in the future *)
-
+(* ALE: This code should be changed in the future *)
 
 exception WrongType of E.term
 exception Sort_mismatch of E.V.id * E.sort * E.sort
@@ -44,7 +68,7 @@ let get_sort (t:E.term) : E.sort =
     System.get_sort_from_term gVars iVars lVars invVars t
 
 
-(* Parsing error message funtion *)
+(* Parsing error message function *)
 let parser_error (msg:string) =
   let msg = sprintf "Error at line %i:\n%s" (Global.get_linenum ()) msg in
     raise(ParserError msg)
@@ -103,7 +127,7 @@ let decl_inv_var (v:E.V.id) (s:E.sort) (e:E.initVal_t option) : unit =
 
 
 
-(* slow way to project: traverse one time per entry *)
+(* Slow way to project: traverse one time per entry. *)
 let get_name id = fst id
 let get_line id = snd id
 
@@ -425,56 +449,6 @@ let check_delta_sort (s:E.sort) : unit =
                           (E.sort_to_str E.Int)
                           (E.sort_to_str s)
 
-(*
-let check_and_add_delta (tbl:Vd.delta_fun_t)
-                        (lst:(Vd.delta_range_t list * E.term) list)
-                          : unit =
-  let sort = ref None in
-  let add e k =
-    if Hashtbl.mem tbl k then
-      begin
-        let prev_e = Hashtbl.find tbl k in
-        Interface.Err.msg "Node labeled twice" $
-          sprintf "Ranking function is trying to associate to node %s the \
-                   expression:\n\"%s\",\nbut this node has already been \
-                   associated to expression:\n\"%s\"\n"
-                   (Vd.PP.node_id_to_str k)
-                   (E.term_to_str e)
-                   (E.term_to_str prev_e);
-        raise(Duplicated_ranking_function(k,e,prev_e))
-      end
-    else
-      begin
-        let e_sort = get_sort e in
-        let _ =
-          match !sort with
-            None   -> let _ = check_delta_sort e_sort in
-                        sort := Some e_sort
-          | Some s -> if s <> e_sort then
-                        begin
-                          Interface.Err.msg"Unmatched sort in ranking function"$
-                            sprintf "An expression of sort %s was expected, \
-                                     but expression \"%s\" has sort %s."                       
-                                     (E.sort_to_str s)
-                                     (E.term_to_str e)
-                                     (E.sort_to_str e_sort);
-                          raise(Ranking_function_unmatched_sort(s,e,e_sort))
-                        end
-        in
-          Hashtbl.add tbl k e
-      end in
-  let _ = List.iter ( fun (rs,expr) ->
-            List.iter (fun r ->
-              match r with
-                Vd.Single n    -> add expr n
-              | Vd.Range (m,n) -> let node_list = VD.gen_node_range m n in
-                                    List.iter (add expr) node_list
-              | Vd.Default     -> add expr Vd.defaultNodeId
-            ) rs
-          ) lst
-  in
-    ()
-*)
 
 let define_ident (proc_name:E.V.procedure_name)
                  (id:string)
@@ -926,8 +900,6 @@ inv_var_decl:
     {
       let s      = check_and_get_sort (get_name $1) in
       let v_name = get_name $2 in
-
-(*      decl_global_var v_name s None E.RealVar; *)
       decl_inv_var v_name s None
     }
 
@@ -969,7 +941,6 @@ formula :
         let th_p       = $3 in
         let labelTbl   = System.get_labels !Symtbl.sys in
         let pc_pos     = System.get_label_pos labelTbl label_name in
-(*      let pos_list = List.map (fun p -> E.pc_form p th_p false) pc_list *)
         let pc_expr    = match pc_pos with
                            None -> parser_error ("Unknown label: " ^ label_name)
                          | Some (i,e) -> if i = e then
@@ -1354,70 +1325,14 @@ ident :
   IDENT
     {
       define_ident E.V.GlobalScope (get_name $1) E.V.Shared
-(*
-      let id  = get_name $1 in
-      let var = E.build_var id E.Unknown false None None E.RealVar in
-        inject_sort (E.VarT var)
-*)
     }
   | IDENT DOUBLECOLON IDENT
     {
       define_ident (E.V.Scope (get_name $1)) (get_name $3) E.V.Shared
-(*
-      let proc_name = get_name $1 in
-
-      let id            = get_name $3 in
-      let _             = check_is_procedure proc_name in
-      let _             = check_var_belongs_to_procedure id proc_name in
-
-      let proc_info     = System.get_proc_by_name !Symtbl.sys proc_name in
-      let iVars         = System.proc_info_get_input proc_info in
-      let lVars         = System.proc_info_get_local proc_info in
-
-      let k             = if System.mem_var iVars id then
-                            System.find_var_kind iVars id
-                          else
-                            System.find_var_kind lVars id in
-      let var           = inject_sort (E.VarT
-                            (E.build_var id E.Unknown false None
-                                            (Some proc_name) k))
-      in
-        var
-*)
     }
   | IDENT DOUBLECOLON IDENT th_param
     {
       define_ident (E.V.Scope (get_name $1)) (get_name $3) $4
-(*
-      let proc_name = get_name $1 in
-*)
-(* Under testing. Possible correction. *)
-(*
-      let c_proc = if !current_proc <> "" then
-                     Some !current_proc
-                   else
-                     None in
-*)
-(*
-      let id            = get_name $3 in
-      let th            = $4 in
-      let _             = check_is_procedure proc_name in
-      let _             = check_var_belongs_to_procedure id proc_name in
-
-      let proc_info     = System.get_proc_by_name !Symtbl.sys proc_name in
-      let iVars         = System.proc_info_get_input proc_info in
-      let lVars         = System.proc_info_get_local proc_info in
-
-      let k             = if System.mem_var iVars id then
-                            System.find_var_kind iVars id
-                          else
-                            System.find_var_kind lVars id in
-      let var           = inject_sort (E.VarT
-                            (E.build_var id E.Unknown false th
-                                            (Some proc_name) k))
-      in
-        var
-*)
     }
 
 

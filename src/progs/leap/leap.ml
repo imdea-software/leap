@@ -1,3 +1,29 @@
+
+(***********************************************************************)
+(*                                                                     *)
+(*                                 LEAP                                *)
+(*                                                                     *)
+(*               Alejandro Sanchez, IMDEA Software Institute           *)
+(*                                                                     *)
+(*                                                                     *)
+(*      Copyright 2011 IMDEA Software Institute                        *)
+(*                                                                     *)
+(*  Licensed under the Apache License, Version 2.0 (the "License");    *)
+(*  you may not use this file except in compliance with the License.   *)
+(*  You may obtain a copy of the License at                            *)
+(*                                                                     *)
+(*      http://www.apache.org/licenses/LICENSE-2.0                     *)
+(*                                                                     *)
+(*  Unless required by applicable law or agreed to in writing,         *)
+(*  software distributed under the License is distributed on an        *)
+(*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,       *)
+(*  either express or implied.                                         *)
+(*  See the License for the specific language governing permissions    *)
+(*  and limitations under the License.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+
+
 open Printf
 
 open LeapLib
@@ -110,7 +136,6 @@ let _ =
       let timer = new LeapLib.timer in
       timer#start;
 
-
       if (!LeapArgs.vcgenFlag) then begin
 
         (* Invariant candidate *)
@@ -127,69 +152,10 @@ let _ =
           let _ = LeapCore.decl_tag Core.Inv tag inv invVars in
           (* Declare the tag of each subformula in the parsed file *)
           let _ = List.iter (fun (tag, phi) -> LeapCore.decl_tag Core.Inv tag phi invVars) inv_decls in
-          let _ = Report.report_inv_cand inv in
-  (*        let sys = System.add_global_vars sys invVars in *)
-
-          (* Use B-INV *)
-          if !LeapArgs.binvSys then begin
-  (*
-            let conds = VCG.binv sys inv in
-              printf "%s\n" $ String.concat "\n--------\n" (List.map (fst>>Expr.formula_to_str) conds)
-  *)
-          end;
-
-          (* Use P-INV *)
-          if !LeapArgs.pinvSys then begin
-  (*
-            if VCG.some_dp_enabled () then
-              ignore $ VCG.check_with_pinv sys inv
-            else
-              print_endline (String.concat "\n--------\n" $
-                List.map (fst>>Expr.formula_to_str)
-                  (VCG.pinv sys inv))
-  *)
-          end;
-
-          (* Use P-INV+ *)
-          if !LeapArgs.pinvPlusSys then begin
-  (*
-            if VCG.some_dp_enabled () then
-              ignore $ VCG.check_with_pinv_plus sys inv
-            else
-              print_endline (String.concat "\n--------\n" $
-                List.map (fst>>Expr.formula_to_str)
-                  (VCG.pinv_plus sys inv))
-  *)
-          end;
-
-          (* SP-INV *)
-          if !LeapArgs.spinvSys then begin
-  (*
-            let supInv_file_list = Str.split (Str.regexp ",") !LeapArgs.supInvariant in
-            let supInv_list = List.map (fun file ->
-                                Parser.open_and_parse file (Eparser.invariant Elexer.norm)
-                              ) supInv_file_list in
-            Report.report_sup_inv supInv_list;
-            let sup_form_list = List.map (fun (_,tag,phi) ->
-                                  ignore(LeapCore.decl_tag Core.Inv tag phi); phi
-                                ) supInv_list in
-  *)
-            ()
-  (*
-            if VCG.some_dp_enabled () then
-              ignore $ VCG.check_with_spinv sys sup_form_list inv
-            else
-              print_endline (String.concat "\n--------\n" $
-                List.map (fst>>Expr.formula_to_str)
-                  (VCG.spinv sys sup_form_list inv))
-  *)
-          end;
+          Report.report_inv_cand inv;
+          (* let sys = System.add_global_vars sys invVars in *)
           ()
-          end
-
-
-
-
+        end
       end;
 
 
@@ -209,7 +175,6 @@ let _ =
                           | file -> Some (Parser.open_and_parse file
                                       (Gparser.pvd_support Glexer.norm)) in
         let module PVDSolver = Diagrams.Make(LeapCore) in
-  (*      let module DSolver = Diagrams.Make(LeapCore) in *)
         print_endline "PVD Analysis";
         print_endline (PVD.to_str pvd);
         let lines_to_consider =
@@ -226,8 +191,8 @@ let _ =
       timer#stop;
       printf "Total Analysis time: %.3f\n" timer#elapsed_time;
       printf "Heap usage: %s\n" (LeapLib.report_heap());
-      printf "Memory consumption Ale: %s\n" (LeapLib.report_mem());
-      printf "Memory consumption Juli: %s\n" (LeapLib.human_readable_byte_count());
+      printf "Memory consumption #1: %s\n" (LeapLib.report_mem());
+      printf "Memory consumption #2: %s\n" (LeapLib.human_readable_byte_count());
       LeapDebug.flush()
     end
 

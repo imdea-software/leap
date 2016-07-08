@@ -1,4 +1,28 @@
-(*open LeapLib *)
+
+(***********************************************************************)
+(*                                                                     *)
+(*                                 LEAP                                *)
+(*                                                                     *)
+(*               Alejandro Sanchez, IMDEA Software Institute           *)
+(*                                                                     *)
+(*                                                                     *)
+(*      Copyright 2011 IMDEA Software Institute                        *)
+(*                                                                     *)
+(*  Licensed under the Apache License, Version 2.0 (the "License");    *)
+(*  you may not use this file except in compliance with the License.   *)
+(*  You may obtain a copy of the License at                            *)
+(*                                                                     *)
+(*      http://www.apache.org/licenses/LICENSE-2.0                     *)
+(*                                                                     *)
+(*  Unless required by applicable law or agreed to in writing,         *)
+(*  software distributed under the License is distributed on an        *)
+(*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,       *)
+(*  either express or implied.                                         *)
+(*  See the License for the specific language governing permissions    *)
+(*  and limitations under the License.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+
 
 module GenSet = LeapGenericSet
 
@@ -181,26 +205,6 @@ let from_list (xs:'a list list) : 'a t =
           ) xs in
     p
 
-(*
-let rec gen_eq_classes (xs:'a list) : ('a t) list =
-  match xs with
-  | []    -> []
-  | y::[] -> let p = singleton y in [p]
-  | y::ys -> let p_list = gen_eq_classes ys
-             in
-               List.fold_left (fun zs p ->
-                 let ks = keys p in
-                 let xs' = List.map (fun i ->
-                             let p' = copy p in
-                             let _ = add_to p' y i in
-                               p'
-                           ) ks in
-                 let p_extra = copy p in
-                 let _ = add_new p_extra y
-                 in
-                   (p_extra :: xs') @ zs
-               ) [] p_list
-*)
 
 let load_ineq_tbl (dom:'a list) (p:'a t) (tbl:'a ineq_table_t) : unit =
   (* I create a map for elements in the domain *)

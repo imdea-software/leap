@@ -1,3 +1,29 @@
+
+(***********************************************************************)
+(*                                                                     *)
+(*                                 LEAP                                *)
+(*                                                                     *)
+(*               Alejandro Sanchez, IMDEA Software Institute           *)
+(*                                                                     *)
+(*                                                                     *)
+(*      Copyright 2011 IMDEA Software Institute                        *)
+(*                                                                     *)
+(*  Licensed under the Apache License, Version 2.0 (the "License");    *)
+(*  you may not use this file except in compliance with the License.   *)
+(*  You may obtain a copy of the License at                            *)
+(*                                                                     *)
+(*      http://www.apache.org/licenses/LICENSE-2.0                     *)
+(*                                                                     *)
+(*  Unless required by applicable law or agreed to in writing,         *)
+(*  software distributed under the License is distributed on an        *)
+(*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,       *)
+(*  either express or implied.                                         *)
+(*  See the License for the specific language governing permissions    *)
+(*  and limitations under the License.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+
+
 open PairsQuery
 open LeapLib
 
@@ -61,7 +87,7 @@ struct
 
 
   let pairs_var_to_str (v:PE.V.t) : string =
-    let pr_str = "" (*if (PE.V.is_primed v) then "_prime" else ""*)
+    let pr_str = "" (* if (PE.V.is_primed v) then "_prime" else "" *)
     in
       match PE.V.scope v with
       | PE.V.GlobalScope -> pairs_varid_to_str ((PE.V.id v) ^ pr_str)
@@ -101,7 +127,7 @@ struct
 
 
   and variable_to_str (v:PE.V.t) : string =
-    let pr_str = "" in (*if (PE.V.is_primed v) then "_prime" else "" in*)
+    let pr_str = "" in (* if (PE.V.is_primed v) then "_prime" else "" in *)
     let th_str = match (PE.V.parameter v) with
                  | PE.V.Shared  -> ""
                  | PE.V.Local t -> "_" ^ (PE.V.to_str t) in
@@ -334,14 +360,14 @@ struct
   and variable_invocation_to_str (v:PE.V.t) : string =
     let th_str = shared_or_local_to_str (PE.V.parameter v) in
     let p_str  = procedure_name_to_append (PE.V.scope v) in
-    let pr_str = "" (*if (PE.V.is_primed v) then "_prime" else ""*)
+    let pr_str = "" (* if (PE.V.is_primed v) then "_prime" else "" *)
     in
       match (PE.V.parameter v) with
       | PE.V.Shared  -> Printf.sprintf " %s%s%s%s" p_str (PE.V.id v) th_str pr_str
-  (* For LEAP *)
+      (* For LEAP *)
       | PE.V.Local _ -> Printf.sprintf " (%s%s%s %s)" p_str (PE.V.id v) pr_str th_str
-  (* For numinv *)
-  (*    | PE.V.Local _ -> Printf.sprintf " %s%s%s_%s" p_str (PE.V.id v) pr_str th_str *)
+      (* For numinv *)
+      (* | PE.V.Local _ -> Printf.sprintf " %s%s%s_%s" p_str (PE.V.id v) pr_str th_str *)
 
 
 
@@ -589,14 +615,13 @@ struct
      "  " ^low_set^ ")\n")
 
 
-(*
-  let z3_unique_def (buf:Buffer.t) : unit =
-    B.add_string buf
-      ("(define-fun uniqueint ((&s " ^setpair_s^ ")) " ^bool_s^ "\n" ^
-       "  (forall ((&n1 " ^int_s^ ") (&n2 " ^int_s^ ") (&t " ^tid_s^ ")) (=> (and (select &s (mk-pair &n1 &t)) (select &s (mk-pair &n2 &t))) (= &n1 &n2))))\n" ^
-       "(define-fun uniquetid ((&s " ^setpair_s^ ")) " ^bool_s^ "\n" ^
-       "  (forall ((&n " ^int_s^ ") (&t1 " ^tid_s^ ") (&t2 " ^tid_s^ ")) (=> (and (select &s (mk-pair &n &t1)) (select &s (mk-pair &n &t2))) (= &t1 &t2))))\n")
-*)
+  (* ALE: Test definition based on quantifiers over finite domains.
+    let z3_unique_def (buf:Buffer.t) : unit =
+      B.add_string buf
+        ("(define-fun uniqueint ((&s " ^setpair_s^ ")) " ^bool_s^ "\n" ^
+         "  (forall ((&n1 " ^int_s^ ") (&n2 " ^int_s^ ") (&t " ^tid_s^ ")) (=> (and (select &s (mk-pair &n1 &t)) (select &s (mk-pair &n2 &t))) (= &n1 &n2))))\n" ^
+         "(define-fun uniquetid ((&s " ^setpair_s^ ")) " ^bool_s^ "\n" ^
+         "  (forall ((&n " ^int_s^ ") (&t1 " ^tid_s^ ") (&t2 " ^tid_s^ ")) (=> (and (select &s (mk-pair &n &t1)) (select &s (mk-pair &n &t2))) (= &t1 &t2))))\n") *)
   let z3_unique_def (max_ints:int) (voc_rep:string list) (buf:Buffer.t) : unit =
     let str1 = ref "" in
     let str2 = ref "" in
@@ -691,7 +716,7 @@ struct
     ) local_vars
 
 
-  (* TODO: Verify, if no set is defined, then do not include the preamble for sets *)
+  (* ALE: Check that if no set is defined, then do not include the preamble for sets *)
   let z3_preamble (buf:Buffer.t)
                      (voc:PE.tid list)
                      (int_cutoff:int)

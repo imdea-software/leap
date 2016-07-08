@@ -1,8 +1,35 @@
+
+(***********************************************************************)
+(*                                                                     *)
+(*                                 LEAP                                *)
+(*                                                                     *)
+(*               Alejandro Sanchez, IMDEA Software Institute           *)
+(*                                                                     *)
+(*                                                                     *)
+(*      Copyright 2011 IMDEA Software Institute                        *)
+(*                                                                     *)
+(*  Licensed under the Apache License, Version 2.0 (the "License");    *)
+(*  you may not use this file except in compliance with the License.   *)
+(*  You may obtain a copy of the License at                            *)
+(*                                                                     *)
+(*      http://www.apache.org/licenses/LICENSE-2.0                     *)
+(*                                                                     *)
+(*  Unless required by applicable law or agreed to in writing,         *)
+(*  software distributed under the License is distributed on an        *)
+(*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,       *)
+(*  either express or implied.                                         *)
+(*  See the License for the specific language governing permissions    *)
+(*  and limitations under the License.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+
+
 open LeapLib
 
 module Eparser = ExprParser
 module Elexer  = ExprLexer
 module F = Formula
+module SolOpt = SolverOptions
 
 
 (****************)
@@ -91,7 +118,9 @@ let _ =
         List.iter (fun phi ->
           print_endline (Expression.formula_to_str phi);
           let tll_phi = TllInterface.formula_to_tll_formula phi in
-          let result = Valid.is_valid (Tll.check_valid 50 !ApplyTacArgs.coType false tll_phi) in
+          let opt = SolOpt.new_opt () in
+          SolOpt.set_cutoff_strategy opt (!ApplyTacArgs.coType);
+          let result = Valid.is_valid (Tll.check_valid opt tll_phi) in
           if result then print_endline "VALID" else print_endline "NOT VALID"
         ) final_formulas
       end;

@@ -1,3 +1,29 @@
+
+(***********************************************************************)
+(*                                                                     *)
+(*                                 LEAP                                *)
+(*                                                                     *)
+(*               Alejandro Sanchez, IMDEA Software Institute           *)
+(*                                                                     *)
+(*                                                                     *)
+(*      Copyright 2011 IMDEA Software Institute                        *)
+(*                                                                     *)
+(*  Licensed under the Apache License, Version 2.0 (the "License");    *)
+(*  you may not use this file except in compliance with the License.   *)
+(*  You may obtain a copy of the License at                            *)
+(*                                                                     *)
+(*      http://www.apache.org/licenses/LICENSE-2.0                     *)
+(*                                                                     *)
+(*  Unless required by applicable law or agreed to in writing,         *)
+(*  software distributed under the License is distributed on an        *)
+(*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,       *)
+(*  either express or implied.                                         *)
+(*  See the License for the specific language governing permissions    *)
+(*  and limitations under the License.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+
+
 open Printf
 open LeapLib
 open TrsLexer
@@ -8,17 +34,17 @@ module Sys  = System
 module Stm  = Statement
 module NumExp = NumExpression
 
-(* This code should be changed in the future *)
+(* ALE: This code should be changed in the future *)
 module PosSolver  = (val PosSolver.choose  "default" : PosSolver.S)
 module TllSolver  = (val TllSolver.choose  "default" : TllSolver.S)
 module TslkSolver = (val TslkSolver.choose "default" 1 : TslkSolver.S)
 module NumSolver  = (val NumSolver.choose  "default" : NumSolver.S)
 module VCG = VCGen.Make(PosSolver)(TllSolver)(TslkSolver)(NumSolver)
-(* This code should be changed in the future *)
+(* ALE: This code should be changed in the future *)
 
-    (* FOR DEBUG ONLY. OUTPUTS INTERMEDIATE INVARIANTS TO CHECK WITH SPECS *)
+(* FOR DEBUG ONLY. OUTPUTS INTERMEDIATE INVARIANTS TO CHECK WITH SPECS *)
 let tmpCounter = ref 0
-    (* FOR DEBUG ONLY. OUTPUTS INTERMEDIATE INVARIANTS TO CHECK WITH SPECS *)
+(* FOR DEBUG ONLY. OUTPUTS INTERMEDIATE INVARIANTS TO CHECK WITH SPECS *)
 
 type loc_t = int list
 
@@ -64,7 +90,7 @@ type inv_table_t = (loc_t, Expr.formula) Hashtbl.t
 
 type num_problem_t =
   {         name  : string                 ; (* The problem name             *)
-            vars  : Expr.V.t list     ; (* The problem variables        *)
+            vars  : Expr.V.t list          ; (* The problem variables        *)
     mutable locs  : num_location_t list    ; (* The location list            *)
             mats  : num_trans_t list       ; (* The main thread transitions  *)
     mutable self  : num_trans_t list       ; (* The spaghetti transitions    *)
@@ -139,7 +165,7 @@ let num_localize_var_id (v:Expr.varId) (p_name:string) : Expr.varId =
 
 
 let num_loc_var_option (v:Expr.varId) (p_name:string option) : Expr.varId =
-  (* FIX: Provisional fix until we add support for pc using labels *)
+  (* ALE: Provisional fix until we add support for pc using labels *)
   match p_name with
     Some "" -> (v)
   | _       -> Option.map_default (num_localize_var_id v) v p_name
@@ -520,7 +546,7 @@ let update_info (t_info:num_trans_info_t)
   (* FIX: The guard here should be updated by the new_effect formula *)
   (* FIX: The guard may be the enabling condition of the formula *)
   let (s_loc, e_loc, _, prev_effect, presVars) = t_info in
-  (* TODO: Ask Cesar if this is OK *)
+  (* ALE: Check whether this is fine. *)
   let new_info = (*if prev_effect = new_effect then
                    (s_loc, e_loc, new_guard, prev_effect, presVars)
                  else*)
@@ -531,7 +557,6 @@ let update_info (t_info:num_trans_info_t)
 
 
 (* Printing for invariant specifications *)
-
 
 let loc_to_str (l:loc_t) : string =
   defLoc ^ (String.concat "_" $ List.map string_of_int l)
@@ -924,7 +949,6 @@ let gen_locations (sys:Sys.t)
 
 
 (* NEW FUNCTIONS *)
-
 let gen_transitions (trans_tbl:num_trans_info_table_t)
                     (sys:Sys.t)
                     (ths:Expr.tid list)
@@ -996,7 +1020,7 @@ let call_polyProject (phi:Expr.formula) (ths:Expr.tid list) : Expr.formula =
     let out_ch = open_out temp in
     let _ = output_string out_ch query in
     let _ = close_out out_ch in
-    (* Call the Sriram exists program *)
+    (* Call the "exists" program *)
     let cmd = pProjectCmd ^ " " ^ temp in
     let in_ch = Unix.open_process_in cmd in
     let pProjectRes = Interface.File.readChannel in_ch in
@@ -1006,25 +1030,6 @@ let call_polyProject (phi:Expr.formula) (ths:Expr.tid list) : Expr.formula =
     Debug.infoMsg (fun _ -> "Projected formula:\n" ^ (Expr.formula_to_str prjForm) ^ "\n");
     prjForm
 
-
-
-(* OLD FUNCTIONS FOR PRE-PROJECTION OF ENABLING CONDITIONS AND EFFECTS *)
-(*
-let build_prj_table (transTbl:num_trans_info_table_t)
-                    (ths:Expr.tid list) : num_trans_prj_t =
-  let prjTbl = Hashtbl.create (Hashtbl.length transTbl) in
-  let _ = Hashtbl.iter (fun (f,t,v) (_,_,guard,effect,_) ->
-            let param_guard = Expr.param (Some spagetthi_param) guard in
-            let param_effect = Expr.param (Some spagetthi_param) effect in
-            let prj_guard = call_polyProject param_guard ths in
-            let prj_effect = call_polyProject param_effect ths
-            in
-              Hashtbl.add prjTbl (f,t,v) (prj_guard, prj_effect)
-          ) transTbl in
-  let _ = assert (Hashtbl.length prjTbl = Hashtbl.length transTbl)
-  in
-    prjTbl
-*)
 
 
 let gen_visit_order (trans:num_trans_t list)
@@ -1079,7 +1084,7 @@ let new_num_problem (name:string)
   let _ = all_vars := Expr.V.varset_from_list vars in
   let (locs, init_loc) = gen_locations sys ths use_labels in
   let info_tbl = build_trans_info sys use_labels in
-(*  let prj_tbl = build_prj_table info_tbl ths in *)
+  (* let prj_tbl = build_prj_table info_tbl ths in *)
   let (trans,selfs) = gen_transitions info_tbl sys ths in
   let final_selfs = if sloops then selfs else [] in
   let locs_num = List.length locs in
@@ -1088,7 +1093,7 @@ let new_num_problem (name:string)
               visit_order = order  ; init_loc   = init_loc  ;
               updLocs     = updLocs; absIntMode = absIntMode;
              }
-(*  let _ = Printf.printf "SELFS: %i\n" (List.length final_selfs) in *)
+  (* let _ = Printf.printf "SELFS: %i\n" (List.length final_selfs) in *)
   in
     { name = name;
       vars = vars;
@@ -1288,69 +1293,6 @@ let make_round_focus (prob:num_problem_t) (dType:domain_t) : num_problem_t =
     final_prob
 
 
-
-
-
-(* FIRST SELFLOOPS, THEN FULL SYSTEM WITHOUT SELFLOOPS *)
-(*
-let make_round_focus (prob:num_problem_t) (dType:domain_t) : num_problem_t =
-  let _       = incr iterations in
-  let tmpLabel_tbl = Hashtbl.create (List.length prob.locs) in
-
-  (* First I compute the invariant for each location considering only selfloops *)
-  let _ = List.iter (fun (loc, loc_guard) ->
-            let imp_self = List.filter (fun s ->
-                             let (_,_,_,_,_,info) = s in
-                               get_info_sloc info = loc
-                           ) prob.self in
-
-            let tmpProb = {name = prob.name;
-                           vars = prob.vars;
-                           locs = ( try
-(*
-                                      if loc = prob.info.init_loc then
-                                        [(loc, loc_guard)]
-                                      else
-*)
-                                        [(loc, Hashtbl.find prob.invs loc)]
-                                    with
-                                      _ -> [(loc, loc_guard)]
-                                  );
-                           mats = [];
-                           self = imp_self;
-                           trans = prob.trans;
-                           invs = prob.invs;
-                           info = prob.info;} in
-
-            let _ = printf "===== Computing selfloop effect for location %s =========\n" (loc_to_str loc) in
-            let tmp_tbl = call_trs tmpProb dType
-            in
-              Hashtbl.add tmpLabel_tbl loc (Hashtbl.find tmp_tbl loc)
-          ) prob.locs in
-
-  (* Then I build a full problem without selfloops *)
-  let _ = printf "===== Computing full problem =========\n" in
-  let updated_locs = List.map (fun (loc, _) ->
-                       (loc, Hashtbl.find tmpLabel_tbl loc)
-                     ) prob.locs in
-
-  let full_prob = {name = prob.name;
-                   vars = prob.vars;
-                   locs = updated_locs;
-                   mats = prob.mats;
-                   self = [];
-                   trans = prob.trans;
-                   invs = prob.invs;
-                   info = prob.info;} in
-
-  let final_inv_tbl = call_trs full_prob dType in
-  let upd_prob = update_selfloops prob final_inv_tbl in
-  let _ = upd_prob.invs <- final_inv_tbl
-  in
-    upd_prob
-*)
-
-
 let make_round_split (prob:num_problem_t) (dType:domain_t) : num_problem_t =
   let _       = incr iterations in
   let inv_tbl = Hashtbl.create (List.length prob.locs) in
@@ -1437,10 +1379,8 @@ let compare_tables (invs:inv_table_t) (invs':inv_table_t) : bool =
       Printf.printf "NOT_LINEAR: %s\n" (NumExp.formula_to_string int_exp) in
     let _ = if not (NumExp.formula_is_linear int_exp') then
       Printf.printf "NOT_LINEAR: %s\n" (NumExp.formula_to_string int_exp') in
-(*
-      Printf.printf "%s\n<=\n%s" (Expr.formula_to_str exp)
-                                 (Expr.formula_to_str exp') ;
-*)
+(*    Printf.printf "%s\n<=\n%s" (Expr.formula_to_str exp)
+                                 (Expr.formula_to_str exp'); *)
       NumSolver.compare_formulas exp exp'
   in
     List.for_all check_one invs_list
@@ -1477,13 +1417,13 @@ let iterate (prob:num_problem_t) (dType:domain_t) : inv_table_t option =
           prob.info.absIntMode = EagerPlus ) then
         Some inv'
       else
-        (* FOR DEBUG ONLY. OPUPUTS INTERMEDIATE INVARIANTS TO CHECK WITH SPECS *)
+        (* FOR DEBUG ONLY. OUTPUTS INTERMEDIATE INVARIANTS TO CHECK WITH SPECS *)
         let spec_str = invs_for_spec inv' in
         let spec_out = open_out ("tmpinv_" ^ string_of_int !tmpCounter) in
         let _ = incr tmpCounter in
         let _ = output_string spec_out spec_str in
         let _ = close_out spec_out in
-        (* FOR DEBUG ONLY. OPUPUTS INTERMEDIATE INVARIANTS TO CHECK WITH SPECS *)
+        (* FOR DEBUG ONLY. OUTPUTS INTERMEDIATE INVARIANTS TO CHECK WITH SPECS *)
 
         let use_widening = !wait_for_widening = 1 in
         let _ = if !wait_for_widening > 1 then

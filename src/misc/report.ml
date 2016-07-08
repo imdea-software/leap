@@ -1,4 +1,30 @@
 
+(***********************************************************************)
+(*                                                                     *)
+(*                                 LEAP                                *)
+(*                                                                     *)
+(*               Alejandro Sanchez, IMDEA Software Institute           *)
+(*                                                                     *)
+(*                                                                     *)
+(*      Copyright 2011 IMDEA Software Institute                        *)
+(*                                                                     *)
+(*  Licensed under the Apache License, Version 2.0 (the "License");    *)
+(*  you may not use this file except in compliance with the License.   *)
+(*  You may obtain a copy of the License at                            *)
+(*                                                                     *)
+(*      http://www.apache.org/licenses/LICENSE-2.0                     *)
+(*                                                                     *)
+(*  Unless required by applicable law or agreed to in writing,         *)
+(*  software distributed under the License is distributed on an        *)
+(*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,       *)
+(*  either express or implied.                                         *)
+(*  See the License for the specific language governing permissions    *)
+(*  and limitations under the License.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+
+
+
 open Printf
 open LeapLib
 
@@ -55,7 +81,6 @@ let report_generated_vcs_to_str (vcs:Tactics.vc_info list) (n:int) : string =
 let report_inv_cand_to_str (inv:E.formula) : string =
   let inv_str = E.formula_to_str inv in
   let voc_str = E.ThreadSet.fold (fun t str -> str ^ (E.tid_to_str t) ^ ";") (E.voc inv) ""
-(*  let voc_str = String.concat ", " $ List.map E.tid_to_str (E.voc inv) *)
   in
   "+- Invariant information ---------------------------------------------\n" ^
   "| Candidate : " ^ inv_str ^ "\n" ^
@@ -228,11 +253,19 @@ let report_vc_tail_to_str (vc_id:int)
                           (calls_tbl:DP.call_tbl_t) : string =
   let total_oblig = List.length oblig_res_list in
   let res_info = extract_result_info oblig_res_list in
-(*
-  let total_time = Result.get_time vc_res in
-  let average_time = total_time /. (float_of_int total_oblig) in
-*)
+  (* ALE: Information provided as part of the result:
+     number of proof obligations
+     number of unverified proof obligations
+     number of invalid proof obligations
+     number of valid proof obligations
 
+     fastest proof obligation
+     slowest proof obligation
+     average solving time for obligation
+     total time to verify all proof obligations
+
+     total number of guessed arrangements
+     number of calls to each DP *)
     "--  VC " ^string_of_int vc_id^ " results  ---------------------------------------------------------\n" ^
     "  Proof obligations\n" ^
     "    Total      : " ^string_of_int total_oblig^ "\n" ^
@@ -250,26 +283,11 @@ let report_vc_tail_to_str (vc_id:int)
     "    " ^call_tbl_to_str calls_tbl^ "\n" ^
     "==========================================================================="
         
-(*
-  number of proof obligations
-  number of unverified proof obligations
-  number of invalid proof obligations
-  number of valid proof obligations
-
-  fastest proof obligation
-  slowest proof obligation
-  average solving time for obligation
-  total time to verify all proof obligations
-
-  total number of guessed arrangements
-  number of calls to each DP
-*)
 
 
 let report_summary_to_str (oblig_num:int)
                           (vc_list:Result.info_t list)
                           (call_tbl:DP.call_tbl_t) : string =
-    (* The put a table here *)
     let res_info = extract_result_info vc_list in
     "==  Summary  ==============================================================\n" ^
     "  Conditions\n" ^
@@ -304,8 +322,6 @@ let report_obligation_tail_to_str (st:Result.status_t) (time:float) : string =
 
 
 (* Reporting to standard output *)
-
-
 let report_generated_vcs (vcs:Tactics.vc_info list) (n:int) : unit =
   print_newline(); print_string (report_generated_vcs_to_str vcs n)
 

@@ -1,3 +1,29 @@
+
+(***********************************************************************)
+(*                                                                     *)
+(*                                 LEAP                                *)
+(*                                                                     *)
+(*               Alejandro Sanchez, IMDEA Software Institute           *)
+(*                                                                     *)
+(*                                                                     *)
+(*      Copyright 2011 IMDEA Software Institute                        *)
+(*                                                                     *)
+(*  Licensed under the Apache License, Version 2.0 (the "License");    *)
+(*  you may not use this file except in compliance with the License.   *)
+(*  You may obtain a copy of the License at                            *)
+(*                                                                     *)
+(*      http://www.apache.org/licenses/LICENSE-2.0                     *)
+(*                                                                     *)
+(*  Unless required by applicable law or agreed to in writing,         *)
+(*  software distributed under the License is distributed on an        *)
+(*  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,       *)
+(*  either express or implied.                                         *)
+(*  See the License for the specific language governing permissions    *)
+(*  and limitations under the License.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+
+
 (****************)
 (* ARGS         *)
 (****************)
@@ -12,6 +38,7 @@ open Debug
 
 module Pars = SpecParser
 module Lex = SpecLexer
+module F = Formula
 
 module NumExp = NumExpression
 module NumSolver = (val NumSolver.choose "default" : NumSolver.S)
@@ -101,17 +128,17 @@ let read_input_files _ =
 
 
 let forall f ls =
-  List.fold_left (fun sofar x -> (f x) & sofar) true ls
+  List.fold_left (fun sofar x -> (f x) && sofar) true ls
 
 let prove_one_spec invs  sCount a_spec =
   let (name, phi) = a_spec in
   let prove_at_one_location an_invariant = 
     let (loc, conj_inv) = an_invariant in
-    let inv = NumExp.conj_literals_to_formula conj_inv in
-    let is_valid = NumSolver.is_valid (NumExp.Implies(inv,phi)) in
+    let inv = F.conjunctive_to_formula conj_inv in
+    let is_valid = Valid.is_valid (NumSolver.check_valid (F.Implies(inv,phi))) in
       if not is_valid then begin
-  Printf.eprintf "\"%s\" fails at location \"%s\".\n" name loc 
-      end ;
+        Printf.eprintf "\"%s\" fails at location \"%s\".\n" name loc 
+      end;
       is_valid
   in
   let res =     forall prove_at_one_location invs in 
