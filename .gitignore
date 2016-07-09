@@ -26,6 +26,3 @@ setup.log
 
 # mypath
 /src/progs/MyPath.ml
-
-# revision file
-/src/progs/Revision.ml
