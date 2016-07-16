@@ -1,0 +1,6 @@
+vars:
+  mem m
+  addr a
+
+axiom[reach__a_a_epsilon__true]:
+  reach(m,a,a,epsilon)

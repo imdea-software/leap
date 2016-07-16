@@ -1,0 +1,17 @@
+vars:
+
+addr head
+addr a
+addr b
+mem heap
+addrSet region
+elemSet elems
+int maxlevel
+
+formula:
+
+skiplist(heap, region, maxlevel, head, null, elems) /\
+rd(heap,head).arr[1] = b /\
+rd(heap,head).arr[0] = a /\
+in (b, addr2set(heap, head, 0))
+

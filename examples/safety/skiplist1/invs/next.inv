@@ -1,0 +1,64 @@
+vars:
+
+invariant [skiplist_next] :
+
+
+   @insert_prev_is_head. ->
+      (insert::prev = head)
+
+/\ @insert_lookup_loop. ->
+      in (insert::prev, addr2set(heap, head, insert::i))
+
+/\ (@insert_set_i. \/ @insert_lookup_loop.) ->
+      (insert::curr != null)
+
+/\ (@insert_prev_next_curr_one. \/ @insert_prev_next_curr_two.) ->
+      (rd(heap, insert::prev).nextat[insert::i] = insert::curr)
+
+/\ @insert_update_set. ->
+      (insert::update[insert::i] = insert::prev)
+
+/\ @insert_prev_next_region_two. ->
+      (insert::curr = insert::prev)
+
+/\ @insert_update_all_set. ->
+      (insert::update[0] != null /\ insert::update[0] != tail)
+
+/\ @insert_newCell_created. ->
+      (insert::newCell != null)
+
+/\ @insert_newCell_next_connected. ->
+      (rd(heap, insert::newCell).nextat[insert::i] =
+       rd(heap, insert::update[insert::i]).nextat[insert::i])
+  
+/\ @insert_prev_in_region. ->
+      (insert::prev != null)
+
+/\ @remove_prev_is_head. ->
+      (remove::prev = head)
+
+/\ @remove_curr_not_null. ->
+      (remove::curr != null)
+
+/\ (@remove_prev_next_curr. \/
+    @remove_bounded_curr.) ->
+      (rd(heap, remove::prev).nextat[remove::i] = remove::curr)
+
+/\ @remove_prev_eq_curr. ->
+      (remove::prev = remove::curr)
+
+/\ @remove_lookup_i_decreases. ->
+      (remove::update[remove::i] = remove::prev)
+
+/\ @remove_prev_in_region. ->
+      (remove::prev != null)
+
+/\ @remove_prev_is_head. ->
+      in (remove::prev, addr2set(heap, head, 0))
+
+/\ @remove_lookup_loop. ->
+      in (remove::prev, addr2set(heap, head, remove::i))
+
+//////////////////////
+
+

@@ -1,0 +1,17 @@
+vars:
+
+invariant [skiplist_prop] :
+
+   tail != null
+/\ head != null
+/\ head != tail
+
+/\ orderlist (heap, head, tail)
+/\ region = addr2set (heap, head, 0)
+/\ rd(heap, tail).nextat[0] = null
+
+/\ rd(heap, head).data = lowestElem
+/\ rd(heap, tail).data = highestElem
+
+/\ in (tail, addr2set(heap, head, 0))
+

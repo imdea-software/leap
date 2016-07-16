@@ -1,0 +1,36 @@
+1. Download GMP library from gmplib.org
+
+
+2. Unzip and configure it with:
+		./configure --enable-cxx
+		make
+		make check
+		make install
+
+3. Download CVC4 from http://cvc4.cs.nyu.edu/
+
+
+4. Unzip and install antlr by running the following script in the CVC4 contrib directory:
+		cd contrib
+	 ./get-antlr-3.4
+
+
+5. Install Boost:
+		sudo port install boost
+
+
+6. configure CVC4:
+		cd ..
+	 ./configure --with-antlr-dir=`pwd`/antlr-3.4 ANTLR=`pwd`/antlr-3.4/bin/antlr3
+
+
+6,5. Edit file cvc4-1.0/src/main/interactive_shell.cpp, line 101, replacing the cast from "int" to "char*" in order to prevent error:
+			'invalid conversion from ‘int (*)(const char*, int)’ to ‘char* (*)(const char*, int)’
+
+
+7. Compile and install it:
+		make
+		make check
+		make install
+
+

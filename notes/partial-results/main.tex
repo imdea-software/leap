@@ -1,0 +1,130 @@
+
+\documentclass[10pt]{article}
+
+
+\usepackage{array}
+\usepackage{xspace}
+
+\usepackage{mdwmath}
+\usepackage{mdwtab}
+\usepackage{eqparbox}
+
+\usepackage{url}
+\usepackage{subfig}
+\usepackage{paralist}
+\usepackage{afterpage}
+\usepackage{wrapfig}
+
+\usepackage{calc}
+
+\usepackage[margin=0.5in]{geometry}
+
+
+\input{results}
+\input{definitions}
+
+\begin{document}
+
+
+\title{\Leap results}
+
+
+\maketitle
+
+
+This document describes the results we have obtained applying \Leap to a set of 
+examples. The results are divided into two sections. The first section presents 
+the sequential examples, mainly based on skiplists. The second section presents 
+the concurrent examples based on a ticketing system and lock-coupling lists.
+
+Each section presents two tables. The first table describes each invariant 
+candidate and the decision procedures used in order to verify them. The second 
+table presents the required analysis time for each invariant candidate.
+
+Consider the first table of each section. When dealing with concurrency, we say 
+that a parametrized formula is a formula parametrized by some thread 
+identifiers. The number of thread identifiers parametrizing an invariant 
+candidate is what we call the \emph{index} of the formula. This number is shown 
+in the second column of the tables.
+
+Depending on the proof rules we apply (\binv, \pinv, \spinv, ...) and the length 
+of the program, a number of verification conditions (VCs) are generated.  The 
+number of generated VCs that needs to be verified as valid for each invariant 
+candidate is shown in the third column. A feature of \Leap is the possibility of 
+applying tactics in order to simplify VCs. Applying a tactic on a single VC may 
+simplify it, or it may produce many new VCs that subsumes the original VC.  
+However, the idea is that all new VCs obtained through the application of 
+tactics are simpler to analyze than the original one. Thus, the number of actual 
+final VCs (or queries as we call them) passed to the solvers may be more than 
+the original number of VCs. The number of final queries is depicted in the forth 
+column of the table.
+
+The final eight columns of the table contain the number of calls performed to 
+each decision procedure in order to solve all the queries. We use the following 
+decision procedures:
+
+\begin{itemize}
+\item A \FODP decision procedure, which reasons only about first order logic and 
+information regarding the program counter. This DP usually solves simple queries 
+in almost no time, speeding up the verification process.
+\item A \NumDP decision procedure, which is capable of reasoning about 
+Presburger Arithmetic with sets of integers.
+\item A \TLLDP decision procedure, capable of dealing with concurrent 
+lock-coupling single-linked lists.
+\item A \TSLDP decision procedure, which deals with skiplists of arbitrary 
+height.
+\item A set of \TSLKOneDP, \TSLKTwoDP, \TSLKThreeDP and \TSLKFourDP decision 
+procedures, capable of reasoning about skiplists with a fixed number of levels 
+($1$, $2$, $3$ and $4$ respectively).
+\end{itemize}
+
+In all cases not involving the use of \TSLDP, the sum of calls performed to all 
+decision procedures is equal to the number of generated queries. On the other 
+hand, in the case of the skiplist example involving \TSLDP, notice that only the 
+sum of calls performed to \FODP and \TSLDP is equal to the number of generated 
+queries. This means that each query is solved through first order logic 
+reasoning or, if not possible, through a call to the \TSLDP decision procedure.  
+However, because of how \TSLDP decision procedure works, a single call to \TSLDP 
+may require multiple calls to \NumDP (when guessing arrangements) as well as to 
+simpler decision procedures such as \TSLKOneDP, \TSLKTwoDP, \TSLKThreeDP and 
+\TSLKFourDP.
+
+Now, consider the second table on each section. These tables show the time 
+required in order to analyze all generated VCs for each invariant candidate.  
+The first column presents the name of the invariant candidate. The second column 
+depicts the number of generated VCs (which matches with the first table). Then, 
+we present three columns showing the least, most and average time it takes to 
+analyze a single VC. The sixth column shows the total time employed by the 
+decision procedures to analyze all VCs. The final column presents the total time 
+required by \Leap in order to completely analyze and verify the invariant 
+candidate. This value is greater than the one shown in the previous column as it 
+includes, in addition to the time employed by the decision procedures, the time 
+required to parse the program, the invariant candidates, generate the VCs, apply 
+tactics, transform the intermediate formulas, etc. All the times shown in these 
+tables are in seconds.
+
+
+\section{Sequential examples}
+
+\ResultsSequentialInfo
+
+\vspace{3em}
+
+\ResultsSequentialTimes
+
+\pagebreak
+
+\section{Concurrent examples}
+
+\ResultsConcurrentInfo
+
+\vspace{3em}
+
+\ResultsConcurrentTimes
+
+\end{document}
+
+
+%%% Local Variables:
+%%% TeX-PDF-mode: t
+%%% End:

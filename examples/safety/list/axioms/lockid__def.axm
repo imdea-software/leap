@@ -1,0 +1,7 @@
+vars:
+  elem e
+  tid t
+  addr a
+
+axiom[lockid__def]:
+  mkcell(e,a,t).lockid = t

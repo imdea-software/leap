@@ -1,0 +1,42 @@
+Diagram[ticketset]
+
+Nodes: n0 {@1(k). \/ @2(k). \/ @7(k). \/ @8(k).},
+       n1 {@3(k).},
+       n2 {@4(t). /\ k!=t /\ @4(k). /\ int_of(spmin(bag)) = main::ticket(t)},
+       n3 {@5(t). /\ k!=t /\ @4(k). /\ int_of(spmin(bag)) = main::ticket(t)},
+       n4 {@6(t). /\ k!=t /\ @4(k). /\ int_of(spmin(bag)) = main::ticket(t)},
+       n5 {@4(k). /\ int_of(spmin(bag)) = main::ticket(k)},
+       n6 {(@5(k). \/ @6(k).) /\ int_of(spmin(bag)) = main::ticket(k)}
+
+Boxes: {b1[t]:n2,n3,n4}
+
+Initial: n0
+
+Edges:  n0 --> n1;
+        n1 -{3(k)}-> n2;
+        n1 -{3(k)}-> n3;
+        n1 -{3(k)}-> n4;
+        n1 -{3(k)}-> n5;
+       [n2 -{4(t)}-> n3];
+       [n3 -{5(t)}-> n4];
+        n4 -{6(t)}-> n2;
+        n4 -{6(t)}-> n3;
+        n4 -{6(t)}-> n4;
+        n4 -{6(t)}-> n5;
+        n5 -{4(k)}-> n6;
+        n6 --> n0;
+  // Self-loops
+        n0 --> n0;
+        n1 --> n1;
+       [n2 --> n2];
+       [n3 --> n3];
+       [n4 --> n4];
+        n5 --> n5;
+        n6 --> n6;
+
+Acceptance:
+  <<Bad :{(n4,n2,any),(n4,n3,any),(n4,n4,any),(n4,n5,any)};
+    Good:{(n6,n0,any)
+          };
+    [(splower(bag,main::ticket(k)), pairsubset_op)] >>
+

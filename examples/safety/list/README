@@ -1,0 +1,70 @@
+
+This folder contains the example of concurrent lock-coupling single-liked 
+lists.
+
+
+
+In this folder you will find some scripts to run the examples:
+
+run.sh:
+  executes the example for list shape preservation.
+
+run_insert.sh:
+  executes the example for functional correctness of insert procedure
+  considering the case in which one thread handles an element different
+  from all other threads. It verifies that the element is in the list
+  after insertion.
+
+run_remove.sh:
+  executes the example for functional correctness of remove procedure
+  considering the case in which one thread handles an element different
+  from all other threads. It verifies that the element is no longer in
+  the list after removal.
+
+run_search.sh:
+  executes the example for functional correctness of search procedure
+  considering the case in which one thread handles an element different
+  from all other threads. It verifies that the element is found if and
+  only if it is in the list.
+
+run_functional_search_linearization.sh:
+  executes the example which establishes that the result of search
+  procedure matches with the presence of the searched element at the
+  linearization point of search.
+
+run_functional_search_true.sh:
+  executes the example which states that if a search is successful then
+  the searched element was inserted earlier in the history.
+
+run_functional_search_false.sh:
+  executes the example which states that if a search is unsuccessful then
+  the searched element was not present in the list at the linearization point
+  of search either because of it was never inserted or because of it has been
+  removed.
+
+
+Inside each script you can configure the options you want Leap to use.
+
+IMPORTANT: You must configure the path to Leap inside the script before you
+           can run it.
+
+
+
+The other folders within this folder are:
+
+  + graphs: contains the proof graph for this example.
+
+  + invs: contains the invariant candidates.
+
+  + prgs: contains the program under verification.
+
+  + vcs: here are output the generated VCs during the verification process, 
+         just to provide extra information.
+
+
+
+For further information regarding how to configure Leap or edit the files 
+within this example, please refer to:
+
+http://software.imdea.org/leap/tutorial.html
+

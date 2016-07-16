@@ -1,0 +1,48 @@
+vars:
+
+invariant [skiplist_value] :
+
+
+   (@insert_not_all_processed_one. \/ @insert_not_all_processed_two.) ->
+      (~.insert::all_processed.)
+
+
+/\ @insert_i_upper_limit. ->
+      (insert::i = insert::lvl)
+
+
+/\ @insert_update_upper_bounds. ->
+      (.insert::all_processed. -> (insert::i = 2 \/ insert::i > insert::lvl) /\
+      ((~.insert::all_processed.) -> insert::i <= insert::lvl))
+
+
+/\ @insert_increase_i. ->
+      (.insert::all_processed. -> (insert::i = insert::lvl) /\
+      ((~.insert::all_processed.) -> insert::i < insert::lvl))
+
+
+
+/\ @insert_final_if_condition. ->
+      (.insert::valueWasIn. -> rd(heap, rd(heap, insert::update[0]).nextat[0]).data = insert::e /\
+       ~(.insert::valueWasIn.) -> rd(heap, rd(heap, insert::update[0]).nextat[0]).data != insert::e)
+
+
+/\ @remove_not_all_processed. ->
+      (~.remove::all_processed.)
+
+
+/\ @remove_i_lower_limit. ->
+      (remove::i = 0)
+
+
+/\ @remove_final_loop_i_decreases. ->
+      (.remove::all_processed. -> remove::i = 0 /\
+      ((~.remove::all_processed.) -> remove::i != 0))
+
+
+/\ @remove_final_conditional. ->
+      (.remove::valueWasIn. -> rd(heap, remove::curr).data = remove::e)
+
+/\ @remove_final_if_true. ->
+      (.remove::valueWasIn.)
+

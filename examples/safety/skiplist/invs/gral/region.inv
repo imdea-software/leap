@@ -1,0 +1,94 @@
+vars:
+
+int j
+
+invariant [skiplist_region] :
+
+
+///////////  Search  /////////////
+
+
+#search_prev_in_region:
+   @search_prev_in_region. ->
+      in (search::prev, region)
+
+   @search_curr_in_region. ->
+      in (search::curr, region)
+
+#search_prev_next_i_in_region:
+   (@search_prev_next_region. \/
+    @search_prev_is_curr. \/
+    @search_i_decrements.) ->
+      in (rd(heap, search::prev).arr[search::i], region)
+
+
+///////////  Insert  /////////////
+
+
+   @insert_i_set_zero. ->
+      (~ in (insert::newCell, region))
+
+/\ @insert_prev_in_region. ->
+      in (insert::prev, region)
+
+/\ @insert_curr_in_region. ->
+      in (insert::curr, region)
+
+#insert_prev_next_i_in_region:
+   (@insert_prev_next_region_one. \/
+    @insert_prev_is_curr. \/
+    @insert_set_valueWasIn.) ->
+      in (rd(heap, insert::prev).arr[insert::i], region)
+
+   @insert_newCell_unconnected. ->
+      ((insert::i <= j /\ j <= maxLevel) -> (~ in (insert::newCell, addr2set(heap, head, j))))
+
+/\ @insert_i_increases. ->
+      ((insert::i < j /\ j <= maxLevel) -> (~ in (insert::newCell, addr2set(heap, head, j))))
+
+/\ @insert_i_increases. ->
+      in (insert::newCell, addr2set(heap, head, insert::i))
+
+/\ @insert_newCell_low_connected. ->
+      ((0 <= j /\ j < insert::i) -> in (insert::newCell, addr2set(heap, head, j)))
+
+/\ (@insert_lookup_loop. /\ insert::i < j /\ j <= maxLevel) ->
+      in (insert::update[j], region)
+
+/\ @insert_update_set. ->
+      insert::update[insert::i] = insert::prev
+
+#insert_update_j_in_addr2set:
+   (@insert_update_all_set. /\ 0 <= j /\ j <= maxLevel) ->
+      (in (insert::update[j], region) /\
+       in (insert::update[j], addr2set(heap, head, j)) /\
+       in (rd(heap,insert::update[j]).arr[j], addr2set(heap, head, j)))
+
+
+///////////  Remove  /////////////
+
+
+#remove_prev_next_i_in_region:
+   (@remove_prev_next_region.  \/
+    @remove_prev_is_curr.      \/
+    @remove_lookup_i_decreases. ) ->
+      in (rd(heap, remove::prev).arr[remove::i], region)
+
+#remove_prev_in_region:
+   @remove_prev_in_region. ->
+      in (remove::prev, region)
+
+   @remove_curr_in_region. ->
+      in (remove::curr, region)
+
+/\ (@remove_set_valueWasIn. \/ @remove_final_if.) ->
+      ((0 <= j /\ j <= remove::removeFrom) ->
+            in (remove::update[j], addr2set(heap, head, j)))
+
+#remove_curr_in_region:
+   @remove_final_loop_begins. ->
+      (remove::i >= 0 -> in (remove::curr, region))
+
+   @remove_final_loop_i_decreases. ->
+      (remove::i > 0 -> in (remove::curr, region))
+

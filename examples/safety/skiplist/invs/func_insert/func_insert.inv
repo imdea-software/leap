@@ -1,0 +1,16 @@
+vars:
+
+invariant [skiplist_func_insert] :
+
+   @should_be_inserted. -> (elements = eunion (elements_before, esingle(main::e)))
+
+/\ @main_insert_e_matches. -> main::e = insert::e
+
+/\ @insert_update_upper_bounds. -> (insert::i <= 0 -> elements = elements_before /\
+                                    insert::i > 0 -> elements = eunion (elements_before, esingle(insert::e)))
+
+/\ @insert_i_increases. -> elements = eunion (elements_before, esingle(insert::e))
+
+/\ @insert_return. -> elements = eunion (elements_before, esingle(insert::e))
+
+/\ (@main_call_insert. \/ @global_elements_equal.) -> elements_before = elements

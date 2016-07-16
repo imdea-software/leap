@@ -1,0 +1,16 @@
+vars:
+
+addr head
+addr a
+mem heap
+addrSet region
+elemSet elems
+
+formula:
+
+skiplist(heap, region, 3, head, null, elems) /\
+in (a, addr2set(heap, head, 2)) /\
+(~ in (a, addr2set(heap, head, 1)))
+
+
+

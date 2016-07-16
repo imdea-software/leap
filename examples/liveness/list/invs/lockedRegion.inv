@@ -1,0 +1,138 @@
+vars:
+
+tid i
+
+invariant [lockedRegion] :
+
+#main_no_locks:
+  @main_body(i). -> ~ tin(i, lockset(heap, getp(heap, head, null)))
+
+//  Search  ///////////////////////////
+
+#search_no_locks:
+  (@sch_init_no_lock(i). \/
+   @sch_return(i).) -> ~ tin(i, lockset(heap, getp(heap, head, null)))
+
+
+#search_prev_locked:
+  (@sch_init_prev_locked(i). \/
+   @sch_only_prev_locked(i).) ->
+    (~ tin(i, lockset(heap, getp(heap, head, search::prev(i)))) /\
+     ~ tin(i, lockset(heap, getp(heap, rd(heap, search::prev(i)).next, null))))
+
+
+#search_prev_curr_locked:
+  (@sch_prev_curr_locked(i). \/
+   @sch_after_lookup(i). \/
+   @sch_last_prev_unlock(i). ) ->
+    (~ tin(i, lockset(heap, getp(heap, head, search::prev(i)))) /\
+     ~ tin(i, lockset(heap, getp(heap, rd(heap, search::curr(i)).next, null))))
+
+
+#search_aux_curr_locked:
+  @sch_aux_before_prev(i). ->
+    (~ tin(i, lockset(heap, getp(heap, head, search::aux(i)))) /\
+     ~ tin(i, lockset(heap, getp(heap, rd(heap, search::curr(i)).next, null))))
+
+
+#search_curr_locked:
+  (@sch_only_curr_locked(i). \/
+    @sch_releases_last_lock(i).) ->
+    (~ tin(i, lockset(heap, getp(heap, head, search::curr(i)))) /\
+     ~ tin(i, lockset(heap, getp(heap, rd(heap, search::curr(i)).next, null))))
+
+
+//  Insert  ///////////////////////////
+
+
+#insert_no_locks:
+  (@ins_init_no_lock(i). \/
+   @ins_return(i).) -> ~ tin(i, lockset(heap, getp(heap, head, null)))
+
+
+ 
+#insert_prev_locked:
+  (@ins_init_prev_locked(i). \/
+   @ins_lock_curr(i).) ->
+    (~ tin(i, lockset(heap, getp(heap, head, insert::prev(i)))) /\
+     ~ tin(i, lockset(heap, getp(heap, rd(heap, insert::prev(i)).next, null))))
+
+
+#insert_prev_curr_locked:
+  (@ins_prev_curr_locked(i). \/
+   @ins_final_conditional(i). \/
+   @ins_insert(i). \/
+   @ins_last_prev_unlock(i).) ->
+    (~ tin(i, lockset(heap, getp(heap, head, insert::prev(i)))) /\
+     ~ tin(i, lockset(heap, getp(heap, rd(heap, insert::curr(i)).next, null))))
+
+
+#insert_aux_curr_locked:
+  @ins_aux_before_prev(i). ->
+    (~ tin(i, lockset(heap, getp(heap, head, insert::aux(i)))) /\
+     ~ tin(i, lockset(heap, getp(heap, rd(heap, insert::curr(i)).next, null))))
+
+
+#insert_curr_locked:
+  (@ins_only_curr_locked(i). \/
+   @ins_releases_last_lock(i).) ->
+    (~ tin(i, lockset(heap, getp(heap, head, insert::curr(i)))) /\
+     ~ tin(i, lockset(heap, getp(heap, rd(heap, insert::curr(i)).next, null))))
+
+
+
+//  Remove  ///////////////////////////
+
+
+#remove_no_locks:
+  (@rem_init_no_lock(i). \/
+   @rem_return(i). ) ->
+//   @rem_releases_last_lock(i).) ->
+    ~ tin(i, lockset(heap, getp(heap, head, null)))
+
+
+ 
+#remove_prev_locked:
+  (@rem_init_prev_locked(i). \/
+   @rem_lock_curr(i). \/
+   @rem_releases_curr_one(i). \/
+   @rem_last_prev_unlock(i). ) ->
+    (~ tin(i, lockset(heap, getp(heap, head, remove::prev(i)))) /\
+     ~ tin(i, lockset(heap, getp(heap, rd(heap, remove::prev(i)).next, null))))
+
+
+//#remove_prev_or_curr_locked:
+//   @rem_last_prev_unlock(i). ->
+//    ((~ tin(i, lockset(heap, getp(heap, head, remove::prev(i)))) /\
+//      ~ tin(i, lockset(heap, getp(heap, rd(heap, remove::prev(i)).next, null)))) \/
+//     (~ tin(i, lockset(heap, getp(heap, head, remove::prev(i)))) /\
+//      ~ tin(i, lockset(heap, getp(heap, rd(heap, remove::curr(i)).next, null)))))
+
+
+//#remove_nothing_or_curr_locked:
+//   @rem_releases_last_lock(i). ->
+//    ((~ tin(i, lockset(heap, getp(heap, head, remove::curr(i)))) /\
+//      ~ tin(i, lockset(heap, getp(heap, rd(heap, remove::curr(i)).next, null)))) \/
+//     (~ tin(i, lockset(heap, getp(heap, head, null)))))
+
+
+
+#remove_prev_curr_locked:
+  (@rem_prev_curr_locked(i). \/
+   @rem_final_conditional(i). \/
+   @rem_remove(i). \/
+   @rem_releases_curr_two(i). ) ->
+    (~ tin(i, lockset(heap, getp(heap, head, remove::prev(i)))) /\
+     ~ tin(i, lockset(heap, getp(heap, rd(heap, remove::curr(i)).next, null))))
+
+
+#remove_aux_curr_locked:
+  @rem_aux_before_prev(i). ->
+    (~ tin(i, lockset(heap, getp(heap, head, remove::aux(i)))) /\
+     ~ tin(i, lockset(heap, getp(heap, rd(heap, remove::curr(i)).next, null))))
+
+
+#remove_curr_locked:
+  (@rem_only_curr_locked(i). ) ->
+    (~ tin(i, lockset(heap, getp(heap, head, remove::curr(i)))) /\
+     ~ tin(i, lockset(heap, getp(heap, rd(heap, remove::curr(i)).next, null))))

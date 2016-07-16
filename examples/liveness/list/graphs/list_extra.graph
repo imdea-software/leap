@@ -1,0 +1,297 @@
+=> special [
+     9:preserve,
+       nexts::{search_prev_is_head},
+       region::{insert_prev_in_region};
+    11:preserve,
+       nexts::{search_prev_is_head,search_prev_next_curr},
+       locks::{search_owns_prev,insert_owns_prev},
+       region::{insert_prev_in_region};
+    17:preserve,
+       nexts::{search_prev_next_curr},
+       locks::{search_owns_prev,insert_owns_prev},
+       region::{search_prev_in_region,insert_prev_in_region};
+    23:preserve,
+       nexts::{insert_prev_is_head},
+       region::{insert_prev_in_region};
+    25:preserve,
+       nexts::{insert_prev_is_head,insert_prev_next_curr},
+       locks::{insert_owns_prev},
+       region::{insert_prev_in_region};
+    31:preserve,
+       nexts::{insert_prev_next_curr},
+       locks::{insert_owns_prev},
+       region::{insert_prev_in_region};
+    32:preserve,
+       nexts::{insert_prev_next_curr},
+       locks::{insert_owns_prev},
+       region::{insert_prev_in_region};
+    34:preserve,
+       nexts::{insert_prev_next_curr},
+       locks::{insert_owns_prev},
+       region::{insert_prev_in_region,insert_aux_not_in_region};
+    35:preserve,
+       nexts::{insert_aux_next_curr},
+       locks::{insert_owns_prev,insert_nobody_owns_aux};
+    40:preserve,
+       nexts::{remove_prev_is_head},
+       region::{insert_prev_in_region};
+    42:preserve,
+       nexts::{remove_prev_is_head,remove_prev_next_curr},
+       locks::{remove_owns_prev,insert_owns_prev},
+       region::{insert_prev_in_region};
+    48:preserve,
+       nexts::{remove_prev_next_curr},
+       locks::{remove_owns_prev,insert_owns_prev},
+       region::{remove_prev_in_region,insert_prev_in_region};
+    51:preserve,
+       locks::{insert_owns_prev,remove_owns_prev}
+   ] { union :
+             | reduce2
+             |
+             | simplify-pc
+     }
+
+
+=> lockedRegion [
+     9:preserve,
+       nexts::{search_prev_is_head}
+        {union : split-goal | reduce2 | | simplify-pc};
+    11:preserve,
+       nexts::{search_prev_next_curr},
+       locks::{search_owns_prev}
+        {union : split-goal | reduce2 | | simplify-pc};
+    14:preserve,
+       nexts::{search_aux_eq_prev};
+    15:preserve,
+       nexts::{search_aux_before_prev,search_prev_eq_curr},
+       locks::{search_owns_curr,search_owns_aux},
+       region::{search_aux_in_region}
+        {union : split-goal | reduce2 | | simplify-pc};
+    16:preserve,
+       nexts::{search_prev_eq_curr};
+    17:preserve,
+       nexts::{search_prev_next_curr}
+        {union : split-goal | reduce2 | | simplify-pc};
+    19:preserve,
+       nexts::{search_prev_next_curr},
+       region::{search_prev_in_region}
+        {union : split-goal | reduce2 | | simplify-pc};
+    20:preserve,
+       region::{search_curr_in_region}
+        {union : split-goal | reduce2 | | simplify-pc};
+    23:preserve,
+       nexts::{insert_prev_is_head}
+        {union : split-goal | reduce2 | | simplify-pc};
+    25:preserve,
+       nexts::{insert_prev_is_head,insert_prev_next_curr},
+       locks::{insert_owns_prev}
+        {union : split-goal | reduce2 | | simplify-pc};
+    28:preserve,
+       nexts::{insert_diff};
+    29:preserve,
+       nexts::{insert_aux_next_prev,insert_equal},
+       locks::{insert_owns_curr,insert_owns_aux},
+       region::{insert_aux_in_region}
+        {union : split-goal | reduce2 | | simplify-pc};
+    30:preserve,
+       nexts::{insert_equal};
+    31:preserve,
+       nexts::{insert_prev_next_curr}
+        {union : split-goal | reduce2 | | simplify-pc};
+    33:
+        {union : | reduce2 | | simplify-pc filter-strict-except-heap};
+    34:preserve,
+       region::{insert_aux_not_in_region,
+                search_prev_in_region,
+                search_curr_in_region,
+                insert_prev_in_region,
+                insert_curr_in_region,
+                remove_curr_in_region,
+                remove_prev_in_region}
+        {union : split-goal | reduce2 | | simplify-pc };
+    35:preserve,
+       nexts::{insert_prev_next_curr,insert_aux_next_curr},
+       locks::{insert_owns_prev,
+               insert_owns_curr,
+               insert_owns_aux,
+               insert_nobody_owns_aux,
+               search_owns_prev,
+               search_owns_curr,
+               search_owns_aux,
+               remove_owns_prev,
+               remove_owns_curr,
+               remove_owns_aux}
+        {union : split-goal | reduce2 | | simplify-pc };
+    36:preserve,
+       region::{insert_prev_in_region},
+       special::{insert_aux_between}
+        {union : split-goal | reduce2 | | simplify-pc};
+    37:preserve,
+       region::{insert_curr_in_region}
+        {union : split-goal | reduce2 | | simplify-pc};
+    40:preserve,
+       nexts::{remove_prev_is_head}
+        {union : split-goal | reduce2 | | simplify-pc};
+    42:preserve,
+       nexts::{remove_prev_next_curr},
+       locks::{remove_owns_prev}
+        {union : split-goal | reduce2 | | simplify-pc};
+    45:preserve,
+       nexts::{remove_diff};
+    46:preserve,
+       nexts::{remove_aux_next_prev,remove_equal},
+       locks::{remove_owns_curr,remove_owns_aux},
+       region::{remove_aux_in_region}
+        {union : split-goal | reduce2 | | simplify-pc};
+    47:preserve,
+       nexts::{remove_equal};
+    48:preserve,
+       nexts::{remove_prev_next_curr}
+        {union : split-goal | reduce2 | | simplify-pc};
+    51:preserve,
+       nexts::{remove_curr_next_aux, remove_prev_next_curr},
+       locks::{insert_owns_prev,
+               insert_owns_curr,
+               insert_owns_aux,
+               insert_nobody_owns_aux,
+               search_owns_prev,
+               search_owns_curr,
+               search_owns_aux,
+               remove_owns_prev,
+               remove_owns_curr,
+               remove_owns_aux}
+        {union : split-goal | reduce2 | | simplify-pc};
+    52:preserve,
+       region::{remove_curr_not_in_region}
+        {union : split-goal | reduce2 | | simplify-pc};
+    53:preserve,
+       nexts::{remove_prev_next_curr},
+       region::{remove_prev_in_region}
+        {union : split-goal | reduce2 | | simplify-pc};
+    54:preserve,
+       region::{remove_prev_in_region}
+        {union : split-goal | reduce2 | | simplify-pc}
+   ] { union :
+             | reduce2
+             |
+             | simplify-pc
+     }
+
+
+
+=> locksets [
+     9:preserve,
+       nexts::{search_prev_is_head},
+       region::{insert_prev_in_region}
+        {union : split-goal | reduce2 | | simplify-pc};
+    11:preserve,
+       locks::{search_owns_prev, insert_owns_prev},
+       nexts::{search_prev_next_curr},
+       region::{search_prev_in_region,insert_prev_in_region}
+        {union : split-goal | reduce2 | | simplify-pc};
+    15:preserve,
+       locks::{search_owns_prev},
+       nexts::{search_aux_before_prev}
+        {union : split-goal | reduce2 | | simplify-pc};
+    17:preserve,
+       locks::{search_owns_prev, insert_owns_prev},
+       nexts::{search_prev_next_curr},
+       region::{search_prev_in_region,insert_prev_in_region}
+        {union : split-goal | reduce2 | | simplify-pc};
+    19:preserve,
+       locks::{search_owns_prev, search_owns_curr},
+       nexts::{search_prev_next_curr}
+        {union : split-goal | reduce2 | | simplify-pc};
+    20:preserve,
+       region::{search_curr_in_region,insert_prev_in_region},
+       lockedRegion::{search_curr_locked}
+        {union : split-goal | reduce2 | | simplify-pc};
+    23:preserve,
+       nexts::{insert_prev_is_head},
+       region::{insert_prev_in_region}
+        {union : split-goal | reduce2 | | simplify-pc};
+    25:preserve,
+       locks::{insert_owns_prev},
+       nexts::{insert_prev_next_curr},
+       region::{insert_prev_in_region}
+        {union : split-goal | reduce2 | | simplify-pc};
+    28:preserve,
+       nexts::{insert_prev_next_curr},
+       locks::{insert_owns_curr};
+    29:preserve,
+       locks::{insert_owns_prev},
+       nexts::{insert_aux_next_prev}
+        {union : split-goal | reduce2 | | simplify-pc};
+    31:preserve,
+       locks::{insert_owns_prev},
+       nexts::{insert_prev_next_curr},
+       region::{insert_prev_in_region}
+        {union : split-goal | reduce2 | | simplify-pc};
+    33:
+        {union : | reduce2 | | simplify-pc filter-strict-except-heap};
+    34:preserve,
+       region::{insert_prev_in_region,insert_aux_not_in_region}
+        {union : split-goal | reduce2 | | simplify-pc };
+    35:preserve,
+       region::{insert_prev_in_region, insert_aux_not_in_region},
+       nexts::{insert_prev_next_curr, insert_aux_next_curr},
+       locks::{insert_owns_prev, insert_owns_curr, insert_nobody_owns_aux}
+        {union : split-goal | reduce2 | | simplify-pc };
+    36:preserve,
+       nexts::{insert_diff},
+       locks::{insert_owns_prev, insert_owns_curr},
+       region::{insert_prev_in_region,insert_curr_in_region},
+       lockedRegion::{insert_prev_curr_locked},
+       special::{insert_aux_between}
+        {union : split-goal | reduce2 | | simplify-pc};
+    37:preserve,
+       region::{insert_curr_in_region,insert_prev_in_region},
+       lockedRegion::{insert_curr_locked}
+        {union : split-goal | reduce2 | | simplify-pc};
+    40:preserve,
+       nexts::{remove_prev_is_head},
+       region::{insert_prev_in_region}
+        {union : split-goal | reduce2 | | simplify-pc};
+    42:preserve,
+       locks::{remove_owns_prev, insert_owns_prev},
+       nexts::{remove_prev_next_curr},
+       region::{remove_prev_in_region,insert_prev_in_region}
+        {union : split-goal | reduce2 | | simplify-pc};
+    46:preserve,
+       locks::{remove_owns_prev},
+       nexts::{remove_aux_next_prev}
+        {union : split-goal | reduce2 | | simplify-pc};
+    48:preserve,
+       locks::{remove_owns_prev, insert_owns_prev},
+       nexts::{remove_prev_next_curr},
+       region::{remove_prev_in_region,insert_prev_in_region}
+        {union : split-goal | reduce2 | | simplify-pc};
+    51:preserve,
+       nexts::{remove_curr_next_aux, remove_prev_next_curr},
+       locks::{insert_owns_prev, remove_owns_prev, remove_owns_curr}
+        {union : split-goal | reduce2 | | simplify-pc};
+    52:preserve,
+       region::{remove_prev_in_region,
+                remove_curr_not_in_region,
+                insert_prev_in_region},
+       lockedRegion::{remove_prev_locked}
+        {union : split-goal | reduce2 | | simplify-pc};
+    53:preserve,
+       nexts::{remove_prev_next_curr},
+       locks::{remove_owns_prev, remove_owns_curr, insert_owns_prev},
+       region::{remove_prev_in_region,
+                remove_curr_in_region,
+                insert_prev_in_region},
+       lockedRegion::{remove_prev_curr_locked}
+        {union : split-goal | reduce2 | | simplify-pc};
+    54:preserve,
+       locks::{insert_owns_prev,remove_owns_prev},
+       region::{insert_prev_in_region,remove_prev_in_region},
+       lockedRegion::{remove_prev_locked}
+        {union : split-goal | reduce2 | | simplify-pc}
+   ] { union :
+             | reduce2
+             |
+             | simplify-pc
+     }
+

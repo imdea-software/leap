@@ -1,0 +1,129 @@
+
+=> preserve [
+      34:O:region;
+      35:O:region::{insert_prev_in_region,insert_curr_in_region},
+           nexts,
+           locks,
+           order;
+      51:O:nexts::remove_curr_not_null,
+           nexts::remove_curr_next_aux,
+           nexts::remove_prev_next_curr,
+           region,
+           order
+   ] { pruning :
+               | reduce2
+               |
+               | simplify-pc
+     }
+
+
+=> order [
+      26:nexts
+   ] { union   :
+               | reduce2
+               |
+               | simplify-pc
+     }
+
+
+=> locks [
+       9:O:region;
+      11:O:region;
+      14:S:nexts;
+      15:S:nexts;
+      17:O:region;
+      19:S:nexts;
+      23:O:region;
+      25:O:region;
+      28:S:nexts;
+      29:S:nexts;
+      31:O:region;
+      36:S:nexts;
+      40:O:region;
+      42:O:region;
+      45:S:nexts;
+      46:S:nexts;
+      48:O:region;
+      52:S:region;
+      53:S:nexts,region
+   ] { pruning :
+               | reduce2
+               |
+               | simplify-pc
+     }
+
+
+
+=> nexts [
+       5:S:preserve;
+      16:S:preserve,
+           region,
+           order
+            {pruning : | reduce2 | | simplify-pc};
+      26: preserve,
+          region::insert_curr_in_region,
+          order::insert_bounded_e
+             {pruning : | reduce2 | | simplify-pc};
+      30:S:preserve,region;
+      34:S:region,disjoint;
+      34:O:region,locks,disjoint;
+      35:S:preserve,region;
+      35:O:locks,region;
+      41:S:preserve,region;
+      43:preserve,
+         region::remove_curr_in_region,
+         order::remove_bounded_e {pruning : | reduce2 | | simplify-pc} ;
+      47:S:preserve,region;
+      50:S:preserve,region;
+      51:S:preserve,
+           region,
+           order::remove_bounded_e,
+           order::remove_curr_is_e {pruning : | reduce2 | | simplify-pc} ;
+      51:O:preserve,
+           locks,
+           region,
+           order::remove_bounded_e,
+           order::remove_curr_is_e {pruning : | reduce2 | | simplify-pc};
+      52:S:region
+   ] { union :
+             | reduce2
+             |
+             | simplify-pc
+     }
+
+
+=> region [
+      10:S:preserve;
+      14:S:nexts;
+      16:S:preserve;
+      24:S:preserve;
+      28:S:nexts;
+      30:S:preserve;
+      35:O:locks,disjoint;
+      39:S:preserve::head_not_null;
+      41:S:preserve;
+      45:S:nexts;
+      47:S:preserve,nexts;
+      51:S:preserve,
+           nexts,
+           order::remove_curr_is_e,
+           order::remove_bounded_e {union:|reduce2||simplify-pc};
+      51:O:preserve,
+           nexts,
+           locks,
+           order::remove_curr_is_e,
+           order::remove_bounded_e {union:split-goal|reduce2||simplify-pc}
+   ] { union :
+               | reduce2
+               |
+               | simplify-pc
+     }
+
+
+=> disjoint
+      { union :
+              | reduce2
+              |
+              | simplify-pc
+  }
+

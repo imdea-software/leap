@@ -1,0 +1,9 @@
+vars:
+
+tid i
+
+invariant [minTicket] :
+
+@crit(i). ->
+  ( i = tid_of(spmin(bag)) /\
+    int_of(spmin(bag)) = main::ticket(i))

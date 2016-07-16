@@ -1,0 +1,8 @@
+vars:
+
+tid i
+tid j
+
+invariant [mutex] :
+
+(i != j) -> ~ (@crit(i). /\ @crit(j).)

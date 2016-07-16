@@ -1,0 +1,6 @@
+vars:
+  addrSet se
+  addr a
+
+axiom[a_not__in_se_dif_a]:
+  in(a,se) -> (~ in(a,diff(se,{ a })))

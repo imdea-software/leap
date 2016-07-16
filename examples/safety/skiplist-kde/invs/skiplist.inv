@@ -1,0 +1,20 @@
+vars:
+
+invariant [skiplist_prop] :
+
+
+#head_not_null:
+   head != null
+
+
+#is_skiplist:
+   skiplist(heap, region, maxLevel, head, null, elements)
+
+
+#head_is_lowest:
+   rd(heap, head).data = lowestElem
+
+
+#maxLevel_is_positive:
+   maxLevel >= 0
+

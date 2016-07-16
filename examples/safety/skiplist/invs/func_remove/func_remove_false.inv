@@ -1,0 +1,27 @@
+vars:
+
+invariant [skiplist_func_remove_false] :
+
+   @should_be_removed. -> (ein (main::e, elements))
+
+/\ (@should_be_removed. \/ @remove_body.) -> main::e = remove::e
+
+/\ @remove_final_loop_begins. -> (remove::i >= 0 -> elements = elements_before /\
+                                  remove::i < 0 -> elements = ediff (elements_before, esingle(remove::e)))
+
+/\ @remove_final_loop_i_decreases. -> (remove::i = 0 -> elements = ediff (elements_before, esingle(remove::e)) /\
+                                       remove::i != 0 -> elements = elements_before)
+
+/\ @remove_return. -> elements = ediff (elements_before, esingle(remove::e))
+
+/\ (@main_call_remove. \/ @global_elements_equal.) -> elements_before = elements
+
+///////////////////////////////////////////
+
+
+/\ @remove_check_valueWasIn. ->
+      (~ .remove::valueWasIn. -> ~ ein (remove::e, elements))
+
+
+
+

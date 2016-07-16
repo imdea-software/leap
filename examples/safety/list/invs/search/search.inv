@@ -1,0 +1,24 @@
+vars:
+
+tid j
+
+invariant [list_search] :
+
+   @check_search(chosen). -> (ein (chosen_e, elements) -> .main::result(chosen). /\
+                               .main::result(chosen). -> ein (chosen_e, elements))
+
+/\ @sch_result_set(chosen). -> (ein (search::e(chosen), elements) -> .search::result(chosen). /\
+                           .search::result(chosen). -> ein (search::e(chosen), elements))
+
+/\ @search_body(chosen). -> search::e(chosen) = chosen_e
+
+/\ (@main_other_threads(j). \/ @insert_body(j). \/ @remove_body(j).) -> j != chosen
+
+/\ @main_other_threads(chosen). -> me != chosen
+
+/\ @main_e_not_chosen(j). -> main::e(j) != chosen_e
+
+/\ @insert_body(j). -> insert::e(j) != chosen_e
+
+/\ @remove_body(j). -> remove::e(j) != chosen_e
+

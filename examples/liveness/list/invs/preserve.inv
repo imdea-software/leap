@@ -1,0 +1,32 @@
+vars:
+
+
+invariant [preserve] :
+
+#null_in_region:
+   in (null, region)
+
+#region:
+   region = addr2set(heap, head)
+
+#tail_at_end:
+   rd(heap, tail).next = null
+/\ tail != null
+
+#head_not_null:
+   head != null
+
+#head_not_tail:
+   head != tail
+
+#elements:
+   elements = set2elem(heap, diff(region, {null}))
+
+   rd(heap, head).data = lowestElem
+/\ rd(heap, tail).data = highestElem
+
+#ordered:
+   orderlist (heap, head, tail)
+
+#tail_in_region:
+   in (tail, region)

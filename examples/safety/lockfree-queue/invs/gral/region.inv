@@ -1,0 +1,14 @@
+
+vars:
+
+tid j
+
+invariant [queueRegion] :
+
+
+   (@n_disconnected(j). \/ @enqueue_next_not_null(j).) -> ~ in (enqueue::n(j), region)
+/\ (@comparison_done(j). /\ ~ .enqueue::comparison(j).) -> ~ in (enqueue::n(j), region)
+
+
+
+

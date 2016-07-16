@@ -1,0 +1,10 @@
+vars:
+
+tid i
+
+invariant [hashtable_next] :
+
+  true
+
+//  @adding_node(i). ->
+//    ( rd(heap, add::node(i)).next = table[add::myBucket(i)].binit)

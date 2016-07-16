@@ -1,0 +1,12 @@
+vars:
+
+addr a
+int i
+
+invariant [hashmap_preserve] :
+
+//  locksLength <= capacity
+
+#is_hashmap:
+  hashmap(heap,region,elements,table,capacity)
+

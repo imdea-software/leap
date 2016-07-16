@@ -1,0 +1,14 @@
+vars:
+
+invariant [stackPreserve] :
+
+   in (null, region)
+/\ in (top, region)
+/\ region = addr2set(heap, top)
+
+
+
+
+
+
+

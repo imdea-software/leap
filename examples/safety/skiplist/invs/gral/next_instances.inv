@@ -1,0 +1,27 @@
+vars:
+
+invariant [skiplist_next_inst] :
+
+
+#insert_update_arr_zero_not_null:
+   @insert_update_all_set. ->
+      rd(heap, insert::update[0]).arr[0] != null
+
+#insert_update_i_addr2set:
+  @insert_update_all_set. ->
+    ((0 <= insert::i /\ insert::i <= maxLevel) ->
+         in (insert::update[insert::i], addr2set(heap, head, insert::i)))
+
+#insert_update_zero_in_region:
+   @insert_update_all_set. ->
+    ((0 <= maxLevel) -> in (insert::update[0], region))
+
+#newCell_unconnected_at_i:
+   @insert_not_all_processed. ->
+      (insert::i <= maxLevel -> (~ in (insert::newCell, addr2set(heap, head, insert::i))))
+
+#remove_update_in_addr2set:
+   @remove_final_loop. ->
+      ((0 <= remove::i /\ remove::i <= remove::removeFrom) ->
+            in (remove::update[remove::i], addr2set(heap, head, remove::i)))
+

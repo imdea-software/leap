@@ -1,0 +1,56 @@
+
+vars:
+
+int j
+
+invariant [skiplist_region] :
+
+
+/////////////////   Insert   ///////////////////
+
+
+@insert_i_set_zero. -> (~ in (insert::element, region))
+
+
+@insert_element_in_region. -> in (insert::element, region)
+
+
+@insert_nextElement_in_region. -> in (insert::nextElement, region)
+
+
+#insert_element_next_i_in_region:
+  (@insert_element_next_region_one. \/
+   @insert_element_is_nextElement.) ->
+    in (rd(heap, insert::element).arr[insert::i], region)
+
+
+@insert_newCell_unconnected. ->
+  ((insert::i <= j /\ j <= maxLevel) -> (~ in (insert::element, addr2set(heap, head, j))))
+
+
+@insert_i_increases. ->
+  ((insert::i < j /\ j <= maxLevel) -> (~ in (insert::element, addr2set(heap, head, j))))
+
+
+@insert_i_increases. ->
+  in (insert::element, addr2set(heap, head, insert::i))
+
+
+@insert_newCell_low_connected. ->
+      ((0 <= j /\ j < insert::i) -> in (insert::element, addr2set(heap, head, j)))
+
+
+(@insert_lookup_loop. /\ insert::i < j /\ j <= maxLevel) ->
+      in (insert::update[j], region)
+
+
+@insert_update_set. -> insert::update[insert::i] = insert::element
+
+
+#insert_update_j_in_addr2set:
+   (@insert_update_all_set. /\ 0 <= j /\ j <= maxLevel) ->
+      (in (insert::update[j], region) /\
+       in (insert::update[j], addr2set(heap, head, j)) /\
+       in (rd(heap,insert::update[j]).arr[j], addr2set(heap, head, j)))
+
+

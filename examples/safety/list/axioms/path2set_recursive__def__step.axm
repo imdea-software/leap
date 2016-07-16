@@ -1,0 +1,7 @@
+vars:
+  mem m
+  addr b
+  addr a
+
+axiom[path2set_recursive__def__step]:
+  (~ getp(m,a,b) = epsilon) -> path2set(getp(m,a,b)) = union({ a },path2set(getp(m,rd(m,a).next,b)))

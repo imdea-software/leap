@@ -1,0 +1,4 @@
+vars: 
+
+axiom[path2set_epsilon__is__empty]:
+  path2set(epsilon) = empty

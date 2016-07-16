@@ -1,0 +1,112 @@
+-> skiplist_prop [
+       3:
+          {union : | reduce2 | split-antecedent-pc | simplify-pc };
+      18:
+          {union : | reduce2 | split-antecedent-pc | simplify-pc };
+      34:skiplist_region,skiplist_order,skiplist_value
+          {union : split-goal | reduce2 | split-antecedent-pc | simplify-pc };
+      35:skiplist_region,skiplist_order,skiplist_next
+          {union : split-goal | reduce2 | split-antecedent-pc | simplify-pc };
+      56:skiplist_region,skiplist_order,skiplist_next,skiplist_value
+          {union : split-goal | reduce2 | split-antecedent-pc | simplify-pc }
+   ] { union :
+             | reduce2
+             |
+             | simplify-pc
+      }
+
+
+
+-> skiplist_region [
+       3:
+          {union : | reduce2 | split-antecedent-pc | simplify-pc };
+      18:
+          {union : | reduce2 | split-antecedent-pc | simplify-pc };
+      19:skiplist_prop;
+      20:skiplist_prop,skiplist_next;
+      21:skiplist_prop,skiplist_next;
+      25:skiplist_prop,skiplist_next;
+      28:skiplist_prop;
+      32:skiplist_prop;
+      34:skiplist_value;
+      36:skiplist_prop,skiplist_next,skiplist_order {union : split-goal | reduce2 | |simplify-pc};
+      37:skiplist_value;
+      38:skiplist_value;
+      40:skiplist_prop;
+      41:skiplist_prop,skiplist_next;
+      42:skiplist_prop,skiplist_next;
+      46:skiplist_prop,skiplist_next;
+      50:skiplist_next;
+      51:skiplist_prop;
+      59:skiplist_value
+  ] { union :
+             | reduce2
+             |
+             | simplify-pc
+    }
+
+
+
+-> skiplist_next [
+       3:
+          {union : | reduce2 | split-antecedent-pc | simplify-pc };
+      18:
+          {union : | reduce2 | split-antecedent-pc | simplify-pc };
+      19:skiplist_prop;
+      20:skiplist_prop;
+      23:skiplist_prop,skiplist_order;
+      26:skiplist_prop,skiplist_order;
+      28:skiplist_prop;
+      31:skiplist_prop;
+      40:skiplist_prop;
+      41:skiplist_prop;
+      44:skiplist_prop,skiplist_order;
+      47:skiplist_prop,skiplist_region,skiplist_order;
+      51:skiplist_prop
+  ] { union :
+             | reduce2
+             |
+             | simplify-pc
+    }
+
+
+
+-> skiplist_order [
+       3:
+          {union : | reduce2 | split-antecedent-pc | simplify-pc };
+      18:
+          {union : | reduce2 | split-antecedent-pc | simplify-pc };
+      24:skiplist_next;
+      27:skiplist_next;
+      28:skiplist_next;
+      30:skiplist_prop,skiplist_region,skiplist_value;
+      31:skiplist_prop,skiplist_region;
+      34:skiplist_value;
+      35:skiplist_value;
+      38:skiplist_value;
+      42:skiplist_next;
+      45:skiplist_next;
+      51:skiplist_next;
+      53:skiplist_value;
+      56:skiplist_prop,skiplist_region,skiplist_next,skiplist_value;
+      59:skiplist_value
+   ] { union :
+             | reduce2
+             |
+             | simplify-pc
+    }
+
+
+
+-> skiplist_value [
+       3:
+          {union : | reduce2 | split-antecedent-pc | simplify-pc };
+      18:
+          {union : | reduce2 | split-antecedent-pc | simplify-pc }
+  ] { union :
+             | reduce2
+             |
+             | simplify-pc
+     }
+
+

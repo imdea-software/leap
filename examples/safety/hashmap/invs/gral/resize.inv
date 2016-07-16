@@ -1,0 +1,11 @@
+vars:
+
+tid i
+
+invariant [hashmap_resize] :
+
+  @38(i). ->
+      (hashmap(heap,region,elements,table,resize::newCapacity(i)) /\
+       locksLength <= resize::newCapacity(i) /\
+       resize::newCapacity(i) >= capacity)
+

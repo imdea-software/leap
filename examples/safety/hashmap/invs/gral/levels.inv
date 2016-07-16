@@ -1,0 +1,15 @@
+vars:
+
+tid i
+
+invariant [hashmap_levels] :
+
+  @myLock_set(i). -> add::myLock(i) < locksLength
+
+#myBucket_bound:
+  @myBucket_set(i). -> add::myBucket(i) < capacity
+  
+
+
+//  @locked_bucket(i). ->
+//    locks[myLock] = i

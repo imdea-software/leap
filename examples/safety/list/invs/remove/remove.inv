@@ -1,0 +1,21 @@
+vars:
+
+tid j
+
+invariant [list_remove] :
+
+   @check_remove(chosen). -> ~(ein (chosen_e, elements))
+
+/\ (@rem_elem_removed(j). /\ remove::e(j) = chosen_e) -> ~(ein (remove::e(j), elements))
+
+/\ @remove_body(chosen). -> remove::e(chosen) = chosen_e
+
+/\ (@main_other_threads(j). \/ @search_body(j). \/ @insert_body(j).) -> j != chosen
+
+/\ @main_other_threads(chosen). -> me != chosen
+
+/\ @main_e_not_chosen(j). -> main::e(j) != chosen_e
+
+/\ (@insert_body(j). /\ j != chosen) -> insert::e(j) != chosen_e
+
+

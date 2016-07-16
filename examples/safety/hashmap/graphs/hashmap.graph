@@ -1,0 +1,25 @@
+//=> hashmap_preserve [
+//    22:hashmap_next,hashmap_elems;
+//    38:hashmap_resize
+//   ] { union : split-goal
+//             | reduce2
+//             | split-antecedent-pc
+//             | simplify-pc propositional-propagate
+//            }
+
+//=> hashmap_elems
+//     { union : split-goal
+//             | reduce2
+//             | split-antecedent-pc
+//             | simplify-pc
+//            }
+
+
+=> hashmap_next
+//    21:O:hashmap_preserve,hashmap_disjoint,hashmap_levels::myBucket_bound
+     { union :
+             | reduce2
+             |
+             | simplify-pc propositional-propagate}
+
+

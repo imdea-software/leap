@@ -1,0 +1,9 @@
+
+vars:
+
+tid j
+tid i
+
+invariant [stackDisjoint] :
+
+(@n_created(i). /\ @n_created(j). /\ i != j) -> push::n(i) != push::n(j)

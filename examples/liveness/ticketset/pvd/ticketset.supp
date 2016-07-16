@@ -1,0 +1,10 @@
+Tactics :
+  {union : split-goal
+         | reduce2
+         |
+         | simplify-pc } ;
+
+Facts :
+  3:activeLow, minTicketActive, unique;
+  4:notSame;
+  6:bagIsActive, unique;

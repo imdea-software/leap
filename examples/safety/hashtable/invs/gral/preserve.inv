@@ -1,0 +1,20 @@
+vars:
+
+tid i
+
+invariant [hashtable_preserve] :
+
+#is_hashtable:
+  hashtbl(heap,region,elements,table,capacity)
+
+
+#add_preserves_hashtable:
+  @procedure_add(i). -> hashtbl(heap,region,elements,add::tbl(i), capacity)
+
+
+#newTable_is_hashtable:
+  @newTable_init(i). -> hashtbl(heap,
+                                resize::newRegion(i),
+                                resize::newElements(i),
+                                resize::newTable(i),
+                                resize::newCapacity(i))

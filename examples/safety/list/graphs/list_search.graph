@@ -1,0 +1,13 @@
+=> list_search [
+      25 : preserve,
+           region::search_prev_in_region,
+           nexts::search_prev_next_curr,
+           order::search_prev_lower,
+           order::search_curr_bounded
+            { union : split-goal | reduce2 | | simplify-pc };
+      42 : preserve
+   ] { union :
+            | reduce2
+            |
+            | simplify-pc
+     }

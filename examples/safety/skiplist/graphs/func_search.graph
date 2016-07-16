@@ -1,0 +1,11 @@
+-> skiplist_func_search [
+      14:skiplist_prop,
+         skiplist_next::search_prev_next_zero_is_curr,
+         skiplist_region::search_prev_in_region,
+         skiplist_order::search_prev_value_lower_than_e,
+         skiplist_order::search_curr_greater_equal_e
+   ] { union :
+             | reduce2
+             |
+             | simplify-pc
+     }

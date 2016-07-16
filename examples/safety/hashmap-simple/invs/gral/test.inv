@@ -1,0 +1,28 @@
+vars:
+
+tid i
+
+invariant [test] :
+
+  true
+//  @22(i). ->
+//      (rd(heap, add::node(i)).next = table[add::myBucket(i)].binit /\
+//       rd(heap, add::node(i)).data = add::e(i)
+//      )
+
+//  @38(i). ->
+//      (hashmap(heap,region,elements,table,resize::newCapacity(i)) /\
+//       locksLength <= resize::newCapacity(i) /\
+//       resize::newCapacity(i) >= capacity)
+
+
+//  @19(i). ->
+//    (rd(heap,add::newNode(i)).data = add::e(i) /\
+//     add::bSet(i) = table[add::myBucket(i)].bregion /\
+//     rd(heap,add::newNode(i)).next = table[add::myBucket(i)].binit /\
+//
+//     rd(heap,add::newNode(i)).next = table[add::myBucket(i)].binit /\
+//     add::newNode(i) != null /\
+//     ~in(add::newNode(i), region)
+//)
+

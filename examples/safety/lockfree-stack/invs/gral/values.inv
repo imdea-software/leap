@@ -1,0 +1,9 @@
+
+vars:
+
+tid j
+
+invariant [stackValues] :
+
+   @n_created(j). -> rd(heap, push::n(j)).data = push::e(j)
+/\ @pop_removing(j). -> rd(heap, pop::oldTop(j)).data = pop::value(j)

@@ -1,0 +1,9 @@
+vars:
+
+tid i
+
+invariant [hashtable_elems] :
+
+  true
+
+//  @adding_node(i). -> rd(heap, add::node(i)).data = add::e(i)

@@ -1,0 +1,15 @@
+vars:
+
+tid i
+int l
+
+invariant [hashtable_locks] :
+
+  @add_own_lock(i). -> locks[add::myLock(i)].lockid = i
+
+  @resize_own_all_locks(i). -> locks[l].lockid = i
+
+
+  true
+//  @locked_bucket(i). -> locks[add::myBucket(i)].lockid = i
+

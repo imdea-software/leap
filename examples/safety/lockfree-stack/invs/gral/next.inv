@@ -1,0 +1,12 @@
+vars:
+
+tid j
+
+invariant [stackNext] :
+
+   @connecting(j). -> rd(heap, push::n(j)).next = push::oldTop(j)
+/\ @n_created(j). -> push::n(j) != null
+/\ @oldTop_not_null(j). -> pop::oldTop(j) != null
+/\ @newTop_follows_oldTop(j). -> rd(heap, pop::oldTop(j)).next = pop::newTop(j)
+
+

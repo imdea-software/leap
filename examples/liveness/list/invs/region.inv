@@ -1,0 +1,60 @@
+vars:
+
+tid i
+
+invariant [region] :
+
+
+   in (head, region)
+/\ in (tail, region)
+/\ in (null, region)
+
+
+
+///////  Search   /////////////////////////
+
+
+#search_prev_in_region:
+   @sch_prev_def(i). -> in (search::prev(i), region)
+
+#search_curr_in_region:
+   @sch_curr_def(i). -> in (search::curr(i), region)
+
+#search_aux_in_region:
+   @sch_aux_before_prev(i). -> in (search::aux(i), region)
+
+
+
+///////  Insert   /////////////////////////
+
+
+#insert_prev_in_region:
+   @ins_prev_def(i). -> in (insert::prev(i), region)
+
+#insert_curr_in_region:
+   @ins_curr_def(i). -> in (insert::curr(i), region)
+
+#insert_aux_not_in_region:
+   @after_malloc(i). -> ~ in (insert::aux(i), region)
+
+#insert_aux_in_region:
+   @ins_aux_before_prev(i). -> in (insert::aux(i), region)
+
+
+///////  Remove   /////////////////////////
+
+
+#remove_prev_not_null:
+   @rem_prev_def(i). -> remove::prev(i) != null
+
+#remove_prev_in_region:
+   @rem_prev_def(i). -> in (remove::prev(i), region)
+
+#remove_curr_in_region:
+   (@rem_curr_def(i). \/ @rem_releases_curr_two(i).) -> in (remove::curr(i), region)
+
+#remove_curr_not_in_region:
+   @rem_releases_curr_one(i). -> ~ in (remove::curr(i), region)
+
+#remove_aux_in_region:
+   @rem_aux_before_prev(i). -> in (remove::aux(i), region)

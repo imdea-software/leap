@@ -1,0 +1,11 @@
+vars:
+
+addr a
+addr head
+mem heap
+
+formula:
+
+(  in (a, path2set(getp(heap, head, null))) \/
+ ~ in (a, path2set(getp(heap, head, null))))
+

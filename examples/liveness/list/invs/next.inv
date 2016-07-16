@@ -1,0 +1,122 @@
+vars:
+
+tid j
+
+invariant [nexts] :
+
+#general:
+    rd(heap, head).next != head
+/\  head != tail // Same as in remove_region
+/\  tail != null // Same as in remove_region
+/\  rd(heap, head).next != null
+
+
+
+///////  Search   /////////////////////////
+
+#search_prev_def:
+   @sch_prev_def(j). -> search::prev(j) != null
+
+#search_prev_is_head:
+   @sch_prev_is_head(j). -> (search::prev(j) = head /\ rd(heap, head).next != null)
+
+#search_aux_eq_prev:
+   @sch_aux_eq_prev(j). -> search::aux(j) = search::prev(j)
+
+#search_prev_eq_curr:
+   @sch_equals(j). -> search::prev(j) = search::curr(j)
+
+#search_aux_before_prev:
+   @sch_aux_before_prev(j). -> (search::aux(j) != search::prev(j) /\ rd(heap, search::aux(j)).next = search::prev(j))
+
+#search_prev_next_curr:
+   ((@sch_follows(j). /\ ~ @sch_equals(j).) -> (search::prev(j) != search::curr(j) /\
+                                     rd(heap,search::prev(j)).next = search::curr(j)))
+
+#search_follows:
+   @sch_follows(j). -> search::curr(j) != null
+
+
+#search_diff:
+   @sch_diff(j). -> search::prev(j) != search::curr(j)
+
+
+
+///////  Insert   /////////////////////////
+
+    @ins_head_next_diff(j). -> rd(heap, head).next != head
+
+#insert_prev_is_head:
+    @ins_prev_is_head(j). -> insert::prev(j) = head
+
+#insert_diff:
+    @ins_diff(j). -> insert::prev(j) != insert::curr(j)
+/\  (@ins_aux_eq_prev(j). -> insert::aux(j) = insert::prev(j))
+
+#insert_aux_next_prev:
+   (@ins_aux_before_prev(j). -> (insert::aux(j) != insert::prev(j) /\ rd(heap, insert::aux(j)).next = insert::prev(j)))
+
+#insert_aux_next_curr:
+   @ins_aux_before_curr(j). -> (rd(heap,insert::aux(j)).next = insert::curr(j))
+
+#insert_prev_next_curr:
+    (  @ins_follows(j). /\
+     ~ @ins_equals(j). /\
+     ~ @ins_elem_inserted(j). ) ->
+      (insert::prev(j) != insert::curr(j) /\
+       rd(heap,insert::prev(j)).next = insert::curr(j))
+
+#insert_equal:
+    @ins_equals(j). -> insert::prev(j) = insert::curr(j)
+/\ (@ins_prev_is_head(j). \/ @ins_lookup_loop(j).) -> insert::prev(j) != null
+
+#insert_not_null:
+   @ins_prev_def(j). -> insert::prev(j) != null
+
+#insert_curr_not_null:
+   @ins_follows(j). -> insert::curr(j) != null
+
+#after_malloc_aux_not_null:
+   @after_malloc(j). -> insert::aux(j) != null
+
+#insert_while_begins:
+   @ins_while_begins(j). -> rd(heap, insert::curr(j)).next != null
+
+
+
+///////  Remove   /////////////////////////
+
+#remove_prev_is_head:
+   @rem_prev_is_head(j). -> (remove::prev(j) = head /\ rd(heap, head).next != null)
+
+
+#remove_equal:
+   (@rem_equals(j). -> remove::prev(j) = remove::curr(j))
+/\ (@rem_prev_is_head(j). \/ @rem_lookup_loop(j).) -> remove::prev(j) != null
+
+#remove_aux_next_prev:
+   (@rem_aux_before_prev(j). -> (remove::aux(j) != remove::prev(j) /\ rd(heap, remove::aux(j)).next = remove::prev(j)))
+
+#remove_prev_next_curr:
+   (((@rem_follows(j). /\ ~ @rem_equals(j).) \/
+    @rem_releases_curr_two(j).) -> (remove::prev(j) != remove::curr(j) /\
+                                     rd(heap,remove::prev(j)).next = remove::curr(j)))
+
+#remove_diff:
+    @rem_diff(j). -> remove::prev(j) != remove::curr(j)
+/\ (@rem_aux_eq_prev(j). -> remove::aux(j) = remove::prev(j))
+
+
+#remove_curr_next_aux:
+   (@rem_if_two(j). \/ @rem_releases_curr_one(j).) ->
+      ( rd(heap, remove::curr(j)).next = remove::aux(j) /\
+        remove::prev(j) != remove::aux(j) /\
+        remove::curr(j) != remove::aux(j))
+
+
+#remove_curr_not_null:
+   @rem_follows(j). -> remove::curr(j) != null
+
+#remove_while_begins:
+   @rem_while_begins(j). -> rd(heap, remove::curr(j)).next != null
+
